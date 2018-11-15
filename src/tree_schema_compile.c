@@ -1510,12 +1510,27 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_type *type_p, LY_DATA_TYPE b
         dec = (struct lysc_type_dec*)(*type);
 
         /* RFC 7950 9.3.4 - fraction-digits */
-        if (builtin && !type_p->fraction_digits) {
+        if (builtin) {
+            if (!type_p->fraction_digits) {
+                if (tpdfname) {
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Missing fraction-digits substatement for decimal64 type \"%s\".",
+                           tpdfname);
+                } else {
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Missing fraction-digits substatement for decimal64 type.");
+                    free(*type);
+                    *type = NULL;
+                }
+                return LY_EVALID;
+            }
+        } else if (type_p->fraction_digits) {
+            /* fraction digits is prohibited in types not directly derived from built-in decimal64 */
             if (tpdfname) {
-                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Missing fraction-digits substatement for decimal64 type \"%s\".",
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                       "Invalid fraction-digits substatement for type \"%s\" not directly derived from decimal64 built-in type.",
                        tpdfname);
             } else {
-                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Missing fraction-digits substatement for decimal64 type.");
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                       "Invalid fraction-digits substatement for type not directly derived from decimal64 built-in type.");
                 free(*type);
                 *type = NULL;
             }
@@ -1532,8 +1547,6 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_type *type_p, LY_DATA_TYPE b
                 COMPILE_ARRAY_GOTO(ctx, type_p->range->exts, dec->range->exts,
                                    options, u, lys_compile_ext, ret, done);
             }
-        } else if (base && ((struct lysc_type_dec*)base)->range) {
-            dec->range = lysc_range_dup(ctx->ctx, ((struct lysc_type_dec*)base)->range);
         }
 
         if (tpdfname) {

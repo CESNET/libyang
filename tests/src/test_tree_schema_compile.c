@@ -1074,6 +1074,10 @@ test_type_dec64(void **state)
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
     logbuf_assert("Missing fraction-digits substatement for decimal64 type.");
 
+    assert_non_null(mod = lys_parse_mem(ctx, "module ab {namespace urn:ab;prefix ab; typedef mytype {type decimal64;}leaf l {type mytype;}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Missing fraction-digits substatement for decimal64 type \"mytype\".");
+
     assert_non_null(mod = lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb; leaf l {type decimal64 {fraction-digits 2;"
                                         "range '3.142';}}}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
@@ -1083,6 +1087,16 @@ test_type_dec64(void **state)
                                         "range '4 | 3.14';}}}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
     logbuf_assert("Invalid range restriction - values are not in ascending order (3.14).");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module dd {namespace urn:dd;prefix dd; typedef mytype {type decimal64 {fraction-digits 2;}}"
+                                        "leaf l {type mytype {fraction-digits 3;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid fraction-digits substatement for type not directly derived from decimal64 built-in type.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module de {namespace urn:de;prefix de; typedef mytype {type decimal64 {fraction-digits 2;}}"
+                                        "typedef mytype2 {type mytype {fraction-digits 3;}}leaf l {type mytype2;}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid fraction-digits substatement for type \"mytype2\" not directly derived from decimal64 built-in type.");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
