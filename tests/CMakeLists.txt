@@ -26,7 +26,7 @@ endforeach(test_name)
 
 # Set common attributes of all tests
 foreach(test_name IN LISTS tests)
-    target_link_libraries(${test_name} ${CMOCKA_LIBRARIES} yang)
+    target_link_libraries(${test_name} ${CMOCKA_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${PCRE_LIBRARIES} m)
     list(GET tests_wraps 0 test_wrap)
     set_target_properties(${test_name} PROPERTIES LINK_FLAGS "${test_wrap}")
     list(REMOVE_AT tests_wraps 0)

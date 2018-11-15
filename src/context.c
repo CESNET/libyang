@@ -29,20 +29,13 @@
 
 #define LY_INTERNAL_MODS_COUNT 6
 
-#define IETF_YANG_METADATA_PATH "../models/ietf-yang-metadata@2016-08-05.h"
-#define YANG_PATH "../models/yang@2017-02-20.h"
-#define IETF_INET_TYPES_PATH "../models/ietf-inet-types@2013-07-15.h"
-#define IETF_YANG_TYPES_PATH "../models/ietf-yang-types@2013-07-15.h"
-#define IETF_DATASTORES "../models/ietf-datastores@2017-08-17.h"
-#define IETF_YANG_LIB_PATH "../models/ietf-yang-library@2018-01-17.h"
+#include "../models/ietf-yang-metadata@2016-08-05.h"
+#include "../models/yang@2017-02-20.h"
+#include "../models/ietf-inet-types@2013-07-15.h"
+#include "../models/ietf-yang-types@2013-07-15.h"
+#include "../models/ietf-datastores@2017-08-17.h"
+#include "../models/ietf-yang-library@2018-01-17.h"
 #define IETF_YANG_LIB_REV "2018-01-17"
-
-#include IETF_YANG_METADATA_PATH
-#include YANG_PATH
-#include IETF_INET_TYPES_PATH
-#include IETF_YANG_TYPES_PATH
-#include IETF_DATASTORES
-#include IETF_YANG_LIB_PATH
 
 static struct internal_modules_s {
     const char *name;

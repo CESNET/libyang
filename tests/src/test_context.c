@@ -13,7 +13,14 @@
  */
 
 #include "tests/config.h"
+#include "../../src/common.c"
+#include "../../src/log.c"
+#include "../../src/set.c"
+#include "../../src/hash_table.c"
+#include "../../src/xpath.c"
+#include "../../src/parser_yang.c"
 #include "../../src/context.c"
+#include "../../src/tree_schema_helpers.c"
 #include "../../src/tree_schema.c"
 
 #include <stdarg.h>
@@ -65,19 +72,6 @@ logger_setup(void **state)
 #   define logbuf_assert(str)
 #endif
 
-int __real_ly_set_add(struct ly_set *set, void *object, int options);
-int __wrap_ly_set_add(struct ly_set *set, void *object, int options)
-{
-    int wrap = mock_type(int);
-
-    if (wrap) {
-        /* error */
-        return -1;
-    } else {
-        return __real_ly_set_add(set, object, options);
-    }
-}
-
 static void
 test_searchdirs(void **state)
 {
@@ -86,7 +80,6 @@ test_searchdirs(void **state)
     struct ly_ctx *ctx;
     const char * const *list;
 
-    will_return_count(__wrap_ly_set_add, 0, 6);
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
 
     /* invalid arguments */
@@ -108,14 +101,10 @@ test_searchdirs(void **state)
     logbuf_assert("Unable to use search directory \"/nonexistingfile\" (No such file or directory)");
 
     /* ly_set_add() fails */
-    will_return(__wrap_ly_set_add, 1);
-    assert_int_equal(LY_EMEM, ly_ctx_set_searchdir(ctx, TESTS_BIN"/src"));
-
     /* no change */
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(ctx, NULL));
 
     /* correct path */
-    will_return_always(__wrap_ly_set_add, 0);
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(ctx, TESTS_BIN"/src"));
     assert_int_equal(1, ctx->search_paths.count);
     assert_string_equal(TESTS_BIN"/src", ctx->search_paths.objs[0]);
@@ -188,7 +177,6 @@ test_options(void **state)
 
     struct ly_ctx *ctx;
 
-    will_return_always(__wrap_ly_set_add, 0);
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0xffffffff, &ctx));
 
     /* invalid arguments */
@@ -285,7 +273,6 @@ test_models(void **state)
     assert_int_equal(0, ly_ctx_get_module_set_id(NULL));
     logbuf_assert("Invalid argument ctx (ly_ctx_get_module_set_id()).");
 
-    will_return_always(__wrap_ly_set_add, 0);
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
     assert_int_equal(ctx->module_set_id, ly_ctx_get_module_set_id(ctx));
 
@@ -360,7 +347,6 @@ test_get_models(void **state)
     const char *str1 = "module a {namespace urn:a;prefix a;revision 2018-10-23;}";
     const char *str2 = "module a {namespace urn:a;prefix a;revision 2018-10-23;revision 2018-10-24;}";
 
-    will_return_always(__wrap_ly_set_add, 0);
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
 
     /* invalid arguments */

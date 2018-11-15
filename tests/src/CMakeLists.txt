@@ -10,7 +10,7 @@ set(local_tests
 set(local_tests_wraps
     " "
     "-Wl,--wrap=realloc"
-    "-Wl,--wrap=ly_set_add"
+    " "
     " "
     " "
     " "

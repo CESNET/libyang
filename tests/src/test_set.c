@@ -22,6 +22,7 @@
 
 #include "libyang.h"
 #include "../../src/set.c"
+#include "../../src/log.c"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};

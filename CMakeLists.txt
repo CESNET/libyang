@@ -209,7 +209,7 @@ else()
 endif(ENABLE_STATIC)
 
 set_target_properties(yang PROPERTIES VERSION ${LIBYANG_VERSION} SOVERSION ${LIBYANG_SOVERSION})
-set_target_properties(yang PROPERTIES COMPILE_FLAGS "-fvisibility=hidden")
+set_target_properties(yangobj PROPERTIES COMPILE_FLAGS "-fvisibility=hidden")
 
 # link math
 target_link_libraries(yang m)

@@ -13,6 +13,7 @@
  */
 
 #include "../../src/common.c"
+#include "../../src/log.c"
 
 #include <stdarg.h>
 #include <stddef.h>

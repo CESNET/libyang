@@ -83,7 +83,7 @@ void ly_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, const char 
 void ly_vlog(const struct ly_ctx *ctx, enum LY_VLOG_ELEM elem_type, const void *elem, LY_VECODE code, const char *format, ...);
 
 #define LOGERR(ctx, errno, str, args...) ly_log(ctx, LY_LLERR, errno, str, ##args)
-#define LOGWRN(ctx, str, args...) ly_log(ctx, LY_LLWRN, 0, str, ##args)
+#define LOGWRN(ctx, str, ...) ly_log(ctx, LY_LLWRN, 0, str, ##__VA_ARGS__)
 #define LOGVRB(str, args...) ly_log(NULL, LY_LLVRB, 0, str, ##args)
 
 #ifdef NDEBUG
