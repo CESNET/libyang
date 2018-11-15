@@ -1044,8 +1044,7 @@ struct lysc_type_dec {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
-    uint64_t fraction_digits:1;      /**< fraction digits specification */
-    uint64_t div:63;                 /**< value for moving decimal point (dividing the stored value to get the real value) */
+    uint8_t fraction_digits;         /**< fraction digits specification */
     struct lysc_range *range;        /**< Optional range limitation */
 };
 

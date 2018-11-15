@@ -529,6 +529,9 @@ lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type)
     case LY_TYPE_BITS:
         FREE_ARRAY(ctx, (struct lysc_type_enum_item*)((struct lysc_type_bits*)type)->bits, lysc_enum_item_free);
         break;
+    case LY_TYPE_DEC64:
+        FREE_MEMBER(ctx, ((struct lysc_type_dec*)type)->range, lysc_range_free);
+        break;
     case LY_TYPE_STRING:
         FREE_MEMBER(ctx, ((struct lysc_type_str*)type)->length, lysc_range_free);
         FREE_ARRAY(ctx, ((struct lysc_type_str*)type)->patterns, lysc_pattern_free);
@@ -626,8 +629,6 @@ lysc_module_free_(struct lysc_module *module)
 void
 lysc_module_free(struct lysc_module *module, void (*private_destructor)(const struct lysc_node *node, void *priv))
 {
-    (void) private_destructor;
-
     if (module) {
         lysc_module_free_(module);
     }

@@ -1021,6 +1021,73 @@ test_type_bits(void **state)
     ly_ctx_destroy(ctx, NULL);
 }
 
+static void
+test_type_dec64(void **state)
+{
+    *state = test_type_dec64;
+
+    struct ly_ctx *ctx;
+    struct lys_module *mod;
+    struct lysc_type *type;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;leaf l {type decimal64 {"
+                                        "fraction-digits 2;range min..max;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(LY_TYPE_DEC64, type->basetype);
+    assert_int_equal(2, ((struct lysc_type_dec*)type)->fraction_digits);
+    assert_non_null(((struct lysc_type_dec*)type)->range);
+    assert_non_null(((struct lysc_type_dec*)type)->range->parts);
+    assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_type_dec*)type)->range->parts));
+    assert_int_equal(INT64_C(-9223372036854775807) - INT64_C(1), ((struct lysc_type_dec*)type)->range->parts[0].min_64);
+    assert_int_equal(INT64_C(9223372036854775807), ((struct lysc_type_dec*)type)->range->parts[0].max_64);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;typedef mytype {type decimal64 {"
+                                        "fraction-digits 2;range '3.14 | 5.1 | 10';}}leaf l {type mytype;}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(LY_TYPE_DEC64, type->basetype);
+    assert_int_equal(2, ((struct lysc_type_dec*)type)->fraction_digits);
+    assert_non_null(((struct lysc_type_dec*)type)->range);
+    assert_non_null(((struct lysc_type_dec*)type)->range->parts);
+    assert_int_equal(3, LY_ARRAY_SIZE(((struct lysc_type_dec*)type)->range->parts));
+    assert_int_equal(314, ((struct lysc_type_dec*)type)->range->parts[0].min_64);
+    assert_int_equal(314, ((struct lysc_type_dec*)type)->range->parts[0].max_64);
+    assert_int_equal(510, ((struct lysc_type_dec*)type)->range->parts[1].min_64);
+    assert_int_equal(510, ((struct lysc_type_dec*)type)->range->parts[1].max_64);
+    assert_int_equal(1000, ((struct lysc_type_dec*)type)->range->parts[2].min_64);
+    assert_int_equal(1000, ((struct lysc_type_dec*)type)->range->parts[2].max_64);
+
+    /* invalid cases */
+    assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; leaf l {type decimal64 {fraction-digits 0;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid value \"0\" of \"fraction-digits\". Line number 1.");
+    assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; leaf l {type decimal64 {fraction-digits -1;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid value \"-1\" of \"fraction-digits\". Line number 1.");
+    assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; leaf l {type decimal64 {fraction-digits 19;}}}", LYS_IN_YANG));
+    logbuf_assert("Value \"19\" is out of \"fraction-digits\" bounds. Line number 1.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; leaf l {type decimal64;}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Missing fraction-digits substatement for decimal64 type.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb; leaf l {type decimal64 {fraction-digits 2;"
+                                        "range '3.142';}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Range boundary \"3.142\" of decimal64 type exceeds defined number (2) of fraction digits.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module cc {namespace urn:cc;prefix cc; leaf l {type decimal64 {fraction-digits 2;"
+                                        "range '4 | 3.14';}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid range restriction - values are not in ascending order (3.14).");
+
+    *state = NULL;
+    ly_ctx_destroy(ctx, NULL);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1032,6 +1099,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_type_pattern, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_type_enum, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_type_bits, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_type_dec64, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_node_container, logger_setup, logger_teardown),
     };
 

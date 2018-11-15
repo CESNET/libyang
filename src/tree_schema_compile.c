@@ -565,9 +565,10 @@ done:
 }
 
 static LY_ERR
-range_part_check_value_syntax(struct lysc_ctx *ctx, LY_DATA_TYPE basetype, const char *value, size_t *len, char **valcopy)
+range_part_check_value_syntax(struct lysc_ctx *ctx, LY_DATA_TYPE basetype, uint8_t frdigits, const char *value, size_t *len, char **valcopy)
 {
-    size_t fraction = 0;
+    size_t fraction = 0, size;
+
     *len = 0;
 
     assert(value);
@@ -585,8 +586,12 @@ range_part_check_value_syntax(struct lysc_ctx *ctx, LY_DATA_TYPE basetype, const
     }
 
     if ((basetype != LY_TYPE_DEC64) || (value[*len] != '.') || !isdigit(value[*len + 1])) {
-        *valcopy = strndup(value, *len);
-        return LY_SUCCESS;
+        if (basetype == LY_TYPE_DEC64) {
+            goto decimal;
+        } else {
+            *valcopy = strndup(value, *len);
+            return LY_SUCCESS;
+        }
     }
     fraction = *len;
 
@@ -595,13 +600,32 @@ range_part_check_value_syntax(struct lysc_ctx *ctx, LY_DATA_TYPE basetype, const
         ++(*len);
     }
 
-    if (fraction) {
-        *valcopy = malloc(((*len) - 1) * sizeof **valcopy);
+    if (basetype == LY_TYPE_DEC64) {
+decimal:
+        assert(frdigits);
+        if (*len - 1 - fraction > frdigits) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                   "Range boundary \"%.*s\" of decimal64 type exceeds defined number (%u) of fraction digits.",
+                   *len, value, frdigits);
+            return LY_EINVAL;
+        }
+        if (fraction) {
+            size = (*len) + (frdigits - ((*len) - 1 - fraction));
+        } else {
+            size = (*len) + frdigits + 1;
+        }
+        *valcopy = malloc(size * sizeof **valcopy);
         LY_CHECK_ERR_RET(!(*valcopy), LOGMEM(ctx->ctx), LY_EMEM);
 
-        *valcopy[(*len) - 1] = '\0';
-        memcpy(&(*valcopy)[0], &value[0], fraction);
-        memcpy(&(*valcopy)[fraction], &value[fraction + 1], (*len) - 1 - (fraction + 1));
+        (*valcopy)[size - 1] = '\0';
+        if (fraction) {
+            memcpy(&(*valcopy)[0], &value[0], fraction);
+            memcpy(&(*valcopy)[fraction], &value[fraction + 1], (*len) - 1 - (fraction));
+            memset(&(*valcopy)[(*len) - 1], '0', frdigits - ((*len) - 1 - fraction));
+        } else {
+            memcpy(&(*valcopy)[0], &value[0], *len);
+            memset(&(*valcopy)[*len], '0', frdigits);
+        }
     }
     return LY_SUCCESS;
 }
@@ -623,14 +647,14 @@ range_part_check_ascendance(int unsigned_value, int64_t value, int64_t prev_valu
 
 static LY_ERR
 range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, int64_t prev, LY_DATA_TYPE basetype, int first, int length_restr,
-                  const char **value)
+                  uint8_t frdigits, const char **value)
 {
     LY_ERR ret = LY_SUCCESS;
     char *valcopy = NULL;
     size_t len;
 
     if (value) {
-        ret = range_part_check_value_syntax(ctx, basetype, *value, &len, &valcopy);
+        ret = range_part_check_value_syntax(ctx, basetype, frdigits, *value, &len, &valcopy);
         LY_CHECK_GOTO(ret, error);
     }
 
@@ -643,7 +667,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
         } else {
             part->min_u64 = UINT64_C(0);
         }
-        if (!first) {
+        if (!ret && !first) {
             ret = range_part_check_ascendance(1, max ? part->max_64 : part->min_64, prev);
         }
         break;
@@ -656,7 +680,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
         } else {
             part->min_64 = INT64_C(-9223372036854775807) - INT64_C(1);
         }
-        if (!first) {
+        if (!ret && !first) {
             ret = range_part_check_ascendance(0, max ? part->max_64 : part->min_64, prev);
         }
         break;
@@ -668,7 +692,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
         } else {
             part->min_64 = INT64_C(-128);
         }
-        if (!first) {
+        if (!ret && !first) {
             ret = range_part_check_ascendance(0, max ? part->max_64 : part->min_64, prev);
         }
         break;
@@ -680,7 +704,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
         } else {
             part->min_64 = INT64_C(-32768);
         }
-        if (!first) {
+        if (!ret && !first) {
             ret = range_part_check_ascendance(0, max ? part->max_64 : part->min_64, prev);
         }
         break;
@@ -692,7 +716,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
         } else {
             part->min_64 = INT64_C(-2147483648);
         }
-        if (!first) {
+        if (!ret && !first) {
             ret = range_part_check_ascendance(0, max ? part->max_64 : part->min_64, prev);
         }
         break;
@@ -705,7 +729,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
         } else {
             part->min_64 = INT64_C(-9223372036854775807) - INT64_C(1);
         }
-        if (!first) {
+        if (!ret && !first) {
             ret = range_part_check_ascendance(0, max ? part->max_64 : part->min_64, prev);
         }
         break;
@@ -717,7 +741,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
         } else {
             part->min_u64 = UINT64_C(0);
         }
-        if (!first) {
+        if (!ret && !first) {
             ret = range_part_check_ascendance(1, max ? part->max_64 : part->min_64, prev);
         }
         break;
@@ -729,7 +753,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
         } else {
             part->min_u64 = UINT64_C(0);
         }
-        if (!first) {
+        if (!ret && !first) {
             ret = range_part_check_ascendance(1, max ? part->max_64 : part->min_64, prev);
         }
         break;
@@ -741,7 +765,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
         } else {
             part->min_u64 = UINT64_C(0);
         }
-        if (!first) {
+        if (!ret && !first) {
             ret = range_part_check_ascendance(1, max ? part->max_64 : part->min_64, prev);
         }
         break;
@@ -753,7 +777,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
         } else {
             part->min_u64 = UINT64_C(0);
         }
-        if (!first) {
+        if (!ret && !first) {
             ret = range_part_check_ascendance(1, max ? part->max_64 : part->min_64, prev);
         }
         break;
@@ -765,7 +789,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
         } else {
             part->min_u64 = UINT64_C(0);
         }
-        if (!first) {
+        if (!ret && !first) {
             ret = range_part_check_ascendance(1, max ? part->max_64 : part->min_64, prev);
         }
         break;
@@ -786,7 +810,8 @@ error:
     } else if (ret == LY_EEXIST) {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
                        "Invalid %s restriction - values are not in ascending order (%s).",
-                       length_restr ? "length" : "range", valcopy ? valcopy : *value);
+                       length_restr ? "length" : "range",
+                       (valcopy && basetype != LY_TYPE_DEC64) ? valcopy : *value);
     } else if (!ret && value) {
         *value = *value + len;
     }
@@ -795,7 +820,7 @@ error:
 }
 
 static LY_ERR
-lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA_TYPE basetype, int length_restr,
+lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA_TYPE basetype, int length_restr, uint8_t frdigits,
                        struct lysc_range *base_range, struct lysc_range **range)
 {
     LY_ERR ret = LY_EVALID;
@@ -836,7 +861,7 @@ lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA
             expr += 3;
 
             LY_ARRAY_NEW_GOTO(ctx->ctx, parts, part, ret, cleanup);
-            LY_CHECK_GOTO(range_part_minmax(ctx, part, 0, 0, basetype, 1, length_restr, NULL), cleanup);
+            LY_CHECK_GOTO(range_part_minmax(ctx, part, 0, 0, basetype, 1, length_restr, frdigits, NULL), cleanup);
             part->max_64 = part->min_64;
         } else if (*expr == '|') {
             if (!parts || range_expected) {
@@ -863,12 +888,12 @@ lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA
             /* number */
             if (range_expected) {
                 part = &parts[LY_ARRAY_SIZE(parts) - 1];
-                LY_CHECK_GOTO(range_part_minmax(ctx, part, 1, part->min_64, basetype, 0, length_restr, &expr), cleanup);
+                LY_CHECK_GOTO(range_part_minmax(ctx, part, 1, part->min_64, basetype, 0, length_restr, frdigits, &expr), cleanup);
                 range_expected = 0;
             } else {
                 LY_ARRAY_NEW_GOTO(ctx->ctx, parts, part, ret, cleanup);
                 LY_CHECK_GOTO(range_part_minmax(ctx, part, 0, parts_done ? parts[LY_ARRAY_SIZE(parts) - 2].max_64 : 0,
-                                                basetype, parts_done ? 0 : 1, length_restr, &expr), cleanup);
+                                                basetype, parts_done ? 0 : 1, length_restr, frdigits, &expr), cleanup);
                 part->max_64 = part->min_64;
             }
 
@@ -885,12 +910,12 @@ lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA
             }
             if (range_expected) {
                 part = &parts[LY_ARRAY_SIZE(parts) - 1];
-                LY_CHECK_GOTO(range_part_minmax(ctx, part, 1, part->min_64, basetype, 0, length_restr, NULL), cleanup);
+                LY_CHECK_GOTO(range_part_minmax(ctx, part, 1, part->min_64, basetype, 0, length_restr, frdigits, NULL), cleanup);
                 range_expected = 0;
             } else {
                 LY_ARRAY_NEW_GOTO(ctx->ctx, parts, part, ret, cleanup);
                 LY_CHECK_GOTO(range_part_minmax(ctx, part, 1, parts_done ? parts[LY_ARRAY_SIZE(parts) - 2].max_64 : 0,
-                                                basetype, parts_done ? 0 : 1, length_restr, NULL), cleanup);
+                                                basetype, parts_done ? 0 : 1, length_restr, frdigits, NULL), cleanup);
                 part->min_64 = part->max_64;
             }
         } else {
@@ -1432,13 +1457,14 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_type *type_p, LY_DATA_TYPE b
     struct lysc_type_str *str;
     struct lysc_type_bits *bits;
     struct lysc_type_enum *enumeration;
+    struct lysc_type_dec *dec;
 
     switch (basetype) {
     case LY_TYPE_BINARY:
         /* RFC 7950 9.8.1, 9.4.4 - length, number of octets it contains */
         bin = (struct lysc_type_bin*)(*type);
         if (type_p->length) {
-            ret = lys_compile_type_range(ctx, type_p->length, basetype, 1,
+            ret = lys_compile_type_range(ctx, type_p->length, basetype, 1, 0,
                                          base ? ((struct lysc_type_bin*)base)->length : NULL, &bin->length);
             LY_CHECK_RET(ret);
             if (!tpdfname) {
@@ -1464,16 +1490,15 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_type *type_p, LY_DATA_TYPE b
 
         if (builtin && !type_p->flags) {
             /* type derived from bits built-in type must contain at least one bit */
-            if (!bits->bits) {
-                if (tpdfname) {
-                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Missing bit substatement for bits type \"%s\".", tpdfname);
-                } else {
-                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Missing bit substatement for bits type.");
-                    free(*type);
-                    *type = NULL;
-                }
-                return LY_EVALID;
+            if (tpdfname) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Missing bit substatement for bits type \"%s\".",
+                       tpdfname);
+            } else {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Missing bit substatement for bits type.");
+                free(*type);
+                *type = NULL;
             }
+            return LY_EVALID;
         }
 
         if (tpdfname) {
@@ -1481,11 +1506,46 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_type *type_p, LY_DATA_TYPE b
             *type = calloc(1, sizeof(struct lysc_type_bits));
         }
         break;
+    case LY_TYPE_DEC64:
+        dec = (struct lysc_type_dec*)(*type);
+
+        /* RFC 7950 9.3.4 - fraction-digits */
+        if (builtin && !type_p->fraction_digits) {
+            if (tpdfname) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Missing fraction-digits substatement for decimal64 type \"%s\".",
+                       tpdfname);
+            } else {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Missing fraction-digits substatement for decimal64 type.");
+                free(*type);
+                *type = NULL;
+            }
+            return LY_EVALID;
+        }
+        dec->fraction_digits = type_p->fraction_digits;
+
+        /* RFC 7950 9.2.4 - range */
+        if (type_p->range) {
+            ret = lys_compile_type_range(ctx, type_p->range, basetype, 0, dec->fraction_digits,
+                                         base ? ((struct lysc_type_dec*)base)->range : NULL, &dec->range);
+            LY_CHECK_RET(ret);
+            if (!tpdfname) {
+                COMPILE_ARRAY_GOTO(ctx, type_p->range->exts, dec->range->exts,
+                                   options, u, lys_compile_ext, ret, done);
+            }
+        } else if (base && ((struct lysc_type_dec*)base)->range) {
+            dec->range = lysc_range_dup(ctx->ctx, ((struct lysc_type_dec*)base)->range);
+        }
+
+        if (tpdfname) {
+            type_p->compiled = *type;
+            *type = calloc(1, sizeof(struct lysc_type_dec));
+        }
+        break;
     case LY_TYPE_STRING:
         /* RFC 7950 9.4.4 - length */
         str = (struct lysc_type_str*)(*type);
         if (type_p->length) {
-            ret = lys_compile_type_range(ctx, type_p->length, basetype, 1,
+            ret = lys_compile_type_range(ctx, type_p->length, basetype, 1, 0,
                                          base ? ((struct lysc_type_str*)base)->length : NULL, &str->length);
             LY_CHECK_RET(ret);
             if (!tpdfname) {
@@ -1521,17 +1581,15 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_type *type_p, LY_DATA_TYPE b
 
         if (builtin && !type_p->flags) {
             /* type derived from enumerations built-in type must contain at least one enum */
-            if (!enumeration->enums) {
-                if (tpdfname) {
-                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
-                           "Missing enum substatement for enumeration type \"%s\".", tpdfname);
-                } else {
-                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Missing enum substatement for enumeration type.");
-                    free(*type);
-                    *type = NULL;
-                }
-                return LY_EVALID;
+            if (tpdfname) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                       "Missing enum substatement for enumeration type \"%s\".", tpdfname);
+            } else {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Missing enum substatement for enumeration type.");
+                free(*type);
+                *type = NULL;
             }
+            return LY_EVALID;
         }
 
         if (tpdfname) {
@@ -1550,7 +1608,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_type *type_p, LY_DATA_TYPE b
         /* RFC 6020 9.2.4 - range */
         num = (struct lysc_type_num*)(*type);
         if (type_p->range) {
-            ret = lys_compile_type_range(ctx, type_p->range, basetype, 1,
+            ret = lys_compile_type_range(ctx, type_p->range, basetype, 0, 0,
                                          base ? ((struct lysc_type_num*)base)->range : NULL, &num->range);
             LY_CHECK_RET(ret);
             if (!tpdfname) {
