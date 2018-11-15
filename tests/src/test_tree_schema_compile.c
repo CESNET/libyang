@@ -18,6 +18,8 @@
 #include "../../src/xpath.c"
 #include "../../src/parser_yang.c"
 #include "../../src/tree_schema_helpers.c"
+#include "../../src/tree_schema_free.c"
+#include "../../src/tree_schema_compile.c"
 #include "../../src/tree_schema.c"
 #include "../../src/context.c"
 #include "../../src/hash_table.c"

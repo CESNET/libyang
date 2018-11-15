@@ -321,6 +321,20 @@ LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *re
 void lys_module_implement(struct lys_module *mod);
 
 /**
+ * @brief Free the compiled node structure.
+ * @param[in] ctx libyang context where the string data resides in a dictionary.
+ * @param[in,out] node Compiled node structure to be freed.
+ */
+void lysc_node_free(struct ly_ctx *ctx, struct lysc_node *node);
+
+/**
+ * @brief Free the compiled schema structure.
+ * @param[in,out] module Compiled schema module structure to free.
+ * @param[in] private_destructor Function to remove private data from the compiled schema tree.
+ */
+void lysc_module_free(struct lysc_module *module, void (*private_destructor)(const struct lysc_node *node, void *priv));
+
+/**
  * @brief Free the schema structure. It just frees, it does not remove the schema from its context.
  * @param[in,out] module Schema module structure to free.
  * @param[in] private_destructor Function to remove private data from the compiled schema tree.

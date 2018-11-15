@@ -158,6 +158,8 @@ set(libsrc
     src/set.c
     src/context.c
     src/tree_schema.c
+    src/tree_schema_free.c
+    src/tree_schema_compile.c
     src/tree_schema_helpers.c
     src/parser_yang.c
     src/xml.c
