@@ -1422,6 +1422,159 @@ done:
 }
 
 static LY_ERR
+lys_compile_type_(struct lysc_ctx *ctx, struct lysp_type *type_p, LY_DATA_TYPE basetype, int options, int builtin, const char *tpdfname,
+                  struct lysc_type *base,  struct lysc_type **type)
+{
+    LY_ERR ret = LY_SUCCESS;
+    unsigned int u;
+    struct lysc_type_bin *bin;
+    struct lysc_type_num *num;
+    struct lysc_type_str *str;
+    struct lysc_type_bits *bits;
+    struct lysc_type_enum *enumeration;
+
+    switch (basetype) {
+    case LY_TYPE_BINARY:
+        /* RFC 7950 9.8.1, 9.4.4 - length, number of octets it contains */
+        bin = (struct lysc_type_bin*)(*type);
+        if (type_p->length) {
+            ret = lys_compile_type_range(ctx, type_p->length, basetype, 1,
+                                         base ? ((struct lysc_type_bin*)base)->length : NULL, &bin->length);
+            LY_CHECK_RET(ret);
+            if (!tpdfname) {
+                COMPILE_ARRAY_GOTO(ctx, type_p->length->exts, bin->length->exts,
+                                   options, u, lys_compile_ext, ret, done);
+            }
+        }
+
+        if (tpdfname) {
+            type_p->compiled = *type;
+            *type = calloc(1, sizeof(struct lysc_type_bin));
+        }
+        break;
+    case LY_TYPE_BITS:
+        /* RFC 7950 9.7 - bits */
+        bits = (struct lysc_type_bits*)(*type);
+        if (type_p->bits) {
+            ret = lys_compile_type_enums(ctx, type_p->bits, basetype, options,
+                                         base ? (struct lysc_type_enum_item*)((struct lysc_type_bits*)base)->bits : NULL,
+                                         (struct lysc_type_enum_item**)&bits->bits);
+            LY_CHECK_RET(ret);
+        }
+
+        if (builtin && !type_p->flags) {
+            /* type derived from bits built-in type must contain at least one bit */
+            if (!bits->bits) {
+                if (tpdfname) {
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Missing bit substatement for bits type \"%s\".", tpdfname);
+                } else {
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Missing bit substatement for bits type.");
+                    free(*type);
+                    *type = NULL;
+                }
+                return LY_EVALID;
+            }
+        }
+
+        if (tpdfname) {
+            type_p->compiled = *type;
+            *type = calloc(1, sizeof(struct lysc_type_bits));
+        }
+        break;
+    case LY_TYPE_STRING:
+        /* RFC 7950 9.4.4 - length */
+        str = (struct lysc_type_str*)(*type);
+        if (type_p->length) {
+            ret = lys_compile_type_range(ctx, type_p->length, basetype, 1,
+                                         base ? ((struct lysc_type_str*)base)->length : NULL, &str->length);
+            LY_CHECK_RET(ret);
+            if (!tpdfname) {
+                COMPILE_ARRAY_GOTO(ctx, type_p->length->exts, str->length->exts,
+                                   options, u, lys_compile_ext, ret, done);
+            }
+        } else if (base && ((struct lysc_type_str*)base)->length) {
+            str->length = lysc_range_dup(ctx->ctx, ((struct lysc_type_str*)base)->length);
+        }
+
+        /* RFC 7950 9.4.5 - pattern */
+        if (type_p->patterns) {
+            ret = lys_compile_type_patterns(ctx, type_p->patterns, options,
+                                            base ? ((struct lysc_type_str*)base)->patterns : NULL, &str->patterns);
+            LY_CHECK_RET(ret);
+        } else if (base && ((struct lysc_type_str*)base)->patterns) {
+            str->patterns = lysc_patterns_dup(ctx->ctx, ((struct lysc_type_str*)base)->patterns);
+        }
+
+        if (tpdfname) {
+            type_p->compiled = *type;
+            *type = calloc(1, sizeof(struct lysc_type_str));
+        }
+        break;
+    case LY_TYPE_ENUM:
+        /* RFC 7950 9.6 - enum */
+        enumeration = (struct lysc_type_enum*)(*type);
+        if (type_p->enums) {
+            ret = lys_compile_type_enums(ctx, type_p->enums, basetype, options,
+                                         base ? ((struct lysc_type_enum*)base)->enums : NULL, &enumeration->enums);
+            LY_CHECK_RET(ret);
+        }
+
+        if (builtin && !type_p->flags) {
+            /* type derived from enumerations built-in type must contain at least one enum */
+            if (!enumeration->enums) {
+                if (tpdfname) {
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                           "Missing enum substatement for enumeration type \"%s\".", tpdfname);
+                } else {
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Missing enum substatement for enumeration type.");
+                    free(*type);
+                    *type = NULL;
+                }
+                return LY_EVALID;
+            }
+        }
+
+        if (tpdfname) {
+            type_p->compiled = *type;
+            *type = calloc(1, sizeof(struct lysc_type_enum));
+        }
+        break;
+    case LY_TYPE_INT8:
+    case LY_TYPE_UINT8:
+    case LY_TYPE_INT16:
+    case LY_TYPE_UINT16:
+    case LY_TYPE_INT32:
+    case LY_TYPE_UINT32:
+    case LY_TYPE_INT64:
+    case LY_TYPE_UINT64:
+        /* RFC 6020 9.2.4 - range */
+        num = (struct lysc_type_num*)(*type);
+        if (type_p->range) {
+            ret = lys_compile_type_range(ctx, type_p->range, basetype, 1,
+                                         base ? ((struct lysc_type_num*)base)->range : NULL, &num->range);
+            LY_CHECK_RET(ret);
+            if (!tpdfname) {
+                COMPILE_ARRAY_GOTO(ctx, type_p->range->exts, num->range->exts,
+                                   options, u, lys_compile_ext, ret, done);
+            }
+        }
+
+        if (tpdfname) {
+            type_p->compiled = *type;
+            *type = calloc(1, sizeof(struct lysc_type_num));
+        }
+        break;
+    case LY_TYPE_BOOL:
+    case LY_TYPE_EMPTY:
+    case LY_TYPE_UNKNOWN: /* just to complete switch */
+        break;
+    }
+    LY_CHECK_ERR_RET(!(*type), LOGMEM(ctx->ctx), LY_EMEM);
+done:
+    return ret;
+}
+
+static LY_ERR
 lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int options, struct lysc_type **type)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -1433,13 +1586,8 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
         struct lysp_module *mod;
     } *tctx, *tctx_prev = NULL;
     LY_DATA_TYPE basetype = LY_TYPE_UNKNOWN;
-    struct lysc_type *base = NULL;
+    struct lysc_type *base = NULL, *prev_type;
     struct ly_set tpdf_chain = {0};
-    struct lysc_type_bin *bin;
-    struct lysc_type_num *num;
-    struct lysc_type_str *str;
-    struct lysc_type_bits *bits;
-    struct lysc_type_enum *enumeration;
 
     (*type) = NULL;
 
@@ -1481,11 +1629,9 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
     switch (basetype) {
     case LY_TYPE_BINARY:
         *type = calloc(1, sizeof(struct lysc_type_bin));
-        bin = (struct lysc_type_bin*)(*type);
         break;
     case LY_TYPE_BITS:
         *type = calloc(1, sizeof(struct lysc_type_bits));
-        bits = (struct lysc_type_bits*)(*type);
         break;
     case LY_TYPE_BOOL:
     case LY_TYPE_EMPTY:
@@ -1496,7 +1642,6 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
         break;
     case LY_TYPE_ENUM:
         *type = calloc(1, sizeof(struct lysc_type_enum));
-        enumeration = (struct lysc_type_enum*)(*type);
         break;
     case LY_TYPE_IDENT:
         *type = calloc(1, sizeof(struct lysc_type_identityref));
@@ -1509,7 +1654,6 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
         break;
     case LY_TYPE_STRING:
         *type = calloc(1, sizeof(struct lysc_type_str));
-        str = (struct lysc_type_str*)(*type);
         break;
     case LY_TYPE_UNION:
         *type = calloc(1, sizeof(struct lysc_type_union));
@@ -1523,7 +1667,6 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
     case LY_TYPE_INT64:
     case LY_TYPE_UINT64:
         *type = calloc(1, sizeof(struct lysc_type_num));
-        num = (struct lysc_type_num*)(*type);
         break;
     case LY_TYPE_UNKNOWN:
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
@@ -1561,213 +1704,24 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
 
         ++(*type)->refcount;
         (*type)->basetype = basetype;
-        switch (basetype) {
-        case LY_TYPE_BINARY:
-            /* RFC 6020 9.8.1, 9.4.4 - length, number of octets it contains */
-            if (tctx->tpdf->type.length) {
-                ret = lys_compile_type_range(ctx, tctx->tpdf->type.length, basetype, 1,
-                                             base ? ((struct lysc_type_bin*)base)->length : NULL, &bin->length);
-                LY_CHECK_GOTO(ret, cleanup);
-            }
-
-            base = ((struct lysp_tpdf*)tctx->tpdf)->type.compiled = *type;
-            *type = calloc(1, sizeof(struct lysc_type_bin));
-            bin = (struct lysc_type_bin*)(*type);
-            break;
-        case LY_TYPE_BITS:
-            /* RFC 6020 9.6 - enum */
-            if (tctx->tpdf->type.bits) {
-                ret = lys_compile_type_enums(ctx, tctx->tpdf->type.bits, basetype, options,
-                                             base ? (struct lysc_type_enum_item*)((struct lysc_type_bits*)base)->bits : NULL,
-                                             (struct lysc_type_enum_item**)&bits->bits);
-                LY_CHECK_GOTO(ret, cleanup);
-            }
-
-            if ((u == tpdf_chain.count - 1) && !(tctx->tpdf->type.flags)) {
-                /* type derived from bits built-in type must contain at least one bit */
-                if (!bits->bits) {
-                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
-                           "Missing bit substatement for bits type \"%s\".", tctx->tpdf->name);
-                    ret = LY_EVALID;
-                    goto cleanup;
-                }
-            }
-
-            base = ((struct lysp_tpdf*)tctx->tpdf)->type.compiled = *type;
-            *type = calloc(1, sizeof(struct lysc_type_bits));
-            bits = (struct lysc_type_bits*)(*type);
-            break;
-        case LY_TYPE_STRING:
-            /* RFC 6020 9.4.4 - length */
-            if (tctx->tpdf->type.length) {
-                ret = lys_compile_type_range(ctx, tctx->tpdf->type.length, basetype, 1,
-                                             base ? ((struct lysc_type_str*)base)->length : NULL, &str->length);
-                LY_CHECK_GOTO(ret, cleanup);
-            } else if (base && ((struct lysc_type_str*)base)->length) {
-                str->length = lysc_range_dup(ctx->ctx, ((struct lysc_type_str*)base)->length);
-            }
-
-            /* RFC 6020 9.4.6 - pattern */
-            if (tctx->tpdf->type.patterns) {
-                ret = lys_compile_type_patterns(ctx, tctx->tpdf->type.patterns, options,
-                                                base ? ((struct lysc_type_str*)base)->patterns : NULL, &str->patterns);
-                LY_CHECK_GOTO(ret, cleanup);
-            } else if (base && ((struct lysc_type_str*)base)->patterns) {
-                str->patterns = lysc_patterns_dup(ctx->ctx, ((struct lysc_type_str*)base)->patterns);
-            }
-
-            base = ((struct lysp_tpdf*)tctx->tpdf)->type.compiled = *type;
-            *type = calloc(1, sizeof(struct lysc_type_str));
-            str = (struct lysc_type_str*)(*type);
-            break;
-        case LY_TYPE_ENUM:
-            /* RFC 6020 9.6 - enum */
-            if (tctx->tpdf->type.enums) {
-                ret = lys_compile_type_enums(ctx, tctx->tpdf->type.enums, basetype, options,
-                                             base ? ((struct lysc_type_enum*)base)->enums : NULL, &enumeration->enums);
-                LY_CHECK_GOTO(ret, cleanup);
-            }
-
-            if ((u == tpdf_chain.count - 1) && !(tctx->tpdf->type.flags)) {
-                /* type derived from enumerations built-in type must contain at least one enum */
-                if (!enumeration->enums) {
-                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
-                           "Missing enum substatement for enumeration type \"%s\".", tctx->tpdf->name);
-                    ret = LY_EVALID;
-                    goto cleanup;
-                }
-            }
-
-            base = ((struct lysp_tpdf*)tctx->tpdf)->type.compiled = *type;
-            *type = calloc(1, sizeof(struct lysc_type_enum));
-            enumeration = (struct lysc_type_enum*)(*type);
-            break;
-        case LY_TYPE_INT8:
-        case LY_TYPE_UINT8:
-        case LY_TYPE_INT16:
-        case LY_TYPE_UINT16:
-        case LY_TYPE_INT32:
-        case LY_TYPE_UINT32:
-        case LY_TYPE_INT64:
-        case LY_TYPE_UINT64:
-            /* RFC 6020 9.2.4 - range */
-            if (tctx->tpdf->type.range) {
-                ret = lys_compile_type_range(ctx, tctx->tpdf->type.range, basetype, 1,
-                                             base ? ((struct lysc_type_num*)base)->range : NULL, &num->range);
-                LY_CHECK_GOTO(ret, cleanup);
-            }
-
-            base = ((struct lysp_tpdf*)tctx->tpdf)->type.compiled = *type;
-            *type = calloc(1, sizeof(struct lysc_type_num));
-            num = (struct lysc_type_num*)(*type);
-            break;
-        case LY_TYPE_BOOL:
-        case LY_TYPE_EMPTY:
-        case LY_TYPE_UNKNOWN: /* just to complete switch */
-            base = ((struct lysp_tpdf*)tctx->tpdf)->type.compiled = *type;
-            *type = calloc(1, sizeof(struct lysc_type));
-            break;
-        }
-        LY_CHECK_ERR_GOTO(!(*type), LOGMEM(ctx->ctx); ret = LY_EMEM, cleanup);
-
+        prev_type = *type;
+        ret = lys_compile_type_(ctx, &((struct lysp_tpdf*)tctx->tpdf)->type, basetype, options, (u == tpdf_chain.count - 1) ? 1 : 0, tctx->tpdf->name, base, type);
+        LY_CHECK_GOTO(ret, cleanup);
+        base = prev_type;
     }
 
-    if (leaf_p->type.flags) {
+    /* process the type definition in leaf */
+    if (leaf_p->type.flags || !base) {
         /* get restrictions from the node itself, finalize the type structure */
         (*type)->basetype = basetype;
         ++(*type)->refcount;
-        switch (basetype) {
-        case LY_TYPE_BINARY:
-            if (leaf_p->type.length) {
-                ret = lys_compile_type_range(ctx, leaf_p->type.length, basetype, 1,
-                                             base ? ((struct lysc_type_bin*)base)->length : NULL, &bin->length);
-                LY_CHECK_GOTO(ret, cleanup);
-                COMPILE_ARRAY_GOTO(ctx, leaf_p->type.length->exts, bin->length->exts,
-                                   options, u, lys_compile_ext, ret, cleanup);
-            }
-            break;
-        case LY_TYPE_BITS:
-            if (leaf_p->type.bits) {
-                ret = lys_compile_type_enums(ctx, leaf_p->type.bits, basetype, options,
-                                             base ? (struct lysc_type_enum_item*)((struct lysc_type_bits*)base)->bits : NULL,
-                                             (struct lysc_type_enum_item**)&bits->bits);
-                LY_CHECK_GOTO(ret, cleanup);
-            }
-            break;
-        case LY_TYPE_STRING:
-            if (leaf_p->type.length) {
-                ret = lys_compile_type_range(ctx, leaf_p->type.length, basetype, 1,
-                                             base ? ((struct lysc_type_str*)base)->length : NULL, &str->length);
-                LY_CHECK_GOTO(ret, cleanup);
-                COMPILE_ARRAY_GOTO(ctx, leaf_p->type.length->exts, str->length->exts,
-                                   options, u, lys_compile_ext, ret, cleanup);
-            } else if (base && ((struct lysc_type_str*)base)->length) {
-                str->length = lysc_range_dup(ctx->ctx, ((struct lysc_type_str*)base)->length);
-            }
-
-            if (leaf_p->type.patterns) {
-                ret = lys_compile_type_patterns(ctx, leaf_p->type.patterns, options,
-                                                base ? ((struct lysc_type_str*)base)->patterns : NULL, &str->patterns);
-                LY_CHECK_GOTO(ret, cleanup);
-            } else if (base && ((struct lysc_type_str*)base)->patterns) {
-                str->patterns = lysc_patterns_dup(ctx->ctx, ((struct lysc_type_str*)base)->patterns);
-            }
-            break;
-        case LY_TYPE_ENUM:
-            if (leaf_p->type.enums) {
-                ret = lys_compile_type_enums(ctx, leaf_p->type.enums, basetype, options,
-                                             base ? ((struct lysc_type_enum*)base)->enums : NULL, &enumeration->enums);
-                LY_CHECK_GOTO(ret, cleanup);
-            }
-            break;
-        case LY_TYPE_INT8:
-        case LY_TYPE_UINT8:
-        case LY_TYPE_INT16:
-        case LY_TYPE_UINT16:
-        case LY_TYPE_INT32:
-        case LY_TYPE_UINT32:
-        case LY_TYPE_INT64:
-        case LY_TYPE_UINT64:
-            if (leaf_p->type.range) {
-                ret = lys_compile_type_range(ctx, leaf_p->type.range, basetype, 0,
-                                             base ? ((struct lysc_type_num*)base)->range : NULL, &num->range);
-                LY_CHECK_GOTO(ret, cleanup);
-                COMPILE_ARRAY_GOTO(ctx, leaf_p->type.range->exts, num->range->exts,
-                                   options, u, lys_compile_ext, ret, cleanup);
-            }
-            break;
-        case LY_TYPE_BOOL:
-        case LY_TYPE_EMPTY:
-        case LY_TYPE_UNKNOWN: /* just to complete switch */
-            /* nothing to do */
-            break;
-        }
-    } else if (base) {
+        ret = lys_compile_type_(ctx, &leaf_p->type, basetype, options, base ? 0 : 1, NULL, base, type);
+        LY_CHECK_GOTO(ret, cleanup);
+    } else {
         /* no specific restriction in leaf's type definition, copy from the base */
         free(*type);
         (*type) = base;
         ++(*type)->refcount;
-    } else {
-        /* there are some limitations on types derived directly from built-in types */
-        if (basetype == LY_TYPE_BITS) {
-            if (!bits->bits) {
-                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
-                       "Missing bit substatement for bits type.");
-                free(*type);
-                *type = NULL;
-                ret = LY_EVALID;
-                goto cleanup;
-            }
-        } else if (basetype == LY_TYPE_ENUM) {
-            if (!enumeration->enums) {
-                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
-                       "Missing enum substatement for enumeration type.");
-                free(*type);
-                *type = NULL;
-                ret = LY_EVALID;
-                goto cleanup;
-            }
-        }
     }
 
     COMPILE_ARRAY_GOTO(ctx, type_p->exts, (*type)->exts, options, u, lys_compile_ext, ret, cleanup);
