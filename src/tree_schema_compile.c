@@ -494,44 +494,82 @@ done:
 }
 
 static LY_ERR
-lys_compile_identities_derived(struct lysc_ctx *ctx, struct lysp_ident *idents_p, struct lysc_ident *idents)
+lys_compile_identity_bases(struct lysc_ctx *ctx, const char **bases_p,  struct lysc_ident *ident, struct lysc_ident ***bases)
 {
-    unsigned int i, u, v;
+    unsigned int u, v;
     const char *s, *name;
     struct lysc_module *mod;
-    struct lysc_ident **dident;
+    struct lysc_ident **idref;
+
+    assert(ident || bases);
+
+    if (LY_ARRAY_SIZE(bases_p) > 1 && ctx->mod->compiled->version < 2) {
+        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+               "Multiple bases in %s are allowed only in YANG 1.1 modules.", ident ? "identity" : "identityref type");
+        return LY_EVALID;
+    }
+
+    for (u = 0; u < LY_ARRAY_SIZE(bases_p); ++u) {
+        s = strchr(bases_p[u], ':');
+        if (s) {
+            /* prefixed identity */
+            name = &s[1];
+            mod = lysc_module_find_prefix(ctx->mod->compiled, bases_p[u], s - bases_p[u]);
+        } else {
+            name = bases_p[u];
+            mod = ctx->mod->compiled;
+        }
+        if (!mod) {
+            if (ident) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                       "Invalid prefix used for base (%s) of identity \"%s\".", bases_p[u], ident->name);
+            } else {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                       "Invalid prefix used for base (%s) of identityref.", bases_p[u]);
+            }
+            return LY_EVALID;
+        }
+        idref = NULL;
+        if (mod->identities) {
+            for (v = 0; v < LY_ARRAY_SIZE(mod->identities); ++v) {
+                if (!strcmp(name, mod->identities[v].name)) {
+                    if (ident) {
+                        /* we have match! store the backlink */
+                        LY_ARRAY_NEW_RET(ctx->ctx, mod->identities[v].derived, idref, LY_EMEM);
+                        *idref = ident;
+                    } else {
+                        /* we have match! store the found identity */
+                        LY_ARRAY_NEW_RET(ctx->ctx, *bases, idref, LY_EMEM);
+                        *idref = &mod->identities[v];
+                    }
+                    break;
+                }
+            }
+        }
+        if (!idref || !(*idref)) {
+            if (ident) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                       "Unable to find base (%s) of identity \"%s\".", bases_p[u], ident->name);
+            } else {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                       "Unable to find base (%s) of identityref.", bases_p[u]);
+            }
+            return LY_EVALID;
+        }
+    }
+    return LY_SUCCESS;
+}
+
+static LY_ERR
+lys_compile_identities_derived(struct lysc_ctx *ctx, struct lysp_ident *idents_p, struct lysc_ident *idents)
+{
+    unsigned int i;
 
     for (i = 0; i < LY_ARRAY_SIZE(idents_p); ++i) {
         if (!idents_p[i].bases) {
             continue;
         }
-        for (u = 0; u < LY_ARRAY_SIZE(idents_p[i].bases); ++u) {
-            s = strchr(idents_p[i].bases[u], ':');
-            if (s) {
-                /* prefixed identity */
-                name = &s[1];
-                mod = lysc_module_find_prefix(ctx->mod->compiled, idents_p[i].bases[u], s - idents_p[i].bases[u]);
-            } else {
-                name = idents_p[i].bases[u];
-                mod = ctx->mod->compiled;
-            }
-            LY_CHECK_ERR_RET(!mod, LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
-                                          "Invalid prefix used for base (%s) of identity \"%s\".", idents_p[i].bases[u], idents[i].name),
-                             LY_EVALID);
-            if (mod->identities) {
-                for (v = 0; v < LY_ARRAY_SIZE(mod->identities); ++v) {
-                    if (!strcmp(name, mod->identities[v].name)) {
-                        /* we have match! store the backlink */
-                        LY_ARRAY_NEW_RET(ctx->ctx, mod->identities[v].derived, dident, LY_EMEM);
-                        *dident = &idents[i];
-                        break;
-                    }
-                }
-            }
-            LY_CHECK_ERR_RET(!dident, LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
-                                             "Unable to find base (%s) of identity \"%s\".", idents_p[i].bases[u], idents[i].name),
-                             LY_EVALID);
-        }
+        LY_CHECK_RET(lys_compile_identity_bases(ctx, idents_p[i].bases, &idents[i], NULL));
     }
     return LY_SUCCESS;
 }
@@ -1447,7 +1485,7 @@ done:
 }
 
 static LY_ERR
-lys_compile_type_(struct lysc_ctx *ctx, struct lysp_type *type_p, LY_DATA_TYPE basetype, int options, int builtin, const char *tpdfname,
+lys_compile_type_(struct lysc_ctx *ctx, struct lysp_type *type_p, LY_DATA_TYPE basetype, int options, const char *tpdfname,
                   struct lysc_type *base,  struct lysc_type **type)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -1458,11 +1496,13 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_type *type_p, LY_DATA_TYPE b
     struct lysc_type_bits *bits;
     struct lysc_type_enum *enumeration;
     struct lysc_type_dec *dec;
+    struct lysc_type_identityref *idref;
 
     switch (basetype) {
     case LY_TYPE_BINARY:
-        /* RFC 7950 9.8.1, 9.4.4 - length, number of octets it contains */
         bin = (struct lysc_type_bin*)(*type);
+
+        /* RFC 7950 9.8.1, 9.4.4 - length, number of octets it contains */
         if (type_p->length) {
             ret = lys_compile_type_range(ctx, type_p->length, basetype, 1, 0,
                                          base ? ((struct lysc_type_bin*)base)->length : NULL, &bin->length);
@@ -1488,13 +1528,12 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_type *type_p, LY_DATA_TYPE b
             LY_CHECK_RET(ret);
         }
 
-        if (builtin && !type_p->flags) {
+        if (!base && !type_p->flags) {
             /* type derived from bits built-in type must contain at least one bit */
             if (tpdfname) {
-                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Missing bit substatement for bits type \"%s\".",
-                       tpdfname);
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_MISSCHILDSTMT, "bit", "bits type ", tpdfname);
             } else {
-                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Missing bit substatement for bits type.");
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_MISSCHILDSTMT, "bit", "bits type", "");
                 free(*type);
                 *type = NULL;
             }
@@ -1510,13 +1549,12 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_type *type_p, LY_DATA_TYPE b
         dec = (struct lysc_type_dec*)(*type);
 
         /* RFC 7950 9.3.4 - fraction-digits */
-        if (builtin) {
+        if (!base) {
             if (!type_p->fraction_digits) {
                 if (tpdfname) {
-                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Missing fraction-digits substatement for decimal64 type \"%s\".",
-                           tpdfname);
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_MISSCHILDSTMT, "fraction-digits", "decimal64 type ", tpdfname);
                 } else {
-                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Missing fraction-digits substatement for decimal64 type.");
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_MISSCHILDSTMT, "fraction-digits", "decimal64 type", "");
                     free(*type);
                     *type = NULL;
                 }
@@ -1555,8 +1593,9 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_type *type_p, LY_DATA_TYPE b
         }
         break;
     case LY_TYPE_STRING:
-        /* RFC 7950 9.4.4 - length */
         str = (struct lysc_type_str*)(*type);
+
+        /* RFC 7950 9.4.4 - length */
         if (type_p->length) {
             ret = lys_compile_type_range(ctx, type_p->length, basetype, 1, 0,
                                          base ? ((struct lysc_type_str*)base)->length : NULL, &str->length);
@@ -1584,21 +1623,21 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_type *type_p, LY_DATA_TYPE b
         }
         break;
     case LY_TYPE_ENUM:
-        /* RFC 7950 9.6 - enum */
         enumeration = (struct lysc_type_enum*)(*type);
+
+        /* RFC 7950 9.6 - enum */
         if (type_p->enums) {
             ret = lys_compile_type_enums(ctx, type_p->enums, basetype, options,
                                          base ? ((struct lysc_type_enum*)base)->enums : NULL, &enumeration->enums);
             LY_CHECK_RET(ret);
         }
 
-        if (builtin && !type_p->flags) {
+        if (!base && !type_p->flags) {
             /* type derived from enumerations built-in type must contain at least one enum */
             if (tpdfname) {
-                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
-                       "Missing enum substatement for enumeration type \"%s\".", tpdfname);
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_MISSCHILDSTMT, "enum", "enumeration type ", tpdfname);
             } else {
-                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Missing enum substatement for enumeration type.");
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_MISSCHILDSTMT, "enum", "enumeration type", "");
                 free(*type);
                 *type = NULL;
             }
@@ -1618,8 +1657,9 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_type *type_p, LY_DATA_TYPE b
     case LY_TYPE_UINT32:
     case LY_TYPE_INT64:
     case LY_TYPE_UINT64:
-        /* RFC 6020 9.2.4 - range */
         num = (struct lysc_type_num*)(*type);
+
+        /* RFC 6020 9.2.4 - range */
         if (type_p->range) {
             ret = lys_compile_type_range(ctx, type_p->range, basetype, 0, 0,
                                          base ? ((struct lysc_type_num*)base)->range : NULL, &num->range);
@@ -1633,6 +1673,46 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_type *type_p, LY_DATA_TYPE b
         if (tpdfname) {
             type_p->compiled = *type;
             *type = calloc(1, sizeof(struct lysc_type_num));
+        }
+        break;
+    case LY_TYPE_IDENT:
+        idref = (struct lysc_type_identityref*)(*type);
+
+        /* RFC 7950 9.10.2 - base */
+        if (type_p->bases) {
+            if (base) {
+                /* only the directly derived identityrefs can contain base specification */
+                if (tpdfname) {
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                           "Invalid base substatement for type \"%s\" not directly derived from identityref built-in type.",
+                           tpdfname);
+                } else {
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                           "Invalid base substatement for type not directly derived from identityref built-in type.");
+                    free(*type);
+                    *type = NULL;
+                }
+                return LY_EVALID;
+            }
+            ret = lys_compile_identity_bases(ctx, type_p->bases, NULL, &idref->bases);
+            LY_CHECK_RET(ret);
+        }
+
+        if (!base && !type_p->flags) {
+            /* type derived from identityref built-in type must contain at least one base */
+            if (tpdfname) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_MISSCHILDSTMT, "base", "identityref type ", tpdfname);
+            } else {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_MISSCHILDSTMT, "base", "identityref type", "");
+                free(*type);
+                *type = NULL;
+            }
+            return LY_EVALID;
+        }
+
+        if (tpdfname) {
+            type_p->compiled = *type;
+            *type = calloc(1, sizeof(struct lysc_type_identityref));
         }
         break;
     case LY_TYPE_INST:
@@ -1790,7 +1870,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
         ++(*type)->refcount;
         (*type)->basetype = basetype;
         prev_type = *type;
-        ret = lys_compile_type_(ctx, &((struct lysp_tpdf*)tctx->tpdf)->type, basetype, options, (u == tpdf_chain.count - 1) ? 1 : 0, tctx->tpdf->name, base, type);
+        ret = lys_compile_type_(ctx, &((struct lysp_tpdf*)tctx->tpdf)->type, basetype, options, tctx->tpdf->name, base, type);
         LY_CHECK_GOTO(ret, cleanup);
         base = prev_type;
     }
@@ -1800,7 +1880,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
         /* get restrictions from the node itself, finalize the type structure */
         (*type)->basetype = basetype;
         ++(*type)->refcount;
-        ret = lys_compile_type_(ctx, &leaf_p->type, basetype, options, base ? 0 : 1, NULL, base, type);
+        ret = lys_compile_type_(ctx, &leaf_p->type, basetype, options, NULL, base, type);
         LY_CHECK_GOTO(ret, cleanup);
     } else {
         /* no specific restriction in leaf's type definition, copy from the base */

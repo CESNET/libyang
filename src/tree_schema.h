@@ -1080,7 +1080,7 @@ struct lysc_type_identityref {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
-    struct lysc_ident **base;        /**< list of pointers to the base identities ([sized array](@ref sizedarrays)),
+    struct lysc_ident **bases;       /**< list of pointers to the base identities ([sized array](@ref sizedarrays)),
                                           mandatory (at least 1 item) */
 };
 

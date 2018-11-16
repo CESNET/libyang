@@ -904,7 +904,7 @@ test_type_enum(void **state)
     assert_non_null(mod = lys_parse_mem(ctx, "module gg {namespace urn:gg;prefix gg;typedef mytype {type enumeration;}"
                                              "leaf l {type mytype {enum one;}}}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
-    logbuf_assert("Missing enum substatement for enumeration type \"mytype\".");
+    logbuf_assert("Missing enum substatement for enumeration type mytype.");
 
     assert_non_null(mod = lys_parse_mem(ctx, "module hh {namespace urn:hh;prefix hh; typedef mytype {type enumeration {enum one;}}"
                                         "leaf l {type mytype {enum one;}}}", LYS_IN_YANG));
@@ -1010,7 +1010,7 @@ test_type_bits(void **state)
     assert_non_null(mod = lys_parse_mem(ctx, "module gg {namespace urn:gg;prefix gg;typedef mytype {type bits;}"
                                              "leaf l {type mytype {bit one;}}}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
-    logbuf_assert("Missing bit substatement for bits type \"mytype\".");
+    logbuf_assert("Missing bit substatement for bits type mytype.");
 
     assert_non_null(mod = lys_parse_mem(ctx, "module hh {namespace urn:hh;prefix hh; typedef mytype {type bits {bit one;}}"
                                         "leaf l {type mytype {bit one;}}}", LYS_IN_YANG));
@@ -1076,7 +1076,7 @@ test_type_dec64(void **state)
 
     assert_non_null(mod = lys_parse_mem(ctx, "module ab {namespace urn:ab;prefix ab; typedef mytype {type decimal64;}leaf l {type mytype;}}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
-    logbuf_assert("Missing fraction-digits substatement for decimal64 type \"mytype\".");
+    logbuf_assert("Missing fraction-digits substatement for decimal64 type mytype.");
 
     assert_non_null(mod = lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb; leaf l {type decimal64 {fraction-digits 2;"
                                         "range '3.142';}}}", LYS_IN_YANG));
@@ -1144,6 +1144,65 @@ test_type_instanceid(void **state)
     ly_ctx_destroy(ctx, NULL);
 }
 
+static void
+test_type_identityref(void **state)
+{
+    *state = test_type_identityref;
+
+    struct ly_ctx *ctx;
+    struct lys_module *mod;
+    struct lysc_type *type;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module a {yang-version 1.1;namespace urn:a;prefix a;identity i; identity j; identity k {base i;}"
+                                        "typedef mytype {type identityref {base i;}}"
+                                        "leaf l1 {type mytype;} leaf l2 {type identityref {base k; base j;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(LY_TYPE_IDENT, type->basetype);
+    assert_non_null(((struct lysc_type_identityref*)type)->bases);
+    assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_type_identityref*)type)->bases));
+    assert_string_equal("i", ((struct lysc_type_identityref*)type)->bases[0]->name);
+
+    type = ((struct lysc_node_leaf*)mod->compiled->data->next)->type;
+    assert_non_null(type);
+    assert_int_equal(LY_TYPE_IDENT, type->basetype);
+    assert_non_null(((struct lysc_type_identityref*)type)->bases);
+    assert_int_equal(2, LY_ARRAY_SIZE(((struct lysc_type_identityref*)type)->bases));
+    assert_string_equal("k", ((struct lysc_type_identityref*)type)->bases[0]->name);
+    assert_string_equal("j", ((struct lysc_type_identityref*)type)->bases[1]->name);
+
+    /* invalid cases */
+    assert_non_null(mod = lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; leaf l {type identityref;}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Missing base substatement for identityref type.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb; typedef mytype {type identityref;}"
+                                        "leaf l {type mytype;}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Missing base substatement for identityref type mytype.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module cc {namespace urn:cc;prefix cc; identity i; typedef mytype {type identityref {base i;}}"
+                                        "leaf l {type mytype {base i;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid base substatement for type not directly derived from identityref built-in type.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module dd {namespace urn:dd;prefix dd; identity i; typedef mytype {type identityref {base i;}}"
+                                        "typedef mytype2 {type mytype {base i;}}leaf l {type mytype2;}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid base substatement for type \"mytype2\" not directly derived from identityref built-in type.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module ee {namespace urn:ee;prefix ee; identity i; identity j;"
+                                        "leaf l {type identityref {base i;base j;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Multiple bases in identityref type are allowed only in YANG 1.1 modules.");
+
+    *state = NULL;
+    ly_ctx_destroy(ctx, NULL);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1157,6 +1216,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_type_bits, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_type_dec64, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_type_instanceid, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_type_identityref, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_node_container, logger_setup, logger_teardown),
     };
 

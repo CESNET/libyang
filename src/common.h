@@ -139,6 +139,7 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_DUPIDENT    LYVE_SYNTAX_YANG, "Duplicate identifier \"%s\" of %s statement."
 #define LY_VCODE_INVAL       LYVE_SYNTAX_YANG, "Invalid value \"%.*s\" of \"%s\"."
 #define LY_VCODE_MISSTMT     LYVE_SYNTAX_YANG, "Missing mandatory keyword \"%s\" as a child of \"%s\"."
+#define LY_VCODE_MISSCHILDSTMT LYVE_SYNTAX_YANG, "Missing %s substatement for %s%s."
 #define LY_VCODE_INORD       LYVE_SYNTAX_YANG, "Invalid keyword \"%s\", it cannot appear after \"%s\"."
 #define LY_VCODE_OOB         LYVE_SYNTAX_YANG, "Value \"%.*s\" is out of \"%s\" bounds."
 #define LY_VCODE_INDEV       LYVE_SYNTAX_YANG, "Deviate \"%s\" does not support keyword \"%s\"."
