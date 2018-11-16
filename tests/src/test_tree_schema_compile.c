@@ -1199,6 +1199,14 @@ test_type_identityref(void **state)
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
     logbuf_assert("Multiple bases in identityref type are allowed only in YANG 1.1 modules.");
 
+    assert_non_null(mod = lys_parse_mem(ctx, "module ff {namespace urn:ff;prefix ff; identity i;leaf l {type identityref {base j;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Unable to find base (j) of identityref.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module gg {namespace urn:gg;prefix gg;leaf l {type identityref {base x:j;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid prefix used for base (x:j) of identityref.");
+
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
 }
