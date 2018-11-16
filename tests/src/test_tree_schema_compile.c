@@ -83,7 +83,7 @@ logbuf_clean(void)
 }
 
 #if ENABLE_LOGGER_CHECKING
-#   define logbuf_assert(str) assert_string_equal(logbuf, str)
+#   define logbuf_assert(str) assert_string_equal(logbuf, str);logbuf_clean()
 #else
 #   define logbuf_assert(str)
 #endif
@@ -1102,6 +1102,48 @@ test_type_dec64(void **state)
     ly_ctx_destroy(ctx, NULL);
 }
 
+static void
+test_type_instanceid(void **state)
+{
+    *state = test_type_instanceid;
+
+    struct ly_ctx *ctx;
+    struct lys_module *mod;
+    struct lysc_type *type;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;typedef mytype {type instance-identifier {require-instance false;}}"
+                                        "leaf l1 {type instance-identifier {require-instance true;}}"
+                                        "leaf l2 {type mytype;} leaf l3 {type instance-identifier;}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(LY_TYPE_INST, type->basetype);
+    assert_int_equal(1, ((struct lysc_type_instanceid*)type)->require_instance);
+
+    type = ((struct lysc_node_leaf*)mod->compiled->data->next)->type;
+    assert_non_null(type);
+    assert_int_equal(LY_TYPE_INST, type->basetype);
+    assert_int_equal(0, ((struct lysc_type_instanceid*)type)->require_instance);
+
+    type = ((struct lysc_node_leaf*)mod->compiled->data->next->next)->type;
+    assert_non_null(type);
+    assert_int_equal(LY_TYPE_INST, type->basetype);
+    assert_int_equal(1, ((struct lysc_type_instanceid*)type)->require_instance);
+
+    /* invalid cases */
+    assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; leaf l {type instance-identifier {require-instance yes;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid value \"yes\" of \"require-instance\". Line number 1.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; leaf l {type instance-identifier {fraction-digits 1;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid type restrictions for instance-identifier type.");
+
+    *state = NULL;
+    ly_ctx_destroy(ctx, NULL);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1114,6 +1156,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_type_enum, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_type_bits, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_type_dec64, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_type_instanceid, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_node_container, logger_setup, logger_teardown),
     };
 

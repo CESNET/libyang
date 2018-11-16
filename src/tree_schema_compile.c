@@ -1635,6 +1635,20 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_type *type_p, LY_DATA_TYPE b
             *type = calloc(1, sizeof(struct lysc_type_num));
         }
         break;
+    case LY_TYPE_INST:
+        /* RFC 7950 9.9.3 - require-instance */
+        if (type_p->flags & LYS_SET_REQINST) {
+            ((struct lysc_type_instanceid*)(*type))->require_instance = type_p->require_instance;
+        } else {
+            /* default is true */
+            ((struct lysc_type_instanceid*)(*type))->require_instance = 1;
+        }
+
+        if (tpdfname) {
+            type_p->compiled = *type;
+            *type = calloc(1, sizeof(struct lysc_type_instanceid));
+        }
+        break;
     case LY_TYPE_BOOL:
     case LY_TYPE_EMPTY:
     case LY_TYPE_UNKNOWN: /* just to complete switch */

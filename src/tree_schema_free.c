@@ -549,6 +549,7 @@ lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type)
     case LY_TYPE_UINT64:
         FREE_MEMBER(ctx, ((struct lysc_type_num*)type)->range, lysc_range_free);
         break;
+    case LY_TYPE_INST:
     case LY_TYPE_BOOL:
     case LY_TYPE_EMPTY:
     case LY_TYPE_UNKNOWN: /* just to complete switch */
