@@ -58,8 +58,7 @@ Package: yang-tools
 Depends:
  ${misc:Depends},
  ${shlibs:Depends},
- libyang0.16 (<< ${source:Upstream-Version}.0-~),
- libyang0.16 (>= ${source:Version}~)
+ libyang0.16 (= ${binary:Version})
 Section: devel
 Architecture: any
 Description: parser toolkit for IETF YANG data modeling - executable tools
@@ -72,8 +71,7 @@ Package: libyang-cpp0.16
 Depends:
  ${misc:Depends},
  ${shlibs:Depends},
- libyang0.16 (<< ${source:Upstream-Version}.0-~),
- libyang0.16 (>= ${source:Version}~)
+ libyang0.16 (= ${binary:Version})
 Architecture: any
 Description: parser toolkit for IETF YANG data modeling - C++ runtime
  Partially SWIG-generated bindings to use libyang with a C++ API.
@@ -84,8 +82,7 @@ Package: libyang-cpp-dev
 Depends:
  ${misc:Depends},
  libyang-cpp0.16 (= ${binary:Version}),
- libyang-dev (<< ${source:Upstream-Version}.0-~),
- libyang-dev (>= ${source:Version}~)
+ libyang-dev (= ${binary:Version})
 Section: libdevel
 Architecture: any
 Description: parser toolkit for IETF YANG data modeling - C++ development files
@@ -101,8 +98,7 @@ Depends:
  ${misc:Depends},
  ${shlibs:Depends},
  ${python3:Depends},
- libyang-cpp0.16 (<< ${source:Upstream-Version}.0-~),
- libyang-cpp0.16 (>= ${source:Version}~)
+ libyang-cpp0.16 (= ${binary:Version})
 Section: python
 Architecture: any
 Description: parser toolkit for IETF YANG data modeling - python3 support
