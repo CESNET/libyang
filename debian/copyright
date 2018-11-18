@@ -20,10 +20,8 @@ Comment:
  Slightly confusing copyright/license indication;  should probably be
  BSD-3-clause only, but safe assumption is BSD-3-clause AND Apache-2.0.
 License: BSD-3-clause AND Apache-2.0
- Please refer to /usr/share/common-licenses/Apache-2.0 on Debian systems,
- as well as the BSD-3-clause block in this file.
 
-Files: */iana-*.yin */iana-*.yang */iana-*.h */ietf-*.yin */ietf-*.yang */ietf-*.h
+Files: */iana-*.yin */iana-*.yang */ietf-*.yin */ietf-*.yang */ietf-*.h
 Copyright: 2011-2018 by the IETF Trust and the persons identified as authors
 License: IETF-BSD-3-clause
  Redistribution and use in source and binary forms, with or
@@ -175,3 +173,6 @@ License: BSD-3-clause
  CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
  OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+License: Apache-2.0
+ Please refer to /usr/share/common-licenses/Apache-2.0 on Debian systems.
