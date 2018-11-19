@@ -392,6 +392,86 @@ test_parse_yang_with_submodule_types(void **state)
     free(schema);
 }
 
+static void
+test_parse_yin_with_submodule_grouping_idref_default(void **state)
+{
+    (void)state;
+    char *schema = NULL, *schema2 = NULL;
+    const struct lys_module *modyang = NULL, *modyang2 = NULL;
+    const struct lys_module *subyang = NULL, *subyang2 = NULL;
+    struct ly_ctx *ctx2 = NULL;
+    int ret = 0;
+
+    modyang = ly_ctx_load_module(ctx, "grp_idref_def-mod", NULL);
+    assert_non_null(modyang);
+
+    ret = lys_print_mem(&schema, modyang, LYS_OUT_YIN, NULL, 0, 0);
+    assert_int_equal(ret, 0);
+    assert_non_null(schema);
+
+    subyang = (const struct lys_module *)ly_ctx_get_submodule2(modyang, "grp_idref_def-sub");
+    assert_non_null(subyang);
+
+    ret = lys_print_mem(&schema2, subyang, LYS_OUT_YIN, NULL, 0, 0);
+    assert_int_equal(ret, 0);
+    assert_non_null(schema2);
+
+    ctx2 = ly_ctx_new(NULL, 0);
+    ly_ctx_set_searchdir(ctx2, SCHEMA_FOLDER_YANG);
+
+    modyang2 = lys_parse_mem(ctx2, schema, LYS_IN_YIN);
+    assert_non_null(modyang2);
+
+    subyang2 = lys_parse_mem(ctx2, schema2, LYS_IN_YIN);
+    assert_non_null(subyang2);
+
+    ly_ctx_unset_searchdirs(ctx2, -1);
+    ly_ctx_destroy(ctx2, NULL);
+
+    free(schema);
+    free(schema2);
+}
+
+static void
+test_parse_yang_with_submodule_grouping_idref_default(void **state)
+{
+    (void)state;
+    char *schema = NULL, *schema2 = NULL;
+    const struct lys_module *modyang = NULL, *modyang2 = NULL;
+    const struct lys_module *subyang = NULL, *subyang2 = NULL;
+    struct ly_ctx *ctx2 = NULL;
+    int ret = 0;
+
+    modyang = ly_ctx_load_module(ctx, "grp_idref_def-mod", NULL);
+    assert_non_null(modyang);
+
+    ret = lys_print_mem(&schema, modyang, LYS_OUT_YANG, NULL, 0, 0);
+    assert_int_equal(ret, 0);
+    assert_non_null(schema);
+
+    subyang = (const struct lys_module *)ly_ctx_get_submodule2(modyang, "grp_idref_def-sub");
+    assert_non_null(subyang);
+
+    ret = lys_print_mem(&schema2, subyang, LYS_OUT_YANG, NULL, 0, 0);
+    assert_int_equal(ret, 0);
+    assert_non_null(schema2);
+
+    ctx2 = ly_ctx_new(NULL, 0);
+    ly_ctx_set_searchdir(ctx2, SCHEMA_FOLDER_YANG);
+
+    modyang2 = lys_parse_mem(ctx2, schema, LYS_IN_YANG);
+    assert_non_null(modyang2);
+
+    subyang2 = lys_parse_mem(ctx2, schema2, LYS_IN_YIN);
+    assert_non_null(subyang2);
+
+    ly_ctx_unset_searchdirs(ctx2, -1);
+    ly_ctx_destroy(ctx2, NULL);
+
+    free(schema);
+    free(schema2);
+}
+
 int
 main(void)
 {
@@ -403,6 +483,8 @@ main(void)
         cmocka_unit_test_setup_teardown(test_parse_yang_with_unique, setup_ctx, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_parse_yin_with_submodule_types, setup_ctx, teardown_ctx),
         cmocka_unit_test_setup_teardown(test_parse_yang_with_submodule_types, setup_ctx, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_parse_yin_with_submodule_grouping_idref_default, setup_ctx, teardown_ctx),
+        cmocka_unit_test_setup_teardown(test_parse_yang_with_submodule_grouping_idref_default, setup_ctx, teardown_ctx),
     };
 
     return cmocka_run_group_tests(cmut, NULL, NULL);
