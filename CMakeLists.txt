@@ -12,7 +12,7 @@ set(CMAKE_MACOSX_RPATH TRUE)
 # set version
 set(LIBYANG_MAJOR_VERSION 0)
 set(LIBYANG_MINOR_VERSION 16)
-set(LIBYANG_MICRO_VERSION 71)
+set(LIBYANG_MICRO_VERSION 78)
 set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_MICRO_VERSION})
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION})
 
@@ -257,10 +257,11 @@ else()
 
     #link dl
     target_link_libraries(yang ${CMAKE_DL_LIBS})
+
+    set_target_properties(yangobj PROPERTIES COMPILE_FLAGS "-fvisibility=hidden")
 endif(ENABLE_STATIC)
 
 set_target_properties(yang PROPERTIES VERSION ${LIBYANG_VERSION} SOVERSION ${LIBYANG_SOVERSION})
-set_target_properties(yangobj PROPERTIES COMPILE_FLAGS "-fvisibility=hidden")
 
 # link math
 target_link_libraries(yang m)

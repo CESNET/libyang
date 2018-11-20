@@ -2851,7 +2851,6 @@ yang_read_string(struct ly_ctx *ctx, const char *input, char *output, int size, 
             } else {
                 /* backslash must not be followed by any other character */
                 LOGVAL(ctx, LYE_XML_INCHAR, LY_VLOG_NONE, NULL, input + i);
-                free(output);
                 return NULL;
             }
             break;

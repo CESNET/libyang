@@ -881,6 +881,25 @@ struct lyd_node *lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, co
 unsigned int lyd_list_pos(const struct lyd_node *node);
 
 /**
+ * @defgroup dupoptions Data duplication options
+ * @ingroup datatree
+ *
+ * Various options to change lyd_dup() behavior.
+ *
+ * Default behavior:
+ * - only the specified node is duplicated without siblings, parents, or children.
+ * - all the attributes of the duplicated nodes are also duplicated.
+ * @{
+ */
+
+#define LYD_DUP_OPT_RECURSIVE    0x01 /**< Duplicate not just the node but also all the children. */
+#define LYD_DUP_OPT_NO_ATTR      0x02 /**< Do not duplicate attributes of any node. */
+#define LYD_DUP_OPT_WITH_PARENTS 0x04 /**< If a nested node is being duplicated, duplicate also all the parents.
+                                           Keys are also duplicated for lists. Return value does not change! */
+
+/** @} dupoptions */
+
+/**
  * @brief Create a copy of the specified data tree \p node. Schema references are kept the same. Use carefully,
  * since libyang silently creates default nodes, it is always better to use lyd_dup_withsiblings() to duplicate
  * the complete data tree.
@@ -888,10 +907,10 @@ unsigned int lyd_list_pos(const struct lyd_node *node);
  * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
  *
  * @param[in] node Data tree node to be duplicated.
- * @param[in] recursive 1 if all children are supposed to be also duplicated.
+ * @param[in] options Bitmask of options flags, see @ref dupoptions.
  * @return Created copy of the provided data \p node.
  */
-struct lyd_node *lyd_dup(const struct lyd_node *node, int recursive);
+struct lyd_node *lyd_dup(const struct lyd_node *node, int options);
 
 /**
  * @brief Create a copy of the specified data tree and all its siblings (preceding as well as following).
@@ -900,10 +919,10 @@ struct lyd_node *lyd_dup(const struct lyd_node *node, int recursive);
  * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
  *
  * @param[in] node Data tree sibling node to be duplicated.
- * @param[in] recursive 1 if all children of all the siblings are supposed to be also duplicated.
+ * @param[in] options Bitmask of options flags, see @ref dupoptions.
  * @return Created copy of the provided data \p node and all of its siblings.
  */
-struct lyd_node *lyd_dup_withsiblings(const struct lyd_node *node, int recursive);
+struct lyd_node *lyd_dup_withsiblings(const struct lyd_node *node, int options);
 
 /**
  * @brief Create a copy of the specified data tree \p node in the different context. All the
@@ -913,11 +932,11 @@ struct lyd_node *lyd_dup_withsiblings(const struct lyd_node *node, int recursive
  * is raised and the new data tree is not created.
  *
  * @param[in] node Data tree node to be duplicated.
- * @param[in] recursive 1 if all children are supposed to be also duplicated.
+ * @param[in] options Bitmask of options flags, see @ref dupoptions.
  * @param[in] ctx Target context for the duplicated data.
  * @return Created copy of the provided data \p node.
  */
-struct lyd_node *lyd_dup_to_ctx(const struct lyd_node *node, int recursive, struct ly_ctx *ctx);
+struct lyd_node *lyd_dup_to_ctx(const struct lyd_node *node, int options, struct ly_ctx *ctx);
 
 /**
  * @brief Merge a (sub)tree into a data tree.

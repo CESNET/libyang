@@ -1573,24 +1573,19 @@ test_lyd_leaf_type(void **state)
 }
 
 static void
-test_lyd_validation_remove_empty_containers(void **state)
+test_lyd_validation_dflt_empty_containers(void **state)
 {
     (void) state; /* unused */
     struct lyd_node *new = NULL;
     struct lyd_node *old = root;
     struct lyd_node *node = root;
-    struct lyd_node_leaf_list *result;
 
     new = lyd_new(NULL, old->schema->module, "z");
     lyd_insert_before(old, new);
     node = new;
 
     assert_int_equal(lyd_validate(&node, LYD_OPT_CONFIG, ctx), 0);
-    assert_ptr_not_equal(node, NULL);
-    assert_ptr_equal(node, old);
-    assert_ptr_not_equal(node->child, NULL);
-    result = (struct lyd_node_leaf_list *) node->child;
-    assert_string_equal("test", result->value_str);
+    assert_ptr_equal(node->dflt, 1);
 }
 
 void
@@ -1778,7 +1773,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_lyd_print_clb_json, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_path, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_leaf_type, setup_f2, teardown_f2),
-        cmocka_unit_test_setup_teardown(test_lyd_validation_remove_empty_containers, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_lyd_validation_dflt_empty_containers, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_diff, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_free_diff, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_new_output, setup_f, teardown_f),

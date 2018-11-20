@@ -4882,7 +4882,7 @@ lyd_schema_sort(struct lyd_node *sibling, int recursive)
 API int
 lyd_validate(struct lyd_node **node, int options, void *var_arg)
 {
-    struct lyd_node *root, *next1, *next2, *iter, *act_notif = NULL, *to_free = NULL, *data_tree = NULL;
+    struct lyd_node *root, *next1, *next2, *iter, *act_notif = NULL, *data_tree = NULL;
     struct ly_ctx *ctx = NULL;
     int ret = EXIT_FAILURE;
     struct unres_data *unres = NULL;
@@ -4973,11 +4973,6 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
 
     LY_TREE_FOR_SAFE(*node, next1, root) {
         LY_TREE_DFS_BEGIN(root, next2, iter) {
-            if (to_free) {
-                lyd_free(to_free);
-                to_free = NULL;
-            }
-
             if (iter->parent && (iter->schema->nodetype & (LYS_ACTION | LYS_NOTIF))) {
                 if (!(options & LYD_OPT_ACT_NOTIF) || act_notif) {
                     LOGVAL(ctx, LYE_INELEM, LY_VLOG_LYD, iter, iter->schema->name);
@@ -4995,59 +4990,13 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
             /* basic validation successful */
             iter->validity &= ~LYD_VAL_MAND;
 
-            /* where go next? - modified LY_TREE_DFS_END */
-            if (iter->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
-                next2 = NULL;
-            } else {
-                next2 = iter->child;
-
-                /* if we have empty non-dflt and non-presence container, we can remove it */
-                if (!next2 && !iter->dflt && (iter->schema->nodetype == LYS_CONTAINER)
+            /* empty non-default, non-presence container without attributes, make it default */
+            if (!iter->dflt && (iter->schema->nodetype == LYS_CONTAINER) && !iter->child
                         && !((struct lys_node_container *)iter->schema)->presence && !iter->attr) {
-                    lyd_free(to_free);
-                    to_free = iter;
-                }
+                iter->dflt = 1;
             }
-            if (!next2) {
-                /* no children */
-                if (iter == root) {
-                    /* we are done */
-                    break;
-                }
-                /* try siblings */
-                next2 = iter->next;
-            }
-            while (!next2) {
-                iter = iter->parent;
 
-                /* if we have empty non-dflt, non-presence container without any attributes, we can remove it */
-                if (to_free && !iter->dflt && !to_free->next && to_free->prev == to_free &&
-                        iter->schema->nodetype == LYS_CONTAINER &&
-                        !((struct lys_node_container *)iter->schema)->presence && !iter->attr) {
-                    to_free = iter;
-                } else {
-                    lyd_free(to_free);
-                    to_free = NULL;
-                }
-
-                /* parent is already processed, go to its sibling */
-                if (iter->parent == root->parent) {
-                    /* we are done */
-                    break;
-                }
-                next2 = iter->next;
-            } /* end of modified LY_TREE_DFS_END */
-        }
-
-        if (to_free) {
-            if ((*node) == to_free) {
-                *node = to_free->next;
-                if (data_tree == to_free) {
-                    data_tree = to_free->next;
-                }
-            }
-            lyd_free(to_free);
-            to_free = NULL;
+            LY_TREE_DFS_END(root, next2, iter);
         }
 
         if (options & LYD_OPT_NOSIBLINGS) {
@@ -5291,7 +5240,7 @@ lyd_unlink(struct lyd_node *node)
  * - in leaflist it must be added with value_str
  */
 static int
-lyd_dup_common(struct lyd_node *parent, struct lyd_node *new, const struct lyd_node *orig, struct ly_ctx *ctx)
+lyd_dup_common(struct lyd_node *parent, struct lyd_node *new, const struct lyd_node *orig, struct ly_ctx *ctx, int options)
 {
     struct lyd_attr *attr;
     const struct lys_module *trg_mod;
@@ -5333,8 +5282,10 @@ lyd_dup_common(struct lyd_node *parent, struct lyd_node *new, const struct lyd_n
         ctx = orig->schema->module->ctx;
     }
     new->attr = NULL;
-    LY_TREE_FOR(orig->attr, attr) {
-        lyd_dup_attr(ctx, new, attr);
+    if (!(options & LYD_DUP_OPT_NO_ATTR)) {
+        LY_TREE_FOR(orig->attr, attr) {
+            lyd_dup_attr(ctx, new, attr);
+        }
     }
     new->next = NULL;
     new->prev = new;
@@ -5363,14 +5314,16 @@ lyd_dup_common(struct lyd_node *parent, struct lyd_node *new, const struct lyd_n
 }
 
 API struct lyd_node *
-lyd_dup_to_ctx(const struct lyd_node *node, int recursive, struct ly_ctx *ctx)
+lyd_dup_to_ctx(const struct lyd_node *node, int options, struct ly_ctx *ctx)
 {
     struct ly_ctx *log_ctx;
     struct lys_node_leaf *sleaf;
+    struct lys_node_list *slist;
     const struct lyd_node *next, *elem;
-    struct lyd_node *ret, *parent, *new_node = NULL;
+    struct lyd_node *ret, *parent, *key, *key_dup, *new_node = NULL;
     struct lyd_node_leaf_list *new_leaf;
     struct lyd_node_anydata *new_any, *old_any;
+    uint16_t i;
     int r;
 
     if (!node) {
@@ -5403,7 +5356,7 @@ lyd_dup_to_ctx(const struct lyd_node *node, int recursive, struct ly_ctx *ctx)
                                                 ((struct lyd_node_leaf_list *)elem)->value_str, 0);
             new_leaf->value_type = ((struct lyd_node_leaf_list *)elem)->value_type;
             new_leaf->value_flags = ((struct lyd_node_leaf_list *)elem)->value_flags;
-            if (lyd_dup_common(parent, new_node, elem, ctx)) {
+            if (lyd_dup_common(parent, new_node, elem, ctx, options)) {
                 if (!new_node->schema) {
                     /* in error cleanup, just free will be called instead of lyd_free(),
                      * so do the additional cleanup here */
@@ -5423,7 +5376,7 @@ lyd_dup_to_ctx(const struct lyd_node *node, int recursive, struct ly_ctx *ctx)
                 break;
             case LY_TYPE_LEAFREF:
                 new_leaf->validity |= LYD_VAL_LEAFREF;
-                lyp_parse_value(&sleaf->type, &new_leaf->value_str, NULL, new_leaf, NULL, NULL, 1, node->dflt, 0);
+                lyp_parse_value(&sleaf->type, &new_leaf->value_str, NULL, new_leaf, NULL, NULL, 1, elem->dflt, 0);
                 break;
             case LY_TYPE_INST:
                 new_leaf->value.instance = NULL;
@@ -5431,7 +5384,7 @@ lyd_dup_to_ctx(const struct lyd_node *node, int recursive, struct ly_ctx *ctx)
             case LY_TYPE_UNION:
                 /* unresolved union (this must be non-validated tree), duplicate the stored string (duplicated
                  * because of possible change of the value in case of instance-identifier) */
-                new_leaf->value.string = lydict_insert(ctx ? ctx : node->schema->module->ctx,
+                new_leaf->value.string = lydict_insert(ctx ? ctx : elem->schema->module->ctx,
                                                        ((struct lyd_node_leaf_list *)elem)->value.string, 0);
                 break;
             case LY_TYPE_ENUM:
@@ -5446,7 +5399,7 @@ lyd_dup_to_ctx(const struct lyd_node *node, int recursive, struct ly_ctx *ctx)
                 /* in case of duplicating bits (no matter if in the same context or not) or enum and identityref into
                  * a different context, searching for the type and duplicating the data is almost as same as resolving
                  * the string value, so due to a simplicity, parse the value for the duplicated leaf */
-                if (!lyp_parse_value(&sleaf->type, &new_leaf->value_str, NULL, new_leaf, NULL, NULL, 1, node->dflt, 0)) {
+                if (!lyp_parse_value(&sleaf->type, &new_leaf->value_str, NULL, new_leaf, NULL, NULL, 1, elem->dflt, 0)) {
                     goto error;
                 }
                 break;
@@ -5470,7 +5423,7 @@ lyd_dup_to_ctx(const struct lyd_node *node, int recursive, struct ly_ctx *ctx)
             new_any = calloc(1, sizeof *new_any);
             new_node = (struct lyd_node *)new_any;
             LY_CHECK_ERR_GOTO(!new_node, LOGMEM(log_ctx), error);
-            if (lyd_dup_common(parent, new_node, elem, ctx)) {
+            if (lyd_dup_common(parent, new_node, elem, ctx, options)) {
                 goto error;
             }
 
@@ -5518,9 +5471,8 @@ lyd_dup_to_ctx(const struct lyd_node *node, int recursive, struct ly_ctx *ctx)
         case LYS_ACTION:
             new_node = calloc(1, sizeof *new_node);
             LY_CHECK_ERR_GOTO(!new_node, LOGMEM(log_ctx), error);
-            new_node->child = NULL;
 
-            if (lyd_dup_common(parent, new_node, elem, ctx)) {
+            if (lyd_dup_common(parent, new_node, elem, ctx, options)) {
                 goto error;
             }
             break;
@@ -5532,7 +5484,7 @@ lyd_dup_to_ctx(const struct lyd_node *node, int recursive, struct ly_ctx *ctx)
             ret = new_node;
         }
 
-        if (!recursive) {
+        if (!(options & LYD_DUP_OPT_RECURSIVE)) {
             break;
         }
 
@@ -5571,6 +5523,45 @@ lyd_dup_to_ctx(const struct lyd_node *node, int recursive, struct ly_ctx *ctx)
         }
     }
 
+    /* dup all the parents */
+    if (options & LYD_DUP_OPT_WITH_PARENTS) {
+        parent = ret;
+        for (elem = node->parent; elem; elem = elem->parent) {
+            new_node = lyd_dup(elem, options & LYD_DUP_OPT_NO_ATTR);
+            LY_CHECK_ERR_GOTO(!new_node, LOGMEM(log_ctx), error);
+
+            /* dup all list keys */
+            if (new_node->schema->nodetype == LYS_LIST) {
+                slist = (struct lys_node_list *)new_node->schema;
+                for (key = elem->child, i = 0; key && (i < slist->keys_size); ++i, key = key->next) {
+                    if (key->schema != (struct lys_node *)slist->keys[i]) {
+                        LOGVAL(log_ctx, LYE_PATH_INKEY, LY_VLOG_LYD, new_node, slist->keys[i]->name);
+                        goto error;
+                    }
+
+                    key_dup = lyd_dup(key, options & LYD_DUP_OPT_NO_ATTR);
+                    LY_CHECK_ERR_GOTO(!key_dup, LOGMEM(log_ctx), error);
+
+                    if (lyd_insert(new_node, key_dup)) {
+                        lyd_free(key_dup);
+                        goto error;
+                    }
+                }
+                if (!key && (i < slist->keys_size)) {
+                    LOGVAL(log_ctx, LYE_PATH_INKEY, LY_VLOG_LYD, new_node, slist->keys[i]->name);
+                    goto error;
+                }
+            }
+
+            /* link together */
+            if (lyd_insert(new_node, parent)) {
+                ret = parent;
+                goto error;
+            }
+            parent = new_node;
+        }
+    }
+
     return ret;
 
 error:
@@ -5584,13 +5575,13 @@ error:
 }
 
 API struct lyd_node *
-lyd_dup(const struct lyd_node *node, int recursive)
+lyd_dup(const struct lyd_node *node, int options)
 {
-    return lyd_dup_to_ctx(node, recursive, NULL);
+    return lyd_dup_to_ctx(node, options, NULL);
 }
 
 API struct lyd_node *
-lyd_dup_withsiblings(const struct lyd_node *node, int recursive)
+lyd_dup_withsiblings(const struct lyd_node *node, int options)
 {
     const struct lyd_node *iter;
     struct lyd_node *ret, *ret_iter, *tmp;
@@ -5599,7 +5590,7 @@ lyd_dup_withsiblings(const struct lyd_node *node, int recursive)
         return NULL;
     }
 
-    ret = lyd_dup(node, recursive);
+    ret = lyd_dup(node, options);
     if (!ret) {
         return NULL;
     }
@@ -5607,7 +5598,7 @@ lyd_dup_withsiblings(const struct lyd_node *node, int recursive)
     /* copy following siblings */
     ret_iter = ret;
     LY_TREE_FOR(node->next, iter) {
-        tmp = lyd_dup(iter, recursive);
+        tmp = lyd_dup(iter, options);
         if (!tmp) {
             lyd_free_withsiblings(ret);
             return NULL;
@@ -5624,7 +5615,7 @@ lyd_dup_withsiblings(const struct lyd_node *node, int recursive)
     /* copy preceding siblings */
     ret_iter = ret;
     for (iter = node->prev; iter->next; iter = iter->prev) {
-        tmp = lyd_dup(iter, recursive);
+        tmp = lyd_dup(iter, options);
         if (!tmp) {
             lyd_free_withsiblings(ret);
             return NULL;

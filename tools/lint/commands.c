@@ -524,7 +524,7 @@ parse_data(char *filepath, int *options, struct lyd_node *val_tree, const char *
     LYD_FORMAT informat = LYD_UNKNOWN;
     struct lyxml_elem *xml = NULL;
     struct lyd_node *data = NULL, *rpc_act = NULL;
-    int opts = *options | LYD_OPT_DATA_ADD_YANGLIB;
+    int opts = *options;
 
     /* detect input format according to file suffix */
     informat = detect_data_format(filepath);
@@ -552,7 +552,7 @@ parse_data(char *filepath, int *options, struct lyd_node *val_tree, const char *
 
         if (!strcmp(xml->name, "data")) {
             fprintf(stdout, "Parsing %s as complete datastore.\n", filepath);
-            opts = (opts & ~LYD_OPT_TYPEMASK);
+            opts = (opts & ~LYD_OPT_TYPEMASK) | LYD_OPT_DATA_ADD_YANGLIB;
         } else if (!strcmp(xml->name, "config")) {
             fprintf(stdout, "Parsing %s as config data.\n", filepath);
             opts = (opts & ~LYD_OPT_TYPEMASK) | LYD_OPT_CONFIG;
@@ -630,6 +630,10 @@ parse_data(char *filepath, int *options, struct lyd_node *val_tree, const char *
             }
             data = lyd_parse_path(ctx, filepath, informat, opts, rpc_act_file);
         } else {
+            if (!(opts & LYD_OPT_TYPEMASK)) {
+                /* automatically add yang-library data */
+                opts |= LYD_OPT_DATA_ADD_YANGLIB;
+            }
             data = lyd_parse_path(ctx, filepath, informat, opts);
         }
     }
