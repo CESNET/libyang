@@ -6975,7 +6975,7 @@ featurecheckdone:
     case UNRES_TYPE_DFLT:
         stype = item;
         rc = check_default(stype, (const char **)str_snode, mod, parent_type);
-        if ((rc == EXIT_FAILURE) && !parent_type) {
+        if ((rc == EXIT_FAILURE) && !parent_type && (stype->base == LY_TYPE_LEAFREF)) {
             for (par_grp = (struct lys_node *)stype->parent;
                  par_grp && (par_grp->nodetype != LYS_GROUPING);
                  par_grp = lys_parent(par_grp));
