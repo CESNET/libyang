@@ -1582,11 +1582,6 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         }
         /* value is now in the dictionary, whether it differs from *value_ or not */
 
-        /* the value is always changed and includes prefix */
-        if (dflt) {
-            type->parent->flags |= LYS_DFLTJSON;
-        }
-
         ident = resolve_identref(type, value, contextnode, local_mod, dflt);
         if (!ident) {
             lydict_remove(ctx, value);
@@ -1595,6 +1590,11 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             /* store the result */
             val->ident = ident;
             *val_type = LY_TYPE_IDENT;
+        }
+
+        /* the value is always changed and includes prefix */
+        if (dflt) {
+            type->parent->flags |= LYS_DFLTJSON;
         }
 
         make_canonical(ctx, LY_TYPE_IDENT, &value, (void*)lys_main_module(local_mod)->name, NULL);
