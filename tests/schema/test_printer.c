@@ -398,7 +398,7 @@ test_parse_yin_with_submodule_grouping_idref_default(void **state)
     (void)state;
     char *schema = NULL, *schema2 = NULL;
     const struct lys_module *modyang = NULL, *modyang2 = NULL;
-    const struct lys_module *subyang = NULL, *subyang2 = NULL;
+    const struct lys_module *subyang = NULL;
     struct ly_ctx *ctx2 = NULL;
     int ret = 0;
 
@@ -422,9 +422,6 @@ test_parse_yin_with_submodule_grouping_idref_default(void **state)
     modyang2 = lys_parse_mem(ctx2, schema, LYS_IN_YIN);
     assert_non_null(modyang2);
 
-    subyang2 = lys_parse_mem(ctx2, schema2, LYS_IN_YIN);
-    assert_non_null(subyang2);
-
     ly_ctx_unset_searchdirs(ctx2, -1);
     ly_ctx_destroy(ctx2, NULL);
 
@@ -438,7 +435,7 @@ test_parse_yang_with_submodule_grouping_idref_default(void **state)
     (void)state;
     char *schema = NULL, *schema2 = NULL;
     const struct lys_module *modyang = NULL, *modyang2 = NULL;
-    const struct lys_module *subyang = NULL, *subyang2 = NULL;
+    const struct lys_module *subyang = NULL;
     struct ly_ctx *ctx2 = NULL;
     int ret = 0;
 
@@ -461,9 +458,6 @@ test_parse_yang_with_submodule_grouping_idref_default(void **state)
 
     modyang2 = lys_parse_mem(ctx2, schema, LYS_IN_YANG);
     assert_non_null(modyang2);
-
-    subyang2 = lys_parse_mem(ctx2, schema2, LYS_IN_YIN);
-    assert_non_null(subyang2);
 
     ly_ctx_unset_searchdirs(ctx2, -1);
     ly_ctx_destroy(ctx2, NULL);
