@@ -386,6 +386,9 @@ install(FILES ${PROJECT_SOURCE_DIR}/tools/re/yangre.1 DESTINATION ${CMAKE_INSTAL
 # yang2yin
 add_executable(yang2yin ${yang2yinsrc})
 
+# uninstall
+add_custom_target(uninstall "${CMAKE_COMMAND}" -P "${CMAKE_MODULE_PATH}/uninstall.cmake")
+
 if(ENABLE_VALGRIND_TESTS)
     set(ENABLE_BUILD_TESTS ON)
 endif()
