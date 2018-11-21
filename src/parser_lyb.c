@@ -123,11 +123,11 @@ lyb_read_enum(uint64_t *enum_idx, uint32_t count, const char *data, struct lyb_s
     size_t bytes;
     uint64_t tmp_enum = 0;
 
-    if (count < (2 << 8)) {
+    if (count < (1 << 8)) {
         bytes = 1;
-    } else if (count < (2 << 16)) {
+    } else if (count < (1 << 16)) {
         bytes = 2;
-    } else if (count < (2 << 24)) {
+    } else if (count < (1 << 24)) {
         bytes = 3;
     } else {
         bytes = 4;
