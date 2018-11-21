@@ -446,9 +446,9 @@ ext_get_plugin(const char *name, const char *module, const char *revision)
 }
 
 API int
-lys_ext_instance_presence(struct lys_ext *def, struct lys_ext_instance **ext, uint16_t ext_size)
+lys_ext_instance_presence(struct lys_ext *def, struct lys_ext_instance **ext, uint8_t ext_size)
 {
-    uint16_t index;
+    uint8_t index;
 
     if (!def || (ext_size && !ext)) {
         LOGARG;

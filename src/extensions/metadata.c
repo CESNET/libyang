@@ -55,7 +55,7 @@ int annotation_position(const void * UNUSED(parent), LYEXT_PAR parent_type, LYEX
 int
 annotation_final_check(struct lys_ext_instance *ext)
 {
-    uint16_t  i, j, c;
+    uint8_t  i, j, c;
     struct lys_module *mod;
     struct lys_submodule *submod;
     struct lys_type *type;

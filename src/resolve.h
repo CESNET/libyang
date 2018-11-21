@@ -74,7 +74,7 @@ struct unres_ext {
     LYEXT_PAR parent_type;
     LYEXT_SUBSTMT substmt;
     uint8_t substmt_index;
-    uint16_t ext_index;
+    uint8_t ext_index;
 };
 
 /**

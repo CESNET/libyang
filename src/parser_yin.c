@@ -91,7 +91,7 @@ static struct lys_when *read_yin_when(struct lys_module *module, struct lyxml_el
 int
 lyp_yin_fill_ext(void *parent, LYEXT_PAR parent_type, LYEXT_SUBSTMT substmt, uint8_t substmt_index,
              struct lys_module *module, struct lyxml_elem *yin, struct lys_ext_instance ***ext,
-             uint16_t ext_index, struct unres_schema *unres)
+             uint8_t ext_index, struct unres_schema *unres)
 {
     struct unres_ext *info;
 
@@ -141,7 +141,7 @@ lyp_yin_parse_subnode_ext(struct lys_module *mod, void *elem, LYEXT_PAR elem_typ
     struct lyxml_elem *next, *child;
     int r;
     struct lys_ext_instance ***ext;
-    uint16_t *ext_size;
+    uint8_t *ext_size;
     const char *statement;
 
     switch (elem_type) {
