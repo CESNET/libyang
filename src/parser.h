@@ -86,7 +86,7 @@ enum LY_IDENT {
 };
 int lyp_yin_fill_ext(void *parent, LYEXT_PAR parent_type, LYEXT_SUBSTMT substmt, uint8_t substmt_index,
                      struct lys_module *module, struct lyxml_elem *yin, struct lys_ext_instance ***ext,
-                     uint8_t ext_index, struct unres_schema *unres);
+                     uint16_t ext_index, struct unres_schema *unres);
 
 int lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_complex *ext,
                               struct lyxml_elem *yin, struct unres_schema *unres);
@@ -160,7 +160,7 @@ int lyp_mand_check_ext(struct lys_ext_instance_complex *ext, const char *ext_nam
 const char *lyp_get_yang_data_template_name(const struct lyd_node *node);
 const struct lys_node *lyp_get_yang_data_template(const struct lys_module *module, const char *yang_data_name, int yang_data_name_len);
 
-void lyp_ext_instance_rm(struct ly_ctx *ctx, struct lys_ext_instance ***ext, uint8_t *size, uint8_t index);
+void lyp_ext_instance_rm(struct ly_ctx *ctx, struct lys_ext_instance ***ext, uint16_t *size, uint16_t index);
 
 /**
  * @brief Propagate imports and includes into the main module

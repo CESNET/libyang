@@ -3001,9 +3001,9 @@ lyp_sort_revisions(struct lys_module *module)
 }
 
 void
-lyp_ext_instance_rm(struct ly_ctx *ctx, struct lys_ext_instance ***ext, uint8_t *size, uint8_t index)
+lyp_ext_instance_rm(struct ly_ctx *ctx, struct lys_ext_instance ***ext, uint16_t *size, uint16_t index)
 {
-    uint8_t i;
+    uint16_t i;
 
     lys_extension_instances_free(ctx, (*ext)[index]->ext, (*ext)[index]->ext_size, NULL);
     lydict_remove(ctx, (*ext)[index]->arg_value);

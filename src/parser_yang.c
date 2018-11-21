@@ -2083,7 +2083,7 @@ yang_ext_instance(void *node, enum yytokentype type, int is_ext_instance)
 {
     struct lys_ext_instance ***ext, **tmp, *instance = NULL;
     LYEXT_PAR parent_type;
-    uint8_t *size;
+    uint16_t *size;
 
     switch (type) {
     case MODULE_KEYWORD:
@@ -3289,11 +3289,11 @@ free_yang_common(struct lys_module *module, struct lys_node *node)
 /* check function*/
 
 int
-yang_check_ext_instance(struct lys_module *module, struct lys_ext_instance ***ext, uint size,
+yang_check_ext_instance(struct lys_module *module, struct lys_ext_instance ***ext, uint16_t size,
                         void *parent, struct unres_schema *unres)
 {
     struct unres_ext *info;
-    uint i;
+    uint16_t i;
 
     for (i = 0; i < size; ++i) {
         info = malloc(sizeof *info);
@@ -3587,22 +3587,20 @@ int
 yang_check_typedef(struct lys_module *module, struct lys_node *parent, struct unres_schema *unres)
 {
     struct lys_tpdf *tpdf;
-    uint8_t *ptr_tpdf_size = NULL;
-    uint16_t j, i, tpdf_size, *ptr_tpdf_size16 = NULL;
+    uint16_t j, i, tpdf_size, *ptr_tpdf_size = NULL;
 
     if (!parent) {
         tpdf = module->tpdf;
-        //ptr_tpdf_size = &module->tpdf_size;
-        ptr_tpdf_size16 = &module->tpdf_size;
+        ptr_tpdf_size = &module->tpdf_size;
     } else {
         switch (parent->nodetype) {
         case LYS_GROUPING:
             tpdf = ((struct lys_node_grp *)parent)->tpdf;
-            ptr_tpdf_size16 = &((struct lys_node_grp *)parent)->tpdf_size;
+            ptr_tpdf_size = &((struct lys_node_grp *)parent)->tpdf_size;
             break;
         case LYS_CONTAINER:
             tpdf = ((struct lys_node_container *)parent)->tpdf;
-            ptr_tpdf_size16 = &((struct lys_node_container *)parent)->tpdf_size;
+            ptr_tpdf_size = &((struct lys_node_container *)parent)->tpdf_size;
             break;
         case LYS_LIST:
             tpdf = ((struct lys_node_list *)parent)->tpdf;
@@ -3611,16 +3609,16 @@ yang_check_typedef(struct lys_module *module, struct lys_node *parent, struct un
         case LYS_RPC:
         case LYS_ACTION:
             tpdf = ((struct lys_node_rpc_action *)parent)->tpdf;
-            ptr_tpdf_size16 = &((struct lys_node_rpc_action *)parent)->tpdf_size;
+            ptr_tpdf_size = &((struct lys_node_rpc_action *)parent)->tpdf_size;
             break;
         case LYS_INPUT:
         case LYS_OUTPUT:
             tpdf = ((struct lys_node_inout *)parent)->tpdf;
-            ptr_tpdf_size16 = &((struct lys_node_inout *)parent)->tpdf_size;
+            ptr_tpdf_size = &((struct lys_node_inout *)parent)->tpdf_size;
             break;
         case LYS_NOTIF:
             tpdf = ((struct lys_node_notif *)parent)->tpdf;
-            ptr_tpdf_size16 = &((struct lys_node_notif *)parent)->tpdf_size;
+            ptr_tpdf_size = &((struct lys_node_notif *)parent)->tpdf_size;
             break;
         default:
             LOGINT(module->ctx);
@@ -3628,13 +3626,8 @@ yang_check_typedef(struct lys_module *module, struct lys_node *parent, struct un
         }
     }
 
-    if (ptr_tpdf_size16) {
-        tpdf_size = *ptr_tpdf_size16;
-        *ptr_tpdf_size16 = 0;
-    } else {
-        tpdf_size = *ptr_tpdf_size;
-        *ptr_tpdf_size = 0;
-    }
+    tpdf_size = *ptr_tpdf_size;
+    *ptr_tpdf_size = 0;
 
     for (i = 0; i < tpdf_size; ++i) {
         if (lyp_check_identifier(module->ctx, tpdf[i].name, LY_IDENT_TYPE, module, parent)) {
@@ -3657,11 +3650,8 @@ yang_check_typedef(struct lys_module *module, struct lys_node *parent, struct un
             goto error;
         }
 
-        if (ptr_tpdf_size16) {
-            (*ptr_tpdf_size16)++;
-        } else {
-            (*ptr_tpdf_size)++;
-        }
+        (*ptr_tpdf_size)++;
+
         /* check default value*/
         if (!(module->ctx->models.flags & LY_CTX_TRUSTED)
                 && unres_schema_add_node(module, unres, &tpdf[i].type, UNRES_TYPEDEF_DFLT, (struct lys_node *)(&tpdf[i].dflt)) == -1)  {

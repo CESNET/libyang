@@ -450,8 +450,10 @@ struct lys_ext {
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
     uint16_t flags;                  /**< LYS_STATUS_* and LYS_YINELEM values (@ref snodeflags) */
-    uint8_t ext_size;                /**< number of elements in #ext array */
-    uint8_t padding[5];              /**< padding for compatibility with ::lys_node */
+    uint16_t ext_size;               /**< number of elements in #ext array */
+
+    uint8_t padding[8];              /**< padding for compatibility with ::lys_node */
+
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     const char *argument;            /**< argument name, NULL if not specified, replacement for ::lys_node's iffeature */
     struct lys_module *module;       /**< link to the extension's data model */
@@ -473,7 +475,9 @@ struct lys_ext_instance {
                                           ::lys_ext_instance#parent_type to access the schema element */
     const char *arg_value;           /**< value of the instance's argument, if defined */
     uint16_t flags;                  /**< [extension flags](@ref extflags) */
-    uint8_t ext_size;                /**< number of elements in #ext array */
+    uint16_t ext_size;               /**< number of elements in #ext array */
+
+    uint8_t padding[4];              /**< padding for 32b alignment */
     uint8_t insubstmt_index;         /**< since some of the statements can appear multiple times, it is needed to
                                           keep the position of the specific statement instance which contains
                                           this extension instance. Order of both, the extension and the statement,
@@ -486,7 +490,7 @@ struct lys_ext_instance {
                                           instances for all possible statements to save some, commonly unused, space. */
     uint8_t parent_type;             /**< #LYEXT_PAR - type of the parent structure */
     uint8_t ext_type;                /**< extension type (#LYEXT_TYPE) */
-    uint8_t padding;                 /**< 32b padding */
+
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     void *priv;                      /**< private caller's data, not used by libyang */
     struct lys_module *module;       /**< pointer to the extension instance's module (mandatory) */
@@ -505,7 +509,9 @@ struct lys_ext_instance_complex {
                                           ::lys_ext_instance#parent_type to access the schema element */
     const char *arg_value;           /**< value of the instance's argument, if defined */
     uint16_t flags;                  /**< [extension flags](@ref extflags) */
-    uint8_t ext_size;                /**< number of elements in #ext array */
+    uint16_t ext_size;               /**< number of elements in #ext array */
+
+    uint8_t padding[4];              /**< padding for 32b alignment */
     uint8_t insubstmt_index;         /**< since some of the statements can appear multiple times, it is needed to
                                           keep the position of the specific statement instance which contains
                                           this extension instance. Order of both, the extension and the statement,
@@ -518,7 +524,7 @@ struct lys_ext_instance_complex {
                                           instances for all possible statements to save some, commonly unused, space. */
     uint8_t parent_type;             /**< #LYEXT_PAR - type of the parent structure */
     uint8_t ext_type;                /**< extension type (#LYEXT_TYPE) */
-    uint8_t padding;                 /**< 32b padding */
+
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     void *priv;                      /**< private caller's data, not used by libyang */
     struct lys_module *module;       /**< pointer to the extension instance's module (mandatory) */
@@ -585,7 +591,7 @@ const void *lys_ext_instance_substmt(const struct lys_ext_instance *ext);
  * @param[in] ext_size Number of items in the extensions list
  * @return -1 in case the extension is not present in the list, index of the extension in the provided list otherwise
  */
-int lys_ext_instance_presence(struct lys_ext *def, struct lys_ext_instance **ext, uint8_t ext_size);
+int lys_ext_instance_presence(struct lys_ext *def, struct lys_ext_instance **ext, uint16_t ext_size);
 
 /**
  * @brief get pointer to the place where the specified extension's substatement is supposed to be stored in the complex
@@ -690,7 +696,7 @@ struct lys_module {
     uint8_t latest_revision:1;       /**< flag if the module was loaded without specific revision and is
                                           the latest revision found */
     uint8_t padding1:7;              /**< padding for 32b alignment */
-    uint8_t padding2[2];
+    uint8_t padding2[1];
 
     /* array sizes */
     uint8_t rev_size;                /**< number of elements in #rev array */
@@ -704,7 +710,7 @@ struct lys_module {
     uint8_t augment_size;            /**< number of elements in #augment array */
     uint8_t deviation_size;          /**< number of elements in #deviation array */
     uint8_t extensions_size;         /**< number of elements in #extensions array */
-    uint8_t ext_size;                /**< number of elements in #ext array */
+    uint16_t ext_size;               /**< number of elements in #ext array */
 
     struct lys_revision *rev;        /**< array of the module revisions, revisions[0] is always the last (newest)
                                           revision of the module */
@@ -750,7 +756,7 @@ struct lys_submodule {
                                           - 2 = deviation applied to this module are temporarily off */
     uint8_t disabled:1;              /**< flag if the module is disabled in the context (same as in main module) */
     uint8_t implemented:1;           /**< flag if the module is implemented, not just imported (same as in main module) */
-    uint8_t padding[3];              /**< padding for 32b alignment */
+    uint8_t padding[2];              /**< padding for 32b alignment */
 
     /* array sizes */
     uint8_t rev_size;                /**< number of elements in #rev array */
@@ -764,7 +770,7 @@ struct lys_submodule {
     uint8_t augment_size;            /**< number of elements in #augment array */
     uint8_t deviation_size;          /**< number of elements in #deviation array */
     uint8_t extensions_size;         /**< number of elements in #extensions array */
-    uint8_t ext_size;                /**< number of elements in #ext array */
+    uint16_t ext_size;               /**< number of elements in #ext array */
 
     struct lys_revision *rev;        /**< array of the module revisions, revisions[0] is always the last (newest)
                                           revision of the submodule */
@@ -827,10 +833,9 @@ struct lys_type_bit {
     const char *ref;                 /**< bit's reference (optional) */
     uint16_t flags;                  /**< bit's flags, whether the position was auto-assigned
                                           and the status(one of LYS_NODE_STATUS_* values or 0 for default) */
-    uint8_t ext_size;                /**< number of elements in #ext array */
+    uint16_t ext_size;               /**< number of elements in #ext array */
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
 
-    /* 32b padding for compatibility with ::lys_node */
     uint32_t pos;                    /**< bit's position (mandatory) */
 
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
@@ -867,10 +872,9 @@ struct lys_type_enum {
     const char *ref;                 /**< enum's reference (optional) */
     uint16_t flags;                  /**< enum's flags, whether the value was auto-assigned
                                           and the status(one of LYS_NODE_STATUS_* values or 0 for default) */
-    uint8_t ext_size;                /**< number of elements in #ext array */
+    uint16_t ext_size;               /**< number of elements in #ext array */
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
 
-    /* 32b padding for compatibility with ::lys_node */
     int32_t value;                   /**< enum's value (mandatory) */
 
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
@@ -977,7 +981,7 @@ union lys_type_info {
 struct lys_type {
     LY_DATA_TYPE _PACKED base;       /**< base type */
     uint8_t value_flags;             /**< value type flags */
-    uint8_t ext_size;                /**< number of elements in #ext array */
+    uint16_t ext_size;               /**< number of elements in #ext array */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     struct lys_tpdf *der;            /**< pointer to the superior typedef. If NULL,
                                           structure provides information about one of the built-in types */
@@ -1073,7 +1077,7 @@ struct lys_type {
  */
 struct lys_iffeature {
     uint8_t *expr;                   /**< 2bits array describing the if-feature expression in prefix format */
-    uint8_t ext_size;                /**< number of elements in #ext array */
+    uint16_t ext_size;               /**< number of elements in #ext array */
     struct lys_feature **features;   /**< array of pointers to the features used in expression */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
 };
@@ -1213,10 +1217,10 @@ struct lys_node {
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
-    uint8_t ext_size;                /**< number of elements in #ext array */
+    uint16_t ext_size;               /**< number of elements in #ext array */
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
 
-    uint8_t padding[4];              /**< 32b padding - on 64b it just fills the already required data making the
+    uint8_t padding[7];              /**< 32b padding - on 64b it just fills the already required data making the
                                           space for type-specific values used by the structures derived from lys_node,
                                           on 32b it adds one word to lys_node, but this space is anyway required by
                                           the (really used) derived structures, so there is no wasting (except
@@ -1259,11 +1263,11 @@ struct lys_node_container {
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
-    uint8_t ext_size;                /**< number of elements in #ext array */
+    uint16_t ext_size;               /**< number of elements in #ext array */
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
 
-    /* non compatible 32b with ::lys_node */
-    uint8_t padding[1];              /**< padding for 32b alignment */
+    /* non compatible 32b members with ::lys_node */
+    uint8_t padding[4];              /**< padding for 32b alignment */
     uint8_t must_size;               /**< number of elements in the #must array */
     uint16_t tpdf_size;              /**< number of elements in the #tpdf array */
 
@@ -1307,11 +1311,11 @@ struct lys_node_choice {
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
-    uint8_t ext_size;                /**< number of elements in #ext array */
+    uint16_t ext_size;               /**< number of elements in #ext array */
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
 
-    /* non compatible 32b with ::lys_node */
-    uint8_t padding[4];              /**< padding for 32b alignment */
+    /* non compatible 32b members with ::lys_node */
+    uint8_t padding[7];              /**< padding for 32b alignment */
 
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     struct lys_iffeature *iffeature; /**< array of if-feature expressions */
@@ -1349,11 +1353,11 @@ struct lys_node_leaf {
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
-    uint8_t ext_size;                /**< number of elements in #ext array */
+    uint16_t ext_size;               /**< number of elements in #ext array */
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
 
-    /* non compatible 32b with ::lys_node */
-    uint8_t padding[3];              /**< padding for 32b alignment */
+    /* non compatible 32b members with ::lys_node */
+    uint8_t padding[6];              /**< padding for 32b alignment */
     uint8_t must_size;               /**< number of elements in the #must array */
 
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
@@ -1402,11 +1406,11 @@ struct lys_node_leaflist {
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
-    uint8_t ext_size;                /**< number of elements in #ext array */
+    uint16_t ext_size;               /**< number of elements in #ext array */
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
 
-    /* non compatible 32b with ::lys_node */
-    uint8_t padding[2];              /**< padding for 32b alignment */
+    /* non compatible 32b members with ::lys_node */
+    uint8_t padding[5];              /**< padding for 32b alignment */
     uint8_t dflt_size;               /**< number of elements in the #dflt array */
     uint8_t must_size;               /**< number of elements in the #must array */
 
@@ -1458,12 +1462,13 @@ struct lys_node_list {
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
-    uint8_t ext_size;                /**< number of elements in #ext array */
+    uint16_t ext_size;               /**< number of elements in #ext array */
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
 
-    /* non compatible 32b with ::lys_node */
+    /* non compatible 32b members with ::lys_node */
+    uint8_t padding[2];              /**< padding for 32b alignment */
     uint8_t must_size;               /**< number of elements in the #must array */
-    uint8_t tpdf_size;               /**< number of elements in the #tpdf array */
+    uint16_t tpdf_size;              /**< number of elements in the #tpdf array */
     uint8_t keys_size;               /**< number of elements in the #keys array */
     uint8_t unique_size;             /**< number of elements in the #unique array (number of unique statements) */
 
@@ -1517,11 +1522,11 @@ struct lys_node_anydata {
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
-    uint8_t ext_size;                /**< number of elements in #ext array */
+    uint16_t ext_size;               /**< number of elements in #ext array */
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
 
-    /* non compatible 32b with ::lys_node */
-    uint8_t padding[3];              /**< padding for 32b alignment */
+    /* non compatible 32b members with ::lys_node */
+    uint8_t padding[6];              /**< padding for 32b alignment */
     uint8_t must_size;               /**< number of elements in the #must array */
 
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
@@ -1566,11 +1571,11 @@ struct lys_node_uses {
     const char *ref;                 /**< reference statement (optional) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* and LYS_USESGRP
                                           values are allowed */
-    uint8_t ext_size;                /**< number of elements in #ext array */
+    uint16_t ext_size;               /**< number of elements in #ext array */
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
 
-    /* non compatible 32b with ::lys_node */
-    uint8_t padding[2];              /**< padding for 32b alignment */
+    /* non compatible 32b members with ::lys_node */
+    uint8_t padding[5];              /**< padding for 32b alignment */
     uint8_t refine_size;             /**< number of elements in the #refine array */
     uint8_t augment_size;            /**< number of elements in the #augment array */
 
@@ -1612,10 +1617,11 @@ struct lys_node_grp {
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values are allowed */
-    uint8_t ext_size;                /**< number of elements in #ext array */
+    uint16_t ext_size;               /**< number of elements in #ext array */
     uint8_t padding_iffsize;         /**< padding byte for the ::lys_node's iffeature_size */
 
-    /* non compatible 32b with ::lys_node */
+    /* non compatible 32b members with ::lys_node */
+    uint8_t padding[3];              /**< padding for 32b alignment */
     uint16_t unres_count;            /**< internal counter for unresolved uses, should be always 0 when the module is parsed */
     uint16_t tpdf_size;              /**< number of elements in #tpdf array */
 
@@ -1651,11 +1657,11 @@ struct lys_node_case {
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
-    uint8_t ext_size;                /**< number of elements in #ext array */
+    uint16_t ext_size;               /**< number of elements in #ext array */
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
 
-    /* non compatible 32b with ::lys_node */
-    uint8_t padding[4];              /**< padding for 32b alignment */
+    /* non compatible 32b members with ::lys_node */
+    uint8_t padding[7];              /**< padding for 32b alignment */
 
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     struct lys_iffeature *iffeature; /**< array of if-feature expressions */
@@ -1695,11 +1701,11 @@ struct lys_node_inout {
     const char *name;
     void *fill1[2];                  /**< padding for compatibility with ::lys_node - dsc and ref */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_IMPLICIT is applicable */
-    uint8_t ext_size;                /**< number of elements in #ext array */
+    uint16_t ext_size;               /**< number of elements in #ext array */
     uint8_t padding_iffsize;         /**< padding byte for the ::lys_node's iffeature_size */
 
-    /* non compatible 32b with ::lys_node */
-    uint8_t padding[1];              /**< padding for 32b alignment */
+    /* non compatible 32b members with ::lys_node */
+    uint8_t padding[4];              /**< padding for 32b alignment */
     uint8_t must_size;               /**< number of elements in the #must array */
     uint16_t tpdf_size;              /**< number of elements in the #tpdf array */
 
@@ -1734,11 +1740,11 @@ struct lys_node_notif {
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
-    uint8_t ext_size;                /**< number of elements in #ext array */
+    uint16_t ext_size;               /**< number of elements in #ext array */
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
 
-    /* non compatible 32b with ::lys_node */
-    uint8_t padding[1];              /**< padding for 32b alignment */
+    /* non compatible 32b members with ::lys_node */
+    uint8_t padding[4];              /**< padding for 32b alignment */
     uint8_t must_size;               /**< number of elements in the #must array */
     uint16_t tpdf_size;              /**< number of elements in the #tpdf array */
 
@@ -1781,11 +1787,11 @@ struct lys_node_rpc_action {
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
-    uint8_t ext_size;                /**< number of elements in #ext array */
+    uint16_t ext_size;               /**< number of elements in #ext array */
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
 
-    /* non compatible 32b with ::lys_node */
-    uint8_t padding[2];              /**< padding for 32b alignment */
+    /* non compatible 32b members with ::lys_node */
+    uint8_t padding[5];              /**< padding for 32b alignment */
     uint16_t tpdf_size;              /**< number of elements in the #tpdf array */
 
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
@@ -1830,11 +1836,11 @@ struct lys_node_augment {
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
-    uint8_t ext_size;                /**< number of elements in #ext array */
+    uint16_t ext_size;               /**< number of elements in #ext array */
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
 
-    /* non compatible 32b with ::lys_node */
-    uint8_t padding[4];              /**< padding for 32b alignment */
+    /* non compatible 32b members with ::lys_node */
+    uint8_t padding[7];              /**< padding for 32b alignment */
 
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     struct lys_iffeature *iffeature; /**< array of if-feature expressions */
@@ -1881,10 +1887,11 @@ struct lys_refine {
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only config and mandatory flags apply */
-    uint8_t ext_size;                /**< number of elements in #ext array */
+    uint16_t ext_size;               /**< number of elements in #ext array */
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
 
-    /* 32b padding for compatibility with ::lys_node */
+    /* non compatible 32b members with ::lys_node */
+    uint8_t padding[3];              /**< padding for 32b alignment */
     uint16_t target_type;            /**< limitations (get from specified refinements) for target node type:
                                           - 0 = no limitations,
                                           - ORed #LYS_NODE values if there are some limitations */
@@ -1922,7 +1929,7 @@ struct lys_deviate {
 
     uint8_t flags;                   /**< Properties: config, mandatory */
     uint8_t dflt_size;               /**< Properties: default - number of elements in the #dflt array */
-    uint8_t ext_size;                 /**< number of elements in #ext array */
+    uint16_t ext_size;                /**< number of elements in #ext array */
 
     uint8_t min_set;                 /**< Since min can be 0, this flag says if it is default value or 0 was set */
     uint8_t max_set;                 /**< Since max can be 0, this flag says if it is default value or 0 (unbounded) was set */
@@ -1952,7 +1959,7 @@ struct lys_deviation {
     struct lys_node *orig_node;       /**< original (non-deviated) node (mandatory) */
 
     uint8_t deviate_size;             /**< number of elements in the #deviate array */
-    uint8_t ext_size;                 /**< number of elements in #ext array */
+    uint16_t ext_size;                /**< number of elements in #ext array */
     struct lys_deviate *deviate;      /**< deviate information */
     struct lys_ext_instance **ext;    /**< array of pointers to the extension instances */
 };
@@ -1964,7 +1971,7 @@ struct lys_import {
     struct lys_module *module;       /**< link to the imported module (mandatory) */
     const char *prefix;              /**< prefix for the data from the imported schema (mandatory) */
     char rev[LY_REV_SIZE];           /**< revision-date of the imported module (optional) */
-    uint8_t ext_size;                /**< number of elements in #ext array */
+    uint16_t ext_size;               /**< number of elements in #ext array */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     const char *dsc;                 /**< description (optional) */
     const char *ref;                 /**< reference (optional) */
@@ -1976,7 +1983,7 @@ struct lys_import {
 struct lys_include {
     struct lys_submodule *submodule; /**< link to the included submodule (mandatory) */
     char rev[LY_REV_SIZE];           /**< revision-date of the included submodule (optional) */
-    uint8_t ext_size;                /**< number of elements in #ext array */
+    uint16_t ext_size;               /**< number of elements in #ext array */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     const char *dsc;                 /**< description (optional) */
     const char *ref;                 /**< reference (optional) */
@@ -1987,7 +1994,7 @@ struct lys_include {
  */
 struct lys_revision {
     char date[LY_REV_SIZE];          /**< revision-date (mandatory) */
-    uint8_t ext_size;                /**< number of elements in #ext array */
+    uint16_t ext_size;               /**< number of elements in #ext array */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     const char *dsc;                 /**< revision's dsc (optional) */
     const char *ref;                 /**< revision's reference (optional) */
@@ -2001,12 +2008,12 @@ struct lys_tpdf {
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_ and LYS_DFLTJSON values (or 0) are allowed */
-    uint8_t ext_size;                /**< number of elements in #ext array */
+    uint16_t ext_size;               /**< number of elements in #ext array */
     uint8_t padding_iffsize;         /**< padding byte for the ::lys_node's iffeature_size */
-    uint8_t has_union_leafref;       /**< flag to mark typedefs with a leafref inside a union */
 
-    /* 24b padding for compatibility with ::lys_node */
-    uint8_t padding[3];              /**< padding for 32b alignment */
+    /* non compatible 32b members with ::lys_node */
+    uint8_t padding[6];              /**< padding for 32b alignment */
+    uint8_t has_union_leafref;       /**< flag to mark typedefs with a leafref inside a union */
 
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     const char *units;               /**< units of the newly defined type (optional) */
@@ -2036,11 +2043,11 @@ struct lys_feature {
     const char *ref;                 /**< reference statement (optional) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values and
                                           #LYS_FENABLED value are allowed */
-    uint8_t ext_size;                /**< number of elements in #ext array */
+    uint16_t ext_size;               /**< number of elements in #ext array */
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
 
-    /* 32b padding for compatibility with ::lys_node */
-    uint8_t padding[4];              /**< padding for 32b alignment */
+    /* non compatible 32b members with ::lys_node */
+    uint8_t padding[7];              /**< padding for 32b alignment */
 
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
     struct lys_iffeature *iffeature; /**< array of if-feature expressions */
@@ -2060,7 +2067,7 @@ struct lys_restr {
     const char *eapptag;             /**< error-app-tag value (optional) */
     const char *emsg;                /**< error-message (optional) */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
-    uint8_t ext_size;                /**< number of elements in #ext array */
+    uint16_t ext_size;               /**< number of elements in #ext array */
     uint16_t flags;                  /**< only flags #LYS_XPCONF_DEP and #LYS_XPSTATE_DEP can be specified */
 };
 
@@ -2072,7 +2079,7 @@ struct lys_when {
     const char *dsc;                 /**< description (optional) */
     const char *ref;                 /**< reference (optional) */
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
-    uint8_t ext_size;                /**< number of elements in #ext array */
+    uint16_t ext_size;               /**< number of elements in #ext array */
     uint16_t flags;                  /**< only flags #LYS_XPCONF_DEP and #LYS_XPSTATE_DEP can be specified */
 };
 
@@ -2086,11 +2093,11 @@ struct lys_ident {
     const char *dsc;                 /**< description statement (optional) */
     const char *ref;                 /**< reference statement (optional) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_ values are allowed */
-    uint8_t ext_size;                /**< number of elements in #ext array */
+    uint16_t ext_size;               /**< number of elements in #ext array */
     uint8_t iffeature_size;          /**< number of elements in the #iffeature array */
 
-    /* 32b padding for compatibility with ::lys_node */
-    uint8_t padding[3];              /**< padding for 32b alignment */
+    /* non compatible 32b members with ::lys_node */
+    uint8_t padding[6];              /**< padding for 32b alignment */
     uint8_t base_size;               /**< number of elements in the #base array */
 
     struct lys_ext_instance **ext;   /**< array of pointers to the extension instances */
