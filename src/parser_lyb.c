@@ -903,7 +903,11 @@ lyb_parse_schema_hash(const struct lys_node *sparent, const struct lys_module *m
     LYB_HAVE_READ_RETURN(r, data, -1);
 
     /* based on the first hash read all the other ones, if any */
-    for (i = 0; !(hash[0] & (LYB_HASH_COLLISION_ID >> i)); ++i);
+    for (i = 0; !(hash[0] & (LYB_HASH_COLLISION_ID >> i)); ++i) {
+        if (i > LYB_HASH_BITS) {
+            return -1;
+        }
+    }
 
     /* move the first hash on its accurate position */
     hash[i] = hash[0];
