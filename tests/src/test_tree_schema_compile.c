@@ -1286,7 +1286,7 @@ test_type_leafref(void **state)
     assert_int_equal(0, has_predicate);
 
     /* complete leafref paths */
-    assert_non_null(mod = lys_parse_mem(ctx, "module a {yang-version 1.1;namespace urn:a;prefix a;"
+    assert_non_null(mod = lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;"
                                         "leaf ref1 {type leafref {path /a:target1;}} leaf ref2 {type leafref {path /a/target2; require-instance false;}}"
                                         "leaf target1 {type string;}container a {leaf target2 {type uint8;}}}", LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
@@ -1294,12 +1294,36 @@ test_type_leafref(void **state)
     assert_non_null(type);
     assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
     assert_string_equal("/a:target1", ((struct lysc_type_leafref*)type)->path);
+    assert_ptr_equal(mod, ((struct lysc_type_leafref*)type)->path_context);
     assert_int_equal(1, ((struct lysc_type_leafref*)type)->require_instance);
     type = ((struct lysc_node_leaf*)mod->compiled->data->next)->type;
     assert_non_null(type);
     assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
     assert_string_equal("/a/target2", ((struct lysc_type_leafref*)type)->path);
     assert_int_equal(0, ((struct lysc_type_leafref*)type)->require_instance);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b; typedef mytype {type leafref {path /b:target;}}"
+                                        "typedef mytype2 {type mytype;} leaf ref {type mytype2;}leaf target {type string;}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(3, type->refcount);
+    assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
+    assert_string_equal("/b:target", ((struct lysc_type_leafref* )type)->path);
+    assert_ptr_equal(mod, ((struct lysc_type_leafref*)type)->path_context);
+    assert_int_equal(1, ((struct lysc_type_leafref* )type)->require_instance);
+
+    /* prefixes are reversed to check using correct context of the path! */
+    assert_non_null(mod = lys_parse_mem(ctx, "module c {namespace urn:c;prefix b; import b {prefix c;}"
+                                        "typedef mytype3 {type c:mytype;} leaf ref {type b:mytype3;}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(5, type->refcount);
+    assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
+    assert_string_equal("/b:target", ((struct lysc_type_leafref* )type)->path);
+    assert_ptr_not_equal(mod, ((struct lysc_type_leafref*)type)->path_context);
+    assert_int_equal(1, ((struct lysc_type_leafref* )type)->require_instance);
 
     /* TODO target in list with predicates */
 

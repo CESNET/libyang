@@ -1598,12 +1598,12 @@ done:
  * @param[in, out] predicate Pointer to the predicate in the leafref path. The pointer is moved after the validated predicate(s).
  * Since there can be multiple adjacent predicates for lists with multiple keys, all such predicates are validated.
  * @param[in] context_node Predicate context node (where the predicate is placed).
- * @param[in] startnode Path context node (where the leafref path begins/is placed).
+ * @param[in] path_context Schema where the path was defined to correct resolve of the prefixes.
  * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
  */
 static LY_ERR
 lys_compile_leafref_predicate_validate(struct lysc_ctx *ctx, const char **predicate,
-                                       const struct lysc_node *context_node, const struct lysc_node *startnode)
+                                       const struct lysc_node *context_node, const struct lys_module *path_context)
 {
     LY_ERR ret = LY_EVALID;
     const struct lys_module *mod;
@@ -1651,9 +1651,9 @@ lys_compile_leafref_predicate_validate(struct lysc_ctx *ctx, const char **predic
 
         /* source (must be leaf or leaf-list) */
         if (src_prefix) {
-            mod = lys_module_find_prefix(startnode->module, src_prefix, src_prefix_len);
+            mod = lys_module_find_prefix(path_context, src_prefix, src_prefix_len);
         } else {
-            mod = startnode->module;
+            mod = path_context;
         }
         src_node = lys_child(context_node, mod, src, src_len,
                              mod->compiled->version < LYS_VERSION_1_1 ? LYS_LEAF : LYS_LEAF | LYS_LEAFLIST, LYS_GETNEXT_NOSTATECHECK);
@@ -1749,9 +1749,9 @@ lys_compile_leafref_predicate_validate(struct lysc_ctx *ctx, const char **predic
             }
 
             if (dst_prefix) {
-                mod = lys_module_find_prefix(startnode->module, dst_prefix, dst_prefix_len);
+                mod = lys_module_find_prefix(path_context, dst_prefix, dst_prefix_len);
             } else {
-                mod = startnode->module;
+                mod = path_context;
             }
             if (!mod) {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
@@ -1863,10 +1863,11 @@ lys_path_token(const char **path, const char **prefix, size_t *prefix_len, const
  * @param[in] ctx Compile context
  * @param[in] startnode Path context node (where the leafref path begins/is placed).
  * @param[in] path Leafref path to validate.
+ * @param[in] path_context Module where the path was defined to correct resolve of the prefixes.
  * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
  */
 static LY_ERR
-lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *startnode, const char *path)
+lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *startnode, const char *path, struct lys_module *path_context)
 {
     const struct lysc_node *node = NULL, *parent = NULL;
     const struct lys_module *mod;
@@ -1897,9 +1898,9 @@ lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *startnode, 
         }
 
         if (prefix) {
-            mod = lys_module_find_prefix(startnode->module, prefix, prefix_len);
+            mod = lys_module_find_prefix(path_context, prefix, prefix_len);
         } else {
-            mod = startnode->module;
+            mod = path_context;
         }
         if (!mod) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
@@ -1924,7 +1925,7 @@ lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *startnode, 
                 return LY_EVALID;
             }
 
-            LY_CHECK_RET(lys_compile_leafref_predicate_validate(ctx, &id, node, startnode), LY_EVALID);
+            LY_CHECK_RET(lys_compile_leafref_predicate_validate(ctx, &id, node, path_context), LY_EVALID);
         }
 
         ++iter;
@@ -1962,8 +1963,8 @@ lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *startnode, 
  * @return LY_ERR value.
  */
 static LY_ERR
-lys_compile_type_(struct lysc_ctx *ctx, struct lysp_type *type_p, LY_DATA_TYPE basetype, int options, const char *tpdfname,
-                  struct lysc_type *base,  struct lysc_type **type)
+lys_compile_type_(struct lysc_ctx *ctx, struct lysp_type *type_p, struct lys_module *module, LY_DATA_TYPE basetype, int options,
+                  const char *tpdfname, struct lysc_type *base,  struct lysc_type **type)
 {
     LY_ERR ret = LY_SUCCESS;
     unsigned int u;
@@ -2202,8 +2203,10 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_type *type_p, LY_DATA_TYPE b
         }
         if (type_p->path) {
             DUP_STRING(ctx->ctx, (void*)type_p->path, ((struct lysc_type_leafref*)(*type))->path);
+            ((struct lysc_type_leafref*)(*type))->path_context = module;
         } else if (base) {
             DUP_STRING(ctx->ctx, ((struct lysc_type_leafref*)base)->path, ((struct lysc_type_leafref*)(*type))->path);
+            ((struct lysc_type_leafref*)(*type))->path_context = ((struct lysc_type_leafref*)base)->path_context;
         } else if (tpdfname) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_MISSCHILDSTMT, "path", "leafref type ", tpdfname);
             return LY_EVALID;
@@ -2371,7 +2374,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
         } else if (tctx->tpdf->type.compiled) {
             base = tctx->tpdf->type.compiled;
             continue;
-        } else if ((basetype != LY_TYPE_LEAFREF) && (u != tpdf_chain.count - 1) && !(tctx->tpdf->type.flags)) {
+        } else if ((u != tpdf_chain.count - 1) && !(tctx->tpdf->type.flags)) {
             /* no change, just use the type information from the base */
             base = ((struct lysp_tpdf*)tctx->tpdf)->type.compiled = ((struct type_context*)tpdf_chain.objs[u + 1])->tpdf->type.compiled;
             ++base->refcount;
@@ -2381,17 +2384,19 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
         ++(*type)->refcount;
         (*type)->basetype = basetype;
         prev_type = *type;
-        ret = lys_compile_type_(ctx, &((struct lysp_tpdf*)tctx->tpdf)->type, basetype, options, tctx->tpdf->name, base, type);
+        ret = lys_compile_type_(ctx, &((struct lysp_tpdf*)tctx->tpdf)->type,
+                                basetype & (LY_TYPE_LEAFREF | LY_TYPE_UNION) ? lysp_find_module(ctx->ctx, tctx->mod) : NULL,
+                                basetype, options, tctx->tpdf->name, base, type);
         LY_CHECK_GOTO(ret, cleanup);
         base = prev_type;
     }
 
     /* process the type definition in leaf */
-    if (leaf_p->type.flags || !base || basetype == LY_TYPE_LEAFREF) {
+    if (leaf_p->type.flags || !base) {
         /* get restrictions from the node itself */
         (*type)->basetype = basetype;
         ++(*type)->refcount;
-        ret = lys_compile_type_(ctx, &leaf_p->type, basetype, options, NULL, base, type);
+        ret = lys_compile_type_(ctx, &leaf_p->type, ctx->mod, basetype, options, NULL, base, type);
         LY_CHECK_GOTO(ret, cleanup);
     } else {
         /* no specific restriction in leaf's type definition, copy from the base */
@@ -2670,7 +2675,7 @@ lys_compile(struct lys_module *mod, int options)
             if (type->basetype == LY_TYPE_LEAFREF) {
                 /* validate the path */
                 ret = lys_compile_leafref_validate(&ctx, ((struct lysc_node*)ctx.unres.objs[u]),
-                                                   ((struct lysc_type_leafref*)type)->path);
+                                                   ((struct lysc_type_leafref*)type)->path, ((struct lysc_type_leafref*)type)->path_context);
                 LY_CHECK_GOTO(ret, error);
             }
         }

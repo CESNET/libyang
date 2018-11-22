@@ -980,3 +980,16 @@ lysc_node_iff(const struct lysc_node *node)
     }
 }
 
+struct lys_module *
+lysp_find_module(struct ly_ctx *ctx, const struct lysp_module *mod)
+{
+    unsigned int u;
+
+    for (u = 0; u < ctx->list.count; ++u) {
+        if (((struct lys_module*)ctx->list.objs[u])->parsed == mod) {
+            return ((struct lys_module*)ctx->list.objs[u]);
+        }
+    }
+    return NULL;
+}
+

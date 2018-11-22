@@ -189,6 +189,14 @@ struct lysc_node **lysc_node_children(const struct lysc_node *node);
 struct lysc_iffeature **lysc_node_iff(const struct lysc_node *node);
 
 /**
+ * @brief Get the covering schema module structure for the given parsed module structure.
+ * @param[in] ctx libyang context to search.
+ * @param[in] mod Parsed schema structure.
+ * @return Corresponding lys_module structure for the given parsed schema structure.
+ */
+struct lys_module *lysp_find_module(struct ly_ctx *ctx, const struct lysp_module *mod);
+
+/**
  * @brief Find the module referenced by prefix in the provided parsed mod.
  *
  * @param[in] mod Schema module where the prefix was used.
