@@ -156,10 +156,10 @@ typedef enum {
 #define LYS_LEAFLIST 0x0008       /**< leaf-list statement node */
 #define LYS_LIST 0x0010           /**< list statement node */
 #define LYS_ANYXML 0x0020         /**< anyxml statement node */
-#define LYS_CASE 0x0040           /**< case statement node */
-#define LYS_USES 0x0080           /**< uses statement node */
 #define LYS_ANYDATA 0x0120        /**< anydata statement node, in tests it can be used for both #LYS_ANYXML and #LYS_ANYDATA */
 
+#define LYS_CASE 0x0040           /**< case statement node */
+#define LYS_USES 0x0080           /**< uses statement node */
 #define LYS_INOUT 0x200
 #define LYS_ACTION 0x400
 #define LYS_NOTIF 0x800
@@ -940,6 +940,7 @@ struct lysc_import {
  */
 struct lysc_when {
     struct lyxp_expr *cond;          /**< XPath when condition */
+    struct lysc_node *context;       /**< context node of the expression */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 };
 
@@ -1072,7 +1073,7 @@ struct lysc_type_leafref {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
-    struct lysc_node* target;        /**< Target schema node */
+    const char* path;                /**< target path */
     uint8_t require_instance;        /**< require-instance flag */
 };
 
@@ -1158,6 +1159,14 @@ struct lysc_node_container {
     struct lysc_notif *notifs;       /**< list of notifications ([sized array](@ref sizedarrays)) */
 };
 
+struct lysc_node_case {
+    const char *name;                /**< name of the case, including the implicit case */
+    struct lysc_node *child;         /**< first child node of the case (linked list). Note that all the children of all the sibling cases are linked
+                                          each other as siblings with the parent pointer pointing to the choice node holding the case. To distinguish
+                                          which children node belongs to which case, it is needed to match the first children of the cases while going
+                                          through the children linked list. */
+};
+
 struct lysc_node_choice {
     uint16_t nodetype;               /**< LYS_CHOICE */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
@@ -1172,7 +1181,10 @@ struct lysc_node_choice {
     const char *name;                /**< node name (mandatory) */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 
-    struct lysc_node *child;
+    struct lysc_node_case *cases;    /**< list of the cases with their name and pointer to the first children of each case ([sized array](@ref sizedarrays))
+                                          Note that all the children of all the cases are linked each other as siblings with the parent pointer pointing
+                                          to this choice node. To distinguish which children node belongs to which case, it is needed to match the first
+                                          children of the cases while going through the children linked list. */
 };
 
 struct lysc_node_leaf {
@@ -1245,40 +1257,6 @@ struct lysc_node_anydata {
     const char *name;                /**< node name (mandatory) */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 
-};
-
-struct lysc_node_case {
-    uint16_t nodetype;               /**< LYS_CASE */
-    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
-    struct lys_module *module;       /**< module structure */
-    struct lysp_node *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
-    struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
-    struct lysc_node *next;          /**< next sibling node (NULL if there is no one) */
-    struct lysc_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
-                                          never NULL. If there is no sibling node, pointer points to the node
-                                          itself. In case of the first node, this pointer points to the last
-                                          node in the list. */
-    const char *name;                /**< node name (mandatory) */
-    struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-
-    struct lysc_node *child;
-};
-
-struct lysc_node_uses {
-    uint16_t nodetype;               /**< LYS_CHOICE */
-    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
-    struct lys_module *module;       /**< module structure */
-    struct lysp_node *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
-    struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
-    struct lysc_node *next;          /**< next sibling node (NULL if there is no one) */
-    struct lysc_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
-                                          never NULL. If there is no sibling node, pointer points to the node
-                                          itself. In case of the first node, this pointer points to the last
-                                          node in the list. */
-    const char *name;                /**< node name (mandatory) */
-    struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-
-    struct lysc_node *child;
 };
 
 /**
@@ -1438,10 +1416,7 @@ LY_ERR lys_search_localfile(const char * const *searchpaths, int cwd, const char
  * @{
  */
 #define LYSC_OPT_FREE_SP 1           /**< Free the input printable schema */
-
-/**
- * @}
- */
+/** @} scflags */
 
 /**
  * @brief Compile printable schema into a validated schema linking all the references.
@@ -1452,6 +1427,68 @@ LY_ERR lys_search_localfile(const char * const *searchpaths, int cwd, const char
  * @return LY_ERR value.
  */
 LY_ERR lys_compile(struct lys_module *mod, int options);
+
+/**
+ * @brief Get next schema tree (sibling) node element that can be instantiated in a data tree. Returned node can
+ * be from an augment.
+ *
+ * lys_getnext() is supposed to be called sequentially. In the first call, the \p last parameter is usually NULL
+ * and function starts returning i) the first \p parent's child or ii) the first top level element of the \p module.
+ * Consequent calls suppose to provide the previously returned node as the \p last parameter and still the same
+ * \p parent and \p module parameters.
+ *
+ * Without options, the function is used to traverse only the schema nodes that can be paired with corresponding
+ * data nodes in a data tree. By setting some \p options the behavior can be modified to the extent that
+ * all the schema nodes are iteratively returned.
+ *
+ * @param[in] last Previously returned schema tree node, or NULL in case of the first call.
+ * @param[in] parent Parent of the subtree where the function starts processing.
+ * @param[in] module In case of iterating on top level elements, the \p parent is NULL and
+ * module must be specified.
+ * @param[in] options [ORed options](@ref sgetnextflags).
+ * @return Next schema tree node that can be instantiated in a data tree, NULL in case there is no such element.
+ */
+const struct lysc_node *lys_getnext(const struct lysc_node *last, const struct lysc_node *parent,
+                                    const struct lysc_module *module, int options);
+
+/**
+ * @defgroup sgetnextflags lys_getnext() flags
+ * @ingroup schematree
+ *
+ * @{
+ */
+#define LYS_GETNEXT_WITHCHOICE   0x01 /**< lys_getnext() option to allow returning #LYS_CHOICE nodes instead of looking into them */
+#define LYS_GETNEXT_INTONPCONT   0x40 /**< lys_getnext() option to look into non-presence container, instead of returning container itself */
+#define LYS_GETNEXT_NOSTATECHECK 0x100 /**< lys_getnext() option to skip checking module validity (import-only, disabled) and
+                                            relevant if-feature conditions state */
+/** @} sgetnextflags */
+
+/**
+ * @brief Get child node according to the specified criteria.
+ *
+ * @param[in] parent Optional parent of the node to find. If not specified, the module's top-level nodes are searched.
+ * @param[in] module module of the node to find. It is also limitation for the children node of the given parent.
+ * @param[in] name Name of the node to find.
+ * @param[in] name_len Optional length of the name in case it is not NULL-terminated string.
+ * @param[in] nodetype Optional criteria (to speedup) specifying nodetype(s) of the node to find.
+ * Used as a bitmask, so multiple nodetypes can be specified.
+ * @param[in] options [ORed options](@ref sgetnextflags).
+ * @return Found node if any.
+ */
+const struct lysc_node *lys_child(const struct lysc_node *parent, const struct lys_module *module,
+                                  const char *name, size_t name_len, uint16_t nodetype, int options);
+
+/**
+ * @brief Check if the schema node is disabled in the schema tree, i.e. there is any disabled if-feature statement
+ * affecting the node.
+ *
+ * @param[in] node Schema node to check.
+ * @param[in] recursive - 0 to check if-feature only in the \p node schema node,
+ * - 1 to check if-feature in all ascendant schema nodes until there is a node possibly having an instance in a data tree
+ * @return - NULL if enabled,
+ * - pointer to the node with the unsatisfied (disabling) if-feature expression.
+ */
+const struct lysc_iffeature *lys_is_disabled(const struct lysc_node *node, int recursive);
 
 /** @} */
 

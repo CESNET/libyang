@@ -1211,6 +1211,133 @@ test_type_identityref(void **state)
     ly_ctx_destroy(ctx, NULL);
 }
 
+static void
+test_type_leafref(void **state)
+{
+    *state = test_type_leafref;
+
+    struct ly_ctx *ctx;
+    struct lys_module *mod;
+    struct lysc_type *type;
+    const char *path, *name, *prefix;
+    size_t prefix_len, name_len;
+    int parent_times, has_predicate;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+
+    /* lys_path_token() */
+    path = "invalid_path";
+    parent_times = 0;
+    assert_int_equal(LY_EINVAL, lys_path_token(&path, &prefix, &prefix_len, &name, &name_len, &parent_times, &has_predicate));
+    path = "..";
+    parent_times = 0;
+    assert_int_equal(LY_EINVAL, lys_path_token(&path, &prefix, &prefix_len, &name, &name_len, &parent_times, &has_predicate));
+    path = "..[";
+    parent_times = 0;
+    assert_int_equal(LY_EINVAL, lys_path_token(&path, &prefix, &prefix_len, &name, &name_len, &parent_times, &has_predicate));
+    path = "../";
+    parent_times = 0;
+    assert_int_equal(LY_EINVAL, lys_path_token(&path, &prefix, &prefix_len, &name, &name_len, &parent_times, &has_predicate));
+    path = "/";
+    parent_times = 0;
+    assert_int_equal(LY_EINVAL, lys_path_token(&path, &prefix, &prefix_len, &name, &name_len, &parent_times, &has_predicate));
+
+    path = "../../pref:id/xxx[predicate]/invalid!!!";
+    parent_times = 0;
+    assert_int_equal(LY_SUCCESS, lys_path_token(&path, &prefix, &prefix_len, &name, &name_len, &parent_times, &has_predicate));
+    assert_string_equal("/xxx[predicate]/invalid!!!", path);
+    assert_int_equal(4, prefix_len);
+    assert_int_equal(0, strncmp("pref", prefix, prefix_len));
+    assert_int_equal(2, name_len);
+    assert_int_equal(0, strncmp("id", name, name_len));
+    assert_int_equal(2, parent_times);
+    assert_int_equal(0, has_predicate);
+    assert_int_equal(LY_SUCCESS, lys_path_token(&path, &prefix, &prefix_len, &name, &name_len, &parent_times, &has_predicate));
+    assert_string_equal("[predicate]/invalid!!!", path);
+    assert_int_equal(0, prefix_len);
+    assert_null(prefix);
+    assert_int_equal(3, name_len);
+    assert_int_equal(0, strncmp("xxx", name, name_len));
+    assert_int_equal(1, has_predicate);
+    path += 11;
+    assert_int_equal(LY_EINVAL, lys_path_token(&path, &prefix, &prefix_len, &name, &name_len, &parent_times, &has_predicate));
+    assert_string_equal("!!!", path);
+    assert_int_equal(0, prefix_len);
+    assert_null(prefix);
+    assert_int_equal(7, name_len);
+    assert_int_equal(0, strncmp("invalid", name, name_len));
+
+    path = "/absolute/prefix:path";
+    parent_times = 0;
+    assert_int_equal(LY_SUCCESS, lys_path_token(&path, &prefix, &prefix_len, &name, &name_len, &parent_times, &has_predicate));
+    assert_string_equal("/prefix:path", path);
+    assert_int_equal(0, prefix_len);
+    assert_null(prefix);
+    assert_int_equal(8, name_len);
+    assert_int_equal(0, strncmp("absolute", name, name_len));
+    assert_int_equal(-1, parent_times);
+    assert_int_equal(0, has_predicate);
+    assert_int_equal(LY_SUCCESS, lys_path_token(&path, &prefix, &prefix_len, &name, &name_len, &parent_times, &has_predicate));
+    assert_int_equal(0, *path);
+    assert_int_equal(6, prefix_len);
+    assert_int_equal(0, strncmp("prefix", prefix, prefix_len));
+    assert_int_equal(4, name_len);
+    assert_int_equal(0, strncmp("path", name, name_len));
+    assert_int_equal(0, has_predicate);
+
+    /* complete leafref paths */
+    assert_non_null(mod = lys_parse_mem(ctx, "module a {yang-version 1.1;namespace urn:a;prefix a;"
+                                        "leaf ref1 {type leafref {path /a:target1;}} leaf ref2 {type leafref {path /a/target2; require-instance false;}}"
+                                        "leaf target1 {type string;}container a {leaf target2 {type uint8;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
+    assert_string_equal("/a:target1", ((struct lysc_type_leafref*)type)->path);
+    assert_int_equal(1, ((struct lysc_type_leafref*)type)->require_instance);
+    type = ((struct lysc_node_leaf*)mod->compiled->data->next)->type;
+    assert_non_null(type);
+    assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
+    assert_string_equal("/a/target2", ((struct lysc_type_leafref*)type)->path);
+    assert_int_equal(0, ((struct lysc_type_leafref*)type)->require_instance);
+
+    /* TODO target in list with predicates */
+
+
+    /* invalid paths */
+    assert_non_null(mod = lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;container a {leaf target2 {type uint8;}}"
+                                        "leaf ref1 {type leafref {path ../a/invalid;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid leafref path - unable to find \"../a/invalid\".");
+    assert_non_null(mod = lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb;container a {leaf target2 {type uint8;}}"
+                                        "leaf ref1 {type leafref {path ../../toohigh;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid leafref path \"../../toohigh\" - too many \"..\" in the path.");
+    assert_non_null(mod = lys_parse_mem(ctx, "module cc {namespace urn:cc;prefix cc;container a {leaf target2 {type uint8;}}"
+                                        "leaf ref1 {type leafref {path /a:invalid;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid leafref path - unable to find module connected with the prefix of the node \"/a:invalid\".");
+    assert_non_null(mod = lys_parse_mem(ctx, "module dd {namespace urn:dd;prefix dd;leaf target1 {type string;}container a {leaf target2 {type uint8;}}"
+                                        "leaf ref1 {type leafref {path '/a[target2 = current()/../target1]/target2';}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid leafref path - node \"/a\" is expected to be a list, but it is container.");
+    assert_non_null(mod = lys_parse_mem(ctx, "module ee {namespace urn:ee;prefix ee;container a {leaf target2 {type uint8;}}"
+                                        "leaf ref1 {type leafref {path /a!invalid;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid leafref path at character 3 (/a!invalid).");
+    assert_non_null(mod = lys_parse_mem(ctx, "module ff {namespace urn:ff;prefix ff;container a {leaf target2 {type uint8;}}"
+                                        "leaf ref1 {type leafref {path /a;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid leafref path \"/a\" - target node is container instead of leaf or leaf-list.");
+    assert_non_null(mod = lys_parse_mem(ctx, "module gg {namespace urn:gg;prefix gg;container a {leaf target2 {type uint8; status deprecated;}}"
+                                        "leaf ref1 {type leafref {path /a/target2;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("A current definition \"ref1\" is not allowed to reference deprecated definition \"target2\".");
+
+    *state = NULL;
+    ly_ctx_destroy(ctx, NULL);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1225,6 +1352,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_type_dec64, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_type_instanceid, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_type_identityref, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_type_leafref, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_node_container, logger_setup, logger_teardown),
     };
 

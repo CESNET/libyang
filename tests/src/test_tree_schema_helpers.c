@@ -66,6 +66,18 @@ logger_setup(void **state)
     return 0;
 }
 
+static int
+logger_teardown(void **state)
+{
+    (void) state; /* unused */
+#if ENABLE_LOGGER_CHECKING
+    if (*state) {
+        fprintf(stderr, "%s\n", logbuf);
+    }
+#endif
+    return 0;
+}
+
 void
 logbuf_clean(void)
 {
@@ -81,7 +93,7 @@ logbuf_clean(void)
 static void
 test_date(void **state)
 {
-    (void) state; /* unused */
+    *state = test_date;
 
     assert_int_equal(LY_EINVAL, lysp_check_date(NULL, NULL, 0, "date"));
     logbuf_assert("Invalid argument date (lysp_check_date()).");
@@ -105,6 +117,8 @@ test_date(void **state)
     assert_int_equal(LY_SUCCESS, lysp_check_date(NULL, "2018-11-11", 10, "date"));
     assert_int_equal(LY_SUCCESS, lysp_check_date(NULL, "2018-02-28", 10, "date"));
     assert_int_equal(LY_SUCCESS, lysp_check_date(NULL, "2016-02-29", 10, "date"));
+
+    *state = NULL;
 }
 
 static void
@@ -149,7 +163,7 @@ static LY_ERR test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_
 static void
 test_typedef(void **state)
 {
-    (void) state; /* unused */
+    *state = test_typedef;
 
     struct ly_ctx *ctx = NULL;
     const char *str;
@@ -252,15 +266,48 @@ test_typedef(void **state)
     assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
     logbuf_assert("Invalid name \"x\" of typedef - scoped type collide with a top-level type.");
 
+    *state = NULL;
     ly_ctx_destroy(ctx, NULL);
+}
+
+static void
+test_parse_nodeid(void **state)
+{
+    (void) state; /* unused */
+    const char *str;
+    const char *prefix, *name;
+    size_t prefix_len, name_len;
+
+    str = "123";
+    assert_int_equal(LY_EINVAL, lys_parse_nodeid(&str, &prefix, &prefix_len, &name, &name_len));
+
+    str = "a12_-.!";
+    assert_int_equal(LY_SUCCESS, lys_parse_nodeid(&str, &prefix, &prefix_len, &name, &name_len));
+    assert_null(prefix);
+    assert_int_equal(0, prefix_len);
+    assert_non_null(name);
+    assert_int_equal(6, name_len);
+    assert_int_equal(0, strncmp("a12_-.", name, name_len));
+    assert_string_equal("!", str);
+
+    str = "a12_-.:_b2 xxx";
+    assert_int_equal(LY_SUCCESS, lys_parse_nodeid(&str, &prefix, &prefix_len, &name, &name_len));
+    assert_non_null(prefix);
+    assert_int_equal(6, prefix_len);
+    assert_int_equal(0, strncmp("a12_-.", prefix, prefix_len));
+    assert_non_null(name);
+    assert_int_equal(3, name_len);
+    assert_int_equal(0, strncmp("_b2", name, name_len));
+    assert_string_equal(" xxx", str);
 }
 
 int main(void)
 {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup(test_date, logger_setup),
+        cmocka_unit_test_setup_teardown(test_date, logger_setup, logger_teardown),
         cmocka_unit_test_setup(test_revisions, logger_setup),
-        cmocka_unit_test_setup(test_typedef, logger_setup),
+        cmocka_unit_test_setup_teardown(test_typedef, logger_setup, logger_teardown),
+        cmocka_unit_test_setup(test_parse_nodeid, logger_setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

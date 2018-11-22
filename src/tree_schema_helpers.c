@@ -27,6 +27,63 @@
 #include "libyang.h"
 #include "tree_schema_internal.h"
 
+/**
+ * @brief Parse an identifier.
+ *
+ * ;; An identifier MUST NOT start with (('X'|'x') ('M'|'m') ('L'|'l'))
+ * identifier          = (ALPHA / "_")
+ *                       *(ALPHA / DIGIT / "_" / "-" / ".")
+ *
+ * @param[in,out] id Identifier to parse. When returned, it points to the first character which is not part of the identifier.
+ * @return LY_ERR value: LY_SUCCESS or LY_EINVAL in case of invalid starting character.
+ */
+static LY_ERR
+lys_parse_id(const char **id)
+{
+    assert(id && *id);
+
+    if (!isalpha(**id) && (**id != '_')) {
+        return LY_EINVAL;
+    }
+    ++(*id);
+
+    while (isalnum(**id) || (**id == '_') || (**id == '-') || (**id == '.')) {
+        ++(*id);
+    }
+    return LY_SUCCESS;
+}
+
+LY_ERR
+lys_parse_nodeid(const char **id, const char **prefix, size_t *prefix_len, const char **name, size_t *name_len)
+{
+    assert(id && *id);
+    assert(prefix && prefix_len);
+    assert(name && name_len);
+
+    *prefix = *id;
+    *prefix_len = 0;
+    *name = NULL;
+    *name_len = 0;
+
+    LY_CHECK_RET(lys_parse_id(id));
+    if (**id == ':') {
+        /* there is prefix */
+        *prefix_len = *id - *prefix;
+        ++(*id);
+        *name = *id;
+
+        LY_CHECK_RET(lys_parse_id(id));
+        *name_len = *id - *name;
+    } else {
+        /* there is no prefix, so what we have as prefix now is actually the name */
+        *name = *prefix;
+        *name_len = *id - *name;
+        *prefix = NULL;
+    }
+
+    return LY_SUCCESS;
+}
+
 LY_ERR
 lysp_check_prefix(struct ly_parser_ctx *ctx, struct lysp_module *module, const char **value)
 {
@@ -737,7 +794,7 @@ search_file:
     }
 
 struct lysc_module *
-lysc_module_find_prefix(struct lysc_module *mod, const char *prefix, size_t len)
+lysc_module_find_prefix(const struct lysc_module *mod, const char *prefix, size_t len)
 {
     const struct lys_module *m = NULL;
 
@@ -746,7 +803,7 @@ lysc_module_find_prefix(struct lysc_module *mod, const char *prefix, size_t len)
 }
 
 struct lysp_module *
-lysp_module_find_prefix(struct lysp_module *mod, const char *prefix, size_t len)
+lysp_module_find_prefix(const struct lysp_module *mod, const char *prefix, size_t len)
 {
     const struct lys_module *m = NULL;
 
@@ -755,7 +812,7 @@ lysp_module_find_prefix(struct lysp_module *mod, const char *prefix, size_t len)
 }
 
 struct lys_module *
-lys_module_find_prefix(struct lys_module *mod, const char *prefix, size_t len)
+lys_module_find_prefix(const struct lys_module *mod, const char *prefix, size_t len)
 {
     const struct lys_module *m = NULL;
 
@@ -765,6 +822,29 @@ lys_module_find_prefix(struct lys_module *mod, const char *prefix, size_t len)
         FIND_MODULE(struct lysp_import, mod->parsed, 2);
     }
     return (struct lys_module*)m;
+}
+
+const char *
+lys_nodetype2str(uint16_t nodetype)
+{
+    switch(nodetype) {
+    case LYS_CONTAINER:
+        return "container";
+    case LYS_CHOICE:
+        return "choice";
+    case LYS_LEAF:
+        return "leaf";
+    case LYS_LEAFLIST:
+        return "leaf-list";
+    case LYS_LIST:
+        return "list";
+    case LYS_ANYXML:
+        return "anyxml";
+    case LYS_ANYDATA:
+        return "anydata";
+    default:
+        return "unknown";
+    }
 }
 
 struct lysp_tpdf **
@@ -851,23 +931,47 @@ lysp_node_children(struct lysp_node *node)
 }
 
 struct lysc_node **
-lysc_node_children(struct lysc_node *node)
+lysc_node_children(const struct lysc_node *node)
 {
     assert(node);
     switch (node->nodetype) {
     case LYS_CONTAINER:
         return &((struct lysc_node_container*)node)->child;
     case LYS_CHOICE:
-        return &((struct lysc_node_choice*)node)->child;
+        if (((struct lysc_node_choice*)node)->cases) {
+            return &((struct lysc_node_choice*)node)->cases[0].child;
+        } else {
+            return NULL;
+        }
     case LYS_LIST:
         return &((struct lysc_node_list*)node)->child;
-    case LYS_CASE:
-        return &((struct lysc_node_case*)node)->child;
-    case LYS_USES:
-        return &((struct lysc_node_uses*)node)->child;
 /* TODO
     case LYS_INOUT:
         return &((struct lysc_action_inout*)node)->child;
+    case LYS_NOTIF:
+        return &((struct lysc_notif*)node)->child;
+*/
+    default:
+        return NULL;
+    }
+}
+
+struct lysc_iffeature **
+lysc_node_iff(const struct lysc_node *node)
+{
+    assert(node);
+    switch (node->nodetype) {
+    case LYS_CONTAINER:
+        return &((struct lysc_node_container*)node)->iffeatures;
+    case LYS_LEAF:
+        return &((struct lysc_node_leaf*)node)->iffeatures;
+/* TODO
+    case LYS_LIST:
+        return &((struct lysc_node_list*)node)->iffeatures;
+    case LYS_CASE:
+        return &((struct lysc_node_case*)node)->iffeatures;
+    case LYS_USES:
+        return &((struct lysc_node_uses*)node)->iffeatures;
     case LYS_NOTIF:
         return &((struct lysc_notif*)node)->child;
 */

@@ -516,6 +516,12 @@ lysc_enum_item_free(struct ly_ctx *ctx, struct lysc_type_enum_item *item)
     FREE_ARRAY(ctx, item->exts, lysc_ext_instance_free);
 }
 
+static void lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type);
+static void
+lysc_type2_free(struct ly_ctx *ctx, struct lysc_type **type)
+{
+    lysc_type_free(ctx, *type);
+}
 static void
 lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type)
 {
@@ -551,6 +557,12 @@ lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type)
         break;
     case LY_TYPE_IDENT:
         LY_ARRAY_FREE(((struct lysc_type_identityref*)type)->bases);
+        break;
+    case LY_TYPE_UNION:
+        FREE_ARRAY(ctx, ((struct lysc_type_union*)type)->types, lysc_type2_free);
+        break;
+    case LY_TYPE_LEAFREF:
+        FREE_STRING(ctx, ((struct lysc_type_leafref*)type)->path);
         break;
     case LY_TYPE_INST:
     case LY_TYPE_BOOL:

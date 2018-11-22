@@ -56,6 +56,7 @@ struct ly_parser_ctx {
 struct lysc_ctx {
     struct ly_ctx *ctx;
     struct lys_module *mod;
+    struct ly_set unres;        /* to validate leafref's target and xpath of when/must */
     uint16_t path_len;
 #define LYSC_CTX_BUFSIZE 4078
     char path[LYSC_CTX_BUFSIZE];
@@ -178,7 +179,14 @@ struct lysp_node **lysp_node_children(struct lysp_node *node);
  * @param[in] node Node to check.
  * @return Address of the node's child member if any, NULL otherwise.
  */
-struct lysc_node **lysc_node_children(struct lysc_node *node);
+struct lysc_node **lysc_node_children(const struct lysc_node *node);
+
+/**
+ * @brief Get address of a node's iffeatures pointer if any.
+ * @param[in] node Node to check.
+ * @return Address of the node's iffeature member if any, NULL otherwise.
+ */
+struct lysc_iffeature **lysc_node_iff(const struct lysc_node *node);
 
 /**
  * @brief Find the module referenced by prefix in the provided parsed mod.
@@ -188,7 +196,7 @@ struct lysc_node **lysc_node_children(struct lysc_node *node);
  * @param[in] len Length of the prefix since it is not necessary NULL-terminated.
  * @return Pointer to the module or NULL if the module is not found.
  */
-struct lysp_module *lysp_module_find_prefix(struct lysp_module *mod, const char *prefix, size_t len);
+struct lysp_module *lysp_module_find_prefix(const struct lysp_module *mod, const char *prefix, size_t len);
 
 /**
  * @brief Find the module referenced by prefix in the provided compiled mod.
@@ -198,7 +206,7 @@ struct lysp_module *lysp_module_find_prefix(struct lysp_module *mod, const char 
  * @param[in] len Length of the prefix since it is not necessary NULL-terminated.
  * @return Pointer to the module or NULL if the module is not found.
  */
-struct lysc_module *lysc_module_find_prefix(struct lysc_module *mod, const char *prefix, size_t len);
+struct lysc_module *lysc_module_find_prefix(const struct lysc_module *mod, const char *prefix, size_t len);
 
 /**
  * @brief Check statement's status for invalid combination.
@@ -221,6 +229,20 @@ LY_ERR lysc_check_status(struct lysc_ctx *ctx,
                          uint16_t flags2, void *mod2, const char *name2);
 
 /**
+ * @brief Parse a node-identifier.
+ *
+ * node-identifier     = [prefix ":"] identifier
+ *
+ * @param[in, out] id Identifier to parse. When returned, it points to the first character which is not part of the identifier.
+ * @param[out] prefix Node's prefix, NULL if there is not any.
+ * @param[out] prefix_len Length of the node's prefix, 0 if there is not any.
+ * @param[out] name Node's name.
+ * @param[out] nam_len Length of the node's name.
+ * @return LY_ERR value: LY_SUCCESS or LY_EINVAL in case of invalid character in the id.
+ */
+LY_ERR lys_parse_nodeid(const char **id, const char **prefix, size_t *prefix_len, const char **name, size_t *name_len);
+
+/**
  * @brief Find the module referenced by prefix in the provided mod.
  *
  * @param[in] mod Schema module where the prefix was used.
@@ -228,7 +250,14 @@ LY_ERR lysc_check_status(struct lysc_ctx *ctx,
  * @param[in] len Length of the prefix since it is not necessary NULL-terminated.
  * @return Pointer to the module or NULL if the module is not found.
  */
-struct lys_module *lys_module_find_prefix(struct lys_module *mod, const char *prefix, size_t len);
+struct lys_module *lys_module_find_prefix(const struct lys_module *mod, const char *prefix, size_t len);
+
+/**
+ * @brief Stringify schema nodetype.
+ * @param[in] nodetype Nodetype to stringify.
+ * @return Constant string with the name of the node's type.
+ */
+const char *lys_nodetype2str(uint16_t nodetype);
 
 /**
  * @brief Parse YANG module and submodule from a string.

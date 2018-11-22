@@ -493,6 +493,19 @@ done:
     return ret;
 }
 
+/**
+ * @brief Find and process the referenced base identities from another identity or identityref
+ *
+ * For bases in identity se backlinks to them from the base identities. For identityref, store
+ * the array of pointers to the base identities. So one of the ident or bases parameter must be set
+ * to distinguish these two use cases.
+ *
+ * @param[in] ctx Compile context, not only for logging but also to get the current module to resolve prefixes.
+ * @param[in] bases_p Array of names (including prefix if necessary) of base identities.
+ * @param[in] ident Referencing identity to work with.
+ * @param[in] bases Array of bases of identityref to fill in.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lys_compile_identity_bases(struct lysc_ctx *ctx, const char **bases_p,  struct lysc_ident *ident, struct lysc_ident ***bases)
 {
@@ -560,6 +573,13 @@ lys_compile_identity_bases(struct lysc_ctx *ctx, const char **bases_p,  struct l
     return LY_SUCCESS;
 }
 
+/**
+ * @brief For the given array of identities, set the backlinks from all their base identities.
+ * @param[in] ctx Compile context, not only for logging but also to get the current module to resolve prefixes.
+ * @param[in] idents_p Array of identities definitions from the parsed schema structure.
+ * @param[in] idents Array of referencing identities to which the backlinks are supposed to be set.
+ * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
+ */
 static LY_ERR
 lys_compile_identities_derived(struct lysc_ctx *ctx, struct lysp_ident *idents_p, struct lysc_ident *idents)
 {
@@ -574,6 +594,14 @@ lys_compile_identities_derived(struct lysc_ctx *ctx, struct lysp_ident *idents_p
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Create compiled feature structure.
+ * @param[in] ctx Compile context.
+ * @param[in] feature_p Parsed feature definition to compile.
+ * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
+ * @param[in,out] feature Compiled feature structure to fill.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lys_compile_feature(struct lysc_ctx *ctx, struct lysp_feature *feature_p, int options, struct lysc_feature *feature)
 {
@@ -602,6 +630,19 @@ done:
     return ret;
 }
 
+/**
+ * @brief Validate and normalize numeric value from a range definition.
+ * @param[in] ctx Compile context.
+ * @param[in] basetype Base YANG built-in type of the node connected with the range restriction. Actually only LY_TYPE_DEC64 is important to
+ * allow processing of the fractions. The fraction point is extracted from the value which is then normalize according to given frdigits into
+ * valcopy to allow easy parsing and storing of the value. libyang stores decimal number without the decimal point which is always recovered from
+ * the known fraction-digits value. So, with fraction-digits 2, number 3.14 is stored as 314 and number 1 is stored as 100.
+ * @param[in] frdigits The fraction-digits of the type in case of LY_TYPE_DEC64.
+ * @param[in] value String value of the range boundary.
+ * @param[out] len Number of the processed bytes from the value. Processing stops on the first character which is not part of the number boundary.
+ * @param[out] valcopy NULL-terminated string with the numeric value to parse and store.
+ * @return LY_ERR value - LY_SUCCESS, LY_EMEM, LY_EVALID (no number) or LY_EINVAL (decimal64 not matching fraction-digits value).
+ */
 static LY_ERR
 range_part_check_value_syntax(struct lysc_ctx *ctx, LY_DATA_TYPE basetype, uint8_t frdigits, const char *value, size_t *len, char **valcopy)
 {
@@ -668,8 +709,15 @@ decimal:
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Check that values in range are in ascendant order.
+ * @param[in] unsigned_value Flag to note that we are working with unsigned values.
+ * @param[in] value Current value to check.
+ * @param[in] prev_value The last seen value.
+ * @return LY_SUCCESS or LY_EEXIST for invalid order.
+ */
 static LY_ERR
-range_part_check_ascendance(int unsigned_value, int64_t value, int64_t prev_value)
+range_part_check_ascendancy(int unsigned_value, int64_t value, int64_t prev_value)
 {
     if (unsigned_value) {
         if ((uint64_t)prev_value >= (uint64_t)value) {
@@ -683,6 +731,21 @@ range_part_check_ascendance(int unsigned_value, int64_t value, int64_t prev_valu
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Set min/max value of the range part.
+ * @param[in] ctx Compile context.
+ * @param[in] part Range part structure to fill.
+ * @param[in] max Flag to distinguish if storing min or max value.
+ * @param[in] prev The last seen value to check that all values in range are specified in ascendant order.
+ * @param[in] basetype Type of the value to get know implicit min/max values and other checking rules.
+ * @param[in] first Flag for the first value of the range to avoid ascendancy order.
+ * @param[in] length_restr Flag to distinguish between range and length restrictions. Only for logging.
+ * @param[in] frdigits The fraction-digits value in case of LY_TYPE_DEC64 basetype.
+ * @param[in,out] value Numeric range value to be stored, if not provided the type's min/max value is set.
+ * @return LY_ERR value - LY_SUCCESS, LY_EDENIED (value brokes type's boundaries), LY_EVALID (not a number),
+ * LY_EEXIST (value is smaller than the previous one), LY_EINVAL (decimal64 value does not corresponds with the
+ * frdigits value), LY_EMEM.
+ */
 static LY_ERR
 range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, int64_t prev, LY_DATA_TYPE basetype, int first, int length_restr,
                   uint8_t frdigits, const char **value)
@@ -706,7 +769,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
             part->min_u64 = UINT64_C(0);
         }
         if (!ret && !first) {
-            ret = range_part_check_ascendance(1, max ? part->max_64 : part->min_64, prev);
+            ret = range_part_check_ascendancy(1, max ? part->max_64 : part->min_64, prev);
         }
         break;
     case LY_TYPE_DEC64: /* range */
@@ -719,7 +782,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
             part->min_64 = INT64_C(-9223372036854775807) - INT64_C(1);
         }
         if (!ret && !first) {
-            ret = range_part_check_ascendance(0, max ? part->max_64 : part->min_64, prev);
+            ret = range_part_check_ascendancy(0, max ? part->max_64 : part->min_64, prev);
         }
         break;
     case LY_TYPE_INT8: /* range */
@@ -731,7 +794,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
             part->min_64 = INT64_C(-128);
         }
         if (!ret && !first) {
-            ret = range_part_check_ascendance(0, max ? part->max_64 : part->min_64, prev);
+            ret = range_part_check_ascendancy(0, max ? part->max_64 : part->min_64, prev);
         }
         break;
     case LY_TYPE_INT16: /* range */
@@ -743,7 +806,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
             part->min_64 = INT64_C(-32768);
         }
         if (!ret && !first) {
-            ret = range_part_check_ascendance(0, max ? part->max_64 : part->min_64, prev);
+            ret = range_part_check_ascendancy(0, max ? part->max_64 : part->min_64, prev);
         }
         break;
     case LY_TYPE_INT32: /* range */
@@ -755,7 +818,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
             part->min_64 = INT64_C(-2147483648);
         }
         if (!ret && !first) {
-            ret = range_part_check_ascendance(0, max ? part->max_64 : part->min_64, prev);
+            ret = range_part_check_ascendancy(0, max ? part->max_64 : part->min_64, prev);
         }
         break;
     case LY_TYPE_INT64: /* range */
@@ -768,7 +831,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
             part->min_64 = INT64_C(-9223372036854775807) - INT64_C(1);
         }
         if (!ret && !first) {
-            ret = range_part_check_ascendance(0, max ? part->max_64 : part->min_64, prev);
+            ret = range_part_check_ascendancy(0, max ? part->max_64 : part->min_64, prev);
         }
         break;
     case LY_TYPE_UINT8: /* range */
@@ -780,7 +843,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
             part->min_u64 = UINT64_C(0);
         }
         if (!ret && !first) {
-            ret = range_part_check_ascendance(1, max ? part->max_64 : part->min_64, prev);
+            ret = range_part_check_ascendancy(1, max ? part->max_64 : part->min_64, prev);
         }
         break;
     case LY_TYPE_UINT16: /* range */
@@ -792,7 +855,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
             part->min_u64 = UINT64_C(0);
         }
         if (!ret && !first) {
-            ret = range_part_check_ascendance(1, max ? part->max_64 : part->min_64, prev);
+            ret = range_part_check_ascendancy(1, max ? part->max_64 : part->min_64, prev);
         }
         break;
     case LY_TYPE_UINT32: /* range */
@@ -804,7 +867,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
             part->min_u64 = UINT64_C(0);
         }
         if (!ret && !first) {
-            ret = range_part_check_ascendance(1, max ? part->max_64 : part->min_64, prev);
+            ret = range_part_check_ascendancy(1, max ? part->max_64 : part->min_64, prev);
         }
         break;
     case LY_TYPE_UINT64: /* range */
@@ -816,7 +879,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
             part->min_u64 = UINT64_C(0);
         }
         if (!ret && !first) {
-            ret = range_part_check_ascendance(1, max ? part->max_64 : part->min_64, prev);
+            ret = range_part_check_ascendancy(1, max ? part->max_64 : part->min_64, prev);
         }
         break;
     case LY_TYPE_STRING: /* length */
@@ -828,7 +891,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
             part->min_u64 = UINT64_C(0);
         }
         if (!ret && !first) {
-            ret = range_part_check_ascendance(1, max ? part->max_64 : part->min_64, prev);
+            ret = range_part_check_ascendancy(1, max ? part->max_64 : part->min_64, prev);
         }
         break;
     default:
@@ -857,6 +920,18 @@ error:
     return ret;
 }
 
+/**
+ * @brief Compile the parsed range restriction.
+ * @param[in] ctx Compile context.
+ * @param[in] range_p Parsed range structure to compile.
+ * @param[in] basetype Base YANG built-in type of the node with the range restriction.
+ * @param[in] length_restr Flag to distinguish between range and length restrictions. Only for logging.
+ * @param[in] frdigits The fraction-digits value in case of LY_TYPE_DEC64 basetype.
+ * @param[in] base_range Range restriction of the type from which the current type is derived. The current
+ * range restriction must be more restrictive than the base_range.
+ * @param[in,out] range Pointer to the created current range structure.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA_TYPE basetype, int length_restr, uint8_t frdigits,
                        struct lysc_range *base_range, struct lysc_range **range)
@@ -1080,9 +1155,10 @@ cleanup:
 /**
  * @brief Checks pattern syntax.
  *
+ * @param[in] ctx Compile context.
  * @param[in] pattern Pattern to check.
- * @param[out] pcre_precomp Precompiled PCRE pattern. Can be NULL.
- * @return EXIT_SUCCESS on success, EXIT_FAILURE otherwise.
+ * @param[in,out] pcre_precomp Precompiled PCRE pattern. If NULL, the compiled information used to validate pattern are freed.
+ * @return LY_ERR value - LY_SUCCESS, LY_EMEM, LY_EVALID.
  */
 static LY_ERR
 lys_compile_type_pattern_check(struct lysc_ctx *ctx, const char *pattern, pcre **pcre_precomp)
@@ -1287,6 +1363,16 @@ lys_compile_type_pattern_check(struct lysc_ctx *ctx, const char *pattern, pcre *
 #undef URANGE_LEN
 }
 
+/**
+ * @brief Compile parsed pattern restriction in conjunction with the patterns from base type.
+ * @param[in] ctx Compile context.
+ * @param[in] patterns_p Array of parsed patterns from the current type to compile.
+ * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
+ * @param[in] base_patterns Compiled patterns from the type from which the current type is derived.
+ * Patterns from the base type are inherited to have all the patterns that have to match at one place.
+ * @param[out] patterns Pointer to the storage for the patterns of the current type.
+ * @return LY_ERR LY_SUCCESS, LY_EMEM, LY_EVALID.
+ */
 static LY_ERR
 lys_compile_type_patterns(struct lysc_ctx *ctx, struct lysp_restr *patterns_p, int options,
                           struct lysc_pattern **base_patterns, struct lysc_pattern ***patterns)
@@ -1326,6 +1412,9 @@ done:
     return ret;
 }
 
+/**
+ * @brief map of the possible restrictions combination for the specific built-in type.
+ */
 static uint16_t type_substmt_map[LY_DATA_TYPE_COUNT] = {
     0 /* LY_TYPE_UNKNOWN */,
     LYS_SET_LENGTH /* LY_TYPE_BINARY */,
@@ -1349,6 +1438,16 @@ static uint16_t type_substmt_map[LY_DATA_TYPE_COUNT] = {
     LYS_SET_RANGE /* LY_TYPE_UINT64 */
 };
 
+/**
+ * @brief Compile parsed type's enum structures (for enumeration and bits types).
+ * @param[in] ctx Compile context.
+ * @param[in] enums_p Array of the parsed enum structures to compile.
+ * @param[in] basetype Base YANG built-in type from which the current type is derived. Only LY_TYPE_ENUM and LY_TYPE_BITS are expected.
+ * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
+ * @param[in] base_enums Array of the compiled enums information from the (latest) base type to check if the current enums are compatible.
+ * @param[out] enums Newly created array of the compiled enums information for the current type.
+ * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
+ */
 static LY_ERR
 lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_DATA_TYPE basetype, int options,
                        struct lysc_type_enum_item *base_enums, struct lysc_type_enum_item **enums)
@@ -1484,6 +1583,384 @@ done:
     return ret;
 }
 
+#define MOVE_PATH_PARENT(NODE, LIMIT_COND, TERM, ERR_MSG, ...) \
+    for ((NODE) = (NODE)->parent; \
+         (NODE) && !((NODE)->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_ACTION | LYS_NOTIF | LYS_ACTION)); \
+         (NODE) = (NODE)->parent); \
+    if (!(NODE) && (LIMIT_COND)) { /* we are going higher than top-level */ \
+        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE, ERR_MSG, ##__VA_ARGS__); \
+        TERM; \
+    }
+
+/**
+ * @brief Validate the predicate(s) from the leafref path.
+ * @param[in] ctx Compile context
+ * @param[in, out] predicate Pointer to the predicate in the leafref path. The pointer is moved after the validated predicate(s).
+ * Since there can be multiple adjacent predicates for lists with multiple keys, all such predicates are validated.
+ * @param[in] context_node Predicate context node (where the predicate is placed).
+ * @param[in] startnode Path context node (where the leafref path begins/is placed).
+ * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
+ */
+static LY_ERR
+lys_compile_leafref_predicate_validate(struct lysc_ctx *ctx, const char **predicate,
+                                       const struct lysc_node *context_node, const struct lysc_node *startnode)
+{
+    LY_ERR ret = LY_EVALID;
+    const struct lys_module *mod;
+    const struct lysc_node *src_node, *dst_node;
+    const char *path_key_expr, *pke_start, *src, *src_prefix, *dst, *dst_prefix;
+    size_t src_len, src_prefix_len, dst_len, dst_prefix_len;
+    unsigned int dest_parent_times;
+    const char *start, *end, *pke_end;
+    struct ly_set keys = {0};
+    int i;
+
+    while (**predicate == '[') {
+        start = (*predicate)++;
+
+        while (isspace(**predicate)) {
+            ++(*predicate);
+        }
+        LY_CHECK_GOTO(lys_parse_nodeid(predicate, &src_prefix, &src_prefix_len, &src, &src_len), cleanup);
+        while (isspace(**predicate)) {
+            ++(*predicate);
+        }
+        if (**predicate != '=') {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                   "Invalid leafref path predicate \"%.*s\" - missing \"=\".", *predicate - start + 1, *predicate);
+            goto cleanup;
+        }
+        ++(*predicate);
+        while (isspace(**predicate)) {
+            ++(*predicate);
+        }
+
+        if ((end = pke_end = strchr(*predicate, ']')) == NULL) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                   "Invalid leafref path predicate \"%s\" - missing predicate termination.", start);
+            goto cleanup;
+        }
+        --pke_end;
+        while (isspace(*pke_end)) {
+            --pke_end;
+        }
+        /* localize path-key-expr */
+        pke_start = path_key_expr = *predicate;
+        /* move after the current predicate */
+        *predicate = end + 1;
+
+        /* source (must be leaf or leaf-list) */
+        if (src_prefix) {
+            mod = lys_module_find_prefix(startnode->module, src_prefix, src_prefix_len);
+        } else {
+            mod = startnode->module;
+        }
+        src_node = lys_child(context_node, mod, src, src_len,
+                             mod->compiled->version < LYS_VERSION_1_1 ? LYS_LEAF : LYS_LEAF | LYS_LEAFLIST, LYS_GETNEXT_NOSTATECHECK);
+        if (!src_node) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                   "Invalid leafref path predicate \"%.*s\" - key node \"%.*s\" from module \"%s\" not found.",
+                   *predicate - start, start, src_len, src, mod->compiled->name);
+            goto cleanup;
+        }
+        /* TODO - check the src_node is really a key of the context_node */
+
+        /* check that there is only one predicate for the */
+        i = ly_set_add(&keys, (void*)src_node, 0);
+        LY_CHECK_GOTO(i == -1, cleanup);
+        if (keys.count != (unsigned int)i + 1) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                   "Invalid leafref path predicate \"%.*s\" - multiple equality test for the key %s.",
+                   *predicate - start, start, src_node->name);
+            goto cleanup;
+        }
+
+        /* destination */
+        dest_parent_times = 0;
+        dst_node = context_node;
+
+        /* current-function-invocation *WSP "/" *WSP rel-path-keyexpr */
+        if (strncmp(path_key_expr, "current()", 9)) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                   "Invalid leafref path predicate \"%.*s\" - missing current-function-invocation.",
+                   *predicate - start, start);
+            goto cleanup;
+        }
+        path_key_expr += 9;
+        while (isspace(*path_key_expr)) {
+            ++path_key_expr;
+        }
+
+        if (*path_key_expr != '/') {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                   "Invalid leafref path predicate \"%.*s\" - missing \"/\" after current-function-invocation.",
+                   *predicate - start, start);
+            goto cleanup;
+        }
+        ++path_key_expr;
+        while (isspace(*path_key_expr)) {
+            ++path_key_expr;
+        }
+
+        /* rel-path-keyexpr:
+         * 1*(".." *WSP "/" *WSP) *(node-identifier *WSP "/" *WSP) node-identifier */
+        while (!strncmp(path_key_expr, "..", 2)) {
+            ++dest_parent_times;
+            path_key_expr += 2;
+            while (isspace(*path_key_expr)) {
+                ++path_key_expr;
+            }
+            if (*path_key_expr != '/') {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                       "Invalid leafref path predicate \"%.*s\" - missing \"/\" in \"../\" rel-path-keyexpr pattern.",
+                       *predicate - start, start);
+                goto cleanup;
+            }
+            ++path_key_expr;
+            while (isspace(*path_key_expr)) {
+                ++path_key_expr;
+            }
+
+            /* path is supposed to be evaluated in data tree, so we have to skip
+             * all schema nodes that cannot be instantiated in data tree */
+            MOVE_PATH_PARENT(dst_node, !strncmp(path_key_expr, "..", 2), goto cleanup,
+                             "Invalid leafref path predicate \"%.*s\" - too many \"..\" in rel-path-keyexpr.",
+                             *predicate - start, start);
+        }
+        if (!dest_parent_times) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                   "Invalid leafref path predicate \"%.*s\" - at least one \"..\" is expected in rel-path-keyexpr.",
+                   *predicate - start, start);
+            goto cleanup;
+        }
+        if (path_key_expr == pke_end) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                   "Invalid leafref path predicate \"%.*s\" - at least one node-identifier is expected in rel-path-keyexpr.",
+                   *predicate - start, start);
+            goto cleanup;
+        }
+
+        while(path_key_expr != pke_end) {
+            if (lys_parse_nodeid(&path_key_expr, &dst_prefix, &dst_prefix_len, &dst, &dst_len)) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                       "Invalid node identifier in leafref path predicate - character %d (%.*s).",
+                       path_key_expr - start, *predicate - start, start);
+                goto cleanup;
+            }
+
+            if (dst_prefix) {
+                mod = lys_module_find_prefix(startnode->module, dst_prefix, dst_prefix_len);
+            } else {
+                mod = startnode->module;
+            }
+            if (!mod) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                       "Invalid leafref path predicate \"%.*s\" - unable to find module of the node \"%.*s\" in rel-path_keyexpr.",
+                       *predicate - start, start, dst_len, dst);
+                goto cleanup;
+            }
+
+            dst_node = lys_child(dst_node, mod, dst, dst_len, 0, LYS_GETNEXT_NOSTATECHECK);
+            if (!dst_node) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                       "Invalid leafref path predicate \"%.*s\" - unable to find node \"%.*s\" in the rel-path_keyexpr.",
+                       *predicate - start, start, path_key_expr - pke_start, pke_start);
+                goto cleanup;
+            }
+        }
+        if (!(dst_node->nodetype & (dst_node->module->compiled->version < LYS_VERSION_1_1 ? LYS_LEAF : LYS_LEAF | LYS_LEAFLIST))) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                   "Invalid leafref path predicate \"%.*s\" - rel-path_keyexpr \"%.*s\" refers %s.",
+                   *predicate - start, start, path_key_expr - pke_start, pke_start, lys_nodetype2str(dst_node->nodetype));
+            goto cleanup;
+        }
+    }
+
+    ret = LY_SUCCESS;
+cleanup:
+    ly_set_erase(&keys, NULL);
+    return ret;
+}
+
+/**
+ * @brief Parse path-arg (leafref). Get tokens of the path by repetitive calls of the function.
+ *
+ * path-arg            = absolute-path / relative-path
+ * absolute-path       = 1*("/" (node-identifier *path-predicate))
+ * relative-path       = 1*(".." "/") descendant-path
+ *
+ * @param[in,out] path Path to parse.
+ * @param[out] prefix Prefix of the token, NULL if there is not any.
+ * @param[out] pref_len Length of the prefix, 0 if there is not any.
+ * @param[out] name Name of the token.
+ * @param[out] nam_len Length of the name.
+ * @param[out] parent_times Number of leading ".." in the path. Must be 0 on the first call,
+ *                          must not be changed between consecutive calls. -1 if the
+ *                          path is absolute.
+ * @param[out] has_predicate Flag to mark whether there is a predicate specified.
+ * @return LY_ERR value: LY_SUCCESS or LY_EINVAL in case of invalid character in the path.
+ */
+static LY_ERR
+lys_path_token(const char **path, const char **prefix, size_t *prefix_len, const char **name, size_t *name_len,
+               int *parent_times, int *has_predicate)
+{
+    int par_times = 0;
+
+    assert(path && *path);
+    assert(parent_times);
+    assert(prefix);
+    assert(prefix_len);
+    assert(name);
+    assert(name_len);
+    assert(has_predicate);
+
+    *prefix = NULL;
+    *prefix_len = 0;
+    *name = NULL;
+    *name_len = 0;
+    *has_predicate = 0;
+
+    if (!*parent_times) {
+        if (!strncmp(*path, "..", 2)) {
+            *path += 2;
+            ++par_times;
+            while (!strncmp(*path, "/..", 3)) {
+                *path += 3;
+                ++par_times;
+            }
+        }
+        if (par_times) {
+            *parent_times = par_times;
+        } else {
+            *parent_times = -1;
+        }
+    }
+
+    if (**path != '/') {
+        return LY_EINVAL;
+    }
+    /* skip '/' */
+    ++(*path);
+
+    /* node-identifier ([prefix:]name) */
+    LY_CHECK_RET(lys_parse_nodeid(path, prefix, prefix_len, name, name_len));
+
+    if ((**path == '/' && (*path)[1]) || !**path) {
+        /* path continues by another token or this is the last token */
+        return LY_SUCCESS;
+    } else if ((*path)[0] != '[') {
+        /* unexpected character */
+        return LY_EINVAL;
+    } else {
+        /* predicate starting with [ */
+        *has_predicate = 1;
+        return LY_SUCCESS;
+    }
+}
+
+/**
+ * @brief Validate the leafref path.
+ * @param[in] ctx Compile context
+ * @param[in] startnode Path context node (where the leafref path begins/is placed).
+ * @param[in] path Leafref path to validate.
+ * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
+ */
+static LY_ERR
+lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *startnode, const char *path)
+{
+    const struct lysc_node *node = NULL, *parent = NULL;
+    const struct lys_module *mod;
+    const char *id, *prefix, *name;
+    size_t prefix_len, name_len;
+    int parent_times = 0, has_predicate;
+    unsigned int iter, u;
+    LY_ERR ret = LY_SUCCESS;
+
+    assert(ctx);
+    assert(startnode);
+    assert(path);
+
+    iter = 0;
+    id = path;
+    while(*id && (ret = lys_path_token(&id, &prefix, &prefix_len, &name, &name_len, &parent_times, &has_predicate)) == LY_SUCCESS) {
+        if (!iter) { /* first iteration */
+            /* precess ".." in relative paths */
+            if (parent_times > 0) {
+                /* move from the context node */
+                for (u = 0, parent = startnode; u < (unsigned int)parent_times; u++) {
+                    /* path is supposed to be evaluated in data tree, so we have to skip
+                    * all schema nodes that cannot be instantiated in data tree */
+                    MOVE_PATH_PARENT(parent, u < (unsigned int)parent_times - 1, return LY_EVALID,
+                                     "Invalid leafref path \"%s\" - too many \"..\" in the path.", path);
+                }
+            }
+        }
+
+        if (prefix) {
+            mod = lys_module_find_prefix(startnode->module, prefix, prefix_len);
+        } else {
+            mod = startnode->module;
+        }
+        if (!mod) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                   "Invalid leafref path - unable to find module connected with the prefix of the node \"%.*s\".", id - path, path);
+            return LY_EVALID;
+        }
+
+        node = lys_child(parent, mod, name, name_len, 0, LYS_GETNEXT_NOSTATECHECK);
+        if (!node) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                   "Invalid leafref path - unable to find \"%.*s\".", id - path, path);
+            return LY_EVALID;
+        }
+        parent = node;
+
+        if (has_predicate) {
+            /* we have predicate, so the current result must be list */
+            if (node->nodetype != LYS_LIST) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                       "Invalid leafref path - node \"%.*s\" is expected to be a list, but it is %s.",
+                       id - path, path, lys_nodetype2str(node->nodetype));
+                return LY_EVALID;
+            }
+
+            LY_CHECK_RET(lys_compile_leafref_predicate_validate(ctx, &id, node, startnode), LY_EVALID);
+        }
+
+        ++iter;
+    }
+    if (ret) {
+        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+               "Invalid leafref path at character %d (%s).", id - path + 1, path);
+        return LY_EVALID;
+    }
+
+    if (!(node->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+               "Invalid leafref path \"%s\" - target node is %s instead of leaf or leaf-list.",
+               path, lys_nodetype2str(node->nodetype));
+        return LY_EVALID;
+    }
+
+    /* check status */
+    if (lysc_check_status(ctx, startnode->flags, startnode->module, startnode->name, node->flags, node->module, node->name)) {
+        return LY_EVALID;
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief The core of the lys_compile_type() - compile information about the given type (from typedef or leaf/leaf-list).
+ * @param[in] ctx Compile context.
+ * @param[in] type_p Parsed type to compile.
+ * @param[in] basetype Base YANG built-in type of the type to compile.
+ * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
+ * @param[in] tpdfname Name of the type's typedef, serves as a flag - if it is leaf/leaf-list's type, it is NULL.
+ * @param[in] base The latest base (compiled) type from which the current type is being derived.
+ * @param[out] type Newly created type structure with the filled information about the type.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lys_compile_type_(struct lysc_ctx *ctx, struct lysp_type *type_p, LY_DATA_TYPE basetype, int options, const char *tpdfname,
                   struct lysc_type *base,  struct lysc_type **type)
@@ -1715,6 +2192,32 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_type *type_p, LY_DATA_TYPE b
             *type = calloc(1, sizeof(struct lysc_type_identityref));
         }
         break;
+    case LY_TYPE_LEAFREF:
+        /* RFC 7950 9.9.3 - require-instance */
+        if (type_p->flags & LYS_SET_REQINST) {
+            ((struct lysc_type_leafref*)(*type))->require_instance = type_p->require_instance;
+        } else {
+            /* default is true */
+            ((struct lysc_type_leafref*)(*type))->require_instance = 1;
+        }
+        if (type_p->path) {
+            DUP_STRING(ctx->ctx, (void*)type_p->path, ((struct lysc_type_leafref*)(*type))->path);
+        } else if (base) {
+            DUP_STRING(ctx->ctx, ((struct lysc_type_leafref*)base)->path, ((struct lysc_type_leafref*)(*type))->path);
+        } else if (tpdfname) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_MISSCHILDSTMT, "path", "leafref type ", tpdfname);
+            return LY_EVALID;
+        } else {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_MISSCHILDSTMT, "path", "leafref type", "");
+            free(*type);
+            *type = NULL;
+            return LY_EVALID;
+        }
+        if (tpdfname) {
+            type_p->compiled = *type;
+            *type = calloc(1, sizeof(struct lysc_type_leafref));
+        }
+        break;
     case LY_TYPE_INST:
         /* RFC 7950 9.9.3 - require-instance */
         if (type_p->flags & LYS_SET_REQINST) {
@@ -1739,6 +2242,14 @@ done:
     return ret;
 }
 
+/**
+ * @brief Compile information about the leaf/leaf-list's type.
+ * @param[in] ctx Compile context.
+ * @param[in] leaf_p Parsed leaf with the type to compile.
+ * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
+ * @param[out] type Newly created (or reused with increased refcount) type structure with the filled information about the type.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int options, struct lysc_type **type)
 {
@@ -1860,7 +2371,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
         } else if (tctx->tpdf->type.compiled) {
             base = tctx->tpdf->type.compiled;
             continue;
-        } else if ((u != tpdf_chain.count - 1) && !(tctx->tpdf->type.flags)) {
+        } else if ((basetype != LY_TYPE_LEAFREF) && (u != tpdf_chain.count - 1) && !(tctx->tpdf->type.flags)) {
             /* no change, just use the type information from the base */
             base = ((struct lysp_tpdf*)tctx->tpdf)->type.compiled = ((struct type_context*)tpdf_chain.objs[u + 1])->tpdf->type.compiled;
             ++base->refcount;
@@ -1876,8 +2387,8 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
     }
 
     /* process the type definition in leaf */
-    if (leaf_p->type.flags || !base) {
-        /* get restrictions from the node itself, finalize the type structure */
+    if (leaf_p->type.flags || !base || basetype == LY_TYPE_LEAFREF) {
+        /* get restrictions from the node itself */
         (*type)->basetype = basetype;
         ++(*type)->refcount;
         ret = lys_compile_type_(ctx, &leaf_p->type, basetype, options, NULL, base, type);
@@ -1898,6 +2409,15 @@ cleanup:
 
 static LY_ERR lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, struct lysc_node *parent);
 
+/**
+ * @brief Compile parsed container node information.
+ * @param[in] ctx Compile context
+ * @param[in] node_p Parsed container node.
+ * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
+ * @param[in,out] node Pre-prepared structure from lys_compile_node() with filled generic node information
+ * is enriched with the container-specific information.
+ * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
+ */
 static LY_ERR
 lys_compile_node_container(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, struct lysc_node *node)
 {
@@ -1922,6 +2442,15 @@ done:
     return ret;
 }
 
+/**
+ * @brief Compile parsed leaf node information.
+ * @param[in] ctx Compile context
+ * @param[in] node_p Parsed leaf node.
+ * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
+ * @param[in,out] node Pre-prepared structure from lys_compile_node() with filled generic node information
+ * is enriched with the leaf-specific information.
+ * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
+ */
 static LY_ERR
 lys_compile_node_leaf(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, struct lysc_node *node)
 {
@@ -1937,12 +2466,27 @@ lys_compile_node_leaf(struct lysc_ctx *ctx, struct lysp_node *node_p, int option
     ret = lys_compile_type(ctx, leaf_p, options, &leaf->type);
     LY_CHECK_GOTO(ret, done);
 
+    if (leaf->type->basetype == LY_TYPE_LEAFREF) {
+        /* store to validate the path in the current context at the end of schema compiling when all the nodes are present */
+        ly_set_add(&ctx->unres, leaf, 0);
+    }
+
     DUP_STRING(ctx->ctx, leaf_p->units, leaf->units);
     DUP_STRING(ctx->ctx, leaf_p->dflt, leaf->dflt);
 done:
     return ret;
 }
 
+/**
+ * @brief Compile parsed schema node information.
+ * @param[in] ctx Compile context
+ * @param[in] node_p Parsed schema node.
+ * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
+ * @param[in] parent Compiled parent node where the current node is supposed to be connected. It is
+ * NULL for top-level nodes, in such a case the module where the node will be connected is taken from
+ * the compile context.
+ * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
+ */
 static LY_ERR
 lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, struct lysc_node *parent)
 {
@@ -1966,14 +2510,8 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, st
     case LYS_LEAFLIST:
         node = (struct lysc_node*)calloc(1, sizeof(struct lysc_node_leaflist));
         break;
-    case LYS_CASE:
-        node = (struct lysc_node*)calloc(1, sizeof(struct lysc_node_case));
-        break;
     case LYS_CHOICE:
         node = (struct lysc_node*)calloc(1, sizeof(struct lysc_node_choice));
-        break;
-    case LYS_USES:
-        node = (struct lysc_node*)calloc(1, sizeof(struct lysc_node_uses));
         break;
     case LYS_ANYXML:
     case LYS_ANYDATA:
@@ -2035,15 +2573,19 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, st
     LY_CHECK_GOTO(node_compile_spec(ctx, node_p, options, node), error);
 
     /* insert into parent's children */
-    if (parent && (children = lysc_node_children(parent))) {
-        if (!(*children)) {
-            /* first child */
-            *children = node;
-        } else {
-            /* insert at the end of the parent's children list */
-            (*children)->prev->next = node;
-            node->prev = (*children)->prev;
-            (*children)->prev = node;
+    if (parent) {
+        if (parent->nodetype == LYS_CHOICE) {
+            /* TODO exception for cases */
+        } else if ((children = lysc_node_children(parent))) {
+            if (!(*children)) {
+                /* first child */
+                *children = node;
+            } else {
+                /* insert at the end of the parent's children list */
+                (*children)->prev->next = node;
+                node->prev = (*children)->prev;
+                (*children)->prev = node;
+            }
         }
     } else {
         /* top-level element */
@@ -2064,11 +2606,18 @@ error:
     return ret;
 }
 
+/**
+ * @brief Compile the given YANG module.
+ * @param[in] mod Module structure where the parsed schema is expected and the compiled schema will be placed.
+ * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
+ * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
+ */
 LY_ERR
 lys_compile(struct lys_module *mod, int options)
 {
     struct lysc_ctx ctx = {0};
     struct lysc_module *mod_c;
+    struct lysc_type *type;
     struct lysp_module *sp;
     struct lysp_node *node_p;
     unsigned int u;
@@ -2114,6 +2663,20 @@ lys_compile(struct lys_module *mod, int options)
 
     COMPILE_ARRAY_GOTO(&ctx, sp->exts, mod_c->exts, options, u, lys_compile_ext, ret, error);
 
+    /* validate leafref's paths and when/must xpaths */
+    for (u = 0; u < ctx.unres.count; ++u) {
+        if (((struct lysc_node*)ctx.unres.objs[u])->nodetype == LYS_LEAF) {
+            type = ((struct lysc_node_leaf*)ctx.unres.objs[u])->type;
+            if (type->basetype == LY_TYPE_LEAFREF) {
+                /* validate the path */
+                ret = lys_compile_leafref_validate(&ctx, ((struct lysc_node*)ctx.unres.objs[u]),
+                                                   ((struct lysc_type_leafref*)type)->path);
+                LY_CHECK_GOTO(ret, error);
+            }
+        }
+    }
+    ly_set_erase(&ctx.unres, NULL);
+
     if (options & LYSC_OPT_FREE_SP) {
         lysp_module_free(mod->parsed);
         ((struct lys_module*)mod)->parsed = NULL;
@@ -2123,6 +2686,7 @@ lys_compile(struct lys_module *mod, int options)
     return LY_SUCCESS;
 
 error:
+    ly_set_erase(&ctx.unres, NULL);
     lysc_module_free(mod_c, NULL);
     ((struct lys_module*)mod)->compiled = NULL;
     return ret;

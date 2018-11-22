@@ -30,6 +30,125 @@
 #include "tree_schema_internal.h"
 #include "xpath.h"
 
+API const struct lysc_node *
+lys_getnext(const struct lysc_node *last, const struct lysc_node *parent, const struct lysc_module *module, int options)
+{
+    const struct lysc_node *next;
+    struct lysc_node **snode;
+
+    LY_CHECK_ARG_RET(NULL, parent || module, NULL);
+
+    if (!last) {
+        /* first call */
+
+        /* get know where to start */
+        if (parent) {
+            /* schema subtree */
+            snode = lysc_node_children(parent);
+            /* do not return anything if the augment does not have any children */
+            if (!snode || !(*snode)) {
+                return NULL;
+            }
+            next = last = *snode;
+        } else {
+            /* top level data */
+            next = last = module->data;
+        }
+        if (!next) {
+            return next;
+        } else if (!(options & LYS_GETNEXT_NOSTATECHECK)) {
+            if (!lys_is_disabled(next, 0)) {
+                return next;
+            }
+            /* continue to find next available node */
+        } else {
+            return next;
+        }
+    }
+
+    next = last->next;
+repeat:
+    if (!next) {
+        return next;
+    }
+    switch (next->nodetype) {
+    case LYS_ACTION:
+    case LYS_NOTIF:
+    case LYS_LEAF:
+    case LYS_ANYXML:
+    case LYS_ANYDATA:
+    case LYS_LIST:
+    case LYS_LEAFLIST:
+        break;
+    case LYS_CONTAINER:
+        if (!(((struct lysc_node_container *)next)->flags & LYS_PRESENCE) && (options & LYS_GETNEXT_INTONPCONT)) {
+            if (((struct lysc_node_container *)next)->child) {
+                /* go into */
+                next = ((struct lysc_node_container *)next)->child;
+            } else {
+                next = next->next;
+            }
+            goto repeat;
+        }
+        break;
+    case LYS_CHOICE:
+        if (options & LYS_GETNEXT_WITHCHOICE) {
+            return next;
+        } else if (((struct lysc_node_choice *)next)->cases) {
+            /* go into */
+            next = ((struct lysc_node_choice *)next)->cases[0].child;
+        } else {
+            next = next->next;
+        }
+        goto repeat;
+    default:
+        /* we should not be here */
+        LOGINT(last->module->compiled->ctx);
+        return NULL;
+    }
+
+    if (!(options & LYS_GETNEXT_NOSTATECHECK)) {
+        /* check if the node is disabled by if-feature */
+        if (lys_is_disabled(next, 0)) {
+            next = next->next;
+            goto repeat;
+        }
+    }
+    return next;
+}
+
+API const struct lysc_node *
+lys_child(const struct lysc_node *parent, const struct lys_module *module,
+          const char *name, size_t name_len, uint16_t nodetype, int options)
+{
+    const struct lysc_node *node = NULL;
+
+    LY_CHECK_ARG_RET(NULL, module, name, NULL);
+    if (!nodetype) {
+        nodetype = 0xffff;
+    }
+
+    while ((node = lys_getnext(node, parent, module->compiled, options))) {
+        if (!(node->nodetype & nodetype)) {
+            continue;
+        }
+        if (node->module != module) {
+            continue;
+        }
+
+        if (name_len) {
+            if (!strncmp(node->name, name, name_len) && !node->name[name_len]) {
+                return node;
+            }
+        } else {
+            if (!strcmp(node->name, name)) {
+                return node;
+            }
+        }
+    }
+    return NULL;
+}
+
 API int
 lysc_feature_value(const struct lysc_feature *feature)
 {
@@ -280,6 +399,39 @@ lys_feature_value(const struct lys_module *module, const char *feature)
 
     /* feature definition not found */
     return -1;
+}
+
+API const struct lysc_iffeature *
+lys_is_disabled(const struct lysc_node *node, int recursive)
+{
+    unsigned int u;
+    struct lysc_iffeature **iff;
+
+    LY_CHECK_ARG_RET(NULL, node, NULL);
+
+    while(node) {
+        if (node->nodetype & LYS_CHOICE) {
+            return NULL;
+        }
+
+        iff = lysc_node_iff(node);
+        if (iff && *iff) {
+            /* check local if-features */
+            LY_ARRAY_FOR(*iff, u) {
+                if (!lysc_iffeature_value(&(*iff)[u])) {
+                    return &(*iff)[u];
+                }
+            }
+        }
+
+        if (!recursive) {
+            return NULL;
+        }
+
+        /* go through parents */
+        node = node->parent;
+    }
+    return NULL;
 }
 
 static void
