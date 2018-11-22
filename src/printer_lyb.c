@@ -596,41 +596,43 @@ lyb_print_data_models(struct lyout *out, const struct lyd_node *root, struct lyb
         add_model(&models, &mod_count, mod);
     }
 
-    /* then add all models augmenting or deviating the used models */
-    idx = ly_ctx_internal_modules_count(root->schema->module->ctx);
-    while ((mod = ly_ctx_get_module_iter(root->schema->module->ctx, &idx))) {
-        if (!mod->implemented) {
+    if (root) {
+        /* then add all models augmenting or deviating the used models */
+        idx = ly_ctx_internal_modules_count(root->schema->module->ctx);
+        while ((mod = ly_ctx_get_module_iter(root->schema->module->ctx, &idx))) {
+            if (!mod->implemented) {
 next_mod:
-            continue;
-        }
-
-        for (i = 0; i < mod->deviation_size; ++i) {
-            if (mod->deviation[i].orig_node && is_added_model(models, mod_count, lys_node_module(mod->deviation[i].orig_node))) {
-                add_model(&models, &mod_count, mod);
-                goto next_mod;
+                continue;
             }
-        }
-        for (i = 0; i < mod->augment_size; ++i) {
-            if (is_added_model(models, mod_count, lys_node_module(mod->augment[i].target))) {
-                add_model(&models, &mod_count, mod);
-                goto next_mod;
-            }
-        }
 
-        /* submodules */
-        for (j = 0; j < mod->inc_size; ++j) {
-            submod = mod->inc[j].submodule;
-
-            for (i = 0; i < submod->deviation_size; ++i) {
-                if (submod->deviation[i].orig_node && is_added_model(models, mod_count, lys_node_module(submod->deviation[i].orig_node))) {
+            for (i = 0; i < mod->deviation_size; ++i) {
+                if (mod->deviation[i].orig_node && is_added_model(models, mod_count, lys_node_module(mod->deviation[i].orig_node))) {
                     add_model(&models, &mod_count, mod);
                     goto next_mod;
                 }
             }
-            for (i = 0; i < submod->augment_size; ++i) {
-                if (is_added_model(models, mod_count, lys_node_module(submod->augment[i].target))) {
+            for (i = 0; i < mod->augment_size; ++i) {
+                if (is_added_model(models, mod_count, lys_node_module(mod->augment[i].target))) {
                     add_model(&models, &mod_count, mod);
                     goto next_mod;
+                }
+            }
+
+            /* submodules */
+            for (j = 0; j < mod->inc_size; ++j) {
+                submod = mod->inc[j].submodule;
+
+                for (i = 0; i < submod->deviation_size; ++i) {
+                    if (submod->deviation[i].orig_node && is_added_model(models, mod_count, lys_node_module(submod->deviation[i].orig_node))) {
+                        add_model(&models, &mod_count, mod);
+                        goto next_mod;
+                    }
+                }
+                for (i = 0; i < submod->augment_size; ++i) {
+                    if (is_added_model(models, mod_count, lys_node_module(submod->augment[i].target))) {
+                        add_model(&models, &mod_count, mod);
+                        goto next_mod;
+                    }
                 }
             }
         }

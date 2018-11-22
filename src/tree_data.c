@@ -7373,7 +7373,7 @@ lyd_lyb_data_length(const char *data)
     ptr = data;
 
     /* magic number */
-    if (memcmp(ptr, "lyb", 3)) {
+    if ((ptr[0] != 'l') || (ptr[1] != 'y') || (ptr[2] != 'b')) {
         return -1;
     }
     ptr += 3;
@@ -7398,16 +7398,18 @@ lyd_lyb_data_length(const char *data)
         ptr += 2;
     }
 
-    /* subtrees */
-    do {
-        memcpy(&meta, ptr, LYB_META_BYTES);
-        ptr += LYB_META_BYTES;
+    if (ptr[0]) {
+        /* subtrees */
+        do {
+            memcpy(&meta, ptr, LYB_META_BYTES);
+            ptr += LYB_META_BYTES;
 
-        /* read whole subtree (chunk size) */
-        ptr += *((uint8_t *)&meta);
-        /* skip inner chunks (inner chunk count) */
-        ptr += *(((uint8_t *)&meta) + LYB_SIZE_BYTES) * LYB_META_BYTES;
-    } while ((*((uint8_t *)&meta) == LYB_SIZE_MAX) || ptr[0]);
+            /* read whole subtree (chunk size) */
+            ptr += *((uint8_t *)&meta);
+            /* skip inner chunks (inner chunk count) */
+            ptr += *(((uint8_t *)&meta) + LYB_SIZE_BYTES) * LYB_META_BYTES;
+        } while ((*((uint8_t *)&meta) == LYB_SIZE_MAX) || ptr[0]);
+    }
 
     /* ending zero */
     ++ptr;

@@ -1143,14 +1143,27 @@ lyb_parse_data_models(struct ly_ctx *ctx, const char *data, struct lyb_state *ly
 static int
 lyb_parse_magic_number(const char *data, struct lyb_state *lybs)
 {
-    int ret = 0;
-    uint32_t magic_number = 0;
+    int r, ret = 0;
+    char magic_byte = 0;
 
-    ret += lyb_read(data, (uint8_t *)&magic_number, 3, lybs);
+    ret += (r = lyb_read(data, (uint8_t *)&magic_byte, 1, lybs));
+    LYB_HAVE_READ_RETURN(r, data, -1);
+    if (magic_byte != 'l') {
+        LOGERR(NULL, LY_EINVAL, "Invalid first magic number byte \"0x%02x\".", magic_byte);
+        return -1;
+    }
 
-    if (memcmp(&magic_number, "lyb", 3)) {
-        LOGERR(NULL, LY_EINVAL, "Invalid magic number \"0x%02x%02x%02x\".",
-               ((uint8_t *)&magic_number)[0], ((uint8_t *)&magic_number)[1], ((uint8_t *)&magic_number)[2]);
+    ret += (r = lyb_read(data, (uint8_t *)&magic_byte, 1, lybs));
+    LYB_HAVE_READ_RETURN(r, data, -1);
+    if (magic_byte != 'y') {
+        LOGERR(NULL, LY_EINVAL, "Invalid second magic number byte \"0x%02x\".", magic_byte);
+        return -1;
+    }
+
+    ret += (r = lyb_read(data, (uint8_t *)&magic_byte, 1, lybs));
+    LYB_HAVE_READ_RETURN(r, data, -1);
+    if (magic_byte != 'b') {
+        LOGERR(NULL, LY_EINVAL, "Invalid third magic number byte \"0x%02x\".", magic_byte);
         return -1;
     }
 

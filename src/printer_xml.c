@@ -620,7 +620,12 @@ xml_print_data(struct lyout *out, const struct lyd_node *root, int options)
     struct lys_node *parent = NULL;
     int level, action_input = 0;
 
-    assert(root);
+    if (!root) {
+        if (out->type == LYOUT_MEMORY || out->type == LYOUT_CALLBACK) {
+            ly_print(out, "");
+        }
+        return EXIT_SUCCESS;
+    }
 
     level = (options & LYP_FORMAT ? 1 : 0);
 
