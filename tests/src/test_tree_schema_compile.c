@@ -1315,11 +1315,19 @@ test_type_leafref(void **state)
 
     /* prefixes are reversed to check using correct context of the path! */
     assert_non_null(mod = lys_parse_mem(ctx, "module c {namespace urn:c;prefix b; import b {prefix c;}"
-                                        "typedef mytype3 {type c:mytype;} leaf ref {type b:mytype3;}}", LYS_IN_YANG));
+                                        "typedef mytype3 {type c:mytype {require-instance false;}}"
+                                        "leaf ref1 {type b:mytype3;}leaf ref2 {type c:mytype2;}}", LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
     type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
     assert_non_null(type);
-    assert_int_equal(5, type->refcount);
+    assert_int_equal(2, type->refcount);
+    assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
+    assert_string_equal("/b:target", ((struct lysc_type_leafref* )type)->path);
+    assert_ptr_not_equal(mod, ((struct lysc_type_leafref*)type)->path_context);
+    assert_int_equal(0, ((struct lysc_type_leafref* )type)->require_instance);
+    type = ((struct lysc_node_leaf*)mod->compiled->data->next)->type;
+    assert_non_null(type);
+    assert_int_equal(4, type->refcount);
     assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
     assert_string_equal("/b:target", ((struct lysc_type_leafref* )type)->path);
     assert_ptr_not_equal(mod, ((struct lysc_type_leafref*)type)->path_context);
@@ -1357,6 +1365,14 @@ test_type_leafref(void **state)
                                         "leaf ref1 {type leafref {path /a/target2;}}}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
     logbuf_assert("A current definition \"ref1\" is not allowed to reference deprecated definition \"target2\".");
+    assert_non_null(mod = lys_parse_mem(ctx, "module hh {namespace urn:hh;prefix hh;"
+                                        "leaf ref1 {type leafref;}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Missing path substatement for leafref type.");
+    assert_non_null(mod = lys_parse_mem(ctx, "module ii {namespace urn:ii;prefix ii;typedef mytype {type leafref;}"
+                                        "leaf ref1 {type mytype;}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Missing path substatement for leafref type mytype.");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
