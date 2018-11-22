@@ -88,6 +88,7 @@ lyb_hash_sequence_check(struct hash_table *ht, struct lys_node *sibling, int ht_
 }
 
 #ifndef NDEBUG
+
 static int
 lyb_check_augment_collision(struct hash_table *ht, struct lys_node *aug1, struct lys_node *aug2)
 {
@@ -113,7 +114,7 @@ lyb_check_augment_collision(struct hash_table *ht, struct lys_node *aug1, struct
                     if ((lyht_find(ht, &iter1, hash1, NULL) == 0) || (lyht_find(ht, &iter2, hash2, NULL) == 0)) {
                         LOGWRN(aug1->module->ctx, "Augmentations from modules \"%s\" and \"%s\" have fatal hash collision.",
                                iter1->module->name, iter2->module->name);
-                        LOGWRN(aug1->module->ctx, "Load module \"%s\" before \"%s\" to resolve this issue.",
+                        LOGWRN(aug1->module->ctx, "It will cause no errors if module \"%s\" is always loaded before \"%s\".",
                                iter1->module->name, iter2->module->name);
                         lyht_set_cb(ht, cb);
                         return 1;
@@ -192,6 +193,7 @@ lyb_check_augments(struct lys_node *parent, struct hash_table *ht, int options)
     free(augs);
     return;
 }
+
 #endif
 
 static struct hash_table *
@@ -241,6 +243,7 @@ lyb_hash_siblings(struct lys_node *sibling, const struct lys_module **models, in
             aug_mod = lys_node_module(sibling);
         }
 #endif
+
         /* find the first non-colliding hash (or specifically non-colliding hash sequence) */
         for (i = 0; i < LYB_HASH_BITS; ++i) {
             /* check that we are not colliding with nodes inserted with a lower collision ID than ours */
