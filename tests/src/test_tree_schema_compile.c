@@ -1418,7 +1418,8 @@ test_type_leafref(void **state)
     assert_non_null(mod = lys_parse_mem(ctx, "module aaa {namespace urn:aaa;prefix aaa;"
                                         "leaf ref1 {type leafref {path /ref2;}}"
                                         "leaf ref2 {type leafref {path /ref3;}}"
-                                        "leaf ref3 {type leafref {path /ref1;}}}", LYS_IN_YANG));
+                                        "leaf ref3 {type leafref {path /ref4;}}"
+                                        "leaf ref4 {type leafref {path /ref1;}}}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
     logbuf_assert("Invalid leafref path \"/ref1\" - circular chain of leafrefs detected.");
 
