@@ -968,10 +968,6 @@ lysc_node_iff(const struct lysc_node *node)
 /* TODO
     case LYS_LIST:
         return &((struct lysc_node_list*)node)->iffeatures;
-    case LYS_CASE:
-        return &((struct lysc_node_case*)node)->iffeatures;
-    case LYS_USES:
-        return &((struct lysc_node_uses*)node)->iffeatures;
     case LYS_NOTIF:
         return &((struct lysc_notif*)node)->child;
 */

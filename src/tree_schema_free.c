@@ -460,6 +460,22 @@ lysc_iffeature_free(struct ly_ctx *UNUSED(ctx), struct lysc_iffeature *iff)
 }
 
 static void
+lysc_when_free(struct ly_ctx *ctx, struct lysc_when *w)
+{
+    lyxp_expr_free(ctx, w->cond);
+    FREE_ARRAY(ctx, w->exts, lysc_ext_instance_free);
+}
+
+static void
+lysc_must_free(struct ly_ctx *ctx, struct lysc_must *must)
+{
+    lyxp_expr_free(ctx, must->cond);
+    FREE_STRING(ctx, must->emsg);
+    FREE_STRING(ctx, must->eapptag);
+    FREE_ARRAY(ctx, must->exts, lysc_ext_instance_free);
+}
+
+static void
 lysc_import_free(struct ly_ctx *ctx, struct lysc_import *import)
 {
     /* imported module is freed directly from the context's list */
@@ -581,17 +597,27 @@ lysc_node_container_free(struct ly_ctx *ctx, struct lysc_node_container *node)
 {
     struct lysc_node *child, *child_next;
 
+    FREE_MEMBER(ctx, node->when, lysc_when_free);
+    FREE_ARRAY(ctx, node->iffeatures, lysc_iffeature_free);
     LY_LIST_FOR_SAFE(node->child, child_next, child) {
         lysc_node_free(ctx, child);
     }
+    FREE_ARRAY(ctx, node->musts, lysc_must_free);
+
+    /* TODO actions, notifs */
 }
 
 static void
 lysc_node_leaf_free(struct ly_ctx *ctx, struct lysc_node_leaf *node)
 {
+    FREE_MEMBER(ctx, node->when, lysc_when_free);
+    FREE_ARRAY(ctx, node->iffeatures, lysc_iffeature_free);
+    FREE_ARRAY(ctx, node->musts, lysc_must_free);
     if (node->type) {
         lysc_type_free(ctx, node->type);
     }
+    FREE_STRING(ctx, node->units);
+    FREE_STRING(ctx, node->dflt);
 }
 
 void

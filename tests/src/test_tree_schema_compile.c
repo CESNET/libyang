@@ -1350,6 +1350,20 @@ test_type_leafref(void **state)
     assert_ptr_not_equal(mod, ((struct lysc_type_leafref*)type)->path_context);
     assert_int_equal(1, ((struct lysc_type_leafref* )type)->require_instance);
 
+    /* conditional leafrefs */
+    assert_non_null(mod = lys_parse_mem(ctx, "module d {yang-version 1.1;namespace urn:d;prefix d;feature f1; feature f2;"
+                                        "leaf ref1 {if-feature 'f1 and f2';type leafref {path /target;}}"
+                                        "leaf target {if-feature f1; type boolean;}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(1, type->refcount);
+    assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
+    assert_string_equal("/target", ((struct lysc_type_leafref* )type)->path);
+    assert_ptr_equal(mod, ((struct lysc_type_leafref*)type)->path_context);
+    assert_non_null(((struct lysc_type_leafref*)type)->realtype);
+    assert_int_equal(LY_TYPE_BOOL, ((struct lysc_type_leafref*)type)->realtype->basetype);
+
     /* TODO target in list with predicates */
 
 
@@ -1390,6 +1404,12 @@ test_type_leafref(void **state)
                                         "leaf ref1 {type mytype;}}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
     logbuf_assert("Missing path substatement for leafref type mytype.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module jj {namespace urn:jj;prefix jj;feature f;"
+                                        "leaf ref {type leafref {path /target;}}leaf target {if-feature f;type string;}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid leafref path \"/target\" - set of features applicable to the leafref target is not a subset of features "
+                  "applicable to the leafref itself.");
 
     /* circular chain */
     assert_non_null(mod = lys_parse_mem(ctx, "module aaa {namespace urn:aaa;prefix aaa;"

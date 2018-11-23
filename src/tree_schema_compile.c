@@ -1876,6 +1876,62 @@ lys_path_token(const char **path, const char **prefix, size_t *prefix_len, const
 }
 
 /**
+ * @brief Check the features used in if-feature statements applicable to the leafref and its target.
+ *
+ * The set of features used for target must be a subset of features used for the leafref.
+ * This is not a perfect, we should compare the truth tables but it could require too much resources
+ * and RFC 7950 does not require it explicitely, so we simplify that.
+ *
+ * @param[in] refnode The leafref node.
+ * @param[in] target Tha target node of the leafref.
+ * @return LY_SUCCESS or LY_EVALID;
+ */
+static LY_ERR
+lys_compile_leafref_features_validate(const struct lysc_node *refnode, const struct lysc_node *target)
+{
+    LY_ERR ret = LY_EVALID;
+    const struct lysc_node *iter;
+    struct lysc_iffeature **iff;
+    unsigned int u, v, count;
+    struct ly_set features = {0};
+
+    for (iter = refnode; iter; iter = iter->parent) {
+        iff = lysc_node_iff(iter);
+        if (iff && *iff) {
+            LY_ARRAY_FOR(*iff, u) {
+                LY_ARRAY_FOR((*iff)[u].features, v) {
+                    LY_CHECK_GOTO(ly_set_add(&features, (*iff)[u].features[v], 0) == -1, cleanup);
+                }
+            }
+        }
+    }
+
+    /* we should have, in features set, a superset of features applicable to the target node.
+     * So when adding features applicable to the target into the features set, we should not be
+     * able to actually add any new feature, otherwise it is not a subset of features applicable
+     * to the leafref itself. */
+    count = features.count;
+    for (iter = target; iter; iter = iter->parent) {
+        iff = lysc_node_iff(iter);
+        if (iff && *iff) {
+            LY_ARRAY_FOR(*iff, u) {
+                LY_ARRAY_FOR((*iff)[u].features, v) {
+                    if ((unsigned int)ly_set_add(&features, (*iff)[u].features[v], 0) >= count) {
+                        /* new feature was added (or LY_EMEM) */
+                        goto cleanup;
+                    }
+                }
+            }
+        }
+    }
+    ret = LY_SUCCESS;
+
+cleanup:
+    ly_set_erase(&features, NULL);
+    return ret;
+}
+
+/**
  * @brief Validate the leafref path.
  * @param[in] ctx Compile context
  * @param[in] startnode Path context node (where the leafref path begins/is placed).
@@ -1977,6 +2033,14 @@ lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *startnode, 
                    "Invalid leafref path \"%s\" - circular chain of leafrefs detected.", leafref->path);
             return LY_EVALID;
         }
+    }
+
+    /* check if leafref and its target are under common if-features */
+    if (lys_compile_leafref_features_validate(startnode, node)) {
+        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+               "Invalid leafref path \"%s\" - set of features applicable to the leafref target is not a subset of features applicable to the leafref itself.",
+               leafref->path);
+        return LY_EVALID;
     }
 
     return LY_SUCCESS;
@@ -2500,7 +2564,6 @@ lys_compile_node_leaf(struct lysc_ctx *ctx, struct lysp_node *node_p, int option
 
     COMPILE_MEMBER_GOTO(ctx, leaf_p->when, leaf->when, options, lys_compile_when, ret, done);
     COMPILE_ARRAY_GOTO(ctx, leaf_p->iffeatures, leaf->iffeatures, options, u, lys_compile_iffeature, ret, done);
-
     COMPILE_ARRAY_GOTO(ctx, leaf_p->musts, leaf->musts, options, u, lys_compile_must, ret, done);
     ret = lys_compile_type(ctx, leaf_p, options, &leaf->type);
     LY_CHECK_GOTO(ret, done);
