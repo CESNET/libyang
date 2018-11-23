@@ -2440,15 +2440,10 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
     /* get restrictions from the referred typedefs */
     for (u = tpdf_chain.count - 1; u + 1 > 0; --u) {
         tctx = (struct type_context*)tpdf_chain.objs[u];
-        if (~type_substmt_map[basetype] & tctx->tpdf->type.flags) {
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Invalid type \"%s\" restriction(s) for %s type.",
-                   tctx->tpdf->name, ly_data_type2str[basetype]);
-            ret = LY_EVALID;
-            goto cleanup;
-        } else if (tctx->tpdf->type.compiled) {
+        if (tctx->tpdf->type.compiled) {
             base = tctx->tpdf->type.compiled;
             continue;
-        } else if ((basetype != LY_TYPE_LEAFREF) && (u != tpdf_chain.count - 1) && !(tctx->tpdf->type.flags)) {
+        } else if (basetype != LY_TYPE_LEAFREF && (u != tpdf_chain.count - 1) && !(tctx->tpdf->type.flags)) {
             /* no change, just use the type information from the base */
             base = ((struct lysp_tpdf*)tctx->tpdf)->type.compiled = ((struct type_context*)tpdf_chain.objs[u + 1])->tpdf->type.compiled;
             ++base->refcount;
@@ -2456,6 +2451,19 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
         }
 
         ++(*type)->refcount;
+        if (~type_substmt_map[basetype] & tctx->tpdf->type.flags) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Invalid type \"%s\" restriction(s) for %s type.",
+                   tctx->tpdf->name, ly_data_type2str[basetype]);
+            ret = LY_EVALID;
+            goto cleanup;
+        } else if (basetype == LY_TYPE_EMPTY && tctx->tpdf->dflt) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                   "Invalid type \"%s\" - \"empty\" type must not have a default value (%s).",
+                   tctx->tpdf->name, tctx->tpdf->dflt);
+            ret = LY_EVALID;
+            goto cleanup;
+        }
+
         (*type)->basetype = basetype;
         prev_type = *type;
         ret = lys_compile_type_(ctx, &((struct lysp_tpdf*)tctx->tpdf)->type,
@@ -2541,12 +2549,16 @@ lys_compile_node_leaf(struct lysc_ctx *ctx, struct lysp_node *node_p, int option
     COMPILE_MEMBER_GOTO(ctx, leaf_p->when, leaf->when, options, lys_compile_when, ret, done);
     COMPILE_ARRAY_GOTO(ctx, leaf_p->iffeatures, leaf->iffeatures, options, u, lys_compile_iffeature, ret, done);
     COMPILE_ARRAY_GOTO(ctx, leaf_p->musts, leaf->musts, options, u, lys_compile_must, ret, done);
+
     ret = lys_compile_type(ctx, leaf_p, options, &leaf->type);
     LY_CHECK_GOTO(ret, done);
-
     if (leaf->type->basetype == LY_TYPE_LEAFREF) {
         /* store to validate the path in the current context at the end of schema compiling when all the nodes are present */
         ly_set_add(&ctx->unres, leaf, 0);
+    } else if (leaf->type->basetype == LY_TYPE_EMPTY && leaf_p->dflt) {
+        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+               "Leaf of type \"empty\" must not have a default value (%s).",leaf_p->dflt);
+        return LY_EVALID;
     }
 
     DUP_STRING(ctx->ctx, leaf_p->units, leaf->units);

@@ -1438,6 +1438,31 @@ test_type_leafref(void **state)
     ly_ctx_destroy(ctx, NULL);
 }
 
+static void
+test_type_empty(void **state)
+{
+    *state = test_type_empty;
+
+    struct ly_ctx *ctx;
+    struct lys_module *mod;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+
+    /* invalid */
+    assert_non_null(mod = lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;"
+                                        "leaf l {type empty; default x;}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Leaf of type \"empty\" must not have a default value (x).");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb;typedef mytype {type empty; default x;}"
+                                        "leaf l {type mytype;}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid type \"mytype\" - \"empty\" type must not have a default value (x).");
+
+    *state = NULL;
+    ly_ctx_destroy(ctx, NULL);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1453,6 +1478,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_type_instanceid, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_type_identityref, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_type_leafref, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_type_empty, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_node_container, logger_setup, logger_teardown),
     };
 
