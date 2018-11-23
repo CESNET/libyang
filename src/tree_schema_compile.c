@@ -1879,15 +1879,15 @@ lys_path_token(const char **path, const char **prefix, size_t *prefix_len, const
  * @brief Validate the leafref path.
  * @param[in] ctx Compile context
  * @param[in] startnode Path context node (where the leafref path begins/is placed).
- * @param[in] path Leafref path to validate.
- * @param[in] path_context Module where the path was defined to correct resolve of the prefixes.
+ * @param[in] leafref Leafref to validate.
  * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
  */
 static LY_ERR
-lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *startnode, const char *path, struct lys_module *path_context)
+lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *startnode, struct lysc_type_leafref *leafref)
 {
     const struct lysc_node *node = NULL, *parent = NULL;
     const struct lys_module *mod;
+    struct lysc_type *type;
     const char *id, *prefix, *name;
     size_t prefix_len, name_len;
     int parent_times = 0, has_predicate;
@@ -1896,10 +1896,12 @@ lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *startnode, 
 
     assert(ctx);
     assert(startnode);
-    assert(path);
+    assert(leafref);
+
+    /* TODO leafref targets may be not implemented, in such a case we actually could make (we did it in libyang1) such a models implemented */
 
     iter = 0;
-    id = path;
+    id = leafref->path;
     while(*id && (ret = lys_path_token(&id, &prefix, &prefix_len, &name, &name_len, &parent_times, &has_predicate)) == LY_SUCCESS) {
         if (!iter) { /* first iteration */
             /* precess ".." in relative paths */
@@ -1909,26 +1911,27 @@ lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *startnode, 
                     /* path is supposed to be evaluated in data tree, so we have to skip
                     * all schema nodes that cannot be instantiated in data tree */
                     MOVE_PATH_PARENT(parent, u < (unsigned int)parent_times - 1, return LY_EVALID,
-                                     "Invalid leafref path \"%s\" - too many \"..\" in the path.", path);
+                                     "Invalid leafref path \"%s\" - too many \"..\" in the path.", leafref->path);
                 }
             }
         }
 
         if (prefix) {
-            mod = lys_module_find_prefix(path_context, prefix, prefix_len);
+            mod = lys_module_find_prefix(leafref->path_context, prefix, prefix_len);
         } else {
-            mod = path_context;
+            mod = leafref->path_context;
         }
         if (!mod) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                   "Invalid leafref path - unable to find module connected with the prefix of the node \"%.*s\".", id - path, path);
+                   "Invalid leafref path - unable to find module connected with the prefix of the node \"%.*s\".",
+                   id - leafref->path, leafref->path);
             return LY_EVALID;
         }
 
         node = lys_child(parent, mod, name, name_len, 0, LYS_GETNEXT_NOSTATECHECK);
         if (!node) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                   "Invalid leafref path - unable to find \"%.*s\".", id - path, path);
+                   "Invalid leafref path - unable to find \"%.*s\".", id - leafref->path, leafref->path);
             return LY_EVALID;
         }
         parent = node;
@@ -1938,31 +1941,42 @@ lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *startnode, 
             if (node->nodetype != LYS_LIST) {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                        "Invalid leafref path - node \"%.*s\" is expected to be a list, but it is %s.",
-                       id - path, path, lys_nodetype2str(node->nodetype));
+                       id - leafref->path, leafref->path, lys_nodetype2str(node->nodetype));
                 return LY_EVALID;
             }
 
-            LY_CHECK_RET(lys_compile_leafref_predicate_validate(ctx, &id, node, path_context), LY_EVALID);
+            LY_CHECK_RET(lys_compile_leafref_predicate_validate(ctx, &id, node, leafref->path_context), LY_EVALID);
         }
 
         ++iter;
     }
     if (ret) {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
-               "Invalid leafref path at character %d (%s).", id - path + 1, path);
+               "Invalid leafref path at character %d (%s).", id - leafref->path + 1, leafref->path);
         return LY_EVALID;
     }
 
     if (!(node->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                "Invalid leafref path \"%s\" - target node is %s instead of leaf or leaf-list.",
-               path, lys_nodetype2str(node->nodetype));
+               leafref->path, lys_nodetype2str(node->nodetype));
         return LY_EVALID;
     }
 
     /* check status */
     if (lysc_check_status(ctx, startnode->flags, startnode->module, startnode->name, node->flags, node->module, node->name)) {
         return LY_EVALID;
+    }
+
+    /* store the target's type and check for circular chain of leafrefs */
+    leafref->realtype = ((struct lysc_node_leaf*)node)->type;
+    for (type = leafref->realtype; type && type->basetype == LY_TYPE_LEAFREF; type = ((struct lysc_type_leafref*)type)->realtype) {
+        if (type == (struct lysc_type*)leafref) {
+            /* circular chain detected */
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                   "Invalid leafref path \"%s\" - circular chain of leafrefs detected.", leafref->path);
+            return LY_EVALID;
+        }
     }
 
     return LY_SUCCESS;
@@ -2214,6 +2228,9 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_type *type_p, struct lys_mod
         /* RFC 7950 9.9.3 - require-instance */
         if (type_p->flags & LYS_SET_REQINST) {
             ((struct lysc_type_leafref*)(*type))->require_instance = type_p->require_instance;
+        } else if (base) {
+            /* inherit */
+            ((struct lysc_type_leafref*)(*type))->require_instance = ((struct lysc_type_leafref*)base)->require_instance;
         } else {
             /* default is true */
             ((struct lysc_type_leafref*)(*type))->require_instance = 1;
@@ -2391,7 +2408,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
         } else if (tctx->tpdf->type.compiled) {
             base = tctx->tpdf->type.compiled;
             continue;
-        } else if ((u != tpdf_chain.count - 1) && !(tctx->tpdf->type.flags)) {
+        } else if ((basetype != LY_TYPE_LEAFREF) && (u != tpdf_chain.count - 1) && !(tctx->tpdf->type.flags)) {
             /* no change, just use the type information from the base */
             base = ((struct lysp_tpdf*)tctx->tpdf)->type.compiled = ((struct type_context*)tpdf_chain.objs[u + 1])->tpdf->type.compiled;
             ++base->refcount;
@@ -2409,7 +2426,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
     }
 
     /* process the type definition in leaf */
-    if (leaf_p->type.flags || !base) {
+    if (leaf_p->type.flags || !base || basetype == LY_TYPE_LEAFREF) {
         /* get restrictions from the node itself */
         (*type)->basetype = basetype;
         ++(*type)->refcount;
@@ -2639,7 +2656,7 @@ lys_compile(struct lys_module *mod, int options)
 {
     struct lysc_ctx ctx = {0};
     struct lysc_module *mod_c;
-    struct lysc_type *type;
+    struct lysc_type *type, *typeiter;
     struct lysp_module *sp;
     struct lysp_node *node_p;
     unsigned int u;
@@ -2686,14 +2703,28 @@ lys_compile(struct lys_module *mod, int options)
     COMPILE_ARRAY_GOTO(&ctx, sp->exts, mod_c->exts, options, u, lys_compile_ext, ret, error);
 
     /* validate leafref's paths and when/must xpaths */
+    /* for leafref, we need 2 rounds - first detects circular chain by storing the first referred type (which
+     * can be also leafref, in case it is already resolved, go through the chain and check that it does not
+     * point to the starting leafref type). The second round stores the first non-leafref type for later data validation. */
     for (u = 0; u < ctx.unres.count; ++u) {
         if (((struct lysc_node*)ctx.unres.objs[u])->nodetype == LYS_LEAF) {
             type = ((struct lysc_node_leaf*)ctx.unres.objs[u])->type;
             if (type->basetype == LY_TYPE_LEAFREF) {
                 /* validate the path */
-                ret = lys_compile_leafref_validate(&ctx, ((struct lysc_node*)ctx.unres.objs[u]),
-                                                   ((struct lysc_type_leafref*)type)->path, ((struct lysc_type_leafref*)type)->path_context);
+                ret = lys_compile_leafref_validate(&ctx, ((struct lysc_node*)ctx.unres.objs[u]), (struct lysc_type_leafref*)type);
                 LY_CHECK_GOTO(ret, error);
+            }
+        }
+    }
+    for (u = 0; u < ctx.unres.count; ++u) {
+        if (((struct lysc_node*)ctx.unres.objs[u])->nodetype == LYS_LEAF) {
+            type = ((struct lysc_node_leaf*)ctx.unres.objs[u])->type;
+            if (type->basetype == LY_TYPE_LEAFREF) {
+                /* store pointer to the real type */
+                for (typeiter = ((struct lysc_type_leafref*)type)->realtype;
+                        typeiter->basetype == LY_TYPE_LEAFREF;
+                        typeiter = ((struct lysc_type_leafref*)typeiter)->realtype);
+                ((struct lysc_type_leafref*)type)->realtype = typeiter;
             }
         }
     }

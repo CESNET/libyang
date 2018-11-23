@@ -1303,11 +1303,16 @@ test_type_leafref(void **state)
     assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
     assert_string_equal("/a:target1", ((struct lysc_type_leafref*)type)->path);
     assert_ptr_equal(mod, ((struct lysc_type_leafref*)type)->path_context);
+    assert_non_null(((struct lysc_type_leafref*)type)->realtype);
+    assert_int_equal(LY_TYPE_STRING, ((struct lysc_type_leafref*)type)->realtype->basetype);
     assert_int_equal(1, ((struct lysc_type_leafref*)type)->require_instance);
     type = ((struct lysc_node_leaf*)mod->compiled->data->next)->type;
     assert_non_null(type);
     assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
     assert_string_equal("/a/target2", ((struct lysc_type_leafref*)type)->path);
+    assert_ptr_equal(mod, ((struct lysc_type_leafref*)type)->path_context);
+    assert_non_null(((struct lysc_type_leafref*)type)->realtype);
+    assert_int_equal(LY_TYPE_UINT8, ((struct lysc_type_leafref*)type)->realtype->basetype);
     assert_int_equal(0, ((struct lysc_type_leafref*)type)->require_instance);
 
     assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b; typedef mytype {type leafref {path /b:target;}}"
@@ -1315,10 +1320,12 @@ test_type_leafref(void **state)
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
     type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
     assert_non_null(type);
-    assert_int_equal(3, type->refcount);
+    assert_int_equal(1, type->refcount);
     assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
     assert_string_equal("/b:target", ((struct lysc_type_leafref* )type)->path);
     assert_ptr_equal(mod, ((struct lysc_type_leafref*)type)->path_context);
+    assert_non_null(((struct lysc_type_leafref*)type)->realtype);
+    assert_int_equal(LY_TYPE_STRING, ((struct lysc_type_leafref*)type)->realtype->basetype);
     assert_int_equal(1, ((struct lysc_type_leafref* )type)->require_instance);
 
     /* prefixes are reversed to check using correct context of the path! */
@@ -1328,14 +1335,16 @@ test_type_leafref(void **state)
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
     type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
     assert_non_null(type);
-    assert_int_equal(2, type->refcount);
+    assert_int_equal(1, type->refcount);
     assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
     assert_string_equal("/b:target", ((struct lysc_type_leafref* )type)->path);
     assert_ptr_not_equal(mod, ((struct lysc_type_leafref*)type)->path_context);
+    assert_non_null(((struct lysc_type_leafref*)type)->realtype);
+    assert_int_equal(LY_TYPE_STRING, ((struct lysc_type_leafref*)type)->realtype->basetype);
     assert_int_equal(0, ((struct lysc_type_leafref* )type)->require_instance);
     type = ((struct lysc_node_leaf*)mod->compiled->data->next)->type;
     assert_non_null(type);
-    assert_int_equal(4, type->refcount);
+    assert_int_equal(1, type->refcount);
     assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
     assert_string_equal("/b:target", ((struct lysc_type_leafref* )type)->path);
     assert_ptr_not_equal(mod, ((struct lysc_type_leafref*)type)->path_context);
@@ -1381,6 +1390,14 @@ test_type_leafref(void **state)
                                         "leaf ref1 {type mytype;}}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
     logbuf_assert("Missing path substatement for leafref type mytype.");
+
+    /* circular chain */
+    assert_non_null(mod = lys_parse_mem(ctx, "module aaa {namespace urn:aaa;prefix aaa;"
+                                        "leaf ref1 {type leafref {path /ref2;}}"
+                                        "leaf ref2 {type leafref {path /ref3;}}"
+                                        "leaf ref3 {type leafref {path /ref1;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid leafref path \"/ref1\" - circular chain of leafrefs detected.");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
