@@ -1165,7 +1165,7 @@ test_type_identityref(void **state)
 
     assert_non_null(mod = lys_parse_mem(ctx, "module a {yang-version 1.1;namespace urn:a;prefix a;identity i; identity j; identity k {base i;}"
                                         "typedef mytype {type identityref {base i;}}"
-                                        "leaf l1 {type mytype;} leaf l2 {type identityref {base k; base j;}}}", LYS_IN_YANG));
+                                        "leaf l1 {type mytype;} leaf l2 {type identityref {base a:k; base j;}}}", LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
     type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
     assert_non_null(type);
@@ -1175,6 +1175,17 @@ test_type_identityref(void **state)
     assert_string_equal("i", ((struct lysc_type_identityref*)type)->bases[0]->name);
 
     type = ((struct lysc_node_leaf*)mod->compiled->data->next)->type;
+    assert_non_null(type);
+    assert_int_equal(LY_TYPE_IDENT, type->basetype);
+    assert_non_null(((struct lysc_type_identityref*)type)->bases);
+    assert_int_equal(2, LY_ARRAY_SIZE(((struct lysc_type_identityref*)type)->bases));
+    assert_string_equal("k", ((struct lysc_type_identityref*)type)->bases[0]->name);
+    assert_string_equal("j", ((struct lysc_type_identityref*)type)->bases[1]->name);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module b {yang-version 1.1;namespace urn:b;prefix b;import a {prefix a;}"
+                                        "leaf l {type identityref {base a:k; base a:j;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
     assert_non_null(type);
     assert_int_equal(LY_TYPE_IDENT, type->basetype);
     assert_non_null(((struct lysc_type_identityref*)type)->bases);
