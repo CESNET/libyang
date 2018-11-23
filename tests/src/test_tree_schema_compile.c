@@ -659,6 +659,19 @@ test_type_length(void **state)
     assert_int_equal(10, ((struct lysc_type_str*)type)->length->parts[0].min_u64);
     assert_int_equal(100, ((struct lysc_type_str*)type)->length->parts[0].max_u64);
 
+    assert_non_null(mod = lys_parse_mem(ctx, "module m {namespace urn:m;prefix m;typedef mytype {type string {length 10;}}"
+                                             "leaf l {type mytype {length min..max;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(LY_TYPE_STRING, type->basetype);
+    assert_int_equal(1, type->refcount);
+    assert_non_null(((struct lysc_type_str*)type)->length);
+    assert_non_null(((struct lysc_type_str*)type)->length->parts);
+    assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_type_str*)type)->length->parts));
+    assert_int_equal(10, ((struct lysc_type_str*)type)->length->parts[0].min_u64);
+    assert_int_equal(10, ((struct lysc_type_str*)type)->length->parts[0].max_u64);
+
     /* invalid values */
     assert_non_null(mod = lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;leaf l {type binary {length -10;}}}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
@@ -729,11 +742,6 @@ test_type_length(void **state)
     assert_non_null(mod = lys_parse_mem(ctx, "module ss {namespace urn:rr;prefix rr;leaf l {type binary {pattern '[0-9]*';}}}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
     logbuf_assert("Invalid type restrictions for binary type.");
-
-    assert_non_null(mod = lys_parse_mem(ctx, "module tt {namespace urn:tt;prefix tt;typedef mytype {type string {length 10;}}"
-                                             "leaf l {type mytype {length min..max;}}}", LYS_IN_YANG));
-    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
-    logbuf_assert("Invalid length restriction - the derived restriction (min..max) is not equally or more limiting.");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);

@@ -56,11 +56,6 @@
         LY_CHECK_GOTO(RET != LY_SUCCESS, GOTO); \
     }
 
-const char* ly_data_type2str[LY_DATA_TYPE_COUNT] = {"unknown", "binary", "bits", "boolean", "decimal64", "empty", "enumeration",
-    "identityref", "instance-identifier", "leafref", "string", "union", "8bit integer", "8bit unsigned integer", "16bit integer",
-    "16bit unsigned integer", "32bit integer", "32bit unsigned integer", "64bit integer", "64bit unsigned integer"
-};
-
 static struct lysc_ext_instance *
 lysc_ext_instance_dup(struct ly_ctx *ctx, struct lysc_ext_instance *orig)
 {
@@ -712,19 +707,21 @@ decimal:
 /**
  * @brief Check that values in range are in ascendant order.
  * @param[in] unsigned_value Flag to note that we are working with unsigned values.
+ * @param[in] max Flag to distinguish if checking min or max value. min value must be strictly higher than previous,
+ * max can be also equal.
  * @param[in] value Current value to check.
  * @param[in] prev_value The last seen value.
  * @return LY_SUCCESS or LY_EEXIST for invalid order.
  */
 static LY_ERR
-range_part_check_ascendancy(int unsigned_value, int64_t value, int64_t prev_value)
+range_part_check_ascendancy(int unsigned_value, int max, int64_t value, int64_t prev_value)
 {
     if (unsigned_value) {
-        if ((uint64_t)prev_value >= (uint64_t)value) {
+        if ((max && (uint64_t)prev_value > (uint64_t)value) || (!max && (uint64_t)prev_value >= (uint64_t)value)) {
             return LY_EEXIST;
         }
     } else {
-        if (prev_value >= value) {
+        if ((max && prev_value > value) || (!max && prev_value >= value)) {
             return LY_EEXIST;
         }
     }
@@ -741,6 +738,7 @@ range_part_check_ascendancy(int unsigned_value, int64_t value, int64_t prev_valu
  * @param[in] first Flag for the first value of the range to avoid ascendancy order.
  * @param[in] length_restr Flag to distinguish between range and length restrictions. Only for logging.
  * @param[in] frdigits The fraction-digits value in case of LY_TYPE_DEC64 basetype.
+ * @param[in] base_range Range from the type from which the current type is derived (if not built-in) to get type's min and max values.
  * @param[in,out] value Numeric range value to be stored, if not provided the type's min/max value is set.
  * @return LY_ERR value - LY_SUCCESS, LY_EDENIED (value brokes type's boundaries), LY_EVALID (not a number),
  * LY_EEXIST (value is smaller than the previous one), LY_EINVAL (decimal64 value does not corresponds with the
@@ -748,7 +746,7 @@ range_part_check_ascendancy(int unsigned_value, int64_t value, int64_t prev_valu
  */
 static LY_ERR
 range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, int64_t prev, LY_DATA_TYPE basetype, int first, int length_restr,
-                  uint8_t frdigits, const char **value)
+                  uint8_t frdigits, struct lysc_range *base_range, const char **value)
 {
     LY_ERR ret = LY_SUCCESS;
     char *valcopy = NULL;
@@ -756,7 +754,18 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
 
     if (value) {
         ret = range_part_check_value_syntax(ctx, basetype, frdigits, *value, &len, &valcopy);
-        LY_CHECK_GOTO(ret, error);
+        LY_CHECK_GOTO(ret, finalize);
+    }
+    if (!valcopy && base_range) {
+        if (max) {
+            part->max_64 = base_range->parts[LY_ARRAY_SIZE(base_range->parts) - 1].max_64;
+        } else {
+            part->min_64 = base_range->parts[0].min_64;
+        }
+        if (!first) {
+            ret = range_part_check_ascendancy(basetype <= LY_TYPE_STRING ? 1 : 0, max, max ? part->max_64 : part->min_64, prev);
+        }
+        goto finalize;
     }
 
     switch (basetype) {
@@ -769,7 +778,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
             part->min_u64 = UINT64_C(0);
         }
         if (!ret && !first) {
-            ret = range_part_check_ascendancy(1, max ? part->max_64 : part->min_64, prev);
+            ret = range_part_check_ascendancy(1, max, max ? part->max_64 : part->min_64, prev);
         }
         break;
     case LY_TYPE_DEC64: /* range */
@@ -782,7 +791,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
             part->min_64 = INT64_C(-9223372036854775807) - INT64_C(1);
         }
         if (!ret && !first) {
-            ret = range_part_check_ascendancy(0, max ? part->max_64 : part->min_64, prev);
+            ret = range_part_check_ascendancy(0, max, max ? part->max_64 : part->min_64, prev);
         }
         break;
     case LY_TYPE_INT8: /* range */
@@ -794,7 +803,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
             part->min_64 = INT64_C(-128);
         }
         if (!ret && !first) {
-            ret = range_part_check_ascendancy(0, max ? part->max_64 : part->min_64, prev);
+            ret = range_part_check_ascendancy(0, max, max ? part->max_64 : part->min_64, prev);
         }
         break;
     case LY_TYPE_INT16: /* range */
@@ -806,7 +815,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
             part->min_64 = INT64_C(-32768);
         }
         if (!ret && !first) {
-            ret = range_part_check_ascendancy(0, max ? part->max_64 : part->min_64, prev);
+            ret = range_part_check_ascendancy(0, max, max ? part->max_64 : part->min_64, prev);
         }
         break;
     case LY_TYPE_INT32: /* range */
@@ -818,7 +827,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
             part->min_64 = INT64_C(-2147483648);
         }
         if (!ret && !first) {
-            ret = range_part_check_ascendancy(0, max ? part->max_64 : part->min_64, prev);
+            ret = range_part_check_ascendancy(0, max, max ? part->max_64 : part->min_64, prev);
         }
         break;
     case LY_TYPE_INT64: /* range */
@@ -831,7 +840,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
             part->min_64 = INT64_C(-9223372036854775807) - INT64_C(1);
         }
         if (!ret && !first) {
-            ret = range_part_check_ascendancy(0, max ? part->max_64 : part->min_64, prev);
+            ret = range_part_check_ascendancy(0, max, max ? part->max_64 : part->min_64, prev);
         }
         break;
     case LY_TYPE_UINT8: /* range */
@@ -843,7 +852,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
             part->min_u64 = UINT64_C(0);
         }
         if (!ret && !first) {
-            ret = range_part_check_ascendancy(1, max ? part->max_64 : part->min_64, prev);
+            ret = range_part_check_ascendancy(1, max, max ? part->max_64 : part->min_64, prev);
         }
         break;
     case LY_TYPE_UINT16: /* range */
@@ -855,7 +864,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
             part->min_u64 = UINT64_C(0);
         }
         if (!ret && !first) {
-            ret = range_part_check_ascendancy(1, max ? part->max_64 : part->min_64, prev);
+            ret = range_part_check_ascendancy(1, max, max ? part->max_64 : part->min_64, prev);
         }
         break;
     case LY_TYPE_UINT32: /* range */
@@ -867,7 +876,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
             part->min_u64 = UINT64_C(0);
         }
         if (!ret && !first) {
-            ret = range_part_check_ascendancy(1, max ? part->max_64 : part->min_64, prev);
+            ret = range_part_check_ascendancy(1, max, max ? part->max_64 : part->min_64, prev);
         }
         break;
     case LY_TYPE_UINT64: /* range */
@@ -879,7 +888,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
             part->min_u64 = UINT64_C(0);
         }
         if (!ret && !first) {
-            ret = range_part_check_ascendancy(1, max ? part->max_64 : part->min_64, prev);
+            ret = range_part_check_ascendancy(1, max, max ? part->max_64 : part->min_64, prev);
         }
         break;
     case LY_TYPE_STRING: /* length */
@@ -891,7 +900,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
             part->min_u64 = UINT64_C(0);
         }
         if (!ret && !first) {
-            ret = range_part_check_ascendancy(1, max ? part->max_64 : part->min_64, prev);
+            ret = range_part_check_ascendancy(1, max, max ? part->max_64 : part->min_64, prev);
         }
         break;
     default:
@@ -899,7 +908,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
         ret = LY_EINT;
     }
 
-error:
+finalize:
     if (ret == LY_EDENIED) {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
                "Invalid %s restriction - value \"%s\" does not fit the type limitations.",
@@ -912,7 +921,7 @@ error:
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
                        "Invalid %s restriction - values are not in ascending order (%s).",
                        length_restr ? "length" : "range",
-                       (valcopy && basetype != LY_TYPE_DEC64) ? valcopy : *value);
+                       (valcopy && basetype != LY_TYPE_DEC64) ? valcopy : value ? *value : max ? "max" : "min");
     } else if (!ret && value) {
         *value = *value + len;
     }
@@ -974,7 +983,7 @@ lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA
             expr += 3;
 
             LY_ARRAY_NEW_GOTO(ctx->ctx, parts, part, ret, cleanup);
-            LY_CHECK_GOTO(range_part_minmax(ctx, part, 0, 0, basetype, 1, length_restr, frdigits, NULL), cleanup);
+            LY_CHECK_GOTO(range_part_minmax(ctx, part, 0, 0, basetype, 1, length_restr, frdigits, base_range, NULL), cleanup);
             part->max_64 = part->min_64;
         } else if (*expr == '|') {
             if (!parts || range_expected) {
@@ -1001,12 +1010,12 @@ lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA
             /* number */
             if (range_expected) {
                 part = &parts[LY_ARRAY_SIZE(parts) - 1];
-                LY_CHECK_GOTO(range_part_minmax(ctx, part, 1, part->min_64, basetype, 0, length_restr, frdigits, &expr), cleanup);
+                LY_CHECK_GOTO(range_part_minmax(ctx, part, 1, part->min_64, basetype, 0, length_restr, frdigits, NULL, &expr), cleanup);
                 range_expected = 0;
             } else {
                 LY_ARRAY_NEW_GOTO(ctx->ctx, parts, part, ret, cleanup);
                 LY_CHECK_GOTO(range_part_minmax(ctx, part, 0, parts_done ? parts[LY_ARRAY_SIZE(parts) - 2].max_64 : 0,
-                                                basetype, parts_done ? 0 : 1, length_restr, frdigits, &expr), cleanup);
+                                                basetype, parts_done ? 0 : 1, length_restr, frdigits, NULL, &expr), cleanup);
                 part->max_64 = part->min_64;
             }
 
@@ -1023,12 +1032,12 @@ lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA
             }
             if (range_expected) {
                 part = &parts[LY_ARRAY_SIZE(parts) - 1];
-                LY_CHECK_GOTO(range_part_minmax(ctx, part, 1, part->min_64, basetype, 0, length_restr, frdigits, NULL), cleanup);
+                LY_CHECK_GOTO(range_part_minmax(ctx, part, 1, part->min_64, basetype, 0, length_restr, frdigits, base_range, NULL), cleanup);
                 range_expected = 0;
             } else {
                 LY_ARRAY_NEW_GOTO(ctx->ctx, parts, part, ret, cleanup);
                 LY_CHECK_GOTO(range_part_minmax(ctx, part, 1, parts_done ? parts[LY_ARRAY_SIZE(parts) - 2].max_64 : 0,
-                                                basetype, parts_done ? 0 : 1, length_restr, frdigits, NULL), cleanup);
+                                                basetype, parts_done ? 0 : 1, length_restr, frdigits, base_range, NULL), cleanup);
                 part->min_64 = part->max_64;
             }
         } else {
@@ -1418,6 +1427,11 @@ done:
 static uint16_t type_substmt_map[LY_DATA_TYPE_COUNT] = {
     0 /* LY_TYPE_UNKNOWN */,
     LYS_SET_LENGTH /* LY_TYPE_BINARY */,
+    LYS_SET_RANGE /* LY_TYPE_UINT8 */,
+    LYS_SET_RANGE /* LY_TYPE_UINT16 */,
+    LYS_SET_RANGE /* LY_TYPE_UINT32 */,
+    LYS_SET_RANGE /* LY_TYPE_UINT64 */,
+    LYS_SET_LENGTH | LYS_SET_PATTERN /* LY_TYPE_STRING */,
     LYS_SET_BIT /* LY_TYPE_BITS */,
     0 /* LY_TYPE_BOOL */,
     LYS_SET_FRDIGITS | LYS_SET_RANGE /* LY_TYPE_DEC64 */,
@@ -1426,16 +1440,19 @@ static uint16_t type_substmt_map[LY_DATA_TYPE_COUNT] = {
     LYS_SET_BASE /* LY_TYPE_IDENT */,
     LYS_SET_REQINST /* LY_TYPE_INST */,
     LYS_SET_REQINST | LYS_SET_PATH /* LY_TYPE_LEAFREF */,
-    LYS_SET_LENGTH | LYS_SET_PATTERN /* LY_TYPE_STRING */,
     LYS_SET_TYPE /* LY_TYPE_UNION */,
     LYS_SET_RANGE /* LY_TYPE_INT8 */,
-    LYS_SET_RANGE /* LY_TYPE_UINT8 */,
     LYS_SET_RANGE /* LY_TYPE_INT16 */,
-    LYS_SET_RANGE /* LY_TYPE_UINT16 */,
     LYS_SET_RANGE /* LY_TYPE_INT32 */,
-    LYS_SET_RANGE /* LY_TYPE_UINT32 */,
-    LYS_SET_RANGE /* LY_TYPE_INT64 */,
-    LYS_SET_RANGE /* LY_TYPE_UINT64 */
+    LYS_SET_RANGE /* LY_TYPE_INT64 */
+};
+
+/**
+ * @brief stringification of the YANG built-in data types
+ */
+const char* ly_data_type2str[LY_DATA_TYPE_COUNT] = {"unknown", "binary", "8bit unsigned integer", "16bit unsigned integer",
+    "32bit unsigned integer", "64bit unsigned integer", "string", "bits", "boolean", "decimal64", "empty", "enumeration",
+    "identityref", "instance-identifier", "leafref", "union", "8bit integer", "16bit integer", "32bit integer", "64bit integer"
 };
 
 /**
