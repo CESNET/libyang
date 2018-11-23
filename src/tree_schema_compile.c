@@ -2024,6 +2024,16 @@ lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *startnode, 
         return LY_EVALID;
     }
 
+    /* check config */
+    if (leafref->require_instance && (startnode->flags & LYS_CONFIG_W)) {
+        if (node->flags & LYS_CONFIG_R) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                   "Invalid leafref path \"%s\" - target is supposed to represent configuration data (as the leafref does), but it does not.",
+                   leafref->path);
+            return LY_EVALID;
+        }
+    }
+
     /* store the target's type and check for circular chain of leafrefs */
     leafref->realtype = ((struct lysc_node_leaf*)node)->type;
     for (type = leafref->realtype; type && type->basetype == LY_TYPE_LEAFREF; type = ((struct lysc_type_leafref*)type)->realtype) {

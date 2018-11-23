@@ -1404,12 +1404,15 @@ test_type_leafref(void **state)
                                         "leaf ref1 {type mytype;}}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
     logbuf_assert("Missing path substatement for leafref type mytype.");
-
     assert_non_null(mod = lys_parse_mem(ctx, "module jj {namespace urn:jj;prefix jj;feature f;"
                                         "leaf ref {type leafref {path /target;}}leaf target {if-feature f;type string;}}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
     logbuf_assert("Invalid leafref path \"/target\" - set of features applicable to the leafref target is not a subset of features "
                   "applicable to the leafref itself.");
+    assert_non_null(mod = lys_parse_mem(ctx, "module kk {namespace urn:kk;prefix kk;"
+                                        "leaf ref {type leafref {path /target;}}leaf target {type string;config false;}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid leafref path \"/target\" - target is supposed to represent configuration data (as the leafref does), but it does not.");
 
     /* circular chain */
     assert_non_null(mod = lys_parse_mem(ctx, "module aaa {namespace urn:aaa;prefix aaa;"
