@@ -6194,7 +6194,7 @@ resolve_must(struct lyd_node *node, int inout_parent, int ignore_fail)
             } else {
                 LOGVAL(ctx, LYE_NOMUST, LY_VLOG_LYD, node, must[i].expr);
                 if (must[i].emsg) {
-                    LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL, must[i].emsg);
+                    ly_vlog_str(ctx, LY_VLOG_PREV, must[i].emsg);
                 }
                 if (must[i].eapptag) {
                     ly_err_last_set_apptag(ctx, must[i].eapptag);

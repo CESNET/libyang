@@ -249,6 +249,18 @@ void ly_vlog(const struct ly_ctx *ctx, LY_ECODE code, enum LY_VLOG_ELEM elem_typ
     ly_vlog(ctx, LYE_PATH, elem_type, elem);
 
 /**
+ * @brief Print additional validation information string.
+ *
+ * All special characters will be escaped ('%').
+ *
+ * @param[in] ctx Context to use for logging.
+ * @param[in] elem_type Identify the element at issue. Either #LY_VLOG_NONE or #LY_VLOG_PREV.
+ * @param[in] str String to print that will be escaped.
+ * @param[in] ... Always leave empty (needed for compiler to accept va_start() call).
+ */
+void ly_vlog_str(const struct ly_ctx *ctx, enum LY_VLOG_ELEM elem_type, const char *str, ...);
+
+/**
  * @brief Build path of \p elem.
  *
  * @param[in] elem_type What to expect in \p elem.

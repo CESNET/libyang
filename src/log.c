@@ -821,6 +821,43 @@ ly_vlog(const struct ly_ctx *ctx, LY_ECODE ecode, enum LY_VLOG_ELEM elem_type, c
     va_end(ap);
 }
 
+void
+ly_vlog_str(const struct ly_ctx *ctx, enum LY_VLOG_ELEM elem_type, const char *str, ...)
+{
+    va_list ap;
+    char *path = NULL, *fmt, *ptr;
+    const struct ly_err_item *first;
+
+    assert((elem_type == LY_VLOG_NONE) || (elem_type == LY_VLOG_PREV));
+
+    if (elem_type == LY_VLOG_PREV) {
+        /* use previous path */
+        first = ly_err_first(ctx);
+        if (first && first->prev->path) {
+            path = strdup(first->prev->path);
+        }
+    }
+
+    if (strchr(str, '%')) {
+        /* must be enough */
+        fmt = malloc(2 * strlen(str) + 1);
+        strcpy(fmt, str);
+        for (ptr = strchr(fmt, '%'); ptr; ptr = strchr(ptr + 2, '%')) {
+            memmove(ptr + 1, ptr, strlen(ptr) + 1);
+            ptr[0] = '%';
+        }
+    } else {
+        fmt = strdup(str);
+    }
+
+    va_start(ap, str);
+    /* path is spent and should not be freed! */
+    log_vprintf(ctx, LY_LLERR, LY_EVALID, LYVE_SUCCESS, path, fmt, ap);
+    va_end(ap);
+
+    free(fmt);
+}
+
 API void
 ly_err_print(struct ly_err_item *eitem)
 {
