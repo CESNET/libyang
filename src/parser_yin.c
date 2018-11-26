@@ -96,10 +96,72 @@ match_argument_name(const char *name, size_t len)
 }
 
 LY_ERR
+parse_namespace(struct lyxml_context *xml_ctx, const char **data, struct lysp_module **mod_p)
+{
+    LY_ERR ret = LY_SUCCESS;
+    const char *prefix, *name;
+    size_t prefix_len, name_len;
+
+    char *buf = NULL, *out = NULL;
+    size_t buf_len = 0, out_len = 0;
+    int dynamic;
+
+    /* TODO read all in cycle */
+    /* check if namespace has argument uri */
+    ret = lyxml_get_attribute(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
+    LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), LY_EMEM);
+    if (match_argument_name(name, name_len) != YIN_ARG_URI) {
+        LOGVAL(xml_ctx->ctx, xml_ctx->line, &xml_ctx->line, LYVE_SYNTAX, "Invalid argument name \"%s\", expected \"uri\".", name);
+    }
+
+    if (xml_ctx->status == LYXML_ATTR_CONTENT) {
+        ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
+        (*mod_p)->ns = lydict_insert(xml_ctx->ctx, out, out_len);
+    } else {
+        //error missing namespace
+    }
+
+    ret = lyxml_get_attribute(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
+
+    return LY_SUCCESS;
+}
+
+LY_ERR
+parse_prefix(struct lyxml_context *xml_ctx, const char **data, struct lysp_module **mod_p)
+{
+    LY_ERR ret = LY_SUCCESS;
+    const char *prefix, *name;
+    size_t prefix_len, name_len;
+
+    char *buf = NULL, *out = NULL;
+    size_t buf_len = 0, out_len = 0;
+    int dynamic;
+
+    /* TODO read all in cycle */
+    /* check if prfix has argument value */
+    ret = lyxml_get_attribute(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
+    LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), LY_EMEM);
+    if (match_argument_name(name, name_len) != YIN_ARG_VALUE) {
+        LOGVAL(xml_ctx->ctx, xml_ctx->line, &xml_ctx->line, LYVE_SYNTAX, "Invalid argument name \"%s\", expected \"value\".", name);
+    }
+
+    if (xml_ctx->status == LYXML_ATTR_CONTENT) {
+            ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
+            (*mod_p)->prefix = lydict_insert(xml_ctx->ctx, out, out_len);
+    } else {
+        //error missing prefix
+    }
+
+    ret = lyxml_get_attribute(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
+
+    return LY_SUCCESS;
+}
+
+LY_ERR
 parse_submodule(struct lyxml_context *xml_ctx, const char **data, struct lysp_module **mod_p)
 {
     LY_ERR ret = LY_SUCCESS;
-
+    enum yang_keyword kw = YANG_NONE;
     const char *prefix, *name;
     size_t prefix_len, name_len;
 
@@ -115,10 +177,41 @@ parse_submodule(struct lyxml_context *xml_ctx, const char **data, struct lysp_mo
     }
 
     /* read module name */
+    if (xml_ctx->status != LYXML_ATTR_CONTENT) {
+        LOGVAL(xml_ctx->ctx, xml_ctx->line, &xml_ctx->line, LYVE_SYNTAX, "Missing value of argument \"name\"");
+    }
     ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
     LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), LY_EMEM);
     (*mod_p)->name = lydict_insert(xml_ctx->ctx, out, out_len);
     LY_CHECK_ERR_RET(!(*mod_p)->name, LOGMEM(xml_ctx->ctx), LY_EMEM);
+
+    /* read all attributes and their content temporary solution */
+    while (xml_ctx->status == LYXML_ATTRIBUTE) {
+        lyxml_get_attribute(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
+        if (xml_ctx->status == LYXML_ATTR_CONTENT) {
+            ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
+        }
+    }
+
+    while (xml_ctx->status == LYXML_ELEMENT || xml_ctx->status == LYXML_ELEM_CONTENT) {
+        ret = lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
+        printf("%s\n\n\n", name);
+        LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), LY_EMEM);
+        kw = match_keyword(name);
+
+        switch (kw) {
+            case YANG_PREFIX:
+                ret = parse_prefix(xml_ctx, data, mod_p);
+            break;
+
+            case YANG_NAMESPACE:
+                ret = parse_namespace(xml_ctx, data, mod_p);
+            break;
+
+            default:
+            break;
+        }
+    }
 
     return ret;
 }

@@ -22,7 +22,31 @@ test_parse(void **state)
     mod = calloc(1, sizeof(*mod));
     mod->ctx = ctx;
 
-    yin_parse(ctx, "<module name=\"example-foo\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:foo=\"urn:example:foo\" xmlns:myext=\"urn:example:extensions\">",
+    yin_parse(ctx, "<module name=\"example-foo\"\
+                    xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\
+                    xmlns:foo=\"urn:example:foo\"\
+                    xmlns:myext=\"urn:example:extensions\">\
+                    <namespace uri=\"urn:example:foo\"/>\
+                    <prefix value=\"foo\"/>\
+                    \
+                    <import module=\"example-extensions\">\
+                        <prefix value=\"myext\"/>\
+                    </import>\
+                    \
+                    <list name=\"interface\">\
+                        <key value=\"name\"/>\
+                        <leaf name=\"name\">\
+                        <type name=\"string\"/>\
+                        </leaf>\
+                        <leaf name=\"mtu\">\
+                        <type name=\"uint32\"/>\
+                        <description>\
+                            <text>The MTU of the interface.</text>\
+                        </description>\
+                        <myext:c-define name=\"MY_MTU\"/>\
+                        </leaf>\
+                    </list>\
+                    </module>",
                 &mod);
 
     assert_string_equal(mod->name, "example-foo");
