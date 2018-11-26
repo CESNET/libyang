@@ -616,7 +616,11 @@ lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision,
     LY_CHECK_ERR_GOTO(!mod, ly_errcode(ctx), cleanup);
 
     if (!mod->parsed->filepath) {
+#ifdef __APPLE__
+        char rpath[MAXPATHLEN];
+#else
         char rpath[PATH_MAX];
+#endif
         if (realpath(filepath, rpath) != NULL) {
             mod->parsed->filepath = lydict_insert(ctx, rpath, 0);
         } else {

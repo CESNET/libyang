@@ -149,7 +149,11 @@ const char *const ly_devmod_list[] = {
 char *
 get_current_dir_name(void)
 {
+#ifdef __APPLE__
+    char tmp[MAXPATHLEN];
+#else
     char tmp[PATH_MAX];
+#endif
     char *retval;
 
     if (getcwd(tmp, sizeof(tmp))) {
