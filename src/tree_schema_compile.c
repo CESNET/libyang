@@ -2022,9 +2022,15 @@ lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *startnode, 
     return LY_SUCCESS;
 }
 
+static LY_ERR lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16_t context_flags, struct lysp_module *context_mod, const char *context_name,
+                               struct lysp_type *type_p, int options, struct lysc_type **type, const char **units, const char **dflt);
 /**
  * @brief The core of the lys_compile_type() - compile information about the given type (from typedef or leaf/leaf-list).
  * @param[in] ctx Compile context.
+ * @param[in] context_node_p Schema node where the type/typedef is placed to correctly find the base types.
+ * @param[in] context_flags Flags of the context node or the referencing typedef to correctly check status of referencing and referenced objects.
+ * @param[in] context_mod Module of the context node or the referencing typedef to correctly check status of referencing and referenced objects.
+ * @param[in] context_name Name of the context node or referencing typedef for logging.
  * @param[in] type_p Parsed type to compile.
  * @param[in] basetype Base YANG built-in type of the type to compile.
  * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
@@ -2034,11 +2040,12 @@ lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *startnode, 
  * @return LY_ERR value.
  */
 static LY_ERR
-lys_compile_type_(struct lysc_ctx *ctx, struct lysp_type *type_p, struct lys_module *module, LY_DATA_TYPE basetype, int options,
-                  const char *tpdfname, struct lysc_type *base,  struct lysc_type **type)
+lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16_t context_flags, struct lysp_module *context_mod, const char *context_name,
+                  struct lysp_type *type_p, struct lys_module *module, LY_DATA_TYPE basetype, int options, const char *tpdfname,
+                  struct lysc_type *base,  struct lysc_type **type)
 {
     LY_ERR ret = LY_SUCCESS;
-    unsigned int u;
+    unsigned int u, v, additional;
     struct lysc_type_bin *bin;
     struct lysc_type_num *num;
     struct lysc_type_str *str;
@@ -2046,6 +2053,8 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_type *type_p, struct lys_mod
     struct lysc_type_enum *enumeration;
     struct lysc_type_dec *dec;
     struct lysc_type_identityref *idref;
+    struct lysc_type_union *un, *un_aux;
+    void *p;
 
     switch (basetype) {
     case LY_TYPE_BINARY:
@@ -2233,11 +2242,11 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_type *type_p, struct lys_mod
                 /* only the directly derived identityrefs can contain base specification */
                 if (tpdfname) {
                     LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
-                           "Invalid base substatement for type \"%s\" not directly derived from identityref built-in type.",
+                           "Invalid base substatement for the type \"%s\" not directly derived from identityref built-in type.",
                            tpdfname);
                 } else {
                     LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
-                           "Invalid base substatement for type not directly derived from identityref built-in type.");
+                           "Invalid base substatement for the type not directly derived from identityref built-in type.");
                     free(*type);
                     *type = NULL;
                 }
@@ -2309,6 +2318,86 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_type *type_p, struct lys_mod
             *type = calloc(1, sizeof(struct lysc_type_instanceid));
         }
         break;
+    case LY_TYPE_UNION:
+        un = (struct lysc_type_union*)(*type);
+
+        /* RFC 7950 7.4 - type */
+        if (type_p->types) {
+            if (base) {
+                /* only the directly derived union can contain types specification */
+                if (tpdfname) {
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                           "Invalid type substatement for the type \"%s\" not directly derived from union built-in type.",
+                           tpdfname);
+                } else {
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                           "Invalid type substatement for the type not directly derived from union built-in type.");
+                    free(*type);
+                    *type = NULL;
+                }
+                return LY_EVALID;
+            }
+            /* compile the type */
+            additional = 0;
+            LY_ARRAY_CREATE_RET(ctx->ctx, un->types, LY_ARRAY_SIZE(type_p->types), LY_EVALID);
+            for (u = 0; u < LY_ARRAY_SIZE(type_p->types); ++u) {
+                ret = lys_compile_type(ctx, context_node_p, context_flags, context_mod, context_name, &type_p->types[u], options, &un->types[u + additional], NULL, NULL);
+                if (un->types[u + additional]->basetype == LY_TYPE_UNION) {
+                    /* add space for additional types from the union subtype */
+                    un_aux = (struct lysc_type_union *)un->types[u + additional];
+                    p = ly_realloc(((uint32_t*)(un->types) - 1), sizeof(uint32_t) + ((LY_ARRAY_SIZE(type_p->types) + additional + LY_ARRAY_SIZE(un_aux->types) - 1) * sizeof *(un->types)));
+                    LY_CHECK_ERR_RET(!p, LOGMEM(ctx->ctx);lysc_type_free(ctx->ctx, (struct lysc_type*)un_aux), LY_EMEM);
+                    un->types = (void*)((uint32_t*)(p) + 1);
+
+                    /* copy subtypes of the subtype union */
+                    for (v = 0; v < LY_ARRAY_SIZE(un_aux->types); ++v) {
+                        if (un_aux->types[v]->basetype == LY_TYPE_LEAFREF) {
+                            /* duplicate the whole structure because of the instance-specific path resolving for realtype */
+                            un->types[u + additional] = calloc(1, sizeof(struct lysc_type_leafref));
+                            LY_CHECK_ERR_RET(!un->types[u + additional], LOGMEM(ctx->ctx);lysc_type_free(ctx->ctx, (struct lysc_type*)un_aux), LY_EMEM);
+                            ((struct lysc_type_leafref*)un->types[u + additional])->basetype = LY_TYPE_LEAFREF;
+                            DUP_STRING(ctx->ctx, ((struct lysc_type_leafref*)un_aux->types[v])->path, ((struct lysc_type_leafref*)un->types[u + additional])->path);
+                            ((struct lysc_type_leafref*)un->types[u + additional])->refcount = 1;
+                            ((struct lysc_type_leafref*)un->types[u + additional])->require_instance = ((struct lysc_type_leafref*)un_aux->types[v])->require_instance;
+                            ((struct lysc_type_leafref*)un->types[u + additional])->path_context = ((struct lysc_type_leafref*)un_aux->types[v])->path_context;
+                            /* TODO extensions */
+
+                        } else {
+                            un->types[u + additional] = un_aux->types[v];
+                            ++un_aux->types[v]->refcount;
+                        }
+                        ++additional;
+                        LY_ARRAY_INCREMENT(un->types);
+                    }
+                    /* compensate u increment in main loop */
+                    --additional;
+
+                    /* free the replaced union subtype */
+                    lysc_type_free(ctx->ctx, (struct lysc_type*)un_aux);
+                } else {
+                    LY_ARRAY_INCREMENT(un->types);
+                }
+                LY_CHECK_RET(ret);
+            }
+        }
+
+        if (!base && !type_p->flags) {
+            /* type derived from union built-in type must contain at least one type */
+            if (tpdfname) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_MISSCHILDSTMT, "type", "union type ", tpdfname);
+            } else {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_MISSCHILDSTMT, "type", "union type", "");
+                free(*type);
+                *type = NULL;
+            }
+            return LY_EVALID;
+        }
+
+        if (tpdfname) {
+            type_p->compiled = *type;
+            *type = calloc(1, sizeof(struct lysc_type_union));
+        }
+        break;
     case LY_TYPE_BOOL:
     case LY_TYPE_EMPTY:
     case LY_TYPE_UNKNOWN: /* just to complete switch */
@@ -2322,17 +2411,24 @@ done:
 /**
  * @brief Compile information about the leaf/leaf-list's type.
  * @param[in] ctx Compile context.
- * @param[in] leaf_p Parsed leaf with the type to compile.
+ * @param[in] context_node_p Schema node where the type/typedef is placed to correctly find the base types.
+ * @param[in] context_flags Flags of the context node or the referencing typedef to correctly check status of referencing and referenced objects.
+ * @param[in] context_mod Module of the context node or the referencing typedef to correctly check status of referencing and referenced objects.
+ * @param[in] context_name Name of the context node or referencing typedef for logging.
+ * @param[in] type_p Parsed type to compile.
  * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
  * @param[out] type Newly created (or reused with increased refcount) type structure with the filled information about the type.
+ * @param[out] units Storage for inheriting units value from the typedefs the current type derives from.
+ * @param[out] dflt Storage for inheriting default value from the typedefs the current type derives from.
  * @return LY_ERR value.
  */
 static LY_ERR
-lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int options, struct lysc_type **type)
+lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16_t context_flags, struct lysp_module *context_mod, const char *context_name,
+                 struct lysp_type *type_p, int options, struct lysc_type **type, const char **units, const char **dflt)
 {
     LY_ERR ret = LY_SUCCESS;
     unsigned int u;
-    struct lysp_type *type_p = &leaf_p->type;
+    int dummyloops = 0;
     struct type_context {
         const struct lysp_tpdf *tpdf;
         struct lysp_node *node;
@@ -2346,7 +2442,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
 
     tctx = calloc(1, sizeof *tctx);
     LY_CHECK_ERR_RET(!tctx, LOGMEM(ctx->ctx), LY_EMEM);
-    for (ret = lysp_type_find(type_p->name, (struct lysp_node*)leaf_p, ctx->mod->parsed,
+    for (ret = lysp_type_find(type_p->name, context_node_p, ctx->mod->parsed,
                              &basetype, &tctx->tpdf, &tctx->node, &tctx->mod);
             ret == LY_SUCCESS;
             ret = lysp_type_find(tctx_prev->tpdf->type.name, tctx_prev->node, tctx_prev->mod,
@@ -2356,21 +2452,41 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
         }
 
         /* check status */
-        ret = lysc_check_status(ctx, leaf_p->flags, ctx->mod->parsed, leaf_p->name,
-                                tctx->tpdf->flags, tctx->mod, tctx->node ? tctx->node->name : tctx->mod->name);
+        ret = lysc_check_status(ctx, context_flags, context_mod, context_name,
+                                tctx->tpdf->flags, tctx->mod, tctx->node ? tctx->node->name : tctx->tpdf->name);
         LY_CHECK_ERR_GOTO(ret,  free(tctx), cleanup);
 
+        if (units && !*units) {
+            /* inherit units */
+            DUP_STRING(ctx->ctx, tctx->tpdf->units, *units);
+        }
+        if (dflt && !*dflt) {
+            /* inherit default */
+            DUP_STRING(ctx->ctx, tctx->tpdf->dflt, *dflt);
+        }
+        if (dummyloops && (!units || *units) && (!dflt || *dflt)) {
+            basetype = ((struct type_context*)tpdf_chain.objs[tpdf_chain.count - 1])->tpdf->type.compiled->basetype;
+            break;
+        }
+
         if (tctx->tpdf->type.compiled) {
-            /* it is not necessary to continue, the rest of the chain was already compiled */
+            /* it is not necessary to continue, the rest of the chain was already compiled,
+             * but we still may need to inherit default and units values, so start dummy loops */
             basetype = tctx->tpdf->type.compiled->basetype;
             ly_set_add(&tpdf_chain, tctx, LY_SET_OPT_USEASLIST);
-            tctx = NULL;
-            break;
+            if ((units && !*units) || (dflt && !*dflt)) {
+                dummyloops = 1;
+                goto preparenext;
+            } else {
+                tctx = NULL;
+                break;
+            }
         }
 
         /* store information for the following processing */
         ly_set_add(&tpdf_chain, tctx, LY_SET_OPT_USEASLIST);
 
+preparenext:
         /* prepare next loop */
         tctx_prev = tctx;
         tctx = calloc(1, sizeof *tctx);
@@ -2428,7 +2544,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
         goto cleanup;
     }
     LY_CHECK_ERR_GOTO(!(*type), LOGMEM(ctx->ctx), cleanup);
-    if (~type_substmt_map[basetype] & leaf_p->type.flags) {
+    if (~type_substmt_map[basetype] & type_p->flags) {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Invalid type restrictions for %s type.",
                ly_data_type2str[basetype]);
         free(*type);
@@ -2466,7 +2582,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
 
         (*type)->basetype = basetype;
         prev_type = *type;
-        ret = lys_compile_type_(ctx, &((struct lysp_tpdf*)tctx->tpdf)->type,
+        ret = lys_compile_type_(ctx, tctx->node, tctx->tpdf->flags, tctx->mod, tctx->tpdf->name, &((struct lysp_tpdf*)tctx->tpdf)->type,
                                 basetype & (LY_TYPE_LEAFREF | LY_TYPE_UNION) ? lysp_find_module(ctx->ctx, tctx->mod) : NULL,
                                 basetype, options, tctx->tpdf->name, base, type);
         LY_CHECK_GOTO(ret, cleanup);
@@ -2474,11 +2590,11 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node_leaf *leaf_p, int option
     }
 
     /* process the type definition in leaf */
-    if (leaf_p->type.flags || !base || basetype == LY_TYPE_LEAFREF) {
+    if (type_p->flags || !base || basetype == LY_TYPE_LEAFREF) {
         /* get restrictions from the node itself */
         (*type)->basetype = basetype;
         ++(*type)->refcount;
-        ret = lys_compile_type_(ctx, &leaf_p->type, ctx->mod, basetype, options, NULL, base, type);
+        ret = lys_compile_type_(ctx, context_node_p, context_flags, context_mod, context_name, type_p, ctx->mod, basetype, options, NULL, base, type);
         LY_CHECK_GOTO(ret, cleanup);
     } else {
         /* no specific restriction in leaf's type definition, copy from the base */
@@ -2549,20 +2665,28 @@ lys_compile_node_leaf(struct lysc_ctx *ctx, struct lysp_node *node_p, int option
     COMPILE_MEMBER_GOTO(ctx, leaf_p->when, leaf->when, options, lys_compile_when, ret, done);
     COMPILE_ARRAY_GOTO(ctx, leaf_p->iffeatures, leaf->iffeatures, options, u, lys_compile_iffeature, ret, done);
     COMPILE_ARRAY_GOTO(ctx, leaf_p->musts, leaf->musts, options, u, lys_compile_must, ret, done);
+    DUP_STRING(ctx->ctx, leaf_p->units, leaf->units);
+    DUP_STRING(ctx->ctx, leaf_p->dflt, leaf->dflt);
 
-    ret = lys_compile_type(ctx, leaf_p, options, &leaf->type);
+    ret = lys_compile_type(ctx, node_p, node_p->flags, ctx->mod->parsed, node_p->name, &leaf_p->type, options, &leaf->type,
+                           leaf->units ? NULL : &leaf->units, leaf->dflt ? NULL : &leaf->dflt);
     LY_CHECK_GOTO(ret, done);
     if (leaf->type->basetype == LY_TYPE_LEAFREF) {
         /* store to validate the path in the current context at the end of schema compiling when all the nodes are present */
         ly_set_add(&ctx->unres, leaf, 0);
+    } else if (leaf->type->basetype == LY_TYPE_UNION) {
+        LY_ARRAY_FOR(((struct lysc_type_union*)leaf->type)->types, u) {
+            if (((struct lysc_type_union*)leaf->type)->types[u]->basetype == LY_TYPE_LEAFREF) {
+                /* store to validate the path in the current context at the end of schema compiling when all the nodes are present */
+                ly_set_add(&ctx->unres, leaf, 0);
+            }
+        }
     } else if (leaf->type->basetype == LY_TYPE_EMPTY && leaf_p->dflt) {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
                "Leaf of type \"empty\" must not have a default value (%s).",leaf_p->dflt);
         return LY_EVALID;
     }
 
-    DUP_STRING(ctx->ctx, leaf_p->units, leaf->units);
-    DUP_STRING(ctx->ctx, leaf_p->dflt, leaf->dflt);
 done:
     return ret;
 }
@@ -2710,7 +2834,7 @@ lys_compile(struct lys_module *mod, int options)
     struct lysc_type *type, *typeiter;
     struct lysp_module *sp;
     struct lysp_node *node_p;
-    unsigned int u;
+    unsigned int u, v;
     LY_ERR ret;
 
     LY_CHECK_ARG_RET(NULL, mod, mod->parsed, mod->parsed->ctx, LY_EINVAL);
@@ -2764,6 +2888,15 @@ lys_compile(struct lys_module *mod, int options)
                 /* validate the path */
                 ret = lys_compile_leafref_validate(&ctx, ((struct lysc_node*)ctx.unres.objs[u]), (struct lysc_type_leafref*)type);
                 LY_CHECK_GOTO(ret, error);
+            } else if (type->basetype == LY_TYPE_UNION) {
+                LY_ARRAY_FOR(((struct lysc_type_union*)type)->types, v) {
+                    if (((struct lysc_type_union*)type)->types[v]->basetype == LY_TYPE_LEAFREF) {
+                        /* validate the path */
+                        ret = lys_compile_leafref_validate(&ctx, ((struct lysc_node*)ctx.unres.objs[u]),
+                                                           (struct lysc_type_leafref*)((struct lysc_type_union*)type)->types[v]);
+                        LY_CHECK_GOTO(ret, error);
+                    }
+                }
             }
         }
     }
@@ -2776,6 +2909,16 @@ lys_compile(struct lys_module *mod, int options)
                         typeiter->basetype == LY_TYPE_LEAFREF;
                         typeiter = ((struct lysc_type_leafref*)typeiter)->realtype);
                 ((struct lysc_type_leafref*)type)->realtype = typeiter;
+            } else if (type->basetype == LY_TYPE_UNION) {
+                LY_ARRAY_FOR(((struct lysc_type_union*)type)->types, v) {
+                    if (((struct lysc_type_union*)type)->types[v]->basetype == LY_TYPE_LEAFREF) {
+                        /* store pointer to the real type */
+                        for (typeiter = ((struct lysc_type_leafref*)((struct lysc_type_union*)type)->types[v])->realtype;
+                                typeiter->basetype == LY_TYPE_LEAFREF;
+                                typeiter = ((struct lysc_type_leafref*)typeiter)->realtype);
+                        ((struct lysc_type_leafref*)((struct lysc_type_union*)type)->types[v])->realtype = typeiter;
+                    }
+                }
             }
         }
     }

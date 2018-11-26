@@ -1206,12 +1206,12 @@ test_type_identityref(void **state)
     assert_non_null(mod = lys_parse_mem(ctx, "module cc {namespace urn:cc;prefix cc; identity i; typedef mytype {type identityref {base i;}}"
                                         "leaf l {type mytype {base i;}}}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
-    logbuf_assert("Invalid base substatement for type not directly derived from identityref built-in type.");
+    logbuf_assert("Invalid base substatement for the type not directly derived from identityref built-in type.");
 
     assert_non_null(mod = lys_parse_mem(ctx, "module dd {namespace urn:dd;prefix dd; identity i; typedef mytype {type identityref {base i;}}"
                                         "typedef mytype2 {type mytype {base i;}}leaf l {type mytype2;}}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
-    logbuf_assert("Invalid base substatement for type \"mytype2\" not directly derived from identityref built-in type.");
+    logbuf_assert("Invalid base substatement for the type \"mytype2\" not directly derived from identityref built-in type.");
 
     assert_non_null(mod = lys_parse_mem(ctx, "module ee {namespace urn:ee;prefix ee; identity i; identity j;"
                                         "leaf l {type identityref {base i;base j;}}}", LYS_IN_YANG));
@@ -1463,6 +1463,116 @@ test_type_empty(void **state)
     ly_ctx_destroy(ctx, NULL);
 }
 
+
+static void
+test_type_union(void **state)
+{
+    *state = test_type_union;
+
+    struct ly_ctx *ctx;
+    struct lys_module *mod;
+    struct lysc_type *type;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module a {yang-version 1.1;namespace urn:a;prefix a; typedef mybasetype {type string;}"
+                                        "typedef mytype {type union {type int8; type mybasetype;}}"
+                                        "leaf l {type mytype;}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(2, type->refcount);
+    assert_int_equal(LY_TYPE_UNION, type->basetype);
+    assert_non_null(((struct lysc_type_union*)type)->types);
+    assert_int_equal(2, LY_ARRAY_SIZE(((struct lysc_type_union*)type)->types));
+    assert_int_equal(LY_TYPE_INT8, ((struct lysc_type_union*)type)->types[0]->basetype);
+    assert_int_equal(LY_TYPE_STRING, ((struct lysc_type_union*)type)->types[1]->basetype);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module b {yang-version 1.1;namespace urn:b;prefix b; typedef mybasetype {type string;}"
+                                        "typedef mytype {type union {type int8; type mybasetype;}}"
+                                        "leaf l {type union {type decimal64 {fraction-digits 2;} type mytype;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(1, type->refcount);
+    assert_int_equal(LY_TYPE_UNION, type->basetype);
+    assert_non_null(((struct lysc_type_union*)type)->types);
+    assert_int_equal(3, LY_ARRAY_SIZE(((struct lysc_type_union*)type)->types));
+    assert_int_equal(LY_TYPE_DEC64, ((struct lysc_type_union*)type)->types[0]->basetype);
+    assert_int_equal(LY_TYPE_INT8, ((struct lysc_type_union*)type)->types[1]->basetype);
+    assert_int_equal(LY_TYPE_STRING, ((struct lysc_type_union*)type)->types[2]->basetype);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module c {yang-version 1.1;namespace urn:c;prefix c; typedef mybasetype {type string;}"
+                                        "typedef mytype {type union {type leafref {path ../target;} type mybasetype;}}"
+                                        "leaf l {type union {type decimal64 {fraction-digits 2;} type mytype;}} leaf target {type int8;}}",
+                                        LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(1, type->refcount);
+    assert_int_equal(LY_TYPE_UNION, type->basetype);
+    assert_non_null(((struct lysc_type_union*)type)->types);
+    assert_int_equal(3, LY_ARRAY_SIZE(((struct lysc_type_union*)type)->types));
+    assert_int_equal(LY_TYPE_DEC64, ((struct lysc_type_union*)type)->types[0]->basetype);
+    assert_int_equal(LY_TYPE_LEAFREF, ((struct lysc_type_union*)type)->types[1]->basetype);
+    assert_int_equal(LY_TYPE_STRING, ((struct lysc_type_union*)type)->types[2]->basetype);
+    assert_non_null(((struct lysc_type_leafref*)((struct lysc_type_union*)type)->types[1])->realtype);
+    assert_int_equal(LY_TYPE_INT8, ((struct lysc_type_leafref*)((struct lysc_type_union*)type)->types[1])->realtype->basetype);
+
+    *state = NULL;
+    ly_ctx_destroy(ctx, NULL);
+}
+
+static void
+test_type_dflt(void **state)
+{
+    *state = test_type_union;
+
+    struct ly_ctx *ctx;
+    struct lys_module *mod;
+    struct lysc_type *type;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+
+    /* default is not inherited from union's types */
+    assert_non_null(mod = lys_parse_mem(ctx, "module a {namespace urn:a;prefix a; typedef mybasetype {type string;default hello;units xxx;}"
+                                        "leaf l {type union {type decimal64 {fraction-digits 2;} type mybasetype;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(1, type->refcount);
+    assert_int_equal(LY_TYPE_UNION, type->basetype);
+    assert_non_null(((struct lysc_type_union*)type)->types);
+    assert_int_equal(2, LY_ARRAY_SIZE(((struct lysc_type_union*)type)->types));
+    assert_int_equal(LY_TYPE_DEC64, ((struct lysc_type_union*)type)->types[0]->basetype);
+    assert_int_equal(LY_TYPE_STRING, ((struct lysc_type_union*)type)->types[1]->basetype);
+    assert_null(((struct lysc_node_leaf*)mod->compiled->data)->dflt);
+    assert_null(((struct lysc_node_leaf*)mod->compiled->data)->units);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b; typedef mybasetype {type string;default hello;units xxx;}"
+                                        "leaf l {type mybasetype;}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(2, type->refcount);
+    assert_int_equal(LY_TYPE_STRING, type->basetype);
+    assert_string_equal("hello", ((struct lysc_node_leaf*)mod->compiled->data)->dflt);
+    assert_string_equal("xxx", ((struct lysc_node_leaf*)mod->compiled->data)->units);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module c {namespace urn:c;prefix c; typedef mybasetype {type string;default hello;units xxx;}"
+                                        "leaf l {type mybasetype; default goodbye;units yyy;}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(2, type->refcount);
+    assert_int_equal(LY_TYPE_STRING, type->basetype);
+    assert_string_equal("goodbye", ((struct lysc_node_leaf*)mod->compiled->data)->dflt);
+    assert_string_equal("yyy", ((struct lysc_node_leaf*)mod->compiled->data)->units);
+
+    *state = NULL;
+    ly_ctx_destroy(ctx, NULL);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1479,6 +1589,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_type_identityref, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_type_leafref, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_type_empty, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_type_union, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_type_dflt, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_node_container, logger_setup, logger_teardown),
     };
 

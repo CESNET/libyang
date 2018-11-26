@@ -358,6 +358,13 @@ LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *re
 void lys_module_implement(struct lys_module *mod);
 
 /**
+ * @brief Free the compiled type structure.
+ * @param[in] ctx libyang context where the string data resides in a dictionary.
+ * @param[in,out] type Compiled type structure to be freed. The structure has refcount, so it is freed only in case the value is decreased to 0.
+ */
+void lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type);
+
+/**
  * @brief Free the compiled node structure.
  * @param[in] ctx libyang context where the string data resides in a dictionary.
  * @param[in,out] node Compiled node structure to be freed.

@@ -149,7 +149,7 @@ lysp_type_enum_free(struct ly_ctx *ctx, struct lysp_type_enum *item)
     FREE_ARRAY(ctx, item->exts, lysp_ext_instance_free);
 }
 
-static void lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type);
+void lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type);
 static void
 lysp_type_free(struct ly_ctx *ctx, struct lysp_type *type)
 {
@@ -532,13 +532,12 @@ lysc_enum_item_free(struct ly_ctx *ctx, struct lysc_type_enum_item *item)
     FREE_ARRAY(ctx, item->exts, lysc_ext_instance_free);
 }
 
-static void lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type);
 static void
 lysc_type2_free(struct ly_ctx *ctx, struct lysc_type **type)
 {
     lysc_type_free(ctx, *type);
 }
-static void
+void
 lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type)
 {
     if (--type->refcount) {
@@ -592,7 +591,7 @@ lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type)
     free(type);
 }
 
-void
+static void
 lysc_node_container_free(struct ly_ctx *ctx, struct lysc_node_container *node)
 {
     struct lysc_node *child, *child_next;
