@@ -16,6 +16,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
@@ -143,6 +144,22 @@ const char *const ly_devmod_list[] = {
     [LYS_DEV_DELETE] = "delete",
     [LYS_DEV_REPLACE] = "replace",
 };
+
+#ifndef  __USE_GNU
+char *
+get_current_dir_name(void)
+{
+    char tmp[PATH_MAX];
+    char *retval;
+
+    if (getcwd(tmp, sizeof(tmp))) {
+        retval = strdup(tmp);
+        LY_CHECK_ERR_RETURN(!retval, LOGMEM(NULL), NULL);
+        return retval;
+    }
+    return NULL;
+}
+#endif
 
 void *
 ly_realloc(void *ptr, size_t size)
