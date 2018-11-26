@@ -2375,6 +2375,10 @@ checks:
         LOGVAL_YANG(ctx, LY_VCODE_MISSTMT, "type", "leaf");
         return LY_EVALID;
     }
+    if ((leaf->flags & LYS_MAND_TRUE) && (leaf->dflt)) {
+        LOGVAL_YANG(ctx, LY_VCODE_INCHILDSTMSCOMB, "mandatory", "default", "leaf");
+        return LY_EVALID;
+    }
 
     return ret;
 }

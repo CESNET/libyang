@@ -2661,7 +2661,7 @@ lys_compile_node_leaf(struct lysc_ctx *ctx, struct lysp_node *node_p, int option
     DUP_STRING(ctx->ctx, leaf_p->dflt, leaf->dflt);
 
     ret = lys_compile_type(ctx, node_p, node_p->flags, ctx->mod->parsed, node_p->name, &leaf_p->type, options, &leaf->type,
-                           leaf->units ? NULL : &leaf->units, leaf->dflt ? NULL : &leaf->dflt);
+                           leaf->units ? NULL : &leaf->units, leaf->dflt || (leaf->flags & LYS_MAND_TRUE) ? NULL : &leaf->dflt);
     LY_CHECK_GOTO(ret, done);
     if (leaf->type->basetype == LY_TYPE_LEAFREF) {
         /* store to validate the path in the current context at the end of schema compiling when all the nodes are present */
@@ -2678,6 +2678,8 @@ lys_compile_node_leaf(struct lysc_ctx *ctx, struct lysp_node *node_p, int option
                "Leaf of type \"empty\" must not have a default value (%s).",leaf_p->dflt);
         return LY_EVALID;
     }
+
+    /* TODO validate default value according to the type, possibly postpone the check when the leafref target is known */
 
 done:
     return ret;

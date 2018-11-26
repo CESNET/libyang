@@ -69,6 +69,18 @@ logger_setup(void **state)
     return 0;
 }
 
+static int
+logger_teardown(void **state)
+{
+    (void) state; /* unused */
+#if ENABLE_LOGGER_CHECKING
+    if (*state) {
+        fprintf(stderr, "%s\n", logbuf);
+    }
+#endif
+    return 0;
+}
+
 void
 logbuf_clean(void)
 {
@@ -1187,6 +1199,8 @@ test_container(void **state)
           "leaf-list ll {type string;} list li;must 'expr';notification not; presence true; reference test;status current;typedef t {type int8;}uses g;when true;m:ext;} ...";
     assert_int_equal(LY_SUCCESS, parse_container(&ctx, &str, NULL, (struct lysp_node**)&c));
     assert_non_null(c);
+    assert_int_equal(LYS_CONTAINER, c->nodetype);
+    assert_string_equal("cont", c->name);
     assert_non_null(c->actions);
     assert_non_null(c->child);
     assert_string_equal("test", c->dsc);
@@ -1218,6 +1232,85 @@ test_container(void **state)
     ly_ctx_destroy(ctx.ctx, NULL);
 }
 
+static void
+test_leaf(void **state)
+{
+    *state = test_leaf;
+
+    struct lysp_module mod = {0};
+    struct ly_parser_ctx ctx = {0};
+    struct lysp_node_leaf *l = NULL;
+    const char *str;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
+    assert_non_null(ctx.ctx);
+    ctx.line = 1;
+    ctx.mod = &mod;
+    //ctx.mod->version = 2; /* simulate YANG 1.1 */
+
+    /* invalid cardinality */
+#define TEST_DUP(MEMBER, VALUE1, VALUE2) \
+    str = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
+    assert_int_equal(LY_EVALID, parse_leaf(&ctx, &str, NULL, (struct lysp_node**)&l)); \
+    logbuf_assert("Duplicate keyword \""MEMBER"\". Line number 1."); \
+    lysp_node_free(ctx.ctx, (struct lysp_node*)l); l = NULL;
+
+    TEST_DUP("config", "true", "false");
+    TEST_DUP("default", "x", "y");
+    TEST_DUP("description", "text1", "text2");
+    TEST_DUP("mandatory", "true", "false");
+    TEST_DUP("reference", "1", "2");
+    TEST_DUP("status", "current", "obsolete");
+    TEST_DUP("units", "text1", "text2");
+    TEST_DUP("when", "true", "false");
+#undef TEST_DUP
+
+    /* full content - without mandatory which is mutual exclusive with default */
+    str = "l {config false;default \"xxx\";description test;if-feature f;"
+          "must 'expr';reference test;status current;type string; units yyy;when true;m:ext;} ...";
+    assert_int_equal(LY_SUCCESS, parse_leaf(&ctx, &str, NULL, (struct lysp_node**)&l));
+    assert_non_null(l);
+    assert_int_equal(LYS_LEAF, l->nodetype);
+    assert_string_equal("l", l->name);
+    assert_string_equal("test", l->dsc);
+    assert_string_equal("xxx", l->dflt);
+    assert_string_equal("yyy", l->units);
+    assert_string_equal("string", l->type.name);
+    assert_non_null(l->exts);
+    assert_non_null(l->iffeatures);
+    assert_non_null(l->musts);
+    assert_string_equal("test", l->ref);
+    assert_non_null(l->when);
+    assert_null(l->parent);
+    assert_null(l->next);
+    assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR, l->flags);
+    lysp_node_free(ctx.ctx, (struct lysp_node*)l); l = NULL;
+
+    /* full content - now with mandatory */
+    str = "l {mandatory true; type string;} ...";
+    assert_int_equal(LY_SUCCESS, parse_leaf(&ctx, &str, NULL, (struct lysp_node**)&l));
+    assert_non_null(l);
+    assert_int_equal(LYS_LEAF, l->nodetype);
+    assert_string_equal("l", l->name);
+    assert_string_equal("string", l->type.name);
+    assert_int_equal(LYS_MAND_TRUE, l->flags);
+    lysp_node_free(ctx.ctx, (struct lysp_node*)l); l = NULL;
+
+    /* invalid */
+    str = " l {mandatory true; default xx; type string;} ...";
+    assert_int_equal(LY_EVALID, parse_leaf(&ctx, &str, NULL, (struct lysp_node**)&l));
+    logbuf_assert("Invalid combination of keywords \"mandatory\" and \"default\" as children of \"leaf\". Line number 1.");
+    lysp_node_free(ctx.ctx, (struct lysp_node*)l); l = NULL;
+
+    str = " l {description \"missing type\";} ...";
+    assert_int_equal(LY_EVALID, parse_leaf(&ctx, &str, NULL, (struct lysp_node**)&l));
+    logbuf_assert("Missing mandatory keyword \"type\" as a child of \"leaf\". Line number 1.");
+    lysp_node_free(ctx.ctx, (struct lysp_node*)l); l = NULL;
+
+    *state = NULL;
+    ly_ctx_destroy(ctx.ctx, NULL);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1231,6 +1324,7 @@ int main(void)
         cmocka_unit_test_setup(test_deviation, logger_setup),
         cmocka_unit_test_setup(test_deviate, logger_setup),
         cmocka_unit_test_setup(test_container, logger_setup),
+        cmocka_unit_test_setup_teardown(test_leaf, logger_setup, logger_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

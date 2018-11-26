@@ -1618,6 +1618,16 @@ test_type_dflt(void **state)
     assert_string_equal("hello", ((struct lysc_node_leaf*)mod->compiled->data)->dflt);
     assert_string_equal("xxx", ((struct lysc_node_leaf*)mod->compiled->data)->units);
 
+    /* mandatory leaf does not takes default value from type */
+    assert_non_null(mod = lys_parse_mem(ctx, "module f {namespace urn:f;prefix f;typedef mytype {type string; default hello;units xxx;}"
+                                        "leaf l {type mytype; mandatory true;}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(LY_TYPE_STRING, type->basetype);
+    assert_null(((struct lysc_node_leaf*)mod->compiled->data)->dflt);
+    assert_string_equal("xxx", ((struct lysc_node_leaf*)mod->compiled->data)->units);
+
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
 }
