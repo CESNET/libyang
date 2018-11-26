@@ -1327,7 +1327,8 @@ test_type_leafref(void **state)
     assert_int_equal(0, ((struct lysc_type_leafref*)type)->require_instance);
 
     assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b; typedef mytype {type leafref {path /b:target;}}"
-                                        "typedef mytype2 {type mytype;} leaf ref {type mytype2;}leaf target {type string;}}", LYS_IN_YANG));
+                                        "typedef mytype2 {type mytype;} leaf ref {type mytype2;}"
+                                        "leaf target {type leafref {path ../realtarget;}} leaf realtarget {type string;}}", LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
     type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
     assert_non_null(type);
@@ -1504,7 +1505,8 @@ test_type_union(void **state)
 
     assert_non_null(mod = lys_parse_mem(ctx, "module c {yang-version 1.1;namespace urn:c;prefix c; typedef mybasetype {type string;}"
                                         "typedef mytype {type union {type leafref {path ../target;} type mybasetype;}}"
-                                        "leaf l {type union {type decimal64 {fraction-digits 2;} type mytype;}} leaf target {type int8;}}",
+                                        "leaf l {type union {type decimal64 {fraction-digits 2;} type mytype;}}"
+                                        "leaf target {type leafref {path ../realtarget;}} leaf realtarget {type int8;}}",
                                         LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
     type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
@@ -1518,6 +1520,26 @@ test_type_union(void **state)
     assert_int_equal(LY_TYPE_STRING, ((struct lysc_type_union*)type)->types[2]->basetype);
     assert_non_null(((struct lysc_type_leafref*)((struct lysc_type_union*)type)->types[1])->realtype);
     assert_int_equal(LY_TYPE_INT8, ((struct lysc_type_leafref*)((struct lysc_type_union*)type)->types[1])->realtype->basetype);
+
+    /* invalid unions */
+    assert_non_null(mod = lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;typedef mytype {type union;}"
+                                        "leaf l {type mytype;}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Missing type substatement for union type mytype.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb;leaf l {type union;}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Missing type substatement for union type.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module cc {namespace urn:cc;prefix cc;typedef mytype {type union{type int8; type string;}}"
+                                        "leaf l {type mytype {type string;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid type substatement for the type not directly derived from union built-in type.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module dd {namespace urn:dd;prefix dd;typedef mytype {type union{type int8; type string;}}"
+                                        "typedef mytype2 {type mytype {type string;}}leaf l {type mytype2;}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid type substatement for the type \"mytype2\" not directly derived from union built-in type.");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
@@ -1568,6 +1590,33 @@ test_type_dflt(void **state)
     assert_int_equal(LY_TYPE_STRING, type->basetype);
     assert_string_equal("goodbye", ((struct lysc_node_leaf*)mod->compiled->data)->dflt);
     assert_string_equal("yyy", ((struct lysc_node_leaf*)mod->compiled->data)->units);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module d {namespace urn:d;prefix d; typedef mybasetype {type string;default hello;units xxx;}"
+                                        "typedef mytype {type mybasetype;}leaf l1 {type mytype; default goodbye;units yyy;}"
+                                        "leaf l2 {type mytype;}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(4, type->refcount);
+    assert_int_equal(LY_TYPE_STRING, type->basetype);
+    assert_string_equal("goodbye", ((struct lysc_node_leaf*)mod->compiled->data)->dflt);
+    assert_string_equal("yyy", ((struct lysc_node_leaf*)mod->compiled->data)->units);
+    type = ((struct lysc_node_leaf*)mod->compiled->data->next)->type;
+    assert_non_null(type);
+    assert_int_equal(4, type->refcount);
+    assert_int_equal(LY_TYPE_STRING, type->basetype);
+    assert_string_equal("hello", ((struct lysc_node_leaf*)mod->compiled->data->next)->dflt);
+    assert_string_equal("xxx", ((struct lysc_node_leaf*)mod->compiled->data->next)->units);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module e {namespace urn:e;prefix e; typedef mybasetype {type string;}"
+                                        "typedef mytype {type mybasetype; default hello;units xxx;}leaf l {type mytype;}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(3, type->refcount);
+    assert_int_equal(LY_TYPE_STRING, type->basetype);
+    assert_string_equal("hello", ((struct lysc_node_leaf*)mod->compiled->data)->dflt);
+    assert_string_equal("xxx", ((struct lysc_node_leaf*)mod->compiled->data)->units);
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
