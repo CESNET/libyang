@@ -310,6 +310,7 @@ cmd_load(const char *arg)
 
     while (name) {
         model = ly_ctx_load_module(ctx, name, NULL);
+        free(name);
         if (!model) {
             /* libyang printed the error messages */
             goto cleanup;
