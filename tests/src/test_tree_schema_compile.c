@@ -534,8 +534,8 @@ test_type_length(void **state)
     assert_non_null(((struct lysc_type_bin*)type)->length);
     assert_non_null(((struct lysc_type_bin*)type)->length->parts);
     assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_type_bin*)type)->length->parts));
-    assert_int_equal(__UINT64_C(18446744073709551615), ((struct lysc_type_bin*)type)->length->parts[0].min_u64);
-    assert_int_equal(__UINT64_C(18446744073709551615), ((struct lysc_type_bin*)type)->length->parts[0].max_u64);
+    assert_int_equal(UINT64_C(18446744073709551615), ((struct lysc_type_bin*)type)->length->parts[0].min_u64);
+    assert_int_equal(UINT64_C(18446744073709551615), ((struct lysc_type_bin*)type)->length->parts[0].max_u64);
 
     assert_non_null(mod = lys_parse_mem(ctx, "module c {namespace urn:c;prefix c;leaf l {type binary {length min..max;}}}", LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
@@ -545,7 +545,7 @@ test_type_length(void **state)
     assert_non_null(((struct lysc_type_bin*)type)->length->parts);
     assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_type_bin*)type)->length->parts));
     assert_int_equal(0, ((struct lysc_type_bin*)type)->length->parts[0].min_u64);
-    assert_int_equal(__UINT64_C(18446744073709551615), ((struct lysc_type_bin*)type)->length->parts[0].max_u64);
+    assert_int_equal(UINT64_C(18446744073709551615), ((struct lysc_type_bin*)type)->length->parts[0].max_u64);
 
     assert_non_null(mod = lys_parse_mem(ctx, "module d {namespace urn:d;prefix d;leaf l {type binary {length 5;}}}", LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
