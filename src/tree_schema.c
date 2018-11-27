@@ -633,12 +633,8 @@ lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
 static void
 lys_parse_set_filename(struct ly_ctx *ctx, const char **filename, int fd)
 {
-#ifdef __APPLE__
-    char path[MAXPATHLEN];
-#else
     int len;
     char path[PATH_MAX], proc_path[32];
-#endif
 
 #ifdef __APPLE__
     if (fcntl(fd, F_GETPATH, path) != -1) {
