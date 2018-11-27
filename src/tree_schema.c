@@ -633,14 +633,16 @@ lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
 static void
 lys_parse_set_filename(struct ly_ctx *ctx, const char **filename, int fd)
 {
-    int len;
-    char path[PATH_MAX], proc_path[32];
+    char path[PATH_MAX];
 
 #ifdef __APPLE__
     if (fcntl(fd, F_GETPATH, path) != -1) {
         *filename = lydict_insert(ctx, path, 0);
     }
 #else
+    int len;
+    char proc_path[32];
+
     /* get URI if there is /proc */
     sprintf(proc_path, "/proc/self/fd/%d", fd);
     if ((len = readlink(proc_path, path, PATH_MAX - 1)) > 0) {
