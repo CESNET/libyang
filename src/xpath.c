@@ -2832,6 +2832,15 @@ warn_is_numeric_type(struct lys_type *type)
         /* did not find any suitable type */
         return 0;
     case LY_TYPE_LEAFREF:
+        if (!type->info.lref.target) {
+            /* we may be in a grouping (and not directly in a typedef) */
+            assert(&((struct lys_node_leaf *)type->parent)->type == type);
+            for (node = ((struct lys_node *)type->parent); node && (node->nodetype != LYS_GROUPING); node = node->parent);
+            if (!node) {
+                LOGINT(((struct lys_node *)type->parent)->module->ctx);
+            }
+            return 1;
+        }
         return warn_is_numeric_type(&type->info.lref.target->type);
     default:
         return 0;
