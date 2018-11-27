@@ -123,7 +123,7 @@ test_searchdirs(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(ctx, TESTS_SRC"/../doc"));
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(ctx, TESTS_SRC));
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(ctx, TESTS_BIN));
-    assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(ctx, "/tmp"));
+    assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(ctx, "/home"));
     assert_int_equal(8, ctx->search_paths.count);
 
     /* get searchpaths */
@@ -133,7 +133,7 @@ test_searchdirs(void **state)
     assert_string_equal(TESTS_BIN"/CMakeFiles", list[1]);
     assert_string_equal(TESTS_SRC, list[5]);
     assert_string_equal(TESTS_BIN, list[6]);
-    assert_string_equal("/tmp", list[7]);
+    assert_string_equal("/home", list[7]);
     assert_null(list[8]);
 
     /* removing searchpaths */
@@ -148,7 +148,7 @@ test_searchdirs(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdirs(ctx, TESTS_SRC));
     assert_int_equal(6, ctx->search_paths.count);
     /* last */
-    assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdirs(ctx, "/tmp"));
+    assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdirs(ctx, "/home"));
     assert_int_equal(5, ctx->search_paths.count);
     /* all */
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdirs(ctx, NULL));
@@ -163,10 +163,10 @@ test_searchdirs(void **state)
     /* test searchdir list in ly_ctx_new() */
     assert_int_equal(LY_EINVAL, ly_ctx_new("/nonexistingfile", 0, &ctx));
     logbuf_assert("Unable to use search directory \"/nonexistingfile\" (No such file or directory)");
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC":/tmp:/tmp:"TESTS_SRC, 0, &ctx));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC":/home:/home:"TESTS_SRC, 0, &ctx));
     assert_int_equal(2, ctx->search_paths.count);
     assert_string_equal(TESTS_SRC, ctx->search_paths.objs[0]);
-    assert_string_equal("/tmp", ctx->search_paths.objs[1]);
+    assert_string_equal("/home", ctx->search_paths.objs[1]);
 
     /* cleanup */
     ly_ctx_destroy(ctx, NULL);
