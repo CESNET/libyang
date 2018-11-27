@@ -12,7 +12,7 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#define _POSIX_C_SOURCE 200809L /* strndup() */
+#include "common.h"
 
 #include <assert.h>
 #include <ctype.h>
@@ -22,7 +22,6 @@
 
 #include "libyang.h"
 #include "xml.h"
-#include "common.h"
 
 /* Move input p by s characters, if EOF log with lyxml_context c */
 #define move_input(c,p,s) p += s; LY_CHECK_ERR_RET(!p[0], LOGVAL(c->ctx, LY_VLOG_LINE, &c->line, LY_VCODE_EOF), LY_EVALID)

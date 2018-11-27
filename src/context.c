@@ -14,7 +14,6 @@
 
 #include "common.h"
 
-#define _BSD_SOURCE
 #include <errno.h>
 #include <limits.h>
 #include <stdlib.h>

@@ -17,7 +17,6 @@
 
 #define _DEFAULT_SOURCE
 #define _GNU_SOURCE
-#define _XOPEN_SOURCE
 
 #include <assert.h>
 #include <pthread.h>
