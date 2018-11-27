@@ -1197,7 +1197,7 @@ lyd_create_leaf(const struct lys_node *schema, const char *val_str, int dflt)
 }
 
 static struct lyd_node *
-_lyd_new_leaf(struct lyd_node *parent, const struct lys_node *schema, const char *val_str, int dflt)
+_lyd_new_leaf(struct lyd_node *parent, const struct lys_node *schema, const char *val_str, int dflt, int edit_leaf)
 {
     struct lyd_node *ret;
 
@@ -1212,6 +1212,12 @@ _lyd_new_leaf(struct lyd_node *parent, const struct lys_node *schema, const char
             lyd_free(ret);
             return NULL;
         }
+    }
+
+    if (edit_leaf && !((struct lyd_node_leaf_list *)ret)->value_str[0]) {
+        /* empty edit leaf, it is fine */
+        ((struct lyd_node_leaf_list *)ret)->value_type = LY_TYPE_UNKNOWN;
+        return ret;
     }
 
     /* resolve the type correctly (after it was connected to parent cause of log) */
@@ -1255,7 +1261,7 @@ lyd_new_leaf(struct lyd_node *parent, const struct lys_module *module, const cha
         return NULL;
     }
 
-    return _lyd_new_leaf(parent, snode, val_str, 0);
+    return _lyd_new_leaf(parent, snode, val_str, 0, 0);
 }
 
 /**
@@ -1579,7 +1585,7 @@ lyd_new_output_leaf(struct lyd_node *parent, const struct lys_module *module, co
         return NULL;
     }
 
-    return _lyd_new_leaf(parent, snode, val_str, 0);
+    return _lyd_new_leaf(parent, snode, val_str, 0, 0);
 }
 
 API struct lyd_node *
@@ -1671,7 +1677,7 @@ check_parsed_values:
         strncpy(key_val, value, val_len);
         key_val[val_len] = '\0';
 
-        if (!_lyd_new_leaf(list, key, key_val, 0)) {
+        if (!_lyd_new_leaf(list, key, key_val, 0, 0)) {
             free(key_val);
             return -1;
         }
@@ -2040,7 +2046,8 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
                 lyd_free(ret);
                 return NULL;
             }
-            node = _lyd_new_leaf(is_relative ? parent : NULL, schild, (str ? str : value), (options & LYD_PATH_OPT_DFLT) ? 1 : 0);
+            node = _lyd_new_leaf(is_relative ? parent : NULL, schild, (str ? str : value),
+                                 (options & LYD_PATH_OPT_DFLT) ? 1 : 0, (options & LYD_PATH_OPT_EDIT) ? 1 : 0);
             free(str);
             break;
         case LYS_ANYXML:
@@ -2242,7 +2249,7 @@ lyd_new_dummy(struct lyd_node *root, struct lyd_node *parent, const struct lys_n
         case LYS_LEAF:
         case LYS_LEAFLIST:
             if (value) {
-                iter = _lyd_new_leaf(parent, spath->set.s[index - 1], value, dflt);
+                iter = _lyd_new_leaf(parent, spath->set.s[index - 1], value, dflt, 0);
             } else {
                 iter = lyd_create_leaf(spath->set.s[index - 1], value, dflt);
                 if (iter && parent) {

@@ -837,6 +837,8 @@ struct lyd_node *lyd_new_yangdata(const struct lys_module *module, const char *n
                                         created during validation and using this flag one can set them (see @ref howtodatawd). */
 #define LYD_PATH_OPT_NOPARENTRET 0x10 /**< Changes the return value in the way that even if some parents were created in
                                         addition to the path-referenced node, the path-referenced node will always be returned. */
+#define LYD_PATH_OPT_EDIT     0x20 /**< Allows the creation of special leaves without value. These leaves are valid if used
+                                        in a NETCONF edit-config with delete/remove operation. */
 
 /** @} pathoptions */
 

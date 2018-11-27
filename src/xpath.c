@@ -2805,6 +2805,7 @@ warn_get_snode_in_ctx(struct lyxp_set *set)
 static int
 warn_is_numeric_type(struct lys_type *type)
 {
+    struct lys_node *node;
     struct lys_type *t = NULL;
     int found = 0, ret;
 
