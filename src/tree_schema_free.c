@@ -608,6 +608,24 @@ lysc_node_leaf_free(struct ly_ctx *ctx, struct lysc_node_leaf *node)
     FREE_STRING(ctx, node->dflt);
 }
 
+static void
+lysc_node_leaflist_free(struct ly_ctx *ctx, struct lysc_node_leaflist *node)
+{
+    unsigned int u;
+
+    FREE_MEMBER(ctx, node->when, lysc_when_free);
+    FREE_ARRAY(ctx, node->iffeatures, lysc_iffeature_free);
+    FREE_ARRAY(ctx, node->musts, lysc_must_free);
+    if (node->type) {
+        lysc_type_free(ctx, node->type);
+    }
+    FREE_STRING(ctx, node->units);
+    LY_ARRAY_FOR(node->dflts, u) {
+        lydict_remove(ctx, node->dflts[u]);
+    }
+    LY_ARRAY_FREE(node->dflts);
+}
+
 void
 lysc_node_free(struct ly_ctx *ctx, struct lysc_node *node)
 {
@@ -620,8 +638,10 @@ lysc_node_free(struct ly_ctx *ctx, struct lysc_node *node)
         lysc_node_container_free(ctx, (struct lysc_node_container*)node);
         break;
     case LYS_LEAF:
-    case LYS_LEAFLIST:
         lysc_node_leaf_free(ctx, (struct lysc_node_leaf*)node);
+        break;
+    case LYS_LEAFLIST:
+        lysc_node_leaflist_free(ctx, (struct lysc_node_leaflist*)node);
         break;
     default:
         LOGINT(ctx);
