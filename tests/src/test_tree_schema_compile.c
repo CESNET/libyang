@@ -301,7 +301,7 @@ test_feature(void **state)
 static void
 test_identity(void **state)
 {
-    (void) state; /* unused */
+    *state = test_identity;
 
     struct ly_ctx *ctx;
     struct lys_module *mod1, *mod2;
@@ -311,6 +311,7 @@ test_identity(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
     assert_non_null(mod1 = lys_parse_mem(ctx, mod1_str, LYS_IN_YANG));
     assert_non_null(mod2 = lys_parse_mem(ctx, mod2_str, LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod1, 0));
     assert_int_equal(LY_SUCCESS, lys_compile(mod2, 0));
 
     assert_non_null(mod1->compiled);
@@ -332,6 +333,7 @@ test_identity(void **state)
     assert_int_equal(1, LY_ARRAY_SIZE(mod2->compiled->identities[2].derived));
     assert_ptr_equal(mod2->compiled->identities[2].derived[0], &mod2->compiled->identities[3]);
 
+    *state = NULL;
     ly_ctx_destroy(ctx, NULL);
 }
 

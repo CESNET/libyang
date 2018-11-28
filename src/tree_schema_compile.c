@@ -435,8 +435,9 @@ lys_compile_import(struct lysc_ctx *ctx, struct lysp_import *imp_p, int options,
     COMPILE_ARRAY_GOTO(ctx, imp_p->exts, imp->exts, options, u, lys_compile_ext, ret, done);
     imp->module = imp_p->module;
 
-    /* make sure that we have both versions (lysp_ and lysc_) of the imported module. To import groupings or
-     * typedefs, the lysp_ is needed. To augment or deviate imported module, we need the lysc_ structure */
+    /* make sure that we have the parsed version (lysp_) of the imported module to import groupings or typedefs.
+     * The compiled version is needed only for augments, deviates and leafrefs, so they are checked (and added,
+     * if needed) when these nodes are finally being instantiated and validated at the end of context compilation. */
     if (!imp->module->parsed) {
         comp = imp->module->compiled;
         /* try to get filepath from the compiled version */
@@ -456,8 +457,6 @@ lys_compile_import(struct lysc_ctx *ctx, struct lysp_import *imp_p, int options,
                 return LY_ENOTFOUND;
             }
         }
-    } else if (!imp->module->compiled) {
-        return lys_compile(imp->module, options);
     }
 
 done:
