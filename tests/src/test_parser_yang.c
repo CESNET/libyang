@@ -1347,6 +1347,7 @@ test_leaf(void **state)
     TEST_DUP("mandatory", "true", "false");
     TEST_DUP("reference", "1", "2");
     TEST_DUP("status", "current", "obsolete");
+    TEST_DUP("type", "int8", "uint8");
     TEST_DUP("units", "text1", "text2");
     TEST_DUP("when", "true", "false");
 #undef TEST_DUP
@@ -1397,6 +1398,101 @@ test_leaf(void **state)
     ly_ctx_destroy(ctx.ctx, NULL);
 }
 
+static void
+test_leaflist(void **state)
+{
+    *state = test_leaf;
+
+    struct lysp_module mod = {0};
+    struct ly_parser_ctx ctx = {0};
+    struct lysp_node_leaflist *ll = NULL;
+    const char *str;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
+    assert_non_null(ctx.ctx);
+    ctx.line = 1;
+    ctx.mod = &mod;
+    ctx.mod->version = 2; /* simulate YANG 1.1 */
+
+    /* invalid cardinality */
+#define TEST_DUP(MEMBER, VALUE1, VALUE2) \
+    str = "ll {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
+    assert_int_equal(LY_EVALID, parse_leaflist(&ctx, &str, NULL, (struct lysp_node**)&ll)); \
+    logbuf_assert("Duplicate keyword \""MEMBER"\". Line number 1."); \
+    lysp_node_free(ctx.ctx, (struct lysp_node*)ll); ll = NULL;
+
+    TEST_DUP("config", "true", "false");
+    TEST_DUP("description", "text1", "text2");
+    TEST_DUP("max-elements", "10", "20");
+    TEST_DUP("min-elements", "10", "20");
+    TEST_DUP("ordered-by", "user", "system");
+    TEST_DUP("reference", "1", "2");
+    TEST_DUP("status", "current", "obsolete");
+    TEST_DUP("type", "int8", "uint8");
+    TEST_DUP("units", "text1", "text2");
+    TEST_DUP("when", "true", "false");
+#undef TEST_DUP
+
+    /* full content - without min-elements which is mutual exclusive with default */
+    str = "ll {config false;default \"xxx\"; default \"yyy\";description test;if-feature f;"
+          "max-elements 10;must 'expr';ordered-by user;reference test;"
+          "status current;type string; units zzz;when true;m:ext;} ...";
+    assert_int_equal(LY_SUCCESS, parse_leaflist(&ctx, &str, NULL, (struct lysp_node**)&ll));
+    assert_non_null(ll);
+    assert_int_equal(LYS_LEAFLIST, ll->nodetype);
+    assert_string_equal("ll", ll->name);
+    assert_string_equal("test", ll->dsc);
+    assert_non_null(ll->dflts);
+    assert_int_equal(2, LY_ARRAY_SIZE(ll->dflts));
+    assert_string_equal("xxx", ll->dflts[0]);
+    assert_string_equal("yyy", ll->dflts[1]);
+    assert_string_equal("zzz", ll->units);
+    assert_int_equal(10, ll->max);
+    assert_int_equal(0, ll->min);
+    assert_string_equal("string", ll->type.name);
+    assert_non_null(ll->exts);
+    assert_non_null(ll->iffeatures);
+    assert_non_null(ll->musts);
+    assert_string_equal("test", ll->ref);
+    assert_non_null(ll->when);
+    assert_null(ll->parent);
+    assert_null(ll->next);
+    assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_USER | LYS_SET_MAX, ll->flags);
+    lysp_node_free(ctx.ctx, (struct lysp_node*)ll); ll = NULL;
+
+    /* full content - now with min-elements */
+    str = "ll {min-elements 10; type string;} ...";
+    assert_int_equal(LY_SUCCESS, parse_leaflist(&ctx, &str, NULL, (struct lysp_node**)&ll));
+    assert_non_null(ll);
+    assert_int_equal(LYS_LEAFLIST, ll->nodetype);
+    assert_string_equal("ll", ll->name);
+    assert_string_equal("string", ll->type.name);
+    assert_int_equal(0, ll->max);
+    assert_int_equal(10, ll->min);
+    assert_int_equal(LYS_SET_MIN, ll->flags);
+    lysp_node_free(ctx.ctx, (struct lysp_node*)ll); ll = NULL;
+
+    /* invalid */
+    str = " ll {min-elements 1; default xx; type string;} ...";
+    assert_int_equal(LY_EVALID, parse_leaflist(&ctx, &str, NULL, (struct lysp_node**)&ll));
+    logbuf_assert("Invalid combination of keywords \"min-elements\" and \"default\" as children of \"leaf-list\". Line number 1.");
+    lysp_node_free(ctx.ctx, (struct lysp_node*)ll); ll = NULL;
+
+    str = " ll {description \"missing type\";} ...";
+    assert_int_equal(LY_EVALID, parse_leaflist(&ctx, &str, NULL, (struct lysp_node**)&ll));
+    logbuf_assert("Missing mandatory keyword \"type\" as a child of \"leaf-list\". Line number 1.");
+    lysp_node_free(ctx.ctx, (struct lysp_node*)ll); ll = NULL;
+
+    ctx.mod->version = 1; /* simulate YANG 1.0 - default statement is not allowed */
+    str = " ll {default xx; type string;} ...";
+    assert_int_equal(LY_EVALID, parse_leaflist(&ctx, &str, NULL, (struct lysp_node**)&ll));
+    logbuf_assert("Invalid keyword \"default\" as a child of \"leaf-list\" - the statement is allowed only in YANG 1.1 modules. Line number 1.");
+    lysp_node_free(ctx.ctx, (struct lysp_node*)ll); ll = NULL;
+
+    *state = NULL;
+    ly_ctx_destroy(ctx.ctx, NULL);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1412,6 +1508,7 @@ int main(void)
         cmocka_unit_test_setup(test_deviate, logger_setup),
         cmocka_unit_test_setup(test_container, logger_setup),
         cmocka_unit_test_setup_teardown(test_leaf, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_leaflist, logger_setup, logger_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

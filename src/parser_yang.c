@@ -2659,6 +2659,10 @@ checks:
         LOGVAL_YANG(ctx, LY_VCODE_MISSTMT, "type", "leaf-list");
         return LY_EVALID;
     }
+    if ((llist->min) && (llist->dflts)) {
+        LOGVAL_YANG(ctx, LY_VCODE_INCHILDSTMSCOMB, "min-elements", "default", "leaf-list");
+        return LY_EVALID;
+    }
 
     return ret;
 }

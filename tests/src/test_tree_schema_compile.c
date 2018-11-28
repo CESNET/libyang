@@ -372,6 +372,54 @@ test_node_container(void **state)
     ly_ctx_destroy(ctx, NULL);
 }
 
+static void
+test_node_leaflist(void **state)
+{
+    *state = test_node_leaflist;
+
+    struct ly_ctx *ctx;
+    struct lys_module *mod;
+    struct lysc_type *type;
+    struct lysc_node_leaflist *ll;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;"
+                                        "typedef mytype {type union {type leafref {path ../target;} type string;}}"
+                                        "leaf-list ll1 {type union {type decimal64 {fraction-digits 2;} type mytype;}}"
+                                        "leaf-list ll2 {type leafref {path ../target;}}"
+                                        "leaf target {type int8;}}",
+                                        LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(1, type->refcount);
+    assert_int_equal(LY_TYPE_UNION, type->basetype);
+    assert_non_null(((struct lysc_type_union*)type)->types);
+    assert_int_equal(3, LY_ARRAY_SIZE(((struct lysc_type_union*)type)->types));
+    assert_int_equal(LY_TYPE_DEC64, ((struct lysc_type_union*)type)->types[0]->basetype);
+    assert_int_equal(LY_TYPE_LEAFREF, ((struct lysc_type_union*)type)->types[1]->basetype);
+    assert_int_equal(LY_TYPE_STRING, ((struct lysc_type_union*)type)->types[2]->basetype);
+    assert_non_null(((struct lysc_type_leafref*)((struct lysc_type_union*)type)->types[1])->realtype);
+    assert_int_equal(LY_TYPE_INT8, ((struct lysc_type_leafref*)((struct lysc_type_union*)type)->types[1])->realtype->basetype);
+    type = ((struct lysc_node_leaf*)mod->compiled->data->next)->type;
+    assert_non_null(type);
+    assert_int_equal(1, type->refcount);
+    assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
+    assert_non_null(((struct lysc_type_leafref*)type)->realtype);
+    assert_int_equal(LY_TYPE_INT8, ((struct lysc_type_leafref*)type)->realtype->basetype);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;feature f; leaf-list ll {type string;}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    assert_non_null(mod->compiled);
+    assert_non_null((ll = (struct lysc_node_leaflist*)mod->compiled->data));
+    assert_int_equal(0, ll->min);
+    assert_int_equal((uint32_t)-1, ll->max);
+
+    *state = NULL;
+    ly_ctx_destroy(ctx, NULL);
+}
+
 /**
  * actually the same as length restriction (tested in test_type_length()), so just check the correct handling in appropriate types,
  * do not test the expression itself
@@ -1666,6 +1714,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_type_union, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_type_dflt, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_node_container, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_node_leaflist, logger_setup, logger_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

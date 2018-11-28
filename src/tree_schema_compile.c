@@ -437,7 +437,7 @@ lys_compile_import(struct lysc_ctx *ctx, struct lysp_import *imp_p, int options,
 
     /* make sure that we have the parsed version (lysp_) of the imported module to import groupings or typedefs.
      * The compiled version is needed only for augments, deviates and leafrefs, so they are checked (and added,
-     * if needed) when these nodes are finally being instantiated and validated at the end of context compilation. */
+     * if needed) when these nodes are finally being instantiated and validated at the end of schema compilation. */
     if (!imp->module->parsed) {
         comp = imp->module->compiled;
         /* try to get filepath from the compiled version */
@@ -2686,6 +2686,84 @@ done:
 }
 
 /**
+ * @brief Compile parsed leaf-list node information.
+ * @param[in] ctx Compile context
+ * @param[in] node_p Parsed leaf-list node.
+ * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
+ * @param[in,out] node Pre-prepared structure from lys_compile_node() with filled generic node information
+ * is enriched with the leaf-list-specific information.
+ * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
+ */
+static LY_ERR
+lys_compile_node_leaflist(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, struct lysc_node *node)
+{
+    struct lysp_node_leaflist *llist_p = (struct lysp_node_leaflist*)node_p;
+    struct lysc_node_leaflist *llist = (struct lysc_node_leaflist*)node;
+    unsigned int u, v;
+    const char *dflt = NULL;
+    LY_ERR ret = LY_SUCCESS;
+
+    COMPILE_MEMBER_GOTO(ctx, llist_p->when, llist->when, options, lys_compile_when, ret, done);
+    COMPILE_ARRAY_GOTO(ctx, llist_p->iffeatures, llist->iffeatures, options, u, lys_compile_iffeature, ret, done);
+    COMPILE_ARRAY_GOTO(ctx, llist_p->musts, llist->musts, options, u, lys_compile_must, ret, done);
+    DUP_STRING(ctx->ctx, llist_p->units, llist->units);
+
+    if (llist_p->dflts) {
+        LY_ARRAY_CREATE_GOTO(ctx->ctx, llist->dflts, LY_ARRAY_SIZE(llist_p->dflts), ret, done);
+        LY_ARRAY_FOR(llist_p->dflts, u) {
+            DUP_STRING(ctx->ctx, llist_p->dflts[u], llist->dflts[u]);
+            LY_ARRAY_INCREMENT(llist->dflts);
+        }
+    }
+
+    llist->min = llist_p->min;
+    llist->max = llist_p->max ? llist_p->max : -1;
+
+    ret = lys_compile_type(ctx, node_p, node_p->flags, ctx->mod->parsed, node_p->name, &llist_p->type, options, &llist->type,
+                           llist->units ? NULL : &llist->units, (llist->dflts || llist->min) ? NULL : &dflt);
+    LY_CHECK_GOTO(ret, done);
+    if (dflt) {
+        LY_ARRAY_CREATE_GOTO(ctx->ctx, llist->dflts, 1, ret, done);
+        llist->dflts[0] = dflt;
+        LY_ARRAY_INCREMENT(llist->dflts);
+    }
+
+    if (llist->type->basetype == LY_TYPE_LEAFREF) {
+        /* store to validate the path in the current context at the end of schema compiling when all the nodes are present */
+        ly_set_add(&ctx->unres, llist, 0);
+    } else if (llist->type->basetype == LY_TYPE_UNION) {
+        LY_ARRAY_FOR(((struct lysc_type_union*)llist->type)->types, u) {
+            if (((struct lysc_type_union*)llist->type)->types[u]->basetype == LY_TYPE_LEAFREF) {
+                /* store to validate the path in the current context at the end of schema compiling when all the nodes are present */
+                ly_set_add(&ctx->unres, llist, 0);
+            }
+        }
+    } else if (llist->type->basetype == LY_TYPE_EMPTY && llist_p->dflts) {
+        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+               "Leaf-list of type \"empty\" must not have a default value (%s).", llist_p->dflts[0]);
+        return LY_EVALID;
+    }
+
+    if ((llist->flags & LYS_CONFIG_W) && llist->dflts && LY_ARRAY_SIZE(llist->dflts)) {
+        /* configuration data values must be unique - so check the default values */
+        LY_ARRAY_FOR(llist->dflts, u) {
+            for (v = u + 1; v < LY_ARRAY_SIZE(llist->dflts); ++v) {
+                if (!strcmp(llist->dflts[u], llist->dflts[v])) {
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                           "Configuration leaf-list has multiple defaults of the same value \"%s\".", llist->dflts[v]);
+                    return LY_EVALID;
+                }
+            }
+        }
+    }
+
+    /* TODO validate default value according to the type, possibly postpone the check when the leafref target is known */
+
+done:
+    return ret;
+}
+
+/**
  * @brief Compile parsed schema node information.
  * @param[in] ctx Compile context
  * @param[in] node_p Parsed schema node.
@@ -2717,6 +2795,7 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, st
         break;
     case LYS_LEAFLIST:
         node = (struct lysc_node*)calloc(1, sizeof(struct lysc_node_leaflist));
+        node_compile_spec = lys_compile_node_leaflist;
         break;
     case LYS_CHOICE:
         node = (struct lysc_node*)calloc(1, sizeof(struct lysc_node_choice));
@@ -2733,7 +2812,7 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, st
     node->nodetype = node_p->nodetype;
     node->module = ctx->mod;
     node->prev = node;
-    node->flags = node_p->flags;
+    node->flags = node_p->flags & LYS_FLAGS_COMPILED_MASK;
 
     /* config */
     if (!(node->flags & LYS_CONFIG_MASK)) {
@@ -2876,7 +2955,7 @@ lys_compile(struct lys_module *mod, int options)
      * can be also leafref, in case it is already resolved, go through the chain and check that it does not
      * point to the starting leafref type). The second round stores the first non-leafref type for later data validation. */
     for (u = 0; u < ctx.unres.count; ++u) {
-        if (((struct lysc_node*)ctx.unres.objs[u])->nodetype == LYS_LEAF) {
+        if (((struct lysc_node*)ctx.unres.objs[u])->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
             type = ((struct lysc_node_leaf*)ctx.unres.objs[u])->type;
             if (type->basetype == LY_TYPE_LEAFREF) {
                 /* validate the path */
@@ -2895,7 +2974,7 @@ lys_compile(struct lys_module *mod, int options)
         }
     }
     for (u = 0; u < ctx.unres.count; ++u) {
-        if (((struct lysc_node*)ctx.unres.objs[u])->nodetype == LYS_LEAF) {
+        if (((struct lysc_node*)ctx.unres.objs[u])->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
             type = ((struct lysc_node_leaf*)ctx.unres.objs[u])->type;
             if (type->basetype == LY_TYPE_LEAFREF) {
                 /* store pointer to the real type */

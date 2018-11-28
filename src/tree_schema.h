@@ -565,6 +565,7 @@ struct lysp_deviation {
  *       5 LYS_FENABLED     | | | | | | | | | | | |x| | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       6 LYS_MAND_TRUE    | |x|x| | |x| | | | | | | | |
+ *         LYS_ORDBY_SYSTEM | | | |x|x| | | | | | | | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       7 LYS_ORDBY_USER   | | | |x|x| | | | | | | | | |
  *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -614,6 +615,8 @@ struct lysp_deviation {
 #define LYS_SET_RANGE    0x0080      /**< type's flag for present range substatement */
 #define LYS_SET_TYPE     0x0100      /**< type's flag for present type substatement */
 #define LYS_SET_REQINST  0x0200      /**< type's flag for present require-instance substatement */
+
+#define LYS_FLAGS_COMPILED_MASK 0x7f /**< mask for flags that maps to the compiled structures */
 /** @} */
 
 /**
@@ -1235,6 +1238,11 @@ struct lysc_node_leaflist {
 
     struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
     struct lysc_type *type;          /**< type of the leaf node (mandatory) */
+
+    const char *units;               /**< units of the leaf's type */
+    const char **dflts;              /**< list of default values ([sized array](@ref sizedarrays)) */
+    uint32_t min;                    /**< min-elements constraint */
+    uint32_t max;                    /**< max-elements constraint */
 
 };
 

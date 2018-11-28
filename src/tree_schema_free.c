@@ -620,6 +620,7 @@ lysc_node_free(struct ly_ctx *ctx, struct lysc_node *node)
         lysc_node_container_free(ctx, (struct lysc_node_container*)node);
         break;
     case LYS_LEAF:
+    case LYS_LEAFLIST:
         lysc_node_leaf_free(ctx, (struct lysc_node_leaf*)node);
         break;
     default:
