@@ -2663,6 +2663,12 @@ checks:
         LOGVAL_YANG(ctx, LY_VCODE_INCHILDSTMSCOMB, "min-elements", "default", "leaf-list");
         return LY_EVALID;
     }
+    if (llist->max && llist->min > llist->max) {
+        LOGVAL_YANG(ctx, LYVE_SEMANTICS,
+                    "Invalid combination of min-elements and max-elements: min value %u is bigger than the max value %u.",
+                    llist->min, llist->max);
+        return LY_EVALID;
+    }
 
     return ret;
 }

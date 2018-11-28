@@ -686,14 +686,20 @@ test_minmax(void **state)
     ctx.mod = &mod;
     ctx.mod->version = 2; /* simulate YANG 1.1 */
 
-    str = " invalid; ...";
+    str = " 1invalid; ...";
     assert_int_equal(LY_EVALID, parse_minelements(&ctx, &str, &value, &flags, &ext));
-    logbuf_assert("Invalid value \"invalid\" of \"min-elements\". Line number 1.");
+    logbuf_assert("Invalid value \"1invalid\" of \"min-elements\". Line number 1.");
 
     flags = value = 0;
     str = " -1; ...";
     assert_int_equal(LY_EVALID, parse_minelements(&ctx, &str, &value, &flags, &ext));
     logbuf_assert("Invalid value \"-1\" of \"min-elements\". Line number 1.");
+
+    /* implementation limit */
+    flags = value = 0;
+    str = " 4294967296; ...";
+    assert_int_equal(LY_EVALID, parse_minelements(&ctx, &str, &value, &flags, &ext));
+    logbuf_assert("Value \"4294967296\" is out of \"min-elements\" bounds. Line number 1.");
 
     flags = value = 0;
     str = " 1; ...";
@@ -715,14 +721,20 @@ test_minmax(void **state)
     assert_int_equal(LY_EVALID, parse_minelements(&ctx, &str, &value, &flags, &ext));
     logbuf_assert("Invalid keyword \"config\" as a child of \"min-elements\". Line number 1.");
 
-    str = " invalid; ...";
+    str = " 1invalid; ...";
     assert_int_equal(LY_EVALID, parse_maxelements(&ctx, &str, &value, &flags, &ext));
-    logbuf_assert("Invalid value \"invalid\" of \"max-elements\". Line number 1.");
+    logbuf_assert("Invalid value \"1invalid\" of \"max-elements\". Line number 1.");
 
     flags = value = 0;
     str = " -1; ...";
     assert_int_equal(LY_EVALID, parse_maxelements(&ctx, &str, &value, &flags, &ext));
     logbuf_assert("Invalid value \"-1\" of \"max-elements\". Line number 1.");
+
+    /* implementation limit */
+    flags = value = 0;
+    str = " 4294967296; ...";
+    assert_int_equal(LY_EVALID, parse_maxelements(&ctx, &str, &value, &flags, &ext));
+    logbuf_assert("Value \"4294967296\" is out of \"max-elements\" bounds. Line number 1.");
 
     flags = value = 0;
     str = " 1; ...";
@@ -1481,6 +1493,11 @@ test_leaflist(void **state)
     str = " ll {description \"missing type\";} ...";
     assert_int_equal(LY_EVALID, parse_leaflist(&ctx, &str, NULL, (struct lysp_node**)&ll));
     logbuf_assert("Missing mandatory keyword \"type\" as a child of \"leaf-list\". Line number 1.");
+    lysp_node_free(ctx.ctx, (struct lysp_node*)ll); ll = NULL;
+
+    str = " ll {type string; min-elements 10; max-elements 1;} ..."; /* invalid combination of min/max */
+    assert_int_equal(LY_EVALID, parse_leaflist(&ctx, &str, NULL, (struct lysp_node**)&ll));
+    logbuf_assert("Invalid combination of min-elements and max-elements: min value 10 is bigger than the max value 1. Line number 1.");
     lysp_node_free(ctx.ctx, (struct lysp_node*)ll); ll = NULL;
 
     ctx.mod->version = 1; /* simulate YANG 1.0 - default statement is not allowed */
