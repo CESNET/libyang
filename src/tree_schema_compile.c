@@ -2717,7 +2717,7 @@ lys_compile_node_leaflist(struct lysc_ctx *ctx, struct lysp_node *node_p, int op
     }
 
     llist->min = llist_p->min;
-    llist->max = llist_p->max ? llist_p->max : -1;
+    llist->max = llist_p->max ? llist_p->max : (uint32_t)-1;
 
     ret = lys_compile_type(ctx, node_p, node_p->flags, ctx->mod->parsed, node_p->name, &llist_p->type, options, &llist->type,
                            llist->units ? NULL : &llist->units, (llist->dflts || llist->min) ? NULL : &dflt);
