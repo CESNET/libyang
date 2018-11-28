@@ -668,6 +668,92 @@ test_stmts(void **state)
     assert_ptr_equal(p, word);
 }
 
+static void
+test_minmax(void **state)
+{
+    *state = test_minmax;
+
+    struct lysp_module mod = {0};
+    struct ly_parser_ctx ctx = {0};
+    uint16_t flags = 0;
+    uint32_t value = 0;
+    struct lysp_ext_instance *ext = NULL;
+    const char *str;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
+    assert_non_null(ctx.ctx);
+    ctx.line = 1;
+    ctx.mod = &mod;
+    ctx.mod->version = 2; /* simulate YANG 1.1 */
+
+    str = " invalid; ...";
+    assert_int_equal(LY_EVALID, parse_minelements(&ctx, &str, &value, &flags, &ext));
+    logbuf_assert("Invalid value \"invalid\" of \"min-elements\". Line number 1.");
+
+    flags = value = 0;
+    str = " -1; ...";
+    assert_int_equal(LY_EVALID, parse_minelements(&ctx, &str, &value, &flags, &ext));
+    logbuf_assert("Invalid value \"-1\" of \"min-elements\". Line number 1.");
+
+    flags = value = 0;
+    str = " 1; ...";
+    assert_int_equal(LY_SUCCESS, parse_minelements(&ctx, &str, &value, &flags, &ext));
+    assert_int_equal(LYS_SET_MIN, flags);
+    assert_int_equal(1, value);
+
+    flags = value = 0;
+    str = " 1 {m:ext;} ...";
+    assert_int_equal(LY_SUCCESS, parse_minelements(&ctx, &str, &value, &flags, &ext));
+    assert_int_equal(LYS_SET_MIN, flags);
+    assert_int_equal(1, value);
+    assert_non_null(ext);
+    FREE_ARRAY(ctx.ctx, ext, lysp_ext_instance_free);
+    ext = NULL;
+
+    flags = value = 0;
+    str = " 1 {config true;} ...";
+    assert_int_equal(LY_EVALID, parse_minelements(&ctx, &str, &value, &flags, &ext));
+    logbuf_assert("Invalid keyword \"config\" as a child of \"min-elements\". Line number 1.");
+
+    str = " invalid; ...";
+    assert_int_equal(LY_EVALID, parse_maxelements(&ctx, &str, &value, &flags, &ext));
+    logbuf_assert("Invalid value \"invalid\" of \"max-elements\". Line number 1.");
+
+    flags = value = 0;
+    str = " -1; ...";
+    assert_int_equal(LY_EVALID, parse_maxelements(&ctx, &str, &value, &flags, &ext));
+    logbuf_assert("Invalid value \"-1\" of \"max-elements\". Line number 1.");
+
+    flags = value = 0;
+    str = " 1; ...";
+    assert_int_equal(LY_SUCCESS, parse_maxelements(&ctx, &str, &value, &flags, &ext));
+    assert_int_equal(LYS_SET_MAX, flags);
+    assert_int_equal(1, value);
+
+    flags = value = 0;
+    str = " unbounded; ...";
+    assert_int_equal(LY_SUCCESS, parse_maxelements(&ctx, &str, &value, &flags, &ext));
+    assert_int_equal(LYS_SET_MAX, flags);
+    assert_int_equal(0, value);
+
+    flags = value = 0;
+    str = " 1 {m:ext;} ...";
+    assert_int_equal(LY_SUCCESS, parse_maxelements(&ctx, &str, &value, &flags, &ext));
+    assert_int_equal(LYS_SET_MAX, flags);
+    assert_int_equal(1, value);
+    assert_non_null(ext);
+    FREE_ARRAY(ctx.ctx, ext, lysp_ext_instance_free);
+    ext = NULL;
+
+    flags = value = 0;
+    str = " 1 {config true;} ...";
+    assert_int_equal(LY_EVALID, parse_maxelements(&ctx, &str, &value, &flags, &ext));
+    logbuf_assert("Invalid keyword \"config\" as a child of \"max-elements\". Line number 1.");
+
+    *state = NULL;
+    ly_ctx_destroy(ctx.ctx, NULL);
+}
+
 static struct lysp_module *
 mod_renew(struct ly_parser_ctx *ctx, struct lysp_module *mod, uint8_t submodule)
 {
@@ -1318,6 +1404,7 @@ int main(void)
         cmocka_unit_test_setup(test_comments, logger_setup),
         cmocka_unit_test_setup(test_arg, logger_setup),
         cmocka_unit_test_setup(test_stmts, logger_setup),
+        cmocka_unit_test_setup_teardown(test_minmax, logger_setup, logger_teardown),
         cmocka_unit_test_setup(test_module, logger_setup),
         cmocka_unit_test_setup(test_identity, logger_setup),
         cmocka_unit_test_setup(test_feature, logger_setup),
