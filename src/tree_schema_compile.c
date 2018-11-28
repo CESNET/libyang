@@ -2738,10 +2738,16 @@ lys_compile_node_leaflist(struct lysc_ctx *ctx, struct lysp_node *node_p, int op
                 ly_set_add(&ctx->unres, llist, 0);
             }
         }
-    } else if (llist->type->basetype == LY_TYPE_EMPTY && llist_p->dflts) {
-        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-               "Leaf-list of type \"empty\" must not have a default value (%s).", llist_p->dflts[0]);
-        return LY_EVALID;
+    } else if (llist->type->basetype == LY_TYPE_EMPTY) {
+        if (ctx->mod->compiled->version < LYS_VERSION_1_1) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                   "Leaf-list of type \"empty\" is allowed only in YANG 1.1 modules.");
+            return LY_EVALID;
+        } else if (llist_p->dflts) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                   "Leaf-list of type \"empty\" must not have a default value (%s).", llist_p->dflts[0]);
+            return LY_EVALID;
+        }
     }
 
     if ((llist->flags & LYS_CONFIG_W) && llist->dflts && LY_ARRAY_SIZE(llist->dflts)) {

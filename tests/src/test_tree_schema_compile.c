@@ -409,12 +409,50 @@ test_node_leaflist(void **state)
     assert_non_null(((struct lysc_type_leafref*)type)->realtype);
     assert_int_equal(LY_TYPE_INT8, ((struct lysc_type_leafref*)type)->realtype->basetype);
 
-    assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;feature f; leaf-list ll {type string;}}", LYS_IN_YANG));
+    assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;leaf-list ll {type string;}}", LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
     assert_non_null(mod->compiled);
     assert_non_null((ll = (struct lysc_node_leaflist*)mod->compiled->data));
     assert_int_equal(0, ll->min);
     assert_int_equal((uint32_t)-1, ll->max);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module c {yang-version 1.1;namespace urn:c;prefix c;typedef mytype {type int8;default 10;}"
+                                        "leaf-list ll1 {type mytype;default 1; default 2;}"
+                                        "leaf-list ll2 {type mytype;}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    assert_non_null(mod->compiled);
+    assert_non_null((ll = (struct lysc_node_leaflist*)mod->compiled->data));
+    assert_non_null(ll->dflts);
+    assert_int_equal(3, ll->type->refcount);
+    assert_int_equal(2, LY_ARRAY_SIZE(ll->dflts));
+    assert_string_equal("1", ll->dflts[0]);
+    assert_string_equal("2", ll->dflts[1]);
+    assert_non_null((ll = (struct lysc_node_leaflist*)mod->compiled->data->next));
+    assert_non_null(ll->dflts);
+    assert_int_equal(3, ll->type->refcount);
+    assert_int_equal(1, LY_ARRAY_SIZE(ll->dflts));
+    assert_string_equal("10", ll->dflts[0]);
+
+    /* invalid */
+    assert_non_null(mod = lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;leaf-list ll {type empty;}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Leaf-list of type \"empty\" is allowed only in YANG 1.1 modules.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module bb {yang-version 1.1;namespace urn:bb;prefix bb;leaf-list ll {type empty; default x;}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Leaf-list of type \"empty\" must not have a default value (x).");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module cc {yang-version 1.1;namespace urn:cc;prefix cc;"
+                                        "leaf-list ll {config false;type string; default one;default two;default one;}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    assert_non_null(mod->compiled);
+    assert_non_null((ll = (struct lysc_node_leaflist*)mod->compiled->data));
+    assert_non_null(ll->dflts);
+    assert_int_equal(3, LY_ARRAY_SIZE(ll->dflts));
+    assert_non_null(mod = lys_parse_mem(ctx, "module dd {yang-version 1.1;namespace urn:dd;prefix dd;"
+                                        "leaf-list ll {type string; default one;default two;default one;}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Configuration leaf-list has multiple defaults of the same value \"one\".");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
