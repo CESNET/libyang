@@ -1572,12 +1572,13 @@ done:
  * @param[in] ctx Compile context
  * @param[in, out] predicate Pointer to the predicate in the leafref path. The pointer is moved after the validated predicate(s).
  * Since there can be multiple adjacent predicates for lists with multiple keys, all such predicates are validated.
+ * @param[in] start_node Path context node (where the path is instantiated).
  * @param[in] context_node Predicate context node (where the predicate is placed).
  * @param[in] path_context Schema where the path was defined to correct resolve of the prefixes.
  * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
  */
 static LY_ERR
-lys_compile_leafref_predicate_validate(struct lysc_ctx *ctx, const char **predicate,
+lys_compile_leafref_predicate_validate(struct lysc_ctx *ctx, const char **predicate, const struct lysc_node *start_node,
                                        const struct lysc_node *context_node, const struct lys_module *path_context)
 {
     LY_ERR ret = LY_EVALID;
@@ -1628,7 +1629,7 @@ lys_compile_leafref_predicate_validate(struct lysc_ctx *ctx, const char **predic
         if (src_prefix) {
             mod = lys_module_find_prefix(path_context, src_prefix, src_prefix_len);
         } else {
-            mod = path_context;
+            mod = start_node->module;
         }
         src_node = lys_child(context_node, mod, src, src_len,
                              mod->compiled->version < LYS_VERSION_1_1 ? LYS_LEAF : LYS_LEAF | LYS_LEAFLIST, LYS_GETNEXT_NOSTATECHECK);
@@ -1652,7 +1653,7 @@ lys_compile_leafref_predicate_validate(struct lysc_ctx *ctx, const char **predic
 
         /* destination */
         dest_parent_times = 0;
-        dst_node = context_node;
+        dst_node = start_node;
 
         /* current-function-invocation *WSP "/" *WSP rel-path-keyexpr */
         if (strncmp(path_key_expr, "current()", 9)) {
@@ -1726,7 +1727,7 @@ lys_compile_leafref_predicate_validate(struct lysc_ctx *ctx, const char **predic
             if (dst_prefix) {
                 mod = lys_module_find_prefix(path_context, dst_prefix, dst_prefix_len);
             } else {
-                mod = path_context;
+                mod = start_node->module;
             }
             if (!mod) {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
@@ -1933,7 +1934,7 @@ lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *startnode, 
         if (prefix) {
             mod = lys_module_find_prefix(leafref->path_context, prefix, prefix_len);
         } else {
-            mod = leafref->path_context;
+            mod = startnode->module;
         }
         if (!mod) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
@@ -1959,7 +1960,7 @@ lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *startnode, 
                 return LY_EVALID;
             }
 
-            LY_CHECK_RET(lys_compile_leafref_predicate_validate(ctx, &id, node, leafref->path_context), LY_EVALID);
+            LY_CHECK_RET(lys_compile_leafref_predicate_validate(ctx, &id, startnode, node, leafref->path_context), LY_EVALID);
         }
 
         ++iter;
