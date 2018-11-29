@@ -2831,6 +2831,19 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, st
         }
     }
 
+    /* *list ordering */
+    if (node->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
+        if ((node->flags & LYS_CONFIG_R) && (node->flags & LYS_ORDBY_MASK)) {
+            LOGWRN(ctx->ctx, "The ordered-by statement is ignored in lists representing state data, "
+                   "RPC/action output parameters or notification content (%s).", ctx->path);
+            node->flags &= ~LYS_ORDBY_MASK;
+            node->flags |= LYS_ORDBY_SYSTEM;
+        } else if (!(node->flags & LYS_ORDBY_MASK)) {
+            /* default ordering is system */
+            node->flags |= LYS_ORDBY_SYSTEM;
+        }
+    }
+
     /* status - it is not inherited by specification, but it does not make sense to have
      * current in deprecated or deprecated in obsolete, so we do print warning and inherit status */
     if (!(node->flags & LYS_STATUS_MASK)) {

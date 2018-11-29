@@ -417,8 +417,8 @@ test_node_leaflist(void **state)
     assert_int_equal((uint32_t)-1, ll->max);
 
     assert_non_null(mod = lys_parse_mem(ctx, "module c {yang-version 1.1;namespace urn:c;prefix c;typedef mytype {type int8;default 10;}"
-                                        "leaf-list ll1 {type mytype;default 1; default 2;}"
-                                        "leaf-list ll2 {type mytype;}}", LYS_IN_YANG));
+                                        "leaf-list ll1 {type mytype;default 1; default 2; config false;}"
+                                        "leaf-list ll2 {type mytype; ordered-by user;}}", LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
     assert_non_null(mod->compiled);
     assert_non_null((ll = (struct lysc_node_leaflist*)mod->compiled->data));
@@ -427,11 +427,24 @@ test_node_leaflist(void **state)
     assert_int_equal(2, LY_ARRAY_SIZE(ll->dflts));
     assert_string_equal("1", ll->dflts[0]);
     assert_string_equal("2", ll->dflts[1]);
+    assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM, ll->flags);
     assert_non_null((ll = (struct lysc_node_leaflist*)mod->compiled->data->next));
     assert_non_null(ll->dflts);
     assert_int_equal(3, ll->type->refcount);
     assert_int_equal(1, LY_ARRAY_SIZE(ll->dflts));
     assert_string_equal("10", ll->dflts[0]);
+    assert_int_equal(LYS_CONFIG_W | LYS_STATUS_CURR | LYS_ORDBY_USER, ll->flags);
+
+    /* ordered-by is ignored for state data, RPC/action output parameters and notification content
+     * TODO test also, RPC output parameters and notification content */
+    assert_non_null(mod = lys_parse_mem(ctx, "module d {yang-version 1.1;namespace urn:d;prefix d;"
+                                        "leaf-list ll {config false; type string; ordered-by user;}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    /* but warning is present: */
+    logbuf_assert("The ordered-by statement is ignored in lists representing state data, RPC/action output parameters or notification content ().");
+    assert_non_null(mod->compiled);
+    assert_non_null((ll = (struct lysc_node_leaflist*)mod->compiled->data));
+    assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM, ll->flags);
 
     /* invalid */
     assert_non_null(mod = lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;leaf-list ll {type empty;}}", LYS_IN_YANG));
