@@ -2839,7 +2839,7 @@ warn_is_numeric_type(struct lys_type *type)
             if (!node) {
                 LOGINT(((struct lys_node *)type->parent)->module->ctx);
             }
-            return 1;
+            return 0;
         }
         return warn_is_numeric_type(&type->info.lref.target->type);
     default:
@@ -2877,6 +2877,10 @@ warn_is_string_type(struct lys_type *type)
         /* did not find any suitable type */
         return 0;
     case LY_TYPE_LEAFREF:
+        if (!type->info.lref.target) {
+            /* we are in a grouping */
+            return 0;
+        }
         return warn_is_string_type(&type->info.lref.target->type);
     default:
         return 0;
@@ -2908,6 +2912,10 @@ warn_is_specific_type(struct lys_type *type, LY_DATA_TYPE base)
         /* did not find any suitable type */
         return 0;
     } else if (type->base == LY_TYPE_LEAFREF) {
+        if (!type->info.lref.target) {
+            /* we are in a grouping */
+            return 1;
+        }
         return warn_is_specific_type(&type->info.lref.target->type, base);
     }
 
@@ -2924,6 +2932,10 @@ warn_is_equal_type_next_type(struct lys_type *type, struct lys_type *prev_type)
         /* this can, unfortunately, return leafref */
         return lyp_get_next_union_type(type, prev_type, &found);
     case LY_TYPE_LEAFREF:
+        if (!type->info.lref.target) {
+            /* we are in a grouping */
+            return type;
+        }
         return warn_is_equal_type_next_type(&type->info.lref.target->type, prev_type);
     default:
         if (prev_type) {
