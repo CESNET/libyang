@@ -754,8 +754,6 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
                     return EXIT_FAILURE;
                 }
             }
-
-
         }
 
         /* remove the flag */
@@ -786,9 +784,14 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
     }
 
     if (node->validity & LYD_VAL_UNIQUE) {
-        /* check the unique constraint at the end (once the parsing is done) */
-        if (unres_data_add(unres, node, UNRES_UNIQ_LEAVES)) {
-            return 1;
+        if (options & LYD_OPT_TRUSTED) {
+            /* just remove flag */
+            node->validity &= ~LYD_VAL_UNIQUE;
+        } else {
+            /* check the unique constraint at the end (once the parsing is done) */
+            if (unres_data_add(unres, node, UNRES_UNIQ_LEAVES)) {
+                return 1;
+            }
         }
     }
 

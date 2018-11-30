@@ -5034,6 +5034,12 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
                 continue;
             }
 
+            if (options & LYD_OPT_TRUSTED) {
+                /* just clear the flag */
+                root->validity &= ~LYD_VAL_DUP;
+                continue;
+            }
+
             if (lyv_data_dup(root, *node)) {
                 goto cleanup;
             }
