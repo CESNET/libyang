@@ -1817,7 +1817,7 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
     const struct lys_node_list *slist;
     const struct lys_module *module, *prev_mod;
     int r, i, parsed = 0, mod_name_len, nam_len, val_name_len, val_len;
-    int is_relative = -1, has_predicate, first_iter = 1;
+    int is_relative = -1, has_predicate, first_iter = 1, edit_leaf;
     int backup_is_relative, backup_mod_name_len, yang_data_name_len;
 
     if (!path || (!data_tree && !ctx)
@@ -2046,8 +2046,14 @@ lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, v
                 lyd_free(ret);
                 return NULL;
             }
+
+            if ((options & LYD_PATH_OPT_EDIT) && schild->nodetype == LYS_LEAF) {
+                edit_leaf = 1;
+            } else {
+                edit_leaf = 0;
+            }
             node = _lyd_new_leaf(is_relative ? parent : NULL, schild, (str ? str : value),
-                                 (options & LYD_PATH_OPT_DFLT) ? 1 : 0, (options & LYD_PATH_OPT_EDIT) ? 1 : 0);
+                                 (options & LYD_PATH_OPT_DFLT) ? 1 : 0, edit_leaf);
             free(str);
             break;
         case LYS_ANYXML:
