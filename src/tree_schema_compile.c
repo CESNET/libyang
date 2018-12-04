@@ -1590,6 +1590,8 @@ lys_compile_leafref_predicate_validate(struct lysc_ctx *ctx, const char **predic
     struct ly_set keys = {0};
     int i;
 
+    assert(path_context);
+
     while (**predicate == '[') {
         start = (*predicate)++;
 
@@ -1627,6 +1629,12 @@ lys_compile_leafref_predicate_validate(struct lysc_ctx *ctx, const char **predic
         /* source (must be leaf or leaf-list) */
         if (src_prefix) {
             mod = lys_module_find_prefix(path_context, src_prefix, src_prefix_len);
+            if (!mod) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                       "Invalid leafref path predicate \"%.*s\" - prefix \"%.*s\" not defined in module \"%s\".",
+                       *predicate - start, start, src_prefix_len, src_prefix, path_context->compiled->name);
+                goto cleanup;
+            }
         } else {
             mod = start_node->module;
         }
@@ -2024,6 +2032,7 @@ static LY_ERR lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_n
  * @param[in] context_mod Module of the context node or the referencing typedef to correctly check status of referencing and referenced objects.
  * @param[in] context_name Name of the context node or referencing typedef for logging.
  * @param[in] type_p Parsed type to compile.
+ * @param[in] module Context module for the leafref path (to correctly resolve prefixes in path)
  * @param[in] basetype Base YANG built-in type of the type to compile.
  * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
  * @param[in] tpdfname Name of the type's typedef, serves as a flag - if it is leaf/leaf-list's type, it is NULL.
@@ -2268,6 +2277,18 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16
     case LY_TYPE_LEAFREF:
         /* RFC 7950 9.9.3 - require-instance */
         if (type_p->flags & LYS_SET_REQINST) {
+            if (context_mod->version < LYS_VERSION_1_1) {
+                if (tpdfname) {
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                           "Leafref type \"%s\" can be restricted by require-instance statement only in YANG 1.1 modules.", tpdfname);
+                } else {
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                           "Leafref type can be restricted by require-instance statement only in YANG 1.1 modules.");
+                    free(*type);
+                    *type = NULL;
+                }
+                return LY_EVALID;
+            }
             ((struct lysc_type_leafref*)(*type))->require_instance = type_p->require_instance;
         } else if (base) {
             /* inherit */
@@ -2770,6 +2791,168 @@ done:
 }
 
 /**
+ * @brief Compile parsed list node information.
+ * @param[in] ctx Compile context
+ * @param[in] node_p Parsed list node.
+ * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
+ * @param[in,out] node Pre-prepared structure from lys_compile_node() with filled generic node information
+ * is enriched with the list-specific information.
+ * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
+ */
+static LY_ERR
+lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, struct lysc_node *node)
+{
+    struct lysp_node_list *list_p = (struct lysp_node_list*)node_p;
+    struct lysc_node_list *list = (struct lysc_node_list*)node;
+    struct lysp_node *child_p;
+    struct lysc_node_leaf **key, ***unique;
+    size_t len;
+    unsigned int u, v;
+    const char *keystr, *delim;
+    int config;
+    LY_ERR ret = LY_SUCCESS;
+
+    COMPILE_MEMBER_GOTO(ctx, list_p->when, list->when, options, lys_compile_when, ret, done);
+    COMPILE_ARRAY_GOTO(ctx, list_p->iffeatures, list->iffeatures, options, u, lys_compile_iffeature, ret, done);
+    list->min = list_p->min;
+    list->max = list_p->max ? list_p->max : (uint32_t)-1;
+
+    LY_LIST_FOR(list_p->child, child_p) {
+        LY_CHECK_RET(lys_compile_node(ctx, child_p, options, node));
+    }
+
+    COMPILE_ARRAY_GOTO(ctx, list_p->musts, list->musts, options, u, lys_compile_must, ret, done);
+
+    /* keys */
+    if ((list->flags & LYS_CONFIG_W) && (!list_p->key || !list_p->key[0])) {
+        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS, "Missing key in list representing configuration data.");
+        return LY_EVALID;
+    }
+
+    /* find all the keys (must be direct children) */
+    keystr = list_p->key;
+    while (keystr) {
+        delim = strpbrk(keystr, " \t\n");
+        if (delim) {
+            len = delim - keystr;
+            while (isspace(*delim)) {
+                ++delim;
+            }
+        } else {
+            len = strlen(keystr);
+        }
+
+        /* key node must be present */
+        LY_ARRAY_NEW_RET(ctx->ctx, list->keys, key, LY_EMEM);
+        *key = (struct lysc_node_leaf*)lys_child(node, node->module, keystr, len, LYS_LEAF, LYS_GETNEXT_NOCHOICE | LYS_GETNEXT_NOSTATECHECK);
+        if (!(*key)) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                   "The list's key \"%.*s\" not found.", len, keystr);
+            return LY_EVALID;
+        }
+        /* keys must be unique */
+        for(u = 0; u < LY_ARRAY_SIZE(list->keys) - 1; ++u) {
+            if (*key == list->keys[u]) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                       "Duplicated key identifier \"%.*s\".", len, keystr);
+                return LY_EVALID;
+            }
+        }
+        /* key must have the same config flag as the list itself */
+        if ((list->flags & LYS_CONFIG_MASK) != ((*key)->flags & LYS_CONFIG_MASK)) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS, "Key of the configuration list must not be status leaf.");
+            return LY_EVALID;
+        }
+        if (ctx->mod->compiled->version < LYS_VERSION_1_1) {
+            /* YANG 1.0 denies key to be of empty type */
+            if ((*key)->type->basetype == LY_TYPE_EMPTY) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                       "Key of a list can be of type \"empty\" only in YANG 1.1 modules.");
+                return LY_EVALID;
+            }
+        } else {
+            /* when and if-feature are illegal on list keys */
+            if ((*key)->when) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                       "List's key \"%s\" must not have any \"when\" statement.", (*key)->name);
+                return LY_EVALID;
+            }
+            if ((*key)->iffeatures) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                       "List's key \"%s\" must not have any \"if-feature\" statement.", (*key)->name);
+                return LY_EVALID;
+            }
+        }
+        /* ignore default values of the key */
+        if ((*key)->dflt) {
+            lydict_remove(ctx->ctx, (*key)->dflt);
+            (*key)->dflt = NULL;
+        }
+        /* mark leaf as key */
+        (*key)->flags |= LYS_KEY;
+
+        /* next key value */
+        keystr = delim;
+    }
+
+    /* uniques */
+    if (list_p->uniques) {
+        for (v = 0; v < LY_ARRAY_SIZE(list_p->uniques); ++v) {
+            config = -1;
+            LY_ARRAY_NEW_RET(ctx->ctx, list->uniques, unique, LY_EMEM);
+            keystr = list_p->uniques[v];
+            while (keystr) {
+                delim = strpbrk(keystr, " \t\n");
+                if (delim) {
+                    len = delim - keystr;
+                    while (isspace(*delim)) {
+                        ++delim;
+                    }
+                } else {
+                    len = strlen(keystr);
+                }
+
+                /* unique node must be present */
+                LY_ARRAY_NEW_RET(ctx->ctx, *unique, key, LY_EMEM);
+                ret = lys_resolve_descendant_schema_nodeid(ctx, keystr, len, node, LYS_LEAF, (const struct lysc_node**)key);
+                if (ret != LY_SUCCESS) {
+                    if (ret == LY_EDENIED) {
+                        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                               "Unique's descendant-schema-nodeid \"%.*s\" refers to a %s node instead of a leaf.",
+                               len, keystr, lys_nodetype2str((*key)->nodetype));
+                    }
+                    return LY_EVALID;
+                }
+
+                /* all referenced leafs must be of the same config type */
+                if (config != -1 && ((((*key)->flags & LYS_CONFIG_W) && config == 0) || (((*key)->flags & LYS_CONFIG_R) && config == 1))) {
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                           "Unique statement \"%s\" refers to leafs with different config type.", list_p->uniques[v]);
+                    return LY_EVALID;
+                } else if ((*key)->flags & LYS_CONFIG_W) {
+                    config = 1;
+                } else { /* LYS_CONFIG_R */
+                    config = 0;
+                }
+
+                /* mark leaf as unique */
+                (*key)->flags |= LYS_UNIQUE;
+
+                /* next unique value in line */
+                keystr = delim;
+            }
+            /* next unique definition */
+        }
+    }
+
+    //COMPILE_ARRAY_GOTO(ctx, list_p->actions, list->actions, options, u, lys_compile_action, ret, done);
+    //COMPILE_ARRAY_GOTO(ctx, list_p->notifs, list->notifs, options, u, lys_compile_notif, ret, done);
+
+done:
+    return ret;
+}
+
+/**
  * @brief Compile parsed schema node information.
  * @param[in] ctx Compile context
  * @param[in] node_p Parsed schema node.
@@ -2798,6 +2981,7 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, st
         break;
     case LYS_LIST:
         node = (struct lysc_node*)calloc(1, sizeof(struct lysc_node_list));
+        node_compile_spec = lys_compile_node_list;
         break;
     case LYS_LEAFLIST:
         node = (struct lysc_node*)calloc(1, sizeof(struct lysc_node_leaflist));
@@ -2829,6 +3013,11 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, st
             /* default is config true */
             node->flags |= LYS_CONFIG_W;
         }
+    }
+    if (parent && (parent->flags & LYS_CONFIG_R) && (node->flags & LYS_CONFIG_W)) {
+        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+               "Configuration node cannot be child of any state data node.");
+        goto error;
     }
 
     /* *list ordering */

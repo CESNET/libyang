@@ -417,7 +417,7 @@ test_node_leaflist(void **state)
     assert_int_equal((uint32_t)-1, ll->max);
 
     assert_non_null(mod = lys_parse_mem(ctx, "module c {yang-version 1.1;namespace urn:c;prefix c;typedef mytype {type int8;default 10;}"
-                                        "leaf-list ll1 {type mytype;default 1; default 2; config false;}"
+                                        "leaf-list ll1 {type mytype;default 1; default 1; config false;}"
                                         "leaf-list ll2 {type mytype; ordered-by user;}}", LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
     assert_non_null(mod->compiled);
@@ -426,7 +426,7 @@ test_node_leaflist(void **state)
     assert_int_equal(3, ll->type->refcount);
     assert_int_equal(2, LY_ARRAY_SIZE(ll->dflts));
     assert_string_equal("1", ll->dflts[0]);
-    assert_string_equal("2", ll->dflts[1]);
+    assert_string_equal("1", ll->dflts[1]);
     assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM, ll->flags);
     assert_non_null((ll = (struct lysc_node_leaflist*)mod->compiled->data->next));
     assert_non_null(ll->dflts);
@@ -466,6 +466,107 @@ test_node_leaflist(void **state)
                                         "leaf-list ll {type string; default one;default two;default one;}}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
     logbuf_assert("Configuration leaf-list has multiple defaults of the same value \"one\".");
+
+    *state = NULL;
+    ly_ctx_destroy(ctx, NULL);
+}
+
+static void
+test_node_list(void **state)
+{
+    *state = test_node_list;
+
+    struct ly_ctx *ctx;
+    struct lys_module *mod;
+    struct lysc_node_list *list;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;feature f;"
+                                        "list l1 {key \"x y\"; ordered-by user; leaf x {type string; when 1;}leaf y{type string;if-feature f;}}"
+                                        "list l2 {config false;leaf value {type string;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    list = (struct lysc_node_list*)mod->compiled->data;
+    assert_non_null(list);
+    assert_non_null(list->keys);
+    assert_int_equal(2, LY_ARRAY_SIZE(list->keys));
+    assert_string_equal("x", list->keys[0]->name);
+    assert_string_equal("y", list->keys[1]->name);
+    assert_non_null(list->child);
+    assert_int_equal(LYS_CONFIG_W | LYS_STATUS_CURR | LYS_ORDBY_USER, list->flags);
+    assert_true(list->child->flags & LYS_KEY);
+    assert_true(list->child->next->flags & LYS_KEY);
+    list = (struct lysc_node_list*)mod->compiled->data->next;
+    assert_non_null(list);
+    assert_null(list->keys);
+    assert_non_null(list->child);
+    assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM, list->flags);
+    assert_false(list->child->flags & LYS_KEY);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;"
+                                        "list l {key a; unique \"a c/b:b\"; unique \"c/e d\";"
+                                        "leaf a {type string;} leaf d {type string;config false;}"
+                                        "container c {leaf b {type string;}leaf e{type string;config false;}}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    list = (struct lysc_node_list*)mod->compiled->data;
+    assert_non_null(list);
+    assert_string_equal("l", list->name);
+    assert_non_null(list->keys);
+    assert_int_equal(1, LY_ARRAY_SIZE(list->keys));
+    assert_string_equal("a", list->keys[0]->name);
+    assert_true(list->keys[0]->flags & LYS_KEY);
+    assert_non_null(list->uniques);
+    assert_int_equal(2, LY_ARRAY_SIZE(list->uniques));
+    assert_int_equal(2, LY_ARRAY_SIZE(list->uniques[0]));
+    assert_string_equal("a", list->uniques[0][0]->name);
+    assert_true(list->uniques[0][0]->flags & LYS_UNIQUE);
+    assert_string_equal("b", list->uniques[0][1]->name);
+    assert_true(list->uniques[0][1]->flags & LYS_UNIQUE);
+    assert_int_equal(2, LY_ARRAY_SIZE(list->uniques[1]));
+    assert_string_equal("e", list->uniques[1][0]->name);
+    assert_true(list->uniques[1][0]->flags & LYS_UNIQUE);
+    assert_string_equal("d", list->uniques[1][1]->name);
+    assert_true(list->uniques[1][1]->flags & LYS_UNIQUE);
+
+    /* invalid */
+    assert_non_null(mod = lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;list l;}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Missing key in list representing configuration data.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module bb {yang-version 1.1; namespace urn:bb;prefix bb;"
+                                        "list l {key x; leaf x {type string; when 1;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("List's key \"x\" must not have any \"when\" statement.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module cc {yang-version 1.1;namespace urn:cc;prefix cc;feature f;"
+                                        "list l {key x; leaf x {type string; if-feature f;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("List's key \"x\" must not have any \"if-feature\" statement.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module dd {namespace urn:dd;prefix dd;"
+                                        "list l {key x; leaf x {type string; config false;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Key of the configuration list must not be status leaf.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module ee {namespace urn:ee;prefix ee;"
+                                        "list l {config false;key x; leaf x {type string; config true;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Configuration node cannot be child of any state data node.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module ff {namespace urn:ff;prefix ff;"
+                                        "list l {key x; leaf-list x {type string;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("The list's key \"x\" not found.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module gg {namespace urn:gg;prefix gg;"
+                                        "list l {key x; unique y;leaf x {type string;} leaf-list y {type string;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Unique's descendant-schema-nodeid \"y\" refers to a leaf-list node instead of a leaf.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module hh {namespace urn:hh;prefix hh;"
+                                        "list l {key x; unique \"x y\";leaf x {type string;} leaf y {config false; type string;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Unique statement \"x y\" refers to leafs with different config type.");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
@@ -1406,7 +1507,7 @@ test_type_leafref(void **state)
     assert_int_equal(0, has_predicate);
 
     /* complete leafref paths */
-    assert_non_null(mod = lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;"
+    assert_non_null(mod = lys_parse_mem(ctx, "module a {yang-version 1.1;namespace urn:a;prefix a;"
                                         "leaf ref1 {type leafref {path /a:target1;}} leaf ref2 {type leafref {path /a/target2; require-instance false;}}"
                                         "leaf target1 {type string;}container a {leaf target2 {type uint8;}}}", LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
@@ -1442,7 +1543,7 @@ test_type_leafref(void **state)
     assert_int_equal(1, ((struct lysc_type_leafref* )type)->require_instance);
 
     /* prefixes are reversed to check using correct context of the path! */
-    assert_non_null(mod = lys_parse_mem(ctx, "module c {namespace urn:c;prefix b; import b {prefix c;}"
+    assert_non_null(mod = lys_parse_mem(ctx, "module c {yang-version 1.1;namespace urn:c;prefix b; import b {prefix c;}"
                                         "typedef mytype3 {type c:mytype {require-instance false;}}"
                                         "leaf ref1 {type b:mytype3;}leaf ref2 {type c:mytype2;}}", LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
@@ -1539,6 +1640,15 @@ test_type_leafref(void **state)
                                         "leaf ref {type leafref {path /target;}}leaf target {type string;config false;}}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
     logbuf_assert("Invalid leafref path \"/target\" - target is supposed to represent configuration data (as the leafref does), but it does not.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module ll {namespace urn:ll;prefix ll;"
+                                        "leaf ref {type leafref {path /target; require-instance true;}}leaf target {type string;}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Leafref type can be restricted by require-instance statement only in YANG 1.1 modules.");
+    assert_non_null(mod = lys_parse_mem(ctx, "module mm {namespace urn:mm;prefix mm;typedef mytype {type leafref {path /target;require-instance false;}}"
+                                        "leaf ref {type mytype;}leaf target {type string;}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Leafref type \"mytype\" can be restricted by require-instance statement only in YANG 1.1 modules.");
 
     /* circular chain */
     assert_non_null(mod = lys_parse_mem(ctx, "module aaa {namespace urn:aaa;prefix aaa;"
@@ -1766,6 +1876,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_type_dflt, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_node_container, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_node_leaflist, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_node_list, logger_setup, logger_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

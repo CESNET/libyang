@@ -92,11 +92,11 @@ repeat:
     case LYS_CHOICE:
         if (options & LYS_GETNEXT_WITHCHOICE) {
             return next;
-        } else if (((struct lysc_node_choice *)next)->cases) {
+        } else if ((options & LYS_GETNEXT_NOCHOICE) || !((struct lysc_node_choice *)next)->cases) {
+            next = next->next;
+        } else {
             /* go into */
             next = ((struct lysc_node_choice *)next)->cases[0].child;
-        } else {
-            next = next->next;
         }
         goto repeat;
     default:

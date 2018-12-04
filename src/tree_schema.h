@@ -562,7 +562,8 @@ struct lysp_deviation {
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       4 LYS_UNIQUE       | | |x| | | | | | | | | | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       5 LYS_FENABLED     | | | | | | | | | | | |x| | |
+ *       5 LYS_KEY          | | |x| | | | | | | | | | | |
+ *         LYS_FENABLED     | | | | | | | | | | | |x| | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       6 LYS_MAND_TRUE    | |x|x| | |x| | | | | | | | |
  *         LYS_ORDBY_SYSTEM | | | |x|x| | | | | | | | | |
@@ -592,6 +593,7 @@ struct lysp_deviation {
 #define LYS_MAND_MASK    0x60        /**< mask for mandatory values */
 #define LYS_PRESENCE     0x04        /**< flag for presence property of a container, applicable only to ::lysc_node_container */
 #define LYS_UNIQUE       0x08        /**< flag for leafs being part of a unique set, applicable only to ::lysc_node_leaf */
+#define LYS_KEY          0x10        /**< flag for leafs being a key of a list, applicable only to ::lysc_node_leaf */
 #define LYS_FENABLED     0x10        /**< feature enabled flag, applicable only to ::lysc_feature */
 #define LYS_ORDBY_SYSTEM 0x20        /**< ordered-by user lists, applicable only to ::lysc_node_leaflist/::lysp_node_leaflist and
                                           ::lysc_node_list/::lysp_node_list */
@@ -1260,7 +1262,18 @@ struct lysc_node_list {
     const char *name;                /**< node name (mandatory) */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 
-    struct lysc_node *child;
+    struct lysc_when *when;          /**< when statement */
+    struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+
+    struct lysc_node *child;         /**< first child node (linked list) */
+    struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
+    struct lysc_action *actions;     /**< list of actions ([sized array](@ref sizedarrays)) */
+    struct lysc_notif *notifs;       /**< list of notifications ([sized array](@ref sizedarrays)) */
+
+    struct lysc_node_leaf **keys;    /**< list of pointers to the keys ([sized array](@ref sizedarrays)) */
+    struct lysc_node_leaf ***uniques; /**< list of sized arrays of pointers to the unique nodes ([sized array](@ref sizedarrays)) */
+    uint32_t min;                    /**< min-elements constraint */
+    uint32_t max;                    /**< max-elements constraint */
 };
 
 struct lysc_node_anydata {
@@ -1478,6 +1491,7 @@ const struct lysc_node *lys_getnext(const struct lysc_node *last, const struct l
  * @{
  */
 #define LYS_GETNEXT_WITHCHOICE   0x01 /**< lys_getnext() option to allow returning #LYS_CHOICE nodes instead of looking into them */
+#define LYS_GETNEXT_NOCHOICE     0x02 /**< lys_getnext() option to ignore (kind of conditional) nodes within choice node */
 #define LYS_GETNEXT_INTONPCONT   0x40 /**< lys_getnext() option to look into non-presence container, instead of returning container itself */
 #define LYS_GETNEXT_NOSTATECHECK 0x100 /**< lys_getnext() option to skip checking module validity (import-only, disabled) and
                                             relevant if-feature conditions state */

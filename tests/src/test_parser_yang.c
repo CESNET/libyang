@@ -1510,6 +1510,71 @@ test_leaflist(void **state)
     ly_ctx_destroy(ctx.ctx, NULL);
 }
 
+static void
+test_list(void **state)
+{
+    *state = test_list;
+
+    struct lysp_module mod = {0};
+    struct ly_parser_ctx ctx = {0};
+    struct lysp_node_list *l = NULL;
+    const char *str;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
+    assert_non_null(ctx.ctx);
+    ctx.line = 1;
+    ctx.mod = &mod;
+    ctx.mod->version = 2; /* simulate YANG 1.1 */
+
+    /* invalid cardinality */
+#define TEST_DUP(MEMBER, VALUE1, VALUE2) \
+    str = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
+    assert_int_equal(LY_EVALID, parse_list(&ctx, &str, NULL, (struct lysp_node**)&l)); \
+    logbuf_assert("Duplicate keyword \""MEMBER"\". Line number 1."); \
+    lysp_node_free(ctx.ctx, (struct lysp_node*)l); l = NULL;
+
+    TEST_DUP("config", "true", "false");
+    TEST_DUP("description", "text1", "text2");
+    TEST_DUP("key", "one", "two");
+    TEST_DUP("max-elements", "10", "20");
+    TEST_DUP("min-elements", "10", "20");
+    TEST_DUP("ordered-by", "user", "system");
+    TEST_DUP("reference", "1", "2");
+    TEST_DUP("status", "current", "obsolete");
+    TEST_DUP("when", "true", "false");
+#undef TEST_DUP
+
+    /* full content */
+    str = "l {action x;anydata any;anyxml anyxml; choice ch;config false;container c;description test;grouping g;if-feature f; key l; leaf l {type string;}"
+          "leaf-list ll {type string;} list li;max-elements 10; min-elements 1;must 'expr';notification not; ordered-by system; reference test;"
+          "status current;typedef t {type int8;}unique xxx;unique yyy;uses g;when true;m:ext;} ...";
+    assert_int_equal(LY_SUCCESS, parse_list(&ctx, &str, NULL, (struct lysp_node**)&l));
+    assert_non_null(l);
+    assert_int_equal(LYS_LIST, l->nodetype);
+    assert_string_equal("l", l->name);
+    assert_string_equal("test", l->dsc);
+    assert_string_equal("l", l->key);
+    assert_non_null(l->uniques);
+    assert_int_equal(2, LY_ARRAY_SIZE(l->uniques));
+    assert_string_equal("xxx", l->uniques[0]);
+    assert_string_equal("yyy", l->uniques[1]);
+    assert_int_equal(10, l->max);
+    assert_int_equal(1, l->min);
+    assert_non_null(l->exts);
+    assert_non_null(l->iffeatures);
+    assert_non_null(l->musts);
+    assert_string_equal("test", l->ref);
+    assert_non_null(l->when);
+    assert_null(l->parent);
+    assert_null(l->next);
+    assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM | LYS_SET_MAX | LYS_SET_MIN, l->flags);
+    ly_set_erase(&ctx.tpdfs_nodes, NULL);
+    lysp_node_free(ctx.ctx, (struct lysp_node*)l); l = NULL;
+
+    *state = NULL;
+    ly_ctx_destroy(ctx.ctx, NULL);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1526,6 +1591,7 @@ int main(void)
         cmocka_unit_test_setup(test_container, logger_setup),
         cmocka_unit_test_setup_teardown(test_leaf, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_leaflist, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_list, logger_setup, logger_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

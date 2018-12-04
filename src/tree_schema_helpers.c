@@ -85,6 +85,63 @@ lys_parse_nodeid(const char **id, const char **prefix, size_t *prefix_len, const
 }
 
 LY_ERR
+lys_resolve_descendant_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodeid_len, const struct lysc_node *context_node,
+                                     int nodetype, const struct lysc_node **target)
+{
+    LY_ERR ret = LY_EVALID;
+    const char *name, *prefix, *id;
+    const struct lysc_node *context;
+    size_t name_len, prefix_len;
+    const struct lys_module *mod;
+
+    assert(nodeid);
+    assert(context_node);
+    assert(target);
+    *target = NULL;
+
+    id = nodeid;
+    context = context_node;
+    while (*id && (ret = lys_parse_nodeid(&id, &prefix, &prefix_len, &name, &name_len)) == LY_SUCCESS) {
+        if (prefix) {
+            mod = lys_module_find_prefix(context_node->module, prefix, prefix_len);
+            if (!mod) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                       "Invalid descendant-schema-nodeid value \"%.*s\" - prefix \"%.*s\" not defined in module \"%s\".",
+                       id - nodeid, nodeid, prefix_len, prefix, context_node->module->compiled->name);
+                return LY_ENOTFOUND;
+            }
+        } else {
+            mod = context_node->module;
+        }
+        context = lys_child(context, mod, name, name_len, 0, LYS_GETNEXT_NOSTATECHECK | LYS_GETNEXT_WITHCHOICE);
+        if (!context) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                   "Invalid descendant-schema-nodeid value \"%.*s\" - target node not found.", id - nodeid, nodeid);
+            return LY_ENOTFOUND;
+        }
+        if (nodeid_len && ((size_t)(id - nodeid) >= nodeid_len)) {
+            break;
+        }
+        if (id && *id != '/') {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                   "Invalid descendant-schema-nodeid value \"%.*s\" - missing \"/\" as node-identifier separator.",
+                   id - nodeid, nodeid);
+            return LY_EVALID;
+        }
+        ++id;
+    }
+
+    if (ret == LY_SUCCESS) {
+        *target = context;
+        if (nodetype && !(context->nodetype & nodetype)) {
+            return LY_EDENIED;
+        }
+    }
+
+    return ret;
+}
+
+LY_ERR
 lysp_check_prefix(struct ly_parser_ctx *ctx, struct lysp_module *module, const char **value)
 {
     struct lysp_import *i;

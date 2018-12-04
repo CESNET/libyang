@@ -3638,7 +3638,7 @@ parse_list(struct ly_parser_ctx *ctx, const char **data, struct lysp_node *paren
     INSERT_WORD(ctx, buf, list->name, word, word_len);
 
     /* parse substatements */
-    YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret,) {
+    YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret, goto checks) {
         switch (kw) {
         case YANG_CONFIG:
             LY_CHECK_RET(parse_config(ctx, data, &list->flags, &list->exts));
@@ -3723,6 +3723,14 @@ parse_list(struct ly_parser_ctx *ctx, const char **data, struct lysp_node *paren
             LOGVAL_YANG(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "list");
             return LY_EVALID;
         }
+    }
+    LY_CHECK_RET(ret);
+checks:
+    if (list->max && list->min > list->max) {
+        LOGVAL_YANG(ctx, LYVE_SEMANTICS,
+                    "Invalid combination of min-elements and max-elements: min value %u is bigger than the max value %u.",
+                    list->min, list->max);
+        return LY_EVALID;
     }
 
     return ret;
