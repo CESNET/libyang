@@ -4581,76 +4581,79 @@ lyd_insert_nextto(struct lyd_node *sibling, struct lyd_node *node, int before, i
     }
 
     /* process the nodes one by one to clean the current tree */
-    LY_TREE_FOR_SAFE(node, next1, ins) {
-        if (invalid) {
+    if (!invalid) {
+        /* just moving one sibling */
+        last = node;
+        node->parent = sibling->parent;
+    } else {
+        LY_TREE_FOR_SAFE(node, next1, ins) {
             lyd_insert_setinvalid(ins);
-        }
 
-        if (invalid == 1) {
-            /* auto delete nodes from other cases */
-            if (lyv_multicases(ins, NULL, &start, 1, sibling) == 2) {
-                LOGVAL(ctx, LYE_SPEC, LY_VLOG_LYD, sibling, "Insert request refers node (%s) that is going to be auto-deleted.",
-                       ly_errpath(ctx));
-                goto error;
+            if (invalid == 1) {
+                /* auto delete nodes from other cases */
+                if (lyv_multicases(ins, NULL, &start, 1, sibling) == 2) {
+                    LOGVAL(ctx, LYE_SPEC, LY_VLOG_LYD, sibling, "Insert request refers node (%s) that is going to be auto-deleted.",
+                        ly_errpath(ctx));
+                    goto error;
+                }
             }
-        }
 
-        /* try to find previously present default instance to remove because of
-         * inserting the specified node */
-        if (ins->schema->nodetype == LYS_LEAFLIST) {
-            LY_TREE_FOR_SAFE(start, next2, iter) {
-                if (iter->schema == ins->schema) {
-                    if ((ins->dflt && (!iter->dflt || ((iter->schema->flags & LYS_CONFIG_W) &&
-                                                       !strcmp(((struct lyd_node_leaf_list *)iter)->value_str,
-                                                              ((struct lyd_node_leaf_list *)ins)->value_str))))
-                            || (!ins->dflt && iter->dflt)) {
-                        /* iter will get deleted */
-                        if (iter == sibling) {
-                            LOGERR(ctx, LY_EINVAL, "Insert request refers node (%s) that is going to be auto-deleted.",
-                                   str = lyd_path(sibling));
-                            free(str);
-                            goto error;
+            /* try to find previously present default instance to remove because of
+            * inserting the specified node */
+            if (ins->schema->nodetype == LYS_LEAFLIST) {
+                LY_TREE_FOR_SAFE(start, next2, iter) {
+                    if (iter->schema == ins->schema) {
+                        if ((ins->dflt && (!iter->dflt || ((iter->schema->flags & LYS_CONFIG_W) &&
+                                                        !strcmp(((struct lyd_node_leaf_list *)iter)->value_str,
+                                                                ((struct lyd_node_leaf_list *)ins)->value_str))))
+                                || (!ins->dflt && iter->dflt)) {
+                            /* iter will get deleted */
+                            if (iter == sibling) {
+                                LOGERR(ctx, LY_EINVAL, "Insert request refers node (%s) that is going to be auto-deleted.",
+                                    str = lyd_path(sibling));
+                                free(str);
+                                goto error;
+                            }
+                            if (iter == start) {
+                                start = next2;
+                            }
+                            lyd_free(iter);
                         }
-                        if (iter == start) {
-                            start = next2;
+                    }
+                }
+            } else if (ins->schema->nodetype == LYS_LEAF ||
+                    (ins->schema->nodetype == LYS_CONTAINER && !((struct lys_node_container *)ins->schema)->presence)) {
+                LY_TREE_FOR(start, iter) {
+                    if (iter->schema == ins->schema) {
+                        if (iter->dflt || ins->dflt) {
+                            /* iter gets deleted */
+                            if (iter == sibling) {
+                                LOGERR(ctx, LY_EINVAL, "Insert request refers node (%s) that is going to be auto-deleted.",
+                                    str = lyd_path(sibling));
+                                free(str);
+                                goto error;
+                            }
+                            if (iter == start) {
+                                start = iter->next;
+                            }
+                            lyd_free(iter);
                         }
-                        lyd_free(iter);
+                        break;
                     }
                 }
             }
-        } else if (ins->schema->nodetype == LYS_LEAF ||
-                (ins->schema->nodetype == LYS_CONTAINER && !((struct lys_node_container *)ins->schema)->presence)) {
-            LY_TREE_FOR(start, iter) {
-                if (iter->schema == ins->schema) {
-                    if (iter->dflt || ins->dflt) {
-                        /* iter gets deleted */
-                        if (iter == sibling) {
-                            LOGERR(ctx, LY_EINVAL, "Insert request refers node (%s) that is going to be auto-deleted.",
-                                   str = lyd_path(sibling));
-                            free(str);
-                            goto error;
-                        }
-                        if (iter == start) {
-                            start = iter->next;
-                        }
-                        lyd_free(iter);
-                    }
-                    break;
-                }
-            }
+
+#ifdef LY_ENABLED_CACHE
+            lyd_unlink_hash(ins, ins->parent);
+#endif
+
+            ins->parent = sibling->parent;
+
+#ifdef LY_ENABLED_CACHE
+            lyd_insert_hash(ins);
+#endif
+            last = ins;
         }
-
-#ifdef LY_ENABLED_CACHE
-        lyd_unlink_hash(ins, ins->parent);
-#endif
-
-        ins->parent = sibling->parent;
-
-#ifdef LY_ENABLED_CACHE
-        lyd_insert_hash(ins);
-#endif
-
-        last = ins;
     }
 
     /* insert the (list of) node(s) to the specified position */
