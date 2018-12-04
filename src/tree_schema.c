@@ -5040,6 +5040,8 @@ cleanup:
 struct lys_node_augment *
 lys_getnext_target_aug(struct lys_node_augment *last, const struct lys_module *mod, const struct lys_node *aug_target)
 {
+    struct lys_node *child;
+    struct lys_node_augment *aug;
     int i, j, last_found;
 
     assert(mod && aug_target);
@@ -5085,6 +5087,16 @@ lys_getnext_target_aug(struct lys_node_augment *last, const struct lys_module *m
                 if (&mod->inc[i].submodule->augment[j] == last) {
                     last_found = 1;
                 }
+            }
+        }
+    }
+
+    /* we also need to check possible augments to choices */
+    LY_TREE_FOR(aug_target->child, child) {
+        if (child->nodetype == LYS_CHOICE) {
+            aug = lys_getnext_target_aug(last, mod, child);
+            if (aug) {
+                return aug;
             }
         }
     }
