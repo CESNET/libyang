@@ -4560,8 +4560,9 @@ lyd_insert_nextto(struct lyd_node *sibling, struct lyd_node *node, int before, i
         }
     }
 
-    /* unlink only if it is not a list of siblings without a parent and node is not the first sibling */
-    if (node->parent || node->prev->next) {
+    /* unlink only if it is not a list of siblings without a parent or node is not the first sibling,
+     * always unlink if just moving a node */
+    if ((!invalid) || node->parent || node->prev->next) {
         /* remember the original position to be able to revert
          * unlink in case of error */
         orig_parent = node->parent;
