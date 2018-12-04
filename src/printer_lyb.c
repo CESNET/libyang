@@ -887,25 +887,25 @@ lyb_print_attributes(struct lyout *out, struct lyd_attr *attr, struct lyb_state 
         }
 
         /* model */
-        ret += (r = lyb_print_model(out, attr->annotation->module, lybs));
+        ret += (r = lyb_print_model(out, iter->annotation->module, lybs));
         if (r < 0) {
             return -1;
         }
 
         /* annotation name with length */
-        ret += (r = lyb_write_string(attr->annotation->arg_value, 0, 1, out, lybs));
+        ret += (r = lyb_write_string(iter->annotation->arg_value, 0, 1, out, lybs));
         if (r < 0) {
             return -1;
         }
 
         /* get the type */
-        type = (struct lys_type **)lys_ext_complex_get_substmt(LY_STMT_TYPE, attr->annotation, NULL);
+        type = (struct lys_type **)lys_ext_complex_get_substmt(LY_STMT_TYPE, iter->annotation, NULL);
         if (!type || !(*type)) {
             return -1;
         }
 
         /* attribute value */
-        ret += (r = lyb_print_value(*type, attr->value_str, attr->value, attr->value_type, attr->value_flags, 0, out, lybs));
+        ret += (r = lyb_print_value(*type, iter->value_str, iter->value, iter->value_type, iter->value_flags, 0, out, lybs));
         if (r < 0) {
             return -1;
         }
