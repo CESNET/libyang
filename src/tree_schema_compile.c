@@ -33,9 +33,21 @@
 #define COMPILE_ARRAY_GOTO(CTX, ARRAY_P, ARRAY_C, OPTIONS, ITER, FUNC, RET, GOTO) \
     if (ARRAY_P) { \
         LY_ARRAY_CREATE_GOTO((CTX)->ctx, ARRAY_C, LY_ARRAY_SIZE(ARRAY_P), RET, GOTO); \
+        size_t __array_offset = LY_ARRAY_SIZE(ARRAY_C); \
         for (ITER = 0; ITER < LY_ARRAY_SIZE(ARRAY_P); ++ITER) { \
             LY_ARRAY_INCREMENT(ARRAY_C); \
-            RET = FUNC(CTX, &(ARRAY_P)[ITER], OPTIONS, &(ARRAY_C)[ITER]); \
+            RET = FUNC(CTX, &(ARRAY_P)[ITER], OPTIONS, &(ARRAY_C)[ITER + __array_offset]); \
+            LY_CHECK_GOTO(RET != LY_SUCCESS, GOTO); \
+        } \
+    }
+
+#define COMPILE_ARRAY_UNIQUE_GOTO(CTX, ARRAY_P, ARRAY_C, OPTIONS, ITER, FUNC, RET, GOTO) \
+    if (ARRAY_P) { \
+        LY_ARRAY_CREATE_GOTO((CTX)->ctx, ARRAY_C, LY_ARRAY_SIZE(ARRAY_P), RET, GOTO); \
+        size_t __array_offset = LY_ARRAY_SIZE(ARRAY_C); \
+        for (ITER = 0; ITER < LY_ARRAY_SIZE(ARRAY_P); ++ITER) { \
+            LY_ARRAY_INCREMENT(ARRAY_C); \
+            RET = FUNC(CTX, &(ARRAY_P)[ITER], OPTIONS, ARRAY_C, &(ARRAY_C)[ITER + __array_offset]); \
             LY_CHECK_GOTO(RET != LY_SUCCESS, GOTO); \
         } \
     }
@@ -46,6 +58,16 @@
         LY_CHECK_ERR_GOTO(!(MEMBER_C), LOGMEM((CTX)->ctx); RET = LY_EMEM, GOTO); \
         RET = FUNC(CTX, MEMBER_P, OPTIONS, MEMBER_C); \
         LY_CHECK_GOTO(RET != LY_SUCCESS, GOTO); \
+    }
+
+#define COMPILE_CHECK_UNIQUENESS(CTX, ARRAY, MEMBER, EXCL, STMT, IDENT) \
+    if (ARRAY) { \
+        for (unsigned int u = 0; u < LY_ARRAY_SIZE(ARRAY); ++u) { \
+            if (&(ARRAY)[u] != EXCL && (void*)((ARRAY)[u].MEMBER) == (void*)(IDENT)) { \
+                LOGVAL((CTX)->ctx, LY_VLOG_STR, (CTX)->path, LY_VCODE_DUPIDENT, IDENT, STMT); \
+                return LY_EVALID; \
+            } \
+        } \
     }
 
 static struct lysc_ext_instance *
@@ -67,7 +89,7 @@ lysc_pattern_dup(struct lysc_pattern *orig)
 static struct lysc_pattern**
 lysc_patterns_dup(struct ly_ctx *ctx, struct lysc_pattern **orig)
 {
-    struct lysc_pattern **dup;
+    struct lysc_pattern **dup = NULL;
     unsigned int u;
 
     LY_ARRAY_CREATE_RET(ctx, dup, LY_ARRAY_SIZE(orig), NULL);
@@ -464,11 +486,12 @@ done:
 }
 
 static LY_ERR
-lys_compile_identity(struct lysc_ctx *ctx, struct lysp_ident *ident_p, int options, struct lysc_ident *ident)
+lys_compile_identity(struct lysc_ctx *ctx, struct lysp_ident *ident_p, int options, struct lysc_ident *idents, struct lysc_ident *ident)
 {
     unsigned int u;
     LY_ERR ret = LY_SUCCESS;
 
+    COMPILE_CHECK_UNIQUENESS(ctx, idents, name, ident, "identity", ident_p->name);
     DUP_STRING(ctx->ctx, ident_p->name, ident->name);
     COMPILE_ARRAY_GOTO(ctx, ident_p->iffeatures, ident->iffeatures, options, u, lys_compile_iffeature, ret, done);
     /* backlings (derived) can be added no sooner than when all the identities in the current module are present */
@@ -585,16 +608,18 @@ lys_compile_identities_derived(struct lysc_ctx *ctx, struct lysp_ident *idents_p
  * @param[in] ctx Compile context.
  * @param[in] feature_p Parsed feature definition to compile.
  * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
+ * @param[in] features List of already compiled features to check name duplicity.
  * @param[in,out] feature Compiled feature structure to fill.
  * @return LY_ERR value.
  */
 static LY_ERR
-lys_compile_feature(struct lysc_ctx *ctx, struct lysp_feature *feature_p, int options, struct lysc_feature *feature)
+lys_compile_feature(struct lysc_ctx *ctx, struct lysp_feature *feature_p, int options, struct lysc_feature *features, struct lysc_feature *feature)
 {
     unsigned int u, v;
     LY_ERR ret = LY_SUCCESS;
     struct lysc_feature **df;
 
+    COMPILE_CHECK_UNIQUENESS(ctx, features, name, feature, "feature", feature_p->name);
     DUP_STRING(ctx->ctx, feature_p->name, feature->name);
     feature->flags = feature_p->flags;
 
@@ -3113,6 +3138,29 @@ error:
 }
 
 /**
+ * @brief Compile the given YANG submodule into the main module.
+ * @param[in] ctx Compile context
+ * @param[in] inc Include structure from the main module defining the submodule.
+ * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
+ * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
+ */
+LY_ERR
+lys_compile_submodule(struct lysc_ctx *ctx, struct lysp_include *inc, int options)
+{
+    unsigned int u;
+    LY_ERR ret = LY_SUCCESS;
+    /* shortcuts */
+    struct lysp_module *submod = inc->submodule;
+    struct lysc_module *mainmod = ctx->mod->compiled;
+
+    COMPILE_ARRAY_UNIQUE_GOTO(ctx, submod->features, mainmod->features, options, u, lys_compile_feature, ret, error);
+    COMPILE_ARRAY_UNIQUE_GOTO(ctx, submod->identities, mainmod->identities, options, u, lys_compile_identity, ret, error);
+
+error:
+    return ret;
+}
+
+/**
  * @brief Compile the given YANG module.
  * @param[in] mod Module structure where the parsed schema is expected and the compiled schema will be placed.
  * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
@@ -3127,7 +3175,7 @@ lys_compile(struct lys_module *mod, int options)
     struct lysp_module *sp;
     struct lysp_node *node_p;
     unsigned int u, v;
-    LY_ERR ret;
+    LY_ERR ret = LY_SUCCESS;
 
     LY_CHECK_ARG_RET(NULL, mod, mod->parsed, mod->parsed->ctx, LY_EINVAL);
     sp = mod->parsed;
@@ -3154,8 +3202,12 @@ lys_compile(struct lys_module *mod, int options)
         DUP_STRING(sp->ctx, sp->revs[0].date, mod_c->revision);
     }
     COMPILE_ARRAY_GOTO(&ctx, sp->imports, mod_c->imports, options, u, lys_compile_import, ret, error);
-    COMPILE_ARRAY_GOTO(&ctx, sp->features, mod_c->features, options, u, lys_compile_feature, ret, error);
-    COMPILE_ARRAY_GOTO(&ctx, sp->identities, mod_c->identities, options, u, lys_compile_identity, ret, error);
+    LY_ARRAY_FOR(sp->includes, u) {
+        ret = lys_compile_submodule(&ctx, &sp->includes[u], options);
+        LY_CHECK_GOTO(ret != LY_SUCCESS, error);
+    }
+    COMPILE_ARRAY_UNIQUE_GOTO(&ctx, sp->features, mod_c->features, options, u, lys_compile_feature, ret, error);
+    COMPILE_ARRAY_UNIQUE_GOTO(&ctx, sp->identities, mod_c->identities, options, u, lys_compile_identity, ret, error);
     if (sp->identities) {
         LY_CHECK_RET(lys_compile_identities_derived(&ctx, sp->identities, mod_c->identities));
     }

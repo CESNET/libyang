@@ -1031,7 +1031,7 @@ test_identity(void **state)
     (void) state; /* unused */
 
     struct ly_parser_ctx ctx;
-    struct lysp_module *mod = NULL, m = {0};
+    struct lysp_module m = {0};
     struct lysp_ident *ident = NULL;
     const char *str;
 
@@ -1066,12 +1066,6 @@ test_identity(void **state)
     FREE_ARRAY(ctx.ctx, ident, lysp_ident_free);
     ident = NULL;
 
-    /* identity duplication */
-    str = "module a {namespace urn:a; prefix a; identity a; identity a;}";
-    assert_int_equal(LY_EVALID, yang_parse(&ctx, str, &mod));
-    logbuf_assert("Duplicate identifier \"a\" of identity statement. Line number 1.");
-    assert_null(mod);
-
 #undef TEST_DUP
 
     ly_ctx_destroy(ctx.ctx, NULL);
@@ -1083,7 +1077,6 @@ test_feature(void **state)
     (void) state; /* unused */
 
     struct ly_parser_ctx ctx;
-    struct lysp_module *mod = NULL;
     struct lysp_feature *features = NULL;
     const char *str;
 
@@ -1115,12 +1108,6 @@ test_feature(void **state)
     logbuf_assert("Invalid keyword \"organization\" as a child of \"feature\". Line number 1.");
     FREE_ARRAY(ctx.ctx, features, lysp_feature_free);
     features = NULL;
-
-    /* feature duplication */
-    str = "module a {namespace urn:a; prefix a; feature a; feature a;}";
-    assert_int_equal(LY_EVALID, yang_parse(&ctx, str, &mod));
-    logbuf_assert("Duplicate identifier \"a\" of feature statement. Line number 1.");
-    assert_null(mod);
 
 #undef TEST_DUP
 

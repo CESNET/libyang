@@ -410,6 +410,7 @@ LY_ERR ly_munmap(void *addr, size_t length);
 
 /**
  * @brief Allocate a ([sized array](@ref sizedarrays)) for the specified number of items.
+ * If the ARRAY already exists, it is resized (space for SIZE items is added).
  *
  * Does not set the size information, it is supposed to be incremented via ::LY_ARRAY_INCREMENT
  * when the items are filled.
@@ -421,12 +422,20 @@ LY_ERR ly_munmap(void *addr, size_t length);
  * @param[in] RETVAL Return value for the case of error (memory allocation failure).
  */
 #define LY_ARRAY_CREATE_RET(CTX, ARRAY, SIZE, RETVAL) \
-        ARRAY = calloc(1, sizeof(uint32_t) + SIZE * sizeof *(ARRAY)); \
-        LY_CHECK_ERR_RET(!(ARRAY), LOGMEM(CTX), RETVAL); \
-        ARRAY = (void*)((uint32_t*)(ARRAY) + 1)
+        if (ARRAY) { \
+            ARRAY = ly_realloc(((uint32_t*)(ARRAY) - 1), sizeof(uint32_t) + ((*((uint32_t*)(ARRAY) - 1) + SIZE) * sizeof *(ARRAY))); \
+            LY_CHECK_ERR_RET(!(ARRAY), LOGMEM(CTX), RETVAL); \
+            ARRAY = (void*)((uint32_t*)(ARRAY) + 1); \
+            memset(&(ARRAY)[*((uint32_t*)(ARRAY) - 1)], 0, SIZE * sizeof *(ARRAY)); \
+        } else { \
+            ARRAY = calloc(1, sizeof(uint32_t) + SIZE * sizeof *(ARRAY)); \
+            LY_CHECK_ERR_RET(!(ARRAY), LOGMEM(CTX), RETVAL); \
+            ARRAY = (void*)((uint32_t*)(ARRAY) + 1); \
+        }
 
 /**
  * @brief Allocate a ([sized array](@ref sizedarrays)) for the specified number of items.
+ * If the ARRAY already exists, it is resized (space for SIZE items is added).
  *
  * Does not set the size information, it is supposed to be incremented via ::LY_ARRAY_INCREMENT
  * when the items are filled.
@@ -439,9 +448,16 @@ LY_ERR ly_munmap(void *addr, size_t length);
  * @param[in] GOTO Label to go in case of error (memory allocation failure).
  */
 #define LY_ARRAY_CREATE_GOTO(CTX, ARRAY, SIZE, RET, GOTO) \
-        ARRAY = calloc(1, sizeof(uint32_t) + SIZE * sizeof *(ARRAY)); \
-        LY_CHECK_ERR_GOTO(!(ARRAY), LOGMEM(CTX); RET = LY_EMEM, GOTO); \
-        ARRAY = (void*)((uint32_t*)(ARRAY) + 1)
+        if (ARRAY) { \
+            ARRAY = ly_realloc(((uint32_t*)(ARRAY) - 1), sizeof(uint32_t) + ((*((uint32_t*)(ARRAY) - 1) + SIZE) * sizeof *(ARRAY))); \
+            LY_CHECK_ERR_GOTO(!(ARRAY), LOGMEM(CTX); RET = LY_EMEM, GOTO); \
+            ARRAY = (void*)((uint32_t*)(ARRAY) + 1); \
+            memset(&(ARRAY)[*((uint32_t*)(ARRAY) - 1)], 0, SIZE * sizeof *(ARRAY)); \
+        } else { \
+            ARRAY = calloc(1, sizeof(uint32_t) + SIZE * sizeof *(ARRAY)); \
+            LY_CHECK_ERR_GOTO(!(ARRAY), LOGMEM(CTX); RET = LY_EMEM, GOTO); \
+            ARRAY = (void*)((uint32_t*)(ARRAY) + 1); \
+        }
 
 #define LY_ARRAY_INCREMENT(ARRAY) \
         ++(*((uint32_t*)(ARRAY) - 1))

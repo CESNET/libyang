@@ -1925,7 +1925,6 @@ parse_type_enum(struct ly_parser_ctx *ctx, const char **data, enum yang_keyword 
 
     }
     INSERT_WORD(ctx, buf, enm->name, word, word_len);
-
     CHECK_UNIQUENESS(ctx, *enums, name, ly_stmt2str(enum_kw), enm->name);
 
     YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret,) {
@@ -4171,8 +4170,6 @@ parse_feature(struct ly_parser_ctx *ctx, const char **data, struct lysp_feature 
     LY_CHECK_RET(get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len));
     INSERT_WORD(ctx, buf, feat->name, word, word_len);
 
-    CHECK_UNIQUENESS(ctx, *features, name, "feature", feat->name);
-
     YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret,) {
         switch (kw) {
         case YANG_DESCRIPTION:
@@ -4221,8 +4218,6 @@ parse_identity(struct ly_parser_ctx *ctx, const char **data, struct lysp_ident *
     /* get value */
     LY_CHECK_RET(get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len));
     INSERT_WORD(ctx, buf, ident->name, word, word_len);
-
-    CHECK_UNIQUENESS(ctx, *identities, name, "identity", ident->name);
 
     YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret,) {
         switch (kw) {

@@ -88,6 +88,16 @@ logbuf_clean(void)
 #   define logbuf_assert(str)
 #endif
 
+static LY_ERR test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), const char *UNUSED(submod_name),
+                           const char *UNUSED(sub_rev), void *user_data, LYS_INFORMAT *format,
+                           const char **module_data, void (**free_module_data)(void *model_data, void *user_data))
+{
+    *module_data = user_data;
+    *format = LYS_IN_YANG;
+    *free_module_data = NULL;
+    return LY_SUCCESS;
+}
+
 static void
 test_module(void **state)
 {
@@ -148,7 +158,7 @@ test_module(void **state)
 static void
 test_feature(void **state)
 {
-    (void) state; /* unused */
+    *state = test_feature;
 
     struct ly_parser_ctx ctx = {0};
     struct lys_module mod = {0}, *modp;
@@ -285,16 +295,27 @@ test_feature(void **state)
     logbuf_assert("Invalid value \"not f1\" of if-feature - YANG 1.1 expression in YANG 1.0 module.");
     lysp_module_free(mod.parsed);
 
+    assert_int_equal(LY_SUCCESS, yang_parse(&ctx, "module b{namespace urn:b; prefix b; feature f1; feature f1;}", &mod.parsed));
+    assert_int_equal(LY_EVALID, lys_compile(&mod, 0));
+    logbuf_assert("Duplicate identifier \"f1\" of feature statement.");
+    lysp_module_free(mod.parsed);
+
+    ly_ctx_set_module_imp_clb(ctx.ctx, test_imp_clb, "submodule sb {belongs-to b {prefix b;} feature f1;}");
+    assert_non_null(modp = lys_parse_mem(ctx.ctx, "module b{namespace urn:b; prefix b; include sb;feature f1;}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(modp, 0));
+    logbuf_assert("Duplicate identifier \"f1\" of feature statement.");
+
     /* import reference */
     assert_non_null(modp = lys_parse_mem(ctx.ctx, str, LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(modp, 0));
     assert_int_equal(LY_SUCCESS, lys_feature_enable(modp, "f1"));
-    assert_non_null(modp = lys_parse_mem(ctx.ctx, "module b{namespace urn:b; prefix b; import a {prefix a;} feature f1; feature f2{if-feature 'a:f1';}}", LYS_IN_YANG));
+    assert_non_null(modp = lys_parse_mem(ctx.ctx, "module c{namespace urn:c; prefix c; import a {prefix a;} feature f1; feature f2{if-feature 'a:f1';}}", LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(modp, 0));
     assert_int_equal(LY_SUCCESS, lys_feature_enable(modp, "f2"));
     assert_int_equal(0, lys_feature_value(modp, "f1"));
     assert_int_equal(1, lys_feature_value(modp, "f2"));
 
+    *state = NULL;
     ly_ctx_destroy(ctx.ctx, NULL);
 }
 
@@ -332,6 +353,15 @@ test_identity(void **state)
     assert_non_null(mod2->compiled->identities[2].derived);
     assert_int_equal(1, LY_ARRAY_SIZE(mod2->compiled->identities[2].derived));
     assert_ptr_equal(mod2->compiled->identities[2].derived[0], &mod2->compiled->identities[3]);
+
+    assert_non_null(mod1 = lys_parse_mem(ctx, "module c{namespace urn:c; prefix c; identity i1;identity i1;}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod1, 0));
+    logbuf_assert("Duplicate identifier \"i1\" of identity statement.");
+
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule sd {belongs-to d {prefix d;} identity i1;}");
+    assert_non_null(mod1 = lys_parse_mem(ctx, "module d{namespace urn:d; prefix d; include sd;identity i1;}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod1, 0));
+    logbuf_assert("Duplicate identifier \"i1\" of identity statement.");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
@@ -1630,7 +1660,6 @@ test_type_leafref(void **state)
     assert_non_null(((struct lysc_type_leafref*)type)->realtype);
     assert_int_equal(LY_TYPE_BOOL, ((struct lysc_type_leafref*)type)->realtype->basetype);
 
-    /* TODO target in list with predicates */
     assert_non_null(mod = lys_parse_mem(ctx, "module f {namespace urn:f;prefix f;"
                                         "list interface{key name;leaf name{type string;}list address {key ip;leaf ip {type string;}}}"
                                         "container default-address{leaf ifname{type leafref{ path \"../../interface/name\";}}"
