@@ -558,17 +558,22 @@ struct lysp_deviation {
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       2 LYS_CONFIG_R     |x|x|x|x|x|x|x| | | |x| | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       3 LYS_PRESENCE     |x| | | | | | | | | | | | | |
+ *       3 LYS_STATUS_CURR  |x|x|x|x|x|x|x|x|x| | |x|x|x|
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       4 LYS_UNIQUE       | | |x| | | | | | | | | | | |
+ *       4 LYS_STATUS_DEPRC |x|x|x|x|x|x|x|x|x| | |x|x|x|
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       5 LYS_KEY          | | |x| | | | | | | | | | | |
- *         LYS_FENABLED     | | | | | | | | | | | |x| | |
+ *       5 LYS_STATUS_OBSLT |x|x|x|x|x|x|x|x|x| | |x|x|x|
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       6 LYS_MAND_TRUE    | |x|x| | |x| | | | | | | | |
  *         LYS_ORDBY_SYSTEM | | | |x|x| | | | | | | | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       7 LYS_ORDBY_USER   | | | |x|x| | | | | | | | | |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       8 LYS_PRESENCE     |x| | | | | | | | | | | | | |
+ *         LYS_UNIQUE       | | |x| | | | | | | | | | | |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       9 LYS_KEY          | | |x| | | | | | | | | | | |
+ *         LYS_FENABLED     | | | | | | | | | | | |x| | |
  *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  */
@@ -591,10 +596,10 @@ struct lysp_deviation {
                                           ::lysp_node_choice/::lysc_node_choice, ::lysp_node_leaf/::lysc_node_leaf
                                           and ::lysp_node_anydata/::lysc_node_anydata */
 #define LYS_MAND_MASK    0x60        /**< mask for mandatory values */
-#define LYS_PRESENCE     0x04        /**< flag for presence property of a container, applicable only to ::lysc_node_container */
-#define LYS_UNIQUE       0x08        /**< flag for leafs being part of a unique set, applicable only to ::lysc_node_leaf */
-#define LYS_KEY          0x10        /**< flag for leafs being a key of a list, applicable only to ::lysc_node_leaf */
-#define LYS_FENABLED     0x10        /**< feature enabled flag, applicable only to ::lysc_feature */
+#define LYS_PRESENCE     0x80        /**< flag for presence property of a container, applicable only to ::lysc_node_container */
+#define LYS_UNIQUE       0x80        /**< flag for leafs being part of a unique set, applicable only to ::lysc_node_leaf */
+#define LYS_KEY          0x100       /**< flag for leafs being a key of a list, applicable only to ::lysc_node_leaf */
+#define LYS_FENABLED     0x100       /**< feature enabled flag, applicable only to ::lysc_feature */
 #define LYS_ORDBY_SYSTEM 0x20        /**< ordered-by user lists, applicable only to ::lysc_node_leaflist/::lysp_node_leaflist and
                                           ::lysc_node_list/::lysp_node_list */
 #define LYS_ORDBY_USER   0x40        /**< ordered-by user lists, applicable only to ::lysc_node_leaflist/::lysp_node_leaflist and

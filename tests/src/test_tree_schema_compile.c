@@ -1631,6 +1631,20 @@ test_type_leafref(void **state)
     assert_int_equal(LY_TYPE_BOOL, ((struct lysc_type_leafref*)type)->realtype->basetype);
 
     /* TODO target in list with predicates */
+    assert_non_null(mod = lys_parse_mem(ctx, "module f {namespace urn:f;prefix f;"
+                                        "list interface{key name;leaf name{type string;}list address {key ip;leaf ip {type string;}}}"
+                                        "container default-address{leaf ifname{type leafref{ path \"../../interface/name\";}}"
+                                          "leaf address {type leafref{ path \"../../interface[name = current()/../ifname]/address/ip\";}}}}",
+                                        LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)(*lysc_node_children(mod->compiled->data->prev))->prev)->type;
+    assert_non_null(type);
+    assert_int_equal(1, type->refcount);
+    assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
+    assert_string_equal("../../interface[name = current()/../ifname]/address/ip", ((struct lysc_type_leafref* )type)->path);
+    assert_ptr_equal(mod, ((struct lysc_type_leafref*)type)->path_context);
+    assert_non_null(((struct lysc_type_leafref*)type)->realtype);
+    assert_int_equal(LY_TYPE_STRING, ((struct lysc_type_leafref*)type)->realtype->basetype);
 
     /* invalid paths */
     assert_non_null(mod = lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;container a {leaf target2 {type uint8;}}"

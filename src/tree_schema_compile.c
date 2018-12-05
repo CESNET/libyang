@@ -1621,6 +1621,7 @@ lys_compile_leafref_predicate_validate(struct lysc_ctx *ctx, const char **predic
         while (isspace(*pke_end)) {
             --pke_end;
         }
+        ++pke_end;
         /* localize path-key-expr */
         pke_start = path_key_expr = *predicate;
         /* move after the current predicate */
@@ -3082,6 +3083,7 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, st
                 (*children)->prev = node;
             }
         }
+        node->parent = parent;
     } else {
         /* top-level element */
         if (!ctx->mod->compiled->data) {
