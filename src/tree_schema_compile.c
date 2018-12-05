@@ -1578,14 +1578,14 @@ done:
  */
 static LY_ERR
 lys_compile_leafref_predicate_validate(struct lysc_ctx *ctx, const char **predicate, const struct lysc_node *start_node,
-                                       const struct lysc_node *context_node, const struct lys_module *path_context)
+                                       const struct lysc_node_list *context_node, const struct lys_module *path_context)
 {
     LY_ERR ret = LY_EVALID;
     const struct lys_module *mod;
     const struct lysc_node *src_node, *dst_node;
     const char *path_key_expr, *pke_start, *src, *src_prefix, *dst, *dst_prefix;
     size_t src_len, src_prefix_len, dst_len, dst_prefix_len;
-    unsigned int dest_parent_times;
+    unsigned int dest_parent_times, c, u;
     const char *start, *end, *pke_end;
     struct ly_set keys = {0};
     int i;
@@ -1604,7 +1604,8 @@ lys_compile_leafref_predicate_validate(struct lysc_ctx *ctx, const char **predic
         }
         if (**predicate != '=') {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                   "Invalid leafref path predicate \"%.*s\" - missing \"=\".", *predicate - start + 1, *predicate);
+                   "Invalid leafref path predicate \"%.*s\" - missing \"=\" after node-identifier.",
+                   *predicate - start + 1, start);
             goto cleanup;
         }
         ++(*predicate);
@@ -1639,22 +1640,29 @@ lys_compile_leafref_predicate_validate(struct lysc_ctx *ctx, const char **predic
         } else {
             mod = start_node->module;
         }
-        src_node = lys_child(context_node, mod, src, src_len,
-                             mod->compiled->version < LYS_VERSION_1_1 ? LYS_LEAF : LYS_LEAF | LYS_LEAFLIST, LYS_GETNEXT_NOSTATECHECK);
+        src_node = NULL;
+        if (context_node->keys) {
+            for (u = 0; u < LY_ARRAY_SIZE(context_node->keys); ++u) {
+                if (!strncmp(src, context_node->keys[u]->name, src_len) && context_node->keys[u]->name[src_len] == '\0') {
+                    src_node = (const struct lysc_node*)context_node->keys[u];
+                    break;
+                }
+            }
+        }
         if (!src_node) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                   "Invalid leafref path predicate \"%.*s\" - key node \"%.*s\" from module \"%s\" not found.",
+                   "Invalid leafref path predicate \"%.*s\" - predicate's key node \"%.*s\" not found.",
                    *predicate - start, start, src_len, src, mod->compiled->name);
             goto cleanup;
         }
-        /* TODO - check the src_node is really a key of the context_node */
 
         /* check that there is only one predicate for the */
+        c = keys.count;
         i = ly_set_add(&keys, (void*)src_node, 0);
         LY_CHECK_GOTO(i == -1, cleanup);
-        if (keys.count != (unsigned int)i + 1) {
+        if (keys.count == c) { /* node was already present in the set */
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                   "Invalid leafref path predicate \"%.*s\" - multiple equality test for the key %s.",
+                   "Invalid leafref path predicate \"%.*s\" - multiple equality tests for the key \"%s\".",
                    *predicate - start, start, src_node->name);
             goto cleanup;
         }
@@ -1727,8 +1735,8 @@ lys_compile_leafref_predicate_validate(struct lysc_ctx *ctx, const char **predic
         while(path_key_expr != pke_end) {
             if (lys_parse_nodeid(&path_key_expr, &dst_prefix, &dst_prefix_len, &dst, &dst_len)) {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
-                       "Invalid node identifier in leafref path predicate - character %d (%.*s).",
-                       path_key_expr - start, *predicate - start, start);
+                       "Invalid node identifier in leafref path predicate - character %d (of %.*s).",
+                       path_key_expr - start + 1, *predicate - start, start);
                 goto cleanup;
             }
 
@@ -1754,7 +1762,7 @@ lys_compile_leafref_predicate_validate(struct lysc_ctx *ctx, const char **predic
         }
         if (!(dst_node->nodetype & (dst_node->module->compiled->version < LYS_VERSION_1_1 ? LYS_LEAF : LYS_LEAF | LYS_LEAFLIST))) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                   "Invalid leafref path predicate \"%.*s\" - rel-path_keyexpr \"%.*s\" refers %s.",
+                   "Invalid leafref path predicate \"%.*s\" - rel-path_keyexpr \"%.*s\" refers %s instead of leaf.",
                    *predicate - start, start, path_key_expr - pke_start, pke_start, lys_nodetype2str(dst_node->nodetype));
             goto cleanup;
         }
@@ -1968,7 +1976,8 @@ lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *startnode, 
                 return LY_EVALID;
             }
 
-            LY_CHECK_RET(lys_compile_leafref_predicate_validate(ctx, &id, startnode, node, leafref->path_context), LY_EVALID);
+            LY_CHECK_RET(lys_compile_leafref_predicate_validate(ctx, &id, startnode, (struct lysc_node_list*)node, leafref->path_context),
+                         LY_EVALID);
         }
 
         ++iter;

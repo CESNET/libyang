@@ -1634,14 +1634,14 @@ test_type_leafref(void **state)
     assert_non_null(mod = lys_parse_mem(ctx, "module f {namespace urn:f;prefix f;"
                                         "list interface{key name;leaf name{type string;}list address {key ip;leaf ip {type string;}}}"
                                         "container default-address{leaf ifname{type leafref{ path \"../../interface/name\";}}"
-                                          "leaf address {type leafref{ path \"../../interface[name = current()/../ifname]/address/ip\";}}}}",
+                                          "leaf address {type leafref{ path \"../../interface[  name = current()/../ifname ]/address/ip\";}}}}",
                                         LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
     type = ((struct lysc_node_leaf*)(*lysc_node_children(mod->compiled->data->prev))->prev)->type;
     assert_non_null(type);
     assert_int_equal(1, type->refcount);
     assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
-    assert_string_equal("../../interface[name = current()/../ifname]/address/ip", ((struct lysc_type_leafref* )type)->path);
+    assert_string_equal("../../interface[  name = current()/../ifname ]/address/ip", ((struct lysc_type_leafref* )type)->path);
     assert_ptr_equal(mod, ((struct lysc_type_leafref*)type)->path_context);
     assert_non_null(((struct lysc_type_leafref*)type)->realtype);
     assert_int_equal(LY_TYPE_STRING, ((struct lysc_type_leafref*)type)->realtype->basetype);
@@ -1701,6 +1701,126 @@ test_type_leafref(void **state)
                                         "leaf ref {type mytype;}leaf target {type string;}}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
     logbuf_assert("Leafref type \"mytype\" can be restricted by require-instance statement only in YANG 1.1 modules.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module nn {namespace urn:nn;prefix nn;"
+                                        "list interface{key name;leaf name{type string;}leaf ip {type string;}}"
+                                        "leaf ifname{type leafref{ path \"../interface/name\";}}"
+                                        "leaf address {type leafref{ path \"/interface[name is current()/../ifname]/ip\";}}}",
+                                        LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid leafref path predicate \"[name i\" - missing \"=\" after node-identifier.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module oo {namespace urn:oo;prefix oo;"
+                                        "list interface{key name;leaf name{type string;}leaf ip {type string;}}"
+                                        "leaf ifname{type leafref{ path \"../interface/name\";}}"
+                                        "leaf address {type leafref{ path \"/interface[name=current()/../ifname/ip\";}}}",
+                                        LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid leafref path predicate \"[name=current()/../ifname/ip\" - missing predicate termination.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module pp {namespace urn:pp;prefix pp;"
+                                        "list interface{key name;leaf name{type string;}leaf ip {type string;}}"
+                                        "leaf ifname{type leafref{ path \"../interface/name\";}}"
+                                        "leaf address {type leafref{ path \"/interface[x:name=current()/../ifname]/ip\";}}}",
+                                        LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid leafref path predicate \"[x:name=current()/../ifname]\" - prefix \"x\" not defined in module \"pp\".");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module qq {namespace urn:qq;prefix qq;"
+                                        "list interface{key name;leaf name{type string;}leaf ip {type string;}}"
+                                        "leaf ifname{type leafref{ path \"../interface/name\";}}"
+                                        "leaf address {type leafref{ path \"/interface[id=current()/../ifname]/ip\";}}}",
+                                        LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid leafref path predicate \"[id=current()/../ifname]\" - predicate's key node \"id\" not found.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module rr {namespace urn:rr;prefix rr;"
+                                        "list interface{key name;leaf name{type string;}leaf ip {type string;}}"
+                                        "leaf ifname{type leafref{ path \"../interface/name\";}}leaf test{type string;}"
+                                        "leaf address {type leafref{ path \"/interface[name=current() /  .. / ifname][name=current()/../test]/ip\";}}}",
+                                        LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid leafref path predicate \"[name=current()/../test]\" - multiple equality tests for the key \"name\".");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module ss {namespace urn:ss;prefix ss;"
+                                        "list interface{key name;leaf name{type string;}leaf ip {type string;}}"
+                                        "leaf ifname{type leafref{ path \"../interface/name\";}}leaf test{type string;}"
+                                        "leaf address {type leafref{ path \"/interface[name = ../ifname]/ip\";}}}",
+                                        LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid leafref path predicate \"[name = ../ifname]\" - missing current-function-invocation.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module tt {namespace urn:tt;prefix tt;"
+                                        "list interface{key name;leaf name{type string;}leaf ip {type string;}}"
+                                        "leaf ifname{type leafref{ path \"../interface/name\";}}leaf test{type string;}"
+                                        "leaf address {type leafref{ path \"/interface[name = current()../ifname]/ip\";}}}",
+                                        LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid leafref path predicate \"[name = current()../ifname]\" - missing \"/\" after current-function-invocation.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module uu {namespace urn:uu;prefix uu;"
+                                        "list interface{key name;leaf name{type string;}leaf ip {type string;}}"
+                                        "leaf ifname{type leafref{ path \"../interface/name\";}}leaf test{type string;}"
+                                        "leaf address {type leafref{ path \"/interface[name = current()/..ifname]/ip\";}}}",
+                                        LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid leafref path predicate \"[name = current()/..ifname]\" - missing \"/\" in \"../\" rel-path-keyexpr pattern.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module vv {namespace urn:vv;prefix vv;"
+                                        "list interface{key name;leaf name{type string;}leaf ip {type string;}}"
+                                        "leaf ifname{type leafref{ path \"../interface/name\";}}leaf test{type string;}"
+                                        "leaf address {type leafref{ path \"/interface[name = current()/ifname]/ip\";}}}",
+                                        LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid leafref path predicate \"[name = current()/ifname]\" - at least one \"..\" is expected in rel-path-keyexpr.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module ww {namespace urn:ww;prefix ww;"
+                                        "list interface{key name;leaf name{type string;}leaf ip {type string;}}"
+                                        "leaf ifname{type leafref{ path \"../interface/name\";}}leaf test{type string;}"
+                                        "leaf address {type leafref{ path \"/interface[name = current()/../]/ip\";}}}",
+                                        LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid leafref path predicate \"[name = current()/../]\" - at least one node-identifier is expected in rel-path-keyexpr.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module xx {namespace urn:xx;prefix xx;"
+                                        "list interface{key name;leaf name{type string;}leaf ip {type string;}}"
+                                        "leaf ifname{type leafref{ path \"../interface/name\";}}leaf test{type string;}"
+                                        "leaf address {type leafref{ path \"/interface[name = current()/../$node]/ip\";}}}",
+                                        LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid node identifier in leafref path predicate - character 22 (of [name = current()/../$node]).");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module yy {namespace urn:yy;prefix yy;"
+                                        "list interface{key name;leaf name{type string;}leaf ip {type string;}}"
+                                        "leaf ifname{type leafref{ path \"../interface/name\";}}"
+                                        "leaf address {type leafref{ path \"/interface[name=current()/../x:ifname]/ip\";}}}",
+                                        LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid leafref path predicate \"[name=current()/../x:ifname]\" - unable to find module of the node \"ifname\" in rel-path_keyexpr.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module zz {namespace urn:zz;prefix zz;"
+                                        "list interface{key name;leaf name{type string;}leaf ip {type string;}}"
+                                        "leaf ifname{type leafref{ path \"../interface/name\";}}"
+                                        "leaf address {type leafref{ path \"/interface[name=current()/../xxx]/ip\";}}}",
+                                        LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid leafref path predicate \"[name=current()/../xxx]\" - unable to find node \"current()/../xxx\" in the rel-path_keyexpr.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module zza {namespace urn:zza;prefix zza;"
+                                        "list interface{key name;leaf name{type string;}leaf ip {type string;}}"
+                                        "leaf ifname{type leafref{ path \"../interface/name\";}}container c;"
+                                        "leaf address {type leafref{ path \"/interface[name=current()/../c]/ip\";}}}",
+                                        LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid leafref path predicate \"[name=current()/../c]\" - rel-path_keyexpr \"current()/../c\" refers container instead of leaf.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module zzb {namespace urn:zzb;prefix zzb;"
+                                        "list interface{key name;leaf name{type string;}leaf ip {type string;}container c;}"
+                                        "leaf ifname{type leafref{ path \"../interface/name\";}}"
+                                        "leaf address {type leafref{ path \"/interface[c=current()/../ifname]/ip\";}}}",
+                                        LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid leafref path predicate \"[c=current()/../ifname]\" - predicate's key node \"c\" not found.");
 
     /* circular chain */
     assert_non_null(mod = lys_parse_mem(ctx, "module aaa {namespace urn:aaa;prefix aaa;"
