@@ -505,7 +505,7 @@ test_node_list(void **state)
 
     assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;"
                                         "list l {key a; unique \"a c/b:b\"; unique \"c/e d\";"
-                                        "leaf a {type string;} leaf d {type string;config false;}"
+                                        "leaf a {type string; default x;} leaf d {type string;config false;}"
                                         "container c {leaf b {type string;}leaf e{type string;config false;}}}}", LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
     list = (struct lysc_node_list*)mod->compiled->data;
@@ -515,6 +515,7 @@ test_node_list(void **state)
     assert_int_equal(1, LY_ARRAY_SIZE(list->keys));
     assert_string_equal("a", list->keys[0]->name);
     assert_true(list->keys[0]->flags & LYS_KEY);
+    assert_null(list->keys[0]->dflt);
     assert_non_null(list->uniques);
     assert_int_equal(2, LY_ARRAY_SIZE(list->uniques));
     assert_int_equal(2, LY_ARRAY_SIZE(list->uniques[0]));
@@ -527,6 +528,18 @@ test_node_list(void **state)
     assert_true(list->uniques[1][0]->flags & LYS_UNIQUE);
     assert_string_equal("d", list->uniques[1][1]->name);
     assert_true(list->uniques[1][1]->flags & LYS_UNIQUE);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module c {yang-version 1.1;namespace urn:c;prefix c;"
+                                        "list l {key a;leaf a {type empty;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    list = (struct lysc_node_list*)mod->compiled->data;
+    assert_non_null(list);
+    assert_string_equal("l", list->name);
+    assert_non_null(list->keys);
+    assert_int_equal(1, LY_ARRAY_SIZE(list->keys));
+    assert_string_equal("a", list->keys[0]->name);
+    assert_true(list->keys[0]->flags & LYS_KEY);
+    assert_int_equal(LY_TYPE_EMPTY, list->keys[0]->type->basetype);
 
     /* invalid */
     assert_non_null(mod = lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;list l;}", LYS_IN_YANG));
@@ -567,6 +580,31 @@ test_node_list(void **state)
                                         "list l {key x; unique \"x y\";leaf x {type string;} leaf y {config false; type string;}}}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
     logbuf_assert("Unique statement \"x y\" refers to leafs with different config type.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module ii {namespace urn:ii;prefix ii;"
+                                        "list l {key x; unique a:x;leaf x {type string;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid descendant-schema-nodeid value \"a:x\" - prefix \"a\" not defined in module \"ii\".");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module jj {namespace urn:jj;prefix jj;"
+                                        "list l {key x; unique c/x;leaf x {type string;}container c {leaf y {type string;}}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid descendant-schema-nodeid value \"c/x\" - target node not found.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module kk {namespace urn:kk;prefix kk;"
+                                        "list l {key x; unique c^y;leaf x {type string;}container c {leaf y {type string;}}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid descendant-schema-nodeid value \"c^\" - missing \"/\" as node-identifier separator.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module ll {namespace urn:ll;prefix ll;"
+                                        "list l {key \"x y x\";leaf x {type string;}leaf y {type string;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Duplicated key identifier \"x\".");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module mm {namespace urn:mm;prefix mm;"
+                                        "list l {key x;leaf x {type empty;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Key of a list can be of type \"empty\" only in YANG 1.1 modules.");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
@@ -1856,6 +1894,35 @@ test_type_dflt(void **state)
     ly_ctx_destroy(ctx, NULL);
 }
 
+static void
+test_status(void **state)
+{
+    *state = test_status;
+
+    struct ly_ctx *ctx;
+    struct lys_module *mod;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;"
+                                        "container c {status deprecated; leaf l {status current; type string;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("A \"current\" status is in conflict with the parent's \"deprecated\" status.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb;"
+                                        "container c {status obsolete; leaf l {status current; type string;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("A \"current\" status is in conflict with the parent's \"obsolete\" status.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module cc {namespace urn:cc;prefix cc;"
+                                        "container c {status obsolete; leaf l {status deprecated; type string;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("A \"deprecated\" status is in conflict with the parent's \"obsolete\" status.");
+
+    *state = NULL;
+    ly_ctx_destroy(ctx, NULL);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1874,6 +1941,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_type_empty, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_type_union, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_type_dflt, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_status, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_node_container, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_node_leaflist, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_node_list, logger_setup, logger_teardown),

@@ -125,7 +125,7 @@ lys_resolve_descendant_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, s
         if (id && *id != '/') {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                    "Invalid descendant-schema-nodeid value \"%.*s\" - missing \"/\" as node-identifier separator.",
-                   id - nodeid, nodeid);
+                   id - nodeid + 1, nodeid);
             return LY_EVALID;
         }
         ++id;
