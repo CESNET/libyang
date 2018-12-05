@@ -1,6 +1,7 @@
 libyang (0.16.52-2) UNRELEASED; urgency=medium
 
   * use correct DEB_HOST_GNU_TYPE to fix i386 build
+  * mark non-libyang C++ symbols as optional (fixes build on several arch)
 
  -- David Lamparter <equinox-debian@diac24.net>  Wed, 05 Dec 2018 17:28:25 +0100
 
