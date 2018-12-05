@@ -35,5 +35,5 @@ override_dh_makeshlibs:
 
 override_dh_auto_test:
 ifeq ($(filter nocheck,$(DEB_BUILD_OPTIONS)),)
-	make -C obj-$(DEB_HOST_GNU_TYPE) test
+	make -C obj-$(DEB_HOST_GNU_TYPE) test ARGS=-V
 endif
