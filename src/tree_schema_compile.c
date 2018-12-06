@@ -1891,16 +1891,14 @@ lys_compile_leafref_features_validate(const struct lysc_node *refnode, const str
 {
     LY_ERR ret = LY_EVALID;
     const struct lysc_node *iter;
-    struct lysc_iffeature **iff;
     unsigned int u, v, count;
     struct ly_set features = {0};
 
     for (iter = refnode; iter; iter = iter->parent) {
-        iff = lysc_node_iff(iter);
-        if (iff && *iff) {
-            LY_ARRAY_FOR(*iff, u) {
-                LY_ARRAY_FOR((*iff)[u].features, v) {
-                    LY_CHECK_GOTO(ly_set_add(&features, (*iff)[u].features[v], 0) == -1, cleanup);
+        if (iter->iffeatures) {
+            LY_ARRAY_FOR(iter->iffeatures, u) {
+                LY_ARRAY_FOR(iter->iffeatures[u].features, v) {
+                    LY_CHECK_GOTO(ly_set_add(&features, iter->iffeatures[u].features[v], 0) == -1, cleanup);
                 }
             }
         }
@@ -1912,11 +1910,10 @@ lys_compile_leafref_features_validate(const struct lysc_node *refnode, const str
      * to the leafref itself. */
     count = features.count;
     for (iter = target; iter; iter = iter->parent) {
-        iff = lysc_node_iff(iter);
-        if (iff && *iff) {
-            LY_ARRAY_FOR(*iff, u) {
-                LY_ARRAY_FOR((*iff)[u].features, v) {
-                    if ((unsigned int)ly_set_add(&features, (*iff)[u].features[v], 0) >= count) {
+        if (iter->iffeatures) {
+            LY_ARRAY_FOR(iter->iffeatures, u) {
+                LY_ARRAY_FOR(iter->iffeatures[u].features, v) {
+                    if ((unsigned int)ly_set_add(&features, iter->iffeatures[u].features[v], 0) >= count) {
                         /* new feature was added (or LY_EMEM) */
                         goto cleanup;
                     }
@@ -2988,6 +2985,202 @@ done:
 }
 
 /**
+ * @brief Compile parsed choice node information.
+ * @param[in] ctx Compile context
+ * @param[in] node_p Parsed choice node.
+ * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
+ * @param[in,out] node Pre-prepared structure from lys_compile_node() with filled generic node information
+ * is enriched with the container-specific information.
+ * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
+ */
+static LY_ERR
+lys_compile_node_choice(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, struct lysc_node *node)
+{
+    struct lysp_node_choice *ch_p = (struct lysp_node_choice*)node_p;
+    struct lysc_node_choice *ch = (struct lysc_node_choice*)node;
+    struct lysp_node *child_p, *case_child_p;
+    unsigned int u;
+    LY_ERR ret = LY_SUCCESS;
+
+    COMPILE_MEMBER_GOTO(ctx, ch_p->when, ch->when, options, lys_compile_when, ret, done);
+    COMPILE_ARRAY_GOTO(ctx, ch_p->iffeatures, ch->iffeatures, options, u, lys_compile_iffeature, ret, done);
+
+    LY_LIST_FOR(ch_p->child, child_p) {
+        if (child_p->nodetype == LYS_CASE) {
+            LY_LIST_FOR(((struct lysp_node_case*)child_p)->child, case_child_p) {
+                LY_CHECK_RET(lys_compile_node(ctx, case_child_p, options, node));
+            }
+        } else {
+            LY_CHECK_RET(lys_compile_node(ctx, child_p, options, node));
+        }
+    }
+
+    /* default branch */
+
+done:
+    return ret;
+}
+
+static LY_ERR
+lys_compile_status(struct lysc_ctx *ctx, struct lysc_node *node,  struct lysc_node *parent)
+{
+
+    /* status - it is not inherited by specification, but it does not make sense to have
+     * current in deprecated or deprecated in obsolete, so we do print warning and inherit status */
+    if (!(node->flags & LYS_STATUS_MASK)) {
+        if (parent && (parent->flags & (LYS_STATUS_DEPRC | LYS_STATUS_OBSLT))) {
+            LOGWRN(ctx->ctx, "Missing explicit \"%s\" status that was already specified in parent, inheriting.",
+                   (parent->flags & LYS_STATUS_DEPRC) ? "deprecated" : "obsolete");
+            node->flags |= parent->flags & LYS_STATUS_MASK;
+        } else {
+            node->flags |= LYS_STATUS_CURR;
+        }
+    } else if (parent) {
+        /* check status compatibility with the parent */
+        if ((parent->flags & LYS_STATUS_MASK) > (node->flags & LYS_STATUS_MASK)) {
+            if (node->flags & LYS_STATUS_CURR) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                       "A \"current\" status is in conflict with the parent's \"%s\" status.",
+                       (parent->flags & LYS_STATUS_DEPRC) ? "deprecated" : "obsolete");
+            } else { /* LYS_STATUS_DEPRC */
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                       "A \"deprecated\" status is in conflict with the parent's \"obsolete\" status.");
+            }
+            return LY_EVALID;
+        }
+    }
+    return LY_SUCCESS;
+}
+
+static LY_ERR
+lys_compile_node_uniqness(struct lysc_ctx *ctx, const struct lysc_node *children,
+                          const struct lysc_action *actions, const struct lysc_notif *notifs,
+                          const char *name, void *exclude)
+{
+    const struct lysc_node *iter;
+    unsigned int u;
+
+    LY_LIST_FOR(children, iter) {
+        if (iter != exclude && !strcmp(name, iter->name)) {
+            goto error;
+        }
+    }
+    LY_ARRAY_FOR(actions, u) {
+        if (&actions[u] != exclude && !strcmp(name, actions[u].name)) {
+            goto error;
+        }
+    }
+    LY_ARRAY_FOR(notifs, u) {
+        if (&notifs[u] != exclude && !strcmp(name, notifs[u].name)) {
+            goto error;
+        }
+    }
+    return LY_SUCCESS;
+error:
+    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DUPIDENT, name, "data definition");
+    return LY_EEXIST;
+}
+
+/**
+ * @brief Connect the node into the siblings list and check its name uniqueness.
+ *
+ * @param[in] ctx Compile context
+ * @param[in] parent Parent node holding the children list, in case of node from a choice's case,
+ * the choice itself is expected instead of a specific case node.
+ * @param[in] node Schema node to connect into the list.
+ * @return LY_ERR value - LY_SUCCESS or LY_EEXIST.
+ */
+static LY_ERR
+lys_compile_node_connect(struct lysc_ctx *ctx, struct lysc_node *parent, struct lysc_node *node)
+{
+    struct lysc_node **children;
+
+    if (node->nodetype == LYS_CASE) {
+        children = (struct lysc_node**)&((struct lysc_node_choice*)parent)->cases;
+    } else {
+        children = lysc_node_children_p(parent);
+    }
+    if (children) {
+        if (!(*children)) {
+            /* first child */
+            *children = node;
+        } else if (*children != node) {
+            /* by the condition in previous branch we cover the choice/case children
+             * - the children list is shared by the choice and the the first case, in addition
+             * the first child of each case must be referenced from the case node. So the node is
+             * actually always already inserted in case it is the first children - so here such
+             * a situation actually corresponds to the first branch */
+            /* insert at the end of the parent's children list */
+            (*children)->prev->next = node;
+            node->prev = (*children)->prev;
+            (*children)->prev = node;
+
+            /* check the name uniqueness */
+            if (lys_compile_node_uniqness(ctx, *children, lysc_node_actions(parent),
+                                          lysc_node_notifs(parent), node->name, node)) {
+                return LY_EEXIST;
+            }
+        }
+    }
+    return LY_SUCCESS;
+}
+
+static struct lysc_node_case*
+lys_compile_node_case(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, struct lysc_node_choice *ch, struct lysc_node *child)
+{
+    struct lysc_node *iter;
+    struct lysc_node_case *cs;
+    unsigned int u;
+    LY_ERR ret;
+
+#define UNIQUE_CHECK(NAME) \
+    LY_LIST_FOR((struct lysc_node*)ch->cases, iter) { \
+        if (!strcmp(iter->name, NAME)) { \
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DUPIDENT, NAME, "case"); \
+            return NULL; \
+        } \
+    }
+
+    if (node_p->nodetype == LYS_CHOICE) {
+        UNIQUE_CHECK(child->name);
+
+        /* we have to add an implicit case node into the parent choice */
+        cs = calloc(1, sizeof(struct lysc_node_case));
+        DUP_STRING(ctx->ctx, child->name, cs->name);
+        cs->flags = ch->flags & LYS_STATUS_MASK;
+    } else { /* node_p->nodetype == LYS_CASE */
+        if (ch->cases && (node_p == ch->cases->prev->sp)) {
+            /* the case is already present since the child is not its first children */
+            return (struct lysc_node_case*)ch->cases->prev;
+        }
+        UNIQUE_CHECK(node_p->name);
+
+        /* explicit parent case is not present (this is its first child) */
+        cs = calloc(1, sizeof(struct lysc_node_case));
+        DUP_STRING(ctx->ctx, node_p->name, cs->name);
+        cs->flags = LYS_STATUS_MASK & node_p->flags;
+        cs->sp = node_p;
+
+        /* check the case's status */
+        LY_CHECK_RET(lys_compile_status(ctx, (struct lysc_node*)cs, (struct lysc_node* )ch), NULL);
+        COMPILE_MEMBER_GOTO(ctx, node_p->when, cs->when, options, lys_compile_when, ret, error);
+        COMPILE_ARRAY_GOTO(ctx, node_p->iffeatures, cs->iffeatures, options, u, lys_compile_iffeature, ret, error);
+    }
+    cs->module = ctx->mod;
+    cs->prev = (struct lysc_node*)cs;
+    cs->nodetype = LYS_CASE;
+    lys_compile_node_connect(ctx, (struct lysc_node*)ch, (struct lysc_node*)cs);
+    cs->parent = (struct lysc_node*)ch;
+    cs->child = child;
+
+    return cs;
+error:
+    return NULL;
+
+#undef UNIQUE_CHECK
+}
+
+/**
  * @brief Compile parsed schema node information.
  * @param[in] ctx Compile context
  * @param[in] node_p Parsed schema node.
@@ -3001,7 +3194,8 @@ static LY_ERR
 lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, struct lysc_node *parent)
 {
     LY_ERR ret = LY_EVALID;
-    struct lysc_node *node, **children;
+    struct lysc_node *node;
+    struct lysc_node_case *cs;
     unsigned int u;
     LY_ERR (*node_compile_spec)(struct lysc_ctx*, struct lysp_node*, int, struct lysc_node*);
 
@@ -3024,6 +3218,7 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, st
         break;
     case LYS_CHOICE:
         node = (struct lysc_node*)calloc(1, sizeof(struct lysc_node_choice));
+        node_compile_spec = lys_compile_node_choice;
         break;
     case LYS_ANYXML:
     case LYS_ANYDATA:
@@ -3070,27 +3265,10 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, st
 
     /* status - it is not inherited by specification, but it does not make sense to have
      * current in deprecated or deprecated in obsolete, so we do print warning and inherit status */
-    if (!(node->flags & LYS_STATUS_MASK)) {
-        if (parent && (parent->flags & (LYS_STATUS_DEPRC | LYS_STATUS_OBSLT))) {
-            LOGWRN(ctx->ctx, "Missing explicit \"%s\" status that was already specified in parent, inheriting.",
-                   (parent->flags & LYS_STATUS_DEPRC) ? "deprecated" : "obsolete");
-            node->flags |= parent->flags & LYS_STATUS_MASK;
-        } else {
-            node->flags |= LYS_STATUS_CURR;
-        }
-    } else if (parent) {
-        /* check status compatibility with the parent */
-        if ((parent->flags & LYS_STATUS_MASK) > (node->flags & LYS_STATUS_MASK)) {
-            if (node->flags & LYS_STATUS_CURR) {
-                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                       "A \"current\" status is in conflict with the parent's \"%s\" status.",
-                       (parent->flags & LYS_STATUS_DEPRC) ? "deprecated" : "obsolete");
-            } else { /* LYS_STATUS_DEPRC */
-                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                       "A \"deprecated\" status is in conflict with the parent's \"obsolete\" status.");
-            }
-            goto error;
-        }
+    if (!parent || parent->nodetype != LYS_CHOICE) {
+        /* in case of choice/case's children, postpone the check to the moment we know if
+         * the parent is choice (parent here) or some case (so we have to get its flags to check) */
+        LY_CHECK_GOTO(lys_compile_status(ctx, node, parent), error);
     }
 
     if (!(options & LYSC_OPT_FREE_SP)) {
@@ -3105,19 +3283,16 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, st
     /* insert into parent's children */
     if (parent) {
         if (parent->nodetype == LYS_CHOICE) {
-            /* TODO exception for cases */
-        } else if ((children = lysc_node_children(parent))) {
-            if (!(*children)) {
-                /* first child */
-                *children = node;
-            } else {
-                /* insert at the end of the parent's children list */
-                (*children)->prev->next = node;
-                node->prev = (*children)->prev;
-                (*children)->prev = node;
-            }
+            cs = lys_compile_node_case(ctx, node_p->parent, options, (struct lysc_node_choice*)parent, node);
+            LY_CHECK_ERR_GOTO(!cs, ret = LY_EVALID, error);
+            /* the postponed status check of the node and its real parent - in case of implicit case,
+             * it directly gets the same status flags as the choice */
+            LY_CHECK_GOTO(lys_compile_status(ctx, node, (struct lysc_node*)cs), error);
+            node->parent = (struct lysc_node*)cs;
+        } else { /* other than choice */
+            node->parent = parent;
         }
-        node->parent = parent;
+        LY_CHECK_RET(lys_compile_node_connect(ctx, parent, node), LY_EVALID);
     } else {
         /* top-level element */
         if (!ctx->mod->compiled->data) {

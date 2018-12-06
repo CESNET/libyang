@@ -1133,6 +1133,20 @@ struct lysc_type_bin {
     struct lysc_range *length;       /**< Optional length limitation */
 };
 
+struct lysc_action {
+    uint16_t nodetype;               /**< LYS_ACTION */
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
+    const char *name;                /**< action/RPC name (mandatory) */
+    /* TODO */
+};
+
+struct lysc_notif {
+    uint16_t nodetype;               /**< LYS_NOTIF */
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
+    const char *name;                /**< Notification name (mandatory) */
+    /* TODO */
+};
+
 /**
  * @brief Compiled YANG data node
  */
@@ -1149,6 +1163,8 @@ struct lysc_node {
                                           node in the list. */
     const char *name;                /**< node name (mandatory) */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    struct lysc_when *when;          /**< when statement */
+    struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
 };
 
 struct lysc_node_container {
@@ -1164,7 +1180,6 @@ struct lysc_node_container {
                                           node in the list. */
     const char *name;                /**< node name (mandatory) */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-
     struct lysc_when *when;          /**< when statement */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
 
@@ -1175,7 +1190,21 @@ struct lysc_node_container {
 };
 
 struct lysc_node_case {
+    uint16_t nodetype;               /**< LYS_CASE */
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
+    struct lys_module *module;       /**< module structure */
+    struct lysp_node *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
+    struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
+    struct lysc_node *next;          /**< next sibling node (NULL if there is no one) */
+    struct lysc_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is
+                                          never NULL. If there is no sibling node, pointer points to the node
+                                          itself. In case of the first node, this pointer points to the last
+                                          node in the list. */
     const char *name;                /**< name of the case, including the implicit case */
+    struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    struct lysc_when *when;          /**< when statement */
+    struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+
     struct lysc_node *child;         /**< first child node of the case (linked list). Note that all the children of all the sibling cases are linked
                                           each other as siblings with the parent pointer pointing to the choice node holding the case. To distinguish
                                           which children node belongs to which case, it is needed to match the first children of the cases while going
@@ -1195,11 +1224,14 @@ struct lysc_node_choice {
                                           node in the list. */
     const char *name;                /**< node name (mandatory) */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    struct lysc_when *when;          /**< when statement */
+    struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
 
     struct lysc_node_case *cases;    /**< list of the cases with their name and pointer to the first children of each case ([sized array](@ref sizedarrays))
                                           Note that all the children of all the cases are linked each other as siblings with the parent pointer pointing
                                           to this choice node. To distinguish which children node belongs to which case, it is needed to match the first
                                           children of the cases while going through the children linked list. */
+    struct lysc_node_case *dflt;     /**< default case of the choice, only a pointer into the cases array. */
 };
 
 struct lysc_node_leaf {
@@ -1215,7 +1247,6 @@ struct lysc_node_leaf {
                                           node in the list. */
     const char *name;                /**< node name (mandatory) */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-
     struct lysc_when *when;          /**< when statement */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
 
@@ -1239,7 +1270,6 @@ struct lysc_node_leaflist {
                                           node in the list. */
     const char *name;                /**< node name (mandatory) */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-
     struct lysc_when *when;          /**< when statement */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
 
@@ -1266,7 +1296,6 @@ struct lysc_node_list {
                                           node in the list. */
     const char *name;                /**< node name (mandatory) */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-
     struct lysc_when *when;          /**< when statement */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
 
@@ -1294,7 +1323,8 @@ struct lysc_node_anydata {
                                           node in the list. */
     const char *name;                /**< node name (mandatory) */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-
+    struct lysc_when *when;          /**< when statement */
+    struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
 };
 
 /**
@@ -1326,6 +1356,62 @@ struct lysc_module {
                                           2 - searchdirs were searched and this is the latest available revision */
     uint8_t version;                 /**< yang-version (LYS_VERSION values) */
 };
+
+/**
+ * @brief Get the typedefs sized array of the given (parsed) schema node.
+ * Decides the node's type and in case it has a typedefs array, returns it.
+ * @param[in] node Node to examine.
+ * @return The node's typedefs sized array if any, NULL otherwise.
+ */
+const struct lysp_tpdf *lysp_node_typedefs(const struct lysp_node *node);
+
+/**
+ * @brief Get the actions/RPCs sized array of the given (parsed) schema node.
+ * Decides the node's type and in case it has a actions/RPCs array, returns it.
+ * @param[in] node Node to examine.
+ * @return The node's actions/RPCs sized array if any, NULL otherwise.
+ */
+const struct lysp_action *lysp_node_actions(const struct lysp_node *node);
+
+/**
+ * @brief Get the Notifications sized array of the given (parsed) schema node.
+ * Decides the node's type and in case it has a Notifications array, returns it.
+ * @param[in] node Node to examine.
+ * @return The node's Notifications sized array if any, NULL otherwise.
+ */
+const struct lysp_notif *lysp_node_notifs(const struct lysp_node *node);
+
+/**
+ * @brief Get the children linked list of the given (parsed) schema node.
+ * Decides the node's type and in case it has a children list, returns it.
+ * @param[in] node Node to examine.
+ * @return The node's children linked list if any, NULL otherwise.
+ */
+const struct lysp_node *lysp_node_children(const struct lysp_node *node);
+
+/**
+ * @brief Get the actions/RPCs sized array of the given (compiled) schema node.
+ * Decides the node's type and in case it has a actions/RPCs array, returns it.
+ * @param[in] node Node to examine.
+ * @return The node's actions/RPCs sized array if any, NULL otherwise.
+ */
+const struct lysc_action *lysc_node_actions(const struct lysc_node *node);
+
+/**
+ * @brief Get the Notifications sized array of the given (compiled) schema node.
+ * Decides the node's type and in case it has a Notifications array, returns it.
+ * @param[in] node Node to examine.
+ * @return The node's Notifications sized array if any, NULL otherwise.
+ */
+const struct lysc_notif *lysc_node_notifs(const struct lysc_node *node);
+
+/**
+ * @brief Get the children linked list of the given (compiled) schema node.
+ * Decides the node's type and in case it has a children list, returns it.
+ * @param[in] node Node to examine.
+ * @return The node's children linked list if any, NULL otherwise.
+ */
+const struct lysc_node *lysc_node_children(const struct lysc_node *node);
 
 /**
  * @brief Get how the if-feature statement currently evaluates.
@@ -1497,6 +1583,7 @@ const struct lysc_node *lys_getnext(const struct lysc_node *last, const struct l
  */
 #define LYS_GETNEXT_WITHCHOICE   0x01 /**< lys_getnext() option to allow returning #LYS_CHOICE nodes instead of looking into them */
 #define LYS_GETNEXT_NOCHOICE     0x02 /**< lys_getnext() option to ignore (kind of conditional) nodes within choice node */
+#define LYS_GETNEXT_WITHCASE     0x04 /**< lys_getnext() option to allow returning #LYS_CASE nodes instead of looking into them */
 #define LYS_GETNEXT_INTONPCONT   0x40 /**< lys_getnext() option to look into non-presence container, instead of returning container itself */
 #define LYS_GETNEXT_NOSTATECHECK 0x100 /**< lys_getnext() option to skip checking module validity (import-only, disabled) and
                                             relevant if-feature conditions state */

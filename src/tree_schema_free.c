@@ -585,8 +585,6 @@ lysc_node_container_free(struct ly_ctx *ctx, struct lysc_node_container *node)
 {
     struct lysc_node *child, *child_next;
 
-    FREE_MEMBER(ctx, node->when, lysc_when_free);
-    FREE_ARRAY(ctx, node->iffeatures, lysc_iffeature_free);
     LY_LIST_FOR_SAFE(node->child, child_next, child) {
         lysc_node_free(ctx, child);
     }
@@ -598,8 +596,6 @@ lysc_node_container_free(struct ly_ctx *ctx, struct lysc_node_container *node)
 static void
 lysc_node_leaf_free(struct ly_ctx *ctx, struct lysc_node_leaf *node)
 {
-    FREE_MEMBER(ctx, node->when, lysc_when_free);
-    FREE_ARRAY(ctx, node->iffeatures, lysc_iffeature_free);
     FREE_ARRAY(ctx, node->musts, lysc_must_free);
     if (node->type) {
         lysc_type_free(ctx, node->type);
@@ -613,8 +609,6 @@ lysc_node_leaflist_free(struct ly_ctx *ctx, struct lysc_node_leaflist *node)
 {
     unsigned int u;
 
-    FREE_MEMBER(ctx, node->when, lysc_when_free);
-    FREE_ARRAY(ctx, node->iffeatures, lysc_iffeature_free);
     FREE_ARRAY(ctx, node->musts, lysc_must_free);
     if (node->type) {
         lysc_type_free(ctx, node->type);
@@ -632,8 +626,6 @@ lysc_node_list_free(struct ly_ctx *ctx, struct lysc_node_list *node)
     unsigned int u;
     struct lysc_node *child, *child_next;
 
-    FREE_MEMBER(ctx, node->when, lysc_when_free);
-    FREE_ARRAY(ctx, node->iffeatures, lysc_iffeature_free);
     LY_LIST_FOR_SAFE(node->child, child_next, child) {
         lysc_node_free(ctx, child);
     }
@@ -646,6 +638,24 @@ lysc_node_list_free(struct ly_ctx *ctx, struct lysc_node_list *node)
     LY_ARRAY_FREE(node->uniques);
 
     /* TODO actions, notifs */
+}
+
+static void
+lysc_node_choice_free(struct ly_ctx *ctx, struct lysc_node_choice *node)
+{
+    struct lysc_node *child, *child_next;
+
+    FREE_MEMBER(ctx, node->when, lysc_when_free);
+    FREE_ARRAY(ctx, node->iffeatures, lysc_iffeature_free);
+    if (node->cases) {
+        LY_LIST_FOR_SAFE(node->cases->child, child_next, child) {
+            lysc_node_free(ctx, child);
+        }
+        LY_LIST_FOR_SAFE((struct lysc_node*)node->cases, child_next, child) {
+            lysc_node_free(ctx, child);
+        }
+    }
+
 }
 
 void
@@ -668,10 +678,19 @@ lysc_node_free(struct ly_ctx *ctx, struct lysc_node *node)
     case LYS_LIST:
         lysc_node_list_free(ctx, (struct lysc_node_list*)node);
         break;
+    case LYS_CHOICE:
+        lysc_node_choice_free(ctx, (struct lysc_node_choice*)node);
+        break;
+    case LYS_CASE:
+        /* nothing specific */
+        break;
     default:
         LOGINT(ctx);
     }
 
+    FREE_MEMBER(ctx, node->when, lysc_when_free);
+    FREE_ARRAY(ctx, node->iffeatures, lysc_iffeature_free);
+    FREE_ARRAY(ctx, node->exts, lysc_ext_instance_free);
     free(node);
 }
 

@@ -640,6 +640,63 @@ test_node_list(void **state)
     ly_ctx_destroy(ctx, NULL);
 }
 
+static void
+test_node_choice(void **state)
+{
+    *state = test_node_choice;
+
+    struct ly_ctx *ctx;
+    struct lys_module *mod;
+    struct lysc_node_choice *ch;
+    struct lysc_node_case *cs;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;feature f;"
+                                        "choice ch {case a {leaf a {type string;}}leaf b {type string;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    ch = (struct lysc_node_choice*)mod->compiled->data;
+    assert_non_null(ch);
+    assert_int_equal(LYS_CONFIG_W | LYS_STATUS_CURR, ch->flags);
+    cs = ch->cases;
+    assert_non_null(cs);
+    assert_string_equal("a", cs->name);
+    assert_ptr_equal(ch, cs->parent);
+    assert_non_null(cs->child);
+    assert_string_equal("a", cs->child->name);
+    assert_ptr_equal(cs, cs->child->parent);
+    cs = (struct lysc_node_case*)cs->next;
+    assert_non_null(cs);
+    assert_string_equal("b", cs->name);
+    assert_ptr_equal(ch, cs->parent);
+    assert_non_null(cs->child);
+    assert_string_equal("b", cs->child->name);
+    assert_ptr_equal(cs, cs->child->parent);
+    assert_ptr_equal(ch->cases->child, cs->child->prev);
+    assert_ptr_equal(ch->cases->child->next, cs->child);
+    assert_ptr_equal(ch->cases->child->prev, cs->child);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;"
+                                        "choice ch {case a {leaf x {type string;}}leaf x {type string;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Duplicate identifier \"x\" of data definition statement.");
+    assert_non_null(mod = lys_parse_mem(ctx, "module aa2 {namespace urn:aa2;prefix aa;"
+                                        "choice ch {case a {leaf y {type string;}}case b {leaf y {type string;}}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Duplicate identifier \"y\" of data definition statement.");
+    assert_non_null(mod = lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb;"
+                                        "choice ch {case a {leaf x {type string;}}leaf a {type string;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Duplicate identifier \"a\" of case statement.");
+    assert_non_null(mod = lys_parse_mem(ctx, "module bb2 {namespace urn:bb2;prefix bb;"
+                                        "choice ch {case b {leaf x {type string;}}case b {leaf y {type string;}}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Duplicate identifier \"b\" of case statement.");
+
+    *state = NULL;
+    ly_ctx_destroy(ctx, NULL);
+}
+
 /**
  * actually the same as length restriction (tested in test_type_length()), so just check the correct handling in appropriate types,
  * do not test the expression itself
@@ -1666,7 +1723,7 @@ test_type_leafref(void **state)
                                           "leaf address {type leafref{ path \"../../interface[  name = current()/../ifname ]/address/ip\";}}}}",
                                         LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
-    type = ((struct lysc_node_leaf*)(*lysc_node_children(mod->compiled->data->prev))->prev)->type;
+    type = ((struct lysc_node_leaf*)(*lysc_node_children_p(mod->compiled->data->prev))->prev)->type;
     assert_non_null(type);
     assert_int_equal(1, type->refcount);
     assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
@@ -2108,6 +2165,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_node_container, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_node_leaflist, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_node_list, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_node_choice, logger_setup, logger_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

@@ -143,7 +143,7 @@ LY_ERR lysp_load_submodule(struct ly_parser_ctx *ctx, struct lysp_module *mod, s
  * @param[in] node Node to check.
  * @return Address of the node's tpdf member if any, NULL otherwise.
  */
-struct lysp_tpdf **lysp_node_typedefs(struct lysp_node *node);
+struct lysp_tpdf **lysp_node_typedefs_p(const struct lysp_node *node);
 
 /**
  * @brief Get address of a node's actions list if any.
@@ -152,7 +152,7 @@ struct lysp_tpdf **lysp_node_typedefs(struct lysp_node *node);
  * @param[in] node Node to check.
  * @return Address of the node's actions member if any, NULL otherwise.
  */
-struct lysp_action **lysp_node_actions(struct lysp_node *node);
+struct lysp_action **lysp_node_actions_p(struct lysp_node *node);
 
 /**
  * @brief Get address of a node's notifications list if any.
@@ -161,7 +161,7 @@ struct lysp_action **lysp_node_actions(struct lysp_node *node);
  * @param[in] node Node to check.
  * @return Address of the node's notifs member if any, NULL otherwise.
  */
-struct lysp_notif **lysp_node_notifs(struct lysp_node *node);
+struct lysp_notif **lysp_node_notifs_p(struct lysp_node *node);
 
 /**
  * @brief Get address of a node's child pointer if any.
@@ -170,7 +170,7 @@ struct lysp_notif **lysp_node_notifs(struct lysp_node *node);
  * @param[in] node Node to check.
  * @return Address of the node's child member if any, NULL otherwise.
  */
-struct lysp_node **lysp_node_children(struct lysp_node *node);
+struct lysp_node **lysp_node_children_p(struct lysp_node *node);
 
 /**
  * @brief Get address of a node's child pointer if any.
@@ -179,14 +179,7 @@ struct lysp_node **lysp_node_children(struct lysp_node *node);
  * @param[in] node Node to check.
  * @return Address of the node's child member if any, NULL otherwise.
  */
-struct lysc_node **lysc_node_children(const struct lysc_node *node);
-
-/**
- * @brief Get address of a node's iffeatures pointer if any.
- * @param[in] node Node to check.
- * @return Address of the node's iffeature member if any, NULL otherwise.
- */
-struct lysc_iffeature **lysc_node_iff(const struct lysc_node *node);
+struct lysc_node **lysc_node_children_p(const struct lysc_node *node);
 
 /**
  * @brief Get the covering schema module structure for the given parsed module structure.

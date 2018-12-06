@@ -42,12 +42,19 @@ lys_getnext(const struct lysc_node *last, const struct lysc_node *parent, const 
         /* get know where to start */
         if (parent) {
             /* schema subtree */
-            snode = lysc_node_children(parent);
-            /* do not return anything if the augment does not have any children */
-            if (!snode || !(*snode)) {
-                return NULL;
+            if (parent->nodetype == LYS_CHOICE && (options & LYS_GETNEXT_WITHCASE)) {
+                if (!((struct lysc_node_choice*)parent)->cases) {
+                    return NULL;
+                }
+                next = last = (const struct lysc_node*)&((struct lysc_node_choice*)parent)->cases[0];
+            } else {
+                snode = lysc_node_children_p(parent);
+                /* do not return anything if the augment does not have any children */
+                if (!snode || !(*snode)) {
+                    return NULL;
+                }
+                next = last = *snode;
             }
-            next = last = *snode;
         } else {
             /* top level data */
             next = last = module->data;
@@ -403,7 +410,6 @@ API const struct lysc_iffeature *
 lys_is_disabled(const struct lysc_node *node, int recursive)
 {
     unsigned int u;
-    struct lysc_iffeature **iff;
 
     LY_CHECK_ARG_RET(NULL, node, NULL);
 
@@ -412,12 +418,11 @@ lys_is_disabled(const struct lysc_node *node, int recursive)
             return NULL;
         }
 
-        iff = lysc_node_iff(node);
-        if (iff && *iff) {
+        if (node->iffeatures) {
             /* check local if-features */
-            LY_ARRAY_FOR(*iff, u) {
-                if (!lysc_iffeature_value(&(*iff)[u])) {
-                    return &(*iff)[u];
+            LY_ARRAY_FOR(node->iffeatures, u) {
+                if (!lysc_iffeature_value(&node->iffeatures[u])) {
+                    return &node->iffeatures[u];
                 }
             }
         }

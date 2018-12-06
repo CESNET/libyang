@@ -260,7 +260,7 @@ lysp_type_match(const char *name, struct lysp_node *node)
     struct lysp_tpdf **typedefs;
     unsigned int u;
 
-    typedefs = lysp_node_typedefs(node);
+    typedefs = lysp_node_typedefs_p(node);
     if (typedefs && *typedefs) {
         LY_ARRAY_FOR(*typedefs, u) {
             if (!strcmp(name, (*typedefs)[u].name)) {
@@ -458,7 +458,7 @@ lysp_check_typedef(struct ly_parser_ctx *ctx, struct lysp_node *node, struct lys
 
     /* check locally scoped typedefs (avoid name shadowing) */
     if (node) {
-        typedefs = lysp_node_typedefs(node);
+        typedefs = lysp_node_typedefs_p(node);
         if (typedefs && *typedefs) {
             LY_ARRAY_FOR(*typedefs, u) {
                 if (typedefs[u] == tpdf) {
@@ -535,7 +535,7 @@ lysp_check_typedefs(struct ly_parser_ctx *ctx)
         }
     }
     for (u = 0; u < ctx->tpdfs_nodes.count; ++u) {
-        typedefs = lysp_node_typedefs((struct lysp_node *)ctx->tpdfs_nodes.objs[u]);
+        typedefs = lysp_node_typedefs_p((struct lysp_node *)ctx->tpdfs_nodes.objs[u]);
         LY_ARRAY_FOR(*typedefs, i) {
             if (lysp_check_typedef(ctx, (struct lysp_node *)ctx->tpdfs_nodes.objs[u], &(*typedefs)[i], ids_global, ids_scoped)) {
                 goto cleanup;
@@ -905,7 +905,7 @@ lys_nodetype2str(uint16_t nodetype)
 }
 
 struct lysp_tpdf **
-lysp_node_typedefs(struct lysp_node *node)
+lysp_node_typedefs_p(const struct lysp_node *node)
 {
     switch (node->nodetype) {
     case LYS_CONTAINER:
@@ -925,8 +925,20 @@ lysp_node_typedefs(struct lysp_node *node)
     }
 }
 
+API const struct lysp_tpdf *
+lysp_node_typedefs(const struct lysp_node *node)
+{
+    struct lysp_tpdf **tpdfs;
+    tpdfs = lysp_node_typedefs_p(node);
+    if (tpdfs) {
+        return *tpdfs;
+    } else {
+        return NULL;
+    }
+}
+
 struct lysp_action **
-lysp_node_actions(struct lysp_node *node)
+lysp_node_actions_p(struct lysp_node *node)
 {
     assert(node);
     switch (node->nodetype) {
@@ -943,8 +955,20 @@ lysp_node_actions(struct lysp_node *node)
     }
 }
 
+API const struct lysp_action *
+lysp_node_actions(const struct lysp_node *node)
+{
+    struct lysp_action **actions;
+    actions = lysp_node_actions_p((struct lysp_node*)node);
+    if (actions) {
+        return *actions;
+    } else {
+        return NULL;
+    }
+}
+
 struct lysp_notif **
-lysp_node_notifs(struct lysp_node *node)
+lysp_node_notifs_p(struct lysp_node *node)
 {
     assert(node);
     switch (node->nodetype) {
@@ -961,8 +985,20 @@ lysp_node_notifs(struct lysp_node *node)
     }
 }
 
+API const struct lysp_notif *
+lysp_node_notifs(const struct lysp_node *node)
+{
+    struct lysp_notif **notifs;
+    notifs = lysp_node_notifs_p((struct lysp_node*)node);
+    if (notifs) {
+        return *notifs;
+    } else {
+        return NULL;
+    }
+}
+
 struct lysp_node **
-lysp_node_children(struct lysp_node *node)
+lysp_node_children_p(struct lysp_node *node)
 {
     assert(node);
     switch (node->nodetype) {
@@ -987,8 +1023,72 @@ lysp_node_children(struct lysp_node *node)
     }
 }
 
+API const struct lysp_node *
+lysp_node_children(const struct lysp_node *node)
+{
+    struct lysp_node **children;
+    children = lysp_node_children_p((struct lysp_node*)node);
+    if (children) {
+        return *children;
+    } else {
+        return NULL;
+    }
+}
+
+struct lysc_action **
+lysc_node_actions_p(struct lysc_node *node)
+{
+    assert(node);
+    switch (node->nodetype) {
+    case LYS_CONTAINER:
+        return &((struct lysc_node_container*)node)->actions;
+    case LYS_LIST:
+        return &((struct lysc_node_list*)node)->actions;
+    default:
+        return NULL;
+    }
+}
+
+API const struct lysc_action *
+lysc_node_actions(const struct lysc_node *node)
+{
+    struct lysc_action **actions;
+    actions = lysc_node_actions_p((struct lysc_node*)node);
+    if (actions) {
+        return *actions;
+    } else {
+        return NULL;
+    }
+}
+
+struct lysc_notif **
+lysc_node_notifs_p(struct lysc_node *node)
+{
+    assert(node);
+    switch (node->nodetype) {
+    case LYS_CONTAINER:
+        return &((struct lysc_node_container*)node)->notifs;
+    case LYS_LIST:
+        return &((struct lysc_node_list*)node)->notifs;
+    default:
+        return NULL;
+    }
+}
+
+API const struct lysc_notif *
+lysc_node_notifs(const struct lysc_node *node)
+{
+    struct lysc_notif **notifs;
+    notifs = lysc_node_notifs_p((struct lysc_node*)node);
+    if (notifs) {
+        return *notifs;
+    } else {
+        return NULL;
+    }
+}
+
 struct lysc_node **
-lysc_node_children(const struct lysc_node *node)
+lysc_node_children_p(const struct lysc_node *node)
 {
     assert(node);
     switch (node->nodetype) {
@@ -1013,22 +1113,14 @@ lysc_node_children(const struct lysc_node *node)
     }
 }
 
-struct lysc_iffeature **
-lysc_node_iff(const struct lysc_node *node)
+API const struct lysc_node *
+lysc_node_children(const struct lysc_node *node)
 {
-    assert(node);
-    switch (node->nodetype) {
-    case LYS_CONTAINER:
-        return &((struct lysc_node_container*)node)->iffeatures;
-    case LYS_LEAF:
-        return &((struct lysc_node_leaf*)node)->iffeatures;
-/* TODO
-    case LYS_LIST:
-        return &((struct lysc_node_list*)node)->iffeatures;
-    case LYS_NOTIF:
-        return &((struct lysc_notif*)node)->child;
-*/
-    default:
+    struct lysc_node **children;
+    children = lysc_node_children_p((struct lysc_node*)node);
+    if (children) {
+        return *children;
+    } else {
         return NULL;
     }
 }
