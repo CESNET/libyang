@@ -5040,7 +5040,8 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
         case LYEXT_COMPLEX:
             tmp_ext = realloc(*ext, ((struct lyext_plugin_complex*)e->plugin)->instance_size);
             LY_CHECK_ERR_GOTO(!tmp_ext, LOGMEM(ctx), error);
-            memset((char *)tmp_ext + sizeof **ext, 0, ((struct lyext_plugin_complex*)e->plugin)->instance_size - sizeof **ext);
+            memset((char *)tmp_ext + offsetof(struct lys_ext_instance_complex, content), 0,
+                   ((struct lyext_plugin_complex*)e->plugin)->instance_size - offsetof(struct lys_ext_instance_complex, content));
             (*ext) = tmp_ext;
             ((struct lys_ext_instance_complex*)(*ext))->substmt = ((struct lyext_plugin_complex*)e->plugin)->substmt;
             if (info->data.yang) {

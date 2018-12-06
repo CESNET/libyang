@@ -108,6 +108,8 @@ check:
             /* unresolved augment, let's say it's enabled */
             return NULL;
         }
+    } else if (node->nodetype == LYS_EXT) {
+        return NULL;
     } else if (node->parent) {
         node = node->parent;
     } else {
