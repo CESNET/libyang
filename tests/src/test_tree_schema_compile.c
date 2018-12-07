@@ -1732,6 +1732,20 @@ test_type_leafref(void **state)
     assert_non_null(((struct lysc_type_leafref*)type)->realtype);
     assert_int_equal(LY_TYPE_STRING, ((struct lysc_type_leafref*)type)->realtype->basetype);
 
+    assert_non_null(mod = lys_parse_mem(ctx, "module g {namespace urn:g;prefix g;"
+                                        "leaf source {type leafref {path \"/endpoint-parent[id=current()/../field]/endpoint/name\";}}"
+                                        "leaf field {type int32;}list endpoint-parent {key id;leaf id {type int32;}"
+                                        "list endpoint {key name;leaf name {type string;}}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(1, type->refcount);
+    assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
+    assert_string_equal("/endpoint-parent[id=current()/../field]/endpoint/name", ((struct lysc_type_leafref* )type)->path);
+    assert_ptr_equal(mod, ((struct lysc_type_leafref*)type)->path_context);
+    assert_non_null(((struct lysc_type_leafref*)type)->realtype);
+    assert_int_equal(LY_TYPE_STRING, ((struct lysc_type_leafref*)type)->realtype->basetype);
+
     /* invalid paths */
     assert_non_null(mod = lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;container a {leaf target2 {type uint8;}}"
                                         "leaf ref1 {type leafref {path ../a/invalid;}}}", LYS_IN_YANG));
