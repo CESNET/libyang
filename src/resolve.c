@@ -3955,6 +3955,12 @@ resolve_schema_leafref_predicate(const char *path, const struct lys_node *contex
         pke_parsed += i;
 
         for (i = 0, dst_node = parent; i < dest_parent_times; ++i) {
+            if (!dst_node) {
+                /* we went too much into parents, there is no parent anymore */
+                LOGVAL(ctx, LYE_NORESOLV, LY_VLOG_LYS, parent, "leafref predicate", path_key_expr);
+                return 0;
+            }
+
             if (dst_node->parent && (dst_node->parent->nodetype == LYS_AUGMENT)
                     && !((struct lys_node_augment *)dst_node->parent)->target) {
                 /* we are in an unresolved augment, cannot evaluate */
@@ -3968,11 +3974,6 @@ resolve_schema_leafref_predicate(const char *path, const struct lys_node *contex
             for (dst_node = lys_parent(dst_node);
                  dst_node && !(dst_node->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_ACTION | LYS_NOTIF | LYS_RPC));
                  dst_node = lys_parent(dst_node));
-
-            if (!dst_node) {
-                LOGVAL(ctx, LYE_NORESOLV, LY_VLOG_LYS, parent, "leafref predicate", path_key_expr);
-                return 0;
-            }
         }
         first_iter = 1;
         while (1) {
