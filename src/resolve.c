@@ -7613,8 +7613,7 @@ check_instid_ext_dep(const struct lys_node *sleaf, const char *json_instid)
 {
     const struct lys_node *op_node, *first_node;
     enum int_log_opts prev_ilo;
-    char *buf;
-    char *tempBuf = NULL;
+    char *buf, *tmp;
     int ret = 0;
 
     if (!json_instid || !json_instid[0]) {
@@ -7632,10 +7631,11 @@ check_instid_ext_dep(const struct lys_node *sleaf, const char *json_instid)
     }
 
     /* get the first node from the instid */
-    tempBuf = strchr(json_instid + 1, '/');
-    if (!tempBuf)
-      return 0;
-    buf = strndup(json_instid, tempBuf - json_instid);
+    tmp = strchr(json_instid + 1, '/');
+    if (!tmp) {
+        return 0;
+    }
+    buf = strndup(json_instid, tmp - json_instid);
     if (!buf) {
         /* so that we do not have to bother with logging, say it is not external */
         return 0;
