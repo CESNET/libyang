@@ -5842,28 +5842,27 @@ lyd_free_value(lyd_val value, LY_DATA_TYPE value_type, uint8_t value_flags, stru
 }
 
 static void
-lyd_free_internal(struct lyd_node *node, int top)
+_lyd_free_node(struct lyd_node *node)
 {
-    struct lyd_node *next, *iter;
     struct lyd_node_leaf_list *leaf;
 
     if (!node) {
         return;
     }
 
-    /* if freeing top-level, always remove it from the parent hash table */
-    lyd_unlink_internal(node, (top ? 1 : 2));
-
-    if (!(node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
-        /* free children */
-        LY_TREE_FOR_SAFE(node->child, next, iter) {
-            lyd_free_internal(iter, 0);
-        }
+    switch (node->schema->nodetype) {
+    case LYS_CONTAINER:
+    case LYS_LIST:
+    case LYS_RPC:
+    case LYS_ACTION:
+    case LYS_NOTIF:
 #ifdef LY_ENABLED_CACHE
         /* it should be empty because all the children are freed already (only if in debug mode) */
         lyht_free(node->ht);
 #endif
-    } else if (node->schema->nodetype & LYS_ANYDATA) {
+        break;
+    case LYS_ANYDATA:
+    case LYS_ANYXML:
         switch (((struct lyd_node_anydata *)node)->value_type) {
         case LYD_ANYDATA_CONSTSTRING:
         case LYD_ANYDATA_SXML:
@@ -5887,20 +5886,61 @@ lyd_free_internal(struct lyd_node *node, int top)
             assert(0);
             break;
         }
-    } else { /* LYS_LEAF | LYS_LEAFLIST */
+        break;
+    case LYS_LEAF:
+    case LYS_LEAFLIST:
         leaf = (struct lyd_node_leaf_list *)node;
         lyd_free_value(leaf->value, leaf->value_type, leaf->value_flags, &((struct lys_node_leaf *)leaf->schema)->type,
                        NULL, NULL, NULL);
         lydict_remove(leaf->schema->module->ctx, leaf->value_str);
+        break;
+    default:
+        assert(0);
     }
+
     lyd_free_attr(node->schema->module->ctx, node, node->attr, 1);
     free(node);
+}
+
+static void
+lyd_free_internal_r(struct lyd_node *node, int top)
+{
+    struct lyd_node *next, *iter;
+
+    if (!node) {
+        return;
+    }
+
+    /* if freeing top-level, always remove it from the parent hash table */
+    lyd_unlink_internal(node, (top ? 1 : 2));
+
+    if (!(node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
+        /* free children */
+        LY_TREE_FOR_SAFE(node->child, next, iter) {
+            lyd_free_internal_r(iter, 0);
+        }
+    }
+
+    _lyd_free_node(node);
 }
 
 API void
 lyd_free(struct lyd_node *node)
 {
-    lyd_free_internal(node, 1);
+    lyd_free_internal_r(node, 1);
+}
+
+static void
+lyd_free_withsiblings_r(struct lyd_node *first)
+{
+    struct lyd_node *next, *node;
+
+    LY_TREE_FOR_SAFE(first, next, node) {
+        if (node->schema->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_RPC | LYS_ACTION | LYS_NOTIF)) {
+            lyd_free_withsiblings_r(node->child);
+        }
+        _lyd_free_node(node);
+    }
 }
 
 API void
@@ -5912,15 +5952,26 @@ lyd_free_withsiblings(struct lyd_node *node)
         return;
     }
 
-    /* optimization - avoid freeing (unlinking) the last node of the siblings list */
-    /* so, first, free the node's predecessors to the beginning of the list ... */
-    for(iter = node->prev; iter->next; iter = aux) {
-        aux = iter->prev;
-        lyd_free(iter);
-    }
-    /* ... then, the node is the first in the siblings list, so free them all */
-    LY_TREE_FOR_SAFE(node, aux, iter) {
-        lyd_free(iter);
+    if (node->parent) {
+        /* optimization - avoid freeing (unlinking) the last node of the siblings list */
+        /* so, first, free the node's predecessors to the beginning of the list ... */
+        for(iter = node->prev; iter->next; iter = aux) {
+            aux = iter->prev;
+            lyd_free(iter);
+        }
+        /* ... then, the node is the first in the siblings list, so free them all */
+        LY_TREE_FOR_SAFE(node, aux, iter) {
+            lyd_free(iter);
+        }
+    } else {
+        /* node is top-level so we are freeing the whole data tree, we can just free nodes without any unlinking */
+        while (node->prev->next) {
+            /* find the first sibling */
+            node = node->prev;
+        }
+
+        /* free it all */
+        lyd_free_withsiblings_r(node);
     }
 }
 

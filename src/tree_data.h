@@ -1214,6 +1214,9 @@ void lyd_free(struct lyd_node *node);
 /**
  * @brief Free (and unlink) the specified data tree and all its siblings (preceding as well as following).
  *
+ * If used on a top-level node it means that the whole data tree is being freed and unnecessary operations
+ * are skipped. Always use this function for freeing a whole data tree to achieve better performance.
+ *
  * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
  *
  * @param[in] node One of the siblings root element of the (sub)trees to be freed.
