@@ -219,8 +219,13 @@ lyxml_dup_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, struct lyxml_elem *p
     /* correct namespaces */
     lyxml_correct_elem_ns(ctx, result, 1, 0);
 
+    if(elem->attr && (LYXML_ATTR_NS == elem->attr->type))
+      attr = elem->attr->next;
+    else
+      attr = elem->attr;
+
     /* duplicate attributes */
-    for (attr = elem->attr; attr; attr = attr->next) {
+    for (; attr; attr = attr->next) {
         lyxml_dup_attr(ctx, result, attr);
     }
 
