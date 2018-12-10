@@ -1477,13 +1477,13 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
     }
 
     /* add/validate default values, unres */
-    if (lyd_defaults_add_unres(&result, options, ctx, data_tree, act_notif, unres, 1)) {
+    if (lyd_defaults_add_unres(&result, options, ctx, NULL, 0, data_tree, act_notif, unres, 1)) {
         goto error;
     }
 
     /* check for missing top level mandatory nodes */
     if (!(options & (LYD_OPT_TRUSTED | LYD_OPT_NOTIF_FILTER))
-            && lyd_check_mandatory_tree((act_notif ? act_notif : result), ctx, options)) {
+            && lyd_check_mandatory_tree((act_notif ? act_notif : result), ctx, NULL, 0, options)) {
         goto error;
     }
 

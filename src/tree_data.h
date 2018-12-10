@@ -1163,6 +1163,21 @@ struct lyd_node *lyd_first_sibling(struct lyd_node *node);
 int lyd_validate(struct lyd_node **node, int options, void *var_arg);
 
 /**
+ * @brief Validate \p node data tree but only subtrees that belong to the schema found in \p modules. All other
+ *        schemas are effectively disabled for the validation.
+ *
+ * @param[in,out] node Data tree to be validated. In case the \p options includes #LYD_OPT_WHENAUTODEL, libyang
+ *                     can modify the provided tree including the root \p node.
+ * @param[in] modules List of module names to validate.
+ * @param[in] mod_count Number of modules in \p modules.
+ * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions.
+ *                    Accepted data type values include #LYD_OPT_DATA, #LYD_OPT_CONFIG, #LYD_OPT_GET,
+ *                    #LYD_OPT_GETCONFIG, and #LYD_OPT_EDIT.
+ * @return 0 on success, nonzero in case of an error.
+ */
+int lyd_validate_modules(struct lyd_node **node, const struct lys_module **modules, int mod_count, int options);
+
+/**
  * @brief Check restrictions applicable to the particular leaf/leaf-list on the given string value.
  *
  * Validates the value only using the types' restrictions. Do not check the rest of restrictions dependent on the

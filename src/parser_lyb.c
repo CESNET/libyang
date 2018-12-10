@@ -1254,7 +1254,7 @@ lyd_parse_lyb(struct ly_ctx *ctx, const char *data, int options, const struct ly
                 LY_TREE_DFS_END(node, next, act_notif);
             }
         }
-        if (lyd_defaults_add_unres(&node, options, ctx, data_tree, act_notif, unres, 0)) {
+        if (lyd_defaults_add_unres(&node, options, ctx, NULL, 0, data_tree, act_notif, unres, 0)) {
             lyd_free_withsiblings(node);
             node = NULL;
             goto finish;
