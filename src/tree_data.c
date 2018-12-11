@@ -1305,48 +1305,78 @@ check_leaf_list_backlinks(struct lyd_node *node, int op)
 {
     struct lyd_node *next, *iter;
     struct lyd_node_leaf_list *leaf_list;
-    struct ly_set *set, *data;
-    uint32_t i, j;
+    struct lys_node_leaflist *iter_leaf_list;
+    struct ly_set *set, *leafrefs = NULL, *leaves = NULL, *instances = NULL;
+    uint32_t i;
     int validity_changed = 0;
 
     assert((op == 0) || (op == 1) || (op == 2));
 
-    /* fix leafrefs */
+    /* leaf data nodes below "node", referenced by a leafref */
+    leaves = ly_set_new();
+    if (leaves == NULL) {
+        LOGMEM(node->schema->module->ctx);
+        goto out;
+    }
+
+    /* leafref schema nodes referencing leaves below "node" */
+    leafrefs = ly_set_new();
+    if (leafrefs == NULL) {
+        LOGMEM(node->schema->module->ctx);
+        goto out;
+    }
+
+    /* get a set with all leafref schema nodes */
     LY_TREE_DFS_BEGIN(node, next, iter) {
+        if ((iter->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) == 0)
+            goto next;
+        iter_leaf_list = (struct lys_node_leaflist *)iter->schema;
+        if (iter_leaf_list->backlinks == NULL)
+            goto next;
         /* the node is target of a leafref */
-        if ((iter->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) && iter->schema->child) {
-            set = (struct ly_set *)iter->schema->child;
-            for (i = 0; i < set->number; i++) {
-                data = lyd_find_instance(iter, set->set.s[i]);
-                if (data) {
-                    for (j = 0; j < data->number; j++) {
-                        leaf_list = (struct lyd_node_leaf_list *)data->set.d[j];
-                        if (((op != 0) && (leaf_list->value_type == LY_TYPE_LEAFREF) && (leaf_list->value.leafref == iter))
-                                || ((op != 1) && (leaf_list->value_flags & LY_VALUE_UNRES))) {
-                            /* invalidate the leafref, a change concerning it happened */
-                            leaf_list->validity |= LYD_VAL_LEAFREF;
-                            validity_changed = 1;
-                            if (leaf_list->value_type == LY_TYPE_LEAFREF) {
-                                /* remove invalid link and put unresolved value back */
-                                lyp_parse_value(&((struct lys_node_leaf *)leaf_list->schema)->type, &leaf_list->value_str,
-                                                NULL, leaf_list, NULL, NULL, 1, leaf_list->dflt, 0);
-                            }
-                        }
-                    }
-                    ly_set_free(data);
-                } else {
-                    LOGINT(node->schema->module->ctx);
-                    return;
-                }
+        ly_set_add(leaves, iter, 0);
+        set = iter_leaf_list->backlinks;
+        for (i = 0; i < set->number; i++)
+            ly_set_add(leafrefs, set->set.s[i], 0);
+    next:
+        LY_TREE_DFS_END(node, next, iter)
+    }
+
+    if (leafrefs->number == 0)
+        goto out;
+
+    instances = lyd_find_instance_set(node, leafrefs);
+    if (instances == NULL) {
+        LOGMEM(node->schema->module->ctx);
+        goto out;
+    }
+
+    for (i = 0; i < instances->number; i++) {
+        leaf_list = (struct lyd_node_leaf_list *)instances->set.s[i];
+        if (((op != 0) && (leaf_list->value_type == LY_TYPE_LEAFREF) &&
+                ly_set_contains(leaves, leaf_list->value.leafref) != -1)
+            || ((op != 1) && (leaf_list->value_flags & LY_VALUE_UNRES))) {
+            /* invalidate the leafref, a change concerning it happened */
+            leaf_list->validity |= LYD_VAL_LEAFREF;
+            validity_changed = 1;
+            if (leaf_list->value_type == LY_TYPE_LEAFREF) {
+                /* remove invalid link and put unresolved value back */
+                lyp_parse_value(&((struct lys_node_leaf *)leaf_list->schema)->type,
+                                &leaf_list->value_str, NULL, leaf_list, NULL,
+                                NULL, 1, leaf_list->dflt, 0);
             }
         }
-        LY_TREE_DFS_END(node, next, iter)
     }
 
     /* invalidate parent to make sure it will be checked in future validation */
     if (validity_changed && node->parent) {
         node->parent->validity |= LYD_VAL_MAND;
     }
+
+out:
+    ly_set_free(leafrefs);
+    ly_set_free(leaves);
+    ly_set_free(instances);
 }
 
 API int
