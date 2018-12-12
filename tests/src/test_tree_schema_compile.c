@@ -653,7 +653,8 @@ test_node_choice(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
 
     assert_non_null(mod = lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;feature f;"
-                                        "choice ch {default a:b; case a {leaf a {type string;}}leaf b {type string;}}}", LYS_IN_YANG));
+                                        "choice ch {default a:b; case a {leaf a1 {type string;}leaf a2 {type string;}}"
+                                        "leaf b {type string;}}}", LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
     ch = (struct lysc_node_choice*)mod->compiled->data;
     assert_non_null(ch);
@@ -663,7 +664,9 @@ test_node_choice(void **state)
     assert_string_equal("a", cs->name);
     assert_ptr_equal(ch, cs->parent);
     assert_non_null(cs->child);
-    assert_string_equal("a", cs->child->name);
+    assert_string_equal("a1", cs->child->name);
+    assert_non_null(cs->child->next);
+    assert_string_equal("a2", cs->child->next->name);
     assert_ptr_equal(cs, cs->child->parent);
     cs = (struct lysc_node_case*)cs->next;
     assert_non_null(cs);
@@ -672,8 +675,8 @@ test_node_choice(void **state)
     assert_non_null(cs->child);
     assert_string_equal("b", cs->child->name);
     assert_ptr_equal(cs, cs->child->parent);
-    assert_ptr_equal(ch->cases->child, cs->child->prev);
-    assert_ptr_equal(ch->cases->child->next, cs->child);
+    assert_ptr_equal(ch->cases->child->next, cs->child->prev);
+    assert_ptr_equal(ch->cases->child->next->next, cs->child);
     assert_ptr_equal(ch->cases->child->prev, cs->child);
     assert_ptr_equal(ch->dflt, cs);
 
