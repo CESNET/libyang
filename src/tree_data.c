@@ -6317,6 +6317,7 @@ ly_set_dup(const struct ly_set *set)
     LY_CHECK_ERR_RETURN(!new, LOGMEM(NULL), NULL);
     new->number = set->number;
     new->size = set->size;
+    new->type = set->type;
     new->set.g = malloc(new->size * sizeof *(new->set.g));
     LY_CHECK_ERR_RETURN(!new->set.g, LOGMEM(NULL); free(new), NULL);
     memcpy(new->set.g, set->set.g, new->size * sizeof *(new->set.g));
@@ -6335,7 +6336,12 @@ ly_set_add(struct ly_set *set, void *node, int options)
         return -1;
     }
 
-    if (!(options & LY_SET_OPT_USEASLIST)) {
+    if (options & LY_SET_OPT_USEASLIST) {
+        assert(set->type == LY_SET_NONE || set->type == LY_SET_LIST);
+        set->type = LY_SET_LIST;
+    } else {
+        assert(set->type == LY_SET_NONE || set->type == LY_SET_DICT);
+        set->type = LY_SET_DICT;
         /* search for duplication */
         for (i = 0; i < set->number; i++) {
             if (set->set.g[i] == node) {
@@ -6372,7 +6378,12 @@ ly_set_merge(struct ly_set *trg, struct ly_set *src, int options)
         return 0;
     }
 
-    if (!(options & LY_SET_OPT_USEASLIST)) {
+    if (options & LY_SET_OPT_USEASLIST) {
+        assert(trg->type == LY_SET_NONE || trg->type == LY_SET_LIST);
+        trg->type = LY_SET_LIST;
+    } else {
+        assert(trg->type == LY_SET_NONE || trg->type == LY_SET_DICT);
+        trg->type = LY_SET_DICT;
         /* remove duplicates */
         i = 0;
         while (i < src->number) {
@@ -6456,6 +6467,8 @@ ly_set_clean(struct ly_set *set)
     }
 
     set->number = 0;
+    set->type = LY_SET_NONE;
+
     return EXIT_SUCCESS;
 }
 

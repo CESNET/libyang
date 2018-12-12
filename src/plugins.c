@@ -38,7 +38,7 @@ static uint16_t ext_plugins_count = 0; /* size of the ext_plugins array */
 static struct lytype_plugin_list *type_plugins = NULL;
 static uint16_t type_plugins_count = 0;
 
-static struct ly_set dlhandlers = {0, 0, {NULL}};
+static struct ly_set dlhandlers = {0};
 static pthread_mutex_t plugins_lock = PTHREAD_MUTEX_INITIALIZER;
 
 static char **loaded_plugins = NULL; /* both ext and type plugin names */

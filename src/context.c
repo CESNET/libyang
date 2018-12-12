@@ -158,7 +158,7 @@ ly_ctx_new_yl_legacy(struct ly_ctx *ctx, struct lyd_node *yltree)
     struct lyd_node *module, *node;
     struct ly_set *set;
     const char *name, *revision;
-    struct ly_set features = {0, 0, {NULL}};
+    struct ly_set features = {0};
     const struct lys_module *mod;
 
     set = lyd_find_path(yltree, "/ietf-yang-library:yang-library/modules-state/module");
@@ -215,7 +215,7 @@ ly_ctx_new_yl_common(const char *search_dir, const char *input, LYD_FORMAT forma
     unsigned int i, u;
     struct lyd_node *module, *node;
     const char *name, *revision;
-    struct ly_set features = {0, 0, {NULL}};
+    struct ly_set features = {0};
     const struct lys_module *mod;
     struct lyd_node *yltree = NULL;
     struct ly_ctx *ctx = NULL;

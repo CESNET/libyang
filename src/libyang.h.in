@@ -1704,6 +1704,10 @@ union ly_set_set {
 struct ly_set {
     unsigned int size;               /**< allocated size of the set array */
     unsigned int number;             /**< number of elements in (used size of) the set array */
+#define LY_SET_NONE 0x00
+#define LY_SET_LIST 0x01
+#define LY_SET_DICT 0x02
+    unsigned int type;               /**< none, list, or dict */
     union ly_set_set set;            /**< set array - union to keep ::ly_set generic for data as well as schema trees */
 };
 
