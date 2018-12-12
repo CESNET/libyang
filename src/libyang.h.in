@@ -15,6 +15,7 @@
 #ifndef LY_LIBYANG_H_
 #define LY_LIBYANG_H_
 
+#include <sys/queue.h>
 #include <stdio.h>
 
 /**
@@ -1691,6 +1692,16 @@ union ly_set_set {
 };
 
 /**
+ * An element of the hash table
+ */
+struct ly_set_elt {
+    unsigned int index;
+    void *node;
+    LIST_ENTRY(ly_set_elt) next;
+};
+LIST_HEAD(ly_set_elt_list, ly_set_elt);
+
+/**
  * @brief Structure to hold a set of (not necessary somehow connected) ::lyd_node or ::lys_node objects.
  * Caller is supposed to not mix the type of objects added to the set and according to its knowledge about
  * the set content, it is supposed to access the set via the sset, dset or set members of the structure.
@@ -1709,6 +1720,8 @@ struct ly_set {
 #define LY_SET_DICT 0x02
     unsigned int type;               /**< none, list, or dict */
     union ly_set_set set;            /**< set array - union to keep ::ly_set generic for data as well as schema trees */
+    unsigned int htable_size;        /**< size of the hash table (always a power of 2) */
+    struct ly_set_elt_list *htable;  /**< hash table to store elements */
 };
 
 /**

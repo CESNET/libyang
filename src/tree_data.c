@@ -6263,6 +6263,8 @@ lyd_first_sibling(struct lyd_node *node)
     return start;
 }
 
+#define LY_SET_GROWTH_FACTOR 8
+
 API struct ly_set *
 ly_set_new(void)
 {
@@ -6273,6 +6275,21 @@ ly_set_new(void)
     return new;
 }
 
+static void
+ly_set_htable_clean(struct ly_set *set)
+{
+    struct ly_set_elt *elt;
+    unsigned int i;
+
+    for (i = 0; i < set->htable_size; i++) {
+        while (!LIST_EMPTY(&set->htable[i])) {
+            elt = LIST_FIRST(&set->htable[i]);
+            LIST_REMOVE(elt, next);
+            free(elt);
+        }
+    }
+}
+
 API void
 ly_set_free(struct ly_set *set)
 {
@@ -6280,19 +6297,108 @@ ly_set_free(struct ly_set *set)
         return;
     }
 
+    ly_set_htable_clean(set);
+    free(set->htable);
     free(set->set.g);
     free(set);
+}
+
+/** Hash rotation */
+static inline uint32_t murmurhash_rotl32(uint32_t x, int8_t r)
+{
+	return (x << r) | (x >> (32 - r));
+}
+
+/** Add 32-bit to the hash */
+static inline uint32_t murmurhash3_add32(uint32_t h, uint32_t data)
+{
+	data *= 0xcc9e2d51;
+	data = murmurhash_rotl32(data, 15);
+	data *= 0x1b873593;
+	h ^= data;
+	return h;
+}
+
+/** Intermediate mix */
+static inline uint32_t murmurhash3_mix32(uint32_t h)
+{
+	h = murmurhash_rotl32(h,13);
+	h = h * 5 +0xe6546b64;
+	return h;
+}
+
+/** Final mix: force all bits of a hash block to avalanche */
+static inline uint32_t murmurhash3_fmix32(uint32_t h)
+{
+	h ^= h >> 16;
+	h *= 0x85ebca6b;
+	h ^= h >> 13;
+	h *= 0xc2b2ae35;
+	h ^= h >> 16;
+
+	return h;
+}
+
+/*
+ * Based on MurmurHash3, a hash implementation written by Austin
+ * Appleby, and is placed in the public domain.
+ */
+static unsigned int
+ly_set_hash(void *node)
+{
+    intptr_t addr = (intptr_t)node;
+    uint32_t seed = 0x7a657230;
+    uint32_t h;
+
+    h = seed;
+    h = murmurhash3_add32(h, addr & 0xfffffffful);
+    h = murmurhash3_mix32(h);
+    h = murmurhash3_add32(h, addr >> 32ul);
+    h = murmurhash3_mix32(h);
+    h = murmurhash3_fmix32(h);
+
+    return h;
+}
+
+static struct ly_set_elt *
+ly_set_htable_lookup(const struct ly_set *set, void *node)
+{
+    struct ly_set_elt *elt;
+    uint32_t h;
+
+    if (!set || set->htable_size == 0) {
+        return NULL;
+    }
+
+    h = ly_set_hash(node);
+    h &= set->htable_size - 1;
+    LIST_FOREACH(elt, &set->htable[h], next) {
+        if (node == elt->node)
+            return elt;
+    }
+
+    return NULL;
 }
 
 API int
 ly_set_contains(const struct ly_set *set, void *node)
 {
+    struct ly_set_elt *elt;
     unsigned int i;
 
     if (!set) {
         return -1;
     }
 
+    /* use the hash table */
+    if (set->htable_size > 0) {
+        elt = ly_set_htable_lookup(set, node);
+        if (elt == NULL)
+            return -1;
+        return elt->index;
+    }
+
+    /* linear search */
     for (i = 0; i < set->number; i++) {
         if (set->set.g[i] == node) {
             /* object found */
@@ -6307,7 +6413,9 @@ ly_set_contains(const struct ly_set *set, void *node)
 API struct ly_set *
 ly_set_dup(const struct ly_set *set)
 {
+    struct ly_set_elt *elt, *new_elt;
     struct ly_set *new;
+    unsigned int i;
 
     if (!set) {
         return NULL;
@@ -6322,14 +6430,62 @@ ly_set_dup(const struct ly_set *set)
     LY_CHECK_ERR_RETURN(!new->set.g, LOGMEM(NULL); free(new), NULL);
     memcpy(new->set.g, set->set.g, new->size * sizeof *(new->set.g));
 
+    /* copy the hash table */
+    if (set->htable_size > 0) {
+        new->htable_size = set->htable_size;
+        new->htable = calloc(1, new->htable_size * sizeof(struct ly_set_elt_list *));
+        LY_CHECK_ERR_RETURN(!new->htable, LOGMEM(NULL); ly_set_free(new), NULL);
+        for (i = 0; i < set->htable_size; i++) {
+            LIST_FOREACH(elt, &set->htable[i], next) {
+                new_elt = calloc(1, sizeof(*new_elt));
+                LY_CHECK_ERR_RETURN(!new_elt, LOGMEM(NULL); ly_set_free(new), NULL);
+                memcpy(new_elt, elt, sizeof(*new_elt));
+                LIST_INSERT_HEAD(&new->htable[i], new_elt, next);
+            }
+        }
+    }
+
     return new;
+}
+
+static int
+ly_set_htable_resize(struct ly_set *set, size_t new_size)
+{
+    struct ly_set_elt_list *new_table;
+    struct ly_set_elt *elt;
+    uint32_t h;
+    size_t i;
+
+    /* new_size is a power of 2 */
+    assert(new_size != 0 && !(new_size & (new_size - 1)));
+
+    new_table = calloc(new_size, sizeof(*set->htable));
+    LY_CHECK_ERR_RETURN(!new_table, LOGMEM(NULL), -1);
+
+    for (i = 0; i < set->htable_size; i++) {
+        while (!LIST_EMPTY(&set->htable[i])) {
+            elt = LIST_FIRST(&set->htable[i]);
+            LIST_REMOVE(elt, next);
+            h = ly_set_hash(elt->node) & (new_size - 1);
+            LIST_INSERT_HEAD(&new_table[h], elt, next);
+        }
+    }
+
+    free(set->htable);
+    set->htable = new_table;
+    set->htable_size = new_size;
+
+    return 0;
 }
 
 API int
 ly_set_add(struct ly_set *set, void *node, int options)
 {
-    unsigned int i;
+    struct ly_set_elt *elt;
+    unsigned int new_size;
+    int index;
     void **new;
+    uint32_t h;
 
     if (!set || !node) {
         LOGARG;
@@ -6343,12 +6499,9 @@ ly_set_add(struct ly_set *set, void *node, int options)
         assert(set->type == LY_SET_NONE || set->type == LY_SET_DICT);
         set->type = LY_SET_DICT;
         /* search for duplication */
-        for (i = 0; i < set->number; i++) {
-            if (set->set.g[i] == node) {
-                /* already in set */
-                return i;
-            }
-        }
+        index = ly_set_contains(set, node);
+        if (index != -1)
+            return index;
     }
 
     if (set->size == set->number) {
@@ -6356,6 +6509,23 @@ ly_set_add(struct ly_set *set, void *node, int options)
         LY_CHECK_ERR_RETURN(!new, LOGMEM(NULL), -1);
         set->size += 8;
         set->set.g = new;
+    }
+
+    if (set->type == LY_SET_DICT) {
+        /* resize hash table if needed */
+        if (set->number >= set->htable_size) {
+            if (set->htable_size != 0)
+                new_size =  set->htable_size * LY_SET_GROWTH_FACTOR;
+            else
+                new_size =  LY_SET_GROWTH_FACTOR;
+            ly_set_htable_resize(set, new_size);
+        }
+        elt = calloc(1, sizeof(*elt));
+        LY_CHECK_ERR_RETURN(!elt, LOGMEM(NULL), -1);
+        elt->index = set->number;
+        elt->node = node;
+        h = ly_set_hash(node) & (set->htable_size - 1);
+        LIST_INSERT_HEAD(&set->htable[h], elt, next);
     }
 
     set->set.g[set->number++] = node;
@@ -6366,8 +6536,9 @@ ly_set_add(struct ly_set *set, void *node, int options)
 API int
 ly_set_merge(struct ly_set *trg, struct ly_set *src, int options)
 {
-    unsigned int i, ret;
+    unsigned int i, prev_number;
     void **new;
+    int index;
 
     if (!trg) {
         LOGARG;
@@ -6378,48 +6549,44 @@ ly_set_merge(struct ly_set *trg, struct ly_set *src, int options)
         return 0;
     }
 
+    prev_number = trg->number;
+
     if (options & LY_SET_OPT_USEASLIST) {
         assert(trg->type == LY_SET_NONE || trg->type == LY_SET_LIST);
         trg->type = LY_SET_LIST;
+
+        /* allocate more memory if needed */
+        if (trg->size < trg->number + src->number) {
+            new = realloc(trg->set.g, (trg->number + src->number) * sizeof *(trg->set.g));
+            LY_CHECK_ERR_RETURN(!new, LOGMEM(NULL), -1);
+            trg->size = trg->number + src->number;
+            trg->set.g = new;
+        }
+
+        /* copy contents from src into trg */
+        memcpy(trg->set.g + trg->number, src->set.g, src->number * sizeof *(src->set.g));
+        trg->number += src->number;
     } else {
         assert(trg->type == LY_SET_NONE || trg->type == LY_SET_DICT);
         trg->type = LY_SET_DICT;
-        /* remove duplicates */
-        i = 0;
-        while (i < src->number) {
-            if (ly_set_contains(trg, src->set.g[i]) > -1) {
-                ly_set_rm_index(src, i);
-            } else {
-                ++i;
-            }
+
+        /* add in trg, removing duplicates */
+        for (i = 0; i < src->number; i++) {
+            index = ly_set_add(trg, src->set.g[i], 0);
+            LY_CHECK_ERR_RETURN(index < 0, LOGMEM(NULL); ly_set_free(trg), -1);
         }
     }
 
-    /* allocate more memory if needed */
-    if (trg->size < trg->number + src->number) {
-        new = realloc(trg->set.g, (trg->number + src->number) * sizeof *(trg->set.g));
-        LY_CHECK_ERR_RETURN(!new, LOGMEM(NULL), -1);
-        trg->size = trg->number + src->number;
-        trg->set.g = new;
-    }
-
-    /* copy contents from src into trg */
-    memcpy(trg->set.g + trg->number, src->set.g, src->number * sizeof *(src->set.g));
-    ret = src->number;
-    trg->number += ret;
-
     /* cleanup */
     ly_set_free(src);
-    return ret;
+
+    return trg->number - prev_number;
 }
 
-API int
-ly_set_rm_index(struct ly_set *set, unsigned int index)
+static int
+__ly_set_rm(struct ly_set *set, unsigned int index, struct ly_set_elt *elt)
 {
-    if (!set || (index + 1) > set->number) {
-        LOGARG;
-        return EXIT_FAILURE;
-    }
+    struct ly_set_elt *elt2;
 
     if (index == set->number - 1) {
         /* removing last item in set */
@@ -6428,35 +6595,60 @@ ly_set_rm_index(struct ly_set *set, unsigned int index)
         /* removing item somewhere in a middle, so put there the last item */
         set->set.g[index] = set->set.g[set->number - 1];
         set->set.g[set->number - 1] = NULL;
+
+        /* update index in swaped element */
+        elt2 = ly_set_htable_lookup(set, set->set.g[index]);
+        if (elt2 != NULL)
+            elt2->index = index;
     }
     set->number--;
+
+    /* remove element from hash table */
+    if (elt) {
+        LIST_REMOVE(elt, next);
+        free(elt);
+    }
 
     return EXIT_SUCCESS;
 }
 
 API int
+ly_set_rm_index(struct ly_set *set, unsigned int index)
+{
+    struct ly_set_elt *elt;
+
+    if (!set || (index + 1) > set->number) {
+        LOGARG;
+        return EXIT_FAILURE;
+    }
+
+    elt = ly_set_htable_lookup(set, set->set.g[index]);
+    return __ly_set_rm(set, index, elt);
+}
+
+API int
 ly_set_rm(struct ly_set *set, void *node)
 {
-    unsigned int i;
+    struct ly_set_elt *elt = NULL;
+    int index;
 
     if (!set || !node) {
         LOGARG;
         return EXIT_FAILURE;
     }
 
-    /* get index */
-    for (i = 0; i < set->number; i++) {
-        if (set->set.g[i] == node) {
-            break;
-        }
-    }
-    if (i == set->number) {
-        /* node is not in set */
-        LOGARG;
-        return EXIT_FAILURE;
+    if (set->htable_size > 0) {
+        elt = ly_set_htable_lookup(set, node);
+        if (elt == NULL)
+            return EXIT_FAILURE;
+        index = elt->index;
+    } else {
+        index = ly_set_contains(set, node);
+        if (index < 0)
+            return EXIT_FAILURE;
     }
 
-    return ly_set_rm_index(set, i);
+    return __ly_set_rm(set, index, elt);
 }
 
 API int
@@ -6466,6 +6658,7 @@ ly_set_clean(struct ly_set *set)
         return EXIT_FAILURE;
     }
 
+    ly_set_htable_clean(set);
     set->number = 0;
     set->type = LY_SET_NONE;
 
