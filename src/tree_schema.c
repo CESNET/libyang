@@ -74,6 +74,12 @@ lys_getnext(const struct lysc_node *last, const struct lysc_node *parent, const 
     next = last->next;
 repeat:
     if (!next) {
+        /* possibly go back to parent */
+        if (last->parent != parent) {
+            last = last->parent;
+            next = last->next;
+            goto repeat;
+        }
         return next;
     }
     switch (next->nodetype) {
@@ -84,6 +90,7 @@ repeat:
     case LYS_ANYDATA:
     case LYS_LIST:
     case LYS_LEAFLIST:
+    case LYS_CASE:
         break;
     case LYS_CONTAINER:
         if (!(((struct lysc_node_container *)next)->flags & LYS_PRESENCE) && (options & LYS_GETNEXT_INTONPCONT)) {
@@ -103,7 +110,11 @@ repeat:
             next = next->next;
         } else {
             /* go into */
-            next = ((struct lysc_node_choice *)next)->cases[0].child;
+            if (options & LYS_GETNEXT_WITHCASE) {
+                next = (struct lysc_node*)&((struct lysc_node_choice *)next)->cases;
+            } else {
+                next = ((struct lysc_node_choice *)next)->cases->child;
+            }
         }
         goto repeat;
     default:

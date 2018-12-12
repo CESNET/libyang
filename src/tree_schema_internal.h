@@ -17,6 +17,11 @@
 
 #define LOGVAL_YANG(CTX, ...) LOGVAL((CTX)->ctx, LY_VLOG_LINE, &(CTX)->line, __VA_ARGS__)
 
+/* These 2 macros checks YANG's identifier grammar rule */
+#define is_yangidentstartchar(c) ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_')
+#define is_yangidentchar(c) ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || \
+        c == '_' || c == '-' || c == '.')
+
 /**
  * @brief List of YANG statement groups - the (sub)module's substatements
  */
@@ -33,7 +38,7 @@ enum yang_module_stmt {
  */
 enum yang_arg {
     Y_IDENTIF_ARG,        /**< YANG "identifier-arg-str" rule */
-    Y_PREF_IDENTIF_ARG,   /**< YANG "identifier-ref-arg-str" rule */
+    Y_PREF_IDENTIF_ARG,   /**< YANG "identifier-ref-arg-str" or node-identifier rule */
     Y_STR_ARG,            /**< YANG "string" rule */
     Y_MAYBE_STR_ARG       /**< optional YANG "string" rule */
 };

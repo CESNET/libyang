@@ -653,7 +653,7 @@ test_node_choice(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
 
     assert_non_null(mod = lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;feature f;"
-                                        "choice ch {case a {leaf a {type string;}}leaf b {type string;}}}", LYS_IN_YANG));
+                                        "choice ch {default a:b; case a {leaf a {type string;}}leaf b {type string;}}}", LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
     ch = (struct lysc_node_choice*)mod->compiled->data;
     assert_non_null(ch);
@@ -675,6 +675,7 @@ test_node_choice(void **state)
     assert_ptr_equal(ch->cases->child, cs->child->prev);
     assert_ptr_equal(ch->cases->child->next, cs->child);
     assert_ptr_equal(ch->cases->child->prev, cs->child);
+    assert_ptr_equal(ch->dflt, cs);
 
     assert_non_null(mod = lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;"
                                         "choice ch {case a {leaf x {type string;}}leaf x {type string;}}}", LYS_IN_YANG));
@@ -692,6 +693,20 @@ test_node_choice(void **state)
                                         "choice ch {case b {leaf x {type string;}}case b {leaf y {type string;}}}}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
     logbuf_assert("Duplicate identifier \"b\" of case statement.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module ca {namespace urn:ca;prefix ca;"
+                                        "choice ch {default c;case a {leaf x {type string;}}case b {leaf y {type string;}}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Default case \"c\" not found.");
+    assert_non_null(mod = lys_parse_mem(ctx, "module cb {namespace urn:cb;prefix cb; import a {prefix a;}"
+                                        "choice ch {default a:a;case a {leaf x {type string;}}case b {leaf y {type string;}}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid default case referencing a case from different YANG module (by prefix \"a\").");
+    assert_non_null(mod = lys_parse_mem(ctx, "module cc {namespace urn:cc;prefix cc;"
+                                        "choice ch {default a;case a {leaf x {mandatory true;type string;}}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Mandatory node \"x\" under the default case \"a\".");
+    /* TODO check with mandatory nodes from augment placed into the case */
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);

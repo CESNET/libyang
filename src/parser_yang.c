@@ -41,11 +41,6 @@
         (c >= 0xd0000 && c <= 0xdfffd) || (c >= 0xe0000 && c <= 0xefffd) || \
         (c >= 0xf0000 && c <= 0xffffd) || (c >= 0x100000 && c <= 0x10fffd))
 
-/* These 2 macros checks YANG's identifier grammar rule */
-#define is_yangidentstartchar(c) ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_')
-#define is_yangidentchar(c) ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || \
-        c == '_' || c == '-' || c == '.')
-
 #define CHECK_UNIQUENESS(CTX, ARRAY, MEMBER, STMT, IDENT) \
     if (ARRAY) { \
         for (unsigned int u = 0; u < LY_ARRAY_SIZE(ARRAY) - 1; ++u) { \
@@ -3355,7 +3350,7 @@ parse_case(struct ly_parser_ctx *ctx, const char **data, struct lysp_node *paren
             LY_CHECK_RET(parse_any(ctx, data, kw, (struct lysp_node*)cas, &cas->child));
             break;
         case YANG_CHOICE:
-            LY_CHECK_RET(parse_case(ctx, data, (struct lysp_node*)cas, &cas->child));
+            LY_CHECK_RET(parse_choice(ctx, data, (struct lysp_node*)cas, &cas->child));
             break;
         case YANG_CONTAINER:
             LY_CHECK_RET(parse_container(ctx, data, (struct lysp_node*)cas, &cas->child));
@@ -3421,7 +3416,7 @@ parse_choice(struct ly_parser_ctx *ctx, const char **data, struct lysp_node *par
     INSERT_WORD(ctx, buf, choice->name, word, word_len);
 
     /* parse substatements */
-    YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret,) {
+    YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret, goto checks) {
         switch (kw) {
         case YANG_CONFIG:
             LY_CHECK_RET(parse_config(ctx, data, &choice->flags, &choice->exts));
@@ -3445,7 +3440,7 @@ parse_choice(struct ly_parser_ctx *ctx, const char **data, struct lysp_node *par
             LY_CHECK_RET(parse_when(ctx, data, &choice->when));
             break;
         case YANG_DEFAULT:
-            LY_CHECK_RET(parse_text_field(ctx, data, LYEXT_SUBSTMT_DEFAULT, 0, &choice->dflt, Y_IDENTIF_ARG, &choice->exts));
+            LY_CHECK_RET(parse_text_field(ctx, data, LYEXT_SUBSTMT_DEFAULT, 0, &choice->dflt, Y_PREF_IDENTIF_ARG, &choice->exts));
             break;
 
         case YANG_ANYDATA:
@@ -3480,6 +3475,12 @@ parse_choice(struct ly_parser_ctx *ctx, const char **data, struct lysp_node *par
             LOGVAL_YANG(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "choice");
             return LY_EVALID;
         }
+    }
+    LY_CHECK_RET(ret);
+checks:
+    if ((choice->flags & LYS_MAND_TRUE) && choice->dflt) {
+        LOGVAL_YANG(ctx, LY_VCODE_INCHILDSTMSCOMB, "mandatory", "default", "choice");
+        return LY_EVALID;
     }
     return ret;
 }

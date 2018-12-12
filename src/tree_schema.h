@@ -1227,10 +1227,9 @@ struct lysc_node_choice {
     struct lysc_when *when;          /**< when statement */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
 
-    struct lysc_node_case *cases;    /**< list of the cases with their name and pointer to the first children of each case ([sized array](@ref sizedarrays))
-                                          Note that all the children of all the cases are linked each other as siblings with the parent pointer pointing
-                                          to this choice node. To distinguish which children node belongs to which case, it is needed to match the first
-                                          children of the cases while going through the children linked list. */
+    struct lysc_node_case *cases;    /**< list of the cases (linked list). Note that all the children of all the cases are linked each other
+                                          as siblings. Their parent pointers points to the specific case they belongs to, so distinguish the
+                                          case is simple. */
     struct lysc_node_case *dflt;     /**< default case of the choice, only a pointer into the cases array. */
 };
 

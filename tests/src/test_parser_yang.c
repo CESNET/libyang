@@ -1385,7 +1385,7 @@ test_leaf(void **state)
     /* invalid */
     str = " l {mandatory true; default xx; type string;} ...";
     assert_int_equal(LY_EVALID, parse_leaf(&ctx, &str, NULL, (struct lysp_node**)&l));
-    logbuf_assert("Invalid combination of keywords \"mandatory\" and \"default\" as children of \"leaf\". Line number 1.");
+    logbuf_assert("Invalid combination of keywords \"mandatory\" and \"default\" as substatements of \"leaf\". Line number 1.");
     lysp_node_free(ctx.ctx, (struct lysp_node*)l); l = NULL;
 
     str = " l {description \"missing type\";} ...";
@@ -1474,7 +1474,7 @@ test_leaflist(void **state)
     /* invalid */
     str = " ll {min-elements 1; default xx; type string;} ...";
     assert_int_equal(LY_EVALID, parse_leaflist(&ctx, &str, NULL, (struct lysp_node**)&ll));
-    logbuf_assert("Invalid combination of keywords \"min-elements\" and \"default\" as children of \"leaf-list\". Line number 1.");
+    logbuf_assert("Invalid combination of keywords \"min-elements\" and \"default\" as substatements of \"leaf-list\". Line number 1.");
     lysp_node_free(ctx.ctx, (struct lysp_node*)ll); ll = NULL;
 
     str = " ll {description \"missing type\";} ...";
@@ -1594,8 +1594,8 @@ test_choice(void **state)
     TEST_DUP("when", "true", "false");
 #undef TEST_DUP
 
-    /* full content */
-    str = "ch {anydata any;anyxml anyxml; case c;choice ch;config false;container c;default c;description test;if-feature f;leaf l {type string;}"
+    /* full content - without default due to a collision with mandatory */
+    str = "ch {anydata any;anyxml anyxml; case c;choice ch;config false;container c;description test;if-feature f;leaf l {type string;}"
           "leaf-list ll {type string;} list li;mandatory true;reference test;status current;when true;m:ext;} ...";
     assert_int_equal(LY_SUCCESS, parse_choice(&ctx, &str, NULL, (struct lysp_node**)&ch));
     assert_non_null(ch);
@@ -1610,6 +1610,78 @@ test_choice(void **state)
     assert_null(ch->next);
     assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_MAND_TRUE, ch->flags);
     lysp_node_free(ctx.ctx, (struct lysp_node*)ch); ch = NULL;
+
+    /* full content - the default missing from the previous node */
+    str = "ch {default c;case c;} ...";
+    assert_int_equal(LY_SUCCESS, parse_choice(&ctx, &str, NULL, (struct lysp_node**)&ch));
+    assert_non_null(ch);
+    assert_int_equal(LYS_CHOICE, ch->nodetype);
+    assert_string_equal("ch", ch->name);
+    assert_string_equal("c", ch->dflt);
+    assert_int_equal(0, ch->flags);
+    lysp_node_free(ctx.ctx, (struct lysp_node*)ch); ch = NULL;
+
+    /* invalid content */
+    str = "ch {mandatory true; default c1; case c1 {leaf x{type string;}}} ...";
+    assert_int_equal(LY_EVALID, parse_choice(&ctx, &str, NULL, (struct lysp_node**)&ch));
+    logbuf_assert("Invalid combination of keywords \"mandatory\" and \"default\" as substatements of \"choice\". Line number 1.");
+    lysp_node_free(ctx.ctx, (struct lysp_node*)ch); ch = NULL;
+
+    *state = NULL;
+    ly_ctx_destroy(ctx.ctx, NULL);
+}
+
+static void
+test_case(void **state)
+{
+    *state = test_case;
+
+    struct lysp_module mod = {0};
+    struct ly_parser_ctx ctx = {0};
+    struct lysp_node_case *cs = NULL;
+    const char *str;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
+    assert_non_null(ctx.ctx);
+    ctx.line = 1;
+    ctx.mod = &mod;
+    ctx.mod->version = 2; /* simulate YANG 1.1 */
+
+    /* invalid cardinality */
+#define TEST_DUP(MEMBER, VALUE1, VALUE2) \
+    str = "cs {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
+    assert_int_equal(LY_EVALID, parse_case(&ctx, &str, NULL, (struct lysp_node**)&cs)); \
+    logbuf_assert("Duplicate keyword \""MEMBER"\". Line number 1."); \
+    lysp_node_free(ctx.ctx, (struct lysp_node*)cs); cs = NULL;
+
+    TEST_DUP("description", "text1", "text2");
+    TEST_DUP("reference", "1", "2");
+    TEST_DUP("status", "current", "obsolete");
+    TEST_DUP("when", "true", "false");
+#undef TEST_DUP
+
+    /* full content */
+    str = "cs {anydata any;anyxml anyxml; choice ch;container c;description test;if-feature f;leaf l {type string;}"
+          "leaf-list ll {type string;} list li;reference test;status current;uses grp;when true;m:ext;} ...";
+    assert_int_equal(LY_SUCCESS, parse_case(&ctx, &str, NULL, (struct lysp_node**)&cs));
+    assert_non_null(cs);
+    assert_int_equal(LYS_CASE, cs->nodetype);
+    assert_string_equal("cs", cs->name);
+    assert_string_equal("test", cs->dsc);
+    assert_non_null(cs->exts);
+    assert_non_null(cs->iffeatures);
+    assert_string_equal("test", cs->ref);
+    assert_non_null(cs->when);
+    assert_null(cs->parent);
+    assert_null(cs->next);
+    assert_int_equal(LYS_STATUS_CURR, cs->flags);
+    lysp_node_free(ctx.ctx, (struct lysp_node*)cs); cs = NULL;
+
+    /* invalid content */
+    str = "cs {config true} ...";
+    assert_int_equal(LY_EVALID, parse_case(&ctx, &str, NULL, (struct lysp_node**)&cs));
+    logbuf_assert("Invalid keyword \"config\" as a child of \"case\". Line number 1.");
+    lysp_node_free(ctx.ctx, (struct lysp_node*)cs); cs = NULL;
 
     *state = NULL;
     ly_ctx_destroy(ctx.ctx, NULL);
@@ -1633,6 +1705,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_leaflist, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_list, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_choice, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_case, logger_setup, logger_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

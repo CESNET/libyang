@@ -142,7 +142,7 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_INSTMT      LYVE_SYNTAX_YANG, "Invalid keyword \"%s\"."
 #define LY_VCODE_INCHILDSTMT LYVE_SYNTAX_YANG, "Invalid keyword \"%s\" as a child of \"%s\"."
 #define LY_VCODE_INCHILDSTMT2 LYVE_SYNTAX_YANG, "Invalid keyword \"%s\" as a child of \"%s\" - the statement is allowed only in YANG 1.1 modules."
-#define LY_VCODE_INCHILDSTMSCOMB LYVE_SYNTAX_YANG, "Invalid combination of keywords \"%s\" and \"%s\" as children of \"%s\"."
+#define LY_VCODE_INCHILDSTMSCOMB LYVE_SYNTAX_YANG, "Invalid combination of keywords \"%s\" and \"%s\" as substatements of \"%s\"."
 #define LY_VCODE_DUPSTMT     LYVE_SYNTAX_YANG, "Duplicate keyword \"%s\"."
 #define LY_VCODE_DUPIDENT    LYVE_SYNTAX_YANG, "Duplicate identifier \"%s\" of %s statement."
 #define LY_VCODE_INVAL       LYVE_SYNTAX_YANG, "Invalid value \"%.*s\" of \"%s\"."

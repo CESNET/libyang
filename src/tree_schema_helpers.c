@@ -42,12 +42,12 @@ lys_parse_id(const char **id)
 {
     assert(id && *id);
 
-    if (!isalpha(**id) && (**id != '_')) {
+    if (!is_yangidentstartchar(**id)) {
         return LY_EINVAL;
     }
     ++(*id);
 
-    while (isalnum(**id) || (**id == '_') || (**id == '-') || (**id == '.')) {
+    while (is_yangidentchar(**id)) {
         ++(*id);
     }
     return LY_SUCCESS;
@@ -113,7 +113,7 @@ lys_resolve_descendant_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, s
         } else {
             mod = context_node->module;
         }
-        context = lys_child(context, mod, name, name_len, 0, LYS_GETNEXT_NOSTATECHECK | LYS_GETNEXT_WITHCHOICE);
+        context = lys_child(context, mod, name, name_len, 0, LYS_GETNEXT_NOSTATECHECK | LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE);
         if (!context) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                    "Invalid descendant-schema-nodeid value \"%.*s\" - target node not found.", id - nodeid, nodeid);

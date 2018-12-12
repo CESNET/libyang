@@ -2999,7 +2999,11 @@ lys_compile_node_choice(struct lysc_ctx *ctx, struct lysp_node *node_p, int opti
     struct lysp_node_choice *ch_p = (struct lysp_node_choice*)node_p;
     struct lysc_node_choice *ch = (struct lysc_node_choice*)node;
     struct lysp_node *child_p, *case_child_p;
+    struct lysc_node *iter;
     unsigned int u;
+    const char *prefix = NULL, *name;
+    size_t prefix_len = 0;
+    struct lys_module;
     LY_ERR ret = LY_SUCCESS;
 
     COMPILE_MEMBER_GOTO(ctx, ch_p->when, ch->when, options, lys_compile_when, ret, done);
@@ -3016,6 +3020,38 @@ lys_compile_node_choice(struct lysc_ctx *ctx, struct lysp_node *node_p, int opti
     }
 
     /* default branch */
+    if (ch_p->dflt) {
+        /* could use lys_parse_nodeid(), but it checks syntax which is already done in this case by the parsers */
+        name = strchr(ch_p->dflt, ':');
+        if (name) {
+            prefix = ch_p->dflt;
+            prefix_len = name - prefix;
+            ++name;
+        } else {
+            name = ch_p->dflt;
+        }
+        if (prefix && (strncmp(prefix, node->module->compiled->prefix, prefix_len) || node->module->compiled->prefix[prefix_len] != '\0')) {
+            /* prefixed default case make sense only for the prefix of the schema itself */
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                   "Invalid default case referencing a case from different YANG module (by prefix \"%.*s\").",
+                   prefix_len, prefix);
+            return LY_EVALID;
+        }
+        ch->dflt = (struct lysc_node_case*)lys_child(node, node->module, name, 0, LYS_CASE, LYS_GETNEXT_NOSTATECHECK | LYS_GETNEXT_WITHCASE);
+        if (!ch->dflt) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                   "Default case \"%s\" not found.", ch_p->dflt);
+            return LY_EVALID;
+        }
+        /* no mandatory nodes directly under the default case */
+        LY_LIST_FOR(ch->dflt->child, iter) {
+            if (iter->flags & LYS_MAND_TRUE) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                       "Mandatory node \"%s\" under the default case \"%s\".", iter->name, ch_p->dflt);
+                return LY_EVALID;
+            }
+        }
+    }
 
 done:
     return ret;
