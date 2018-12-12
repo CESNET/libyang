@@ -525,6 +525,10 @@ int lyd_check_mandatory_tree(struct lyd_node *root, struct ly_ctx *ctx, const st
  */
 int lys_ingrouping(const struct lys_node *node);
 
+int unres_data_diff_new(struct unres_data *unres, struct lyd_node *subtree, struct lyd_node *parent, int created);
+
+void unres_data_diff_rem(struct unres_data *unres, unsigned int idx);
+
 /**
  * @brief Process (add/clean) default nodes in the data tree and resolve the unresolved items
  *

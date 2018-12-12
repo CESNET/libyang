@@ -525,6 +525,8 @@ char *lyd_path(const struct lyd_node *node);
 #define LYD_OPT_DATA_ADD_YANGLIB 0x20000 /**< Add missing ietf-yang-library data into the validated data tree. Applicable
                                               only with #LYD_OPT_DATA. If some ietf-yang-library data are present, they are
                                               preserved and option is ignored. */
+#define LYD_OPT_VAL_DIFF 0x40000 /**< Flag only for validation, store all the data node changes performed by the validation
+                                      in a diff structure. */
 #define LYD_OPT_DATA_TEMPLATE 0x1000000 /**< Data represents YANG data template. */
 
 /**@} parseroptions */
@@ -1158,9 +1160,18 @@ struct lyd_node *lyd_first_sibling(struct lyd_node *node);
  *                                                   any "when" or "must" conditions in the \p node tree
  *                                                   that require some nodes outside their subtree. If set,
  *                                                   it must be a list of top-level elements!
+ * @param[in] ... Used only if options include #LYD_OPT_VAL_DIFF. In that case a (struct lyd_difflist **)
+ *                is expected into which all data node changes performed by the validation will be stored.
+ *                Needs to be properly freed. Meaning of diff type is following:
+ *                   - LYD_DIFF_CREATED:
+ *                      - first - Path identifying the parent node (format of lyd_path()).
+ *                      - second - Duplicated subtree of the created nodes.
+ *                   - LYD_DIFF_DELETED:
+ *                      - first - Unlinked subtree of the deleted nodes.
+ *                      - second - Path identifying the original parent (format of lyd_path()).
  * @return 0 on success, nonzero in case of an error.
  */
-int lyd_validate(struct lyd_node **node, int options, void *var_arg);
+int lyd_validate(struct lyd_node **node, int options, void *var_arg, ...);
 
 /**
  * @brief Validate \p node data tree but only subtrees that belong to the schema found in \p modules. All other
@@ -1173,9 +1184,25 @@ int lyd_validate(struct lyd_node **node, int options, void *var_arg);
  * @param[in] options Options for the inserting data to the target data tree options, see @ref parseroptions.
  *                    Accepted data type values include #LYD_OPT_DATA, #LYD_OPT_CONFIG, #LYD_OPT_GET,
  *                    #LYD_OPT_GETCONFIG, and #LYD_OPT_EDIT.
+ * @param[in] ... Used only if options include #LYD_OPT_VAL_DIFF. In that case a (struct lyd_difflist **)
+ *                is expected into which all data node changes performed by the validation will be stored.
+ *                Needs to be properly freed. Meaning of diff type is following:
+ *                   - LYD_DIFF_CREATED:
+ *                      - first - Path identifying the parent node (format of lyd_path()).
+ *                      - second - Duplicated subtree of the created nodes.
+ *                   - LYD_DIFF_DELETED:
+ *                      - first - Unlinked subtree of the deleted nodes.
+ *                      - second - Path identifying the original parent (format of lyd_path()).
  * @return 0 on success, nonzero in case of an error.
  */
-int lyd_validate_modules(struct lyd_node **node, const struct lys_module **modules, int mod_count, int options);
+int lyd_validate_modules(struct lyd_node **node, const struct lys_module **modules, int mod_count, int options, ...);
+
+/**
+ * @brief Free special diff that was returned by lyd_validate() or lyd_validate_modules().
+ *
+ * @param[in] diff Diff to free.
+ */
+void lyd_free_val_diff(struct lyd_difflist *diff);
 
 /**
  * @brief Check restrictions applicable to the particular leaf/leaf-list on the given string value.

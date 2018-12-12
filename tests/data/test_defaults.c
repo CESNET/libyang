@@ -24,6 +24,7 @@
 struct state {
     struct ly_ctx *ctx;
     const struct lys_module *mod;
+    const struct lys_module *mod2;
     struct lyd_node *dt;
     char *xml;
 };
@@ -33,6 +34,7 @@ setup_f(void **state)
 {
     struct state *st;
     const char *schemafile = TESTS_DIR"/data/files/defaults.yin";
+    const char *schema2file = TESTS_DIR"/data/files/defaults2.yang";
     const char *ncwdfile = TESTS_DIR"/schema/yin/ietf/ietf-netconf-with-defaults.yin";
     const char *ietfdir = TESTS_DIR"/schema/yin/ietf/";
 
@@ -58,6 +60,12 @@ setup_f(void **state)
     st->mod = lys_parse_path(st->ctx, schemafile, LYS_IN_YIN);
     if (!st->mod) {
         fprintf(stderr, "Failed to load data model \"%s\".\n", schemafile);
+        goto error;
+    }
+
+    st->mod2 = lys_parse_path(st->ctx, schema2file, LYS_IN_YANG);
+    if (!st->mod2) {
+        fprintf(stderr, "Failed to load data model \"%s\".\n", schema2file);
         goto error;
     }
 
@@ -485,6 +493,42 @@ test_notif_default(void **state)
 }
 
 static void
+test_val_diff(void **state)
+{
+    struct state *st = (*state);
+    struct lyd_difflist *diff;
+    int ret;
+
+    st->dt = lyd_new_path(NULL, st->ctx, "/defaults2:l1[k='when-true']", NULL, 0, 0);
+    assert_non_null(st->dt);
+
+    ret = lyd_validate_modules(&st->dt, &st->mod2, 1,  LYD_OPT_CONFIG | LYD_OPT_VAL_DIFF, &diff);
+    assert_int_equal(ret, 0);
+
+    assert_int_equal(diff->type[0], LYD_DIFF_CREATED);
+    assert_string_equal(diff->second[0]->schema->name, "cont1");
+    assert_string_equal(diff->second[0]->child->schema->name, "cont2");
+    assert_string_equal(diff->second[0]->child->child->schema->name, "dflt1");
+    assert_int_equal(diff->type[1], LYD_DIFF_CREATED);
+    assert_string_equal(diff->second[1]->schema->name, "dflt2");
+    assert_int_equal(diff->type[2], LYD_DIFF_END);
+
+    lyd_free_val_diff(diff);
+
+    st->dt = st->dt->next;
+    lyd_free(st->dt->prev);
+
+    ret = lyd_validate_modules(&st->dt, &st->mod2, 1,  LYD_OPT_CONFIG | LYD_OPT_VAL_DIFF, &diff);
+    assert_int_equal(ret, 0);
+
+    assert_int_equal(diff->type[0], LYD_DIFF_DELETED);
+    assert_string_equal(diff->first[0]->schema->name, "dflt2");
+    assert_int_equal(diff->type[1], LYD_DIFF_END);
+
+    lyd_free_val_diff(diff);
+}
+
+static void
 test_feature(void **state)
 {
     struct state *st = (*state);
@@ -632,6 +676,7 @@ int main(void)
                     cmocka_unit_test_setup_teardown(test_rpc_input_default, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_rpc_output_default, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_notif_default, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_val_diff, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_feature, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_leaflist_in10, setup_clean_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_leaflist_yang, setup_clean_f, teardown_f),

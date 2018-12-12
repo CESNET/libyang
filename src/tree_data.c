@@ -4908,15 +4908,21 @@ lyd_schema_sort(struct lyd_node *sibling, int recursive)
 
 static int
 _lyd_validate(struct lyd_node **node, struct lyd_node *data_tree, struct ly_ctx *ctx, const struct lys_module **modules,
-              int mod_count, int options)
+              int mod_count, struct lyd_difflist **diff, int options)
 {
     struct lyd_node *root, *next1, *next2, *iter, *act_notif = NULL;
-    int ret = EXIT_FAILURE, i;
+    int ret = EXIT_FAILURE;
+    unsigned int i;
     struct unres_data *unres = NULL;
     const struct lys_module *yanglib_mod;
 
     unres = calloc(1, sizeof *unres);
     LY_CHECK_ERR_RETURN(!unres, LOGMEM(NULL), EXIT_FAILURE);
+
+    if (diff) {
+        unres->store_diff = 1;
+        unres->diff = lyd_diff_init_difflist(ctx, &unres->diff_size);
+    }
 
     if ((options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY)) && *node && ((*node)->schema->nodetype != LYS_RPC)) {
         options |= LYD_OPT_ACT_NOTIF;
@@ -4927,12 +4933,12 @@ _lyd_validate(struct lyd_node **node, struct lyd_node *data_tree, struct ly_ctx 
 
     LY_TREE_FOR_SAFE(*node, next1, root) {
         if (modules) {
-            for (i = 0; i < mod_count; ++i) {
+            for (i = 0; i < (unsigned)mod_count; ++i) {
                 if (lyd_node_module(root) == modules[i]) {
                     break;
                 }
             }
-            if (i == mod_count) {
+            if (i == (unsigned)mod_count) {
                 /* skip data that should not be validated */
                 continue;
             }
@@ -5029,12 +5035,37 @@ _lyd_validate(struct lyd_node **node, struct lyd_node *data_tree, struct ly_ctx 
         }
     }
 
+    /* consolidate diff if created */
+    if (diff) {
+        assert(unres->store_diff);
+
+        for (i = 0; i < unres->diff_idx; ++i) {
+            if (unres->diff->type[i] == LYD_DIFF_CREATED) {
+                if (unres->diff->second[i]->parent) {
+                    unres->diff->first[i] = (struct lyd_node *)lyd_path(unres->diff->second[i]->parent);
+                }
+                unres->diff->second[i] = lyd_dup(unres->diff->second[i], LYD_DUP_OPT_RECURSIVE);
+            }
+        }
+
+        *diff = unres->diff;
+        unres->diff = 0;
+        unres->diff_idx = 0;
+    }
+
     ret = EXIT_SUCCESS;
 
 cleanup:
     if (unres) {
         free(unres->node);
         free(unres->type);
+        for (i = 0; i < unres->diff_idx; ++i) {
+            if (unres->diff->type[i] == LYD_DIFF_DELETED) {
+                lyd_free_withsiblings(unres->diff->first[i]);
+                free(unres->diff->second[i]);
+            }
+        }
+        lyd_free_diff(unres->diff);
         free(unres);
     }
 
@@ -5042,10 +5073,12 @@ cleanup:
 }
 
 API int
-lyd_validate(struct lyd_node **node, int options, void *var_arg)
+lyd_validate(struct lyd_node **node, int options, void *var_arg, ...)
 {
     struct lyd_node *iter, *data_tree = NULL;
+    struct lyd_difflist **diff = NULL;
     struct ly_ctx *ctx = NULL;
+    va_list ap;
 
     if (!node) {
         LOGARG;
@@ -5108,6 +5141,16 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
         }
     }
 
+    if (options & LYD_OPT_VAL_DIFF) {
+        va_start(ap, var_arg);
+        diff = va_arg(ap, struct lyd_difflist **);
+        va_end(ap);
+        if (!diff) {
+            LOGERR(ctx, LY_EINVAL, "%s: invalid variable parameter (struct lyd_difflist **).", __func__);
+            return EXIT_FAILURE;
+        }
+    }
+
     if (*node) {
         if (!ctx) {
             ctx = (*node)->schema->module->ctx;
@@ -5120,13 +5163,15 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg)
         }
     }
 
-    return _lyd_validate(node, data_tree, ctx, NULL, 0, options);
+    return _lyd_validate(node, data_tree, ctx, NULL, 0, diff, options);
 }
 
 API int
-lyd_validate_modules(struct lyd_node **node, const struct lys_module **modules, int mod_count, int options)
+lyd_validate_modules(struct lyd_node **node, const struct lys_module **modules, int mod_count, int options, ...)
 {
     struct ly_ctx *ctx;
+    struct lyd_difflist **diff = NULL;
+    va_list ap;
 
     if (!node || !modules || !mod_count) {
         LOGARG;
@@ -5151,7 +5196,17 @@ lyd_validate_modules(struct lyd_node **node, const struct lys_module **modules, 
         return EXIT_FAILURE;
     }
 
-    return _lyd_validate(node, *node, ctx, modules, mod_count, options);
+    if (options & LYD_OPT_VAL_DIFF) {
+        va_start(ap, options);
+        diff = va_arg(ap, struct lyd_difflist **);
+        va_end(ap);
+        if (!diff) {
+            LOGERR(ctx, LY_EINVAL, "%s: invalid variable parameter (struct lyd_difflist **).", __func__);
+            return EXIT_FAILURE;
+        }
+    }
+
+    return _lyd_validate(node, *node, ctx, modules, mod_count, diff, options);
 }
 
 API int
@@ -6688,6 +6743,72 @@ lyd_wd_default(struct lyd_node_leaf_list *node)
     return 1;
 }
 
+int
+unres_data_diff_new(struct unres_data *unres, struct lyd_node *subtree, struct lyd_node *parent, int created)
+{
+    char *parent_xpath = NULL;
+
+    if (created) {
+        return lyd_difflist_add(unres->diff, &unres->diff_size, unres->diff_idx++, LYD_DIFF_CREATED, NULL, subtree);
+    } else {
+        if (parent) {
+            parent_xpath = lyd_path(parent);
+            LY_CHECK_ERR_RETURN(!parent_xpath, LOGMEM(lyd_node_module(subtree)->ctx), -1);
+        }
+        return lyd_difflist_add(unres->diff, &unres->diff_size, unres->diff_idx++, LYD_DIFF_DELETED,
+                                subtree, (struct lyd_node *)parent_xpath);
+    }
+}
+
+void
+unres_data_diff_rem(struct unres_data *unres, unsigned int idx)
+{
+    if (unres->diff->type[idx] == LYD_DIFF_DELETED) {
+        lyd_free_withsiblings(unres->diff->first[idx]);
+        free(unres->diff->second[idx]);
+    }
+
+    /* replace by last real value */
+    if (idx < unres->diff_idx - 1) {
+        unres->diff->type[idx] = unres->diff->type[unres->diff_idx - 1];
+        unres->diff->first[idx] = unres->diff->first[unres->diff_idx - 1];
+        unres->diff->second[idx] = unres->diff->second[unres->diff_idx - 1];
+    }
+
+    /* move the end */
+    assert(unres->diff->type[unres->diff_idx] == LYD_DIFF_END);
+    unres->diff->type[unres->diff_idx - 1] = unres->diff->type[unres->diff_idx];
+    --unres->diff_idx;
+}
+
+API void
+lyd_free_val_diff(struct lyd_difflist *diff)
+{
+    uint32_t i;
+
+    if (!diff) {
+        return;
+    }
+
+    for (i = 0; diff->type[i] != LYD_DIFF_END; ++i) {
+        switch (diff->type[i]) {
+        case LYD_DIFF_CREATED:
+            free(diff->first[i]);
+            lyd_free_withsiblings(diff->second[i]);
+            break;
+        case LYD_DIFF_DELETED:
+            lyd_free_withsiblings(diff->first[i]);
+            free(diff->second[i]);
+            break;
+        default:
+            /* what to do? */
+            break;
+        }
+    }
+
+    lyd_free_diff(diff);
+}
+
 static int
 lyd_wd_add_leaf(struct lyd_node **tree, struct lyd_node *last_parent, struct lys_node_leaf *leaf, struct unres_data *unres,
                 int check_when_must)
@@ -6716,6 +6837,14 @@ lyd_wd_add_leaf(struct lyd_node **tree, struct lyd_node *last_parent, struct lys
     if (!(dummy = lyd_new_dummy(*tree, last_parent, (struct lys_node*)leaf, dflt, 1))) {
         goto error;
     }
+
+    if (unres->store_diff) {
+        /* remember this subtree in the diff */
+        if (unres_data_diff_new(unres, dummy, NULL, 1)) {
+            goto error;
+        }
+    }
+
     if (!dummy->parent && (*tree)) {
         /* connect dummy nodes into the data tree (at the end of top level nodes) */
         if (lyd_insert_sibling(tree, dummy)) {
@@ -6812,6 +6941,13 @@ lyd_wd_add_leaflist(struct lyd_node **tree, struct lyd_node *last_parent, struct
             goto error;
         }
 
+        if (unres->store_diff) {
+            /* remember this subtree in the diff */
+            if (unres_data_diff_new(unres, dummy, NULL, 1)) {
+                goto error;
+            }
+        }
+
         if (!first) {
             first = dummy;
         } else if (!dummy->parent) {
@@ -6879,7 +7015,7 @@ error:
 }
 
 static void
-lyd_wd_leaflist_cleanup(struct ly_set *set)
+lyd_wd_leaflist_cleanup(struct ly_set *set, struct unres_data *unres)
 {
     unsigned int i;
 
@@ -6896,7 +7032,14 @@ lyd_wd_leaflist_cleanup(struct ly_set *set)
     if (i < set->number) {
         for (i = 0; i < set->number; i++) {
             if (set->set.d[i]->dflt) {
-                lyd_free(set->set.d[i]);
+                /* remove this default instance */
+                if (unres->store_diff) {
+                    /* just move it to diff if is being generated */
+                    unres_data_diff_new(unres, set->set.d[i], set->set.d[i]->parent, 0);
+                    lyd_unlink(set->set.d[i]);
+                } else {
+                    lyd_free(set->set.d[i]);
+                }
             }
         }
     }
@@ -6924,7 +7067,7 @@ lyd_wd_add_subtree(struct lyd_node **root, struct lyd_node *last_parent, struct 
     struct ly_set *present = NULL;
     struct lys_node *siter, *siter_prev;
     struct lyd_node *iter;
-    int i, check_when_must;
+    int i, check_when_must, storing_diff = 0;
 
     assert(root);
 
@@ -6951,7 +7094,7 @@ lyd_wd_add_subtree(struct lyd_node **root, struct lyd_node *last_parent, struct 
             /* there are some instances */
             for (i = 0; i < (signed)present->number; i++) {
                 if (schema->nodetype & LYS_LEAFLIST) {
-                    lyd_wd_leaflist_cleanup(present);
+                    lyd_wd_leaflist_cleanup(present, unres);
                 } else if (schema->nodetype != LYS_LEAF) {
                     if (lyd_wd_add_subtree(root, present->set.d[i], present->set.d[i], schema, 0, options, unres)) {
                         goto error;
@@ -7016,6 +7159,17 @@ lyd_wd_add_subtree(struct lyd_node **root, struct lyd_node *last_parent, struct 
             /* useless to set mand flag */
             subroot->validity &= ~LYD_VAL_MAND;
 
+            if (unres->store_diff) {
+                /* remember this container in the diff */
+                if (unres_data_diff_new(unres, subroot, NULL, 1)) {
+                    goto error;
+                }
+
+                /* do not store diff for recursive calls, created values will be connected to this one */
+                storing_diff = 1;
+                unres->store_diff = 0;
+            }
+
             if (!last_parent) {
                 if (*root) {
                     lyd_insert_common((*root)->parent, root, subroot, 0);
@@ -7070,7 +7224,7 @@ lyd_wd_add_subtree(struct lyd_node **root, struct lyd_node *last_parent, struct 
                     if (siter->nodetype & LYS_LEAFLIST) {
                         /* already have some leaflists, check that they are all
                          * default, if not, remove the default leaflists */
-                        lyd_wd_leaflist_cleanup(present);
+                        lyd_wd_leaflist_cleanup(present, unres);
                     } else if (siter->nodetype != LYS_LEAF) {
                         /* recursion */
                         for (i = 0; i < (signed)present->number; i++) {
@@ -7101,6 +7255,11 @@ lyd_wd_add_subtree(struct lyd_node **root, struct lyd_node *last_parent, struct 
                     }
                 }
             }
+        }
+
+        if (storing_diff) {
+            /* continue generating the diff in functions above this one */
+            unres->store_diff = 1;
         }
         break;
     case LYS_LEAF:
