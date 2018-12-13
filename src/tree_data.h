@@ -1130,6 +1130,18 @@ struct ly_set *lyd_find_path(const struct lyd_node *ctx_node, const char *path);
 struct ly_set *lyd_find_instance(const struct lyd_node *data, const struct lys_node *schema);
 
 /**
+ * @brief Search in the given data for instances of the provided schema nodes.
+ *
+ * The \p data is used to find the data root and function then searches in the whole tree and all sibling trees.
+ *
+ * @param[in] data A node in the data tree to search.
+ * @param[in] schema_set Schema node set of the data nodes caller want to find.
+ * @return Set of found data nodes. If no data node is found, the returned set is empty.
+ * In case of error, NULL is returned.
+ */
+struct ly_set *lyd_find_instance_set(const struct lyd_node *data, const struct ly_set *schema_set);
+
+/**
  * @brief Get the first sibling of the given node.
  *
  * @param[in] node Node which first sibling is going to be the result.

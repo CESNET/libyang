@@ -6244,6 +6244,103 @@ error:
     return NULL;
 }
 
+/* recursively find instances of schema, used by lyd_find_instance_set()  */
+static void
+search_instances(struct ly_set *ret, struct lyd_node *data,
+                const struct ly_set *parents, const struct ly_set *targets)
+{
+    struct lyd_node *iter;
+
+    if (ly_set_contains(targets, data->schema) != -1)
+        ly_set_add(ret, data, 0);
+    if (ly_set_contains(parents, data->schema) != -1) {
+        LY_TREE_FOR((struct lyd_node *)data->child, iter) {
+            search_instances(ret, iter, parents, targets);
+        }
+    }
+}
+
+API struct ly_set *
+lyd_find_instance_set(const struct lyd_node *data, const struct ly_set *schema_set)
+{
+    struct ly_set *ret, *parents, *targets;
+    struct lyd_node *iter;
+    const struct lys_node *siter;
+    const struct lys_node *schema;
+    unsigned int i;
+    int is_parent;
+
+    if (!data || !schema_set) {
+        LOGARG;
+        return NULL;
+    }
+
+    ret = ly_set_new();
+    parents = ly_set_new();
+    targets = ly_set_new();
+    if (!ret || !parents || !targets) {
+        LOGMEM(NULL);
+        goto error;
+    }
+
+    /* find data root */
+    while (data->parent) {
+        /* vertical move (up) */
+        data = data->parent;
+    }
+    while (data->prev->next) {
+        /* horizontal move (left) */
+        data = data->prev;
+    }
+
+    /* build schema path */
+    for (i = 0; i < schema_set->number; i++) {
+        schema = schema_set->set.s[i];
+        if (!(schema->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_LEAFLIST |
+                                        LYS_ANYDATA | LYS_NOTIF | LYS_RPC | LYS_ACTION))) {
+            LOGARG;
+            goto error;
+        }
+
+        is_parent = 0;
+        for (siter = schema; siter; ) {
+            if (siter->nodetype == LYS_AUGMENT) {
+                siter = ((struct lys_node_augment *)siter)->target;
+                continue;
+            } else if (siter->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_LEAFLIST |
+                                                LYS_ANYDATA | LYS_NOTIF | LYS_RPC | LYS_ACTION)) {
+                if (!is_parent) {
+                    ly_set_add(targets, (void*)siter, 0);
+                    is_parent = 1;
+                } else {
+                    ly_set_add(parents, (void*)siter, 0);
+                }
+            } /* else skip the rest node types */
+            siter = siter->parent;
+        }
+        if (!is_parent) {
+            /* no valid path */
+            goto error;
+        }
+    }
+
+    LY_TREE_FOR((struct lyd_node *)data, iter) {
+        search_instances(ret, (struct lyd_node *)data, parents, targets);
+    }
+
+    ly_set_free(parents);
+    ly_set_free(targets);
+
+    return ret;
+
+error:
+    ly_set_free(ret);
+    ly_set_free(parents);
+    ly_set_free(targets);
+
+    return NULL;
+}
+
 API struct lyd_node *
 lyd_first_sibling(struct lyd_node *node)
 {
