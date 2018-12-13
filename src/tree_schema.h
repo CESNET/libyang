@@ -1359,6 +1359,14 @@ struct lysc_module {
 };
 
 /**
+ * @brief Get the groupings sized array of the given (parsed) schema node.
+ * Decides the node's type and in case it has a groupings array, returns it.
+ * @param[in] node Node to examine.
+ * @return The node's groupings sized array if any, NULL otherwise.
+ */
+const struct lysp_grp *lysp_node_groupings(const struct lysp_node *node);
+
+/**
  * @brief Get the typedefs sized array of the given (parsed) schema node.
  * Decides the node's type and in case it has a typedefs array, returns it.
  * @param[in] node Node to examine.

@@ -921,6 +921,27 @@ lysp_node_typedefs(const struct lysp_node *node)
     }
 }
 
+API const struct lysp_grp *
+lysp_node_groupings(const struct lysp_node *node)
+{
+    switch (node->nodetype) {
+    case LYS_CONTAINER:
+        return ((struct lysp_node_container*)node)->groupings;
+    case LYS_LIST:
+        return ((struct lysp_node_list*)node)->groupings;
+    case LYS_GROUPING:
+        return ((struct lysp_grp*)node)->groupings;
+    case LYS_ACTION:
+        return ((struct lysp_action*)node)->groupings;
+    case LYS_INOUT:
+        return ((struct lysp_action_inout*)node)->groupings;
+    case LYS_NOTIF:
+        return ((struct lysp_notif*)node)->groupings;
+    default:
+        return NULL;
+    }
+}
+
 struct lysp_action **
 lysp_node_actions_p(struct lysp_node *node)
 {
