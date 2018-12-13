@@ -1324,9 +1324,8 @@ lys_search_localfile(const char * const *searchpaths, int cwd, const char *name,
         free(wd);
         free(wn); wn = NULL;
 
-        dirs->number--;
-        wd = (char *)dirs->set.g[dirs->number];
-        dirs->set.g[dirs->number] = NULL;
+        wd = (char *)dirs->set.g[dirs->number - 1];
+        ly_set_rm_index(dirs, dirs->number - 1);
         LOGVRB("Searching for \"%s\" in %s.", name, wd);
 
         if (dir) {
