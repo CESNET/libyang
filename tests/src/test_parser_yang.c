@@ -1687,6 +1687,74 @@ test_case(void **state)
     ly_ctx_destroy(ctx.ctx, NULL);
 }
 
+static void
+test_any(void **state, enum yang_keyword kw)
+{
+    *state = test_any;
+
+    struct lysp_module mod = {0};
+    struct ly_parser_ctx ctx = {0};
+    struct lysp_node_anydata *any = NULL;
+    const char *str;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
+    assert_non_null(ctx.ctx);
+    ctx.line = 1;
+    ctx.mod = &mod;
+    if (kw == YANG_ANYDATA) {
+        ctx.mod->version = 2; /* simulate YANG 1.1 */
+    } else {
+        ctx.mod->version = 1; /* simulate YANG 1.0 */
+    }
+
+    /* invalid cardinality */
+#define TEST_DUP(MEMBER, VALUE1, VALUE2) \
+    str = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
+    assert_int_equal(LY_EVALID, parse_any(&ctx, &str, kw, NULL, (struct lysp_node**)&any)); \
+    logbuf_assert("Duplicate keyword \""MEMBER"\". Line number 1."); \
+    lysp_node_free(ctx.ctx, (struct lysp_node*)any); any = NULL;
+
+    TEST_DUP("config", "true", "false");
+    TEST_DUP("description", "text1", "text2");
+    TEST_DUP("mandatory", "true", "false");
+    TEST_DUP("reference", "1", "2");
+    TEST_DUP("status", "current", "obsolete");
+    TEST_DUP("when", "true", "false");
+#undef TEST_DUP
+
+    /* full content */
+    str = "any {config true;description test;if-feature f;mandatory true;must 'expr';reference test;status current;when true;m:ext;} ...";
+    assert_int_equal(LY_SUCCESS, parse_any(&ctx, &str, kw, NULL, (struct lysp_node**)&any));
+    assert_non_null(any);
+    assert_int_equal(kw == YANG_ANYDATA ? LYS_ANYDATA : LYS_ANYXML, any->nodetype);
+    assert_string_equal("any", any->name);
+    assert_string_equal("test", any->dsc);
+    assert_non_null(any->exts);
+    assert_non_null(any->iffeatures);
+    assert_non_null(any->musts);
+    assert_string_equal("test", any->ref);
+    assert_non_null(any->when);
+    assert_null(any->parent);
+    assert_null(any->next);
+    assert_int_equal(LYS_CONFIG_W | LYS_STATUS_CURR | LYS_MAND_TRUE, any->flags);
+    lysp_node_free(ctx.ctx, (struct lysp_node*)any); any = NULL;
+
+    *state = NULL;
+    ly_ctx_destroy(ctx.ctx, NULL);
+}
+
+static void
+test_anydata(void **state)
+{
+    return test_any(state, YANG_ANYDATA);
+}
+
+static void
+test_anyxml(void **state)
+{
+    return test_any(state, YANG_ANYXML);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1706,6 +1774,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_list, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_choice, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_case, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_anydata, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_anyxml, logger_setup, logger_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

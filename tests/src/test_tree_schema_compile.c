@@ -715,6 +715,43 @@ test_node_choice(void **state)
     ly_ctx_destroy(ctx, NULL);
 }
 
+static void
+test_node_anydata(void **state)
+{
+    *state = test_node_anydata;
+
+    struct ly_ctx *ctx;
+    struct lys_module *mod;
+    struct lysc_node_anydata *any;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module a {yang-version 1.1;namespace urn:a;prefix a;"
+                                        "anydata any {config false;mandatory true;}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    any = (struct lysc_node_anydata*)mod->compiled->data;
+    assert_non_null(any);
+    assert_int_equal(LYS_ANYDATA, any->nodetype);
+    assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_MAND_TRUE, any->flags);
+
+    logbuf_clean();
+    assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;"
+                                        "anyxml any;}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    any = (struct lysc_node_anydata*)mod->compiled->data;
+    assert_non_null(any);
+    assert_int_equal(LYS_ANYXML, any->nodetype);
+    assert_int_equal(LYS_CONFIG_W | LYS_STATUS_CURR, any->flags);
+    logbuf_assert("Use of anyxml to define configuration data is not recommended."); /* warning */
+
+    /* invalid */
+    assert_null(mod = lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;anydata any;}", LYS_IN_YANG));
+    logbuf_assert("Invalid keyword \"anydata\" as a child of \"module\" - the statement is allowed only in YANG 1.1 modules. Line number 1.");
+
+    *state = NULL;
+    ly_ctx_destroy(ctx, NULL);
+}
+
 /**
  * actually the same as length restriction (tested in test_type_length()), so just check the correct handling in appropriate types,
  * do not test the expression itself
@@ -2198,6 +2235,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_node_leaflist, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_node_list, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_node_choice, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_node_anydata, logger_setup, logger_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

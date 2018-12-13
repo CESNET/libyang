@@ -2675,9 +2675,6 @@ lys_compile_node_container(struct lysc_ctx *ctx, struct lysp_node *node_p, int o
     unsigned int u;
     LY_ERR ret = LY_SUCCESS;
 
-    COMPILE_MEMBER_GOTO(ctx, cont_p->when, cont->when, options, lys_compile_when, ret, done);
-    COMPILE_ARRAY_GOTO(ctx, cont_p->iffeatures, cont->iffeatures, options, u, lys_compile_iffeature, ret, done);
-
     LY_LIST_FOR(cont_p->child, child_p) {
         LY_CHECK_RET(lys_compile_node(ctx, child_p, options, node));
     }
@@ -2707,8 +2704,6 @@ lys_compile_node_leaf(struct lysc_ctx *ctx, struct lysp_node *node_p, int option
     unsigned int u;
     LY_ERR ret = LY_SUCCESS;
 
-    COMPILE_MEMBER_GOTO(ctx, leaf_p->when, leaf->when, options, lys_compile_when, ret, done);
-    COMPILE_ARRAY_GOTO(ctx, leaf_p->iffeatures, leaf->iffeatures, options, u, lys_compile_iffeature, ret, done);
     COMPILE_ARRAY_GOTO(ctx, leaf_p->musts, leaf->musts, options, u, lys_compile_must, ret, done);
     DUP_STRING(ctx->ctx, leaf_p->units, leaf->units);
     DUP_STRING(ctx->ctx, leaf_p->dflt, leaf->dflt);
@@ -2756,8 +2751,6 @@ lys_compile_node_leaflist(struct lysc_ctx *ctx, struct lysp_node *node_p, int op
     const char *dflt = NULL;
     LY_ERR ret = LY_SUCCESS;
 
-    COMPILE_MEMBER_GOTO(ctx, llist_p->when, llist->when, options, lys_compile_when, ret, done);
-    COMPILE_ARRAY_GOTO(ctx, llist_p->iffeatures, llist->iffeatures, options, u, lys_compile_iffeature, ret, done);
     COMPILE_ARRAY_GOTO(ctx, llist_p->musts, llist->musts, options, u, lys_compile_must, ret, done);
     DUP_STRING(ctx->ctx, llist_p->units, llist->units);
 
@@ -2844,8 +2837,6 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *node_p, int option
     int config;
     LY_ERR ret = LY_SUCCESS;
 
-    COMPILE_MEMBER_GOTO(ctx, list_p->when, list->when, options, lys_compile_when, ret, done);
-    COMPILE_ARRAY_GOTO(ctx, list_p->iffeatures, list->iffeatures, options, u, lys_compile_iffeature, ret, done);
     list->min = list_p->min;
     list->max = list_p->max ? list_p->max : (uint32_t)-1;
 
@@ -3000,14 +2991,10 @@ lys_compile_node_choice(struct lysc_ctx *ctx, struct lysp_node *node_p, int opti
     struct lysc_node_choice *ch = (struct lysc_node_choice*)node;
     struct lysp_node *child_p, *case_child_p;
     struct lysc_node *iter;
-    unsigned int u;
     const char *prefix = NULL, *name;
     size_t prefix_len = 0;
     struct lys_module;
     LY_ERR ret = LY_SUCCESS;
-
-    COMPILE_MEMBER_GOTO(ctx, ch_p->when, ch->when, options, lys_compile_when, ret, done);
-    COMPILE_ARRAY_GOTO(ctx, ch_p->iffeatures, ch->iffeatures, options, u, lys_compile_iffeature, ret, done);
 
     LY_LIST_FOR(ch_p->child, child_p) {
         if (child_p->nodetype == LYS_CASE) {
@@ -3053,6 +3040,32 @@ lys_compile_node_choice(struct lysc_ctx *ctx, struct lysp_node *node_p, int opti
         }
     }
 
+    return ret;
+}
+
+/**
+ * @brief Compile parsed anydata or anyxml node information.
+ * @param[in] ctx Compile context
+ * @param[in] node_p Parsed anydata or anyxml node.
+ * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
+ * @param[in,out] node Pre-prepared structure from lys_compile_node() with filled generic node information
+ * is enriched with the any-specific information.
+ * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
+ */
+static LY_ERR
+lys_compile_node_any(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, struct lysc_node *node)
+{
+    struct lysp_node_anydata *any_p = (struct lysp_node_anydata*)node_p;
+    struct lysc_node_anydata *any = (struct lysc_node_anydata*)node;
+    unsigned int u;
+    LY_ERR ret = LY_SUCCESS;
+
+    COMPILE_ARRAY_GOTO(ctx, any_p->musts, any->musts, options, u, lys_compile_must, ret, done);
+
+    if (any->flags & LYS_CONFIG_W) {
+        LOGWRN(ctx->ctx, "Use of %s to define configuration data is not recommended.",
+               ly_stmt2str(any->nodetype == LYS_ANYDATA ? YANG_ANYDATA : YANG_ANYXML));
+    }
 done:
     return ret;
 }
@@ -3259,6 +3272,7 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, st
     case LYS_ANYXML:
     case LYS_ANYDATA:
         node = (struct lysc_node*)calloc(1, sizeof(struct lysc_node_anydata));
+        node_compile_spec = lys_compile_node_any;
         break;
     default:
         LOGINT(ctx->ctx);
@@ -3311,6 +3325,8 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, st
         node->sp = node_p;
     }
     DUP_STRING(ctx->ctx, node_p->name, node->name);
+    COMPILE_MEMBER_GOTO(ctx, node_p->when, node->when, options, lys_compile_when, ret, error);
+    COMPILE_ARRAY_GOTO(ctx, node_p->iffeatures, node->iffeatures, options, u, lys_compile_iffeature, ret, error);
     COMPILE_ARRAY_GOTO(ctx, node_p->exts, node->exts, options, u, lys_compile_ext, ret, error);
 
     /* nodetype-specific part */

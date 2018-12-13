@@ -655,7 +655,12 @@ lysc_node_choice_free(struct ly_ctx *ctx, struct lysc_node_choice *node)
             lysc_node_free(ctx, child);
         }
     }
+}
 
+static void
+lysc_node_anydata_free(struct ly_ctx *ctx, struct lysc_node_anydata *node)
+{
+    FREE_ARRAY(ctx, node->musts, lysc_must_free);
 }
 
 void
@@ -683,6 +688,10 @@ lysc_node_free(struct ly_ctx *ctx, struct lysc_node *node)
         break;
     case LYS_CASE:
         /* nothing specific */
+        break;
+    case LYS_ANYDATA:
+    case LYS_ANYXML:
+        lysc_node_anydata_free(ctx, (struct lysc_node_anydata*)node);
         break;
     default:
         LOGINT(ctx);
