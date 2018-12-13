@@ -142,15 +142,6 @@ LY_ERR lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revisi
 LY_ERR lysp_load_submodule(struct ly_parser_ctx *ctx, struct lysp_module *mod, struct lysp_include *inc);
 
 /**
- * @brief Get address of a node's typedefs list if any.
- *
- * Decides the node's type and in case it has an typedefs list, returns its address.
- * @param[in] node Node to check.
- * @return Address of the node's tpdf member if any, NULL otherwise.
- */
-struct lysp_tpdf **lysp_node_typedefs_p(const struct lysp_node *node);
-
-/**
  * @brief Get address of a node's actions list if any.
  *
  * Decides the node's type and in case it has an actions list, returns its address.

@@ -257,16 +257,14 @@ lysp_sort_revisions(struct lysp_revision *revs)
 static const struct lysp_tpdf *
 lysp_type_match(const char *name, struct lysp_node *node)
 {
-    struct lysp_tpdf **typedefs;
+    const struct lysp_tpdf *typedefs;
     unsigned int u;
 
-    typedefs = lysp_node_typedefs_p(node);
-    if (typedefs && *typedefs) {
-        LY_ARRAY_FOR(*typedefs, u) {
-            if (!strcmp(name, (*typedefs)[u].name)) {
-                /* match */
-                return &(*typedefs)[u];
-            }
+    typedefs = lysp_node_typedefs(node);
+    LY_ARRAY_FOR(typedefs, u) {
+        if (!strcmp(name, typedefs[u].name)) {
+            /* match */
+            return &typedefs[u];
         }
     }
 
@@ -434,7 +432,7 @@ lysp_type_find(const char *id, struct lysp_node *start_node, struct lysp_module 
  * @return LY_EEXIST in case of collision, LY_SUCCESS otherwise.
  */
 static LY_ERR
-lysp_check_typedef(struct ly_parser_ctx *ctx, struct lysp_node *node, struct lysp_tpdf *tpdf,
+lysp_check_typedef(struct ly_parser_ctx *ctx, struct lysp_node *node, const struct lysp_tpdf *tpdf,
                    struct hash_table *tpdfs_global, struct hash_table *tpdfs_scoped)
 {
     struct lysp_node *parent;
@@ -442,7 +440,7 @@ lysp_check_typedef(struct ly_parser_ctx *ctx, struct lysp_node *node, struct lys
     size_t name_len;
     const char *name;
     unsigned int u;
-    struct lysp_tpdf **typedefs;
+    const struct lysp_tpdf *typedefs;
 
     assert(ctx);
     assert(tpdf);
@@ -458,17 +456,15 @@ lysp_check_typedef(struct ly_parser_ctx *ctx, struct lysp_node *node, struct lys
 
     /* check locally scoped typedefs (avoid name shadowing) */
     if (node) {
-        typedefs = lysp_node_typedefs_p(node);
-        if (typedefs && *typedefs) {
-            LY_ARRAY_FOR(*typedefs, u) {
-                if (typedefs[u] == tpdf) {
-                    break;
-                }
-                if (!strcmp(name, (*typedefs)[u].name)) {
-                    LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_SYNTAX_YANG,
-                           "Invalid name \"%s\" of typedef - name collision with sibling type.", name);
-                    return LY_EEXIST;
-                }
+        typedefs = lysp_node_typedefs(node);
+        LY_ARRAY_FOR(typedefs, u) {
+            if (&typedefs[u] == tpdf) {
+                break;
+            }
+            if (!strcmp(name, typedefs[u].name)) {
+                LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_SYNTAX_YANG,
+                       "Invalid name \"%s\" of typedef - name collision with sibling type.", name);
+                return LY_EEXIST;
             }
         }
         /* search typedefs in parent's nodes */
@@ -515,7 +511,7 @@ lysp_check_typedefs(struct ly_parser_ctx *ctx)
 {
     struct hash_table *ids_global;
     struct hash_table *ids_scoped;
-    struct lysp_tpdf **typedefs;
+    const struct lysp_tpdf *typedefs;
     unsigned int i, u;
     LY_ERR ret = LY_EVALID;
 
@@ -535,9 +531,9 @@ lysp_check_typedefs(struct ly_parser_ctx *ctx)
         }
     }
     for (u = 0; u < ctx->tpdfs_nodes.count; ++u) {
-        typedefs = lysp_node_typedefs_p((struct lysp_node *)ctx->tpdfs_nodes.objs[u]);
-        LY_ARRAY_FOR(*typedefs, i) {
-            if (lysp_check_typedef(ctx, (struct lysp_node *)ctx->tpdfs_nodes.objs[u], &(*typedefs)[i], ids_global, ids_scoped)) {
+        typedefs = lysp_node_typedefs((struct lysp_node *)ctx->tpdfs_nodes.objs[u]);
+        LY_ARRAY_FOR(typedefs, i) {
+            if (lysp_check_typedef(ctx, (struct lysp_node *)ctx->tpdfs_nodes.objs[u], &typedefs[i], ids_global, ids_scoped)) {
                 goto cleanup;
             }
         }
@@ -904,35 +900,23 @@ lys_nodetype2str(uint16_t nodetype)
     }
 }
 
-struct lysp_tpdf **
-lysp_node_typedefs_p(const struct lysp_node *node)
-{
-    switch (node->nodetype) {
-    case LYS_CONTAINER:
-        return &((struct lysp_node_container*)node)->typedefs;
-    case LYS_LIST:
-        return &((struct lysp_node_list*)node)->typedefs;
-    case LYS_GROUPING:
-        return &((struct lysp_grp*)node)->typedefs;
-    case LYS_ACTION:
-        return &((struct lysp_action*)node)->typedefs;
-    case LYS_INOUT:
-        return &((struct lysp_action_inout*)node)->typedefs;
-    case LYS_NOTIF:
-        return &((struct lysp_notif*)node)->typedefs;
-    default:
-        return NULL;
-    }
-}
-
 API const struct lysp_tpdf *
 lysp_node_typedefs(const struct lysp_node *node)
 {
-    struct lysp_tpdf **tpdfs;
-    tpdfs = lysp_node_typedefs_p(node);
-    if (tpdfs) {
-        return *tpdfs;
-    } else {
+    switch (node->nodetype) {
+    case LYS_CONTAINER:
+        return ((struct lysp_node_container*)node)->typedefs;
+    case LYS_LIST:
+        return ((struct lysp_node_list*)node)->typedefs;
+    case LYS_GROUPING:
+        return ((struct lysp_grp*)node)->typedefs;
+    case LYS_ACTION:
+        return ((struct lysp_action*)node)->typedefs;
+    case LYS_INOUT:
+        return ((struct lysp_action_inout*)node)->typedefs;
+    case LYS_NOTIF:
+        return ((struct lysp_notif*)node)->typedefs;
+    default:
         return NULL;
     }
 }
