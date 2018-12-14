@@ -216,7 +216,7 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, int UNUSE
 
     /* get module where the extension definition should be placed */
     for (u = 0; ext_p->name[u] != ':'; ++u);
-    mod = lys_module_find_prefix(ctx->mod, ext_p->name, u);
+    mod = lys_module_find_prefix(ctx->mod_def, ext_p->name, u);
     LY_CHECK_ERR_RET(!mod, LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                                   "Invalid prefix \"%.*s\" used for extension instance identifier.", u, ext_p->name),
                      LY_EVALID);
@@ -314,7 +314,7 @@ lys_compile_iffeature(struct lysc_ctx *ctx, const char **value, int UNUSED(optio
 
     if (checkversion || expr_size > 1) {
         /* check that we have 1.1 module */
-        if (ctx->mod->compiled->version != LYS_VERSION_1_1) {
+        if (ctx->mod_def->parsed->version != LYS_VERSION_1_1) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
                    "Invalid value \"%s\" of if-feature - YANG 1.1 expression in YANG 1.0 module.", *value);
             return LY_EVALID;
@@ -520,12 +520,12 @@ lys_compile_identity_bases(struct lysc_ctx *ctx, const char **bases_p,  struct l
 {
     unsigned int u, v;
     const char *s, *name;
-    struct lysc_module *mod;
+    struct lys_module *mod;
     struct lysc_ident **idref;
 
     assert(ident || bases);
 
-    if (LY_ARRAY_SIZE(bases_p) > 1 && ctx->mod->compiled->version < 2) {
+    if (LY_ARRAY_SIZE(bases_p) > 1 && ctx->mod_def->parsed->version < 2) {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
                "Multiple bases in %s are allowed only in YANG 1.1 modules.", ident ? "identity" : "identityref type");
         return LY_EVALID;
@@ -536,10 +536,10 @@ lys_compile_identity_bases(struct lysc_ctx *ctx, const char **bases_p,  struct l
         if (s) {
             /* prefixed identity */
             name = &s[1];
-            mod = lysc_module_find_prefix(ctx->mod->compiled, bases_p[u], s - bases_p[u]);
+            mod = lys_module_find_prefix(ctx->mod_def, bases_p[u], s - bases_p[u]);
         } else {
             name = bases_p[u];
-            mod = ctx->mod->compiled;
+            mod = ctx->mod_def;
         }
         if (!mod) {
             if (ident) {
@@ -552,17 +552,17 @@ lys_compile_identity_bases(struct lysc_ctx *ctx, const char **bases_p,  struct l
             return LY_EVALID;
         }
         idref = NULL;
-        if (mod->identities) {
-            for (v = 0; v < LY_ARRAY_SIZE(mod->identities); ++v) {
-                if (!strcmp(name, mod->identities[v].name)) {
+        if (mod->compiled && mod->compiled->identities) {
+            for (v = 0; v < LY_ARRAY_SIZE(mod->compiled->identities); ++v) {
+                if (!strcmp(name, mod->compiled->identities[v].name)) {
                     if (ident) {
                         /* we have match! store the backlink */
-                        LY_ARRAY_NEW_RET(ctx->ctx, mod->identities[v].derived, idref, LY_EMEM);
+                        LY_ARRAY_NEW_RET(ctx->ctx, mod->compiled->identities[v].derived, idref, LY_EMEM);
                         *idref = ident;
                     } else {
                         /* we have match! store the found identity */
                         LY_ARRAY_NEW_RET(ctx->ctx, *bases, idref, LY_EMEM);
-                        *idref = &mod->identities[v];
+                        *idref = &mod->compiled->identities[v];
                     }
                     break;
                 }
@@ -1457,7 +1457,7 @@ lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_
     uint32_t position = 0;
     struct lysc_type_enum_item *e, storage;
 
-    if (base_enums && ctx->mod->compiled->version < 2) {
+    if (base_enums && ctx->mod_def->parsed->version < 2) {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "%s type can be subtyped only in YANG 1.1 modules.",
                basetype == LY_TYPE_ENUM ? "Enumeration" : "Bits");
         return LY_EVALID;
@@ -2487,7 +2487,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16_
 
     tctx = calloc(1, sizeof *tctx);
     LY_CHECK_ERR_RET(!tctx, LOGMEM(ctx->ctx), LY_EMEM);
-    for (ret = lysp_type_find(type_p->name, context_node_p, ctx->mod->parsed,
+    for (ret = lysp_type_find(type_p->name, context_node_p, ctx->mod_def->parsed,
                              &basetype, &tctx->tpdf, &tctx->node, &tctx->mod);
             ret == LY_SUCCESS;
             ret = lysp_type_find(tctx_prev->tpdf->type.name, tctx_prev->node, tctx_prev->mod,
@@ -2639,7 +2639,7 @@ preparenext:
         /* get restrictions from the node itself */
         (*type)->basetype = basetype;
         ++(*type)->refcount;
-        ret = lys_compile_type_(ctx, context_node_p, context_flags, context_mod, context_name, type_p, ctx->mod, basetype, options, NULL, base, type);
+        ret = lys_compile_type_(ctx, context_node_p, context_flags, context_mod, context_name, type_p, ctx->mod_def, basetype, options, NULL, base, type);
         LY_CHECK_GOTO(ret, cleanup);
     } else {
         /* no specific restriction in leaf's type definition, copy from the base */
@@ -2708,7 +2708,7 @@ lys_compile_node_leaf(struct lysc_ctx *ctx, struct lysp_node *node_p, int option
     DUP_STRING(ctx->ctx, leaf_p->units, leaf->units);
     DUP_STRING(ctx->ctx, leaf_p->dflt, leaf->dflt);
 
-    ret = lys_compile_type(ctx, node_p, node_p->flags, ctx->mod->parsed, node_p->name, &leaf_p->type, options, &leaf->type,
+    ret = lys_compile_type(ctx, node_p, node_p->flags, ctx->mod_def->parsed, node_p->name, &leaf_p->type, options, &leaf->type,
                            leaf->units ? NULL : &leaf->units, leaf->dflt || (leaf->flags & LYS_MAND_TRUE) ? NULL : &leaf->dflt);
     LY_CHECK_GOTO(ret, done);
     if (leaf->type->basetype == LY_TYPE_LEAFREF) {
@@ -2765,7 +2765,7 @@ lys_compile_node_leaflist(struct lysc_ctx *ctx, struct lysp_node *node_p, int op
     llist->min = llist_p->min;
     llist->max = llist_p->max ? llist_p->max : (uint32_t)-1;
 
-    ret = lys_compile_type(ctx, node_p, node_p->flags, ctx->mod->parsed, node_p->name, &llist_p->type, options, &llist->type,
+    ret = lys_compile_type(ctx, node_p, node_p->flags, ctx->mod_def->parsed, node_p->name, &llist_p->type, options, &llist->type,
                            llist->units ? NULL : &llist->units, (llist->dflts || llist->min) ? NULL : &dflt);
     LY_CHECK_GOTO(ret, done);
     if (dflt) {
@@ -2785,7 +2785,7 @@ lys_compile_node_leaflist(struct lysc_ctx *ctx, struct lysp_node *node_p, int op
             }
         }
     } else if (llist->type->basetype == LY_TYPE_EMPTY) {
-        if (ctx->mod->compiled->version < LYS_VERSION_1_1) {
+        if (ctx->mod_def->parsed->version < LYS_VERSION_1_1) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
                    "Leaf-list of type \"empty\" is allowed only in YANG 1.1 modules.");
             return LY_EVALID;
@@ -2886,7 +2886,7 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *node_p, int option
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS, "Key of the configuration list must not be status leaf.");
             return LY_EVALID;
         }
-        if (ctx->mod->compiled->version < LYS_VERSION_1_1) {
+        if (ctx->mod_def->parsed->version < LYS_VERSION_1_1) {
             /* YANG 1.0 denies key to be of empty type */
             if ((*key)->type->basetype == LY_TYPE_EMPTY) {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
@@ -3230,6 +3230,118 @@ error:
 }
 
 /**
+ * @brief Compile parsed uses statement - resolve target grouping and connect its content into parent.
+ * If present, also apply uses's modificators.
+ *
+ * @param[in] ctx Compile context
+ * @param[in] uses_p Parsed uses schema node.
+ * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
+ * @param[in] parent Compiled parent node where the content of the referenced grouping is supposed to be connected. It is
+ * NULL for top-level nodes, in such a case the module where the node will be connected is taken from
+ * the compile context.
+ * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
+ */
+static LY_ERR
+lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int options, struct lysc_node *parent)
+{
+    struct lysp_node *node_p;
+    struct lysc_node *last;
+    const struct lysp_grp *grp = NULL;
+    unsigned int u, grp_stack_count;
+    int found;
+    const char *id, *name, *prefix;
+    size_t prefix_len, name_len;
+    struct lys_module *mod, *mod_old;
+    LY_ERR ret = LY_EVALID;
+
+    /* search for the grouping definition */
+    found = 0;
+    id = uses_p->name;
+    lys_parse_nodeid(&id, &prefix, &prefix_len, &name, &name_len);
+    if (prefix) {
+        mod = lys_module_find_prefix(ctx->mod_def, prefix, prefix_len);
+        if (!mod) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                   "Invalid prefix used for grouping reference (%s).", uses_p->name);
+            return LY_EVALID;
+        }
+    } else {
+        mod = ctx->mod_def;
+    }
+    if (mod == ctx->mod_def) {
+        for (node_p = uses_p->parent; !found && node_p; node_p = node_p->parent) {
+            grp = lysp_node_groupings(node_p);
+            LY_ARRAY_FOR(grp, u) {
+                if (!strcmp(grp[u].name, name)) {
+                    grp = &grp[u];
+                    found = 1;
+                    break;
+                }
+            }
+        }
+    }
+    if (!found) {
+        /* search in top-level groupings */
+        grp = mod->parsed->groupings;
+        LY_ARRAY_FOR(grp, u) {
+            if (!strcmp(grp[u].name, name)) {
+                grp = &grp[u];
+                found = 1;
+                break;
+            }
+        }
+    }
+    if (!found) {
+        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+               "Grouping \"%s\" referenced by a uses statement not found.", uses_p->name);
+        return LY_EVALID;
+    }
+
+    /* grouping must not reference themselves - stack in ctx maintains list of groupings currently being applied */
+    grp_stack_count = ctx->groupings.count;
+    ly_set_add(&ctx->groupings, (void*)grp, 0);
+    if (grp_stack_count == ctx->groupings.count) {
+        /* the target grouping is already in the stack, so we are already inside it -> circular dependency */
+        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+               "Grouping \"%s\" references itself through a uses statement.", grp->name);
+        return LY_EVALID;
+    }
+
+    /* switch context's mod_def */
+    mod_old = ctx->mod_def;
+    ctx->mod_def = mod;
+
+    /* check status */
+    LY_CHECK_GOTO(lysc_check_status(ctx, uses_p->flags, mod_old, uses_p->name, grp->flags, mod, grp->name), error);
+
+    /* remember the last parent's child present before connecting the grouping content, it will be used later
+     * to know where start when applying uses's modificators */
+    if (parent) {
+        last = (struct lysc_node*)lysc_node_children(parent);
+    } else {
+        last = ctx->mod->compiled->data;
+    }
+    if (last) {
+        last = last->prev; /* get the last one */
+    }
+
+    /* connect the grouping's content */
+    LY_LIST_FOR(grp->data, node_p) {
+        LY_CHECK_GOTO(lys_compile_node(ctx, node_p, options, parent), error);
+    }
+
+    ret = LY_SUCCESS;
+error:
+    /* reload previous context's mod_def */
+    ctx->mod_def = mod_old;
+    /* remove the grouping from the stack for circular groupings dependency check */
+    ly_set_rm_index(&ctx->groupings, ctx->groupings.count - 1, NULL);
+    assert(ctx->groupings.count == grp_stack_count);
+
+    return ret;
+}
+
+/**
  * @brief Compile parsed schema node information.
  * @param[in] ctx Compile context
  * @param[in] node_p Parsed schema node.
@@ -3274,6 +3386,8 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, st
         node = (struct lysc_node*)calloc(1, sizeof(struct lysc_node_anydata));
         node_compile_spec = lys_compile_node_any;
         break;
+    case LYS_USES:
+        return lys_compile_uses(ctx, (struct lysp_node_uses*)node_p, options, parent);
     default:
         LOGINT(ctx->ctx);
         return LY_EINT;
@@ -3414,6 +3528,7 @@ lys_compile(struct lys_module *mod, int options)
 
     ctx.ctx = sp->ctx;
     ctx.mod = mod;
+    ctx.mod_def = mod;
 
     mod->compiled = mod_c = calloc(1, sizeof *mod_c);
     LY_CHECK_ERR_RET(!mod_c, LOGMEM(sp->ctx), LY_EMEM);
@@ -3494,6 +3609,7 @@ lys_compile(struct lys_module *mod, int options)
         }
     }
     ly_set_erase(&ctx.unres, NULL);
+    ly_set_erase(&ctx.groupings, NULL);
 
     if (options & LYSC_OPT_FREE_SP) {
         lysp_module_free(mod->parsed);
@@ -3505,6 +3621,7 @@ lys_compile(struct lys_module *mod, int options)
 
 error:
     ly_set_erase(&ctx.unres, NULL);
+    ly_set_erase(&ctx.groupings, NULL);
     lysc_module_free(mod_c, NULL);
     ((struct lys_module*)mod)->compiled = NULL;
     return ret;

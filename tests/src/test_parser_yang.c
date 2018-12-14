@@ -1755,6 +1755,114 @@ test_anyxml(void **state)
     return test_any(state, YANG_ANYXML);
 }
 
+static void
+test_grouping(void **state)
+{
+    *state = test_grouping;
+
+    struct lysp_module mod = {0};
+    struct ly_parser_ctx ctx = {0};
+    struct lysp_grp *grp = NULL;
+    const char *str;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
+    assert_non_null(ctx.ctx);
+    ctx.line = 1;
+    ctx.mod = &mod;
+    ctx.mod->version = 2; /* simulate YANG 1.1 */
+
+    /* invalid cardinality */
+#define TEST_DUP(MEMBER, VALUE1, VALUE2) \
+    str = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
+    assert_int_equal(LY_EVALID, parse_grouping(&ctx, &str, NULL, &grp)); \
+    logbuf_assert("Duplicate keyword \""MEMBER"\". Line number 1."); \
+    FREE_ARRAY(ctx.ctx, grp, lysp_grp_free); grp = NULL;
+
+    TEST_DUP("description", "text1", "text2");
+    TEST_DUP("reference", "1", "2");
+    TEST_DUP("status", "current", "obsolete");
+#undef TEST_DUP
+
+    /* full content */
+    str = "grp {action x;anydata any;anyxml anyxml; choice ch;container c;description test;grouping g;leaf l {type string;}"
+          "leaf-list ll {type string;} list li;notification not;reference test;status current;typedef t {type int8;}uses g;m:ext;} ...";
+    assert_int_equal(LY_SUCCESS, parse_grouping(&ctx, &str, NULL, &grp));
+    assert_non_null(grp);
+    assert_int_equal(LYS_GROUPING, grp->nodetype);
+    assert_string_equal("grp", grp->name);
+    assert_string_equal("test", grp->dsc);
+    assert_non_null(grp->exts);
+    assert_string_equal("test", grp->ref);
+    assert_null(grp->parent);
+    assert_int_equal( LYS_STATUS_CURR, grp->flags);
+    ly_set_erase(&ctx.tpdfs_nodes, NULL);
+    FREE_ARRAY(ctx.ctx, grp, lysp_grp_free); grp = NULL;
+
+    /* invalid content */
+    str = "grp {config true} ...";
+    assert_int_equal(LY_EVALID, parse_grouping(&ctx, &str, NULL, &grp));
+    logbuf_assert("Invalid keyword \"config\" as a child of \"grouping\". Line number 1.");
+    FREE_ARRAY(ctx.ctx, grp, lysp_grp_free); grp = NULL;
+
+    str = "grp {must 'expr'} ...";
+    assert_int_equal(LY_EVALID, parse_grouping(&ctx, &str, NULL, &grp));
+    logbuf_assert("Invalid keyword \"must\" as a child of \"grouping\". Line number 1.");
+    FREE_ARRAY(ctx.ctx, grp, lysp_grp_free); grp = NULL;
+
+    *state = NULL;
+    ly_ctx_destroy(ctx.ctx, NULL);
+}
+
+static void
+test_uses(void **state)
+{
+    *state = test_uses;
+
+    struct lysp_module mod = {0};
+    struct ly_parser_ctx ctx = {0};
+    struct lysp_node_uses *u = NULL;
+    const char *str;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
+    assert_non_null(ctx.ctx);
+    ctx.line = 1;
+    ctx.mod = &mod;
+    ctx.mod->version = 2; /* simulate YANG 1.1 */
+
+    /* invalid cardinality */
+#define TEST_DUP(MEMBER, VALUE1, VALUE2) \
+    str = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
+    assert_int_equal(LY_EVALID, parse_uses(&ctx, &str, NULL, (struct lysp_node**)&u)); \
+    logbuf_assert("Duplicate keyword \""MEMBER"\". Line number 1."); \
+    lysp_node_free(ctx.ctx, (struct lysp_node*)u); u = NULL;
+
+    TEST_DUP("description", "text1", "text2");
+    TEST_DUP("reference", "1", "2");
+    TEST_DUP("status", "current", "obsolete");
+    TEST_DUP("when", "true", "false");
+#undef TEST_DUP
+
+    /* full content */
+    str = "grpref {augment some/node;description test;if-feature f;reference test;refine some/other/node;status current;when true;m:ext;} ...";
+    assert_int_equal(LY_SUCCESS, parse_uses(&ctx, &str, NULL, (struct lysp_node**)&u));
+    assert_non_null(u);
+    assert_int_equal(LYS_USES, u->nodetype);
+    assert_string_equal("grpref", u->name);
+    assert_string_equal("test", u->dsc);
+    assert_non_null(u->exts);
+    assert_non_null(u->iffeatures);
+    assert_string_equal("test", u->ref);
+    assert_non_null(u->augments);
+    assert_non_null(u->refines);
+    assert_non_null(u->when);
+    assert_null(u->parent);
+    assert_null(u->next);
+    assert_int_equal(LYS_STATUS_CURR, u->flags);
+    lysp_node_free(ctx.ctx, (struct lysp_node*)u); u = NULL;
+
+    *state = NULL;
+    ly_ctx_destroy(ctx.ctx, NULL);
+}
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1776,6 +1884,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_case, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_anydata, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_anyxml, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_grouping, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_uses, logger_setup, logger_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

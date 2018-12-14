@@ -2212,6 +2212,52 @@ test_status(void **state)
     ly_ctx_destroy(ctx, NULL);
 }
 
+static void
+test_uses(void **state)
+{
+    *state = test_uses;
+
+    struct ly_ctx *ctx;
+    struct lys_module *mod;
+    struct lysc_node *parent, *child;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module grp {namespace urn:grp;prefix g; typedef mytype {type string;}"
+                                        "grouping grp {leaf x {type mytype;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;import grp {prefix g;}"
+                                        "grouping grp_a_top {leaf a1 {type int8;}}"
+                                        "container a {uses grp_a; uses grp_a_top; uses g:grp; grouping grp_a {leaf a2 {type uint8;}}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    assert_non_null((parent = mod->compiled->data));
+    assert_int_equal(LYS_CONTAINER, parent->nodetype);
+    assert_non_null((child = ((struct lysc_node_container*)parent)->child));
+    assert_string_equal("a2", child->name);
+    assert_non_null((child = child->next));
+    assert_string_equal("a1", child->name);
+    assert_non_null((child = child->next));
+    assert_string_equal("x", child->name);
+
+    /* invalid */
+    assert_non_null(mod = lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;uses missinggrp;}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Grouping \"missinggrp\" referenced by a uses statement not found.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb;uses grp;"
+                                        "grouping grp {leaf a{type string;}uses grp1;}"
+                                        "grouping grp1 {leaf b {type string;}uses grp2;}"
+                                        "grouping grp2 {leaf c {type string;}uses grp;}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Grouping \"grp\" references itself through a uses statement.");
+
+    *state = NULL;
+    ly_ctx_destroy(ctx, NULL);
+}
+
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -2236,6 +2282,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_node_list, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_node_choice, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_node_anydata, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_uses, logger_setup, logger_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

@@ -61,6 +61,11 @@ struct ly_parser_ctx {
 struct lysc_ctx {
     struct ly_ctx *ctx;
     struct lys_module *mod;
+    struct lys_module *mod_def; /* context module for the definitions of the nodes being currently
+                                   processed - groupings are supposed to be evaluated in place where
+                                   defined, but its content instances are supposed to be placed into
+                                   the target module (mod) */
+    struct ly_set groupings;    /* stack for groupings circular check */
     struct ly_set unres;        /* to validate leafref's target and xpath of when/must */
     uint16_t path_len;
 #define LYSC_CTX_BUFSIZE 4078
