@@ -150,8 +150,16 @@ test_module(void **state)
     assert_int_equal(LY_EINVAL, lys_compile(&mod, 0));
     logbuf_assert("Submodules (test) are not supposed to be compiled, compile only the main modules.");
     assert_null(mod.compiled);
-
     lysp_module_free(mod.parsed);
+
+    /* data definition name collision in top level */
+    assert_int_equal(LY_SUCCESS, yang_parse(&ctx, "module aa {namespace urn:aa;prefix aa;"
+                                                  "leaf a {type string;} container a{presence x;}}", &mod.parsed));
+    assert_int_equal(LY_EVALID, lys_compile(&mod, 0));
+    logbuf_assert("Duplicate identifier \"a\" of data definition statement.");
+    assert_null(mod.compiled);
+    lysp_module_free(mod.parsed);
+
     ly_ctx_destroy(ctx.ctx, NULL);
 }
 
@@ -658,7 +666,7 @@ test_node_choice(void **state)
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
     ch = (struct lysc_node_choice*)mod->compiled->data;
     assert_non_null(ch);
-    assert_int_equal(LYS_CONFIG_W | LYS_STATUS_CURR, ch->flags);
+    assert_int_equal(LYS_CONFIG_W | LYS_STATUS_CURR | LYS_SET_DFLT, ch->flags);
     cs = ch->cases;
     assert_non_null(cs);
     assert_string_equal("a", cs->name);
@@ -2236,10 +2244,13 @@ test_uses(void **state)
     assert_int_equal(LYS_CONTAINER, parent->nodetype);
     assert_non_null((child = ((struct lysc_node_container*)parent)->child));
     assert_string_equal("a2", child->name);
+    assert_ptr_equal(mod, child->module);
     assert_non_null((child = child->next));
     assert_string_equal("a1", child->name);
+    assert_ptr_equal(mod, child->module);
     assert_non_null((child = child->next));
     assert_string_equal("x", child->name);
+    assert_ptr_equal(mod, child->module);
 
     /* invalid */
     assert_non_null(mod = lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;uses missinggrp;}", LYS_IN_YANG));
@@ -2252,6 +2263,15 @@ test_uses(void **state)
                                         "grouping grp2 {leaf c {type string;}uses grp;}}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
     logbuf_assert("Grouping \"grp\" references itself through a uses statement.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module cc {namespace urn:cc;prefix cc;uses a:missingprefix;}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid prefix used for grouping reference (a:missingprefix).");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module dd {namespace urn:dd;prefix dd;grouping grp{leaf a{type string;}}"
+                                        "leaf a {type string;}uses grp;}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Duplicate identifier \"a\" of data definition statement.");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);

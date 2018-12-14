@@ -574,6 +574,8 @@ struct lysp_deviation {
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       9 LYS_KEY          | | |x| | | | | | | | | | | |
  *         LYS_FENABLED     | | | | | | | | | | | |x| | |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      10 LYS_SET_DFLT     | | |x| | | |x| | | | | | | |
  *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  */
@@ -622,6 +624,10 @@ struct lysp_deviation {
 #define LYS_SET_RANGE    0x0080      /**< type's flag for present range substatement */
 #define LYS_SET_TYPE     0x0100      /**< type's flag for present type substatement */
 #define LYS_SET_REQINST  0x0200      /**< type's flag for present require-instance substatement */
+#define LYS_SET_DFLT     0x0200      /**< flag to mark leaf with own default value, not a default value taken from its type, and default
+                                          cases of choice. This information is important for refines, since it is prohibited to make leafs
+                                          with default statement mandatory. In case the default leaf value is taken from type, it is thrown
+                                          away when it is refined to be mandatory node. */
 
 #define LYS_FLAGS_COMPILED_MASK 0x7f /**< mask for flags that maps to the compiled structures */
 /** @} */

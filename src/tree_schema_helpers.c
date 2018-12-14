@@ -405,13 +405,11 @@ lysp_type_find(const char *id, struct lysp_node *start_node, struct lysp_module 
     /* search in submodules' typedefs */
     LY_ARRAY_FOR((*module)->includes, u) {
         typedefs = (*module)->includes[u].submodule->typedefs;
-        if (typedefs) {
-            LY_ARRAY_FOR(typedefs, v) {
-                if (!strcmp(name, typedefs[v].name)) {
-                    /* match */
-                    *tpdf = &typedefs[v];
-                    return LY_SUCCESS;
-                }
+        LY_ARRAY_FOR(typedefs, v) {
+            if (!strcmp(name, typedefs[v].name)) {
+                /* match */
+                *tpdf = &typedefs[v];
+                return LY_SUCCESS;
             }
         }
     }

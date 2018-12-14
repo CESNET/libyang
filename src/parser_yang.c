@@ -4507,6 +4507,7 @@ parse_sub_module(struct ly_parser_ctx *ctx, const char **data, struct lysp_modul
             child->parent = (struct lysp_node*)&mod->groupings[u];
         }
     }
+    /* TODO the same finalization for rpcs and notifications, do also in the relevant nodes */
 
 checks:
     /* mandatory substatements */
