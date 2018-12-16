@@ -96,6 +96,53 @@ match_argument_name(const char *name, size_t len)
 }
 
 LY_ERR
+parser_belongs_to(struct lyxml_context *xml_ctx, const char **data, const char **belongsto, const char **prefix, struct lysp_ext **extensions)
+{
+    enum yang_keyword kw = YANG_NONE;
+    LY_ERR ret = LY_SUCCESS;
+    const char *prefix_out, *name;
+    size_t prefix_len, name_len;
+
+    char *buf = NULL, *out = NULL;
+    size_t buf_len = 0, out_len = 0;
+    int dynamic;
+
+    /* check if belongs-to has argument module */
+    ret = lyxml_get_attribute(xml_ctx, data, &prefix_out, &prefix_len, &name, &name_len);
+    LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), ret);
+    if (match_argument_name(name, name_len) != YIN_ARG_MODULE) {
+        LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Invalid argument name \"%s\", expected \"module\".", name);
+    }
+
+    ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
+    *belongsto = lydict_insert(xml_ctx->ctx, out, out_len);
+
+    /* read substatements */
+    while (xml_ctx->status == LYXML_ATTRIBUTE) {
+        ret = lyxml_get_attribute(xml_ctx, data, &prefix_out, &prefix_len, &name, &name_len);
+        LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), ret);
+        kw = match_keyword(name);
+
+        switch (kw) {
+        case YANG_PREFIX:
+            ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
+            *prefix = lydict_insert(xml_ctx->ctx, out, out_len);
+            break;
+        case YANG_CUSTOM:
+            /* TODO parse extension */
+            break;
+        default:
+            LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Unexpected attribute \"%s\"", name);
+            return LY_EVALID;
+        }
+    }
+
+    if (!prefix) {
+        LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Missing prefix");
+    }
+}
+
+LY_ERR
 parse_namespace(struct lyxml_context *xml_ctx, const char **data, struct lysp_module **mod_p)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -200,15 +247,19 @@ parse_submodule(struct lyxml_context *xml_ctx, const char **data, struct lysp_mo
         kw = match_keyword(name);
 
         switch (kw) {
-            case YANG_PREFIX:
-                ret = parse_prefix(xml_ctx, data, mod_p);
-            break;
-
             case YANG_NAMESPACE:
                 ret = parse_namespace(xml_ctx, data, mod_p);
             break;
+            case YANG_PREFIX:
+                ret = parse_prefix(xml_ctx, data, mod_p);
+                LY_CHECK_RET(lysp_check_prefix(xml_ctx->ctx, *mod_p, &((*mod_p)->prefix)), LY_EVALID);
+            break;
+            case YANG_BELONGS_TO:
+                ret = parser_belongs_to(xml_ctx, data, &(*mod_p)->belongsto, &(*mod_p)->prefix, &(*mod_p)->extensions);
+            break;
 
             default:
+                /* error */
             break;
         }
     }
