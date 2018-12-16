@@ -50,10 +50,10 @@ test_parse(void **state)
                 &mod);
 
     assert_string_equal(mod->name, "example-foo");
+    assert_string_equal(mod->prefix, "foo");
 
+    lysp_module_free(mod);
     ly_ctx_destroy(ctx, NULL);
-
-    free(mod);
 }
 
 static int
