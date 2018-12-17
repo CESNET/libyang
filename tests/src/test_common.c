@@ -13,6 +13,7 @@
  */
 
 #include "../../src/common.c"
+#include "../../src/log.c"
 
 #include <stdarg.h>
 #include <stddef.h>
@@ -82,6 +83,7 @@ test_utf8(void **state)
     assert_int_equal(LY_EINVAL, ly_getutf8(&str, &c, &len));
 }
 
+#ifndef APPLE
 void *__real_realloc(void *ptr, size_t size);
 void *__wrap_realloc(void *ptr, size_t size)
 {
@@ -118,12 +120,15 @@ test_lyrealloc(void **state)
 
     /* ptr should be freed by ly_realloc() */
 }
+#endif /* not APPLE */
 
 int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup(test_utf8, logger_setup),
+#ifndef APPLE
         cmocka_unit_test(test_lyrealloc),
+#endif
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

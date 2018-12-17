@@ -12,11 +12,20 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#define _BSD_SOURCE
-#define _DEFAULT_SOURCE
+#include "common.h"
 
 #include "tests/config.h"
+#include "../../src/common.c"
+#include "../../src/set.c"
+#include "../../src/log.c"
+#include "../../src/xpath.c"
 #include "../../src/hash_table.c"
+#include "../../src/parser_yang.c"
+#include "../../src/context.c"
+#include "../../src/tree_schema_helpers.c"
+#include "../../src/tree_schema_free.c"
+#include "../../src/tree_schema_compile.c"
+#include "../../src/tree_schema.c"
 
 #include <stdarg.h>
 #include <stddef.h>

@@ -21,7 +21,7 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE debug)
 endif()
 
-set(CMAKE_C_FLAGS         "${CMAKE_C_FLAGS} -Wall -Wextra -std=c99")
+set(CMAKE_C_FLAGS         "${CMAKE_C_FLAGS} -Wall -Wextra -Wno-missing-field-initializers -std=c99")
 set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG")
 set(CMAKE_C_FLAGS_PACKAGE "-g -O2 -DNDEBUG")
 set(CMAKE_C_FLAGS_DEBUG   "-g -O0")
@@ -158,10 +158,13 @@ set(libsrc
     src/set.c
     src/context.c
     src/tree_schema.c
+    src/tree_schema_free.c
+    src/tree_schema_compile.c
     src/tree_schema_helpers.c
     src/parser_yang.c
     src/parser_yin.c
-    src/xml.c)
+    src/xml.c
+    src/xpath.c)
 
 #set(lintsrc
 #    tools/lint/main.c
@@ -179,7 +182,9 @@ set(libsrc
 
 set(headers
     src/libyang.h
+    src/context.h
     src/tree_schema.h
+    src/extensions.h
     src/dict.h
     src/log.h
     src/set.h)
@@ -207,7 +212,7 @@ else()
 endif(ENABLE_STATIC)
 
 set_target_properties(yang PROPERTIES VERSION ${LIBYANG_VERSION} SOVERSION ${LIBYANG_SOVERSION})
-set_target_properties(yang PROPERTIES COMPILE_FLAGS "-fvisibility=hidden")
+set_target_properties(yangobj PROPERTIES COMPILE_FLAGS "-fvisibility=hidden")
 
 # link math
 target_link_libraries(yang m)

@@ -32,6 +32,11 @@
  */
 uint32_t dict_hash_multi(uint32_t hash, const char *key_part, size_t len);
 
+/*
+ * @brief Compute hash from a string.
+ */
+uint32_t dict_hash(const char *key, size_t len);
+
 /**
  * @brief Callback for checking hash table values equivalence.
  *

@@ -12,10 +12,20 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
+#include "../../src/common.c"
+#include "../../src/log.c"
+#include "../../src/set.c"
+#include "../../src/parser_yang.c"
+#include "../../src/tree_schema.c"
+#include "../../src/tree_schema_free.c"
 #include "../../src/tree_schema_helpers.c"
+#include "../../src/hash_table.c"
+#include "../../src/xpath.c"
+#include "../../src/context.c"
 
 #include <stdarg.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <setjmp.h>
 #include <cmocka.h>
 
@@ -23,15 +33,28 @@
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
+int store = -1; /* negative for infinite logging, positive for limited logging */
 
+/* set to 0 to printing error messages to stderr instead of checking them in code */
+#define ENABLE_LOGGER_CHECKING 1
+
+#if ENABLE_LOGGER_CHECKING
 static void
 logger(LY_LOG_LEVEL level, const char *msg, const char *path)
 {
     (void) level; /* unused */
-    (void) path; /* unused */
-
-    strncpy(logbuf, msg, BUFSIZE - 1);
+    if (store) {
+        if (path && path[0]) {
+            snprintf(logbuf, BUFSIZE - 1, "%s %s", msg, path);
+        } else {
+            strncpy(logbuf, msg, BUFSIZE - 1);
+        }
+        if (store > 0) {
+            --store;
+        }
+    }
 }
+#endif
 
 static int
 logger_setup(void **state)
@@ -43,6 +66,24 @@ logger_setup(void **state)
     return 0;
 }
 
+static int
+logger_teardown(void **state)
+{
+    (void) state; /* unused */
+#if ENABLE_LOGGER_CHECKING
+    if (*state) {
+        fprintf(stderr, "%s\n", logbuf);
+    }
+#endif
+    return 0;
+}
+
+void
+logbuf_clean(void)
+{
+    logbuf[0] = '\0';
+}
+
 #if ENABLE_LOGGER_CHECKING
 #   define logbuf_assert(str) assert_string_equal(logbuf, str)
 #else
@@ -52,7 +93,7 @@ logger_setup(void **state)
 static void
 test_date(void **state)
 {
-    (void) state; /* unused */
+    *state = test_date;
 
     assert_int_equal(LY_EINVAL, lysp_check_date(NULL, NULL, 0, "date"));
     logbuf_assert("Invalid argument date (lysp_check_date()).");
@@ -76,6 +117,8 @@ test_date(void **state)
     assert_int_equal(LY_SUCCESS, lysp_check_date(NULL, "2018-11-11", 10, "date"));
     assert_int_equal(LY_SUCCESS, lysp_check_date(NULL, "2018-02-28", 10, "date"));
     assert_int_equal(LY_SUCCESS, lysp_check_date(NULL, "2016-02-29", 10, "date"));
+
+    *state = NULL;
 }
 
 static void
@@ -85,15 +128,16 @@ test_revisions(void **state)
 
     struct lysp_revision *revs = NULL, *rev;
 
+    logbuf_clean();
     /* no error, it just does nothing */
     lysp_sort_revisions(NULL);
     logbuf_assert("");
 
     /* revisions are stored in wrong order - the newest is the last */
     LY_ARRAY_NEW_RET(NULL, revs, rev,);
-    strcpy(rev->rev, "2018-01-01");
+    strcpy(rev->date, "2018-01-01");
     LY_ARRAY_NEW_RET(NULL, revs, rev,);
-    strcpy(rev->rev, "2018-12-31");
+    strcpy(rev->date, "2018-12-31");
 
     assert_int_equal(2, LY_ARRAY_SIZE(revs));
     assert_string_equal("2018-01-01", &revs[0]);
@@ -106,11 +150,164 @@ test_revisions(void **state)
     LY_ARRAY_FREE(revs);
 }
 
+static LY_ERR test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), const char *UNUSED(submod_name),
+                           const char *UNUSED(sub_rev), void *user_data, LYS_INFORMAT *format,
+                           const char **module_data, void (**free_module_data)(void *model_data, void *user_data))
+{
+    *module_data = user_data;
+    *format = LYS_IN_YANG;
+    *free_module_data = NULL;
+    return LY_SUCCESS;
+}
+
+static void
+test_typedef(void **state)
+{
+    *state = test_typedef;
+
+    struct ly_ctx *ctx = NULL;
+    const char *str;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+
+    str = "module a {namespace urn:a; prefix a; typedef binary {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"binary\" of typedef - name collision with a built-in type.");
+    str = "module a {namespace urn:a; prefix a; typedef bits {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"bits\" of typedef - name collision with a built-in type.");
+    str = "module a {namespace urn:a; prefix a; typedef boolean {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"boolean\" of typedef - name collision with a built-in type.");
+    str = "module a {namespace urn:a; prefix a; typedef decimal64 {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"decimal64\" of typedef - name collision with a built-in type.");
+    str = "module a {namespace urn:a; prefix a; typedef empty {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"empty\" of typedef - name collision with a built-in type.");
+    str = "module a {namespace urn:a; prefix a; typedef enumeration {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"enumeration\" of typedef - name collision with a built-in type.");
+    str = "module a {namespace urn:a; prefix a; typedef int8 {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"int8\" of typedef - name collision with a built-in type.");
+    str = "module a {namespace urn:a; prefix a; typedef int16 {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"int16\" of typedef - name collision with a built-in type.");
+    str = "module a {namespace urn:a; prefix a; typedef int32 {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"int32\" of typedef - name collision with a built-in type.");
+    str = "module a {namespace urn:a; prefix a; typedef int64 {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"int64\" of typedef - name collision with a built-in type.");
+    str = "module a {namespace urn:a; prefix a; typedef instance-identifier {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"instance-identifier\" of typedef - name collision with a built-in type.");
+    str = "module a {namespace urn:a; prefix a; typedef identityref {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"identityref\" of typedef - name collision with a built-in type.");
+    str = "module a {namespace urn:a; prefix a; typedef leafref {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"leafref\" of typedef - name collision with a built-in type.");
+    str = "module a {namespace urn:a; prefix a; typedef string {type int8;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"string\" of typedef - name collision with a built-in type.");
+    str = "module a {namespace urn:a; prefix a; typedef union {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"union\" of typedef - name collision with a built-in type.");
+    str = "module a {namespace urn:a; prefix a; typedef uint8 {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"uint8\" of typedef - name collision with a built-in type.");
+    str = "module a {namespace urn:a; prefix a; typedef uint16 {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"uint16\" of typedef - name collision with a built-in type.");
+    str = "module a {namespace urn:a; prefix a; typedef uint32 {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"uint32\" of typedef - name collision with a built-in type.");
+    str = "module a {namespace urn:a; prefix a; typedef uint64 {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"uint64\" of typedef - name collision with a built-in type.");
+
+    str = "module mytypes {namespace urn:types; prefix t; typedef binary_ {type string;} typedef bits_ {type string;} typedef boolean_ {type string;} "
+          "typedef decimal64_ {type string;} typedef empty_ {type string;} typedef enumeration_ {type string;} typedef int8_ {type string;} typedef int16_ {type string;}"
+          "typedef int32_ {type string;} typedef int64_ {type string;} typedef instance-identifier_ {type string;} typedef identityref_ {type string;}"
+          "typedef leafref_ {type string;} typedef string_ {type int8;} typedef union_ {type string;} typedef uint8_ {type string;} typedef uint16_ {type string;}"
+          "typedef uint32_ {type string;} typedef uint64_ {type string;}}";
+    assert_non_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+
+    str = "module a {namespace urn:a; prefix a; typedef test {type string;} typedef test {type int8;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"test\" of typedef - name collision with another top-level type.");
+
+    str = "module a {namespace urn:a; prefix a; typedef x {type string;} container c {typedef x {type int8;}}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"x\" of typedef - scoped type collide with a top-level type.");
+
+    str = "module a {namespace urn:a; prefix a; container c {container d {typedef y {type int8;}} typedef y {type string;}}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"y\" of typedef - name collision with another scoped type.");
+
+    str = "module a {namespace urn:a; prefix a; container c {typedef y {type int8;} typedef y {type string;}}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"y\" of typedef - name collision with sibling type.");
+
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule b {belongs-to a {prefix a;} typedef x {type string;}}");
+    str = "module a {namespace urn:a; prefix a; include b; typedef x {type int8;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"x\" of typedef - name collision with another top-level type.");
+
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule b {belongs-to a {prefix a;} container c {typedef x {type string;}}}");
+    str = "module a {namespace urn:a; prefix a; include b; typedef x {type int8;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"x\" of typedef - scoped type collide with a top-level type.");
+
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule b {belongs-to a {prefix a;} typedef x {type int8;}}");
+    str = "module a {namespace urn:a; prefix a; include b; container c {typedef x {type string;}}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"x\" of typedef - scoped type collide with a top-level type.");
+
+    *state = NULL;
+    ly_ctx_destroy(ctx, NULL);
+}
+
+static void
+test_parse_nodeid(void **state)
+{
+    (void) state; /* unused */
+    const char *str;
+    const char *prefix, *name;
+    size_t prefix_len, name_len;
+
+    str = "123";
+    assert_int_equal(LY_EINVAL, lys_parse_nodeid(&str, &prefix, &prefix_len, &name, &name_len));
+
+    str = "a12_-.!";
+    assert_int_equal(LY_SUCCESS, lys_parse_nodeid(&str, &prefix, &prefix_len, &name, &name_len));
+    assert_null(prefix);
+    assert_int_equal(0, prefix_len);
+    assert_non_null(name);
+    assert_int_equal(6, name_len);
+    assert_int_equal(0, strncmp("a12_-.", name, name_len));
+    assert_string_equal("!", str);
+
+    str = "a12_-.:_b2 xxx";
+    assert_int_equal(LY_SUCCESS, lys_parse_nodeid(&str, &prefix, &prefix_len, &name, &name_len));
+    assert_non_null(prefix);
+    assert_int_equal(6, prefix_len);
+    assert_int_equal(0, strncmp("a12_-.", prefix, prefix_len));
+    assert_non_null(name);
+    assert_int_equal(3, name_len);
+    assert_int_equal(0, strncmp("_b2", name, name_len));
+    assert_string_equal(" xxx", str);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup(test_date, logger_setup),
+        cmocka_unit_test_setup_teardown(test_date, logger_setup, logger_teardown),
         cmocka_unit_test_setup(test_revisions, logger_setup),
+        cmocka_unit_test_setup_teardown(test_typedef, logger_setup, logger_teardown),
+        cmocka_unit_test_setup(test_parse_nodeid, logger_setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

@@ -12,8 +12,8 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#define _DEFAULT_SOURCE
-#define _BSD_SOURCE
+#include "common.h"
+
 #include <errno.h>
 #include <limits.h>
 #include <stdlib.h>
@@ -23,26 +23,18 @@
 #include <unistd.h>
 
 #include "context.h"
-#include "common.h"
 #include "tree_schema_internal.h"
 #include "libyang.h"
 
 #define LY_INTERNAL_MODS_COUNT 6
 
-#define IETF_YANG_METADATA_PATH "../models/ietf-yang-metadata@2016-08-05.h"
-#define YANG_PATH "../models/yang@2017-02-20.h"
-#define IETF_INET_TYPES_PATH "../models/ietf-inet-types@2013-07-15.h"
-#define IETF_YANG_TYPES_PATH "../models/ietf-yang-types@2013-07-15.h"
-#define IETF_DATASTORES "../models/ietf-datastores@2017-08-17.h"
-#define IETF_YANG_LIB_PATH "../models/ietf-yang-library@2018-01-17.h"
+#include "../models/ietf-yang-metadata@2016-08-05.h"
+#include "../models/yang@2017-02-20.h"
+#include "../models/ietf-inet-types@2013-07-15.h"
+#include "../models/ietf-yang-types@2013-07-15.h"
+#include "../models/ietf-datastores@2017-08-17.h"
+#include "../models/ietf-yang-library@2018-01-17.h"
 #define IETF_YANG_LIB_REV "2018-01-17"
-
-#include IETF_YANG_METADATA_PATH
-#include YANG_PATH
-#include IETF_INET_TYPES_PATH
-#include IETF_YANG_TYPES_PATH
-#include IETF_DATASTORES
-#include IETF_YANG_LIB_PATH
 
 static struct internal_modules_s {
     const char *name;
@@ -94,6 +86,9 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
             free(new_dir);
             return LY_EMEM;
         }
+
+        /* new searchdir - possibly more latest revision available */
+        ly_ctx_reset_latests(ctx);
 
         return LY_SUCCESS;
     } else {
@@ -212,7 +207,7 @@ ly_ctx_new(const char *search_dir, int options, struct ly_ctx **new_ctx)
     /* load internal modules */
     for (i = 0; i < ((options & LY_CTX_NOYANGLIBRARY) ? (LY_INTERNAL_MODS_COUNT - 2) : LY_INTERNAL_MODS_COUNT); i++) {
         module = (struct lys_module *)lys_parse_mem(ctx, internal_modules[i].data, internal_modules[i].format);
-        LY_CHECK_GOTO(!module, error);
+        LY_CHECK_ERR_GOTO(!module, rc = ly_errcode(ctx), error);
         module->parsed->implemented = internal_modules[i].implemented;
     }
 
@@ -259,6 +254,242 @@ ly_ctx_get_module_set_id(const struct ly_ctx *ctx)
 {
     LY_CHECK_ARG_RET(ctx, ctx, 0);
     return ctx->module_set_id;
+}
+
+API void
+ly_ctx_set_module_imp_clb(struct ly_ctx *ctx, ly_module_imp_clb clb, void *user_data)
+{
+    LY_CHECK_ARG_RET(ctx, ctx,);
+
+    ctx->imp_clb = clb;
+    ctx->imp_clb_data = user_data;
+}
+
+API ly_module_imp_clb
+ly_ctx_get_module_imp_clb(const struct ly_ctx *ctx, void **user_data)
+{
+    LY_CHECK_ARG_RET(ctx, ctx, NULL);
+
+    if (user_data) {
+        *user_data = ctx->imp_clb_data;
+    }
+    return ctx->imp_clb;
+}
+
+/**
+ * @brief Iterate over the modules in the given context. Returned modules must match the given key at the offset of
+ * lysp_module and lysc_module structures (they are supposed to be placed at the same offset in both structures).
+ *
+ * @param[in] ctx Context where to iterate.
+ * @param[in] key Key value to search for.
+ * @param[in] key_offset Key's offset in struct lysp_module and struct lysc_module to get value from the context's
+ * modules to match with the key.
+ * @param[in,out] Iterator to pass between the function calls. On the first call, the variable is supposed to be
+ * initiated to 0. After each call returning a module, the value is greater by 1 than the index of the returned
+ * module in the context.
+ * @return Module matching the given key, NULL if no such module found.
+ */
+static const struct lys_module *
+ly_ctx_get_module_by_iter(const struct ly_ctx *ctx, const char *key, size_t key_offset, unsigned int *index)
+{
+    const struct lys_module *mod;
+    const char *value;
+
+    for (; *index < ctx->list.count; ++(*index)) {
+        mod = ctx->list.objs[*index];
+        if (mod->compiled) {
+            value = *(const char**)(((int8_t*)(mod->compiled)) + key_offset);
+        } else {
+            value = *(const char**)(((int8_t*)(mod->parsed)) + key_offset);
+        }
+        if (!strcmp(key, value)) {
+            /* increment index for the next run */
+            ++(*index);
+            return mod;
+        }
+    }
+    /* done */
+    return NULL;
+}
+
+/**
+ * @brief Unifying function for ly_ctx_get_module() and ly_ctx_get_module_ns()
+ * @param[in] ctx Context where to search.
+ * @param[in] key Name or Namespace as a search key.
+ * @param[in] key_offset Key's offset in struct lysp_module to get value from the context's modules to match with the key.
+ * @param[in] revision Revision date to match. If NULL, the matching module must have no revision. To search for the latest
+ * revision module, use ly_ctx_get_module_latest_by().
+ * @return Matching module if any.
+ */
+static const struct lys_module *
+ly_ctx_get_module_by(const struct ly_ctx *ctx, const char *key, size_t key_offset, const char *revision)
+{
+    const struct lys_module *mod;
+    unsigned int index = 0;
+
+    while ((mod = ly_ctx_get_module_by_iter(ctx, key, key_offset, &index))) {
+        if (!revision) {
+            if ((mod->compiled && !mod->compiled->revision) || (!mod->compiled && !mod->parsed->revs)) {
+                /* found requested module without revision */
+                return mod;
+            }
+        } else {
+            if ((mod->compiled && mod->compiled->revision && !strcmp(mod->compiled->revision, revision)) ||
+                    (!mod->compiled && mod->parsed->revs && !strcmp(mod->parsed->revs[0].date, revision))) {
+                /* found requested module of the specific revision */
+                return mod;
+            }
+        }
+    }
+
+    return NULL;
+}
+
+API const struct lys_module *
+ly_ctx_get_module_ns(const struct ly_ctx *ctx, const char *ns, const char *revision)
+{
+    LY_CHECK_ARG_RET(ctx, ctx, ns, NULL);
+    return ly_ctx_get_module_by(ctx, ns, offsetof(struct lysp_module, ns), revision);
+}
+
+API const struct lys_module *
+ly_ctx_get_module(const struct ly_ctx *ctx, const char *name, const char *revision)
+{
+    LY_CHECK_ARG_RET(ctx, ctx, name, NULL);
+    return ly_ctx_get_module_by(ctx, name, offsetof(struct lysp_module, name), revision);
+}
+
+/**
+ * @brief Unifying function for ly_ctx_get_module_latest() and ly_ctx_get_module_latest_ns()
+ * @param[in] ctx Context where to search.
+ * @param[in] key Name or Namespace as a search key.
+ * @param[in] key_offset Key's offset in struct lysp_module to get value from the context's modules to match with the key.
+ * @return Matching module if any.
+ */
+static const struct lys_module *
+ly_ctx_get_module_latest_by(const struct ly_ctx *ctx, const char *key, size_t key_offset)
+{
+    const struct lys_module *mod;
+    unsigned int index = 0;
+
+    while ((mod = ly_ctx_get_module_by_iter(ctx, key, key_offset, &index))) {
+        if ((mod->compiled && mod->compiled->latest_revision) || (!mod->compiled && mod->parsed->latest_revision)) {
+            return mod;
+        }
+    }
+
+    return NULL;
+}
+
+API const struct lys_module *
+ly_ctx_get_module_latest(const struct ly_ctx *ctx, const char *name)
+{
+    LY_CHECK_ARG_RET(ctx, ctx, name, NULL);
+    return ly_ctx_get_module_latest_by(ctx, name, offsetof(struct lysp_module, name));
+}
+
+const struct lys_module *
+ly_ctx_get_module_latest_ns(const struct ly_ctx *ctx, const char *ns)
+{
+    LY_CHECK_ARG_RET(ctx, ctx, ns, NULL);
+    return ly_ctx_get_module_latest_by(ctx, ns, offsetof(struct lysp_module, ns));
+}
+
+/**
+ * @brief Unifying function for ly_ctx_get_module_implemented() and ly_ctx_get_module_implemented_ns()
+ * @param[in] ctx Context where to search.
+ * @param[in] key Name or Namespace as a search key.
+ * @param[in] key_offset Key's offset in struct lysp_module to get value from the context's modules to match with the key.
+ * @return Matching module if any.
+ */
+static const struct lys_module *
+ly_ctx_get_module_implemented_by(const struct ly_ctx *ctx, const char *key, size_t key_offset)
+{
+    const struct lys_module *mod;
+    unsigned int index = 0;
+
+    while ((mod = ly_ctx_get_module_by_iter(ctx, key, key_offset, &index))) {
+        if ((mod->compiled && mod->compiled->implemented) || (!mod->compiled && mod->parsed->implemented)) {
+            return mod;
+        }
+    }
+
+    return NULL;
+}
+
+API const struct lys_module *
+ly_ctx_get_module_implemented(const struct ly_ctx *ctx, const char *name)
+{
+    LY_CHECK_ARG_RET(ctx, ctx, name, NULL);
+    return ly_ctx_get_module_implemented_by(ctx, name, offsetof(struct lysp_module, name));
+}
+
+API const struct lys_module *
+ly_ctx_get_module_implemented_ns(const struct ly_ctx *ctx, const char *ns)
+{
+    LY_CHECK_ARG_RET(ctx, ctx, ns, NULL);
+    return ly_ctx_get_module_implemented_by(ctx, ns, offsetof(struct lysp_module, ns));
+}
+
+struct lysp_module *
+ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *submodule, const char *revision)
+{
+    const struct lys_module *mod;
+    struct lysp_include *inc;
+    unsigned int v, u;
+
+    assert(submodule);
+
+    for (v = 0; v < ctx->list.count; ++v) {
+        mod = ctx->list.objs[v];
+        if (!mod->parsed) {
+            continue;
+        }
+        if (module && strcmp(module, mod->parsed->name)) {
+            continue;
+        }
+
+        LY_ARRAY_FOR(mod->parsed->includes, u) {
+            if (mod->parsed->includes[u].submodule && !strcmp(submodule, mod->parsed->includes[u].submodule->name)) {
+                inc = &mod->parsed->includes[u];
+                if (!revision) {
+                    if (inc->submodule->latest_revision) {
+                        return inc->submodule;
+                    }
+                } else if (inc->submodule->revs && !strcmp(revision, inc->submodule->revs[0].date)) {
+                    return inc->submodule;
+                }
+            }
+        }
+    }
+
+    return NULL;
+}
+
+API void
+ly_ctx_reset_latests(struct ly_ctx *ctx)
+{
+    unsigned int u,v ;
+    struct lys_module *mod;
+
+    for (u = 0; u < ctx->list.count; ++u) {
+        mod = ctx->list.objs[u];
+        if (mod->compiled && mod->compiled->latest_revision == 2) {
+            mod->compiled->latest_revision = 1;
+        }
+        if (mod->parsed) {
+            if (mod->parsed->latest_revision == 2) {
+                mod->parsed->latest_revision = 1;
+            }
+            if (mod->parsed->includes) {
+                for (v = 0; v < LY_ARRAY_SIZE(mod->parsed->includes); ++v) {
+                    if (mod->parsed->includes[v].submodule->latest_revision == 2) {
+                        mod->parsed->includes[v].submodule->latest_revision = 1;
+                    }
+                }
+            }
+        }
+    }
 }
 
 API void

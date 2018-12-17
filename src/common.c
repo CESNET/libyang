@@ -11,11 +11,12 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
-#define _XOPEN_SOURCE
-#define _DEFAULT_SOURCE
+
+#include "common.h"
 
 #include <assert.h>
 #include <errno.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <ctype.h>
@@ -25,7 +26,6 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "common.h"
 #include "tree_schema.h"
 
 const char *const ly_stmt_list[] = {
@@ -144,6 +144,22 @@ const char *const ly_devmod_list[] = {
     [LYS_DEV_DELETE] = "delete",
     [LYS_DEV_REPLACE] = "replace",
 };
+
+#ifndef  __USE_GNU
+char *
+get_current_dir_name(void)
+{
+    char tmp[PATH_MAX];
+    char *retval;
+
+    if (getcwd(tmp, sizeof(tmp))) {
+        retval = strdup(tmp);
+        LY_CHECK_ERR_RET(!retval, LOGMEM(NULL), NULL);
+        return retval;
+    }
+    return NULL;
+}
+#endif
 
 void *
 ly_realloc(void *ptr, size_t size)
@@ -302,5 +318,61 @@ ly_munmap(void *addr, size_t length)
     if (munmap(addr, length)) {
         return LY_ESYS;
     }
+    return LY_SUCCESS;
+}
+
+LY_ERR
+ly_parse_int(const char *val_str, int64_t min, int64_t max, int base, int64_t *ret)
+{
+    char *strptr;
+
+    LY_CHECK_ARG_RET(NULL, val_str, val_str[0], LY_EINVAL);
+
+    /* convert to 64-bit integer, all the redundant characters are handled */
+    errno = 0;
+    strptr = NULL;
+
+    /* parse the value */
+    *ret = strtoll(val_str, &strptr, base);
+    if (errno) {
+        return LY_EVALID;
+    } else if ((*ret < min) || (*ret > max)) {
+        return LY_EDENIED;
+    } else if (strptr && *strptr) {
+        while (isspace(*strptr)) {
+            ++strptr;
+        }
+        if (*strptr) {
+            return LY_EVALID;
+        }
+    }
+    return LY_SUCCESS;
+}
+
+LY_ERR
+ly_parse_uint(const char *val_str, uint64_t max, int base, uint64_t *ret)
+{
+    char *strptr;
+    uint64_t u;
+
+    LY_CHECK_ARG_RET(NULL, val_str, val_str[0], LY_EINVAL);
+
+    errno = 0;
+    strptr = NULL;
+    u = strtoull(val_str, &strptr, base);
+    if (errno) {
+        return LY_EVALID;
+    } else if ((u > max) || (u && val_str[0] == '-')) {
+        return LY_EDENIED;
+    } else if (strptr && *strptr) {
+        while (isspace(*strptr)) {
+            ++strptr;
+        }
+        if (*strptr) {
+            return LY_EVALID;
+        }
+    }
+
+    *ret = u;
     return LY_SUCCESS;
 }

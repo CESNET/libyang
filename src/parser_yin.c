@@ -257,7 +257,6 @@ parse_submodule(struct lyxml_context *xml_ctx, const char **data, struct lysp_mo
 
     while (xml_ctx->status == LYXML_ELEMENT || xml_ctx->status == LYXML_ELEM_CONTENT) {
         ret = lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
-        printf("%s\n\n\n", name);
         LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), LY_EMEM);
         kw = match_keyword(name);
 
