@@ -35,59 +35,59 @@ enum YIN_ARGUMENT {
     YIN_ARG_TAG,
 };
 
-#define MOVE_INPUT(DATA, COUNT) already_read+=COUNT;
-#define IF_KW(STR, LEN, STMT) if (!strncmp((name) + already_read, STR, LEN)) {MOVE_INPUT(name, LEN);arg=STMT;}
-#define IF_KW_PREFIX(STR, LEN) if (!strncmp((name) + already_read, STR, LEN)) {MOVE_INPUT(name, LEN);
-#define IF_KW_PREFIX_END }
-
 enum YIN_ARGUMENT
 match_argument_name(const char *name, size_t len)
 {
     enum YIN_ARGUMENT arg = YIN_ARG_NONE;
     size_t already_read = 0;
 
+#define MOVE_DATA(DATA, COUNT) already_read+=COUNT;
+#define IF_ARG(STR, LEN, STMT) if (!strncmp((name) + already_read, STR, LEN)) {MOVE_DATA(name, LEN);arg=STMT;}
+#define IF_ARG_PREFIX(STR, LEN) if (!strncmp((name) + already_read, STR, LEN)) {MOVE_DATA(name, LEN);
+#define IF_ARG_PREFIX_END }
+
     switch(*name) {
         case 'c':
-            MOVE_INPUT(name, 1);
-            IF_KW("ondition", 8, YIN_ARG_CONDITION);
+            MOVE_DATA(name, 1);
+            IF_ARG("ondition", 8, YIN_ARG_CONDITION);
         break;
 
         case 'd':
-            MOVE_INPUT(name, 1);
-            IF_KW("ate", 3, YIN_ARG_DATE);
+            MOVE_DATA(name, 1);
+            IF_ARG("ate", 3, YIN_ARG_DATE);
         break;
 
         case 'm':
-            MOVE_INPUT(name, 1);
-            IF_KW("odule", 5, YIN_ARG_MODULE);
+            MOVE_DATA(name, 1);
+            IF_ARG("odule", 5, YIN_ARG_MODULE);
         break;
 
         case 'n':
-            MOVE_INPUT(name, 1);
-            IF_KW("ame", 3, YIN_ARG_NAME);
+            MOVE_DATA(name, 1);
+            IF_ARG("ame", 3, YIN_ARG_NAME);
         break;
 
         case 't':
-            MOVE_INPUT(name, 1);
-            IF_KW_PREFIX("a", 1)
-                IF_KW("g", 1, YIN_ARG_TAG)
-                else IF_KW("rget-node", 9, YIN_ARG_TARGET_NODE)
-            IF_KW_PREFIX_END
-            else IF_KW("ext", 3, YIN_ARG_TEXT)
+            MOVE_DATA(name, 1);
+            IF_ARG_PREFIX("a", 1)
+                IF_ARG("g", 1, YIN_ARG_TAG)
+                else IF_ARG("rget-node", 9, YIN_ARG_TARGET_NODE)
+            IF_ARG_PREFIX_END
+            else IF_ARG("ext", 3, YIN_ARG_TEXT)
         break;
 
         case 'u':
-            MOVE_INPUT(name, 1);
-            IF_KW("ri", 2, YIN_ARG_URI)
+            MOVE_DATA(name, 1);
+            IF_ARG("ri", 2, YIN_ARG_URI)
         break;
 
         case 'v':
-            MOVE_INPUT(name, 1);
-            IF_KW("alue", 4, YIN_ARG_VALUE);
+            MOVE_DATA(name, 1);
+            IF_ARG("alue", 4, YIN_ARG_VALUE);
         break;
     }
 
-    /* whole keyword must be matched */
+    /* whole argument must be matched */
     if (already_read != len) {
         arg = YIN_ARG_NONE;
     }
@@ -109,13 +109,17 @@ parser_belongs_to(struct lyxml_context *xml_ctx, const char **data, const char *
 
     /* check if belongs-to has argument module */
     ret = lyxml_get_attribute(xml_ctx, data, &prefix_out, &prefix_len, &name, &name_len);
-    LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), ret);
+    LY_CHECK_RET1(ret);
     if (match_argument_name(name, name_len) != YIN_ARG_MODULE) {
         LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Invalid argument name \"%s\", expected \"module\".", name);
+        return LY_EINVAL;
     }
 
+    /* read content of argument */
     ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
+    LY_CHECK_RET1(ret);
     *belongsto = lydict_insert(xml_ctx->ctx, out, out_len);
+    LY_CHECK_ERR_RET(!belongsto, LOGMEM(xml_ctx->ctx), LY_EMEM);
 
     /* read substatements */
     while (xml_ctx->status == LYXML_ATTRIBUTE) {
@@ -132,14 +136,17 @@ parser_belongs_to(struct lyxml_context *xml_ctx, const char **data, const char *
             /* TODO parse extension */
             break;
         default:
-            LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Unexpected attribute \"%s\"", name);
+            LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Unexpected attribute");
             return LY_EVALID;
         }
     }
 
     if (!prefix) {
         LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Missing prefix");
+        return LY_EVALID;
     }
+
+    return LY_SUCCESS;
 }
 
 LY_ERR
@@ -153,22 +160,26 @@ parse_namespace(struct lyxml_context *xml_ctx, const char **data, struct lysp_mo
     size_t buf_len = 0, out_len = 0;
     int dynamic;
 
-    /* TODO read all in cycle */
     /* check if namespace has argument uri */
     ret = lyxml_get_attribute(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
-    LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), LY_EMEM);
+    LY_CHECK_RET1(ret);
     if (match_argument_name(name, name_len) != YIN_ARG_URI) {
-        LOGVAL(xml_ctx->ctx, xml_ctx->line, &xml_ctx->line, LYVE_SYNTAX, "Invalid argument name \"%s\", expected \"uri\".", name);
+        LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Invalid argument name \"%s\", expected \"uri\".", name);
+        return LY_EVALID;
     }
 
-    if (xml_ctx->status == LYXML_ATTR_CONTENT) {
-        ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
-        (*mod_p)->ns = lydict_insert(xml_ctx->ctx, out, out_len);
-    } else {
-        //error missing namespace
-    }
+    ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
+    LY_CHECK_RET1(ret);
+    (*mod_p)->ns = lydict_insert(xml_ctx->ctx, out, out_len);
+    LY_CHECK_ERR_RET(!(*mod_p)->ns, LOGMEM(xml_ctx->ctx), LY_EMEM);
 
+    /* namespace can only have one argument */
     ret = lyxml_get_attribute(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
+    LY_CHECK_RET1(ret);
+    if (name) {
+        LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Unexpected argument \"%s\".", name);
+        return LY_EVALID;
+    }
 
     return LY_SUCCESS;
 }
@@ -184,23 +195,26 @@ parse_prefix(struct lyxml_context *xml_ctx, const char **data, struct lysp_modul
     size_t buf_len = 0, out_len = 0;
     int dynamic;
 
-    /* TODO read all in cycle */
-    /* check if prfix has argument value */
+    /* check if prefix has argument value */
     ret = lyxml_get_attribute(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
-    LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), LY_EMEM);
+    LY_CHECK_RET1(ret);
     if (match_argument_name(name, name_len) != YIN_ARG_VALUE) {
-        LOGVAL(xml_ctx->ctx, xml_ctx->line, &xml_ctx->line, LYVE_SYNTAX, "Invalid argument name \"%s\", expected \"value\".", name);
+        LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Invalid argument name \"%s\", expected \"value\".", name);
+        return LY_EVALID;
     }
 
-    if (xml_ctx->status == LYXML_ATTR_CONTENT) {
-            ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
-            (*mod_p)->prefix = lydict_insert(xml_ctx->ctx, out, out_len);
-    } else {
-        //error missing prefix
-    }
+    ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
+    LY_CHECK_RET1(ret);
+    (*mod_p)->prefix = lydict_insert(xml_ctx->ctx, out, out_len);
+    LY_CHECK_ERR_RET(!(*mod_p)->prefix, LOGMEM(xml_ctx->ctx), LY_EMEM);
 
+    /* prefix element can only have one argument */
     ret = lyxml_get_attribute(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
-
+    LY_CHECK_RET1(ret);
+    if (name) {
+        LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Unexpected argument \"%s\".", name);
+        return LY_EVALID;
+    }
     return LY_SUCCESS;
 }
 
@@ -220,25 +234,26 @@ parse_submodule(struct lyxml_context *xml_ctx, const char **data, struct lysp_mo
     ret = lyxml_get_attribute(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
     LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), LY_EMEM);
     if (match_argument_name(name, name_len) != YIN_ARG_NAME) {
-        LOGVAL(xml_ctx->ctx, xml_ctx->line, &xml_ctx->line, LYVE_SYNTAX, "Invalid argument name \"%s\", expected \"name\".", name);
+        LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Invalid argument name \"%s\", expected \"name\".", name);
     }
 
     /* read module name */
     if (xml_ctx->status != LYXML_ATTR_CONTENT) {
-        LOGVAL(xml_ctx->ctx, xml_ctx->line, &xml_ctx->line, LYVE_SYNTAX, "Missing value of argument \"name\"");
+        LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Missing value of argument \"name\"");
     }
     ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
     LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), LY_EMEM);
     (*mod_p)->name = lydict_insert(xml_ctx->ctx, out, out_len);
     LY_CHECK_ERR_RET(!(*mod_p)->name, LOGMEM(xml_ctx->ctx), LY_EMEM);
 
-    /* read all attributes and their content temporary solution */
+    /* read all attributes and their content only for testing */
     while (xml_ctx->status == LYXML_ATTRIBUTE) {
         lyxml_get_attribute(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
-        if (xml_ctx->status == LYXML_ATTR_CONTENT) {
-            ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
+        while (xml_ctx->status == LYXML_ATTR_CONTENT) {
+            lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
         }
     }
+
 
     while (xml_ctx->status == LYXML_ELEMENT || xml_ctx->status == LYXML_ELEM_CONTENT) {
         ret = lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
@@ -252,7 +267,8 @@ parse_submodule(struct lyxml_context *xml_ctx, const char **data, struct lysp_mo
             break;
             case YANG_PREFIX:
                 ret = parse_prefix(xml_ctx, data, mod_p);
-                LY_CHECK_RET(lysp_check_prefix(xml_ctx->ctx, *mod_p, &((*mod_p)->prefix)), LY_EVALID);
+                /* TODO change lysp_check_prefix function to work with ctx and not parser_ctx */
+                //LY_CHECK_RET(lysp_check_prefix(&xml_ctx->ctx, *mod_p, &((*mod_p)->prefix)), LY_EVALID);
             break;
             case YANG_BELONGS_TO:
                 ret = parser_belongs_to(xml_ctx, data, &(*mod_p)->belongsto, &(*mod_p)->prefix, &(*mod_p)->extensions);
@@ -286,12 +302,11 @@ yin_parse(struct ly_ctx *ctx, const char *data, struct lysp_module **mod_p)
     LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx.ctx), LY_EMEM);
     kw = match_keyword(name);
     if (kw != YANG_MODULE && kw != YANG_SUBMODULE) {
-        LOGVAL(xml_ctx.ctx, xml_ctx.line, &xml_ctx.line, LYVE_SYNTAX, "Invalid keyword \"%s\", expected \"module\" or \"submodule\".", name);
+        LOGVAL(xml_ctx.ctx, LY_VLOG_LINE, &xml_ctx.line, LYVE_SYNTAX, "Invalid keyword \"%s\", expected \"module\" or \"submodule\".", name);
     }
 
     if (kw == YANG_SUBMODULE) {
         (*mod_p)->submodule = 1;
-
     }
 
     ret = parse_submodule(&xml_ctx, &data, mod_p);

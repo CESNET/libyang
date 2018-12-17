@@ -127,14 +127,15 @@ lysc_module_find_prefix(struct lysc_module *mod, const char *prefix, size_t len)
     return NULL;
 }
 
+enum yang_keyword
+match_keyword(char *data)
+{
+/* TODO make this function usable in get_keyword function */
 #define MOVE_INPUT(DATA, COUNT) (data)+=COUNT;
 #define IF_KW(STR, LEN, STMT) if (!strncmp((data), STR, LEN)) {MOVE_INPUT(data, LEN);kw=STMT;}
 #define IF_KW_PREFIX(STR, LEN) if (!strncmp((data), STR, LEN)) {MOVE_INPUT(data, LEN);
 #define IF_KW_PREFIX_END }
 
-enum yang_keyword
-match_keyword(char *data)
-{
     enum yang_keyword kw = YANG_NONE;
     /* read the keyword itself */
     switch (*data) {
@@ -318,5 +319,6 @@ match_keyword(char *data)
         break;
     }
 
+    /* TODO important fix whole keyword must be matched */
     return kw;
 }
