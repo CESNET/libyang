@@ -299,7 +299,7 @@ yin_parse(struct ly_ctx *ctx, const char *data, struct lysp_module **mod_p)
 
     /* check if root element is module or submodule */
     ret = lyxml_get_element(&xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx.ctx), LY_EMEM);
+    LY_CHECK_GOTO(ret != LY_SUCCESS, error);
     kw = match_keyword(name);
     if (kw != YANG_MODULE && kw != YANG_SUBMODULE) {
         LOGVAL(xml_ctx.ctx, LY_VLOG_LINE, &xml_ctx.line, LYVE_SYNTAX, "Invalid keyword \"%s\", expected \"module\" or \"submodule\".", name);
@@ -311,6 +311,10 @@ yin_parse(struct ly_ctx *ctx, const char *data, struct lysp_module **mod_p)
 
     ret = parse_submodule(&xml_ctx, &data, mod_p);
 
+    lyxml_context_clear(&xml_ctx);
+    return ret;
+
+error:
     lyxml_context_clear(&xml_ctx);
     return ret;
 }
