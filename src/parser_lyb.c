@@ -306,7 +306,8 @@ lyb_new_node(const struct lys_node *schema)
     /* fill basic info */
     node->schema = (struct lys_node *)schema;
     if (resolve_applies_when(schema, 0, NULL)) {
-        node->when_status = LYD_WHEN;
+        /* this data are considered trusted so if this node exists, it means its when must have been true */
+        node->when_status = LYD_WHEN | LYD_WHEN_TRUE;
     }
     node->prev = node;
 
