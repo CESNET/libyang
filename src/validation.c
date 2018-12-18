@@ -65,29 +65,30 @@ lyv_data_context(const struct lyd_node *node, int options, struct unres_data *un
         return 1;
     }
 
-    if (node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
-        /* if union with leafref/intsid, leafref itself (invalid) or instance-identifier, store the node for later resolving */
-        if ((((struct lys_node_leaf *)leaf->schema)->type.base == LY_TYPE_UNION)
-                && ((struct lys_node_leaf *)leaf->schema)->type.info.uni.has_ptr_type) {
-            if (unres_data_add(unres, (struct lyd_node *)node, UNRES_UNION)) {
-                return 1;
-            }
-        } else if ((((struct lys_node_leaf *)leaf->schema)->type.base == LY_TYPE_LEAFREF) && (leaf->validity & LYD_VAL_LEAFREF)) {
-            if (unres_data_add(unres, (struct lyd_node *)node, UNRES_LEAFREF)) {
-                return 1;
-            }
-        } else if (((struct lys_node_leaf *)leaf->schema)->type.base == LY_TYPE_INST) {
-            if (unres_data_add(unres, (struct lyd_node *)node, UNRES_INSTID)) {
-                return 1;
+    if (!(options & (LYD_OPT_NOTIF_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG))) {
+        if (node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
+            /* if union with leafref/intsid, leafref itself (invalid) or instance-identifier, store the node for later resolving */
+            if ((((struct lys_node_leaf *)leaf->schema)->type.base == LY_TYPE_UNION)
+                    && ((struct lys_node_leaf *)leaf->schema)->type.info.uni.has_ptr_type) {
+                if (unres_data_add(unres, (struct lyd_node *)node, UNRES_UNION)) {
+                    return 1;
+                }
+            } else if ((((struct lys_node_leaf *)leaf->schema)->type.base == LY_TYPE_LEAFREF) && (leaf->validity & LYD_VAL_LEAFREF)) {
+                if (unres_data_add(unres, (struct lyd_node *)node, UNRES_LEAFREF)) {
+                    return 1;
+                }
+            } else if (((struct lys_node_leaf *)leaf->schema)->type.base == LY_TYPE_INST) {
+                if (unres_data_add(unres, (struct lyd_node *)node, UNRES_INSTID)) {
+                    return 1;
+                }
             }
         }
-    }
 
-    /* check all relevant when conditions */
-    if (!(options & (LYD_OPT_NOTIF_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG))
-            && (node->when_status & LYD_WHEN)) {
-        if (unres_data_add(unres, (struct lyd_node *)node, UNRES_WHEN)) {
-            return 1;
+        /* check all relevant when conditions */
+        if (node->when_status & LYD_WHEN) {
+            if (unres_data_add(unres, (struct lyd_node *)node, UNRES_WHEN)) {
+                return 1;
+            }
         }
     }
 
