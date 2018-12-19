@@ -1936,7 +1936,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
     /* search user types in case this value is supposed to be stored in a custom way */
     if (store && type->der && type->der->module) {
-        c = lytype_store(type->der->module, type->der->name, *value_, val);
+        c = lytype_store(type->der->module, type->der->name, value_, val);
         if (c == -1) {
             goto error;
         } else if (!c) {

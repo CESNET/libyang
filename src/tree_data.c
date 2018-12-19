@@ -5549,7 +5549,7 @@ lyd_dup_to_ctx(const struct lyd_node *node, int options, struct ly_ctx *ctx)
             }
 
             if (sleaf->type.der && sleaf->type.der->module) {
-                r = lytype_store(sleaf->type.der->module, sleaf->type.der->name, new_leaf->value_str, &new_leaf->value);
+                r = lytype_store(sleaf->type.der->module, sleaf->type.der->name, &new_leaf->value_str, &new_leaf->value);
                 if (r == -1) {
                     goto error;
                 } else if (!r) {

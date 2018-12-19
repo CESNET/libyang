@@ -1245,7 +1245,13 @@ test_ly_get_loaded_plugins(void **state)
     }
     assert_non_null(plugins[i]);
     for (i = 0; plugins[i]; ++i) {
-        if (!strcmp(plugins[i], "user_date_and_time")) {
+        if (!strcmp(plugins[i], "user_yang_types")) {
+            break;
+        }
+    }
+    assert_non_null(plugins[i]);
+    for (i = 0; plugins[i]; ++i) {
+        if (!strcmp(plugins[i], "user_inet_types")) {
             break;
         }
     }

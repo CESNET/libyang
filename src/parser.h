@@ -258,11 +258,11 @@ struct lyext_plugin *ext_get_plugin(const char *name, const char *module, const 
  *
  * @param[in] mod Module of the type.
  * @param[in] type_name Type (typedef) name.
- * @param[in] value_str Value to store as a string.
+ * @param[in,out] value_str Stored string value, can be overwritten by the user store callback.
  * @param[in,out] value Filled value to be overwritten by the user store callback.
  * @return 0 on successful storing, 1 if the type is not a user type, -1 on error.
  */
-int lytype_store(const struct lys_module *mod, const char *type_name, const char *value_str, lyd_val *value);
+int lytype_store(const struct lys_module *mod, const char *type_name, const char **value_str, lyd_val *value);
 
 /**
  * @brief Free a user type stored value.
