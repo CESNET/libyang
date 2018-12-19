@@ -637,8 +637,11 @@ lyb_parse_val_2(struct lys_type *type, struct lyd_node_leaf_list *leaf, struct l
         return -1;
     }
 
-    if (!(*value_flags & LY_VALUE_UNRES) && ((type->base == LY_TYPE_LEAFREF)
-            || (type->base == LY_TYPE_INST) || ((type->base == LY_TYPE_UNION) && type->info.uni.has_ptr_type))) {
+    if (*value_flags & LY_VALUE_UNRES) {
+        /* just remove the flag, it should stay unresolved */
+        leaf->validity &= ~LYD_VAL_LEAFREF;
+    } else if ((type->base == LY_TYPE_LEAFREF) || (type->base == LY_TYPE_INST)
+            || ((type->base == LY_TYPE_UNION) && type->info.uni.has_ptr_type)) {
 parse_reference:
         assert(*value_str);
 

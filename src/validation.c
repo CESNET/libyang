@@ -90,6 +90,9 @@ lyv_data_context(const struct lyd_node *node, int options, struct unres_data *un
                 return 1;
             }
         }
+    } else if (node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
+        /* just remove the flag if it was set */
+        leaf->validity &= ~LYD_VAL_LEAFREF;
     }
 
     /* check for (non-)presence of status data in edit-config data */
