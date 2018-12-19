@@ -578,7 +578,7 @@ test_anydata(void **state)
     memcpy(st->mem, ((struct lyd_node_anydata *)st->dt1->child)->value.mem, ret);
 
     lyd_free_withsiblings(st->dt2);
-    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_NOTIF | LYD_OPT_STRICT, NULL);
+    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_NOTIF | LYD_OPT_STRICT | LYD_OPT_NOEXTDEPS, NULL);
     assert_ptr_not_equal(st->dt2, NULL);
 
     /* parse the JSON again for this comparison */
