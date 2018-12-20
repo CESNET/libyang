@@ -4339,16 +4339,6 @@ apply_aug(struct lys_node_augment *augment, struct unres_schema *unres)
         goto success;
     }
 
-    /* reconnect augmenting data into the target - add them to the target child list */
-    if (augment->target->child) {
-        child = augment->target->child->prev;
-        child->next = augment->child;
-        augment->target->child->prev = augment->child->prev;
-        augment->child->prev = child;
-    } else {
-        augment->target->child = augment->child;
-    }
-
     /* inherit config information from actual parent */
     for (parent = augment->target; parent && !(parent->nodetype & (LYS_NOTIF | LYS_INPUT | LYS_OUTPUT | LYS_RPC)); parent = lys_parent(parent));
     clear_config = (parent) ? 1 : 0;
@@ -4373,6 +4363,16 @@ apply_aug(struct lys_node_augment *augment, struct unres_schema *unres)
                 return -1;
             }
         }
+    }
+
+    /* reconnect augmenting data into the target - add them to the target child list */
+    if (augment->target->child) {
+        child = augment->target->child->prev;
+        child->next = augment->child;
+        augment->target->child->prev = augment->child->prev;
+        augment->child->prev = child;
+    } else {
+        augment->target->child = augment->child;
     }
 
 success:
