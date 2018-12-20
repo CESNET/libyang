@@ -4822,7 +4822,7 @@ lys_make_implemented_r(struct lys_module *module, struct unres_schema *unres)
 
         /* apply augment */
         if ((module->augment[i].flags & LYS_NOTAPPLIED) && apply_aug(&module->augment[i], unres)) {
-            return EXIT_FAILURE;
+            return -1;
         }
     }
 
@@ -4851,7 +4851,7 @@ lys_make_implemented_r(struct lys_module *module, struct unres_schema *unres)
 
             /* apply augment */
             if ((module->inc[i].submodule->augment[j].flags & LYS_NOTAPPLIED) && apply_aug(&module->inc[i].submodule->augment[j], unres)) {
-                return EXIT_FAILURE;
+                return -1;
             }
         }
 
@@ -4874,7 +4874,7 @@ lys_make_implemented_r(struct lys_module *module, struct unres_schema *unres)
                 if (((struct lys_node_leaf *)node)->type.base == LY_TYPE_LEAFREF) {
                     if (unres_schema_add_node(module, unres, &((struct lys_node_leaf *)node)->type,
                                               UNRES_TYPE_LEAFREF, node) == -1) {
-                        return EXIT_FAILURE;
+                        return -1;
                     }
                 }
             }
