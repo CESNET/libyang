@@ -921,6 +921,10 @@ keyword_start:
         break;
     }
 
+#undef IF_KW
+#undef IF_KW_PREFIX
+#undef IF_KW_PREFIX_END
+
     if (*kw != YANG_NONE) {
         /* make sure we have the whole keyword */
         switch (**data) {
