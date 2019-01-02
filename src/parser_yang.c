@@ -55,7 +55,7 @@
     if (BUF) {(TARGET) = lydict_insert_zc((CTX)->ctx, WORD);}\
     else {(TARGET) = lydict_insert((CTX)->ctx, WORD, LEN);}
 
-#define MOVE_INPUT(CTX, DATA, COUNT) (*(data))+=COUNT;(CTX)->indent+=COUNT
+#define MOVE_INPUT(CTX, DATA, COUNT) (*(DATA))+=COUNT;(CTX)->indent+=COUNT
 
 /**
  * @brief Loop through all substatements providing, return if there are none.
