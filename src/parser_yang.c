@@ -41,6 +41,16 @@
         (c >= 0xd0000 && c <= 0xdfffd) || (c >= 0xe0000 && c <= 0xefffd) || \
         (c >= 0xf0000 && c <= 0xffffd) || (c >= 0x100000 && c <= 0x10fffd))
 
+/**
+ * @brief Try to find object with MEMBER string matching the IDENT in the given ARRAY.
+ * Macro logs an error message and returns LY_EVALID in case of existence of a matching object.
+ *
+ * @param[in] CTX yang parser context for logging.
+ * @param[in] ARRAY [sized array](@ref sizedarrays) of a generic objects with member named MEMBER to search.
+ * @param[in] MEMBER Name of the member of the objects in the ARRAY to compare.
+ * @param[in] STMT Name of the compared YANG statements for logging.
+ * @param[in] IDENT String trying to find in the ARRAY's objects inside the MEMBER member.
+ */
 #define CHECK_UNIQUENESS(CTX, ARRAY, MEMBER, STMT, IDENT) \
     if (ARRAY) { \
         for (unsigned int u = 0; u < LY_ARRAY_SIZE(ARRAY) - 1; ++u) { \
@@ -51,10 +61,24 @@
         } \
     }
 
+/**
+ * @brief Insert WORD into the libyang context's dictionary and store as TARGET.
+ * @param[in] CTX yang parser context to access libyang context.
+ * @param[in] BUF buffer in case the word is not a constant and can be inserted directly (zero-copy)
+ * @param[out] TARGET variable where to store the pointer to the inserted value.
+ * @param[in] WORD string to store.
+ * @param[in] LEN length of the string in WORD to store.
+ */
 #define INSERT_WORD(CTX, BUF, TARGET, WORD, LEN) \
     if (BUF) {(TARGET) = lydict_insert_zc((CTX)->ctx, WORD);}\
     else {(TARGET) = lydict_insert((CTX)->ctx, WORD, LEN);}
 
+/**
+ * @brief Move the DATA pointer by COUNT items. Also updates the indent value in yang parser context
+ * @param[in] CTX yang parser context to update its indent value.
+ * @param[in,out] DATA pointer to move
+ * @param[in] COUNT number of items for which the DATA pointer is supposed to move on.
+ */
 #define MOVE_INPUT(CTX, DATA, COUNT) (*(DATA))+=COUNT;(CTX)->indent+=COUNT
 
 /**
@@ -83,7 +107,14 @@
             !ERR && (KW != YANG_RIGHT_BRACE); \
             ERR = get_keyword(CTX, DATA, &KW, &WORD, &WORD_LEN))
 
-#define YANG_CHECK_STMTVER_RET(CTX, KW, PARENT) \
+/**
+ * @brief Check module version is at least 2 (YANG 1.1) because of the keyword presence.
+ * Logs error message and returns LY_EVALID in case of module in YANG version 1.0.
+ * @param[in] CTX yang parser context to get current module and for logging.
+ * @param[in] KW keyword allowed only in YANG version 1.1 (or later) - for logging.
+ * @param[in] PARENT parent statement where the KW is present - for logging.
+ */
+#define YANG_CHECK_STMTVER2_RET(CTX, KW, PARENT) \
     if ((CTX)->mod->version < 2) {LOGVAL_YANG((CTX), LY_VCODE_INCHILDSTMT2, KW, PARENT); return LY_EVALID;}
 
 static LY_ERR parse_container(struct ly_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
@@ -1276,11 +1307,11 @@ parse_include(struct ly_parser_ctx *ctx, const char **data, struct lysp_module *
     YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret,) {
         switch (kw) {
         case YANG_DESCRIPTION:
-            YANG_CHECK_STMTVER_RET(ctx, "description", "include");
+            YANG_CHECK_STMTVER2_RET(ctx, "description", "include");
             LY_CHECK_RET(parse_text_field(ctx, data, LYEXT_SUBSTMT_DESCRIPTION, 0, &inc->dsc, Y_STR_ARG, &inc->exts));
             break;
         case YANG_REFERENCE:
-            YANG_CHECK_STMTVER_RET(ctx, "reference", "include");
+            YANG_CHECK_STMTVER2_RET(ctx, "reference", "include");
             LY_CHECK_RET(parse_text_field(ctx, data, LYEXT_SUBSTMT_REFERENCE, 0, &inc->ref, Y_STR_ARG, &inc->exts));
             break;
         case YANG_REVISION_DATE:
@@ -1328,11 +1359,11 @@ parse_import(struct ly_parser_ctx *ctx, const char **data, struct lysp_module *m
             LY_CHECK_RET(lysp_check_prefix(ctx, module, &imp->prefix), LY_EVALID);
             break;
         case YANG_DESCRIPTION:
-            YANG_CHECK_STMTVER_RET(ctx, "description", "import");
+            YANG_CHECK_STMTVER2_RET(ctx, "description", "import");
             LY_CHECK_RET(parse_text_field(ctx, data, LYEXT_SUBSTMT_DESCRIPTION, 0, &imp->dsc, Y_STR_ARG, &imp->exts));
             break;
         case YANG_REFERENCE:
-            YANG_CHECK_STMTVER_RET(ctx, "reference", "import");
+            YANG_CHECK_STMTVER2_RET(ctx, "reference", "import");
             LY_CHECK_RET(parse_text_field(ctx, data, LYEXT_SUBSTMT_REFERENCE, 0, &imp->ref, Y_STR_ARG, &imp->exts));
             break;
         case YANG_REVISION_DATE:
@@ -1928,7 +1959,7 @@ parse_type_enum(struct ly_parser_ctx *ctx, const char **data, enum yang_keyword 
             LY_CHECK_RET(parse_text_field(ctx, data, LYEXT_SUBSTMT_DESCRIPTION, 0, &enm->dsc, Y_STR_ARG, &enm->exts));
             break;
         case YANG_IF_FEATURE:
-            YANG_CHECK_STMTVER_RET(ctx, "if-feature", ly_stmt2str(enum_kw));
+            YANG_CHECK_STMTVER2_RET(ctx, "if-feature", ly_stmt2str(enum_kw));
             LY_CHECK_RET(parse_text_fields(ctx, data, LYEXT_SUBSTMT_IFFEATURE, &enm->iffeatures, Y_STR_ARG, &enm->exts));
             break;
         case YANG_REFERENCE:
@@ -2172,7 +2203,7 @@ parse_type_pattern(struct ly_parser_ctx *ctx, const char **data, struct lysp_res
             LY_CHECK_RET(parse_text_field(ctx, data, LYEXT_SUBSTMT_ERRMSG, 0, &restr->emsg, Y_STR_ARG, &restr->exts));
             break;
         case YANG_MODIFIER:
-            YANG_CHECK_STMTVER_RET(ctx, "modifier", "pattern");
+            YANG_CHECK_STMTVER2_RET(ctx, "modifier", "pattern");
             LY_CHECK_RET(parse_type_pattern_modifier(ctx, data, &restr->arg, &restr->exts));
             break;
         case YANG_CUSTOM:
@@ -2602,7 +2633,7 @@ parse_leaflist(struct ly_parser_ctx *ctx, const char **data, struct lysp_node *p
             LY_CHECK_RET(parse_config(ctx, data, &llist->flags, &llist->exts));
             break;
         case YANG_DEFAULT:
-            YANG_CHECK_STMTVER_RET(ctx, "default", "leaf-list");
+            YANG_CHECK_STMTVER2_RET(ctx, "default", "leaf-list");
             LY_CHECK_RET(parse_text_fields(ctx, data, LYEXT_SUBSTMT_DEFAULT, &llist->dflts, Y_STR_ARG, &llist->exts));
             break;
         case YANG_DESCRIPTION:
@@ -2703,7 +2734,7 @@ parse_refine(struct ly_parser_ctx *ctx, const char **data, struct lysp_refine **
             LY_CHECK_RET(parse_text_field(ctx, data, LYEXT_SUBSTMT_DESCRIPTION, 0, &rf->dsc, Y_STR_ARG, &rf->exts));
             break;
         case YANG_IF_FEATURE:
-            YANG_CHECK_STMTVER_RET(ctx, "if-feature", "refine");
+            YANG_CHECK_STMTVER2_RET(ctx, "if-feature", "refine");
             LY_CHECK_RET(parse_text_fields(ctx, data, LYEXT_SUBSTMT_IFFEATURE, &rf->iffeatures, Y_STR_ARG, &rf->exts));
             break;
         case YANG_MAX_ELEMENTS:
@@ -2841,7 +2872,7 @@ parse_inout(struct ly_parser_ctx *ctx, const char **data, enum yang_keyword inou
     YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret,) {
         switch (kw) {
         case YANG_ANYDATA:
-            YANG_CHECK_STMTVER_RET(ctx, "anydata", ly_stmt2str(inout_kw));
+            YANG_CHECK_STMTVER2_RET(ctx, "anydata", ly_stmt2str(inout_kw));
             /* fall through */
         case YANG_ANYXML:
             LY_CHECK_RET(parse_any(ctx, data, kw, (struct lysp_node*)inout, &inout->data));
@@ -2868,7 +2899,7 @@ parse_inout(struct ly_parser_ctx *ctx, const char **data, enum yang_keyword inou
             LY_CHECK_RET(parse_typedef(ctx, (struct lysp_node*)inout, data, &inout->typedefs));
             break;
         case YANG_MUST:
-            YANG_CHECK_STMTVER_RET(ctx, "must", ly_stmt2str(inout_kw));
+            YANG_CHECK_STMTVER2_RET(ctx, "must", ly_stmt2str(inout_kw));
             LY_CHECK_RET(parse_restrs(ctx, data, kw, &inout->musts));
             break;
         case YANG_GROUPING:
@@ -3008,7 +3039,7 @@ parse_notif(struct ly_parser_ctx *ctx, const char **data, struct lysp_node *pare
             break;
 
         case YANG_ANYDATA:
-            YANG_CHECK_STMTVER_RET(ctx, "anydata", "notification");
+            YANG_CHECK_STMTVER2_RET(ctx, "anydata", "notification");
             /* fall through */
         case YANG_ANYXML:
             LY_CHECK_RET(parse_any(ctx, data, kw, (struct lysp_node*)notif, &notif->data));
@@ -3033,7 +3064,7 @@ parse_notif(struct ly_parser_ctx *ctx, const char **data, struct lysp_node *pare
             break;
 
         case YANG_MUST:
-            YANG_CHECK_STMTVER_RET(ctx, "must", "notification");
+            YANG_CHECK_STMTVER2_RET(ctx, "must", "notification");
             LY_CHECK_RET(parse_restrs(ctx, data, kw, &notif->musts));
             break;
         case YANG_TYPEDEF:
@@ -3100,7 +3131,7 @@ parse_grouping(struct ly_parser_ctx *ctx, const char **data, struct lysp_node *p
             break;
 
         case YANG_ANYDATA:
-            YANG_CHECK_STMTVER_RET(ctx, "anydata", "grouping");
+            YANG_CHECK_STMTVER2_RET(ctx, "anydata", "grouping");
             /* fall through */
         case YANG_ANYXML:
             LY_CHECK_RET(parse_any(ctx, data, kw, (struct lysp_node*)grp, &grp->data));
@@ -3128,14 +3159,14 @@ parse_grouping(struct ly_parser_ctx *ctx, const char **data, struct lysp_node *p
             LY_CHECK_RET(parse_typedef(ctx, (struct lysp_node*)grp, data, &grp->typedefs));
             break;
         case YANG_ACTION:
-            YANG_CHECK_STMTVER_RET(ctx, "action", "grouping");
+            YANG_CHECK_STMTVER2_RET(ctx, "action", "grouping");
             LY_CHECK_RET(parse_action(ctx, data, (struct lysp_node*)grp, &grp->actions));
             break;
         case YANG_GROUPING:
             LY_CHECK_RET(parse_grouping(ctx, data, (struct lysp_node*)grp, &grp->groupings));
             break;
         case YANG_NOTIFICATION:
-            YANG_CHECK_STMTVER_RET(ctx, "notification", "grouping");
+            YANG_CHECK_STMTVER2_RET(ctx, "notification", "grouping");
             LY_CHECK_RET(parse_notif(ctx, data, (struct lysp_node*)grp, &grp->notifs));
             break;
         case YANG_CUSTOM:
@@ -3200,7 +3231,7 @@ parse_augment(struct ly_parser_ctx *ctx, const char **data, struct lysp_node *pa
             break;
 
         case YANG_ANYDATA:
-            YANG_CHECK_STMTVER_RET(ctx, "anydata", "augment");
+            YANG_CHECK_STMTVER2_RET(ctx, "anydata", "augment");
             /* fall through */
         case YANG_ANYXML:
             LY_CHECK_RET(parse_any(ctx, data, kw, (struct lysp_node*)aug, &aug->child));
@@ -3228,11 +3259,11 @@ parse_augment(struct ly_parser_ctx *ctx, const char **data, struct lysp_node *pa
             break;
 
         case YANG_ACTION:
-            YANG_CHECK_STMTVER_RET(ctx, "action", "augment");
+            YANG_CHECK_STMTVER2_RET(ctx, "action", "augment");
             LY_CHECK_RET(parse_action(ctx, data, (struct lysp_node*)aug, &aug->actions));
             break;
         case YANG_NOTIFICATION:
-            YANG_CHECK_STMTVER_RET(ctx, "notification", "augment");
+            YANG_CHECK_STMTVER2_RET(ctx, "notification", "augment");
             LY_CHECK_RET(parse_notif(ctx, data, (struct lysp_node*)aug, &aug->notifs));
             break;
         case YANG_CUSTOM:
@@ -3376,7 +3407,7 @@ parse_case(struct ly_parser_ctx *ctx, const char **data, struct lysp_node *paren
             break;
 
         case YANG_ANYDATA:
-            YANG_CHECK_STMTVER_RET(ctx, "anydata", "case");
+            YANG_CHECK_STMTVER2_RET(ctx, "anydata", "case");
             /* fall through */
         case YANG_ANYXML:
             LY_CHECK_RET(parse_any(ctx, data, kw, (struct lysp_node*)cas, &cas->child));
@@ -3476,7 +3507,7 @@ parse_choice(struct ly_parser_ctx *ctx, const char **data, struct lysp_node *par
             break;
 
         case YANG_ANYDATA:
-            YANG_CHECK_STMTVER_RET(ctx, "anydata", "choice");
+            YANG_CHECK_STMTVER2_RET(ctx, "anydata", "choice");
             /* fall through */
         case YANG_ANYXML:
             LY_CHECK_RET(parse_any(ctx, data, kw, (struct lysp_node*)choice, &choice->child));
@@ -3485,7 +3516,7 @@ parse_choice(struct ly_parser_ctx *ctx, const char **data, struct lysp_node *par
             LY_CHECK_RET(parse_case(ctx, data, (struct lysp_node*)choice, &choice->child));
             break;
         case YANG_CHOICE:
-            YANG_CHECK_STMTVER_RET(ctx, "choice", "choice");
+            YANG_CHECK_STMTVER2_RET(ctx, "choice", "choice");
             LY_CHECK_RET(parse_choice(ctx, data, (struct lysp_node*)choice, &choice->child));
             break;
         case YANG_CONTAINER:
@@ -3581,7 +3612,7 @@ parse_container(struct ly_parser_ctx *ctx, const char **data, struct lysp_node *
             break;
 
         case YANG_ANYDATA:
-            YANG_CHECK_STMTVER_RET(ctx, "anydata", "container");
+            YANG_CHECK_STMTVER2_RET(ctx, "anydata", "container");
             /* fall through */
         case YANG_ANYXML:
             LY_CHECK_RET(parse_any(ctx, data, kw, (struct lysp_node*)cont, &cont->child));
@@ -3612,14 +3643,14 @@ parse_container(struct ly_parser_ctx *ctx, const char **data, struct lysp_node *
             LY_CHECK_RET(parse_restrs(ctx, data, kw, &cont->musts));
             break;
         case YANG_ACTION:
-            YANG_CHECK_STMTVER_RET(ctx, "action", "container");
+            YANG_CHECK_STMTVER2_RET(ctx, "action", "container");
             LY_CHECK_RET(parse_action(ctx, data, (struct lysp_node*)cont, &cont->actions));
             break;
         case YANG_GROUPING:
             LY_CHECK_RET(parse_grouping(ctx, data, (struct lysp_node*)cont, &cont->groupings));
             break;
         case YANG_NOTIFICATION:
-            YANG_CHECK_STMTVER_RET(ctx, "notification", "container");
+            YANG_CHECK_STMTVER2_RET(ctx, "notification", "container");
             LY_CHECK_RET(parse_notif(ctx, data, (struct lysp_node*)cont, &cont->notifs));
             break;
         case YANG_CUSTOM:
@@ -3715,7 +3746,7 @@ parse_list(struct ly_parser_ctx *ctx, const char **data, struct lysp_node *paren
             break;
 
         case YANG_ANYDATA:
-            YANG_CHECK_STMTVER_RET(ctx, "anydata", "list");
+            YANG_CHECK_STMTVER2_RET(ctx, "anydata", "list");
             /* fall through */
         case YANG_ANYXML:
             LY_CHECK_RET(parse_any(ctx, data, kw, (struct lysp_node*)list, &list->child));
@@ -3746,14 +3777,14 @@ parse_list(struct ly_parser_ctx *ctx, const char **data, struct lysp_node *paren
             LY_CHECK_RET(parse_restrs(ctx, data, kw, &list->musts));
             break;
         case YANG_ACTION:
-            YANG_CHECK_STMTVER_RET(ctx, "action", "list");
+            YANG_CHECK_STMTVER2_RET(ctx, "action", "list");
             LY_CHECK_RET(parse_action(ctx, data, (struct lysp_node*)list, &list->actions));
             break;
         case YANG_GROUPING:
             LY_CHECK_RET(parse_grouping(ctx, data, (struct lysp_node*)list, &list->groupings));
             break;
         case YANG_NOTIFICATION:
-            YANG_CHECK_STMTVER_RET(ctx, "notification", "list");
+            YANG_CHECK_STMTVER2_RET(ctx, "notification", "list");
             LY_CHECK_RET(parse_notif(ctx, data, (struct lysp_node*)list, &list->notifs));
             break;
         case YANG_CUSTOM:
@@ -4272,7 +4303,7 @@ parse_identity(struct ly_parser_ctx *ctx, const char **data, struct lysp_ident *
             LY_CHECK_RET(parse_text_field(ctx, data, LYEXT_SUBSTMT_DESCRIPTION, 0, &ident->dsc, Y_STR_ARG, &ident->exts));
             break;
         case YANG_IF_FEATURE:
-            YANG_CHECK_STMTVER_RET(ctx, "if-feature", "identity");
+            YANG_CHECK_STMTVER2_RET(ctx, "if-feature", "identity");
             LY_CHECK_RET(parse_text_fields(ctx, data, LYEXT_SUBSTMT_IFFEATURE, &ident->iffeatures, Y_STR_ARG, &ident->exts));
             break;
         case YANG_REFERENCE:
@@ -4439,7 +4470,7 @@ parse_sub_module(struct ly_parser_ctx *ctx, const char **data, struct lysp_modul
 
         /* body */
         case YANG_ANYDATA:
-            YANG_CHECK_STMTVER_RET(ctx, "anydata", mod->submodule ? "submodule" : "module");
+            YANG_CHECK_STMTVER2_RET(ctx, "anydata", mod->submodule ? "submodule" : "module");
             /* fall through */
         case YANG_ANYXML:
             LY_CHECK_RET(parse_any(ctx, data, kw, NULL, &mod->data));
