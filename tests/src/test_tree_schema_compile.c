@@ -666,7 +666,7 @@ test_node_choice(void **state)
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
     ch = (struct lysc_node_choice*)mod->compiled->data;
     assert_non_null(ch);
-    assert_int_equal(LYS_CONFIG_W | LYS_STATUS_CURR | LYS_SET_DFLT, ch->flags);
+    assert_int_equal(LYS_CONFIG_W | LYS_STATUS_CURR, ch->flags);
     cs = ch->cases;
     assert_non_null(cs);
     assert_string_equal("a", cs->name);
@@ -679,6 +679,7 @@ test_node_choice(void **state)
     cs = (struct lysc_node_case*)cs->next;
     assert_non_null(cs);
     assert_string_equal("b", cs->name);
+    assert_int_equal(LYS_STATUS_CURR | LYS_SET_DFLT, cs->flags);
     assert_ptr_equal(ch, cs->parent);
     assert_non_null(cs->child);
     assert_string_equal("b", cs->child->name);
@@ -2277,6 +2278,109 @@ test_uses(void **state)
     ly_ctx_destroy(ctx, NULL);
 }
 
+static void
+test_refine(void **state)
+{
+    *state = test_refine;
+
+    struct ly_ctx *ctx;
+    struct lys_module *mod;
+    struct lysc_node *parent, *child;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module grp {yang-version 1.1;namespace urn:grp;prefix g; typedef mytype {type string; default cheers!;}"
+                                        "grouping grp {container c {leaf l {type mytype; default goodbye;}"
+                                        "leaf-list ll {type mytype; default goodbye;}"
+                                        "choice ch {default a; leaf a {type int8;}leaf b{type uint8;}}"
+                                        "leaf x {type mytype; mandatory true;}}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module a {yang-version 1.1;namespace urn:a;prefix a;import grp {prefix g;}"
+                                        "uses g:grp {refine c/l {default hello; config false;}"
+                                        "refine c/ll {default hello;default world;}"
+                                        "refine c/ch {default b;}"
+                                        "refine c/x {mandatory false;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    assert_non_null((parent = mod->compiled->data));
+    assert_int_equal(LYS_CONTAINER, parent->nodetype);
+    assert_string_equal("c", parent->name);
+    assert_non_null((child = ((struct lysc_node_container*)parent)->child));
+    assert_int_equal(LYS_LEAF, child->nodetype);
+    assert_string_equal("l", child->name);
+    assert_string_equal("hello", ((struct lysc_node_leaf*)child)->dflt);
+    assert_int_equal(LYS_CONFIG_R, child->flags & LYS_CONFIG_MASK);
+    assert_non_null(child = child->next);
+    assert_int_equal(LYS_LEAFLIST, child->nodetype);
+    assert_string_equal("ll", child->name);
+    assert_int_equal(2, LY_ARRAY_SIZE(((struct lysc_node_leaflist*)child)->dflts));
+    assert_string_equal("hello", ((struct lysc_node_leaflist*)child)->dflts[0]);
+    assert_string_equal("world", ((struct lysc_node_leaflist*)child)->dflts[1]);
+    assert_non_null(child = child->next);
+    assert_int_equal(LYS_CHOICE, child->nodetype);
+    assert_string_equal("ch", child->name);
+    assert_string_equal("b", ((struct lysc_node_choice*)child)->dflt->name);
+    assert_true(LYS_SET_DFLT & ((struct lysc_node_choice*)child)->dflt->flags);
+    assert_false(LYS_SET_DFLT & ((struct lysc_node_choice*)child)->cases[0].flags);
+    assert_non_null(child = child->next);
+    assert_int_equal(LYS_LEAF, child->nodetype);
+    assert_string_equal("x", child->name);
+    assert_false(LYS_MAND_TRUE & child->flags);
+    assert_string_equal("cheers!", ((struct lysc_node_leaf*)child)->dflt);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module b {yang-version 1.1;namespace urn:b;prefix b;import grp {prefix g;}"
+                                        "uses g:grp {refine c/x {default hello; mandatory false;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    assert_non_null((child = ((struct lysc_node_container*)mod->compiled->data)->child->prev));
+    assert_int_equal(LYS_LEAF, child->nodetype);
+    assert_string_equal("x", child->name);
+    assert_false(LYS_MAND_TRUE & child->flags);
+    assert_string_equal("hello", ((struct lysc_node_leaf*)child)->dflt);
+
+    /* invalid */
+    assert_non_null(mod = lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;import grp {prefix g;}"
+                                        "uses g:grp {refine c {default hello;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid refine of default in \"c\" - container cannot hold default value(s).");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb;import grp {prefix g;}"
+                                        "uses g:grp {refine c/l {default hello; default world;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid refine of default in \"c/l\" - leaf cannot hold 2 default values.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module cc {namespace urn:cc;prefix cc;import grp {prefix g;}"
+                                        "uses g:grp {refine c/ll {default hello; default world;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid refine of default in leaf-list - the default statement is allowed only in YANG 1.1 modules.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module dd {namespace urn:dd;prefix dd;import grp {prefix g;}"
+                                        "uses g:grp {refine c/ll {mandatory true;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid refine of mandatory in \"c/ll\" - leaf-list cannot hold mandatory statement.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module ee {namespace urn:ee;prefix ee;import grp {prefix g;}"
+                                        "uses g:grp {refine c/l {mandatory true;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid refine of mandatory in \"c/l\" - leaf already has \"default\" statement.");
+    assert_non_null(mod = lys_parse_mem(ctx, "module ef {namespace urn:ef;prefix ef;import grp {prefix g;}"
+                                        "uses g:grp {refine c/ch {mandatory true;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid refine of mandatory in \"c/ch\" - choice already has \"default\" statement.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module ff {namespace urn:ff;prefix ff;import grp {prefix g;}"
+                                        "uses g:grp {refine c/ch/a/a {mandatory true;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid refine of mandatory in \"c/ch/a/a\" - leaf under the default case.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module gg {namespace urn:gg;prefix gg;import grp {prefix g;}"
+                                        "uses g:grp {refine c/x {default hello;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid refine of default in \"c/x\" - the node is mandatory.");
+
+    *state = NULL;
+    ly_ctx_destroy(ctx, NULL);
+}
 
 int main(void)
 {
@@ -2303,6 +2407,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_node_choice, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_node_anydata, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_uses, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_refine, logger_setup, logger_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

@@ -594,9 +594,7 @@ struct lysp_deviation {
 #define LYS_STATUS_MASK  0x1C        /**< mask for status value */
 #define LYS_MAND_TRUE    0x20        /**< mandatory true; applicable only to ::lysp_node_choice/::lysc_node_choice,
                                           ::lysp_node_leaf/::lysc_node_leaf and ::lysp_node_anydata/::lysc_node_anydata */
-#define LYS_MAND_FALSE   0x40        /**< mandatory false; applicable only to
-                                          ::lysp_node_choice/::lysc_node_choice, ::lysp_node_leaf/::lysc_node_leaf
-                                          and ::lysp_node_anydata/::lysc_node_anydata */
+#define LYS_MAND_FALSE   0x40        /**< mandatory false; applicable only to ::lysp_node_choice, ::lysp_node_leaf and ::lysp_node_anydata */
 #define LYS_MAND_MASK    0x60        /**< mask for mandatory values */
 #define LYS_PRESENCE     0x80        /**< flag for presence property of a container, applicable only to ::lysc_node_container */
 #define LYS_UNIQUE       0x80        /**< flag for leafs being part of a unique set, applicable only to ::lysc_node_leaf */
@@ -624,7 +622,7 @@ struct lysp_deviation {
 #define LYS_SET_RANGE    0x0080      /**< type's flag for present range substatement */
 #define LYS_SET_TYPE     0x0100      /**< type's flag for present type substatement */
 #define LYS_SET_REQINST  0x0200      /**< type's flag for present require-instance substatement */
-#define LYS_SET_DFLT     0x0200      /**< flag to mark leaf with own default value, not a default value taken from its type, and default
+#define LYS_SET_DFLT     0x0200      /**< flag to mark leaf with own (or refined) default value, not a default value taken from its type, and default
                                           cases of choice. This information is important for refines, since it is prohibited to make leafs
                                           with default statement mandatory. In case the default leaf value is taken from type, it is thrown
                                           away when it is refined to be mandatory node. */
@@ -1049,12 +1047,14 @@ struct lysc_must {
 
 struct lysc_type {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    const char *dflt;                /**< type's default value if any */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
 };
 
 struct lysc_type_num {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    const char *dflt;                /**< type's default value if any */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
     struct lysc_range *range;        /**< Optional range limitation */
@@ -1062,6 +1062,7 @@ struct lysc_type_num {
 
 struct lysc_type_dec {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    const char *dflt;                /**< type's default value if any */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
     uint8_t fraction_digits;         /**< fraction digits specification */
@@ -1070,6 +1071,7 @@ struct lysc_type_dec {
 
 struct lysc_type_str {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    const char *dflt;                /**< type's default value if any */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
     struct lysc_range *length;       /**< Optional length limitation */
@@ -1078,6 +1080,7 @@ struct lysc_type_str {
 
 struct lysc_type_enum {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    const char *dflt;                /**< type's default value if any */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
     struct lysc_type_enum_item {
@@ -1090,6 +1093,7 @@ struct lysc_type_enum {
 
 struct lysc_type_leafref {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    const char *dflt;                /**< type's default value if any */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
     const char* path;                /**< target path */
@@ -1100,6 +1104,7 @@ struct lysc_type_leafref {
 
 struct lysc_type_identityref {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    const char *dflt;                /**< type's default value if any */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
     struct lysc_ident **bases;       /**< list of pointers to the base identities ([sized array](@ref sizedarrays)),
@@ -1108,6 +1113,7 @@ struct lysc_type_identityref {
 
 struct lysc_type_instanceid {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    const char *dflt;                /**< type's default value if any */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
     uint8_t require_instance;        /**< require-instance flag */
@@ -1115,6 +1121,7 @@ struct lysc_type_instanceid {
 
 struct lysc_type_bits {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    const char *dflt;                /**< type's default value if any */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
     struct lysc_type_bits_item {
@@ -1127,6 +1134,7 @@ struct lysc_type_bits {
 
 struct lysc_type_union {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    const char *dflt;                /**< type's default value if any */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
     struct lysc_type **types;        /**< list of types in the union ([sized array](@ref sizedarrays)), mandatory (at least 1 item) */
@@ -1134,6 +1142,7 @@ struct lysc_type_union {
 
 struct lysc_type_bin {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    const char *dflt;                /**< type's default value if any */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
     struct lysc_range *length;       /**< Optional length limitation */

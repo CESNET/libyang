@@ -575,6 +575,7 @@ lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type)
         break;
     }
     FREE_ARRAY(ctx, type->exts, lysc_ext_instance_free);
+    FREE_STRING(ctx, type->dflt);
 
     free(type);
 }

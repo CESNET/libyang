@@ -119,10 +119,10 @@ lys_resolve_descendant_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, s
                    "Invalid descendant-schema-nodeid value \"%.*s\" - target node not found.", id - nodeid, nodeid);
             return LY_ENOTFOUND;
         }
-        if (nodeid_len && ((size_t)(id - nodeid) >= nodeid_len)) {
+        if (!*id || (nodeid_len && ((size_t)(id - nodeid) >= nodeid_len))) {
             break;
         }
-        if (id && *id != '/') {
+        if (*id != '/') {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                    "Invalid descendant-schema-nodeid value \"%.*s\" - missing \"/\" as node-identifier separator.",
                    id - nodeid + 1, nodeid);
@@ -828,7 +828,7 @@ search_file:
     return LY_SUCCESS;
 }
 
-#define FIND_MODULE(TYPE, MOD, ID) \
+#define FIND_MODULE(TYPE, MOD) \
     TYPE *imp; \
     if (!strncmp((MOD)->prefix, prefix, len) && (MOD)->prefix[len] == '\0') { \
         /* it is the prefix of the module itself */ \
@@ -837,7 +837,7 @@ search_file:
     /* search in imports */ \
     if (!m) { \
         LY_ARRAY_FOR((MOD)->imports, TYPE, imp) { \
-            if (!strncmp(imp->prefix, prefix, len) && (MOD)->prefix[len] == '\0') { \
+            if (!strncmp(imp->prefix, prefix, len) && imp->prefix[len] == '\0') { \
                 m = imp->module; \
                 break; \
             } \
@@ -849,7 +849,7 @@ lysc_module_find_prefix(const struct lysc_module *mod, const char *prefix, size_
 {
     const struct lys_module *m = NULL;
 
-    FIND_MODULE(struct lysc_import, mod, 1);
+    FIND_MODULE(struct lysc_import, mod);
     return m ? m->compiled : NULL;
 }
 
@@ -858,7 +858,7 @@ lysp_module_find_prefix(const struct lysp_module *mod, const char *prefix, size_
 {
     const struct lys_module *m = NULL;
 
-    FIND_MODULE(struct lysp_import, mod, 1);
+    FIND_MODULE(struct lysp_import, mod);
     return m ? m->parsed : NULL;
 }
 
@@ -868,9 +868,9 @@ lys_module_find_prefix(const struct lys_module *mod, const char *prefix, size_t 
     const struct lys_module *m = NULL;
 
     if (mod->compiled) {
-        FIND_MODULE(struct lysc_import, mod->compiled, 1);
+        FIND_MODULE(struct lysc_import, mod->compiled);
     } else {
-        FIND_MODULE(struct lysp_import, mod->parsed, 2);
+        FIND_MODULE(struct lysp_import, mod->parsed);
     }
     return (struct lys_module*)m;
 }
@@ -1103,6 +1103,8 @@ lysc_node_children_p(const struct lysc_node *node)
         } else {
             return NULL;
         }
+    case LYS_CASE:
+        return &((struct lysc_node_case*)node)->child;
     case LYS_LIST:
         return &((struct lysc_node_list*)node)->child;
 /* TODO
