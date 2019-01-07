@@ -2260,6 +2260,19 @@ test_uses(void **state)
     assert_int_equal(LYS_LEAF, mod->compiled->data->nodetype);
     assert_string_equal("b", mod->compiled->data->name);
 
+    logbuf_clean();
+    assert_non_null(mod = lys_parse_mem(ctx, "module c {namespace urn:ii;prefix ii;"
+                                        "grouping grp {leaf l {type string;}leaf k {type string; status obsolete;}}"
+                                        "uses grp {status deprecated;}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    assert_int_equal(LYS_LEAF, mod->compiled->data->nodetype);
+    assert_string_equal("l", mod->compiled->data->name);
+    assert_true(LYS_STATUS_DEPRC & mod->compiled->data->flags);
+    assert_int_equal(LYS_LEAF, mod->compiled->data->next->nodetype);
+    assert_string_equal("k", mod->compiled->data->next->name);
+    assert_true(LYS_STATUS_OBSLT & mod->compiled->data->next->flags);
+    logbuf_assert(""); /* no warning about inheriting deprecated flag from uses */
+
     /* invalid */
     assert_non_null(mod = lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;uses missinggrp;}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
@@ -2281,6 +2294,11 @@ test_uses(void **state)
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
     logbuf_assert("Duplicate identifier \"a\" of data definition statement.");
 
+    assert_non_null(mod = lys_parse_mem(ctx, "module ee {namespace urn:ee;prefix ee;grouping grp {leaf l {type string; status deprecated;}}"
+                                        "uses grp {status obsolete;}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("A \"deprecated\" status is in conflict with the parent's \"obsolete\" status.");
+
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
 }
@@ -2301,6 +2319,7 @@ test_refine(void **state)
                                         "leaf-list ll {type mytype; default goodbye;}"
                                         "choice ch {default a; leaf a {type int8;}leaf b{type uint8;}}"
                                         "leaf x {type mytype; mandatory true;}"
+                                        "anydata a {mandatory false;}"
                                         "container c {config false; leaf l {type string;}}}}}", LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
 
@@ -2309,6 +2328,7 @@ test_refine(void **state)
                                         "refine c/ll {default hello;default world;}"
                                         "refine c/ch {default b;config true;}"
                                         "refine c/x {mandatory false;}"
+                                        "refine c/a {mandatory true;}"
                                         "refine c/c {config true;presence indispensable;}}}", LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
     assert_non_null((parent = mod->compiled->data));
@@ -2337,32 +2357,24 @@ test_refine(void **state)
     assert_false(LYS_MAND_TRUE & child->flags);
     assert_string_equal("cheers!", ((struct lysc_node_leaf*)child)->dflt);
     assert_non_null(child = child->next);
+    assert_int_equal(LYS_ANYDATA, child->nodetype);
+    assert_string_equal("a", child->name);
+    assert_true(LYS_MAND_TRUE & child->flags);
+    assert_non_null(child = child->next);
     assert_int_equal(LYS_CONTAINER, child->nodetype);
     assert_string_equal("c", child->name);
+    assert_true(LYS_PRESENCE & child->flags);
     assert_true(LYS_CONFIG_W & child->flags);
     assert_true(LYS_CONFIG_W & ((struct lysc_node_container*)child)->child->flags);
 
     assert_non_null(mod = lys_parse_mem(ctx, "module b {yang-version 1.1;namespace urn:b;prefix b;import grp {prefix g;}"
                                         "uses g:grp {status deprecated; refine c/x {default hello; mandatory false;}}}", LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
-    assert_non_null((child = ((struct lysc_node_container*)mod->compiled->data)->child->prev->prev));
+    assert_non_null((child = ((struct lysc_node_container*)mod->compiled->data)->child->prev->prev->prev));
     assert_int_equal(LYS_LEAF, child->nodetype);
     assert_string_equal("x", child->name);
     assert_false(LYS_MAND_TRUE & child->flags);
     assert_string_equal("hello", ((struct lysc_node_leaf*)child)->dflt);
-
-    logbuf_clean();
-    assert_non_null(mod = lys_parse_mem(ctx, "module c {namespace urn:ii;prefix ii;"
-                                        "grouping grp {leaf l {type string;}leaf k {type string; status obsolete;}}"
-                                        "uses grp {status deprecated;}}", LYS_IN_YANG));
-    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
-    assert_int_equal(LYS_LEAF, mod->compiled->data->nodetype);
-    assert_string_equal("l", mod->compiled->data->name);
-    assert_true(LYS_STATUS_DEPRC & mod->compiled->data->flags);
-    assert_int_equal(LYS_LEAF, mod->compiled->data->next->nodetype);
-    assert_string_equal("k", mod->compiled->data->next->name);
-    assert_true(LYS_STATUS_OBSLT & mod->compiled->data->next->flags);
-    logbuf_assert(""); /* no warning about inheriting deprecated flag from uses */
 
     /* invalid */
     assert_non_null(mod = lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;import grp {prefix g;}"
