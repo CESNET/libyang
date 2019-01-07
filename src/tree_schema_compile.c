@@ -382,7 +382,13 @@ lys_compile_iffeature(struct lysc_ctx *ctx, const char **value, int UNUSED(optio
             iff_setop(iff->expr, LYS_IFF_F, expr_size--);
 
             /* now get the link to the feature definition */
-            f = lysc_feature_find(ctx->mod->compiled, &c[i], j - i);
+            if (!ctx->mod_def->compiled) {
+                /* TODO - permanently switched off feature - link to some static feature and update when the schema gets implemented */
+                LOGINT(ctx->ctx);
+                goto error;
+            } else {
+                f = lysc_feature_find(ctx->mod_def->compiled, &c[i], j - i);
+            }
             LY_CHECK_ERR_GOTO(!f,
                               LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
                                      "Invalid value \"%s\" of if-feature - unable to find feature \"%.*s\".", *value, j - i, &c[i]);
@@ -3425,6 +3431,9 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int option
         context_node_fake.child->prev = parent ? lysc_node_children(parent)->prev : ctx->mod->compiled->data->prev;
     }
 
+    /* reload previous context's mod_def */
+    ctx->mod_def = mod_old;
+
     /* apply refine */
     LY_ARRAY_FOR(uses_p->refines, struct lysp_refine, rfn) {
         LY_CHECK_GOTO(lys_resolve_descendant_schema_nodeid(ctx, rfn->nodeid, 0, (struct lysc_node*)&context_node_fake, 0, (const struct lysc_node**)&node),
@@ -3599,6 +3608,12 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int option
                        (rfn->flags & LYS_SET_MAX) ? "max-elements" : "min-elements", rfn->nodeid, lys_nodetype2str(node->nodetype));
                 goto error;
             }
+        }
+
+        /* if-feature */
+        if (rfn->iffeatures) {
+            /* any node in compiled tree can get additional if-feature, so do not check nodetype */
+            COMPILE_ARRAY_GOTO(ctx, rfn->iffeatures, node->iffeatures, options, u, lys_compile_iffeature, ret, error);
         }
     }
     /* fix connection of the children nodes from fake context node back into the parent */

@@ -2314,21 +2314,21 @@ test_refine(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
 
-    assert_non_null(mod = lys_parse_mem(ctx, "module grp {yang-version 1.1;namespace urn:grp;prefix g; typedef mytype {type string; default cheers!;}"
+    assert_non_null(mod = lys_parse_mem(ctx, "module grp {yang-version 1.1;namespace urn:grp;prefix g; feature f;typedef mytype {type string; default cheers!;}"
                                         "grouping grp {container c {leaf l {type mytype; default goodbye;}"
                                         "leaf-list ll {type mytype; default goodbye;}"
                                         "choice ch {default a; leaf a {type int8;}leaf b{type uint8;}}"
                                         "leaf x {type mytype; mandatory true; must 1;}"
-                                        "anydata a {mandatory false;}"
+                                        "anydata a {mandatory false; if-feature f;}"
                                         "container c {config false; leaf l {type string;}}}}}", LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
 
-    assert_non_null(mod = lys_parse_mem(ctx, "module a {yang-version 1.1;namespace urn:a;prefix a;import grp {prefix g;}"
+    assert_non_null(mod = lys_parse_mem(ctx, "module a {yang-version 1.1;namespace urn:a;prefix a;import grp {prefix g;}feature fa;"
                                         "uses g:grp {refine c/l {default hello; config false;}"
                                         "refine c/ll {default hello;default world; min-elements 2; max-elements 5;}"
-                                        "refine c/ch {default b;config true;}"
+                                        "refine c/ch {default b;config true; if-feature fa;}"
                                         "refine c/x {mandatory false; must ../ll;}"
-                                        "refine c/a {mandatory true; must 1;}"
+                                        "refine c/a {mandatory true; must 1; if-feature fa;}"
                                         "refine c/c {config true;presence indispensable;}}}", LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
     assert_non_null((parent = mod->compiled->data));
@@ -2353,6 +2353,8 @@ test_refine(void **state)
     assert_string_equal("b", ((struct lysc_node_choice*)child)->dflt->name);
     assert_true(LYS_SET_DFLT & ((struct lysc_node_choice*)child)->dflt->flags);
     assert_false(LYS_SET_DFLT & ((struct lysc_node_choice*)child)->cases[0].flags);
+    assert_non_null(child->iffeatures);
+    assert_int_equal(1, LY_ARRAY_SIZE(child->iffeatures));
     assert_non_null(child = child->next);
     assert_int_equal(LYS_LEAF, child->nodetype);
     assert_string_equal("x", child->name);
@@ -2366,6 +2368,8 @@ test_refine(void **state)
     assert_true(LYS_MAND_TRUE & child->flags);
     assert_non_null(((struct lysc_node_anydata*)child)->musts);
     assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_node_anydata*)child)->musts));
+    assert_non_null(child->iffeatures);
+    assert_int_equal(2, LY_ARRAY_SIZE(child->iffeatures));
     assert_non_null(child = child->next);
     assert_int_equal(LYS_CONTAINER, child->nodetype);
     assert_string_equal("c", child->name);
