@@ -645,8 +645,6 @@ lysc_node_choice_free(struct ly_ctx *ctx, struct lysc_node_choice *node)
 {
     struct lysc_node *child, *child_next;
 
-    FREE_MEMBER(ctx, node->when, lysc_when_free);
-    FREE_ARRAY(ctx, node->iffeatures, lysc_iffeature_free);
     if (node->cases) {
         LY_LIST_FOR_SAFE(node->cases->child, child_next, child) {
             lysc_node_free(ctx, child);
