@@ -2316,7 +2316,7 @@ test_refine(void **state)
 
     assert_non_null(mod = lys_parse_mem(ctx, "module grp {yang-version 1.1;namespace urn:grp;prefix g; feature f;typedef mytype {type string; default cheers!;}"
                                         "grouping grp {container c {leaf l {type mytype; default goodbye;}"
-                                        "leaf-list ll {type mytype; default goodbye;}"
+                                        "leaf-list ll {type mytype; default goodbye; max-elements 6;}"
                                         "choice ch {default a; leaf a {type int8;}leaf b{type uint8;}}"
                                         "leaf x {type mytype; mandatory true; must 1;}"
                                         "anydata a {mandatory false; if-feature f;}"
@@ -2450,6 +2450,11 @@ test_refine(void **state)
                                         "uses g:grp {refine c/x {min-elements 1;}}}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
     logbuf_assert("Invalid refine of min-elements statement in \"c/x\" - leaf cannot hold this statement.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module mm {namespace urn:mm;prefix mm;import grp {prefix g;}"
+                                        "uses g:grp {refine c/ll {min-elements 10;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid refine of min-elements statement in \"c/ll\" - \"min-elements\" is bigger than \"max-elements\".");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);

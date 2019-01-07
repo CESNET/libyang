@@ -3335,6 +3335,8 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int option
     struct lys_module *mod, *mod_old;
     struct lysp_refine *rfn;
     LY_ERR ret = LY_EVALID;
+    uint32_t min, max;
+    struct ly_set refined = {0};
 
     /* search for the grouping definition */
     found = 0;
@@ -3438,6 +3440,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int option
     LY_ARRAY_FOR(uses_p->refines, struct lysp_refine, rfn) {
         LY_CHECK_GOTO(lys_resolve_descendant_schema_nodeid(ctx, rfn->nodeid, 0, (struct lysc_node*)&context_node_fake, 0, (const struct lysc_node**)&node),
                       error);
+        ly_set_add(&refined, node, LY_SET_OPT_USEASLIST);
 
         /* default value */
         if (rfn->dflts) {
@@ -3535,15 +3538,6 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int option
                 }
             }
         }
-        /* here we must have applied mandatory change, so check possible conflict with default value
-         * (default added, mandatory left true) */
-        if ((node->flags & LYS_MAND_TRUE) &&
-                (((node->nodetype & LYS_CHOICE) && ((struct lysc_node_choice*)node)->dflt) ||
-                ((node->nodetype & LYS_LEAF) && (node->flags & LYS_SET_DFLT)))) {
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                   "Invalid refine of default in \"%s\" - the node is mandatory.", rfn->nodeid);
-            goto error;
-        }
 
         /* presence */
         if (rfn->presence) {
@@ -3624,6 +3618,37 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int option
         child->parent = parent;
     }
 
+    /* do some additional checks of the changed nodes when all the refines are applied */
+    for (u = 0; u < refined.count; ++u) {
+        node = (struct lysc_node*)refined.objs[u];
+        rfn = &uses_p->refines[u];
+
+        /* check possible conflict with default value (default added, mandatory left true) */
+        if ((node->flags & LYS_MAND_TRUE) &&
+                (((node->nodetype & LYS_CHOICE) && ((struct lysc_node_choice*)node)->dflt) ||
+                ((node->nodetype & LYS_LEAF) && (node->flags & LYS_SET_DFLT)))) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                   "Invalid refine of default in \"%s\" - the node is mandatory.", rfn->nodeid);
+            goto error;
+        }
+
+        if (rfn->flags & (LYS_SET_MAX | LYS_SET_MIN)) {
+            if (node->nodetype == LYS_LIST) {
+                min = ((struct lysc_node_list*)node)->min;
+                max = ((struct lysc_node_list*)node)->max;
+            } else {
+                min = ((struct lysc_node_leaflist*)node)->min;
+                max = ((struct lysc_node_leaflist*)node)->max;
+            }
+            if (min > max) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                       "Invalid refine of %s statement in \"%s\" - \"min-elements\" is bigger than \"max-elements\".",
+                       (rfn->flags & LYS_SET_MAX) ? "max-elements" : "min-elements", rfn->nodeid);
+                goto error;
+            }
+        }
+    }
+
     ret = LY_SUCCESS;
 error:
     /* reload previous context's mod_def */
@@ -3631,6 +3656,7 @@ error:
     /* remove the grouping from the stack for circular groupings dependency check */
     ly_set_rm_index(&ctx->groupings, ctx->groupings.count - 1, NULL);
     assert(ctx->groupings.count == grp_stack_count);
+    ly_set_erase(&refined, NULL);
 
     return ret;
 }
