@@ -3535,6 +3535,17 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int option
                    "Invalid refine of default in \"%s\" - the node is mandatory.", rfn->nodeid);
             goto error;
         }
+
+        /* presence */
+        if (rfn->presence) {
+            if (node->nodetype != LYS_CONTAINER) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                       "Invalid refine of presence statement in \"%s\" - %s cannot hold the presence statement.",
+                       rfn->nodeid, lys_nodetype2str(node->nodetype));
+                goto error;
+            }
+            node->flags |= LYS_PRESENCE;
+        }
     }
     /* fix connection of the children nodes from fake context node back into the parent */
     if (context_node_fake.child) {

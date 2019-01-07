@@ -2309,7 +2309,7 @@ test_refine(void **state)
                                         "refine c/ll {default hello;default world;}"
                                         "refine c/ch {default b;config true;}"
                                         "refine c/x {mandatory false;}"
-                                        "refine c/c {config true;}}}", LYS_IN_YANG));
+                                        "refine c/c {config true;presence indispensable;}}}", LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
     assert_non_null((parent = mod->compiled->data));
     assert_int_equal(LYS_CONTAINER, parent->nodetype);
@@ -2413,6 +2413,11 @@ test_refine(void **state)
                                         "uses grp {status obsolete;}}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
     logbuf_assert("A \"deprecated\" status is in conflict with the parent's \"obsolete\" status.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module jj {namespace urn:jj;prefix jj;import grp {prefix g;}"
+                                        "uses g:grp {refine c/x {presence nonsence;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid refine of presence statement in \"c/x\" - leaf cannot hold the presence statement.");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
