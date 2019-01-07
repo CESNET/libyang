@@ -2325,7 +2325,7 @@ test_refine(void **state)
 
     assert_non_null(mod = lys_parse_mem(ctx, "module a {yang-version 1.1;namespace urn:a;prefix a;import grp {prefix g;}"
                                         "uses g:grp {refine c/l {default hello; config false;}"
-                                        "refine c/ll {default hello;default world;}"
+                                        "refine c/ll {default hello;default world; min-elements 2; max-elements 5;}"
                                         "refine c/ch {default b;config true;}"
                                         "refine c/x {mandatory false; must ../ll;}"
                                         "refine c/a {mandatory true; must 1;}"
@@ -2345,6 +2345,8 @@ test_refine(void **state)
     assert_int_equal(2, LY_ARRAY_SIZE(((struct lysc_node_leaflist*)child)->dflts));
     assert_string_equal("hello", ((struct lysc_node_leaflist*)child)->dflts[0]);
     assert_string_equal("world", ((struct lysc_node_leaflist*)child)->dflts[1]);
+    assert_int_equal(2, ((struct lysc_node_leaflist*)child)->min);
+    assert_int_equal(5, ((struct lysc_node_leaflist*)child)->max);
     assert_non_null(child = child->next);
     assert_int_equal(LYS_CHOICE, child->nodetype);
     assert_string_equal("ch", child->name);
@@ -2439,6 +2441,11 @@ test_refine(void **state)
                                         "uses g:grp {refine c/ch {must 1;}}}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
     logbuf_assert("Invalid refine of must statement in \"c/ch\" - choice cannot hold any must statement.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module ll {namespace urn:ll;prefix ll;import grp {prefix g;}"
+                                        "uses g:grp {refine c/x {min-elements 1;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid refine of min-elements statement in \"c/x\" - leaf cannot hold this statement.");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);

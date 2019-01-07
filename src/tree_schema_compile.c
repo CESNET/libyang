@@ -3573,6 +3573,33 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int option
                 goto error;
             }
         }
+
+        /* min/max-elements */
+        if (rfn->flags & (LYS_SET_MAX | LYS_SET_MIN)) {
+            switch (node->nodetype) {
+            case LYS_LEAFLIST:
+                if (rfn->flags & LYS_SET_MAX) {
+                    ((struct lysc_node_leaflist*)node)->max = rfn->max ? rfn->max : (uint32_t)-1;
+                }
+                if (rfn->flags & LYS_SET_MIN) {
+                    ((struct lysc_node_leaflist*)node)->min = rfn->min;
+                }
+                break;
+            case LYS_LIST:
+                if (rfn->flags & LYS_SET_MAX) {
+                    ((struct lysc_node_list*)node)->max = rfn->max ? rfn->max : (uint32_t)-1;
+                }
+                if (rfn->flags & LYS_SET_MIN) {
+                    ((struct lysc_node_list*)node)->min = rfn->min;
+                }
+                break;
+            default:
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                       "Invalid refine of %s statement in \"%s\" - %s cannot hold this statement.",
+                       (rfn->flags & LYS_SET_MAX) ? "max-elements" : "min-elements", rfn->nodeid, lys_nodetype2str(node->nodetype));
+                goto error;
+            }
+        }
     }
     /* fix connection of the children nodes from fake context node back into the parent */
     if (context_node_fake.child) {
