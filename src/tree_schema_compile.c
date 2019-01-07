@@ -3546,6 +3546,33 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int option
             }
             node->flags |= LYS_PRESENCE;
         }
+
+        /* must */
+        if (rfn->musts) {
+            switch (node->nodetype) {
+            case LYS_LEAF:
+                COMPILE_ARRAY_GOTO(ctx, rfn->musts, ((struct lysc_node_leaf*)node)->musts, options, u, lys_compile_must, ret, error);
+                break;
+            case LYS_LEAFLIST:
+                COMPILE_ARRAY_GOTO(ctx, rfn->musts, ((struct lysc_node_leaflist*)node)->musts, options, u, lys_compile_must, ret, error);
+                break;
+            case LYS_LIST:
+                COMPILE_ARRAY_GOTO(ctx, rfn->musts, ((struct lysc_node_list*)node)->musts, options, u, lys_compile_must, ret, error);
+                break;
+            case LYS_CONTAINER:
+                COMPILE_ARRAY_GOTO(ctx, rfn->musts, ((struct lysc_node_container*)node)->musts, options, u, lys_compile_must, ret, error);
+                break;
+            case LYS_ANYXML:
+            case LYS_ANYDATA:
+                COMPILE_ARRAY_GOTO(ctx, rfn->musts, ((struct lysc_node_anydata*)node)->musts, options, u, lys_compile_must, ret, error);
+                break;
+            default:
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                       "Invalid refine of must statement in \"%s\" - %s cannot hold any must statement.",
+                       rfn->nodeid, lys_nodetype2str(node->nodetype));
+                goto error;
+            }
+        }
     }
     /* fix connection of the children nodes from fake context node back into the parent */
     if (context_node_fake.child) {

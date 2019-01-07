@@ -48,6 +48,9 @@ parse_ncname(const char *ncname)
 
     do {
         len += size;
+        if (!*ncname) {
+            break;
+        }
         LY_CHECK_RET(ly_getutf8(&ncname, &uc, &size), 0);
     } while (is_xmlqnamechar(uc) && (uc != ':'));
 

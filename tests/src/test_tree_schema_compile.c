@@ -2318,7 +2318,7 @@ test_refine(void **state)
                                         "grouping grp {container c {leaf l {type mytype; default goodbye;}"
                                         "leaf-list ll {type mytype; default goodbye;}"
                                         "choice ch {default a; leaf a {type int8;}leaf b{type uint8;}}"
-                                        "leaf x {type mytype; mandatory true;}"
+                                        "leaf x {type mytype; mandatory true; must 1;}"
                                         "anydata a {mandatory false;}"
                                         "container c {config false; leaf l {type string;}}}}}", LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
@@ -2327,8 +2327,8 @@ test_refine(void **state)
                                         "uses g:grp {refine c/l {default hello; config false;}"
                                         "refine c/ll {default hello;default world;}"
                                         "refine c/ch {default b;config true;}"
-                                        "refine c/x {mandatory false;}"
-                                        "refine c/a {mandatory true;}"
+                                        "refine c/x {mandatory false; must ../ll;}"
+                                        "refine c/a {mandatory true; must 1;}"
                                         "refine c/c {config true;presence indispensable;}}}", LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
     assert_non_null((parent = mod->compiled->data));
@@ -2356,10 +2356,14 @@ test_refine(void **state)
     assert_string_equal("x", child->name);
     assert_false(LYS_MAND_TRUE & child->flags);
     assert_string_equal("cheers!", ((struct lysc_node_leaf*)child)->dflt);
+    assert_non_null(((struct lysc_node_leaf*)child)->musts);
+    assert_int_equal(2, LY_ARRAY_SIZE(((struct lysc_node_leaf*)child)->musts));
     assert_non_null(child = child->next);
     assert_int_equal(LYS_ANYDATA, child->nodetype);
     assert_string_equal("a", child->name);
     assert_true(LYS_MAND_TRUE & child->flags);
+    assert_non_null(((struct lysc_node_anydata*)child)->musts);
+    assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_node_anydata*)child)->musts));
     assert_non_null(child = child->next);
     assert_int_equal(LYS_CONTAINER, child->nodetype);
     assert_string_equal("c", child->name);
@@ -2430,6 +2434,11 @@ test_refine(void **state)
                                         "uses g:grp {refine c/x {presence nonsence;}}}", LYS_IN_YANG));
     assert_int_equal(LY_EVALID, lys_compile(mod, 0));
     logbuf_assert("Invalid refine of presence statement in \"c/x\" - leaf cannot hold the presence statement.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module kk {namespace urn:kk;prefix kk;import grp {prefix g;}"
+                                        "uses g:grp {refine c/ch {must 1;}}}", LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_compile(mod, 0));
+    logbuf_assert("Invalid refine of must statement in \"c/ch\" - choice cannot hold any must statement.");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
