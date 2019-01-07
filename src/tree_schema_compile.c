@@ -2658,7 +2658,7 @@ cleanup:
     return ret;
 }
 
-static LY_ERR lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, struct lysc_node *parent);
+static LY_ERR lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, struct lysc_node *parent, uint16_t uses_status);
 
 /**
  * @brief Compile parsed container node information.
@@ -2679,7 +2679,7 @@ lys_compile_node_container(struct lysc_ctx *ctx, struct lysp_node *node_p, int o
     LY_ERR ret = LY_SUCCESS;
 
     LY_LIST_FOR(cont_p->child, child_p) {
-        LY_CHECK_RET(lys_compile_node(ctx, child_p, options, node));
+        LY_CHECK_RET(lys_compile_node(ctx, child_p, options, node, 0));
     }
 
     COMPILE_ARRAY_GOTO(ctx, cont_p->musts, cont->musts, options, u, lys_compile_must, ret, done);
@@ -2849,7 +2849,7 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *node_p, int option
     list->max = list_p->max ? list_p->max : (uint32_t)-1;
 
     LY_LIST_FOR(list_p->child, child_p) {
-        LY_CHECK_RET(lys_compile_node(ctx, child_p, options, node));
+        LY_CHECK_RET(lys_compile_node(ctx, child_p, options, node, 0));
     }
 
     COMPILE_ARRAY_GOTO(ctx, list_p->musts, list->musts, options, u, lys_compile_must, ret, done);
@@ -3054,10 +3054,10 @@ lys_compile_node_choice(struct lysc_ctx *ctx, struct lysp_node *node_p, int opti
     LY_LIST_FOR(ch_p->child, child_p) {
         if (child_p->nodetype == LYS_CASE) {
             LY_LIST_FOR(((struct lysp_node_case*)child_p)->child, case_child_p) {
-                LY_CHECK_RET(lys_compile_node(ctx, case_child_p, options, node));
+                LY_CHECK_RET(lys_compile_node(ctx, case_child_p, options, node, 0));
             }
         } else {
-            LY_CHECK_RET(lys_compile_node(ctx, child_p, options, node));
+            LY_CHECK_RET(lys_compile_node(ctx, child_p, options, node, 0));
         }
     }
 
@@ -3115,21 +3115,24 @@ lys_compile_status_check(struct lysc_ctx *ctx, uint16_t node_flags, uint16_t par
 }
 
 static LY_ERR
-lys_compile_status(struct lysc_ctx *ctx, struct lysc_node *node, struct lysc_node *parent)
+lys_compile_status(struct lysc_ctx *ctx, struct lysc_node *node, uint16_t parent_flags)
 {
-
     /* status - it is not inherited by specification, but it does not make sense to have
      * current in deprecated or deprecated in obsolete, so we do print warning and inherit status */
     if (!(node->flags & LYS_STATUS_MASK)) {
-        if (parent && (parent->flags & (LYS_STATUS_DEPRC | LYS_STATUS_OBSLT))) {
-            LOGWRN(ctx->ctx, "Missing explicit \"%s\" status that was already specified in parent, inheriting.",
-                   (parent->flags & LYS_STATUS_DEPRC) ? "deprecated" : "obsolete");
-            node->flags |= parent->flags & LYS_STATUS_MASK;
+        if (parent_flags & (LYS_STATUS_DEPRC | LYS_STATUS_OBSLT)) {
+            if ((parent_flags & 0x3) != 0x3) {
+                /* do not print the warning when inheriting status from uses - the uses_status value has a special
+                 * combination of bits (0x3) which marks the uses_status value */
+                LOGWRN(ctx->ctx, "Missing explicit \"%s\" status that was already specified in parent, inheriting.",
+                       (parent_flags & LYS_STATUS_DEPRC) ? "deprecated" : "obsolete");
+            }
+            node->flags |= parent_flags & LYS_STATUS_MASK;
         } else {
             node->flags |= LYS_STATUS_CURR;
         }
-    } else if (parent) {
-        return lys_compile_status_check(ctx, node->flags, parent->flags);
+    } else if (parent_flags & LYS_STATUS_MASK) {
+        return lys_compile_status_check(ctx, node->flags, parent_flags);
     }
     return LY_SUCCESS;
 }
@@ -3243,8 +3246,8 @@ lys_compile_node_case(struct lysc_ctx *ctx, struct lysp_node *node_p, int option
         cs->flags = LYS_STATUS_MASK & node_p->flags;
         cs->sp = node_p;
 
-        /* check the case's status */
-        LY_CHECK_RET(lys_compile_status(ctx, (struct lysc_node*)cs, (struct lysc_node* )ch), NULL);
+        /* check the case's status (don't need to solve uses_status since case statement cannot be directly in grouping statement */
+        LY_CHECK_RET(lys_compile_status(ctx, (struct lysc_node*)cs, ch->flags), NULL);
         COMPILE_MEMBER_GOTO(ctx, node_p->when, cs->when, options, lys_compile_when, ret, error);
         COMPILE_ARRAY_GOTO(ctx, node_p->iffeatures, cs->iffeatures, options, u, lys_compile_iffeature, ret, error);
     }
@@ -3277,7 +3280,8 @@ lys_compile_refine_config(struct lysc_ctx *ctx, struct lysc_node *node, struct l
         /* explicit refine */
         if (config == LYS_CONFIG_W && node->parent && (node->parent->flags & LYS_CONFIG_R)) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                   "Invalid refine of config in \"%s\" - configuration node cannot be child of any state data node.");
+                   "Invalid refine of config in \"%s\" - configuration node cannot be child of any state data node.",
+                   rfn->nodeid);
             return LY_EVALID;
         }
     }
@@ -3401,14 +3405,10 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int option
     /* check status */
     LY_CHECK_GOTO(lysc_check_status(ctx, uses_p->flags, mod_old, uses_p->name, grp->flags, mod, grp->name), error);
 
-    /* connect the grouping's content */
     LY_LIST_FOR(grp->data, node_p) {
-        LY_CHECK_GOTO(lys_compile_node(ctx, node_p, options, parent), error);
+        /* 0x3 in uses_status is a special bits combination to be able to detect status flags from uses */
+        LY_CHECK_GOTO(lys_compile_node(ctx, node_p, options, parent, (uses_p->flags & LYS_STATUS_MASK) | 0x3), error);
         child = parent ? lysc_node_children(parent)->prev : ctx->mod->compiled->data->prev;
-        /* check status between parent (uses in this case) and child - lys_compile_node() compares parent and the new node */
-        if (lys_compile_status_check(ctx, child->flags, uses_p->flags)) {
-            goto error;
-        }
         if (uses_p->refines) {
             /* some preparation for applying refines */
             if (grp->data == node_p) {
@@ -3563,10 +3563,12 @@ error:
  * @param[in] parent Compiled parent node where the current node is supposed to be connected. It is
  * NULL for top-level nodes, in such a case the module where the node will be connected is taken from
  * the compile context.
+ * @param[in] uses_status If the node is being placed instead of uses, here we have the uses's status value (as node's flags).
+ * Zero means no uses, non-zero value with no status bit set mean the default status.
  * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
  */
 static LY_ERR
-lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, struct lysc_node *parent)
+lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, struct lysc_node *parent, uint16_t uses_status)
 {
     LY_ERR ret = LY_EVALID;
     struct lysc_node *node;
@@ -3646,7 +3648,7 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, st
     if (!parent || parent->nodetype != LYS_CHOICE) {
         /* in case of choice/case's children, postpone the check to the moment we know if
          * the parent is choice (parent here) or some case (so we have to get its flags to check) */
-        LY_CHECK_GOTO(lys_compile_status(ctx, node, parent), error);
+        LY_CHECK_GOTO(lys_compile_status(ctx, node, uses_status ? uses_status : (parent ? parent->flags : 0)), error);
     }
 
     if (!(options & LYSC_OPT_FREE_SP)) {
@@ -3665,9 +3667,13 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, st
         if (parent->nodetype == LYS_CHOICE) {
             cs = lys_compile_node_case(ctx, node_p->parent, options, (struct lysc_node_choice*)parent, node);
             LY_CHECK_ERR_GOTO(!cs, ret = LY_EVALID, error);
+            if (uses_status) {
+
+            }
             /* the postponed status check of the node and its real parent - in case of implicit case,
-             * it directly gets the same status flags as the choice */
-            LY_CHECK_GOTO(lys_compile_status(ctx, node, (struct lysc_node*)cs), error);
+             * it directly gets the same status flags as the choice;
+             * uses_status cannot be applied here since uses cannot be child statement of choice */
+            LY_CHECK_GOTO(lys_compile_status(ctx, node, cs->flags), error);
             node->parent = (struct lysc_node*)cs;
         } else { /* other than choice */
             node->parent = parent;
@@ -3773,7 +3779,7 @@ lys_compile(struct lys_module *mod, int options)
     }
 
     LY_LIST_FOR(sp->data, node_p) {
-        ret = lys_compile_node(&ctx, node_p, options, NULL);
+        ret = lys_compile_node(&ctx, node_p, options, NULL, 0);
         LY_CHECK_GOTO(ret, error);
     }
     //COMPILE_ARRAY_GOTO(ctx, sp->rpcs, mod_c->rpcs, options, u, lys_compile_action, ret, error);
