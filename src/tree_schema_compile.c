@@ -427,6 +427,8 @@ lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, int options, st
     LY_ERR ret = LY_SUCCESS;
 
     when->cond = lyxp_expr_parse(ctx->ctx, when_p->cond);
+    DUP_STRING(ctx->ctx, when_p->dsc, when->dsc);
+    DUP_STRING(ctx->ctx, when_p->ref, when->ref);
     LY_CHECK_ERR_GOTO(!when->cond, ret = ly_errcode(ctx->ctx), done);
     COMPILE_ARRAY_GOTO(ctx, when_p->exts, when->exts, options, u, lys_compile_ext, ret, done);
 
@@ -445,6 +447,8 @@ lys_compile_must(struct lysc_ctx *ctx, struct lysp_restr *must_p, int options, s
 
     DUP_STRING(ctx->ctx, must_p->eapptag, must->eapptag);
     DUP_STRING(ctx->ctx, must_p->emsg, must->emsg);
+    DUP_STRING(ctx->ctx, must_p->dsc, must->dsc);
+    DUP_STRING(ctx->ctx, must_p->ref, must->ref);
     COMPILE_ARRAY_GOTO(ctx, must_p->exts, must->exts, options, u, lys_compile_ext, ret, done);
 
 done:
@@ -499,6 +503,8 @@ lys_compile_identity(struct lysc_ctx *ctx, struct lysp_ident *ident_p, int optio
 
     COMPILE_CHECK_UNIQUENESS(ctx, idents, name, ident, "identity", ident_p->name);
     DUP_STRING(ctx->ctx, ident_p->name, ident->name);
+    DUP_STRING(ctx->ctx, ident_p->ref, ident->dsc);
+    DUP_STRING(ctx->ctx, ident_p->ref, ident->dsc);
     COMPILE_ARRAY_GOTO(ctx, ident_p->iffeatures, ident->iffeatures, options, u, lys_compile_iffeature, ret, done);
     /* backlings (derived) can be added no sooner than when all the identities in the current module are present */
     COMPILE_ARRAY_GOTO(ctx, ident_p->exts, ident->exts, options, u, lys_compile_ext, ret, done);
@@ -627,6 +633,8 @@ lys_compile_feature(struct lysc_ctx *ctx, struct lysp_feature *feature_p, int op
 
     COMPILE_CHECK_UNIQUENESS(ctx, features, name, feature, "feature", feature_p->name);
     DUP_STRING(ctx->ctx, feature_p->name, feature->name);
+    DUP_STRING(ctx->ctx, feature_p->dsc, feature->dsc);
+    DUP_STRING(ctx->ctx, feature_p->ref, feature->ref);
     feature->flags = feature_p->flags;
 
     COMPILE_ARRAY_GOTO(ctx, feature_p->exts, feature->exts, options, u, lys_compile_ext, ret, done);
@@ -1129,6 +1137,7 @@ baseerror:
         LY_CHECK_ERR_RET(!(*range), LOGMEM(ctx->ctx), LY_EMEM);
     }
 
+    /* we rewrite the following values as the types chain is being processed */
     if (range_p->eapptag) {
         lydict_remove(ctx->ctx, (*range)->eapptag);
         (*range)->eapptag = lydict_insert(ctx->ctx, range_p->eapptag, 0);
@@ -1136,6 +1145,14 @@ baseerror:
     if (range_p->emsg) {
         lydict_remove(ctx->ctx, (*range)->emsg);
         (*range)->emsg = lydict_insert(ctx->ctx, range_p->emsg, 0);
+    }
+    if (range_p->dsc) {
+        lydict_remove(ctx->ctx, (*range)->dsc);
+        (*range)->dsc = lydict_insert(ctx->ctx, range_p->dsc, 0);
+    }
+    if (range_p->ref) {
+        lydict_remove(ctx->ctx, (*range)->ref);
+        (*range)->ref = lydict_insert(ctx->ctx, range_p->ref, 0);
     }
     /* extensions are taken only from the last range by the caller */
 
@@ -1402,6 +1419,8 @@ lys_compile_type_patterns(struct lysc_ctx *ctx, struct lysp_restr *patterns_p, i
         }
         DUP_STRING(ctx->ctx, patterns_p[u].eapptag, (*pattern)->eapptag);
         DUP_STRING(ctx->ctx, patterns_p[u].emsg, (*pattern)->emsg);
+        DUP_STRING(ctx->ctx, patterns_p[u].dsc, (*pattern)->dsc);
+        DUP_STRING(ctx->ctx, patterns_p[u].ref, (*pattern)->ref);
         COMPILE_ARRAY_GOTO(ctx, patterns_p[u].exts, (*pattern)->exts,
                            options, v, lys_compile_ext, ret, done);
     }
@@ -1472,6 +1491,8 @@ lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_
     LY_ARRAY_FOR(enums_p, u) {
         LY_ARRAY_NEW_RET(ctx->ctx, *enums, e, LY_EMEM);
         DUP_STRING(ctx->ctx, enums_p[u].name, e->name);
+        DUP_STRING(ctx->ctx, enums_p[u].ref, e->dsc);
+        DUP_STRING(ctx->ctx, enums_p[u].ref, e->ref);
         if (base_enums) {
             /* check the enum/bit presence in the base type - the set of enums/bits in the derived type must be a subset */
             LY_ARRAY_FOR(base_enums, v) {
@@ -3884,6 +3905,10 @@ lys_compile(struct lys_module *mod, int options)
     DUP_STRING(sp->ctx, sp->name, mod_c->name);
     DUP_STRING(sp->ctx, sp->ns, mod_c->ns);
     DUP_STRING(sp->ctx, sp->prefix, mod_c->prefix);
+    DUP_STRING(sp->ctx, sp->org, mod_c->org);
+    DUP_STRING(sp->ctx, sp->contact, mod_c->contact);
+    DUP_STRING(sp->ctx, sp->dsc, mod_c->dsc);
+    DUP_STRING(sp->ctx, sp->ref, mod_c->ref);
     if (sp->revs) {
         DUP_STRING(sp->ctx, sp->revs[0].date, mod_c->revision);
     }

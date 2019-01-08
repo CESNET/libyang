@@ -957,6 +957,8 @@ struct lysc_import {
  */
 struct lysc_when {
     struct lyxp_expr *cond;          /**< XPath when condition */
+    const char *dsc;                 /**< description */
+    const char *ref;                 /**< reference */
     struct lysc_node *context;       /**< context node of the expression */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 };
@@ -966,6 +968,8 @@ struct lysc_when {
  */
 struct lysc_ident {
     const char *name;                /**< identity name (mandatory), including possible prefix */
+    const char *dsc;                 /**< description */
+    const char *ref;                 /**< reference */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysc_ident **derived;     /**< list of (pointers to the) derived identities ([sized array](@ref sizedarrays)) */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
@@ -977,6 +981,8 @@ struct lysc_ident {
  */
 struct lysc_feature {
     const char *name;                /**< feature name (mandatory) */
+    const char *dsc;                 /**< description */
+    const char *ref;                 /**< reference */
     struct lysc_feature **depfeatures;/**< list of pointers to other features depending on this one ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
@@ -1006,11 +1012,6 @@ struct lysc_revision {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 };
 
-struct lysc_default {
-    struct lys_module *module;       /**< module where the default was defined */
-    const char *value;               /**< default value (with possible prefixes from the module where defined) */
-};
-
 struct lysc_range {
     struct lysc_range_part {
         union {                      /**< min boundary TODO decimal */
@@ -1022,6 +1023,8 @@ struct lysc_range {
             uint64_t max_u64;        /**< for uint8, uint16, uint32 and uint64 */
         };
     } *parts;                        /**< compiled range expression ([sized array](@ref sizedarrays)) */
+    const char *dsc;                 /**< description */
+    const char *ref;                 /**< reference */
     const char *emsg;                /**< error-message */
     const char *eapptag;             /**< error-app-tag value */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
@@ -1030,6 +1033,8 @@ struct lysc_range {
 struct lysc_pattern {
     pcre *expr;                      /**< compiled regular expression */
     pcre_extra *expr_extra;          /**< additional information to speed up matching */
+    const char *dsc;                 /**< description */
+    const char *ref;                 /**< reference */
     const char *emsg;                /**< error-message */
     const char *eapptag;             /**< error-app-tag value */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
@@ -1040,6 +1045,8 @@ struct lysc_pattern {
 struct lysc_must {
     struct lys_module *module;       /**< module where the must was defined */
     struct lyxp_expr *cond;          /**< XPath when condition */
+    const char *dsc;                 /**< description */
+    const char *ref;                 /**< reference */
     const char *emsg;                /**< error-message */
     const char *eapptag;             /**< error-app-tag value */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
@@ -1085,6 +1092,8 @@ struct lysc_type_enum {
     uint32_t refcount;               /**< reference counter for type sharing */
     struct lysc_type_enum_item {
         const char *name;            /**< enumeration identifier */
+        const char *dsc;             /**< description */
+        const char *ref;             /**< reference */
         struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
         struct lysc_ext_instance *exts;    /**< list of the extension instances ([sized array](@ref sizedarrays)) */
         int32_t value;               /**< integer value associated with the enumeration */
@@ -1126,6 +1135,8 @@ struct lysc_type_bits {
     uint32_t refcount;               /**< reference counter for type sharing */
     struct lysc_type_bits_item {
         const char *name;            /**< bit identifier */
+        const char *dsc;             /**< description */
+        const char *ref;             /**< reference */
         struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
         struct lysc_ext_instance *exts;    /**< list of the extension instances ([sized array](@ref sizedarrays)) */
         uint32_t position;           /**< non-negative integer value associated with the bit */
@@ -1372,6 +1383,10 @@ struct lysc_module {
     const char *ns;                  /**< namespace of the module (mandatory) */
     const char *prefix;              /**< module prefix (mandatory) */
     const char *revision;            /**< the revision of the module */
+    const char *org;                 /**< party/company responsible for the module */
+    const char *contact;             /**< contact information for the module */
+    const char *dsc;                 /**< description of the module */
+    const char *ref;                 /**< cross-reference for the module */
     struct lysc_import *imports;     /**< list of imported modules ([sized array](@ref sizedarrays)) */
 
     struct lysc_feature *features;   /**< list of feature definitions ([sized array](@ref sizedarrays)) */

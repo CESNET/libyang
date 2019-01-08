@@ -451,6 +451,8 @@ static void
 lysc_when_free(struct ly_ctx *ctx, struct lysc_when *w)
 {
     lyxp_expr_free(ctx, w->cond);
+    FREE_STRING(ctx, w->dsc);
+    FREE_STRING(ctx, w->ref);
     FREE_ARRAY(ctx, w->exts, lysc_ext_instance_free);
 }
 
@@ -460,6 +462,8 @@ lysc_must_free(struct ly_ctx *ctx, struct lysc_must *must)
     lyxp_expr_free(ctx, must->cond);
     FREE_STRING(ctx, must->emsg);
     FREE_STRING(ctx, must->eapptag);
+    FREE_STRING(ctx, must->dsc);
+    FREE_STRING(ctx, must->ref);
     FREE_ARRAY(ctx, must->exts, lysc_ext_instance_free);
 }
 
@@ -475,6 +479,8 @@ static void
 lysc_ident_free(struct ly_ctx *ctx, struct lysc_ident *ident)
 {
     FREE_STRING(ctx, ident->name);
+    FREE_STRING(ctx, ident->dsc);
+    FREE_STRING(ctx, ident->ref);
     FREE_ARRAY(ctx, ident->iffeatures, lysc_iffeature_free);
     LY_ARRAY_FREE(ident->derived);
     FREE_ARRAY(ctx, ident->exts, lysc_ext_instance_free);
@@ -484,6 +490,8 @@ static void
 lysc_feature_free(struct ly_ctx *ctx, struct lysc_feature *feat)
 {
     FREE_STRING(ctx, feat->name);
+    FREE_STRING(ctx, feat->dsc);
+    FREE_STRING(ctx, feat->ref);
     FREE_ARRAY(ctx, feat->iffeatures, lysc_iffeature_free);
     LY_ARRAY_FREE(feat->depfeatures);
     FREE_ARRAY(ctx, feat->exts, lysc_ext_instance_free);
@@ -495,6 +503,8 @@ lysc_range_free(struct ly_ctx *ctx, struct lysc_range *range)
     LY_ARRAY_FREE(range->parts);
     FREE_STRING(ctx, range->eapptag);
     FREE_STRING(ctx, range->emsg);
+    FREE_STRING(ctx, range->dsc);
+    FREE_STRING(ctx, range->ref);
     FREE_ARRAY(ctx, range->exts, lysc_ext_instance_free);
 }
 
@@ -508,6 +518,8 @@ lysc_pattern_free(struct ly_ctx *ctx, struct lysc_pattern **pattern)
     pcre_free_study((*pattern)->expr_extra);
     FREE_STRING(ctx, (*pattern)->eapptag);
     FREE_STRING(ctx, (*pattern)->emsg);
+    FREE_STRING(ctx, (*pattern)->dsc);
+    FREE_STRING(ctx, (*pattern)->ref);
     FREE_ARRAY(ctx, (*pattern)->exts, lysc_ext_instance_free);
     free(*pattern);
 }
@@ -516,6 +528,8 @@ static void
 lysc_enum_item_free(struct ly_ctx *ctx, struct lysc_type_enum_item *item)
 {
     FREE_STRING(ctx, item->name);
+    FREE_STRING(ctx, item->dsc);
+    FREE_STRING(ctx, item->ref);
     FREE_ARRAY(ctx, item->iffeatures, lysc_iffeature_free);
     FREE_ARRAY(ctx, item->exts, lysc_ext_instance_free);
 }
@@ -716,6 +730,10 @@ lysc_module_free_(struct lysc_module *module)
     FREE_STRING(ctx, module->ns);
     FREE_STRING(ctx, module->prefix);
     FREE_STRING(ctx, module->revision);
+    FREE_STRING(ctx, module->org);
+    FREE_STRING(ctx, module->contact);
+    FREE_STRING(ctx, module->dsc);
+    FREE_STRING(ctx, module->ref);
 
     FREE_ARRAY(ctx, module->imports, lysc_import_free);
     FREE_ARRAY(ctx, module->features, lysc_feature_free);
