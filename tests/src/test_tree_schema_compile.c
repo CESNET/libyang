@@ -2335,7 +2335,7 @@ test_refine(void **state)
                                         "leaf-list ll {type mytype; default goodbye; max-elements 6;}"
                                         "choice ch {default a; leaf a {type int8;}leaf b{type uint8;}}"
                                         "leaf x {type mytype; mandatory true; must 1;}"
-                                        "anydata a {mandatory false; if-feature f;}"
+                                        "anydata a {mandatory false; if-feature f; description original; reference original;}"
                                         "container c {config false; leaf l {type string;}}}}}", LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
 
@@ -2343,8 +2343,8 @@ test_refine(void **state)
                                         "uses g:grp {refine c/l {default hello; config false;}"
                                         "refine c/ll {default hello;default world; min-elements 2; max-elements 5;}"
                                         "refine c/ch {default b;config true; if-feature fa;}"
-                                        "refine c/x {mandatory false; must ../ll;}"
-                                        "refine c/a {mandatory true; must 1; if-feature fa;}"
+                                        "refine c/x {mandatory false; must ../ll;description refined; reference refined;}"
+                                        "refine c/a {mandatory true; must 1; if-feature fa;description refined; reference refined;}"
                                         "refine c/c {config true;presence indispensable;}}}", LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
     assert_non_null((parent = mod->compiled->data));
@@ -2378,6 +2378,8 @@ test_refine(void **state)
     assert_string_equal("cheers!", ((struct lysc_node_leaf*)child)->dflt);
     assert_non_null(((struct lysc_node_leaf*)child)->musts);
     assert_int_equal(2, LY_ARRAY_SIZE(((struct lysc_node_leaf*)child)->musts));
+    assert_string_equal("refined", child->dsc);
+    assert_string_equal("refined", child->ref);
     assert_non_null(child = child->next);
     assert_int_equal(LYS_ANYDATA, child->nodetype);
     assert_string_equal("a", child->name);
@@ -2386,6 +2388,8 @@ test_refine(void **state)
     assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_node_anydata*)child)->musts));
     assert_non_null(child->iffeatures);
     assert_int_equal(2, LY_ARRAY_SIZE(child->iffeatures));
+    assert_string_equal("refined", child->dsc);
+    assert_string_equal("refined", child->ref);
     assert_non_null(child = child->next);
     assert_int_equal(LYS_CONTAINER, child->nodetype);
     assert_string_equal("c", child->name);
