@@ -1177,6 +1177,8 @@ struct lysc_node {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
     const char *name;                /**< node name (mandatory) */
+    const char *dsc;                 /**< description */
+    const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lysc_when *when;          /**< when statement */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
@@ -1194,6 +1196,8 @@ struct lysc_node_container {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
     const char *name;                /**< node name (mandatory) */
+    const char *dsc;                 /**< description */
+    const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lysc_when *when;          /**< when statement */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
@@ -1216,6 +1220,8 @@ struct lysc_node_case {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
     const char *name;                /**< name of the case, including the implicit case */
+    const char *dsc;                 /**< description */
+    const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lysc_when *when;          /**< when statement */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
@@ -1238,6 +1244,8 @@ struct lysc_node_choice {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
     const char *name;                /**< node name (mandatory) */
+    const char *dsc;                 /**< description */
+    const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lysc_when *when;          /**< when statement */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
@@ -1260,6 +1268,8 @@ struct lysc_node_leaf {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
     const char *name;                /**< node name (mandatory) */
+    const char *dsc;                 /**< description */
+    const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lysc_when *when;          /**< when statement */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
@@ -1283,6 +1293,8 @@ struct lysc_node_leaflist {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
     const char *name;                /**< node name (mandatory) */
+    const char *dsc;                 /**< description */
+    const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lysc_when *when;          /**< when statement */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
@@ -1309,6 +1321,8 @@ struct lysc_node_list {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
     const char *name;                /**< node name (mandatory) */
+    const char *dsc;                 /**< description */
+    const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lysc_when *when;          /**< when statement */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
@@ -1336,6 +1350,8 @@ struct lysc_node_anydata {
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
     const char *name;                /**< node name (mandatory) */
+    const char *dsc;                 /**< description */
+    const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lysc_when *when;          /**< when statement */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */

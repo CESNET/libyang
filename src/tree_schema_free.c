@@ -666,6 +666,8 @@ lysc_node_free(struct ly_ctx *ctx, struct lysc_node *node)
 {
     /* common part */
     FREE_STRING(ctx, node->name);
+    FREE_STRING(ctx, node->dsc);
+    FREE_STRING(ctx, node->ref);
 
     /* nodetype-specific part */
     switch(node->nodetype) {

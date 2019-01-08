@@ -3321,6 +3321,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int option
 {
     struct lysp_node *node_p;
     struct lysc_node *node, *child;
+    /* context_node_fake allows us to temporarily isolate the nodes inserted from the grouping instead of uses */
     struct lysc_node_container context_node_fake =
         {.nodetype = LYS_CONTAINER,
          .module = ctx->mod,
@@ -3433,6 +3434,8 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int option
         context_node_fake.child->prev = parent ? lysc_node_children(parent)->prev : ctx->mod->compiled->data->prev;
     }
 
+    /* TODO: apply augment */
+
     /* reload previous context's mod_def */
     ctx->mod_def = mod_old;
 
@@ -3487,8 +3490,17 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int option
             }
         }
 
-        /* description refine not applicable */
-        /* reference refine not applicable */
+        /* description */
+        if (rfn->dsc) {
+            FREE_STRING(ctx->ctx, node->dsc);
+            node->dsc = lydict_insert(ctx->ctx, rfn->dsc, 0);
+        }
+
+        /* reference */
+        if (rfn->ref) {
+            FREE_STRING(ctx->ctx, node->ref);
+            node->ref = lydict_insert(ctx->ctx, rfn->ref, 0);
+        }
 
         /* config */
         if (rfn->flags & LYS_CONFIG_MASK) {
@@ -3761,6 +3773,8 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, st
         node->sp = node_p;
     }
     DUP_STRING(ctx->ctx, node_p->name, node->name);
+    DUP_STRING(ctx->ctx, node_p->dsc, node->dsc);
+    DUP_STRING(ctx->ctx, node_p->ref, node->ref);
     COMPILE_MEMBER_GOTO(ctx, node_p->when, node->when, options, lys_compile_when, ret, error);
     COMPILE_ARRAY_GOTO(ctx, node_p->iffeatures, node->iffeatures, options, u, lys_compile_iffeature, ret, error);
     COMPILE_ARRAY_GOTO(ctx, node_p->exts, node->exts, options, u, lys_compile_ext, ret, error);
