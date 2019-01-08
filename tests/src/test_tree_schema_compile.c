@@ -891,6 +891,22 @@ test_type_range(void **state)
     assert_non_null(((struct lysc_type_num*)type)->range->parts);
     assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_type_num*)type)->range->parts));
 
+    assert_non_null(mod = lys_parse_mem(ctx, "module j {namespace urn:j;prefix j;"
+                                             "typedef mytype {type uint8 {range 1..100{description \"one to hundred\";reference A;}}}"
+                                             "leaf l {type mytype {range 1..10 {description \"one to ten\";reference B;}}}}", LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_compile(mod, 0));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(1, type->refcount);
+    assert_int_equal(LY_TYPE_UINT8, type->basetype);
+    assert_non_null(((struct lysc_type_num*)type)->range);
+    assert_string_equal("one to ten", ((struct lysc_type_num*)type)->range->dsc);
+    assert_string_equal("B", ((struct lysc_type_num*)type)->range->ref);
+    assert_non_null(((struct lysc_type_num*)type)->range->parts);
+    assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_type_num*)type)->range->parts));
+    assert_int_equal(1, ((struct lysc_type_num*)type)->range->parts[0].min_u64);
+    assert_int_equal(10, ((struct lysc_type_num*)type)->range->parts[0].max_u64);
+
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
 }
