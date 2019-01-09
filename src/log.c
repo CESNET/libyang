@@ -523,7 +523,7 @@ ly_vlog_build_path(enum LY_VLOG_ELEM elem_type, const void *elem, char **path, i
 {
     int i, j, yang_data_extension = 0;
     struct lys_node_list *slist;
-    struct lys_node *sparent = NULL;
+    struct lys_node *sparent;
     struct lyd_node *dlist, *diter;
     const struct lys_module *top_smodule = NULL;
     const char *name, *prefix = NULL, *val_end, *val_start, *ext_name;
@@ -544,12 +544,14 @@ ly_vlog_build_path(enum LY_VLOG_ELEM elem_type, const void *elem, char **path, i
             elem = ((struct lyxml_elem *)elem)->parent;
             break;
         case LY_VLOG_LYS:
-            if (!top_smodule && !schema_all_prefixes) {
+            if (!top_smodule) {
                 /* remember the top module, it will act as the current module */
-                top_smodule = lys_node_module((struct lys_node *)elem);
+                for (sparent = (struct lys_node *)elem; lys_parent(sparent); sparent = lys_parent(sparent));
+                top_smodule = lys_node_module(sparent);
             }
 
-            if (!((struct lys_node *)elem)->parent || lys_node_module((struct lys_node *)elem) != top_smodule) {
+            if (!((struct lys_node *)elem)->parent || (lys_node_module((struct lys_node *)elem) != top_smodule)
+                    || schema_all_prefixes) {
                 prefix = lys_node_module((struct lys_node *)elem)->name;
             } else {
                 prefix = NULL;

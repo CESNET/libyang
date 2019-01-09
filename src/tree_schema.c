@@ -4339,16 +4339,6 @@ apply_aug(struct lys_node_augment *augment, struct unres_schema *unres)
         goto success;
     }
 
-    /* reconnect augmenting data into the target - add them to the target child list */
-    if (augment->target->child) {
-        child = augment->target->child->prev;
-        child->next = augment->child;
-        augment->target->child->prev = augment->child->prev;
-        augment->child->prev = child;
-    } else {
-        augment->target->child = augment->child;
-    }
-
     /* inherit config information from actual parent */
     for (parent = augment->target; parent && !(parent->nodetype & (LYS_NOTIF | LYS_INPUT | LYS_OUTPUT | LYS_RPC)); parent = lys_parent(parent));
     clear_config = (parent) ? 1 : 0;
@@ -4373,6 +4363,16 @@ apply_aug(struct lys_node_augment *augment, struct unres_schema *unres)
                 return -1;
             }
         }
+    }
+
+    /* reconnect augmenting data into the target - add them to the target child list */
+    if (augment->target->child) {
+        child = augment->target->child->prev;
+        child->next = augment->child;
+        augment->target->child->prev = augment->child->prev;
+        augment->child->prev = child;
+    } else {
+        augment->target->child = augment->child;
     }
 
 success:
@@ -4822,7 +4822,7 @@ lys_make_implemented_r(struct lys_module *module, struct unres_schema *unres)
 
         /* apply augment */
         if ((module->augment[i].flags & LYS_NOTAPPLIED) && apply_aug(&module->augment[i], unres)) {
-            return EXIT_FAILURE;
+            return -1;
         }
     }
 
@@ -4851,7 +4851,7 @@ lys_make_implemented_r(struct lys_module *module, struct unres_schema *unres)
 
             /* apply augment */
             if ((module->inc[i].submodule->augment[j].flags & LYS_NOTAPPLIED) && apply_aug(&module->inc[i].submodule->augment[j], unres)) {
-                return EXIT_FAILURE;
+                return -1;
             }
         }
 
@@ -4874,7 +4874,7 @@ lys_make_implemented_r(struct lys_module *module, struct unres_schema *unres)
                 if (((struct lys_node_leaf *)node)->type.base == LY_TYPE_LEAFREF) {
                     if (unres_schema_add_node(module, unres, &((struct lys_node_leaf *)node)->type,
                                               UNRES_TYPE_LEAFREF, node) == -1) {
-                        return EXIT_FAILURE;
+                        return -1;
                     }
                 }
             }
@@ -4995,7 +4995,7 @@ lys_path(const struct lys_node *node, int options)
         return NULL;
     }
 
-    if (ly_vlog_build_path(LY_VLOG_LYS, node, &buf, !options, 0)) {
+    if (ly_vlog_build_path(LY_VLOG_LYS, node, &buf, (options & LYS_PATH_FIRST_PREFIX) ? 0 : 1, 0)) {
         return NULL;
     }
 
