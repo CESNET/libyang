@@ -716,7 +716,7 @@ lyb_parse_value(struct lys_type *type, struct lyd_node_leaf_list *leaf, struct l
     LYB_HAVE_READ_RETURN(r, data, -1);
 
     /* union is handled specially */
-    if (type->base == LY_TYPE_UNION) {
+    if ((type->base == LY_TYPE_UNION) && !(*value_flags & LY_VALUE_USER)) {
         assert(*value_type == LY_TYPE_STRING);
 
         *value_str = value->string;
