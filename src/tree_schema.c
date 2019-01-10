@@ -124,7 +124,7 @@ repeat:
         goto repeat;
     default:
         /* we should not be here */
-        LOGINT(last->module->compiled->ctx);
+        LOGINT(last->module->ctx);
         return NULL;
     }
 
@@ -255,9 +255,10 @@ lys_feature_change(const struct lysc_module *mod, const char *name, int value)
     struct lysc_feature *f, **df;
     struct lysc_iffeature *iff;
     struct ly_set *changed;
+    struct ly_ctx *ctx = mod->mod->ctx; /* shortcut */
 
     if (!mod->features) {
-        LOGERR(mod->ctx, LY_EINVAL, "Unable to switch feature since the module \"%s\" has no features.", mod->name);
+        LOGERR(ctx, LY_EINVAL, "Unable to switch feature since the module \"%s\" has no features.", mod->mod->name);
         return LY_EINVAL;
     }
 
@@ -291,7 +292,7 @@ run:
                             ++disabled_count;
                             goto next;
                         } else {
-                            LOGERR(mod->ctx, LY_EDENIED,
+                            LOGERR(ctx, LY_EDENIED,
                                    "Feature \"%s\" cannot be enabled since it is disabled by its if-feature condition(s).",
                                    f->name);
                             ly_set_free(changed, NULL);
@@ -319,7 +320,7 @@ next:
     }
 
     if (!all && !changed->count) {
-        LOGERR(mod->ctx, LY_EINVAL, "Feature \"%s\" not found in module \"%s\".", name, mod->name);
+        LOGERR(ctx, LY_EINVAL, "Feature \"%s\" not found in module \"%s\".", name, mod->mod->name);
         ly_set_free(changed, NULL);
         return LY_EINVAL;
     }
@@ -330,7 +331,7 @@ next:
             /* ... print errors */
             for (u = 0; disabled_count && u < LY_ARRAY_SIZE(mod->features); ++u) {
                 if (!(mod->features[u].flags & LYS_FENABLED)) {
-                    LOGERR(mod->ctx, LY_EDENIED,
+                    LOGERR(ctx, LY_EDENIED,
                            "Feature \"%s\" cannot be enabled since it is disabled by its if-feature condition(s).",
                            mod->features[u].name);
                     --disabled_count;
@@ -453,25 +454,80 @@ lys_is_disabled(const struct lysc_node *node, int recursive)
     return NULL;
 }
 
-static void
-lys_latest_switch(struct lys_module *old, struct lysp_module *new)
+struct lysp_submodule *
+lys_parse_mem_submodule(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, struct ly_parser_ctx *main_ctx,
+                        LY_ERR (*custom_check)(struct ly_ctx*, struct lysp_module*, struct lysp_submodule*, void*), void *check_data)
 {
-    if (old->parsed) {
-        new->latest_revision = old->parsed->latest_revision;
-        old->parsed->latest_revision = 0;
+    LY_ERR ret = LY_EINVAL;
+    struct lysp_submodule *submod = NULL, *latest_sp;
+    struct ly_parser_ctx context = {0};
+
+    LY_CHECK_ARG_RET(ctx, ctx, data, NULL);
+
+    context.ctx = ctx;
+    context.line = 1;
+
+    /* map the typedefs and groupings list from main context to the submodule's context */
+    memcpy(&context.tpdfs_nodes, &main_ctx->tpdfs_nodes, sizeof main_ctx->tpdfs_nodes);
+    memcpy(&context.grps_nodes, &main_ctx->grps_nodes, sizeof main_ctx->grps_nodes);
+
+    switch (format) {
+    case LYS_IN_YIN:
+        /* TODO not yet supported
+        mod = yin_read_module();
+        */
+        break;
+    case LYS_IN_YANG:
+        ret = yang_parse_submodule(&context, data, &submod);
+        break;
+    default:
+        LOGERR(context.ctx, LY_EINVAL, "Invalid schema input format.");
+        break;
     }
-    if (old->compiled) {
-        new->latest_revision = old->parsed->latest_revision;
-        old->compiled->latest_revision = 0;
+    LY_CHECK_RET(ret, NULL);
+
+    /* make sure that the newest revision is at position 0 */
+    lysp_sort_revisions(submod->revs);
+
+    if (custom_check) {
+        LY_CHECK_GOTO(custom_check(context.ctx, NULL, submod, check_data), error);
     }
+
+    /* decide the latest revision */
+    latest_sp = ly_ctx_get_submodule(context.ctx, submod->belongsto, submod->name, NULL);
+    if (latest_sp) {
+        if (submod->revs) {
+            if (!latest_sp->revs) {
+                /* latest has no revision, so mod is anyway newer */
+                submod->latest_revision = latest_sp->latest_revision;
+                latest_sp->latest_revision = 0;
+            } else {
+                if (strcmp(submod->revs[0].date, latest_sp->revs[0].date) > 0) {
+                    submod->latest_revision = latest_sp->latest_revision;
+                    latest_sp->latest_revision = 0;
+                }
+            }
+        }
+    } else {
+        submod->latest_revision = 1;
+    }
+
+    /* remap possibly changed and reallocated typedefs and groupings list back to the main context */
+    memcpy(&main_ctx->tpdfs_nodes, &context.tpdfs_nodes, sizeof main_ctx->tpdfs_nodes);
+    memcpy(&main_ctx->grps_nodes, &context.grps_nodes, sizeof main_ctx->grps_nodes);
+
+    return submod;
+error:
+    lysp_submodule_free(ctx, submod);
+    return NULL;
 }
 
 struct lys_module *
-lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int implement, struct ly_parser_ctx *main_ctx,
-               LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, void *data), void *check_data)
+lys_parse_mem_module(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int implement,
+                     LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data),
+                     void *check_data)
 {
     struct lys_module *mod = NULL, *latest, *mod_dup;
-    struct lysp_module *latest_p;
     struct lysp_import *imp;
     struct lysp_include *inc;
     LY_ERR ret = LY_EINVAL;
@@ -483,95 +539,64 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int im
     context.ctx = ctx;
     context.line = 1;
 
-    if (main_ctx) {
-        /* map the typedefs and groupings list from main context to the submodule's context */
-        memcpy(&context.tpdfs_nodes, &main_ctx->tpdfs_nodes, sizeof main_ctx->tpdfs_nodes);
-        memcpy(&context.grps_nodes, &main_ctx->grps_nodes, sizeof main_ctx->grps_nodes);
-    }
-
     mod = calloc(1, sizeof *mod);
     LY_CHECK_ERR_RET(!mod, LOGMEM(ctx), NULL);
+    mod->ctx = ctx;
 
     switch (format) {
     case LYS_IN_YIN:
         /* TODO not yet supported
-        mod = yin_read_module(ctx, data, revision, implement);
+        mod = yin_read_module();
         */
         break;
     case LYS_IN_YANG:
-        ret = yang_parse(&context, data, &mod->parsed);
+        ret = yang_parse_module(&context, data, mod);
         break;
     default:
         LOGERR(ctx, LY_EINVAL, "Invalid schema input format.");
         break;
     }
-    LY_CHECK_ERR_RET(ret, free(mod), NULL);
+    LY_CHECK_ERR_RET(ret, lys_module_free(mod, NULL), NULL);
 
     /* make sure that the newest revision is at position 0 */
     lysp_sort_revisions(mod->parsed->revs);
 
+    if (custom_check) {
+        LY_CHECK_GOTO(custom_check(ctx, mod->parsed, NULL, check_data), error);
+    }
+
     if (implement) {
         /* mark the loaded module implemented */
-        if (ly_ctx_get_module_implemented(ctx, mod->parsed->name)) {
-            LOGERR(ctx, LY_EDENIED, "Module \"%s\" is already implemented in the context.", mod->parsed->name);
+        if (ly_ctx_get_module_implemented(ctx, mod->name)) {
+            LOGERR(ctx, LY_EDENIED, "Module \"%s\" is already implemented in the context.", mod->name);
             goto error;
         }
-        mod->parsed->implemented = 1;
+        mod->implemented = 1;
     }
 
-    if (custom_check) {
-        LY_CHECK_GOTO(custom_check(ctx, mod->parsed, check_data), error);
-    }
-
-    if (mod->parsed->submodule) { /* submodule */
-        if (!main_ctx) {
-            LOGERR(ctx, LY_EDENIED, "Input data contains submodule \"%s\" which cannot be parsed directly without its main module.",
-                   mod->parsed->name);
-            goto error;
-        }
-        /* decide the latest revision */
-        latest_p = ly_ctx_get_submodule(ctx, mod->parsed->belongsto, mod->parsed->name, NULL);
-        if (latest_p) {
+    /* check for duplicity in the context */
+    mod_dup = (struct lys_module*)ly_ctx_get_module(ctx, mod->name, mod->parsed->revs ? mod->parsed->revs[0].date : NULL);
+    if (mod_dup) {
+        if (mod_dup->parsed) {
+            /* error */
             if (mod->parsed->revs) {
-                if (!latest_p->revs) {
-                    /* latest has no revision, so mod is anyway newer */
-                    mod->parsed->latest_revision = latest_p->latest_revision;
-                    latest_p->latest_revision = 0;
-                } else {
-                    if (strcmp(mod->parsed->revs[0].date, latest_p->revs[0].date) > 0) {
-                        mod->parsed->latest_revision = latest_p->latest_revision;
-                        latest_p->latest_revision = 0;
-                    }
-                }
-            }
-        } else {
-            mod->parsed->latest_revision = 1;
-        }
-        /* remap possibly changed and reallocated typedefs and groupings list back to the main context */
-        memcpy(&main_ctx->tpdfs_nodes, &context.tpdfs_nodes, sizeof main_ctx->tpdfs_nodes);
-        memcpy(&main_ctx->grps_nodes, &context.grps_nodes, sizeof main_ctx->grps_nodes);
-    } else { /* module */
-        /* check for duplicity in the context */
-        mod_dup = (struct lys_module*)ly_ctx_get_module(ctx, mod->parsed->name, mod->parsed->revs ? mod->parsed->revs[0].date : NULL);
-        if (mod_dup) {
-            if (mod_dup->parsed) {
-                /* error */
-                if (mod->parsed->revs) {
-                    LOGERR(ctx, LY_EEXIST, "Module \"%s\" of revision \"%s\" is already present in the context.",
-                           mod->parsed->name, mod->parsed->revs[0].date);
-                } else {
-                    LOGERR(ctx, LY_EEXIST, "Module \"%s\" with no revision is already present in the context.",
-                           mod->parsed->name);
-                }
-                goto error;
+                LOGERR(ctx, LY_EEXIST, "Module \"%s\" of revision \"%s\" is already present in the context.",
+                       mod->name, mod->parsed->revs[0].date);
             } else {
-                /* add the parsed data to the currently compiled-only module in the context */
-                mod_dup->parsed = mod->parsed;
-                free(mod);
-                mod = mod_dup;
-                goto finish_parsing;
+                LOGERR(ctx, LY_EEXIST, "Module \"%s\" with no revision is already present in the context.",
+                       mod->name);
             }
+            goto error;
+        } else {
+            /* add the parsed data to the currently compiled-only module in the context */
+            mod_dup->parsed = mod->parsed;
+            mod_dup->parsed->mod = mod_dup;
+            mod->parsed = NULL;
+            lys_module_free(mod, NULL);
+            mod = mod_dup;
+            goto finish_parsing;
         }
+    }
 
 #if 0
     /* hack for NETCONF's edit-config's operation attribute. It is not defined in the schema, but since libyang
@@ -579,7 +604,7 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int im
      * internal part of libyang, we cannot add the annotation into the schema source, but we do it here to have
      * the anotation definitions available in the internal schema structure. There is another hack in schema
      * printers to do not print this internally added annotation. */
-    if (mod && ly_strequal(mod->name, "ietf-netconf", 0)) {
+    if (ly_strequal(mod->name, "ietf-netconf", 0)) {
         if (lyp_add_ietf_netconf_annotations(mod)) {
             lys_free(mod, NULL, 1, 1);
             return NULL;
@@ -587,53 +612,52 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int im
     }
 #endif
 
-        /* decide the latest revision */
-        latest = (struct lys_module*)ly_ctx_get_module_latest(ctx, mod->parsed->name);
-        if (latest) {
-            if (mod->parsed->revs) {
-                if ((latest->parsed && !latest->parsed->revs) || (!latest->parsed && !latest->compiled->revision)) {
-                    /* latest has no revision, so mod is anyway newer */
-                    lys_latest_switch(latest, mod->parsed);
-                } else {
-                    if (strcmp(mod->parsed->revs[0].date, latest->parsed ? latest->parsed->revs[0].date : latest->compiled->revision) > 0) {
-                        lys_latest_switch(latest, mod->parsed);
-                    }
-                }
+    /* decide the latest revision */
+    latest = (struct lys_module*)ly_ctx_get_module_latest(ctx, mod->name);
+    if (latest) {
+        if (mod->parsed->revs) {
+            if ((latest->parsed && !latest->parsed->revs) || (!latest->parsed && !latest->compiled->revision)) {
+                /* latest has no revision, so mod is anyway newer */
+                mod->latest_revision = latest->latest_revision;
+                latest->latest_revision = 0;
+            } else if (strcmp(mod->parsed->revs[0].date, latest->parsed ? latest->parsed->revs[0].date : latest->compiled->revision) > 0) {
+                mod->latest_revision = latest->latest_revision;
+                latest->latest_revision = 0;
             }
-        } else {
-            mod->parsed->latest_revision = 1;
         }
+    } else {
+        mod->latest_revision = 1;
+    }
 
-        /* add into context */
-        ly_set_add(&ctx->list, mod, LY_SET_OPT_USEASLIST);
+    /* add into context */
+    ly_set_add(&ctx->list, mod, LY_SET_OPT_USEASLIST);
 
 finish_parsing:
-        /* resolve imports */
-        mod->parsed->parsing = 1;
-        LY_ARRAY_FOR(mod->parsed->imports, u) {
-            imp = &mod->parsed->imports[u];
-            if (!imp->module && lysp_load_module(ctx, imp->name, imp->rev[0] ? imp->rev : NULL, 0, 0, &imp->module)) {
-                goto error_ctx;
-            }
-            /* check for importing the same module twice */
-            for (i = 0; i < u; ++i) {
-                if (imp->module == mod->parsed->imports[i].module) {
-                    LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "Single revision of the module \"%s\" referred twice.", imp->name);
-                    goto error_ctx;
-                }
-            }
+    /* resolve imports */
+    mod->parsed->parsing = 1;
+    LY_ARRAY_FOR(mod->parsed->imports, u) {
+        imp = &mod->parsed->imports[u];
+        if (!imp->module && lysp_load_module(ctx, imp->name, imp->rev[0] ? imp->rev : NULL, 0, 0, &imp->module)) {
+            goto error_ctx;
         }
-        LY_ARRAY_FOR(mod->parsed->includes, u) {
-            inc = &mod->parsed->includes[u];
-            if (!inc->submodule && lysp_load_submodule(&context, mod->parsed, inc)) {
+        /* check for importing the same module twice */
+        for (i = 0; i < u; ++i) {
+            if (imp->module == mod->parsed->imports[i].module) {
+                LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "Single revision of the module \"%s\" referred twice.", imp->name);
                 goto error_ctx;
             }
         }
-        mod->parsed->parsing = 0;
-
-        /* check name collisions - typedefs and groupings */
-        LY_CHECK_GOTO(lysp_check_typedefs(&context), error_ctx);
     }
+    LY_ARRAY_FOR(mod->parsed->includes, u) {
+        inc = &mod->parsed->includes[u];
+        if (!inc->submodule && lysp_load_submodule(&context, mod->parsed, inc)) {
+            goto error_ctx;
+        }
+    }
+    mod->parsed->parsing = 0;
+
+    /* check name collisions - typedefs and groupings */
+    LY_CHECK_GOTO(lysp_check_typedefs(&context, mod->parsed), error_ctx);
 
     return mod;
 
@@ -648,7 +672,7 @@ error:
 API struct lys_module *
 lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
 {
-    return lys_parse_mem_(ctx, data, format, 1, NULL, NULL, NULL);
+    return lys_parse_mem_module(ctx, data, format, 1, NULL, NULL);
 }
 
 static void
@@ -672,11 +696,14 @@ lys_parse_set_filename(struct ly_ctx *ctx, const char **filename, int fd)
 #endif
 }
 
-struct lys_module *
+void *
 lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, int implement, struct ly_parser_ctx *main_ctx,
-              LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, void *data), void *check_data)
+                    LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data),
+                    void *check_data)
 {
-    struct lys_module *mod;
+    void *result;
+    struct lys_module *mod = NULL;
+    struct lysp_submodule *submod = NULL;
     size_t length;
     char *addr;
 
@@ -692,25 +719,48 @@ lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, int implement, st
         return NULL;
     }
 
-    mod = lys_parse_mem_(ctx, addr, format, implement, main_ctx, custom_check, check_data);
+    if (main_ctx) {
+        result = submod = lys_parse_mem_submodule(ctx, addr, format, main_ctx, custom_check, check_data);
+    } else {
+        result = mod = lys_parse_mem_module(ctx, addr, format, implement, custom_check, check_data);
+    }
     ly_munmap(addr, length);
 
-    if (mod && !mod->parsed->filepath) {
-        lys_parse_set_filename(ctx, &mod->parsed->filepath, fd);
+    if (mod && !mod->filepath) {
+        lys_parse_set_filename(ctx, &mod->filepath, fd);
+    } else if (submod && !submod->filepath) {
+        lys_parse_set_filename(ctx, &submod->filepath, fd);
     }
 
-    return mod;
+    return result;
+}
+
+struct lys_module *
+lys_parse_fd_module(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, int implement,
+                    LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data),
+                    void *check_data)
+{
+    return (struct lys_module*)lys_parse_fd_(ctx, fd, format, implement, NULL, custom_check, check_data);
+}
+
+struct lysp_submodule *
+lys_parse_fd_submodule(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, struct ly_parser_ctx *main_ctx,
+                       LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data),
+                       void *check_data)
+{
+    assert(main_ctx);
+    return (struct lysp_submodule*)lys_parse_fd_(ctx, fd, format, 0, main_ctx, custom_check, check_data);
 }
 
 API struct lys_module *
 lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
 {
-    return lys_parse_fd_(ctx, fd, format, 1, NULL, NULL, NULL);
+    return lys_parse_fd_module(ctx, fd, format, 1, NULL, NULL);
 }
 
 struct lys_module *
-lys_parse_path_(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, int implement, struct ly_parser_ctx *main_ctx,
-                LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, void *data), void *check_data)
+lys_parse_path_(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, int implement,
+                LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data), void *check_data)
 {
     int fd;
     struct lys_module *mod;
@@ -722,7 +772,7 @@ lys_parse_path_(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, int i
     fd = open(path, O_RDONLY);
     LY_CHECK_ERR_RET(fd == -1, LOGERR(ctx, LY_ESYS, "Opening file \"%s\" failed (%s).", path, strerror(errno)), NULL);
 
-    mod = lys_parse_fd_(ctx, fd, format, implement, main_ctx, custom_check, check_data);
+    mod = lys_parse_fd_module(ctx, fd, format, implement, custom_check, check_data);
     close(fd);
     LY_CHECK_RET(!mod, NULL);
 
@@ -737,10 +787,10 @@ lys_parse_path_(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, int i
     dot = strrchr(filename, '.');
 
     /* name */
-    len = strlen(mod->parsed->name);
-    if (strncmp(filename, mod->parsed->name, len) ||
+    len = strlen(mod->name);
+    if (strncmp(filename, mod->name, len) ||
             ((rev && rev != &filename[len]) || (!rev && dot != &filename[len]))) {
-        LOGWRN(ctx, "File name \"%s\" does not match module name \"%s\".", filename, mod->parsed->name);
+        LOGWRN(ctx, "File name \"%s\" does not match module name \"%s\".", filename, mod->name);
     }
     if (rev) {
         len = dot - ++rev;
@@ -750,13 +800,13 @@ lys_parse_path_(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, int i
         }
     }
 
-    if (!mod->parsed->filepath) {
+    if (!mod->filepath) {
         /* store URI */
         char rpath[PATH_MAX];
         if (realpath(path, rpath) != NULL) {
-            mod->parsed->filepath = lydict_insert(ctx, rpath, 0);
+            mod->filepath = lydict_insert(ctx, rpath, 0);
         } else {
-            mod->parsed->filepath = lydict_insert(ctx, path, 0);
+            mod->filepath = lydict_insert(ctx, path, 0);
         }
     }
 
@@ -766,7 +816,7 @@ lys_parse_path_(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, int i
 API struct lys_module *
 lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format)
 {
-    return lys_parse_path_(ctx, path, format, 1, NULL, NULL, NULL);
+    return lys_parse_path_(ctx, path, format, 1, NULL, NULL);
 }
 
 API LY_ERR

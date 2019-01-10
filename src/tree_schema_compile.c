@@ -223,7 +223,7 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, int UNUSE
     LY_CHECK_ERR_RET(!mod->parsed->extensions,
                      LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                             "Extension instance \"%s\" refers \"%s\" module that does not contain extension definitions.",
-                            ext_p->name, mod->parsed->name),
+                            ext_p->name, mod->name),
                      LY_EVALID);
     name = &ext_p->name[u + 1];
     /* find the extension definition there */
@@ -314,7 +314,7 @@ lys_compile_iffeature(struct lysc_ctx *ctx, const char **value, int UNUSED(optio
 
     if (checkversion || expr_size > 1) {
         /* check that we have 1.1 module */
-        if (ctx->mod_def->parsed->version != LYS_VERSION_1_1) {
+        if (ctx->mod_def->version != LYS_VERSION_1_1) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
                    "Invalid value \"%s\" of if-feature - YANG 1.1 expression in YANG 1.0 module.", *value);
             return LY_EVALID;
@@ -460,7 +460,6 @@ lys_compile_import(struct lysc_ctx *ctx, struct lysp_import *imp_p, int options,
 {
     unsigned int u;
     struct lys_module *mod = NULL;
-    struct lysc_module *comp;
     LY_ERR ret = LY_SUCCESS;
 
     DUP_STRING(ctx->ctx, imp_p->prefix, imp->prefix);
@@ -471,21 +470,20 @@ lys_compile_import(struct lysc_ctx *ctx, struct lysp_import *imp_p, int options,
      * The compiled version is needed only for augments, deviates and leafrefs, so they are checked (and added,
      * if needed) when these nodes are finally being instantiated and validated at the end of schema compilation. */
     if (!imp->module->parsed) {
-        comp = imp->module->compiled;
-        /* try to get filepath from the compiled version */
-        if (comp->filepath) {
-            mod = (struct lys_module*)lys_parse_path(ctx->ctx, comp->filepath,
-                                 !strcmp(&comp->filepath[strlen(comp->filepath - 4)], ".yin") ? LYS_IN_YIN : LYS_IN_YANG);
+        /* try to use filepath if present */
+        if (imp->module->filepath) {
+            mod = (struct lys_module*)lys_parse_path(ctx->ctx, imp->module->filepath,
+                                 !strcmp(&imp->module->filepath[strlen(imp->module->filepath - 4)], ".yin") ? LYS_IN_YIN : LYS_IN_YANG);
             if (mod != imp->module) {
                 LOGERR(ctx->ctx, LY_EINT, "Filepath \"%s\" of the module \"%s\" does not match.",
-                       comp->filepath, comp->name);
+                       imp->module->filepath, imp->module->name);
                 mod = NULL;
             }
         }
         if (!mod) {
-            if (lysp_load_module(ctx->ctx, comp->name, comp->revision, 0, 1, &mod)) {
+            if (lysp_load_module(ctx->ctx, imp->module->name, imp->module->compiled->revision, 0, 1, &mod)) {
                 LOGERR(ctx->ctx, LY_ENOTFOUND, "Unable to reload \"%s\" module to import it into \"%s\", source data not found.",
-                       comp->name, ctx->mod->compiled->name);
+                       imp->module->name, ctx->mod->name);
                 return LY_ENOTFOUND;
             }
         }
@@ -537,7 +535,7 @@ lys_compile_identity_bases(struct lysc_ctx *ctx, const char **bases_p,  struct l
 
     assert(ident || bases);
 
-    if (LY_ARRAY_SIZE(bases_p) > 1 && ctx->mod_def->parsed->version < 2) {
+    if (LY_ARRAY_SIZE(bases_p) > 1 && ctx->mod_def->version < 2) {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
                "Multiple bases in %s are allowed only in YANG 1.1 modules.", ident ? "identity" : "identityref type");
         return LY_EVALID;
@@ -1482,7 +1480,7 @@ lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_
     uint32_t position = 0;
     struct lysc_type_enum_item *e, storage;
 
-    if (base_enums && ctx->mod_def->parsed->version < 2) {
+    if (base_enums && ctx->mod_def->version < 2) {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "%s type can be subtyped only in YANG 1.1 modules.",
                basetype == LY_TYPE_ENUM ? "Enumeration" : "Bits");
         return LY_EVALID;
@@ -1686,7 +1684,7 @@ lys_compile_leafref_predicate_validate(struct lysc_ctx *ctx, const char **predic
             if (!mod) {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                        "Invalid leafref path predicate \"%.*s\" - prefix \"%.*s\" not defined in module \"%s\".",
-                       *predicate - start, start, src_prefix_len, src_prefix, path_context->compiled->name);
+                       *predicate - start, start, src_prefix_len, src_prefix, path_context->name);
                 goto cleanup;
             }
         } else {
@@ -1704,7 +1702,7 @@ lys_compile_leafref_predicate_validate(struct lysc_ctx *ctx, const char **predic
         if (!src_node) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                    "Invalid leafref path predicate \"%.*s\" - predicate's key node \"%.*s\" not found.",
-                   *predicate - start, start, src_len, src, mod->compiled->name);
+                   *predicate - start, start, src_len, src, mod->name);
             goto cleanup;
         }
 
@@ -1812,7 +1810,7 @@ lys_compile_leafref_predicate_validate(struct lysc_ctx *ctx, const char **predic
                 goto cleanup;
             }
         }
-        if (!(dst_node->nodetype & (dst_node->module->compiled->version < LYS_VERSION_1_1 ? LYS_LEAF : LYS_LEAF | LYS_LEAFLIST))) {
+        if (!(dst_node->nodetype & (dst_node->module->version < LYS_VERSION_1_1 ? LYS_LEAF : LYS_LEAF | LYS_LEAFLIST))) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                    "Invalid leafref path predicate \"%.*s\" - rel-path_keyexpr \"%.*s\" refers %s instead of leaf.",
                    *predicate - start, start, path_key_expr - pke_start, pke_start, lys_nodetype2str(dst_node->nodetype));
@@ -2336,7 +2334,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16
     case LY_TYPE_LEAFREF:
         /* RFC 7950 9.9.3 - require-instance */
         if (type_p->flags & LYS_SET_REQINST) {
-            if (context_mod->version < LYS_VERSION_1_1) {
+            if (context_mod->mod->version < LYS_VERSION_1_1) {
                 if (tpdfname) {
                     LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
                            "Leafref type \"%s\" can be restricted by require-instance statement only in YANG 1.1 modules.", tpdfname);
@@ -2820,7 +2818,7 @@ lys_compile_node_leaflist(struct lysc_ctx *ctx, struct lysp_node *node_p, int op
             }
         }
     } else if (llist->type->basetype == LY_TYPE_EMPTY) {
-        if (ctx->mod_def->parsed->version < LYS_VERSION_1_1) {
+        if (ctx->mod_def->version < LYS_VERSION_1_1) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
                    "Leaf-list of type \"empty\" is allowed only in YANG 1.1 modules.");
             return LY_EVALID;
@@ -2921,7 +2919,7 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *node_p, int option
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS, "Key of the configuration list must not be status leaf.");
             return LY_EVALID;
         }
-        if (ctx->mod_def->parsed->version < LYS_VERSION_1_1) {
+        if (ctx->mod_def->version < LYS_VERSION_1_1) {
             /* YANG 1.0 denies key to be of empty type */
             if ((*key)->type->basetype == LY_TYPE_EMPTY) {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
@@ -3035,7 +3033,7 @@ lys_compile_node_choice_dflt(struct lysc_ctx *ctx, const char *dflt, struct lysc
     } else {
         name = dflt;
     }
-    if (prefix && (strncmp(prefix, node->module->compiled->prefix, prefix_len) || node->module->compiled->prefix[prefix_len] != '\0')) {
+    if (prefix && (strncmp(prefix, node->module->prefix, prefix_len) || node->module->prefix[prefix_len] != '\0')) {
         /* prefixed default case make sense only for the prefix of the schema itself */
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                "Invalid default case referencing a case from different YANG module (by prefix \"%.*s\").",
@@ -3486,7 +3484,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int option
                 node->flags |= LYS_SET_DFLT;
                 /* TODO check the default value according to type */
             } else if (node->nodetype == LYS_LEAFLIST) {
-                if (ctx->mod->compiled->version < 2) {
+                if (ctx->mod->version < 2) {
                     LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
                            "Invalid refine of default in leaf-list - the default statement is allowed only in YANG 1.1 modules.");
                     goto error;
@@ -3856,7 +3854,7 @@ lys_compile_submodule(struct lysc_ctx *ctx, struct lysp_include *inc, int option
     unsigned int u;
     LY_ERR ret = LY_SUCCESS;
     /* shortcuts */
-    struct lysp_module *submod = inc->submodule;
+    struct lysp_submodule *submod = inc->submodule;
     struct lysc_module *mainmod = ctx->mod->compiled;
 
     COMPILE_ARRAY_UNIQUE_GOTO(ctx, submod->features, mainmod->features, options, u, lys_compile_feature, ret, error);
@@ -3883,34 +3881,19 @@ lys_compile(struct lys_module *mod, int options)
     unsigned int u, v;
     LY_ERR ret = LY_SUCCESS;
 
-    LY_CHECK_ARG_RET(NULL, mod, mod->parsed, mod->parsed->ctx, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, mod, mod->parsed, mod->ctx, LY_EINVAL);
     sp = mod->parsed;
 
-    if (sp->submodule) {
-        LOGERR(sp->ctx, LY_EINVAL, "Submodules (%s) are not supposed to be compiled, compile only the main modules.", sp->name);
-        return LY_EINVAL;
-    }
-
-    ctx.ctx = sp->ctx;
+    ctx.ctx = mod->ctx;
     ctx.mod = mod;
     ctx.mod_def = mod;
 
     mod->compiled = mod_c = calloc(1, sizeof *mod_c);
-    LY_CHECK_ERR_RET(!mod_c, LOGMEM(sp->ctx), LY_EMEM);
-    mod_c->ctx = sp->ctx;
-    mod_c->implemented = sp->implemented;
-    mod_c->latest_revision = sp->latest_revision;
-    mod_c->version = sp->version;
+    LY_CHECK_ERR_RET(!mod_c, LOGMEM(mod->ctx), LY_EMEM);
+    mod_c->mod = mod;
 
-    DUP_STRING(sp->ctx, sp->name, mod_c->name);
-    DUP_STRING(sp->ctx, sp->ns, mod_c->ns);
-    DUP_STRING(sp->ctx, sp->prefix, mod_c->prefix);
-    DUP_STRING(sp->ctx, sp->org, mod_c->org);
-    DUP_STRING(sp->ctx, sp->contact, mod_c->contact);
-    DUP_STRING(sp->ctx, sp->dsc, mod_c->dsc);
-    DUP_STRING(sp->ctx, sp->ref, mod_c->ref);
     if (sp->revs) {
-        DUP_STRING(sp->ctx, sp->revs[0].date, mod_c->revision);
+        DUP_STRING(mod->ctx, sp->revs[0].date, mod_c->revision);
     }
     COMPILE_ARRAY_GOTO(&ctx, sp->imports, mod_c->imports, options, u, lys_compile_import, ret, error);
     LY_ARRAY_FOR(sp->includes, u) {

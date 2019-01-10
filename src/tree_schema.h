@@ -216,7 +216,7 @@ struct lysp_import {
  * @brief YANG include-stmt
  */
 struct lysp_include {
-    struct lysp_module *submodule;   /**< pointer to the parsed submodule structure
+    struct lysp_submodule *submodule;/**< pointer to the parsed submodule structure
                                          (mandatory, but resolved when the referring module is completely parsed) */
     const char *name;                /**< name of the included submodule (mandatory) */
     const char *dsc;                 /**< description */
@@ -866,24 +866,12 @@ typedef enum LYS_VERSION {
  * Simple structure corresponding to the YANG format. The schema is only syntactically validated.
  */
 struct lysp_module {
-    struct ly_ctx *ctx;              /**< libyang context of the module (mandatory) */
-    const char *name;                /**< name of the module (mandatory) */
-    const char *filepath;            /**< path, if the schema was read from a file, NULL in case of reading from memory */
-    union {
-        /* module */
-        const char *ns;              /**< namespace of the module (module - mandatory) */
-        /* submodule */
-        const char *belongsto;       /**< belongs to parent module (submodule - mandatory) */
-    };
-    const char *prefix;              /**< module prefix or submodule belongsto prefix of main module (mandatory) */
+    struct lys_module *mod;          /**< covering module structure */
+
     struct lysp_revision *revs;      /**< list of the module revisions ([sized array](@ref sizedarrays)), the first revision
                                           in the list is always the last (newest) revision of the module */
     struct lysp_import *imports;     /**< list of imported modules ([sized array](@ref sizedarrays)) */
     struct lysp_include *includes;   /**< list of included submodules ([sized array](@ref sizedarrays)) */
-    const char *org;                 /**< party/company responsible for the module */
-    const char *contact;             /**< contact information for the module */
-    const char *dsc;                 /**< description of the module */
-    const char *ref;                 /**< cross-reference for the module */
     struct lysp_ext *extensions;     /**< list of extension statements ([sized array](@ref sizedarrays)) */
     struct lysp_feature *features;   /**< list of feature definitions ([sized array](@ref sizedarrays)) */
     struct lysp_ident *identities;   /**< list of identities ([sized array](@ref sizedarrays)) */
@@ -896,13 +884,41 @@ struct lysp_module {
     struct lysp_deviation *deviations; /**< list of deviations ([sized array](@ref sizedarrays)) */
     struct lysp_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 
-    uint8_t submodule:1;             /**< flag to distinguish main modules and submodules */
-    uint8_t implemented:1;           /**< flag if the module is implemented, not just imported */
+    uint8_t parsing:1;               /**< flag for circular check */
+};
+
+struct lysp_submodule {
+    const char *belongsto;           /**< belongs to parent module (submodule - mandatory) */
+
+    struct lysp_revision *revs;      /**< list of the module revisions ([sized array](@ref sizedarrays)), the first revision
+                                          in the list is always the last (newest) revision of the module */
+    struct lysp_import *imports;     /**< list of imported modules ([sized array](@ref sizedarrays)) */
+    struct lysp_include *includes;   /**< list of included submodules ([sized array](@ref sizedarrays)) */
+    struct lysp_ext *extensions;     /**< list of extension statements ([sized array](@ref sizedarrays)) */
+    struct lysp_feature *features;   /**< list of feature definitions ([sized array](@ref sizedarrays)) */
+    struct lysp_ident *identities;   /**< list of identities ([sized array](@ref sizedarrays)) */
+    struct lysp_tpdf *typedefs;      /**< list of typedefs ([sized array](@ref sizedarrays)) */
+    struct lysp_grp *groupings;      /**< list of groupings ([sized array](@ref sizedarrays)) */
+    struct lysp_node *data;          /**< list of module's top-level data nodes (linked list) */
+    struct lysp_augment *augments;   /**< list of augments ([sized array](@ref sizedarrays)) */
+    struct lysp_action *rpcs;        /**< list of RPCs ([sized array](@ref sizedarrays)) */
+    struct lysp_notif *notifs;       /**< list of notifications ([sized array](@ref sizedarrays)) */
+    struct lysp_deviation *deviations; /**< list of deviations ([sized array](@ref sizedarrays)) */
+    struct lysp_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+
+    uint8_t parsing:1;               /**< flag for circular check */
+
     uint8_t latest_revision:2;       /**< flag to mark the latest available revision:
                                           1 - the latest revision in searchdirs was not searched yet and this is the
                                           latest revision in the current context
                                           2 - searchdirs were searched and this is the latest available revision */
-    uint8_t parsing:1;               /**< flag for circular check */
+    const char *name;                /**< name of the module (mandatory) */
+    const char *filepath;            /**< path, if the schema was read from a file, NULL in case of reading from memory */
+    const char *prefix;              /**< submodule belongsto prefix of main module (mandatory) */
+    const char *org;                 /**< party/company responsible for the module */
+    const char *contact;             /**< contact information for the module */
+    const char *dsc;                 /**< description of the module */
+    const char *ref;                 /**< cross-reference for the module */
     uint8_t version;                 /**< yang-version (LYS_VERSION values) */
 };
 
@@ -1377,16 +1393,8 @@ struct lysc_node_anydata {
  * Contains only the necessary information for the data validation.
  */
 struct lysc_module {
-    struct ly_ctx *ctx;              /**< libyang context of the module (mandatory) */
-    const char *name;                /**< name of the module (mandatory) */
-    const char *filepath;            /**< path, if the schema was read from a file, NULL in case of reading from memory */
-    const char *ns;                  /**< namespace of the module (mandatory) */
-    const char *prefix;              /**< module prefix (mandatory) */
+    struct lys_module *mod;          /**< covering module structure */
     const char *revision;            /**< the revision of the module */
-    const char *org;                 /**< party/company responsible for the module */
-    const char *contact;             /**< contact information for the module */
-    const char *dsc;                 /**< description of the module */
-    const char *ref;                 /**< cross-reference for the module */
     struct lysc_import *imports;     /**< list of imported modules ([sized array](@ref sizedarrays)) */
 
     struct lysc_feature *features;   /**< list of feature definitions ([sized array](@ref sizedarrays)) */
@@ -1395,13 +1403,6 @@ struct lysc_module {
     struct lysc_action *rpcs;        /**< list of RPCs ([sized array](@ref sizedarrays)) */
     struct lysc_notif *notifs;       /**< list of notifications ([sized array](@ref sizedarrays)) */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-
-    uint8_t implemented:1;           /**< flag if the module is implemented, not just imported */
-    uint8_t latest_revision:2;       /**< flag to mark the latest available revision:
-                                          1 - the latest revision in searchdirs was not searched yet and this is the
-                                          latest revision in the current context
-                                          2 - searchdirs were searched and this is the latest available revision */
-    uint8_t version;                 /**< yang-version (LYS_VERSION values) */
 };
 
 /**
@@ -1491,8 +1492,25 @@ int lysc_feature_value(const struct lysc_feature *feature);
  * @brief Available YANG schema tree structures representing YANG module.
  */
 struct lys_module {
+    struct ly_ctx *ctx;              /**< libyang context of the module (mandatory) */
+    const char *name;                /**< name of the module (mandatory) */
+    const char *ns;                  /**< namespace of the module (module - mandatory) */
+    const char *prefix;              /**< module prefix or submodule belongsto prefix of main module (mandatory) */
+    const char *filepath;            /**< path, if the schema was read from a file, NULL in case of reading from memory */
+    const char *org;                 /**< party/company responsible for the module */
+    const char *contact;             /**< contact information for the module */
+    const char *dsc;                 /**< description of the module */
+    const char *ref;                 /**< cross-reference for the module */
+
     struct lysp_module *parsed;      /**< Simply parsed (unresolved) YANG schema tree */
     struct lysc_module *compiled;    /**< Compiled and fully validated YANG schema tree for data parsing */
+
+    uint8_t implemented:1;           /**< flag if the module is implemented, not just imported */
+    uint8_t latest_revision:2;       /**< flag to mark the latest available revision:
+                                          1 - the latest revision in searchdirs was not searched yet and this is the
+                                          latest revision in the current context
+                                          2 - searchdirs were searched and this is the latest available revision */
+    uint8_t version;                 /**< yang-version (LYS_VERSION values) */
 };
 
 /**

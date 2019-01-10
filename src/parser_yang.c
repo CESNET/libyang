@@ -115,7 +115,7 @@
  * @param[in] PARENT parent statement where the KW is present - for logging.
  */
 #define YANG_CHECK_STMTVER2_RET(CTX, KW, PARENT) \
-    if ((CTX)->mod->version < 2) {LOGVAL_YANG((CTX), LY_VCODE_INCHILDSTMT2, KW, PARENT); return LY_EVALID;}
+    if ((CTX)->mod_version < 2) {LOGVAL_YANG((CTX), LY_VCODE_INCHILDSTMT2, KW, PARENT); return LY_EVALID;}
 
 static LY_ERR parse_container(struct ly_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
 static LY_ERR parse_uses(struct ly_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
@@ -1132,19 +1132,20 @@ parse_text_field(struct ly_parser_ctx *ctx, const char **data, LYEXT_SUBSTMT sub
  *
  * @param[in] ctx yang parser context for logging.
  * @param[in,out] data Data to read from, always moved to currently handled character.
- * @param[in] mod Module to store the parsed information in.
+ * @param[out] version Storage for the parsed information.
+ * @param[in, out] exts Extension instances to add to.
  *
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_yangversion(struct ly_parser_ctx *ctx, const char **data, struct lysp_module *mod)
+parse_yangversion(struct ly_parser_ctx *ctx, const char **data, uint8_t *version, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
     size_t word_len;
     enum yang_keyword kw;
 
-    if (mod->version) {
+    if (*version) {
         LOGVAL_YANG(ctx, LY_VCODE_DUPSTMT, "yang-version");
         return LY_EVALID;
     }
@@ -1153,9 +1154,9 @@ parse_yangversion(struct ly_parser_ctx *ctx, const char **data, struct lysp_modu
     LY_CHECK_RET(get_argument(ctx, data, Y_STR_ARG, &word, &buf, &word_len));
 
     if ((word_len == 3) && !strncmp(word, "1.0", word_len)) {
-        mod->version = LYS_VERSION_1_0;
+        *version = LYS_VERSION_1_0;
     } else if ((word_len == 3) && !strncmp(word, "1.1", word_len)) {
-        mod->version = LYS_VERSION_1_1;
+        *version = LYS_VERSION_1_1;
     } else {
         LOGVAL_YANG(ctx, LY_VCODE_INVAL, word_len, word, "yang-version");
         free(buf);
@@ -1166,7 +1167,7 @@ parse_yangversion(struct ly_parser_ctx *ctx, const char **data, struct lysp_modu
     YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret,) {
         switch (kw) {
         case YANG_CUSTOM:
-            LY_CHECK_RET(parse_ext(ctx, data, word, word_len, LYEXT_SUBSTMT_VERSION, 0, &mod->exts));
+            LY_CHECK_RET(parse_ext(ctx, data, word, word_len, LYEXT_SUBSTMT_VERSION, 0, exts));
             break;
         default:
             LOGVAL_YANG(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "yang-version");
@@ -1280,13 +1281,14 @@ parse_revisiondate(struct ly_parser_ctx *ctx, const char **data, char *rev, stru
  * @brief Parse the include statement.
  *
  * @param[in] ctx yang parser context for logging.
+ * @param[in] module_name Name of the module to check name collisions.
  * @param[in,out] data Data to read from, always moved to currently handled character.
  * @param[in,out] includes Parsed includes to add to.
  *
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_include(struct ly_parser_ctx *ctx, const char **data, struct lysp_module *mod)
+parse_include(struct ly_parser_ctx *ctx, const char *module_name, const char **data, struct lysp_include **includes)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -1294,7 +1296,7 @@ parse_include(struct ly_parser_ctx *ctx, const char **data, struct lysp_module *
     enum yang_keyword kw;
     struct lysp_include *inc;
 
-    LY_ARRAY_NEW_RET(ctx->ctx, mod->includes, inc, LY_EMEM);
+    LY_ARRAY_NEW_RET(ctx->ctx, *includes, inc, LY_EMEM);
 
     /* get value */
     LY_CHECK_RET(get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len));
@@ -1303,7 +1305,7 @@ parse_include(struct ly_parser_ctx *ctx, const char **data, struct lysp_module *
 
     /* submodules share the namespace with the module names, so there must not be
      * a module of the same name in the context, no need for revision matching */
-    if (!strcmp(ctx->mod->name, inc->name) || ly_ctx_get_module_latest(ctx->ctx, inc->name)) {
+    if (!strcmp(module_name, inc->name) || ly_ctx_get_module_latest(ctx->ctx, inc->name)) {
         LOGVAL_YANG(ctx, LYVE_SYNTAX_YANG, "Name collision between module and submodule of name \"%s\".", inc->name);
         return LY_EVALID;
     }
@@ -1336,13 +1338,14 @@ parse_include(struct ly_parser_ctx *ctx, const char **data, struct lysp_module *
  * @brief Parse the import statement.
  *
  * @param[in] ctx yang parser context for logging.
+ * @param[in] module_prefix Prefix of the module to check prefix collisions.
  * @param[in,out] data Data to read from, always moved to currently handled character.
  * @param[in,out] imports Parsed imports to add to.
  *
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_import(struct ly_parser_ctx *ctx, const char **data, struct lysp_module *module)
+parse_import(struct ly_parser_ctx *ctx, const char *module_prefix, const char **data, struct lysp_import **imports)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -1350,7 +1353,7 @@ parse_import(struct ly_parser_ctx *ctx, const char **data, struct lysp_module *m
     enum yang_keyword kw;
     struct lysp_import *imp;
 
-    LY_ARRAY_NEW_RET(ctx->ctx, module->imports, imp, LY_EVALID);
+    LY_ARRAY_NEW_RET(ctx->ctx, *imports, imp, LY_EVALID);
 
     /* get value */
     LY_CHECK_RET(get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len));
@@ -1360,7 +1363,7 @@ parse_import(struct ly_parser_ctx *ctx, const char **data, struct lysp_module *m
         switch (kw) {
         case YANG_PREFIX:
             LY_CHECK_RET(parse_text_field(ctx, data, LYEXT_SUBSTMT_PREFIX, 0, &imp->prefix, Y_IDENTIF_ARG, &imp->exts));
-            LY_CHECK_RET(lysp_check_prefix(ctx, module, &imp->prefix), LY_EVALID);
+            LY_CHECK_RET(lysp_check_prefix(ctx, *imports, module_prefix, &imp->prefix), LY_EVALID);
             break;
         case YANG_DESCRIPTION:
             YANG_CHECK_STMTVER2_RET(ctx, "description", "import");
@@ -4317,7 +4320,7 @@ parse_identity(struct ly_parser_ctx *ctx, const char **data, struct lysp_ident *
             LY_CHECK_RET(parse_status(ctx, data, &ident->flags, &ident->exts));
             break;
         case YANG_BASE:
-            if (ident->bases && ctx->mod->version < 2) {
+            if (ident->bases && ctx->mod_version < 2) {
                 LOGVAL_YANG(ctx, LYVE_SYNTAX_YANG, "Identity can be derived from multiple base identities only in YANG 1.1 modules");
                 return LY_EVALID;
             }
@@ -4335,7 +4338,33 @@ parse_identity(struct ly_parser_ctx *ctx, const char **data, struct lysp_ident *
 }
 
 /**
- * @brief Parse the module or submodule statement.
+ * @brief Finalize some of the (sub)module structure after parsing.
+ *
+ * Update parent pointers in the nodes inside grouping/RPC/Notification, which could be reallocated.
+ *
+ * @param[in] mod Parsed module to be updated.
+ * @return LY_ERR value (currently only LY_SUCCESS, but it can change in future).
+ */
+static LY_ERR
+parse_sub_module_finalize(struct lysp_module *mod)
+{
+    unsigned int u;
+    struct lysp_node *child;
+
+    /* finalize parent pointers to the reallocated items */
+    LY_ARRAY_FOR(mod->groupings, u) {
+        LY_LIST_FOR(mod->groupings[u].data, child) {
+            child->parent = (struct lysp_node*)&mod->groupings[u];
+        }
+    }
+
+    /* TODO the same finalization for rpcs and notifications, do also in the relevant nodes */
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Parse module substatements.
  *
  * @param[in] ctx yang parser context for logging.
  * @param[in,out] data Data to read from, always moved to currently handled character.
@@ -4344,20 +4373,18 @@ parse_identity(struct ly_parser_ctx *ctx, const char **data, struct lysp_ident *
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_sub_module(struct ly_parser_ctx *ctx, const char **data, struct lysp_module *mod)
+parse_module(struct ly_parser_ctx *ctx, const char **data, struct lysp_module *mod)
 {
     LY_ERR ret = 0;
     char *buf, *word;
     size_t word_len;
     enum yang_keyword kw, prev_kw = 0;
     enum yang_module_stmt mod_stmt = Y_MOD_MODULE_HEADER;
-    struct lysp_module *dup;
-    struct lysp_node *child;
-    unsigned int u;
+    struct lysp_submodule *dup;
 
     /* (sub)module name */
     LY_CHECK_RET(get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len));
-    INSERT_WORD(ctx, buf, mod->name, word, word_len);
+    INSERT_WORD(ctx, buf, mod->mod->name, word, word_len);
 
     YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret, goto checks) {
 
@@ -4368,17 +4395,6 @@ parse_sub_module(struct ly_parser_ctx *ctx, const char **data, struct lysp_modul
         /* module header */
         case YANG_NAMESPACE:
         case YANG_PREFIX:
-            if (mod->submodule) {
-                LOGVAL_YANG(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "submodule");
-                return LY_EVALID;
-            }
-            CHECK_ORDER(Y_MOD_MODULE_HEADER);
-            break;
-        case YANG_BELONGS_TO:
-            if (!mod->submodule) {
-                LOGVAL_YANG(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "module");
-                return LY_EVALID;
-            }
             CHECK_ORDER(Y_MOD_MODULE_HEADER);
             break;
         case YANG_YANG_VERSION:
@@ -4432,39 +4448,36 @@ parse_sub_module(struct ly_parser_ctx *ctx, const char **data, struct lysp_modul
         switch (kw) {
         /* module header */
         case YANG_YANG_VERSION:
-            LY_CHECK_RET(parse_yangversion(ctx, data, mod));
+            LY_CHECK_RET(parse_yangversion(ctx, data, &mod->mod->version, &mod->exts));
+            ctx->mod_version = mod->mod->version;
             break;
         case YANG_NAMESPACE:
-            LY_CHECK_RET(parse_text_field(ctx, data, LYEXT_SUBSTMT_NAMESPACE, 0, &mod->ns, Y_STR_ARG, &mod->exts));
+            LY_CHECK_RET(parse_text_field(ctx, data, LYEXT_SUBSTMT_NAMESPACE, 0, &mod->mod->ns, Y_STR_ARG, &mod->exts));
             break;
         case YANG_PREFIX:
-            LY_CHECK_RET(parse_text_field(ctx, data, LYEXT_SUBSTMT_PREFIX, 0, &mod->prefix, Y_IDENTIF_ARG, &mod->exts));
-            LY_CHECK_RET(lysp_check_prefix(ctx, mod, &mod->prefix), LY_EVALID);
-            break;
-        case YANG_BELONGS_TO:
-            LY_CHECK_RET(parse_belongsto(ctx, data, &mod->belongsto, &mod->prefix, &mod->exts));
+            LY_CHECK_RET(parse_text_field(ctx, data, LYEXT_SUBSTMT_PREFIX, 0, &mod->mod->prefix, Y_IDENTIF_ARG, &mod->exts));
             break;
 
         /* linkage */
         case YANG_INCLUDE:
-            LY_CHECK_RET(parse_include(ctx, data, mod));
+            LY_CHECK_RET(parse_include(ctx, mod->mod->name, data, &mod->includes));
             break;
         case YANG_IMPORT:
-            LY_CHECK_RET(parse_import(ctx, data, mod));
+            LY_CHECK_RET(parse_import(ctx, mod->mod->prefix, data, &mod->imports));
             break;
 
         /* meta */
         case YANG_ORGANIZATION:
-            LY_CHECK_RET(parse_text_field(ctx, data, LYEXT_SUBSTMT_ORGANIZATION, 0, &mod->org, Y_STR_ARG, &mod->exts));
+            LY_CHECK_RET(parse_text_field(ctx, data, LYEXT_SUBSTMT_ORGANIZATION, 0, &mod->mod->org, Y_STR_ARG, &mod->exts));
             break;
         case YANG_CONTACT:
-            LY_CHECK_RET(parse_text_field(ctx, data, LYEXT_SUBSTMT_CONTACT, 0, &mod->contact, Y_STR_ARG, &mod->exts));
+            LY_CHECK_RET(parse_text_field(ctx, data, LYEXT_SUBSTMT_CONTACT, 0, &mod->mod->contact, Y_STR_ARG, &mod->exts));
             break;
         case YANG_DESCRIPTION:
-            LY_CHECK_RET(parse_text_field(ctx, data, LYEXT_SUBSTMT_DESCRIPTION, 0, &mod->dsc, Y_STR_ARG, &mod->exts));
+            LY_CHECK_RET(parse_text_field(ctx, data, LYEXT_SUBSTMT_DESCRIPTION, 0, &mod->mod->dsc, Y_STR_ARG, &mod->exts));
             break;
         case YANG_REFERENCE:
-            LY_CHECK_RET(parse_text_field(ctx, data, LYEXT_SUBSTMT_REFERENCE, 0, &mod->ref, Y_STR_ARG, &mod->exts));
+            LY_CHECK_RET(parse_text_field(ctx, data, LYEXT_SUBSTMT_REFERENCE, 0, &mod->mod->ref, Y_STR_ARG, &mod->exts));
             break;
 
         /* revision */
@@ -4474,7 +4487,7 @@ parse_sub_module(struct ly_parser_ctx *ctx, const char **data, struct lysp_modul
 
         /* body */
         case YANG_ANYDATA:
-            YANG_CHECK_STMTVER2_RET(ctx, "anydata", mod->submodule ? "submodule" : "module");
+            YANG_CHECK_STMTVER2_RET(ctx, "anydata", "module");
             /* fall through */
         case YANG_ANYXML:
             LY_CHECK_RET(parse_any(ctx, data, kw, NULL, &mod->data));
@@ -4530,43 +4543,233 @@ parse_sub_module(struct ly_parser_ctx *ctx, const char **data, struct lysp_modul
             break;
 
         default:
-            LOGVAL_YANG(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), mod->submodule ? "submodule" : "module");
+            LOGVAL_YANG(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "module");
             return LY_EVALID;
         }
     }
     LY_CHECK_RET(ret);
 
-    /* finalize parent pointers to the reallocated items */
-    LY_ARRAY_FOR(mod->groupings, u) {
-        LY_LIST_FOR(mod->groupings[u].data, child) {
-            child->parent = (struct lysp_node*)&mod->groupings[u];
-        }
-    }
-    /* TODO the same finalization for rpcs and notifications, do also in the relevant nodes */
-
 checks:
+    /* finalize parent pointers to the reallocated items */
+    LY_CHECK_RET(parse_sub_module_finalize(mod));
+
     /* mandatory substatements */
-    if (mod->submodule) {
-        if (!mod->belongsto) {
-            LOGVAL_YANG(ctx, LY_VCODE_MISSTMT, "belongs-to", "submodule");
-            return LY_EVALID;
-        }
-    } else {
-        if (!mod->ns) {
-            LOGVAL_YANG(ctx, LY_VCODE_MISSTMT, "namespace", "module");
-            return LY_EVALID;
-        } else if (!mod->prefix) {
-            LOGVAL_YANG(ctx, LY_VCODE_MISSTMT, "prefix", "module");
-            return LY_EVALID;
-        }
+    if (!mod->mod->ns) {
+        LOGVAL_YANG(ctx, LY_VCODE_MISSTMT, "namespace", "module");
+        return LY_EVALID;
+    } else if (!mod->mod->prefix) {
+        LOGVAL_YANG(ctx, LY_VCODE_MISSTMT, "prefix", "module");
+        return LY_EVALID;
     }
 
     /* submodules share the namespace with the module names, so there must not be
      * a submodule of the same name in the context, no need for revision matching */
-    dup = ly_ctx_get_submodule(ctx->ctx, NULL, mod->name, NULL);
-    if (dup && (!mod->submodule || strcmp(dup->belongsto, mod->belongsto))) {
-        LOGVAL_YANG(ctx, LYVE_SYNTAX_YANG, "Name collision between %s of name \"%s\".",
-                    mod->submodule ? "submodules" : "module and submodule", mod->name);
+    dup = ly_ctx_get_submodule(ctx->ctx, NULL, mod->mod->name, NULL);
+    if (dup) {
+        LOGVAL_YANG(ctx, LYVE_SYNTAX_YANG, "Name collision between module and submodule of name \"%s\".", mod->mod->name);
+        return LY_EVALID;
+    }
+
+    return ret;
+}
+
+/**
+ * @brief Parse submodule substatements.
+ *
+ * @param[in] ctx yang parser context for logging.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[out] submod Parsed submodule structure.
+ *
+ * @return LY_ERR values.
+ */
+static LY_ERR
+parse_submodule(struct ly_parser_ctx *ctx, const char **data, struct lysp_submodule *submod)
+{
+    LY_ERR ret = 0;
+    char *buf, *word;
+    size_t word_len;
+    enum yang_keyword kw, prev_kw = 0;
+    enum yang_module_stmt mod_stmt = Y_MOD_MODULE_HEADER;
+    struct lysp_submodule *dup;
+
+    /* submodule name */
+    LY_CHECK_RET(get_argument(ctx, data, Y_IDENTIF_ARG, &word, &buf, &word_len));
+    INSERT_WORD(ctx, buf, submod->name, word, word_len);
+
+    YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret, goto checks) {
+
+#define CHECK_ORDER(SECTION) \
+        if (mod_stmt > SECTION) {LOGVAL_YANG(ctx, LY_VCODE_INORD, ly_stmt2str(kw), ly_stmt2str(prev_kw)); return LY_EVALID;}mod_stmt = SECTION
+
+        switch (kw) {
+        /* module header */
+        case YANG_BELONGS_TO:
+            CHECK_ORDER(Y_MOD_MODULE_HEADER);
+            break;
+        case YANG_YANG_VERSION:
+            CHECK_ORDER(Y_MOD_MODULE_HEADER);
+            break;
+        /* linkage */
+        case YANG_INCLUDE:
+        case YANG_IMPORT:
+            CHECK_ORDER(Y_MOD_LINKAGE);
+            break;
+        /* meta */
+        case YANG_ORGANIZATION:
+        case YANG_CONTACT:
+        case YANG_DESCRIPTION:
+        case YANG_REFERENCE:
+            CHECK_ORDER(Y_MOD_META);
+            break;
+
+        /* revision */
+        case YANG_REVISION:
+            CHECK_ORDER(Y_MOD_REVISION);
+            break;
+        /* body */
+        case YANG_ANYDATA:
+        case YANG_ANYXML:
+        case YANG_AUGMENT:
+        case YANG_CHOICE:
+        case YANG_CONTAINER:
+        case YANG_DEVIATION:
+        case YANG_EXTENSION:
+        case YANG_FEATURE:
+        case YANG_GROUPING:
+        case YANG_IDENTITY:
+        case YANG_LEAF:
+        case YANG_LEAF_LIST:
+        case YANG_LIST:
+        case YANG_NOTIFICATION:
+        case YANG_RPC:
+        case YANG_TYPEDEF:
+        case YANG_USES:
+        case YANG_CUSTOM:
+            mod_stmt = Y_MOD_BODY;
+            break;
+        default:
+            /* error handled in the next switch */
+            break;
+        }
+#undef CHECK_ORDER
+
+        prev_kw = kw;
+        switch (kw) {
+        /* module header */
+        case YANG_YANG_VERSION:
+            LY_CHECK_RET(parse_yangversion(ctx, data, &submod->version, &submod->exts));
+            ctx->mod_version = submod->version;
+            break;
+        case YANG_BELONGS_TO:
+            LY_CHECK_RET(parse_belongsto(ctx, data, &submod->belongsto, &submod->prefix, &submod->exts));
+            break;
+
+        /* linkage */
+        case YANG_INCLUDE:
+            LY_CHECK_RET(parse_include(ctx, submod->name, data, &submod->includes));
+            break;
+        case YANG_IMPORT:
+            LY_CHECK_RET(parse_import(ctx, submod->prefix, data, &submod->imports));
+            break;
+
+        /* meta */
+        case YANG_ORGANIZATION:
+            LY_CHECK_RET(parse_text_field(ctx, data, LYEXT_SUBSTMT_ORGANIZATION, 0, &submod->org, Y_STR_ARG, &submod->exts));
+            break;
+        case YANG_CONTACT:
+            LY_CHECK_RET(parse_text_field(ctx, data, LYEXT_SUBSTMT_CONTACT, 0, &submod->contact, Y_STR_ARG, &submod->exts));
+            break;
+        case YANG_DESCRIPTION:
+            LY_CHECK_RET(parse_text_field(ctx, data, LYEXT_SUBSTMT_DESCRIPTION, 0, &submod->dsc, Y_STR_ARG, &submod->exts));
+            break;
+        case YANG_REFERENCE:
+            LY_CHECK_RET(parse_text_field(ctx, data, LYEXT_SUBSTMT_REFERENCE, 0, &submod->ref, Y_STR_ARG, &submod->exts));
+            break;
+
+        /* revision */
+        case YANG_REVISION:
+            LY_CHECK_RET(parse_revision(ctx, data, &submod->revs));
+            break;
+
+        /* body */
+        case YANG_ANYDATA:
+            YANG_CHECK_STMTVER2_RET(ctx, "anydata", "submodule");
+            /* fall through */
+        case YANG_ANYXML:
+            LY_CHECK_RET(parse_any(ctx, data, kw, NULL, &submod->data));
+            break;
+        case YANG_CHOICE:
+            LY_CHECK_RET(parse_choice(ctx, data, NULL, &submod->data));
+            break;
+        case YANG_CONTAINER:
+            LY_CHECK_RET(parse_container(ctx, data, NULL, &submod->data));
+            break;
+        case YANG_LEAF:
+            LY_CHECK_RET(parse_leaf(ctx, data, NULL, &submod->data));
+            break;
+        case YANG_LEAF_LIST:
+            LY_CHECK_RET(parse_leaflist(ctx, data, NULL, &submod->data));
+            break;
+        case YANG_LIST:
+            LY_CHECK_RET(parse_list(ctx, data, NULL, &submod->data));
+            break;
+        case YANG_USES:
+            LY_CHECK_RET(parse_uses(ctx, data, NULL, &submod->data));
+            break;
+
+        case YANG_AUGMENT:
+            LY_CHECK_RET(parse_augment(ctx, data, NULL, &submod->augments));
+            break;
+        case YANG_DEVIATION:
+            LY_CHECK_RET(parse_deviation(ctx, data, &submod->deviations));
+            break;
+        case YANG_EXTENSION:
+            LY_CHECK_RET(parse_extension(ctx, data, &submod->extensions));
+            break;
+        case YANG_FEATURE:
+            LY_CHECK_RET(parse_feature(ctx, data, &submod->features));
+            break;
+        case YANG_GROUPING:
+            LY_CHECK_RET(parse_grouping(ctx, data, NULL, &submod->groupings));
+            break;
+        case YANG_IDENTITY:
+            LY_CHECK_RET(parse_identity(ctx, data, &submod->identities));
+            break;
+        case YANG_NOTIFICATION:
+            LY_CHECK_RET(parse_notif(ctx, data, NULL, &submod->notifs));
+            break;
+        case YANG_RPC:
+            LY_CHECK_RET(parse_action(ctx, data, NULL, &submod->rpcs));
+            break;
+        case YANG_TYPEDEF:
+            LY_CHECK_RET(parse_typedef(ctx, NULL, data, &submod->typedefs));
+            break;
+        case YANG_CUSTOM:
+            LY_CHECK_RET(parse_ext(ctx, data, word, word_len, LYEXT_SUBSTMT_SELF, 0, &submod->exts));
+            break;
+
+        default:
+            LOGVAL_YANG(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "submodule");
+            return LY_EVALID;
+        }
+    }
+    LY_CHECK_RET(ret);
+
+checks:
+    /* finalize parent pointers to the reallocated items */
+    LY_CHECK_RET(parse_sub_module_finalize((struct lysp_module*)submod));
+
+    /* mandatory substatements */
+    if (!submod->belongsto) {
+        LOGVAL_YANG(ctx, LY_VCODE_MISSTMT, "belongs-to", "submodule");
+        return LY_EVALID;
+    }
+
+    /* submodules share the namespace with the module names, so there must not be
+     * a submodule of the same name in the context, no need for revision matching */
+    dup = ly_ctx_get_submodule(ctx->ctx, NULL, submod->name, NULL);
+    if (dup && strcmp(dup->belongsto, submod->belongsto)) {
+        LOGVAL_YANG(ctx, LYVE_SYNTAX_YANG, "Name collision between submodules of name \"%s\".", dup->name);
         return LY_EVALID;
     }
 
@@ -4574,35 +4777,35 @@ checks:
 }
 
 LY_ERR
-yang_parse(struct ly_parser_ctx *context, const char *data, struct lysp_module **mod_p)
+yang_parse_submodule(struct ly_parser_ctx *context, const char *data, struct lysp_submodule **submod)
 {
     LY_ERR ret = LY_SUCCESS;
     char *word, *buf;
     size_t word_len;
     enum yang_keyword kw;
-    struct lysp_module *mod = NULL;
+    struct lysp_submodule *mod_p = NULL;
 
     /* "module"/"submodule" */
     ret = get_keyword(context, &data, &kw, &word, &word_len);
     LY_CHECK_GOTO(ret, cleanup);
 
-    if ((kw != YANG_MODULE) && (kw != YANG_SUBMODULE)) {
+    if (kw == YANG_MODULE) {
+        LOGERR(context->ctx, LY_EDENIED, "Input data contains module in situation when a submodule is expected.");
+        ret = LY_EINVAL;
+        goto cleanup;
+    } else if (kw != YANG_SUBMODULE) {
         LOGVAL_YANG(context, LYVE_SYNTAX, "Invalid keyword \"%s\", expected \"module\" or \"submodule\".",
                ly_stmt2str(kw));
+        ret = LY_EINVAL;
         goto cleanup;
     }
 
-    mod = calloc(1, sizeof *mod);
-    LY_CHECK_ERR_GOTO(!mod, LOGMEM(context->ctx), cleanup);
-    if (kw == YANG_SUBMODULE) {
-        mod->submodule = 1;
-    }
-    mod->parsing = 1;
-    mod->ctx = context->ctx;
-    context->mod = mod;
+    mod_p = calloc(1, sizeof *mod_p);
+    LY_CHECK_ERR_GOTO(!mod_p, LOGMEM(context->ctx), cleanup);
+    mod_p->parsing = 1;
 
     /* substatements */
-    ret = parse_sub_module(context, &data, mod);
+    ret = parse_submodule(context, &data, mod_p);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* read some trailing spaces or new lines */
@@ -4617,12 +4820,68 @@ yang_parse(struct ly_parser_ctx *context, const char *data, struct lysp_module *
     }
     assert(!buf);
 
-    mod->parsing = 0;
-    *mod_p = mod;
+    mod_p->parsing = 0;
+    *submod = mod_p;
 
 cleanup:
     if (ret) {
-        lysp_module_free(mod);
+        lysp_submodule_free(context->ctx, mod_p);
+    }
+
+    return ret;
+}
+
+LY_ERR
+yang_parse_module(struct ly_parser_ctx *context, const char *data, struct lys_module *mod)
+{
+    LY_ERR ret = LY_SUCCESS;
+    char *word, *buf;
+    size_t word_len;
+    enum yang_keyword kw;
+    struct lysp_module *mod_p = NULL;
+
+    /* "module"/"submodule" */
+    ret = get_keyword(context, &data, &kw, &word, &word_len);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    if (kw == YANG_SUBMODULE) {
+        LOGERR(context->ctx, LY_EDENIED, "Input data contains submodule which cannot be parsed directly without its main module.");
+        ret = LY_EINVAL;
+        goto cleanup;
+    } else if (kw != YANG_MODULE) {
+        LOGVAL_YANG(context, LYVE_SYNTAX, "Invalid keyword \"%s\", expected \"module\" or \"submodule\".",
+               ly_stmt2str(kw));
+        ret = LY_EINVAL;
+        goto cleanup;
+    }
+
+    mod_p = calloc(1, sizeof *mod_p);
+    LY_CHECK_ERR_GOTO(!mod_p, LOGMEM(context->ctx), cleanup);
+    mod_p->mod = mod;
+    mod_p->parsing = 1;
+
+    /* substatements */
+    ret = parse_module(context, &data, mod_p);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* read some trailing spaces or new lines */
+    ret = get_argument(context, &data, Y_MAYBE_STR_ARG, &word, &buf, &word_len);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    if (word) {
+        LOGVAL_YANG(context, LYVE_SYNTAX, "Invalid character sequence \"%.*s\", expected end-of-file.",
+               word_len, word);
+        free(buf);
+        goto cleanup;
+    }
+    assert(!buf);
+
+    mod_p->parsing = 0;
+    mod->parsed = mod_p;
+
+cleanup:
+    if (ret) {
+        lysp_module_free(mod_p);
     }
 
     return ret;

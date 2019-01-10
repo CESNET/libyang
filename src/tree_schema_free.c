@@ -69,7 +69,7 @@ static void
 lysp_include_free(struct ly_ctx *ctx, struct lysp_include *include)
 {
     if (include->submodule) {
-        lysp_module_free(include->submodule);
+        lysp_submodule_free(ctx, include->submodule);
     }
     FREE_STRING(ctx, include->name);
     FREE_STRING(ctx, include->dsc);
@@ -393,27 +393,56 @@ lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node)
     free(node);
 }
 
+void
+lysp_submodule_free(struct ly_ctx *ctx, struct lysp_submodule *submod)
+{
+    struct lysp_node *node, *next;
+
+    LY_CHECK_ARG_RET(NULL, submod,);
+
+    FREE_ARRAY(ctx, submod->imports, lysp_import_free);
+    FREE_ARRAY(ctx, submod->includes, lysp_include_free);
+
+    FREE_ARRAY(ctx, submod->revs, lysp_revision_free);
+    FREE_ARRAY(ctx, submod->extensions, lysp_ext_free);
+    FREE_ARRAY(ctx, submod->features, lysp_feature_free);
+    FREE_ARRAY(ctx, submod->identities, lysp_ident_free);
+    FREE_ARRAY(ctx, submod->typedefs, lysp_tpdf_free);
+    FREE_ARRAY(ctx, submod->groupings, lysp_grp_free);
+    LY_LIST_FOR_SAFE(submod->data, next, node) {
+        lysp_node_free(ctx, node);
+    }
+    FREE_ARRAY(ctx, submod->augments, lysp_augment_free);
+    FREE_ARRAY(ctx, submod->rpcs, lysp_action_free);
+    FREE_ARRAY(ctx, submod->notifs, lysp_notif_free);
+    FREE_ARRAY(ctx, submod->deviations, lysp_deviation_free);
+    FREE_ARRAY(ctx, submod->exts, lysp_ext_instance_free);
+
+    FREE_STRING(ctx, submod->belongsto);
+    FREE_STRING(ctx, submod->name);
+    FREE_STRING(ctx, submod->filepath);
+    FREE_STRING(ctx, submod->prefix);
+    FREE_STRING(ctx, submod->org);
+    FREE_STRING(ctx, submod->contact);
+    FREE_STRING(ctx, submod->dsc);
+    FREE_STRING(ctx, submod->ref);
+
+    free(submod);
+}
+
 API void
 lysp_module_free(struct lysp_module *module)
 {
     struct ly_ctx *ctx;
     struct lysp_node *node, *next;
 
-    LY_CHECK_ARG_RET(NULL, module,);
-    ctx = module->ctx;
-
-    FREE_STRING(ctx, module->name);
-    FREE_STRING(ctx, module->filepath);
-    FREE_STRING(ctx, module->ns);  /* or belongs-to */
-    FREE_STRING(ctx, module->prefix);
+    if (!module) {
+        return;
+    }
+    ctx = module->mod->ctx;
 
     FREE_ARRAY(ctx, module->imports, lysp_import_free);
     FREE_ARRAY(ctx, module->includes, lysp_include_free);
-
-    FREE_STRING(ctx, module->org);
-    FREE_STRING(ctx, module->contact);
-    FREE_STRING(ctx, module->dsc);
-    FREE_STRING(ctx, module->ref);
 
     FREE_ARRAY(ctx, module->revs, lysp_revision_free);
     FREE_ARRAY(ctx, module->extensions, lysp_ext_free);
@@ -724,16 +753,9 @@ lysc_module_free_(struct lysc_module *module)
     struct lysc_node *node, *node_next;
 
     LY_CHECK_ARG_RET(NULL, module,);
-    ctx = module->ctx;
+    ctx = module->mod->ctx;
 
-    FREE_STRING(ctx, module->name);
-    FREE_STRING(ctx, module->ns);
-    FREE_STRING(ctx, module->prefix);
     FREE_STRING(ctx, module->revision);
-    FREE_STRING(ctx, module->org);
-    FREE_STRING(ctx, module->contact);
-    FREE_STRING(ctx, module->dsc);
-    FREE_STRING(ctx, module->ref);
 
     FREE_ARRAY(ctx, module->imports, lysc_import_free);
     FREE_ARRAY(ctx, module->features, lysc_feature_free);
@@ -765,5 +787,15 @@ lys_module_free(struct lys_module *module, void (*private_destructor)(const stru
 
     lysc_module_free(module->compiled, private_destructor);
     lysp_module_free(module->parsed);
+
+    FREE_STRING(module->ctx, module->name);
+    FREE_STRING(module->ctx, module->ns);
+    FREE_STRING(module->ctx, module->prefix);
+    FREE_STRING(module->ctx, module->filepath);
+    FREE_STRING(module->ctx, module->org);
+    FREE_STRING(module->ctx, module->contact);
+    FREE_STRING(module->ctx, module->dsc);
+    FREE_STRING(module->ctx, module->ref);
+
     free(module);
 }

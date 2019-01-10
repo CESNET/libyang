@@ -184,7 +184,7 @@ struct ly_ctx {
  * @param[in] revision Optional revision of the submodule to find. If not specified, the latest revision is returned.
  * @return Pointer to the specified submodule if it is present in the context.
  */
-struct lysp_module *ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *submodule, const char *revision);
+struct lysp_submodule *ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *submodule, const char *revision);
 
 /******************************************************************************
  * Parsers
