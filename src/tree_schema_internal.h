@@ -61,12 +61,12 @@ struct ly_parser_ctx {
 struct lysc_ctx {
     struct ly_ctx *ctx;
     struct lys_module *mod;
-    struct lys_module *mod_def; /* context module for the definitions of the nodes being currently
-                                   processed - groupings are supposed to be evaluated in place where
-                                   defined, but its content instances are supposed to be placed into
-                                   the target module (mod) */
-    struct ly_set groupings;    /* stack for groupings circular check */
-    struct ly_set unres;        /* to validate leafref's target and xpath of when/must */
+    struct lys_module *mod_def; /**< context module for the definitions of the nodes being currently
+                                     processed - groupings are supposed to be evaluated in place where
+                                     defined, but its content instances are supposed to be placed into
+                                     the target module (mod) */
+    struct ly_set groupings;    /**< stack for groupings circular check */
+    struct ly_set unres;        /**< to validate leafref's target and xpath of when/must */
     uint16_t path_len;
 #define LYSC_CTX_BUFSIZE 4078
     char path[LYSC_CTX_BUFSIZE];
@@ -436,6 +436,27 @@ LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *re
                             void **result);
 
 /**
+ * @brief Create pre-compiled features array.
+ *
+ * Features are compiled in two steps to allow forward references between them via their if-feature statements.
+ * In case of not implemented schemas, the precompiled list of features is stored in lys_module structure and
+ * the compilation is not finished (if-feature and extensions are missing) and all the features are permanently
+ * disabled without a chance to change it. The list is used as target for any if-feature statement in any
+ * implemented module to get valid data to evaluate its result. The compilation is finished via
+ * lys_feature_precompile_finish() in implemented modules. In case a not implemented module becomes implemented,
+ * the precompiled list is reused to finish the compilation to preserve pointers already used in various compiled
+ * if-feature structures.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] features_p Array if the parsed features definitions to precompile.
+ * @param[in,out] features Pointer to the storage of the (pre)compiled features array where the new features are
+ * supposed to be added. The storage is supposed to be initiated to NULL when the first parsed features are going
+ * to be processed.
+ * @return LY_ERR value.
+ */
+LY_ERR lys_feature_precompile(struct ly_ctx *ctx, struct lysp_feature *features_p, struct lysc_feature **features);
+
+/**
  * @brief Free the parsed submodule structure.
  * @param[in] ctx libyang context where the string data resides in a dictionary.
  * @param[in,out] submod Parsed schema submodule structure to free.
@@ -448,6 +469,22 @@ void lysp_submodule_free(struct ly_ctx *ctx, struct lysp_submodule *submod);
  * @param[in,out] type Compiled type structure to be freed. The structure has refcount, so it is freed only in case the value is decreased to 0.
  */
 void lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type);
+
+/**
+ * @brief Free the compiled if-feature structure.
+ * @param[in] ctx libyang context where the string data resides in a dictionary.
+ * @param[in,out] iff Compiled if-feature structure to be cleaned.
+ * Since the structure is typically part of the sized array, the structure itself is not freed.
+ */
+void lysc_iffeature_free(struct ly_ctx *ctx, struct lysc_iffeature *iff);
+
+/**
+ * @brief Free the compiled extension instance structure.
+ * @param[in] ctx libyang context where the string data resides in a dictionary.
+ * @param[in,out] ext Compiled extension instance structure to be cleaned.
+ * Since the structure is typically part of the sized array, the structure itself is not freed.
+ */
+void lysc_ext_instance_free(struct ly_ctx *ctx, struct lysc_ext_instance *ext);
 
 /**
  * @brief Free the compiled node structure.

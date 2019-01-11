@@ -241,24 +241,29 @@ lysc_iffeature_value(const struct lysc_iffeature *iff)
  * if-feature statements are again evaluated (disabled if a if-feature statemen
  * evaluates to false).
  *
- * @param[in] mod Compiled module where to set (search for) the feature.
+ * @param[in] mod Module where to set (search for) the feature.
  * @param[in] name Name of the feature to set. Asterisk ('*') can be used to
  * set all the features in the module.
  * @param[in] value Desired value of the feature: 1 (enable) or 0 (disable).
  * @return LY_ERR value.
  */
 static LY_ERR
-lys_feature_change(const struct lysc_module *mod, const char *name, int value)
+lys_feature_change(const struct lys_module *mod, const char *name, int value)
 {
     int all = 0;
     unsigned int u, changed_count, disabled_count;
     struct lysc_feature *f, **df;
     struct lysc_iffeature *iff;
     struct ly_set *changed;
-    struct ly_ctx *ctx = mod->mod->ctx; /* shortcut */
+    struct ly_ctx *ctx = mod->ctx; /* shortcut */
 
-    if (!mod->features) {
-        LOGERR(ctx, LY_EINVAL, "Unable to switch feature since the module \"%s\" has no features.", mod->mod->name);
+    if (!mod->compiled) {
+        LOGERR(ctx, LY_EINVAL, "Module \"%s\" is not implemented so all its features are permanently disabled without a chance to change it.",
+               mod->name);
+        return LY_EINVAL;
+    }
+    if (!mod->compiled->features) {
+        LOGERR(ctx, LY_EINVAL, "Unable to switch feature since the module \"%s\" has no features.", mod->name);
         return LY_EINVAL;
     }
 
@@ -270,8 +275,8 @@ lys_feature_change(const struct lysc_module *mod, const char *name, int value)
     changed_count = 0;
 
 run:
-    for (disabled_count = u = 0; u < LY_ARRAY_SIZE(mod->features); ++u) {
-        f = &mod->features[u];
+    for (disabled_count = u = 0; u < LY_ARRAY_SIZE(mod->compiled->features); ++u) {
+        f = &mod->compiled->features[u];
         if (all || !strcmp(f->name, name)) {
             if ((value && (f->flags & LYS_FENABLED)) || (!value && !(f->flags & LYS_FENABLED))) {
                 if (all) {
@@ -320,7 +325,7 @@ next:
     }
 
     if (!all && !changed->count) {
-        LOGERR(ctx, LY_EINVAL, "Feature \"%s\" not found in module \"%s\".", name, mod->mod->name);
+        LOGERR(ctx, LY_EINVAL, "Feature \"%s\" not found in module \"%s\".", name, mod->name);
         ly_set_free(changed, NULL);
         return LY_EINVAL;
     }
@@ -329,11 +334,11 @@ next:
         if (changed_count == changed->count) {
             /* no change in last run -> not able to enable all ... */
             /* ... print errors */
-            for (u = 0; disabled_count && u < LY_ARRAY_SIZE(mod->features); ++u) {
-                if (!(mod->features[u].flags & LYS_FENABLED)) {
+            for (u = 0; disabled_count && u < LY_ARRAY_SIZE(mod->compiled->features); ++u) {
+                if (!(mod->compiled->features[u].flags & LYS_FENABLED)) {
                     LOGERR(ctx, LY_EDENIED,
                            "Feature \"%s\" cannot be enabled since it is disabled by its if-feature condition(s).",
-                           mod->features[u].name);
+                           mod->compiled->features[u].name);
                     --disabled_count;
                 }
             }
@@ -384,17 +389,17 @@ next:
 API LY_ERR
 lys_feature_enable(struct lys_module *module, const char *feature)
 {
-    LY_CHECK_ARG_RET(NULL, module, module->compiled, feature, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, module, feature, LY_EINVAL);
 
-    return lys_feature_change(module->compiled, feature, 1);
+    return lys_feature_change(module, feature, 1);
 }
 
 API LY_ERR
 lys_feature_disable(struct lys_module *module, const char *feature)
 {
-    LY_CHECK_ARG_RET(NULL, module, module->compiled, feature, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, module, feature, LY_EINVAL);
 
-    return lys_feature_change(module->compiled, feature, 0);
+    return lys_feature_change(module, feature, 0);
 }
 
 API int
@@ -560,6 +565,9 @@ lys_parse_mem_module(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, 
 
     /* make sure that the newest revision is at position 0 */
     lysp_sort_revisions(mod->parsed->revs);
+    if (mod->parsed->revs) {
+        mod->revision = lydict_insert(ctx, mod->parsed->revs[0].date, 0);
+    }
 
     if (custom_check) {
         LY_CHECK_GOTO(custom_check(ctx, mod->parsed, NULL, check_data), error);
@@ -575,7 +583,7 @@ lys_parse_mem_module(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, 
     }
 
     /* check for duplicity in the context */
-    mod_dup = (struct lys_module*)ly_ctx_get_module(ctx, mod->name, mod->parsed->revs ? mod->parsed->revs[0].date : NULL);
+    mod_dup = (struct lys_module*)ly_ctx_get_module(ctx, mod->name, mod->revision);
     if (mod_dup) {
         if (mod_dup->parsed) {
             /* error */
@@ -612,15 +620,20 @@ lys_parse_mem_module(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, 
     }
 #endif
 
+    if (!mod->implemented) {
+        /* pre-compile features of the module */
+        LY_CHECK_GOTO(lys_feature_precompile(ctx, mod->parsed->features, &mod->off_features), error);
+    }
+
     /* decide the latest revision */
     latest = (struct lys_module*)ly_ctx_get_module_latest(ctx, mod->name);
     if (latest) {
-        if (mod->parsed->revs) {
-            if ((latest->parsed && !latest->parsed->revs) || (!latest->parsed && !latest->compiled->revision)) {
+        if (mod->revision) {
+            if (!latest->revision) {
                 /* latest has no revision, so mod is anyway newer */
                 mod->latest_revision = latest->latest_revision;
                 latest->latest_revision = 0;
-            } else if (strcmp(mod->parsed->revs[0].date, latest->parsed ? latest->parsed->revs[0].date : latest->compiled->revision) > 0) {
+            } else if (strcmp(mod->revision, latest->revision) > 0) {
                 mod->latest_revision = latest->latest_revision;
                 latest->latest_revision = 0;
             }
@@ -652,6 +665,10 @@ finish_parsing:
         inc = &mod->parsed->includes[u];
         if (!inc->submodule && lysp_load_submodule(&context, mod->parsed, inc)) {
             goto error_ctx;
+        }
+        if (!mod->implemented) {
+            /* pre-compile features of the module */
+            LY_CHECK_GOTO(lys_feature_precompile(ctx, inc->submodule->features, &mod->off_features), error);
         }
     }
     mod->parsed->parsing = 0;

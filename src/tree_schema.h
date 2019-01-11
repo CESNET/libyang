@@ -1394,7 +1394,6 @@ struct lysc_node_anydata {
  */
 struct lysc_module {
     struct lys_module *mod;          /**< covering module structure */
-    const char *revision;            /**< the revision of the module */
     struct lysc_import *imports;     /**< list of imported modules ([sized array](@ref sizedarrays)) */
 
     struct lysc_feature *features;   /**< list of feature definitions ([sized array](@ref sizedarrays)) */
@@ -1494,6 +1493,7 @@ int lysc_feature_value(const struct lysc_feature *feature);
 struct lys_module {
     struct ly_ctx *ctx;              /**< libyang context of the module (mandatory) */
     const char *name;                /**< name of the module (mandatory) */
+    const char *revision;            /**< revision of the module (if present) */
     const char *ns;                  /**< namespace of the module (module - mandatory) */
     const char *prefix;              /**< module prefix or submodule belongsto prefix of main module (mandatory) */
     const char *filepath;            /**< path, if the schema was read from a file, NULL in case of reading from memory */
@@ -1503,7 +1503,14 @@ struct lys_module {
     const char *ref;                 /**< cross-reference for the module */
 
     struct lysp_module *parsed;      /**< Simply parsed (unresolved) YANG schema tree */
-    struct lysc_module *compiled;    /**< Compiled and fully validated YANG schema tree for data parsing */
+    struct lysc_module *compiled;    /**< Compiled and fully validated YANG schema tree for data parsing.
+                                          Available only for implemented modules. */
+    struct lysc_feature *off_features;/**< List of pre-compiled features of the module in non implemented modules ([sized array](@ref sizedarrays)).
+                                          These features are always disabled and cannot be enabled until the module
+                                          become implemented. The features are present in this form to allow their linkage
+                                          from if-feature statements of the compiled schemas and their proper use in case
+                                          the module became implemented in future (no matter if implicitly via augment/deviate
+                                          or explicitly via ly_ctx_module_implement()). */
 
     uint8_t implemented:1;           /**< flag if the module is implemented, not just imported */
     uint8_t latest_revision:2;       /**< flag to mark the latest available revision:

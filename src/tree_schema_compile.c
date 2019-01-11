@@ -62,8 +62,8 @@
 
 #define COMPILE_CHECK_UNIQUENESS(CTX, ARRAY, MEMBER, EXCL, STMT, IDENT) \
     if (ARRAY) { \
-        for (unsigned int u = 0; u < LY_ARRAY_SIZE(ARRAY); ++u) { \
-            if (&(ARRAY)[u] != EXCL && (void*)((ARRAY)[u].MEMBER) == (void*)(IDENT)) { \
+        for (unsigned int u__ = 0; u__ < LY_ARRAY_SIZE(ARRAY); ++u__) { \
+            if (&(ARRAY)[u__] != EXCL && (void*)((ARRAY)[u__].MEMBER) == (void*)(IDENT)) { \
                 LOGVAL((CTX)->ctx, LY_VLOG_STR, (CTX)->path, LY_VCODE_DUPIDENT, IDENT, STMT); \
                 return LY_EVALID; \
             } \
@@ -174,16 +174,31 @@ iff_setop(uint8_t *list, uint8_t op, int pos)
 #define LYS_IFF_LP 0x04 /* ( */
 #define LYS_IFF_RP 0x08 /* ) */
 
+/**
+ * @brief Find a feature of the given name and referenced in the given module.
+ *
+ * If the compiled schema is available (the schema is implemented), the feature from the compiled schema is
+ * returned. Otherwise, the special array of pre-compiled features is used to search for the feature. Such
+ * features are always disabled (feature from not implemented schema cannot be enabled), but in case the schema
+ * will be made implemented in future (no matter if implicitly via augmenting/deviating it or explicitly via
+ * ly_ctx_module_implement()), the compilation of these feature structure is finished, but the pointers
+ * assigned till that time will be still valid.
+ *
+ * @param[in] mod Module where the feature was referenced (used to resolve prefix of the feature).
+ * @param[in] name Name of the feature including possible prefix.
+ * @param[in] len Length of the string representing the feature identifier in the name variable (mandatory!).
+ * @return Pointer to the feature structure if found, NULL otherwise.
+ */
 static struct lysc_feature *
-lysc_feature_find(struct lysc_module *mod, const char *name, size_t len)
+lys_feature_find(struct lys_module *mod, const char *name, size_t len)
 {
     size_t i;
-    struct lysc_feature *f;
+    struct lysc_feature *f, *flist;
 
     for (i = 0; i < len; ++i) {
         if (name[i] == ':') {
             /* we have a prefixed feature */
-            mod = lysc_module_find_prefix(mod, name, i);
+            mod = lys_module_find_prefix(mod, name, i);
             LY_CHECK_RET(!mod, NULL);
 
             name = &name[i + 1];
@@ -192,8 +207,14 @@ lysc_feature_find(struct lysc_module *mod, const char *name, size_t len)
     }
 
     /* we have the correct module, get the feature */
-    LY_ARRAY_FOR(mod->features, i) {
-        f = &mod->features[i];
+    if (mod->implemented) {
+        /* module is implemented so there is already the compiled schema */
+        flist = mod->compiled->features;
+    } else {
+        flist = mod->off_features;
+    }
+    LY_ARRAY_FOR(flist, i) {
+        f = &flist[i];
         if (!strncmp(f->name, name, len) && f->name[len] == '\0') {
             return f;
         }
@@ -382,18 +403,10 @@ lys_compile_iffeature(struct lysc_ctx *ctx, const char **value, int UNUSED(optio
             iff_setop(iff->expr, LYS_IFF_F, expr_size--);
 
             /* now get the link to the feature definition */
-            if (!ctx->mod_def->compiled) {
-                /* TODO - permanently switched off feature - link to some static feature and update when the schema gets implemented */
-                LOGINT(ctx->ctx);
-                goto error;
-            } else {
-                f = lysc_feature_find(ctx->mod_def->compiled, &c[i], j - i);
-            }
-            LY_CHECK_ERR_GOTO(!f,
-                              LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
-                                     "Invalid value \"%s\" of if-feature - unable to find feature \"%.*s\".", *value, j - i, &c[i]);
-                              rc = LY_EVALID,
-                              error)
+            f = lys_feature_find(ctx->mod_def, &c[i], j - i);
+            LY_CHECK_ERR_GOTO(!f, LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                                         "Invalid value \"%s\" of if-feature - unable to find feature \"%.*s\".", *value, j - i, &c[i]);
+                              rc = LY_EVALID, error)
             iff->features[f_size] = f;
             LY_ARRAY_INCREMENT(iff->features);
             f_size--;
@@ -481,7 +494,7 @@ lys_compile_import(struct lysc_ctx *ctx, struct lysp_import *imp_p, int options,
             }
         }
         if (!mod) {
-            if (lysp_load_module(ctx->ctx, imp->module->name, imp->module->compiled->revision, 0, 1, &mod)) {
+            if (lysp_load_module(ctx->ctx, imp->module->name, imp->module->revision, 0, 1, &mod)) {
                 LOGERR(ctx->ctx, LY_ENOTFOUND, "Unable to reload \"%s\" module to import it into \"%s\", source data not found.",
                        imp->module->name, ctx->mod->name);
                 return LY_ENOTFOUND;
@@ -613,44 +626,81 @@ lys_compile_identities_derived(struct lysc_ctx *ctx, struct lysp_ident *idents_p
     return LY_SUCCESS;
 }
 
+LY_ERR
+lys_feature_precompile(struct ly_ctx *ctx, struct lysp_feature *features_p, struct lysc_feature **features)
+{
+    unsigned int offset = 0, u;
+    struct lysc_ctx context = {0};
+
+    assert(ctx);
+    context.ctx = ctx;
+
+    if (!features_p) {
+        return LY_SUCCESS;
+    }
+    if (*features) {
+        offset = LY_ARRAY_SIZE(*features);
+    }
+
+    LY_ARRAY_CREATE_RET(ctx, *features, LY_ARRAY_SIZE(features_p), LY_EMEM);
+    LY_ARRAY_FOR(features_p, u) {
+        LY_ARRAY_INCREMENT(*features);
+        COMPILE_CHECK_UNIQUENESS(&context, *features, name, &(*features)[offset + u], "feature", features_p[u].name);
+        DUP_STRING(ctx, features_p[u].name, (*features)[offset + u].name);
+        DUP_STRING(ctx, features_p[u].dsc, (*features)[offset + u].dsc);
+        DUP_STRING(ctx, features_p[u].ref, (*features)[offset + u].ref);
+        (*features)[offset + u].flags = features_p[u].flags;
+    }
+
+    return LY_SUCCESS;
+}
+
 /**
- * @brief Create compiled feature structure.
+ * @brief Create pre-compiled features array.
+ *
+ * See lys_feature_precompile() for more details.
+ *
  * @param[in] ctx Compile context.
  * @param[in] feature_p Parsed feature definition to compile.
  * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
- * @param[in] features List of already compiled features to check name duplicity.
- * @param[in,out] feature Compiled feature structure to fill.
+ * @param[in,out] features List of already (pre)compiled features to find the corresponding precompiled feature structure.
  * @return LY_ERR value.
  */
 static LY_ERR
-lys_compile_feature(struct lysc_ctx *ctx, struct lysp_feature *feature_p, int options, struct lysc_feature *features, struct lysc_feature *feature)
+lys_feature_precompile_finish(struct lysc_ctx *ctx, struct lysp_feature *feature_p, int options, struct lysc_feature *features)
 {
-    unsigned int u, v;
+    unsigned int u, v, x;
+    struct lysc_feature *feature, **df;
     LY_ERR ret = LY_SUCCESS;
-    struct lysc_feature **df;
 
-    COMPILE_CHECK_UNIQUENESS(ctx, features, name, feature, "feature", feature_p->name);
-    DUP_STRING(ctx->ctx, feature_p->name, feature->name);
-    DUP_STRING(ctx->ctx, feature_p->dsc, feature->dsc);
-    DUP_STRING(ctx->ctx, feature_p->ref, feature->ref);
-    feature->flags = feature_p->flags;
+    /* find the preprecompiled feature */
+    LY_ARRAY_FOR(features, x) {
+        if (strcmp(features[x].name, feature_p->name)) {
+            continue;
+        }
+        feature = &features[x];
 
-    COMPILE_ARRAY_GOTO(ctx, feature_p->exts, feature->exts, options, u, lys_compile_ext, ret, done);
-    COMPILE_ARRAY_GOTO(ctx, feature_p->iffeatures, feature->iffeatures, options, u, lys_compile_iffeature, ret, done);
-    if (feature->iffeatures) {
-        for (u = 0; u < LY_ARRAY_SIZE(feature->iffeatures); ++u) {
-            if (feature->iffeatures[u].features) {
-                for (v = 0; v < LY_ARRAY_SIZE(feature->iffeatures[u].features); ++v) {
-                    /* add itself into the dependants list */
-                    LY_ARRAY_NEW_RET(ctx->ctx, feature->iffeatures[u].features[v]->depfeatures, df, LY_EMEM);
-                    *df = feature;
+        /* finish compilation started in lys_feature_precompile() */
+        COMPILE_ARRAY_GOTO(ctx, feature_p->exts, feature->exts, options, u, lys_compile_ext, ret, done);
+        COMPILE_ARRAY_GOTO(ctx, feature_p->iffeatures, feature->iffeatures, options, u, lys_compile_iffeature, ret, done);
+        if (feature->iffeatures) {
+            for (u = 0; u < LY_ARRAY_SIZE(feature->iffeatures); ++u) {
+                if (feature->iffeatures[u].features) {
+                    for (v = 0; v < LY_ARRAY_SIZE(feature->iffeatures[u].features); ++v) {
+                        /* add itself into the dependants list */
+                        LY_ARRAY_NEW_RET(ctx->ctx, feature->iffeatures[u].features[v]->depfeatures, df, LY_EMEM);
+                        *df = feature;
+                    }
+                    /* TODO check for circular dependency */
                 }
-                /* TODO check for circular dependency */
             }
         }
+    done:
+        return ret;
     }
-done:
-    return ret;
+
+    LOGINT(ctx->ctx);
+    return LY_EINT;
 }
 
 /**
@@ -3857,7 +3907,15 @@ lys_compile_submodule(struct lysc_ctx *ctx, struct lysp_include *inc, int option
     struct lysp_submodule *submod = inc->submodule;
     struct lysc_module *mainmod = ctx->mod->compiled;
 
-    COMPILE_ARRAY_UNIQUE_GOTO(ctx, submod->features, mainmod->features, options, u, lys_compile_feature, ret, error);
+    if (!mainmod->mod->off_features) {
+        /* features are compiled directly into the compiled module structure,
+         * but it must be done in two steps to allow forward references (via if-feature) between the features themselves.
+         * The features compilation is finished in the main module (lys_compile()). */
+        ret = lys_feature_precompile(ctx->ctx, submod->features,
+                                     mainmod->mod->off_features ? &mainmod->mod->off_features : &mainmod->features);
+        LY_CHECK_GOTO(ret, error);
+    }
+
     COMPILE_ARRAY_UNIQUE_GOTO(ctx, submod->identities, mainmod->identities, options, u, lys_compile_identity, ret, error);
 
 error:
@@ -3873,6 +3931,7 @@ lys_compile(struct lys_module *mod, int options)
     struct lysp_module *sp;
     struct lysp_node *node_p;
     unsigned int u, v;
+    int using_precompiled_features = 0;
     LY_ERR ret = LY_SUCCESS;
 
     LY_CHECK_ARG_RET(NULL, mod, mod->parsed, mod->ctx, LY_EINVAL);
@@ -3892,15 +3951,36 @@ lys_compile(struct lys_module *mod, int options)
     LY_CHECK_ERR_RET(!mod_c, LOGMEM(mod->ctx), LY_EMEM);
     mod_c->mod = mod;
 
-    if (sp->revs) {
-        DUP_STRING(mod->ctx, sp->revs[0].date, mod_c->revision);
-    }
     COMPILE_ARRAY_GOTO(&ctx, sp->imports, mod_c->imports, options, u, lys_compile_import, ret, error);
     LY_ARRAY_FOR(sp->includes, u) {
         ret = lys_compile_submodule(&ctx, &sp->includes[u], options);
         LY_CHECK_GOTO(ret != LY_SUCCESS, error);
     }
-    COMPILE_ARRAY_UNIQUE_GOTO(&ctx, sp->features, mod_c->features, options, u, lys_compile_feature, ret, error);
+    if (mod->off_features) {
+        /* there is already precompiled array of features */
+        mod_c->features = mod->off_features;
+        mod->off_features = NULL;
+        using_precompiled_features = 1;
+    } else {
+        /* features are compiled directly into the compiled module structure,
+         * but it must be done in two steps to allow forward references (via if-feature) between the features themselves */
+        ret = lys_feature_precompile(ctx.ctx, sp->features, &mod_c->features);
+        LY_CHECK_GOTO(ret, error);
+    }
+    /* finish feature compilation, not only for the main module, but also for the submodules.
+     * Due to possible forward references, it must be done when all the features (including submodules)
+     * are present. */
+    LY_ARRAY_FOR(sp->features, u) {
+        ret = lys_feature_precompile_finish(&ctx, &sp->features[u], options, mod_c->features);
+        LY_CHECK_GOTO(ret != LY_SUCCESS, error);
+    }
+    LY_ARRAY_FOR(sp->includes, v) {
+        LY_ARRAY_FOR(sp->includes[v].submodule->features, u) {
+            ret = lys_feature_precompile_finish(&ctx, &sp->includes[v].submodule->features[u], options, mod_c->features);
+            LY_CHECK_GOTO(ret != LY_SUCCESS, error);
+        }
+    }
+
     COMPILE_ARRAY_UNIQUE_GOTO(&ctx, sp->identities, mod_c->identities, options, u, lys_compile_identity, ret, error);
     if (sp->identities) {
         LY_CHECK_RET(lys_compile_identities_derived(&ctx, sp->identities, mod_c->identities));
@@ -3972,6 +4052,23 @@ lys_compile(struct lys_module *mod, int options)
     return LY_SUCCESS;
 
 error:
+    if (using_precompiled_features) {
+        /* keep the off_features list until the complete lys_module is freed */
+        mod->off_features = mod->compiled->features;
+        mod->compiled->features = NULL;
+    }
+    /* in the off_features list, remove all the parts (from finished compiling process)
+     * which may points into the data being freed here */
+    LY_ARRAY_FOR(mod->off_features, u) {
+        LY_ARRAY_FOR(mod->off_features[u].iffeatures, v) {
+            lysc_iffeature_free(ctx.ctx, &mod->off_features[u].iffeatures[v]);
+        }
+        LY_ARRAY_FREE(mod->off_features[u].iffeatures);
+        LY_ARRAY_FOR(mod->off_features[u].exts, v) {
+            lysc_ext_instance_free(ctx.ctx, &(mod->off_features[u].exts)[v]);
+        }
+        LY_ARRAY_FREE(mod->off_features[u].exts);
+    }
     ly_set_erase(&ctx.unres, NULL);
     ly_set_erase(&ctx.groupings, NULL);
     lysc_module_free(mod_c, NULL);

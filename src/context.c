@@ -289,10 +289,10 @@ ly_ctx_get_module_imp_clb(const struct ly_ctx *ctx, void **user_data)
  * module in the context.
  * @return Module matching the given key, NULL if no such module found.
  */
-static const struct lys_module *
+static struct lys_module *
 ly_ctx_get_module_by_iter(const struct ly_ctx *ctx, const char *key, size_t key_offset, unsigned int *index)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     const char *value;
 
     for (; *index < ctx->list.count; ++(*index)) {
@@ -317,21 +317,20 @@ ly_ctx_get_module_by_iter(const struct ly_ctx *ctx, const char *key, size_t key_
  * revision module, use ly_ctx_get_module_latest_by().
  * @return Matching module if any.
  */
-static const struct lys_module *
+static struct lys_module *
 ly_ctx_get_module_by(const struct ly_ctx *ctx, const char *key, size_t key_offset, const char *revision)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     unsigned int index = 0;
 
     while ((mod = ly_ctx_get_module_by_iter(ctx, key, key_offset, &index))) {
         if (!revision) {
-            if ((mod->compiled && !mod->compiled->revision) || (!mod->compiled && !mod->parsed->revs)) {
+            if (!mod->revision) {
                 /* found requested module without revision */
                 return mod;
             }
         } else {
-            if ((mod->compiled && mod->compiled->revision && !strcmp(mod->compiled->revision, revision)) ||
-                    (!mod->compiled && mod->parsed->revs && !strcmp(mod->parsed->revs[0].date, revision))) {
+            if (mod->revision && !strcmp(mod->revision, revision)) {
                 /* found requested module of the specific revision */
                 return mod;
             }
@@ -341,14 +340,14 @@ ly_ctx_get_module_by(const struct ly_ctx *ctx, const char *key, size_t key_offse
     return NULL;
 }
 
-API const struct lys_module *
+API struct lys_module *
 ly_ctx_get_module_ns(const struct ly_ctx *ctx, const char *ns, const char *revision)
 {
     LY_CHECK_ARG_RET(ctx, ctx, ns, NULL);
     return ly_ctx_get_module_by(ctx, ns, offsetof(struct lys_module, ns), revision);
 }
 
-API const struct lys_module *
+API struct lys_module *
 ly_ctx_get_module(const struct ly_ctx *ctx, const char *name, const char *revision)
 {
     LY_CHECK_ARG_RET(ctx, ctx, name, NULL);
@@ -362,10 +361,10 @@ ly_ctx_get_module(const struct ly_ctx *ctx, const char *name, const char *revisi
  * @param[in] key_offset Key's offset in struct lys_module to get value from the context's modules to match with the key.
  * @return Matching module if any.
  */
-static const struct lys_module *
+static struct lys_module *
 ly_ctx_get_module_latest_by(const struct ly_ctx *ctx, const char *key, size_t key_offset)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     unsigned int index = 0;
 
     while ((mod = ly_ctx_get_module_by_iter(ctx, key, key_offset, &index))) {
@@ -377,14 +376,14 @@ ly_ctx_get_module_latest_by(const struct ly_ctx *ctx, const char *key, size_t ke
     return NULL;
 }
 
-API const struct lys_module *
+API struct lys_module *
 ly_ctx_get_module_latest(const struct ly_ctx *ctx, const char *name)
 {
     LY_CHECK_ARG_RET(ctx, ctx, name, NULL);
     return ly_ctx_get_module_latest_by(ctx, name, offsetof(struct lys_module, name));
 }
 
-const struct lys_module *
+API struct lys_module *
 ly_ctx_get_module_latest_ns(const struct ly_ctx *ctx, const char *ns)
 {
     LY_CHECK_ARG_RET(ctx, ctx, ns, NULL);
@@ -398,10 +397,10 @@ ly_ctx_get_module_latest_ns(const struct ly_ctx *ctx, const char *ns)
  * @param[in] key_offset Key's offset in struct lys_module to get value from the context's modules to match with the key.
  * @return Matching module if any.
  */
-static const struct lys_module *
+static struct lys_module *
 ly_ctx_get_module_implemented_by(const struct ly_ctx *ctx, const char *key, size_t key_offset)
 {
-    const struct lys_module *mod;
+    struct lys_module *mod;
     unsigned int index = 0;
 
     while ((mod = ly_ctx_get_module_by_iter(ctx, key, key_offset, &index))) {
@@ -413,14 +412,14 @@ ly_ctx_get_module_implemented_by(const struct ly_ctx *ctx, const char *key, size
     return NULL;
 }
 
-API const struct lys_module *
+API struct lys_module *
 ly_ctx_get_module_implemented(const struct ly_ctx *ctx, const char *name)
 {
     LY_CHECK_ARG_RET(ctx, ctx, name, NULL);
     return ly_ctx_get_module_implemented_by(ctx, name, offsetof(struct lys_module, name));
 }
 
-API const struct lys_module *
+API struct lys_module *
 ly_ctx_get_module_implemented_ns(const struct ly_ctx *ctx, const char *ns)
 {
     LY_CHECK_ARG_RET(ctx, ctx, ns, NULL);
@@ -483,6 +482,40 @@ ly_ctx_reset_latests(struct ly_ctx *ctx)
             }
         }
     }
+}
+
+API LY_ERR
+ly_ctx_module_implement(struct ly_ctx *ctx, struct lys_module *mod)
+{
+    struct lys_module *m;
+
+    LY_CHECK_ARG_RET(ctx, mod, LY_EINVAL);
+
+    if (mod->implemented) {
+        return LY_SUCCESS;
+    }
+
+    /* we have module from the current context */
+    m = ly_ctx_get_module_implemented(ctx, mod->name);
+    if (m) {
+        if (m != mod) {
+            /* check collision with other implemented revision */
+            LOGERR(ctx, LY_EDENIED, "Module \"%s\" is present in the context in other implemented revision (%s).",
+                   mod->name, mod->revision ? mod->revision : "module without revision");
+            return LY_EDENIED;
+        } else {
+            /* mod is already implemented */
+            return LY_SUCCESS;
+        }
+    }
+
+    /* mark the module implemented, check for collision was already done */
+    mod->implemented = 1;
+
+    /* compile the schema */
+    LY_CHECK_RET(lys_compile(mod, 0));
+
+    return LY_SUCCESS;
 }
 
 API void

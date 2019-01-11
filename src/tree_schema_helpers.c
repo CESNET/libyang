@@ -681,12 +681,17 @@ lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, int
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
     void (*module_data_free)(void *module_data, void *user_data) = NULL;
     struct lysp_load_module_check_data check_data = {0};
+    struct lys_module *m;
 
-    /* try to get the module from the context */
-    if (revision) {
-        *mod = (struct lys_module*)ly_ctx_get_module(ctx, name, revision);
-    } else {
-        *mod = (struct lys_module*)ly_ctx_get_module_latest(ctx, name);
+    assert(mod);
+
+    if (!*mod) {
+        /* try to get the module from the context */
+        if (revision) {
+            *mod = (struct lys_module*)ly_ctx_get_module(ctx, name, revision);
+        } else {
+            *mod = (struct lys_module*)ly_ctx_get_module_latest(ctx, name);
+        }
     }
 
     if (!(*mod) || (require_parsed && !(*mod)->parsed)) {
@@ -740,12 +745,15 @@ search_file:
         }
     } else {
         /* we have module from the current context */
-        if (implement && (ly_ctx_get_module_implemented(ctx, name) != *mod)) {
-            /* check collision with other implemented revision */
-            LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE,
-                   "Module \"%s\" is already present in other implemented revision.", name);
-            *mod = NULL;
-            return LY_EDENIED;
+        if (implement) {
+            m = ly_ctx_get_module_implemented(ctx, name);
+            if (m && m != *mod) {
+                /* check collision with other implemented revision */
+                LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE,
+                       "Module \"%s\" is already present in other implemented revision.", name);
+                *mod = NULL;
+                return LY_EDENIED;
+            }
         }
 
         /* circular check */
@@ -828,7 +836,7 @@ search_file:
     TYPE *imp; \
     if (!strncmp((MOD)->mod->prefix, prefix, len) && (MOD)->mod->prefix[len] == '\0') { \
         /* it is the prefix of the module itself */ \
-        m = ly_ctx_get_module((MOD)->mod->ctx, (MOD)->mod->name, ((struct lysc_module*)(MOD))->revision); \
+        m = ly_ctx_get_module((MOD)->mod->ctx, (MOD)->mod->name, (MOD)->mod->revision); \
     } \
     /* search in imports */ \
     if (!m) { \

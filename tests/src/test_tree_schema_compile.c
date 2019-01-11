@@ -286,6 +286,22 @@ test_feature(void **state)
     assert_int_equal(1, lys_feature_value(&mod, "f1"));
     assert_int_equal(0, lys_feature_value(&mod, "f2"));
 
+    assert_non_null(modp = lys_parse_mem(ctx.ctx, "module b {namespace urn:b;prefix b;"
+                                         "feature f1 {if-feature f2;}feature f2;}", LYS_IN_YANG));
+    assert_non_null(modp->compiled);
+    assert_non_null(modp->compiled->features);
+    assert_int_equal(2, LY_ARRAY_SIZE(modp->compiled->features));
+    assert_non_null(modp->compiled->features[0].iffeatures);
+    assert_int_equal(1, LY_ARRAY_SIZE(modp->compiled->features[0].iffeatures));
+    assert_non_null(modp->compiled->features[0].iffeatures[0].features);
+    assert_int_equal(1, LY_ARRAY_SIZE(modp->compiled->features[0].iffeatures[0].features));
+    assert_ptr_equal(&modp->compiled->features[1], modp->compiled->features[0].iffeatures[0].features[0]);
+    assert_non_null(modp->compiled->features);
+    assert_int_equal(2, LY_ARRAY_SIZE(modp->compiled->features));
+    assert_non_null(modp->compiled->features[1].depfeatures);
+    assert_int_equal(1, LY_ARRAY_SIZE(modp->compiled->features[1].depfeatures));
+    assert_ptr_equal(&modp->compiled->features[0], modp->compiled->features[1].depfeatures[0]);
+
     /* invalid reference */
     assert_int_equal(LY_EINVAL, lys_feature_enable(&mod, "xxx"));
     logbuf_assert("Feature \"xxx\" not found in module \"a\".");
@@ -333,8 +349,8 @@ test_feature(void **state)
     logbuf_assert("Duplicate identifier \"f1\" of feature statement.");
     reset_mod(ctx.ctx, &mod);
 
-    ly_ctx_set_module_imp_clb(ctx.ctx, test_imp_clb, "submodule sb {belongs-to b {prefix b;} feature f1;}");
-    assert_null(lys_parse_mem(ctx.ctx, "module b{namespace urn:b; prefix b; include sb;feature f1;}", LYS_IN_YANG));
+    ly_ctx_set_module_imp_clb(ctx.ctx, test_imp_clb, "submodule sz {belongs-to z {prefix z;} feature f1;}");
+    assert_null(lys_parse_mem(ctx.ctx, "module z{namespace urn:z; prefix z; include sz;feature f1;}", LYS_IN_YANG));
     logbuf_assert("Duplicate identifier \"f1\" of feature statement.");
 
     /* import reference */
@@ -2090,10 +2106,8 @@ test_uses(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
 
-    assert_non_null(lys_parse_mem(ctx, "module grp {namespace urn:grp;prefix g; typedef mytype {type string;}"
-                                       "grouping grp {leaf x {type mytype;}}}", LYS_IN_YANG));
-
-
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "module grp {namespace urn:grp;prefix g; typedef mytype {type string;} feature f;"
+                              "grouping grp {leaf x {type mytype;} leaf y {type string; if-feature f;}}}");
     assert_non_null(mod = lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;import grp {prefix g;}"
                                         "grouping grp_a_top {leaf a1 {type int8;}}"
                                         "container a {uses grp_a; uses grp_a_top; uses g:grp; grouping grp_a {leaf a2 {type uint8;}}}}", LYS_IN_YANG));
@@ -2108,6 +2122,22 @@ test_uses(void **state)
     assert_non_null((child = child->next));
     assert_string_equal("x", child->name);
     assert_ptr_equal(mod, child->module);
+    assert_non_null((child = child->next));
+    assert_string_equal("y", child->name);
+    assert_non_null(child->iffeatures);
+    assert_int_equal(1, LY_ARRAY_SIZE(child->iffeatures));
+    assert_int_equal(1, LY_ARRAY_SIZE(child->iffeatures[0].features));
+    assert_string_equal("f", child->iffeatures[0].features[0]->name);
+    assert_int_equal(LY_EINVAL, lys_feature_enable(mod->compiled->imports[0].module, "f"));
+    logbuf_assert("Module \"grp\" is not implemented so all its features are permanently disabled without a chance to change it.");
+    assert_int_equal(0, lysc_iffeature_value(&child->iffeatures[0]));
+
+    /* make the imported module implemented and enable the feature */
+    assert_non_null(mod = ly_ctx_get_module(ctx, "grp", NULL));
+    assert_int_equal(LY_SUCCESS, ly_ctx_module_implement(ctx, mod));
+    assert_int_equal(LY_SUCCESS, lys_feature_enable(mod, "f"));
+    assert_string_equal("f", child->iffeatures[0].features[0]->name);
+    assert_int_equal(1, lysc_iffeature_value(&child->iffeatures[0]));
 
     ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule bsub {belongs-to b {prefix b;} grouping grp {leaf b {type string;}}}");
     assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;include bsub;uses grp;}", LYS_IN_YANG));

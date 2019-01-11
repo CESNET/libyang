@@ -464,14 +464,14 @@ lysp_module_free(struct lysp_module *module)
     free(module);
 }
 
-static void
+void
 lysc_ext_instance_free(struct ly_ctx *ctx, struct lysc_ext_instance *ext)
 {
     FREE_STRING(ctx, ext->argument);
     FREE_ARRAY(ctx, ext->exts, lysc_ext_instance_free);
 }
 
-static void
+void
 lysc_iffeature_free(struct ly_ctx *UNUSED(ctx), struct lysc_iffeature *iff)
 {
     LY_ARRAY_FREE(iff->features);
@@ -757,8 +757,6 @@ lysc_module_free_(struct lysc_module *module)
     LY_CHECK_ARG_RET(NULL, module,);
     ctx = module->mod->ctx;
 
-    FREE_STRING(ctx, module->revision);
-
     FREE_ARRAY(ctx, module->imports, lysc_import_free);
     FREE_ARRAY(ctx, module->features, lysc_feature_free);
     FREE_ARRAY(ctx, module->identities, lysc_ident_free);
@@ -788,9 +786,11 @@ lys_module_free(struct lys_module *module, void (*private_destructor)(const stru
     }
 
     lysc_module_free(module->compiled, private_destructor);
+    FREE_ARRAY(module->ctx, module->off_features, lysc_feature_free);
     lysp_module_free(module->parsed);
 
     FREE_STRING(module->ctx, module->name);
+    FREE_STRING(module->ctx, module->revision);
     FREE_STRING(module->ctx, module->ns);
     FREE_STRING(module->ctx, module->prefix);
     FREE_STRING(module->ctx, module->filepath);
