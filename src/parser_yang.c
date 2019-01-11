@@ -4796,7 +4796,7 @@ yang_parse_submodule(struct ly_parser_ctx *context, const char *data, struct lys
     } else if (kw != YANG_SUBMODULE) {
         LOGVAL_YANG(context, LYVE_SYNTAX, "Invalid keyword \"%s\", expected \"module\" or \"submodule\".",
                ly_stmt2str(kw));
-        ret = LY_EINVAL;
+        ret = LY_EVALID;
         goto cleanup;
     }
 
@@ -4816,6 +4816,7 @@ yang_parse_submodule(struct ly_parser_ctx *context, const char *data, struct lys
         LOGVAL_YANG(context, LYVE_SYNTAX, "Invalid character sequence \"%.*s\", expected end-of-file.",
                word_len, word);
         free(buf);
+        ret = LY_EVALID;
         goto cleanup;
     }
     assert(!buf);
@@ -4851,7 +4852,7 @@ yang_parse_module(struct ly_parser_ctx *context, const char *data, struct lys_mo
     } else if (kw != YANG_MODULE) {
         LOGVAL_YANG(context, LYVE_SYNTAX, "Invalid keyword \"%s\", expected \"module\" or \"submodule\".",
                ly_stmt2str(kw));
-        ret = LY_EINVAL;
+        ret = LY_EVALID;
         goto cleanup;
     }
 
@@ -4872,6 +4873,7 @@ yang_parse_module(struct ly_parser_ctx *context, const char *data, struct lys_mo
         LOGVAL_YANG(context, LYVE_SYNTAX, "Invalid character sequence \"%.*s\", expected end-of-file.",
                word_len, word);
         free(buf);
+        ret = LY_EVALID;
         goto cleanup;
     }
     assert(!buf);

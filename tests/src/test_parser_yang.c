@@ -765,8 +765,9 @@ test_minmax(void **state)
 }
 
 static struct lysp_module *
-mod_renew(struct ly_parser_ctx *ctx, struct lysp_module *mod_p)
+mod_renew(struct ly_parser_ctx *ctx)
 {
+    struct lysp_module *mod_p;
     static struct lys_module mod = {0};
 
     lysc_module_free(mod.compiled, NULL);
@@ -811,11 +812,12 @@ static LY_ERR test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_
 static void
 test_module(void **state)
 {
-    (void) state; /* unused */
+    *state = test_module;
 
     struct ly_parser_ctx ctx;
-    struct lysp_module *mod;
-    struct lysp_submodule *submod;
+    struct lysp_module *mod = NULL;
+    struct lysp_submodule *submod = NULL;
+    struct lys_module *m;
     const char *str;
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
@@ -823,25 +825,25 @@ test_module(void **state)
     ctx.line = 1;
     ctx.indent = 0;
 
-    mod = mod_renew(&ctx, NULL);
+    mod = mod_renew(&ctx);
 
     /* missing mandatory substatements */
     str = " name {}";
     assert_int_equal(LY_EVALID, parse_module(&ctx, &str, mod));
     assert_string_equal("name", mod->mod->name);
     logbuf_assert("Missing mandatory keyword \"namespace\" as a child of \"module\". Line number 1.");
-    mod = mod_renew(&ctx, mod);
+    mod = mod_renew(&ctx);
 
     str = " name {namespace urn:x;}";
     assert_int_equal(LY_EVALID, parse_module(&ctx, &str, mod));
     assert_string_equal("urn:x", mod->mod->ns);
     logbuf_assert("Missing mandatory keyword \"prefix\" as a child of \"module\". Line number 1.");
-    mod = mod_renew(&ctx, mod);
+    mod = mod_renew(&ctx);
 
     str = " name {namespace urn:x;prefix \"x\";}";
     assert_int_equal(LY_SUCCESS, parse_module(&ctx, &str, mod));
     assert_string_equal("x", mod->mod->prefix);
-    mod = mod_renew(&ctx, mod);
+    mod = mod_renew(&ctx);
 
 #define SCHEMA_BEGINNING " name {yang-version 1.1;namespace urn:x;prefix \"x\";"
 #define SCHEMA_BEGINNING2 " name {namespace urn:x;prefix \"x\";"
@@ -851,16 +853,16 @@ test_module(void **state)
         assert_non_null(mod->data); \
         assert_int_equal(NODETYPE, mod->data->nodetype); \
         assert_string_equal(NAME, mod->data->name); \
-        mod = mod_renew(&ctx, mod);
+        mod = mod_renew(&ctx);
 #define TEST_GENERIC(INPUT, TARGET, TEST) \
         str = SCHEMA_BEGINNING INPUT; \
         assert_int_equal(LY_SUCCESS, parse_module(&ctx, &str, mod)); \
         assert_non_null(TARGET); \
         TEST; \
-        mod = mod_renew(&ctx, mod);
+        mod = mod_renew(&ctx);
 #define TEST_DUP(MEMBER, VALUE1, VALUE2, LINE) \
         TEST_DUP_GENERIC(SCHEMA_BEGINNING, MEMBER, VALUE1, VALUE2, \
-                         parse_module, mod, LINE, mod = mod_renew(&ctx, mod))
+                         parse_module, mod, LINE, mod = mod_renew(&ctx))
 
     /* duplicated namespace, prefix */
     TEST_DUP("namespace", "y", "z", "1");
@@ -874,7 +876,7 @@ test_module(void **state)
     str = SCHEMA_BEGINNING "belongs-to master {prefix m;}}";
     assert_int_equal(LY_EVALID, parse_module(&ctx, &str, mod));
     logbuf_assert("Invalid keyword \"belongs-to\" as a child of \"module\". Line number 1.");
-    mod = mod_renew(&ctx, mod);
+    mod = mod_renew(&ctx);
 
     /* anydata */
     TEST_NODE(LYS_ANYDATA, "anydata test;}", "test");
@@ -917,11 +919,11 @@ test_module(void **state)
     str = SCHEMA_BEGINNING "import zzz {prefix x;}}";
     assert_int_equal(LY_EVALID, parse_module(&ctx, &str, mod));
     logbuf_assert("Prefix \"x\" already used as module prefix. Line number 2.");
-    mod = mod_renew(&ctx, mod);
+    mod = mod_renew(&ctx);
     str = SCHEMA_BEGINNING "import zzz {prefix y;}import zzz {prefix y;}}";
     assert_int_equal(LY_EVALID, parse_module(&ctx, &str, mod));
     logbuf_assert("Prefix \"y\" already used to import \"zzz\" module. Line number 2.");
-    mod = mod_renew(&ctx, mod);
+    mod = mod_renew(&ctx);
     str = "module" SCHEMA_BEGINNING "import zzz {prefix y;}import zzz {prefix z;}}";
     assert_null(lys_parse_mem(ctx.ctx, str, LYS_IN_YANG));
     assert_int_equal(LY_EVALID, ly_errcode(ctx.ctx));
@@ -978,34 +980,50 @@ test_module(void **state)
     str = SCHEMA_BEGINNING2 "\n\tyang-version 10;}";
     assert_int_equal(LY_EVALID, parse_module(&ctx, &str, mod));
     logbuf_assert("Invalid value \"10\" of \"yang-version\". Line number 3.");
-    mod = mod_renew(&ctx, mod);
+    mod = mod_renew(&ctx);
     str = SCHEMA_BEGINNING2 "yang-version 1.0;yang-version 1.1;}";
     assert_int_equal(LY_EVALID, parse_module(&ctx, &str, mod));
     logbuf_assert("Duplicate keyword \"yang-version\". Line number 3.");
-    mod = mod_renew(&ctx, mod);
+    mod = mod_renew(&ctx);
     str = SCHEMA_BEGINNING2 "yang-version 1.0;}";
     assert_int_equal(LY_SUCCESS, parse_module(&ctx, &str, mod));
     assert_int_equal(1, mod->mod->version);
-    mod = mod_renew(&ctx, mod);
+    mod = mod_renew(&ctx);
     str = SCHEMA_BEGINNING2 "yang-version \"1.1\";}";
     assert_int_equal(LY_SUCCESS, parse_module(&ctx, &str, mod));
     assert_int_equal(2, mod->mod->version);
-    mod = mod_renew(&ctx, mod);
+    mod = mod_renew(&ctx);
+
+    str = "module " SCHEMA_BEGINNING "} module q {namespace urn:q;prefixq;}";
+    m = mod->mod;
+    free(mod);
+    m->parsed = NULL;
+    assert_int_equal(LY_EVALID, yang_parse_module(&ctx, str, m));
+    logbuf_assert("Invalid character sequence \"module\", expected end-of-file. Line number 3.");
+    mod = mod_renew(&ctx);
+
+    str = "prefix " SCHEMA_BEGINNING "}";
+    m = mod->mod;
+    free(mod);
+    m->parsed = NULL;
+    assert_int_equal(LY_EVALID, yang_parse_module(&ctx, str, m));
+    logbuf_assert("Invalid keyword \"prefix\", expected \"module\" or \"submodule\". Line number 3.");
+    mod = mod_renew(&ctx);
 
     /* extensions */
     TEST_GENERIC("prefix:test;}", mod->exts,
                  assert_string_equal("prefix:test", mod->exts[0].name);
                  assert_int_equal(LYEXT_SUBSTMT_SELF, mod->exts[0].insubstmt));
-    mod = mod_renew(&ctx, mod);
+    mod = mod_renew(&ctx);
 
     /* invalid substatement */
     str = SCHEMA_BEGINNING "must false;}";
     assert_int_equal(LY_EVALID, parse_module(&ctx, &str, mod));
     logbuf_assert("Invalid keyword \"must\" as a child of \"module\". Line number 3.");
-    mod = mod_renew(&ctx, mod);
+    mod = mod_renew(&ctx);
 
     /* submodule */
-    submod = submod_renew(&ctx, NULL);
+    submod = submod_renew(&ctx, submod);
 
     /* missing mandatory substatements */
     str = " subname {}";
@@ -1040,6 +1058,17 @@ test_module(void **state)
     logbuf_assert("Invalid keyword \"prefix\" as a child of \"submodule\". Line number 3.");
     submod = submod_renew(&ctx, submod);
 
+    str = "submodule " SCHEMA_BEGINNING "} module q {namespace urn:q;prefixq;}";
+    lysp_submodule_free(ctx.ctx, submod);
+    submod = NULL;
+    assert_int_equal(LY_EVALID, yang_parse_submodule(&ctx, str, &submod));
+    logbuf_assert("Invalid character sequence \"module\", expected end-of-file. Line number 3.");
+
+    str = "prefix " SCHEMA_BEGINNING "}";
+    assert_int_equal(LY_EVALID, yang_parse_submodule(&ctx, str, &submod));
+    logbuf_assert("Invalid keyword \"prefix\", expected \"module\" or \"submodule\". Line number 3.");
+    submod = submod_renew(&ctx, submod);
+
 #undef TEST_GENERIC
 #undef TEST_NODE
 #undef TEST_DUP
@@ -1048,6 +1077,8 @@ test_module(void **state)
     lysp_module_free(mod);
     lysp_submodule_free(ctx.ctx, submod);
     ly_ctx_destroy(ctx.ctx, NULL);
+
+    *state = NULL;
 }
 
 static void
@@ -1882,7 +1913,7 @@ int main(void)
         cmocka_unit_test_setup(test_arg, logger_setup),
         cmocka_unit_test_setup(test_stmts, logger_setup),
         cmocka_unit_test_setup_teardown(test_minmax, logger_setup, logger_teardown),
-        cmocka_unit_test_setup(test_module, logger_setup),
+        cmocka_unit_test_setup_teardown(test_module, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_identity, logger_setup, logger_teardown),
         cmocka_unit_test_setup(test_feature, logger_setup),
         cmocka_unit_test_setup(test_deviation, logger_setup),

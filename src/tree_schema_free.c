@@ -398,7 +398,9 @@ lysp_submodule_free(struct ly_ctx *ctx, struct lysp_submodule *submod)
 {
     struct lysp_node *node, *next;
 
-    LY_CHECK_ARG_RET(NULL, submod,);
+    if (!submod) {
+        return;
+    }
 
     FREE_ARRAY(ctx, submod->imports, lysp_import_free);
     FREE_ARRAY(ctx, submod->includes, lysp_include_free);
