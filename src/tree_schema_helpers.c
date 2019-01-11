@@ -712,6 +712,11 @@ search_clb:
                     if (module_data_free) {
                         module_data_free((void*)module_data, ctx->imp_clb_data);
                     }
+                    if (*mod && implement && lys_compile(*mod, 0)) {
+                        ly_set_rm(&ctx->list, *mod, NULL);
+                        lys_module_free(*mod, NULL);
+                        *mod = NULL;
+                    }
                 }
             }
             if (!(*mod) && !(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {

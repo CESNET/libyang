@@ -48,7 +48,7 @@ static struct internal_modules_s {
     {"ietf-inet-types", "2013-07-15", (const char*)ietf_inet_types_2013_07_15_yang, 0, LYS_IN_YANG},
     {"ietf-yang-types", "2013-07-15", (const char*)ietf_yang_types_2013_07_15_yang, 0, LYS_IN_YANG},
     /* ietf-datastores and ietf-yang-library must be right here at the end of the list! */
-    {"ietf-datastores", "2017-08-17", (const char*)ietf_datastores_2017_08_17_yang, 0, LYS_IN_YANG},
+    {"ietf-datastores", "2017-08-17", (const char*)ietf_datastores_2017_08_17_yang, 1, LYS_IN_YANG},
     {"ietf-yang-library", IETF_YANG_LIB_REV, (const char*)ietf_yang_library_2018_01_17_yang, 1, LYS_IN_YANG}
 };
 
@@ -206,9 +206,10 @@ ly_ctx_new(const char *search_dir, int options, struct ly_ctx **new_ctx)
 
     /* load internal modules */
     for (i = 0; i < ((options & LY_CTX_NOYANGLIBRARY) ? (LY_INTERNAL_MODS_COUNT - 2) : LY_INTERNAL_MODS_COUNT); i++) {
-        module = (struct lys_module *)lys_parse_mem(ctx, internal_modules[i].data, internal_modules[i].format);
+        module = (struct lys_module *)lys_parse_mem_module(ctx, internal_modules[i].data, internal_modules[i].format,
+                                                           internal_modules[i].implemented, NULL, NULL);
         LY_CHECK_ERR_GOTO(!module, rc = ly_errcode(ctx), error);
-        module->implemented = internal_modules[i].implemented;
+        LY_CHECK_GOTO((rc = lys_compile(module, 0)), error);
     }
 
     *new_ctx = ctx;
@@ -460,6 +461,8 @@ ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *s
 
     return NULL;
 }
+
+/* TODO ly_ctx_load_module() via lysp_load_module() */
 
 API void
 ly_ctx_reset_latests(struct ly_ctx *ctx)

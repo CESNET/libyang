@@ -672,7 +672,17 @@ error:
 API struct lys_module *
 lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
 {
-    return lys_parse_mem_module(ctx, data, format, 1, NULL, NULL);
+    struct lys_module *mod;
+
+    mod = lys_parse_mem_module(ctx, data, format, 1, NULL, NULL);
+    LY_CHECK_RET(!mod, NULL);
+
+    if (lys_compile(mod, 0)) {
+        ly_set_rm(&ctx->list, mod, NULL);
+        lys_module_free(mod, NULL);
+        return NULL;
+    }
+    return mod;
 }
 
 static void
@@ -723,6 +733,11 @@ lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, int implement, st
         result = submod = lys_parse_mem_submodule(ctx, addr, format, main_ctx, custom_check, check_data);
     } else {
         result = mod = lys_parse_mem_module(ctx, addr, format, implement, custom_check, check_data);
+        if (mod && implement && lys_compile(mod, 0)) {
+            ly_set_rm(&ctx->list, mod, NULL);
+            lys_module_free(mod, NULL);
+            result = mod = NULL;
+        }
     }
     ly_munmap(addr, length);
 

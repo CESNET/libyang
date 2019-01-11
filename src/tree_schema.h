@@ -1607,25 +1607,6 @@ struct lys_module *lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFO
 LY_ERR lys_search_localfile(const char * const *searchpaths, int cwd, const char *name, const char *revision, char **localfile, LYS_INFORMAT *format);
 
 /**
- * @defgroup scflags Schema compile flags
- * @ingroup schematree
- *
- * @{
- */
-#define LYSC_OPT_FREE_SP 1           /**< Free the input printable schema */
-/** @} scflags */
-
-/**
- * @brief Compile printable schema into a validated schema linking all the references.
- *
- * @param[in, out] mod Schema structure holding pointers to both schema structure types. The ::lys_module#parsed
- * member is used as input and ::lys_module#compiled is used to hold the result of the compilation.
- * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
- * @return LY_ERR value.
- */
-LY_ERR lys_compile(struct lys_module *mod, int options);
-
-/**
  * @brief Get next schema tree (sibling) node element that can be instantiated in a data tree. Returned node can
  * be from an augment.
  *

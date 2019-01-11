@@ -149,6 +149,25 @@ LY_ERR lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revisi
 LY_ERR lysp_load_submodule(struct ly_parser_ctx *ctx, struct lysp_module *mod, struct lysp_include *inc);
 
 /**
+ * @defgroup scflags Schema compile flags
+ * @ingroup schematree
+ *
+ * @{
+ */
+#define LYSC_OPT_FREE_SP 1           /**< Free the input printable schema */
+/** @} scflags */
+
+/**
+ * @brief Compile printable schema into a validated schema linking all the references.
+ *
+ * @param[in, out] mod Schema structure holding pointers to both schema structure types. The ::lys_module#parsed
+ * member is used as input and ::lys_module#compiled is used to hold the result of the compilation.
+ * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
+ * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
+ */
+LY_ERR lys_compile(struct lys_module *mod, int options);
+
+/**
  * @brief Get address of a node's actions list if any.
  *
  * Decides the node's type and in case it has an actions list, returns its address.

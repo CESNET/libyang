@@ -292,7 +292,7 @@ test_models(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
     assert_int_equal(ctx->module_set_id, ly_ctx_get_module_set_id(ctx));
 
-    assert_null(lys_parse_mem(ctx, "module x {namespace urn:x;prefix x;}", 3));
+    assert_null(lys_parse_mem_module(ctx, "module x {namespace urn:x;prefix x;}", 3, 1, NULL, NULL));
     logbuf_assert("Invalid schema input format.");
 
     /* import callback */
@@ -308,18 +308,18 @@ test_models(void **state)
 
     /* name collision of module and submodule */
     ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule y {belongs-to a {prefix a;} revision 2018-10-30;}");
-    assert_null(lys_parse_mem(ctx, "module y {namespace urn:y;prefix y;include y;}", LYS_IN_YANG));
+    assert_null(lys_parse_mem_module(ctx, "module y {namespace urn:y;prefix y;include y;}", LYS_IN_YANG, 1, NULL, NULL));
     assert_int_equal(LY_EVALID, ly_errcode(ctx));
     logbuf_assert("Name collision between module and submodule of name \"y\". Line number 1.");
 
-    assert_non_null(lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;include y;revision 2018-10-30; }", LYS_IN_YANG));
-    assert_null(lys_parse_mem(ctx, "module y {namespace urn:y;prefix y;}", LYS_IN_YANG));
+    assert_non_null(lys_parse_mem_module(ctx, "module a {namespace urn:a;prefix a;include y;revision 2018-10-30; }", LYS_IN_YANG, 1, NULL, NULL));
+    assert_null(lys_parse_mem_module(ctx, "module y {namespace urn:y;prefix y;}", LYS_IN_YANG, 1, NULL, NULL));
     assert_int_equal(LY_EVALID, ly_errcode(ctx));
     logbuf_assert("Name collision between module and submodule of name \"y\". Line number 1.");
 
     store = 1;
     ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule y {belongs-to b {prefix b;}}");
-    assert_null(lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;include y;}", LYS_IN_YANG));
+    assert_null(lys_parse_mem_module(ctx, "module b {namespace urn:b;prefix b;include y;}", LYS_IN_YANG, 1, NULL, NULL));
     assert_int_equal(LY_EVALID, ly_errcode(ctx));
     logbuf_assert("Name collision between submodules of name \"y\". Line number 1.");
     store = -1;
@@ -332,12 +332,12 @@ test_models(void **state)
     assert_string_equal("2018-10-31", mod2->parsed->includes[0].submodule->revs[0].date);
 
     /* reloading module in case only the compiled module resists in the context */
-    mod1 = lys_parse_mem(ctx, "module w {namespace urn:w;prefix w;revision 2018-10-24;}", LYS_IN_YANG);
+    mod1 = lys_parse_mem_module(ctx, "module w {namespace urn:w;prefix w;revision 2018-10-24;}", LYS_IN_YANG, 1, NULL, NULL);
     assert_non_null(mod1);
     assert_int_equal(LY_SUCCESS, lys_compile(mod1, LYSC_OPT_FREE_SP));
     assert_non_null(mod1->compiled);
     assert_null(mod1->parsed);
-    mod2 = lys_parse_mem(ctx, "module z {namespace urn:z;prefix z;import w {prefix w;revision-date 2018-10-24;}}", LYS_IN_YANG);
+    mod2 = lys_parse_mem_module(ctx, "module z {namespace urn:z;prefix z;import w {prefix w;revision-date 2018-10-24;}}", LYS_IN_YANG, 1, NULL, NULL);
     assert_non_null(mod2);
     /* mod1->parsed is necessary to compile mod2 because of possible groupings, typedefs, ... */
     ly_ctx_set_module_imp_clb(ctx, NULL, NULL);
@@ -391,9 +391,9 @@ test_get_models(void **state)
     assert_non_null(ly_ctx_get_module_ns(ctx, "urn:ietf:params:xml:ns:yang:ietf-datastores", "2017-08-17"));
 
     /* select module by revision */
-    mod = lys_parse_mem(ctx, str1, LYS_IN_YANG);
+    mod = lys_parse_mem_module(ctx, str1, LYS_IN_YANG, 1, NULL, NULL);
     /* invalid attempts - implementing module of the same name and inserting the same module */
-    assert_null(lys_parse_mem(ctx, str2, LYS_IN_YANG));
+    assert_null(lys_parse_mem_module(ctx, str2, LYS_IN_YANG, 1, NULL, NULL));
     logbuf_assert("Module \"a\" is already implemented in the context.");
     assert_null(lys_parse_mem_module(ctx, str1, LYS_IN_YANG, 0, NULL, NULL));
     logbuf_assert("Module \"a\" of revision \"2018-10-23\" is already present in the context.");
@@ -413,7 +413,7 @@ test_get_models(void **state)
     assert_ptr_not_equal(mod, ly_ctx_get_module_latest(ctx, "a"));
 
     str1 = "submodule b {belongs-to a {prefix a;}}";
-    assert_null(lys_parse_mem(ctx, str1, LYS_IN_YANG));
+    assert_null(lys_parse_mem_module(ctx, str1, LYS_IN_YANG, 1, NULL, NULL));
     logbuf_assert("Input data contains submodule which cannot be parsed directly without its main module.");
 
     /* cleanup */

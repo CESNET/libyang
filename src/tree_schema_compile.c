@@ -3864,12 +3864,6 @@ error:
     return ret;
 }
 
-/**
- * @brief Compile the given YANG module.
- * @param[in] mod Module structure where the parsed schema is expected and the compiled schema will be placed.
- * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
- * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
- */
 LY_ERR
 lys_compile(struct lys_module *mod, int options)
 {
@@ -3882,6 +3876,12 @@ lys_compile(struct lys_module *mod, int options)
     LY_ERR ret = LY_SUCCESS;
 
     LY_CHECK_ARG_RET(NULL, mod, mod->parsed, mod->ctx, LY_EINVAL);
+
+    if (!mod->implemented) {
+        /* just imported modules are not compiled */
+        return LY_SUCCESS;
+    }
+
     sp = mod->parsed;
 
     ctx.ctx = mod->ctx;
