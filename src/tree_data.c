@@ -2811,6 +2811,11 @@ src_insert:
                     src_elem_backup = lyd_dup_to_ctx(src_elem_backup, 1, ctx);
                 }
 
+                if (src_elem == source) {
+                    /* it will be linked into another data tree and the pointers changed */
+                    source = source->next;
+                }
+
                 /* insert subtree into the target */
                 if (lyd_insert(trg_parent_backup, src_elem_backup)) {
                     LOGINT(ctx);
@@ -2818,10 +2823,7 @@ src_insert:
                     return 1;
                 }
                 if (src_elem == src) {
-                    /* we are finished for this src, we spent it, so forget the pointer if available */
-                    if (source == src) {
-                        source = source->next;
-                    }
+                    /* we are finished for this src */
                     break;
                 }
             }
