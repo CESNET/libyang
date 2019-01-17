@@ -372,12 +372,12 @@ test_identity(void **state)
 
     struct ly_ctx *ctx;
     struct lys_module *mod1, *mod2;
-    const char *mod1_str = "module a {namespace urn:a;prefix a; identity a1;}";
-    const char *mod2_str = "module b {yang-version 1.1;namespace urn:b;prefix b; import a {prefix a;}identity b1; identity b2; identity b3 {base b1; base b:b2; base a:a1;} identity b4 {base b:b1; base b3;}}";
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
-    assert_non_null(mod1 = lys_parse_mem(ctx, mod1_str, LYS_IN_YANG));
-    assert_non_null(mod2 = lys_parse_mem(ctx, mod2_str, LYS_IN_YANG));
+    assert_non_null(mod1 = lys_parse_mem(ctx, "module a {namespace urn:a;prefix a; identity a1;}", LYS_IN_YANG));
+    assert_non_null(mod2 = lys_parse_mem(ctx, "module b {yang-version 1.1;namespace urn:b;prefix b; import a {prefix a;}"
+                                         "identity b1; identity b2; identity b3 {base b1; base b:b2; base a:a1;}"
+                                         "identity b4 {base b:b1; base b3;}}", LYS_IN_YANG));
 
     assert_non_null(mod1->compiled);
     assert_non_null(mod1->compiled->identities);
@@ -398,11 +398,16 @@ test_identity(void **state)
     assert_int_equal(1, LY_ARRAY_SIZE(mod2->compiled->identities[2].derived));
     assert_ptr_equal(mod2->compiled->identities[2].derived[0], &mod2->compiled->identities[3]);
 
-    assert_null(lys_parse_mem(ctx, "module c{namespace urn:c; prefix c; identity i1;identity i1;}", LYS_IN_YANG));
+    assert_non_null(mod2 = lys_parse_mem(ctx, "module c {yang-version 1.1;namespace urn:c;prefix c;"
+                                             "identity c2 {base c1;} identity c1;}", LYS_IN_YANG));
+    assert_int_equal(1, LY_ARRAY_SIZE(mod2->compiled->identities[1].derived));
+    assert_ptr_equal(mod2->compiled->identities[1].derived[0], &mod2->compiled->identities[0]);
+
+    assert_null(lys_parse_mem(ctx, "module aa{namespace urn:aa; prefix aa; identity i1;identity i1;}", LYS_IN_YANG));
     logbuf_assert("Duplicate identifier \"i1\" of identity statement.");
 
-    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule sd {belongs-to d {prefix d;} identity i1;}");
-    assert_null(lys_parse_mem(ctx, "module d{namespace urn:d; prefix d; include sd;identity i1;}", LYS_IN_YANG));
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule sbb {belongs-to bb {prefix bb;} identity i1;}");
+    assert_null(lys_parse_mem(ctx, "module bb{namespace urn:bb; prefix bb; include sbb;identity i1;}", LYS_IN_YANG));
     logbuf_assert("Duplicate identifier \"i1\" of identity statement.");
 
     *state = NULL;
