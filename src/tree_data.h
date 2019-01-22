@@ -872,7 +872,7 @@ struct lyd_node *lyd_new_yangdata(const struct lys_module *module, const char *n
  * NULL if #LYD_PATH_OPT_UPDATE was used and the full path exists or the leaf original value matches \p value,
  * NULL and ly_errno is set on error.
  */
-struct lyd_node *lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, void *value,
+struct lyd_node *lyd_new_path(struct lyd_node *data_tree, const struct ly_ctx *ctx, const char *path, void *value,
                               LYD_ANYDATA_VALUETYPE value_type, int options);
 
 /**
