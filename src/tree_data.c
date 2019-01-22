@@ -2701,8 +2701,10 @@ lyd_merge_parent_children(struct lyd_node *target, struct lyd_node *source, int 
 #ifdef LY_ENABLED_CACHE
             struct lyd_node **trg_child_p;
 
-            /* trees are supposed to be validated so all nodes must have their hash */
-            assert(src_elem->hash);
+            /* trees are supposed to be validated so all nodes must have their hash, but lets not be that strict */
+            if (!src_elem->hash) {
+                lyd_hash(src_elem);
+            }
 
             if (trg_parent->ht) {
                 trg_child = NULL;
