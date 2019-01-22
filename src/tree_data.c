@@ -855,7 +855,7 @@ lyd_check_mandatory_tree(struct lyd_node *root, struct ly_ctx *ctx, const struct
         ctx = root->schema->module->ctx;
     }
 
-    if (!(options & LYD_OPT_TYPEMASK) || (options & (LYD_OPT_DATA | LYD_OPT_CONFIG))) {
+    if (!(options & LYD_OPT_TYPEMASK) || (options & LYD_OPT_CONFIG)) {
         if (options & LYD_OPT_NOSIBLINGS) {
             if (root && lyd_check_mandatory_subtree(root, NULL, NULL, root->schema, 1, options)) {
                 return EXIT_FAILURE;
@@ -5094,7 +5094,7 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg, ...)
     data_tree = *node;
 
     if ((!(options & LYD_OPT_TYPEMASK)
-            || (options & (LYD_OPT_DATA | LYD_OPT_CONFIG | LYD_OPT_GET | LYD_OPT_GETCONFIG | LYD_OPT_EDIT))) && !(*node)) {
+            || (options & (LYD_OPT_CONFIG | LYD_OPT_GET | LYD_OPT_GETCONFIG | LYD_OPT_EDIT))) && !(*node)) {
         /* get context with schemas from the var_arg */
         ctx = (struct ly_ctx *)var_arg;
         if (!ctx) {
@@ -5193,7 +5193,7 @@ lyd_validate_modules(struct lyd_node **node, const struct lys_module **modules, 
         return EXIT_FAILURE;
     }
 
-    if (!(options & (LYD_OPT_DATA | LYD_OPT_CONFIG | LYD_OPT_GET | LYD_OPT_GETCONFIG | LYD_OPT_EDIT))) {
+    if ((options & LYD_OPT_TYPEMASK) && !(options & (LYD_OPT_CONFIG | LYD_OPT_GET | LYD_OPT_GETCONFIG | LYD_OPT_EDIT))) {
         LOGERR(NULL, LY_EINVAL, "%s: options include a forbidden data type.", __func__);
         return EXIT_FAILURE;
     }
@@ -7422,7 +7422,7 @@ lyd_wd_add(struct lyd_node **root, struct ly_ctx *ctx, const struct lys_module *
         ctx = (*root)->schema->module->ctx;
     }
 
-    if (!(options & LYD_OPT_TYPEMASK) || (options & (LYD_OPT_DATA | LYD_OPT_CONFIG))) {
+    if (!(options & LYD_OPT_TYPEMASK) || (options & LYD_OPT_CONFIG)) {
         if (options & LYD_OPT_NOSIBLINGS) {
             if (lyd_wd_add_subtree(root, NULL, NULL, (*root)->schema, 1, options, unres)) {
                 return EXIT_FAILURE;
