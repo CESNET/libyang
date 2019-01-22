@@ -855,7 +855,7 @@ lyd_check_mandatory_tree(struct lyd_node *root, struct ly_ctx *ctx, const struct
         ctx = root->schema->module->ctx;
     }
 
-    if (!(options & LYD_OPT_TYPEMASK) || (options & (LYD_OPT_DATA | LYD_OPT_CONFIG))) {
+    if (!(options & LYD_OPT_TYPEMASK) || (options & LYD_OPT_CONFIG)) {
         if (options & LYD_OPT_NOSIBLINGS) {
             if (root && lyd_check_mandatory_subtree(root, NULL, NULL, root->schema, 1, options)) {
                 return EXIT_FAILURE;
@@ -1817,7 +1817,7 @@ lyd_new_path_update(struct lyd_node *node, void *value, LYD_ANYDATA_VALUETYPE va
 }
 
 API struct lyd_node *
-lyd_new_path(struct lyd_node *data_tree, struct ly_ctx *ctx, const char *path, void *value,
+lyd_new_path(struct lyd_node *data_tree, const struct ly_ctx *ctx, const char *path, void *value,
              LYD_ANYDATA_VALUETYPE value_type, int options)
 {
     char *str;
@@ -2701,8 +2701,10 @@ lyd_merge_parent_children(struct lyd_node *target, struct lyd_node *source, int 
 #ifdef LY_ENABLED_CACHE
             struct lyd_node **trg_child_p;
 
-            /* trees are supposed to be validated so all nodes must have their hash */
-            assert(src_elem->hash);
+            /* trees are supposed to be validated so all nodes must have their hash, but lets not be that strict */
+            if (!src_elem->hash) {
+                lyd_hash(src_elem);
+            }
 
             if (trg_parent->ht) {
                 trg_child = NULL;
@@ -2811,6 +2813,11 @@ src_insert:
                     src_elem_backup = lyd_dup_to_ctx(src_elem_backup, 1, ctx);
                 }
 
+                if (src_elem == source) {
+                    /* it will be linked into another data tree and the pointers changed */
+                    source = source->next;
+                }
+
                 /* insert subtree into the target */
                 if (lyd_insert(trg_parent_backup, src_elem_backup)) {
                     LOGINT(ctx);
@@ -2818,10 +2825,7 @@ src_insert:
                     return 1;
                 }
                 if (src_elem == src) {
-                    /* we are finished for this src, we spent it, so forget the pointer if available */
-                    if (source == src) {
-                        source = source->next;
-                    }
+                    /* we are finished for this src */
                     break;
                 }
             }
@@ -5092,7 +5096,7 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg, ...)
     data_tree = *node;
 
     if ((!(options & LYD_OPT_TYPEMASK)
-            || (options & (LYD_OPT_DATA | LYD_OPT_CONFIG | LYD_OPT_GET | LYD_OPT_GETCONFIG | LYD_OPT_EDIT))) && !(*node)) {
+            || (options & (LYD_OPT_CONFIG | LYD_OPT_GET | LYD_OPT_GETCONFIG | LYD_OPT_EDIT))) && !(*node)) {
         /* get context with schemas from the var_arg */
         ctx = (struct ly_ctx *)var_arg;
         if (!ctx) {
@@ -5191,7 +5195,7 @@ lyd_validate_modules(struct lyd_node **node, const struct lys_module **modules, 
         return EXIT_FAILURE;
     }
 
-    if (!(options & (LYD_OPT_DATA | LYD_OPT_CONFIG | LYD_OPT_GET | LYD_OPT_GETCONFIG | LYD_OPT_EDIT))) {
+    if ((options & LYD_OPT_TYPEMASK) && !(options & (LYD_OPT_CONFIG | LYD_OPT_GET | LYD_OPT_GETCONFIG | LYD_OPT_EDIT))) {
         LOGERR(NULL, LY_EINVAL, "%s: options include a forbidden data type.", __func__);
         return EXIT_FAILURE;
     }
@@ -7420,7 +7424,7 @@ lyd_wd_add(struct lyd_node **root, struct ly_ctx *ctx, const struct lys_module *
         ctx = (*root)->schema->module->ctx;
     }
 
-    if (!(options & LYD_OPT_TYPEMASK) || (options & (LYD_OPT_DATA | LYD_OPT_CONFIG))) {
+    if (!(options & LYD_OPT_TYPEMASK) || (options & LYD_OPT_CONFIG)) {
         if (options & LYD_OPT_NOSIBLINGS) {
             if (lyd_wd_add_subtree(root, NULL, NULL, (*root)->schema, 1, options, unres)) {
                 return EXIT_FAILURE;

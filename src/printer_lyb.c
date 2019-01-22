@@ -1135,7 +1135,16 @@ lyb_print_data(struct lyout *out, const struct lyd_node *root, int options)
     uint8_t zero = 0;
     struct hash_table *top_sibling_ht = NULL;
     const struct lys_module *prev_mod = NULL;
+    struct lys_node *parent;
     struct lyb_state lybs;
+
+    if (root) {
+        for (parent = lys_parent(root->schema); parent && (parent->nodetype == LYS_USES); parent = lys_parent(parent));
+        if (parent && (parent->nodetype != LYS_EXT)) {
+            LOGERR(lyd_node_module(root)->ctx, LY_EINVAL, "LYB printer supports only printing top-level nodes.");
+            return EXIT_FAILURE;
+        }
+    }
 
     memset(&lybs, 0, sizeof lybs);
 

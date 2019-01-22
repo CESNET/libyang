@@ -1015,7 +1015,9 @@ lyb_parse_subtree(struct ly_ctx *ctx, const char *data, struct lyd_node *parent,
         do {
             ret += (r = lyb_read(data, NULL, lybs->written[lybs->used - 1], lybs));
             /* also skip the meta information inside */
-            ret += (r = lyb_read(data, NULL, lybs->inner_chunks[lybs->used - 1] * LYB_META_BYTES, lybs));
+            r = lybs->inner_chunks[lybs->used - 1] * LYB_META_BYTES;
+            data += r;
+            ret += r;
         } while (lybs->written[lybs->used - 1]);
         goto stop_subtree;
     }
