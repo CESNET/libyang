@@ -163,3 +163,9 @@ libyang.so.0.16 libyang0.16 #MINVER#
  lyxml_print_file@Base 0.16.52
  lyxml_print_mem@Base 0.16.52
  lyxml_unlink@Base 0.16.52
+
+ ly_register_exts@Base 0.16.74
+ ly_register_types@Base 0.16.74
+
+ lyd_free_val_diff@Base 0.16.97
+ lyd_validate_modules@Base 0.16.97
