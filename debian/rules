@@ -2,6 +2,8 @@
 #export DH_VERBOSE=1
 export DEB_BUILD_MAINT_OPTIONS = hardening=+all
 
+include /usr/share/dpkg/architecture.mk
+
 %:
 	dh $@ --with python3
 
@@ -18,8 +20,8 @@ override_dh_auto_install:
 	dh_auto_install
 	-rm -rf debian/tmp/usr/lib/python3
 	set -e; /usr/bin/py3versions -s | sed -e 's/python\([^ ]\+\)/\1/g' -e 's/ /\n/g' | while read V; do \
-		make -C obj-$(DEB_HOST_MULTIARCH)/swig/python$${V}   DESTDIR=`pwd`/debian/python3-yang     install; \
-		make -C obj-$(DEB_HOST_MULTIARCH)/swig/python$${V}dm DESTDIR=`pwd`/debian/python3-yang-dbg install; \
+		make -C obj-$(DEB_HOST_GNU_TYPE)/swig/python$${V}   DESTDIR=`pwd`/debian/python3-yang     install; \
+		make -C obj-$(DEB_HOST_GNU_TYPE)/swig/python$${V}dm DESTDIR=`pwd`/debian/python3-yang-dbg install; \
 	done
 	-rm -rf debian/python3-yang/usr/include
 	-rm -rf debian/python3-yang-dbg/usr/include
@@ -33,5 +35,5 @@ override_dh_makeshlibs:
 
 override_dh_auto_test:
 ifeq ($(filter nocheck,$(DEB_BUILD_OPTIONS)),)
-	make -C obj-$(DEB_HOST_MULTIARCH) test
+	make -C obj-$(DEB_HOST_GNU_TYPE) test ARGS=-V
 endif

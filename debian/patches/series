@@ -1,2 +1,4 @@
+0004-extensions-BUGFIX-reflect-change-from-commit-01cdea1.patch
+0005-libyang-BUGFIX-don-t-access-LYS_EXT-parent.patch
 pybuild
 swigpy37
