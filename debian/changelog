@@ -1,8 +1,8 @@
-libyang (0.16.105-1) UNRELEASED; urgency=medium
+libyang (0.16.105-1) unstable; urgency=medium
 
   * upstream 0.16.105 (0.16-r3) release
 
- -- David Lamparter <equinox-debian@diac24.net>  Wed, 23 Jan 2019 01:15:58 +0100
+ -- David Lamparter <equinox-debian@diac24.net>  Wed, 23 Jan 2019 01:32:43 +0100
 
 libyang (0.16.52-2) unstable; urgency=medium
 

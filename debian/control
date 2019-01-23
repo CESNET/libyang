@@ -15,8 +15,8 @@ Build-Depends:
  python3-all-dev,
  python3-all-dbg,
  pkg-config
-Vcs-Browser: https://github.com/CESNET/libyang
-Vcs-Git: https://github.com/CESNET/libyang.git
+Vcs-Browser: https://github.com/CESNET/libyang/tree/debian
+Vcs-Git: https://github.com/CESNET/libyang.git -b debian
 
 Package: libyang0.16
 Depends:
