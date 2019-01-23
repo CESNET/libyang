@@ -1311,16 +1311,6 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
     /* skip leading whitespaces */
     len += skip_ws(&data[len]);
 
-    /* no data (or whitespaces only) are fine */
-    if (!data[len]) {
-empty:
-        if (options & LYD_OPT_DATA_ADD_YANGLIB) {
-            result = ly_ctx_info(ctx);
-        }
-        lyd_validate(&result, options, ctx);
-        return result;
-    }
-
     /* expect top-level { */
     if (data[len] != '{') {
         LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_NONE, NULL, "JSON data (missing top level begin-object)");
@@ -1331,7 +1321,11 @@ empty:
     r = len + 1;
     r += skip_ws(&data[r]);
     if (data[r] == '}') {
-        goto empty;
+        if (options & LYD_OPT_DATA_ADD_YANGLIB) {
+            result = ly_ctx_info(ctx);
+        }
+        lyd_validate(&result, options, ctx);
+        return result;
     }
 
     unres = calloc(1, sizeof *unres);
@@ -1483,13 +1477,13 @@ empty:
     }
 
     /* add/validate default values, unres */
-    if (lyd_defaults_add_unres(&result, options, ctx, data_tree, act_notif, unres, 1)) {
+    if (lyd_defaults_add_unres(&result, options, ctx, NULL, 0, data_tree, act_notif, unres, 1)) {
         goto error;
     }
 
     /* check for missing top level mandatory nodes */
     if (!(options & (LYD_OPT_TRUSTED | LYD_OPT_NOTIF_FILTER))
-            && lyd_check_mandatory_tree((act_notif ? act_notif : result), ctx, options)) {
+            && lyd_check_mandatory_tree((act_notif ? act_notif : result), ctx, NULL, 0, options)) {
         goto error;
     }
 

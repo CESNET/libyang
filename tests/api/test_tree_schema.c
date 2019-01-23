@@ -1494,6 +1494,51 @@ test_lys_find_path(void **state)
 }
 
 static void
+test_lys_xpath_atomize(void **state)
+{
+    (void) state; /* unused */
+    const struct lys_module *module;
+    struct ly_set *set;
+    const char *schema =
+    "module a {"
+        "namespace \"urn:a\";"
+        "prefix \"a\";"
+        "grouping g {"
+            "list b {"
+                "key \"name type\";"
+                "leaf name {"
+                    "type leafref {"
+                        "path \"/a/name\";"
+                    "}"
+                "}"
+                "leaf type {"
+                    "type leafref {"
+                        "path \"/a[name=current()/../name]/type\";"
+                    "}"
+                "}"
+            "}"
+        "}"
+        "list a {"
+            "key \"name type\";"
+            "leaf name {"
+                "type string;"
+            "}"
+            "leaf type {"
+                "type string;"
+            "}"
+        "}"
+        "uses g;"
+    "}";
+
+    module = lys_parse_mem(ctx, schema, LYS_IN_YANG);
+    assert_non_null(module);
+
+    /* should not crash */
+    set = lys_xpath_atomize(module->data->child->child->next, LYXP_NODE_ELEM, "/a[name=current()/../name]/type", 0);
+    ly_set_free(set);
+}
+
+static void
 test_lys_path(void **state)
 {
     (void) state; /* unused */
@@ -1556,6 +1601,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_lys_print_file_info, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lys_print_file_jsons, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lys_find_path, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_lys_xpath_atomize, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lys_path, setup_f, teardown_f),
     };
 

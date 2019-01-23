@@ -804,7 +804,7 @@ static void
 test_lyd_insert_after(void **state)
 {
     (void) state; /* unused */
-    struct lyd_node *new = NULL;
+    struct lyd_node *new = NULL, *node;
     struct lyd_node_leaf_list *result;
     int rc;
 
@@ -833,6 +833,36 @@ test_lyd_insert_after(void **state)
 
     result = (struct lyd_node_leaf_list *) root->child->next->next;
     assert_string_equal("1000", result->value_str);
+
+    /* test user-ordered lists */
+    lyd_free_withsiblings(root->child);
+    rc = lyd_validate(&root, LYD_OPT_CONFIG, NULL);
+    assert_int_equal(rc, 0);
+
+    new = lyd_new(NULL, lyd_node_module(root), "l");
+    assert_non_null(new);
+    node = lyd_new_leaf(new, NULL, "key1", "1");
+    assert_non_null(node);
+    node = lyd_new_leaf(new, NULL, "key2", "1");
+    assert_non_null(node);
+    node = lyd_new_leaf(new, NULL, "value", "one");
+    assert_non_null(node);
+    rc = lyd_insert_after(root->prev, new);
+    assert_int_equal(rc, 0);
+
+    new = lyd_new(NULL, lyd_node_module(root), "l");
+    assert_non_null(new);
+    node = lyd_new_leaf(new, NULL, "key1", "2");
+    assert_non_null(node);
+    node = lyd_new_leaf(new, NULL, "key2", "2");
+    assert_non_null(node);
+    node = lyd_new_leaf(new, NULL, "value", "two");
+    assert_non_null(node);
+    rc = lyd_insert_after(root->prev, new);
+    assert_int_equal(rc, 0);
+
+    rc = lyd_insert_after(root->next, root->next->next);
+    assert_int_equal(rc, 0);
 }
 
 static void

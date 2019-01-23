@@ -588,7 +588,7 @@ validate_length_range(uint8_t kind, uint64_t unum, int64_t snum, int64_t fnum, u
 
         LOGVAL(ctx, LYE_NOCONSTR, LY_VLOG_LYD, node, (val_str ? val_str : ""), restr ? restr->expr : "");
         if (restr && restr->emsg) {
-            LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL, restr->emsg);
+            ly_vlog_str(ctx, LY_VLOG_PREV, restr->emsg);
         }
         if (restr && restr->eapptag) {
             ly_err_last_set_apptag(ctx, restr->eapptag);
@@ -648,7 +648,7 @@ validate_pattern(struct ly_ctx *ctx, const char *val_str, struct lys_type *type,
         if ((rc && type->info.str.patterns[i].expr[0] == 0x06) || (!rc && type->info.str.patterns[i].expr[0] == 0x15)) {
             LOGVAL(ctx, LYE_NOCONSTR, LY_VLOG_LYD, node, val_str, &type->info.str.patterns[i].expr[1]);
             if (type->info.str.patterns[i].emsg) {
-                LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL, type->info.str.patterns[i].emsg);
+                ly_vlog_str(ctx, LY_VLOG_PREV, type->info.str.patterns[i].emsg);
             }
             if (type->info.str.patterns[i].eapptag) {
                 ly_err_last_set_apptag(ctx, type->info.str.patterns[i].eapptag);
@@ -1582,11 +1582,6 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         }
         /* value is now in the dictionary, whether it differs from *value_ or not */
 
-        /* the value is always changed and includes prefix */
-        if (dflt) {
-            type->parent->flags |= LYS_DFLTJSON;
-        }
-
         ident = resolve_identref(type, value, contextnode, local_mod, dflt);
         if (!ident) {
             lydict_remove(ctx, value);
@@ -1595,6 +1590,11 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             /* store the result */
             val->ident = ident;
             *val_type = LY_TYPE_IDENT;
+        }
+
+        /* the value is always changed and includes prefix */
+        if (dflt) {
+            type->parent->flags |= LYS_DFLTJSON;
         }
 
         make_canonical(ctx, LY_TYPE_IDENT, &value, (void*)lys_main_module(local_mod)->name, NULL);

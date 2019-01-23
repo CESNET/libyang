@@ -509,10 +509,13 @@ int lys_make_implemented_r(struct lys_module *module, struct unres_schema *unres
  *
  * @param[in] root Data tree to validate.
  * @param[in] ctx libyang context (for the case when the data tree is empty - i.e. root == NULL).
+ * @param[in] modules Only check mandatory nodes from these modules. If not set, check for all modules in the context.
+ * @param[in] mod_count Number of modules in \p modules.
  * @param[in] options Standard @ref parseroptions.
  * @return EXIT_SUCCESS or EXIT_FAILURE.
  */
-int lyd_check_mandatory_tree(struct lyd_node *root, struct ly_ctx *ctx, int options);
+int lyd_check_mandatory_tree(struct lyd_node *root, struct ly_ctx *ctx, const struct lys_module **modules, int mod_count,
+                             int options);
 
 /**
  * @brief Check if the provided node is inside a grouping.
@@ -522,6 +525,10 @@ int lyd_check_mandatory_tree(struct lyd_node *root, struct ly_ctx *ctx, int opti
  */
 int lys_ingrouping(const struct lys_node *node);
 
+int unres_data_diff_new(struct unres_data *unres, struct lyd_node *subtree, struct lyd_node *parent, int created);
+
+void unres_data_diff_rem(struct unres_data *unres, unsigned int idx);
+
 /**
  * @brief Process (add/clean) default nodes in the data tree and resolve the unresolved items
  *
@@ -529,6 +536,8 @@ int lys_ingrouping(const struct lys_node *node);
  *                      is empty
  * @param[in] options   Parser options to know the data tree type, see @ref parseroptions.
  * @param[in] ctx       Context for the case the \p root is empty (in that case \p ctx must not be NULL)
+ * @param[in] modules   Only modules that will be traversed when adding default values.
+ * @param[in] mod_count Number of module names in \p modules.
  * @param[in] data_tree Additional data tree for validating RPC/action/notification. The tree is used to satisfy
  *                      possible references to the datastore content.
  * @param[in] act_notif In case of nested action/notification, pointer to the subroot of the action/notification. Note
@@ -538,8 +547,9 @@ int lys_ingrouping(const struct lys_node *node);
  * @param[in] wd        Whether to add default values.
  * @return EXIT_SUCCESS or EXIT_FAILURE
  */
-int lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, const struct lyd_node *data_tree,
-                           struct lyd_node *act_notif, struct unres_data *unres, int wd);
+int lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, const struct lys_module **modules,
+                           int mod_count, const struct lyd_node *data_tree, struct lyd_node *act_notif,
+                           struct unres_data *unres, int wd);
 
 void lys_enable_deviations(struct lys_module *module);
 

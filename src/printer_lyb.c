@@ -88,6 +88,7 @@ lyb_hash_sequence_check(struct hash_table *ht, struct lys_node *sibling, int ht_
 }
 
 #ifndef NDEBUG
+
 static int
 lyb_check_augment_collision(struct hash_table *ht, struct lys_node *aug1, struct lys_node *aug2)
 {
@@ -113,7 +114,7 @@ lyb_check_augment_collision(struct hash_table *ht, struct lys_node *aug1, struct
                     if ((lyht_find(ht, &iter1, hash1, NULL) == 0) || (lyht_find(ht, &iter2, hash2, NULL) == 0)) {
                         LOGWRN(aug1->module->ctx, "Augmentations from modules \"%s\" and \"%s\" have fatal hash collision.",
                                iter1->module->name, iter2->module->name);
-                        LOGWRN(aug1->module->ctx, "Load module \"%s\" before \"%s\" to resolve this issue.",
+                        LOGWRN(aug1->module->ctx, "It will cause no errors if module \"%s\" is always loaded before \"%s\".",
                                iter1->module->name, iter2->module->name);
                         lyht_set_cb(ht, cb);
                         return 1;
@@ -192,6 +193,7 @@ lyb_check_augments(struct lys_node *parent, struct hash_table *ht, int options)
     free(augs);
     return;
 }
+
 #endif
 
 static struct hash_table *
@@ -241,6 +243,7 @@ lyb_hash_siblings(struct lys_node *sibling, const struct lys_module **models, in
             aug_mod = lys_node_module(sibling);
         }
 #endif
+
         /* find the first non-colliding hash (or specifically non-colliding hash sequence) */
         for (i = 0; i < LYB_HASH_BITS; ++i) {
             /* check that we are not colliding with nodes inserted with a lower collision ID than ours */
@@ -327,14 +330,13 @@ lyb_hash_find(struct hash_table *ht, struct lys_node *node)
 static int
 lyb_write(struct lyout *out, const uint8_t *buf, size_t count, struct lyb_state *lybs)
 {
-    int ret, i, full_chunk_i;
+    int ret = 0, i, full_chunk_i;
     size_t r, to_write;
     uint8_t meta_buf[LYB_META_BYTES];
 
     assert(out && lybs);
 
-    ret = 0;
-    while (count) {
+    while (1) {
         /* check for full data chunks */
         to_write = count;
         full_chunk_i = -1;
@@ -347,21 +349,28 @@ lyb_write(struct lyout *out, const uint8_t *buf, size_t count, struct lyb_state 
             }
         }
 
-        r = ly_write(out, (char *)buf, to_write);
-        if (r < to_write) {
-            return -1;
+        if ((full_chunk_i == -1) && !count) {
+            break;
         }
 
-        for (i = 0; i < lybs->used; ++i) {
-            /* increase all written counters */
-            lybs->written[i] += r;
-            assert(lybs->written[i] <= LYB_SIZE_MAX);
-        }
-        /* decrease count/buf */
-        count -= r;
-        buf += r;
+        /* we are actually writing some data, not just finishing another chunk */
+        if (to_write) {
+            r = ly_write(out, (char *)buf, to_write);
+            if (r < to_write) {
+                return -1;
+            }
 
-        ret += r;
+            for (i = 0; i < lybs->used; ++i) {
+                /* increase all written counters */
+                lybs->written[i] += r;
+                assert(lybs->written[i] <= LYB_SIZE_MAX);
+            }
+            /* decrease count/buf */
+            count -= r;
+            buf += r;
+
+            ret += r;
+        }
 
         if (full_chunk_i > -1) {
             /* write the meta information (inner chunk count and chunk size) */
@@ -471,11 +480,11 @@ lyb_write_enum(uint32_t enum_idx, uint32_t count, struct lyout *out, struct lyb_
 {
     size_t bytes;
 
-    if (count < (2 << 8)) {
+    if (count < (1 << 8)) {
         bytes = 1;
-    } else if (count < (2 << 16)) {
+    } else if (count < (1 << 16)) {
         bytes = 2;
-    } else if (count < (2 << 24)) {
+    } else if (count < (1 << 24)) {
         bytes = 3;
     } else {
         bytes = 4;
@@ -593,41 +602,43 @@ lyb_print_data_models(struct lyout *out, const struct lyd_node *root, struct lyb
         add_model(&models, &mod_count, mod);
     }
 
-    /* then add all models augmenting or deviating the used models */
-    idx = ly_ctx_internal_modules_count(root->schema->module->ctx);
-    while ((mod = ly_ctx_get_module_iter(root->schema->module->ctx, &idx))) {
-        if (!mod->implemented) {
+    if (root) {
+        /* then add all models augmenting or deviating the used models */
+        idx = ly_ctx_internal_modules_count(root->schema->module->ctx);
+        while ((mod = ly_ctx_get_module_iter(root->schema->module->ctx, &idx))) {
+            if (!mod->implemented) {
 next_mod:
-            continue;
-        }
-
-        for (i = 0; i < mod->deviation_size; ++i) {
-            if (mod->deviation[i].orig_node && is_added_model(models, mod_count, lys_node_module(mod->deviation[i].orig_node))) {
-                add_model(&models, &mod_count, mod);
-                goto next_mod;
+                continue;
             }
-        }
-        for (i = 0; i < mod->augment_size; ++i) {
-            if (is_added_model(models, mod_count, lys_node_module(mod->augment[i].target))) {
-                add_model(&models, &mod_count, mod);
-                goto next_mod;
-            }
-        }
 
-        /* submodules */
-        for (j = 0; j < mod->inc_size; ++j) {
-            submod = mod->inc[j].submodule;
-
-            for (i = 0; i < submod->deviation_size; ++i) {
-                if (submod->deviation[i].orig_node && is_added_model(models, mod_count, lys_node_module(submod->deviation[i].orig_node))) {
+            for (i = 0; i < mod->deviation_size; ++i) {
+                if (mod->deviation[i].orig_node && is_added_model(models, mod_count, lys_node_module(mod->deviation[i].orig_node))) {
                     add_model(&models, &mod_count, mod);
                     goto next_mod;
                 }
             }
-            for (i = 0; i < submod->augment_size; ++i) {
-                if (is_added_model(models, mod_count, lys_node_module(submod->augment[i].target))) {
+            for (i = 0; i < mod->augment_size; ++i) {
+                if (is_added_model(models, mod_count, lys_node_module(mod->augment[i].target))) {
                     add_model(&models, &mod_count, mod);
                     goto next_mod;
+                }
+            }
+
+            /* submodules */
+            for (j = 0; j < mod->inc_size; ++j) {
+                submod = mod->inc[j].submodule;
+
+                for (i = 0; i < submod->deviation_size; ++i) {
+                    if (submod->deviation[i].orig_node && is_added_model(models, mod_count, lys_node_module(submod->deviation[i].orig_node))) {
+                        add_model(&models, &mod_count, mod);
+                        goto next_mod;
+                    }
+                }
+                for (i = 0; i < submod->augment_size; ++i) {
+                    if (is_added_model(models, mod_count, lys_node_module(submod->augment[i].target))) {
+                        add_model(&models, &mod_count, mod);
+                        goto next_mod;
+                    }
                 }
             }
         }
@@ -882,25 +893,25 @@ lyb_print_attributes(struct lyout *out, struct lyd_attr *attr, struct lyb_state 
         }
 
         /* model */
-        ret += (r = lyb_print_model(out, attr->annotation->module, lybs));
+        ret += (r = lyb_print_model(out, iter->annotation->module, lybs));
         if (r < 0) {
             return -1;
         }
 
         /* annotation name with length */
-        ret += (r = lyb_write_string(attr->annotation->arg_value, 0, 1, out, lybs));
+        ret += (r = lyb_write_string(iter->annotation->arg_value, 0, 1, out, lybs));
         if (r < 0) {
             return -1;
         }
 
         /* get the type */
-        type = (struct lys_type **)lys_ext_complex_get_substmt(LY_STMT_TYPE, attr->annotation, NULL);
+        type = (struct lys_type **)lys_ext_complex_get_substmt(LY_STMT_TYPE, iter->annotation, NULL);
         if (!type || !(*type)) {
             return -1;
         }
 
         /* attribute value */
-        ret += (r = lyb_print_value(*type, attr->value_str, attr->value, attr->value_type, attr->value_flags, 0, out, lybs));
+        ret += (r = lyb_print_value(*type, iter->value_str, iter->value, iter->value_type, iter->value_flags, 0, out, lybs));
         if (r < 0) {
             return -1;
         }

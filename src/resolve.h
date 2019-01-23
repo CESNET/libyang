@@ -93,6 +93,11 @@ struct unres_data {
     struct lyd_node **node;
     enum UNRES_ITEM *type;
     uint32_t count;
+
+    int store_diff;
+    struct lyd_difflist *diff;
+    unsigned int diff_size;
+    unsigned int diff_idx;
 };
 
 /**

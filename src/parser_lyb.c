@@ -123,11 +123,11 @@ lyb_read_enum(uint64_t *enum_idx, uint32_t count, const char *data, struct lyb_s
     size_t bytes;
     uint64_t tmp_enum = 0;
 
-    if (count < (2 << 8)) {
+    if (count < (1 << 8)) {
         bytes = 1;
-    } else if (count < (2 << 16)) {
+    } else if (count < (1 << 16)) {
         bytes = 2;
-    } else if (count < (2 << 24)) {
+    } else if (count < (1 << 24)) {
         bytes = 3;
     } else {
         bytes = 4;
@@ -306,7 +306,8 @@ lyb_new_node(const struct lys_node *schema)
     /* fill basic info */
     node->schema = (struct lys_node *)schema;
     if (resolve_applies_when(schema, 0, NULL)) {
-        node->when_status = LYD_WHEN;
+        /* this data are considered trusted so if this node exists, it means its when must have been true */
+        node->when_status = LYD_WHEN | LYD_WHEN_TRUE;
     }
     node->prev = node;
 
@@ -511,8 +512,8 @@ lyb_parse_val_2(struct lys_type *type, struct lyd_node_leaf_list *leaf, struct l
 
     /* we are parsing leafref/ptr union stored as the target type,
      * so we first parse it into string and then resolve the leafref/ptr union */
-    if (!(*value_flags & LY_VALUE_UNRES) && ((type->base == LY_TYPE_LEAFREF)
-            || (type->base == LY_TYPE_INST) || ((type->base == LY_TYPE_UNION) && type->info.uni.has_ptr_type))) {
+    if ((type->base == LY_TYPE_LEAFREF) || (type->base == LY_TYPE_INST)
+            || ((type->base == LY_TYPE_UNION) && type->info.uni.has_ptr_type)) {
         if ((value_type == LY_TYPE_INST) || (value_type == LY_TYPE_IDENT) || (value_type == LY_TYPE_UNION)) {
             /* we already have a string */
             goto parse_reference;
@@ -636,8 +637,8 @@ lyb_parse_val_2(struct lys_type *type, struct lyd_node_leaf_list *leaf, struct l
         return -1;
     }
 
-    if (!(*value_flags & LY_VALUE_UNRES) && ((type->base == LY_TYPE_LEAFREF)
-            || (type->base == LY_TYPE_INST) || ((type->base == LY_TYPE_UNION) && type->info.uni.has_ptr_type))) {
+    if ((type->base == LY_TYPE_LEAFREF) || (type->base == LY_TYPE_INST)
+            || ((type->base == LY_TYPE_UNION) && type->info.uni.has_ptr_type)) {
 parse_reference:
         assert(*value_str);
 
@@ -715,7 +716,7 @@ lyb_parse_value(struct lys_type *type, struct lyd_node_leaf_list *leaf, struct l
     LYB_HAVE_READ_RETURN(r, data, -1);
 
     /* union is handled specially */
-    if (type->base == LY_TYPE_UNION) {
+    if ((type->base == LY_TYPE_UNION) && !(*value_flags & LY_VALUE_USER)) {
         assert(*value_type == LY_TYPE_STRING);
 
         *value_str = value->string;
@@ -903,7 +904,11 @@ lyb_parse_schema_hash(const struct lys_node *sparent, const struct lys_module *m
     LYB_HAVE_READ_RETURN(r, data, -1);
 
     /* based on the first hash read all the other ones, if any */
-    for (i = 0; !(hash[0] & (LYB_HASH_COLLISION_ID >> i)); ++i);
+    for (i = 0; !(hash[0] & (LYB_HASH_COLLISION_ID >> i)); ++i) {
+        if (i > LYB_HASH_BITS) {
+            return -1;
+        }
+    }
 
     /* move the first hash on its accurate position */
     hash[i] = hash[0];
@@ -1139,14 +1144,27 @@ lyb_parse_data_models(struct ly_ctx *ctx, const char *data, struct lyb_state *ly
 static int
 lyb_parse_magic_number(const char *data, struct lyb_state *lybs)
 {
-    int ret = 0;
-    uint32_t magic_number = 0;
+    int r, ret = 0;
+    char magic_byte = 0;
 
-    ret += lyb_read(data, (uint8_t *)&magic_number, 3, lybs);
+    ret += (r = lyb_read(data, (uint8_t *)&magic_byte, 1, lybs));
+    LYB_HAVE_READ_RETURN(r, data, -1);
+    if (magic_byte != 'l') {
+        LOGERR(NULL, LY_EINVAL, "Invalid first magic number byte \"0x%02x\".", magic_byte);
+        return -1;
+    }
 
-    if (memcmp(&magic_number, "lyb", 3)) {
-        LOGERR(NULL, LY_EINVAL, "Invalid magic number \"0x%02x%02x%02x\".",
-               ((uint8_t *)&magic_number)[0], ((uint8_t *)&magic_number)[1], ((uint8_t *)&magic_number)[2]);
+    ret += (r = lyb_read(data, (uint8_t *)&magic_byte, 1, lybs));
+    LYB_HAVE_READ_RETURN(r, data, -1);
+    if (magic_byte != 'y') {
+        LOGERR(NULL, LY_EINVAL, "Invalid second magic number byte \"0x%02x\".", magic_byte);
+        return -1;
+    }
+
+    ret += (r = lyb_read(data, (uint8_t *)&magic_byte, 1, lybs));
+    LYB_HAVE_READ_RETURN(r, data, -1);
+    if (magic_byte != 'b') {
+        LOGERR(NULL, LY_EINVAL, "Invalid third magic number byte \"0x%02x\".", magic_byte);
         return -1;
     }
 
@@ -1237,7 +1255,7 @@ lyd_parse_lyb(struct ly_ctx *ctx, const char *data, int options, const struct ly
                 LY_TREE_DFS_END(node, next, act_notif);
             }
         }
-        if (lyd_defaults_add_unres(&node, options, ctx, data_tree, act_notif, unres, 0)) {
+        if (lyd_defaults_add_unres(&node, options, ctx, NULL, 0, data_tree, act_notif, unres, 0)) {
             lyd_free_withsiblings(node);
             node = NULL;
             goto finish;

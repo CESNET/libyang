@@ -87,7 +87,22 @@ xml_print_ns(struct lyout *out, const struct lyd_node *node, int options)
     }
 
     /* add node children nodes and attribute modules */
-    if (!(node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
+    switch (node->schema->nodetype) {
+    case LYS_LEAFLIST:
+    case LYS_LEAF:
+        if (node->dflt && (options & (LYP_WD_ALL_TAG | LYP_WD_IMPL_TAG))) {
+            /* get with-defaults module and print its namespace */
+            wdmod = ly_ctx_get_module(node->schema->module->ctx, "ietf-netconf-with-defaults", NULL, 1);
+            if (wdmod && modlist_add(&mlist, wdmod)) {
+                goto print;
+            }
+        }
+        break;
+    case LYS_CONTAINER:
+    case LYS_LIST:
+    case LYS_RPC:
+    case LYS_ACTION:
+    case LYS_NOTIF:
         if (options & (LYP_WD_ALL_TAG | LYP_WD_IMPL_TAG)) {
             /* get with-defaults module and print its namespace */
             wdmod = ly_ctx_get_module(node->schema->module->ctx, "ietf-netconf-with-defaults", NULL, 1);
@@ -113,6 +128,9 @@ xml_print_ns(struct lyout *out, const struct lyd_node *node, int options)
                 }
             LY_TREE_DFS_END(node2, next, cur)}
         }
+        break;
+    default:
+        break;
     }
 
 print:
@@ -620,7 +638,12 @@ xml_print_data(struct lyout *out, const struct lyd_node *root, int options)
     struct lys_node *parent = NULL;
     int level, action_input = 0;
 
-    assert(root);
+    if (!root) {
+        if (out->type == LYOUT_MEMORY || out->type == LYOUT_CALLBACK) {
+            ly_print(out, "");
+        }
+        return EXIT_SUCCESS;
+    }
 
     level = (options & LYP_FORMAT ? 1 : 0);
 

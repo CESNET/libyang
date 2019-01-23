@@ -216,13 +216,13 @@ lyxml_dup_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, struct lyxml_elem *p
     /* keep old namespace for now */
     result->ns = elem->ns;
 
-    /* correct namespaces */
-    lyxml_correct_elem_ns(ctx, result, 1, 0);
-
     /* duplicate attributes */
     for (attr = elem->attr; attr; attr = attr->next) {
         lyxml_dup_attr(ctx, result, attr);
     }
+
+    /* correct namespaces */
+    lyxml_correct_elem_ns(ctx, result, 1, 0);
 
     if (!recursive) {
         return result;

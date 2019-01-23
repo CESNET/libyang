@@ -1371,6 +1371,7 @@ LYB_HASH
 lyb_hash(struct lys_node *sibling, uint8_t collision_id)
 {
     struct lys_module *mod;
+    int ext_len;
     uint32_t full_hash;
     LYB_HASH hash;
 
@@ -1386,11 +1387,13 @@ lyb_hash(struct lys_node *sibling, uint8_t collision_id)
     full_hash = dict_hash_multi(full_hash, sibling->name, strlen(sibling->name));
     if (collision_id) {
         if (collision_id > strlen(mod->name)) {
-            /* wow */
-            LOGINT(sibling->module->ctx);
-            return 0;
+            /* fine, we will not hash more bytes, just use more bits from the hash than previously */
+            ext_len = strlen(mod->name);
+        } else {
+            /* use one more byte from the module name than before */
+            ext_len = collision_id;
         }
-        full_hash = dict_hash_multi(full_hash, mod->name, collision_id);
+        full_hash = dict_hash_multi(full_hash, mod->name, ext_len);
     }
     full_hash = dict_hash_multi(full_hash, NULL, 0);
 

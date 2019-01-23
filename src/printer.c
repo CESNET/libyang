@@ -706,14 +706,6 @@ lys_print_target(struct lyout *out, const struct lys_module *module, const char 
 static int
 lyd_print_(struct lyout *out, const struct lyd_node *root, LYD_FORMAT format, int options)
 {
-    if (!root) {
-        /* no data to print, but even empty tree is valid */
-        if (out->type == LYOUT_MEMORY || out->type == LYOUT_CALLBACK) {
-            ly_print(out, "");
-        }
-        return EXIT_SUCCESS;
-    }
-
     switch (format) {
     case LYD_XML:
         return xml_print_data(out, root, options);
