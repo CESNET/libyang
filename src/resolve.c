@@ -7568,7 +7568,7 @@ unres_schema_find(struct unres_schema *unres, int start_on_backwards, void *item
                 break;
             }
         } else {
-            aux_uniq1 = (struct unres_list_uniq *)unres->item[i - 1];
+            aux_uniq1 = (struct unres_list_uniq *)unres->item[i];
             aux_uniq2 = (struct unres_list_uniq *)item;
             if ((aux_uniq1->list == aux_uniq2->list) && ly_strequal(aux_uniq1->expr, aux_uniq2->expr, 0)) {
                 break;
