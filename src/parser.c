@@ -1210,7 +1210,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
     unsigned int i, j;
     int64_t num;
     uint64_t unum, uind, u = 0;
-    const char *ptr, *value = *value_, *itemname;
+    const char *ptr, *value = *value_, *itemname, *old_val_str;
     struct lys_type_bit **bits = NULL;
     struct lys_ident *ident;
     lyd_val *val, old_val;
@@ -1245,7 +1245,8 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
     /* fully clear the value */
     if (store) {
-        lyd_free_value(*val, *val_type, *val_flags, type, &old_val, &old_val_type, &old_val_flags);
+        old_val_str = lydict_insert(ctx, *value_, 0);
+        lyd_free_value(*val, *val_type, *val_flags, type, old_val_str, &old_val, &old_val_type, &old_val_flags);
         *val_flags &= ~LY_VALUE_UNRES;
     }
 
@@ -1907,7 +1908,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
             if (store) {
                 /* erase possible present and invalid value data */
-                lyd_free_value(*val, *val_type, *val_flags, t, NULL, NULL, NULL);
+                lyd_free_value(*val, *val_type, *val_flags, t, *value_, NULL, NULL, NULL);
                 memset(val, 0, sizeof(lyd_val));
             }
         }
@@ -1946,7 +1947,8 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
     /* free backup */
     if (store) {
-        lyd_free_value(old_val, old_val_type, old_val_flags, type, NULL, NULL, NULL);
+        lyd_free_value(old_val, old_val_type, old_val_flags, type, old_val_str, NULL, NULL, NULL);
+        lydict_remove(ctx, old_val_str);
     }
     return type;
 
@@ -1956,6 +1958,7 @@ error:
         *val = old_val;
         *val_type = old_val_type;
         *val_flags = old_val_flags;
+        lydict_remove(ctx, old_val_str);
     }
     return NULL;
 }

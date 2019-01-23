@@ -267,10 +267,10 @@ int lytype_store(const struct lys_module *mod, const char *type_name, const char
 /**
  * @brief Free a user type stored value.
  *
- * @param[in] mod Module of the type.
- * @param[in] type_name Type (typedef) name.
+ * @param[in] type Type of the value.
  * @param[in] value Value union to free.
+ * @param[in] value_str String value of the value.
  */
-void lytype_free(const struct lys_module *mod, const char *type_name, lyd_val value);
+void lytype_free(const struct lys_type *type, lyd_val value, const char *value_str);
 
 #endif /* LY_PARSER_H_ */

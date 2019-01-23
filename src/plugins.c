@@ -603,11 +603,40 @@ lytype_store(const struct lys_module *mod, const char *type_name, const char **v
 }
 
 void
-lytype_free(const struct lys_module *mod, const char *type_name, lyd_val value)
+lytype_free(const struct lys_type *type, lyd_val value, const char *value_str)
 {
     struct lytype_plugin_list *p;
+    struct lys_node_leaf sleaf;
+    struct lyd_node_leaf_list leaf;
+    struct lys_module *mod;
 
-    p = lytype_find(mod->name, mod->rev_size ? mod->rev[0].date : NULL, type_name);
+    assert(type->der && type->der->module);
+
+    mod = type->der->module;
+    memset(&sleaf, 0, sizeof sleaf);
+    memset(&leaf, 0, sizeof leaf);
+
+    if (type->base == LY_TYPE_UNION) {
+        /* create a fake schema node */
+        sleaf.module = mod;
+        sleaf.name = "fake-leaf";
+        sleaf.type = *type;
+        sleaf.nodetype = LYS_LEAF;
+
+        /* and a fake data node */
+        leaf.schema = (struct lys_node *)&sleaf;
+        leaf.value = value;
+        leaf.value_str = value_str;
+
+        /* find the original type */
+        type = lyd_leaf_type(&leaf);
+        if (!type) {
+            LOGINT(mod->ctx);
+            return;
+        }
+    }
+
+    p = lytype_find(mod->name, mod->rev_size ? mod->rev[0].date : NULL, type->der->name);
     if (!p) {
         LOGINT(mod->ctx);
         return;
