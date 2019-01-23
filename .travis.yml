@@ -32,7 +32,7 @@ before_install:
 
 script:
   - mkdir build && cd build
-  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then cmake ..; fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then cmake -DENABLE_VALGRIND_TESTS=OFF ..; fi
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then cmake -DGEN_LANGUAGE_BINDINGS=ON ..; fi
   - make -j2 && ctest --output-on-failure
   - cd -

@@ -755,7 +755,7 @@ int
 lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys_node *child, int options)
 {
     struct ly_ctx *ctx = child->module->ctx;
-    struct lys_node *iter, **pchild;
+    struct lys_node *iter, **pchild, *log_parent;
     struct lys_node_inout *in, *out;
     struct lys_node_case *c;
     int type, shortcase = 0;
@@ -767,10 +767,25 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
     if (parent) {
         type = parent->nodetype;
         module = parent->module;
+        log_parent = parent;
+
+        if (type == LYS_USES) {
+            /* we are adding children to uses -> we must be copying grouping contents into it, so properly check the parent */
+            log_parent = lys_parent(log_parent);
+            while (log_parent && (log_parent->nodetype == LYS_USES)) {
+                log_parent = lys_parent(log_parent);
+            }
+            if (log_parent) {
+                type = log_parent->nodetype;
+            } else {
+                type = 0;
+            }
+        }
     } else {
         assert(module);
         assert(!(child->nodetype & (LYS_INPUT | LYS_OUTPUT)));
         type = 0;
+        log_parent = NULL;
     }
 
     /* checks */
@@ -782,7 +797,7 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
         if (!(child->nodetype &
                 (LYS_ANYDATA | LYS_CHOICE | LYS_CONTAINER | LYS_GROUPING | LYS_LEAF |
                  LYS_LEAFLIST | LYS_LIST | LYS_USES | LYS_ACTION | LYS_NOTIF))) {
-            LOGVAL(ctx, LYE_INCHILDSTMT, LY_VLOG_LYS, parent, strnodetype(child->nodetype), strnodetype(parent->nodetype));
+            LOGVAL(ctx, LYE_INCHILDSTMT, LY_VLOG_LYS, log_parent, strnodetype(child->nodetype), strnodetype(log_parent->nodetype));
             return EXIT_FAILURE;
         }
         break;
@@ -792,14 +807,14 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
         if (!(child->nodetype &
                 (LYS_ANYDATA | LYS_CHOICE | LYS_CONTAINER | LYS_GROUPING | LYS_LEAF |
                  LYS_LEAFLIST | LYS_LIST | LYS_USES))) {
-            LOGVAL(ctx, LYE_INCHILDSTMT, LY_VLOG_LYS, parent, strnodetype(child->nodetype), strnodetype(parent->nodetype));
+            LOGVAL(ctx, LYE_INCHILDSTMT, LY_VLOG_LYS, log_parent, strnodetype(child->nodetype), strnodetype(log_parent->nodetype));
             return EXIT_FAILURE;
         }
         break;
     case LYS_CHOICE:
         if (!(child->nodetype &
                 (LYS_ANYDATA | LYS_CASE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_CHOICE))) {
-            LOGVAL(ctx, LYE_INCHILDSTMT, LY_VLOG_LYS, parent, strnodetype(child->nodetype), "choice");
+            LOGVAL(ctx, LYE_INCHILDSTMT, LY_VLOG_LYS, log_parent, strnodetype(child->nodetype), "choice");
             return EXIT_FAILURE;
         }
         if (child->nodetype != LYS_CASE) {
@@ -809,14 +824,14 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
     case LYS_CASE:
         if (!(child->nodetype &
                 (LYS_ANYDATA | LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_USES))) {
-            LOGVAL(ctx, LYE_INCHILDSTMT, LY_VLOG_LYS, parent, strnodetype(child->nodetype), "case");
+            LOGVAL(ctx, LYE_INCHILDSTMT, LY_VLOG_LYS, log_parent, strnodetype(child->nodetype), "case");
             return EXIT_FAILURE;
         }
         break;
     case LYS_RPC:
     case LYS_ACTION:
         if (!(child->nodetype & (LYS_INPUT | LYS_OUTPUT | LYS_GROUPING))) {
-            LOGVAL(ctx, LYE_INCHILDSTMT, LY_VLOG_LYS, parent, strnodetype(child->nodetype), "rpc");
+            LOGVAL(ctx, LYE_INCHILDSTMT, LY_VLOG_LYS, log_parent, strnodetype(child->nodetype), "rpc");
             return EXIT_FAILURE;
         }
         break;
@@ -824,15 +839,15 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
     case LYS_LEAFLIST:
     case LYS_ANYXML:
     case LYS_ANYDATA:
-        LOGVAL(ctx, LYE_INCHILDSTMT, LY_VLOG_LYS, parent, strnodetype(child->nodetype), strnodetype(parent->nodetype));
+        LOGVAL(ctx, LYE_INCHILDSTMT, LY_VLOG_LYS, log_parent, strnodetype(child->nodetype), strnodetype(log_parent->nodetype));
         LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL, "The \"%s\" statement cannot have any data substatement.",
-               strnodetype(parent->nodetype));
+               strnodetype(log_parent->nodetype));
         return EXIT_FAILURE;
     case LYS_AUGMENT:
         if (!(child->nodetype &
                 (LYS_ANYDATA | LYS_CASE | LYS_CHOICE | LYS_CONTAINER | LYS_LEAF
                 | LYS_LEAFLIST | LYS_LIST | LYS_USES | LYS_ACTION | LYS_NOTIF))) {
-            LOGVAL(ctx, LYE_INCHILDSTMT, LY_VLOG_LYS, parent, strnodetype(child->nodetype), strnodetype(parent->nodetype));
+            LOGVAL(ctx, LYE_INCHILDSTMT, LY_VLOG_LYS, log_parent, strnodetype(child->nodetype), strnodetype(log_parent->nodetype));
             return EXIT_FAILURE;
         }
         break;
@@ -841,16 +856,16 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
         if (!(child->nodetype &
                 (LYS_ANYDATA | LYS_CHOICE | LYS_CONTAINER | LYS_LEAF | LYS_GROUPING
                 | LYS_LEAFLIST | LYS_LIST | LYS_USES | LYS_RPC | LYS_NOTIF | LYS_AUGMENT))) {
-            LOGVAL(ctx, LYE_INCHILDSTMT, LY_VLOG_LYS, parent, strnodetype(child->nodetype), "(sub)module");
+            LOGVAL(ctx, LYE_INCHILDSTMT, LY_VLOG_LYS, log_parent, strnodetype(child->nodetype), "(sub)module");
             return EXIT_FAILURE;
         }
         break;
     case LYS_EXT:
         /* plugin-defined */
-        p = lys_ext_complex_get_substmt(lys_snode2stmt(child->nodetype), (struct lys_ext_instance_complex*)parent, &info);
+        p = lys_ext_complex_get_substmt(lys_snode2stmt(child->nodetype), (struct lys_ext_instance_complex*)log_parent, &info);
         if (!p) {
-            LOGVAL(ctx, LYE_INCHILDSTMT, LY_VLOG_LYS, parent, strnodetype(child->nodetype),
-                   ((struct lys_ext_instance_complex*)parent)->def->name);
+            LOGVAL(ctx, LYE_INCHILDSTMT, LY_VLOG_LYS, log_parent, strnodetype(child->nodetype),
+                   ((struct lys_ext_instance_complex*)log_parent)->def->name);
             return EXIT_FAILURE;
         }
         /* TODO check cardinality */
@@ -4324,16 +4339,6 @@ apply_aug(struct lys_node_augment *augment, struct unres_schema *unres)
         goto success;
     }
 
-    /* reconnect augmenting data into the target - add them to the target child list */
-    if (augment->target->child) {
-        child = augment->target->child->prev;
-        child->next = augment->child;
-        augment->target->child->prev = augment->child->prev;
-        augment->child->prev = child;
-    } else {
-        augment->target->child = augment->child;
-    }
-
     /* inherit config information from actual parent */
     for (parent = augment->target; parent && !(parent->nodetype & (LYS_NOTIF | LYS_INPUT | LYS_OUTPUT | LYS_RPC)); parent = lys_parent(parent));
     clear_config = (parent) ? 1 : 0;
@@ -4358,6 +4363,16 @@ apply_aug(struct lys_node_augment *augment, struct unres_schema *unres)
                 return -1;
             }
         }
+    }
+
+    /* reconnect augmenting data into the target - add them to the target child list */
+    if (augment->target->child) {
+        child = augment->target->child->prev;
+        child->next = augment->child;
+        augment->target->child->prev = augment->child->prev;
+        augment->child->prev = child;
+    } else {
+        augment->target->child = augment->child;
     }
 
 success:
@@ -4807,7 +4822,7 @@ lys_make_implemented_r(struct lys_module *module, struct unres_schema *unres)
 
         /* apply augment */
         if ((module->augment[i].flags & LYS_NOTAPPLIED) && apply_aug(&module->augment[i], unres)) {
-            return EXIT_FAILURE;
+            return -1;
         }
     }
 
@@ -4836,7 +4851,7 @@ lys_make_implemented_r(struct lys_module *module, struct unres_schema *unres)
 
             /* apply augment */
             if ((module->inc[i].submodule->augment[j].flags & LYS_NOTAPPLIED) && apply_aug(&module->inc[i].submodule->augment[j], unres)) {
-                return EXIT_FAILURE;
+                return -1;
             }
         }
 
@@ -4859,7 +4874,7 @@ lys_make_implemented_r(struct lys_module *module, struct unres_schema *unres)
                 if (((struct lys_node_leaf *)node)->type.base == LY_TYPE_LEAFREF) {
                     if (unres_schema_add_node(module, unres, &((struct lys_node_leaf *)node)->type,
                                               UNRES_TYPE_LEAFREF, node) == -1) {
-                        return EXIT_FAILURE;
+                        return -1;
                     }
                 }
             }
@@ -4980,7 +4995,7 @@ lys_path(const struct lys_node *node, int options)
         return NULL;
     }
 
-    if (ly_vlog_build_path(LY_VLOG_LYS, node, &buf, !options, 0)) {
+    if (ly_vlog_build_path(LY_VLOG_LYS, node, &buf, (options & LYS_PATH_FIRST_PREFIX) ? 0 : 1, 0)) {
         return NULL;
     }
 

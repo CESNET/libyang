@@ -306,7 +306,8 @@ lyb_new_node(const struct lys_node *schema)
     /* fill basic info */
     node->schema = (struct lys_node *)schema;
     if (resolve_applies_when(schema, 0, NULL)) {
-        node->when_status = LYD_WHEN;
+        /* this data are considered trusted so if this node exists, it means its when must have been true */
+        node->when_status = LYD_WHEN | LYD_WHEN_TRUE;
     }
     node->prev = node;
 
@@ -511,8 +512,8 @@ lyb_parse_val_2(struct lys_type *type, struct lyd_node_leaf_list *leaf, struct l
 
     /* we are parsing leafref/ptr union stored as the target type,
      * so we first parse it into string and then resolve the leafref/ptr union */
-    if (!(*value_flags & LY_VALUE_UNRES) && ((type->base == LY_TYPE_LEAFREF)
-            || (type->base == LY_TYPE_INST) || ((type->base == LY_TYPE_UNION) && type->info.uni.has_ptr_type))) {
+    if ((type->base == LY_TYPE_LEAFREF) || (type->base == LY_TYPE_INST)
+            || ((type->base == LY_TYPE_UNION) && type->info.uni.has_ptr_type)) {
         if ((value_type == LY_TYPE_INST) || (value_type == LY_TYPE_IDENT) || (value_type == LY_TYPE_UNION)) {
             /* we already have a string */
             goto parse_reference;
@@ -636,8 +637,8 @@ lyb_parse_val_2(struct lys_type *type, struct lyd_node_leaf_list *leaf, struct l
         return -1;
     }
 
-    if (!(*value_flags & LY_VALUE_UNRES) && ((type->base == LY_TYPE_LEAFREF)
-            || (type->base == LY_TYPE_INST) || ((type->base == LY_TYPE_UNION) && type->info.uni.has_ptr_type))) {
+    if ((type->base == LY_TYPE_LEAFREF) || (type->base == LY_TYPE_INST)
+            || ((type->base == LY_TYPE_UNION) && type->info.uni.has_ptr_type)) {
 parse_reference:
         assert(*value_str);
 
@@ -715,7 +716,7 @@ lyb_parse_value(struct lys_type *type, struct lyd_node_leaf_list *leaf, struct l
     LYB_HAVE_READ_RETURN(r, data, -1);
 
     /* union is handled specially */
-    if (type->base == LY_TYPE_UNION) {
+    if ((type->base == LY_TYPE_UNION) && !(*value_flags & LY_VALUE_USER)) {
         assert(*value_type == LY_TYPE_STRING);
 
         *value_str = value->string;
@@ -1254,7 +1255,7 @@ lyd_parse_lyb(struct ly_ctx *ctx, const char *data, int options, const struct ly
                 LY_TREE_DFS_END(node, next, act_notif);
             }
         }
-        if (lyd_defaults_add_unres(&node, options, ctx, data_tree, act_notif, unres, 0)) {
+        if (lyd_defaults_add_unres(&node, options, ctx, NULL, 0, data_tree, act_notif, unres, 0)) {
             lyd_free_withsiblings(node);
             node = NULL;
             goto finish;

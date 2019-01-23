@@ -330,14 +330,13 @@ lyb_hash_find(struct hash_table *ht, struct lys_node *node)
 static int
 lyb_write(struct lyout *out, const uint8_t *buf, size_t count, struct lyb_state *lybs)
 {
-    int ret, i, full_chunk_i;
+    int ret = 0, i, full_chunk_i;
     size_t r, to_write;
     uint8_t meta_buf[LYB_META_BYTES];
 
     assert(out && lybs);
 
-    ret = 0;
-    while (count) {
+    while (1) {
         /* check for full data chunks */
         to_write = count;
         full_chunk_i = -1;
@@ -350,21 +349,28 @@ lyb_write(struct lyout *out, const uint8_t *buf, size_t count, struct lyb_state 
             }
         }
 
-        r = ly_write(out, (char *)buf, to_write);
-        if (r < to_write) {
-            return -1;
+        if ((full_chunk_i == -1) && !count) {
+            break;
         }
 
-        for (i = 0; i < lybs->used; ++i) {
-            /* increase all written counters */
-            lybs->written[i] += r;
-            assert(lybs->written[i] <= LYB_SIZE_MAX);
-        }
-        /* decrease count/buf */
-        count -= r;
-        buf += r;
+        /* we are actually writing some data, not just finishing another chunk */
+        if (to_write) {
+            r = ly_write(out, (char *)buf, to_write);
+            if (r < to_write) {
+                return -1;
+            }
 
-        ret += r;
+            for (i = 0; i < lybs->used; ++i) {
+                /* increase all written counters */
+                lybs->written[i] += r;
+                assert(lybs->written[i] <= LYB_SIZE_MAX);
+            }
+            /* decrease count/buf */
+            count -= r;
+            buf += r;
+
+            ret += r;
+        }
 
         if (full_chunk_i > -1) {
             /* write the meta information (inner chunk count and chunk size) */

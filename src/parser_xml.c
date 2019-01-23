@@ -739,11 +739,11 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     }
 
     /* add default values, resolve unres and check for mandatory nodes in final tree */
-    if (lyd_defaults_add_unres(&result, options, ctx, data_tree, act_notif, unres, 1)) {
+    if (lyd_defaults_add_unres(&result, options, ctx, NULL, 0, data_tree, act_notif, unres, 1)) {
         goto error;
     }
     if (!(options & (LYD_OPT_TRUSTED | LYD_OPT_NOTIF_FILTER))
-            && lyd_check_mandatory_tree((act_notif ? act_notif : result), ctx, options)) {
+            && lyd_check_mandatory_tree((act_notif ? act_notif : result), ctx, NULL, 0, options)) {
         goto error;
     }
 

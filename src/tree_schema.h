@@ -1168,8 +1168,8 @@ struct lys_iffeature {
                                           depends on state data nodes outside their subtree (applicable only to RPCs,
                                           notifications, and actions) */
 #define LYS_LEAFREF_DEP  0x800       /**< flag marking nodes, whose validation (leafrefs)
-                                          depends on nodes outside their subtree (applicable only to RPCs,
-                                          notifications, and actions) */
+                                          depends on nodes outside their subtree (applicable to RPCs,
+                                          notifications, actions) or outside their module (applicate to data) */
 #define LYS_DFLTJSON     0x1000       /**< default value (in ::lys_node_leaf, ::lys_node_leaflist, :lys_tpdf) was
                                           converted into JSON format, since it contains identityref value which is
                                           being used in JSON format (instead of module prefixes, we use the module

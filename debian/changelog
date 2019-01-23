@@ -1,0 +1,20 @@
+libyang (0.16.105-1) unstable; urgency=medium
+
+  * upstream 0.16.105 (0.16-r3) release
+
+ -- David Lamparter <equinox-debian@diac24.net>  Wed, 23 Jan 2019 01:32:43 +0100
+
+libyang (0.16.52-2) unstable; urgency=medium
+
+  * use correct DEB_HOST_GNU_TYPE to fix i386 build
+  * mark non-libyang C++ symbols as optional (fixes build on several arch)
+  * pull in 2 upstraem fixes to get build working on big-endian
+
+ -- David Lamparter <equinox-debian@diac24.net>  Thu, 06 Dec 2018 13:33:08 +0100
+
+libyang (0.16.52-1) unstable; urgency=medium
+
+  * Initial release.
+  * Closes: #913219
+
+ -- David Lamparter <equinox-debian@diac24.net>  Sun, 18 Nov 2018 19:30:04 +0100
