@@ -336,8 +336,10 @@ typedef enum {
                                     its children. */
     LYD_DIFF_MOVEDAFTER2     /**< similar to LYD_DIFF_MOVEDAFTER1, but this time the moved item is in the second tree.
                                   This type is always used in combination with (as a successor of) #LYD_DIFF_CREATED
-                                  as an instruction to move the newly created node to a specific position. Note, that
-                                  due to applicability to the second tree, the meaning of lyd_difflist:first and
+                                  as an instruction to move the newly created node to a specific position. If it is not
+                                  present, it means that even the parent of the user-ordered instances did not exist
+                                  (or was empty) so it is safe to just create the instances in the same order. Note,
+                                  that due to applicability to the second tree, the meaning of lyd_difflist:first and
                                   lyd_difflist:second is inverse in comparison to #LYD_DIFF_MOVEDAFTER1. The
                                   lyd_difflist::second points to the (previously) created node in the second tree and
                                   the lyd_difflist::first points to the predecessor node in the second tree. If the
