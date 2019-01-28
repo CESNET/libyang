@@ -1,36 +1,71 @@
 Debian packaging for libyang
 ============================
 
-This repository contains Debian package files for
-[libyang](https://github.com/CESNET/libyang).
+Compatibility notes
+-------------------
 
-Building a release with Debian patches
---------------------------------------
+This package won't build on older Debian (jessie, stretch) due to missing
+swig 3.0.12 and debhelper 11.  However, the resulting binary packages can
+be installed on jessie and stretch without issues - except for the python
+packages.  I.e. the following packages:
+
+- libyang0.16
+- libyang-dev
+- libyang-cpp0.16
+- libyang-cpp-dev
+- yang-tools
+
+will work on jessie and stretch.  The following:
+
+- python3-yang
+
+will NOT work on jessie and stretch (because they have older python
+versions.)
+
+There are not plans to make this package "backwards compatible" in some
+way.  You can either build on buster, or install swig 3.0.12 and debhelper
+11.
+
+Where to file issues
+--------------------
+
+Please file issues on the Debian BTS as usual.  You could also open issues
+on github, but if it's something about the Debian packaging it's better to
+stick with the proper Debian ways.  The Debian BTS is where other people
+involved with Debian go look for bugs regarding a package, so that's where
+they should be.
+
+Building straight off git
+-------------------------
+
+Just the normal:
 
 ```
-git clone https://github.com/opensourcerouting/libyang-debian.git
-cd libyang-debian
-dpkg-buildpackage -uc -us
+git clone https://github.com/CESNET/libyang -b debian
+cd libyang
+dpkg-buildpackage
 ```
 
-Building a proper Debian source and package
--------------------------------------------
+Building a Debian .dsc
+----------------------
+
+Again, pretty much the normal:
 
 ```
-git clone https://github.com/opensourcerouting/libyang-debian.git
-dpkg-source -b libyang-debian
-dpkg-source -x *.dsc
-cd libyang-0*
-debuild
+git clone https://github.com/CESNET/libyang -b debian
+wget -Olibyang_0.16.105.orig.tar.gz https://github.com/CESNET/libyang/archive/v0.16-r3.tar.gz
+cd libyang
+dpkg-source -b .
 ```
 
-You can also use `cowbuilder` or `reprotest` on the dsc file directly.
+(Note the diverging release numbering though.)
 
 
 Maintainer Notes
 ================
 
-* the project version number is actually the SO ABI version.
+* the project version number is actually the SO ABI version.  The release
+  point numbers (0.16-r3) isn't used for Debian.
 
 * it's intentional that the SONAME is libyang.so.0.16 and not libyang.so.0.
   ABI compatibility is indicated by the first two numbers being equal;
