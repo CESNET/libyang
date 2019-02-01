@@ -2636,6 +2636,7 @@ lyd_merge_node_equal(struct lyd_node *node1, struct lyd_node *node2)
     case LYS_ANYDATA:
     case LYS_RPC:
     case LYS_ACTION:
+    case LYS_NOTIF:
         return 1;
     case LYS_LEAFLIST:
         if (node1->validity & LYD_VAL_INUSE) {
