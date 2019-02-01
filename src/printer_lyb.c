@@ -21,6 +21,26 @@
 #ifdef __APPLE__
 # include <libkern/OSByteOrder.h>
 # define htole64(x) OSSwapHostToLittleInt64(x)
+#elif defined(__FreeBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
+# include <sys/endian.h>
+#elif defined(__sun__)
+# include <endian.h>
+# include <sys/byteorder.h>
+# if defined(_BIG_ENDIAN)
+#  define le16toh(x) BSWAP_16(x)
+#  define le32toh(x) BSWAP_32(x)
+#  define le64toh(x) BSWAP_64(x)
+#  define htole64(x) le64toh(x)
+#  define htole32(x) le32toh(x)
+#  define htole16(x) le16toh(x)
+# else
+#  define le16toh(x) (x)
+#  define le32toh(x) (x)
+#  define le64toh(x) (x)
+#  define htole64(x) (x)
+#  define htole32(x) (x)
+#  define htole16(x) (x)
+# endif
 #else
 # include <endian.h>
 #endif

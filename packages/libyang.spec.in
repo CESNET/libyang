@@ -8,20 +8,44 @@ Source1: libyang.rpmlintrc
 License: BSD-3-Clause
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}
 
+%if 0%{?rhel} && 0%{?rhel} < 8
+    %define with_lang_bind 0
+%else
+    %define with_lang_bind 1
+%endif
+
+%if 0%{?rhel} && 0%{?rhel} < 7
+    # CentOS/RedHat before 7.0 contains old pcre without pcre_free_study().
+    # With cache disabled, this isn't needed
+    %define with_enable_cache 0
+    # CentOS/RedHat before 7.0 contains old valgrind which can't run
+    # valgrind tests. Disable them
+    %define with_valgrind 0
+%else
+    %define with_enable_cache 1
+    %define with_valgrind 1
+%endif
+
 Requires:  pcre
 BuildRequires:  cmake
 BuildRequires:  doxygen
 BuildRequires:  pcre-devel
-BuildRequires:  valgrind
-BuildRequires:  libcmocka-devel
 BuildRequires:  gcc
-BuildRequires:  gcc-c++
-BuildRequires:  swig >= 3.0.12
 
-%if 0%{?suse_version} + 0%{?fedora} > 0
-BuildRequires:  python3-devel
-%else
-BuildRequires:  python34-devel
+%if %{with_valgrind}
+    BuildRequires:  valgrind
+%endif
+
+%if %{with_lang_bind}
+    BuildRequires:  gcc-c++
+    BuildRequires:  swig >= 3.0.12
+    BuildRequires:  libcmocka-devel
+
+    %if 0%{?suse_version} + 0%{?fedora} > 0
+        BuildRequires:  python3-devel
+    %else
+        BuildRequires:  python34-devel
+    %endif
 %endif
 
 Conflicts: @CONFLICT_PACKAGE_NAME@ = @LIBYANG_MAJOR_VERSION@.@LIBYANG_MINOR_VERSION@
@@ -31,28 +55,30 @@ Summary:    Headers of libyang library
 Requires:   %{name} = %{version}-%{release}
 Requires:   pcre-devel
 
-%package -n libyang-cpp@PACKAGE_PART_NAME@
-Summary:    Bindings to c++ language
-Requires:   %{name} = %{version}-%{release}
+%if %{with_lang_bind}
+    %package -n libyang-cpp@PACKAGE_PART_NAME@
+    Summary:    Bindings to c++ language
+    Requires:   %{name} = %{version}-%{release}
 
-%package -n libyang-cpp@PACKAGE_PART_NAME@-devel
-Summary:    Headers of bindings to c++ language
-Requires:   libyang-cpp@PACKAGE_PART_NAME@ = %{version}-%{release}
-Requires:   pcre-devel
+    %package -n libyang-cpp@PACKAGE_PART_NAME@-devel
+    Summary:    Headers of bindings to c++ language
+    Requires:   libyang-cpp@PACKAGE_PART_NAME@ = %{version}-%{release}
+    Requires:   pcre-devel
 
-%package -n python3-yang@PACKAGE_PART_NAME@
-Summary:    Binding to python
-Requires:   libyang-cpp@PACKAGE_PART_NAME@ = %{version}-%{release}
-Requires:   %{name} = %{version}-%{release}
+    %package -n python3-yang@PACKAGE_PART_NAME@
+    Summary:    Binding to python
+    Requires:   libyang-cpp@PACKAGE_PART_NAME@ = %{version}-%{release}
+    Requires:   %{name} = %{version}-%{release}
 
-%description -n libyang-cpp@PACKAGE_PART_NAME@
-Bindings of libyang library to C++ language.
+    %description -n libyang-cpp@PACKAGE_PART_NAME@
+    Bindings of libyang library to C++ language.
 
-%description -n libyang-cpp@PACKAGE_PART_NAME@-devel
-Headers of bindings to c++ language.
+    %description -n libyang-cpp@PACKAGE_PART_NAME@-devel
+    Headers of bindings to c++ language.
 
-%description -n python3-yang@PACKAGE_PART_NAME@
-Bindings of libyang library to python language.
+    %description -n python3-yang@PACKAGE_PART_NAME@
+    Bindings of libyang library to python language.
+%endif
 
 %description devel
 Headers of libyang library.
@@ -66,7 +92,22 @@ mkdir build
 
 %build
 cd build
-cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr -D CMAKE_BUILD_TYPE:String="@BUILD_TYPE@" -DGEN_LANGUAGE_BINDINGS=ON ..
+%if %{with_lang_bind}
+    %define cmake_lang_bind "-DGEN_LANGUAGE_BINDINGS=ON"
+%else
+    %define cmake_lang_bind "-DGEN_LANGUAGE_BINDINGS=OFF"
+%endif
+%if %{with_enable_cache}
+    %define cmake_enable_cache ""
+%else
+    %define cmake_enable_cache "-DENABLE_CACHE=OFF"
+%endif
+%if %{with_valgrind}
+    %define cmake_valgrind ""
+%else
+    %define cmake_valgrind "-DENABLE_VALGRIND_TESTS=OFF"
+%endif
+cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr -D CMAKE_BUILD_TYPE:String="@BUILD_TYPE@" %{cmake_valgrind} %{cmake_lang_bind} %{cmake_enable_cache} ..
 make
 
 %check
@@ -78,10 +119,14 @@ cd build
 make DESTDIR=%{buildroot} install
 
 %post -p /sbin/ldconfig
-%post -n libyang-cpp@PACKAGE_PART_NAME@ -p /sbin/ldconfig
+%if %{with_lang_bind}
+    %post -n libyang-cpp@PACKAGE_PART_NAME@ -p /sbin/ldconfig
+%endif 
 
 %postun -p /sbin/ldconfig
-%postun -n libyang-cpp@PACKAGE_PART_NAME@ -p /sbin/ldconfig
+%if %{with_lang_bind}
+    %postun -n libyang-cpp@PACKAGE_PART_NAME@ -p /sbin/ldconfig
+%endif 
 
 %files
 %defattr(-,root,root)
@@ -100,19 +145,21 @@ make DESTDIR=%{buildroot} install
 %{_includedir}/libyang/*.h
 %dir %{_includedir}/libyang/
 
-%files -n libyang-cpp@PACKAGE_PART_NAME@
-%defattr(-,root,root)
-%{_libdir}/libyang-cpp.so.*
+%if %{with_lang_bind}
+    %files -n libyang-cpp@PACKAGE_PART_NAME@
+    %defattr(-,root,root)
+    %{_libdir}/libyang-cpp.so.*
 
-%files -n libyang-cpp@PACKAGE_PART_NAME@-devel
-%defattr(-,root,root)
-%{_libdir}/libyang-cpp.so
-%{_includedir}/libyang/*.hpp
-%{_libdir}/pkgconfig/libyang-cpp.pc
-%dir %{_includedir}/libyang/
+    %files -n libyang-cpp@PACKAGE_PART_NAME@-devel
+    %defattr(-,root,root)
+    %{_libdir}/libyang-cpp.so
+    %{_includedir}/libyang/*.hpp
+    %{_libdir}/pkgconfig/libyang-cpp.pc
+    %dir %{_includedir}/libyang/
 
-%files -n python3-yang@PACKAGE_PART_NAME@
-%defattr(-,root,root)
-%{_libdir}/python*
+    %files -n python3-yang@PACKAGE_PART_NAME@
+    %defattr(-,root,root)
+    %{_libdir}/python*
+%endif
 
 %changelog
