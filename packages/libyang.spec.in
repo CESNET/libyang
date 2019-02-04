@@ -33,19 +33,19 @@ BuildRequires:  pcre-devel
 BuildRequires:  gcc
 
 %if %{with_valgrind}
-    BuildRequires:  valgrind
+BuildRequires:  valgrind
 %endif
 
 %if %{with_lang_bind}
-    BuildRequires:  gcc-c++
-    BuildRequires:  swig >= 3.0.12
-    BuildRequires:  libcmocka-devel
+BuildRequires:  gcc-c++
+BuildRequires:  swig >= 3.0.12
+BuildRequires:  libcmocka-devel
 
-    %if 0%{?suse_version} + 0%{?fedora} > 0
-        BuildRequires:  python3-devel
-    %else
-        BuildRequires:  python34-devel
-    %endif
+%if 0%{?suse_version} + 0%{?fedora} > 0
+BuildRequires:  python3-devel
+%else
+BuildRequires:  python34-devel
+%endif
 %endif
 
 Conflicts: @CONFLICT_PACKAGE_NAME@ = @LIBYANG_MAJOR_VERSION@.@LIBYANG_MINOR_VERSION@
@@ -56,28 +56,28 @@ Requires:   %{name} = %{version}-%{release}
 Requires:   pcre-devel
 
 %if %{with_lang_bind}
-    %package -n libyang-cpp@PACKAGE_PART_NAME@
-    Summary:    Bindings to c++ language
-    Requires:   %{name} = %{version}-%{release}
+%package -n libyang-cpp@PACKAGE_PART_NAME@
+Summary:    Bindings to c++ language
+Requires:   %{name} = %{version}-%{release}
 
-    %package -n libyang-cpp@PACKAGE_PART_NAME@-devel
-    Summary:    Headers of bindings to c++ language
-    Requires:   libyang-cpp@PACKAGE_PART_NAME@ = %{version}-%{release}
-    Requires:   pcre-devel
+%package -n libyang-cpp@PACKAGE_PART_NAME@-devel
+Summary:    Headers of bindings to c++ language
+Requires:   libyang-cpp@PACKAGE_PART_NAME@ = %{version}-%{release}
+Requires:   pcre-devel
 
-    %package -n python3-yang@PACKAGE_PART_NAME@
-    Summary:    Binding to python
-    Requires:   libyang-cpp@PACKAGE_PART_NAME@ = %{version}-%{release}
-    Requires:   %{name} = %{version}-%{release}
+%package -n python3-yang@PACKAGE_PART_NAME@
+Summary:    Binding to python
+Requires:   libyang-cpp@PACKAGE_PART_NAME@ = %{version}-%{release}
+Requires:   %{name} = %{version}-%{release}
 
-    %description -n libyang-cpp@PACKAGE_PART_NAME@
-    Bindings of libyang library to C++ language.
+%description -n libyang-cpp@PACKAGE_PART_NAME@
+Bindings of libyang library to C++ language.
 
-    %description -n libyang-cpp@PACKAGE_PART_NAME@-devel
-    Headers of bindings to c++ language.
+%description -n libyang-cpp@PACKAGE_PART_NAME@-devel
+Headers of bindings to c++ language.
 
-    %description -n python3-yang@PACKAGE_PART_NAME@
-    Bindings of libyang library to python language.
+%description -n python3-yang@PACKAGE_PART_NAME@
+Bindings of libyang library to python language.
 %endif
 
 %description devel
@@ -146,20 +146,20 @@ make DESTDIR=%{buildroot} install
 %dir %{_includedir}/libyang/
 
 %if %{with_lang_bind}
-    %files -n libyang-cpp@PACKAGE_PART_NAME@
-    %defattr(-,root,root)
-    %{_libdir}/libyang-cpp.so.*
+%files -n libyang-cpp@PACKAGE_PART_NAME@
+%defattr(-,root,root)
+%{_libdir}/libyang-cpp.so.*
 
-    %files -n libyang-cpp@PACKAGE_PART_NAME@-devel
-    %defattr(-,root,root)
-    %{_libdir}/libyang-cpp.so
-    %{_includedir}/libyang/*.hpp
-    %{_libdir}/pkgconfig/libyang-cpp.pc
-    %dir %{_includedir}/libyang/
+%files -n libyang-cpp@PACKAGE_PART_NAME@-devel
+%defattr(-,root,root)
+%{_libdir}/libyang-cpp.so
+%{_includedir}/libyang/*.hpp
+%{_libdir}/pkgconfig/libyang-cpp.pc
+%dir %{_includedir}/libyang/
 
-    %files -n python3-yang@PACKAGE_PART_NAME@
-    %defattr(-,root,root)
-    %{_libdir}/python*
+%files -n python3-yang@PACKAGE_PART_NAME@
+%defattr(-,root,root)
+%{_libdir}/python*
 %endif
 
 %changelog
