@@ -1848,7 +1848,7 @@ lyd_new_path(struct lyd_node *data_tree, const struct ly_ctx *ctx, const char *p
         LY_TREE_FOR(data_tree, node) {
             parent = resolve_partial_json_data_nodeid(id, value_type > LYD_ANYDATA_STRING ? NULL : value, node,
                                                       options, &parsed);
-            if (parsed) {
+            if (parsed || (path[0] != '/')) {
                 break;
             }
         }

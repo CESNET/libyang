@@ -2650,10 +2650,14 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
 
     if (is_relative) {
         prev_mod = lyd_node_module(start);
-        start = start->child;
+        start = (start->schema->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_RPC | LYS_ACTION | LYS_NOTIF)) ? start->child : NULL;
     } else {
         for (; start->parent; start = start->parent);
         prev_mod = lyd_node_module(start);
+    }
+    if (!start) {
+        /* there are no siblings to search */
+        return NULL;
     }
 
     /* do not duplicate code, use predicate parsing from the loop */
