@@ -558,8 +558,8 @@ char *lyd_path(const struct lyd_node *node);
  *                    when checking any "when" or "must" conditions in the parsed tree that require
  *                    some nodes outside their subtree. It must be a list of top-level elements!
  *                - #LYD_OPT_RPCREPLY:
- *                  - const struct ::lyd_node *rpc_act - pointer to the whole RPC or action operation data
- *                    tree (the request) of the reply.
+ *                  - const struct ::lyd_node *rpc_act - pointer to the whole RPC or (top-level) action operation
+ *                    data tree (the request) of the reply.
  *                  - const struct ::lyd_node *data_tree - additional data tree that will be used
  *                    when checking any "when" or "must" conditions in the parsed tree that require
  *                    some nodes outside their subtree. It must be a list of top-level elements!
