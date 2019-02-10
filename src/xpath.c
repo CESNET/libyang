@@ -35,11 +35,12 @@
  *
  * @return Length of \p ncname valid bytes.
  */
-static size_t
+static long int
 parse_ncname(const char *ncname)
 {
     unsigned int uc;
-    size_t size, len = 0;
+    size_t size;
+    long int len = 0;
 
     LY_CHECK_RET(ly_getutf8(&ncname, &uc, &size), 0);
     if (!is_xmlqnamestartchar(uc) || (uc == ':')) {
@@ -48,7 +49,10 @@ parse_ncname(const char *ncname)
 
     do {
         len += size;
-        LY_CHECK_RET(ly_getutf8(&ncname, &uc, &size), 0);
+        if (!*ncname) {
+            break;
+        }
+        LY_CHECK_RET(ly_getutf8(&ncname, &uc, &size), -len);
     } while (is_xmlqnamechar(uc) && (uc != ':'));
 
     return len;
@@ -118,7 +122,8 @@ struct lyxp_expr *
 lyxp_expr_parse(struct ly_ctx *ctx, const char *expr)
 {
     struct lyxp_expr *ret;
-    size_t parsed = 0, tok_len, ncname_len;
+    size_t parsed = 0, tok_len;
+    long int ncname_len;
     enum lyxp_token tok_type;
     int prev_function_check = 0;
 
@@ -305,7 +310,7 @@ lyxp_expr_parse(struct ly_ctx *ctx, const char *expr)
                        expr[parsed], &expr[parsed], ret->tok_len[ret->used - 1], &ret->expr[ret->tok_pos[ret->used - 1]]);
                 goto error;
             } else {
-                LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_INEXPR, expr[parsed], &expr[parsed]);
+                LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_INEXPR, parsed + 1, expr);
                 goto error;
             }
         } else if (expr[parsed] == '*') {
@@ -318,7 +323,7 @@ lyxp_expr_parse(struct ly_ctx *ctx, const char *expr)
 
             /* NameTest (NCName ':' '*' | QName) or NodeType/FunctionName */
             ncname_len = parse_ncname(&expr[parsed]);
-            LY_CHECK_ERR_GOTO(!ncname_len, LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_INEXPR, expr[parsed], &expr[parsed]), error);
+            LY_CHECK_ERR_GOTO(ncname_len < 0, LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_INEXPR, parsed - ncname_len + 1, expr), error);
             tok_len = ncname_len;
 
             if (expr[parsed + tok_len] == ':') {
@@ -327,7 +332,7 @@ lyxp_expr_parse(struct ly_ctx *ctx, const char *expr)
                     ++tok_len;
                 } else {
                     ncname_len = parse_ncname(&expr[parsed + tok_len]);
-                    LY_CHECK_ERR_GOTO(!ncname_len, LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_INEXPR, expr[parsed], &expr[parsed]), error);
+                    LY_CHECK_ERR_GOTO(ncname_len < 0, LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_INEXPR, parsed - ncname_len + 1, expr), error);
                     tok_len += ncname_len;
                 }
                 /* remove old flag to prevent ambiguities */

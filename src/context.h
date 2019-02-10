@@ -63,6 +63,7 @@ struct ly_ctx;
                                         directory, which is by default searched automatically (despite not
                                         recursively). */
 #define LY_CTX_PREFER_SEARCHDIRS 0x20 /**< When searching for schema, prefer searchdirs instead of user callback. */
+
 /**@} contextoptions */
 
 /**
@@ -206,7 +207,7 @@ void ly_ctx_set_module_imp_clb(struct ly_ctx *ctx, ly_module_imp_clb clb, void *
  * the schema with no revision is returned, if it is present in the context.
  * @return Pointer to the YANG module, NULL if no schema in the context follows the name and revision requirements.
  */
-const struct lys_module *ly_ctx_get_module(const struct ly_ctx *ctx, const char *name, const char *revision);
+struct lys_module *ly_ctx_get_module(const struct ly_ctx *ctx, const char *name, const char *revision);
 
 /**
  * @brief Get the latest revision of the YANG module specified by its name.
@@ -218,7 +219,7 @@ const struct lys_module *ly_ctx_get_module(const struct ly_ctx *ctx, const char 
  * @return The latest revision of the specified YANG module in the given context, NULL if no YANG module of the
  * given name is present in the context.
  */
-const struct lys_module *ly_ctx_get_module_latest(const struct ly_ctx *ctx, const char *name);
+struct lys_module *ly_ctx_get_module_latest(const struct ly_ctx *ctx, const char *name);
 
 /**
  * @brief Get the (only) implemented YANG module specified by its name.
@@ -228,7 +229,7 @@ const struct lys_module *ly_ctx_get_module_latest(const struct ly_ctx *ctx, cons
  * @return The only implemented YANG module revision of the given name in the given context. NULL if there is no
  * implemented module of the given name.
  */
-const struct lys_module *ly_ctx_get_module_implemented(const struct ly_ctx *ctx, const char *name);
+struct lys_module *ly_ctx_get_module_implemented(const struct ly_ctx *ctx, const char *name);
 
 /**
  * @brief Get YANG module of the given namespace and revision.
@@ -239,7 +240,7 @@ const struct lys_module *ly_ctx_get_module_implemented(const struct ly_ctx *ctx,
  * the schema with no revision is returned, if it is present in the context.
  * @return Pointer to the YANG module, NULL if no schema in the context follows the namespace and revision requirements.
  */
-const struct lys_module *ly_ctx_get_module_ns(const struct ly_ctx *ctx, const char *ns, const char *revision);
+struct lys_module *ly_ctx_get_module_ns(const struct ly_ctx *ctx, const char *ns, const char *revision);
 
 /**
  * @brief Get the latest revision of the YANG module specified by its namespace.
@@ -251,7 +252,7 @@ const struct lys_module *ly_ctx_get_module_ns(const struct ly_ctx *ctx, const ch
  * @return The latest revision of the specified YANG module in the given context, NULL if no YANG module of the
  * given namespace is present in the context.
  */
-const struct lys_module *ly_ctx_get_module_latest_ns(const struct ly_ctx *ctx, const char *ns);
+struct lys_module *ly_ctx_get_module_latest_ns(const struct ly_ctx *ctx, const char *ns);
 
 /**
  * @brief Get the (only) implemented YANG module specified by its namespace.
@@ -261,7 +262,7 @@ const struct lys_module *ly_ctx_get_module_latest_ns(const struct ly_ctx *ctx, c
  * @return The only implemented YANG module revision of the given namespace in the given context. NULL if there is no
  * implemented module of the given namespace.
  */
-const struct lys_module *ly_ctx_get_module_implemented_ns(const struct ly_ctx *ctx, const char *ns);
+struct lys_module *ly_ctx_get_module_implemented_ns(const struct ly_ctx *ctx, const char *ns);
 
 /**
  * @brief Reset cached latest revision information of the schemas in the context.
@@ -279,6 +280,17 @@ const struct lys_module *ly_ctx_get_module_implemented_ns(const struct ly_ctx *c
  * @param[in] ctx libyang context where the latest revision information is going to be reset.
  */
 void ly_ctx_reset_latests(struct ly_ctx *ctx);
+
+/**
+ * @brief Make the specific module implemented.
+ *
+ * @param[in] ctx libyang context to change.
+ * @param[in] mod Module from the given context to make implemented. It is not an error
+ * to provide already implemented module, it just does nothing.
+ * @return LY_SUCCESS or LY_EDENIED in case the context contains some other revision of the
+ * same module which is already implemented.
+ */
+LY_ERR ly_ctx_module_implement(struct ly_ctx *ctx, struct lys_module *mod);
 
 /**
  * @brief Free all internal structures of the specified context.

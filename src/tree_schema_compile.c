@@ -62,8 +62,8 @@
 
 #define COMPILE_CHECK_UNIQUENESS(CTX, ARRAY, MEMBER, EXCL, STMT, IDENT) \
     if (ARRAY) { \
-        for (unsigned int u = 0; u < LY_ARRAY_SIZE(ARRAY); ++u) { \
-            if (&(ARRAY)[u] != EXCL && (void*)((ARRAY)[u].MEMBER) == (void*)(IDENT)) { \
+        for (unsigned int u__ = 0; u__ < LY_ARRAY_SIZE(ARRAY); ++u__) { \
+            if (&(ARRAY)[u__] != EXCL && (void*)((ARRAY)[u__].MEMBER) == (void*)(IDENT)) { \
                 LOGVAL((CTX)->ctx, LY_VLOG_STR, (CTX)->path, LY_VCODE_DUPIDENT, IDENT, STMT); \
                 return LY_EVALID; \
             } \
@@ -174,16 +174,31 @@ iff_setop(uint8_t *list, uint8_t op, int pos)
 #define LYS_IFF_LP 0x04 /* ( */
 #define LYS_IFF_RP 0x08 /* ) */
 
+/**
+ * @brief Find a feature of the given name and referenced in the given module.
+ *
+ * If the compiled schema is available (the schema is implemented), the feature from the compiled schema is
+ * returned. Otherwise, the special array of pre-compiled features is used to search for the feature. Such
+ * features are always disabled (feature from not implemented schema cannot be enabled), but in case the schema
+ * will be made implemented in future (no matter if implicitly via augmenting/deviating it or explicitly via
+ * ly_ctx_module_implement()), the compilation of these feature structure is finished, but the pointers
+ * assigned till that time will be still valid.
+ *
+ * @param[in] mod Module where the feature was referenced (used to resolve prefix of the feature).
+ * @param[in] name Name of the feature including possible prefix.
+ * @param[in] len Length of the string representing the feature identifier in the name variable (mandatory!).
+ * @return Pointer to the feature structure if found, NULL otherwise.
+ */
 static struct lysc_feature *
-lysc_feature_find(struct lysc_module *mod, const char *name, size_t len)
+lys_feature_find(struct lys_module *mod, const char *name, size_t len)
 {
     size_t i;
-    struct lysc_feature *f;
+    struct lysc_feature *f, *flist;
 
     for (i = 0; i < len; ++i) {
         if (name[i] == ':') {
             /* we have a prefixed feature */
-            mod = lysc_module_find_prefix(mod, name, i);
+            mod = lys_module_find_prefix(mod, name, i);
             LY_CHECK_RET(!mod, NULL);
 
             name = &name[i + 1];
@@ -192,8 +207,14 @@ lysc_feature_find(struct lysc_module *mod, const char *name, size_t len)
     }
 
     /* we have the correct module, get the feature */
-    LY_ARRAY_FOR(mod->features, i) {
-        f = &mod->features[i];
+    if (mod->implemented) {
+        /* module is implemented so there is already the compiled schema */
+        flist = mod->compiled->features;
+    } else {
+        flist = mod->off_features;
+    }
+    LY_ARRAY_FOR(flist, i) {
+        f = &flist[i];
         if (!strncmp(f->name, name, len) && f->name[len] == '\0') {
             return f;
         }
@@ -223,7 +244,7 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, int UNUSE
     LY_CHECK_ERR_RET(!mod->parsed->extensions,
                      LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                             "Extension instance \"%s\" refers \"%s\" module that does not contain extension definitions.",
-                            ext_p->name, mod->parsed->name),
+                            ext_p->name, mod->name),
                      LY_EVALID);
     name = &ext_p->name[u + 1];
     /* find the extension definition there */
@@ -314,7 +335,7 @@ lys_compile_iffeature(struct lysc_ctx *ctx, const char **value, int UNUSED(optio
 
     if (checkversion || expr_size > 1) {
         /* check that we have 1.1 module */
-        if (ctx->mod_def->parsed->version != LYS_VERSION_1_1) {
+        if (ctx->mod_def->version != LYS_VERSION_1_1) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
                    "Invalid value \"%s\" of if-feature - YANG 1.1 expression in YANG 1.0 module.", *value);
             return LY_EVALID;
@@ -382,12 +403,10 @@ lys_compile_iffeature(struct lysc_ctx *ctx, const char **value, int UNUSED(optio
             iff_setop(iff->expr, LYS_IFF_F, expr_size--);
 
             /* now get the link to the feature definition */
-            f = lysc_feature_find(ctx->mod->compiled, &c[i], j - i);
-            LY_CHECK_ERR_GOTO(!f,
-                              LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
-                                     "Invalid value \"%s\" of if-feature - unable to find feature \"%.*s\".", *value, j - i, &c[i]);
-                              rc = LY_EVALID,
-                              error)
+            f = lys_feature_find(ctx->mod_def, &c[i], j - i);
+            LY_CHECK_ERR_GOTO(!f, LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                                         "Invalid value \"%s\" of if-feature - unable to find feature \"%.*s\".", *value, j - i, &c[i]);
+                              rc = LY_EVALID, error)
             iff->features[f_size] = f;
             LY_ARRAY_INCREMENT(iff->features);
             f_size--;
@@ -421,6 +440,8 @@ lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, int options, st
     LY_ERR ret = LY_SUCCESS;
 
     when->cond = lyxp_expr_parse(ctx->ctx, when_p->cond);
+    DUP_STRING(ctx->ctx, when_p->dsc, when->dsc);
+    DUP_STRING(ctx->ctx, when_p->ref, when->ref);
     LY_CHECK_ERR_GOTO(!when->cond, ret = ly_errcode(ctx->ctx), done);
     COMPILE_ARRAY_GOTO(ctx, when_p->exts, when->exts, options, u, lys_compile_ext, ret, done);
 
@@ -439,6 +460,8 @@ lys_compile_must(struct lysc_ctx *ctx, struct lysp_restr *must_p, int options, s
 
     DUP_STRING(ctx->ctx, must_p->eapptag, must->eapptag);
     DUP_STRING(ctx->ctx, must_p->emsg, must->emsg);
+    DUP_STRING(ctx->ctx, must_p->dsc, must->dsc);
+    DUP_STRING(ctx->ctx, must_p->ref, must->ref);
     COMPILE_ARRAY_GOTO(ctx, must_p->exts, must->exts, options, u, lys_compile_ext, ret, done);
 
 done:
@@ -450,7 +473,6 @@ lys_compile_import(struct lysc_ctx *ctx, struct lysp_import *imp_p, int options,
 {
     unsigned int u;
     struct lys_module *mod = NULL;
-    struct lysc_module *comp;
     LY_ERR ret = LY_SUCCESS;
 
     DUP_STRING(ctx->ctx, imp_p->prefix, imp->prefix);
@@ -461,21 +483,20 @@ lys_compile_import(struct lysc_ctx *ctx, struct lysp_import *imp_p, int options,
      * The compiled version is needed only for augments, deviates and leafrefs, so they are checked (and added,
      * if needed) when these nodes are finally being instantiated and validated at the end of schema compilation. */
     if (!imp->module->parsed) {
-        comp = imp->module->compiled;
-        /* try to get filepath from the compiled version */
-        if (comp->filepath) {
-            mod = (struct lys_module*)lys_parse_path(ctx->ctx, comp->filepath,
-                                 !strcmp(&comp->filepath[strlen(comp->filepath - 4)], ".yin") ? LYS_IN_YIN : LYS_IN_YANG);
+        /* try to use filepath if present */
+        if (imp->module->filepath) {
+            mod = (struct lys_module*)lys_parse_path(ctx->ctx, imp->module->filepath,
+                                 !strcmp(&imp->module->filepath[strlen(imp->module->filepath - 4)], ".yin") ? LYS_IN_YIN : LYS_IN_YANG);
             if (mod != imp->module) {
                 LOGERR(ctx->ctx, LY_EINT, "Filepath \"%s\" of the module \"%s\" does not match.",
-                       comp->filepath, comp->name);
+                       imp->module->filepath, imp->module->name);
                 mod = NULL;
             }
         }
         if (!mod) {
-            if (lysp_load_module(ctx->ctx, comp->name, comp->revision, 0, 1, &mod)) {
+            if (lysp_load_module(ctx->ctx, imp->module->name, imp->module->revision, 0, 1, &mod)) {
                 LOGERR(ctx->ctx, LY_ENOTFOUND, "Unable to reload \"%s\" module to import it into \"%s\", source data not found.",
-                       comp->name, ctx->mod->compiled->name);
+                       imp->module->name, ctx->mod->name);
                 return LY_ENOTFOUND;
             }
         }
@@ -493,6 +514,8 @@ lys_compile_identity(struct lysc_ctx *ctx, struct lysp_ident *ident_p, int optio
 
     COMPILE_CHECK_UNIQUENESS(ctx, idents, name, ident, "identity", ident_p->name);
     DUP_STRING(ctx->ctx, ident_p->name, ident->name);
+    DUP_STRING(ctx->ctx, ident_p->ref, ident->dsc);
+    DUP_STRING(ctx->ctx, ident_p->ref, ident->dsc);
     COMPILE_ARRAY_GOTO(ctx, ident_p->iffeatures, ident->iffeatures, options, u, lys_compile_iffeature, ret, done);
     /* backlings (derived) can be added no sooner than when all the identities in the current module are present */
     COMPILE_ARRAY_GOTO(ctx, ident_p->exts, ident->exts, options, u, lys_compile_ext, ret, done);
@@ -525,7 +548,7 @@ lys_compile_identity_bases(struct lysc_ctx *ctx, const char **bases_p,  struct l
 
     assert(ident || bases);
 
-    if (LY_ARRAY_SIZE(bases_p) > 1 && ctx->mod_def->parsed->version < 2) {
+    if (LY_ARRAY_SIZE(bases_p) > 1 && ctx->mod_def->version < 2) {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
                "Multiple bases in %s are allowed only in YANG 1.1 modules.", ident ? "identity" : "identityref type");
         return LY_EVALID;
@@ -603,42 +626,81 @@ lys_compile_identities_derived(struct lysc_ctx *ctx, struct lysp_ident *idents_p
     return LY_SUCCESS;
 }
 
+LY_ERR
+lys_feature_precompile(struct ly_ctx *ctx, struct lysp_feature *features_p, struct lysc_feature **features)
+{
+    unsigned int offset = 0, u;
+    struct lysc_ctx context = {0};
+
+    assert(ctx);
+    context.ctx = ctx;
+
+    if (!features_p) {
+        return LY_SUCCESS;
+    }
+    if (*features) {
+        offset = LY_ARRAY_SIZE(*features);
+    }
+
+    LY_ARRAY_CREATE_RET(ctx, *features, LY_ARRAY_SIZE(features_p), LY_EMEM);
+    LY_ARRAY_FOR(features_p, u) {
+        LY_ARRAY_INCREMENT(*features);
+        COMPILE_CHECK_UNIQUENESS(&context, *features, name, &(*features)[offset + u], "feature", features_p[u].name);
+        DUP_STRING(ctx, features_p[u].name, (*features)[offset + u].name);
+        DUP_STRING(ctx, features_p[u].dsc, (*features)[offset + u].dsc);
+        DUP_STRING(ctx, features_p[u].ref, (*features)[offset + u].ref);
+        (*features)[offset + u].flags = features_p[u].flags;
+    }
+
+    return LY_SUCCESS;
+}
+
 /**
- * @brief Create compiled feature structure.
+ * @brief Create pre-compiled features array.
+ *
+ * See lys_feature_precompile() for more details.
+ *
  * @param[in] ctx Compile context.
  * @param[in] feature_p Parsed feature definition to compile.
  * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
- * @param[in] features List of already compiled features to check name duplicity.
- * @param[in,out] feature Compiled feature structure to fill.
+ * @param[in,out] features List of already (pre)compiled features to find the corresponding precompiled feature structure.
  * @return LY_ERR value.
  */
 static LY_ERR
-lys_compile_feature(struct lysc_ctx *ctx, struct lysp_feature *feature_p, int options, struct lysc_feature *features, struct lysc_feature *feature)
+lys_feature_precompile_finish(struct lysc_ctx *ctx, struct lysp_feature *feature_p, int options, struct lysc_feature *features)
 {
-    unsigned int u, v;
+    unsigned int u, v, x;
+    struct lysc_feature *feature, **df;
     LY_ERR ret = LY_SUCCESS;
-    struct lysc_feature **df;
 
-    COMPILE_CHECK_UNIQUENESS(ctx, features, name, feature, "feature", feature_p->name);
-    DUP_STRING(ctx->ctx, feature_p->name, feature->name);
-    feature->flags = feature_p->flags;
+    /* find the preprecompiled feature */
+    LY_ARRAY_FOR(features, x) {
+        if (strcmp(features[x].name, feature_p->name)) {
+            continue;
+        }
+        feature = &features[x];
 
-    COMPILE_ARRAY_GOTO(ctx, feature_p->exts, feature->exts, options, u, lys_compile_ext, ret, done);
-    COMPILE_ARRAY_GOTO(ctx, feature_p->iffeatures, feature->iffeatures, options, u, lys_compile_iffeature, ret, done);
-    if (feature->iffeatures) {
-        for (u = 0; u < LY_ARRAY_SIZE(feature->iffeatures); ++u) {
-            if (feature->iffeatures[u].features) {
-                for (v = 0; v < LY_ARRAY_SIZE(feature->iffeatures[u].features); ++v) {
-                    /* add itself into the dependants list */
-                    LY_ARRAY_NEW_RET(ctx->ctx, feature->iffeatures[u].features[v]->depfeatures, df, LY_EMEM);
-                    *df = feature;
+        /* finish compilation started in lys_feature_precompile() */
+        COMPILE_ARRAY_GOTO(ctx, feature_p->exts, feature->exts, options, u, lys_compile_ext, ret, done);
+        COMPILE_ARRAY_GOTO(ctx, feature_p->iffeatures, feature->iffeatures, options, u, lys_compile_iffeature, ret, done);
+        if (feature->iffeatures) {
+            for (u = 0; u < LY_ARRAY_SIZE(feature->iffeatures); ++u) {
+                if (feature->iffeatures[u].features) {
+                    for (v = 0; v < LY_ARRAY_SIZE(feature->iffeatures[u].features); ++v) {
+                        /* add itself into the dependants list */
+                        LY_ARRAY_NEW_RET(ctx->ctx, feature->iffeatures[u].features[v]->depfeatures, df, LY_EMEM);
+                        *df = feature;
+                    }
+                    /* TODO check for circular dependency */
                 }
-                /* TODO check for circular dependency */
             }
         }
+    done:
+        return ret;
     }
-done:
-    return ret;
+
+    LOGINT(ctx->ctx);
+    return LY_EINT;
 }
 
 /**
@@ -1123,6 +1185,7 @@ baseerror:
         LY_CHECK_ERR_RET(!(*range), LOGMEM(ctx->ctx), LY_EMEM);
     }
 
+    /* we rewrite the following values as the types chain is being processed */
     if (range_p->eapptag) {
         lydict_remove(ctx->ctx, (*range)->eapptag);
         (*range)->eapptag = lydict_insert(ctx->ctx, range_p->eapptag, 0);
@@ -1130,6 +1193,14 @@ baseerror:
     if (range_p->emsg) {
         lydict_remove(ctx->ctx, (*range)->emsg);
         (*range)->emsg = lydict_insert(ctx->ctx, range_p->emsg, 0);
+    }
+    if (range_p->dsc) {
+        lydict_remove(ctx->ctx, (*range)->dsc);
+        (*range)->dsc = lydict_insert(ctx->ctx, range_p->dsc, 0);
+    }
+    if (range_p->ref) {
+        lydict_remove(ctx->ctx, (*range)->ref);
+        (*range)->ref = lydict_insert(ctx->ctx, range_p->ref, 0);
     }
     /* extensions are taken only from the last range by the caller */
 
@@ -1396,6 +1467,8 @@ lys_compile_type_patterns(struct lysc_ctx *ctx, struct lysp_restr *patterns_p, i
         }
         DUP_STRING(ctx->ctx, patterns_p[u].eapptag, (*pattern)->eapptag);
         DUP_STRING(ctx->ctx, patterns_p[u].emsg, (*pattern)->emsg);
+        DUP_STRING(ctx->ctx, patterns_p[u].dsc, (*pattern)->dsc);
+        DUP_STRING(ctx->ctx, patterns_p[u].ref, (*pattern)->ref);
         COMPILE_ARRAY_GOTO(ctx, patterns_p[u].exts, (*pattern)->exts,
                            options, v, lys_compile_ext, ret, done);
     }
@@ -1457,7 +1530,7 @@ lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_
     uint32_t position = 0;
     struct lysc_type_enum_item *e, storage;
 
-    if (base_enums && ctx->mod_def->parsed->version < 2) {
+    if (base_enums && ctx->mod_def->version < 2) {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "%s type can be subtyped only in YANG 1.1 modules.",
                basetype == LY_TYPE_ENUM ? "Enumeration" : "Bits");
         return LY_EVALID;
@@ -1466,6 +1539,8 @@ lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_
     LY_ARRAY_FOR(enums_p, u) {
         LY_ARRAY_NEW_RET(ctx->ctx, *enums, e, LY_EMEM);
         DUP_STRING(ctx->ctx, enums_p[u].name, e->name);
+        DUP_STRING(ctx->ctx, enums_p[u].ref, e->dsc);
+        DUP_STRING(ctx->ctx, enums_p[u].ref, e->ref);
         if (base_enums) {
             /* check the enum/bit presence in the base type - the set of enums/bits in the derived type must be a subset */
             LY_ARRAY_FOR(base_enums, v) {
@@ -1659,7 +1734,7 @@ lys_compile_leafref_predicate_validate(struct lysc_ctx *ctx, const char **predic
             if (!mod) {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                        "Invalid leafref path predicate \"%.*s\" - prefix \"%.*s\" not defined in module \"%s\".",
-                       *predicate - start, start, src_prefix_len, src_prefix, path_context->compiled->name);
+                       *predicate - start, start, src_prefix_len, src_prefix, path_context->name);
                 goto cleanup;
             }
         } else {
@@ -1677,7 +1752,7 @@ lys_compile_leafref_predicate_validate(struct lysc_ctx *ctx, const char **predic
         if (!src_node) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                    "Invalid leafref path predicate \"%.*s\" - predicate's key node \"%.*s\" not found.",
-                   *predicate - start, start, src_len, src, mod->compiled->name);
+                   *predicate - start, start, src_len, src, mod->name);
             goto cleanup;
         }
 
@@ -1785,7 +1860,7 @@ lys_compile_leafref_predicate_validate(struct lysc_ctx *ctx, const char **predic
                 goto cleanup;
             }
         }
-        if (!(dst_node->nodetype & (dst_node->module->compiled->version < LYS_VERSION_1_1 ? LYS_LEAF : LYS_LEAF | LYS_LEAFLIST))) {
+        if (!(dst_node->nodetype & (dst_node->module->version < LYS_VERSION_1_1 ? LYS_LEAF : LYS_LEAF | LYS_LEAFLIST))) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                    "Invalid leafref path predicate \"%.*s\" - rel-path_keyexpr \"%.*s\" refers %s instead of leaf.",
                    *predicate - start, start, path_key_expr - pke_start, pke_start, lys_nodetype2str(dst_node->nodetype));
@@ -2055,7 +2130,7 @@ lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *startnode, 
 }
 
 static LY_ERR lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16_t context_flags, struct lysp_module *context_mod, const char *context_name,
-                               struct lysp_type *type_p, int options, struct lysc_type **type, const char **units, const char **dflt);
+                               struct lysp_type *type_p, int options, struct lysc_type **type, const char **units);
 /**
  * @brief The core of the lys_compile_type() - compile information about the given type (from typedef or leaf/leaf-list).
  * @param[in] ctx Compile context.
@@ -2309,7 +2384,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16
     case LY_TYPE_LEAFREF:
         /* RFC 7950 9.9.3 - require-instance */
         if (type_p->flags & LYS_SET_REQINST) {
-            if (context_mod->version < LYS_VERSION_1_1) {
+            if (context_mod->mod->version < LYS_VERSION_1_1) {
                 if (tpdfname) {
                     LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
                            "Leafref type \"%s\" can be restricted by require-instance statement only in YANG 1.1 modules.", tpdfname);
@@ -2386,7 +2461,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16
             additional = 0;
             LY_ARRAY_CREATE_RET(ctx->ctx, un->types, LY_ARRAY_SIZE(type_p->types), LY_EVALID);
             for (u = 0; u < LY_ARRAY_SIZE(type_p->types); ++u) {
-                ret = lys_compile_type(ctx, context_node_p, context_flags, context_mod, context_name, &type_p->types[u], options, &un->types[u + additional], NULL, NULL);
+                ret = lys_compile_type(ctx, context_node_p, context_flags, context_mod, context_name, &type_p->types[u], options, &un->types[u + additional], NULL);
                 if (un->types[u + additional]->basetype == LY_TYPE_UNION) {
                     /* add space for additional types from the union subtype */
                     un_aux = (struct lysc_type_union *)un->types[u + additional];
@@ -2464,12 +2539,11 @@ done:
  * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
  * @param[out] type Newly created (or reused with increased refcount) type structure with the filled information about the type.
  * @param[out] units Storage for inheriting units value from the typedefs the current type derives from.
- * @param[out] dflt Storage for inheriting default value from the typedefs the current type derives from.
  * @return LY_ERR value.
  */
 static LY_ERR
 lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16_t context_flags, struct lysp_module *context_mod, const char *context_name,
-                 struct lysp_type *type_p, int options, struct lysc_type **type, const char **units, const char **dflt)
+                 struct lysp_type *type_p, int options, struct lysc_type **type, const char **units)
 {
     LY_ERR ret = LY_SUCCESS;
     unsigned int u;
@@ -2482,6 +2556,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16_
     LY_DATA_TYPE basetype = LY_TYPE_UNKNOWN;
     struct lysc_type *base = NULL, *prev_type;
     struct ly_set tpdf_chain = {0};
+    const char *dflt = NULL;
 
     (*type) = NULL;
 
@@ -2505,11 +2580,11 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16_
             /* inherit units */
             DUP_STRING(ctx->ctx, tctx->tpdf->units, *units);
         }
-        if (dflt && !*dflt) {
+        if (!dflt) {
             /* inherit default */
-            DUP_STRING(ctx->ctx, tctx->tpdf->dflt, *dflt);
+            dflt = tctx->tpdf->dflt;
         }
-        if (dummyloops && (!units || *units) && (!dflt || *dflt)) {
+        if (dummyloops && (!units || *units) && dflt) {
             basetype = ((struct type_context*)tpdf_chain.objs[tpdf_chain.count - 1])->tpdf->type.compiled->basetype;
             break;
         }
@@ -2519,7 +2594,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16_
              * but we still may need to inherit default and units values, so start dummy loops */
             basetype = tctx->tpdf->type.compiled->basetype;
             ly_set_add(&tpdf_chain, tctx, LY_SET_OPT_USEASLIST);
-            if ((units && !*units) || (dflt && !*dflt)) {
+            if ((units && !*units) || !dflt) {
                 dummyloops = 1;
                 goto preparenext;
             } else {
@@ -2647,6 +2722,9 @@ preparenext:
         (*type) = base;
         ++(*type)->refcount;
     }
+    if (!(*type)->dflt) {
+        DUP_STRING(ctx->ctx, dflt, (*type)->dflt);
+    }
 
     COMPILE_ARRAY_GOTO(ctx, type_p->exts, (*type)->exts, options, u, lys_compile_ext, ret, cleanup);
 
@@ -2655,7 +2733,7 @@ cleanup:
     return ret;
 }
 
-static LY_ERR lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, struct lysc_node *parent);
+static LY_ERR lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, struct lysc_node *parent, uint16_t uses_status);
 
 /**
  * @brief Compile parsed container node information.
@@ -2676,7 +2754,7 @@ lys_compile_node_container(struct lysc_ctx *ctx, struct lysp_node *node_p, int o
     LY_ERR ret = LY_SUCCESS;
 
     LY_LIST_FOR(cont_p->child, child_p) {
-        LY_CHECK_RET(lys_compile_node(ctx, child_p, options, node));
+        LY_CHECK_RET(lys_compile_node(ctx, child_p, options, node, 0));
     }
 
     COMPILE_ARRAY_GOTO(ctx, cont_p->musts, cont->musts, options, u, lys_compile_must, ret, done);
@@ -2712,8 +2790,11 @@ lys_compile_node_leaf(struct lysc_ctx *ctx, struct lysp_node *node_p, int option
     }
 
     ret = lys_compile_type(ctx, node_p, node_p->flags, ctx->mod_def->parsed, node_p->name, &leaf_p->type, options, &leaf->type,
-                           leaf->units ? NULL : &leaf->units, leaf->dflt || (leaf->flags & LYS_MAND_TRUE) ? NULL : &leaf->dflt);
+                           leaf->units ? NULL : &leaf->units);
     LY_CHECK_GOTO(ret, done);
+    if (!leaf->dflt && !(leaf->flags & LYS_MAND_TRUE)) {
+        DUP_STRING(ctx->ctx, leaf->type->dflt, leaf->dflt);
+    }
     if (leaf->type->basetype == LY_TYPE_LEAFREF) {
         /* store to validate the path in the current context at the end of schema compiling when all the nodes are present */
         ly_set_add(&ctx->unres, leaf, 0);
@@ -2751,7 +2832,6 @@ lys_compile_node_leaflist(struct lysc_ctx *ctx, struct lysp_node *node_p, int op
     struct lysp_node_leaflist *llist_p = (struct lysp_node_leaflist*)node_p;
     struct lysc_node_leaflist *llist = (struct lysc_node_leaflist*)node;
     unsigned int u, v;
-    const char *dflt = NULL;
     LY_ERR ret = LY_SUCCESS;
 
     COMPILE_ARRAY_GOTO(ctx, llist_p->musts, llist->musts, options, u, lys_compile_must, ret, done);
@@ -2769,11 +2849,11 @@ lys_compile_node_leaflist(struct lysc_ctx *ctx, struct lysp_node *node_p, int op
     llist->max = llist_p->max ? llist_p->max : (uint32_t)-1;
 
     ret = lys_compile_type(ctx, node_p, node_p->flags, ctx->mod_def->parsed, node_p->name, &llist_p->type, options, &llist->type,
-                           llist->units ? NULL : &llist->units, (llist->dflts || llist->min) ? NULL : &dflt);
+                           llist->units ? NULL : &llist->units);
     LY_CHECK_GOTO(ret, done);
-    if (dflt) {
+    if (llist->type->dflt && !llist->dflts && !llist->min) {
         LY_ARRAY_CREATE_GOTO(ctx->ctx, llist->dflts, 1, ret, done);
-        llist->dflts[0] = dflt;
+        DUP_STRING(ctx->ctx, llist->type->dflt, llist->dflts[0]);
         LY_ARRAY_INCREMENT(llist->dflts);
     }
 
@@ -2788,7 +2868,7 @@ lys_compile_node_leaflist(struct lysc_ctx *ctx, struct lysp_node *node_p, int op
             }
         }
     } else if (llist->type->basetype == LY_TYPE_EMPTY) {
-        if (ctx->mod_def->parsed->version < LYS_VERSION_1_1) {
+        if (ctx->mod_def->version < LYS_VERSION_1_1) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
                    "Leaf-list of type \"empty\" is allowed only in YANG 1.1 modules.");
             return LY_EVALID;
@@ -2844,7 +2924,7 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *node_p, int option
     list->max = list_p->max ? list_p->max : (uint32_t)-1;
 
     LY_LIST_FOR(list_p->child, child_p) {
-        LY_CHECK_RET(lys_compile_node(ctx, child_p, options, node));
+        LY_CHECK_RET(lys_compile_node(ctx, child_p, options, node, 0));
     }
 
     COMPILE_ARRAY_GOTO(ctx, list_p->musts, list->musts, options, u, lys_compile_must, ret, done);
@@ -2889,7 +2969,7 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *node_p, int option
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS, "Key of the configuration list must not be status leaf.");
             return LY_EVALID;
         }
-        if (ctx->mod_def->parsed->version < LYS_VERSION_1_1) {
+        if (ctx->mod_def->version < LYS_VERSION_1_1) {
             /* YANG 1.0 denies key to be of empty type */
             if ((*key)->type->basetype == LY_TYPE_EMPTY) {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
@@ -3003,7 +3083,7 @@ lys_compile_node_choice_dflt(struct lysc_ctx *ctx, const char *dflt, struct lysc
     } else {
         name = dflt;
     }
-    if (prefix && (strncmp(prefix, node->module->compiled->prefix, prefix_len) || node->module->compiled->prefix[prefix_len] != '\0')) {
+    if (prefix && (strncmp(prefix, node->module->prefix, prefix_len) || node->module->prefix[prefix_len] != '\0')) {
         /* prefixed default case make sense only for the prefix of the schema itself */
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                "Invalid default case referencing a case from different YANG module (by prefix \"%.*s\").",
@@ -3024,7 +3104,7 @@ lys_compile_node_choice_dflt(struct lysc_ctx *ctx, const char *dflt, struct lysc
             return LY_EVALID;
         }
     }
-    ch->flags |= LYS_SET_DFLT;
+    ch->dflt->flags |= LYS_SET_DFLT;
     return LY_SUCCESS;
 }
 
@@ -3049,10 +3129,10 @@ lys_compile_node_choice(struct lysc_ctx *ctx, struct lysp_node *node_p, int opti
     LY_LIST_FOR(ch_p->child, child_p) {
         if (child_p->nodetype == LYS_CASE) {
             LY_LIST_FOR(((struct lysp_node_case*)child_p)->child, case_child_p) {
-                LY_CHECK_RET(lys_compile_node(ctx, case_child_p, options, node));
+                LY_CHECK_RET(lys_compile_node(ctx, case_child_p, options, node, 0));
             }
         } else {
-            LY_CHECK_RET(lys_compile_node(ctx, child_p, options, node));
+            LY_CHECK_RET(lys_compile_node(ctx, child_p, options, node, 0));
         }
     }
 
@@ -3110,21 +3190,24 @@ lys_compile_status_check(struct lysc_ctx *ctx, uint16_t node_flags, uint16_t par
 }
 
 static LY_ERR
-lys_compile_status(struct lysc_ctx *ctx, struct lysc_node *node, struct lysc_node *parent)
+lys_compile_status(struct lysc_ctx *ctx, struct lysc_node *node, uint16_t parent_flags)
 {
-
     /* status - it is not inherited by specification, but it does not make sense to have
      * current in deprecated or deprecated in obsolete, so we do print warning and inherit status */
     if (!(node->flags & LYS_STATUS_MASK)) {
-        if (parent && (parent->flags & (LYS_STATUS_DEPRC | LYS_STATUS_OBSLT))) {
-            LOGWRN(ctx->ctx, "Missing explicit \"%s\" status that was already specified in parent, inheriting.",
-                   (parent->flags & LYS_STATUS_DEPRC) ? "deprecated" : "obsolete");
-            node->flags |= parent->flags & LYS_STATUS_MASK;
+        if (parent_flags & (LYS_STATUS_DEPRC | LYS_STATUS_OBSLT)) {
+            if ((parent_flags & 0x3) != 0x3) {
+                /* do not print the warning when inheriting status from uses - the uses_status value has a special
+                 * combination of bits (0x3) which marks the uses_status value */
+                LOGWRN(ctx->ctx, "Missing explicit \"%s\" status that was already specified in parent, inheriting.",
+                       (parent_flags & LYS_STATUS_DEPRC) ? "deprecated" : "obsolete");
+            }
+            node->flags |= parent_flags & LYS_STATUS_MASK;
         } else {
             node->flags |= LYS_STATUS_CURR;
         }
-    } else if (parent) {
-        return lys_compile_status_check(ctx, node->flags, parent->flags);
+    } else if (parent_flags & LYS_STATUS_MASK) {
+        return lys_compile_status_check(ctx, node->flags, parent_flags);
     }
     return LY_SUCCESS;
 }
@@ -3238,8 +3321,8 @@ lys_compile_node_case(struct lysc_ctx *ctx, struct lysp_node *node_p, int option
         cs->flags = LYS_STATUS_MASK & node_p->flags;
         cs->sp = node_p;
 
-        /* check the case's status */
-        LY_CHECK_RET(lys_compile_status(ctx, (struct lysc_node*)cs, (struct lysc_node* )ch), NULL);
+        /* check the case's status (don't need to solve uses_status since case statement cannot be directly in grouping statement */
+        LY_CHECK_RET(lys_compile_status(ctx, (struct lysc_node*)cs, ch->flags), NULL);
         COMPILE_MEMBER_GOTO(ctx, node_p->when, cs->when, options, lys_compile_when, ret, error);
         COMPILE_ARRAY_GOTO(ctx, node_p->iffeatures, cs->iffeatures, options, u, lys_compile_iffeature, ret, error);
     }
@@ -3272,7 +3355,8 @@ lys_compile_refine_config(struct lysc_ctx *ctx, struct lysc_node *node, struct l
         /* explicit refine */
         if (config == LYS_CONFIG_W && node->parent && (node->parent->flags & LYS_CONFIG_R)) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                   "Invalid refine of config in \"%s\" - configuration node cannot be child of any state data node.");
+                   "Invalid refine of config in \"%s\" - configuration node cannot be child of any state data node.",
+                   rfn->nodeid);
             return LY_EVALID;
         }
     }
@@ -3305,7 +3389,14 @@ static LY_ERR
 lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int options, struct lysc_node *parent)
 {
     struct lysp_node *node_p;
-    struct lysc_node *node;
+    struct lysc_node *node, *child;
+    /* context_node_fake allows us to temporarily isolate the nodes inserted from the grouping instead of uses */
+    struct lysc_node_container context_node_fake =
+        {.nodetype = LYS_CONTAINER,
+         .module = ctx->mod,
+         .flags = parent ? parent->flags : 0,
+         .child = NULL, .next = NULL,
+         .prev = (struct lysc_node*)&context_node_fake};
     const struct lysp_grp *grp = NULL;
     unsigned int u, v, grp_stack_count;
     int found;
@@ -3314,6 +3405,8 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int option
     struct lys_module *mod, *mod_old;
     struct lysp_refine *rfn;
     LY_ERR ret = LY_EVALID;
+    uint32_t min, max;
+    struct ly_set refined = {0};
 
     /* search for the grouping definition */
     found = 0;
@@ -3390,22 +3483,40 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int option
     /* check status */
     LY_CHECK_GOTO(lysc_check_status(ctx, uses_p->flags, mod_old, uses_p->name, grp->flags, mod, grp->name), error);
 
-    /* connect the grouping's content */
     LY_LIST_FOR(grp->data, node_p) {
-        LY_CHECK_GOTO(lys_compile_node(ctx, node_p, options, parent), error);
-        /* check status between parent (uses in this case) and child - lys_compile_node() compares parent and the new node */
-        if (lys_compile_status_check(ctx, parent ? lysc_node_children(parent)->prev->flags : ctx->mod->compiled->data->prev->flags, uses_p->flags)) {
-            goto error;
+        /* 0x3 in uses_status is a special bits combination to be able to detect status flags from uses */
+        LY_CHECK_GOTO(lys_compile_node(ctx, node_p, options, parent, (uses_p->flags & LYS_STATUS_MASK) | 0x3), error);
+        child = parent ? lysc_node_children(parent)->prev : ctx->mod->compiled->data->prev;
+        if (uses_p->refines) {
+            /* some preparation for applying refines */
+            if (grp->data == node_p) {
+                /* remember the first child */
+                context_node_fake.child = child;
+            }
         }
     }
+    LY_LIST_FOR(context_node_fake.child, child) {
+        child->parent = (struct lysc_node*)&context_node_fake;
+    }
+    if (context_node_fake.child) {
+        child = context_node_fake.child->prev;
+        context_node_fake.child->prev = parent ? lysc_node_children(parent)->prev : ctx->mod->compiled->data->prev;
+    }
+
+    /* TODO: apply augment */
+
+    /* reload previous context's mod_def */
+    ctx->mod_def = mod_old;
 
     /* apply refine */
     LY_ARRAY_FOR(uses_p->refines, struct lysp_refine, rfn) {
-        LY_CHECK_GOTO(lys_resolve_descendant_schema_nodeid(ctx, rfn->nodeid, 0, parent, 0, (const struct lysc_node**)&node), error);
+        LY_CHECK_GOTO(lys_resolve_descendant_schema_nodeid(ctx, rfn->nodeid, 0, (struct lysc_node*)&context_node_fake, 0, (const struct lysc_node**)&node),
+                      error);
+        ly_set_add(&refined, node, LY_SET_OPT_USEASLIST);
 
         /* default value */
         if (rfn->dflts) {
-            if ((node->nodetype & (LYS_LEAF | LYS_CHOICE)) && LY_ARRAY_SIZE(rfn->dflts) > 1) {
+            if ((node->nodetype != LYS_LEAFLIST) && LY_ARRAY_SIZE(rfn->dflts) > 1) {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
                        "Invalid refine of default in \"%s\" - %s cannot hold %d default values.",
                        rfn->nodeid, lys_nodetype2str(node->nodetype), LY_ARRAY_SIZE(rfn->dflts));
@@ -3420,12 +3531,19 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int option
             if (node->nodetype == LYS_LEAF) {
                 FREE_STRING(ctx->ctx, ((struct lysc_node_leaf*)node)->dflt);
                 DUP_STRING(ctx->ctx, rfn->dflts[0], ((struct lysc_node_leaf*)node)->dflt);
+                node->flags |= LYS_SET_DFLT;
                 /* TODO check the default value according to type */
             } else if (node->nodetype == LYS_LEAFLIST) {
+                if (ctx->mod->version < 2) {
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                           "Invalid refine of default in leaf-list - the default statement is allowed only in YANG 1.1 modules.");
+                    goto error;
+                }
                 LY_ARRAY_FOR(((struct lysc_node_leaflist*)node)->dflts, u) {
                     lydict_remove(ctx->ctx, ((struct lysc_node_leaflist*)node)->dflts[u]);
                 }
                 LY_ARRAY_FREE(((struct lysc_node_leaflist*)node)->dflts);
+                ((struct lysc_node_leaflist*)node)->dflts = NULL;
                 LY_ARRAY_CREATE_GOTO(ctx->ctx, ((struct lysc_node_leaflist*)node)->dflts, LY_ARRAY_SIZE(rfn->dflts), ret, error);
                 LY_ARRAY_FOR(rfn->dflts, u) {
                     LY_ARRAY_INCREMENT(((struct lysc_node_leaflist*)node)->dflts);
@@ -3433,12 +3551,25 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int option
                 }
                 /* TODO check the default values according to type */
             } else if (node->nodetype == LYS_CHOICE) {
+                if (((struct lysc_node_choice*)node)->dflt) {
+                    /* unset LYS_SET_DFLT from the current default case */
+                    ((struct lysc_node_choice*)node)->dflt->flags &= ~LYS_SET_DFLT;
+                }
                 LY_CHECK_GOTO(lys_compile_node_choice_dflt(ctx, rfn->dflts[0], (struct lysc_node_choice*)node), error);
             }
         }
 
-        /* description refine not applicable */
-        /* reference refine not applicable */
+        /* description */
+        if (rfn->dsc) {
+            FREE_STRING(ctx->ctx, node->dsc);
+            node->dsc = lydict_insert(ctx->ctx, rfn->dsc, 0);
+        }
+
+        /* reference */
+        if (rfn->ref) {
+            FREE_STRING(ctx->ctx, node->ref);
+            node->ref = lydict_insert(ctx->ctx, rfn->ref, 0);
+        }
 
         /* config */
         if (rfn->flags & LYS_CONFIG_MASK) {
@@ -3459,7 +3590,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int option
                 if (node->nodetype & LYS_LEAF) {
                     if (node->flags & LYS_SET_DFLT) {
                         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                               "Invalid refine of mandatory in \"%s\" - leafswith \"default\" statement.", rfn->nodeid);
+                               "Invalid refine of mandatory in \"%s\" - leaf already has \"default\" statement.", rfn->nodeid);
                         goto error;
                     } else {
                         /* remove the default value taken from the leaf's type */
@@ -3468,7 +3599,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int option
                     }
                 } else if ((node->nodetype & LYS_CHOICE) && ((struct lysc_node_choice*)node)->dflt) {
                     LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                           "Invalid refine of mandatory in \"%s\" - choice with \"default\" statement.", rfn->nodeid);
+                           "Invalid refine of mandatory in \"%s\" - choice already has \"default\" statement.", rfn->nodeid);
                     goto error;
                 }
                 if (node->parent && (node->parent->flags & LYS_SET_DFLT)) {
@@ -3480,7 +3611,121 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int option
 
                 node->flags |= LYS_MAND_TRUE;
             } else {
+                /* make mandatory false */
                 node->flags &= ~LYS_MAND_TRUE;
+                if ((node->nodetype & LYS_LEAF) && !((struct lysc_node_leaf*)node)->dflt) {
+                    /* get the type's default value if any */
+                    DUP_STRING(ctx->ctx, ((struct lysc_node_leaf*)node)->type->dflt, ((struct lysc_node_leaf*)node)->dflt);
+                }
+            }
+        }
+
+        /* presence */
+        if (rfn->presence) {
+            if (node->nodetype != LYS_CONTAINER) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                       "Invalid refine of presence statement in \"%s\" - %s cannot hold the presence statement.",
+                       rfn->nodeid, lys_nodetype2str(node->nodetype));
+                goto error;
+            }
+            node->flags |= LYS_PRESENCE;
+        }
+
+        /* must */
+        if (rfn->musts) {
+            switch (node->nodetype) {
+            case LYS_LEAF:
+                COMPILE_ARRAY_GOTO(ctx, rfn->musts, ((struct lysc_node_leaf*)node)->musts, options, u, lys_compile_must, ret, error);
+                break;
+            case LYS_LEAFLIST:
+                COMPILE_ARRAY_GOTO(ctx, rfn->musts, ((struct lysc_node_leaflist*)node)->musts, options, u, lys_compile_must, ret, error);
+                break;
+            case LYS_LIST:
+                COMPILE_ARRAY_GOTO(ctx, rfn->musts, ((struct lysc_node_list*)node)->musts, options, u, lys_compile_must, ret, error);
+                break;
+            case LYS_CONTAINER:
+                COMPILE_ARRAY_GOTO(ctx, rfn->musts, ((struct lysc_node_container*)node)->musts, options, u, lys_compile_must, ret, error);
+                break;
+            case LYS_ANYXML:
+            case LYS_ANYDATA:
+                COMPILE_ARRAY_GOTO(ctx, rfn->musts, ((struct lysc_node_anydata*)node)->musts, options, u, lys_compile_must, ret, error);
+                break;
+            default:
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                       "Invalid refine of must statement in \"%s\" - %s cannot hold any must statement.",
+                       rfn->nodeid, lys_nodetype2str(node->nodetype));
+                goto error;
+            }
+        }
+
+        /* min/max-elements */
+        if (rfn->flags & (LYS_SET_MAX | LYS_SET_MIN)) {
+            switch (node->nodetype) {
+            case LYS_LEAFLIST:
+                if (rfn->flags & LYS_SET_MAX) {
+                    ((struct lysc_node_leaflist*)node)->max = rfn->max ? rfn->max : (uint32_t)-1;
+                }
+                if (rfn->flags & LYS_SET_MIN) {
+                    ((struct lysc_node_leaflist*)node)->min = rfn->min;
+                }
+                break;
+            case LYS_LIST:
+                if (rfn->flags & LYS_SET_MAX) {
+                    ((struct lysc_node_list*)node)->max = rfn->max ? rfn->max : (uint32_t)-1;
+                }
+                if (rfn->flags & LYS_SET_MIN) {
+                    ((struct lysc_node_list*)node)->min = rfn->min;
+                }
+                break;
+            default:
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                       "Invalid refine of %s statement in \"%s\" - %s cannot hold this statement.",
+                       (rfn->flags & LYS_SET_MAX) ? "max-elements" : "min-elements", rfn->nodeid, lys_nodetype2str(node->nodetype));
+                goto error;
+            }
+        }
+
+        /* if-feature */
+        if (rfn->iffeatures) {
+            /* any node in compiled tree can get additional if-feature, so do not check nodetype */
+            COMPILE_ARRAY_GOTO(ctx, rfn->iffeatures, node->iffeatures, options, u, lys_compile_iffeature, ret, error);
+        }
+    }
+    /* fix connection of the children nodes from fake context node back into the parent */
+    if (context_node_fake.child) {
+        context_node_fake.child->prev = child;
+    }
+    LY_LIST_FOR(context_node_fake.child, child) {
+        child->parent = parent;
+    }
+
+    /* do some additional checks of the changed nodes when all the refines are applied */
+    for (u = 0; u < refined.count; ++u) {
+        node = (struct lysc_node*)refined.objs[u];
+        rfn = &uses_p->refines[u];
+
+        /* check possible conflict with default value (default added, mandatory left true) */
+        if ((node->flags & LYS_MAND_TRUE) &&
+                (((node->nodetype & LYS_CHOICE) && ((struct lysc_node_choice*)node)->dflt) ||
+                ((node->nodetype & LYS_LEAF) && (node->flags & LYS_SET_DFLT)))) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                   "Invalid refine of default in \"%s\" - the node is mandatory.", rfn->nodeid);
+            goto error;
+        }
+
+        if (rfn->flags & (LYS_SET_MAX | LYS_SET_MIN)) {
+            if (node->nodetype == LYS_LIST) {
+                min = ((struct lysc_node_list*)node)->min;
+                max = ((struct lysc_node_list*)node)->max;
+            } else {
+                min = ((struct lysc_node_leaflist*)node)->min;
+                max = ((struct lysc_node_leaflist*)node)->max;
+            }
+            if (min > max) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                       "Invalid refine of %s statement in \"%s\" - \"min-elements\" is bigger than \"max-elements\".",
+                       (rfn->flags & LYS_SET_MAX) ? "max-elements" : "min-elements", rfn->nodeid);
+                goto error;
             }
         }
     }
@@ -3492,6 +3737,7 @@ error:
     /* remove the grouping from the stack for circular groupings dependency check */
     ly_set_rm_index(&ctx->groupings, ctx->groupings.count - 1, NULL);
     assert(ctx->groupings.count == grp_stack_count);
+    ly_set_erase(&refined, NULL);
 
     return ret;
 }
@@ -3504,10 +3750,12 @@ error:
  * @param[in] parent Compiled parent node where the current node is supposed to be connected. It is
  * NULL for top-level nodes, in such a case the module where the node will be connected is taken from
  * the compile context.
+ * @param[in] uses_status If the node is being placed instead of uses, here we have the uses's status value (as node's flags).
+ * Zero means no uses, non-zero value with no status bit set mean the default status.
  * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
  */
 static LY_ERR
-lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, struct lysc_node *parent)
+lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, struct lysc_node *parent, uint16_t uses_status)
 {
     LY_ERR ret = LY_EVALID;
     struct lysc_node *node;
@@ -3587,13 +3835,15 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, st
     if (!parent || parent->nodetype != LYS_CHOICE) {
         /* in case of choice/case's children, postpone the check to the moment we know if
          * the parent is choice (parent here) or some case (so we have to get its flags to check) */
-        LY_CHECK_GOTO(lys_compile_status(ctx, node, parent), error);
+        LY_CHECK_GOTO(lys_compile_status(ctx, node, uses_status ? uses_status : (parent ? parent->flags : 0)), error);
     }
 
     if (!(options & LYSC_OPT_FREE_SP)) {
         node->sp = node_p;
     }
     DUP_STRING(ctx->ctx, node_p->name, node->name);
+    DUP_STRING(ctx->ctx, node_p->dsc, node->dsc);
+    DUP_STRING(ctx->ctx, node_p->ref, node->ref);
     COMPILE_MEMBER_GOTO(ctx, node_p->when, node->when, options, lys_compile_when, ret, error);
     COMPILE_ARRAY_GOTO(ctx, node_p->iffeatures, node->iffeatures, options, u, lys_compile_iffeature, ret, error);
     COMPILE_ARRAY_GOTO(ctx, node_p->exts, node->exts, options, u, lys_compile_ext, ret, error);
@@ -3606,9 +3856,13 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, st
         if (parent->nodetype == LYS_CHOICE) {
             cs = lys_compile_node_case(ctx, node_p->parent, options, (struct lysc_node_choice*)parent, node);
             LY_CHECK_ERR_GOTO(!cs, ret = LY_EVALID, error);
+            if (uses_status) {
+
+            }
             /* the postponed status check of the node and its real parent - in case of implicit case,
-             * it directly gets the same status flags as the choice */
-            LY_CHECK_GOTO(lys_compile_status(ctx, node, (struct lysc_node*)cs), error);
+             * it directly gets the same status flags as the choice;
+             * uses_status cannot be applied here since uses cannot be child statement of choice */
+            LY_CHECK_GOTO(lys_compile_status(ctx, node, cs->flags), error);
             node->parent = (struct lysc_node*)cs;
         } else { /* other than choice */
             node->parent = parent;
@@ -3650,22 +3904,24 @@ lys_compile_submodule(struct lysc_ctx *ctx, struct lysp_include *inc, int option
     unsigned int u;
     LY_ERR ret = LY_SUCCESS;
     /* shortcuts */
-    struct lysp_module *submod = inc->submodule;
+    struct lysp_submodule *submod = inc->submodule;
     struct lysc_module *mainmod = ctx->mod->compiled;
 
-    COMPILE_ARRAY_UNIQUE_GOTO(ctx, submod->features, mainmod->features, options, u, lys_compile_feature, ret, error);
+    if (!mainmod->mod->off_features) {
+        /* features are compiled directly into the compiled module structure,
+         * but it must be done in two steps to allow forward references (via if-feature) between the features themselves.
+         * The features compilation is finished in the main module (lys_compile()). */
+        ret = lys_feature_precompile(ctx->ctx, submod->features,
+                                     mainmod->mod->off_features ? &mainmod->mod->off_features : &mainmod->features);
+        LY_CHECK_GOTO(ret, error);
+    }
+
     COMPILE_ARRAY_UNIQUE_GOTO(ctx, submod->identities, mainmod->identities, options, u, lys_compile_identity, ret, error);
 
 error:
     return ret;
 }
 
-/**
- * @brief Compile the given YANG module.
- * @param[in] mod Module structure where the parsed schema is expected and the compiled schema will be placed.
- * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
- * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
- */
 LY_ERR
 lys_compile(struct lys_module *mod, int options)
 {
@@ -3675,46 +3931,63 @@ lys_compile(struct lys_module *mod, int options)
     struct lysp_module *sp;
     struct lysp_node *node_p;
     unsigned int u, v;
+    int using_precompiled_features = 0;
     LY_ERR ret = LY_SUCCESS;
 
-    LY_CHECK_ARG_RET(NULL, mod, mod->parsed, mod->parsed->ctx, LY_EINVAL);
-    sp = mod->parsed;
+    LY_CHECK_ARG_RET(NULL, mod, mod->parsed, mod->ctx, LY_EINVAL);
 
-    if (sp->submodule) {
-        LOGERR(sp->ctx, LY_EINVAL, "Submodules (%s) are not supposed to be compiled, compile only the main modules.", sp->name);
-        return LY_EINVAL;
+    if (!mod->implemented) {
+        /* just imported modules are not compiled */
+        return LY_SUCCESS;
     }
 
-    ctx.ctx = sp->ctx;
+    sp = mod->parsed;
+
+    ctx.ctx = mod->ctx;
     ctx.mod = mod;
     ctx.mod_def = mod;
 
     mod->compiled = mod_c = calloc(1, sizeof *mod_c);
-    LY_CHECK_ERR_RET(!mod_c, LOGMEM(sp->ctx), LY_EMEM);
-    mod_c->ctx = sp->ctx;
-    mod_c->implemented = sp->implemented;
-    mod_c->latest_revision = sp->latest_revision;
-    mod_c->version = sp->version;
+    LY_CHECK_ERR_RET(!mod_c, LOGMEM(mod->ctx), LY_EMEM);
+    mod_c->mod = mod;
 
-    DUP_STRING(sp->ctx, sp->name, mod_c->name);
-    DUP_STRING(sp->ctx, sp->ns, mod_c->ns);
-    DUP_STRING(sp->ctx, sp->prefix, mod_c->prefix);
-    if (sp->revs) {
-        DUP_STRING(sp->ctx, sp->revs[0].date, mod_c->revision);
-    }
     COMPILE_ARRAY_GOTO(&ctx, sp->imports, mod_c->imports, options, u, lys_compile_import, ret, error);
     LY_ARRAY_FOR(sp->includes, u) {
         ret = lys_compile_submodule(&ctx, &sp->includes[u], options);
         LY_CHECK_GOTO(ret != LY_SUCCESS, error);
     }
-    COMPILE_ARRAY_UNIQUE_GOTO(&ctx, sp->features, mod_c->features, options, u, lys_compile_feature, ret, error);
+    if (mod->off_features) {
+        /* there is already precompiled array of features */
+        mod_c->features = mod->off_features;
+        mod->off_features = NULL;
+        using_precompiled_features = 1;
+    } else {
+        /* features are compiled directly into the compiled module structure,
+         * but it must be done in two steps to allow forward references (via if-feature) between the features themselves */
+        ret = lys_feature_precompile(ctx.ctx, sp->features, &mod_c->features);
+        LY_CHECK_GOTO(ret, error);
+    }
+    /* finish feature compilation, not only for the main module, but also for the submodules.
+     * Due to possible forward references, it must be done when all the features (including submodules)
+     * are present. */
+    LY_ARRAY_FOR(sp->features, u) {
+        ret = lys_feature_precompile_finish(&ctx, &sp->features[u], options, mod_c->features);
+        LY_CHECK_GOTO(ret != LY_SUCCESS, error);
+    }
+    LY_ARRAY_FOR(sp->includes, v) {
+        LY_ARRAY_FOR(sp->includes[v].submodule->features, u) {
+            ret = lys_feature_precompile_finish(&ctx, &sp->includes[v].submodule->features[u], options, mod_c->features);
+            LY_CHECK_GOTO(ret != LY_SUCCESS, error);
+        }
+    }
+
     COMPILE_ARRAY_UNIQUE_GOTO(&ctx, sp->identities, mod_c->identities, options, u, lys_compile_identity, ret, error);
     if (sp->identities) {
         LY_CHECK_RET(lys_compile_identities_derived(&ctx, sp->identities, mod_c->identities));
     }
 
     LY_LIST_FOR(sp->data, node_p) {
-        ret = lys_compile_node(&ctx, node_p, options, NULL);
+        ret = lys_compile_node(&ctx, node_p, options, NULL, 0);
         LY_CHECK_GOTO(ret, error);
     }
     //COMPILE_ARRAY_GOTO(ctx, sp->rpcs, mod_c->rpcs, options, u, lys_compile_action, ret, error);
@@ -3779,6 +4052,23 @@ lys_compile(struct lys_module *mod, int options)
     return LY_SUCCESS;
 
 error:
+    if (using_precompiled_features) {
+        /* keep the off_features list until the complete lys_module is freed */
+        mod->off_features = mod->compiled->features;
+        mod->compiled->features = NULL;
+    }
+    /* in the off_features list, remove all the parts (from finished compiling process)
+     * which may points into the data being freed here */
+    LY_ARRAY_FOR(mod->off_features, u) {
+        LY_ARRAY_FOR(mod->off_features[u].iffeatures, v) {
+            lysc_iffeature_free(ctx.ctx, &mod->off_features[u].iffeatures[v]);
+        }
+        LY_ARRAY_FREE(mod->off_features[u].iffeatures);
+        LY_ARRAY_FOR(mod->off_features[u].exts, v) {
+            lysc_ext_instance_free(ctx.ctx, &(mod->off_features[u].exts)[v]);
+        }
+        LY_ARRAY_FREE(mod->off_features[u].exts);
+    }
     ly_set_erase(&ctx.unres, NULL);
     ly_set_erase(&ctx.groupings, NULL);
     lysc_module_free(mod_c, NULL);
