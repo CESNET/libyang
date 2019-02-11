@@ -3924,38 +3924,62 @@ error:
     return ret;
 }
 
+static void
+lys_compile_augment_sort_(struct lysp_augment *aug_p, struct lysp_augment **result)
+{
+    unsigned int v;
+    size_t len;
+
+    len = strlen(aug_p->nodeid);
+    LY_ARRAY_FOR(result, v) {
+        if (strlen(result[v]->nodeid) <= len) {
+            continue;
+        }
+        if (v < LY_ARRAY_SIZE(result)) {
+            /* move the rest of array */
+            memmove(&result[v + 1], &result[v], (LY_ARRAY_SIZE(result) - v) * sizeof *result);
+            break;
+        }
+    }
+    result[v] = aug_p;
+    LY_ARRAY_INCREMENT(result);
+}
+
 LY_ERR
-lys_compile_augment_sort(struct lysc_ctx *ctx, struct lysp_augment *aug_p, struct lysp_augment ***augments)
+lys_compile_augment_sort(struct lysc_ctx *ctx, struct lysp_module *mod_p, struct lysp_augment ***augments)
 {
     struct lysp_augment **result = NULL;
     unsigned int u, v;
-    size_t len;
+    size_t count = 0;
 
+    assert(mod_p);
     assert(augments);
 
-    if (!aug_p || !LY_ARRAY_SIZE(aug_p)) {
+    /* get count of the augments in module and all its submodules */
+    if (mod_p->augments) {
+        count += LY_ARRAY_SIZE(mod_p->augments);
+    }
+    LY_ARRAY_FOR(mod_p->includes, u) {
+        if (mod_p->includes[u].submodule->augments) {
+            count += LY_ARRAY_SIZE(mod_p->includes[u].submodule->augments);
+        }
+    }
+
+    if (!count) {
         *augments = NULL;
         return LY_SUCCESS;
     }
-
-    LY_ARRAY_CREATE_RET(ctx->ctx, result, LY_ARRAY_SIZE(aug_p), LY_EMEM);
+    LY_ARRAY_CREATE_RET(ctx->ctx, result, count, LY_EMEM);
 
     /* sort by the length of schema-nodeid - we need to solve /x before /x/xy. It is not necessary to group them
      * together, so there can be even /z/y betwwen them. */
-    LY_ARRAY_FOR(aug_p, u) {
-        len = strlen(aug_p[u].nodeid);
-        LY_ARRAY_FOR(result, v) {
-            if (strlen(result[v]->nodeid) <= len) {
-                continue;
-            }
-            if (v < LY_ARRAY_SIZE(result)) {
-                /* move the rest of array */
-                memmove(&result[v + 1], &result[v], (LY_ARRAY_SIZE(result) - v) * sizeof *result);
-                break;
-            }
+    LY_ARRAY_FOR(mod_p->augments, u) {
+        lys_compile_augment_sort_(&mod_p->augments[u], result);
+    }
+    LY_ARRAY_FOR(mod_p->includes, u) {
+        LY_ARRAY_FOR(mod_p->includes[u].submodule->augments, v) {
+            lys_compile_augment_sort_(&mod_p->includes[u].submodule->augments[v], result);
         }
-        result[v] = &aug_p[u];
-        LY_ARRAY_INCREMENT(result);
     }
 
     *augments = result;
@@ -4124,7 +4148,7 @@ lys_compile(struct lys_module *mod, int options)
     }
 
     /* augments - sort first to cover augments augmenting other augments */
-    ret = lys_compile_augment_sort(&ctx, sp->augments, &augments);
+    ret = lys_compile_augment_sort(&ctx, sp, &augments);
     LY_CHECK_GOTO(ret, error);
     LY_ARRAY_FOR(augments, u) {
         ret = lys_compile_augment(&ctx, augments[u], options, NULL);

@@ -924,6 +924,8 @@ lys_nodetype2str(uint16_t nodetype)
         return "anyxml";
     case LYS_ANYDATA:
         return "anydata";
+    case LYS_CASE:
+        return "case";
     default:
         return "unknown";
     }
