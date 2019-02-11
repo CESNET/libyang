@@ -1,4 +1,4 @@
-/* A Bison parser, made by GNU Bison 3.0.5.  */
+/* A Bison parser, made by GNU Bison 3.2.4.  */
 
 /* Bison implementation for Yacc-like parsers in C
 
@@ -40,11 +40,14 @@
    define necessary library symbols; they are noted "INFRINGES ON
    USER NAME SPACE" below.  */
 
+/* Undocumented macros, especially those whose name start with YY_,
+   are private implementation details.  Do not rely on them.  */
+
 /* Identify Bison output.  */
 #define YYBISON 1
 
 /* Bison version.  */
-#define YYBISON_VERSION "3.0.5"
+#define YYBISON_VERSION "3.2.4"
 
 /* Skeleton name.  */
 #define YYSKELETON_NAME "yacc.c"
@@ -61,7 +64,7 @@
 
 
 
-/* Copy the first part of user declarations.  */
+/* First part of user prologue.  */
 
 
 #include <stdio.h>
@@ -76,12 +79,12 @@
 #include "parser_yang_lex.h"
 #include "parser.h"
 
-#define YANG_ADDELEM(current_ptr, size)                                                  \
-    if ((size) == LY_ARRAY_MAX(size)) {                                                    \
-         LOGERR(trg->ctx, LY_EINT, "Reached limit (%"PRIu64") for storing typedefs.", LY_ARRAY_MAX(trg->tpdf_size));\
+#define YANG_ADDELEM(current_ptr, size, array_name)                                      \
+    if ((size) == LY_ARRAY_MAX(size)) {                                                  \
+         LOGERR(trg->ctx, LY_EINT, "Reached limit (%"PRIu64") for storing %s.", LY_ARRAY_MAX(size), array_name); \
          free(s);                                                                        \
          YYABORT;                                                                        \
-    } else if (!((size) % LY_YANG_ARRAY_SIZE)) {                                           \
+    } else if (!((size) % LY_YANG_ARRAY_SIZE)) {                                         \
         void *tmp;                                                                       \
                                                                                          \
         tmp = realloc((current_ptr), (sizeof *(current_ptr)) * ((size) + LY_YANG_ARRAY_SIZE)); \
@@ -91,20 +94,23 @@
             YYABORT;                                                                     \
         }                                                                                \
         memset(tmp + (sizeof *(current_ptr)) * (size), 0, (sizeof *(current_ptr)) * LY_YANG_ARRAY_SIZE); \
-        (current_ptr) = tmp;                                                               \
+        (current_ptr) = tmp;                                                             \
     }                                                                                    \
-    actual = &(current_ptr)[(size)++];                                                       \
+    actual = &(current_ptr)[(size)++];                                                   \
 
 void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 /* pointer on the current parsed element 'actual' */
 
 
-
 # ifndef YY_NULLPTR
-#  if defined __cplusplus && 201103L <= __cplusplus
-#   define YY_NULLPTR nullptr
+#  if defined __cplusplus
+#   if 201103L <= __cplusplus
+#    define YY_NULLPTR nullptr
+#   else
+#    define YY_NULLPTR 0
+#   endif
 #  else
-#   define YY_NULLPTR 0
+#   define YY_NULLPTR ((void*)0)
 #  endif
 # endif
 
@@ -303,8 +309,6 @@ int yyparse (void *scanner, struct yang_parameter *param);
 
 #endif /* !YY_YY_PARSER_YANG_BIS_H_INCLUDED  */
 
-/* Copy the second part of user declarations.  */
-
 
 
 #ifdef short
@@ -326,13 +330,13 @@ typedef signed char yytype_int8;
 #ifdef YYTYPE_UINT16
 typedef YYTYPE_UINT16 yytype_uint16;
 #else
-typedef unsigned short int yytype_uint16;
+typedef unsigned short yytype_uint16;
 #endif
 
 #ifdef YYTYPE_INT16
 typedef YYTYPE_INT16 yytype_int16;
 #else
-typedef short int yytype_int16;
+typedef short yytype_int16;
 #endif
 
 #ifndef YYSIZE_T
@@ -344,7 +348,7 @@ typedef short int yytype_int16;
 #  include <stddef.h> /* INFRINGES ON USER NAME SPACE */
 #  define YYSIZE_T size_t
 # else
-#  define YYSIZE_T unsigned int
+#  define YYSIZE_T unsigned
 # endif
 #endif
 
@@ -380,15 +384,6 @@ typedef short int yytype_int16;
 # define YY_ATTRIBUTE_UNUSED YY_ATTRIBUTE ((__unused__))
 #endif
 
-#if !defined _Noreturn \
-     && (!defined __STDC_VERSION__ || __STDC_VERSION__ < 201112)
-# if defined _MSC_VER && 1200 <= _MSC_VER
-#  define _Noreturn __declspec (noreturn)
-# else
-#  define _Noreturn YY_ATTRIBUTE ((__noreturn__))
-# endif
-#endif
-
 /* Suppress unused-variable warnings by "using" E.  */
 #if ! defined lint || defined __GNUC__
 # define YYUSE(E) ((void) (E))
@@ -396,7 +391,7 @@ typedef short int yytype_int16;
 # define YYUSE(E) /* empty */
 #endif
 
-#if defined __GNUC__ && 407 <= __GNUC__ * 100 + __GNUC_MINOR__
+#if defined __GNUC__ && ! defined __ICC && 407 <= __GNUC__ * 100 + __GNUC_MINOR__
 /* Suppress an incorrect diagnostic about yylval being uninitialized.  */
 # define YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN \
     _Pragma ("GCC diagnostic push") \
@@ -566,7 +561,7 @@ union yyalloc
 #define YYMAXUTOK   357
 
 #define YYTRANSLATE(YYX)                                                \
-  ((unsigned int) (YYX) <= YYMAXUTOK ? yytranslate[YYX] : YYUNDEFTOK)
+  ((unsigned) (YYX) <= YYMAXUTOK ? yytranslate[YYX] : YYUNDEFTOK)
 
 /* YYTRANSLATE[TOKEN-NUM] -- Symbol number corresponding to TOKEN-NUM
    as returned by yylex, without out-of-bounds checking.  */
@@ -2319,10 +2314,10 @@ do {                                            \
 /* Print *YYLOCP on YYO.  Private, do not rely on its existence. */
 
 YY_ATTRIBUTE_UNUSED
-static unsigned
+static int
 yy_location_print_ (FILE *yyo, YYLTYPE const * const yylocp)
 {
-  unsigned res = 0;
+  int res = 0;
   int end_col = 0 != yylocp->last_column ? yylocp->last_column - 1 : 0;
   if (0 <= yylocp->first_line)
     {
@@ -2365,15 +2360,15 @@ do {                                                                      \
 } while (0)
 
 
-/*----------------------------------------.
-| Print this symbol's value on YYOUTPUT.  |
-`----------------------------------------*/
+/*-----------------------------------.
+| Print this symbol's value on YYO.  |
+`-----------------------------------*/
 
 static void
-yy_symbol_value_print (FILE *yyoutput, int yytype, YYSTYPE const * const yyvaluep, YYLTYPE const * const yylocationp, void *scanner, struct yang_parameter *param)
+yy_symbol_value_print (FILE *yyo, int yytype, YYSTYPE const * const yyvaluep, YYLTYPE const * const yylocationp, void *scanner, struct yang_parameter *param)
 {
-  FILE *yyo = yyoutput;
-  YYUSE (yyo);
+  FILE *yyoutput = yyo;
+  YYUSE (yyoutput);
   YYUSE (yylocationp);
   YYUSE (scanner);
   YYUSE (param);
@@ -2381,26 +2376,26 @@ yy_symbol_value_print (FILE *yyoutput, int yytype, YYSTYPE const * const yyvalue
     return;
 # ifdef YYPRINT
   if (yytype < YYNTOKENS)
-    YYPRINT (yyoutput, yytoknum[yytype], *yyvaluep);
+    YYPRINT (yyo, yytoknum[yytype], *yyvaluep);
 # endif
   YYUSE (yytype);
 }
 
 
-/*--------------------------------.
-| Print this symbol on YYOUTPUT.  |
-`--------------------------------*/
+/*---------------------------.
+| Print this symbol on YYO.  |
+`---------------------------*/
 
 static void
-yy_symbol_print (FILE *yyoutput, int yytype, YYSTYPE const * const yyvaluep, YYLTYPE const * const yylocationp, void *scanner, struct yang_parameter *param)
+yy_symbol_print (FILE *yyo, int yytype, YYSTYPE const * const yyvaluep, YYLTYPE const * const yylocationp, void *scanner, struct yang_parameter *param)
 {
-  YYFPRINTF (yyoutput, "%s %s (",
+  YYFPRINTF (yyo, "%s %s (",
              yytype < YYNTOKENS ? "token" : "nterm", yytname[yytype]);
 
-  YY_LOCATION_PRINT (yyoutput, *yylocationp);
-  YYFPRINTF (yyoutput, ": ");
-  yy_symbol_value_print (yyoutput, yytype, yyvaluep, yylocationp, scanner, param);
-  YYFPRINTF (yyoutput, ")");
+  YY_LOCATION_PRINT (yyo, *yylocationp);
+  YYFPRINTF (yyo, ": ");
+  yy_symbol_value_print (yyo, yytype, yyvaluep, yylocationp, scanner, param);
+  YYFPRINTF (yyo, ")");
 }
 
 /*------------------------------------------------------------------.
@@ -2434,7 +2429,7 @@ do {                                                            \
 static void
 yy_reduce_print (yytype_int16 *yyssp, YYSTYPE *yyvsp, YYLTYPE *yylsp, int yyrule, void *scanner, struct yang_parameter *param)
 {
-  unsigned long int yylno = yyrline[yyrule];
+  unsigned long yylno = yyrline[yyrule];
   int yynrhs = yyr2[yyrule];
   int yyi;
   YYFPRINTF (stderr, "Reducing stack by rule %d (line %lu):\n",
@@ -2567,7 +2562,7 @@ yytnamerr (char *yyres, const char *yystr)
   if (! yyres)
     return yystrlen (yystr);
 
-  return yystpcpy (yyres, yystr) - yyres;
+  return (YYSIZE_T) (yystpcpy (yyres, yystr) - yyres);
 }
 # endif
 
@@ -2913,12 +2908,12 @@ YYLTYPE yylloc = yyloc_default;
   yyssp++;
 
  yysetstate:
-  *yyssp = yystate;
+  *yyssp = (yytype_int16) yystate;
 
   if (yyss + yystacksize - 1 <= yyssp)
     {
       /* Get the current used size of the three stacks, in elements.  */
-      YYSIZE_T yysize = yyssp - yyss + 1;
+      YYSIZE_T yysize = (YYSIZE_T) (yyssp - yyss + 1);
 
 #ifdef yyoverflow
       {
@@ -2938,10 +2933,9 @@ YYLTYPE yylloc = yyloc_default;
                     &yyvs1, yysize * sizeof (*yyvsp),
                     &yyls1, yysize * sizeof (*yylsp),
                     &yystacksize);
-
-        yyls = yyls1;
         yyss = yyss1;
         yyvs = yyvs1;
+        yyls = yyls1;
       }
 #else /* no yyoverflow */
 # ifndef YYSTACK_RELOCATE
@@ -2975,7 +2969,7 @@ YYLTYPE yylloc = yyloc_default;
       yylsp = yyls + yysize - 1;
 
       YYDPRINTF ((stderr, "Stack size increased to %lu\n",
-                  (unsigned long int) yystacksize));
+                  (unsigned long) yystacksize));
 
       if (yyss + yystacksize - 1 <= yyssp)
         YYABORT;
@@ -3282,7 +3276,7 @@ yyreduce:
 
   case 31:
 
-    { YANG_ADDELEM(trg->imp, trg->imp_size);
+    { YANG_ADDELEM(trg->imp, trg->imp_size, "imports");
                                      /* HACK for unres */
                                      ((struct lys_import *)actual)->module = (struct lys_module *)s;
                                      s = NULL;
@@ -3357,7 +3351,7 @@ yyreduce:
 
   case 37:
 
-    { YANG_ADDELEM(trg->inc, trg->inc_size);
+    { YANG_ADDELEM(trg->inc, trg->inc_size, "includes");
                                      /* HACK for unres */
                                      ((struct lys_include *)actual)->submodule = (struct lys_submodule *)s;
                                      s = NULL;
@@ -3583,7 +3577,7 @@ yyreduce:
     { (yyval.backup_token).token = actual_type;
                                   (yyval.backup_token).actual = actual;
                                   if (!is_ext_instance) {
-                                    YANG_ADDELEM(trg->rev, trg->rev_size);
+                                    YANG_ADDELEM(trg->rev, trg->rev_size, "revisions");
                                   }
                                   memcpy(((struct lys_revision *)actual)->date, s, LY_REV_SIZE);
                                   free(s);
@@ -3748,7 +3742,7 @@ yyreduce:
 
     { (yyval.backup_token).token = actual_type;
                                         (yyval.backup_token).actual = actual;
-                                        YANG_ADDELEM(trg->extensions, trg->extensions_size);
+                                        YANG_ADDELEM(trg->extensions, trg->extensions_size, "extensions");
                                         trg->extensions_size--;
                                         ((struct lys_ext *)actual)->name = lydict_insert_zc(param->module->ctx, s);
                                         ((struct lys_ext *)actual)->module = trg;
@@ -3956,7 +3950,7 @@ yyreduce:
                                       }
                                       (yyval.backup_token).token = actual_type;
                                       (yyval.backup_token).actual = actual;
-                                      YANG_ADDELEM(trg->features, trg->features_size);
+                                      YANG_ADDELEM(trg->features, trg->features_size, "features");
                                       ((struct lys_feature *)actual)->name = lydict_insert_zc(trg->ctx, s);
                                       ((struct lys_feature *)actual)->module = trg;
                                       s = NULL;
@@ -4028,7 +4022,7 @@ yyreduce:
                          switch (actual_type) {
                          case FEATURE_KEYWORD:
                            YANG_ADDELEM(((struct lys_feature *)actual)->iffeature,
-                                        ((struct lys_feature *)actual)->iffeature_size);
+                                        ((struct lys_feature *)actual)->iffeature_size, "if-features");
                            break;
                          case IDENTITY_KEYWORD:
                            if (trg->version < 2) {
@@ -4037,7 +4031,7 @@ yyreduce:
                              YYABORT;
                            }
                            YANG_ADDELEM(((struct lys_ident *)actual)->iffeature,
-                                        ((struct lys_ident *)actual)->iffeature_size);
+                                        ((struct lys_ident *)actual)->iffeature_size, "if-features");
                            break;
                          case ENUM_KEYWORD:
                            if (trg->version < 2) {
@@ -4046,7 +4040,7 @@ yyreduce:
                              YYABORT;
                            }
                            YANG_ADDELEM(((struct lys_type_enum *)actual)->iffeature,
-                                        ((struct lys_type_enum *)actual)->iffeature_size);
+                                        ((struct lys_type_enum *)actual)->iffeature_size, "if-features");
                            break;
                          case BIT_KEYWORD:
                            if (trg->version < 2) {
@@ -4055,7 +4049,7 @@ yyreduce:
                              YYABORT;
                            }
                            YANG_ADDELEM(((struct lys_type_bit *)actual)->iffeature,
-                                        ((struct lys_type_bit *)actual)->iffeature_size);
+                                        ((struct lys_type_bit *)actual)->iffeature_size, "if-features");
                            break;
                          case REFINE_KEYWORD:
                            if (trg->version < 2) {
@@ -4064,7 +4058,7 @@ yyreduce:
                              YYABORT;
                            }
                            YANG_ADDELEM(((struct lys_refine *)actual)->iffeature,
-                                        ((struct lys_refine *)actual)->iffeature_size);
+                                        ((struct lys_refine *)actual)->iffeature_size, "if-features");
                            break;
                          case EXTENSION_INSTANCE:
                            /* nothing change */
@@ -4072,7 +4066,7 @@ yyreduce:
                          default:
                            /* lys_node_* */
                            YANG_ADDELEM(((struct lys_node *)actual)->iffeature,
-                                        ((struct lys_node *)actual)->iffeature_size);
+                                        ((struct lys_node *)actual)->iffeature_size, "if-features");
                            break;
                          }
                          ((struct lys_iffeature *)actual)->features = (struct lys_feature **)s;
@@ -4102,7 +4096,7 @@ yyreduce:
                                        }
                                        (yyval.backup_token).token = actual_type;
                                        (yyval.backup_token).actual = actual;
-                                       YANG_ADDELEM(trg->ident, trg->ident_size);
+                                       YANG_ADDELEM(trg->ident, trg->ident_size, "identities");
                                        ((struct lys_ident *)actual)->name = tmp;
                                        ((struct lys_ident *)actual)->module = trg;
                                        actual_type = IDENTITY_KEYWORD;
@@ -4156,7 +4150,7 @@ yyreduce:
                                    }
                                    identity = actual;
                                    YANG_ADDELEM(((struct lys_ident *)actual)->base,
-                                                ((struct lys_ident *)actual)->base_size);
+                                                ((struct lys_ident *)actual)->base_size, "bases");
                                    *((struct lys_ident **)actual) = (struct lys_ident *)s;
                                    s = NULL;
                                    actual = identity;
@@ -4215,33 +4209,33 @@ yyreduce:
                                       switch (actual_type) {
                                       case MODULE_KEYWORD:
                                       case SUBMODULE_KEYWORD:
-                                        YANG_ADDELEM(trg->tpdf, trg->tpdf_size);
+                                        YANG_ADDELEM(trg->tpdf, trg->tpdf_size, "typedefs");
                                         break;
                                       case GROUPING_KEYWORD:
                                         YANG_ADDELEM(((struct lys_node_grp *)tpdf_parent)->tpdf,
-                                                     ((struct lys_node_grp *)tpdf_parent)->tpdf_size);
+                                                     ((struct lys_node_grp *)tpdf_parent)->tpdf_size, "typedefs");
                                         break;
                                       case CONTAINER_KEYWORD:
                                         YANG_ADDELEM(((struct lys_node_container *)tpdf_parent)->tpdf,
-                                                     ((struct lys_node_container *)tpdf_parent)->tpdf_size);
+                                                     ((struct lys_node_container *)tpdf_parent)->tpdf_size, "typedefs");
                                         break;
                                       case LIST_KEYWORD:
                                         YANG_ADDELEM(((struct lys_node_list *)tpdf_parent)->tpdf,
-                                                     ((struct lys_node_list *)tpdf_parent)->tpdf_size);
+                                                     ((struct lys_node_list *)tpdf_parent)->tpdf_size, "typedefs");
                                         break;
                                       case RPC_KEYWORD:
                                       case ACTION_KEYWORD:
                                         YANG_ADDELEM(((struct lys_node_rpc_action *)tpdf_parent)->tpdf,
-                                                     ((struct lys_node_rpc_action *)tpdf_parent)->tpdf_size);
+                                                     ((struct lys_node_rpc_action *)tpdf_parent)->tpdf_size, "typedefs");
                                         break;
                                       case INPUT_KEYWORD:
                                       case OUTPUT_KEYWORD:
                                         YANG_ADDELEM(((struct lys_node_inout *)tpdf_parent)->tpdf,
-                                                     ((struct lys_node_inout *)tpdf_parent)->tpdf_size);
+                                                     ((struct lys_node_inout *)tpdf_parent)->tpdf_size, "typedefs");
                                         break;
                                       case NOTIFICATION_KEYWORD:
                                         YANG_ADDELEM(((struct lys_node_notif *)tpdf_parent)->tpdf,
-                                                     ((struct lys_node_notif *)tpdf_parent)->tpdf_size);
+                                                     ((struct lys_node_notif *)tpdf_parent)->tpdf_size, "typedefs");
                                         break;
                                       case EXTENSION_INSTANCE:
                                         /* typedef is already allocated */
@@ -4442,7 +4436,7 @@ yyreduce:
                                    ((struct yang_type *)actual)->base = LY_TYPE_IDENT;
                                    yang_type = actual;
                                    YANG_ADDELEM(((struct yang_type *)actual)->type->info.ident.ref,
-                                                ((struct yang_type *)actual)->type->info.ident.count);
+                                                ((struct yang_type *)actual)->type->info.ident.count, "identity refs");
                                    *((struct lys_ident **)actual) = (struct lys_ident *)s;
                                    actual = yang_type;
                                    s = NULL;
@@ -4483,7 +4477,7 @@ yyreduce:
                            LOGVAL(trg->ctx, LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "type", "derived type");
                            YYABORT;
                          }
-                         YANG_ADDELEM(stype->type->info.uni.types, stype->type->info.uni.count)
+                         YANG_ADDELEM(stype->type->info.uni.types, stype->type->info.uni.count, "union types")
                          actual_type = UNION_KEYWORD;
                        }
 
@@ -4628,7 +4622,7 @@ yyreduce:
                                                                         if ((yyvsp[-2].backup_token).token != EXTENSION_INSTANCE &&
                                                                             !(data_node && data_node->nodetype != LYS_GROUPING && lys_ingrouping(data_node))) {
                                                                           unsigned int c = 2 * (((struct yang_type *)(yyvsp[-2].backup_token).actual)->type->info.str.pat_count - 1);
-                                                                          YANG_ADDELEM(((struct yang_type *)(yyvsp[-2].backup_token).actual)->type->info.str.patterns_pcre, c);
+                                                                          YANG_ADDELEM(((struct yang_type *)(yyvsp[-2].backup_token).actual)->type->info.str.patterns_pcre, c, "patterns");
                                                                         }
 #endif
                                                                         if (yang_read_pattern(trg->ctx, pattern, actual, (yyvsp[-1].str), (yyvsp[0].ch))) {
@@ -4650,7 +4644,7 @@ yyreduce:
                             }
                             ((struct yang_type *)actual)->base = LY_TYPE_STRING;
                             YANG_ADDELEM(((struct yang_type *)actual)->type->info.str.patterns,
-                                         ((struct yang_type *)actual)->type->info.str.pat_count);
+                                         ((struct yang_type *)actual)->type->info.str.pat_count, "patterns");
                           }
                           (yyval.str) = s;
                           s = NULL;
@@ -4786,7 +4780,7 @@ yyreduce:
 
     { (yyval.backup_token).token = actual_type;
                        (yyval.backup_token).actual = yang_type = actual;
-                       YANG_ADDELEM(((struct yang_type *)actual)->type->info.enums.enm, ((struct yang_type *)actual)->type->info.enums.count);
+                       YANG_ADDELEM(((struct yang_type *)actual)->type->info.enums.enm, ((struct yang_type *)actual)->type->info.enums.count, "enums");
                        if (yang_read_enum(trg->ctx, yang_type, actual, s)) {
                          YYABORT;
                        }
@@ -4994,7 +4988,7 @@ yyreduce:
     { (yyval.backup_token).token = actual_type;
                                   (yyval.backup_token).actual = yang_type = actual;
                                   YANG_ADDELEM(((struct yang_type *)actual)->type->info.bits.bit,
-                                               ((struct yang_type *)actual)->type->info.bits.count);
+                                               ((struct yang_type *)actual)->type->info.bits.count, "bits");
                                   if (yang_read_bit(trg->ctx, yang_type, actual, s)) {
                                     YYABORT;
                                   }
@@ -5569,7 +5563,7 @@ yyreduce:
                                          YYABORT;
                                        }
                                        YANG_ADDELEM((yyvsp[-1].nodes).node.ptr_leaflist->dflt,
-                                                    (yyvsp[-1].nodes).node.ptr_leaflist->dflt_size);
+                                                    (yyvsp[-1].nodes).node.ptr_leaflist->dflt_size, "defaults");
                                        (*(const char **)actual) = lydict_insert_zc(param->module->ctx, s);
                                        s = NULL;
                                        actual = (yyvsp[-1].nodes).node.ptr_leaflist;
@@ -5766,7 +5760,7 @@ yyreduce:
 
   case 321:
 
-    { YANG_ADDELEM((yyvsp[-1].nodes).node.ptr_list->unique, (yyvsp[-1].nodes).node.ptr_list->unique_size);
+    { YANG_ADDELEM((yyvsp[-1].nodes).node.ptr_list->unique, (yyvsp[-1].nodes).node.ptr_list->unique_size, "uniques");
                                  ((struct lys_unique *)actual)->expr = (const char **)s;
                                  (yyval.nodes) = (yyvsp[-1].nodes);
                                  s = NULL;
@@ -6329,7 +6323,7 @@ yyreduce:
     { (yyval.backup_token).token = actual_type;
                                   (yyval.backup_token).actual = actual;
                                   YANG_ADDELEM(((struct lys_node_uses *)actual)->refine,
-                                               ((struct lys_node_uses *)actual)->refine_size);
+                                               ((struct lys_node_uses *)actual)->refine_size, "refines");
                                   ((struct lys_refine *)actual)->target_name = transform_schema2json(trg, s);
                                   free(s);
                                   s = NULL;
@@ -6504,7 +6498,7 @@ yyreduce:
                                                   YYABORT;
                                               }
                                           }
-                                          YANG_ADDELEM((yyvsp[-1].nodes).refine->dflt, (yyvsp[-1].nodes).refine->dflt_size);
+                                          YANG_ADDELEM((yyvsp[-1].nodes).refine->dflt, (yyvsp[-1].nodes).refine->dflt_size, "defaults");
                                           *((const char **)actual) = lydict_insert_zc(trg->ctx, s);
                                           actual = (yyvsp[-1].nodes).refine;
                                           s = NULL;
@@ -6641,7 +6635,7 @@ yyreduce:
                                          (yyval.backup_token).actual = actual;
                                          parent = actual;
                                          YANG_ADDELEM(((struct lys_node_uses *)actual)->augment,
-                                                      ((struct lys_node_uses *)actual)->augment_size);
+                                                      ((struct lys_node_uses *)actual)->augment_size, "augments");
                                          if (yang_read_augment(trg, parent, actual, s)) {
                                            YYABORT;
                                          }
@@ -6666,7 +6660,7 @@ yyreduce:
 
     { (yyval.backup_token).token = actual_type;
                                (yyval.backup_token).actual = actual;
-                               YANG_ADDELEM(trg->augment, trg->augment_size);
+                               YANG_ADDELEM(trg->augment, trg->augment_size, "augments");
                                if (yang_read_augment(trg, NULL, actual, s)) {
                                  YYABORT;
                                }
@@ -7073,7 +7067,7 @@ yyreduce:
 
     { (yyval.backup_token).token = actual_type;
                                    (yyval.backup_token).actual = actual;
-                                   YANG_ADDELEM(trg->deviation, trg->deviation_size);
+                                   YANG_ADDELEM(trg->deviation, trg->deviation_size, "deviations");
                                    ((struct lys_deviation *)actual)->target_name = transform_schema2json(trg, s);
                                    free(s);
                                    if (!((struct lys_deviation *)actual)->target_name) {
@@ -7227,7 +7221,7 @@ yyreduce:
 
   case 491:
 
-    { YANG_ADDELEM((yyvsp[-1].deviate)->unique, (yyvsp[-1].deviate)->unique_size);
+    { YANG_ADDELEM((yyvsp[-1].deviate)->unique, (yyvsp[-1].deviate)->unique_size, "uniques");
                                         ((struct lys_unique *)actual)->expr = (const char **)s;
                                         s = NULL;
                                         actual = (yyvsp[-1].deviate);
@@ -7238,7 +7232,7 @@ yyreduce:
 
   case 492:
 
-    { YANG_ADDELEM((yyvsp[-1].deviate)->dflt, (yyvsp[-1].deviate)->dflt_size);
+    { YANG_ADDELEM((yyvsp[-1].deviate)->dflt, (yyvsp[-1].deviate)->dflt_size, "defaults");
                                          *((const char **)actual) = lydict_insert_zc(trg->ctx, s);
                                          s = NULL;
                                          actual = (yyvsp[-1].deviate);
@@ -7370,7 +7364,7 @@ yyreduce:
 
   case 504:
 
-    { YANG_ADDELEM((yyvsp[-1].deviate)->unique, (yyvsp[-1].deviate)->unique_size);
+    { YANG_ADDELEM((yyvsp[-1].deviate)->unique, (yyvsp[-1].deviate)->unique_size, "uniques");
                                            ((struct lys_unique *)actual)->expr = (const char **)s;
                                            s = NULL;
                                            actual = (yyvsp[-1].deviate);
@@ -7381,7 +7375,7 @@ yyreduce:
 
   case 505:
 
-    { YANG_ADDELEM((yyvsp[-1].deviate)->dflt, (yyvsp[-1].deviate)->dflt_size);
+    { YANG_ADDELEM((yyvsp[-1].deviate)->dflt, (yyvsp[-1].deviate)->dflt_size, "defaults");
                                             *((const char **)actual) = lydict_insert_zc(trg->ctx, s);
                                             s = NULL;
                                             actual = (yyvsp[-1].deviate);
@@ -7445,7 +7439,7 @@ yyreduce:
 
   case 513:
 
-    { YANG_ADDELEM((yyvsp[-1].deviate)->dflt, (yyvsp[-1].deviate)->dflt_size);
+    { YANG_ADDELEM((yyvsp[-1].deviate)->dflt, (yyvsp[-1].deviate)->dflt_size, "defaults");
                                              *((const char **)actual) = lydict_insert_zc(trg->ctx, s);
                                              s = NULL;
                                              actual = (yyvsp[-1].deviate);
@@ -7787,33 +7781,33 @@ yyreduce:
                        switch (actual_type) {
                        case CONTAINER_KEYWORD:
                          YANG_ADDELEM(((struct lys_node_container *)actual)->must,
-                                     ((struct lys_node_container *)actual)->must_size);
+                                     ((struct lys_node_container *)actual)->must_size, "musts");
                          break;
                        case ANYDATA_KEYWORD:
                        case ANYXML_KEYWORD:
                          YANG_ADDELEM(((struct lys_node_anydata *)actual)->must,
-                                     ((struct lys_node_anydata *)actual)->must_size);
+                                     ((struct lys_node_anydata *)actual)->must_size, "musts");
                          break;
                        case LEAF_KEYWORD:
                          YANG_ADDELEM(((struct lys_node_leaf *)actual)->must,
-                                     ((struct lys_node_leaf *)actual)->must_size);
+                                     ((struct lys_node_leaf *)actual)->must_size, "musts");
                          break;
                        case LEAF_LIST_KEYWORD:
                          YANG_ADDELEM(((struct lys_node_leaflist *)actual)->must,
-                                     ((struct lys_node_leaflist *)actual)->must_size);
+                                     ((struct lys_node_leaflist *)actual)->must_size, "musts");
                          break;
                        case LIST_KEYWORD:
                          YANG_ADDELEM(((struct lys_node_list *)actual)->must,
-                                     ((struct lys_node_list *)actual)->must_size);
+                                     ((struct lys_node_list *)actual)->must_size, "musts");
                          break;
                        case REFINE_KEYWORD:
                          YANG_ADDELEM(((struct lys_refine *)actual)->must,
-                                     ((struct lys_refine *)actual)->must_size);
+                                     ((struct lys_refine *)actual)->must_size, "musts");
                          break;
                        case ADD_KEYWORD:
                        case DELETE_KEYWORD:
                          YANG_ADDELEM(((struct lys_deviate *)actual)->must,
-                                      ((struct lys_deviate *)actual)->must_size);
+                                      ((struct lys_deviate *)actual)->must_size, "musts");
                          break;
                        case NOTIFICATION_KEYWORD:
                          if (trg->version < 2) {
@@ -7822,7 +7816,7 @@ yyreduce:
                            YYABORT;
                          }
                          YANG_ADDELEM(((struct lys_node_notif *)actual)->must,
-                                     ((struct lys_node_notif *)actual)->must_size);
+                                     ((struct lys_node_notif *)actual)->must_size, "musts");
                          break;
                        case INPUT_KEYWORD:
                        case OUTPUT_KEYWORD:
@@ -7832,7 +7826,7 @@ yyreduce:
                            YYABORT;
                          }
                          YANG_ADDELEM(((struct lys_node_inout *)actual)->must,
-                                     ((struct lys_node_inout *)actual)->must_size);
+                                     ((struct lys_node_inout *)actual)->must_size, "musts");
                          break;
                        case EXTENSION_INSTANCE:
                          /* must is already allocated */
@@ -8915,14 +8909,13 @@ yyreduce:
   /* Now 'shift' the result of the reduction.  Determine what state
      that goes to, based on the state we popped back to and the rule
      number reduced by.  */
-
-  yyn = yyr1[yyn];
-
-  yystate = yypgoto[yyn - YYNTOKENS] + *yyssp;
-  if (0 <= yystate && yystate <= YYLAST && yycheck[yystate] == *yyssp)
-    yystate = yytable[yystate];
-  else
-    yystate = yydefgoto[yyn - YYNTOKENS];
+  {
+    const int yylhs = yyr1[yyn] - YYNTOKENS;
+    const int yyi = yypgoto[yylhs] + *yyssp;
+    yystate = (0 <= yyi && yyi <= YYLAST && yycheck[yyi] == *yyssp
+               ? yytable[yyi]
+               : yydefgoto[yylhs]);
+  }
 
   goto yynewstate;
 
