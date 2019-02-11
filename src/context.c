@@ -484,8 +484,8 @@ ly_ctx_reset_latests(struct ly_ctx *ctx)
     }
 }
 
-API LY_ERR
-ly_ctx_module_implement(struct ly_ctx *ctx, struct lys_module *mod)
+LY_ERR
+ly_ctx_module_implement_internal(struct ly_ctx *ctx, struct lys_module *mod, uint8_t value)
 {
     struct lys_module *m;
 
@@ -510,12 +510,18 @@ ly_ctx_module_implement(struct ly_ctx *ctx, struct lys_module *mod)
     }
 
     /* mark the module implemented, check for collision was already done */
-    mod->implemented = 1;
+    mod->implemented = value;
 
     /* compile the schema */
-    LY_CHECK_RET(lys_compile(mod, 0));
+    LY_CHECK_RET(lys_compile(mod, LYSC_OPT_INTERNAL));
 
     return LY_SUCCESS;
+}
+
+API LY_ERR
+ly_ctx_module_implement(struct ly_ctx *ctx, struct lys_module *mod)
+{
+    return ly_ctx_module_implement_internal(ctx, mod, 1);
 }
 
 API void

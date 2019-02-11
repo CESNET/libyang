@@ -155,6 +155,7 @@ LY_ERR lysp_load_submodule(struct ly_parser_ctx *ctx, struct lysp_module *mod, s
  * @{
  */
 #define LYSC_OPT_FREE_SP 1           /**< Free the input printable schema */
+#define LYSC_OPT_INTERNAL 2          /**< Internal compilation caused by dependency */
 /** @} scflags */
 
 /**
@@ -266,21 +267,24 @@ LY_ERR lysc_check_status(struct lysc_ctx *ctx,
 LY_ERR lys_parse_nodeid(const char **id, const char **prefix, size_t *prefix_len, const char **name, size_t *name_len);
 
 /**
- * @brief Find the node according to the given descendant schema node id.
- * Used in unique, refine and uses's augment statements
+ * @brief Find the node according to the given descendant/absolute schema nodeid.
+ * Used in unique, refine and augment statements.
  *
  * @param[in] ctx Compile context
  * @param[in] nodeid Descendant-schema-nodeid (according to the YANG grammar)
  * @param[in] nodeid_len Length of the given nodeid, if it is not NULL-terminated string.
  * @param[in] context_node Node where the nodeid is specified to correctly resolve prefixes and to start searching.
+ * If no context node is provided, the nodeid is actually expected to be the absolute schema node id and the module
+ * to resolve prefixes and to start searching is taken from ctx's mod_def.
  * @param[in] nodetype Optional (can be 0) restriction for target's nodetype. If target exists, but does not match
- * the given nodetype, LY_EDENIED is returned, but no error message is printed. The value can be even an ORed value to allow
- * multiple nodetypes.
+ * the given nodetype, LY_EDENIED is returned (and target is provided), but no error message is printed.
+ * The value can be even an ORed value to allow multiple nodetypes.
+ * @param[in] implement Flag if the modules mentioned in the nodeid are supposed to be made implemented.
  * @param[out] target Found target node if any.
  * @return LY_ERR values - LY_ENOTFOUND, LY_EVALID, LY_EDENIED or LY_SUCCESS.
  */
-LY_ERR lys_resolve_descendant_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodeid_len, const struct lysc_node *context_node,
-                                            int nodetype, const struct lysc_node **target);
+LY_ERR lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodeid_len, const struct lysc_node *context_node,
+                                 int nodetype, int implement, const struct lysc_node **target);
 
 /**
  * @brief Find the module referenced by prefix in the provided mod.
@@ -525,5 +529,17 @@ LY_ERR yang_parse_submodule(struct ly_parser_ctx *ctx, const char *data, struct 
  * @return LY_ERR value - LY_SUCCESS, LY_EINVAL or LY_EVALID.
  */
 LY_ERR yang_parse_module(struct ly_parser_ctx *ctx, const char *data, struct lys_module *mod);
+
+/**
+ * @brief Make the specific module implemented, use the provided value as flag.
+ *
+ * @param[in] ctx libyang context to change.
+ * @param[in] mod Module from the given context to make implemented. It is not an error
+ * to provide already implemented module, it just does nothing.
+ * @param[in] implemented Flag value for the ::lys_module#implemented item.
+ * @return LY_SUCCESS or LY_EDENIED in case the context contains some other revision of the
+ * same module which is already implemented.
+ */
+LY_ERR ly_ctx_module_implement_internal(struct ly_ctx *ctx, struct lys_module *mod, uint8_t implemented);
 
 #endif /* LY_TREE_SCHEMA_INTERNAL_H_ */

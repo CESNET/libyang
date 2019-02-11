@@ -112,6 +112,7 @@ reset_mod(struct ly_ctx *ctx, struct lys_module *module)
     FREE_STRING(module->ctx, module->contact);
     FREE_STRING(module->ctx, module->dsc);
     FREE_STRING(module->ctx, module->ref);
+    FREE_ARRAY(module->ctx, module->off_features, lysc_feature_free);
 
     memset(module, 0, sizeof *module);
     module->ctx = ctx;
@@ -2183,6 +2184,13 @@ test_uses(void **state)
                                         "uses grp {status obsolete;}}", LYS_IN_YANG));
     logbuf_assert("A \"deprecated\" status is in conflict with the parent's \"obsolete\" status.");
 
+    assert_null(lys_parse_mem(ctx, "module ff {namespace urn:ff;prefix ff;grouping grp {leaf l {type string;}}"
+                                        "leaf l {type int8;}uses grp;}", LYS_IN_YANG));
+    logbuf_assert("Duplicate identifier \"l\" of data definition statement.");
+    assert_null(lys_parse_mem(ctx, "module fg {namespace urn:fg;prefix fg;grouping grp {leaf m {type string;}}"
+                                        "uses grp;leaf m {type int8;}}", LYS_IN_YANG));
+    logbuf_assert("Duplicate identifier \"m\" of data definition statement.");
+
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
 }
@@ -2331,6 +2339,83 @@ test_refine(void **state)
     ly_ctx_destroy(ctx, NULL);
 }
 
+static void
+test_augment(void **state)
+{
+    *state = test_augment;
+
+    struct ly_ctx *ctx;
+    struct lys_module *mod;
+    const struct lysc_node *node;
+    const struct lysc_node_choice *ch;
+    const struct lysc_node_case *c;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "module a {namespace urn:a;prefix a; typedef atype {type string;}"
+                              "container top {leaf a {type string;}}}");
+    assert_non_null(lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;import a {prefix a;}"
+                                  "leaf b {type a:atype;}}", LYS_IN_YANG));
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "module c {namespace urn:c;prefix c; import a {prefix a;}"
+                              "augment /a:top/ { container c {leaf c {type a:atype;}}}}");
+    assert_non_null(lys_parse_mem(ctx, "module d {namespace urn:d;prefix d;import a {prefix a;} import c {prefix c;}"
+                                  "augment /a:top/c:c/ { leaf d {type a:atype;} leaf c {type string;}}}", LYS_IN_YANG));
+    assert_non_null((mod = ly_ctx_get_module_implemented(ctx, "a")));
+    assert_non_null(ly_ctx_get_module_implemented(ctx, "b"));
+    assert_non_null(ly_ctx_get_module_implemented(ctx, "c"));
+    assert_non_null(ly_ctx_get_module_implemented(ctx, "d"));
+    assert_non_null(node = mod->compiled->data);
+    assert_string_equal(node->name, "top");
+    assert_non_null(node = lysc_node_children(node));
+    assert_string_equal(node->name, "a");
+    assert_non_null(node = node->next);
+    assert_string_equal(node->name, "c");
+    assert_non_null(node = lysc_node_children(node));
+    assert_string_equal(node->name, "c");
+    assert_non_null(node = node->next);
+    assert_string_equal(node->name, "d");
+    assert_non_null(node = node->next);
+    assert_string_equal(node->name, "c");
+
+    assert_non_null((mod = lys_parse_mem(ctx, "module e {namespace urn:e;prefix e;choice ch {leaf a {type string;}}"
+                                         "augment /ch/c { leaf lc2 {type uint16;}}"
+                                         "augment /ch { leaf b {type int8;} case c {leaf lc1 {type uint8;}}}}", LYS_IN_YANG)));
+    assert_non_null((ch = (const struct lysc_node_choice*)mod->compiled->data));
+    assert_null(mod->compiled->data->next);
+    assert_string_equal("ch", ch->name);
+    assert_non_null(c = ch->cases);
+    assert_string_equal("a", c->name);
+    assert_string_equal("a", c->child->name);
+    assert_non_null(c = (const struct lysc_node_case*)c->next);
+    assert_string_equal("b", c->name);
+    assert_string_equal("b", c->child->name);
+    assert_non_null(c = (const struct lysc_node_case*)c->next);
+    assert_string_equal("c", c->name);
+    assert_string_equal("lc1", ((const struct lysc_node_case*)c)->child->name);
+    assert_string_equal("lc2", ((const struct lysc_node_case*)c)->child->next->name);
+    assert_ptr_equal(ch->cases->child->prev, ((const struct lysc_node_case*)c)->child->next);
+    assert_null(c->next);
+
+    assert_non_null((mod = lys_parse_mem(ctx, "module f {namespace urn:f;prefix f;grouping g {leaf a {type string;}}"
+                                         "container c;"
+                                         "augment /c {uses g;}}", LYS_IN_YANG)));
+    assert_non_null(node = lysc_node_children(mod->compiled->data));
+    assert_string_equal(node->name, "a");
+
+    assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; container c {leaf a {type string;}}"
+                                        "augment /x {leaf a {type int8;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid absolute-schema-nodeid value \"/x\" - target node not found.");
+
+    assert_null(lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb; container c {leaf a {type string;}}"
+                                        "augment /c {leaf a {type int8;}}}", LYS_IN_YANG));
+    logbuf_assert("Duplicate identifier \"a\" of data definition statement.");
+
+
+
+    *state = NULL;
+    ly_ctx_destroy(ctx, NULL);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -2357,6 +2442,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_node_anydata, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_uses, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_refine, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_augment, logger_setup, logger_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
