@@ -2402,6 +2402,17 @@ test_augment(void **state)
     assert_non_null(node = lysc_node_children(mod->compiled->data));
     assert_string_equal(node->name, "a");
 
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule gsub {belongs-to g {prefix g;}"
+                                  "augment /c {container sub;}}");
+    assert_non_null(mod = lys_parse_mem(ctx, "module g {namespace urn:g;prefix g;include gsub; container c;"
+                                        "augment /c/sub {leaf main {type string;}}}", LYS_IN_YANG));
+    assert_non_null(mod->compiled->data);
+    assert_string_equal("c", mod->compiled->data->name);
+    assert_non_null(node = ((struct lysc_node_container*)mod->compiled->data)->child);
+    assert_string_equal("sub", node->name);
+    assert_non_null(node = ((struct lysc_node_container*)node)->child);
+    assert_string_equal("main", node->name);
+
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; container c {leaf a {type string;}}"
                                         "augment /x {leaf a {type int8;}}}", LYS_IN_YANG));
     logbuf_assert("Invalid absolute-schema-nodeid value \"/x\" - target node not found.");
@@ -2409,6 +2420,16 @@ test_augment(void **state)
     assert_null(lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb; container c {leaf a {type string;}}"
                                         "augment /c {leaf a {type int8;}}}", LYS_IN_YANG));
     logbuf_assert("Duplicate identifier \"a\" of data definition statement.");
+
+
+    assert_null(lys_parse_mem(ctx, "module cc {namespace urn:cc;prefix cc; container c {leaf a {type string;}}"
+                                        "augment /c/a {leaf a {type int8;}}}", LYS_IN_YANG));
+    logbuf_assert("Augment's absolute-schema-nodeid \"/c/a\" refers to a leaf node which is not an allowed augment's target.");
+
+    assert_null(lys_parse_mem(ctx, "module dd {namespace urn:dd;prefix dd; container c {leaf a {type string;}}"
+                                        "augment /c {case b {leaf d {type int8;}}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid augment (/c) of container node which is not allowed to contain case node \"b\".");
+
 
 
 
