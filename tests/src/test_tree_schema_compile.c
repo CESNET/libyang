@@ -2145,11 +2145,12 @@ test_uses(void **state)
     assert_string_equal("f", child->iffeatures[0].features[0]->name);
     assert_int_equal(1, lysc_iffeature_value(&child->iffeatures[0]));
 
-    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule bsub {belongs-to b {prefix b;} grouping grp {leaf b {type string;}}}");
-    assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;include bsub;uses grp;}", LYS_IN_YANG));
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule bsub {belongs-to b {prefix b;} grouping grp {leaf b {when 1; type string;}}}");
+    assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;include bsub;uses grp {when 2;}}", LYS_IN_YANG));
     assert_non_null(mod->compiled->data);
     assert_int_equal(LYS_LEAF, mod->compiled->data->nodetype);
     assert_string_equal("b", mod->compiled->data->name);
+    assert_int_equal(2, LY_ARRAY_SIZE(mod->compiled->data->when));
 
     logbuf_clean();
     assert_non_null(mod = lys_parse_mem(ctx, "module c {namespace urn:ii;prefix ii;"
@@ -2378,21 +2379,26 @@ test_augment(void **state)
     assert_string_equal(node->name, "c");
 
     assert_non_null((mod = lys_parse_mem(ctx, "module e {namespace urn:e;prefix e;choice ch {leaf a {type string;}}"
-                                         "augment /ch/c { leaf lc2 {type uint16;}}"
-                                         "augment /ch { leaf b {type int8;} case c {leaf lc1 {type uint8;}}}}", LYS_IN_YANG)));
+                                         "augment /ch/c {when 1; leaf lc2 {type uint16;}}"
+                                         "augment /ch { when 1; leaf b {type int8;} case c {leaf lc1 {type uint8;}}}}", LYS_IN_YANG)));
     assert_non_null((ch = (const struct lysc_node_choice*)mod->compiled->data));
     assert_null(mod->compiled->data->next);
     assert_string_equal("ch", ch->name);
     assert_non_null(c = ch->cases);
     assert_string_equal("a", c->name);
+    assert_null(c->when);
     assert_string_equal("a", c->child->name);
     assert_non_null(c = (const struct lysc_node_case*)c->next);
     assert_string_equal("b", c->name);
+    assert_non_null(c->when);
     assert_string_equal("b", c->child->name);
     assert_non_null(c = (const struct lysc_node_case*)c->next);
     assert_string_equal("c", c->name);
+    assert_non_null(c->when);
     assert_string_equal("lc1", ((const struct lysc_node_case*)c)->child->name);
+    assert_null(((const struct lysc_node_case*)c)->child->when);
     assert_string_equal("lc2", ((const struct lysc_node_case*)c)->child->next->name);
+    assert_non_null(((const struct lysc_node_case*)c)->child->next->when);
     assert_ptr_equal(ch->cases->child->prev, ((const struct lysc_node_case*)c)->child->next);
     assert_null(c->next);
 

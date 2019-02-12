@@ -975,8 +975,9 @@ struct lysc_when {
     struct lyxp_expr *cond;          /**< XPath when condition */
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
-    struct lysc_node *context;       /**< context node of the expression */
+    struct lysc_node *context;       /**< context node for evaluating the expression */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    uint32_t refcount;               /**< reference counter since some of the when statements are shared among several nodes */
 };
 
 /**
@@ -1209,7 +1210,7 @@ struct lysc_node {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_when *when;          /**< when statement */
+    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
 };
 
@@ -1228,7 +1229,7 @@ struct lysc_node_container {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_when *when;          /**< when statement */
+    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
 
     struct lysc_node *child;         /**< first child node (linked list) */
@@ -1252,7 +1253,7 @@ struct lysc_node_case {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_when *when;          /**< when statement */
+    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
 
     struct lysc_node *child;         /**< first child node of the case (linked list). Note that all the children of all the sibling cases are linked
@@ -1276,7 +1277,7 @@ struct lysc_node_choice {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_when *when;          /**< when statement */
+    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
 
     struct lysc_node_case *cases;    /**< list of the cases (linked list). Note that all the children of all the cases are linked each other
@@ -1300,7 +1301,7 @@ struct lysc_node_leaf {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_when *when;          /**< when statement */
+    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
 
     struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
@@ -1325,7 +1326,7 @@ struct lysc_node_leaflist {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_when *when;          /**< when statement */
+    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
 
     struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
@@ -1353,7 +1354,7 @@ struct lysc_node_list {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_when *when;          /**< when statement */
+    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
 
     struct lysc_node *child;         /**< first child node (linked list) */
@@ -1382,7 +1383,7 @@ struct lysc_node_anydata {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_when *when;          /**< when statement */
+    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
 
     struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */

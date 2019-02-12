@@ -444,7 +444,7 @@ LY_ERR ly_munmap(void *addr, size_t length);
  *
  * @param[in] CTX libyang context for logging.
  * @param[in,out] ARRAY Pointer to the array to create.
- * @param[in] SIZE Number of items the array is supposed to hold. The size of the allocated
+ * @param[in] SIZE Number of the new items the array is supposed to hold. The size of the allocated
  * space is then counted from the type of the ARRAY, so do not provide placeholder void pointers.
  * @param[out] RET Variable to store error code.
  * @param[in] GOTO Label to go in case of error (memory allocation failure).

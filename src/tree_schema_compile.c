@@ -60,6 +60,15 @@
         LY_CHECK_GOTO(RET != LY_SUCCESS, GOTO); \
     }
 
+#define COMPILE_MEMBER_ARRAY_GOTO(CTX, MEMBER_P, ARRAY_C, OPTIONS, FUNC, RET, GOTO) \
+    if (MEMBER_P) { \
+        LY_ARRAY_CREATE_GOTO((CTX)->ctx, ARRAY_C, 1, RET, GOTO); \
+        size_t __array_offset = LY_ARRAY_SIZE(ARRAY_C); \
+        LY_ARRAY_INCREMENT(ARRAY_C); \
+        RET = FUNC(CTX, MEMBER_P, OPTIONS, &(ARRAY_C)[__array_offset]); \
+        LY_CHECK_GOTO(RET != LY_SUCCESS, GOTO); \
+    }
+
 #define COMPILE_CHECK_UNIQUENESS(CTX, ARRAY, MEMBER, EXCL, STMT, IDENT) \
     if (ARRAY) { \
         for (unsigned int u__ = 0; u__ < LY_ARRAY_SIZE(ARRAY); ++u__) { \
@@ -433,17 +442,27 @@ error:
     return rc;
 }
 
+static struct lysc_node *
+lys_compile_xpath_context(struct lysc_node *start)
+{
+    for (; start && !(start->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_ACTION | LYS_NOTIF));
+            start = start->parent);
+    return start;
+}
+
 static LY_ERR
-lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, int options, struct lysc_when *when)
+lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, int options, struct lysc_when **when)
 {
     unsigned int u;
     LY_ERR ret = LY_SUCCESS;
 
-    when->cond = lyxp_expr_parse(ctx->ctx, when_p->cond);
-    DUP_STRING(ctx->ctx, when_p->dsc, when->dsc);
-    DUP_STRING(ctx->ctx, when_p->ref, when->ref);
-    LY_CHECK_ERR_GOTO(!when->cond, ret = ly_errcode(ctx->ctx), done);
-    COMPILE_ARRAY_GOTO(ctx, when_p->exts, when->exts, options, u, lys_compile_ext, ret, done);
+    *when = calloc(1, sizeof **when);
+    (*when)->refcount = 1;
+    (*when)->cond = lyxp_expr_parse(ctx->ctx, when_p->cond);
+    DUP_STRING(ctx->ctx, when_p->dsc, (*when)->dsc);
+    DUP_STRING(ctx->ctx, when_p->ref, (*when)->ref);
+    LY_CHECK_ERR_GOTO(!(*when)->cond, ret = ly_errcode(ctx->ctx), done);
+    COMPILE_ARRAY_GOTO(ctx, when_p->exts, (*when)->exts, options, u, lys_compile_ext, ret, done);
 
 done:
     return ret;
@@ -3320,6 +3339,7 @@ lys_compile_node_case(struct lysc_ctx *ctx, struct lysp_node *node_p, int option
 {
     struct lysc_node *iter;
     struct lysc_node_case *cs;
+    struct lysc_when **when;
     unsigned int u;
     LY_ERR ret;
 
@@ -3353,7 +3373,13 @@ lys_compile_node_case(struct lysc_ctx *ctx, struct lysp_node *node_p, int option
 
         /* check the case's status (don't need to solve uses_status since case statement cannot be directly in grouping statement */
         LY_CHECK_RET(lys_compile_status(ctx, (struct lysc_node*)cs, ch->flags), NULL);
-        COMPILE_MEMBER_GOTO(ctx, node_p->when, cs->when, options, lys_compile_when, ret, error);
+
+        if (node_p->when) {
+            LY_ARRAY_NEW_GOTO(ctx->ctx, cs->when, when, ret, error);
+            ret = lys_compile_when(ctx, node_p->when, options, when);
+            LY_CHECK_GOTO(ret, error);
+            (*when)->context = lys_compile_xpath_context(ch->parent);
+        }
         COMPILE_ARRAY_GOTO(ctx, node_p->iffeatures, cs->iffeatures, options, u, lys_compile_iffeature, ret, error);
     } else {
         LOGINT(ctx->ctx);
@@ -3440,6 +3466,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int option
     LY_ERR ret = LY_EVALID;
     uint32_t min, max;
     struct ly_set refined = {0};
+    struct lysc_when **when, *when_shared;
 
     /* search for the grouping definition */
     found = 0;
@@ -3520,16 +3547,30 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int option
         /* 0x3 in uses_status is a special bits combination to be able to detect status flags from uses */
         LY_CHECK_GOTO(lys_compile_node(ctx, node_p, options, parent, (uses_p->flags & LYS_STATUS_MASK) | 0x3), error);
         child = parent ? lysc_node_children(parent)->prev : ctx->mod->compiled->data->prev;
-        if (uses_p->refines) {
-            /* some preparation for applying refines */
-            if (grp->data == node_p) {
-                /* remember the first child */
-                context_node_fake.child = child;
-            }
+
+        /* some preparation for applying refines */
+        if (grp->data == node_p) {
+            /* remember the first child */
+            context_node_fake.child = child;
         }
     }
+    when_shared = NULL;
     LY_LIST_FOR(context_node_fake.child, child) {
         child->parent = (struct lysc_node*)&context_node_fake;
+
+        /* pass uses's when to all the children */
+        if (uses_p->when) {
+            LY_ARRAY_NEW_GOTO(ctx->ctx, child->when, when, ret, error);
+            if (!when_shared) {
+                ret = lys_compile_when(ctx, uses_p->when, options, when);
+                LY_CHECK_GOTO(ret, error);
+                (*when)->context = lys_compile_xpath_context(parent);
+                when_shared = *when;
+            } else {
+                ++when_shared->refcount;
+                (*when) = when_shared;
+            }
+        }
     }
     if (context_node_fake.child) {
         child = context_node_fake.child->prev;
@@ -3793,6 +3834,7 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, st
     LY_ERR ret = LY_EVALID;
     struct lysc_node *node;
     struct lysc_node_case *cs;
+    struct lysc_when **when;
     unsigned int u;
     LY_ERR (*node_compile_spec)(struct lysc_ctx*, struct lysp_node*, int, struct lysc_node*);
 
@@ -3877,7 +3919,12 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, st
     DUP_STRING(ctx->ctx, node_p->name, node->name);
     DUP_STRING(ctx->ctx, node_p->dsc, node->dsc);
     DUP_STRING(ctx->ctx, node_p->ref, node->ref);
-    COMPILE_MEMBER_GOTO(ctx, node_p->when, node->when, options, lys_compile_when, ret, error);
+    if (node_p->when) {
+        LY_ARRAY_NEW_GOTO(ctx->ctx, node->when, when, ret, error);
+        ret = lys_compile_when(ctx, node_p->when, options, when);
+        LY_CHECK_GOTO(ret, error);
+        (*when)->context = lys_compile_xpath_context(node);
+    }
     COMPILE_ARRAY_GOTO(ctx, node_p->iffeatures, node->iffeatures, options, u, lys_compile_iffeature, ret, error);
     COMPILE_ARRAY_GOTO(ctx, node_p->exts, node->exts, options, u, lys_compile_ext, ret, error);
 
@@ -4007,6 +4054,9 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, int option
     LY_ERR ret = LY_SUCCESS;
     struct lysp_node *node_p, *case_node_p;
     struct lysc_node *target; /* target target of the augment */
+    struct lysc_node *node;
+    struct lysc_node_case *next_case;
+    struct lysc_when **when, *when_shared;
 
     ret = lys_resolve_schema_nodeid(ctx, aug_p->nodeid, 0, parent,
                                                LYS_CONTAINER | LYS_LIST | LYS_CHOICE | LYS_CASE | LYS_INOUT | LYS_NOTIF,
@@ -4020,6 +4070,12 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, int option
         return LY_EVALID;
     }
 
+    /* check for mandatory nodes
+     * - new cases augmenting some choice can have mandatory nodes
+     * - mandatory nodes are allowed only in case the augmentation is made conditional with a when statement
+     */
+
+    when_shared = NULL;
     LY_LIST_FOR(aug_p->child, node_p) {
         /* check if the subnode can be connected to the found target (e.g. case cannot be inserted into container) */
         if (!(target->nodetype == LYS_CHOICE && node_p->nodetype == LYS_CASE)
@@ -4030,6 +4086,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, int option
                    aug_p->nodeid, lys_nodetype2str(target->nodetype), lys_nodetype2str(node_p->nodetype), node_p->name);
             return LY_EVALID;
         }
+
         /* compile the children */
         if (node_p->nodetype != LYS_CASE) {
             LY_CHECK_RET(lys_compile_node(ctx, node_p, options, target, 0));
@@ -4038,9 +4095,37 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, int option
                 LY_CHECK_RET(lys_compile_node(ctx, case_node_p, options, target, 0));
             }
         }
+
+        /* since the augment node is not present in the compiled tree, we need to pass some of its statements to all its children */
+        if (target->nodetype == LYS_CASE) {
+            /* the compiled node is the last child of the target (but it is a case, so we have to be careful) */
+            next_case = target->next ? (struct lysc_node_case*)target->next : ((struct lysc_node_choice*)target->parent)->cases;
+            for (node = (struct lysc_node*)lysc_node_children(target); node->next && node->next != next_case->child; node = node->next);
+        } else if (target->nodetype == LYS_CHOICE) {
+            /* to pass when statement, we need the last case no matter if it is explicit or implicit case */
+            node = ((struct lysc_node_choice*)target)->cases->prev;
+        } else {
+            /* the compiled node is the last child of the target */
+            node = lysc_node_children(target)->prev;
+        }
+
+        /* pass augment's when to all the children */
+        if (aug_p->when) {
+            LY_ARRAY_NEW_GOTO(ctx->ctx, node->when, when, ret, error);
+            if (!when_shared) {
+                ret = lys_compile_when(ctx, aug_p->when, options, when);
+                LY_CHECK_GOTO(ret, error);
+                (*when)->context = lys_compile_xpath_context(target);
+                when_shared = *when;
+            } else {
+                ++when_shared->refcount;
+                (*when) = when_shared;
+            }
+        }
     }
     /* TODO actions, notifications */
 
+error:
     return ret;
 }
 
