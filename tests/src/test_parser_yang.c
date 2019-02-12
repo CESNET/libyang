@@ -1905,6 +1905,55 @@ test_uses(void **state)
     *state = NULL;
     ly_ctx_destroy(ctx.ctx, NULL);
 }
+
+
+static void
+test_augment(void **state)
+{
+    *state = test_augment;
+
+    struct ly_parser_ctx ctx = {0};
+    struct lysp_augment *a = NULL;
+    const char *str;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
+    assert_non_null(ctx.ctx);
+    ctx.line = 1;
+    //ctx.mod_version = 2; /* simulate YANG 1.1 */
+
+    /* invalid cardinality */
+#define TEST_DUP(MEMBER, VALUE1, VALUE2) \
+    str = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
+    assert_int_equal(LY_EVALID, parse_augment(&ctx, &str, NULL, &a)); \
+    logbuf_assert("Duplicate keyword \""MEMBER"\". Line number 1."); \
+    lysp_augment_free(ctx.ctx, a); a = NULL;
+
+    TEST_DUP("description", "text1", "text2");
+    TEST_DUP("reference", "1", "2");
+    TEST_DUP("status", "current", "obsolete");
+    TEST_DUP("when", "true", "false");
+#undef TEST_DUP
+
+    /* full content */
+    str = "/target/nodeid {action x; anydata any;anyxml anyxml; case cs; choice ch;container c;description test;if-feature f;leaf l {type string;}"
+          "leaf-list ll {type string;} list li;notification not;reference test;status current;uses g;when true;m:ext;} ...";
+    assert_int_equal(LY_SUCCESS, parse_augment(&ctx, &str, NULL, &a));
+    assert_non_null(a);
+    assert_int_equal(LYS_AUGMENT, a->nodetype);
+    assert_string_equal("/target/nodeid", a->nodeid);
+    assert_string_equal("test", a->dsc);
+    assert_non_null(a->exts);
+    assert_non_null(a->iffeatures);
+    assert_string_equal("test", a->ref);
+    assert_non_null(a->when);
+    assert_null(a->parent);
+    assert_int_equal(LYS_STATUS_CURR, a->flags);
+    lysp_augment_free(ctx.ctx, a); a = NULL;
+
+    *state = NULL;
+    ly_ctx_destroy(ctx.ctx, NULL);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
