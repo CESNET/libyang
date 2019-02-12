@@ -544,6 +544,48 @@ done:
     return ret;
 }
 
+static LY_ERR
+lys_compile_identity_circular_check(struct lysc_ctx *ctx, struct lysc_ident *ident, struct lysc_ident **derived)
+{
+    LY_ERR ret = LY_EVALID;
+    unsigned int u, v;
+    struct ly_set recursion = {0};
+    struct lysc_ident *drv;
+
+    if (!derived) {
+        return LY_SUCCESS;
+    }
+
+    for (u = 0; u < LY_ARRAY_SIZE(derived); ++u) {
+        if (ident == derived[u]) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                   "Identity \"%s\" is indirectly derived from itself.", ident->name);
+            goto cleanup;
+        }
+        ly_set_add(&recursion, derived[u], 0);
+    }
+
+    for (v = 0; v < recursion.count; ++v) {
+        drv = recursion.objs[v];
+        if (!drv->derived) {
+            continue;
+        }
+        for (u = 0; u < LY_ARRAY_SIZE(drv->derived); ++u) {
+            if (ident == drv->derived[u]) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                       "Identity \"%s\" is indirectly derived from itself.", ident->name);
+                goto cleanup;
+            }
+            ly_set_add(&recursion, drv->derived[u], 0);
+        }
+    }
+    ret = LY_SUCCESS;
+
+cleanup:
+    ly_set_erase(&recursion, NULL);
+    return ret;
+}
+
 /**
  * @brief Find and process the referenced base identities from another identity or identityref
  *
@@ -598,6 +640,12 @@ lys_compile_identity_bases(struct lysc_ctx *ctx, const char **bases_p,  struct l
             for (v = 0; v < LY_ARRAY_SIZE(mod->compiled->identities); ++v) {
                 if (!strcmp(name, mod->compiled->identities[v].name)) {
                     if (ident) {
+                        if (ident == &mod->compiled->identities[v]) {
+                            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                                   "Identity \"%s\" is derived from itself.", ident->name);
+                            return LY_EVALID;
+                        }
+                        LY_CHECK_RET(lys_compile_identity_circular_check(ctx, &mod->compiled->identities[v], ident->derived));
                         /* we have match! store the backlink */
                         LY_ARRAY_NEW_RET(ctx->ctx, mod->compiled->identities[v].derived, idref, LY_EMEM);
                         *idref = ident;

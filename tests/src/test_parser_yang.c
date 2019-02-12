@@ -1101,12 +1101,7 @@ test_identity(void **state)
     TEST_DUP_GENERIC(" test {", MEMBER, VALUE1, VALUE2, parse_identity, \
                      &ident, "1", FREE_ARRAY(ctx.ctx, ident, lysp_ident_free); ident = NULL)
 
-    //TEST_DUP("description", "a", "b");
-    str = " test {description a;description b;} ...";
-    assert_int_equal(LY_EVALID, parse_identity(&ctx, &str, &ident));
-    logbuf_assert("Duplicate keyword \"description\". Line number 1.");
-    FREE_ARRAY(ctx.ctx, ident, lysp_ident_free); ident = NULL;
-
+    TEST_DUP("description", "a", "b");
     TEST_DUP("reference", "a", "b");
     TEST_DUP("status", "current", "obsolete");
 

@@ -411,6 +411,14 @@ test_identity(void **state)
     assert_null(lys_parse_mem(ctx, "module bb{namespace urn:bb; prefix bb; include sbb;identity i1;}", LYS_IN_YANG));
     logbuf_assert("Duplicate identifier \"i1\" of identity statement.");
 
+    assert_null(lys_parse_mem(ctx, "module cc{namespace urn:cc; prefix cc; identity i1 {base i2;}}", LYS_IN_YANG));
+    logbuf_assert("Unable to find base (i2) of identity \"i1\".");
+
+    assert_null(lys_parse_mem(ctx, "module dd{namespace urn:dd; prefix dd; identity i1 {base i1;}}", LYS_IN_YANG));
+    logbuf_assert("Identity \"i1\" is derived from itself.");
+    assert_null(lys_parse_mem(ctx, "module de{namespace urn:de; prefix de; identity i1 {base i2;}identity i2 {base i3;}identity i3 {base i1;}}", LYS_IN_YANG));
+    logbuf_assert("Identity \"i1\" is indirectly derived from itself.");
+
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
 }
