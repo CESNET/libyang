@@ -2798,6 +2798,10 @@ lys_compile_node_container(struct lysc_ctx *ctx, struct lysp_node *node_p, int o
     unsigned int u;
     LY_ERR ret = LY_SUCCESS;
 
+    if (cont_p->presence) {
+        cont->flags |= LYS_PRESENCE;
+    }
+
     LY_LIST_FOR(cont_p->child, child_p) {
         LY_CHECK_RET(lys_compile_node(ctx, child_p, options, node, 0));
     }
@@ -2891,6 +2895,9 @@ lys_compile_node_leaflist(struct lysc_ctx *ctx, struct lysp_node *node_p, int op
     }
 
     llist->min = llist_p->min;
+    if (llist->min) {
+        llist->flags |= LYS_MAND_TRUE;
+    }
     llist->max = llist_p->max ? llist_p->max : (uint32_t)-1;
 
     ret = lys_compile_type(ctx, node_p, node_p->flags, ctx->mod_def->parsed, node_p->name, &llist_p->type, options, &llist->type,
@@ -2966,6 +2973,9 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *node_p, int option
     LY_ERR ret = LY_SUCCESS;
 
     list->min = list_p->min;
+    if (list->min) {
+        list->flags |= LYS_MAND_TRUE;
+    }
     list->max = list_p->max ? list_p->max : (uint32_t)-1;
 
     LY_LIST_FOR(list_p->child, child_p) {
@@ -3432,6 +3442,30 @@ lys_compile_refine_config(struct lysc_ctx *ctx, struct lysc_node *node, struct l
     return LY_SUCCESS;
 }
 
+void
+lys_compile_mandatory_parents(struct lysc_node *parent, int add)
+{
+    struct lysc_node *iter;
+
+    if (add) { /* set flag */
+        for (; parent &&  parent->nodetype == LYS_CONTAINER && !(parent->flags & LYS_MAND_TRUE) && !(parent->flags & LYS_PRESENCE);
+                parent = parent->parent) {
+            parent->flags |= LYS_MAND_TRUE;
+        }
+    } else { /* unset flag */
+        for (; parent && parent->nodetype == LYS_CONTAINER && (parent->flags & LYS_MAND_TRUE); parent = parent->parent) {
+            for (iter = (struct lysc_node*)lysc_node_children(parent); iter; iter = iter->next) {
+                if (iter->flags && LYS_MAND_TRUE) {
+                    /* there is another mandatory node */
+                    return;
+                }
+            }
+            /* unset mandatory flag - there is no mandatory children in the non-presence container */
+            parent->flags &= ~LYS_MAND_TRUE;
+        }
+    }
+}
+
 /**
  * @brief Compile parsed uses statement - resolve target grouping and connect its content into parent.
  * If present, also apply uses's modificators.
@@ -3684,9 +3718,11 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int option
                 }
 
                 node->flags |= LYS_MAND_TRUE;
+                lys_compile_mandatory_parents(node->parent, 1);
             } else {
                 /* make mandatory false */
                 node->flags &= ~LYS_MAND_TRUE;
+                lys_compile_mandatory_parents(node->parent, 0);
                 if ((node->nodetype & LYS_LEAF) && !((struct lysc_node_leaf*)node)->dflt) {
                     /* get the type's default value if any */
                     DUP_STRING(ctx->ctx, ((struct lysc_node_leaf*)node)->type->dflt, ((struct lysc_node_leaf*)node)->dflt);
@@ -3741,6 +3777,13 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int option
                 }
                 if (rfn->flags & LYS_SET_MIN) {
                     ((struct lysc_node_leaflist*)node)->min = rfn->min;
+                    if (rfn->min) {
+                        node->flags |= LYS_MAND_TRUE;
+                        lys_compile_mandatory_parents(node->parent, 1);
+                    } else {
+                        node->flags &= ~LYS_MAND_TRUE;
+                        lys_compile_mandatory_parents(node->parent, 0);
+                    }
                 }
                 break;
             case LYS_LIST:
@@ -3749,6 +3792,13 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int option
                 }
                 if (rfn->flags & LYS_SET_MIN) {
                     ((struct lysc_node_list*)node)->min = rfn->min;
+                    if (rfn->min) {
+                        node->flags |= LYS_MAND_TRUE;
+                        lys_compile_mandatory_parents(node->parent, 1);
+                    } else {
+                        node->flags &= ~LYS_MAND_TRUE;
+                        lys_compile_mandatory_parents(node->parent, 0);
+                    }
                 }
                 break;
             default:
@@ -3815,6 +3865,7 @@ error:
 
     return ret;
 }
+
 
 /**
  * @brief Compile parsed schema node information.
@@ -3930,6 +3981,11 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, st
 
     /* nodetype-specific part */
     LY_CHECK_GOTO(node_compile_spec(ctx, node_p, options, node), error);
+
+    /* inherit LYS_MAND_TRUE in parent containers */
+    if (node->flags & LYS_MAND_TRUE) {
+        lys_compile_mandatory_parents(parent, 1);
+    }
 
     /* insert into parent's children */
     if (parent) {
@@ -4057,6 +4113,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, int option
     struct lysc_node *node;
     struct lysc_node_case *next_case;
     struct lysc_when **when, *when_shared;
+    int allow_mandatory = 0;
 
     ret = lys_resolve_schema_nodeid(ctx, aug_p->nodeid, 0, parent,
                                                LYS_CONTAINER | LYS_LIST | LYS_CHOICE | LYS_CASE | LYS_INOUT | LYS_NOTIF,
@@ -4074,6 +4131,9 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, int option
      * - new cases augmenting some choice can have mandatory nodes
      * - mandatory nodes are allowed only in case the augmentation is made conditional with a when statement
      */
+    if (aug_p->when || target->nodetype == LYS_CHOICE) {
+        allow_mandatory = 1;
+    }
 
     when_shared = NULL;
     LY_LIST_FOR(aug_p->child, node_p) {
@@ -4107,6 +4167,15 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, int option
         } else {
             /* the compiled node is the last child of the target */
             node = lysc_node_children(target)->prev;
+        }
+
+        if (!allow_mandatory && (node->flags & LYS_MAND_TRUE)) {
+            node->flags &= ~LYS_MAND_TRUE;
+            lys_compile_mandatory_parents(target, 0);
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                   "Invalid augment (%s) adding mandatory node \"%s\" without making it conditional via when statement.",
+                   aug_p->nodeid, node->name);
+            return LY_EVALID;
         }
 
         /* pass augment's when to all the children */

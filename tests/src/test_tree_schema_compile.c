@@ -2419,6 +2419,15 @@ test_augment(void **state)
     assert_non_null(node = ((struct lysc_node_container*)node)->child);
     assert_string_equal("main", node->name);
 
+    assert_non_null(mod = lys_parse_mem(ctx, "module h {namespace urn:h;prefix h;container top;"
+                                        "augment /top {container p {presence XXX; leaf x {mandatory true;type string;}}}"
+                                        "augment /top {list l {key x;leaf x {type string;}leaf y {mandatory true; type string;}}}}", LYS_IN_YANG));
+    assert_non_null(node = mod->compiled->data);
+    assert_non_null(node = ((struct lysc_node_container*)node)->child);
+    assert_string_equal("p", node->name);
+    assert_non_null(node->next);
+    assert_string_equal("l", node->next->name);
+
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; container c {leaf a {type string;}}"
                                         "augment /x {leaf a {type int8;}}}", LYS_IN_YANG));
     logbuf_assert("Invalid absolute-schema-nodeid value \"/x\" - target node not found.");
@@ -2436,6 +2445,10 @@ test_augment(void **state)
                                         "augment /c {case b {leaf d {type int8;}}}}", LYS_IN_YANG));
     logbuf_assert("Invalid augment (/c) of container node which is not allowed to contain case node \"b\".");
 
+
+    assert_null(lys_parse_mem(ctx, "module ee {namespace urn:ee;prefix ee; container top;"
+                                        "augment /top {container c {leaf d {mandatory true; type int8;}}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid augment (/top) adding mandatory node \"c\" without making it conditional via when statement.");
 
 
 

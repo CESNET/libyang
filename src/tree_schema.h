@@ -517,14 +517,14 @@ struct lysp_deviation {
  *         LYS_SET_LENGTH   | | | | | | | | | | | | | | | | | | | | | |x|
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       6 LYS_MAND_TRUE    | |x|x| | |x| | | | | | | | | | | |x| |x| | |
- *         LYS_ORDBY_SYSTEM | | | |x|x| | | | | | | | | | | | | | | | | |
  *         LYS_SET_PATH     | | | | | | | | | | | | | | | | | | | | | |x|
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       7 LYS_MAND_FALSE   | |x|x| | |x| | | | | | | | | | | |x| |x| | |
  *         LYS_ORDBY_USER   | | | |x|x| | | | | | | | | | | | | | | | | |
  *         LYS_SET_PATTERN  | | | | | | | | | | | | | | | | | | | | | |x|
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       8 LYS_YINELEM_TRUE | | | | | | | | | | | | | |x| | | | | | | | |
+ *       8 LYS_ORDBY_SYSTEM | | | |x|x| | | | | | | | | | | | | | | | | |
+ *         LYS_YINELEM_TRUE | | | | | | | | | | | | | |x| | | | | | | | |
  *         LYS_SET_RANGE    | | | | | | | | | | | | | | | | | | | | | |x|
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       9 LYS_YINELEM_FALSE| | | | | | | | | | | | | |x| | | | | | | | |
@@ -564,12 +564,12 @@ struct lysp_deviation {
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       5 LYS_STATUS_OBSLT |x|x|x|x|x|x|x|x|x| | |x|x|x|
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       6 LYS_MAND_TRUE    | |x|x| | |x| | | | | | | | |
- *         LYS_ORDBY_SYSTEM | | | |x|x| | | | | | | | | |
+ *       6 LYS_MAND_TRUE    |x|x|x|x|x|x| | | | | | | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       7 LYS_ORDBY_USER   | | | |x|x| | | | | | | | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       8 LYS_PRESENCE     |x| | | | | | | | | | | | | |
+ *       8 LYS_ORDBY_SYSTEM | | | |x|x| | | | | | | | | |
+ *         LYS_PRESENCE     |x| | | | | | | | | | | | | |
  *         LYS_UNIQUE       | | |x| | | | | | | | | | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       9 LYS_KEY          | | |x| | | | | | | | | | | |
@@ -593,14 +593,17 @@ struct lysp_deviation {
 #define LYS_STATUS_OBSLT 0x10        /**< status obsolete; */
 #define LYS_STATUS_MASK  0x1C        /**< mask for status value */
 #define LYS_MAND_TRUE    0x20        /**< mandatory true; applicable only to ::lysp_node_choice/::lysc_node_choice,
-                                          ::lysp_node_leaf/::lysc_node_leaf and ::lysp_node_anydata/::lysc_node_anydata */
+                                          ::lysp_node_leaf/::lysc_node_leaf and ::lysp_node_anydata/::lysc_node_anydata.
+                                          The ::lysc_node_leaflist and ::lysc_node_leaflist have this flag in case that min-elements > 0.
+                                          The ::lysc_node_container has this flag if it is not a presence container and it has at least one
+                                          child with LYS_MAND_TRUE. */
 #define LYS_MAND_FALSE   0x40        /**< mandatory false; applicable only to ::lysp_node_choice, ::lysp_node_leaf and ::lysp_node_anydata */
 #define LYS_MAND_MASK    0x60        /**< mask for mandatory values */
 #define LYS_PRESENCE     0x80        /**< flag for presence property of a container, applicable only to ::lysc_node_container */
 #define LYS_UNIQUE       0x80        /**< flag for leafs being part of a unique set, applicable only to ::lysc_node_leaf */
 #define LYS_KEY          0x100       /**< flag for leafs being a key of a list, applicable only to ::lysc_node_leaf */
 #define LYS_FENABLED     0x100       /**< feature enabled flag, applicable only to ::lysc_feature */
-#define LYS_ORDBY_SYSTEM 0x20        /**< ordered-by user lists, applicable only to ::lysc_node_leaflist/::lysp_node_leaflist and
+#define LYS_ORDBY_SYSTEM 0x80        /**< ordered-by user lists, applicable only to ::lysc_node_leaflist/::lysp_node_leaflist and
                                           ::lysc_node_list/::lysp_node_list */
 #define LYS_ORDBY_USER   0x40        /**< ordered-by user lists, applicable only to ::lysc_node_leaflist/::lysp_node_leaflist and
                                           ::lysc_node_list/::lysp_node_list */
@@ -627,7 +630,7 @@ struct lysp_deviation {
                                           with default statement mandatory. In case the default leaf value is taken from type, it is thrown
                                           away when it is refined to be mandatory node. */
 
-#define LYS_FLAGS_COMPILED_MASK 0x7f /**< mask for flags that maps to the compiled structures */
+#define LYS_FLAGS_COMPILED_MASK 0xff /**< mask for flags that maps to the compiled structures */
 /** @} */
 
 /**
