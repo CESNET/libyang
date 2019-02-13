@@ -723,6 +723,56 @@ lys_feature_precompile(struct ly_ctx *ctx, struct lysp_feature *features_p, stru
 }
 
 /**
+ * @brief Check circular dependency of features - feature MUST NOT reference itself (via their if-feature statement).
+ * @param[in] ctx Compile context for logging.
+ * @param[in] feature The feature referenced in if-feature statement (its depfeatures list is being extended)
+ * @param[in] depfeatures The list of depending features of a feature being currently processed (not the one provided as @p feature)
+ * @return LY_SUCCESS if everything is ok.
+ * @return LY_EVALID if the feature references indirectly itself.
+ */
+static LY_ERR
+lys_compile_feature_circular_check(struct lysc_ctx *ctx, struct lysc_feature *feature, struct lysc_feature **depfeatures)
+{
+    LY_ERR ret = LY_EVALID;
+    unsigned int u, v;
+    struct ly_set recursion = {0};
+    struct lysc_feature *drv;
+
+    if (!depfeatures) {
+        return LY_SUCCESS;
+    }
+
+    for (u = 0; u < LY_ARRAY_SIZE(depfeatures); ++u) {
+        if (feature == depfeatures[u]) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                   "Feature \"%s\" is indirectly referenced from itself.", feature->name);
+            goto cleanup;
+        }
+        ly_set_add(&recursion, depfeatures[u], 0);
+    }
+
+    for (v = 0; v < recursion.count; ++v) {
+        drv = recursion.objs[v];
+        if (!drv->depfeatures) {
+            continue;
+        }
+        for (u = 0; u < LY_ARRAY_SIZE(drv->depfeatures); ++u) {
+            if (feature == drv->depfeatures[u]) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                       "Feature \"%s\" is indirectly referenced from itself.", feature->name);
+                goto cleanup;
+            }
+            ly_set_add(&recursion, drv->depfeatures[u], 0);
+        }
+    }
+    ret = LY_SUCCESS;
+
+cleanup:
+    ly_set_erase(&recursion, NULL);
+    return ret;
+}
+
+/**
  * @brief Create pre-compiled features array.
  *
  * See lys_feature_precompile() for more details.
@@ -754,11 +804,19 @@ lys_feature_precompile_finish(struct lysc_ctx *ctx, struct lysp_feature *feature
             for (u = 0; u < LY_ARRAY_SIZE(feature->iffeatures); ++u) {
                 if (feature->iffeatures[u].features) {
                     for (v = 0; v < LY_ARRAY_SIZE(feature->iffeatures[u].features); ++v) {
+                        /* check for circular dependency - direct reference first,... */
+                        if (feature == feature->iffeatures[u].features[v]) {
+                            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                                   "Feature \"%s\" is referenced from itself.", feature->name);
+                            return LY_EVALID;
+                        }
+                        /* ... and indirect circular reference */
+                        LY_CHECK_RET(lys_compile_feature_circular_check(ctx, feature->iffeatures[u].features[v], feature->depfeatures));
+
                         /* add itself into the dependants list */
                         LY_ARRAY_NEW_RET(ctx->ctx, feature->iffeatures[u].features[v]->depfeatures, df, LY_EMEM);
                         *df = feature;
                     }
-                    /* TODO check for circular dependency */
                 }
             }
         }

@@ -354,6 +354,11 @@ test_feature(void **state)
     assert_null(lys_parse_mem(ctx.ctx, "module z{namespace urn:z; prefix z; include sz;feature f1;}", LYS_IN_YANG));
     logbuf_assert("Duplicate identifier \"f1\" of feature statement.");
 
+    assert_null(lys_parse_mem(ctx.ctx, "module aa{namespace urn:aa; prefix aa; feature f1 {if-feature f2;} feature f2 {if-feature f1;}}", LYS_IN_YANG));
+    logbuf_assert("Feature \"f1\" is indirectly referenced from itself.");
+    assert_null(lys_parse_mem(ctx.ctx, "module ab{namespace urn:ab; prefix ab; feature f1 {if-feature f1;}}", LYS_IN_YANG));
+    logbuf_assert("Feature \"f1\" is referenced from itself.");
+
     /* import reference */
     assert_non_null(modp = lys_parse_mem(ctx.ctx, str, LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_feature_enable(modp, "f1"));
