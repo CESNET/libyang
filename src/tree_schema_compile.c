@@ -88,6 +88,14 @@ lysc_ext_instance_dup(struct ly_ctx *ctx, struct lysc_ext_instance *orig)
     return NULL;
 }
 
+/**
+ * @brief Duplicate the compiled pattern structure.
+ *
+ * Instead of duplicating memory, the reference counter in the @p orig is increased.
+ *
+ * @param[in] orig The pattern structure to duplicate.
+ * @return The duplicated structure to use.
+ */
 static struct lysc_pattern*
 lysc_pattern_dup(struct lysc_pattern *orig)
 {
@@ -95,11 +103,23 @@ lysc_pattern_dup(struct lysc_pattern *orig)
     return orig;
 }
 
+/**
+ * @brief Duplicate the array of compiled patterns.
+ *
+ * The sized array itself is duplicated, but the pattern structures are just shadowed by increasing their reference counter.
+ *
+ * @param[in] ctx Libyang context for logging.
+ * @param[in] orig The patterns sized array to duplicate.
+ * @return New sized array as a copy of @p orig.
+ * @return NULL in case of memory allocation error.
+ */
 static struct lysc_pattern**
 lysc_patterns_dup(struct ly_ctx *ctx, struct lysc_pattern **orig)
 {
     struct lysc_pattern **dup = NULL;
     unsigned int u;
+
+    assert(orig);
 
     LY_ARRAY_CREATE_RET(ctx, dup, LY_ARRAY_SIZE(orig), NULL);
     LY_ARRAY_FOR(orig, u) {
@@ -109,11 +129,21 @@ lysc_patterns_dup(struct ly_ctx *ctx, struct lysc_pattern **orig)
     return dup;
 }
 
+/**
+ * @brief Duplicate compiled range structure.
+ *
+ * @param[in] ctx Libyang context for logging.
+ * @param[in] orig The range structure to be duplicated.
+ * @return New compiled range structure as a copy of @p orig.
+ * @return NULL in case of memory allocation error.
+ */
 struct lysc_range*
 lysc_range_dup(struct ly_ctx *ctx, const struct lysc_range *orig)
 {
     struct lysc_range *dup;
     LY_ERR ret;
+
+    assert(orig);
 
     dup = calloc(1, sizeof *dup);
     LY_CHECK_ERR_RET(!dup, LOGMEM(ctx), NULL);
@@ -133,12 +163,22 @@ cleanup:
     return NULL;
 }
 
+/**
+ * @brief Stack for processing if-feature expressions.
+ */
 struct iff_stack {
-    int size;
-    int index;     /* first empty item */
-    uint8_t *stack;
+    int size;      /**< number of items in the stack */
+    int index;     /**< first empty item */
+    uint8_t *stack;/**< stack - array of @ref ifftokens to create the if-feature expression in prefix format */
 };
 
+/**
+ * @brief Add @ref ifftokens into the stack.
+ * @param[in] stack The if-feature stack to use.
+ * @param[in] value One of the @ref ifftokens to store in the stack.
+ * @return LY_EMEM in case of memory allocation error
+ * @return LY_ESUCCESS if the value successfully stored.
+ */
 static LY_ERR
 iff_stack_push(struct iff_stack *stack, uint8_t value)
 {
@@ -151,13 +191,24 @@ iff_stack_push(struct iff_stack *stack, uint8_t value)
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Get (and remove) the last item form the stack.
+ * @param[in] stack The if-feature stack to use.
+ * @return The value from the top of the stack.
+ */
 static uint8_t
 iff_stack_pop(struct iff_stack *stack)
 {
+    assert(stack && stack->index);
+
     stack->index--;
     return stack->stack[stack->index];
 }
 
+/**
+ * @brief Clean up the stack.
+ * @param[in] stack The if-feature stack to use.
+ */
 static void
 iff_stack_clean(struct iff_stack *stack)
 {
@@ -165,6 +216,13 @@ iff_stack_clean(struct iff_stack *stack)
     free(stack->stack);
 }
 
+/**
+ * @brief Store the @ref ifftokens (@p op) on the given position in the 2bits array
+ * (libyang format of the if-feature expression).
+ * @param[in,out] list The 2bits array to modify.
+ * @param[in] op The operand (@ref ifftokens) to store.
+ * @param[in] pos Position (0-based) where to store the given @p op.
+ */
 static void
 iff_setop(uint8_t *list, uint8_t op, int pos)
 {
@@ -180,8 +238,8 @@ iff_setop(uint8_t *list, uint8_t op, int pos)
     *item = (*item) | (op << 2 * (pos % 4));
 }
 
-#define LYS_IFF_LP 0x04 /* ( */
-#define LYS_IFF_RP 0x08 /* ) */
+#define LYS_IFF_LP 0x04 /**< Additional, temporary, value of @ref ifftokens: ( */
+#define LYS_IFF_RP 0x08 /**< Additional, temporary, value of @ref ifftokens: ) */
 
 /**
  * @brief Find a feature of the given name and referenced in the given module.
@@ -271,6 +329,14 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, int UNUSE
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Compile information from the if-feature statement
+ * @param[in] ctx Compile context.
+ * @param[in] value The if-feature argument to process. It is pointer-to-pointer-to-char just to unify the compile functions.
+ * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
+ * @param[in,out] iff Prepared (empty) compiled if-feature structure to fill.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lys_compile_iffeature(struct lysc_ctx *ctx, const char **value, int UNUSED(options), struct lysc_iffeature *iff)
 {
@@ -442,14 +508,14 @@ error:
     return rc;
 }
 
-static struct lysc_node *
-lys_compile_xpath_context(struct lysc_node *start)
-{
-    for (; start && !(start->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_ACTION | LYS_NOTIF));
-            start = start->parent);
-    return start;
-}
-
+/**
+ * @brief Compile information from the when statement
+ * @param[in] ctx Compile context.
+ * @param[in] when_p The parsed when statement structure.
+ * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
+ * @param[out] when Pointer where to store pointer to the created compiled when structure.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, int options, struct lysc_when **when)
 {
@@ -468,6 +534,14 @@ done:
     return ret;
 }
 
+/**
+ * @brief Compile information from the must statement
+ * @param[in] ctx Compile context.
+ * @param[in] must_p The parsed must statement structure.
+ * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
+ * @param[in,out] must Prepared (empty) compiled must structure to fill.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lys_compile_must(struct lysc_ctx *ctx, struct lysp_restr *must_p, int options, struct lysc_must *must)
 {
@@ -487,6 +561,14 @@ done:
     return ret;
 }
 
+/**
+ * @brief Compile information from the import statement
+ * @param[in] ctx Compile context.
+ * @param[in] imp_p The parsed import statement structure.
+ * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
+ * @param[in,out] imp Prepared (empty) compiled import structure to fill.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lys_compile_import(struct lysc_ctx *ctx, struct lysp_import *imp_p, int options, struct lysc_import *imp)
 {
@@ -525,6 +607,18 @@ done:
     return ret;
 }
 
+/**
+ * @brief Compile information from the identity statement
+ *
+ * The backlinks to the identities derived from this one are supposed to be filled later via lys_compile_identity_bases().
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] ident_p The parsed identity statement structure.
+ * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
+ * @param[in] idents List of so far compiled identities to check the name uniqueness.
+ * @param[in,out] ident Prepared (empty) compiled identity structure to fill.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lys_compile_identity(struct lysc_ctx *ctx, struct lysp_ident *ident_p, int options, struct lysc_ident *idents, struct lysc_ident *ident)
 {
@@ -544,6 +638,17 @@ done:
     return ret;
 }
 
+/**
+ * @brief Check circular dependency of identities - identity MUST NOT reference itself (via their base statement).
+ *
+ * The function works in the same way as lys_compile_feature_circular_check() with different structures and error messages.
+ *
+ * @param[in] ctx Compile context for logging.
+ * @param[in] ident The base identity (its derived list is being extended by the identity being currently processed).
+ * @param[in] derived The list of derived identities of the identity being currently processed (not the one provided as @p ident)
+ * @return LY_SUCCESS if everything is ok.
+ * @return LY_EVALID if the identity is derived from itself.
+ */
 static LY_ERR
 lys_compile_identity_circular_check(struct lysc_ctx *ctx, struct lysc_ident *ident, struct lysc_ident **derived)
 {
@@ -724,9 +829,13 @@ lys_feature_precompile(struct ly_ctx *ctx, struct lysp_feature *features_p, stru
 
 /**
  * @brief Check circular dependency of features - feature MUST NOT reference itself (via their if-feature statement).
+ *
+ * The function works in the same way as lys_compile_identity_circular_check() with different structures and error messages.
+ *
  * @param[in] ctx Compile context for logging.
- * @param[in] feature The feature referenced in if-feature statement (its depfeatures list is being extended)
- * @param[in] depfeatures The list of depending features of a feature being currently processed (not the one provided as @p feature)
+ * @param[in] feature The feature referenced in if-feature statement (its depfeatures list is being extended by the feature
+ *            being currently processed).
+ * @param[in] depfeatures The list of depending features of the feature being currently processed (not the one provided as @p feature)
  * @return LY_SUCCESS if everything is ok.
  * @return LY_EVALID if the feature references indirectly itself.
  */
@@ -828,6 +937,16 @@ lys_feature_precompile_finish(struct lysc_ctx *ctx, struct lysp_feature *feature
     return LY_EINT;
 }
 
+/**
+ * @brief Revert compiled list of features back to the precompiled state.
+ *
+ * Function is needed in case the compilation failed and the schema is expected to revert back to the non-compiled status.
+ * The features are supposed to be stored again as off_features in ::lys_module structure.
+ *
+ * @param[in] ctx Compilation context.
+ * @param[in] mod The module structure still holding the compiled (but possibly not finished, only the list of compiled features is taken) schema
+ * and supposed to hold the off_features list.
+ */
 static void
 lys_feature_precompile_revert(struct lysc_ctx *ctx, struct lys_module *mod)
 {
@@ -3228,6 +3347,17 @@ done:
     return ret;
 }
 
+/**
+ * @brief Do some checks and set the default choice's case.
+ *
+ * Selects (and stores into ::lysc_node_choice#dflt) the default case and set LYS_SET_DFLT flag on it.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] dflt Name of the default branch. Can contain even the prefix, but it make sense only in case it is the prefix of the module itself,
+ * not the reference to the imported module.
+ * @param[in,out] ch The compiled choice node, its dflt member is filled to point to the default case node of the choice.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lys_compile_node_choice_dflt(struct lysc_ctx *ctx, const char *dflt, struct lysc_node_choice *ch)
 {
@@ -3332,24 +3462,18 @@ done:
     return ret;
 }
 
-static LY_ERR
-lys_compile_status_check(struct lysc_ctx *ctx, uint16_t node_flags, uint16_t parent_flags)
-{
-    /* check status compatibility with the parent */
-    if ((parent_flags & LYS_STATUS_MASK) > (node_flags & LYS_STATUS_MASK)) {
-        if (node_flags & LYS_STATUS_CURR) {
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                   "A \"current\" status is in conflict with the parent's \"%s\" status.",
-                   (parent_flags & LYS_STATUS_DEPRC) ? "deprecated" : "obsolete");
-        } else { /* LYS_STATUS_DEPRC */
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                   "A \"deprecated\" status is in conflict with the parent's \"obsolete\" status.");
-        }
-        return LY_EVALID;
-    }
-    return LY_SUCCESS;
-}
-
+/**
+ * @brief Compile status information of the given node.
+ *
+ * To simplify getting status of the node, the flags are set following inheritance rules, so all the nodes
+ * has the status correctly set during the compilation.
+ *
+ * @param[in] ctx Compile context
+ * @param[in,out] node Compiled node which status is supposed to be resolved. If the status was set explicitely on the node, it is already set in the
+ * flags value and we just check the compatibility with the parent's status value.
+ * @param[in] parent_flags Flags of the parent node to check/inherit the status value.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lys_compile_status(struct lysc_ctx *ctx, struct lysc_node *node, uint16_t parent_flags)
 {
@@ -3368,11 +3492,37 @@ lys_compile_status(struct lysc_ctx *ctx, struct lysc_node *node, uint16_t parent
             node->flags |= LYS_STATUS_CURR;
         }
     } else if (parent_flags & LYS_STATUS_MASK) {
-        return lys_compile_status_check(ctx, node->flags, parent_flags);
+        /* check status compatibility with the parent */
+        if ((parent_flags & LYS_STATUS_MASK) > (node->flags & LYS_STATUS_MASK)) {
+            if (node->flags & LYS_STATUS_CURR) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                       "A \"current\" status is in conflict with the parent's \"%s\" status.",
+                       (parent_flags & LYS_STATUS_DEPRC) ? "deprecated" : "obsolete");
+            } else { /* LYS_STATUS_DEPRC */
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                       "A \"deprecated\" status is in conflict with the parent's \"obsolete\" status.");
+            }
+            return LY_EVALID;
+        }
     }
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Check uniqness of the node/action/notification name.
+ *
+ * Data nodes, actions/RPCs and Notifications are stored separately (in distinguish lists) in the schema
+ * structures, but they share the namespace so we need to check their name collisions.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] children List (linked list) of data nodes to go through.
+ * @param[in] actions List (sized array) of actions or RPCs to go through.
+ * @param[in] notifs List (sized array) of Notifications to go through.
+ * @param[in] name Name of the item to find in the given lists.
+ * @param[in] exclude Pointer to an object to exclude from the name checking - for the case that the object
+ * with the @p name being checked is already inserted into one of the list so we need to skip it when searching for duplicity.
+ * @return LY_SUCCESS in case of unique name, LY_EEXIST otherwise.
+ */
 static LY_ERR
 lys_compile_node_uniqness(struct lysc_ctx *ctx, const struct lysc_node *children,
                           const struct lysc_action *actions, const struct lysc_notif *notifs,
@@ -3447,8 +3597,33 @@ lys_compile_node_connect(struct lysc_ctx *ctx, struct lysc_node *parent, struct 
 }
 
 /**
+ * @brief Get the XPath context node for the given schema node.
+ * @param[in] start The schema node where the XPath expression appears.
+ * @return The context node to evaluate XPath expression in given schema node.
+ * @return NULL in case the context node is the root node.
+ */
+static struct lysc_node *
+lysc_xpath_context(struct lysc_node *start)
+{
+    for (; start && !(start->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_ACTION | LYS_NOTIF));
+            start = start->parent);
+    return start;
+}
+
+/**
+ * @brief Prepare the case structure in choice node for the new data node.
+ *
+ * It is able to handle implicit as well as explicit cases and the situation when the case has multiple data nodes and the case was already
+ * created in the choice when the first child was processed.
+ *
+ * @param[in] ctx Compile context.
  * @param[in] node_p Node image from the parsed tree. If the case is explicit, it is the LYS_CASE node, but in case of implicit case,
  *                   it is the LYS_CHOICE node or LYS_AUGMENT node.
+ * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
+ * @param[in] ch The compiled choice structure where the new case structures are created (if needed).
+ * @param[in] child The new data node being part of a case (no matter if explicit or implicit).
+ * @return The case structure where the child node belongs to, NULL in case of error. Note that the child is not connected into the siblings list,
+ * it is linked from the case structure only in case it is its first child.
  */
 static struct lysc_node_case*
 lys_compile_node_case(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, struct lysc_node_choice *ch, struct lysc_node *child)
@@ -3494,7 +3669,7 @@ lys_compile_node_case(struct lysc_ctx *ctx, struct lysp_node *node_p, int option
             LY_ARRAY_NEW_GOTO(ctx->ctx, cs->when, when, ret, error);
             ret = lys_compile_when(ctx, node_p->when, options, when);
             LY_CHECK_GOTO(ret, error);
-            (*when)->context = lys_compile_xpath_context(ch->parent);
+            (*when)->context = lysc_xpath_context(ch->parent);
         }
         COMPILE_ARRAY_GOTO(ctx, node_p->iffeatures, cs->iffeatures, options, u, lys_compile_iffeature, ret, error);
     } else {
@@ -3515,6 +3690,17 @@ error:
 #undef UNIQUE_CHECK
 }
 
+/**
+ * @brief Apply refined config to the refine's target node.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] node Refine's target node.
+ * @param[in] rfn Parsed refine information.
+ * @param[in] inheriting Flag (inverted) to check the refined config compatibility with the node's parent. This is
+ * done only on the node for which the refine was created. The function applies also recursively to apply the config change
+ * to the complete subtree and the test is not needed for the subnodes.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lys_compile_refine_config(struct lysc_ctx *ctx, struct lysc_node *node, struct lysp_refine *rfn, int inheriting)
 {
@@ -3548,6 +3734,16 @@ lys_compile_refine_config(struct lysc_ctx *ctx, struct lysc_node *node, struct l
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Set LYS_MAND_TRUE flag for the non-presence container parents.
+ *
+ * A non-presence container is mandatory in case it has at least one mandatory children. This function propagate
+ * the flag to such parents from a mandatory children.
+ *
+ * @param[in] parent A schema node to be examined if the mandatory child make it also mandatory.
+ * @param[in] add Flag to distinguish adding the mandatory flag (new mandatory children appeared) or removing the flag
+ * (mandatory children was removed).
+ */
 void
 lys_compile_mandatory_parents(struct lysc_node *parent, int add)
 {
@@ -3704,7 +3900,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int option
             if (!when_shared) {
                 ret = lys_compile_when(ctx, uses_p->when, options, when);
                 LY_CHECK_GOTO(ret, error);
-                (*when)->context = lys_compile_xpath_context(parent);
+                (*when)->context = lysc_xpath_context(parent);
                 when_shared = *when;
             } else {
                 ++when_shared->refcount;
@@ -4080,7 +4276,7 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, st
         LY_ARRAY_NEW_GOTO(ctx->ctx, node->when, when, ret, error);
         ret = lys_compile_when(ctx, node_p->when, options, when);
         LY_CHECK_GOTO(ret, error);
-        (*when)->context = lys_compile_xpath_context(node);
+        (*when)->context = lysc_xpath_context(node);
     }
     COMPILE_ARRAY_GOTO(ctx, node_p->iffeatures, node->iffeatures, options, u, lys_compile_iffeature, ret, error);
     COMPILE_ARRAY_GOTO(ctx, node_p->exts, node->exts, options, u, lys_compile_ext, ret, error);
@@ -4133,6 +4329,12 @@ error:
     return ret;
 }
 
+/**
+ * @brief Internal sorting process for the lys_compile_augment_sort().
+ * @param[in] aug_p The parsed augment structure to insert into the sorter sized array @p result.
+ * @param[in,out] result Sized array to store the sorted list of augments. The array is expected
+ * to be allocated to hold the complete list, its size is just incremented by adding another item.
+ */
 static void
 lys_compile_augment_sort_(struct lysp_augment *aug_p, struct lysp_augment **result)
 {
@@ -4154,6 +4356,17 @@ lys_compile_augment_sort_(struct lysp_augment *aug_p, struct lysp_augment **resu
     LY_ARRAY_INCREMENT(result);
 }
 
+/**
+ * @brief Sort augments to apply /a/b before /a/b/c (where the /a/b/c was added by the first augment).
+ *
+ * The sorting is based only on the length of the augment's path since it guarantee the correct order
+ * (it doesn't matter the /a/x is done before /a/b/c from the example above).
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] mod_p Parsed module with the global augments (also augments from the submodules are taken).
+ * @param[out] augments Resulting sorted sized array of pointers to the augments.
+ * @return LY_ERR value.
+ */
 LY_ERR
 lys_compile_augment_sort(struct lysc_ctx *ctx, struct lysp_module *mod_p, struct lysp_augment ***augments)
 {
@@ -4290,7 +4503,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, int option
             if (!when_shared) {
                 ret = lys_compile_when(ctx, aug_p->when, options, when);
                 LY_CHECK_GOTO(ret, error);
-                (*when)->context = lys_compile_xpath_context(target);
+                (*when)->context = lysc_xpath_context(target);
                 when_shared = *when;
             } else {
                 ++when_shared->refcount;
@@ -4334,8 +4547,6 @@ lys_compile_submodule(struct lysc_ctx *ctx, struct lysp_include *inc, int option
 error:
     return ret;
 }
-
-
 
 LY_ERR
 lys_compile(struct lys_module *mod, int options)
