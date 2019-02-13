@@ -2121,7 +2121,7 @@ test_uses(void **state)
 
     struct ly_ctx *ctx;
     struct lys_module *mod;
-    struct lysc_node *parent, *child;
+    const struct lysc_node *parent, *child;
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
 
@@ -2177,6 +2177,14 @@ test_uses(void **state)
     assert_true(LYS_STATUS_OBSLT & mod->compiled->data->next->flags);
     logbuf_assert(""); /* no warning about inheriting deprecated flag from uses */
 
+    assert_non_null(mod = lys_parse_mem(ctx, "module d {namespace urn:d;prefix d; grouping grp {container g;}"
+                                        "container top {uses grp {augment g {leaf x {type int8;}}}}}", LYS_IN_YANG));
+    assert_non_null(mod->compiled->data);
+    assert_non_null(child = lysc_node_children(mod->compiled->data));
+    assert_string_equal("g", child->name);
+    assert_non_null(child = lysc_node_children(child));
+    assert_string_equal("x", child->name);
+
     /* invalid */
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;uses missinggrp;}", LYS_IN_YANG));
     logbuf_assert("Grouping \"missinggrp\" referenced by a uses statement not found.");
@@ -2204,6 +2212,13 @@ test_uses(void **state)
     assert_null(lys_parse_mem(ctx, "module fg {namespace urn:fg;prefix fg;grouping grp {leaf m {type string;}}"
                                         "uses grp;leaf m {type int8;}}", LYS_IN_YANG));
     logbuf_assert("Duplicate identifier \"m\" of data definition statement.");
+
+
+    assert_null(lys_parse_mem(ctx, "module gg {namespace urn:gg;prefix gg; grouping grp {container g;}"
+                              "leaf g {type string;}"
+                              "container top {uses grp {augment /g {leaf x {type int8;}}}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid descendant-schema-nodeid value \"/g\" - absolute-schema-nodeid used.");
+
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
@@ -2458,12 +2473,13 @@ test_augment(void **state)
                                         "augment /c {case b {leaf d {type int8;}}}}", LYS_IN_YANG));
     logbuf_assert("Invalid augment (/c) of container node which is not allowed to contain case node \"b\".");
 
-
     assert_null(lys_parse_mem(ctx, "module ee {namespace urn:ee;prefix ee; container top;"
                                         "augment /top {container c {leaf d {mandatory true; type int8;}}}}", LYS_IN_YANG));
     logbuf_assert("Invalid augment (/top) adding mandatory node \"c\" without making it conditional via when statement.");
 
-
+    assert_null(lys_parse_mem(ctx, "module ff {namespace urn:ff;prefix ff; container top;"
+                                        "augment ../top {leaf x {type int8;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid absolute-schema-nodeid value \"../top\" - missing starting \"/\".");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);

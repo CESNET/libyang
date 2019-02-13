@@ -106,6 +106,13 @@ lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodei
         /* descendant-schema-nodeid */
         nodeid_type = "descendant";
         context_module = context_node->module;
+
+        if (*id == '/') {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                   "Invalid descendant-schema-nodeid value \"%.*s\" - absolute-schema-nodeid used.",
+                   nodeid_len ? nodeid_len : strlen(nodeid), nodeid);
+            return LY_EVALID;
+        }
     } else {
         /* absolute-schema-nodeid */
         nodeid_type = "absolute";
@@ -114,7 +121,7 @@ lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodei
         if (*id != '/') {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                    "Invalid absolute-schema-nodeid value \"%.*s\" - missing starting \"/\".",
-                   nodeid_len, nodeid);
+                   nodeid_len ? nodeid_len : strlen(nodeid), nodeid);
             return LY_EVALID;
         }
         ++id;
@@ -162,7 +169,7 @@ lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodei
     } else {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                "Invalid %s-schema-nodeid value \"%.*s\" - unexpected end of expression.",
-               nodeid_type, nodeid_len, nodeid);
+               nodeid_type, nodeid_len ? nodeid_len : strlen(nodeid), nodeid);
     }
 
     return ret;

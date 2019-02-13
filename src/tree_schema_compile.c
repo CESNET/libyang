@@ -1478,7 +1478,6 @@ baseerror:
     parts = NULL;
     ret = LY_SUCCESS;
 cleanup:
-    /* TODO clean up */
     LY_ARRAY_FREE(parts);
 
     return ret;
@@ -3769,6 +3768,195 @@ lys_compile_mandatory_parents(struct lysc_node *parent, int add)
 }
 
 /**
+ * @brief Internal sorting process for the lys_compile_augment_sort().
+ * @param[in] aug_p The parsed augment structure to insert into the sorter sized array @p result.
+ * @param[in,out] result Sized array to store the sorted list of augments. The array is expected
+ * to be allocated to hold the complete list, its size is just incremented by adding another item.
+ */
+static void
+lys_compile_augment_sort_(struct lysp_augment *aug_p, struct lysp_augment **result)
+{
+    unsigned int v;
+    size_t len;
+
+    len = strlen(aug_p->nodeid);
+    LY_ARRAY_FOR(result, v) {
+        if (strlen(result[v]->nodeid) <= len) {
+            continue;
+        }
+        if (v < LY_ARRAY_SIZE(result)) {
+            /* move the rest of array */
+            memmove(&result[v + 1], &result[v], (LY_ARRAY_SIZE(result) - v) * sizeof *result);
+            break;
+        }
+    }
+    result[v] = aug_p;
+    LY_ARRAY_INCREMENT(result);
+}
+
+/**
+ * @brief Sort augments to apply /a/b before /a/b/c (where the /a/b/c was added by the first augment).
+ *
+ * The sorting is based only on the length of the augment's path since it guarantee the correct order
+ * (it doesn't matter the /a/x is done before /a/b/c from the example above).
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] mod_p Parsed module with the global augments (also augments from the submodules are taken).
+ * @param[in] aug_p Parsed sized array of augments to sort (no matter if global or uses's)
+ * @param[in] inc_p In case of global augments, sized array of module includes (submodules) to get global augments from submodules.
+ * @param[out] augments Resulting sorted sized array of pointers to the augments.
+ * @return LY_ERR value.
+ */
+LY_ERR
+lys_compile_augment_sort(struct lysc_ctx *ctx, struct lysp_augment *aug_p, struct lysp_include *inc_p, struct lysp_augment ***augments)
+{
+    struct lysp_augment **result = NULL;
+    unsigned int u, v;
+    size_t count = 0;
+
+    assert(augments);
+
+    /* get count of the augments in module and all its submodules */
+    if (aug_p) {
+        count += LY_ARRAY_SIZE(aug_p);
+    }
+    LY_ARRAY_FOR(inc_p, u) {
+        if (inc_p[u].submodule->augments) {
+            count += LY_ARRAY_SIZE(inc_p[u].submodule->augments);
+        }
+    }
+
+    if (!count) {
+        *augments = NULL;
+        return LY_SUCCESS;
+    }
+    LY_ARRAY_CREATE_RET(ctx->ctx, result, count, LY_EMEM);
+
+    /* sort by the length of schema-nodeid - we need to solve /x before /x/xy. It is not necessary to group them
+     * together, so there can be even /z/y betwwen them. */
+    LY_ARRAY_FOR(aug_p, u) {
+        lys_compile_augment_sort_(&aug_p[u], result);
+    }
+    LY_ARRAY_FOR(inc_p, u) {
+        LY_ARRAY_FOR(inc_p[u].submodule->augments, v) {
+            lys_compile_augment_sort_(&inc_p[u].submodule->augments[v], result);
+        }
+    }
+
+    *augments = result;
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Compile the parsed augment connecting it into its target.
+ *
+ * It is expected that all the data referenced in path are present - augments are ordered so that augment B
+ * targeting data from augment A is being compiled after augment A. Also the modules referenced in the path
+ * are already implemented and compiled.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] aug_p Parsed augment to compile.
+ * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
+ * @param[in] parent Parent node to provide the augment's context. It is NULL for the top level augments and a node holding uses's
+ * children in case of the augmenting uses data.
+ * @return LY_SUCCESS on success.
+ * @return LY_EVALID on failure.
+ */
+LY_ERR
+lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, int options, const struct lysc_node *parent)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lysp_node *node_p, *case_node_p;
+    struct lysc_node *target; /* target target of the augment */
+    struct lysc_node *node;
+    struct lysc_node_case *next_case;
+    struct lysc_when **when, *when_shared;
+    int allow_mandatory = 0;
+
+    ret = lys_resolve_schema_nodeid(ctx, aug_p->nodeid, 0, parent,
+                                               LYS_CONTAINER | LYS_LIST | LYS_CHOICE | LYS_CASE | LYS_INOUT | LYS_NOTIF,
+                                               1, (const struct lysc_node**)&target);
+    if (ret != LY_SUCCESS) {
+        if (ret == LY_EDENIED) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                   "Augment's %s-schema-nodeid \"%s\" refers to a %s node which is not an allowed augment's target.",
+                   parent ? "descendant" : "absolute", aug_p->nodeid, lys_nodetype2str(target->nodetype));
+        }
+        return LY_EVALID;
+    }
+
+    /* check for mandatory nodes
+     * - new cases augmenting some choice can have mandatory nodes
+     * - mandatory nodes are allowed only in case the augmentation is made conditional with a when statement
+     */
+    if (aug_p->when || target->nodetype == LYS_CHOICE) {
+        allow_mandatory = 1;
+    }
+
+    when_shared = NULL;
+    LY_LIST_FOR(aug_p->child, node_p) {
+        /* check if the subnode can be connected to the found target (e.g. case cannot be inserted into container) */
+        if (!(target->nodetype == LYS_CHOICE && node_p->nodetype == LYS_CASE)
+                && !((target->nodetype & (LYS_CONTAINER | LYS_LIST)) && (node_p->nodetype & (LYS_ACTION | LYS_NOTIF)))
+                && !(node_p->nodetype & (LYS_ANYDATA | LYS_CONTAINER | LYS_CHOICE | LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_USES))) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                   "Invalid augment (%s) of %s node which is not allowed to contain %s node \"%s\".",
+                   aug_p->nodeid, lys_nodetype2str(target->nodetype), lys_nodetype2str(node_p->nodetype), node_p->name);
+            return LY_EVALID;
+        }
+
+        /* compile the children */
+        if (node_p->nodetype != LYS_CASE) {
+            LY_CHECK_RET(lys_compile_node(ctx, node_p, options, target, 0));
+        } else {
+            LY_LIST_FOR(((struct lysp_node_case *)node_p)->child, case_node_p) {
+                LY_CHECK_RET(lys_compile_node(ctx, case_node_p, options, target, 0));
+            }
+        }
+
+        /* since the augment node is not present in the compiled tree, we need to pass some of its statements to all its children */
+        if (target->nodetype == LYS_CASE) {
+            /* the compiled node is the last child of the target (but it is a case, so we have to be careful) */
+            next_case = target->next ? (struct lysc_node_case*)target->next : ((struct lysc_node_choice*)target->parent)->cases;
+            for (node = (struct lysc_node*)lysc_node_children(target); node->next && node->next != next_case->child; node = node->next);
+        } else if (target->nodetype == LYS_CHOICE) {
+            /* to pass when statement, we need the last case no matter if it is explicit or implicit case */
+            node = ((struct lysc_node_choice*)target)->cases->prev;
+        } else {
+            /* the compiled node is the last child of the target */
+            node = lysc_node_children(target)->prev;
+        }
+
+        if (!allow_mandatory && (node->flags & LYS_MAND_TRUE)) {
+            node->flags &= ~LYS_MAND_TRUE;
+            lys_compile_mandatory_parents(target, 0);
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                   "Invalid augment (%s) adding mandatory node \"%s\" without making it conditional via when statement.",
+                   aug_p->nodeid, node->name);
+            return LY_EVALID;
+        }
+
+        /* pass augment's when to all the children */
+        if (aug_p->when) {
+            LY_ARRAY_NEW_GOTO(ctx->ctx, node->when, when, ret, error);
+            if (!when_shared) {
+                ret = lys_compile_when(ctx, aug_p->when, options, when);
+                LY_CHECK_GOTO(ret, error);
+                (*when)->context = lysc_xpath_context(target);
+                when_shared = *when;
+            } else {
+                ++when_shared->refcount;
+                (*when) = when_shared;
+            }
+        }
+    }
+    /* TODO actions, notifications */
+
+error:
+    return ret;
+}
+
+/**
  * @brief Compile parsed uses statement - resolve target grouping and connect its content into parent.
  * If present, also apply uses's modificators.
  *
@@ -3803,6 +3991,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int option
     uint32_t min, max;
     struct ly_set refined = {0};
     struct lysc_when **when, *when_shared;
+    struct lysp_augment **augments = NULL;
 
     /* search for the grouping definition */
     found = 0;
@@ -3898,8 +4087,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int option
         if (uses_p->when) {
             LY_ARRAY_NEW_GOTO(ctx->ctx, child->when, when, ret, error);
             if (!when_shared) {
-                ret = lys_compile_when(ctx, uses_p->when, options, when);
-                LY_CHECK_GOTO(ret, error);
+                LY_CHECK_GOTO(lys_compile_when(ctx, uses_p->when, options, when), error);
                 (*when)->context = lysc_xpath_context(parent);
                 when_shared = *when;
             } else {
@@ -3913,7 +4101,11 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int option
         context_node_fake.child->prev = parent ? lysc_node_children(parent)->prev : ctx->mod->compiled->data->prev;
     }
 
-    /* TODO: apply augment */
+    /* sort and apply augments */
+    LY_CHECK_GOTO(lys_compile_augment_sort(ctx, uses_p->augments, NULL, &augments), error);
+    LY_ARRAY_FOR(augments, u) {
+        LY_CHECK_GOTO(lys_compile_augment(ctx, augments[u], options, (struct lysc_node*)&context_node_fake), error);
+    }
 
     /* reload previous context's mod_def */
     ctx->mod_def = mod_old;
@@ -4164,6 +4356,7 @@ error:
     ly_set_rm_index(&ctx->groupings, ctx->groupings.count - 1, NULL);
     assert(ctx->groupings.count == grp_stack_count);
     ly_set_erase(&refined, NULL);
+    LY_ARRAY_FREE(augments);
 
     return ret;
 }
@@ -4330,194 +4523,6 @@ error:
 }
 
 /**
- * @brief Internal sorting process for the lys_compile_augment_sort().
- * @param[in] aug_p The parsed augment structure to insert into the sorter sized array @p result.
- * @param[in,out] result Sized array to store the sorted list of augments. The array is expected
- * to be allocated to hold the complete list, its size is just incremented by adding another item.
- */
-static void
-lys_compile_augment_sort_(struct lysp_augment *aug_p, struct lysp_augment **result)
-{
-    unsigned int v;
-    size_t len;
-
-    len = strlen(aug_p->nodeid);
-    LY_ARRAY_FOR(result, v) {
-        if (strlen(result[v]->nodeid) <= len) {
-            continue;
-        }
-        if (v < LY_ARRAY_SIZE(result)) {
-            /* move the rest of array */
-            memmove(&result[v + 1], &result[v], (LY_ARRAY_SIZE(result) - v) * sizeof *result);
-            break;
-        }
-    }
-    result[v] = aug_p;
-    LY_ARRAY_INCREMENT(result);
-}
-
-/**
- * @brief Sort augments to apply /a/b before /a/b/c (where the /a/b/c was added by the first augment).
- *
- * The sorting is based only on the length of the augment's path since it guarantee the correct order
- * (it doesn't matter the /a/x is done before /a/b/c from the example above).
- *
- * @param[in] ctx Compile context.
- * @param[in] mod_p Parsed module with the global augments (also augments from the submodules are taken).
- * @param[out] augments Resulting sorted sized array of pointers to the augments.
- * @return LY_ERR value.
- */
-LY_ERR
-lys_compile_augment_sort(struct lysc_ctx *ctx, struct lysp_module *mod_p, struct lysp_augment ***augments)
-{
-    struct lysp_augment **result = NULL;
-    unsigned int u, v;
-    size_t count = 0;
-
-    assert(mod_p);
-    assert(augments);
-
-    /* get count of the augments in module and all its submodules */
-    if (mod_p->augments) {
-        count += LY_ARRAY_SIZE(mod_p->augments);
-    }
-    LY_ARRAY_FOR(mod_p->includes, u) {
-        if (mod_p->includes[u].submodule->augments) {
-            count += LY_ARRAY_SIZE(mod_p->includes[u].submodule->augments);
-        }
-    }
-
-    if (!count) {
-        *augments = NULL;
-        return LY_SUCCESS;
-    }
-    LY_ARRAY_CREATE_RET(ctx->ctx, result, count, LY_EMEM);
-
-    /* sort by the length of schema-nodeid - we need to solve /x before /x/xy. It is not necessary to group them
-     * together, so there can be even /z/y betwwen them. */
-    LY_ARRAY_FOR(mod_p->augments, u) {
-        lys_compile_augment_sort_(&mod_p->augments[u], result);
-    }
-    LY_ARRAY_FOR(mod_p->includes, u) {
-        LY_ARRAY_FOR(mod_p->includes[u].submodule->augments, v) {
-            lys_compile_augment_sort_(&mod_p->includes[u].submodule->augments[v], result);
-        }
-    }
-
-    *augments = result;
-    return LY_SUCCESS;
-}
-
-/**
- * @brief Compile the parsed augment connecting it into its target.
- *
- * It is expected that all the data referenced in path are present - augments are ordered so that augment B
- * targeting data from augment A is being compiled after augment A. Also the modules referenced in the path
- * are already implemented and compiled.
- *
- * @param[in] ctx Compile context.
- * @param[in] aug_p Parsed augment to compile.
- * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
- * @param[in] parent Parent node to provide the augment's context. It is NULL for the top level augments and a node holding uses's
- * children in case of the augmenting uses data.
- * @return LY_SUCCESS on success.
- * @return LY_EVALID on failure.
- */
-LY_ERR
-lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, int options, const struct lysc_node *parent)
-{
-    LY_ERR ret = LY_SUCCESS;
-    struct lysp_node *node_p, *case_node_p;
-    struct lysc_node *target; /* target target of the augment */
-    struct lysc_node *node;
-    struct lysc_node_case *next_case;
-    struct lysc_when **when, *when_shared;
-    int allow_mandatory = 0;
-
-    ret = lys_resolve_schema_nodeid(ctx, aug_p->nodeid, 0, parent,
-                                               LYS_CONTAINER | LYS_LIST | LYS_CHOICE | LYS_CASE | LYS_INOUT | LYS_NOTIF,
-                                               1, (const struct lysc_node**)&target);
-    if (ret != LY_SUCCESS) {
-        if (ret == LY_EDENIED) {
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                   "Augment's %s-schema-nodeid \"%s\" refers to a %s node which is not an allowed augment's target.",
-                   parent ? "descendant" : "absolute", aug_p->nodeid, lys_nodetype2str(target->nodetype));
-        }
-        return LY_EVALID;
-    }
-
-    /* check for mandatory nodes
-     * - new cases augmenting some choice can have mandatory nodes
-     * - mandatory nodes are allowed only in case the augmentation is made conditional with a when statement
-     */
-    if (aug_p->when || target->nodetype == LYS_CHOICE) {
-        allow_mandatory = 1;
-    }
-
-    when_shared = NULL;
-    LY_LIST_FOR(aug_p->child, node_p) {
-        /* check if the subnode can be connected to the found target (e.g. case cannot be inserted into container) */
-        if (!(target->nodetype == LYS_CHOICE && node_p->nodetype == LYS_CASE)
-                && !((target->nodetype & (LYS_CONTAINER | LYS_LIST)) && (node_p->nodetype & (LYS_ACTION | LYS_NOTIF)))
-                && !(node_p->nodetype & (LYS_ANYDATA | LYS_CONTAINER | LYS_CHOICE | LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_USES))) {
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                   "Invalid augment (%s) of %s node which is not allowed to contain %s node \"%s\".",
-                   aug_p->nodeid, lys_nodetype2str(target->nodetype), lys_nodetype2str(node_p->nodetype), node_p->name);
-            return LY_EVALID;
-        }
-
-        /* compile the children */
-        if (node_p->nodetype != LYS_CASE) {
-            LY_CHECK_RET(lys_compile_node(ctx, node_p, options, target, 0));
-        } else {
-            LY_LIST_FOR(((struct lysp_node_case *)node_p)->child, case_node_p) {
-                LY_CHECK_RET(lys_compile_node(ctx, case_node_p, options, target, 0));
-            }
-        }
-
-        /* since the augment node is not present in the compiled tree, we need to pass some of its statements to all its children */
-        if (target->nodetype == LYS_CASE) {
-            /* the compiled node is the last child of the target (but it is a case, so we have to be careful) */
-            next_case = target->next ? (struct lysc_node_case*)target->next : ((struct lysc_node_choice*)target->parent)->cases;
-            for (node = (struct lysc_node*)lysc_node_children(target); node->next && node->next != next_case->child; node = node->next);
-        } else if (target->nodetype == LYS_CHOICE) {
-            /* to pass when statement, we need the last case no matter if it is explicit or implicit case */
-            node = ((struct lysc_node_choice*)target)->cases->prev;
-        } else {
-            /* the compiled node is the last child of the target */
-            node = lysc_node_children(target)->prev;
-        }
-
-        if (!allow_mandatory && (node->flags & LYS_MAND_TRUE)) {
-            node->flags &= ~LYS_MAND_TRUE;
-            lys_compile_mandatory_parents(target, 0);
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                   "Invalid augment (%s) adding mandatory node \"%s\" without making it conditional via when statement.",
-                   aug_p->nodeid, node->name);
-            return LY_EVALID;
-        }
-
-        /* pass augment's when to all the children */
-        if (aug_p->when) {
-            LY_ARRAY_NEW_GOTO(ctx->ctx, node->when, when, ret, error);
-            if (!when_shared) {
-                ret = lys_compile_when(ctx, aug_p->when, options, when);
-                LY_CHECK_GOTO(ret, error);
-                (*when)->context = lysc_xpath_context(target);
-                when_shared = *when;
-            } else {
-                ++when_shared->refcount;
-                (*when) = when_shared;
-            }
-        }
-    }
-    /* TODO actions, notifications */
-
-error:
-    return ret;
-}
-
-/**
  * @brief Compile the given YANG submodule into the main module.
  * @param[in] ctx Compile context
  * @param[in] inc Include structure from the main module defining the submodule.
@@ -4619,7 +4624,7 @@ lys_compile(struct lys_module *mod, int options)
     }
 
     /* augments - sort first to cover augments augmenting other augments */
-    ret = lys_compile_augment_sort(&ctx, sp, &augments);
+    ret = lys_compile_augment_sort(&ctx, sp->augments, sp->includes, &augments);
     LY_CHECK_GOTO(ret, error);
     LY_ARRAY_FOR(augments, u) {
         ret = lys_compile_augment(&ctx, augments[u], options, NULL);
