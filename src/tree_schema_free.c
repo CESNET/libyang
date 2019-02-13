@@ -777,6 +777,9 @@ lysc_module_free_(struct lysc_module *module)
 void
 lysc_module_free(struct lysc_module *module, void (*private_destructor)(const struct lysc_node *node, void *priv))
 {
+    /* TODO use the destructor, this just suppress warning about unused parameter */
+    (void) private_destructor;
+
     if (module) {
         lysc_module_free_(module);
     }
