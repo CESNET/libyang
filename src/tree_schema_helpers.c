@@ -1184,7 +1184,7 @@ lysp_find_module(struct ly_ctx *ctx, const struct lysp_module *mod)
 }
 
 enum yang_keyword
-match_keyword(const char *data)
+match_keyword(const char *data, size_t len)
 {
 /* TODO make this function usable in get_keyword function */
 #define MOVE_IN(DATA, COUNT) (data)+=COUNT;
@@ -1192,6 +1192,7 @@ match_keyword(const char *data)
 #define IF_KEYWORD_PREFIX(STR, LEN) if (!strncmp((data), STR, LEN)) {MOVE_IN(data, LEN);
 #define IF_KEYWORD_PREFIX_END }
 
+    const char *start = data;
     enum yang_keyword kw = YANG_NONE;
     /* read the keyword itself */
     switch (*data) {
@@ -1375,6 +1376,10 @@ match_keyword(const char *data)
         break;
     }
 
-    /* TODO important fix whole keyword must be matched */
-    return kw;
+    if (data - start == (long int)len) {
+        return kw;
+    } else {
+        return YANG_NONE;
+    }
+
 }
