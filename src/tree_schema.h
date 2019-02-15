@@ -1264,9 +1264,7 @@ struct lysc_node_case {
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
 
     struct lysc_node *child;         /**< first child node of the case (linked list). Note that all the children of all the sibling cases are linked
-                                          each other as siblings with the parent pointer pointing to the choice node holding the case. To distinguish
-                                          which children node belongs to which case, it is needed to match the first children of the cases while going
-                                          through the children linked list. */
+                                          each other as siblings with the parent pointer pointing to appropriate case node. */
 };
 
 struct lysc_node_choice {

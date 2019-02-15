@@ -3395,6 +3395,9 @@ lys_compile_node_choice_dflt(struct lysc_ctx *ctx, const char *dflt, struct lysc
     }
     /* no mandatory nodes directly under the default case */
     LY_LIST_FOR(ch->dflt->child, iter) {
+        if (iter->parent != (struct lysc_node*)ch->dflt) {
+            break;
+        }
         if (iter->flags & LYS_MAND_TRUE) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
                    "Mandatory node \"%s\" under the default case \"%s\".", iter->name, dflt);
@@ -3446,6 +3449,9 @@ lys_compile_deviation_set_choice_dflt(struct lysc_ctx *ctx, const char *devnodei
 
     /* check that there is no mandatory node */
     LY_LIST_FOR(cs->child, node) {
+        if (node->parent != (struct lysc_node*)cs) {
+            break;
+        }
         if (node->flags & LYS_MAND_TRUE) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
                    "Invalid deviation (%s) adding \"default\" property \"%s\" of choice - "
@@ -3932,7 +3938,6 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, int option
     struct lysp_node *node_p, *case_node_p;
     struct lysc_node *target; /* target target of the augment */
     struct lysc_node *node;
-    struct lysc_node_case *next_case;
     struct lysc_when **when, *when_shared;
     int allow_mandatory = 0;
 
@@ -3977,11 +3982,11 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, int option
             }
         }
 
-        /* since the augment node is not present in the compiled tree, we need to pass some of its statements to all its children */
+        /* since the augment node is not present in the compiled tree, we need to pass some of its statements to all its children,
+         * here we gets the last created node as last children of our parent */
         if (target->nodetype == LYS_CASE) {
-            /* the compiled node is the last child of the target (but it is a case, so we have to be careful) */
-            next_case = target->next ? (struct lysc_node_case*)target->next : ((struct lysc_node_choice*)target->parent)->cases;
-            for (node = (struct lysc_node*)lysc_node_children(target); node->next && node->next != next_case->child; node = node->next);
+            /* the compiled node is the last child of the target (but it is a case, so we have to be careful and stop) */
+            for (node = (struct lysc_node*)lysc_node_children(target); node->next && node->next->parent == node->parent; node = node->next);
         } else if (target->nodetype == LYS_CHOICE) {
             /* to pass when statement, we need the last case no matter if it is explicit or implicit case */
             node = ((struct lysc_node_choice*)target)->cases->prev;
