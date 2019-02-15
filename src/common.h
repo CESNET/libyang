@@ -153,7 +153,7 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_INDEV       LYVE_SYNTAX_YANG, "Deviate \"%s\" does not support keyword \"%s\"."
 #define LY_VCODE_INREGEXP    LYVE_SYNTAX_YANG, "Regular expression \"%s\" is not valid (\"%s\": %s)."
 #define LY_VCODE_XP_EOE      LYVE_XPATH, "Unterminated string delimited with %c (%.15s)."
-#define LY_VCODE_XP_INEXPR   LYVE_XPATH, "Invalid expression 0x%x."
+#define LY_VCODE_XP_INEXPR   LYVE_XPATH, "Invalid character number %u of expression \'%s\'."
 
 /******************************************************************************
  * Context
@@ -184,7 +184,7 @@ struct ly_ctx {
  * @param[in] revision Optional revision of the submodule to find. If not specified, the latest revision is returned.
  * @return Pointer to the specified submodule if it is present in the context.
  */
-struct lysp_module *ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *submodule, const char *revision);
+struct lysp_submodule *ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *submodule, const char *revision);
 
 /******************************************************************************
  * Parsers
@@ -444,7 +444,7 @@ LY_ERR ly_munmap(void *addr, size_t length);
  *
  * @param[in] CTX libyang context for logging.
  * @param[in,out] ARRAY Pointer to the array to create.
- * @param[in] SIZE Number of items the array is supposed to hold. The size of the allocated
+ * @param[in] SIZE Number of the new items the array is supposed to hold. The size of the allocated
  * space is then counted from the type of the ARRAY, so do not provide placeholder void pointers.
  * @param[out] RET Variable to store error code.
  * @param[in] GOTO Label to go in case of error (memory allocation failure).
