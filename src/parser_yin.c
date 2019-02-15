@@ -35,6 +35,14 @@ enum YIN_ARGUMENT {
     YIN_ARG_TAG,
 };
 
+/**
+ * @brief Match argument name.
+ *
+ * @param[in] name String representing name.
+ * @param[in] len Lenght of the name.
+ *
+ * @reurn YIN_ARGUMENT value.
+ */
 enum YIN_ARGUMENT
 match_argument_name(const char *name, size_t len)
 {
@@ -149,6 +157,15 @@ match_argument_name(const char *name, size_t len)
 //     return LY_SUCCESS;
 // }
 
+/**
+ * @brief Parse namespace statement.
+ *
+ * @param[in] xml_ctx xml context.
+ * @param[in, out] data Data to read from.
+ * @param[in, out] mod_p Module to write to.
+ *
+ * @return LY_ERR values.
+ */
 LY_ERR
 parse_namespace(struct lyxml_context *xml_ctx, const char **data, struct lysp_module **mod_p)
 {
@@ -173,7 +190,7 @@ parse_namespace(struct lyxml_context *xml_ctx, const char **data, struct lysp_mo
     (*mod_p)->mod->ns = lydict_insert(xml_ctx->ctx, out, out_len);
     LY_CHECK_ERR_RET(!(*mod_p)->mod->ns, LOGMEM(xml_ctx->ctx), LY_EMEM);
 
-    /* namespace can only have one argument */
+    /* namespace can have only one argument */
     ret = lyxml_get_attribute(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
     LY_CHECK_RET1(ret);
     if (name) {
@@ -184,6 +201,15 @@ parse_namespace(struct lyxml_context *xml_ctx, const char **data, struct lysp_mo
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Parse prefix statement.
+ *
+ * @param[in] xml_ctx Xml context.
+ * @param[in, out] data Data to reda from.
+ * @param[out] mod_p Module to write to.
+ *
+ * @return LY_ERR values.
+ */
 LY_ERR
 parse_prefix(struct lyxml_context *xml_ctx, const char **data, struct lysp_module **mod_p)
 {
@@ -218,6 +244,15 @@ parse_prefix(struct lyxml_context *xml_ctx, const char **data, struct lysp_modul
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Parse module substatements.
+ *
+ * @param[in] xml_ctx xml context.
+ * @param[in, out] data Data to read from.
+ * @param[out] mod Parsed module structure
+ *
+ * @return LY_ERR values.
+ */
 LY_ERR
 parse_mod(struct lyxml_context *xml_ctx, const char **data, struct lysp_module **mod)
 {
@@ -278,56 +313,74 @@ parse_mod(struct lyxml_context *xml_ctx, const char **data, struct lysp_module *
     return ret;
 }
 
-// LY_ERR
-// yin_parse_submodule(struct ly_ctx *ctx, const char *data, struct lysp_submodule **submod)
-// {
-//     LY_ERR ret = LY_SUCCESS;
-//     enum yang_keyword kw = YANG_NONE;
-//     struct lyxml_context xml_ctx;
-//     struct lysp_submodule *mod_p = NULL;
-//     const char *prefix, *name;
-//     size_t prefix_len, name_len;
+/**
+ * @brief Parse yin submodule.
+ *
+ * @param[in] ctx Context of YANG schemas.
+ * @param[in] data Data to read from.
+ * @param[out] submod Module to write to.
+ *
+ * @return LY_ERR values.
+ */
+LY_ERR
+yin_parse_submodule(struct ly_ctx *ctx, const char *data, struct lysp_submodule **submod)
+{
+    LY_ERR ret = LY_SUCCESS;
+    enum yang_keyword kw = YANG_NONE;
+    struct lyxml_context xml_ctx;
+    struct lysp_submodule *mod_p = NULL;
+    const char *prefix, *name;
+    size_t prefix_len, name_len;
 
-//     /* initialize xml context */
-//     memset(&xml_ctx, 0, sizeof xml_ctx);
-//     xml_ctx.ctx = ctx;
-//     xml_ctx.line = 1;
+    /* initialize xml context */
+    memset(&xml_ctx, 0, sizeof xml_ctx);
+    xml_ctx.ctx = ctx;
+    xml_ctx.line = 1;
 
-//     /* check submodule */
-//     ret = lyxml_get_element(&xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-//     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-//     kw = match_keyword(name);
-//     if (kw == YANG_MODULE) {
-//         LOGERR(ctx, LY_EDENIED, "Input data contains module in situation when a submodule is expected.");
-//         ret = LY_EINVAL;
-//         goto cleanup;
-//     } else if (kw != YANG_SUBMODULE) {
-//         /* TODO log error using LOGVAL_YIN macro */
-//         ret = LY_EVALID;
-//         goto cleanup;
-//     }
+    /* check submodule */
+    ret = lyxml_get_element(&xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
+    kw = match_keyword(name);
+    if (kw == YANG_MODULE) {
+        LOGERR(ctx, LY_EDENIED, "Input data contains module in situation when a submodule is expected.");
+        ret = LY_EINVAL;
+        goto cleanup;
+    } else if (kw != YANG_SUBMODULE) {
+        /* TODO log error using LOGVAL_YIN macro */
+        ret = LY_EVALID;
+        goto cleanup;
+    }
 
-//     /* allocate module */
-//     mod_p = calloc(1, sizeof *mod_p);
-//     LY_CHECK_ERR_GOTO(!mod_p, LOGMEM(ctx), cleanup);
-//     mod_p->parsing = 1;
+    /* allocate module */
+    mod_p = calloc(1, sizeof *mod_p);
+    LY_CHECK_ERR_GOTO(!mod_p, LOGMEM(ctx), cleanup);
+    mod_p->parsing = 1;
 
-//     /* parser submodule substatements */
-//     ret = parse_submodule(&xml_ctx, &data, mod_p);
-//     LY_CHECK_GOTO(ret, cleanup);
+    /* parser submodule substatements */
+    //ret = parse_submod(&xml_ctx, &data, mod_p);
+    LY_CHECK_GOTO(ret, cleanup);
 
-//     mod_p->parsing = 0;
-//     *submod = mod_p;
+    mod_p->parsing = 0;
+    *submod = mod_p;
 
-// cleanup:
-//     if (ret) {
-//         lysp_submodule_free(ctx, mod_p);
-//     }
+cleanup:
+    if (ret) {
+        lysp_submodule_free(ctx, mod_p);
+    }
 
-//     lyxml_context_clear(&xml_ctx);
-//     return ret;
-// }
+    lyxml_context_clear(&xml_ctx);
+    return ret;
+}
 
+/**
+ * @brief Parse yin module.
+ *
+ * @param[in] ctx Context of YANG schemas.
+ * @param[in] data Data to read from.
+ * @param[out] mod Module to write to.
+ *
+ * @return LY_ERR values.
+ */
 LY_ERR
 yin_parse_module(struct ly_ctx *ctx, const char *data, struct lys_module *mod)
 {
