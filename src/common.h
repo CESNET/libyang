@@ -154,6 +154,8 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_INREGEXP    LYVE_SYNTAX_YANG, "Regular expression \"%s\" is not valid (\"%s\": %s)."
 #define LY_VCODE_XP_EOE      LYVE_XPATH, "Unterminated string delimited with %c (%.15s)."
 #define LY_VCODE_XP_INEXPR   LYVE_XPATH, "Invalid character number %u of expression \'%s\'."
+#define LY_VCODE_DEV_NODETYPE LYVE_REFERENCE, "Invalid deviation (%s) of %s node - it is not possible to %s \"%s\" property."
+#define LY_VCODE_DEV_NOT_PRESENT LYVE_REFERENCE, "Invalid deviation (%s) %s \"%s\" property \"%s\" which is not present."
 
 /******************************************************************************
  * Context
@@ -463,6 +465,10 @@ LY_ERR ly_munmap(void *addr, size_t length);
 
 #define LY_ARRAY_INCREMENT(ARRAY) \
         ++(*((uint32_t*)(ARRAY) - 1))
+
+#define LY_ARRAY_DECREMENT(ARRAY) \
+        --(*((uint32_t*)(ARRAY) - 1))
+
 /**
  * @brief Free the space allocated for the ([sized array](@ref sizedarrays)).
  *

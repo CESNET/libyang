@@ -483,6 +483,14 @@ void lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type);
 void lysc_iffeature_free(struct ly_ctx *ctx, struct lysc_iffeature *iff);
 
 /**
+ * @brief Free the compiled must structure.
+ * @param[in] ctx libyang context where the string data resides in a dictionary.
+ * @param[in,out] must Compiled must structure to be cleaned.
+ * Since the structure is typically part of the sized array, the structure itself is not freed.
+ */
+void lysc_must_free(struct ly_ctx *ctx, struct lysc_must *must);
+
+/**
  * @brief Free the compiled extension instance structure.
  * @param[in] ctx libyang context where the string data resides in a dictionary.
  * @param[in,out] ext Compiled extension instance structure to be cleaned.

@@ -491,7 +491,7 @@ lysc_when_free(struct ly_ctx *ctx, struct lysc_when **w)
     free(*w);
 }
 
-static void
+void
 lysc_must_free(struct ly_ctx *ctx, struct lysc_must *must)
 {
     lyxp_expr_free(ctx, must->cond);
