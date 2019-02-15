@@ -2542,7 +2542,7 @@ test_deviation(void **state)
     assert_null(((struct lysc_node_leaf*)node)->musts);
 
     ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "module e {yang-version 1.1; namespace urn:e;prefix e;"
-                              "choice a {default a;leaf a {type string;} leaf b {type string;}}"
+                              "choice a {default a;leaf a {type string;} leaf b {type string;} leaf c {type string; mandatory true;}}"
                               "choice b {default a;leaf a {type string;} leaf b {type string;}}"
                               "leaf c {default hello; type string;}"
                               "leaf-list d {default hello; default world; type string;}}");
@@ -2639,8 +2639,18 @@ test_deviation(void **state)
                               "deviation /e:b {deviate add {default e:a;}}}", LYS_IN_YANG));
     logbuf_assert("Invalid deviation (/e:b) adding \"default\" property which already exists (with value \"a\").");
     assert_null(lys_parse_mem(ctx, "module gg2 {namespace urn:gg2;prefix gg2; import e {prefix e;}"
+                              "deviation /e:a {deviate add {default x:a;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/e:a) adding \"default\" property \"x:a\" of choice. "
+                  "The prefix does not match any imported module of the deviation module.");
+    assert_null(lys_parse_mem(ctx, "module gg3 {namespace urn:gg3;prefix gg3; import e {prefix e;}"
+                              "deviation /e:a {deviate add {default a;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/e:a) adding \"default\" property \"a\" of choice - the specified case does not exists.");
+    assert_null(lys_parse_mem(ctx, "module gg4 {namespace urn:gg4;prefix gg4; import e {prefix e;}"
                               "deviation /e:c {deviate add {default hi;}}}", LYS_IN_YANG));
     logbuf_assert("Invalid deviation (/e:c) adding \"default\" property which already exists (with value \"hello\").");
+    assert_null(lys_parse_mem(ctx, "module gg4 {namespace urn:gg4;prefix gg4; import e {prefix e;}"
+                              "deviation /e:a {deviate add {default e:c;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/e:a) adding \"default\" property \"e:c\" of choice - mandatory node \"c\" under the default case.");
 
     assert_null(lys_parse_mem(ctx, "module hh1 {yang-version 1.1; namespace urn:hh1;prefix hh1; import e {prefix e;}"
                               "deviation /e:d {deviate replace {default hi;}}}", LYS_IN_YANG));
