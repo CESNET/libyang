@@ -259,6 +259,7 @@ parse_mod(struct lyxml_context *xml_ctx, const char **data, struct lysp_module *
     enum yang_keyword kw = YANG_NONE;
     const char *prefix, *name;
     size_t prefix_len, name_len;
+    enum yang_module_stmt mod_stmt = Y_MOD_MODULE_HEADER;
 
     char *buf = NULL, *out = NULL;
     size_t buf_len = 0, out_len = 0;
@@ -289,6 +290,64 @@ parse_mod(struct lyxml_context *xml_ctx, const char **data, struct lysp_module *
     }
 
     while (xml_ctx->status == LYXML_ELEMENT || xml_ctx->status == LYXML_ELEM_CONTENT) {
+
+/* TODO ADD error log to macro */
+#define CHECK_ORDER(SECTION) \
+        if (mod_stmt > SECTION) {return LY_EVALID;}mod_stmt = SECTION
+
+        switch (kw) {
+        /* module header */
+        case YANG_NAMESPACE:
+        case YANG_PREFIX:
+            CHECK_ORDER(Y_MOD_MODULE_HEADER);
+            break;
+        case YANG_YANG_VERSION:
+            CHECK_ORDER(Y_MOD_MODULE_HEADER);
+            break;
+        /* linkage */
+        case YANG_INCLUDE:
+        case YANG_IMPORT:
+            CHECK_ORDER(Y_MOD_LINKAGE);
+            break;
+        /* meta */
+        case YANG_ORGANIZATION:
+        case YANG_CONTACT:
+        case YANG_DESCRIPTION:
+        case YANG_REFERENCE:
+            CHECK_ORDER(Y_MOD_META);
+            break;
+
+        /* revision */
+        case YANG_REVISION:
+            CHECK_ORDER(Y_MOD_REVISION);
+            break;
+        /* body */
+        case YANG_ANYDATA:
+        case YANG_ANYXML:
+        case YANG_AUGMENT:
+        case YANG_CHOICE:
+        case YANG_CONTAINER:
+        case YANG_DEVIATION:
+        case YANG_EXTENSION:
+        case YANG_FEATURE:
+        case YANG_GROUPING:
+        case YANG_IDENTITY:
+        case YANG_LEAF:
+        case YANG_LEAF_LIST:
+        case YANG_LIST:
+        case YANG_NOTIFICATION:
+        case YANG_RPC:
+        case YANG_TYPEDEF:
+        case YANG_USES:
+        case YANG_CUSTOM:
+            mod_stmt = Y_MOD_BODY;
+            break;
+        default:
+            /* error will be handled in the next switch */
+            break;
+        }
+#undef CHECK_ORDER
+
         ret = lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
         LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), LY_EMEM);
         kw = match_keyword(name, name_len);
