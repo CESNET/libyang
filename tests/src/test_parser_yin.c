@@ -28,13 +28,14 @@ test_parse(void **state)
     (void)state; /* unused */
 
     struct ly_ctx *ctx;
-    struct lysp_module *mod;
+    struct lys_module *mod;
+    LY_ERR ret = LY_SUCCESS;
 
     ly_ctx_new(NULL, 0, &ctx);
     mod = calloc(1, sizeof(*mod));
     mod->ctx = ctx;
 
-    yin_parse(ctx, "<module name=\"example-foo\"\
+    ret = yin_parse_module(ctx, "<module name=\"example-foo\"\
                     xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\
                     xmlns:foo=\"urn:example:foo\"\
                     xmlns:myext=\"urn:example:extensions\">\
@@ -59,12 +60,13 @@ test_parse(void **state)
                         </leaf>\
                     </list>\
                     </module>",
-                &mod);
+                mod);
 
-    assert_string_equal(mod->name, "example-foo");
-    assert_string_equal(mod->prefix, "foo");
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_string_equal(mod->parsed->mod->name, "example-foo");
+    assert_string_equal(mod->parsed->mod->prefix, "foo");
 
-    lysp_module_free(mod);
+    lys_module_free(mod, NULL);
     ly_ctx_destroy(ctx, NULL);
 }
 

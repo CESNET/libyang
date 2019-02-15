@@ -95,59 +95,59 @@ match_argument_name(const char *name, size_t len)
     return arg;
 }
 
-LY_ERR
-parser_belongs_to(struct lyxml_context *xml_ctx, const char **data, const char **belongsto, const char **prefix, struct lysp_ext **extensions)
-{
-    enum yang_keyword kw = YANG_NONE;
-    LY_ERR ret = LY_SUCCESS;
-    const char *prefix_out, *name;
-    size_t prefix_len, name_len;
+// LY_ERR
+// parser_belongs_to(struct lyxml_context *xml_ctx, const char **data, const char **belongsto, const char **prefix, struct lysp_ext **extensions)
+// {
+//     enum yang_keyword kw = YANG_NONE;
+//     LY_ERR ret = LY_SUCCESS;
+//     const char *prefix_out, *name;
+//     size_t prefix_len, name_len;
 
-    char *buf = NULL, *out = NULL;
-    size_t buf_len = 0, out_len = 0;
-    int dynamic;
+//     char *buf = NULL, *out = NULL;
+//     size_t buf_len = 0, out_len = 0;
+//     int dynamic;
 
-    /* check if belongs-to has argument module */
-    ret = lyxml_get_attribute(xml_ctx, data, &prefix_out, &prefix_len, &name, &name_len);
-    LY_CHECK_RET1(ret);
-    if (match_argument_name(name, name_len) != YIN_ARG_MODULE) {
-        LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Invalid argument name \"%s\", expected \"module\".", name);
-        return LY_EINVAL;
-    }
+//     /* check if belongs-to has argument module */
+//     ret = lyxml_get_attribute(xml_ctx, data, &prefix_out, &prefix_len, &name, &name_len);
+//     LY_CHECK_RET1(ret);
+//     if (match_argument_name(name, name_len) != YIN_ARG_MODULE) {
+//         LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Invalid argument name \"%s\", expected \"module\".", name);
+//         return LY_EINVAL;
+//     }
 
-    /* read content of argument */
-    ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
-    LY_CHECK_RET1(ret);
-    *belongsto = lydict_insert(xml_ctx->ctx, out, out_len);
-    LY_CHECK_ERR_RET(!belongsto, LOGMEM(xml_ctx->ctx), LY_EMEM);
+//     /* read content of argument */
+//     ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
+//     LY_CHECK_RET1(ret);
+//     *belongsto = lydict_insert(xml_ctx->ctx, out, out_len);
+//     LY_CHECK_ERR_RET(!belongsto, LOGMEM(xml_ctx->ctx), LY_EMEM);
 
-    /* read substatements */
-    while (xml_ctx->status == LYXML_ATTRIBUTE) {
-        ret = lyxml_get_attribute(xml_ctx, data, &prefix_out, &prefix_len, &name, &name_len);
-        LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), ret);
-        kw = match_keyword(name);
+//     /* read substatements */
+//     while (xml_ctx->status == LYXML_ATTRIBUTE) {
+//         ret = lyxml_get_attribute(xml_ctx, data, &prefix_out, &prefix_len, &name, &name_len);
+//         LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), ret);
+//         kw = match_keyword(name);
 
-        switch (kw) {
-        case YANG_PREFIX:
-            ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
-            *prefix = lydict_insert(xml_ctx->ctx, out, out_len);
-            break;
-        case YANG_CUSTOM:
-            /* TODO parse extension */
-            break;
-        default:
-            LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Unexpected attribute");
-            return LY_EVALID;
-        }
-    }
+//         switch (kw) {
+//         case YANG_PREFIX:
+//             ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
+//             *prefix = lydict_insert(xml_ctx->ctx, out, out_len);
+//             break;
+//         case YANG_CUSTOM:
+//             /* TODO parse extension */
+//             break;
+//         default:
+//             LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Unexpected attribute");
+//             return LY_EVALID;
+//         }
+//     }
 
-    if (!prefix) {
-        LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Missing prefix");
-        return LY_EVALID;
-    }
+//     if (!prefix) {
+//         LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Missing prefix");
+//         return LY_EVALID;
+//     }
 
-    return LY_SUCCESS;
-}
+//     return LY_SUCCESS;
+// }
 
 LY_ERR
 parse_namespace(struct lyxml_context *xml_ctx, const char **data, struct lysp_module **mod_p)
@@ -170,8 +170,8 @@ parse_namespace(struct lyxml_context *xml_ctx, const char **data, struct lysp_mo
 
     ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
     LY_CHECK_RET1(ret);
-    (*mod_p)->ns = lydict_insert(xml_ctx->ctx, out, out_len);
-    LY_CHECK_ERR_RET(!(*mod_p)->ns, LOGMEM(xml_ctx->ctx), LY_EMEM);
+    (*mod_p)->mod->ns = lydict_insert(xml_ctx->ctx, out, out_len);
+    LY_CHECK_ERR_RET(!(*mod_p)->mod->ns, LOGMEM(xml_ctx->ctx), LY_EMEM);
 
     /* namespace can only have one argument */
     ret = lyxml_get_attribute(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
@@ -205,10 +205,10 @@ parse_prefix(struct lyxml_context *xml_ctx, const char **data, struct lysp_modul
 
     ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
     LY_CHECK_RET1(ret);
-    (*mod_p)->prefix = lydict_insert(xml_ctx->ctx, out, out_len);
-    LY_CHECK_ERR_RET(!(*mod_p)->prefix, LOGMEM(xml_ctx->ctx), LY_EMEM);
+    (*mod_p)->mod->prefix = lydict_insert(xml_ctx->ctx, out, out_len);
+    LY_CHECK_ERR_RET(!(*mod_p)->mod->prefix, LOGMEM(xml_ctx->ctx), LY_EMEM);
 
-    /* prefix element can only have one argument */
+    /* prefix element can have only one argument */
     ret = lyxml_get_attribute(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
     LY_CHECK_RET1(ret);
     if (name) {
@@ -219,7 +219,7 @@ parse_prefix(struct lyxml_context *xml_ctx, const char **data, struct lysp_modul
 }
 
 LY_ERR
-parse_submodule(struct lyxml_context *xml_ctx, const char **data, struct lysp_module **mod_p)
+parse_mod(struct lyxml_context *xml_ctx, const char **data, struct lysp_module **mod)
 {
     LY_ERR ret = LY_SUCCESS;
     enum yang_keyword kw = YANG_NONE;
@@ -230,7 +230,7 @@ parse_submodule(struct lyxml_context *xml_ctx, const char **data, struct lysp_mo
     size_t buf_len = 0, out_len = 0;
     int dynamic;
 
-    /* check if module/submodule has argument "name" */
+    /* check if module has argument "name" */
     ret = lyxml_get_attribute(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
     LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), LY_EMEM);
     if (match_argument_name(name, name_len) != YIN_ARG_NAME) {
@@ -243,8 +243,8 @@ parse_submodule(struct lyxml_context *xml_ctx, const char **data, struct lysp_mo
     }
     ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
     LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), LY_EMEM);
-    (*mod_p)->name = lydict_insert(xml_ctx->ctx, out, out_len);
-    LY_CHECK_ERR_RET(!(*mod_p)->name, LOGMEM(xml_ctx->ctx), LY_EMEM);
+    (*mod)->mod->name = lydict_insert(xml_ctx->ctx, out, out_len);
+    LY_CHECK_ERR_RET(!(*mod)->mod->name, LOGMEM(xml_ctx->ctx), LY_EMEM);
 
     /* read all attributes and their content only for testing */
     while (xml_ctx->status == LYXML_ATTRIBUTE) {
@@ -254,7 +254,6 @@ parse_submodule(struct lyxml_context *xml_ctx, const char **data, struct lysp_mo
         }
     }
 
-
     while (xml_ctx->status == LYXML_ELEMENT || xml_ctx->status == LYXML_ELEM_CONTENT) {
         ret = lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
         LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), LY_EMEM);
@@ -262,15 +261,12 @@ parse_submodule(struct lyxml_context *xml_ctx, const char **data, struct lysp_mo
 
         switch (kw) {
             case YANG_NAMESPACE:
-                ret = parse_namespace(xml_ctx, data, mod_p);
+                ret = parse_namespace(xml_ctx, data, mod);
             break;
             case YANG_PREFIX:
-                ret = parse_prefix(xml_ctx, data, mod_p);
+                ret = parse_prefix(xml_ctx, data, mod);
                 /* TODO change lysp_check_prefix function to work with ctx and not parser_ctx */
                 //LY_CHECK_RET(lysp_check_prefix(&xml_ctx->ctx, *mod_p, &((*mod_p)->prefix)), LY_EVALID);
-            break;
-            case YANG_BELONGS_TO:
-                ret = parser_belongs_to(xml_ctx, data, &(*mod_p)->belongsto, &(*mod_p)->prefix, &(*mod_p)->extensions);
             break;
 
             default:
@@ -282,38 +278,103 @@ parse_submodule(struct lyxml_context *xml_ctx, const char **data, struct lysp_mo
     return ret;
 }
 
+// LY_ERR
+// yin_parse_submodule(struct ly_ctx *ctx, const char *data, struct lysp_submodule **submod)
+// {
+//     LY_ERR ret = LY_SUCCESS;
+//     enum yang_keyword kw = YANG_NONE;
+//     struct lyxml_context xml_ctx;
+//     struct lysp_submodule *mod_p = NULL;
+//     const char *prefix, *name;
+//     size_t prefix_len, name_len;
+
+//     /* initialize xml context */
+//     memset(&xml_ctx, 0, sizeof xml_ctx);
+//     xml_ctx.ctx = ctx;
+//     xml_ctx.line = 1;
+
+//     /* check submodule */
+//     ret = lyxml_get_element(&xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+//     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
+//     kw = match_keyword(name);
+//     if (kw == YANG_MODULE) {
+//         LOGERR(ctx, LY_EDENIED, "Input data contains module in situation when a submodule is expected.");
+//         ret = LY_EINVAL;
+//         goto cleanup;
+//     } else if (kw != YANG_SUBMODULE) {
+//         /* TODO log error using LOGVAL_YIN macro */
+//         ret = LY_EVALID;
+//         goto cleanup;
+//     }
+
+//     /* allocate module */
+//     mod_p = calloc(1, sizeof *mod_p);
+//     LY_CHECK_ERR_GOTO(!mod_p, LOGMEM(ctx), cleanup);
+//     mod_p->parsing = 1;
+
+//     /* parser submodule substatements */
+//     ret = parse_submodule(&xml_ctx, &data, mod_p);
+//     LY_CHECK_GOTO(ret, cleanup);
+
+//     mod_p->parsing = 0;
+//     *submod = mod_p;
+
+// cleanup:
+//     if (ret) {
+//         lysp_submodule_free(ctx, mod_p);
+//     }
+
+//     lyxml_context_clear(&xml_ctx);
+//     return ret;
+// }
+
 LY_ERR
-yin_parse(struct ly_ctx *ctx, const char *data, struct lysp_module **mod_p)
+yin_parse_module(struct ly_ctx *ctx, const char *data, struct lys_module *mod)
 {
     LY_ERR ret = LY_SUCCESS;
     enum yang_keyword kw = YANG_NONE;
     struct lyxml_context xml_ctx;
+    struct lysp_module *mod_p = NULL;
+    const char *prefix, *name;
+    size_t prefix_len, name_len;
 
+    /* initialize xml context */
     memset(&xml_ctx, 0, sizeof xml_ctx);
     xml_ctx.ctx = ctx;
     xml_ctx.line = 1;
 
-    const char *prefix, *name;
-    size_t prefix_len, name_len;
-
-    /* check if root element is module or submodule */
+    /* check submodule */
     ret = lyxml_get_element(&xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    LY_CHECK_GOTO(ret != LY_SUCCESS, error);
+    LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
     kw = match_keyword(name);
-    if (kw != YANG_MODULE && kw != YANG_SUBMODULE) {
-        LOGVAL(xml_ctx.ctx, LY_VLOG_LINE, &xml_ctx.line, LYVE_SYNTAX, "Invalid keyword \"%s\", expected \"module\" or \"submodule\".", name);
-    }
-
     if (kw == YANG_SUBMODULE) {
-        (*mod_p)->submodule = 1;
+        LOGERR(ctx, LY_EDENIED, "Input data contains submodule which cannot be parsed directly without its main module.");
+        ret = LY_EINVAL;
+        goto cleanup;
+    } else if (kw != YANG_MODULE) {
+        /* TODO log error using LOGVAL_YIN macro */
+        ret = LY_EVALID;
+        goto cleanup;
     }
 
-    ret = parse_submodule(&xml_ctx, &data, mod_p);
+    /* allocate module */
+    mod_p = calloc(1, sizeof *mod_p);
+    LY_CHECK_ERR_GOTO(!mod_p, LOGMEM(ctx), cleanup);
+    mod_p->mod = mod;
+    mod_p->parsing = 1;
 
-    lyxml_context_clear(&xml_ctx);
-    return ret;
+    /* parser module substatements */
+    ret = parse_mod(&xml_ctx, &data, &mod_p);
+    LY_CHECK_GOTO(ret, cleanup);
 
-error:
+    mod_p->parsing = 0;
+    mod->parsed = mod_p;
+
+cleanup:
+    if (ret) {
+        lysp_module_free(mod_p);
+    }
+
     lyxml_context_clear(&xml_ctx);
     return ret;
 }
