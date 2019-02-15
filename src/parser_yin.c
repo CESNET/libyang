@@ -49,49 +49,48 @@ match_argument_name(const char *name, size_t len)
     enum YIN_ARGUMENT arg = YIN_ARG_NONE;
     size_t already_read = 0;
 
-#define MOVE_DATA(DATA, COUNT) already_read+=COUNT;
-#define IF_ARG(STR, LEN, STMT) if (!strncmp((name) + already_read, STR, LEN)) {MOVE_DATA(name, LEN);arg=STMT;}
-#define IF_ARG_PREFIX(STR, LEN) if (!strncmp((name) + already_read, STR, LEN)) {MOVE_DATA(name, LEN);
+#define IF_ARG(STR, LEN, STMT) if (!strncmp((name) + already_read, STR, LEN)) {already_read+=LEN;arg=STMT;}
+#define IF_ARG_PREFIX(STR, LEN) if (!strncmp((name) + already_read, STR, LEN)) {already_read+=LEN;
 #define IF_ARG_PREFIX_END }
 
     switch(*name) {
-        case 'c':
-            MOVE_DATA(name, 1);
-            IF_ARG("ondition", 8, YIN_ARG_CONDITION);
+    case 'c':
+        already_read += 1;
+        IF_ARG("ondition", 8, YIN_ARG_CONDITION);
         break;
 
-        case 'd':
-            MOVE_DATA(name, 1);
-            IF_ARG("ate", 3, YIN_ARG_DATE);
+    case 'd':
+        already_read += 1;
+        IF_ARG("ate", 3, YIN_ARG_DATE);
         break;
 
-        case 'm':
-            MOVE_DATA(name, 1);
-            IF_ARG("odule", 5, YIN_ARG_MODULE);
+    case 'm':
+        already_read += 1;
+        IF_ARG("odule", 5, YIN_ARG_MODULE);
         break;
 
-        case 'n':
-            MOVE_DATA(name, 1);
-            IF_ARG("ame", 3, YIN_ARG_NAME);
+    case 'n':
+        already_read += 1;
+        IF_ARG("ame", 3, YIN_ARG_NAME);
         break;
 
-        case 't':
-            MOVE_DATA(name, 1);
-            IF_ARG_PREFIX("a", 1)
-                IF_ARG("g", 1, YIN_ARG_TAG)
-                else IF_ARG("rget-node", 9, YIN_ARG_TARGET_NODE)
-            IF_ARG_PREFIX_END
-            else IF_ARG("ext", 3, YIN_ARG_TEXT)
+    case 't':
+        already_read += 1;
+        IF_ARG_PREFIX("a", 1)
+            IF_ARG("g", 1, YIN_ARG_TAG)
+            else IF_ARG("rget-node", 9, YIN_ARG_TARGET_NODE)
+        IF_ARG_PREFIX_END
+        else IF_ARG("ext", 3, YIN_ARG_TEXT)
         break;
 
-        case 'u':
-            MOVE_DATA(name, 1);
-            IF_ARG("ri", 2, YIN_ARG_URI)
+    case 'u':
+        already_read += 1;
+        IF_ARG("ri", 2, YIN_ARG_URI)
         break;
 
-        case 'v':
-            MOVE_DATA(name, 1);
-            IF_ARG("alue", 4, YIN_ARG_VALUE);
+    case 'v':
+        already_read += 1;
+        IF_ARG("alue", 4, YIN_ARG_VALUE);
         break;
     }
 
@@ -179,20 +178,20 @@ parse_namespace(struct lyxml_context *xml_ctx, const char **data, struct lysp_mo
 
     /* check if namespace has argument uri */
     ret = lyxml_get_attribute(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
-    LY_CHECK_RET1(ret);
+    LY_CHECK_RET(ret);
     if (match_argument_name(name, name_len) != YIN_ARG_URI) {
         LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Invalid argument name \"%s\", expected \"uri\".", name);
         return LY_EVALID;
     }
 
     ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
-    LY_CHECK_RET1(ret);
+    LY_CHECK_RET(ret);
     (*mod_p)->mod->ns = lydict_insert(xml_ctx->ctx, out, out_len);
     LY_CHECK_ERR_RET(!(*mod_p)->mod->ns, LOGMEM(xml_ctx->ctx), LY_EMEM);
 
     /* namespace can have only one argument */
     ret = lyxml_get_attribute(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
-    LY_CHECK_RET1(ret);
+    LY_CHECK_RET(ret);
     if (name) {
         LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Unexpected argument \"%s\".", name);
         return LY_EVALID;
@@ -223,20 +222,20 @@ parse_prefix(struct lyxml_context *xml_ctx, const char **data, struct lysp_modul
 
     /* check if prefix has argument value */
     ret = lyxml_get_attribute(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
-    LY_CHECK_RET1(ret);
+    LY_CHECK_RET(ret);
     if (match_argument_name(name, name_len) != YIN_ARG_VALUE) {
         LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Invalid argument name \"%s\", expected \"value\".", name);
         return LY_EVALID;
     }
 
     ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
-    LY_CHECK_RET1(ret);
+    LY_CHECK_RET(ret);
     (*mod_p)->mod->prefix = lydict_insert(xml_ctx->ctx, out, out_len);
     LY_CHECK_ERR_RET(!(*mod_p)->mod->prefix, LOGMEM(xml_ctx->ctx), LY_EMEM);
 
     /* prefix element can have only one argument */
     ret = lyxml_get_attribute(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
-    LY_CHECK_RET1(ret);
+    LY_CHECK_RET(ret);
     if (name) {
         LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Unexpected argument \"%s\".", name);
         return LY_EVALID;
@@ -292,7 +291,7 @@ parse_mod(struct lyxml_context *xml_ctx, const char **data, struct lysp_module *
     while (xml_ctx->status == LYXML_ELEMENT || xml_ctx->status == LYXML_ELEM_CONTENT) {
         ret = lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
         LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), LY_EMEM);
-        kw = match_keyword(name);
+        kw = match_keyword(name, name_len);
 
         switch (kw) {
             case YANG_NAMESPACE:
@@ -340,7 +339,7 @@ yin_parse_submodule(struct ly_ctx *ctx, const char *data, struct lysp_submodule 
     /* check submodule */
     ret = lyxml_get_element(&xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-    kw = match_keyword(name);
+    kw = match_keyword(name, name_len);
     if (kw == YANG_MODULE) {
         LOGERR(ctx, LY_EDENIED, "Input data contains module in situation when a submodule is expected.");
         ret = LY_EINVAL;
@@ -399,7 +398,7 @@ yin_parse_module(struct ly_ctx *ctx, const char *data, struct lys_module *mod)
     /* check submodule */
     ret = lyxml_get_element(&xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-    kw = match_keyword(name);
+    kw = match_keyword(name, name_len);
     if (kw == YANG_SUBMODULE) {
         LOGERR(ctx, LY_EDENIED, "Input data contains submodule which cannot be parsed directly without its main module.");
         ret = LY_EINVAL;
