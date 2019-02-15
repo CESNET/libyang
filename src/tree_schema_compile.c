@@ -3957,7 +3957,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, int option
      * - new cases augmenting some choice can have mandatory nodes
      * - mandatory nodes are allowed only in case the augmentation is made conditional with a when statement
      */
-    if (aug_p->when || target->nodetype == LYS_CHOICE) {
+    if (aug_p->when || target->nodetype == LYS_CHOICE || ctx->mod == target->module) {
         allow_mandatory = 1;
     }
 
@@ -3995,7 +3995,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, int option
             node = lysc_node_children(target)->prev;
         }
 
-        if (!allow_mandatory && (node->flags & LYS_MAND_TRUE)) {
+        if (!allow_mandatory && (node->flags & LYS_CONFIG_W) && (node->flags & LYS_MAND_TRUE)) {
             node->flags &= ~LYS_MAND_TRUE;
             lys_compile_mandatory_parents(target, 0);
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,

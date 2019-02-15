@@ -2447,14 +2447,25 @@ test_augment(void **state)
     assert_non_null(node = ((struct lysc_node_container*)node)->child);
     assert_string_equal("main", node->name);
 
-    assert_non_null(mod = lys_parse_mem(ctx, "module h {namespace urn:h;prefix h;container top;"
-                                        "augment /top {container p {presence XXX; leaf x {mandatory true;type string;}}}"
-                                        "augment /top {list l {key x;leaf x {type string;}leaf y {mandatory true; type string;}}}}", LYS_IN_YANG));
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "module himp {namespace urn:hi;prefix hi;container top;}");
+    assert_non_null(mod = lys_parse_mem(ctx, "module h {namespace urn:h;prefix h;import himp {prefix hi;}container top;"
+                                        "augment /hi:top {container p {presence XXX; leaf x {mandatory true;type string;}}}"
+                                        "augment /hi:top {list ll {key x;leaf x {type string;}leaf y {mandatory true; type string;}}}"
+                                        "augment /hi:top {leaf l {type string; mandatory true; config false;}}"
+                                        "augment /top {leaf l {type string; mandatory true;}}}", LYS_IN_YANG));
+    assert_non_null(node = mod->compiled->data);
+    assert_non_null(node = ((struct lysc_node_container*)node)->child);
+    assert_string_equal("l", node->name);
+    assert_true(node->flags & LYS_MAND_TRUE);
+    assert_non_null(mod = ly_ctx_get_module_implemented(ctx, "himp"));
     assert_non_null(node = mod->compiled->data);
     assert_non_null(node = ((struct lysc_node_container*)node)->child);
     assert_string_equal("p", node->name);
-    assert_non_null(node->next);
-    assert_string_equal("l", node->next->name);
+    assert_non_null(node = node->next);
+    assert_string_equal("ll", node->name);
+    assert_non_null(node = node->next);
+    assert_string_equal("l", node->name);
+    assert_true(node->flags & LYS_CONFIG_R);
 
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; container c {leaf a {type string;}}"
                                         "augment /x {leaf a {type int8;}}}", LYS_IN_YANG));
@@ -2473,9 +2484,9 @@ test_augment(void **state)
                                         "augment /c {case b {leaf d {type int8;}}}}", LYS_IN_YANG));
     logbuf_assert("Invalid augment (/c) of container node which is not allowed to contain case node \"b\".");
 
-    assert_null(lys_parse_mem(ctx, "module ee {namespace urn:ee;prefix ee; container top;"
-                                        "augment /top {container c {leaf d {mandatory true; type int8;}}}}", LYS_IN_YANG));
-    logbuf_assert("Invalid augment (/top) adding mandatory node \"c\" without making it conditional via when statement.");
+    assert_null(lys_parse_mem(ctx, "module ee {namespace urn:ee;prefix ee; import himp {prefix hi;}"
+                                        "augment /hi:top {container c {leaf d {mandatory true; type int8;}}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid augment (/hi:top) adding mandatory node \"c\" without making it conditional via when statement.");
 
     assert_null(lys_parse_mem(ctx, "module ff {namespace urn:ff;prefix ff; container top;"
                                         "augment ../top {leaf x {type int8;}}}", LYS_IN_YANG));
