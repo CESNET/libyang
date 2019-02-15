@@ -65,6 +65,7 @@ test_parse(void **state)
     assert_int_equal(ret, LY_SUCCESS);
     assert_string_equal(mod->parsed->mod->name, "example-foo");
     assert_string_equal(mod->parsed->mod->prefix, "foo");
+    assert_string_equal(mod->parsed->imports->name, "example-extensions");
 
     lys_module_free(mod, NULL);
     ly_ctx_destroy(ctx, NULL);
