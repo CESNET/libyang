@@ -2536,7 +2536,7 @@ test_deviation(void **state)
     assert_string_equal("centimeters", ((struct lysc_node_leaf*)node)->units);
 
     assert_non_null(mod = lys_parse_mem(ctx, "module d {namespace urn:d;prefix d; leaf c1 {type string; must 1;}"
-                                        "leaf c2 {type string; must 1; must 2;} leaf c3 {type string; must 1; must 3;}"
+                                        "container c2 {presence yes; must 1; must 2;} leaf c3 {type string; must 1; must 3;}"
                                         "deviation /c1 {deviate add {must 3;}}"
                                         "deviation /c2 {deviate delete {must 2;}}"
                                         "deviation /c3 {deviate delete {must 3; must 1;}}}", LYS_IN_YANG));
@@ -2546,17 +2546,18 @@ test_deviation(void **state)
     assert_string_equal("3", ((struct lysc_node_leaf*)node)->musts[1].cond->expr);
     assert_non_null(node = node->next);
     assert_string_equal("c2", node->name);
-    assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_node_leaf*)node)->musts));
-    assert_string_equal("1", ((struct lysc_node_leaf*)node)->musts[0].cond->expr);
+    assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_node_container*)node)->musts));
+    assert_string_equal("1", ((struct lysc_node_container*)node)->musts[0].cond->expr);
     assert_non_null(node = node->next);
     assert_string_equal("c3", node->name);
     assert_null(((struct lysc_node_leaf*)node)->musts);
 
-    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "module e {yang-version 1.1; namespace urn:e;prefix e;"
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "module e {yang-version 1.1; namespace urn:e;prefix e; typedef mytype {type string; default nothing;}"
                               "choice a {default a;leaf a {type string;} leaf b {type string;} leaf c {type string; mandatory true;}}"
                               "choice b {default a;leaf a {type string;} leaf b {type string;}}"
                               "leaf c {default hello; type string;}"
-                              "leaf-list d {default hello; default world; type string;}}");
+                              "leaf-list d {default hello; default world; type string;}"
+                              "leaf c2 {type mytype;} leaf-list d2 {type mytype;}}");
     assert_non_null(lys_parse_mem(ctx, "module f {yang-version 1.1; namespace urn:f;prefix f;import e {prefix x;}"
                                   "deviation /x:a {deviate delete {default a;}}"
                                   "deviation /x:b {deviate delete {default x:a;}}"
@@ -2572,11 +2573,18 @@ test_deviation(void **state)
     assert_non_null(node = node->next);
     assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_node_leaflist*)node)->dflts));
     assert_string_equal("hello", ((struct lysc_node_leaflist*)node)->dflts[0]);
+    assert_non_null(node = node->next);
+    assert_string_equal("nothing", ((struct lysc_node_leaf*)node)->dflt);
+    assert_non_null(node = node->next);
+    assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_node_leaflist*)node)->dflts));
+    assert_string_equal("nothing", ((struct lysc_node_leaflist*)node)->dflts[0]);
 
     assert_non_null(lys_parse_mem(ctx, "module g {yang-version 1.1; namespace urn:g;prefix g;import e {prefix x;}"
                                   "deviation /x:b {deviate add {default x:b;}}"
                                   "deviation /x:c {deviate add {default bye;}}"
-                                  "deviation /x:d {deviate add {default all; default people;}}}", LYS_IN_YANG));
+                                  "deviation /x:d {deviate add {default all; default people;}}"
+                                  "deviation /x:c2 {deviate add {default hi;}}"
+                                  "deviation /x:d2 {deviate add {default hi; default all;}}}", LYS_IN_YANG));
     assert_non_null((mod = ly_ctx_get_module_implemented(ctx, "e")));
     assert_non_null(node = mod->compiled->data);
     assert_null(((struct lysc_node_choice*)node)->dflt);
@@ -2591,6 +2599,13 @@ test_deviation(void **state)
     assert_string_equal("hello", ((struct lysc_node_leaflist*)node)->dflts[0]);
     assert_string_equal("all", ((struct lysc_node_leaflist*)node)->dflts[1]);
     assert_string_equal("people", ((struct lysc_node_leaflist*)node)->dflts[2]);
+    assert_non_null(node = node->next);
+    assert_non_null(((struct lysc_node_leaf*)node)->dflt);
+    assert_string_equal("hi", ((struct lysc_node_leaf*)node)->dflt);
+    assert_non_null(node = node->next);
+    assert_int_equal(2, LY_ARRAY_SIZE(((struct lysc_node_leaflist*)node)->dflts));
+    assert_string_equal("hi", ((struct lysc_node_leaflist*)node)->dflts[0]);
+    assert_string_equal("all", ((struct lysc_node_leaflist*)node)->dflts[1]);
 
     assert_non_null(lys_parse_mem(ctx, "module h {yang-version 1.1; namespace urn:h;prefix h;import e {prefix x;}"
                                   "deviation /x:b {deviate replace {default x:a;}}"
