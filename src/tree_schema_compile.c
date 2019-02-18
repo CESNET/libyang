@@ -3182,6 +3182,78 @@ done:
 }
 
 /**
+ * @brief Compile information about list's uniques.
+ * @param[in] ctx Compile context.
+ * @param[in] context_module Module where the prefixes are going to be resolved.
+ * @param[in] uniques Sized array list of unique statements.
+ * @param[in] list Compiled list where the uniques are supposed to be resolved and stored.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lys_compile_node_list_unique(struct lysc_ctx *ctx, struct lys_module *context_module, const char **uniques, struct lysc_node_list *list)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lysc_node_leaf **key, ***unique;
+    const char *keystr, *delim;
+    size_t len;
+    unsigned int v;
+    int config;
+
+    for (v = 0; v < LY_ARRAY_SIZE(uniques); ++v) {
+        config = -1;
+        LY_ARRAY_NEW_RET(ctx->ctx, list->uniques, unique, LY_EMEM);
+        keystr = uniques[v];
+        while (keystr) {
+            delim = strpbrk(keystr, " \t\n");
+            if (delim) {
+                len = delim - keystr;
+                while (isspace(*delim)) {
+                    ++delim;
+                }
+            } else {
+                len = strlen(keystr);
+            }
+
+            /* unique node must be present */
+            LY_ARRAY_NEW_RET(ctx->ctx, *unique, key, LY_EMEM);
+            ret = lys_resolve_schema_nodeid(ctx, keystr, len, (struct lysc_node*)list, context_module, LYS_LEAF, 0, (const struct lysc_node**)key);
+            if (ret != LY_SUCCESS) {
+                if (ret == LY_EDENIED) {
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                           "Unique's descendant-schema-nodeid \"%.*s\" refers to a %s node instead of a leaf.",
+                           len, keystr, lys_nodetype2str((*key)->nodetype));
+                }
+                return LY_EVALID;
+            }
+
+            /* all referenced leafs must be of the same config type */
+            if (config != -1 && ((((*key)->flags & LYS_CONFIG_W) && config == 0) || (((*key)->flags & LYS_CONFIG_R) && config == 1))) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                       "Unique statement \"%s\" refers to leafs with different config type.", uniques[v]);
+                return LY_EVALID;
+            } else if ((*key)->flags & LYS_CONFIG_W) {
+                config = 1;
+            } else { /* LYS_CONFIG_R */
+                config = 0;
+            }
+
+            /* check status */
+            LY_CHECK_RET(lysc_check_status(ctx, list->flags, list->module, list->name,
+                                           (*key)->flags, (*key)->module, (*key)->name));
+
+            /* mark leaf as unique */
+            (*key)->flags |= LYS_UNIQUE;
+
+            /* next unique value in line */
+            keystr = delim;
+        }
+        /* next unique definition */
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Compile parsed list node information.
  * @param[in] ctx Compile context
  * @param[in] node_p Parsed list node.
@@ -3196,11 +3268,10 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *node_p, int option
     struct lysp_node_list *list_p = (struct lysp_node_list*)node_p;
     struct lysc_node_list *list = (struct lysc_node_list*)node;
     struct lysp_node *child_p;
-    struct lysc_node_leaf **key, ***unique;
+    struct lysc_node_leaf **key;
     size_t len;
-    unsigned int u, v;
+    unsigned int u;
     const char *keystr, *delim;
-    int config;
     LY_ERR ret = LY_SUCCESS;
 
     list->min = list_p->min;
@@ -3294,56 +3365,7 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *node_p, int option
 
     /* uniques */
     if (list_p->uniques) {
-        for (v = 0; v < LY_ARRAY_SIZE(list_p->uniques); ++v) {
-            config = -1;
-            LY_ARRAY_NEW_RET(ctx->ctx, list->uniques, unique, LY_EMEM);
-            keystr = list_p->uniques[v];
-            while (keystr) {
-                delim = strpbrk(keystr, " \t\n");
-                if (delim) {
-                    len = delim - keystr;
-                    while (isspace(*delim)) {
-                        ++delim;
-                    }
-                } else {
-                    len = strlen(keystr);
-                }
-
-                /* unique node must be present */
-                LY_ARRAY_NEW_RET(ctx->ctx, *unique, key, LY_EMEM);
-                ret = lys_resolve_schema_nodeid(ctx, keystr, len, node, LYS_LEAF, 0, (const struct lysc_node**)key);
-                if (ret != LY_SUCCESS) {
-                    if (ret == LY_EDENIED) {
-                        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                               "Unique's descendant-schema-nodeid \"%.*s\" refers to a %s node instead of a leaf.",
-                               len, keystr, lys_nodetype2str((*key)->nodetype));
-                    }
-                    return LY_EVALID;
-                }
-
-                /* all referenced leafs must be of the same config type */
-                if (config != -1 && ((((*key)->flags & LYS_CONFIG_W) && config == 0) || (((*key)->flags & LYS_CONFIG_R) && config == 1))) {
-                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                           "Unique statement \"%s\" refers to leafs with different config type.", list_p->uniques[v]);
-                    return LY_EVALID;
-                } else if ((*key)->flags & LYS_CONFIG_W) {
-                    config = 1;
-                } else { /* LYS_CONFIG_R */
-                    config = 0;
-                }
-
-                /* check status */
-                LY_CHECK_RET(lysc_check_status(ctx, list->flags, list->module, list->name,
-                                               (*key)->flags, (*key)->module, (*key)->name));
-
-                /* mark leaf as unique */
-                (*key)->flags |= LYS_UNIQUE;
-
-                /* next unique value in line */
-                keystr = delim;
-            }
-            /* next unique definition */
-        }
+        LY_CHECK_RET(lys_compile_node_list_unique(ctx, list->module, list_p->uniques, list));
     }
 
     //COMPILE_ARRAY_GOTO(ctx, list_p->actions, list->actions, options, u, lys_compile_action, ret, done);
@@ -3941,7 +3963,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, int option
     struct lysc_when **when, *when_shared;
     int allow_mandatory = 0;
 
-    ret = lys_resolve_schema_nodeid(ctx, aug_p->nodeid, 0, parent,
+    ret = lys_resolve_schema_nodeid(ctx, aug_p->nodeid, 0, parent, parent ? parent->module : ctx->mod_def,
                                                LYS_CONTAINER | LYS_LIST | LYS_CHOICE | LYS_CASE | LYS_INOUT | LYS_NOTIF,
                                                1, (const struct lysc_node**)&target);
     if (ret != LY_SUCCESS) {
@@ -4180,7 +4202,8 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int option
 
     /* apply refine */
     LY_ARRAY_FOR(uses_p->refines, struct lysp_refine, rfn) {
-        LY_CHECK_GOTO(lys_resolve_schema_nodeid(ctx, rfn->nodeid, 0, (struct lysc_node*)&context_node_fake, 0, 0, (const struct lysc_node**)&node),
+        LY_CHECK_GOTO(lys_resolve_schema_nodeid(ctx, rfn->nodeid, 0, (struct lysc_node*)&context_node_fake, ctx->mod,
+                                                0, 0, (const struct lysc_node**)&node),
                       error);
         ly_set_add(&refined, node, LY_SET_OPT_USEASLIST);
 
@@ -4656,12 +4679,13 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p, int opti
     struct ly_set devs_p = {0};
     struct ly_set targets = {0};
     struct lysc_node *target; /* target target of the deviation */
+    struct lysc_node_list *list;
     struct lysp_deviation *dev;
     struct lysp_deviate *d, **dp_new;
     struct lysp_deviate_add *d_add;
     struct lysp_deviate_del *d_del;
     struct lysp_deviate_rpl *d_rpl;
-    unsigned int u, v, x, y;
+    unsigned int u, v, x, y, z;
     struct lysc_deviation {
         const char *nodeid;
         struct lysc_node *target;      /* target node of the deviation */
@@ -4693,7 +4717,7 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p, int opti
         dev = devs_p.objs[u];
 
         /* resolve the target */
-        LY_CHECK_GOTO(lys_resolve_schema_nodeid(ctx, dev->nodeid, 0, NULL, 0, 1, (const struct lysc_node**)&target), cleanup);
+        LY_CHECK_GOTO(lys_resolve_schema_nodeid(ctx, dev->nodeid, 0, NULL, ctx->mod, 0, 1, (const struct lysc_node**)&target), cleanup);
 
         /* insert into the set of targets with duplicity detection */
         i = ly_set_add(&targets, target, 0);
@@ -4825,12 +4849,16 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p, int opti
                         /* TODO */
                     default:
                         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NODETYPE,
-                               devs[u]->nodeid, lys_nodetype2str(target->nodetype), "add", "must");
+                               devs[u]->nodeid, lys_nodetype2str(devs[u]->target->nodetype), "add", "must");
                         goto cleanup;
                     }
                 }
 
                 /* *unique-stmt */
+                if (d_add->uniques) {
+                    DEV_CHECK_NODETYPE(LYS_LIST, "add", "unique");
+                    LY_CHECK_GOTO(lys_compile_node_list_unique(ctx, ctx->mod, d_add->uniques, (struct lysc_node_list*)devs[u]->target), cleanup);
+                }
 
                 /* *default-stmt */
                 if (d_add->dflts) {
@@ -4882,7 +4910,7 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p, int opti
                         break;
                     default:
                         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NODETYPE,
-                               devs[u]->nodeid, lys_nodetype2str(target->nodetype), "add", "default");
+                               devs[u]->nodeid, lys_nodetype2str(devs[u]->target->nodetype), "add", "default");
                         goto cleanup;
                     }
                 }
@@ -4922,12 +4950,54 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p, int opti
                         /* TODO */
                     default:
                         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NODETYPE,
-                               devs[u]->nodeid, lys_nodetype2str(target->nodetype), "delete", "must");
+                               devs[u]->nodeid, lys_nodetype2str(devs[u]->target->nodetype), "delete", "must");
                         goto cleanup;
                     }
                 }
 
                 /* *unique-stmt */
+                if (d_del->uniques) {
+                    DEV_CHECK_NODETYPE(LYS_LIST, "delete", "unique");
+                    list = (struct lysc_node_list*)devs[u]->target; /* shortcut */
+                    LY_ARRAY_FOR(d_del->uniques, x) {
+                        LY_ARRAY_FOR(list->uniques, z) {
+                            for (name = d_del->uniques[x], y = 0; name; name = nodeid, ++y) {
+                                nodeid = strpbrk(name, " \t\n");
+                                if (nodeid) {
+                                    if (strncmp(name, list->uniques[z][y]->name, nodeid - name)
+                                            || list->uniques[z][y]->name[nodeid - name] != '\0') {
+                                        break;
+                                    }
+                                    while (isspace(*nodeid)) {
+                                        ++nodeid;
+                                    }
+                                } else {
+                                    if (strcmp(name, list->uniques[z][y]->name)) {
+                                        break;
+                                    }
+                                }
+                            }
+                            if (!name) {
+                                /* complete match - remove the unique */
+                                LY_ARRAY_DECREMENT(list->uniques);
+                                LY_ARRAY_FREE(list->uniques[z]);
+                                memmove(&list->uniques[z], &list->uniques[z + 1], (LY_ARRAY_SIZE(list->uniques) - z) * (sizeof *list->uniques));
+                                --z;
+                                break;
+                            }
+                        }
+                        if (!list->uniques || z == LY_ARRAY_SIZE(list->uniques)) {
+                            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                                   "Invalid deviation (%s) deleting \"unique\" property \"%s\" which does not match any of the target's property values.",
+                                   devs[u]->nodeid, d_del->uniques[x]);
+                            goto cleanup;
+                        }
+                    }
+                    if (!LY_ARRAY_SIZE(list->uniques)) {
+                        LY_ARRAY_FREE(list->uniques);
+                        list->uniques = NULL;
+                    }
+                }
 
                 /* *default-stmt */
                 if (d_del->dflts) {
@@ -4979,7 +5049,7 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p, int opti
                         break;
                     default:
                         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NODETYPE,
-                               devs[u]->nodeid, lys_nodetype2str(target->nodetype), "delete", "default");
+                               devs[u]->nodeid, lys_nodetype2str(devs[u]->target->nodetype), "delete", "default");
                         goto cleanup;
                     }
                 }
@@ -5019,7 +5089,7 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p, int opti
                         break;
                     default:
                         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NODETYPE,
-                               devs[u]->nodeid, lys_nodetype2str(target->nodetype), "replace", "default");
+                               devs[u]->nodeid, lys_nodetype2str(devs[u]->target->nodetype), "replace", "default");
                         goto cleanup;
                     }
                 }

@@ -274,8 +274,8 @@ LY_ERR lys_parse_nodeid(const char **id, const char **prefix, size_t *prefix_len
  * @param[in] nodeid Descendant-schema-nodeid (according to the YANG grammar)
  * @param[in] nodeid_len Length of the given nodeid, if it is not NULL-terminated string.
  * @param[in] context_node Node where the nodeid is specified to correctly resolve prefixes and to start searching.
- * If no context node is provided, the nodeid is actually expected to be the absolute schema node id and the module
- * to resolve prefixes and to start searching is taken from ctx's mod_def.
+ * If no context node is provided, the nodeid is actually expected to be the absolute schema node .
+ * @param[in] context_module Explicit module to resolve prefixes in @nodeid.
  * @param[in] nodetype Optional (can be 0) restriction for target's nodetype. If target exists, but does not match
  * the given nodetype, LY_EDENIED is returned (and target is provided), but no error message is printed.
  * The value can be even an ORed value to allow multiple nodetypes.
@@ -284,7 +284,7 @@ LY_ERR lys_parse_nodeid(const char **id, const char **prefix, size_t *prefix_len
  * @return LY_ERR values - LY_ENOTFOUND, LY_EVALID, LY_EDENIED or LY_SUCCESS.
  */
 LY_ERR lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodeid_len, const struct lysc_node *context_node,
-                                 int nodetype, int implement, const struct lysc_node **target);
+                                 const struct lys_module *context_module, int nodetype, int implement, const struct lysc_node **target);
 
 /**
  * @brief Find the module referenced by prefix in the provided mod.

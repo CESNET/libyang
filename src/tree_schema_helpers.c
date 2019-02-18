@@ -86,13 +86,12 @@ lys_parse_nodeid(const char **id, const char **prefix, size_t *prefix_len, const
 
 LY_ERR
 lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodeid_len, const struct lysc_node *context_node,
-                          int nodetype, int implement, const struct lysc_node **target)
+                          const struct lys_module *context_module, int nodetype, int implement, const struct lysc_node **target)
 {
     LY_ERR ret = LY_EVALID;
     const char *name, *prefix, *id;
-    const struct lysc_node *context;
     size_t name_len, prefix_len;
-    const struct lys_module *mod, *context_module;
+    const struct lys_module *mod;
     const char *nodeid_type;
 
     assert(nodeid);
@@ -100,12 +99,10 @@ lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodei
     *target = NULL;
 
     id = nodeid;
-    context = context_node;
 
     if (context_node) {
         /* descendant-schema-nodeid */
         nodeid_type = "descendant";
-        context_module = context_node->module;
 
         if (*id == '/') {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
@@ -116,7 +113,6 @@ lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodei
     } else {
         /* absolute-schema-nodeid */
         nodeid_type = "absolute";
-        context_module = ctx->mod_def;
 
         if (*id != '/') {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
@@ -143,8 +139,8 @@ lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodei
             /* make the module implemented */
             ly_ctx_module_implement_internal(ctx->ctx, (struct lys_module*)mod, 2);
         }
-        context = lys_child(context, mod, name, name_len, 0, LYS_GETNEXT_NOSTATECHECK | LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE);
-        if (!context) {
+        context_node = lys_child(context_node, mod, name, name_len, 0, LYS_GETNEXT_NOSTATECHECK | LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE);
+        if (!context_node) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                    "Invalid %s-schema-nodeid value \"%.*s\" - target node not found.", nodeid_type, id - nodeid, nodeid);
             return LY_ENOTFOUND;
@@ -162,8 +158,8 @@ lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodei
     }
 
     if (ret == LY_SUCCESS) {
-        *target = context;
-        if (nodetype && !(context->nodetype & nodetype)) {
+        *target = context_node;
+        if (nodetype && !(context_node->nodetype & nodetype)) {
             return LY_EDENIED;
         }
     } else {

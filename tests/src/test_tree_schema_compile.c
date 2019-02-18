@@ -2504,6 +2504,7 @@ test_deviation(void **state)
     struct ly_ctx *ctx;
     struct lys_module *mod;
     const struct lysc_node *node;
+    const struct lysc_node_list *list;
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
 
@@ -2620,6 +2621,28 @@ test_deviation(void **state)
     assert_non_null(((struct lysc_node_leaf*)node)->dflt);
     assert_string_equal("hello", ((struct lysc_node_leaf*)node)->dflt);
 
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "module i {namespace urn:i;prefix i;"
+                              "list l1 {key a; leaf a {type string;} leaf b {type string;} leaf c {type string;}}"
+                              "list l2 {key a; unique \"b c\"; unique \"d\"; leaf a {type string;} leaf b {type string;}"
+                              "         leaf c {type string;} leaf d {type string;}}}");
+    assert_non_null(lys_parse_mem(ctx, "module j {namespace urn:j;prefix j;import i {prefix i;}"
+                                  "augment /i:l1 {leaf j_c {type string;}}"
+                                  "deviation /i:l1 {deviate add {unique \"i:b j_c\"; }}"
+                                  "deviation /i:l1 {deviate add {unique \"i:c\";}}"
+                                  "deviation /i:l2 {deviate delete {unique \"d\"; unique \"b c\";}}}", LYS_IN_YANG));
+    assert_non_null((mod = ly_ctx_get_module_implemented(ctx, "i")));
+    assert_non_null(list = (struct lysc_node_list*)mod->compiled->data);
+    assert_string_equal("l1", list->name);
+    assert_int_equal(2, LY_ARRAY_SIZE(list->uniques));
+    assert_int_equal(2, LY_ARRAY_SIZE(list->uniques[0]));
+    assert_string_equal("b", list->uniques[0][0]->name);
+    assert_string_equal("j_c", list->uniques[0][1]->name);
+    assert_int_equal(1, LY_ARRAY_SIZE(list->uniques[1]));
+    assert_string_equal("c", list->uniques[1][0]->name);
+    assert_non_null(list = (struct lysc_node_list*)list->next);
+    assert_string_equal("l2", list->name);
+    assert_null(list->uniques);
+
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;import a {prefix a;}"
                               "deviation /a:top/a:z {deviate not-supported;}}", LYS_IN_YANG));
     logbuf_assert("Invalid absolute-schema-nodeid value \"/a:top/a:z\" - target node not found.");
@@ -2682,6 +2705,18 @@ test_deviation(void **state)
                               "deviation /e:d {deviate replace {default hi;}}}", LYS_IN_YANG));
     logbuf_assert("Invalid deviation (/e:d) of leaf-list node - it is not possible to replace \"default\" property.");
 
+    assert_null(lys_parse_mem(ctx, "module ii1 {namespace urn:ii1;prefix ii1; import i {prefix i;}"
+                              "deviation /i:l1 {deviate delete {unique x;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/i:l1) deleting \"unique\" property \"x\" which does not match any of the target's property values.");
+    assert_null(lys_parse_mem(ctx, "module ii2 {namespace urn:ii2;prefix ii2; import i {prefix i;} leaf x { type string;}"
+                              "deviation /i:l2 {deviate delete {unique d;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/i:l2) deleting \"unique\" property \"d\" which does not match any of the target's property values.");
+    assert_null(lys_parse_mem(ctx, "module ii3 {namespace urn:ii3;prefix ii3; leaf x { type string;}"
+                              "deviation /x {deviate delete {unique d;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/x) of leaf node - it is not possible to delete \"unique\" property.");
+    assert_null(lys_parse_mem(ctx, "module ii4 {namespace urn:ii4;prefix ii4; leaf x { type string;}"
+                              "deviation /x {deviate add {unique d;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/x) of leaf node - it is not possible to add \"unique\" property.");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
