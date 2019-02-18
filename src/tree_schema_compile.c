@@ -4616,8 +4616,8 @@ error:
 static void
 lysc_disconnect(struct lysc_node *node)
 {
-    struct lysc_node *parent, *child, *nextchild;
-    struct lysc_node_case *cs;
+    struct lysc_node *parent, *child, *prev = NULL, *next;
+    struct lysc_node_case *cs = NULL;
     int remove_cs = 0;
 
     parent = node->parent;
@@ -4627,27 +4627,38 @@ lysc_disconnect(struct lysc_node *node)
         return;
     }
     if (parent->nodetype == LYS_CHOICE) {
-        if (node->nodetype == LYS_CASE) {
-            cs = (struct lysc_node_case*)node;
-        } else {
-            /* disconnecting some node in a case */
-            for (cs = ((struct lysc_node_choice*)parent)->cases; cs; cs = (struct lysc_node_case*)cs->next) {
-                nextchild = cs->next ? ((struct lysc_node_case*)cs->next)->child : NULL;
-                for (child = cs->child; child != nextchild && child != node; child = child->next);
-                if (child != nextchild) {
-                    /* we are at the node being removed */
-                    if (cs->child == node) {
-                        if (node->next != nextchild) {
-                            cs->child = node->next;
-                        } else {
-                            /* case with a single child -> remove also the case */
-                            remove_cs = 1;
-                        }
+        cs = (struct lysc_node_case*)node;
+    } else if (parent->nodetype == LYS_CASE) {
+        /* disconnecting some node in a case */
+        cs = (struct lysc_node_case*)parent;
+        parent = cs->parent;
+        for (child = cs->child; child && child->parent == (struct lysc_node*)cs; child = child->next) {
+            if (child == node) {
+                if (cs->child == child) {
+                    if (!child->next || child->next->parent != (struct lysc_node*)cs) {
+                        /* case with a single child -> remove also the case */
+                        child->parent = NULL;
+                        remove_cs = 1;
+                    } else {
+                        cs->child = child->next;
                     }
                 }
+                break;
             }
         }
-        if (cs) {
+        if (!remove_cs) {
+            cs = NULL;
+        }
+    } else if (lysc_node_children(parent) == node) {
+        *lysc_node_children_p(parent) = node->next;
+    }
+
+    if (cs) {
+        if (remove_cs) {
+            /* cs has only one child which is being also removed */
+            lysc_disconnect((struct lysc_node*)cs);
+            lysc_node_free(cs->module->ctx, (struct lysc_node*)cs);
+        } else {
             if (((struct lysc_node_choice*)parent)->dflt == cs) {
                 /* default case removed */
                 ((struct lysc_node_choice*)parent)->dflt = NULL;
@@ -4656,19 +4667,45 @@ lysc_disconnect(struct lysc_node *node)
                 /* first case removed */
                 ((struct lysc_node_choice*)parent)->cases = (struct lysc_node_case*)cs->next;
             }
-            if (remove_cs) {
-                lysc_disconnect((struct lysc_node*)cs);
-                lysc_node_free(cs->module->ctx, (struct lysc_node*)cs);
+            if (cs->child) {
+                /* cs will be removed and disconnected from its siblings, but we have to take care also about its children */
+                if (cs->child->prev->parent != (struct lysc_node*)cs) {
+                    prev = cs->child->prev;
+                } /* else all the children are under a single case */
+                LY_LIST_FOR_SAFE(cs->child, next, child) {
+                    if (child->parent != (struct lysc_node*)cs) {
+                        break;
+                    }
+                    lysc_node_free(node->module->ctx, child);
+                }
+                if (prev) {
+                    if (prev->next) {
+                        prev->next = child;
+                    }
+                    if (child) {
+                        child->prev = prev;
+                    } else {
+                        /* link from the first child under the cases */
+                        ((struct lysc_node_choice*)cs->parent)->cases->child->prev = prev;
+                    }
+                }
             }
         }
-    } else if (lysc_node_children(parent) == node) {
-        *lysc_node_children_p(node) = node->next;
     }
 
     /* siblings */
-    node->prev->next = node->next;
+    if (node->prev->next) {
+        node->prev->next = node->next;
+    }
     if (node->next) {
         node->next->prev = node->prev;
+    } else if (node->nodetype != LYS_CASE) {
+        child = (struct lysc_node*)lysc_node_children(parent);
+        if (child) {
+            child->prev = node->prev;
+        }
+    } else if (((struct lysc_node_choice*)parent)->cases) {
+        ((struct lysc_node_choice*)parent)->cases->prev = node->prev;
     }
 }
 
