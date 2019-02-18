@@ -193,7 +193,8 @@ static int
 parse_node_identifier(const char *id, const char **mod_name, int *mod_name_len, const char **name, int *nam_len,
                       int *all_desc, int extended)
 {
-    int parsed = 0, ret, all_desc_local = 0;
+    int parsed = 0, ret, all_desc_local = 0, first_id_len;
+    const char *first_id;
 
     assert(id);
     assert((mod_name && mod_name_len) || (!mod_name && !mod_name_len));
@@ -283,10 +284,8 @@ standard_id:
         return ret;
     }
 
-    if (mod_name) {
-        *mod_name = id;
-        *mod_name_len = ret;
-    }
+    first_id = id;
+    first_id_len = ret;
 
     parsed += ret;
     id += ret;
@@ -298,18 +297,9 @@ standard_id:
 
     /* there isn't */
     } else {
-        if (name && mod_name) {
-            *name = *mod_name;
-        }
-        if (mod_name) {
-            *mod_name = NULL;
-        }
-
-        if (nam_len && mod_name_len) {
-            *nam_len = *mod_name_len;
-        }
-        if (mod_name_len) {
-            *mod_name_len = 0;
+        if (name) {
+            *name = first_id;
+            *nam_len = first_id_len;
         }
 
         return parsed;
@@ -317,15 +307,19 @@ standard_id:
 
     /* identifier (node name) */
     if ((ret = parse_identifier(id)) < 1) {
-        return -parsed+ret;
+        return -parsed + ret;
     }
 
+    if (mod_name) {
+        *mod_name = first_id;
+        *mod_name_len = first_id_len;
+    }
     if (name) {
         *name = id;
         *nam_len = ret;
     }
 
-    return parsed+ret;
+    return parsed + ret;
 }
 
 /**
