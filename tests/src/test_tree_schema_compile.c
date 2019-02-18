@@ -2509,9 +2509,15 @@ test_deviation(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
 
     ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "module a {namespace urn:a;prefix a;"
-                              "container top {leaf a {type string;} leaf b {type string;} leaf c {type string;}}}");
+                              "container top {leaf a {type string;} leaf b {type string;} leaf c {type string;}}"
+                              "choice ch {default c; case b {leaf b{type string;}} case a {leaf a{type string;} leaf x {type string;}}"
+                              " case c {leaf c{type string;}}}}");
     assert_non_null(lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;import a {prefix a;}"
-                                  "deviation /a:top/a:b {deviate not-supported;}}", LYS_IN_YANG));
+                                  "deviation /a:top/a:b {deviate not-supported;}"
+                                  "deviation /a:ch/a:a/a:x {deviate not-supported;}"
+                                  "deviation /a:ch/a:c/a:c {deviate not-supported;}"
+                                  "deviation /a:ch/a:b {deviate not-supported;}"
+                                  "deviation /a:ch/a:a/a:a {deviate not-supported;}}", LYS_IN_YANG));
     assert_non_null((mod = ly_ctx_get_module_implemented(ctx, "a")));
     assert_non_null(node = mod->compiled->data);
     assert_string_equal(node->name, "top");
@@ -2519,7 +2525,11 @@ test_deviation(void **state)
     assert_string_equal(node->name, "a");
     assert_non_null(node = node->next);
     assert_string_equal(node->name, "c");
-    assert_null(node->next);
+    assert_null(node = node->next);
+    assert_non_null(node = mod->compiled->data->next);
+    assert_string_equal("ch", node->name);
+    assert_null(((struct lysc_node_choice*)node)->dflt);
+    assert_null(((struct lysc_node_choice*)node)->cases);
 
     assert_non_null(mod = lys_parse_mem(ctx, "module c {namespace urn:c;prefix c; typedef mytype {type string; units kilometers;}"
                                         "leaf c1 {type mytype;} leaf c2 {type mytype; units meters;} leaf c3 {type mytype; units meters;}"
@@ -2643,9 +2653,14 @@ test_deviation(void **state)
     assert_string_equal("l2", list->name);
     assert_null(list->uniques);
 
-    assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;import a {prefix a;}"
+    assert_null(lys_parse_mem(ctx, "module aa1 {namespace urn:aa1;prefix aa1;import a {prefix a;}"
                               "deviation /a:top/a:z {deviate not-supported;}}", LYS_IN_YANG));
     logbuf_assert("Invalid absolute-schema-nodeid value \"/a:top/a:z\" - target node not found.");
+    assert_non_null(lys_parse_mem(ctx, "module aa2 {namespace urn:aa2;prefix aa2;import a {prefix a;}"
+                              "deviation /a:top/a:a {deviate not-supported;}"
+                              "deviation /a:top/a:a {deviate add {default error;}}}", LYS_IN_YANG));
+    /* warning */
+    logbuf_assert("Useless multiple (2) deviates on node \"/a:top/a:a\" since the node is not-supported.");
 
     assert_null(lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb;import a {prefix a;}"
                               "deviation a:top/a:a {deviate not-supported;}}", LYS_IN_YANG));
@@ -2683,6 +2698,15 @@ test_deviation(void **state)
                               "deviation /e:b {deviate delete {default x:a;}}}", LYS_IN_YANG));
     logbuf_assert("Invalid deviation (/e:b) deleting \"default\" property \"x:a\" of choice. "
                   "The prefix does not match any imported module of the deviation module.");
+    assert_null(lys_parse_mem(ctx, "module ff3 {namespace urn:ff3;prefix ff3; import e {prefix e;}"
+                              "deviation /e:b {deviate delete {default e:b;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/e:b) deleting \"default\" property \"e:b\" of choice does not match the default case name \"a\".");
+    assert_null(lys_parse_mem(ctx, "module ff4 {namespace urn:ff4;prefix ff4; import e {prefix e;}"
+                              "deviation /e:b {deviate delete {default ff4:a;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/e:b) deleting \"default\" property \"ff4:a\" of choice. The prefix does not match the default case's module.");
+    assert_null(lys_parse_mem(ctx, "module ff5 {namespace urn:ff5;prefix ff5; anyxml a;"
+                              "deviation /a {deviate delete {default x;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/a) of anyxml node - it is not possible to delete \"default\" property.");
 
     assert_null(lys_parse_mem(ctx, "module gg1 {namespace urn:gg1;prefix gg1; import e {prefix e;}"
                               "deviation /e:b {deviate add {default e:a;}}}", LYS_IN_YANG));
@@ -2700,6 +2724,9 @@ test_deviation(void **state)
     assert_null(lys_parse_mem(ctx, "module gg4 {namespace urn:gg4;prefix gg4; import e {prefix e;}"
                               "deviation /e:a {deviate add {default e:c;}}}", LYS_IN_YANG));
     logbuf_assert("Invalid deviation (/e:a) adding \"default\" property \"e:c\" of choice - mandatory node \"c\" under the default case.");
+    assert_null(lys_parse_mem(ctx, "module gg5 {namespace urn:gg5;prefix gg5; leaf x {type string; mandatory true;}"
+                              "deviation /x {deviate add {default error;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/x) adding \"default\" property \"error\" into a mandatory node.");
 
     assert_null(lys_parse_mem(ctx, "module hh1 {yang-version 1.1; namespace urn:hh1;prefix hh1; import e {prefix e;}"
                               "deviation /e:d {deviate replace {default hi;}}}", LYS_IN_YANG));
