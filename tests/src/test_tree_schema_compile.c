@@ -2334,7 +2334,7 @@ test_refine(void **state)
 
     assert_null(lys_parse_mem(ctx, "module ff {namespace urn:ff;prefix ff;import grp {prefix g;}"
                                         "uses g:grp {refine c/ch/a/a {mandatory true;}}}", LYS_IN_YANG));
-    logbuf_assert("Invalid refine of mandatory in \"c/ch/a/a\" - leaf under the default case.");
+    logbuf_assert("Invalid refine of mandatory in \"c/ch/a/a\" under the default case.");
 
     assert_null(lys_parse_mem(ctx, "module gg {namespace urn:gg;prefix gg;import grp {prefix g;}"
                                         "uses g:grp {refine c/x {default hello;}}}", LYS_IN_YANG));
@@ -2684,6 +2684,20 @@ test_deviation(void **state)
     assert_string_equal("x", node->name);
     assert_true(node->flags & LYS_CONFIG_W);
 
+    assert_non_null(mod = lys_parse_mem(ctx, "module m {namespace urn:m;prefix m;"
+                                        "container a {leaf a {type string;}}"
+                                        "container b {leaf b {mandatory true; type string;}}"
+                                        "deviation /a/a {deviate add {mandatory true;}}"
+                                        "deviation /b/b {deviate replace {mandatory false;}}}", LYS_IN_YANG));
+    assert_non_null(node = mod->compiled->data);
+    assert_string_equal("a", node->name);
+    assert_true((node->flags & LYS_MAND_MASK) == LYS_MAND_TRUE);
+    assert_true((lysc_node_children(node)->flags & LYS_MAND_MASK) == LYS_MAND_TRUE);
+    assert_non_null(node = node->next);
+    assert_string_equal("b", node->name);
+    assert_false(node->flags & LYS_MAND_MASK); /* just unset on container */
+    assert_true((lysc_node_children(node)->flags & LYS_MAND_MASK) == LYS_MAND_FALSE);
+
     assert_null(lys_parse_mem(ctx, "module aa1 {namespace urn:aa1;prefix aa1;import a {prefix a;}"
                               "deviation /a:top/a:z {deviate not-supported;}}", LYS_IN_YANG));
     logbuf_assert("Invalid absolute-schema-nodeid value \"/a:top/a:z\" - target node not found.");
@@ -2791,6 +2805,22 @@ test_deviation(void **state)
     assert_null(lys_parse_mem(ctx, "module jj5 {namespace urn:jj5;prefix jj5; container top {leaf x {type string; config true;}}"
                               "deviation /top {deviate add {config false;}}}", LYS_IN_YANG));
     logbuf_assert("Invalid deviation of config in \"/top\" - configuration node cannot be child of any state data node.");
+    assert_null(lys_parse_mem(ctx, "module jj6 {namespace urn:jj6;prefix jj6; leaf x {config false; type string;}"
+                              "deviation /x {deviate add {config true;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/x) adding \"config\" property which already exists (with value \"config false\").");
+
+    assert_null(lys_parse_mem(ctx, "module kk1 {namespace urn:kk1;prefix kk1; container top {leaf a{type string;}}"
+                              "deviation /top {deviate add {mandatory true;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation of mandatory in \"/top\" - container cannot hold mandatory statement.");
+    assert_null(lys_parse_mem(ctx, "module kk2 {namespace urn:kk2;prefix kk2; container top {leaf a{type string;}}"
+                              "deviation /top {deviate replace {mandatory true;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/top) replacing \"mandatory\" property \"mandatory true\" which is not present.");
+    assert_null(lys_parse_mem(ctx, "module kk3 {namespace urn:kk3;prefix kk3; container top {leaf x {type string;}}"
+                              "deviation /top/x {deviate replace {mandatory true;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/top/x) replacing \"mandatory\" property \"mandatory true\" which is not present.");
+    assert_null(lys_parse_mem(ctx, "module kk4 {namespace urn:kk4;prefix kk4; leaf x {mandatory true; type string;}"
+                              "deviation /x {deviate add {mandatory false;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/x) adding \"mandatory\" property which already exists (with value \"mandatory true\").");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);

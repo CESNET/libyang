@@ -567,6 +567,7 @@ struct lysp_deviation {
  *       6 LYS_MAND_TRUE    |x|x|x|x|x|x| | | | | | | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       7 LYS_ORDBY_USER   | | | |x|x| | | | | | | | | |
+ *         LYS_MAND_FALSE   | |x|x| | |x| | | | | | | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       8 LYS_ORDBY_SYSTEM | | | |x|x| | | | | | | | | |
  *         LYS_PRESENCE     |x| | | | | | | | | | | | | |
@@ -601,7 +602,9 @@ struct lysp_deviation {
                                           The ::lysc_node_leaflist and ::lysc_node_leaflist have this flag in case that min-elements > 0.
                                           The ::lysc_node_container has this flag if it is not a presence container and it has at least one
                                           child with LYS_MAND_TRUE. */
-#define LYS_MAND_FALSE   0x40        /**< mandatory false; applicable only to ::lysp_node_choice, ::lysp_node_leaf and ::lysp_node_anydata */
+#define LYS_MAND_FALSE   0x40        /**< mandatory false; applicable only to ::lysp_node_choice/::lysc_node_choice,
+                                          ::lysp_node_leaf/::lysc_node_leaf and ::lysp_node_anydata/::lysc_node_anydata.
+                                          This flag is present only in case the mandatory false statement was explicitly specified. */
 #define LYS_MAND_MASK    0x60        /**< mask for mandatory values */
 #define LYS_PRESENCE     0x80        /**< flag for presence property of a container, applicable only to ::lysc_node_container */
 #define LYS_UNIQUE       0x80        /**< flag for leafs being part of a unique set, applicable only to ::lysc_node_leaf */
@@ -635,7 +638,7 @@ struct lysp_deviation {
                                           away when it is refined to be mandatory node. Similarly it is used for deviations to distinguish
                                           between own default or the default values taken from the type. */
 #define LYS_SET_UNITS    0x0400      /**< flag to know if the leaf's/leaflist's units are their own (flag set) or it is taken from the type. */
-#define LYS_SET_CONFIG   0x0800      /**< flag to know if the config property set explicitely (flag set) or it is inherited. */
+#define LYS_SET_CONFIG   0x0800      /**< flag to know if the config property was set explicitly (flag set) or it is inherited. */
 
 #define LYS_FLAGS_COMPILED_MASK 0xff /**< mask for flags that maps to the compiled structures */
 /** @} */

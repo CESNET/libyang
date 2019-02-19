@@ -3864,7 +3864,7 @@ lys_compile_mandatory_parents(struct lysc_node *parent, int add)
     } else { /* unset flag */
         for (; parent && parent->nodetype == LYS_CONTAINER && (parent->flags & LYS_MAND_TRUE); parent = parent->parent) {
             for (iter = (struct lysc_node*)lysc_node_children(parent); iter; iter = iter->next) {
-                if (iter->flags && LYS_MAND_TRUE) {
+                if (iter->flags & LYS_MAND_TRUE) {
                     /* there is another mandatory node */
                     return;
                 }
@@ -4062,6 +4062,68 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, int option
 
 error:
     return ret;
+}
+
+/**
+ * @brief Apply refined or deviated mandatory flag to the target node.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] node Target node where the mandatory property is supposed to be changed.
+ * @param[in] mandatory_flag Node's mandatory flag to be applied to the @p node.
+ * @param[in] nodeid Schema nodeid used to identify target of refine/deviation (for logging).
+ * @param[in] refine_flag Flag to distinguish if the change is caused by refine (flag set) or deviation (for logging).
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lys_compile_change_mandatory(struct lysc_ctx *ctx, struct lysc_node *node, uint16_t mandatory_flag, const char *nodeid, int refine_flag)
+{
+    if (!(node->nodetype & (LYS_LEAF | LYS_ANYDATA | LYS_ANYXML | LYS_CHOICE))) {
+        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+               "Invalid %s of mandatory in \"%s\" - %s cannot hold mandatory statement.",
+               refine_flag ? "refine" : "deviation", nodeid, lys_nodetype2str(node->nodetype));
+        return LY_EVALID;
+    }
+
+    if (mandatory_flag & LYS_MAND_TRUE) {
+        /* check if node has default value */
+        if (node->nodetype & LYS_LEAF) {
+            if (node->flags & LYS_SET_DFLT) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                       "Invalid %s of mandatory in \"%s\" - leaf already has \"default\" statement.",
+                       refine_flag ? "refine" : "deviation", nodeid);
+                return LY_EVALID;
+            } else {
+                /* remove the default value taken from the leaf's type */
+                FREE_STRING(ctx->ctx, ((struct lysc_node_leaf*)node)->dflt);
+                ((struct lysc_node_leaf*)node)->dflt = NULL;
+            }
+        } else if ((node->nodetype & LYS_CHOICE) && ((struct lysc_node_choice*)node)->dflt) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                   "Invalid %s of mandatory in \"%s\" - choice already has \"default\" statement.",
+                   refine_flag ? "refine" : "deviation", nodeid);
+            return LY_EVALID;
+        }
+        if (node->parent && (node->parent->flags & LYS_SET_DFLT)) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                   "Invalid %s of mandatory in \"%s\" under the default case.",
+                   refine_flag ? "refine" : "deviation", nodeid);
+            return LY_EVALID;
+        }
+
+        node->flags &= ~LYS_MAND_FALSE;
+        node->flags |= LYS_MAND_TRUE;
+        lys_compile_mandatory_parents(node->parent, 1);
+    } else {
+        /* make mandatory false */
+        node->flags &= ~LYS_MAND_TRUE;
+        node->flags |= LYS_MAND_FALSE;
+        lys_compile_mandatory_parents(node->parent, 0);
+        if ((node->nodetype & LYS_LEAF) && !((struct lysc_node_leaf*)node)->dflt) {
+            /* get the type's default value if any */
+            DUP_STRING(ctx->ctx, ((struct lysc_node_leaf*)node)->type->dflt, ((struct lysc_node_leaf*)node)->dflt);
+        }
+    }
+    return LY_SUCCESS;
 }
 
 /**
@@ -4289,48 +4351,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int option
 
         /* mandatory */
         if (rfn->flags & LYS_MAND_MASK) {
-            if (!(node->nodetype & (LYS_LEAF | LYS_ANYDATA | LYS_ANYXML | LYS_CHOICE))) {
-                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                       "Invalid refine of mandatory in \"%s\" - %s cannot hold mandatory statement.",
-                       rfn->nodeid, lys_nodetype2str(node->nodetype));
-                goto error;
-            }
-            /* in compiled flags, only the LYS_MAND_TRUE is present */
-            if (rfn->flags & LYS_MAND_TRUE) {
-                /* check if node has default value */
-                if (node->nodetype & LYS_LEAF) {
-                    if (node->flags & LYS_SET_DFLT) {
-                        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                               "Invalid refine of mandatory in \"%s\" - leaf already has \"default\" statement.", rfn->nodeid);
-                        goto error;
-                    } else {
-                        /* remove the default value taken from the leaf's type */
-                        FREE_STRING(ctx->ctx, ((struct lysc_node_leaf*)node)->dflt);
-                        ((struct lysc_node_leaf*)node)->dflt = NULL;
-                    }
-                } else if ((node->nodetype & LYS_CHOICE) && ((struct lysc_node_choice*)node)->dflt) {
-                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                           "Invalid refine of mandatory in \"%s\" - choice already has \"default\" statement.", rfn->nodeid);
-                    goto error;
-                }
-                if (node->parent && (node->parent->flags & LYS_SET_DFLT)) {
-                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                           "Invalid refine of mandatory in \"%s\" - %s under the default case.",
-                           rfn->nodeid, lys_nodetype2str(node->nodetype));
-                    goto error;
-                }
-
-                node->flags |= LYS_MAND_TRUE;
-                lys_compile_mandatory_parents(node->parent, 1);
-            } else {
-                /* make mandatory false */
-                node->flags &= ~LYS_MAND_TRUE;
-                lys_compile_mandatory_parents(node->parent, 0);
-                if ((node->nodetype & LYS_LEAF) && !((struct lysc_node_leaf*)node)->dflt) {
-                    /* get the type's default value if any */
-                    DUP_STRING(ctx->ctx, ((struct lysc_node_leaf*)node)->type->dflt, ((struct lysc_node_leaf*)node)->dflt);
-                }
-            }
+            LY_CHECK_GOTO(lys_compile_change_mandatory(ctx, node, rfn->flags, rfn->nodeid, 1), error);
         }
 
         /* presence */
@@ -4990,6 +5011,15 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p, int opti
                 }
 
                 /* [mandatory-stmt] */
+                if (d_add->flags & LYS_MAND_MASK) {
+                    if (devs[u]->target->flags & LYS_MAND_MASK) {
+                        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                               "Invalid deviation (%s) adding \"mandatory\" property which already exists (with value \"mandatory %s\").",
+                               devs[u]->nodeid, devs[u]->target->flags & LYS_MAND_TRUE ? "true" : "false");
+                        goto cleanup;
+                    }
+                    LY_CHECK_GOTO(lys_compile_change_mandatory(ctx, devs[u]->target, d_add->flags, devs[u]->nodeid, 0), cleanup);
+                }
 
                 /* [min-elements-stmt] */
 
@@ -5182,6 +5212,14 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p, int opti
                 }
 
                 /* [mandatory-stmt] */
+                if (d_rpl->flags & LYS_MAND_MASK) {
+                    if (!(devs[u]->target->flags & LYS_MAND_MASK)) {
+                        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NOT_PRESENT, devs[u]->nodeid,
+                               "replacing", "mandatory", d_rpl->flags & LYS_MAND_TRUE ? "mandatory true" : "mandatory false");
+                        goto cleanup;
+                    }
+                    LY_CHECK_GOTO(lys_compile_change_mandatory(ctx, devs[u]->target, d_rpl->flags, devs[u]->nodeid, 0), cleanup);
+                }
 
                 /* [min-elements-stmt] */
 
