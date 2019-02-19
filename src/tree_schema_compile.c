@@ -3988,7 +3988,8 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, int option
         /* check if the subnode can be connected to the found target (e.g. case cannot be inserted into container) */
         if (!(target->nodetype == LYS_CHOICE && node_p->nodetype == LYS_CASE)
                 && !((target->nodetype & (LYS_CONTAINER | LYS_LIST)) && (node_p->nodetype & (LYS_ACTION | LYS_NOTIF)))
-                && !(node_p->nodetype & (LYS_ANYDATA | LYS_CONTAINER | LYS_CHOICE | LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_USES))) {
+                && !(target->nodetype != LYS_CHOICE && node_p->nodetype == LYS_USES)
+                && !(node_p->nodetype & (LYS_ANYDATA | LYS_CONTAINER | LYS_CHOICE | LYS_LEAF | LYS_LIST | LYS_LEAFLIST))) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                    "Invalid augment (%s) of %s node which is not allowed to contain %s node \"%s\".",
                    aug_p->nodeid, lys_nodetype2str(target->nodetype), lys_nodetype2str(node_p->nodetype), node_p->name);
