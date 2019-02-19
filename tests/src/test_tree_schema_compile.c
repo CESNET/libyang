@@ -513,7 +513,7 @@ test_node_leaflist(void **state)
     assert_int_equal(2, LY_ARRAY_SIZE(ll->dflts));
     assert_string_equal("1", ll->dflts[0]);
     assert_string_equal("1", ll->dflts[1]);
-    assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM | LYS_SET_DFLT, ll->flags);
+    assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM | LYS_SET_DFLT | LYS_SET_CONFIG, ll->flags);
     assert_non_null((ll = (struct lysc_node_leaflist*)mod->compiled->data->next));
     assert_non_null(ll->dflts);
     assert_int_equal(3, ll->type->refcount);
@@ -529,7 +529,7 @@ test_node_leaflist(void **state)
     logbuf_assert("The ordered-by statement is ignored in lists representing state data, RPC/action output parameters or notification content ().");
     assert_non_null(mod->compiled);
     assert_non_null((ll = (struct lysc_node_leaflist*)mod->compiled->data));
-    assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM, ll->flags);
+    assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM | LYS_SET_CONFIG, ll->flags);
 
     /* invalid */
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;leaf-list ll {type empty;}}", LYS_IN_YANG));
@@ -580,7 +580,7 @@ test_node_list(void **state)
     assert_non_null(list);
     assert_null(list->keys);
     assert_non_null(list->child);
-    assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM, list->flags);
+    assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM | LYS_SET_CONFIG, list->flags);
     assert_false(list->child->flags & LYS_KEY);
 
     assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;"
@@ -759,7 +759,7 @@ test_node_anydata(void **state)
     any = (struct lysc_node_anydata*)mod->compiled->data;
     assert_non_null(any);
     assert_int_equal(LYS_ANYDATA, any->nodetype);
-    assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_MAND_TRUE, any->flags);
+    assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_MAND_TRUE | LYS_SET_CONFIG, any->flags);
 
     logbuf_clean();
     assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;"
@@ -2653,6 +2653,37 @@ test_deviation(void **state)
     assert_string_equal("l2", list->name);
     assert_null(list->uniques);
 
+    assert_non_null(mod = lys_parse_mem(ctx, "module k {namespace urn:k;prefix k; leaf a {type string;}"
+                                        "container top {leaf x {type string;} leaf y {type string; config false;}}"
+                                        "deviation /a {deviate add {config false; }}"
+                                        "deviation /top {deviate add {config false;}}}", LYS_IN_YANG));
+    assert_non_null(node = mod->compiled->data);
+    assert_string_equal("a", node->name);
+    assert_true(node->flags & LYS_CONFIG_R);
+    assert_non_null(node = node->next);
+    assert_string_equal("top", node->name);
+    assert_true(node->flags & LYS_CONFIG_R);
+    assert_non_null(node = lysc_node_children(node));
+    assert_string_equal("x", node->name);
+    assert_true(node->flags & LYS_CONFIG_R);
+    assert_non_null(node = node->next);
+    assert_string_equal("y", node->name);
+    assert_true(node->flags & LYS_CONFIG_R);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module l {namespace urn:l;prefix l; leaf a {config false; type string;}"
+                                        "container top {config false; leaf x {type string;}}"
+                                        "deviation /a {deviate replace {config true;}}"
+                                        "deviation /top {deviate replace {config true;}}}", LYS_IN_YANG));
+    assert_non_null(node = mod->compiled->data);
+    assert_string_equal("a", node->name);
+    assert_true(node->flags & LYS_CONFIG_W);
+    assert_non_null(node = node->next);
+    assert_string_equal("top", node->name);
+    assert_true(node->flags & LYS_CONFIG_W);
+    assert_non_null(node = lysc_node_children(node));
+    assert_string_equal("x", node->name);
+    assert_true(node->flags & LYS_CONFIG_W);
+
     assert_null(lys_parse_mem(ctx, "module aa1 {namespace urn:aa1;prefix aa1;import a {prefix a;}"
                               "deviation /a:top/a:z {deviate not-supported;}}", LYS_IN_YANG));
     logbuf_assert("Invalid absolute-schema-nodeid value \"/a:top/a:z\" - target node not found.");
@@ -2744,6 +2775,22 @@ test_deviation(void **state)
     assert_null(lys_parse_mem(ctx, "module ii4 {namespace urn:ii4;prefix ii4; leaf x { type string;}"
                               "deviation /x {deviate add {unique d;}}}", LYS_IN_YANG));
     logbuf_assert("Invalid deviation (/x) of leaf node - it is not possible to add \"unique\" property.");
+
+    assert_null(lys_parse_mem(ctx, "module jj1 {namespace urn:jj1;prefix jj1; choice ch {case a {leaf a{type string;}}}"
+                              "deviation /ch/a {deviate add {config false;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/ch/a) of case node - it is not possible to add \"config\" property.");
+    assert_null(lys_parse_mem(ctx, "module jj2 {namespace urn:jj2;prefix jj2; container top {config false; leaf x {type string;}}"
+                              "deviation /top/x {deviate add {config true;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation of config in \"/top/x\" - configuration node cannot be child of any state data node.");
+    assert_null(lys_parse_mem(ctx, "module jj3 {namespace urn:jj3;prefix jj3; container top {leaf x {type string;}}"
+                              "deviation /top/x {deviate replace {config false;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/top/x) replacing \"config\" property \"config false\" which is not present.");
+    assert_null(lys_parse_mem(ctx, "module jj4 {namespace urn:jj4;prefix jj4; choice ch {case a {leaf a{type string;}}}"
+                              "deviation /ch/a {deviate replace {config false;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/ch/a) of case node - it is not possible to replace \"config\" property.");
+    assert_null(lys_parse_mem(ctx, "module jj5 {namespace urn:jj5;prefix jj5; container top {leaf x {type string; config true;}}"
+                              "deviation /top {deviate add {config false;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation of config in \"/top\" - configuration node cannot be child of any state data node.");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);

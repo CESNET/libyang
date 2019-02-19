@@ -3781,21 +3781,24 @@ error:
 }
 
 /**
- * @brief Apply refined config to the refine's target node.
+ * @brief Apply refined or deviated config to the target node.
  *
  * @param[in] ctx Compile context.
- * @param[in] node Refine's target node.
- * @param[in] rfn Parsed refine information.
+ * @param[in] node Target node where the config is supposed to be changed.
+ * @param[in] config_flag Node's config flag to be applied to the @p node.
+ * @param[in] nodeid Schema nodeid used to identify target of refine/deviation (for logging).
  * @param[in] inheriting Flag (inverted) to check the refined config compatibility with the node's parent. This is
  * done only on the node for which the refine was created. The function applies also recursively to apply the config change
- * to the complete subtree and the test is not needed for the subnodes.
+ * to the complete subtree (except the subnodes with explicit config set) and the test is not needed for the subnodes.
+ * @param[in] refine_flag Flag to distinguish if the change is caused by refine (flag set) or deviation (for logging).
  * @return LY_ERR value.
  */
 static LY_ERR
-lys_compile_refine_config(struct lysc_ctx *ctx, struct lysc_node *node, struct lysp_refine *rfn, int inheriting)
+lys_compile_change_config(struct lysc_ctx *ctx, struct lysc_node *node, uint16_t config_flag,
+                          const char *nodeid, int inheriting, int refine_flag)
 {
     struct lysc_node *child;
-    uint16_t config = rfn->flags & LYS_CONFIG_MASK;
+    uint16_t config = config_flag & LYS_CONFIG_MASK;
 
     if (config == (node->flags & LYS_CONFIG_MASK)) {
         /* nothing to do */
@@ -3803,12 +3806,26 @@ lys_compile_refine_config(struct lysc_ctx *ctx, struct lysc_node *node, struct l
     }
 
     if (!inheriting) {
-        /* explicit refine */
+        /* explicit change */
         if (config == LYS_CONFIG_W && node->parent && (node->parent->flags & LYS_CONFIG_R)) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                   "Invalid refine of config in \"%s\" - configuration node cannot be child of any state data node.",
-                   rfn->nodeid);
+                   "Invalid %s of config in \"%s\" - configuration node cannot be child of any state data node.",
+                   refine_flag ? "refine" : "deviation", nodeid);
             return LY_EVALID;
+        }
+        node->flags |= LYS_SET_CONFIG;
+    } else {
+        if (node->flags & LYS_SET_CONFIG) {
+            if ((node->flags & LYS_CONFIG_W) && (config == LYS_CONFIG_R)) {
+                /* setting config flags, but have node with explicit config true */
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                       "Invalid %s of config in \"%s\" - configuration node cannot be child of any state data node.",
+                       refine_flag ? "refine" : "deviation", nodeid);
+                return LY_EVALID;
+            }
+            /* do not change config on nodes where the config is explicitely set, this does not apply to
+             * nodes, which are being changed explicitly (targets of refine or deviation) */
+            return LY_SUCCESS;
         }
     }
     node->flags &= ~LYS_CONFIG_MASK;
@@ -3816,7 +3833,7 @@ lys_compile_refine_config(struct lysc_ctx *ctx, struct lysc_node *node, struct l
 
     /* inherit the change into the children */
     LY_LIST_FOR((struct lysc_node*)lysc_node_children(node), child) {
-        LY_CHECK_RET(lys_compile_refine_config(ctx, child, rfn, 1));
+        LY_CHECK_RET(lys_compile_change_config(ctx, child, config_flag, nodeid, 1, refine_flag));
     }
 
     /* TODO actions and notifications */
@@ -4267,7 +4284,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int option
 
         /* config */
         if (rfn->flags & LYS_CONFIG_MASK) {
-            LY_CHECK_GOTO(lys_compile_refine_config(ctx, node, rfn, 0), error);
+            LY_CHECK_GOTO(lys_compile_change_config(ctx, node, rfn->flags, rfn->nodeid, 0, 1), error);
         }
 
         /* mandatory */
@@ -4523,6 +4540,9 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, st
             /* default is config true */
             node->flags |= LYS_CONFIG_W;
         }
+    } else {
+        /* config set explicitely */
+        node->flags |= LYS_SET_CONFIG;
     }
     if (parent && (parent->flags & LYS_CONFIG_R) && (node->flags & LYS_CONFIG_W)) {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
@@ -4790,7 +4810,7 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p, int opti
     }
 
 #define DEV_CHECK_NONPRESENCE(TYPE, COND, MEMBER, PROPERTY, VALUEMEMBER) \
-    if (((TYPE)devs[u]->target)->MEMBER && COND) { \
+    if (((TYPE)devs[u]->target)->MEMBER && (COND)) { \
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE, \
                "Invalid deviation (%s) adding \"%s\" property which already exists (with value \"%s\").", \
                devs[u]->nodeid, PROPERTY, ((TYPE)devs[u]->target)->VALUEMEMBER); \
@@ -4954,6 +4974,20 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p, int opti
                 }
 
                 /* [config-stmt] */
+                if (d_add->flags & LYS_CONFIG_MASK) {
+                    if (devs[u]->target->nodetype & (LYS_CASE | LYS_INOUT | LYS_ACTION | LYS_NOTIF)) {
+                        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NODETYPE, devs[u]->nodeid,
+                               lys_nodetype2str(devs[u]->target->nodetype), "add", "config");
+                        goto cleanup;
+                    }
+                    if (devs[u]->target->flags & LYS_SET_CONFIG) {
+                        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                               "Invalid deviation (%s) adding \"config\" property which already exists (with value \"config %s\").",
+                               devs[u]->nodeid, devs[u]->target->flags & LYS_CONFIG_W ? "true" : "false");
+                        goto cleanup;
+                    }
+                    LY_CHECK_GOTO(lys_compile_change_config(ctx, devs[u]->target, d_add->flags, devs[u]->nodeid, 0, 0), cleanup);
+                }
 
                 /* [mandatory-stmt] */
 
@@ -5133,6 +5167,19 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p, int opti
                 }
 
                 /* [config-stmt] */
+                if (d_rpl->flags & LYS_CONFIG_MASK) {
+                    if (devs[u]->target->nodetype & (LYS_CASE | LYS_INOUT | LYS_ACTION | LYS_NOTIF)) {
+                        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NODETYPE, devs[u]->nodeid,
+                               lys_nodetype2str(devs[u]->target->nodetype), "replace", "config");
+                        goto cleanup;
+                    }
+                    if (!(devs[u]->target->flags & LYS_SET_CONFIG)) {
+                        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NOT_PRESENT, devs[u]->nodeid,
+                               "replacing", "config", d_rpl->flags & LYS_CONFIG_W ? "config true" : "config false");
+                        goto cleanup;
+                    }
+                    LY_CHECK_GOTO(lys_compile_change_config(ctx, devs[u]->target, d_rpl->flags, devs[u]->nodeid, 0, 0), cleanup);
+                }
 
                 /* [mandatory-stmt] */
 
