@@ -2698,6 +2698,46 @@ test_deviation(void **state)
     assert_false(node->flags & LYS_MAND_MASK); /* just unset on container */
     assert_true((lysc_node_children(node)->flags & LYS_MAND_MASK) == LYS_MAND_FALSE);
 
+    assert_non_null(mod = lys_parse_mem(ctx, "module n {yang-version 1.1; namespace urn:n;prefix n;"
+                                        "leaf a {default test; type string;}"
+                                        "leaf b {mandatory true; type string;}"
+                                        "deviation /a {deviate add {mandatory true;} deviate delete {default test;}}"
+                                        "deviation /b {deviate add {default test;} deviate replace {mandatory false;}}}", LYS_IN_YANG));
+    assert_non_null(node = mod->compiled->data);
+    assert_string_equal("a", node->name);
+    assert_null(((struct lysc_node_leaf*)node)->dflt);
+    assert_true((node->flags & LYS_MAND_MASK) == LYS_MAND_TRUE);
+    assert_non_null(node = node->next);
+    assert_string_equal("b", node->name);
+    assert_non_null(((struct lysc_node_leaf*)node)->dflt);
+    assert_true((node->flags & LYS_MAND_MASK) == LYS_MAND_FALSE);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module o {namespace urn:o;prefix o;"
+                                        "leaf-list a {type string;}"
+                                        "list b {config false;}"
+                                        "leaf-list c {min-elements 1; max-elements 10; type string;}"
+                                        "list d {min-elements 10; max-elements 100; config false;}"
+                                        "deviation /a {deviate add {min-elements 1; max-elements 10;}}"
+                                        "deviation /b {deviate add {min-elements 10; max-elements 100;}}"
+                                        "deviation /c {deviate replace {min-elements 10; max-elements 100;}}"
+                                        "deviation /d {deviate replace {min-elements 1; max-elements 10;}}}", LYS_IN_YANG));
+    assert_non_null(node = mod->compiled->data);
+    assert_string_equal("a", node->name);
+    assert_int_equal(1, ((struct lysc_node_leaflist*)node)->min);
+    assert_int_equal(10, ((struct lysc_node_leaflist*)node)->max);
+    assert_non_null(node = node->next);
+    assert_string_equal("b", node->name);
+    assert_int_equal(10, ((struct lysc_node_list*)node)->min);
+    assert_int_equal(100, ((struct lysc_node_list*)node)->max);
+    assert_non_null(node = node->next);
+    assert_string_equal("c", node->name);
+    assert_int_equal(10, ((struct lysc_node_leaflist*)node)->min);
+    assert_int_equal(100, ((struct lysc_node_leaflist*)node)->max);
+    assert_non_null(node = node->next);
+    assert_string_equal("d", node->name);
+    assert_int_equal(1, ((struct lysc_node_list*)node)->min);
+    assert_int_equal(10, ((struct lysc_node_list*)node)->max);
+
     assert_null(lys_parse_mem(ctx, "module aa1 {namespace urn:aa1;prefix aa1;import a {prefix a;}"
                               "deviation /a:top/a:z {deviate not-supported;}}", LYS_IN_YANG));
     logbuf_assert("Invalid absolute-schema-nodeid value \"/a:top/a:z\" - target node not found.");
@@ -2771,7 +2811,7 @@ test_deviation(void **state)
     logbuf_assert("Invalid deviation (/e:a) adding \"default\" property \"e:c\" of choice - mandatory node \"c\" under the default case.");
     assert_null(lys_parse_mem(ctx, "module gg5 {namespace urn:gg5;prefix gg5; leaf x {type string; mandatory true;}"
                               "deviation /x {deviate add {default error;}}}", LYS_IN_YANG));
-    logbuf_assert("Invalid deviation (/x) adding \"default\" property \"error\" into a mandatory node.");
+    logbuf_assert("Invalid deviation (/x) combining default value and mandatory leaf.");
 
     assert_null(lys_parse_mem(ctx, "module hh1 {yang-version 1.1; namespace urn:hh1;prefix hh1; import e {prefix e;}"
                               "deviation /e:d {deviate replace {default hi;}}}", LYS_IN_YANG));
@@ -2821,6 +2861,53 @@ test_deviation(void **state)
     assert_null(lys_parse_mem(ctx, "module kk4 {namespace urn:kk4;prefix kk4; leaf x {mandatory true; type string;}"
                               "deviation /x {deviate add {mandatory false;}}}", LYS_IN_YANG));
     logbuf_assert("Invalid deviation (/x) adding \"mandatory\" property which already exists (with value \"mandatory true\").");
+
+    assert_null(lys_parse_mem(ctx, "module ll1 {namespace urn:ll1;prefix ll1; leaf x {default test; type string;}"
+                              "deviation /x {deviate add {mandatory true;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/x) combining default value and mandatory leaf.");
+    assert_null(lys_parse_mem(ctx, "module ll2 {yang-version 1.1; namespace urn:ll2;prefix ll2; leaf-list x {default test; type string;}"
+                              "deviation /x {deviate add {min-elements 1;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/x) combining default value and mandatory leaf-list.");
+    assert_null(lys_parse_mem(ctx, "module ll2 {namespace urn:ll2;prefix ll2; choice ch {default a; leaf a {type string;} leaf b {type string;}}"
+                              "deviation /ch {deviate add {mandatory true;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/ch) combining default case and mandatory choice.");
+
+    assert_null(lys_parse_mem(ctx, "module mm1 {namespace urn:mm1;prefix mm1; leaf-list x {min-elements 10; type string;}"
+                              "deviation /x {deviate add {max-elements 5;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid combination of min-elements and max-elements after deviation (/x): min value 10 is bigger than max value 5.");
+    assert_null(lys_parse_mem(ctx, "module mm2 {namespace urn:mm2;prefix mm2; leaf-list x {max-elements 10; type string;}"
+                              "deviation /x {deviate add {min-elements 20;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid combination of min-elements and max-elements after deviation (/x): min value 20 is bigger than max value 10.");
+    assert_null(lys_parse_mem(ctx, "module mm3 {namespace urn:mm3;prefix mm3; list x {min-elements 5; max-elements 10; config false;}"
+                              "deviation /x {deviate replace {max-elements 1;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid combination of min-elements and max-elements after deviation (/x): min value 5 is bigger than max value 1.");
+    assert_null(lys_parse_mem(ctx, "module mm4 {namespace urn:mm4;prefix mm4; list x {min-elements 5; max-elements 10; config false;}"
+                              "deviation /x {deviate replace {min-elements 20;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid combination of min-elements and max-elements after deviation (/x): min value 20 is bigger than max value 10.");
+    assert_null(lys_parse_mem(ctx, "module mm5 {namespace urn:mm5;prefix mm5; leaf-list x {type string; min-elements 5;}"
+                              "deviation /x {deviate add {min-elements 1;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/x) adding \"min-elements\" property which already exists (with value \"5\").");
+    assert_null(lys_parse_mem(ctx, "module mm6 {namespace urn:mm6;prefix mm6; list x {config false; min-elements 5;}"
+                              "deviation /x {deviate add {min-elements 1;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/x) adding \"min-elements\" property which already exists (with value \"5\").");
+    assert_null(lys_parse_mem(ctx, "module mm7 {namespace urn:mm7;prefix mm7; leaf-list x {type string; max-elements 5;}"
+                              "deviation /x {deviate add {max-elements 1;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/x) adding \"max-elements\" property which already exists (with value \"5\").");
+    assert_null(lys_parse_mem(ctx, "module mm8 {namespace urn:mm8;prefix mm8; list x {config false; max-elements 5;}"
+                              "deviation /x {deviate add {max-elements 1;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/x) adding \"max-elements\" property which already exists (with value \"5\").");
+    assert_null(lys_parse_mem(ctx, "module mm9 {namespace urn:mm9;prefix mm9; leaf-list x {type string;}"
+                              "deviation /x {deviate replace {min-elements 1;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/x) replacing with \"min-elements\" property \"1\" which is not present.");
+    assert_null(lys_parse_mem(ctx, "module mm10 {namespace urn:mm10;prefix mm10; list x {config false;}"
+                              "deviation /x {deviate replace {min-elements 1;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/x) replacing with \"min-elements\" property \"1\" which is not present.");
+    assert_null(lys_parse_mem(ctx, "module mm11 {namespace urn:mm11;prefix mm11; leaf-list x {type string;}"
+                              "deviation /x {deviate replace {max-elements 1;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/x) replacing with \"max-elements\" property \"1\" which is not present.");
+    assert_null(lys_parse_mem(ctx, "module mm12 {namespace urn:mm12;prefix mm12; list x {config false; }"
+                              "deviation /x {deviate replace {max-elements 1;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/x) replacing with \"max-elements\" property \"1\" which is not present.");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
