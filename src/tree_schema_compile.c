@@ -3038,6 +3038,75 @@ done:
     return ret;
 }
 
+/*
+ * @brief Compile type in leaf/leaf-list node and do all the necessary checks.
+ * @param[in] ctx Compile context.
+ * @param[in] context_node Schema node where the type/typedef is placed to correctly find the base types.
+ * @param[in] type_p Parsed type to compile.
+ * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
+ * @param[in,out] leaf Compiled leaf structure (possibly cast leaf-list) to provide node information and to store the compiled type information.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lys_compile_node_type(struct lysc_ctx *ctx, struct lysp_node *context_node, struct lysp_type *type_p, int options, struct lysc_node_leaf *leaf)
+{
+    unsigned int u, v;
+    struct lysc_node_leaflist *llist = (struct lysc_node_leaflist*)leaf;
+
+    LY_CHECK_RET(lys_compile_type(ctx, context_node, leaf->flags, ctx->mod_def->parsed, leaf->name, type_p, options, &leaf->type,
+                                  leaf->units ? NULL : &leaf->units));
+    if (leaf->nodetype == LYS_LEAFLIST) {
+        if (llist->type->dflt && !llist->dflts && !llist->min) {
+            LY_ARRAY_CREATE_RET(ctx->ctx, llist->dflts, 1, LY_EMEM);
+            DUP_STRING(ctx->ctx, llist->type->dflt, llist->dflts[0]);
+            LY_ARRAY_INCREMENT(llist->dflts);
+        }
+    } else {
+        if (leaf->type->dflt && !leaf->dflt && !(leaf->flags & LYS_MAND_TRUE)) {
+            DUP_STRING(ctx->ctx, leaf->type->dflt, leaf->dflt);
+        }
+    }
+    if (leaf->type->basetype == LY_TYPE_LEAFREF) {
+        /* store to validate the path in the current context at the end of schema compiling when all the nodes are present */
+        ly_set_add(&ctx->unres, leaf, 0);
+    } else if (leaf->type->basetype == LY_TYPE_UNION) {
+        LY_ARRAY_FOR(((struct lysc_type_union*)leaf->type)->types, u) {
+            if (((struct lysc_type_union*)leaf->type)->types[u]->basetype == LY_TYPE_LEAFREF) {
+                /* store to validate the path in the current context at the end of schema compiling when all the nodes are present */
+                ly_set_add(&ctx->unres, leaf, 0);
+            }
+        }
+    } else if (leaf->type->basetype == LY_TYPE_EMPTY) {
+        if (leaf->flags & LYS_SET_DFLT) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS, "%s of type \"empty\" must not have a default value (%s).",
+                   leaf->nodetype == LYS_LEAFLIST ? "Leaf-list" : "Leaf", leaf->nodetype == LYS_LEAFLIST ? llist->dflts[0] : leaf->dflt);
+            return LY_EVALID;
+        }
+        if (leaf->nodetype == LYS_LEAFLIST && ctx->mod_def->version < LYS_VERSION_1_1) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                   "Leaf-list of type \"empty\" is allowed only in YANG 1.1 modules.");
+            return LY_EVALID;
+        }
+    }
+
+    if (leaf->nodetype == LYS_LEAFLIST && (llist->flags & LYS_CONFIG_W) && llist->dflts && LY_ARRAY_SIZE(llist->dflts)) {
+        /* configuration data values must be unique - so check the default values */
+        LY_ARRAY_FOR(llist->dflts, u) {
+            for (v = u + 1; v < LY_ARRAY_SIZE(llist->dflts); ++v) {
+                if (!strcmp(llist->dflts[u], llist->dflts[v])) {
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                           "Configuration leaf-list has multiple defaults of the same value \"%s\".", llist->dflts[v]);
+                    return LY_EVALID;
+                }
+            }
+        }
+    }
+
+    /* TODO validate default value according to the type, possibly postpone the check when the leafref target is known */
+
+    return LY_SUCCESS;
+}
+
 /**
  * @brief Compile parsed leaf node information.
  * @param[in] ctx Compile context
@@ -3065,29 +3134,7 @@ lys_compile_node_leaf(struct lysc_ctx *ctx, struct lysp_node *node_p, int option
         leaf->flags |= LYS_SET_DFLT;
     }
 
-    ret = lys_compile_type(ctx, node_p, node_p->flags, ctx->mod_def->parsed, node_p->name, &leaf_p->type, options, &leaf->type,
-                           leaf->units ? NULL : &leaf->units);
-    LY_CHECK_GOTO(ret, done);
-    if (!leaf->dflt && !(leaf->flags & LYS_MAND_TRUE)) {
-        DUP_STRING(ctx->ctx, leaf->type->dflt, leaf->dflt);
-    }
-    if (leaf->type->basetype == LY_TYPE_LEAFREF) {
-        /* store to validate the path in the current context at the end of schema compiling when all the nodes are present */
-        ly_set_add(&ctx->unres, leaf, 0);
-    } else if (leaf->type->basetype == LY_TYPE_UNION) {
-        LY_ARRAY_FOR(((struct lysc_type_union*)leaf->type)->types, u) {
-            if (((struct lysc_type_union*)leaf->type)->types[u]->basetype == LY_TYPE_LEAFREF) {
-                /* store to validate the path in the current context at the end of schema compiling when all the nodes are present */
-                ly_set_add(&ctx->unres, leaf, 0);
-            }
-        }
-    } else if (leaf->type->basetype == LY_TYPE_EMPTY && leaf_p->dflt) {
-        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-               "Leaf of type \"empty\" must not have a default value (%s).",leaf_p->dflt);
-        return LY_EVALID;
-    }
-
-    /* TODO validate default value according to the type, possibly postpone the check when the leafref target is known */
+    ret = lys_compile_node_type(ctx, node_p, &leaf_p->type, options, leaf);
 
 done:
     return ret;
@@ -3107,7 +3154,7 @@ lys_compile_node_leaflist(struct lysc_ctx *ctx, struct lysp_node *node_p, int op
 {
     struct lysp_node_leaflist *llist_p = (struct lysp_node_leaflist*)node_p;
     struct lysc_node_leaflist *llist = (struct lysc_node_leaflist*)node;
-    unsigned int u, v;
+    unsigned int u;
     LY_ERR ret = LY_SUCCESS;
 
     COMPILE_ARRAY_GOTO(ctx, llist_p->musts, llist->musts, options, u, lys_compile_must, ret, done);
@@ -3131,51 +3178,7 @@ lys_compile_node_leaflist(struct lysc_ctx *ctx, struct lysp_node *node_p, int op
     }
     llist->max = llist_p->max ? llist_p->max : (uint32_t)-1;
 
-    ret = lys_compile_type(ctx, node_p, node_p->flags, ctx->mod_def->parsed, node_p->name, &llist_p->type, options, &llist->type,
-                           llist->units ? NULL : &llist->units);
-    LY_CHECK_GOTO(ret, done);
-    if (llist->type->dflt && !llist->dflts && !llist->min) {
-        LY_ARRAY_CREATE_GOTO(ctx->ctx, llist->dflts, 1, ret, done);
-        DUP_STRING(ctx->ctx, llist->type->dflt, llist->dflts[0]);
-        LY_ARRAY_INCREMENT(llist->dflts);
-    }
-
-    if (llist->type->basetype == LY_TYPE_LEAFREF) {
-        /* store to validate the path in the current context at the end of schema compiling when all the nodes are present */
-        ly_set_add(&ctx->unres, llist, 0);
-    } else if (llist->type->basetype == LY_TYPE_UNION) {
-        LY_ARRAY_FOR(((struct lysc_type_union*)llist->type)->types, u) {
-            if (((struct lysc_type_union*)llist->type)->types[u]->basetype == LY_TYPE_LEAFREF) {
-                /* store to validate the path in the current context at the end of schema compiling when all the nodes are present */
-                ly_set_add(&ctx->unres, llist, 0);
-            }
-        }
-    } else if (llist->type->basetype == LY_TYPE_EMPTY) {
-        if (ctx->mod_def->version < LYS_VERSION_1_1) {
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                   "Leaf-list of type \"empty\" is allowed only in YANG 1.1 modules.");
-            return LY_EVALID;
-        } else if (llist_p->dflts) {
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                   "Leaf-list of type \"empty\" must not have a default value (%s).", llist_p->dflts[0]);
-            return LY_EVALID;
-        }
-    }
-
-    if ((llist->flags & LYS_CONFIG_W) && llist->dflts && LY_ARRAY_SIZE(llist->dflts)) {
-        /* configuration data values must be unique - so check the default values */
-        LY_ARRAY_FOR(llist->dflts, u) {
-            for (v = u + 1; v < LY_ARRAY_SIZE(llist->dflts); ++v) {
-                if (!strcmp(llist->dflts[u], llist->dflts[v])) {
-                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                           "Configuration leaf-list has multiple defaults of the same value \"%s\".", llist->dflts[v]);
-                    return LY_EVALID;
-                }
-            }
-        }
-    }
-
-    /* TODO validate default value according to the type, possibly postpone the check when the leafref target is known */
+    ret = lys_compile_node_type(ctx, node_p, &llist_p->type, options, (struct lysc_node_leaf*)llist);
 
 done:
     return ret;
@@ -5216,6 +5219,12 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p, int opti
                 d_rpl = (struct lysp_deviate_rpl*)d;
 
                 /* [type-stmt] */
+                if (d_rpl->type) {
+                    DEV_CHECK_NODETYPE(LYS_LEAF | LYS_LEAFLIST, "replace", "type");
+                    /* type is mandatory, so checking for its presence is not necessary */
+                    lysc_type_free(ctx->ctx, ((struct lysc_node_leaf*)devs[u]->target)->type);
+                    LY_CHECK_GOTO(lys_compile_node_type(ctx, NULL, d_rpl->type, options, (struct lysc_node_leaf*)devs[u]->target), cleanup);
+                }
 
                 /* [units-stmt] */
                 if (d_rpl->units) {
@@ -5320,6 +5329,8 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p, int opti
             }
         }
 
+        /* final check when all deviations of a single target node are applied */
+
         /* check min-max compatibility */
         if (devs[u]->target->nodetype == LYS_LEAFLIST) {
             min = ((struct lysc_node_leaflist*)devs[u]->target)->min;
@@ -5359,6 +5370,8 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p, int opti
                    devs[u]->nodeid, lys_nodetype2str(devs[u]->target->nodetype), devs[u]->target->name, devs[u]->target->parent->name);
             goto cleanup;
         }
+
+        /* TODO check default value(s) according to the type */
     }
 
     ret = LY_SUCCESS;

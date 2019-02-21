@@ -2738,6 +2738,20 @@ test_deviation(void **state)
     assert_int_equal(1, ((struct lysc_node_list*)node)->min);
     assert_int_equal(10, ((struct lysc_node_list*)node)->max);
 
+    assert_non_null(mod = lys_parse_mem(ctx, "module p {yang-version 1.1; namespace urn:p;prefix p; typedef mytype {type int8; default 1;}"
+                                        "leaf a {type string; default 10;} leaf-list b {type string;}"
+                                        "deviation /a {deviate replace {type mytype;}}"
+                                        "deviation /b {deviate replace {type mytype;}}}", LYS_IN_YANG));
+    assert_non_null(node = mod->compiled->data);
+    assert_string_equal("a", node->name);
+    assert_int_equal(LY_TYPE_INT8, ((struct lysc_node_leaf*)node)->type->basetype);
+    assert_string_equal("10", ((struct lysc_node_leaf*)node)->dflt);
+    assert_non_null(node = node->next);
+    assert_string_equal("b", node->name);
+    assert_int_equal(LY_TYPE_INT8, ((struct lysc_node_leaflist*)node)->type->basetype);
+    assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_node_leaflist*)node)->dflts));
+    assert_string_equal("1", ((struct lysc_node_leaflist*)node)->dflts[0]);
+
     assert_null(lys_parse_mem(ctx, "module aa1 {namespace urn:aa1;prefix aa1;import a {prefix a;}"
                               "deviation /a:top/a:z {deviate not-supported;}}", LYS_IN_YANG));
     logbuf_assert("Invalid absolute-schema-nodeid value \"/a:top/a:z\" - target node not found.");
@@ -2908,6 +2922,13 @@ test_deviation(void **state)
     assert_null(lys_parse_mem(ctx, "module mm12 {namespace urn:mm12;prefix mm12; list x {config false; }"
                               "deviation /x {deviate replace {max-elements 1;}}}", LYS_IN_YANG));
     logbuf_assert("Invalid deviation (/x) replacing with \"max-elements\" property \"1\" which is not present.");
+
+    assert_null(lys_parse_mem(ctx, "module nn1 {namespace urn:nn1;prefix nn1; anyxml x;"
+                              "deviation /x {deviate replace {type string;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/x) of anyxml node - it is not possible to replace \"type\" property.");
+    assert_null(lys_parse_mem(ctx, "module nn2 {namespace urn:nn2;prefix nn2; leaf-list x {type string;}"
+                              "deviation /x {deviate replace {type empty;}}}", LYS_IN_YANG));
+    logbuf_assert("Leaf-list of type \"empty\" is allowed only in YANG 1.1 modules.");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
