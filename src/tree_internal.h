@@ -75,6 +75,7 @@ struct lyb_state {
     int size;
     const struct lys_module **models;
     int mod_count;
+    struct ly_ctx *ctx;
 
     /* LYB printer only */
     struct {
