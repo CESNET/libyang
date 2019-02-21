@@ -2295,8 +2295,6 @@ lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *startnode, 
     assert(startnode);
     assert(leafref);
 
-    /* TODO leafref targets may be not implemented, in such a case we actually could make (we did it in libyang1) such a models implemented */
-
     iter = 0;
     id = leafref->path;
     while(*id && (ret = lys_path_token(&id, &prefix, &prefix_len, &name, &name_len, &parent_times, &has_predicate)) == LY_SUCCESS) {
@@ -2323,6 +2321,10 @@ lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *startnode, 
                    "Invalid leafref path - unable to find module connected with the prefix of the node \"%.*s\".",
                    id - leafref->path, leafref->path);
             return LY_EVALID;
+        }
+        if (!mod->implemented) {
+            /* make the module implemented */
+            ly_ctx_module_implement_internal(ctx->ctx, (struct lys_module*)mod, 2);
         }
 
         node = lys_child(parent, mod, name, name_len, 0, LYS_GETNEXT_NOSTATECHECK);

@@ -1752,6 +1752,20 @@ test_type_leafref(void **state)
     assert_non_null(((struct lysc_type_leafref*)type)->realtype);
     assert_int_equal(LY_TYPE_STRING, ((struct lysc_type_leafref*)type)->realtype->basetype);
 
+    /* leafref to imported (not yet implemented) module */
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "module h {namespace urn:h;prefix h; leaf h  {type uint16;}}");
+    assert_non_null(mod = lys_parse_mem(ctx, "module i {namespace urn:i;prefix i;import h {prefix h;}"
+                                        "leaf i {type leafref {path /h:h;}}}", LYS_IN_YANG));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
+    assert_non_null(((struct lysc_type_leafref*)type)->realtype);
+    assert_int_equal(LY_TYPE_UINT16, ((struct lysc_type_leafref*)type)->realtype->basetype);
+    assert_non_null(mod = ly_ctx_get_module_implemented(ctx, "h"));
+    assert_int_equal(1, mod->implemented);
+    assert_non_null(mod->compiled->data);
+    assert_string_equal("h", mod->compiled->data->name);
+
     /* invalid paths */
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;container a {leaf target2 {type uint8;}}"
                                         "leaf ref1 {type leafref {path ../a/invalid;}}}", LYS_IN_YANG));
