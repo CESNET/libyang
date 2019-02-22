@@ -107,7 +107,12 @@ cd build
 %else
     %define cmake_valgrind "-DENABLE_VALGRIND_TESTS=OFF"
 %endif
-cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr -D CMAKE_BUILD_TYPE:String="@BUILD_TYPE@" %{cmake_valgrind} %{cmake_lang_bind} %{cmake_enable_cache} ..
+cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr \
+   -DCMAKE_BUILD_TYPE:String="@BUILD_TYPE@" \
+   -DENABLE_LYD_PRIV=ON \
+   -DGEN_JAVA_BINDINGS=OFF \
+   -DGEN_JAVASCRIPT_BINDINGS=OFF \
+   %{cmake_valgrind} %{cmake_lang_bind} %{cmake_enable_cache} ..
 make
 
 %check
