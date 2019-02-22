@@ -161,7 +161,7 @@ typedef enum {
 #define LYS_CASE 0x0040           /**< case statement node */
 #define LYS_USES 0x0080           /**< uses statement node */
 #define LYS_INOUT 0x200
-#define LYS_ACTION 0x400
+#define LYS_ACTION 0x400          /**< RPC or action */
 #define LYS_NOTIF 0x800
 #define LYS_GROUPING 0x1000
 #define LYS_AUGMENT 0x2000
@@ -554,9 +554,9 @@ struct lysp_deviation {
  *                                             1 1 1 1 1
  *     bit name              1 2 3 4 5 6 7 8 9 0 1 2 3 4
  *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       1 LYS_CONFIG_W     |x|x|x|x|x|x|x| | |x| | | | |
+ *       1 LYS_CONFIG_W     |x|x|x|x|x|x|x| | | | | | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       2 LYS_CONFIG_R     |x|x|x|x|x|x|x| | | |x| | | |
+ *       2 LYS_CONFIG_R     |x|x|x|x|x|x|x| | | | | | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       3 LYS_STATUS_CURR  |x|x|x|x|x|x|x|x|x| | |x|x|x|
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -841,8 +841,8 @@ struct lysp_action {
     const char **iffeatures;         /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysp_tpdf *typedefs;      /**< list of typedefs ([sized array](@ref sizedarrays)) */
     struct lysp_grp *groupings;      /**< list of groupings ([sized array](@ref sizedarrays)) */
-    struct lysp_action_inout *input; /**< RPC's/Action's input */
-    struct lysp_action_inout *output;/**< RPC's/Action's output */
+    struct lysp_action_inout input;  /**< RPC's/Action's input */
+    struct lysp_action_inout output; /**< RPC's/Action's output */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 };
 
@@ -1189,19 +1189,41 @@ struct lysc_type_bin {
     struct lysc_range *length;       /**< Optional length limitation */
 };
 
+struct lysc_action_inout {
+    struct lysc_node *data;          /**< first child node (linked list) */
+    struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
+};
+
 struct lysc_action {
     uint16_t nodetype;               /**< LYS_ACTION */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     struct lys_module *module;       /**< module structure */
+    struct lysp_action *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
+    struct lysc_node *parent;        /**< parent node (NULL in case of top level node - RPC) */
+
+    struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+
     const char *name;                /**< action/RPC name (mandatory) */
-    /* TODO */
+    const char *dsc;                 /**< description */
+    const char *ref;                 /**< reference */
+
+    struct lysc_action_inout input;  /**< RPC's/action's input */
+    struct lysc_action_inout output; /**< RPC's/action's output */
+
 };
 
 struct lysc_notif {
     uint16_t nodetype;               /**< LYS_NOTIF */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     struct lys_module *module;       /**< module structure */
+    struct lysp_notification *sp;    /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
+    struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
+
     const char *name;                /**< Notification name (mandatory) */
+    const char *dsc;                 /**< description */
+    const char *ref;                 /**< reference */
     /* TODO */
 };
 
@@ -1478,9 +1500,10 @@ const struct lysc_notif *lysc_node_notifs(const struct lysc_node *node);
  * @brief Get the children linked list of the given (compiled) schema node.
  * Decides the node's type and in case it has a children list, returns it.
  * @param[in] node Node to examine.
+ * @param[in] flags Config flag to distinguish input (LYS_CONFIG_W) and output (LYS_CONFIG_R) data in case of RPC/action node.
  * @return The node's children linked list if any, NULL otherwise.
  */
-const struct lysc_node *lysc_node_children(const struct lysc_node *node);
+const struct lysc_node *lysc_node_children(const struct lysc_node *node, uint16_t flags);
 
 /**
  * @brief Get how the if-feature statement currently evaluates.
@@ -1665,6 +1688,8 @@ const struct lysc_node *lys_getnext(const struct lysc_node *last, const struct l
 #define LYS_GETNEXT_INTONPCONT   0x40 /**< lys_getnext() option to look into non-presence container, instead of returning container itself */
 #define LYS_GETNEXT_NOSTATECHECK 0x100 /**< lys_getnext() option to skip checking module validity (import-only, disabled) and
                                             relevant if-feature conditions state */
+#define LYS_GETNEXT_OUTPUT       0x200 /**< lys_getnext() option to provide RPC's/action's output schema nodes instead of input schema nodes
+                                            provided by default */
 /** @} sgetnextflags */
 
 /**

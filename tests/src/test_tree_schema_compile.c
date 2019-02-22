@@ -645,7 +645,7 @@ test_node_list(void **state)
 
     assert_null(lys_parse_mem(ctx, "module gg {namespace urn:gg;prefix gg;"
                               "list l {key x; unique y;leaf x {type string;} leaf-list y {type string;}}}", LYS_IN_YANG));
-    logbuf_assert("Unique's descendant-schema-nodeid \"y\" refers to a leaf-list node instead of a leaf.");
+    logbuf_assert("Unique's descendant-schema-nodeid \"y\" refers to leaf-list node instead of a leaf.");
 
     assert_null(lys_parse_mem(ctx, "module hh {namespace urn:hh;prefix hh;"
                               "list l {key x; unique \"x y\";leaf x {type string;} leaf y {config false; type string;}}}", LYS_IN_YANG));
@@ -1730,7 +1730,7 @@ test_type_leafref(void **state)
                                         "container default-address{leaf ifname{type leafref{ path \"../../interface/name\";}}"
                                           "leaf address {type leafref{ path \"../../interface[  name = current()/../ifname ]/address/ip\";}}}}",
                                         LYS_IN_YANG));
-    type = ((struct lysc_node_leaf*)(*lysc_node_children_p(mod->compiled->data->prev))->prev)->type;
+    type = ((struct lysc_node_leaf*)(*lysc_node_children_p(mod->compiled->data->prev, 0))->prev)->type;
     assert_non_null(type);
     assert_int_equal(1, type->refcount);
     assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
@@ -2194,9 +2194,9 @@ test_uses(void **state)
     assert_non_null(mod = lys_parse_mem(ctx, "module d {namespace urn:d;prefix d; grouping grp {container g;}"
                                         "container top {uses grp {augment g {leaf x {type int8;}}}}}", LYS_IN_YANG));
     assert_non_null(mod->compiled->data);
-    assert_non_null(child = lysc_node_children(mod->compiled->data));
+    assert_non_null(child = lysc_node_children(mod->compiled->data, 0));
     assert_string_equal("g", child->name);
-    assert_non_null(child = lysc_node_children(child));
+    assert_non_null(child = lysc_node_children(child, 0));
     assert_string_equal("x", child->name);
 
     /* invalid */
@@ -2409,11 +2409,11 @@ test_augment(void **state)
     assert_non_null(ly_ctx_get_module_implemented(ctx, "d"));
     assert_non_null(node = mod->compiled->data);
     assert_string_equal(node->name, "top");
-    assert_non_null(node = lysc_node_children(node));
+    assert_non_null(node = lysc_node_children(node, 0));
     assert_string_equal(node->name, "a");
     assert_non_null(node = node->next);
     assert_string_equal(node->name, "c");
-    assert_non_null(node = lysc_node_children(node));
+    assert_non_null(node = lysc_node_children(node, 0));
     assert_string_equal(node->name, "c");
     assert_non_null(node = node->next);
     assert_string_equal(node->name, "d");
@@ -2447,7 +2447,7 @@ test_augment(void **state)
     assert_non_null((mod = lys_parse_mem(ctx, "module f {namespace urn:f;prefix f;grouping g {leaf a {type string;}}"
                                          "container c;"
                                          "augment /c {uses g;}}", LYS_IN_YANG)));
-    assert_non_null(node = lysc_node_children(mod->compiled->data));
+    assert_non_null(node = lysc_node_children(mod->compiled->data, 0));
     assert_string_equal(node->name, "a");
 
     ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule gsub {belongs-to g {prefix g;}"
@@ -2535,7 +2535,7 @@ test_deviation(void **state)
     assert_non_null((mod = ly_ctx_get_module_implemented(ctx, "a")));
     assert_non_null(node = mod->compiled->data);
     assert_string_equal(node->name, "top");
-    assert_non_null(node = lysc_node_children(node));
+    assert_non_null(node = lysc_node_children(node, 0));
     assert_string_equal(node->name, "a");
     assert_non_null(node = node->next);
     assert_string_equal(node->name, "c");
@@ -2677,7 +2677,7 @@ test_deviation(void **state)
     assert_non_null(node = node->next);
     assert_string_equal("top", node->name);
     assert_true(node->flags & LYS_CONFIG_R);
-    assert_non_null(node = lysc_node_children(node));
+    assert_non_null(node = lysc_node_children(node, 0));
     assert_string_equal("x", node->name);
     assert_true(node->flags & LYS_CONFIG_R);
     assert_non_null(node = node->next);
@@ -2694,7 +2694,7 @@ test_deviation(void **state)
     assert_non_null(node = node->next);
     assert_string_equal("top", node->name);
     assert_true(node->flags & LYS_CONFIG_W);
-    assert_non_null(node = lysc_node_children(node));
+    assert_non_null(node = lysc_node_children(node, 0));
     assert_string_equal("x", node->name);
     assert_true(node->flags & LYS_CONFIG_W);
 
@@ -2706,11 +2706,11 @@ test_deviation(void **state)
     assert_non_null(node = mod->compiled->data);
     assert_string_equal("a", node->name);
     assert_true((node->flags & LYS_MAND_MASK) == LYS_MAND_TRUE);
-    assert_true((lysc_node_children(node)->flags & LYS_MAND_MASK) == LYS_MAND_TRUE);
+    assert_true((lysc_node_children(node, 0)->flags & LYS_MAND_MASK) == LYS_MAND_TRUE);
     assert_non_null(node = node->next);
     assert_string_equal("b", node->name);
     assert_false(node->flags & LYS_MAND_MASK); /* just unset on container */
-    assert_true((lysc_node_children(node)->flags & LYS_MAND_MASK) == LYS_MAND_FALSE);
+    assert_true((lysc_node_children(node, 0)->flags & LYS_MAND_MASK) == LYS_MAND_FALSE);
 
     assert_non_null(mod = lys_parse_mem(ctx, "module n {yang-version 1.1; namespace urn:n;prefix n;"
                                         "leaf a {default test; type string;}"

@@ -86,17 +86,21 @@ lys_parse_nodeid(const char **id, const char **prefix, size_t *prefix_len, const
 
 LY_ERR
 lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodeid_len, const struct lysc_node *context_node,
-                          const struct lys_module *context_module, int nodetype, int implement, const struct lysc_node **target)
+                          const struct lys_module *context_module, int nodetype, int implement,
+                          const struct lysc_node **target, uint16_t *result_flag)
 {
     LY_ERR ret = LY_EVALID;
     const char *name, *prefix, *id;
     size_t name_len, prefix_len;
     const struct lys_module *mod;
     const char *nodeid_type;
+    int getnext_extra_flag = 0;
 
     assert(nodeid);
     assert(target);
+    assert(result_flag);
     *target = NULL;
+    *result_flag = 0;
 
     id = nodeid;
 
@@ -139,11 +143,27 @@ lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodei
             /* make the module implemented */
             ly_ctx_module_implement_internal(ctx->ctx, (struct lys_module*)mod, 2);
         }
-        context_node = lys_child(context_node, mod, name, name_len, 0, LYS_GETNEXT_NOSTATECHECK | LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE);
-        if (!context_node) {
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                   "Invalid %s-schema-nodeid value \"%.*s\" - target node not found.", nodeid_type, id - nodeid, nodeid);
-            return LY_ENOTFOUND;
+        if (context_node && context_node->nodetype == LYS_ACTION) {
+            /* move through input/output manually */
+            if (!strncmp("input", name, name_len)) {
+                (*result_flag) |= LYSC_OPT_RPC_INPUT;
+            } else if (!strncmp("input", name, name_len)) {
+                (*result_flag) |= LYSC_OPT_RPC_OUTPUT;
+                getnext_extra_flag = LYS_GETNEXT_OUTPUT;
+            }
+        } else {
+            context_node = lys_child(context_node, mod, name, name_len, 0,
+                                     getnext_extra_flag | LYS_GETNEXT_NOSTATECHECK | LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE);
+            if (!context_node) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                       "Invalid %s-schema-nodeid value \"%.*s\" - target node not found.", nodeid_type, id - nodeid, nodeid);
+                return LY_ENOTFOUND;
+            }
+            getnext_extra_flag = 0;
+
+            if (context_node->nodetype == LYS_NOTIF) {
+                (*result_flag) |= LYSC_OPT_NOTIFICATION;
+            }
         }
         if (!*id || (nodeid_len && ((size_t)(id - nodeid) >= nodeid_len))) {
             break;
@@ -1127,7 +1147,7 @@ lysc_node_notifs(const struct lysc_node *node)
 }
 
 struct lysc_node **
-lysc_node_children_p(const struct lysc_node *node)
+lysc_node_children_p(const struct lysc_node *node, uint16_t flags)
 {
     assert(node);
     switch (node->nodetype) {
@@ -1143,22 +1163,24 @@ lysc_node_children_p(const struct lysc_node *node)
         return &((struct lysc_node_case*)node)->child;
     case LYS_LIST:
         return &((struct lysc_node_list*)node)->child;
-/* TODO
-    case LYS_INOUT:
-        return &((struct lysc_action_inout*)node)->child;
-    case LYS_NOTIF:
-        return &((struct lysc_notif*)node)->child;
-*/
+    case LYS_ACTION:
+        if (flags & LYS_CONFIG_R) {
+            return &((struct lysc_action*)node)->output.data;
+        } else {
+            /* LYS_CONFIG_W, but also the default case */
+            return &((struct lysc_action*)node)->input.data;
+        }
+    /* TODO Notification */
     default:
         return NULL;
     }
 }
 
 API const struct lysc_node *
-lysc_node_children(const struct lysc_node *node)
+lysc_node_children(const struct lysc_node *node, uint16_t flags)
 {
     struct lysc_node **children;
-    children = lysc_node_children_p((struct lysc_node*)node);
+    children = lysc_node_children_p((struct lysc_node*)node, flags);
     if (children) {
         return *children;
     } else {

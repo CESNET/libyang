@@ -154,8 +154,12 @@ LY_ERR lysp_load_submodule(struct ly_parser_ctx *ctx, struct lysp_module *mod, s
  *
  * @{
  */
-#define LYSC_OPT_FREE_SP 1           /**< Free the input printable schema */
-#define LYSC_OPT_INTERNAL 2          /**< Internal compilation caused by dependency */
+#define LYSC_OPT_RPC_INPUT  LYS_CONFIG_W       /**< Internal option when compiling schema tree of RPC/action input */
+#define LYSC_OPT_RPC_OUTPUT LYS_CONFIG_R       /**< Internal option when compiling schema tree of RPC/action output */
+#define LYSC_OPT_RPC_MASK   LYS_CONFIG_MASK
+#define LYSC_OPT_FREE_SP    0x04               /**< Free the input printable schema */
+#define LYSC_OPT_INTERNAL   0x08               /**< Internal compilation caused by dependency */
+#define LYSC_OPT_NOTIFICATION 0x10             /**< Internal option when compiling schema tree of Notification */
 /** @} scflags */
 
 /**
@@ -200,9 +204,10 @@ struct lysp_node **lysp_node_children_p(struct lysp_node *node);
  *
  * Decides the node's type and in case it has a children list, returns its address.
  * @param[in] node Node to check.
+ * @param[in] flags Config flag to distinguish input (LYS_CONFIG_W) and output (LYS_CONFIG_R) data in case of RPC/action node.
  * @return Address of the node's child member if any, NULL otherwise.
  */
-struct lysc_node **lysc_node_children_p(const struct lysc_node *node);
+struct lysc_node **lysc_node_children_p(const struct lysc_node *node, uint16_t flags);
 
 /**
  * @brief Get the covering schema module structure for the given parsed module structure.
@@ -280,11 +285,15 @@ LY_ERR lys_parse_nodeid(const char **id, const char **prefix, size_t *prefix_len
  * the given nodetype, LY_EDENIED is returned (and target is provided), but no error message is printed.
  * The value can be even an ORed value to allow multiple nodetypes.
  * @param[in] implement Flag if the modules mentioned in the nodeid are supposed to be made implemented.
- * @param[out] target Found target node if any.
+ * @param[out] target Found target node if any. In case of RPC/action input/output node, LYS_ACTION node is actually returned
+ * since the input/output has not a standalone node structure and it is part of ::lysc_action which is better compatible with ::lysc_node.
+ * @param[out] result_flag Output parameter to announce if the schema nodeid goes through the action's input/output or a Notification.
+ * The LYSC_OPT_RPC_INPUT, LYSC_OPT_RPC_OUTPUT and LYSC_OPT_NOTIFICATION are used as flags.
  * @return LY_ERR values - LY_ENOTFOUND, LY_EVALID, LY_EDENIED or LY_SUCCESS.
  */
 LY_ERR lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodeid_len, const struct lysc_node *context_node,
-                                 const struct lys_module *context_module, int nodetype, int implement, const struct lysc_node **target);
+                                 const struct lys_module *context_module, int nodetype, int implement,
+                                 const struct lysc_node **target, uint16_t *result_flag);
 
 /**
  * @brief Find the module referenced by prefix in the provided mod.

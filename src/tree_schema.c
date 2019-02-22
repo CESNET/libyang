@@ -31,8 +31,12 @@
 API const struct lysc_node *
 lys_getnext(const struct lysc_node *last, const struct lysc_node *parent, const struct lysc_module *module, int options)
 {
-    const struct lysc_node *next;
+    const struct lysc_node *next = NULL;
     struct lysc_node **snode;
+    int action_flag = 0, notif_flag = 0;
+    const struct lysc_action *actions;
+    const struct lysc_notif *notifs;
+    unsigned int u;
 
     LY_CHECK_ARG_RET(NULL, parent || module, NULL);
 
@@ -48,7 +52,7 @@ lys_getnext(const struct lysc_node *last, const struct lysc_node *parent, const 
                 }
                 next = last = (const struct lysc_node*)&((struct lysc_node_choice*)parent)->cases[0];
             } else {
-                snode = lysc_node_children_p(parent);
+                snode = lysc_node_children_p(parent, (options & LYS_GETNEXT_OUTPUT) ? LYS_CONFIG_R : LYS_CONFIG_W);
                 /* do not return anything if the augment does not have any children */
                 if (!snode || !(*snode)) {
                     return NULL;
@@ -60,7 +64,8 @@ lys_getnext(const struct lysc_node *last, const struct lysc_node *parent, const 
             next = last = module->data;
         }
         if (!next) {
-            return next;
+            /* try to get action or notification */
+            goto repeat;
         } else if (!(options & LYS_GETNEXT_NOSTATECHECK)) {
             if (!lys_is_disabled(next, 0)) {
                 return next;
@@ -69,6 +74,36 @@ lys_getnext(const struct lysc_node *last, const struct lysc_node *parent, const 
         } else {
             return next;
         }
+    } else if (last->nodetype == LYS_ACTION) {
+        if (last->parent) {
+            actions = lysc_node_actions(last->parent);
+        } else {
+            actions = module->rpcs;
+        }
+        LY_ARRAY_FOR(actions, u) {
+            if (&actions[u] == (struct lysc_action*)last) {
+                break;
+            }
+        }
+        if (u + 1 < LY_ARRAY_SIZE(actions)) {
+            next = (struct lysc_node*)(&actions[u + 1]);
+        }
+        goto repeat;
+    } else if (last->nodetype == LYS_NOTIF) {
+        if (last->parent) {
+            notifs = lysc_node_notifs(last->parent);
+        } else {
+            notifs = module->notifs;
+        }
+        LY_ARRAY_FOR(notifs, u) {
+            if (&notifs[u] == (struct lysc_notif*)last) {
+                break;
+            }
+        }
+        if (u + 1 < LY_ARRAY_SIZE(notifs)) {
+            next = (struct lysc_node*)(&notifs[u + 1]);
+        }
+        goto repeat;
     }
 
     next = last->next;
@@ -83,9 +118,16 @@ repeat:
         if (last->parent != parent) {
             last = last->parent;
             next = last->next;
-            goto repeat;
+        } else if (!action_flag) {
+            action_flag = 1;
+            next = parent ? (struct lysc_node*)lysc_node_actions(parent) : (struct lysc_node*)module->rpcs;
+        } else if (!notif_flag) {
+            notif_flag = 1;
+            next = parent ? (struct lysc_node*)lysc_node_notifs(parent) : (struct lysc_node*)module->notifs;
+        } else {
+            return NULL;
         }
-        return next;
+        goto repeat;
     }
     switch (next->nodetype) {
     case LYS_ACTION:
