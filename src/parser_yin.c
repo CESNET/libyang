@@ -35,6 +35,31 @@ enum YIN_ARGUMENT {
     YIN_ARG_TAG,
 };
 
+LY_ERR
+parse_text_element(struct lyxml_context *xml_ctx, const char **data, const char **value)
+{
+    LY_ERR ret = LY_SUCCESS;
+    char *buf = NULL, *out = NULL;
+    size_t buf_len = 0, out_len = 0;
+    int dynamic;
+
+    const char *prefix, *name;
+    size_t prefix_len, name_len;
+
+
+    if (xml_ctx->status == LYXML_ELEM_CONTENT) {
+        ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
+        LY_CHECK_RET(ret);
+        *value = lydict_insert(xml_ctx->ctx, out, out_len);
+        LY_CHECK_ERR_RET(!(*value), LOGMEM(xml_ctx->ctx), LY_EMEM);
+    }
+
+    LY_CHECK_ERR_RET(xml_ctx->status != LYXML_ELEMENT, "erere", LY_EINT);
+    lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
+
+    return 0;
+}
+
 /**
  * @brief Match argument name.
  *
@@ -53,7 +78,7 @@ match_argument_name(const char *name, size_t len)
 #define IF_ARG_PREFIX(STR, LEN) if (!strncmp((name) + already_read, STR, LEN)) {already_read+=LEN;
 #define IF_ARG_PREFIX_END }
 
-    switch(*name) {
+    switch (*name) {
     case 'c':
         already_read += 1;
         IF_ARG("ondition", 8, YIN_ARG_CONDITION);
@@ -263,7 +288,7 @@ yin_parse_import(struct lyxml_context *xml_ctx, const char *module_prefix, const
     ret = lyxml_get_attribute(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
     LY_CHECK_RET(ret);
     if (match_argument_name(name, name_len) != YIN_ARG_MODULE) {
-        LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Invalid argument name \"%s\", expected \"value\".", name);
+        LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Invalid argument name \"%s\", expected \"module\".", name);
         return LY_EVALID;
     }
     ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
@@ -421,7 +446,21 @@ parse_mod(struct lyxml_context *xml_ctx, const char **data, struct lysp_module *
         /* linkage */
         case YANG_IMPORT:
             yin_parse_import(xml_ctx, (*mod)->mod->prefix, data, &(*mod)->imports);
+            break;
 
+        /* meta */
+        case YANG_ORGANIZATION:
+            LY_CHECK_RET(parse_text_element(xml_ctx, data, &(*mod)->mod->org));
+            break;
+        case YANG_CONTACT:
+            LY_CHECK_RET(parse_text_element(xml_ctx, data, &(*mod)->mod->contact));
+            break;
+        case YANG_DESCRIPTION:
+            LY_CHECK_RET(parse_text_element(xml_ctx, data, &(*mod)->mod->dsc));
+            break;
+        case YANG_REFERENCE:
+            LY_CHECK_RET(parse_text_element(xml_ctx, data, &(*mod)->mod->ref));
+            break;
 
         default:
             /* error */
