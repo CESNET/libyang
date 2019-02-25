@@ -2944,6 +2944,10 @@ test_deviation(void **state)
                               "deviation /x {deviate replace {type empty;}}}", LYS_IN_YANG));
     logbuf_assert("Leaf-list of type \"empty\" is allowed only in YANG 1.1 modules.");
 
+    assert_null(lys_parse_mem(ctx, "module oo {yang-version 1.1; namespace urn:oo;prefix oo; rpc test {input {container a {leaf b {type string;}}}}"
+                              "augment /test/input/a {action invalid {input {leaf x {type string;}}}}}", LYS_IN_YANG));
+    logbuf_assert("Action \"invalid\" is placed inside another RPC/action.");
+
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
 }

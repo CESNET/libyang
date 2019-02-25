@@ -95,6 +95,7 @@ lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodei
     const struct lys_module *mod;
     const char *nodeid_type;
     int getnext_extra_flag = 0;
+    int current_nodetype = 0;
 
     assert(nodeid);
     assert(target);
@@ -147,11 +148,15 @@ lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodei
             /* move through input/output manually */
             if (!strncmp("input", name, name_len)) {
                 (*result_flag) |= LYSC_OPT_RPC_INPUT;
-            } else if (!strncmp("input", name, name_len)) {
+            } else if (!strncmp("output", name, name_len)) {
                 (*result_flag) |= LYSC_OPT_RPC_OUTPUT;
                 getnext_extra_flag = LYS_GETNEXT_OUTPUT;
+            } else {
+                goto getnext;
             }
+            current_nodetype = LYS_INOUT;
         } else {
+getnext:
             context_node = lys_child(context_node, mod, name, name_len, 0,
                                      getnext_extra_flag | LYS_GETNEXT_NOSTATECHECK | LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE);
             if (!context_node) {
@@ -160,8 +165,9 @@ lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodei
                 return LY_ENOTFOUND;
             }
             getnext_extra_flag = 0;
+            current_nodetype = context_node->nodetype;
 
-            if (context_node->nodetype == LYS_NOTIF) {
+            if (current_nodetype == LYS_NOTIF) {
                 (*result_flag) |= LYSC_OPT_NOTIFICATION;
             }
         }
@@ -179,7 +185,10 @@ lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodei
 
     if (ret == LY_SUCCESS) {
         *target = context_node;
-        if (nodetype && !(context_node->nodetype & nodetype)) {
+        if (nodetype & LYS_INOUT) {
+            /* instead of input/output nodes, the RPC/action node is actually returned */
+        }
+        if (nodetype && !(current_nodetype & nodetype)) {
             return LY_EDENIED;
         }
     } else {

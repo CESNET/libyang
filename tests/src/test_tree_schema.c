@@ -98,6 +98,10 @@ test_getnext(void **state)
 
     struct ly_ctx *ctx;
     struct lys_module *mod;
+    const struct lysc_node *node = NULL, *four;
+    const struct lysc_node_container *cont;
+    const struct lysc_action *rpc;
+
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
 
     assert_non_null(mod = lys_parse_mem(ctx, "module a {yang-version 1.1; namespace urn:a;prefix a;"
@@ -109,6 +113,78 @@ test_getnext(void **state)
                                         "choice x { leaf e {type string;} case y {leaf f {type string;}}} anyxml g;"
                                         "rpc h {input {leaf h-input {type string;}} output {leaf h-output {type string;}}}"
                                         "notification i {leaf i-data {type string;}}}", LYS_IN_YANG));
+    assert_non_null(node = lys_getnext(node, NULL, mod->compiled, 0));
+    assert_string_equal("a", node->name);
+    cont = (const struct lysc_node_container*)node;
+    assert_non_null(node = lys_getnext(node, NULL, mod->compiled, 0));
+    assert_string_equal("b", node->name);
+    assert_non_null(node = lys_getnext(node, NULL, mod->compiled, 0));
+    assert_string_equal("c", node->name);
+    assert_non_null(node = lys_getnext(node, NULL, mod->compiled, 0));
+    assert_string_equal("d", node->name);
+    assert_non_null(node = lys_getnext(node, NULL, mod->compiled, 0));
+    assert_string_equal("e", node->name);
+    assert_non_null(node = lys_getnext(node, NULL, mod->compiled, 0));
+    assert_string_equal("f", node->name);
+    assert_non_null(node = lys_getnext(node, NULL, mod->compiled, 0));
+    assert_string_equal("g", node->name);
+    assert_non_null(node = lys_getnext(node, NULL, mod->compiled, 0));
+    assert_string_equal("h", node->name);
+    rpc = (const struct lysc_action*)node;
+    /* TODO Notifications
+    assert_non_null(node = lys_getnext(node, NULL, mod->compiled, 0));
+    assert_string_equal("i", node->name);
+    */
+    assert_null(node = lys_getnext(node, NULL, mod->compiled, 0));
+    /* Inside container */
+    assert_non_null(node = lys_getnext(node, (const struct lysc_node*)cont, mod->compiled, 0));
+    assert_string_equal("one", node->name);
+    assert_non_null(node = lys_getnext(node, (const struct lysc_node*)cont, mod->compiled, 0));
+    assert_string_equal("two", node->name);
+    assert_non_null(node = lys_getnext(node, (const struct lysc_node*)cont, mod->compiled, 0));
+    assert_string_equal("three", node->name);
+    assert_non_null(node = four = lys_getnext(node, (const struct lysc_node*)cont, mod->compiled, 0));
+    assert_string_equal("four", node->name);
+    assert_non_null(node = lys_getnext(node, (const struct lysc_node*)cont, mod->compiled, 0));
+    assert_string_equal("five", node->name);
+    assert_non_null(node = lys_getnext(node, (const struct lysc_node*)cont, mod->compiled, 0));
+    assert_string_equal("six", node->name);
+    assert_non_null(node = lys_getnext(node, (const struct lysc_node*)cont, mod->compiled, 0));
+    assert_string_equal("seven", node->name);
+    assert_non_null(node = lys_getnext(node, (const struct lysc_node*)cont, mod->compiled, 0));
+    assert_string_equal("eight", node->name);
+    /* TODO Notifications
+    assert_non_null(node = lys_getnext(node, (const struct lysc_node*)cont, mod->compiled, 0));
+    assert_string_equal("nine", node->name);
+    */
+    assert_null(node = lys_getnext(node, (const struct lysc_node*)cont, mod->compiled, 0));
+    /* Inside RPC */
+    assert_non_null(node = lys_getnext(node, (const struct lysc_node*)rpc, mod->compiled, 0));
+    assert_string_equal("h-input", node->name);
+    assert_null(node = lys_getnext(node, (const struct lysc_node*)rpc, mod->compiled, 0));
+
+    /* options */
+    assert_non_null(node = lys_getnext(four, (const struct lysc_node*)cont, mod->compiled, LYS_GETNEXT_WITHCHOICE));
+    assert_string_equal("x", node->name);
+    assert_non_null(node = lys_getnext(node, (const struct lysc_node*)cont, mod->compiled, LYS_GETNEXT_WITHCHOICE));
+    assert_string_equal("seven", node->name);
+
+    assert_non_null(node = lys_getnext(four, (const struct lysc_node*)cont, mod->compiled, LYS_GETNEXT_NOCHOICE));
+    assert_string_equal("seven", node->name);
+
+    assert_non_null(node = lys_getnext(four, (const struct lysc_node*)cont, mod->compiled, LYS_GETNEXT_WITHCASE));
+    assert_string_equal("five", node->name);
+    assert_non_null(node = lys_getnext(node, (const struct lysc_node*)cont, mod->compiled, LYS_GETNEXT_WITHCASE));
+    assert_string_equal("y", node->name);
+    assert_non_null(node = lys_getnext(node, (const struct lysc_node*)cont, mod->compiled, LYS_GETNEXT_WITHCASE));
+    assert_string_equal("seven", node->name);
+
+    assert_non_null(node = lys_getnext(NULL, NULL, mod->compiled, LYS_GETNEXT_INTONPCONT));
+    assert_string_equal("one", node->name);
+
+    assert_non_null(node = lys_getnext(NULL, (const struct lysc_node*)rpc, mod->compiled, LYS_GETNEXT_OUTPUT));
+    assert_string_equal("h-output", node->name);
+    assert_null(node = lys_getnext(node, (const struct lysc_node*)rpc, mod->compiled, LYS_GETNEXT_OUTPUT));
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
