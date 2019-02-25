@@ -40,6 +40,7 @@ option(ENABLE_CALLGRIND_TESTS "Build performance tests to be run with callgrind"
 option(ENABLE_CACHE "Enable data caching for schemas and hash tables for data (time-efficient at the cost of increased space-complexity)" ON)
 option(ENABLE_LATEST_REVISIONS "Enable reusing of latest revisions of schemas" ON)
 option(ENABLE_LYD_PRIV "Add a private pointer also to struct lyd_node (data node structure), just like in struct lys_node, for arbitrary user data" OFF)
+option(ENABLE_FUZZ_TARGETS "Build target programs suitable for fuzzing with AFL" OFF)
 set(PLUGINS_DIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libyang" CACHE STRING "Directory with libyang plugins (extensions and user types)")
 
 if(ENABLE_CACHE)
@@ -402,6 +403,10 @@ if(ENABLE_BUILD_TESTS)
         set(ENABLE_BUILD_TESTS NO)
     endif(CMOCKA_FOUND)
 endif(ENABLE_BUILD_TESTS)
+
+if(ENABLE_BUILD_FUZZ_TARGETS)
+    add_subdirectory(tests/fuzz)
+endif(ENABLE_BUILD_FUZZ_TARGETS)
 
 if(GEN_LANGUAGE_BINDINGS AND GEN_CPP_BINDINGS)
     add_subdirectory(swig)

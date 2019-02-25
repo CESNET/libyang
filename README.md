@@ -225,6 +225,13 @@ Tests can be run by the make's `test` target:
 $ make test
 ```
 
+## Fuzzing
+
+Simple fuzzing targets, fuzzing instructions and a Dockerfile that builds the fuzz targets
+and the AFL fuzzer are available in the `tests/fuzz` directory.
+
+The `tests/fuzz` directory also contains a README file that describes the whole process in more detail.
+
 ## Bindings
 
 We provide bindings for high-level languages using [SWIG](http://www.swig.org/)
