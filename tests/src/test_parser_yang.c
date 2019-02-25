@@ -1914,14 +1914,14 @@ test_augment(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
     ctx.line = 1;
-    //ctx.mod_version = 2; /* simulate YANG 1.1 */
+    ctx.mod_version = 2; /* simulate YANG 1.1 */
 
     /* invalid cardinality */
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
     str = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
     assert_int_equal(LY_EVALID, parse_augment(&ctx, &str, NULL, &a)); \
     logbuf_assert("Duplicate keyword \""MEMBER"\". Line number 1."); \
-    lysp_augment_free(ctx.ctx, a); a = NULL;
+    FREE_ARRAY(ctx.ctx, a, lysp_augment_free); a = NULL;
 
     TEST_DUP("description", "text1", "text2");
     TEST_DUP("reference", "1", "2");
@@ -1943,7 +1943,7 @@ test_augment(void **state)
     assert_non_null(a->when);
     assert_null(a->parent);
     assert_int_equal(LYS_STATUS_CURR, a->flags);
-    lysp_augment_free(ctx.ctx, a); a = NULL;
+    FREE_ARRAY(ctx.ctx, a, lysp_augment_free); a = NULL;
 
     *state = NULL;
     ly_ctx_destroy(ctx.ctx, NULL);
@@ -1972,6 +1972,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_anyxml, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_grouping, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_uses, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_augment, logger_setup, logger_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
