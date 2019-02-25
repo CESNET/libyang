@@ -1,9 +1,9 @@
 /*
- * @file set.c
+ * @file test_tree_schema.c
  * @author: Radek Krejci <rkrejci@cesnet.cz>
- * @brief unit tests for functions from common.c
+ * @brief unit tests for functions from tress_schema.c
  *
- * Copyright (c) 2018 CESNET, z.s.p.o.
+ * Copyright (c) 2018-2019 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
