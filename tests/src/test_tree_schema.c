@@ -112,7 +112,9 @@ test_getnext(void **state)
                                         "leaf b {type string;} leaf-list c {type string;} list d {config false;}"
                                         "choice x { leaf e {type string;} case y {leaf f {type string;}}} anyxml g;"
                                         "rpc h {input {leaf h-input {type string;}} output {leaf h-output {type string;}}}"
-                                        "notification i {leaf i-data {type string;}}}", LYS_IN_YANG));
+                                        "rpc i;"
+                                        "notification j {leaf i-data {type string;}}"
+                                        "notification k;}", LYS_IN_YANG));
     assert_non_null(node = lys_getnext(node, NULL, mod->compiled, 0));
     assert_string_equal("a", node->name);
     cont = (const struct lysc_node_container*)node;
@@ -131,9 +133,13 @@ test_getnext(void **state)
     assert_non_null(node = lys_getnext(node, NULL, mod->compiled, 0));
     assert_string_equal("h", node->name);
     rpc = (const struct lysc_action*)node;
-    /* TODO Notifications
     assert_non_null(node = lys_getnext(node, NULL, mod->compiled, 0));
     assert_string_equal("i", node->name);
+    /* TODO Notifications
+    assert_non_null(node = lys_getnext(node, NULL, mod->compiled, 0));
+    assert_string_equal("j", node->name);
+    assert_non_null(node = lys_getnext(node, NULL, mod->compiled, 0));
+    assert_string_equal("k", node->name);
     */
     assert_null(node = lys_getnext(node, NULL, mod->compiled, 0));
     /* Inside container */
@@ -185,6 +191,15 @@ test_getnext(void **state)
     assert_non_null(node = lys_getnext(NULL, (const struct lysc_node*)rpc, mod->compiled, LYS_GETNEXT_OUTPUT));
     assert_string_equal("h-output", node->name);
     assert_null(node = lys_getnext(node, (const struct lysc_node*)rpc, mod->compiled, LYS_GETNEXT_OUTPUT));
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b; feature f;"
+                                        "leaf a {type string; if-feature f;}"
+                                        "leaf b {type string;}}", LYS_IN_YANG));
+    assert_non_null(node = lys_getnext(NULL, NULL, mod->compiled, 0));
+    assert_string_equal("b", node->name);
+    assert_non_null(node = lys_getnext(NULL, NULL, mod->compiled, LYS_GETNEXT_NOSTATECHECK));
+    assert_string_equal("a", node->name);
+
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
