@@ -59,6 +59,8 @@ help(int shortout)
 #endif
         "  -p PATH, --path=PATH  Search path for schema (YANG/YIN) modules. The option can be used multiple times.\n"
         "                        Current working directory and path of the module being added is used implicitly.\n\n"
+        "  -D, --disable-cwd-search\n"
+        "                        Do not implicitly search in CWD for schema modules.\n\n"
         "  -s, --strict          Strict data parsing (do not skip unknown data),\n"
         "                        has no effect for schemas.\n\n"
         "  -m, --merge           Merge input data files into a single tree and validate at once,\n"
@@ -256,6 +258,7 @@ main_ni(int argc, char* argv[])
         {"help",             no_argument,       NULL, 'h'},
         {"tree-help",        no_argument,       NULL, 'H'},
         {"allimplemented",   no_argument,       NULL, 'i'},
+        {"disable-cwd-search", no_argument,     NULL, 'D'},
         {"list",             no_argument,       NULL, 'l'},
         {"merge",            no_argument,       NULL, 'm'},
         {"output",           required_argument, NULL, 'o'},
@@ -399,6 +402,9 @@ main_ni(int argc, char* argv[])
             goto cleanup;
         case 'i':
             options_ctx |= LY_CTX_ALLIMPLEMENTED;
+            break;
+        case 'D':
+            options_ctx |= LY_CTX_DISABLE_SEARCHDIR_CWD;
             break;
         case 'l':
             list = 1;
