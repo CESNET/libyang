@@ -303,9 +303,9 @@ main_ni(int argc, char* argv[])
 
     opterr = 0;
 #ifndef NDEBUG
-    while ((opt = getopt_long(argc, argv, "ad:f:F:gunP:L:hHilmo:p:r:st:vVG:y:", options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "ad:f:F:gunP:L:hHiDlmo:p:r:st:vVG:y:", options, &opt_index)) != -1)
 #else
-    while ((opt = getopt_long(argc, argv, "ad:f:F:gunP:L:hHilmo:p:r:st:vVy:", options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "ad:f:F:gunP:L:hHiDlmo:p:r:st:vVy:", options, &opt_index)) != -1)
 #endif
     {
         switch (opt) {
