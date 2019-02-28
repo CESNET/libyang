@@ -939,7 +939,7 @@ const struct lys_module *
 ly_ctx_load_sub_module(struct ly_ctx *ctx, struct lys_module *module, const char *name, const char *revision,
                        int implement, struct unres_schema *unres)
 {
-    struct lys_module *mod = NULL;
+    struct lys_module *mod = NULL, *latest_mod = NULL;
     int i;
 
     if (!module) {
@@ -958,6 +958,16 @@ ly_ctx_load_sub_module(struct ly_ctx *ctx, struct lys_module *module, const char
         for (i = ctx->internal_module_count, mod = NULL; i < ctx->models.used; i++) {
             mod = ctx->models.list[i]; /* shortcut */
             if (ly_strequal(name, mod->name, 0)) {
+                /* first remember latest module if no other is found */
+                if (!latest_mod) {
+                    latest_mod = mod;
+                } else {
+                    if (mod->rev_size && latest_mod->rev_size && (strcmp(mod->rev[0].date, latest_mod->rev[0].date) > 0)) {
+                        /* newer revision */
+                        latest_mod = mod;
+                    }
+                }
+
                 if (revision && mod->rev_size && !strcmp(revision, mod->rev[0].date)) {
                     /* the specific revision was already loaded */
                     break;
@@ -1003,6 +1013,11 @@ search_file:
         if (!mod && (ctx->models.flags & LY_CTX_PREFER_SEARCHDIRS)) {
             goto search_clb;
         }
+    }
+
+    if (!mod && latest_mod) {
+        /* consider the latest mod found as the latest available */
+        mod = latest_mod;
     }
 
 #ifdef LY_ENABLED_LATEST_REVISIONS
