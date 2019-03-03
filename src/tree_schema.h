@@ -517,14 +517,14 @@ struct lysp_deviation {
  *         LYS_SET_LENGTH   | | | | | | | | | | | | | | | | | | | | | |x|
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       6 LYS_MAND_TRUE    | |x|x| | |x| | | | | | | | | | | |x| |x| | |
- *         LYS_ORDBY_SYSTEM | | | |x|x| | | | | | | | | | | | | | | | | |
  *         LYS_SET_PATH     | | | | | | | | | | | | | | | | | | | | | |x|
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       7 LYS_MAND_FALSE   | |x|x| | |x| | | | | | | | | | | |x| |x| | |
  *         LYS_ORDBY_USER   | | | |x|x| | | | | | | | | | | | | | | | | |
  *         LYS_SET_PATTERN  | | | | | | | | | | | | | | | | | | | | | |x|
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       8 LYS_YINELEM_TRUE | | | | | | | | | | | | | |x| | | | | | | | |
+ *       8 LYS_ORDBY_SYSTEM | | | |x|x| | | | | | | | | | | | | | | | | |
+ *         LYS_YINELEM_TRUE | | | | | | | | | | | | | |x| | | | | | | | |
  *         LYS_SET_RANGE    | | | | | | | | | | | | | | | | | | | | | |x|
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       9 LYS_YINELEM_FALSE| | | | | | | | | | | | | |x| | | | | | | | |
@@ -564,12 +564,12 @@ struct lysp_deviation {
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       5 LYS_STATUS_OBSLT |x|x|x|x|x|x|x|x|x| | |x|x|x|
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       6 LYS_MAND_TRUE    | |x|x| | |x| | | | | | | | |
- *         LYS_ORDBY_SYSTEM | | | |x|x| | | | | | | | | |
+ *       6 LYS_MAND_TRUE    |x|x|x|x|x|x| | | | | | | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       7 LYS_ORDBY_USER   | | | |x|x| | | | | | | | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       8 LYS_PRESENCE     |x| | | | | | | | | | | | | |
+ *       8 LYS_ORDBY_SYSTEM | | | |x|x| | | | | | | | | |
+ *         LYS_PRESENCE     |x| | | | | | | | | | | | | |
  *         LYS_UNIQUE       | | |x| | | | | | | | | | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       9 LYS_KEY          | | |x| | | | | | | | | | | |
@@ -593,14 +593,17 @@ struct lysp_deviation {
 #define LYS_STATUS_OBSLT 0x10        /**< status obsolete; */
 #define LYS_STATUS_MASK  0x1C        /**< mask for status value */
 #define LYS_MAND_TRUE    0x20        /**< mandatory true; applicable only to ::lysp_node_choice/::lysc_node_choice,
-                                          ::lysp_node_leaf/::lysc_node_leaf and ::lysp_node_anydata/::lysc_node_anydata */
+                                          ::lysp_node_leaf/::lysc_node_leaf and ::lysp_node_anydata/::lysc_node_anydata.
+                                          The ::lysc_node_leaflist and ::lysc_node_leaflist have this flag in case that min-elements > 0.
+                                          The ::lysc_node_container has this flag if it is not a presence container and it has at least one
+                                          child with LYS_MAND_TRUE. */
 #define LYS_MAND_FALSE   0x40        /**< mandatory false; applicable only to ::lysp_node_choice, ::lysp_node_leaf and ::lysp_node_anydata */
 #define LYS_MAND_MASK    0x60        /**< mask for mandatory values */
 #define LYS_PRESENCE     0x80        /**< flag for presence property of a container, applicable only to ::lysc_node_container */
 #define LYS_UNIQUE       0x80        /**< flag for leafs being part of a unique set, applicable only to ::lysc_node_leaf */
 #define LYS_KEY          0x100       /**< flag for leafs being a key of a list, applicable only to ::lysc_node_leaf */
 #define LYS_FENABLED     0x100       /**< feature enabled flag, applicable only to ::lysc_feature */
-#define LYS_ORDBY_SYSTEM 0x20        /**< ordered-by user lists, applicable only to ::lysc_node_leaflist/::lysp_node_leaflist and
+#define LYS_ORDBY_SYSTEM 0x80        /**< ordered-by user lists, applicable only to ::lysc_node_leaflist/::lysp_node_leaflist and
                                           ::lysc_node_list/::lysp_node_list */
 #define LYS_ORDBY_USER   0x40        /**< ordered-by user lists, applicable only to ::lysc_node_leaflist/::lysp_node_leaflist and
                                           ::lysc_node_list/::lysp_node_list */
@@ -627,7 +630,7 @@ struct lysp_deviation {
                                           with default statement mandatory. In case the default leaf value is taken from type, it is thrown
                                           away when it is refined to be mandatory node. */
 
-#define LYS_FLAGS_COMPILED_MASK 0x7f /**< mask for flags that maps to the compiled structures */
+#define LYS_FLAGS_COMPILED_MASK 0xff /**< mask for flags that maps to the compiled structures */
 /** @} */
 
 /**
@@ -975,8 +978,9 @@ struct lysc_when {
     struct lyxp_expr *cond;          /**< XPath when condition */
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
-    struct lysc_node *context;       /**< context node of the expression */
+    struct lysc_node *context;       /**< context node for evaluating the expression */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    uint32_t refcount;               /**< reference counter since some of the when statements are shared among several nodes */
 };
 
 /**
@@ -1178,6 +1182,7 @@ struct lysc_type_bin {
 struct lysc_action {
     uint16_t nodetype;               /**< LYS_ACTION */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
+    struct lys_module *module;       /**< module structure */
     const char *name;                /**< action/RPC name (mandatory) */
     /* TODO */
 };
@@ -1185,6 +1190,7 @@ struct lysc_action {
 struct lysc_notif {
     uint16_t nodetype;               /**< LYS_NOTIF */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
+    struct lys_module *module;       /**< module structure */
     const char *name;                /**< Notification name (mandatory) */
     /* TODO */
 };
@@ -1207,7 +1213,7 @@ struct lysc_node {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_when *when;          /**< when statement */
+    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
 };
 
@@ -1226,7 +1232,7 @@ struct lysc_node_container {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_when *when;          /**< when statement */
+    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
 
     struct lysc_node *child;         /**< first child node (linked list) */
@@ -1250,7 +1256,7 @@ struct lysc_node_case {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_when *when;          /**< when statement */
+    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
 
     struct lysc_node *child;         /**< first child node of the case (linked list). Note that all the children of all the sibling cases are linked
@@ -1274,7 +1280,7 @@ struct lysc_node_choice {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_when *when;          /**< when statement */
+    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
 
     struct lysc_node_case *cases;    /**< list of the cases (linked list). Note that all the children of all the cases are linked each other
@@ -1298,7 +1304,7 @@ struct lysc_node_leaf {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_when *when;          /**< when statement */
+    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
 
     struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
@@ -1323,7 +1329,7 @@ struct lysc_node_leaflist {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_when *when;          /**< when statement */
+    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
 
     struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
@@ -1351,7 +1357,7 @@ struct lysc_node_list {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_when *when;          /**< when statement */
+    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
 
     struct lysc_node *child;         /**< first child node (linked list) */
@@ -1380,7 +1386,7 @@ struct lysc_node_anydata {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_when *when;          /**< when statement */
+    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
 
     struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
@@ -1512,8 +1518,11 @@ struct lys_module {
                                           the module became implemented in future (no matter if implicitly via augment/deviate
                                           or explicitly via ly_ctx_module_implement()). */
 
-    uint8_t implemented:1;           /**< flag if the module is implemented, not just imported */
-    uint8_t latest_revision:2;       /**< flag to mark the latest available revision:
+    uint8_t implemented;             /**< flag if the module is implemented, not just imported. The module is implemented if
+                                          the flag has non-zero value. Specific values are used internally:
+                                          1 - implemented module
+                                          2 - recently implemented module by dependency, it can be reverted in rollback procedure */
+    uint8_t latest_revision;         /**< flag to mark the latest available revision:
                                           1 - the latest revision in searchdirs was not searched yet and this is the
                                           latest revision in the current context
                                           2 - searchdirs were searched and this is the latest available revision */

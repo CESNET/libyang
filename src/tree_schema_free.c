@@ -479,12 +479,16 @@ lysc_iffeature_free(struct ly_ctx *UNUSED(ctx), struct lysc_iffeature *iff)
 }
 
 static void
-lysc_when_free(struct ly_ctx *ctx, struct lysc_when *w)
+lysc_when_free(struct ly_ctx *ctx, struct lysc_when **w)
 {
-    lyxp_expr_free(ctx, w->cond);
-    FREE_STRING(ctx, w->dsc);
-    FREE_STRING(ctx, w->ref);
-    FREE_ARRAY(ctx, w->exts, lysc_ext_instance_free);
+    if (--(*w)->refcount) {
+        return;
+    }
+    lyxp_expr_free(ctx, (*w)->cond);
+    FREE_STRING(ctx, (*w)->dsc);
+    FREE_STRING(ctx, (*w)->ref);
+    FREE_ARRAY(ctx, (*w)->exts, lysc_ext_instance_free);
+    free(*w);
 }
 
 static void
@@ -742,7 +746,7 @@ lysc_node_free(struct ly_ctx *ctx, struct lysc_node *node)
         LOGINT(ctx);
     }
 
-    FREE_MEMBER(ctx, node->when, lysc_when_free);
+    FREE_ARRAY(ctx, node->when, lysc_when_free);
     FREE_ARRAY(ctx, node->iffeatures, lysc_iffeature_free);
     FREE_ARRAY(ctx, node->exts, lysc_ext_instance_free);
     free(node);
@@ -773,6 +777,9 @@ lysc_module_free_(struct lysc_module *module)
 void
 lysc_module_free(struct lysc_module *module, void (*private_destructor)(const struct lysc_node *node, void *priv))
 {
+    /* TODO use the destructor, this just suppress warning about unused parameter */
+    (void) private_destructor;
+
     if (module) {
         lysc_module_free_(module);
     }

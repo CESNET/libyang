@@ -85,38 +85,68 @@ lys_parse_nodeid(const char **id, const char **prefix, size_t *prefix_len, const
 }
 
 LY_ERR
-lys_resolve_descendant_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodeid_len, const struct lysc_node *context_node,
-                                     int nodetype, const struct lysc_node **target)
+lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodeid_len, const struct lysc_node *context_node,
+                          int nodetype, int implement, const struct lysc_node **target)
 {
     LY_ERR ret = LY_EVALID;
     const char *name, *prefix, *id;
     const struct lysc_node *context;
     size_t name_len, prefix_len;
-    const struct lys_module *mod;
+    const struct lys_module *mod, *context_module;
+    const char *nodeid_type;
 
     assert(nodeid);
-    assert(context_node);
     assert(target);
     *target = NULL;
 
     id = nodeid;
     context = context_node;
+
+    if (context_node) {
+        /* descendant-schema-nodeid */
+        nodeid_type = "descendant";
+        context_module = context_node->module;
+
+        if (*id == '/') {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                   "Invalid descendant-schema-nodeid value \"%.*s\" - absolute-schema-nodeid used.",
+                   nodeid_len ? nodeid_len : strlen(nodeid), nodeid);
+            return LY_EVALID;
+        }
+    } else {
+        /* absolute-schema-nodeid */
+        nodeid_type = "absolute";
+        context_module = ctx->mod_def;
+
+        if (*id != '/') {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                   "Invalid absolute-schema-nodeid value \"%.*s\" - missing starting \"/\".",
+                   nodeid_len ? nodeid_len : strlen(nodeid), nodeid);
+            return LY_EVALID;
+        }
+        ++id;
+    }
+
     while (*id && (ret = lys_parse_nodeid(&id, &prefix, &prefix_len, &name, &name_len)) == LY_SUCCESS) {
         if (prefix) {
-            mod = lys_module_find_prefix(context_node->module, prefix, prefix_len);
+            mod = lys_module_find_prefix(context_module, prefix, prefix_len);
             if (!mod) {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                       "Invalid descendant-schema-nodeid value \"%.*s\" - prefix \"%.*s\" not defined in module \"%s\".",
-                       id - nodeid, nodeid, prefix_len, prefix, context_node->module->name);
+                       "Invalid %s-schema-nodeid value \"%.*s\" - prefix \"%.*s\" not defined in module \"%s\".",
+                       nodeid_type, id - nodeid, nodeid, prefix_len, prefix, context_module->name);
                 return LY_ENOTFOUND;
             }
         } else {
-            mod = context_node->module;
+            mod = context_module;
+        }
+        if (implement && !mod->implemented) {
+            /* make the module implemented */
+            ly_ctx_module_implement_internal(ctx->ctx, (struct lys_module*)mod, 2);
         }
         context = lys_child(context, mod, name, name_len, 0, LYS_GETNEXT_NOSTATECHECK | LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE);
         if (!context) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                   "Invalid descendant-schema-nodeid value \"%.*s\" - target node not found.", id - nodeid, nodeid);
+                   "Invalid %s-schema-nodeid value \"%.*s\" - target node not found.", nodeid_type, id - nodeid, nodeid);
             return LY_ENOTFOUND;
         }
         if (!*id || (nodeid_len && ((size_t)(id - nodeid) >= nodeid_len))) {
@@ -124,8 +154,8 @@ lys_resolve_descendant_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, s
         }
         if (*id != '/') {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                   "Invalid descendant-schema-nodeid value \"%.*s\" - missing \"/\" as node-identifier separator.",
-                   id - nodeid + 1, nodeid);
+                   "Invalid %s-schema-nodeid value \"%.*s\" - missing \"/\" as node-identifier separator.",
+                   nodeid_type, id - nodeid + 1, nodeid);
             return LY_EVALID;
         }
         ++id;
@@ -136,6 +166,10 @@ lys_resolve_descendant_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, s
         if (nodetype && !(context->nodetype & nodetype)) {
             return LY_EDENIED;
         }
+    } else {
+        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+               "Invalid %s-schema-nodeid value \"%.*s\" - unexpected end of expression.",
+               nodeid_type, nodeid_len ? nodeid_len : strlen(nodeid), nodeid);
     }
 
     return ret;
@@ -897,6 +931,8 @@ lys_nodetype2str(uint16_t nodetype)
         return "anyxml";
     case LYS_ANYDATA:
         return "anydata";
+    case LYS_CASE:
+        return "case";
     default:
         return "unknown";
     }
@@ -1103,7 +1139,7 @@ lysc_node_children_p(const struct lysc_node *node)
         return &((struct lysc_node_container*)node)->child;
     case LYS_CHOICE:
         if (((struct lysc_node_choice*)node)->cases) {
-            return &((struct lysc_node_choice*)node)->cases[0].child;
+            return &((struct lysc_node_choice*)node)->cases->child;
         } else {
             return NULL;
         }
@@ -1148,7 +1184,7 @@ lysp_find_module(struct ly_ctx *ctx, const struct lysp_module *mod)
 }
 
 enum yang_keyword
-match_keyword(const char *data)
+match_keyword(const char *data, size_t len)
 {
 /* TODO make this function usable in get_keyword function */
 #define MOVE_IN(DATA, COUNT) (data)+=COUNT;
@@ -1156,6 +1192,7 @@ match_keyword(const char *data)
 #define IF_KEYWORD_PREFIX(STR, LEN) if (!strncmp((data), STR, LEN)) {MOVE_IN(data, LEN);
 #define IF_KEYWORD_PREFIX_END }
 
+    const char *start = data;
     enum yang_keyword kw = YANG_NONE;
     /* read the keyword itself */
     switch (*data) {
@@ -1339,6 +1376,10 @@ match_keyword(const char *data)
         break;
     }
 
-    /* TODO important fix whole keyword must be matched */
-    return kw;
+    if (data - start == (long int)len) {
+        return kw;
+    } else {
+        return YANG_NONE;
+    }
+
 }

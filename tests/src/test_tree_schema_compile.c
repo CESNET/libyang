@@ -112,6 +112,7 @@ reset_mod(struct ly_ctx *ctx, struct lys_module *module)
     FREE_STRING(module->ctx, module->contact);
     FREE_STRING(module->ctx, module->dsc);
     FREE_STRING(module->ctx, module->ref);
+    FREE_ARRAY(module->ctx, module->off_features, lysc_feature_free);
 
     memset(module, 0, sizeof *module);
     module->ctx = ctx;
@@ -353,6 +354,11 @@ test_feature(void **state)
     assert_null(lys_parse_mem(ctx.ctx, "module z{namespace urn:z; prefix z; include sz;feature f1;}", LYS_IN_YANG));
     logbuf_assert("Duplicate identifier \"f1\" of feature statement.");
 
+    assert_null(lys_parse_mem(ctx.ctx, "module aa{namespace urn:aa; prefix aa; feature f1 {if-feature f2;} feature f2 {if-feature f1;}}", LYS_IN_YANG));
+    logbuf_assert("Feature \"f1\" is indirectly referenced from itself.");
+    assert_null(lys_parse_mem(ctx.ctx, "module ab{namespace urn:ab; prefix ab; feature f1 {if-feature f1;}}", LYS_IN_YANG));
+    logbuf_assert("Feature \"f1\" is referenced from itself.");
+
     /* import reference */
     assert_non_null(modp = lys_parse_mem(ctx.ctx, str, LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_feature_enable(modp, "f1"));
@@ -372,12 +378,12 @@ test_identity(void **state)
 
     struct ly_ctx *ctx;
     struct lys_module *mod1, *mod2;
-    const char *mod1_str = "module a {namespace urn:a;prefix a; identity a1;}";
-    const char *mod2_str = "module b {yang-version 1.1;namespace urn:b;prefix b; import a {prefix a;}identity b1; identity b2; identity b3 {base b1; base b:b2; base a:a1;} identity b4 {base b:b1; base b3;}}";
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
-    assert_non_null(mod1 = lys_parse_mem(ctx, mod1_str, LYS_IN_YANG));
-    assert_non_null(mod2 = lys_parse_mem(ctx, mod2_str, LYS_IN_YANG));
+    assert_non_null(mod1 = lys_parse_mem(ctx, "module a {namespace urn:a;prefix a; identity a1;}", LYS_IN_YANG));
+    assert_non_null(mod2 = lys_parse_mem(ctx, "module b {yang-version 1.1;namespace urn:b;prefix b; import a {prefix a;}"
+                                         "identity b1; identity b2; identity b3 {base b1; base b:b2; base a:a1;}"
+                                         "identity b4 {base b:b1; base b3;}}", LYS_IN_YANG));
 
     assert_non_null(mod1->compiled);
     assert_non_null(mod1->compiled->identities);
@@ -398,12 +404,25 @@ test_identity(void **state)
     assert_int_equal(1, LY_ARRAY_SIZE(mod2->compiled->identities[2].derived));
     assert_ptr_equal(mod2->compiled->identities[2].derived[0], &mod2->compiled->identities[3]);
 
-    assert_null(lys_parse_mem(ctx, "module c{namespace urn:c; prefix c; identity i1;identity i1;}", LYS_IN_YANG));
+    assert_non_null(mod2 = lys_parse_mem(ctx, "module c {yang-version 1.1;namespace urn:c;prefix c;"
+                                             "identity c2 {base c1;} identity c1;}", LYS_IN_YANG));
+    assert_int_equal(1, LY_ARRAY_SIZE(mod2->compiled->identities[1].derived));
+    assert_ptr_equal(mod2->compiled->identities[1].derived[0], &mod2->compiled->identities[0]);
+
+    assert_null(lys_parse_mem(ctx, "module aa{namespace urn:aa; prefix aa; identity i1;identity i1;}", LYS_IN_YANG));
     logbuf_assert("Duplicate identifier \"i1\" of identity statement.");
 
-    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule sd {belongs-to d {prefix d;} identity i1;}");
-    assert_null(lys_parse_mem(ctx, "module d{namespace urn:d; prefix d; include sd;identity i1;}", LYS_IN_YANG));
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule sbb {belongs-to bb {prefix bb;} identity i1;}");
+    assert_null(lys_parse_mem(ctx, "module bb{namespace urn:bb; prefix bb; include sbb;identity i1;}", LYS_IN_YANG));
     logbuf_assert("Duplicate identifier \"i1\" of identity statement.");
+
+    assert_null(lys_parse_mem(ctx, "module cc{namespace urn:cc; prefix cc; identity i1 {base i2;}}", LYS_IN_YANG));
+    logbuf_assert("Unable to find base (i2) of identity \"i1\".");
+
+    assert_null(lys_parse_mem(ctx, "module dd{namespace urn:dd; prefix dd; identity i1 {base i1;}}", LYS_IN_YANG));
+    logbuf_assert("Identity \"i1\" is derived from itself.");
+    assert_null(lys_parse_mem(ctx, "module de{namespace urn:de; prefix de; identity i1 {base i2;}identity i2 {base i3;}identity i3 {base i1;}}", LYS_IN_YANG));
+    logbuf_assert("Identity \"i1\" is indirectly derived from itself.");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
@@ -2102,7 +2121,7 @@ test_uses(void **state)
 
     struct ly_ctx *ctx;
     struct lys_module *mod;
-    struct lysc_node *parent, *child;
+    const struct lysc_node *parent, *child;
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
 
@@ -2139,11 +2158,12 @@ test_uses(void **state)
     assert_string_equal("f", child->iffeatures[0].features[0]->name);
     assert_int_equal(1, lysc_iffeature_value(&child->iffeatures[0]));
 
-    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule bsub {belongs-to b {prefix b;} grouping grp {leaf b {type string;}}}");
-    assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;include bsub;uses grp;}", LYS_IN_YANG));
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule bsub {belongs-to b {prefix b;} grouping grp {leaf b {when 1; type string;}}}");
+    assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;include bsub;uses grp {when 2;}}", LYS_IN_YANG));
     assert_non_null(mod->compiled->data);
     assert_int_equal(LYS_LEAF, mod->compiled->data->nodetype);
     assert_string_equal("b", mod->compiled->data->name);
+    assert_int_equal(2, LY_ARRAY_SIZE(mod->compiled->data->when));
 
     logbuf_clean();
     assert_non_null(mod = lys_parse_mem(ctx, "module c {namespace urn:ii;prefix ii;"
@@ -2156,6 +2176,14 @@ test_uses(void **state)
     assert_string_equal("k", mod->compiled->data->next->name);
     assert_true(LYS_STATUS_OBSLT & mod->compiled->data->next->flags);
     logbuf_assert(""); /* no warning about inheriting deprecated flag from uses */
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module d {namespace urn:d;prefix d; grouping grp {container g;}"
+                                        "container top {uses grp {augment g {leaf x {type int8;}}}}}", LYS_IN_YANG));
+    assert_non_null(mod->compiled->data);
+    assert_non_null(child = lysc_node_children(mod->compiled->data));
+    assert_string_equal("g", child->name);
+    assert_non_null(child = lysc_node_children(child));
+    assert_string_equal("x", child->name);
 
     /* invalid */
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;uses missinggrp;}", LYS_IN_YANG));
@@ -2177,6 +2205,20 @@ test_uses(void **state)
     assert_null(lys_parse_mem(ctx, "module ee {namespace urn:ee;prefix ee;grouping grp {leaf l {type string; status deprecated;}}"
                                         "uses grp {status obsolete;}}", LYS_IN_YANG));
     logbuf_assert("A \"deprecated\" status is in conflict with the parent's \"obsolete\" status.");
+
+    assert_null(lys_parse_mem(ctx, "module ff {namespace urn:ff;prefix ff;grouping grp {leaf l {type string;}}"
+                                        "leaf l {type int8;}uses grp;}", LYS_IN_YANG));
+    logbuf_assert("Duplicate identifier \"l\" of data definition statement.");
+    assert_null(lys_parse_mem(ctx, "module fg {namespace urn:fg;prefix fg;grouping grp {leaf m {type string;}}"
+                                        "uses grp;leaf m {type int8;}}", LYS_IN_YANG));
+    logbuf_assert("Duplicate identifier \"m\" of data definition statement.");
+
+
+    assert_null(lys_parse_mem(ctx, "module gg {namespace urn:gg;prefix gg; grouping grp {container g;}"
+                              "leaf g {type string;}"
+                              "container top {uses grp {augment /g {leaf x {type int8;}}}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid descendant-schema-nodeid value \"/g\" - absolute-schema-nodeid used.");
+
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
@@ -2326,6 +2368,123 @@ test_refine(void **state)
     ly_ctx_destroy(ctx, NULL);
 }
 
+static void
+test_augment(void **state)
+{
+    *state = test_augment;
+
+    struct ly_ctx *ctx;
+    struct lys_module *mod;
+    const struct lysc_node *node;
+    const struct lysc_node_choice *ch;
+    const struct lysc_node_case *c;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "module a {namespace urn:a;prefix a; typedef atype {type string;}"
+                              "container top {leaf a {type string;}}}");
+    assert_non_null(lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;import a {prefix a;}"
+                                  "leaf b {type a:atype;}}", LYS_IN_YANG));
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "module c {namespace urn:c;prefix c; import a {prefix a;}"
+                              "augment /a:top/ { container c {leaf c {type a:atype;}}}}");
+    assert_non_null(lys_parse_mem(ctx, "module d {namespace urn:d;prefix d;import a {prefix a;} import c {prefix c;}"
+                                  "augment /a:top/c:c/ { leaf d {type a:atype;} leaf c {type string;}}}", LYS_IN_YANG));
+    assert_non_null((mod = ly_ctx_get_module_implemented(ctx, "a")));
+    assert_non_null(ly_ctx_get_module_implemented(ctx, "b"));
+    assert_non_null(ly_ctx_get_module_implemented(ctx, "c"));
+    assert_non_null(ly_ctx_get_module_implemented(ctx, "d"));
+    assert_non_null(node = mod->compiled->data);
+    assert_string_equal(node->name, "top");
+    assert_non_null(node = lysc_node_children(node));
+    assert_string_equal(node->name, "a");
+    assert_non_null(node = node->next);
+    assert_string_equal(node->name, "c");
+    assert_non_null(node = lysc_node_children(node));
+    assert_string_equal(node->name, "c");
+    assert_non_null(node = node->next);
+    assert_string_equal(node->name, "d");
+    assert_non_null(node = node->next);
+    assert_string_equal(node->name, "c");
+
+    assert_non_null((mod = lys_parse_mem(ctx, "module e {namespace urn:e;prefix e;choice ch {leaf a {type string;}}"
+                                         "augment /ch/c {when 1; leaf lc2 {type uint16;}}"
+                                         "augment /ch { when 1; leaf b {type int8;} case c {leaf lc1 {type uint8;}}}}", LYS_IN_YANG)));
+    assert_non_null((ch = (const struct lysc_node_choice*)mod->compiled->data));
+    assert_null(mod->compiled->data->next);
+    assert_string_equal("ch", ch->name);
+    assert_non_null(c = ch->cases);
+    assert_string_equal("a", c->name);
+    assert_null(c->when);
+    assert_string_equal("a", c->child->name);
+    assert_non_null(c = (const struct lysc_node_case*)c->next);
+    assert_string_equal("b", c->name);
+    assert_non_null(c->when);
+    assert_string_equal("b", c->child->name);
+    assert_non_null(c = (const struct lysc_node_case*)c->next);
+    assert_string_equal("c", c->name);
+    assert_non_null(c->when);
+    assert_string_equal("lc1", ((const struct lysc_node_case*)c)->child->name);
+    assert_null(((const struct lysc_node_case*)c)->child->when);
+    assert_string_equal("lc2", ((const struct lysc_node_case*)c)->child->next->name);
+    assert_non_null(((const struct lysc_node_case*)c)->child->next->when);
+    assert_ptr_equal(ch->cases->child->prev, ((const struct lysc_node_case*)c)->child->next);
+    assert_null(c->next);
+
+    assert_non_null((mod = lys_parse_mem(ctx, "module f {namespace urn:f;prefix f;grouping g {leaf a {type string;}}"
+                                         "container c;"
+                                         "augment /c {uses g;}}", LYS_IN_YANG)));
+    assert_non_null(node = lysc_node_children(mod->compiled->data));
+    assert_string_equal(node->name, "a");
+
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule gsub {belongs-to g {prefix g;}"
+                                  "augment /c {container sub;}}");
+    assert_non_null(mod = lys_parse_mem(ctx, "module g {namespace urn:g;prefix g;include gsub; container c;"
+                                        "augment /c/sub {leaf main {type string;}}}", LYS_IN_YANG));
+    assert_non_null(mod->compiled->data);
+    assert_string_equal("c", mod->compiled->data->name);
+    assert_non_null(node = ((struct lysc_node_container*)mod->compiled->data)->child);
+    assert_string_equal("sub", node->name);
+    assert_non_null(node = ((struct lysc_node_container*)node)->child);
+    assert_string_equal("main", node->name);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module h {namespace urn:h;prefix h;container top;"
+                                        "augment /top {container p {presence XXX; leaf x {mandatory true;type string;}}}"
+                                        "augment /top {list l {key x;leaf x {type string;}leaf y {mandatory true; type string;}}}}", LYS_IN_YANG));
+    assert_non_null(node = mod->compiled->data);
+    assert_non_null(node = ((struct lysc_node_container*)node)->child);
+    assert_string_equal("p", node->name);
+    assert_non_null(node->next);
+    assert_string_equal("l", node->next->name);
+
+    assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; container c {leaf a {type string;}}"
+                                        "augment /x {leaf a {type int8;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid absolute-schema-nodeid value \"/x\" - target node not found.");
+
+    assert_null(lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb; container c {leaf a {type string;}}"
+                                        "augment /c {leaf a {type int8;}}}", LYS_IN_YANG));
+    logbuf_assert("Duplicate identifier \"a\" of data definition statement.");
+
+
+    assert_null(lys_parse_mem(ctx, "module cc {namespace urn:cc;prefix cc; container c {leaf a {type string;}}"
+                                        "augment /c/a {leaf a {type int8;}}}", LYS_IN_YANG));
+    logbuf_assert("Augment's absolute-schema-nodeid \"/c/a\" refers to a leaf node which is not an allowed augment's target.");
+
+    assert_null(lys_parse_mem(ctx, "module dd {namespace urn:dd;prefix dd; container c {leaf a {type string;}}"
+                                        "augment /c {case b {leaf d {type int8;}}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid augment (/c) of container node which is not allowed to contain case node \"b\".");
+
+    assert_null(lys_parse_mem(ctx, "module ee {namespace urn:ee;prefix ee; container top;"
+                                        "augment /top {container c {leaf d {mandatory true; type int8;}}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid augment (/top) adding mandatory node \"c\" without making it conditional via when statement.");
+
+    assert_null(lys_parse_mem(ctx, "module ff {namespace urn:ff;prefix ff; container top;"
+                                        "augment ../top {leaf x {type int8;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid absolute-schema-nodeid value \"../top\" - missing starting \"/\".");
+
+    *state = NULL;
+    ly_ctx_destroy(ctx, NULL);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -2352,6 +2511,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_node_anydata, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_uses, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_refine, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_augment, logger_setup, logger_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
