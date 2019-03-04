@@ -5491,6 +5491,7 @@ static int
 moveto_snode(struct lyxp_set *set, struct lys_node *cur_node, const char *qname, uint16_t qname_len, int options)
 {
     int i, orig_used, pref_len, idx, temp_ctx = 0;
+    uint32_t mod_idx;
     const char *ptr, *name_dict = NULL; /* optimalization - so we can do (==) instead (!strncmp(...)) in moveto_node_check() */
     struct lys_module *moveto_mod, *tmp_mod;
     const struct lys_node *sub, *start_parent;
@@ -5521,8 +5522,12 @@ moveto_snode(struct lyxp_set *set, struct lys_node *cur_node, const char *qname,
         }
         qname += pref_len + 1;
         qname_len -= pref_len + 1;
-    } else {
+    } else if ((qname[0] == '*') && (qname_len == 1)) {
+        /* all modules - special case */
         moveto_mod = NULL;
+    } else {
+        /* content node module */
+        moveto_mod = lys_node_module(cur_node);
     }
 
     /* name */
@@ -5540,16 +5545,26 @@ moveto_snode(struct lyxp_set *set, struct lys_node *cur_node, const char *qname,
         if ((set->val.snodes[i].type == LYXP_NODE_ROOT_CONFIG) || (set->val.snodes[i].type == LYXP_NODE_ROOT)) {
             /* it can actually be in any module, it's all <running>, but we know it's moveto_mod (if set),
              * so use it directly (root node itself is useless in this case) */
-            sub = NULL;
-            while ((sub = lys_getnext(sub, NULL, (moveto_mod ? moveto_mod : lys_node_module(cur_node)), LYS_GETNEXT_NOSTATECHECK))) {
-                if (!moveto_snode_check(sub, root_type, name_dict, (moveto_mod ? moveto_mod : lys_node_module(cur_node)), options)) {
-                    idx = set_snode_insert_node(set, sub, LYXP_NODE_ELEM);
-                    /* we need to prevent these nodes to be considered in this moveto */
-                    if ((idx < orig_used) && (idx > i)) {
-                        set->val.snodes[idx].in_ctx = 2;
-                        temp_ctx = 1;
+            mod_idx = 0;
+            while (moveto_mod || (moveto_mod = (struct lys_module *)ly_ctx_get_module_iter(ctx, &mod_idx))) {
+                sub = NULL;
+                while ((sub = lys_getnext(sub, NULL, moveto_mod, LYS_GETNEXT_NOSTATECHECK))) {
+                    if (!moveto_snode_check(sub, root_type, name_dict, moveto_mod, options)) {
+                        idx = set_snode_insert_node(set, sub, LYXP_NODE_ELEM);
+                        /* we need to prevent these nodes from being considered in this moveto */
+                        if ((idx < orig_used) && (idx > i)) {
+                            set->val.snodes[idx].in_ctx = 2;
+                            temp_ctx = 1;
+                        }
                     }
                 }
+
+                if (!mod_idx) {
+                    /* moveto_mod was specified, we are not going through the whole context */
+                    break;
+                }
+                /* next iteration */
+                moveto_mod = NULL;
             }
 
         /* skip nodes without children - leaves, leaflists, and anyxmls (ouput root will eval to true) */
