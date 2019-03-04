@@ -37,7 +37,7 @@ master branch. If you want the latest code from the devel branch, install `libya
 
 ### Build Requirements
 
-* C compiler (gcc >= 4.9, clang >= 3.0, ...)
+* C compiler (gcc >= 4.8.4, clang >= 3.0, ...)
 * cmake >= 2.8.12
 * libpcre (devel package)
  * note, that PCRE is supposed to be compiled with unicode support (configure's options
