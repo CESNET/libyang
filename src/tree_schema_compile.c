@@ -3062,6 +3062,50 @@ lys_compile_status(struct lysc_ctx *ctx, uint16_t *node_flags, uint16_t parent_f
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Check uniqness of the node/action/notification name.
+ *
+ * Data nodes, actions/RPCs and Notifications are stored separately (in distinguish lists) in the schema
+ * structures, but they share the namespace so we need to check their name collisions.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] children List (linked list) of data nodes to go through.
+ * @param[in] actions List (sized array) of actions or RPCs to go through.
+ * @param[in] notifs List (sized array) of Notifications to go through.
+ * @param[in] name Name of the item to find in the given lists.
+ * @param[in] exclude Pointer to an object to exclude from the name checking - for the case that the object
+ * with the @p name being checked is already inserted into one of the list so we need to skip it when searching for duplicity.
+ * @return LY_SUCCESS in case of unique name, LY_EEXIST otherwise.
+ */
+static LY_ERR
+lys_compile_node_uniqness(struct lysc_ctx *ctx, const struct lysc_node *children,
+                          const struct lysc_action *actions, const struct lysc_notif *notifs,
+                          const char *name, void *exclude)
+{
+    const struct lysc_node *iter;
+    unsigned int u;
+
+    LY_LIST_FOR(children, iter) {
+        if (iter != exclude && iter->module == ctx->mod && !strcmp(name, iter->name)) {
+            goto error;
+        }
+    }
+    LY_ARRAY_FOR(actions, u) {
+        if (&actions[u] != exclude && actions[u].module == ctx->mod && !strcmp(name, actions[u].name)) {
+            goto error;
+        }
+    }
+    LY_ARRAY_FOR(notifs, u) {
+        if (&notifs[u] != exclude && notifs[u].module == ctx->mod && !strcmp(name, notifs[u].name)) {
+            goto error;
+        }
+    }
+    return LY_SUCCESS;
+error:
+    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DUPIDENT, name, "data definition/RPC/action/Notification");
+    return LY_EEXIST;
+}
+
 static LY_ERR lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, struct lysc_node *parent, uint16_t uses_status);
 
 /**
@@ -3081,6 +3125,13 @@ lys_compile_action(struct lysc_ctx *ctx, struct lysp_action *action_p, int optio
     LY_ERR ret = LY_SUCCESS;
     struct lysp_node *child_p;
     unsigned int u;
+
+    if (lys_compile_node_uniqness(ctx, parent ? lysc_node_children(parent, 0) : ctx->mod->compiled->data,
+                                  parent ? lysc_node_actions(parent) : ctx->mod->compiled->rpcs,
+                                  parent ? lysc_node_notifs(parent) : ctx->mod->compiled->notifs,
+                                  action_p->name, action)) {
+        return LY_EVALID;
+    }
 
     if (options & LYSC_OPT_RPC_MASK) {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
@@ -3681,50 +3732,6 @@ lys_compile_node_any(struct lysc_ctx *ctx, struct lysp_node *node_p, int options
     }
 done:
     return ret;
-}
-
-/**
- * @brief Check uniqness of the node/action/notification name.
- *
- * Data nodes, actions/RPCs and Notifications are stored separately (in distinguish lists) in the schema
- * structures, but they share the namespace so we need to check their name collisions.
- *
- * @param[in] ctx Compile context.
- * @param[in] children List (linked list) of data nodes to go through.
- * @param[in] actions List (sized array) of actions or RPCs to go through.
- * @param[in] notifs List (sized array) of Notifications to go through.
- * @param[in] name Name of the item to find in the given lists.
- * @param[in] exclude Pointer to an object to exclude from the name checking - for the case that the object
- * with the @p name being checked is already inserted into one of the list so we need to skip it when searching for duplicity.
- * @return LY_SUCCESS in case of unique name, LY_EEXIST otherwise.
- */
-static LY_ERR
-lys_compile_node_uniqness(struct lysc_ctx *ctx, const struct lysc_node *children,
-                          const struct lysc_action *actions, const struct lysc_notif *notifs,
-                          const char *name, void *exclude)
-{
-    const struct lysc_node *iter;
-    unsigned int u;
-
-    LY_LIST_FOR(children, iter) {
-        if (iter != exclude && iter->module == ctx->mod && !strcmp(name, iter->name)) {
-            goto error;
-        }
-    }
-    LY_ARRAY_FOR(actions, u) {
-        if (&actions[u] != exclude && actions[u].module == ctx->mod && !strcmp(name, actions[u].name)) {
-            goto error;
-        }
-    }
-    LY_ARRAY_FOR(notifs, u) {
-        if (&notifs[u] != exclude && notifs[u].module == ctx->mod && !strcmp(name, notifs[u].name)) {
-            goto error;
-        }
-    }
-    return LY_SUCCESS;
-error:
-    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DUPIDENT, name, "data definition");
-    return LY_EEXIST;
 }
 
 /**
@@ -5617,6 +5624,11 @@ lys_compile_submodule(struct lysc_ctx *ctx, struct lysp_include *inc, int option
     }
 
     COMPILE_ARRAY_UNIQUE_GOTO(ctx, submod->identities, mainmod->identities, options, u, lys_compile_identity, ret, error);
+
+    /* TODO data nodes */
+
+    COMPILE_ARRAY1_GOTO(ctx, submod->rpcs, mainmod->rpcs, NULL, options, u, lys_compile_action, 0, ret, error);
+    // TODO COMPILE_ARRAY1_GOTO(&ctx, submod->notifs, mainmod->notifs, NULL, options, u, lys_compile_notif, 0, ret, error);
 
 error:
     return ret;

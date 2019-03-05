@@ -180,7 +180,7 @@ test_module(void **state)
     assert_int_equal(LY_SUCCESS, yang_parse_module(&ctx, "module aa {namespace urn:aa;prefix aa;"
                                                   "leaf a {type string;} container a{presence x;}}", &mod));
     assert_int_equal(LY_EVALID, lys_compile(&mod, 0));
-    logbuf_assert("Duplicate identifier \"a\" of data definition statement.");
+    logbuf_assert("Duplicate identifier \"a\" of data definition/RPC/action/Notification statement.");
     assert_null(mod.compiled);
     reset_mod(ctx.ctx, &mod);
 
@@ -717,10 +717,10 @@ test_node_choice(void **state)
 
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;"
                               "choice ch {case a {leaf x {type string;}}leaf x {type string;}}}", LYS_IN_YANG));
-    logbuf_assert("Duplicate identifier \"x\" of data definition statement.");
+    logbuf_assert("Duplicate identifier \"x\" of data definition/RPC/action/Notification statement.");
     assert_null(lys_parse_mem(ctx, "module aa2 {namespace urn:aa2;prefix aa;"
                               "choice ch {case a {leaf y {type string;}}case b {leaf y {type string;}}}}", LYS_IN_YANG));
-    logbuf_assert("Duplicate identifier \"y\" of data definition statement.");
+    logbuf_assert("Duplicate identifier \"y\" of data definition/RPC/action/Notification statement.");
     assert_null(lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb;"
                               "choice ch {case a {leaf x {type string;}}leaf a {type string;}}}", LYS_IN_YANG));
     logbuf_assert("Duplicate identifier \"a\" of case statement.");
@@ -810,6 +810,16 @@ test_action(void **state)
     /* invalid */
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;container top {action x;}}", LYS_IN_YANG));
     logbuf_assert("Invalid keyword \"action\" as a child of \"container\" - the statement is allowed only in YANG 1.1 modules. Line number 1.");
+
+    assert_null(lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb;leaf x{type string;} rpc x;}", LYS_IN_YANG));
+    logbuf_assert("Duplicate identifier \"x\" of data definition/RPC/action/Notification statement.");
+    assert_null(lys_parse_mem(ctx, "module cc {yang-version 1.1; namespace urn:cc;prefix cc;container c {leaf y {type string;} action y;}}", LYS_IN_YANG));
+    logbuf_assert("Duplicate identifier \"y\" of data definition/RPC/action/Notification statement.");
+    assert_null(lys_parse_mem(ctx, "module dd {yang-version 1.1; namespace urn:dd;prefix dd;container c {action z; action z;}}", LYS_IN_YANG));
+    logbuf_assert("Duplicate identifier \"z\" of data definition/RPC/action/Notification statement.");
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule eesub {belongs-to ee {prefix ee;} rpc w;}");
+    assert_null(lys_parse_mem(ctx, "module ee {yang-version 1.1; namespace urn:ee;prefix ee;include eesub; rpc w;}", LYS_IN_YANG));
+    logbuf_assert("Duplicate identifier \"w\" of data definition/RPC/action/Notification statement.");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
@@ -2251,7 +2261,7 @@ test_uses(void **state)
 
     assert_null(lys_parse_mem(ctx, "module dd {namespace urn:dd;prefix dd;grouping grp{leaf a{type string;}}"
                                         "leaf a {type string;}uses grp;}", LYS_IN_YANG));
-    logbuf_assert("Duplicate identifier \"a\" of data definition statement.");
+    logbuf_assert("Duplicate identifier \"a\" of data definition/RPC/action/Notification statement.");
 
     assert_null(lys_parse_mem(ctx, "module ee {namespace urn:ee;prefix ee;grouping grp {leaf l {type string; status deprecated;}}"
                                         "uses grp {status obsolete;}}", LYS_IN_YANG));
@@ -2259,10 +2269,10 @@ test_uses(void **state)
 
     assert_null(lys_parse_mem(ctx, "module ff {namespace urn:ff;prefix ff;grouping grp {leaf l {type string;}}"
                                         "leaf l {type int8;}uses grp;}", LYS_IN_YANG));
-    logbuf_assert("Duplicate identifier \"l\" of data definition statement.");
+    logbuf_assert("Duplicate identifier \"l\" of data definition/RPC/action/Notification statement.");
     assert_null(lys_parse_mem(ctx, "module fg {namespace urn:fg;prefix fg;grouping grp {leaf m {type string;}}"
                                         "uses grp;leaf m {type int8;}}", LYS_IN_YANG));
-    logbuf_assert("Duplicate identifier \"m\" of data definition statement.");
+    logbuf_assert("Duplicate identifier \"m\" of data definition/RPC/action/Notification statement.");
 
 
     assert_null(lys_parse_mem(ctx, "module gg {namespace urn:gg;prefix gg; grouping grp {container g;}"
@@ -2538,7 +2548,7 @@ test_augment(void **state)
 
     assert_null(lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb; container c {leaf a {type string;}}"
                                         "augment /c {leaf a {type int8;}}}", LYS_IN_YANG));
-    logbuf_assert("Duplicate identifier \"a\" of data definition statement.");
+    logbuf_assert("Duplicate identifier \"a\" of data definition/RPC/action/Notification statement.");
 
 
     assert_null(lys_parse_mem(ctx, "module cc {namespace urn:cc;prefix cc; container c {leaf a {type string;}}"
