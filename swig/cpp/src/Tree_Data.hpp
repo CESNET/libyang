@@ -268,7 +268,8 @@ public:
     ~Data_Node_Anydata();
     /** get value_type variable from [lyd_node_anydata](@ref lyd_node_anydata)*/
     LYD_ANYDATA_VALUETYPE value_type() {return ((struct lyd_node_anydata *) node)->value_type;};
-    //union value
+    /** get value variable from [lyd_node_anydata](@ref lyd_node_anydata)*/
+    lyd_anydata_value value() {return ((struct lyd_node_anydata *) node)->value;};
     /** get child variable from [lyd_node_anydata](@ref lyd_node_anydata)*/
     S_Data_Node child() {return nullptr;};
 
