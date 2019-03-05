@@ -259,6 +259,17 @@ struct lyd_node_leaf_list {
 /* 0x80 is reserved for internal use */
 
 /**
+ * @brief Anydata value union
+ */
+typedef union {
+    const char *str;             /**< string value, in case of printing as XML, characters like '<' or '&' are escaped */
+    char *mem;                   /**< raw memory (used for LYB format) */
+    struct lyxml_elem *xml;      /**< xml tree */
+    struct lyd_node *tree;       /**< libyang data tree, does not change the root's parent, so it is not possible
+                                      to get from the data tree into the anydata/anyxml */
+} lyd_anydata_value;
+
+/**
  * @brief Structure for data nodes defined as #LYS_ANYDATA or #LYS_ANYXML.
  *
  * Extension for ::lyd_node structure - replaces the ::lyd_node#child member by new #value member. The first five
@@ -294,13 +305,7 @@ struct lyd_node_anydata {
 
     /* anyxml's specific members */
     LYD_ANYDATA_VALUETYPE value_type;/**< type of the stored anydata value */
-    union {
-        const char *str;             /**< string value, in case of printing as XML, characters like '<' or '&' are escaped */
-        char *mem;                   /**< raw memory (used for LYB format) */
-        struct lyxml_elem *xml;      /**< xml tree */
-        struct lyd_node *tree;       /**< libyang data tree, does not change the root's parent, so it is not possible
-                                          to get from the data tree into the anydata/anyxml */
-    } value;
+    lyd_anydata_value value;/**< stored anydata value */
 };
 
 /**
