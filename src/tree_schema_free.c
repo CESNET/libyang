@@ -170,7 +170,7 @@ lysp_tpdf_free(struct ly_ctx *ctx, struct lysp_tpdf *tpdf)
 
 }
 
-static void
+void
 lysp_action_inout_free(struct ly_ctx *ctx, struct lysp_action_inout *inout)
 {
     struct lysp_node *node, *next;
@@ -630,29 +630,27 @@ lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type)
 }
 
 void
-lysc_action_free(struct ly_ctx *ctx, struct lysc_action *action)
+lysc_action_inout_free(struct ly_ctx *ctx, struct lysc_action_inout *inout)
 {
     struct lysc_node *child, *child_next;
 
+    FREE_ARRAY(ctx, inout->exts, lysc_ext_instance_free);
+    FREE_ARRAY(ctx, inout->musts, lysc_must_free);
+    LY_LIST_FOR_SAFE(inout->data, child_next, child) {
+        lysc_node_free(ctx, child);
+    }
+}
+
+void
+lysc_action_free(struct ly_ctx *ctx, struct lysc_action *action)
+{
     FREE_STRING(ctx, action->name);
     FREE_STRING(ctx, action->dsc);
     FREE_STRING(ctx, action->ref);
     FREE_ARRAY(ctx, action->iffeatures, lysc_iffeature_free);
     FREE_ARRAY(ctx, action->exts, lysc_ext_instance_free);
-
-    /* input */
-    FREE_ARRAY(ctx, action->input.exts, lysc_ext_instance_free);
-    FREE_ARRAY(ctx, action->input.musts, lysc_must_free);
-    LY_LIST_FOR_SAFE(action->input.data, child_next, child) {
-        lysc_node_free(ctx, child);
-    }
-
-    /* output */
-    FREE_ARRAY(ctx, action->output.exts, lysc_ext_instance_free);
-    FREE_ARRAY(ctx, action->output.musts, lysc_must_free);
-    LY_LIST_FOR_SAFE(action->output.data, child_next, child) {
-        lysc_node_free(ctx, child);
-    }
+    lysc_action_inout_free(ctx, &action->input);
+    lysc_action_inout_free(ctx, &action->output);
 }
 
 static void

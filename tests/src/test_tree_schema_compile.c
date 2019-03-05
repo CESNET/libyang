@@ -778,6 +778,43 @@ test_node_anydata(void **state)
     ly_ctx_destroy(ctx, NULL);
 }
 
+static void
+test_action(void **state)
+{
+    *state = test_action;
+
+    struct ly_ctx *ctx;
+    struct lys_module *mod;
+    const struct lysc_action *rpc;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;"
+                                        "rpc a {input {leaf x {type int8;} leaf y {type int8;}} output {leaf result {type int16;}}}}", LYS_IN_YANG));
+    rpc = mod->compiled->rpcs;
+    assert_non_null(rpc);
+    assert_int_equal(1, LY_ARRAY_SIZE(rpc));
+    assert_int_equal(LYS_ACTION, rpc->nodetype);
+    assert_int_equal(LYS_STATUS_CURR, rpc->flags);
+    assert_string_equal("a", rpc->name);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module b {yang-version 1.1; namespace urn:b;prefix b; container top {"
+                                        "action b {input {leaf x {type int8;} leaf y {type int8;}} output {leaf result {type int16;}}}}}", LYS_IN_YANG));
+    rpc = lysc_node_actions(mod->compiled->data);
+    assert_non_null(rpc);
+    assert_int_equal(1, LY_ARRAY_SIZE(rpc));
+    assert_int_equal(LYS_ACTION, rpc->nodetype);
+    assert_int_equal(LYS_STATUS_CURR, rpc->flags);
+    assert_string_equal("b", rpc->name);
+
+    /* invalid */
+    assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;container top {action x;}}", LYS_IN_YANG));
+    logbuf_assert("Invalid keyword \"action\" as a child of \"container\" - the statement is allowed only in YANG 1.1 modules. Line number 1.");
+
+    *state = NULL;
+    ly_ctx_destroy(ctx, NULL);
+}
+
 /**
  * actually the same as length restriction (tested in test_type_length()), so just check the correct handling in appropriate types,
  * do not test the expression itself
@@ -2392,6 +2429,7 @@ test_augment(void **state)
     const struct lysc_node *node;
     const struct lysc_node_choice *ch;
     const struct lysc_node_case *c;
+    const struct lysc_action *rpc;
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
 
@@ -2461,7 +2499,7 @@ test_augment(void **state)
     assert_non_null(node = ((struct lysc_node_container*)node)->child);
     assert_string_equal("main", node->name);
 
-    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "module himp {namespace urn:hi;prefix hi;container top;}");
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "module himp {namespace urn:hi;prefix hi;container top; rpc func;}");
     assert_non_null(mod = lys_parse_mem(ctx, "module h {namespace urn:h;prefix h;import himp {prefix hi;}container top;"
                                         "augment /hi:top {container p {presence XXX; leaf x {mandatory true;type string;}}}"
                                         "augment /hi:top {list ll {key x;leaf x {type string;}leaf y {mandatory true; type string;}}}"
@@ -2480,6 +2518,19 @@ test_augment(void **state)
     assert_non_null(node = node->next);
     assert_string_equal("l", node->name);
     assert_true(node->flags & LYS_CONFIG_R);
+
+    assert_non_null(lys_parse_mem(ctx, "module i {namespace urn:i;prefix i;import himp {prefix hi;}"
+                                        "augment /hi:func/input {leaf x {type string;}}"
+                                        "augment /hi:func/output {leaf y {type string;}}}", LYS_IN_YANG));
+    assert_non_null(mod = ly_ctx_get_module_implemented(ctx, "himp"));
+    assert_non_null(rpc = mod->compiled->rpcs);
+    assert_int_equal(1, LY_ARRAY_SIZE(rpc));
+    assert_non_null(rpc->input.data);
+    assert_string_equal("x", rpc->input.data->name);
+    assert_null(rpc->input.data->next);
+    assert_non_null(rpc->output.data);
+    assert_string_equal("y", rpc->output.data->name);
+    assert_null(rpc->output.data->next);
 
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; container c {leaf a {type string;}}"
                                         "augment /x {leaf a {type int8;}}}", LYS_IN_YANG));
@@ -2506,6 +2557,10 @@ test_augment(void **state)
                                         "augment ../top {leaf x {type int8;}}}", LYS_IN_YANG));
     logbuf_assert("Invalid absolute-schema-nodeid value \"../top\" - missing starting \"/\".");
 
+    assert_null(lys_parse_mem(ctx, "module gg {namespace urn:gg;prefix gg; rpc func;"
+                                        "augment /func {leaf x {type int8;}}}", LYS_IN_YANG));
+    logbuf_assert("Augment's absolute-schema-nodeid \"/func\" refers to a RPC/action node which is not an allowed augment's target.");
+
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
 }
@@ -2525,13 +2580,18 @@ test_deviation(void **state)
     ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "module a {namespace urn:a;prefix a;"
                               "container top {leaf a {type string;} leaf b {type string;} leaf c {type string;}}"
                               "choice ch {default c; case b {leaf b{type string;}} case a {leaf a{type string;} leaf x {type string;}}"
-                              " case c {leaf c{type string;}}}}");
+                              " case c {leaf c{type string;}}}"
+                              "rpc func1 { input { leaf x {type int8;}} output {leaf y {type int8;}}}"
+                              "rpc func2;}");
     assert_non_null(lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;import a {prefix a;}"
                                   "deviation /a:top/a:b {deviate not-supported;}"
                                   "deviation /a:ch/a:a/a:x {deviate not-supported;}"
                                   "deviation /a:ch/a:c/a:c {deviate not-supported;}"
                                   "deviation /a:ch/a:b {deviate not-supported;}"
-                                  "deviation /a:ch/a:a/a:a {deviate not-supported;}}", LYS_IN_YANG));
+                                  "deviation /a:ch/a:a/a:a {deviate not-supported;}"
+                                  "deviation /a:func1/a:input {deviate not-supported;}"
+                                  "deviation /a:func1/a:output {deviate not-supported;}"
+                                  "deviation /a:func2 {deviate not-supported;}}", LYS_IN_YANG));
     assert_non_null((mod = ly_ctx_get_module_implemented(ctx, "a")));
     assert_non_null(node = mod->compiled->data);
     assert_string_equal(node->name, "top");
@@ -2544,6 +2604,9 @@ test_deviation(void **state)
     assert_string_equal("ch", node->name);
     assert_null(((struct lysc_node_choice*)node)->dflt);
     assert_null(((struct lysc_node_choice*)node)->cases);
+    assert_int_equal(1, LY_ARRAY_SIZE(mod->compiled->rpcs));
+    assert_null(mod->compiled->rpcs[0].input.data);
+    assert_null(mod->compiled->rpcs[0].output.data);
 
     assert_non_null(mod = lys_parse_mem(ctx, "module c {namespace urn:c;prefix c; typedef mytype {type string; units kilometers;}"
                                         "leaf c1 {type mytype;} leaf c2 {type mytype; units meters;} leaf c3 {type mytype; units meters;}"
@@ -2976,6 +3039,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_node_list, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_node_choice, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_node_anydata, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_action, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_uses, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_refine, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_augment, logger_setup, logger_teardown),

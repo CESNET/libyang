@@ -958,6 +958,10 @@ lys_nodetype2str(uint16_t nodetype)
         return "anydata";
     case LYS_CASE:
         return "case";
+    case LYS_ACTION:
+        return "RPC/action";
+    case LYS_NOTIF:
+        return "Notification";
     default:
         return "unknown";
     }

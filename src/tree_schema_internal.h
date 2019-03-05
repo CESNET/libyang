@@ -500,6 +500,22 @@ void lysc_iffeature_free(struct ly_ctx *ctx, struct lysc_iffeature *iff);
 void lysc_must_free(struct ly_ctx *ctx, struct lysc_must *must);
 
 /**
+ * @brief Free the data inside compiled input/output structure.
+ * @param[in] ctx libyang context where the string data resides in a dictionary.
+ * @param[in,out] inout Compiled inout structure to be cleaned.
+ * Since the structure is part of the RPC/action structure, it is not freed itself.
+ */
+void lysc_action_inout_free(struct ly_ctx *ctx, struct lysc_action_inout *inout);
+
+/**
+ * @brief Free the data inside compiled RPC/action structure.
+ * @param[in] ctx libyang context where the string data resides in a dictionary.
+ * @param[in,out] action Compiled action structure to be cleaned.
+ * Since the structure is typically part of the sized array, the structure itself is not freed.
+ */
+void lysc_action_free(struct ly_ctx *ctx, struct lysc_action *action);
+
+/**
  * @brief Free the compiled extension instance structure.
  * @param[in] ctx libyang context where the string data resides in a dictionary.
  * @param[in,out] ext Compiled extension instance structure to be cleaned.

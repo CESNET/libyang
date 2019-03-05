@@ -4888,6 +4888,7 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p, int opti
     struct ly_set targets = {0};
     struct lysc_node *target; /* target target of the deviation */
     struct lysc_node_list *list;
+    struct lysc_action *actions;
     struct lysp_deviation *dev;
     struct lysp_deviate *d, **dp_new;
     struct lysp_deviate_add *d_add;
@@ -4930,7 +4931,19 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p, int opti
         /* resolve the target */
         LY_CHECK_GOTO(lys_resolve_schema_nodeid(ctx, dev->nodeid, 0, NULL, ctx->mod, 0, 1,
                                                 (const struct lysc_node**)&target, &flags), cleanup);
-
+        if (target->nodetype == LYS_ACTION) {
+            /* move the target pointer to input/output to make them different from the action and
+             * between them. Before the devs[] item is being processed, the target pointer must be fixed
+             * back to the RPC/action node due to a better compatibility and decision code in this function.
+             * The LYSC_OPT_INTERNAL is used as a flag to this change. */
+            if (flags & LYSC_OPT_RPC_INPUT) {
+                target = (struct lysc_node*)&((struct lysc_action*)target)->input;
+                flags |= LYSC_OPT_INTERNAL;
+            } else if (flags & LYSC_OPT_RPC_OUTPUT) {
+                target = (struct lysc_node*)&((struct lysc_action*)target)->output;
+                flags |= LYSC_OPT_INTERNAL;
+            }
+        }
         /* insert into the set of targets with duplicity detection */
         i = ly_set_add(&targets, target, 0);
         if (!devs[i]) {
@@ -5030,15 +5043,55 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p, int opti
 
     /* apply deviations */
     for (u = 0; u < devs_p.count && devs[u]; ++u) {
+        if (devs[u]->flags & LYSC_OPT_INTERNAL) {
+            /* fix the target pointer in case of RPC's/action's input/output */
+            if (devs[u]->flags & LYSC_OPT_RPC_INPUT) {
+                devs[u]->target = (struct lysc_node*)((char*)devs[u]->target - offsetof(struct lysc_action, input));
+            } else if (devs[u]->flags & LYSC_OPT_RPC_OUTPUT) {
+                devs[u]->target = (struct lysc_node*)((char*)devs[u]->target - offsetof(struct lysc_action, output));
+            }
+        }
+
         /* not-supported */
         if (devs[u]->not_supported) {
             if (LY_ARRAY_SIZE(devs[u]->deviates) > 1) {
                 LOGWRN(ctx->ctx, "Useless multiple (%u) deviates on node \"%s\" since the node is not-supported.",
                        LY_ARRAY_SIZE(devs[u]->deviates), devs[u]->nodeid);
             }
-            /* remove the target node */
-            lysc_disconnect(devs[u]->target);
-            lysc_node_free(ctx->ctx, devs[u]->target);
+            if (devs[u]->target->nodetype == LYS_ACTION) {
+                if (devs[u]->flags & LYSC_OPT_RPC_INPUT) {
+                    /* remove RPC's/action's input */
+                    lysc_action_inout_free(ctx->ctx, &((struct lysc_action*)devs[u]->target)->input);
+                    memset(&((struct lysc_action*)devs[u]->target)->input, 0, sizeof ((struct lysc_action*)devs[u]->target)->input);
+                } else if (devs[u]->flags & LYSC_OPT_RPC_OUTPUT) {
+                    /* remove RPC's/action's output */
+                    lysc_action_inout_free(ctx->ctx, &((struct lysc_action*)devs[u]->target)->output);
+                    memset(&((struct lysc_action*)devs[u]->target)->output, 0, sizeof ((struct lysc_action*)devs[u]->target)->output);
+                } else {
+                    /* remove RPC/action */
+                    if (devs[u]->target->parent) {
+                        actions = (struct lysc_action*)lysc_node_actions(devs[u]->target->parent);
+                    } else {
+                        actions = devs[u]->target->module->compiled->rpcs;
+                    }
+                    LY_ARRAY_FOR(actions, x) {
+                        if (&actions[x] == (struct lysc_action*)devs[u]->target) {
+                            break;
+                        }
+                    }
+                    if (x < LY_ARRAY_SIZE(actions)) {
+                        lysc_action_free(ctx->ctx, &actions[x]);
+                        memmove(&actions[x], &actions[x + 1], (LY_ARRAY_SIZE(actions) - (x + 1)) * sizeof *actions);
+                        LY_ARRAY_DECREMENT(actions);
+                    }
+                }
+            } else if (devs[u]->target->nodetype == LYS_NOTIF) {
+                /* TODO Notification */
+            } else {
+                /* remove the target node */
+                lysc_disconnect(devs[u]->target);
+                lysc_node_free(ctx->ctx, devs[u]->target);
+            }
 
             continue;
         }
