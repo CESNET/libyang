@@ -54,7 +54,6 @@ parse_text_element(struct lyxml_context *xml_ctx, const char **data, const char 
         LY_CHECK_ERR_RET(!(*value), LOGMEM(xml_ctx->ctx), LY_EMEM);
     }
 
-    LY_CHECK_ERR_RET(xml_ctx->status != LYXML_ELEMENT, "erere", LY_EINT);
     lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
 
     return 0;
@@ -504,7 +503,8 @@ yin_parse_submodule(struct ly_ctx *ctx, const char *data, struct lysp_submodule 
         ret = LY_EINVAL;
         goto cleanup;
     } else if (kw != YANG_SUBMODULE) {
-        /* TODO log error using LOGVAL_YIN macro */
+        LOGVAL_YANG(&xml_ctx, LYVE_SYNTAX, "Invalid keyword \"%s\", expected \"module\" or \"submodule\".",
+               ly_stmt2str(kw));
         ret = LY_EVALID;
         goto cleanup;
     }
@@ -563,7 +563,8 @@ yin_parse_module(struct ly_ctx *ctx, const char *data, struct lys_module *mod)
         ret = LY_EINVAL;
         goto cleanup;
     } else if (kw != YANG_MODULE) {
-        /* TODO log error using LOGVAL_YIN macro */
+        LOGVAL_YANG(&xml_ctx, LYVE_SYNTAX, "Invalid keyword \"%s\", expected \"module\" or \"submodule\".",
+               ly_stmt2str(kw));
         ret = LY_EVALID;
         goto cleanup;
     }

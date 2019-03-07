@@ -163,6 +163,7 @@ typedef enum {
     LYVE_SUCCESS = 0,  /**< no error */
     LYVE_SYNTAX,       /**< generic syntax error */
     LYVE_SYNTAX_YANG,  /**< YANG-related syntax error */
+    LYVE_SYNTAX_YIN,   /**< YIN-related syntax error */
     LYVE_REFERENCE,    /**< invalid referencing or using an item */
     LYVE_XPATH,        /**< invalid XPath expression */
     LYVE_SEMANTICS     /**< generic semantic error */
