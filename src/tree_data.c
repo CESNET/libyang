@@ -1843,17 +1843,22 @@ lyd_new_path(struct lyd_node *data_tree, const struct ly_ctx *ctx, const char *p
     id = path;
 
     if (data_tree) {
-        /* go through all the siblings and try to find the right parent, if exists,
-         * first go through all the next siblings keeping the original order, for positional predicates */
-        LY_TREE_FOR(data_tree, node) {
-            parent = resolve_partial_json_data_nodeid(id, value_type > LYD_ANYDATA_STRING ? NULL : value, node,
-                                                      options, &parsed);
-            if (parsed || (path[0] != '/')) {
-                break;
+        if (path[0] == '/') {
+            /* absolute path, go through all the siblings and try to find the right parent, if exists,
+             * first go through all the next siblings keeping the original order, for positional predicates */
+            for (node = data_tree; !parsed && node; node = node->next) {
+                parent = resolve_partial_json_data_nodeid(id, value_type > LYD_ANYDATA_STRING ? NULL : value, node,
+                                                          options, &parsed);
             }
-        }
-        for (node = data_tree->prev; !parsed && node->next; node = node->prev) {
-            parent = resolve_partial_json_data_nodeid(id, value_type > LYD_ANYDATA_STRING ? NULL : value, node,
+            if (!parsed) {
+                for (node = data_tree->prev; !parsed && node->next; node = node->prev) {
+                    parent = resolve_partial_json_data_nodeid(id, value_type > LYD_ANYDATA_STRING ? NULL : value, node,
+                                                              options, &parsed);
+                }
+            }
+        } else {
+            /* relative path, use only the provided data tree root */
+            parent = resolve_partial_json_data_nodeid(id, value_type > LYD_ANYDATA_STRING ? NULL : value, data_tree,
                                                       options, &parsed);
         }
         if (parsed == -1) {
