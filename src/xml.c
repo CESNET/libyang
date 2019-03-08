@@ -371,7 +371,6 @@ success:
     }
 
     context->status -= 1;
-    (*input) = in;
     if (buf) {
         (*buffer) = buf;
         (*buffer_size) = size;
@@ -383,6 +382,23 @@ success:
     }
     (*length) = len;
 
+    if (context->status == LYXML_ATTRIBUTE) {
+        if (in[0] == '>') {
+            /* element terminated by > - termination of the opening tag */
+            context->status = LYXML_ELEM_CONTENT;
+            ++in;
+        } else if (in[0] == '/' && in[1] == '>') {
+            /* element terminated by /> - termination of an empty element */
+            context->status = LYXML_ELEMENT;
+            in += 2;
+
+            /* remove the closed element record from the tags list */
+            free(context->elements.objs[context->elements.count - 1]);
+            --context->elements.count;
+        }
+    }
+
+    (*input) = in;
     return LY_SUCCESS;
 
 #undef BUFSIZE
@@ -412,16 +428,6 @@ lyxml_get_attribute(struct lyxml_context *context, const char **input,
     if (in[0] == '\0') {
         /* EOF - not expected at this place */
         return LY_EINVAL;
-    } else if (in[0] == '>') {
-        /* element terminated by > - termination of the opening tag */
-        context->status = LYXML_ELEM_CONTENT;
-        ++in;
-        goto success;
-    } else if (in[0] == '/' && in[1] == '>') {
-        /* element terminated by /> - termination of an empty element */
-        context->status = LYXML_ELEMENT;
-        in += 2;
-        goto success;
     }
 
     /* remember the identifier start before checking its format */
@@ -463,7 +469,6 @@ lyxml_get_attribute(struct lyxml_context *context, const char **input,
     }
     context->status = LYXML_ATTR_CONTENT;
 
-success:
     /* move caller's input */
     (*input) = in;
     return LY_SUCCESS;
