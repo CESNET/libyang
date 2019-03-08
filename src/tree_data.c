@@ -5566,17 +5566,49 @@ error:
     return NULL;
 }
 
+static int
+lyd_dup_keys(struct lyd_node *new_list, const struct lyd_node *old_list, struct ly_ctx *log_ctx, int options)
+{
+    struct lys_node_list *slist;
+    struct lyd_node *key, *key_dup;
+    uint16_t i;
+
+    if (new_list->schema->nodetype != LYS_LIST) {
+        return 0;
+    }
+
+    slist = (struct lys_node_list *)new_list->schema;
+    for (key = old_list->child, i = 0; key && (i < slist->keys_size); ++i, key = key->next) {
+        if (key->schema != (struct lys_node *)slist->keys[i]) {
+            LOGVAL(log_ctx, LYE_PATH_INKEY, LY_VLOG_LYD, new_list, slist->keys[i]->name);
+            return -1;
+        }
+
+        key_dup = lyd_dup(key, options & LYD_DUP_OPT_NO_ATTR);
+        LY_CHECK_ERR_RETURN(!key_dup, LOGMEM(log_ctx), -1);
+
+        if (lyd_insert(new_list, key_dup)) {
+            lyd_free(key_dup);
+            return -1;
+        }
+    }
+    if (!key && (i < slist->keys_size)) {
+        LOGVAL(log_ctx, LYE_PATH_INKEY, LY_VLOG_LYD, new_list, slist->keys[i]->name);
+        return -1;
+    }
+
+    return 0;
+}
+
 API struct lyd_node *
 lyd_dup_to_ctx(const struct lyd_node *node, int options, struct ly_ctx *ctx)
 {
     struct ly_ctx *log_ctx;
-    struct lys_node_list *slist;
     struct lys_node *schema;
     const char *yang_data_name;
     const struct lys_module *trg_mod;
     const struct lyd_node *next, *elem;
-    struct lyd_node *ret, *parent, *key, *key_dup, *new_node = NULL;
-    uint16_t i;
+    struct lyd_node *ret, *parent, *new_node = NULL;
 
     if (!node) {
         LOGARG;
@@ -5644,7 +5676,16 @@ lyd_dup_to_ctx(const struct lyd_node *node, int options, struct ly_ctx *ctx)
             ret = new_node;
         }
 
-        if (!(options & LYD_DUP_OPT_RECURSIVE)) {
+        if (!(options & (LYD_DUP_OPT_RECURSIVE | LYD_DUP_OPT_WITH_KEYS))) {
+            /* no more descendants copied */
+            break;
+        }
+
+        if (options & LYD_DUP_OPT_WITH_KEYS) {
+            /* copy only descendant keys */
+            if (lyd_dup_keys(new_node, elem, log_ctx, options)) {
+                goto error;
+            }
             break;
         }
 
@@ -5691,26 +5732,8 @@ lyd_dup_to_ctx(const struct lyd_node *node, int options, struct ly_ctx *ctx)
             LY_CHECK_ERR_GOTO(!new_node, LOGMEM(log_ctx), error);
 
             /* dup all list keys */
-            if (new_node->schema->nodetype == LYS_LIST) {
-                slist = (struct lys_node_list *)new_node->schema;
-                for (key = elem->child, i = 0; key && (i < slist->keys_size); ++i, key = key->next) {
-                    if (key->schema != (struct lys_node *)slist->keys[i]) {
-                        LOGVAL(log_ctx, LYE_PATH_INKEY, LY_VLOG_LYD, new_node, slist->keys[i]->name);
-                        goto error;
-                    }
-
-                    key_dup = lyd_dup(key, options & LYD_DUP_OPT_NO_ATTR);
-                    LY_CHECK_ERR_GOTO(!key_dup, LOGMEM(log_ctx), error);
-
-                    if (lyd_insert(new_node, key_dup)) {
-                        lyd_free(key_dup);
-                        goto error;
-                    }
-                }
-                if (!key && (i < slist->keys_size)) {
-                    LOGVAL(log_ctx, LYE_PATH_INKEY, LY_VLOG_LYD, new_node, slist->keys[i]->name);
-                    goto error;
-                }
+            if (lyd_dup_keys(new_node, elem, log_ctx, options)) {
+                goto error;
             }
 
             /* link together */

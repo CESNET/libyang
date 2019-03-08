@@ -907,6 +907,8 @@ unsigned int lyd_list_pos(const struct lyd_node *node);
 #define LYD_DUP_OPT_NO_ATTR      0x02 /**< Do not duplicate attributes of any node. */
 #define LYD_DUP_OPT_WITH_PARENTS 0x04 /**< If a nested node is being duplicated, duplicate also all the parents.
                                            Keys are also duplicated for lists. Return value does not change! */
+#define LYD_DUP_OPT_WITH_KEYS    0x08 /**< If a lits key is being duplicated non-recursively, duplicate its keys.
+                                           Ignored if used with #LYD_DUP_OPT_RECURSIVE. Return value does not change! */
 
 /** @} dupoptions */
 
