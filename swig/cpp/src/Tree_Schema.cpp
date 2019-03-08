@@ -281,7 +281,8 @@ S_Set Schema_Node::xpath_atomize(enum lyxp_node_type ctx_node_type, const char *
         return nullptr;
     }
 
-    return std::make_shared<Set>(set, deleter);
+    S_Deleter new_deleter = std::make_shared<Deleter>(set, deleter);
+    return std::make_shared<Set>(set, new_deleter);
 }
 S_Set Schema_Node::xpath_atomize(int options) {
     struct ly_set *set = lys_node_xpath_atomize(node, options);
@@ -290,7 +291,8 @@ S_Set Schema_Node::xpath_atomize(int options) {
         return nullptr;
     }
 
-    return std::make_shared<Set>(set, deleter);
+    S_Deleter new_deleter = std::make_shared<Deleter>(set, deleter);
+    return std::make_shared<Set>(set, new_deleter);
 }
 std::vector<S_Schema_Node> Schema_Node::tree_for() {
     std::vector<S_Schema_Node> s_vector;
