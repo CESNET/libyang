@@ -35,6 +35,13 @@ enum YIN_ARGUMENT {
     YIN_ARG_TAG,
 };
 
+/**
+ * @brief Parse content of whole element as text.
+ *
+ * @param[in] xml_ctx Xml context.
+ * @param[in] data Data to read from.
+ * @param[out] value Where content of element should be stored.
+ */
 LY_ERR
 parse_text_element(struct lyxml_context *xml_ctx, const char **data, const char **value)
 {
@@ -214,9 +221,7 @@ parse_namespace(struct lyxml_context *xml_ctx, const char **data, struct lysp_mo
     LY_CHECK_ERR_RET(!(*mod_p)->mod->ns, LOGMEM(xml_ctx->ctx), LY_EMEM);
 
     /* namespace can have only one argument */
-    ret = lyxml_get_attribute(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
-    LY_CHECK_RET(ret);
-    if (name) {
+    if (xml_ctx->status != LYXML_ELEMENT) {
         LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Unexpected argument \"%s\".", name);
         return LY_EVALID;
     }
@@ -258,9 +263,7 @@ parse_prefix(struct lyxml_context *xml_ctx, const char **data, struct lysp_modul
     LY_CHECK_ERR_RET(!(*mod_p)->mod->prefix, LOGMEM(xml_ctx->ctx), LY_EMEM);
 
     /* prefix element can have only one argument */
-    ret = lyxml_get_attribute(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
-    LY_CHECK_RET(ret);
-    if (name) {
+    if (xml_ctx->status != LYXML_ELEMENT) {
         LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Unexpected argument \"%s\".", name);
         return LY_EVALID;
     }
@@ -358,17 +361,11 @@ parse_mod(struct lyxml_context *xml_ctx, const char **data, struct lysp_module *
     (*mod)->mod->name = lydict_insert(xml_ctx->ctx, out, out_len);
     LY_CHECK_ERR_RET(!(*mod)->mod->name, LOGMEM(xml_ctx->ctx), LY_EMEM);
 
-    /* read all attributes and their content only for testing */
-    while (xml_ctx->status == LYXML_ATTRIBUTE) {
-        lyxml_get_attribute(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
-        while (xml_ctx->status == LYXML_ATTR_CONTENT) {
-            lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
-        }
-    }
+    ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
+    LY_CHECK_ERR_RET(ret != LY_EINVAL, LOGVAL_YANG(xml_ctx, LYVE_SYNTAX_YIN, "Expected new xml element after module element"), LY_EINVAL);
 
     /* loop over all elements and parse them */
-    while (xml_ctx->status == LYXML_ELEMENT || xml_ctx->status == LYXML_ELEM_CONTENT) {
-
+    while (xml_ctx->status != LYXML_END) {
 /* TODO ADD error log to macro */
 #define CHECK_ORDER(SECTION) \
         if (mod_stmt > SECTION) {return LY_EVALID;}mod_stmt = SECTION
@@ -427,43 +424,45 @@ parse_mod(struct lyxml_context *xml_ctx, const char **data, struct lysp_module *
 #undef CHECK_ORDER
 
         ret = lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
-        LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), LY_EMEM);
-        kw = match_keyword(name, name_len);
+        LY_CHECK_RET(ret != LY_SUCCESS, LY_EMEM);
 
-        switch (kw) {
+        if (name) {
+            kw = match_keyword(name, name_len);
+            switch (kw) {
 
-        /* module header */
-        case YANG_NAMESPACE:
-            LY_CHECK_RET(parse_namespace(xml_ctx, data, mod));
-            break;
-        case YANG_PREFIX:
-            LY_CHECK_RET(parse_prefix(xml_ctx, data, mod));
-            /* TODO change lysp_check_prefix function to work with ctx and not parser_ctx */
-            //LY_CHECK_RET(lysp_check_prefix(&xml_ctx->ctx, *mod_p, &((*mod_p)->prefix)), LY_EVALID);
-            break;
+            /* module header */
+            case YANG_NAMESPACE:
+                LY_CHECK_RET(parse_namespace(xml_ctx, data, mod));
+                break;
+            case YANG_PREFIX:
+                LY_CHECK_RET(parse_prefix(xml_ctx, data, mod));
+                /* TODO change lysp_check_prefix function to work with ctx and not parser_ctx */
+                //LY_CHECK_RET(lysp_check_prefix(&xml_ctx->ctx, *mod_p, &((*mod_p)->prefix)), LY_EVALID);
+                break;
 
-        /* linkage */
-        case YANG_IMPORT:
-            yin_parse_import(xml_ctx, (*mod)->mod->prefix, data, &(*mod)->imports);
-            break;
+            /* linkage */
+            case YANG_IMPORT:
+                yin_parse_import(xml_ctx, (*mod)->mod->prefix, data, &(*mod)->imports);
+                break;
 
-        /* meta */
-        case YANG_ORGANIZATION:
-            LY_CHECK_RET(parse_text_element(xml_ctx, data, &(*mod)->mod->org));
-            break;
-        case YANG_CONTACT:
-            LY_CHECK_RET(parse_text_element(xml_ctx, data, &(*mod)->mod->contact));
-            break;
-        case YANG_DESCRIPTION:
-            LY_CHECK_RET(parse_text_element(xml_ctx, data, &(*mod)->mod->dsc));
-            break;
-        case YANG_REFERENCE:
-            LY_CHECK_RET(parse_text_element(xml_ctx, data, &(*mod)->mod->ref));
-            break;
+            /* meta */
+            case YANG_ORGANIZATION:
+                LY_CHECK_RET(parse_text_element(xml_ctx, data, &(*mod)->mod->org));
+                break;
+            case YANG_CONTACT:
+                LY_CHECK_RET(parse_text_element(xml_ctx, data, &(*mod)->mod->contact));
+                break;
+            case YANG_DESCRIPTION:
+                LY_CHECK_RET(parse_text_element(xml_ctx, data, &(*mod)->mod->dsc));
+                break;
+            case YANG_REFERENCE:
+                LY_CHECK_RET(parse_text_element(xml_ctx, data, &(*mod)->mod->ref));
+                break;
 
-        default:
-            /* error */
-            break;
+            default:
+                /* error */
+                break;
+            }
         }
     }
 
