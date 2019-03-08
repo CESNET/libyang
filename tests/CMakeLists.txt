@@ -29,7 +29,7 @@ if(ENABLE_COVERAGE)
     endif()
 
     if(NOT CMAKE_COMPILER_IS_GNUCC)
-        message(WARNING "Compiler is not gcc/g++! Building code coverage report may not work!")
+        message(WARNING "Compiler is not gcc! Coverage may break the tests!")
     endif()
 
     if(ENABLE_COVERAGE)

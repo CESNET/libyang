@@ -42,12 +42,15 @@ master branch. If you want the latest code from the devel branch, install `libya
 * libpcre (devel package)
  * note, that PCRE is supposed to be compiled with unicode support (configure's options
    `--enable-utf` and `--enable-unicode-properties`)
-* cmocka >= 1.0.0 (for tests only, see [Tests](#Tests))
 
 #### Optional
 
 * doxygen (for generating documentation)
+* cmocka >= 1.0.0 (for [tests](#Tests)
 * valgrind (for enhanced testing)
+* gcov (for code coverage)
+* lcov (for code coverage)
+* genhtml (for code coverage)
 
 ### Runtime Requirements
 
@@ -223,6 +226,14 @@ cmake's options.
 Tests can be run by the make's `test` target:
 ```
 $ make test
+```
+
+### Code Coverage
+
+Based on the tests run, it is possible to generate code coverage report via the
+make's `coverage` target:
+```
+$ make coverage
 ```
 
 ## Bindings
