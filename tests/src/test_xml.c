@@ -458,13 +458,11 @@ test_simple_xml(void **state)
     assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, (const char **)&test_in, &prefix, &prefix_len, &name, &name_len));     /* <elem1 */
     assert_int_equal(LY_SUCCESS, lyxml_get_attribute(&ctx, (const char **)&test_in, &prefix, &prefix_len, &name, &name_len));   /* attr1= */
     assert_int_equal(LY_SUCCESS, lyxml_get_string(&ctx, (const char **)&test_in, &buf, &buf_size, &output, &length, &dynamic)); /* "value" */
-    assert_int_equal(LY_SUCCESS, lyxml_get_attribute(&ctx, (const char **)&test_in, &prefix, &prefix_len, &name, &name_len));   /* > */
     /* try to get string content of elem1 whitespace is removed and EINVAL is expected in this case */
     assert_int_equal(LY_EINVAL, lyxml_get_string(&ctx, (const char **)&test_in, &buf, &buf_size, &output, &length, &dynamic));
     assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, (const char **)&test_in, &prefix, &prefix_len, &name, &name_len));     /* <elem2 */
     assert_int_equal(LY_SUCCESS, lyxml_get_attribute(&ctx, (const char **)&test_in, &prefix, &prefix_len, &name, &name_len));   /* attr2= */
     assert_int_equal(LY_SUCCESS, lyxml_get_string(&ctx, (const char **)&test_in, &buf, &buf_size, &output, &length, &dynamic)); /* "value" */
-    assert_int_equal(LY_SUCCESS, lyxml_get_attribute(&ctx, (const char **)&test_in, &prefix, &prefix_len, &name, &name_len));   /* /> */
     assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, (const char **)&test_in, &prefix, &prefix_len, &name, &name_len));     /* </elem1> */
 }
 
