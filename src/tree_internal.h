@@ -485,12 +485,13 @@ int lys_get_sibling(const struct lys_node *siblings, const char *mod_name, int m
  * @param[in] name Node name.
  * @param[in] nam_len Node \p name length.
  * @param[in] type ORed desired type of the node. 0 means any (data node) type.
+ * @param[in] getnext_opts lys_getnext() options to use.
  * @param[out] ret Pointer to the node of the desired type. Can be NULL.
  *
  * @return EXIT_SUCCESS on success, EXIT_FAILURE on fail.
  */
 int lys_getnext_data(const struct lys_module *mod, const struct lys_node *parent, const char *name, int nam_len,
-                     LYS_NODE type, const struct lys_node **ret);
+                     LYS_NODE type, int getnext_opts, const struct lys_node **ret);
 
 int lyd_get_unique_default(const char* unique_expr, struct lyd_node *list, const char **dflt);
 

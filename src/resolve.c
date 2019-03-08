@@ -3941,7 +3941,8 @@ resolve_schema_leafref_predicate(const char *path, const struct lys_node *contex
         } else {
             trg_mod = lys_node_module(parent);
         }
-        rc = lys_getnext_data(trg_mod, context_node, source, sour_len, LYS_LEAF | LYS_LEAFLIST, &src_node);
+        rc = lys_getnext_data(trg_mod, context_node, source, sour_len, LYS_LEAF | LYS_LEAFLIST, LYS_GETNEXT_NOSTATECHECK,
+                              &src_node);
         if (rc) {
             LOGVAL(ctx, LYE_NORESOLV, LY_VLOG_LYS, parent, "leafref predicate", path-parsed);
             return 0;
@@ -3984,7 +3985,8 @@ resolve_schema_leafref_predicate(const char *path, const struct lys_node *contex
             } else {
                 trg_mod = lys_node_module(parent);
             }
-            rc = lys_getnext_data(trg_mod, dst_node, dest, dest_len, LYS_CONTAINER | LYS_LIST | LYS_LEAF, &dst_node);
+            rc = lys_getnext_data(trg_mod, dst_node, dest, dest_len, LYS_CONTAINER | LYS_LIST | LYS_LEAF,
+                                  LYS_GETNEXT_NOSTATECHECK, &dst_node);
             if (rc) {
                 LOGVAL(ctx, LYE_NORESOLV, LY_VLOG_LYS, parent, "leafref predicate", path_key_expr);
                 return 0;
@@ -6065,7 +6067,7 @@ resolve_list_keys(struct lys_node_list *list, const char *keys_str)
         }
 
         rc = lys_getnext_data(lys_node_module((struct lys_node *)list), (struct lys_node *)list, keys_str, len, LYS_LEAF,
-                              (const struct lys_node **)&list->keys[i]);
+                              LYS_GETNEXT_NOSTATECHECK, (const struct lys_node **)&list->keys[i]);
         if (rc) {
             LOGVAL(ctx, LYE_INRESOLV, LY_VLOG_LYS, list, "list key", keys_str);
             return EXIT_FAILURE;

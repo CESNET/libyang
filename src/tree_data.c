@@ -1172,7 +1172,7 @@ lyd_new(struct lyd_node *parent, const struct lys_module *module, const char *na
     }
 
     if (lys_getnext_data(module, lys_parent(siblings), name, strlen(name), LYS_CONTAINER | LYS_LIST | LYS_NOTIF
-                         | LYS_RPC | LYS_ACTION, &snode) || !snode) {
+                         | LYS_RPC | LYS_ACTION, 0, &snode) || !snode) {
         LOGERR(siblings->module->ctx, LY_EINVAL, "Failed to find \"%s\" as a sibling to \"%s:%s\".",
                name, lys_node_module(siblings)->name, siblings->name);
         return NULL;
@@ -1265,7 +1265,7 @@ lyd_new_leaf(struct lyd_node *parent, const struct lys_module *module, const cha
         return NULL;
     }
 
-    if (lys_getnext_data(module, lys_parent(siblings), name, strlen(name), LYS_LEAFLIST | LYS_LEAF, &snode) || !snode) {
+    if (lys_getnext_data(module, lys_parent(siblings), name, strlen(name), LYS_LEAFLIST | LYS_LEAF, 0, &snode) || !snode) {
         LOGERR(siblings->module->ctx, LY_EINVAL, "Failed to find \"%s\" as a sibling to \"%s:%s\".",
                name, lys_node_module(siblings)->name, siblings->name);
         return NULL;
@@ -1513,7 +1513,7 @@ lyd_new_anydata(struct lyd_node *parent, const struct lys_module *module, const 
         return NULL;
     }
 
-    if (lys_getnext_data(module, lys_parent(siblings), name, strlen(name), LYS_ANYDATA, &snode) || !snode) {
+    if (lys_getnext_data(module, lys_parent(siblings), name, strlen(name), LYS_ANYDATA, 0, &snode) || !snode) {
         LOGERR(siblings->module->ctx, LY_EINVAL, "Failed to find \"%s\" as a sibling to \"%s:%s\".",
                name, lys_node_module(siblings)->name, siblings->name);
         return NULL;
@@ -1538,7 +1538,7 @@ lyd_new_yangdata(const struct lys_module *module, const char *name_template, con
         return NULL;
     }
 
-    if (lys_getnext_data(module, schema, name, strlen(name), LYS_CONTAINER, &snode) || !snode) {
+    if (lys_getnext_data(module, schema, name, strlen(name), LYS_CONTAINER, 0, &snode) || !snode) {
         LOGERR(module->ctx, LY_EINVAL, "Failed to find \"%s\" as a container child of \"%s:%s\".",
                name, module->name, schema->name);
         return NULL;
@@ -1564,7 +1564,7 @@ lyd_new_output(struct lyd_node *parent, const struct lys_module *module, const c
     }
 
     if (lys_getnext_data(module, lys_parent(siblings), name, strlen(name), LYS_CONTAINER | LYS_LIST | LYS_NOTIF
-                         | LYS_RPC | LYS_ACTION, &snode) || !snode) {
+                         | LYS_RPC | LYS_ACTION, 0, &snode) || !snode) {
         LOGERR(siblings->module->ctx, LY_EINVAL, "Failed to find \"%s\" as a sibling to \"%s:%s\".",
                name, lys_node_module(siblings)->name, siblings->name);
         return NULL;
@@ -1589,7 +1589,7 @@ lyd_new_output_leaf(struct lyd_node *parent, const struct lys_module *module, co
         return NULL;
     }
 
-    if (lys_getnext_data(module, lys_parent(siblings), name, strlen(name), LYS_LEAFLIST | LYS_LEAF, &snode) || !snode) {
+    if (lys_getnext_data(module, lys_parent(siblings), name, strlen(name), LYS_LEAFLIST | LYS_LEAF, 0, &snode) || !snode) {
         LOGERR(siblings->module->ctx, LY_EINVAL, "Failed to find \"%s\" as a sibling to \"%s:%s\".",
                name, lys_node_module(siblings)->name, siblings->name);
         return NULL;
@@ -1615,7 +1615,7 @@ lyd_new_output_anydata(struct lyd_node *parent, const struct lys_module *module,
         return NULL;
     }
 
-    if (lys_getnext_data(module, lys_parent(siblings), name, strlen(name), LYS_ANYDATA, &snode) || !snode) {
+    if (lys_getnext_data(module, lys_parent(siblings), name, strlen(name), LYS_ANYDATA, 0, &snode) || !snode) {
         LOGERR(siblings->module->ctx, LY_EINVAL, "Failed to find \"%s\" as a sibling to \"%s:%s\".",
                name, lys_node_module(siblings)->name, siblings->name);
         return NULL;
@@ -5609,7 +5609,7 @@ lyd_dup_to_ctx(const struct lyd_node *node, int options, struct ly_ctx *ctx)
                 }
                 /* we know its parent, so we can start with it */
                 lys_getnext_data(trg_mod, parent->schema, elem->schema->name, strlen(elem->schema->name),
-                                 elem->schema->nodetype, (const struct lys_node **)&schema);
+                                 elem->schema->nodetype, 0, (const struct lys_node **)&schema);
             } else {
                 /* we have to search in complete context */
                 schema = lyd_get_schema_inctx(elem, ctx);
