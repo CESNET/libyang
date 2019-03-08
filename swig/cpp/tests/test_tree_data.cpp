@@ -286,6 +286,50 @@ TEST(test_ly_data_node_new_path)
     }
 }
 
+TEST(test_ly_data_node_validity)
+{
+    const char *yang_folder = TESTS_DIR "/api/files";
+    const char *config_file = TESTS_DIR "/api/files/a.xml";
+
+    try {
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
+        ASSERT_NOTNULL(ctx);
+        ctx->parse_module_mem(lys_module_a, LYS_IN_YIN);
+        auto root = ctx->parse_data_path(config_file, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_STRICT);
+        ASSERT_NOTNULL(root);
+        uint8_t validity = root->validity();
+        ASSERT_EQ(0, validity);
+
+    } catch (const std::exception& e) {
+        mt::printFailed(e.what(), stdout);
+        throw;
+    }
+}
+
+TEST(test_ly_data_node_dflt)
+{
+    const char *yang_folder = TESTS_DIR "/api/files";
+    const char *config_file = TESTS_DIR "/api/files/a.xml";
+
+    try {
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
+        ASSERT_NOTNULL(ctx);
+        ctx->parse_module_mem(lys_module_a, LYS_IN_YIN);
+        ctx->parse_data_path(config_file, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_STRICT);
+        auto root = std::make_shared<libyang::Data_Node>(ctx, "/a:x/bar-gggg", "a", LYD_ANYDATA_CONSTSTRING, 0);
+        ASSERT_NOTNULL(root);
+        ASSERT_EQ(0, root->dflt());
+
+        auto node = root->new_path(ctx, "def-leaf", "def", LYD_ANYDATA_CONSTSTRING, LYD_PATH_OPT_DFLT);
+        ASSERT_NOTNULL(node);
+        ASSERT_EQ(1, node->dflt());
+
+    } catch (const std::exception& e) {
+        mt::printFailed(e.what(), stdout);
+        throw;
+    }
+}
+
 TEST(test_ly_data_node_insert)
 {
     const char *yang_folder = TESTS_DIR "/api/files";
@@ -537,6 +581,49 @@ TEST(test_ly_data_node_unlink)
     }
 }
 
+TEST(test_ly_data_node_insert_attr)
+{
+     const char *yang_folder = TESTS_DIR "/api/files";
+    const char *config_file = TESTS_DIR "/api/files/a.xml";
+
+    try {
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
+        ASSERT_NOTNULL(ctx);
+        ctx->parse_module_mem(lys_module_a, LYS_IN_YIN);
+        auto root = ctx->parse_data_path(config_file, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_STRICT);
+        ASSERT_NOTNULL(root);
+
+        auto node = root->child();
+        auto attr = node->insert_attr(nullptr, "test", "test");
+
+        ASSERT_STREQ("test", node->attr()->name());
+        ASSERT_STREQ("test", attr->name());
+    } catch( const std::exception& e ) {
+        mt::printFailed(e.what(), stdout);
+        throw;
+    }
+}
+
+TEST(test_ly_data_node_node_module)
+{
+    const char *yang_folder = TESTS_DIR "/api/files";
+    const char *config_file = TESTS_DIR "/api/files/a.xml";
+
+    try {
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
+        ASSERT_NOTNULL(ctx);
+        ctx->parse_module_mem(lys_module_a, LYS_IN_YIN);
+        auto root = ctx->parse_data_path(config_file, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_STRICT);
+        ASSERT_NOTNULL(root);
+
+        auto module = root->node_module();
+        ASSERT_NOTNULL(module);
+    } catch( const std::exception& e ) {
+        mt::printFailed(e.what(), stdout);
+        throw;
+    }
+}
+
 TEST(test_ly_data_node_print_mem_xml)
 {
     const char *yang_folder = TESTS_DIR "/api/files";
@@ -678,6 +765,30 @@ TEST(test_ly_data_node_dup)
         ASSERT_NOTNULL(new_node);
         auto dup_node = new_node->dup(0);
         ASSERT_NOTNULL(dup_node);
+    } catch( const std::exception& e ) {
+        mt::printFailed(e.what(), stdout);
+        throw;
+    }
+}
+
+TEST(test_ly_data_node_dup_withsiblings)
+{
+    const char *yang_folder = TESTS_DIR "/api/files";
+    const char *config_file = TESTS_DIR "/api/files/a.xml";
+
+    try {
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
+        ASSERT_NOTNULL(ctx);
+        ctx->parse_module_mem(lys_module_a, LYS_IN_YIN);
+        auto root = ctx->parse_data_path(config_file, LYD_XML, LYD_OPT_CONFIG | LYD_OPT_STRICT);
+        ASSERT_NOTNULL(root);
+
+        auto new_node = std::make_shared<libyang::Data_Node>(root, root->child()->schema()->module(), "bar-y");
+        ASSERT_NOTNULL(new_node);
+        auto dup_node = new_node->dup_withsiblings(0);
+        ASSERT_NOTNULL(dup_node);
+        /* Check if the sibling of our duplicated node exists */
+        ASSERT_NOTNULL(dup_node->prev());
     } catch( const std::exception& e ) {
         mt::printFailed(e.what(), stdout);
         throw;

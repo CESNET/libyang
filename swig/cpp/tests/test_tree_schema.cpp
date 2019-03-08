@@ -115,6 +115,39 @@ const char *lys_module_b = \
     }\
 }";
 
+
+const char *lys_module_c =
+"module a {"
+    "namespace \"urn:a\";"
+    "prefix \"a\";"
+    "grouping g {"
+        "list b {"
+            "key \"name type\";"
+            "leaf name {"
+                "type leafref {"
+                    "path \"/a/name\";"
+                "}"
+            "}"
+            "leaf type {"
+                "type leafref {"
+                    "path \"/a[name=current()/../name]/type\";"
+                "}"
+            "}"
+        "}"
+    "}"
+    "list a {"
+        "key \"name\";"
+        "leaf name {"
+            "type string;"
+        "}"
+        "leaf type {"
+          "when \"../name = 'something'\";"
+            "type string;"
+        "}"
+    "}"
+    "uses g;"
+"}";
+
 const char *lys_module_a_with_typo = \
 "<?xml version=\"1.0\" encoding=\"UTF-8\"?>           \
 <module_typo name=\"a\"                                    \
@@ -509,6 +542,106 @@ TEST(test_ly_schema_node_path)
         auto schema = schemas.at(0);
         auto path = schema->path(0);
         ASSERT_STREQ(path_template, path);
+    } catch (const std::exception& e) {
+        mt::printFailed(e.what(), stdout);
+        throw;
+    }
+}
+
+TEST(test_ly_schema_node_name)
+{
+    const char *yang_folder = TESTS_DIR "/api/files";
+
+    try {
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
+        ASSERT_NOTNULL(ctx);
+        auto module = ctx->parse_module_mem(lys_module_a, LYS_IN_YIN);
+        ASSERT_NOTNULL(module);
+        auto schema_node = module->data();
+        ASSERT_NOTNULL(schema_node);
+
+        ASSERT_STREQ("top", schema_node->name());
+    } catch (const std::exception& e) {
+        mt::printFailed(e.what(), stdout);
+        throw;
+    }
+}
+
+TEST(test_ly_schema_node_module)
+{
+    const char *yang_folder = TESTS_DIR "/api/files";
+
+    try {
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
+        ASSERT_NOTNULL(ctx);
+        auto module = ctx->parse_module_mem(lys_module_a, LYS_IN_YIN);
+        ASSERT_NOTNULL(module);
+        auto schema_node = module->data();
+        ASSERT_NOTNULL(schema_node);
+
+        auto mod = schema_node->module();
+        ASSERT_NOTNULL(mod);
+        ASSERT_STREQ(mod->name(), "atop")
+    } catch (const std::exception& e) {
+        mt::printFailed(e.what(), stdout);
+        throw;
+    }
+}
+
+TEST(test_ly_schema_node_xpath_atomize)
+{
+    const char *yang_folder = TESTS_DIR "/api/files";
+
+    try {
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
+        ASSERT_NOTNULL(ctx);
+        auto module = ctx->parse_module_mem(lys_module_c, LYS_IN_YANG);
+        ASSERT_NOTNULL(module);
+
+        auto set = module->data()->child()->child()->next()->xpath_atomize(LYXP_NODE_ELEM, "/a[name=current()/../name]/type", 0);
+        ASSERT_NOTNULL(set);
+
+    } catch (const std::exception& e) {
+        mt::printFailed(e.what(), stdout);
+        throw;
+    }
+}
+
+TEST(test_ly_schema_node_validate_value)
+{
+    const char *yang_folder = TESTS_DIR "/api/files";
+
+    try {
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
+        ASSERT_NOTNULL(ctx);
+        auto module = ctx->parse_module_mem(lys_module_c, LYS_IN_YANG);
+        ASSERT_NOTNULL(module);
+        auto schema_node = module->data();
+        ASSERT_NOTNULL(schema_node);
+
+        int rc = schema_node->next()->child()->validate_value("something");
+        ASSERT_STREQ(schema_node->next()->child()->name(), "name");
+        ASSERT_EQ(rc, 0);
+
+    } catch (const std::exception& e) {
+        mt::printFailed(e.what(), stdout);
+        throw;
+    }
+}
+
+TEST(test_ly_schema_node_xpath_atomize2)
+{
+    const char *yang_folder = TESTS_DIR "/api/files";
+
+    try {
+        auto ctx = std::make_shared<libyang::Context>(yang_folder);
+        ASSERT_NOTNULL(ctx);
+        auto module = ctx->parse_module_mem(lys_module_c, LYS_IN_YANG);
+        ASSERT_NOTNULL(module);
+
+        auto set = module->data()->next()->child()->next()->xpath_atomize(0);
+        ASSERT_NULL(set);
+
     } catch (const std::exception& e) {
         mt::printFailed(e.what(), stdout);
         throw;
