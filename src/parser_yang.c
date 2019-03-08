@@ -516,6 +516,10 @@ yang_fill_unique(struct lys_module *module, struct lys_node_list *list, struct l
 
         /* store token into unique structure (includes converting prefix to the module name) */
         unique->expr[i] = transform_schema2json(module, value);
+        if (!unique->expr[i]) {
+            LOGVAL(module->ctx, LYE_INARG, LY_VLOG_LYS, list, value, "unique");
+            goto error;
+        }
         if (vaux) {
             *vaux = c;
         }
