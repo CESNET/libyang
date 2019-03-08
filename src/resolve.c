@@ -3290,6 +3290,32 @@ error:
     return -1;
 }
 
+static int
+resolve_superior_type_check(struct lys_type *type)
+{
+    uint32_t i;
+
+    if (type->base == LY_TYPE_DER) {
+        /* check that the referenced typedef is resolved */
+        return EXIT_FAILURE;
+    } else if (type->base == LY_TYPE_UNION) {
+        /* check that all union types are resolved */
+        for (i = 0; i < type->info.uni.count; ++i) {
+            if (resolve_superior_type_check(&type->info.uni.types[i])) {
+                return EXIT_FAILURE;
+            }
+        }
+    } else if (type->base == LY_TYPE_LEAFREF) {
+        /* check there is path in some derived type */
+        while (!type->info.lref.path) {
+            assert(type->der);
+            type = &type->der->type;
+        }
+    }
+
+    return EXIT_SUCCESS;
+}
+
 /**
  * @brief Resolve a typedef, return only resolved typedefs if derived. If leafref, it must be
  * resolved for this function to return it. Does not log.
@@ -3369,9 +3395,9 @@ resolve_superior_type(const char *name, const char *mod_name, const struct lys_m
             }
 
             for (i = 0; i < tpdf_size; i++) {
-                if (!strcmp(tpdf[i].name, name) && tpdf[i].type.base > 0) {
+                if (!strcmp(tpdf[i].name, name)) {
                     match = &tpdf[i];
-                    goto check_leafref;
+                    goto check_typedef;
                 }
             }
 
@@ -3387,33 +3413,31 @@ resolve_superior_type(const char *name, const char *mod_name, const struct lys_m
 
     /* search in top level typedefs */
     for (i = 0; i < module->tpdf_size; i++) {
-        if (!strcmp(module->tpdf[i].name, name) && module->tpdf[i].type.base > 0) {
+        if (!strcmp(module->tpdf[i].name, name)) {
             match = &module->tpdf[i];
-            goto check_leafref;
+            goto check_typedef;
         }
     }
 
     /* search in submodules */
     for (i = 0; i < module->inc_size && module->inc[i].submodule; i++) {
         for (j = 0; j < module->inc[i].submodule->tpdf_size; j++) {
-            if (!strcmp(module->inc[i].submodule->tpdf[j].name, name) && module->inc[i].submodule->tpdf[j].type.base > 0) {
+            if (!strcmp(module->inc[i].submodule->tpdf[j].name, name)) {
                 match = &module->inc[i].submodule->tpdf[j];
-                goto check_leafref;
+                goto check_typedef;
             }
         }
     }
 
     return EXIT_FAILURE;
 
-check_leafref:
+check_typedef:
+    if (resolve_superior_type_check(&match->type)) {
+        return EXIT_FAILURE;
+    }
+
     if (ret) {
         *ret = match;
-    }
-    if (match->type.base == LY_TYPE_LEAFREF) {
-        while (!match->type.info.lref.path) {
-            match = match->type.der;
-            assert(match);
-        }
     }
     return EXIT_SUCCESS;
 }
