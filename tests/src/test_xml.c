@@ -436,6 +436,38 @@ test_ns(void **state)
     assert_null(lyxml_ns_get(&ctx, NULL, 0));
 }
 
+static void
+test_simple_xml(void **state)
+{
+    (void)state; /* unused */
+    size_t name_len, prefix_len;
+    const char *prefix, *name;
+    char *test_in = NULL;
+    struct lyxml_context ctx;
+
+    char *buf = NULL, *output = NULL;
+    size_t buf_size, length;
+    int dynamic;
+
+    memset(&ctx, 0, sizeof ctx);
+    ctx.line = 1;
+    test_in = malloc(100);
+    /* test input */
+    strcpy(test_in, "<elem1 attr1=\"value\">      <elem2 attr2=\"value\"/> </elem1>");
+
+    assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, (const char **)&test_in, &prefix, &prefix_len, &name, &name_len));     /* <elem1 */
+    assert_int_equal(LY_SUCCESS, lyxml_get_attribute(&ctx, (const char **)&test_in, &prefix, &prefix_len, &name, &name_len));   /* attr1= */
+    assert_int_equal(LY_SUCCESS, lyxml_get_string(&ctx, (const char **)&test_in, &buf, &buf_size, &output, &length, &dynamic)); /* "value" */
+    assert_int_equal(LY_SUCCESS, lyxml_get_attribute(&ctx, (const char **)&test_in, &prefix, &prefix_len, &name, &name_len));   /* > */
+    /* try to get string content of elem1 whitespace is removed and EINVAL is expected in this case */
+    assert_int_equal(LY_EINVAL, lyxml_get_string(&ctx, (const char **)&test_in, &buf, &buf_size, &output, &length, &dynamic));
+    assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, (const char **)&test_in, &prefix, &prefix_len, &name, &name_len));     /* <elem2 */
+    assert_int_equal(LY_SUCCESS, lyxml_get_attribute(&ctx, (const char **)&test_in, &prefix, &prefix_len, &name, &name_len));   /* attr2= */
+    assert_int_equal(LY_SUCCESS, lyxml_get_string(&ctx, (const char **)&test_in, &buf, &buf_size, &output, &length, &dynamic)); /* "value" */
+    assert_int_equal(LY_SUCCESS, lyxml_get_attribute(&ctx, (const char **)&test_in, &prefix, &prefix_len, &name, &name_len));   /* /> */
+    assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, (const char **)&test_in, &prefix, &prefix_len, &name, &name_len));     /* </elem1> */
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -443,6 +475,7 @@ int main(void)
         cmocka_unit_test_setup(test_attribute, logger_setup),
         cmocka_unit_test_setup(test_text, logger_setup),
         cmocka_unit_test_setup(test_ns, logger_setup),
+        cmocka_unit_test(test_simple_xml),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
