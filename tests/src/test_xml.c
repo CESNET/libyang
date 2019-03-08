@@ -442,18 +442,19 @@ test_simple_xml(void **state)
     (void)state; /* unused */
     size_t name_len, prefix_len;
     const char *prefix, *name;
-    char *test_in = NULL;
+    char *test_in = NULL, *to_free = NULL;
     struct lyxml_context ctx;
 
     char *buf = NULL, *output = NULL;
     size_t buf_size, length;
     int dynamic;
+    char *test_input = "<elem1 attr1=\"value\">  <elem2 attr2=\"value\"/> </elem1>";
 
     memset(&ctx, 0, sizeof ctx);
     ctx.line = 1;
-    test_in = malloc(100);
+    to_free = test_in = malloc(strlen(test_input) + 1);
     /* test input */
-    strcpy(test_in, "<elem1 attr1=\"value\">      <elem2 attr2=\"value\"/> </elem1>");
+    strcpy(test_in, test_input);
 
     assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, (const char **)&test_in, &prefix, &prefix_len, &name, &name_len));     /* <elem1 */
     assert_int_equal(LY_SUCCESS, lyxml_get_attribute(&ctx, (const char **)&test_in, &prefix, &prefix_len, &name, &name_len));   /* attr1= */
@@ -464,6 +465,9 @@ test_simple_xml(void **state)
     assert_int_equal(LY_SUCCESS, lyxml_get_attribute(&ctx, (const char **)&test_in, &prefix, &prefix_len, &name, &name_len));   /* attr2= */
     assert_int_equal(LY_SUCCESS, lyxml_get_string(&ctx, (const char **)&test_in, &buf, &buf_size, &output, &length, &dynamic)); /* "value" */
     assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, (const char **)&test_in, &prefix, &prefix_len, &name, &name_len));     /* </elem1> */
+
+    lyxml_context_clear(&ctx);
+    free(to_free);
 }
 
 int main(void)
