@@ -201,18 +201,18 @@ getnext:
 }
 
 LY_ERR
-lysp_check_prefix(struct ly_parser_ctx *ctx, struct lysp_import *imports, const char *module_prefix, const char **value)
+lysp_check_prefix(struct ly_ctx *ctx, uint64_t *line, struct lysp_import *imports, const char *module_prefix, const char **value)
 {
     struct lysp_import *i;
 
     if (module_prefix && &module_prefix != value && !strcmp(module_prefix, *value)) {
-        LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_REFERENCE,
+        LOGVAL(ctx, LY_VLOG_LINE, line, LYVE_REFERENCE,
                "Prefix \"%s\" already used as module prefix.", *value);
         return LY_EEXIST;
     }
     LY_ARRAY_FOR(imports, struct lysp_import, i) {
         if (i->prefix && &i->prefix != value && !strcmp(i->prefix, *value)) {
-            LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_REFERENCE, "Prefix \"%s\" already used to import \"%s\" module.",
+            LOGVAL(ctx, LY_VLOG_LINE, line, LYVE_REFERENCE, "Prefix \"%s\" already used to import \"%s\" module.",
                    *value, i->name);
             return LY_EEXIST;
         }

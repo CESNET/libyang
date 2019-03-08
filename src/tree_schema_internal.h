@@ -81,7 +81,7 @@ struct lysc_ctx {
  * @param[in] value Newly added prefix value (including its location to distinguish collision with itself).
  * @return LY_EEXIST when prefix is already used in the module, LY_SUCCESS otherwise
  */
-LY_ERR lysp_check_prefix(struct ly_parser_ctx *ctx, struct lysp_import *imports, const char *module_prefix, const char **value);
+LY_ERR lysp_check_prefix(struct ly_ctx *ctx, uint64_t *line, struct lysp_import *imports, const char *module_prefix, const char **value);
 
 /**
  * @brief Check date string (4DIGIT "-" 2DIGIT "-" 2DIGIT)

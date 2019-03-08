@@ -1363,7 +1363,7 @@ parse_import(struct ly_parser_ctx *ctx, const char *module_prefix, const char **
         switch (kw) {
         case YANG_PREFIX:
             LY_CHECK_RET(parse_text_field(ctx, data, LYEXT_SUBSTMT_PREFIX, 0, &imp->prefix, Y_IDENTIF_ARG, &imp->exts));
-            LY_CHECK_RET(lysp_check_prefix(ctx, *imports, module_prefix, &imp->prefix), LY_EVALID);
+            LY_CHECK_RET(lysp_check_prefix(ctx->ctx, &ctx->line, *imports, module_prefix, &imp->prefix), LY_EVALID);
             break;
         case YANG_DESCRIPTION:
             YANG_CHECK_STMTVER2_RET(ctx, "description", "import");
