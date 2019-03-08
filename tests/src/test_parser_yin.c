@@ -22,59 +22,61 @@
 
 #include "libyang.h"
 
-static void
-test_parse(void **state)
-{
-    (void)state; /* unused */
-
+struct state {
     struct ly_ctx *ctx;
     struct lys_module *mod;
-    LY_ERR ret = LY_SUCCESS;
+};
 
-    ly_ctx_new(NULL, 0, &ctx);
-    mod = calloc(1, sizeof(*mod));
-    mod->ctx = ctx;
+static int
+setup_f(void **state)
+{
+    struct state *st = NULL;
 
-    ret = yin_parse_module(ctx, "<module name=\"example-foo\"\
-                    xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\
-                    xmlns:foo=\"urn:example:foo\"\
-                    xmlns:myext=\"urn:example:extensions\">\
-                    <namespace uri=\"urn:example:foo\"/>\
-                    <prefix value=\"foo\"/>\
-                    \
-                    <import module=\"example-extensions\">\
-                        <prefix value=\"myext\"/>\
-                    </import>\
-                    \
-                    <list name=\"interface\">\
-                        <key value=\"name\"/>\
-                        <leaf name=\"name\">\
-                        <type name=\"string\"/>\
-                        </leaf>\
-                        <leaf name=\"mtu\">\
-                        <type name=\"uint32\"/>\
-                        <description>\
-                            <text>The MTU of the interface.</text>\
-                        </description>\
-                        <myext:c-define name=\"MY_MTU\"/>\
-                        </leaf>\
-                    </list>\
-                    </module>",
-                mod);
+    /* allocate state variable */
+    (*state) = st = calloc(1, sizeof(*st));
+    if (!st) {
+        fprintf(stderr, "Memmory allocation failed");
+        return EXIT_FAILURE;
+    }
 
-    assert_int_equal(ret, LY_SUCCESS);
-    assert_string_equal(mod->parsed->mod->name, "example-foo");
-    assert_string_equal(mod->parsed->mod->prefix, "foo");
-    assert_string_equal(mod->parsed->imports->name, "example-extensions");
+    /* create new libyang context */
+    ly_ctx_new(NULL, 0, &st->ctx);
 
-    lys_module_free(mod, NULL);
-    ly_ctx_destroy(ctx, NULL);
+    /* allocate new module */
+    st->mod = calloc(1, sizeof(*st->mod));
+    st->mod->ctx = st->ctx;
+
+    return EXIT_SUCCESS;
 }
 
 static int
-test_setup(void **state) {
-    (void)state; /* unused */
-    return 0;
+teardown_f(void **state)
+{
+    struct state *st = *(struct state **)state;
+
+    lys_module_free(st->mod, NULL);
+    ly_ctx_destroy(st->ctx, NULL);
+    free(st);
+
+    return EXIT_SUCCESS;
+}
+
+static void
+test_parse(void **state)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct state *st = *state;
+
+    ret = yin_parse_module(st->ctx,
+                    "<module name=\"example-foo\">\
+                        <namespace uri=\"urn:example:foo\"/>\
+                        <prefix value=\"foo\"/>\
+                    </module>",
+                st->mod);
+
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_string_equal(st->mod->parsed->mod->name, "example-foo");
+    assert_string_equal(st->mod->parsed->mod->prefix, "foo");
 }
 
 static void
@@ -157,7 +159,7 @@ test_match_keyword(void **state)
 static void
 test_match_argument(void **state)
 {
-    (void)state;
+    (void)state; /* unused */
 
     assert_int_equal(match_argument_name("", 5), YIN_ARG_NONE);
     assert_int_equal(match_argument_name("qwertyasd", 5), YIN_ARG_NONE);
@@ -173,12 +175,33 @@ test_match_argument(void **state)
     assert_int_equal(match_argument_name("value", 5), YIN_ARG_VALUE);
 }
 
+static void
+test_meta(void **state)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct state *st = *state;
+
+    ret = yin_parse_module(st->ctx,"<module name=\"example-foo\">\
+                                        <organization>organization...</organization>\
+                                        <contact>contact...</contact>\
+                                        <description>description...</description>\
+                                        <reference>reference...</reference>\
+                                    </module>", st->mod);
+
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_string_equal(st->mod->parsed->mod->org, "organization...");
+    assert_string_equal(st->mod->parsed->mod->contact, "contact...");
+    assert_string_equal(st->mod->parsed->mod->dsc, "description...");
+    assert_string_equal(st->mod->parsed->mod->ref, "reference...");
+}
+
 int
 main(void)
 {
 
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup(test_parse, test_setup),
+        cmocka_unit_test_setup_teardown(test_parse, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_meta, setup_f, teardown_f),
         cmocka_unit_test(test_match_keyword),
         cmocka_unit_test(test_match_argument),
     };
