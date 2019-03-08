@@ -74,8 +74,11 @@ test_element(void **state)
     (void) state; /* unused */
 
     size_t name_len, prefix_len;
+    size_t buf_len, len;
     const char *name, *prefix;
+    char *buf = NULL, *out = NULL;
     const char *str, *p;
+    int dynamic;
 
     struct lyxml_context ctx;
     memset(&ctx, 0, sizeof ctx);
@@ -117,6 +120,21 @@ test_element(void **state)
     assert_int_equal(7, name_len);
     assert_int_equal(LYXML_ELEMENT, ctx.status);
     assert_string_equal("", str);
+    assert_int_equal(0, ctx.elements.count);
+
+    str = "  <  element attr=\'x\'/>";
+    assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
+    assert_int_equal(LYXML_ATTRIBUTE, ctx.status);
+    assert_string_equal("attr=\'x\'/>", str);
+    assert_int_equal(1, ctx.elements.count);
+    assert_int_equal(LY_SUCCESS, lyxml_get_attribute(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
+    assert_int_equal(LYXML_ATTR_CONTENT, ctx.status);
+    assert_string_equal("\'x\'/>", str);
+    assert_int_equal(1, ctx.elements.count);
+    assert_int_equal(LY_SUCCESS, lyxml_get_string(&ctx, &str, &buf, &buf_len, &out, &len, &dynamic));
+    assert_int_equal(LYXML_ELEMENT, ctx.status);
+    assert_string_equal("", str);
+    assert_int_equal(0, ctx.elements.count);
 
     str = "<?xml version=\"1.0\"?>  <!-- comment --> <![CDATA[<greeting>Hello, world!</greeting>]]> <?TEST xxx?> <element/>";
     assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
@@ -200,18 +218,6 @@ test_attribute(void **state)
     str = "";
     assert_int_equal(LY_EINVAL, lyxml_get_attribute(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
 
-    /* empty - without element tag termination */
-    str = "   />";
-    assert_int_equal(LY_SUCCESS, lyxml_get_attribute(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
-    assert_null(name);
-    assert_true(str[0] == '\0');
-    assert_int_equal(LYXML_ELEMENT, ctx.status);
-    str = ">";
-    assert_int_equal(LY_SUCCESS, lyxml_get_attribute(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
-    assert_null(name);
-    assert_true(str[0] == '\0');
-    assert_int_equal(LYXML_ELEM_CONTENT, ctx.status);
-
     /* not an attribute */
     str = p = "unknown/>";
     assert_int_equal(LY_EVALID, lyxml_get_attribute(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
@@ -241,7 +247,7 @@ test_attribute(void **state)
     assert_string_equal("\"urn\">", str);
     assert_int_equal(LYXML_ATTR_CONTENT, ctx.status);
 
-    str = "xmlns:nc\n = \'urn\'>";
+    str = "xmlns:nc\n = \'urn\'/>";
     assert_int_equal(LY_SUCCESS, lyxml_get_attribute(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
     assert_non_null(name);
     assert_non_null(prefix);
@@ -250,8 +256,9 @@ test_attribute(void **state)
     assert_int_equal(3, ctx.line);
     assert_false(strncmp("xmlns", prefix, prefix_len));
     assert_false(strncmp("nc", name, name_len));
-    assert_string_equal("\'urn\'>", str);
+    assert_string_equal("\'urn\'/>", str);
     assert_int_equal(LYXML_ATTR_CONTENT, ctx.status);
+
 }
 
 static void

@@ -86,26 +86,28 @@ lys_parse_nodeid(const char **id, const char **prefix, size_t *prefix_len, const
 
 LY_ERR
 lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodeid_len, const struct lysc_node *context_node,
-                          int nodetype, int implement, const struct lysc_node **target)
+                          const struct lys_module *context_module, int nodetype, int implement,
+                          const struct lysc_node **target, uint16_t *result_flag)
 {
     LY_ERR ret = LY_EVALID;
     const char *name, *prefix, *id;
-    const struct lysc_node *context;
     size_t name_len, prefix_len;
-    const struct lys_module *mod, *context_module;
+    const struct lys_module *mod;
     const char *nodeid_type;
+    int getnext_extra_flag = 0;
+    int current_nodetype = 0;
 
     assert(nodeid);
     assert(target);
+    assert(result_flag);
     *target = NULL;
+    *result_flag = 0;
 
     id = nodeid;
-    context = context_node;
 
     if (context_node) {
         /* descendant-schema-nodeid */
         nodeid_type = "descendant";
-        context_module = context_node->module;
 
         if (*id == '/') {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
@@ -116,7 +118,6 @@ lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodei
     } else {
         /* absolute-schema-nodeid */
         nodeid_type = "absolute";
-        context_module = ctx->mod_def;
 
         if (*id != '/') {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
@@ -143,11 +144,32 @@ lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodei
             /* make the module implemented */
             ly_ctx_module_implement_internal(ctx->ctx, (struct lys_module*)mod, 2);
         }
-        context = lys_child(context, mod, name, name_len, 0, LYS_GETNEXT_NOSTATECHECK | LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE);
-        if (!context) {
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                   "Invalid %s-schema-nodeid value \"%.*s\" - target node not found.", nodeid_type, id - nodeid, nodeid);
-            return LY_ENOTFOUND;
+        if (context_node && context_node->nodetype == LYS_ACTION) {
+            /* move through input/output manually */
+            if (!strncmp("input", name, name_len)) {
+                (*result_flag) |= LYSC_OPT_RPC_INPUT;
+            } else if (!strncmp("output", name, name_len)) {
+                (*result_flag) |= LYSC_OPT_RPC_OUTPUT;
+                getnext_extra_flag = LYS_GETNEXT_OUTPUT;
+            } else {
+                goto getnext;
+            }
+            current_nodetype = LYS_INOUT;
+        } else {
+getnext:
+            context_node = lys_child(context_node, mod, name, name_len, 0,
+                                     getnext_extra_flag | LYS_GETNEXT_NOSTATECHECK | LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE);
+            if (!context_node) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                       "Invalid %s-schema-nodeid value \"%.*s\" - target node not found.", nodeid_type, id - nodeid, nodeid);
+                return LY_ENOTFOUND;
+            }
+            getnext_extra_flag = 0;
+            current_nodetype = context_node->nodetype;
+
+            if (current_nodetype == LYS_NOTIF) {
+                (*result_flag) |= LYSC_OPT_NOTIFICATION;
+            }
         }
         if (!*id || (nodeid_len && ((size_t)(id - nodeid) >= nodeid_len))) {
             break;
@@ -162,8 +184,11 @@ lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodei
     }
 
     if (ret == LY_SUCCESS) {
-        *target = context;
-        if (nodetype && !(context->nodetype & nodetype)) {
+        *target = context_node;
+        if (nodetype & LYS_INOUT) {
+            /* instead of input/output nodes, the RPC/action node is actually returned */
+        }
+        if (nodetype && !(current_nodetype & nodetype)) {
             return LY_EDENIED;
         }
     } else {
@@ -933,6 +958,10 @@ lys_nodetype2str(uint16_t nodetype)
         return "anydata";
     case LYS_CASE:
         return "case";
+    case LYS_ACTION:
+        return "RPC/action";
+    case LYS_NOTIF:
+        return "Notification";
     default:
         return "unknown";
     }
@@ -1131,7 +1160,7 @@ lysc_node_notifs(const struct lysc_node *node)
 }
 
 struct lysc_node **
-lysc_node_children_p(const struct lysc_node *node)
+lysc_node_children_p(const struct lysc_node *node, uint16_t flags)
 {
     assert(node);
     switch (node->nodetype) {
@@ -1147,22 +1176,24 @@ lysc_node_children_p(const struct lysc_node *node)
         return &((struct lysc_node_case*)node)->child;
     case LYS_LIST:
         return &((struct lysc_node_list*)node)->child;
-/* TODO
-    case LYS_INOUT:
-        return &((struct lysc_action_inout*)node)->child;
-    case LYS_NOTIF:
-        return &((struct lysc_notif*)node)->child;
-*/
+    case LYS_ACTION:
+        if (flags & LYS_CONFIG_R) {
+            return &((struct lysc_action*)node)->output.data;
+        } else {
+            /* LYS_CONFIG_W, but also the default case */
+            return &((struct lysc_action*)node)->input.data;
+        }
+    /* TODO Notification */
     default:
         return NULL;
     }
 }
 
 API const struct lysc_node *
-lysc_node_children(const struct lysc_node *node)
+lysc_node_children(const struct lysc_node *node, uint16_t flags)
 {
     struct lysc_node **children;
-    children = lysc_node_children_p((struct lysc_node*)node);
+    children = lysc_node_children_p((struct lysc_node*)node, flags);
     if (children) {
         return *children;
     } else {

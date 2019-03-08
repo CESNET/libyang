@@ -58,6 +58,9 @@ struct lyxml_elem {
     size_t name_len;
 };
 
+/**
+ * @brief Status of the parser providing information what is expected next (which function is supposed to be called).
+ */
 enum LYXML_PARSER_STATUS {
     LYXML_ELEMENT,        /* expecting XML element, call lyxml_get_element() */
     LYXML_ELEM_CONTENT,   /* expecting content of an element, call lyxml_get_string */
@@ -91,7 +94,7 @@ struct lyxml_context {
  * @param[out] prefix_len Length of the prefix if any.
  * @param[out] name Element name. When LY_SUCCESS is returned but name is NULL, check context's status field:
  * - LYXML_END - end of input was reached
- * - LYXML_ELEMENT - closing element found, expecting sibling element so call lyxml_get_element() again
+ * - LYXML_ELEMENT - closing element found, expecting now a sibling element so call lyxml_get_element() again
  * @param[out] name_len Length of the element name.
  * @return LY_ERR values.
  */
@@ -112,9 +115,7 @@ LY_ERR lyxml_get_element(struct lyxml_context *context, const char **input,
  * when succeeded, it points to the opening quote of the attribute's value.
  * @param[out] prefix Pointer to prefix if present in the attribute name, NULL otherwise.
  * @param[out] prefix_len Length of the prefix if any.
- * @param[out] name Attribute name. LY_SUCCESS can be returned with NULL name only in case the
- * end of the element tag was reached. According to the context's status field, the opening tag was read
- * (LYXML_CONTENT) or empty element was closed (LYXML_ELEMENT).
+ * @param[out] name Attribute name.
  * @param[out] name_len Length of the element name.
  * @return LY_ERR values.
  */

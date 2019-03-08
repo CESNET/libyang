@@ -161,7 +161,7 @@ typedef enum {
 #define LYS_CASE 0x0040           /**< case statement node */
 #define LYS_USES 0x0080           /**< uses statement node */
 #define LYS_INOUT 0x200
-#define LYS_ACTION 0x400
+#define LYS_ACTION 0x400          /**< RPC or action */
 #define LYS_NOTIF 0x800
 #define LYS_GROUPING 0x1000
 #define LYS_AUGMENT 0x2000
@@ -554,9 +554,9 @@ struct lysp_deviation {
  *                                             1 1 1 1 1
  *     bit name              1 2 3 4 5 6 7 8 9 0 1 2 3 4
  *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       1 LYS_CONFIG_W     |x|x|x|x|x|x|x| | |x| | | | |
+ *       1 LYS_CONFIG_W     |x|x|x|x|x|x|x| | | | | | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       2 LYS_CONFIG_R     |x|x|x|x|x|x|x| | | |x| | | |
+ *       2 LYS_CONFIG_R     |x|x|x|x|x|x|x| | | | | | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       3 LYS_STATUS_CURR  |x|x|x|x|x|x|x|x|x| | |x|x|x|
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -567,6 +567,7 @@ struct lysp_deviation {
  *       6 LYS_MAND_TRUE    |x|x|x|x|x|x| | | | | | | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       7 LYS_ORDBY_USER   | | | |x|x| | | | | | | | | |
+ *         LYS_MAND_FALSE   | |x|x| | |x| | | | | | | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *       8 LYS_ORDBY_SYSTEM | | | |x|x| | | | | | | | | |
  *         LYS_PRESENCE     |x| | | | | | | | | | | | | |
@@ -575,7 +576,11 @@ struct lysp_deviation {
  *       9 LYS_KEY          | | |x| | | | | | | | | | | |
  *         LYS_FENABLED     | | | | | | | | | | | |x| | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *      10 LYS_SET_DFLT     | | |x| | | |x| | | | | | | |
+ *      10 LYS_SET_DFLT     | | |x|x| | |x| | | | | | | |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      11 LYS_SET_UNITS    | | |x|x| | | | | | | | | | |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      11 LYS_SET_CONFIG   |x|x|x|x|x|x|x| | |x|x| | | |
  *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  */
@@ -597,7 +602,9 @@ struct lysp_deviation {
                                           The ::lysc_node_leaflist and ::lysc_node_leaflist have this flag in case that min-elements > 0.
                                           The ::lysc_node_container has this flag if it is not a presence container and it has at least one
                                           child with LYS_MAND_TRUE. */
-#define LYS_MAND_FALSE   0x40        /**< mandatory false; applicable only to ::lysp_node_choice, ::lysp_node_leaf and ::lysp_node_anydata */
+#define LYS_MAND_FALSE   0x40        /**< mandatory false; applicable only to ::lysp_node_choice/::lysc_node_choice,
+                                          ::lysp_node_leaf/::lysc_node_leaf and ::lysp_node_anydata/::lysc_node_anydata.
+                                          This flag is present only in case the mandatory false statement was explicitly specified. */
 #define LYS_MAND_MASK    0x60        /**< mask for mandatory values */
 #define LYS_PRESENCE     0x80        /**< flag for presence property of a container, applicable only to ::lysc_node_container */
 #define LYS_UNIQUE       0x80        /**< flag for leafs being part of a unique set, applicable only to ::lysc_node_leaf */
@@ -625,10 +632,13 @@ struct lysp_deviation {
 #define LYS_SET_RANGE    0x0080      /**< type's flag for present range substatement */
 #define LYS_SET_TYPE     0x0100      /**< type's flag for present type substatement */
 #define LYS_SET_REQINST  0x0200      /**< type's flag for present require-instance substatement */
-#define LYS_SET_DFLT     0x0200      /**< flag to mark leaf with own (or refined) default value, not a default value taken from its type, and default
+#define LYS_SET_DFLT     0x0200      /**< flag to mark leaf/leaflist with own (or refined) default value, not a default value taken from its type, and default
                                           cases of choice. This information is important for refines, since it is prohibited to make leafs
                                           with default statement mandatory. In case the default leaf value is taken from type, it is thrown
-                                          away when it is refined to be mandatory node. */
+                                          away when it is refined to be mandatory node. Similarly it is used for deviations to distinguish
+                                          between own default or the default values taken from the type. */
+#define LYS_SET_UNITS    0x0400      /**< flag to know if the leaf's/leaflist's units are their own (flag set) or it is taken from the type. */
+#define LYS_SET_CONFIG   0x0800      /**< flag to know if the config property was set explicitly (flag set) or it is inherited. */
 
 #define LYS_FLAGS_COMPILED_MASK 0xff /**< mask for flags that maps to the compiled structures */
 /** @} */
@@ -831,8 +841,8 @@ struct lysp_action {
     const char **iffeatures;         /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysp_tpdf *typedefs;      /**< list of typedefs ([sized array](@ref sizedarrays)) */
     struct lysp_grp *groupings;      /**< list of groupings ([sized array](@ref sizedarrays)) */
-    struct lysp_action_inout *input; /**< RPC's/Action's input */
-    struct lysp_action_inout *output;/**< RPC's/Action's output */
+    struct lysp_action_inout input;  /**< RPC's/Action's input */
+    struct lysp_action_inout output; /**< RPC's/Action's output */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 };
 
@@ -1179,19 +1189,41 @@ struct lysc_type_bin {
     struct lysc_range *length;       /**< Optional length limitation */
 };
 
+struct lysc_action_inout {
+    struct lysc_node *data;          /**< first child node (linked list) */
+    struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
+};
+
 struct lysc_action {
     uint16_t nodetype;               /**< LYS_ACTION */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     struct lys_module *module;       /**< module structure */
+    struct lysp_action *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
+    struct lysc_node *parent;        /**< parent node (NULL in case of top level node - RPC) */
+
+    struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+
     const char *name;                /**< action/RPC name (mandatory) */
-    /* TODO */
+    const char *dsc;                 /**< description */
+    const char *ref;                 /**< reference */
+
+    struct lysc_action_inout input;  /**< RPC's/action's input */
+    struct lysc_action_inout output; /**< RPC's/action's output */
+
 };
 
 struct lysc_notif {
     uint16_t nodetype;               /**< LYS_NOTIF */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     struct lys_module *module;       /**< module structure */
+    struct lysp_notification *sp;    /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
+    struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
+
     const char *name;                /**< Notification name (mandatory) */
+    const char *dsc;                 /**< description */
+    const char *ref;                 /**< reference */
     /* TODO */
 };
 
@@ -1260,9 +1292,7 @@ struct lysc_node_case {
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
 
     struct lysc_node *child;         /**< first child node of the case (linked list). Note that all the children of all the sibling cases are linked
-                                          each other as siblings with the parent pointer pointing to the choice node holding the case. To distinguish
-                                          which children node belongs to which case, it is needed to match the first children of the cases while going
-                                          through the children linked list. */
+                                          each other as siblings with the parent pointer pointing to appropriate case node. */
 };
 
 struct lysc_node_choice {
@@ -1470,9 +1500,10 @@ const struct lysc_notif *lysc_node_notifs(const struct lysc_node *node);
  * @brief Get the children linked list of the given (compiled) schema node.
  * Decides the node's type and in case it has a children list, returns it.
  * @param[in] node Node to examine.
+ * @param[in] flags Config flag to distinguish input (LYS_CONFIG_W) and output (LYS_CONFIG_R) data in case of RPC/action node.
  * @return The node's children linked list if any, NULL otherwise.
  */
-const struct lysc_node *lysc_node_children(const struct lysc_node *node);
+const struct lysc_node *lysc_node_children(const struct lysc_node *node, uint16_t flags);
 
 /**
  * @brief Get how the if-feature statement currently evaluates.
@@ -1657,6 +1688,8 @@ const struct lysc_node *lys_getnext(const struct lysc_node *last, const struct l
 #define LYS_GETNEXT_INTONPCONT   0x40 /**< lys_getnext() option to look into non-presence container, instead of returning container itself */
 #define LYS_GETNEXT_NOSTATECHECK 0x100 /**< lys_getnext() option to skip checking module validity (import-only, disabled) and
                                             relevant if-feature conditions state */
+#define LYS_GETNEXT_OUTPUT       0x200 /**< lys_getnext() option to provide RPC's/action's output schema nodes instead of input schema nodes
+                                            provided by default */
 /** @} sgetnextflags */
 
 /**

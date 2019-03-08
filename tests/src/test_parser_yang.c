@@ -1367,6 +1367,12 @@ test_container(void **state)
     logbuf_assert("Invalid character sequence \"nonsence\", expected a keyword. Line number 1.");
     lysp_node_free(ctx.ctx, (struct lysp_node*)c); c = NULL;
 
+    ctx.mod_version = 1; /* simulate YANG 1.0 */
+    str = " cont {action x;} ...";
+    assert_int_equal(LY_EVALID, parse_container(&ctx, &str, NULL, (struct lysp_node**)&c));
+    logbuf_assert("Invalid keyword \"action\" as a child of \"container\" - the statement is allowed only in YANG 1.1 modules. Line number 1.");
+    lysp_node_free(ctx.ctx, (struct lysp_node*)c); c = NULL;
+
     ly_ctx_destroy(ctx.ctx, NULL);
 }
 
@@ -1603,6 +1609,13 @@ test_list(void **state)
     assert_null(l->next);
     assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM | LYS_SET_MAX | LYS_SET_MIN, l->flags);
     ly_set_erase(&ctx.tpdfs_nodes, NULL);
+    lysp_node_free(ctx.ctx, (struct lysp_node*)l); l = NULL;
+
+    /* invalid content */
+    ctx.mod_version = 1; /* simulate YANG 1.0 */
+    str = "l {action x;} ...";
+    assert_int_equal(LY_EVALID, parse_list(&ctx, &str, NULL, (struct lysp_node**)&l));
+    logbuf_assert("Invalid keyword \"action\" as a child of \"list\" - the statement is allowed only in YANG 1.1 modules. Line number 1.");
     lysp_node_free(ctx.ctx, (struct lysp_node*)l); l = NULL;
 
     *state = NULL;
@@ -1853,6 +1866,83 @@ test_grouping(void **state)
 }
 
 static void
+test_action(void **state)
+{
+    *state = test_action;
+
+    struct ly_parser_ctx ctx = {0};
+    struct lysp_action *rpcs = NULL;
+    struct lysp_node_container *c = NULL;
+    const char *str;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
+    assert_non_null(ctx.ctx);
+    ctx.line = 1;
+    ctx.mod_version = 2; /* simulate YANG 1.1 */
+
+    /* invalid cardinality */
+#define TEST_DUP(MEMBER, VALUE1, VALUE2) \
+    str = "func {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
+    assert_int_equal(LY_EVALID, parse_action(&ctx, &str, NULL, &rpcs)); \
+    logbuf_assert("Duplicate keyword \""MEMBER"\". Line number 1."); \
+    FREE_ARRAY(ctx.ctx, rpcs, lysp_action_free); rpcs = NULL;
+
+    TEST_DUP("description", "text1", "text2");
+    TEST_DUP("input", "", "");
+    TEST_DUP("output", "", "");
+    TEST_DUP("reference", "1", "2");
+    TEST_DUP("status", "current", "obsolete");
+#undef TEST_DUP
+
+    /* full content */
+    str = "top;";
+    assert_int_equal(LY_SUCCESS, parse_container(&ctx, &str, NULL, (struct lysp_node**)&c));
+    str = "func {description test;grouping grp;if-feature f;reference test;status current;typedef mytype {type int8;} m:ext;"
+          "input {anydata a1; anyxml a2; choice ch; container c; grouping grp; leaf l {type int8;} leaf-list ll {type int8;}"
+          " list li; must 1; typedef mytypei {type int8;} uses grp; m:ext;}"
+          "output {anydata a1; anyxml a2; choice ch; container c; grouping grp; leaf l {type int8;} leaf-list ll {type int8;}"
+          " list li; must 1; typedef mytypeo {type int8;} uses grp; m:ext;}} ...";
+    assert_int_equal(LY_SUCCESS, parse_action(&ctx, &str, (struct lysp_node*)c, &rpcs));
+    assert_non_null(rpcs);
+    assert_int_equal(LYS_ACTION, rpcs->nodetype);
+    assert_string_equal("func", rpcs->name);
+    assert_string_equal("test", rpcs->dsc);
+    assert_non_null(rpcs->exts);
+    assert_non_null(rpcs->iffeatures);
+    assert_string_equal("test", rpcs->ref);
+    assert_non_null(rpcs->groupings);
+    assert_non_null(rpcs->typedefs);
+    assert_int_equal(LYS_STATUS_CURR, rpcs->flags);
+    /* input */
+    assert_int_equal(rpcs->input.nodetype, LYS_INOUT);
+    assert_non_null(rpcs->input.groupings);
+    assert_non_null(rpcs->input.exts);
+    assert_non_null(rpcs->input.musts);
+    assert_non_null(rpcs->input.typedefs);
+    assert_non_null(rpcs->input.data);
+    /* output */
+    assert_int_equal(rpcs->output.nodetype, LYS_INOUT);
+    assert_non_null(rpcs->output.groupings);
+    assert_non_null(rpcs->output.exts);
+    assert_non_null(rpcs->output.musts);
+    assert_non_null(rpcs->output.typedefs);
+    assert_non_null(rpcs->output.data);
+
+    ly_set_erase(&ctx.tpdfs_nodes, NULL);
+    FREE_ARRAY(ctx.ctx, rpcs, lysp_action_free); rpcs = NULL;
+
+    /* invalid content */
+    str = "func {config true} ...";
+    assert_int_equal(LY_EVALID, parse_action(&ctx, &str, NULL, &rpcs));
+    logbuf_assert("Invalid keyword \"config\" as a child of \"rpc\". Line number 1.");
+    FREE_ARRAY(ctx.ctx, rpcs, lysp_action_free); rpcs = NULL;
+
+    *state = NULL;
+    lysp_node_free(ctx.ctx, (struct lysp_node*)c);
+    ly_ctx_destroy(ctx.ctx, NULL);
+}
+
+static void
 test_uses(void **state)
 {
     *state = test_uses;
@@ -1914,14 +2004,14 @@ test_augment(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
     ctx.line = 1;
-    //ctx.mod_version = 2; /* simulate YANG 1.1 */
+    ctx.mod_version = 2; /* simulate YANG 1.1 */
 
     /* invalid cardinality */
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
     str = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
     assert_int_equal(LY_EVALID, parse_augment(&ctx, &str, NULL, &a)); \
     logbuf_assert("Duplicate keyword \""MEMBER"\". Line number 1."); \
-    lysp_augment_free(ctx.ctx, a); a = NULL;
+    FREE_ARRAY(ctx.ctx, a, lysp_augment_free); a = NULL;
 
     TEST_DUP("description", "text1", "text2");
     TEST_DUP("reference", "1", "2");
@@ -1943,7 +2033,7 @@ test_augment(void **state)
     assert_non_null(a->when);
     assert_null(a->parent);
     assert_int_equal(LYS_STATUS_CURR, a->flags);
-    lysp_augment_free(ctx.ctx, a); a = NULL;
+    FREE_ARRAY(ctx.ctx, a, lysp_augment_free); a = NULL;
 
     *state = NULL;
     ly_ctx_destroy(ctx.ctx, NULL);
@@ -1970,8 +2060,10 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_case, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_anydata, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_anyxml, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_action, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_grouping, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_uses, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_augment, logger_setup, logger_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

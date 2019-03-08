@@ -2853,27 +2853,23 @@ checks:
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_inout(struct ly_parser_ctx *ctx, const char **data, enum yang_keyword inout_kw, struct lysp_node *parent, struct lysp_action_inout **inout_p)
+parse_inout(struct ly_parser_ctx *ctx, const char **data, enum yang_keyword inout_kw, struct lysp_node *parent, struct lysp_action_inout *inout_p)
 {
     LY_ERR ret = LY_SUCCESS;
     char *word;
     size_t word_len;
-    struct lysp_action_inout *inout;
     enum yang_keyword kw;
     unsigned int u;
     struct lysp_node *child;
 
-    if (*inout_p) {
+    if (inout_p->nodetype) {
         LOGVAL_YANG(ctx, LY_VCODE_DUPSTMT, ly_stmt2str(inout_kw));
         return LY_EVALID;
     }
 
-    /* create structure */
-    inout = calloc(1, sizeof *inout);
-    LY_CHECK_ERR_RET(!inout, LOGMEM(ctx->ctx), LY_EMEM);
-    *inout_p = inout;
-    inout->nodetype = LYS_INOUT;
-    inout->parent = parent;
+    /* initiate structure */
+    inout_p->nodetype = LYS_INOUT;
+    inout_p->parent = parent;
 
     /* parse substatements */
     YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret,) {
@@ -2882,38 +2878,38 @@ parse_inout(struct ly_parser_ctx *ctx, const char **data, enum yang_keyword inou
             YANG_CHECK_STMTVER2_RET(ctx, "anydata", ly_stmt2str(inout_kw));
             /* fall through */
         case YANG_ANYXML:
-            LY_CHECK_RET(parse_any(ctx, data, kw, (struct lysp_node*)inout, &inout->data));
+            LY_CHECK_RET(parse_any(ctx, data, kw, (struct lysp_node*)inout_p, &inout_p->data));
             break;
         case YANG_CHOICE:
-            LY_CHECK_RET(parse_choice(ctx, data, (struct lysp_node*)inout, &inout->data));
+            LY_CHECK_RET(parse_choice(ctx, data, (struct lysp_node*)inout_p, &inout_p->data));
             break;
         case YANG_CONTAINER:
-            LY_CHECK_RET(parse_container(ctx, data, (struct lysp_node*)inout, &inout->data));
+            LY_CHECK_RET(parse_container(ctx, data, (struct lysp_node*)inout_p, &inout_p->data));
             break;
         case YANG_LEAF:
-            LY_CHECK_RET(parse_leaf(ctx, data, (struct lysp_node*)inout, &inout->data));
+            LY_CHECK_RET(parse_leaf(ctx, data, (struct lysp_node*)inout_p, &inout_p->data));
             break;
         case YANG_LEAF_LIST:
-            LY_CHECK_RET(parse_leaflist(ctx, data, (struct lysp_node*)inout, &inout->data));
+            LY_CHECK_RET(parse_leaflist(ctx, data, (struct lysp_node*)inout_p, &inout_p->data));
             break;
         case YANG_LIST:
-            LY_CHECK_RET(parse_list(ctx, data, (struct lysp_node*)inout, &inout->data));
+            LY_CHECK_RET(parse_list(ctx, data, (struct lysp_node*)inout_p, &inout_p->data));
             break;
         case YANG_USES:
-            LY_CHECK_RET(parse_uses(ctx, data, (struct lysp_node*)inout, &inout->data));
+            LY_CHECK_RET(parse_uses(ctx, data, (struct lysp_node*)inout_p, &inout_p->data));
             break;
         case YANG_TYPEDEF:
-            LY_CHECK_RET(parse_typedef(ctx, (struct lysp_node*)inout, data, &inout->typedefs));
+            LY_CHECK_RET(parse_typedef(ctx, (struct lysp_node*)inout_p, data, &inout_p->typedefs));
             break;
         case YANG_MUST:
             YANG_CHECK_STMTVER2_RET(ctx, "must", ly_stmt2str(inout_kw));
-            LY_CHECK_RET(parse_restrs(ctx, data, kw, &inout->musts));
+            LY_CHECK_RET(parse_restrs(ctx, data, kw, &inout_p->musts));
             break;
         case YANG_GROUPING:
-            LY_CHECK_RET(parse_grouping(ctx, data, (struct lysp_node*)inout, &inout->groupings));
+            LY_CHECK_RET(parse_grouping(ctx, data, (struct lysp_node*)inout_p, &inout_p->groupings));
             break;
         case YANG_CUSTOM:
-            LY_CHECK_RET(parse_ext(ctx, data, word, word_len, LYEXT_SUBSTMT_SELF, 0, &inout->exts));
+            LY_CHECK_RET(parse_ext(ctx, data, word, word_len, LYEXT_SUBSTMT_SELF, 0, &inout_p->exts));
             break;
         default:
             LOGVAL_YANG(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), ly_stmt2str(inout_kw));
@@ -2921,9 +2917,9 @@ parse_inout(struct ly_parser_ctx *ctx, const char **data, enum yang_keyword inou
         }
     }
     /* finalize parent pointers to the reallocated items */
-    LY_ARRAY_FOR(inout->groupings, u) {
-        LY_LIST_FOR(inout->groupings[u].data, child) {
-            child->parent = (struct lysp_node*)&inout->groupings[u];
+    LY_ARRAY_FOR(inout_p->groupings, u) {
+        LY_LIST_FOR(inout_p->groupings[u].data, child) {
+            child->parent = (struct lysp_node*)&inout_p->groupings[u];
         }
     }
     return ret;
@@ -2989,7 +2985,7 @@ parse_action(struct ly_parser_ctx *ctx, const char **data, struct lysp_node *par
             LY_CHECK_RET(parse_ext(ctx, data, word, word_len, LYEXT_SUBSTMT_SELF, 0, &act->exts));
             break;
         default:
-            LOGVAL_YANG(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), "action");
+            LOGVAL_YANG(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), parent ? "action" : "rpc");
             return LY_EVALID;
         }
     }

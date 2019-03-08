@@ -180,7 +180,7 @@ test_module(void **state)
     assert_int_equal(LY_SUCCESS, yang_parse_module(&ctx, "module aa {namespace urn:aa;prefix aa;"
                                                   "leaf a {type string;} container a{presence x;}}", &mod));
     assert_int_equal(LY_EVALID, lys_compile(&mod, 0));
-    logbuf_assert("Duplicate identifier \"a\" of data definition statement.");
+    logbuf_assert("Duplicate identifier \"a\" of data definition/RPC/action/Notification statement.");
     assert_null(mod.compiled);
     reset_mod(ctx.ctx, &mod);
 
@@ -513,7 +513,7 @@ test_node_leaflist(void **state)
     assert_int_equal(2, LY_ARRAY_SIZE(ll->dflts));
     assert_string_equal("1", ll->dflts[0]);
     assert_string_equal("1", ll->dflts[1]);
-    assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM, ll->flags);
+    assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM | LYS_SET_DFLT | LYS_SET_CONFIG, ll->flags);
     assert_non_null((ll = (struct lysc_node_leaflist*)mod->compiled->data->next));
     assert_non_null(ll->dflts);
     assert_int_equal(3, ll->type->refcount);
@@ -529,7 +529,7 @@ test_node_leaflist(void **state)
     logbuf_assert("The ordered-by statement is ignored in lists representing state data, RPC/action output parameters or notification content ().");
     assert_non_null(mod->compiled);
     assert_non_null((ll = (struct lysc_node_leaflist*)mod->compiled->data));
-    assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM, ll->flags);
+    assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM | LYS_SET_CONFIG, ll->flags);
 
     /* invalid */
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;leaf-list ll {type empty;}}", LYS_IN_YANG));
@@ -580,7 +580,7 @@ test_node_list(void **state)
     assert_non_null(list);
     assert_null(list->keys);
     assert_non_null(list->child);
-    assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM, list->flags);
+    assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM | LYS_SET_CONFIG, list->flags);
     assert_false(list->child->flags & LYS_KEY);
 
     assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;"
@@ -645,7 +645,7 @@ test_node_list(void **state)
 
     assert_null(lys_parse_mem(ctx, "module gg {namespace urn:gg;prefix gg;"
                               "list l {key x; unique y;leaf x {type string;} leaf-list y {type string;}}}", LYS_IN_YANG));
-    logbuf_assert("Unique's descendant-schema-nodeid \"y\" refers to a leaf-list node instead of a leaf.");
+    logbuf_assert("Unique's descendant-schema-nodeid \"y\" refers to leaf-list node instead of a leaf.");
 
     assert_null(lys_parse_mem(ctx, "module hh {namespace urn:hh;prefix hh;"
                               "list l {key x; unique \"x y\";leaf x {type string;} leaf y {config false; type string;}}}", LYS_IN_YANG));
@@ -717,10 +717,10 @@ test_node_choice(void **state)
 
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;"
                               "choice ch {case a {leaf x {type string;}}leaf x {type string;}}}", LYS_IN_YANG));
-    logbuf_assert("Duplicate identifier \"x\" of data definition statement.");
+    logbuf_assert("Duplicate identifier \"x\" of data definition/RPC/action/Notification statement.");
     assert_null(lys_parse_mem(ctx, "module aa2 {namespace urn:aa2;prefix aa;"
                               "choice ch {case a {leaf y {type string;}}case b {leaf y {type string;}}}}", LYS_IN_YANG));
-    logbuf_assert("Duplicate identifier \"y\" of data definition statement.");
+    logbuf_assert("Duplicate identifier \"y\" of data definition/RPC/action/Notification statement.");
     assert_null(lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb;"
                               "choice ch {case a {leaf x {type string;}}leaf a {type string;}}}", LYS_IN_YANG));
     logbuf_assert("Duplicate identifier \"a\" of case statement.");
@@ -759,7 +759,7 @@ test_node_anydata(void **state)
     any = (struct lysc_node_anydata*)mod->compiled->data;
     assert_non_null(any);
     assert_int_equal(LYS_ANYDATA, any->nodetype);
-    assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_MAND_TRUE, any->flags);
+    assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_MAND_TRUE | LYS_SET_CONFIG, any->flags);
 
     logbuf_clean();
     assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;"
@@ -773,6 +773,53 @@ test_node_anydata(void **state)
     /* invalid */
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;anydata any;}", LYS_IN_YANG));
     logbuf_assert("Invalid keyword \"anydata\" as a child of \"module\" - the statement is allowed only in YANG 1.1 modules. Line number 1.");
+
+    *state = NULL;
+    ly_ctx_destroy(ctx, NULL);
+}
+
+static void
+test_action(void **state)
+{
+    *state = test_action;
+
+    struct ly_ctx *ctx;
+    struct lys_module *mod;
+    const struct lysc_action *rpc;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;"
+                                        "rpc a {input {leaf x {type int8;} leaf y {type int8;}} output {leaf result {type int16;}}}}", LYS_IN_YANG));
+    rpc = mod->compiled->rpcs;
+    assert_non_null(rpc);
+    assert_int_equal(1, LY_ARRAY_SIZE(rpc));
+    assert_int_equal(LYS_ACTION, rpc->nodetype);
+    assert_int_equal(LYS_STATUS_CURR, rpc->flags);
+    assert_string_equal("a", rpc->name);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module b {yang-version 1.1; namespace urn:b;prefix b; container top {"
+                                        "action b {input {leaf x {type int8;} leaf y {type int8;}} output {leaf result {type int16;}}}}}", LYS_IN_YANG));
+    rpc = lysc_node_actions(mod->compiled->data);
+    assert_non_null(rpc);
+    assert_int_equal(1, LY_ARRAY_SIZE(rpc));
+    assert_int_equal(LYS_ACTION, rpc->nodetype);
+    assert_int_equal(LYS_STATUS_CURR, rpc->flags);
+    assert_string_equal("b", rpc->name);
+
+    /* invalid */
+    assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;container top {action x;}}", LYS_IN_YANG));
+    logbuf_assert("Invalid keyword \"action\" as a child of \"container\" - the statement is allowed only in YANG 1.1 modules. Line number 1.");
+
+    assert_null(lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb;leaf x{type string;} rpc x;}", LYS_IN_YANG));
+    logbuf_assert("Duplicate identifier \"x\" of data definition/RPC/action/Notification statement.");
+    assert_null(lys_parse_mem(ctx, "module cc {yang-version 1.1; namespace urn:cc;prefix cc;container c {leaf y {type string;} action y;}}", LYS_IN_YANG));
+    logbuf_assert("Duplicate identifier \"y\" of data definition/RPC/action/Notification statement.");
+    assert_null(lys_parse_mem(ctx, "module dd {yang-version 1.1; namespace urn:dd;prefix dd;container c {action z; action z;}}", LYS_IN_YANG));
+    logbuf_assert("Duplicate identifier \"z\" of data definition/RPC/action/Notification statement.");
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule eesub {belongs-to ee {prefix ee;} rpc w;}");
+    assert_null(lys_parse_mem(ctx, "module ee {yang-version 1.1; namespace urn:ee;prefix ee;include eesub; rpc w;}", LYS_IN_YANG));
+    logbuf_assert("Duplicate identifier \"w\" of data definition/RPC/action/Notification statement.");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
@@ -1730,7 +1777,7 @@ test_type_leafref(void **state)
                                         "container default-address{leaf ifname{type leafref{ path \"../../interface/name\";}}"
                                           "leaf address {type leafref{ path \"../../interface[  name = current()/../ifname ]/address/ip\";}}}}",
                                         LYS_IN_YANG));
-    type = ((struct lysc_node_leaf*)(*lysc_node_children_p(mod->compiled->data->prev))->prev)->type;
+    type = ((struct lysc_node_leaf*)(*lysc_node_children_p(mod->compiled->data->prev, 0))->prev)->type;
     assert_non_null(type);
     assert_int_equal(1, type->refcount);
     assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
@@ -1751,6 +1798,20 @@ test_type_leafref(void **state)
     assert_ptr_equal(mod, ((struct lysc_type_leafref*)type)->path_context);
     assert_non_null(((struct lysc_type_leafref*)type)->realtype);
     assert_int_equal(LY_TYPE_STRING, ((struct lysc_type_leafref*)type)->realtype->basetype);
+
+    /* leafref to imported (not yet implemented) module */
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "module h {namespace urn:h;prefix h; leaf h  {type uint16;}}");
+    assert_non_null(mod = lys_parse_mem(ctx, "module i {namespace urn:i;prefix i;import h {prefix h;}"
+                                        "leaf i {type leafref {path /h:h;}}}", LYS_IN_YANG));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
+    assert_non_null(((struct lysc_type_leafref*)type)->realtype);
+    assert_int_equal(LY_TYPE_UINT16, ((struct lysc_type_leafref*)type)->realtype->basetype);
+    assert_non_null(mod = ly_ctx_get_module_implemented(ctx, "h"));
+    assert_int_equal(1, mod->implemented);
+    assert_non_null(mod->compiled->data);
+    assert_string_equal("h", mod->compiled->data->name);
 
     /* invalid paths */
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;container a {leaf target2 {type uint8;}}"
@@ -2180,9 +2241,9 @@ test_uses(void **state)
     assert_non_null(mod = lys_parse_mem(ctx, "module d {namespace urn:d;prefix d; grouping grp {container g;}"
                                         "container top {uses grp {augment g {leaf x {type int8;}}}}}", LYS_IN_YANG));
     assert_non_null(mod->compiled->data);
-    assert_non_null(child = lysc_node_children(mod->compiled->data));
+    assert_non_null(child = lysc_node_children(mod->compiled->data, 0));
     assert_string_equal("g", child->name);
-    assert_non_null(child = lysc_node_children(child));
+    assert_non_null(child = lysc_node_children(child, 0));
     assert_string_equal("x", child->name);
 
     /* invalid */
@@ -2200,7 +2261,7 @@ test_uses(void **state)
 
     assert_null(lys_parse_mem(ctx, "module dd {namespace urn:dd;prefix dd;grouping grp{leaf a{type string;}}"
                                         "leaf a {type string;}uses grp;}", LYS_IN_YANG));
-    logbuf_assert("Duplicate identifier \"a\" of data definition statement.");
+    logbuf_assert("Duplicate identifier \"a\" of data definition/RPC/action/Notification statement.");
 
     assert_null(lys_parse_mem(ctx, "module ee {namespace urn:ee;prefix ee;grouping grp {leaf l {type string; status deprecated;}}"
                                         "uses grp {status obsolete;}}", LYS_IN_YANG));
@@ -2208,10 +2269,10 @@ test_uses(void **state)
 
     assert_null(lys_parse_mem(ctx, "module ff {namespace urn:ff;prefix ff;grouping grp {leaf l {type string;}}"
                                         "leaf l {type int8;}uses grp;}", LYS_IN_YANG));
-    logbuf_assert("Duplicate identifier \"l\" of data definition statement.");
+    logbuf_assert("Duplicate identifier \"l\" of data definition/RPC/action/Notification statement.");
     assert_null(lys_parse_mem(ctx, "module fg {namespace urn:fg;prefix fg;grouping grp {leaf m {type string;}}"
                                         "uses grp;leaf m {type int8;}}", LYS_IN_YANG));
-    logbuf_assert("Duplicate identifier \"m\" of data definition statement.");
+    logbuf_assert("Duplicate identifier \"m\" of data definition/RPC/action/Notification statement.");
 
 
     assert_null(lys_parse_mem(ctx, "module gg {namespace urn:gg;prefix gg; grouping grp {container g;}"
@@ -2334,7 +2395,7 @@ test_refine(void **state)
 
     assert_null(lys_parse_mem(ctx, "module ff {namespace urn:ff;prefix ff;import grp {prefix g;}"
                                         "uses g:grp {refine c/ch/a/a {mandatory true;}}}", LYS_IN_YANG));
-    logbuf_assert("Invalid refine of mandatory in \"c/ch/a/a\" - leaf under the default case.");
+    logbuf_assert("Invalid refine of mandatory in \"c/ch/a/a\" under the default case.");
 
     assert_null(lys_parse_mem(ctx, "module gg {namespace urn:gg;prefix gg;import grp {prefix g;}"
                                         "uses g:grp {refine c/x {default hello;}}}", LYS_IN_YANG));
@@ -2378,6 +2439,7 @@ test_augment(void **state)
     const struct lysc_node *node;
     const struct lysc_node_choice *ch;
     const struct lysc_node_case *c;
+    const struct lysc_action *rpc;
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
 
@@ -2395,11 +2457,11 @@ test_augment(void **state)
     assert_non_null(ly_ctx_get_module_implemented(ctx, "d"));
     assert_non_null(node = mod->compiled->data);
     assert_string_equal(node->name, "top");
-    assert_non_null(node = lysc_node_children(node));
+    assert_non_null(node = lysc_node_children(node, 0));
     assert_string_equal(node->name, "a");
     assert_non_null(node = node->next);
     assert_string_equal(node->name, "c");
-    assert_non_null(node = lysc_node_children(node));
+    assert_non_null(node = lysc_node_children(node, 0));
     assert_string_equal(node->name, "c");
     assert_non_null(node = node->next);
     assert_string_equal(node->name, "d");
@@ -2433,7 +2495,7 @@ test_augment(void **state)
     assert_non_null((mod = lys_parse_mem(ctx, "module f {namespace urn:f;prefix f;grouping g {leaf a {type string;}}"
                                          "container c;"
                                          "augment /c {uses g;}}", LYS_IN_YANG)));
-    assert_non_null(node = lysc_node_children(mod->compiled->data));
+    assert_non_null(node = lysc_node_children(mod->compiled->data, 0));
     assert_string_equal(node->name, "a");
 
     ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule gsub {belongs-to g {prefix g;}"
@@ -2447,14 +2509,38 @@ test_augment(void **state)
     assert_non_null(node = ((struct lysc_node_container*)node)->child);
     assert_string_equal("main", node->name);
 
-    assert_non_null(mod = lys_parse_mem(ctx, "module h {namespace urn:h;prefix h;container top;"
-                                        "augment /top {container p {presence XXX; leaf x {mandatory true;type string;}}}"
-                                        "augment /top {list l {key x;leaf x {type string;}leaf y {mandatory true; type string;}}}}", LYS_IN_YANG));
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "module himp {namespace urn:hi;prefix hi;container top; rpc func;}");
+    assert_non_null(mod = lys_parse_mem(ctx, "module h {namespace urn:h;prefix h;import himp {prefix hi;}container top;"
+                                        "augment /hi:top {container p {presence XXX; leaf x {mandatory true;type string;}}}"
+                                        "augment /hi:top {list ll {key x;leaf x {type string;}leaf y {mandatory true; type string;}}}"
+                                        "augment /hi:top {leaf l {type string; mandatory true; config false;}}"
+                                        "augment /top {leaf l {type string; mandatory true;}}}", LYS_IN_YANG));
+    assert_non_null(node = mod->compiled->data);
+    assert_non_null(node = ((struct lysc_node_container*)node)->child);
+    assert_string_equal("l", node->name);
+    assert_true(node->flags & LYS_MAND_TRUE);
+    assert_non_null(mod = ly_ctx_get_module_implemented(ctx, "himp"));
     assert_non_null(node = mod->compiled->data);
     assert_non_null(node = ((struct lysc_node_container*)node)->child);
     assert_string_equal("p", node->name);
-    assert_non_null(node->next);
-    assert_string_equal("l", node->next->name);
+    assert_non_null(node = node->next);
+    assert_string_equal("ll", node->name);
+    assert_non_null(node = node->next);
+    assert_string_equal("l", node->name);
+    assert_true(node->flags & LYS_CONFIG_R);
+
+    assert_non_null(lys_parse_mem(ctx, "module i {namespace urn:i;prefix i;import himp {prefix hi;}"
+                                        "augment /hi:func/input {leaf x {type string;}}"
+                                        "augment /hi:func/output {leaf y {type string;}}}", LYS_IN_YANG));
+    assert_non_null(mod = ly_ctx_get_module_implemented(ctx, "himp"));
+    assert_non_null(rpc = mod->compiled->rpcs);
+    assert_int_equal(1, LY_ARRAY_SIZE(rpc));
+    assert_non_null(rpc->input.data);
+    assert_string_equal("x", rpc->input.data->name);
+    assert_null(rpc->input.data->next);
+    assert_non_null(rpc->output.data);
+    assert_string_equal("y", rpc->output.data->name);
+    assert_null(rpc->output.data->next);
 
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; container c {leaf a {type string;}}"
                                         "augment /x {leaf a {type int8;}}}", LYS_IN_YANG));
@@ -2462,7 +2548,7 @@ test_augment(void **state)
 
     assert_null(lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb; container c {leaf a {type string;}}"
                                         "augment /c {leaf a {type int8;}}}", LYS_IN_YANG));
-    logbuf_assert("Duplicate identifier \"a\" of data definition statement.");
+    logbuf_assert("Duplicate identifier \"a\" of data definition/RPC/action/Notification statement.");
 
 
     assert_null(lys_parse_mem(ctx, "module cc {namespace urn:cc;prefix cc; container c {leaf a {type string;}}"
@@ -2473,13 +2559,467 @@ test_augment(void **state)
                                         "augment /c {case b {leaf d {type int8;}}}}", LYS_IN_YANG));
     logbuf_assert("Invalid augment (/c) of container node which is not allowed to contain case node \"b\".");
 
-    assert_null(lys_parse_mem(ctx, "module ee {namespace urn:ee;prefix ee; container top;"
-                                        "augment /top {container c {leaf d {mandatory true; type int8;}}}}", LYS_IN_YANG));
-    logbuf_assert("Invalid augment (/top) adding mandatory node \"c\" without making it conditional via when statement.");
+    assert_null(lys_parse_mem(ctx, "module ee {namespace urn:ee;prefix ee; import himp {prefix hi;}"
+                                        "augment /hi:top {container c {leaf d {mandatory true; type int8;}}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid augment (/hi:top) adding mandatory node \"c\" without making it conditional via when statement.");
 
     assert_null(lys_parse_mem(ctx, "module ff {namespace urn:ff;prefix ff; container top;"
                                         "augment ../top {leaf x {type int8;}}}", LYS_IN_YANG));
     logbuf_assert("Invalid absolute-schema-nodeid value \"../top\" - missing starting \"/\".");
+
+    assert_null(lys_parse_mem(ctx, "module gg {namespace urn:gg;prefix gg; rpc func;"
+                                        "augment /func {leaf x {type int8;}}}", LYS_IN_YANG));
+    logbuf_assert("Augment's absolute-schema-nodeid \"/func\" refers to a RPC/action node which is not an allowed augment's target.");
+
+    *state = NULL;
+    ly_ctx_destroy(ctx, NULL);
+}
+
+static void
+test_deviation(void **state)
+{
+    *state = test_deviation;
+
+    struct ly_ctx *ctx;
+    struct lys_module *mod;
+    const struct lysc_node *node;
+    const struct lysc_node_list *list;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "module a {namespace urn:a;prefix a;"
+                              "container top {leaf a {type string;} leaf b {type string;} leaf c {type string;}}"
+                              "choice ch {default c; case b {leaf b{type string;}} case a {leaf a{type string;} leaf x {type string;}}"
+                              " case c {leaf c{type string;}}}"
+                              "rpc func1 { input { leaf x {type int8;}} output {leaf y {type int8;}}}"
+                              "rpc func2;}");
+    assert_non_null(lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;import a {prefix a;}"
+                                  "deviation /a:top/a:b {deviate not-supported;}"
+                                  "deviation /a:ch/a:a/a:x {deviate not-supported;}"
+                                  "deviation /a:ch/a:c/a:c {deviate not-supported;}"
+                                  "deviation /a:ch/a:b {deviate not-supported;}"
+                                  "deviation /a:ch/a:a/a:a {deviate not-supported;}"
+                                  "deviation /a:func1/a:input {deviate not-supported;}"
+                                  "deviation /a:func1/a:output {deviate not-supported;}"
+                                  "deviation /a:func2 {deviate not-supported;}}", LYS_IN_YANG));
+    assert_non_null((mod = ly_ctx_get_module_implemented(ctx, "a")));
+    assert_non_null(node = mod->compiled->data);
+    assert_string_equal(node->name, "top");
+    assert_non_null(node = lysc_node_children(node, 0));
+    assert_string_equal(node->name, "a");
+    assert_non_null(node = node->next);
+    assert_string_equal(node->name, "c");
+    assert_null(node = node->next);
+    assert_non_null(node = mod->compiled->data->next);
+    assert_string_equal("ch", node->name);
+    assert_null(((struct lysc_node_choice*)node)->dflt);
+    assert_null(((struct lysc_node_choice*)node)->cases);
+    assert_int_equal(1, LY_ARRAY_SIZE(mod->compiled->rpcs));
+    assert_null(mod->compiled->rpcs[0].input.data);
+    assert_null(mod->compiled->rpcs[0].output.data);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module c {namespace urn:c;prefix c; typedef mytype {type string; units kilometers;}"
+                                        "leaf c1 {type mytype;} leaf c2 {type mytype; units meters;} leaf c3 {type mytype; units meters;}"
+                                        "deviation /c1 {deviate add {units meters;}}"
+                                        "deviation /c2 {deviate delete {units meters;}}"
+                                        "deviation /c3 {deviate replace {units centimeters;}}}", LYS_IN_YANG));
+    assert_non_null(node = mod->compiled->data);
+    assert_string_equal("c1", node->name);
+    assert_string_equal("meters", ((struct lysc_node_leaf*)node)->units);
+    assert_non_null(node = node->next);
+    assert_string_equal("c2", node->name);
+    assert_null(((struct lysc_node_leaf*)node)->units);
+    assert_non_null(node = node->next);
+    assert_string_equal("c3", node->name);
+    assert_string_equal("centimeters", ((struct lysc_node_leaf*)node)->units);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module d {namespace urn:d;prefix d; leaf c1 {type string; must 1;}"
+                                        "container c2 {presence yes; must 1; must 2;} leaf c3 {type string; must 1; must 3;}"
+                                        "deviation /c1 {deviate add {must 3;}}"
+                                        "deviation /c2 {deviate delete {must 2;}}"
+                                        "deviation /c3 {deviate delete {must 3; must 1;}}}", LYS_IN_YANG));
+    assert_non_null(node = mod->compiled->data);
+    assert_string_equal("c1", node->name);
+    assert_int_equal(2, LY_ARRAY_SIZE(((struct lysc_node_leaf*)node)->musts));
+    assert_string_equal("3", ((struct lysc_node_leaf*)node)->musts[1].cond->expr);
+    assert_non_null(node = node->next);
+    assert_string_equal("c2", node->name);
+    assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_node_container*)node)->musts));
+    assert_string_equal("1", ((struct lysc_node_container*)node)->musts[0].cond->expr);
+    assert_non_null(node = node->next);
+    assert_string_equal("c3", node->name);
+    assert_null(((struct lysc_node_leaf*)node)->musts);
+
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "module e {yang-version 1.1; namespace urn:e;prefix e; typedef mytype {type string; default nothing;}"
+                              "choice a {default a;leaf a {type string;} leaf b {type string;} leaf c {type string; mandatory true;}}"
+                              "choice b {default a;leaf a {type string;} leaf b {type string;}}"
+                              "leaf c {default hello; type string;}"
+                              "leaf-list d {default hello; default world; type string;}"
+                              "leaf c2 {type mytype;} leaf-list d2 {type mytype;}}");
+    assert_non_null(lys_parse_mem(ctx, "module f {yang-version 1.1; namespace urn:f;prefix f;import e {prefix x;}"
+                                  "deviation /x:a {deviate delete {default a;}}"
+                                  "deviation /x:b {deviate delete {default x:a;}}"
+                                  "deviation /x:c {deviate delete {default hello;}}"
+                                  "deviation /x:d {deviate delete {default world;}}}", LYS_IN_YANG));
+    assert_non_null((mod = ly_ctx_get_module_implemented(ctx, "e")));
+    assert_non_null(node = mod->compiled->data);
+    assert_null(((struct lysc_node_choice*)node)->dflt);
+    assert_non_null(node = node->next);
+    assert_null(((struct lysc_node_choice*)node)->dflt);
+    assert_non_null(node = node->next);
+    assert_null(((struct lysc_node_leaf*)node)->dflt);
+    assert_non_null(node = node->next);
+    assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_node_leaflist*)node)->dflts));
+    assert_string_equal("hello", ((struct lysc_node_leaflist*)node)->dflts[0]);
+    assert_non_null(node = node->next);
+    assert_string_equal("nothing", ((struct lysc_node_leaf*)node)->dflt);
+    assert_non_null(node = node->next);
+    assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_node_leaflist*)node)->dflts));
+    assert_string_equal("nothing", ((struct lysc_node_leaflist*)node)->dflts[0]);
+
+    assert_non_null(lys_parse_mem(ctx, "module g {yang-version 1.1; namespace urn:g;prefix g;import e {prefix x;}"
+                                  "deviation /x:b {deviate add {default x:b;}}"
+                                  "deviation /x:c {deviate add {default bye;}}"
+                                  "deviation /x:d {deviate add {default all; default people;}}"
+                                  "deviation /x:c2 {deviate add {default hi;}}"
+                                  "deviation /x:d2 {deviate add {default hi; default all;}}}", LYS_IN_YANG));
+    assert_non_null((mod = ly_ctx_get_module_implemented(ctx, "e")));
+    assert_non_null(node = mod->compiled->data);
+    assert_null(((struct lysc_node_choice*)node)->dflt);
+    assert_non_null(node = node->next);
+    assert_non_null(((struct lysc_node_choice*)node)->dflt);
+    assert_string_equal("b", ((struct lysc_node_choice*)node)->dflt->name);
+    assert_non_null(node = node->next);
+    assert_non_null(((struct lysc_node_leaf*)node)->dflt);
+    assert_string_equal("bye", ((struct lysc_node_leaf*)node)->dflt);
+    assert_non_null(node = node->next);
+    assert_int_equal(3, LY_ARRAY_SIZE(((struct lysc_node_leaflist*)node)->dflts));
+    assert_string_equal("hello", ((struct lysc_node_leaflist*)node)->dflts[0]);
+    assert_string_equal("all", ((struct lysc_node_leaflist*)node)->dflts[1]);
+    assert_string_equal("people", ((struct lysc_node_leaflist*)node)->dflts[2]);
+    assert_non_null(node = node->next);
+    assert_non_null(((struct lysc_node_leaf*)node)->dflt);
+    assert_string_equal("hi", ((struct lysc_node_leaf*)node)->dflt);
+    assert_non_null(node = node->next);
+    assert_int_equal(2, LY_ARRAY_SIZE(((struct lysc_node_leaflist*)node)->dflts));
+    assert_string_equal("hi", ((struct lysc_node_leaflist*)node)->dflts[0]);
+    assert_string_equal("all", ((struct lysc_node_leaflist*)node)->dflts[1]);
+
+    assert_non_null(lys_parse_mem(ctx, "module h {yang-version 1.1; namespace urn:h;prefix h;import e {prefix x;}"
+                                  "deviation /x:b {deviate replace {default x:a;}}"
+                                  "deviation /x:c {deviate replace {default hello;}}}", LYS_IN_YANG));
+    assert_non_null((mod = ly_ctx_get_module_implemented(ctx, "e")));
+    assert_non_null(node = mod->compiled->data);
+    assert_null(((struct lysc_node_choice*)node)->dflt);
+    assert_non_null(node = node->next);
+    assert_non_null(((struct lysc_node_choice*)node)->dflt);
+    assert_string_equal("a", ((struct lysc_node_choice*)node)->dflt->name);
+    assert_non_null(node = node->next);
+    assert_non_null(((struct lysc_node_leaf*)node)->dflt);
+    assert_string_equal("hello", ((struct lysc_node_leaf*)node)->dflt);
+
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "module i {namespace urn:i;prefix i;"
+                              "list l1 {key a; leaf a {type string;} leaf b {type string;} leaf c {type string;}}"
+                              "list l2 {key a; unique \"b c\"; unique \"d\"; leaf a {type string;} leaf b {type string;}"
+                              "         leaf c {type string;} leaf d {type string;}}}");
+    assert_non_null(lys_parse_mem(ctx, "module j {namespace urn:j;prefix j;import i {prefix i;}"
+                                  "augment /i:l1 {leaf j_c {type string;}}"
+                                  "deviation /i:l1 {deviate add {unique \"i:b j_c\"; }}"
+                                  "deviation /i:l1 {deviate add {unique \"i:c\";}}"
+                                  "deviation /i:l2 {deviate delete {unique \"d\"; unique \"b c\";}}}", LYS_IN_YANG));
+    assert_non_null((mod = ly_ctx_get_module_implemented(ctx, "i")));
+    assert_non_null(list = (struct lysc_node_list*)mod->compiled->data);
+    assert_string_equal("l1", list->name);
+    assert_int_equal(2, LY_ARRAY_SIZE(list->uniques));
+    assert_int_equal(2, LY_ARRAY_SIZE(list->uniques[0]));
+    assert_string_equal("b", list->uniques[0][0]->name);
+    assert_string_equal("j_c", list->uniques[0][1]->name);
+    assert_int_equal(1, LY_ARRAY_SIZE(list->uniques[1]));
+    assert_string_equal("c", list->uniques[1][0]->name);
+    assert_non_null(list = (struct lysc_node_list*)list->next);
+    assert_string_equal("l2", list->name);
+    assert_null(list->uniques);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module k {namespace urn:k;prefix k; leaf a {type string;}"
+                                        "container top {leaf x {type string;} leaf y {type string; config false;}}"
+                                        "deviation /a {deviate add {config false; }}"
+                                        "deviation /top {deviate add {config false;}}}", LYS_IN_YANG));
+    assert_non_null(node = mod->compiled->data);
+    assert_string_equal("a", node->name);
+    assert_true(node->flags & LYS_CONFIG_R);
+    assert_non_null(node = node->next);
+    assert_string_equal("top", node->name);
+    assert_true(node->flags & LYS_CONFIG_R);
+    assert_non_null(node = lysc_node_children(node, 0));
+    assert_string_equal("x", node->name);
+    assert_true(node->flags & LYS_CONFIG_R);
+    assert_non_null(node = node->next);
+    assert_string_equal("y", node->name);
+    assert_true(node->flags & LYS_CONFIG_R);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module l {namespace urn:l;prefix l; leaf a {config false; type string;}"
+                                        "container top {config false; leaf x {type string;}}"
+                                        "deviation /a {deviate replace {config true;}}"
+                                        "deviation /top {deviate replace {config true;}}}", LYS_IN_YANG));
+    assert_non_null(node = mod->compiled->data);
+    assert_string_equal("a", node->name);
+    assert_true(node->flags & LYS_CONFIG_W);
+    assert_non_null(node = node->next);
+    assert_string_equal("top", node->name);
+    assert_true(node->flags & LYS_CONFIG_W);
+    assert_non_null(node = lysc_node_children(node, 0));
+    assert_string_equal("x", node->name);
+    assert_true(node->flags & LYS_CONFIG_W);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module m {namespace urn:m;prefix m;"
+                                        "container a {leaf a {type string;}}"
+                                        "container b {leaf b {mandatory true; type string;}}"
+                                        "deviation /a/a {deviate add {mandatory true;}}"
+                                        "deviation /b/b {deviate replace {mandatory false;}}}", LYS_IN_YANG));
+    assert_non_null(node = mod->compiled->data);
+    assert_string_equal("a", node->name);
+    assert_true((node->flags & LYS_MAND_MASK) == LYS_MAND_TRUE);
+    assert_true((lysc_node_children(node, 0)->flags & LYS_MAND_MASK) == LYS_MAND_TRUE);
+    assert_non_null(node = node->next);
+    assert_string_equal("b", node->name);
+    assert_false(node->flags & LYS_MAND_MASK); /* just unset on container */
+    assert_true((lysc_node_children(node, 0)->flags & LYS_MAND_MASK) == LYS_MAND_FALSE);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module n {yang-version 1.1; namespace urn:n;prefix n;"
+                                        "leaf a {default test; type string;}"
+                                        "leaf b {mandatory true; type string;}"
+                                        "deviation /a {deviate add {mandatory true;} deviate delete {default test;}}"
+                                        "deviation /b {deviate add {default test;} deviate replace {mandatory false;}}}", LYS_IN_YANG));
+    assert_non_null(node = mod->compiled->data);
+    assert_string_equal("a", node->name);
+    assert_null(((struct lysc_node_leaf*)node)->dflt);
+    assert_true((node->flags & LYS_MAND_MASK) == LYS_MAND_TRUE);
+    assert_non_null(node = node->next);
+    assert_string_equal("b", node->name);
+    assert_non_null(((struct lysc_node_leaf*)node)->dflt);
+    assert_true((node->flags & LYS_MAND_MASK) == LYS_MAND_FALSE);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module o {namespace urn:o;prefix o;"
+                                        "leaf-list a {type string;}"
+                                        "list b {config false;}"
+                                        "leaf-list c {min-elements 1; max-elements 10; type string;}"
+                                        "list d {min-elements 10; max-elements 100; config false;}"
+                                        "deviation /a {deviate add {min-elements 1; max-elements 10;}}"
+                                        "deviation /b {deviate add {min-elements 10; max-elements 100;}}"
+                                        "deviation /c {deviate replace {min-elements 10; max-elements 100;}}"
+                                        "deviation /d {deviate replace {min-elements 1; max-elements 10;}}}", LYS_IN_YANG));
+    assert_non_null(node = mod->compiled->data);
+    assert_string_equal("a", node->name);
+    assert_int_equal(1, ((struct lysc_node_leaflist*)node)->min);
+    assert_int_equal(10, ((struct lysc_node_leaflist*)node)->max);
+    assert_non_null(node = node->next);
+    assert_string_equal("b", node->name);
+    assert_int_equal(10, ((struct lysc_node_list*)node)->min);
+    assert_int_equal(100, ((struct lysc_node_list*)node)->max);
+    assert_non_null(node = node->next);
+    assert_string_equal("c", node->name);
+    assert_int_equal(10, ((struct lysc_node_leaflist*)node)->min);
+    assert_int_equal(100, ((struct lysc_node_leaflist*)node)->max);
+    assert_non_null(node = node->next);
+    assert_string_equal("d", node->name);
+    assert_int_equal(1, ((struct lysc_node_list*)node)->min);
+    assert_int_equal(10, ((struct lysc_node_list*)node)->max);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module p {yang-version 1.1; namespace urn:p;prefix p; typedef mytype {type int8; default 1;}"
+                                        "leaf a {type string; default 10;} leaf-list b {type string;}"
+                                        "deviation /a {deviate replace {type mytype;}}"
+                                        "deviation /b {deviate replace {type mytype;}}}", LYS_IN_YANG));
+    assert_non_null(node = mod->compiled->data);
+    assert_string_equal("a", node->name);
+    assert_int_equal(LY_TYPE_INT8, ((struct lysc_node_leaf*)node)->type->basetype);
+    assert_string_equal("10", ((struct lysc_node_leaf*)node)->dflt);
+    assert_non_null(node = node->next);
+    assert_string_equal("b", node->name);
+    assert_int_equal(LY_TYPE_INT8, ((struct lysc_node_leaflist*)node)->type->basetype);
+    assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_node_leaflist*)node)->dflts));
+    assert_string_equal("1", ((struct lysc_node_leaflist*)node)->dflts[0]);
+
+    assert_null(lys_parse_mem(ctx, "module aa1 {namespace urn:aa1;prefix aa1;import a {prefix a;}"
+                              "deviation /a:top/a:z {deviate not-supported;}}", LYS_IN_YANG));
+    logbuf_assert("Invalid absolute-schema-nodeid value \"/a:top/a:z\" - target node not found.");
+    assert_non_null(lys_parse_mem(ctx, "module aa2 {namespace urn:aa2;prefix aa2;import a {prefix a;}"
+                              "deviation /a:top/a:a {deviate not-supported;}"
+                              "deviation /a:top/a:a {deviate add {default error;}}}", LYS_IN_YANG));
+    /* warning */
+    logbuf_assert("Useless multiple (2) deviates on node \"/a:top/a:a\" since the node is not-supported.");
+
+    assert_null(lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb;import a {prefix a;}"
+                              "deviation a:top/a:a {deviate not-supported;}}", LYS_IN_YANG));
+    logbuf_assert("Invalid absolute-schema-nodeid value \"a:top/a:a\" - missing starting \"/\".");
+
+    assert_null(lys_parse_mem(ctx, "module cc {namespace urn:cc;prefix cc; container c;"
+                              "deviation /c {deviate add {units meters;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/c) of container node - it is not possible to add \"units\" property.");
+    assert_null(lys_parse_mem(ctx, "module cd {namespace urn:cd;prefix cd; leaf c {type string; units centimeters;}"
+                              "deviation /c {deviate add {units meters;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/c) adding \"units\" property which already exists (with value \"centimeters\").");
+
+    assert_null(lys_parse_mem(ctx, "module dd1 {namespace urn:dd1;prefix dd1; container c;"
+                              "deviation /c {deviate delete {units meters;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/c) of container node - it is not possible to delete \"units\" property.");
+    assert_null(lys_parse_mem(ctx, "module dd2 {namespace urn:dd2;prefix dd2; leaf c {type string;}"
+                              "deviation /c {deviate delete {units meters;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/c) deleting \"units\" property \"meters\" which is not present.");
+    assert_null(lys_parse_mem(ctx, "module dd3 {namespace urn:dd3;prefix dd3; leaf c {type string; units centimeters;}"
+                              "deviation /c {deviate delete {units meters;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/c) deleting \"units\" property \"meters\" which does not match the target's property value \"centimeters\".");
+
+    assert_null(lys_parse_mem(ctx, "module ee1 {namespace urn:ee1;prefix ee1; container c;"
+                              "deviation /c {deviate replace {units meters;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/c) of container node - it is not possible to replace \"units\" property.");
+    assert_null(lys_parse_mem(ctx, "module ee2 {namespace urn:ee2;prefix ee2; leaf c {type string;}"
+                              "deviation /c {deviate replace {units meters;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/c) replacing \"units\" property \"meters\" which is not present.");
+
+    /* the default is already deleted in /e:a byt module f */
+    assert_null(lys_parse_mem(ctx, "module ff1 {namespace urn:ff1;prefix ff1; import e {prefix e;}"
+                              "deviation /e:a {deviate delete {default x:a;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/e:a) deleting \"default\" property \"x:a\" which is not present.");
+    assert_null(lys_parse_mem(ctx, "module ff2 {namespace urn:ff2;prefix ff2; import e {prefix e;}"
+                              "deviation /e:b {deviate delete {default x:a;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/e:b) deleting \"default\" property \"x:a\" of choice. "
+                  "The prefix does not match any imported module of the deviation module.");
+    assert_null(lys_parse_mem(ctx, "module ff3 {namespace urn:ff3;prefix ff3; import e {prefix e;}"
+                              "deviation /e:b {deviate delete {default e:b;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/e:b) deleting \"default\" property \"e:b\" of choice does not match the default case name \"a\".");
+    assert_null(lys_parse_mem(ctx, "module ff4 {namespace urn:ff4;prefix ff4; import e {prefix e;}"
+                              "deviation /e:b {deviate delete {default ff4:a;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/e:b) deleting \"default\" property \"ff4:a\" of choice. The prefix does not match the default case's module.");
+    assert_null(lys_parse_mem(ctx, "module ff5 {namespace urn:ff5;prefix ff5; anyxml a;"
+                              "deviation /a {deviate delete {default x;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/a) of anyxml node - it is not possible to delete \"default\" property.");
+
+    assert_null(lys_parse_mem(ctx, "module gg1 {namespace urn:gg1;prefix gg1; import e {prefix e;}"
+                              "deviation /e:b {deviate add {default e:a;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/e:b) adding \"default\" property which already exists (with value \"a\").");
+    assert_null(lys_parse_mem(ctx, "module gg2 {namespace urn:gg2;prefix gg2; import e {prefix e;}"
+                              "deviation /e:a {deviate add {default x:a;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/e:a) adding \"default\" property \"x:a\" of choice. "
+                  "The prefix does not match any imported module of the deviation module.");
+    assert_null(lys_parse_mem(ctx, "module gg3 {namespace urn:gg3;prefix gg3; import e {prefix e;}"
+                              "deviation /e:a {deviate add {default a;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/e:a) adding \"default\" property \"a\" of choice - the specified case does not exists.");
+    assert_null(lys_parse_mem(ctx, "module gg4 {namespace urn:gg4;prefix gg4; import e {prefix e;}"
+                              "deviation /e:c {deviate add {default hi;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/e:c) adding \"default\" property which already exists (with value \"hello\").");
+    assert_null(lys_parse_mem(ctx, "module gg4 {namespace urn:gg4;prefix gg4; import e {prefix e;}"
+                              "deviation /e:a {deviate add {default e:c;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/e:a) adding \"default\" property \"e:c\" of choice - mandatory node \"c\" under the default case.");
+    assert_null(lys_parse_mem(ctx, "module gg5 {namespace urn:gg5;prefix gg5; leaf x {type string; mandatory true;}"
+                              "deviation /x {deviate add {default error;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/x) combining default value and mandatory leaf.");
+
+    assert_null(lys_parse_mem(ctx, "module hh1 {yang-version 1.1; namespace urn:hh1;prefix hh1; import e {prefix e;}"
+                              "deviation /e:d {deviate replace {default hi;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/e:d) of leaf-list node - it is not possible to replace \"default\" property.");
+
+    assert_null(lys_parse_mem(ctx, "module ii1 {namespace urn:ii1;prefix ii1; import i {prefix i;}"
+                              "deviation /i:l1 {deviate delete {unique x;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/i:l1) deleting \"unique\" property \"x\" which does not match any of the target's property values.");
+    assert_null(lys_parse_mem(ctx, "module ii2 {namespace urn:ii2;prefix ii2; import i {prefix i;} leaf x { type string;}"
+                              "deviation /i:l2 {deviate delete {unique d;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/i:l2) deleting \"unique\" property \"d\" which does not match any of the target's property values.");
+    assert_null(lys_parse_mem(ctx, "module ii3 {namespace urn:ii3;prefix ii3; leaf x { type string;}"
+                              "deviation /x {deviate delete {unique d;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/x) of leaf node - it is not possible to delete \"unique\" property.");
+    assert_null(lys_parse_mem(ctx, "module ii4 {namespace urn:ii4;prefix ii4; leaf x { type string;}"
+                              "deviation /x {deviate add {unique d;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/x) of leaf node - it is not possible to add \"unique\" property.");
+
+    assert_null(lys_parse_mem(ctx, "module jj1 {namespace urn:jj1;prefix jj1; choice ch {case a {leaf a{type string;}}}"
+                              "deviation /ch/a {deviate add {config false;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/ch/a) of case node - it is not possible to add \"config\" property.");
+    assert_null(lys_parse_mem(ctx, "module jj2 {namespace urn:jj2;prefix jj2; container top {config false; leaf x {type string;}}"
+                              "deviation /top/x {deviate add {config true;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation of config in \"/top/x\" - configuration node cannot be child of any state data node.");
+    assert_null(lys_parse_mem(ctx, "module jj3 {namespace urn:jj3;prefix jj3; container top {leaf x {type string;}}"
+                              "deviation /top/x {deviate replace {config false;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/top/x) replacing \"config\" property \"config false\" which is not present.");
+    assert_null(lys_parse_mem(ctx, "module jj4 {namespace urn:jj4;prefix jj4; choice ch {case a {leaf a{type string;}}}"
+                              "deviation /ch/a {deviate replace {config false;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/ch/a) of case node - it is not possible to replace \"config\" property.");
+    assert_null(lys_parse_mem(ctx, "module jj5 {namespace urn:jj5;prefix jj5; container top {leaf x {type string; config true;}}"
+                              "deviation /top {deviate add {config false;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation of config in \"/top\" - configuration node cannot be child of any state data node.");
+    assert_null(lys_parse_mem(ctx, "module jj6 {namespace urn:jj6;prefix jj6; leaf x {config false; type string;}"
+                              "deviation /x {deviate add {config true;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/x) adding \"config\" property which already exists (with value \"config false\").");
+
+    assert_null(lys_parse_mem(ctx, "module kk1 {namespace urn:kk1;prefix kk1; container top {leaf a{type string;}}"
+                              "deviation /top {deviate add {mandatory true;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation of mandatory in \"/top\" - container cannot hold mandatory statement.");
+    assert_null(lys_parse_mem(ctx, "module kk2 {namespace urn:kk2;prefix kk2; container top {leaf a{type string;}}"
+                              "deviation /top {deviate replace {mandatory true;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/top) replacing \"mandatory\" property \"mandatory true\" which is not present.");
+    assert_null(lys_parse_mem(ctx, "module kk3 {namespace urn:kk3;prefix kk3; container top {leaf x {type string;}}"
+                              "deviation /top/x {deviate replace {mandatory true;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/top/x) replacing \"mandatory\" property \"mandatory true\" which is not present.");
+    assert_null(lys_parse_mem(ctx, "module kk4 {namespace urn:kk4;prefix kk4; leaf x {mandatory true; type string;}"
+                              "deviation /x {deviate add {mandatory false;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/x) adding \"mandatory\" property which already exists (with value \"mandatory true\").");
+
+    assert_null(lys_parse_mem(ctx, "module ll1 {namespace urn:ll1;prefix ll1; leaf x {default test; type string;}"
+                              "deviation /x {deviate add {mandatory true;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/x) combining default value and mandatory leaf.");
+    assert_null(lys_parse_mem(ctx, "module ll2 {yang-version 1.1; namespace urn:ll2;prefix ll2; leaf-list x {default test; type string;}"
+                              "deviation /x {deviate add {min-elements 1;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/x) combining default value and mandatory leaf-list.");
+    assert_null(lys_parse_mem(ctx, "module ll2 {namespace urn:ll2;prefix ll2; choice ch {default a; leaf a {type string;} leaf b {type string;}}"
+                              "deviation /ch {deviate add {mandatory true;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/ch) combining default case and mandatory choice.");
+
+    assert_null(lys_parse_mem(ctx, "module mm1 {namespace urn:mm1;prefix mm1; leaf-list x {min-elements 10; type string;}"
+                              "deviation /x {deviate add {max-elements 5;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid combination of min-elements and max-elements after deviation (/x): min value 10 is bigger than max value 5.");
+    assert_null(lys_parse_mem(ctx, "module mm2 {namespace urn:mm2;prefix mm2; leaf-list x {max-elements 10; type string;}"
+                              "deviation /x {deviate add {min-elements 20;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid combination of min-elements and max-elements after deviation (/x): min value 20 is bigger than max value 10.");
+    assert_null(lys_parse_mem(ctx, "module mm3 {namespace urn:mm3;prefix mm3; list x {min-elements 5; max-elements 10; config false;}"
+                              "deviation /x {deviate replace {max-elements 1;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid combination of min-elements and max-elements after deviation (/x): min value 5 is bigger than max value 1.");
+    assert_null(lys_parse_mem(ctx, "module mm4 {namespace urn:mm4;prefix mm4; list x {min-elements 5; max-elements 10; config false;}"
+                              "deviation /x {deviate replace {min-elements 20;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid combination of min-elements and max-elements after deviation (/x): min value 20 is bigger than max value 10.");
+    assert_null(lys_parse_mem(ctx, "module mm5 {namespace urn:mm5;prefix mm5; leaf-list x {type string; min-elements 5;}"
+                              "deviation /x {deviate add {min-elements 1;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/x) adding \"min-elements\" property which already exists (with value \"5\").");
+    assert_null(lys_parse_mem(ctx, "module mm6 {namespace urn:mm6;prefix mm6; list x {config false; min-elements 5;}"
+                              "deviation /x {deviate add {min-elements 1;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/x) adding \"min-elements\" property which already exists (with value \"5\").");
+    assert_null(lys_parse_mem(ctx, "module mm7 {namespace urn:mm7;prefix mm7; leaf-list x {type string; max-elements 5;}"
+                              "deviation /x {deviate add {max-elements 1;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/x) adding \"max-elements\" property which already exists (with value \"5\").");
+    assert_null(lys_parse_mem(ctx, "module mm8 {namespace urn:mm8;prefix mm8; list x {config false; max-elements 5;}"
+                              "deviation /x {deviate add {max-elements 1;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/x) adding \"max-elements\" property which already exists (with value \"5\").");
+    assert_null(lys_parse_mem(ctx, "module mm9 {namespace urn:mm9;prefix mm9; leaf-list x {type string;}"
+                              "deviation /x {deviate replace {min-elements 1;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/x) replacing with \"min-elements\" property \"1\" which is not present.");
+    assert_null(lys_parse_mem(ctx, "module mm10 {namespace urn:mm10;prefix mm10; list x {config false;}"
+                              "deviation /x {deviate replace {min-elements 1;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/x) replacing with \"min-elements\" property \"1\" which is not present.");
+    assert_null(lys_parse_mem(ctx, "module mm11 {namespace urn:mm11;prefix mm11; leaf-list x {type string;}"
+                              "deviation /x {deviate replace {max-elements 1;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/x) replacing with \"max-elements\" property \"1\" which is not present.");
+    assert_null(lys_parse_mem(ctx, "module mm12 {namespace urn:mm12;prefix mm12; list x {config false; }"
+                              "deviation /x {deviate replace {max-elements 1;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/x) replacing with \"max-elements\" property \"1\" which is not present.");
+
+    assert_null(lys_parse_mem(ctx, "module nn1 {namespace urn:nn1;prefix nn1; anyxml x;"
+                              "deviation /x {deviate replace {type string;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation (/x) of anyxml node - it is not possible to replace \"type\" property.");
+    assert_null(lys_parse_mem(ctx, "module nn2 {namespace urn:nn2;prefix nn2; leaf-list x {type string;}"
+                              "deviation /x {deviate replace {type empty;}}}", LYS_IN_YANG));
+    logbuf_assert("Leaf-list of type \"empty\" is allowed only in YANG 1.1 modules.");
+
+    assert_null(lys_parse_mem(ctx, "module oo {yang-version 1.1; namespace urn:oo;prefix oo; rpc test {input {container a {leaf b {type string;}}}}"
+                              "augment /test/input/a {action invalid {input {leaf x {type string;}}}}}", LYS_IN_YANG));
+    logbuf_assert("Action \"invalid\" is placed inside another RPC/action.");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
@@ -2509,9 +3049,11 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_node_list, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_node_choice, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_node_anydata, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_action, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_uses, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_refine, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_augment, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_deviation, logger_setup, logger_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
