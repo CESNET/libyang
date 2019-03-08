@@ -237,7 +237,8 @@ lyb_hash_siblings(struct lys_node *sibling, const struct lys_module **models, in
     mod = lys_node_module(sibling);
 
     sibling = NULL;
-    while ((sibling = (struct lys_node *)lys_getnext(sibling, parent, mod, 0))) {
+    /* ignore features so that their state does not affect hashes */
+    while ((sibling = (struct lys_node *)lys_getnext(sibling, parent, mod, LYS_GETNEXT_NOSTATECHECK))) {
         if (models && !lyb_has_schema_model(sibling, models, mod_count)) {
             /* ignore models not present during printing */
             continue;
