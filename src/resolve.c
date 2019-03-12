@@ -5028,16 +5028,16 @@ resolve_extension(struct unres_ext *info, struct lys_ext_instance **ext, struct 
             }
         }
 
+        if (e->argument && !(*ext)->arg_value) {
+            LOGVAL(ctx, LYE_MISSARG, LY_VLOG_NONE, NULL, e->argument, ext_name);
+            goto error;
+        }
+
         /* extension common part */
         (*ext)->def = e;
         (*ext)->parent = info->parent;
         (*ext)->ext_type = e->plugin ? e->plugin->type : LYEXT_FLAG;
         (*ext)->flags |= e->plugin ? e->plugin->flags : 0;
-
-        if (e->argument && !(*ext)->arg_value) {
-            LOGVAL(ctx, LYE_MISSARG, LY_VLOG_NONE, NULL, e->argument, ext_name);
-            goto error;
-        }
 
         if ((*ext)->flags & LYEXT_OPT_VALID &&
             (info->parent_type == LYEXT_PAR_NODE || info->parent_type == LYEXT_PAR_TPDF)) {
