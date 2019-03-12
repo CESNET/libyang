@@ -121,7 +121,7 @@ public:
     //                                     const char *val_str);
     //struct lyd_node *lyd_new_output_leaf(struct lyd_node *parent, const struct lys_module *module, const char *name,
     //                                     void *value, LYD_ANYDATA_VALUETYPE value_type);
-    ~Data_Node();
+    virtual ~Data_Node();
     /** get schema variable from [lyd_node](@ref lyd_node)*/
     S_Schema_Node schema() LY_NEW(node, schema, Schema_Node);
     /** get validity variable from [lyd_node](@ref lyd_node)*/
