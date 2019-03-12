@@ -1567,7 +1567,7 @@ lys_ext_dup(struct ly_ctx *ctx, struct lys_module *mod, struct lys_ext_instance 
             LY_CHECK_ERR_GOTO(!info, LOGMEM(ctx), error);
             info->datatype = info_orig->datatype;
             if (info->datatype == LYS_IN_YIN) {
-                info->data.yin = lyxml_dup_elem(ctx, info_orig->data.yin, NULL, 1);
+                info->data.yin = lyxml_dup_elem(ctx, info_orig->data.yin, NULL, 1, 0);
             } /* else TODO YANG */
             info->parent = parent;
             info->mod = mod;
@@ -2228,7 +2228,7 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
             new->der = (struct lys_tpdf *)lys_yang_type_dup(mod, parent, (struct yang_type *)old->der, new, in_grp,
                                                             shallow, unres);
         } else {
-            new->der = (struct lys_tpdf *)lyxml_dup_elem(mod->ctx, (struct lyxml_elem *)old->der, NULL, 1);
+            new->der = (struct lys_tpdf *)lyxml_dup_elem(mod->ctx, (struct lyxml_elem *)old->der, NULL, 1, 0);
         }
         /* all these unres additions can fail even though they did not before */
         if (!new->der || (unres_schema_add_node(mod, unres, new, UNRES_TYPE_DER, parent) == -1)) {

@@ -40,6 +40,8 @@
 
 static struct lys_node *lyd_get_schema_inctx(const struct lyd_node *node, struct ly_ctx *ctx);
 
+static struct lyd_node *lyd_dup_withsiblings_to_ctx(const struct lyd_node *node, int options, struct ly_ctx *ctx);
+
 static int
 lyd_anydata_equal(struct lyd_node *first, struct lyd_node *second)
 {
@@ -2573,10 +2575,10 @@ lyd_merge_node_update(struct lyd_node *target, struct lyd_node *source)
                     trg_any->value.str = lydict_insert(ctx, src_any->value.str, 0);
                     break;
                 case LYD_ANYDATA_DATATREE:
-                    trg_any->value.tree = lyd_dup_to_ctx(src_any->value.tree, 1, ctx);
+                    trg_any->value.tree = lyd_dup_withsiblings_to_ctx(src_any->value.tree, 1, ctx);
                     break;
                 case LYD_ANYDATA_XML:
-                    trg_any->value.xml = lyxml_dup_elem(ctx, src_any->value.xml, NULL, 1);
+                    trg_any->value.xml = lyxml_dup_elem(ctx, src_any->value.xml, NULL, 1, 1);
                     break;
                 case LYD_ANYDATA_LYB:
                     len = lyd_lyb_data_length(src_any->value.mem);
@@ -5517,10 +5519,10 @@ _lyd_dup_node(const struct lyd_node *node, const struct lys_node *schema, struct
             new_any->value.str = lydict_insert(ctx, old_any->value.str, 0);
             break;
         case LYD_ANYDATA_DATATREE:
-            new_any->value.tree = lyd_dup_to_ctx(old_any->value.tree, 1, ctx);
+            new_any->value.tree = lyd_dup_withsiblings_to_ctx(old_any->value.tree, 1, ctx);
             break;
         case LYD_ANYDATA_XML:
-            new_any->value.xml = lyxml_dup_elem(ctx, old_any->value.xml, NULL, 1);
+            new_any->value.xml = lyxml_dup_elem(ctx, old_any->value.xml, NULL, 1, 1);
             break;
         case LYD_ANYDATA_LYB:
             r = lyd_lyb_data_length(old_any->value.mem);
@@ -5759,7 +5761,7 @@ lyd_dup(const struct lyd_node *node, int options)
 }
 
 static struct lyd_node *
-lyd_dup_withsiblings_r(const struct lyd_node *first, struct lyd_node *parent_dup, int options)
+lyd_dup_withsiblings_r(const struct lyd_node *first, struct lyd_node *parent_dup, int options, struct ly_ctx *ctx)
 {
     struct lyd_node *first_dup = NULL, *prev_dup = NULL, *last_dup;
     const struct lyd_node *next;
@@ -5768,7 +5770,7 @@ lyd_dup_withsiblings_r(const struct lyd_node *first, struct lyd_node *parent_dup
 
     /* duplicate and connect all siblings */
     LY_TREE_FOR(first, next) {
-        last_dup = _lyd_dup_node(next, next->schema, next->schema->module->ctx, options);
+        last_dup = _lyd_dup_node(next, next->schema, ctx, options);
         if (!last_dup) {
             goto error;
         }
@@ -5788,7 +5790,7 @@ lyd_dup_withsiblings_r(const struct lyd_node *first, struct lyd_node *parent_dup
 
         if ((next->schema->nodetype & (LYS_LIST | LYS_CONTAINER | LYS_RPC | LYS_ACTION | LYS_NOTIF)) && next->child) {
             /* recursively duplicate all children */
-            if (!lyd_dup_withsiblings_r(next->child, last_dup, options)) {
+            if (!lyd_dup_withsiblings_r(next->child, last_dup, options, ctx)) {
                 goto error;
             }
         }
@@ -5812,8 +5814,8 @@ error:
     return NULL;
 }
 
-API struct lyd_node *
-lyd_dup_withsiblings(const struct lyd_node *node, int options)
+static struct lyd_node *
+lyd_dup_withsiblings_to_ctx(const struct lyd_node *node, int options, struct ly_ctx *ctx)
 {
     const struct lyd_node *iter;
     struct lyd_node *ret, *ret_iter, *tmp;
@@ -5828,7 +5830,7 @@ lyd_dup_withsiblings(const struct lyd_node *node, int options)
     }
 
     if (node->parent) {
-        ret = lyd_dup(node, options);
+        ret = lyd_dup_to_ctx(node, options, ctx);
         if (!ret) {
             return NULL;
         }
@@ -5836,7 +5838,7 @@ lyd_dup_withsiblings(const struct lyd_node *node, int options)
         /* copy following siblings */
         ret_iter = ret;
         LY_TREE_FOR(node->next, iter) {
-            tmp = lyd_dup(iter, options);
+            tmp = lyd_dup_to_ctx(iter, options, ctx);
             if (!tmp) {
                 lyd_free_withsiblings(ret);
                 return NULL;
@@ -5851,10 +5853,20 @@ lyd_dup_withsiblings(const struct lyd_node *node, int options)
         }
     } else {
         /* duplicating top-level siblings, we can duplicate much more efficiently */
-        ret = lyd_dup_withsiblings_r(node, NULL, options);
+        ret = lyd_dup_withsiblings_r(node, NULL, options, ctx);
     }
 
     return ret;
+}
+
+API struct lyd_node *
+lyd_dup_withsiblings(const struct lyd_node *node, int options)
+{
+    if (!node) {
+        return NULL;
+    }
+
+    return lyd_dup_withsiblings_to_ctx(node, options, lyd_node_module(node)->ctx);
 }
 
 API void
