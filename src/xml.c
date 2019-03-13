@@ -230,13 +230,9 @@ lyxml_dup_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, struct lyxml_elem *p
             lyxml_dup_elem(ctx, elem->child, dup, 1, 1);
         }
 
-        /* link to result */
+        /* set result (first sibling) */
         if (!result) {
             result = dup;
-        } else {
-            dup->prev = result->prev;
-            result->prev = dup;
-            dup->prev->next = dup;
         }
 
         if (!with_siblings) {
