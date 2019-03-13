@@ -45,7 +45,7 @@ class Value
 {
 public:
     /** wrapper for struct [lyd_val](@ref lyd_val), for internal use only */
-    Value(lyd_val value, LY_DATA_TYPE* value_type, uint8_t value_flags, S_Deleter deleter);
+    Value(lyd_val value, LY_DATA_TYPE* value_type, S_Deleter deleter);
     ~Value();
     /** get binary variable from [lyd_val](@ref lyd_val)*/
     const char *binary() {return LY_TYPE_BINARY == type ? value.binary : throw "wrong type";};
@@ -86,7 +86,6 @@ public:
 private:
     lyd_val value;
     LY_DATA_TYPE type;
-    uint8_t flags;
     S_Deleter deleter;
 };
 

@@ -167,10 +167,9 @@ Type_Info_Union::Type_Info_Union(lys_type_info_union *info_union, S_Deleter dele
 Type_Info_Union::~Type_Info_Union() {};
 std::vector<S_Type> Type_Info_Union::types() LY_NEW_LIST(info_union, types, count, Type);
 
-Type_Info::Type_Info(union lys_type_info info, LY_DATA_TYPE *type, uint8_t flags, S_Deleter deleter):
+Type_Info::Type_Info(union lys_type_info info, LY_DATA_TYPE *type, S_Deleter deleter):
     info(info),
     type(*type),
-    flags(flags),
     deleter(deleter)
 {};
 Type_Info::~Type_Info() {};
@@ -199,7 +198,7 @@ Type::~Type() {};
 std::vector<S_Ext_Instance> Type::ext() LY_NEW_P_LIST(type, ext, ext_size, Ext_Instance);
 S_Tpdf Type::der() {return type->der ? std::make_shared<Tpdf>(type->der, deleter) : nullptr;};
 S_Tpdf Type::parent() {return type->parent ? std::make_shared<Tpdf>(type->parent, deleter) : nullptr;};
-S_Type_Info Type::info() {return std::make_shared<Type_Info>(type->info, &type->base, type->value_flags, deleter);};
+S_Type_Info Type::info() {return std::make_shared<Type_Info>(type->info, &type->base, deleter);};
 
 Iffeature::Iffeature(struct lys_iffeature *iffeature, S_Deleter deleter):
     iffeature(iffeature),

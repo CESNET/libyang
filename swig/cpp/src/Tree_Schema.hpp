@@ -405,7 +405,7 @@ class Type_Info
 {
 public:
     /** wrapper for struct [lys_type_info](@ref lys_type_info), for internal use only */
-    Type_Info(union lys_type_info info, LY_DATA_TYPE *type, uint8_t flags, S_Deleter deleter);
+    Type_Info(union lys_type_info info, LY_DATA_TYPE *type, S_Deleter deleter);
     ~Type_Info();
     /** get binary variable from [lys_type_info](@ref lys_type_info)*/
     S_Type_Info_Binary binary();
@@ -431,7 +431,6 @@ public:
 private:
     union lys_type_info info;
     LY_DATA_TYPE type;
-    uint8_t flags;
     S_Deleter deleter;
 };
 
