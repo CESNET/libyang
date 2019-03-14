@@ -248,6 +248,10 @@ lyp_yin_parse_subnode_ext(struct lys_module *mod, void *elem, LYEXT_PAR elem_typ
     }
 
     LY_TREE_FOR_SAFE(yin->child, next, child) {
+        if (!child->ns) {
+            LOGVAL(mod->ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Extension instance \"%s\" is missing namespace.", child->name);
+            return EXIT_FAILURE;
+        }
         if (!strcmp(child->ns->value, LY_NSYIN)) {
             /* skip the regular YIN nodes */
             continue;
