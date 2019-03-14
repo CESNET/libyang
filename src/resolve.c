@@ -1587,7 +1587,10 @@ resolve_iffeature_compile(struct lys_iffeature *iffeat_expr, const char *value, 
         expr_size++;
 
         while (!isspace(c[i])) {
-            if (!c[i] || c[i] == ')') {
+            if (c[i] == '(') {
+                LOGVAL(ctx, LYE_INARG, LY_VLOG_NONE, NULL, value, "if-feature");
+                return EXIT_FAILURE;
+            } else if (!c[i] || c[i] == ')') {
                 i--;
                 break;
             }
