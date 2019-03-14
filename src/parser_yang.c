@@ -2260,74 +2260,72 @@ yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext
 {
     struct lys_ext_instance *instance;
     LY_STMT stmt = LY_STMT_UNKNOWN;
+    LYEXT_SUBSTMT insubstmt;
+    uint8_t insubstmt_index = 0;
 
     if (backup_type != NODE) {
-        instance = yang_ext_instance(actual, backup_type, is_ext_instance);
-        if (!instance) {
-            return NULL;
-        }
         switch (actual_type) {
         case YANG_VERSION_KEYWORD:
-            instance->insubstmt = LYEXT_SUBSTMT_VERSION;
+            insubstmt = LYEXT_SUBSTMT_VERSION;
             stmt = LY_STMT_VERSION;
             break;
         case NAMESPACE_KEYWORD:
-            instance->insubstmt = LYEXT_SUBSTMT_NAMESPACE;
+            insubstmt = LYEXT_SUBSTMT_NAMESPACE;
             stmt = LY_STMT_NAMESPACE;
             break;
         case PREFIX_KEYWORD:
-            instance->insubstmt = LYEXT_SUBSTMT_PREFIX;
+            insubstmt = LYEXT_SUBSTMT_PREFIX;
             stmt = LY_STMT_PREFIX;
             break;
         case REVISION_DATE_KEYWORD:
-            instance->insubstmt = LYEXT_SUBSTMT_REVISIONDATE;
+            insubstmt = LYEXT_SUBSTMT_REVISIONDATE;
             stmt = LY_STMT_REVISIONDATE;
             break;
         case DESCRIPTION_KEYWORD:
-            instance->insubstmt = LYEXT_SUBSTMT_DESCRIPTION;
+            insubstmt = LYEXT_SUBSTMT_DESCRIPTION;
             stmt = LY_STMT_DESCRIPTION;
             break;
         case REFERENCE_KEYWORD:
-            instance->insubstmt = LYEXT_SUBSTMT_REFERENCE;
+            insubstmt = LYEXT_SUBSTMT_REFERENCE;
             stmt = LY_STMT_REFERENCE;
             break;
         case CONTACT_KEYWORD:
-            instance->insubstmt = LYEXT_SUBSTMT_CONTACT;
+            insubstmt = LYEXT_SUBSTMT_CONTACT;
             stmt = LY_STMT_CONTACT;
             break;
         case ORGANIZATION_KEYWORD:
-            instance->insubstmt = LYEXT_SUBSTMT_ORGANIZATION;
+            insubstmt = LYEXT_SUBSTMT_ORGANIZATION;
             stmt = LY_STMT_ORGANIZATION;
             break;
         case YIN_ELEMENT_KEYWORD:
-            instance->insubstmt = LYEXT_SUBSTMT_YINELEM;
+            insubstmt = LYEXT_SUBSTMT_YINELEM;
             stmt = LY_STMT_YINELEM;
             break;
         case STATUS_KEYWORD:
-            instance->insubstmt = LYEXT_SUBSTMT_STATUS;
+            insubstmt = LYEXT_SUBSTMT_STATUS;
             stmt = LY_STMT_STATUS;
             break;
         case BASE_KEYWORD:
-            instance->insubstmt = LYEXT_SUBSTMT_BASE;
+            insubstmt = LYEXT_SUBSTMT_BASE;
             stmt = LY_STMT_BASE;
             if (backup_type == IDENTITY_KEYWORD) {
-                instance->insubstmt_index = ((struct lys_ident *)actual)->base_size;
+                insubstmt_index = ((struct lys_ident *)actual)->base_size;
             } else if (backup_type == TYPE_KEYWORD) {
-                instance->insubstmt_index = ((struct yang_type *)actual)->type->info.ident.count;
+                insubstmt_index = ((struct yang_type *)actual)->type->info.ident.count;
             }
             break;
         case DEFAULT_KEYWORD:
-            instance->insubstmt = LYEXT_SUBSTMT_DEFAULT;
+            insubstmt = LYEXT_SUBSTMT_DEFAULT;
             stmt = LY_STMT_DEFAULT;
             switch (backup_type) {
             case LEAF_LIST_KEYWORD:
-                instance->insubstmt_index = ((struct lys_node_leaflist *)actual)->dflt_size;
+                insubstmt_index = ((struct lys_node_leaflist *)actual)->dflt_size;
                 break;
             case REFINE_KEYWORD:
-                instance->insubstmt_index = ((struct lys_refine *)actual)->dflt_size;
+                insubstmt_index = ((struct lys_refine *)actual)->dflt_size;
                 break;
             case ADD_KEYWORD:
-                instance->insubstmt_index = ((struct lys_deviate *)actual)->dflt_size;
+                insubstmt_index = ((struct lys_deviate *)actual)->dflt_size;
                 break;
             default:
                 /* nothing changes */
@@ -2335,80 +2333,80 @@ yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext
             }
             break;
         case UNITS_KEYWORD:
-            instance->insubstmt = LYEXT_SUBSTMT_UNITS;
+            insubstmt = LYEXT_SUBSTMT_UNITS;
             stmt = LY_STMT_UNITS;
             break;
         case REQUIRE_INSTANCE_KEYWORD:
-            instance->insubstmt = LYEXT_SUBSTMT_REQINSTANCE;
+            insubstmt = LYEXT_SUBSTMT_REQINSTANCE;
             stmt = LY_STMT_REQINSTANCE;
             break;
         case PATH_KEYWORD:
-            instance->insubstmt = LYEXT_SUBSTMT_PATH;
+            insubstmt = LYEXT_SUBSTMT_PATH;
             stmt = LY_STMT_PATH;
             break;
         case ERROR_MESSAGE_KEYWORD:
-            instance->insubstmt = LYEXT_SUBSTMT_ERRMSG;
+            insubstmt = LYEXT_SUBSTMT_ERRMSG;
             stmt = LY_STMT_ERRMSG;
             break;
         case ERROR_APP_TAG_KEYWORD:
-            instance->insubstmt = LYEXT_SUBSTMT_ERRTAG;
+            insubstmt = LYEXT_SUBSTMT_ERRTAG;
             stmt = LY_STMT_ERRTAG;
             break;
         case MODIFIER_KEYWORD:
-            instance->insubstmt = LYEXT_SUBSTMT_MODIFIER;
+            insubstmt = LYEXT_SUBSTMT_MODIFIER;
             stmt = LY_STMT_MODIFIER;
             break;
         case FRACTION_DIGITS_KEYWORD:
-            instance->insubstmt = LYEXT_SUBSTMT_DIGITS;
+            insubstmt = LYEXT_SUBSTMT_DIGITS;
             stmt = LY_STMT_DIGITS;
             break;
         case VALUE_KEYWORD:
-            instance->insubstmt = LYEXT_SUBSTMT_VALUE;
+            insubstmt = LYEXT_SUBSTMT_VALUE;
             stmt = LY_STMT_VALUE;
             break;
         case POSITION_KEYWORD:
-            instance->insubstmt = LYEXT_SUBSTMT_POSITION;
+            insubstmt = LYEXT_SUBSTMT_POSITION;
             stmt = LY_STMT_POSITION;
             break;
         case PRESENCE_KEYWORD:
-            instance->insubstmt = LYEXT_SUBSTMT_PRESENCE;
+            insubstmt = LYEXT_SUBSTMT_PRESENCE;
             stmt = LY_STMT_PRESENCE;
             break;
         case CONFIG_KEYWORD:
-            instance->insubstmt = LYEXT_SUBSTMT_CONFIG;
+            insubstmt = LYEXT_SUBSTMT_CONFIG;
             stmt = LY_STMT_CONFIG;
             break;
         case MANDATORY_KEYWORD:
-            instance->insubstmt = LYEXT_SUBSTMT_MANDATORY;
+            insubstmt = LYEXT_SUBSTMT_MANDATORY;
             stmt = LY_STMT_MANDATORY;
             break;
         case MIN_ELEMENTS_KEYWORD:
-            instance->insubstmt = LYEXT_SUBSTMT_MIN;
+            insubstmt = LYEXT_SUBSTMT_MIN;
             stmt = LY_STMT_MIN;
             break;
         case MAX_ELEMENTS_KEYWORD:
-            instance->insubstmt = LYEXT_SUBSTMT_MAX;
+            insubstmt = LYEXT_SUBSTMT_MAX;
             stmt = LY_STMT_MAX;
             break;
         case ORDERED_BY_KEYWORD:
-            instance->insubstmt = LYEXT_SUBSTMT_ORDEREDBY;
+            insubstmt = LYEXT_SUBSTMT_ORDEREDBY;
             stmt = LY_STMT_ORDEREDBY;
             break;
         case KEY_KEYWORD:
-            instance->insubstmt = LYEXT_SUBSTMT_KEY;
+            insubstmt = LYEXT_SUBSTMT_KEY;
             stmt = LY_STMT_KEY;
             break;
         case UNIQUE_KEYWORD:
-            instance->insubstmt = LYEXT_SUBSTMT_UNIQUE;
+            insubstmt = LYEXT_SUBSTMT_UNIQUE;
             stmt = LY_STMT_UNIQUE;
             switch (backup_type) {
             case LIST_KEYWORD:
-                instance->insubstmt_index = ((struct lys_node_list *)actual)->unique_size;
+                insubstmt_index = ((struct lys_node_list *)actual)->unique_size;
                 break;
             case ADD_KEYWORD:
             case DELETE_KEYWORD:
             case REPLACE_KEYWORD:
-                instance->insubstmt_index = ((struct lys_deviate *)actual)->unique_size;
+                insubstmt_index = ((struct lys_deviate *)actual)->unique_size;
                 break;
             default:
                 /* nothing changes */
@@ -2420,25 +2418,27 @@ yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext
             return NULL;
         }
     } else {
-        instance = yang_ext_instance(actual, actual_type, is_ext_instance);
-        if (!instance) {
-            return NULL;
-        }
-        instance->insubstmt = LYEXT_SUBSTMT_SELF;
         switch (actual_type) {
         case ARGUMENT_KEYWORD:
-            instance->insubstmt = LYEXT_SUBSTMT_ARGUMENT;
+            insubstmt = LYEXT_SUBSTMT_ARGUMENT;
             stmt = LY_STMT_ARGUMENT;
             break;
         case BELONGS_TO_KEYWORD:
-            instance->insubstmt = LYEXT_SUBSTMT_BELONGSTO;
+            insubstmt = LYEXT_SUBSTMT_BELONGSTO;
             stmt = LY_STMT_BELONGSTO;
             break;
         default:
-            instance->insubstmt = LYEXT_SUBSTMT_SELF;
+            insubstmt = LYEXT_SUBSTMT_SELF;
             break;
         }
     }
+
+    instance = yang_ext_instance(actual, backup_type, is_ext_instance);
+    if (!instance) {
+        return NULL;
+    }
+    instance->insubstmt = insubstmt;
+    instance->insubstmt_index = insubstmt_index;
     instance->flags |= LYEXT_OPT_YANG;
     instance->def = (struct lys_ext *)ext_name;    /* hack for UNRES */
     instance->arg_value = lydict_insert_zc(module->ctx, ext_arg);
