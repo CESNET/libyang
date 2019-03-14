@@ -2417,6 +2417,8 @@ yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext
             LOGINT(module->ctx);
             return NULL;
         }
+
+        instance = yang_ext_instance(actual, backup_type, is_ext_instance);
     } else {
         switch (actual_type) {
         case ARGUMENT_KEYWORD:
@@ -2431,9 +2433,10 @@ yang_read_ext(struct lys_module *module, void *actual, char *ext_name, char *ext
             insubstmt = LYEXT_SUBSTMT_SELF;
             break;
         }
+
+        instance = yang_ext_instance(actual, actual_type, is_ext_instance);
     }
 
-    instance = yang_ext_instance(actual, backup_type, is_ext_instance);
     if (!instance) {
         return NULL;
     }
