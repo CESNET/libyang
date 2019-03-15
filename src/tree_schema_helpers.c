@@ -1215,9 +1215,12 @@ lysp_find_module(struct ly_ctx *ctx, const struct lysp_module *mod)
 }
 
 enum yang_keyword
-match_keyword(const char *data, size_t len)
+match_keyword(const char *data, size_t len, size_t prefix_len)
 {
-/* TODO make this function usable in get_keyword function */
+    if (prefix_len != 0) {
+        return YANG_CUSTOM;
+    }
+
 #define MOVE_IN(DATA, COUNT) (data)+=COUNT;
 #define IF_KEYWORD(STR, LEN, STMT) if (!strncmp((data), STR, LEN)) {MOVE_IN(data, LEN);kw=STMT;}
 #define IF_KEYWORD_PREFIX(STR, LEN) if (!strncmp((data), STR, LEN)) {MOVE_IN(data, LEN);
@@ -1225,7 +1228,7 @@ match_keyword(const char *data, size_t len)
 
     const char *start = data;
     enum yang_keyword kw = YANG_NONE;
-    /* read the keyword itself */
+    /* try to match the keyword itself */
     switch (*data) {
     case 'a':
         MOVE_IN(data, 1);
@@ -1388,24 +1391,14 @@ match_keyword(const char *data, size_t len)
         IF_KEYWORD("ang-version", 11, YANG_YANG_VERSION)
         else IF_KEYWORD("in-element", 10, YANG_YIN_ELEMENT)
         break;
-    case ';':
-        MOVE_IN(data, 1);
-        kw = YANG_SEMICOLON;
-        //goto success;
-        break;
-    case '{':
-        MOVE_IN(data, 1);
-        kw = YANG_LEFT_BRACE;
-        //goto success;
-        break;
-    case '}':
-        MOVE_IN(data, 1);
-        kw = YANG_RIGHT_BRACE;
-        //goto success;
-        break;
     default:
         break;
     }
+
+#undef MOVE_IN
+#undef IF_KEYWORD
+#undef IF_KEYWORD_PREFIX
+#undef IF_KEYWORD_PREFIX_END
 
     if (data - start == (long int)len) {
         return kw;

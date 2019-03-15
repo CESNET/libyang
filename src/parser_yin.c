@@ -23,16 +23,17 @@
 #include "tree_schema_internal.h"
 
 enum YIN_ARGUMENT {
-    YIN_ARG_NONE = 0,
-    YIN_ARG_NAME,
-    YIN_ARG_TARGET_NODE,
-    YIN_ARG_MODULE,
-    YIN_ARG_VALUE,
-    YIN_ARG_TEXT,
-    YIN_ARG_CONDITION,
-    YIN_ARG_URI,
-    YIN_ARG_DATE,
-    YIN_ARG_TAG,
+    YIN_ARG_NONE = 0,      /**< unrecognized argument */
+    YIN_ARG_NAME,          /**< argument name */
+    YIN_ARG_TARGET_NODE,   /**<argument target-node */
+    YIN_ARG_MODULE,        /**< argument module */
+    YIN_ARG_VALUE,         /**< argument value */
+    YIN_ARG_TEXT,          /**< argument text */
+    YIN_ARG_CONDITION,     /**< argument condition */
+    YIN_ARG_URI,           /**< argument uri */
+    YIN_ARG_DATE,          /**< argument data */
+    YIN_ARG_TAG,           /**< argument tag */
+    YIN_ARG_XMLNS,         /**< argument xmlns */
 };
 
 /**
@@ -52,7 +53,6 @@ parse_text_element(struct lyxml_context *xml_ctx, const char **data, const char 
 
     const char *prefix, *name;
     size_t prefix_len, name_len;
-
 
     if (xml_ctx->status == LYXML_ELEM_CONTENT) {
         ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
@@ -85,6 +85,10 @@ match_argument_name(const char *name, size_t len)
 #define IF_ARG_PREFIX_END }
 
     switch (*name) {
+    case 'x':
+        already_read += 1;
+        IF_ARG("mlns", 4, YIN_ARG_XMLNS);
+        break;
     case 'c':
         already_read += 1;
         IF_ARG("ondition", 8, YIN_ARG_CONDITION);
@@ -130,7 +134,34 @@ match_argument_name(const char *name, size_t len)
         arg = YIN_ARG_NONE;
     }
 
+#undef IF_ARG
+#undef IF_ARG_PREFIX
+#undef IF_ARG_PREFIX_END
+
     return arg;
+}
+
+/**
+ * @brief parse xmlns statement
+ *
+ * @param[in] xml_ctx XML parser context.
+ * @param[in, out] data Data to reda from.
+ * @param[in] prefix
+ */
+LY_ERR
+parse_xmlns(struct lyxml_context *xml_ctx, const char **data, const char *prefix, size_t prefix_len, char *element)
+{
+    char *buf = NULL, *out = NULL;
+    size_t buf_len = 0, out_len = 0;
+    int dynamic = 0;
+    LY_ERR ret = LY_SUCCESS;
+
+    ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
+    LY_CHECK_RET(ret != LY_SUCCESS, ret);
+    LY_CHECK_ERR_RET(out_len == 0, LOGVAL_YANG(xml_ctx, LYVE_SYNTAX_YIN, "Missing value of xmlns attribute"), LY_EEXIST);
+    lyxml_ns_add(xml_ctx, element, prefix, prefix_len, out, out_len);
+
+    return LY_SUCCESS;
 }
 
 // LY_ERR
@@ -300,7 +331,7 @@ yin_parse_import(struct lyxml_context *xml_ctx, const char *module_prefix, const
 
 
     while ((ret = lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len) == LY_SUCCESS && name != NULL)) {
-        kw = match_keyword(name, name_len);
+        kw = match_keyword(name, name_len, prefix_len);
         switch (kw) {
         case YANG_PREFIX:
             /* TODO parse prefix */
@@ -340,29 +371,54 @@ parse_mod(struct lyxml_context *xml_ctx, const char **data, struct lysp_module *
     const char *prefix, *name;
     size_t prefix_len, name_len;
     enum yang_module_stmt mod_stmt = Y_MOD_MODULE_HEADER;
+    enum YIN_ARGUMENT arg = YIN_ARG_NONE;
 
     char *buf = NULL, *out = NULL;
     size_t buf_len = 0, out_len = 0;
     int dynamic;
 
-    /* check if module has argument "name" */
-    ret = lyxml_get_attribute(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
-    LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), LY_EMEM);
-    if (match_argument_name(name, name_len) != YIN_ARG_NAME) {
-        LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Invalid argument name \"%s\", expected \"name\".", name);
+    /* parse module attributes */
+    while (xml_ctx->status == LYXML_ATTRIBUTE) {
+        ret = lyxml_get_attribute(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
+        LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), LY_EMEM);
+
+        arg = match_argument_name(name, name_len);
+
+        switch (arg) {
+        case YIN_ARG_XMLNS:
+            parse_xmlns(xml_ctx, data, prefix, prefix_len, "module");
+            break;
+        case YIN_ARG_NAME:
+            /* check for multiple definitions of name */
+            LY_CHECK_ERR_RET((*mod)->mod->name, LOGVAL_YANG(xml_ctx, LYVE_SYNTAX_YIN, "Duplicit definition of module name \"%s\"", (*mod)->mod->name), LY_EEXIST);
+
+            /* read module name */
+            if (xml_ctx->status != LYXML_ATTR_CONTENT) {
+                LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Missing value of argument \"name\".");
+            }
+            ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
+            LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), LY_EMEM);
+            (*mod)->mod->name = lydict_insert(xml_ctx->ctx, out, out_len);
+            LY_CHECK_ERR_RET(!(*mod)->mod->name, LOGMEM(xml_ctx->ctx), LY_EMEM);
+            break;
+        default:
+            /* unrecognized attribute, still can be namespace definition eg. xmlns:foo=.... */
+            if (match_argument_name(prefix, prefix_len) == YIN_ARG_XMLNS) {
+                /* in this case prefix of namespace is actually name of attribute */
+                parse_xmlns(xml_ctx, data, name, name_len, "module");
+            } else {
+                /* unrecognized or unexpected attribute */
+                LOGERR(xml_ctx->ctx, LY_EDENIED, "Invalid argument in module element");
+                return LY_EVALID;
+            }
+            break;
+        }
     }
 
-    /* read module name */
-    if (xml_ctx->status != LYXML_ATTR_CONTENT) {
-        LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Missing value of argument \"name\"");
-    }
-    ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
-    LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), LY_EMEM);
-    (*mod)->mod->name = lydict_insert(xml_ctx->ctx, out, out_len);
-    LY_CHECK_ERR_RET(!(*mod)->mod->name, LOGMEM(xml_ctx->ctx), LY_EMEM);
+    LY_CHECK_ERR_RET(!(*mod)->mod->name, LOGVAL_YANG(xml_ctx, LYVE_SYNTAX_YIN, "Missing argument name of a module", (*mod)->mod->name), LY_ENOTFOUND);
 
     ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
-    LY_CHECK_ERR_RET(ret != LY_EINVAL, LOGVAL_YANG(xml_ctx, LYVE_SYNTAX_YIN, "Expected new xml element after module element"), LY_EINVAL);
+    LY_CHECK_ERR_RET(ret != LY_EINVAL, LOGVAL_YANG(xml_ctx, LYVE_SYNTAX_YIN, "Expected new xml element after module element."), LY_EINVAL);
 
     /* loop over all elements and parse them */
     while (xml_ctx->status != LYXML_END) {
@@ -427,7 +483,7 @@ parse_mod(struct lyxml_context *xml_ctx, const char **data, struct lysp_module *
         LY_CHECK_RET(ret != LY_SUCCESS, LY_EMEM);
 
         if (name) {
-            kw = match_keyword(name, name_len);
+            kw = match_keyword(name, name_len, prefix_len);
             switch (kw) {
 
             /* module header */
@@ -436,8 +492,6 @@ parse_mod(struct lyxml_context *xml_ctx, const char **data, struct lysp_module *
                 break;
             case YANG_PREFIX:
                 LY_CHECK_RET(parse_prefix(xml_ctx, data, mod));
-                /* TODO change lysp_check_prefix function to work with ctx and not parser_ctx */
-                //LY_CHECK_RET(lysp_check_prefix(&xml_ctx->ctx, *mod_p, &((*mod_p)->prefix)), LY_EVALID);
                 break;
 
             /* linkage */
@@ -460,12 +514,13 @@ parse_mod(struct lyxml_context *xml_ctx, const char **data, struct lysp_module *
                 break;
 
             default:
-                /* error */
+                return LY_EVALID;
                 break;
             }
         }
     }
 
+    lyxml_ns_rm(xml_ctx, "module");
     return ret;
 }
 
@@ -496,7 +551,7 @@ yin_parse_submodule(struct ly_ctx *ctx, const char *data, struct lysp_submodule 
     /* check submodule */
     ret = lyxml_get_element(&xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-    kw = match_keyword(name, name_len);
+    kw = match_keyword(name, name_len, prefix_len);
     if (kw == YANG_MODULE) {
         LOGERR(ctx, LY_EDENIED, "Input data contains module in situation when a submodule is expected.");
         ret = LY_EINVAL;
@@ -556,7 +611,7 @@ yin_parse_module(struct ly_ctx *ctx, const char *data, struct lys_module *mod)
     /* check submodule */
     ret = lyxml_get_element(&xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-    kw = match_keyword(name, name_len);
+    kw = match_keyword(name, name_len, prefix_len);
     if (kw == YANG_SUBMODULE) {
         LOGERR(ctx, LY_EDENIED, "Input data contains submodule which cannot be parsed directly without its main module.");
         ret = LY_EINVAL;

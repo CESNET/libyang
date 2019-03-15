@@ -578,5 +578,5 @@ LY_ERR ly_ctx_module_implement_internal(struct ly_ctx *ctx, struct lys_module *m
 /**
  * @brief match yang keyword
  */
-enum yang_keyword match_keyword(const char *data, size_t len);
+enum yang_keyword match_keyword(const char *data, size_t len, size_t prefix_len);
 #endif /* LY_TREE_SCHEMA_INTERNAL_H_ */
