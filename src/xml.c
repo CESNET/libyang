@@ -641,7 +641,7 @@ success:
 }
 
 LY_ERR
-lyxml_ns_add(struct lyxml_context *context, const char *element_name, const char *prefix, size_t prefix_len, char *uri)
+lyxml_ns_add(struct lyxml_context *context, const char *element_name, const char *prefix, size_t prefix_len, char *uri, size_t uri_len)
 {
     struct lyxml_ns *ns;
 
@@ -649,15 +649,17 @@ lyxml_ns_add(struct lyxml_context *context, const char *element_name, const char
     LY_CHECK_ERR_RET(!ns, LOGMEM(context->ctx), LY_EMEM);
 
     ns->element = element_name;
-    ns->uri = uri;
+    ns->uri = strndup(uri, uri_len);
+    LY_CHECK_ERR_RET(!ns->uri, LOGMEM(context->ctx); free(ns), LY_EMEM);
+
     if (prefix) {
         ns->prefix = strndup(prefix, prefix_len);
-        LY_CHECK_ERR_RET(!ns->prefix, LOGMEM(context->ctx); free(ns), LY_EMEM);
+        LY_CHECK_ERR_RET(!ns->prefix, LOGMEM(context->ctx); free(ns->uri); free(ns), LY_EMEM);
     } else {
         ns->prefix = NULL;
     }
 
-    LY_CHECK_ERR_RET(ly_set_add(&context->ns, ns, LY_SET_OPT_USEASLIST) == -1, free(ns->prefix), LY_EMEM);
+    LY_CHECK_ERR_RET(ly_set_add(&context->ns, ns, LY_SET_OPT_USEASLIST) == -1, free(ns->prefix); free(ns->uri); free(ns), LY_EMEM);
     return LY_SUCCESS;
 }
 

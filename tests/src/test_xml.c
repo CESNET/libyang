@@ -405,9 +405,9 @@ test_ns(void **state)
 
     e1 = "element1";
     e2 = "element2";
-    assert_int_equal(LY_SUCCESS, lyxml_ns_add(&ctx, e1, NULL, 0, strdup("urn:default")));
-    assert_int_equal(LY_SUCCESS, lyxml_ns_add(&ctx, e1, "nc", 2, strdup("urn:nc1")));
-    assert_int_equal(LY_SUCCESS, lyxml_ns_add(&ctx, e2, "nc", 2, strdup("urn:nc2")));
+    assert_int_equal(LY_SUCCESS, lyxml_ns_add(&ctx, e1, NULL, 0, "urn:default", strlen("urn:default")));
+    assert_int_equal(LY_SUCCESS, lyxml_ns_add(&ctx, e1, "nc", 2, "urn:nc1", strlen("urn:nc1")));
+    assert_int_equal(LY_SUCCESS, lyxml_ns_add(&ctx, e2, "nc", 2, "urn:nc2", strlen("urn:nc2")));
     assert_int_equal(3, (&ctx)->ns.count);
     assert_int_not_equal(0, (&ctx)->ns.size);
 

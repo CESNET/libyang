@@ -172,9 +172,10 @@ LY_ERR lyxml_get_string(struct lyxml_context *context, const char **input, char 
  * @param[in] prefix_len Length of the prefix string (since it is not NULL-terminated when returned from lyxml_get_attribute()).
  * @param[in] uri Namespace URI (value) to store. Value can be obtained via lyxml_get_string() and caller is not supposed to
  * work with the pointer when the function succeeds.
+ * @param[in] uri_len Lenght of the URI string (since it is not NULL-terminated when returned from lyxml_get_string())
  * @return LY_ERR values.
  */
-LY_ERR lyxml_ns_add(struct lyxml_context *context, const char *element_name, const char *prefix, size_t prefix_len, char *uri);
+LY_ERR lyxml_ns_add(struct lyxml_context *context, const char *element_name, const char *prefix, size_t prefix_len, char *uri, size_t uri_len);
 
 /**
  * @brief Get a namespace record for the given prefix in the current context.
