@@ -5407,7 +5407,11 @@ _lyd_dup_node_common(struct lyd_node *new_node, const struct lyd_node *orig, str
     new_node->parent = NULL;
     new_node->validity = ly_new_node_validity(new_node->schema);
     new_node->dflt = orig->dflt;
-    new_node->when_status = orig->when_status & LYD_WHEN;
+    if (options & LYD_DUP_OPT_WITH_WHEN) {
+        new_node->when_status = orig->when_status;
+    } else {
+        new_node->when_status = orig->when_status & LYD_WHEN;
+    }
 #ifdef LY_ENABLED_CACHE
     /* just copy the hash, it will not change */
     if ((new_node->schema->nodetype != LYS_LIST) || lyd_list_has_keys(new_node)) {

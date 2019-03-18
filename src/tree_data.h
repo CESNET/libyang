@@ -909,6 +909,10 @@ unsigned int lyd_list_pos(const struct lyd_node *node);
                                            Keys are also duplicated for lists. Return value does not change! */
 #define LYD_DUP_OPT_WITH_KEYS    0x08 /**< If a lits key is being duplicated non-recursively, duplicate its keys.
                                            Ignored if used with #LYD_DUP_OPT_RECURSIVE. Return value does not change! */
+#define LYD_DUP_OPT_WITH_WHEN    0x10 /**< Also copy any when evaluation state flags. This is useful in case the copied
+                                           nodes are actually still part of the same datastore meaning no dependency data
+                                           could have changed. Otherwise nothing is assumed about the copied node when
+                                           state and it is evaluated from scratch during validation. */
 
 /** @} dupoptions */
 
