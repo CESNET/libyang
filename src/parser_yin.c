@@ -37,36 +37,6 @@ enum YIN_ARGUMENT {
 };
 
 /**
- * @brief Parse content of whole element as text.
- *
- * @param[in] xml_ctx Xml context.
- * @param[in] data Data to read from.
- * @param[out] value Where content of element should be stored.
- */
-LY_ERR
-parse_text_element(struct lyxml_context *xml_ctx, const char **data, const char **value)
-{
-    LY_ERR ret = LY_SUCCESS;
-    char *buf = NULL, *out = NULL;
-    size_t buf_len = 0, out_len = 0;
-    int dynamic;
-
-    const char *prefix, *name;
-    size_t prefix_len, name_len;
-
-    if (xml_ctx->status == LYXML_ELEM_CONTENT) {
-        ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
-        LY_CHECK_RET(ret);
-        *value = lydict_insert(xml_ctx->ctx, out, out_len);
-        LY_CHECK_ERR_RET(!(*value), LOGMEM(xml_ctx->ctx), LY_EMEM);
-    }
-
-    lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
-
-    return 0;
-}
-
-/**
  * @brief Match argument name.
  *
  * @param[in] name String representing name.
@@ -164,6 +134,62 @@ parse_xmlns(struct lyxml_context *xml_ctx, const char **data, const char *prefix
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Parse content of whole element as text.
+ *
+ * @param[in] xml_ctx Xml context.
+ * @param[in] data Data to read from.
+ * @param[out] value Where content of element should be stored.
+ */
+LY_ERR
+parse_text_element(struct lyxml_context *xml_ctx, const char **data, const char **value)
+{
+    LY_ERR ret = LY_SUCCESS;
+    char *buf = NULL, *out = NULL;
+    size_t buf_len = 0, out_len = 0;
+    int dynamic;
+    enum YIN_ARGUMENT arg = YIN_ARG_NONE;
+
+    const char *prefix, *name;
+    size_t prefix_len, name_len;
+
+    /* parse module attributes */
+    while (xml_ctx->status == LYXML_ATTRIBUTE) {
+        ret = lyxml_get_attribute(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
+        LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), LY_EMEM);
+
+        arg = match_argument_name(name, name_len);
+        if (arg) {
+            parse_xmlns(xml_ctx, data, prefix, prefix_len, "module");
+        } else {
+            /* unrecognized attribute, still can be namespace definition eg. xmlns:foo=.... */
+            if (match_argument_name(prefix, prefix_len) == YIN_ARG_XMLNS) {
+                /* in this case prefix of namespace is actually name of attribute */
+                parse_xmlns(xml_ctx, data, name, name_len, "module");
+            } else {
+                /* unrecognized or unexpected attribute */
+                LOGERR(xml_ctx->ctx, LY_EDENIED, "Invalid argument in module element");
+                return LY_EVALID;
+            }
+            break;
+        }
+    }
+
+
+    LY_CHECK_RET(xml_ctx->status != LYXML_ELEM_CONTENT, LY_EVALID);
+
+    if (xml_ctx->status == LYXML_ELEM_CONTENT) {
+        ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
+        LY_CHECK_RET(ret);
+        *value = lydict_insert(xml_ctx->ctx, out, out_len);
+        LY_CHECK_ERR_RET(!(*value), LOGMEM(xml_ctx->ctx), LY_EMEM);
+    }
+
+    lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
+
+    return 0;
+}
+
 // LY_ERR
 // parser_belongs_to(struct lyxml_context *xml_ctx, const char **data, const char **belongsto, const char **prefix, struct lysp_ext **extensions)
 // {
@@ -228,7 +254,7 @@ parse_xmlns(struct lyxml_context *xml_ctx, const char **data, const char *prefix
  * @return LY_ERR values.
  */
 LY_ERR
-parse_namespace(struct lyxml_context *xml_ctx, const char **data, struct lysp_module **mod_p)
+parse_namespace(struct lyxml_context *xml_ctx, const char **data, struct lysp_module **mod)
 {
     LY_ERR ret = LY_SUCCESS;
     const char *prefix, *name;
@@ -237,19 +263,43 @@ parse_namespace(struct lyxml_context *xml_ctx, const char **data, struct lysp_mo
     char *buf = NULL, *out = NULL;
     size_t buf_len = 0, out_len = 0;
     int dynamic;
+    enum YIN_ARGUMENT arg = YIN_ARG_NONE;
 
-    /* check if namespace has argument uri */
-    ret = lyxml_get_attribute(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
-    LY_CHECK_RET(ret);
-    if (match_argument_name(name, name_len) != YIN_ARG_URI) {
-        LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Invalid argument name \"%s\", expected \"uri\".", name);
-        return LY_EVALID;
+    /* parse namespace attributes */
+    while (xml_ctx->status == LYXML_ATTRIBUTE) {
+        ret = lyxml_get_attribute(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
+        LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), LY_EMEM);
+
+        arg = match_argument_name(name, name_len);
+
+        switch (arg) {
+        case YIN_ARG_XMLNS:
+            parse_xmlns(xml_ctx, data, prefix, prefix_len, "module");
+            break;
+        case YIN_ARG_URI:
+            LY_CHECK_RET(ret);
+            if (match_argument_name(name, name_len) != YIN_ARG_URI) {
+                LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Invalid argument name \"%s\", expected \"uri\".", name);
+                return LY_EVALID;
+            }
+            ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
+            LY_CHECK_RET(ret);
+            (*mod)->mod->ns = lydict_insert(xml_ctx->ctx, out, out_len);
+            LY_CHECK_ERR_RET(!(*mod)->mod->ns, LOGMEM(xml_ctx->ctx), LY_EMEM);
+            break;
+        default:
+            /* unrecognized attribute, still can be namespace definition eg. xmlns:foo=.... */
+            if (match_argument_name(prefix, prefix_len) == YIN_ARG_XMLNS) {
+                /* in this case prefix of namespace is actually name of attribute */
+                parse_xmlns(xml_ctx, data, name, name_len, "module");
+            } else {
+                /* unrecognized or unexpected attribute */
+                LOGERR(xml_ctx->ctx, LY_EDENIED, "Invalid argument in module element");
+                return LY_EVALID;
+            }
+            break;
+        }
     }
-
-    ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
-    LY_CHECK_RET(ret);
-    (*mod_p)->mod->ns = lydict_insert(xml_ctx->ctx, out, out_len);
-    LY_CHECK_ERR_RET(!(*mod_p)->mod->ns, LOGMEM(xml_ctx->ctx), LY_EMEM);
 
     /* namespace can have only one argument */
     if (xml_ctx->status != LYXML_ELEMENT) {

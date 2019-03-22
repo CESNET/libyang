@@ -185,14 +185,14 @@ test_meta(void **state)
     struct state *st = *state;
 
     ret = yin_parse_module(st->ctx,"<module name=\"example-foo\">\
-                                        <organization>organization...</organization>\
+                                        <organization xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">organiz&lt;ation...</organization>\
                                         <contact>contact...</contact>\
                                         <description>description...</description>\
                                         <reference>reference...</reference>\
                                     </module>", st->mod);
 
     assert_int_equal(ret, LY_SUCCESS);
-    assert_string_equal(st->mod->parsed->mod->org, "organization...");
+    assert_string_equal(st->mod->parsed->mod->org, "organiz<ation...");
     assert_string_equal(st->mod->parsed->mod->contact, "contact...");
     assert_string_equal(st->mod->parsed->mod->dsc, "description...");
     assert_string_equal(st->mod->parsed->mod->ref, "reference...");
