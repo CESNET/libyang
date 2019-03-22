@@ -138,11 +138,12 @@ parse_xmlns(struct lyxml_context *xml_ctx, const char **data, const char *prefix
  * @brief Parse content of whole element as text.
  *
  * @param[in] xml_ctx Xml context.
+ * @param[in] element_name Name of element, name is necesary to remove xmlns definitions at the end of element
  * @param[in] data Data to read from.
  * @param[out] value Where content of element should be stored.
  */
 LY_ERR
-parse_text_element(struct lyxml_context *xml_ctx, const char **data, const char **value)
+parse_text_element(struct lyxml_context *xml_ctx, char *element_name, const char **data, const char **value)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf = NULL, *out = NULL;
@@ -175,7 +176,6 @@ parse_text_element(struct lyxml_context *xml_ctx, const char **data, const char 
         }
     }
 
-
     LY_CHECK_RET(xml_ctx->status != LYXML_ELEM_CONTENT, LY_EVALID);
 
     if (xml_ctx->status == LYXML_ELEM_CONTENT) {
@@ -186,8 +186,8 @@ parse_text_element(struct lyxml_context *xml_ctx, const char **data, const char 
     }
 
     lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
-
-    return 0;
+    lyxml_ns_rm(xml_ctx, element_name);
+    return LY_SUCCESS;
 }
 
 // LY_ERR
@@ -551,16 +551,16 @@ parse_mod(struct lyxml_context *xml_ctx, const char **data, struct lysp_module *
 
             /* meta */
             case YANG_ORGANIZATION:
-                LY_CHECK_RET(parse_text_element(xml_ctx, data, &(*mod)->mod->org));
+                LY_CHECK_RET(parse_text_element(xml_ctx, "organization", data, &(*mod)->mod->org));
                 break;
             case YANG_CONTACT:
-                LY_CHECK_RET(parse_text_element(xml_ctx, data, &(*mod)->mod->contact));
+                LY_CHECK_RET(parse_text_element(xml_ctx, "contact", data, &(*mod)->mod->contact));
                 break;
             case YANG_DESCRIPTION:
-                LY_CHECK_RET(parse_text_element(xml_ctx, data, &(*mod)->mod->dsc));
+                LY_CHECK_RET(parse_text_element(xml_ctx, "description", data, &(*mod)->mod->dsc));
                 break;
             case YANG_REFERENCE:
-                LY_CHECK_RET(parse_text_element(xml_ctx, data, &(*mod)->mod->ref));
+                LY_CHECK_RET(parse_text_element(xml_ctx, "reference", data, &(*mod)->mod->ref));
                 break;
 
             default:
