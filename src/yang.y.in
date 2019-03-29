@@ -613,7 +613,7 @@ revision_date_stmt: REVISION_DATE_KEYWORD sep revision_date_arg stmtend
 
 belongs_to_arg_str: identifier_arg_str { $$ = actual_type;
                                          if (is_ext_instance) {
-                                           if (yang_read_extcomplex_str(trg, ext_instance, "belongs-to", ext_name, s,
+                                           if (yang_read_extcomplex_str(trg, ext_instance, "belongs-to", ext_name, &s,
                                                                         0, LY_STMT_BELONGSTO)) {
                                              YYABORT;
                                            }
@@ -638,7 +638,7 @@ belongs_to_stmt: BELONGS_TO_KEYWORD sep belongs_to_arg_str
                  '{' stmtsep
                      prefix_stmt
                  '}' { if (is_ext_instance) {
-                         if (yang_read_extcomplex_str(trg, ext_instance, "prefix", "belongs-to", s,
+                         if (yang_read_extcomplex_str(trg, ext_instance, "prefix", "belongs-to", &s,
                                                       LY_STMT_BELONGSTO, LY_STMT_PREFIX)) {
                            YYABORT;
                          }
@@ -909,7 +909,7 @@ extension_opt_stmt: @EMPTYDIR@
 
 argument_str: identifier_arg_str { $$ = actual_type;
                                    if (is_ext_instance) {
-                                     if (yang_read_extcomplex_str(trg, ext_instance, "argument", ext_name, s,
+                                     if (yang_read_extcomplex_str(trg, ext_instance, "argument", ext_name, &s,
                                                                   0, LY_STMT_ARGUMENT)) {
                                        YYABORT;
                                      }
@@ -4545,77 +4545,77 @@ ext_substatements: @EMPTYDIR@ { actual_type = EXTENSION_INSTANCE;
                                 $$ = 0;
                               }
   |  ext_substatements belongs_to_stmt stmtsep
-  |  ext_substatements prefix_stmt { if (yang_read_extcomplex_str(trg, ext_instance, "prefix", ext_name, s,
+  |  ext_substatements prefix_stmt { if (yang_read_extcomplex_str(trg, ext_instance, "prefix", ext_name, &s,
                                                                   0, LY_STMT_PREFIX)) {
                                        YYABORT;
                                      }
                                    }
-  |  ext_substatements description_stmt { if (yang_read_extcomplex_str(trg, ext_instance, "description", ext_name, s,
+  |  ext_substatements description_stmt { if (yang_read_extcomplex_str(trg, ext_instance, "description", ext_name, &s,
                                                                        0, LY_STMT_DESCRIPTION)) {
                                             YYABORT;
                                           }
                                         }
-  |  ext_substatements reference_stmt { if (yang_read_extcomplex_str(trg, ext_instance, "reference", ext_name, s,
+  |  ext_substatements reference_stmt { if (yang_read_extcomplex_str(trg, ext_instance, "reference", ext_name, &s,
                                                                      0, LY_STMT_REFERENCE)) {
                                           YYABORT;
                                         }
                                       }
-  |  ext_substatements units_stmt { if (yang_read_extcomplex_str(trg, ext_instance, "units", ext_name, s,
+  |  ext_substatements units_stmt { if (yang_read_extcomplex_str(trg, ext_instance, "units", ext_name, &s,
                                                                      0, LY_STMT_UNITS)) {
                                       YYABORT;
                                     }
                                   }
-  |  ext_substatements base_stmt { if (yang_read_extcomplex_str(trg, ext_instance, "base", ext_name, s,
+  |  ext_substatements base_stmt { if (yang_read_extcomplex_str(trg, ext_instance, "base", ext_name, &s,
                                                                 0, LY_STMT_BASE)) {
                                      YYABORT;
                                    }
                                  }
-  |  ext_substatements contact_stmt { if (yang_read_extcomplex_str(trg, ext_instance, "contact", ext_name, s,
+  |  ext_substatements contact_stmt { if (yang_read_extcomplex_str(trg, ext_instance, "contact", ext_name, &s,
                                                                      0, LY_STMT_CONTACT)) {
                                         YYABORT;
                                       }
                                     }
-  |  ext_substatements default_stmt { if (yang_read_extcomplex_str(trg, ext_instance, "default", ext_name, s,
+  |  ext_substatements default_stmt { if (yang_read_extcomplex_str(trg, ext_instance, "default", ext_name, &s,
                                                                      0, LY_STMT_DEFAULT)) {
                                         YYABORT;
                                       }
                                     }
-  |  ext_substatements error_message_stmt { if (yang_read_extcomplex_str(trg, ext_instance, "error-message", ext_name, s,
+  |  ext_substatements error_message_stmt { if (yang_read_extcomplex_str(trg, ext_instance, "error-message", ext_name, &s,
                                                                          0, LY_STMT_ERRMSG)) {
                                               YYABORT;
                                             }
                                           }
-  |  ext_substatements error_app_tag_stmt { if (yang_read_extcomplex_str(trg, ext_instance, "error-app-tag", ext_name, s,
+  |  ext_substatements error_app_tag_stmt { if (yang_read_extcomplex_str(trg, ext_instance, "error-app-tag", ext_name, &s,
                                                                          0, LY_STMT_ERRTAG)) {
                                               YYABORT;
                                             }
                                           }
-  |  ext_substatements key_stmt { if (yang_read_extcomplex_str(trg, ext_instance, "key", ext_name, s,
+  |  ext_substatements key_stmt { if (yang_read_extcomplex_str(trg, ext_instance, "key", ext_name, &s,
                                                                0, LY_STMT_KEY)) {
                                     YYABORT;
                                   }
                                 }
-  |  ext_substatements namespace_stmt { if (yang_read_extcomplex_str(trg, ext_instance, "namespace", ext_name, s,
+  |  ext_substatements namespace_stmt { if (yang_read_extcomplex_str(trg, ext_instance, "namespace", ext_name, &s,
                                                                      0, LY_STMT_NAMESPACE)) {
                                           YYABORT;
                                         }
                                       }
-  |  ext_substatements organization_stmt { if (yang_read_extcomplex_str(trg, ext_instance, "organization", ext_name, s,
+  |  ext_substatements organization_stmt { if (yang_read_extcomplex_str(trg, ext_instance, "organization", ext_name, &s,
                                                                         0, LY_STMT_ORGANIZATION)) {
                                              YYABORT;
                                            }
                                          }
-  |  ext_substatements path_stmt { if (yang_read_extcomplex_str(trg, ext_instance, "path", ext_name, s,
+  |  ext_substatements path_stmt { if (yang_read_extcomplex_str(trg, ext_instance, "path", ext_name, &s,
                                                                 0, LY_STMT_PATH)) {
                                      YYABORT;
                                    }
                                  }
-  |  ext_substatements presence_stmt { if (yang_read_extcomplex_str(trg, ext_instance, "presence", ext_name, s,
+  |  ext_substatements presence_stmt { if (yang_read_extcomplex_str(trg, ext_instance, "presence", ext_name, &s,
                                                                     0, LY_STMT_PRESENCE)) {
                                          YYABORT;
                                        }
                                      }
-  |  ext_substatements revision_date_stmt { if (yang_read_extcomplex_str(trg, ext_instance, "revision-date", ext_name, s,
+  |  ext_substatements revision_date_stmt { if (yang_read_extcomplex_str(trg, ext_instance, "revision-date", ext_name, &s,
                                                                          0, LY_STMT_REVISIONDATE)) {
                                               YYABORT;
                                             }

@@ -3435,7 +3435,7 @@ yyreduce:
 
     { (yyval.token) = actual_type;
                                          if (is_ext_instance) {
-                                           if (yang_read_extcomplex_str(trg, ext_instance, "belongs-to", ext_name, s,
+                                           if (yang_read_extcomplex_str(trg, ext_instance, "belongs-to", ext_name, &s,
                                                                         0, LY_STMT_BELONGSTO)) {
                                              YYABORT;
                                            }
@@ -3461,7 +3461,7 @@ yyreduce:
   case 48:
 
     { if (is_ext_instance) {
-                         if (yang_read_extcomplex_str(trg, ext_instance, "prefix", "belongs-to", s,
+                         if (yang_read_extcomplex_str(trg, ext_instance, "prefix", "belongs-to", &s,
                                                       LY_STMT_BELONGSTO, LY_STMT_PREFIX)) {
                            YYABORT;
                          }
@@ -3802,7 +3802,7 @@ yyreduce:
 
     { (yyval.token) = actual_type;
                                    if (is_ext_instance) {
-                                     if (yang_read_extcomplex_str(trg, ext_instance, "argument", ext_name, s,
+                                     if (yang_read_extcomplex_str(trg, ext_instance, "argument", ext_name, &s,
                                                                   0, LY_STMT_ARGUMENT)) {
                                        YYABORT;
                                      }
@@ -8442,7 +8442,7 @@ yyreduce:
 
   case 792:
 
-    { if (yang_read_extcomplex_str(trg, ext_instance, "prefix", ext_name, s,
+    { if (yang_read_extcomplex_str(trg, ext_instance, "prefix", ext_name, &s,
                                                                   0, LY_STMT_PREFIX)) {
                                        YYABORT;
                                      }
@@ -8452,7 +8452,7 @@ yyreduce:
 
   case 793:
 
-    { if (yang_read_extcomplex_str(trg, ext_instance, "description", ext_name, s,
+    { if (yang_read_extcomplex_str(trg, ext_instance, "description", ext_name, &s,
                                                                        0, LY_STMT_DESCRIPTION)) {
                                             YYABORT;
                                           }
@@ -8462,7 +8462,7 @@ yyreduce:
 
   case 794:
 
-    { if (yang_read_extcomplex_str(trg, ext_instance, "reference", ext_name, s,
+    { if (yang_read_extcomplex_str(trg, ext_instance, "reference", ext_name, &s,
                                                                      0, LY_STMT_REFERENCE)) {
                                           YYABORT;
                                         }
@@ -8472,7 +8472,7 @@ yyreduce:
 
   case 795:
 
-    { if (yang_read_extcomplex_str(trg, ext_instance, "units", ext_name, s,
+    { if (yang_read_extcomplex_str(trg, ext_instance, "units", ext_name, &s,
                                                                      0, LY_STMT_UNITS)) {
                                       YYABORT;
                                     }
@@ -8482,7 +8482,7 @@ yyreduce:
 
   case 796:
 
-    { if (yang_read_extcomplex_str(trg, ext_instance, "base", ext_name, s,
+    { if (yang_read_extcomplex_str(trg, ext_instance, "base", ext_name, &s,
                                                                 0, LY_STMT_BASE)) {
                                      YYABORT;
                                    }
@@ -8492,7 +8492,7 @@ yyreduce:
 
   case 797:
 
-    { if (yang_read_extcomplex_str(trg, ext_instance, "contact", ext_name, s,
+    { if (yang_read_extcomplex_str(trg, ext_instance, "contact", ext_name, &s,
                                                                      0, LY_STMT_CONTACT)) {
                                         YYABORT;
                                       }
@@ -8502,7 +8502,7 @@ yyreduce:
 
   case 798:
 
-    { if (yang_read_extcomplex_str(trg, ext_instance, "default", ext_name, s,
+    { if (yang_read_extcomplex_str(trg, ext_instance, "default", ext_name, &s,
                                                                      0, LY_STMT_DEFAULT)) {
                                         YYABORT;
                                       }
@@ -8512,7 +8512,7 @@ yyreduce:
 
   case 799:
 
-    { if (yang_read_extcomplex_str(trg, ext_instance, "error-message", ext_name, s,
+    { if (yang_read_extcomplex_str(trg, ext_instance, "error-message", ext_name, &s,
                                                                          0, LY_STMT_ERRMSG)) {
                                               YYABORT;
                                             }
@@ -8522,7 +8522,7 @@ yyreduce:
 
   case 800:
 
-    { if (yang_read_extcomplex_str(trg, ext_instance, "error-app-tag", ext_name, s,
+    { if (yang_read_extcomplex_str(trg, ext_instance, "error-app-tag", ext_name, &s,
                                                                          0, LY_STMT_ERRTAG)) {
                                               YYABORT;
                                             }
@@ -8532,7 +8532,7 @@ yyreduce:
 
   case 801:
 
-    { if (yang_read_extcomplex_str(trg, ext_instance, "key", ext_name, s,
+    { if (yang_read_extcomplex_str(trg, ext_instance, "key", ext_name, &s,
                                                                0, LY_STMT_KEY)) {
                                     YYABORT;
                                   }
@@ -8542,7 +8542,7 @@ yyreduce:
 
   case 802:
 
-    { if (yang_read_extcomplex_str(trg, ext_instance, "namespace", ext_name, s,
+    { if (yang_read_extcomplex_str(trg, ext_instance, "namespace", ext_name, &s,
                                                                      0, LY_STMT_NAMESPACE)) {
                                           YYABORT;
                                         }
@@ -8552,7 +8552,7 @@ yyreduce:
 
   case 803:
 
-    { if (yang_read_extcomplex_str(trg, ext_instance, "organization", ext_name, s,
+    { if (yang_read_extcomplex_str(trg, ext_instance, "organization", ext_name, &s,
                                                                         0, LY_STMT_ORGANIZATION)) {
                                              YYABORT;
                                            }
@@ -8562,7 +8562,7 @@ yyreduce:
 
   case 804:
 
-    { if (yang_read_extcomplex_str(trg, ext_instance, "path", ext_name, s,
+    { if (yang_read_extcomplex_str(trg, ext_instance, "path", ext_name, &s,
                                                                 0, LY_STMT_PATH)) {
                                      YYABORT;
                                    }
@@ -8572,7 +8572,7 @@ yyreduce:
 
   case 805:
 
-    { if (yang_read_extcomplex_str(trg, ext_instance, "presence", ext_name, s,
+    { if (yang_read_extcomplex_str(trg, ext_instance, "presence", ext_name, &s,
                                                                     0, LY_STMT_PRESENCE)) {
                                          YYABORT;
                                        }
@@ -8582,7 +8582,7 @@ yyreduce:
 
   case 806:
 
-    { if (yang_read_extcomplex_str(trg, ext_instance, "revision-date", ext_name, s,
+    { if (yang_read_extcomplex_str(trg, ext_instance, "revision-date", ext_name, &s,
                                                                          0, LY_STMT_REVISIONDATE)) {
                                               YYABORT;
                                             }

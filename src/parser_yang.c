@@ -4763,7 +4763,7 @@ error:
 
 int
 yang_read_extcomplex_str(struct lys_module *module, struct lys_ext_instance_complex *ext, const char *arg_name,
-                         const char *parent_name, char *value, int parent_stmt, LY_STMT stmt)
+                         const char *parent_name, char **value, int parent_stmt, LY_STMT stmt)
 {
     int c;
     const char **str, ***p = NULL;
@@ -4782,7 +4782,8 @@ yang_read_extcomplex_str(struct lys_module *module, struct lys_ext_instance_comp
             for (c = 0; p[0][c + 1]; c++);
             str = p[1];
         }
-        str[c] = lydict_insert_zc(module->ctx, value);
+        str[c] = lydict_insert_zc(module->ctx, *value);
+        *value = NULL;
     }  else {
         str = lys_ext_complex_get_substmt(stmt, ext, &info);
         if (!str) {
@@ -4819,8 +4820,8 @@ yang_read_extcomplex_str(struct lys_module *module, struct lys_ext_instance_comp
             str = p[0];
         }
 
-        str[c] = lydict_insert_zc(module->ctx, value);
-        value = NULL;
+        str[c] = lydict_insert_zc(module->ctx, *value);
+        *value = NULL;
 
         if (c) {
             /* enlarge the array(s) */
@@ -4862,7 +4863,8 @@ yang_read_extcomplex_str(struct lys_module *module, struct lys_ext_instance_comp
     return EXIT_SUCCESS;
 
 error:
-    free(value);
+    free(*value);
+    *value = NULL;
     return EXIT_FAILURE;
 }
 
