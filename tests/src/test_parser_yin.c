@@ -72,7 +72,7 @@ test_parse(void **state)
                         xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\
                         xmlns:foo=\"urn:example:foo\"\
                         xmlns:myext=\"urn:example:extensions\">\
-                        <namespace uri=\"urn:example:foo\"/>\
+                        <namespace uri=\"urn:example:foo\" xmlns:myext=\"urn:example:extensions\"/>\
                         <prefix value=\"foo\"/>\
                     </module>",
                 st->mod);
@@ -80,6 +80,7 @@ test_parse(void **state)
     assert_int_equal(ret, LY_SUCCESS);
     assert_string_equal(st->mod->parsed->mod->name, "example-foo");
     assert_string_equal(st->mod->parsed->mod->prefix, "foo");
+    assert_string_equal(st->mod->parsed->mod->ns, "urn:example:foo");
 }
 
 static void
