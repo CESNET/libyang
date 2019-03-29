@@ -3102,9 +3102,12 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
 
     retval->prev = retval;
 
-    retval->ext_size = node->ext_size;
-    if (lys_ext_dup(ctx, module, node->ext, node->ext_size, retval, LYEXT_PAR_NODE, &retval->ext, shallow, unres)) {
-        goto error;
+    /* copying unresolved extensions is not supported */
+    if (unres_schema_find(unres, -1, (void *)&node->ext, UNRES_EXT) == -1) {
+        retval->ext_size = node->ext_size;
+        if (lys_ext_dup(ctx, module, node->ext, node->ext_size, retval, LYEXT_PAR_NODE, &retval->ext, shallow, unres)) {
+            goto error;
+        }
     }
 
     if (node->iffeature_size) {
