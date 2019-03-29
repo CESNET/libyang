@@ -294,7 +294,7 @@ parse_namespace(struct lyxml_context *xml_ctx, const char **data, struct lysp_mo
                 parse_xmlns(xml_ctx, data, name, name_len, "module");
             } else {
                 /* unrecognized or unexpected attribute */
-                LOGERR(xml_ctx->ctx, LY_EDENIED, "Invalid argument in module element");
+                LOGERR(xml_ctx->ctx, LY_EDENIED, "Invalid argument in namespace element");
                 return LY_EVALID;
             }
             break;
