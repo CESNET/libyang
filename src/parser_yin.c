@@ -49,6 +49,7 @@ match_argument_name(const char *name, size_t len)
 {
     enum YIN_ARGUMENT arg = YIN_ARG_NONE;
     size_t already_read = 0;
+    LY_CHECK_RET(len == 0, YIN_ARG_NONE);
 
 #define IF_ARG(STR, LEN, STMT) if (!strncmp((name) + already_read, STR, LEN)) {already_read+=LEN;arg=STMT;}
 #define IF_ARG_PREFIX(STR, LEN) if (!strncmp((name) + already_read, STR, LEN)) {already_read+=LEN;
@@ -274,7 +275,7 @@ parse_namespace(struct lyxml_context *xml_ctx, const char **data, struct lysp_mo
 
         switch (arg) {
         case YIN_ARG_XMLNS:
-            parse_xmlns(xml_ctx, data, prefix, prefix_len, "module");
+            parse_xmlns(xml_ctx, data, prefix, prefix_len, "namespace");
             break;
         case YIN_ARG_URI:
             LY_CHECK_RET(ret);
@@ -291,7 +292,7 @@ parse_namespace(struct lyxml_context *xml_ctx, const char **data, struct lysp_mo
             /* unrecognized attribute, still can be namespace definition eg. xmlns:foo=.... */
             if (match_argument_name(prefix, prefix_len) == YIN_ARG_XMLNS) {
                 /* in this case prefix of namespace is actually name of attribute */
-                parse_xmlns(xml_ctx, data, name, name_len, "module");
+                parse_xmlns(xml_ctx, data, name, name_len, "namespace");
             } else {
                 /* unrecognized or unexpected attribute */
                 LOGERR(xml_ctx->ctx, LY_EDENIED, "Invalid argument in namespace element");
@@ -301,12 +302,8 @@ parse_namespace(struct lyxml_context *xml_ctx, const char **data, struct lysp_mo
         }
     }
 
-    /* namespace can have only one argument */
-    if (xml_ctx->status != LYXML_ELEMENT) {
-        LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Unexpected argument \"%s\".", name);
-        return LY_EVALID;
-    }
-
+    /* remove local xmlns definitions */
+    lyxml_ns_rm(xml_ctx, "namespace");
     return LY_SUCCESS;
 }
 
@@ -315,12 +312,12 @@ parse_namespace(struct lyxml_context *xml_ctx, const char **data, struct lysp_mo
  *
  * @param[in] xml_ctx Xml context.
  * @param[in, out] data Data to reda from.
- * @param[out] mod_p Module to write to.
+ * @param[out] mod Module to write to.
  *
  * @return LY_ERR values.
  */
 LY_ERR
-parse_prefix(struct lyxml_context *xml_ctx, const char **data, struct lysp_module **mod_p)
+parse_prefix(struct lyxml_context *xml_ctx, const char **data, struct lysp_module **mod)
 {
     LY_ERR ret = LY_SUCCESS;
     const char *prefix, *name;
