@@ -4178,16 +4178,14 @@ nextsibling:
     }
 
     if (node->parent) {
-        /* if the inserted node is list/leaflist with constraint on max instances,
+        /* if the inserted node is list/leaflist with constraint on max instances or extension validation callback,
          * invalidate the parent to make it validate this */
-        if (node->schema->nodetype & LYS_LEAFLIST) {
-            if (((struct lys_node_leaflist *)node->schema)->max) {
-                node->parent->validity |= LYD_VAL_MAND;
-            }
-        } else if (node->schema->nodetype & LYS_LIST) {
-            if (((struct lys_node_list *)node->schema)->max) {
-                node->parent->validity |= LYD_VAL_MAND;
-            }
+        if ((node->schema->nodetype & LYS_LEAFLIST) && ((struct lys_node_leaflist *)node->schema)->max) {
+            node->parent->validity |= LYD_VAL_MAND;
+        } else if ((node->schema->nodetype & LYS_LIST) && ((struct lys_node_list *)node->schema)->max) {
+            node->parent->validity |= LYD_VAL_MAND;
+        } else if (node->parent->schema->flags & LYS_VALID_EXT) {
+            node->parent->validity |= LYD_VAL_MAND;
         }
     }
 }
@@ -4970,9 +4968,6 @@ _lyd_validate(struct lyd_node **node, struct lyd_node *data_tree, struct ly_ctx 
             if (lyv_data_context(iter, options, unres) || lyv_data_content(iter, options, unres)) {
                 goto cleanup;
             }
-
-            /* basic validation successful */
-            iter->validity &= ~LYD_VAL_MAND;
 
             /* empty non-default, non-presence container without attributes, make it default */
             if (!iter->dflt && (iter->schema->nodetype == LYS_CONTAINER) && !iter->child
