@@ -3084,7 +3084,7 @@ resolve_len_ran_interval(struct ly_ctx *ctx, const char *str_restr, struct lys_t
         }
         if (isdigit(ptr[0]) || (ptr[0] == '+') || (ptr[0] == '-')) {
             if (kind == 0) {
-                tmp_local_intv->value.uval.min = strtoll(ptr, (char **)&ptr, 10);
+                tmp_local_intv->value.uval.min = strtoull(ptr, (char **)&ptr, 10);
             } else if (kind == 1) {
                 tmp_local_intv->value.sval.min = strtoll(ptr, (char **)&ptr, 10);
             } else if (kind == 2) {
@@ -3140,7 +3140,7 @@ resolve_len_ran_interval(struct ly_ctx *ctx, const char *str_restr, struct lys_t
             /* max */
             if (isdigit(ptr[0]) || (ptr[0] == '+') || (ptr[0] == '-')) {
                 if (kind == 0) {
-                    tmp_local_intv->value.uval.max = strtoll(ptr, (char **)&ptr, 10);
+                    tmp_local_intv->value.uval.max = strtoull(ptr, (char **)&ptr, 10);
                 } else if (kind == 1) {
                     tmp_local_intv->value.sval.max = strtoll(ptr, (char **)&ptr, 10);
                 } else if (kind == 2) {
@@ -3164,7 +3164,7 @@ resolve_len_ran_interval(struct ly_ctx *ctx, const char *str_restr, struct lys_t
             goto error;
         }
 
-        /* check min and max in correct order*/
+        /* check min and max in correct order */
         if (kind == 0) {
             /* current segment */
             if (tmp_local_intv->value.uval.min > tmp_local_intv->value.uval.max) {
