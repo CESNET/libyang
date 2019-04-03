@@ -8469,6 +8469,7 @@ lyxp_eval(const char *expr, const struct lyd_node *cur_node, enum lyxp_node_type
 
     exp_idx = 0;
     memset(set, 0, sizeof *set);
+    set->type = LYXP_SET_EMPTY;
     if (cur_node) {
         set_insert_node(set, (struct lyd_node *)cur_node, 0, cur_node_type, 0);
     }
