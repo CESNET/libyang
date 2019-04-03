@@ -456,6 +456,7 @@ cast_string_recursive(struct lyd_node *node, struct lys_module *local_mod, int f
         line = strtok_r(buf, "\n", &ptr);
         do {
             if (cast_string_realloc(local_mod->ctx, indent * 2 + strlen(line) + 1, str, used, size)) {
+                free(buf);
                 return -1;
             }
             memset(*str + (*used - 1), ' ', indent * 2);
