@@ -490,7 +490,7 @@ lyb_parse_val_2(struct lys_type *type, struct lyd_node_leaf_list *leaf, struct l
 {
     struct ly_ctx *ctx;
     struct lys_module *mod;
-    struct lys_type *rtype;
+    struct lys_type *rtype = NULL;
     char num_str[22], *str;
     int64_t frac;
     uint32_t i, str_len;

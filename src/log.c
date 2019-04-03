@@ -523,7 +523,7 @@ ly_vlog_build_path(enum LY_VLOG_ELEM elem_type, const void *elem, char **path, i
 {
     int i, j, yang_data_extension = 0;
     struct lys_node_list *slist;
-    struct lys_node *sparent;
+    struct lys_node *sparent = NULL;
     struct lyd_node *dlist, *diter;
     const struct lys_module *top_smodule = NULL;
     const char *name, *prefix = NULL, *val_end, *val_start, *ext_name;
