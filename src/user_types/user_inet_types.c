@@ -44,13 +44,17 @@ convert_ipv6_addr(const char *ipv6_addr, char **err_msg)
     }
 
     if (!inet_pton(AF_INET6, ipv6_addr, buf)) {
-        asprintf(err_msg, "Failed to convert IPv6 address \"%s\".", ipv6_addr);
+        if (asprintf(err_msg, "Failed to convert IPv6 address \"%s\".", ipv6_addr) == -1) {
+            *err_msg = NULL;
+        }
         free(str);
         return NULL;
     }
 
     if (!inet_ntop(AF_INET6, buf, str, INET6_ADDRSTRLEN)) {
-        asprintf(err_msg, "Failed to convert IPv6 address (%s).", strerror(errno));
+        if (asprintf(err_msg, "Failed to convert IPv6 address (%s).", strerror(errno)) == -1) {
+            *err_msg = NULL;
+        }
         free(str);
         return NULL;
     }
@@ -117,13 +121,17 @@ ipv4_prefix_store_clb(struct ly_ctx *ctx, const char *UNUSED(type_name), const c
 
     pref_str = strchr(*value_str, '/');
     if (!pref_str) {
-        asprintf(err_msg, "Invalid IPv4 prefix \"%s\".", *value_str);
+        if (asprintf(err_msg, "Invalid IPv4 prefix \"%s\".", *value_str) == -1) {
+            *err_msg = NULL;
+        }
         return 1;
     }
 
     pref = strtoul(pref_str + 1, &ptr, 10);
     if (ptr[0]) {
-        asprintf(err_msg, "Invalid IPv4 prefix \"%s\".", *value_str);
+        if (asprintf(err_msg, "Invalid IPv4 prefix \"%s\".", *value_str) == -1) {
+            *err_msg = NULL;
+        }
         return 1;
     }
 
@@ -169,13 +177,17 @@ ipv6_prefix_store_clb(struct ly_ctx *ctx, const char *UNUSED(type_name), const c
 
     pref_str = strchr(*value_str, '/');
     if (!pref_str) {
-        asprintf(err_msg, "Invalid IPv6 prefix \"%s\".", *value_str);
+        if (asprintf(err_msg, "Invalid IPv6 prefix \"%s\".", *value_str) == -1) {
+            *err_msg = NULL;
+        }
         return 1;
     }
 
     pref = strtoul(pref_str + 1, &ptr, 10);
     if (ptr[0]) {
-        asprintf(err_msg, "Invalid IPv6 prefix \"%s\".", *value_str);
+        if (asprintf(err_msg, "Invalid IPv6 prefix \"%s\".", *value_str) == -1) {
+            *err_msg = NULL;
+        }
         return 1;
     }
 
