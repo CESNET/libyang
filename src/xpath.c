@@ -448,8 +448,8 @@ cast_string_recursive(struct lyd_node *node, struct lys_module *local_mod, int f
             case LYD_ANYDATA_JSOND:
             case LYD_ANYDATA_LYBD:
                 /* dynamic strings are used only as input parameters */
-                assert(0);
-                break;
+                LOGINT(local_mod->ctx);
+                return -1;
             }
         }
 
