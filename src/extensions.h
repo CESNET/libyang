@@ -27,6 +27,17 @@ extern "C" {
  */
 
 /**
+ * @brief Extensions API version
+ */
+#define LYEXT_API_VERSION 1
+
+/**
+ * @brief Macro to store version of extension plugins API in the plugins.
+ * It is matched when the plugin is being loaded by libyang.
+ */
+#define LYEXT_VERSION_CHECK int lyext_api_version = LYEXT_API_VERSION;
+
+/**
  * @brief Extension instance structure parent enumeration
  */
 typedef enum {

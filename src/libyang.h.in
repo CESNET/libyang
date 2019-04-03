@@ -365,6 +365,9 @@ extern "C" {
  * The plugins list can be cleaned by ly_clean_plugins(). However, since various contexts (respectively their
  * schemas) can link to the plugins, the cleanup is successful only when there is no remaining context.
  *
+ * For both plugin types, when a specific plugin is being loaded, libyang checks for the API version the plugin was compiled with.
+ * From the plugin side, this is done using `LYEXT_VERSION_CHECK` or `LYTYPE_VERSION_CHECK` which must be defined in the plugin code.
+ *
  * @section extensions Extensions
  *
  * YANG provides extensions as a mechanism how to add new statements into the language. Since they are very generic -

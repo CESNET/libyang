@@ -22,6 +22,11 @@
 
 #include "../user_types.h"
 
+/**
+ * @brief Storage for ID used to check plugin API version compatibility.
+ */
+LYTYPE_VERSION_CHECK
+
 #ifdef __GNUC__
 #  define UNUSED(x) UNUSED_ ## x __attribute__((__unused__))
 #else

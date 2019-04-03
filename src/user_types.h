@@ -28,6 +28,18 @@ extern "C" {
  */
 
 /**
+ * @brief User types API version
+ */
+#define LYTYPE_API_VERSION 1
+
+/**
+ * @brief Macro to store version of user type plugins API in the plugins.
+ * It is matched when the plugin is being loaded by libyang.
+ */
+#define LYTYPE_VERSION_CHECK int lytype_api_version = LYTYPE_API_VERSION;
+
+
+/**
  * @brief Callback for storing user type values.
  *
  * This callback should overwrite the value stored in \p value using some custom encoding. Be careful,
