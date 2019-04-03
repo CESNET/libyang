@@ -259,6 +259,17 @@ struct lyd_node_leaf_list {
 /* 0x80 is reserved for internal use */
 
 /**
+ * @brief Anydata value union
+ */
+typedef union {
+    const char *str;             /**< string value, in case of printing as XML, characters like '<' or '&' are escaped */
+    char *mem;                   /**< raw memory (used for LYB format) */
+    struct lyxml_elem *xml;      /**< xml tree */
+    struct lyd_node *tree;       /**< libyang data tree, does not change the root's parent, so it is not possible
+                                      to get from the data tree into the anydata/anyxml */
+} lyd_anydata_value;
+
+/**
  * @brief Structure for data nodes defined as #LYS_ANYDATA or #LYS_ANYXML.
  *
  * Extension for ::lyd_node structure - replaces the ::lyd_node#child member by new #value member. The first five
@@ -294,13 +305,7 @@ struct lyd_node_anydata {
 
     /* anyxml's specific members */
     LYD_ANYDATA_VALUETYPE value_type;/**< type of the stored anydata value */
-    union {
-        const char *str;             /**< string value, in case of printing as XML, characters like '<' or '&' are escaped */
-        char *mem;                   /**< raw memory (used for LYB format) */
-        struct lyxml_elem *xml;      /**< xml tree */
-        struct lyd_node *tree;       /**< libyang data tree, does not change the root's parent, so it is not possible
-                                          to get from the data tree into the anydata/anyxml */
-    } value;
+    lyd_anydata_value value;/**< stored anydata value */
 };
 
 /**
@@ -336,8 +341,10 @@ typedef enum {
                                     its children. */
     LYD_DIFF_MOVEDAFTER2     /**< similar to LYD_DIFF_MOVEDAFTER1, but this time the moved item is in the second tree.
                                   This type is always used in combination with (as a successor of) #LYD_DIFF_CREATED
-                                  as an instruction to move the newly created node to a specific position. Note, that
-                                  due to applicability to the second tree, the meaning of lyd_difflist:first and
+                                  as an instruction to move the newly created node to a specific position. If it is not
+                                  present, it means that even the parent of the user-ordered instances did not exist
+                                  (or was empty) so it is safe to just create the instances in the same order. Note,
+                                  that due to applicability to the second tree, the meaning of lyd_difflist:first and
                                   lyd_difflist:second is inverse in comparison to #LYD_DIFF_MOVEDAFTER1. The
                                   lyd_difflist::second points to the (previously) created node in the second tree and
                                   the lyd_difflist::first points to the predecessor node in the second tree. If the
@@ -556,8 +563,8 @@ char *lyd_path(const struct lyd_node *node);
  *                    when checking any "when" or "must" conditions in the parsed tree that require
  *                    some nodes outside their subtree. It must be a list of top-level elements!
  *                - #LYD_OPT_RPCREPLY:
- *                  - const struct ::lyd_node *rpc_act - pointer to the whole RPC or action operation data
- *                    tree (the request) of the reply.
+ *                  - const struct ::lyd_node *rpc_act - pointer to the whole RPC or (top-level) action operation
+ *                    data tree (the request) of the reply.
  *                  - const struct ::lyd_node *data_tree - additional data tree that will be used
  *                    when checking any "when" or "must" conditions in the parsed tree that require
  *                    some nodes outside their subtree. It must be a list of top-level elements!
@@ -900,6 +907,12 @@ unsigned int lyd_list_pos(const struct lyd_node *node);
 #define LYD_DUP_OPT_NO_ATTR      0x02 /**< Do not duplicate attributes of any node. */
 #define LYD_DUP_OPT_WITH_PARENTS 0x04 /**< If a nested node is being duplicated, duplicate also all the parents.
                                            Keys are also duplicated for lists. Return value does not change! */
+#define LYD_DUP_OPT_WITH_KEYS    0x08 /**< If a lits key is being duplicated non-recursively, duplicate its keys.
+                                           Ignored if used with #LYD_DUP_OPT_RECURSIVE. Return value does not change! */
+#define LYD_DUP_OPT_WITH_WHEN    0x10 /**< Also copy any when evaluation state flags. This is useful in case the copied
+                                           nodes are actually still part of the same datastore meaning no dependency data
+                                           could have changed. Otherwise nothing is assumed about the copied node when
+                                           state and it is evaluated from scratch during validation. */
 
 /** @} dupoptions */
 

@@ -369,7 +369,7 @@ const char *ly_errs[] = {
 /* LYE_INWHEN */       "Irresolvable when condition \"%s\".",
 /* LYE_NOMIN */        "Too few \"%s\" elements.",
 /* LYE_NOMAX */        "Too many \"%s\" elements.",
-/* LYE_NOREQINS */     "Required instance of \"%s\" does not exists.",
+/* LYE_NOREQINS */     "Required instance of \"%s\" does not exist.",
 /* LYE_NOLEAFREF */    "Leafref \"%s\" of value \"%s\" points to a non-existing leaf.",
 /* LYE_NOMANDCHOICE */ "Mandatory choice \"%s\" missing a case branch.",
 

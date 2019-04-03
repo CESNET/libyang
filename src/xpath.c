@@ -316,17 +316,25 @@ print_set_debug(struct lyxp_set *set)
  * @param[in,out] str Pointer to the string to use.
  * @param[in,out] used Used bytes in \p str.
  * @param[in,out] size Allocated bytes in \p str.
+ *
+ * @return 0 on success, non-zero on error
  */
-static void
-cast_string_realloc(uint16_t needed, char **str, uint16_t *used, uint16_t *size)
+static int
+cast_string_realloc(struct ly_ctx *ctx, uint16_t needed, char **str, uint16_t *used, uint16_t *size)
 {
     if (*size - *used < needed) {
         do {
+            if ((UINT16_MAX - *size) < LYXP_STRING_CAST_SIZE_STEP) {
+                LOGERR(ctx, LY_EINVAL, "XPath string length limit (%u) reached.", UINT16_MAX);
+                return -1;
+            }
             *size += LYXP_STRING_CAST_SIZE_STEP;
         } while (*size - *used < needed);
         *str = ly_realloc(*str, *size * sizeof(char));
-        LY_CHECK_ERR_RETURN(!(*str), LOGMEM(NULL), );
+        LY_CHECK_ERR_RETURN(!(*str), LOGMEM(ctx), -1);
     }
+
+    return 0;
 }
 
 /**
@@ -340,7 +348,7 @@ cast_string_realloc(uint16_t needed, char **str, uint16_t *used, uint16_t *size)
  * @param[in,out] used Used bytes in \p str.
  * @param[in,out] size Allocated bytes in \p str.
  */
-static void
+static int
 cast_string_recursive(struct lyd_node *node, struct lys_module *local_mod, int fake_cont, enum lyxp_node_type root_type,
                       uint16_t indent, char **str, uint16_t *used, uint16_t *size)
 {
@@ -350,11 +358,13 @@ cast_string_recursive(struct lyd_node *node, struct lys_module *local_mod, int f
     struct lyd_node_anydata *any;
 
     if ((root_type == LYXP_NODE_ROOT_CONFIG) && (node->schema->flags & LYS_CONFIG_R)) {
-        return;
+        return 0;
     }
 
     if (fake_cont) {
-        cast_string_realloc(1, str, used, size);
+        if (cast_string_realloc(local_mod->ctx, 1, str, used, size)) {
+            return -1;
+        }
         strcpy(*str + (*used - 1), "\n");
         ++(*used);
 
@@ -366,12 +376,16 @@ cast_string_recursive(struct lyd_node *node, struct lys_module *local_mod, int f
     case LYS_LIST:
     case LYS_RPC:
     case LYS_NOTIF:
-        cast_string_realloc(1, str, used, size);
+        if (cast_string_realloc(local_mod->ctx, 1, str, used, size)) {
+            return -1;
+        }
         strcpy(*str + (*used - 1), "\n");
         ++(*used);
 
         LY_TREE_FOR(node->child, child) {
-            cast_string_recursive(child, local_mod, 0, root_type, indent + 1, str, used, size);
+            if (cast_string_recursive(child, local_mod, 0, root_type, indent + 1, str, used, size)) {
+                return -1;
+            }
         }
 
         break;
@@ -384,7 +398,9 @@ cast_string_recursive(struct lyd_node *node, struct lys_module *local_mod, int f
         }
 
         /* print indent */
-        cast_string_realloc(indent * 2 + strlen(value_str) + 1, str, used, size);
+        if (cast_string_realloc(local_mod->ctx, indent * 2 + strlen(value_str) + 1, str, used, size)) {
+            return -1;
+        }
         memset(*str + (*used - 1), ' ', indent * 2);
         *used += indent * 2;
 
@@ -405,28 +421,28 @@ cast_string_recursive(struct lyd_node *node, struct lys_module *local_mod, int f
         if (!(void*)any->value.tree) {
             /* no content */
             buf = strdup("");
-            LY_CHECK_ERR_RETURN(!buf, LOGMEM(local_mod->ctx), );
+            LY_CHECK_ERR_RETURN(!buf, LOGMEM(local_mod->ctx), -1);
         } else {
             switch (any->value_type) {
             case LYD_ANYDATA_CONSTSTRING:
             case LYD_ANYDATA_SXML:
             case LYD_ANYDATA_JSON:
                 buf = strdup(any->value.str);
-                LY_CHECK_ERR_RETURN(!buf, LOGMEM(local_mod->ctx), );
+                LY_CHECK_ERR_RETURN(!buf, LOGMEM(local_mod->ctx), -1);
                 break;
             case LYD_ANYDATA_DATATREE:
                 if (lyd_print_mem(&buf, any->value.tree, LYD_XML, LYP_WITHSIBLINGS)) {
-                    return;
+                    return -1;
                 }
                 break;
             case LYD_ANYDATA_XML:
                 if (lyxml_print_mem(&buf, any->value.xml, LYXML_PRINT_SIBLINGS)) {
-                    return;
+                    return -1;
                 }
                 break;
             case LYD_ANYDATA_LYB:
                 LOGERR(local_mod->ctx, LY_EINVAL, "Cannot convert LYB anydata into string.");
-                return;
+                return -1;
             case LYD_ANYDATA_STRING:
             case LYD_ANYDATA_SXMLD:
             case LYD_ANYDATA_JSOND:
@@ -439,7 +455,9 @@ cast_string_recursive(struct lyd_node *node, struct lys_module *local_mod, int f
 
         line = strtok_r(buf, "\n", &ptr);
         do {
-            cast_string_realloc(indent * 2 + strlen(line) + 1, str, used, size);
+            if (cast_string_realloc(local_mod->ctx, indent * 2 + strlen(line) + 1, str, used, size)) {
+                return -1;
+            }
             memset(*str + (*used - 1), ' ', indent * 2);
             *used += indent * 2;
 
@@ -455,16 +473,20 @@ cast_string_recursive(struct lyd_node *node, struct lys_module *local_mod, int f
 
     default:
         LOGINT(local_mod->ctx);
-        break;
+        return -1;
     }
 
     if (fake_cont) {
-        cast_string_realloc(1, str, used, size);
+        if (cast_string_realloc(local_mod->ctx, 1, str, used, size)) {
+            return -1;
+        }
         strcpy(*str + (*used - 1), "\n");
         ++(*used);
 
         --indent;
     }
+
+    return 0;
 }
 
 /**
@@ -488,11 +510,14 @@ cast_string_elem(struct lyd_node *node, struct lys_module *local_mod, int fake_c
     used = 1;
     size = LYXP_STRING_CAST_SIZE_START;
 
-    cast_string_recursive(node, local_mod, fake_cont, root_type, 0, &str, &used, &size);
+    if (cast_string_recursive(node, local_mod, fake_cont, root_type, 0, &str, &used, &size)) {
+        free(str);
+        return NULL;
+    }
 
     if (size > used) {
         str = ly_realloc(str, used * sizeof(char));
-        LY_CHECK_ERR_RETURN(!str, LOGMEM(local_mod->ctx), NULL);
+        LY_CHECK_ERR_RETURN(!str, free(str); LOGMEM(local_mod->ctx), NULL);
     }
     return str;
 }
@@ -5466,6 +5491,7 @@ static int
 moveto_snode(struct lyxp_set *set, struct lys_node *cur_node, const char *qname, uint16_t qname_len, int options)
 {
     int i, orig_used, pref_len, idx, temp_ctx = 0;
+    uint32_t mod_idx;
     const char *ptr, *name_dict = NULL; /* optimalization - so we can do (==) instead (!strncmp(...)) in moveto_node_check() */
     struct lys_module *moveto_mod, *tmp_mod;
     const struct lys_node *sub, *start_parent;
@@ -5496,8 +5522,12 @@ moveto_snode(struct lyxp_set *set, struct lys_node *cur_node, const char *qname,
         }
         qname += pref_len + 1;
         qname_len -= pref_len + 1;
-    } else {
+    } else if ((qname[0] == '*') && (qname_len == 1)) {
+        /* all modules - special case */
         moveto_mod = NULL;
+    } else {
+        /* content node module */
+        moveto_mod = lys_node_module(cur_node);
     }
 
     /* name */
@@ -5515,16 +5545,26 @@ moveto_snode(struct lyxp_set *set, struct lys_node *cur_node, const char *qname,
         if ((set->val.snodes[i].type == LYXP_NODE_ROOT_CONFIG) || (set->val.snodes[i].type == LYXP_NODE_ROOT)) {
             /* it can actually be in any module, it's all <running>, but we know it's moveto_mod (if set),
              * so use it directly (root node itself is useless in this case) */
-            sub = NULL;
-            while ((sub = lys_getnext(sub, NULL, (moveto_mod ? moveto_mod : lys_node_module(cur_node)), LYS_GETNEXT_NOSTATECHECK))) {
-                if (!moveto_snode_check(sub, root_type, name_dict, (moveto_mod ? moveto_mod : lys_node_module(cur_node)), options)) {
-                    idx = set_snode_insert_node(set, sub, LYXP_NODE_ELEM);
-                    /* we need to prevent these nodes to be considered in this moveto */
-                    if ((idx < orig_used) && (idx > i)) {
-                        set->val.snodes[idx].in_ctx = 2;
-                        temp_ctx = 1;
+            mod_idx = 0;
+            while (moveto_mod || (moveto_mod = (struct lys_module *)ly_ctx_get_module_iter(ctx, &mod_idx))) {
+                sub = NULL;
+                while ((sub = lys_getnext(sub, NULL, moveto_mod, LYS_GETNEXT_NOSTATECHECK))) {
+                    if (!moveto_snode_check(sub, root_type, name_dict, moveto_mod, options)) {
+                        idx = set_snode_insert_node(set, sub, LYXP_NODE_ELEM);
+                        /* we need to prevent these nodes from being considered in this moveto */
+                        if ((idx < orig_used) && (idx > i)) {
+                            set->val.snodes[idx].in_ctx = 2;
+                            temp_ctx = 1;
+                        }
                     }
                 }
+
+                if (!mod_idx) {
+                    /* moveto_mod was specified, we are not going through the whole context */
+                    break;
+                }
+                /* next iteration */
+                moveto_mod = NULL;
             }
 
         /* skip nodes without children - leaves, leaflists, and anyxmls (ouput root will eval to true) */
@@ -6102,49 +6142,73 @@ moveto_attr_alldesc(struct lyxp_set *set, struct lyd_node *cur_node, const char 
 }
 
 static int
-moveto_self_add_children_r(const struct lyd_node *parent, uint32_t parent_pos, struct lyxp_set *to_set,
-                           const struct lyxp_set *dup_check_set, enum lyxp_node_type root_type, int options)
+moveto_self_add_children_r(const struct lyd_node *parent, uint32_t parent_pos, enum lyxp_node_type parent_type,
+                           struct lyxp_set *to_set, const struct lyxp_set *dup_check_set, enum lyxp_node_type root_type,
+                           int options)
 {
     struct lyd_node *sub;
     int ret;
 
-    /* add all the children ... */
-    if (!(parent->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
-        LY_TREE_FOR(parent->child, sub) {
-            /* context check */
-            if ((root_type == LYXP_NODE_ROOT_CONFIG) && (sub->schema->flags & LYS_CONFIG_R)) {
-                continue;
-            }
+    switch (parent_type) {
+    case LYXP_NODE_ROOT:
+    case LYXP_NODE_ROOT_CONFIG:
+        /* add the same node but as an element */
+        if (!set_dup_node_check(dup_check_set, parent, LYXP_NODE_ELEM, -1)) {
+            set_insert_node(to_set, parent, 0, LYXP_NODE_ELEM, to_set->used);
 
-            /* when check */
-            if ((options & LYXP_WHEN) && !LYD_WHEN_DONE(sub->when_status)) {
-                return EXIT_FAILURE;
-            }
-
-            if (!set_dup_node_check(dup_check_set, sub, LYXP_NODE_ELEM, -1)) {
-                set_insert_node(to_set, sub, 0, LYXP_NODE_ELEM, to_set->used);
-
-                /* skip anydata/anyxml and dummy nodes */
-                if ((sub->schema->nodetype & LYS_ANYDATA) || (sub->validity & LYD_VAL_INUSE)) {
-                    continue;
-                }
-
+            /* skip anydata/anyxml and dummy nodes */
+            if (!(parent->schema->nodetype & LYS_ANYDATA) && !(parent->validity & LYD_VAL_INUSE)) {
                 /* also add all the children of this node, recursively */
-                ret = moveto_self_add_children_r(sub, 0, to_set, dup_check_set, root_type, options);
+                ret = moveto_self_add_children_r(parent, 0, LYXP_NODE_ELEM, to_set, dup_check_set, root_type, options);
                 if (ret) {
                     return ret;
                 }
             }
         }
+        break;
+    case LYXP_NODE_ELEM:
+        /* add all the children ... */
+        if (!(parent->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+            LY_TREE_FOR(parent->child, sub) {
+                /* context check */
+                if ((root_type == LYXP_NODE_ROOT_CONFIG) && (sub->schema->flags & LYS_CONFIG_R)) {
+                    continue;
+                }
 
-    /* ... or add their text node, ... */
-    } else {
-        /* ... but only non-empty */
-        if (((struct lyd_node_leaf_list *)parent)->value_str) {
-            if (!set_dup_node_check(dup_check_set, parent, LYXP_NODE_TEXT, -1)) {
-                set_insert_node(to_set, parent, parent_pos, LYXP_NODE_TEXT, to_set->used);
+                /* when check */
+                if ((options & LYXP_WHEN) && !LYD_WHEN_DONE(sub->when_status)) {
+                    return EXIT_FAILURE;
+                }
+
+                if (!set_dup_node_check(dup_check_set, sub, LYXP_NODE_ELEM, -1)) {
+                    set_insert_node(to_set, sub, 0, LYXP_NODE_ELEM, to_set->used);
+
+                    /* skip anydata/anyxml and dummy nodes */
+                    if ((sub->schema->nodetype & LYS_ANYDATA) || (sub->validity & LYD_VAL_INUSE)) {
+                        continue;
+                    }
+
+                    /* also add all the children of this node, recursively */
+                    ret = moveto_self_add_children_r(sub, 0, LYXP_NODE_ELEM, to_set, dup_check_set, root_type, options);
+                    if (ret) {
+                        return ret;
+                    }
+                }
+            }
+
+        /* ... or add their text node, ... */
+        } else {
+            /* ... but only non-empty */
+            if (((struct lyd_node_leaf_list *)parent)->value_str) {
+                if (!set_dup_node_check(dup_check_set, parent, LYXP_NODE_TEXT, -1)) {
+                    set_insert_node(to_set, parent, parent_pos, LYXP_NODE_TEXT, to_set->used);
+                }
             }
         }
+        break;
+    default:
+        LOGINT(lyd_node_module(parent)->ctx);
+        return -1;
     }
 
     return EXIT_SUCCESS;
@@ -6202,7 +6266,8 @@ moveto_self(struct lyxp_set *set, struct lyd_node *cur_node, int all_desc, int o
         }
 
         /* add all the children */
-        ret = moveto_self_add_children_r(set->val.nodes[i].node, set->val.nodes[i].pos, &ret_set, set, root_type, options);
+        ret = moveto_self_add_children_r(set->val.nodes[i].node, set->val.nodes[i].pos, set->val.nodes[i].type, &ret_set,
+                                         set, root_type, options);
         if (ret) {
             set_free_content(&ret_set);
             return ret;
@@ -8413,6 +8478,7 @@ lyxp_eval(const char *expr, const struct lyd_node *cur_node, enum lyxp_node_type
     }
     if ((rc == -1) && cur_node) {
         LOGPATH(ctx, LY_VLOG_LYD, cur_node);
+        lyxp_set_cast(set, LYXP_SET_EMPTY, cur_node, local_mod, options);
     }
 
 finish:

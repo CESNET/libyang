@@ -213,7 +213,7 @@ lys_get_sibling(const struct lys_node *siblings, const char *mod_name, int mod_n
 
 int
 lys_getnext_data(const struct lys_module *mod, const struct lys_node *parent, const char *name, int nam_len,
-                 LYS_NODE type, const struct lys_node **ret)
+                 LYS_NODE type, int getnext_opts, const struct lys_node **ret)
 {
     const struct lys_node *node;
 
@@ -226,7 +226,7 @@ lys_getnext_data(const struct lys_module *mod, const struct lys_node *parent, co
 
     /* try to find the node */
     node = NULL;
-    while ((node = lys_getnext(node, parent, mod, 0))) {
+    while ((node = lys_getnext(node, parent, mod, getnext_opts))) {
         if (!type || (node->nodetype & type)) {
             /* module check */
             if (lys_node_module(node) != lys_main_module(mod)) {
@@ -1567,7 +1567,7 @@ lys_ext_dup(struct ly_ctx *ctx, struct lys_module *mod, struct lys_ext_instance 
             LY_CHECK_ERR_GOTO(!info, LOGMEM(ctx), error);
             info->datatype = info_orig->datatype;
             if (info->datatype == LYS_IN_YIN) {
-                info->data.yin = lyxml_dup_elem(ctx, info_orig->data.yin, NULL, 1);
+                info->data.yin = lyxml_dup_elem(ctx, info_orig->data.yin, NULL, 1, 0);
             } /* else TODO YANG */
             info->parent = parent;
             info->mod = mod;
@@ -2228,7 +2228,7 @@ lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct lys_type *n
             new->der = (struct lys_tpdf *)lys_yang_type_dup(mod, parent, (struct yang_type *)old->der, new, in_grp,
                                                             shallow, unres);
         } else {
-            new->der = (struct lys_tpdf *)lyxml_dup_elem(mod->ctx, (struct lyxml_elem *)old->der, NULL, 1);
+            new->der = (struct lys_tpdf *)lyxml_dup_elem(mod->ctx, (struct lyxml_elem *)old->der, NULL, 1, 0);
         }
         /* all these unres additions can fail even though they did not before */
         if (!new->der || (unres_schema_add_node(mod, unres, new, UNRES_TYPE_DER, parent) == -1)) {
@@ -3102,9 +3102,12 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
 
     retval->prev = retval;
 
-    retval->ext_size = node->ext_size;
-    if (lys_ext_dup(ctx, module, node->ext, node->ext_size, retval, LYEXT_PAR_NODE, &retval->ext, shallow, unres)) {
-        goto error;
+    /* copying unresolved extensions is not supported */
+    if (unres_schema_find(unres, -1, (void *)&node->ext, UNRES_EXT) == -1) {
+        retval->ext_size = node->ext_size;
+        if (lys_ext_dup(ctx, module, node->ext, node->ext_size, retval, LYEXT_PAR_NODE, &retval->ext, shallow, unres)) {
+            goto error;
+        }
     }
 
     if (node->iffeature_size) {

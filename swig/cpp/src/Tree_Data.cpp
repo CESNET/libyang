@@ -523,8 +523,9 @@ S_Value Attr::value() {
 }
 S_Attr Attr::next() LY_NEW(attr, next, Attr);
 
-Difflist::Difflist(struct lyd_difflist *diff, S_Deleter deleter) {
-    diff = diff;
+Difflist::Difflist(struct lyd_difflist *diff, S_Deleter deleter):
+    diff(diff)
+{
     deleter = std::make_shared<Deleter>(diff, deleter);
 }
 Difflist::~Difflist() {};

@@ -64,7 +64,7 @@ int lyxml_add_child(struct ly_ctx *ctx, struct lyxml_elem *parent, struct lyxml_
 void lyxml_correct_elem_ns(struct ly_ctx *ctx, struct lyxml_elem *elem, int copy_ns, int correct_attrs);
 
 struct lyxml_elem *lyxml_dup_elem(struct ly_ctx *ctx, struct lyxml_elem *elem,
-                                  struct lyxml_elem *parent, int recursive);
+                                  struct lyxml_elem *parent, int recursive, int with_siblings);
 
 /**
  * @brief Free attribute. Includes unlinking from an element if the attribute

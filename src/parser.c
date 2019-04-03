@@ -1691,11 +1691,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         t = lyp_parse_value(&type->info.lref.target->type, value_, xml, leaf, attr, NULL, store, dflt, trusted);
         value = *value_; /* refresh possibly changed value */
         if (!t) {
-            if (leaf) {
-                LOGVAL(ctx, LYE_INVAL, LY_VLOG_LYD, contextnode, value, itemname);
-            } else {
-                LOGVAL(ctx, LYE_INMETA, LY_VLOG_LYD, contextnode, "<none>", itemname, value);
-            }
+            /* already logged */
             goto error;
         }
 

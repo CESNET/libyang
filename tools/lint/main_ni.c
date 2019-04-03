@@ -59,6 +59,9 @@ help(int shortout)
 #endif
         "  -p PATH, --path=PATH  Search path for schema (YANG/YIN) modules. The option can be used multiple times.\n"
         "                        Current working directory and path of the module being added is used implicitly.\n\n"
+        "  -D, --disable-searchdir\n"
+        "                        Do not implicitly search in CWD for schema modules. If specified a second time,\n"
+        "                        do not even search the module directory (all modules must be explicitly specified).\n\n"
         "  -s, --strict          Strict data parsing (do not skip unknown data),\n"
         "                        has no effect for schemas.\n\n"
         "  -m, --merge           Merge input data files into a single tree and validate at once,\n"
@@ -256,6 +259,7 @@ main_ni(int argc, char* argv[])
         {"help",             no_argument,       NULL, 'h'},
         {"tree-help",        no_argument,       NULL, 'H'},
         {"allimplemented",   no_argument,       NULL, 'i'},
+        {"disable-cwd-search", no_argument,     NULL, 'D'},
         {"list",             no_argument,       NULL, 'l'},
         {"merge",            no_argument,       NULL, 'm'},
         {"output",           required_argument, NULL, 'o'},
@@ -300,9 +304,9 @@ main_ni(int argc, char* argv[])
 
     opterr = 0;
 #ifndef NDEBUG
-    while ((opt = getopt_long(argc, argv, "ad:f:F:gunP:L:hHilmo:p:r:st:vVG:y:", options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "ad:f:F:gunP:L:hHiDlmo:p:r:st:vVG:y:", options, &opt_index)) != -1)
 #else
-    while ((opt = getopt_long(argc, argv, "ad:f:F:gunP:L:hHilmo:p:r:st:vVy:", options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "ad:f:F:gunP:L:hHiDlmo:p:r:st:vVy:", options, &opt_index)) != -1)
 #endif
     {
         switch (opt) {
@@ -399,6 +403,17 @@ main_ni(int argc, char* argv[])
             goto cleanup;
         case 'i':
             options_ctx |= LY_CTX_ALLIMPLEMENTED;
+            break;
+        case 'D':
+            if (options_ctx & LY_CTX_DISABLE_SEARCHDIRS) {
+                fprintf(stderr, "yanglint error: -D specified too many times.\n");
+                goto cleanup;
+            } else if (options_ctx & LY_CTX_DISABLE_SEARCHDIR_CWD) {
+                options_ctx &= ~LY_CTX_DISABLE_SEARCHDIR_CWD;
+                options_ctx |= LY_CTX_DISABLE_SEARCHDIRS;
+            } else {
+                options_ctx |= LY_CTX_DISABLE_SEARCHDIR_CWD;
+            }
             break;
         case 'l':
             list = 1;
