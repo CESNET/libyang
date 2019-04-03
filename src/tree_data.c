@@ -3216,10 +3216,13 @@ lyd_difflist_add(struct lyd_difflist *diff, unsigned int *size, unsigned int ind
                  LYD_DIFFTYPE type, struct lyd_node *first, struct lyd_node *second)
 {
     void *new;
-    struct ly_ctx *ctx = (first ? first->schema->module->ctx : second->schema->module->ctx);
+    struct ly_ctx *ctx;
 
     assert(diff);
     assert(size && *size);
+    assert(first || second);
+
+    ctx = (first ? first->schema->module->ctx : (second ? second->schema->module->ctx : NULL));
 
     if (index + 1 == *size) {
         /* it's time to enlarge */
