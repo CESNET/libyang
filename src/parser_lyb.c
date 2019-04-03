@@ -165,12 +165,10 @@ lyb_read_string(const char *data, char **str, int with_length, struct lyb_state 
 {
     int next_chunk = 0, r, ret = 0;
     size_t len = 0, cur_len;
-    uint8_t len_buf[2];
 
     if (with_length) {
-        ret += (r = lyb_read(data, len_buf, 2, lybs));
+        ret += (r = lyb_read_number(&len, 2, data, lybs));
         LYB_HAVE_READ_GOTO(r, data, error);
-        len = len_buf[0] | (len_buf[1] << 8);
     } else {
         /* read until the end of this subtree */
         len = lybs->written[lybs->used - 1];
@@ -1140,12 +1138,10 @@ static int
 lyb_parse_data_models(const char *data, struct lyb_state *lybs)
 {
     int i, r, ret = 0;
-    uint8_t mod_count_buf[2];
 
     /* read model count */
-    ret += (r = lyb_read(data, mod_count_buf, 2, lybs));
+    ret += (r = lyb_read_number((uint64_t *)&lybs->mod_count, 2, data, lybs));
     LYB_HAVE_READ_RETURN(r, data, -1);
-    lybs->mod_count = mod_count_buf[0] | (mod_count_buf[1] << 8);
 
     lybs->models = malloc(lybs->mod_count * sizeof *lybs->models);
     LY_CHECK_ERR_RETURN(!lybs->models, LOGMEM(lybs->ctx), -1);
