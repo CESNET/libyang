@@ -1718,7 +1718,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
              tpdf = tpdf->type.der);
         if (tpdf->module && xml) {
             /* convert value into the json format */
-            value = transform_xml2json(ctx, value, xml, 1, 1);
+            value = transform_xml2json(ctx, value ? value : "", xml, 1, 1);
             if (!value) {
                 /* invalid instance-identifier format */
                 if (leaf) {

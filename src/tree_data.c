@@ -5811,8 +5811,10 @@ lyd_dup_withsiblings_r(const struct lyd_node *first, struct lyd_node *parent_dup
 
 error:
     /* disconnect and free */
-    first_dup->parent = NULL;
-    lyd_free_withsiblings(first_dup);
+    if (first_dup) {
+        first_dup->parent = NULL;
+        lyd_free_withsiblings(first_dup);
+    }
     return NULL;
 }
 

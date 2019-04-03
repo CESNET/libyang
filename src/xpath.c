@@ -6808,7 +6808,7 @@ moveto_op_math(struct lyxp_set *set1, struct lyxp_set *set2, const char *op, str
         break;
 
     default:
-        LOGINT(local_mod->ctx);
+        LOGINT(local_mod ? local_mod->ctx : NULL);
         return -1;
     }
 
@@ -6962,7 +6962,7 @@ eval_node_test(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
         break;
 
     default:
-        LOGINT(local_mod->ctx);
+        LOGINT(local_mod ? local_mod->ctx : NULL);
         return -1;
     }
 
@@ -7239,7 +7239,7 @@ step:
             break;
 
         default:
-            LOGINT(local_mod->ctx);
+            LOGINT(local_mod ? local_mod->ctx : NULL);
             return -1;
         }
     } while ((exp->used > *exp_idx) && (exp->tokens[*exp_idx] == LYXP_TOKEN_OPERATOR_PATH));
@@ -8661,7 +8661,7 @@ lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target, const struct lyd_
             LY_CHECK_ERR_RETURN(!set->val.str, LOGMEM(local_mod->ctx), -1);
             break;
         default:
-            LOGINT(local_mod->ctx);
+            LOGINT(local_mod ? local_mod->ctx : NULL);
             return -1;
         }
         set->type = LYXP_SET_STRING;
@@ -8683,7 +8683,7 @@ lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target, const struct lyd_
             }
             break;
         default:
-            LOGINT(local_mod->ctx);
+            LOGINT(local_mod ? local_mod->ctx : NULL);
             return -1;
         }
         set->type = LYXP_SET_NUMBER;
@@ -8718,7 +8718,7 @@ lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target, const struct lyd_
             set->val.bool = 0;
             break;
         default:
-            LOGINT(local_mod->ctx);
+            LOGINT(local_mod ? local_mod->ctx : NULL);
             return -1;
         }
         set->type = LYXP_SET_BOOLEAN;
