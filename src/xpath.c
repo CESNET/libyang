@@ -8438,15 +8438,17 @@ int
 lyxp_eval(const char *expr, const struct lyd_node *cur_node, enum lyxp_node_type cur_node_type,
           const struct lys_module *local_mod, struct lyxp_set *set, int options)
 {
-    struct ly_ctx *ctx = local_mod ? local_mod->ctx : NULL;
+    struct ly_ctx *ctx;
     struct lyxp_expr *exp;
     uint16_t exp_idx = 0;
     int rc = -1;
 
-    if (!expr || !set) {
+    if (!expr || !local_mod || !set) {
         LOGARG;
         return EXIT_FAILURE;
     }
+
+    ctx = local_mod->ctx;
 
     exp = lyxp_parse_expr(ctx, expr);
     if (!exp) {
