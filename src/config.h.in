@@ -27,8 +27,9 @@
  */
 #define _PACKED @COMPILER_PACKED_ATTR@
 
-#define LY_VERSION_MAJOR @LIBYANG_MAJOR_VERSION@ /**< libyang major version number */
-#define LY_VERSION_MINOR @LIBYANG_MINOR_VERSION@ /**< libyang minor version number */
-#define LY_VERSION_MICRO @LIBYANG_MICRO_VERSION@ /**< libyang micro version number */
+#define LY_VERSION_MAJOR @LIBYANG_MAJOR_SOVERSION@ /**< libyang major version number */
+#define LY_VERSION_MINOR @LIBYANG_MINOR_SOVERSION@ /**< libyang minor version number */
+#define LY_VERSION_MICRO @LIBYANG_MICRO_SOVERSION@ /**< libyang micro version number */
+#define LY_VERSION "@LIBYANG_SOVERSION_FULL@" /**< libyang version string */
 
 #endif /* LY_CONFIG_H_ */
