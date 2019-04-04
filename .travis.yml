@@ -8,15 +8,6 @@ stages:
   - name: Coverity
     if: type = cron
 
-addons:
-  - if: type = cron
-    coverity_scan:
-      project:
-        name: "CESNET/libyang"
-      notification_email: rkrejci@cesnet.cz
-      build_command_prepend: "mkdir build; cd build; cmake ..; make clean"
-      build_command: "make"
-
 jobs:
   include:
     - stage: Coverity
@@ -30,6 +21,13 @@ jobs:
         # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
         #   via the "travis encrypt" command using the project repo's public key
         - secure: "jkN1i+W2V5/ULAmpqEOyl6J6hsa9rS8JcBKsjB/Md6sJJprWKepUfQ0UdhrjBYbFJbo1mnjL0sHboTrowBXH59IQquPtw64oF9HzyMcmwr+Dm93hhm/vaI06oXwkxmnQxC0OW7Cttrmo+858lsegZYxrh2p4tgEd6WOtDpJIaQ4="
+      addons:
+        coverity_scan:
+          project:
+            name: "CESNET/libyang"
+          notification_email: rkrejci@cesnet.cz
+          build_command_prepend: "mkdir build; cd build; cmake ..; make clean"
+          build_command: "make"
       before_install:
         - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-certificates.crt
         - sudo apt-get update -qq
