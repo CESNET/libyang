@@ -2,31 +2,25 @@ language: c
 sudo: required
 dist: trusty
 
-env:
-  global:
-   # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
-   #   via the "travis encrypt" command using the project repo's public key
-   - secure: "jkN1i+W2V5/ULAmpqEOyl6J6hsa9rS8JcBKsjB/Md6sJJprWKepUfQ0UdhrjBYbFJbo1mnjL0sHboTrowBXH59IQquPtw64oF9HzyMcmwr+Dm93hhm/vaI06oXwkxmnQxC0OW7Cttrmo+858lsegZYxrh2p4tgEd6WOtDpJIaQ4="
-
 stages:
   - name: Test
     if: type != cron
   - name: Coverity
     if: type = cron
-    
+    addons:
+      coverity_scan:
+        project:
+          name: "CESNET/libyang"
+        notification_email: rkrejci@cesnet.cz
+        build_command_prepend: "mkdir build; cd build; cmake ..; make clean"
+        build_command: "make"
+
 jobs:
   include:
     - stage: Coverity
       name: Coverity night check
       os: linux
       compiler: clang
-      addons:
-        coverity_scan:
-          project:
-            name: "CESNET/libyang"
-          notification_email: rkrejci@cesnet.cz
-          build_command_prepend: "mkdir build; cd build; cmake ..; make clean"
-          build_command: "make"
       branches:
         only:
           - libyang2
