@@ -7,13 +7,15 @@ stages:
     if: type != cron
   - name: Coverity
     if: type = cron
-    addons:
-      coverity_scan:
-        project:
-          name: "CESNET/libyang"
-        notification_email: rkrejci@cesnet.cz
-        build_command_prepend: "mkdir build; cd build; cmake ..; make clean"
-        build_command: "make"
+
+addons:
+  - if: type = cron
+    coverity_scan:
+      project:
+        name: "CESNET/libyang"
+      notification_email: rkrejci@cesnet.cz
+      build_command_prepend: "mkdir build; cd build; cmake ..; make clean"
+      build_command: "make"
 
 jobs:
   include:
