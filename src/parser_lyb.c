@@ -247,17 +247,15 @@ lyb_parse_model(const char *data, const struct lys_module **mod, struct lyb_stat
 {
     int r, ret = 0;
     char *mod_name = NULL, mod_rev[11];
-    uint16_t rev = 0;
-    uint8_t tmp_buf[2];
+    uint16_t rev;
 
     /* model name */
     ret += (r = lyb_read_string(data, &mod_name, 1, lybs));
     LYB_HAVE_READ_GOTO(r, data, error);
 
     /* revision */
-    ret += (r = lyb_read(data, tmp_buf, sizeof tmp_buf, lybs));
+    ret += (r = lyb_read(data, (uint8_t *)&rev, 2, lybs));
     LYB_HAVE_READ_GOTO(r, data, error);
-    rev = tmp_buf[0] | (tmp_buf[1] << 8);
 
     if (rev) {
         sprintf(mod_rev, "%04u-%02u-%02u", ((rev & 0xFE00) >> 9) + 2000, (rev & 0x01E0) >> 5, (rev & 0x001F));
@@ -992,6 +990,24 @@ finish:
 }
 
 static int
+lyb_skip_subtree(const char *data, struct lyb_state *lybs)
+{
+    int r, ret = 0;
+
+    do {
+        ret += (r = lyb_read(data, NULL, lybs->written[lybs->used - 1], lybs));
+        LYB_HAVE_READ_RETURN(r, data, -1);
+
+        /* also skip the meta information inside */
+        r = lybs->inner_chunks[lybs->used - 1] * LYB_META_BYTES;
+        data += r;
+        ret += r;
+    } while (lybs->written[lybs->used - 1]);
+
+    return ret;
+}
+
+static int
 lyb_parse_subtree(const char *data, struct lyd_node *parent, struct lyd_node **first_sibling, const char *yang_data_name,
         int options, struct unres_data *unres, struct lyb_state *lybs)
 {
@@ -1026,13 +1042,8 @@ lyb_parse_subtree(const char *data, struct lyd_node *parent, struct lyd_node **f
 
     if (!mod || !snode) {
         /* unknown data subtree, skip it whole */
-        do {
-            ret += (r = lyb_read(data, NULL, lybs->written[lybs->used - 1], lybs));
-            /* also skip the meta information inside */
-            r = lybs->inner_chunks[lybs->used - 1] * LYB_META_BYTES;
-            data += r;
-            ret += r;
-        } while (lybs->written[lybs->used - 1]);
+        ret += (r = lyb_skip_subtree(data, lybs));
+        LYB_HAVE_READ_GOTO(r, data, error);
         goto stop_subtree;
     }
 
@@ -1292,4 +1303,78 @@ finish:
         *parsed = r;
     }
     return node;
+}
+
+API int
+lyd_lyb_data_length(const char *data)
+{
+    struct lyb_state lybs;
+    int r = 0, ret = 0, i;
+    size_t len;
+    uint8_t buf[LYB_SIZE_MAX];
+
+    if (!data) {
+        return -1;
+    }
+
+    lybs.written = malloc(LYB_STATE_STEP * sizeof *lybs.written);
+    lybs.position = malloc(LYB_STATE_STEP * sizeof *lybs.position);
+    lybs.inner_chunks = malloc(LYB_STATE_STEP * sizeof *lybs.inner_chunks);
+    LY_CHECK_ERR_GOTO(!lybs.written || !lybs.position || !lybs.inner_chunks, LOGMEM(NULL), finish);
+    lybs.used = 0;
+    lybs.size = LYB_STATE_STEP;
+    lybs.models = NULL;
+    lybs.mod_count = 0;
+    lybs.ctx = NULL;
+
+    /* read magic number */
+    ret += (r = lyb_parse_magic_number(data, &lybs));
+    LYB_HAVE_READ_GOTO(r, data, finish);
+
+    /* read header */
+    ret += (r = lyb_parse_header(data, &lybs));
+    LYB_HAVE_READ_GOTO(r, data, finish);
+
+    /* read model count */
+    ret += (r = lyb_read_number((uint64_t *)&lybs.mod_count, 2, data, &lybs));
+    LYB_HAVE_READ_GOTO(r, data, finish);
+
+    /* read all models */
+    for (i = 0; i < lybs.mod_count; ++i) {
+        /* module name length */
+        len = 0;
+        ret += (r = lyb_read_number(&len, 2, data, &lybs));
+        LYB_HAVE_READ_GOTO(r, data, finish);
+
+        /* model name */
+        ret += (r = lyb_read(data, buf, len, &lybs));
+        LYB_HAVE_READ_GOTO(r, data, finish);
+
+        /* revision */
+        ret += (r = lyb_read(data, buf, 2, &lybs));
+        LYB_HAVE_READ_GOTO(r, data, finish);
+    }
+
+    while (data[0]) {
+        /* register a new subtree */
+        ret += (r = lyb_read_start_subtree(data, &lybs));
+        LYB_HAVE_READ_GOTO(r, data, finish);
+
+        /* skip it */
+        ret += (r = lyb_skip_subtree(data, &lybs));
+        LYB_HAVE_READ_GOTO(r, data, finish);
+
+        /* subtree finished */
+        lyb_read_stop_subtree(&lybs);
+    }
+
+    /* read the last zero, parsing finished */
+    ++ret;
+
+finish:
+    free(lybs.written);
+    free(lybs.position);
+    free(lybs.inner_chunks);
+    free(lybs.models);
+    return ret;
 }

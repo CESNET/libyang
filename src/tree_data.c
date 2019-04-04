@@ -7767,65 +7767,6 @@ lyd_leaf_type(const struct lyd_node_leaf_list *leaf)
     return type;
 }
 
-API int
-lyd_lyb_data_length(const char *data)
-{
-    const char *ptr;
-    uint16_t i, mod_count, str_len;
-    uint8_t tmp_buf[2];
-    LYB_META meta;
-
-    if (!data) {
-        return -1;
-    }
-
-    ptr = data;
-
-    /* magic number */
-    if ((ptr[0] != 'l') || (ptr[1] != 'y') || (ptr[2] != 'b')) {
-        return -1;
-    }
-    ptr += 3;
-
-    /* header */
-    ++ptr;
-
-    /* models */
-    memcpy(tmp_buf, ptr, 2);
-    ptr += 2;
-    mod_count = tmp_buf[0] | (tmp_buf[1] << 8);
-
-    for (i = 0; i < mod_count; ++i) {
-        /* model name */
-        memcpy(tmp_buf, ptr, 2);
-        ptr += 2;
-        str_len = tmp_buf[0] | (tmp_buf[1] << 8);
-
-        ptr += str_len;
-
-        /* revision */
-        ptr += 2;
-    }
-
-    if (ptr[0]) {
-        /* subtrees */
-        do {
-            memcpy(&meta, ptr, LYB_META_BYTES);
-            ptr += LYB_META_BYTES;
-
-            /* read whole subtree (chunk size) */
-            ptr += *((uint8_t *)&meta);
-            /* skip inner chunks (inner chunk count) */
-            ptr += *(((uint8_t *)&meta) + LYB_SIZE_BYTES) * LYB_META_BYTES;
-        } while ((*((uint8_t *)&meta) == LYB_SIZE_MAX) || ptr[0]);
-    }
-
-    /* ending zero */
-    ++ptr;
-
-    return ptr - data;
-}
-
 #ifdef LY_ENABLED_LYD_PRIV
 
 API void *

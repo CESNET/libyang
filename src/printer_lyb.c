@@ -739,6 +739,8 @@ lyb_print_anydata(struct lyd_node_anydata *anydata, struct lyout *out, struct ly
         len = lyd_lyb_data_length(anydata->value.mem);
         if (len > -1) {
             ret += lyb_write_string(anydata->value.str, (size_t)len, 0, out, lybs);
+        } else {
+            ret = len;
         }
     } else {
         ret += lyb_write_string(anydata->value.str, 0, 0, out, lybs);
