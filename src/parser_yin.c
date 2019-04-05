@@ -280,16 +280,16 @@ parse_text_element(struct lyxml_context *xml_ctx, char *element_name, const char
  *
  * @param[in] xml_ctx xml context.
  * @param[in, out] data Data to read from.
- * @param[in, out] mod_p Module to write to.
+ * @param[in, out] namespace Where namespace value should be stored.
  *
  * @return LY_ERR values.
  */
 LY_ERR
-parse_namespace(struct lyxml_context *xml_ctx, const char **data, struct lysp_module **mod)
+parse_namespace(struct lyxml_context *xml_ctx, const char **data, const char **namespace)
 {
     LY_ERR ret = LY_SUCCESS;
 
-    ret = yin_parse_attribute(xml_ctx, data, YIN_ARG_URI, &((*mod)->mod->ns), "namespace");
+    ret = yin_parse_attribute(xml_ctx, data, YIN_ARG_URI, namespace, "namespace");
     LY_CHECK_RET(ret != LY_SUCCESS, ret);
 
     /* remove local xmlns definitions */
@@ -302,32 +302,43 @@ parse_namespace(struct lyxml_context *xml_ctx, const char **data, struct lysp_mo
  *
  * @param[in] xml_ctx Xml context.
  * @param[in, out] data Data to reda from.
- * @param[out] mod Module to write to.
+ * @param[out] prefix Where to store prefix value.
  *
  * @return LY_ERR values.
  */
 LY_ERR
-parse_prefix(struct lyxml_context *xml_ctx, const char **data, struct lysp_module **mod)
+parse_prefix(struct lyxml_context *xml_ctx, const char **data, const char **prefix)
 {
     LY_ERR ret = LY_SUCCESS;
 
     /* parse attributes */
-    ret = yin_parse_attribute(xml_ctx, data, YIN_ARG_VALUE, &(*mod)->mod->prefix, "prefix");
+    ret = yin_parse_attribute(xml_ctx, data, YIN_ARG_VALUE, prefix, "prefix");
     LY_CHECK_RET(ret != LY_SUCCESS, ret);
     /* remove local xmlns definitions */
     ret = lyxml_ns_rm(xml_ctx, "prefix");
     return ret;
 }
 
-// static LY_ERR
-// yin_parse_revision_date(struct lyxml_context *xml_ctx, const char **data, struct lysp_module **mod)
-// {
+static LY_ERR
+yin_parse_revision_date(struct lyxml_context *xml_ctx, const char **data, char *rev, struct lysp_ext_instance **exts)
+{
+    LY_ERR ret = LY_SUCCESS;
 
-//     return LY_SUCCESS;
-// }
+    if (rev[0]) {
+        LOGVAL_YANG(xml_ctx, LY_VCODE_DUPSTMT, "revision-date");
+        return LY_EVALID;
+    }
+
+    ret = yin_parse_attribute(xml_ctx, data, YIN_ARG_DATE, (const char **)&rev, "revision-date");
+    LY_CHECK_RET(ret != LY_SUCCESS, ret);
+    LY_CHECK_RET(lysp_check_date((struct ly_parser_ctx *)xml_ctx, rev, strlen(rev), "revision-date") != LY_SUCCESS, LY_EVALID);
+
+    ret = lyxml_ns_rm(xml_ctx, "import");
+    return ret;
+}
 
 static LY_ERR
-yin_parse_import(struct lyxml_context *xml_ctx, const char *module_prefix, const char **data, struct lysp_module **mod)
+yin_parse_import(struct lyxml_context *xml_ctx, const char *module_prefix, const char **data, struct lysp_import **imports)
 {
     LY_ERR ret = LY_SUCCESS;
     enum yang_keyword kw;
@@ -335,43 +346,28 @@ yin_parse_import(struct lyxml_context *xml_ctx, const char *module_prefix, const
     const char *prefix, *name;
     size_t prefix_len, name_len;
 
-    char *buf = NULL, *out = NULL;
-    size_t buf_len = 0, out_len = 0;
-    int dynamic;
+    /* allocate sized array for imports */
+    LY_ARRAY_NEW_RET(xml_ctx->ctx, *imports, imp, LY_EVALID);
 
     /* parse import attributes  */
-    ret = yin_parse_attribute(xml_ctx, data, YIN_ARG_MODULE, &(*mod)->mod->prefix, "import");
-
-    /* valid subelements description, prefix, reference, revision-data */
-    /* allocate sized array for imports */
-    LY_ARRAY_NEW_RET(xml_ctx->ctx, (*mod)->imports, imp, LY_EVALID);
-
-    /* get value */
-    ret = lyxml_get_attribute(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
-    LY_CHECK_RET(ret);
-    if (match_argument_name(name, name_len) != YIN_ARG_MODULE) {
-        LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Invalid argument name \"%s\", expected \"module\".", name);
-        return LY_EVALID;
-    }
-    ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
-    LY_CHECK_RET(ret);
-    imp->name = lydict_insert(xml_ctx->ctx, out, out_len);
-    LY_CHECK_ERR_RET(!imp->name, LOGMEM(xml_ctx->ctx), LY_EMEM);
-
+    ret = yin_parse_attribute(xml_ctx, data, YIN_ARG_MODULE, &imp->name, "import");
     while ((ret = lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len) == LY_SUCCESS && name != NULL)) {
         kw = match_keyword(name, name_len, prefix_len);
         switch (kw) {
         case YANG_PREFIX:
-            parse_prefix(xml_ctx, data, mod);
+            LY_CHECK_ERR_RET(imp->prefix, LOGVAL_YANG(xml_ctx, LY_VCODE_DUPSTMT, "prefix"), LY_EVALID);
+            parse_prefix(xml_ctx, data, &imp->prefix);
             break;
         case YANG_DESCRIPTION:
-            parse_text_element(xml_ctx, "description", data, &((*mod)->mod->dsc));
+            LY_CHECK_ERR_RET(imp->dsc, LOGVAL_YANG(xml_ctx, LY_VCODE_DUPSTMT, "description"), LY_EVALID);
+            parse_text_element(xml_ctx, "description", data, &imp->dsc);
             break;
         case YANG_REFERENCE:
-            parse_text_element(xml_ctx, "reference", data, &((*mod)->imports->ref));
+            LY_CHECK_ERR_RET(imp->ref, LOGVAL_YANG(xml_ctx, LY_VCODE_DUPSTMT, "reference"), LY_EVALID);
+            parse_text_element(xml_ctx, "reference", data, &imp->ref);
             break;
         case YANG_REVISION_DATE:
-            /* this is attribute of import element */
+            yin_parse_revision_date(xml_ctx, data, &imp->rev, &imp->exts);
         case YANG_CUSTOM:
             /* TODO parse extension */
         default:
@@ -520,15 +516,15 @@ parse_mod(struct lyxml_context *xml_ctx, const char **data, struct lysp_module *
 
             /* module header */
             case YANG_NAMESPACE:
-                LY_CHECK_RET(parse_namespace(xml_ctx, data, mod));
+                LY_CHECK_RET(parse_namespace(xml_ctx, data, &(*mod)->mod->ns));
                 break;
             case YANG_PREFIX:
-                LY_CHECK_RET(parse_prefix(xml_ctx, data, mod));
+                LY_CHECK_RET(parse_prefix(xml_ctx, data, &(*mod)->mod->prefix));
                 break;
 
             /* linkage */
             case YANG_IMPORT:
-                yin_parse_import(xml_ctx, (*mod)->mod->prefix, data, mod);
+                yin_parse_import(xml_ctx, (*mod)->mod->prefix, data, &(*mod)->imports);
                 break;
 
             /* meta */
