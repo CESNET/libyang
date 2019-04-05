@@ -167,7 +167,7 @@ lyb_read_string(const char *data, char **str, int with_length, struct lyb_state 
     size_t len = 0, cur_len;
 
     if (with_length) {
-        ret += (r = lyb_read_number(&len, 2, data, lybs));
+        ret += (r = lyb_read_number((uint64_t *)&len, 2, data, lybs));
         LYB_HAVE_READ_GOTO(r, data, error);
     } else {
         /* read until the end of this subtree */
@@ -1343,7 +1343,7 @@ lyd_lyb_data_length(const char *data)
     for (i = 0; i < lybs.mod_count; ++i) {
         /* module name length */
         len = 0;
-        ret += (r = lyb_read_number(&len, 2, data, &lybs));
+        ret += (r = lyb_read_number((uint64_t *)&len, 2, data, &lybs));
         LYB_HAVE_READ_GOTO(r, data, finish);
 
         /* model name */
