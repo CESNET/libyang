@@ -630,18 +630,19 @@ yin_parse_module(struct ly_ctx *ctx, const char *data, struct lys_module *mod)
 {
     LY_ERR ret = LY_SUCCESS;
     enum yang_keyword kw = YANG_NONE;
-    struct lyxml_context xml_ctx;
+    struct ly_parser_ctx parser_ctx;
+    struct lyxml_context *xml_ctx = (struct lyxml_context *)&parser_ctx;
     struct lysp_module *mod_p = NULL;
     const char *prefix, *name;
     size_t prefix_len, name_len;
 
     /* initialize xml context */
-    memset(&xml_ctx, 0, sizeof xml_ctx);
-    xml_ctx.ctx = ctx;
-    xml_ctx.line = 1;
+    memset(&parser_ctx, 0, sizeof parser_ctx);
+    xml_ctx->ctx = ctx;
+    xml_ctx->line = 1;
 
     /* check submodule */
-    ret = lyxml_get_element(&xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    ret = lyxml_get_element(xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
     kw = match_keyword(name, name_len, prefix_len);
     if (kw == YANG_SUBMODULE) {
@@ -649,7 +650,7 @@ yin_parse_module(struct ly_ctx *ctx, const char *data, struct lys_module *mod)
         ret = LY_EINVAL;
         goto cleanup;
     } else if (kw != YANG_MODULE) {
-        LOGVAL_YANG(&xml_ctx, LYVE_SYNTAX, "Invalid keyword \"%s\", expected \"module\" or \"submodule\".",
+        LOGVAL_YANG(xml_ctx, LYVE_SYNTAX, "Invalid keyword \"%s\", expected \"module\" or \"submodule\".",
                ly_stmt2str(kw));
         ret = LY_EVALID;
         goto cleanup;
@@ -662,7 +663,7 @@ yin_parse_module(struct ly_ctx *ctx, const char *data, struct lys_module *mod)
     mod_p->parsing = 1;
 
     /* parser module substatements */
-    ret = parse_mod(&xml_ctx, &data, &mod_p);
+    ret = parse_mod(xml_ctx, &data, &mod_p);
     LY_CHECK_GOTO(ret, cleanup);
 
     mod_p->parsing = 0;
@@ -673,6 +674,6 @@ cleanup:
         lysp_module_free(mod_p);
     }
 
-    lyxml_context_clear(&xml_ctx);
+    lyxml_context_clear(xml_ctx);
     return ret;
 }
