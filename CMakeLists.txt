@@ -1,4 +1,10 @@
 cmake_minimum_required(VERSION 2.8.12)
+
+# force out-of-source build
+if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
+    message(FATAL_ERROR "In-source build is not allowed. Please make a standalone build directory and run CMake from there. You may need to remove CMakeCache.txt.")
+endif()
+
 project(libyang C)
 
 include(GNUInstallDirs)
@@ -9,12 +15,17 @@ set(LIBYANG_DESCRIPTION "libyang is YANG data modelling language parser and tool
 # Correct RPATH usage on OS X
 set(CMAKE_MACOSX_RPATH TRUE)
 
-# set version
-set(LIBYANG_MAJOR_VERSION 1)
+# set version of the project
+set(LIBYANG_MAJOR_VERSION 2)
 set(LIBYANG_MINOR_VERSION 0)
 set(LIBYANG_MICRO_VERSION 0)
 set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_MICRO_VERSION})
-set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION})
+# set version of the library
+set(LIBYANG_MAJOR_SOVERSION 2)
+set(LIBYANG_MINOR_SOVERSION 0)
+set(LIBYANG_MICRO_SOVERSION 0)
+set(LIBYANG_SOVERSION_FULL ${LIBYANG_MAJOR_SOVERSION}.${LIBYANG_MINOR_SOVERSION}.${LIBYANG_MICRO_SOVERSION})
+set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_SOVERSION})
 
 # set default build type if not specified by user
 if(NOT CMAKE_BUILD_TYPE)
@@ -30,9 +41,16 @@ set(CMAKE_C_FLAGS_DEBUG   "-g -O0")
 if((CMAKE_BUILD_TYPE STREQUAL debug) OR (CMAKE_BUILD_TYPE STREQUAL Package))
     option(ENABLE_BUILD_TESTS "Build tests" ON)
     option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" ON)
+
+    if(CMAKE_COMPILER_IS_GNUCC)
+        option(ENABLE_COVERAGE "Build code coverage report from tests" ON)
+    else()
+        option(ENABLE_COVERAGE "Build code coverage report from tests" OFF)
+    endif()
 else()
     option(ENABLE_BUILD_TESTS "Build tests" OFF)
     option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" OFF)
+    option(ENABLE_COVERAGE "Build code coverage report from tests" OFF)
 endif()
 #option(ENABLE_CALLGRIND_TESTS "Build performance tests to be run with callgrind" OFF)
 
@@ -211,7 +229,7 @@ else()
     target_link_libraries(yang ${CMAKE_DL_LIBS})
 endif(ENABLE_STATIC)
 
-set_target_properties(yang PROPERTIES VERSION ${LIBYANG_VERSION} SOVERSION ${LIBYANG_SOVERSION})
+set_target_properties(yang PROPERTIES VERSION ${LIBYANG_SOVERSION_FULL} SOVERSION ${LIBYANG_SOVERSION})
 set_target_properties(yangobj PROPERTIES COMPILE_FLAGS "-fvisibility=hidden")
 
 # link math
