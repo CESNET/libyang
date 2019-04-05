@@ -1,6 +1,9 @@
 language: c
 sudo: required
 dist: trusty
+branches:
+  only:
+    - libyang2
 
 stages:
   - name: Test
@@ -14,9 +17,6 @@ jobs:
       name: Coverity night check
       os: linux
       compiler: clang
-      branches:
-        only:
-          - libyang2
       env:
         # The next declaration is the encrypted COVERITY_SCAN_TOKEN, created
         #   via the "travis encrypt" command using the project repo's public key
@@ -28,6 +28,7 @@ jobs:
           notification_email: rkrejci@cesnet.cz
           build_command_prepend: "mkdir build; cd build; cmake ..; make clean"
           build_command: "make"
+          branch_pattern: libyang2
       before_install:
         - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-certificates.crt
         - sudo apt-get update -qq
@@ -38,9 +39,6 @@ jobs:
       name: Linux with CLang
       os: linux
       compiler: clang
-      branches:
-        only:
-          - libyang2
       before_install:
         - wget https://cmocka.org/files/1.1/cmocka-1.1.2.tar.xz
         - tar -xf cmocka-1.1.2.tar.xz
@@ -52,9 +50,6 @@ jobs:
       name: Linux with GCC
       os: linux
       compiled: gcc
-      branches:
-        only:
-          - libyang2
       before_install:
         - wget https://cmocka.org/files/1.1/cmocka-1.1.2.tar.xz
         - tar -xf cmocka-1.1.2.tar.xz
@@ -71,9 +66,6 @@ jobs:
       compiler: gcc
       allow_failures:
         - os: osx
-      branches:
-        only:
-          - libyang2
       before_install:
         - wget https://cmocka.org/files/1.1/cmocka-1.1.2.tar.xz
         - tar -xf cmocka-1.1.2.tar.xz
