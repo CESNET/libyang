@@ -648,7 +648,13 @@ lyxml_ns_add(struct lyxml_context *context, const char *element_name, const char
     ns = malloc(sizeof *ns);
     LY_CHECK_ERR_RET(!ns, LOGMEM(context->ctx), LY_EMEM);
 
+    /* to distinguish 2 elements, we need not only the name, but also its depth in the XML tree.
+     * In case some dictionary is used to store elements' names (so name strings of 2 distinguish nodes
+     * actually points to the same memory), so the depth is necessary to distinguish parent/child nodes
+     * of the same name. Otherwise, the namespace defined in parent could be removed when leaving child node. */
+    ns->element_depth = context->elements.count;
     ns->element = element_name;
+
     ns->uri = uri;
     if (prefix) {
         ns->prefix = strndup(prefix, prefix_len);
@@ -688,8 +694,12 @@ lyxml_ns_rm(struct lyxml_context *context, const char *element_name)
     unsigned int u;
 
     for (u = context->ns.count - 1; u + 1 > 0; --u) {
-        if (((struct lyxml_ns *)context->ns.objs[u])->element != element_name) {
-            /* we are done, the namespaces from a single element are supposed to be together */
+        if (((struct lyxml_ns *)context->ns.objs[u])->element != element_name ||
+                ((struct lyxml_ns *)context->ns.objs[u])->element_depth != context->elements.count + 1) {
+            /* we are done, the namespaces from a single element are supposed to be together;
+             * the second condition is there to distinguish parent/child elements with the same name
+             * (which are for some reason stored at the same memory chunk), so we need to distinguish
+             * level of the node */
             break;
         }
         /* remove the ns structure */

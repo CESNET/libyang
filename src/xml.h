@@ -48,6 +48,7 @@ struct lyxml_ns {
     const char *element;  /* element where the namespace is defined */
     char *prefix;         /* prefix of the namespace, NULL for the default namespace */
     char *uri;            /* namespace URI */
+    unsigned int element_depth; /* depth level of the element to distinguish parent-child elements of the same name */
 };
 
 /* element tag identifier for matching opening and closing tags */
