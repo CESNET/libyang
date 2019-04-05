@@ -15,12 +15,23 @@ set(LIBYANG_DESCRIPTION "libyang is YANG data modelling language parser and tool
 # Correct RPATH usage on OS X
 set(CMAKE_MACOSX_RPATH TRUE)
 
-# set version
-set(LIBYANG_MAJOR_VERSION 0)
-set(LIBYANG_MINOR_VERSION 16)
-set(LIBYANG_MICRO_VERSION 133)
+# Version of the project
+# Generic version of not only the library. Major version is reserved for really big changes of the project,
+# minor version changes with added functionality (new tool, functionality of the tool or library, ...) and
+# micro version is changed with a set of small changes or bugfixes anywhere in the project.
+set(LIBYANG_MAJOR_VERSION 1)
+set(LIBYANG_MINOR_VERSION 0)
+set(LIBYANG_MICRO_VERSION 0)
 set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_MICRO_VERSION})
-set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION})
+
+# Version of the library
+# Major version is changed with every backward non-compatible API/ABI change in libyang, minor version changes
+# with backward compatible change and micro version is connected with any internal change of the library.
+set(LIBYANG_MAJOR_SOVERSION 1)
+set(LIBYANG_MINOR_SOVERSION 0)
+set(LIBYANG_MICRO_SOVERSION 0)
+set(LIBYANG_SOVERSION_FULL ${LIBYANG_MAJOR_SOVERSION}.${LIBYANG_MINOR_SOVERSION}.${LIBYANG_MICRO_SOVERSION})
+set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_SOVERSION})
 
 # set default build type if not specified by user
 if(NOT CMAKE_BUILD_TYPE)
@@ -268,7 +279,7 @@ else()
     set_target_properties(yangobj PROPERTIES COMPILE_FLAGS "-fvisibility=hidden")
 endif(ENABLE_STATIC)
 
-set_target_properties(yang PROPERTIES VERSION ${LIBYANG_VERSION} SOVERSION ${LIBYANG_SOVERSION})
+set_target_properties(yang PROPERTIES VERSION ${LIBYANG_SOVERSION_FULL} SOVERSION ${LIBYANG_SOVERSION})
 
 # link math
 target_link_libraries(yang m)
