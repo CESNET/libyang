@@ -73,7 +73,7 @@ test_parse(void **state)
                         xmlns:foo=\"urn:example:foo\"\
                         xmlns:myext=\"urn:example:extensions\">\
                         <namespace uri=\"urn:example:foo\" xmlns:myext=\"urn:example:extensions\"/>\
-                        <prefix value=\"foo\"/>\
+                        <prefix xmlns:myxt=\"urn:emple:extensions\" value=\"foo\" xmlns:myext=\"urn:example:extensions\"/>\
                     </module>",
                 st->mod);
 
@@ -165,9 +165,9 @@ test_match_argument(void **state)
 {
     (void)state; /* unused */
 
-    assert_int_equal(match_argument_name("", 5), YIN_ARG_NONE);
-    assert_int_equal(match_argument_name("qwertyasd", 5), YIN_ARG_NONE);
-    assert_int_equal(match_argument_name("conditionasd", 8), YIN_ARG_NONE);
+    assert_int_equal(match_argument_name("", 5), YIN_ARG_UNKNOWN);
+    assert_int_equal(match_argument_name("qwertyasd", 5), YIN_ARG_UNKNOWN);
+    assert_int_equal(match_argument_name("conditionasd", 8), YIN_ARG_UNKNOWN);
     assert_int_equal(match_argument_name("condition", 9), YIN_ARG_CONDITION);
     assert_int_equal(match_argument_name("date", 4), YIN_ARG_DATE);
     assert_int_equal(match_argument_name("module", 6), YIN_ARG_MODULE);
@@ -186,14 +186,14 @@ test_meta(void **state)
     struct state *st = *state;
 
     ret = yin_parse_module(st->ctx,"<module name=\"example-foo\">\
-                                        <organization xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">organiz&lt;ation...</organization>\
+                                        <organization xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">organization...</organization>\
                                         <contact>contact...</contact>\
                                         <description>description...</description>\
                                         <reference>reference...</reference>\
                                     </module>", st->mod);
 
     assert_int_equal(ret, LY_SUCCESS);
-    assert_string_equal(st->mod->parsed->mod->org, "organiz<ation...");
+    assert_string_equal(st->mod->parsed->mod->org, "organization...");
     assert_string_equal(st->mod->parsed->mod->contact, "contact...");
     assert_string_equal(st->mod->parsed->mod->dsc, "description...");
     assert_string_equal(st->mod->parsed->mod->ref, "reference...");
