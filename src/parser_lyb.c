@@ -995,13 +995,14 @@ lyb_skip_subtree(const char *data, struct lyb_state *lybs)
     int r, ret = 0;
 
     do {
-        ret += (r = lyb_read(data, NULL, lybs->written[lybs->used - 1], lybs));
-        LYB_HAVE_READ_RETURN(r, data, -1);
-
-        /* also skip the meta information inside */
+        /* first skip any meta information inside */
         r = lybs->inner_chunks[lybs->used - 1] * LYB_META_BYTES;
         data += r;
         ret += r;
+
+        /* then read data */
+        ret += (r = lyb_read(data, NULL, lybs->written[lybs->used - 1], lybs));
+        LYB_HAVE_READ_RETURN(r, data, -1);
     } while (lybs->written[lybs->used - 1]);
 
     return ret;
