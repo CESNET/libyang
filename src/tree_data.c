@@ -4187,8 +4187,15 @@ nextsibling:
             node->parent->validity |= LYD_VAL_MAND;
         } else if ((node->schema->nodetype & LYS_LIST) && ((struct lys_node_list *)node->schema)->max) {
             node->parent->validity |= LYD_VAL_MAND;
-        } else if (node->parent->schema->flags & LYS_VALID_EXT) {
-            node->parent->validity |= LYD_VAL_MAND;
+        } else {
+            /* invalidate all parents that have an extension with a validation
+             * callback for their whole subtree */
+            next = node->parent;
+            while (next) {
+                if ((next->schema->flags & LYS_VALID_EXT) && (next->schema->flags & LYS_VALID_EXT_SUBTREE))
+                    next->validity |= LYD_VAL_MAND;
+                next = next->parent;
+            }
         }
     }
 }

@@ -4268,7 +4268,10 @@ yang_check_nodes(struct lys_module *module, struct lys_node *parent, struct lys_
         for (i = 0; i < node->ext_size; ++i) {
             if (node->ext[i]->flags & LYEXT_OPT_VALID) {
                 node->flags |= LYS_VALID_EXT;
-                break;
+                if (node->ext[i]->flags & LYEXT_OPT_VALID_SUBTREE) {
+                    node->flags |= LYS_VALID_EXT_SUBTREE;
+                    break;
+                }
             }
         }
 

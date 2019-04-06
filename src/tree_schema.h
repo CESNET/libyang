@@ -419,6 +419,10 @@ typedef enum {
 #define LYEXT_OPT_CONTENT    0x04    /**< content of lys_ext_instance_complex is copied from source (not dup, just memcpy). */
 /** @endcond */
 #define LYEXT_OPT_VALID      0x08    /**< needed to call calback for validation */
+#define LYEXT_OPT_VALID_SUBTREE 0x10 /**< The plugin needs to do validation on nodes in the subtree of the extended node
+                                          (i.e. not only the extended node nor its direct children). valid_data callback
+                                          will be called when any descendant node in the subtree of the extended node is
+                                          modified. */
 #define LYEXT_OPT_PLUGIN1    0x0100  /**< reserved flag for plugin-specific use */
 #define LYEXT_OPT_PLUGIN2    0x0200  /**< reserved flag for plugin-specific use */
 #define LYEXT_OPT_PLUGIN3    0x0400  /**< reserved flag for plugin-specific use */
@@ -1177,6 +1181,8 @@ struct lys_iffeature {
 #define LYS_NOTAPPLIED   0x01        /**< flag for the not applied augments to allow keeping the resolved target */
 #define LYS_YINELEM      0x01        /**< yin-element true for extension's argument */
 #define LYS_VALID_EXT    0x2000      /**< flag marking nodes that need to be validated using an extension validation function */
+#define LYS_VALID_EXT_SUBTREE 0x4000 /**< flag marking nodes that need to be validated using an extension
+                                          validation function when one of their children nodes is modified */
 
 /**
  * @}
