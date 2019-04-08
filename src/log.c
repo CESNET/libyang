@@ -308,6 +308,61 @@ lyext_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, const char *plugin, cons
     free(plugin_msg);
 }
 
+static enum LY_VLOG_ELEM extvelog2velog[] = {
+    LY_VLOG_NONE, /* LYEXT_VLOG_NONE */
+    LY_VLOG_XML, /* LYEXT_VLOG_XML */
+    LY_VLOG_LYS, /* LYEXT_VLOG_LYS */
+    LY_VLOG_LYD, /* LYEXT_VLOG_LYD */
+    LY_VLOG_STR, /* LYEXT_VLOG_STR */
+    LY_VLOG_PREV, /* LYEXT_VLOG_PREV */
+};
+
+API void
+lyext_vlog(const struct ly_ctx *ctx, LY_VECODE vecode, const char *plugin, const char *function,
+           LYEXT_VLOG_ELEM elem_type, const void *elem, const char *format, ...)
+{
+    enum LY_VLOG_ELEM etype = extvelog2velog[elem_type];
+    char *plugin_msg, *path = NULL;
+    va_list ap;
+    int ret;
+
+    if (path_flag && (etype != LY_VLOG_NONE)) {
+        if (etype == LY_VLOG_PREV) {
+            /* use previous path */
+            const struct ly_err_item *first = ly_err_first(ctx);
+            if (first && first->prev->path) {
+                path = strdup(first->prev->path);
+            }
+        } else {
+            /* print path */
+            if (!elem) {
+                /* top-level */
+                path = strdup("/");
+            } else {
+                ly_vlog_build_path(etype, elem, &path, 0, 0);
+            }
+        }
+    }
+
+    if (plugin)
+        ret = asprintf(&plugin_msg, "%s (reported by plugin %s, %s())", format, plugin, function);
+    else
+        ret = asprintf(&plugin_msg, "%s", format);
+
+    if (ret == -1) {
+        LOGMEM(ctx);
+        free(path);
+        return;
+    }
+
+    va_start(ap, format);
+    /* path is spent and should not be freed! */
+    log_vprintf(ctx, LY_LLERR, LY_EVALID, vecode, path, plugin_msg, ap);
+    va_end(ap);
+
+    free(plugin_msg);
+}
+
 const char *ly_errs[] = {
 /* LYE_SUCCESS */      "",
 /* LYE_XML_MISS */     "Missing %s \"%s\".",
