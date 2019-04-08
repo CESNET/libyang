@@ -529,6 +529,9 @@ lyxml_get_element(struct lyxml_context *context, const char **input,
                 /* Document type declaration - not supported */
                 LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_NSUPP, "Document Type Declaration");
                 return LY_EVALID;
+            } else {
+                LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX, "Unknown XML section \"%.20s\".", &in[-2]);
+                return LY_EVALID;
             }
             in = ign_todelim(in, endtag, endtag_len, &newlines);
             LY_CHECK_ERR_RET(!in, LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_NTERM, sectname), LY_EVALID);

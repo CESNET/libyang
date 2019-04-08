@@ -112,6 +112,13 @@ test_element(void **state)
     assert_ptr_equal(p, str); /* input data not eaten */
     logbuf_assert("Document Type Declaration not supported. Line number 1.");
 
+    /* invalid XML */
+    str = p = "<!NONSENCE/>";
+    assert_int_equal(LY_EVALID, lyxml_get_element(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
+    assert_null(name);
+    assert_ptr_equal(p, str); /* input data not eaten */
+    logbuf_assert("Unknown XML section \"<!NONSENCE/>\". Line number 1.");
+
     /* unqualified element */
     str = "  <  element/>";
     assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
