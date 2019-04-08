@@ -350,7 +350,12 @@ getbuffer:
     LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_EOF);
 error:
     if (!(*buffer)) {
+        /* buffer not provided, buf is local */
         free(buf);
+    } else if (buf) {
+        /* buf is shared with caller via buffer, but buf could be reallocated, so update the provided buffer */
+        (*buffer) = buf;
+        (*buffer_size) = size;
     }
     return LY_EVALID;
 

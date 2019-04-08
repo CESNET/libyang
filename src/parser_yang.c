@@ -1013,6 +1013,14 @@ parse_ext_substmt(struct ly_parser_ctx *ctx, const char **data, char *word, size
     stmt = calloc(1, sizeof *stmt);
     LY_CHECK_ERR_RET(!stmt, LOGMEM(NULL), LY_EMEM);
 
+    /* insert into parent statements */
+    if (!*child) {
+        *child = stmt;
+    } else {
+        for (par_child = *child; par_child->next; par_child = par_child->next);
+        par_child->next = stmt;
+    }
+
     stmt->stmt = lydict_insert(ctx->ctx, word, word_len);
 
     /* get optional argument */
@@ -1024,14 +1032,6 @@ parse_ext_substmt(struct ly_parser_ctx *ctx, const char **data, char *word, size
         } else {
             stmt->arg = lydict_insert(ctx->ctx, word, word_len);
         }
-    }
-
-    /* insert into parent statements */
-    if (!*child) {
-        *child = stmt;
-    } else {
-        for (par_child = *child; par_child->next; par_child = par_child->next);
-        par_child->next = stmt;
     }
 
     YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret, ) {
