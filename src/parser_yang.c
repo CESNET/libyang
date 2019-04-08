@@ -268,6 +268,9 @@ buf_store_char(struct ly_parser_ctx *ctx, const char **input, enum yang_arg arg,
         /* in case of realloc */
         *word_p = *word_b;
     } else if (need_buf) {
+        /* check  valid combination of input paremeters - if need_buf specified, word_b must be provided */
+        assert(word_b);
+
         /* first time we need a buffer, copy everything read up to now */
         if (*word_len) {
             *word_b = malloc(*word_len);

@@ -165,7 +165,7 @@ check:
         goto repeat;
     default:
         /* we should not be here */
-        LOGINT(last->module->ctx);
+        LOGINT(module ? module->mod->ctx : parent->module->ctx);
         return NULL;
     }
 

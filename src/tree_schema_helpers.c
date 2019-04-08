@@ -631,7 +631,7 @@ lysp_load_module_check(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_
         /* check revision of the parsed model */
         if (!revs || strcmp(info->revision, revs[0].date)) {
             LOGERR(ctx, LY_EINVAL, "Module \"%s\" parsed with the wrong revision (\"%s\" instead \"%s\").", name,
-                   revs[0].date, info->revision);
+                   revs ? revs[0].date : "none", info->revision);
             return LY_EINVAL;
         }
     }
