@@ -838,7 +838,7 @@ search_file:
 LY_ERR
 lysp_load_submodule(struct ly_parser_ctx *ctx, struct lysp_module *mod, struct lysp_include *inc)
 {
-    struct lysp_submodule *submod;
+    struct lysp_submodule *submod = NULL;
     const char *submodule_data = NULL;
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
     void (*submodule_data_free)(void *module_data, void *user_data) = NULL;
