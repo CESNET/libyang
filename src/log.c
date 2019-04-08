@@ -285,12 +285,18 @@ lyext_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, const char *plugin, cons
 {
     va_list ap;
     char *plugin_msg;
+    int ret;
 
     if (ly_log_level < level) {
         return;
     }
 
-    if (asprintf(&plugin_msg, "%s (reported by plugin %s, %s())", format, plugin, function) == -1) {
+    if (plugin)
+        ret = asprintf(&plugin_msg, "%s (reported by plugin %s, %s())", format, plugin, function);
+    else
+        ret = asprintf(&plugin_msg, "%s", format);
+
+    if (ret == -1) {
         LOGMEM(ctx);
         return;
     }
