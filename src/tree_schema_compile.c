@@ -4290,7 +4290,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, int option
     /* search for the grouping definition */
     found = 0;
     id = uses_p->name;
-    lys_parse_nodeid(&id, &prefix, &prefix_len, &name, &name_len);
+    LY_CHECK_RET(lys_parse_nodeid(&id, &prefix, &prefix_len, &name, &name_len), LY_EVALID);
     if (prefix) {
         mod = lys_module_find_prefix(ctx->mod_def, prefix, prefix_len);
         if (!mod) {
