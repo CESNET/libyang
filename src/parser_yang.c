@@ -234,6 +234,9 @@ buf_store_char(struct ly_parser_ctx *ctx, const char **input, enum yang_arg arg,
     unsigned int c;
     size_t len;
 
+    /* check  valid combination of input paremeters - if need_buf specified, word_b must be provided */
+    assert(!need_buf || (need_buf && word_b));
+
     /* get UTF8 code point (and number of bytes coding the character) */
     LY_CHECK_ERR_RET(ly_getutf8(input, &c, &len),
                      LOGVAL_YANG(ctx, LY_VCODE_INCHAR, (*input)[-len]), LY_EVALID);
@@ -267,10 +270,7 @@ buf_store_char(struct ly_parser_ctx *ctx, const char **input, enum yang_arg arg,
 
         /* in case of realloc */
         *word_p = *word_b;
-    } else if (need_buf) {
-        /* check  valid combination of input paremeters - if need_buf specified, word_b must be provided */
-        assert(word_b);
-
+    } else if (word_b && need_buf) {
         /* first time we need a buffer, copy everything read up to now */
         if (*word_len) {
             *word_b = malloc(*word_len);
