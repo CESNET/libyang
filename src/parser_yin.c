@@ -5522,7 +5522,10 @@ read_yin_list(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         /* set flag, which represent LYEXT_OPT_VALID */
         if (retval->ext[r]->flags & LYEXT_OPT_VALID) {
             retval->flags |= LYS_VALID_EXT;
-            break;
+            if (retval->ext[r]->flags & LYEXT_OPT_VALID_SUBTREE) {
+                retval->flags |= LYS_VALID_EXT_SUBTREE;
+                break;
+            }
         }
     }
 
@@ -5743,7 +5746,10 @@ read_yin_container(struct lys_module *module, struct lys_node *parent, struct ly
         /* set flag, which represent LYEXT_OPT_VALID */
         if (retval->ext[r]->flags & LYEXT_OPT_VALID) {
             retval->flags |= LYS_VALID_EXT;
-            break;
+            if (retval->ext[r]->flags & LYEXT_OPT_VALID_SUBTREE) {
+                retval->flags |= LYS_VALID_EXT_SUBTREE;
+                break;
+            }
         }
     }
 
