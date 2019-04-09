@@ -3846,7 +3846,7 @@ lys_compile_node_case(struct lysc_ctx *ctx, struct lysp_node *node_p, int option
         cs->sp = node_p;
 
         /* check the case's status (don't need to solve uses_status since case statement cannot be directly in grouping statement */
-        LY_CHECK_RET(lys_compile_status(ctx, &cs->flags, ch->flags), NULL);
+        LY_CHECK_GOTO(lys_compile_status(ctx, &cs->flags, ch->flags), error);
 
         if (node_p->when) {
             LY_ARRAY_NEW_GOTO(ctx->ctx, cs->when, when, ret, error);
