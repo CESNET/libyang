@@ -480,20 +480,10 @@ lyb_write_start_subtree(struct lyout *out, struct lyb_state *lybs)
 static int
 lyb_write_number(uint64_t num, size_t bytes, struct lyout *out, struct lyb_state *lybs)
 {
-    int ret = 0;
-    size_t i;
-    uint8_t byte;
-
+    /* correct byte order */
     num = htole64(num);
-    for (i = 0; i < bytes; ++i) {
-        byte = *(((uint8_t *)&num) + i);
-        ret += lyb_write(out, &byte, 1, lybs);
-        if (ret < 0) {
-            break;
-        }
-    }
 
-    return ret;
+    return lyb_write(out, (uint8_t *)&num, bytes, lybs);
 }
 
 static int

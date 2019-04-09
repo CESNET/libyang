@@ -120,32 +120,29 @@ lyb_read(const char *data, uint8_t *buf, size_t count, struct lyb_state *lybs)
 }
 
 static int
-lyb_read_number(uint64_t *num, size_t num_size, size_t bytes, const char *data, struct lyb_state *lybs)
+lyb_read_number(void *num, size_t num_size, size_t bytes, const char *data, struct lyb_state *lybs)
 {
     int r, ret = 0;
-    size_t i;
-    uint8_t byte;
+    uint64_t buf = 0;
 
-    for (i = 0; i < bytes; ++i) {
-        ret += (r = lyb_read(data, &byte, 1, lybs));
-        LYB_HAVE_READ_RETURN(r, data, -1);
-
-        *(((uint8_t *)num) + i) = byte;
-    }
+    ret += (r = lyb_read(data, (uint8_t *)&buf, bytes, lybs));
+    LYB_HAVE_READ_RETURN(r, data, -1);
 
     /* correct byte order */
+    buf = le64toh(buf);
+
     switch (num_size) {
     case 1:
-        /* no need to do anything */
+        *((uint8_t *)num) = buf;
         break;
     case 2:
-        *num = le16toh(*num);
+        *((uint16_t *)num) = buf;
         break;
     case 4:
-        *num = le32toh(*num);
+        *((uint32_t *)num) = buf;
         break;
     case 8:
-        *num = le64toh(*num);
+        *((uint64_t *)num) = buf;
         break;
     default:
         LOGINT(lybs->ctx);
@@ -182,7 +179,7 @@ lyb_read_string(const char *data, char **str, int with_length, struct lyb_state 
     size_t len = 0, cur_len;
 
     if (with_length) {
-        ret += (r = lyb_read_number((uint64_t *)&len, sizeof len, 2, data, lybs));
+        ret += (r = lyb_read_number(&len, sizeof len, 2, data, lybs));
         LYB_HAVE_READ_GOTO(r, data, error);
     } else {
         /* read until the end of this subtree */
@@ -269,7 +266,7 @@ lyb_parse_model(const char *data, const struct lys_module **mod, struct lyb_stat
     LYB_HAVE_READ_GOTO(r, data, error);
 
     /* revision */
-    ret += (r = lyb_read(data, (uint8_t *)&rev, 2, lybs));
+    ret += (r = lyb_read_number(&rev, sizeof rev, 2, data, lybs));
     LYB_HAVE_READ_GOTO(r, data, error);
 
     if (rev) {
@@ -470,20 +467,20 @@ lyb_parse_val_1(struct lys_type *type, LY_DATA_TYPE value_type, uint8_t value_fl
         break;
     case LY_TYPE_INT8:
     case LY_TYPE_UINT8:
-        ret = lyb_read_number((uint64_t *)&value->uint8, sizeof value->uint8, 1, data, lybs);
+        ret = lyb_read_number(&value->uint8, sizeof value->uint8, 1, data, lybs);
         break;
     case LY_TYPE_INT16:
     case LY_TYPE_UINT16:
-        ret = lyb_read_number((uint64_t *)&value->uint16, sizeof value->uint16, 2, data, lybs);
+        ret = lyb_read_number(&value->uint16, sizeof value->uint16, 2, data, lybs);
         break;
     case LY_TYPE_INT32:
     case LY_TYPE_UINT32:
-        ret = lyb_read_number((uint64_t *)&value->uint32, sizeof value->uint32, 4, data, lybs);
+        ret = lyb_read_number(&value->uint32, sizeof value->uint32, 4, data, lybs);
         break;
     case LY_TYPE_DEC64:
     case LY_TYPE_INT64:
     case LY_TYPE_UINT64:
-        ret = lyb_read_number((uint64_t *)&value->uint64, sizeof value->uint64, 8, data, lybs);
+        ret = lyb_read_number(&value->uint64, sizeof value->uint64, 8, data, lybs);
         break;
     default:
         return -1;
@@ -1164,7 +1161,7 @@ lyb_parse_data_models(const char *data, struct lyb_state *lybs)
     int i, r, ret = 0;
 
     /* read model count */
-    ret += (r = lyb_read_number((uint64_t *)&lybs->mod_count, sizeof lybs->mod_count, 2, data, lybs));
+    ret += (r = lyb_read_number(&lybs->mod_count, sizeof lybs->mod_count, 2, data, lybs));
     LYB_HAVE_READ_RETURN(r, data, -1);
 
     lybs->models = malloc(lybs->mod_count * sizeof *lybs->models);
@@ -1349,14 +1346,14 @@ lyd_lyb_data_length(const char *data)
     LYB_HAVE_READ_GOTO(r, data, finish);
 
     /* read model count */
-    ret += (r = lyb_read_number((uint64_t *)&lybs.mod_count, sizeof lybs.mod_count, 2, data, &lybs));
+    ret += (r = lyb_read_number(&lybs.mod_count, sizeof lybs.mod_count, 2, data, &lybs));
     LYB_HAVE_READ_GOTO(r, data, finish);
 
     /* read all models */
     for (i = 0; i < lybs.mod_count; ++i) {
         /* module name length */
         len = 0;
-        ret += (r = lyb_read_number((uint64_t *)&len, sizeof len, 2, data, &lybs));
+        ret += (r = lyb_read_number(&len, sizeof len, 2, data, &lybs));
         LYB_HAVE_READ_GOTO(r, data, finish);
 
         /* model name */
