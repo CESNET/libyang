@@ -109,10 +109,10 @@ test_searchdirs(void **state)
     logbuf_assert("Given search directory \""TESTS_BIN"/src_context\" is not a directory.");
     /* not executable */
     assert_int_equal(LY_EINVAL, ly_ctx_set_searchdir(ctx, __FILE__));
-    logbuf_assert("Unable to use search directory \""__FILE__"\" (Permission denied)");
+    logbuf_assert("Unable to fully access search directory \""__FILE__"\" (Permission denied).");
     /* not existing */
     assert_int_equal(LY_EINVAL, ly_ctx_set_searchdir(ctx, "/nonexistingfile"));
-    logbuf_assert("Unable to use search directory \"/nonexistingfile\" (No such file or directory)");
+    logbuf_assert("Unable to use search directory \"/nonexistingfile\" (No such file or directory).");
 
     /* ly_set_add() fails */
     /* no change */
@@ -174,7 +174,7 @@ test_searchdirs(void **state)
 
     /* test searchdir list in ly_ctx_new() */
     assert_int_equal(LY_EINVAL, ly_ctx_new("/nonexistingfile", 0, &ctx));
-    logbuf_assert("Unable to use search directory \"/nonexistingfile\" (No such file or directory)");
+    logbuf_assert("Unable to use search directory \"/nonexistingfile\" (No such file or directory).");
     assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC":/home:/home:"TESTS_SRC, 0, &ctx));
     assert_int_equal(2, ctx->search_paths.count);
     assert_string_equal(TESTS_SRC, ctx->search_paths.objs[0]);

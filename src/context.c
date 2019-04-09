@@ -62,19 +62,22 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
     LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
 
     if (search_dir) {
-        LY_CHECK_ERR_RET(access(search_dir, R_OK | X_OK),
-                         LOGERR(ctx, LY_ESYS, "Unable to use search directory \"%s\" (%s)", search_dir, strerror(errno)),
-                         LY_EINVAL);
-        LY_CHECK_ERR_RET(stat(search_dir, &st),
-                         LOGERR(ctx, LY_ESYS, "stat() failed for \"%s\" (%s)", search_dir, strerror(errno)),
-                         LY_ESYS);
-        LY_CHECK_ERR_RET(!S_ISDIR(st.st_mode),
-                         LOGERR(ctx, LY_ESYS, "Given search directory \"%s\" is not a directory.", search_dir),
-                         LY_EINVAL);
         new_dir = realpath(search_dir, NULL);
         LY_CHECK_ERR_RET(!new_dir,
-                         LOGERR(ctx, LY_ESYS, "realpath() call failed for \"%s\" (%s).", search_dir, strerror(errno)),
+                         LOGERR(ctx, LY_ESYS, "Unable to use search directory \"%s\" (%s).", search_dir, strerror(errno)),
+                         LY_EINVAL);
+        if (strcmp(search_dir, new_dir)) {
+            LOGVRB("Canonicalizing search directory string from \"%s\" to \"%s\".", search_dir, new_dir);
+        }
+        LY_CHECK_ERR_RET(access(new_dir, R_OK | X_OK),
+                         LOGERR(ctx, LY_ESYS, "Unable to fully access search directory \"%s\" (%s).", new_dir, strerror(errno)); free(new_dir),
+                         LY_EINVAL);
+        LY_CHECK_ERR_RET(stat(new_dir, &st),
+                         LOGERR(ctx, LY_ESYS, "stat() failed for \"%s\" (%s).", new_dir, strerror(errno)); free(new_dir),
                          LY_ESYS);
+        LY_CHECK_ERR_RET(!S_ISDIR(st.st_mode),
+                         LOGERR(ctx, LY_ESYS, "Given search directory \"%s\" is not a directory.", new_dir); free(new_dir),
+                         LY_EINVAL);
         /* avoid path duplication */
         for (u = 0; u < ctx->search_paths.count; ++u) {
             if (!strcmp(new_dir, ctx->search_paths.objs[u])) {
