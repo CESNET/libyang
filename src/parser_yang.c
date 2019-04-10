@@ -146,7 +146,11 @@ buf_add_char(struct ly_ctx *ctx, const char **input, size_t len, char **buf, siz
         *buf = ly_realloc(*buf, *buf_len);
         LY_CHECK_ERR_RET(!*buf, LOGMEM(ctx), LY_EMEM);
     }
-    memcpy(&(*buf)[*buf_used], *input, len);
+    if (*buf_used) {
+        memcpy(&(*buf)[*buf_used], *input, len);
+    } else {
+        memcpy(*buf, *input, len);
+    }
 
     (*buf_used) += len;
     (*input) += len;
