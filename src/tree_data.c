@@ -5792,13 +5792,27 @@ lyd_dup_withsiblings_r(const struct lyd_node *first, struct lyd_node *parent_dup
         last_dup->when_status = next->when_status;
 
         last_dup->parent = parent_dup;
+        /* connect to the parent or the siblings */
         if (!first_dup) {
             first_dup = last_dup;
+            if (parent_dup) {
+                parent_dup->child = first_dup;
+            }
         } else {
             assert(prev_dup);
             prev_dup->next = last_dup;
             last_dup->prev = prev_dup;
         }
+
+#ifdef LY_ENABLED_CACHE
+        /* copy hash */
+        if ((last_dup->schema->nodetype != LYS_LIST) || lyd_list_has_keys(last_dup)) {
+            last_dup->hash = next->hash;
+        }
+
+        /* insert into parent */
+        lyd_insert_hash(last_dup);
+#endif
 
         if ((next->schema->nodetype & (LYS_LIST | LYS_CONTAINER | LYS_RPC | LYS_ACTION | LYS_NOTIF)) && next->child) {
             /* recursively duplicate all children */
@@ -5810,12 +5824,9 @@ lyd_dup_withsiblings_r(const struct lyd_node *first, struct lyd_node *parent_dup
         prev_dup = last_dup;
     }
 
-    /* correctly set last sibling and parent child pointer */
+    /* correctly set last sibling */
     assert(!prev_dup->next);
     first_dup->prev = prev_dup;
-    if (parent_dup) {
-        parent_dup->child = first_dup;
-    }
 
     return first_dup;
 
