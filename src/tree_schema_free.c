@@ -19,10 +19,6 @@
 #include "tree_schema_internal.h"
 #include "xpath.h"
 
-#define FREE_ARRAY(CTX, ARRAY, FUNC) {uint64_t c__; LY_ARRAY_FOR(ARRAY, c__){FUNC(CTX, &(ARRAY)[c__]);}LY_ARRAY_FREE(ARRAY);}
-#define FREE_MEMBER(CTX, MEMBER, FUNC) if (MEMBER) {FUNC(CTX, MEMBER);free(MEMBER);}
-#define FREE_STRINGS(CTX, ARRAY) {uint64_t c__; LY_ARRAY_FOR(ARRAY, c__){FREE_STRING(CTX, ARRAY[c__]);}LY_ARRAY_FREE(ARRAY);}
-
 static void lysp_grp_free(struct ly_ctx *ctx, struct lysp_grp *grp);
 static void lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node);
 
@@ -634,7 +630,6 @@ lysc_action_inout_free(struct ly_ctx *ctx, struct lysc_action_inout *inout)
 {
     struct lysc_node *child, *child_next;
 
-    FREE_ARRAY(ctx, inout->exts, lysc_ext_instance_free);
     FREE_ARRAY(ctx, inout->musts, lysc_must_free);
     LY_LIST_FOR_SAFE(inout->data, child_next, child) {
         lysc_node_free(ctx, child);
@@ -649,8 +644,26 @@ lysc_action_free(struct ly_ctx *ctx, struct lysc_action *action)
     FREE_STRING(ctx, action->ref);
     FREE_ARRAY(ctx, action->iffeatures, lysc_iffeature_free);
     FREE_ARRAY(ctx, action->exts, lysc_ext_instance_free);
+    FREE_ARRAY(ctx, action->input_exts, lysc_ext_instance_free);
     lysc_action_inout_free(ctx, &action->input);
+    FREE_ARRAY(ctx, action->output_exts, lysc_ext_instance_free);
     lysc_action_inout_free(ctx, &action->output);
+}
+
+void
+lysc_notif_free(struct ly_ctx *ctx, struct lysc_notif *notif)
+{
+    struct lysc_node *child, *child_next;
+
+    FREE_STRING(ctx, notif->name);
+    FREE_STRING(ctx, notif->dsc);
+    FREE_STRING(ctx, notif->ref);
+    FREE_ARRAY(ctx, notif->iffeatures, lysc_iffeature_free);
+    FREE_ARRAY(ctx, notif->exts, lysc_ext_instance_free);
+    FREE_ARRAY(ctx, notif->musts, lysc_must_free);
+    LY_LIST_FOR_SAFE(notif->data, child_next, child) {
+        lysc_node_free(ctx, child);
+    }
 }
 
 static void
@@ -663,8 +676,7 @@ lysc_node_container_free(struct ly_ctx *ctx, struct lysc_node_container *node)
     }
     FREE_ARRAY(ctx, node->musts, lysc_must_free);
     FREE_ARRAY(ctx, node->actions, lysc_action_free);
-
-    /* TODO notifs */
+    FREE_ARRAY(ctx, node->notifs, lysc_notif_free);
 }
 
 static void
@@ -712,8 +724,7 @@ lysc_node_list_free(struct ly_ctx *ctx, struct lysc_node_list *node)
     LY_ARRAY_FREE(node->uniques);
 
     FREE_ARRAY(ctx, node->actions, lysc_action_free);
-
-    /* TODO notifs */
+    FREE_ARRAY(ctx, node->notifs, lysc_notif_free);
 }
 
 static void
@@ -796,7 +807,7 @@ lysc_module_free_(struct lysc_module *module)
         lysc_node_free(ctx, node);
     }
     FREE_ARRAY(ctx, module->rpcs, lysc_action_free);
-    /* TODO notifications */
+    FREE_ARRAY(ctx, module->notifs, lysc_notif_free);
 
     FREE_ARRAY(ctx, module->exts, lysc_ext_instance_free);
 

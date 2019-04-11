@@ -521,15 +521,24 @@ test_node_leaflist(void **state)
     assert_string_equal("10", ll->dflts[0]);
     assert_int_equal(LYS_CONFIG_W | LYS_STATUS_CURR | LYS_ORDBY_USER, ll->flags);
 
-    /* ordered-by is ignored for state data, RPC/action output parameters and notification content
-     * TODO test also, RPC output parameters and notification content */
+    /* ordered-by is ignored for state data, RPC/action output parameters and notification content */
     assert_non_null(mod = lys_parse_mem(ctx, "module d {yang-version 1.1;namespace urn:d;prefix d;"
                                         "leaf-list ll {config false; type string; ordered-by user;}}", LYS_IN_YANG));
     /* but warning is present: */
-    logbuf_assert("The ordered-by statement is ignored in lists representing state data, RPC/action output parameters or notification content ().");
+    logbuf_assert("The ordered-by statement is ignored in lists representing state data ().");
     assert_non_null(mod->compiled);
     assert_non_null((ll = (struct lysc_node_leaflist*)mod->compiled->data));
     assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM | LYS_SET_CONFIG, ll->flags);
+    logbuf_clean();
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module e {yang-version 1.1;namespace urn:e;prefix e;"
+                                        "rpc oper {output {leaf-list ll {type string; ordered-by user;}}}}", LYS_IN_YANG));
+    logbuf_assert("The ordered-by statement is ignored in lists representing RPC/action output parameters ().");
+    logbuf_clean();
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module f {yang-version 1.1;namespace urn:f;prefix f;"
+                                        "notification event {leaf-list ll {type string; ordered-by user;}}}", LYS_IN_YANG));
+    logbuf_assert("The ordered-by statement is ignored in lists representing notification content ().");
 
     /* invalid */
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;leaf-list ll {type empty;}}", LYS_IN_YANG));
@@ -817,9 +826,92 @@ test_action(void **state)
     logbuf_assert("Duplicate identifier \"y\" of data definition/RPC/action/Notification statement.");
     assert_null(lys_parse_mem(ctx, "module dd {yang-version 1.1; namespace urn:dd;prefix dd;container c {action z; action z;}}", LYS_IN_YANG));
     logbuf_assert("Duplicate identifier \"z\" of data definition/RPC/action/Notification statement.");
-    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule eesub {belongs-to ee {prefix ee;} rpc w;}");
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule eesub {belongs-to ee {prefix ee;} notification w;}");
     assert_null(lys_parse_mem(ctx, "module ee {yang-version 1.1; namespace urn:ee;prefix ee;include eesub; rpc w;}", LYS_IN_YANG));
     logbuf_assert("Duplicate identifier \"w\" of data definition/RPC/action/Notification statement.");
+
+    assert_null(lys_parse_mem(ctx, "module ff {yang-version 1.1; namespace urn:ff;prefix ff; rpc test {input {container a {leaf b {type string;}}}}"
+                              "augment /test/input/a {action invalid {input {leaf x {type string;}}}}}", LYS_IN_YANG));
+    logbuf_assert("Action \"invalid\" is placed inside another RPC/action.");
+
+    assert_null(lys_parse_mem(ctx, "module gg {yang-version 1.1; namespace urn:gg;prefix gg; notification test {container a {leaf b {type string;}}}"
+                              "augment /test/a {action invalid {input {leaf x {type string;}}}}}", LYS_IN_YANG));
+    logbuf_assert("Action \"invalid\" is placed inside Notification.");
+
+    assert_null(lys_parse_mem(ctx, "module hh {yang-version 1.1; namespace urn:hh;prefix hh; notification test {container a {uses grp;}}"
+                              "grouping grp {action invalid {input {leaf x {type string;}}}}}", LYS_IN_YANG));
+    logbuf_assert("Action \"invalid\" is placed inside Notification.");
+
+    *state = NULL;
+    ly_ctx_destroy(ctx, NULL);
+}
+
+static void
+test_notification(void **state)
+{
+    *state = test_notification;
+
+    struct ly_ctx *ctx;
+    struct lys_module *mod;
+    const struct lysc_notif *notif;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;"
+                                        "notification a1 {leaf x {type int8;}} notification a2;}", LYS_IN_YANG));
+    notif = mod->compiled->notifs;
+    assert_non_null(notif);
+    assert_int_equal(2, LY_ARRAY_SIZE(notif));
+    assert_int_equal(LYS_NOTIF, notif->nodetype);
+    assert_int_equal(LYS_STATUS_CURR, notif->flags);
+    assert_string_equal("a1", notif->name);
+    assert_non_null(notif->data);
+    assert_string_equal("x", notif->data->name);
+    assert_int_equal(LYS_NOTIF, notif[1].nodetype);
+    assert_int_equal(LYS_STATUS_CURR, notif[1].flags);
+    assert_string_equal("a2", notif[1].name);
+    assert_null(notif[1].data);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module b {yang-version 1.1; namespace urn:b;prefix b; container top {"
+                                        "notification b1 {leaf x {type int8;}} notification b2;}}", LYS_IN_YANG));
+    notif = lysc_node_notifs(mod->compiled->data);
+    assert_non_null(notif);
+    assert_int_equal(2, LY_ARRAY_SIZE(notif));
+    assert_int_equal(LYS_NOTIF, notif->nodetype);
+    assert_int_equal(LYS_STATUS_CURR, notif->flags);
+    assert_string_equal("b1", notif->name);
+    assert_non_null(notif->data);
+    assert_string_equal("x", notif->data->name);
+    assert_int_equal(LYS_NOTIF, notif[1].nodetype);
+    assert_int_equal(LYS_STATUS_CURR, notif[1].flags);
+    assert_string_equal("b2", notif[1].name);
+    assert_null(notif[1].data);
+
+    /* invalid */
+    assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;container top {notification x;}}", LYS_IN_YANG));
+    logbuf_assert("Invalid keyword \"notification\" as a child of \"container\" - the statement is allowed only in YANG 1.1 modules. Line number 1.");
+
+    assert_null(lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb;leaf x{type string;} notification x;}", LYS_IN_YANG));
+    logbuf_assert("Duplicate identifier \"x\" of data definition/RPC/action/Notification statement.");
+    assert_null(lys_parse_mem(ctx, "module cc {yang-version 1.1; namespace urn:cc;prefix cc;container c {leaf y {type string;} notification y;}}", LYS_IN_YANG));
+    logbuf_assert("Duplicate identifier \"y\" of data definition/RPC/action/Notification statement.");
+    assert_null(lys_parse_mem(ctx, "module dd {yang-version 1.1; namespace urn:dd;prefix dd;container c {notification z; notification z;}}", LYS_IN_YANG));
+    logbuf_assert("Duplicate identifier \"z\" of data definition/RPC/action/Notification statement.");
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule eesub {belongs-to ee {prefix ee;} rpc w;}");
+    assert_null(lys_parse_mem(ctx, "module ee {yang-version 1.1; namespace urn:ee;prefix ee;include eesub; notification w;}", LYS_IN_YANG));
+    logbuf_assert("Duplicate identifier \"w\" of data definition/RPC/action/Notification statement.");
+
+    assert_null(lys_parse_mem(ctx, "module ff {yang-version 1.1; namespace urn:ff;prefix ff; rpc test {input {container a {leaf b {type string;}}}}"
+                              "augment /test/input/a {notification invalid {leaf x {type string;}}}}", LYS_IN_YANG));
+    logbuf_assert("Notification \"invalid\" is placed inside RPC/action.");
+
+    assert_null(lys_parse_mem(ctx, "module gg {yang-version 1.1; namespace urn:gg;prefix gg; notification test {container a {leaf b {type string;}}}"
+                              "augment /test/a {notification invalid {leaf x {type string;}}}}", LYS_IN_YANG));
+    logbuf_assert("Notification \"invalid\" is placed inside another Notification.");
+
+    assert_null(lys_parse_mem(ctx, "module hh {yang-version 1.1; namespace urn:hh;prefix hh; rpc test {input {container a {uses grp;}}}"
+                              "grouping grp {notification invalid {leaf x {type string;}}}}", LYS_IN_YANG));
+    logbuf_assert("Notification \"invalid\" is placed inside RPC/action.");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
@@ -3017,10 +3109,6 @@ test_deviation(void **state)
                               "deviation /x {deviate replace {type empty;}}}", LYS_IN_YANG));
     logbuf_assert("Leaf-list of type \"empty\" is allowed only in YANG 1.1 modules.");
 
-    assert_null(lys_parse_mem(ctx, "module oo {yang-version 1.1; namespace urn:oo;prefix oo; rpc test {input {container a {leaf b {type string;}}}}"
-                              "augment /test/input/a {action invalid {input {leaf x {type string;}}}}}", LYS_IN_YANG));
-    logbuf_assert("Action \"invalid\" is placed inside another RPC/action.");
-
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
 }
@@ -3050,6 +3138,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_node_choice, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_node_anydata, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_action, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_notification, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_uses, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_refine, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_augment, logger_setup, logger_teardown),

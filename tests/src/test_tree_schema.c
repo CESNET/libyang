@@ -135,12 +135,10 @@ test_getnext(void **state)
     rpc = (const struct lysc_action*)node;
     assert_non_null(node = lys_getnext(node, NULL, mod->compiled, 0));
     assert_string_equal("i", node->name);
-    /* TODO Notifications
     assert_non_null(node = lys_getnext(node, NULL, mod->compiled, 0));
     assert_string_equal("j", node->name);
     assert_non_null(node = lys_getnext(node, NULL, mod->compiled, 0));
     assert_string_equal("k", node->name);
-    */
     assert_null(node = lys_getnext(node, NULL, mod->compiled, 0));
     /* Inside container */
     assert_non_null(node = lys_getnext(node, (const struct lysc_node*)cont, mod->compiled, 0));
@@ -159,10 +157,8 @@ test_getnext(void **state)
     assert_string_equal("seven", node->name);
     assert_non_null(node = lys_getnext(node, (const struct lysc_node*)cont, mod->compiled, 0));
     assert_string_equal("eight", node->name);
-    /* TODO Notifications
     assert_non_null(node = lys_getnext(node, (const struct lysc_node*)cont, mod->compiled, 0));
     assert_string_equal("nine", node->name);
-    */
     assert_null(node = lys_getnext(node, (const struct lysc_node*)cont, mod->compiled, 0));
     /* Inside RPC */
     assert_non_null(node = lys_getnext(node, (const struct lysc_node*)rpc, mod->compiled, 0));

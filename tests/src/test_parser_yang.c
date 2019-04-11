@@ -1943,6 +1943,66 @@ test_action(void **state)
 }
 
 static void
+test_notification(void **state)
+{
+    *state = test_notification;
+
+    struct ly_parser_ctx ctx = {0};
+    struct lysp_notif *notifs = NULL;
+    struct lysp_node_container *c = NULL;
+    const char *str;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
+    assert_non_null(ctx.ctx);
+    ctx.line = 1;
+    ctx.mod_version = 2; /* simulate YANG 1.1 */
+
+    /* invalid cardinality */
+#define TEST_DUP(MEMBER, VALUE1, VALUE2) \
+    str = "func {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
+    assert_int_equal(LY_EVALID, parse_notif(&ctx, &str, NULL, &notifs)); \
+    logbuf_assert("Duplicate keyword \""MEMBER"\". Line number 1."); \
+    FREE_ARRAY(ctx.ctx, notifs, lysp_notif_free); notifs = NULL;
+
+    TEST_DUP("description", "text1", "text2");
+    TEST_DUP("reference", "1", "2");
+    TEST_DUP("status", "current", "obsolete");
+#undef TEST_DUP
+
+    /* full content */
+    str = "top;";
+    assert_int_equal(LY_SUCCESS, parse_container(&ctx, &str, NULL, (struct lysp_node**)&c));
+    str = "ntf {anydata a1; anyxml a2; choice ch; container c; description test; grouping grp; if-feature f; leaf l {type int8;}"
+          "leaf-list ll {type int8;} list li; must 1; reference test; status current; typedef mytype {type int8;} uses grp; m:ext;}";
+    assert_int_equal(LY_SUCCESS, parse_notif(&ctx, &str, (struct lysp_node*)c, &notifs));
+    assert_non_null(notifs);
+    assert_int_equal(LYS_NOTIF, notifs->nodetype);
+    assert_string_equal("ntf", notifs->name);
+    assert_string_equal("test", notifs->dsc);
+    assert_non_null(notifs->exts);
+    assert_non_null(notifs->iffeatures);
+    assert_string_equal("test", notifs->ref);
+    assert_non_null(notifs->groupings);
+    assert_non_null(notifs->typedefs);
+    assert_non_null(notifs->musts);
+    assert_non_null(notifs->data);
+    assert_int_equal(LYS_STATUS_CURR, notifs->flags);
+
+    ly_set_erase(&ctx.tpdfs_nodes, NULL);
+    FREE_ARRAY(ctx.ctx, notifs, lysp_notif_free); notifs = NULL;
+
+    /* invalid content */
+    str = "ntf {config true} ...";
+    assert_int_equal(LY_EVALID, parse_notif(&ctx, &str, NULL, &notifs));
+    logbuf_assert("Invalid keyword \"config\" as a child of \"notification\". Line number 1.");
+    FREE_ARRAY(ctx.ctx, notifs, lysp_notif_free); notifs = NULL;
+
+    *state = NULL;
+    lysp_node_free(ctx.ctx, (struct lysp_node*)c);
+    ly_ctx_destroy(ctx.ctx, NULL);
+}
+
+static void
 test_uses(void **state)
 {
     *state = test_uses;
@@ -2061,6 +2121,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_anydata, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_anyxml, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_action, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_notification, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_grouping, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_uses, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_augment, logger_setup, logger_teardown),

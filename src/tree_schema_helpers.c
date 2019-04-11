@@ -1183,7 +1183,8 @@ lysc_node_children_p(const struct lysc_node *node, uint16_t flags)
             /* LYS_CONFIG_W, but also the default case */
             return &((struct lysc_action*)node)->input.data;
         }
-    /* TODO Notification */
+    case LYS_NOTIF:
+        return &((struct lysc_notif*)node)->data;
     default:
         return NULL;
     }

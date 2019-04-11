@@ -156,7 +156,7 @@ LY_ERR lysp_load_submodule(struct ly_parser_ctx *ctx, struct lysp_module *mod, s
  */
 #define LYSC_OPT_RPC_INPUT  LYS_CONFIG_W       /**< Internal option when compiling schema tree of RPC/action input */
 #define LYSC_OPT_RPC_OUTPUT LYS_CONFIG_R       /**< Internal option when compiling schema tree of RPC/action output */
-#define LYSC_OPT_RPC_MASK   LYS_CONFIG_MASK
+#define LYSC_OPT_RPC_MASK   LYS_CONFIG_MASK    /**< mask for the internal RPC options */
 #define LYSC_OPT_FREE_SP    0x04               /**< Free the input printable schema */
 #define LYSC_OPT_INTERNAL   0x08               /**< Internal compilation caused by dependency */
 #define LYSC_OPT_NOTIFICATION 0x10             /**< Internal option when compiling schema tree of Notification */
@@ -208,6 +208,24 @@ struct lysp_node **lysp_node_children_p(struct lysp_node *node);
  * @return Address of the node's child member if any, NULL otherwise.
  */
 struct lysc_node **lysc_node_children_p(const struct lysc_node *node, uint16_t flags);
+
+/**
+ * @brief Get address of a node's notifs pointer if any.
+ *
+ * Decides the node's type and in case it has a notifs array, returns its address.
+ * @param[in] node Node to check.
+ * @return Address of the node's notifs member if any, NULL otherwise.
+ */
+struct lysc_notif **lysc_node_notifs_p(struct lysc_node *node);
+
+/**
+ * @brief Get address of a node's actions pointer if any.
+ *
+ * Decides the node's type and in case it has a actions array, returns its address.
+ * @param[in] node Node to check.
+ * @return Address of the node's actions member if any, NULL otherwise.
+ */
+struct lysc_action **lysc_node_actions_p(struct lysc_node *node);
 
 /**
  * @brief Get the covering schema module structure for the given parsed module structure.
@@ -470,6 +488,23 @@ LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *re
 LY_ERR lys_feature_precompile(struct ly_ctx *ctx, struct lysp_feature *features_p, struct lysc_feature **features);
 
 /**
+ * @brief Macro to free [sized array](@ref sizedarrays) of items using the provided free function. The ARRAY itself is also freed,
+ * but the memory is not sanitized.
+ */
+#define FREE_ARRAY(CTX, ARRAY, FUNC) {uint64_t c__; LY_ARRAY_FOR(ARRAY, c__){FUNC(CTX, &(ARRAY)[c__]);}LY_ARRAY_FREE(ARRAY);}
+
+/**
+ * @brief Macro to free the specified MEMBER of a structure using the provided free function. The memory is not sanitized.
+ */
+#define FREE_MEMBER(CTX, MEMBER, FUNC) if (MEMBER) {FUNC(CTX, MEMBER);free(MEMBER);}
+
+/**
+ * @brief Macro to free [sized array](@ref sizedarrays) of strings stored in the context's dictionary. The ARRAY itself is also freed,
+ * but the memory is not sanitized.
+ */
+#define FREE_STRINGS(CTX, ARRAY) {uint64_t c__; LY_ARRAY_FOR(ARRAY, c__){FREE_STRING(CTX, ARRAY[c__]);}LY_ARRAY_FREE(ARRAY);}
+
+/**
  * @brief Free the parsed submodule structure.
  * @param[in] ctx libyang context where the string data resides in a dictionary.
  * @param[in,out] submod Parsed schema submodule structure to free.
@@ -514,6 +549,14 @@ void lysc_action_inout_free(struct ly_ctx *ctx, struct lysc_action_inout *inout)
  * Since the structure is typically part of the sized array, the structure itself is not freed.
  */
 void lysc_action_free(struct ly_ctx *ctx, struct lysc_action *action);
+
+/**
+ * @brief Free the items inside the compiled Notification structure.
+ * @param[in] ctx libyang context where the string data resides in a dictionary.
+ * @param[in,out] action Compiled Notification structure to be cleaned.
+ * Since the structure is typically part of the sized array, the structure itself is not freed.
+ */
+void lysc_notif_free(struct ly_ctx *ctx, struct lysc_notif *notif);
 
 /**
  * @brief Free the compiled extension instance structure.
