@@ -42,6 +42,9 @@ static struct lys_node *lyd_get_schema_inctx(const struct lyd_node *node, struct
 
 static struct lyd_node *lyd_dup_withsiblings_to_ctx(const struct lyd_node *node, int options, struct ly_ctx *ctx);
 
+static struct lyd_node *lyd_new_dummy(struct lyd_node *root, struct lyd_node *parent, const struct lys_node *schema,
+                                      const char *value, int dflt);
+
 static int
 lyd_anydata_equal(struct lyd_node *first, struct lyd_node *second)
 {
@@ -2204,7 +2207,7 @@ lyd_list_pos(const struct lyd_node *node)
     return pos;
 }
 
-struct lyd_node *
+static struct lyd_node *
 lyd_new_dummy(struct lyd_node *root, struct lyd_node *parent, const struct lys_node *schema, const char *value, int dflt)
 {
     unsigned int index;
