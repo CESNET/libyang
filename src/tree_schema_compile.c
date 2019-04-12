@@ -4711,11 +4711,11 @@ cleanup:
 
     if (uses_p->augments || uses_p->refines) {
         /* return back actions and notifications in case they were separated for augment/refine processing */
-        if (actions && *actions) {
+        if (context_node_fake.actions) {
             memcpy(&(*actions)[actions_index], context_node_fake.actions, LY_ARRAY_SIZE(context_node_fake.actions) * sizeof **actions);
             LY_ARRAY_FREE(context_node_fake.actions);
         }
-        if (notifs && *notifs) {
+        if (context_node_fake.notifs) {
             memcpy(&(*notifs)[notifs_index], context_node_fake.notifs, LY_ARRAY_SIZE(context_node_fake.notifs) * sizeof **notifs);
             LY_ARRAY_FREE(context_node_fake.notifs);
         }
