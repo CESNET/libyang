@@ -453,12 +453,12 @@ LY_ERR ly_munmap(void *addr, size_t length);
  */
 #define LY_ARRAY_CREATE_GOTO(CTX, ARRAY, SIZE, RET, GOTO) \
         if (ARRAY) { \
-            ARRAY = ly_realloc(((uint32_t*)(ARRAY) - 1), sizeof(uint32_t) + ((*((uint32_t*)(ARRAY) - 1) + SIZE) * sizeof *(ARRAY))); \
+            ARRAY = ly_realloc(((uint32_t*)(ARRAY) - 1), sizeof(uint32_t) + ((*((uint32_t*)(ARRAY) - 1) + (SIZE)) * sizeof *(ARRAY))); \
             LY_CHECK_ERR_GOTO(!(ARRAY), LOGMEM(CTX); RET = LY_EMEM, GOTO); \
             ARRAY = (void*)((uint32_t*)(ARRAY) + 1); \
-            memset(&(ARRAY)[*((uint32_t*)(ARRAY) - 1)], 0, SIZE * sizeof *(ARRAY)); \
+            memset(&(ARRAY)[*((uint32_t*)(ARRAY) - 1)], 0, (SIZE) * sizeof *(ARRAY)); \
         } else { \
-            ARRAY = calloc(1, sizeof(uint32_t) + SIZE * sizeof *(ARRAY)); \
+            ARRAY = calloc(1, sizeof(uint32_t) + (SIZE) * sizeof *(ARRAY)); \
             LY_CHECK_ERR_GOTO(!(ARRAY), LOGMEM(CTX); RET = LY_EMEM, GOTO); \
             ARRAY = (void*)((uint32_t*)(ARRAY) + 1); \
         }
