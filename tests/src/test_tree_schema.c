@@ -196,6 +196,15 @@ test_getnext(void **state)
     assert_non_null(node = lys_getnext(NULL, NULL, mod->compiled, LYS_GETNEXT_NOSTATECHECK));
     assert_string_equal("a", node->name);
 
+    assert_non_null(mod = lys_parse_mem(ctx, "module c {namespace urn:c;prefix c; rpc c;}", LYS_IN_YANG));
+    assert_non_null(node = lys_getnext(NULL, NULL, mod->compiled, 0));
+    assert_string_equal("c", node->name);
+    assert_null(node = lys_getnext(node, NULL, mod->compiled, LYS_GETNEXT_NOSTATECHECK));
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module d {namespace urn:d;prefix d; notification d;}", LYS_IN_YANG));
+    assert_non_null(node = lys_getnext(NULL, NULL, mod->compiled, 0));
+    assert_string_equal("d", node->name);
+    assert_null(node = lys_getnext(node, NULL, mod->compiled, LYS_GETNEXT_NOSTATECHECK));
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);

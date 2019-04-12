@@ -40,6 +40,7 @@ lys_getnext(const struct lysc_node *last, const struct lysc_node *parent, const 
 
     LY_CHECK_ARG_RET(NULL, parent || module, NULL);
 
+next:
     if (!last) {
         /* first call */
 
@@ -47,17 +48,15 @@ lys_getnext(const struct lysc_node *last, const struct lysc_node *parent, const 
         if (parent) {
             /* schema subtree */
             if (parent->nodetype == LYS_CHOICE && (options & LYS_GETNEXT_WITHCASE)) {
-                if (!((struct lysc_node_choice*)parent)->cases) {
-                    return NULL;
+                if (((struct lysc_node_choice*)parent)->cases) {
+                    next = last = (const struct lysc_node*)&((struct lysc_node_choice*)parent)->cases[0];
                 }
-                next = last = (const struct lysc_node*)&((struct lysc_node_choice*)parent)->cases[0];
             } else {
                 snode = lysc_node_children_p(parent, (options & LYS_GETNEXT_OUTPUT) ? LYS_CONFIG_R : LYS_CONFIG_W);
                 /* do not return anything if the node does not have any children */
-                if (!snode || !(*snode)) {
-                    return NULL;
+                if (snode && *snode) {
+                    next = last = *snode;
                 }
-                next = last = *snode;
             }
         } else {
             /* top level data */
@@ -115,7 +114,7 @@ repeat:
         /* possibly go back to parent */
         if (last && last->parent != parent) {
             last = last->parent;
-            next = last->next;
+            goto next;
         } else if (!action_flag) {
             action_flag = 1;
             next = parent ? (struct lysc_node*)lysc_node_actions(parent) : (struct lysc_node*)module->rpcs;
