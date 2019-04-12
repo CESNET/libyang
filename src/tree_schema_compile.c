@@ -3111,8 +3111,9 @@ static LY_ERR lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, i
 /**
  * @brief Compile parsed RPC/action schema node information.
  * @param[in] ctx Compile context
- * @param[in] node_p Parsed RPC/action schema node.
+ * @param[in] action_p Parsed RPC/action schema node.
  * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
+ * @param[in] parent Parent node of the action, NULL in case of RPC (top-level action)
  * @param[in,out] action Prepared (empty) compiled action structure to fill.
  * @param[in] uses_status If the RPC/action is being placed instead of uses, here we have the uses's status value (as node's flags).
  * Zero means no uses, non-zero value with no status bit set mean the default status.
@@ -3177,12 +3178,13 @@ cleanup:
 }
 
 /**
- * @brief Compile parsed RPC/action schema node information.
+ * @brief Compile parsed Notification schema node information.
  * @param[in] ctx Compile context
- * @param[in] node_p Parsed RPC/action schema node.
+ * @param[in] notif_p Parsed Notification schema node.
  * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
- * @param[in,out] action Prepared (empty) compiled action structure to fill.
- * @param[in] uses_status If the RPC/action is being placed instead of uses, here we have the uses's status value (as node's flags).
+ * @param[in] parent Parent node of the Notification, NULL in case of top-level Notification
+ * @param[in,out] notif Prepared (empty) compiled notification structure to fill.
+ * @param[in] uses_status If the Notification is being placed instead of uses, here we have the uses's status value (as node's flags).
  * Zero means no uses, non-zero value with no status bit set mean the default status.
  * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
  */
