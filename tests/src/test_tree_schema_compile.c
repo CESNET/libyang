@@ -2275,6 +2275,7 @@ test_uses(void **state)
     struct ly_ctx *ctx;
     struct lys_module *mod;
     const struct lysc_node *parent, *child;
+    const struct lysc_node_container *cont;
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
 
@@ -2338,6 +2339,26 @@ test_uses(void **state)
     assert_non_null(child = lysc_node_children(child, 0));
     assert_string_equal("x", child->name);
 
+    assert_non_null(mod = lys_parse_mem(ctx, "module e {yang-version 1.1;namespace urn:e;prefix e; grouping grp {action g { description \"super g\";}}"
+                                        "container top {action e; uses grp {refine g {description \"ultra g\";}}}}", LYS_IN_YANG));
+    assert_non_null(mod->compiled->data);
+    cont = (const struct lysc_node_container*)mod->compiled->data;
+    assert_non_null(cont->actions);
+    assert_int_equal(2, LY_ARRAY_SIZE(cont->actions));
+    assert_string_equal("e", cont->actions[1].name);
+    assert_string_equal("g", cont->actions[0].name);
+    assert_string_equal("ultra g", cont->actions[0].dsc);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module f {yang-version 1.1;namespace urn:f;prefix f; grouping grp {notification g { description \"super g\";}}"
+                                        "container top {notification f; uses grp {refine g {description \"ultra g\";}}}}", LYS_IN_YANG));
+    assert_non_null(mod->compiled->data);
+    cont = (const struct lysc_node_container*)mod->compiled->data;
+    assert_non_null(cont->notifs);
+    assert_int_equal(2, LY_ARRAY_SIZE(cont->notifs));
+    assert_string_equal("f", cont->notifs[1].name);
+    assert_string_equal("g", cont->notifs[0].name);
+    assert_string_equal("ultra g", cont->notifs[0].dsc);
+
     /* invalid */
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;uses missinggrp;}", LYS_IN_YANG));
     logbuf_assert("Grouping \"missinggrp\" referenced by a uses statement not found.");
@@ -2372,6 +2393,15 @@ test_uses(void **state)
                               "container top {uses grp {augment /g {leaf x {type int8;}}}}}", LYS_IN_YANG));
     logbuf_assert("Invalid descendant-schema-nodeid value \"/g\" - absolute-schema-nodeid used.");
 
+    assert_non_null(mod = lys_parse_mem(ctx, "module hh {yang-version 1.1;namespace urn:hh;prefix hh;"
+                                        "grouping grp {notification g { description \"super g\";}}"
+                                        "container top {notification h; uses grp {refine h {description \"ultra h\";}}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid descendant-schema-nodeid value \"h\" - target node not found.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module ii {yang-version 1.1;namespace urn:ii;prefix ii;"
+                                        "grouping grp {action g { description \"super g\";}}"
+                                        "container top {action i; uses grp {refine i {description \"ultra i\";}}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid descendant-schema-nodeid value \"i\" - target node not found.");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
