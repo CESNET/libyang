@@ -36,7 +36,11 @@ extern "C" {
  * @brief Macro to store version of user type plugins API in the plugins.
  * It is matched when the plugin is being loaded by libyang.
  */
+#ifdef STATIC
+#define LYTYPE_VERSION_CHECK
+#else
 #define LYTYPE_VERSION_CHECK int lytype_api_version = LYTYPE_API_VERSION;
+#endif
 
 
 /**
