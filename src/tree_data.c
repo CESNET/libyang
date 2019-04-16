@@ -710,6 +710,10 @@ lyd_check_mandatory_subtree(struct lyd_node *tree, struct lyd_node *subtree, str
 
     assert(schema);
 
+    if (lys_is_disabled(schema, 0)) {
+        return EXIT_SUCCESS;
+    }
+
     if (schema->nodetype & (LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_ANYDATA | LYS_CONTAINER)) {
         /* data node */
         present = ly_set_new();
