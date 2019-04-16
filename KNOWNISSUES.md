@@ -24,6 +24,14 @@ specific identity value), and the identity literal used is from the deviation mo
 (meaning it could be written without a prefix), the prefix is mandatory for libyang
 to evaluate the XPath expression correctly.
 
+## Nested Notification/Action Validation
+
+[NMDA RFC](https://tools.ietf.org/html/rfc8342#section-6.2) specifically defines that
+the parent data node of an invoked nested notification or action must exist in
+the operational datastore. This validation is not implicitly performed by libyang when
+validating the operation so if the validation is supposed to happen in full compliance
+to this RFC, parent existence must be checked explicitly.
+
 ## Wrong API version
 
 Since libyang 1.0, there is a check to make sure that the (user type or extension) plugin

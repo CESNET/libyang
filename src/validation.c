@@ -689,6 +689,18 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
     schema = node->schema; /* shortcut */
     ctx = schema->module->ctx;
 
+    if (!(node->schema->nodetype & (LYS_NOTIF | LYS_RPC | LYS_ACTION))) {
+        for (diter = node->parent; diter; diter = diter->parent) {
+            if (diter->schema->nodetype & (LYS_NOTIF | LYS_RPC | LYS_ACTION)) {
+                break;
+            }
+        }
+        if (!diter && (options & (LYD_OPT_NOTIF | LYD_OPT_RPC))) {
+            /* validating parent of a nested notification/action, skip most checks */
+            options |= LYD_OPT_TRUSTED;
+        }
+    }
+
     if (node->validity & LYD_VAL_MAND) {
         if (!(options & (LYD_OPT_TRUSTED | LYD_OPT_NOTIF_FILTER))) {
             /* check presence and correct order of all keys in case of list */
