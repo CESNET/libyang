@@ -180,6 +180,8 @@ set(libsrc
     src/tree_schema_compile.c
     src/tree_schema_helpers.c
     src/parser_yang.c
+    src/printer.c
+    src/printer_yang.c
     src/xml.c
     src/xpath.c)
 
@@ -201,6 +203,7 @@ set(headers
     src/libyang.h
     src/context.h
     src/tree_schema.h
+    src/printer_schema.h
     src/extensions.h
     src/dict.h
     src/log.h

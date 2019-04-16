@@ -150,7 +150,8 @@ typedef enum
     LY_EINT,        /**< Internal error */
     LY_EVALID,      /**< Validation failure */
     LY_EPLUGIN,     /**< Error reported by a plugin */
-    LY_EDENIED      /**< Operation is not allowed */
+    LY_EDENIED,     /**< Operation is not allowed */
+    LY_EOTHER       /**< Unknown error */
 } LY_ERR;
 
 /**

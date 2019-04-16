@@ -7,10 +7,12 @@ set(local_tests
     src_parser_yang
     src_tree_schema
     src_tree_schema_compile
-    src_tree_schema_helpers)
+    src_tree_schema_helpers
+    src_printer_yang)
 set(local_tests_wraps
     " "
     "-Wl,--wrap=realloc"
+    " "
     " "
     " "
     " "

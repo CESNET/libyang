@@ -638,8 +638,8 @@ lys_compile_identity(struct lysc_ctx *ctx, struct lysp_ident *ident_p, int optio
 
     COMPILE_CHECK_UNIQUENESS(ctx, idents, name, ident, "identity", ident_p->name);
     DUP_STRING(ctx->ctx, ident_p->name, ident->name);
-    DUP_STRING(ctx->ctx, ident_p->ref, ident->dsc);
-    DUP_STRING(ctx->ctx, ident_p->ref, ident->dsc);
+    DUP_STRING(ctx->ctx, ident_p->dsc, ident->dsc);
+    DUP_STRING(ctx->ctx, ident_p->ref, ident->ref);
     COMPILE_ARRAY_GOTO(ctx, ident_p->iffeatures, ident->iffeatures, options, u, lys_compile_iffeature, ret, done);
     /* backlings (derived) can be added no sooner than when all the identities in the current module are present */
     COMPILE_ARRAY_GOTO(ctx, ident_p->exts, ident->exts, options, u, lys_compile_ext, ret, done);

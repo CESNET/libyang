@@ -228,6 +228,18 @@ struct lysc_notif **lysc_node_notifs_p(struct lysc_node *node);
 struct lysc_action **lysc_node_actions_p(struct lysc_node *node);
 
 /**
+ * @brief Iterate over the specified type of the extension instances
+ *
+ * @param[in] ext ([Sized array](@ref sizedarrays)) of extensions to explore
+ * @param[in] index Index in the \p ext array where to start searching (first call with 0, the consequent calls with
+ *            the returned index increased by 1 (until the iteration is not terminated by returning LY_ARRAY_SIZE(ext).
+ * @param[in] substmt Type of the extension (its belongins to the specific substatement) to iterate, use
+ *            #LYEXT_SUBSTMT_ALL to go through all the extensions in the array
+ * @result index in the ext array, LY_ARRAY_SIZE(ext) value if not present.
+ */
+unsigned int lysp_ext_instance_iter(struct lysp_ext_instance *ext, unsigned int index, LYEXT_SUBSTMT substmt);
+
+/**
  * @brief Get the covering schema module structure for the given parsed module structure.
  * @param[in] ctx libyang context to search.
  * @param[in] mod Parsed schema structure.

@@ -1215,3 +1215,18 @@ lysp_find_module(struct ly_ctx *ctx, const struct lysp_module *mod)
     return NULL;
 }
 
+unsigned int
+lysp_ext_instance_iter(struct lysp_ext_instance *ext, unsigned int index, LYEXT_SUBSTMT substmt)
+{
+    LY_CHECK_ARG_RET(NULL, ext, LY_EINVAL);
+
+    for (; index < LY_ARRAY_SIZE(ext); index++) {
+        if (ext[index].insubstmt == substmt) {
+            return index;
+        }
+    }
+
+    return LY_ARRAY_SIZE(ext);
+}
+
+

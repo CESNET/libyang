@@ -17,6 +17,7 @@
 
 #include <pcre.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #include "extensions.h"
 
@@ -142,6 +143,8 @@ typedef enum {
     LYS_OUT_UNKNOWN = 0, /**< unknown format, used as return value in case of error */
     LYS_OUT_YANG = 1,    /**< YANG schema output format */
     LYS_OUT_YIN = 2,     /**< YIN schema output format */
+    LYS_OUT_YANG_COMPILED, /**< YANG schema output format of the compiled schema tree */
+
     LYS_OUT_TREE,        /**< Tree schema output format, for more information see the [printers](@ref howtoschemasprinters) page */
     LYS_OUT_INFO,        /**< Info schema output format, for more information see the [printers](@ref howtoschemasprinters) page */
     LYS_OUT_JSON,        /**< JSON schema output format, reflecting YIN format with conversion of attributes to object's members */
@@ -160,7 +163,9 @@ typedef enum {
 
 #define LYS_CASE 0x0040           /**< case statement node */
 #define LYS_USES 0x0080           /**< uses statement node */
-#define LYS_INOUT 0x200
+#define LYS_INPUT 0x100
+#define LYS_OUTPUT 0x200
+#define LYS_INOUT 0x300
 #define LYS_ACTION 0x400          /**< RPC or action */
 #define LYS_NOTIF 0x800
 #define LYS_GROUPING 0x1000
@@ -245,6 +250,7 @@ struct lysp_stmt {
     const char *arg;                 /**< statement's argument */
     struct lysp_stmt *next;          /**< link to the next statement */
     struct lysp_stmt *child;         /**< list of the statement's substatements (linked list) */
+    uint16_t flags;
 };
 
 /**
@@ -494,48 +500,50 @@ struct lysp_deviation {
  *
  *     1 - container    6 - anydata/anyxml    11 - output       16 - grouping   21 - enum
  *     2 - choice       7 - case              12 - feature      17 - uses       22 - type
- *     3 - leaf         8 - notification      13 - identity     18 - refine
+ *     3 - leaf         8 - notification      13 - identity     18 - refine     23 - stmt
  *     4 - leaflist     9 - rpc               14 - extension    19 - augment
  *     5 - list        10 - input             15 - typedef      20 - deviate
  *
- *                                             1 1 1 1 1 1 1 1 1 1 2 2 2
- *     bit name              1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2
- *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       1 LYS_CONFIG_W     |x|x|x|x|x|x|x| | | | | | | | | | |x| |x| | |
- *         LYS_SET_BASE     | | | | | | | | | | | | | | | | | | | | | |x|
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       2 LYS_CONFIG_R     |x|x|x|x|x|x|x| | | | | | | | | | |x| |x| | |
- *         LYS_SET_BIT      | | | | | | | | | | | | | | | | | | | | | |x|
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       3 LYS_STATUS_CURR  |x|x|x|x|x|x|x|x|x| | |x|x|x|x|x|x| |x|x|x| |
- *         LYS_SET_ENUM     | | | | | | | | | | | | | | | | | | | | | |x|
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       4 LYS_STATUS_DEPRC |x|x|x|x|x|x|x|x|x| | |x|x|x|x|x|x| |x|x|x| |
- *         LYS_SET_FRDIGITS | | | | | | | | | | | | | | | | | | | | | |x|
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       5 LYS_STATUS_OBSLT |x|x|x|x|x|x|x|x|x| | |x|x|x|x|x|x| |x|x|x| |
- *         LYS_SET_LENGTH   | | | | | | | | | | | | | | | | | | | | | |x|
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       6 LYS_MAND_TRUE    | |x|x| | |x| | | | | | | | | | | |x| |x| | |
- *         LYS_SET_PATH     | | | | | | | | | | | | | | | | | | | | | |x|
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       7 LYS_MAND_FALSE   | |x|x| | |x| | | | | | | | | | | |x| |x| | |
- *         LYS_ORDBY_USER   | | | |x|x| | | | | | | | | | | | | | | | | |
- *         LYS_SET_PATTERN  | | | | | | | | | | | | | | | | | | | | | |x|
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       8 LYS_ORDBY_SYSTEM | | | |x|x| | | | | | | | | | | | | | | | | |
- *         LYS_YINELEM_TRUE | | | | | | | | | | | | | |x| | | | | | | | |
- *         LYS_SET_RANGE    | | | | | | | | | | | | | | | | | | | | | |x|
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       9 LYS_YINELEM_FALSE| | | | | | | | | | | | | |x| | | | | | | | |
- *         LYS_SET_TYPE     | | | | | | | | | | | | | | | | | | | | | |x|
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *      10 LYS_SET_VALUE    | | | | | | | | | | | | | | | | | | | | |x| |
- *         LYS_SET_REQINST  | | | | | | | | | | | | | | | | | | | | | |x|
- *         LYS_SET_MIN      | | | |x|x| | | | | | | | | | | | |x| |x| | |
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *      11 LYS_SET_MAX      | | | |x|x| | | | | | | | | | | | |x| |x| | |
- *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *                                             1 1 1 1 1 1 1 1 1 1 2 2 2 2
+ *     bit name              1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3
+ *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       1 LYS_CONFIG_W     |x|x|x|x|x|x|x| | | | | | | | | | |x| |x| | | |
+ *         LYS_SET_BASE     | | | | | | | | | | | | | | | | | | | | | |x| |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       2 LYS_CONFIG_R     |x|x|x|x|x|x|x| | | | | | | | | | |x| |x| | | |
+ *         LYS_SET_BIT      | | | | | | | | | | | | | | | | | | | | | |x| |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       3 LYS_STATUS_CURR  |x|x|x|x|x|x|x|x|x| | |x|x|x|x|x|x| |x|x|x| | |
+ *         LYS_SET_ENUM     | | | | | | | | | | | | | | | | | | | | | |x| |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       4 LYS_STATUS_DEPRC |x|x|x|x|x|x|x|x|x| | |x|x|x|x|x|x| |x|x|x| | |
+ *         LYS_SET_FRDIGITS | | | | | | | | | | | | | | | | | | | | | |x| |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       5 LYS_STATUS_OBSLT |x|x|x|x|x|x|x|x|x| | |x|x|x|x|x|x| |x|x|x| | |
+ *         LYS_SET_LENGTH   | | | | | | | | | | | | | | | | | | | | | |x| |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       6 LYS_MAND_TRUE    | |x|x| | |x| | | | | | | | | | | |x| |x| | | |
+ *         LYS_SET_PATH     | | | | | | | | | | | | | | | | | | | | | |x| |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       7 LYS_MAND_FALSE   | |x|x| | |x| | | | | | | | | | | |x| |x| | | |
+ *         LYS_ORDBY_USER   | | | |x|x| | | | | | | | | | | | | | | | | | |
+ *         LYS_SET_PATTERN  | | | | | | | | | | | | | | | | | | | | | |x| |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       8 LYS_ORDBY_SYSTEM | | | |x|x| | | | | | | | | | | | | | | | | | |
+ *         LYS_YINELEM_TRUE | | | | | | | | | | | | | |x| | | | | | | | | |
+ *         LYS_SET_RANGE    | | | | | | | | | | | | | | | | | | | | | |x| |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       9 LYS_YINELEM_FALSE| | | | | | | | | | | | | |x| | | | | | | | | |
+ *         LYS_SET_TYPE     | | | | | | | | | | | | | | | | | | | | | |x| |
+ *         LYS_SINGLEQUOTED | | | | | | | | | | | | | | | | | | | | | | |x|
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      10 LYS_SET_VALUE    | | | | | | | | | | | | | | | | | | | | |x| | |
+ *         LYS_SET_REQINST  | | | | | | | | | | | | | | | | | | | | | |x| |
+ *         LYS_SET_MIN      | | | |x|x| | | | | | | | | | | | |x| |x| | | |
+ *         LYS_DOUBLEQUOTED | | | | | | | | | | | | | | | | | | | | | | |x|
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      11 LYS_SET_MAX      | | | |x|x| | | | | | | | | | | | |x| |x| | | |
+ *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  */
 
@@ -639,6 +647,9 @@ struct lysp_deviation {
                                           between own default or the default values taken from the type. */
 #define LYS_SET_UNITS    0x0400      /**< flag to know if the leaf's/leaflist's units are their own (flag set) or it is taken from the type. */
 #define LYS_SET_CONFIG   0x0800      /**< flag to know if the config property was set explicitly (flag set) or it is inherited. */
+
+#define LYS_SINGLEQUOTED 0x100       /**< flag for single-quoted argument of an extension instance's substatement */
+#define LYS_DOUBLEQUOTED 0x200       /**< flag for double-quoted argument of an extension instance's substatement */
 
 #define LYS_FLAGS_COMPILED_MASK 0xff /**< mask for flags that maps to the compiled structures */
 /** @} */

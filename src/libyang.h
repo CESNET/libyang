@@ -26,6 +26,7 @@ extern "C" {
 #include "dict.h"
 #include "context.h"
 #include "tree_schema.h"
+#include "printer_schema.h"
 
 /**
  * @mainpage About
