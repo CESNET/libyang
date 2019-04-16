@@ -590,12 +590,12 @@ element:
                 /* match opening and closing element tags */
                 LY_CHECK_ERR_RET(
                         !context->elements.count,
-                        LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX, "Opening and closing elements tag missmatch (\"%.*s\").", name_len, *name),
+                        LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX, "Opening and closing elements tag missmatch (\"%.*s\").", *name_len, *name),
                         LY_EVALID);
                 e = (struct lyxml_elem*)context->elements.objs[context->elements.count - 1];
                 LY_CHECK_ERR_RET(e->prefix_len != *prefix_len || e->name_len != *name_len
                                  || (*prefix_len && strncmp(*prefix, e->prefix, e->prefix_len)) || strncmp(*name, e->name, e->name_len),
-                                 LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX, "Opening and closing elements tag missmatch (\"%.*s\").", name_len, *name),
+                                 LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX, "Opening and closing elements tag missmatch (\"%.*s\").", *name_len, *name),
                                  LY_EVALID);
                 /* opening and closing element tags matches, remove record from the opening tags list */
                 free(e);
