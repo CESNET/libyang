@@ -168,51 +168,51 @@ test_inet_types(void **state)
     lyd_free_withsiblings(st->dt);
 
     /* ip-prefix */
-    st->dt = lyd_new_leaf(NULL, st->mod, "inet5", "12.1.58.4/1");
+    st->dt = lyd_new_leaf(NULL, st->mod, "inet5", "158.1.58.4/1");
     assert_non_null(st->dt);
-    assert_string_equal(((struct lyd_node_leaf_list *)st->dt)->value_str, "1.0.0.0/1");
+    assert_string_equal(((struct lyd_node_leaf_list *)st->dt)->value_str, "128.0.0.0/1");
     lyd_free_withsiblings(st->dt);
 
-    st->dt = lyd_new_leaf(NULL, st->mod, "inet5", "12.1.58.4/24");
+    st->dt = lyd_new_leaf(NULL, st->mod, "inet5", "158.1.58.4/24");
     assert_non_null(st->dt);
-    assert_string_equal(((struct lyd_node_leaf_list *)st->dt)->value_str, "255.255.255.0/24");
+    assert_string_equal(((struct lyd_node_leaf_list *)st->dt)->value_str, "158.1.58.0/24");
     lyd_free_withsiblings(st->dt);
 
     st->dt = lyd_new_leaf(NULL, st->mod, "inet5", "2000:A:B:C:D:E:f:a/16");
     assert_non_null(st->dt);
-    assert_string_equal(((struct lyd_node_leaf_list *)st->dt)->value_str, "ffff::/16");
+    assert_string_equal(((struct lyd_node_leaf_list *)st->dt)->value_str, "2000::/16");
     lyd_free_withsiblings(st->dt);
 
     /* ipv4-prefix */
     st->dt = lyd_new_leaf(NULL, st->mod, "inet6", "0.1.58.4/32");
     assert_non_null(st->dt);
-    assert_string_equal(((struct lyd_node_leaf_list *)st->dt)->value_str, "255.255.255.255/32");
+    assert_string_equal(((struct lyd_node_leaf_list *)st->dt)->value_str, "0.1.58.4/32");
     lyd_free_withsiblings(st->dt);
 
     st->dt = lyd_new_leaf(NULL, st->mod, "inet6", "12.1.58.4/8");
     assert_non_null(st->dt);
-    assert_string_equal(((struct lyd_node_leaf_list *)st->dt)->value_str, "255.0.0.0/8");
+    assert_string_equal(((struct lyd_node_leaf_list *)st->dt)->value_str, "12.0.0.0/8");
     lyd_free_withsiblings(st->dt);
 
     /* ipv6-prefix */
     st->dt = lyd_new_leaf(NULL, st->mod, "inet7", "::C:D:E:f:a/112");
     assert_non_null(st->dt);
-    assert_string_equal(((struct lyd_node_leaf_list *)st->dt)->value_str, "ffff:ffff:ffff:ffff:ffff:ffff:ffff:0/112");
+    assert_string_equal(((struct lyd_node_leaf_list *)st->dt)->value_str, "::c:d:e:f:0/112");
     lyd_free_withsiblings(st->dt);
 
     st->dt = lyd_new_leaf(NULL, st->mod, "inet7", "::C:D:E:f:a/110");
     assert_non_null(st->dt);
-    assert_string_equal(((struct lyd_node_leaf_list *)st->dt)->value_str, "ffff:ffff:ffff:ffff:ffff:ffff:3fff:0/110");
+    assert_string_equal(((struct lyd_node_leaf_list *)st->dt)->value_str, "::c:d:e:c:0/110");
     lyd_free_withsiblings(st->dt);
 
     st->dt = lyd_new_leaf(NULL, st->mod, "inet7", "::C:D:E:f:a/96");
     assert_non_null(st->dt);
-    assert_string_equal(((struct lyd_node_leaf_list *)st->dt)->value_str, "ffff:ffff:ffff:ffff:ffff:ffff::/96");
+    assert_string_equal(((struct lyd_node_leaf_list *)st->dt)->value_str, "::c:d:e:0:0/96");
     lyd_free_withsiblings(st->dt);
 
     st->dt = lyd_new_leaf(NULL, st->mod, "inet7", "::C:D:E:f:a/55");
     assert_non_null(st->dt);
-    assert_string_equal(((struct lyd_node_leaf_list *)st->dt)->value_str, "ffff:ffff:ffff:7f::/55");
+    assert_string_equal(((struct lyd_node_leaf_list *)st->dt)->value_str, "::/55");
 }
 
 int main(void)

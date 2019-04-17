@@ -118,8 +118,15 @@ static int
 ipv4_prefix_store_clb(struct ly_ctx *ctx, const char *UNUSED(type_name), const char **value_str, lyd_val *value, char **err_msg)
 {
     char *pref_str, *ptr, *result;
-    int result_len, i, j, num;
-    unsigned long int pref;
+    unsigned long int pref, addr_bin, i;
+    uint32_t mask;
+
+    if (sizeof addr_bin < sizeof(struct in_addr)) {
+        if (asprintf(err_msg, "Internal error (buffer too small for an ip address).") == -1) {
+            *err_msg = NULL;
+        }
+        return 1;
+    }
 
     pref_str = strchr(*value_str, '/');
     if (!pref_str) {
@@ -129,8 +136,9 @@ ipv4_prefix_store_clb(struct ly_ctx *ctx, const char *UNUSED(type_name), const c
         return 1;
     }
 
+    /* learn prefix */
     pref = strtoul(pref_str + 1, &ptr, 10);
-    if (ptr[0]) {
+    if (ptr[0] || (pref > 32)) {
         if (asprintf(err_msg, "Invalid IPv4 prefix \"%s\".", *value_str) == -1) {
             *err_msg = NULL;
         }
@@ -143,20 +151,41 @@ ipv4_prefix_store_clb(struct ly_ctx *ctx, const char *UNUSED(type_name), const c
         return 1;
     }
 
-    /* generate ip prefix mask */
-    result_len = 0;
-    for (i = 0; i < 4; ++i) {
-        num = 0;
-        for (j = 0; (j < 8) && pref; ++j) {
-            num += (1 << j);
-            --pref;
-        }
+    /* copy just the network prefix */
+    strncpy(result, *value_str, pref_str - *value_str);
+    result[pref_str - *value_str] = '\0';
 
-        result_len += sprintf(result + result_len, "%s%d", i ? "." : "", num);
+    /* convert it to binary form */
+    if (inet_pton(AF_INET, result, (void *)&addr_bin) != 1) {
+        if (asprintf(err_msg, "Failed to convert IPv4 address \"%s\".", result) == -1) {
+            *err_msg = NULL;
+        }
+        free(result);
+        return 1;
+    }
+
+    /* zero host bits */
+    mask = 0;
+    for (i = 0; i < 32; ++i) {
+        mask <<= 1;
+        if (pref > i) {
+            mask |= 1;
+        }
+    }
+    mask = htonl(mask);
+    addr_bin &= mask;
+
+    /* convert back to string */
+    if (!inet_ntop(AF_INET, (void *)&addr_bin, result, INET_ADDRSTRLEN)) {
+        if (asprintf(err_msg, "Failed to convert IPv4 address (%s).", strerror(errno)) == -1) {
+            *err_msg = NULL;
+        }
+        free(result);
+        return 1;
     }
 
     /* add the prefix */
-    result_len += sprintf(result + result_len, "%s", pref_str);
+    strcat(result, pref_str);
 
     if (strcmp(result, *value_str)) {
         /* some conversion took place, update the value */
@@ -174,8 +203,12 @@ static int
 ipv6_prefix_store_clb(struct ly_ctx *ctx, const char *UNUSED(type_name), const char **value_str, lyd_val *value, char **err_msg)
 {
     char *pref_str, *ptr, *result;
-    int result_len, i, j, num;
-    unsigned long int pref;
+    unsigned long int pref, i, j;
+    union {
+        struct in6_addr s;
+        uint32_t a[4];
+    } addr_bin;
+    uint32_t mask;
 
     pref_str = strchr(*value_str, '/');
     if (!pref_str) {
@@ -185,8 +218,9 @@ ipv6_prefix_store_clb(struct ly_ctx *ctx, const char *UNUSED(type_name), const c
         return 1;
     }
 
+    /* learn prefix */
     pref = strtoul(pref_str + 1, &ptr, 10);
-    if (ptr[0]) {
+    if (ptr[0] || (pref > 128)) {
         if (asprintf(err_msg, "Invalid IPv6 prefix \"%s\".", *value_str) == -1) {
             *err_msg = NULL;
         }
@@ -199,26 +233,43 @@ ipv6_prefix_store_clb(struct ly_ctx *ctx, const char *UNUSED(type_name), const c
         return 1;
     }
 
-    /* generate ipv6 prefix mask */
-    result_len = 0;
-    for (i = 0; i < 8; ++i) {
-        num = 0;
-        for (j = 0; (j < 16) && pref; ++j) {
-            num += (1 << j);
-            --pref;
-        }
+    /* copy just the network prefix */
+    strncpy(result, *value_str, pref_str - *value_str);
+    result[pref_str - *value_str] = '\0';
 
-        result_len += sprintf(result + result_len, "%s%x", i ? ":" : "", num);
-
-        if (!pref && (i < 6)) {
-            /* shorten ending zeros */
-            result_len += sprintf(result + result_len, "::");
-            break;
+    /* convert it to binary form */
+    if (inet_pton(AF_INET6, result, (void *)&addr_bin.s) != 1) {
+        if (asprintf(err_msg, "Failed to convert IPv6 address \"%s\".", result) == -1) {
+            *err_msg = NULL;
         }
+        free(result);
+        return 1;
+    }
+
+    /* zero host bits */
+    for (i = 0; i < 4; ++i) {
+        mask = 0;
+        for (j = 0; j < 32; ++j) {
+            mask <<= 1;
+            if (pref > (i * 32) + j) {
+                mask |= 1;
+            }
+        }
+        mask = htonl(mask);
+        addr_bin.a[i] &= mask;
+    }
+
+    /* convert back to string */
+    if (!inet_ntop(AF_INET6, (void *)&addr_bin.s, result, INET6_ADDRSTRLEN)) {
+        if (asprintf(err_msg, "Failed to convert IPv6 address (%s).", strerror(errno)) == -1) {
+            *err_msg = NULL;
+        }
+        free(result);
+        return 1;
     }
 
     /* add the prefix */
-    result_len += sprintf(result + result_len, "%s", pref_str);
+    strcat(result, pref_str);
 
     if (strcmp(result, *value_str)) {
         /* some conversion took place, update the value */
