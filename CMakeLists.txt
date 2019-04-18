@@ -209,10 +209,8 @@ set(headers
     src/log.h
     src/set.h)
 
+list(APPEND CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
 check_symbol_exists(vdprintf stdio.h HAVE_VDPRINTF)
-if(HAVE_VDPRINTF)
-    add_definitions(-DHAVE_VDPRINTF)
-endif(HAVE_VDPRINTF)
 
 # create static libyang library
 if(ENABLE_STATIC)

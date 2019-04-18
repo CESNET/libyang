@@ -17,6 +17,8 @@
 
 #cmakedefine APPLE
 
+#cmakedefine HAVE_VDPRINTF
+
 /**
  * @brief Compiler flag for unused function attributes
  */
