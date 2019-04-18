@@ -65,6 +65,7 @@ ly_print(struct lyout *out, const char *format, ...)
     char *msg = NULL, *aux;
     va_list ap;
 #ifndef HAVE_VDPRINTF
+    int fd;
     FILE *stream;
 #endif
 
@@ -74,14 +75,31 @@ ly_print(struct lyout *out, const char *format, ...)
     case LYOUT_FD:
 #ifdef HAVE_VDPRINTF
         count = vdprintf(out->method.fd, format, ap);
-#else
-        stream = fdopen(dup(out->method.fd), "a+");
-        if (stream) {
-            count = vfprintf(stream, format, ap);
-            fclose(stream);
-        }
-#endif
         break;
+#else
+        /* Without vdfprintf(), change the printing method to printing to a FILE stream.
+         * To preserve the original file descriptor, duplicate it and use it to open file stream.
+         * Due to a standalone LYOUT_FDSTREAM, ly*_print_fd() functions are supposed to detect the
+         * change and close the stream on their exit. */
+        fd = dup(out->method.fd);
+        if (fd < 0) {
+            LOGERR(NULL, LY_ESYS, "Unable to duplicate provided file descriptor (%d) for printing the output (%s).",
+                   out->method.fd, strerror(errno));
+            va_end(ap);
+            return LY_ESYS;
+        }
+        stream = fdopen(fd, "a");
+        if (!stream) {
+            LOGERR(NULL, LY_ESYS, "Unable to open provided file descriptor (%d) for printing the output (%s).",
+                   out->method.fd, strerror(errno));
+            va_end(ap);
+            return LY_ESYS;
+        }
+        out->method.f = stream;
+        out->type = LYOUT_FDSTREAM;
+#endif
+        /* fall through */
+    case LYOUT_FDSTREAM:
     case LYOUT_STREAM:
         count = vfprintf(out->method.f, format, ap);
         break;
@@ -95,7 +113,7 @@ ly_print(struct lyout *out, const char *format, ...)
                 out->method.mem.size = 0;
                 LOGMEM(NULL);
                 va_end(ap);
-                return -1;
+                return LY_EMEM;
             }
             out->method.mem.buf = aux;
             out->method.mem.size = out->method.mem.len + count + 1;
@@ -125,6 +143,7 @@ void
 ly_print_flush(struct lyout *out)
 {
     switch (out->type) {
+    case LYOUT_FDSTREAM:
     case LYOUT_STREAM:
         fflush(out->method.f);
         break;
@@ -176,6 +195,7 @@ ly_write(struct lyout *out, const char *buf, size_t count)
     case LYOUT_FD:
         written = write(out->method.fd, buf, count);
         break;
+    case LYOUT_FDSTREAM:
     case LYOUT_STREAM:
         written =  fwrite(buf, sizeof *buf, count, out->method.f);
         break;
@@ -213,6 +233,7 @@ ly_write_skip(struct lyout *out, size_t count, size_t *position)
         out->method.mem.len += count;
         break;
     case LYOUT_FD:
+    case LYOUT_FDSTREAM:
     case LYOUT_STREAM:
     case LYOUT_CALLBACK:
         /* buffer the hole */
@@ -250,6 +271,7 @@ ly_write_skipped(struct lyout *out, size_t position, const char *buf, size_t cou
         memcpy(&out->method.mem.buf[position], buf, count);
         break;
     case LYOUT_FD:
+    case LYOUT_FDSTREAM:
     case LYOUT_STREAM:
     case LYOUT_CALLBACK:
         if (out->buf_len < position + count) {
@@ -347,6 +369,7 @@ lys_print_path(const char *path, const struct lys_module *module, LYS_OUTFORMAT 
 API LY_ERR
 lys_print_fd(int fd, const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options)
 {
+    LY_ERR ret;
     struct lyout out;
 
     LY_CHECK_ARG_RET(NULL, fd >= 0, module, LY_EINVAL);
@@ -356,7 +379,16 @@ lys_print_fd(int fd, const struct lys_module *module, LYS_OUTFORMAT format, int 
     out.type = LYOUT_FD;
     out.method.fd = fd;
 
-    return lys_print_(&out, module, format, line_length, options);
+    ret = lys_print_(&out, module, format, line_length, options);
+
+    if (out.type == LYOUT_FDSTREAM) {
+        /* close temporary stream based on the given file descriptor */
+        fclose(out.method.f);
+        /* move the original file descriptor to the end of the output file */
+        lseek(fd, 0, SEEK_END);
+    }
+
+    return ret;
 }
 
 API LY_ERR

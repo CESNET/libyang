@@ -20,6 +20,7 @@
 typedef enum LYOUT_TYPE {
     LYOUT_FD,          /**< file descriptor */
     LYOUT_STREAM,      /**< FILE stream */
+    LYOUT_FDSTREAM,    /**< FILE stream based on duplicated file descriptor */
     LYOUT_MEMORY,      /**< memory */
     LYOUT_CALLBACK     /**< print via provided callback */
 } LYOUT_TYPE;
