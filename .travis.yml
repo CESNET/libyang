@@ -4,6 +4,9 @@ dist: trusty
 branches:
   only:
     - libyang2
+cache:
+   directories:
+   - $HOME/cache
 
 stages:
   - name: Test
@@ -30,7 +33,12 @@ jobs:
           build_command: "make"
           branch_pattern: libyang2
       before_install:
-        - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-certificates.crt
+        # check if something changed from the last coverity build
+        - if [ `git rev-parse HEAD` = `cat $HOME/cache/coveritybuild` ]; then echo "Codebase did not change from previous build."; travis_terminate 0; fi
+        - if [ ! -d $HOME/cache ]; then mkdir -p $HOME/cache; fi
+        - git rev-parse HEAD > $HOME/cache/coveritybuild
+        # get everything for coverity
+        # - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-certificates.crt
         - sudo apt-get update -qq
       script:
         # do nothing, everything here is done in coverity addon
