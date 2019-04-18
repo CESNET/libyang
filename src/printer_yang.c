@@ -625,9 +625,9 @@ ypr_parsed_grouping(struct ypr_ctx *ctx, const struct lysp_grp *grp)
     LEVEL++;
 
     ypr_parsed_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, grp->exts, &flag, 0);
-    ypr_parsed_status(ctx, grp->flags, grp->exts, NULL);
-    ypr_description(ctx, grp->dsc, grp->exts, NULL);
-    ypr_reference(ctx, grp->ref, grp->exts, NULL);
+    ypr_parsed_status(ctx, grp->flags, grp->exts, &flag);
+    ypr_description(ctx, grp->dsc, grp->exts, &flag);
+    ypr_reference(ctx, grp->ref, grp->exts, &flag);
 
     LY_ARRAY_FOR(grp->typedefs, u) {
         ypr_parsed_typedef(ctx, &grp->typedefs[u]);
@@ -638,6 +638,7 @@ ypr_parsed_grouping(struct ypr_ctx *ctx, const struct lysp_grp *grp)
     }
 
     LY_LIST_FOR(grp->data, data) {
+        ypr_open(ctx->out, &flag);
         ypr_parsed_node(ctx, data);
     }
 
@@ -1066,7 +1067,7 @@ ypr_parsed_augment(struct ypr_ctx *ctx, const struct lysp_augment *aug)
     }
 
     LEVEL--;
-    ly_print(ctx->out, "%*s}\n", INDENT);
+    ypr_close(ctx, 1);
 }
 
 
@@ -1232,7 +1233,7 @@ ypr_parsed_deviation(struct ypr_ctx *ctx, const struct lysp_deviation *deviation
                 ypr_parsed_type(ctx, rpl->type);
             }
             ypr_parsed_substmt(ctx, LYEXT_SUBSTMT_UNITS, 0, rpl->units, rpl->exts);
-            ypr_parsed_substmt(ctx, LYEXT_SUBSTMT_DEFAULT, v, rpl->dflt, rpl->exts);
+            ypr_parsed_substmt(ctx, LYEXT_SUBSTMT_DEFAULT, 0, rpl->dflt, rpl->exts);
             ypr_parsed_config(ctx, rpl->flags, rpl->exts, NULL);
             ypr_parsed_mandatory(ctx, rpl->flags, rpl->exts, NULL);
             if (rpl->flags & LYS_SET_MIN) {
