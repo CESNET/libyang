@@ -624,7 +624,14 @@ lytype_free(const struct lys_type *type, lyd_val value, const char *value_str)
     struct lyd_node_leaf_list leaf;
     struct lys_module *mod;
 
-    assert(type->der && type->der->module);
+    while (type->base == LY_TYPE_LEAFREF) {
+        type = &type->info.lref.target->type;
+    }
+
+    if (!type->der || !type->der->module) {
+        LOGINT(NULL);
+        return;
+    }
 
     mod = type->der->module;
     memset(&sleaf, 0, sizeof sleaf);
