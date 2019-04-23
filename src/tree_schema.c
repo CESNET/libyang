@@ -4494,7 +4494,7 @@ lys_switch_deviation(struct lys_deviation *dev, const struct lys_module *module,
                 }
             } else {
                 /* ... from top-level data */
-                lys_node_addchild(NULL, (struct lys_module *)dev->orig_node->module, dev->orig_node, 0);
+                lys_node_addchild(NULL, lys_node_module(dev->orig_node), dev->orig_node, 0);
             }
 
             dev->orig_node = NULL;
