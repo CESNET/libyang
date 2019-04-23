@@ -869,7 +869,7 @@ static int linenoiseEdit(int stdin_fd, int stdout_fd, char *buf, size_t buflen, 
 
     if (write(ls.ofd,prompt,ls.plen) == -1) return -1;
     while(1) {
-        int c, nread;
+        int c = 0, nread;
         char seq[3];
 
         nread = read(ls.ifd,&c,1);
