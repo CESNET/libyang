@@ -34,11 +34,14 @@ jobs:
           branch_pattern: libyang2
       before_install:
         # check if something changed from the last coverity build
+        - echo "Last coverity build on revision" `cat $HOME/cache/coveritybuild 2>/dev/null`
+        - echo "Current revision" `git rev-parse HEAD`
         - if [ "`git rev-parse HEAD`" = "`cat $HOME/cache/coveritybuild`" ]; then echo "Codebase did not change from previous build."; travis_terminate 0; fi
-        - if [ ! -d $HOME/cache ]; then mkdir -p $HOME/cache; fi
+        - if [ ! -d $HOME/cache ]; then echo "Preparing revision cache."; mkdir -p $HOME/cache; fi
         - git rev-parse HEAD > $HOME/cache/coveritybuild
+        - cat $HOME/cache/coveritybuild
         # get everything for coverity
-        # - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-certificates.crt
+        - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-certificates.crt
         - sudo apt-get update -qq
       script:
         # do nothing, everything here is done in coverity addon
