@@ -77,6 +77,15 @@ std::string Module::print_mem(LYS_OUTFORMAT format, const char *target, int opti
     free(strp);
     return s_strp;
 }
+int Module::feature_enable(const char *feature) {
+    return lys_features_enable(module, feature);
+}
+int Module::feature_disable(const char *feature) {
+    return lys_features_disable(module, feature);
+}
+int Module::feature_state(const char *feature) {
+    return lys_features_state(module, feature);
+}
 Submodule::~Submodule() {};
 S_Revision Submodule::rev() LY_NEW(submodule, rev, Revision);
 std::vector<S_Deviation> Submodule::deviation() LY_NEW_LIST(submodule, deviation, deviation_size, Deviation);

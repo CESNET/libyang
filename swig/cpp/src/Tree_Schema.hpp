@@ -103,6 +103,10 @@ public:
     std::string print_mem(LYS_OUTFORMAT format, int options);
     std::string print_mem(LYS_OUTFORMAT format, const char *target, int options);
 
+    int feature_enable(const char *feature);
+    int feature_disable(const char *feature);
+    int feature_state(const char *feature);
+
     friend Context;
     friend Data_Node;
 
