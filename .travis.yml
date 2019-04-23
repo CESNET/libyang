@@ -41,6 +41,7 @@ jobs:
         - git rev-parse HEAD > $HOME/cache/coveritybuild
         - cat $HOME/cache/coveritybuild
         # get everything for coverity
+        - alias curl='curl -k'
         - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-certificates.crt
         - sudo apt-get update -qq
       script:
