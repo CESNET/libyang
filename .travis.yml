@@ -44,6 +44,7 @@ jobs:
         # get everything for coverity
         - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-certificates.crt
         - wget https://entrust.com/root-certificates/entrust_l1k.cer -O - | sudo tee -a /etc/ssl/certs/ca-certificates.crt
+        - export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
       script:
         # do nothing, everything here is done in coverity addon
         - true
