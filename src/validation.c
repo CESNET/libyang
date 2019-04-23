@@ -896,7 +896,7 @@ lyv_multicases(struct lyd_node *node, struct lys_node *schemanode, struct lyd_no
         schemanode = node->schema;
     }
 
-    sparent = lys_parent(schemanode);
+    for (sparent = lys_parent(schemanode); sparent && (sparent->nodetype == LYS_USES); sparent = lys_parent(sparent));
     if (!sparent || !(sparent->nodetype & (LYS_CHOICE | LYS_CASE))) {
         /* node is not under any choice */
         return 0;
@@ -921,7 +921,7 @@ autodelete:
             continue;
         }
 
-        sparent = lys_parent(iter->schema);
+        for (sparent = lys_parent(iter->schema); sparent && (sparent->nodetype == LYS_USES); sparent = lys_parent(sparent));
         if (sparent && ((sparent->nodetype == LYS_CHOICE && sparent == schoice) /* another implicit case */
                 || (sparent->nodetype == LYS_CASE && sparent != scase && lys_parent(sparent) == schoice)) /* another case */
                 ) {
