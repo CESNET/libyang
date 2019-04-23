@@ -40,10 +40,10 @@ jobs:
         - if [ ! -d $HOME/cache ]; then echo "Preparing revision cache."; mkdir -p $HOME/cache; fi
         - git rev-parse HEAD > $HOME/cache/coveritybuild
         - cat $HOME/cache/coveritybuild
-        # get everything for coverity
-        - alias curl='curl -k'
-        - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-certificates.crt
         - sudo apt-get update -qq
+        # get everything for coverity
+        - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-certificates.crt
+        - wget https://entrust.com/root-certificates/entrust_l1k.cer -O - | sudo tee -a /etc/ssl/certs/ca-certificates.crt
       script:
         # do nothing, everything here is done in coverity addon
         - true
