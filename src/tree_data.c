@@ -1633,6 +1633,43 @@ lyd_new_output_anydata(struct lyd_node *parent, const struct lys_module *module,
     return lyd_create_anydata(parent, snode, value, value_type);
 }
 
+char *
+lyd_make_canonical(const struct lys_node *schema, const char *val_str, int val_str_len)
+{
+    struct lyd_node *node;
+    char *str;
+
+    assert(schema->nodetype & (LYS_LEAF | LYS_LEAFLIST));
+
+    str = strndup(val_str, val_str_len);
+    if (!str) {
+        LOGMEM(schema->module->ctx);
+        return NULL;
+    }
+
+    node = lyd_create_leaf(schema, str, 0);
+    free(str);
+    if (!node) {
+        return NULL;
+    }
+
+    /* parse the value into a fake leaf */
+    if (!lyp_parse_value(&((struct lys_node_leaf *)node->schema)->type, &((struct lyd_node_leaf_list *)node)->value_str,
+                         NULL, (struct lyd_node_leaf_list *)node, NULL, NULL, 1, 0, 0)) {
+        lyd_free(node);
+        return NULL;
+    }
+
+    str = strdup(((struct lyd_node_leaf_list *)node)->value_str);
+    lyd_free(node);
+    if (!str) {
+        LOGMEM(schema->module->ctx);
+        return NULL;
+    }
+
+    return str;
+}
+
 static int
 lyd_new_path_list_predicate(struct lyd_node *list, const char *list_name, const char *predicate, int *parsed)
 {

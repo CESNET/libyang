@@ -425,6 +425,16 @@ const struct lyd_node *lyd_attr_parent(const struct lyd_node *root, struct lyd_a
 int lyd_unlink_internal(struct lyd_node *node, int permanent);
 
 /**
+ * @brief Get the canonical value.
+ *
+ * @param[in] schema Leaf or leaf-list schema node of the value.
+ * @param[in] val_str String value to transform.
+ * @param[in] val_str_len String value length.
+ * @return Canonical value (must be freed), NULL on error.
+ */
+char *lyd_make_canonical(const struct lys_node *schema, const char *val_str, int val_str_len);
+
+/**
  * @brief Internal version of lyd_insert() and lyd_insert_sibling().
  *
  * @param[in] invalidate Whether to invalidate any nodes. Set 0 only if linking back some temporarily internally unlinked nodes.

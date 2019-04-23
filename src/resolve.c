@@ -2522,6 +2522,7 @@ static int
 resolve_partial_json_data_list_predicate(struct parsed_pred pp, struct lyd_node *node, int position)
 {
     uint16_t i;
+    char *val_str;
     struct lyd_node_leaf_list *key;
     struct lys_node_list *slist;
     struct ly_ctx *ctx;
@@ -2578,10 +2579,18 @@ resolve_partial_json_data_list_predicate(struct parsed_pred pp, struct lyd_node 
             }
         }
 
+        /* get canonical value */
+        val_str = lyd_make_canonical(key->schema, pp.pred[i].value, pp.pred[i].val_len);
+        if (!val_str) {
+            return -1;
+        }
+
         /* value does not match */
-        if (strncmp(key->value_str, pp.pred[i].value, pp.pred[i].val_len) || key->value_str[pp.pred[i].val_len]) {
+        if (strcmp(key->value_str, val_str)) {
+            free(val_str);
             return 1;
         }
+        free(val_str);
 
         key = (struct lyd_node_leaf_list *)key->next;
     }
