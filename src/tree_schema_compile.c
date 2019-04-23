@@ -3874,7 +3874,7 @@ static struct lysc_node_case*
 lys_compile_node_case(struct lysc_ctx *ctx, struct lysp_node *node_p, int options, struct lysc_node_choice *ch, struct lysc_node *child)
 {
     struct lysc_node *iter;
-    struct lysc_node_case *cs;
+    struct lysc_node_case *cs = NULL;
     struct lysc_when **when;
     unsigned int u;
     LY_ERR ret;
