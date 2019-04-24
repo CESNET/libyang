@@ -3930,7 +3930,9 @@ lys_compile_node_case(struct lysc_ctx *ctx, struct lysp_node *node_p, int option
 
     return cs;
 error:
-    lysc_node_free(ctx->ctx, (struct lysc_node*)cs);
+    if (cs) {
+        lysc_node_free(ctx->ctx, (struct lysc_node*)cs);
+    }
     return NULL;
 
 #undef UNIQUE_CHECK
