@@ -104,11 +104,12 @@ help(int shortout)
         "                          The same rule of pairing applies also in case of 'auto' TYPE and input data file\n"
         "                          containing RPC reply.\n"
         "        notif           - Notification instance (content of the <notification> element without <eventTime>.\n\n"
-        "  -r FILE, --running=FILE\n"
+        "  -O FILE, --operational=FILE\n"
         "                        - Optional parameter for 'rpc', 'rpcreply' and 'notif' TYPEs, the FILE contains running\n"
-        "                          configuration datastore data referenced from the RPC/Notification. The same data\n"
-        "                          apply to all input data <file>s. Note that the file is validated as 'data' TYPE.\n"
-        "                          Special value '!' can be used as FILE argument to ignore the external references.\n\n"
+        "                          configuration datastore and state data (operational datastore) referenced from\n"
+        "                          the RPC/Notification. The same data apply to all input data <file>s. Note that\n"
+        "                          the file is validated as 'data' TYPE. Special value '!' can be used as FILE argument\n"
+        "                          to ignore the external references.\n\n"
         "  -y YANGLIB_PATH       - Path to a yang-library data describing the initial context.\n\n"
         "Tree output specific options:\n"
         "  --tree-help           - Print help on tree symbols and exit.\n"
@@ -265,6 +266,7 @@ main_ni(int argc, char* argv[])
         {"output",           required_argument, NULL, 'o'},
         {"path",             required_argument, NULL, 'p'},
         {"running",          required_argument, NULL, 'r'},
+        {"operational",      required_argument, NULL, 'O'},
         {"strict",           no_argument,       NULL, 's'},
         {"type",             required_argument, NULL, 't'},
         {"version",          no_argument,       NULL, 'v'},
@@ -282,7 +284,7 @@ main_ni(int argc, char* argv[])
     LYS_INFORMAT informat_s;
     LYD_FORMAT informat_d, outformat_d = 0, ylformat = 0;
     struct ly_set *searchpaths = NULL;
-    const char *running_file = NULL, *envelope_s = NULL, *outtarget_s = NULL;
+    const char *oper_file = NULL, *envelope_s = NULL, *outtarget_s = NULL;
     char **feat = NULL, *ptr, *featlist, *ylpath = NULL, *dir;
     struct stat st;
     uint32_t u;
@@ -297,16 +299,16 @@ main_ni(int argc, char* argv[])
         int type;
     } *data = NULL, *data_item, *data_prev = NULL;
     struct ly_set *mods = NULL;
-    struct lyd_node *running = NULL, *subroot, *next, *node;
+    struct lyd_node *oper = NULL, *subroot, *next, *node;
     void *p;
     int index = 0;
     struct lyxml_elem *iter, *elem;
 
     opterr = 0;
 #ifndef NDEBUG
-    while ((opt = getopt_long(argc, argv, "ad:f:F:gunP:L:hHiDlmo:p:r:st:vVG:y:", options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "ad:f:F:gunP:L:hHiDlmo:p:r:O:st:vVG:y:", options, &opt_index)) != -1)
 #else
-    while ((opt = getopt_long(argc, argv, "ad:f:F:gunP:L:hHiDlmo:p:r:st:vVy:", options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "ad:f:F:gunP:L:hHiDlmo:p:r:O:st:vVy:", options, &opt_index)) != -1)
 #endif
     {
         switch (opt) {
@@ -446,16 +448,17 @@ main_ni(int argc, char* argv[])
             ly_set_add(searchpaths, optarg, 0);
             break;
         case 'r':
-            if (running_file || (options_parser & LYD_OPT_NOEXTDEPS)) {
-                fprintf(stderr, "yanglint error: The running datastore (-r) cannot be set multiple times.\n");
+        case 'O':
+            if (oper_file || (options_parser & LYD_OPT_NOEXTDEPS)) {
+                fprintf(stderr, "yanglint error: The operational datastore (-O) cannot be set multiple times.\n");
                 goto cleanup;
             }
             if (optarg[0] == '!') {
-                /* ignore extenral dependencies to the running datastore */
+                /* ignore extenral dependencies to the operational datastore */
                 options_parser |= LYD_OPT_NOEXTDEPS;
             } else {
-                /* external file with the running datastore */
-                running_file = optarg;
+                /* external file with the operational datastore */
+                oper_file = optarg;
             }
             break;
         case 's':
@@ -592,10 +595,10 @@ main_ni(int argc, char* argv[])
         /* we have options for printing data tree, but output is schema */
         fprintf(stderr, "yanglint warning: data parser options are ignored when printing schema.\n");
     }
-    if (running_file && (!autodetection && !(options_parser & (LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF)))) {
-        fprintf(stderr, "yanglint warning: running datastore applies only to RPCs or Notifications.\n");
-        /* ignore running datastore file */
-        running_file = NULL;
+    if (oper_file && (!autodetection && !(options_parser & (LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF)))) {
+        fprintf(stderr, "yanglint warning: operational datastore applies only to RPCs or Notifications.\n");
+        /* ignore operational datastore file */
+        oper_file = NULL;
     }
     if ((options_parser & LYD_OPT_TYPEMASK) == LYD_OPT_DATA) {
         /* add option to ignore ietf-yang-library data for implicit data type */
@@ -732,18 +735,18 @@ main_ni(int argc, char* argv[])
     } else if (data) {
         ly_errno = 0;
 
-        /* prepare running datastore when specified for RPC/Notification */
-        if (running_file) {
+        /* prepare operational datastore when specified for RPC/Notification */
+        if (oper_file) {
             /* get the file format */
-            if (!get_fileformat(running_file, NULL, &informat_d)) {
+            if (!get_fileformat(oper_file, NULL, &informat_d)) {
                 goto cleanup;
             } else if (!informat_d) {
-                fprintf(stderr, "yanglint error: The running data are expected in XML or JSON format.\n");
+                fprintf(stderr, "yanglint error: The operational data are expected in XML or JSON format.\n");
                 goto cleanup;
             }
-            running = lyd_parse_path(ctx, running_file, informat_d, LYD_OPT_DATA_NO_YANGLIB);
-            if (!running) {
-                fprintf(stderr, "yanglint error: Failed to parse the running datastore file for RPC/Notification validation.\n");
+            oper = lyd_parse_path(ctx, oper_file, informat_d, LYD_OPT_DATA_NO_YANGLIB | LYD_OPT_TRUSTED);
+            if (!oper) {
+                fprintf(stderr, "yanglint error: Failed to parse the operational datastore file for RPC/Notification validation.\n");
                 goto cleanup;
             }
         }
@@ -826,7 +829,7 @@ main_ni(int argc, char* argv[])
                     goto cleanup;
                 }
 
-                data_item->tree = lyd_parse_xml(ctx, &data_item->xml->child, options_parser, running);
+                data_item->tree = lyd_parse_xml(ctx, &data_item->xml->child, options_parser, oper);
                 if (data_prev && data_prev->type == LYD_OPT_RPCREPLY) {
 parse_reply:
                     /* check result of the RPC parsing, we are going to do another parsing in this step */
@@ -871,17 +874,17 @@ parse_reply:
 
                         /* finally, parse RPC reply from the previous step */
                         data_prev->tree = lyd_parse_xml(ctx, &data_prev->xml->child,
-                                                        (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPCREPLY, data_item->tree, running);
+                                                        (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPCREPLY, data_item->tree, oper);
                     } else { /* LYD_JSON */
                         data_prev->tree = lyd_parse_path(ctx, data_prev->filename, data_item->format,
-                                                         (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPCREPLY, data_item->tree, running);
+                                                         (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPCREPLY, data_item->tree, oper);
                     }
                 }
             } else if ((options_parser & LYD_OPT_TYPEMASK) == LYD_OPT_RPCREPLY) {
                 if (data_prev && !data_prev->tree) {
                     /* now we should have RPC for the preceding RPC reply */
                     data_item->tree = lyd_parse_path(ctx, data_item->filename, data_item->format,
-                                                     (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPC, running);
+                                                     (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPC, oper);
                     data_item->type = LYD_OPT_RPC;
                     goto parse_reply;
                 } else {
@@ -907,7 +910,7 @@ parse_reply:
                     continue;
                 }
             } else {
-                data_item->tree = lyd_parse_path(ctx, data_item->filename, data_item->format, options_parser, running);
+                data_item->tree = lyd_parse_path(ctx, data_item->filename, data_item->format, options_parser, oper);
             }
             if (ly_errno) {
                 goto cleanup;
@@ -1036,7 +1039,7 @@ cleanup:
         lyd_free_withsiblings(data->tree);
         free(data);
     }
-    lyd_free_withsiblings(running);
+    lyd_free_withsiblings(oper);
     ly_ctx_destroy(ctx, NULL);
 
     return ret;
