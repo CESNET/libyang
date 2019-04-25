@@ -2017,6 +2017,10 @@ lys_compile_leafref_predicate_validate(struct lysc_ctx *ctx, const char **predic
                        *predicate - start, start, src_prefix_len, src_prefix, path_context->name);
                 goto cleanup;
             }
+            if (!mod->implemented) {
+                /* make the module implemented */
+                ly_ctx_module_implement_internal(ctx->ctx, (struct lys_module*)mod, 2);
+            }
         } else {
             mod = start_node->module;
         }
@@ -2127,22 +2131,26 @@ lys_compile_leafref_predicate_validate(struct lysc_ctx *ctx, const char **predic
             }
             if (!mod) {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                       "Invalid leafref path predicate \"%.*s\" - unable to find module of the node \"%.*s\" in rel-path_keyexpr.",
+                       "Invalid leafref path predicate \"%.*s\" - unable to find module of the node \"%.*s\" in rel-path-keyexpr.",
                        *predicate - start, start, dst_len, dst);
                 goto cleanup;
+            }
+            if (!mod->implemented) {
+                /* make the module implemented */
+                ly_ctx_module_implement_internal(ctx->ctx, (struct lys_module*)mod, 2);
             }
 
             dst_node = lys_child(dst_node, mod, dst, dst_len, 0, LYS_GETNEXT_NOSTATECHECK);
             if (!dst_node) {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                       "Invalid leafref path predicate \"%.*s\" - unable to find node \"%.*s\" in the rel-path_keyexpr.",
+                       "Invalid leafref path predicate \"%.*s\" - unable to find node \"%.*s\" in the rel-path-keyexpr.",
                        *predicate - start, start, path_key_expr - pke_start, pke_start);
                 goto cleanup;
             }
         }
         if (!(dst_node->nodetype & (dst_node->module->version < LYS_VERSION_1_1 ? LYS_LEAF : LYS_LEAF | LYS_LEAFLIST))) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                   "Invalid leafref path predicate \"%.*s\" - rel-path_keyexpr \"%.*s\" refers %s instead of leaf.",
+                   "Invalid leafref path predicate \"%.*s\" - rel-path-keyexpr \"%.*s\" refers %s instead of leaf.",
                    *predicate - start, start, path_key_expr - pke_start, pke_start, lys_nodetype2str(dst_node->nodetype));
             goto cleanup;
         }
