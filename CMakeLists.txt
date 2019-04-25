@@ -185,19 +185,16 @@ set(libsrc
     src/xml.c
     src/xpath.c)
 
-#set(lintsrc
-#    tools/lint/main.c
-#    tools/lint/main_ni.c
-#    tools/lint/commands.c
-#    tools/lint/completion.c
-#    tools/lint/configuration.c
-#    linenoise/linenoise.c)
+set(lintsrc
+    tools/lint/main.c
+    tools/lint/main_ni.c
+    tools/lint/commands.c
+    tools/lint/completion.c
+    tools/lint/configuration.c
+    tools/lint/linenoise/linenoise.c)
 
 #set(resrc
 #    tools/re/main.c)
-
-#set(yang2yinsrc
-#    tools/yang2yin/main.c)
 
 set(headers
     src/libyang.h
@@ -340,19 +337,21 @@ endif(ENABLE_BUILD_TESTS)
 #
 #configure_file(${PROJECT_SOURCE_DIR}/src/plugin_config.h.in ${PROJECT_BINARY_DIR}/src/plugin_config.h)
 
+# config file for tools
+configure_file(${PROJECT_SOURCE_DIR}/tools/config.h.in ${PROJECT_BINARY_DIR}/tools/config.h @ONLY)
+
 # yanglint
-#add_executable(yanglint ${lintsrc})
-#target_link_libraries(yanglint yang)
-#install(TARGETS yanglint DESTINATION ${CMAKE_INSTALL_BINDIR})
-#install(FILES ${PROJECT_SOURCE_DIR}/tools/lint/yanglint.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
+add_executable(yanglint ${lintsrc})
+target_link_libraries(yanglint yang)
+install(TARGETS yanglint DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES ${PROJECT_SOURCE_DIR}/tools/lint/yanglint.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
+target_include_directories(yanglint BEFORE PRIVATE ${PROJECT_BINARY_DIR}/tools)
 
 #yangre
 #add_executable(yangre ${resrc})
 #target_link_libraries(yangre yang)
 #install(TARGETS yangre DESTINATION ${CMAKE_INSTALL_BINDIR})
-
-# yang2yin
-#add_executable(yang2yin ${yang2yinsrc})
+#target_include_directories(yangre BEFORE PRIVATE ${PROJECT_BINARY_DIR}/tools)
 
 if(ENABLE_VALGRIND_TESTS)
     set(ENABLE_BUILD_TESTS ON)

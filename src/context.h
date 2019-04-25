@@ -104,11 +104,24 @@ LY_ERR ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir);
 /**
  * @brief Clean the search path(s) from the libyang context
  *
+ * To remove the search path by its index, use ly_ctx_unset_searchdir().
+ *
  * @param[in] ctx Context to be modified.
  * @param[in] value Searchdir to be removed, use NULL to remove them all.
  * @return LY_ERR return value
  */
 LY_ERR ly_ctx_unset_searchdirs(struct ly_ctx *ctx, const char *value);
+
+/**
+ * @brief Remove the specific search path from the libyang context.
+ *
+ * To remove the search path by its value, use ly_ctx_unset_searchdirs().
+ *
+ * @param[in] ctx Context to be modified.
+ * @param[in] index Index of the searchdir to be removed.
+ * @return LY_ERR return value
+ */
+LY_ERR ly_ctx_unset_searchdir(struct ly_ctx *ctx, unsigned int index);
 
 /**
  * @brief Get the NULL-terminated list of the search paths in libyang context. Do not modify the result!
@@ -232,6 +245,25 @@ struct lys_module *ly_ctx_get_module_latest(const struct ly_ctx *ctx, const char
 struct lys_module *ly_ctx_get_module_implemented(const struct ly_ctx *ctx, const char *name);
 
 /**
+ * @brief Get the (only) implemented YANG module specified by its name.
+ *
+ * @param[in] ctx Context where to search.
+ * @param[in] name Name of the YANG module to get.
+ * @return The only implemented YANG module revision of the given name in the given context. NULL if there is no
+ * implemented module of the given name.
+ */
+/**
+ * @brief Iterate over all modules in the given context.
+ *
+ * @param[in] ctx Context with the modules.
+ * @param[in,out] index Index of the next module to get. Value of 0 starts from the beginning.
+ * The value is updated with each call, so to iterate over all modules the same variable is supposed
+ * to be used in all calls starting with value 0.
+ * @return Next context module, NULL if the last was already returned.
+ */
+const struct lys_module *ly_ctx_get_module_iter(const struct ly_ctx *ctx, unsigned int *index);
+
+/**
  * @brief Get YANG module of the given namespace and revision.
  *
  * @param[in] ctx Context to work in.
@@ -291,6 +323,23 @@ void ly_ctx_reset_latests(struct ly_ctx *ctx);
  * same module which is already implemented.
  */
 LY_ERR ly_ctx_module_implement(struct ly_ctx *ctx, struct lys_module *mod);
+
+/**
+ * @brief Try to find the model in the searchpaths of \p ctx and load it into it. If custom missing
+ * module callback is set, it is used instead.
+ *
+ * The context itself is searched for the requested module first. If \p revision is not specified
+ * (the module of the latest revision is requested) and there is implemented revision of the requested
+ * module in the context, this implemented revision is returned despite there might be a newer revision.
+ * This behavior is cause by the fact that it is not possible to have multiple implemented revisions of
+ * the same module in the context.
+ *
+ * @param[in] ctx Context to add to.
+ * @param[in] name Name of the module to load.
+ * @param[in] revision Optional revision date of the module. If not specified, the latest revision is loaded.
+ * @return Pointer to the data model structure, NULL if not found or some error occurred.
+ */
+const struct lys_module *ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision);
 
 /**
  * @brief Free all internal structures of the specified context.

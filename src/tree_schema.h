@@ -1595,7 +1595,7 @@ struct lys_module {
  * @param[in] feature Name of the feature to enable. To enable all features at once, use asterisk (`*`) character.
  * @return LY_ERR value.
  */
-LY_ERR lys_feature_enable(struct lys_module *module, const char *feature);
+LY_ERR lys_feature_enable(const struct lys_module *module, const char *feature);
 
 /**
  * @brief Disable specified feature in the module
@@ -1606,7 +1606,7 @@ LY_ERR lys_feature_enable(struct lys_module *module, const char *feature);
  * @param[in] feature Name of the feature to disable. To disable all features at once, use asterisk (`*`) character.
  * @return LY_ERR value
  */
-LY_ERR lys_feature_disable(struct lys_module *module, const char *feature);
+LY_ERR lys_feature_disable(const struct lys_module *module, const char *feature);
 
 /**
  * @brief Get the current status of the specified feature in the module.

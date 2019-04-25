@@ -129,7 +129,9 @@ LY_ERR lysp_type_find(const char *id, struct lysp_node *start_node, struct lysp_
  * @param[in] ctx libyang context.
  * @param[in] name Name of the module to load.
  * @param[in] revison Optional revision of the module to load. If NULL, the newest revision is loaded.
- * @param[in] implement Flag if the loaded module is supposed to be marked as implemented.
+ * @param[in] implement Flag if the loaded module is supposed to be marked as implemented. If revision is NULL and implement flag set,
+ * the implemented module in the context is returned despite it might not be of the latest revision, because in this case the module
+ * of the latest revision can not be made implemented.
  * @param[in] require_parsed Flag to require parsed module structure in case the module is already in the context,
  * but only the compiled structure is available.
  * @param[out] mod Parsed module structure.

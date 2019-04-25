@@ -154,6 +154,36 @@ ly_ctx_unset_searchdirs(struct ly_ctx *ctx, const char *value)
 }
 
 API LY_ERR
+ly_ctx_unset_searchdir(struct ly_ctx *ctx, unsigned int index)
+{
+    LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
+
+    if (!ctx->search_paths.count) {
+        return LY_SUCCESS;
+    }
+
+    if (index >= ctx->search_paths.count) {
+        LOGARG(ctx, value);
+        return LY_EINVAL;
+    } else {
+        return ly_set_rm_index(&ctx->search_paths, index, free);
+    }
+
+    return LY_SUCCESS;
+}
+
+API const struct lys_module *
+ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
+{
+    struct lys_module *result = NULL;
+
+    LY_CHECK_ARG_RET(ctx, ctx, name, NULL);
+
+    LY_CHECK_RET(lysp_load_module(ctx, name, revision, 1, 0, &result), NULL);
+    return result;
+}
+
+API LY_ERR
 ly_ctx_new(const char *search_dir, int options, struct ly_ctx **new_ctx)
 {
     struct ly_ctx *ctx = NULL;
@@ -162,6 +192,8 @@ ly_ctx_new(const char *search_dir, int options, struct ly_ctx **new_ctx)
     char *sep, *dir;
     int i;
     LY_ERR rc = LY_SUCCESS;
+
+    LY_CHECK_ARG_RET(NULL, new_ctx, LY_EINVAL);
 
     ctx = calloc(1, sizeof *ctx);
     LY_CHECK_ERR_RET(!ctx, LOGMEM(NULL), LY_EMEM);
@@ -278,6 +310,18 @@ ly_ctx_get_module_imp_clb(const struct ly_ctx *ctx, void **user_data)
         *user_data = ctx->imp_clb_data;
     }
     return ctx->imp_clb;
+}
+
+API const struct lys_module *
+ly_ctx_get_module_iter(const struct ly_ctx *ctx, unsigned int *index)
+{
+    LY_CHECK_ARG_RET(ctx, ctx, index, NULL);
+
+    for ( ; *index < (unsigned)ctx->list.count; (*index)++) {
+        return ctx->list.objs[(*index)++];
+    }
+
+    return NULL;
 }
 
 /**

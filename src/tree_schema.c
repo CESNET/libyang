@@ -427,19 +427,19 @@ next:
 }
 
 API LY_ERR
-lys_feature_enable(struct lys_module *module, const char *feature)
+lys_feature_enable(const struct lys_module *module, const char *feature)
 {
     LY_CHECK_ARG_RET(NULL, module, feature, LY_EINVAL);
 
-    return lys_feature_change(module, feature, 1);
+    return lys_feature_change((struct lys_module*)module, feature, 1);
 }
 
 API LY_ERR
-lys_feature_disable(struct lys_module *module, const char *feature)
+lys_feature_disable(const struct lys_module *module, const char *feature)
 {
     LY_CHECK_ARG_RET(NULL, module, feature, LY_EINVAL);
 
-    return lys_feature_change(module, feature, 0);
+    return lys_feature_change((struct lys_module*)module, feature, 0);
 }
 
 API int
@@ -517,11 +517,11 @@ lys_parse_mem_submodule(struct ly_ctx *ctx, const char *data, LYS_INFORMAT forma
     memcpy(&context.grps_nodes, &main_ctx->grps_nodes, sizeof main_ctx->grps_nodes);
 
     switch (format) {
+    /* TODO not yet supported
     case LYS_IN_YIN:
-        /* TODO not yet supported
         mod = yin_read_module();
-        */
         break;
+    */
     case LYS_IN_YANG:
         ret = yang_parse_submodule(&context, data, &submod);
         break;
@@ -589,11 +589,11 @@ lys_parse_mem_module(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, 
     mod->ctx = ctx;
 
     switch (format) {
+    /* TODO not yet supported
     case LYS_IN_YIN:
-        /* TODO not yet supported
         mod = yin_read_module();
-        */
         break;
+    */
     case LYS_IN_YANG:
         ret = yang_parse_module(&context, data, mod);
         break;
@@ -1004,10 +1004,12 @@ lys_search_localfile(const char * const *searchpaths, int cwd, const char *name,
 
                 /* get type according to filename suffix */
                 flen = strlen(file->d_name);
-                if (!strcmp(&file->d_name[flen - 4], ".yin")) {
-                    format_aux = LYS_IN_YIN;
-                } else if (!strcmp(&file->d_name[flen - 5], ".yang")) {
+                if (!strcmp(&file->d_name[flen - 5], ".yang")) {
                     format_aux = LYS_IN_YANG;
+                /* TODO YIN parser
+                } else if (!strcmp(&file->d_name[flen - 4], ".yin")) {
+                    format_aux = LYS_IN_YIN;
+                */
                 } else {
                     /* not supportde suffix/file format */
                     continue;

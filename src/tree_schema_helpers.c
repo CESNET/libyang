@@ -747,8 +747,18 @@ lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, int
     if (!*mod) {
         /* try to get the module from the context */
         if (revision) {
+            /* get the specific revision */
             *mod = (struct lys_module*)ly_ctx_get_module(ctx, name, revision);
+        } else if (implement) {
+            /* prefer the implemented module instead of the latest one */
+            *mod = (struct lys_module*)ly_ctx_get_module_implemented(ctx, name);
+            if (!*mod) {
+                /* there is no implemented module in the context, try to get the latest revision module */
+                goto latest_in_the_context;
+            }
         } else {
+            /* get the requested module of the latest revision in the context */
+latest_in_the_context:
             *mod = (struct lys_module*)ly_ctx_get_module_latest(ctx, name);
         }
     }
