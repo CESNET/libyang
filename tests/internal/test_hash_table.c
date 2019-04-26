@@ -269,6 +269,45 @@ test_collisions(void **state)
     }
 }
 
+static void
+test_invalid_rebuild(void **state)
+{
+    int i, a[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };
+    struct ht_rec *rec;
+
+    (void)state;
+
+    assert_int_equal(lyht_insert(ht, &a[0], 0, NULL), 0);
+
+    assert_int_equal(lyht_insert(ht, &a[1], 1, NULL), 0);
+    assert_int_equal(lyht_insert(ht, &a[2], 2, NULL), 0);
+    assert_int_equal(lyht_insert(ht, &a[3], 3, NULL), 0);
+
+    assert_int_equal(lyht_insert(ht, &a[4], 0, NULL), 0);
+
+    assert_int_equal(lyht_remove(ht, &a[1], 1), 0);
+    assert_int_equal(lyht_remove(ht, &a[2], 2), 0);
+    assert_int_equal(lyht_remove(ht, &a[3], 3), 0);
+
+    assert_int_equal(lyht_insert(ht, &a[5], 5, NULL), 0);
+    assert_int_equal(lyht_insert(ht, &a[6], 6, NULL), 0);
+    assert_int_equal(lyht_insert(ht, &a[7], 7, NULL), 0);
+
+    /* these are the invalid values */
+    for (i = 1; i < 4; ++i) {
+        rec = lyht_get_rec(ht->recs, ht->rec_size, i);
+        assert_int_equal(rec->hits, -1);
+    }
+
+    /* should cause hash table rebuild */
+    assert_int_equal(lyht_insert(ht, &a[8], 0, NULL), 0);
+
+    for (i = 3; i < 5; ++i) {
+        rec = lyht_get_rec(ht->recs, ht->rec_size, i);
+        assert_int_equal(rec->hits, 0);
+    }
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -276,6 +315,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_half_full, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_resize, setup_f_resize, teardown_f),
         cmocka_unit_test_setup_teardown(test_collisions, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_invalid_rebuild, setup_f, teardown_f),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

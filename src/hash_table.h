@@ -70,8 +70,7 @@ struct ht_rec {
  *
  * Hash table with open addressing collision resolution and
  * linear probing of interval 1 (next free record is used).
- * Removal is lazy (removed records are only marked), but
- * if possible, they are fully emptied.
+ * Removal is lazy (removed records are only marked).
  */
 struct hash_table {
     uint32_t used;        /* number of values stored in the hash table (filled records) */

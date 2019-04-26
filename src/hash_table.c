@@ -352,7 +352,7 @@ lyht_free(struct hash_table *ht)
 }
 
 static int
-lyht_resize(struct hash_table *ht, int enlarge)
+lyht_resize(struct hash_table *ht, int change)
 {
     struct ht_rec *rec;
     unsigned char *old_recs;
@@ -362,13 +362,13 @@ lyht_resize(struct hash_table *ht, int enlarge)
     old_recs = ht->recs;
     old_size = ht->size;
 
-    if (enlarge) {
+    if (change > 0) {
         /* double the size */
         ht->size <<= 1;
-    } else {
+    } else if (change < 0) {
         /* half the size */
         ht->size >>= 1;
-    }
+    } /* else keep the same size, just create new table without invalid values */
 
     ht->recs = calloc(ht->size, ht->rec_size);
     LY_CHECK_ERR_RETURN(!ht->recs, LOGMEM(NULL); ht->recs = old_recs; ht->size = old_size, -1);
@@ -443,7 +443,8 @@ lyht_find_first(struct hash_table *ht, uint32_t hash, struct ht_rec **rec_p)
  * @param[in,out] last Last returned collision record.
  * @param[in] first First collision record (hits > 1).
  * @return 0 when hash collision found, \p last points to this next collision,
- *         1 when hash collision not found, \p last points to the record where it would be inserted.
+ *         1 when hash collision not found, \p last points to the record where it would be inserted,
+ *         1 and \p last NULL in the corner case that there are no empty records (likely filled with invalid values).
  */
 static int
 lyht_find_collision(struct hash_table *ht, struct ht_rec **last, struct ht_rec *first)
@@ -461,8 +462,7 @@ lyht_find_collision(struct hash_table *ht, struct ht_rec **last, struct ht_rec *
         *last = lyht_get_rec(ht->recs, ht->rec_size, i);
         if (*last == first) {
             /* we went through all the records (very unlikely, but possible when many records are invalid),
-             * just return an invalid record */
-            assert(empty);
+             * just return an invalid record (if any suitable even available) */
             *last = empty;
             return 1;
         }
@@ -621,6 +621,25 @@ lyht_insert_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash,
         /* value not found, get the record where it will be inserted */
         r = lyht_find_collision(ht, &rec, crec);
         assert(r);
+
+        if (!rec) {
+            /* specific case of having hash table full of invalid values */
+            assert(ht->used < ht->size);
+            if (resize_val_equal) {
+                old_val_equal = lyht_set_cb(ht, resize_val_equal);
+            }
+            /* create the hash table from scratch */
+            ret = lyht_resize(ht, 0);
+            if (resize_val_equal) {
+                lyht_set_cb(ht, old_val_equal);
+            }
+            if (ret) {
+                return -1;
+            }
+
+            /* retry adding the value, must succeed now */
+            return lyht_insert_with_resize_cb(ht, val_p, hash, resize_val_equal, match_p);
+        }
     }
 
     /* insert it into the returned record */
@@ -731,7 +750,7 @@ lyht_remove(struct hash_table *ht, void *val_p, uint32_t hash)
         r = (ht->used * 100) / ht->size;
         if ((r < LYHT_SHRINK_PERCENTAGE) && (ht->size > LYHT_MIN_SIZE)) {
             /* shrink */
-            ret = lyht_resize(ht, 0);
+            ret = lyht_resize(ht, -1);
         }
     }
 
