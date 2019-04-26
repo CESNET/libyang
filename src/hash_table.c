@@ -711,10 +711,12 @@ lyht_remove(struct hash_table *ht, void *val_p, uint32_t hash)
     } else if (first_matched) {
         /* the first record matches */
         if (crec != rec) {
-            /* ... so put the last collision in its place */
+            /* ... and there are some collisions so put the last collision in its place keeping the correct collision count */
             rec->hits = crec->hits - 1;
             memcpy(crec, rec, ht->rec_size);
         }
+
+        /* this matching record was removed and is not valid anymore */
         rec->hits = -1;
     } else {
         /* value not found even in collisions */
