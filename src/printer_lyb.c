@@ -483,6 +483,8 @@ lyb_write_enum(uint32_t enum_idx, uint32_t count, struct lyout *out, struct lyb_
 {
     size_t bytes;
 
+    assert(enum_idx < count);
+
     if (count < (1 << 8)) {
         bytes = 1;
     } else if (count < (1 << 16)) {
@@ -760,14 +762,15 @@ lyb_print_value(const struct lys_type *type, const char *value_str, lyd_val valu
     /* we have only 5b available, must be enough */
     assert((value_type & 0x1f) == value_type);
 
+    /* find actual type */
+    while (type->base == LY_TYPE_LEAFREF) {
+        type = &type->info.lref.target->type;
+    }
+
     if ((value_flags & LY_VALUE_USER) || (type->base == LY_TYPE_UNION)) {
         value_type = LY_TYPE_STRING;
     } else if (value_type == LY_TYPE_LEAFREF) {
         assert(!(value_flags & LY_VALUE_UNRES));
-        /* find the leafref target type */
-        while (type->base == LY_TYPE_LEAFREF) {
-            type = &type->info.lref.target->type;
-        }
         value_type = type->base;
 
         /* and also use its value */
