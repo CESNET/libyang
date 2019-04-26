@@ -6980,6 +6980,7 @@ yyreduce:
                                              YYABORT;
                                            }
                                            data_node = actual;
+                                           s = NULL;
                                            actual_type = NOTIFICATION_KEYWORD;
                                          }
 
