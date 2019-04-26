@@ -16,6 +16,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
+#include <errno.h>
 #include <string.h>
 #include <assert.h>
 #include <inttypes.h>
@@ -156,6 +157,8 @@ xml_print_attrs(struct lyout *out, const struct lyd_node *node, int options)
     char *p;
     size_t len;
 
+    LY_PRINT_SET;
+
     /* with-defaults */
     if (node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
         if ((node->dflt && (options & (LYP_WD_ALL_TAG | LYP_WD_IMPL_TAG))) ||
@@ -183,7 +186,6 @@ xml_print_attrs(struct lyout *out, const struct lyd_node *node, int options)
                 xml_expr = transform_json2xml(node->schema->module, attr->value_str, 0, &prefs, &nss, &ns_count);
                 if (!xml_expr) {
                     /* error */
-                    ly_print(out, "\"(!error!)\"");
                     return EXIT_FAILURE;
                 }
 
@@ -240,7 +242,6 @@ printinst:
                                           &prefs, &nss, &ns_count);
             if (!xml_expr) {
                 /* error */
-                ly_print(out, "(!error!)");
                 return EXIT_FAILURE;
             }
 
@@ -260,7 +261,7 @@ printinst:
 
         default:
             /* error */
-            ly_print(out, "(!error!)");
+            LOGINT(node->schema->module->ctx);
             return EXIT_FAILURE;
         }
 
@@ -271,7 +272,7 @@ printinst:
         }
     }
 
-    return EXIT_SUCCESS;
+    LY_PRINT_RET(node->schema->module->ctx);
 }
 
 static int
@@ -288,6 +289,8 @@ xml_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int to
     char *p;
     size_t len;
     enum int_log_opts prev_ilo;
+
+    LY_PRINT_SET;
 
     if (toplevel || !node->parent || nscmp(node, node->parent)) {
         /* print "namespace" */
@@ -371,7 +374,6 @@ printvalue:
                                       &prefs, &nss, &ns_count);
         if (!xml_expr) {
             /* error */
-            ly_print(out, "\"(!error!)\"");
             return EXIT_FAILURE;
         }
 
@@ -401,7 +403,6 @@ printvalue:
             type = lyd_leaf_type((struct lyd_node_leaf_list *)leaf);
             if (!type) {
                 /* error */
-                ly_print(out, "\"(!error!)\"");
                 return EXIT_FAILURE;
             }
             datatype = type->base;
@@ -416,7 +417,7 @@ printvalue:
 
     default:
         /* error */
-        ly_print(out, "\"(!error!)\"");
+        LOGINT(node->schema->module->ctx);
         return EXIT_FAILURE;
     }
 
@@ -424,7 +425,7 @@ printvalue:
         ly_print(out, "\n");
     }
 
-    return EXIT_SUCCESS;
+    LY_PRINT_RET(node->schema->module->ctx);
 }
 
 static int
@@ -432,6 +433,8 @@ xml_print_container(struct lyout *out, int level, const struct lyd_node *node, i
 {
     struct lyd_node *child;
     const char *ns;
+
+    LY_PRINT_SET;
 
     if (toplevel || !node->parent || nscmp(node, node->parent)) {
         /* print "namespace" */
@@ -451,7 +454,7 @@ xml_print_container(struct lyout *out, int level, const struct lyd_node *node, i
 
     if (!node->child) {
         ly_print(out, "/>%s", level ? "\n" : "");
-        return EXIT_SUCCESS;
+        goto finish;
     }
     ly_print(out, ">%s", level ? "\n" : "");
 
@@ -463,7 +466,8 @@ xml_print_container(struct lyout *out, int level, const struct lyd_node *node, i
 
     ly_print(out, "%*s</%s>%s", LEVEL, INDENT, node->schema->name, level ? "\n" : "");
 
-    return EXIT_SUCCESS;
+finish:
+    LY_PRINT_RET(node->schema->module->ctx);
 }
 
 static int
@@ -471,6 +475,8 @@ xml_print_list(struct lyout *out, int level, const struct lyd_node *node, int is
 {
     struct lyd_node *child;
     const char *ns;
+
+    LY_PRINT_SET;
 
     if (is_list) {
         /* list print */
@@ -491,7 +497,7 @@ xml_print_list(struct lyout *out, int level, const struct lyd_node *node, int is
 
         if (!node->child) {
             ly_print(out, "/>%s", level ? "\n" : "");
-            return EXIT_SUCCESS;
+            goto finish;
         }
         ly_print(out, ">%s", level ? "\n" : "");
 
@@ -507,7 +513,8 @@ xml_print_list(struct lyout *out, int level, const struct lyd_node *node, int is
         xml_print_leaf(out, level, node, toplevel, options);
     }
 
-    return EXIT_SUCCESS;
+finish:
+    LY_PRINT_RET(node->schema->module->ctx);
 }
 
 static int
@@ -517,6 +524,8 @@ xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int
     struct lyd_node_anydata *any = (struct lyd_node_anydata *)node;
     struct lyd_node *iter;
     const char *ns;
+
+    LY_PRINT_SET;
 
     if (toplevel || !node->parent || nscmp(node, node->parent)) {
         /* print "namespace" */
@@ -589,7 +598,7 @@ xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int
         ly_print(out, "</%s>%s", node->schema->name, level ? "\n" : "");
     }
 
-    return EXIT_SUCCESS;
+    LY_PRINT_RET(node->schema->module->ctx);
 }
 
 int
@@ -638,11 +647,13 @@ xml_print_data(struct lyout *out, const struct lyd_node *root, int options)
     struct lys_node *parent = NULL;
     int level, action_input = 0;
 
+    LY_PRINT_SET;
+
     if (!root) {
         if (out->type == LYOUT_MEMORY || out->type == LYOUT_CALLBACK) {
             ly_print(out, "");
         }
-        return EXIT_SUCCESS;
+        goto finish;
     }
 
     level = (options & LYP_FORMAT ? 1 : 0);
@@ -698,8 +709,9 @@ xml_print_data(struct lyout *out, const struct lyd_node *root, int options)
         ly_print(out, "%*s</action>%s", LEVEL, INDENT, level ? "\n" : "");
     }
 
+finish:
     ly_print_flush(out);
 
-    return EXIT_SUCCESS;
+    LY_PRINT_RET(NULL);
 }
 

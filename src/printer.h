@@ -59,6 +59,11 @@ struct ext_substmt_info_s {
 #define SUBST_FLAG_ID 0x2  /**< the value is identifier -> no quotes */
 };
 
+#define LY_PRINT_SET errno = 0
+
+#define LY_PRINT_RET(ctx) if (errno) { LOGERR(ctx, LY_ESYS, "Print error (%s).", strerror(errno)); return EXIT_FAILURE; } else \
+        { return EXIT_SUCCESS; }
+
 /* filled in printer.c */
 extern struct ext_substmt_info_s ext_substmt_info[];
 
