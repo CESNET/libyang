@@ -346,13 +346,14 @@ cleanup:
 int
 cmd_print(const char *arg)
 {
-    int c, argc, option_index, ret = 1, tree_ll = 0, tree_opts = 0;
+    int c, argc, option_index, ret = 1, tree_ll = 0, tree_opts = 0, compiled = 0;
     char **argv = NULL, *ptr, *model_name, *revision;
     const char *out_path = NULL;
     const struct lys_module *module;
     LYS_OUTFORMAT format = LYS_OUT_TREE;
     FILE *output = stdout;
     static struct option long_options[] = {
+        {"compiled", no_argument, 0, 'c'},
         {"help", no_argument, 0, 'h'},
         {"format", required_argument, 0, 'f'},
         {"output", required_argument, 0, 'o'},
@@ -386,12 +387,15 @@ cmd_print(const char *arg)
     optind = 0;
     while (1) {
         option_index = 0;
-        c = getopt_long(argc, argv, "hf:go:guP:L:", long_options, &option_index);
+        c = getopt_long(argc, argv, "chf:go:guP:L:", long_options, &option_index);
         if (c == -1) {
             break;
         }
 
         switch (c) {
+        case 'c':
+            compiled = 1;
+            break;
         case 'h':
             cmd_print_help();
             ret = 0;
@@ -451,6 +455,11 @@ cmd_print(const char *arg)
     if (optind == argc) {
         fprintf(stderr, "Missing the module name.\n");
         goto cleanup;
+    }
+
+    /* compiled format */
+    if (compiled) {
+        format++;
     }
 
     /* tree fromat with or without gropings */

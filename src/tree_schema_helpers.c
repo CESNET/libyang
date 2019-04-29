@@ -949,6 +949,30 @@ lys_module_find_prefix(const struct lys_module *mod, const char *prefix, size_t 
 }
 
 const char *
+lys_prefix_find_module(const struct lys_module *mod, const struct lys_module *import)
+{
+    unsigned int u;
+
+    if (import == mod) {
+        return mod->prefix;
+    }
+
+    if (mod->parsed) {
+        LY_ARRAY_FOR(mod->parsed->imports, u) {
+            if (mod->parsed->imports[u].module == import) {
+                return mod->parsed->imports[u].prefix;
+            }
+        }
+    } else {
+        /* we don't have original information about the import's prefix,
+         * so the prefix of the import module itself is returned instead */
+        return import->prefix;
+    }
+
+    return NULL;
+}
+
+const char *
 lys_nodetype2str(uint16_t nodetype)
 {
     switch(nodetype) {
@@ -974,6 +998,53 @@ lys_nodetype2str(uint16_t nodetype)
         return "Notification";
     case LYS_USES:
         return "uses";
+    default:
+        return "unknown";
+    }
+}
+
+const char *
+lys_datatype2str(LY_DATA_TYPE basetype)
+{
+    switch(basetype) {
+    case LY_TYPE_BINARY:
+        return "binary";
+    case LY_TYPE_UINT8:
+        return "uint8";
+    case LY_TYPE_UINT16:
+        return "uint16";
+    case LY_TYPE_UINT32:
+        return "uint32";
+    case LY_TYPE_UINT64:
+        return "uint64";
+    case LY_TYPE_STRING:
+        return "string";
+    case LY_TYPE_BITS:
+        return "bits";
+    case LY_TYPE_BOOL:
+        return "boolean";
+    case LY_TYPE_DEC64:
+        return "decimal64";
+    case LY_TYPE_EMPTY:
+        return "empty";
+    case LY_TYPE_ENUM:
+        return "enumeration";
+    case LY_TYPE_IDENT:
+        return "identityref";
+    case LY_TYPE_INST:
+        return "instance-identifier";
+    case LY_TYPE_LEAFREF:
+        return "leafref";
+    case LY_TYPE_UNION:
+        return "union";
+    case LY_TYPE_INT8:
+        return "int8";
+    case LY_TYPE_INT16:
+        return "int16";
+    case LY_TYPE_INT32:
+        return "int32";
+    case LY_TYPE_INT64:
+        return "int64";
     default:
         return "unknown";
     }

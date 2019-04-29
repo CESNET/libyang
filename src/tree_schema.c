@@ -217,8 +217,8 @@ lysc_feature_value(const struct lysc_feature *feature)
     return feature->flags & LYS_FENABLED ? 1 : 0;
 }
 
-static uint8_t
-iff_getop(uint8_t *list, int pos)
+uint8_t
+lysc_iff_getop(uint8_t *list, int pos)
 {
     uint8_t *item;
     uint8_t mask = 3, result;
@@ -236,7 +236,7 @@ lysc_iffeature_value_(const struct lysc_iffeature *iff, int *index_e, int *index
     uint8_t op;
     int a, b;
 
-    op = iff_getop(iff->expr, *index_e);
+    op = lysc_iff_getop(iff->expr, *index_e);
     (*index_e)++;
 
     switch (op) {
@@ -662,7 +662,7 @@ lys_parse_mem_module(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, 
 
     if (!mod->implemented) {
         /* pre-compile features of the module */
-        LY_CHECK_GOTO(lys_feature_precompile(ctx, mod->parsed->features, &mod->off_features), error);
+        LY_CHECK_GOTO(lys_feature_precompile(ctx, mod, mod->parsed->features, &mod->off_features), error);
     }
 
     /* decide the latest revision */
@@ -708,7 +708,7 @@ finish_parsing:
         }
         if (!mod->implemented) {
             /* pre-compile features of the module */
-            LY_CHECK_GOTO(lys_feature_precompile(ctx, inc->submodule->features, &mod->off_features), error);
+            LY_CHECK_GOTO(lys_feature_precompile(ctx, mod, inc->submodule->features, &mod->off_features), error);
         }
     }
     mod->parsed->parsing = 0;

@@ -547,6 +547,7 @@ lysc_pattern_free(struct ly_ctx *ctx, struct lysc_pattern **pattern)
     }
     pcre_free((*pattern)->expr);
     pcre_free_study((*pattern)->expr_extra);
+    FREE_STRING(ctx, (*pattern)->orig);
     FREE_STRING(ctx, (*pattern)->eapptag);
     FREE_STRING(ctx, (*pattern)->emsg);
     FREE_STRING(ctx, (*pattern)->dsc);
@@ -556,7 +557,7 @@ lysc_pattern_free(struct ly_ctx *ctx, struct lysc_pattern **pattern)
 }
 
 static void
-lysc_enum_item_free(struct ly_ctx *ctx, struct lysc_type_enum_item *item)
+lysc_enum_item_free(struct ly_ctx *ctx, struct lysc_type_bitenum_item *item)
 {
     FREE_STRING(ctx, item->name);
     FREE_STRING(ctx, item->dsc);
@@ -581,7 +582,7 @@ lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type)
         FREE_MEMBER(ctx, ((struct lysc_type_bin*)type)->length, lysc_range_free);
         break;
     case LY_TYPE_BITS:
-        FREE_ARRAY(ctx, (struct lysc_type_enum_item*)((struct lysc_type_bits*)type)->bits, lysc_enum_item_free);
+        FREE_ARRAY(ctx, (struct lysc_type_bitenum_item*)((struct lysc_type_bits*)type)->bits, lysc_enum_item_free);
         break;
     case LY_TYPE_DEC64:
         FREE_MEMBER(ctx, ((struct lysc_type_dec*)type)->range, lysc_range_free);

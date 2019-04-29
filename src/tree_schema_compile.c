@@ -640,6 +640,7 @@ lys_compile_identity(struct lysc_ctx *ctx, struct lysp_ident *ident_p, int optio
     DUP_STRING(ctx->ctx, ident_p->name, ident->name);
     DUP_STRING(ctx->ctx, ident_p->dsc, ident->dsc);
     DUP_STRING(ctx->ctx, ident_p->ref, ident->ref);
+    ident->module = ctx->mod;
     COMPILE_ARRAY_GOTO(ctx, ident_p->iffeatures, ident->iffeatures, options, u, lys_compile_iffeature, ret, done);
     /* backlings (derived) can be added no sooner than when all the identities in the current module are present */
     COMPILE_ARRAY_GOTO(ctx, ident_p->exts, ident->exts, options, u, lys_compile_ext, ret, done);
@@ -810,7 +811,7 @@ lys_compile_identities_derived(struct lysc_ctx *ctx, struct lysp_ident *idents_p
 }
 
 LY_ERR
-lys_feature_precompile(struct ly_ctx *ctx, struct lysp_feature *features_p, struct lysc_feature **features)
+lys_feature_precompile(struct ly_ctx *ctx, struct lys_module *module, struct lysp_feature *features_p, struct lysc_feature **features)
 {
     unsigned int offset = 0, u;
     struct lysc_ctx context = {0};
@@ -833,6 +834,7 @@ lys_feature_precompile(struct ly_ctx *ctx, struct lysp_feature *features_p, stru
         DUP_STRING(ctx, features_p[u].dsc, (*features)[offset + u].dsc);
         DUP_STRING(ctx, features_p[u].ref, (*features)[offset + u].ref);
         (*features)[offset + u].flags = features_p[u].flags;
+        (*features)[offset + u].module = module;
     }
 
     return LY_SUCCESS;
@@ -1745,6 +1747,7 @@ lys_compile_type_patterns(struct lysc_ctx *ctx, struct lysp_restr *patterns_p, i
         if (patterns_p[u].arg[0] == 0x15) {
             (*pattern)->inverted = 1;
         }
+        DUP_STRING(ctx->ctx, &patterns_p[u].arg[1], (*pattern)->orig);
         DUP_STRING(ctx->ctx, patterns_p[u].eapptag, (*pattern)->eapptag);
         DUP_STRING(ctx->ctx, patterns_p[u].emsg, (*pattern)->emsg);
         DUP_STRING(ctx->ctx, patterns_p[u].dsc, (*pattern)->dsc);
@@ -1802,13 +1805,13 @@ const char* ly_data_type2str[LY_DATA_TYPE_COUNT] = {"unknown", "binary", "8bit u
  */
 static LY_ERR
 lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_DATA_TYPE basetype, int options,
-                       struct lysc_type_enum_item *base_enums, struct lysc_type_enum_item **enums)
+                       struct lysc_type_bitenum_item *base_enums, struct lysc_type_bitenum_item **enums)
 {
     LY_ERR ret = LY_SUCCESS;
     unsigned int u, v, match;
     int32_t value = 0;
     uint32_t position = 0;
-    struct lysc_type_enum_item *e, storage;
+    struct lysc_type_bitenum_item *e, storage;
 
     if (base_enums && ctx->mod_def->version < 2) {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "%s type can be subtyped only in YANG 1.1 modules.",
@@ -1821,6 +1824,7 @@ lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_
         DUP_STRING(ctx->ctx, enums_p[u].name, e->name);
         DUP_STRING(ctx->ctx, enums_p[u].ref, e->dsc);
         DUP_STRING(ctx->ctx, enums_p[u].ref, e->ref);
+        e->flags = enums_p[u].flags & LYS_FLAGS_COMPILED_MASK;
         if (base_enums) {
             /* check the enum/bit presence in the base type - the set of enums/bits in the derived type must be a subset */
             LY_ARRAY_FOR(base_enums, v) {
@@ -1838,6 +1842,7 @@ lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_
         }
 
         if (basetype == LY_TYPE_ENUM) {
+            e->flags |= LYS_ISENUM;
             if (enums_p[u].flags & LYS_SET_VALUE) {
                 e->value = (int32_t)enums_p[u].value;
                 if (!u || e->value >= value) {
@@ -2479,8 +2484,8 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16
         bits = (struct lysc_type_bits*)(*type);
         if (type_p->bits) {
             ret = lys_compile_type_enums(ctx, type_p->bits, basetype, options,
-                                         base ? (struct lysc_type_enum_item*)((struct lysc_type_bits*)base)->bits : NULL,
-                                         (struct lysc_type_enum_item**)&bits->bits);
+                                         base ? (struct lysc_type_bitenum_item*)((struct lysc_type_bits*)base)->bits : NULL,
+                                         (struct lysc_type_bitenum_item**)&bits->bits);
             LY_CHECK_RET(ret);
         }
 
@@ -5751,7 +5756,7 @@ lys_compile_submodule(struct lysc_ctx *ctx, struct lysp_include *inc, int option
         /* features are compiled directly into the compiled module structure,
          * but it must be done in two steps to allow forward references (via if-feature) between the features themselves.
          * The features compilation is finished in the main module (lys_compile()). */
-        ret = lys_feature_precompile(ctx->ctx, submod->features,
+        ret = lys_feature_precompile(ctx->ctx, ctx->mod, submod->features,
                                      mainmod->mod->off_features ? &mainmod->mod->off_features : &mainmod->features);
         LY_CHECK_GOTO(ret, error);
     }
@@ -5809,7 +5814,7 @@ lys_compile(struct lys_module *mod, int options)
     } else {
         /* features are compiled directly into the compiled module structure,
          * but it must be done in two steps to allow forward references (via if-feature) between the features themselves */
-        ret = lys_feature_precompile(ctx.ctx, sp->features, &mod_c->features);
+        ret = lys_feature_precompile(ctx.ctx, ctx.mod, sp->features, &mod_c->features);
         LY_CHECK_GOTO(ret, error);
     }
     /* finish feature compilation, not only for the main module, but also for the submodules.

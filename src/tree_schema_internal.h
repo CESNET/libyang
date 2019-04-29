@@ -330,6 +330,8 @@ LY_ERR lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_
 /**
  * @brief Find the module referenced by prefix in the provided mod.
  *
+ * Reverse function to lys_prefix_find_module().
+ *
  * @param[in] mod Schema module where the prefix was used.
  * @param[in] prefix Prefix used to reference a module.
  * @param[in] len Length of the prefix since it is not necessary NULL-terminated.
@@ -338,11 +340,32 @@ LY_ERR lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_
 struct lys_module *lys_module_find_prefix(const struct lys_module *mod, const char *prefix, size_t len);
 
 /**
+ * @brief Find the prefix used to referenced the import module in the provided mod.
+ *
+ * Reverse function to lys_module_find_prefix().
+ *
+ * Note that original prefixes are present only in the parsed schema. In case it is not available
+ * (only compiled schema available), the own prefix of the import module is returned instead.
+ *
+ * @param[in] mod Schema module where the import module was used.
+ * @param[in] import Module referenced in mod.
+ * @return Prefix of the import module.
+ */
+const char *lys_prefix_find_module(const struct lys_module *mod, const struct lys_module *import);
+
+/**
  * @brief Stringify schema nodetype.
  * @param[in] nodetype Nodetype to stringify.
  * @return Constant string with the name of the node's type.
  */
 const char *lys_nodetype2str(uint16_t nodetype);
+
+/**
+ * @brief Stringify YANG built-in type.
+ * @param[in] basetype Built-in tyep ID to stringify.
+ * @return Constant string with the name of the built-in type.
+ */
+const char *lys_datatype2str(LY_DATA_TYPE basetype);
 
 /**
  * @brief Parse YANG module from a string.
@@ -493,13 +516,22 @@ LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *re
  * if-feature structures.
  *
  * @param[in] ctx libyang context.
+ * @param[in] module Module of the features.
  * @param[in] features_p Array if the parsed features definitions to precompile.
  * @param[in,out] features Pointer to the storage of the (pre)compiled features array where the new features are
  * supposed to be added. The storage is supposed to be initiated to NULL when the first parsed features are going
  * to be processed.
  * @return LY_ERR value.
  */
-LY_ERR lys_feature_precompile(struct ly_ctx *ctx, struct lysp_feature *features_p, struct lysc_feature **features);
+LY_ERR lys_feature_precompile(struct ly_ctx *ctx, struct lys_module *module, struct lysp_feature *features_p, struct lysc_feature **features);
+
+/**
+ * @brief Get the @ref ifftokens from the given position in the 2bits array
+ * (libyang format of the if-feature expression).
+ * @param[in] list The 2bits array with the compiled if-feature expression.
+ * @param[in] pos Position (0-based) to specify from which position get the operator.
+ */
+uint8_t lysc_iff_getop(uint8_t *list, int pos);
 
 /**
  * @brief Macro to free [sized array](@ref sizedarrays) of items using the provided free function. The ARRAY itself is also freed,

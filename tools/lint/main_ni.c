@@ -254,7 +254,7 @@ int
 main_ni(int argc, char* argv[])
 {
     int ret = EXIT_FAILURE;
-    int opt, opt_index = 0, i, featsize = 0;
+    int opt, opt_index = 0, i, featsize = 0, compiled = 0;
     struct option options[] = {
 #if 0
         {"auto",             no_argument,       NULL, 'a'},
@@ -269,6 +269,7 @@ main_ni(int argc, char* argv[])
         {"tree-path",        required_argument, NULL, 'P'},
         {"tree-line-length", required_argument, NULL, 'L'},
 #endif
+        {"compiled",         no_argument,       NULL, 'c'},
         {"help",             no_argument,       NULL, 'h'},
 #if 0
         {"tree-help",        no_argument,       NULL, 'H'},
@@ -330,9 +331,9 @@ main_ni(int argc, char* argv[])
 
     opterr = 0;
 #ifndef NDEBUG
-    while ((opt = getopt_long(argc, argv, "ad:f:F:gunP:L:hHiDlmo:p:r:O:st:vVG:y:", options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "acd:f:F:gunP:L:hHiDlmo:p:r:O:st:vVG:y:", options, &opt_index)) != -1)
 #else
-    while ((opt = getopt_long(argc, argv, "ad:f:F:gunP:L:hHiDlmo:p:r:O:st:vVy:", options, &opt_index)) != -1)
+    while ((opt = getopt_long(argc, argv, "acd:f:F:gunP:L:hHiDlmo:p:r:O:st:vVy:", options, &opt_index)) != -1)
 #endif
     {
         switch (opt) {
@@ -356,6 +357,9 @@ main_ni(int argc, char* argv[])
             }
             break;
 #endif
+        case 'c':
+            compiled = 1;
+            break;
         case 'f':
             if (!strcasecmp(optarg, "yang")) {
                 outformat_s = LYS_OUT_YANG;
@@ -602,6 +606,13 @@ main_ni(int argc, char* argv[])
         help(1);
         fprintf(stderr, "yanglint error: missing <file> to process\n");
         goto cleanup;
+    }
+    if (compiled) {
+        if (!outformat_s) {
+            fprintf(stderr, "yanglint warning: --compiled option takes effect only in case of printing schemas.\n");
+        } else {
+            outformat_s++;
+        }
     }
     if (outformat_s && outformat_s != LYS_OUT_TREE && (optind + 1) < argc) {
         /* we have multiple schemas to be printed as YIN or YANG */
