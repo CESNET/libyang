@@ -26,9 +26,10 @@
  * @param[in] format Schema output format.
  * @param[in] line_length Maximum characters to be printed on a line, 0 for unlimited. Only for #LYS_OUT_TREE printer.
  * @param[in] options Schema output options (see @ref schemaprinterflags).
- * @return 0 on success, 1 on failure (#ly_errno is set).
+ * @return Number of printed bytes in case of success.
+ * @return Negative value failure (absolute value corresponds to LY_ERR values).
  */
-LY_ERR lys_print_mem(char **strp, const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options);
+ssize_t lys_print_mem(char **strp, const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options);
 
 /**
  * @brief Print schema tree in the specified format into a file descriptor.
@@ -38,9 +39,10 @@ LY_ERR lys_print_mem(char **strp, const struct lys_module *module, LYS_OUTFORMAT
  * @param[in] format Schema output format.
  * @param[in] line_length Maximum characters to be printed on a line, 0 for unlimited. Only for #LYS_OUT_TREE format.
  * @param[in] options Schema output options (see @ref schemaprinterflags).
- * @return 0 on success, 1 on failure (#ly_errno is set).
+ * @return Number of printed bytes in case of success.
+ * @return Negative value failure (absolute value corresponds to LY_ERR values).
  */
-LY_ERR lys_print_fd(int fd, const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options);
+ssize_t lys_print_fd(int fd, const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options);
 
 /**
  * @brief Print schema tree in the specified format into a file stream.
@@ -50,9 +52,10 @@ LY_ERR lys_print_fd(int fd, const struct lys_module *module, LYS_OUTFORMAT forma
  * @param[in] format Schema output format.
  * @param[in] line_length Maximum characters to be printed on a line, 0 for unlimited. Only for #LYS_OUT_TREE printer.
  * @param[in] options Schema output options (see @ref schemaprinterflags).
- * @return 0 on success, 1 on failure (#ly_errno is set).
+ * @return Number of printed bytes in case of success.
+ * @return Negative value failure (absolute value corresponds to LY_ERR values).
  */
-LY_ERR lys_print_file(FILE *f, const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options);
+ssize_t lys_print_file(FILE *f, const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options);
 
 /**
  * @brief Print schema tree in the specified format into a file.
@@ -62,9 +65,10 @@ LY_ERR lys_print_file(FILE *f, const struct lys_module *module, LYS_OUTFORMAT fo
  * @param[in] format Schema output format.
  * @param[in] line_length Maximum characters to be printed on a line, 0 for unlimited. Only for #LYS_OUT_TREE printer.
  * @param[in] options Schema output options (see @ref schemaprinterflags).
- * @return 0 on success, 1 on failure (#ly_errno is set).
+ * @return Number of printed bytes in case of success.
+ * @return Negative value failure (absolute value corresponds to LY_ERR values).
  */
-LY_ERR lys_print_path(const char *path, const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options);
+ssize_t lys_print_path(const char *path, const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options);
 
 /**
  * @brief Print schema tree in the specified format using a provided callback.
@@ -75,9 +79,10 @@ LY_ERR lys_print_path(const char *path, const struct lys_module *module, LYS_OUT
  * @param[in] format Schema output format.
  * @param[in] line_length Maximum characters to be printed on a line, 0 for unlimited. Only for #LYS_OUT_TREE printer.
  * @param[in] options Schema output options (see @ref schemaprinterflags).
- * @return LY_ERR value.
+ * @return Number of printed bytes in case of success.
+ * @return Negative value failure (absolute value corresponds to LY_ERR values).
  */
-LY_ERR lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg,
+ssize_t lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg,
                      const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options);
 
 #endif /* LY_PRINTER_SCHEMA_H_ */

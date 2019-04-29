@@ -48,6 +48,12 @@ struct lyout {
 
     /* hole counter */
     size_t hole_count;
+
+    /* counter for printed bytes */
+    size_t printed;
+
+    /* libyang context for error logging */
+    struct ly_ctx *ctx;
 };
 
 struct ext_substmt_info_s {

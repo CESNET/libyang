@@ -130,7 +130,7 @@ test_module(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
 
     assert_non_null(mod = lys_parse_mem(ctx, orig, LYS_IN_YANG));
-    assert_int_equal(LY_SUCCESS, lys_print_mem(&printed, mod, LYS_OUT_YANG, 0, 0));
+    assert_int_equal(strlen(orig), lys_print_mem(&printed, mod, LYS_OUT_YANG, 0, 0));
     assert_string_equal(printed, orig);
     free(printed);
 
@@ -160,7 +160,7 @@ test_module(void **state)
             "  }\n"
             "}\n";
     assert_non_null(mod = lys_parse_mem(ctx, orig, LYS_IN_YANG));
-    assert_int_equal(LY_SUCCESS, lys_print_mem(&printed, mod, LYS_OUT_YANG, 0, 0));
+    assert_int_equal(strlen(orig), lys_print_mem(&printed, mod, LYS_OUT_YANG, 0, 0));
     assert_string_equal(printed, orig);
     free(printed);
 
@@ -182,7 +182,7 @@ test_module(void **state)
             "  }\n"
             "}\n";
     assert_non_null(mod = lys_parse_mem(ctx, orig, LYS_IN_YANG));
-    assert_int_equal(LY_SUCCESS, lys_print_mem(&printed, mod, LYS_OUT_YANG, 0, 0));
+    assert_int_equal(strlen(orig), lys_print_mem(&printed, mod, LYS_OUT_YANG, 0, 0));
     assert_string_equal(printed, orig);
     free(printed);
 
