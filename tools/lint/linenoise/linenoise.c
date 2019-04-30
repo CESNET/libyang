@@ -335,7 +335,7 @@ static void freeCompletions(linenoiseCompletions *lc) {
  *
  * The state of the editing is encapsulated into the pointed linenoiseState
  * structure as described in the structure definition. */
-static int completeLine(struct linenoiseState *ls) {
+static char completeLine(struct linenoiseState *ls) {
     linenoiseCompletions lc = {0, 0, NULL};
     int nread, nwritten, hint_len, hint_line_count, char_count;
     char c = 0, *common, *hint;
@@ -871,10 +871,11 @@ static int linenoiseEdit(int stdin_fd, int stdout_fd, char *buf, size_t buflen, 
 
     if (write(ls.ofd,prompt,ls.plen) == -1) return -1;
     while(1) {
-        int c = 0, nread;
+        char c = 0;
+        int nread;
         char seq[3];
 
-        nread = read(ls.ifd,&c,1);
+        nread = read(ls.ifd,&c,sizeof c);
         if (nread <= 0) return ls.len;
 
         /* Only autocomplete when the callback is set. It returns < 0 when
