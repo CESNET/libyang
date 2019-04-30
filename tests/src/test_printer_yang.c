@@ -125,6 +125,24 @@ test_module(void **state)
             "  reference\n"
             "    \"some reference\";\n"
             "}\n";
+    char *compiled = "module a {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"urn:test:a\";\n"
+            "  prefix a;\n\n"
+            "  import ietf-yang-types {\n"
+            "    prefix yt;\n"
+            "    revision-date 2013-07-15;\n"
+            "  }\n\n"
+            "  organization\n"
+            "    \"ORG\";\n"
+            "  contact\n"
+            "    \"Radek Krejci.\";\n"
+            "  description\n"
+            "    \"Long multiline\n"
+            "      description.\";\n"
+            "  reference\n"
+            "    \"some reference\";\n"
+            "}\n";
     char *printed;
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
@@ -132,6 +150,9 @@ test_module(void **state)
     assert_non_null(mod = lys_parse_mem(ctx, orig, LYS_IN_YANG));
     assert_int_equal(strlen(orig), lys_print_mem(&printed, mod, LYS_OUT_YANG, 0, 0));
     assert_string_equal(printed, orig);
+    free(printed);
+    assert_int_equal(strlen(compiled), lys_print_mem(&printed, mod, LYS_OUT_YANG_COMPILED, 0, 0));
+    assert_string_equal(printed, compiled);
     free(printed);
 
     orig = "module b {\n"
@@ -159,12 +180,31 @@ test_module(void **state)
             "    if-feature \"not f1\";\n"
             "  }\n"
             "}\n";
+    compiled = "module b {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"urn:test:b\";\n"
+            "  prefix b;\n\n"
+            "  revision 2019-04-16;\n\n"
+            "  feature f1 {\n"
+            "    status current;\n"
+            "    description\n"
+            "      \"text\";\n"
+            "    reference\n"
+            "      \"text\";\n"
+            "  }\n\n"
+            "  feature f2 {\n"
+            "    if-feature \"not f1\";\n"
+            "  }\n"
+            "}\n";
     assert_non_null(mod = lys_parse_mem(ctx, orig, LYS_IN_YANG));
     assert_int_equal(strlen(orig), lys_print_mem(&printed, mod, LYS_OUT_YANG, 0, 0));
     assert_string_equal(printed, orig);
     free(printed);
+    assert_int_equal(strlen(compiled), lys_print_mem(&printed, mod, LYS_OUT_YANG_COMPILED, 0, 0));
+    assert_string_equal(printed, compiled);
+    free(printed);
 
-    orig = "module c {\n"
+    orig = compiled ="module c {\n"
             "  yang-version 1.1;\n"
             "  namespace \"urn:test:c\";\n"
             "  prefix c;\n\n"
@@ -184,6 +224,9 @@ test_module(void **state)
     assert_non_null(mod = lys_parse_mem(ctx, orig, LYS_IN_YANG));
     assert_int_equal(strlen(orig), lys_print_mem(&printed, mod, LYS_OUT_YANG, 0, 0));
     assert_string_equal(printed, orig);
+    free(printed);
+    assert_int_equal(strlen(compiled), lys_print_mem(&printed, mod, LYS_OUT_YANG, 0, 0));
+    assert_string_equal(printed, compiled);
     free(printed);
 
     *state = NULL;
