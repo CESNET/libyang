@@ -243,11 +243,15 @@ get_fileformat(const char *filename, LYS_INFORMAT *schema/* TODO , LYD_FORMAT *d
         (*schema) = informat_s;
     }
 
+#if 0
     if (informat_s) {
         return 1;
     } else {
         return 2;
     }
+#else
+    return 1;
+#endif
 }
 
 int

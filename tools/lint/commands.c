@@ -461,12 +461,12 @@ cmd_print(const char *arg)
     if (compiled) {
         format++;
     }
-
+#if 0
     /* tree fromat with or without gropings */
     if ((tree_opts || tree_ll) && format != LYS_OUT_TREE) {
         fprintf(stderr, "--tree options take effect only in case of the tree output format.\n");
     }
-
+#endif
     /* module, revision */
     model_name = argv[optind];
     revision = NULL;
