@@ -464,7 +464,9 @@ yprc_iffeatures(struct ypr_ctx *ctx, struct lysc_iffeature *iff, struct lysc_ext
         ypr_open(ctx->out, flag);
         extflag = 0;
 
+        ly_print(ctx->out, "%*sif-feature \"", INDENT);
         yprc_iffeature(ctx, iff, &index_e, &index_f);
+        ly_print(ctx->out, "\"");
 
         /* extensions */
         LEVEL++;
