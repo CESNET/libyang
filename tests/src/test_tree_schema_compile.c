@@ -2177,6 +2177,13 @@ test_type_union(void **state)
                                         "typedef mytype2 {type mytype {type string;}}leaf l {type mytype2;}}", LYS_IN_YANG));
     logbuf_assert("Invalid type substatement for the type \"mytype2\" not directly derived from union built-in type.");
 
+    assert_null(lys_parse_mem(ctx, "module ee {namespace urn:ee;prefix ee;typedef mytype {type union{type mytype; type string;}}"
+                                        "leaf l {type mytype;}}", LYS_IN_YANG));
+    logbuf_assert("Invalid \"mytype\" type reference - circular chain of types detected.");
+    assert_null(lys_parse_mem(ctx, "module ef {namespace urn:ef;prefix ef;typedef mytype {type mytype2;}"
+                                        "typedef mytype2 {type mytype;} leaf l {type mytype;}}", LYS_IN_YANG));
+    logbuf_assert("Invalid \"mytype\" type reference - circular chain of types detected.");
+
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
 }

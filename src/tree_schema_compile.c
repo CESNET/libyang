@@ -2464,9 +2464,8 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16
 
         /* RFC 7950 9.8.1, 9.4.4 - length, number of octets it contains */
         if (type_p->length) {
-            ret = lys_compile_type_range(ctx, type_p->length, basetype, 1, 0,
-                                         base ? ((struct lysc_type_bin*)base)->length : NULL, &bin->length);
-            LY_CHECK_RET(ret);
+            LY_CHECK_RET(lys_compile_type_range(ctx, type_p->length, basetype, 1, 0,
+                                                base ? ((struct lysc_type_bin*)base)->length : NULL, &bin->length));
             if (!tpdfname) {
                 COMPILE_ARRAY_GOTO(ctx, type_p->length->exts, bin->length->exts,
                                    options, u, lys_compile_ext, ret, done);
@@ -2482,10 +2481,9 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16
         /* RFC 7950 9.7 - bits */
         bits = (struct lysc_type_bits*)(*type);
         if (type_p->bits) {
-            ret = lys_compile_type_enums(ctx, type_p->bits, basetype, options,
-                                         base ? (struct lysc_type_bitenum_item*)((struct lysc_type_bits*)base)->bits : NULL,
-                                         (struct lysc_type_bitenum_item**)&bits->bits);
-            LY_CHECK_RET(ret);
+            LY_CHECK_RET(lys_compile_type_enums(ctx, type_p->bits, basetype, options,
+                                                base ? (struct lysc_type_bitenum_item*)((struct lysc_type_bits*)base)->bits : NULL,
+                                                (struct lysc_type_bitenum_item**)&bits->bits));
         }
 
         if (!base && !type_p->flags) {
@@ -2538,9 +2536,8 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16
 
         /* RFC 7950 9.2.4 - range */
         if (type_p->range) {
-            ret = lys_compile_type_range(ctx, type_p->range, basetype, 0, dec->fraction_digits,
-                                         base ? ((struct lysc_type_dec*)base)->range : NULL, &dec->range);
-            LY_CHECK_RET(ret);
+            LY_CHECK_RET(lys_compile_type_range(ctx, type_p->range, basetype, 0, dec->fraction_digits,
+                                                base ? ((struct lysc_type_dec*)base)->range : NULL, &dec->range));
             if (!tpdfname) {
                 COMPILE_ARRAY_GOTO(ctx, type_p->range->exts, dec->range->exts,
                                    options, u, lys_compile_ext, ret, done);
@@ -2557,9 +2554,8 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16
 
         /* RFC 7950 9.4.4 - length */
         if (type_p->length) {
-            ret = lys_compile_type_range(ctx, type_p->length, basetype, 1, 0,
-                                         base ? ((struct lysc_type_str*)base)->length : NULL, &str->length);
-            LY_CHECK_RET(ret);
+            LY_CHECK_RET(lys_compile_type_range(ctx, type_p->length, basetype, 1, 0,
+                                                base ? ((struct lysc_type_str*)base)->length : NULL, &str->length));
             if (!tpdfname) {
                 COMPILE_ARRAY_GOTO(ctx, type_p->length->exts, str->length->exts,
                                    options, u, lys_compile_ext, ret, done);
@@ -2570,9 +2566,8 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16
 
         /* RFC 7950 9.4.5 - pattern */
         if (type_p->patterns) {
-            ret = lys_compile_type_patterns(ctx, type_p->patterns, options,
-                                            base ? ((struct lysc_type_str*)base)->patterns : NULL, &str->patterns);
-            LY_CHECK_RET(ret);
+            LY_CHECK_RET(lys_compile_type_patterns(ctx, type_p->patterns, options,
+                                                   base ? ((struct lysc_type_str*)base)->patterns : NULL, &str->patterns));
         } else if (base && ((struct lysc_type_str*)base)->patterns) {
             str->patterns = lysc_patterns_dup(ctx->ctx, ((struct lysc_type_str*)base)->patterns);
         }
@@ -2587,9 +2582,8 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16
 
         /* RFC 7950 9.6 - enum */
         if (type_p->enums) {
-            ret = lys_compile_type_enums(ctx, type_p->enums, basetype, options,
-                                         base ? ((struct lysc_type_enum*)base)->enums : NULL, &enumeration->enums);
-            LY_CHECK_RET(ret);
+            LY_CHECK_RET(lys_compile_type_enums(ctx, type_p->enums, basetype, options,
+                                                base ? ((struct lysc_type_enum*)base)->enums : NULL, &enumeration->enums));
         }
 
         if (!base && !type_p->flags) {
@@ -2621,9 +2615,8 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16
 
         /* RFC 6020 9.2.4 - range */
         if (type_p->range) {
-            ret = lys_compile_type_range(ctx, type_p->range, basetype, 0, 0,
-                                         base ? ((struct lysc_type_num*)base)->range : NULL, &num->range);
-            LY_CHECK_RET(ret);
+            LY_CHECK_RET(lys_compile_type_range(ctx, type_p->range, basetype, 0, 0,
+                                                base ? ((struct lysc_type_num*)base)->range : NULL, &num->range));
             if (!tpdfname) {
                 COMPILE_ARRAY_GOTO(ctx, type_p->range->exts, num->range->exts,
                                    options, u, lys_compile_ext, ret, done);
@@ -2654,8 +2647,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16
                 }
                 return LY_EVALID;
             }
-            ret = lys_compile_identity_bases(ctx, type_p->bases, NULL, &idref->bases);
-            LY_CHECK_RET(ret);
+            LY_CHECK_RET(lys_compile_identity_bases(ctx, type_p->bases, NULL, &idref->bases));
         }
 
         if (!base && !type_p->flags) {
@@ -2755,7 +2747,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16
             additional = 0;
             LY_ARRAY_CREATE_RET(ctx->ctx, un->types, LY_ARRAY_SIZE(type_p->types), LY_EVALID);
             for (u = 0; u < LY_ARRAY_SIZE(type_p->types); ++u) {
-                ret = lys_compile_type(ctx, context_node_p, context_flags, context_mod, context_name, &type_p->types[u], options, &un->types[u + additional], NULL);
+                LY_CHECK_RET(lys_compile_type(ctx, context_node_p, context_flags, context_mod, context_name, &type_p->types[u], options, &un->types[u + additional], NULL));
                 if (un->types[u + additional]->basetype == LY_TYPE_UNION) {
                     /* add space for additional types from the union subtype */
                     un_aux = (struct lysc_type_union *)un->types[u + additional];
@@ -2791,7 +2783,6 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16
                 } else {
                     LY_ARRAY_INCREMENT(un->types);
                 }
-                LY_CHECK_RET(ret);
             }
         }
 
@@ -2846,7 +2837,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16_
         const struct lysp_tpdf *tpdf;
         struct lysp_node *node;
         struct lysp_module *mod;
-    } *tctx, *tctx_prev = NULL;
+    } *tctx, *tctx_prev = NULL, *tctx_iter;
     LY_DATA_TYPE basetype = LY_TYPE_UNKNOWN;
     struct lysc_type *base = NULL, *prev_type;
     struct ly_set tpdf_chain = {0};
@@ -2894,6 +2885,30 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16_
             } else {
                 tctx = NULL;
                 break;
+            }
+        }
+
+        /* circular typedef reference detection */
+        for (u = 0; u < tpdf_chain.count; u++) {
+            /* local part */
+            tctx_iter = (struct type_context*)tpdf_chain.objs[u];
+            if (tctx_iter->mod == tctx->mod && tctx_iter->node == tctx->node && tctx_iter->tpdf == tctx->tpdf) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                       "Invalid \"%s\" type reference - circular chain of types detected.", tctx->tpdf->name);
+                free(tctx);
+                ret = LY_EVALID;
+                goto cleanup;
+            }
+        }
+        for (u = 0; u < ctx->tpdf_chain.count; u++) {
+            /* global part for unions corner case */
+            tctx_iter = (struct type_context*)ctx->tpdf_chain.objs[u];
+            if (tctx_iter->mod == tctx->mod && tctx_iter->node == tctx->node && tctx_iter->tpdf == tctx->tpdf) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                       "Invalid \"%s\" type reference - circular chain of types detected.", tctx->tpdf->name);
+                free(tctx);
+                ret = LY_EVALID;
+                goto cleanup;
             }
         }
 
@@ -2970,6 +2985,10 @@ preparenext:
     /* get restrictions from the referred typedefs */
     for (u = tpdf_chain.count - 1; u + 1 > 0; --u) {
         tctx = (struct type_context*)tpdf_chain.objs[u];
+
+        /* remember the typedef context for circular check */
+        ly_set_add(&ctx->tpdf_chain, tctx, LY_SET_OPT_USEASLIST);
+
         if (tctx->tpdf->type.compiled) {
             base = tctx->tpdf->type.compiled;
             continue;
@@ -3002,6 +3021,8 @@ preparenext:
         LY_CHECK_GOTO(ret, cleanup);
         base = prev_type;
     }
+    /* remove the processed typedef contexts from the stack for circular check */
+    ctx->tpdf_chain.count = ctx->tpdf_chain.count - tpdf_chain.count;
 
     /* process the type definition in leaf */
     if (type_p->flags || !base || basetype == LY_TYPE_LEAFREF) {
@@ -5905,6 +5926,7 @@ lys_compile(struct lys_module *mod, int options)
     }
     ly_set_erase(&ctx.unres, NULL);
     ly_set_erase(&ctx.groupings, NULL);
+    ly_set_erase(&ctx.tpdf_chain, NULL);
     LY_ARRAY_FREE(augments);
 
     if (options & LYSC_OPT_FREE_SP) {
@@ -5929,6 +5951,7 @@ error:
     lys_feature_precompile_revert(&ctx, mod);
     ly_set_erase(&ctx.unres, NULL);
     ly_set_erase(&ctx.groupings, NULL);
+    ly_set_erase(&ctx.tpdf_chain, NULL);
     LY_ARRAY_FREE(augments);
     lysc_module_free(mod_c, NULL);
     mod->compiled = NULL;
