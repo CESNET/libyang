@@ -1601,8 +1601,11 @@ lys_restr_dup(struct lys_module *mod, struct lys_restr *old, int size, int shall
     LY_CHECK_ERR_RETURN(!result, LOGMEM(mod->ctx), NULL);
 
     for (i = 0; i < size; i++) {
-        result[i].ext_size = old[i].ext_size;
-        lys_ext_dup(mod->ctx, mod, old[i].ext, old[i].ext_size, &result[i], LYEXT_PAR_RESTR, &result[i].ext, shallow, unres);
+        /* copying unresolved extensions is not supported */
+        if (unres_schema_find(unres, -1, (void *)&old[i].ext, UNRES_EXT) == -1) {
+            result[i].ext_size = old[i].ext_size;
+            lys_ext_dup(mod->ctx, mod, old[i].ext, old[i].ext_size, &result[i], LYEXT_PAR_RESTR, &result[i].ext, shallow, unres);
+        }
         result[i].expr = lydict_insert(mod->ctx, old[i].expr, 0);
         result[i].dsc = lydict_insert(mod->ctx, old[i].dsc, 0);
         result[i].ref = lydict_insert(mod->ctx, old[i].ref, 0);
