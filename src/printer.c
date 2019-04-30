@@ -69,6 +69,8 @@ ly_print(struct lyout *out, const char *format, ...)
     FILE *stream;
 #endif
 
+    LYOUT_CHECK(out, out->status);
+
     va_start(ap, format);
 
     switch (out->type) {
@@ -86,6 +88,7 @@ ly_print(struct lyout *out, const char *format, ...)
             LOGERR(NULL, LY_ESYS, "Unable to duplicate provided file descriptor (%d) for printing the output (%s).",
                    out->method.fd, strerror(errno));
             va_end(ap);
+            out->status = LY_ESYS;
             return LY_ESYS;
         }
         stream = fdopen(fd, "a");
@@ -93,6 +96,7 @@ ly_print(struct lyout *out, const char *format, ...)
             LOGERR(NULL, LY_ESYS, "Unable to open provided file descriptor (%d) for printing the output (%s).",
                    out->method.fd, strerror(errno));
             va_end(ap);
+            out->status = LY_ESYS;
             return LY_ESYS;
         }
         out->method.f = stream;
@@ -138,6 +142,7 @@ ly_print(struct lyout *out, const char *format, ...)
 
     if (count < 0) {
         LOGERR(out->ctx, LY_ESYS, "%s: writing data failed (%s).", __func__, strerror(errno));
+        out->status = LY_ESYS;
         return LY_ESYS;
     } else {
         out->printed += count;
@@ -165,6 +170,8 @@ LY_ERR
 ly_write(struct lyout *out, const char *buf, size_t count)
 {
     int written = 0;
+
+    LYOUT_CHECK(out, out->status);
 
     if (out->hole_count) {
         /* we are buffering data after a hole */
@@ -218,9 +225,11 @@ repeat:
             goto repeat;
         }
         LOGERR(out->ctx, LY_ESYS, "%s: writing data failed (%s).", __func__, strerror(errno));
+        out->status = LY_ESYS;
         return LY_ESYS;
     } else if ((size_t)written != count) {
         LOGERR(out->ctx, LY_ESYS, "%s: writing data failed (unable to write %u from %u data).", __func__, count - (size_t)written, count);
+        out->status = LY_ESYS;
         return LY_ESYS;
     } else {
         out->printed += written;
@@ -231,6 +240,8 @@ repeat:
 LY_ERR
 ly_write_skip(struct lyout *out, size_t count, size_t *position)
 {
+    LYOUT_CHECK(out, out->status);
+
     switch (out->type) {
     case LYOUT_MEMORY:
         if (out->method.mem.len + count > out->method.mem.size) {
@@ -238,6 +249,7 @@ ly_write_skip(struct lyout *out, size_t count, size_t *position)
             if (!out->method.mem.buf) {
                 out->method.mem.len = 0;
                 out->method.mem.size = 0;
+                out->status = LY_ESYS;
                 LOGMEM_RET(NULL);
             }
             out->method.mem.size = out->method.mem.len + count;
@@ -262,6 +274,7 @@ ly_write_skip(struct lyout *out, size_t count, size_t *position)
             if (!out->buffered) {
                 out->buf_len = 0;
                 out->buf_size = 0;
+                out->status = LY_ESYS;
                 LOGMEM_RET(NULL);
             }
             out->buf_size = out->buf_len + count;
@@ -285,6 +298,8 @@ ly_write_skipped(struct lyout *out, size_t position, const char *buf, size_t cou
 {
     LY_ERR ret = LY_SUCCESS;
 
+    LYOUT_CHECK(out, out->status);
+
     switch (out->type) {
     case LYOUT_MEMORY:
         /* write */
@@ -295,6 +310,7 @@ ly_write_skipped(struct lyout *out, size_t position, const char *buf, size_t cou
     case LYOUT_STREAM:
     case LYOUT_CALLBACK:
         if (out->buf_len < position + count) {
+            out->status = LY_ESYS;
             LOGMEM_RET(NULL);
         }
 

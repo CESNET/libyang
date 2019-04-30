@@ -54,7 +54,10 @@ struct lyout {
 
     /* libyang context for error logging */
     struct ly_ctx *ctx;
+    LY_ERR status;
 };
+
+#define LYOUT_CHECK(LYOUT, ...) if (LYOUT->status) {return __VA_ARGS__;}
 
 struct ext_substmt_info_s {
     const char *name;

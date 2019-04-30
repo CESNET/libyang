@@ -290,6 +290,7 @@ ypr_unsigned(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t substmt_index, 
 
     if (asprintf(&str, "%u", attr_value) == -1) {
         LOGMEM(ctx->module->ctx);
+        ctx->out->status = LY_EMEM;
         return;
     }
     ypr_open(ctx->out, flag);
@@ -304,6 +305,7 @@ ypr_signed(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t substmt_index, vo
 
     if (asprintf(&str, "%d", attr_value) == -1) {
         LOGMEM(ctx->module->ctx);
+        ctx->out->status = LY_EMEM;
         return;
     }
     ypr_open(ctx->out, flag);
@@ -972,6 +974,7 @@ yprc_type(struct ypr_ctx *ctx, const struct lysc_type *type)
     }
     default:
         LOGINT(ctx->module->ctx);
+        ctx->out->status = LY_EINT;
     }
 
     LEVEL--;
@@ -981,6 +984,8 @@ yprc_type(struct ypr_ctx *ctx, const struct lysc_type *type)
 static void
 yprp_typedef(struct ypr_ctx *ctx, const struct lysp_tpdf *tpdf)
 {
+    LYOUT_CHECK(ctx->out);
+
     ly_print(ctx->out, "\n%*stypedef %s {\n", INDENT, tpdf->name);
     LEVEL++;
 
@@ -1013,6 +1018,8 @@ yprp_grouping(struct ypr_ctx *ctx, const struct lysp_grp *grp)
     unsigned int u;
     int flag = 0;
     struct lysp_node *data;
+
+    LYOUT_CHECK(ctx->out);
 
     ly_print(ctx->out, "\n%*sgrouping %s", INDENT, grp->name);
     LEVEL++;
@@ -1112,6 +1119,8 @@ yprp_notification(struct ypr_ctx *ctx, const struct lysp_notif *notif)
     int flag = 0;
     struct lysp_node *data;
 
+    LYOUT_CHECK(ctx->out);
+
     ly_print(ctx->out, "%*snotification %s", INDENT, notif->name);
 
     LEVEL++;
@@ -1151,6 +1160,8 @@ yprc_notification(struct ypr_ctx *ctx, const struct lysc_notif *notif)
     int flag = 0;
     struct lysc_node *data;
 
+    LYOUT_CHECK(ctx->out);
+
     ly_print(ctx->out, "%*snotification %s", INDENT, notif->name);
 
     LEVEL++;
@@ -1178,6 +1189,8 @@ yprp_action(struct ypr_ctx *ctx, const struct lysp_action *action)
 {
     unsigned int u;
     int flag = 0;
+
+    LYOUT_CHECK(ctx->out);
 
     ly_print(ctx->out, "%*s%s %s", INDENT, action->parent ? "action" : "rpc", action->name);
 
@@ -1209,6 +1222,8 @@ static void
 yprc_action(struct ypr_ctx *ctx, const struct lysc_action *action)
 {
     int flag = 0;
+
+    LYOUT_CHECK(ctx->out);
 
     ly_print(ctx->out, "%*s%s %s", INDENT, action->parent ? "action" : "rpc", action->name);
 
@@ -1857,6 +1872,8 @@ yprc_anydata(struct ypr_ctx *ctx, const struct lysc_node *node)
 static void
 yprp_node(struct ypr_ctx *ctx, const struct lysp_node *node)
 {
+    LYOUT_CHECK(ctx->out);
+
     switch (node->nodetype) {
     case LYS_CONTAINER:
         yprp_container(ctx, node);
@@ -1891,6 +1908,8 @@ yprp_node(struct ypr_ctx *ctx, const struct lysp_node *node)
 static void
 yprc_node(struct ypr_ctx *ctx, const struct lysc_node *node)
 {
+    LYOUT_CHECK(ctx->out);
+
     switch (node->nodetype) {
     case LYS_CONTAINER:
         yprc_container(ctx, node);
