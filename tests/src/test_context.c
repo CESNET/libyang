@@ -364,6 +364,9 @@ test_get_models(void **state)
     const char *str1 = "module a {namespace urn:a;prefix a;revision 2018-10-23;}";
     const char *str2 = "module a {namespace urn:a;prefix a;revision 2018-10-23;revision 2018-10-24;}";
 
+    unsigned int index = 0;
+    const char *names[] = {"ietf-yang-metadata", "yang", "ietf-inet-types", "ietf-yang-types", "ietf-datastores", "ietf-yang-library", "a", "a", "a"};
+
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
 
     /* invalid arguments */
@@ -415,6 +418,11 @@ test_get_models(void **state)
     str1 = "submodule b {belongs-to a {prefix a;}}";
     assert_null(lys_parse_mem_module(ctx, str1, LYS_IN_YANG, 1, NULL, NULL));
     logbuf_assert("Input data contains submodule which cannot be parsed directly without its main module.");
+
+    while ((mod = ly_ctx_get_module_iter(ctx, &index))) {
+        assert_string_equal(names[index - 1], mod->name);
+    }
+    assert_int_equal(9, index);
 
     /* cleanup */
     *state = NULL;
