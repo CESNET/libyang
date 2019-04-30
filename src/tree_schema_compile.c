@@ -1501,16 +1501,18 @@ cleanup:
  *
  * @param[in] ctx Compile context.
  * @param[in] pattern Pattern to check.
- * @param[in,out] pcre_precomp Precompiled PCRE pattern. If NULL, the compiled information used to validate pattern are freed.
+ * @param[in,out] pcre2_code Compiled PCRE2 pattern. If NULL, the compiled information used to validate pattern are freed.
  * @return LY_ERR value - LY_SUCCESS, LY_EMEM, LY_EVALID.
  */
 static LY_ERR
-lys_compile_type_pattern_check(struct lysc_ctx *ctx, const char *pattern, pcre **pcre_precomp)
+lys_compile_type_pattern_check(struct lysc_ctx *ctx, const char *pattern, pcre2_code **code)
 {
-    int idx, idx2, start, end, err_offset, count;
+    int idx, idx2, start, end, count;
     char *perl_regex, *ptr;
-    const char *err_msg, *orig_ptr;
-    pcre *precomp;
+    int err_code;
+    const char *orig_ptr;
+    PCRE2_SIZE err_offset;
+    pcre2_code *code_local;
 #define URANGE_LEN 19
     char *ublock2urange[][2] = {
         {"BasicLatin", "[\\x{0000}-\\x{007F}]"},
@@ -1687,19 +1689,21 @@ lys_compile_type_pattern_check(struct lysc_ctx *ctx, const char *pattern, pcre *
     }
 
     /* must return 0, already checked during parsing */
-    precomp = pcre_compile(perl_regex, PCRE_UTF8 | PCRE_ANCHORED | PCRE_DOLLAR_ENDONLY | PCRE_NO_AUTO_CAPTURE,
-                           &err_msg, &err_offset, NULL);
-    if (!precomp) {
+    code_local = pcre2_compile((PCRE2_SPTR)perl_regex, PCRE2_ZERO_TERMINATED, PCRE2_UTF | PCRE2_ANCHORED | PCRE2_DOLLAR_ENDONLY | PCRE2_NO_AUTO_CAPTURE,
+                           &err_code, &err_offset, NULL);
+    if (!code_local) {
+        PCRE2_UCHAR err_msg[256] = {0};
+        pcre2_get_error_message(err_code, err_msg, 256);
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_INREGEXP, pattern, perl_regex + err_offset, err_msg);
         free(perl_regex);
         return LY_EVALID;
     }
     free(perl_regex);
 
-    if (pcre_precomp) {
-        *pcre_precomp = precomp;
+    if (code) {
+        *code = code_local;
     } else {
-        free(precomp);
+        free(code_local);
     }
 
     return LY_SUCCESS;
@@ -1723,7 +1727,6 @@ lys_compile_type_patterns(struct lysc_ctx *ctx, struct lysp_restr *patterns_p, i
 {
     struct lysc_pattern **pattern;
     unsigned int u, v;
-    const char *err_msg;
     LY_ERR ret = LY_SUCCESS;
 
     /* first, copy the patterns from the base type */
@@ -1737,17 +1740,13 @@ lys_compile_type_patterns(struct lysc_ctx *ctx, struct lysp_restr *patterns_p, i
         *pattern = calloc(1, sizeof **pattern);
         ++(*pattern)->refcount;
 
-        ret = lys_compile_type_pattern_check(ctx, &patterns_p[u].arg[1], &(*pattern)->expr);
+        ret = lys_compile_type_pattern_check(ctx, &patterns_p[u].arg[1], &(*pattern)->code);
         LY_CHECK_RET(ret);
-        (*pattern)->expr_extra = pcre_study((*pattern)->expr, 0, &err_msg);
-        if (err_msg) {
-            LOGWRN(ctx->ctx, "Studying pattern \"%s\" failed (%s).", pattern, err_msg);
-        }
 
         if (patterns_p[u].arg[0] == 0x15) {
             (*pattern)->inverted = 1;
         }
-        DUP_STRING(ctx->ctx, &patterns_p[u].arg[1], (*pattern)->orig);
+        DUP_STRING(ctx->ctx, &patterns_p[u].arg[1], (*pattern)->expr);
         DUP_STRING(ctx->ctx, patterns_p[u].eapptag, (*pattern)->eapptag);
         DUP_STRING(ctx->ctx, patterns_p[u].emsg, (*pattern)->emsg);
         DUP_STRING(ctx->ctx, patterns_p[u].dsc, (*pattern)->dsc);

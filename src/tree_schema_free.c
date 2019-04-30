@@ -545,9 +545,8 @@ lysc_pattern_free(struct ly_ctx *ctx, struct lysc_pattern **pattern)
     if (--(*pattern)->refcount) {
         return;
     }
-    pcre_free((*pattern)->expr);
-    pcre_free_study((*pattern)->expr_extra);
-    FREE_STRING(ctx, (*pattern)->orig);
+    pcre2_code_free((*pattern)->code);
+    FREE_STRING(ctx, (*pattern)->expr);
     FREE_STRING(ctx, (*pattern)->eapptag);
     FREE_STRING(ctx, (*pattern)->emsg);
     FREE_STRING(ctx, (*pattern)->dsc);

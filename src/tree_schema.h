@@ -15,7 +15,9 @@
 #ifndef LY_TREE_SCHEMA_H_
 #define LY_TREE_SCHEMA_H_
 
-#include <pcre.h>
+#define PCRE2_CODE_UNIT_WIDTH 8
+
+#include <pcre2.h>
 #include <stdint.h>
 #include <stdio.h>
 
@@ -1077,9 +1079,8 @@ struct lysc_range {
 };
 
 struct lysc_pattern {
-    const char *orig;                /**< original, not compiled, regular expression */
-    pcre *expr;                      /**< compiled regular expression */
-    pcre_extra *expr_extra;          /**< additional information to speed up matching */
+    const char *expr;                /**< original, not compiled, regular expression */
+    pcre2_code *code;                /**< compiled regular expression */
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     const char *emsg;                /**< error-message */

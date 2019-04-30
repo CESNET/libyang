@@ -1287,11 +1287,11 @@ test_type_pattern(void **state)
     assert_int_equal(2, LY_ARRAY_SIZE(((struct lysc_type_str*)type)->patterns));
     assert_string_equal("errortag", ((struct lysc_type_str*)type)->patterns[0]->eapptag);
     assert_string_equal("error", ((struct lysc_type_str*)type)->patterns[0]->emsg);
-    assert_string_equal(".*", ((struct lysc_type_str*)type)->patterns[0]->orig);
+    assert_string_equal(".*", ((struct lysc_type_str*)type)->patterns[0]->expr);
     assert_int_equal(0, ((struct lysc_type_str*)type)->patterns[0]->inverted);
     assert_null(((struct lysc_type_str*)type)->patterns[1]->eapptag);
     assert_null(((struct lysc_type_str*)type)->patterns[1]->emsg);
-    assert_string_equal("[0-9].*[0-9]", ((struct lysc_type_str*)type)->patterns[1]->orig);
+    assert_string_equal("[0-9].*[0-9]", ((struct lysc_type_str*)type)->patterns[1]->expr);
     assert_int_equal(1, ((struct lysc_type_str*)type)->patterns[1]->inverted);
 
     assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;typedef mytype {type string {pattern '[0-9]*';}}"
@@ -1302,9 +1302,9 @@ test_type_pattern(void **state)
     assert_int_equal(1, type->refcount);
     assert_non_null(((struct lysc_type_str*)type)->patterns);
     assert_int_equal(2, LY_ARRAY_SIZE(((struct lysc_type_str*)type)->patterns));
-    assert_string_equal("[0-9]*", ((struct lysc_type_str*)type)->patterns[0]->orig);
+    assert_string_equal("[0-9]*", ((struct lysc_type_str*)type)->patterns[0]->expr);
     assert_int_equal(3, ((struct lysc_type_str*)type)->patterns[0]->refcount);
-    assert_string_equal("[0-4]*", ((struct lysc_type_str*)type)->patterns[1]->orig);
+    assert_string_equal("[0-4]*", ((struct lysc_type_str*)type)->patterns[1]->expr);
     assert_int_equal(1, ((struct lysc_type_str*)type)->patterns[1]->refcount);
 
     assert_non_null(mod = lys_parse_mem(ctx, "module c {namespace urn:c;prefix c;typedef mytype {type string {pattern '[0-9]*';}}"
@@ -1315,7 +1315,7 @@ test_type_pattern(void **state)
     assert_int_equal(1, type->refcount);
     assert_non_null(((struct lysc_type_str*)type)->patterns);
     assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_type_str*)type)->patterns));
-    assert_string_equal("[0-9]*", ((struct lysc_type_str*)type)->patterns[0]->orig);
+    assert_string_equal("[0-9]*", ((struct lysc_type_str*)type)->patterns[0]->expr);
     assert_int_equal(2, ((struct lysc_type_str*)type)->patterns[0]->refcount);
 
     /* test substitutions */
@@ -1325,7 +1325,7 @@ test_type_pattern(void **state)
     assert_non_null(type);
     assert_non_null(((struct lysc_type_str*)type)->patterns);
     assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_type_str*)type)->patterns));
-    assert_string_equal("^\\p{IsLatinExtended-A}$", ((struct lysc_type_str*)type)->patterns[0]->orig);
+    assert_string_equal("^\\p{IsLatinExtended-A}$", ((struct lysc_type_str*)type)->patterns[0]->expr);
     /* TODO check some data "^ř$" */
 
     *state = NULL;

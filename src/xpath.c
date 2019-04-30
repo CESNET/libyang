@@ -23,7 +23,6 @@
 #include <limits.h>
 #include <errno.h>
 #include <math.h>
-#include <pcre.h>
 
 #include "xpath.h"
 #include "xml.h"

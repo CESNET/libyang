@@ -161,7 +161,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMakeModules/")
 #endif()
 
 # by default build shared library
-# static build requires static libpcre library
+# static build requires static libpcre2 library
 option(ENABLE_STATIC "Build static (.a) library" OFF)
 
 # check the supported platform
@@ -241,11 +241,11 @@ else()
     target_link_libraries(yang ${CMAKE_THREAD_LIBS_INIT})
 endif(ENABLE_STATIC)
 
-# find PCRE library
-unset(PCRE_LIBRARY CACHE)
-find_package(PCRE REQUIRED)
-include_directories(${PCRE_INCLUDE_DIRS})
-target_link_libraries(yang ${PCRE_LIBRARIES})
+# find PCRE2 library
+unset(PCRE2_LIBRARY CACHE)
+find_package(PCRE2 REQUIRED)
+include_directories(${PCRE2_INCLUDE_DIRS})
+target_link_libraries(yang ${PCRE2_LIBRARIES})
 
 install(TARGETS yang DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES ${headers} ${PROJECT_BINARY_DIR}/src/config.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libyang)

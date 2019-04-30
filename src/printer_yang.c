@@ -722,7 +722,7 @@ yprc_pattern(struct ypr_ctx *ctx, const struct lysc_pattern *pattern, int *flag)
 
     ypr_open(ctx->out, flag);
     ly_print(ctx->out, "%*spattern \"", INDENT);
-    ypr_encode(ctx->out, pattern->orig, -1);
+    ypr_encode(ctx->out, pattern->expr, -1);
     ly_print(ctx->out, "\"");
 
     LEVEL++;

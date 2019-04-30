@@ -54,7 +54,7 @@ endforeach(test_name)
 
 # Set common attributes of all tests
 foreach(test_name IN LISTS tests)
-    target_link_libraries(${test_name} ${CMOCKA_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${PCRE_LIBRARIES} m)
+    target_link_libraries(${test_name} ${CMOCKA_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${PCRE2_LIBRARIES} m)
     if (NOT APPLE)
         list(GET tests_wraps 0 test_wrap)
         set_target_properties(${test_name} PROPERTIES LINK_FLAGS "${test_wrap}")
