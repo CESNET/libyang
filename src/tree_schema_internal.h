@@ -164,6 +164,10 @@ LY_ERR lysp_load_submodule(struct ly_parser_ctx *ctx, struct lysp_module *mod, s
 #define LYSC_OPT_FREE_SP    0x04               /**< Free the input printable schema */
 #define LYSC_OPT_INTERNAL   0x08               /**< Internal compilation caused by dependency */
 #define LYSC_OPT_NOTIFICATION 0x10             /**< Internal option when compiling schema tree of Notification */
+
+#define LYSC_OPT_GROUPING   0x20               /** Compiling (validation) of a non-instantiated grouping.
+                                                   In this case not all the restrictions are checked since they can be valid only
+                                                   in the real placement of the grouping. TODO - what specifically is not done */
 /** @} scflags */
 
 /**
@@ -620,6 +624,17 @@ void lysc_ext_instance_free(struct ly_ctx *ctx, struct lysc_ext_instance *ext);
  * @param[in,out] node Compiled node structure to be freed.
  */
 void lysc_node_free(struct ly_ctx *ctx, struct lysc_node *node);
+
+/**
+ * @brief Free the compiled container node structure.
+ *
+ * Only the container-specific members are freed, for generic node free function,
+ * use lysc_node_free().
+ *
+ * @param[in] ctx libyang context where the string data resides in a dictionary.
+ * @param[in,out] node Compiled container node structure to be freed.
+ */
+void lysc_node_container_free(struct ly_ctx *ctx, struct lysc_node_container *node);
 
 /**
  * @brief Free the compiled schema structure.

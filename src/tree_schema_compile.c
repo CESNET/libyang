@@ -4443,6 +4443,10 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
                "Grouping \"%s\" references itself through a uses statement.", grp->name);
         return LY_EVALID;
     }
+    if (!(ctx->options & LYSC_OPT_GROUPING)) {
+        /* remember that the grouping is instantiated to avoid its standalone validation */
+        grp->flags |= LYS_USED_GRP;
+    }
 
     /* switch context's mod_def */
     mod_old = ctx->mod_def;
@@ -4753,6 +4757,45 @@ cleanup:
     return ret;
 }
 
+/**
+ * @brief Validate groupings that were defined but not directly used in the schema itself.
+ *
+ * The grouping does not need to be compiled (and it is compiled here, but the result is forgotten immediately),
+ * but to have the complete result of the schema validity, even such groupings are supposed to be checked.
+ */
+static LY_ERR
+lys_compile_grouping(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lysp_grp *grp)
+{
+    LY_ERR ret;
+    struct lysp_node_uses fake_uses = {
+        .parent = node_p,
+        .nodetype = LYS_USES,
+        .flags = 0, .next = NULL,
+        .name = grp->name,
+        .dsc = NULL, .ref = NULL, .when = NULL, .iffeatures = NULL, .exts = NULL,
+        .refines = NULL, .augments = NULL
+    };
+    struct lysc_node_container fake_container = {
+        .nodetype = LYS_CONTAINER,
+        .flags = node_p ? (node_p->flags & LYS_FLAGS_COMPILED_MASK) : 0,
+        .module = ctx->mod,
+        .sp = NULL, .parent = NULL, .next = NULL,
+        .prev = (struct lysc_node*)&fake_container,
+        .name = "fake",
+        .dsc = NULL, .ref = NULL, .exts = NULL, .iffeatures = NULL, .when = NULL,
+        .child = NULL, .musts = NULL, .actions = NULL, .notifs = NULL
+    };
+
+    if (grp->parent) {
+        LOGWRN(ctx->ctx, "Locally scoped grouping \"%s\" not used.", grp->name);
+    }
+    ret = lys_compile_uses(ctx, &fake_uses, (struct lysc_node*)&fake_container);
+
+    /* cleanup */
+    lysc_node_container_free(ctx->ctx, &fake_container);
+
+    return ret;
+}
 
 /**
  * @brief Compile parsed schema node information.
@@ -5785,6 +5828,7 @@ lys_compile(struct lys_module *mod, int options)
     struct lysp_module *sp;
     struct lysp_node *node_p;
     struct lysp_augment **augments = NULL;
+    struct lysp_grp *grps;
     struct lys_module *m;
     unsigned int u, v;
     LY_ERR ret = LY_SUCCESS;
@@ -5906,6 +5950,23 @@ lys_compile(struct lys_module *mod, int options)
                         ((struct lysc_type_leafref*)((struct lysc_type_union*)type)->types[v])->realtype = typeiter;
                     }
                 }
+            }
+        }
+    }
+
+    /* validate non-instantiated groupings from the parsed schema,
+     * without it we would accept even the schemas with invalid grouping specification */
+    ctx.options |= LYSC_OPT_GROUPING;
+    LY_ARRAY_FOR(sp->groupings, u) {
+        if (!(sp->groupings[u].flags & LYS_USED_GRP)) {
+            LY_CHECK_GOTO((ret = lys_compile_grouping(&ctx, node_p, &sp->groupings[u])) != LY_SUCCESS, error);
+        }
+    }
+    LY_LIST_FOR(sp->data, node_p) {
+        grps = (struct lysp_grp*)lysp_node_groupings(node_p);
+        LY_ARRAY_FOR(grps, u) {
+            if (!(grps[u].flags & LYS_USED_GRP)) {
+                LY_CHECK_GOTO((ret = lys_compile_grouping(&ctx, node_p, &grps[u])) != LY_SUCCESS, error);
             }
         }
     }

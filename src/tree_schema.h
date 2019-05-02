@@ -545,6 +545,7 @@ struct lysp_deviation {
  *         LYS_DOUBLEQUOTED | | | | | | | | | | | | | | | | | | | | | | |x|
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *      11 LYS_SET_MAX      | | | |x|x| | | | | | | | | | | | |x| |x| | | |
+ *         LYS_USED_GRP     | | | | | | | | | | | | | | | |x| | | | | | | |
  *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  */
@@ -629,6 +630,8 @@ struct lysp_deviation {
 #define LYS_YINELEM_TRUE 0x80        /**< yin-element true for extension's argument */
 #define LYS_YINELEM_FALSE 0x100      /**< yin-element false for extension's argument */
 #define LYS_YINELEM_MASK 0x180       /**< mask for yin-element value */
+#define LYS_USED_GRP     0x400       /**< internal flag for validating not-instantiated groupings
+                                          (resp. do not validate again the instantiated groupings). */
 #define LYS_SET_VALUE    0x200       /**< value attribute is set */
 #define LYS_SET_MIN      0x200       /**< min attribute is set */
 #define LYS_SET_MAX      0x400       /**< max attribute is set */

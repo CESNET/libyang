@@ -2295,6 +2295,42 @@ test_status(void **state)
 }
 
 static void
+test_grouping(void **state)
+{
+    *state = test_grouping;
+
+    struct ly_ctx *ctx;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+
+    /* result ok, but a warning about not used locally scoped grouping printed */
+    assert_non_null(lys_parse_mem(ctx, "module a {namespace urn:a;prefix a; grouping grp1 {leaf a1 {type string;}}"
+                                  "container a {leaf x {type string;} grouping grp2 {leaf a2 {type string;}}}}", LYS_IN_YANG));
+    logbuf_assert("Locally scoped grouping \"grp2\" not used.");
+    logbuf_clean();
+
+    /* result ok - when statement or leafref target must be checked only at the place where the grouping is really instantiated */
+    assert_non_null(lys_parse_mem(ctx, "module b {namespace urn:b;prefix b; grouping grp {"
+                                  "leaf ref {type leafref {path \"../name\";}}"
+                                  "leaf cond {type string; when \"../name = 'specialone'\";}}}", LYS_IN_YANG));
+    logbuf_assert("");
+
+
+    /* invalid - error in a non-instantiated grouping */
+    assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;"
+                                        "grouping grp {leaf x {type leafref;}}}", LYS_IN_YANG));
+    logbuf_assert("Missing path substatement for leafref type.");
+    logbuf_clean();
+    assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;"
+                                        "container a {grouping grp {leaf x {type leafref;}}}}", LYS_IN_YANG));
+    logbuf_assert("Missing path substatement for leafref type.");
+
+
+    *state = NULL;
+    ly_ctx_destroy(ctx, NULL);
+}
+
+static void
 test_uses(void **state)
 {
     *state = test_uses;
@@ -3196,6 +3232,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_node_anydata, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_action, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_notification, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_grouping, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_uses, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_refine, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_augment, logger_setup, logger_teardown),

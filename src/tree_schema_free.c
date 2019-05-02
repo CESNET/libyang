@@ -666,7 +666,7 @@ lysc_notif_free(struct ly_ctx *ctx, struct lysc_notif *notif)
     }
 }
 
-static void
+void
 lysc_node_container_free(struct ly_ctx *ctx, struct lysc_node_container *node)
 {
     struct lysc_node *child, *child_next;
