@@ -33,6 +33,7 @@ jobs:
           build_command: "make"
           branch_pattern: libyang2
       before_install:
+        - sudo apt-get install libpcre2-dev
         # check if something changed from the last coverity build
         - echo "Last coverity build on revision" `cat $HOME/cache/coveritybuild 2>/dev/null`
         - echo "Current revision" `git rev-parse HEAD`
@@ -56,7 +57,7 @@ jobs:
         - wget https://cmocka.org/files/1.1/cmocka-1.1.2.tar.xz
         - tar -xf cmocka-1.1.2.tar.xz
         - cd cmocka-1.1.2; mkdir build; cd build; cmake .. && make -j2 && sudo make install; cd ../..
-        - sudo apt-get update -qq; sudo apt-get install -y valgrind
+        - sudo apt-get update -qq; sudo apt-get install -y valgrind libpcre2-dev
       script:
         - mkdir build && cd build; cmake .. && make -j2 && ctest --output-on-failure; cd -
     - stage: Test
@@ -67,7 +68,7 @@ jobs:
         - wget https://cmocka.org/files/1.1/cmocka-1.1.2.tar.xz
         - tar -xf cmocka-1.1.2.tar.xz
         - cd cmocka-1.1.2; mkdir build; cd build; cmake .. && make -j2 && sudo make install; cd ../..
-        - sudo apt-get update -qq; sudo apt-get install -y valgrind
+        - sudo apt-get update -qq; sudo apt-get install -y valgrind libpcre2-dev
         - pip install --user codecov; export CFLAGS="-coverage"
       script:
         - mkdir build && cd build; cmake .. && make -j2 && ctest --output-on-failure; cd -
