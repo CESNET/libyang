@@ -297,20 +297,25 @@ lys_feature_change(const struct lys_module *mod, const char *name, int value)
     struct ly_set *changed;
     struct ly_ctx *ctx = mod->ctx; /* shortcut */
 
+    if (!strcmp(name, "*")) {
+        /* enable all */
+        all = 1;
+    }
+
     if (!mod->compiled) {
         LOGERR(ctx, LY_EINVAL, "Module \"%s\" is not implemented so all its features are permanently disabled without a chance to change it.",
                mod->name);
         return LY_EINVAL;
     }
     if (!mod->compiled->features) {
+        if (all) {
+            /* no feature to enable */
+            return LY_SUCCESS;
+        }
         LOGERR(ctx, LY_EINVAL, "Unable to switch feature since the module \"%s\" has no features.", mod->name);
         return LY_EINVAL;
     }
 
-    if (!strcmp(name, "*")) {
-        /* enable all */
-        all = 1;
-    }
     changed = ly_set_new();
     changed_count = 0;
 
