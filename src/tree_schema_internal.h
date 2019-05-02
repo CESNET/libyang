@@ -69,6 +69,7 @@ struct lysc_ctx {
     struct ly_set unres;        /**< to validate leafref's target and xpath of when/must */
     struct ly_set tpdf_chain;
     uint16_t path_len;
+    int options;                /**< various @ref scflags. */
 #define LYSC_CTX_BUFSIZE 4078
     char path[LYSC_CTX_BUFSIZE];
 };
