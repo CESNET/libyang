@@ -523,7 +523,7 @@ lysp_check_typedef(struct ly_parser_ctx *ctx, struct lysp_node *node, const stru
             }
         }
         /* search typedefs in parent's nodes */
-        for (parent = node->parent; parent; parent = node->parent) {
+        for (parent = node->parent; parent; parent = parent->parent) {
             if (lysp_type_match(name, parent)) {
                 LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_SYNTAX_YANG,
                        "Invalid name \"%s\" of typedef - name collision with another scoped type.", name);
