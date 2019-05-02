@@ -1032,10 +1032,12 @@ yprp_grouping(struct ypr_ctx *ctx, const struct lysp_grp *grp)
     ypr_reference(ctx, grp->ref, grp->exts, &flag);
 
     LY_ARRAY_FOR(grp->typedefs, u) {
+        ypr_open(ctx->out, &flag);
         yprp_typedef(ctx, &grp->typedefs[u]);
     }
 
     LY_ARRAY_FOR(grp->groupings, u) {
+        ypr_open(ctx->out, &flag);
         yprp_grouping(ctx, &grp->groupings[u]);
     }
 
