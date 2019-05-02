@@ -30,7 +30,9 @@ ly_set_clean(struct ly_set *set, void (*destructor)(void *obj))
 {
     unsigned int u;
 
-    LY_CHECK_ARG_RET(NULL, set,);
+    if (!set) {
+        return;
+    }
 
     if (destructor) {
         for (u = 0; u < set->count; ++u) {
@@ -43,7 +45,9 @@ ly_set_clean(struct ly_set *set, void (*destructor)(void *obj))
 API void
 ly_set_erase(struct ly_set *set, void (*destructor)(void *obj))
 {
-    LY_CHECK_ARG_RET(NULL, set,);
+    if (!set) {
+        return;
+    }
 
     ly_set_clean(set, destructor);
 
@@ -55,7 +59,9 @@ ly_set_erase(struct ly_set *set, void (*destructor)(void *obj))
 API void
 ly_set_free(struct ly_set *set, void (*destructor)(void *obj))
 {
-    LY_CHECK_ARG_RET(NULL, set,);
+    if (!set) {
+        return;
+    }
 
     ly_set_erase(set, destructor);
 
