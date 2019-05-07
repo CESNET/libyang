@@ -769,11 +769,11 @@ lyb_print_value(const struct lys_type *type, const char *value_str, lyd_val valu
 
     if ((value_flags & LY_VALUE_USER) || (type->base == LY_TYPE_UNION)) {
         value_type = LY_TYPE_STRING;
-    } else if (value_type == LY_TYPE_LEAFREF) {
+    } else while (value_type == LY_TYPE_LEAFREF) {
         assert(!(value_flags & LY_VALUE_UNRES));
-        value_type = type->base;
 
-        /* and also use its value */
+        /* update value_type and value to that of the target */
+        value_type = ((struct lyd_node_leaf_list *)value.leafref)->value_type;
         value = ((struct lyd_node_leaf_list *)value.leafref)->value;
     }
 
