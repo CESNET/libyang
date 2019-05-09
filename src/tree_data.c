@@ -5484,6 +5484,7 @@ _lyd_dup_node(const struct lyd_node *node, const struct lys_node *schema, struct
     struct lys_node_leaf *sleaf;
     struct lyd_node_leaf_list *new_leaf;
     struct lyd_node_anydata *new_any, *old_any;
+    const struct lys_type *type;
     int r;
 
     /* fill specific part */
@@ -5538,12 +5539,20 @@ _lyd_dup_node(const struct lyd_node *node, const struct lys_node *schema, struct
             break;
         }
 
-        if (sleaf->type.der && sleaf->type.der->module) {
-            r = lytype_store(sleaf->type.der->module, sleaf->type.der->name, &new_leaf->value_str, &new_leaf->value);
+        if (new_leaf->value_flags & LY_VALUE_USER) {
+            /* get the real type */
+            type = lyd_leaf_type(new_leaf);
+            if (!type || !type->der || !type->der->module) {
+                LOGINT(ctx);
+                goto error;
+            }
+
+            r = lytype_store(type->der->module, type->der->name, &new_leaf->value_str, &new_leaf->value);
             if (r == -1) {
                 goto error;
-            } else if (!r) {
-                new_leaf->value_flags |= LY_VALUE_USER;
+            } else if (r) {
+                LOGERR(ctx, LY_EINT, "Value \"%s\" of node \"%s\" was stored as user-type before.");
+                goto error;
             }
         }
         break;
