@@ -1974,7 +1974,7 @@ error:
 }
 
 API const struct lys_node *
-ly_ctx_get_node(struct ly_ctx *ctx, const struct lys_node *start, const char *nodeid, int output)
+ly_ctx_get_node(const struct ly_ctx *ctx, const struct lys_node *start, const char *nodeid, int output)
 {
     const struct lys_node *node;
 

@@ -2338,7 +2338,7 @@ resolve_json_schema_list_predicate(const char *predicate, const struct lys_node_
 
 /* cannot return LYS_GROUPING, LYS_AUGMENT, LYS_USES, logs directly */
 const struct lys_node *
-resolve_json_nodeid(const char *nodeid, struct ly_ctx *ctx, const struct lys_node *start, int output)
+resolve_json_nodeid(const char *nodeid, const struct ly_ctx *ctx, const struct lys_node *start, int output)
 {
     char *str;
     const char *name, *mod_name, *id, *backup_mod_name = NULL, *yang_data_name = NULL;

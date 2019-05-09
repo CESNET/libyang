@@ -1590,7 +1590,7 @@ const struct lys_submodule *ly_ctx_get_submodule2(const struct lys_module *main_
  * @param[in] output Search operation output instead input.
  * @return Resolved schema node or NULL.
  */
-const struct lys_node *ly_ctx_get_node(struct ly_ctx *ctx, const struct lys_node *start, const char *data_path, int output);
+const struct lys_node *ly_ctx_get_node(const struct ly_ctx *ctx, const struct lys_node *start, const char *data_path, int output);
 
 /**
  * @brief Get schema node according to the given schema path (see @ref howtoxpath).
