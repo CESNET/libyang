@@ -308,6 +308,51 @@ test_invalid_rebuild(void **state)
     }
 }
 
+static void
+test_invalid_2(void **state)
+{
+    int i, a[30];
+
+    (void)state;
+
+	for (i = 0; i < 30; i++) {
+        a[i] = i;
+    }
+
+    assert_int_equal(lyht_insert(ht, &a[6], 6, NULL), 0);
+    assert_int_equal(lyht_insert(ht, &a[7], 7, NULL), 0);
+    assert_int_equal(lyht_insert(ht, &a[0], 0, NULL), 0);
+    assert_int_equal(lyht_insert(ht, &a[1], 1, NULL), 0);
+    assert_int_equal(lyht_insert(ht, &a[8 + 6], 6, NULL), 0);
+
+    assert_int_equal(lyht_remove(ht, &a[7], 7), 0); 
+
+    assert_int_equal(lyht_insert(ht, &a[2 * 8 + 6], 6, NULL), 0); 
+
+    assert_int_equal(lyht_remove(ht, &a[0], 0), 0);
+    assert_int_equal(lyht_remove(ht, &a[1], 1), 0);
+    assert_int_equal(lyht_remove(ht, &a[8 + 6], 6), 0);
+
+    assert_int_equal(lyht_insert(ht, &a[4], 4, NULL), 0);
+    assert_int_equal(lyht_insert(ht, &a[5], 5, NULL), 0); 
+
+    assert_int_equal(lyht_insert(ht, &a[8 + 3], 3, NULL), 0); 
+
+    assert_int_equal(lyht_remove(ht, &a[2 * 8 + 6], 6), 0);
+    assert_int_equal(lyht_remove(ht, &a[4], 4), 0);
+    assert_int_equal(lyht_remove(ht, &a[5], 5), 0);
+    assert_int_equal(lyht_remove(ht, &a[6], 6), 0);
+
+    assert_int_equal(lyht_insert(ht, &a[0], 0, NULL), 0);
+    assert_int_equal(lyht_insert(ht, &a[1], 1, NULL), 0);
+    assert_int_equal(lyht_insert(ht, &a[2], 2, NULL), 0);
+    assert_int_equal(lyht_insert(ht, &a[3], 3, NULL), 0);
+
+    void *find = NULL;
+    int r = lyht_find(ht, &a[8 + 3], 3, &find);
+    assert_int_equal(r, 0);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -316,6 +361,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_resize, setup_f_resize, teardown_f),
         cmocka_unit_test_setup_teardown(test_collisions, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_invalid_rebuild, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_invalid_2, setup_f, teardown_f),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

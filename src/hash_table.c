@@ -588,8 +588,9 @@ int
 lyht_insert_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash,
                            values_equal_cb resize_val_equal, void **match_p)
 {
-    struct ht_rec *rec, *crec = NULL;
+    struct ht_rec *rec, *rec2, *crec = NULL;
     int32_t i;
+	uint32_t idx;
     int r, ret;
     values_equal_cb old_val_equal;
 
@@ -639,6 +640,18 @@ lyht_insert_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash,
 
             /* retry adding the value, must succeed now */
             return lyht_insert_with_resize_cb(ht, val_p, hash, resize_val_equal, match_p);
+        }
+    }
+
+    idx = hash & (ht->size - 1);
+    rec2 = lyht_get_rec(ht->recs, ht->rec_size, idx);
+    if (rec != rec2) {
+        assert(rec2->hits > 0);
+        if ((rec2->hash & (ht->size - 1)) != idx) {
+            // our position is hold by other, move it
+            memcpy(rec, rec2, ht->rec_size);
+            rec2->hits = -1;
+            rec = rec2;
         }
     }
 
