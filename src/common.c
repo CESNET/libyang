@@ -181,6 +181,10 @@ ly_getutf8(const char **input, unsigned int *utf8_char, size_t *bytes_read)
     int aux;
     int i;
 
+    if (bytes_read) {
+        (*bytes_read) = 0;
+    }
+
     c = (*input)[0];
     LY_CHECK_RET(!c, LY_EINVAL);
 
