@@ -308,6 +308,52 @@ test_invalid_rebuild(void **state)
     }
 }
 
+static void
+test_invalid_2(void **state)
+{
+    int i, a[30];
+
+    (void)state;
+
+	for (i = 0; i < 30; i++) {
+        a[i] = i;
+    }
+	
+	
+    lyht_insert(ht, &a[6], 6, NULL);
+    lyht_insert(ht, &a[7], 7, NULL);
+    lyht_insert(ht, &a[0], 0, NULL);
+    lyht_insert(ht, &a[1], 1, NULL);
+    lyht_insert(ht, &a[8 + 6], 6, NULL);  // pos with values: 6,7,0,1,2(6)
+
+    lyht_remove(ht, &a[7], 7);  // pos with values: 6,0,1,2(6)
+
+    lyht_insert(ht, &a[2 * 8 + 6], 6, NULL);  // pos with values: 6,0,1,2(6),3(6)
+
+    lyht_remove(ht, &a[0], 0);
+    lyht_remove(ht, &a[1], 1);
+    lyht_remove(ht, &a[8 + 6], 6);  //  pos with values: 6,3(6)
+
+    lyht_insert(ht, &a[4], 4, NULL);
+    lyht_insert(ht, &a[5], 5, NULL);  //  pos with values: 6,3(6),4,5
+
+    lyht_insert(ht, &a[8 + 3], 3, NULL);  //  pos with values: 6,7(3),3(6),4,5
+
+    lyht_remove(ht, &a[2 * 8 + 6], 6);
+    lyht_remove(ht, &a[4], 4);
+    lyht_remove(ht, &a[5], 5);
+    lyht_remove(ht, &a[6], 6);   //  pos with values: 7(3)
+
+    lyht_insert(ht, &a[0], 0, NULL);
+    lyht_insert(ht, &a[1], 1, NULL);
+    lyht_insert(ht, &a[2], 2, NULL);
+    lyht_insert(ht, &a[3], 3, NULL);  //  pos with values: 7(3),0,1,2,3
+
+    void *find = NULL;
+    int r = lyht_find(ht, &a[8 + 3], 3, &find);   // a[8 + 3] is in pos:7, but can not be found
+    assert_int_equal(r, 0);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -316,6 +362,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_resize, setup_f_resize, teardown_f),
         cmocka_unit_test_setup_teardown(test_collisions, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_invalid_rebuild, setup_f, teardown_f),
+		cmocka_unit_test_setup_teardown(test_invalid_2, setup_f, teardown_f),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
