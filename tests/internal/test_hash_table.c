@@ -270,7 +270,7 @@ test_collisions(void **state)
 }
 
 static void
-test_invalid_rebuild(void **state)
+test_invalid_move(void **state)
 {
     int i, a[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };
     struct ht_rec *rec;
@@ -299,59 +299,58 @@ test_invalid_rebuild(void **state)
         assert_int_equal(rec->hits, -1);
     }
 
-    /* should cause hash table rebuild */
+    /* if all the values were being moved correctly, this succeeds */
     assert_int_equal(lyht_insert(ht, &a[8], 0, NULL), 0);
 
-    for (i = 3; i < 5; ++i) {
-        rec = lyht_get_rec(ht->recs, ht->rec_size, i);
-        assert_int_equal(rec->hits, 0);
-    }
+    rec = lyht_get_rec(ht->recs, ht->rec_size, 0);
+    assert_int_equal(rec->hits, 3);
+    rec = lyht_get_rec(ht->recs, ht->rec_size, 1);
+    assert_int_equal(rec->hits, 1);
+    rec = lyht_get_rec(ht->recs, ht->rec_size, 2);
+    assert_int_equal(rec->hits, 1);
 }
 
 static void
-test_invalid_2(void **state)
+test_invalid_move2(void **state)
 {
     int i, a[30];
 
     (void)state;
 
-	for (i = 0; i < 30; i++) {
+    for (i = 0; i < 30; i++) {
         a[i] = i;
     }
-	
-	
-    lyht_insert(ht, &a[6], 6, NULL);
-    lyht_insert(ht, &a[7], 7, NULL);
-    lyht_insert(ht, &a[0], 0, NULL);
-    lyht_insert(ht, &a[1], 1, NULL);
-    lyht_insert(ht, &a[8 + 6], 6, NULL);  // pos with values: 6,7,0,1,2(6)
 
-    lyht_remove(ht, &a[7], 7);  // pos with values: 6,0,1,2(6)
+    assert_int_equal(lyht_insert(ht, &a[6], 6, NULL), 0);
+    assert_int_equal(lyht_insert(ht, &a[7], 7, NULL), 0);
+    assert_int_equal(lyht_insert(ht, &a[0], 0, NULL), 0);
+    assert_int_equal(lyht_insert(ht, &a[1], 1, NULL), 0);
+    assert_int_equal(lyht_insert(ht, &a[8 + 6], 6, NULL), 0);
 
-    lyht_insert(ht, &a[2 * 8 + 6], 6, NULL);  // pos with values: 6,0,1,2(6),3(6)
+    assert_int_equal(lyht_remove(ht, &a[7], 7), 0);
 
-    lyht_remove(ht, &a[0], 0);
-    lyht_remove(ht, &a[1], 1);
-    lyht_remove(ht, &a[8 + 6], 6);  //  pos with values: 6,3(6)
+    assert_int_equal(lyht_insert(ht, &a[2 * 8 + 6], 6, NULL), 0);
 
-    lyht_insert(ht, &a[4], 4, NULL);
-    lyht_insert(ht, &a[5], 5, NULL);  //  pos with values: 6,3(6),4,5
+    assert_int_equal(lyht_remove(ht, &a[0], 0), 0);
+    assert_int_equal(lyht_remove(ht, &a[1], 1), 0);
+    assert_int_equal(lyht_remove(ht, &a[8 + 6], 6), 0);
 
-    lyht_insert(ht, &a[8 + 3], 3, NULL);  //  pos with values: 6,7(3),3(6),4,5
+    assert_int_equal(lyht_insert(ht, &a[4], 4, NULL), 0);
+    assert_int_equal(lyht_insert(ht, &a[5], 5, NULL), 0);
 
-    lyht_remove(ht, &a[2 * 8 + 6], 6);
-    lyht_remove(ht, &a[4], 4);
-    lyht_remove(ht, &a[5], 5);
-    lyht_remove(ht, &a[6], 6);   //  pos with values: 7(3)
+    assert_int_equal(lyht_insert(ht, &a[8 + 3], 3, NULL), 0);
 
-    lyht_insert(ht, &a[0], 0, NULL);
-    lyht_insert(ht, &a[1], 1, NULL);
-    lyht_insert(ht, &a[2], 2, NULL);
-    lyht_insert(ht, &a[3], 3, NULL);  //  pos with values: 7(3),0,1,2,3
+    assert_int_equal(lyht_remove(ht, &a[2 * 8 + 6], 6), 0);
+    assert_int_equal(lyht_remove(ht, &a[4], 4), 0);
+    assert_int_equal(lyht_remove(ht, &a[5], 5), 0);
+    assert_int_equal(lyht_remove(ht, &a[6], 6), 0);
 
-    void *find = NULL;
-    int r = lyht_find(ht, &a[8 + 3], 3, &find);   // a[8 + 3] is in pos:7, but can not be found
-    assert_int_equal(r, 0);
+    assert_int_equal(lyht_insert(ht, &a[0], 0, NULL), 0);
+    assert_int_equal(lyht_insert(ht, &a[1], 1, NULL), 0);
+    assert_int_equal(lyht_insert(ht, &a[2], 2, NULL), 0);
+    assert_int_equal(lyht_insert(ht, &a[3], 3, NULL), 0);
+
+    assert_int_equal(lyht_find(ht, &a[8 + 3], 3, NULL), 0);
 }
 
 int main(void)
@@ -361,8 +360,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_half_full, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_resize, setup_f_resize, teardown_f),
         cmocka_unit_test_setup_teardown(test_collisions, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_invalid_rebuild, setup_f, teardown_f),
-		cmocka_unit_test_setup_teardown(test_invalid_2, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_invalid_move, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_invalid_move2, setup_f, teardown_f),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
