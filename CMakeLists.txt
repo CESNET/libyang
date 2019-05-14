@@ -52,6 +52,8 @@ else()
     option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" OFF)
     option(ENABLE_COVERAGE "Build code coverage report from tests" OFF)
 endif()
+
+option(ENABLE_FUZZ_TARGETS "Build target programs suitable for fuzzing with AFL" OFF)
 #option(ENABLE_CALLGRIND_TESTS "Build performance tests to be run with callgrind" OFF)
 
 #option(ENABLE_CACHE "Enable data caching for schemas and hash tables for data (time-efficient at the cost of increased space-complexity)" ON)
@@ -366,6 +368,10 @@ if(ENABLE_BUILD_TESTS)
         set(ENABLE_BUILD_TESTS NO)
     endif(CMOCKA_FOUND)
 endif(ENABLE_BUILD_TESTS)
+
+if(ENABLE_BUILD_FUZZ_TARGETS)
+	add_subdirectory(tests/fuzz)
+endif(ENABLE_BUILD_FUZZ_TARGETS)
 
 #if(GEN_LANGUAGE_BINDINGS AND GEN_CPP_BINDINGS)
 #    add_subdirectory(swig)
