@@ -403,24 +403,21 @@ test_ns(void **state)
 {
     (void) state; /* unused */
 
-    const char *e1, *e2;
     const struct lyxml_ns *ns;
 
     struct lyxml_context ctx;
     memset(&ctx, 0, sizeof ctx);
     ctx.line = 1;
 
-    e1 = "element1";
-    e2 = "element2";
     /* simulate adding open element1 into context */
     ctx.elements.count++;
     /* processing namespace definitions */
-    assert_int_equal(LY_SUCCESS, lyxml_ns_add(&ctx, e1, NULL, 0, strdup("urn:default")));
-    assert_int_equal(LY_SUCCESS, lyxml_ns_add(&ctx, e1, "nc", 2, strdup("urn:nc1")));
+    assert_int_equal(LY_SUCCESS, lyxml_ns_add(&ctx, NULL, 0, strdup("urn:default")));
+    assert_int_equal(LY_SUCCESS, lyxml_ns_add(&ctx, "nc", 2, strdup("urn:nc1")));
     /* simulate adding open element2 into context */
     ctx.elements.count++;
     /* processing namespace definitions */
-    assert_int_equal(LY_SUCCESS, lyxml_ns_add(&ctx, e2, "nc", 2, strdup("urn:nc2")));
+    assert_int_equal(LY_SUCCESS, lyxml_ns_add(&ctx, "nc", 2, strdup("urn:nc2")));
     assert_int_equal(3, ctx.ns.count);
     assert_int_not_equal(0, ctx.ns.size);
 
@@ -436,7 +433,7 @@ test_ns(void **state)
 
     /* simulate closing element2 */
     ctx.elements.count--;
-    assert_int_equal(LY_SUCCESS, lyxml_ns_rm(&ctx, e2));
+    assert_int_equal(LY_SUCCESS, lyxml_ns_rm(&ctx));
     assert_int_equal(2, ctx.ns.count);
 
     ns = lyxml_ns_get(&ctx, "nc", 2);
@@ -446,7 +443,7 @@ test_ns(void **state)
 
     /* simulate closing element1 */
     ctx.elements.count--;
-    assert_int_equal(LY_SUCCESS, lyxml_ns_rm(&ctx, e1));
+    assert_int_equal(LY_SUCCESS, lyxml_ns_rm(&ctx));
     assert_int_equal(0, ctx.ns.count);
 
     assert_null(lyxml_ns_get(&ctx, "nc", 2));
@@ -458,30 +455,25 @@ test_ns2(void **state)
 {
     (void) state; /* unused */
 
-    const char *e1, *e2;
-
     struct lyxml_context ctx;
     memset(&ctx, 0, sizeof ctx);
     ctx.line = 1;
 
-    /* parent element has the same name as its child (and for some reason both names are stored at the same place) */
-    e1 = e2 = "element1";
     /* simulate adding open element1 into context */
     ctx.elements.count++;
     /* default namespace defined in parent element1 */
-    assert_int_equal(LY_SUCCESS, lyxml_ns_add(&ctx, e1, NULL, 0, strdup("urn:default")));
+    assert_int_equal(LY_SUCCESS, lyxml_ns_add(&ctx, NULL, 0, strdup("urn:default")));
     assert_int_equal(1, ctx.ns.count);
     /* going into child element1 */
-    e1 = e2;
     /* simulate adding open element1 into context */
     ctx.elements.count++;
     /* no namespace defined, going out (first, simulate closing of so far open element) */
     ctx.elements.count--;
-    assert_int_equal(LY_SUCCESS, lyxml_ns_rm(&ctx, e2));
+    assert_int_equal(LY_SUCCESS, lyxml_ns_rm(&ctx));
     assert_int_equal(1, ctx.ns.count);
     /* nothing else, going out of the parent element1 (first, simulate closing of so far open element) */
     ctx.elements.count--;
-    assert_int_equal(LY_SUCCESS, lyxml_ns_rm(&ctx, e1));
+    assert_int_equal(LY_SUCCESS, lyxml_ns_rm(&ctx));
     assert_int_equal(0, ctx.ns.count);
 }
 

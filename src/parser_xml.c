@@ -50,14 +50,13 @@ struct lyd_xml_ctx {
  * @brief Parse XML attributes of the XML element of YANG data.
  *
  * @param[in] ctx XML YANG data parser context.
- * @param[in] element_name Element identifier to distinguish namespaces defined in different elements.
  * @param[in,out] data Pointer to the XML string representation of the YANG data to parse.
  * @param[out] attributes Resulting list of the parsed attributes. XML namespace definitions are not parsed
  * as attributes, they are stored internally in the parser context.
  * @reutn LY_ERR value.
  */
 static LY_ERR
-lydxml_attributes(struct lyd_xml_ctx *ctx, const char *element_name, const char **data, struct lyd_attr **attributes)
+lydxml_attributes(struct lyd_xml_ctx *ctx, const char **data, struct lyd_attr **attributes)
 {
     LY_ERR ret = LY_SUCCESS;
     unsigned int u;
@@ -78,38 +77,34 @@ lydxml_attributes(struct lyd_xml_ctx *ctx, const char *element_name, const char 
         char *buffer = NULL, *value;
         size_t buffer_size = 0, value_len;
 
-        lyxml_get_string((struct lyxml_context *)ctx, data, &buffer, &buffer_size, &value, &value_len, &dynamic);
-
-        if (prefix_len == 5 && !strncmp(prefix, "xmlns", 5)) {
-            /* named namespace */
-            lyxml_ns_add((struct lyxml_context *)ctx, element_name, name, name_len,
-                         dynamic ? value : strndup(value, value_len));
-        } else if (!prefix && name_len == 5 && !strncmp(name, "xmlns", 5)) {
-            /* default namespace */
-            lyxml_ns_add((struct lyxml_context *)ctx, element_name, NULL, 0,
-                         dynamic ? value : strndup(value, value_len));
-        } else {
-            /* attribute */
-            attr = calloc(1, sizeof *attr);
-            LY_CHECK_ERR_GOTO(!attr, LOGMEM(ctx->ctx); ret = LY_EMEM, cleanup);
-
-            attr->name = lydict_insert(ctx->ctx, name, name_len);
-            /* auxiliary store the prefix information and wait with resolving prefix to the time when all the namespaces,
-             * defined in this element, are parsed, so we will get the correct namespace for this prefix */
-            attr_prefix = malloc(sizeof *attr_prefix);
-            attr_prefix->prefix = prefix;
-            attr_prefix->prefix_len = prefix_len;
-            ly_set_add(&attr_prefixes, attr_prefix, LY_SET_OPT_USEASLIST);
-
-            /* TODO process value */
-
-            if (last) {
-                last->next = attr;
-            } else {
-                (*attributes) = attr;
-            }
-            last = attr;
+        if (!name) {
+            /* seems like all the attrributes were internally processed as namespace definitions */
+            continue;
         }
+
+        /* get attribute value */
+        ret = lyxml_get_string((struct lyxml_context *)ctx, data, &buffer, &buffer_size, &value, &value_len, &dynamic);
+        LY_CHECK_GOTO(ret, cleanup);
+
+        attr = calloc(1, sizeof *attr);
+        LY_CHECK_ERR_GOTO(!attr, LOGMEM(ctx->ctx); ret = LY_EMEM, cleanup);
+
+        attr->name = lydict_insert(ctx->ctx, name, name_len);
+        /* auxiliary store the prefix information and wait with resolving prefix to the time when all the namespaces,
+         * defined in this element, are parsed, so we will get the correct namespace for this prefix */
+        attr_prefix = malloc(sizeof *attr_prefix);
+        attr_prefix->prefix = prefix;
+        attr_prefix->prefix_len = prefix_len;
+        ly_set_add(&attr_prefixes, attr_prefix, LY_SET_OPT_USEASLIST);
+
+        /* TODO process value */
+
+        if (last) {
+            last->next = attr;
+        } else {
+            (*attributes) = attr;
+        }
+        last = attr;
     }
 
     /* resolve annotation pointers in all the attributes */
@@ -141,7 +136,6 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
 {
     LY_ERR ret = LY_SUCCESS;
     const char *prefix, *name;
-    char *element_name = NULL;
     size_t prefix_len, name_len;
     struct lyd_attr *attributes = NULL;
     const struct lyxml_ns *ns;
@@ -157,9 +151,6 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
         LY_CHECK_GOTO(ret, cleanup);
         if (!name) {
             /* closing previous element */
-            lyxml_ns_rm((struct lyxml_context *)ctx, element_name);
-            free(element_name);
-            element_name = NULL;
             if (ctx->elements.count < parents_count) {
                 /* all siblings parsed */
                 break;
@@ -168,8 +159,7 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
             }
         }
         attributes = NULL;
-        element_name = strndup(name, name_len);
-        LY_CHECK_GOTO(lydxml_attributes(ctx, element_name, data, &attributes), cleanup);
+        LY_CHECK_GOTO(lydxml_attributes(ctx, data, &attributes), cleanup);
         ns = lyxml_ns_get((struct lyxml_context *)ctx, prefix, prefix_len);
         if (!ns) {
             LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_REFERENCE, "Unknown XML prefix \"%*.s\".", prefix_len, prefix);
@@ -251,9 +241,7 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
     }
 
 cleanup:
-    lyxml_ns_rm((struct lyxml_context *)ctx, element_name);
     lyd_free_attr(ctx->ctx, attributes, 1);
-    free(element_name);
     return ret;
 }
 

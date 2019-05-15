@@ -48,10 +48,9 @@ struct lyout;
         (c >= 0x10000 && c <= 0xeffff))
 
 struct lyxml_ns {
-    const char *element;  /* element where the namespace is defined */
     char *prefix;         /* prefix of the namespace, NULL for the default namespace */
     char *uri;            /* namespace URI */
-    unsigned int element_depth; /* depth level of the element to distinguish parent-child elements of the same name */
+    unsigned int depth;   /* depth level of the element to maintain the list of accessible namespace definitions */
 };
 
 /* element tag identifier for matching opening and closing tags */
@@ -111,15 +110,19 @@ LY_ERR lyxml_get_element(struct lyxml_context *context, const char **input,
  * Input string is not being modified, so the returned values are not NULL-terminated, instead their length
  * is returned.
  *
- * In case of a namespace definition, prefix just contains xmlns string. In case of the default namespace,
- * prefix is NULL and the attribute name is xmlns.
+ * Namespace definitions are processed automatically and stored internally. To get namespace for a specific
+ * prefix, use lyxml_get_ns(). This also means, that in case there are only the namespace definitions,
+ * lyxml_get_attribute() can succeed, but nothing (name, prefix) is returned.
+ *
+ * The status member of the context is updated to provide information what the caller is supposed to call
+ * after this function.
  *
  * @param[in] context XML context to track lines or store errors into libyang context.
  * @param[in,out] input Input string to process, updated according to the processed/read data so,
  * when succeeded, it points to the opening quote of the attribute's value.
  * @param[out] prefix Pointer to prefix if present in the attribute name, NULL otherwise.
  * @param[out] prefix_len Length of the prefix if any.
- * @param[out] name Attribute name.
+ * @param[out] name Attribute name. Can be NULL only in case there is actually no attribute, but namespaces.
  * @param[out] name_len Length of the element name.
  * @return LY_ERR values.
  */
@@ -159,28 +162,6 @@ LY_ERR lyxml_get_attribute(struct lyxml_context *context, const char **input,
 LY_ERR lyxml_get_string(struct lyxml_context *context, const char **input, char **buffer, size_t *buffer_size, char **output, size_t *length, int *dynamic);
 
 /**
- * @brief Add namespace definition into XML context.
- *
- * Namespaces from a single element are supposed to be added sequentially together (not interleaved by a namespace from other
- * element). This mimic namespace visibility, since the namespace defined in element E is not visible from its parents or
- * siblings. On the other hand, namespace from a parent element can be redefined in a child element. This is also reflected
- * by lyxml_ns_get() which returns the most recent namespace definition for the given prefix.
- *
- * When leaving processing of a subtree of some element, caller is supposed to call lyxml_ns_rm() to remove all the namespaces
- * defined in such an element from the context.
- *
- * @param[in] context XML context to work with.
- * @param[in] element_name Pointer to the element name where the namespace is defined. Serve as an identifier to select
- * which namespaces are supposed to be removed via lyxml_ns_rm() when leaving the element's subtree.
- * @param[in] prefix Pointer to the namespace prefix as taken from lyxml_get_attribute(). Can be NULL for default namespace.
- * @param[in] prefix_len Length of the prefix string (since it is not NULL-terminated when returned from lyxml_get_attribute()).
- * @param[in] uri Namespace URI (value) to store. Value can be obtained via lyxml_get_string() and caller is not supposed to
- * work with the pointer when the function succeeds.
- * @return LY_ERR values.
- */
-LY_ERR lyxml_ns_add(struct lyxml_context *context, const char *element_name, const char *prefix, size_t prefix_len, char *uri);
-
-/**
  * @brief Get a namespace record for the given prefix in the current context.
  *
  * @param[in] context XML context to work with.
@@ -191,16 +172,6 @@ LY_ERR lyxml_ns_add(struct lyxml_context *context, const char *element_name, con
  * @return The namespace record or NULL if the record for the specified prefix not found.
  */
 const struct lyxml_ns *lyxml_ns_get(struct lyxml_context *context, const char *prefix, size_t prefix_len);
-
-/**
- * @brief Remove all the namespaces defined in the given element.
- *
- * @param[in] context XML context to work with.
- * @param[in] element_name Pointer to the element name where the namespaces are defined. Serve as an identifier previously provided
- * by lyxml_get_element()
- * @return LY_ERR values.
- */
-LY_ERR lyxml_ns_rm(struct lyxml_context *context, const char *element_name);
 
 /**
  * @brief Print the given @p text as XML string which replaces some of the characters which cannot appear in XML data.

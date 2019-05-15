@@ -168,6 +168,102 @@ lyxml_check_qname(struct lyxml_context *context, const char **input, unsigned in
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Add namespace definition into XML context.
+ *
+ * Namespaces from a single element are supposed to be added sequentially together (not interleaved by a namespace from other
+ * element). This mimic namespace visibility, since the namespace defined in element E is not visible from its parents or
+ * siblings. On the other hand, namespace from a parent element can be redefined in a child element. This is also reflected
+ * by lyxml_ns_get() which returns the most recent namespace definition for the given prefix.
+ *
+ * When leaving processing of a subtree of some element (after it is removed from context->elements), caller is supposed to call
+ * lyxml_ns_rm() to remove all the namespaces defined in such an element from the context.
+ *
+ * @param[in] context XML context to work with.
+ * @param[in] prefix Pointer to the namespace prefix as taken from lyxml_get_attribute(). Can be NULL for default namespace.
+ * @param[in] prefix_len Length of the prefix string (since it is not NULL-terminated when returned from lyxml_get_attribute()).
+ * @param[in] uri Namespace URI (value) to store. Value can be obtained via lyxml_get_string() and caller is not supposed to
+ * work with the pointer when the function succeeds. In case of error the value is freed.
+ * @return LY_ERR values.
+ */
+static LY_ERR
+lyxml_ns_add(struct lyxml_context *context, const char *prefix, size_t prefix_len, char *uri)
+{
+    struct lyxml_ns *ns;
+
+    ns = malloc(sizeof *ns);
+    LY_CHECK_ERR_RET(!ns, LOGMEM(context->ctx), LY_EMEM);
+
+    /* we need to connect the depth of the element where the namespace is defined with the
+     * namespace record to be able to maintain (remove) the record when the parser leaves
+     * (to its sibling or back to the parent) the element where the namespace was defined */
+    ns->depth = context->elements.count;
+
+    ns->uri = uri;
+    if (prefix) {
+        ns->prefix = strndup(prefix, prefix_len);
+        LY_CHECK_ERR_RET(!ns->prefix, LOGMEM(context->ctx); free(ns->uri); free(ns), LY_EMEM);
+    } else {
+        ns->prefix = NULL;
+    }
+
+    LY_CHECK_ERR_RET(ly_set_add(&context->ns, ns, LY_SET_OPT_USEASLIST) == -1,
+                     free(ns->prefix); free(ns->uri); free(ns), LY_EMEM);
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Remove all the namespaces defined in the element recently closed (removed from the context->elements).
+ *
+ * @param[in] context XML context to work with.
+ * @return LY_ERR values.
+ */
+static LY_ERR
+lyxml_ns_rm(struct lyxml_context *context)
+{
+    unsigned int u;
+
+    for (u = context->ns.count - 1; u + 1 > 0; --u) {
+        if (((struct lyxml_ns *)context->ns.objs[u])->depth != context->elements.count + 1) {
+            /* we are done, the namespaces from a single element are supposed to be together */
+            break;
+        }
+        /* remove the ns structure */
+        free(((struct lyxml_ns *)context->ns.objs[u])->prefix);
+        free(((struct lyxml_ns *)context->ns.objs[u])->uri);
+        free(context->ns.objs[u]);
+        --context->ns.count;
+    }
+
+    if (!context->ns.count) {
+        /* cleanup the context's namespaces storage */
+        ly_set_erase(&context->ns, NULL);
+    }
+
+    return LY_SUCCESS;
+}
+
+const struct lyxml_ns *
+lyxml_ns_get(struct lyxml_context *context, const char *prefix, size_t prefix_len)
+{
+    unsigned int u;
+    struct lyxml_ns *ns;
+
+    for (u = context->ns.count - 1; u + 1 > 0; --u) {
+        ns = (struct lyxml_ns *)context->ns.objs[u];
+        if (prefix) {
+            if (!strncmp(prefix, ns->prefix, prefix_len) && ns->prefix[prefix_len] == '\0') {
+                return ns;
+            }
+        } else if (!ns->prefix) {
+            /* default namespace */
+            return ns;
+        }
+    }
+
+    return NULL;
+}
+
 LY_ERR
 lyxml_get_string(struct lyxml_context *context, const char **input, char **buffer, size_t *buffer_size, char **output, size_t *length, int *dynamic)
 {
@@ -190,7 +286,7 @@ lyxml_get_string(struct lyxml_context *context, const char **input, char **buffe
     uint32_t n;
     size_t u, newlines;
     bool empty_content = false;
-    LY_ERR rc;
+    LY_ERR rc = LY_SUCCESS;
 
     assert(context);
     assert(context->status == LYXML_ELEM_CONTENT || context->status == LYXML_ATTR_CONTENT);
@@ -402,11 +498,14 @@ success:
             /* remove the closed element record from the tags list */
             free(context->elements.objs[context->elements.count - 1]);
             --context->elements.count;
+
+            /* remove also the namespaces conneted with the element */
+            rc = lyxml_ns_rm(context);
         }
     }
 
     (*input) = in;
-    return LY_SUCCESS;
+    return rc;
 
 #undef BUFSIZE
 #undef BUFSIZE_STEP
@@ -424,7 +523,11 @@ lyxml_get_attribute(struct lyxml_context *context, const char **input,
     LY_ERR rc;
     unsigned int c;
     size_t endtag_len;
+    int is_ns = 0;
+    const char *ns_prefix = NULL;
+    size_t ns_prefix_len = 0;
 
+start:
     /* initialize output variables */
     (*prefix) = (*name) = NULL;
     (*prefix_len) = (*name_len) = 0;
@@ -475,6 +578,36 @@ lyxml_get_attribute(struct lyxml_context *context, const char **input,
         return LY_EVALID;
     }
     context->status = LYXML_ATTR_CONTENT;
+
+    is_ns = 0;
+    if (*prefix && *prefix_len == 5 && !strncmp(*prefix, "xmlns", 5)) {
+        is_ns = 1;
+        ns_prefix = *name;
+        ns_prefix_len = *name_len;
+    } else if (*name_len == 5 && !strncmp(*name, "xmlns", 5)) {
+        is_ns = 1;
+    }
+    if (is_ns) {
+        /* instead of attribute, we have namespace specification,
+         * so process it automatically and then move to another attribute (if any) */
+        char *value = NULL;
+        size_t value_len = 0;
+        int dynamic = 0;
+
+        LY_CHECK_RET(lyxml_get_string(context, &in, &value, &value_len, &value, &value_len, &dynamic));
+        if ((rc = lyxml_ns_add(context, ns_prefix, ns_prefix_len, dynamic ? value : strndup(value, value_len)))) {
+            if (dynamic) {
+                free(value);
+                return rc;
+            }
+        }
+        if (context->status == LYXML_ATTRIBUTE) {
+            goto start;
+        } else {
+            (*prefix) = (*name) = NULL;
+            (*prefix_len) = (*name_len) = 0;
+        }
+    }
 
     /* move caller's input */
     (*input) = in;
@@ -602,6 +735,10 @@ element:
                 /* opening and closing element tags matches, remove record from the opening tags list */
                 free(e);
                 --context->elements.count;
+
+                /* remove also the namespaces conneted with the element */
+                rc = lyxml_ns_rm(context);
+
                 /* do not return element information to announce closing element being currently processed */
                 *name = *prefix = NULL;
                 *name_len = *prefix_len = 0;
@@ -650,82 +787,6 @@ success:
     return LY_SUCCESS;
 }
 
-LY_ERR
-lyxml_ns_add(struct lyxml_context *context, const char *element_name, const char *prefix, size_t prefix_len, char *uri)
-{
-    struct lyxml_ns *ns;
-
-    ns = malloc(sizeof *ns);
-    LY_CHECK_ERR_RET(!ns, LOGMEM(context->ctx), LY_EMEM);
-
-    /* to distinguish 2 elements, we need not only the name, but also its depth in the XML tree.
-     * In case some dictionary is used to store elements' names (so name strings of 2 distinguish nodes
-     * actually points to the same memory), so the depth is necessary to distinguish parent/child nodes
-     * of the same name. Otherwise, the namespace defined in parent could be removed when leaving child node. */
-    ns->element_depth = context->elements.count;
-    ns->element = element_name;
-
-    ns->uri = uri;
-    if (prefix) {
-        ns->prefix = strndup(prefix, prefix_len);
-        LY_CHECK_ERR_RET(!ns->prefix, LOGMEM(context->ctx); free(ns), LY_EMEM);
-    } else {
-        ns->prefix = NULL;
-    }
-
-    LY_CHECK_ERR_RET(ly_set_add(&context->ns, ns, LY_SET_OPT_USEASLIST) == -1, free(ns->prefix), LY_EMEM);
-    return LY_SUCCESS;
-}
-
-const struct lyxml_ns *
-lyxml_ns_get(struct lyxml_context *context, const char *prefix, size_t prefix_len)
-{
-    unsigned int u;
-    struct lyxml_ns *ns;
-
-    for (u = context->ns.count - 1; u + 1 > 0; --u) {
-        ns = (struct lyxml_ns *)context->ns.objs[u];
-        if (prefix) {
-            if (!strncmp(prefix, ns->prefix, prefix_len) && ns->prefix[prefix_len] == '\0') {
-                return ns;
-            }
-        } else if (!ns->prefix) {
-            /* default namespace */
-            return ns;
-        }
-    }
-
-    return NULL;
-}
-
-LY_ERR
-lyxml_ns_rm(struct lyxml_context *context, const char *element_name)
-{
-    unsigned int u;
-
-    for (u = context->ns.count - 1; u + 1 > 0; --u) {
-        if (((struct lyxml_ns *)context->ns.objs[u])->element != element_name ||
-                ((struct lyxml_ns *)context->ns.objs[u])->element_depth != context->elements.count + 1) {
-            /* we are done, the namespaces from a single element are supposed to be together;
-             * the second condition is there to distinguish parent/child elements with the same name
-             * (which are for some reason stored at the same memory chunk), so we need to distinguish
-             * level of the node */
-            break;
-        }
-        /* remove the ns structure */
-        free(((struct lyxml_ns *)context->ns.objs[u])->prefix);
-        free(((struct lyxml_ns *)context->ns.objs[u])->uri);
-        free(context->ns.objs[u]);
-        --context->ns.count;
-    }
-
-    if (!context->ns.count) {
-        /* cleanup the context's namespaces storage */
-        ly_set_erase(&context->ns, NULL);
-    }
-
-    return LY_SUCCESS;
-}
 
 void
 lyxml_context_clear(struct lyxml_context *context)
