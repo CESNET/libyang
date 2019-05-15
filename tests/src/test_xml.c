@@ -246,26 +246,26 @@ test_attribute(void **state)
     /* valid attribute */
     str = "xmlns=\"urn\">";
     assert_int_equal(LY_SUCCESS, lyxml_get_attribute(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
-    assert_non_null(name);
+    assert_null(name);
     assert_null(prefix);
-    assert_int_equal(5, name_len);
+    assert_int_equal(0, name_len);
     assert_int_equal(0, prefix_len);
-    assert_false(strncmp("xmlns", name, name_len));
-    assert_string_equal("\"urn\">", str);
-    assert_int_equal(LYXML_ATTR_CONTENT, ctx.status);
+    assert_int_equal(1, ctx.ns.count);
+    assert_string_equal("", str);
+    assert_int_equal(LYXML_ELEM_CONTENT, ctx.status);
 
-    str = "xmlns:nc\n = \'urn\'/>";
+    str = "xmlns:nc\n = \'urn\'>";
     assert_int_equal(LY_SUCCESS, lyxml_get_attribute(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
-    assert_non_null(name);
-    assert_non_null(prefix);
-    assert_int_equal(2, name_len);
-    assert_int_equal(5, prefix_len);
+    assert_null(name);
+    assert_null(prefix);
+    assert_int_equal(0, name_len);
+    assert_int_equal(0, prefix_len);
     assert_int_equal(3, ctx.line);
-    assert_false(strncmp("xmlns", prefix, prefix_len));
-    assert_false(strncmp("nc", name, name_len));
-    assert_string_equal("\'urn\'/>", str);
-    assert_int_equal(LYXML_ATTR_CONTENT, ctx.status);
+    assert_int_equal(2, ctx.ns.count);
+    assert_string_equal("", str);
+    assert_int_equal(LYXML_ELEM_CONTENT, ctx.status);
 
+    lyxml_context_clear(&ctx);
 }
 
 static void
