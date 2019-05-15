@@ -171,17 +171,27 @@ endif()
 
 set(libsrc
     src/common.c
+    src/compat.c
     src/log.c
     src/hash_table.c
     src/set.c
     src/context.c
+    src/tree_data.c
+    src/tree_data_free.c
+    src/tree_data_helpers.c
+    src/tree_data_hash.c
+    src/parser_xml.c
+    src/printer_data.c
+    src/printer_xml.c
     src/tree_schema.c
     src/tree_schema_free.c
     src/tree_schema_compile.c
     src/tree_schema_helpers.c
     src/parser_yang.c
     src/printer.c
+    src/printer_schema.c
     src/printer_yang.c
+    src/plugins_types.c
     src/xml.c
     src/xpath.c)
 
@@ -199,15 +209,20 @@ set(lintsrc
 set(headers
     src/libyang.h
     src/context.h
+    src/tree.h
+    src/tree_data.h
+    src/printer_data.h
     src/tree_schema.h
     src/printer_schema.h
     src/extensions.h
+    src/plugins_types.h
     src/dict.h
     src/log.h
     src/set.h)
 
 list(APPEND CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
 check_symbol_exists(vdprintf stdio.h HAVE_VDPRINTF)
+check_symbol_exists(strnstr string.h HAVE_STRNSTR)
 
 # create static libyang library
 if(ENABLE_STATIC)

@@ -15,6 +15,8 @@
 #ifndef LY_CONTEXT_H_
 #define LY_CONTEXT_H_
 
+#include <stdint.h>
+
 #include "log.h"
 #include "tree_schema.h"
 

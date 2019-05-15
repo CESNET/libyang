@@ -14,19 +14,25 @@
 
 #include "common.h"
 
+#include <assert.h>
 #include <dirent.h>
 #include <errno.h>
-#include <limits.h>
 #include <fcntl.h>
+#include <limits.h>
+#include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <unistd.h>
 
-#include "libyang.h"
 #include "context.h"
+#include "dict.h"
+#include "log.h"
+#include "set.h"
+#include "tree.h"
+#include "tree_schema.h"
 #include "tree_schema_internal.h"
-#include "xpath.h"
 
 API const struct lysc_node *
 lys_getnext(const struct lysc_node *last, const struct lysc_node *parent, const struct lysc_module *module, int options)
@@ -505,12 +511,12 @@ lys_is_disabled(const struct lysc_node *node, int recursive)
 }
 
 struct lysp_submodule *
-lys_parse_mem_submodule(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, struct ly_parser_ctx *main_ctx,
+lys_parse_mem_submodule(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, struct lys_parser_ctx *main_ctx,
                         LY_ERR (*custom_check)(struct ly_ctx*, struct lysp_module*, struct lysp_submodule*, void*), void *check_data)
 {
     LY_ERR ret = LY_EINVAL;
     struct lysp_submodule *submod = NULL, *latest_sp;
-    struct ly_parser_ctx context = {0};
+    struct lys_parser_ctx context = {0};
 
     LY_CHECK_ARG_RET(ctx, ctx, data, NULL);
 
@@ -582,7 +588,7 @@ lys_parse_mem_module(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, 
     struct lysp_include *inc;
     LY_ERR ret = LY_EINVAL;
     unsigned int u, i;
-    struct ly_parser_ctx context = {0};
+    struct lys_parser_ctx context = {0};
 
     LY_CHECK_ARG_RET(ctx, ctx, data, NULL);
 
@@ -769,7 +775,7 @@ lys_parse_set_filename(struct ly_ctx *ctx, const char **filename, int fd)
 }
 
 void *
-lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, int implement, struct ly_parser_ctx *main_ctx,
+lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, int implement, struct lys_parser_ctx *main_ctx,
                     LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data),
                     void *check_data)
 {
@@ -821,7 +827,7 @@ lys_parse_fd_module(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, int impleme
 }
 
 struct lysp_submodule *
-lys_parse_fd_submodule(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, struct ly_parser_ctx *main_ctx,
+lys_parse_fd_submodule(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, struct lys_parser_ctx *main_ctx,
                        LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data),
                        void *check_data)
 {

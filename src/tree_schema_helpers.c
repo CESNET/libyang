@@ -1,7 +1,7 @@
 /**
  * @file tree_schema_helpers.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
- * @brief Parsing and validation helper functions
+ * @brief Parsing and validation helper functions for schema trees
  *
  * Copyright (c) 2015 - 2018 CESNET, z.s.p.o.
  *
@@ -13,18 +13,26 @@
  */
 #include "common.h"
 
+#include <assert.h>
+#include <bits/types/struct_tm.h>
 #include <ctype.h>
-#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <stdint.h>
 #include <stdlib.h>
-#include <sys/stat.h>
-#include <sys/types.h>
+#include <string.h>
 #include <unistd.h>
 #include <time.h>
 
-#include "libyang.h"
+#include "context.h"
+#include "dict.h"
+#include "extensions.h"
+#include "hash_table.h"
+#include "log.h"
+#include "set.h"
+#include "tree.h"
+#include "tree_schema.h"
 #include "tree_schema_internal.h"
 
 /**
@@ -201,7 +209,7 @@ getnext:
 }
 
 LY_ERR
-lysp_check_prefix(struct ly_parser_ctx *ctx, struct lysp_import *imports, const char *module_prefix, const char **value)
+lysp_check_prefix(struct lys_parser_ctx *ctx, struct lysp_import *imports, const char *module_prefix, const char **value)
 {
     struct lysp_import *i;
 
@@ -244,7 +252,7 @@ lysc_check_status(struct lysc_ctx *ctx,
 }
 
 LY_ERR
-lysp_check_date(struct ly_parser_ctx *ctx, const char *date, int date_len, const char *stmt)
+lysp_check_date(struct lys_parser_ctx *ctx, const char *date, int date_len, const char *stmt)
 {
     int i;
     struct tm tm, tm_;
@@ -487,7 +495,7 @@ lysp_type_find(const char *id, struct lysp_node *start_node, struct lysp_module 
  * @return LY_EEXIST in case of collision, LY_SUCCESS otherwise.
  */
 static LY_ERR
-lysp_check_typedef(struct ly_parser_ctx *ctx, struct lysp_node *node, const struct lysp_tpdf *tpdf,
+lysp_check_typedef(struct lys_parser_ctx *ctx, struct lysp_node *node, const struct lysp_tpdf *tpdf,
                    struct hash_table *tpdfs_global, struct hash_table *tpdfs_scoped)
 {
     struct lysp_node *parent;
@@ -562,7 +570,7 @@ lysp_id_cmp(void *val1, void *val2, int UNUSED(mod), void *UNUSED(cb_data))
 }
 
 LY_ERR
-lysp_check_typedefs(struct ly_parser_ctx *ctx, struct lysp_module *mod)
+lysp_check_typedefs(struct lys_parser_ctx *ctx, struct lysp_module *mod)
 {
     struct hash_table *ids_global;
     struct hash_table *ids_scoped;
@@ -679,7 +687,7 @@ lysp_load_module_check(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_
 }
 
 LY_ERR
-lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, int implement, struct ly_parser_ctx *main_ctx,
+lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, int implement, struct lys_parser_ctx *main_ctx,
                      void **result)
 {
     int fd;
@@ -846,7 +854,7 @@ search_file:
 }
 
 LY_ERR
-lysp_load_submodule(struct ly_parser_ctx *ctx, struct lysp_module *mod, struct lysp_include *inc)
+lysp_load_submodule(struct lys_parser_ctx *ctx, struct lysp_module *mod, struct lysp_include *inc)
 {
     struct lysp_submodule *submod = NULL;
     const char *submodule_data = NULL;
@@ -1182,6 +1190,11 @@ API const struct lysp_node *
 lysp_node_children(const struct lysp_node *node)
 {
     struct lysp_node **children;
+
+    if (!node) {
+        return NULL;
+    }
+
     children = lysp_node_children_p((struct lysp_node*)node);
     if (children) {
         return *children;
@@ -1277,6 +1290,11 @@ API const struct lysc_node *
 lysc_node_children(const struct lysc_node *node, uint16_t flags)
 {
     struct lysc_node **children;
+
+    if (!node) {
+        return NULL;
+    }
+
     children = lysc_node_children_p((struct lysc_node*)node, flags);
     if (children) {
         return *children;

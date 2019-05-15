@@ -18,10 +18,11 @@
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
-#include "libyang.h"
 #include "xml.h"
+#include "printer_internal.h"
 
 /* Move input p by s characters, if EOF log with lyxml_context c */
 #define move_input(c,p,s) p += s; LY_CHECK_ERR_RET(!p[0], LOGVAL(c->ctx, LY_VLOG_LINE, &c->line, LY_VCODE_EOF), LY_EVALID)
@@ -218,6 +219,7 @@ lyxml_get_string(struct lyxml_context *context, const char **input, char **buffe
         context->line += newlines;
         if (in[offset] == '<') {
             (*input) = in + offset;
+            context->status -= 1; /* LYXML_ELEMENT */;
             return LY_EINVAL;
         }
     }
@@ -739,3 +741,40 @@ lyxml_context_clear(struct lyxml_context *context)
     }
     ly_set_erase(&context->ns, NULL);
 }
+
+LY_ERR
+lyxml_dump_text(struct lyout *out, const char *text, int attribute)
+{
+    LY_ERR ret = LY_SUCCESS;
+    unsigned int u;
+
+    if (!text) {
+        return 0;
+    }
+
+    for (u = 0; text[u]; u++) {
+        switch (text[u]) {
+        case '&':
+            ret = ly_print(out, "&amp;");
+            break;
+        case '<':
+            ret = ly_print(out, "&lt;");
+            break;
+        case '>':
+            /* not needed, just for readability */
+            ret = ly_print(out, "&gt;");
+            break;
+        case '"':
+            if (attribute) {
+                ret = ly_print(out, "&quot;");
+                break;
+            }
+            /* falls through */
+        default:
+            ly_write(out, &text[u], 1);
+        }
+    }
+
+    return ret;
+}
+

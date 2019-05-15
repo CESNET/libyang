@@ -26,6 +26,7 @@
 #include "../../src/tree_schema_free.c"
 #include "../../src/tree_schema_compile.c"
 #include "../../src/tree_schema.c"
+#include "../../src/plugins_types.c"
 
 #include <stdarg.h>
 #include <stddef.h>

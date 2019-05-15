@@ -18,18 +18,21 @@
 #define _DEFAULT_SOURCE
 #define _GNU_SOURCE
 
-#include <assert.h>
+#include <features.h>
 #include <pthread.h>
+#include <stdc-predef.h>
+#include <stddef.h>
 #include <stdint.h>
-#include <stdlib.h>
-#include <unistd.h>
 
 #include "config.h"
-#include "log.h"
+
 #include "context.h"
-#include "tree_schema.h"
-#include "set.h"
+#include "dict.h"
 #include "hash_table.h"
+#include "log.h"
+#include "set.h"
+
+struct ly_ctx;
 
 #if __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
 # define THREAD_LOCAL _Thread_local
@@ -61,6 +64,19 @@ char *get_current_dir_name(void);
 #endif
 
 /******************************************************************************
+ * Compatibility functions
+ *****************************************************************************/
+
+#ifndef HAVE_STRNSTR
+/**
+ * @brief Find the first occurrence of find in s, where the search is limited to the
+ * first slen characters of s.
+ */
+char *strnstr(const char *s, const char *find, size_t slen);
+#endif
+
+
+/******************************************************************************
  * Logger
  *****************************************************************************/
 
@@ -85,8 +101,32 @@ extern THREAD_LOCAL enum int_log_opts log_opt;
 extern volatile uint8_t ly_log_level;
 extern volatile uint8_t ly_log_opts;
 
-void ly_err_free(void *ptr);
+/**
+ * @brief Set error-app-tag to the last error record in the context.
+ * @param[in] ctx libyang context where the error records are present.
+ * @param[in] apptag The error-app-tag value to store.
+ */
+void ly_err_last_set_apptag(const struct ly_ctx *ctx, const char *apptag);
+
+/**
+ * @brief Print a log message and store it into the context (if provided).
+ *
+ * @param[in] ctx libyang context to store the error record. If not provided, the error is just printed.
+ * @param[in] level Log message level (error, warning, etc.)
+ * @param[in] no Error type code.
+ * @param[in] format Format string to print.
+ */
 void ly_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, const char *format, ...);
+
+/**
+ * @brief Print Validation error and store it into the context (if provided).
+ *
+ * @param[in] ctx libyang context to store the error record. If not provided, the error is just printed.
+ * @param[in] elem_type Type of the data in @p elem variable.
+ * @param[in] elem Object to provide more information about the place where the error appeared.
+ * @param[in] code Validation error code.
+ * @param[in] format Format string to print.
+ */
 void ly_vlog(const struct ly_ctx *ctx, enum LY_VLOG_ELEM elem_type, const void *elem, LY_VECODE code, const char *format, ...);
 
 #define LOGERR(ctx, errno, str, args...) ly_log(ctx, LY_LLERR, errno, str, ##args)

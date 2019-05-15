@@ -20,6 +20,7 @@
 #include "../../src/tree_schema_compile.c"
 #include "../../src/tree_schema_free.c"
 #include "../../src/tree_schema_helpers.c"
+#include "../../src/plugins_types.c"
 #include "../../src/hash_table.c"
 #include "../../src/xpath.c"
 #include "../../src/context.c"

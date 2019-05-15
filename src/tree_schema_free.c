@@ -1,9 +1,9 @@
 /**
- * @file tree_schema.c
+ * @file tree_schema_free.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
- * @brief Schema tree implementation
+ * @brief Freeing functions for schema tree structures.
  *
- * Copyright (c) 2015 - 2018 CESNET, z.s.p.o.
+ * Copyright (c) 2019 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -14,8 +14,11 @@
 
 #include "common.h"
 
-#include "libyang.h"
-#include "context.h"
+#include <stdlib.h>
+
+#include "dict.h"
+#include "tree.h"
+#include "tree_schema.h"
 #include "tree_schema_internal.h"
 #include "xpath.h"
 
@@ -621,7 +624,6 @@ lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type)
     }
     FREE_ARRAY(ctx, type->exts, lysc_ext_instance_free);
     FREE_STRING(ctx, type->dflt);
-
     free(type);
 }
 

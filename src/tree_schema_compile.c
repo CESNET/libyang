@@ -14,11 +14,20 @@
 
 #include "common.h"
 
+#include <assert.h>
 #include <ctype.h>
+#include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include "libyang.h"
-#include "context.h"
+#include "dict.h"
+#include "log.h"
+#include "set.h"
+#include "plugins_types.h"
+#include "tree.h"
+#include "tree_schema.h"
 #include "tree_schema_internal.h"
 #include "xpath.h"
 
@@ -93,7 +102,7 @@
 static struct lysc_ext_instance *
 lysc_ext_instance_dup(struct ly_ctx *ctx, struct lysc_ext_instance *orig)
 {
-    /* TODO */
+    /* TODO - extensions */
     (void) ctx;
     (void) orig;
     return NULL;
@@ -2999,6 +3008,8 @@ preparenext:
         }
 
         (*type)->basetype = basetype;
+        /* TODO user type plugins */
+        (*type)->plugin = &ly_builtin_type_plugins[basetype];
         prev_type = *type;
         ret = lys_compile_type_(ctx, tctx->node, tctx->tpdf->flags, tctx->mod, tctx->tpdf->name, &((struct lysp_tpdf*)tctx->tpdf)->type,
                                 basetype & (LY_TYPE_LEAFREF | LY_TYPE_UNION) ? lysp_find_module(ctx->ctx, tctx->mod) : NULL,
@@ -3013,6 +3024,8 @@ preparenext:
     if (type_p->flags || !base || basetype == LY_TYPE_LEAFREF) {
         /* get restrictions from the node itself */
         (*type)->basetype = basetype;
+        /* TODO user type plugins */
+        (*type)->plugin = &ly_builtin_type_plugins[basetype];
         ++(*type)->refcount;
         ret = lys_compile_type_(ctx, context_node_p, context_flags, context_mod, context_name, type_p, ctx->mod_def, basetype, NULL, base, type);
         LY_CHECK_GOTO(ret, cleanup);
@@ -3766,7 +3779,6 @@ lys_compile_node_choice(struct lysc_ctx *ctx, struct lysp_node *node_p, struct l
     struct lysp_node_choice *ch_p = (struct lysp_node_choice*)node_p;
     struct lysc_node_choice *ch = (struct lysc_node_choice*)node;
     struct lysp_node *child_p, *case_child_p;
-    struct lys_module;
     LY_ERR ret = LY_SUCCESS;
 
     LY_LIST_FOR(ch_p->child, child_p) {

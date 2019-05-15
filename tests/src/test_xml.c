@@ -17,7 +17,6 @@
 #include "../../src/xml.c"
 #include "../../src/common.c"
 #include "../../src/log.c"
-
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
@@ -26,6 +25,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "../../src/printer.c"
 #include "libyang.h"
 
 #define BUFSIZE 1024

@@ -12,14 +12,14 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
+#include "common.h"
+
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <pthread.h>
 #include <assert.h>
 
-#include "common.h"
-#include "context.h"
 #include "hash_table.h"
 
 static int

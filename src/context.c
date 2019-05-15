@@ -14,17 +14,21 @@
 
 #include "common.h"
 
+#include <assert.h>
 #include <errno.h>
-#include <limits.h>
+#include <pthread.h>
+#include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <unistd.h>
 
 #include "context.h"
+#include "hash_table.h"
+#include "set.h"
+#include "tree.h"
 #include "tree_schema_internal.h"
-#include "libyang.h"
+#include "plugins_types.h"
 
 #define LY_INTERNAL_MODS_COUNT 6
 

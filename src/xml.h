@@ -15,10 +15,13 @@
 #ifndef LY_XML_H_
 #define LY_XML_H_
 
+#include <stddef.h>
 #include <stdint.h>
 
-#include "context.h"
+#include "log.h"
 #include "set.h"
+
+struct lyout;
 
 /* Macro to test if character is whitespace */
 #define is_xmlws(c) (c == 0x20 || c == 0x9 || c == 0xa || c == 0xd)
@@ -81,7 +84,7 @@ struct lyxml_context {
 /**
  * @brief Parse input expecting an XML element.
  *
- * Able to silently skip comments, PIs and CData. DOCTYPE is not parsable, so it is reported as LY_EVALID error.
+ * Able to silently skip comments, PIs and CData. DOCTYPE is not parseable, so it is reported as LY_EVALID error.
  * If '<' is not found in input, LY_EINVAL is returned (but no error is logged), so it is possible to continue
  * with parsing input as text content.
  *
@@ -198,6 +201,16 @@ const struct lyxml_ns *lyxml_ns_get(struct lyxml_context *context, const char *p
  * @return LY_ERR values.
  */
 LY_ERR lyxml_ns_rm(struct lyxml_context *context, const char *element_name);
+
+/**
+ * @brief Print the given @p text as XML string which replaces some of the characters which cannot appear in XML data.
+ *
+ * @param[in] out Output structure for printing.
+ * @param[in] text String to print.
+ * @param[in] attribute Flag for attribute's value where a double quotes must be replaced.
+ * @return LY_ERR values.
+ */
+LY_ERR lyxml_dump_text(struct lyout *out, const char *text, int attribute);
 
 /**
  * @brief Remove the allocated working memory of the context.

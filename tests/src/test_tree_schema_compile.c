@@ -21,6 +21,7 @@
 #include "../../src/tree_schema_free.c"
 #include "../../src/tree_schema_compile.c"
 #include "../../src/tree_schema.c"
+#include "../../src/plugins_types.c"
 #include "../../src/context.c"
 #include "../../src/hash_table.c"
 
@@ -125,7 +126,7 @@ test_module(void **state)
     *state = test_module;
 
     const char *str;
-    struct ly_parser_ctx ctx = {0};
+    struct lys_parser_ctx ctx = {0};
     struct lys_module mod = {0};
     struct lysc_feature *f;
     struct lysc_iffeature *iff;
@@ -193,7 +194,7 @@ test_feature(void **state)
 {
     *state = test_feature;
 
-    struct ly_parser_ctx ctx = {0};
+    struct lys_parser_ctx ctx = {0};
     struct lys_module mod = {0}, *modp;
     const char *str;
     struct lysc_feature *f, *f1;

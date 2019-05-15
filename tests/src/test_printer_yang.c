@@ -23,9 +23,8 @@
 #include "../../src/tree_schema_free.c"
 #include "../../src/tree_schema_compile.c"
 #include "../../src/tree_schema.c"
+#include "../../src/plugins_types.c"
 #include "../../src/printer_yang.c"
-#include "../../src/printer.c"
-
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
@@ -34,6 +33,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "../../src/printer.c"
+#include "../../src/printer_schema.c"
 #include "libyang.h"
 
 #define BUFSIZE 1024

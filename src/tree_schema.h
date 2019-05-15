@@ -21,113 +21,15 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "log.h"
+#include "tree.h"
 #include "extensions.h"
+
+struct ly_ctx;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/**
- * @brief XPath representation.
- */
-struct lyxp_expr;
-
-/**
- * @brief Macro selector for other LY_ARRAY_* macros, do not use directly!
- */
-#define LY_ARRAY_SELECT(_1, _2, NAME, ...) NAME
-
-/**
- * @brief Helper macro to go through sized-arrays with a pointer iterator.
- *
- * Use with opening curly bracket (`{`).
- *
- * @param[in] ARRAY Array to go through
- * @param[in] TYPE Type of the records in the ARRAY
- * @param[out] ITER Iterating pointer to the item being processed in each loop
- */
-#define LY_ARRAY_FOR_ITER(ARRAY, TYPE, ITER) \
-    for (ITER = ARRAY; \
-         (ARRAY) && ((void*)ITER - (void*)ARRAY)/(sizeof(TYPE)) < (*((uint32_t*)(ARRAY) - 1)); \
-         ITER = (void*)((TYPE*)ITER + 1))
-
-/**
- * @brief Helper macro to go through sized-arrays with a numeric iterator.
- *
- * Use with opening curly bracket (`{`).
- *
- * To access an item with the INDEX value, use always LY_ARRAY_INDEX macro!
- *
- * @param[in] ARRAY Array to go through
- * @param[out] INDEX Iterating index of the item being processed in each loop
- */
-#define LY_ARRAY_FOR_INDEX(ARRAY, INDEX) \
-    for (INDEX = 0; \
-         ARRAY && INDEX < (*((uint32_t*)(ARRAY) - 1)); \
-         ++INDEX)
-
-/**
- * @defgroup schematree Schema Tree
- * @{
- *
- * Data structures and functions to manipulate and access schema tree.
- */
-
-/**
- * @brief Get a number of records in the ARRAY.
- *
- * Does not check if array exists!
- */
-#define LY_ARRAY_SIZE(ARRAY) (*((uint32_t*)(ARRAY) - 1))
-
-/**
- * @brief Sized-array iterator (for-loop).
- *
- * Use with opening curly bracket (`{`).
- *
- * There are 2 variants:
- *
- *     LY_ARRAY_FOR(ARRAY, TYPE, ITER)
- *
- * Where ARRAY is a sized-array to go through, TYPE is the type of the items in the ARRAY and ITER is a pointer variable
- * providing the items of the ARRAY in the loops. This functionality is provided by LY_ARRAY_FOR_ITER macro
- *
- *     LY_ARRAY_FOR(ARRAY, INDEX)
- *
- * The ARRAY is again a sized-array to go through, the INDEX is a variable (unsigned integer) for storing iterating ARRAY's index
- * to access the items of ARRAY in the loops. This functionality is provided by LY_ARRAY_FOR_INDEX macro.
- */
-#define LY_ARRAY_FOR(ARRAY, ...) LY_ARRAY_SELECT(__VA_ARGS__, LY_ARRAY_FOR_ITER, LY_ARRAY_FOR_INDEX)(ARRAY, __VA_ARGS__)
-
-/**
- * @brief Macro to iterate via all sibling elements without affecting the list itself
- *
- * Works for all types of nodes despite it is data or schema tree, but all the
- * parameters must be pointers to the same type.
- *
- * Use with opening curly bracket (`{`). All parameters must be of the same type.
- *
- * @param START Pointer to the starting element.
- * @param ELEM Iterator.
- */
-#define LY_LIST_FOR(START, ELEM) \
-    for ((ELEM) = (START); \
-         (ELEM); \
-         (ELEM) = (ELEM)->next)
-
-/**
- * @brief Macro to iterate via all sibling elements allowing to modify the list itself (e.g. removing elements)
- *
- * Use with opening curly bracket (`{`). All parameters must be of the same type.
- *
- * @param START Pointer to the starting element.
- * @param NEXT Temporary storage to allow removing of the current iterator content.
- * @param ELEM Iterator.
- */
-#define LY_LIST_FOR_SAFE(START, NEXT, ELEM) \
-    for ((ELEM) = (START); \
-         (ELEM) ? (NEXT = (ELEM)->next, 1) : 0; \
-         (ELEM) = (NEXT))
 
 /**
  * @brief Schema input formats accepted by libyang [parser functions](@ref howtoschemasparsers).
@@ -163,47 +65,16 @@ typedef enum {
 #define LYS_ANYXML 0x0020         /**< anyxml statement node */
 #define LYS_ANYDATA 0x0120        /**< anydata statement node, in tests it can be used for both #LYS_ANYXML and #LYS_ANYDATA */
 
+#define LYS_ACTION 0x400          /**< RPC or action */
+#define LYS_NOTIF 0x800
+
 #define LYS_CASE 0x0040           /**< case statement node */
 #define LYS_USES 0x0080           /**< uses statement node */
 #define LYS_INPUT 0x100
 #define LYS_OUTPUT 0x200
 #define LYS_INOUT 0x300
-#define LYS_ACTION 0x400          /**< RPC or action */
-#define LYS_NOTIF 0x800
 #define LYS_GROUPING 0x1000
 #define LYS_AUGMENT 0x2000
-
-/**
- * @brief YANG built-in types
- */
-typedef enum {
-    LY_TYPE_UNKNOWN = 0,  /**< Unknown type */
-    LY_TYPE_BINARY,       /**< Any binary data ([RFC 6020 sec 9.8](http://tools.ietf.org/html/rfc6020#section-9.8)) */
-    LY_TYPE_UINT8,        /**< 8-bit unsigned integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
-    LY_TYPE_UINT16,       /**< 16-bit unsigned integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
-    LY_TYPE_UINT32,       /**< 32-bit unsigned integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
-    LY_TYPE_UINT64,       /**< 64-bit unsigned integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
-    LY_TYPE_STRING,       /**< Human-readable string ([RFC 6020 sec 9.4](http://tools.ietf.org/html/rfc6020#section-9.4)) */
-    LY_TYPE_BITS,         /**< A set of bits or flags ([RFC 6020 sec 9.7](http://tools.ietf.org/html/rfc6020#section-9.7)) */
-    LY_TYPE_BOOL,         /**< "true" or "false" ([RFC 6020 sec 9.5](http://tools.ietf.org/html/rfc6020#section-9.5)) */
-    LY_TYPE_DEC64,        /**< 64-bit signed decimal number ([RFC 6020 sec 9.3](http://tools.ietf.org/html/rfc6020#section-9.3))*/
-    LY_TYPE_EMPTY,        /**< A leaf that does not have any value ([RFC 6020 sec 9.11](http://tools.ietf.org/html/rfc6020#section-9.11)) */
-    LY_TYPE_ENUM,         /**< Enumerated strings ([RFC 6020 sec 9.6](http://tools.ietf.org/html/rfc6020#section-9.6)) */
-    LY_TYPE_IDENT,        /**< A reference to an abstract identity ([RFC 6020 sec 9.10](http://tools.ietf.org/html/rfc6020#section-9.10)) */
-    LY_TYPE_INST,         /**< References a data tree node ([RFC 6020 sec 9.13](http://tools.ietf.org/html/rfc6020#section-9.13)) */
-    LY_TYPE_LEAFREF,      /**< A reference to a leaf instance ([RFC 6020 sec 9.9](http://tools.ietf.org/html/rfc6020#section-9.9))*/
-    LY_TYPE_UNION,        /**< Choice of member types ([RFC 6020 sec 9.12](http://tools.ietf.org/html/rfc6020#section-9.12)) */
-    LY_TYPE_INT8,         /**< 8-bit signed integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
-    LY_TYPE_INT16,        /**< 16-bit signed integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
-    LY_TYPE_INT32,        /**< 32-bit signed integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
-    LY_TYPE_INT64,        /**< 64-bit signed integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
-} LY_DATA_TYPE;
-#define LY_DATA_TYPE_COUNT 20 /**< Number of different types */
-
-/**
- * @brief Stringified YANG built-in data types
- */
-extern const char* ly_data_type2str[LY_DATA_TYPE_COUNT];
 
 /**
  * @brief YANG import-stmt
@@ -1066,12 +937,12 @@ struct lysc_revision {
 struct lysc_range {
     struct lysc_range_part {
         union {                      /**< min boundary */
-            int64_t min_64;          /**< for int8, int16, int32, int64 and decimal64 */
-            uint64_t min_u64;        /**< for uint8, uint16, uint32, uint64, string and binary */
+            int64_t min_64;          /**< for int8, int16, int32, int64 and decimal64 ( >= LY_TYPE_DEC64) */
+            uint64_t min_u64;        /**< for uint8, uint16, uint32, uint64, string and binary ( < LY_TYPE_DEC64) */
         };
         union {                      /**< max boundary */
-            int64_t max_64;          /**< for int8, int16, int32, int64 and decimal64 */
-            uint64_t max_u64;        /**< for uint8, uint16, uint32, uint64, string and binary */
+            int64_t max_64;          /**< for int8, int16, int32, int64 and decimal64 ( >= LY_TYPE_DEC64) */
+            uint64_t max_u64;        /**< for uint8, uint16, uint32, uint64, string and binary ( < LY_TYPE_DEC64) */
         };
     } *parts;                        /**< compiled range expression ([sized array](@ref sizedarrays)) */
     const char *dsc;                 /**< description */
@@ -1106,6 +977,7 @@ struct lysc_must {
 struct lysc_type {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *dflt;                /**< type's default value if any */
+    struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
 };
@@ -1113,6 +985,7 @@ struct lysc_type {
 struct lysc_type_num {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *dflt;                /**< type's default value if any */
+    struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
     struct lysc_range *range;        /**< Optional range limitation */
@@ -1121,6 +994,7 @@ struct lysc_type_num {
 struct lysc_type_dec {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *dflt;                /**< type's default value if any */
+    struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
     uint8_t fraction_digits;         /**< fraction digits specification */
@@ -1130,6 +1004,7 @@ struct lysc_type_dec {
 struct lysc_type_str {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *dflt;                /**< type's default value if any */
+    struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
     struct lysc_range *length;       /**< Optional length limitation */
@@ -1153,6 +1028,7 @@ struct lysc_type_bitenum_item {
 struct lysc_type_enum {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *dflt;                /**< type's default value if any */
+    struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
     struct lysc_type_bitenum_item *enums; /**< enumerations list ([sized array](@ref sizedarrays)), mandatory (at least 1 item) */
@@ -1161,6 +1037,7 @@ struct lysc_type_enum {
 struct lysc_type_bits {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *dflt;                /**< type's default value if any */
+    struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
     struct lysc_type_bitenum_item *bits; /**< bits list ([sized array](@ref sizedarrays)), mandatory (at least 1 item) */
@@ -1169,6 +1046,7 @@ struct lysc_type_bits {
 struct lysc_type_leafref {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *dflt;                /**< type's default value if any */
+    struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
     const char* path;                /**< target path */
@@ -1180,6 +1058,7 @@ struct lysc_type_leafref {
 struct lysc_type_identityref {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *dflt;                /**< type's default value if any */
+    struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
     struct lysc_ident **bases;       /**< list of pointers to the base identities ([sized array](@ref sizedarrays)),
@@ -1189,6 +1068,7 @@ struct lysc_type_identityref {
 struct lysc_type_instanceid {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *dflt;                /**< type's default value if any */
+    struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
     uint8_t require_instance;        /**< require-instance flag */
@@ -1197,6 +1077,7 @@ struct lysc_type_instanceid {
 struct lysc_type_union {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *dflt;                /**< type's default value if any */
+    struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
     struct lysc_type **types;        /**< list of types in the union ([sized array](@ref sizedarrays)), mandatory (at least 1 item) */
@@ -1205,6 +1086,7 @@ struct lysc_type_union {
 struct lysc_type_bin {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *dflt;                /**< type's default value if any */
+    struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
     struct lysc_range *length;       /**< Optional length limitation */

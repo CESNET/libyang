@@ -520,7 +520,7 @@ cleanup:
 
     return ret;
 }
-#if 0
+
 static LYD_FORMAT
 detect_data_format(char *filepath)
 {
@@ -531,10 +531,12 @@ detect_data_format(char *filepath)
     for (; isspace(filepath[len - 1]); len--, filepath[len] = '\0'); /* remove trailing whitespaces */
     if (len >= 5 && !strcmp(&filepath[len - 4], ".xml")) {
         return LYD_XML;
+#if 0
     } else if (len >= 6 && !strcmp(&filepath[len - 5], ".json")) {
         return LYD_JSON;
     } else if (len >= 5 && !strcmp(&filepath[len - 4], ".lyb")) {
         return LYD_LYB;
+#endif
     } else {
         return LYD_UNKNOWN;
     }
@@ -545,7 +547,6 @@ parse_data(char *filepath, int *options, struct lyd_node *val_tree, const char *
            struct lyd_node **result)
 {
     LYD_FORMAT informat = LYD_UNKNOWN;
-    struct lyxml_elem *xml = NULL;
     struct lyd_node *data = NULL, *rpc_act = NULL;
     int opts = *options;
 
@@ -556,8 +557,9 @@ parse_data(char *filepath, int *options, struct lyd_node *val_tree, const char *
         return EXIT_FAILURE;
     }
 
-    ly_errno = LY_SUCCESS;
+    ly_err_clean(ctx, NULL);
 
+#if 0
     if ((opts & LYD_OPT_TYPEMASK) == LYD_OPT_TYPEMASK) {
         /* automatically detect data type from the data top level */
         if (informat != LYD_XML) {
@@ -633,6 +635,7 @@ parse_data(char *filepath, int *options, struct lyd_node *val_tree, const char *
         }
         lyxml_free(ctx, xml);
     } else {
+#endif
         if (opts & LYD_OPT_RPCREPLY) {
             if (!rpc_act_file) {
                 fprintf(stderr, "RPC/action reply data require additional argument (file with the RPC/action).\n");
@@ -659,12 +662,14 @@ parse_data(char *filepath, int *options, struct lyd_node *val_tree, const char *
             }
             data = lyd_parse_path(ctx, filepath, informat, opts);
         }
+#if 0
     }
-    lyd_free_withsiblings(rpc_act);
+#endif
+    lyd_free_all(rpc_act);
 
-    if (ly_errno) {
+    if (ly_err_first(ctx)) {
         fprintf(stderr, "Failed to parse data.\n");
-        lyd_free_withsiblings(data);
+        lyd_free_all(data);
         return EXIT_FAILURE;
     }
 
@@ -719,6 +724,7 @@ cmd_data(const char *arg)
         }
 
         switch (c) {
+#if 0
         case 'd':
             if (!strcmp(optarg, "all")) {
                 printopt = (printopt & ~LYP_WD_MASK) | LYP_WD_ALL;
@@ -730,6 +736,7 @@ cmd_data(const char *arg)
                 printopt = (printopt & ~LYP_WD_MASK) | LYP_WD_IMPL_TAG;
             }
             break;
+#endif
         case 'h':
             cmd_data_help();
             ret = 0;
@@ -737,10 +744,12 @@ cmd_data(const char *arg)
         case 'f':
             if (!strcmp(optarg, "xml")) {
                 outformat = LYD_XML;
+#if 0
             } else if (!strcmp(optarg, "json")) {
                 outformat = LYD_JSON;
             } else if (!strcmp(optarg, "lyb")) {
                 outformat = LYD_LYB;
+#endif
             } else {
                 fprintf(stderr, "Unknown output format \"%s\".\n", optarg);
                 goto cleanup;
@@ -827,9 +836,9 @@ cmd_data(const char *arg)
 
     if (outformat != LYD_UNKNOWN) {
         if (options & LYD_OPT_RPCREPLY) {
-            lyd_print_file(output, data->child, outformat, LYP_WITHSIBLINGS | LYP_FORMAT | printopt);
+            lyd_print_file(output, lyd_node_children(data), outformat, LYDP_WITHSIBLINGS | LYDP_FORMAT | printopt);
         } else {
-            lyd_print_file(output, data, outformat, LYP_WITHSIBLINGS | LYP_FORMAT | printopt);
+            lyd_print_file(output, data, outformat, LYDP_WITHSIBLINGS | LYDP_FORMAT | printopt);
         }
     }
 
@@ -843,12 +852,12 @@ cleanup:
         fclose(output);
     }
 
-    lyd_free_withsiblings(val_tree);
-    lyd_free_withsiblings(data);
+    lyd_free_all(val_tree);
+    lyd_free_all(data);
 
     return ret;
 }
-
+#if 0
 int
 cmd_xpath(const char *arg)
 {
@@ -1540,8 +1549,8 @@ COMMAND commands[] = {
         {"add", cmd_add, cmd_add_help, "Add a new model from a specific file"},
         {"load", cmd_load, cmd_load_help, "Load a new model from the searchdirs"},
         {"print", cmd_print, cmd_print_help, "Print a model"},
-#if 0
         {"data", cmd_data, cmd_data_help, "Load, validate and optionally print instance data"},
+#if 0
         {"xpath", cmd_xpath, cmd_xpath_help, "Get data nodes satisfying an XPath expression"},
         {"list", cmd_list, cmd_list_help, "List all the loaded models"},
 #endif

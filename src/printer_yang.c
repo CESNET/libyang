@@ -15,27 +15,52 @@
 #include "common.h"
 
 #include <inttypes.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
+#include "extensions.h"
+#include "log.h"
 #include "printer_internal.h"
+#include "tree.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 #include "xpath.h"
 
-#define LEVEL ctx->level
-#define INDENT (LEVEL)*2,""
-
+/**
+ * @brief Types of the YANG printers
+ */
 enum schema_type {
-    YPR_PARSED,
-    YPR_COMPILED
+    YPR_PARSED,   /**< YANG printer of the parsed schema */
+    YPR_COMPILED  /**< YANG printer of the compiled schema */
 };
 
+/**
+ * @brief YANG printer context.
+ */
 struct ypr_ctx {
-    struct lyout *out;
-    unsigned int level;
-    const struct lys_module *module;
-    enum schema_type schema;
+    struct lyout *out;               /**< output specification */
+    unsigned int level;              /**< current indentation level: 0 - no formatting, >= 1 indentation levels */
+    const struct lys_module *module; /**< schema to print */
+    enum schema_type schema;         /**< type of the schema to print */
 };
 
+#define LEVEL ctx->level             /**< current level */
+#define INDENT (LEVEL)*2,""          /**< indentation parameters for printer functions */
+
+/**
+ * @brief Print the given text as content of a double quoted YANG string,
+ * including encoding characters that have special meanings. The quotation marks
+ * are not printed.
+ *
+ * Follows RFC 7950, section 6.1.3.
+ *
+ * @param[in] out Output specification.
+ * @param[in] text String to be printed.
+ * @param[in] len Length of the string from @p text to be printed. In case of 0,
+ * the @p text is printed completely as a NULL-terminated string.
+ */
 static void
 ypr_encode(struct lyout *out, const char *text, int len)
 {

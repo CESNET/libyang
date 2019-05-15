@@ -15,16 +15,13 @@
 #include "common.h"
 
 #include <ctype.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include <string.h>
-#include <assert.h>
-#include <limits.h>
-#include <errno.h>
-#include <math.h>
 
 #include "xpath.h"
+#include "dict.h"
 #include "xml.h"
 
 /**

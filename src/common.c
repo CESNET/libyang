@@ -16,16 +16,14 @@
 
 #include <assert.h>
 #include <errno.h>
-#include <limits.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <ctype.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <unistd.h>
 
+#include "extensions.h"
 #include "tree_schema.h"
 
 const char *const ly_stmt_list[] = {

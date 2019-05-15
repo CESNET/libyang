@@ -166,7 +166,9 @@ typedef enum {
     LYVE_SYNTAX_YANG,  /**< YANG-related syntax error */
     LYVE_REFERENCE,    /**< invalid referencing or using an item */
     LYVE_XPATH,        /**< invalid XPath expression */
-    LYVE_SEMANTICS     /**< generic semantic error */
+    LYVE_SEMANTICS,    /**< generic semantic error */
+    LYVE_SYNTAX_XML,   /**< XML-related syntax error */
+    LYVE_RESTRICTION   /**< YANG data does not reflect some of the module restrictions */
 } LY_VECODE;
 
 /**

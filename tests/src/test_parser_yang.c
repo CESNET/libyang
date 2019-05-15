@@ -23,6 +23,7 @@
 #include "../../src/tree_schema_free.c"
 #include "../../src/tree_schema_compile.c"
 #include "../../src/tree_schema.c"
+#include "../../src/plugins_types.c"
 
 #include <stdarg.h>
 #include <stddef.h>
@@ -108,7 +109,7 @@ test_helpers(void **state)
     char *buf, *p;
     size_t len, size;
     int prefix;
-    struct ly_parser_ctx ctx;
+    struct lys_parser_ctx ctx;
     ctx.ctx = NULL;
     ctx.line = 1;
 
@@ -177,7 +178,7 @@ test_comments(void **state)
 {
     (void) state; /* unused */
 
-    struct ly_parser_ctx ctx;
+    struct lys_parser_ctx ctx;
     const char *str, *p;
     char *word, *buf;
     size_t len;
@@ -213,7 +214,7 @@ test_arg(void **state)
 {
     (void) state; /* unused */
 
-    struct ly_parser_ctx ctx;
+    struct lys_parser_ctx ctx;
     const char *str;
     char *word, *buf;
     size_t len;
@@ -337,7 +338,7 @@ test_stmts(void **state)
 {
     (void) state; /* unused */
 
-    struct ly_parser_ctx ctx;
+    struct lys_parser_ctx ctx;
     const char *str, *p;
     enum yang_keyword kw;
     char *word;
@@ -673,7 +674,7 @@ test_minmax(void **state)
 {
     *state = test_minmax;
 
-    struct ly_parser_ctx ctx = {0};
+    struct lys_parser_ctx ctx = {0};
     uint16_t flags = 0;
     uint32_t value = 0;
     struct lysp_ext_instance *ext = NULL;
@@ -765,7 +766,7 @@ test_minmax(void **state)
 }
 
 static struct lysp_module *
-mod_renew(struct ly_parser_ctx *ctx)
+mod_renew(struct lys_parser_ctx *ctx)
 {
     struct lysp_module *mod_p;
     static struct lys_module mod = {0};
@@ -791,7 +792,7 @@ mod_renew(struct ly_parser_ctx *ctx)
 }
 
 static struct lysp_submodule *
-submod_renew(struct ly_parser_ctx *ctx, struct lysp_submodule *submod)
+submod_renew(struct lys_parser_ctx *ctx, struct lysp_submodule *submod)
 {
     lysp_submodule_free(ctx->ctx, submod);
     submod = calloc(1, sizeof *submod);
@@ -814,7 +815,7 @@ test_module(void **state)
 {
     *state = test_module;
 
-    struct ly_parser_ctx ctx;
+    struct lys_parser_ctx ctx;
     struct lysp_module *mod = NULL;
     struct lysp_submodule *submod = NULL;
     struct lys_module *m;
@@ -1086,7 +1087,7 @@ test_identity(void **state)
 {
     *state = test_identity;
 
-    struct ly_parser_ctx ctx;
+    struct lys_parser_ctx ctx;
     struct lysp_ident *ident = NULL;
     const char *str;
 
@@ -1131,7 +1132,7 @@ test_feature(void **state)
 {
     (void) state; /* unused */
 
-    struct ly_parser_ctx ctx;
+    struct lys_parser_ctx ctx;
     struct lysp_feature *features = NULL;
     const char *str;
 
@@ -1174,7 +1175,7 @@ test_deviation(void **state)
 {
     (void) state; /* unused */
 
-    struct ly_parser_ctx ctx;
+    struct lys_parser_ctx ctx;
     struct lysp_deviation *d = NULL;
     const char *str;
 
@@ -1223,7 +1224,7 @@ test_deviate(void **state)
 {
     (void) state; /* unused */
 
-    struct ly_parser_ctx ctx;
+    struct lys_parser_ctx ctx;
     struct lysp_deviate *d = NULL;
     const char *str;
 
@@ -1308,7 +1309,7 @@ test_container(void **state)
 {
     (void) state; /* unused */
 
-    struct ly_parser_ctx ctx = {0};
+    struct lys_parser_ctx ctx = {0};
     struct lysp_node_container *c = NULL;
     const char *str;
 
@@ -1381,7 +1382,7 @@ test_leaf(void **state)
 {
     *state = test_leaf;
 
-    struct ly_parser_ctx ctx = {0};
+    struct lys_parser_ctx ctx = {0};
     struct lysp_node_leaf *l = NULL;
     const char *str;
 
@@ -1459,7 +1460,7 @@ test_leaflist(void **state)
 {
     *state = test_leaf;
 
-    struct ly_parser_ctx ctx = {0};
+    struct lys_parser_ctx ctx = {0};
     struct lysp_node_leaflist *ll = NULL;
     const char *str;
 
@@ -1557,7 +1558,7 @@ test_list(void **state)
 {
     *state = test_list;
 
-    struct ly_parser_ctx ctx = {0};
+    struct lys_parser_ctx ctx = {0};
     struct lysp_node_list *l = NULL;
     const char *str;
 
@@ -1627,7 +1628,7 @@ test_choice(void **state)
 {
     *state = test_choice;
 
-    struct ly_parser_ctx ctx = {0};
+    struct lys_parser_ctx ctx = {0};
     struct lysp_node_choice *ch = NULL;
     const char *str;
 
@@ -1694,7 +1695,7 @@ test_case(void **state)
 {
     *state = test_case;
 
-    struct ly_parser_ctx ctx = {0};
+    struct lys_parser_ctx ctx = {0};
     struct lysp_node_case *cs = NULL;
     const char *str;
 
@@ -1748,7 +1749,7 @@ test_any(void **state, enum yang_keyword kw)
 {
     *state = test_any;
 
-    struct ly_parser_ctx ctx = {0};
+    struct lys_parser_ctx ctx = {0};
     struct lysp_node_anydata *any = NULL;
     const char *str;
 
@@ -1814,7 +1815,7 @@ test_grouping(void **state)
 {
     *state = test_grouping;
 
-    struct ly_parser_ctx ctx = {0};
+    struct lys_parser_ctx ctx = {0};
     struct lysp_grp *grp = NULL;
     const char *str;
 
@@ -1870,7 +1871,7 @@ test_action(void **state)
 {
     *state = test_action;
 
-    struct ly_parser_ctx ctx = {0};
+    struct lys_parser_ctx ctx = {0};
     struct lysp_action *rpcs = NULL;
     struct lysp_node_container *c = NULL;
     const char *str;
@@ -1947,7 +1948,7 @@ test_notification(void **state)
 {
     *state = test_notification;
 
-    struct ly_parser_ctx ctx = {0};
+    struct lys_parser_ctx ctx = {0};
     struct lysp_notif *notifs = NULL;
     struct lysp_node_container *c = NULL;
     const char *str;
@@ -2007,7 +2008,7 @@ test_uses(void **state)
 {
     *state = test_uses;
 
-    struct ly_parser_ctx ctx = {0};
+    struct lys_parser_ctx ctx = {0};
     struct lysp_node_uses *u = NULL;
     const char *str;
 
@@ -2057,7 +2058,7 @@ test_augment(void **state)
 {
     *state = test_augment;
 
-    struct ly_parser_ctx ctx = {0};
+    struct lys_parser_ctx ctx = {0};
     struct lysp_augment *a = NULL;
     const char *str;
 

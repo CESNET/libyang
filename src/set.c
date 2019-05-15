@@ -12,8 +12,13 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "libyang.h"
 #include "common.h"
+
+#include <stdlib.h>
+#include <string.h>
+
+#include "log.h"
+#include "set.h"
 
 API struct ly_set *
 ly_set_new(void)
