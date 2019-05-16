@@ -15,9 +15,9 @@
 #include "common.h"
 
 #include <string.h>
+#include <unistd.h>
 
 #ifndef HAVE_STRNSTR
-
 char *
 strnstr(const char *s, const char *find, size_t slen)
 {
@@ -38,5 +38,20 @@ strnstr(const char *s, const char *find, size_t slen)
     }
     return ((char *)s);
 }
+#endif
 
+#ifndef  HAVE_GET_CURRENT_DIR_NAME
+char *
+get_current_dir_name(void)
+{
+    char tmp[PATH_MAX];
+    char *retval;
+
+    if (getcwd(tmp, sizeof(tmp))) {
+        retval = strdup(tmp);
+        LY_CHECK_ERR_RET(!retval, LOGMEM(NULL), NULL);
+        return retval;
+    }
+    return NULL;
+}
 #endif

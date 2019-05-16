@@ -18,7 +18,6 @@
 #define _DEFAULT_SOURCE
 #define _GNU_SOURCE
 
-#include <features.h>
 #include <pthread.h>
 #include <stdc-predef.h>
 #include <stddef.h>
@@ -56,16 +55,17 @@ struct ly_ctx;
  */
 #define API __attribute__((visibility("default")))
 
-#ifndef  __USE_GNU
-/*
- * If we don't have GNU extension, implement these function on your own
- */
-char *get_current_dir_name(void);
-#endif
 
 /******************************************************************************
  * Compatibility functions
  *****************************************************************************/
+
+#ifndef HAVE_GET_CURRENT_DIR_NAME
+/**
+ * @brief Return a malloc'd string containing the current directory name.
+ */
+char *get_current_dir_name(void);
+#endif
 
 #ifndef HAVE_STRNSTR
 /**

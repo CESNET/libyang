@@ -143,22 +143,6 @@ const char *const ly_devmod_list[] = {
     [LYS_DEV_REPLACE] = "replace",
 };
 
-#ifndef  __USE_GNU
-char *
-get_current_dir_name(void)
-{
-    char tmp[PATH_MAX];
-    char *retval;
-
-    if (getcwd(tmp, sizeof(tmp))) {
-        retval = strdup(tmp);
-        LY_CHECK_ERR_RET(!retval, LOGMEM(NULL), NULL);
-        return retval;
-    }
-    return NULL;
-}
-#endif
-
 void *
 ly_realloc(void *ptr, size_t size)
 {

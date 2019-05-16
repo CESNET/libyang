@@ -80,6 +80,11 @@ else()
     set(COMPILER_PACKED_ATTR "")
 endif()
 
+list(APPEND CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
+check_symbol_exists(get_current_dir_name unistd.h HAVE_GET_CURRENT_DIR_NAME)
+check_symbol_exists(vdprintf stdio.h HAVE_VDPRINTF)
+check_symbol_exists(strnstr string.h HAVE_STRNSTR)
+
 include_directories(${PROJECT_BINARY_DIR}/src ${PROJECT_SOURCE_DIR}/src)
 configure_file(${PROJECT_SOURCE_DIR}/src/config.h.in ${PROJECT_BINARY_DIR}/src/config.h @ONLY)
 
@@ -219,10 +224,6 @@ set(headers
     src/dict.h
     src/log.h
     src/set.h)
-
-list(APPEND CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
-check_symbol_exists(vdprintf stdio.h HAVE_VDPRINTF)
-check_symbol_exists(strnstr string.h HAVE_STRNSTR)
 
 # create static libyang library
 if(ENABLE_STATIC)

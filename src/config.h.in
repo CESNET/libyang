@@ -17,6 +17,8 @@
 
 #cmakedefine APPLE
 
+#cmakedefine HAVE_GET_CURRENT_DIR_NAME
+
 #cmakedefine HAVE_VDPRINTF
 
 #cmakedefine HAVE_STRNSTR
