@@ -29,7 +29,7 @@ jobs:
           project:
             name: "CESNET/libyang"
           notification_email: rkrejci@cesnet.cz
-          build_command_prepend: "mkdir build; cd build; cmake ..; make clean"
+          build_command_prepend: "mkdir build && cd build && cmake .. && make clean"
           build_command: "make"
           branch_pattern: libyang2
       before_install:
@@ -56,10 +56,10 @@ jobs:
       before_install:
         - wget https://cmocka.org/files/1.1/cmocka-1.1.2.tar.xz
         - tar -xf cmocka-1.1.2.tar.xz
-        - cd cmocka-1.1.2; mkdir build; cd build; cmake .. && make -j2 && sudo make install; cd ../..
-        - sudo apt-get update -qq; sudo apt-get install -y valgrind libpcre2-dev
+        - cd cmocka-1.1.2 && mkdir build && cd build && cmake .. && make -j2 && sudo make install && cd ../..
+        - sudo apt-get update -qq && sudo apt-get install -y valgrind libpcre2-dev
       script:
-        - mkdir build && cd build; cmake .. && make -j2 && ctest --output-on-failure; cd -
+        - mkdir build && cd build && cmake .. && make -j2 && ctest --output-on-failure && cd -
     - stage: Test
       name: Linux with GCC
       os: linux
@@ -67,11 +67,11 @@ jobs:
       before_install:
         - wget https://cmocka.org/files/1.1/cmocka-1.1.2.tar.xz
         - tar -xf cmocka-1.1.2.tar.xz
-        - cd cmocka-1.1.2; mkdir build; cd build; cmake .. && make -j2 && sudo make install; cd ../..
-        - sudo apt-get update -qq; sudo apt-get install -y valgrind libpcre2-dev
-        - pip install --user codecov; export CFLAGS="-coverage"
+        - cd cmocka-1.1.2 && mkdir build && cd build && cmake .. && make -j2 && sudo make install && cd ../..
+        - sudo apt-get update -qq && sudo apt-get install -y valgrind libpcre2-dev
+        - pip install --user codecov && export CFLAGS="-coverage"
       script:
-        - mkdir build && cd build; cmake .. && make -j2 && ctest --output-on-failure; cd -
+        - mkdir build && cd build && cmake .. && make -j2 && ctest --output-on-failure && cd -
       after_success:
         - codecov
     - stage: Test
@@ -83,8 +83,9 @@ jobs:
       before_install:
         - wget https://cmocka.org/files/1.1/cmocka-1.1.2.tar.xz
         - tar -xf cmocka-1.1.2.tar.xz
-        - cd cmocka-1.1.2; mkdir build; cd build; cmake .. && make -j2 && sudo make install; cd ../..
+        - cd cmocka-1.1.2 && mkdir build && cd build && cmake .. && make -j2 && sudo make install && cd ../..
         - brew update
         - brew install pcre2
       script:
-        - mkdir build && cd build; cmake -DENABLE_VALGRIND_TESTS=OFF .. && make -j2 && ctest --output-on-failure; cd -
+        - mkdir build && cd build && cmake -DENABLE_VALGRIND_TESTS=OFF .. && make -j2 && ctest --output-on-failure && cd -
+
