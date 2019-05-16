@@ -13,6 +13,7 @@
  */
 
 #include "../../src/common.c"
+#include "../../src/compat.c"
 #include "../../src/log.c"
 #include "../../src/set.c"
 #include "../../src/parser_yang.c"

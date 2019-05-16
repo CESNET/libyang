@@ -13,6 +13,7 @@
  */
 
 #include "../../src/common.c"
+#include "../../src/compat.c"
 #include "../../src/set.c"
 #include "../../src/log.c"
 #include "../../src/hash_table.c"

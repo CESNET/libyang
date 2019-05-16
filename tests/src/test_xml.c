@@ -16,6 +16,7 @@
 #include "../../src/set.c"
 #include "../../src/xml.c"
 #include "../../src/common.c"
+#include "../../src/compat.c"
 #include "../../src/log.c"
 #include <stdarg.h>
 #include <stddef.h>
