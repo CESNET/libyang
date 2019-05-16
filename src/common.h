@@ -19,7 +19,6 @@
 #define _GNU_SOURCE
 
 #include <pthread.h>
-#include <stdc-predef.h>
 #include <stddef.h>
 #include <stdint.h>
 
