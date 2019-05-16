@@ -217,13 +217,13 @@ test_comments(void **state)
     ctx.ctx = NULL;
     ctx.line = 1;
 
-    str = " // this is a text of / one * line */ comment\nargument";
+    str = " // this is a text of / one * line */ comment\nargument;";
     assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
-    assert_string_equal("argument", word);
+    assert_string_equal("argument;", word);
     assert_null(buf);
     assert_int_equal(8, len);
 
-    str = "/* this is a \n * text // of / block * comment */\"arg\" + \"ume\" \n + \n \"nt\"";
+    str = "/* this is a \n * text // of / block * comment */\"arg\" + \"ume\" \n + \n \"nt\";";
     assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
     assert_string_equal("argument", word);
     assert_ptr_equal(buf, word);
@@ -236,7 +236,7 @@ test_comments(void **state)
 
     str = p = " this is a not terminated comment x";
     assert_int_equal(LY_EVALID, skip_comment(&ctx, &str, 2));
-    logbuf_assert("Unexpected end-of-file, non-terminated comment. Line number 5.");
+    logbuf_assert("Unexpected end-of-input, non-terminated comment. Line number 5.");
     assert_true(str[0] == '\0');
 }
 
@@ -1031,7 +1031,7 @@ test_module(void **state)
     free(mod);
     m->parsed = NULL;
     assert_int_equal(LY_EVALID, yang_parse_module(&ctx, str, m));
-    logbuf_assert("Invalid character sequence \"module\", expected end-of-file. Line number 3.");
+    logbuf_assert("Trailing garbage \"module q {names...\" after module, expected end-of-input. Line number 3.");
     mod = mod_renew(&ctx);
 
     str = "prefix " SCHEMA_BEGINNING "}";
@@ -1094,7 +1094,7 @@ test_module(void **state)
     lysp_submodule_free(ctx.ctx, submod);
     submod = NULL;
     assert_int_equal(LY_EVALID, yang_parse_submodule(&ctx, str, &submod));
-    logbuf_assert("Invalid character sequence \"module\", expected end-of-file. Line number 3.");
+    logbuf_assert("Trailing garbage \"module q {names...\" after submodule, expected end-of-input. Line number 3.");
 
     str = "prefix " SCHEMA_BEGINNING "}";
     assert_int_equal(LY_EVALID, yang_parse_submodule(&ctx, str, &submod));

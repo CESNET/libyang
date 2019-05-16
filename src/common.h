@@ -175,7 +175,7 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 
 #define LY_VCODE_INCHAR      LYVE_SYNTAX, "Invalid character 0x%x."
 #define LY_VCODE_INSTREXP    LYVE_SYNTAX, "Invalid character sequence \"%.*s\", expected %s."
-#define LY_VCODE_EOF         LYVE_SYNTAX, "Unexpected end-of-file."
+#define LY_VCODE_EOF         LYVE_SYNTAX, "Unexpected end-of-input."
 #define LY_VCODE_NTERM       LYVE_SYNTAX, "%s not terminated."
 #define LY_VCODE_NSUPP       LYVE_SYNTAX, "%s not supported."
 #define LY_VCODE_INSTMT      LYVE_SYNTAX_YANG, "Invalid keyword \"%s\"."

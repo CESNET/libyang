@@ -316,13 +316,13 @@ test_text(void **state)
     str = "";
     assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &buf, &buf_len, &out, &len, &dynamic));
     assert_null(buf);
-    logbuf_assert("Unexpected end-of-file. Line number 2.");
+    logbuf_assert("Unexpected end-of-input. Line number 2.");
 
     ctx.status = LYXML_ELEM_CONTENT;
     str = p = "xxx";
     assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &buf, &buf_len, &out, &len, &dynamic));
     assert_null(buf);
-    logbuf_assert("Unexpected end-of-file. Line number 2.");
+    logbuf_assert("Unexpected end-of-input. Line number 2.");
     assert_ptr_equal(p, str); /* input data not eaten */
 
     /* valid strings */

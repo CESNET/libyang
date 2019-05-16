@@ -362,7 +362,7 @@ skip_comment(struct lys_parser_ctx *ctx, const char **data, int comment)
     }
 
     if (!**data && (comment > 1)) {
-        LOGVAL_YANG(ctx, LYVE_SYNTAX, "Unexpected end-of-file, non-terminated comment.");
+        LOGVAL_YANG(ctx, LYVE_SYNTAX, "Unexpected end-of-input, non-terminated comment.");
         return LY_EVALID;
     }
 
@@ -672,6 +672,10 @@ get_argument(struct lys_parser_ctx *ctx, const char **data, enum yang_arg arg,
             break;
         }
     }
+
+    /* unexpected end of loop */
+    LOGVAL_YANG(ctx, LY_VCODE_EOF);
+    return LY_EVALID;
 
 str_end:
     /* terminating NULL byte for buf */
@@ -4790,7 +4794,7 @@ LY_ERR
 yang_parse_submodule(struct lys_parser_ctx *context, const char *data, struct lysp_submodule **submod)
 {
     LY_ERR ret = LY_SUCCESS;
-    char *word, *buf;
+    char *word;
     size_t word_len;
     enum yang_keyword kw;
     struct lysp_submodule *mod_p = NULL;
@@ -4819,17 +4823,15 @@ yang_parse_submodule(struct lys_parser_ctx *context, const char *data, struct ly
     LY_CHECK_GOTO(ret, cleanup);
 
     /* read some trailing spaces or new lines */
-    ret = get_argument(context, &data, Y_MAYBE_STR_ARG, NULL, &word, &buf, &word_len);
-    LY_CHECK_GOTO(ret, cleanup);
-
-    if (word) {
-        LOGVAL_YANG(context, LYVE_SYNTAX, "Invalid character sequence \"%.*s\", expected end-of-file.",
-               word_len, word);
-        free(buf);
+    while(*data && isspace(*data)) {
+        data++;
+    }
+    if (*data) {
+        LOGVAL_YANG(context, LYVE_SYNTAX, "Trailing garbage \"%.*s%s\" after submodule, expected end-of-input.",
+                    15, data, strlen(data) > 15 ? "..." : "");
         ret = LY_EVALID;
         goto cleanup;
     }
-    assert(!buf);
 
     mod_p->parsing = 0;
     *submod = mod_p;
@@ -4846,7 +4848,7 @@ LY_ERR
 yang_parse_module(struct lys_parser_ctx *context, const char *data, struct lys_module *mod)
 {
     LY_ERR ret = LY_SUCCESS;
-    char *word, *buf;
+    char *word;
     size_t word_len;
     enum yang_keyword kw;
     struct lysp_module *mod_p = NULL;
@@ -4876,17 +4878,15 @@ yang_parse_module(struct lys_parser_ctx *context, const char *data, struct lys_m
     LY_CHECK_GOTO(ret, cleanup);
 
     /* read some trailing spaces or new lines */
-    ret = get_argument(context, &data, Y_MAYBE_STR_ARG, NULL, &word, &buf, &word_len);
-    LY_CHECK_GOTO(ret, cleanup);
-
-    if (word) {
-        LOGVAL_YANG(context, LYVE_SYNTAX, "Invalid character sequence \"%.*s\", expected end-of-file.",
-               word_len, word);
-        free(buf);
+    while(*data && isspace(*data)) {
+        data++;
+    }
+    if (*data) {
+        LOGVAL_YANG(context, LYVE_SYNTAX, "Trailing garbage \"%.*s%s\" after module, expected end-of-input.",
+                    15, data, strlen(data) > 15 ? "..." : "");
         ret = LY_EVALID;
         goto cleanup;
     }
-    assert(!buf);
 
     mod_p->parsing = 0;
     mod->parsed = mod_p;
