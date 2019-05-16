@@ -14,7 +14,6 @@
 #include "common.h"
 
 #include <assert.h>
-#include <bits/types/struct_tm.h>
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
