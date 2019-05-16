@@ -186,7 +186,7 @@ lyxml_check_qname(struct lyxml_context *context, const char **input, unsigned in
  * work with the pointer when the function succeeds. In case of error the value is freed.
  * @return LY_ERR values.
  */
-static LY_ERR
+LY_ERR
 lyxml_ns_add(struct lyxml_context *context, const char *prefix, size_t prefix_len, char *uri)
 {
     struct lyxml_ns *ns;
@@ -218,7 +218,7 @@ lyxml_ns_add(struct lyxml_context *context, const char *prefix, size_t prefix_le
  * @param[in] context XML context to work with.
  * @return LY_ERR values.
  */
-static LY_ERR
+LY_ERR
 lyxml_ns_rm(struct lyxml_context *context)
 {
     unsigned int u;

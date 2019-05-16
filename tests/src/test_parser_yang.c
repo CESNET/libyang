@@ -12,20 +12,6 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "../../src/common.c"
-#include "../../src/compat.c"
-#include "../../src/set.c"
-#include "../../src/log.c"
-#include "../../src/hash_table.c"
-#include "../../src/xpath.c"
-#include "../../src/parser_yang.c"
-#include "../../src/context.c"
-#include "../../src/tree_schema_helpers.c"
-#include "../../src/tree_schema_free.c"
-#include "../../src/tree_schema_compile.c"
-#include "../../src/tree_schema.c"
-#include "../../src/plugins_types.c"
-
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
@@ -34,7 +20,51 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "libyang.h"
+#include "../../src/common.h"
+#include "../../src/tree_schema.h"
+#include "../../src/tree_schema_internal.h"
+
+/* originally static functions from tree_schema_free.c and parser_yang.c */
+void lysp_ext_instance_free(struct ly_ctx *ctx, struct lysp_ext_instance *ext);
+void lysp_ident_free(struct ly_ctx *ctx, struct lysp_ident *ident);
+void lysp_feature_free(struct ly_ctx *ctx, struct lysp_feature *feat);
+void lysp_deviation_free(struct ly_ctx *ctx, struct lysp_deviation *dev);
+void lysp_grp_free(struct ly_ctx *ctx, struct lysp_grp *grp);
+void lysp_action_free(struct ly_ctx *ctx, struct lysp_action *action);
+void lysp_notif_free(struct ly_ctx *ctx, struct lysp_notif *notif);
+void lysp_augment_free(struct ly_ctx *ctx, struct lysp_augment *augment);
+void lysp_deviate_free(struct ly_ctx *ctx, struct lysp_deviate *d);
+void lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node);
+
+LY_ERR buf_add_char(struct ly_ctx *ctx, const char **input, size_t len, char **buf, size_t *buf_len, size_t *buf_used);
+LY_ERR buf_store_char(struct lys_parser_ctx *ctx, const char **input, enum yang_arg arg,
+                      char **word_p, size_t *word_len, char **word_b, size_t *buf_len, int need_buf);
+LY_ERR get_keyword(struct lys_parser_ctx *ctx, const char **data, enum yang_keyword *kw, char **word_p, size_t *word_len);
+LY_ERR get_argument(struct lys_parser_ctx *ctx, const char **data, enum yang_arg arg,
+                    uint16_t *flags, char **word_p, char **word_b, size_t *word_len);
+LY_ERR skip_comment(struct lys_parser_ctx *ctx, const char **data, int comment);
+LY_ERR check_identifierchar(struct lys_parser_ctx *ctx, unsigned int c, int first, int *prefix);
+
+LY_ERR parse_action(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_action **actions);
+LY_ERR parse_any(struct lys_parser_ctx *ctx, const char **data, enum yang_keyword kw, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_augment(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_augment **augments);
+LY_ERR parse_case(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_container(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_deviate(struct lys_parser_ctx *ctx, const char **data, struct lysp_deviate **deviates);
+LY_ERR parse_deviation(struct lys_parser_ctx *ctx, const char **data, struct lysp_deviation **deviations);
+LY_ERR parse_feature(struct lys_parser_ctx *ctx, const char **data, struct lysp_feature **features);
+LY_ERR parse_grouping(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_grp **groupings);
+LY_ERR parse_choice(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_identity(struct lys_parser_ctx *ctx, const char **data, struct lysp_ident **identities);
+LY_ERR parse_leaf(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_leaflist(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_list(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_maxelements(struct lys_parser_ctx *ctx, const char **data, uint32_t *max, uint16_t *flags, struct lysp_ext_instance **exts);
+LY_ERR parse_minelements(struct lys_parser_ctx *ctx, const char **data, uint32_t *min, uint16_t *flags, struct lysp_ext_instance **exts);
+LY_ERR parse_module(struct lys_parser_ctx *ctx, const char **data, struct lysp_module *mod);
+LY_ERR parse_notif(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_notif **notifs);
+LY_ERR parse_submodule(struct lys_parser_ctx *ctx, const char **data, struct lysp_submodule *submod);
+LY_ERR parse_uses(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};

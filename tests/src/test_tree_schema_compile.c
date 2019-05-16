@@ -12,20 +12,6 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "../../src/common.c"
-#include "../../src/compat.c"
-#include "../../src/log.c"
-#include "../../src/set.c"
-#include "../../src/xpath.c"
-#include "../../src/parser_yang.c"
-#include "../../src/tree_schema_helpers.c"
-#include "../../src/tree_schema_free.c"
-#include "../../src/tree_schema_compile.c"
-#include "../../src/tree_schema.c"
-#include "../../src/plugins_types.c"
-#include "../../src/context.c"
-#include "../../src/hash_table.c"
-
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
@@ -34,7 +20,14 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "libyang.h"
+#include "../../src/common.h"
+#include "../../src/tree_schema_internal.h"
+#include "../../src/xpath.h"
+
+void lysc_feature_free(struct ly_ctx *ctx, struct lysc_feature *feat);
+
+LY_ERR lys_path_token(const char **path, const char **prefix, size_t *prefix_len, const char **name, size_t *name_len,
+                      int *parent_times, int *has_predicate);
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};

@@ -15,6 +15,11 @@
 #ifndef LY_TREE_SCHEMA_INTERNAL_H_
 #define LY_TREE_SCHEMA_INTERNAL_H_
 
+#include <stdint.h>
+
+#include "set.h"
+#include "tree_schema.h"
+
 #define LOGVAL_YANG(CTX, ...) LOGVAL((CTX)->ctx, LY_VLOG_LINE, &(CTX)->line, __VA_ARGS__)
 
 /* These 2 macros checks YANG's identifier grammar rule */

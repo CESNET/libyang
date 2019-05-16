@@ -12,22 +12,22 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "common.h"
-#include "../../src/set.c"
-#include "../../src/xml.c"
-#include "../../src/common.c"
-#include "../../src/compat.c"
-#include "../../src/log.c"
+#define _DEFAULT_SOURCE
+#define _GNU_SOURCE
+
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
 #include <cmocka.h>
 
+#include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 
-#include "../../src/printer.c"
-#include "libyang.h"
+#include "../../src/xml.h"
+
+LY_ERR lyxml_ns_add(struct lyxml_context *context, const char *prefix, size_t prefix_len, char *uri);
+LY_ERR lyxml_ns_rm(struct lyxml_context *context);
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};

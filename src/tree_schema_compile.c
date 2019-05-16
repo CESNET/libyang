@@ -2184,7 +2184,7 @@ cleanup:
  * @param[out] has_predicate Flag to mark whether there is a predicate specified.
  * @return LY_ERR value: LY_SUCCESS or LY_EINVAL in case of invalid character in the path.
  */
-static LY_ERR
+LY_ERR
 lys_path_token(const char **path, const char **prefix, size_t *prefix_len, const char **name, size_t *name_len,
                int *parent_times, int *has_predicate)
 {

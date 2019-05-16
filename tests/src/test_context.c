@@ -13,19 +13,6 @@
  */
 
 #include "tests/config.h"
-#include "../../src/common.c"
-#include "../../src/compat.c"
-#include "../../src/log.c"
-#include "../../src/set.c"
-#include "../../src/hash_table.c"
-#include "../../src/xpath.c"
-#include "../../src/parser_yang.c"
-#include "../../src/context.c"
-#include "../../src/tree_schema_helpers.c"
-#include "../../src/tree_schema_free.c"
-#include "../../src/tree_schema_compile.c"
-#include "../../src/tree_schema.c"
-#include "../../src/plugins_types.c"
 
 #include <stdarg.h>
 #include <stddef.h>
@@ -35,7 +22,9 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "libyang.h"
+#include "../../src/common.h"
+#include "../../src/context.h"
+#include "../../src/tree_schema_internal.h"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
