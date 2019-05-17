@@ -207,6 +207,16 @@ test_element(void **state)
     str = "<yin:c⁐element>";
     assert_int_equal(LY_EVALID, lyxml_get_element(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
     logbuf_assert("Invalid character sequence \"⁐element>\", expected whitespace or element tag termination ('>' or '/>'. Line number 1.");
+
+    /* mixed content */
+    str = "<a>text <b>x</b></a>";
+    assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
+    assert_string_equal("text <b>x</b></a>", str);
+    assert_int_equal(LYXML_ELEM_CONTENT, ctx.status);
+    assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &buf, &buf_len, &out, &len, &dynamic));
+    logbuf_assert("Mixed XML content is not allowed (text <b>). Line number 1.");
+    lyxml_context_clear(&ctx);
+
 }
 
 static void
@@ -278,6 +288,8 @@ test_text(void **state)
     int dynamic;
     const char *str, *p;
     char *buf = NULL, *out = NULL;
+    const char *prefix, *name;
+    size_t prefix_len, name_len;
 
     struct lyxml_context ctx;
     memset(&ctx, 0, sizeof ctx);
@@ -306,10 +318,12 @@ test_text(void **state)
 
     /* empty element content - only formating before defining child */
     ctx.status = LYXML_ELEM_CONTENT;
-    str = "\n  <";
+    str = "<x>\n  <y>";
+    assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
     assert_int_equal(LY_EINVAL, lyxml_get_string(&ctx, &str, &buf, &buf_len, &out, &len, &dynamic));
     assert_null(buf);
-    assert_string_equal("<", str);
+    assert_string_equal("<y>", str);
+    lyxml_context_clear(&ctx);
 
     /* empty element content is invalid - missing content terminating character < */
     ctx.status = LYXML_ELEM_CONTENT;
@@ -327,7 +341,8 @@ test_text(void **state)
 
     /* valid strings */
     ctx.status = LYXML_ELEM_CONTENT;
-    str = "€𠜎Øn \n&lt;&amp;&quot;&apos;&gt; &#82;&#x4f;&#x4B;<";
+    str = "<a>€𠜎Øn \n&lt;&amp;&quot;&apos;&gt; &#82;&#x4f;&#x4B;</a>";
+    assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
     assert_int_equal(LY_SUCCESS, lyxml_get_string(&ctx, &str, &buf, &buf_len, &out, &len, &dynamic));
     assert_int_not_equal(0, dynamic);
     assert_non_null(buf);
@@ -335,8 +350,9 @@ test_text(void **state)
     assert_int_equal(22, buf_len);
     assert_int_equal(21, len);
     assert_string_equal("€𠜎Øn \n<&\"\'> ROK", buf);
-    assert_string_equal("<", str);
+    assert_string_equal("", str);
     assert_int_equal(LYXML_ELEMENT, ctx.status);
+    lyxml_context_clear(&ctx);
 
     /* test using n-bytes UTF8 hexadecimal code points */
     ctx.status = LYXML_ATTR_CONTENT;

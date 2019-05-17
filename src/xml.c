@@ -311,9 +311,28 @@ lyxml_get_string(struct lyxml_context *context, const char **input, char **buffe
         LY_CHECK_ERR_RET(!in[offset], LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_EOF), LY_EVALID);
         context->line += newlines;
         if (in[offset] == '<') {
+            const char *name, *prefix;
+            size_t name_len, prefix_len;
+
             (*input) = in + offset;
-            context->status -= 1; /* LYXML_ELEMENT */;
-            return LY_EINVAL;
+
+            /* get know if it is child element (indentation) or closing element (whitespace-only content) */
+            in = *input;
+            rc = lyxml_get_element(context, &in, &prefix, &prefix_len, &name, &name_len);
+            if (name) {
+                /* the element here is not closing element, so we have the just indentation formatting before the child */
+                free(context->elements.objs[--context->elements.count]);
+                context->status -= 1; /* LYXML_ELEMENT */
+                return LY_EINVAL;
+            } else if (rc) {
+                /* some parsing error, so pass it */
+                (*input) = in;
+                return rc;
+            } else {
+                /* whitespace-only content */
+                len = offset - 1;
+                goto success;
+            }
         }
     }
     /* init */
@@ -427,7 +446,29 @@ getbuffer:
             /* in case of element content, keep the leading <,
              * for attribute's value move after the terminating quotation mark */
             if (context->status == LYXML_ELEM_CONTENT) {
+                const char *name, *prefix;
+                size_t name_len, prefix_len;
+
                 in += offset;
+
+                /* get know if it is child element (mixed content) or closing element (regular content) */
+                (*input) = in;
+                rc = lyxml_get_element(context, &in, &prefix, &prefix_len, &name, &name_len);
+                if (name) {
+                    /* the element here is not closing element, so we have not allowed mixed content */
+                    struct lyxml_elem *e = (struct lyxml_elem*)context->elements.objs[--context->elements.count];
+                    LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX, "Mixed XML content is not allowed (%.*s).",
+                           offset + (in - (*input)), &(*input)[-offset]);
+                    free(e);
+                    return LY_EVALID;
+                } else if (rc) {
+                    /* some parsing error, so pass it */
+                    return rc;
+                } else {
+                    /* closing element, so we have regular content */
+                    context->status++;
+                    goto success;
+                }
             } else {
                 in += offset + 1;
             }

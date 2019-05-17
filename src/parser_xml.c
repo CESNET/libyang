@@ -217,7 +217,12 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
 
             if (ctx->status == LYXML_ELEM_CONTENT) {
                 /* get the value */
-                lyxml_get_string((struct lyxml_context *)ctx, data, &buffer, &buffer_size, &value, &value_len, &dynamic);
+                LY_ERR r = lyxml_get_string((struct lyxml_context *)ctx, data, &buffer, &buffer_size, &value, &value_len, &dynamic);
+                if (r == LY_EINVAL) {
+                    /* just indentation of a child element found */
+                    LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_SYNTAX, "Child element inside terminal node \"%s\" found.", cur->schema->name);
+                    goto cleanup;
+                }
                 lyd_value_validate((struct lyd_node_term*)cur, value, value_len,
                                    LY_TYPE_VALIDATE_CANONIZE | (dynamic ? LY_TYPE_VALIDATE_DYNAMIC : 0));
             }
