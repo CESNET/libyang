@@ -144,9 +144,6 @@ xml_print_ns(struct xmlpr_ctx *ctx, const struct lyd_node *node)
                     } else {
                         /* TODO annotations r = modlist_add(&mlist, lys_main_module(attr->annotation->module)); */
                     }
-                    if (r) {
-                        goto print;
-                    }
                 }
             LYD_TREE_DFS_END(child, next, cur)}
         }

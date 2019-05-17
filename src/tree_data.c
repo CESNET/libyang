@@ -194,7 +194,9 @@ lyd_parse_fd_(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, va_lis
 
     LY_CHECK_RET(ly_mmap(ctx, fd, &length, (void **)&addr), NULL);
     result = lyd_parse_mem_(ctx, addr ? addr : "", format, options, ap);
-    ly_munmap(addr, length);
+    if (addr) {
+        ly_munmap(addr, length);
+    }
 
     return result;
 }

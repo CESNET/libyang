@@ -51,7 +51,7 @@ lyd_print_(struct lyout *out, const struct lyd_node *root, LYD_FORMAT format, in
         break;
 #endif
     default:
-        LOGERR(root->schema->module->ctx, LY_EINVAL, "Unknown output format.");
+        LOGERR(out->ctx, LY_EINVAL, "Unknown output format.");
         ret = LY_EINVAL;
         break;
     }
