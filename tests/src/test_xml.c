@@ -434,7 +434,7 @@ test_ns(void **state)
 
     /* simulate closing element2 */
     ctx.elements.count--;
-    assert_int_equal(LY_SUCCESS, lyxml_ns_rm(&ctx));
+    lyxml_ns_rm(&ctx);
     assert_int_equal(2, ctx.ns.count);
 
     ns = lyxml_ns_get(&ctx, "nc", 2);
@@ -444,7 +444,7 @@ test_ns(void **state)
 
     /* simulate closing element1 */
     ctx.elements.count--;
-    assert_int_equal(LY_SUCCESS, lyxml_ns_rm(&ctx));
+    lyxml_ns_rm(&ctx);
     assert_int_equal(0, ctx.ns.count);
 
     assert_null(lyxml_ns_get(&ctx, "nc", 2));
@@ -470,11 +470,11 @@ test_ns2(void **state)
     ctx.elements.count++;
     /* no namespace defined, going out (first, simulate closing of so far open element) */
     ctx.elements.count--;
-    assert_int_equal(LY_SUCCESS, lyxml_ns_rm(&ctx));
+    lyxml_ns_rm(&ctx);
     assert_int_equal(1, ctx.ns.count);
     /* nothing else, going out of the parent element1 (first, simulate closing of so far open element) */
     ctx.elements.count--;
-    assert_int_equal(LY_SUCCESS, lyxml_ns_rm(&ctx));
+    lyxml_ns_rm(&ctx);
     assert_int_equal(0, ctx.ns.count);
 }
 

@@ -216,9 +216,8 @@ lyxml_ns_add(struct lyxml_context *context, const char *prefix, size_t prefix_le
  * @brief Remove all the namespaces defined in the element recently closed (removed from the context->elements).
  *
  * @param[in] context XML context to work with.
- * @return LY_ERR values.
  */
-LY_ERR
+void
 lyxml_ns_rm(struct lyxml_context *context)
 {
     unsigned int u;
@@ -239,8 +238,6 @@ lyxml_ns_rm(struct lyxml_context *context)
         /* cleanup the context's namespaces storage */
         ly_set_erase(&context->ns, NULL);
     }
-
-    return LY_SUCCESS;
 }
 
 const struct lyxml_ns *
@@ -500,7 +497,7 @@ success:
             --context->elements.count;
 
             /* remove also the namespaces conneted with the element */
-            rc = lyxml_ns_rm(context);
+            lyxml_ns_rm(context);
         }
     }
 
@@ -737,7 +734,7 @@ element:
                 --context->elements.count;
 
                 /* remove also the namespaces conneted with the element */
-                rc = lyxml_ns_rm(context);
+                lyxml_ns_rm(context);
 
                 /* do not return element information to announce closing element being currently processed */
                 *name = *prefix = NULL;
