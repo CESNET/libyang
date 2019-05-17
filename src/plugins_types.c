@@ -95,7 +95,7 @@ static LY_ERR
 ly_type_validate_binary(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
                         const char **canonized, struct ly_err_item **err)
 {
-    size_t start, stop, count = 0, u, termination = 0;
+    size_t start = 0, stop = 0, count = 0, u, termination = 0;
     struct lysc_type_bin *type_bin = (struct lysc_type_bin *)type;
     char *errmsg;
 
