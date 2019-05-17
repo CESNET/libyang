@@ -82,10 +82,10 @@ xml_print_ns(struct xmlpr_ctx *ctx, const struct lyd_node *node)
 {
     struct lyd_node *next, *cur, *child;
     struct lyd_attr *attr;
-    struct mlist *mlist = NULL, *miter;
-    int r = 0;
 
 #if 0
+    struct mlist *mlist = NULL, *miter;
+
     const struct lys_module *wdmod = NULL;
 
     /* add node attribute modules */
@@ -151,7 +151,7 @@ xml_print_ns(struct xmlpr_ctx *ctx, const struct lyd_node *node)
     default:
         break;
     }
-
+#if 0
 print:
     /* print used namespaces */
     while (mlist) {
@@ -161,6 +161,7 @@ print:
         ly_print(ctx->out, " xmlns:%s=\"%s\"", miter->module->prefix, miter->module->ns);
         free(miter);
     }
+#endif
 }
 
 /**
