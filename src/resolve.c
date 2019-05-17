@@ -2044,7 +2044,9 @@ get_next_augment:
                 if (!*ret) {
                     *ret = ly_set_new();
                     LY_CHECK_ERR_RETURN(!*ret, LOGMEM(ctx), -1);
-                    ly_set_add(*ret, (void *)start_parent, LY_SET_OPT_USEASLIST);
+                    if (start_parent) {
+                        ly_set_add(*ret, (void *)start_parent, LY_SET_OPT_USEASLIST);
+                    }
                 }
                 ly_set_add(*ret, (void *)sibling, LY_SET_OPT_USEASLIST);
                 if (all_desc) {
