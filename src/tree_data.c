@@ -90,10 +90,11 @@ lyd_search(const struct lyd_node *first, const struct lys_module *module,
 static struct lyd_node *
 lyd_parse_mem_(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options, va_list ap)
 {
-    LY_ERR ret = LY_SUCCESS;
     struct lyd_node *result = NULL;
     const struct lyd_node *rpc_act = NULL, *data_tree = NULL, *iter;
+#if 0
     const char *yang_data_name = NULL;
+#endif
 
     if (lyd_parse_check_options(ctx, options, __func__)) {
         return NULL;
@@ -133,9 +134,11 @@ lyd_parse_mem_(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int opti
             }
         }
     }
+#if 0
     if (options & LYD_OPT_DATA_TEMPLATE) {
         yang_data_name = va_arg(ap, const char *);
     }
+#endif
 
     if (!format) {
         /* TODO try to detect format from the content */
@@ -143,24 +146,19 @@ lyd_parse_mem_(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int opti
 
     switch (format) {
     case LYD_XML:
-        ret = lyd_parse_xml(ctx, data, options, &result);
+        lyd_parse_xml(ctx, data, options, &result);
         break;
 #if 0
     case LYD_JSON:
-        ret = lyd_parse_json(ctx, data, options, rpc_act, data_tree, yang_data_name);
+        lyd_parse_json(ctx, data, options, rpc_act, data_tree, yang_data_name);
         break;
     case LYD_LYB:
-        ret = lyd_parse_lyb(ctx, data, options, data_tree, yang_data_name, NULL);
+        lyd_parse_lyb(ctx, data, options, data_tree, yang_data_name, NULL);
         break;
 #endif
     case LYD_UNKNOWN:
         LOGINT(ctx);
         break;
-    }
-
-    if (ret) {
-        lyd_free_all(result);
-        result = NULL;
     }
 
     return result;

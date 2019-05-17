@@ -57,7 +57,7 @@ setup(void **state)
 {
     struct state_s *s;
     const char *schema_a = "module types {namespace urn:tests:types;prefix t;yang-version 1.1;"
-            "leaf binary {type binary {length 5;}}"
+            "leaf binary {type binary {length 5 {error-message \"This bas64 value must be of length 5.\";}}}"
             "leaf binary-norestr {type binary;}}";
 
     s = calloc(1, sizeof *s);
@@ -113,14 +113,20 @@ test_binary(void **state)
     struct lyd_node *tree;
     struct lyd_node_term *leaf;
 
-    const char *data = "<binary xmlns=\"urn:tests:types\">\n   aGVsbG8=  \t\n  </binary>";
+    const char *data = "<binary xmlns=\"urn:tests:types\">\n   aGVs\nbG8=  \t\n  </binary>"
+                       "<binary-norestr xmlns=\"urn:tests:types\">TQ==</binary-norestr>";
 
     /* valid data (hello) */
     assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("binary", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
-    assert_string_equal("aGVsbG8=", leaf->value.canonized);
+    assert_string_equal("aGVs\nbG8=", leaf->value.canonized);
+    assert_non_null(tree = tree->next);
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("binary-norestr", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("TQ==", leaf->value.canonized);
     lyd_free_all(tree);
 
     /* no data */
@@ -131,6 +137,41 @@ test_binary(void **state)
     leaf = (struct lyd_node_term*)tree;
     assert_string_equal("", leaf->value.canonized);
     lyd_free_all(tree);
+    data = "<binary-norestr xmlns=\"urn:tests:types\"></binary-norestr>";
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("binary-norestr", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("", leaf->value.canonized);
+    lyd_free_all(tree);
+    data = "<binary-norestr xmlns=\"urn:tests:types\"/>";
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("binary-norestr", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("", leaf->value.canonized);
+    lyd_free_all(tree);
+
+    /* invalid base64 character */
+    data = "<binary-norestr xmlns=\"urn:tests:types\">a@bcd=</binary-norestr>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid Base64 character (@). /");
+
+    /* missing data */
+    data = "<binary-norestr xmlns=\"urn:tests:types\">aGVsbG8</binary-norestr>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Base64 encoded value length must be divisible by 4. /");
+    data = "<binary-norestr xmlns=\"urn:tests:types\">VsbG8=</binary-norestr>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Base64 encoded value length must be divisible by 4. /");
+
+    /* invalid binary length */
+    data = "<binary xmlns=\"urn:tests:types\">aGVsbG93b3JsZA==</binary>"; /* helloworld */
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("This bas64 value must be of length 5. /");
+    data = "<binary xmlns=\"urn:tests:types\">TQ==</binary>"; /* M */
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("This bas64 value must be of length 5. /");
 
     s->func = NULL;
 }

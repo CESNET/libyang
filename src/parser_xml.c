@@ -200,6 +200,13 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
         }
         cur->schema = snode;
         cur->parent = parent;
+        if (parent) {
+            parent->child->prev = cur;
+        } else if (prev) {
+            struct lyd_node *iter;
+            for (iter = prev; iter->prev->next; iter = iter->prev);
+            iter->prev = cur;
+        }
         if (prev) {
             cur->prev = prev;
             prev->next = cur;
@@ -223,9 +230,14 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
                     LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_SYNTAX, "Child element inside terminal node \"%s\" found.", cur->schema->name);
                     goto cleanup;
                 }
-                lyd_value_validate((struct lyd_node_term*)cur, value, value_len,
-                                   LY_TYPE_VALIDATE_CANONIZE | (dynamic ? LY_TYPE_VALIDATE_DYNAMIC : 0));
+            } else {
+                /* no content - validate empty value */
+                value = "";
+                value_len = 0;
             }
+            ret = lyd_value_validate((struct lyd_node_term*)cur, value, value_len,
+                                      LY_TYPE_VALIDATE_CANONIZE | (dynamic ? LY_TYPE_VALIDATE_DYNAMIC : 0));
+            LY_CHECK_GOTO(ret, cleanup);
         } else if (snode->nodetype & LYD_NODE_INNER) {
             int dynamic = 0;
             char *buffer = NULL, *value;
@@ -240,6 +252,7 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
             }
             if (ctx->status == LYXML_ELEMENT) {
                 ret = lydxml_nodes(ctx, (struct lyd_node_inner*)cur, data, lyd_node_children_p(cur));
+                LY_CHECK_GOTO(ret, cleanup);
             }
         }
         /* TODO anyxml/anydata */
@@ -261,6 +274,10 @@ lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, struct lyd_node
     xmlctx.line = 1;
 
     ret = lydxml_nodes(&xmlctx, NULL, &data, result);
+    if (ret) {
+        lyd_free_all(*result);
+        *result = NULL;
+    }
     lyxml_context_clear((struct lyxml_context*)&xmlctx);
     return ret;
 }

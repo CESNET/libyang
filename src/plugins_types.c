@@ -103,7 +103,7 @@ ly_type_validate_binary(struct ly_ctx *ctx, struct lysc_type *type, const char *
     *err = NULL;
 
     /* validate characters and remember the number of octets for length validation */
-    if (value) {
+    if (value && value_len) {
         /* silently skip leading/trailing whitespaces */
         for (start = 0; (start < value_len) && isspace(value[start]); start++);
         for (stop = value_len - 1; stop > start && isspace(value[stop]); stop--);
@@ -127,6 +127,8 @@ ly_type_validate_binary(struct ly_ctx *ctx, struct lysc_type *type, const char *
                     /* padding */
                     if (u == stop - 1 && value[stop] == '=') {
                         termination = 2;
+                        count++;
+                        u++;
                     } else if (u == stop){
                         termination = 1;
                     }
@@ -154,13 +156,13 @@ finish:
     }
 
     if (options & LY_TYPE_VALIDATE_CANONIZE) {
-        if (start != 0 || stop != value_len - 1) {
+        if (start != 0 || stop != value_len) {
             *canonized = lydict_insert_zc(ctx, strndup(&value[start], stop + 1 - start));
         } else if (options & LY_TYPE_VALIDATE_DYNAMIC) {
             *canonized = lydict_insert_zc(ctx, (char*)value);
             value = NULL;
         } else {
-            *canonized = lydict_insert(ctx, value, value_len);
+            *canonized = lydict_insert(ctx, value_len ? value : "", value_len);
         }
     }
     if (options & LY_TYPE_VALIDATE_DYNAMIC) {

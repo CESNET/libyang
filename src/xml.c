@@ -330,7 +330,8 @@ lyxml_get_string(struct lyxml_context *context, const char **input, char **buffe
                 return rc;
             } else {
                 /* whitespace-only content */
-                len = offset - 1;
+                len = offset;
+                context->status++;
                 goto success;
             }
         }
