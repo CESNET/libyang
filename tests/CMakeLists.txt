@@ -9,34 +9,6 @@ else()
     find_program(VALGRIND_FOUND valgrind)
 endif()
 
-if(ENABLE_COVERAGE)
-    find_program(PATH_GCOV NAMES gcov)
-    if(NOT PATH_GCOV)
-        message(WARNING "'gcov' executable not found! Disabling building code coverage report.")
-        set(ENABLE_COVERAGE OFF)
-    endif()
-
-    find_program(PATH_LCOV NAMES lcov)
-    if(NOT PATH_GCOV)
-        message(WARNING "'lcov' executable not found! Disabling building code coverage report.")
-        set(ENABLE_COVERAGE OFF)
-    endif()
-
-    find_program(PATH_GENHTML NAMES genhtml)
-    if(NOT PATH_GCOV)
-        message(WARNING "'genhtml' executable not found! Disabling building code coverage report.")
-        set(ENABLE_COVERAGE OFF)
-    endif()
-
-    if(NOT CMAKE_COMPILER_IS_GNUCC)
-        message(WARNING "Compiler is not gcc! Coverage may break the tests!")
-    endif()
-
-    if(ENABLE_COVERAGE)
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} --coverage -fprofile-arcs -ftest-coverage")
-    endif()
-endif()
-
 configure_file("${PROJECT_SOURCE_DIR}/tests/config.h.in" "${PROJECT_BINARY_DIR}/tests/config.h" ESCAPE_QUOTES @ONLY)
 include_directories(SYSTEM ${CMOCKA_INCLUDE_DIR})
 include_directories(${PROJECT_BINARY_DIR})
@@ -44,6 +16,7 @@ include_directories(${PROJECT_BINARY_DIR})
 set(tests)
 set(tests_wraps)
 add_subdirectory(src)
+add_subdirectory(features)
 
 foreach(test_name IN LISTS tests)
     message(STATUS ${test_name})
@@ -88,7 +61,7 @@ if(ENABLE_COVERAGE)
     # Add coverage target
     add_custom_target(coverage
         COMMENT "Generating code coverage..."
-        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}/tests"
+        WORKING_DIRECTORY "${CMAKE_BINARY_DIR}"
         # Cleanup code counters
         COMMAND "${PATH_LCOV}" --directory . --zerocounters --quiet
 
@@ -104,7 +77,7 @@ if(ENABLE_COVERAGE)
             --output-file "${COVERAGE_FILE_RAW}"
         # Remove coverage of tests, system headers, etc.
         COMMAND "${PATH_LCOV}"
-            --remove "${COVERAGE_FILE_RAW}" '${CMAKE_BINARY_DIR}/*' '${CMAKE_BINARY_DIR}/tests/*' '/usr/*'
+            --remove "${COVERAGE_FILE_RAW}" '${CMAKE_SOURCE_DIR}/tests/*'
             --rc lcov_branch_coverage=1
             --quiet --output-file "${COVERAGE_FILE_CLEAN}"
         # Generate HTML report
