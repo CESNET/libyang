@@ -41,7 +41,7 @@ ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t 
                            (basetype & (LY_TYPE_BINARY | LY_TYPE_STRING)) ? "length" : "range");
                 }
                 goto error;
-            } else if ((uint64_t)value < range->parts[u].max_u64) {
+            } else if ((uint64_t)value <= range->parts[u].max_u64) {
                 /* inside the range */
                 return LY_SUCCESS;
             } else if (u == LY_ARRAY_SIZE(range->parts) - 1) {
@@ -112,7 +112,7 @@ ly_type_validate_binary(struct ly_ctx *ctx, struct lysc_type *type, const char *
             goto finish;
         }
 
-        for (count = 0, u = start; u < stop; u++) {
+        for (count = 0, u = start; u <= stop; u++) {
             if (value[u] == '\n') {
                 /* newline formatting */
                 continue;
@@ -125,12 +125,10 @@ ly_type_validate_binary(struct ly_ctx *ctx, struct lysc_type *type, const char *
                 /* non-encoding characters */
                 if (value[u] == '=') {
                     /* padding */
-                    if (u == stop - 1 && value[u + 1] == '=') {
+                    if (u == stop - 1 && value[stop] == '=') {
                         termination = 2;
-                        stop = u + 1;
                     } else if (u == stop){
                         termination = 1;
-                        stop = u;
                     }
                 }
                 if (!termination) {
@@ -157,7 +155,7 @@ finish:
 
     if (options & LY_TYPE_VALIDATE_CANONIZE) {
         if (start != 0 || stop != value_len - 1) {
-            *canonized = lydict_insert_zc(ctx, strndup(&value[start], stop - start));
+            *canonized = lydict_insert_zc(ctx, strndup(&value[start], stop + 1 - start));
         } else if (options & LY_TYPE_VALIDATE_DYNAMIC) {
             *canonized = lydict_insert_zc(ctx, (char*)value);
             value = NULL;

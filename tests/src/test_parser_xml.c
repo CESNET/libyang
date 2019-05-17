@@ -97,12 +97,6 @@ logbuf_clean(void)
 #   define logbuf_assert(str)
 #endif
 
-#define TEST_DUP_GENERIC(PREFIX, MEMBER, VALUE1, VALUE2, FUNC, RESULT, LINE, CLEANUP) \
-    str = PREFIX MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
-    assert_int_equal(LY_EVALID, FUNC(&ctx, &str, RESULT)); \
-    logbuf_assert("Duplicate keyword \""MEMBER"\". Line number "LINE"."); \
-    CLEANUP
-
 static void
 test_leaf(void **state)
 {
