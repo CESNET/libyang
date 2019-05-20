@@ -236,7 +236,7 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
                 value_len = 0;
             }
             ret = lyd_value_validate((struct lyd_node_term*)cur, value, value_len,
-                                      LY_TYPE_VALIDATE_CANONIZE | (dynamic ? LY_TYPE_VALIDATE_DYNAMIC : 0));
+                                      LY_TYPE_OPTS_VALIDATE | LY_TYPE_OPTS_CANONIZE | (dynamic ? LY_TYPE_OPTS_DYNAMIC : 0) | LY_TYPE_OPTS_STORE);
             LY_CHECK_GOTO(ret, cleanup);
         } else if (snode->nodetype & LYD_NODE_INNER) {
             int dynamic = 0;

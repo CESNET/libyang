@@ -90,22 +90,35 @@ lyd_value_validate(struct lyd_node_term *node, const char *value, size_t value_l
     struct ly_err_item *err = NULL;
     struct ly_ctx *ctx;
     struct lysc_type *type;
+    void *priv = NULL;
 
     assert(node);
 
     ctx = node->schema->module->ctx;
     type = ((struct lysc_node_leaf*)node->schema)->type;
     if (type->plugin->validate) {
-        ret = type->plugin->validate(ctx, type, value, value_len, options, &node->value.canonized, &err);
+        ret = type->plugin->validate(ctx, type, value, value_len, options, &node->value.canonized, &err, &priv);
         if (ret) {
             ly_err_print(err);
             LOGVAL(ctx, LY_VLOG_STR, err->path, err->vecode, err->msg);
             ly_err_free(err);
+            goto error;
         }
-    } else if (options & LY_TYPE_VALIDATE_CANONIZE) {
+    } else if (options & LY_TYPE_OPTS_CANONIZE) {
         node->value.canonized = lydict_insert(ctx, value, value_len);
     }
 
+    if ((options & LY_TYPE_OPTS_STORE) && type->plugin->store) {
+        ret = type->plugin->store(ctx, type, options, &node->value, &err, &priv);
+        if (ret) {
+            ly_err_print(err);
+            LOGVAL(ctx, LY_VLOG_STR, err->path, err->vecode, err->msg);
+            ly_err_free(err);
+            goto error;
+        }
+    }
+
+error:
     return ret;
 }
 

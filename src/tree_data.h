@@ -187,7 +187,6 @@ struct lyd_value {
         void *ptr;                   /**< generic data type structure used to store the data */
     };  /**< The union is just a list of shorthands to possible values stored by a type's plugin. libyang works only with the canonized string,
              this specific data type storage is just to simplify use of the values by the libyang users. */
-    LY_DATA_TYPE type;               /**< type of the value in the node, mainly for union to avoid repeating of type detection */
 };
 
 /**

@@ -47,16 +47,20 @@ struct ly_err_item *ly_err_new(LY_LOG_LEVEL level, LY_ERR code, LY_VECODE vecode
 void ly_err_free(void *ptr);
 
 /**
- * @defgroup plugintypevalidateopts Options for type plugin validation callback.
- * Options applicable to ly_type_validate_clb().
+ * @defgroup plugintypeopts Options for type plugin callbacks. The same set of the options is passed to all the type's callbacks used together.
+ *
+ * Options applicable to ly_type_validate_clb() and ly_typestore_clb.
  * @{
  */
-#define LY_TYPE_VALIDATE_CANONIZE 0x01 /**< Canonize the given value and store it (insert into the context's dictionary)
+#define LY_TYPE_OPTS_VALIDATE     0x01 /**< Flag announcing calling of ly_type_validate_clb() of the type */
+#define LY_TYPE_OPTS_CANONIZE     0x02 /**< Canonize the given value and store it (insert into the context's dictionary)
                                             as the value's canonized string */
-#define LY_TYPE_VALIDATE_DYNAMIC  0x02 /**< Flag for the dynamically allocated string value, in this case the value is supposed to be freed
-                                            or directly used to insert into the node's value structure in case of canonization.
+#define LY_TYPE_OPTS_DYNAMIC      0x04 /**< Flag for the dynamically allocated string value, in this case the value is supposed to be freed
+                                            or directly inserted into the context's dictionary (e.g. in case of canonization).
                                             In any case, the caller of the callback does not free the provided string value after calling
-                                            the ly_type_validate_clb() with this option */
+                                            the type's callbacks with this option */
+#define LY_TYPE_OPTS_STORE        0x08 /**< Flag announcing calling of ly_type_store_clb() */
+#define LY_TYPE_OPTS_SCHEMA       0x10 /**< Flag for the value used in schema instead of the data tree */
 
 /**
  * @}
@@ -82,15 +86,16 @@ void ly_err_free(void *ptr);
  * @param[in] type Type of the value being canonized.
  * @param[in] value Lexical representation of the value to be validated (and canonized).
  * @param[in] value_len Length of the given \p value.
- * @param[in] options [Type validation options ](@ref plugintypevalidateopts).
+ * @param[in] options [Type plugin options ](@ref plugintypeopts).
  * @param[out] canonized If LY_TYPE_VALIDATE_CANONIZE option set, the canonized string stored in the @p ctx dictionary is returned via this parameter.
  * @param[out] err Optionally provided error information in case of failure. If not provided to the caller, a generic error message is prepared instead.
  * The error structure can be created by ly_err_new().
+ * @param[out] priv Type's private data passed between all the callbacks. The last callback is supposed to free the data allocated beforehand.
  * @return LY_SUCCESS on success
  * @return LY_ERR value if an error occurred and the value could not be canonized following the type's rules.
  */
 typedef LY_ERR (*ly_type_validate_clb)(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                                       const char **canonized, struct ly_err_item **err);
+                                       const char **canonized, struct ly_err_item **err, void **priv);
 
 /**
  * @brief Callback for storing user type values.
@@ -100,14 +105,16 @@ typedef LY_ERR (*ly_type_validate_clb)(struct ly_ctx *ctx, struct lysc_type *typ
  *
  * @param[in] ctx libyang ctx to enable correct manipulation with values that are in the dictionary.
  * @param[in] type Type of the value being stored.
- * @param[in] value_str Canonized string value to be stored.
- * @param[in,out] value Value structure to store the data in the type plugin specific way.
+ * @param[in] options [Type plugin options ](@ref plugintypeopts).
+ * @param[in,out] value Value structure to store the data in the type's specific way. The structure already contains canonized value string to be processed.
  * @param[out] err Optionally provided error information in case of failure. If not provided to the caller, a generic error message is prepared instead.
  * The error structure can be created by ly_err_new().
+ * @param[out] priv Type's private data passed between all the callbacks. The last callback is supposed to free the data allocated beforehand.
  * @return LY_SUCCESS on success
  * @return LY_ERR value if an error occurred and the value could not be stored for any reason.
  */
-typedef LY_ERR (*ly_type_store_clb)(struct ly_ctx *ctx, struct lysc_type *type, const char *value_str, struct lyd_value *value, struct ly_err_item **err);
+typedef LY_ERR (*ly_type_store_clb)(struct ly_ctx *ctx, struct lysc_type *type, int options,
+                                    struct lyd_value *value, struct ly_err_item **err, void **priv);
 
 /**
  * @brief Hold type-specific functions for various operations with the data values.
@@ -129,13 +136,46 @@ struct lysc_type_plugin {
 extern struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT];
 
 /**
+ * @brief Unsigned integer value parser and validator.
+ *
+ * @param[in] datatype Type of the integer for logging.
+ * @param[in] base Base of the integer's lexical representation. In case of built-in types, data must be represented in decimal format (base 10),
+ * but default values in schemas can be represented also as hexadecimal or octal values (base 0).
+ * @param[in] min Lower bound of the type.
+ * @param[in] max Upper bound of the type.
+ * @param[in] value Value string to parse.
+ * @param[in] value_len Length of the @p value (mandatory parameter).
+ * @param[out] ret Parsed integer value (optional).
+ * @param[out] err Error information in case of failure. The error structure can be freed by ly_err_free().
+ * @return LY_ERR value according to the result of the parsing and validation.
+ */
+LY_ERR parse_int(const char *datatype, int base, int64_t min, int64_t max, const char *value, size_t value_len,
+                 int64_t *ret, struct ly_err_item **err);
+
+/**
+ * @brief Unsigned integer value parser and validator.
+ *
+ * @param[in] datatype Type of the unsigned integer for logging.
+ * @param[in] base Base of the integer's lexical representation. In case of built-in types, data must be represented in decimal format (base 10),
+ * but default values in schemas can be represented also as hexadecimal or octal values (base 0).
+ * @param[in] min Lower bound of the type.
+ * @param[in] max Upper bound of the type.
+ * @param[in] value Value string to parse.
+ * @param[in] value_len Length of the @p value (mandatory parameter).
+ * @param[out] ret Parsed unsigned integer value (optional).
+ * @param[out] err Error information in case of failure. The error structure can be freed by ly_err_free().
+ * @return LY_ERR value according to the result of the parsing and validation.
+ */
+LY_ERR parse_uint(const char *datatype, int base, uint64_t min, uint64_t max, const char *value, size_t value_len,
+                  uint64_t *ret, struct ly_err_item **err);
+
+/**
  * @brief Data type validator for a range/length-restricted values.
  *
- * @param[in] ctx libyang context
+ * @param[in] basetype Base built-in type of the type with the range specified to get know if the @p range structure represents range or length restriction.
  * @param[in] range Range (length) restriction information.
  * @param[in] value Value to check. In case of basetypes using unsigned integer values, the value is actually cast to uint64_t.
- * @param[out] err Optionally provided error information in case of failure. If not provided to the caller, a generic error message is prepared instead.
- * The error structure can be created by ly_err_new().
+ * @param[out] err Error information in case of failure. The error structure can be freed by ly_err_free().
  * @return LY_ERR value according to the result of the validation.
  */
 LY_ERR ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t value, struct ly_err_item **err);

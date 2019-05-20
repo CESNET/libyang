@@ -42,7 +42,7 @@ LY_ERR lyd_parse_check_options(struct ly_ctx *ctx, int options, const char *func
  *
  * According to the given options, the value can be also canonized or stored into the node's value structure.
  *
- * @param[in] options [Type validation options ](@ref plugintypevalidateopts).
+ * @param[in] options [Type validation options ](@ref plugintypeopts).
  */
 LY_ERR lyd_value_validate(struct lyd_node_term *node, const char *value, size_t value_len, int options);
 

@@ -58,7 +58,15 @@ setup(void **state)
     struct state_s *s;
     const char *schema_a = "module types {namespace urn:tests:types;prefix t;yang-version 1.1;"
             "leaf binary {type binary {length 5 {error-message \"This bas64 value must be of length 5.\";}}}"
-            "leaf binary-norestr {type binary;}}";
+            "leaf binary-norestr {type binary;}"
+            "leaf int8 {type int8 {range 10..20;}}"
+            "leaf uint8 {type uint8 {range 150..200;}}"
+            "leaf int16 {type int16 {range -20..-10;}}"
+            "leaf uint16 {type uint16 {range 150..200;}}"
+            "leaf int32 {type int32;}"
+            "leaf uint32 {type uint32;}"
+            "leaf int64 {type int64;}"
+            "leaf uint64 {type uint64;}}";;
 
     s = calloc(1, sizeof *s);
     assert_non_null(s);
@@ -103,6 +111,88 @@ logbuf_clean(void)
 #else
 #   define logbuf_assert(str)
 #endif
+
+static void
+test_int(void **state)
+{
+    struct state_s *s = (struct state_s*)(*state);
+    s->func = test_int;
+
+    struct lyd_node *tree;
+    struct lyd_node_term *leaf;
+
+    const char *data = "<int8 xmlns=\"urn:tests:types\">\n 15 \t\n  </int8>";
+
+    /* valid data */
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("int8", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("15", leaf->value.canonized);
+    assert_int_equal(15, leaf->value.int8);
+    lyd_free_all(tree);
+
+    /* invalid range */
+    data = "<int8 xmlns=\"urn:tests:types\">1</int8>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Value \"1\" does not satisfy the range constraint. /");
+
+    data = "<int16 xmlns=\"urn:tests:types\">100</int16>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Value \"100\" does not satisfy the range constraint. /");
+
+    /* invalid value */
+    data = "<int32 xmlns=\"urn:tests:types\">0x01</int32>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid int32 value 0x01. /");
+
+    data = "<int64 xmlns=\"urn:tests:types\"></int64>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid empty int64 value. /");
+
+    s->func = NULL;
+}
+
+static void
+test_uint(void **state)
+{
+    struct state_s *s = (struct state_s*)(*state);
+    s->func = test_uint;
+
+    struct lyd_node *tree;
+    struct lyd_node_term *leaf;
+
+    const char *data = "<uint8 xmlns=\"urn:tests:types\">\n 150 \t\n  </uint8>";
+
+    /* valid data */
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("uint8", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("150", leaf->value.canonized);
+    assert_int_equal(150, leaf->value.uint8);
+    lyd_free_all(tree);
+
+    /* invalid range */
+    data = "<uint8 xmlns=\"urn:tests:types\">\n 15 \t\n  </uint8>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Value \"15\" does not satisfy the range constraint. /");
+
+    data = "<uint16 xmlns=\"urn:tests:types\">\n 1500 \t\n  </uint16>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Value \"1500\" does not satisfy the range constraint. /");
+
+    /* invalid value */
+    data = "<uint32 xmlns=\"urn:tests:types\">-10</uint32>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid uint32 value -10. /");
+
+    data = "<uint64 xmlns=\"urn:tests:types\"/>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid empty uint64 value. /");
+
+    s->func = NULL;
+}
 
 static void
 test_binary(void **state)
@@ -179,6 +269,8 @@ test_binary(void **state)
 int main(void)
 {
     const struct CMUnitTest tests[] = {
+        cmocka_unit_test_setup_teardown(test_int, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_uint, setup, teardown),
         cmocka_unit_test_setup_teardown(test_binary, setup, teardown),
     };
 
