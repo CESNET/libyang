@@ -327,7 +327,7 @@ lyxml_get_string(struct lyxml_context *context, const char **input, char **buffe
             } else if (rc) {
                 /* some parsing error, so pass it */
                 (*input) = in;
-                return rc;
+                goto error;
             } else {
                 /* whitespace-only content */
                 len = offset;
@@ -461,10 +461,10 @@ getbuffer:
                     LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX, "Mixed XML content is not allowed (%.*s).",
                            offset + (in - (*input)), &(*input)[-offset]);
                     free(e);
-                    return LY_EVALID;
+                    goto error;
                 } else if (rc) {
-                    /* some parsing error, so pass it */
-                    return rc;
+                    /* some parsing error */
+                    goto error;
                 } else {
                     /* closing element, so we have regular content */
                     context->status++;
