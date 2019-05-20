@@ -176,15 +176,15 @@ ly_type_parse_int_builtin(LY_DATA_TYPE basetype, const char *value, size_t value
 {
     switch (basetype) {
     case LY_TYPE_INT8:
-        return parse_int("int16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, __INT64_C(-128), __INT64_C(127), value, value_len, val, err);
+        return parse_int("int16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, INT64_C(-128), INT64_C(127), value, value_len, val, err);
     case LY_TYPE_INT16:
-        return parse_int("int16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, __INT64_C(-32768), __INT64_C(32767), value, value_len, val, err);
+        return parse_int("int16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, INT64_C(-32768), INT64_C(32767), value, value_len, val, err);
     case LY_TYPE_INT32:
         return parse_int("int32", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10,
-                         __INT64_C(-2147483648), __INT64_C(2147483647), value, value_len, val, err);
+                         INT64_C(-2147483648), INT64_C(2147483647), value, value_len, val, err);
     case LY_TYPE_INT64:
         return parse_int("int64", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10,
-                         __INT64_C(-9223372036854775807) - __INT64_C(1), __INT64_C(9223372036854775807), value, value_len, val, err);
+                         INT64_C(-9223372036854775807) - INT64_C(1), INT64_C(9223372036854775807), value, value_len, val, err);
     default:
         LOGINT(NULL);
         return LY_EINVAL;
@@ -256,13 +256,13 @@ ly_type_parse_uint_builtin(LY_DATA_TYPE basetype, const char *value, size_t valu
 {
     switch (basetype) {
     case LY_TYPE_UINT8:
-        return parse_uint("uint16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, 0, __UINT64_C(255), value, value_len, val, err);
+        return parse_uint("uint16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, 0, UINT64_C(255), value, value_len, val, err);
     case LY_TYPE_UINT16:
-        return parse_uint("uint16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, 0, __UINT64_C(65535), value, value_len, val, err);
+        return parse_uint("uint16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, 0, UINT64_C(65535), value, value_len, val, err);
     case LY_TYPE_UINT32:
-        return parse_uint("uint32", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, 0, __UINT64_C(4294967295), value, value_len, val, err);
+        return parse_uint("uint32", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, 0, UINT64_C(4294967295), value, value_len, val, err);
     case LY_TYPE_UINT64:
-        return parse_uint("uint64", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, 0, __UINT64_C(18446744073709551615), value, value_len, val, err);
+        return parse_uint("uint64", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, 0, UINT64_C(18446744073709551615), value, value_len, val, err);
     default:
         LOGINT(NULL);
         return LY_EINVAL;
