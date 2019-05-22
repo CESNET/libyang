@@ -102,7 +102,7 @@ ly_set_dup(const struct ly_set *set, void *(*duplicator)(void *obj))
     new = malloc(sizeof *new);
     LY_CHECK_ERR_RET(!new, LOGMEM(NULL), NULL);
     new->count = set->count;
-    new->size = set->size;
+    new->size = set->count; /* optimize the size */
     new->objs = malloc(new->size * sizeof *(new->objs));
     LY_CHECK_ERR_RET(!new->objs, LOGMEM(NULL); free(new), NULL);
     if (duplicator) {
