@@ -442,24 +442,21 @@ ly_type_validate_bits(struct ly_ctx *ctx, struct lysc_type *type, const char *va
     char *errmsg = NULL;
     struct lysc_type_bits *type_bits = (struct lysc_type_bits*)type;
     int iscanonical = 1;
-    size_t ws_count = 0;
-    size_t lws_count = 0; /* leading whitespace count */
+    size_t ws_count;
+    size_t lws_count; /* leading whitespace count */
 
     /* remember the present items for further work */
     items = ly_set_new();
     LY_CHECK_RET(!items, LY_EMEM);
 
-    for (index = 0; index < value_len; index++) {
+    for (index = ws_count = lws_count = 0; index < value_len; index++, ws_count++) {
         if (isspace(value[index])) {
-            if (iscanonical && (ws_count || !index || value[index] != ' ')) {
-                /* this whitespace breaks canonical format of the value */
-                iscanonical = 0;
-            }
-            ws_count++;
             continue;
         }
         if (index == ws_count) {
             lws_count = ws_count;
+        } else if (ws_count > 1) {
+            iscanonical = 0;
         }
         ws_count = 0;
 

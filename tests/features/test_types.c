@@ -214,8 +214,7 @@ test_bits(void **state)
     assert_string_equal("zero two", leaf->value.canonized);
     lyd_free_all(tree);
 
-    /* canonical value */
-    data = "<bits xmlns=\"urn:tests:types\">zero two</bits>";
+    data = "<bits xmlns=\"urn:tests:types\">zero  two</bits>";
     assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("bits", tree->schema->name);
