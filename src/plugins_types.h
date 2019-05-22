@@ -100,9 +100,6 @@ typedef LY_ERR (*ly_type_validate_clb)(struct ly_ctx *ctx, struct lysc_type *typ
 /**
  * @brief Callback for storing user type values.
  *
- * This callback should overwrite the value stored in \p value using some custom encoding. Be careful,
- * if the type is #LY_TYPE_BITS, the bits must be freed before overwritting the union value.
- *
  * @param[in] ctx libyang ctx to enable correct manipulation with values that are in the dictionary.
  * @param[in] type Type of the value being stored.
  * @param[in] options [Type plugin options ](@ref plugintypeopts).
@@ -117,6 +114,16 @@ typedef LY_ERR (*ly_type_store_clb)(struct ly_ctx *ctx, struct lysc_type *type, 
                                     struct lyd_value *value, struct ly_err_item **err, void **priv);
 
 /**
+ * @brief Callback for freeing the user type values stored by ly_type_store_clb().
+ *
+ *
+ * @param[in] ctx libyang ctx to enable correct manipulation with values that are in the dictionary.
+ * @param[in] type Type of the stored value.
+ * @param[in,out] value Value structure to free the data stored there by the plugin's ly_type_store_clb() callback
+ */
+typedef void (*ly_type_free_clb)(struct ly_ctx *ctx, struct lysc_type *type, struct lyd_value *value);
+
+/**
  * @brief Hold type-specific functions for various operations with the data values.
  *
  * libyang includes set of plugins for all the built-in types. They are, by default, inherited to the derived types.
@@ -127,6 +134,7 @@ struct lysc_type_plugin {
     LY_DATA_TYPE type;               /**< implemented type, use LY_TYPE_UNKNOWN for derived data types */
     ly_type_validate_clb validate;   /**< function to validate and canonize given value */
     ly_type_store_clb store;         /**< function to store the value in the type-specific way */
+    ly_type_free_clb free;           /**< function to free the type-spceific way stored value */
     uint32_t flags;                  /**< [type flags ](@ref plugintypeflags). */
 };
 

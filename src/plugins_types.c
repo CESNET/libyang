@@ -13,6 +13,7 @@
  */
 #include "common.h"
 
+#include <assert.h>
 #include <ctype.h>
 #include <errno.h>
 #include <inttypes.h>
@@ -421,16 +422,207 @@ error:
     return (*err)->no;
 }
 
+/**
+ * @brief Validate and canonize value of the YANG built-in bits type.
+ *
+ * Implementation of the ly_type_validate_clb.
+ */
+static LY_ERR
+ly_type_validate_bits(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
+                       const char **canonized, struct ly_err_item **err, void **priv)
+{
+    LY_ERR ret = LY_EVALID;
+    size_t item_len;
+    const char *item;
+    struct ly_set *items = NULL, *items_ordered = NULL;
+    size_t buf_size = 0;
+    char *buf = NULL;
+    size_t index;
+    unsigned int u, v;
+    char *errmsg = NULL;
+    struct lysc_type_bits *type_bits = (struct lysc_type_bits*)type;
+    int iscanonical = 1;
+    size_t ws_count = 0;
+    size_t lws_count = 0; /* leading whitespace count */
+
+    /* remember the present items for further work */
+    items = ly_set_new();
+    LY_CHECK_RET(!items, LY_EMEM);
+
+    for (index = 0; index < value_len; index++) {
+        if (isspace(value[index])) {
+            if (iscanonical && (ws_count || !index || value[index] != ' ')) {
+                /* this whitespace breaks canonical format of the value */
+                iscanonical = 0;
+            }
+            ws_count++;
+            continue;
+        }
+        if (index == ws_count) {
+            lws_count = ws_count;
+        }
+        ws_count = 0;
+
+        /* start of the item */
+        item = &value[index];
+        for (item_len = 0; index + item_len < value_len && !isspace(item[item_len]); item_len++);
+        LY_ARRAY_FOR(type_bits->bits, u) {
+            if (!strncmp(type_bits->bits[u].name, item, item_len) && type_bits->bits[u].name[item_len] == '\0') {
+                /* we have the match */
+                int inserted;
+
+                /* check that the bit is not disabled */
+                LY_ARRAY_FOR(type_bits->bits[u].iffeatures, v) {
+                    if (!lysc_iffeature_value(&type_bits->bits[u].iffeatures[v])) {
+                        asprintf(&errmsg, "Bit \"%s\" is disabled by its %u. if-feature condition.",
+                                 type_bits->bits[u].name, v + 1);
+                        goto error;
+                    }
+                }
+
+                if (iscanonical &&items->count && type_bits->bits[u].position < ((struct lysc_type_bitenum_item*)items->objs[items->count - 1])->position) {
+                    iscanonical = 0;
+                }
+                inserted = ly_set_add(items, &type_bits->bits[u], 0);
+                LY_CHECK_ERR_GOTO(inserted == -1, ret = LY_EMEM, error);
+                if ((unsigned int)inserted != items->count - 1) {
+                    asprintf(&errmsg, "Bit \"%s\" used multiple times.", type_bits->bits[u].name);
+                    goto error;
+                }
+                goto next;
+            }
+        }
+        /* item not found */
+        asprintf(&errmsg, "Invalid bit value \"%.*s\".", (int)item_len, item);
+        goto error;
+next:
+        /* remember for canonized form: item + space/termination-byte */
+        buf_size += item_len + 1;
+        index += item_len;
+    }
+    /* validation done */
+
+    if (options & LY_TYPE_OPTS_CANONIZE) {
+        if (options & LY_TYPE_OPTS_STORE) {
+            if (iscanonical) {
+                items_ordered = items;
+                items = NULL;
+            } else {
+                items_ordered = ly_set_dup(items, NULL);
+                LY_CHECK_ERR_GOTO(!items_ordered, LOGMEM(ctx); ret = LY_EMEM, error);
+                items_ordered->count = 0;
+            }
+        }
+        if (iscanonical) {
+            if (!ws_count && !lws_count && (options & LY_TYPE_OPTS_DYNAMIC)) {
+                *canonized = lydict_insert_zc(ctx, (char*)value);
+                value = NULL;
+            } else {
+                *canonized = lydict_insert(ctx, value_len ? &value[lws_count] : "", value_len - ws_count - lws_count);
+            }
+        } else {
+            buf = malloc(buf_size * sizeof *buf);
+            LY_CHECK_ERR_GOTO(!buf, LOGMEM(ctx); ret = LY_EMEM, error);
+            index = 0;
+
+            /* generate ordered bits list */
+            LY_ARRAY_FOR(type_bits->bits, u) {
+                int i = ly_set_contains(items, &type_bits->bits[u]);
+                if (i != -1) {
+                    int c = sprintf(&buf[index], "%s%s", index ? " " : "", type_bits->bits[u].name);
+                    LY_CHECK_ERR_GOTO(c < 0, LOGERR(ctx, LY_ESYS, "sprintf() failed."); ret = LY_ESYS, error);
+                    index += c;
+                    if (items_ordered) {
+                        ly_set_add(items_ordered, &type_bits->bits[u], LY_SET_OPT_USEASLIST);
+                    }
+                }
+            }
+            assert(buf_size == index + 1);
+            /* termination NULL-byte */
+            buf[index] = '\0';
+
+            *canonized = lydict_insert_zc(ctx, buf);
+            buf = NULL;
+        }
+    }
+
+    if (options & LY_TYPE_OPTS_STORE) {
+        /* remember the set to store */
+        if (items_ordered) {
+            *priv = items_ordered;
+        } else {
+            *priv = items;
+            items = NULL;
+        }
+    }
+
+    if (options & LY_TYPE_OPTS_DYNAMIC) {
+        free((char*)value);
+    }
+
+    ly_set_free(items, NULL);
+    return LY_SUCCESS;
+error:
+    if (errmsg) {
+        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_RESTRICTION, errmsg, NULL, NULL);
+    }
+    ly_set_free(items, NULL);
+    ly_set_free(items_ordered, NULL);
+    free(buf);
+    return ret;
+}
+
+/**
+ * @brief Store value of the YANG built-in bits type.
+ *
+ * Implementation of the ly_type_store_clb.
+ */
+static LY_ERR
+ly_type_store_bits(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), int options,
+                   struct lyd_value *value, struct ly_err_item **UNUSED(err), void **priv)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct ly_set *items = NULL;
+    unsigned int u;
+
+    if (options & LY_TYPE_OPTS_VALIDATE) {
+        /* the value was prepared by ly_type_validate_bits() */
+        items = (struct ly_set *)(*priv);
+        LY_ARRAY_CREATE_GOTO(ctx, value->bits_items, items->count, ret, cleanup);
+        for (u = 0; u < items->count; u++) {
+            value->bits_items[u] = items->objs[u];
+            LY_ARRAY_INCREMENT(value->bits_items);
+        }
+    } else {
+        /* TODO if there is usecase for store without validate */
+    }
+
+cleanup:
+    ly_set_free(items, NULL);
+    return ret;
+}
+
+/**
+ * @brief Free value of the YANG built-in bits type.
+ *
+ * Implementation of the ly_type_free_clb.
+ */
+static void
+ly_type_free_bits(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(type), struct lyd_value *value)
+{
+    LY_ARRAY_FREE(value->bits_items);
+    value->bits_items = NULL;
+}
 
 struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT] = {
     {0}, /* LY_TYPE_UNKNOWN */
-    {.type = LY_TYPE_BINARY, .validate = ly_type_validate_binary, .store = NULL},
-    {.type = LY_TYPE_UINT8, .validate = ly_type_validate_uint, .store = ly_type_store_uint},
-    {.type = LY_TYPE_UINT16, .validate = ly_type_validate_uint, .store = ly_type_store_uint},
-    {.type = LY_TYPE_UINT32, .validate = ly_type_validate_uint, .store = ly_type_store_uint},
-    {.type = LY_TYPE_UINT64, .validate = ly_type_validate_uint, .store = ly_type_store_uint},
+    {.type = LY_TYPE_BINARY, .validate = ly_type_validate_binary, .store = NULL, .free = NULL},
+    {.type = LY_TYPE_UINT8, .validate = ly_type_validate_uint, .store = ly_type_store_uint, .free = NULL},
+    {.type = LY_TYPE_UINT16, .validate = ly_type_validate_uint, .store = ly_type_store_uint, .free = NULL},
+    {.type = LY_TYPE_UINT32, .validate = ly_type_validate_uint, .store = ly_type_store_uint, .free = NULL},
+    {.type = LY_TYPE_UINT64, .validate = ly_type_validate_uint, .store = ly_type_store_uint, .free = NULL},
     {0}, /* TODO LY_TYPE_STRING */
-    {0}, /* TODO LY_TYPE_BITS */
+    {.type = LY_TYPE_BITS, .validate = ly_type_validate_bits, .store = ly_type_store_bits, .free = ly_type_free_bits},
     {0}, /* TODO LY_TYPE_BOOL */
     {0}, /* TODO LY_TYPE_DEC64 */
     {0}, /* TODO LY_TYPE_EMPTY */
@@ -439,9 +631,9 @@ struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT] = {
     {0}, /* TODO LY_TYPE_INST */
     {0}, /* TODO LY_TYPE_LEAFREF */
     {0}, /* TODO LY_TYPE_UNION */
-    {.type = LY_TYPE_INT8, .validate = ly_type_validate_int, .store = ly_type_store_int},
-    {.type = LY_TYPE_INT16, .validate = ly_type_validate_int, .store = ly_type_store_int},
-    {.type = LY_TYPE_INT32, .validate = ly_type_validate_int, .store = ly_type_store_int},
-    {.type = LY_TYPE_INT64, .validate = ly_type_validate_int, .store = ly_type_store_int},
+    {.type = LY_TYPE_INT8, .validate = ly_type_validate_int, .store = ly_type_store_int, .free = NULL},
+    {.type = LY_TYPE_INT16, .validate = ly_type_validate_int, .store = ly_type_store_int, .free = NULL},
+    {.type = LY_TYPE_INT32, .validate = ly_type_validate_int, .store = ly_type_store_int, .free = NULL},
+    {.type = LY_TYPE_INT64, .validate = ly_type_validate_int, .store = ly_type_store_int, .free = NULL},
 };
 

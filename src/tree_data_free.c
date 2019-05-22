@@ -23,6 +23,7 @@
 #include "tree_data.h"
 #include "tree_schema.h"
 #include "tree_data_internal.h"
+#include "plugins_types.h"
 
 API LY_ERR
 lyd_unlink_tree(struct lyd_node *node)
@@ -78,9 +79,14 @@ lyd_unlink_tree(struct lyd_node *node)
  * @param[in] value Data value structure to clean - since it is mostly part of other structure, only content is freed.
  */
 static void
-lyd_free_value(struct ly_ctx *ctx, struct lyd_value *value)
+lyd_free_value(struct ly_ctx *ctx, struct lyd_value *value, struct lysc_type *type)
 {
+    if (type->plugin->free) {
+        type->plugin->free(ctx, type, value);
+    }
+
     FREE_STRING(ctx, value->canonized);
+
 }
 
 API void
@@ -121,7 +127,7 @@ lyd_free_attr(struct ly_ctx *ctx, struct lyd_attr *attr, int recursive)
         iter = iter->next;
 
         FREE_STRING(ctx, attr->name);
-        lyd_free_value(ctx, &attr->value);
+        lyd_free_value(ctx, &attr->value, NULL /* TODO */);
         free(attr);
     }
 }
@@ -178,7 +184,7 @@ lyd_free_subtree(struct ly_ctx *ctx, struct lyd_node *node, int top)
         }
 #endif
     } else if (node->schema->nodetype & LYD_NODE_TERM) {
-        lyd_free_value(ctx, &((struct lyd_node_term*)node)->value);
+        lyd_free_value(ctx, &((struct lyd_node_term*)node)->value, ((struct lysc_node_leaf*)node->schema)->type);
     }
 
     /* free the node's attributes */

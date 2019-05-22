@@ -175,6 +175,7 @@ struct lyd_value {
         int8_t boolean;              /**< 0 as false, 1 as true */
         int64_t dec64;               /**< decimal64: value = dec64 / 10^fraction-digits  */
         struct lysc_type_bitenum_item *enum_item;  /**< pointer to the definition of the enumeration value */
+        struct lysc_type_bitenum_item **bits_items; /**< list of set pointers to the specification of the set bits ([sized array](@ref sizedarrays)) */
         struct lysc_ident *ident;    /**< pointer to the schema definition of the identityref value */
         int8_t int8;                 /**< 8-bit signed integer */
         int16_t int16;               /**< 16-bit signed integer */

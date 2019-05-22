@@ -56,7 +56,7 @@ static int
 setup(void **state)
 {
     struct state_s *s;
-    const char *schema_a = "module types {namespace urn:tests:types;prefix t;yang-version 1.1;"
+    const char *schema_a = "module types {namespace urn:tests:types;prefix t;yang-version 1.1; feature f;"
             "leaf binary {type binary {length 5 {error-message \"This bas64 value must be of length 5.\";}}}"
             "leaf binary-norestr {type binary;}"
             "leaf int8 {type int8 {range 10..20;}}"
@@ -66,7 +66,8 @@ setup(void **state)
             "leaf int32 {type int32;}"
             "leaf uint32 {type uint32;}"
             "leaf int64 {type int64;}"
-            "leaf uint64 {type uint64;}}";;
+            "leaf uint64 {type uint64;}"
+            "leaf bits {type bits {bit zero; bit one {if-feature f;} bit two;}}}";
 
     s = calloc(1, sizeof *s);
     assert_non_null(s);
@@ -195,6 +196,61 @@ test_uint(void **state)
 }
 
 static void
+test_bits(void **state)
+{
+    struct state_s *s = (struct state_s*)(*state);
+    s->func = test_bits;
+
+    struct lyd_node *tree;
+    struct lyd_node_term *leaf;
+
+    const char *data = "<bits xmlns=\"urn:tests:types\">\n two    \t\nzero\n  </bits>";
+
+    /* valid data */
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("bits", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("zero two", leaf->value.canonized);
+    lyd_free_all(tree);
+
+    /* canonical value */
+    data = "<bits xmlns=\"urn:tests:types\">zero two</bits>";
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("bits", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("zero two", leaf->value.canonized);
+    lyd_free_all(tree);
+
+    /* disabled feature */
+    data = "<bits xmlns=\"urn:tests:types\"> \t one \n\t </bits>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Bit \"one\" is disabled by its 1. if-feature condition. /");
+
+    /* enable that feature */
+    assert_int_equal(LY_SUCCESS, lys_feature_enable(ly_ctx_get_module(s->ctx, "types", NULL), "f"));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("bits", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("one", leaf->value.canonized);
+    lyd_free_all(tree);
+
+    /* multiple instances of the bit */
+    data = "<bits xmlns=\"urn:tests:types\">one zero one</bits>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Bit \"one\" used multiple times. /");
+
+    /* invalid bit value */
+    data = "<bits xmlns=\"urn:tests:types\">one xero one</bits>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid bit value \"xero\". /");
+
+    s->func = NULL;
+}
+
+static void
 test_binary(void **state)
 {
     struct state_s *s = (struct state_s*)(*state);
@@ -271,6 +327,7 @@ int main(void)
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_int, setup, teardown),
         cmocka_unit_test_setup_teardown(test_uint, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_bits, setup, teardown),
         cmocka_unit_test_setup_teardown(test_binary, setup, teardown),
     };
 
