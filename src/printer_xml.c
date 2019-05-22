@@ -412,6 +412,8 @@ printvalue:
         goto printvalue;
 
     case LY_TYPE_EMPTY:
+    case LY_TYPE_UNKNOWN:
+        /* treat <edit-config> node without value as empty */
         ly_print(out, "/>");
         break;
 
