@@ -29,12 +29,12 @@
 #include "tree_schema.h"
 
 static int
-cmp_str(const char *refstr, const char *str, size_t strlen)
+cmp_str(const char *refstr, const char *str, size_t str_len)
 {
 
-    if (strlen) {
-        int r = strncmp(refstr, str, strlen);
-        if (!r && !refstr[strlen]) {
+    if (str_len) {
+        int r = strncmp(refstr, str, str_len);
+        if (!r && !refstr[str_len]) {
             return 0;
         } else {
             return 1;
