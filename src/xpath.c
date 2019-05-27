@@ -5780,12 +5780,6 @@ moveto_snode_alldesc(struct lyxp_set *set, struct lys_node *cur_node, const char
 
     moveto_snode_get_root(cur_node, options, &root_type);
 
-    /* add all matching direct descendant nodes */
-    idx = moveto_snode(set, cur_node, qname, qname_len, options);
-    if (idx) {
-        return idx;
-    }
-
     /* prefix */
     if (strnchr(qname, ':', qname_len)) {
         pref_len = strnchr(qname, ':', qname_len) - qname;
@@ -5809,6 +5803,7 @@ moveto_snode_alldesc(struct lyxp_set *set, struct lys_node *cur_node, const char
         if (set->val.snodes[i].in_ctx != 1) {
             continue;
         }
+        set->val.snodes[i].in_ctx = 0;
 
         /* TREE DFS */
         start = set->val.snodes[i].snode;
@@ -5843,8 +5838,13 @@ moveto_snode_alldesc(struct lyxp_set *set, struct lys_node *cur_node, const char
 
             match = 1;
 
+            /* skip root */
+            if (elem == start) {
+                match = 0;
+            }
+
             /* module check */
-            if (!all) {
+            if (match && !all) {
                 if (moveto_mod && (lys_node_module(elem) != moveto_mod)) {
                     match = 0;
                 } else if (!moveto_mod && (lys_node_module(elem) != lys_node_module(cur_node))) {
@@ -5853,11 +5853,11 @@ moveto_snode_alldesc(struct lyxp_set *set, struct lys_node *cur_node, const char
             }
 
             /* name check */
-            if (!all && (strncmp(elem->name, qname, qname_len) || elem->name[qname_len])) {
+            if (match && !all && (strncmp(elem->name, qname, qname_len) || elem->name[qname_len])) {
                 match = 0;
             }
 
-            if (match && (elem != start)) {
+            if (match) {
                 if ((idx = set_snode_dup_node_check(set, elem, LYXP_NODE_ELEM, i)) > -1) {
                     set->val.snodes[idx].in_ctx = 1;
                     if (idx > i) {
@@ -5867,9 +5867,6 @@ moveto_snode_alldesc(struct lyxp_set *set, struct lys_node *cur_node, const char
                 } else {
                     set_snode_insert_node(set, elem, LYXP_NODE_ELEM);
                 }
-            } else if (!match && (elem == start)) {
-                /* start node must match! */
-                LOGINT(ctx);
             }
 
 next_iter:
