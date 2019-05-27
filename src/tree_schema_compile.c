@@ -4471,12 +4471,18 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
     LY_LIST_FOR(grp->data, node_p) {
         /* 0x3 in uses_status is a special bits combination to be able to detect status flags from uses */
         LY_CHECK_GOTO(lys_compile_node(ctx, node_p, parent, (uses_p->flags & LYS_STATUS_MASK) | 0x3), cleanup);
-        child = parent ? lysc_node_children(parent, ctx->options & LYSC_OPT_RPC_MASK)->prev : ctx->mod->compiled->data->prev;
 
         /* some preparation for applying refines */
         if (grp->data == node_p) {
             /* remember the first child */
-            context_node_fake.child = child;
+            if (parent) {
+                child = (struct lysc_node*)lysc_node_children(parent, ctx->options & LYSC_OPT_RPC_MASK);
+            } else if (ctx->mod->compiled->data) {
+                child = ctx->mod->compiled->data;
+            } else {
+                child = NULL;
+            }
+            context_node_fake.child = child ? child->prev : NULL;
         }
     }
     when_shared = NULL;

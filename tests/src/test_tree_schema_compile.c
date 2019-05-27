@@ -2417,6 +2417,10 @@ test_uses(void **state)
     assert_string_equal("g", cont->notifs[0].name);
     assert_string_equal("ultra g", cont->notifs[0].dsc);
 
+    /* empty grouping */
+    assert_non_null(mod = lys_parse_mem(ctx, "module g {namespace urn:g;prefix g; grouping grp; uses grp;}", LYS_IN_YANG));
+    assert_null(mod->compiled->data);
+
     /* invalid */
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;uses missinggrp;}", LYS_IN_YANG));
     logbuf_assert("Grouping \"missinggrp\" referenced by a uses statement not found.");
