@@ -280,6 +280,14 @@ test_arg(void **state)
     assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
     logbuf_assert("Invalid character sequence \"}\", expected unquoted string character, optsep, semicolon or opening brace. Line number 1.");
 
+    str = "\"\";"; /* empty identifier is not allowed */
+    assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_IDENTIF_ARG, NULL, &word, &buf, &len));
+    logbuf_assert("Statement argument is required. Line number 1.");
+    logbuf_clean();
+    str = "\"\";"; /* empty reference identifier is not allowed */
+    assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_PREF_IDENTIF_ARG, NULL, &word, &buf, &len));
+    logbuf_assert("Statement argument is required. Line number 1.");
+
     str = "hello/x\t"; /* slash is not an invalid character */
     assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
     assert_int_equal(7, len);

@@ -564,6 +564,11 @@ read_qstring(struct lys_parser_ctx *ctx, const char **data, enum yang_arg arg, c
     }
 
 string_end:
+    if (arg <= Y_PREF_IDENTIF_ARG && !(*word_len)) {
+        /* empty identifier */
+        LOGVAL_YANG(ctx, LYVE_SYNTAX_YANG, "Statement argument is required.");
+        return LY_EVALID;
+    }
     return LY_SUCCESS;
 }
 
