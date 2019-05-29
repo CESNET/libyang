@@ -547,6 +547,9 @@ main_ni(int argc, char* argv[])
                 goto cleanup;
             }
             ylpath = optarg;
+
+            /* use internal ietf-yang-library schema */
+            options_ctx &= ~LY_CTX_NOYANGLIBRARY;
             break;
         default:
             help(1);
