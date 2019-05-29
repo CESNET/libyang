@@ -611,6 +611,84 @@ ly_type_free_bits(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(type), st
     value->bits_items = NULL;
 }
 
+
+/**
+ * @brief Validate and canonize value of the YANG built-in enumeration type.
+ *
+ * Implementation of the ly_type_validate_clb.
+ */
+static LY_ERR
+ly_type_validate_enum(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
+                       const char **canonized, struct ly_err_item **err, void **priv)
+{
+    unsigned int u, v;
+    char *errmsg = NULL;
+    struct lysc_type_enum *type_enum = (struct lysc_type_enum*)type;
+
+    /* find the matching enumeration value item */
+    LY_ARRAY_FOR(type_enum->enums, u) {
+        if (!strncmp(type_enum->enums[u].name, value, value_len) && type_enum->enums[u].name[value_len] == '\0') {
+            /* we have the match */
+
+            /* check that the enumeration value is not disabled */
+            LY_ARRAY_FOR(type_enum->enums[u].iffeatures, v) {
+                if (!lysc_iffeature_value(&type_enum->enums[u].iffeatures[v])) {
+                    asprintf(&errmsg, "Enumeration \"%s\" is disabled by its %u. if-feature condition.",
+                             type_enum->enums[u].name, v + 1);
+                    goto error;
+                }
+            }
+            goto match;
+        }
+    }
+    /* enum not found */
+    asprintf(&errmsg, "Invalid enumeration value \"%.*s\".", (int)value_len, value);
+    goto error;
+
+match:
+    /* validation done */
+    if (options & LY_TYPE_OPTS_CANONIZE) {
+        if (options & LY_TYPE_OPTS_DYNAMIC) {
+            *canonized = lydict_insert_zc(ctx, (char*)value);
+            free((char*)value);
+        } else {
+            *canonized = lydict_insert(ctx, value_len ? value : "", value_len);
+        }
+    }
+
+    if (options & LY_TYPE_OPTS_STORE) {
+        /* remember the enum definition to store */
+        *priv = &type_enum->enums[u];
+    }
+
+    return LY_SUCCESS;
+
+error:
+    if (errmsg) {
+        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_RESTRICTION, errmsg, NULL, NULL);
+    }
+    return LY_EVALID;
+}
+
+/**
+ * @brief Store value of the YANG built-in enumeration type.
+ *
+ * Implementation of the ly_type_store_clb.
+ */
+static LY_ERR
+ly_type_store_enum(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(type), int options,
+                   struct lyd_value *value, struct ly_err_item **UNUSED(err), void **priv)
+{
+    if (options & LY_TYPE_OPTS_VALIDATE) {
+        /* the value was prepared by ly_type_validate_enum() */
+        value->enum_item = *priv;
+    } else {
+        /* TODO if there is usecase for store without validate */
+    }
+
+    return LY_SUCCESS;
+}
+
 struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT] = {
     {0}, /* LY_TYPE_UNKNOWN */
     {.type = LY_TYPE_BINARY, .validate = ly_type_validate_binary, .store = NULL, .free = NULL},
@@ -623,7 +701,7 @@ struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT] = {
     {0}, /* TODO LY_TYPE_BOOL */
     {0}, /* TODO LY_TYPE_DEC64 */
     {0}, /* TODO LY_TYPE_EMPTY */
-    {0}, /* TODO LY_TYPE_ENUM */
+    {.type = LY_TYPE_ENUM, .validate = ly_type_validate_enum, .store = ly_type_store_enum, .free = NULL},
     {0}, /* TODO LY_TYPE_IDENT */
     {0}, /* TODO LY_TYPE_INST */
     {0}, /* TODO LY_TYPE_LEAFREF */

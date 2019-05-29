@@ -67,7 +67,8 @@ setup(void **state)
             "leaf uint32 {type uint32;}"
             "leaf int64 {type int64;}"
             "leaf uint64 {type uint64;}"
-            "leaf bits {type bits {bit zero; bit one {if-feature f;} bit two;}}}";
+            "leaf bits {type bits {bit zero; bit one {if-feature f;} bit two;}}"
+            "leaf enums {type enumeration {enum white; enum yellow {if-feature f;}}}}";
 
     s = calloc(1, sizeof *s);
     assert_non_null(s);
@@ -250,6 +251,55 @@ test_bits(void **state)
 }
 
 static void
+test_enums(void **state)
+{
+    struct state_s *s = (struct state_s*)(*state);
+    s->func = test_enums;
+
+    struct lyd_node *tree;
+    struct lyd_node_term *leaf;
+
+    const char *data = "<enums xmlns=\"urn:tests:types\">white</enums>";
+
+    /* valid data */
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("enums", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("white", leaf->value.canonized);
+    lyd_free_all(tree);
+
+    /* disabled feature */
+    data = "<enums xmlns=\"urn:tests:types\">yellow</enums>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Enumeration \"yellow\" is disabled by its 1. if-feature condition. /");
+
+    /* enable that feature */
+    assert_int_equal(LY_SUCCESS, lys_feature_enable(ly_ctx_get_module(s->ctx, "types", NULL), "f"));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("enums", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("yellow", leaf->value.canonized);
+    lyd_free_all(tree);
+
+    /* leading/trailing whitespaces are not valid */
+    data = "<enums xmlns=\"urn:tests:types\"> white</enums>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid enumeration value \" white\". /");
+    data = "<enums xmlns=\"urn:tests:types\">white\n</enums>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid enumeration value \"white\n\". /");
+
+    /* invalid enumeration value */
+    data = "<enums xmlns=\"urn:tests:types\">black</enums>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid enumeration value \"black\". /");
+
+    s->func = NULL;
+}
+
+static void
 test_binary(void **state)
 {
     struct state_s *s = (struct state_s*)(*state);
@@ -321,12 +371,14 @@ test_binary(void **state)
     s->func = NULL;
 }
 
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_int, setup, teardown),
         cmocka_unit_test_setup_teardown(test_uint, setup, teardown),
         cmocka_unit_test_setup_teardown(test_bits, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_enums, setup, teardown),
         cmocka_unit_test_setup_teardown(test_binary, setup, teardown),
     };
 
