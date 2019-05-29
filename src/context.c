@@ -220,6 +220,7 @@ ly_ctx_new_yl_common(const char *search_dir, const char *input, LYD_FORMAT forma
     struct lyd_node *yltree = NULL;
     struct ly_ctx *ctx = NULL;
     struct ly_set *set = NULL;
+    int err = 0;
 
     /* create empty (with internal modules including ietf-yang-library) context */
     ctx = ly_ctx_new(search_dir, options);
@@ -280,8 +281,7 @@ ly_ctx_new_yl_common(const char *search_dir, const char *input, LYD_FORMAT forma
     if (0) {
         /* skip context destroy in case of success */
 error:
-        ly_ctx_destroy(ctx, NULL);
-        ctx = NULL;
+        err = 1;
     }
 
     /* cleanup */
@@ -291,6 +291,10 @@ error:
     }
     if (set) {
         ly_set_free(set);
+    }
+    if (err) {
+        ly_ctx_destroy(ctx, NULL);
+        ctx = NULL;
     }
 
     return ctx;
