@@ -183,10 +183,11 @@ LY_ERR parse_uint(const char *datatype, int base, uint64_t min, uint64_t max, co
  * @param[in] basetype Base built-in type of the type with the range specified to get know if the @p range structure represents range or length restriction.
  * @param[in] range Range (length) restriction information.
  * @param[in] value Value to check. In case of basetypes using unsigned integer values, the value is actually cast to uint64_t.
+ * @param[in] canonized Canonized @p value for error logging.
  * @param[out] err Error information in case of failure. The error structure can be freed by ly_err_free().
  * @return LY_ERR value according to the result of the validation.
  */
-LY_ERR ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t value, struct ly_err_item **err);
+LY_ERR ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t value, const char *canonized, struct ly_err_item **err);
 
 
 #endif /* LY_PLUGINS_TYPES_H_ */

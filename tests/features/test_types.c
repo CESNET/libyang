@@ -57,7 +57,7 @@ setup(void **state)
 {
     struct state_s *s;
     const char *schema_a = "module types {namespace urn:tests:types;prefix t;yang-version 1.1; feature f;"
-            "leaf binary {type binary {length 5 {error-message \"This bas64 value must be of length 5.\";}}}"
+            "leaf binary {type binary {length 5 {error-message \"This base64 value must be of length 5.\";}}}"
             "leaf binary-norestr {type binary;}"
             "leaf int8 {type int8 {range 10..20;}}"
             "leaf uint8 {type uint8 {range 150..200;}}"
@@ -68,7 +68,9 @@ setup(void **state)
             "leaf int64 {type int64;}"
             "leaf uint64 {type uint64;}"
             "leaf bits {type bits {bit zero; bit one {if-feature f;} bit two;}}"
-            "leaf enums {type enumeration {enum white; enum yellow {if-feature f;}}}}";
+            "leaf enums {type enumeration {enum white; enum yellow {if-feature f;}}}"
+            "leaf dec64 {type decimal64 {fraction-digits 1; range 1.5..10;}}"
+            "leaf dec64-norestr {type decimal64 {fraction-digits 18;}}}";
 
     s = calloc(1, sizeof *s);
     assert_non_null(s);
@@ -146,11 +148,19 @@ test_int(void **state)
     /* invalid value */
     data = "<int32 xmlns=\"urn:tests:types\">0x01</int32>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
-    logbuf_assert("Invalid int32 value 0x01. /");
+    logbuf_assert("Invalid int32 value \"0x01\". /");
 
     data = "<int64 xmlns=\"urn:tests:types\"></int64>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
     logbuf_assert("Invalid empty int64 value. /");
+
+    data = "<int64 xmlns=\"urn:tests:types\">   </int64>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid empty int64 value. /");
+
+    data = "<int64 xmlns=\"urn:tests:types\">-10  xxx</int64>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid int64 value \"-10  xxx\". /");
 
     s->func = NULL;
 }
@@ -187,11 +197,81 @@ test_uint(void **state)
     /* invalid value */
     data = "<uint32 xmlns=\"urn:tests:types\">-10</uint32>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
-    logbuf_assert("Invalid uint32 value -10. /");
+    logbuf_assert("Invalid uint32 value \"-10\". /");
 
     data = "<uint64 xmlns=\"urn:tests:types\"/>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
     logbuf_assert("Invalid empty uint64 value. /");
+
+    data = "<uint64 xmlns=\"urn:tests:types\">   </uint64>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid empty uint64 value. /");
+
+    data = "<uint64 xmlns=\"urn:tests:types\">10  xxx</uint64>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid 5. character of uint64 value \"10  xxx\". /");
+
+    s->func = NULL;
+}
+
+static void
+test_dec64(void **state)
+{
+    struct state_s *s = (struct state_s*)(*state);
+    s->func = test_dec64;
+
+    struct lyd_node *tree;
+    struct lyd_node_term *leaf;
+
+    const char *data = "<dec64 xmlns=\"urn:tests:types\">\n +8 \t\n  </dec64>";
+
+    /* valid data */
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("dec64", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("8.0", leaf->value.canonized);
+    assert_int_equal(80, leaf->value.dec64);
+    lyd_free_all(tree);
+
+    data = "<dec64 xmlns=\"urn:tests:types\">8.00</dec64>";
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("dec64", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("8.0", leaf->value.canonized);
+    assert_int_equal(80, leaf->value.dec64);
+    lyd_free_all(tree);
+
+    /* invalid range */
+    data = "<dec64 xmlns=\"urn:tests:types\">\n 15 \t\n  </dec64>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Value \"15.0\" does not satisfy the range constraint. /");
+
+    data = "<dec64 xmlns=\"urn:tests:types\">\n 0 \t\n  </dec64>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Value \"0.0\" does not satisfy the range constraint. /");
+
+    /* invalid value */
+    data = "<dec64 xmlns=\"urn:tests:types\">xxx</dec64>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid 1. character of decimal64 value \"xxx\". /");
+
+    data = "<dec64 xmlns=\"urn:tests:types\"/>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid empty decimal64 value. /");
+
+    data = "<dec64 xmlns=\"urn:tests:types\">   </dec64>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid empty decimal64 value. /");
+
+    data = "<dec64 xmlns=\"urn:tests:types\">8.5  xxx</dec64>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid 6. character of decimal64 value \"8.5  xxx\". /");
+
+    data = "<dec64 xmlns=\"urn:tests:types\">8.55  xxx</dec64>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Value \"8.55\" of decimal64 type exceeds defined number (1) of fraction digits. /");
 
     s->func = NULL;
 }
@@ -363,10 +443,10 @@ test_binary(void **state)
     /* invalid binary length */
     data = "<binary xmlns=\"urn:tests:types\">aGVsbG93b3JsZA==</binary>"; /* helloworld */
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
-    logbuf_assert("This bas64 value must be of length 5. /");
+    logbuf_assert("This base64 value must be of length 5. /");
     data = "<binary xmlns=\"urn:tests:types\">TQ==</binary>"; /* M */
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
-    logbuf_assert("This bas64 value must be of length 5. /");
+    logbuf_assert("This base64 value must be of length 5. /");
 
     s->func = NULL;
 }
@@ -377,6 +457,7 @@ int main(void)
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_int, setup, teardown),
         cmocka_unit_test_setup_teardown(test_uint, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_dec64, setup, teardown),
         cmocka_unit_test_setup_teardown(test_bits, setup, teardown),
         cmocka_unit_test_setup_teardown(test_enums, setup, teardown),
         cmocka_unit_test_setup_teardown(test_binary, setup, teardown),

@@ -1002,7 +1002,7 @@ lys_feature_precompile_revert(struct lysc_ctx *ctx, struct lys_module *mod)
  * @param[out] valcopy NULL-terminated string with the numeric value to parse and store.
  * @return LY_ERR value - LY_SUCCESS, LY_EMEM, LY_EVALID (no number) or LY_EINVAL (decimal64 not matching fraction-digits value).
  */
-static LY_ERR
+LY_ERR
 range_part_check_value_syntax(struct lysc_ctx *ctx, LY_DATA_TYPE basetype, uint8_t frdigits, const char *value, size_t *len, char **valcopy)
 {
     size_t fraction = 0, size;

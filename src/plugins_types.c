@@ -33,6 +33,10 @@ parse_int(const char *datatype, int base, int64_t min, int64_t max, const char *
     int64_t i;
 
     LY_CHECK_ARG_RET(NULL, err, datatype, LY_EINVAL);
+
+    /* consume leading whitespaces */
+    for (;value_len && isspace(*value); ++value, --value_len);
+
     if (!value || !value[0] || !value_len) {
         asprintf(&errmsg, "Invalid empty %s value.", datatype);
         goto error;
@@ -43,7 +47,7 @@ parse_int(const char *datatype, int base, int64_t min, int64_t max, const char *
 
     /* parse the value */
     i = strtoll(value, &strptr, base);
-    if (errno || (i < min) || (i > max)) {
+    if (errno || strptr == value || (i < min) || (i > max)) {
         goto error;
     } else if (strptr && *strptr && strptr < value + value_len) {
         while (isspace(*strptr)) {
@@ -61,10 +65,10 @@ parse_int(const char *datatype, int base, int64_t min, int64_t max, const char *
 
 error:
     if (!errmsg) {
-        asprintf(&errmsg, "Invalid %s value %.*s.", datatype, (int)value_len, value);
+        asprintf(&errmsg, "Invalid %s value \"%.*s\".", datatype, (int)value_len, value);
     }
     *err = ly_err_new(LY_LLERR, LY_EINVAL, LYVE_RESTRICTION, errmsg, NULL, NULL);
-    return LY_EVALID;;
+    return LY_EVALID;
 }
 
 API LY_ERR
@@ -75,6 +79,10 @@ parse_uint(const char *datatype, int base, uint64_t min, uint64_t max, const cha
     uint64_t u;
 
     LY_CHECK_ARG_RET(NULL, err, datatype, LY_EINVAL);
+
+    /* consume leading whitespaces */
+    for (;value_len && isspace(*value); ++value, --value_len);
+
     if (!value || !value[0] || !value_len) {
         asprintf(&errmsg, "Invalid empty %s value.", datatype);
         goto error;
@@ -83,7 +91,7 @@ parse_uint(const char *datatype, int base, uint64_t min, uint64_t max, const cha
     *err = NULL;
     errno = 0;
     u = strtoull(value, &strptr, base);
-    if (errno || (u < min) || (u > max)) {
+    if (errno || strptr == value || (u < min) || (u > max)) {
         goto error;
     } else if (strptr && *strptr && strptr < value + value_len) {
         while (isspace(*strptr)) {
@@ -103,14 +111,127 @@ parse_uint(const char *datatype, int base, uint64_t min, uint64_t max, const cha
 
 error:
     if (!errmsg) {
-        asprintf(&errmsg, "Invalid %s value %.*s.", datatype, (int)value_len, value);
+        if (strptr && strptr != value + value_len) {
+            asprintf(&errmsg, "Invalid %lu. character of %s value \"%.*s\".",
+                     1 + (unsigned long int)(strptr - value), datatype, (int)value_len, value);
+        } else {
+            asprintf(&errmsg, "Invalid %s value \"%.*s\".", datatype, (int)value_len, value);
+        }
     }
     *err = ly_err_new(LY_LLERR, LY_EINVAL, LYVE_RESTRICTION, errmsg, NULL, NULL);
-    return LY_EVALID;;
+    return LY_EVALID;
 }
 
+/**
+ * @brief Convert a string with a decimal64 value into libyang representation:
+ * ret = value * 10^fraction-digits
+ *
+ * @param[in] fraction_digits Fraction-digits of the decimal64 type.
+ * @param[in] value Value string to parse.
+ * @param[in] value_len Length of the @p value (mandatory parameter).
+ * @param[out] ret Parsed decimal64 value representing original value * 10^fraction-digits (optional).
+ * @param[out] err Error information in case of failure. The error structure can be freed by ly_err_free().
+ * @return LY_ERR value according to the result of the parsing and validation.
+ */
 API LY_ERR
-ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t value, struct ly_err_item **err)
+parse_dec64(uint8_t fraction_digits, const char *value, size_t value_len, int64_t *ret, struct ly_err_item **err)
+{
+    LY_ERR rc = LY_EINVAL;
+    char *errmsg = NULL;
+    char *valcopy = NULL;
+    size_t fraction = 0, size, len = 0, trailing_zeros;
+    int64_t d;
+
+    /* consume leading whitespaces */
+    for (;value_len && isspace(*value); ++value, --value_len);
+
+    /* parse value */
+    if (!value_len) {
+        errmsg = strdup("Invalid empty decimal64 value.");
+        goto error;
+    } else if (!isdigit(value[len]) && (value[len] != '-') && (value[len] != '+')) {
+        asprintf(&errmsg, "Invalid %lu. character of decimal64 value \"%.*s\".",
+                 len + 1, (int)value_len, value);
+        goto error;
+    }
+
+    if ((value[len] == '-') || (value[len] == '+')) {
+        ++len;
+    }
+
+    while (len < value_len && isdigit(value[len])) {
+        ++len;
+    }
+
+    trailing_zeros = 0;
+    if (len < value_len && ((value[len] != '.') || !isdigit(value[len + 1]))) {
+        goto decimal;
+    }
+    fraction = len;
+    ++len;
+    while (len < value_len && isdigit(value[len])) {
+        if (value[len] == '0') {
+            ++trailing_zeros;
+        } else {
+            trailing_zeros = 0;
+        }
+        ++len;
+    }
+    len = len - trailing_zeros;
+
+decimal:
+    if (len - 1 - fraction > fraction_digits) {
+        asprintf(&errmsg, "Value \"%.*s\" of decimal64 type exceeds defined number (%u) of fraction digits.", (int)len, value,
+                 fraction_digits);
+        goto error;
+    }
+    if (fraction) {
+        size = len + (fraction_digits - (len - 1 - fraction));
+    } else {
+        size = len + fraction_digits + 1;
+    }
+
+    if (len + trailing_zeros < value_len) {
+        /* consume trailing whitespaces to check that there is nothing after it */
+        unsigned long int u;
+        for (u = len + trailing_zeros; u < value_len && isspace(value[u]); ++u);
+        if (u != value_len) {
+            asprintf(&errmsg, "Invalid %lu. character of decimal64 value \"%.*s\".",
+                     u + 1, (int)value_len, value);
+            goto error;
+        }
+    }
+
+    /* prepare value string without decimal point to easily parse using standard functions */
+    valcopy = malloc(size * sizeof *valcopy);
+    LY_CHECK_ERR_GOTO(!valcopy, LOGMEM(NULL); rc = LY_EMEM, error);
+
+    valcopy[size - 1] = '\0';
+    if (fraction) {
+        memcpy(&valcopy[0], &value[0], fraction);
+        memcpy(&valcopy[fraction], &value[fraction + 1], len - 1 - (fraction));
+        memset(&valcopy[len - 1], '0', fraction_digits - (len - 1 - fraction));
+    } else {
+        memcpy(&valcopy[0], &value[0], len);
+        memset(&valcopy[len], '0', fraction_digits);
+    }
+
+    rc = parse_int("decimal64", 10, INT64_C(-9223372036854775807) - INT64_C(1), INT64_C(9223372036854775807), valcopy, len, &d, err);
+    if (!rc && ret) {
+        *ret = d;
+    }
+    free(valcopy);
+
+error:
+    if (errmsg) {
+        *err = ly_err_new(LY_LLERR, LY_EINVAL, LYVE_RESTRICTION, errmsg, NULL, NULL);
+    }
+    return rc;
+}
+
+
+API LY_ERR
+ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t value, const char *canonized, struct ly_err_item **err)
 {
     unsigned int u;
     char *errmsg = NULL;
@@ -122,8 +243,8 @@ ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t 
                 if (range->emsg) {
                     errmsg = strdup(range->emsg);
                 } else {
-                    asprintf(&errmsg, "%s \"%"PRIu64"\" does not satisfy the %s constraint.",
-                           (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "Length" : "Value", (uint64_t)value,
+                    asprintf(&errmsg, "%s \"%s\" does not satisfy the %s constraint.",
+                           (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "Length" : "Value", canonized,
                            (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "length" : "range");
                 }
                 goto error;
@@ -135,8 +256,8 @@ ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t 
                 if (range->emsg) {
                     errmsg = strdup(range->emsg);
                 } else {
-                    asprintf(&errmsg, "%s \"%"PRIu64"\" does not satisfy the %s constraint.",
-                           (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "Length" : "Value", (uint64_t)value,
+                    asprintf(&errmsg, "%s \"%s\" does not satisfy the %s constraint.",
+                           (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "Length" : "Value", canonized,
                            (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "length" : "range");
                 }
                 goto error;
@@ -147,7 +268,7 @@ ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t 
                 if (range->emsg) {
                     errmsg = strdup(range->emsg);
                 } else {
-                    asprintf(&errmsg, "Value \"%"PRId64"\" does not satisfy the range constraint.", value);
+                    asprintf(&errmsg, "Value \"%s\" does not satisfy the range constraint.", canonized);
                 }
                 goto error;
             } else if (value < range->parts[u].max_64) {
@@ -158,7 +279,7 @@ ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t 
                 if (range->emsg) {
                     errmsg = strdup(range->emsg);
                 } else {
-                    asprintf(&errmsg, "Value \"%"PRId64"\" does not satisfy the range constraint.", value);
+                    asprintf(&errmsg, "Value \"%s\" does not satisfy the range constraint.", canonized);
                 }
                 goto error;
             }
@@ -200,20 +321,23 @@ static LY_ERR
 ly_type_validate_int(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
                      const char **canonized, struct ly_err_item **err, void **priv)
 {
+    LY_ERR ret;
     int64_t i;
+    char *str;
     struct lysc_type_num *type_num = (struct lysc_type_num *)type;
 
     LY_CHECK_RET(ly_type_parse_int_builtin(type->basetype, value, value_len, options, &i, err));
+    asprintf(&str, "%"PRId64, i);
 
     /* range of the number */
     if (type_num->range) {
-        LY_CHECK_RET(ly_type_validate_range(type->basetype, type_num->range, i, err));
+        LY_CHECK_ERR_RET(ret = ly_type_validate_range(type->basetype, type_num->range, i, str, err), free(str), ret);
     }
 
     if (options & LY_TYPE_OPTS_CANONIZE) {
-        char *str;
-        asprintf(&str, "%"PRId64, i);
         *canonized = lydict_insert_zc(ctx, str);
+    } else {
+        free(str);
     }
     if (options & LY_TYPE_OPTS_DYNAMIC) {
         free((char*)value);
@@ -269,6 +393,7 @@ ly_type_parse_uint_builtin(LY_DATA_TYPE basetype, const char *value, size_t valu
         return LY_EINVAL;
     }
 }
+
 /**
  * @brief Validate and canonize value of the YANG built-in unsigned integer types.
  *
@@ -278,21 +403,25 @@ static LY_ERR
 ly_type_validate_uint(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
                       const char **canonized, struct ly_err_item **err, void **priv)
 {
+    LY_ERR ret;
     uint64_t u;
     struct lysc_type_num* type_num = (struct lysc_type_num*)type;
+    char *str;
 
     LY_CHECK_RET(ly_type_parse_uint_builtin(type->basetype, value, value_len, options, &u, err));
+    asprintf(&str, "%"PRIu64, u);
 
     /* range of the number */
     if (type_num->range) {
-        LY_CHECK_RET(ly_type_validate_range(type->basetype, type_num->range, u, err));
+        LY_CHECK_ERR_RET(ret = ly_type_validate_range(type->basetype, type_num->range, u, str, err), free(str), ret);
     }
 
     if (options & LY_TYPE_OPTS_CANONIZE) {
-        char *str;
-        asprintf(&str, "%"PRIu64, u);
         *canonized = lydict_insert_zc(ctx, str);
+    } else {
+        free(str);
     }
+
     if (options & LY_TYPE_OPTS_DYNAMIC) {
         free((char*)value);
     }
@@ -326,6 +455,99 @@ ly_type_store_uint(struct ly_ctx *UNUSED(ctx), struct lysc_type *type, int optio
 
     /* store the result */
     value->uint64 = u;
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Validate and canonize value of the YANG built-in decimal64 types.
+ *
+ * Implementation of the ly_type_validate_clb.
+ */
+static LY_ERR
+ly_type_validate_decimal64(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
+                           const char **canonized, struct ly_err_item **err, void **priv)
+{
+    int64_t d;
+    struct lysc_type_dec* type_dec = (struct lysc_type_dec*)type;
+    char buf[22];
+
+    if (!value || !value[0] || !value_len) {
+        *err = ly_err_new(LY_LLERR, LY_EINVAL, LYVE_RESTRICTION, strdup("Invalid empty decimal64 value."), NULL, NULL);
+        return LY_EVALID;
+    }
+
+    LY_CHECK_RET(parse_dec64(type_dec->fraction_digits, value, value_len, &d, err));
+    /* prepare canonized value */
+    if (d) {
+        int count = sprintf(buf, "%"PRId64" ", d);
+        if ( (d > 0 && (count - 1) <= type_dec->fraction_digits)
+             || (count - 2) <= type_dec->fraction_digits ) {
+            /* we have 0. value, print the value with the leading zeros
+             * (one for 0. and also keep the correct with of num according
+             * to fraction-digits value)
+             * for (num<0) - extra character for '-' sign */
+            count = sprintf(buf, "%0*"PRId64" ", (d > 0) ? (type_dec->fraction_digits + 1) : (type_dec->fraction_digits + 2), d);
+        }
+        for (int i = type_dec->fraction_digits, j = 1; i > 0 ; i--) {
+            if (j && i > 1 && buf[count - 2] == '0') {
+                /* we have trailing zero to skip */
+                buf[count - 1] = '\0';
+            } else {
+                j = 0;
+                buf[count - 1] = buf[count - 2];
+            }
+            count--;
+        }
+        buf[count - 1] = '.';
+    } else {
+        /* zero */
+        sprintf(buf, "0.0");
+    }
+
+    /* range of the number */
+    if (type_dec->range) {
+        LY_CHECK_RET(ly_type_validate_range(type->basetype, type_dec->range, d, buf, err));
+    }
+
+    if (options & LY_TYPE_OPTS_CANONIZE) {
+        *canonized = lydict_insert(ctx, buf, strlen(buf));
+    }
+    if (options & LY_TYPE_OPTS_DYNAMIC) {
+        free((char*)value);
+    }
+    if (options & LY_TYPE_OPTS_STORE) {
+        /* save for the store callback */
+        *priv = malloc(sizeof d);
+        *(int64_t*)(*priv) = d;
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Store value of the YANG built-in decimal64 types.
+ *
+ * Implementation of the ly_type_store_clb.
+ */
+static LY_ERR
+ly_type_store_decimal64(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(type), int options,
+                        struct lyd_value *value, struct ly_err_item **UNUSED(err), void **priv)
+{
+    int64_t d;
+
+    if (options & LY_TYPE_OPTS_VALIDATE) {
+        /* the value was prepared by ly_type_validate_uint() */
+        d = *(int64_t*)(*priv);
+        free(*priv);
+    } else {
+        /* TODO if there is usecase for store without validate */
+        LOGINT(NULL);
+        return LY_EINT;
+    }
+
+    /* store the result */
+    value->dec64 = d;
 
     return LY_SUCCESS;
 }
@@ -395,8 +617,10 @@ finish:
 
     /* length of the encoded string */
     if (type_bin->length) {
+        char buf[22];
         uint64_t len = ((count / 4) * 3) - termination;
-        LY_CHECK_RET(ly_type_validate_range(LY_TYPE_BINARY, type_bin->length, len, err));
+        snprintf(buf, 22, "%"PRIu64, len);
+        LY_CHECK_RET(ly_type_validate_range(LY_TYPE_BINARY, type_bin->length, len, buf, err));
     }
 
     if (options & LY_TYPE_OPTS_CANONIZE) {
@@ -592,6 +816,8 @@ ly_type_store_bits(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), int optio
         }
     } else {
         /* TODO if there is usecase for store without validate */
+        LOGINT(NULL);
+        return LY_EINT;
     }
 
 cleanup:
@@ -684,6 +910,8 @@ ly_type_store_enum(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(type), i
         value->enum_item = *priv;
     } else {
         /* TODO if there is usecase for store without validate */
+        LOGINT(NULL);
+        return LY_EINT;
     }
 
     return LY_SUCCESS;
@@ -699,7 +927,7 @@ struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT] = {
     {0}, /* TODO LY_TYPE_STRING */
     {.type = LY_TYPE_BITS, .validate = ly_type_validate_bits, .store = ly_type_store_bits, .free = ly_type_free_bits},
     {0}, /* TODO LY_TYPE_BOOL */
-    {0}, /* TODO LY_TYPE_DEC64 */
+    {.type = LY_TYPE_DEC64, .validate = ly_type_validate_decimal64, .store = ly_type_store_decimal64, .free = NULL},
     {0}, /* TODO LY_TYPE_EMPTY */
     {.type = LY_TYPE_ENUM, .validate = ly_type_validate_enum, .store = ly_type_store_enum, .free = NULL},
     {0}, /* TODO LY_TYPE_IDENT */
