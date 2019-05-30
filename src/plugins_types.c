@@ -876,7 +876,6 @@ match:
     if (options & LY_TYPE_OPTS_CANONIZE) {
         if (options & LY_TYPE_OPTS_DYNAMIC) {
             *canonized = lydict_insert_zc(ctx, (char*)value);
-            free((char*)value);
         } else {
             *canonized = lydict_insert(ctx, value_len ? value : "", value_len);
         }
