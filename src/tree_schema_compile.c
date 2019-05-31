@@ -1616,12 +1616,6 @@ lys_compile_type_pattern_check(struct lysc_ctx *ctx, const char *pattern, pcre2_
 
     ptr = perl_regex;
 
-    if (strncmp(pattern + strlen(pattern) - 2, ".*", 2)) {
-        /* we will add line-end anchoring */
-        ptr[0] = '(';
-        ++ptr;
-    }
-
     for (orig_ptr = pattern; orig_ptr[0]; ++orig_ptr) {
         if (orig_ptr[0] == '$') {
             ptr += sprintf(ptr, "\\$");
@@ -1632,13 +1626,8 @@ lys_compile_type_pattern_check(struct lysc_ctx *ctx, const char *pattern, pcre2_
             ++ptr;
         }
     }
-
-    if (strncmp(pattern + strlen(pattern) - 2, ".*", 2)) {
-        ptr += sprintf(ptr, ")$");
-    } else {
-        ptr[0] = '\0';
-        ++ptr;
-    }
+    ptr[0] = '\0';
+    ++ptr;
 
     /* substitute Unicode Character Blocks with exact Character Ranges */
     while ((ptr = strstr(perl_regex, "\\p{Is"))) {
@@ -1692,7 +1681,8 @@ lys_compile_type_pattern_check(struct lysc_ctx *ctx, const char *pattern, pcre2_
     }
 
     /* must return 0, already checked during parsing */
-    code_local = pcre2_compile((PCRE2_SPTR)perl_regex, PCRE2_ZERO_TERMINATED, PCRE2_UTF | PCRE2_ANCHORED | PCRE2_DOLLAR_ENDONLY | PCRE2_NO_AUTO_CAPTURE,
+    code_local = pcre2_compile((PCRE2_SPTR)perl_regex, PCRE2_ZERO_TERMINATED,
+                               PCRE2_UTF | PCRE2_ANCHORED | PCRE2_ENDANCHORED | PCRE2_DOLLAR_ENDONLY | PCRE2_NO_AUTO_CAPTURE,
                            &err_code, &err_offset, NULL);
     if (!code_local) {
         PCRE2_UCHAR err_msg[256] = {0};

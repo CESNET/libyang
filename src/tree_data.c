@@ -251,7 +251,3 @@ lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int opti
 
     return result;
 }
-
-
-
-

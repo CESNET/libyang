@@ -84,14 +84,14 @@ lyd_parse_check_options(struct ly_ctx *ctx, int options, const char *func)
 }
 
 LY_ERR
-lyd_value_validate(struct lyd_node_term *node, const char *value, size_t value_len, int options)
+lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len, int dynamic)
 {
     LY_ERR ret = LY_SUCCESS;
     struct ly_err_item *err = NULL;
     struct ly_ctx *ctx;
     struct lysc_type *type;
     void *priv = NULL;
-
+    int options = LY_TYPE_OPTS_VALIDATE | LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_STORE | (dynamic ? LY_TYPE_OPTS_DYNAMIC : 0);
     assert(node);
 
     ctx = node->schema->module->ctx;
@@ -104,11 +104,13 @@ lyd_value_validate(struct lyd_node_term *node, const char *value, size_t value_l
             ly_err_free(err);
             goto error;
         }
-    } else if (options & LY_TYPE_OPTS_CANONIZE) {
+    } else if (dynamic) {
+        node->value.canonized = lydict_insert_zc(ctx, (char*)value);
+    } else {
         node->value.canonized = lydict_insert(ctx, value, value_len);
     }
 
-    if ((options & LY_TYPE_OPTS_STORE) && type->plugin->store) {
+    if (type->plugin->store) {
         ret = type->plugin->store(ctx, type, options, &node->value, &err, &priv);
         if (ret) {
             ly_err_print(err);

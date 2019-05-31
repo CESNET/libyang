@@ -70,7 +70,9 @@ setup(void **state)
             "leaf bits {type bits {bit zero; bit one {if-feature f;} bit two;}}"
             "leaf enums {type enumeration {enum white; enum yellow {if-feature f;}}}"
             "leaf dec64 {type decimal64 {fraction-digits 1; range 1.5..10;}}"
-            "leaf dec64-norestr {type decimal64 {fraction-digits 18;}}}";
+            "leaf dec64-norestr {type decimal64 {fraction-digits 18;}}"
+            "leaf str {type string {length 8..10; pattern '[a-z ]*';}}"
+            "leaf str-norestr {type string;}}";
 
     s = calloc(1, sizeof *s);
     assert_non_null(s);
@@ -295,6 +297,42 @@ test_dec64(void **state)
 }
 
 static void
+test_string(void **state)
+{
+    struct state_s *s = (struct state_s*)(*state);
+    s->func = test_string;
+
+    struct lyd_node *tree;
+    struct lyd_node_term *leaf;
+
+    const char *data = "<str xmlns=\"urn:tests:types\">teststring</str>";
+
+    /* valid data */
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("str", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("teststring", leaf->value.canonized);
+    lyd_free_all(tree);
+
+    /* invalid length */
+    data = "<str xmlns=\"urn:tests:types\">short</str>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Length \"5\" does not satisfy the length constraint. /");
+
+    data = "<str xmlns=\"urn:tests:types\">tooooo long</str>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Length \"11\" does not satisfy the length constraint. /");
+
+    /* invalid pattern */
+    data = "<str xmlns=\"urn:tests:types\">string15</str>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("String \"string15\" does not conforms to the 1. pattern restriction of its type. /");
+
+    s->func = NULL;
+}
+
+static void
 test_bits(void **state)
 {
     struct state_s *s = (struct state_s*)(*state);
@@ -476,6 +514,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_int, setup, teardown),
         cmocka_unit_test_setup_teardown(test_uint, setup, teardown),
         cmocka_unit_test_setup_teardown(test_dec64, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_string, setup, teardown),
         cmocka_unit_test_setup_teardown(test_bits, setup, teardown),
         cmocka_unit_test_setup_teardown(test_enums, setup, teardown),
         cmocka_unit_test_setup_teardown(test_binary, setup, teardown),

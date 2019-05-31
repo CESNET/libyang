@@ -178,6 +178,19 @@ LY_ERR parse_uint(const char *datatype, int base, uint64_t min, uint64_t max, co
                   uint64_t *ret, struct ly_err_item **err);
 
 /**
+ * @brief Convert a string with a decimal64 value into libyang representation:
+ * ret = value * 10^fraction-digits
+ *
+ * @param[in] fraction_digits Fraction-digits of the decimal64 type.
+ * @param[in] value Value string to parse.
+ * @param[in] value_len Length of the @p value (mandatory parameter).
+ * @param[out] ret Parsed decimal64 value representing original value * 10^fraction-digits (optional).
+ * @param[out] err Error information in case of failure. The error structure can be freed by ly_err_free().
+ * @return LY_ERR value according to the result of the parsing and validation.
+ */
+LY_ERR parse_dec64(uint8_t fraction_digits, const char *value, size_t value_len, int64_t *ret, struct ly_err_item **err);
+
+/**
  * @brief Data type validator for a range/length-restricted values.
  *
  * @param[in] basetype Base built-in type of the type with the range specified to get know if the @p range structure represents range or length restriction.
@@ -189,5 +202,18 @@ LY_ERR parse_uint(const char *datatype, int base, uint64_t min, uint64_t max, co
  */
 LY_ERR ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t value, const char *canonized, struct ly_err_item **err);
 
+/**
+ * @brief Data type validator for pattern-restricted string values.
+ *
+ * @param[in] patterns ([Sized array](@ref sizedarrays)) of the compiled list of pointers to the pattern restrictions.
+ * The array can be found in the lysc_type_str::patterns structure.
+ * @param[in] str String to validate.
+ * @param[in] str_len Length of the string to validate (mandatory).
+ * @param[out] err Error information in case of failure or non-matching @p str. The error structure can be freed by ly_err_free().
+ * @return LY_SUCCESS when @p matches all the patterns.
+ * @return LY_EVALID when @p does not match any of the patterns.
+ * @return LY_ESYS in case of PCRE2 error.
+ */
+LY_ERR ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str, size_t str_len, struct ly_err_item **err);
 
 #endif /* LY_PLUGINS_TYPES_H_ */

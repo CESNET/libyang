@@ -122,17 +122,6 @@ error:
     return LY_EVALID;
 }
 
-/**
- * @brief Convert a string with a decimal64 value into libyang representation:
- * ret = value * 10^fraction-digits
- *
- * @param[in] fraction_digits Fraction-digits of the decimal64 type.
- * @param[in] value Value string to parse.
- * @param[in] value_len Length of the @p value (mandatory parameter).
- * @param[out] ret Parsed decimal64 value representing original value * 10^fraction-digits (optional).
- * @param[out] err Error information in case of failure. The error structure can be freed by ly_err_free().
- * @return LY_ERR value according to the result of the parsing and validation.
- */
 API LY_ERR
 parse_dec64(uint8_t fraction_digits, const char *value, size_t value_len, int64_t *ret, struct ly_err_item **err)
 {
@@ -204,7 +193,10 @@ decimal:
 
     /* prepare value string without decimal point to easily parse using standard functions */
     valcopy = malloc(size * sizeof *valcopy);
-    LY_CHECK_ERR_GOTO(!valcopy, LOGMEM(NULL); rc = LY_EMEM, error);
+    if (!valcopy) {
+        *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+        return LY_EMEM;
+    }
 
     valcopy[size - 1] = '\0';
     if (fraction) {
@@ -231,6 +223,49 @@ error:
     return rc;
 }
 
+API LY_ERR
+ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str, size_t str_len, struct ly_err_item **err)
+{
+    LY_ERR ret = LY_SUCCESS;
+    int rc;
+    unsigned int u;
+    char *errmsg;
+    pcre2_match_data *match_data = NULL;
+
+    LY_CHECK_ARG_RET(NULL, str, err, LY_EINVAL);
+
+    LY_ARRAY_FOR(patterns, u) {
+        match_data = pcre2_match_data_create_from_pattern(patterns[u]->code, NULL);
+        if (!match_data) {
+            *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+            return LY_EMEM;
+        }
+
+        rc = pcre2_match(patterns[u]->code, (PCRE2_SPTR)str, str_len, 0, PCRE2_ANCHORED | PCRE2_ENDANCHORED, match_data, NULL);
+        if (rc == PCRE2_ERROR_NOMATCH) {
+            asprintf(&errmsg, "String \"%.*s\" does not conforms to the %u. pattern restriction of its type.",
+                     (int)str_len, str, u + 1);
+            *err = ly_err_new(LY_LLERR, LY_ESYS, 0, errmsg, NULL, NULL);
+            ret = LY_EVALID;
+            goto cleanup;
+        } else if (rc < 0) {
+            /* error */
+            PCRE2_UCHAR pcre2_errmsg[256] = {0};
+            pcre2_get_error_message(rc, pcre2_errmsg, 256);
+            *err = ly_err_new(LY_LLERR, LY_ESYS, 0, strdup((const char*)pcre2_errmsg), NULL, NULL);
+            ret = LY_ESYS;
+            goto cleanup;
+        }
+
+    cleanup:
+        pcre2_match_data_free(match_data);
+        if (ret) {
+            break;
+        }
+    }
+
+    return ret;
+}
 
 API LY_ERR
 ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t value, const char *canonized, struct ly_err_item **err)
@@ -341,13 +376,19 @@ ly_type_validate_int(struct ly_ctx *ctx, struct lysc_type *type, const char *val
     } else {
         free(str);
     }
-    if (options & LY_TYPE_OPTS_DYNAMIC) {
-        free((char*)value);
-    }
+
     if (options & LY_TYPE_OPTS_STORE) {
         /* save for the store callback */
         *priv = malloc(sizeof i);
+        if (!(*priv)) {
+            *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+            return LY_EMEM;
+        }
         *(int64_t*)(*priv) = i;
+    }
+
+    if (options & LY_TYPE_OPTS_DYNAMIC) {
+        free((char*)value);
     }
 
     return LY_SUCCESS;
@@ -424,13 +465,18 @@ ly_type_validate_uint(struct ly_ctx *ctx, struct lysc_type *type, const char *va
         free(str);
     }
 
-    if (options & LY_TYPE_OPTS_DYNAMIC) {
-        free((char*)value);
-    }
     if (options & LY_TYPE_OPTS_STORE) {
         /* save for the store callback */
         *priv = malloc(sizeof u);
+        if (!(*priv)) {
+            *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+            return LY_EMEM;
+        }
         *(uint64_t*)(*priv) = u;
+    }
+
+    if (options & LY_TYPE_OPTS_DYNAMIC) {
+        free((char*)value);
     }
 
     return LY_SUCCESS;
@@ -515,13 +561,18 @@ ly_type_validate_decimal64(struct ly_ctx *ctx, struct lysc_type *type, const cha
     if (options & LY_TYPE_OPTS_CANONIZE) {
         *canonized = lydict_insert(ctx, buf, strlen(buf));
     }
-    if (options & LY_TYPE_OPTS_DYNAMIC) {
-        free((char*)value);
-    }
     if (options & LY_TYPE_OPTS_STORE) {
         /* save for the store callback */
         *priv = malloc(sizeof d);
+        if (!(*priv)) {
+            *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+            return LY_EMEM;
+        }
         *(int64_t*)(*priv) = d;
+    }
+
+    if (options & LY_TYPE_OPTS_DYNAMIC) {
+        free((char*)value);
     }
 
     return LY_SUCCESS;
@@ -646,6 +697,46 @@ error:
         *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_RESTRICTION, errmsg, NULL, NULL);
     }
     return (*err)->no;
+}
+
+/**
+ * @brief Validate value of the YANG built-in string type.
+ *
+ * Implementation of the ly_type_validate_clb.
+ */
+static LY_ERR
+ly_type_validate_string(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
+                        const char **canonized, struct ly_err_item **err, void **UNUSED(priv))
+{
+    struct lysc_type_str *type_str = (struct lysc_type_str *)type;
+
+    /* initiate */
+    *err = NULL;
+
+    /* length restriction of the string */
+    if (type_str->length) {
+        char buf[22];
+        snprintf(buf, 22, "%lu", value_len);
+        LY_CHECK_RET(ly_type_validate_range(LY_TYPE_BINARY, type_str->length, value_len, buf, err));
+    }
+
+    /* pattern restrictions */
+    LY_CHECK_RET(ly_type_validate_patterns(type_str->patterns, value, value_len, err));
+
+    if (options & LY_TYPE_OPTS_CANONIZE) {
+        if (options & LY_TYPE_OPTS_DYNAMIC) {
+            *canonized = lydict_insert_zc(ctx, (char*)value);
+            value = NULL;
+        } else {
+            *canonized = lydict_insert(ctx, value_len ? value : "", value_len);
+        }
+    }
+
+    if (options & LY_TYPE_OPTS_DYNAMIC) {
+        free((char*)value);
+    }
+
+    return LY_SUCCESS;
 }
 
 /**
@@ -878,6 +969,7 @@ match:
     if (options & LY_TYPE_OPTS_CANONIZE) {
         if (options & LY_TYPE_OPTS_DYNAMIC) {
             *canonized = lydict_insert_zc(ctx, (char*)value);
+            value = NULL;
         } else {
             *canonized = lydict_insert(ctx, value_len ? value : "", value_len);
         }
@@ -886,6 +978,10 @@ match:
     if (options & LY_TYPE_OPTS_STORE) {
         /* remember the enum definition to store */
         *priv = &type_enum->enums[u];
+    }
+
+    if (options & LY_TYPE_OPTS_DYNAMIC) {
+        free((char*)value);
     }
 
     return LY_SUCCESS;
@@ -925,7 +1021,7 @@ struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT] = {
     {.type = LY_TYPE_UINT16, .validate = ly_type_validate_uint, .store = ly_type_store_uint, .free = NULL},
     {.type = LY_TYPE_UINT32, .validate = ly_type_validate_uint, .store = ly_type_store_uint, .free = NULL},
     {.type = LY_TYPE_UINT64, .validate = ly_type_validate_uint, .store = ly_type_store_uint, .free = NULL},
-    {0}, /* TODO LY_TYPE_STRING */
+    {.type = LY_TYPE_STRING, .validate = ly_type_validate_string, .store = NULL, .free = NULL},
     {.type = LY_TYPE_BITS, .validate = ly_type_validate_bits, .store = ly_type_store_bits, .free = ly_type_free_bits},
     {0}, /* TODO LY_TYPE_BOOL */
     {.type = LY_TYPE_DEC64, .validate = ly_type_validate_decimal64, .store = ly_type_store_decimal64, .free = NULL},

@@ -38,13 +38,15 @@ struct lyd_node **lyd_node_children_p(struct lyd_node *node);
 LY_ERR lyd_parse_check_options(struct ly_ctx *ctx, int options, const char *func);
 
 /**
- * @brief Validate the given value according to the type's rules.
+ * @brief Validate, canonize and store the given @p value into the node according to the node's type's rules.
  *
- * According to the given options, the value can be also canonized or stored into the node's value structure.
- *
- * @param[in] options [Type validation options ](@ref plugintypeopts).
+ * @param[in] node Data node for with the @p value.
+ * @param[in] value String value to be parsed.
+ * @param[in] value_len Length of the give @p value (mandatory).
+ * @param[in] dynamic Flag if @p value is a dynamically allocated memory and should be directly consumed/freed inside the function.
+ * @return LY_ERR value.
  */
-LY_ERR lyd_value_validate(struct lyd_node_term *node, const char *value, size_t value_len, int options);
+LY_ERR lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len, int dynamic);
 
 /**
  * @brief Parse XML string as YANG data tree.
