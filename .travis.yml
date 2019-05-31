@@ -60,7 +60,7 @@ jobs:
         - cd cmocka-1.1.2 && mkdir build && cd build && cmake .. && make -j2 && sudo make install && cd ../..
         - wget https://ftp.pcre.org/pub/pcre/pcre2-10.30.tar.gz
         - tar -xzf pcre2-10.30.tar.gz
-        - cd pcre2-10.30 && ./configure && make -j2 && sudo make install && cd ..
+        - cd pcre2-10.30 && ./configure && make -j2 && sudo -E make install && cd ..
       script:
         - mkdir build && cd build && cmake .. && make -j2 && ctest --output-on-failure && cd -
     - stage: Test
