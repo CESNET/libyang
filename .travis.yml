@@ -54,10 +54,13 @@ jobs:
       os: linux
       compiler: clang
       before_install:
+        - sudo apt-get update -qq && sudo apt-get install -y valgrind
         - wget https://cmocka.org/files/1.1/cmocka-1.1.2.tar.xz
         - tar -xf cmocka-1.1.2.tar.xz
         - cd cmocka-1.1.2 && mkdir build && cd build && cmake .. && make -j2 && sudo make install && cd ../..
-        - sudo apt-get update -qq && sudo apt-get install -y valgrind libpcre2-dev
+        - wget https://ftp.pcre.org/pub/pcre/pcre2-10.30.tar.gz
+        - tar -xzf pcre2-10.30.tar.gz
+        - cd pcre-10.30 && ./configure && && make -j2 && sudo make install && cd ../..
       script:
         - mkdir build && cd build && cmake .. && make -j2 && ctest --output-on-failure && cd -
     - stage: Test
@@ -65,10 +68,13 @@ jobs:
       os: linux
       compiled: gcc
       before_install:
+        - sudo apt-get update -qq && sudo apt-get install -y valgrind
         - wget https://cmocka.org/files/1.1/cmocka-1.1.2.tar.xz
         - tar -xf cmocka-1.1.2.tar.xz
         - cd cmocka-1.1.2 && mkdir build && cd build && cmake .. && make -j2 && sudo make install && cd ../..
-        - sudo apt-get update -qq && sudo apt-get install -y valgrind libpcre2-dev
+        - wget https://ftp.pcre.org/pub/pcre/pcre2-10.30.tar.gz
+        - tar -xzf pcre2-10.30.tar.gz
+        - cd pcre-10.30 && ./configure && && make -j2 && sudo make install && cd ../..
         - pip install --user codecov && export CFLAGS="-coverage"
       script:
         - mkdir build && cd build && cmake .. && make -j2 && ctest --output-on-failure && cd -
