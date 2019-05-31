@@ -243,6 +243,24 @@ test_dec64(void **state)
     assert_int_equal(80, leaf->value.dec64);
     lyd_free_all(tree);
 
+    data = "<dec64-norestr xmlns=\"urn:tests:types\">-9.223372036854775808</dec64-norestr>";
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("dec64-norestr", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("-9.223372036854775808", leaf->value.canonized);
+    assert_int_equal(INT64_C(-9223372036854775807) - INT64_C(1), leaf->value.dec64);
+    lyd_free_all(tree);
+
+    data = "<dec64-norestr xmlns=\"urn:tests:types\">9.223372036854775807</dec64-norestr>";
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("dec64-norestr", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("9.223372036854775807", leaf->value.canonized);
+    assert_int_equal(INT64_C(9223372036854775807), leaf->value.dec64);
+    lyd_free_all(tree);
+
     /* invalid range */
     data = "<dec64 xmlns=\"urn:tests:types\">\n 15 \t\n  </dec64>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
