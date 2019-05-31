@@ -210,9 +210,11 @@ decimal:
     if (fraction) {
         memcpy(&valcopy[0], &value[0], fraction);
         memcpy(&valcopy[fraction], &value[fraction + 1], len - 1 - (fraction));
+        /* add trailing zero characters */
         memset(&valcopy[len - 1], '0', fraction_digits - (len - 1 - fraction));
     } else {
         memcpy(&valcopy[0], &value[0], len);
+        /* add trailing zero characters */
         memset(&valcopy[len], '0', fraction_digits);
     }
 
