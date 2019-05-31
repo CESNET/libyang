@@ -39,14 +39,14 @@ master branch. If you want the latest code from the devel branch, install `libya
 
 * C compiler
 * cmake >= 2.8.12
-* libpcre (devel package)
+* libpcre2 >= 10.30 (including devel package)
  * note, that PCRE is supposed to be compiled with unicode support (configure's options
    `--enable-utf` and `--enable-unicode-properties`)
 
 #### Optional
 
 * doxygen (for generating documentation)
-* cmocka >= 1.0.0 (for [tests](#Tests)
+* cmocka >= 1.0.0 (for [tests](#Tests))
 * valgrind (for enhanced testing)
 * gcov (for code coverage)
 * lcov (for code coverage)
@@ -54,7 +54,7 @@ master branch. If you want the latest code from the devel branch, install `libya
 
 ### Runtime Requirements
 
-* libpcre
+* libpcre2 >= 10.30
 
 ## Building
 

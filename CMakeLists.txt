@@ -282,7 +282,7 @@ endif(ENABLE_STATIC)
 
 # find PCRE2 library
 unset(PCRE2_LIBRARY CACHE)
-find_package(PCRE2 REQUIRED)
+find_package(PCRE2 10.30 REQUIRED)
 include_directories(${PCRE2_INCLUDE_DIRS})
 target_link_libraries(yang ${PCRE2_LIBRARIES})
 
