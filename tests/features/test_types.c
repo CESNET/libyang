@@ -72,7 +72,8 @@ setup(void **state)
             "leaf dec64 {type decimal64 {fraction-digits 1; range 1.5..10;}}"
             "leaf dec64-norestr {type decimal64 {fraction-digits 18;}}"
             "leaf str {type string {length 8..10; pattern '[a-z ]*';}}"
-            "leaf str-norestr {type string;}}";
+            "leaf str-norestr {type string;}"
+            "leaf bool {type boolean;}}";
 
     s = calloc(1, sizeof *s);
     assert_non_null(s);
@@ -507,6 +508,46 @@ test_binary(void **state)
     s->func = NULL;
 }
 
+static void
+test_boolean(void **state)
+{
+    struct state_s *s = (struct state_s*)(*state);
+    s->func = test_boolean;
+
+    struct lyd_node *tree;
+    struct lyd_node_term *leaf;
+
+    const char *data = "<bool xmlns=\"urn:tests:types\">true</bool>";
+
+    /* valid data */
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("bool", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("true", leaf->value.canonized);
+    assert_int_equal(1, leaf->value.boolean);
+    lyd_free_all(tree);
+
+    data = "<bool xmlns=\"urn:tests:types\">false</bool>";
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("bool", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("false", leaf->value.canonized);
+    assert_int_equal(0, leaf->value.boolean);
+    lyd_free_all(tree);
+
+    /* invalid value */
+    data = "<bool xmlns=\"urn:tests:types\">unsure</bool>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid boolean value \"unsure\". /");
+
+    data = "<bool xmlns=\"urn:tests:types\"> true</bool>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid boolean value \" true\". /");
+
+    s->func = NULL;
+}
 
 int main(void)
 {
@@ -518,6 +559,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_bits, setup, teardown),
         cmocka_unit_test_setup_teardown(test_enums, setup, teardown),
         cmocka_unit_test_setup_teardown(test_binary, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_boolean, setup, teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

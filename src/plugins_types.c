@@ -349,6 +349,7 @@ ly_type_parse_int_builtin(LY_DATA_TYPE basetype, const char *value, size_t value
         return LY_EINVAL;
     }
 }
+
 /**
  * @brief Validate and canonize value of the YANG built-in signed integer types.
  *
@@ -1014,6 +1015,75 @@ ly_type_store_enum(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(type), i
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Validate value of the YANG built-in boolean type.
+ *
+ * Implementation of the ly_type_validate_clb.
+ */
+static LY_ERR
+ly_type_validate_boolean(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
+                         const char **canonized, struct ly_err_item **err, void **priv)
+{
+    int8_t i;
+
+    if (value_len == 4 && !strncmp(value, "true", 4)) {
+        i = 1;
+    } else if (value_len == 5 && !strncmp(value, "false", 5)) {
+        i = 0;
+    } else {
+        char *errmsg;
+        asprintf(&errmsg, "Invalid boolean value \"%.*s\".", (int)value_len, value);
+        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_RESTRICTION, errmsg, NULL, NULL);
+        return LY_EVALID;
+    }
+
+    if (options & LY_TYPE_OPTS_CANONIZE) {
+        if (i) {
+            *canonized = lydict_insert(ctx, "true", 4);
+        } else {
+            *canonized = lydict_insert(ctx, "false", 5);
+        }
+    }
+
+    if (options & LY_TYPE_OPTS_STORE) {
+        /* save for the store callback */
+        *priv = malloc(sizeof i);
+        if (!(*priv)) {
+            *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+            return LY_EMEM;
+        }
+        *(int8_t*)(*priv) = i;
+    }
+
+    if (options & LY_TYPE_OPTS_DYNAMIC) {
+        free((char*)value);
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Store value of the YANG built-in boolean type.
+ *
+ * Implementation of the ly_type_store_clb.
+ */
+static LY_ERR
+ly_type_store_boolean(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(type), int options,
+                   struct lyd_value *value, struct ly_err_item **UNUSED(err), void **priv)
+{
+    if (options & LY_TYPE_OPTS_VALIDATE) {
+        /* the value was prepared by ly_type_validate_enum() */
+        value->boolean = *(int8_t*)(*priv);
+        free(*priv);
+    } else {
+        /* TODO if there is usecase for store without validate */
+        LOGINT(NULL);
+        return LY_EINT;
+    }
+
+    return LY_SUCCESS;
+}
+
 struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT] = {
     {0}, /* LY_TYPE_UNKNOWN */
     {.type = LY_TYPE_BINARY, .validate = ly_type_validate_binary, .store = NULL, .free = NULL},
@@ -1023,7 +1093,7 @@ struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT] = {
     {.type = LY_TYPE_UINT64, .validate = ly_type_validate_uint, .store = ly_type_store_uint, .free = NULL},
     {.type = LY_TYPE_STRING, .validate = ly_type_validate_string, .store = NULL, .free = NULL},
     {.type = LY_TYPE_BITS, .validate = ly_type_validate_bits, .store = ly_type_store_bits, .free = ly_type_free_bits},
-    {0}, /* TODO LY_TYPE_BOOL */
+    {.type = LY_TYPE_BOOL, .validate = ly_type_validate_boolean, .store = ly_type_store_boolean, .free = NULL},
     {.type = LY_TYPE_DEC64, .validate = ly_type_validate_decimal64, .store = ly_type_store_decimal64, .free = NULL},
     {0}, /* TODO LY_TYPE_EMPTY */
     {.type = LY_TYPE_ENUM, .validate = ly_type_validate_enum, .store = ly_type_store_enum, .free = NULL},
