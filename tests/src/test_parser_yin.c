@@ -10,10 +10,12 @@
 #include "../../src/tree_schema.h"
 #include "../../src/tree_schema_internal.h"
 #include "../../src/parser_yin.h"
+#include "../../src/xml.h"
 
 struct state {
     struct ly_ctx *ctx;
     struct lys_module *mod;
+    struct lyxml_context *xml_ctx;
 };
 
 static int
@@ -35,6 +37,10 @@ setup_f(void **state)
     st->mod = calloc(1, sizeof(*st->mod));
     st->mod->ctx = st->ctx;
 
+    st->xml_ctx = calloc(1, sizeof(struct lys_parser_ctx));
+    st->xml_ctx->ctx = st->ctx;
+    st->xml_ctx->line = 1;
+
     return EXIT_SUCCESS;
 }
 
@@ -43,8 +49,10 @@ teardown_f(void **state)
 {
     struct state *st = *(struct state **)state;
 
+    lyxml_context_clear(st->xml_ctx);
     lys_module_free(st->mod, NULL);
     ly_ctx_destroy(st->ctx, NULL);
+    free(st->xml_ctx);
     free(st);
 
     return EXIT_SUCCESS;
@@ -188,6 +196,33 @@ test_meta(void **state)
     assert_string_equal(st->mod->parsed->mod->ref, "reference...");
 }
 
+static void
+test_parse_text_element(void **state)
+{
+    struct state *st = *state;
+    const char *res = NULL, *prefix = NULL, *name = NULL;
+    size_t prefix_len = 0, name_len = 0;
+    LY_ERR ret = LY_SUCCESS;
+
+    const char *data = "<elem>content</elem>";
+    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    parse_text_element(st->xml_ctx, &data, &res);
+    assert_string_equal(res, "content");
+    lydict_remove(st->ctx, "content");
+
+
+    data = "<elem xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">another-content</elem>";
+    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    parse_text_element(st->xml_ctx, &data, &res);
+    assert_string_equal(res, "another-content");
+    lydict_remove(st->ctx, "another-content");
+
+    data = "<elem invalid=\"invalid\">text</elem>";
+    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    ret = parse_text_element(st->xml_ctx, &data, &res);
+    assert_int_equal(ret, LY_EVALID);
+}
+
 int
 main(void)
 {
@@ -195,6 +230,7 @@ main(void)
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_parse, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_meta, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_parse_text_element, setup_f, teardown_f),
         cmocka_unit_test(test_match_keyword),
         cmocka_unit_test(test_match_argument),
     };

@@ -26,14 +26,6 @@
 #include "tree_schema_internal.h"
 #include "parser_yin.h"
 
-/**
- * @brief Match argument name.
- *
- * @param[in] name String representing name.
- * @param[in] len Lenght of the name.
- *
- * @reurn YIN_ARGUMENT value.
- */
 enum YIN_ARGUMENT
 match_argument_name(const char *name, size_t len)
 {
