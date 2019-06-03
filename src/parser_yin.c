@@ -368,8 +368,10 @@ yin_parse_import(struct lyxml_context *xml_ctx, const char *module_prefix, const
             break;
         case YANG_REVISION_DATE:
             yin_parse_revision_date(xml_ctx, data, &imp->rev, &imp->exts);
+            break;
         case YANG_CUSTOM:
             /* TODO parse extension */
+            break;
         default:
             /* TODO log error */
             return LY_EVALID;
