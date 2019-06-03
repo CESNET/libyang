@@ -1021,7 +1021,7 @@ ly_type_store_enum(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(type), i
  * Implementation of the ly_type_validate_clb.
  */
 static LY_ERR
-ly_type_validate_boolean(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
+ly_type_validate_boolean(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), const char *value, size_t value_len, int options,
                          const char **canonized, struct ly_err_item **err, void **priv)
 {
     int8_t i;
@@ -1084,6 +1084,28 @@ ly_type_store_boolean(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(type)
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Validate value of the YANG built-in empty type.
+ *
+ * Implementation of the ly_type_validate_clb.
+ */
+static LY_ERR
+ly_type_validate_empty(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), const char *value, size_t value_len, int options,
+                       const char **canonized, struct ly_err_item **err, void **UNUSED(priv))
+{
+    if (value_len) {
+        char *errmsg;
+        asprintf(&errmsg, "Invalid empty value \"%.*s\".", (int)value_len, value);
+        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_RESTRICTION, errmsg, NULL, NULL);
+        return LY_EVALID;
+    }
+
+    if (options & LY_TYPE_OPTS_CANONIZE) {
+        *canonized = lydict_insert(ctx, "", 0);
+    }
+    return LY_SUCCESS;
+}
+
 struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT] = {
     {0}, /* LY_TYPE_UNKNOWN */
     {.type = LY_TYPE_BINARY, .validate = ly_type_validate_binary, .store = NULL, .free = NULL},
@@ -1095,7 +1117,7 @@ struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT] = {
     {.type = LY_TYPE_BITS, .validate = ly_type_validate_bits, .store = ly_type_store_bits, .free = ly_type_free_bits},
     {.type = LY_TYPE_BOOL, .validate = ly_type_validate_boolean, .store = ly_type_store_boolean, .free = NULL},
     {.type = LY_TYPE_DEC64, .validate = ly_type_validate_decimal64, .store = ly_type_store_decimal64, .free = NULL},
-    {0}, /* TODO LY_TYPE_EMPTY */
+    {.type = LY_TYPE_EMPTY, .validate = ly_type_validate_empty, .store = NULL, .free = NULL},
     {.type = LY_TYPE_ENUM, .validate = ly_type_validate_enum, .store = ly_type_store_enum, .free = NULL},
     {0}, /* TODO LY_TYPE_IDENT */
     {0}, /* TODO LY_TYPE_INST */

@@ -73,7 +73,8 @@ setup(void **state)
             "leaf dec64-norestr {type decimal64 {fraction-digits 18;}}"
             "leaf str {type string {length 8..10; pattern '[a-z ]*';}}"
             "leaf str-norestr {type string;}"
-            "leaf bool {type boolean;}}";
+            "leaf bool {type boolean;}"
+            "leaf empty {type empty;}}";
 
     s = calloc(1, sizeof *s);
     assert_non_null(s);
@@ -549,6 +550,45 @@ test_boolean(void **state)
     s->func = NULL;
 }
 
+static void
+test_empty(void **state)
+{
+    struct state_s *s = (struct state_s*)(*state);
+    s->func = test_empty;
+
+    struct lyd_node *tree;
+    struct lyd_node_term *leaf;
+
+    const char *data = "<empty xmlns=\"urn:tests:types\"></empty>";
+
+    /* valid data */
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("empty", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("", leaf->value.canonized);
+    lyd_free_all(tree);
+
+    data = "<empty xmlns=\"urn:tests:types\"/>";
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("empty", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("", leaf->value.canonized);
+    lyd_free_all(tree);
+
+    /* invalid value */
+    data = "<empty xmlns=\"urn:tests:types\">x</empty>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid empty value \"x\". /");
+
+    data = "<empty xmlns=\"urn:tests:types\"> </empty>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid empty value \" \". /");
+
+    s->func = NULL;
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -560,6 +600,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_enums, setup, teardown),
         cmocka_unit_test_setup_teardown(test_binary, setup, teardown),
         cmocka_unit_test_setup_teardown(test_boolean, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_empty, setup, teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
