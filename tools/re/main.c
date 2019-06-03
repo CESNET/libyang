@@ -130,7 +130,7 @@ main(int argc, char* argv[])
     size_t len = 0;
     ssize_t l;
     struct lysc_type *type;
-    struct ly_err_item *err;
+    struct ly_err_item *err = NULL;
 
     opterr = 0;
     while ((i = getopt_long(argc, argv, "hf:ivVp:", options, &opt_index)) != -1) {
