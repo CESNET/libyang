@@ -42,6 +42,9 @@ jobs:
         - git rev-parse HEAD > $HOME/cache/coveritybuild
         - cat $HOME/cache/coveritybuild
         - sudo apt-get update -qq
+        - wget https://ftp.pcre.org/pub/pcre/pcre2-10.30.tar.gz
+        - tar -xzf pcre2-10.30.tar.gz
+        - cd pcre2-10.30 && ./configure && make -j2 && sudo -i -- sh -c 'cd /home/travis/build/CESNET/libyang/pcre2-10.30/ && make install' && cd ..
         # get everything for coverity
         - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-certificates.crt
         - wget https://entrust.com/root-certificates/entrust_l1k.cer -O - | sudo tee -a /etc/ssl/certs/ca-certificates.crt
