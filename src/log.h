@@ -150,7 +150,8 @@ typedef enum
     LY_EINT,        /**< Internal error */
     LY_EVALID,      /**< Validation failure */
     LY_EPLUGIN,     /**< Error reported by a plugin */
-    LY_EDENIED      /**< Operation is not allowed */
+    LY_EDENIED,     /**< Operation is not allowed */
+    LY_EOTHER       /**< Unknown error */
 } LY_ERR;
 
 /**
@@ -166,7 +167,9 @@ typedef enum {
     LYVE_SYNTAX_YIN,   /**< YIN-related syntax error */
     LYVE_REFERENCE,    /**< invalid referencing or using an item */
     LYVE_XPATH,        /**< invalid XPath expression */
-    LYVE_SEMANTICS     /**< generic semantic error */
+    LYVE_SEMANTICS,    /**< generic semantic error */
+    LYVE_SYNTAX_XML,   /**< XML-related syntax error */
+    LYVE_RESTRICTION   /**< YANG data does not reflect some of the module restrictions */
 } LY_VECODE;
 
 /**

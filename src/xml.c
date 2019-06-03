@@ -18,10 +18,11 @@
 #include <ctype.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 
-#include "libyang.h"
 #include "xml.h"
+#include "printer_internal.h"
 
 /* Move input p by s characters, if EOF log with lyxml_context c */
 #define move_input(c,p,s) p += s; LY_CHECK_ERR_RET(!p[0], LOGVAL(c->ctx, LY_VLOG_LINE, &c->line, LY_VCODE_EOF), LY_EVALID)
@@ -167,6 +168,99 @@ lyxml_check_qname(struct lyxml_context *context, const char **input, unsigned in
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Add namespace definition into XML context.
+ *
+ * Namespaces from a single element are supposed to be added sequentially together (not interleaved by a namespace from other
+ * element). This mimic namespace visibility, since the namespace defined in element E is not visible from its parents or
+ * siblings. On the other hand, namespace from a parent element can be redefined in a child element. This is also reflected
+ * by lyxml_ns_get() which returns the most recent namespace definition for the given prefix.
+ *
+ * When leaving processing of a subtree of some element (after it is removed from context->elements), caller is supposed to call
+ * lyxml_ns_rm() to remove all the namespaces defined in such an element from the context.
+ *
+ * @param[in] context XML context to work with.
+ * @param[in] prefix Pointer to the namespace prefix as taken from lyxml_get_attribute(). Can be NULL for default namespace.
+ * @param[in] prefix_len Length of the prefix string (since it is not NULL-terminated when returned from lyxml_get_attribute()).
+ * @param[in] uri Namespace URI (value) to store. Value can be obtained via lyxml_get_string() and caller is not supposed to
+ * work with the pointer when the function succeeds. In case of error the value is freed.
+ * @return LY_ERR values.
+ */
+LY_ERR
+lyxml_ns_add(struct lyxml_context *context, const char *prefix, size_t prefix_len, char *uri)
+{
+    struct lyxml_ns *ns;
+
+    ns = malloc(sizeof *ns);
+    LY_CHECK_ERR_RET(!ns, LOGMEM(context->ctx), LY_EMEM);
+
+    /* we need to connect the depth of the element where the namespace is defined with the
+     * namespace record to be able to maintain (remove) the record when the parser leaves
+     * (to its sibling or back to the parent) the element where the namespace was defined */
+    ns->depth = context->elements.count;
+
+    ns->uri = uri;
+    if (prefix) {
+        ns->prefix = strndup(prefix, prefix_len);
+        LY_CHECK_ERR_RET(!ns->prefix, LOGMEM(context->ctx); free(ns->uri); free(ns), LY_EMEM);
+    } else {
+        ns->prefix = NULL;
+    }
+
+    LY_CHECK_ERR_RET(ly_set_add(&context->ns, ns, LY_SET_OPT_USEASLIST) == -1,
+                     free(ns->prefix); free(ns->uri); free(ns), LY_EMEM);
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Remove all the namespaces defined in the element recently closed (removed from the context->elements).
+ *
+ * @param[in] context XML context to work with.
+ */
+void
+lyxml_ns_rm(struct lyxml_context *context)
+{
+    unsigned int u;
+
+    for (u = context->ns.count - 1; u + 1 > 0; --u) {
+        if (((struct lyxml_ns *)context->ns.objs[u])->depth != context->elements.count + 1) {
+            /* we are done, the namespaces from a single element are supposed to be together */
+            break;
+        }
+        /* remove the ns structure */
+        free(((struct lyxml_ns *)context->ns.objs[u])->prefix);
+        free(((struct lyxml_ns *)context->ns.objs[u])->uri);
+        free(context->ns.objs[u]);
+        --context->ns.count;
+    }
+
+    if (!context->ns.count) {
+        /* cleanup the context's namespaces storage */
+        ly_set_erase(&context->ns, NULL);
+    }
+}
+
+const struct lyxml_ns *
+lyxml_ns_get(struct lyxml_context *context, const char *prefix, size_t prefix_len)
+{
+    unsigned int u;
+    struct lyxml_ns *ns;
+
+    for (u = context->ns.count - 1; u + 1 > 0; --u) {
+        ns = (struct lyxml_ns *)context->ns.objs[u];
+        if (prefix) {
+            if (!strncmp(prefix, ns->prefix, prefix_len) && ns->prefix[prefix_len] == '\0') {
+                return ns;
+            }
+        } else if (!ns->prefix) {
+            /* default namespace */
+            return ns;
+        }
+    }
+
+    return NULL;
+}
+
 LY_ERR
 lyxml_get_string(struct lyxml_context *context, const char **input, char **buffer, size_t *buffer_size, char **output, size_t *length, int *dynamic)
 {
@@ -189,7 +283,7 @@ lyxml_get_string(struct lyxml_context *context, const char **input, char **buffe
     uint32_t n;
     size_t u, newlines;
     bool empty_content = false;
-    LY_ERR rc;
+    LY_ERR rc = LY_SUCCESS;
 
     assert(context);
     assert(context->status == LYXML_ELEM_CONTENT || context->status == LYXML_ATTR_CONTENT);
@@ -217,8 +311,29 @@ lyxml_get_string(struct lyxml_context *context, const char **input, char **buffe
         LY_CHECK_ERR_RET(!in[offset], LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_EOF), LY_EVALID);
         context->line += newlines;
         if (in[offset] == '<') {
+            const char *name, *prefix;
+            size_t name_len, prefix_len;
+
             (*input) = in + offset;
-            return LY_EINVAL;
+
+            /* get know if it is child element (indentation) or closing element (whitespace-only content) */
+            in = *input;
+            rc = lyxml_get_element(context, &in, &prefix, &prefix_len, &name, &name_len);
+            if (name) {
+                /* the element here is not closing element, so we have the just indentation formatting before the child */
+                free(context->elements.objs[--context->elements.count]);
+                context->status -= 1; /* LYXML_ELEMENT */
+                return LY_EINVAL;
+            } else if (rc) {
+                /* some parsing error, so pass it */
+                (*input) = in;
+                goto error;
+            } else {
+                /* whitespace-only content */
+                len = offset;
+                context->status++;
+                goto success;
+            }
         }
     }
     /* init */
@@ -332,7 +447,29 @@ getbuffer:
             /* in case of element content, keep the leading <,
              * for attribute's value move after the terminating quotation mark */
             if (context->status == LYXML_ELEM_CONTENT) {
+                const char *name, *prefix;
+                size_t name_len, prefix_len;
+
                 in += offset;
+
+                /* get know if it is child element (mixed content) or closing element (regular content) */
+                (*input) = in;
+                rc = lyxml_get_element(context, &in, &prefix, &prefix_len, &name, &name_len);
+                if (name) {
+                    /* the element here is not closing element, so we have not allowed mixed content */
+                    struct lyxml_elem *e = (struct lyxml_elem*)context->elements.objs[--context->elements.count];
+                    LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX, "Mixed XML content is not allowed (%.*s).",
+                           offset + (in - (*input)), &(*input)[-offset]);
+                    free(e);
+                    goto error;
+                } else if (rc) {
+                    /* some parsing error */
+                    goto error;
+                } else {
+                    /* closing element, so we have regular content */
+                    context->status++;
+                    goto success;
+                }
             } else {
                 in += offset + 1;
             }
@@ -350,7 +487,12 @@ getbuffer:
     LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_EOF);
 error:
     if (!(*buffer)) {
+        /* buffer not provided, buf is local */
         free(buf);
+    } else if (buf) {
+        /* buf is shared with caller via buffer, but buf could be reallocated, so update the provided buffer */
+        (*buffer) = buf;
+        (*buffer_size) = size;
     }
     return LY_EVALID;
 
@@ -395,11 +537,14 @@ success:
             /* remove the closed element record from the tags list */
             free(context->elements.objs[context->elements.count - 1]);
             --context->elements.count;
+
+            /* remove also the namespaces conneted with the element */
+            lyxml_ns_rm(context);
         }
     }
 
     (*input) = in;
-    return LY_SUCCESS;
+    return rc;
 
 #undef BUFSIZE
 #undef BUFSIZE_STEP
@@ -417,7 +562,11 @@ lyxml_get_attribute(struct lyxml_context *context, const char **input,
     LY_ERR rc;
     unsigned int c;
     size_t endtag_len;
+    int is_ns = 0;
+    const char *ns_prefix = NULL;
+    size_t ns_prefix_len = 0;
 
+start:
     /* initialize output variables */
     (*prefix) = (*name) = NULL;
     (*prefix_len) = (*name_len) = 0;
@@ -468,6 +617,36 @@ lyxml_get_attribute(struct lyxml_context *context, const char **input,
         return LY_EVALID;
     }
     context->status = LYXML_ATTR_CONTENT;
+
+    is_ns = 0;
+    if (*prefix && *prefix_len == 5 && !strncmp(*prefix, "xmlns", 5)) {
+        is_ns = 1;
+        ns_prefix = *name;
+        ns_prefix_len = *name_len;
+    } else if (*name_len == 5 && !strncmp(*name, "xmlns", 5)) {
+        is_ns = 1;
+    }
+    if (is_ns) {
+        /* instead of attribute, we have namespace specification,
+         * so process it automatically and then move to another attribute (if any) */
+        char *value = NULL;
+        size_t value_len = 0;
+        int dynamic = 0;
+
+        LY_CHECK_RET(lyxml_get_string(context, &in, &value, &value_len, &value, &value_len, &dynamic));
+        if ((rc = lyxml_ns_add(context, ns_prefix, ns_prefix_len, dynamic ? value : strndup(value, value_len)))) {
+            if (dynamic) {
+                free(value);
+                return rc;
+            }
+        }
+        if (context->status == LYXML_ATTRIBUTE) {
+            goto start;
+        } else {
+            (*prefix) = (*name) = NULL;
+            (*prefix_len) = (*name_len) = 0;
+        }
+    }
 
     /* move caller's input */
     (*input) = in;
@@ -523,6 +702,9 @@ lyxml_get_element(struct lyxml_context *context, const char **input,
             } else if (!strncmp(in, "DOCTYPE", 7)) {
                 /* Document type declaration - not supported */
                 LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_NSUPP, "Document Type Declaration");
+                return LY_EVALID;
+            } else {
+                LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX, "Unknown XML section \"%.20s\".", &in[-2]);
                 return LY_EVALID;
             }
             in = ign_todelim(in, endtag, endtag_len, &newlines);
@@ -582,16 +764,20 @@ element:
                 /* match opening and closing element tags */
                 LY_CHECK_ERR_RET(
                         !context->elements.count,
-                        LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX, "Opening and closing elements tag missmatch (\"%.*s\").", name_len, *name),
+                        LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX, "Opening and closing elements tag missmatch (\"%.*s\").", *name_len, *name),
                         LY_EVALID);
                 e = (struct lyxml_elem*)context->elements.objs[context->elements.count - 1];
                 LY_CHECK_ERR_RET(e->prefix_len != *prefix_len || e->name_len != *name_len
                                  || (*prefix_len && strncmp(*prefix, e->prefix, e->prefix_len)) || strncmp(*name, e->name, e->name_len),
-                                 LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX, "Opening and closing elements tag missmatch (\"%.*s\").", name_len, *name),
+                                 LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX, "Opening and closing elements tag missmatch (\"%.*s\").", *name_len, *name),
                                  LY_EVALID);
                 /* opening and closing element tags matches, remove record from the opening tags list */
                 free(e);
                 --context->elements.count;
+
+                /* remove also the namespaces conneted with the element */
+                lyxml_ns_rm(context);
+
                 /* do not return element information to announce closing element being currently processed */
                 *name = *prefix = NULL;
                 *name_len = *prefix_len = 0;
@@ -640,75 +826,6 @@ success:
     return LY_SUCCESS;
 }
 
-LY_ERR
-lyxml_ns_add(struct lyxml_context *context, const char *element_name, const char *prefix, size_t prefix_len, char *uri, size_t uri_len)
-{
-    struct lyxml_ns *ns;
-
-    ns = malloc(sizeof *ns);
-    LY_CHECK_ERR_RET(!ns, LOGMEM(context->ctx), LY_EMEM);
-
-    ns->element = element_name;
-    ns->uri = strndup(uri, uri_len);
-    LY_CHECK_ERR_RET(!ns->uri, LOGMEM(context->ctx); free(ns), LY_EMEM);
-
-    if (prefix) {
-        ns->prefix = strndup(prefix, prefix_len);
-        LY_CHECK_ERR_RET(!ns->prefix, LOGMEM(context->ctx); free(ns->uri); free(ns), LY_EMEM);
-    } else {
-        ns->prefix = NULL;
-    }
-
-    LY_CHECK_ERR_RET(ly_set_add(&context->ns, ns, LY_SET_OPT_USEASLIST) == -1, free(ns->prefix); free(ns->uri); free(ns), LY_EMEM);
-    return LY_SUCCESS;
-}
-
-const struct lyxml_ns *
-lyxml_ns_get(struct lyxml_context *context, const char *prefix, size_t prefix_len)
-{
-    unsigned int u;
-    struct lyxml_ns *ns;
-
-    for (u = context->ns.count - 1; u + 1 > 0; --u) {
-        ns = (struct lyxml_ns *)context->ns.objs[u];
-        if (prefix) {
-            if (!strncmp(prefix, ns->prefix, prefix_len) && ns->prefix[prefix_len] == '\0') {
-                return ns;
-            }
-        } else if (!ns->prefix) {
-            /* default namespace */
-            return ns;
-        }
-    }
-
-    return NULL;
-}
-
-LY_ERR
-lyxml_ns_rm(struct lyxml_context *context, const char *element_name)
-{
-    unsigned int u;
-
-    for (u = context->ns.count - 1; u + 1 > 0; --u) {
-        if (((struct lyxml_ns *)context->ns.objs[u])->element != element_name) {
-            /* we are done, the namespaces from a single element are supposed to be together */
-            break;
-        }
-        /* remove the ns structure */
-        free(((struct lyxml_ns *)context->ns.objs[u])->prefix);
-        free(((struct lyxml_ns *)context->ns.objs[u])->uri);
-        free(context->ns.objs[u]);
-        --context->ns.count;
-    }
-
-    if (!context->ns.count) {
-        /* cleanup the context's namespaces storage */
-        ly_set_erase(&context->ns, NULL);
-    }
-
-    return LY_SUCCESS;
-}
-
 void
 lyxml_context_clear(struct lyxml_context *context)
 {
@@ -723,3 +840,40 @@ lyxml_context_clear(struct lyxml_context *context)
     }
     ly_set_erase(&context->ns, NULL);
 }
+
+LY_ERR
+lyxml_dump_text(struct lyout *out, const char *text, int attribute)
+{
+    LY_ERR ret = LY_SUCCESS;
+    unsigned int u;
+
+    if (!text) {
+        return 0;
+    }
+
+    for (u = 0; text[u]; u++) {
+        switch (text[u]) {
+        case '&':
+            ret = ly_print(out, "&amp;");
+            break;
+        case '<':
+            ret = ly_print(out, "&lt;");
+            break;
+        case '>':
+            /* not needed, just for readability */
+            ret = ly_print(out, "&gt;");
+            break;
+        case '"':
+            if (attribute) {
+                ret = ly_print(out, "&quot;");
+                break;
+            }
+            /* falls through */
+        default:
+            ly_write(out, &text[u], 1);
+        }
+    }
+
+    return ret;
+}
+

@@ -1,7 +1,7 @@
 /**
  * @file tree_schema_helpers.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
- * @brief Parsing and validation helper functions
+ * @brief Parsing and validation helper functions for schema trees
  *
  * Copyright (c) 2015 - 2018 CESNET, z.s.p.o.
  *
@@ -13,18 +13,25 @@
  */
 #include "common.h"
 
+#include <assert.h>
 #include <ctype.h>
-#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <stdint.h>
 #include <stdlib.h>
-#include <sys/stat.h>
-#include <sys/types.h>
+#include <string.h>
 #include <unistd.h>
 #include <time.h>
 
-#include "libyang.h"
+#include "context.h"
+#include "dict.h"
+#include "extensions.h"
+#include "hash_table.h"
+#include "log.h"
+#include "set.h"
+#include "tree.h"
+#include "tree_schema.h"
 #include "tree_schema_internal.h"
 
 /**
@@ -201,18 +208,18 @@ getnext:
 }
 
 LY_ERR
-lysp_check_prefix(struct ly_ctx *ctx, uint64_t *line, struct lysp_import *imports, const char *module_prefix, const char **value)
+lysp_check_prefix(struct lys_parser_ctx *ctx, struct lysp_import *imports, const char *module_prefix, const char **value)
 {
     struct lysp_import *i;
 
     if (module_prefix && &module_prefix != value && !strcmp(module_prefix, *value)) {
-        LOGVAL(ctx, LY_VLOG_LINE, line, LYVE_REFERENCE,
+        LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_REFERENCE,
                "Prefix \"%s\" already used as module prefix.", *value);
         return LY_EEXIST;
     }
     LY_ARRAY_FOR(imports, struct lysp_import, i) {
         if (i->prefix && &i->prefix != value && !strcmp(i->prefix, *value)) {
-            LOGVAL(ctx, LY_VLOG_LINE, line, LYVE_REFERENCE, "Prefix \"%s\" already used to import \"%s\" module.",
+            LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_REFERENCE, "Prefix \"%s\" already used to import \"%s\" module.",
                    *value, i->name);
             return LY_EEXIST;
         }
@@ -244,7 +251,7 @@ lysc_check_status(struct lysc_ctx *ctx,
 }
 
 LY_ERR
-lysp_check_date(struct ly_parser_ctx *ctx, const char *date, int date_len, const char *stmt)
+lysp_check_date(struct lys_parser_ctx *ctx, const char *date, int date_len, const char *stmt)
 {
     int i;
     struct tm tm, tm_;
@@ -487,7 +494,7 @@ lysp_type_find(const char *id, struct lysp_node *start_node, struct lysp_module 
  * @return LY_EEXIST in case of collision, LY_SUCCESS otherwise.
  */
 static LY_ERR
-lysp_check_typedef(struct ly_parser_ctx *ctx, struct lysp_node *node, const struct lysp_tpdf *tpdf,
+lysp_check_typedef(struct lys_parser_ctx *ctx, struct lysp_node *node, const struct lysp_tpdf *tpdf,
                    struct hash_table *tpdfs_global, struct hash_table *tpdfs_scoped)
 {
     struct lysp_node *parent;
@@ -523,7 +530,7 @@ lysp_check_typedef(struct ly_parser_ctx *ctx, struct lysp_node *node, const stru
             }
         }
         /* search typedefs in parent's nodes */
-        for (parent = node->parent; parent; parent = node->parent) {
+        for (parent = node->parent; parent; parent = parent->parent) {
             if (lysp_type_match(name, parent)) {
                 LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_SYNTAX_YANG,
                        "Invalid name \"%s\" of typedef - name collision with another scoped type.", name);
@@ -562,7 +569,7 @@ lysp_id_cmp(void *val1, void *val2, int UNUSED(mod), void *UNUSED(cb_data))
 }
 
 LY_ERR
-lysp_check_typedefs(struct ly_parser_ctx *ctx, struct lysp_module *mod)
+lysp_check_typedefs(struct lys_parser_ctx *ctx, struct lysp_module *mod)
 {
     struct hash_table *ids_global;
     struct hash_table *ids_scoped;
@@ -631,7 +638,7 @@ lysp_load_module_check(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_
         /* check revision of the parsed model */
         if (!revs || strcmp(info->revision, revs[0].date)) {
             LOGERR(ctx, LY_EINVAL, "Module \"%s\" parsed with the wrong revision (\"%s\" instead \"%s\").", name,
-                   revs[0].date, info->revision);
+                   revs ? revs[0].date : "none", info->revision);
             return LY_EINVAL;
         }
     }
@@ -679,7 +686,7 @@ lysp_load_module_check(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_
 }
 
 LY_ERR
-lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, int implement, struct ly_parser_ctx *main_ctx,
+lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, int implement, struct lys_parser_ctx *main_ctx,
                      void **result)
 {
     int fd;
@@ -747,8 +754,18 @@ lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, int
     if (!*mod) {
         /* try to get the module from the context */
         if (revision) {
+            /* get the specific revision */
             *mod = (struct lys_module*)ly_ctx_get_module(ctx, name, revision);
+        } else if (implement) {
+            /* prefer the implemented module instead of the latest one */
+            *mod = (struct lys_module*)ly_ctx_get_module_implemented(ctx, name);
+            if (!*mod) {
+                /* there is no implemented module in the context, try to get the latest revision module */
+                goto latest_in_the_context;
+            }
         } else {
+            /* get the requested module of the latest revision in the context */
+latest_in_the_context:
             *mod = (struct lys_module*)ly_ctx_get_module_latest(ctx, name);
         }
     }
@@ -836,9 +853,9 @@ search_file:
 }
 
 LY_ERR
-lysp_load_submodule(struct ly_parser_ctx *ctx, struct lysp_module *mod, struct lysp_include *inc)
+lysp_load_submodule(struct lys_parser_ctx *ctx, struct lysp_module *mod, struct lysp_include *inc)
 {
-    struct lysp_submodule *submod;
+    struct lysp_submodule *submod = NULL;
     const char *submodule_data = NULL;
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
     void (*submodule_data_free)(void *module_data, void *user_data) = NULL;
@@ -939,6 +956,30 @@ lys_module_find_prefix(const struct lys_module *mod, const char *prefix, size_t 
 }
 
 const char *
+lys_prefix_find_module(const struct lys_module *mod, const struct lys_module *import)
+{
+    unsigned int u;
+
+    if (import == mod) {
+        return mod->prefix;
+    }
+
+    if (mod->parsed) {
+        LY_ARRAY_FOR(mod->parsed->imports, u) {
+            if (mod->parsed->imports[u].module == import) {
+                return mod->parsed->imports[u].prefix;
+            }
+        }
+    } else {
+        /* we don't have original information about the import's prefix,
+         * so the prefix of the import module itself is returned instead */
+        return import->prefix;
+    }
+
+    return NULL;
+}
+
+const char *
 lys_nodetype2str(uint16_t nodetype)
 {
     switch(nodetype) {
@@ -962,6 +1003,55 @@ lys_nodetype2str(uint16_t nodetype)
         return "RPC/action";
     case LYS_NOTIF:
         return "Notification";
+    case LYS_USES:
+        return "uses";
+    default:
+        return "unknown";
+    }
+}
+
+const char *
+lys_datatype2str(LY_DATA_TYPE basetype)
+{
+    switch(basetype) {
+    case LY_TYPE_BINARY:
+        return "binary";
+    case LY_TYPE_UINT8:
+        return "uint8";
+    case LY_TYPE_UINT16:
+        return "uint16";
+    case LY_TYPE_UINT32:
+        return "uint32";
+    case LY_TYPE_UINT64:
+        return "uint64";
+    case LY_TYPE_STRING:
+        return "string";
+    case LY_TYPE_BITS:
+        return "bits";
+    case LY_TYPE_BOOL:
+        return "boolean";
+    case LY_TYPE_DEC64:
+        return "decimal64";
+    case LY_TYPE_EMPTY:
+        return "empty";
+    case LY_TYPE_ENUM:
+        return "enumeration";
+    case LY_TYPE_IDENT:
+        return "identityref";
+    case LY_TYPE_INST:
+        return "instance-identifier";
+    case LY_TYPE_LEAFREF:
+        return "leafref";
+    case LY_TYPE_UNION:
+        return "union";
+    case LY_TYPE_INT8:
+        return "int8";
+    case LY_TYPE_INT16:
+        return "int16";
+    case LY_TYPE_INT32:
+        return "int32";
+    case LY_TYPE_INT64:
+        return "int64";
     default:
         return "unknown";
     }
@@ -1099,6 +1189,11 @@ API const struct lysp_node *
 lysp_node_children(const struct lysp_node *node)
 {
     struct lysp_node **children;
+
+    if (!node) {
+        return NULL;
+    }
+
     children = lysp_node_children_p((struct lysp_node*)node);
     if (children) {
         return *children;
@@ -1183,7 +1278,8 @@ lysc_node_children_p(const struct lysc_node *node, uint16_t flags)
             /* LYS_CONFIG_W, but also the default case */
             return &((struct lysc_action*)node)->input.data;
         }
-    /* TODO Notification */
+    case LYS_NOTIF:
+        return &((struct lysc_notif*)node)->data;
     default:
         return NULL;
     }
@@ -1193,6 +1289,11 @@ API const struct lysc_node *
 lysc_node_children(const struct lysc_node *node, uint16_t flags)
 {
     struct lysc_node **children;
+
+    if (!node) {
+        return NULL;
+    }
+
     children = lysc_node_children_p((struct lysc_node*)node, flags);
     if (children) {
         return *children;
@@ -1407,3 +1508,18 @@ match_keyword(const char *data, size_t len, size_t prefix_len)
     }
 
 }
+
+unsigned int
+lysp_ext_instance_iter(struct lysp_ext_instance *ext, unsigned int index, LYEXT_SUBSTMT substmt)
+{
+    LY_CHECK_ARG_RET(NULL, ext, LY_EINVAL);
+
+    for (; index < LY_ARRAY_SIZE(ext); index++) {
+        if (ext[index].insubstmt == substmt) {
+            return index;
+        }
+    }
+
+    return LY_ARRAY_SIZE(ext);
+}
+

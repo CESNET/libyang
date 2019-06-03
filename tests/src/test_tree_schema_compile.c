@@ -12,18 +12,6 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "../../src/common.c"
-#include "../../src/log.c"
-#include "../../src/set.c"
-#include "../../src/xpath.c"
-#include "../../src/parser_yang.c"
-#include "../../src/tree_schema_helpers.c"
-#include "../../src/tree_schema_free.c"
-#include "../../src/tree_schema_compile.c"
-#include "../../src/tree_schema.c"
-#include "../../src/context.c"
-#include "../../src/hash_table.c"
-
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
@@ -32,7 +20,14 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "libyang.h"
+#include "../../src/common.h"
+#include "../../src/tree_schema_internal.h"
+#include "../../src/xpath.h"
+
+void lysc_feature_free(struct ly_ctx *ctx, struct lysc_feature *feat);
+
+LY_ERR lys_path_token(const char **path, const char **prefix, size_t *prefix_len, const char **name, size_t *name_len,
+                      int *parent_times, int *has_predicate);
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
@@ -125,7 +120,7 @@ test_module(void **state)
     *state = test_module;
 
     const char *str;
-    struct ly_parser_ctx ctx = {0};
+    struct lys_parser_ctx ctx = {0};
     struct lys_module mod = {0};
     struct lysc_feature *f;
     struct lysc_iffeature *iff;
@@ -193,7 +188,7 @@ test_feature(void **state)
 {
     *state = test_feature;
 
-    struct ly_parser_ctx ctx = {0};
+    struct lys_parser_ctx ctx = {0};
     struct lys_module mod = {0}, *modp;
     const char *str;
     struct lysc_feature *f, *f1;
@@ -521,15 +516,24 @@ test_node_leaflist(void **state)
     assert_string_equal("10", ll->dflts[0]);
     assert_int_equal(LYS_CONFIG_W | LYS_STATUS_CURR | LYS_ORDBY_USER, ll->flags);
 
-    /* ordered-by is ignored for state data, RPC/action output parameters and notification content
-     * TODO test also, RPC output parameters and notification content */
+    /* ordered-by is ignored for state data, RPC/action output parameters and notification content */
     assert_non_null(mod = lys_parse_mem(ctx, "module d {yang-version 1.1;namespace urn:d;prefix d;"
                                         "leaf-list ll {config false; type string; ordered-by user;}}", LYS_IN_YANG));
     /* but warning is present: */
-    logbuf_assert("The ordered-by statement is ignored in lists representing state data, RPC/action output parameters or notification content ().");
+    logbuf_assert("The ordered-by statement is ignored in lists representing state data ().");
     assert_non_null(mod->compiled);
     assert_non_null((ll = (struct lysc_node_leaflist*)mod->compiled->data));
     assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM | LYS_SET_CONFIG, ll->flags);
+    logbuf_clean();
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module e {yang-version 1.1;namespace urn:e;prefix e;"
+                                        "rpc oper {output {leaf-list ll {type string; ordered-by user;}}}}", LYS_IN_YANG));
+    logbuf_assert("The ordered-by statement is ignored in lists representing RPC/action output parameters ().");
+    logbuf_clean();
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module f {yang-version 1.1;namespace urn:f;prefix f;"
+                                        "notification event {leaf-list ll {type string; ordered-by user;}}}", LYS_IN_YANG));
+    logbuf_assert("The ordered-by statement is ignored in lists representing notification content ().");
 
     /* invalid */
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;leaf-list ll {type empty;}}", LYS_IN_YANG));
@@ -817,9 +821,92 @@ test_action(void **state)
     logbuf_assert("Duplicate identifier \"y\" of data definition/RPC/action/Notification statement.");
     assert_null(lys_parse_mem(ctx, "module dd {yang-version 1.1; namespace urn:dd;prefix dd;container c {action z; action z;}}", LYS_IN_YANG));
     logbuf_assert("Duplicate identifier \"z\" of data definition/RPC/action/Notification statement.");
-    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule eesub {belongs-to ee {prefix ee;} rpc w;}");
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule eesub {belongs-to ee {prefix ee;} notification w;}");
     assert_null(lys_parse_mem(ctx, "module ee {yang-version 1.1; namespace urn:ee;prefix ee;include eesub; rpc w;}", LYS_IN_YANG));
     logbuf_assert("Duplicate identifier \"w\" of data definition/RPC/action/Notification statement.");
+
+    assert_null(lys_parse_mem(ctx, "module ff {yang-version 1.1; namespace urn:ff;prefix ff; rpc test {input {container a {leaf b {type string;}}}}"
+                              "augment /test/input/a {action invalid {input {leaf x {type string;}}}}}", LYS_IN_YANG));
+    logbuf_assert("Action \"invalid\" is placed inside another RPC/action.");
+
+    assert_null(lys_parse_mem(ctx, "module gg {yang-version 1.1; namespace urn:gg;prefix gg; notification test {container a {leaf b {type string;}}}"
+                              "augment /test/a {action invalid {input {leaf x {type string;}}}}}", LYS_IN_YANG));
+    logbuf_assert("Action \"invalid\" is placed inside Notification.");
+
+    assert_null(lys_parse_mem(ctx, "module hh {yang-version 1.1; namespace urn:hh;prefix hh; notification test {container a {uses grp;}}"
+                              "grouping grp {action invalid {input {leaf x {type string;}}}}}", LYS_IN_YANG));
+    logbuf_assert("Action \"invalid\" is placed inside Notification.");
+
+    *state = NULL;
+    ly_ctx_destroy(ctx, NULL);
+}
+
+static void
+test_notification(void **state)
+{
+    *state = test_notification;
+
+    struct ly_ctx *ctx;
+    struct lys_module *mod;
+    const struct lysc_notif *notif;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;"
+                                        "notification a1 {leaf x {type int8;}} notification a2;}", LYS_IN_YANG));
+    notif = mod->compiled->notifs;
+    assert_non_null(notif);
+    assert_int_equal(2, LY_ARRAY_SIZE(notif));
+    assert_int_equal(LYS_NOTIF, notif->nodetype);
+    assert_int_equal(LYS_STATUS_CURR, notif->flags);
+    assert_string_equal("a1", notif->name);
+    assert_non_null(notif->data);
+    assert_string_equal("x", notif->data->name);
+    assert_int_equal(LYS_NOTIF, notif[1].nodetype);
+    assert_int_equal(LYS_STATUS_CURR, notif[1].flags);
+    assert_string_equal("a2", notif[1].name);
+    assert_null(notif[1].data);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module b {yang-version 1.1; namespace urn:b;prefix b; container top {"
+                                        "notification b1 {leaf x {type int8;}} notification b2;}}", LYS_IN_YANG));
+    notif = lysc_node_notifs(mod->compiled->data);
+    assert_non_null(notif);
+    assert_int_equal(2, LY_ARRAY_SIZE(notif));
+    assert_int_equal(LYS_NOTIF, notif->nodetype);
+    assert_int_equal(LYS_STATUS_CURR, notif->flags);
+    assert_string_equal("b1", notif->name);
+    assert_non_null(notif->data);
+    assert_string_equal("x", notif->data->name);
+    assert_int_equal(LYS_NOTIF, notif[1].nodetype);
+    assert_int_equal(LYS_STATUS_CURR, notif[1].flags);
+    assert_string_equal("b2", notif[1].name);
+    assert_null(notif[1].data);
+
+    /* invalid */
+    assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;container top {notification x;}}", LYS_IN_YANG));
+    logbuf_assert("Invalid keyword \"notification\" as a child of \"container\" - the statement is allowed only in YANG 1.1 modules. Line number 1.");
+
+    assert_null(lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb;leaf x{type string;} notification x;}", LYS_IN_YANG));
+    logbuf_assert("Duplicate identifier \"x\" of data definition/RPC/action/Notification statement.");
+    assert_null(lys_parse_mem(ctx, "module cc {yang-version 1.1; namespace urn:cc;prefix cc;container c {leaf y {type string;} notification y;}}", LYS_IN_YANG));
+    logbuf_assert("Duplicate identifier \"y\" of data definition/RPC/action/Notification statement.");
+    assert_null(lys_parse_mem(ctx, "module dd {yang-version 1.1; namespace urn:dd;prefix dd;container c {notification z; notification z;}}", LYS_IN_YANG));
+    logbuf_assert("Duplicate identifier \"z\" of data definition/RPC/action/Notification statement.");
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule eesub {belongs-to ee {prefix ee;} rpc w;}");
+    assert_null(lys_parse_mem(ctx, "module ee {yang-version 1.1; namespace urn:ee;prefix ee;include eesub; notification w;}", LYS_IN_YANG));
+    logbuf_assert("Duplicate identifier \"w\" of data definition/RPC/action/Notification statement.");
+
+    assert_null(lys_parse_mem(ctx, "module ff {yang-version 1.1; namespace urn:ff;prefix ff; rpc test {input {container a {leaf b {type string;}}}}"
+                              "augment /test/input/a {notification invalid {leaf x {type string;}}}}", LYS_IN_YANG));
+    logbuf_assert("Notification \"invalid\" is placed inside RPC/action.");
+
+    assert_null(lys_parse_mem(ctx, "module gg {yang-version 1.1; namespace urn:gg;prefix gg; notification test {container a {leaf b {type string;}}}"
+                              "augment /test/a {notification invalid {leaf x {type string;}}}}", LYS_IN_YANG));
+    logbuf_assert("Notification \"invalid\" is placed inside another Notification.");
+
+    assert_null(lys_parse_mem(ctx, "module hh {yang-version 1.1; namespace urn:hh;prefix hh; rpc test {input {container a {uses grp;}}}"
+                              "grouping grp {notification invalid {leaf x {type string;}}}}", LYS_IN_YANG));
+    logbuf_assert("Notification \"invalid\" is placed inside RPC/action.");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
@@ -1195,9 +1282,11 @@ test_type_pattern(void **state)
     assert_int_equal(2, LY_ARRAY_SIZE(((struct lysc_type_str*)type)->patterns));
     assert_string_equal("errortag", ((struct lysc_type_str*)type)->patterns[0]->eapptag);
     assert_string_equal("error", ((struct lysc_type_str*)type)->patterns[0]->emsg);
+    assert_string_equal(".*", ((struct lysc_type_str*)type)->patterns[0]->expr);
     assert_int_equal(0, ((struct lysc_type_str*)type)->patterns[0]->inverted);
     assert_null(((struct lysc_type_str*)type)->patterns[1]->eapptag);
     assert_null(((struct lysc_type_str*)type)->patterns[1]->emsg);
+    assert_string_equal("[0-9].*[0-9]", ((struct lysc_type_str*)type)->patterns[1]->expr);
     assert_int_equal(1, ((struct lysc_type_str*)type)->patterns[1]->inverted);
 
     assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;typedef mytype {type string {pattern '[0-9]*';}}"
@@ -1208,7 +1297,9 @@ test_type_pattern(void **state)
     assert_int_equal(1, type->refcount);
     assert_non_null(((struct lysc_type_str*)type)->patterns);
     assert_int_equal(2, LY_ARRAY_SIZE(((struct lysc_type_str*)type)->patterns));
+    assert_string_equal("[0-9]*", ((struct lysc_type_str*)type)->patterns[0]->expr);
     assert_int_equal(3, ((struct lysc_type_str*)type)->patterns[0]->refcount);
+    assert_string_equal("[0-4]*", ((struct lysc_type_str*)type)->patterns[1]->expr);
     assert_int_equal(1, ((struct lysc_type_str*)type)->patterns[1]->refcount);
 
     assert_non_null(mod = lys_parse_mem(ctx, "module c {namespace urn:c;prefix c;typedef mytype {type string {pattern '[0-9]*';}}"
@@ -1219,6 +1310,7 @@ test_type_pattern(void **state)
     assert_int_equal(1, type->refcount);
     assert_non_null(((struct lysc_type_str*)type)->patterns);
     assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_type_str*)type)->patterns));
+    assert_string_equal("[0-9]*", ((struct lysc_type_str*)type)->patterns[0]->expr);
     assert_int_equal(2, ((struct lysc_type_str*)type)->patterns[0]->refcount);
 
     /* test substitutions */
@@ -1228,6 +1320,7 @@ test_type_pattern(void **state)
     assert_non_null(type);
     assert_non_null(((struct lysc_type_str*)type)->patterns);
     assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_type_str*)type)->patterns));
+    assert_string_equal("^\\p{IsLatinExtended-A}$", ((struct lysc_type_str*)type)->patterns[0]->expr);
     /* TODO check some data "^ř$" */
 
     *state = NULL;
@@ -1813,6 +1906,20 @@ test_type_leafref(void **state)
     assert_non_null(mod->compiled->data);
     assert_string_equal("h", mod->compiled->data->name);
 
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "module j {namespace urn:j;prefix j; leaf j  {type string;}}");
+    assert_non_null(mod = lys_parse_mem(ctx, "module k {namespace urn:k;prefix k;import j {prefix j;}"
+                                        "leaf i {type leafref {path \"/ilist[name = current()/../j:j]/value\";}}"
+                                        "list ilist {key name; leaf name {type string;} leaf value {type uint16;}}}", LYS_IN_YANG));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
+    assert_non_null(((struct lysc_type_leafref*)type)->realtype);
+    assert_int_equal(LY_TYPE_UINT16, ((struct lysc_type_leafref*)type)->realtype->basetype);
+    assert_non_null(mod = ly_ctx_get_module_implemented(ctx, "j"));
+    assert_int_equal(1, mod->implemented);
+    assert_non_null(mod->compiled->data);
+    assert_string_equal("j", mod->compiled->data->name);
+
     /* invalid paths */
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;container a {leaf target2 {type uint8;}}"
                                         "leaf ref1 {type leafref {path ../a/invalid;}}}", LYS_IN_YANG));
@@ -1938,21 +2045,21 @@ test_type_leafref(void **state)
                                         "leaf ifname{type leafref{ path \"../interface/name\";}}"
                                         "leaf address {type leafref{ path \"/interface[name=current()/../x:ifname]/ip\";}}}",
                                         LYS_IN_YANG));
-    logbuf_assert("Invalid leafref path predicate \"[name=current()/../x:ifname]\" - unable to find module of the node \"ifname\" in rel-path_keyexpr.");
+    logbuf_assert("Invalid leafref path predicate \"[name=current()/../x:ifname]\" - unable to find module of the node \"ifname\" in rel-path-keyexpr.");
 
     assert_null(lys_parse_mem(ctx, "module zz {namespace urn:zz;prefix zz;"
                                         "list interface{key name;leaf name{type string;}leaf ip {type string;}}"
                                         "leaf ifname{type leafref{ path \"../interface/name\";}}"
                                         "leaf address {type leafref{ path \"/interface[name=current()/../xxx]/ip\";}}}",
                                         LYS_IN_YANG));
-    logbuf_assert("Invalid leafref path predicate \"[name=current()/../xxx]\" - unable to find node \"current()/../xxx\" in the rel-path_keyexpr.");
+    logbuf_assert("Invalid leafref path predicate \"[name=current()/../xxx]\" - unable to find node \"current()/../xxx\" in the rel-path-keyexpr.");
 
     assert_null(lys_parse_mem(ctx, "module zza {namespace urn:zza;prefix zza;"
                                         "list interface{key name;leaf name{type string;}leaf ip {type string;}}"
                                         "leaf ifname{type leafref{ path \"../interface/name\";}}container c;"
                                         "leaf address {type leafref{ path \"/interface[name=current()/../c]/ip\";}}}",
                                         LYS_IN_YANG));
-    logbuf_assert("Invalid leafref path predicate \"[name=current()/../c]\" - rel-path_keyexpr \"current()/../c\" refers container instead of leaf.");
+    logbuf_assert("Invalid leafref path predicate \"[name=current()/../c]\" - rel-path-keyexpr \"current()/../c\" refers container instead of leaf.");
 
     assert_null(lys_parse_mem(ctx, "module zzb {namespace urn:zzb;prefix zzb;"
                                         "list interface{key name;leaf name{type string;}leaf ip {type string;}container c;}"
@@ -2065,6 +2172,13 @@ test_type_union(void **state)
                                         "typedef mytype2 {type mytype {type string;}}leaf l {type mytype2;}}", LYS_IN_YANG));
     logbuf_assert("Invalid type substatement for the type \"mytype2\" not directly derived from union built-in type.");
 
+    assert_null(lys_parse_mem(ctx, "module ee {namespace urn:ee;prefix ee;typedef mytype {type union{type mytype; type string;}}"
+                                        "leaf l {type mytype;}}", LYS_IN_YANG));
+    logbuf_assert("Invalid \"mytype\" type reference - circular chain of types detected.");
+    assert_null(lys_parse_mem(ctx, "module ef {namespace urn:ef;prefix ef;typedef mytype {type mytype2;}"
+                                        "typedef mytype2 {type mytype;} leaf l {type mytype;}}", LYS_IN_YANG));
+    logbuf_assert("Invalid \"mytype\" type reference - circular chain of types detected.");
+
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
 }
@@ -2176,6 +2290,42 @@ test_status(void **state)
 }
 
 static void
+test_grouping(void **state)
+{
+    *state = test_grouping;
+
+    struct ly_ctx *ctx;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+
+    /* result ok, but a warning about not used locally scoped grouping printed */
+    assert_non_null(lys_parse_mem(ctx, "module a {namespace urn:a;prefix a; grouping grp1 {leaf a1 {type string;}}"
+                                  "container a {leaf x {type string;} grouping grp2 {leaf a2 {type string;}}}}", LYS_IN_YANG));
+    logbuf_assert("Locally scoped grouping \"grp2\" not used.");
+    logbuf_clean();
+
+    /* result ok - when statement or leafref target must be checked only at the place where the grouping is really instantiated */
+    assert_non_null(lys_parse_mem(ctx, "module b {namespace urn:b;prefix b; grouping grp {"
+                                  "leaf ref {type leafref {path \"../name\";}}"
+                                  "leaf cond {type string; when \"../name = 'specialone'\";}}}", LYS_IN_YANG));
+    logbuf_assert("");
+
+
+    /* invalid - error in a non-instantiated grouping */
+    assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;"
+                                        "grouping grp {leaf x {type leafref;}}}", LYS_IN_YANG));
+    logbuf_assert("Missing path substatement for leafref type.");
+    logbuf_clean();
+    assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;"
+                                        "container a {grouping grp {leaf x {type leafref;}}}}", LYS_IN_YANG));
+    logbuf_assert("Missing path substatement for leafref type.");
+
+
+    *state = NULL;
+    ly_ctx_destroy(ctx, NULL);
+}
+
+static void
 test_uses(void **state)
 {
     *state = test_uses;
@@ -2183,6 +2333,7 @@ test_uses(void **state)
     struct ly_ctx *ctx;
     struct lys_module *mod;
     const struct lysc_node *parent, *child;
+    const struct lysc_node_container *cont;
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
 
@@ -2246,6 +2397,30 @@ test_uses(void **state)
     assert_non_null(child = lysc_node_children(child, 0));
     assert_string_equal("x", child->name);
 
+    assert_non_null(mod = lys_parse_mem(ctx, "module e {yang-version 1.1;namespace urn:e;prefix e; grouping grp {action g { description \"super g\";}}"
+                                        "container top {action e; uses grp {refine g {description \"ultra g\";}}}}", LYS_IN_YANG));
+    assert_non_null(mod->compiled->data);
+    cont = (const struct lysc_node_container*)mod->compiled->data;
+    assert_non_null(cont->actions);
+    assert_int_equal(2, LY_ARRAY_SIZE(cont->actions));
+    assert_string_equal("e", cont->actions[1].name);
+    assert_string_equal("g", cont->actions[0].name);
+    assert_string_equal("ultra g", cont->actions[0].dsc);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module f {yang-version 1.1;namespace urn:f;prefix f; grouping grp {notification g { description \"super g\";}}"
+                                        "container top {notification f; uses grp {refine g {description \"ultra g\";}}}}", LYS_IN_YANG));
+    assert_non_null(mod->compiled->data);
+    cont = (const struct lysc_node_container*)mod->compiled->data;
+    assert_non_null(cont->notifs);
+    assert_int_equal(2, LY_ARRAY_SIZE(cont->notifs));
+    assert_string_equal("f", cont->notifs[1].name);
+    assert_string_equal("g", cont->notifs[0].name);
+    assert_string_equal("ultra g", cont->notifs[0].dsc);
+
+    /* empty grouping */
+    assert_non_null(mod = lys_parse_mem(ctx, "module g {namespace urn:g;prefix g; grouping grp; uses grp;}", LYS_IN_YANG));
+    assert_null(mod->compiled->data);
+
     /* invalid */
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;uses missinggrp;}", LYS_IN_YANG));
     logbuf_assert("Grouping \"missinggrp\" referenced by a uses statement not found.");
@@ -2280,6 +2455,15 @@ test_uses(void **state)
                               "container top {uses grp {augment /g {leaf x {type int8;}}}}}", LYS_IN_YANG));
     logbuf_assert("Invalid descendant-schema-nodeid value \"/g\" - absolute-schema-nodeid used.");
 
+    assert_non_null(mod = lys_parse_mem(ctx, "module hh {yang-version 1.1;namespace urn:hh;prefix hh;"
+                                        "grouping grp {notification g { description \"super g\";}}"
+                                        "container top {notification h; uses grp {refine h {description \"ultra h\";}}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid descendant-schema-nodeid value \"h\" - target node not found.");
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module ii {yang-version 1.1;namespace urn:ii;prefix ii;"
+                                        "grouping grp {action g { description \"super g\";}}"
+                                        "container top {action i; uses grp {refine i {description \"ultra i\";}}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid descendant-schema-nodeid value \"i\" - target node not found.");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
@@ -3017,10 +3201,6 @@ test_deviation(void **state)
                               "deviation /x {deviate replace {type empty;}}}", LYS_IN_YANG));
     logbuf_assert("Leaf-list of type \"empty\" is allowed only in YANG 1.1 modules.");
 
-    assert_null(lys_parse_mem(ctx, "module oo {yang-version 1.1; namespace urn:oo;prefix oo; rpc test {input {container a {leaf b {type string;}}}}"
-                              "augment /test/input/a {action invalid {input {leaf x {type string;}}}}}", LYS_IN_YANG));
-    logbuf_assert("Action \"invalid\" is placed inside another RPC/action.");
-
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
 }
@@ -3050,6 +3230,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_node_choice, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_node_anydata, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_action, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_notification, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_grouping, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_uses, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_refine, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_augment, logger_setup, logger_teardown),

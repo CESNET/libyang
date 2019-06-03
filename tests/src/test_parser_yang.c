@@ -12,18 +12,6 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "../../src/common.c"
-#include "../../src/set.c"
-#include "../../src/log.c"
-#include "../../src/hash_table.c"
-#include "../../src/xpath.c"
-#include "../../src/parser_yang.c"
-#include "../../src/context.c"
-#include "../../src/tree_schema_helpers.c"
-#include "../../src/tree_schema_free.c"
-#include "../../src/tree_schema_compile.c"
-#include "../../src/tree_schema.c"
-
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
@@ -32,7 +20,51 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "libyang.h"
+#include "../../src/common.h"
+#include "../../src/tree_schema.h"
+#include "../../src/tree_schema_internal.h"
+
+/* originally static functions from tree_schema_free.c and parser_yang.c */
+void lysp_ext_instance_free(struct ly_ctx *ctx, struct lysp_ext_instance *ext);
+void lysp_ident_free(struct ly_ctx *ctx, struct lysp_ident *ident);
+void lysp_feature_free(struct ly_ctx *ctx, struct lysp_feature *feat);
+void lysp_deviation_free(struct ly_ctx *ctx, struct lysp_deviation *dev);
+void lysp_grp_free(struct ly_ctx *ctx, struct lysp_grp *grp);
+void lysp_action_free(struct ly_ctx *ctx, struct lysp_action *action);
+void lysp_notif_free(struct ly_ctx *ctx, struct lysp_notif *notif);
+void lysp_augment_free(struct ly_ctx *ctx, struct lysp_augment *augment);
+void lysp_deviate_free(struct ly_ctx *ctx, struct lysp_deviate *d);
+void lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node);
+
+LY_ERR buf_add_char(struct ly_ctx *ctx, const char **input, size_t len, char **buf, size_t *buf_len, size_t *buf_used);
+LY_ERR buf_store_char(struct lys_parser_ctx *ctx, const char **input, enum yang_arg arg,
+                      char **word_p, size_t *word_len, char **word_b, size_t *buf_len, int need_buf);
+LY_ERR get_keyword(struct lys_parser_ctx *ctx, const char **data, enum yang_keyword *kw, char **word_p, size_t *word_len);
+LY_ERR get_argument(struct lys_parser_ctx *ctx, const char **data, enum yang_arg arg,
+                    uint16_t *flags, char **word_p, char **word_b, size_t *word_len);
+LY_ERR skip_comment(struct lys_parser_ctx *ctx, const char **data, int comment);
+LY_ERR check_identifierchar(struct lys_parser_ctx *ctx, unsigned int c, int first, int *prefix);
+
+LY_ERR parse_action(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_action **actions);
+LY_ERR parse_any(struct lys_parser_ctx *ctx, const char **data, enum yang_keyword kw, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_augment(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_augment **augments);
+LY_ERR parse_case(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_container(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_deviate(struct lys_parser_ctx *ctx, const char **data, struct lysp_deviate **deviates);
+LY_ERR parse_deviation(struct lys_parser_ctx *ctx, const char **data, struct lysp_deviation **deviations);
+LY_ERR parse_feature(struct lys_parser_ctx *ctx, const char **data, struct lysp_feature **features);
+LY_ERR parse_grouping(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_grp **groupings);
+LY_ERR parse_choice(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_identity(struct lys_parser_ctx *ctx, const char **data, struct lysp_ident **identities);
+LY_ERR parse_leaf(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_leaflist(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_list(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_maxelements(struct lys_parser_ctx *ctx, const char **data, uint32_t *max, uint16_t *flags, struct lysp_ext_instance **exts);
+LY_ERR parse_minelements(struct lys_parser_ctx *ctx, const char **data, uint32_t *min, uint16_t *flags, struct lysp_ext_instance **exts);
+LY_ERR parse_module(struct lys_parser_ctx *ctx, const char **data, struct lysp_module *mod);
+LY_ERR parse_notif(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_notif **notifs);
+LY_ERR parse_submodule(struct lys_parser_ctx *ctx, const char **data, struct lysp_submodule *submod);
+LY_ERR parse_uses(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
@@ -108,7 +140,7 @@ test_helpers(void **state)
     char *buf, *p;
     size_t len, size;
     int prefix;
-    struct ly_parser_ctx ctx;
+    struct lys_parser_ctx ctx;
     ctx.ctx = NULL;
     ctx.line = 1;
 
@@ -177,7 +209,7 @@ test_comments(void **state)
 {
     (void) state; /* unused */
 
-    struct ly_parser_ctx ctx;
+    struct lys_parser_ctx ctx;
     const char *str, *p;
     char *word, *buf;
     size_t len;
@@ -185,14 +217,14 @@ test_comments(void **state)
     ctx.ctx = NULL;
     ctx.line = 1;
 
-    str = " // this is a text of / one * line */ comment\nargument";
-    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
-    assert_string_equal("argument", word);
+    str = " // this is a text of / one * line */ comment\nargument;";
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
+    assert_string_equal("argument;", word);
     assert_null(buf);
     assert_int_equal(8, len);
 
-    str = "/* this is a \n * text // of / block * comment */\"arg\" + \"ume\" \n + \n \"nt\"";
-    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    str = "/* this is a \n * text // of / block * comment */\"arg\" + \"ume\" \n + \n \"nt\";";
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
     assert_string_equal("argument", word);
     assert_ptr_equal(buf, word);
     assert_int_equal(8, len);
@@ -204,7 +236,7 @@ test_comments(void **state)
 
     str = p = " this is a not terminated comment x";
     assert_int_equal(LY_EVALID, skip_comment(&ctx, &str, 2));
-    logbuf_assert("Unexpected end-of-file, non-terminated comment. Line number 5.");
+    logbuf_assert("Unexpected end-of-input, non-terminated comment. Line number 5.");
     assert_true(str[0] == '\0');
 }
 
@@ -213,7 +245,7 @@ test_arg(void **state)
 {
     (void) state; /* unused */
 
-    struct ly_parser_ctx ctx;
+    struct lys_parser_ctx ctx;
     const char *str;
     char *word, *buf;
     size_t len;
@@ -223,33 +255,41 @@ test_arg(void **state)
 
     /* missing argument */
     str = ";";
-    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_MAYBE_STR_ARG, &word, &buf, &len));
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_MAYBE_STR_ARG, NULL, &word, &buf, &len));
     assert_null(word);
 
     str = "{";
-    assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
     logbuf_assert("Invalid character sequence \"{\", expected an argument. Line number 1.");
 
     /* invalid escape sequence */
     str = "\"\\s\"";
-    assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
     logbuf_assert("Double-quoted string unknown special character \'\\s\'. Line number 1.");
     str = "\'\\s\'"; /* valid, since it is not an escape sequence in single quoted string */
-    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
     assert_int_equal(2, len);
     assert_string_equal("\\s\'", word);
     assert_int_equal('\0', str[0]); /* input has been eaten */
 
     /* invalid character after the argument */
     str = "hello\"";
-    assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
     logbuf_assert("Invalid character sequence \"\"\", expected unquoted string character, optsep, semicolon or opening brace. Line number 1.");
     str = "hello}";
-    assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
     logbuf_assert("Invalid character sequence \"}\", expected unquoted string character, optsep, semicolon or opening brace. Line number 1.");
 
+    str = "\"\";"; /* empty identifier is not allowed */
+    assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_IDENTIF_ARG, NULL, &word, &buf, &len));
+    logbuf_assert("Statement argument is required. Line number 1.");
+    logbuf_clean();
+    str = "\"\";"; /* empty reference identifier is not allowed */
+    assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_PREF_IDENTIF_ARG, NULL, &word, &buf, &len));
+    logbuf_assert("Statement argument is required. Line number 1.");
+
     str = "hello/x\t"; /* slash is not an invalid character */
-    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
     assert_int_equal(7, len);
     assert_string_equal("hello/x\t", word);
 
@@ -257,20 +297,20 @@ test_arg(void **state)
 
     /* different quoting */
     str = "hello ";
-    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
     assert_null(buf);
     assert_int_equal(5, len);
     assert_string_equal("hello ", word);
 
     str = "hello/*comment*/\n";
-    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
     assert_null(buf);
     assert_int_equal(5, len);
     assert_false(strncmp("hello", word, len));
 
 
     str = "\"hello\\n\\t\\\"\\\\\";";
-    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
     assert_null(buf);
     assert_int_equal(9, len);
     assert_string_equal("hello\\n\\t\\\"\\\\\";", word);
@@ -280,7 +320,7 @@ test_arg(void **state)
     /* - space and tabs before newline are stripped out
      * - space and tabs after newline (indentation) are stripped out
      */
-    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
     assert_non_null(buf);
     assert_ptr_equal(word, buf);
     assert_int_equal(14, len);
@@ -289,7 +329,7 @@ test_arg(void **state)
 
     ctx.indent = 14;
     str = "\"hello\n \tworld!\"";
-    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
     assert_non_null(buf);
     assert_ptr_equal(word, buf);
     assert_int_equal(12, len);
@@ -297,30 +337,30 @@ test_arg(void **state)
     free(buf);
 
     str = "\'hello\'";
-    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
     assert_null(buf);
     assert_int_equal(5, len);
     assert_false(strncmp("hello", word, 5));
 
     str = "\"hel\"  +\t\n\"lo\"";
-    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
     assert_ptr_equal(word, buf);
     assert_int_equal(5, len);
     assert_string_equal("hello", word);
     free(buf);
     str = "\"hel\"  +\t\nlo"; /* unquoted the second part */
-    assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
     logbuf_assert("Both string parts divided by '+' must be quoted. Line number 5.");
 
     str = "\'he\'\t\n+ \"llo\"";
-    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
     assert_ptr_equal(word, buf);
     assert_int_equal(5, len);
     assert_string_equal("hello", word);
     free(buf);
 
     str = " \t\n\"he\"+\'llo\'";
-    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
     assert_ptr_equal(word, buf);
     assert_int_equal(5, len);
     assert_string_equal("hello", word);
@@ -328,7 +368,7 @@ test_arg(void **state)
 
     /* missing argument */
     str = ";";
-    assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_STR_ARG, &word, &buf, &len));
+    assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
     logbuf_assert("Invalid character sequence \";\", expected an argument. Line number 7.");
 }
 
@@ -337,7 +377,7 @@ test_stmts(void **state)
 {
     (void) state; /* unused */
 
-    struct ly_parser_ctx ctx;
+    struct lys_parser_ctx ctx;
     const char *str, *p;
     enum yang_keyword kw;
     char *word;
@@ -673,7 +713,7 @@ test_minmax(void **state)
 {
     *state = test_minmax;
 
-    struct ly_parser_ctx ctx = {0};
+    struct lys_parser_ctx ctx = {0};
     uint16_t flags = 0;
     uint32_t value = 0;
     struct lysp_ext_instance *ext = NULL;
@@ -765,7 +805,7 @@ test_minmax(void **state)
 }
 
 static struct lysp_module *
-mod_renew(struct ly_parser_ctx *ctx)
+mod_renew(struct lys_parser_ctx *ctx)
 {
     struct lysp_module *mod_p;
     static struct lys_module mod = {0};
@@ -791,7 +831,7 @@ mod_renew(struct ly_parser_ctx *ctx)
 }
 
 static struct lysp_submodule *
-submod_renew(struct ly_parser_ctx *ctx, struct lysp_submodule *submod)
+submod_renew(struct lys_parser_ctx *ctx, struct lysp_submodule *submod)
 {
     lysp_submodule_free(ctx->ctx, submod);
     submod = calloc(1, sizeof *submod);
@@ -814,7 +854,7 @@ test_module(void **state)
 {
     *state = test_module;
 
-    struct ly_parser_ctx ctx;
+    struct lys_parser_ctx ctx;
     struct lysp_module *mod = NULL;
     struct lysp_submodule *submod = NULL;
     struct lys_module *m;
@@ -999,7 +1039,7 @@ test_module(void **state)
     free(mod);
     m->parsed = NULL;
     assert_int_equal(LY_EVALID, yang_parse_module(&ctx, str, m));
-    logbuf_assert("Invalid character sequence \"module\", expected end-of-file. Line number 3.");
+    logbuf_assert("Trailing garbage \"module q {names...\" after module, expected end-of-input. Line number 3.");
     mod = mod_renew(&ctx);
 
     str = "prefix " SCHEMA_BEGINNING "}";
@@ -1062,7 +1102,7 @@ test_module(void **state)
     lysp_submodule_free(ctx.ctx, submod);
     submod = NULL;
     assert_int_equal(LY_EVALID, yang_parse_submodule(&ctx, str, &submod));
-    logbuf_assert("Invalid character sequence \"module\", expected end-of-file. Line number 3.");
+    logbuf_assert("Trailing garbage \"module q {names...\" after submodule, expected end-of-input. Line number 3.");
 
     str = "prefix " SCHEMA_BEGINNING "}";
     assert_int_equal(LY_EVALID, yang_parse_submodule(&ctx, str, &submod));
@@ -1086,7 +1126,7 @@ test_identity(void **state)
 {
     *state = test_identity;
 
-    struct ly_parser_ctx ctx;
+    struct lys_parser_ctx ctx;
     struct lysp_ident *ident = NULL;
     const char *str;
 
@@ -1131,7 +1171,7 @@ test_feature(void **state)
 {
     (void) state; /* unused */
 
-    struct ly_parser_ctx ctx;
+    struct lys_parser_ctx ctx;
     struct lysp_feature *features = NULL;
     const char *str;
 
@@ -1174,7 +1214,7 @@ test_deviation(void **state)
 {
     (void) state; /* unused */
 
-    struct ly_parser_ctx ctx;
+    struct lys_parser_ctx ctx;
     struct lysp_deviation *d = NULL;
     const char *str;
 
@@ -1223,7 +1263,7 @@ test_deviate(void **state)
 {
     (void) state; /* unused */
 
-    struct ly_parser_ctx ctx;
+    struct lys_parser_ctx ctx;
     struct lysp_deviate *d = NULL;
     const char *str;
 
@@ -1308,7 +1348,7 @@ test_container(void **state)
 {
     (void) state; /* unused */
 
-    struct ly_parser_ctx ctx = {0};
+    struct lys_parser_ctx ctx = {0};
     struct lysp_node_container *c = NULL;
     const char *str;
 
@@ -1381,7 +1421,7 @@ test_leaf(void **state)
 {
     *state = test_leaf;
 
-    struct ly_parser_ctx ctx = {0};
+    struct lys_parser_ctx ctx = {0};
     struct lysp_node_leaf *l = NULL;
     const char *str;
 
@@ -1459,7 +1499,7 @@ test_leaflist(void **state)
 {
     *state = test_leaf;
 
-    struct ly_parser_ctx ctx = {0};
+    struct lys_parser_ctx ctx = {0};
     struct lysp_node_leaflist *ll = NULL;
     const char *str;
 
@@ -1557,7 +1597,7 @@ test_list(void **state)
 {
     *state = test_list;
 
-    struct ly_parser_ctx ctx = {0};
+    struct lys_parser_ctx ctx = {0};
     struct lysp_node_list *l = NULL;
     const char *str;
 
@@ -1627,7 +1667,7 @@ test_choice(void **state)
 {
     *state = test_choice;
 
-    struct ly_parser_ctx ctx = {0};
+    struct lys_parser_ctx ctx = {0};
     struct lysp_node_choice *ch = NULL;
     const char *str;
 
@@ -1694,7 +1734,7 @@ test_case(void **state)
 {
     *state = test_case;
 
-    struct ly_parser_ctx ctx = {0};
+    struct lys_parser_ctx ctx = {0};
     struct lysp_node_case *cs = NULL;
     const char *str;
 
@@ -1748,7 +1788,7 @@ test_any(void **state, enum yang_keyword kw)
 {
     *state = test_any;
 
-    struct ly_parser_ctx ctx = {0};
+    struct lys_parser_ctx ctx = {0};
     struct lysp_node_anydata *any = NULL;
     const char *str;
 
@@ -1814,7 +1854,7 @@ test_grouping(void **state)
 {
     *state = test_grouping;
 
-    struct ly_parser_ctx ctx = {0};
+    struct lys_parser_ctx ctx = {0};
     struct lysp_grp *grp = NULL;
     const char *str;
 
@@ -1870,7 +1910,7 @@ test_action(void **state)
 {
     *state = test_action;
 
-    struct ly_parser_ctx ctx = {0};
+    struct lys_parser_ctx ctx = {0};
     struct lysp_action *rpcs = NULL;
     struct lysp_node_container *c = NULL;
     const char *str;
@@ -1914,14 +1954,14 @@ test_action(void **state)
     assert_non_null(rpcs->typedefs);
     assert_int_equal(LYS_STATUS_CURR, rpcs->flags);
     /* input */
-    assert_int_equal(rpcs->input.nodetype, LYS_INOUT);
+    assert_int_equal(rpcs->input.nodetype, LYS_INPUT);
     assert_non_null(rpcs->input.groupings);
     assert_non_null(rpcs->input.exts);
     assert_non_null(rpcs->input.musts);
     assert_non_null(rpcs->input.typedefs);
     assert_non_null(rpcs->input.data);
     /* output */
-    assert_int_equal(rpcs->output.nodetype, LYS_INOUT);
+    assert_int_equal(rpcs->output.nodetype, LYS_OUTPUT);
     assert_non_null(rpcs->output.groupings);
     assert_non_null(rpcs->output.exts);
     assert_non_null(rpcs->output.musts);
@@ -1943,11 +1983,71 @@ test_action(void **state)
 }
 
 static void
+test_notification(void **state)
+{
+    *state = test_notification;
+
+    struct lys_parser_ctx ctx = {0};
+    struct lysp_notif *notifs = NULL;
+    struct lysp_node_container *c = NULL;
+    const char *str;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
+    assert_non_null(ctx.ctx);
+    ctx.line = 1;
+    ctx.mod_version = 2; /* simulate YANG 1.1 */
+
+    /* invalid cardinality */
+#define TEST_DUP(MEMBER, VALUE1, VALUE2) \
+    str = "func {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
+    assert_int_equal(LY_EVALID, parse_notif(&ctx, &str, NULL, &notifs)); \
+    logbuf_assert("Duplicate keyword \""MEMBER"\". Line number 1."); \
+    FREE_ARRAY(ctx.ctx, notifs, lysp_notif_free); notifs = NULL;
+
+    TEST_DUP("description", "text1", "text2");
+    TEST_DUP("reference", "1", "2");
+    TEST_DUP("status", "current", "obsolete");
+#undef TEST_DUP
+
+    /* full content */
+    str = "top;";
+    assert_int_equal(LY_SUCCESS, parse_container(&ctx, &str, NULL, (struct lysp_node**)&c));
+    str = "ntf {anydata a1; anyxml a2; choice ch; container c; description test; grouping grp; if-feature f; leaf l {type int8;}"
+          "leaf-list ll {type int8;} list li; must 1; reference test; status current; typedef mytype {type int8;} uses grp; m:ext;}";
+    assert_int_equal(LY_SUCCESS, parse_notif(&ctx, &str, (struct lysp_node*)c, &notifs));
+    assert_non_null(notifs);
+    assert_int_equal(LYS_NOTIF, notifs->nodetype);
+    assert_string_equal("ntf", notifs->name);
+    assert_string_equal("test", notifs->dsc);
+    assert_non_null(notifs->exts);
+    assert_non_null(notifs->iffeatures);
+    assert_string_equal("test", notifs->ref);
+    assert_non_null(notifs->groupings);
+    assert_non_null(notifs->typedefs);
+    assert_non_null(notifs->musts);
+    assert_non_null(notifs->data);
+    assert_int_equal(LYS_STATUS_CURR, notifs->flags);
+
+    ly_set_erase(&ctx.tpdfs_nodes, NULL);
+    FREE_ARRAY(ctx.ctx, notifs, lysp_notif_free); notifs = NULL;
+
+    /* invalid content */
+    str = "ntf {config true} ...";
+    assert_int_equal(LY_EVALID, parse_notif(&ctx, &str, NULL, &notifs));
+    logbuf_assert("Invalid keyword \"config\" as a child of \"notification\". Line number 1.");
+    FREE_ARRAY(ctx.ctx, notifs, lysp_notif_free); notifs = NULL;
+
+    *state = NULL;
+    lysp_node_free(ctx.ctx, (struct lysp_node*)c);
+    ly_ctx_destroy(ctx.ctx, NULL);
+}
+
+static void
 test_uses(void **state)
 {
     *state = test_uses;
 
-    struct ly_parser_ctx ctx = {0};
+    struct lys_parser_ctx ctx = {0};
     struct lysp_node_uses *u = NULL;
     const char *str;
 
@@ -1997,7 +2097,7 @@ test_augment(void **state)
 {
     *state = test_augment;
 
-    struct ly_parser_ctx ctx = {0};
+    struct lys_parser_ctx ctx = {0};
     struct lysp_augment *a = NULL;
     const char *str;
 
@@ -2061,6 +2161,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_anydata, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_anyxml, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_action, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_notification, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_grouping, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_uses, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_augment, logger_setup, logger_teardown),

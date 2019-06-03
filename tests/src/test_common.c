@@ -12,15 +12,12 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "../../src/common.c"
-#include "../../src/log.c"
-
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
 #include <cmocka.h>
 
-#include "libyang.h"
+#include "../../src/common.h"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};

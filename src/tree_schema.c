@@ -14,19 +14,25 @@
 
 #include "common.h"
 
+#include <assert.h>
 #include <dirent.h>
 #include <errno.h>
-#include <limits.h>
 #include <fcntl.h>
+#include <limits.h>
+#include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <unistd.h>
 
-#include "libyang.h"
 #include "context.h"
+#include "dict.h"
+#include "log.h"
+#include "set.h"
+#include "tree.h"
+#include "tree_schema.h"
 #include "tree_schema_internal.h"
-#include "xpath.h"
 
 API const struct lysc_node *
 lys_getnext(const struct lysc_node *last, const struct lysc_node *parent, const struct lysc_module *module, int options)
@@ -40,6 +46,7 @@ lys_getnext(const struct lysc_node *last, const struct lysc_node *parent, const 
 
     LY_CHECK_ARG_RET(NULL, parent || module, NULL);
 
+next:
     if (!last) {
         /* first call */
 
@@ -47,17 +54,15 @@ lys_getnext(const struct lysc_node *last, const struct lysc_node *parent, const 
         if (parent) {
             /* schema subtree */
             if (parent->nodetype == LYS_CHOICE && (options & LYS_GETNEXT_WITHCASE)) {
-                if (!((struct lysc_node_choice*)parent)->cases) {
-                    return NULL;
+                if (((struct lysc_node_choice*)parent)->cases) {
+                    next = last = (const struct lysc_node*)&((struct lysc_node_choice*)parent)->cases[0];
                 }
-                next = last = (const struct lysc_node*)&((struct lysc_node_choice*)parent)->cases[0];
             } else {
                 snode = lysc_node_children_p(parent, (options & LYS_GETNEXT_OUTPUT) ? LYS_CONFIG_R : LYS_CONFIG_W);
                 /* do not return anything if the node does not have any children */
-                if (!snode || !(*snode)) {
-                    return NULL;
+                if (snode && *snode) {
+                    next = last = *snode;
                 }
-                next = last = *snode;
             }
         } else {
             /* top level data */
@@ -115,7 +120,7 @@ repeat:
         /* possibly go back to parent */
         if (last && last->parent != parent) {
             last = last->parent;
-            next = last->next;
+            goto next;
         } else if (!action_flag) {
             action_flag = 1;
             next = parent ? (struct lysc_node*)lysc_node_actions(parent) : (struct lysc_node*)module->rpcs;
@@ -165,7 +170,7 @@ check:
         goto repeat;
     default:
         /* we should not be here */
-        LOGINT(last->module->ctx);
+        LOGINT(module ? module->mod->ctx : parent->module->ctx);
         return NULL;
     }
 
@@ -218,8 +223,8 @@ lysc_feature_value(const struct lysc_feature *feature)
     return feature->flags & LYS_FENABLED ? 1 : 0;
 }
 
-static uint8_t
-iff_getop(uint8_t *list, int pos)
+uint8_t
+lysc_iff_getop(uint8_t *list, int pos)
 {
     uint8_t *item;
     uint8_t mask = 3, result;
@@ -237,7 +242,7 @@ lysc_iffeature_value_(const struct lysc_iffeature *iff, int *index_e, int *index
     uint8_t op;
     int a, b;
 
-    op = iff_getop(iff->expr, *index_e);
+    op = lysc_iff_getop(iff->expr, *index_e);
     (*index_e)++;
 
     switch (op) {
@@ -298,20 +303,25 @@ lys_feature_change(const struct lys_module *mod, const char *name, int value)
     struct ly_set *changed;
     struct ly_ctx *ctx = mod->ctx; /* shortcut */
 
+    if (!strcmp(name, "*")) {
+        /* enable all */
+        all = 1;
+    }
+
     if (!mod->compiled) {
         LOGERR(ctx, LY_EINVAL, "Module \"%s\" is not implemented so all its features are permanently disabled without a chance to change it.",
                mod->name);
         return LY_EINVAL;
     }
     if (!mod->compiled->features) {
+        if (all) {
+            /* no feature to enable */
+            return LY_SUCCESS;
+        }
         LOGERR(ctx, LY_EINVAL, "Unable to switch feature since the module \"%s\" has no features.", mod->name);
         return LY_EINVAL;
     }
 
-    if (!strcmp(name, "*")) {
-        /* enable all */
-        all = 1;
-    }
     changed = ly_set_new();
     changed_count = 0;
 
@@ -428,19 +438,19 @@ next:
 }
 
 API LY_ERR
-lys_feature_enable(struct lys_module *module, const char *feature)
+lys_feature_enable(const struct lys_module *module, const char *feature)
 {
     LY_CHECK_ARG_RET(NULL, module, feature, LY_EINVAL);
 
-    return lys_feature_change(module, feature, 1);
+    return lys_feature_change((struct lys_module*)module, feature, 1);
 }
 
 API LY_ERR
-lys_feature_disable(struct lys_module *module, const char *feature)
+lys_feature_disable(const struct lys_module *module, const char *feature)
 {
     LY_CHECK_ARG_RET(NULL, module, feature, LY_EINVAL);
 
-    return lys_feature_change(module, feature, 0);
+    return lys_feature_change((struct lys_module*)module, feature, 0);
 }
 
 API int
@@ -501,12 +511,12 @@ lys_is_disabled(const struct lysc_node *node, int recursive)
 }
 
 struct lysp_submodule *
-lys_parse_mem_submodule(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, struct ly_parser_ctx *main_ctx,
+lys_parse_mem_submodule(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, struct lys_parser_ctx *main_ctx,
                         LY_ERR (*custom_check)(struct ly_ctx*, struct lysp_module*, struct lysp_submodule*, void*), void *check_data)
 {
     LY_ERR ret = LY_EINVAL;
     struct lysp_submodule *submod = NULL, *latest_sp;
-    struct ly_parser_ctx context = {0};
+    struct lys_parser_ctx context = {0};
 
     LY_CHECK_ARG_RET(ctx, ctx, data, NULL);
 
@@ -518,11 +528,11 @@ lys_parse_mem_submodule(struct ly_ctx *ctx, const char *data, LYS_INFORMAT forma
     memcpy(&context.grps_nodes, &main_ctx->grps_nodes, sizeof main_ctx->grps_nodes);
 
     switch (format) {
+    /* TODO not yet supported
     case LYS_IN_YIN:
-        /* TODO not yet supported
         mod = yin_read_module();
-        */
         break;
+    */
     case LYS_IN_YANG:
         ret = yang_parse_submodule(&context, data, &submod);
         break;
@@ -578,7 +588,7 @@ lys_parse_mem_module(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, 
     struct lysp_include *inc;
     LY_ERR ret = LY_EINVAL;
     unsigned int u, i;
-    struct ly_parser_ctx context = {0};
+    struct lys_parser_ctx context = {0};
 
     LY_CHECK_ARG_RET(ctx, ctx, data, NULL);
 
@@ -590,11 +600,11 @@ lys_parse_mem_module(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, 
     mod->ctx = ctx;
 
     switch (format) {
+    /* TODO not yet supported
     case LYS_IN_YIN:
-        /* TODO not yet supported
         mod = yin_read_module();
-        */
         break;
+    */
     case LYS_IN_YANG:
         ret = yang_parse_module(&context, data, mod);
         break;
@@ -663,7 +673,7 @@ lys_parse_mem_module(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, 
 
     if (!mod->implemented) {
         /* pre-compile features of the module */
-        LY_CHECK_GOTO(lys_feature_precompile(ctx, mod->parsed->features, &mod->off_features), error);
+        LY_CHECK_GOTO(lys_feature_precompile(ctx, mod, mod->parsed->features, &mod->off_features), error);
     }
 
     /* decide the latest revision */
@@ -709,7 +719,7 @@ finish_parsing:
         }
         if (!mod->implemented) {
             /* pre-compile features of the module */
-            LY_CHECK_GOTO(lys_feature_precompile(ctx, inc->submodule->features, &mod->off_features), error);
+            LY_CHECK_GOTO(lys_feature_precompile(ctx, mod, inc->submodule->features, &mod->off_features), error);
         }
     }
     mod->parsed->parsing = 0;
@@ -765,7 +775,7 @@ lys_parse_set_filename(struct ly_ctx *ctx, const char **filename, int fd)
 }
 
 void *
-lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, int implement, struct ly_parser_ctx *main_ctx,
+lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, int implement, struct lys_parser_ctx *main_ctx,
                     LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data),
                     void *check_data)
 {
@@ -817,7 +827,7 @@ lys_parse_fd_module(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, int impleme
 }
 
 struct lysp_submodule *
-lys_parse_fd_submodule(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, struct ly_parser_ctx *main_ctx,
+lys_parse_fd_submodule(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, struct lys_parser_ctx *main_ctx,
                        LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data),
                        void *check_data)
 {
@@ -1005,10 +1015,12 @@ lys_search_localfile(const char * const *searchpaths, int cwd, const char *name,
 
                 /* get type according to filename suffix */
                 flen = strlen(file->d_name);
-                if (!strcmp(&file->d_name[flen - 4], ".yin")) {
-                    format_aux = LYS_IN_YIN;
-                } else if (!strcmp(&file->d_name[flen - 5], ".yang")) {
+                if (!strcmp(&file->d_name[flen - 5], ".yang")) {
                     format_aux = LYS_IN_YANG;
+                /* TODO YIN parser
+                } else if (!strcmp(&file->d_name[flen - 4], ".yin")) {
+                    format_aux = LYS_IN_YIN;
+                */
                 } else {
                     /* not supportde suffix/file format */
                     continue;

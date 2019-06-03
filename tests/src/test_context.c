@@ -13,17 +13,6 @@
  */
 
 #include "tests/config.h"
-#include "../../src/common.c"
-#include "../../src/log.c"
-#include "../../src/set.c"
-#include "../../src/hash_table.c"
-#include "../../src/xpath.c"
-#include "../../src/parser_yang.c"
-#include "../../src/context.c"
-#include "../../src/tree_schema_helpers.c"
-#include "../../src/tree_schema_free.c"
-#include "../../src/tree_schema_compile.c"
-#include "../../src/tree_schema.c"
 
 #include <stdarg.h>
 #include <stddef.h>
@@ -33,7 +22,9 @@
 #include <string.h>
 #include <stdio.h>
 
-#include "libyang.h"
+#include "../../src/common.h"
+#include "../../src/context.h"
+#include "../../src/tree_schema_internal.h"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
@@ -109,10 +100,10 @@ test_searchdirs(void **state)
     logbuf_assert("Given search directory \""TESTS_BIN"/src_context\" is not a directory.");
     /* not executable */
     assert_int_equal(LY_EINVAL, ly_ctx_set_searchdir(ctx, __FILE__));
-    logbuf_assert("Unable to use search directory \""__FILE__"\" (Permission denied)");
+    logbuf_assert("Unable to fully access search directory \""__FILE__"\" (Permission denied).");
     /* not existing */
     assert_int_equal(LY_EINVAL, ly_ctx_set_searchdir(ctx, "/nonexistingfile"));
-    logbuf_assert("Unable to use search directory \"/nonexistingfile\" (No such file or directory)");
+    logbuf_assert("Unable to use search directory \"/nonexistingfile\" (No such file or directory).");
 
     /* ly_set_add() fails */
     /* no change */
@@ -174,7 +165,7 @@ test_searchdirs(void **state)
 
     /* test searchdir list in ly_ctx_new() */
     assert_int_equal(LY_EINVAL, ly_ctx_new("/nonexistingfile", 0, &ctx));
-    logbuf_assert("Unable to use search directory \"/nonexistingfile\" (No such file or directory)");
+    logbuf_assert("Unable to use search directory \"/nonexistingfile\" (No such file or directory).");
     assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC":/home:/home:"TESTS_SRC, 0, &ctx));
     assert_int_equal(2, ctx->search_paths.count);
     assert_string_equal(TESTS_SRC, ctx->search_paths.objs[0]);
@@ -364,6 +355,9 @@ test_get_models(void **state)
     const char *str1 = "module a {namespace urn:a;prefix a;revision 2018-10-23;}";
     const char *str2 = "module a {namespace urn:a;prefix a;revision 2018-10-23;revision 2018-10-24;}";
 
+    unsigned int index = 0;
+    const char *names[] = {"ietf-yang-metadata", "yang", "ietf-inet-types", "ietf-yang-types", "ietf-datastores", "ietf-yang-library", "a", "a", "a"};
+
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
 
     /* invalid arguments */
@@ -415,6 +409,11 @@ test_get_models(void **state)
     str1 = "submodule b {belongs-to a {prefix a;}}";
     assert_null(lys_parse_mem_module(ctx, str1, LYS_IN_YANG, 1, NULL, NULL));
     logbuf_assert("Input data contains submodule which cannot be parsed directly without its main module.");
+
+    while ((mod = ly_ctx_get_module_iter(ctx, &index))) {
+        assert_string_equal(names[index - 1], mod->name);
+    }
+    assert_int_equal(9, index);
 
     /* cleanup */
     *state = NULL;

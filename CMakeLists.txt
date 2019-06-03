@@ -32,21 +32,11 @@ if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE debug)
 endif()
 
-set(CMAKE_C_FLAGS         "${CMAKE_C_FLAGS} -Wall -Wextra -Wno-missing-field-initializers -std=c99")
-set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG")
-set(CMAKE_C_FLAGS_PACKAGE "-g -O2 -DNDEBUG")
-set(CMAKE_C_FLAGS_DEBUG   "-g -O0")
-
 # options
 if((CMAKE_BUILD_TYPE STREQUAL debug) OR (CMAKE_BUILD_TYPE STREQUAL Package))
     option(ENABLE_BUILD_TESTS "Build tests" ON)
     option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" ON)
-
-    if(CMAKE_COMPILER_IS_GNUCC)
-        option(ENABLE_COVERAGE "Build code coverage report from tests" ON)
-    else()
-        option(ENABLE_COVERAGE "Build code coverage report from tests" OFF)
-    endif()
+    option(ENABLE_COVERAGE "Build code coverage report from tests" OFF)
 else()
     option(ENABLE_BUILD_TESTS "Build tests" OFF)
     option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" OFF)
@@ -79,6 +69,44 @@ else()
     set(COMPILER_UNUSED_ATTR "UNUSED_ ## x")
     set(COMPILER_PACKED_ATTR "")
 endif()
+
+if(ENABLE_COVERAGE)
+    find_program(PATH_GCOV NAMES gcov)
+    if(NOT PATH_GCOV)
+        message(WARNING "'gcov' executable not found! Disabling building code coverage report.")
+        set(ENABLE_COVERAGE OFF)
+    endif()
+
+    find_program(PATH_LCOV NAMES lcov)
+    if(NOT PATH_GCOV)
+        message(WARNING "'lcov' executable not found! Disabling building code coverage report.")
+        set(ENABLE_COVERAGE OFF)
+    endif()
+
+    find_program(PATH_GENHTML NAMES genhtml)
+    if(NOT PATH_GCOV)
+        message(WARNING "'genhtml' executable not found! Disabling building code coverage report.")
+        set(ENABLE_COVERAGE OFF)
+    endif()
+
+    if(NOT CMAKE_COMPILER_IS_GNUCC)
+        message(WARNING "Compiler is not gcc! Coverage may break the tests!")
+    endif()
+
+    if(ENABLE_COVERAGE)
+        set(CMAKE_C_FLAGS_COVERAGE "${CMAKE_C_FLAGS} --coverage -fprofile-arcs -ftest-coverage")
+    endif()
+endif()
+
+set(CMAKE_C_FLAGS         "${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_COVERAGE} -Wall -Wextra -Wno-missing-field-initializers -std=c99")
+set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG")
+set(CMAKE_C_FLAGS_PACKAGE "-g -O2 -DNDEBUG")
+set(CMAKE_C_FLAGS_DEBUG   "-g -O0")
+
+list(APPEND CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
+check_symbol_exists(get_current_dir_name unistd.h HAVE_GET_CURRENT_DIR_NAME)
+check_symbol_exists(vdprintf stdio.h HAVE_VDPRINTF)
+check_symbol_exists(strnstr string.h HAVE_STRNSTR)
 
 include_directories(${PROJECT_BINARY_DIR}/src ${PROJECT_SOURCE_DIR}/src)
 configure_file(${PROJECT_SOURCE_DIR}/src/config.h.in ${PROJECT_BINARY_DIR}/src/config.h @ONLY)
@@ -161,7 +189,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMakeModules/")
 #endif()
 
 # by default build shared library
-# static build requires static libpcre library
+# static build requires static libpcre2 library
 option(ENABLE_STATIC "Build static (.a) library" OFF)
 
 # check the supported platform
@@ -171,46 +199,55 @@ endif()
 
 set(libsrc
     src/common.c
+    src/compat.c
     src/log.c
     src/hash_table.c
     src/set.c
     src/context.c
+    src/tree_data.c
+    src/tree_data_free.c
+    src/tree_data_helpers.c
+    src/tree_data_hash.c
+    src/parser_xml.c
+    src/printer_data.c
+    src/printer_xml.c
     src/tree_schema.c
     src/tree_schema_free.c
     src/tree_schema_compile.c
     src/tree_schema_helpers.c
     src/parser_yang.c
     src/parser_yin.c
+    src/printer.c
+    src/printer_schema.c
+    src/printer_yang.c
+    src/plugins_types.c
     src/xml.c
     src/xpath.c)
 
-#set(lintsrc
-#    tools/lint/main.c
-#    tools/lint/main_ni.c
-#    tools/lint/commands.c
-#    tools/lint/completion.c
-#    tools/lint/configuration.c
-#    linenoise/linenoise.c)
+set(lintsrc
+    tools/lint/main.c
+    tools/lint/main_ni.c
+    tools/lint/commands.c
+    tools/lint/completion.c
+    tools/lint/configuration.c
+    tools/lint/linenoise/linenoise.c)
 
-#set(resrc
-#    tools/re/main.c)
-
-#set(yang2yinsrc
-#    tools/yang2yin/main.c)
+set(resrc
+    tools/re/main.c)
 
 set(headers
     src/libyang.h
     src/context.h
+    src/tree.h
+    src/tree_data.h
+    src/printer_data.h
     src/tree_schema.h
+    src/printer_schema.h
     src/extensions.h
+    src/plugins_types.h
     src/dict.h
     src/log.h
     src/set.h)
-
-check_symbol_exists(vdprintf stdio.h HAVE_VDPRINTF)
-if(HAVE_VDPRINTF)
-    add_definitions(-DHAVE_VDPRINTF)
-endif(HAVE_VDPRINTF)
 
 # create static libyang library
 if(ENABLE_STATIC)
@@ -244,11 +281,11 @@ else()
     target_link_libraries(yang ${CMAKE_THREAD_LIBS_INIT})
 endif(ENABLE_STATIC)
 
-# find PCRE library
-unset(PCRE_LIBRARY CACHE)
-find_package(PCRE REQUIRED)
-include_directories(${PCRE_INCLUDE_DIRS})
-target_link_libraries(yang ${PCRE_LIBRARIES})
+# find PCRE2 library
+unset(PCRE2_LIBRARY CACHE)
+find_package(PCRE2 10.30 REQUIRED)
+include_directories(${PCRE2_INCLUDE_DIRS})
+target_link_libraries(yang ${PCRE2_LIBRARIES})
 
 install(TARGETS yang DESTINATION ${CMAKE_INSTALL_LIBDIR})
 install(FILES ${headers} ${PROJECT_BINARY_DIR}/src/config.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libyang)
@@ -340,19 +377,21 @@ endif(ENABLE_BUILD_TESTS)
 #
 #configure_file(${PROJECT_SOURCE_DIR}/src/plugin_config.h.in ${PROJECT_BINARY_DIR}/src/plugin_config.h)
 
+# config file for tools
+configure_file(${PROJECT_SOURCE_DIR}/tools/config.h.in ${PROJECT_BINARY_DIR}/tools/config.h @ONLY)
+
 # yanglint
-#add_executable(yanglint ${lintsrc})
-#target_link_libraries(yanglint yang)
-#install(TARGETS yanglint DESTINATION ${CMAKE_INSTALL_BINDIR})
-#install(FILES ${PROJECT_SOURCE_DIR}/tools/lint/yanglint.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
+add_executable(yanglint ${lintsrc})
+target_link_libraries(yanglint yang)
+install(TARGETS yanglint DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES ${PROJECT_SOURCE_DIR}/tools/lint/yanglint.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
+target_include_directories(yanglint BEFORE PRIVATE ${PROJECT_BINARY_DIR}/tools)
 
-#yangre
-#add_executable(yangre ${resrc})
-#target_link_libraries(yangre yang)
-#install(TARGETS yangre DESTINATION ${CMAKE_INSTALL_BINDIR})
-
-# yang2yin
-#add_executable(yang2yin ${yang2yinsrc})
+# yangre
+add_executable(yangre ${resrc})
+target_link_libraries(yangre yang)
+install(TARGETS yangre DESTINATION ${CMAKE_INSTALL_BINDIR})
+target_include_directories(yangre BEFORE PRIVATE ${PROJECT_BINARY_DIR}/tools)
 
 if(ENABLE_VALGRIND_TESTS)
     set(ENABLE_BUILD_TESTS ON)

@@ -12,25 +12,14 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "../../src/common.c"
-#include "../../src/log.c"
-#include "../../src/set.c"
-#include "../../src/parser_yang.c"
-#include "../../src/tree_schema.c"
-#include "../../src/tree_schema_compile.c"
-#include "../../src/tree_schema_free.c"
-#include "../../src/tree_schema_helpers.c"
-#include "../../src/hash_table.c"
-#include "../../src/xpath.c"
-#include "../../src/context.c"
-
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <setjmp.h>
 #include <cmocka.h>
 
-#include "libyang.h"
+#include "../../src/common.h"
+#include "../../src/tree_schema.h"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
@@ -135,12 +124,10 @@ test_getnext(void **state)
     rpc = (const struct lysc_action*)node;
     assert_non_null(node = lys_getnext(node, NULL, mod->compiled, 0));
     assert_string_equal("i", node->name);
-    /* TODO Notifications
     assert_non_null(node = lys_getnext(node, NULL, mod->compiled, 0));
     assert_string_equal("j", node->name);
     assert_non_null(node = lys_getnext(node, NULL, mod->compiled, 0));
     assert_string_equal("k", node->name);
-    */
     assert_null(node = lys_getnext(node, NULL, mod->compiled, 0));
     /* Inside container */
     assert_non_null(node = lys_getnext(node, (const struct lysc_node*)cont, mod->compiled, 0));
@@ -159,10 +146,8 @@ test_getnext(void **state)
     assert_string_equal("seven", node->name);
     assert_non_null(node = lys_getnext(node, (const struct lysc_node*)cont, mod->compiled, 0));
     assert_string_equal("eight", node->name);
-    /* TODO Notifications
     assert_non_null(node = lys_getnext(node, (const struct lysc_node*)cont, mod->compiled, 0));
     assert_string_equal("nine", node->name);
-    */
     assert_null(node = lys_getnext(node, (const struct lysc_node*)cont, mod->compiled, 0));
     /* Inside RPC */
     assert_non_null(node = lys_getnext(node, (const struct lysc_node*)rpc, mod->compiled, 0));
@@ -200,6 +185,15 @@ test_getnext(void **state)
     assert_non_null(node = lys_getnext(NULL, NULL, mod->compiled, LYS_GETNEXT_NOSTATECHECK));
     assert_string_equal("a", node->name);
 
+    assert_non_null(mod = lys_parse_mem(ctx, "module c {namespace urn:c;prefix c; rpc c;}", LYS_IN_YANG));
+    assert_non_null(node = lys_getnext(NULL, NULL, mod->compiled, 0));
+    assert_string_equal("c", node->name);
+    assert_null(node = lys_getnext(node, NULL, mod->compiled, LYS_GETNEXT_NOSTATECHECK));
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module d {namespace urn:d;prefix d; notification d;}", LYS_IN_YANG));
+    assert_non_null(node = lys_getnext(NULL, NULL, mod->compiled, 0));
+    assert_string_equal("d", node->name);
+    assert_null(node = lys_getnext(node, NULL, mod->compiled, LYS_GETNEXT_NOSTATECHECK));
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);

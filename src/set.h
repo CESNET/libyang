@@ -15,6 +15,8 @@
 #ifndef LY_SET_H_
 #define LY_SET_H_
 
+#include "log.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -1,17 +1,3 @@
-#include "../../src/common.c"
-#include "../../src/set.c"
-#include "../../src/log.c"
-#include "../../src/hash_table.c"
-#include "../../src/xpath.c"
-#include "../../src/parser_yang.c"
-#include "../../src/context.c"
-#include "../../src/tree_schema_helpers.c"
-#include "../../src/tree_schema_free.c"
-#include "../../src/tree_schema_compile.c"
-#include "../../src/tree_schema.c"
-#include "../../src/xml.c"
-#include "../../src/parser_yin.c"
-
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
@@ -20,7 +6,10 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "libyang.h"
+#include "../../src/common.h"
+#include "../../src/tree_schema.h"
+#include "../../src/tree_schema_internal.h"
+#include "../../src/parser_yin.h"
 
 struct state {
     struct ly_ctx *ctx;

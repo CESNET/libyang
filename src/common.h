@@ -18,18 +18,19 @@
 #define _DEFAULT_SOURCE
 #define _GNU_SOURCE
 
-#include <assert.h>
 #include <pthread.h>
+#include <stddef.h>
 #include <stdint.h>
-#include <stdlib.h>
-#include <unistd.h>
 
 #include "config.h"
-#include "log.h"
+
 #include "context.h"
-#include "tree_schema.h"
-#include "set.h"
+#include "dict.h"
 #include "hash_table.h"
+#include "log.h"
+#include "set.h"
+
+struct ly_ctx;
 
 #if __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
 # define THREAD_LOCAL _Thread_local
@@ -53,12 +54,26 @@
  */
 #define API __attribute__((visibility("default")))
 
-#ifndef  __USE_GNU
-/*
- * If we don't have GNU extension, implement these function on your own
+
+/******************************************************************************
+ * Compatibility functions
+ *****************************************************************************/
+
+#ifndef HAVE_GET_CURRENT_DIR_NAME
+/**
+ * @brief Return a malloc'd string containing the current directory name.
  */
 char *get_current_dir_name(void);
 #endif
+
+#ifndef HAVE_STRNSTR
+/**
+ * @brief Find the first occurrence of find in s, where the search is limited to the
+ * first slen characters of s.
+ */
+char *strnstr(const char *s, const char *find, size_t slen);
+#endif
+
 
 /******************************************************************************
  * Logger
@@ -85,8 +100,32 @@ extern THREAD_LOCAL enum int_log_opts log_opt;
 extern volatile uint8_t ly_log_level;
 extern volatile uint8_t ly_log_opts;
 
-void ly_err_free(void *ptr);
+/**
+ * @brief Set error-app-tag to the last error record in the context.
+ * @param[in] ctx libyang context where the error records are present.
+ * @param[in] apptag The error-app-tag value to store.
+ */
+void ly_err_last_set_apptag(const struct ly_ctx *ctx, const char *apptag);
+
+/**
+ * @brief Print a log message and store it into the context (if provided).
+ *
+ * @param[in] ctx libyang context to store the error record. If not provided, the error is just printed.
+ * @param[in] level Log message level (error, warning, etc.)
+ * @param[in] no Error type code.
+ * @param[in] format Format string to print.
+ */
 void ly_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, const char *format, ...);
+
+/**
+ * @brief Print Validation error and store it into the context (if provided).
+ *
+ * @param[in] ctx libyang context to store the error record. If not provided, the error is just printed.
+ * @param[in] elem_type Type of the data in @p elem variable.
+ * @param[in] elem Object to provide more information about the place where the error appeared.
+ * @param[in] code Validation error code.
+ * @param[in] format Format string to print.
+ */
 void ly_vlog(const struct ly_ctx *ctx, enum LY_VLOG_ELEM elem_type, const void *elem, LY_VECODE code, const char *format, ...);
 
 #define LOGERR(ctx, errno, str, args...) ly_log(ctx, LY_LLERR, errno, str, ##args)
@@ -112,12 +151,12 @@ void ly_vlog(const struct ly_ctx *ctx, enum LY_VLOG_ELEM elem_type, const void *
 /*
  * Common code to check return value and perform appropriate action.
  */
-#define LY_CHECK_GOTO(COND, GOTO) if (COND) {goto GOTO;}
-#define LY_CHECK_ERR_GOTO(COND, ERR, GOTO) if (COND) {ERR; goto GOTO;}
+#define LY_CHECK_GOTO(COND, GOTO) if ((COND)) {goto GOTO;}
+#define LY_CHECK_ERR_GOTO(COND, ERR, GOTO) if ((COND)) {ERR; goto GOTO;}
 #define LY_CHECK_RET1(RETVAL) {LY_ERR ret__ = RETVAL;if (ret__ != LY_SUCCESS) {return ret__;}}
-#define LY_CHECK_RET2(COND, RETVAL) if (COND) {return RETVAL;}
+#define LY_CHECK_RET2(COND, RETVAL) if ((COND)) {return RETVAL;}
 #define LY_CHECK_RET(...) GETMACRO2(__VA_ARGS__, LY_CHECK_RET2, LY_CHECK_RET1)(__VA_ARGS__)
-#define LY_CHECK_ERR_RET(COND, ERR, RETVAL) if (COND) {ERR; return RETVAL;}
+#define LY_CHECK_ERR_RET(COND, ERR, RETVAL) if ((COND)) {ERR; return RETVAL;}
 
 #define LY_CHECK_ARG_GOTO1(CTX, ARG, GOTO) if (!(ARG)) {LOGARG(CTX, ARG);goto GOTO;}
 #define LY_CHECK_ARG_GOTO2(CTX, ARG1, ARG2, GOTO) LY_CHECK_ARG_GOTO1(CTX, ARG1, GOTO);LY_CHECK_ARG_GOTO1(CTX, ARG2, GOTO)
@@ -136,7 +175,7 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 
 #define LY_VCODE_INCHAR      LYVE_SYNTAX, "Invalid character 0x%x."
 #define LY_VCODE_INSTREXP    LYVE_SYNTAX, "Invalid character sequence \"%.*s\", expected %s."
-#define LY_VCODE_EOF         LYVE_SYNTAX, "Unexpected end-of-file."
+#define LY_VCODE_EOF         LYVE_SYNTAX, "Unexpected end-of-input."
 #define LY_VCODE_NTERM       LYVE_SYNTAX, "%s not terminated."
 #define LY_VCODE_NSUPP       LYVE_SYNTAX, "%s not supported."
 #define LY_VCODE_INSTMT      LYVE_SYNTAX_YANG, "Invalid keyword \"%s\"."
@@ -453,12 +492,12 @@ LY_ERR ly_munmap(void *addr, size_t length);
  */
 #define LY_ARRAY_CREATE_GOTO(CTX, ARRAY, SIZE, RET, GOTO) \
         if (ARRAY) { \
-            ARRAY = ly_realloc(((uint32_t*)(ARRAY) - 1), sizeof(uint32_t) + ((*((uint32_t*)(ARRAY) - 1) + SIZE) * sizeof *(ARRAY))); \
+            ARRAY = ly_realloc(((uint32_t*)(ARRAY) - 1), sizeof(uint32_t) + ((*((uint32_t*)(ARRAY) - 1) + (SIZE)) * sizeof *(ARRAY))); \
             LY_CHECK_ERR_GOTO(!(ARRAY), LOGMEM(CTX); RET = LY_EMEM, GOTO); \
             ARRAY = (void*)((uint32_t*)(ARRAY) + 1); \
-            memset(&(ARRAY)[*((uint32_t*)(ARRAY) - 1)], 0, SIZE * sizeof *(ARRAY)); \
+            memset(&(ARRAY)[*((uint32_t*)(ARRAY) - 1)], 0, (SIZE) * sizeof *(ARRAY)); \
         } else { \
-            ARRAY = calloc(1, sizeof(uint32_t) + SIZE * sizeof *(ARRAY)); \
+            ARRAY = calloc(1, sizeof(uint32_t) + (SIZE) * sizeof *(ARRAY)); \
             LY_CHECK_ERR_GOTO(!(ARRAY), LOGMEM(CTX); RET = LY_EMEM, GOTO); \
             ARRAY = (void*)((uint32_t*)(ARRAY) + 1); \
         }

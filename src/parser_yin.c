@@ -11,31 +11,20 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
+#include "common.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
 
-#include "common.h"
 #include "context.h"
-#include "libyang.h"
+#include "dict.h"
 #include "xml.h"
+#include "tree.h"
+#include "tree_schema.h"
 #include "tree_schema_internal.h"
-
-enum YIN_ARGUMENT {
-    YIN_ARG_UNKNOWN = 0,   /**< parsed argument can not be matched with any known yin argument keyword */
-    YIN_ARG_NAME,          /**< argument name */
-    YIN_ARG_TARGET_NODE,   /**< argument target-node */
-    YIN_ARG_MODULE,        /**< argument module */
-    YIN_ARG_VALUE,         /**< argument value */
-    YIN_ARG_TEXT,          /**< argument text */
-    YIN_ARG_CONDITION,     /**< argument condition */
-    YIN_ARG_URI,           /**< argument uri */
-    YIN_ARG_DATE,          /**< argument data */
-    YIN_ARG_TAG,           /**< argument tag */
-    YIN_ARG_XMLNS,         /**< argument xmlns */
-    YIN_ARG_NONE,          /**< special value to specify no valid argument except xmlns, do not confuse with YIN_ARG_NONE */
-};
+#include "parser_yin.h"
 
 /**
  * @brief Match argument name.
@@ -114,39 +103,15 @@ match_argument_name(const char *name, size_t len)
 }
 
 /**
- * @brief parse xmlns statement
- *
- * @param[in] xml_ctx XML parser context.
- * @param[in, out] data Data to reda from.
- * @param[in] prefix
- */
-LY_ERR
-parse_xmlns(struct lyxml_context *xml_ctx, const char **data, const char *prefix, size_t prefix_len, char *element)
-{
-    char *buf = NULL, *out = NULL;
-    size_t buf_len = 0, out_len = 0;
-    int dynamic = 0;
-    LY_ERR ret = LY_SUCCESS;
-
-    ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
-    LY_CHECK_RET(ret != LY_SUCCESS, ret);
-    LY_CHECK_ERR_RET(out_len == 0, LOGVAL_YANG(xml_ctx, LYVE_SYNTAX_YIN, "Missing value of xmlns attribute"), LY_EEXIST);
-    lyxml_ns_add(xml_ctx, element, prefix, prefix_len, out, out_len);
-
-    return LY_SUCCESS;
-}
-
-/**
- * @brief parse yin argument and xmlns definition
+ * @brief parse yin argument
  *
  * @param[in] xml_ctx XML parser context.
  * @param[in, out] data Data to read from.
  * @param[in] arg_type Type of argument that is expected in parsed element (use YIN_ARG_NONE for elements without special arguments).
  * @param[out] arg_val Where value of argument should be stored. Can be NULL if arg_type is spedified as YIN_ARG_NONE.
- * @param[in] elem_name Name of currently parse element, used to create namespace scoping
  */
 static LY_ERR
-yin_parse_attribute(struct lyxml_context *xml_ctx, const char **data, enum YIN_ARGUMENT arg_type, const char **arg_val, char *elem_name)
+yin_parse_attribute(struct lyxml_context *xml_ctx, const char **data, enum YIN_ARGUMENT arg_type, const char **arg_val)
 {
     LY_ERR ret = LY_SUCCESS;
     const char *prefix, *name;
@@ -163,22 +128,17 @@ yin_parse_attribute(struct lyxml_context *xml_ctx, const char **data, enum YIN_A
 
         arg = match_argument_name(name, name_len);
 
-        if (arg == YIN_ARG_XMLNS) {
-            parse_xmlns(xml_ctx, data, prefix, prefix_len, elem_name);
-        } else if (arg == arg_type) {
+        if (arg == arg_type) {
             LY_CHECK_RET(ret);
             ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
             LY_CHECK_RET(ret);
             *arg_val = lydict_insert(xml_ctx->ctx, out, out_len);
             LY_CHECK_ERR_RET(!(*arg_val), LOGMEM(xml_ctx->ctx), LY_EMEM);
+        } else if (arg_type == YIN_ARG_NONE) {
+            continue;
         } else {
-            /* unrecognized attribute, still can be namespace definition eg. xmlns:foo=.... */
-            /* TODO this might be extension and not ns definition */
-            if (match_argument_name(prefix, prefix_len) == YIN_ARG_XMLNS) {
-                /* in this case prefix of namespace is actually name of attribute */
-                parse_xmlns(xml_ctx, data, name, name_len, elem_name);
-            } else {
-                /* unrecognized or unexpected attribute */
+            /* unrecognized or unexpected attribute */
+            if (name) {
                 LOGERR(xml_ctx->ctx, LY_EDENIED, "Invalid argument in namespace element");
                 return LY_EVALID;
             }
@@ -192,20 +152,18 @@ yin_parse_attribute(struct lyxml_context *xml_ctx, const char **data, enum YIN_A
  * @brief Parse content of whole element as text.
  *
  * @param[in] xml_ctx Xml context.
- * @param[in] element_name Name of element, name is necesary to remove xmlns definitions at the end of element
  * @param[in] data Data to read from.
  * @param[out] value Where content of element should be stored.
  */
 LY_ERR
-parse_text_element(struct lyxml_context *xml_ctx, char *element_name, const char **data, const char **value)
+parse_text_element(struct lyxml_context *xml_ctx, const char **data, const char **value)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf = NULL, *out = NULL;
-    size_t buf_len = 0, out_len = 0, prefix_len, name_len;
+    size_t buf_len = 0, out_len = 0;
     int dynamic;
-    const char *prefix, *name;
 
-    ret = yin_parse_attribute(xml_ctx, data, YIN_ARG_NONE, NULL, element_name);
+    ret = yin_parse_attribute(xml_ctx, data, YIN_ARG_NONE, NULL);
     LY_CHECK_RET(ret != LY_SUCCESS, ret);
     LY_CHECK_RET(xml_ctx->status != LYXML_ELEM_CONTENT, LY_EVALID);
 
@@ -216,64 +174,8 @@ parse_text_element(struct lyxml_context *xml_ctx, char *element_name, const char
         LY_CHECK_ERR_RET(!(*value), LOGMEM(xml_ctx->ctx), LY_EMEM);
     }
 
-    lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
-    lyxml_ns_rm(xml_ctx, element_name);
     return LY_SUCCESS;
 }
-
-// LY_ERR
-// parser_belongs_to(struct lyxml_context *xml_ctx, const char **data, const char **belongsto, const char **prefix, struct lysp_ext **extensions)
-// {
-//     enum yang_keyword kw = YANG_NONE;
-//     LY_ERR ret = LY_SUCCESS;
-//     const char *prefix_out, *name;
-//     size_t prefix_len, name_len;
-
-//     char *buf = NULL, *out = NULL;
-//     size_t buf_len = 0, out_len = 0;
-//     int dynamic;
-
-//     /* check if belongs-to has argument module */
-//     ret = lyxml_get_attribute(xml_ctx, data, &prefix_out, &prefix_len, &name, &name_len);
-//     LY_CHECK_RET1(ret);
-//     if (match_argument_name(name, name_len) != YIN_ARG_MODULE) {
-//         LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Invalid argument name \"%s\", expected \"module\".", name);
-//         return LY_EINVAL;
-//     }
-
-//     /* read content of argument */
-//     ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
-//     LY_CHECK_RET1(ret);
-//     *belongsto = lydict_insert(xml_ctx->ctx, out, out_len);
-//     LY_CHECK_ERR_RET(!belongsto, LOGMEM(xml_ctx->ctx), LY_EMEM);
-
-//     /* read substatements */
-//     while (xml_ctx->status == LYXML_ATTRIBUTE) {
-//         ret = lyxml_get_attribute(xml_ctx, data, &prefix_out, &prefix_len, &name, &name_len);
-//         LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), ret);
-//         kw = match_keyword(name);
-
-//         switch (kw) {
-//         case YANG_PREFIX:
-//             ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
-//             *prefix = lydict_insert(xml_ctx->ctx, out, out_len);
-//             break;
-//         case YANG_CUSTOM:
-//             /* TODO parse extension */
-//             break;
-//         default:
-//             LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Unexpected attribute");
-//             return LY_EVALID;
-//         }
-//     }
-
-//     if (!prefix) {
-//         LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Missing prefix");
-//         return LY_EVALID;
-//     }
-
-//     return LY_SUCCESS;
-// }
 
 /**
  * @brief Parse namespace statement.
@@ -289,11 +191,9 @@ parse_namespace(struct lyxml_context *xml_ctx, const char **data, const char **n
 {
     LY_ERR ret = LY_SUCCESS;
 
-    ret = yin_parse_attribute(xml_ctx, data, YIN_ARG_URI, namespace, "namespace");
+    ret = yin_parse_attribute(xml_ctx, data, YIN_ARG_URI, namespace);
     LY_CHECK_RET(ret != LY_SUCCESS, ret);
 
-    /* remove local xmlns definitions */
-    lyxml_ns_rm(xml_ctx, "namespace");
     return LY_SUCCESS;
 }
 
@@ -312,10 +212,9 @@ parse_prefix(struct lyxml_context *xml_ctx, const char **data, const char **pref
     LY_ERR ret = LY_SUCCESS;
 
     /* parse attributes */
-    ret = yin_parse_attribute(xml_ctx, data, YIN_ARG_VALUE, prefix, "prefix");
+    ret = yin_parse_attribute(xml_ctx, data, YIN_ARG_VALUE, prefix);
     LY_CHECK_RET(ret != LY_SUCCESS, ret);
-    /* remove local xmlns definitions */
-    ret = lyxml_ns_rm(xml_ctx, "prefix");
+
     return ret;
 }
 
@@ -329,11 +228,10 @@ yin_parse_revision_date(struct lyxml_context *xml_ctx, const char **data, char *
         return LY_EVALID;
     }
 
-    ret = yin_parse_attribute(xml_ctx, data, YIN_ARG_DATE, (const char **)&rev, "revision-date");
+    ret = yin_parse_attribute(xml_ctx, data, YIN_ARG_DATE, (const char **)&rev);
     LY_CHECK_RET(ret != LY_SUCCESS, ret);
-    LY_CHECK_RET(lysp_check_date((struct ly_parser_ctx *)xml_ctx, rev, strlen(rev), "revision-date") != LY_SUCCESS, LY_EVALID);
+    LY_CHECK_RET(lysp_check_date((struct lys_parser_ctx *)xml_ctx, rev, strlen(rev), "revision-date") != LY_SUCCESS, LY_EVALID);
 
-    ret = lyxml_ns_rm(xml_ctx, "import");
     return ret;
 }
 
@@ -350,7 +248,7 @@ yin_parse_import(struct lyxml_context *xml_ctx, const char *module_prefix, const
     LY_ARRAY_NEW_RET(xml_ctx->ctx, *imports, imp, LY_EVALID);
 
     /* parse import attributes  */
-    ret = yin_parse_attribute(xml_ctx, data, YIN_ARG_MODULE, &imp->name, "import");
+    ret = yin_parse_attribute(xml_ctx, data, YIN_ARG_MODULE, &imp->name);
     while ((ret = lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len) == LY_SUCCESS && name != NULL)) {
         kw = match_keyword(name, name_len, prefix_len);
         switch (kw) {
@@ -360,14 +258,14 @@ yin_parse_import(struct lyxml_context *xml_ctx, const char *module_prefix, const
             break;
         case YANG_DESCRIPTION:
             LY_CHECK_ERR_RET(imp->dsc, LOGVAL_YANG(xml_ctx, LY_VCODE_DUPSTMT, "description"), LY_EVALID);
-            parse_text_element(xml_ctx, "description", data, &imp->dsc);
+            parse_text_element(xml_ctx, data, &imp->dsc);
             break;
         case YANG_REFERENCE:
             LY_CHECK_ERR_RET(imp->ref, LOGVAL_YANG(xml_ctx, LY_VCODE_DUPSTMT, "reference"), LY_EVALID);
-            parse_text_element(xml_ctx, "reference", data, &imp->ref);
+            parse_text_element(xml_ctx, data, &imp->ref);
             break;
         case YANG_REVISION_DATE:
-            yin_parse_revision_date(xml_ctx, data, &imp->rev, &imp->exts);
+            yin_parse_revision_date(xml_ctx, data, imp->rev, &imp->exts);
             break;
         case YANG_CUSTOM:
             /* TODO parse extension */
@@ -380,7 +278,6 @@ yin_parse_import(struct lyxml_context *xml_ctx, const char *module_prefix, const
 
     /* TODO add log macro and log error */
     LY_CHECK_RET(!imp->prefix);
-    ret = lyxml_ns_rm(xml_ctx, "import");
     return ret;
 }
 
@@ -415,9 +312,6 @@ parse_mod(struct lyxml_context *xml_ctx, const char **data, struct lysp_module *
         arg = match_argument_name(name, name_len);
 
         switch (arg) {
-        case YIN_ARG_XMLNS:
-            parse_xmlns(xml_ctx, data, prefix, prefix_len, "module");
-            break;
         case YIN_ARG_NAME:
             /* check for multiple definitions of name */
             LY_CHECK_ERR_RET((*mod)->mod->name, LOGVAL_YANG(xml_ctx, LYVE_SYNTAX_YIN, "Duplicit definition of module name \"%s\"", (*mod)->mod->name), LY_EEXIST);
@@ -431,16 +325,16 @@ parse_mod(struct lyxml_context *xml_ctx, const char **data, struct lysp_module *
             (*mod)->mod->name = lydict_insert(xml_ctx->ctx, out, out_len);
             LY_CHECK_ERR_RET(!(*mod)->mod->name, LOGMEM(xml_ctx->ctx), LY_EMEM);
             break;
+
         default:
-            /* unrecognized attribute, still can be namespace definition eg. xmlns:foo=.... */
-            if (match_argument_name(prefix, prefix_len) == YIN_ARG_XMLNS) {
-                /* in this case prefix of namespace is actually name of attribute */
-                parse_xmlns(xml_ctx, data, name, name_len, "module");
-            } else {
-                /* unrecognized or unexpected attribute */
+            /* unrecognized attribute */
+            /* unrecognized or unexpected attribute */
+            /* TODO probably still can be from extension */
+            if (arg != YIN_ARG_UNKNOWN || name) {
                 LOGERR(xml_ctx->ctx, LY_EDENIED, "Invalid argument in module element");
                 return LY_EVALID;
             }
+
             break;
         }
     }
@@ -531,16 +425,16 @@ parse_mod(struct lyxml_context *xml_ctx, const char **data, struct lysp_module *
 
             /* meta */
             case YANG_ORGANIZATION:
-                LY_CHECK_RET(parse_text_element(xml_ctx, "organization", data, &(*mod)->mod->org));
+                LY_CHECK_RET(parse_text_element(xml_ctx, data, &(*mod)->mod->org));
                 break;
             case YANG_CONTACT:
-                LY_CHECK_RET(parse_text_element(xml_ctx, "contact", data, &(*mod)->mod->contact));
+                LY_CHECK_RET(parse_text_element(xml_ctx, data, &(*mod)->mod->contact));
                 break;
             case YANG_DESCRIPTION:
-                LY_CHECK_RET(parse_text_element(xml_ctx, "description", data, &(*mod)->mod->dsc));
+                LY_CHECK_RET(parse_text_element(xml_ctx, data, &(*mod)->mod->dsc));
                 break;
             case YANG_REFERENCE:
-                LY_CHECK_RET(parse_text_element(xml_ctx, "reference", data, &(*mod)->mod->ref));
+                LY_CHECK_RET(parse_text_element(xml_ctx, data, &(*mod)->mod->ref));
                 break;
 
             default:
@@ -550,7 +444,6 @@ parse_mod(struct lyxml_context *xml_ctx, const char **data, struct lysp_module *
         }
     }
 
-    lyxml_ns_rm(xml_ctx, "module");
     return ret;
 }
 
@@ -628,7 +521,7 @@ yin_parse_module(struct ly_ctx *ctx, const char *data, struct lys_module *mod)
 {
     LY_ERR ret = LY_SUCCESS;
     enum yang_keyword kw = YANG_NONE;
-    struct ly_parser_ctx parser_ctx;
+    struct lys_parser_ctx parser_ctx;
     struct lyxml_context *xml_ctx = (struct lyxml_context *)&parser_ctx;
     struct lysp_module *mod_p = NULL;
     const char *prefix, *name;

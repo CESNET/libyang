@@ -12,14 +12,14 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
+#include "common.h"
+
 #include <string.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <pthread.h>
 #include <assert.h>
 
-#include "common.h"
-#include "context.h"
 #include "hash_table.h"
 
 static int
@@ -244,7 +244,7 @@ lydict_insert_zc(struct ly_ctx *ctx, char *value)
     return result;
 }
 
-static struct ht_rec *
+struct ht_rec *
 lyht_get_rec(unsigned char *recs, uint16_t rec_size, uint32_t idx)
 {
     return (struct ht_rec *)&recs[idx * rec_size];

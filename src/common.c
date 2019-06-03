@@ -16,16 +16,14 @@
 
 #include <assert.h>
 #include <errno.h>
-#include <limits.h>
 #include <stdlib.h>
-#include <stdio.h>
 #include <ctype.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <unistd.h>
 
+#include "extensions.h"
 #include "tree_schema.h"
 
 const char *const ly_stmt_list[] = {
@@ -145,22 +143,6 @@ const char *const ly_devmod_list[] = {
     [LYS_DEV_REPLACE] = "replace",
 };
 
-#ifndef  __USE_GNU
-char *
-get_current_dir_name(void)
-{
-    char tmp[PATH_MAX];
-    char *retval;
-
-    if (getcwd(tmp, sizeof(tmp))) {
-        retval = strdup(tmp);
-        LY_CHECK_ERR_RET(!retval, LOGMEM(NULL), NULL);
-        return retval;
-    }
-    return NULL;
-}
-#endif
-
 void *
 ly_realloc(void *ptr, size_t size)
 {
@@ -180,6 +162,10 @@ ly_getutf8(const char **input, unsigned int *utf8_char, size_t *bytes_read)
     unsigned int c, len;
     int aux;
     int i;
+
+    if (bytes_read) {
+        (*bytes_read) = 0;
+    }
 
     c = (*input)[0];
     LY_CHECK_RET(!c, LY_EINVAL);

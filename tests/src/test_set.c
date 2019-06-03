@@ -20,9 +20,7 @@
 
 #include <string.h>
 
-#include "libyang.h"
-#include "../../src/set.c"
-#include "../../src/log.c"
+#include "../../src/set.h"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
@@ -102,13 +100,13 @@ test_inval(void **state)
     memset(&set, 0, sizeof set);
 
     ly_set_clean(NULL, NULL);
-    assert_string_equal(logbuf, "Invalid argument set (ly_set_clean()).");
+    assert_string_equal(logbuf, "");
 
     ly_set_erase(NULL, NULL);
-    assert_string_equal(logbuf, "Invalid argument set (ly_set_erase()).");
+    assert_string_equal(logbuf, "");
 
     ly_set_free(NULL, NULL);
-    assert_string_equal(logbuf, "Invalid argument set (ly_set_free()).");
+    assert_string_equal(logbuf, "");
 
     assert_null(ly_set_dup(NULL, NULL));
     assert_string_equal(logbuf, "Invalid argument set (ly_set_dup()).");

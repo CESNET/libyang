@@ -16,11 +16,13 @@
 #ifndef LY_HASH_TABLE_H_
 #define LY_HASH_TABLE_H_
 
-#include <stdint.h>
-#include <pthread.h>
-
 #include "common.h"
-#include "dict.h"
+
+#include <pthread.h>
+#include <stddef.h>
+#include <stdint.h>
+
+#include "log.h"
 
 /**
  * @brief Compute hash from (several) string(s).

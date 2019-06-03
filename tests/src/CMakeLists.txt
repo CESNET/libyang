@@ -8,10 +8,14 @@ set(local_tests
     src_parser_yin
     src_tree_schema
     src_tree_schema_compile
-    src_tree_schema_helpers)
+    src_tree_schema_helpers
+    src_printer_yang
+    src_parser_xml)
 set(local_tests_wraps
     " "
     "-Wl,--wrap=realloc"
+    " "
+    " "
     " "
     " "
     " "

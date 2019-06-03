@@ -15,17 +15,13 @@
 #include "common.h"
 
 #include <ctype.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdint.h>
 #include <string.h>
-#include <assert.h>
-#include <limits.h>
-#include <errno.h>
-#include <math.h>
-#include <pcre.h>
 
 #include "xpath.h"
+#include "dict.h"
 #include "xml.h"
 
 /**
@@ -306,8 +302,8 @@ lyxp_expr_parse(struct ly_ctx *ctx, const char *expr)
                 tok_type = LYXP_TOKEN_OPERATOR_MATH;
 
             } else if (prev_function_check) {
-                LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_XPATH, "Invalid character 0x%x, perhaps \"%.*s\" is supposed to be a function call.",
-                       expr[parsed], &expr[parsed], ret->tok_len[ret->used - 1], &ret->expr[ret->tok_pos[ret->used - 1]]);
+                LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_XPATH, "Invalid character 0x%x ('%c'), perhaps \"%.*s\" is supposed to be a function call.",
+                       expr[parsed], expr[parsed], ret->tok_len[ret->used - 1], &ret->expr[ret->tok_pos[ret->used - 1]]);
                 goto error;
             } else {
                 LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_INEXPR, parsed + 1, expr);

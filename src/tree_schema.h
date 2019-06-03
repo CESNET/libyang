@@ -15,116 +15,21 @@
 #ifndef LY_TREE_SCHEMA_H_
 #define LY_TREE_SCHEMA_H_
 
-#include <pcre.h>
-#include <stdint.h>
+#define PCRE2_CODE_UNIT_WIDTH 8
 
+#include <pcre2.h>
+#include <stdint.h>
+#include <stdio.h>
+
+#include "log.h"
+#include "tree.h"
 #include "extensions.h"
+
+struct ly_ctx;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-/**
- * @brief XPath representation.
- */
-struct lyxp_expr;
-
-/**
- * @brief Macro selector for other LY_ARRAY_* macros, do not use directly!
- */
-#define LY_ARRAY_SELECT(_1, _2, NAME, ...) NAME
-
-/**
- * @brief Helper macro to go through sized-arrays with a pointer iterator.
- *
- * Use with opening curly bracket (`{`).
- *
- * @param[in] ARRAY Array to go through
- * @param[in] TYPE Type of the records in the ARRAY
- * @param[out] ITER Iterating pointer to the item being processed in each loop
- */
-#define LY_ARRAY_FOR_ITER(ARRAY, TYPE, ITER) \
-    for (ITER = ARRAY; \
-         (ARRAY) && ((void*)ITER - (void*)ARRAY)/(sizeof(TYPE)) < (*((uint32_t*)(ARRAY) - 1)); \
-         ITER = (void*)((TYPE*)ITER + 1))
-
-/**
- * @brief Helper macro to go through sized-arrays with a numeric iterator.
- *
- * Use with opening curly bracket (`{`).
- *
- * To access an item with the INDEX value, use always LY_ARRAY_INDEX macro!
- *
- * @param[in] ARRAY Array to go through
- * @param[out] INDEX Iterating index of the item being processed in each loop
- */
-#define LY_ARRAY_FOR_INDEX(ARRAY, INDEX) \
-    for (INDEX = 0; \
-         ARRAY && INDEX < (*((uint32_t*)(ARRAY) - 1)); \
-         ++INDEX)
-
-/**
- * @defgroup schematree Schema Tree
- * @{
- *
- * Data structures and functions to manipulate and access schema tree.
- */
-
-/**
- * @brief Get a number of records in the ARRAY.
- *
- * Does not check if array exists!
- */
-#define LY_ARRAY_SIZE(ARRAY) (*((uint32_t*)(ARRAY) - 1))
-
-/**
- * @brief Sized-array iterator (for-loop).
- *
- * Use with opening curly bracket (`{`).
- *
- * There are 2 variants:
- *
- *     LY_ARRAY_FOR(ARRAY, TYPE, ITER)
- *
- * Where ARRAY is a sized-array to go through, TYPE is the type of the items in the ARRAY and ITER is a pointer variable
- * providing the items of the ARRAY in the loops. This functionality is provided by LY_ARRAY_FOR_ITER macro
- *
- *     LY_ARRAY_FOR(ARRAY, INDEX)
- *
- * The ARRAY is again a sized-array to go through, the INDEX is a variable (unsigned integer) for storing iterating ARRAY's index
- * to access the items of ARRAY in the loops. This functionality is provided by LY_ARRAY_FOR_INDEX macro.
- */
-#define LY_ARRAY_FOR(ARRAY, ...) LY_ARRAY_SELECT(__VA_ARGS__, LY_ARRAY_FOR_ITER, LY_ARRAY_FOR_INDEX)(ARRAY, __VA_ARGS__)
-
-/**
- * @brief Macro to iterate via all sibling elements without affecting the list itself
- *
- * Works for all types of nodes despite it is data or schema tree, but all the
- * parameters must be pointers to the same type.
- *
- * Use with opening curly bracket (`{`). All parameters must be of the same type.
- *
- * @param START Pointer to the starting element.
- * @param ELEM Iterator.
- */
-#define LY_LIST_FOR(START, ELEM) \
-    for ((ELEM) = (START); \
-         (ELEM); \
-         (ELEM) = (ELEM)->next)
-
-/**
- * @brief Macro to iterate via all sibling elements allowing to modify the list itself (e.g. removing elements)
- *
- * Use with opening curly bracket (`{`). All parameters must be of the same type.
- *
- * @param START Pointer to the starting element.
- * @param NEXT Temporary storage to allow removing of the current iterator content.
- * @param ELEM Iterator.
- */
-#define LY_LIST_FOR_SAFE(START, NEXT, ELEM) \
-    for ((ELEM) = (START); \
-         (ELEM) ? (NEXT = (ELEM)->next, 1) : 0; \
-         (ELEM) = (NEXT))
 
 /**
  * @brief Schema input formats accepted by libyang [parser functions](@ref howtoschemasparsers).
@@ -132,7 +37,7 @@ struct lyxp_expr;
 typedef enum {
     LYS_IN_UNKNOWN = 0,  /**< unknown format, used as return value in case of error */
     LYS_IN_YANG = 1,     /**< YANG schema input format */
-    LYS_IN_YIN = 2       /**< YIN schema input format */
+    LYS_IN_YIN = 3       /**< YIN schema input format */
 } LYS_INFORMAT;
 
 /**
@@ -141,7 +46,9 @@ typedef enum {
 typedef enum {
     LYS_OUT_UNKNOWN = 0, /**< unknown format, used as return value in case of error */
     LYS_OUT_YANG = 1,    /**< YANG schema output format */
-    LYS_OUT_YIN = 2,     /**< YIN schema output format */
+    LYS_OUT_YIN = 3,     /**< YIN schema output format */
+    LYS_OUT_YANG_COMPILED = 2, /**< YANG schema output format of the compiled schema tree */
+
     LYS_OUT_TREE,        /**< Tree schema output format, for more information see the [printers](@ref howtoschemasprinters) page */
     LYS_OUT_INFO,        /**< Info schema output format, for more information see the [printers](@ref howtoschemasprinters) page */
     LYS_OUT_JSON,        /**< JSON schema output format, reflecting YIN format with conversion of attributes to object's members */
@@ -158,45 +65,16 @@ typedef enum {
 #define LYS_ANYXML 0x0020         /**< anyxml statement node */
 #define LYS_ANYDATA 0x0120        /**< anydata statement node, in tests it can be used for both #LYS_ANYXML and #LYS_ANYDATA */
 
-#define LYS_CASE 0x0040           /**< case statement node */
-#define LYS_USES 0x0080           /**< uses statement node */
-#define LYS_INOUT 0x200
 #define LYS_ACTION 0x400          /**< RPC or action */
 #define LYS_NOTIF 0x800
+
+#define LYS_CASE 0x0040           /**< case statement node */
+#define LYS_USES 0x0080           /**< uses statement node */
+#define LYS_INPUT 0x100
+#define LYS_OUTPUT 0x200
+#define LYS_INOUT 0x300
 #define LYS_GROUPING 0x1000
 #define LYS_AUGMENT 0x2000
-
-/**
- * @brief YANG built-in types
- */
-typedef enum {
-    LY_TYPE_UNKNOWN = 0,  /**< Unknown type */
-    LY_TYPE_BINARY,       /**< Any binary data ([RFC 6020 sec 9.8](http://tools.ietf.org/html/rfc6020#section-9.8)) */
-    LY_TYPE_UINT8,        /**< 8-bit unsigned integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
-    LY_TYPE_UINT16,       /**< 16-bit unsigned integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
-    LY_TYPE_UINT32,       /**< 32-bit unsigned integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
-    LY_TYPE_UINT64,       /**< 64-bit unsigned integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
-    LY_TYPE_STRING,       /**< Human-readable string ([RFC 6020 sec 9.4](http://tools.ietf.org/html/rfc6020#section-9.4)) */
-    LY_TYPE_BITS,         /**< A set of bits or flags ([RFC 6020 sec 9.7](http://tools.ietf.org/html/rfc6020#section-9.7)) */
-    LY_TYPE_BOOL,         /**< "true" or "false" ([RFC 6020 sec 9.5](http://tools.ietf.org/html/rfc6020#section-9.5)) */
-    LY_TYPE_DEC64,        /**< 64-bit signed decimal number ([RFC 6020 sec 9.3](http://tools.ietf.org/html/rfc6020#section-9.3))*/
-    LY_TYPE_EMPTY,        /**< A leaf that does not have any value ([RFC 6020 sec 9.11](http://tools.ietf.org/html/rfc6020#section-9.11)) */
-    LY_TYPE_ENUM,         /**< Enumerated strings ([RFC 6020 sec 9.6](http://tools.ietf.org/html/rfc6020#section-9.6)) */
-    LY_TYPE_IDENT,        /**< A reference to an abstract identity ([RFC 6020 sec 9.10](http://tools.ietf.org/html/rfc6020#section-9.10)) */
-    LY_TYPE_INST,         /**< References a data tree node ([RFC 6020 sec 9.13](http://tools.ietf.org/html/rfc6020#section-9.13)) */
-    LY_TYPE_LEAFREF,      /**< A reference to a leaf instance ([RFC 6020 sec 9.9](http://tools.ietf.org/html/rfc6020#section-9.9))*/
-    LY_TYPE_UNION,        /**< Choice of member types ([RFC 6020 sec 9.12](http://tools.ietf.org/html/rfc6020#section-9.12)) */
-    LY_TYPE_INT8,         /**< 8-bit signed integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
-    LY_TYPE_INT16,        /**< 16-bit signed integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
-    LY_TYPE_INT32,        /**< 32-bit signed integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
-    LY_TYPE_INT64,        /**< 64-bit signed integer ([RFC 6020 sec 9.2](http://tools.ietf.org/html/rfc6020#section-9.2)) */
-} LY_DATA_TYPE;
-#define LY_DATA_TYPE_COUNT 20 /**< Number of different types */
-
-/**
- * @brief Stringified YANG built-in data types
- */
-extern const char* ly_data_type2str[LY_DATA_TYPE_COUNT];
 
 /**
  * @brief YANG import-stmt
@@ -245,6 +123,7 @@ struct lysp_stmt {
     const char *arg;                 /**< statement's argument */
     struct lysp_stmt *next;          /**< link to the next statement */
     struct lysp_stmt *child;         /**< list of the statement's substatements (linked list) */
+    uint16_t flags;
 };
 
 /**
@@ -253,10 +132,10 @@ struct lysp_stmt {
 struct lysp_ext_instance {
     const char *name;                /**< extension identifier, including possible prefix */
     const char *argument;            /**< optional value of the extension's argument */
+    struct lysp_stmt *child;         /**< list of the extension's substatements (linked list) */
     LYEXT_SUBSTMT insubstmt;         /**< value identifying placement of the extension instance */
     uint32_t insubstmt_index;        /**< in case the instance is in a substatement, this identifies
                                           the index of that substatement */
-    struct lysp_stmt *child;         /**< list of the extension's substatements (linked list) */
 };
 
 /**
@@ -494,48 +373,51 @@ struct lysp_deviation {
  *
  *     1 - container    6 - anydata/anyxml    11 - output       16 - grouping   21 - enum
  *     2 - choice       7 - case              12 - feature      17 - uses       22 - type
- *     3 - leaf         8 - notification      13 - identity     18 - refine
+ *     3 - leaf         8 - notification      13 - identity     18 - refine     23 - stmt
  *     4 - leaflist     9 - rpc               14 - extension    19 - augment
  *     5 - list        10 - input             15 - typedef      20 - deviate
  *
- *                                             1 1 1 1 1 1 1 1 1 1 2 2 2
- *     bit name              1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2
- *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       1 LYS_CONFIG_W     |x|x|x|x|x|x|x| | | | | | | | | | |x| |x| | |
- *         LYS_SET_BASE     | | | | | | | | | | | | | | | | | | | | | |x|
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       2 LYS_CONFIG_R     |x|x|x|x|x|x|x| | | | | | | | | | |x| |x| | |
- *         LYS_SET_BIT      | | | | | | | | | | | | | | | | | | | | | |x|
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       3 LYS_STATUS_CURR  |x|x|x|x|x|x|x|x|x| | |x|x|x|x|x|x| |x|x|x| |
- *         LYS_SET_ENUM     | | | | | | | | | | | | | | | | | | | | | |x|
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       4 LYS_STATUS_DEPRC |x|x|x|x|x|x|x|x|x| | |x|x|x|x|x|x| |x|x|x| |
- *         LYS_SET_FRDIGITS | | | | | | | | | | | | | | | | | | | | | |x|
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       5 LYS_STATUS_OBSLT |x|x|x|x|x|x|x|x|x| | |x|x|x|x|x|x| |x|x|x| |
- *         LYS_SET_LENGTH   | | | | | | | | | | | | | | | | | | | | | |x|
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       6 LYS_MAND_TRUE    | |x|x| | |x| | | | | | | | | | | |x| |x| | |
- *         LYS_SET_PATH     | | | | | | | | | | | | | | | | | | | | | |x|
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       7 LYS_MAND_FALSE   | |x|x| | |x| | | | | | | | | | | |x| |x| | |
- *         LYS_ORDBY_USER   | | | |x|x| | | | | | | | | | | | | | | | | |
- *         LYS_SET_PATTERN  | | | | | | | | | | | | | | | | | | | | | |x|
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       8 LYS_ORDBY_SYSTEM | | | |x|x| | | | | | | | | | | | | | | | | |
- *         LYS_YINELEM_TRUE | | | | | | | | | | | | | |x| | | | | | | | |
- *         LYS_SET_RANGE    | | | | | | | | | | | | | | | | | | | | | |x|
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       9 LYS_YINELEM_FALSE| | | | | | | | | | | | | |x| | | | | | | | |
- *         LYS_SET_TYPE     | | | | | | | | | | | | | | | | | | | | | |x|
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *      10 LYS_SET_VALUE    | | | | | | | | | | | | | | | | | | | | |x| |
- *         LYS_SET_REQINST  | | | | | | | | | | | | | | | | | | | | | |x|
- *         LYS_SET_MIN      | | | |x|x| | | | | | | | | | | | |x| |x| | |
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *      11 LYS_SET_MAX      | | | |x|x| | | | | | | | | | | | |x| |x| | |
- *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *                                             1 1 1 1 1 1 1 1 1 1 2 2 2 2
+ *     bit name              1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3
+ *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       1 LYS_CONFIG_W     |x|x|x|x|x|x|x| | | | | | | | | | |x| |x| | | |
+ *         LYS_SET_BASE     | | | | | | | | | | | | | | | | | | | | | |x| |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       2 LYS_CONFIG_R     |x|x|x|x|x|x|x| | | | | | | | | | |x| |x| | | |
+ *         LYS_SET_BIT      | | | | | | | | | | | | | | | | | | | | | |x| |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       3 LYS_STATUS_CURR  |x|x|x|x|x|x|x|x|x| | |x|x|x|x|x|x| |x|x|x| | |
+ *         LYS_SET_ENUM     | | | | | | | | | | | | | | | | | | | | | |x| |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       4 LYS_STATUS_DEPRC |x|x|x|x|x|x|x|x|x| | |x|x|x|x|x|x| |x|x|x| | |
+ *         LYS_SET_FRDIGITS | | | | | | | | | | | | | | | | | | | | | |x| |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       5 LYS_STATUS_OBSLT |x|x|x|x|x|x|x|x|x| | |x|x|x|x|x|x| |x|x|x| | |
+ *         LYS_SET_LENGTH   | | | | | | | | | | | | | | | | | | | | | |x| |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       6 LYS_MAND_TRUE    | |x|x| | |x| | | | | | | | | | | |x| |x| | | |
+ *         LYS_SET_PATH     | | | | | | | | | | | | | | | | | | | | | |x| |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       7 LYS_MAND_FALSE   | |x|x| | |x| | | | | | | | | | | |x| |x| | | |
+ *         LYS_ORDBY_USER   | | | |x|x| | | | | | | | | | | | | | | | | | |
+ *         LYS_SET_PATTERN  | | | | | | | | | | | | | | | | | | | | | |x| |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       8 LYS_ORDBY_SYSTEM | | | |x|x| | | | | | | | | | | | | | | | | | |
+ *         LYS_YINELEM_TRUE | | | | | | | | | | | | | |x| | | | | | | | | |
+ *         LYS_SET_RANGE    | | | | | | | | | | | | | | | | | | | | | |x| |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       9 LYS_YINELEM_FALSE| | | | | | | | | | | | | |x| | | | | | | | | |
+ *         LYS_SET_TYPE     | | | | | | | | | | | | | | | | | | | | | |x| |
+ *         LYS_SINGLEQUOTED | | | | | | | | | | | | | | | | | | | | | | |x|
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      10 LYS_SET_VALUE    | | | | | | | | | | | | | | | | | | | | |x| | |
+ *         LYS_SET_REQINST  | | | | | | | | | | | | | | | | | | | | | |x| |
+ *         LYS_SET_MIN      | | | |x|x| | | | | | | | | | | | |x| |x| | | |
+ *         LYS_DOUBLEQUOTED | | | | | | | | | | | | | | | | | | | | | | |x|
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      11 LYS_SET_MAX      | | | |x|x| | | | | | | | | | | | |x| |x| | | |
+ *         LYS_USED_GRP     | | | | | | | | | | | | | | | |x| | | | | | | |
+ *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  */
 
@@ -549,39 +431,40 @@ struct lysp_deviation {
  *     2 - choice       7 - case              12 - feature
  *     3 - leaf         8 - notification      13 - identity
  *     4 - leaflist     9 - rpc               14 - extension
- *     5 - list        10 - input
+ *     5 - list        10 - input             15 - bitenum
  *
- *                                             1 1 1 1 1
- *     bit name              1 2 3 4 5 6 7 8 9 0 1 2 3 4
- *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       1 LYS_CONFIG_W     |x|x|x|x|x|x|x| | | | | | | |
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       2 LYS_CONFIG_R     |x|x|x|x|x|x|x| | | | | | | |
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       3 LYS_STATUS_CURR  |x|x|x|x|x|x|x|x|x| | |x|x|x|
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       4 LYS_STATUS_DEPRC |x|x|x|x|x|x|x|x|x| | |x|x|x|
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       5 LYS_STATUS_OBSLT |x|x|x|x|x|x|x|x|x| | |x|x|x|
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       6 LYS_MAND_TRUE    |x|x|x|x|x|x| | | | | | | | |
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       7 LYS_ORDBY_USER   | | | |x|x| | | | | | | | | |
- *         LYS_MAND_FALSE   | |x|x| | |x| | | | | | | | |
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       8 LYS_ORDBY_SYSTEM | | | |x|x| | | | | | | | | |
- *         LYS_PRESENCE     |x| | | | | | | | | | | | | |
- *         LYS_UNIQUE       | | |x| | | | | | | | | | | |
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       9 LYS_KEY          | | |x| | | | | | | | | | | |
- *         LYS_FENABLED     | | | | | | | | | | | |x| | |
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *      10 LYS_SET_DFLT     | | |x|x| | |x| | | | | | | |
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *      11 LYS_SET_UNITS    | | |x|x| | | | | | | | | | |
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *      11 LYS_SET_CONFIG   |x|x|x|x|x|x|x| | |x|x| | | |
- *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *                                             1 1 1 1 1 1
+ *     bit name              1 2 3 4 5 6 7 8 9 0 1 2 3 4 5
+ *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       1 LYS_CONFIG_W     |x|x|x|x|x|x|x| | | | | | | | |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       2 LYS_CONFIG_R     |x|x|x|x|x|x|x| | | | | | | | |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       3 LYS_STATUS_CURR  |x|x|x|x|x|x|x|x|x| | |x|x|x| |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       4 LYS_STATUS_DEPRC |x|x|x|x|x|x|x|x|x| | |x|x|x| |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       5 LYS_STATUS_OBSLT |x|x|x|x|x|x|x|x|x| | |x|x|x| |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       6 LYS_MAND_TRUE    |x|x|x|x|x|x| | | | | | | | | |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       7 LYS_ORDBY_USER   | | | |x|x| | | | | | | | | | |
+ *         LYS_MAND_FALSE   | |x|x| | |x| | | | | | | | | |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       8 LYS_ORDBY_SYSTEM | | | |x|x| | | | | | | | | | |
+ *         LYS_PRESENCE     |x| | | | | | | | | | | | | | |
+ *         LYS_UNIQUE       | | |x| | | | | | | | | | | | |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       9 LYS_KEY          | | |x| | | | | | | | | | | | |
+ *         LYS_FENABLED     | | | | | | | | | | | |x| | | |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      10 LYS_SET_DFLT     | | |x|x| | |x| | | | | | | | |
+ *         LYS_ISENUM       | | | | | | | | | | | | | | |x|
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      11 LYS_SET_UNITS    | | |x|x| | | | | | | | | | | |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      11 LYS_SET_CONFIG   |x|x|x|x|x|x|x| | |x|x| | | | |
+ *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  */
 
@@ -618,6 +501,8 @@ struct lysp_deviation {
 #define LYS_YINELEM_TRUE 0x80        /**< yin-element true for extension's argument */
 #define LYS_YINELEM_FALSE 0x100      /**< yin-element false for extension's argument */
 #define LYS_YINELEM_MASK 0x180       /**< mask for yin-element value */
+#define LYS_USED_GRP     0x400       /**< internal flag for validating not-instantiated groupings
+                                          (resp. do not validate again the instantiated groupings). */
 #define LYS_SET_VALUE    0x200       /**< value attribute is set */
 #define LYS_SET_MIN      0x200       /**< min attribute is set */
 #define LYS_SET_MAX      0x400       /**< max attribute is set */
@@ -639,6 +524,11 @@ struct lysp_deviation {
                                           between own default or the default values taken from the type. */
 #define LYS_SET_UNITS    0x0400      /**< flag to know if the leaf's/leaflist's units are their own (flag set) or it is taken from the type. */
 #define LYS_SET_CONFIG   0x0800      /**< flag to know if the config property was set explicitly (flag set) or it is inherited. */
+
+#define LYS_SINGLEQUOTED 0x100       /**< flag for single-quoted argument of an extension instance's substatement */
+#define LYS_DOUBLEQUOTED 0x200       /**< flag for double-quoted argument of an extension instance's substatement */
+
+#define LYS_ISENUM       0x200       /**< flag to simply distinguish type in struct lysc_type_bitenum_item */
 
 #define LYS_FLAGS_COMPILED_MASK 0xff /**< mask for flags that maps to the compiled structures */
 /** @} */
@@ -1000,9 +890,10 @@ struct lysc_ident {
     const char *name;                /**< identity name (mandatory), including possible prefix */
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
-    struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+    struct lys_module *module;       /**< module structure */
     struct lysc_ident **derived;     /**< list of (pointers to the) derived identities ([sized array](@ref sizedarrays)) */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_ values are allowed */
 };
 
@@ -1013,9 +904,10 @@ struct lysc_feature {
     const char *name;                /**< feature name (mandatory) */
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
+    struct lys_module *module;       /**< module structure */
     struct lysc_feature **depfeatures;/**< list of pointers to other features depending on this one ([sized array](@ref sizedarrays)) */
-    struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* and
                                           #LYS_FENABLED values allowed */
 };
@@ -1044,13 +936,13 @@ struct lysc_revision {
 
 struct lysc_range {
     struct lysc_range_part {
-        union {                      /**< min boundary TODO decimal */
-            int64_t min_64;          /**< for int8, int16, int32 and int64 */
-            uint64_t min_u64;        /**< for uint8, uint16, uint32 and uint64 */
+        union {                      /**< min boundary */
+            int64_t min_64;          /**< for int8, int16, int32, int64 and decimal64 ( >= LY_TYPE_DEC64) */
+            uint64_t min_u64;        /**< for uint8, uint16, uint32, uint64, string and binary ( < LY_TYPE_DEC64) */
         };
-        union {                      /**< max boundary TODO decimal */
-            int64_t max_64;          /**< for int8, int16, int32 and int64 */
-            uint64_t max_u64;        /**< for uint8, uint16, uint32 and uint64 */
+        union {                      /**< max boundary */
+            int64_t max_64;          /**< for int8, int16, int32, int64 and decimal64 ( >= LY_TYPE_DEC64) */
+            uint64_t max_u64;        /**< for uint8, uint16, uint32, uint64, string and binary ( < LY_TYPE_DEC64) */
         };
     } *parts;                        /**< compiled range expression ([sized array](@ref sizedarrays)) */
     const char *dsc;                 /**< description */
@@ -1061,8 +953,8 @@ struct lysc_range {
 };
 
 struct lysc_pattern {
-    pcre *expr;                      /**< compiled regular expression */
-    pcre_extra *expr_extra;          /**< additional information to speed up matching */
+    const char *expr;                /**< original, not compiled, regular expression */
+    pcre2_code *code;                /**< compiled regular expression */
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     const char *emsg;                /**< error-message */
@@ -1085,6 +977,7 @@ struct lysc_must {
 struct lysc_type {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *dflt;                /**< type's default value if any */
+    struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
 };
@@ -1092,6 +985,7 @@ struct lysc_type {
 struct lysc_type_num {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *dflt;                /**< type's default value if any */
+    struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
     struct lysc_range *range;        /**< Optional range limitation */
@@ -1100,6 +994,7 @@ struct lysc_type_num {
 struct lysc_type_dec {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *dflt;                /**< type's default value if any */
+    struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
     uint8_t fraction_digits;         /**< fraction digits specification */
@@ -1109,30 +1004,50 @@ struct lysc_type_dec {
 struct lysc_type_str {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *dflt;                /**< type's default value if any */
+    struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
     struct lysc_range *length;       /**< Optional length limitation */
     struct lysc_pattern **patterns;  /**< Optional list of pointers to pattern limitations ([sized array](@ref sizedarrays)) */
 };
 
+struct lysc_type_bitenum_item {
+    const char *name;            /**< enumeration identifier */
+    const char *dsc;             /**< description */
+    const char *ref;             /**< reference */
+    struct lysc_ext_instance *exts;    /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+    union {
+        int32_t value;           /**< integer value associated with the enumeration */
+        uint32_t position;       /**< non-negative integer value associated with the bit */
+    };
+    uint16_t flags;              /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_ and LYS_SET_VALUE
+                                          values are allowed */
+};
+
 struct lysc_type_enum {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *dflt;                /**< type's default value if any */
+    struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
-    struct lysc_type_enum_item {
-        const char *name;            /**< enumeration identifier */
-        const char *dsc;             /**< description */
-        const char *ref;             /**< reference */
-        struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
-        struct lysc_ext_instance *exts;    /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-        int32_t value;               /**< integer value associated with the enumeration */
-    } *enums;                        /**< enumerations list ([sized array](@ref sizedarrays)), mandatory (at least 1 item) */
+    struct lysc_type_bitenum_item *enums; /**< enumerations list ([sized array](@ref sizedarrays)), mandatory (at least 1 item) */
+};
+
+struct lysc_type_bits {
+    struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    const char *dflt;                /**< type's default value if any */
+    struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
+    LY_DATA_TYPE basetype;           /**< Base type of the type */
+    uint32_t refcount;               /**< reference counter for type sharing */
+    struct lysc_type_bitenum_item *bits; /**< bits list ([sized array](@ref sizedarrays)), mandatory (at least 1 item),
+                                              the items are ordered by their position value. */
 };
 
 struct lysc_type_leafref {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *dflt;                /**< type's default value if any */
+    struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
     const char* path;                /**< target path */
@@ -1144,6 +1059,7 @@ struct lysc_type_leafref {
 struct lysc_type_identityref {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *dflt;                /**< type's default value if any */
+    struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
     struct lysc_ident **bases;       /**< list of pointers to the base identities ([sized array](@ref sizedarrays)),
@@ -1153,29 +1069,16 @@ struct lysc_type_identityref {
 struct lysc_type_instanceid {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *dflt;                /**< type's default value if any */
+    struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
     uint8_t require_instance;        /**< require-instance flag */
 };
 
-struct lysc_type_bits {
-    struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    const char *dflt;                /**< type's default value if any */
-    LY_DATA_TYPE basetype;           /**< Base type of the type */
-    uint32_t refcount;               /**< reference counter for type sharing */
-    struct lysc_type_bits_item {
-        const char *name;            /**< bit identifier */
-        const char *dsc;             /**< description */
-        const char *ref;             /**< reference */
-        struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
-        struct lysc_ext_instance *exts;    /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-        uint32_t position;           /**< non-negative integer value associated with the bit */
-    } *bits;                         /**< bits list ([sized array](@ref sizedarrays)), mandatory (at least 1 item) */
-};
-
 struct lysc_type_union {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *dflt;                /**< type's default value if any */
+    struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
     struct lysc_type **types;        /**< list of types in the union ([sized array](@ref sizedarrays)), mandatory (at least 1 item) */
@@ -1184,6 +1087,7 @@ struct lysc_type_union {
 struct lysc_type_bin {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *dflt;                /**< type's default value if any */
+    struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
     struct lysc_range *length;       /**< Optional length limitation */
@@ -1191,7 +1095,6 @@ struct lysc_type_bin {
 
 struct lysc_action_inout {
     struct lysc_node *data;          /**< first child node (linked list) */
-    struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
 };
 
@@ -1202,12 +1105,15 @@ struct lysc_action {
     struct lysp_action *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
     struct lysc_node *parent;        /**< parent node (NULL in case of top level node - RPC) */
 
-    struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+    struct lysc_ext_instance *input_exts;  /**< list of the extension instances of input ([sized array](@ref sizedarrays)) */
+    struct lysc_ext_instance *output_exts; /**< list of the extension instances of outpu ([sized array](@ref sizedarrays)) */
 
     const char *name;                /**< action/RPC name (mandatory) */
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
+
+    struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
 
     struct lysc_action_inout input;  /**< RPC's/action's input */
     struct lysc_action_inout output; /**< RPC's/action's output */
@@ -1218,13 +1124,18 @@ struct lysc_notif {
     uint16_t nodetype;               /**< LYS_NOTIF */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     struct lys_module *module;       /**< module structure */
-    struct lysp_notification *sp;    /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
+    struct lysp_notif *sp;           /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
     struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
+
+    struct lysc_node *data;          /**< first child node (linked list) */
+    struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
 
     const char *name;                /**< Notification name (mandatory) */
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
-    /* TODO */
+
+    struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
 };
 
 /**
@@ -1245,8 +1156,8 @@ struct lysc_node {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
 };
 
 struct lysc_node_container {
@@ -1264,8 +1175,8 @@ struct lysc_node_container {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
 
     struct lysc_node *child;         /**< first child node (linked list) */
     struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
@@ -1288,8 +1199,8 @@ struct lysc_node_case {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
 
     struct lysc_node *child;         /**< first child node of the case (linked list). Note that all the children of all the sibling cases are linked
                                           each other as siblings with the parent pointer pointing to appropriate case node. */
@@ -1310,8 +1221,8 @@ struct lysc_node_choice {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
 
     struct lysc_node_case *cases;    /**< list of the cases (linked list). Note that all the children of all the cases are linked each other
                                           as siblings. Their parent pointers points to the specific case they belongs to, so distinguish the
@@ -1334,8 +1245,8 @@ struct lysc_node_leaf {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
 
     struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
     struct lysc_type *type;          /**< type of the leaf node (mandatory) */
@@ -1359,8 +1270,8 @@ struct lysc_node_leaflist {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
 
     struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
     struct lysc_type *type;          /**< type of the leaf node (mandatory) */
@@ -1387,8 +1298,8 @@ struct lysc_node_list {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
 
     struct lysc_node *child;         /**< first child node (linked list) */
     struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
@@ -1416,8 +1327,8 @@ struct lysc_node_anydata {
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+    struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
 
     struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
 };
@@ -1577,7 +1488,7 @@ struct lys_module {
  * @param[in] feature Name of the feature to enable. To enable all features at once, use asterisk (`*`) character.
  * @return LY_ERR value.
  */
-LY_ERR lys_feature_enable(struct lys_module *module, const char *feature);
+LY_ERR lys_feature_enable(const struct lys_module *module, const char *feature);
 
 /**
  * @brief Disable specified feature in the module
@@ -1588,7 +1499,7 @@ LY_ERR lys_feature_enable(struct lys_module *module, const char *feature);
  * @param[in] feature Name of the feature to disable. To disable all features at once, use asterisk (`*`) character.
  * @return LY_ERR value
  */
-LY_ERR lys_feature_disable(struct lys_module *module, const char *feature);
+LY_ERR lys_feature_disable(const struct lys_module *module, const char *feature);
 
 /**
  * @brief Get the current status of the specified feature in the module.

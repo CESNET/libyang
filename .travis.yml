@@ -1,9 +1,12 @@
 language: c
 sudo: required
-dist: trusty
+dist: xenial
 branches:
   only:
     - libyang2
+cache:
+   directories:
+   - $HOME/cache
 
 stages:
   - name: Test
@@ -26,12 +29,26 @@ jobs:
           project:
             name: "CESNET/libyang"
           notification_email: rkrejci@cesnet.cz
-          build_command_prepend: "mkdir build; cd build; cmake ..; make clean"
+          build_command_prepend: "mkdir build && cd build && cmake .. && make clean"
           build_command: "make"
           branch_pattern: libyang2
       before_install:
-        - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-certificates.crt
+        - sudo apt-get install libpcre2-dev
+        # check if something changed from the last coverity build
+        - echo "Last coverity build on revision" `cat $HOME/cache/coveritybuild 2>/dev/null`
+        - echo "Current revision" `git rev-parse HEAD`
+        - if [ "`git rev-parse HEAD`" = "`cat $HOME/cache/coveritybuild`" ]; then echo "Codebase did not change from previous build."; travis_terminate 0; fi
+        - if [ ! -d $HOME/cache ]; then echo "Preparing revision cache."; mkdir -p $HOME/cache; fi
+        - git rev-parse HEAD > $HOME/cache/coveritybuild
+        - cat $HOME/cache/coveritybuild
         - sudo apt-get update -qq
+        - wget https://ftp.pcre.org/pub/pcre/pcre2-10.30.tar.gz
+        - tar -xzf pcre2-10.30.tar.gz
+        - cd pcre2-10.30 && ./configure && make -j2 && sudo -i -- sh -c 'cd /home/travis/build/CESNET/libyang/pcre2-10.30/ && make install' && cd ..
+        # get everything for coverity
+        - echo -n | openssl s_client -connect scan.coverity.com:443 | sed -ne '/-BEGIN CERTIFICATE-/,/-END CERTIFICATE-/p' | sudo tee -a /etc/ssl/certs/ca-certificates.crt
+        - wget https://entrust.com/root-certificates/entrust_l1k.cer -O - | sudo tee -a /etc/ssl/certs/ca-certificates.crt
+        - export SSL_CERT_FILE=/etc/ssl/certs/ca-certificates.crt
       script:
         # do nothing, everything here is done in coverity addon
         - true
@@ -40,24 +57,30 @@ jobs:
       os: linux
       compiler: clang
       before_install:
+        - sudo apt-get update -qq && sudo apt-get install -y valgrind
         - wget https://cmocka.org/files/1.1/cmocka-1.1.2.tar.xz
         - tar -xf cmocka-1.1.2.tar.xz
-        - cd cmocka-1.1.2; mkdir build; cd build; cmake .. && make -j2 && sudo make install; cd ../..
-        - sudo apt-get update -qq; sudo apt-get install -y valgrind
+        - cd cmocka-1.1.2 && mkdir build && cd build && cmake .. && make -j2 && sudo make install && cd ../..
+        - wget https://ftp.pcre.org/pub/pcre/pcre2-10.30.tar.gz
+        - tar -xzf pcre2-10.30.tar.gz
+        - cd pcre2-10.30 && ./configure && make -j2 && sudo -i -- sh -c 'cd /home/travis/build/CESNET/libyang/pcre2-10.30/ && make install' && cd ..
       script:
-        - mkdir build && cd build; cmake .. && make -j2 && ctest --output-on-failure; cd -
+        - mkdir build && cd build && cmake .. && make -j2 && ctest --output-on-failure && cd -
     - stage: Test
       name: Linux with GCC
       os: linux
       compiled: gcc
       before_install:
+        - sudo apt-get update -qq && sudo apt-get install -y valgrind
         - wget https://cmocka.org/files/1.1/cmocka-1.1.2.tar.xz
         - tar -xf cmocka-1.1.2.tar.xz
-        - cd cmocka-1.1.2; mkdir build; cd build; cmake .. && make -j2 && sudo make install; cd ../..
-        - sudo apt-get update -qq; sudo apt-get install -y valgrind
-        - pip install --user codecov; export CFLAGS="-coverage"
+        - cd cmocka-1.1.2 && mkdir build && cd build && cmake .. && make -j2 && sudo make install && cd ../..
+        - wget https://ftp.pcre.org/pub/pcre/pcre2-10.30.tar.gz
+        - tar -xzf pcre2-10.30.tar.gz
+        - cd pcre2-10.30 && ./configure && make -j2 && sudo make install && cd ..
+        - pip install --user codecov && export CFLAGS="-coverage"
       script:
-        - mkdir build && cd build; cmake .. && make -j2 && ctest --output-on-failure; cd -
+        - mkdir build && cd build && cmake .. && make -j2 && ctest --output-on-failure && cd -
       after_success:
         - codecov
     - stage: Test
@@ -69,7 +92,9 @@ jobs:
       before_install:
         - wget https://cmocka.org/files/1.1/cmocka-1.1.2.tar.xz
         - tar -xf cmocka-1.1.2.tar.xz
-        - cd cmocka-1.1.2; mkdir build; cd build; cmake .. && make -j2 && sudo make install; cd ../..
+        - cd cmocka-1.1.2 && mkdir build && cd build && cmake .. && make -j2 && sudo make install && cd ../..
         - brew update
+        - brew install pcre2
       script:
-        - mkdir build && cd build; cmake -DENABLE_VALGRIND_TESTS=OFF .. && make -j2 && ctest --output-on-failure; cd -
+        - mkdir build && cd build && cmake -DENABLE_VALGRIND_TESTS=OFF .. && make -j2 && ctest --output-on-failure && cd -
+
