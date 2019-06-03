@@ -91,12 +91,12 @@ test_element(void **state)
     assert_null(name);
     assert_int_equal(LYXML_END, ctx.status);
     assert_true(str[0] == '\0');
+    ctx.status = 0;
 
     /* end element */
     str = "</element>";
     assert_int_equal(LY_EVALID, lyxml_get_element(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
     logbuf_assert("Opening and closing elements tag missmatch (\"element\"). Line number 1.");
-
 
     /* no element */
     logbuf_clean();
@@ -350,7 +350,7 @@ test_text(void **state)
     assert_int_equal(22, buf_len);
     assert_int_equal(21, len);
     assert_string_equal("€𠜎Øn \n<&\"\'> ROK", buf);
-    assert_string_equal("", str);
+    assert_string_equal("</a>", str);
     assert_int_equal(LYXML_ELEMENT, ctx.status);
     lyxml_context_clear(&ctx);
 

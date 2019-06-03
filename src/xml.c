@@ -248,7 +248,7 @@ lyxml_ns_get(struct lyxml_context *context, const char *prefix, size_t prefix_le
 
     for (u = context->ns.count - 1; u + 1 > 0; --u) {
         ns = (struct lyxml_ns *)context->ns.objs[u];
-        if (prefix) {
+        if (prefix && prefix_len) {
             if (!strncmp(prefix, ns->prefix, prefix_len) && ns->prefix[prefix_len] == '\0') {
                 return ns;
             }
@@ -259,6 +259,215 @@ lyxml_ns_get(struct lyxml_context *context, const char *prefix, size_t prefix_le
     }
 
     return NULL;
+}
+
+static LY_ERR
+lyxml_parse_element_start(struct lyxml_context *context, const char **input, int *closing)
+{
+    struct ly_ctx *ctx = context->ctx; /* shortcut */
+    const char *in = (*input);
+    const char *endtag;
+    const char *sectname;
+    size_t endtag_len, newlines;
+
+    while (1) {
+        ign_xmlws(context, in);
+
+        if (in[0] == '\0') {
+            /* EOF */
+            context->status = LYXML_END;
+            (*input) = in;
+            return LY_SUCCESS;
+        } else if (in[0] != '<') {
+            return LY_EINVAL;
+        }
+        move_input(context, in, 1);
+
+        if (in[0] == '!') {
+            move_input(context, in, 1);
+            /* sections to ignore */
+            if (!strncmp(in, "--", 2)) {
+                /* comment */
+                move_input(context, in, 2);
+                sectname = "Comment";
+                endtag = "-->";
+                endtag_len = 3;
+            } else if (!strncmp(in, "[CDATA[", 7)) {
+                /* CDATA section */
+                move_input(context, in, 7);
+                sectname = "CData";
+                endtag = "]]>";
+                endtag_len = 3;
+            } else if (!strncmp(in, "DOCTYPE", 7)) {
+                /* Document type declaration - not supported */
+                LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_NSUPP, "Document Type Declaration");
+                return LY_EVALID;
+            } else {
+                LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX, "Unknown XML section \"%.20s\".", &in[-2]);
+                return LY_EVALID;
+            }
+            in = ign_todelim(in, endtag, endtag_len, &newlines);
+            LY_CHECK_ERR_RET(!in, LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_NTERM, sectname), LY_EVALID);
+            context->line += newlines;
+            in += endtag_len;
+        } else if (in[0] == '?') {
+            in = ign_todelim(in, "?>", 2, &newlines);
+            LY_CHECK_ERR_RET(!in, LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_NTERM, "Declaration"), LY_EVALID);
+            context->line += newlines;
+            in += 2;
+        } else if (in[0] == '/') {
+            /* closing element tag */
+            *closing = 1;
+            ++in;
+            goto element;
+        } else {
+            /* opening element tag */
+            *closing = 0;
+element:
+            ign_xmlws(context, in);
+            LY_CHECK_ERR_RET(!in[0], LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_EOF), LY_EVALID);
+
+            (*input) = in;
+            return LY_SUCCESS;
+        }
+    }
+}
+
+static LY_ERR
+lyxml_parse_element_name(struct lyxml_context *context, const char **input, size_t *endtag_len, unsigned int *term_char,
+                         const char **prefix, size_t *prefix_len, const char **name, size_t *name_len)
+{
+    LY_ERR rc;
+    const char *in = (*input);
+    const char *id;
+    const char *endtag;
+
+    id = in;
+    rc = lyxml_check_qname(context, &in, term_char, endtag_len);
+    LY_CHECK_RET(rc);
+    if (*term_char == ':') {
+        /* we have prefixed identifier */
+        endtag = in - *endtag_len;
+
+        rc = lyxml_check_qname(context, &in, term_char, endtag_len);
+        LY_CHECK_RET(rc);
+
+        (*prefix) = id;
+        (*prefix_len) = endtag - id;
+        id = endtag + 1;
+    }
+    if (!is_xmlws(*term_char) && *term_char != '/' && *term_char != '>') {
+        (*input) = in - *endtag_len;
+        LOGVAL(context->ctx, LY_VLOG_LINE, &context->line, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(*input), *input,
+               "whitespace or element tag termination ('>' or '/>'");
+        return LY_EVALID;
+    }
+    (*name) = id;
+    (*name_len) = in - *endtag_len - id;
+
+    if (is_xmlws(*term_char)) {
+        /* go to the next meaningful input */
+        ign_xmlws(context, in);
+        LY_CHECK_ERR_RET(!in[0], LOGVAL(context->ctx, LY_VLOG_LINE, &context->line, LY_VCODE_EOF), LY_EVALID);
+        *term_char = in[0];
+        ++in;
+        *endtag_len = 1;
+    }
+
+    (*input) = in;
+    return LY_SUCCESS;
+}
+
+LY_ERR
+lyxml_get_element(struct lyxml_context *context, const char **input,
+                  const char **prefix, size_t *prefix_len, const char **name, size_t *name_len)
+{
+    struct ly_ctx *ctx = context->ctx; /* shortcut */
+    const char *in = (*input);
+    size_t endtag_len;
+    bool loop = true;
+    int closing = 0;
+    unsigned int c;
+    LY_ERR rc;
+    struct lyxml_elem *e;
+
+    /* initialize output variables */
+    (*prefix) = (*name) = NULL;
+    (*prefix_len) = (*name_len) = 0;
+
+    while (loop) {
+        rc = lyxml_parse_element_start(context, &in, &closing);
+        if (rc) {
+            return rc;
+        } else if (context->status == LYXML_END) {
+            goto success;
+        }
+        /* we are at the begining of the element name, remember the identifier start before checking its format */
+        LY_CHECK_RET(rc = lyxml_parse_element_name(context, &in, &endtag_len, &c, prefix, prefix_len, name, name_len));
+
+        if (closing) {
+            /* match opening and closing element tags */
+            LY_CHECK_ERR_RET(
+                    !context->elements.count,
+                    LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX, "Opening and closing elements tag missmatch (\"%.*s\").", *name_len, *name),
+                    LY_EVALID);
+            e = (struct lyxml_elem*)context->elements.objs[context->elements.count - 1];
+            LY_CHECK_ERR_RET(e->prefix_len != *prefix_len || e->name_len != *name_len
+                             || (*prefix_len && strncmp(*prefix, e->prefix, e->prefix_len)) || strncmp(*name, e->name, e->name_len),
+                             LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX, "Opening and closing elements tag missmatch (\"%.*s\").", *name_len, *name),
+                             LY_EVALID);
+            /* opening and closing element tags matches, remove record from the opening tags list */
+            free(e);
+            --context->elements.count;
+
+            /* remove also the namespaces conneted with the element */
+            lyxml_ns_rm(context);
+
+            /* do not return element information to announce closing element being currently processed */
+            *name = *prefix = NULL;
+            *name_len = *prefix_len = 0;
+
+            if (c == '>') {
+                /* end of closing element */
+                context->status = LYXML_ELEMENT;
+            } else {
+                in -= endtag_len;
+                LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX, "Unexpected data \"%.*s\" in closing element tag.",
+                       LY_VCODE_INSTREXP_len(in), in);
+                return LY_EVALID;
+            }
+        } else {
+            if (c == '>') {
+                /* end of opening element */
+                context->status = LYXML_ELEM_CONTENT;
+            } else if (c == '/' && in[0] == '>') {
+                /* empty element closing */
+                context->status = LYXML_ELEMENT;
+                ++in;
+            } else {
+                /* attribute */
+                context->status = LYXML_ATTRIBUTE;
+                in -= endtag_len;
+            }
+
+            if (context->status != LYXML_ELEMENT) {
+                /* store element opening tag information */
+                e = malloc(sizeof *e);
+                LY_CHECK_ERR_RET(!e, LOGMEM(ctx), LY_EMEM);
+                e->name = *name;
+                e->prefix = *prefix;
+                e->name_len = *name_len;
+                e->prefix_len = *prefix_len;
+                ly_set_add(&context->elements, e, LY_SET_OPT_USEASLIST);
+            }
+        }
+        loop = false;
+    }
+
+success:
+    /* move caller's input */
+    (*input) = in;
+    return LY_SUCCESS;
 }
 
 LY_ERR
@@ -447,28 +656,54 @@ getbuffer:
             /* in case of element content, keep the leading <,
              * for attribute's value move after the terminating quotation mark */
             if (context->status == LYXML_ELEM_CONTENT) {
-                const char *name, *prefix;
-                size_t name_len, prefix_len;
+                const char *name = NULL, *prefix = NULL;
+                size_t name_len = 0, prefix_len = 0;
+                int closing = 0;
+                /* use fake context to preserve real context (lines, status) since we don't want really parse the element tag here */
+                struct lyxml_context fakecontext = {.ctx = context->ctx, .line = context->line, .status = context->status};
 
                 in += offset;
 
                 /* get know if it is child element (mixed content) or closing element (regular content) */
+                /* We don't want actually to parse the closing element, we just need to check mixed content.
+                 * The closing element tag is preserved to keep the context for the data (returned string),
+                 * since it can contain data using XML prefixes defined in this element and the caller can
+                 * want to work with it */
                 (*input) = in;
-                rc = lyxml_get_element(context, &in, &prefix, &prefix_len, &name, &name_len);
-                if (name) {
-                    /* the element here is not closing element, so we have not allowed mixed content */
-                    struct lyxml_elem *e = (struct lyxml_elem*)context->elements.objs[--context->elements.count];
-                    LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX, "Mixed XML content is not allowed (%.*s).",
-                           offset + (in - (*input)), &(*input)[-offset]);
-                    free(e);
-                    goto error;
-                } else if (rc) {
+                rc = lyxml_parse_element_start(&fakecontext, &in, &closing);
+                if (rc) {
                     /* some parsing error */
                     goto error;
                 } else {
-                    /* closing element, so we have regular content */
-                    context->status++;
-                    goto success;
+                    size_t endtag_len;
+                    unsigned int c;
+                    struct lyxml_elem *e;
+
+                    LY_CHECK_GOTO(lyxml_parse_element_name(&fakecontext, &in, &endtag_len, &c, &prefix, &prefix_len, &name, &name_len), error);
+
+                    if (!closing) {
+                        /* the element here is not closing element, so we have not allowed mixed content */
+                        struct lyxml_elem *e = (struct lyxml_elem*)context->elements.objs[--context->elements.count];
+                        LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX, "Mixed XML content is not allowed (%.*s).",
+                               offset + (in - (*input)), &(*input)[-offset]);
+                        free(e);
+                        goto error;
+                    }
+
+                    /* closing element start - check the name if it matches the opening element tag */
+                    LY_CHECK_ERR_GOTO(!context->elements.count,
+                            LOGVAL(ctx, LY_VLOG_LINE, &fakecontext.line, LYVE_SYNTAX, "Opening and closing elements tag missmatch (\"%.*s\").",
+                                   name_len, name),
+                            error);
+                    e = (struct lyxml_elem*)context->elements.objs[context->elements.count - 1];
+                    LY_CHECK_ERR_GOTO(e->prefix_len != prefix_len || e->name_len != name_len
+                                      || (prefix_len && strncmp(prefix, e->prefix, e->prefix_len)) || strncmp(name, e->name, e->name_len),
+                            free(e); LOGVAL(ctx, LY_VLOG_LINE, &fakecontext.line, LYVE_SYNTAX,
+                                            "Opening and closing elements tag missmatch (\"%.*s\").", name_len, name),
+                            error);
+                    /* opening and closing element tags matches */
+                    /* return input back */
+                    in = (*input);
                 }
             } else {
                 in += offset + 1;
@@ -652,180 +887,6 @@ start:
     (*input) = in;
     return LY_SUCCESS;
 }
-
-LY_ERR
-lyxml_get_element(struct lyxml_context *context, const char **input,
-                  const char **prefix, size_t *prefix_len, const char **name, size_t *name_len)
-{
-    struct ly_ctx *ctx = context->ctx; /* shortcut */
-    const char *in = (*input);
-    const char *endtag;
-    const char *sectname;
-    const char *id;
-    size_t endtag_len, newlines;
-    bool loop = true, closing = false;
-    unsigned int c;
-    LY_ERR rc;
-    struct lyxml_elem *e;
-
-    /* initialize output variables */
-    (*prefix) = (*name) = NULL;
-    (*prefix_len) = (*name_len) = 0;
-
-    while (loop) {
-        ign_xmlws(context, in);
-
-        if (in[0] == '\0') {
-            /* EOF */
-            context->status = LYXML_END;
-            goto success;
-        } else if (in[0] != '<') {
-            return LY_EINVAL;
-        }
-        move_input(context, in, 1);
-
-        if (in[0] == '!') {
-            move_input(context, in, 1);
-            /* sections to ignore */
-            if (!strncmp(in, "--", 2)) {
-                /* comment */
-                move_input(context, in, 2);
-                sectname = "Comment";
-                endtag = "-->";
-                endtag_len = 3;
-            } else if (!strncmp(in, "[CDATA[", 7)) {
-                /* CDATA section */
-                move_input(context, in, 7);
-                sectname = "CData";
-                endtag = "]]>";
-                endtag_len = 3;
-            } else if (!strncmp(in, "DOCTYPE", 7)) {
-                /* Document type declaration - not supported */
-                LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_NSUPP, "Document Type Declaration");
-                return LY_EVALID;
-            } else {
-                LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX, "Unknown XML section \"%.20s\".", &in[-2]);
-                return LY_EVALID;
-            }
-            in = ign_todelim(in, endtag, endtag_len, &newlines);
-            LY_CHECK_ERR_RET(!in, LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_NTERM, sectname), LY_EVALID);
-            context->line += newlines;
-            in += endtag_len;
-        } else if (in[0] == '?') {
-            in = ign_todelim(in, "?>", 2, &newlines);
-            LY_CHECK_ERR_RET(!in, LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_NTERM, "Declaration"), LY_EVALID);
-            context->line += newlines;
-            in += 2;
-        } else if (in[0] == '/') {
-            /* closing element */
-            closing = true;
-            ++in;
-            goto element;
-        } else {
-            /* element */
-element:
-            ign_xmlws(context, in);
-            LY_CHECK_ERR_RET(!in[0], LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_EOF), LY_EVALID);
-
-            /* remember the identifier start before checking its format */
-            id = in;
-            rc = lyxml_check_qname(context, &in, &c, &endtag_len);
-            LY_CHECK_RET(rc);
-            if (c == ':') {
-                /* we have prefixed identifier */
-                endtag = in - endtag_len;
-
-                rc = lyxml_check_qname(context, &in, &c, &endtag_len);
-                LY_CHECK_RET(rc);
-
-                (*prefix) = id;
-                (*prefix_len) = endtag - id;
-                id = endtag + 1;
-            }
-            if (!is_xmlws(c) && c != '/' && c != '>') {
-                in = in - endtag_len;
-                LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(in), in,
-                       "whitespace or element tag termination ('>' or '/>'");
-                return LY_EVALID;
-            }
-            (*name) = id;
-            (*name_len) = in - endtag_len - id;
-
-            if (is_xmlws(c)) {
-                /* go to the next meaningful input */
-                ign_xmlws(context, in);
-                LY_CHECK_ERR_RET(!in[0], LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_EOF), LY_EVALID);
-                c = in[0];
-                ++in;
-                endtag_len = 1;
-            }
-
-            if (closing) {
-                /* match opening and closing element tags */
-                LY_CHECK_ERR_RET(
-                        !context->elements.count,
-                        LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX, "Opening and closing elements tag missmatch (\"%.*s\").", *name_len, *name),
-                        LY_EVALID);
-                e = (struct lyxml_elem*)context->elements.objs[context->elements.count - 1];
-                LY_CHECK_ERR_RET(e->prefix_len != *prefix_len || e->name_len != *name_len
-                                 || (*prefix_len && strncmp(*prefix, e->prefix, e->prefix_len)) || strncmp(*name, e->name, e->name_len),
-                                 LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX, "Opening and closing elements tag missmatch (\"%.*s\").", *name_len, *name),
-                                 LY_EVALID);
-                /* opening and closing element tags matches, remove record from the opening tags list */
-                free(e);
-                --context->elements.count;
-
-                /* remove also the namespaces conneted with the element */
-                lyxml_ns_rm(context);
-
-                /* do not return element information to announce closing element being currently processed */
-                *name = *prefix = NULL;
-                *name_len = *prefix_len = 0;
-
-                if (c == '>') {
-                    /* end of closing element */
-                    context->status = LYXML_ELEMENT;
-                } else {
-                    in -= endtag_len;
-                    LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX, "Unexpected data \"%.*s\" in closing element tag.",
-                           LY_VCODE_INSTREXP_len(in), in);
-                    return LY_EVALID;
-                }
-            } else {
-                if (c == '>') {
-                    /* end of opening element */
-                    context->status = LYXML_ELEM_CONTENT;
-                } else if (c == '/' && in[0] == '>') {
-                    /* empty element closing */
-                    context->status = LYXML_ELEMENT;
-                    ++in;
-                } else {
-                    /* attribute */
-                    context->status = LYXML_ATTRIBUTE;
-                    in -= endtag_len;
-                }
-
-                if (context->status != LYXML_ELEMENT) {
-                    /* store element opening tag information */
-                    e = malloc(sizeof *e);
-                    LY_CHECK_ERR_RET(!e, LOGMEM(ctx), LY_EMEM);
-                    e->name = *name;
-                    e->prefix = *prefix;
-                    e->name_len = *name_len;
-                    e->prefix_len = *prefix_len;
-                    ly_set_add(&context->elements, e, LY_SET_OPT_USEASLIST);
-                }
-            }
-            loop = false;
-        }
-    }
-
-success:
-    /* move caller's input */
-    (*input) = in;
-    return LY_SUCCESS;
-}
-
 
 void
 lyxml_context_clear(struct lyxml_context *context)
