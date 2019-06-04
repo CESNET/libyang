@@ -58,8 +58,17 @@ teardown_f(void **state)
     return EXIT_SUCCESS;
 }
 
+static struct state*
+reset_state(void **state)
+{
+    teardown_f(state);
+    setup_f(state);
+
+    return *state;
+}
+
 static void
-test_parse(void **state)
+test_yin_parse_module(void **state)
 {
     LY_ERR ret = LY_SUCCESS;
     struct state *st = *state;
@@ -78,6 +87,27 @@ test_parse(void **state)
     assert_string_equal(st->mod->parsed->mod->name, "example-foo");
     assert_string_equal(st->mod->parsed->mod->prefix, "foo");
     assert_string_equal(st->mod->parsed->mod->ns, "urn:example:foo");
+
+    st = reset_state(state);
+    ret = yin_parse_module(st->ctx,
+                    "<module name=\"example-foo\">\
+                        <invalid-tag uri=\"urn:example:foo\"\"/>\
+                     </module>",
+                st->mod);
+    assert_int_equal(ret, LY_EVALID);
+
+    st = reset_state(state);
+    ret = yin_parse_module(st->ctx,
+                    "<module>\
+                     </module>",
+                st->mod);
+    assert_int_equal(ret, LY_EVALID);
+
+    st = reset_state(state);
+    ret = yin_parse_module(st->ctx,
+                    "",
+                st->mod);
+    assert_int_equal(ret, LY_EVALID);
 }
 
 static void
@@ -286,7 +316,7 @@ main(void)
 {
 
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup_teardown(test_parse, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_yin_parse_module, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_meta, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_parse_text_element, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_parse_namespace, setup_f, teardown_f),

@@ -330,7 +330,7 @@ parse_mod(struct lyxml_context *xml_ctx, const char **data, struct lysp_module *
         }
     }
 
-    LY_CHECK_ERR_RET(!(*mod)->mod->name, LOGVAL_YANG(xml_ctx, LYVE_SYNTAX_YIN, "Missing argument name of a module", (*mod)->mod->name), LY_ENOTFOUND);
+    LY_CHECK_ERR_RET(!(*mod)->mod->name, LOGVAL_YANG(xml_ctx, LYVE_SYNTAX_YIN, "Missing argument name of a module", (*mod)->mod->name), LY_EVALID);
 
     ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
     LY_CHECK_ERR_RET(ret != LY_EINVAL, LOGVAL_YANG(xml_ctx, LYVE_SYNTAX_YIN, "Expected new xml element after module element."), LY_EINVAL);
