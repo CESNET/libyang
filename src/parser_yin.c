@@ -130,8 +130,9 @@ yin_parse_attribute(struct lyxml_context *xml_ctx, const char **data, enum YIN_A
             continue;
         } else {
             /* unrecognized or unexpected attribute */
+            /* TODO add name of attribute to error message */
             if (name) {
-                LOGERR(xml_ctx->ctx, LY_EDENIED, "Invalid argument in namespace element");
+                LOGERR(xml_ctx->ctx, LY_EDENIED, "Invalid attribute");
                 return LY_EVALID;
             }
         }
@@ -205,20 +206,25 @@ static LY_ERR
 yin_parse_revision_date(struct lyxml_context *xml_ctx, const char **data, char *rev, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
+    const char *temp_rev;
 
     if (rev[0]) {
         LOGVAL_YANG(xml_ctx, LY_VCODE_DUPSTMT, "revision-date");
         return LY_EVALID;
     }
 
-    ret = yin_parse_attribute(xml_ctx, data, YIN_ARG_DATE, (const char **)&rev);
+    ret = yin_parse_attribute(xml_ctx, data, YIN_ARG_DATE, &temp_rev);
     LY_CHECK_RET(ret != LY_SUCCESS, ret);
-    LY_CHECK_RET(lysp_check_date((struct lys_parser_ctx *)xml_ctx, rev, strlen(rev), "revision-date") != LY_SUCCESS, LY_EVALID);
+    LY_CHECK_RET(lysp_check_date((struct lys_parser_ctx *)xml_ctx, temp_rev, strlen(temp_rev), "revision-date") != LY_SUCCESS, LY_EVALID);
+
+    strcpy(rev, temp_rev);
+    lydict_remove(xml_ctx->ctx, temp_rev);
+    /* TODO extension */
 
     return ret;
 }
 
-static LY_ERR
+LY_ERR
 yin_parse_import(struct lyxml_context *xml_ctx, const char *module_prefix, const char **data, struct lysp_import **imports)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -238,6 +244,7 @@ yin_parse_import(struct lyxml_context *xml_ctx, const char *module_prefix, const
         case YANG_PREFIX:
             LY_CHECK_ERR_RET(imp->prefix, LOGVAL_YANG(xml_ctx, LY_VCODE_DUPSTMT, "prefix"), LY_EVALID);
             parse_prefix(xml_ctx, data, &imp->prefix);
+            LY_CHECK_RET(lysp_check_prefix((struct lys_parser_ctx *)xml_ctx, *imports, module_prefix, &imp->prefix), LY_EVALID);
             break;
         case YANG_DESCRIPTION:
             LY_CHECK_ERR_RET(imp->dsc, LOGVAL_YANG(xml_ctx, LY_VCODE_DUPSTMT, "description"), LY_EVALID);
@@ -297,7 +304,8 @@ parse_mod(struct lyxml_context *xml_ctx, const char **data, struct lysp_module *
         switch (arg) {
         case YIN_ARG_NAME:
             /* check for multiple definitions of name */
-            LY_CHECK_ERR_RET((*mod)->mod->name, LOGVAL_YANG(xml_ctx, LYVE_SYNTAX_YIN, "Duplicit definition of module name \"%s\"", (*mod)->mod->name), LY_EEXIST);
+            LY_CHECK_ERR_RET((*mod)->mod->name, LOGVAL_YANG(xml_ctx, LYVE_SYNTAX_YIN, "Duplicit definition of module name \"%s\"",
+                                                            (*mod)->mod->name), LY_EEXIST);
 
             /* read module name */
             if (xml_ctx->status != LYXML_ATTR_CONTENT) {
@@ -490,15 +498,6 @@ cleanup:
     return ret;
 }
 
-/**
- * @brief Parse yin module.
- *
- * @param[in] ctx Context of YANG schemas.
- * @param[in] data Data to read from.
- * @param[out] mod Module to write to.
- *
- * @return LY_ERR values.
- */
 LY_ERR
 yin_parse_module(struct ly_ctx *ctx, const char *data, struct lys_module *mod)
 {

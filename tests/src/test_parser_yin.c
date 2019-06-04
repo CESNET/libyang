@@ -244,6 +244,43 @@ test_parse_namespace(void **state)
     assert_int_equal(ret, LY_EVALID);
 }
 
+static void
+test_yin_parse_import(void **state)
+{
+    struct state *st = *state;
+    const char *prefix = NULL, *name = NULL;
+    size_t prefix_len = 0, name_len = 0;
+    LY_ERR ret = LY_SUCCESS;
+    struct lysp_import *imports = NULL;
+
+    const char *data = "<import module=\"a\">\
+                            <prefix value=\"a_mod\"/>\
+                            <revision-date date=\"2015-01-01\"/>\
+                        </import>";
+
+    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    ret = yin_parse_import(st->xml_ctx, "b-mod", &data, &imports);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_string_equal(imports->name, "a");
+    assert_string_equal(imports->prefix, "a_mod");
+    assert_string_equal(imports->rev, "2015-01-01");
+    lydict_remove(st->ctx, imports->name);
+    lydict_remove(st->ctx, imports->prefix);
+    LY_ARRAY_FREE(imports);
+
+    imports = NULL;
+    data = "<import module=\"a\">\
+                <prefix value=\"a_mod\"/>\
+                <revision-date date=\"2015-01-01\"/>\
+            </import>";
+    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    ret = yin_parse_import(st->xml_ctx, "a_mod", &data, &imports);
+    assert_int_equal(ret, LY_EVALID);
+    lydict_remove(st->ctx, imports->name);
+    lydict_remove(st->ctx, imports->prefix);
+    LY_ARRAY_FREE(imports);
+}
+
 int
 main(void)
 {
@@ -253,6 +290,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_meta, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_parse_text_element, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_parse_namespace, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_yin_parse_import, setup_f, teardown_f),
         cmocka_unit_test(test_match_keyword),
         cmocka_unit_test(test_match_argument),
     };

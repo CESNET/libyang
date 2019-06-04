@@ -51,7 +51,16 @@ LY_ERR parse_text_element(struct lyxml_context *xml_ctx, const char **data, cons
  *
  * @return LY_ERR values.
  */
-LY_ERR
-parse_namespace(struct lyxml_context *xml_ctx, const char **data, const char **namespace);
+LY_ERR parse_namespace(struct lyxml_context *xml_ctx, const char **data, const char **namespace);
+
+/**
+ * @brief Parse import element
+ *
+ * @param[in] xml_ctx Xml context.
+ * @param[in] module_prefix Prefix of the module to check prefix collisions.
+ * @param[in, out] data Dta to read from.
+ *
+ */
+LY_ERR yin_parse_import(struct lyxml_context *xml_ctx, const char *module_prefix, const char **data, struct lysp_import **imports);
 
 #endif /* LY_PARSER_YIN_H_*/
