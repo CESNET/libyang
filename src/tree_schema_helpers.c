@@ -1322,6 +1322,10 @@ match_keyword(const char *data, size_t len, size_t prefix_len)
         return YANG_CUSTOM;
     }
 
+    if (!data || len == 0) {
+        return YANG_NONE;
+    }
+
 #define MOVE_IN(DATA, COUNT) (data)+=COUNT;
 #define IF_KEYWORD(STR, LEN, STMT) if (!strncmp((data), STR, LEN)) {MOVE_IN(data, LEN);kw=STMT;}
 #define IF_KEYWORD_PREFIX(STR, LEN) if (!strncmp((data), STR, LEN)) {MOVE_IN(data, LEN);
