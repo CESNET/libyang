@@ -42,5 +42,16 @@ enum YIN_ARGUMENT match_argument_name(const char *name, size_t len);
  */
 LY_ERR parse_text_element(struct lyxml_context *xml_ctx, const char **data, const char **value);
 
+/**
+ * @brief Parse namespace statement.
+ *
+ * @param[in] xml_ctx xml context.
+ * @param[in, out] data Data to read from.
+ * @param[in, out] namespace Where namespace value should be stored.
+ *
+ * @return LY_ERR values.
+ */
+LY_ERR
+parse_namespace(struct lyxml_context *xml_ctx, const char **data, const char **namespace);
 
 #endif /* LY_PARSER_YIN_H_*/

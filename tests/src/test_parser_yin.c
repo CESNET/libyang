@@ -71,7 +71,7 @@ test_parse(void **state)
                         xmlns:myext=\"urn:example:extensions\">\
                         <namespace uri=\"urn:example:foo\" xmlns:myext=\"urn:example:extensions\"/>\
                         <prefix xmlns:myxt=\"urn:emple:extensions\" value=\"foo\" xmlns:myext=\"urn:example:extensions\"/>\
-                    </module>",
+                     </module>",
                 st->mod);
 
     assert_int_equal(ret, LY_SUCCESS);
@@ -223,6 +223,27 @@ test_parse_text_element(void **state)
     assert_int_equal(ret, LY_EVALID);
 }
 
+static void
+test_parse_namespace(void **state)
+{
+    struct state *st = *state;
+    const char *res = NULL, *prefix = NULL, *name = NULL;
+    size_t prefix_len = 0, name_len = 0;
+    LY_ERR ret = LY_SUCCESS;
+
+    const char *data = "<namespace uri=\"urn:example:foo\"/>";
+    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    ret = parse_namespace(st->xml_ctx, &data, &res);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_string_equal(res, "urn:example:foo");
+    lydict_remove(st->ctx, "urn:example:foo");
+
+    data = "<namespace urr=\"urn:example:foo\"/>";
+    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    ret = parse_namespace(st->xml_ctx, &data, &res);
+    assert_int_equal(ret, LY_EVALID);
+}
+
 int
 main(void)
 {
@@ -231,6 +252,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_parse, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_meta, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_parse_text_element, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_parse_namespace, setup_f, teardown_f),
         cmocka_unit_test(test_match_keyword),
         cmocka_unit_test(test_match_argument),
     };

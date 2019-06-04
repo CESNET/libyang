@@ -169,15 +169,6 @@ parse_text_element(struct lyxml_context *xml_ctx, const char **data, const char 
     return LY_SUCCESS;
 }
 
-/**
- * @brief Parse namespace statement.
- *
- * @param[in] xml_ctx xml context.
- * @param[in, out] data Data to read from.
- * @param[in, out] namespace Where namespace value should be stored.
- *
- * @return LY_ERR values.
- */
 LY_ERR
 parse_namespace(struct lyxml_context *xml_ctx, const char **data, const char **namespace)
 {
@@ -186,7 +177,7 @@ parse_namespace(struct lyxml_context *xml_ctx, const char **data, const char **n
     ret = yin_parse_attribute(xml_ctx, data, YIN_ARG_URI, namespace);
     LY_CHECK_RET(ret != LY_SUCCESS, ret);
 
-    return LY_SUCCESS;
+    return ret;
 }
 
 /**
