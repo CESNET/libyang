@@ -126,9 +126,10 @@ test_element(void **state)
     assert_null(prefix);
     assert_false(strncmp("element", name, name_len));
     assert_int_equal(7, name_len);
-    assert_int_equal(LYXML_ELEMENT, ctx.status);
+    assert_int_equal(LYXML_END, ctx.status);
     assert_string_equal("", str);
     assert_int_equal(0, ctx.elements.count);
+    lyxml_context_clear(&ctx);
 
     str = "  <  element attr=\'x\'/>";
     assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
@@ -140,17 +141,19 @@ test_element(void **state)
     assert_string_equal("\'x\'/>", str);
     assert_int_equal(1, ctx.elements.count);
     assert_int_equal(LY_SUCCESS, lyxml_get_string(&ctx, &str, &buf, &buf_len, &out, &len, &dynamic));
-    assert_int_equal(LYXML_ELEMENT, ctx.status);
+    assert_int_equal(LYXML_END, ctx.status);
     assert_string_equal("", str);
     assert_int_equal(0, ctx.elements.count);
+    lyxml_context_clear(&ctx);
 
     str = "<?xml version=\"1.0\"?>  <!-- comment --> <![CDATA[<greeting>Hello, world!</greeting>]]> <?TEST xxx?> <element/>";
     assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
     assert_null(prefix);
     assert_false(strncmp("element", name, name_len));
     assert_int_equal(7, name_len);
-    assert_int_equal(LYXML_ELEMENT, ctx.status);
+    assert_int_equal(LYXML_END, ctx.status);
     assert_string_equal("", str);
+    lyxml_context_clear(&ctx);
 
     str = "<element xmlns=\"urn\"></element>";
     assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
@@ -162,6 +165,7 @@ test_element(void **state)
     /* cleean context by getting closing tag */
     str += 12;
     assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
+    lyxml_context_clear(&ctx);
 
     /* qualified element */
     str = "  <  yin:element/>";
@@ -170,8 +174,9 @@ test_element(void **state)
     assert_false(strncmp("element", name, name_len));
     assert_int_equal(3, prefix_len);
     assert_int_equal(7, name_len);
-    assert_int_equal(LYXML_ELEMENT, ctx.status);
+    assert_int_equal(LYXML_END, ctx.status);
     assert_string_equal("", str);
+    lyxml_context_clear(&ctx);
 
     str = "<yin:element xmlns=\"urn\"></element>";
     assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
@@ -197,8 +202,9 @@ test_element(void **state)
     assert_false(strncmp("𠜎€𠜎Øn", name, name_len));
     assert_int_equal(14, prefix_len);
     assert_int_equal(14, name_len);
-    assert_int_equal(LYXML_ELEMENT, ctx.status);
+    assert_int_equal(LYXML_END, ctx.status);
     assert_string_equal("", str);
+    lyxml_context_clear(&ctx);
 
     /* invalid UTF-8 character */
     str = "<¢:element>";
@@ -207,6 +213,7 @@ test_element(void **state)
     str = "<yin:c⁐element>";
     assert_int_equal(LY_EVALID, lyxml_get_element(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
     logbuf_assert("Invalid character sequence \"⁐element>\", expected whitespace or element tag termination ('>' or '/>'. Line number 1.");
+    lyxml_context_clear(&ctx);
 
     /* mixed content */
     str = "<a>text <b>x</b></a>";
@@ -234,7 +241,7 @@ test_attribute(void **state)
 
     /* empty - without element tag termination */
     str = "";
-    assert_int_equal(LY_EINVAL, lyxml_get_attribute(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
+    assert_int_equal(LY_EVALID, lyxml_get_attribute(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
 
     /* not an attribute */
     str = p = "unknown/>";
@@ -494,6 +501,55 @@ test_ns2(void **state)
     assert_int_equal(0, ctx.ns.count);
 }
 
+static void
+test_simple_xml(void **state)
+{
+    (void)state; /* unused */
+    size_t name_len, prefix_len;
+    const char *prefix, *name;
+    char *test_in = NULL, *to_free = NULL;
+    struct lyxml_context ctx;
+
+    char *buf = NULL, *output = NULL;
+    size_t buf_size, length;
+    int dynamic;
+    char *test_input = "<elem1 attr1=\"value\"> <elem2 attr2=\"value\" /> </elem1>";
+
+    memset(&ctx, 0, sizeof ctx);
+    ctx.line = 1;
+    to_free = test_in = malloc(strlen(test_input) + 1);
+    /* test input */
+    strcpy(test_in, test_input);
+
+    assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, (const char **)&test_in, &prefix, &prefix_len, &name, &name_len));     /* <elem1 */
+    assert_int_equal(ctx.status, LYXML_ATTRIBUTE);
+
+    assert_int_equal(LY_SUCCESS, lyxml_get_attribute(&ctx, (const char **)&test_in, &prefix, &prefix_len, &name, &name_len));   /* attr1= */
+    assert_int_equal(ctx.status, LYXML_ATTR_CONTENT);
+
+    assert_int_equal(LY_SUCCESS, lyxml_get_string(&ctx, (const char **)&test_in, &buf, &buf_size, &output, &length, &dynamic)); /* "value" */
+    assert_int_equal(ctx.status, LYXML_ELEM_CONTENT);
+
+    /* try to get string content of elem1 whitespace is removed and EINVAL is expected in this case */
+    assert_int_equal(LY_EINVAL, lyxml_get_string(&ctx, (const char **)&test_in, &buf, &buf_size, &output, &length, &dynamic));
+    assert_int_equal(ctx.status, LYXML_ELEM_CONTENT);
+
+    assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, (const char **)&test_in, &prefix, &prefix_len, &name, &name_len));     /* <elem2 */
+    assert_int_equal(ctx.status, LYXML_ATTRIBUTE);
+
+    assert_int_equal(LY_SUCCESS, lyxml_get_attribute(&ctx, (const char **)&test_in, &prefix, &prefix_len, &name, &name_len));   /* attr2= */
+    assert_int_equal(ctx.status, LYXML_ATTR_CONTENT);
+
+    assert_int_equal(LY_SUCCESS, lyxml_get_string(&ctx, (const char **)&test_in, &buf, &buf_size, &output, &length, &dynamic)); /* "value" */
+    assert_int_equal(ctx.status, LYXML_ELEMENT);
+
+    assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, (const char **)&test_in, &prefix, &prefix_len, &name, &name_len));     /* </elem1> */
+    assert_int_equal(ctx.status, LYXML_END);
+
+    lyxml_context_clear(&ctx);
+    free(to_free);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -502,6 +558,7 @@ int main(void)
         cmocka_unit_test_setup(test_text, logger_setup),
         cmocka_unit_test_setup(test_ns, logger_setup),
         cmocka_unit_test_setup(test_ns2, logger_setup),
+        cmocka_unit_test_setup(test_simple_xml, logger_setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
