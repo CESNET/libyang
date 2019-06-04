@@ -84,7 +84,8 @@ lyd_parse_check_options(struct ly_ctx *ctx, int options, const char *func)
 }
 
 LY_ERR
-lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len, int dynamic)
+lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len, int dynamic,
+                ly_type_resolve_prefix get_prefix, void *parser)
 {
     LY_ERR ret = LY_SUCCESS;
     struct ly_err_item *err = NULL;
@@ -97,7 +98,7 @@ lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len,
     ctx = node->schema->module->ctx;
     type = ((struct lysc_node_leaf*)node->schema)->type;
     if (type->plugin->validate) {
-        ret = type->plugin->validate(ctx, type, value, value_len, options, &node->value.canonized, &err, &priv);
+        ret = type->plugin->validate(ctx, type, value, value_len, options, get_prefix, parser, &node->value.canonized, &err, &priv);
         if (ret) {
             ly_err_print(err);
             LOGVAL(ctx, LY_VLOG_STR, err->path, err->vecode, err->msg);

@@ -16,6 +16,7 @@
 #define LY_TREE_DATA_INTERNAL_H_
 
 #include "tree_data.h"
+#include "plugins_types.h"
 
 /**
  * @brief Get address of a node's child pointer if any.
@@ -44,9 +45,11 @@ LY_ERR lyd_parse_check_options(struct ly_ctx *ctx, int options, const char *func
  * @param[in] value String value to be parsed.
  * @param[in] value_len Length of the give @p value (mandatory).
  * @param[in] dynamic Flag if @p value is a dynamically allocated memory and should be directly consumed/freed inside the function.
+ * @param[in] get_prefix Parser-specific getter to resolve prefixes used in the value strings.
+ * @param[in] parser Parser's data for @p get_prefix
  * @return LY_ERR value.
  */
-LY_ERR lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len, int dynamic);
+LY_ERR lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len, int dynamic, ly_type_resolve_prefix get_prefix, void *parser);
 
 /**
  * @brief Parse XML string as YANG data tree.

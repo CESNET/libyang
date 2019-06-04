@@ -91,12 +91,12 @@ test_element(void **state)
     assert_null(name);
     assert_int_equal(LYXML_END, ctx.status);
     assert_true(str[0] == '\0');
+    ctx.status = 0;
 
     /* end element */
     str = "</element>";
     assert_int_equal(LY_EVALID, lyxml_get_element(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
     logbuf_assert("Opening and closing elements tag missmatch (\"element\"). Line number 1.");
-
 
     /* no element */
     logbuf_clean();
@@ -350,7 +350,7 @@ test_text(void **state)
     assert_int_equal(22, buf_len);
     assert_int_equal(21, len);
     assert_string_equal("€𠜎Øn \n<&\"\'> ROK", buf);
-    assert_string_equal("", str);
+    assert_string_equal("</a>", str);
     assert_int_equal(LYXML_ELEMENT, ctx.status);
     lyxml_context_clear(&ctx);
 
@@ -479,7 +479,7 @@ test_simple_xml(void **state)
     char *buf = NULL, *output = NULL;
     size_t buf_size, length;
     int dynamic;
-    char *test_input = "<elem1 attr1=\"value\">  <elem2 attr2=\"value\"/> </elem1>";
+    char *test_input = "<elem1 attr1=\"value\"> <elem2 attr2=\"value\"/> </elem1>";
 
     memset(&ctx, 0, sizeof ctx);
     ctx.line = 1;
@@ -488,14 +488,33 @@ test_simple_xml(void **state)
     strcpy(test_in, test_input);
 
     assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, (const char **)&test_in, &prefix, &prefix_len, &name, &name_len));     /* <elem1 */
+    assert_int_equal(ctx.status, LYXML_ATTRIBUTE);
+
     assert_int_equal(LY_SUCCESS, lyxml_get_attribute(&ctx, (const char **)&test_in, &prefix, &prefix_len, &name, &name_len));   /* attr1= */
+    assert_int_equal(ctx.status, LYXML_ATTR_CONTENT);
+
     assert_int_equal(LY_SUCCESS, lyxml_get_string(&ctx, (const char **)&test_in, &buf, &buf_size, &output, &length, &dynamic)); /* "value" */
+    assert_int_equal(ctx.status, LYXML_ELEM_CONTENT);
+
     /* try to get string content of elem1 whitespace is removed and EINVAL is expected in this case */
     assert_int_equal(LY_EINVAL, lyxml_get_string(&ctx, (const char **)&test_in, &buf, &buf_size, &output, &length, &dynamic));
+    assert_int_equal(ctx.status, LYXML_ELEM_CONTENT);
+
     assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, (const char **)&test_in, &prefix, &prefix_len, &name, &name_len));     /* <elem2 */
+    assert_int_equal(ctx.status, LYXML_ATTRIBUTE);
+
     assert_int_equal(LY_SUCCESS, lyxml_get_attribute(&ctx, (const char **)&test_in, &prefix, &prefix_len, &name, &name_len));   /* attr2= */
+    assert_int_equal(ctx.status, LYXML_ATTR_CONTENT);
+
     assert_int_equal(LY_SUCCESS, lyxml_get_string(&ctx, (const char **)&test_in, &buf, &buf_size, &output, &length, &dynamic)); /* "value" */
+    assert_int_equal(ctx.status, LYXML_ELEMENT);
+
     assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, (const char **)&test_in, &prefix, &prefix_len, &name, &name_len));     /* </elem1> */
+    assert_int_equal(ctx.status, LYXML_ELEMENT);
+
+    assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, (const char **)&test_in, &prefix, &prefix_len, &name, &name_len));
+    assert_ptr_equal(name, NULL);
+    assert_int_equal(ctx.status, LYXML_END);
 
     lyxml_context_clear(&ctx);
     free(to_free);

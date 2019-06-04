@@ -78,6 +78,20 @@ void ly_err_free(void *ptr);
  */
 
 /**
+ * @brief Callback provided by the data parsers to type plugins to resolve (format-specific) mapping between prefixes used in the value strings
+ * to the YANG schemas.
+ *
+ * XML uses XML namespaces, JSON uses schema names as prefixes.
+ *
+ * @param[in] ctx libyang context to find the schema.
+ * @param[in] prefix Prefix found in the value string
+ * @param[in] prefix_len Length of the @p prefix.
+ * @param[in] parser Internal parser's data.
+ * @return Pointer to the YANG schema identified by the provided prefix or NULL if no mapping found.
+ */
+typedef const struct lys_module *(*ly_type_resolve_prefix)(struct ly_ctx *ctx, const char *prefix, size_t prefix_len, void *parser);
+
+/**
  * @brief Callback to validate the given @p value according to the given @p type. Optionaly, it can be requested to canonize the value.
  *
  * Note that the \p value string is not necessarily zero-terminated. The provided \p value_len is always correct.
@@ -87,6 +101,10 @@ void ly_err_free(void *ptr);
  * @param[in] value Lexical representation of the value to be validated (and canonized).
  * @param[in] value_len Length of the given \p value.
  * @param[in] options [Type plugin options ](@ref plugintypeopts).
+ *
+ * @param[in] get_prefix Parser-specific getter to resolve prefixes used in the value strings.
+ * @param[in] parser Parser's data for @p get_prefix
+ *
  * @param[out] canonized If LY_TYPE_VALIDATE_CANONIZE option set, the canonized string stored in the @p ctx dictionary is returned via this parameter.
  * @param[out] err Optionally provided error information in case of failure. If not provided to the caller, a generic error message is prepared instead.
  * The error structure can be created by ly_err_new().
@@ -95,6 +113,7 @@ void ly_err_free(void *ptr);
  * @return LY_ERR value if an error occurred and the value could not be canonized following the type's rules.
  */
 typedef LY_ERR (*ly_type_validate_clb)(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
+                                       ly_type_resolve_prefix get_prefix, void *parser,
                                        const char **canonized, struct ly_err_item **err, void **priv);
 
 /**
@@ -157,7 +176,7 @@ extern struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT];
  * @param[out] err Error information in case of failure. The error structure can be freed by ly_err_free().
  * @return LY_ERR value according to the result of the parsing and validation.
  */
-LY_ERR parse_int(const char *datatype, int base, int64_t min, int64_t max, const char *value, size_t value_len,
+LY_ERR ly_type_parse_int(const char *datatype, int base, int64_t min, int64_t max, const char *value, size_t value_len,
                  int64_t *ret, struct ly_err_item **err);
 
 /**
@@ -174,7 +193,7 @@ LY_ERR parse_int(const char *datatype, int base, int64_t min, int64_t max, const
  * @param[out] err Error information in case of failure. The error structure can be freed by ly_err_free().
  * @return LY_ERR value according to the result of the parsing and validation.
  */
-LY_ERR parse_uint(const char *datatype, int base, uint64_t min, uint64_t max, const char *value, size_t value_len,
+LY_ERR ly_type_parse_uint(const char *datatype, int base, uint64_t min, uint64_t max, const char *value, size_t value_len,
                   uint64_t *ret, struct ly_err_item **err);
 
 /**
@@ -188,7 +207,17 @@ LY_ERR parse_uint(const char *datatype, int base, uint64_t min, uint64_t max, co
  * @param[out] err Error information in case of failure. The error structure can be freed by ly_err_free().
  * @return LY_ERR value according to the result of the parsing and validation.
  */
-LY_ERR parse_dec64(uint8_t fraction_digits, const char *value, size_t value_len, int64_t *ret, struct ly_err_item **err);
+LY_ERR ly_type_parse_dec64(uint8_t fraction_digits, const char *value, size_t value_len, int64_t *ret, struct ly_err_item **err);
+
+/**
+ * @brief Decide if the @p derived identity is derived from (based on) the @p base identity.
+ *
+ * @param[in] base Expected base identity.
+ * @param[in] derived Expected derived identity.
+ * @return LY_SUCCESS if @p derived IS based on the @p base identity.
+ * @return LY_ENOTFOUND if @p derived IS NOT not based on the @p base identity.
+ */
+LY_ERR ly_type_identity_isderived(struct lysc_ident *base, struct lysc_ident *derived);
 
 /**
  * @brief Data type validator for a range/length-restricted values.

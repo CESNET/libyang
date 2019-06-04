@@ -26,7 +26,7 @@
 #include "tree_schema.h"
 
 API LY_ERR
-parse_int(const char *datatype, int base, int64_t min, int64_t max, const char *value, size_t value_len, int64_t *ret, struct ly_err_item **err)
+ly_type_parse_int(const char *datatype, int base, int64_t min, int64_t max, const char *value, size_t value_len, int64_t *ret, struct ly_err_item **err)
 {
     char *errmsg = NULL;
     char *strptr = NULL;
@@ -72,7 +72,7 @@ error:
 }
 
 API LY_ERR
-parse_uint(const char *datatype, int base, uint64_t min, uint64_t max, const char *value, size_t value_len, uint64_t *ret, struct ly_err_item **err)
+ly_type_parse_uint(const char *datatype, int base, uint64_t min, uint64_t max, const char *value, size_t value_len, uint64_t *ret, struct ly_err_item **err)
 {
     char *errmsg = NULL;
     char *strptr = NULL;
@@ -123,7 +123,7 @@ error:
 }
 
 API LY_ERR
-parse_dec64(uint8_t fraction_digits, const char *value, size_t value_len, int64_t *ret, struct ly_err_item **err)
+ly_type_parse_dec64(uint8_t fraction_digits, const char *value, size_t value_len, int64_t *ret, struct ly_err_item **err)
 {
     LY_ERR rc = LY_EINVAL;
     char *errmsg = NULL;
@@ -210,7 +210,7 @@ decimal:
         memset(&valcopy[len], '0', fraction_digits);
     }
 
-    rc = parse_int("decimal64", 10, INT64_C(-9223372036854775807) - INT64_C(1), INT64_C(9223372036854775807), valcopy, len, &d, err);
+    rc = ly_type_parse_int("decimal64", 10, INT64_C(-9223372036854775807) - INT64_C(1), INT64_C(9223372036854775807), valcopy, len, &d, err);
     if (!rc && ret) {
         *ret = d;
     }
@@ -335,20 +335,21 @@ ly_type_parse_int_builtin(LY_DATA_TYPE basetype, const char *value, size_t value
 {
     switch (basetype) {
     case LY_TYPE_INT8:
-        return parse_int("int16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, INT64_C(-128), INT64_C(127), value, value_len, val, err);
+        return ly_type_parse_int("int16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, INT64_C(-128), INT64_C(127), value, value_len, val, err);
     case LY_TYPE_INT16:
-        return parse_int("int16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, INT64_C(-32768), INT64_C(32767), value, value_len, val, err);
+        return ly_type_parse_int("int16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, INT64_C(-32768), INT64_C(32767), value, value_len, val, err);
     case LY_TYPE_INT32:
-        return parse_int("int32", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10,
+        return ly_type_parse_int("int32", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10,
                          INT64_C(-2147483648), INT64_C(2147483647), value, value_len, val, err);
     case LY_TYPE_INT64:
-        return parse_int("int64", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10,
+        return ly_type_parse_int("int64", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10,
                          INT64_C(-9223372036854775807) - INT64_C(1), INT64_C(9223372036854775807), value, value_len, val, err);
     default:
         LOGINT(NULL);
         return LY_EINVAL;
     }
 }
+
 /**
  * @brief Validate and canonize value of the YANG built-in signed integer types.
  *
@@ -356,7 +357,7 @@ ly_type_parse_int_builtin(LY_DATA_TYPE basetype, const char *value, size_t value
  */
 static LY_ERR
 ly_type_validate_int(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                     const char **canonized, struct ly_err_item **err, void **priv)
+                     ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), const char **canonized, struct ly_err_item **err, void **priv)
 {
     LY_ERR ret;
     int64_t i;
@@ -424,13 +425,13 @@ ly_type_parse_uint_builtin(LY_DATA_TYPE basetype, const char *value, size_t valu
 {
     switch (basetype) {
     case LY_TYPE_UINT8:
-        return parse_uint("uint16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, 0, UINT64_C(255), value, value_len, val, err);
+        return ly_type_parse_uint("uint16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, 0, UINT64_C(255), value, value_len, val, err);
     case LY_TYPE_UINT16:
-        return parse_uint("uint16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, 0, UINT64_C(65535), value, value_len, val, err);
+        return ly_type_parse_uint("uint16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, 0, UINT64_C(65535), value, value_len, val, err);
     case LY_TYPE_UINT32:
-        return parse_uint("uint32", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, 0, UINT64_C(4294967295), value, value_len, val, err);
+        return ly_type_parse_uint("uint32", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, 0, UINT64_C(4294967295), value, value_len, val, err);
     case LY_TYPE_UINT64:
-        return parse_uint("uint64", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, 0, UINT64_C(18446744073709551615), value, value_len, val, err);
+        return ly_type_parse_uint("uint64", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, 0, UINT64_C(18446744073709551615), value, value_len, val, err);
     default:
         LOGINT(NULL);
         return LY_EINVAL;
@@ -444,7 +445,7 @@ ly_type_parse_uint_builtin(LY_DATA_TYPE basetype, const char *value, size_t valu
  */
 static LY_ERR
 ly_type_validate_uint(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                      const char **canonized, struct ly_err_item **err, void **priv)
+                      ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), const char **canonized, struct ly_err_item **err, void **priv)
 {
     LY_ERR ret;
     uint64_t u;
@@ -514,7 +515,7 @@ ly_type_store_uint(struct ly_ctx *UNUSED(ctx), struct lysc_type *type, int optio
  */
 static LY_ERR
 ly_type_validate_decimal64(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                           const char **canonized, struct ly_err_item **err, void **priv)
+                           ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), const char **canonized, struct ly_err_item **err, void **priv)
 {
     int64_t d;
     struct lysc_type_dec* type_dec = (struct lysc_type_dec*)type;
@@ -525,7 +526,7 @@ ly_type_validate_decimal64(struct ly_ctx *ctx, struct lysc_type *type, const cha
         return LY_EVALID;
     }
 
-    LY_CHECK_RET(parse_dec64(type_dec->fraction_digits, value, value_len, &d, err));
+    LY_CHECK_RET(ly_type_parse_dec64(type_dec->fraction_digits, value, value_len, &d, err));
     /* prepare canonized value */
     if (d) {
         int count = sprintf(buf, "%"PRId64" ", d);
@@ -612,7 +613,7 @@ ly_type_store_decimal64(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(typ
  */
 static LY_ERR
 ly_type_validate_binary(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                        const char **canonized, struct ly_err_item **err, void **UNUSED(priv))
+                        ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), const char **canonized, struct ly_err_item **err, void **UNUSED(priv))
 {
     size_t start = 0, stop = 0, count = 0, u, termination = 0;
     struct lysc_type_bin *type_bin = (struct lysc_type_bin *)type;
@@ -706,12 +707,9 @@ error:
  */
 static LY_ERR
 ly_type_validate_string(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                        const char **canonized, struct ly_err_item **err, void **UNUSED(priv))
+                        ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), const char **canonized, struct ly_err_item **err, void **UNUSED(priv))
 {
     struct lysc_type_str *type_str = (struct lysc_type_str *)type;
-
-    /* initiate */
-    *err = NULL;
 
     /* length restriction of the string */
     if (type_str->length) {
@@ -746,7 +744,7 @@ ly_type_validate_string(struct ly_ctx *ctx, struct lysc_type *type, const char *
  */
 static LY_ERR
 ly_type_validate_bits(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                       const char **canonized, struct ly_err_item **err, void **priv)
+                      ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), const char **canonized, struct ly_err_item **err, void **priv)
 {
     LY_ERR ret = LY_EVALID;
     size_t item_len;
@@ -938,7 +936,7 @@ ly_type_free_bits(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(type), st
  */
 static LY_ERR
 ly_type_validate_enum(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                       const char **canonized, struct ly_err_item **err, void **priv)
+                      ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), const char **canonized, struct ly_err_item **err, void **priv)
 {
     unsigned int u, v;
     char *errmsg = NULL;
@@ -1014,6 +1012,222 @@ ly_type_store_enum(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(type), i
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Validate value of the YANG built-in boolean type.
+ *
+ * Implementation of the ly_type_validate_clb.
+ */
+static LY_ERR
+ly_type_validate_boolean(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), const char *value, size_t value_len, int options,
+                         ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), const char **canonized, struct ly_err_item **err, void **priv)
+{
+    int8_t i;
+
+    if (value_len == 4 && !strncmp(value, "true", 4)) {
+        i = 1;
+    } else if (value_len == 5 && !strncmp(value, "false", 5)) {
+        i = 0;
+    } else {
+        char *errmsg;
+        asprintf(&errmsg, "Invalid boolean value \"%.*s\".", (int)value_len, value);
+        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_RESTRICTION, errmsg, NULL, NULL);
+        return LY_EVALID;
+    }
+
+    if (options & LY_TYPE_OPTS_CANONIZE) {
+        if (i) {
+            *canonized = lydict_insert(ctx, "true", 4);
+        } else {
+            *canonized = lydict_insert(ctx, "false", 5);
+        }
+    }
+
+    if (options & LY_TYPE_OPTS_STORE) {
+        /* save for the store callback */
+        *priv = malloc(sizeof i);
+        if (!(*priv)) {
+            *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+            return LY_EMEM;
+        }
+        *(int8_t*)(*priv) = i;
+    }
+
+    if (options & LY_TYPE_OPTS_DYNAMIC) {
+        free((char*)value);
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Store value of the YANG built-in boolean type.
+ *
+ * Implementation of the ly_type_store_clb.
+ */
+static LY_ERR
+ly_type_store_boolean(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(type), int options,
+                   struct lyd_value *value, struct ly_err_item **UNUSED(err), void **priv)
+{
+    if (options & LY_TYPE_OPTS_VALIDATE) {
+        /* the value was prepared by ly_type_validate_enum() */
+        value->boolean = *(int8_t*)(*priv);
+        free(*priv);
+    } else {
+        /* TODO if there is usecase for store without validate */
+        LOGINT(NULL);
+        return LY_EINT;
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Validate value of the YANG built-in empty type.
+ *
+ * Implementation of the ly_type_validate_clb.
+ */
+static LY_ERR
+ly_type_validate_empty(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), const char *value, size_t value_len, int options,
+                       ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), const char **canonized, struct ly_err_item **err, void **UNUSED(priv))
+{
+    if (value_len) {
+        char *errmsg;
+        asprintf(&errmsg, "Invalid empty value \"%.*s\".", (int)value_len, value);
+        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_RESTRICTION, errmsg, NULL, NULL);
+        return LY_EVALID;
+    }
+
+    if (options & LY_TYPE_OPTS_CANONIZE) {
+        *canonized = lydict_insert(ctx, "", 0);
+    }
+    return LY_SUCCESS;
+}
+
+API LY_ERR
+ly_type_identity_isderived(struct lysc_ident *base, struct lysc_ident *der)
+{
+    unsigned int u;
+
+    LY_ARRAY_FOR(base->derived, u) {
+        if (der == base->derived[u]) {
+            return LY_SUCCESS;
+        }
+        if (!ly_type_identity_isderived(base->derived[u], der)) {
+            return LY_SUCCESS;
+        }
+    }
+    return LY_ENOTFOUND;
+}
+
+/**
+ * @brief Validate value of the YANG built-in identiytref type.
+ *
+ * Implementation of the ly_type_validate_clb.
+ */
+static LY_ERR
+ly_type_validate_identityref(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
+                             ly_type_resolve_prefix get_prefix, void *parser, const char **canonized, struct ly_err_item **err, void **priv)
+{
+    struct lysc_type_identityref *type_ident = (struct lysc_type_identityref *)type;
+    const char *id_name, *prefix = value;
+    size_t id_len, prefix_len;
+    char *errmsg = NULL;
+    const struct lys_module *mod;
+    unsigned int u;
+    struct lysc_ident *ident;
+
+    /* locate prefix if any */
+    for (prefix_len = 0; prefix_len < value_len && value[prefix_len] != ':'; ++prefix_len);
+    if (prefix_len < value_len) {
+        id_name = &value[prefix_len + 1];
+        id_len = value_len - (prefix_len + 1);
+    } else {
+        prefix_len = 0;
+        id_name = value;
+        id_len = value_len;
+    }
+
+    if (!id_len) {
+        errmsg = strdup("Invalid empty identityref value.");
+        goto error;
+    }
+
+    mod = get_prefix(ctx, prefix, prefix_len, parser);
+    if (!mod) {
+        asprintf(&errmsg, "Invalid identityref \"%.*s\" value - unable to map prefix to YANG schema.", (int)value_len, value);
+        goto error;
+    }
+    LY_ARRAY_FOR(mod->compiled->identities, u) {
+        ident = &mod->compiled->identities[u]; /* shortcut */
+        if (!strncmp(ident->name, id_name, id_len) && ident->name[id_len] == '\0') {
+            /* we have match */
+            break;
+        }
+    }
+    if (u == LY_ARRAY_SIZE(mod->compiled->identities)) {
+        /* no match */
+        asprintf(&errmsg, "Invalid identityref \"%.*s\" value - identity not found.", (int)value_len, value);
+        goto error;
+    }
+
+    /* check that the identity matches some of the type's base identities */
+    LY_ARRAY_FOR(type_ident->bases, u) {
+        if (!ly_type_identity_isderived(type_ident->bases[u], ident)) {
+            /* we have match */
+            break;
+        }
+    }
+    if (u == LY_ARRAY_SIZE(type_ident->bases)) {
+        /* no match */
+        asprintf(&errmsg, "Invalid identityref \"%.*s\" value - identity not accepted by the type specification.", (int)value_len, value);
+        goto error;
+    }
+
+    if (options & LY_TYPE_OPTS_CANONIZE) {
+        if (id_name == value && (options & LY_TYPE_OPTS_DYNAMIC)) {
+            *canonized = lydict_insert_zc(ctx, (char*)value);
+            value = NULL;
+        } else {
+            *canonized = lydict_insert(ctx, id_name, id_len);
+        }
+    }
+
+    if (options & LY_TYPE_OPTS_STORE) {
+        *priv = ident;
+    }
+
+    if (options & LY_TYPE_OPTS_DYNAMIC) {
+        free((char*)value);
+    }
+
+    return LY_SUCCESS;
+
+error:
+    *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_RESTRICTION, errmsg, NULL, NULL);
+    return LY_EVALID;
+}
+
+/**
+ * @brief Store value of the YANG built-in identityref type.
+ *
+ * Implementation of the ly_type_store_clb.
+ */
+static LY_ERR
+ly_type_store_identityref(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(type), int options,
+                          struct lyd_value *value, struct ly_err_item **UNUSED(err), void **priv)
+{
+    if (options & LY_TYPE_OPTS_VALIDATE) {
+        /* the value was prepared by ly_type_validate_enum() */
+        value->ident = *priv;
+    } else {
+        /* TODO if there is usecase for store without validate */
+        LOGINT(NULL);
+        return LY_EINT;
+    }
+
+    return LY_SUCCESS;
+}
+
 struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT] = {
     {0}, /* LY_TYPE_UNKNOWN */
     {.type = LY_TYPE_BINARY, .validate = ly_type_validate_binary, .store = NULL, .free = NULL},
@@ -1023,11 +1237,11 @@ struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT] = {
     {.type = LY_TYPE_UINT64, .validate = ly_type_validate_uint, .store = ly_type_store_uint, .free = NULL},
     {.type = LY_TYPE_STRING, .validate = ly_type_validate_string, .store = NULL, .free = NULL},
     {.type = LY_TYPE_BITS, .validate = ly_type_validate_bits, .store = ly_type_store_bits, .free = ly_type_free_bits},
-    {0}, /* TODO LY_TYPE_BOOL */
+    {.type = LY_TYPE_BOOL, .validate = ly_type_validate_boolean, .store = ly_type_store_boolean, .free = NULL},
     {.type = LY_TYPE_DEC64, .validate = ly_type_validate_decimal64, .store = ly_type_store_decimal64, .free = NULL},
-    {0}, /* TODO LY_TYPE_EMPTY */
+    {.type = LY_TYPE_EMPTY, .validate = ly_type_validate_empty, .store = NULL, .free = NULL},
     {.type = LY_TYPE_ENUM, .validate = ly_type_validate_enum, .store = ly_type_store_enum, .free = NULL},
-    {0}, /* TODO LY_TYPE_IDENT */
+    {.type = LY_TYPE_IDENT, .validate = ly_type_validate_identityref, .store = ly_type_store_identityref, .free = NULL},
     {0}, /* TODO LY_TYPE_INST */
     {0}, /* TODO LY_TYPE_LEAFREF */
     {0}, /* TODO LY_TYPE_UNION */

@@ -130,7 +130,7 @@ main(int argc, char* argv[])
     size_t len = 0;
     ssize_t l;
     struct lysc_type *type;
-    struct ly_err_item *err;
+    struct ly_err_item *err = NULL;
 
     opterr = 0;
     while ((i = getopt_long(argc, argv, "hf:ivVp:", options, &opt_index)) != -1) {
@@ -272,7 +272,7 @@ main(int argc, char* argv[])
     }
 
     type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
-    match = type->plugin->validate(ctx, type, str, strlen(str), LY_TYPE_OPTS_VALIDATE, NULL, &err, NULL);
+    match = type->plugin->validate(ctx, type, str, strlen(str), LY_TYPE_OPTS_VALIDATE, NULL, NULL, NULL, &err, NULL);
     if (verbose) {
         for (i = 0; i < patterns_count; i++) {
             fprintf(stdout, "pattern  %d: %s\n", i + 1, patterns[i]);
