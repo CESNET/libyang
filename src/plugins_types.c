@@ -26,7 +26,7 @@
 #include "tree_schema.h"
 
 API LY_ERR
-parse_int(const char *datatype, int base, int64_t min, int64_t max, const char *value, size_t value_len, int64_t *ret, struct ly_err_item **err)
+ly_type_parse_int(const char *datatype, int base, int64_t min, int64_t max, const char *value, size_t value_len, int64_t *ret, struct ly_err_item **err)
 {
     char *errmsg = NULL;
     char *strptr = NULL;
@@ -72,7 +72,7 @@ error:
 }
 
 API LY_ERR
-parse_uint(const char *datatype, int base, uint64_t min, uint64_t max, const char *value, size_t value_len, uint64_t *ret, struct ly_err_item **err)
+ly_type_parse_uint(const char *datatype, int base, uint64_t min, uint64_t max, const char *value, size_t value_len, uint64_t *ret, struct ly_err_item **err)
 {
     char *errmsg = NULL;
     char *strptr = NULL;
@@ -123,7 +123,7 @@ error:
 }
 
 API LY_ERR
-parse_dec64(uint8_t fraction_digits, const char *value, size_t value_len, int64_t *ret, struct ly_err_item **err)
+ly_type_parse_dec64(uint8_t fraction_digits, const char *value, size_t value_len, int64_t *ret, struct ly_err_item **err)
 {
     LY_ERR rc = LY_EINVAL;
     char *errmsg = NULL;
@@ -210,7 +210,7 @@ decimal:
         memset(&valcopy[len], '0', fraction_digits);
     }
 
-    rc = parse_int("decimal64", 10, INT64_C(-9223372036854775807) - INT64_C(1), INT64_C(9223372036854775807), valcopy, len, &d, err);
+    rc = ly_type_parse_int("decimal64", 10, INT64_C(-9223372036854775807) - INT64_C(1), INT64_C(9223372036854775807), valcopy, len, &d, err);
     if (!rc && ret) {
         *ret = d;
     }
@@ -335,14 +335,14 @@ ly_type_parse_int_builtin(LY_DATA_TYPE basetype, const char *value, size_t value
 {
     switch (basetype) {
     case LY_TYPE_INT8:
-        return parse_int("int16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, INT64_C(-128), INT64_C(127), value, value_len, val, err);
+        return ly_type_parse_int("int16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, INT64_C(-128), INT64_C(127), value, value_len, val, err);
     case LY_TYPE_INT16:
-        return parse_int("int16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, INT64_C(-32768), INT64_C(32767), value, value_len, val, err);
+        return ly_type_parse_int("int16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, INT64_C(-32768), INT64_C(32767), value, value_len, val, err);
     case LY_TYPE_INT32:
-        return parse_int("int32", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10,
+        return ly_type_parse_int("int32", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10,
                          INT64_C(-2147483648), INT64_C(2147483647), value, value_len, val, err);
     case LY_TYPE_INT64:
-        return parse_int("int64", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10,
+        return ly_type_parse_int("int64", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10,
                          INT64_C(-9223372036854775807) - INT64_C(1), INT64_C(9223372036854775807), value, value_len, val, err);
     default:
         LOGINT(NULL);
@@ -425,13 +425,13 @@ ly_type_parse_uint_builtin(LY_DATA_TYPE basetype, const char *value, size_t valu
 {
     switch (basetype) {
     case LY_TYPE_UINT8:
-        return parse_uint("uint16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, 0, UINT64_C(255), value, value_len, val, err);
+        return ly_type_parse_uint("uint16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, 0, UINT64_C(255), value, value_len, val, err);
     case LY_TYPE_UINT16:
-        return parse_uint("uint16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, 0, UINT64_C(65535), value, value_len, val, err);
+        return ly_type_parse_uint("uint16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, 0, UINT64_C(65535), value, value_len, val, err);
     case LY_TYPE_UINT32:
-        return parse_uint("uint32", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, 0, UINT64_C(4294967295), value, value_len, val, err);
+        return ly_type_parse_uint("uint32", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, 0, UINT64_C(4294967295), value, value_len, val, err);
     case LY_TYPE_UINT64:
-        return parse_uint("uint64", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, 0, UINT64_C(18446744073709551615), value, value_len, val, err);
+        return ly_type_parse_uint("uint64", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, 0, UINT64_C(18446744073709551615), value, value_len, val, err);
     default:
         LOGINT(NULL);
         return LY_EINVAL;
@@ -526,7 +526,7 @@ ly_type_validate_decimal64(struct ly_ctx *ctx, struct lysc_type *type, const cha
         return LY_EVALID;
     }
 
-    LY_CHECK_RET(parse_dec64(type_dec->fraction_digits, value, value_len, &d, err));
+    LY_CHECK_RET(ly_type_parse_dec64(type_dec->fraction_digits, value, value_len, &d, err));
     /* prepare canonized value */
     if (d) {
         int count = sprintf(buf, "%"PRId64" ", d);

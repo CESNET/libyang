@@ -176,7 +176,7 @@ extern struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT];
  * @param[out] err Error information in case of failure. The error structure can be freed by ly_err_free().
  * @return LY_ERR value according to the result of the parsing and validation.
  */
-LY_ERR parse_int(const char *datatype, int base, int64_t min, int64_t max, const char *value, size_t value_len,
+LY_ERR ly_type_parse_int(const char *datatype, int base, int64_t min, int64_t max, const char *value, size_t value_len,
                  int64_t *ret, struct ly_err_item **err);
 
 /**
@@ -193,7 +193,7 @@ LY_ERR parse_int(const char *datatype, int base, int64_t min, int64_t max, const
  * @param[out] err Error information in case of failure. The error structure can be freed by ly_err_free().
  * @return LY_ERR value according to the result of the parsing and validation.
  */
-LY_ERR parse_uint(const char *datatype, int base, uint64_t min, uint64_t max, const char *value, size_t value_len,
+LY_ERR ly_type_parse_uint(const char *datatype, int base, uint64_t min, uint64_t max, const char *value, size_t value_len,
                   uint64_t *ret, struct ly_err_item **err);
 
 /**
@@ -207,7 +207,7 @@ LY_ERR parse_uint(const char *datatype, int base, uint64_t min, uint64_t max, co
  * @param[out] err Error information in case of failure. The error structure can be freed by ly_err_free().
  * @return LY_ERR value according to the result of the parsing and validation.
  */
-LY_ERR parse_dec64(uint8_t fraction_digits, const char *value, size_t value_len, int64_t *ret, struct ly_err_item **err);
+LY_ERR ly_type_parse_dec64(uint8_t fraction_digits, const char *value, size_t value_len, int64_t *ret, struct ly_err_item **err);
 
 /**
  * @brief Decide if the @p derived identity is derived from (based on) the @p base identity.
