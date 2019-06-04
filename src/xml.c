@@ -275,6 +275,10 @@ lyxml_parse_element_start(struct lyxml_context *context, const char **input, int
 
         if (in[0] == '\0') {
             /* EOF */
+            if (context->elements.count) {
+                LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_EOF);
+                return LY_EVALID;
+            }
             context->status = LYXML_END;
             (*input) = in;
             return LY_SUCCESS;
@@ -465,6 +469,15 @@ lyxml_get_element(struct lyxml_context *context, const char **input,
     }
 
 success:
+    /* check for end of input */
+    if (in[0] == '\0') {
+        /* EOF */
+        if (context->elements.count) {
+            LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_EOF);
+            return LY_EVALID;
+        }
+        context->status = LYXML_END;
+    }
     /* move caller's input */
     (*input) = in;
     return LY_SUCCESS;
@@ -760,6 +773,9 @@ success:
     (*length) = len;
 
     if (context->status == LYXML_ATTRIBUTE) {
+        /* skip whitespaces after the value */
+        ign_xmlws(context, in);
+
         if (in[0] == '>') {
             /* element terminated by > - termination of the opening tag */
             context->status = LYXML_ELEM_CONTENT;
@@ -775,7 +791,12 @@ success:
 
             /* remove also the namespaces conneted with the element */
             lyxml_ns_rm(context);
-        }
+
+            if (!context->elements.count && in[0] == '\0') {
+                /* EOF */
+                context->status = LYXML_END;
+            }
+        } /* else another attribute */
     }
 
     (*input) = in;
@@ -811,7 +832,8 @@ start:
 
     if (in[0] == '\0') {
         /* EOF - not expected at this place */
-        return LY_EINVAL;
+        LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_EOF);
+        return LY_EVALID;
     }
 
     /* remember the identifier start before checking its format */
@@ -901,6 +923,7 @@ lyxml_context_clear(struct lyxml_context *context)
         free(context->ns.objs[u]);
     }
     ly_set_erase(&context->ns, NULL);
+    context->status = 0;
 }
 
 LY_ERR
