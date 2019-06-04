@@ -210,7 +210,6 @@ test_parse_text_element(void **state)
     assert_string_equal(res, "content");
     lydict_remove(st->ctx, "content");
 
-
     data = "<elem xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">another-content</elem>";
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     parse_text_element(st->xml_ctx, &data, &res);
@@ -231,14 +230,14 @@ test_parse_namespace(void **state)
     size_t prefix_len = 0, name_len = 0;
     LY_ERR ret = LY_SUCCESS;
 
-    const char *data = "<namespace uri=\"urn:example:foo\"/>";
+    const char *data = "<namespace uri=\"urn:example:foo\"/>\
+                        <namespace urr=\"urn:example:foo\"/>";
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     ret = parse_namespace(st->xml_ctx, &data, &res);
     assert_int_equal(ret, LY_SUCCESS);
     assert_string_equal(res, "urn:example:foo");
     lydict_remove(st->ctx, "urn:example:foo");
 
-    data = "<namespace urr=\"urn:example:foo\"/>";
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     ret = parse_namespace(st->xml_ctx, &data, &res);
     assert_int_equal(ret, LY_EVALID);
@@ -256,6 +255,11 @@ test_yin_parse_import(void **state)
     const char *data = "<import module=\"a\">\
                             <prefix value=\"a_mod\"/>\
                             <revision-date date=\"2015-01-01\"/>\
+                        </import>\
+                        \
+                        <import module=\"a\">\
+                            <prefix value=\"a_mod\"/>\
+                            <revision-date date=\"2015-01-01\"/>\
                         </import>";
 
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
@@ -267,12 +271,8 @@ test_yin_parse_import(void **state)
     lydict_remove(st->ctx, imports->name);
     lydict_remove(st->ctx, imports->prefix);
     LY_ARRAY_FREE(imports);
-
     imports = NULL;
-    data = "<import module=\"a\">\
-                <prefix value=\"a_mod\"/>\
-                <revision-date date=\"2015-01-01\"/>\
-            </import>";
+
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     ret = yin_parse_import(st->xml_ctx, "a_mod", &data, &imports);
     assert_int_equal(ret, LY_EVALID);
