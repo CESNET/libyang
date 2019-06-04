@@ -56,7 +56,10 @@ static int
 setup(void **state)
 {
     struct state_s *s;
-    const char *schema_a = "module types {namespace urn:tests:types;prefix t;yang-version 1.1; feature f;"
+    const char *schema_a = "module defs {namespace urn:tests:defs;prefix d;yang-version 1.1;"
+            "identity crypto-alg; identity interface-type; identity ethernet {base interface-type;} identity fast-ethernet {base ethernet;}}";
+    const char *schema_b = "module types {namespace urn:tests:types;prefix t;yang-version 1.1; import defs {prefix defs;}"
+            "feature f; identity gigabit-ethernet { base defs:ethernet;}"
             "leaf binary {type binary {length 5 {error-message \"This base64 value must be of length 5.\";}}}"
             "leaf binary-norestr {type binary;}"
             "leaf int8 {type int8 {range 10..20;}}"
@@ -74,7 +77,8 @@ setup(void **state)
             "leaf str {type string {length 8..10; pattern '[a-z ]*';}}"
             "leaf str-norestr {type string;}"
             "leaf bool {type boolean;}"
-            "leaf empty {type empty;}}";
+            "leaf empty {type empty;}"
+            "leaf ident {type identityref {base defs:interface-type;}}}";
 
     s = calloc(1, sizeof *s);
     assert_non_null(s);
@@ -85,6 +89,7 @@ setup(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &s->ctx));
     assert_non_null(lys_parse_mem(s->ctx, schema_a, LYS_IN_YANG));
+    assert_non_null(lys_parse_mem(s->ctx, schema_b, LYS_IN_YANG));
 
     *state = s;
 
@@ -589,6 +594,53 @@ test_empty(void **state)
     s->func = NULL;
 }
 
+static void
+test_identityref(void **state)
+{
+    struct state_s *s = (struct state_s*)(*state);
+    s->func = test_identityref;
+
+    struct lyd_node *tree;
+    struct lyd_node_term *leaf;
+
+    const char *data = "<ident xmlns=\"urn:tests:types\">gigabit-ethernet</ident>";
+
+    /* valid data */
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("ident", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("gigabit-ethernet", leaf->value.canonized);
+    lyd_free_all(tree);
+
+    data = "<ident xmlns=\"urn:tests:types\" xmlns:x=\"urn:tests:defs\">x:fast-ethernet</ident>";
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("ident", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("fast-ethernet", leaf->value.canonized);
+    lyd_free_all(tree);
+
+    /* invalid value */
+    data = "<ident xmlns=\"urn:tests:types\">fast-ethernet</ident>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid identityref \"fast-ethernet\" value - identity not found. /");
+
+    data = "<ident xmlns=\"urn:tests:types\" xmlns:x=\"urn:tests:defs\">x:slow-ethernet</ident>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid identityref \"x:slow-ethernet\" value - identity not found. /");
+
+    data = "<ident xmlns=\"urn:tests:types\" xmlns:x=\"urn:tests:defs\">x:crypto-alg</ident>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid identityref \"x:crypto-alg\" value - identity not accepted by the type specification. /");
+
+    data = "<ident xmlns=\"urn:tests:types\" xmlns:x=\"urn:tests:unknown\">x:fast-ethernet</ident>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid identityref \"x:fast-ethernet\" value - unable to map prefix to YANG schema. /");
+
+    s->func = NULL;
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -601,6 +653,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_binary, setup, teardown),
         cmocka_unit_test_setup_teardown(test_boolean, setup, teardown),
         cmocka_unit_test_setup_teardown(test_empty, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_identityref, setup, teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

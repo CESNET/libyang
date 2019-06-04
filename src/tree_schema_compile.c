@@ -710,7 +710,7 @@ cleanup:
 /**
  * @brief Find and process the referenced base identities from another identity or identityref
  *
- * For bases in identity se backlinks to them from the base identities. For identityref, store
+ * For bases in identity set backlinks to them from the base identities. For identityref, store
  * the array of pointers to the base identities. So one of the ident or bases parameter must be set
  * to distinguish these two use cases.
  *

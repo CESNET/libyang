@@ -47,6 +47,24 @@ struct lyd_xml_ctx {
 };
 
 /**
+ * @brief XML-parser's implementation of ly_type_resolve_prefix() callback to provide mapping between prefixes used in the values to the schema
+ * via XML namespaces.
+ */
+static const struct lys_module *
+lydxml_resolve_prefix(struct ly_ctx *ctx, const char *prefix, size_t prefix_len, void *parser)
+{
+    const struct lyxml_ns *ns;
+    struct lyxml_context *xmlctx = (struct lyxml_context*)parser;
+
+    ns = lyxml_ns_get(xmlctx, prefix, prefix_len);
+    if (!ns) {
+        return NULL;
+    }
+
+    return ly_ctx_get_module_implemented_ns(ctx, ns->uri);
+}
+
+/**
  * @brief Parse XML attributes of the XML element of YANG data.
  *
  * @param[in] ctx XML YANG data parser context.
@@ -235,7 +253,7 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
                 value = "";
                 value_len = 0;
             }
-            LY_CHECK_ERR_GOTO(ret = lyd_value_parse((struct lyd_node_term*)cur, value, value_len, dynamic),
+            LY_CHECK_ERR_GOTO(ret = lyd_value_parse((struct lyd_node_term*)cur, value, value_len, dynamic, lydxml_resolve_prefix, ctx),
                               if (dynamic){free(value);}, cleanup);
         } else if (snode->nodetype & LYD_NODE_INNER) {
             int dynamic = 0;
