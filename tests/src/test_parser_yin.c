@@ -19,6 +19,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include "../../src/common.h"
 #include "../../src/tree_schema.h"
@@ -30,12 +31,56 @@ struct state {
     struct ly_ctx *ctx;
     struct lys_module *mod;
     struct lyxml_context *xml_ctx;
+    bool finished_correctly;
 };
+
+#define BUFSIZE 1024
+char logbuf[BUFSIZE] = {0};
+int store = -1; /* negative for infinite logging, positive for limited logging */
+
+/* set to 0 to printing error messages to stderr instead of checking them in code */
+#define ENABLE_LOGGER_CHECKING 1
+
+#if ENABLE_LOGGER_CHECKING
+static void
+logger(LY_LOG_LEVEL level, const char *msg, const char *path)
+{
+    (void) level; /* unused */
+    if (store) {
+        if (path && path[0]) {
+            snprintf(logbuf, BUFSIZE - 1, "%s %s", msg, path);
+        } else {
+            strncpy(logbuf, msg, BUFSIZE - 1);
+        }
+        if (store > 0) {
+            --store;
+        }
+    }
+}
+#endif
+
+#if ENABLE_LOGGER_CHECKING
+#   define logbuf_assert(str) assert_string_equal(logbuf, str)
+#else
+#   define logbuf_assert(str)
+#endif
+
+#define TEST_DUP_GENERIC(PREFIX, MEMBER, VALUE1, VALUE2, FUNC, RESULT, LINE, CLEANUP) \
+    str = PREFIX MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
+    assert_int_equal(LY_EVALID, FUNC(&ctx, &str, RESULT)); \
+    logbuf_assert("Duplicate keyword \""MEMBER"\". Line number "LINE"."); \
+    CLEANUP
+
 
 static int
 setup_f(void **state)
 {
     struct state *st = NULL;
+
+#if ENABLE_LOGGER_CHECKING
+    /* setup logger */
+    ly_set_log_clb(logger, 1);
+#endif
 
     /* allocate state variable */
     (*state) = st = calloc(1, sizeof(*st));
@@ -63,6 +108,13 @@ teardown_f(void **state)
 {
     struct state *st = *(struct state **)state;
 
+#if ENABLE_LOGGER_CHECKING
+    /* teardown logger */
+    if (!st->finished_correctly && logbuf[0] != '\0') {
+        fprintf(stderr, "%s\n", logbuf);
+    }
+#endif
+
     lyxml_context_clear(st->xml_ctx);
     lys_module_free(st->mod, NULL);
     ly_ctx_destroy(st->ctx, NULL);
@@ -75,10 +127,17 @@ teardown_f(void **state)
 static struct state*
 reset_state(void **state)
 {
+    ((struct state *)*state)->finished_correctly = true;
     teardown_f(state);
     setup_f(state);
 
     return *state;
+}
+
+void
+logbuf_clean(void)
+{
+    logbuf[0] = '\0';
 }
 
 static void
@@ -116,12 +175,15 @@ test_yin_parse_module(void **state)
                      </module>",
                 st->mod);
     assert_int_equal(ret, LY_EVALID);
+    logbuf_assert("Missing argument name of a module Line number 1.");
 
     st = reset_state(state);
     ret = yin_parse_module(st->ctx,
                     "",
                 st->mod);
     assert_int_equal(ret, LY_EVALID);
+    logbuf_assert("Invalid keyword \"(null)\", expected \"module\" or \"submodule\". Line number 1.");
+    st->finished_correctly = true;
 }
 
 static void
@@ -244,6 +306,8 @@ test_meta(void **state)
                                         <organization test=\"invalid-argument\">organization...</organization>\
                                     </module>", st->mod);
     assert_int_equal(ret, LY_EVALID);
+
+    st->finished_correctly = true;
 }
 
 static void
@@ -270,6 +334,8 @@ test_parse_text_element(void **state)
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     ret = parse_text_element(st->xml_ctx, &data, &res);
     assert_int_equal(ret, LY_EVALID);
+
+    st->finished_correctly = true;
 }
 
 static void
@@ -305,9 +371,12 @@ test_yin_parse_import(void **state)
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     ret = yin_parse_import(st->xml_ctx, "a_mod", &data, &imports);
     assert_int_equal(ret, LY_EVALID);
+    logbuf_assert("Prefix \"a_mod\" already used as module prefix. Line number 1.");
     lydict_remove(st->ctx, imports->name);
     lydict_remove(st->ctx, imports->prefix);
     LY_ARRAY_FREE(imports);
+
+    st->finished_correctly = true;
 }
 
 int

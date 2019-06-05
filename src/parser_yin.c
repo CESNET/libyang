@@ -506,7 +506,7 @@ yin_parse_module(struct ly_ctx *ctx, const char *data, struct lys_module *mod)
         goto cleanup;
     } else if (kw != YANG_MODULE) {
         LOGVAL_YANG(xml_ctx, LYVE_SYNTAX, "Invalid keyword \"%s\", expected \"module\" or \"submodule\".",
-               ly_stmt2str(kw));
+                    ly_stmt2str(kw));
         ret = LY_EVALID;
         goto cleanup;
     }
