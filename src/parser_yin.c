@@ -3,7 +3,7 @@
  * @author David Sedlák <xsedla1d@stud.fit.vutbr.cz>
  * @brief YIN parser.
  *
- * Copyright (c) 2015 - 2018 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2019 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
