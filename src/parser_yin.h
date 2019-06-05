@@ -50,7 +50,7 @@ enum YIN_ARGUMENT match_argument_name(const char *name, size_t len);
  * @brief Parse content of whole element as text.
  *
  * @param[in] xml_ctx Xml context.
- * @param[in] data Data to read from.
+ * @param[in,out] data Data to read from.
  * @param[out] value Where content of element should be stored.
  *
  * @return LY_ERR values
@@ -62,7 +62,8 @@ LY_ERR parse_text_element(struct lyxml_context *xml_ctx, const char **data, cons
  *
  * @param[in] xml_ctx Xml context.
  * @param[in] module_prefix Prefix of the module to check prefix collisions.
- * @param[in, out] data Dta to read from.
+ * @param[in,out] data Dta to read from.
+ * @param[in,out] imports Parsed imports to add to.
  *
  * @return LY_ERR values
  */

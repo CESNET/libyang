@@ -98,9 +98,11 @@ match_argument_name(const char *name, size_t len)
  * @brief parse yin argument
  *
  * @param[in] xml_ctx XML parser context.
- * @param[in, out] data Data to read from.
+ * @param[in,out] data Data to read from.
  * @param[in] arg_type Type of argument that is expected in parsed element (use YIN_ARG_NONE for elements without special arguments).
  * @param[out] arg_val Where value of argument should be stored. Can be NULL if arg_type is specified as YIN_ARG_NONE.
+ *
+ * @return LY_ERR values.
  */
 static LY_ERR
 yin_parse_attribute(struct lyxml_context *xml_ctx, const char **data, enum YIN_ARGUMENT arg_type, const char **arg_val)
@@ -145,8 +147,10 @@ yin_parse_attribute(struct lyxml_context *xml_ctx, const char **data, enum YIN_A
  * @brief Parse content of whole element as text.
  *
  * @param[in] xml_ctx Xml context.
- * @param[in] data Data to read from.
+ * @param[in,out] data Data to read from.
  * @param[out] value Where content of element should be stored.
+ *
+ * @return LY_ERR values.
  */
 LY_ERR
 parse_text_element(struct lyxml_context *xml_ctx, const char **data, const char **value)
@@ -170,6 +174,16 @@ parse_text_element(struct lyxml_context *xml_ctx, const char **data, const char 
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Parse revision date
+ *
+ * @param[in] xml_ctx Xml context.
+ * @param[in,out] data Data to read from.
+ * @param[in,out] rev Array to store the parsed value in.
+ * @param[in,out] exts Extension instances to add to.
+ *
+ * @return LY_ERR values
+ */
 static LY_ERR
 yin_parse_revision_date(struct lyxml_context *xml_ctx, const char **data, char *rev, struct lysp_ext_instance **exts)
 {
@@ -244,7 +258,7 @@ yin_parse_import(struct lyxml_context *xml_ctx, const char *module_prefix, const
  * @brief Parse module substatements.
  *
  * @param[in] xml_ctx xml context.
- * @param[in, out] data Data to read from.
+ * @param[in,out] data Data to read from.
  * @param[out] mod Parsed module structure
  *
  * @return LY_ERR values.
@@ -410,8 +424,8 @@ parse_mod(struct lyxml_context *xml_ctx, const char **data, struct lysp_module *
  * @brief Parse yin submodule.
  *
  * @param[in] ctx Context of YANG schemas.
- * @param[in] data Data to read from.
- * @param[out] submod Module to write to.
+ * @param[in,out] data Data to read from.
+ * @param[out] submod Parsed submodule structure.
  *
  * @return LY_ERR values.
  */
@@ -451,7 +465,7 @@ yin_parse_submodule(struct ly_ctx *ctx, const char *data, struct lysp_submodule 
     mod_p->parsing = 1;
 
     /* parser submodule substatements */
-    //ret = parse_submod(&xml_ctx, &data, mod_p);
+    /* ret = parse_submod(&xml_ctx, &data, mod_p); */
     LY_CHECK_GOTO(ret, cleanup);
 
     mod_p->parsing = 0;

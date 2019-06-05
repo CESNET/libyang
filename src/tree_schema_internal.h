@@ -678,7 +678,7 @@ LY_ERR yang_parse_module(struct lys_parser_ctx *ctx, const char *data, struct ly
  * @brief Parse module from YIN data.
  * @param[in] ctx Libyang context.
  * @param[in] data Input data to be parsed.
- * @param[in, out] mod Prepared module structure where the parsed information, including the parsed
+ * @param[in,out] mod Prepared module structure where the parsed information, including the parsed
  * module structure, will be filled in.
  * @return LY_ERR values.
  */
