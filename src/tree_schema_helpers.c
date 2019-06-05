@@ -1318,10 +1318,6 @@ lysp_find_module(struct ly_ctx *ctx, const struct lysp_module *mod)
 enum yang_keyword
 match_keyword(const char *data, size_t len, size_t prefix_len)
 {
-    if (prefix_len != 0) {
-        return YANG_CUSTOM;
-    }
-
     if (!data || len == 0) {
         return YANG_NONE;
     }
@@ -1504,6 +1500,10 @@ match_keyword(const char *data, size_t len, size_t prefix_len)
 #undef IF_KEYWORD
 #undef IF_KEYWORD_PREFIX
 #undef IF_KEYWORD_PREFIX_END
+
+    if (prefix_len != 0) {
+        return YANG_CUSTOM;
+    }
 
     if (data - start == (long int)len) {
         return kw;

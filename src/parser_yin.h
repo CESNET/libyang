@@ -20,7 +20,7 @@ enum YIN_ARGUMENT {
     YIN_ARG_DATE,          /**< argument data */
     YIN_ARG_TAG,           /**< argument tag */
     YIN_ARG_XMLNS,         /**< argument xmlns */
-    YIN_ARG_NONE,          /**< special value to specify no valid argument except xmlns, do not confuse with YIN_ARG_NONE */
+    YIN_ARG_NONE,          /**< special value to specify no valid argument except xmlns, do not confuse with YIN_ARG_UNKNOWN */
 };
 
 /**
@@ -41,17 +41,6 @@ enum YIN_ARGUMENT match_argument_name(const char *name, size_t len);
  * @param[out] value Where content of element should be stored.
  */
 LY_ERR parse_text_element(struct lyxml_context *xml_ctx, const char **data, const char **value);
-
-/**
- * @brief Parse namespace statement.
- *
- * @param[in] xml_ctx xml context.
- * @param[in, out] data Data to read from.
- * @param[in, out] namespace Where namespace value should be stored.
- *
- * @return LY_ERR values.
- */
-LY_ERR parse_namespace(struct lyxml_context *xml_ctx, const char **data, const char **namespace);
 
 /**
  * @brief Parse import element
