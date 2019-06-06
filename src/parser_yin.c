@@ -26,6 +26,14 @@
 #include "tree_schema_internal.h"
 #include "parser_yin.h"
 
+/**
+ * @brief check if given string is URI of yin namespace.
+ * @param ns Namespace URI to check.
+ *
+ * @return true if ns equals YIN_NS_URI false otherwise.
+ */
+#define IS_YIN_NS(ns) (strcmp(ns, YIN_NS_URI) == 0)
+
 const char *const yin_attr_list[] = {
     [YIN_ARG_NAME] = "name",
     [YIN_ARG_TARGET_NODE] = "target-node",
@@ -108,7 +116,7 @@ match_argument_name(const char *name, size_t len)
 }
 
 /**
- * @brief parse yin argument, arg_val is unchanged if argument arg_type wasn't found
+ * @brief parse yin argument, arg_val is unchanged if argument arg_type wasn't found.
  *
  * @param[in] xml_ctx XML parser context.
  * @param[in,out] data Data to read from.
@@ -133,25 +141,31 @@ yin_parse_attribute(struct lyxml_context *xml_ctx, const char **data, enum YIN_A
         ret = lyxml_get_attribute(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
         LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), LY_EMEM);
 
-        arg = match_argument_name(name, name_len);
-
-        if (arg == arg_type) {
-            LY_CHECK_RET(ret);
-            ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
-            LY_CHECK_RET(ret);
-            *arg_val = lydict_insert(xml_ctx->ctx, out, out_len);
-            LY_CHECK_ERR_RET(!(*arg_val), LOGMEM(xml_ctx->ctx), LY_EMEM);
-        } else if (arg_type == YIN_ARG_NONE) {
-            continue;
-        } else {
-            /* unrecognized or unexpected attribute */
-            if (name) {
-                if (arg_type != YIN_ARG_NONE) {
-                    LOGERR(xml_ctx->ctx, LYVE_SYNTAX_YIN, "Invalid attribute \"%.*s\", expected \"%s\".", name, name_len, yin_attr2str(arg_type));
-                } else {
-                    LOGERR(xml_ctx->ctx, LYVE_SYNTAX_YIN, "Unexpected attribute \"%.*s\".", name_len, name);
+        const struct lyxml_ns *ns = lyxml_ns_get(xml_ctx, prefix, prefix_len);
+        /*
+         * check if loaded attribute is from YIN namespace and if it's of expected type
+         * attributes from different namespaces are silently ignored
+         */
+        if (ns && IS_YIN_NS(ns->uri)) {
+            arg = match_argument_name(name, name_len);
+            if (arg == arg_type) {
+                LY_CHECK_RET(ret);
+                ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
+                LY_CHECK_RET(ret);
+                *arg_val = lydict_insert(xml_ctx->ctx, out, out_len);
+                LY_CHECK_ERR_RET(!(*arg_val), LOGMEM(xml_ctx->ctx), LY_EMEM);
+            } else if (arg_type == YIN_ARG_NONE) {
+                continue;
+            } else {
+                /* unrecognized or unexpected attribute */
+                if (name) {
+                    if (arg_type != YIN_ARG_NONE) {
+                        LOGERR(xml_ctx->ctx, LYVE_SYNTAX_YIN, "Invalid attribute \"%.*s\", expected \"%s\".", name, name_len, yin_attr2str(arg_type));
+                    } else {
+                        LOGERR(xml_ctx->ctx, LYVE_SYNTAX_YIN, "Unexpected attribute \"%.*s\".", name_len, name);
+                    }
+                    return LY_EVALID;
                 }
-                return LY_EVALID;
             }
         }
     }
@@ -191,14 +205,14 @@ parse_text_element(struct lyxml_context *xml_ctx, const char **data, const char 
 }
 
 /**
- * @brief Parse revision date
+ * @brief Parse revision date.
  *
  * @param[in] xml_ctx Xml context.
  * @param[in,out] data Data to read from.
  * @param[in,out] rev Array to store the parsed value in.
  * @param[in,out] exts Extension instances to add to.
  *
- * @return LY_ERR values
+ * @return LY_ERR values.
  */
 static LY_ERR
 yin_parse_revision_date(struct lyxml_context *xml_ctx, const char **data, char *rev, struct lysp_ext_instance **exts)
@@ -274,7 +288,7 @@ yin_parse_import(struct lyxml_context *xml_ctx, const char *module_prefix, const
  *
  * @param[in] xml_ctx xml context.
  * @param[in,out] data Data to read from.
- * @param[out] mod Parsed module structure
+ * @param[out] mod Parsed module structure.
  *
  * @return LY_ERR values.
  */
@@ -286,49 +300,14 @@ parse_mod(struct lyxml_context *xml_ctx, const char **data, struct lysp_module *
     const char *prefix, *name;
     size_t prefix_len, name_len;
     enum yang_module_stmt mod_stmt = Y_MOD_MODULE_HEADER;
-    enum YIN_ARGUMENT arg = YIN_ARG_UNKNOWN;
 
     char *buf = NULL, *out = NULL;
     size_t buf_len = 0, out_len = 0;
     int dynamic;
 
-    /* parse module attributes */
-    while (xml_ctx->status == LYXML_ATTRIBUTE) {
-        ret = lyxml_get_attribute(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
-        LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), LY_EMEM);
+    yin_parse_attribute(xml_ctx, data, YIN_ARG_NAME, &(*mod)->mod->name);
 
-        arg = match_argument_name(name, name_len);
-
-        switch (arg) {
-        case YIN_ARG_NAME:
-            /* check for multiple definitions of name */
-            LY_CHECK_ERR_RET((*mod)->mod->name, LOGVAL_YANG(xml_ctx, LYVE_SYNTAX_YIN, "Duplicit definition of module name \"%s\"",
-                                                            (*mod)->mod->name), LY_EEXIST);
-
-            /* read module name */
-            if (xml_ctx->status != LYXML_ATTR_CONTENT) {
-                LOGVAL(xml_ctx->ctx, LY_VLOG_LINE, &xml_ctx->line, LYVE_SYNTAX, "Missing value of argument \"name\".");
-            }
-            ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
-            LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), LY_EMEM);
-            (*mod)->mod->name = lydict_insert(xml_ctx->ctx, out, out_len);
-            LY_CHECK_ERR_RET(!(*mod)->mod->name, LOGMEM(xml_ctx->ctx), LY_EMEM);
-            break;
-
-        default:
-            /* unrecognized or unexpected attribute */
-            /* TODO probably still can be from extension */
-            if (arg != YIN_ARG_UNKNOWN || name) {
-                LOGERR(xml_ctx->ctx, LY_EDENIED, "Invalid argument in module element");
-                return LY_EVALID;
-            }
-
-            break;
-        }
-    }
-
-    LY_CHECK_ERR_RET(!(*mod)->mod->name, LOGVAL_YANG(xml_ctx, LYVE_SYNTAX_YIN, "Missing argument name of a module", (*mod)->mod->name), LY_EVALID);
-
+    LY_CHECK_ERR_RET(!(*mod)->mod->name, LOGVAL_YANG(xml_ctx, LYVE_SYNTAX_YIN, "Missing argument name of a module"), LY_EVALID);
     ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
     LY_CHECK_ERR_RET(ret != LY_EINVAL, LOGVAL_YANG(xml_ctx, LYVE_SYNTAX_YIN, "Expected new xml element after module element."), LY_EINVAL);
 

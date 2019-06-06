@@ -147,7 +147,8 @@ test_yin_parse_module(void **state)
     struct state *st = *state;
 
     ret = yin_parse_module(st->ctx,
-                    "<module name=\"example-foo\"\
+                    "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\
+                        name=\"example-foo\"\
                         xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\
                         xmlns:foo=\"urn:example:foo\"\
                         xmlns:myext=\"urn:example:extensions\">\
@@ -163,17 +164,17 @@ test_yin_parse_module(void **state)
 
     st = reset_state(state);
     ret = yin_parse_module(st->ctx,
-                    "<module name=\"example-foo\">\
-                        <invalid-tag uri=\"urn:example:foo\"\"/>\
-                     </module>",
-                st->mod);
+                           "<module name=\"example-foo\">\
+                                <invalid-tag uri=\"urn:example:foo\"\"/>\
+                            </module>",
+                            st->mod);
     assert_int_equal(ret, LY_EVALID);
 
     st = reset_state(state);
     ret = yin_parse_module(st->ctx,
-                    "<module>\
-                     </module>",
-                st->mod);
+                           "<module>\
+                           </module>",
+                           st->mod);
     assert_int_equal(ret, LY_EVALID);
     logbuf_assert("Missing argument name of a module Line number 1.");
 
@@ -288,7 +289,8 @@ test_meta(void **state)
     LY_ERR ret = LY_SUCCESS;
     struct state *st = *state;
 
-    ret = yin_parse_module(st->ctx,"<module name=\"example-foo\">\
+    ret = yin_parse_module(st->ctx,"<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\
+                                        name=\"example-foo\">\
                                         <organization xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">organization...</organization>\
                                         <contact>contact...</contact>\
                                         <description>description...</description>\
@@ -347,12 +349,12 @@ test_yin_parse_import(void **state)
     LY_ERR ret = LY_SUCCESS;
     struct lysp_import *imports = NULL;
 
-    const char *data = "<import module=\"a\">\
+    const char *data = "<import xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" module=\"a\">\
                             <prefix value=\"a_mod\"/>\
                             <revision-date date=\"2015-01-01\"/>\
                         </import>\
                         \
-                        <import module=\"a\">\
+                        <import xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" module=\"a\">\
                             <prefix value=\"a_mod\"/>\
                             <revision-date date=\"2015-01-01\"/>\
                         </import>";
