@@ -21,6 +21,10 @@
 #include "log.h"
 #include "xml.h"
 
+/* list of yin attribute strings */
+extern const char *const yin_attr_list[];
+#define yin_attr2str(STMT) yin_attr_list[STMT]
+
 enum YIN_ARGUMENT {
     YIN_ARG_UNKNOWN = 0,   /**< parsed argument can not be matched with any known yin argument keyword */
     YIN_ARG_NAME,          /**< argument name */

@@ -26,6 +26,19 @@
 #include "tree_schema_internal.h"
 #include "parser_yin.h"
 
+const char *const yin_attr_list[] = {
+    [YIN_ARG_NAME] = "name",
+    [YIN_ARG_TARGET_NODE] = "target-node",
+    [YIN_ARG_MODULE] = "module",
+    [YIN_ARG_VALUE] = "value",
+    [YIN_ARG_TEXT] = "text",
+    [YIN_ARG_CONDITION] = "condition",
+    [YIN_ARG_URI] = "uri",
+    [YIN_ARG_DATE] = "date",
+    [YIN_ARG_TAG] = "tag",
+    [YIN_ARG_XMLNS] = "xmlns",
+};
+
 enum YIN_ARGUMENT
 match_argument_name(const char *name, size_t len)
 {
@@ -95,7 +108,7 @@ match_argument_name(const char *name, size_t len)
 }
 
 /**
- * @brief parse yin argument
+ * @brief parse yin argument, arg_val is unchanged if argument arg_type wasn't found
  *
  * @param[in] xml_ctx XML parser context.
  * @param[in,out] data Data to read from.
@@ -132,9 +145,12 @@ yin_parse_attribute(struct lyxml_context *xml_ctx, const char **data, enum YIN_A
             continue;
         } else {
             /* unrecognized or unexpected attribute */
-            /* TODO add name of attribute to error message */
             if (name) {
-                LOGERR(xml_ctx->ctx, LY_EDENIED, "Invalid attribute");
+                if (arg_type != YIN_ARG_NONE) {
+                    LOGERR(xml_ctx->ctx, LYVE_SYNTAX_YIN, "Invalid attribute \"%.*s\", expected \"%s\".", name, name_len, yin_attr2str(arg_type));
+                } else {
+                    LOGERR(xml_ctx->ctx, LYVE_SYNTAX_YIN, "Unexpected attribute \"%.*s\".", name_len, name);
+                }
                 return LY_EVALID;
             }
         }
@@ -250,7 +266,7 @@ yin_parse_import(struct lyxml_context *xml_ctx, const char *module_prefix, const
     }
 
     /* TODO add log macro and log error */
-    LY_CHECK_RET(!imp->prefix);
+    LY_CHECK_ERR_RET(!imp->prefix, LOGVAL_YANG(xml_ctx, LY_VCODE_MISSTMT, "prefix", "import"), LY_EVALID);
     return ret;
 }
 
