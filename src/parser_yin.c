@@ -260,13 +260,12 @@ yin_parse_import(struct lyxml_context *xml_ctx, const char *module_prefix, const
             /* TODO parse extension */
             break;
         default:
-            /* TODO log error */
+            LOGERR(xml_ctx->ctx, LY_VCODE_UNEXP_SUBELEM, name_len, name, "import");
             return LY_EVALID;
         }
     }
 
-    /* TODO add log macro and log error */
-    LY_CHECK_ERR_RET(!imp->prefix, LOGVAL_YANG(xml_ctx, LY_VCODE_MISSTMT, "prefix", "import"), LY_EVALID);
+    LY_CHECK_ERR_RET(!imp->prefix, LOGVAL_YANG(xml_ctx, LY_VCODE_MISSATTR, "prefix", "import"), LY_EVALID);
     return ret;
 }
 
@@ -317,7 +316,6 @@ parse_mod(struct lyxml_context *xml_ctx, const char **data, struct lysp_module *
             break;
 
         default:
-            /* unrecognized attribute */
             /* unrecognized or unexpected attribute */
             /* TODO probably still can be from extension */
             if (arg != YIN_ARG_UNKNOWN || name) {
@@ -336,7 +334,6 @@ parse_mod(struct lyxml_context *xml_ctx, const char **data, struct lysp_module *
 
     /* loop over all elements and parse them */
     while (xml_ctx->status != LYXML_END) {
-/* TODO ADD error log to macro */
 #define CHECK_ORDER(SECTION) \
         if (mod_stmt > SECTION) {return LY_EVALID;}mod_stmt = SECTION
 

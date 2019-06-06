@@ -191,6 +191,8 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_OOB         LYVE_SYNTAX_YANG, "Value \"%.*s\" is out of \"%s\" bounds."
 #define LY_VCODE_INDEV       LYVE_SYNTAX_YANG, "Deviate \"%s\" does not support keyword \"%s\"."
 #define LY_VCODE_INREGEXP    LYVE_SYNTAX_YANG, "Regular expression \"%s\" is not valid (\"%s\": %s)."
+#define LY_VCODE_MISSATTR    LYVE_SYNTAX_YIN, "Missing mandatory child element \"%s\" of %s element ."
+#define LY_VCODE_UNEXP_SUBELEM LYVE_SYNTAX_YIN, "Unexpected child element \"%.*s\" of %s element."
 #define LY_VCODE_XP_EOE      LYVE_XPATH, "Unterminated string delimited with %c (%.15s)."
 #define LY_VCODE_XP_INEXPR   LYVE_XPATH, "Invalid character number %u of expression \'%s\'."
 #define LY_VCODE_DEV_NODETYPE LYVE_REFERENCE, "Invalid deviation (%s) of %s node - it is not possible to %s \"%s\" property."
