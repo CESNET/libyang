@@ -24,6 +24,7 @@
 #include "plugins_types.h"
 #include "dict.h"
 #include "tree_schema.h"
+#include "tree_schema_internal.h"
 
 API LY_ERR
 ly_type_parse_int(const char *datatype, int base, int64_t min, int64_t max, const char *value, size_t value_len, int64_t *ret, struct ly_err_item **err)
@@ -357,7 +358,9 @@ ly_type_parse_int_builtin(LY_DATA_TYPE basetype, const char *value, size_t value
  */
 static LY_ERR
 ly_type_validate_int(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                     ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), const char **canonized, struct ly_err_item **err, void **priv)
+                     ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser),
+                     struct lyd_node *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                     const char **canonized, struct ly_err_item **err, void **priv)
 {
     LY_ERR ret;
     int64_t i;
@@ -445,7 +448,9 @@ ly_type_parse_uint_builtin(LY_DATA_TYPE basetype, const char *value, size_t valu
  */
 static LY_ERR
 ly_type_validate_uint(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                      ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), const char **canonized, struct ly_err_item **err, void **priv)
+                      ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser),
+                      struct lyd_node *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                      const char **canonized, struct ly_err_item **err, void **priv)
 {
     LY_ERR ret;
     uint64_t u;
@@ -515,7 +520,9 @@ ly_type_store_uint(struct ly_ctx *UNUSED(ctx), struct lysc_type *type, int optio
  */
 static LY_ERR
 ly_type_validate_decimal64(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                           ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), const char **canonized, struct ly_err_item **err, void **priv)
+                           ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser),
+                           struct lyd_node *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                           const char **canonized, struct ly_err_item **err, void **priv)
 {
     int64_t d;
     struct lysc_type_dec* type_dec = (struct lysc_type_dec*)type;
@@ -613,7 +620,9 @@ ly_type_store_decimal64(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(typ
  */
 static LY_ERR
 ly_type_validate_binary(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                        ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), const char **canonized, struct ly_err_item **err, void **UNUSED(priv))
+                        ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser),
+                        struct lyd_node *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                        const char **canonized, struct ly_err_item **err, void **UNUSED(priv))
 {
     size_t start = 0, stop = 0, count = 0, u, termination = 0;
     struct lysc_type_bin *type_bin = (struct lysc_type_bin *)type;
@@ -707,7 +716,9 @@ error:
  */
 static LY_ERR
 ly_type_validate_string(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                        ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), const char **canonized, struct ly_err_item **err, void **UNUSED(priv))
+                        ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser),
+                        struct lyd_node *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                        const char **canonized, struct ly_err_item **err, void **UNUSED(priv))
 {
     struct lysc_type_str *type_str = (struct lysc_type_str *)type;
 
@@ -744,7 +755,9 @@ ly_type_validate_string(struct ly_ctx *ctx, struct lysc_type *type, const char *
  */
 static LY_ERR
 ly_type_validate_bits(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                      ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), const char **canonized, struct ly_err_item **err, void **priv)
+                      ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser),
+                      struct lyd_node *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                      const char **canonized, struct ly_err_item **err, void **priv)
 {
     LY_ERR ret = LY_EVALID;
     size_t item_len;
@@ -936,7 +949,9 @@ ly_type_free_bits(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(type), st
  */
 static LY_ERR
 ly_type_validate_enum(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                      ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), const char **canonized, struct ly_err_item **err, void **priv)
+                      ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser),
+                      struct lyd_node *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                      const char **canonized, struct ly_err_item **err, void **priv)
 {
     unsigned int u, v;
     char *errmsg = NULL;
@@ -1019,7 +1034,9 @@ ly_type_store_enum(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(type), i
  */
 static LY_ERR
 ly_type_validate_boolean(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), const char *value, size_t value_len, int options,
-                         ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), const char **canonized, struct ly_err_item **err, void **priv)
+                         ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser),
+                         struct lyd_node *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                         const char **canonized, struct ly_err_item **err, void **priv)
 {
     int8_t i;
 
@@ -1088,7 +1105,9 @@ ly_type_store_boolean(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(type)
  */
 static LY_ERR
 ly_type_validate_empty(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), const char *value, size_t value_len, int options,
-                       ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), const char **canonized, struct ly_err_item **err, void **UNUSED(priv))
+                       ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser),
+                       struct lyd_node *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                       const char **canonized, struct ly_err_item **err, void **UNUSED(priv))
 {
     if (value_len) {
         char *errmsg;
@@ -1126,7 +1145,9 @@ ly_type_identity_isderived(struct lysc_ident *base, struct lysc_ident *der)
  */
 static LY_ERR
 ly_type_validate_identityref(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                             ly_type_resolve_prefix get_prefix, void *parser, const char **canonized, struct ly_err_item **err, void **priv)
+                             ly_type_resolve_prefix get_prefix, void *parser,
+                             struct lyd_node *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                             const char **canonized, struct ly_err_item **err, void **priv)
 {
     struct lysc_type_identityref *type_ident = (struct lysc_type_identityref *)type;
     const char *id_name, *prefix = value;
@@ -1228,6 +1249,191 @@ ly_type_store_identityref(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(t
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Validate value of the YANG built-in instance-identifier type.
+ *
+ * Implementation of the ly_type_validate_clb.
+ */
+static LY_ERR
+ly_type_validate_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
+                             ly_type_resolve_prefix get_prefix, void *parser,
+                             struct lyd_node *context_node, struct lyd_node **trees,
+                             const char **canonized, struct ly_err_item **err, void **priv)
+{
+    LY_ERR ret = LY_EVALID;
+    struct lysc_type_instanceid *type_inst = (struct lysc_type_instanceid *)type;
+    const char *id, *prefix, *token;
+    size_t id_len, prefix_len, offset = 0;
+    char *errmsg = NULL;
+    const struct lys_module *mod;
+    unsigned int u;
+    const struct lysc_node *node_s = NULL;
+    const struct lyd_node *node_d = NULL;
+    struct lyd_value_prefix *prefixes = NULL, *p;
+
+    /* parse the value and try to resolve it in:
+     * a) schema tree - instance is not required, just check that the path is instantiable
+     * b) data tree - instance is required, so find it */
+    for(token = value; (size_t)(token - value) < value_len;) {
+        if (token[0] == '/') {
+            /* node identifier */
+            token++;
+            if (lys_parse_nodeid(&token, &prefix, &prefix_len, &id, &id_len)) {
+                asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value at character %lu.",
+                         (int)value_len, value, token - value + 1);
+                goto error;
+            }
+            if (!prefix || !prefix_len) {
+                asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - all node names (%.*s) MUST be qualified with explicit namespace prefix.",
+                         (int)value_len, value, (int)id_len + 1, &id[-1]);
+                goto error;
+            }
+
+            if (((struct lyd_node_term*)context_node)->value.prefixes) {
+                /* the second run, the first one ended with LY_EINCOMPLETE */
+                prefixes = ((struct lyd_node_term*)context_node)->value.prefixes;
+                LY_ARRAY_FOR(prefixes, u) {
+                    if (!strncmp(prefixes[u].prefix, prefix, prefix_len) && prefixes[u].prefix[prefix_len] == '\0') {
+                        mod = prefixes[u].mod;
+                        break;
+                    }
+                }
+                if (!mod) {
+                    /* prefixes were already checked, so we should always find the match */
+                    LOGINT(ctx);
+                    goto error;
+                }
+            } else {
+                mod = get_prefix(ctx, prefix, prefix_len, parser);
+                if (!mod) {
+                    asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - unable to map prefix \"%.*s\" to YANG schema.",
+                             (int)value_len, value, (int)prefix_len, prefix);
+                    goto error;
+                }
+                LY_ARRAY_NEW_GOTO(ctx, prefixes, p, ret, error);
+                p->mod = mod;
+                p->prefix = lydict_insert(ctx, prefix, prefix_len);
+            }
+            if ((options & LY_TYPE_OPTS_INCOMPLETE_DATA) || !type_inst->require_instance) {
+                /* a) in schema tree */
+                node_s = lys_child(node_s, mod, id, id_len, 0, 0);
+                if (!node_s) {
+                    asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - path \"%.*s\" does not exists in the YANG schema.",
+                             (int)value_len, value, (int)(token - value), value);
+                    goto error;
+                }
+            } else {
+                /* b) in data tree */
+                if (node_d) {
+                    /* internal node */
+                    const struct lyd_node *children = lyd_node_children(node_d);
+                    if (!children || !(node_d = lyd_search(children, mod, id, id_len, 0, NULL, 0))) {
+                        asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - path \"%.*s\" does not exists in the data tree(s).",
+                                 (int)value_len, value, (int)(token - value), value);
+                        goto error;
+                    }
+                } else {
+                    /* top-level node */
+                    LY_ARRAY_FOR(trees, u) {
+                        node_d = lyd_search(trees[u], mod, id, id_len, 0, NULL, 0);
+                        if (node_d) {
+                            break;
+                        }
+                    }
+                    if (!node_d) {
+                        /* node not found */
+                        asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - path \"%.*s\" does not exists in the data tree(s).",
+                                 (int)value_len, value, (int)(token - value), value);
+                        goto error;
+                    }
+                }
+            }
+
+        } else if (token[0] == '[') {
+            /* predicate */
+
+        } else {
+            asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - unexpected character %lu.",
+                     (int)value_len, value, offset + 1);
+            goto error;
+        }
+    }
+
+    if ((options & LY_TYPE_OPTS_CANONIZE) && *canonized != value) {
+        if (options & LY_TYPE_OPTS_DYNAMIC) {
+            *canonized = lydict_insert_zc(ctx, (char*)value);
+            value = NULL;
+        } else {
+            *canonized = lydict_insert(ctx, value, value_len);
+        }
+    }
+#if 0
+    if (options & LY_TYPE_OPTS_STORE) {
+        *priv = ident;
+    }
+#endif
+    if (options & LY_TYPE_OPTS_DYNAMIC) {
+        free((char*)value);
+    }
+
+    *priv = prefixes;
+
+    if ((options & LY_TYPE_OPTS_INCOMPLETE_DATA) && type_inst->require_instance) {
+        return LY_EINCOMPLETE;
+    } else {
+        return LY_SUCCESS;
+    }
+
+error:
+    if (!((struct lyd_node_term*)context_node)->value.prefixes) {
+        LY_ARRAY_FOR(prefixes, u) {
+            lydict_remove(ctx, prefixes[u].prefix);
+        }
+        LY_ARRAY_FREE(prefixes);
+    }
+    *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_RESTRICTION, errmsg, NULL, NULL);
+    return ret;
+}
+
+
+/**
+ * @brief Store value of the YANG built-in instance-identifier type.
+ *
+ * Implementation of the ly_type_store_clb.
+ */
+static LY_ERR
+ly_type_store_instanceid(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(type), int options,
+                         struct lyd_value *value, struct ly_err_item **UNUSED(err), void **priv)
+{
+    if (options & LY_TYPE_OPTS_VALIDATE) {
+        /* the value was prepared by ly_type_validate_enum() */
+        value->prefixes = *priv;
+    } else {
+        /* TODO if there is usecase for store without validate */
+        LOGINT(NULL);
+        return LY_EINT;
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Free value of the YANG built-in instance-identifier type.
+ *
+ * Implementation of the ly_type_free_clb.
+ */
+static void
+ly_type_free_instanceid(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), struct lyd_value *value)
+{
+    unsigned int u;
+
+    LY_ARRAY_FOR(value->prefixes, u) {
+        lydict_remove(ctx, value->prefixes[u].prefix);
+    }
+    LY_ARRAY_FREE(value->prefixes);
+    value->prefixes = NULL;
+}
+
 struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT] = {
     {0}, /* LY_TYPE_UNKNOWN */
     {.type = LY_TYPE_BINARY, .validate = ly_type_validate_binary, .store = NULL, .free = NULL},
@@ -1242,7 +1448,7 @@ struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT] = {
     {.type = LY_TYPE_EMPTY, .validate = ly_type_validate_empty, .store = NULL, .free = NULL},
     {.type = LY_TYPE_ENUM, .validate = ly_type_validate_enum, .store = ly_type_store_enum, .free = NULL},
     {.type = LY_TYPE_IDENT, .validate = ly_type_validate_identityref, .store = ly_type_store_identityref, .free = NULL},
-    {0}, /* TODO LY_TYPE_INST */
+    {.type = LY_TYPE_INST, .validate = ly_type_validate_instanceid, .store = ly_type_store_instanceid, .free = ly_type_free_instanceid},
     {0}, /* TODO LY_TYPE_LEAFREF */
     {0}, /* TODO LY_TYPE_UNION */
     {.type = LY_TYPE_INT8, .validate = ly_type_validate_int, .store = ly_type_store_int, .free = NULL},

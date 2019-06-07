@@ -60,6 +60,7 @@ setup(void **state)
             "identity crypto-alg; identity interface-type; identity ethernet {base interface-type;} identity fast-ethernet {base ethernet;}}";
     const char *schema_b = "module types {namespace urn:tests:types;prefix t;yang-version 1.1; import defs {prefix defs;}"
             "feature f; identity gigabit-ethernet { base defs:ethernet;}"
+            "container cont {leaf leaftarget {type empty;}}"
             "leaf binary {type binary {length 5 {error-message \"This base64 value must be of length 5.\";}}}"
             "leaf binary-norestr {type binary;}"
             "leaf int8 {type int8 {range 10..20;}}"
@@ -78,7 +79,8 @@ setup(void **state)
             "leaf str-norestr {type string;}"
             "leaf bool {type boolean;}"
             "leaf empty {type empty;}"
-            "leaf ident {type identityref {base defs:interface-type;}}}";
+            "leaf ident {type identityref {base defs:interface-type;}}"
+            "leaf inst {type instance-identifier {require-instance true;}}}";
 
     s = calloc(1, sizeof *s);
     assert_non_null(s);
@@ -641,6 +643,55 @@ test_identityref(void **state)
     s->func = NULL;
 }
 
+static void
+test_instanceid(void **state)
+{
+    struct state_s *s = (struct state_s*)(*state);
+    s->func = test_instanceid;
+
+    struct lyd_node *tree;
+    struct lyd_node_term *leaf;
+
+    const char *data = "<cont xmlns=\"urn:tests:types\"><leaftarget/></cont>"
+            "<xdf:inst xmlns:xdf=\"urn:tests:types\">/xdf:cont/xdf:leaftarget</xdf:inst>";
+
+    /* valid data */
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    tree = tree->prev;
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("inst", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("/xdf:cont/xdf:leaftarget", leaf->value.canonized);
+    lyd_free_all(tree);
+
+    /* invalid value */
+    data =  "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:1leaftarget</t:inst>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid instance-identifier \"/t:cont/t:1leaftarget\" value at character 11. /");
+
+    data =  "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:invalid/t:path</t:inst>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid instance-identifier \"/t:cont/t:invalid/t:path\" value - path \"/t:cont/t:invalid\" does not exists in the YANG schema. /");
+
+    data =  "<inst xmlns=\"urn:tests:types\" xmlns:t=\"urn:tests:invalid\">/t:cont/t:leaftarget</inst>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid instance-identifier \"/t:cont/t:leaftarget\" value - unable to map prefix \"t\" to YANG schema. /");
+
+    data =  "<inst xmlns=\"urn:tests:types\">/cont/leaftarget</inst>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid instance-identifier \"/cont/leaftarget\" value - all node names (/cont) MUST be qualified with explicit namespace prefix. /");
+
+    data =  "<cont xmlns=\"urn:tests:types\"/><t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaftarget</t:inst>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid instance-identifier \"/t:cont/t:leaftarget\" value - path \"/t:cont/t:leaftarget\" does not exists in the data tree(s). /");
+
+    data =  "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaftarget</t:inst>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid instance-identifier \"/t:cont/t:leaftarget\" value - path \"/t:cont\" does not exists in the data tree(s). /");
+
+    s->func = NULL;
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -654,6 +705,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_boolean, setup, teardown),
         cmocka_unit_test_setup_teardown(test_empty, setup, teardown),
         cmocka_unit_test_setup_teardown(test_identityref, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_instanceid, setup, teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

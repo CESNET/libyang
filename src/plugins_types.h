@@ -61,6 +61,10 @@ void ly_err_free(void *ptr);
                                             the type's callbacks with this option */
 #define LY_TYPE_OPTS_STORE        0x08 /**< Flag announcing calling of ly_type_store_clb() */
 #define LY_TYPE_OPTS_SCHEMA       0x10 /**< Flag for the value used in schema instead of the data tree */
+#define LY_TYPE_OPTS_INCOMPLETE_DATA 0x20 /**< Flag for the case the data trees are not yet complete. In this case the plagin should do what it
+                                            can (e.g. store the canonical/auxiliary value if it is requested) and in the case of need to use
+                                            data trees (checking require-instance), it returns LY_EINCOMPLETE.
+                                            Caller is supposed to call such validation callback again later with complete data trees. */
 
 /**
  * @}
@@ -104,16 +108,21 @@ typedef const struct lys_module *(*ly_type_resolve_prefix)(struct ly_ctx *ctx, c
  *
  * @param[in] get_prefix Parser-specific getter to resolve prefixes used in the value strings.
  * @param[in] parser Parser's data for @p get_prefix
+ * @param[in] context_node The @p value's node for the case that the require-instance restriction is supposed to be resolved.
+ * @param[in] trees ([Sized array](@ref sizedarrays)) of external data trees (e.g. when validating RPC/Notification) where the required data
+ *            instance can be placed.
  *
  * @param[out] canonized If LY_TYPE_VALIDATE_CANONIZE option set, the canonized string stored in the @p ctx dictionary is returned via this parameter.
  * @param[out] err Optionally provided error information in case of failure. If not provided to the caller, a generic error message is prepared instead.
  * The error structure can be created by ly_err_new().
  * @param[out] priv Type's private data passed between all the callbacks. The last callback is supposed to free the data allocated beforehand.
  * @return LY_SUCCESS on success
+ * @return LY_EINCOMPLETE in case the option included LY_TYPE_OPTS_INCOMPLETE_DATA flag and the data @p trees are needed to finish the validation.
  * @return LY_ERR value if an error occurred and the value could not be canonized following the type's rules.
  */
 typedef LY_ERR (*ly_type_validate_clb)(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
                                        ly_type_resolve_prefix get_prefix, void *parser,
+                                       struct lyd_node *context_node, struct lyd_node **trees,
                                        const char **canonized, struct ly_err_item **err, void **priv);
 
 /**
