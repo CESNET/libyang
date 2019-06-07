@@ -92,6 +92,102 @@ lys_parse_nodeid(const char **id, const char **prefix, size_t *prefix_len, const
 }
 
 LY_ERR
+lys_parse_instance_predicate(const char **pred, size_t limit,
+                             const char **prefix, size_t *prefix_len, const char **id, size_t *id_len, const char **value, size_t *value_len,
+                             const char **errmsg)
+{
+    LY_ERR ret = LY_EVALID;
+    const char *in = *pred;
+    size_t offset = 1;
+    int expr = 0;
+    char quot;
+
+    assert(in[0] == '\[');
+
+    *prefix = *id = *value = NULL;
+    *prefix_len = *id_len = *value_len = 0;
+
+    /* leading *WSP */
+    for (; isspace(in[offset]); offset++);
+
+    if (isdigit(in[offset])) {
+        /* pos: "[" *WSP positive-integer-value *WSP "]" */
+        if (in[offset] == '0') {
+            /* zero */
+            *errmsg = "The position predicate cannot be zero.";
+            goto error;
+        }
+
+        /* positive-integer-value */
+        *id = &in[offset++];
+        for (; isdigit(in[offset]); offset++);
+        *id_len = &in[offset] - *id;
+
+    } else if (in[offset] == '.') {
+        /* leaf-list-predicate: "[" *WSP "." *WSP "=" *WSP quoted-string *WSP "]" */
+        *id = &in[offset];
+        *id_len = 1;
+        offset++;
+        expr = 1;
+
+    } else {
+        /* key-predicate: "[" *WSP node-identifier *WSP "=" *WSP quoted-string *WSP "]" */
+        in = &in[offset];
+        if (lys_parse_nodeid(&in, prefix, prefix_len, id, id_len)) {
+            *errmsg = "Invalid node-identifier.";
+            goto error;
+        }
+        offset = in - *pred;
+        in = *pred;
+        expr = 1;
+    }
+
+    if (expr) {
+        /*  *WSP "=" *WSP quoted-string *WSP "]" */
+        for (; isspace(in[offset]); offset++);
+
+        if (in[offset] != '=') {
+            *errmsg = "Unexpected character instead of \'=\'.";
+            goto error;
+        }
+        offset++;
+        for (; isspace(in[offset]); offset++);
+
+        /* quoted-string */
+        quot = in[offset++];
+        if (quot != '\'' && quot != '\"') {
+            *errmsg = "String value is not quoted.";
+            goto error;
+        }
+        *value = &in[offset];
+        for (;offset < limit && in[offset] != quot; offset++);
+        *value_len = &in[offset] - *value;
+    }
+
+    /* *WSP "]" */
+    for(; isspace(in[offset]); offset++);
+    if (in[offset] != ']') {
+        *errmsg = "Predicate is not terminated by \']\' character.";
+        goto error;
+    }
+
+    if (offset < limit) {
+        return LY_SUCCESS;
+    }
+
+    /* we read after the limit */
+    *errmsg = "Predicate is incomplete.";
+    *prefix = *id = *value = NULL;
+    *prefix_len = *id_len = *value_len = 0;
+    offset = limit;
+    ret = LY_EINVAL;
+
+error:
+    *pred = &in[offset];
+    return ret;
+}
+
+LY_ERR
 lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodeid_len, const struct lysc_node *context_node,
                           const struct lys_module *context_module, int nodetype, int implement,
                           const struct lysc_node **target, uint16_t *result_flag)
