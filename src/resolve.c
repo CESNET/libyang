@@ -383,7 +383,7 @@ parse_path_predicate(const char *id, const char **prefix, int *pref_len, const c
     }
 
     if ((ret = parse_node_identifier(id, prefix, pref_len, name, nam_len, NULL, 0)) < 1) {
-        return -parsed+ret;
+        return -parsed + ret;
     }
 
     parsed += ret;
@@ -656,7 +656,7 @@ parse_path_arg(const struct lys_module *mod, const char *id, const char **prefix
 
     /* node-identifier ([prefix:]identifier) */
     if ((ret = parse_node_identifier(id, prefix, pref_len, name, nam_len, NULL, 0)) < 1) {
-        return -parsed - ret;
+        return -parsed + ret;
     }
     if (prefix && !(*prefix)) {
         /* actually we always need prefix even it is not specified */
@@ -1902,7 +1902,7 @@ resolve_schema_nodeid(const char *nodeid, const struct lys_node *start_parent, c
 
     r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, NULL, NULL, 1);
     if (r < 1) {
-        LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[r], &id[r]);
+        LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[-r], &id[-r]);
         return -1;
     }
 
@@ -1923,7 +1923,7 @@ resolve_schema_nodeid(const char *nodeid, const struct lys_node *start_parent, c
     r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, &has_predicate,
                             (extended ? &all_desc : NULL), extended);
     if (r < 1) {
-        LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[r], &id[r]);
+        LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[-r], &id[-r]);
         return -1;
     }
     id += r;
@@ -2099,7 +2099,7 @@ get_next_augment:
         r = parse_schema_nodeid(id, &mod_name, &mod_name_len, &name, &nam_len, &is_relative, &has_predicate,
                                 (extended ? &all_desc : NULL), extended);
         if (r < 1) {
-            LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[r], &id[r]);
+            LOGVAL(ctx, LYE_PATH_INCHAR, LY_VLOG_NONE, NULL, id[-r], &id[-r]);
             return -1;
         }
         id += r;
