@@ -665,7 +665,7 @@ test_instanceid(void **state)
     leaf = (struct lyd_node_term*)tree;
     assert_string_equal("/xdf:cont/xdf:leaftarget", leaf->value.canonized);
     lyd_free_all(tree);
-#if
+#if 0
     /* TODO predicates support */
     data = "<list xmlns=\"urn:tests:types\"><id>>a</id></list><list xmlns=\"urn:tests:types\"><id>>b</id></list>"
            "<xdf:inst xmlns:xdf=\"urn:tests:types\">/xdf:list[xdf:id='b']/xdf:id</xdf:inst>";
