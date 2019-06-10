@@ -306,11 +306,15 @@ lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, struct lyd_node
         /* finish incompletely validated terminal values */
         for (unsigned int u = 0; u < xmlctx.incomplete_type_validation.count; u++) {
             struct lyd_node_term *node = (struct lyd_node_term*)xmlctx.incomplete_type_validation.objs[u];
-            struct lyd_node **trees = NULL, **tree;
-            if (result) {
+            struct lyd_node **trees = NULL;
+
+            /* prepare sized array for validator */
+            if (*result) {
+                struct lyd_node **tree;
                 LY_ARRAY_NEW_RET(ctx, trees, tree, LY_EMEM);
                 *tree = *result;
             }
+            /* validate and store the value of the node */
             ret = lyd_value_parse(node, node->value.canonized, strlen(node->value.canonized), 0, lydxml_resolve_prefix, ctx, trees);
             LY_ARRAY_FREE(trees);
             if (ret) {
