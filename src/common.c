@@ -452,9 +452,9 @@ ly_parse_instance_predicate(const char **pred, size_t limit,
         }
 
         /* positive-integer-value */
-        *id = &in[offset++];
+        *value = &in[offset++];
         for (; isdigit(in[offset]); offset++);
-        *id_len = &in[offset] - *id;
+        *value_len = &in[offset] - *value;
 
     } else if (in[offset] == '.') {
         /* leaf-list-predicate: "[" *WSP "." *WSP "=" *WSP quoted-string *WSP "]" */
@@ -462,7 +462,10 @@ ly_parse_instance_predicate(const char **pred, size_t limit,
         *id_len = 1;
         offset++;
         expr = 1;
-
+    } else if (in[offset] == '-') {
+        /* typically negative value */
+        *errmsg = "Invalid instance predicate format (negative position or invalid node-identifier).";
+        goto error;
     } else {
         /* key-predicate: "[" *WSP node-identifier *WSP "=" *WSP quoted-string *WSP "]" */
         in = &in[offset];
@@ -472,7 +475,7 @@ ly_parse_instance_predicate(const char **pred, size_t limit,
         }
         offset = in - *pred;
         in = *pred;
-        expr = 1;
+        expr = 2;
     }
 
     if (expr) {
@@ -480,7 +483,11 @@ ly_parse_instance_predicate(const char **pred, size_t limit,
         for (; isspace(in[offset]); offset++);
 
         if (in[offset] != '=') {
-            *errmsg = "Unexpected character instead of \'=\'.";
+            if (expr == 1) {
+                *errmsg = "Unexpected character instead of \'=\' in leaf-list-predicate.";
+            } else { /* 2 */
+                *errmsg = "Unexpected character instead of \'=\' in key-predicate.";
+            }
             goto error;
         }
         offset++;
@@ -494,17 +501,31 @@ ly_parse_instance_predicate(const char **pred, size_t limit,
         }
         *value = &in[offset];
         for (;offset < limit && in[offset] != quot; offset++);
-        *value_len = &in[offset] - *value;
+        if (in[offset] == quot) {
+            *value_len = &in[offset] - *value;
+            offset++;
+        } else {
+            *errmsg = "Value is not terminated quoted-string.";
+            goto error;
+        }
     }
 
     /* *WSP "]" */
     for(; isspace(in[offset]); offset++);
     if (in[offset] != ']') {
-        *errmsg = "Predicate is not terminated by \']\' character.";
+        if (expr == 0) {
+            *errmsg = "Predicate (pos) is not terminated by \']\' character.";
+        } else if (expr == 1) {
+            *errmsg = "Predicate (leaf-list-predicate) is not terminated by \']\' character.";
+        } else { /* 2 */
+            *errmsg = "Predicate (key-predicate) is not terminated by \']\' character.";
+        }
         goto error;
     }
+    offset++;
 
-    if (offset < limit) {
+    if (offset <= limit) {
+        *pred = &in[offset];
         return LY_SUCCESS;
     }
 

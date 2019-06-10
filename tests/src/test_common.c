@@ -245,7 +245,7 @@ test_parse_uint(void **state)
 static void
 test_parse_nodeid(void **state)
 {
-    (void) state; /* unused */
+    *state = test_parse_nodeid;
     const char *str;
     const char *prefix, *name;
     size_t prefix_len, name_len;
@@ -271,6 +271,106 @@ test_parse_nodeid(void **state)
     assert_int_equal(3, name_len);
     assert_int_equal(0, strncmp("_b2", name, name_len));
     assert_string_equal(" xxx", str);
+
+    *state = NULL;
+}
+
+static void
+test_parse_instance_predicate(void **state)
+{
+    *state = test_parse_instance_predicate;
+    const char *str, *errmsg;
+    const char *prefix, *id, *value;
+    size_t prefix_len, id_len, value_len;
+
+    str = "[ex:name='fred']";
+    assert_int_equal(LY_SUCCESS, ly_parse_instance_predicate(&str, strlen(str), &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
+    assert_string_equal(str, "");
+    assert_string_equal(prefix, "ex:name='fred']");
+    assert_int_equal(prefix_len, 2);
+    assert_string_equal(id, "name='fred']");
+    assert_int_equal(id_len, 4);
+    assert_string_equal(value, "fred']");
+    assert_int_equal(value_len, 4);
+
+    str = "[ex:ip = \"[192.0.2.1]\"][ex:port='80']";
+    assert_int_equal(LY_SUCCESS, ly_parse_instance_predicate(&str, strlen(str), &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
+    assert_string_equal(str, "[ex:port='80']");
+    assert_string_equal(prefix, "ex:ip = \"[192.0.2.1]\"][ex:port='80']");
+    assert_int_equal(prefix_len, 2);
+    assert_string_equal(id, "ip = \"[192.0.2.1]\"][ex:port='80']");
+    assert_int_equal(id_len, 2);
+    assert_string_equal(value, "[192.0.2.1]\"][ex:port='80']");
+    assert_int_equal(value_len, 11);
+
+    str = "[. = 'blowfish-cbc']";
+    assert_int_equal(LY_SUCCESS, ly_parse_instance_predicate(&str, strlen(str), &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
+    assert_string_equal(str, "");
+    assert_null(prefix);
+    assert_int_equal(prefix_len, 0);
+    assert_string_equal(id, ". = 'blowfish-cbc']");
+    assert_int_equal(id_len, 1);
+    assert_string_equal(value, "blowfish-cbc']");
+    assert_int_equal(value_len, 12);
+
+    str = "[ 3 ]";
+    assert_int_equal(LY_SUCCESS, ly_parse_instance_predicate(&str, strlen(str), &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
+    assert_string_equal(str, "");
+    assert_null(prefix);
+    assert_int_equal(prefix_len, 0);
+    assert_null(id);
+    assert_int_equal(id_len, 0);
+    assert_string_equal(value, "3 ]");
+    assert_int_equal(value_len, 1);
+
+    /* invalid predicates */
+    /* position must be positive integer */
+    str = "[0]";
+    assert_int_equal(LY_EVALID, ly_parse_instance_predicate(&str, strlen(str), &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
+    assert_string_equal(errmsg, "The position predicate cannot be zero.");
+    str = "[-1]";
+    assert_int_equal(LY_EVALID, ly_parse_instance_predicate(&str, strlen(str), &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
+    assert_string_equal(errmsg, "Invalid instance predicate format (negative position or invalid node-identifier).");
+
+    /* invalid node-identifier */
+    str = "[$node='value']";
+    assert_int_equal(LY_EVALID, ly_parse_instance_predicate(&str, strlen(str), &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
+    assert_string_equal(errmsg, "Invalid node-identifier.");
+    str = "[.node='value']";
+    assert_int_equal(LY_EVALID, ly_parse_instance_predicate(&str, strlen(str), &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
+    assert_string_equal(errmsg, "Unexpected character instead of '=' in leaf-list-predicate.");
+    str = "[13node='value']";
+    assert_int_equal(LY_EVALID, ly_parse_instance_predicate(&str, strlen(str), &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
+    assert_string_equal(errmsg, "Predicate (pos) is not terminated by \']\' character.");
+
+    str = "[node]";
+    assert_int_equal(LY_EVALID, ly_parse_instance_predicate(&str, strlen(str), &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
+    assert_string_equal(errmsg, "Unexpected character instead of '=' in key-predicate.");
+
+    str = "[node=  value]";
+    assert_int_equal(LY_EVALID, ly_parse_instance_predicate(&str, strlen(str), &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
+    assert_string_equal(errmsg, "String value is not quoted.");
+
+    str = "[node='value\"]";
+    assert_int_equal(LY_EVALID, ly_parse_instance_predicate(&str, strlen(str), &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
+    assert_string_equal(errmsg, "Value is not terminated quoted-string.");
+
+    str = "[node='value  ]";
+    assert_int_equal(LY_EVALID, ly_parse_instance_predicate(&str, strlen(str), &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
+    assert_string_equal(errmsg, "Value is not terminated quoted-string.");
+
+    str = "[node=\"value\"[3]";
+    assert_int_equal(LY_EVALID, ly_parse_instance_predicate(&str, strlen(str), &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
+    assert_string_equal(errmsg, "Predicate (key-predicate) is not terminated by \']\' character.");
+    str = "[.=\"value\"[3]";
+    assert_int_equal(LY_EVALID, ly_parse_instance_predicate(&str, strlen(str), &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
+    assert_string_equal(errmsg, "Predicate (leaf-list-predicate) is not terminated by \']\' character.");
+
+    str = "[node='value']";
+    assert_int_equal(LY_EINVAL, ly_parse_instance_predicate(&str, strlen(str) - 1, &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
+    assert_string_equal(errmsg, "Predicate is incomplete.");
+
+    *state = NULL;
 }
 
 int main(void)
@@ -283,6 +383,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_parse_int, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_parse_uint, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_parse_nodeid, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_parse_instance_predicate, logger_setup, logger_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
