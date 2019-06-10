@@ -383,6 +383,42 @@ LY_ERR ly_parse_int(const char *val_str, size_t val_len, int64_t min, int64_t ma
 LY_ERR ly_parse_uint(const char *val_str, size_t val_len, uint64_t max, int base, uint64_t *ret);
 
 /**
+ * @brief Parse a node-identifier.
+ *
+ * node-identifier     = [prefix ":"] identifier
+ *
+ * @param[in, out] id Identifier to parse. When returned, it points to the first character which is not part of the identifier.
+ * @param[out] prefix Node's prefix, NULL if there is not any.
+ * @param[out] prefix_len Length of the node's prefix, 0 if there is not any.
+ * @param[out] name Node's name.
+ * @param[out] nam_len Length of the node's name.
+ * @return LY_ERR value: LY_SUCCESS or LY_EINVAL in case of invalid character in the id.
+ */
+LY_ERR ly_parse_nodeid(const char **id, const char **prefix, size_t *prefix_len, const char **name, size_t *name_len);
+
+/**
+ * @brief parse instance-identifier's predicate, supports key-predicate, leaf-list-predicate and pos rules from YANG ABNF Grammar.
+ *
+ * @param[in, out] pred Predicate string (including the leading '[') to parse. The string is updated according to what was parsed
+ * (even for error case, so it can be used to determine which substring caused failure).
+ * @param[in] limit Limiting length of the @p pred. Function expects NULL terminated string which is not overread.
+ * The limit value is not checked with each character, so it can be overread and the failure is detected later.
+ * @param[out] prefix Start of the node-identifier's prefix if any, NULL in case of pos or leaf-list-predicate rules.
+ * @param[out] prefix_len Length of the parsed @p prefix.
+ * @param[out] id Start of the node-identifier's identifier string, NULL in case of pos rule, "." in case of leaf-list-predicate rule.
+ * @param[out] id_len Length of the parsed @p id.
+ * @param[out] value Start of the quoted-string (without quotation marks), NULL in case of pos rule.
+ * @param[out] value_len Length of the parsed @p value.
+ * @param[out] errmsg Error message string in case of error.
+ * @return LY_SUCCESS in case a complete predicate was parsed.
+ * @return LY_EVALID in case of invalid predicate form.
+ * @return LY_EINVAL in case of reaching @p limit when parsing @p pred.
+ */
+LY_ERR ly_parse_instance_predicate(const char **pred, size_t limit,
+                                   const char **prefix, size_t *prefix_len, const char **id, size_t *id_len,
+                                   const char **value, size_t *value_len, const char **errmsg);
+
+/**
  * @brief mmap(2) wrapper to map input files into memory to unify parsing.
  *
  * The address space is allocate only for reading.

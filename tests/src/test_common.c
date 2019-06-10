@@ -21,15 +21,28 @@
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
+int store = -1; /* negative for infinite logging, positive for limited logging */
 
+/* set to 0 to printing error messages to stderr instead of checking them in code */
+#define ENABLE_LOGGER_CHECKING 1
+
+#if ENABLE_LOGGER_CHECKING
 static void
 logger(LY_LOG_LEVEL level, const char *msg, const char *path)
 {
     (void) level; /* unused */
-    (void) path; /* unused */
-
-    strncpy(logbuf, msg, BUFSIZE - 1);
+    if (store) {
+        if (path && path[0]) {
+            snprintf(logbuf, BUFSIZE - 1, "%s %s", msg, path);
+        } else {
+            strncpy(logbuf, msg, BUFSIZE - 1);
+        }
+        if (store > 0) {
+            --store;
+        }
+    }
 }
+#endif
 
 static int
 logger_setup(void **state)
@@ -40,6 +53,30 @@ logger_setup(void **state)
 
     return 0;
 }
+
+static int
+logger_teardown(void **state)
+{
+    (void) state; /* unused */
+#if ENABLE_LOGGER_CHECKING
+    if (*state) {
+        fprintf(stderr, "%s\n", logbuf);
+    }
+#endif
+    return 0;
+}
+
+void
+logbuf_clean(void)
+{
+    logbuf[0] = '\0';
+}
+
+#if ENABLE_LOGGER_CHECKING
+#   define logbuf_assert(str) assert_string_equal(logbuf, str)
+#else
+#   define logbuf_assert(str)
+#endif
 
 static void
 test_utf8(void **state)
@@ -119,13 +156,45 @@ test_lyrealloc(void **state)
 }
 #endif /* not APPLE */
 
+static void
+test_parse_nodeid(void **state)
+{
+    (void) state; /* unused */
+    const char *str;
+    const char *prefix, *name;
+    size_t prefix_len, name_len;
+
+    str = "123";
+    assert_int_equal(LY_EINVAL, ly_parse_nodeid(&str, &prefix, &prefix_len, &name, &name_len));
+
+    str = "a12_-.!";
+    assert_int_equal(LY_SUCCESS, ly_parse_nodeid(&str, &prefix, &prefix_len, &name, &name_len));
+    assert_null(prefix);
+    assert_int_equal(0, prefix_len);
+    assert_non_null(name);
+    assert_int_equal(6, name_len);
+    assert_int_equal(0, strncmp("a12_-.", name, name_len));
+    assert_string_equal("!", str);
+
+    str = "a12_-.:_b2 xxx";
+    assert_int_equal(LY_SUCCESS, ly_parse_nodeid(&str, &prefix, &prefix_len, &name, &name_len));
+    assert_non_null(prefix);
+    assert_int_equal(6, prefix_len);
+    assert_int_equal(0, strncmp("a12_-.", prefix, prefix_len));
+    assert_non_null(name);
+    assert_int_equal(3, name_len);
+    assert_int_equal(0, strncmp("_b2", name, name_len));
+    assert_string_equal(" xxx", str);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup(test_utf8, logger_setup),
+        cmocka_unit_test_setup_teardown(test_utf8, logger_setup, logger_teardown),
 #ifndef APPLE
         cmocka_unit_test(test_lyrealloc),
 #endif
+        cmocka_unit_test_setup_teardown(test_parse_nodeid, logger_setup, logger_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

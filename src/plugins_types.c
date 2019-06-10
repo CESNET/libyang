@@ -1244,7 +1244,7 @@ ly_type_validate_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const ch
         if (token[0] == '/') {
             /* node identifier */
             token++;
-            if (lys_parse_nodeid(&token, &prefix, &prefix_len, &id, &id_len)) {
+            if (ly_parse_nodeid(&token, &prefix, &prefix_len, &id, &id_len)) {
                 asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value at character %lu.",
                          (int)value_len, value, token - value + 1);
                 goto error;

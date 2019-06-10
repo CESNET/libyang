@@ -1972,7 +1972,7 @@ lys_compile_leafref_predicate_validate(struct lysc_ctx *ctx, const char **predic
         while (isspace(**predicate)) {
             ++(*predicate);
         }
-        LY_CHECK_GOTO(lys_parse_nodeid(predicate, &src_prefix, &src_prefix_len, &src, &src_len), cleanup);
+        LY_CHECK_GOTO(ly_parse_nodeid(predicate, &src_prefix, &src_prefix_len, &src, &src_len), cleanup);
         while (isspace(**predicate)) {
             ++(*predicate);
         }
@@ -2111,7 +2111,7 @@ lys_compile_leafref_predicate_validate(struct lysc_ctx *ctx, const char **predic
         }
 
         while(path_key_expr != pke_end) {
-            if (lys_parse_nodeid(&path_key_expr, &dst_prefix, &dst_prefix_len, &dst, &dst_len)) {
+            if (ly_parse_nodeid(&path_key_expr, &dst_prefix, &dst_prefix_len, &dst, &dst_len)) {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
                        "Invalid node identifier in leafref path predicate - character %d (of %.*s).",
                        path_key_expr - start + 1, *predicate - start, start);
@@ -2217,7 +2217,7 @@ lys_path_token(const char **path, const char **prefix, size_t *prefix_len, const
     ++(*path);
 
     /* node-identifier ([prefix:]name) */
-    LY_CHECK_RET(lys_parse_nodeid(path, prefix, prefix_len, name, name_len));
+    LY_CHECK_RET(ly_parse_nodeid(path, prefix, prefix_len, name, name_len));
 
     if ((**path == '/' && (*path)[1]) || !**path) {
         /* path continues by another token or this is the last token */
@@ -4381,7 +4381,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
     /* search for the grouping definition */
     found = 0;
     id = uses_p->name;
-    LY_CHECK_RET(lys_parse_nodeid(&id, &prefix, &prefix_len, &name, &name_len), LY_EVALID);
+    LY_CHECK_RET(ly_parse_nodeid(&id, &prefix, &prefix_len, &name, &name_len), LY_EVALID);
     if (prefix) {
         mod = lys_module_find_prefix(ctx->mod_def, prefix, prefix_len);
         if (!mod) {
@@ -5580,7 +5580,7 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p)
                         DEV_CHECK_CARDINALITY(d_del->dflts, 1, "default");
                         DEV_CHECK_PRESENCE(struct lysc_node_choice*, 0, dflt, "deleting", "default", d_del->dflts[0]);
                         nodeid = d_del->dflts[0];
-                        LY_CHECK_GOTO(lys_parse_nodeid(&nodeid, &prefix, &prefix_len, &name, &name_len), cleanup);
+                        LY_CHECK_GOTO(ly_parse_nodeid(&nodeid, &prefix, &prefix_len, &name, &name_len), cleanup);
                         if (prefix) {
                             /* use module prefixes from the deviation module to match the module of the default case */
                             if (!(mod = lys_module_find_prefix(ctx->mod, prefix, prefix_len))) {
