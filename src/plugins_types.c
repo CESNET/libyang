@@ -25,6 +25,7 @@
 #include "dict.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
+#include "xpath.h"
 
 API LY_ERR
 ly_type_parse_int(const char *datatype, int base, int64_t min, int64_t max, const char *value, size_t value_len, int64_t *ret, struct ly_err_item **err)
@@ -1215,6 +1216,96 @@ ly_type_store_identityref(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(t
     return LY_SUCCESS;
 }
 
+static LY_ERR
+ly_type_validate_instanceid_checknodeid(struct ly_ctx *ctx, const char *orig, size_t orig_len, int options, int require_instance,
+                                        const char **token, struct lyd_value_prefix **prefixes,
+                                        const struct lysc_node **node_s, const struct lyd_node **node_d,
+                                        ly_type_resolve_prefix get_prefix, void *parser, struct lyd_node **trees,
+                                        char **errmsg)
+{
+    const char *id, *prefix;
+    size_t id_len, prefix_len;
+    const struct lys_module *mod = NULL;
+    unsigned int u;
+    int present_prefix = 0;
+
+    if (ly_parse_nodeid(token, &prefix, &prefix_len, &id, &id_len)) {
+        asprintf(errmsg, "Invalid instance-identifier \"%.*s\" value at character %lu.",
+                 (int)orig_len, orig, *token - orig + 1);
+        return LY_EVALID;
+    }
+    if (!prefix || !prefix_len) {
+        asprintf(errmsg, "Invalid instance-identifier \"%.*s\" value - all node names (%.*s) MUST be qualified with explicit namespace prefix.",
+                 (int)orig_len, orig, (int)id_len + 1, &id[-1]);
+        return LY_EVALID;
+    }
+
+    /* map prefix to schema module */
+    LY_ARRAY_FOR(*prefixes, u) {
+        if (!strncmp((*prefixes)[u].prefix, prefix, prefix_len) && (*prefixes)[u].prefix[prefix_len] == '\0') {
+            mod = (*prefixes)[u].mod;
+            present_prefix = 1;
+            break;
+        }
+    }
+    if (!mod && get_prefix) {
+        mod = get_prefix(ctx, prefix, prefix_len, parser);
+    }
+    if (!mod) {
+        asprintf(errmsg, "Invalid instance-identifier \"%.*s\" value - unable to map prefix \"%.*s\" to YANG schema.",
+                 (int)orig_len, orig, (int)prefix_len, prefix);
+        return LY_EVALID;
+    }
+    if (!present_prefix) {
+        /* store the prefix record for later use */
+        struct lyd_value_prefix *p;
+
+        *errmsg = strdup("Memory allocation failed.");
+        LY_ARRAY_NEW_RET(ctx, *prefixes, p, LY_EMEM);
+        free(*errmsg);
+        *errmsg = NULL;
+        p->mod = mod;
+        p->prefix = lydict_insert(ctx, prefix, prefix_len);
+    }
+
+    if ((options & LY_TYPE_OPTS_INCOMPLETE_DATA) || !require_instance) {
+        /* a) in schema tree */
+        *node_s = lys_child(*node_s, mod, id, id_len, 0, 0);
+        if (!(*node_s)) {
+            asprintf(errmsg, "Invalid instance-identifier \"%.*s\" value - path \"%.*s\" does not exists in the YANG schema.",
+                     (int)orig_len, orig, (int)(*token - orig), orig);
+            return LY_EVALID;
+        }
+    } else {
+        /* b) in data tree */
+        if (*node_d) {
+            /* internal node */
+            const struct lyd_node *children = lyd_node_children(*node_d);
+            if (!children || !(*node_d = lyd_search(children, mod, id, id_len, 0, NULL, 0))) {
+                asprintf(errmsg, "Invalid instance-identifier \"%.*s\" value - path \"%.*s\" does not exists in the data tree(s).",
+                         (int)orig_len, orig, (int)(*token - orig), orig);
+                return LY_EVALID;
+            }
+        } else {
+            /* top-level node */
+            LY_ARRAY_FOR(trees, u) {
+                *node_d = lyd_search(trees[u], mod, id, id_len, 0, NULL, 0);
+                if (*node_d) {
+                    break;
+                }
+            }
+            if (!(*node_d)) {
+                /* node not found */
+                asprintf(errmsg, "Invalid instance-identifier \"%.*s\" value - path \"%.*s\" does not exists in the data tree(s).",
+                         (int)orig_len, orig, (int)(*token - orig), orig);
+                return LY_EVALID;
+            }
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
 /**
  * @brief Validate value of the YANG built-in instance-identifier type.
  *
@@ -1228,14 +1319,19 @@ ly_type_validate_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const ch
 {
     LY_ERR ret = LY_EVALID;
     struct lysc_type_instanceid *type_inst = (struct lysc_type_instanceid *)type;
-    const char *id, *prefix, *token;
-    size_t id_len, prefix_len, offset = 0;
+    const char *id, *prefix, *val, *token;
+    size_t id_len, prefix_len, val_len;
     char *errmsg = NULL;
-    const struct lys_module *mod;
-    unsigned int u;
     const struct lysc_node *node_s = NULL;
     const struct lyd_node *node_d = NULL;
-    struct lyd_value_prefix *prefixes = NULL, *p;
+    struct lyd_value_prefix *prefixes = NULL;
+    unsigned int u;
+
+    if (((struct lyd_node_term*)context_node)->value.prefixes) {
+        /* the second run, the first one ended with LY_EINCOMPLETE */
+        prefixes = ((struct lyd_node_term*)context_node)->value.prefixes;
+        get_prefix = NULL;
+    }
 
     /* parse the value and try to resolve it in:
      * a) schema tree - instance is not required, just check that the path is instantiable
@@ -1244,83 +1340,44 @@ ly_type_validate_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const ch
         if (token[0] == '/') {
             /* node identifier */
             token++;
-            if (ly_parse_nodeid(&token, &prefix, &prefix_len, &id, &id_len)) {
-                asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value at character %lu.",
-                         (int)value_len, value, token - value + 1);
+            if (ly_type_validate_instanceid_checknodeid(ctx, value, value_len, options, type_inst->require_instance,
+                                                        &token, &prefixes, &node_s, &node_d, get_prefix, parser, trees, &errmsg)) {
                 goto error;
-            }
-            if (!prefix || !prefix_len) {
-                asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - all node names (%.*s) MUST be qualified with explicit namespace prefix.",
-                         (int)value_len, value, (int)id_len + 1, &id[-1]);
-                goto error;
-            }
-
-            if (((struct lyd_node_term*)context_node)->value.prefixes) {
-                /* the second run, the first one ended with LY_EINCOMPLETE */
-                prefixes = ((struct lyd_node_term*)context_node)->value.prefixes;
-                LY_ARRAY_FOR(prefixes, u) {
-                    if (!strncmp(prefixes[u].prefix, prefix, prefix_len) && prefixes[u].prefix[prefix_len] == '\0') {
-                        mod = prefixes[u].mod;
-                        break;
-                    }
-                }
-                if (!mod) {
-                    /* prefixes were already checked, so we should always find the match */
-                    LOGINT(ctx);
-                    goto error;
-                }
-            } else {
-                mod = get_prefix(ctx, prefix, prefix_len, parser);
-                if (!mod) {
-                    asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - unable to map prefix \"%.*s\" to YANG schema.",
-                             (int)value_len, value, (int)prefix_len, prefix);
-                    goto error;
-                }
-                LY_ARRAY_NEW_GOTO(ctx, prefixes, p, ret, error);
-                p->mod = mod;
-                p->prefix = lydict_insert(ctx, prefix, prefix_len);
-            }
-            if ((options & LY_TYPE_OPTS_INCOMPLETE_DATA) || !type_inst->require_instance) {
-                /* a) in schema tree */
-                node_s = lys_child(node_s, mod, id, id_len, 0, 0);
-                if (!node_s) {
-                    asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - path \"%.*s\" does not exists in the YANG schema.",
-                             (int)value_len, value, (int)(token - value), value);
-                    goto error;
-                }
-            } else {
-                /* b) in data tree */
-                if (node_d) {
-                    /* internal node */
-                    const struct lyd_node *children = lyd_node_children(node_d);
-                    if (!children || !(node_d = lyd_search(children, mod, id, id_len, 0, NULL, 0))) {
-                        asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - path \"%.*s\" does not exists in the data tree(s).",
-                                 (int)value_len, value, (int)(token - value), value);
-                        goto error;
-                    }
-                } else {
-                    /* top-level node */
-                    LY_ARRAY_FOR(trees, u) {
-                        node_d = lyd_search(trees[u], mod, id, id_len, 0, NULL, 0);
-                        if (node_d) {
-                            break;
-                        }
-                    }
-                    if (!node_d) {
-                        /* node not found */
-                        asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - path \"%.*s\" does not exists in the data tree(s).",
-                                 (int)value_len, value, (int)(token - value), value);
-                        goto error;
-                    }
-                }
             }
 
         } else if (token[0] == '[') {
             /* predicate */
+            const char *pred_errmsg = NULL;
+            const struct lysc_node *key_s = node_s;
+            const struct lyd_node *key_d = node_d;
+
+            if (ly_parse_instance_predicate(&token, value_len - (token - value), &prefix, &prefix_len, &id, &id_len, &val, &val_len, &pred_errmsg)) {
+                asprintf(&errmsg, "Invalid instance-identifier's predicate (%s).", pred_errmsg);
+                goto error;
+            }
+            if (prefix) {
+                /* key-predicate */
+                if (ly_type_validate_instanceid_checknodeid(ctx, value, value_len, options, type_inst->require_instance,
+                                                            &prefix, &prefixes, &key_s, &key_d, get_prefix, parser, trees, &errmsg)) {
+                    goto error;
+                }
+                if (key_d) {
+                    /* TODO check value */
+                } else if (key_s) {
+                    /* TODO check type of the value with the type of the node */
+                } else {
+                    LOGINT(ctx);
+                    goto error;
+                }
+            } else if (id) {
+                /* TODO leaf-list-predicate */
+            } else {
+                /* TODO pos predicate */
+            }
 
         } else {
             asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - unexpected character %lu.",
-                     (int)value_len, value, offset + 1);
+                     (int)value_len, value, token - value + 1);
             goto error;
         }
     }

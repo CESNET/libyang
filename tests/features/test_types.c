@@ -61,6 +61,8 @@ setup(void **state)
     const char *schema_b = "module types {namespace urn:tests:types;prefix t;yang-version 1.1; import defs {prefix defs;}"
             "feature f; identity gigabit-ethernet { base defs:ethernet;}"
             "container cont {leaf leaftarget {type empty;}}"
+            "list list {key id; leaf id {type string;}}"
+            "leaf-list leaflisttarget {type string;}"
             "leaf binary {type binary {length 5 {error-message \"This base64 value must be of length 5.\";}}}"
             "leaf binary-norestr {type binary;}"
             "leaf int8 {type int8 {range 10..20;}}"
@@ -663,7 +665,18 @@ test_instanceid(void **state)
     leaf = (struct lyd_node_term*)tree;
     assert_string_equal("/xdf:cont/xdf:leaftarget", leaf->value.canonized);
     lyd_free_all(tree);
-
+#if
+    /* TODO predicates support */
+    data = "<list xmlns=\"urn:tests:types\"><id>>a</id></list><list xmlns=\"urn:tests:types\"><id>>b</id></list>"
+           "<xdf:inst xmlns:xdf=\"urn:tests:types\">/xdf:list[xdf:id='b']/xdf:id</xdf:inst>";
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    tree = tree->prev;
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("inst", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("/xdf:list[xdf:id='b']/xdf:id", leaf->value.canonized);
+    lyd_free_all(tree);
+#endif
     /* invalid value */
     data =  "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:1leaftarget</t:inst>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
