@@ -30,8 +30,6 @@ API LY_ERR
 ly_type_parse_int(const char *datatype, int base, int64_t min, int64_t max, const char *value, size_t value_len, int64_t *ret, struct ly_err_item **err)
 {
     char *errmsg = NULL;
-    char *strptr = NULL;
-    int64_t i;
 
     LY_CHECK_ARG_RET(NULL, err, datatype, LY_EINVAL);
 
@@ -43,41 +41,26 @@ ly_type_parse_int(const char *datatype, int base, int64_t min, int64_t max, cons
         goto error;
     }
 
-    /* convert to 64-bit integer, all the redundant characters are handled */
-    errno = 0;
-
-    /* parse the value */
-    i = strtoll(value, &strptr, base);
-    if (errno || strptr == value || (i < min) || (i > max)) {
+    switch(ly_parse_int(value, value_len, min, max, base, ret)) {
+    case LY_EDENIED:
+        asprintf(&errmsg, "Value is out of %s's min/max bounds.", datatype);
         goto error;
-    } else if (strptr && *strptr && strptr < value + value_len) {
-        while (isspace(*strptr)) {
-            ++strptr;
-        }
-        if (*strptr && strptr < value + value_len) {
-            goto error;
-        }
+    case LY_SUCCESS:
+        return LY_SUCCESS;
+    default:
+        asprintf(&errmsg, "Invalid %s value \"%.*s\".", datatype, (int)value_len, value);
+        goto error;
     }
-
-    if (ret) {
-        *ret = i;
-    }
-    return LY_SUCCESS;
 
 error:
-    if (!errmsg) {
-        asprintf(&errmsg, "Invalid %s value \"%.*s\".", datatype, (int)value_len, value);
-    }
     *err = ly_err_new(LY_LLERR, LY_EINVAL, LYVE_RESTRICTION, errmsg, NULL, NULL);
     return LY_EVALID;
 }
 
 API LY_ERR
-ly_type_parse_uint(const char *datatype, int base, uint64_t min, uint64_t max, const char *value, size_t value_len, uint64_t *ret, struct ly_err_item **err)
+ly_type_parse_uint(const char *datatype, int base, uint64_t max, const char *value, size_t value_len, uint64_t *ret, struct ly_err_item **err)
 {
     char *errmsg = NULL;
-    char *strptr = NULL;
-    uint64_t u;
 
     LY_CHECK_ARG_RET(NULL, err, datatype, LY_EINVAL);
 
@@ -90,35 +73,18 @@ ly_type_parse_uint(const char *datatype, int base, uint64_t min, uint64_t max, c
     }
 
     *err = NULL;
-    errno = 0;
-    u = strtoull(value, &strptr, base);
-    if (errno || strptr == value || (u < min) || (u > max)) {
+    switch(ly_parse_uint(value, value_len, max, base, ret)) {
+    case LY_EDENIED:
+        asprintf(&errmsg, "Value \"%.*s\" is out of %s's min/max bounds.", (int)value_len, value, datatype);
         goto error;
-    } else if (strptr && *strptr && strptr < value + value_len) {
-        while (isspace(*strptr)) {
-            ++strptr;
-        }
-        if (*strptr && strptr < value + value_len) {
-            goto error;
-        }
-    } else if (u != 0 && value[0] == '-') {
+    case LY_SUCCESS:
+        return LY_SUCCESS;
+    default:
+        asprintf(&errmsg, "Invalid %s value \"%.*s\".", datatype, (int)value_len, value);
         goto error;
     }
-
-    if (ret) {
-        *ret = u;
-    }
-    return LY_SUCCESS;
 
 error:
-    if (!errmsg) {
-        if (strptr && strptr != value + value_len) {
-            asprintf(&errmsg, "Invalid %lu. character of %s value \"%.*s\".",
-                     1 + (unsigned long int)(strptr - value), datatype, (int)value_len, value);
-        } else {
-            asprintf(&errmsg, "Invalid %s value \"%.*s\".", datatype, (int)value_len, value);
-        }
-    }
     *err = ly_err_new(LY_LLERR, LY_EINVAL, LYVE_RESTRICTION, errmsg, NULL, NULL);
     return LY_EVALID;
 }
@@ -428,13 +394,13 @@ ly_type_parse_uint_builtin(LY_DATA_TYPE basetype, const char *value, size_t valu
 {
     switch (basetype) {
     case LY_TYPE_UINT8:
-        return ly_type_parse_uint("uint16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, 0, UINT64_C(255), value, value_len, val, err);
+        return ly_type_parse_uint("uint16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, UINT64_C(255), value, value_len, val, err);
     case LY_TYPE_UINT16:
-        return ly_type_parse_uint("uint16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, 0, UINT64_C(65535), value, value_len, val, err);
+        return ly_type_parse_uint("uint16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, UINT64_C(65535), value, value_len, val, err);
     case LY_TYPE_UINT32:
-        return ly_type_parse_uint("uint32", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, 0, UINT64_C(4294967295), value, value_len, val, err);
+        return ly_type_parse_uint("uint32", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, UINT64_C(4294967295), value, value_len, val, err);
     case LY_TYPE_UINT64:
-        return ly_type_parse_uint("uint64", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, 0, UINT64_C(18446744073709551615), value, value_len, val, err);
+        return ly_type_parse_uint("uint64", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, UINT64_C(18446744073709551615), value, value_len, val, err);
     default:
         LOGINT(NULL);
         return LY_EINVAL;

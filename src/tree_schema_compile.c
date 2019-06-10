@@ -1135,7 +1135,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
     switch (basetype) {
     case LY_TYPE_INT8: /* range */
         if (valcopy) {
-            ret = ly_parse_int(valcopy, INT64_C(-128), INT64_C(127), 10, max ? &part->max_64 : &part->min_64);
+            ret = ly_parse_int(valcopy, strlen(valcopy), INT64_C(-128), INT64_C(127), 10, max ? &part->max_64 : &part->min_64);
         } else if (max) {
             part->max_64 = INT64_C(127);
         } else {
@@ -1147,7 +1147,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
         break;
     case LY_TYPE_INT16: /* range */
         if (valcopy) {
-            ret = ly_parse_int(valcopy, INT64_C(-32768), INT64_C(32767), 10, max ? &part->max_64 : &part->min_64);
+            ret = ly_parse_int(valcopy, strlen(valcopy), INT64_C(-32768), INT64_C(32767), 10, max ? &part->max_64 : &part->min_64);
         } else if (max) {
             part->max_64 = INT64_C(32767);
         } else {
@@ -1159,7 +1159,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
         break;
     case LY_TYPE_INT32: /* range */
         if (valcopy) {
-            ret = ly_parse_int(valcopy, INT64_C(-2147483648), INT64_C(2147483647), 10, max ? &part->max_64 : &part->min_64);
+            ret = ly_parse_int(valcopy, strlen(valcopy), INT64_C(-2147483648), INT64_C(2147483647), 10, max ? &part->max_64 : &part->min_64);
         } else if (max) {
             part->max_64 = INT64_C(2147483647);
         } else {
@@ -1172,7 +1172,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
     case LY_TYPE_INT64: /* range */
     case LY_TYPE_DEC64: /* range */
         if (valcopy) {
-            ret = ly_parse_int(valcopy, INT64_C(-9223372036854775807) - INT64_C(1), INT64_C(9223372036854775807), 10,
+            ret = ly_parse_int(valcopy, strlen(valcopy), INT64_C(-9223372036854775807) - INT64_C(1), INT64_C(9223372036854775807), 10,
                                max ? &part->max_64 : &part->min_64);
         } else if (max) {
             part->max_64 = INT64_C(9223372036854775807);
@@ -1185,7 +1185,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
         break;
     case LY_TYPE_UINT8: /* range */
         if (valcopy) {
-            ret = ly_parse_uint(valcopy, UINT64_C(255), 10, max ? &part->max_u64 : &part->min_u64);
+            ret = ly_parse_uint(valcopy, strlen(valcopy), UINT64_C(255), 10, max ? &part->max_u64 : &part->min_u64);
         } else if (max) {
             part->max_u64 = UINT64_C(255);
         } else {
@@ -1197,7 +1197,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
         break;
     case LY_TYPE_UINT16: /* range */
         if (valcopy) {
-            ret = ly_parse_uint(valcopy, UINT64_C(65535), 10, max ? &part->max_u64 : &part->min_u64);
+            ret = ly_parse_uint(valcopy, strlen(valcopy), UINT64_C(65535), 10, max ? &part->max_u64 : &part->min_u64);
         } else if (max) {
             part->max_u64 = UINT64_C(65535);
         } else {
@@ -1209,7 +1209,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
         break;
     case LY_TYPE_UINT32: /* range */
         if (valcopy) {
-            ret = ly_parse_uint(valcopy, UINT64_C(4294967295), 10, max ? &part->max_u64 : &part->min_u64);
+            ret = ly_parse_uint(valcopy, strlen(valcopy), UINT64_C(4294967295), 10, max ? &part->max_u64 : &part->min_u64);
         } else if (max) {
             part->max_u64 = UINT64_C(4294967295);
         } else {
@@ -1223,7 +1223,7 @@ range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, i
     case LY_TYPE_STRING: /* length */
     case LY_TYPE_BINARY: /* length */
         if (valcopy) {
-            ret = ly_parse_uint(valcopy, UINT64_C(18446744073709551615), 10, max ? &part->max_u64 : &part->min_u64);
+            ret = ly_parse_uint(valcopy, strlen(valcopy), UINT64_C(18446744073709551615), 10, max ? &part->max_u64 : &part->min_u64);
         } else if (max) {
             part->max_u64 = UINT64_C(18446744073709551615);
         } else {

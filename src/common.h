@@ -351,6 +351,7 @@ LY_ERR ly_getutf8(const char **input, unsigned int *utf8_char, size_t *bytes_rea
  * @brief Parse signed integer with possible limitation.
  * @param[in] val_str String value containing signed integer, note that
  * nothing else than whitespaces are expected after the value itself.
+ * @param[in] val_len Length of the @p val_str string.
  * @param[in] min Limitation for the value which must not be lower than min.
  * @param[in] max Limitation for the value which must not be higher than max.
  * @param[in] base Numeric base for parsing:
@@ -362,12 +363,13 @@ LY_ERR ly_getutf8(const char **input, unsigned int *utf8_char, size_t *bytes_rea
  * LY_EVALID - string contains invalid value,
  * LY_SUCCESS - successful parsing.
  */
-LY_ERR ly_parse_int(const char *val_str, int64_t min, int64_t max, int base, int64_t *ret);
+LY_ERR ly_parse_int(const char *val_str, size_t val_len, int64_t min, int64_t max, int base, int64_t *ret);
 
 /**
  * @brief Parse unsigned integer with possible limitation.
  * @param[in] val_str String value containing unsigned integer, note that
  * nothing else than whitespaces are expected after the value itself.
+ * @param[in] val_len Length of the @p val_str string.
  * @param[in] max Limitation for the value which must not be higher than max.
  * @param[in] base Numeric base for parsing:
  *        0 - to accept decimal, octal, hexadecimal (e.g. in default value)
@@ -378,7 +380,7 @@ LY_ERR ly_parse_int(const char *val_str, int64_t min, int64_t max, int base, int
  * LY_EVALID - string contains invalid value,
  * LY_SUCCESS - successful parsing.
  */
-LY_ERR ly_parse_uint(const char *val_str, uint64_t max, int base, uint64_t *ret);
+LY_ERR ly_parse_uint(const char *val_str, size_t val_len, uint64_t max, int base, uint64_t *ret);
 
 /**
  * @brief mmap(2) wrapper to map input files into memory to unify parsing.

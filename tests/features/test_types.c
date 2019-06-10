@@ -208,7 +208,7 @@ test_uint(void **state)
     /* invalid value */
     data = "<uint32 xmlns=\"urn:tests:types\">-10</uint32>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
-    logbuf_assert("Invalid uint32 value \"-10\". /");
+    logbuf_assert("Value \"-10\" is out of uint32's min/max bounds. /");
 
     data = "<uint64 xmlns=\"urn:tests:types\"/>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
@@ -220,7 +220,7 @@ test_uint(void **state)
 
     data = "<uint64 xmlns=\"urn:tests:types\">10  xxx</uint64>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
-    logbuf_assert("Invalid 5. character of uint64 value \"10  xxx\". /");
+    logbuf_assert("Invalid uint64 value \"10  xxx\". /");
 
     s->func = NULL;
 }

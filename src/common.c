@@ -308,11 +308,11 @@ ly_munmap(void *addr, size_t length)
 }
 
 LY_ERR
-ly_parse_int(const char *val_str, int64_t min, int64_t max, int base, int64_t *ret)
+ly_parse_int(const char *val_str, size_t val_len, int64_t min, int64_t max, int base, int64_t *ret)
 {
     char *strptr;
 
-    LY_CHECK_ARG_RET(NULL, val_str, val_str[0], LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, val_str, val_str[0], val_len, LY_EINVAL);
 
     /* convert to 64-bit integer, all the redundant characters are handled */
     errno = 0;
@@ -320,7 +320,7 @@ ly_parse_int(const char *val_str, int64_t min, int64_t max, int base, int64_t *r
 
     /* parse the value */
     *ret = strtoll(val_str, &strptr, base);
-    if (errno) {
+    if (errno || strptr == val_str) {
         return LY_EVALID;
     } else if ((*ret < min) || (*ret > max)) {
         return LY_EDENIED;
@@ -328,7 +328,7 @@ ly_parse_int(const char *val_str, int64_t min, int64_t max, int base, int64_t *r
         while (isspace(*strptr)) {
             ++strptr;
         }
-        if (*strptr) {
+        if (*strptr && strptr < val_str + val_len) {
             return LY_EVALID;
         }
     }
@@ -336,7 +336,7 @@ ly_parse_int(const char *val_str, int64_t min, int64_t max, int base, int64_t *r
 }
 
 LY_ERR
-ly_parse_uint(const char *val_str, uint64_t max, int base, uint64_t *ret)
+ly_parse_uint(const char *val_str, size_t val_len, uint64_t max, int base, uint64_t *ret)
 {
     char *strptr;
     uint64_t u;
@@ -346,7 +346,7 @@ ly_parse_uint(const char *val_str, uint64_t max, int base, uint64_t *ret)
     errno = 0;
     strptr = NULL;
     u = strtoull(val_str, &strptr, base);
-    if (errno) {
+    if (errno || strptr == val_str) {
         return LY_EVALID;
     } else if ((u > max) || (u && val_str[0] == '-')) {
         return LY_EDENIED;
@@ -354,9 +354,11 @@ ly_parse_uint(const char *val_str, uint64_t max, int base, uint64_t *ret)
         while (isspace(*strptr)) {
             ++strptr;
         }
-        if (*strptr) {
+        if (*strptr && strptr < val_str + val_len) {
             return LY_EVALID;
         }
+    } else if (u != 0 && val_str[0] == '-') {
+        return LY_EDENIED;
     }
 
     *ret = u;

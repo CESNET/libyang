@@ -194,7 +194,6 @@ LY_ERR ly_type_parse_int(const char *datatype, int base, int64_t min, int64_t ma
  * @param[in] datatype Type of the unsigned integer for logging.
  * @param[in] base Base of the integer's lexical representation. In case of built-in types, data must be represented in decimal format (base 10),
  * but default values in schemas can be represented also as hexadecimal or octal values (base 0).
- * @param[in] min Lower bound of the type.
  * @param[in] max Upper bound of the type.
  * @param[in] value Value string to parse.
  * @param[in] value_len Length of the @p value (mandatory parameter).
@@ -202,7 +201,7 @@ LY_ERR ly_type_parse_int(const char *datatype, int base, int64_t min, int64_t ma
  * @param[out] err Error information in case of failure. The error structure can be freed by ly_err_free().
  * @return LY_ERR value according to the result of the parsing and validation.
  */
-LY_ERR ly_type_parse_uint(const char *datatype, int base, uint64_t min, uint64_t max, const char *value, size_t value_len,
+LY_ERR ly_type_parse_uint(const char *datatype, int base, uint64_t max, const char *value, size_t value_len,
                   uint64_t *ret, struct ly_err_item **err);
 
 /**
