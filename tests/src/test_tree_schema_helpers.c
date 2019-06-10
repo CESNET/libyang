@@ -267,7 +267,7 @@ int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_date, logger_setup, logger_teardown),
-        cmocka_unit_test_setup(test_revisions, logger_setup),
+        cmocka_unit_test_setup_teardown(test_revisions, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_typedef, logger_setup, logger_teardown),
     };
 

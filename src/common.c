@@ -312,6 +312,7 @@ LY_ERR
 ly_parse_int(const char *val_str, size_t val_len, int64_t min, int64_t max, int base, int64_t *ret)
 {
     char *strptr;
+    int64_t i;
 
     LY_CHECK_ARG_RET(NULL, val_str, val_str[0], val_len, LY_EINVAL);
 
@@ -320,10 +321,10 @@ ly_parse_int(const char *val_str, size_t val_len, int64_t min, int64_t max, int 
     strptr = NULL;
 
     /* parse the value */
-    *ret = strtoll(val_str, &strptr, base);
+    i = strtoll(val_str, &strptr, base);
     if (errno || strptr == val_str) {
         return LY_EVALID;
-    } else if ((*ret < min) || (*ret > max)) {
+    } else if ((i < min) || (i > max)) {
         return LY_EDENIED;
     } else if (strptr && *strptr) {
         while (isspace(*strptr)) {
@@ -333,6 +334,8 @@ ly_parse_int(const char *val_str, size_t val_len, int64_t min, int64_t max, int 
             return LY_EVALID;
         }
     }
+
+    *ret = i;
     return LY_SUCCESS;
 }
 
@@ -358,8 +361,6 @@ ly_parse_uint(const char *val_str, size_t val_len, uint64_t max, int base, uint6
         if (*strptr && strptr < val_str + val_len) {
             return LY_EVALID;
         }
-    } else if (u != 0 && val_str[0] == '-') {
-        return LY_EDENIED;
     }
 
     *ret = u;

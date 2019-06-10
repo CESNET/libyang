@@ -157,6 +157,92 @@ test_lyrealloc(void **state)
 #endif /* not APPLE */
 
 static void
+test_parse_int(void **state)
+{
+    *state = test_parse_int;
+    const char *str;
+    int64_t i = 500;
+
+    str = "10";
+    assert_int_equal(LY_SUCCESS, ly_parse_int(str, strlen(str), -10, 10, 10, &i));
+    assert_int_equal(i, 10);
+
+    /* leading zeros are allowed, trailing whitespaces are allowed */
+    str = "000\n\t  ";
+    assert_int_equal(LY_SUCCESS, ly_parse_int(str, strlen(str), -10, 10, 10, &i));
+    assert_int_equal(i, 0);
+
+    /* negative value */
+    str = "-10";
+    assert_int_equal(LY_SUCCESS, ly_parse_int(str, strlen(str), -10, 10, 10, &i));
+    assert_int_equal(i, -10);
+
+    /* non-NULL terminated string */
+    str = "+5sometext";
+    assert_int_equal(LY_SUCCESS, ly_parse_int(str, 2, -10, 10, 10, &i));
+    assert_int_equal(i, 5);
+
+    /* out of bounds value */
+    str = "11";
+    assert_int_equal(LY_EDENIED, ly_parse_int(str, strlen(str), -10, 10, 10, &i));
+    str = "-11";
+    assert_int_equal(LY_EDENIED, ly_parse_int(str, strlen(str), -10, 10, 10, &i));
+
+    /* NaN */
+    str = "zero";
+    assert_int_equal(LY_EVALID, ly_parse_int(str, strlen(str), -10, 10, 10, &i));
+
+    /* mixing number with text */
+    str = "10zero";
+    assert_int_equal(LY_EVALID, ly_parse_int(str, strlen(str), -10, 10, 10, &i));
+
+    str = "10  zero";
+    assert_int_equal(LY_EVALID, ly_parse_int(str, strlen(str), -10, 10, 10, &i));
+
+    *state = NULL;
+}
+
+static void
+test_parse_uint(void **state)
+{
+    *state = test_parse_int;
+    const char *str;
+    uint64_t u = 500;
+
+    str = "10";
+    assert_int_equal(LY_SUCCESS, ly_parse_uint(str, strlen(str), 10, 10, &u));
+    assert_int_equal(u, 10);
+
+    /* leading zeros are allowed, trailing whitespaces are allowed */
+    str = "000\n\t  ";
+    assert_int_equal(LY_SUCCESS, ly_parse_uint(str, strlen(str), 10, 10, &u));
+    assert_int_equal(u, 0);
+    /* non-NULL terminated string */
+    str = "+5sometext";
+    assert_int_equal(LY_SUCCESS, ly_parse_uint(str, 2, 10, 10, &u));
+    assert_int_equal(u, 5);
+
+    /* out of bounds value */
+    str = "11";
+    assert_int_equal(LY_EDENIED, ly_parse_uint(str, strlen(str), 10, 10, &u));
+    str = "-1";
+    assert_int_equal(LY_EDENIED, ly_parse_uint(str, strlen(str), (uint64_t)-1, 10, &u));
+
+    /* NaN */
+    str = "zero";
+    assert_int_equal(LY_EVALID, ly_parse_uint(str, strlen(str), 10, 10, &u));
+
+    /* mixing number with text */
+    str = "10zero";
+    assert_int_equal(LY_EVALID, ly_parse_uint(str, strlen(str), 10, 10, &u));
+
+    str = "10  zero";
+    assert_int_equal(LY_EVALID, ly_parse_uint(str, strlen(str), 10, 10, &u));
+
+    *state = NULL;
+}
+
+static void
 test_parse_nodeid(void **state)
 {
     (void) state; /* unused */
@@ -194,6 +280,8 @@ int main(void)
 #ifndef APPLE
         cmocka_unit_test(test_lyrealloc),
 #endif
+        cmocka_unit_test_setup_teardown(test_parse_int, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_parse_uint, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_parse_nodeid, logger_setup, logger_teardown),
     };
 
