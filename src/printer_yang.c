@@ -824,9 +824,13 @@ yprp_enum(struct ypr_ctx *ctx, const struct lysp_type_enum *items, LY_DATA_TYPE 
 
     LY_ARRAY_FOR(items, u) {
         ypr_open(ctx->out, flag);
-        ly_print(ctx->out, "%*s%s \"", INDENT, type == LY_TYPE_BITS ? "bit" : "enum");
-        ypr_encode(ctx->out, items[u].name, -1);
-        ly_print(ctx->out, "\"");
+        if (type == LY_TYPE_BITS) {
+            ly_print(ctx->out, "%*sbit %s", INDENT, items[u].name);
+        } else { /* LY_TYPE_ENUM */
+            ly_print(ctx->out, "%*senum \"", INDENT);
+            ypr_encode(ctx->out, items[u].name, -1);
+            ly_print(ctx->out, "\"");
+        }
         inner_flag = 0;
         LEVEL++;
         yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, items[u].exts, &inner_flag, 0);
@@ -1273,7 +1277,7 @@ yprc_action(struct ypr_ctx *ctx, const struct lysc_action *action)
 static void
 yprp_node_common1(struct ypr_ctx *ctx, const struct lysp_node *node, int *flag)
 {
-    ly_print(ctx->out, "\n%*s%s %s%s", INDENT, lys_nodetype2str(node->nodetype), node->name, flag ? "" : " {\n");
+    ly_print(ctx->out, "%*s%s %s%s", INDENT, lys_nodetype2str(node->nodetype), node->name, flag ? "" : " {\n");
     LEVEL++;
 
     yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, node->exts, flag, 0);
@@ -2135,7 +2139,7 @@ yang_print_parsed(struct lyout *out, const struct lys_module *module)
 
     /* linkage-stmts */
     LY_ARRAY_FOR(modp->imports, u) {
-        ly_print(out, "\n%*simport %s {\n", INDENT, modp->imports[u].module->name);
+        ly_print(out, "%s%*simport %s {\n", u ? "" : "\n", INDENT, modp->imports[u].module->name);
         LEVEL++;
         yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, modp->imports[u].exts, NULL, 0);
         ypr_substmt(ctx, LYEXT_SUBSTMT_PREFIX, 0, modp->imports[u].prefix, modp->imports[u].exts);
@@ -2149,7 +2153,7 @@ yang_print_parsed(struct lyout *out, const struct lys_module *module)
     }
     LY_ARRAY_FOR(modp->includes, u) {
         if (modp->includes[u].rev[0] || modp->includes[u].dsc || modp->includes[u].ref || modp->includes[u].exts) {
-            ly_print(out, "\n%*sinclude %s {\n", INDENT, modp->includes[u].submodule->name);
+            ly_print(out, "%s%*sinclude %s {\n", u ? "" : "\n",  INDENT, modp->includes[u].submodule->name);
             LEVEL++;
             yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, modp->includes[u].exts, NULL, 0);
             if (modp->includes[u].rev[0]) {
