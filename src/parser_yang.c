@@ -1135,6 +1135,11 @@ parse_text_field(struct lys_parser_ctx *ctx, const char **data, LYEXT_SUBSTMT su
     /* get value */
     LY_CHECK_RET(get_argument(ctx, data, arg, NULL, &word, &buf, &word_len));
 
+    if (!word_len) {
+        /* empty value */
+        word = "";
+    }
+
     /* store value and spend buf if allocated */
     INSERT_WORD(ctx, buf, *value, word, word_len);
 
