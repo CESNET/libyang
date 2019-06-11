@@ -399,6 +399,11 @@ test_stmts(void **state)
     assert_int_equal(6, len);
     assert_string_equal("output\n\t{", word);
     assert_string_equal("\n\t{", str);
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    assert_int_equal(YANG_LEFT_BRACE, kw);
+    assert_int_equal(1, len);
+    assert_string_equal("{", word);
+    assert_string_equal("", str);
 
     str = "/input { "; /* invalid slash */
     assert_int_equal(LY_EVALID, get_keyword(&ctx, &str, &kw, &word, &len));

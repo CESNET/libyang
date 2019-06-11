@@ -952,12 +952,9 @@ keyword_start:
         /* make sure we have the whole keyword */
         switch (**data) {
         case '\n':
-            ++ctx->line;
-            /* fallthrough */
-        case ' ':
         case '\t':
-            /* mandatory "sep" */
-            MOVE_INPUT(ctx, data, 1);
+        case ' ':
+            /* mandatory "sep" is just checked, not eaten so nothing in the context is updated */
             break;
         case ':':
             /* keyword is not actually a keyword, but prefix of an extension.
