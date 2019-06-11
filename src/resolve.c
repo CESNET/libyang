@@ -7610,6 +7610,7 @@ unres_schema_dup(struct lys_module *mod, struct unres_schema *unres, void *item,
         LY_CHECK_ERR_RETURN(!iff_data, LOGMEM(mod->ctx), -1);
         iff_data->fname = lydict_insert(mod->ctx, ((struct unres_iffeat_data *)unres->str_snode[i])->fname, 0);
         iff_data->node = ((struct unres_iffeat_data *)unres->str_snode[i])->node;
+        iff_data->infeature = ((struct unres_iffeat_data *)unres->str_snode[i])->infeature;
         if (unres_schema_add_node(mod, unres, new_item, type, (struct lys_node *)iff_data) == -1) {
             LOGINT(mod->ctx);
             return -1;
