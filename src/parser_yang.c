@@ -735,7 +735,7 @@ get_keyword(struct lys_parser_ctx *ctx, const char **data, enum yang_keyword *kw
                 LOGVAL_YANG(ctx, LYVE_SYNTAX_YANG, "Invalid identifier first character '/'.");
                 return LY_EVALID;
             }
-            break;
+            continue;
         case '\n':
             /* skip whitespaces (optsep) */
             ++ctx->line;
@@ -957,6 +957,7 @@ keyword_start:
         case ' ':
         case '\t':
             /* mandatory "sep" */
+            MOVE_INPUT(ctx, data, 1);
             break;
         case ':':
             /* keyword is not actually a keyword, but prefix of an extension.
