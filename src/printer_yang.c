@@ -480,7 +480,7 @@ yprc_iffeature(struct ypr_ctx *ctx, struct lysc_iffeature *feat, int *index_e, i
 static void
 yprc_iffeatures(struct ypr_ctx *ctx, struct lysc_iffeature *iff, struct lysc_ext_instance *exts, int *flag)
 {
-    unsigned int u;
+    unsigned int u, v;
     int extflag;
 
     LY_ARRAY_FOR(iff, u) {
@@ -495,11 +495,11 @@ yprc_iffeatures(struct ypr_ctx *ctx, struct lysc_iffeature *iff, struct lysc_ext
 
         /* extensions */
         LEVEL++;
-        LY_ARRAY_FOR(exts, u) {
-            if (exts[u].insubstmt != LYEXT_SUBSTMT_IFFEATURE || exts[u].insubstmt_index != u) {
+        LY_ARRAY_FOR(exts, v) {
+            if (exts[v].insubstmt != LYEXT_SUBSTMT_IFFEATURE || exts[v].insubstmt_index != u) {
                 continue;
             }
-            yprc_extension_instances(ctx, LYEXT_SUBSTMT_IFFEATURE, u, &exts[u], &extflag, 1);
+            yprc_extension_instances(ctx, LYEXT_SUBSTMT_IFFEATURE, u, &exts[v], &extflag, 1);
         }
         LEVEL--;
         ypr_close(ctx, extflag);
@@ -701,8 +701,12 @@ yprc_range(struct ypr_ctx *ctx, const struct lysc_range *range, LY_DATA_TYPE bas
     int inner_flag = 0;
     unsigned int u;
 
+    if (!range) {
+        return;
+    }
+
     ypr_open(ctx->out, flag);
-    ly_print(ctx->out, "%*s%s \"", (basetype == LY_TYPE_STRING || basetype == LY_TYPE_BINARY)? "length" : "range", INDENT);
+    ly_print(ctx->out, "%*s%s \"", INDENT, (basetype == LY_TYPE_STRING || basetype == LY_TYPE_BINARY) ? "length" : "range");
     LY_ARRAY_FOR(range->parts, u) {
         if (u > 0) {
             ly_print(ctx->out, " | ");
