@@ -724,7 +724,7 @@ finish_parsing:
     }
     mod->parsed->parsing = 0;
 
-    /* check name collisions - typedefs and groupings */
+    /* check name collisions - typedefs and TODO groupings */
     LY_CHECK_GOTO(lysp_check_typedefs(&context, mod->parsed), error_ctx);
 
     return mod;
