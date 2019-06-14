@@ -1580,6 +1580,17 @@ test_type_dec64(void **state)
     assert_int_equal(1000, ((struct lysc_type_dec*)type)->range->parts[2].min_64);
     assert_int_equal(1000, ((struct lysc_type_dec*)type)->range->parts[2].max_64);
 
+    assert_non_null(mod = lys_parse_mem(ctx, "module c {namespace urn:c;prefix c;typedef mytype {type decimal64 {"
+                                        "fraction-digits 2;range '1 .. 65535';}}leaf l {type mytype;}}", LYS_IN_YANG));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_int_equal(LY_TYPE_DEC64, type->basetype);
+    assert_int_equal(2, ((struct lysc_type_dec*)type)->fraction_digits);
+    assert_non_null(((struct lysc_type_dec*)type)->range);
+    assert_non_null(((struct lysc_type_dec*)type)->range->parts);
+    assert_int_equal(1, LY_ARRAY_SIZE(((struct lysc_type_dec*)type)->range->parts));
+    assert_int_equal(100, ((struct lysc_type_dec*)type)->range->parts[0].min_64);
+    assert_int_equal(6553500, ((struct lysc_type_dec*)type)->range->parts[0].max_64);
+
     /* invalid cases */
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; leaf l {type decimal64 {fraction-digits 0;}}}", LYS_IN_YANG));
     logbuf_assert("Invalid value \"0\" of \"fraction-digits\". Line number 1.");
@@ -1609,6 +1620,13 @@ test_type_dec64(void **state)
     assert_null(lys_parse_mem(ctx, "module de {namespace urn:de;prefix de; typedef mytype {type decimal64 {fraction-digits 2;}}"
                                         "typedef mytype2 {type mytype {fraction-digits 3;}}leaf l {type mytype2;}}", LYS_IN_YANG));
     logbuf_assert("Invalid fraction-digits substatement for type \"mytype2\" not directly derived from decimal64 built-in type. /de:l");
+
+    assert_null(lys_parse_mem(ctx, "module ee {namespace urn:c;prefix c;typedef mytype {type decimal64 {"
+                              "fraction-digits 18;range '-10 .. 0';}}leaf l {type mytype;}}", LYS_IN_YANG));
+    logbuf_assert("Invalid range restriction - invalid value \"-10000000000000000000\". /ee:l");
+    assert_null(lys_parse_mem(ctx, "module ee {namespace urn:c;prefix c;typedef mytype {type decimal64 {"
+                              "fraction-digits 18;range '0 .. 10';}}leaf l {type mytype;}}", LYS_IN_YANG));
+    logbuf_assert("Invalid range restriction - invalid value \"10000000000000000000\". /ee:l");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);

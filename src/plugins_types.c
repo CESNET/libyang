@@ -137,7 +137,7 @@ ly_type_parse_dec64(uint8_t fraction_digits, const char *value, size_t value_len
     len = len - trailing_zeros;
 
 decimal:
-    if (len - 1 - fraction > fraction_digits) {
+    if (fraction && (len - 1 - fraction > fraction_digits)) {
         asprintf(&errmsg, "Value \"%.*s\" of decimal64 type exceeds defined number (%u) of fraction digits.", (int)len, value,
                  fraction_digits);
         goto error;

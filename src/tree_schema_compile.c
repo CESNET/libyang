@@ -1139,7 +1139,7 @@ range_part_check_value_syntax(struct lysc_ctx *ctx, LY_DATA_TYPE basetype, uint8
     if (basetype == LY_TYPE_DEC64) {
 decimal:
         assert(frdigits);
-        if (*len - 1 - fraction > frdigits) {
+        if (fraction && (*len - 1 - fraction > frdigits)) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
                    "Range boundary \"%.*s\" of decimal64 type exceeds defined number (%u) of fraction digits.",
                    *len, value, frdigits);
