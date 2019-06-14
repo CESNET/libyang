@@ -1714,7 +1714,7 @@ yprc_list(struct ypr_ctx *ctx, const struct lysc_node *node)
         LY_ARRAY_FOR(list->keys, u) {
             ly_print(ctx->out, "%s%s", u > 0 ? ", " : "", list->keys[u]->name);
         }
-        ypr_close(ctx, 0);
+        ly_print(ctx->out, "\";\n");
     }
     LY_ARRAY_FOR(list->uniques, u) {
         ypr_open(ctx->out, &flag);
