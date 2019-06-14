@@ -35,6 +35,7 @@ void lysp_notif_free(struct ly_ctx *ctx, struct lysp_notif *notif);
 void lysp_augment_free(struct ly_ctx *ctx, struct lysp_augment *augment);
 void lysp_deviate_free(struct ly_ctx *ctx, struct lysp_deviate *d);
 void lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node);
+void lysp_when_free(struct ly_ctx *ctx, struct lysp_when *when);
 
 LY_ERR buf_add_char(struct ly_ctx *ctx, const char **input, size_t len, char **buf, size_t *buf_len, size_t *buf_used);
 LY_ERR buf_store_char(struct lys_parser_ctx *ctx, const char **input, enum yang_arg arg,
@@ -65,6 +66,7 @@ LY_ERR parse_module(struct lys_parser_ctx *ctx, const char **data, struct lysp_m
 LY_ERR parse_notif(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_notif **notifs);
 LY_ERR parse_submodule(struct lys_parser_ctx *ctx, const char **data, struct lysp_submodule *submod);
 LY_ERR parse_uses(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_when(struct lys_parser_ctx *ctx, const char **data, struct lysp_when **when_p);
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
@@ -2144,6 +2146,53 @@ test_augment(void **state)
     ly_ctx_destroy(ctx.ctx, NULL);
 }
 
+static void
+test_when(void **state)
+{
+    *state = test_when;
+
+    struct lys_parser_ctx ctx = {0};
+    struct lysp_when *w = NULL;
+    const char *str;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
+    assert_non_null(ctx.ctx);
+    ctx.line = 1;
+    ctx.mod_version = 2; /* simulate YANG 1.1 */
+
+    /* invalid cardinality */
+#define TEST_DUP(MEMBER, VALUE1, VALUE2) \
+    str = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
+    assert_int_equal(LY_EVALID, parse_when(&ctx, &str, &w)); \
+    logbuf_assert("Duplicate keyword \""MEMBER"\". Line number 1."); \
+    FREE_MEMBER(ctx.ctx, w, lysp_when_free); w = NULL;
+
+    TEST_DUP("description", "text1", "text2");
+    TEST_DUP("reference", "1", "2");
+#undef TEST_DUP
+
+    /* full content */
+    str = "expression {description test;reference test;m:ext;} ...";
+    assert_int_equal(LY_SUCCESS, parse_when(&ctx, &str, &w));
+    assert_non_null(w);
+    assert_string_equal("expression", w->cond);
+    assert_string_equal("test", w->dsc);
+    assert_string_equal("test", w->ref);
+    assert_non_null(w->exts);
+    FREE_MEMBER(ctx.ctx, w, lysp_when_free); w = NULL;
+
+    /* empty condition */
+    str = "\"\";";
+    assert_int_equal(LY_SUCCESS, parse_when(&ctx, &str, &w));
+    logbuf_assert("Empty argument of when statement does not make sense.");
+    assert_non_null(w);
+    assert_string_equal("", w->cond);
+    FREE_MEMBER(ctx.ctx, w, lysp_when_free); w = NULL;
+
+    *state = NULL;
+    ly_ctx_destroy(ctx.ctx, NULL);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -2170,6 +2219,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_grouping, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_uses, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_augment, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_when, logger_setup, logger_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
