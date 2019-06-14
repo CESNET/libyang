@@ -1294,7 +1294,7 @@ yprc_node_common1(struct ypr_ctx *ctx, const struct lysc_node *node, int *flag)
 {
     unsigned int u;
 
-    ly_print(ctx->out, "\n%*s%s %s%s", INDENT, lys_nodetype2str(node->nodetype), node->name, flag ? "" : " {\n");
+    ly_print(ctx->out, "%*s%s %s%s", INDENT, lys_nodetype2str(node->nodetype), node->name, flag ? "" : " {\n");
     LEVEL++;
 
     yprc_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, node->exts, flag, 0);
