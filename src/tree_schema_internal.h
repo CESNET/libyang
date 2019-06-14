@@ -512,6 +512,7 @@ LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *re
  * the precompiled list is reused to finish the compilation to preserve pointers already used in various compiled
  * if-feature structures.
  *
+ * @param[in] ctx_sc Compile context - alternative to the combination of @p ctx and @p module.
  * @param[in] ctx libyang context.
  * @param[in] module Module of the features.
  * @param[in] features_p Array if the parsed features definitions to precompile.
@@ -520,7 +521,7 @@ LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *re
  * to be processed.
  * @return LY_ERR value.
  */
-LY_ERR lys_feature_precompile(struct ly_ctx *ctx, struct lys_module *module, struct lysp_feature *features_p, struct lysc_feature **features);
+LY_ERR lys_feature_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lys_module *module, struct lysp_feature *features_p, struct lysc_feature **features);
 
 /**
  * @brief Get the @ref ifftokens from the given position in the 2bits array

@@ -1436,6 +1436,16 @@ int lysc_iffeature_value(const struct lysc_iffeature *iff);
 int lysc_feature_value(const struct lysc_feature *feature);
 
 /**
+ * @brief Generate path of the given node in the requested format.
+ *
+ * @param[in] node Schema path of this node will be generated.
+ * @param[in] pathtype Format of the path to generate.
+ * @return NULL in case of memory allocation error, path of the node otherwise.
+ * Returned string is dynamically allocated and caller is responsible to free it.
+ */
+char *lysc_path(struct lysc_node *node, LY_PATH_TYPE pathtype);
+
+/**
  * @brief Available YANG schema tree structures representing YANG module.
  */
 struct lys_module {
