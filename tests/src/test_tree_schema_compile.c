@@ -354,6 +354,21 @@ test_feature(void **state)
     assert_null(lys_parse_mem(ctx.ctx, "module ab{namespace urn:ab; prefix ab; feature f1 {if-feature f1;}}", LYS_IN_YANG));
     logbuf_assert("Feature \"f1\" is referenced from itself. /ab:{feature='f1'}");
 
+    assert_null(lys_parse_mem(ctx.ctx, "module bb{yang-version 1.1; namespace urn:bb; prefix bb; feature f {if-feature ();}}", LYS_IN_YANG));
+    logbuf_assert("Invalid value \"()\" of if-feature - number of features in expression does not match the required number "
+            "of operands for the operations. /bb:{feature='f'}");
+    assert_null(lys_parse_mem(ctx.ctx, "module bb{yang-version 1.1; namespace urn:bb; prefix bb; feature f1; feature f {if-feature 'f1(';}}", LYS_IN_YANG));
+    logbuf_assert("Invalid value \"f1(\" of if-feature - non-matching opening and closing parentheses. /bb:{feature='f'}");
+    assert_null(lys_parse_mem(ctx.ctx, "module bb{yang-version 1.1; namespace urn:bb; prefix bb; feature f1; feature f {if-feature 'and f1';}}", LYS_IN_YANG));
+    logbuf_assert("Invalid value \"and f1\" of if-feature - missing feature/expression before \"and\" operation. /bb:{feature='f'}");
+    assert_null(lys_parse_mem(ctx.ctx, "module bb{yang-version 1.1; namespace urn:bb; prefix bb; feature f1; feature f {if-feature 'f1 not ';}}", LYS_IN_YANG));
+    logbuf_assert("Invalid value \"f1 not \" of if-feature - unexpected end of expression. /bb:{feature='f'}");
+    assert_null(lys_parse_mem(ctx.ctx, "module bb{yang-version 1.1; namespace urn:bb; prefix bb; feature f1; feature f {if-feature 'f1 not not ';}}", LYS_IN_YANG));
+    logbuf_assert("Invalid value \"f1 not not \" of if-feature - unexpected end of expression. /bb:{feature='f'}");
+    assert_null(lys_parse_mem(ctx.ctx, "module bb{yang-version 1.1; namespace urn:bb; prefix bb; feature f1; feature f2; "
+                              "feature f {if-feature 'or f1 f2';}}", LYS_IN_YANG));
+    logbuf_assert("Invalid value \"or f1 f2\" of if-feature - missing feature/expression before \"or\" operation. /bb:{feature='f'}");
+
     /* import reference */
     assert_non_null(modp = lys_parse_mem(ctx.ctx, str, LYS_IN_YANG));
     assert_int_equal(LY_SUCCESS, lys_feature_enable(modp, "f1"));

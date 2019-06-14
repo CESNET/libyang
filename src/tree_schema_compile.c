@@ -444,7 +444,9 @@ lys_compile_iffeature(struct lysc_ctx *ctx, const char **value, struct lysc_iffe
         }
 
         if (!strncmp(&c[i], "not", r = 3) || !strncmp(&c[i], "and", r = 3) || !strncmp(&c[i], "or", r = 2)) {
-            if (c[i + r] == '\0') {
+            int sp;
+            for(sp = 0; c[i + r + sp] && isspace(c[i + r + sp]); sp++);
+            if (c[i + r + sp] == '\0') {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
                        "Invalid value \"%s\" of if-feature - unexpected end of expression.", *value);
                 return LY_EVALID;
@@ -461,7 +463,13 @@ lys_compile_iffeature(struct lysc_ctx *ctx, const char **value, struct lysc_iffe
                     last_not = 1;
                 }
             } else { /* and, or */
+                if (f_exp != f_size) {
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                           "Invalid value \"%s\" of if-feature - missing feature/expression before \"%.*s\" operation.", *value, r, &c[i]);
+                    return LY_EVALID;
+                }
                 f_exp++;
+
                 /* not a not operation */
                 last_not = 0;
             }
@@ -473,17 +481,24 @@ lys_compile_iffeature(struct lysc_ctx *ctx, const char **value, struct lysc_iffe
         expr_size++;
 
         while (!isspace(c[i])) {
-            if (!c[i] || c[i] == ')') {
+            if (!c[i] || c[i] == ')' || c[i] == '(') {
                 i--;
                 break;
             }
             i++;
         }
     }
-    if (j || f_exp != f_size) {
+    if (j) {
         /* not matching count of ( and ) */
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
                "Invalid value \"%s\" of if-feature - non-matching opening and closing parentheses.", *value);
+        return LY_EVALID;
+    }
+    if (f_exp != f_size) {
+        /* features do not match the needed arguments for the logical operations */
+        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+               "Invalid value \"%s\" of if-feature - number of features in expression does not match "
+               "the required number of operands for the operations.", *value);
         return LY_EVALID;
     }
 
