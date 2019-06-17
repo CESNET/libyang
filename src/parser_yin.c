@@ -47,6 +47,29 @@ const char *const yin_attr_list[] = {
     [YIN_ARG_XMLNS] = "xmlns",
 };
 
+enum yang_keyword
+yin_match_keyword(const char *data, size_t len, size_t prefix_len)
+{
+    if (!data || len == 0) {
+        return YANG_NONE;
+    }
+
+    const char *start = data;
+    enum yang_keyword kw = match_kw(NULL, &data);
+
+
+    if (prefix_len != 0) {
+        return YANG_CUSTOM;
+    }
+
+    if (data - start == (long int)len) {
+        return kw;
+    } else {
+        return YANG_NONE;
+    }
+}
+
+
 enum YIN_ARGUMENT
 match_argument_name(const char *name, size_t len)
 {
@@ -150,7 +173,7 @@ yin_parse_attribute(struct lyxml_context *xml_ctx, const char **data, enum YIN_A
         }
     }
 
-    /* check validation of attributes */
+    /* validation of attributes */
     LY_ARRAY_FOR(argument_array, struct yin_arg_record, iter) {
         ns = lyxml_ns_get(xml_ctx, iter->prefix, iter->prefix_len);
         if (ns && IS_YIN_NS(ns->uri)) {
@@ -263,7 +286,7 @@ yin_parse_import(struct lyxml_context *xml_ctx, const char *module_prefix, const
     LY_CHECK_RET(yin_parse_attribute(xml_ctx, data, YIN_ARG_MODULE, &imp->name));
 
     while ((ret = lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len) == LY_SUCCESS && name != NULL)) {
-        kw = match_keyword(name, name_len, prefix_len);
+        kw = yin_match_keyword(name, name_len, prefix_len);
         switch (kw) {
         case YANG_PREFIX:
             LY_CHECK_ERR_RET(imp->prefix, LOGVAL_YANG(xml_ctx, LY_VCODE_DUPSTMT, "prefix"), LY_EVALID);
@@ -383,7 +406,7 @@ parse_mod(struct lyxml_context *xml_ctx, const char **data, struct lysp_module *
         LY_CHECK_RET(lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len));
 
         if (name) {
-            kw = match_keyword(name, name_len, prefix_len);
+            kw = yin_match_keyword(name, name_len, prefix_len);
             switch (kw) {
 
             /* module header */
@@ -450,7 +473,7 @@ yin_parse_submodule(struct ly_ctx *ctx, const char *data, struct lysp_submodule 
     /* check submodule */
     ret = lyxml_get_element(&xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-    kw = match_keyword(name, name_len, prefix_len);
+    kw = yin_match_keyword(name, name_len, prefix_len);
     if (kw == YANG_MODULE) {
         LOGERR(ctx, LY_EDENIED, "Input data contains module in situation when a submodule is expected.");
         ret = LY_EINVAL;
@@ -502,7 +525,7 @@ yin_parse_module(struct ly_ctx *ctx, const char *data, struct lys_module *mod)
     /* check submodule */
     ret = lyxml_get_element(xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-    kw = match_keyword(name, name_len, prefix_len);
+    kw = yin_match_keyword(name, name_len, prefix_len);
     if (kw == YANG_SUBMODULE) {
         LOGERR(ctx, LY_EDENIED, "Input data contains submodule which cannot be parsed directly without its main module.");
         ret = LY_EINVAL;

@@ -1259,201 +1259,207 @@ lysp_find_module(struct ly_ctx *ctx, const struct lysp_module *mod)
 }
 
 enum yang_keyword
-match_keyword(const char *data, size_t len, size_t prefix_len)
+match_kw(struct lys_parser_ctx *ctx, const char **data)
 {
-    if (!data || len == 0) {
-        return YANG_NONE;
-    }
+/**
+ * @brief Move the DATA pointer by COUNT items. Also updates the indent value in yang parser context
+ * @param[in] CTX yang parser context to update its indent value.
+ * @param[in,out] DATA pointer to move
+ * @param[in] COUNT number of items for which the DATA pointer is supposed to move on.
+ */
+#define MOVE_IN(CTX, DATA, COUNT) (*(DATA))+=COUNT;if(CTX){(CTX)->indent+=COUNT;}
+#define IF_KW(STR, LEN, STMT) if (!strncmp(*(data), STR, LEN)) {MOVE_IN(ctx, data, LEN);*kw=STMT;}
+#define IF_KW_PREFIX(STR, LEN) if (!strncmp(*(data), STR, LEN)) {MOVE_IN(ctx, data, LEN);
+#define IF_KW_PREFIX_END }
 
-#define MOVE_IN(DATA, COUNT) (data)+=COUNT;
-#define IF_KEYWORD(STR, LEN, STMT) if (!strncmp((data), STR, LEN)) {MOVE_IN(data, LEN);kw=STMT;}
-#define IF_KEYWORD_PREFIX(STR, LEN) if (!strncmp((data), STR, LEN)) {MOVE_IN(data, LEN);
-#define IF_KEYWORD_PREFIX_END }
-
-    const char *start = data;
-    enum yang_keyword kw = YANG_NONE;
-    /* try to match the keyword itself */
-    switch (*data) {
+    enum yang_keyword result = YANG_NONE;
+    enum yang_keyword *kw = &result;
+    /* read the keyword itself */
+    switch (**data) {
     case 'a':
-        MOVE_IN(data, 1);
-        IF_KEYWORD("rgument", 7, YANG_ARGUMENT)
-        else IF_KEYWORD("ugment", 6, YANG_AUGMENT)
-        else IF_KEYWORD("ction", 5, YANG_ACTION)
-        else IF_KEYWORD_PREFIX("ny", 2)
-            IF_KEYWORD("data", 4, YANG_ANYDATA)
-            else IF_KEYWORD("xml", 3, YANG_ANYXML)
-        IF_KEYWORD_PREFIX_END
+        MOVE_IN(ctx, data, 1);
+        IF_KW("rgument", 7, YANG_ARGUMENT)
+        else IF_KW("ugment", 6, YANG_AUGMENT)
+        else IF_KW("ction", 5, YANG_ACTION)
+        else IF_KW_PREFIX("ny", 2)
+            IF_KW("data", 4, YANG_ANYDATA)
+            else IF_KW("xml", 3, YANG_ANYXML)
+        IF_KW_PREFIX_END
         break;
     case 'b':
-        MOVE_IN(data, 1);
-        IF_KEYWORD("ase", 3, YANG_BASE)
-        else IF_KEYWORD("elongs-to", 9, YANG_BELONGS_TO)
-        else IF_KEYWORD("it", 2, YANG_BIT)
+        MOVE_IN(ctx, data, 1);
+        IF_KW("ase", 3, YANG_BASE)
+        else IF_KW("elongs-to", 9, YANG_BELONGS_TO)
+        else IF_KW("it", 2, YANG_BIT)
         break;
     case 'c':
-        MOVE_IN(data, 1);
-        IF_KEYWORD("ase", 3, YANG_CASE)
-        else IF_KEYWORD("hoice", 5, YANG_CHOICE)
-        else IF_KEYWORD_PREFIX("on", 2)
-            IF_KEYWORD("fig", 3, YANG_CONFIG)
-            else IF_KEYWORD_PREFIX("ta", 2)
-                IF_KEYWORD("ct", 2, YANG_CONTACT)
-                else IF_KEYWORD("iner", 4, YANG_CONTAINER)
-            IF_KEYWORD_PREFIX_END
-        IF_KEYWORD_PREFIX_END
+        MOVE_IN(ctx, data, 1);
+        IF_KW("ase", 3, YANG_CASE)
+        else IF_KW("hoice", 5, YANG_CHOICE)
+        else IF_KW_PREFIX("on", 2)
+            IF_KW("fig", 3, YANG_CONFIG)
+            else IF_KW_PREFIX("ta", 2)
+                IF_KW("ct", 2, YANG_CONTACT)
+                else IF_KW("iner", 4, YANG_CONTAINER)
+            IF_KW_PREFIX_END
+        IF_KW_PREFIX_END
         break;
     case 'd':
-        MOVE_IN(data, 1);
-        IF_KEYWORD_PREFIX("e", 1)
-            IF_KEYWORD("fault", 5, YANG_DEFAULT)
-            else IF_KEYWORD("scription", 9, YANG_DESCRIPTION)
-            else IF_KEYWORD_PREFIX("viat", 4)
-                IF_KEYWORD("e", 1, YANG_DEVIATE)
-                else IF_KEYWORD("ion", 3, YANG_DEVIATION)
-            IF_KEYWORD_PREFIX_END
-        IF_KEYWORD_PREFIX_END
+        MOVE_IN(ctx, data, 1);
+        IF_KW_PREFIX("e", 1)
+            IF_KW("fault", 5, YANG_DEFAULT)
+            else IF_KW("scription", 9, YANG_DESCRIPTION)
+            else IF_KW_PREFIX("viat", 4)
+                IF_KW("e", 1, YANG_DEVIATE)
+                else IF_KW("ion", 3, YANG_DEVIATION)
+            IF_KW_PREFIX_END
+        IF_KW_PREFIX_END
         break;
     case 'e':
-        MOVE_IN(data, 1);
-        IF_KEYWORD("num", 3, YANG_ENUM)
-        else IF_KEYWORD_PREFIX("rror-", 5)
-            IF_KEYWORD("app-tag", 7, YANG_ERROR_APP_TAG)
-            else IF_KEYWORD("message", 7, YANG_ERROR_MESSAGE)
-        IF_KEYWORD_PREFIX_END
-        else IF_KEYWORD("xtension", 8, YANG_EXTENSION)
+        MOVE_IN(ctx, data, 1);
+        IF_KW("num", 3, YANG_ENUM)
+        else IF_KW_PREFIX("rror-", 5)
+            IF_KW("app-tag", 7, YANG_ERROR_APP_TAG)
+            else IF_KW("message", 7, YANG_ERROR_MESSAGE)
+        IF_KW_PREFIX_END
+        else IF_KW("xtension", 8, YANG_EXTENSION)
         break;
     case 'f':
-        MOVE_IN(data, 1);
-        IF_KEYWORD("eature", 6, YANG_FEATURE)
-        else IF_KEYWORD("raction-digits", 14, YANG_FRACTION_DIGITS)
+        MOVE_IN(ctx, data, 1);
+        IF_KW("eature", 6, YANG_FEATURE)
+        else IF_KW("raction-digits", 14, YANG_FRACTION_DIGITS)
         break;
     case 'g':
-        MOVE_IN(data, 1);
-        IF_KEYWORD("rouping", 7, YANG_GROUPING)
+        MOVE_IN(ctx, data, 1);
+        IF_KW("rouping", 7, YANG_GROUPING)
         break;
     case 'i':
-        MOVE_IN(data, 1);
-        IF_KEYWORD("dentity", 7, YANG_IDENTITY)
-        else IF_KEYWORD("f-feature", 9, YANG_IF_FEATURE)
-        else IF_KEYWORD("mport", 5, YANG_IMPORT)
-        else IF_KEYWORD_PREFIX("n", 1)
-            IF_KEYWORD("clude", 5, YANG_INCLUDE)
-            else IF_KEYWORD("put", 3, YANG_INPUT)
-        IF_KEYWORD_PREFIX_END
+        MOVE_IN(ctx, data, 1);
+        IF_KW("dentity", 7, YANG_IDENTITY)
+        else IF_KW("f-feature", 9, YANG_IF_FEATURE)
+        else IF_KW("mport", 5, YANG_IMPORT)
+        else IF_KW_PREFIX("n", 1)
+            IF_KW("clude", 5, YANG_INCLUDE)
+            else IF_KW("put", 3, YANG_INPUT)
+        IF_KW_PREFIX_END
         break;
     case 'k':
-        MOVE_IN(data, 1);
-        IF_KEYWORD("ey", 2, YANG_KEY)
+        MOVE_IN(ctx, data, 1);
+        IF_KW("ey", 2, YANG_KEY)
         break;
     case 'l':
-        MOVE_IN(data, 1);
-        IF_KEYWORD_PREFIX("e", 1)
-            IF_KEYWORD("af-list", 7, YANG_LEAF_LIST)
-            else IF_KEYWORD("af", 2, YANG_LEAF)
-            else IF_KEYWORD("ngth", 4, YANG_LENGTH)
-        IF_KEYWORD_PREFIX_END
-        else IF_KEYWORD("ist", 3, YANG_LIST)
+        MOVE_IN(ctx, data, 1);
+        IF_KW_PREFIX("e", 1)
+            IF_KW("af-list", 7, YANG_LEAF_LIST)
+            else IF_KW("af", 2, YANG_LEAF)
+            else IF_KW("ngth", 4, YANG_LENGTH)
+        IF_KW_PREFIX_END
+        else IF_KW("ist", 3, YANG_LIST)
         break;
     case 'm':
-        MOVE_IN(data, 1);
-        IF_KEYWORD_PREFIX("a", 1)
-            IF_KEYWORD("ndatory", 7, YANG_MANDATORY)
-            else IF_KEYWORD("x-elements", 10, YANG_MAX_ELEMENTS)
-        IF_KEYWORD_PREFIX_END
-        else IF_KEYWORD("in-elements", 11, YANG_MIN_ELEMENTS)
-        else IF_KEYWORD("ust", 3, YANG_MUST)
-        else IF_KEYWORD_PREFIX("od", 2)
-            IF_KEYWORD("ule", 3, YANG_MODULE)
-            else IF_KEYWORD("ifier", 5, YANG_MODIFIER)
-        IF_KEYWORD_PREFIX_END
+        MOVE_IN(ctx, data, 1);
+        IF_KW_PREFIX("a", 1)
+            IF_KW("ndatory", 7, YANG_MANDATORY)
+            else IF_KW("x-elements", 10, YANG_MAX_ELEMENTS)
+        IF_KW_PREFIX_END
+        else IF_KW("in-elements", 11, YANG_MIN_ELEMENTS)
+        else IF_KW("ust", 3, YANG_MUST)
+        else IF_KW_PREFIX("od", 2)
+            IF_KW("ule", 3, YANG_MODULE)
+            else IF_KW("ifier", 5, YANG_MODIFIER)
+        IF_KW_PREFIX_END
         break;
     case 'n':
-        MOVE_IN(data, 1);
-        IF_KEYWORD("amespace", 8, YANG_NAMESPACE)
-        else IF_KEYWORD("otification", 11, YANG_NOTIFICATION)
+        MOVE_IN(ctx, data, 1);
+        IF_KW("amespace", 8, YANG_NAMESPACE)
+        else IF_KW("otification", 11, YANG_NOTIFICATION)
         break;
     case 'o':
-        MOVE_IN(data, 1);
-        IF_KEYWORD_PREFIX("r", 1)
-            IF_KEYWORD("dered-by", 8, YANG_ORDERED_BY)
-            else IF_KEYWORD("ganization", 10, YANG_ORGANIZATION)
-        IF_KEYWORD_PREFIX_END
-        else IF_KEYWORD("utput", 5, YANG_OUTPUT)
+        MOVE_IN(ctx, data, 1);
+        IF_KW_PREFIX("r", 1)
+            IF_KW("dered-by", 8, YANG_ORDERED_BY)
+            else IF_KW("ganization", 10, YANG_ORGANIZATION)
+        IF_KW_PREFIX_END
+        else IF_KW("utput", 5, YANG_OUTPUT)
         break;
     case 'p':
-        MOVE_IN(data, 1);
-        IF_KEYWORD("ath", 3, YANG_PATH)
-        else IF_KEYWORD("attern", 6, YANG_PATTERN)
-        else IF_KEYWORD("osition", 7, YANG_POSITION)
-        else IF_KEYWORD_PREFIX("re", 2)
-            IF_KEYWORD("fix", 3, YANG_PREFIX)
-            else IF_KEYWORD("sence", 5, YANG_PRESENCE)
-        IF_KEYWORD_PREFIX_END
+        MOVE_IN(ctx, data, 1);
+        IF_KW("ath", 3, YANG_PATH)
+        else IF_KW("attern", 6, YANG_PATTERN)
+        else IF_KW("osition", 7, YANG_POSITION)
+        else IF_KW_PREFIX("re", 2)
+            IF_KW("fix", 3, YANG_PREFIX)
+            else IF_KW("sence", 5, YANG_PRESENCE)
+        IF_KW_PREFIX_END
         break;
     case 'r':
-        MOVE_IN(data, 1);
-        IF_KEYWORD("ange", 4, YANG_RANGE)
-        else IF_KEYWORD_PREFIX("e", 1)
-            IF_KEYWORD_PREFIX("f", 1)
-                IF_KEYWORD("erence", 6, YANG_REFERENCE)
-                else IF_KEYWORD("ine", 3, YANG_REFINE)
-            IF_KEYWORD_PREFIX_END
-            else IF_KEYWORD("quire-instance", 14, YANG_REQUIRE_INSTANCE)
-            else IF_KEYWORD("vision-date", 11, YANG_REVISION_DATE)
-            else IF_KEYWORD("vision", 6, YANG_REVISION)
-        IF_KEYWORD_PREFIX_END
-        else IF_KEYWORD("pc", 2, YANG_RPC)
+        MOVE_IN(ctx, data, 1);
+        IF_KW("ange", 4, YANG_RANGE)
+        else IF_KW_PREFIX("e", 1)
+            IF_KW_PREFIX("f", 1)
+                IF_KW("erence", 6, YANG_REFERENCE)
+                else IF_KW("ine", 3, YANG_REFINE)
+            IF_KW_PREFIX_END
+            else IF_KW("quire-instance", 14, YANG_REQUIRE_INSTANCE)
+            else IF_KW("vision-date", 11, YANG_REVISION_DATE)
+            else IF_KW("vision", 6, YANG_REVISION)
+        IF_KW_PREFIX_END
+        else IF_KW("pc", 2, YANG_RPC)
         break;
     case 's':
-        MOVE_IN(data, 1);
-        IF_KEYWORD("tatus", 5, YANG_STATUS)
-        else IF_KEYWORD("ubmodule", 8, YANG_SUBMODULE)
+        MOVE_IN(ctx, data, 1);
+        IF_KW("tatus", 5, YANG_STATUS)
+        else IF_KW("ubmodule", 8, YANG_SUBMODULE)
         break;
     case 't':
-        MOVE_IN(data, 1);
-        IF_KEYWORD("ypedef", 6, YANG_TYPEDEF)
-        else IF_KEYWORD("ype", 3, YANG_TYPE)
+        MOVE_IN(ctx, data, 1);
+        IF_KW("ypedef", 6, YANG_TYPEDEF)
+        else IF_KW("ype", 3, YANG_TYPE)
         break;
     case 'u':
-        MOVE_IN(data, 1);
-        IF_KEYWORD_PREFIX("ni", 2)
-            IF_KEYWORD("que", 3, YANG_UNIQUE)
-            else IF_KEYWORD("ts", 2, YANG_UNITS)
-        IF_KEYWORD_PREFIX_END
-        else IF_KEYWORD("ses", 3, YANG_USES)
+        MOVE_IN(ctx, data, 1);
+        IF_KW_PREFIX("ni", 2)
+            IF_KW("que", 3, YANG_UNIQUE)
+            else IF_KW("ts", 2, YANG_UNITS)
+        IF_KW_PREFIX_END
+        else IF_KW("ses", 3, YANG_USES)
         break;
     case 'v':
-        MOVE_IN(data, 1);
-        IF_KEYWORD("alue", 4, YANG_VALUE)
+        MOVE_IN(ctx, data, 1);
+        IF_KW("alue", 4, YANG_VALUE)
         break;
     case 'w':
-        MOVE_IN(data, 1);
-        IF_KEYWORD("hen", 3, YANG_WHEN)
+        MOVE_IN(ctx, data, 1);
+        IF_KW("hen", 3, YANG_WHEN)
         break;
     case 'y':
-        MOVE_IN(data, 1);
-        IF_KEYWORD("ang-version", 11, YANG_YANG_VERSION)
-        else IF_KEYWORD("in-element", 10, YANG_YIN_ELEMENT)
+        MOVE_IN(ctx, data, 1);
+        IF_KW("ang-version", 11, YANG_YANG_VERSION)
+        else IF_KW("in-element", 10, YANG_YIN_ELEMENT)
         break;
     default:
+        /* if context is not NULL we are matching keyword from YANG data*/
+        if (ctx) {
+            if (**data == ';') {
+                MOVE_IN(ctx, data, 1);
+                *kw = YANG_SEMICOLON;
+            } else if (**data == '{') {
+                MOVE_IN(ctx, data, 1);
+                *kw = YANG_LEFT_BRACE;
+            } else if (**data == '}') {
+                MOVE_IN(ctx, data, 1);
+                *kw = YANG_RIGHT_BRACE;
+            }
+        }
         break;
     }
 
+#undef IF_KW
+#undef IF_KW_PREFIX
+#undef IF_KW_PREFIX_END
 #undef MOVE_IN
-#undef IF_KEYWORD
-#undef IF_KEYWORD_PREFIX
-#undef IF_KEYWORD_PREFIX_END
 
-    if (prefix_len != 0) {
-        return YANG_CUSTOM;
-    }
-
-    if (data - start == (long int)len) {
-        return kw;
-    } else {
-        return YANG_NONE;
-    }
-
+    return result;
 }
 
 unsigned int

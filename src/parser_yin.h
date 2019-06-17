@@ -28,7 +28,7 @@ extern const char *const yin_attr_list[];
 #define YIN_NS_URI "urn:ietf:params:xml:ns:yang:yin:1"
 
 enum YIN_ARGUMENT {
-    YIN_ARG_UNKNOWN = 0,   /**< parsed argument can not be matched with any known yin argument keyword */
+    YIN_ARG_UNKNOWN = 0,   /**< parsed argument can not be matched with any supported yin argument keyword */
     YIN_ARG_NAME,          /**< argument name */
     YIN_ARG_TARGET_NODE,   /**< argument target-node */
     YIN_ARG_MODULE,        /**< argument module */
@@ -39,17 +39,20 @@ enum YIN_ARGUMENT {
     YIN_ARG_DATE,          /**< argument data */
     YIN_ARG_TAG,           /**< argument tag */
     YIN_ARG_XMLNS,         /**< argument xmlns */
-    YIN_ARG_NONE,          /**< */
+    YIN_ARG_NONE,          /**< empty (special value) */
 };
 
+/**
+ * @brief structure to store instance of xml attribute
+ */
 struct yin_arg_record {
-    const char *prefix;
-    size_t prefix_len;
-    const char *name;
-    size_t name_len;
-    char *content;
-    size_t content_len;
-    int dynamic_content;
+    const char *prefix;   /**< start of prefix */
+    size_t prefix_len;    /**< length of prefix */
+    const char *name;     /**< start of name */
+    size_t name_len;      /**< length of name */
+    char *content;        /**< start of content */
+    size_t content_len;   /**< length of content */
+    int dynamic_content;  /**< is set to 1 iff content is dynamically allocated 0 otherwise */
 };
 
 /**
@@ -84,5 +87,16 @@ LY_ERR parse_text_element(struct lyxml_context *xml_ctx, const char **data, cons
  * @return LY_ERR values.
  */
 LY_ERR yin_parse_import(struct lyxml_context *xml_ctx, const char *module_prefix, const char **data, struct lysp_import **imports);
+
+/**
+ * @brief match yang keyword from yin data
+ *
+ * param[in,out] data Data to read from.
+ * param[in] len lenght of keyword.
+ * param[in] prefix_len lenght of prefix.
+ *
+ * @return yang_keyword values.
+ */
+enum yang_keyword yin_match_keyword(const char *data, size_t len, size_t prefix_len);
 
 #endif /* LY_PARSER_YIN_H_*/
