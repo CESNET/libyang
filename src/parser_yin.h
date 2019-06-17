@@ -49,6 +49,7 @@ struct yin_arg_record {
     size_t name_len;
     char *content;
     size_t content_len;
+    int dynamic_content;
 };
 
 /**

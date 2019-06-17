@@ -173,7 +173,7 @@ test_yin_parse_module(void **state)
     st = reset_state(state);
     ret = yin_parse_module(st->ctx,
                            "<module>\
-                           </module>",
+                            </module>",
                            st->mod);
     assert_int_equal(ret, LY_EVALID);
     logbuf_assert("Missing argument name of a module Line number 1.");

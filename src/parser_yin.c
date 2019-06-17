@@ -129,23 +129,23 @@ static LY_ERR
 yin_parse_attribute(struct lyxml_context *xml_ctx, const char **data, enum YIN_ARGUMENT arg_type, const char **arg_val)
 {
     LY_ERR ret = LY_SUCCESS;
-
-    char *buf = NULL;
-    size_t buf_len = 0;
-    int dynamic;
     enum YIN_ARGUMENT arg = YIN_ARG_UNKNOWN;
     struct yin_arg_record *argument_array = NULL, *argument_record = NULL, *iter = NULL;
     const struct lyxml_ns *ns = NULL;
 
     /* load all attributes first */
-    while(xml_ctx->status == LYXML_ATTRIBUTE) {
+    while (xml_ctx->status == LYXML_ATTRIBUTE) {
         LY_ARRAY_NEW_GOTO(xml_ctx->ctx, argument_array, argument_record, ret, cleanup);
         ret = lyxml_get_attribute(xml_ctx, data, &argument_record->prefix, &argument_record->prefix_len,
                                   &argument_record->name, &argument_record->name_len);
         LY_CHECK_ERR_GOTO(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), cleanup);
 
         if (xml_ctx->status == LYXML_ATTR_CONTENT) {
-            ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &argument_record->content, &argument_record->content_len, &dynamic);
+            argument_record->content = NULL;
+            argument_record->content_len = 0;
+            argument_record->dynamic_content = 0;
+            ret = lyxml_get_string(xml_ctx, data, &argument_record->content, &argument_record->content_len,
+                                   &argument_record->content, &argument_record->content_len, &argument_record->dynamic_content);
             LY_CHECK_ERR_GOTO(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), cleanup);
         }
     }
@@ -158,9 +158,16 @@ yin_parse_attribute(struct lyxml_context *xml_ctx, const char **data, enum YIN_A
             if (arg == YIN_ARG_NONE) {
                 continue;
             } else if (arg == arg_type) {
-                *arg_val = lydict_insert(xml_ctx->ctx, iter->content, iter->content_len);
-                LY_CHECK_ERR_GOTO(!(*arg_val), LOGMEM(xml_ctx->ctx); ret = LY_EMEM, cleanup);
+                if (iter->dynamic_content) {
+                    *arg_val = lydict_insert_zc(xml_ctx->ctx, iter->content);
+                } else {
+                    *arg_val = lydict_insert(xml_ctx->ctx, iter->content, iter->content_len);
+                    LY_CHECK_ERR_GOTO(!(*arg_val), LOGMEM(xml_ctx->ctx); ret = LY_EMEM, cleanup);
+                }
             } else {
+                if (iter->dynamic_content) {
+                    free(iter->content);
+                }
                 LOGERR(xml_ctx->ctx, LYVE_SYNTAX_YIN, "Unexpected attribute \"%.*s\".", iter->name_len, iter->name);
                 ret = LY_EVALID;
                 goto cleanup;
@@ -188,7 +195,7 @@ parse_text_element(struct lyxml_context *xml_ctx, const char **data, const char 
     LY_ERR ret = LY_SUCCESS;
     char *buf = NULL, *out = NULL;
     size_t buf_len = 0, out_len = 0;
-    int dynamic;
+    int dynamic = 0;
 
     ret = yin_parse_attribute(xml_ctx, data, YIN_ARG_NONE, NULL);
     LY_CHECK_RET(ret);
@@ -197,8 +204,12 @@ parse_text_element(struct lyxml_context *xml_ctx, const char **data, const char 
     if (xml_ctx->status == LYXML_ELEM_CONTENT) {
         ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
         LY_CHECK_RET(ret);
-        *value = lydict_insert(xml_ctx->ctx, out, out_len);
-        LY_CHECK_ERR_RET(!(*value), LOGMEM(xml_ctx->ctx), LY_EMEM);
+        if (dynamic) {
+            *value = lydict_insert_zc(xml_ctx->ctx, buf);
+        } else {
+            *value = lydict_insert(xml_ctx->ctx, out, out_len);
+            LY_CHECK_ERR_RET(!(*value), LOGMEM(xml_ctx->ctx), LY_EMEM);
+        }
     }
 
     return LY_SUCCESS;
@@ -303,7 +314,7 @@ parse_mod(struct lyxml_context *xml_ctx, const char **data, struct lysp_module *
 
     char *buf = NULL, *out = NULL;
     size_t buf_len = 0, out_len = 0;
-    int dynamic;
+    int dynamic = 0;
 
     yin_parse_attribute(xml_ctx, data, YIN_ARG_NAME, &(*mod)->mod->name);
 
