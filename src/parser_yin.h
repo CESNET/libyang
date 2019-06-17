@@ -39,7 +39,16 @@ enum YIN_ARGUMENT {
     YIN_ARG_DATE,          /**< argument data */
     YIN_ARG_TAG,           /**< argument tag */
     YIN_ARG_XMLNS,         /**< argument xmlns */
-    YIN_ARG_NONE,          /**< special value to specify no valid argument except xmlns, do not confuse with YIN_ARG_UNKNOWN */
+    YIN_ARG_NONE,          /**< */
+};
+
+struct yin_arg_record {
+    const char *prefix;
+    size_t prefix_len;
+    const char *name;
+    size_t name_len;
+    char *content;
+    size_t content_len;
 };
 
 /**

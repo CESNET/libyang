@@ -52,7 +52,7 @@ match_argument_name(const char *name, size_t len)
 {
     enum YIN_ARGUMENT arg = YIN_ARG_UNKNOWN;
     size_t already_read = 0;
-    LY_CHECK_RET(len == 0, YIN_ARG_UNKNOWN);
+    LY_CHECK_RET(len == 0, YIN_ARG_NONE);
 
 #define IF_ARG(STR, LEN, STMT) if (!strncmp((name) + already_read, STR, LEN)) {already_read+=LEN;arg=STMT;}
 #define IF_ARG_PREFIX(STR, LEN) if (!strncmp((name) + already_read, STR, LEN)) {already_read+=LEN;
@@ -129,48 +129,48 @@ static LY_ERR
 yin_parse_attribute(struct lyxml_context *xml_ctx, const char **data, enum YIN_ARGUMENT arg_type, const char **arg_val)
 {
     LY_ERR ret = LY_SUCCESS;
-    const char *prefix, *name;
-    size_t prefix_len, name_len;
 
-    char *buf = NULL, *out = NULL;
-    size_t buf_len = 0, out_len = 0;
+    char *buf = NULL;
+    size_t buf_len = 0;
     int dynamic;
     enum YIN_ARGUMENT arg = YIN_ARG_UNKNOWN;
+    struct yin_arg_record *argument_array = NULL, *argument_record = NULL, *iter = NULL;
+    const struct lyxml_ns *ns = NULL;
 
-    while (xml_ctx->status == LYXML_ATTRIBUTE) {
-        ret = lyxml_get_attribute(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
-        LY_CHECK_ERR_RET(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), LY_EMEM);
+    /* load all attributes first */
+    while(xml_ctx->status == LYXML_ATTRIBUTE) {
+        LY_ARRAY_NEW_GOTO(xml_ctx->ctx, argument_array, argument_record, ret, cleanup);
+        ret = lyxml_get_attribute(xml_ctx, data, &argument_record->prefix, &argument_record->prefix_len,
+                                  &argument_record->name, &argument_record->name_len);
+        LY_CHECK_ERR_GOTO(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), cleanup);
 
-        const struct lyxml_ns *ns = lyxml_ns_get(xml_ctx, prefix, prefix_len);
-        /*
-         * check if loaded attribute is from YIN namespace and if it's of expected type
-         * attributes from different namespaces are silently ignored
-         */
+        if (xml_ctx->status == LYXML_ATTR_CONTENT) {
+            ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &argument_record->content, &argument_record->content_len, &dynamic);
+            LY_CHECK_ERR_GOTO(ret != LY_SUCCESS, LOGMEM(xml_ctx->ctx), cleanup);
+        }
+    }
+
+    /* check validation of attributes */
+    LY_ARRAY_FOR(argument_array, struct yin_arg_record, iter) {
+        ns = lyxml_ns_get(xml_ctx, iter->prefix, iter->prefix_len);
         if (ns && IS_YIN_NS(ns->uri)) {
-            arg = match_argument_name(name, name_len);
-            if (arg == arg_type) {
-                LY_CHECK_RET(ret);
-                ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
-                LY_CHECK_RET(ret);
-                *arg_val = lydict_insert(xml_ctx->ctx, out, out_len);
-                LY_CHECK_ERR_RET(!(*arg_val), LOGMEM(xml_ctx->ctx), LY_EMEM);
-            } else if (arg_type == YIN_ARG_NONE) {
+            arg = match_argument_name(iter->name, iter->name_len);
+            if (arg == YIN_ARG_NONE) {
                 continue;
+            } else if (arg == arg_type) {
+                *arg_val = lydict_insert(xml_ctx->ctx, iter->content, iter->content_len);
+                LY_CHECK_ERR_GOTO(!(*arg_val), LOGMEM(xml_ctx->ctx); ret = LY_EMEM, cleanup);
             } else {
-                /* unrecognized or unexpected attribute */
-                if (name) {
-                    if (arg_type != YIN_ARG_NONE) {
-                        LOGERR(xml_ctx->ctx, LYVE_SYNTAX_YIN, "Invalid attribute \"%.*s\", expected \"%s\".", name, name_len, yin_attr2str(arg_type));
-                    } else {
-                        LOGERR(xml_ctx->ctx, LYVE_SYNTAX_YIN, "Unexpected attribute \"%.*s\".", name_len, name);
-                    }
-                    return LY_EVALID;
-                }
+                LOGERR(xml_ctx->ctx, LYVE_SYNTAX_YIN, "Unexpected attribute \"%.*s\".", iter->name_len, iter->name);
+                ret = LY_EVALID;
+                goto cleanup;
             }
         }
     }
 
-    return LY_SUCCESS;
+cleanup:
+    LY_ARRAY_FREE(argument_array);
+    return ret;
 }
 
 /**

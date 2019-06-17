@@ -332,7 +332,7 @@ test_parse_text_element(void **state)
     assert_string_equal(res, "another-content");
     lydict_remove(st->ctx, "another-content");
 
-    data = "<elem invalid=\"invalid\">text</elem>";
+    data = "<elem invalid=\"invalid\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">text</elem>";
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     ret = parse_text_element(st->xml_ctx, &data, &res);
     assert_int_equal(ret, LY_EVALID);
