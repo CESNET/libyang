@@ -301,20 +301,6 @@ LY_ERR lysc_check_status(struct lysc_ctx *ctx,
                          uint16_t flags2, void *mod2, const char *name2);
 
 /**
- * @brief Parse a node-identifier.
- *
- * node-identifier     = [prefix ":"] identifier
- *
- * @param[in, out] id Identifier to parse. When returned, it points to the first character which is not part of the identifier.
- * @param[out] prefix Node's prefix, NULL if there is not any.
- * @param[out] prefix_len Length of the node's prefix, 0 if there is not any.
- * @param[out] name Node's name.
- * @param[out] nam_len Length of the node's name.
- * @return LY_ERR value: LY_SUCCESS or LY_EINVAL in case of invalid character in the id.
- */
-LY_ERR lys_parse_nodeid(const char **id, const char **prefix, size_t *prefix_len, const char **name, size_t *name_len);
-
-/**
  * @brief Find the node according to the given descendant/absolute schema nodeid.
  * Used in unique, refine and augment statements.
  *
@@ -526,6 +512,7 @@ LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *re
  * the precompiled list is reused to finish the compilation to preserve pointers already used in various compiled
  * if-feature structures.
  *
+ * @param[in] ctx_sc Compile context - alternative to the combination of @p ctx and @p module.
  * @param[in] ctx libyang context.
  * @param[in] module Module of the features.
  * @param[in] features_p Array if the parsed features definitions to precompile.
@@ -534,7 +521,7 @@ LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *re
  * to be processed.
  * @return LY_ERR value.
  */
-LY_ERR lys_feature_precompile(struct ly_ctx *ctx, struct lys_module *module, struct lysp_feature *features_p, struct lysc_feature **features);
+LY_ERR lys_feature_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lys_module *module, struct lysp_feature *features_p, struct lysc_feature **features);
 
 /**
  * @brief Get the @ref ifftokens from the given position in the 2bits array

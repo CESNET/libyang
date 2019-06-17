@@ -85,24 +85,33 @@ lyd_parse_check_options(struct ly_ctx *ctx, int options, const char *func)
 
 LY_ERR
 lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len, int dynamic,
-                ly_type_resolve_prefix get_prefix, void *parser)
+                ly_type_resolve_prefix get_prefix, void *parser, struct lyd_node **trees)
 {
-    LY_ERR ret = LY_SUCCESS;
+    LY_ERR ret = LY_SUCCESS, rc;
     struct ly_err_item *err = NULL;
     struct ly_ctx *ctx;
     struct lysc_type *type;
     void *priv = NULL;
-    int options = LY_TYPE_OPTS_VALIDATE | LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_STORE | (dynamic ? LY_TYPE_OPTS_DYNAMIC : 0);
+    int options = LY_TYPE_OPTS_VALIDATE | LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_STORE |
+            (dynamic ? LY_TYPE_OPTS_DYNAMIC : 0) | (trees ? 0 : LY_TYPE_OPTS_INCOMPLETE_DATA);
     assert(node);
 
     ctx = node->schema->module->ctx;
     type = ((struct lysc_node_leaf*)node->schema)->type;
     if (type->plugin->validate) {
-        ret = type->plugin->validate(ctx, type, value, value_len, options, get_prefix, parser, &node->value.canonized, &err, &priv);
-        if (ret) {
-            ly_err_print(err);
-            LOGVAL(ctx, LY_VLOG_STR, err->path, err->vecode, err->msg);
-            ly_err_free(err);
+        rc = type->plugin->validate(ctx, type, value, value_len, options,
+                                     get_prefix, parser, (struct lyd_node*)node, trees,
+                                     &node->value.canonized, &err, &priv);
+        if (rc == LY_EINCOMPLETE) {
+            ret = rc;
+            /* continue with storing, just remember what to return if storing is ok */
+        } else if (rc) {
+            ret = rc;
+            if (err) {
+                ly_err_print(err);
+                LOGVAL(ctx, LY_VLOG_STR, err->path, err->vecode, err->msg);
+                ly_err_free(err);
+            }
             goto error;
         }
     } else if (dynamic) {
@@ -112,11 +121,14 @@ lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len,
     }
 
     if (type->plugin->store) {
-        ret = type->plugin->store(ctx, type, options, &node->value, &err, &priv);
-        if (ret) {
-            ly_err_print(err);
-            LOGVAL(ctx, LY_VLOG_STR, err->path, err->vecode, err->msg);
-            ly_err_free(err);
+        rc = type->plugin->store(ctx, type, options, &node->value, &err, &priv);
+        if (rc) {
+            ret = rc;
+            if (err) {
+                ly_err_print(err);
+                LOGVAL(ctx, LY_VLOG_STR, err->path, err->vecode, err->msg);
+                ly_err_free(err);
+            }
             goto error;
         }
     }

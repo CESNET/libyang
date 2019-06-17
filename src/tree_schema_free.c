@@ -234,7 +234,7 @@ lysp_grp_free(struct ly_ctx *ctx, struct lysp_grp *grp)
     FREE_ARRAY(ctx, grp->exts, lysp_ext_instance_free);
 }
 
-static void
+void
 lysp_when_free(struct ly_ctx *ctx, struct lysp_when *when)
 {
     FREE_STRING(ctx, when->cond);

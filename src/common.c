@@ -25,6 +25,7 @@
 
 #include "extensions.h"
 #include "tree_schema.h"
+#include "tree_schema_internal.h"
 
 const char *const ly_stmt_list[] = {
     [YANG_ACTION] = "action",
@@ -308,35 +309,38 @@ ly_munmap(void *addr, size_t length)
 }
 
 LY_ERR
-ly_parse_int(const char *val_str, int64_t min, int64_t max, int base, int64_t *ret)
+ly_parse_int(const char *val_str, size_t val_len, int64_t min, int64_t max, int base, int64_t *ret)
 {
     char *strptr;
+    int64_t i;
 
-    LY_CHECK_ARG_RET(NULL, val_str, val_str[0], LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, val_str, val_str[0], val_len, LY_EINVAL);
 
     /* convert to 64-bit integer, all the redundant characters are handled */
     errno = 0;
     strptr = NULL;
 
     /* parse the value */
-    *ret = strtoll(val_str, &strptr, base);
-    if (errno) {
+    i = strtoll(val_str, &strptr, base);
+    if (errno || strptr == val_str) {
         return LY_EVALID;
-    } else if ((*ret < min) || (*ret > max)) {
+    } else if ((i < min) || (i > max)) {
         return LY_EDENIED;
     } else if (strptr && *strptr) {
         while (isspace(*strptr)) {
             ++strptr;
         }
-        if (*strptr) {
+        if (*strptr && strptr < val_str + val_len) {
             return LY_EVALID;
         }
     }
+
+    *ret = i;
     return LY_SUCCESS;
 }
 
 LY_ERR
-ly_parse_uint(const char *val_str, uint64_t max, int base, uint64_t *ret)
+ly_parse_uint(const char *val_str, size_t val_len, uint64_t max, int base, uint64_t *ret)
 {
     char *strptr;
     uint64_t u;
@@ -346,7 +350,7 @@ ly_parse_uint(const char *val_str, uint64_t max, int base, uint64_t *ret)
     errno = 0;
     strptr = NULL;
     u = strtoull(val_str, &strptr, base);
-    if (errno) {
+    if (errno || strptr == val_str) {
         return LY_EVALID;
     } else if ((u > max) || (u && val_str[0] == '-')) {
         return LY_EDENIED;
@@ -354,11 +358,185 @@ ly_parse_uint(const char *val_str, uint64_t max, int base, uint64_t *ret)
         while (isspace(*strptr)) {
             ++strptr;
         }
-        if (*strptr) {
+        if (*strptr && strptr < val_str + val_len) {
             return LY_EVALID;
         }
     }
 
     *ret = u;
     return LY_SUCCESS;
+}
+
+/**
+ * @brief Parse an identifier.
+ *
+ * ;; An identifier MUST NOT start with (('X'|'x') ('M'|'m') ('L'|'l'))
+ * identifier          = (ALPHA / "_")
+ *                       *(ALPHA / DIGIT / "_" / "-" / ".")
+ *
+ * @param[in,out] id Identifier to parse. When returned, it points to the first character which is not part of the identifier.
+ * @return LY_ERR value: LY_SUCCESS or LY_EINVAL in case of invalid starting character.
+ */
+static LY_ERR
+lys_parse_id(const char **id)
+{
+    assert(id && *id);
+
+    if (!is_yangidentstartchar(**id)) {
+        return LY_EINVAL;
+    }
+    ++(*id);
+
+    while (is_yangidentchar(**id)) {
+        ++(*id);
+    }
+    return LY_SUCCESS;
+}
+
+LY_ERR
+ly_parse_nodeid(const char **id, const char **prefix, size_t *prefix_len, const char **name, size_t *name_len)
+{
+    assert(id && *id);
+    assert(prefix && prefix_len);
+    assert(name && name_len);
+
+    *prefix = *id;
+    *prefix_len = 0;
+    *name = NULL;
+    *name_len = 0;
+
+    LY_CHECK_RET(lys_parse_id(id));
+    if (**id == ':') {
+        /* there is prefix */
+        *prefix_len = *id - *prefix;
+        ++(*id);
+        *name = *id;
+
+        LY_CHECK_RET(lys_parse_id(id));
+        *name_len = *id - *name;
+    } else {
+        /* there is no prefix, so what we have as prefix now is actually the name */
+        *name = *prefix;
+        *name_len = *id - *name;
+        *prefix = NULL;
+    }
+
+    return LY_SUCCESS;
+}
+
+LY_ERR
+ly_parse_instance_predicate(const char **pred, size_t limit,
+                             const char **prefix, size_t *prefix_len, const char **id, size_t *id_len, const char **value, size_t *value_len,
+                             const char **errmsg)
+{
+    LY_ERR ret = LY_EVALID;
+    const char *in = *pred;
+    size_t offset = 1;
+    int expr = 0;
+    char quot;
+
+    assert(in[0] == '\[');
+
+    *prefix = *id = *value = NULL;
+    *prefix_len = *id_len = *value_len = 0;
+
+    /* leading *WSP */
+    for (; isspace(in[offset]); offset++);
+
+    if (isdigit(in[offset])) {
+        /* pos: "[" *WSP positive-integer-value *WSP "]" */
+        if (in[offset] == '0') {
+            /* zero */
+            *errmsg = "The position predicate cannot be zero.";
+            goto error;
+        }
+
+        /* positive-integer-value */
+        *value = &in[offset++];
+        for (; isdigit(in[offset]); offset++);
+        *value_len = &in[offset] - *value;
+
+    } else if (in[offset] == '.') {
+        /* leaf-list-predicate: "[" *WSP "." *WSP "=" *WSP quoted-string *WSP "]" */
+        *id = &in[offset];
+        *id_len = 1;
+        offset++;
+        expr = 1;
+    } else if (in[offset] == '-') {
+        /* typically negative value */
+        *errmsg = "Invalid instance predicate format (negative position or invalid node-identifier).";
+        goto error;
+    } else {
+        /* key-predicate: "[" *WSP node-identifier *WSP "=" *WSP quoted-string *WSP "]" */
+        in = &in[offset];
+        if (ly_parse_nodeid(&in, prefix, prefix_len, id, id_len)) {
+            *errmsg = "Invalid node-identifier.";
+            goto error;
+        }
+        offset = in - *pred;
+        in = *pred;
+        expr = 2;
+    }
+
+    if (expr) {
+        /*  *WSP "=" *WSP quoted-string *WSP "]" */
+        for (; isspace(in[offset]); offset++);
+
+        if (in[offset] != '=') {
+            if (expr == 1) {
+                *errmsg = "Unexpected character instead of \'=\' in leaf-list-predicate.";
+            } else { /* 2 */
+                *errmsg = "Unexpected character instead of \'=\' in key-predicate.";
+            }
+            goto error;
+        }
+        offset++;
+        for (; isspace(in[offset]); offset++);
+
+        /* quoted-string */
+        quot = in[offset++];
+        if (quot != '\'' && quot != '\"') {
+            *errmsg = "String value is not quoted.";
+            goto error;
+        }
+        *value = &in[offset];
+        for (;offset < limit && in[offset] != quot; offset++);
+        if (in[offset] == quot) {
+            *value_len = &in[offset] - *value;
+            offset++;
+        } else {
+            *errmsg = "Value is not terminated quoted-string.";
+            goto error;
+        }
+    }
+
+    /* *WSP "]" */
+    for(; isspace(in[offset]); offset++);
+    if (in[offset] != ']') {
+        if (expr == 0) {
+            *errmsg = "Predicate (pos) is not terminated by \']\' character.";
+        } else if (expr == 1) {
+            *errmsg = "Predicate (leaf-list-predicate) is not terminated by \']\' character.";
+        } else { /* 2 */
+            *errmsg = "Predicate (key-predicate) is not terminated by \']\' character.";
+        }
+        goto error;
+    }
+    offset++;
+
+    if (offset <= limit) {
+        *pred = &in[offset];
+        return LY_SUCCESS;
+    }
+
+    /* we read after the limit */
+    *errmsg = "Predicate is incomplete.";
+    *prefix = *id = *value = NULL;
+    *prefix_len = *id_len = *value_len = 0;
+    offset = limit;
+    ret = LY_EINVAL;
+
+error:
+    *pred = &in[offset];
+    return ret;
 }

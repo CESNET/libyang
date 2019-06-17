@@ -47,9 +47,15 @@ LY_ERR lyd_parse_check_options(struct ly_ctx *ctx, int options, const char *func
  * @param[in] dynamic Flag if @p value is a dynamically allocated memory and should be directly consumed/freed inside the function.
  * @param[in] get_prefix Parser-specific getter to resolve prefixes used in the value strings.
  * @param[in] parser Parser's data for @p get_prefix
- * @return LY_ERR value.
+ * @param[in] trees ([Sized array](@ref sizedarrays)) of data trees (e.g. when validating RPC/Notification) where the required
+ *            data instance (leafref target, instance-identifier) can be placed. NULL in case the data tree are not yet complete,
+ *            then LY_EINCOMPLETE can be returned.
+ * @return LY_SUCCESS on success
+ * @return LY_EINCOMPLETE in case the @p trees is not provided and it was needed to finish the validation.
+ * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len, int dynamic, ly_type_resolve_prefix get_prefix, void *parser);
+LY_ERR lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len, int dynamic,
+                       ly_type_resolve_prefix get_prefix, void *parser, struct lyd_node **trees);
 
 /**
  * @brief Parse XML string as YANG data tree.

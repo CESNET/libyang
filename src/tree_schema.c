@@ -216,6 +216,58 @@ lys_child(const struct lysc_node *parent, const struct lys_module *module,
     return NULL;
 }
 
+API char *
+lysc_path(struct lysc_node *node, LY_PATH_TYPE pathtype)
+{
+    struct lysc_node *iter;
+    char *path = NULL;
+    int len = 0;
+
+    switch (pathtype) {
+    case LY_PATH_LOG:
+        for (iter = node; iter && len >= 0; iter = iter->parent) {
+            char *s = path;
+            char *id;
+
+            switch (iter->nodetype) {
+            case LYS_USES:
+                asprintf(&id, "{uses='%s'}", iter->name);
+                break;
+            case LYS_GROUPING:
+                asprintf(&id, "{grouping='%s'}", iter->name);
+                break;
+            case LYS_AUGMENT:
+                asprintf(&id, "{augment='%s'}", iter->name);
+                break;
+            default:
+                id = strdup(iter->name);
+                break;
+            }
+
+            if (!iter->parent || iter->parent->module != iter->module) {
+                /* print prefix */
+                len = asprintf(&path, "/%s:%s%s", iter->module->name, id, s ? s : "");
+            } else {
+                /* prefix is the same as in parent */
+                len = asprintf(&path, "/%s%s", id, s ? s : "");
+            }
+            free(s);
+            free(id);
+        }
+
+        if (len < 0) {
+            free(path);
+            path = NULL;
+        } else if (len == 0) {
+            path = strdup("/");
+            len = 1;
+        }
+        break;
+    }
+
+    return path;
+}
+
 API int
 lysc_feature_value(const struct lysc_feature *feature)
 {
@@ -673,7 +725,7 @@ lys_parse_mem_module(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, 
 
     if (!mod->implemented) {
         /* pre-compile features of the module */
-        LY_CHECK_GOTO(lys_feature_precompile(ctx, mod, mod->parsed->features, &mod->off_features), error);
+        LY_CHECK_GOTO(lys_feature_precompile(NULL, ctx, mod, mod->parsed->features, &mod->off_features), error);
     }
 
     /* decide the latest revision */
@@ -719,12 +771,12 @@ finish_parsing:
         }
         if (!mod->implemented) {
             /* pre-compile features of the module */
-            LY_CHECK_GOTO(lys_feature_precompile(ctx, mod, inc->submodule->features, &mod->off_features), error);
+            LY_CHECK_GOTO(lys_feature_precompile(NULL, ctx, mod, inc->submodule->features, &mod->off_features), error);
         }
     }
     mod->parsed->parsing = 0;
 
-    /* check name collisions - typedefs and groupings */
+    /* check name collisions - typedefs and TODO groupings */
     LY_CHECK_GOTO(lysp_check_typedefs(&context, mod->parsed), error_ctx);
 
     return mod;

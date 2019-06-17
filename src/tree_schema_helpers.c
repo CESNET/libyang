@@ -34,63 +34,6 @@
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 
-/**
- * @brief Parse an identifier.
- *
- * ;; An identifier MUST NOT start with (('X'|'x') ('M'|'m') ('L'|'l'))
- * identifier          = (ALPHA / "_")
- *                       *(ALPHA / DIGIT / "_" / "-" / ".")
- *
- * @param[in,out] id Identifier to parse. When returned, it points to the first character which is not part of the identifier.
- * @return LY_ERR value: LY_SUCCESS or LY_EINVAL in case of invalid starting character.
- */
-static LY_ERR
-lys_parse_id(const char **id)
-{
-    assert(id && *id);
-
-    if (!is_yangidentstartchar(**id)) {
-        return LY_EINVAL;
-    }
-    ++(*id);
-
-    while (is_yangidentchar(**id)) {
-        ++(*id);
-    }
-    return LY_SUCCESS;
-}
-
-LY_ERR
-lys_parse_nodeid(const char **id, const char **prefix, size_t *prefix_len, const char **name, size_t *name_len)
-{
-    assert(id && *id);
-    assert(prefix && prefix_len);
-    assert(name && name_len);
-
-    *prefix = *id;
-    *prefix_len = 0;
-    *name = NULL;
-    *name_len = 0;
-
-    LY_CHECK_RET(lys_parse_id(id));
-    if (**id == ':') {
-        /* there is prefix */
-        *prefix_len = *id - *prefix;
-        ++(*id);
-        *name = *id;
-
-        LY_CHECK_RET(lys_parse_id(id));
-        *name_len = *id - *name;
-    } else {
-        /* there is no prefix, so what we have as prefix now is actually the name */
-        *name = *prefix;
-        *name_len = *id - *name;
-        *prefix = NULL;
-    }
-
-    return LY_SUCCESS;
-}
-
 LY_ERR
 lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodeid_len, const struct lysc_node *context_node,
                           const struct lys_module *context_module, int nodetype, int implement,
@@ -135,7 +78,7 @@ lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodei
         ++id;
     }
 
-    while (*id && (ret = lys_parse_nodeid(&id, &prefix, &prefix_len, &name, &name_len)) == LY_SUCCESS) {
+    while (*id && (ret = ly_parse_nodeid(&id, &prefix, &prefix_len, &name, &name_len)) == LY_SUCCESS) {
         if (prefix) {
             mod = lys_module_find_prefix(context_module, prefix, prefix_len);
             if (!mod) {
