@@ -376,9 +376,140 @@ yin_parse_import(struct lyxml_context *xml_ctx, const char *module_prefix, const
 }
 
 /**
+ * @brief Parse status statement.
+ *
+ * @param[in] xml_ctx Xml context.
+ * @param[in,out] data Data to read from.
+ * @param[in,out] flags Flags to add to.
+ * @param[in,out] exts Extension instances to add to.
+ *
+ * @return LY_ERR values.
+ */
+LY_ERR
+yin_parse_status(struct lyxml_context *xml_ctx, const char **data, uint16_t *flags, struct lysp_ext_instance **exts)
+{
+    LY_ERR ret = LY_SUCCESS;
+    enum yang_keyword kw = YANG_NONE;
+    const char *value = NULL, *prefix = NULL, *name = NULL;
+    char *out;
+    size_t prefix_len = 0, name_len = 0, out_len = 0;
+    int dynamic = 0;
+
+    if (*flags & LYS_STATUS_MASK) {
+        LOGVAL_YANG(xml_ctx, LY_VCODE_DUPELEM, "status");
+        return LY_EVALID;
+    }
+
+    LY_CHECK_RET(yin_parse_attribute(xml_ctx, data, YIN_ARG_VALUE, &value));
+    /* TODO separate to function and check if dynamic was set to 1 in case of error */
+    ret = lyxml_get_string(xml_ctx, data, &out, &out_len, &out, &out_len, &dynamic);
+    LY_CHECK_ERR_RET(ret != LY_EINVAL, LOGVAL_YANG(xml_ctx, LYVE_SYNTAX_YIN, "Expected new element after status element."), LY_EINVAL);
+
+    if (strcmp(value, "current") == 0) {
+        *flags |= LYS_STATUS_CURR;
+    } else if (strcmp(value, "deprecated") == 0) {
+        *flags |= LYS_STATUS_DEPRC;
+    } else if (strcmp(value, "obsolete") == 0) {
+        *flags |= LYS_STATUS_OBSLT;
+    } else {
+        LOGVAL_YANG(xml_ctx, LY_VCODE_INVAL_YIN, value, "status");
+        lydict_remove(xml_ctx->ctx, value);
+        return LY_EVALID;
+    }
+    lydict_remove(xml_ctx->ctx, value);
+
+    while (xml_ctx->status == LYXML_ELEMENT) {
+        LY_CHECK_RET(lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len));
+        if (!name) {
+            break;
+        }
+
+        kw = yin_match_keyword(name, name_len, prefix_len);
+        switch (kw) {
+            case YANG_CUSTOM:
+                /* TODO parse extension instance */
+                break;
+            default:
+                LOGVAL_YANG(xml_ctx, LY_VCODE_INCHILDSTMT_YIN, name_len, name, 6, "status");
+        }
+    }
+
+    return ret;
+}
+
+/**
+ * @brief Parse the extension statement.
+ *
+ * @param[in] xml_ctx Xml context.
+ * @param[in,out] data Data to read from.
+ * @param[in,out] extensions Extensions to add to.
+ *
+ * @return LY_ERR values.
+ */
+LY_ERR
+yin_parse_extension(struct lyxml_context *xml_ctx, const char **data, struct lysp_ext **extensions)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lysp_ext *ex;
+    const char *prefix = NULL, *name = NULL;
+    char *out = NULL;
+    size_t out_len = 0, prefix_len = 0, name_len = 0;
+    int dynamic = 0;
+    enum yang_keyword kw = YANG_NONE;
+
+    LY_ARRAY_NEW_RET(xml_ctx->ctx, *extensions, ex, LY_EMEM);
+    yin_parse_attribute(xml_ctx, data, YIN_ARG_NAME, &ex->name);
+    ret = lyxml_get_string(xml_ctx, data, &out, &out_len, &out, &out_len, &dynamic);
+    LY_CHECK_ERR_RET(ret != LY_EINVAL, LOGVAL_YANG(xml_ctx, LYVE_SYNTAX_YIN, "Expected new element after extension element."), LY_EINVAL);
+
+    while (xml_ctx->status == LYXML_ELEMENT) {
+        ret = lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
+        LY_CHECK_RET(ret);
+        if (!name) {
+            break;
+        }
+
+        kw = yin_match_keyword(name, name_len, prefix_len);
+        switch (kw) {
+            case YANG_ARGUMENT:
+                break;
+            case YANG_DESCRIPTION:
+                LY_CHECK_RET(yin_parse_meta_element(xml_ctx, data, &ex->dsc));
+                break;
+            case YANG_REFERENCE:
+                LY_CHECK_RET(yin_parse_meta_element(xml_ctx, data, &ex->ref));
+                break;
+            case YANG_STATUS:
+                LY_CHECK_RET(yin_parse_status(xml_ctx, data, &ex->flags, &ex->exts));
+                break;
+            case YANG_CUSTOM:
+                /* TODO parse extension instance */
+                break;
+            default:
+                LOGVAL_YANG(xml_ctx, LY_VCODE_INCHILDSTMT_YIN, name_len, name, 9, "extension");
+                return LY_EVALID;
+        }
+    }
+
+    return ret;
+}
+
+/**
+ * @brief Parse extension instance.
+ *
+ * @param[in]
+ */
+LY_ERR
+yin_parse_extension_instane(struct lyxml_context *xml_ctx, const char *data)
+{
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Parse module substatements.
  *
- * @param[in] xml_ctx xml context.
+ * @param[in] xml_ctx Xml context.
  * @param[in,out] data Data to read from.
  * @param[out] mod Parsed module structure.
  *
@@ -492,6 +623,12 @@ parse_mod(struct lyxml_context *xml_ctx, const char **data, struct lysp_module *
                 break;
             case YANG_REFERENCE:
                 LY_CHECK_RET(yin_parse_meta_element(xml_ctx, data, &(*mod)->mod->ref));
+                break;
+            /* revision */
+
+            /*body */
+            case YANG_EXTENSION:
+                LY_CHECK_RET(yin_parse_extension(xml_ctx, data, &(*mod)->extensions));
                 break;
 
             default:
