@@ -1259,7 +1259,7 @@ lysp_find_module(struct ly_ctx *ctx, const struct lysp_module *mod)
 }
 
 enum yang_keyword
-match_kw(struct lys_parser_ctx *ctx, const char **data)
+lysp_match_kw(struct lys_parser_ctx *ctx, const char **data)
 {
 /**
  * @brief Move the DATA pointer by COUNT items. Also updates the indent value in yang parser context

@@ -767,7 +767,7 @@ get_keyword(struct lys_parser_ctx *ctx, const char **data, enum yang_keyword *kw
 
 keyword_start:
     word_start = *data;
-    *kw = match_kw(ctx, data);
+    *kw = lysp_match_kw(ctx, data);
 
     if (*kw == YANG_SEMICOLON || *kw == YANG_LEFT_BRACE || *kw == YANG_RIGHT_BRACE) {
         goto success;

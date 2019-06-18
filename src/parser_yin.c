@@ -55,7 +55,7 @@ yin_match_keyword(const char *data, size_t len, size_t prefix_len)
     }
 
     const char *start = data;
-    enum yang_keyword kw = match_kw(NULL, &data);
+    enum yang_keyword kw = lysp_match_kw(NULL, &data);
 
 
     if (prefix_len != 0) {

@@ -691,6 +691,6 @@ LY_ERR ly_ctx_module_implement_internal(struct ly_ctx *ctx, struct lys_module *m
  *
  * return yang_keyword values.
  */
-enum yang_keyword match_kw(struct lys_parser_ctx *ctx, const char **data);
+enum yang_keyword lysp_match_kw(struct lys_parser_ctx *ctx, const char **data);
 
 #endif /* LY_TREE_SCHEMA_INTERNAL_H_ */
