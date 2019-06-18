@@ -291,10 +291,10 @@ test_meta(void **state)
 
     ret = yin_parse_module(st->ctx,"<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\
                                         name=\"example-foo\">\
-                                        <organization xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">organization...</organization>\
-                                        <contact>contact...</contact>\
-                                        <description>description...</description>\
-                                        <reference>reference...</reference>\
+                                        <organization xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"><text>organization...</text></organization>\
+                                        <contact><text>contact...</text></contact>\
+                                        <description><text>description...</text></description>\
+                                        <reference><text>reference...</text></reference>\
                                     </module>", st->mod);
 
     assert_int_equal(ret, LY_SUCCESS);
@@ -325,12 +325,14 @@ test_parse_text_element(void **state)
     parse_text_element(st->xml_ctx, &data, &res);
     assert_string_equal(res, "content");
     lydict_remove(st->ctx, "content");
+    st = reset_state(state);
 
     data = "<elem xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">another-content</elem>";
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     parse_text_element(st->xml_ctx, &data, &res);
     assert_string_equal(res, "another-content");
     lydict_remove(st->ctx, "another-content");
+    st = reset_state(state);
 
     data = "<elem invalid=\"invalid\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">text</elem>";
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);

@@ -217,7 +217,8 @@ parse_text_element(struct lyxml_context *xml_ctx, const char **data, const char 
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf = NULL, *out = NULL;
-    size_t buf_len = 0, out_len = 0;
+    const char *prefix = NULL, *name = NULL;
+    size_t buf_len = 0, out_len = 0, prefix_len = 0, name_len = 0;
     int dynamic = 0;
 
     ret = yin_parse_attribute(xml_ctx, data, YIN_ARG_NONE, NULL);
@@ -233,6 +234,63 @@ parse_text_element(struct lyxml_context *xml_ctx, const char **data, const char 
             *value = lydict_insert(xml_ctx->ctx, out, out_len);
             LY_CHECK_ERR_RET(!(*value), LOGMEM(xml_ctx->ctx), LY_EMEM);
         }
+    }
+
+    ret = lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
+    LY_CHECK_RET(ret);
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief function to parse meta tags eg. elements with text element as child
+ *
+ * @param[in] xml_ctx Xml context.
+ * @param[in,out] data Data to read from.
+ * @param[out] value Where the content of meta tag should be stored.
+ *
+ * @return LY_ERR values.
+ */
+LY_ERR
+yin_parse_meta_element(struct lyxml_context *xml_ctx, const char **data, const char **value)
+{
+    LY_ERR ret = LY_SUCCESS;
+    char *buf = NULL, *out = NULL;
+    const char *prefix = NULL, *name = NULL;
+    size_t buf_len = 0, out_len = 0, prefix_len = 0, name_len = 0;
+    int dynamic = 0;
+    const struct lyxml_ns *ns = NULL;
+    enum YIN_ARGUMENT arg = YANG_NONE;
+
+    ret = yin_parse_attribute(xml_ctx, data, YIN_ARG_NONE, NULL);
+    LY_CHECK_RET(ret);
+    LY_CHECK_RET(xml_ctx->status != LYXML_ELEM_CONTENT, LY_EVALID);
+
+    ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
+    LY_CHECK_ERR_RET(ret != LY_EINVAL, LOGVAL_YANG(xml_ctx, LYVE_SYNTAX_YIN, "Expected \"text\" element as child of meta element."), LY_EINVAL);
+
+    /* loop over all child elements and parse them */
+    while (xml_ctx->status == LYXML_ELEMENT) {
+        ret = lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
+        LY_CHECK_RET(ret);
+        if (name) {
+            ns = lyxml_ns_get(xml_ctx, prefix, prefix_len);
+            /* check if child element is from yin namespace, elements from other namespaces are silently ignored */
+            if (IS_YIN_NS(ns->uri)) {
+                arg = match_argument_name(name, name_len);
+                if (arg == YIN_ARG_TEXT) {
+                    parse_text_element(xml_ctx, data, value);
+                } else {
+                    LOGERR(xml_ctx->ctx, LYVE_SYNTAX_YIN, "Unexpected child element \"%.*s\".", name_len, name);
+                    return LY_EVALID;
+                }
+            }
+
+        } else {
+            /* end of meta element reached */
+            break;
+        }
+
     }
 
     return LY_SUCCESS;
@@ -295,11 +353,11 @@ yin_parse_import(struct lyxml_context *xml_ctx, const char *module_prefix, const
             break;
         case YANG_DESCRIPTION:
             LY_CHECK_ERR_RET(imp->dsc, LOGVAL_YANG(xml_ctx, LY_VCODE_DUPSTMT, "description"), LY_EVALID);
-            parse_text_element(xml_ctx, data, &imp->dsc);
+            yin_parse_meta_element(xml_ctx, data, &imp->dsc);
             break;
         case YANG_REFERENCE:
             LY_CHECK_ERR_RET(imp->ref, LOGVAL_YANG(xml_ctx, LY_VCODE_DUPSTMT, "reference"), LY_EVALID);
-            parse_text_element(xml_ctx, data, &imp->ref);
+            yin_parse_meta_element(xml_ctx, data, &imp->ref);
             break;
         case YANG_REVISION_DATE:
             yin_parse_revision_date(xml_ctx, data, imp->rev, &imp->exts);
@@ -424,16 +482,16 @@ parse_mod(struct lyxml_context *xml_ctx, const char **data, struct lysp_module *
 
             /* meta */
             case YANG_ORGANIZATION:
-                LY_CHECK_RET(parse_text_element(xml_ctx, data, &(*mod)->mod->org));
+                LY_CHECK_RET(yin_parse_meta_element(xml_ctx, data, &(*mod)->mod->org));
                 break;
             case YANG_CONTACT:
-                LY_CHECK_RET(parse_text_element(xml_ctx, data, &(*mod)->mod->contact));
+                LY_CHECK_RET(yin_parse_meta_element(xml_ctx, data, &(*mod)->mod->contact));
                 break;
             case YANG_DESCRIPTION:
-                LY_CHECK_RET(parse_text_element(xml_ctx, data, &(*mod)->mod->dsc));
+                LY_CHECK_RET(yin_parse_meta_element(xml_ctx, data, &(*mod)->mod->dsc));
                 break;
             case YANG_REFERENCE:
-                LY_CHECK_RET(parse_text_element(xml_ctx, data, &(*mod)->mod->ref));
+                LY_CHECK_RET(yin_parse_meta_element(xml_ctx, data, &(*mod)->mod->ref));
                 break;
 
             default:
