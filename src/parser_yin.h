@@ -97,7 +97,7 @@ LY_ERR yin_parse_import(struct lyxml_context *xml_ctx, const char *module_prefix
  *
  * @return yang_keyword values.
  */
-enum yang_keyword yin_match_keyword(const char *data, size_t len, size_t prefix_len);
+enum yang_keyword yin_match_keyword(const char *data, size_t len);
 
 /**
  * @brief Parse status statement.

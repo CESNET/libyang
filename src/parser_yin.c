@@ -47,8 +47,34 @@ const char *const yin_attr_list[] = {
     [YIN_ARG_XMLNS] = "xmlns",
 };
 
+/**
+ * @brief check if keyword was matched properly,
+ * information about namespace is not always fully available when type of keyword is already needed
+ * this function retroactively checks if kw isn't actually extension instance or unknown element without namespace
+ *
+ * @param[in] xml_ctx Xml context.
+ * @param[in] prefix Keyword prefix.
+ * @param[in] prefix_len Length of prefix.
+ * @param[in,out] kw Type of keyword.
+ */
+void
+check_kw_ns(struct lyxml_context *xml_ctx, const char *prefix, size_t prefix_len, enum yang_keyword *kw)
+{
+    const struct lyxml_ns *ns = NULL;
+
+    ns = lyxml_ns_get(xml_ctx, prefix, prefix_len);
+
+    if (!ns) {
+        *kw = YANG_NONE;
+    } else {
+        if (!IS_YIN_NS(ns->uri)) {
+            *kw = YANG_CUSTOM;
+        }
+    }
+}
+
 enum yang_keyword
-yin_match_keyword(const char *data, size_t len, size_t prefix_len)
+yin_match_keyword(const char *data, size_t len)
 {
     if (!data || len == 0) {
         return YANG_NONE;
@@ -56,11 +82,6 @@ yin_match_keyword(const char *data, size_t len, size_t prefix_len)
 
     const char *start = data;
     enum yang_keyword kw = lysp_match_kw(NULL, &data);
-
-
-    if (prefix_len != 0) {
-        return YANG_CUSTOM;
-    }
 
     if (data - start == (long int)len) {
         return kw;
@@ -344,7 +365,7 @@ yin_parse_import(struct lyxml_context *xml_ctx, const char *module_prefix, const
     LY_CHECK_RET(yin_parse_attribute(xml_ctx, data, YIN_ARG_MODULE, &imp->name));
 
     while ((ret = lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len) == LY_SUCCESS && name != NULL)) {
-        kw = yin_match_keyword(name, name_len, prefix_len);
+        kw = yin_match_keyword(name, name_len);
         switch (kw) {
         case YANG_PREFIX:
             LY_CHECK_ERR_RET(imp->prefix, LOGVAL_PARSER(xml_ctx, LY_VCODE_DUPSTMT, "prefix"), LY_EVALID);
@@ -416,7 +437,7 @@ yin_parse_status(struct lyxml_context *xml_ctx, const char **data, uint16_t *fla
                     break;
                 }
 
-                kw = yin_match_keyword(name, name_len, prefix_len);
+                kw = yin_match_keyword(name, name_len);
                 switch (kw) {
                     case YANG_CUSTOM:
                         /* TODO parse extension instance */
@@ -463,7 +484,9 @@ yin_parse_extension(struct lyxml_context *xml_ctx, const char **data, struct lys
             break;
         }
 
-        kw = yin_match_keyword(name, name_len, prefix_len);
+        kw = yin_match_keyword(name, name_len);
+        yin_parse_attribute(xml_ctx, data, YIN_ARG_NONE, NULL);
+        check_kw_ns(xml_ctx, prefix, prefix_len, &kw);
         switch (kw) {
             case YANG_ARGUMENT:
                 break;
@@ -523,7 +546,6 @@ yin_parse_mod(struct lyxml_context *xml_ctx, const char **data, struct lysp_modu
     int dynamic = 0;
 
     yin_parse_attribute(xml_ctx, data, YIN_ARG_NAME, &(*mod)->mod->name);
-
     LY_CHECK_ERR_RET(!(*mod)->mod->name, LOGVAL_PARSER(xml_ctx, LYVE_SYNTAX_YIN, "Missing argument name of a module"), LY_EVALID);
     ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
     LY_CHECK_ERR_RET(ret != LY_EINVAL, LOGVAL_PARSER(xml_ctx, LYVE_SYNTAX_YIN, "Expected new xml element after module element."), LY_EINVAL);
@@ -589,7 +611,7 @@ yin_parse_mod(struct lyxml_context *xml_ctx, const char **data, struct lysp_modu
         LY_CHECK_RET(lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len));
 
         if (name) {
-            kw = yin_match_keyword(name, name_len, prefix_len);
+            kw = yin_match_keyword(name, name_len);
             switch (kw) {
 
             /* module header */
@@ -654,7 +676,7 @@ yin_parse_module(struct ly_ctx *ctx, const char *data, struct lys_module *mod)
     /* check submodule */
     ret = lyxml_get_element(xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-    kw = yin_match_keyword(name, name_len, prefix_len);
+    kw = yin_match_keyword(name, name_len);
     if (kw == YANG_SUBMODULE) {
         LOGERR(ctx, LY_EDENIED, "Input data contains submodule which cannot be parsed directly without its main module.");
         ret = LY_EINVAL;
