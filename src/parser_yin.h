@@ -63,7 +63,7 @@ struct yin_arg_record {
  *
  * @return YIN_ARGUMENT value.
  */
-enum YIN_ARGUMENT match_argument_name(const char *name, size_t len);
+enum YIN_ARGUMENT yin_match_argument_name(const char *name, size_t len);
 
 /**
  * @brief Parse content of whole element as text.
@@ -74,7 +74,7 @@ enum YIN_ARGUMENT match_argument_name(const char *name, size_t len);
  *
  * @return LY_ERR values.
  */
-LY_ERR parse_text_element(struct lyxml_context *xml_ctx, const char **data, const char **value);
+LY_ERR yin_parse_text_element(struct lyxml_context *xml_ctx, const char **data, const char **value);
 
 /**
  * @brief Parse import element.

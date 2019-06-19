@@ -265,22 +265,22 @@ test_yin_match_keyword(void **state)
 }
 
 static void
-test_match_argument(void **state)
+test_yin_match_argument_name(void **state)
 {
     (void)state; /* unused */
 
-    assert_int_equal(match_argument_name("", 5), YIN_ARG_UNKNOWN);
-    assert_int_equal(match_argument_name("qwertyasd", 5), YIN_ARG_UNKNOWN);
-    assert_int_equal(match_argument_name("conditionasd", 8), YIN_ARG_UNKNOWN);
-    assert_int_equal(match_argument_name("condition", 9), YIN_ARG_CONDITION);
-    assert_int_equal(match_argument_name("date", 4), YIN_ARG_DATE);
-    assert_int_equal(match_argument_name("module", 6), YIN_ARG_MODULE);
-    assert_int_equal(match_argument_name("name", 4), YIN_ARG_NAME);
-    assert_int_equal(match_argument_name("tag", 3), YIN_ARG_TAG);
-    assert_int_equal(match_argument_name("target-node", 11), YIN_ARG_TARGET_NODE);
-    assert_int_equal(match_argument_name("text", 4), YIN_ARG_TEXT);
-    assert_int_equal(match_argument_name("uri", 3), YIN_ARG_URI);
-    assert_int_equal(match_argument_name("value", 5), YIN_ARG_VALUE);
+    assert_int_equal(yin_match_argument_name("", 5), YIN_ARG_UNKNOWN);
+    assert_int_equal(yin_match_argument_name("qwertyasd", 5), YIN_ARG_UNKNOWN);
+    assert_int_equal(yin_match_argument_name("conditionasd", 8), YIN_ARG_UNKNOWN);
+    assert_int_equal(yin_match_argument_name("condition", 9), YIN_ARG_CONDITION);
+    assert_int_equal(yin_match_argument_name("date", 4), YIN_ARG_DATE);
+    assert_int_equal(yin_match_argument_name("module", 6), YIN_ARG_MODULE);
+    assert_int_equal(yin_match_argument_name("name", 4), YIN_ARG_NAME);
+    assert_int_equal(yin_match_argument_name("tag", 3), YIN_ARG_TAG);
+    assert_int_equal(yin_match_argument_name("target-node", 11), YIN_ARG_TARGET_NODE);
+    assert_int_equal(yin_match_argument_name("text", 4), YIN_ARG_TEXT);
+    assert_int_equal(yin_match_argument_name("uri", 3), YIN_ARG_URI);
+    assert_int_equal(yin_match_argument_name("value", 5), YIN_ARG_VALUE);
 }
 
 static void
@@ -313,7 +313,7 @@ test_meta(void **state)
 }
 
 static void
-test_parse_text_element(void **state)
+test_yin_parse_text_element(void **state)
 {
     struct state *st = *state;
     const char *res = NULL, *prefix = NULL, *name = NULL;
@@ -322,21 +322,21 @@ test_parse_text_element(void **state)
 
     const char *data = "<elem>content</elem>";
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    parse_text_element(st->xml_ctx, &data, &res);
+    yin_parse_text_element(st->xml_ctx, &data, &res);
     assert_string_equal(res, "content");
     lydict_remove(st->ctx, "content");
     st = reset_state(state);
 
     data = "<elem xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">another-content</elem>";
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    parse_text_element(st->xml_ctx, &data, &res);
+    yin_parse_text_element(st->xml_ctx, &data, &res);
     assert_string_equal(res, "another-content");
     lydict_remove(st->ctx, "another-content");
     st = reset_state(state);
 
     data = "<elem invalid=\"invalid\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">text</elem>";
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    ret = parse_text_element(st->xml_ctx, &data, &res);
+    ret = yin_parse_text_element(st->xml_ctx, &data, &res);
     assert_int_equal(ret, LY_EVALID);
 
     st->finished_correctly = true;
@@ -465,11 +465,11 @@ main(void)
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_yin_parse_module, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_meta, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_parse_text_element, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_yin_parse_text_element, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_yin_parse_import, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_yin_parse_status, setup_f, teardown_f),
         cmocka_unit_test(test_yin_match_keyword),
-        cmocka_unit_test(test_match_argument),
+        cmocka_unit_test(test_yin_match_argument_name),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

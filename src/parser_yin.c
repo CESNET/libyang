@@ -71,7 +71,7 @@ yin_match_keyword(const char *data, size_t len, size_t prefix_len)
 
 
 enum YIN_ARGUMENT
-match_argument_name(const char *name, size_t len)
+yin_match_argument_name(const char *name, size_t len)
 {
     enum YIN_ARGUMENT arg = YIN_ARG_UNKNOWN;
     size_t already_read = 0;
@@ -177,7 +177,7 @@ yin_parse_attribute(struct lyxml_context *xml_ctx, const char **data, enum YIN_A
     LY_ARRAY_FOR(argument_array, struct yin_arg_record, iter) {
         ns = lyxml_ns_get(xml_ctx, iter->prefix, iter->prefix_len);
         if (ns && IS_YIN_NS(ns->uri)) {
-            arg = match_argument_name(iter->name, iter->name_len);
+            arg = yin_match_argument_name(iter->name, iter->name_len);
             if (arg == YIN_ARG_NONE) {
                 continue;
             } else if (arg == arg_type) {
@@ -213,7 +213,7 @@ cleanup:
  * @return LY_ERR values.
  */
 LY_ERR
-parse_text_element(struct lyxml_context *xml_ctx, const char **data, const char **value)
+yin_parse_text_element(struct lyxml_context *xml_ctx, const char **data, const char **value)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf = NULL, *out = NULL;
@@ -277,9 +277,9 @@ yin_parse_meta_element(struct lyxml_context *xml_ctx, const char **data, const c
             ns = lyxml_ns_get(xml_ctx, prefix, prefix_len);
             /* check if child element is from yin namespace, elements from other namespaces are silently ignored */
             if (IS_YIN_NS(ns->uri)) {
-                arg = match_argument_name(name, name_len);
+                arg = yin_match_argument_name(name, name_len);
                 if (arg == YIN_ARG_TEXT) {
-                    parse_text_element(xml_ctx, data, value);
+                    yin_parse_text_element(xml_ctx, data, value);
                 } else {
                     LOGERR(xml_ctx->ctx, LYVE_SYNTAX_YIN, "Unexpected child element \"%.*s\".", name_len, name);
                     return LY_EVALID;
@@ -510,7 +510,7 @@ yin_parse_extension_instane(struct lyxml_context *xml_ctx, const char *data)
  * @return LY_ERR values.
  */
 LY_ERR
-parse_mod(struct lyxml_context *xml_ctx, const char **data, struct lysp_module **mod)
+yin_parse_mod(struct lyxml_context *xml_ctx, const char **data, struct lysp_module **mod)
 {
     LY_ERR ret = LY_SUCCESS;
     enum yang_keyword kw = YANG_NONE;
@@ -673,7 +673,7 @@ yin_parse_module(struct ly_ctx *ctx, const char *data, struct lys_module *mod)
     mod_p->parsing = 1;
 
     /* parser module substatements */
-    ret = parse_mod(xml_ctx, &data, &mod_p);
+    ret = yin_parse_mod(xml_ctx, &data, &mod_p);
     LY_CHECK_GOTO(ret, cleanup);
 
     mod_p->parsing = 0;
