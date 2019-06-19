@@ -99,4 +99,16 @@ LY_ERR yin_parse_import(struct lyxml_context *xml_ctx, const char *module_prefix
  */
 enum yang_keyword yin_match_keyword(const char *data, size_t len, size_t prefix_len);
 
+/**
+ * @brief Parse status statement.
+ *
+ * @param[in] xml_ctx Xml context.
+ * @param[in,out] data Data to read from.
+ * @param[in,out] flags Flags to add to.
+ * @param[in,out] exts Extension instances to add to.
+ *
+ * @return LY_ERR values.
+ */
+LY_ERR yin_parse_status(struct lyxml_context *xml_ctx, const char **data, uint16_t *flags, struct lysp_ext_instance **exts);
+
 #endif /* LY_PARSER_YIN_H_*/

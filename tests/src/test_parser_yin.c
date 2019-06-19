@@ -354,32 +354,107 @@ test_yin_parse_import(void **state)
     const char *data = "<import xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" module=\"a\">\
                             <prefix value=\"a_mod\"/>\
                             <revision-date date=\"2015-01-01\"/>\
+                            <description><text>import description</text></description>\
+                            <reference><text>import reference</text></reference>\
                         </import>\
                         \
                         <import xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" module=\"a\">\
                             <prefix value=\"a_mod\"/>\
                             <revision-date date=\"2015-01-01\"/>\
                         </import>";
-
+    /* first import */
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     ret = yin_parse_import(st->xml_ctx, "b-mod", &data, &imports);
     assert_int_equal(ret, LY_SUCCESS);
     assert_string_equal(imports->name, "a");
     assert_string_equal(imports->prefix, "a_mod");
     assert_string_equal(imports->rev, "2015-01-01");
+    assert_string_equal(imports->dsc, "import description");
+    assert_string_equal(imports->ref, "import reference");
     lydict_remove(st->ctx, imports->name);
     lydict_remove(st->ctx, imports->prefix);
+    lydict_remove(st->ctx, imports->dsc);
+    lydict_remove(st->ctx, imports->ref);
     LY_ARRAY_FREE(imports);
     imports = NULL;
 
+    /* second invalid import */
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     ret = yin_parse_import(st->xml_ctx, "a_mod", &data, &imports);
     assert_int_equal(ret, LY_EVALID);
     logbuf_assert("Prefix \"a_mod\" already used as module prefix. Line number 1.");
+    /* cleanup is supposed to be done by caller function */
     lydict_remove(st->ctx, imports->name);
     lydict_remove(st->ctx, imports->prefix);
     LY_ARRAY_FREE(imports);
 
+    imports = NULL;
+    st = reset_state(state);
+    /* import with unknown child element */
+    data = "<import xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" module=\"a\">\
+                <what value=\"a_mod\"/>\
+            </import>";
+    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    ret = yin_parse_import(st->xml_ctx, "invalid_mod", &data, &imports);
+    assert_int_equal(ret, LY_EVALID);
+    logbuf_assert("Unexpected child element \"what\" of import element.");
+    /* cleanup is supposed to be done by caller function */
+    lydict_remove(st->ctx, imports->name);
+    LY_ARRAY_FREE(imports);
+
+    st->finished_correctly = true;
+}
+
+static void
+test_yin_parse_status(void **state)
+{
+    struct state *st = *state;
+    const char *prefix = NULL, *name = NULL;
+    size_t prefix_len = 0, name_len = 0;
+    LY_ERR ret = LY_SUCCESS;
+    uint16_t flags = 0;
+    struct lysp_ext_instance *exts;
+
+    /* try all valid values */
+    const char *data = "<status value=\"current\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"/>";
+    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    ret = yin_parse_status(st->xml_ctx, &data, &flags, &exts);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_true(flags & LYS_STATUS_CURR);
+
+    st = reset_state(state);
+    flags = 0;
+    data = "<status value=\"deprecated\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"/>";
+    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    ret = yin_parse_status(st->xml_ctx, &data, &flags, &exts);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_true(flags & LYS_STATUS_DEPRC);
+    st->finished_correctly = true;
+
+    st = reset_state(state);
+    flags = 0;
+    data = "<status value=\"obsolete\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"/>";
+    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    ret = yin_parse_status(st->xml_ctx, &data, &flags, &exts);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_true(flags & LYS_STATUS_OBSLT);
+    st->finished_correctly = true;
+
+    /* duplicit definition (no reset_state() call) */
+    data = "<status value=\"deprecated\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"/>";
+    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    ret = yin_parse_status(st->xml_ctx, &data, &flags, &exts);
+    assert_int_equal(ret, LY_EVALID);
+    logbuf_assert("Duplicate element \"status\". Line number 1.");
+
+    /* invalid status value */
+    st = reset_state(state);
+    flags = 0;
+    data = "<status value=\"dunno\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"/>";
+    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    ret = yin_parse_status(st->xml_ctx, &data, &flags, &exts);
+    assert_int_equal(ret, LY_EVALID);
+    logbuf_assert("Invalid value \"dunno\" of \"status\". Line number 1.");
     st->finished_correctly = true;
 }
 
@@ -392,6 +467,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_meta, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_parse_text_element, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_yin_parse_import, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_yin_parse_status, setup_f, teardown_f),
         cmocka_unit_test(test_yin_match_keyword),
         cmocka_unit_test(test_match_argument),
     };

@@ -375,16 +375,6 @@ yin_parse_import(struct lyxml_context *xml_ctx, const char *module_prefix, const
     return ret;
 }
 
-/**
- * @brief Parse status statement.
- *
- * @param[in] xml_ctx Xml context.
- * @param[in,out] data Data to read from.
- * @param[in,out] flags Flags to add to.
- * @param[in,out] exts Extension instances to add to.
- *
- * @return LY_ERR values.
- */
 LY_ERR
 yin_parse_status(struct lyxml_context *xml_ctx, const char **data, uint16_t *flags, struct lysp_ext_instance **exts)
 {
@@ -401,10 +391,6 @@ yin_parse_status(struct lyxml_context *xml_ctx, const char **data, uint16_t *fla
     }
 
     LY_CHECK_RET(yin_parse_attribute(xml_ctx, data, YIN_ARG_VALUE, &value));
-    /* TODO separate to function and check if dynamic was set to 1 in case of error */
-    ret = lyxml_get_string(xml_ctx, data, &out, &out_len, &out, &out_len, &dynamic);
-    LY_CHECK_ERR_RET(ret != LY_EINVAL, LOGVAL_YANG(xml_ctx, LYVE_SYNTAX_YIN, "Expected new element after status element."), LY_EINVAL);
-
     if (strcmp(value, "current") == 0) {
         *flags |= LYS_STATUS_CURR;
     } else if (strcmp(value, "deprecated") == 0) {
@@ -418,19 +404,27 @@ yin_parse_status(struct lyxml_context *xml_ctx, const char **data, uint16_t *fla
     }
     lydict_remove(xml_ctx->ctx, value);
 
-    while (xml_ctx->status == LYXML_ELEMENT) {
-        LY_CHECK_RET(lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len));
-        if (!name) {
-            break;
-        }
+    /* TODO check if dynamic was set to 1 in case of error */
+    if (xml_ctx->status == LYXML_ELEM_CONTENT) {
+        ret = lyxml_get_string(xml_ctx, data, &out, &out_len, &out, &out_len, &dynamic);
+        /* if there are any xml subelements parse them, unknown text content is silently ignored */
+        if (ret == LY_EINVAL) {
+            /* load subelements */
+            while (xml_ctx->status == LYXML_ELEMENT) {
+                LY_CHECK_RET(lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len));
+                if (!name) {
+                    break;
+                }
 
-        kw = yin_match_keyword(name, name_len, prefix_len);
-        switch (kw) {
-            case YANG_CUSTOM:
-                /* TODO parse extension instance */
-                break;
-            default:
-                LOGVAL_YANG(xml_ctx, LY_VCODE_INCHILDSTMT_YIN, name_len, name, 6, "status");
+                kw = yin_match_keyword(name, name_len, prefix_len);
+                switch (kw) {
+                    case YANG_CUSTOM:
+                        /* TODO parse extension instance */
+                        break;
+                    default:
+                        LOGVAL_YANG(xml_ctx, LY_VCODE_INCHILDSTMT_YIN, name_len, name, 6, "status");
+                }
+            }
         }
     }
 
@@ -639,66 +633,6 @@ parse_mod(struct lyxml_context *xml_ctx, const char **data, struct lysp_module *
     }
 
     return LY_SUCCESS;
-}
-
-/**
- * @brief Parse yin submodule.
- *
- * @param[in] ctx Context of YANG schemas.
- * @param[in,out] data Data to read from.
- * @param[out] submod Parsed submodule structure.
- *
- * @return LY_ERR values.
- */
-LY_ERR
-yin_parse_submodule(struct ly_ctx *ctx, const char *data, struct lysp_submodule **submod)
-{
-    LY_ERR ret = LY_SUCCESS;
-    enum yang_keyword kw = YANG_NONE;
-    struct lyxml_context xml_ctx;
-    struct lysp_submodule *mod_p = NULL;
-    const char *prefix, *name;
-    size_t prefix_len, name_len;
-
-    /* initialize xml context */
-    memset(&xml_ctx, 0, sizeof xml_ctx);
-    xml_ctx.ctx = ctx;
-    xml_ctx.line = 1;
-
-    /* check submodule */
-    ret = lyxml_get_element(&xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
-    kw = yin_match_keyword(name, name_len, prefix_len);
-    if (kw == YANG_MODULE) {
-        LOGERR(ctx, LY_EDENIED, "Input data contains module in situation when a submodule is expected.");
-        ret = LY_EINVAL;
-        goto cleanup;
-    } else if (kw != YANG_SUBMODULE) {
-        LOGVAL_YANG(&xml_ctx, LYVE_SYNTAX, "Invalid keyword \"%s\", expected \"module\" or \"submodule\".",
-               ly_stmt2str(kw));
-        ret = LY_EVALID;
-        goto cleanup;
-    }
-
-    /* allocate module */
-    mod_p = calloc(1, sizeof *mod_p);
-    LY_CHECK_ERR_GOTO(!mod_p, LOGMEM(ctx), cleanup);
-    mod_p->parsing = 1;
-
-    /* parser submodule substatements */
-    /* ret = parse_submod(&xml_ctx, &data, mod_p); */
-    LY_CHECK_GOTO(ret, cleanup);
-
-    mod_p->parsing = 0;
-    *submod = mod_p;
-
-cleanup:
-    if (ret) {
-        lysp_submodule_free(ctx, mod_p);
-    }
-
-    lyxml_context_clear(&xml_ctx);
-    return ret;
 }
 
 LY_ERR
