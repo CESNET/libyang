@@ -267,7 +267,7 @@ yin_parse_meta_element(struct lyxml_context *xml_ctx, const char **data, const c
     LY_CHECK_RET(xml_ctx->status != LYXML_ELEM_CONTENT, LY_EVALID);
 
     ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
-    LY_CHECK_ERR_RET(ret != LY_EINVAL, LOGVAL_YANG(xml_ctx, LYVE_SYNTAX_YIN, "Expected \"text\" element as child of meta element."), LY_EINVAL);
+    LY_CHECK_ERR_RET(ret != LY_EINVAL, LOGVAL_PARSER(xml_ctx, LYVE_SYNTAX_YIN, "Expected \"text\" element as child of meta element."), LY_EINVAL);
 
     /* loop over all child elements and parse them */
     while (xml_ctx->status == LYXML_ELEMENT) {
@@ -313,7 +313,7 @@ yin_parse_revision_date(struct lyxml_context *xml_ctx, const char **data, char *
     const char *temp_rev;
 
     if (rev[0]) {
-        LOGVAL_YANG(xml_ctx, LY_VCODE_DUPSTMT, "revision-date");
+        LOGVAL_PARSER(xml_ctx, LY_VCODE_DUPSTMT, "revision-date");
         return LY_EVALID;
     }
 
@@ -347,16 +347,16 @@ yin_parse_import(struct lyxml_context *xml_ctx, const char *module_prefix, const
         kw = yin_match_keyword(name, name_len, prefix_len);
         switch (kw) {
         case YANG_PREFIX:
-            LY_CHECK_ERR_RET(imp->prefix, LOGVAL_YANG(xml_ctx, LY_VCODE_DUPSTMT, "prefix"), LY_EVALID);
+            LY_CHECK_ERR_RET(imp->prefix, LOGVAL_PARSER(xml_ctx, LY_VCODE_DUPSTMT, "prefix"), LY_EVALID);
             LY_CHECK_RET(yin_parse_attribute(xml_ctx, data, YIN_ARG_VALUE, &imp->prefix));
             LY_CHECK_RET(lysp_check_prefix((struct lys_parser_ctx *)xml_ctx, *imports, module_prefix, &imp->prefix), LY_EVALID);
             break;
         case YANG_DESCRIPTION:
-            LY_CHECK_ERR_RET(imp->dsc, LOGVAL_YANG(xml_ctx, LY_VCODE_DUPSTMT, "description"), LY_EVALID);
+            LY_CHECK_ERR_RET(imp->dsc, LOGVAL_PARSER(xml_ctx, LY_VCODE_DUPSTMT, "description"), LY_EVALID);
             yin_parse_meta_element(xml_ctx, data, &imp->dsc);
             break;
         case YANG_REFERENCE:
-            LY_CHECK_ERR_RET(imp->ref, LOGVAL_YANG(xml_ctx, LY_VCODE_DUPSTMT, "reference"), LY_EVALID);
+            LY_CHECK_ERR_RET(imp->ref, LOGVAL_PARSER(xml_ctx, LY_VCODE_DUPSTMT, "reference"), LY_EVALID);
             yin_parse_meta_element(xml_ctx, data, &imp->ref);
             break;
         case YANG_REVISION_DATE:
@@ -371,7 +371,7 @@ yin_parse_import(struct lyxml_context *xml_ctx, const char *module_prefix, const
         }
     }
 
-    LY_CHECK_ERR_RET(!imp->prefix, LOGVAL_YANG(xml_ctx, LY_VCODE_MISSATTR, "prefix", "import"), LY_EVALID);
+    LY_CHECK_ERR_RET(!imp->prefix, LOGVAL_PARSER(xml_ctx, LY_VCODE_MISSATTR, "prefix", "import"), LY_EVALID);
     return ret;
 }
 
@@ -386,7 +386,7 @@ yin_parse_status(struct lyxml_context *xml_ctx, const char **data, uint16_t *fla
     int dynamic = 0;
 
     if (*flags & LYS_STATUS_MASK) {
-        LOGVAL_YANG(xml_ctx, LY_VCODE_DUPELEM, "status");
+        LOGVAL_PARSER(xml_ctx, LY_VCODE_DUPELEM, "status");
         return LY_EVALID;
     }
 
@@ -398,7 +398,7 @@ yin_parse_status(struct lyxml_context *xml_ctx, const char **data, uint16_t *fla
     } else if (strcmp(value, "obsolete") == 0) {
         *flags |= LYS_STATUS_OBSLT;
     } else {
-        LOGVAL_YANG(xml_ctx, LY_VCODE_INVAL_YIN, value, "status");
+        LOGVAL_PARSER(xml_ctx, LY_VCODE_INVAL_YIN, value, "status");
         lydict_remove(xml_ctx->ctx, value);
         return LY_EVALID;
     }
@@ -422,7 +422,7 @@ yin_parse_status(struct lyxml_context *xml_ctx, const char **data, uint16_t *fla
                         /* TODO parse extension instance */
                         break;
                     default:
-                        LOGVAL_YANG(xml_ctx, LY_VCODE_INCHILDSTMT_YIN, name_len, name, 6, "status");
+                        LOGVAL_PARSER(xml_ctx, LY_VCODE_INCHILDSTMT_YIN, name_len, name, 6, "status");
                 }
             }
         }
@@ -454,7 +454,7 @@ yin_parse_extension(struct lyxml_context *xml_ctx, const char **data, struct lys
     LY_ARRAY_NEW_RET(xml_ctx->ctx, *extensions, ex, LY_EMEM);
     yin_parse_attribute(xml_ctx, data, YIN_ARG_NAME, &ex->name);
     ret = lyxml_get_string(xml_ctx, data, &out, &out_len, &out, &out_len, &dynamic);
-    LY_CHECK_ERR_RET(ret != LY_EINVAL, LOGVAL_YANG(xml_ctx, LYVE_SYNTAX_YIN, "Expected new element after extension element."), LY_EINVAL);
+    LY_CHECK_ERR_RET(ret != LY_EINVAL, LOGVAL_PARSER(xml_ctx, LYVE_SYNTAX_YIN, "Expected new element after extension element."), LY_EINVAL);
 
     while (xml_ctx->status == LYXML_ELEMENT) {
         ret = lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
@@ -480,7 +480,7 @@ yin_parse_extension(struct lyxml_context *xml_ctx, const char **data, struct lys
                 /* TODO parse extension instance */
                 break;
             default:
-                LOGVAL_YANG(xml_ctx, LY_VCODE_INCHILDSTMT_YIN, name_len, name, 9, "extension");
+                LOGVAL_PARSER(xml_ctx, LY_VCODE_INCHILDSTMT_YIN, name_len, name, 9, "extension");
                 return LY_EVALID;
         }
     }
@@ -524,9 +524,9 @@ parse_mod(struct lyxml_context *xml_ctx, const char **data, struct lysp_module *
 
     yin_parse_attribute(xml_ctx, data, YIN_ARG_NAME, &(*mod)->mod->name);
 
-    LY_CHECK_ERR_RET(!(*mod)->mod->name, LOGVAL_YANG(xml_ctx, LYVE_SYNTAX_YIN, "Missing argument name of a module"), LY_EVALID);
+    LY_CHECK_ERR_RET(!(*mod)->mod->name, LOGVAL_PARSER(xml_ctx, LYVE_SYNTAX_YIN, "Missing argument name of a module"), LY_EVALID);
     ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
-    LY_CHECK_ERR_RET(ret != LY_EINVAL, LOGVAL_YANG(xml_ctx, LYVE_SYNTAX_YIN, "Expected new xml element after module element."), LY_EINVAL);
+    LY_CHECK_ERR_RET(ret != LY_EINVAL, LOGVAL_PARSER(xml_ctx, LYVE_SYNTAX_YIN, "Expected new xml element after module element."), LY_EINVAL);
 
     /* loop over all elements and parse them */
     while (xml_ctx->status != LYXML_END) {
@@ -660,7 +660,7 @@ yin_parse_module(struct ly_ctx *ctx, const char *data, struct lys_module *mod)
         ret = LY_EINVAL;
         goto cleanup;
     } else if (kw != YANG_MODULE) {
-        LOGVAL_YANG(xml_ctx, LYVE_SYNTAX, "Invalid keyword \"%s\", expected \"module\" or \"submodule\".",
+        LOGVAL_PARSER(xml_ctx, LYVE_SYNTAX, "Invalid keyword \"%s\", expected \"module\" or \"submodule\".",
                     ly_stmt2str(kw));
         ret = LY_EVALID;
         goto cleanup;
