@@ -46,17 +46,7 @@ const char *const yin_attr_list[] = {
     [YIN_ARG_XMLNS] = "xmlns",
 };
 
-/**
- * @brief check if keyword was matched properly,
- * information about namespace is not always fully available when type of keyword is already needed
- * this function retroactively checks if kw isn't actually extension instance or unknown element without namespace
- *
- * @param[in] xml_ctx Xml context.
- * @param[in] prefix Keyword prefix.
- * @param[in] prefix_len Length of prefix.
- * @param[in,out] kw Type of keyword.
- */
-void
+static void
 check_kw_ns(struct lyxml_context *xml_ctx, const char *prefix, size_t prefix_len, enum yang_keyword *kw)
 {
     const struct lyxml_ns *ns = NULL;
@@ -270,16 +260,6 @@ yin_parse_text_element(struct lyxml_context *xml_ctx, struct yin_arg_record **ar
     return LY_SUCCESS;
 }
 
-/**
- * @brief function to parse meta tags eg. elements with text element as child
- *
- * @param[in] xml_ctx Xml context.
- * @param[in] args Sized array of arguments of current elements.
- * @param[in,out] data Data to read from.
- * @param[out] value Where the content of meta tag should be stored.
- *
- * @return LY_ERR values.
- */
 LY_ERR
 yin_parse_meta_element(struct lyxml_context *xml_ctx, struct yin_arg_record **args, const char **data, const char **value)
 {
@@ -336,17 +316,6 @@ yin_parse_meta_element(struct lyxml_context *xml_ctx, struct yin_arg_record **ar
     return LY_SUCCESS;
 }
 
-/**
- * @brief Parse revision date.
- *
- * @param[in] xml_ctx Xml context.
- * @param[in] args Sized array of arguments of current element.
- * @param[in,out] data Data to read from.
- * @param[in,out] rev Array to store the parsed value in.
- * @param[in,out] exts Extension instances to add to.
- *
- * @return LY_ERR values.
- */
 static LY_ERR
 yin_parse_revision_date(struct lyxml_context *xml_ctx, struct yin_arg_record **args, const char **data, char *rev, struct lysp_ext_instance **exts)
 {
@@ -533,16 +502,7 @@ yin_parse_extension(struct lyxml_context *xml_ctx, struct yin_arg_record **exten
     return ret;
 }
 
-/**
- * @brief Parse module substatements.
- *
- * @param[in] xml_ctx Xml context.
- * @param[in,out] data Data to read from.
- * @param[out] mod Parsed module structure.
- *
- * @return LY_ERR values.
- */
-LY_ERR
+static LY_ERR
 yin_parse_mod(struct lyxml_context *xml_ctx, struct yin_arg_record **mod_args, const char **data, struct lysp_module **mod)
 {
     LY_ERR ret = LY_SUCCESS;
