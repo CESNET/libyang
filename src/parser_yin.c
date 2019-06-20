@@ -526,6 +526,8 @@ yin_parse_extension(struct lyxml_context *xml_ctx, struct yin_arg_record **exten
                 LOGVAL_PARSER(xml_ctx, LY_VCODE_INCHILDSTMT_YIN, name_len, name, 9, "extension");
                 return LY_EVALID;
         }
+        LY_ARRAY_FREE(subelem_args);
+        subelem_args = NULL;
     }
 
     return ret;

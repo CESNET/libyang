@@ -527,9 +527,11 @@ test_yin_parse_extension(void **state)
         assert_string_equal(iter->ref, "ref");
         assert_true(iter->flags & LYS_STATUS_DEPRC);
     }
-
-
+    lydict_remove(st->ctx, "b");
+    lydict_remove(st->ctx, "desc");
+    lydict_remove(st->ctx, "ref");
     LY_ARRAY_FREE(args);
+    LY_ARRAY_FREE(exts);
     st->finished_correctly = true;
 }
 
