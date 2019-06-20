@@ -69,35 +69,39 @@ enum YIN_ARGUMENT yin_match_argument_name(const char *name, size_t len);
  * @brief Parse content of whole element as text.
  *
  * @param[in] xml_ctx Xml context.
+ * @param[in] args Sized array of arguments of current element.
  * @param[in,out] data Data to read from.
  * @param[out] value Where content of element should be stored.
  *
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_text_element(struct lyxml_context *xml_ctx, const char **data, const char **value);
+LY_ERR yin_parse_text_element(struct lyxml_context *xml_ctx, struct yin_arg_record **args, const char **data, const char **value);
 
 /**
  * @brief Parse import element.
  *
  * @param[in] xml_ctx Xml context.
+ * @param[in] args Sized array of arguments of current element.
  * @param[in] module_prefix Prefix of the module to check prefix collisions.
  * @param[in,out] data Dta to read from.
  * @param[in,out] imports Parsed imports to add to.
  *
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_import(struct lyxml_context *xml_ctx, const char *module_prefix, const char **data, struct lysp_import **imports);
+LY_ERR yin_parse_import(struct lyxml_context *xml_ctx, struct yin_arg_record **args, const char *module_prefix, const char **data, struct lysp_import **imports);
 
 /**
  * @brief match yang keyword from yin data
  *
- * param[in,out] data Data to read from.
- * param[in] len lenght of keyword.
- * param[in] prefix_len lenght of prefix.
+ * @param[in] xml_ctx Xml context.
+ * @param[in] name Name Start of keyword name
+ * @param[in] name_len Lenght of keyword name.
+ * @param[in] prefix Start of keyword prefix.
+ * @param[in] prefix_len lenght of prefix.
  *
  * @return yang_keyword values.
  */
-enum yang_keyword yin_match_keyword(const char *data, size_t len);
+enum yang_keyword yin_match_keyword(struct lyxml_context *xml_ctx, const char *name, size_t name_len, const char *prefix, size_t prefix_len);
 
 /**
  * @brief Parse status statement.
@@ -109,6 +113,29 @@ enum yang_keyword yin_match_keyword(const char *data, size_t len);
  *
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_status(struct lyxml_context *xml_ctx, const char **data, uint16_t *flags, struct lysp_ext_instance **exts);
+LY_ERR yin_parse_status(struct lyxml_context *xml_ctx, struct yin_arg_record **status_args, const char **data, uint16_t *flags, struct lysp_ext_instance **exts);
+
+/**
+ * @brief parse yin argument, arg_val is unchanged if argument arg_type wasn't found.
+ *
+ * @param[in] xml_ctx XML parser context.
+ * @param[in,out] data Data to read from.
+ * @param[in] arg_type Type of argument that is expected in parsed element (use YIN_ARG_NONE for elements without special arguments).
+ * @param[out] arg_val Where value of argument should be stored. Can be NULL if arg_type is specified as YIN_ARG_NONE.
+ *
+ * @return LY_ERR values.
+ */
+LY_ERR yin_parse_attribute(struct lyxml_context *xml_ctx, struct yin_arg_record **args, enum YIN_ARGUMENT arg_type, const char **arg_val);
+
+/**
+ * @brief load all attributes from current element. Caller is supposed to free args array.
+ *
+ * @param[in,out] xml_ctx Xml context.
+ * @param[in,out] data Data to read from, always moved to currently handled position.
+ * @param[out] args Sized array of attributes.
+ *
+ * @return LY_ERR values.
+ */
+LY_ERR yin_load_attributes(struct lyxml_context *xml_ctx, const char **data, struct yin_arg_record **args);
 
 #endif /* LY_PARSER_YIN_H_*/
