@@ -17,7 +17,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <stdbool.h>
 
 #include "context.h"
 #include "dict.h"
@@ -482,16 +481,6 @@ yin_parse_status(struct lyxml_context *xml_ctx, struct yin_arg_record **status_a
     return ret;
 }
 
-/**
- * @brief Parse the extension statement.
- *
- * @param[in] xml_ctx Xml context.
- * @param[in] extension_args Arguments of extension element.
- * @param[in,out] data Data to read from.
- * @param[in,out] extensions Extensions to add to.
- *
- * @return LY_ERR values.
- */
 LY_ERR
 yin_parse_extension(struct lyxml_context *xml_ctx, struct yin_arg_record **extension_args, const char **data, struct lysp_ext **extensions)
 {
@@ -519,6 +508,7 @@ yin_parse_extension(struct lyxml_context *xml_ctx, struct yin_arg_record **exten
         kw = yin_match_keyword(xml_ctx, name, name_len, prefix, prefix_len);
         switch (kw) {
             case YANG_ARGUMENT:
+                /* TODO */
                 break;
             case YANG_DESCRIPTION:
                 LY_CHECK_RET(yin_parse_meta_element(xml_ctx, &subelem_args, data, &ex->dsc));

@@ -502,6 +502,37 @@ test_yin_parse_status(void **state)
     st->finished_correctly = true;
 }
 
+static void
+test_yin_parse_extension(void **state)
+{
+    struct state *st = *state;
+    const char *prefix = NULL, *name = NULL;
+    size_t prefix_len = 0, name_len = 0;
+    LY_ERR ret = LY_SUCCESS;
+    struct yin_arg_record *args = NULL;
+    struct lysp_ext *exts = NULL, *iter = NULL;
+
+    const char *data = "<extension name=\"b\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">\
+                            <description><text>desc</text></description>\
+                            <reference><text>ref</text></reference>\
+                            <status value=\"deprecated\"></status>\
+                        </extension>";
+    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    yin_load_attributes(st->xml_ctx, &data, &args);
+    ret = yin_parse_extension(st->xml_ctx, &args, &data, &exts);
+    assert_int_equal(ret, LY_SUCCESS);
+    LY_ARRAY_FOR_ITER(exts, struct lysp_ext, iter) {
+        assert_string_equal(iter->name, "b");
+        assert_string_equal(iter->dsc, "desc");
+        assert_string_equal(iter->ref, "ref");
+        assert_true(iter->flags & LYS_STATUS_DEPRC);
+    }
+
+
+    LY_ARRAY_FREE(args);
+    st->finished_correctly = true;
+}
+
 int
 main(void)
 {
@@ -513,6 +544,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_yin_parse_import, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_yin_parse_status, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_yin_match_keyword, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_yin_parse_extension, setup_f, teardown_f),
         cmocka_unit_test(test_yin_match_argument_name),
     };
 
