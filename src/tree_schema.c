@@ -2996,7 +2996,7 @@ static struct lys_node *
 lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const struct lys_node *node,
                        struct unres_schema *unres, int shallow, int finalize)
 {
-    struct lys_node *retval = NULL, *iter, *p;
+    struct lys_node *retval = NULL, *iter;
     struct ly_ctx *ctx = module->ctx;
     int i, j, rc;
     unsigned int size, size1, size2;
@@ -3160,21 +3160,17 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
             }
         }
 
-        /* inherit config flags */
-        p = parent;
-        do {
-            for (iter = p; iter && (iter->nodetype == LYS_USES); iter = iter->parent);
-        } while (iter && iter->nodetype == LYS_AUGMENT && (p = lys_parent(iter)));
-        if (iter) {
-            flags = iter->flags & LYS_CONFIG_MASK;
-        } else {
-            /* default */
-            flags = LYS_CONFIG_W;
-        }
-
         switch (finalize) {
         case 1:
             /* inherit config flags */
+            for (iter = parent; iter && (iter->nodetype & (LYS_USES | LYS_AUGMENT)); iter = lys_parent(iter));
+            if (iter) {
+                flags = iter->flags & LYS_CONFIG_MASK;
+            } else {
+                /* default */
+                flags = LYS_CONFIG_W;
+            }
+
             if (retval->flags & LYS_CONFIG_SET) {
                 /* skip nodes with an explicit config value */
                 if ((flags & LYS_CONFIG_R) && (retval->flags & LYS_CONFIG_W)) {
