@@ -444,16 +444,15 @@ yin_parse_import(struct lyxml_context *xml_ctx, struct yin_arg_record **import_a
             LOGERR(xml_ctx->ctx, LY_VCODE_UNEXP_SUBELEM, name_len, name, "import");
             goto validation_err;
         }
-        LY_ARRAY_FREE(subelem_args);
+        FREE_ARRAY(xml_ctx, subelem_args, free_arg_rec);
         subelem_args = NULL;
     }
 
     LY_CHECK_ERR_GOTO(!imp->prefix, LOGVAL_PARSER(xml_ctx, LY_VCODE_MISSATTR, "prefix", "import"), validation_err);
-    LY_ARRAY_FREE(subelem_args);
     return ret;
 
 validation_err:
-    LY_ARRAY_FREE(subelem_args);
+    FREE_ARRAY(xml_ctx, subelem_args, free_arg_rec);
     return LY_EVALID;
 }
 
