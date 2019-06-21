@@ -594,6 +594,61 @@ cleanup:
 }
 
 LY_ERR
+yin_parse_argument_element(struct lyxml_context *xml_ctx, struct yin_arg_record **attrs, const char **data,
+                           uint16_t *flags, const char **argument, struct lysp_ext **extensions)
+{
+    LY_ERR ret = LY_SUCCESS;
+    const char *name, *prefix;
+    size_t name_len, prefix_len;
+    struct yin_arg_record *subelem_args = NULL;
+    char *out;
+    int dynamic;
+    enum yang_keyword kw = YANG_NONE;
+
+    LY_CHECK_RET(yin_parse_attribute(xml_ctx, attrs, YIN_ARG_NAME, argument));
+
+    if (xml_ctx->status == LYXML_ELEM_CONTENT) {
+        ret = lyxml_get_string(xml_ctx, data, &out, &name_len, &out, &name_len, &dynamic);
+        /* unknown element text content is ignored */
+        if (ret == LY_EINVAL) {
+            while (xml_ctx->status == LYXML_ELEMENT) {
+                ret = lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
+                LY_CHECK_GOTO(ret, cleanup);
+                ret = yin_load_attributes(xml_ctx, data, &subelem_args);
+                LY_CHECK_GOTO(ret, cleanup);
+                kw = yin_match_keyword(xml_ctx, name, name_len, prefix, prefix_len);
+
+                if (!name) {
+                    /* end of yin-element element reached */
+                    break;
+                }
+
+                switch (kw) {
+                    case YANG_YIN_ELEMENT:
+                            yin_parse_yin_element_element(xml_ctx, &subelem_args, data, flags, extensions);
+                        break;
+                    case YANG_CUSTOM:
+                        // TODO parse extension instance
+                        break;
+
+                    default:
+                        LOGERR(xml_ctx->ctx, LYVE_SYNTAX_YIN, "Unexpected child element \"%.*s\".", name_len, name);
+                        return LY_EVALID;
+                }
+            }
+        } else {
+            /* load closing element */
+            LY_CHECK_RET(lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len));
+            LY_CHECK_RET(name, LY_EINVAL);
+        }
+    }
+
+cleanup:
+    FREE_ARRAY(xml_ctx, subelem_args, free_arg_rec);
+    return ret;
+}
+
+LY_ERR
 yin_parse_extension(struct lyxml_context *xml_ctx, struct yin_arg_record **extension_args, const char **data, struct lysp_ext **extensions)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -624,7 +679,7 @@ yin_parse_extension(struct lyxml_context *xml_ctx, struct yin_arg_record **exten
         kw = yin_match_keyword(xml_ctx, name, name_len, prefix, prefix_len);
         switch (kw) {
             case YANG_ARGUMENT:
-                /* TODO */
+                ret = yin_parse_argument_element(xml_ctx, &subelem_args, data, &ex->flags, &ex->argument, extensions);
                 break;
             case YANG_DESCRIPTION:
                 ret = yin_parse_meta_element(xml_ctx, &subelem_args, data, &ex->dsc);

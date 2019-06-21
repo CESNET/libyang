@@ -517,6 +517,7 @@ test_yin_parse_extension(void **state)
     struct lysp_ext *exts = NULL, *iter = NULL;
 
     const char *data = "<extension name=\"b\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">\
+                            <argument name=\"argname\"></argument>\
                             <description><text>desc</text></description>\
                             <reference><text>ref</text></reference>\
                             <status value=\"deprecated\"></status>\
@@ -529,11 +530,13 @@ test_yin_parse_extension(void **state)
         assert_string_equal(iter->name, "b");
         assert_string_equal(iter->dsc, "desc");
         assert_string_equal(iter->ref, "ref");
+        assert_string_equal(iter->argument, "argname");
         assert_true(iter->flags & LYS_STATUS_DEPRC);
     }
     lydict_remove(st->ctx, "b");
     lydict_remove(st->ctx, "desc");
     lydict_remove(st->ctx, "ref");
+    lydict_remove(st->ctx, "argname");
     LY_ARRAY_FREE(args);
     LY_ARRAY_FREE(exts);
     st->finished_correctly = true;
