@@ -7443,7 +7443,17 @@ lyd_wd_add_subtree(struct lyd_node **root, struct lyd_node *last_parent, struct 
             }
             lyd_get_node_siblings(subroot->child, schema, present);
             if (present->number) {
-                /* the shortcase leaf(-list) exists, stop the processing */
+                /* the shortcase leaf(-list) exists, stop the processing and fix default flags */
+                if (subroot->dflt) {
+                    for (i = 0; i < (signed)present->number; i++) {
+                        if (!present->set.d[i]->dflt) {
+                            for (iter = subroot; iter && iter->dflt; iter = iter->parent) {
+                                iter->dflt = 0;
+                            }
+                            break;
+                        }
+                    }
+                }
                 break;
             }
         }
