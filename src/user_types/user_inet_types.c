@@ -118,8 +118,7 @@ static int
 ipv4_prefix_store_clb(struct ly_ctx *ctx, const char *UNUSED(type_name), const char **value_str, lyd_val *value, char **err_msg)
 {
     char *pref_str, *ptr, *result;
-    unsigned long int pref, addr_bin, i;
-    uint32_t mask;
+    uint32_t pref, addr_bin, i, mask;
 
     if (sizeof addr_bin < sizeof(struct in_addr)) {
         if (asprintf(err_msg, "Internal error (buffer too small for an ip address).") == -1) {
