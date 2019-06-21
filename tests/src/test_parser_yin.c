@@ -539,6 +539,52 @@ test_yin_parse_extension(void **state)
     st->finished_correctly = true;
 }
 
+static void
+test_yin_parse_yin_element_element(void **state)
+{
+    struct state *st = *state;
+    const char *prefix = NULL, *name = NULL;
+    size_t prefix_len = 0, name_len = 0;
+    LY_ERR ret = LY_SUCCESS;
+    uint16_t flags = 0;
+    struct lysp_ext *exts;
+    struct yin_arg_record *args = NULL;
+
+    /* try all valid values */
+    const char *data = "<yin-element value=\"true\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"/>";
+    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    yin_load_attributes(st->xml_ctx, &data, &args);
+    ret = yin_parse_yin_element_element(st->xml_ctx, &args, &data, &flags, &exts);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_true(flags & LYS_YINELEM_TRUE);
+    LY_ARRAY_FREE(args);
+    args = NULL;
+
+    st = reset_state(state);
+    flags = 0;
+    data = "<yin-element value=\"false\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"/>";
+    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    yin_load_attributes(st->xml_ctx, &data, &args);
+    ret = yin_parse_yin_element_element(st->xml_ctx, &args, &data, &flags, &exts);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_true(flags & LYS_YINELEM_FALSE);
+    LY_ARRAY_FREE(args);
+    args = NULL;
+
+    /* invalid value */
+    st = reset_state(state);
+    flags = 0;
+    data = "<yin-element value=\"invalid\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"/>";
+    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    yin_load_attributes(st->xml_ctx, &data, &args);
+    ret = yin_parse_yin_element_element(st->xml_ctx, &args, &data, &flags, &exts);
+    assert_int_equal(ret, LY_EVALID);
+    LY_ARRAY_FREE(args);
+    args = NULL;
+
+    st->finished_correctly = true;
+}
+
 int
 main(void)
 {
@@ -551,6 +597,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_yin_parse_status, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_yin_match_keyword, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_yin_parse_extension, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_yin_parse_yin_element_element, setup_f, teardown_f),
         cmocka_unit_test(test_yin_match_argument_name),
     };
 

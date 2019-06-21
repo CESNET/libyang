@@ -133,7 +133,7 @@ LY_ERR yin_parse_attribute(struct lyxml_context *xml_ctx, struct yin_arg_record 
                            enum YIN_ARGUMENT arg_type, const char **arg_val);
 
 /**
- * @brief load all attributes from current element. Caller is supposed to free args array.
+ * @brief Load all attributes from current element. Caller is supposed to free args array.
  *
  * @param[in,out] xml_ctx Xml context.
  * @param[in,out] data Data to read from, always moved to currently handled position.
@@ -142,6 +142,20 @@ LY_ERR yin_parse_attribute(struct lyxml_context *xml_ctx, struct yin_arg_record 
  * @return LY_ERR values.
  */
 LY_ERR yin_load_attributes(struct lyxml_context *xml_ctx, const char **data, struct yin_arg_record **args);
+
+/**
+ * @brief Parse yin-elemenet element.
+ *
+ * @param[in,out] xml_ctx Xml context.
+ * @param[in] attrs Sized array of element attributes.
+ * @param[in,out] data Data to read from, always moved to currently handled position.
+ * @param[in,out] flags Flags to add to.
+ * @prama[in,out] extensions Extension instance to add to.
+ *
+ * @return LY_ERR values.
+ */
+LY_ERR yin_parse_yin_element_element(struct lyxml_context *xml_ctx, struct yin_arg_record **attrs, const char **data,
+                                     uint16_t *flags, struct lysp_ext **extensions);
 
 /**
  * @brief Parse the extension statement.
