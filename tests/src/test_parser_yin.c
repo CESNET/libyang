@@ -335,7 +335,8 @@ test_yin_parse_text_element(void **state)
     const char *data = "<elem>content</elem>";
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->xml_ctx, &data, &args);
-    yin_parse_text_element(st->xml_ctx, &args, &data, &res);
+    ret = yin_parse_text_element(st->xml_ctx, &args, &data, &res);
+    assert_int_equal(ret, LY_SUCCESS);
     assert_string_equal(res, "content");
     lydict_remove(st->ctx, "content");
     st = reset_state(state);
@@ -345,18 +346,21 @@ test_yin_parse_text_element(void **state)
     data = "<elem xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">another-content</elem>";
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->xml_ctx, &data, &args);
-    yin_parse_text_element(st->xml_ctx, &args, &data, &res);
+    ret = yin_parse_text_element(st->xml_ctx, &args, &data, &res);
+    assert_int_equal(ret, LY_SUCCESS);
     assert_string_equal(res, "another-content");
     lydict_remove(st->ctx, "another-content");
     st = reset_state(state);
     LY_ARRAY_FREE(args);
     args = NULL;
 
-    data = "<elem invalid=\"invalid\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">text</elem>";
+    data = "<elem unknown=\"unknown\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">text</elem>";
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->xml_ctx, &data, &args);
     ret = yin_parse_text_element(st->xml_ctx, &args, &data, &res);
-    assert_int_equal(ret, LY_EVALID);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_string_equal(res, "text");
+    lydict_remove(st->ctx, "text");
     LY_ARRAY_FREE(args);
     args = NULL;
 
@@ -375,14 +379,14 @@ test_yin_parse_import(void **state)
 
     const char *data = "<import xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" module=\"a\">\
                             <prefix value=\"a_mod\"/>\
-                            <revision-date date=\"2015-01-01\"/>\
+                            <revision-date date=\"2015-01-01\"></revision-date>\
                             <description><text>import description</text></description>\
                             <reference><text>import reference</text></reference>\
                         </import>\
                         \
                         <import xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" module=\"a\">\
                             <prefix value=\"a_mod\"/>\
-                            <revision-date date=\"2015-01-01\"/>\
+                            <revision-date date=\"2015-01-01\" />\
                         </import>";
     /* first import */
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);

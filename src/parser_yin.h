@@ -21,18 +21,6 @@
 #include "log.h"
 #include "xml.h"
 
-/**
- * @brief check if keyword was matched properly,
- * information about namespace is not always fully available when type of keyword is already needed
- * this function retroactively checks if kw isn't actually extension instance or unknown element without namespace
- *
- * @param[in] xml_ctx Xml context.
- * @param[in] prefix Keyword prefix.
- * @param[in] prefix_len Length of prefix.
- * @param[in,out] kw Type of keyword.
- */
-static void check_kw_ns(struct lyxml_context *xml_ctx, const char *prefix, size_t prefix_len, enum yang_keyword *kw);
-
 /* list of yin attribute strings */
 extern const char *const yin_attr_list[];
 #define yin_attr2str(STMT) yin_attr_list[STMT]
@@ -78,19 +66,6 @@ struct yin_arg_record {
 enum YIN_ARGUMENT yin_match_argument_name(const char *name, size_t len);
 
 /**
- * @brief Parse module substatements.
- *
- * @param[in] xml_ctx Xml context.
- * @param[in,out] data Data to read from.
- * @param[out] mod Parsed module structure.
- *
- * @return LY_ERR values.
- */
-static LY_ERR
-yin_parse_mod(struct lyxml_context *xml_ctx, struct yin_arg_record **mod_args, const char **data,
-              struct lysp_module **mod);
-
-/**
  * @brief Parse content of whole element as text.
  *
  * @param[in] xml_ctx Xml context.
@@ -130,33 +105,6 @@ LY_ERR yin_parse_import(struct lyxml_context *xml_ctx, struct yin_arg_record **a
  */
 enum yang_keyword yin_match_keyword(struct lyxml_context *xml_ctx, const char *name, size_t name_len,
                                     const char *prefix, size_t prefix_len);
-
-/**
- * @brief function to parse meta tags eg. elements with text element as child
- *
- * @param[in] xml_ctx Xml context.
- * @param[in] args Sized array of arguments of current elements.
- * @param[in,out] data Data to read from.
- * @param[out] value Where the content of meta tag should be stored.
- *
- * @return LY_ERR values.
- */
-static LY_ERR yin_parse_meta_element(struct lyxml_context *xml_ctx, struct yin_arg_record **args, const char **data,
-                                     const char **value);
-
-/**
- * @brief Parse revision date.
- *
- * @param[in] xml_ctx Xml context.
- * @param[in] args Sized array of arguments of current element.
- * @param[in,out] data Data to read from.
- * @param[in,out] rev Array to store the parsed value in.
- * @param[in,out] exts Extension instances to add to.
- *
- * @return LY_ERR values.
- */
-static LY_ERR yin_parse_revision_date(struct lyxml_context *xml_ctx, struct yin_arg_record **args, const char **data,
-                                      char *rev, struct lysp_ext_instance **exts);
 
 /**
  * @brief Parse status statement.
