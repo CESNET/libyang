@@ -364,7 +364,7 @@ get_word(FILE *in, char **buf, int *buf_len)
                     return NULL;
                 }
             }
-        } else if (((c == '\'') || (c == '\"')) && !string) {
+        } else if (((c == '\'') || (c == '\"')) && !string && !comment) {
             if (used) {
                 /* we want strings always in a separate word, leave it */
                 if (ungetc(c, in) != c) {
