@@ -1245,7 +1245,7 @@ print_keyword(enum yang_token keyword, enum yang_arg arg, FILE *out, int level, 
         break;
     case YANG_WHEN:
         fprintf(out, "%*s<when condition=\"", LEVEL(level), INDENT(level));
-        close_tag = "condition";
+        close_tag = "when";
         break;
     case YANG_YANG_VERSION:
         fprintf(out, "%*s<yang-version value=\"", LEVEL(level), INDENT(level));
