@@ -1216,6 +1216,35 @@ ly_type_store_identityref(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(t
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Validation of instance-identifier - check presence of the specific node in the (data/schema) tree.
+ *
+ * In the case the instance-identifier type does not require instance (@p require_instance is 0) or the data @p trees
+ * are not complete (called in the middle of data parsing), the @p token is checked only to match schema tree.
+ * Otherwise, the provided data @p trees are used to find instance of the node specified by the token and @p node_d as
+ * its parent.
+ *
+ * @param[in] ctx libyang context
+ * @param[in] orig Complete instance-identifier expression for logging.
+ * @param[in] orig_len Length of the @p orig string.
+ * @param[in] options [Type plugin options ](@ref plugintypeopts) - only LY_TYPE_OPTS_INCOMPLETE_DATA is used.
+ * @param[in] require_instance Flag if the instance-identifier requires presence of an instance in the data tree.
+ * If the flag is zero, the data tree is not needed and the @p token is checked only by checking the schema tree.
+ * @param[in,out] token Pointer to the specific position inside the @p orig string where the node-identifier starts.
+ * The pointer is updated to point after the processed node-identifier.
+ * @param[in,out] prefixes [Sized array](@ref sizedarrays) of known mappings between prefix used in the @p orig and modules from the context.
+ * @param[in,out] node_s Parent schema node as input, resolved schema node as output. Alternative parameter for @p node_d
+ * in case the instance is not available (@p trees are not yet complete) or required.
+ * @param[in,out] node_d Parent data node as input, resolved data node instance as output. Alternative parameter for @p node_s
+ * in case the instance is required and @p trees are complete.
+ * @param[in] get_prefix Callback to resolve (map it to a schema) prefix used in the @p token.
+ * @param[in] parser Context data for @p get_prefix callback.
+ * @param[in] trees [Sized array](@ref sizedarrays)) of data trees where the data instance is supposed to be present.
+ * @param[out] errmsg Error message in case of failure. Function does not log on its own, instead it creates error message. Caller is supposed to
+ * free (or store somewhere) the returned message.
+ * @return LY_SUCCESS when node found.
+ * @return LY_EMEM or LY_EVALID in case of failure or when the node is not present in the schema/data tree.
+ */
 static LY_ERR
 ly_type_validate_instanceid_checknodeid(struct ly_ctx *ctx, const char *orig, size_t orig_len, int options, int require_instance,
                                         const char **token, struct lyd_value_prefix **prefixes,
