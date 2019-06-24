@@ -336,6 +336,7 @@ test_yin_parse_text_element(void **state)
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->xml_ctx, &data, &args);
     ret = yin_parse_text_element(st->xml_ctx, &args, &data, &res);
+    assert_int_equal(st->xml_ctx->status, LYXML_END);
     assert_int_equal(ret, LY_SUCCESS);
     assert_string_equal(res, "content");
     lydict_remove(st->ctx, "content");
@@ -347,6 +348,7 @@ test_yin_parse_text_element(void **state)
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->xml_ctx, &data, &args);
     ret = yin_parse_text_element(st->xml_ctx, &args, &data, &res);
+    assert_int_equal(st->xml_ctx->status, LYXML_END);
     assert_int_equal(ret, LY_SUCCESS);
     assert_string_equal(res, "another-content");
     lydict_remove(st->ctx, "another-content");
@@ -358,6 +360,7 @@ test_yin_parse_text_element(void **state)
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->xml_ctx, &data, &args);
     ret = yin_parse_text_element(st->xml_ctx, &args, &data, &res);
+    assert_int_equal(st->xml_ctx->status, LYXML_END);
     assert_int_equal(ret, LY_SUCCESS);
     assert_string_equal(res, "text");
     lydict_remove(st->ctx, "text");
@@ -455,6 +458,7 @@ test_yin_parse_status(void **state)
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->xml_ctx, &data, &args);
     ret = yin_parse_status(st->xml_ctx, &args, &data, &flags, &exts);
+    assert_int_equal(st->xml_ctx->status, LYXML_END);
     assert_int_equal(ret, LY_SUCCESS);
     assert_true(flags & LYS_STATUS_CURR);
     LY_ARRAY_FREE(args);
@@ -466,6 +470,7 @@ test_yin_parse_status(void **state)
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->xml_ctx, &data, &args);
     ret = yin_parse_status(st->xml_ctx, &args, &data, &flags, &exts);
+    assert_int_equal(st->xml_ctx->status, LYXML_END);
     assert_int_equal(ret, LY_SUCCESS);
     assert_true(flags & LYS_STATUS_DEPRC);
     LY_ARRAY_FREE(args);
@@ -477,6 +482,7 @@ test_yin_parse_status(void **state)
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->xml_ctx, &data, &args);
     ret = yin_parse_status(st->xml_ctx, &args, &data, &flags, &exts);
+    assert_int_equal(st->xml_ctx->status, LYXML_END);
     assert_int_equal(ret, LY_SUCCESS);
     assert_true(flags & LYS_STATUS_OBSLT);
     LY_ARRAY_FREE(args);
@@ -525,6 +531,7 @@ test_yin_parse_extension(void **state)
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->xml_ctx, &data, &args);
     ret = yin_parse_extension(st->xml_ctx, &args, &data, &exts);
+    assert_int_equal(st->xml_ctx->status, LYXML_END);
     assert_int_equal(ret, LY_SUCCESS);
     LY_ARRAY_FOR_ITER(exts, struct lysp_ext, iter) {
         assert_string_equal(iter->name, "b");
@@ -558,6 +565,7 @@ test_yin_parse_yin_element_element(void **state)
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->xml_ctx, &data, &args);
     ret = yin_parse_yin_element_element(st->xml_ctx, &args, &data, &flags, &exts);
+    assert_int_equal(st->xml_ctx->status, LYXML_END);
     assert_int_equal(ret, LY_SUCCESS);
     assert_true(flags & LYS_YINELEM_TRUE);
     LY_ARRAY_FREE(args);
@@ -569,6 +577,7 @@ test_yin_parse_yin_element_element(void **state)
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->xml_ctx, &data, &args);
     ret = yin_parse_yin_element_element(st->xml_ctx, &args, &data, &flags, &exts);
+    assert_int_equal(st->xml_ctx->status, LYXML_END);
     assert_int_equal(ret, LY_SUCCESS);
     assert_true(flags & LYS_YINELEM_FALSE);
     LY_ARRAY_FREE(args);
