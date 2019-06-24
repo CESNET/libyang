@@ -34,6 +34,50 @@
  */
 #define IS_YIN_NS(ns) (strcmp(ns, YIN_NS_URI) == 0)
 
+/**
+ * @brief loop over all subelements, automatically skip useles data and
+ * unify inconsistencies in xml parser status when loading full vs self closing tags.
+ * Use YIN_READ_SUBELEMS_END at the end.
+ *
+ * @param[in,out] CTX Xml parser context.
+ * @param[in,out] DATA Data to read from, always moved to currently handeled character.
+ * @param[in,out] RET Name of variable to store return values.
+ * @param[in,out] CLEANUP_LABEL Goto label that will be used in case of error.
+ * @param[in,out] KW Name of variable to store type of current subelement.
+ * @param[in] TMP Name of variable to store temporary values (type yin_arg_record).
+ * @param[in] SUBELEM_ARGS Name of variable to store array of subelements.
+ */
+#define YIN_READ_SUBELEMS_START(CTX, DATA, RET, CLEANUP_LABEL, KW, TMP, SUBELEM_ARGS)\
+if (xml_ctx->status == LYXML_ELEM_CONTENT) {\
+    ret = lyxml_get_string(CTX, DATA, &TMP.content, &TMP.content_len, &TMP.content, &TMP.content_len, &TMP.dynamic_content);\
+    /* unknown element text content is ignored */\
+    if (ret == LY_EINVAL) {\
+        while (CTX->status == LYXML_ELEMENT) {\
+            RET = lyxml_get_element(CTX, DATA, &TMP.prefix, &TMP.prefix_len, &TMP.name, &TMP.name_len);\
+            LY_CHECK_GOTO(RET, CLEANUP_LABEL);\
+            RET = yin_load_attributes(CTX, DATA, &SUBELEM_ARGS);\
+            LY_CHECK_GOTO(RET, CLEANUP_LABEL);\
+            KW = yin_match_keyword(CTX, TMP.name, TMP.name_len, TMP.prefix, TMP.prefix_len);\
+            if (!TMP.name) {\
+                /* end of yin-element element reached */\
+                break;\
+            }
+/**
+ * Closing part of macro YIN_READ_SUBELEM_START
+ *
+ * @param[in] CTX Xml parser context.
+ * @param[in,out] DATA Data to read from, always moved to currently handeled character.
+ * @param[in,out] TMP Name of variable to store temporary values (type yin_arg_record).
+ */
+#define YIN_READ_SUBELEMS_END(CTX, DATA, TMP)\
+        }\
+    } else {\
+        /* load closing element */\
+        LY_CHECK_RET(lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len));\
+        LY_CHECK_RET(name, LY_EINVAL);\
+    }\
+}
+
 const char *const yin_attr_list[] = {
     [YIN_ARG_NAME] = "name",
     [YIN_ARG_TARGET_NODE] = "target-node",
@@ -532,11 +576,10 @@ yin_parse_yin_element_element(struct lyxml_context *xml_ctx, struct yin_arg_reco
 {
     LY_ERR ret = LY_SUCCESS;
     const char *temp_val = NULL, *prefix, *name;
-    char *out;
     size_t prefix_len, name_len;
     struct yin_arg_record *subelem_args = NULL;
-    int dynamic;
     enum yang_keyword kw = YANG_NONE;
+    struct yin_arg_record temp_record;
 
     if (*flags & LYS_YINELEM_MASK) {
         LOGVAL_PARSER(xml_ctx, LY_VCODE_DUPSTMT, "yin-element");
@@ -555,38 +598,22 @@ yin_parse_yin_element_element(struct lyxml_context *xml_ctx, struct yin_arg_reco
     }
     lydict_remove(xml_ctx->ctx, temp_val);
 
-    if (xml_ctx->status == LYXML_ELEM_CONTENT) {
-        ret = lyxml_get_string(xml_ctx, data, &out, &name_len, &out, &name_len, &dynamic);
-        /* unknown element text content is ignored */
-        if (ret == LY_EINVAL) {
-            while (xml_ctx->status == LYXML_ELEMENT) {
-                ret = lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
-                LY_CHECK_GOTO(ret, cleanup);
-                ret = yin_load_attributes(xml_ctx, data, &subelem_args);
-                LY_CHECK_GOTO(ret, cleanup);
-                kw = yin_match_keyword(xml_ctx, name, name_len, prefix, prefix_len);
-
-                if (!name) {
-                    /* end of yin-element element reached */
-                    break;
-                }
-
-                switch (kw) {
-                    case YANG_CUSTOM:
-                        // TODO parse extension instance
-                        break;
-
-                    default:
-                        LOGERR(xml_ctx->ctx, LYVE_SYNTAX_YIN, "Unexpected child element \"%.*s\".", name_len, name);
-                        return LY_EVALID;
-                }
-            }
-        } else {
-            /* load closing element */
-            LY_CHECK_RET(lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len));
-            LY_CHECK_RET(name, LY_EINVAL);
+    YIN_READ_SUBELEMS_START(xml_ctx, data, ret, cleanup, kw, temp_record, subelem_args);
+        if (!name) {
+            /* end of yin-element element reached */
+            break;
         }
-    }
+
+        switch (kw) {
+            case YANG_CUSTOM:
+                // TODO parse extension instance
+                break;
+
+            default:
+                LOGERR(xml_ctx->ctx, LYVE_SYNTAX_YIN, "Unexpected child element \"%.*s\".", name_len, name);
+                return LY_EVALID;
+        }
+    YIN_READ_SUBELEMS_END(xml_ctx, data, temp_record);
 
 cleanup:
     FREE_ARRAY(xml_ctx, subelem_args, free_arg_rec);
@@ -601,47 +628,30 @@ yin_parse_argument_element(struct lyxml_context *xml_ctx, struct yin_arg_record 
     const char *name, *prefix;
     size_t name_len, prefix_len;
     struct yin_arg_record *subelem_args = NULL;
-    char *out;
-    int dynamic;
     enum yang_keyword kw = YANG_NONE;
+    struct yin_arg_record temp_record;
 
     LY_CHECK_RET(yin_parse_attribute(xml_ctx, attrs, YIN_ARG_NAME, argument));
 
-    if (xml_ctx->status == LYXML_ELEM_CONTENT) {
-        ret = lyxml_get_string(xml_ctx, data, &out, &name_len, &out, &name_len, &dynamic);
-        /* unknown element text content is ignored */
-        if (ret == LY_EINVAL) {
-            while (xml_ctx->status == LYXML_ELEMENT) {
-                ret = lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
-                LY_CHECK_GOTO(ret, cleanup);
-                ret = yin_load_attributes(xml_ctx, data, &subelem_args);
-                LY_CHECK_GOTO(ret, cleanup);
-                kw = yin_match_keyword(xml_ctx, name, name_len, prefix, prefix_len);
-
-                if (!name) {
-                    /* end of yin-element element reached */
-                    break;
-                }
-
-                switch (kw) {
-                    case YANG_YIN_ELEMENT:
-                            yin_parse_yin_element_element(xml_ctx, &subelem_args, data, flags, extensions);
-                        break;
-                    case YANG_CUSTOM:
-                        // TODO parse extension instance
-                        break;
-
-                    default:
-                        LOGERR(xml_ctx->ctx, LYVE_SYNTAX_YIN, "Unexpected child element \"%.*s\".", name_len, name);
-                        return LY_EVALID;
-                }
-            }
-        } else {
-            /* load closing element */
-            LY_CHECK_RET(lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len));
-            LY_CHECK_RET(name, LY_EINVAL);
+    YIN_READ_SUBELEMS_START(xml_ctx, data, ret, cleanup, kw, temp_record, subelem_args);
+        if (!name) {
+            /* end of argument element reached */
+            break;
         }
-    }
+
+        switch (kw) {
+            case YANG_YIN_ELEMENT:
+                    yin_parse_yin_element_element(xml_ctx, &subelem_args, data, flags, extensions);
+                break;
+            case YANG_CUSTOM:
+                // TODO parse extension instance
+                break;
+
+            default:
+                LOGERR(xml_ctx->ctx, LYVE_SYNTAX_YIN, "Unexpected child element \"%.*s\".", name_len, name);
+                return LY_EVALID;
+        }
+    YIN_READ_SUBELEMS_END(xml_ctx, data, temp_record);
 
 cleanup:
     FREE_ARRAY(xml_ctx, subelem_args, free_arg_rec);
