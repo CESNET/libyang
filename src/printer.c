@@ -832,7 +832,7 @@ lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), voi
     return r;
 }
 
-int
+static int
 lyd_wd_toprint(const struct lyd_node *node, int options)
 {
     const struct lyd_node *subroot, *next, *elem;
@@ -945,6 +945,55 @@ trim_dfs_nextsibling:
         if (!flag) {
             return 0;
         }
+    }
+
+    return 1;
+}
+
+int
+lyd_toprint(const struct lyd_node *node, int options)
+{
+    struct lys_node *scase, *sparent;
+    struct lyd_node *first;
+
+    if (!lyd_wd_toprint(node, options)) {
+        /* wd says do not print, but make exception for direct descendants of case nodes without other printable nodes */
+        for (sparent = lys_parent(node->schema); sparent && (sparent->nodetype == LYS_USES); sparent = lys_parent(sparent));
+        if (!sparent || (sparent->nodetype != LYS_CASE)) {
+            /* parent not a case */
+            return 0;
+        }
+        scase = sparent;
+
+        for (sparent = lys_parent(scase); sparent && (sparent->nodetype == LYS_USES); sparent = lys_parent(sparent));
+        if (!sparent || (sparent->nodetype != LYS_CHOICE)) {
+            /* weird */
+            LOGINT(lyd_node_module(node)->ctx);
+            return 0;
+        }
+        if (((struct lys_node_choice *)sparent)->dflt == scase) {
+            /* this is a default case, respect the previous original toprint flag */
+            return 0;
+        }
+
+        /* try to find a sibling that will be printed */
+        for (first = node->prev; first->prev->next; first = first->prev);
+        LY_TREE_FOR(first, first) {
+            if (first == node) {
+                /* skip this node */
+                continue;
+            }
+
+            /* find schema parent, whether it is the same case */
+            for (sparent = lys_parent(first->schema); sparent && (sparent->nodetype == LYS_USES); sparent = lys_parent(sparent));
+            if ((sparent == scase) && lyd_wd_toprint(first, options)) {
+                /* this other node will be printed, we do not have to print the current one */
+                return 0;
+            }
+        }
+
+        /* there is no case child that will be printed, print this node */
+        return 1;
     }
 
     return 1;

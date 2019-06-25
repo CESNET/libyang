@@ -524,7 +524,7 @@ json_print_nodes(struct lyout *out, int level, const struct lyd_node *root, int 
     LY_PRINT_SET;
 
     LY_TREE_FOR(root, node) {
-        if (!lyd_wd_toprint(node, options)) {
+        if (!lyd_toprint(node, options)) {
             /* wd says do not print */
             continue;
         }
