@@ -364,7 +364,7 @@ get_word(FILE *in, char **buf, int *buf_len)
                     return NULL;
                 }
             }
-        } else if (((c == '\'') || (c == '\"')) && !string) {
+        } else if (((c == '\'') || (c == '\"')) && !string && !comment) {
             if (used) {
                 /* we want strings always in a separate word, leave it */
                 if (ungetc(c, in) != c) {
@@ -1245,7 +1245,7 @@ print_keyword(enum yang_token keyword, enum yang_arg arg, FILE *out, int level, 
         break;
     case YANG_WHEN:
         fprintf(out, "%*s<when condition=\"", LEVEL(level), INDENT(level));
-        close_tag = "condition";
+        close_tag = "when";
         break;
     case YANG_YANG_VERSION:
         fprintf(out, "%*s<yang-version value=\"", LEVEL(level), INDENT(level));
