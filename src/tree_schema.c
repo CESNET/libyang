@@ -3164,7 +3164,7 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         p = parent;
         do {
             for (iter = p; iter && (iter->nodetype == LYS_USES); iter = iter->parent);
-        } while (iter && iter->nodetype == LYS_AUGMENT && (p = lys_parent(iter)));
+        } while (iter && iter->nodetype == LYS_AUGMENT && (p = ((struct lys_node_augment *)iter)->target));
         if (iter) {
             flags = iter->flags & LYS_CONFIG_MASK;
         } else {
