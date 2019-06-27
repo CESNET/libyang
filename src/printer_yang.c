@@ -228,7 +228,9 @@ yprp_extension_instances(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t sub
         if (!count) {
             break;
         }
-        if (ext->insubstmt == substmt && ext->insubstmt_index == substmt_index) {
+        if (ext->yin) {
+            ly_print(ctx->out, "%*s%s Model comes from different input format, extensions must be resolved first.", INDENT, ext[u].name);
+        } else if (ext->insubstmt == substmt && ext->insubstmt_index == substmt_index) {
             ypr_open(ctx->out, flag);
             if (ext[u].argument) {
                 ly_print(ctx->out, "%*s%s %s%s", INDENT, ext[u].name, ext[u].argument, ext[u].child ? " {\n" : ";\n");
