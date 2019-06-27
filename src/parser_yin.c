@@ -235,11 +235,9 @@ yin_parse_attribute(struct lyxml_context *xml_ctx, struct yin_arg_record **args,
     LY_ERR ret = LY_SUCCESS;
     enum YIN_ARGUMENT arg = YIN_ARG_UNKNOWN;
     struct yin_arg_record *iter = NULL;
-    const struct lyxml_ns *ns = NULL;
 
     /* validation of attributes */
     LY_ARRAY_FOR(*args, struct yin_arg_record, iter) {
-        ns = lyxml_ns_get(xml_ctx, iter->prefix, iter->prefix_len);
         /* yin arguments represented as attributes have no namespace, which in this case means no prefix */
         if (!iter->prefix) {
             arg = yin_match_argument_name(iter->name, iter->name_len);
@@ -575,8 +573,8 @@ LY_ERR
 yin_parse_yin_element_element(struct lyxml_context *xml_ctx, struct yin_arg_record **attrs, const char **data, uint16_t *flags, struct lysp_ext **extensions)
 {
     LY_ERR ret = LY_SUCCESS;
-    const char *temp_val = NULL, *prefix, *name;
-    size_t prefix_len, name_len;
+    const char *temp_val = NULL, *name = NULL;
+    size_t name_len = 0;
     struct yin_arg_record *subelem_args = NULL;
     enum yang_keyword kw = YANG_NONE;
     struct yin_arg_record temp_record;
@@ -615,6 +613,68 @@ cleanup:
     return ret;
 }
 
+/**
+ * @brief take attributes from sized_array of yin_arg_record and save them as linked list lysp_statement.
+ *
+ * @param[in] attributes sized arry of element attributes.
+ * @param[out] elems linked list elements.
+ *
+ * @return LY_ERR values.
+ */
+LY_ERR
+yin_save_attrs_as_subelems(struct lyxml_context *xml_ctx, struct yin_arg_record *attrs, struct lysp_stmt **elems)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct yin_arg_record *iter;
+    struct lysp_stmt *new, *current, *temp;
+
+    current = *elems;
+    LY_ARRAY_FOR_ITER(attrs, struct yin_arg_record, iter) {
+        if (iter->prefix_len == 0) {
+            new = calloc(1, sizeof(*new));
+            LY_CHECK_ERR_RET(new, LOGMEM(xml_ctx->ctx), LY_EMEM);
+            temp = current;
+            current = new;
+            current->next = temp;
+            new->flags |= LYS_YIN_ATTR;
+            new->stmt = lydict_insert(xml_ctx->ctx, iter->name - iter->prefix_len + 1, iter->name_len + iter->prefix_len + 1);
+            if (iter->dynamic_content) {
+                new->arg = iter->content;
+                new->arg = lydict_insert(xml_ctx->ctx, iter->content, iter->content_len);
+            } else {
+                new->arg = lydict_insert_zc(xml_ctx->ctx, iter->content);
+            }
+        }
+    }
+
+    *elems = new;
+
+    return ret;
+}
+
+/**
+ * @brief parse element and it's content into generic structure.
+ *
+ * @param[in,out] xml_ctx Xml context.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] name Name of element.
+ * @param[in] name_len Length of element name.
+ *
+ * @return LY_ERR values.
+ */
+LY_ERR
+yin_parse_extension_subelem(struct lyxml_context *xml_ctx, const char **data, const char *name, size_t name_len)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct yin_arg_record *attributes;
+
+    yin_load_attributes(xml_ctx, data, &attributes);
+
+
+
+    return ret;
+}
+
 LY_ERR
 yin_parse_extension_instance(struct lyxml_context *xml_ctx, struct yin_arg_record **attrs, const char **data,
                              const char *ext_name, int ext_name_len, LYEXT_SUBSTMT insubstmt,
@@ -635,7 +695,7 @@ yin_parse_extension_instance(struct lyxml_context *xml_ctx, struct yin_arg_recor
     e->insubstmt_index = insubstmt_index;
     e->yin |= LYS_YIN;
 
-    current = e->insubstmt_index;
+    current = e->child;
     LY_ARRAY_FOR_ITER(attrs, struct yin_arg_record, iter) {
         if (iter->prefix_len == 0) {
             new = calloc(1, sizeof(*new));
@@ -665,8 +725,8 @@ yin_parse_argument_element(struct lyxml_context *xml_ctx, struct yin_arg_record 
                            uint16_t *flags, const char **argument, struct lysp_ext **extensions)
 {
     LY_ERR ret = LY_SUCCESS;
-    const char *name, *prefix;
-    size_t name_len, prefix_len;
+    const char *name = NULL;
+    size_t name_len = 0;
     struct yin_arg_record *subelem_args = NULL;
     enum yang_keyword kw = YANG_NONE;
     struct yin_arg_record temp_record;
