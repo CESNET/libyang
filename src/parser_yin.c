@@ -73,8 +73,8 @@ if (xml_ctx->status == LYXML_ELEM_CONTENT) {\
         }\
     } else {\
         /* load closing element */\
-        LY_CHECK_RET(lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len));\
-        LY_CHECK_RET(name, LY_EINVAL);\
+        LY_CHECK_RET(lyxml_get_element(CTX, DATA, &TMP.prefix, &TMP.prefix_len, &TMP.name, &TMP.name_len));\
+        LY_CHECK_RET(TMP.name, LY_EINVAL);\
     }\
 }
 
@@ -599,11 +599,6 @@ yin_parse_yin_element_element(struct lyxml_context *xml_ctx, struct yin_arg_reco
     lydict_remove(xml_ctx->ctx, temp_val);
 
     YIN_READ_SUBELEMS_START(xml_ctx, data, ret, cleanup, kw, temp_record, subelem_args);
-        if (!name) {
-            /* end of yin-element element reached */
-            break;
-        }
-
         switch (kw) {
             case YANG_CUSTOM:
                 // TODO parse extension instance
@@ -617,6 +612,51 @@ yin_parse_yin_element_element(struct lyxml_context *xml_ctx, struct yin_arg_reco
 
 cleanup:
     FREE_ARRAY(xml_ctx, subelem_args, free_arg_rec);
+    return ret;
+}
+
+LY_ERR
+yin_parse_extension_instance(struct lyxml_context *xml_ctx, struct yin_arg_record **attrs, const char **data,
+                             const char *ext_name, int ext_name_len, LYEXT_SUBSTMT insubstmt,
+                             uint32_t insubstmt_index, struct lysp_ext_instance **exts)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lysp_ext_instance *e;
+    struct yin_arg_record *iter, *subelem_args = NULL, temp_record;
+    struct lysp_stmt *new, *current;
+    enum yang_keyword kw = YANG_NONE;
+
+    LY_ARRAY_NEW_RET(xml_ctx->ctx, *exts, e, LY_EMEM);
+
+    e->yin = 0;
+    /* store name and insubstmt info */
+    e->name = lydict_insert(xml_ctx->ctx, ext_name, ext_name_len);
+    e->insubstmt = insubstmt;
+    e->insubstmt_index = insubstmt_index;
+    e->yin |= LYS_YIN;
+
+    current = e->insubstmt_index;
+    LY_ARRAY_FOR_ITER(attrs, struct yin_arg_record, iter) {
+        if (iter->prefix_len == 0) {
+            new = calloc(1, sizeof(*new));
+            LY_CHECK_ERR_RET(new, LOGMEM(xml_ctx->ctx), LY_EMEM);
+            current->next = new;
+            current = new;
+            new->flags |= LYS_YIN_ATTR;
+            new->stmt = lydict_insert(xml_ctx->ctx, iter->name - iter->prefix_len + 1, iter->name_len + iter->prefix_len + 1);
+            if (iter->dynamic_content) {
+                new->arg = iter->content;
+                new->arg = lydict_insert(xml_ctx->ctx, iter->content, iter->content_len);
+            } else {
+                new->arg = lydict_insert_zc(xml_ctx->ctx, iter->content);
+            }
+        }
+    }
+    YIN_READ_SUBELEMS_START(xml_ctx, data, ret, cleanup, kw, temp_record, subelem_args);
+        /* parse subelems */
+    YIN_READ_SUBELEMS_END(xml_ctx, data, temp_record);
+
+cleanup:
     return ret;
 }
 
