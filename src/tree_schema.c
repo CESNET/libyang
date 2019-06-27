@@ -758,6 +758,7 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
     struct lys_node *iter, **pchild, *log_parent;
     struct lys_node_inout *in, *out;
     struct lys_node_case *c;
+    struct lys_node_augment *aug;
     int type, shortcase = 0;
     void *p;
     struct lyext_substmt *info = NULL;
@@ -771,9 +772,17 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
 
         if (type == LYS_USES) {
             /* we are adding children to uses -> we must be copying grouping contents into it, so properly check the parent */
-            log_parent = lys_parent(log_parent);
             while (log_parent && (log_parent->nodetype == LYS_USES)) {
-                log_parent = lys_parent(log_parent);
+                if (log_parent->nodetype == LYS_AUGMENT) {
+                    aug = (struct lys_node_augment *)log_parent;
+                    if (!aug->target) {
+                        /* unresolved augment, just pass the node type check */
+                        goto skip_nodetype_check;
+                    }
+                    log_parent = aug->target;
+                } else {
+                    log_parent = log_parent->parent;
+                }
             }
             if (log_parent) {
                 type = log_parent->nodetype;
@@ -872,6 +881,7 @@ lys_node_addchild(struct lys_node *parent, struct lys_module *module, struct lys
         break;
     }
 
+skip_nodetype_check:
     /* check identifier uniqueness */
     if (!(module->ctx->models.flags & LY_CTX_TRUSTED) && lys_check_id(child, parent, module)) {
         return EXIT_FAILURE;
