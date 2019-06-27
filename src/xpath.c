@@ -8951,10 +8951,16 @@ lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set, int set_ext
                                 if (tmp_set.val.snodes[j].snode->flags & LYS_CONFIG_W) {
                                     must[i].flags |= LYS_XPCONF_DEP;
                                     ((struct lys_node *)node)->flags |= LYS_XPCONF_DEP;
-                                } else {
-                                    assert(tmp_set.val.snodes[j].snode->flags & LYS_CONFIG_R);
+                                } else if (tmp_set.val.snodes[j].snode->flags & LYS_CONFIG_R) {
                                     must[i].flags |= LYS_XPSTATE_DEP;
                                     ((struct lys_node *)node)->flags |= LYS_XPSTATE_DEP;
+                                } else {
+                                    /* only possible if the node is in an unimplemented augment */
+                                    elem = tmp_set.val.snodes[j].snode;
+                                    while (elem && (elem->nodetype != LYS_AUGMENT)) {
+                                        elem = elem->parent;
+                                    }
+                                    assert(elem && !lys_node_module(elem)->implemented);
                                 }
                             }
                         }
