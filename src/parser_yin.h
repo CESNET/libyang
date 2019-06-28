@@ -170,4 +170,37 @@ LY_ERR yin_parse_yin_element_element(struct lyxml_context *xml_ctx, struct yin_a
 LY_ERR yin_parse_extension(struct lyxml_context *xml_ctx, struct yin_arg_record **extension_args,
                            const char **data, struct lysp_ext **extensions);
 
+/**
+ * @brief Parse instance of extension.
+ *
+ * @param[in,out] xml_ctx Xml context.
+ * @param[in] attrs Sized array of attributes.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] ext_name Name of the extension element.
+ * @param[in] ext_name_len Length of extension name.
+ * @param[in] insubstmt Type of the parrent element.
+ * @param[in] insubstmt_index Index of the keyword instance this extension instance is a substatement of.
+ * @param[out] exts  exts Extension instances to add to.
+ *
+ * @return LY_ERR values.
+ */
+LY_ERR yin_parse_extension_instance(struct lyxml_context *xml_ctx, struct yin_arg_record **attrs, const char **data,
+                                    const char *ext_name, int ext_name_len, LYEXT_SUBSTMT insubstmt,
+                                    uint32_t insubstmt_index, struct lysp_ext_instance **exts);
+
+/**
+ * @brief Parse yin element into generic structure.
+ *
+ * @param[in,out] xml_ctx Xml context.
+ * @param[in] name Name of element.
+ * @param[in] name_len Length of elements Name.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[out] element Where the element structure should be stored.
+ *
+ * @return LY_ERR values.
+ */
+LY_ERR
+yin_parse_element_generic(struct lyxml_context *xml_ctx, const char *name, size_t name_len,
+                          const char **data, struct lysp_stmt **element);
+
 #endif /* LY_PARSER_YIN_H_*/

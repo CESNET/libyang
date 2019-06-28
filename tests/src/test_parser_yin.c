@@ -597,6 +597,72 @@ test_yin_parse_yin_element_element(void **state)
     st->finished_correctly = true;
 }
 
+static void
+test_yin_parse_element_generic(void **state)
+{
+    const char *prefix, *name;
+    struct state *st = *state;
+    struct lysp_ext_instance exts;
+    size_t prefix_len, name_len;
+    LY_ERR ret;
+
+    memset(&exts, 0, sizeof(exts));
+
+    const char *data = "<elem attr=\"value\">text_value</elem>";
+    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    ret = yin_parse_element_generic(st->xml_ctx, name, name_len, &data, &exts.child);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_string_equal(exts.child->stmt, "elem");
+    assert_string_equal(exts.child->arg, "text_value");
+
+    assert_string_equal(exts.child->child->stmt, "attr");
+    assert_string_equal(exts.child->child->arg, "value");
+    assert_true(exts.child->child->flags & LYS_YIN_ATTR);
+
+    lysp_ext_instance_free(st->ctx, &exts);
+    st->finished_correctly = true;
+}
+
+static void
+test_yin_parse_extension_instance(void **state)
+{
+    LY_ERR ret;
+    struct state *st = *state;
+    const char *prefix, *name;
+    size_t prefix_len, name_len;
+    struct yin_arg_record *args = NULL;
+    struct lysp_ext_instance *exts = NULL;
+
+    const char *data = "<ext value1=\"test\" value=\"test2\"><subelem>text</subelem></ext>";
+    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    yin_load_attributes(st->xml_ctx, &data, &args);
+    ret = yin_parse_extension_instance(st->xml_ctx, &args, &data, name, name_len, LYEXT_SUBSTMT_CONTACT, 0, &exts);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_string_equal(exts->name, "ext");
+    assert_int_equal(exts->insubstmt_index, 0);
+    assert_true(exts->insubstmt == LYEXT_SUBSTMT_CONTACT);
+    assert_true(exts->yin & LYS_YIN);
+    assert_string_equal(exts->child->stmt, "value1");
+    assert_string_equal(exts->child->arg, "test");
+    assert_null(exts->child->child);
+    assert_true(exts->child->flags & LYS_YIN_ATTR);
+    assert_string_equal(exts->child->next->stmt, "value");
+    assert_string_equal(exts->child->next->arg, "test2");
+    assert_null(exts->child->next->child);
+    assert_true(exts->child->next->flags & LYS_YIN_ATTR);
+
+    assert_string_equal(exts->child->next->next->stmt, "subelem");
+    assert_string_equal(exts->child->next->next->arg, "text");
+    assert_null(exts->child->next->next->child);
+    assert_null(exts->child->next->next->next);
+    assert_false(exts->child->next->next->flags & LYS_YIN_ATTR);
+    assert_int_equal(st->xml_ctx->status, LYXML_END);
+    LY_ARRAY_FREE(args);
+    lysp_ext_instance_free(st->ctx, exts);
+    LY_ARRAY_FREE(exts);
+    st->finished_correctly = true;
+}
+
 int
 main(void)
 {
@@ -610,6 +676,8 @@ main(void)
         cmocka_unit_test_setup_teardown(test_yin_match_keyword, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_yin_parse_extension, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_yin_parse_yin_element_element, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_yin_parse_element_generic, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_yin_parse_extension_instance, setup_f, teardown_f),
         cmocka_unit_test(test_yin_match_argument_name),
     };
 

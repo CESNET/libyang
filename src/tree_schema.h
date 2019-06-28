@@ -125,7 +125,7 @@ struct lysp_stmt {
     struct lysp_stmt *child;         /**< list of the statement's substatements (linked list) */
     uint16_t flags;                  /**<  */
 };
-#define LYS_YIN 0x1;
+#define LYS_YIN 0x1
 /**
  * @brief YANG extension instance
  */

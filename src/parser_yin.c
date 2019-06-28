@@ -59,7 +59,7 @@ if (xml_ctx->status == LYXML_ELEM_CONTENT) {\
             LY_CHECK_GOTO(RET, CLEANUP_LABEL);\
             KW = yin_match_keyword(CTX, TMP.name, TMP.name_len, TMP.prefix, TMP.prefix_len);\
             if (!TMP.name) {\
-                /* end of yin-element element reached */\
+                /* end of element reached */\
                 break;\
             }
 /**
@@ -613,78 +613,19 @@ cleanup:
     return ret;
 }
 
-/**
- * @brief take attributes from sized_array of yin_arg_record and save them as linked list lysp_statement.
- *
- * @param[in] attributes sized arry of element attributes.
- * @param[out] elems linked list elements.
- *
- * @return LY_ERR values.
- */
-LY_ERR
-yin_save_attrs_as_subelems(struct lyxml_context *xml_ctx, struct yin_arg_record *attrs, struct lysp_stmt **elems)
-{
-    LY_ERR ret = LY_SUCCESS;
-    struct yin_arg_record *iter;
-    struct lysp_stmt *new, *current, *temp;
-
-    current = *elems;
-    LY_ARRAY_FOR_ITER(attrs, struct yin_arg_record, iter) {
-        if (iter->prefix_len == 0) {
-            new = calloc(1, sizeof(*new));
-            LY_CHECK_ERR_RET(new, LOGMEM(xml_ctx->ctx), LY_EMEM);
-            temp = current;
-            current = new;
-            current->next = temp;
-            new->flags |= LYS_YIN_ATTR;
-            new->stmt = lydict_insert(xml_ctx->ctx, iter->name - iter->prefix_len + 1, iter->name_len + iter->prefix_len + 1);
-            if (iter->dynamic_content) {
-                new->arg = iter->content;
-                new->arg = lydict_insert(xml_ctx->ctx, iter->content, iter->content_len);
-            } else {
-                new->arg = lydict_insert_zc(xml_ctx->ctx, iter->content);
-            }
-        }
-    }
-
-    *elems = new;
-
-    return ret;
-}
-
-/**
- * @brief parse element and it's content into generic structure.
- *
- * @param[in,out] xml_ctx Xml context.
- * @param[in,out] data Data to read from, always moved to currently handled character.
- * @param[in] name Name of element.
- * @param[in] name_len Length of element name.
- *
- * @return LY_ERR values.
- */
-LY_ERR
-yin_parse_extension_subelem(struct lyxml_context *xml_ctx, const char **data, const char *name, size_t name_len)
-{
-    LY_ERR ret = LY_SUCCESS;
-    struct yin_arg_record *attributes;
-
-    yin_load_attributes(xml_ctx, data, &attributes);
-
-
-
-    return ret;
-}
-
 LY_ERR
 yin_parse_extension_instance(struct lyxml_context *xml_ctx, struct yin_arg_record **attrs, const char **data,
                              const char *ext_name, int ext_name_len, LYEXT_SUBSTMT insubstmt,
                              uint32_t insubstmt_index, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
+    char *out;
+    const char *name, *prefix;
+    size_t out_len, prefix_len, name_len;
+    int dynamic;
     struct lysp_ext_instance *e;
-    struct yin_arg_record *iter, *subelem_args = NULL, temp_record;
-    struct lysp_stmt *new, *current;
-    enum yang_keyword kw = YANG_NONE;
+    struct lysp_stmt *last_subelem = NULL, *new_subelem = NULL;
+    struct yin_arg_record *iter;
 
     LY_ARRAY_NEW_RET(xml_ctx->ctx, *exts, e, LY_EMEM);
 
@@ -695,28 +636,149 @@ yin_parse_extension_instance(struct lyxml_context *xml_ctx, struct yin_arg_recor
     e->insubstmt_index = insubstmt_index;
     e->yin |= LYS_YIN;
 
-    current = e->child;
-    LY_ARRAY_FOR_ITER(attrs, struct yin_arg_record, iter) {
-        if (iter->prefix_len == 0) {
-            new = calloc(1, sizeof(*new));
-            LY_CHECK_ERR_RET(new, LOGMEM(xml_ctx->ctx), LY_EMEM);
-            current->next = new;
-            current = new;
-            new->flags |= LYS_YIN_ATTR;
-            new->stmt = lydict_insert(xml_ctx->ctx, iter->name - iter->prefix_len + 1, iter->name_len + iter->prefix_len + 1);
-            if (iter->dynamic_content) {
-                new->arg = iter->content;
-                new->arg = lydict_insert(xml_ctx->ctx, iter->content, iter->content_len);
+    /* store attributes as subelements */
+    LY_ARRAY_FOR_ITER(*attrs, struct yin_arg_record, iter) {
+        if (!iter->prefix) {
+            new_subelem = calloc(1, sizeof(*new_subelem));
+            if (!e->child) {
+                e->child = new_subelem;
             } else {
-                new->arg = lydict_insert_zc(xml_ctx->ctx, iter->content);
+                last_subelem->next = new_subelem;
+            }
+            last_subelem = new_subelem;
+
+            last_subelem->flags |= LYS_YIN_ATTR;
+            last_subelem->stmt = lydict_insert(xml_ctx->ctx, iter->name, iter->name_len);
+            LY_CHECK_ERR_RET(!last_subelem->stmt, LOGMEM(xml_ctx->ctx), LY_EMEM);
+            if (iter->dynamic_content) {
+                last_subelem->arg = lydict_insert_zc(xml_ctx->ctx, iter->content);
+                LY_CHECK_ERR_RET(!last_subelem->arg, LOGMEM(xml_ctx->ctx), LY_EMEM);
+            } else {
+                last_subelem->arg = lydict_insert(xml_ctx->ctx, iter->content, iter->content_len);
+                LY_CHECK_ERR_RET(!last_subelem->arg, LOGMEM(xml_ctx->ctx), LY_EMEM);
             }
         }
     }
-    YIN_READ_SUBELEMS_START(xml_ctx, data, ret, cleanup, kw, temp_record, subelem_args);
-        /* parse subelems */
-    YIN_READ_SUBELEMS_END(xml_ctx, data, temp_record);
 
-cleanup:
+    if (xml_ctx->status == LYXML_ELEM_CONTENT) {
+        ret = lyxml_get_string(xml_ctx, data, &out, &out_len, &out, &out_len, &dynamic);
+        if (ret == LY_EINVAL) {
+            while (xml_ctx->status == LYXML_ELEMENT) {
+                LY_CHECK_RET(lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len));
+                if (!name) {
+                    /* end of extension instance reached */
+                    break;
+                }
+                LY_CHECK_RET(yin_parse_element_generic(xml_ctx, name, name_len, data, &new_subelem))
+                if (!e->child) {
+                    e->child = new_subelem;
+                } else {
+                    last_subelem->next = new_subelem;
+                }
+                last_subelem = new_subelem;
+            }
+        }
+    } else {
+        LY_CHECK_RET(lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len));
+        LY_CHECK_RET(name, LY_EINVAL);
+    }
+
+    return LY_SUCCESS;
+}
+
+LY_ERR
+yin_parse_element_generic(struct lyxml_context *xml_ctx, const char *name, size_t name_len,
+                          const char **data, struct lysp_stmt **element)
+{
+    LY_ERR ret = LY_SUCCESS;
+    const char *temp_prefix, *temp_name;
+    char *out = NULL;
+    size_t out_len, temp_name_len, prefix_len;
+    int dynamic;
+    struct yin_arg_record *subelem_args = NULL;
+    struct lysp_stmt *last = NULL, *new = NULL;
+
+    /* allocate new structure for element */
+    *element = calloc(1, sizeof(**element));
+    (*element)->stmt = lydict_insert(xml_ctx->ctx, name, name_len);
+    LY_CHECK_ERR_RET(!(*element)->stmt, LOGMEM(xml_ctx->ctx), LY_EMEM);
+
+    last = (*element)->child;
+    while(xml_ctx->status == LYXML_ATTRIBUTE) {
+        /* add new element to linked-list */
+        new = calloc(1, sizeof(*last));
+        LY_CHECK_ERR_GOTO(ret, LOGMEM(xml_ctx->ctx), err);
+        if (!(*element)->child) {
+            /* save first */
+            (*element)->child = new;
+        } else {
+            last->next = new;
+        }
+        last = new;
+
+        last->flags |= LYS_YIN_ATTR;
+        ret = lyxml_get_attribute(xml_ctx, data, &temp_prefix, &prefix_len, &temp_name, &temp_name_len);
+        LY_CHECK_GOTO(ret, err);
+        ret = lyxml_get_string(xml_ctx, data, &out, &out_len, &out, &out_len, &dynamic);
+        LY_CHECK_GOTO(ret, err);
+        last->stmt = lydict_insert(xml_ctx->ctx, temp_name, temp_name_len);
+        LY_CHECK_ERR_GOTO(!last->stmt, LOGMEM(xml_ctx->ctx); ret = LY_EMEM, err);
+        /* attributes with prefix are ignored */
+        if (!temp_prefix) {
+            if (dynamic) {
+                last->arg = lydict_insert_zc(xml_ctx->ctx, out);
+                if (!last->arg) {
+                    free(out);
+                    LOGMEM(xml_ctx->ctx);
+                    ret = LY_EMEM;
+                    goto err;
+                }
+            } else {
+                last->arg = lydict_insert(xml_ctx->ctx, out, out_len);
+                LY_CHECK_ERR_GOTO(!last->arg, LOGMEM(xml_ctx->ctx); ret = LY_EMEM, err);
+            }
+        }
+    }
+
+    /* parse content of element */
+    ret = lyxml_get_string(xml_ctx, data, &out, &out_len, &out, &out_len, &dynamic);
+    if (ret == LY_EINVAL) {
+        while (xml_ctx->status == LYXML_ELEMENT) {
+            /* parse subelements */
+            ret = lyxml_get_element(xml_ctx, data, &temp_prefix, &prefix_len, &name, &name_len);
+            LY_CHECK_GOTO(ret, err);
+            if (!name) {
+                /* end of element reached */
+                break;
+            }
+            ret = yin_parse_element_generic(xml_ctx, name, name_len, data, &last->next);
+            LY_CHECK_GOTO(ret, err);
+            last = last->next;
+        }
+    } else {
+        /* save element content */
+        if (dynamic) {
+            (*element)->arg = lydict_insert_zc(xml_ctx->ctx, out);
+            if (!(*element)->arg) {
+                free(out);
+                LOGMEM(xml_ctx->ctx);
+                ret = LY_EMEM;
+                goto err;
+            }
+        } else {
+            (*element)->arg = lydict_insert(xml_ctx->ctx, out, out_len);
+            LY_CHECK_ERR_GOTO(!(*element)->arg, LOGMEM(xml_ctx->ctx); ret = LY_EMEM, err);
+        }
+        /* read closing tag */
+        ret = lyxml_get_element(xml_ctx, data, &temp_prefix, &prefix_len, &temp_name, &temp_name_len);
+        LY_CHECK_GOTO(ret, err);
+    }
+
+    FREE_ARRAY(xml_ctx, subelem_args, free_arg_rec);
+    return LY_SUCCESS;
+
+err:
+    FREE_ARRAY(xml_ctx, subelem_args, free_arg_rec);
     return ret;
 }
 
