@@ -614,12 +614,21 @@ test_yin_parse_element_generic(void **state)
     assert_int_equal(ret, LY_SUCCESS);
     assert_string_equal(exts.child->stmt, "elem");
     assert_string_equal(exts.child->arg, "text_value");
-
     assert_string_equal(exts.child->child->stmt, "attr");
     assert_string_equal(exts.child->child->arg, "value");
     assert_true(exts.child->child->flags & LYS_YIN_ATTR);
-
     lysp_ext_instance_free(st->ctx, &exts);
+    st = reset_state(state);
+
+    data = "<elem></elem>";
+    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    ret = yin_parse_element_generic(st->xml_ctx, name, name_len, &data, &exts.child);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_string_equal(exts.child->stmt, "elem");
+    assert_null(exts.child->child);
+    assert_null(exts.child->arg);
+    lysp_ext_instance_free(st->ctx, &exts);
+
     st->finished_correctly = true;
 }
 

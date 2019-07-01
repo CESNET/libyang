@@ -757,17 +757,19 @@ yin_parse_element_generic(struct lyxml_context *xml_ctx, const char *name, size_
         }
     } else {
         /* save element content */
-        if (dynamic) {
-            (*element)->arg = lydict_insert_zc(xml_ctx->ctx, out);
-            if (!(*element)->arg) {
-                free(out);
-                LOGMEM(xml_ctx->ctx);
-                ret = LY_EMEM;
-                goto err;
+        if (out_len != 0) {
+            if (dynamic) {
+                (*element)->arg = lydict_insert_zc(xml_ctx->ctx, out);
+                if (!(*element)->arg) {
+                    free(out);
+                    LOGMEM(xml_ctx->ctx);
+                    ret = LY_EMEM;
+                    goto err;
+                }
+            } else {
+                (*element)->arg = lydict_insert(xml_ctx->ctx, out, out_len);
+                LY_CHECK_ERR_GOTO(!(*element)->arg, LOGMEM(xml_ctx->ctx); ret = LY_EMEM, err);
             }
-        } else {
-            (*element)->arg = lydict_insert(xml_ctx->ctx, out, out_len);
-            LY_CHECK_ERR_GOTO(!(*element)->arg, LOGMEM(xml_ctx->ctx); ret = LY_EMEM, err);
         }
         /* read closing tag */
         ret = lyxml_get_element(xml_ctx, data, &temp_prefix, &prefix_len, &temp_name, &temp_name_len);
