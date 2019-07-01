@@ -660,6 +660,7 @@ yin_parse_extension_instance(struct lyxml_context *xml_ctx, struct yin_arg_recor
         }
     }
 
+    /* parse subelements */
     if (xml_ctx->status == LYXML_ELEM_CONTENT) {
         ret = lyxml_get_string(xml_ctx, data, &out, &out_len, &out, &out_len, &dynamic);
         if (ret == LY_EINVAL) {
@@ -669,7 +670,7 @@ yin_parse_extension_instance(struct lyxml_context *xml_ctx, struct yin_arg_recor
                     /* end of extension instance reached */
                     break;
                 }
-                LY_CHECK_RET(yin_parse_element_generic(xml_ctx, name, name_len, data, &new_subelem))
+                LY_CHECK_RET(yin_parse_element_generic(xml_ctx, name, name_len, prefix, prefix_len, data, &new_subelem));
                 if (!e->child) {
                     e->child = new_subelem;
                 } else {
@@ -687,13 +688,13 @@ yin_parse_extension_instance(struct lyxml_context *xml_ctx, struct yin_arg_recor
 }
 
 LY_ERR
-yin_parse_element_generic(struct lyxml_context *xml_ctx, const char *name, size_t name_len,
-                          const char **data, struct lysp_stmt **element)
+yin_parse_element_generic(struct lyxml_context *xml_ctx, const char *name, size_t name_len, const char *prefix,
+                          size_t prefix_len, const char **data, struct lysp_stmt **element)
 {
     LY_ERR ret = LY_SUCCESS;
     const char *temp_prefix, *temp_name;
     char *out = NULL;
-    size_t out_len, temp_name_len, prefix_len;
+    size_t out_len, temp_name_len, temp_prefix_len;
     int dynamic;
     struct yin_arg_record *subelem_args = NULL;
     struct lysp_stmt *last = NULL, *new = NULL;
@@ -704,6 +705,7 @@ yin_parse_element_generic(struct lyxml_context *xml_ctx, const char *name, size_
     LY_CHECK_ERR_RET(!(*element)->stmt, LOGMEM(xml_ctx->ctx), LY_EMEM);
 
     last = (*element)->child;
+    /* load attributes */
     while(xml_ctx->status == LYXML_ATTRIBUTE) {
         /* add new element to linked-list */
         new = calloc(1, sizeof(*last));
@@ -745,13 +747,13 @@ yin_parse_element_generic(struct lyxml_context *xml_ctx, const char *name, size_
     if (ret == LY_EINVAL) {
         while (xml_ctx->status == LYXML_ELEMENT) {
             /* parse subelements */
-            ret = lyxml_get_element(xml_ctx, data, &temp_prefix, &prefix_len, &name, &name_len);
+            ret = lyxml_get_element(xml_ctx, data, &temp_prefix, &temp_prefix_len, &temp_name, &temp_name_len);
             LY_CHECK_GOTO(ret, err);
             if (!name) {
                 /* end of element reached */
                 break;
             }
-            ret = yin_parse_element_generic(xml_ctx, name, name_len, data, &last->next);
+            ret = yin_parse_element_generic(xml_ctx, temp_name, temp_name_len, temp_prefix, temp_prefix_len, data, &last->next);
             LY_CHECK_GOTO(ret, err);
             last = last->next;
         }

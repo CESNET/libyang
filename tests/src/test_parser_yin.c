@@ -610,7 +610,7 @@ test_yin_parse_element_generic(void **state)
 
     const char *data = "<elem attr=\"value\">text_value</elem>";
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    ret = yin_parse_element_generic(st->xml_ctx, name, name_len, &data, &exts.child);
+    ret = yin_parse_element_generic(st->xml_ctx, name, name_len, prefix, prefix_len, &data, &exts.child);
     assert_int_equal(ret, LY_SUCCESS);
     assert_string_equal(exts.child->stmt, "elem");
     assert_string_equal(exts.child->arg, "text_value");
@@ -622,11 +622,12 @@ test_yin_parse_element_generic(void **state)
 
     data = "<elem></elem>";
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    ret = yin_parse_element_generic(st->xml_ctx, name, name_len, &data, &exts.child);
+    ret = yin_parse_element_generic(st->xml_ctx, name, name_len, prefix, prefix_len, &data, &exts.child);
     assert_int_equal(ret, LY_SUCCESS);
     assert_string_equal(exts.child->stmt, "elem");
     assert_null(exts.child->child);
     assert_null(exts.child->arg);
+    assert_int_equal(st->xml_ctx->status, LYXML_END);
     lysp_ext_instance_free(st->ctx, &exts);
 
     st->finished_correctly = true;
@@ -645,7 +646,8 @@ test_yin_parse_extension_instance(void **state)
     const char *data = "<ext value1=\"test\" value=\"test2\"><subelem>text</subelem></ext>";
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->xml_ctx, &data, &args);
-    ret = yin_parse_extension_instance(st->xml_ctx, &args, &data, name, name_len, LYEXT_SUBSTMT_CONTACT, 0, &exts);
+    ret = yin_parse_extension_instance(st->xml_ctx, &args, &data, nameprefix2fullname(name, prefix_len),
+                                       namelen2fulllen(name_len, prefix_len), LYEXT_SUBSTMT_CONTACT, 0, &exts);
     assert_int_equal(ret, LY_SUCCESS);
     assert_string_equal(exts->name, "ext");
     assert_int_equal(exts->insubstmt_index, 0);
@@ -665,6 +667,25 @@ test_yin_parse_extension_instance(void **state)
     assert_null(exts->child->next->next->child);
     assert_null(exts->child->next->next->next);
     assert_false(exts->child->next->next->flags & LYS_YIN_ATTR);
+    assert_int_equal(st->xml_ctx->status, LYXML_END);
+    LY_ARRAY_FREE(args);
+    lysp_ext_instance_free(st->ctx, exts);
+    LY_ARRAY_FREE(exts);
+    exts = NULL;
+    args = NULL;
+    st = reset_state(state);
+
+    data = "<extension-elem />";
+    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    yin_load_attributes(st->xml_ctx, &data, &args);
+    ret = yin_parse_extension_instance(st->xml_ctx, &args, &data, name, name_len, LYEXT_SUBSTMT_CONTACT, 0, &exts);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_string_equal(exts->name, "extension-elem");
+    assert_null(exts->argument);
+    assert_null(exts->child);
+    assert_int_equal(exts->insubstmt, LYEXT_SUBSTMT_CONTACT);
+    assert_int_equal(exts->insubstmt_index, 0);
+    assert_true(exts->yin & LYS_YIN);
     assert_int_equal(st->xml_ctx->status, LYXML_END);
     LY_ARRAY_FREE(args);
     lysp_ext_instance_free(st->ctx, exts);

@@ -26,6 +26,8 @@ extern const char *const yin_attr_list[];
 #define yin_attr2str(STMT) yin_attr_list[STMT]
 
 #define YIN_NS_URI "urn:ietf:params:xml:ns:yang:yin:1"
+#define nameprefix2fullname(name, prefix_len) (prefix_len != 0 ? name - (prefix_len + 1) : name)
+#define namelen2fulllen(name_len, prefix_len) (prefix_len != 0 ? name_len + prefix_len + 1 : name_len)
 
 enum YIN_ARGUMENT {
     YIN_ARG_UNKNOWN = 0,   /**< parsed argument can not be matched with any supported yin argument keyword */
@@ -199,8 +201,7 @@ LY_ERR yin_parse_extension_instance(struct lyxml_context *xml_ctx, struct yin_ar
  *
  * @return LY_ERR values.
  */
-LY_ERR
-yin_parse_element_generic(struct lyxml_context *xml_ctx, const char *name, size_t name_len,
-                          const char **data, struct lysp_stmt **element);
+LY_ERR yin_parse_element_generic(struct lyxml_context *xml_ctx, const char *name, size_t name_len, const char *prefix,
+                          size_t prefix_len, const char **data, struct lysp_stmt **element);
 
 #endif /* LY_PARSER_YIN_H_*/
