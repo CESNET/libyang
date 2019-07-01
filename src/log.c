@@ -611,8 +611,12 @@ ly_vlog_build_path(enum LY_VLOG_ELEM elem_type, const void *elem, char **path, i
                 top_smodule = lys_node_module(sparent);
             }
 
-            if (!((struct lys_node *)elem)->parent || (lys_node_module((struct lys_node *)elem) != top_smodule)
-                    || schema_all_prefixes) {
+            /* skip uses */
+            sparent = lys_parent((struct lys_node *)elem);
+            while (sparent && (sparent->nodetype == LYS_USES)) {
+                sparent = lys_parent(sparent);
+            }
+            if (!sparent || (lys_node_module((struct lys_node *)elem) != top_smodule) || schema_all_prefixes) {
                 prefix = lys_node_module((struct lys_node *)elem)->name;
             } else {
                 prefix = NULL;
