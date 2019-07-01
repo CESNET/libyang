@@ -310,7 +310,9 @@ enum yang_keyword {
     YANG_SEMICOLON,
     YANG_LEFT_BRACE,
     YANG_RIGHT_BRACE,
-    YANG_CUSTOM
+    YANG_CUSTOM,
+
+    YANG_TEXT
 };
 
 /* list of the YANG statements strings */

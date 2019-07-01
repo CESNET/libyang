@@ -26,7 +26,7 @@ extern const char *const yin_attr_list[];
 #define yin_attr2str(STMT) yin_attr_list[STMT]
 
 #define YIN_NS_URI "urn:ietf:params:xml:ns:yang:yin:1"
-#define nameprefix2fullname(name, prefix_len) (prefix_len != 0 ? name - (prefix_len + 1) : name)
+#define name2fullname(name, prefix_len) (prefix_len != 0 ? name - (prefix_len + 1) : name)
 #define namelen2fulllen(name_len, prefix_len) (prefix_len != 0 ? name_len + prefix_len + 1 : name_len)
 
 enum YIN_ARGUMENT {

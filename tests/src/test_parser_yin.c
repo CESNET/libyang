@@ -646,7 +646,7 @@ test_yin_parse_extension_instance(void **state)
     const char *data = "<ext value1=\"test\" value=\"test2\"><subelem>text</subelem></ext>";
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->xml_ctx, &data, &args);
-    ret = yin_parse_extension_instance(st->xml_ctx, &args, &data, nameprefix2fullname(name, prefix_len),
+    ret = yin_parse_extension_instance(st->xml_ctx, &args, &data, name2fullname(name, prefix_len),
                                        namelen2fulllen(name_len, prefix_len), LYEXT_SUBSTMT_CONTACT, 0, &exts);
     assert_int_equal(ret, LY_SUCCESS);
     assert_string_equal(exts->name, "ext");

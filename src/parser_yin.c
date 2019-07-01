@@ -17,6 +17,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdbool.h>
 
 #include "context.h"
 #include "dict.h"
@@ -262,6 +263,261 @@ yin_parse_attribute(struct lyxml_context *xml_ctx, struct yin_arg_record **args,
     }
 
 cleanup:
+    return ret;
+}
+
+struct yin_attribute {
+    enum YIN_ARGUMENT type;
+    bool mandatory;
+    const char *dest;
+};
+
+struct yin_subelement {
+    enum yang_keyword type;
+    bool mandatory;
+    void *dest;
+};
+
+struct sized_string {
+    const char *value;
+    size_t len;
+};
+
+/**
+ * @brief get record with given type.
+ *
+ * @param[in] type Type of wanted record.
+ * @param[in] array_size Size of array.
+ * @param[in] array Searched array.
+ *
+ * @return Pointer to desired record on success, NULL if element is not in the array.
+ */
+struct yin_subelement *
+get_record(enum yang_keyword type, size_t array_size, struct yin_subelement *array)
+{
+    for (size_t i = 0; i < array_size; ++i) {
+        if (array[i].type == type) {
+            return &array[i];
+        }
+    }
+
+    return NULL;
+}
+
+/**
+ * @brief Generic function for subelement parsing
+ *
+ * @param[in,out] xml_ctx Xml context.
+ * @param[in] attrs Array of attributes.
+ * @param[in] subelem_info array of valid subelement types and meta information.
+ * @param[in] subelem_info_size Size of subelem_info array.
+ * @param[in] current_element Type of current element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] subelem Type of this subelement.
+ * @param[in] subelem_index Index of this subelement.
+ * @param[in] exts Extension instances to add to.
+ *
+ * @return LY_ERR values.
+ */
+LY_ERR
+yin_parse_element(struct lyxml_context *xml_ctx, struct yin_subelement *subelem_info, size_t subelem_info_size,
+                  enum yang_keyword current_element, const char **data, LYEXT_SUBSTMT subelem,
+                  uint32_t subelem_index, struct lysp_ext_instance *exts)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct sized_string prefix, name;
+    char *out;
+    size_t out_len;
+    int dynamic;
+    struct yin_arg_record *subelem_attrs;
+    enum yang_keyword kw = YANG_NONE;
+    struct yin_subelement *subeleme_info_rec;
+
+    if (xml_ctx->status == LYXML_ELEM_CONTENT) {
+        ret = lyxml_get_string(xml_ctx, data, &out, &out_len, &out, &out_len, &dynamic);
+        /* current element has subelements as content */
+        if (ret == LY_EINVAL) {
+            while (xml_ctx->status == LYXML_ELEMENT) {
+                ret = lyxml_get_element(xml_ctx, data, &prefix.value, &prefix.len, &name.value, &name.len);
+                LY_CHECK_GOTO(ret, cleanup);
+                if (!name.value) {
+                    /* end of current element reached */
+                    break;
+                }
+                ret = yin_load_attributes(xml_ctx, data, &subelem_attrs);
+                LY_CHECK_GOTO(ret, cleanup);
+                kw = yin_match_keyword(xml_ctx, name.value, name.len, prefix.value, prefix.len);
+
+                /* check if this element can be child of current element */
+                subeleme_info_rec = get_record(kw, subelem_info_size, subelem_info);
+                if (!subeleme_info_rec) {
+                    LOGVAL_PARSER(xml_ctx, LY_VCODE_UNEXP_SUBELEM, name.len, name.value, ly_stmt2str(current_element));
+                    ret = LY_EVALID;
+                    goto cleanup;
+                }
+
+                /* TODO macro to check order */
+
+                switch (kw) {
+                case YANG_CUSTOM:
+                    yin_parse_extension_instance(xml_ctx, subelem_attrs, data, name2fullname(name.value, prefix.len),
+                                                 namelen2fulllen(name.len, prefix.len), subelem, subelem_index, &exts);
+                    break;
+                case YANG_ACTION:
+                    break;
+                case YANG_ANYDATA:
+                    break;
+                case YANG_ANYXML:
+                    break;
+                case YANG_ARGUMENT:
+                    break;
+                case YANG_AUGMENT:
+                    break;
+                case YANG_BASE:
+                    break;
+                case YANG_BELONGS_TO:
+                    break;
+                case YANG_BIT:
+                    break;
+                case YANG_CASE:
+                    break;
+                case YANG_CHOICE:
+                    break;
+                case YANG_CONFIG:
+                    break;
+                case YANG_CONTACT:
+                    break;
+                case YANG_CONTAINER:
+                    break;
+                case YANG_DEFAULT:
+                    break;
+                case YANG_DESCRIPTION:
+                    break;
+                case YANG_DEVIATE:
+                    break;
+                case YANG_DEVIATION:
+                    break;
+                case YANG_ENUM:
+                    break;
+                case YANG_ERROR_APP_TAG:
+                    break;
+                case YANG_ERROR_MESSAGE:
+                    break;
+                case YANG_EXTENSION:
+                    break;
+                case YANG_FEATURE:
+                    break;
+                case YANG_FRACTION_DIGITS:
+                    break;
+                case YANG_GROUPING:
+                    break;
+                case YANG_IDENTITY:
+                    break;
+                case YANG_IF_FEATURE:
+                    break;
+                case YANG_IMPORT:
+                    break;
+                case YANG_INCLUDE:
+                    break;
+                case YANG_INPUT:
+                    break;
+                case YANG_KEY:
+                    break;
+                case YANG_LEAF:
+                    break;
+                case YANG_LEAF_LIST:
+                    break;
+                case YANG_LENGTH:
+                    break;
+                case YANG_LIST:
+                    break;
+                case YANG_MANDATORY:
+                    break;
+                case YANG_MAX_ELEMENTS:
+                    break;
+                case YANG_MIN_ELEMENTS:
+                    break;
+                case YANG_MODIFIER:
+                    break;
+                case YANG_MODULE:
+                    break;
+                case YANG_MUST:
+                    break;
+                case YANG_NAMESPACE:
+                    break;
+                case YANG_NOTIFICATION:
+                    break;
+                case YANG_ORDERED_BY:
+                    break;
+                case YANG_ORGANIZATION:
+                    break;
+                case YANG_OUTPUT:
+                    break;
+                case YANG_PATH:
+                    break;
+                case YANG_PATTERN:
+                    break;
+                case YANG_POSITION:
+                    break;
+                case YANG_PREFIX:
+                    break;
+                case YANG_PRESENCE:
+                    break;
+                case YANG_RANGE:
+                    break;
+                case YANG_REFERENCE:
+                    break;
+                case YANG_REFINE:
+                    break;
+                case YANG_REQUIRE_INSTANCE:
+                    break;
+                case YANG_REVISION:
+                    break;
+                case YANG_REVISION_DATE:
+                    break;
+                case YANG_RPC:
+                    break;
+                case YANG_STATUS:
+                    ret = yin_parse_status(xml_ctx, &subelem_attrs, data, subeleme_info_rec->dest, &exts);
+                    LY_CHECK_GOTO(ret, cleanup);
+                    break;
+                case YANG_SUBMODULE:
+                    break;
+                case YANG_TYPE:
+                    break;
+                case YANG_TYPEDEF:
+                    break;
+                case YANG_UNIQUE:
+                    break;
+                case YANG_UNITS:
+                    break;
+                case YANG_USES:
+                    break;
+                case YANG_VALUE:
+                    break;
+                case YANG_WHEN:
+                    break;
+                case YANG_YANG_VERSION:
+                    break;
+                case YANG_YIN_ELEMENT:
+                    break;
+                default:
+                    /* TODO specify special  */
+                    break;
+                }
+                FREE_ARRAY(xml_ctx, subelem_attrs, free_arg_rec);
+                subelem_attrs = NULL;
+            }
+        } else {
+            /* elements with text or none content */
+            /* save text content */
+            /* load closing element */
+            LY_CHECK_RET(lyxml_get_element(xml_ctx, data, &prefix.value, &prefix.len, &name.value, &name.len));
+        }
+    }
+
+cleanup:
+    FREE_ARRAY(xml_ctx, subelem_attrs, free_arg_rec);
     return ret;
 }
 
