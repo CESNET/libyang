@@ -1305,7 +1305,35 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
         /* RFC 6020 9.9.2 - path */
         LY_TREE_FOR(yin->child, node) {
+            if (!strcmp(node->name, "path") && !type->der->type.der) {
+                /* keep path for later */
+            } else if (module->version >= 2 && !strcmp(node->name, "require-instance")) {
+                if (type->info.lref.req) {
+                    LOGVAL(ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, node->name, yin->name);
+                    goto error;
+                }
+                GETVAL(ctx, value, node, "value");
+                if (!strcmp(value, "true")) {
+                    type->info.lref.req = 1;
+                } else if (!strcmp(value, "false")) {
+                    type->info.lref.req = -1;
+                } else {
+                    LOGVAL(ctx, LYE_INARG, LY_VLOG_NONE, NULL, value, node->name);
+                    goto error;
+                }
 
+                /* extensions */
+                if (lyp_yin_parse_subnode_ext(module, type, LYEXT_PAR_TYPE, node, LYEXT_SUBSTMT_REQINSTANCE, 0, unres)) {
+                    goto error;
+                }
+            } else {
+                LOGVAL(ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, node->name);
+                goto error;
+            }
+        }
+
+        /* now that require-instance is properly set, try to find and resolve path */
+        LY_TREE_FOR(yin->child, node) {
             if (!strcmp(node->name, "path") && !type->der->type.der) {
                 if (type->info.lref.path) {
                     LOGVAL(ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, node->name, yin->name);
@@ -1334,28 +1362,8 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 if (lyp_yin_parse_subnode_ext(module, type, LYEXT_PAR_TYPE, node, LYEXT_SUBSTMT_PATH, 0, unres)) {
                     goto error;
                 }
-            } else if (module->version >= 2 && !strcmp(node->name, "require-instance")) {
-                if (type->info.lref.req) {
-                    LOGVAL(ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, node->name, yin->name);
-                    goto error;
-                }
-                GETVAL(ctx, value, node, "value");
-                if (!strcmp(value, "true")) {
-                    type->info.lref.req = 1;
-                } else if (!strcmp(value, "false")) {
-                    type->info.lref.req = -1;
-                } else {
-                    LOGVAL(ctx, LYE_INARG, LY_VLOG_NONE, NULL, value, node->name);
-                    goto error;
-                }
 
-                /* extensions */
-                if (lyp_yin_parse_subnode_ext(module, type, LYEXT_PAR_TYPE, node, LYEXT_SUBSTMT_REQINSTANCE, 0, unres)) {
-                    goto error;
-                }
-            } else {
-                LOGVAL(ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, node->name);
-                goto error;
+                break;
             }
         }
 
