@@ -312,7 +312,8 @@ enum yang_keyword {
     YANG_RIGHT_BRACE,
     YANG_CUSTOM,
 
-    YANG_TEXT
+    YIN_TEXT,
+    YIN_VALUE
 };
 
 /* list of the YANG statements strings */
