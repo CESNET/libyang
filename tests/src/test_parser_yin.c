@@ -30,6 +30,7 @@
 struct state {
     struct ly_ctx *ctx;
     struct lys_module *mod;
+    struct lysp_module *lysp_mod;
     struct lyxml_context *xml_ctx;
     bool finished_correctly;
 };
@@ -96,6 +97,12 @@ setup_f(void **state)
     st->mod = calloc(1, sizeof(*st->mod));
     st->mod->ctx = st->ctx;
 
+    /* allocate new parsed module */
+    st->lysp_mod = calloc(1, sizeof(*st->lysp_mod));
+    st->lysp_mod->mod = calloc(1, sizeof(*st->lysp_mod->mod));
+    st->lysp_mod->mod->ctx = st->ctx;
+
+    /* allocate parser context */
     st->xml_ctx = calloc(1, sizeof(struct lys_parser_ctx));
     st->xml_ctx->ctx = st->ctx;
     st->xml_ctx->line = 1;
@@ -107,6 +114,7 @@ static int
 teardown_f(void **state)
 {
     struct state *st = *(struct state **)state;
+    struct lys_module *temp;
 
 #if ENABLE_LOGGER_CHECKING
     /* teardown logger */
@@ -115,8 +123,12 @@ teardown_f(void **state)
     }
 #endif
 
+    temp = st->lysp_mod->mod;
+
     lyxml_context_clear(st->xml_ctx);
     lys_module_free(st->mod, NULL);
+    lysp_module_free(st->lysp_mod);
+    lys_module_free(temp, NULL);
     ly_ctx_destroy(st->ctx, NULL);
     free(st->xml_ctx);
     free(st);
@@ -176,7 +188,7 @@ test_yin_parse_module(void **state)
                             </module>",
                            st->mod);
     assert_int_equal(ret, LY_EVALID);
-    logbuf_assert("Missing argument name of a module Line number 1.");
+    logbuf_assert("Missing mandatory attribute \"name\" of module element Line number 1.");
 
     st = reset_state(state);
     ret = yin_parse_module(st->ctx,
@@ -377,7 +389,6 @@ test_yin_parse_import(void **state)
     const char *prefix = NULL, *name = NULL;
     size_t prefix_len = 0, name_len = 0;
     LY_ERR ret = LY_SUCCESS;
-    struct lysp_import *imports = NULL;
     struct yin_arg_record *args = NULL;
 
     const char *data = "<import xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" module=\"a\">\
@@ -394,34 +405,26 @@ test_yin_parse_import(void **state)
     /* first import */
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->xml_ctx, &data, &args);
-    ret = yin_parse_import(st->xml_ctx, &args, "b-mod", &data, &imports);
+    st->lysp_mod->mod->prefix = "b-mod";
+    ret = yin_parse_import(st->xml_ctx, &args, &data, st->lysp_mod);
     assert_int_equal(ret, LY_SUCCESS);
-    assert_string_equal(imports->name, "a");
-    assert_string_equal(imports->prefix, "a_mod");
-    assert_string_equal(imports->rev, "2015-01-01");
-    assert_string_equal(imports->dsc, "import description");
-    assert_string_equal(imports->ref, "import reference");
-    lydict_remove(st->ctx, imports->name);
-    lydict_remove(st->ctx, imports->prefix);
-    lydict_remove(st->ctx, imports->dsc);
-    lydict_remove(st->ctx, imports->ref);
-    LY_ARRAY_FREE(imports);
+    assert_string_equal(st->lysp_mod->imports->name, "a");
+    assert_string_equal(st->lysp_mod->imports->prefix, "a_mod");
+    assert_string_equal(st->lysp_mod->imports->rev, "2015-01-01");
+    assert_string_equal(st->lysp_mod->imports->dsc, "import description");
+    assert_string_equal(st->lysp_mod->imports->ref, "import reference");
     LY_ARRAY_FREE(args);
-    imports = NULL;
     args = NULL;
+    st = reset_state(state);
 
     /* second invalid import */
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->xml_ctx, &data, &args);
-    ret = yin_parse_import(st->xml_ctx,  &args, "a_mod", &data, &imports);
+    st->lysp_mod->mod->prefix = "a_mod";
+    ret = yin_parse_import(st->xml_ctx, &args, &data, st->lysp_mod);
     assert_int_equal(ret, LY_EVALID);
     logbuf_assert("Prefix \"a_mod\" already used as module prefix. Line number 1.");
-    /* cleanup is supposed to be done by caller function */
-    lydict_remove(st->ctx, imports->name);
-    lydict_remove(st->ctx, imports->prefix);
-    LY_ARRAY_FREE(imports);
     LY_ARRAY_FREE(args);
-    imports = NULL;
     args = NULL;
 
     st = reset_state(state);
@@ -431,12 +434,10 @@ test_yin_parse_import(void **state)
             </import>";
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->xml_ctx, &data, &args);
-    ret = yin_parse_import(st->xml_ctx, &args, "invalid_mod", &data, &imports);
+    st->lysp_mod->mod->prefix = "invalid_mod";
+    ret = yin_parse_import(st->xml_ctx, &args, &data, st->lysp_mod);
     assert_int_equal(ret, LY_EVALID);
     logbuf_assert("Unexpected child element \"what\" of import element. Line number 1.");
-    /* cleanup is supposed to be done by caller function */
-    lydict_remove(st->ctx, imports->name);
-    LY_ARRAY_FREE(imports);
     LY_ARRAY_FREE(args);
 
     st->finished_correctly = true;
@@ -643,11 +644,10 @@ test_yin_parse_extension_instance(void **state)
     struct yin_arg_record *args = NULL;
     struct lysp_ext_instance *exts = NULL;
     const char *data = "<ext value1=\"test\" value=\"test2\"><subelem>text</subelem></ext>";
-    struct yin_ext_meta meta = {LYEXT_SUBSTMT_CONTACT, 0};
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->xml_ctx, &data, &args);
     ret = yin_parse_extension_instance(st->xml_ctx, &args, &data, name2fullname(name, prefix_len),
-                                       namelen2fulllen(name_len, prefix_len), &meta, &exts);
+                                       namelen2fulllen(name_len, prefix_len), LYEXT_SUBSTMT_CONTACT, 0, &exts);
     assert_int_equal(ret, LY_SUCCESS);
     assert_string_equal(exts->name, "ext");
     assert_int_equal(exts->insubstmt_index, 0);
@@ -678,7 +678,7 @@ test_yin_parse_extension_instance(void **state)
     data = "<extension-elem />";
     lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->xml_ctx, &data, &args);
-    ret = yin_parse_extension_instance(st->xml_ctx, &args, &data, name, name_len, &meta, &exts);
+    ret = yin_parse_extension_instance(st->xml_ctx, &args, &data, name, name_len, LYEXT_SUBSTMT_CONTACT, 0, &exts);
     assert_int_equal(ret, LY_SUCCESS);
     assert_string_equal(exts->name, "extension-elem");
     assert_null(exts->argument);

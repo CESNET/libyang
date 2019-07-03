@@ -194,11 +194,12 @@ cleanup:
 }
 
 LY_ERR
-yin_parse_attribute(struct lyxml_context *xml_ctx, struct yin_arg_record **args, enum YIN_ARGUMENT arg_type, const char **arg_val)
+yin_parse_attribute(struct lyxml_context *xml_ctx, struct yin_arg_record **args, enum YIN_ARGUMENT arg_type,
+                    const char **arg_val, uint8_t flags, enum yang_keyword current_element)
 {
-    LY_ERR ret = LY_SUCCESS;
     enum YIN_ARGUMENT arg = YIN_ARG_UNKNOWN;
     struct yin_arg_record *iter = NULL;
+    bool found = false;
 
     /* validation of attributes */
     LY_ARRAY_FOR(*args, struct yin_arg_record, iter) {
@@ -208,25 +209,29 @@ yin_parse_attribute(struct lyxml_context *xml_ctx, struct yin_arg_record **args,
             if (arg == YIN_ARG_NONE) {
                 continue;
             } else if (arg == arg_type) {
+                found = true;
                 if (iter->dynamic_content) {
                     *arg_val = lydict_insert_zc(xml_ctx->ctx, iter->content);
-                    LY_CHECK_ERR_GOTO(!(*arg_val), LOGMEM(xml_ctx->ctx); ret = LY_EMEM, cleanup);
+                    LY_CHECK_RET(!(*arg_val), LY_EMEM);
                     /* string is no longer supposed to be freed when the sized array is freed */
                     iter->dynamic_content = 0;
                 } else {
                     *arg_val = lydict_insert(xml_ctx->ctx, iter->content, iter->content_len);
-                    LY_CHECK_ERR_GOTO(!(*arg_val), LOGMEM(xml_ctx->ctx); ret = LY_EMEM, cleanup);
+                    LY_CHECK_RET(!(*arg_val), LY_EMEM);
                 }
             } else {
                 LOGERR(xml_ctx->ctx, LYVE_SYNTAX_YIN, "Unexpected attribute \"%.*s\".", iter->name_len, iter->name);
-                ret = LY_EVALID;
-                goto cleanup;
+                return LY_EVALID;
             }
         }
     }
 
-cleanup:
-    return ret;
+    if (flags & YIN_ARG_MANDATORY && !found) {
+        LOGVAL_PARSER(xml_ctx, LYVE_SYNTAX_YIN, "Missing mandatory attribute \"%s\" of %s element", yin_attr2str(arg_type), ly_stmt2str(current_element));
+        return LY_EVALID;
+    }
+
+    return LY_SUCCESS;
 }
 
 /**
@@ -303,9 +308,10 @@ yin_parse_content(struct lyxml_context *xml_ctx, struct yin_subelement *subelem_
                 /* TODO flag check */
                 switch (kw) {
                 case YANG_CUSTOM:
+                    /* TODO write function to calculate index instead of hardcoded 0 */
                     ret = yin_parse_extension_instance(xml_ctx, &subelem_attrs, data, name2fullname(name.value, prefix.len),
                                                       namelen2fulllen(name.len, prefix.len),
-                                                      (struct yin_ext_meta *)subelem_info_rec->dest, exts);
+                                                      kw2lyext_substmt(current_element), 0, exts);
                     LY_CHECK_GOTO(ret, cleanup);
                     break;
                 case YANG_ACTION:
@@ -332,13 +338,14 @@ yin_parse_content(struct lyxml_context *xml_ctx, struct yin_subelement *subelem_
                 case YANG_CONFIG:
                     break;
                 case YANG_CONTACT:
+                case YANG_DESCRIPTION:
+                case YANG_ORGANIZATION:
+                case YANG_REFERENCE:
+                    ret = yin_parse_meta_element(xml_ctx, data, kw, (const char **)subelem_info_rec->dest, exts);
                     break;
                 case YANG_CONTAINER:
                     break;
                 case YANG_DEFAULT:
-                    break;
-                case YANG_DESCRIPTION:
-                    ret = yin_parse_meta_element(xml_ctx, data, YANG_DESCRIPTION, (const char **)subelem_info_rec->dest, exts);
                     break;
                 case YANG_DEVIATE:
                     break;
@@ -363,6 +370,7 @@ yin_parse_content(struct lyxml_context *xml_ctx, struct yin_subelement *subelem_
                 case YANG_IF_FEATURE:
                     break;
                 case YANG_IMPORT:
+                    ret = yin_parse_import(xml_ctx, &subelem_attrs, data, (struct lysp_module *)subelem_info_rec->dest);
                     break;
                 case YANG_INCLUDE:
                     break;
@@ -391,12 +399,12 @@ yin_parse_content(struct lyxml_context *xml_ctx, struct yin_subelement *subelem_
                 case YANG_MUST:
                     break;
                 case YANG_NAMESPACE:
+                    ret = yin_parse_simple_element(xml_ctx, subelem_attrs, data, kw, (const char **)subelem_info_rec->dest,
+                                                   YIN_ARG_URI, YIN_ARG_MANDATORY, exts);
                     break;
                 case YANG_NOTIFICATION:
                     break;
                 case YANG_ORDERED_BY:
-                    break;
-                case YANG_ORGANIZATION:
                     break;
                 case YANG_OUTPUT:
                     break;
@@ -412,9 +420,6 @@ yin_parse_content(struct lyxml_context *xml_ctx, struct yin_subelement *subelem_
                 case YANG_PRESENCE:
                     break;
                 case YANG_RANGE:
-                    break;
-                case YANG_REFERENCE:
-                    ret = yin_parse_meta_element(xml_ctx, data, YANG_REFERENCE, (const char **)subelem_info_rec->dest, exts);
                     break;
                 case YANG_REFINE:
                     break;
@@ -493,43 +498,94 @@ cleanup:
     return ret;
 }
 
+#define YIN_ARG_REQUIRED 0x01
+
+LY_ERR
+yin_parse_simple_element(struct lyxml_context *xml_ctx, struct yin_arg_record *attrs, const char **data, enum yang_keyword kw,
+                         const char **value, enum YIN_ARGUMENT arg_type, uint8_t argument_flags, struct lysp_ext_instance **exts)
+{
+    LY_CHECK_RET(yin_parse_attribute(xml_ctx, &attrs, arg_type, value, argument_flags, kw));
+    struct yin_subelement subelems[1] = {{YANG_CUSTOM, NULL, 0}};
+
+    return yin_parse_content(xml_ctx, subelems, 1, data, kw, NULL, exts);
+}
+
 LY_ERR
 yin_parse_text_element(struct lyxml_context *xml_ctx, const char **data, const char **value)
 {
-    LY_ERR ret = LY_SUCCESS;
-
-    ret = yin_parse_content(xml_ctx, NULL, 0, data, YIN_TEXT, value, NULL);
-
-    return ret;
+    return yin_parse_content(xml_ctx, NULL, 0, data, YIN_TEXT, value, NULL);
 }
 
-/**
- * @brief map keyword type to substatement info.
- *
- * @param[in] kw Keyword type.
- * @param[out] sub Substatement info.
- *
- * @return LY_SUCCESS on success LY_EINVAL if kw can't be mapped.
- */
-LY_ERR
-kw2lyext_substmt(enum yang_keyword kw, LYEXT_SUBSTMT *sub)
+LYEXT_SUBSTMT
+kw2lyext_substmt(enum yang_keyword kw)
 {
     switch (kw) {
-    case YANG_ORGANIZATION:
-        *sub = LYEXT_SUBSTMT_ORGANIZATION;
-        return LY_SUCCESS;
+    case YANG_ARGUMENT:
+        return LYEXT_SUBSTMT_ARGUMENT;
+    case YANG_BASE:
+        return LYEXT_SUBSTMT_BASE;
+    case YANG_BELONGS_TO:
+        return LYEXT_SUBSTMT_BELONGSTO;
     case YANG_CONTACT:
-        *sub = LYEXT_SUBSTMT_CONTACT;
-        return LY_SUCCESS;
+        return LYEXT_SUBSTMT_CONTACT;
+    case YANG_DEFAULT:
+        return LYEXT_SUBSTMT_DEFAULT;
     case YANG_DESCRIPTION:
-        *sub = LYEXT_SUBSTMT_DESCRIPTION;
-        return LY_SUCCESS;
+        return LYEXT_SUBSTMT_DESCRIPTION;
+    case YANG_ERROR_APP_TAG:
+        return LYEXT_SUBSTMT_ERRTAG;
+    case YANG_ERROR_MESSAGE:
+        return LYEXT_SUBSTMT_ERRMSG;
+    case YANG_KEY:
+        return LYEXT_SUBSTMT_KEY;
+    case YANG_NAMESPACE:
+        return LYEXT_SUBSTMT_NAMESPACE;
+    case YANG_ORGANIZATION:
+        return LYEXT_SUBSTMT_ORGANIZATION;
+    case YANG_PATH:
+        return LYEXT_SUBSTMT_PATH;
+    case YANG_PREFIX:
+        return LYEXT_SUBSTMT_PREFIX;
+    case YANG_PRESENCE:
+        return LYEXT_SUBSTMT_PRESENCE;
     case YANG_REFERENCE:
-        *sub = LYEXT_SUBSTMT_REFERENCE;
-        return LY_SUCCESS;
-
+        return LYEXT_SUBSTMT_REFERENCE;
+    case YANG_REVISION_DATE:
+        return LYEXT_SUBSTMT_REVISIONDATE;
+    case YANG_UNITS:
+        return LYEXT_SUBSTMT_UNITS;
+    case YANG_VALUE:
+        return LYEXT_SUBSTMT_VALUE;
+    case YANG_YANG_VERSION:
+        return LYEXT_SUBSTMT_VERSION;
+    case YANG_MODIFIER:
+        return LYEXT_SUBSTMT_MODIFIER;
+    case YANG_REQUIRE_INSTANCE:
+        return LYEXT_SUBSTMT_REQINSTANCE;
+    case YANG_YIN_ELEMENT:
+        return LYEXT_SUBSTMT_YINELEM;
+    case YANG_CONFIG:
+        return LYEXT_SUBSTMT_CONFIG;
+    case YANG_MANDATORY:
+        return LYEXT_SUBSTMT_MANDATORY;
+    case YANG_ORDERED_BY:
+        return LYEXT_SUBSTMT_ORDEREDBY;
+    case YANG_STATUS:
+        return LYEXT_SUBSTMT_STATUS;
+    case YANG_FRACTION_DIGITS:
+        return LYEXT_SUBSTMT_FRACDIGITS;
+    case YANG_MAX_ELEMENTS:
+        return LYEXT_SUBSTMT_MAX;
+    case YANG_MIN_ELEMENTS:
+        return LYEXT_SUBSTMT_MIN;
+    case YANG_POSITION:
+        return LYEXT_SUBSTMT_POSITION;
+    case YANG_UNIQUE:
+        return LYEXT_SUBSTMT_UNIQUE;
+    case YANG_IF_FEATURE:
+        return LYEXT_SUBSTMT_IFFEATURE;
     default:
-        return LY_EINVAL;
+        return LYEXT_SUBSTMT_SELF;
     }
 }
 
@@ -548,24 +604,21 @@ yin_parse_meta_element(struct lyxml_context *xml_ctx, const char **data, enum ya
                        const char **value, struct lysp_ext_instance **exts)
 {
     assert(elem_type == YANG_ORGANIZATION || elem_type == YANG_CONTACT || elem_type == YANG_DESCRIPTION || elem_type == YANG_REFERENCE);
-    struct yin_ext_meta ext_info = {.subelem_index = 0};
     struct yin_subelement subelems[2] = {{YIN_TEXT, value, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE},
-                                         {YANG_CUSTOM, &ext_info, 0}};
-    /* set correct insubstmt info */
-    LY_CHECK_RET(kw2lyext_substmt(elem_type, &ext_info.subelem))
+                                         {YANG_CUSTOM, NULL, 0}};
 
     return yin_parse_content(xml_ctx, subelems, 2, data, elem_type, NULL, exts);
 }
 
 LY_ERR
-yin_parse_revision_date(struct lyxml_context *xml_ctx, struct yin_arg_record **args, const char **data, char *rev, struct lysp_ext_instance **exts)
+yin_parse_revision_date(struct lyxml_context *xml_ctx, struct yin_arg_record **args, const char **data, char *rev,
+                        struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
     const char *temp_rev;
-    struct yin_ext_meta ext_info = {LYEXT_SUBSTMT_REVISIONDATE, 0};
-    struct yin_subelement subelems[1] = {{YANG_CUSTOM, &ext_info, 0}};
+    struct yin_subelement subelems[1] = {{YANG_CUSTOM, NULL, 0}};
 
-    LY_CHECK_RET(yin_parse_attribute(xml_ctx, args, YIN_ARG_DATE, &temp_rev))
+    LY_CHECK_RET(yin_parse_attribute(xml_ctx, args, YIN_ARG_DATE, &temp_rev, YIN_ARG_MANDATORY, YANG_REVISION_DATE));
     LY_CHECK_RET(ret != LY_SUCCESS, ret);
     LY_CHECK_RET(lysp_check_date((struct lys_parser_ctx *)xml_ctx, temp_rev, strlen(temp_rev), "revision-date") != LY_SUCCESS, LY_EVALID);
 
@@ -576,33 +629,33 @@ yin_parse_revision_date(struct lyxml_context *xml_ctx, struct yin_arg_record **a
 }
 
 LY_ERR
-yin_parse_prefix(struct lyxml_context *xml_ctx, struct yin_arg_record *attrs, const char **prefix, const char **data, struct lysp_ext_instance **exts)
+yin_parse_prefix(struct lyxml_context *xml_ctx, struct yin_arg_record *attrs, const char **prefix, const char **data,
+                 struct lysp_ext_instance **exts)
 {
-    struct yin_ext_meta ext_info = {LYEXT_SUBSTMT_PREFIX, 0};
-    struct yin_subelement subelems[1] = {{YANG_CUSTOM, &ext_info, 0}};
-    LY_CHECK_RET(yin_parse_attribute(xml_ctx, &attrs, YIN_ARG_VALUE, prefix));
+    struct yin_subelement subelems[1] = {{YANG_CUSTOM, NULL, 0}};
+    LY_CHECK_RET(yin_parse_attribute(xml_ctx, &attrs, YIN_ARG_VALUE, prefix, YIN_ARG_MANDATORY, YANG_PREFIX));
 
     return yin_parse_content(xml_ctx, subelems, 1, data, YANG_REVISION_DATE, NULL, exts);
 }
 
 LY_ERR
-yin_parse_import(struct lyxml_context *xml_ctx, struct yin_arg_record **import_args, const char *module_prefix, const char **data, struct lysp_import **imports)
+yin_parse_import(struct lyxml_context *xml_ctx, struct yin_arg_record **import_args, const char **data, struct lysp_module *mod)
 {
     struct lysp_import *imp;
     /* allocate new element in sized array for import */
-    LY_ARRAY_NEW_RET(xml_ctx->ctx, *imports, imp, LY_EMEM);
+    LY_ARRAY_NEW_RET(xml_ctx->ctx, mod->imports, imp, LY_EMEM);
 
-    struct yin_ext_meta ext_info = {LYEXT_SUBSTMT_SELF, 0};
     struct yin_subelement subelems[5] = {{YANG_PREFIX, &imp->prefix, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE},
                                          {YANG_DESCRIPTION, &imp->dsc, YIN_SUBELEM_UNIQUE},
                                          {YANG_REFERENCE, &imp->ref, YIN_SUBELEM_UNIQUE},
                                          {YANG_REVISION_DATE, imp->rev, YIN_SUBELEM_UNIQUE},
-                                         {YANG_CUSTOM, &ext_info, 0}};
+                                         {YANG_CUSTOM, NULL, 0}};
 
     /* parse import attributes  */
-    LY_CHECK_RET(yin_parse_attribute(xml_ctx, import_args, YIN_ARG_MODULE, &imp->name));
+    LY_CHECK_RET(yin_parse_attribute(xml_ctx, import_args, YIN_ARG_MODULE, &imp->name, YIN_ARG_MANDATORY, YANG_IMPORT));
     LY_CHECK_RET(yin_parse_content(xml_ctx, subelems, 5, data, YANG_IMPORT, NULL, &imp->exts));
-    LY_CHECK_RET(lysp_check_prefix((struct lys_parser_ctx *)xml_ctx, *imports, module_prefix, &imp->prefix), LY_EVALID);
+    /* check prefix validity */
+    LY_CHECK_RET(lysp_check_prefix((struct lys_parser_ctx *)xml_ctx, mod->imports, mod->mod->prefix, &imp->prefix), LY_EVALID);
 
     return yin_parse_content(xml_ctx, subelems, 5, data, YANG_IMPORT, NULL, &imp->exts);
 }
@@ -611,15 +664,14 @@ LY_ERR
 yin_parse_status(struct lyxml_context *xml_ctx, struct yin_arg_record **status_args, const char **data, uint16_t *flags, struct lysp_ext_instance **exts)
 {
     const char *value = NULL;
-    struct yin_ext_meta ext_info = {LYEXT_SUBSTMT_STATUS, 0};
-    struct yin_subelement subelems[1] = {{YANG_CUSTOM, &ext_info, 0}};
+    struct yin_subelement subelems[1] = {{YANG_CUSTOM, NULL, 0}};
 
     if (*flags & LYS_STATUS_MASK) {
         LOGVAL_PARSER(xml_ctx, LY_VCODE_DUPELEM, "status");
         return LY_EVALID;
     }
 
-    LY_CHECK_RET(yin_parse_attribute(xml_ctx, status_args, YIN_ARG_VALUE, &value));
+    LY_CHECK_RET(yin_parse_attribute(xml_ctx, status_args, YIN_ARG_VALUE, &value, YIN_ARG_MANDATORY, YANG_STATUS));
     if (strcmp(value, "current") == 0) {
         *flags |= LYS_STATUS_CURR;
     } else if (strcmp(value, "deprecated") == 0) {
@@ -641,10 +693,9 @@ yin_parse_yin_element_element(struct lyxml_context *xml_ctx, struct yin_arg_reco
                               uint16_t *flags, struct lysp_ext_instance **exts)
 {
     const char *temp_val = NULL;
-    struct yin_ext_meta ext_info = {LYEXT_SUBSTMT_YINELEM, 0};
-    struct yin_subelement subelems[1] = {{YANG_CUSTOM, &ext_info, 0}};
+    struct yin_subelement subelems[1] = {{YANG_CUSTOM, NULL, 0}};
 
-    LY_CHECK_RET(yin_parse_attribute(xml_ctx, &attrs, YIN_ARG_VALUE, &temp_val));
+    LY_CHECK_RET(yin_parse_attribute(xml_ctx, &attrs, YIN_ARG_VALUE, &temp_val, YIN_ARG_MANDATORY, YANG_YIN_ELEMENT));
     if (strcmp(temp_val, "true") == 0) {
         *flags |= LYS_YINELEM_TRUE;
     } else if (strcmp(temp_val, "false") == 0) {
@@ -661,7 +712,7 @@ yin_parse_yin_element_element(struct lyxml_context *xml_ctx, struct yin_arg_reco
 
 LY_ERR
 yin_parse_extension_instance(struct lyxml_context *xml_ctx, struct yin_arg_record **attrs, const char **data, const char *ext_name,
-                             int ext_name_len, struct yin_ext_meta *metadata, struct lysp_ext_instance **exts)
+                             int ext_name_len, LYEXT_SUBSTMT subelem, uint32_t subelem_index, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
     char *out;
@@ -677,8 +728,8 @@ yin_parse_extension_instance(struct lyxml_context *xml_ctx, struct yin_arg_recor
     e->yin = 0;
     /* store name and insubstmt info */
     e->name = lydict_insert(xml_ctx->ctx, ext_name, ext_name_len);
-    e->insubstmt = metadata->subelem;
-    e->insubstmt_index = metadata->subelem_index;
+    e->insubstmt = subelem;
+    e->insubstmt_index = subelem_index;
     e->yin |= LYS_YIN;
 
     /* store attributes as subelements */
@@ -846,11 +897,10 @@ LY_ERR
 yin_parse_argument_element(struct lyxml_context *xml_ctx, struct yin_arg_record **attrs, const char **data,
                            struct yin_argument_meta *arg_meta, struct lysp_ext_instance **exts)
 {
-    struct yin_ext_meta ext_info = {LYEXT_SUBSTMT_ARGUMENT, 0};
     struct yin_subelement subelems[2] = {{YANG_YIN_ELEMENT, arg_meta->flags, YIN_SUBELEM_UNIQUE},
-                                         {YANG_CUSTOM, &ext_info, 0}};
+                                         {YANG_CUSTOM, NULL, 0}};
 
-    LY_CHECK_RET(yin_parse_attribute(xml_ctx, attrs, YIN_ARG_NAME, arg_meta->argument));
+    LY_CHECK_RET(yin_parse_attribute(xml_ctx, attrs, YIN_ARG_NAME, arg_meta->argument, YIN_ARG_MANDATORY, YANG_ARGUMENT));
 
     return yin_parse_content(xml_ctx, subelems, 2, data, YANG_ARGUMENT, NULL, exts);
 }
@@ -860,14 +910,14 @@ yin_parse_extension(struct lyxml_context *xml_ctx, struct yin_arg_record **exten
 {
     struct lysp_ext *ex;
     LY_ARRAY_NEW_RET(xml_ctx->ctx, *extensions, ex, LY_EMEM);
-    LY_CHECK_RET(yin_parse_attribute(xml_ctx, extension_args, YIN_ARG_NAME, &ex->name));
-    struct yin_ext_meta ext_info = {LYEXT_SUBSTMT_SELF, 0};
+    LY_CHECK_RET(yin_parse_attribute(xml_ctx, extension_args, YIN_ARG_NAME, &ex->name, YIN_ARG_MANDATORY, YANG_EXTENSION));
+
     struct yin_argument_meta arg_info = {&ex->flags, &ex->argument};
     struct yin_subelement subelems[5] = {{YANG_ARGUMENT, &arg_info, YIN_SUBELEM_UNIQUE},
                                          {YANG_DESCRIPTION, &ex->dsc, YIN_SUBELEM_UNIQUE},
                                          {YANG_REFERENCE, &ex->ref, YIN_SUBELEM_UNIQUE},
                                          {YANG_STATUS, &ex->flags, YIN_SUBELEM_UNIQUE},
-                                         {YANG_CUSTOM, &ext_info, 0}};
+                                         {YANG_CUSTOM, NULL, 0}};
 
     return yin_parse_content(xml_ctx, subelems, 5, data, YANG_EXTENSION, NULL, &ex->exts);
 }
@@ -884,141 +934,20 @@ yin_parse_extension(struct lyxml_context *xml_ctx, struct yin_arg_record **exten
 LY_ERR
 yin_parse_mod(struct lyxml_context *xml_ctx, struct yin_arg_record **mod_args, const char **data, struct lysp_module **mod)
 {
-    LY_ERR ret = LY_SUCCESS;
-    enum yang_keyword kw = YANG_NONE;
-    const char *prefix, *name;
-    size_t prefix_len, name_len;
-    enum yang_module_stmt mod_stmt = Y_MOD_MODULE_HEADER;
+    struct yin_subelement subelems[8] = {{YANG_DESCRIPTION, &(*mod)->mod->dsc, YIN_SUBELEM_UNIQUE},
+                                         {YANG_IMPORT, *mod, 0},
+                                         {YANG_ORGANIZATION, &(*mod)->mod->org, YIN_SUBELEM_UNIQUE},
+                                         {YANG_CONTACT, &(*mod)->mod->contact, YIN_SUBELEM_UNIQUE},
+                                         {YANG_PREFIX, &(*mod)->mod->prefix, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE},
+                                         {YANG_REFERENCE, &(*mod)->mod->ref, YIN_SUBELEM_UNIQUE},
+                                         {YANG_NAMESPACE, &(*mod)->mod->ns, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE},
+                                         /* TODO add YANG_EXTENSION */
+                                         {YANG_CUSTOM, NULL, 0}};
 
-    char *buf = NULL, *out = NULL;
-    size_t buf_len = 0, out_len = 0;
-    int dynamic = 0;
-    struct yin_arg_record *substmt_args = NULL;
 
-    yin_parse_attribute(xml_ctx, mod_args, YIN_ARG_NAME, &(*mod)->mod->name);
-    LY_CHECK_ERR_RET(!(*mod)->mod->name, LOGVAL_PARSER(xml_ctx, LYVE_SYNTAX_YIN, "Missing argument name of a module"), LY_EVALID);
-    ret = lyxml_get_string(xml_ctx, data, &buf, &buf_len, &out, &out_len, &dynamic);
-    LY_CHECK_ERR_RET(ret != LY_EINVAL, LOGVAL_PARSER(xml_ctx, LYVE_SYNTAX_YIN, "Expected new xml element after module element."), LY_EINVAL);
+    LY_CHECK_RET(yin_parse_attribute(xml_ctx, mod_args, YIN_ARG_NAME, &(*mod)->mod->name, YIN_ARG_MANDATORY, YANG_MODULE));
 
-    /* loop over all elements and parse them */
-    while (xml_ctx->status != LYXML_END) {
-#define CHECK_ORDER(SECTION) \
-        if (mod_stmt > SECTION) {return LY_EVALID;}mod_stmt = SECTION
-
-        switch (kw) {
-        /* module header */
-        case YANG_NAMESPACE:
-        case YANG_PREFIX:
-            CHECK_ORDER(Y_MOD_MODULE_HEADER);
-            break;
-        case YANG_YANG_VERSION:
-            CHECK_ORDER(Y_MOD_MODULE_HEADER);
-            break;
-        /* linkage */
-        case YANG_INCLUDE:
-        case YANG_IMPORT:
-            CHECK_ORDER(Y_MOD_LINKAGE);
-            break;
-        /* meta */
-        case YANG_ORGANIZATION:
-        case YANG_CONTACT:
-        case YANG_DESCRIPTION:
-        case YANG_REFERENCE:
-            CHECK_ORDER(Y_MOD_META);
-            break;
-
-        /* revision */
-        case YANG_REVISION:
-            CHECK_ORDER(Y_MOD_REVISION);
-            break;
-        /* body */
-        case YANG_ANYDATA:
-        case YANG_ANYXML:
-        case YANG_AUGMENT:
-        case YANG_CHOICE:
-        case YANG_CONTAINER:
-        case YANG_DEVIATION:
-        case YANG_EXTENSION:
-        case YANG_FEATURE:
-        case YANG_GROUPING:
-        case YANG_IDENTITY:
-        case YANG_LEAF:
-        case YANG_LEAF_LIST:
-        case YANG_LIST:
-        case YANG_NOTIFICATION:
-        case YANG_RPC:
-        case YANG_TYPEDEF:
-        case YANG_USES:
-        case YANG_CUSTOM:
-            mod_stmt = Y_MOD_BODY;
-            break;
-        default:
-            /* error will be handled in the next switch */
-            break;
-        }
-#undef CHECK_ORDER
-
-        LY_CHECK_RET(lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len));
-        if (name) {
-            LY_CHECK_RET(yin_load_attributes(xml_ctx, data, &substmt_args));
-            kw = yin_match_keyword(xml_ctx, name, name_len, prefix, prefix_len);
-            switch (kw) {
-
-            /* module header */
-            case YANG_NAMESPACE:
-                ret = yin_parse_attribute(xml_ctx, &substmt_args, YIN_ARG_URI, &(*mod)->mod->ns);
-                LY_CHECK_GOTO(ret, error);
-                break;
-            case YANG_PREFIX:
-                ret = yin_parse_attribute(xml_ctx, &substmt_args, YIN_ARG_VALUE, &(*mod)->mod->prefix);
-                LY_CHECK_GOTO(ret, error);
-                break;
-
-            /* linkage */
-            case YANG_IMPORT:
-                ret = yin_parse_import(xml_ctx, &substmt_args, (*mod)->mod->prefix, data, &(*mod)->imports);
-                LY_CHECK_GOTO(ret, error);
-                break;
-
-            /* meta */
-            case YANG_ORGANIZATION:
-                ret = yin_parse_meta_element(xml_ctx, data, YANG_ORGANIZATION, &(*mod)->mod->org, NULL);
-                LY_CHECK_GOTO(ret, error);
-                break;
-            case YANG_CONTACT:
-                ret = yin_parse_meta_element(xml_ctx, data, YANG_CONTACT, &(*mod)->mod->contact, NULL);
-                LY_CHECK_GOTO(ret, error);
-                break;
-            case YANG_DESCRIPTION:
-                ret = yin_parse_meta_element(xml_ctx, data, YANG_DESCRIPTION, &(*mod)->mod->dsc, NULL);
-                LY_CHECK_GOTO(ret, error);
-                break;
-            case YANG_REFERENCE:
-                ret = yin_parse_meta_element(xml_ctx, data, YANG_REFERENCE, &(*mod)->mod->ref, NULL);
-                LY_CHECK_GOTO(ret, error);
-                break;
-            /* revision */
-
-            /*body */
-            case YANG_EXTENSION:
-                ret = yin_parse_extension(xml_ctx, &substmt_args, data, &(*mod)->extensions);
-                LY_CHECK_GOTO(ret, error);
-                break;
-
-            default:
-                ret = LY_EVALID;
-                goto error;
-            }
-            FREE_ARRAY(xml_ctx, substmt_args, free_arg_rec);
-            substmt_args = NULL;
-        }
-    }
-
-    return LY_SUCCESS;
-
-error:
-    FREE_ARRAY(xml_ctx, substmt_args, free_arg_rec);
-    return ret;
+    return yin_parse_content(xml_ctx, subelems, 8, data, YANG_MODULE, NULL, &(*mod)->exts);
 }
 
 LY_ERR
