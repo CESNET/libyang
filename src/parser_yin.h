@@ -60,7 +60,9 @@ struct yin_arg_record {
 /* flags to encode cardinality of subelement */
 #define YIN_SUBELEM_MANDATORY   0x01    /**< is set when subelement is mandatory */
 #define YIN_SUBELEM_UNIQUE      0x02    /**< is set when subelement is unique */
-#define YIN_SUBELEM_PARSED      0x04    /**< is set during parsing when given subelement is encountered for the first
+#define YIN_SUBELEM_FIRST       0x08    /**< is set when subelement is actually yang argument mapped to yin element */
+
+#define YIN_SUBELEM_PARSED      0x80    /**< is set during parsing when given subelement is encountered for the first
                                              time to simply check validity of given constraints */
 
 #define YIN_ARG_MANDATORY       0x01    /**< is set when attribute is mandatory */

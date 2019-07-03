@@ -188,7 +188,7 @@ test_yin_parse_module(void **state)
                             </module>",
                            st->mod);
     assert_int_equal(ret, LY_EVALID);
-    logbuf_assert("Missing mandatory attribute \"name\" of module element Line number 1.");
+    logbuf_assert("Missing mandatory attribute \"name\" of module element. Line number 1.");
 
     st = reset_state(state);
     ret = yin_parse_module(st->ctx,
@@ -314,6 +314,8 @@ test_meta(void **state)
 
     ret = yin_parse_module(st->ctx,"<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\
                                         name=\"example-foo\">\
+                                        <prefix value=\"foo\">ignored</prefix>\
+                                        <namespace uri=\"urn:example:foo\" xmlns:myext=\"urn:example:extensions\"/>\
                                         <organization xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"><text>organization...</text></organization>\
                                         <contact><text>contact...</text></contact>\
                                         <description><text>description...</text></description>\
