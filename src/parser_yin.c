@@ -46,7 +46,6 @@ const char *const yin_attr_list[] = {
     [YIN_ARG_URI] = "uri",
     [YIN_ARG_DATE] = "date",
     [YIN_ARG_TAG] = "tag",
-    [YIN_ARG_XMLNS] = "xmlns",
 };
 
 enum yang_keyword
@@ -99,10 +98,6 @@ yin_match_argument_name(const char *name, size_t len)
 #define IF_ARG_PREFIX_END }
 
     switch (*name) {
-    case 'x':
-        already_read += 1;
-        IF_ARG("mlns", 4, YIN_ARG_XMLNS);
-        break;
     case 'c':
         already_read += 1;
         IF_ARG("ondition", 8, YIN_ARG_CONDITION);

@@ -40,7 +40,6 @@ enum YIN_ARGUMENT {
     YIN_ARG_URI,           /**< argument uri */
     YIN_ARG_DATE,          /**< argument data */
     YIN_ARG_TAG,           /**< argument tag */
-    YIN_ARG_XMLNS,         /**< argument xmlns */
     YIN_ARG_NONE,          /**< empty (special value) */
 };
 
