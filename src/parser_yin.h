@@ -128,7 +128,7 @@ LYEXT_SUBSTMT kw2lyext_substmt(enum yang_keyword kw);
  * @param[in] exts Extension instance to add to. Can be null if element cannot have extension as subelement.
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_content(struct lyxml_context *xml_ctx, struct yin_subelement *subelem_info, size_t subelem_info_size,
+LY_ERR yin_parse_content(struct lyxml_context *xml_ctx, struct yin_subelement *subelem_info, signed char subelem_info_size,
                          const char **data, enum yang_keyword current_element, const char **text_content,
                          struct lysp_ext_instance **exts);
 

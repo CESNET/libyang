@@ -243,11 +243,21 @@ yin_parse_attribute(struct lyxml_context *xml_ctx, struct yin_arg_record **args,
  * @return Pointer to desired record on success, NULL if element is not in the array.
  */
 struct yin_subelement *
-get_record(enum yang_keyword type, size_t array_size, struct yin_subelement *array)
+get_record(enum yang_keyword type, signed char array_size, struct yin_subelement *array)
 {
-    for (size_t i = 0; i < array_size; ++i) {
-        if (array[i].type == type) {
-            return &array[i];
+    signed char left = 0, right = array_size - 1, middle;
+
+    while (left <= right) {
+        middle = left + (right - left) / 2;
+
+        if (array[middle].type == type) {
+            return &array[middle];
+        }
+
+        if (array[middle].type < type) {
+            left = middle + 1;
+        } else {
+            right = middle - 1;
         }
     }
 
@@ -256,9 +266,9 @@ get_record(enum yang_keyword type, size_t array_size, struct yin_subelement *arr
 
 LY_ERR
 yin_check_subelem_mandatory_constraint(struct lyxml_context *xml_ctx, struct yin_subelement *subelem_info,
-                                       size_t subelem_info_size, enum yang_keyword current_element)
+                                       signed char subelem_info_size, enum yang_keyword current_element)
 {
-    for (size_t i = 0; i < subelem_info_size; ++i) {
+    for (signed char i = 0; i < subelem_info_size; ++i) {
         /* if there is element that is mandatory and isn't parsed log error and rturn LY_EVALID */
         if (subelem_info[i].flags & YIN_SUBELEM_MANDATORY && !(subelem_info[i].flags & YIN_SUBELEM_PARSED)) {
             LOGVAL_PARSER(xml_ctx, LYVE_SYNTAX_YIN, "Missing mandatory subelement %s of %s element.",
@@ -272,9 +282,9 @@ yin_check_subelem_mandatory_constraint(struct lyxml_context *xml_ctx, struct yin
 
 LY_ERR
 yin_check_subelem_first_constraint(struct lyxml_context *xml_ctx, struct yin_subelement *subelem_info,
-                                   size_t subelem_info_size, enum yang_keyword current_element, struct yin_subelement *exp_first)
+                                   signed char subelem_info_size, enum yang_keyword current_element, struct yin_subelement *exp_first)
 {
-    for (size_t i = 0; i < subelem_info_size; ++i) {
+    for (signed char i = 0; i < subelem_info_size; ++i) {
         if (subelem_info[i].flags & YIN_SUBELEM_PARSED) {
             LOGVAL_PARSER(xml_ctx, LYVE_SYNTAX_YIN, "Subelement %s of %s element must be defined as first subelement.",
                           ly_stmt2str(exp_first->type), ly_stmt2str(current_element));
@@ -283,6 +293,22 @@ yin_check_subelem_first_constraint(struct lyxml_context *xml_ctx, struct yin_sub
     }
 
     return LY_SUCCESS;
+}
+
+/* TODO add something like ifdef NDEBUG around this function, this is supposed to be checked only in debug mode */
+bool
+is_ordered(struct yin_subelement *subelem_info, signed char subelem_info_size)
+{
+    enum yang_keyword current = YANG_NONE; /* 0 */
+
+    for (signed char i = 0; i < subelem_info_size; ++i) {
+        if (subelem_info[i].type <= current) {
+            return false;
+        }
+        current = subelem_info[i].type;
+    }
+
+    return true;
 }
 
 /**
@@ -299,7 +325,7 @@ yin_check_subelem_first_constraint(struct lyxml_context *xml_ctx, struct yin_sub
  * @return LY_ERR values.
  */
 LY_ERR
-yin_parse_content(struct lyxml_context *xml_ctx, struct yin_subelement *subelem_info, size_t subelem_info_size,
+yin_parse_content(struct lyxml_context *xml_ctx, struct yin_subelement *subelem_info, signed char subelem_info_size,
                   const char **data, enum yang_keyword current_element, const char **text_content, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -310,6 +336,7 @@ yin_parse_content(struct lyxml_context *xml_ctx, struct yin_subelement *subelem_
     struct yin_arg_record *subelem_attrs = NULL;
     enum yang_keyword kw = YANG_NONE;
     struct yin_subelement *subelem_info_rec = NULL;
+    assert(is_ordered(subelem_info, subelem_info_size));
 
     if (xml_ctx->status == LYXML_ELEM_CONTENT) {
         ret = lyxml_get_string(xml_ctx, data, &out, &out_len, &out, &out_len, &dynamic);
@@ -639,8 +666,8 @@ yin_parse_meta_element(struct lyxml_context *xml_ctx, const char **data, enum ya
 {
     assert(elem_type == YANG_ORGANIZATION || elem_type == YANG_CONTACT || elem_type == YANG_DESCRIPTION || elem_type == YANG_REFERENCE);
 
-    struct yin_subelement subelems[2] = {{YIN_TEXT, value, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE | YIN_SUBELEM_FIRST},
-                                         {YANG_CUSTOM, NULL, 0}};
+    struct yin_subelement subelems[2] = {{YANG_CUSTOM, NULL, 0},
+                                         {YIN_TEXT, value, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE | YIN_SUBELEM_FIRST}};
 
     return yin_parse_content(xml_ctx, subelems, 2, data, elem_type, NULL, exts);
 }
@@ -680,8 +707,8 @@ yin_parse_import(struct lyxml_context *xml_ctx, struct yin_arg_record **import_a
     /* allocate new element in sized array for import */
     LY_ARRAY_NEW_RET(xml_ctx->ctx, mod->imports, imp, LY_EMEM);
 
-    struct yin_subelement subelems[5] = {{YANG_PREFIX, &imp->prefix, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE},
-                                         {YANG_DESCRIPTION, &imp->dsc, YIN_SUBELEM_UNIQUE},
+    struct yin_subelement subelems[5] = {{YANG_DESCRIPTION, &imp->dsc, YIN_SUBELEM_UNIQUE},
+                                         {YANG_PREFIX, &imp->prefix, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE},
                                          {YANG_REFERENCE, &imp->ref, YIN_SUBELEM_UNIQUE},
                                          {YANG_REVISION_DATE, imp->rev, YIN_SUBELEM_UNIQUE},
                                          {YANG_CUSTOM, NULL, 0}};
@@ -980,14 +1007,15 @@ yin_parse_extension(struct lyxml_context *xml_ctx, struct yin_arg_record **exten
 LY_ERR
 yin_parse_mod(struct lyxml_context *xml_ctx, struct yin_arg_record **mod_args, const char **data, struct lysp_module **mod)
 {
-    struct yin_subelement subelems[9] = {{YANG_DESCRIPTION, &(*mod)->mod->dsc, YIN_SUBELEM_UNIQUE},
-                                         {YANG_IMPORT, *mod, 0},
-                                         {YANG_ORGANIZATION, &(*mod)->mod->org, YIN_SUBELEM_UNIQUE},
+    struct yin_subelement subelems[9] = {
                                          {YANG_CONTACT, &(*mod)->mod->contact, YIN_SUBELEM_UNIQUE},
+                                         {YANG_DESCRIPTION, &(*mod)->mod->dsc, YIN_SUBELEM_UNIQUE},
+                                         {YANG_EXTENSION, &(*mod)->exts, 0},
+                                         {YANG_IMPORT, *mod, 0},
+                                         {YANG_NAMESPACE, &(*mod)->mod->ns, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE},
+                                         {YANG_ORGANIZATION, &(*mod)->mod->org, YIN_SUBELEM_UNIQUE},
                                          {YANG_PREFIX, &(*mod)->mod->prefix, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE},
                                          {YANG_REFERENCE, &(*mod)->mod->ref, YIN_SUBELEM_UNIQUE},
-                                         {YANG_NAMESPACE, &(*mod)->mod->ns, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE},
-                                         {YANG_EXTENSION, &(*mod)->exts, 0},
                                          {YANG_CUSTOM, NULL, 0}};
 
     LY_CHECK_RET(yin_parse_attribute(xml_ctx, mod_args, YIN_ARG_NAME, &(*mod)->mod->name, YIN_ARG_MANDATORY, YANG_MODULE));

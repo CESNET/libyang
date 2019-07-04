@@ -679,9 +679,9 @@ test_yin_parse_content(void **state)
     lyxml_get_element(st->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
     yin_load_attributes(st->xml_ctx, &data, &attrs);
 
-    struct yin_subelement subelems[3] = {{YANG_CUSTOM, NULL, 0},
-                                         {YIN_TEXT, &value, 0},
-                                         {YANG_EXTENSION, &ext_def, 0}};
+    struct yin_subelement subelems[3] = {{YANG_EXTENSION, &ext_def, 0},
+                                         {YANG_CUSTOM, NULL, 0},
+                                         {YIN_TEXT, &value, 0}};
     ret = yin_parse_content(st->xml_ctx, subelems, 3, &data, YANG_ACTION, NULL, &exts);
     assert_int_equal(ret, LY_SUCCESS);
     assert_string_equal(exts->name, "custom");
