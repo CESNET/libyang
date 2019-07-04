@@ -167,15 +167,19 @@ yin_load_attributes(struct lyxml_context *xml_ctx, const char **data, struct yin
 {
     LY_ERR ret = LY_SUCCESS;
     struct yin_arg_record *argument_record = NULL;
+    struct sized_string prefix, name;
 
-    /* load all attributes first */
+    /* load all attributes */
     while (xml_ctx->status == LYXML_ATTRIBUTE) {
-        LY_ARRAY_NEW_GOTO(xml_ctx->ctx, *args, argument_record, ret, cleanup);
-        ret = lyxml_get_attribute(xml_ctx, data, &argument_record->prefix, &argument_record->prefix_len,
-                                  &argument_record->name, &argument_record->name_len);
+        ret = lyxml_get_attribute(xml_ctx, data, &prefix.value, &prefix.len, &name.value, &name.len);
         LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
 
         if (xml_ctx->status == LYXML_ATTR_CONTENT) {
+            LY_ARRAY_NEW_GOTO(xml_ctx->ctx, *args, argument_record, ret, cleanup);
+            argument_record->name = name.value;
+            argument_record->name_len = name.len;
+            argument_record->prefix = prefix.value;
+            argument_record->prefix_len = prefix.len;
             argument_record->content = NULL;
             argument_record->content_len = 0;
             argument_record->dynamic_content = 0;
@@ -262,7 +266,8 @@ yin_check_subelem_mandatory_constraint(struct lyxml_context *xml_ctx, struct yin
     for (size_t i = 0; i < subelem_info_size; ++i) {
         /* if there is element that is mandatory and isn't parsed log error and rturn LY_EVALID */
         if (subelem_info[i].flags & YIN_SUBELEM_MANDATORY && !(subelem_info[i].flags & YIN_SUBELEM_PARSED)) {
-            LOGVAL_PARSER(xml_ctx, LYVE_SYNTAX_YIN, "Missing mandatory subelement %s of %s element", ly_stmt2str(subelem_info[i].type), ly_stmt2str(current_element));
+            LOGVAL_PARSER(xml_ctx, LYVE_SYNTAX_YIN, "Missing mandatory subelement %s of %s element.",
+                          ly_stmt2str(subelem_info[i].type), ly_stmt2str(current_element));
             return LY_EVALID;
         }
     }
@@ -276,7 +281,8 @@ yin_check_subelem_first_constraint(struct lyxml_context *xml_ctx, struct yin_sub
 {
     for (size_t i = 0; i < subelem_info_size; ++i) {
         if (subelem_info[i].flags & YIN_SUBELEM_PARSED) {
-            LOGVAL_PARSER(xml_ctx, LYVE_SYNTAX_YIN, "Subelement %s of %s element must be defined as first subelement.", exp_first->type, current_element);
+            LOGVAL_PARSER(xml_ctx, LYVE_SYNTAX_YIN, "Subelement %s of %s element must be defined as first subelement.",
+                          ly_stmt2str(exp_first->type), ly_stmt2str(current_element));
             return LY_EVALID;
         }
     }
@@ -335,12 +341,12 @@ yin_parse_content(struct lyxml_context *xml_ctx, struct yin_subelement *subelem_
 
                 /* TODO macro to check order */
                 /* if element is unique and already defined log error */
-                if (subelem_info_rec->flags & YIN_SUBELEM_UNIQUE & YIN_SUBELEM_PARSED) {
-                    LOGVAL_PARSER(xml_ctx, LYVE_SYNTAX_YIN, "Redefinition of %s element in %s element.", kw, current_element);
+                if ((subelem_info_rec->flags & YIN_SUBELEM_UNIQUE) && (subelem_info_rec->flags & YIN_SUBELEM_PARSED)) {
+                    LOGVAL_PARSER(xml_ctx, LYVE_SYNTAX_YIN, "Redefinition of %s element in %s element.", ly_stmt2str(kw), ly_stmt2str(current_element));
                     return LY_EVALID;
                 }
                 if (subelem_info_rec->flags & YIN_SUBELEM_FIRST) {
-                    yin_check_subelem_first_constraint(xml_ctx, subelem_info, subelem_info_size, current_element, subelem_info_rec);
+                    LY_CHECK_RET(yin_check_subelem_first_constraint(xml_ctx, subelem_info, subelem_info_size, current_element, subelem_info_rec));
                 }
                 subelem_info_rec->flags |= YIN_SUBELEM_PARSED;
 
@@ -508,8 +514,6 @@ yin_parse_content(struct lyxml_context *xml_ctx, struct yin_subelement *subelem_
                 subelem_attrs = NULL;
                 subelem_info_rec = NULL;
             }
-            LY_CHECK_RET(yin_check_subelem_mandatory_constraint(xml_ctx, subelem_info, subelem_info_size, current_element));
-
         } else {
             /* elements with text or none content */
             /* save text content, if text_content isn't set, it's just ignored */
@@ -531,6 +535,8 @@ yin_parse_content(struct lyxml_context *xml_ctx, struct yin_subelement *subelem_
             /* load closing element */
             LY_CHECK_RET(lyxml_get_element(xml_ctx, data, &prefix.value, &prefix.len, &name.value, &name.len));
         }
+
+        LY_CHECK_RET(yin_check_subelem_mandatory_constraint(xml_ctx, subelem_info, subelem_info_size, current_element));
     }
 
 cleanup:
@@ -807,10 +813,21 @@ yin_parse_extension_instance(struct lyxml_context *xml_ctx, struct yin_arg_recor
                 }
                 last_subelem = new_subelem;
             }
+        } else {
+            /* save text content */
+            if (dynamic) {
+                e->argument = lydict_insert_zc(xml_ctx->ctx, out);
+                if (!e->argument) {
+                    free(out);
+                    return LY_EMEM;
+                }
+            } else {
+                e->argument = lydict_insert(xml_ctx->ctx, out, out_len);
+                LY_CHECK_RET(!e->argument, LY_EMEM);
+            }
+            LY_CHECK_RET(lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len));
+            LY_CHECK_RET(name, LY_EINT);
         }
-    } else {
-        LY_CHECK_RET(lyxml_get_element(xml_ctx, data, &prefix, &prefix_len, &name, &name_len));
-        LY_CHECK_RET(name, LY_EINVAL);
     }
 
     return LY_SUCCESS;

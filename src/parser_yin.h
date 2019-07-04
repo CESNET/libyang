@@ -117,16 +117,21 @@ LY_ERR yin_parse_meta_element(struct lyxml_context *xml_ctx, const char **data, 
 LYEXT_SUBSTMT kw2lyext_substmt(enum yang_keyword kw);
 
 /**
- * @brief Parse content of whole element as text.
+ * @brief Generic function for content parsing
  *
- * @param[in] xml_ctx Xml context.
- * @param[in] args Sized array of arguments of current element.
- * @param[in,out] data Data to read from.
- * @param[out] value Where content of element should be stored.
- *
+ * @param[in,out] xml_ctx Xml context.
+ * @param[in] subelem_info array of valid subelement types and meta information,
+ *            array must be ordered by subelem_info->type in ascending order.
+ * @param[in] subelem_info_size Size of subelem_info array.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] current_element Type of current element.
+ * @param[out] Where the text content of element should be stored. Text content is ignored if set to NULL.
+ * @param[in] exts Extension instance to add to. Can be null if element cannot have extension as subelement.
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_text_element(struct lyxml_context *xml_ctx, const char **data, const char **value);
+LY_ERR yin_parse_content(struct lyxml_context *xml_ctx, struct yin_subelement *subelem_info, size_t subelem_info_size,
+                         const char **data, enum yang_keyword current_element, const char **text_content,
+                         struct lysp_ext_instance **exts);
 
 /**
  * @brief Parse simple element without any special constaints and argument mapped to yin attribute.

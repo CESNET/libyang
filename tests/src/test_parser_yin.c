@@ -27,6 +27,9 @@
 #include "../../src/parser_yin.h"
 #include "../../src/xml.h"
 
+/* prototypes of static functions */
+void lysp_ext_instance_free(struct ly_ctx *ctx, struct lysp_ext_instance *ext);
+
 struct state {
     struct ly_ctx *ctx;
     struct lys_module *mod;
@@ -140,6 +143,7 @@ static struct state*
 reset_state(void **state)
 {
     ((struct state *)*state)->finished_correctly = true;
+    logbuf[0] = '\0';
     teardown_f(state);
     setup_f(state);
 
@@ -648,6 +652,91 @@ test_yin_parse_extension_instance(void **state)
     st->finished_correctly = true;
 }
 
+static void
+test_yin_parse_content(void **state)
+{
+    struct state *st = *state;
+    LY_ERR ret = LY_SUCCESS;
+    struct sized_string name, prefix;
+    const char *data = "<prefix value=\"a_mod\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+                            "<custom xmlns=\"my-ext\">"
+                                "totally amazing extension"
+                            "</custom>"
+                            "<text xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">wsefsdf</text>"
+                        "</prefix>";
+    struct lysp_ext_instance *exts = NULL;
+    struct yin_arg_record *attrs = NULL;
+    const char *value;
+
+    lyxml_get_element(st->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
+    yin_load_attributes(st->xml_ctx, &data, &attrs);
+
+    struct yin_subelement subelems[2] = {{YANG_CUSTOM, NULL, 0},
+                                         {YIN_TEXT, &value, 0}};
+    ret = yin_parse_content(st->xml_ctx, subelems, 2, &data, YANG_ACTION, NULL, &exts);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_string_equal(exts->name, "custom");
+    assert_string_equal(exts->argument, "totally amazing extension");
+    assert_string_equal(value, "wsefsdf");
+    lysp_ext_instance_free(st->ctx, exts);
+    LY_ARRAY_FREE(exts);
+    LY_ARRAY_FREE(attrs);
+    attrs = NULL;
+    lydict_remove(st->ctx, value);
+    st = reset_state(state);
+
+    /* test unique subelem */
+    const char *prefix_value;
+    struct yin_subelement subelems2[2] = {{YANG_PREFIX, &prefix_value, 0},
+                                         {YIN_TEXT, &value, YIN_SUBELEM_UNIQUE}};
+    data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+                "<prefix value=\"inv_mod\" />"
+                "<text xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">wsefsdf</text>"
+                "<text xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">wsefsdf</text>"
+           "</module>";
+    lyxml_get_element(st->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
+    yin_load_attributes(st->xml_ctx, &data, &attrs);
+    ret = yin_parse_content(st->xml_ctx, subelems2, 2, &data, YANG_MODULE, NULL, &exts);
+    assert_int_equal(ret, LY_EVALID);
+    logbuf_assert("Redefinition of text element in module element. Line number 1.");
+    lydict_remove(st->ctx, prefix_value);
+    lydict_remove(st->ctx, value);
+    st = reset_state(state);
+    LY_ARRAY_FREE(attrs);
+    attrs = NULL;
+
+    /* test first subelem */
+    data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+                "<prefix value=\"inv_mod\" />"
+                "<text xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">wsefsdf</text>"
+                "<text xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">wsefsdf</text>"
+           "</module>";
+    struct yin_subelement subelems3[2] = {{YANG_PREFIX, &prefix_value, 0},
+                                         {YIN_TEXT, &value, YIN_SUBELEM_FIRST}};
+    lyxml_get_element(st->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
+    yin_load_attributes(st->xml_ctx, &data, &attrs);
+    ret = yin_parse_content(st->xml_ctx, subelems3, 2, &data, YANG_MODULE, NULL, &exts);
+    assert_int_equal(ret, LY_EVALID);
+    logbuf_assert("Subelement text of module element must be defined as first subelement. Line number 1.");
+    lydict_remove(st->ctx, prefix_value);
+    st = reset_state(state);
+    LY_ARRAY_FREE(attrs);
+    attrs = NULL;
+
+    /* test mandatory subelem */
+    data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+           "</module>";
+    struct yin_subelement subelems4[1] = {{YANG_PREFIX, &prefix_value, YIN_SUBELEM_MANDATORY}};
+    lyxml_get_element(st->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
+    yin_load_attributes(st->xml_ctx, &data, &attrs);
+    ret = yin_parse_content(st->xml_ctx, subelems4, 1, &data, YANG_MODULE, NULL, &exts);
+    assert_int_equal(ret, LY_EVALID);
+    logbuf_assert("Missing mandatory subelement prefix of module element. Line number 1.");
+    LY_ARRAY_FREE(attrs);
+
+    st->finished_correctly = true;
+}
+
 int
 main(void)
 {
@@ -662,6 +751,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_yin_parse_yin_element_element, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_yin_parse_element_generic, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_yin_parse_extension_instance, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_yin_parse_content, setup_f, teardown_f),
         cmocka_unit_test(test_yin_match_argument_name),
     };
 
