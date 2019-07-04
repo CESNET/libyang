@@ -495,7 +495,7 @@ yin_parse_content(struct lyxml_context *xml_ctx, struct yin_subelement *subelem_
                     ret = yin_parse_yin_element_element(xml_ctx, subelem_attrs, data, (uint16_t *)subelem_info_rec->dest, exts);
                     break;
                 case YIN_TEXT:
-                    ret = yin_parse_text_element(xml_ctx, data, (const char **)subelem_info_rec->dest);
+                    ret = yin_parse_content(xml_ctx, NULL, 0, data, YIN_TEXT, (const char **)subelem_info_rec->dest, NULL);
                     break;
                 case YIN_VALUE:
                     break;
@@ -546,12 +546,6 @@ yin_parse_simple_element(struct lyxml_context *xml_ctx, struct yin_arg_record *a
     struct yin_subelement subelems[1] = {{YANG_CUSTOM, NULL, 0}};
 
     return yin_parse_content(xml_ctx, subelems, 1, data, kw, NULL, exts);
-}
-
-LY_ERR
-yin_parse_text_element(struct lyxml_context *xml_ctx, const char **data, const char **value)
-{
-    return yin_parse_content(xml_ctx, NULL, 0, data, YIN_TEXT, value, NULL);
 }
 
 LYEXT_SUBSTMT

@@ -338,53 +338,6 @@ test_meta(void **state)
 }
 
 static void
-test_yin_parse_text_element(void **state)
-{
-    struct state *st = *state;
-    const char *res = NULL, *prefix = NULL, *name = NULL;
-    size_t prefix_len = 0, name_len = 0;
-    LY_ERR ret = LY_SUCCESS;
-    struct yin_arg_record *args = NULL;
-
-    const char *data = "<elem>content</elem>";
-    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    yin_load_attributes(st->xml_ctx, &data, &args);
-    ret = yin_parse_text_element(st->xml_ctx, &data, &res);
-    assert_int_equal(st->xml_ctx->status, LYXML_END);
-    assert_int_equal(ret, LY_SUCCESS);
-    assert_string_equal(res, "content");
-    lydict_remove(st->ctx, "content");
-    st = reset_state(state);
-    LY_ARRAY_FREE(args);
-    args = NULL;
-
-    data = "<elem xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">another-content</elem>";
-    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    yin_load_attributes(st->xml_ctx, &data, &args);
-    ret = yin_parse_text_element(st->xml_ctx, &data, &res);
-    assert_int_equal(st->xml_ctx->status, LYXML_END);
-    assert_int_equal(ret, LY_SUCCESS);
-    assert_string_equal(res, "another-content");
-    lydict_remove(st->ctx, "another-content");
-    st = reset_state(state);
-    LY_ARRAY_FREE(args);
-    args = NULL;
-
-    data = "<elem unknown=\"unknown\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">text</elem>";
-    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    yin_load_attributes(st->xml_ctx, &data, &args);
-    ret = yin_parse_text_element(st->xml_ctx, &data, &res);
-    assert_int_equal(st->xml_ctx->status, LYXML_END);
-    assert_int_equal(ret, LY_SUCCESS);
-    assert_string_equal(res, "text");
-    lydict_remove(st->ctx, "text");
-    LY_ARRAY_FREE(args);
-    args = NULL;
-
-    st->finished_correctly = true;
-}
-
-static void
 test_yin_parse_import(void **state)
 {
     struct state *st = *state;
@@ -702,7 +655,6 @@ main(void)
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_yin_parse_module, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_meta, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_yin_parse_text_element, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_yin_parse_import, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_yin_parse_status, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_yin_match_keyword, setup_f, teardown_f),
