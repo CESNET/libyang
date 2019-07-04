@@ -29,6 +29,7 @@
 
 /* prototypes of static functions */
 void lysp_ext_instance_free(struct ly_ctx *ctx, struct lysp_ext_instance *ext);
+void lysp_ext_free(struct ly_ctx *ctx, struct lysp_ext *ext);
 
 struct state {
     struct ly_ctx *ctx;
@@ -662,24 +663,34 @@ test_yin_parse_content(void **state)
                             "<custom xmlns=\"my-ext\">"
                                 "totally amazing extension"
                             "</custom>"
+                            "<extension name=\"ext\">"
+                                "<argument name=\"argname\"></argument>"
+                                "<description><text>desc</text></description>"
+                                "<reference><text>ref</text></reference>"
+                                "<status value=\"deprecated\"></status>"
+                            "</extension>"
                             "<text xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">wsefsdf</text>"
                         "</prefix>";
     struct lysp_ext_instance *exts = NULL;
     struct yin_arg_record *attrs = NULL;
     const char *value;
+    struct lysp_ext *ext_def = NULL;
 
     lyxml_get_element(st->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
     yin_load_attributes(st->xml_ctx, &data, &attrs);
 
-    struct yin_subelement subelems[2] = {{YANG_CUSTOM, NULL, 0},
-                                         {YIN_TEXT, &value, 0}};
-    ret = yin_parse_content(st->xml_ctx, subelems, 2, &data, YANG_ACTION, NULL, &exts);
+    struct yin_subelement subelems[3] = {{YANG_CUSTOM, NULL, 0},
+                                         {YIN_TEXT, &value, 0},
+                                         {YANG_EXTENSION, &ext_def, 0}};
+    ret = yin_parse_content(st->xml_ctx, subelems, 3, &data, YANG_ACTION, NULL, &exts);
     assert_int_equal(ret, LY_SUCCESS);
     assert_string_equal(exts->name, "custom");
     assert_string_equal(exts->argument, "totally amazing extension");
     assert_string_equal(value, "wsefsdf");
     lysp_ext_instance_free(st->ctx, exts);
+    lysp_ext_free(st->ctx, ext_def);
     LY_ARRAY_FREE(exts);
+    LY_ARRAY_FREE(ext_def);
     LY_ARRAY_FREE(attrs);
     attrs = NULL;
     lydict_remove(st->ctx, value);

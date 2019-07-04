@@ -402,6 +402,7 @@ yin_parse_content(struct lyxml_context *xml_ctx, struct yin_subelement *subelem_
                 case YANG_ERROR_MESSAGE:
                     break;
                 case YANG_EXTENSION:
+                    ret = yin_parse_extension(xml_ctx, &subelem_attrs, data, (struct lysp_ext **)subelem_info_rec->dest);
                     break;
                 case YANG_FEATURE:
                     break;
@@ -984,20 +985,19 @@ yin_parse_extension(struct lyxml_context *xml_ctx, struct yin_arg_record **exten
 LY_ERR
 yin_parse_mod(struct lyxml_context *xml_ctx, struct yin_arg_record **mod_args, const char **data, struct lysp_module **mod)
 {
-    struct yin_subelement subelems[8] = {{YANG_DESCRIPTION, &(*mod)->mod->dsc, YIN_SUBELEM_UNIQUE},
+    struct yin_subelement subelems[9] = {{YANG_DESCRIPTION, &(*mod)->mod->dsc, YIN_SUBELEM_UNIQUE},
                                          {YANG_IMPORT, *mod, 0},
                                          {YANG_ORGANIZATION, &(*mod)->mod->org, YIN_SUBELEM_UNIQUE},
                                          {YANG_CONTACT, &(*mod)->mod->contact, YIN_SUBELEM_UNIQUE},
                                          {YANG_PREFIX, &(*mod)->mod->prefix, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE},
                                          {YANG_REFERENCE, &(*mod)->mod->ref, YIN_SUBELEM_UNIQUE},
                                          {YANG_NAMESPACE, &(*mod)->mod->ns, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE},
-                                         /* TODO add YANG_EXTENSION */
+                                         {YANG_EXTENSION, &(*mod)->exts, 0},
                                          {YANG_CUSTOM, NULL, 0}};
-
 
     LY_CHECK_RET(yin_parse_attribute(xml_ctx, mod_args, YIN_ARG_NAME, &(*mod)->mod->name, YIN_ARG_MANDATORY, YANG_MODULE));
 
-    return yin_parse_content(xml_ctx, subelems, 8, data, YANG_MODULE, NULL, &(*mod)->exts);
+    return yin_parse_content(xml_ctx, subelems, 9, data, YANG_MODULE, NULL, &(*mod)->exts);
 }
 
 LY_ERR
