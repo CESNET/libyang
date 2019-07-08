@@ -193,7 +193,7 @@ test_yin_parse_module(void **state)
                             </module>",
                            st->mod);
     assert_int_equal(ret, LY_EVALID);
-    logbuf_assert("Missing mandatory attribute \"name\" of module element. Line number 1.");
+    logbuf_assert("Missing mandatory attribute name of module element. Line number 1.");
 
     st = reset_state(state);
     ret = yin_parse_module(st->ctx,
