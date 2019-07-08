@@ -240,7 +240,7 @@ yin_parse_attribute(struct yin_parser_ctx *ctx, struct yin_arg_record **attrs, e
     }
 
     if (flags & YIN_ARG_MANDATORY && !found) {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LYVE_SYNTAX_YIN, "Missing mandatory attribute \"%s\" of %s element.", yin_attr2str(arg_type), ly_stmt2str(current_element));
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LYVE_SYNTAX_YIN, "Missing mandatory attribute %s of %s element.", yin_attr2str(arg_type), ly_stmt2str(current_element));
         return LY_EVALID;
     }
 
@@ -480,6 +480,29 @@ kw2lyext_substmt(enum yang_keyword kw)
     }
 }
 
+
+/**
+ * @brief Parse belongs-to element.
+ *
+ * @param[in] ctx Yin parser context for logging and to store current state.
+ * @param[in] attrs Array of attributes of belongs-to element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[out] submod Structure of submodule that is being parsed.
+ * @param[in,out] exts Extension instances to add to.
+ *
+ * @return LY_ERR values
+ */
+static LY_ERR
+yin_parse_belongs_to(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+                     struct lysp_submodule *submod, struct lysp_ext_instance **exts)
+{
+    struct yin_subelement subelems[2] = {{YANG_PREFIX, &submod->prefix, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE},
+                                         {YANG_CUSTOM, NULL, 0}};
+    LY_CHECK_RET(yin_parse_attribute(ctx, &attrs, YIN_ARG_MODULE, &submod->belongsto, YIN_ARG_MANDATORY, YANG_BELONGS_TO));
+
+    return yin_parse_content(ctx, subelems, 2, data, YANG_BELONGS_TO, NULL, exts);
+}
+
 LY_ERR
 yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_info, signed char subelem_info_size,
                   const char **data, enum yang_keyword current_element, const char **text_content, struct lysp_ext_instance **exts)
@@ -551,6 +574,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 case YANG_BASE:
                     break;
                 case YANG_BELONGS_TO:
+                    ret = yin_parse_belongs_to(ctx, subelem_attrs, data, (struct lysp_submodule *)subelem_info_rec->dest, exts);
                     break;
                 case YANG_BIT:
                     break;
