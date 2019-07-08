@@ -56,6 +56,11 @@ struct yin_arg_record {
     int dynamic_content;  /**< is set to 1 iff content is dynamically allocated 0 otherwise */
 };
 
+struct yin_parser_ctx {
+    struct lyxml_context xml_ctx;  /**< context for xml parser */
+    uint8_t mod_version;            /**< module's version */
+};
+
 /* flags to encode cardinality of subelement */
 #define YIN_SUBELEM_MANDATORY   0x01    /**< is set when subelement is mandatory */
 #define YIN_SUBELEM_UNIQUE      0x02    /**< is set when subelement is unique */
@@ -64,6 +69,7 @@ struct yin_arg_record {
 #define YIN_SUBELEM_PARSED      0x80    /**< is set during parsing when given subelement is encountered for the first
                                              time to simply check validity of given constraints */
 
+/* flags to encode constraints of arguments */
 #define YIN_ARG_MANDATORY       0x01    /**< is set when attribute is mandatory */
 #define YIN_ARG_IDENTIFIER      0x02    /**< is set when argument value is supposed to be identifier */
 
@@ -99,38 +105,38 @@ enum YIN_ARGUMENT yin_match_argument_name(const char *name, size_t len);
 /**
  * @brief Generic function for content parsing
  *
- * @param[in,out] xml_ctx Xml context.
+ * @param[in,out] ctx Yin parser context for logging and to store current state.
  * @param[in] subelem_info array of valid subelement types and meta information,
  *            array must be ordered by subelem_info->type in ascending order.
  * @param[in] subelem_info_size Size of subelem_info array.
  * @param[in,out] data Data to read from, always moved to currently handled character.
  * @param[in] current_element Type of current element.
  * @param[out] text_content Where the text content of element should be stored if any. Text content is ignored if set to NULL.
- * @param[in] exts Extension instance to add to. Can be null if element cannot have extension as subelement.
+ * @param[in,out] exts Extension instance to add to. Can be se to null if element cannot have extension as subelements.
 
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_content(struct lyxml_context *xml_ctx, struct yin_subelement *subelem_info, signed char subelem_info_size,
+LY_ERR yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_info, signed char subelem_info_size,
                          const char **data, enum yang_keyword current_element, const char **text_content,
                          struct lysp_ext_instance **exts);
 
 /**
  * @brief Parse import element.
  *
- * @param[in] xml_ctx Xml context.
+ * @param[in,out] ctx Yin parser context for logging and to store current state.
  * @param[in] attrs Sized array of attributes of import element.
- * @param[in,out] data Data to read from.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
  * @param[in,out] mod Structure of module that is being parsed.
  *
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_import(struct lyxml_context *xml_ctx, struct yin_arg_record **attrs,
+LY_ERR yin_parse_import(struct yin_parser_ctx *ctx, struct yin_arg_record **attrs,
                         const char **data, struct lysp_module *mod);
 
 /**
  * @brief Match yang keyword from yin data.
  *
- * @param[in] xml_ctx Xml context.
+ * @param[in,out] ctx Yin parser context for logging and to store current state.
  * @param[in] name Start of keyword name
  * @param[in] name_len Lenght of keyword name.
  * @param[in] prefix Start of keyword prefix.
@@ -138,52 +144,52 @@ LY_ERR yin_parse_import(struct lyxml_context *xml_ctx, struct yin_arg_record **a
  *
  * @return yang_keyword values.
  */
-enum yang_keyword yin_match_keyword(struct lyxml_context *xml_ctx, const char *name, size_t name_len,
+enum yang_keyword yin_match_keyword(struct yin_parser_ctx *ctx, const char *name, size_t name_len,
                                     const char *prefix, size_t prefix_len);
 
 /**
  * @brief Parse status element.
  *
- * @param[in] xml_ctx Xml context.
+ * @param[in,out] ctx Yin parser context for logging and to store current state.
  * @param[in] attrs Atributes of status element.
- * @param[in,out] data Data to read from.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
  * @param[in,out] flags Flags to add to.
  * @param[in,out] exts Extension instances to add to.
  *
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_status(struct lyxml_context *xml_ctx, struct yin_arg_record **attrs, const char **data,
+LY_ERR yin_parse_status(struct yin_parser_ctx *ctx, struct yin_arg_record **attrs, const char **data,
                         uint16_t *flags, struct lysp_ext_instance **exts);
 
 /**
  * @brief Parse revision date element.
  *
- * @param[in] xml_ctx Xml context.
+ * @param[in,out] ctx Yin parser context for logging and to store current state.
  * @param[in] attrs Sized array of attributes of revision-date element.
- * @param[in,out] data Data to read from.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
  * @param[in,out] rev Array to store the parsed value in.
  * @param[in,out] exts Extension instances to add to.
  *
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_revision_date(struct lyxml_context *xml_ctx, struct yin_arg_record **attrs, const char **data,
+LY_ERR yin_parse_revision_date(struct yin_parser_ctx *ctx, struct yin_arg_record **attrs, const char **data,
                                char *rev, struct lysp_ext_instance **exts);
 
 /**
- * @brief Load all attributes from current element. Caller is supposed to free args array.
+ * @brief Load all attributes from current element. Caller is supposed to free attrs array.
  *
- * @param[in,out] xml_ctx Xml context.
- * @param[in,out] data Data to read from, always moved to currently handled position.
+ * @param[in,out] ctx Yin parser context for logging and to store current state.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
  * @param[out] attrs Sized array of attributes.
  *
  * @return LY_ERR values.
  */
-LY_ERR yin_load_attributes(struct lyxml_context *xml_ctx, const char **data, struct yin_arg_record **attrs);
+LY_ERR yin_load_attributes(struct yin_parser_ctx *ctx, const char **data, struct yin_arg_record **attrs);
 
 /**
  * @brief Parse yin-elemenet element.
  *
- * @param[in,out] xml_ctx Xml context.
+ * @param[in,out] ctx Yin parser context for logging and to store current state.
  * @param[in] attrs Sized array of element attributes.
  * @param[in,out] data Data to read from, always moved to currently handled position.
  * @param[in,out] flags Flags to add to.
@@ -191,7 +197,7 @@ LY_ERR yin_load_attributes(struct lyxml_context *xml_ctx, const char **data, str
  *
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_yin_element_element(struct lyxml_context *xml_ctx, struct yin_arg_record *attrs, const char **data,
+LY_ERR yin_parse_yin_element_element(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
                                      uint16_t *flags, struct lysp_ext_instance **exts);
 
 /**
@@ -205,26 +211,26 @@ LY_ERR yin_parse_yin_element_element(struct lyxml_context *xml_ctx, struct yin_a
  *
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_argument_element(struct lyxml_context *xml_ctx, struct yin_arg_record **attrs, const char **data,
+LY_ERR yin_parse_argument_element(struct yin_parser_ctx *ctx, struct yin_arg_record **attrs, const char **data,
                                   struct yin_argument_meta *arg_meta, struct lysp_ext_instance **exts);
 
 /**
  * @brief Parse the extension statement.
  *
- * @param[in] xml_ctx Xml context.
+ * @param[in,out] ctx Yin parser context for logging and to store current state.
  * @param[in] attrs Attributes of extension element.
  * @param[in,out] data Data to read from.
  * @param[in,out] extensions Extensions to add to.
  *
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_extension(struct lyxml_context *xml_ctx, struct yin_arg_record **attrs,
+LY_ERR yin_parse_extension(struct yin_parser_ctx *ctx, struct yin_arg_record **attrs,
                            const char **data, struct lysp_ext **extensions);
 
 /**
  * @brief Parse instance of extension.
  *
- * @param[in,out] xml_ctx Xml context.
+ * @param[in,out] ctx Yin parser context for logging and to store current state.
  * @param[in] attrs Sized array of attributes.
  * @param[in,out] data Data to read from, always moved to currently handled character.
  * @param[in] ext_name Name of the extension element.
@@ -235,14 +241,14 @@ LY_ERR yin_parse_extension(struct lyxml_context *xml_ctx, struct yin_arg_record 
  *
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_extension_instance(struct lyxml_context *xml_ctx, struct yin_arg_record **attrs, const char **data,
+LY_ERR yin_parse_extension_instance(struct yin_parser_ctx *ctx, struct yin_arg_record **attrs, const char **data,
                                     const char *ext_name, int ext_name_len, LYEXT_SUBSTMT subelem,
                                     uint32_t subelem_index, struct lysp_ext_instance **exts);
 
 /**
  * @brief Parse yin element into generic structure.
  *
- * @param[in,out] xml_ctx Xml context.
+ * @param[in,out] ctx Yin parser context for logging and to store current state.
  * @param[in] name Name of element.
  * @param[in] name_len Length of elements Name.
  * @param[in] prefix Element prefix.
@@ -252,7 +258,7 @@ LY_ERR yin_parse_extension_instance(struct lyxml_context *xml_ctx, struct yin_ar
  *
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_element_generic(struct lyxml_context *xml_ctx, const char *name, size_t name_len, const char *prefix,
-                          size_t prefix_len, const char **data, struct lysp_stmt **element);
+LY_ERR yin_parse_element_generic(struct yin_parser_ctx *ctx, const char *name, size_t name_len, const char *prefix,
+                                 size_t prefix_len, const char **data, struct lysp_stmt **element);
 
 #endif /* LY_PARSER_YIN_H_*/

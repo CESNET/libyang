@@ -35,7 +35,7 @@ struct state {
     struct ly_ctx *ctx;
     struct lys_module *mod;
     struct lysp_module *lysp_mod;
-    struct lyxml_context *xml_ctx;
+    struct yin_parser_ctx *yin_ctx;
     bool finished_correctly;
 };
 
@@ -107,9 +107,9 @@ setup_f(void **state)
     st->lysp_mod->mod->ctx = st->ctx;
 
     /* allocate parser context */
-    st->xml_ctx = calloc(1, sizeof(struct lys_parser_ctx));
-    st->xml_ctx->ctx = st->ctx;
-    st->xml_ctx->line = 1;
+    st->yin_ctx = calloc(1, sizeof(*st->yin_ctx));
+    st->yin_ctx->xml_ctx.ctx = st->ctx;
+    st->yin_ctx->xml_ctx.line = 1;
 
     return EXIT_SUCCESS;
 }
@@ -129,12 +129,12 @@ teardown_f(void **state)
 
     temp = st->lysp_mod->mod;
 
-    lyxml_context_clear(st->xml_ctx);
+    lyxml_context_clear(&st->yin_ctx->xml_ctx);
     lys_module_free(st->mod, NULL);
     lysp_module_free(st->lysp_mod);
     lys_module_free(temp, NULL);
     ly_ctx_destroy(st->ctx, NULL);
-    free(st->xml_ctx);
+    free(st->yin_ctx);
     free(st);
 
     return EXIT_SUCCESS;
@@ -214,80 +214,80 @@ test_yin_match_keyword(void **state)
     size_t prefix_len, name_len;
     /* create mock yin namespace in xml context */
     const char *data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" />";
-    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    yin_load_attributes(st->xml_ctx, &data, &args);
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    yin_load_attributes(st->yin_ctx, &data, &args);
     LY_ARRAY_FREE(args);
 
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "anydatax", strlen("anydatax"), prefix, prefix_len), YANG_NONE);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "asdasd", strlen("asdasd"), prefix, prefix_len), YANG_NONE);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "", 0, prefix, prefix_len), YANG_NONE);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "anydata", strlen("anydata"), prefix, prefix_len), YANG_ANYDATA);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "anyxml", strlen("anyxml"), prefix, prefix_len), YANG_ANYXML);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "argument", strlen("argument"), prefix, prefix_len), YANG_ARGUMENT);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "augment", strlen("augment"), prefix, prefix_len), YANG_AUGMENT);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "base", strlen("base"), prefix, prefix_len), YANG_BASE);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "belongs-to", strlen("belongs-to"), prefix, prefix_len), YANG_BELONGS_TO);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "bit", strlen("bit"), prefix, prefix_len), YANG_BIT);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "case", strlen("case"), prefix, prefix_len), YANG_CASE);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "choice", strlen("choice"), prefix, prefix_len), YANG_CHOICE);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "config", strlen("config"), prefix, prefix_len), YANG_CONFIG);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "contact", strlen("contact"), prefix, prefix_len), YANG_CONTACT);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "container", strlen("container"), prefix, prefix_len), YANG_CONTAINER);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "default", strlen("default"), prefix, prefix_len), YANG_DEFAULT);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "description", strlen("description"), prefix, prefix_len), YANG_DESCRIPTION);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "deviate", strlen("deviate"), prefix, prefix_len), YANG_DEVIATE);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "deviation", strlen("deviation"), prefix, prefix_len), YANG_DEVIATION);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "enum", strlen("enum"), prefix, prefix_len), YANG_ENUM);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "error-app-tag", strlen("error-app-tag"), prefix, prefix_len), YANG_ERROR_APP_TAG);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "error-message", strlen("error-message"), prefix, prefix_len), YANG_ERROR_MESSAGE);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "extension", strlen("extension"), prefix, prefix_len), YANG_EXTENSION);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "feature", strlen("feature"), prefix, prefix_len), YANG_FEATURE);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "fraction-digits", strlen("fraction-digits"), prefix,  prefix_len), YANG_FRACTION_DIGITS);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "grouping", strlen("grouping"), prefix, prefix_len), YANG_GROUPING);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "identity", strlen("identity"), prefix, prefix_len), YANG_IDENTITY);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "if-feature", strlen("if-feature"), prefix, prefix_len), YANG_IF_FEATURE);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "import", strlen("import"), prefix, prefix_len), YANG_IMPORT);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "include", strlen("include"), prefix, prefix_len), YANG_INCLUDE);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "input", strlen("input"), prefix, prefix_len), YANG_INPUT);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "key", strlen("key"), prefix, prefix_len), YANG_KEY);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "leaf", strlen("leaf"), prefix, prefix_len), YANG_LEAF);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "leaf-list", strlen("leaf-list"), prefix, prefix_len), YANG_LEAF_LIST);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "length", strlen("length"), prefix, prefix_len), YANG_LENGTH);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "list", strlen("list"), prefix, prefix_len), YANG_LIST);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "mandatory", strlen("mandatory"), prefix, prefix_len), YANG_MANDATORY);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "max-elements", strlen("max-elements"), prefix, prefix_len), YANG_MAX_ELEMENTS);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "min-elements", strlen("min-elements"), prefix, prefix_len), YANG_MIN_ELEMENTS);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "modifier", strlen("modifier"), prefix, prefix_len), YANG_MODIFIER);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "module", strlen("module"), prefix, prefix_len), YANG_MODULE);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "must", strlen("must"), prefix, prefix_len), YANG_MUST);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "namespace", strlen("namespace"), prefix, prefix_len), YANG_NAMESPACE);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "notification", strlen("notification"), prefix, prefix_len), YANG_NOTIFICATION);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "ordered-by", strlen("ordered-by"), prefix, prefix_len), YANG_ORDERED_BY);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "organization", strlen("organization"), prefix, prefix_len), YANG_ORGANIZATION);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "output", strlen("output"), prefix, prefix_len), YANG_OUTPUT);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "path", strlen("path"), prefix, prefix_len), YANG_PATH);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "pattern", strlen("pattern"), prefix, prefix_len), YANG_PATTERN);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "position", strlen("position"), prefix, prefix_len), YANG_POSITION);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "prefix", strlen("prefix"), prefix, prefix_len), YANG_PREFIX);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "presence", strlen("presence"), prefix, prefix_len), YANG_PRESENCE);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "range", strlen("range"), prefix, prefix_len), YANG_RANGE);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "reference", strlen("reference"), prefix, prefix_len), YANG_REFERENCE);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "refine", strlen("refine"), prefix, prefix_len), YANG_REFINE);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "require-instance", strlen("require-instance"), prefix, prefix_len), YANG_REQUIRE_INSTANCE);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "revision", strlen("revision"), prefix, prefix_len), YANG_REVISION);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "revision-date", strlen("revision-date"), prefix, prefix_len), YANG_REVISION_DATE);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "rpc", strlen("rpc"), prefix, prefix_len), YANG_RPC);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "status", strlen("status"), prefix, prefix_len), YANG_STATUS);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "submodule", strlen("submodule"), prefix, prefix_len), YANG_SUBMODULE);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "type", strlen("type"), prefix, prefix_len), YANG_TYPE);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "typedef", strlen("typedef"), prefix, prefix_len), YANG_TYPEDEF);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "unique", strlen("unique"), prefix, prefix_len), YANG_UNIQUE);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "units", strlen("units"), prefix, prefix_len), YANG_UNITS);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "uses", strlen("uses"), prefix, prefix_len), YANG_USES);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "value", strlen("value"), prefix, prefix_len), YANG_VALUE);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "when", strlen("when"), prefix, prefix_len), YANG_WHEN);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "yang-version", strlen("yang-version"), prefix, prefix_len), YANG_YANG_VERSION);
-    assert_int_equal(yin_match_keyword(st->xml_ctx, "yin-element", strlen("yin-element"), prefix, prefix_len), YANG_YIN_ELEMENT);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "anydatax", strlen("anydatax"), prefix, prefix_len), YANG_NONE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "asdasd", strlen("asdasd"), prefix, prefix_len), YANG_NONE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "", 0, prefix, prefix_len), YANG_NONE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "anydata", strlen("anydata"), prefix, prefix_len), YANG_ANYDATA);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "anyxml", strlen("anyxml"), prefix, prefix_len), YANG_ANYXML);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "argument", strlen("argument"), prefix, prefix_len), YANG_ARGUMENT);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "augment", strlen("augment"), prefix, prefix_len), YANG_AUGMENT);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "base", strlen("base"), prefix, prefix_len), YANG_BASE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "belongs-to", strlen("belongs-to"), prefix, prefix_len), YANG_BELONGS_TO);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "bit", strlen("bit"), prefix, prefix_len), YANG_BIT);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "case", strlen("case"), prefix, prefix_len), YANG_CASE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "choice", strlen("choice"), prefix, prefix_len), YANG_CHOICE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "config", strlen("config"), prefix, prefix_len), YANG_CONFIG);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "contact", strlen("contact"), prefix, prefix_len), YANG_CONTACT);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "container", strlen("container"), prefix, prefix_len), YANG_CONTAINER);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "default", strlen("default"), prefix, prefix_len), YANG_DEFAULT);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "description", strlen("description"), prefix, prefix_len), YANG_DESCRIPTION);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "deviate", strlen("deviate"), prefix, prefix_len), YANG_DEVIATE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "deviation", strlen("deviation"), prefix, prefix_len), YANG_DEVIATION);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "enum", strlen("enum"), prefix, prefix_len), YANG_ENUM);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "error-app-tag", strlen("error-app-tag"), prefix, prefix_len), YANG_ERROR_APP_TAG);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "error-message", strlen("error-message"), prefix, prefix_len), YANG_ERROR_MESSAGE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "extension", strlen("extension"), prefix, prefix_len), YANG_EXTENSION);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "feature", strlen("feature"), prefix, prefix_len), YANG_FEATURE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "fraction-digits", strlen("fraction-digits"), prefix,  prefix_len), YANG_FRACTION_DIGITS);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "grouping", strlen("grouping"), prefix, prefix_len), YANG_GROUPING);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "identity", strlen("identity"), prefix, prefix_len), YANG_IDENTITY);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "if-feature", strlen("if-feature"), prefix, prefix_len), YANG_IF_FEATURE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "import", strlen("import"), prefix, prefix_len), YANG_IMPORT);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "include", strlen("include"), prefix, prefix_len), YANG_INCLUDE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "input", strlen("input"), prefix, prefix_len), YANG_INPUT);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "key", strlen("key"), prefix, prefix_len), YANG_KEY);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "leaf", strlen("leaf"), prefix, prefix_len), YANG_LEAF);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "leaf-list", strlen("leaf-list"), prefix, prefix_len), YANG_LEAF_LIST);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "length", strlen("length"), prefix, prefix_len), YANG_LENGTH);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "list", strlen("list"), prefix, prefix_len), YANG_LIST);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "mandatory", strlen("mandatory"), prefix, prefix_len), YANG_MANDATORY);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "max-elements", strlen("max-elements"), prefix, prefix_len), YANG_MAX_ELEMENTS);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "min-elements", strlen("min-elements"), prefix, prefix_len), YANG_MIN_ELEMENTS);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "modifier", strlen("modifier"), prefix, prefix_len), YANG_MODIFIER);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "module", strlen("module"), prefix, prefix_len), YANG_MODULE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "must", strlen("must"), prefix, prefix_len), YANG_MUST);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "namespace", strlen("namespace"), prefix, prefix_len), YANG_NAMESPACE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "notification", strlen("notification"), prefix, prefix_len), YANG_NOTIFICATION);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "ordered-by", strlen("ordered-by"), prefix, prefix_len), YANG_ORDERED_BY);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "organization", strlen("organization"), prefix, prefix_len), YANG_ORGANIZATION);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "output", strlen("output"), prefix, prefix_len), YANG_OUTPUT);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "path", strlen("path"), prefix, prefix_len), YANG_PATH);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "pattern", strlen("pattern"), prefix, prefix_len), YANG_PATTERN);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "position", strlen("position"), prefix, prefix_len), YANG_POSITION);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "prefix", strlen("prefix"), prefix, prefix_len), YANG_PREFIX);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "presence", strlen("presence"), prefix, prefix_len), YANG_PRESENCE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "range", strlen("range"), prefix, prefix_len), YANG_RANGE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "reference", strlen("reference"), prefix, prefix_len), YANG_REFERENCE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "refine", strlen("refine"), prefix, prefix_len), YANG_REFINE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "require-instance", strlen("require-instance"), prefix, prefix_len), YANG_REQUIRE_INSTANCE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "revision", strlen("revision"), prefix, prefix_len), YANG_REVISION);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "revision-date", strlen("revision-date"), prefix, prefix_len), YANG_REVISION_DATE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "rpc", strlen("rpc"), prefix, prefix_len), YANG_RPC);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "status", strlen("status"), prefix, prefix_len), YANG_STATUS);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "submodule", strlen("submodule"), prefix, prefix_len), YANG_SUBMODULE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "type", strlen("type"), prefix, prefix_len), YANG_TYPE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "typedef", strlen("typedef"), prefix, prefix_len), YANG_TYPEDEF);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "unique", strlen("unique"), prefix, prefix_len), YANG_UNIQUE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "units", strlen("units"), prefix, prefix_len), YANG_UNITS);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "uses", strlen("uses"), prefix, prefix_len), YANG_USES);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "value", strlen("value"), prefix, prefix_len), YANG_VALUE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "when", strlen("when"), prefix, prefix_len), YANG_WHEN);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "yang-version", strlen("yang-version"), prefix, prefix_len), YANG_YANG_VERSION);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "yin-element", strlen("yin-element"), prefix, prefix_len), YANG_YIN_ELEMENT);
 
     st->finished_correctly = true;
 }
@@ -363,10 +363,10 @@ test_yin_parse_import(void **state)
                             <revision-date date=\"2015-01-01\" />\
                         </import>";
     /* first import */
-    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    yin_load_attributes(st->xml_ctx, &data, &args);
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    yin_load_attributes(st->yin_ctx, &data, &args);
     st->lysp_mod->mod->prefix = "b-mod";
-    ret = yin_parse_import(st->xml_ctx, &args, &data, st->lysp_mod);
+    ret = yin_parse_import(st->yin_ctx, &args, &data, st->lysp_mod);
     assert_int_equal(ret, LY_SUCCESS);
     assert_string_equal(st->lysp_mod->imports->name, "a");
     assert_string_equal(st->lysp_mod->imports->prefix, "a_mod");
@@ -378,10 +378,10 @@ test_yin_parse_import(void **state)
     st = reset_state(state);
 
     /* second invalid import */
-    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    yin_load_attributes(st->xml_ctx, &data, &args);
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    yin_load_attributes(st->yin_ctx, &data, &args);
     st->lysp_mod->mod->prefix = "a_mod";
-    ret = yin_parse_import(st->xml_ctx, &args, &data, st->lysp_mod);
+    ret = yin_parse_import(st->yin_ctx, &args, &data, st->lysp_mod);
     assert_int_equal(ret, LY_EVALID);
     logbuf_assert("Prefix \"a_mod\" already used as module prefix. Line number 1.");
     LY_ARRAY_FREE(args);
@@ -392,10 +392,10 @@ test_yin_parse_import(void **state)
     data = "<import xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" module=\"a\">\
                 <what value=\"a_mod\"/>\
             </import>";
-    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    yin_load_attributes(st->xml_ctx, &data, &args);
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    yin_load_attributes(st->yin_ctx, &data, &args);
     st->lysp_mod->mod->prefix = "invalid_mod";
-    ret = yin_parse_import(st->xml_ctx, &args, &data, st->lysp_mod);
+    ret = yin_parse_import(st->yin_ctx, &args, &data, st->lysp_mod);
     assert_int_equal(ret, LY_EVALID);
     logbuf_assert("Unexpected child element \"what\" of import element. Line number 1.");
     LY_ARRAY_FREE(args);
@@ -416,10 +416,10 @@ test_yin_parse_status(void **state)
 
     /* try all valid values */
     const char *data = "<status value=\"current\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"/>";
-    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    yin_load_attributes(st->xml_ctx, &data, &args);
-    ret = yin_parse_status(st->xml_ctx, &args, &data, &flags, &exts);
-    assert_int_equal(st->xml_ctx->status, LYXML_END);
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    yin_load_attributes(st->yin_ctx, &data, &args);
+    ret = yin_parse_status(st->yin_ctx, &args, &data, &flags, &exts);
+    assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
     assert_int_equal(ret, LY_SUCCESS);
     assert_true(flags & LYS_STATUS_CURR);
     LY_ARRAY_FREE(args);
@@ -428,10 +428,10 @@ test_yin_parse_status(void **state)
     st = reset_state(state);
     flags = 0;
     data = "<status value=\"deprecated\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"/>";
-    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    yin_load_attributes(st->xml_ctx, &data, &args);
-    ret = yin_parse_status(st->xml_ctx, &args, &data, &flags, &exts);
-    assert_int_equal(st->xml_ctx->status, LYXML_END);
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    yin_load_attributes(st->yin_ctx, &data, &args);
+    ret = yin_parse_status(st->yin_ctx, &args, &data, &flags, &exts);
+    assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
     assert_int_equal(ret, LY_SUCCESS);
     assert_true(flags & LYS_STATUS_DEPRC);
     LY_ARRAY_FREE(args);
@@ -440,10 +440,10 @@ test_yin_parse_status(void **state)
     st = reset_state(state);
     flags = 0;
     data = "<status value=\"obsolete\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"/>";
-    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    yin_load_attributes(st->xml_ctx, &data, &args);
-    ret = yin_parse_status(st->xml_ctx, &args, &data, &flags, &exts);
-    assert_int_equal(st->xml_ctx->status, LYXML_END);
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    yin_load_attributes(st->yin_ctx, &data, &args);
+    ret = yin_parse_status(st->yin_ctx, &args, &data, &flags, &exts);
+    assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
     assert_int_equal(ret, LY_SUCCESS);
     assert_true(flags & LYS_STATUS_OBSLT);
     LY_ARRAY_FREE(args);
@@ -451,9 +451,9 @@ test_yin_parse_status(void **state)
 
     /* duplicit definition (no reset_state() call) */
     data = "<status value=\"deprecated\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"/>";
-    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    yin_load_attributes(st->xml_ctx, &data, &args);
-    ret = yin_parse_status(st->xml_ctx, &args, &data, &flags, &exts);
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    yin_load_attributes(st->yin_ctx, &data, &args);
+    ret = yin_parse_status(st->yin_ctx, &args, &data, &flags, &exts);
     assert_int_equal(ret, LY_EVALID);
     logbuf_assert("Duplicate element \"status\". Line number 1.");
     LY_ARRAY_FREE(args);
@@ -463,9 +463,9 @@ test_yin_parse_status(void **state)
     st = reset_state(state);
     flags = 0;
     data = "<status value=\"dunno\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"/>";
-    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    yin_load_attributes(st->xml_ctx, &data, &args);
-    ret = yin_parse_status(st->xml_ctx, &args, &data, &flags, &exts);
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    yin_load_attributes(st->yin_ctx, &data, &args);
+    ret = yin_parse_status(st->yin_ctx, &args, &data, &flags, &exts);
     assert_int_equal(ret, LY_EVALID);
     logbuf_assert("Invalid value \"dunno\" of \"status\". Line number 1.");
     LY_ARRAY_FREE(args);
@@ -489,10 +489,10 @@ test_yin_parse_extension(void **state)
                             <reference><text>ref</text></reference>\
                             <status value=\"deprecated\"></status>\
                         </extension>";
-    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    yin_load_attributes(st->xml_ctx, &data, &args);
-    ret = yin_parse_extension(st->xml_ctx, &args, &data, &exts);
-    assert_int_equal(st->xml_ctx->status, LYXML_END);
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    yin_load_attributes(st->yin_ctx, &data, &args);
+    ret = yin_parse_extension(st->yin_ctx, &args, &data, &exts);
+    assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
     assert_int_equal(ret, LY_SUCCESS);
     LY_ARRAY_FOR_ITER(exts, struct lysp_ext, iter) {
         assert_string_equal(iter->name, "b");
@@ -523,10 +523,10 @@ test_yin_parse_yin_element_element(void **state)
 
     /* try all valid values */
     const char *data = "<yin-element value=\"true\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"/>";
-    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    yin_load_attributes(st->xml_ctx, &data, &args);
-    ret = yin_parse_yin_element_element(st->xml_ctx, args, &data, &flags, &exts);
-    assert_int_equal(st->xml_ctx->status, LYXML_END);
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    yin_load_attributes(st->yin_ctx, &data, &args);
+    ret = yin_parse_yin_element_element(st->yin_ctx, args, &data, &flags, &exts);
+    assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
     assert_int_equal(ret, LY_SUCCESS);
     assert_true(flags & LYS_YINELEM_TRUE);
     LY_ARRAY_FREE(args);
@@ -535,10 +535,10 @@ test_yin_parse_yin_element_element(void **state)
     st = reset_state(state);
     flags = 0;
     data = "<yin-element value=\"false\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"/>";
-    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    yin_load_attributes(st->xml_ctx, &data, &args);
-    ret = yin_parse_yin_element_element(st->xml_ctx, args, &data, &flags, &exts);
-    assert_int_equal(st->xml_ctx->status, LYXML_END);
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    yin_load_attributes(st->yin_ctx, &data, &args);
+    ret = yin_parse_yin_element_element(st->yin_ctx, args, &data, &flags, &exts);
+    assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
     assert_int_equal(ret, LY_SUCCESS);
     assert_true(flags & LYS_YINELEM_FALSE);
     LY_ARRAY_FREE(args);
@@ -548,9 +548,9 @@ test_yin_parse_yin_element_element(void **state)
     st = reset_state(state);
     flags = 0;
     data = "<yin-element value=\"invalid\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"/>";
-    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    yin_load_attributes(st->xml_ctx, &data, &args);
-    ret = yin_parse_yin_element_element(st->xml_ctx, args, &data, &flags, &exts);
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    yin_load_attributes(st->yin_ctx, &data, &args);
+    ret = yin_parse_yin_element_element(st->yin_ctx, args, &data, &flags, &exts);
     assert_int_equal(ret, LY_EVALID);
     LY_ARRAY_FREE(args);
     args = NULL;
@@ -570,8 +570,8 @@ test_yin_parse_element_generic(void **state)
     memset(&exts, 0, sizeof(exts));
 
     const char *data = "<elem attr=\"value\">text_value</elem>";
-    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    ret = yin_parse_element_generic(st->xml_ctx, name, name_len, prefix, prefix_len, &data, &exts.child);
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    ret = yin_parse_element_generic(st->yin_ctx, name, name_len, prefix, prefix_len, &data, &exts.child);
     assert_int_equal(ret, LY_SUCCESS);
     assert_string_equal(exts.child->stmt, "elem");
     assert_string_equal(exts.child->arg, "text_value");
@@ -582,13 +582,13 @@ test_yin_parse_element_generic(void **state)
     st = reset_state(state);
 
     data = "<elem></elem>";
-    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    ret = yin_parse_element_generic(st->xml_ctx, name, name_len, prefix, prefix_len, &data, &exts.child);
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    ret = yin_parse_element_generic(st->yin_ctx, name, name_len, prefix, prefix_len, &data, &exts.child);
     assert_int_equal(ret, LY_SUCCESS);
     assert_string_equal(exts.child->stmt, "elem");
     assert_null(exts.child->child);
     assert_null(exts.child->arg);
-    assert_int_equal(st->xml_ctx->status, LYXML_END);
+    assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
     lysp_ext_instance_free(st->ctx, &exts);
 
     st->finished_correctly = true;
@@ -604,9 +604,9 @@ test_yin_parse_extension_instance(void **state)
     struct yin_arg_record *args = NULL;
     struct lysp_ext_instance *exts = NULL;
     const char *data = "<ext value1=\"test\" value=\"test2\"><subelem>text</subelem></ext>";
-    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    yin_load_attributes(st->xml_ctx, &data, &args);
-    ret = yin_parse_extension_instance(st->xml_ctx, &args, &data, name2fullname(name, prefix_len),
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    yin_load_attributes(st->yin_ctx, &data, &args);
+    ret = yin_parse_extension_instance(st->yin_ctx, &args, &data, name2fullname(name, prefix_len),
                                        namelen2fulllen(name_len, prefix_len), LYEXT_SUBSTMT_CONTACT, 0, &exts);
     assert_int_equal(ret, LY_SUCCESS);
     assert_string_equal(exts->name, "ext");
@@ -627,7 +627,7 @@ test_yin_parse_extension_instance(void **state)
     assert_null(exts->child->next->next->child);
     assert_null(exts->child->next->next->next);
     assert_false(exts->child->next->next->flags & LYS_YIN_ATTR);
-    assert_int_equal(st->xml_ctx->status, LYXML_END);
+    assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
     LY_ARRAY_FREE(args);
     lysp_ext_instance_free(st->ctx, exts);
     LY_ARRAY_FREE(exts);
@@ -636,9 +636,9 @@ test_yin_parse_extension_instance(void **state)
     st = reset_state(state);
 
     data = "<extension-elem />";
-    lyxml_get_element(st->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    yin_load_attributes(st->xml_ctx, &data, &args);
-    ret = yin_parse_extension_instance(st->xml_ctx, &args, &data, name, name_len, LYEXT_SUBSTMT_CONTACT, 0, &exts);
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    yin_load_attributes(st->yin_ctx, &data, &args);
+    ret = yin_parse_extension_instance(st->yin_ctx, &args, &data, name, name_len, LYEXT_SUBSTMT_CONTACT, 0, &exts);
     assert_int_equal(ret, LY_SUCCESS);
     assert_string_equal(exts->name, "extension-elem");
     assert_null(exts->argument);
@@ -646,7 +646,7 @@ test_yin_parse_extension_instance(void **state)
     assert_int_equal(exts->insubstmt, LYEXT_SUBSTMT_CONTACT);
     assert_int_equal(exts->insubstmt_index, 0);
     assert_true(exts->yin & LYS_YIN);
-    assert_int_equal(st->xml_ctx->status, LYXML_END);
+    assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
     LY_ARRAY_FREE(args);
     lysp_ext_instance_free(st->ctx, exts);
     LY_ARRAY_FREE(exts);
@@ -676,13 +676,13 @@ test_yin_parse_content(void **state)
     const char *value;
     struct lysp_ext *ext_def = NULL;
 
-    lyxml_get_element(st->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
-    yin_load_attributes(st->xml_ctx, &data, &attrs);
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
+    yin_load_attributes(st->yin_ctx, &data, &attrs);
 
     struct yin_subelement subelems[3] = {{YANG_EXTENSION, &ext_def, 0},
                                          {YANG_CUSTOM, NULL, 0},
                                          {YIN_TEXT, &value, 0}};
-    ret = yin_parse_content(st->xml_ctx, subelems, 3, &data, YANG_ACTION, NULL, &exts);
+    ret = yin_parse_content(st->yin_ctx, subelems, 3, &data, YANG_ACTION, NULL, &exts);
     assert_int_equal(ret, LY_SUCCESS);
     assert_string_equal(exts->name, "custom");
     assert_string_equal(exts->argument, "totally amazing extension");
@@ -705,9 +705,9 @@ test_yin_parse_content(void **state)
                 "<text xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">wsefsdf</text>"
                 "<text xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">wsefsdf</text>"
            "</module>";
-    lyxml_get_element(st->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
-    yin_load_attributes(st->xml_ctx, &data, &attrs);
-    ret = yin_parse_content(st->xml_ctx, subelems2, 2, &data, YANG_MODULE, NULL, &exts);
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
+    yin_load_attributes(st->yin_ctx, &data, &attrs);
+    ret = yin_parse_content(st->yin_ctx, subelems2, 2, &data, YANG_MODULE, NULL, &exts);
     assert_int_equal(ret, LY_EVALID);
     logbuf_assert("Redefinition of text element in module element. Line number 1.");
     lydict_remove(st->ctx, prefix_value);
@@ -724,9 +724,9 @@ test_yin_parse_content(void **state)
            "</module>";
     struct yin_subelement subelems3[2] = {{YANG_PREFIX, &prefix_value, 0},
                                          {YIN_TEXT, &value, YIN_SUBELEM_FIRST}};
-    lyxml_get_element(st->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
-    yin_load_attributes(st->xml_ctx, &data, &attrs);
-    ret = yin_parse_content(st->xml_ctx, subelems3, 2, &data, YANG_MODULE, NULL, &exts);
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
+    yin_load_attributes(st->yin_ctx, &data, &attrs);
+    ret = yin_parse_content(st->yin_ctx, subelems3, 2, &data, YANG_MODULE, NULL, &exts);
     assert_int_equal(ret, LY_EVALID);
     logbuf_assert("Subelement text of module element must be defined as first subelement. Line number 1.");
     lydict_remove(st->ctx, prefix_value);
@@ -738,9 +738,9 @@ test_yin_parse_content(void **state)
     data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
            "</module>";
     struct yin_subelement subelems4[1] = {{YANG_PREFIX, &prefix_value, YIN_SUBELEM_MANDATORY}};
-    lyxml_get_element(st->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
-    yin_load_attributes(st->xml_ctx, &data, &attrs);
-    ret = yin_parse_content(st->xml_ctx, subelems4, 1, &data, YANG_MODULE, NULL, &exts);
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
+    yin_load_attributes(st->yin_ctx, &data, &attrs);
+    ret = yin_parse_content(st->yin_ctx, subelems4, 1, &data, YANG_MODULE, NULL, &exts);
     assert_int_equal(ret, LY_EVALID);
     logbuf_assert("Missing mandatory subelement prefix of module element. Line number 1.");
     LY_ARRAY_FREE(attrs);
