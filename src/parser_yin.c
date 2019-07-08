@@ -335,7 +335,7 @@ is_ordered(struct yin_subelement *subelem_info, signed char subelem_info_size)
  * @param[in] kw Type of current element.
  * @param[out] value Where value of attribute should be stored.
  * @param[in] arg_type Expected type of attribute.
- * @param[in] arg_flags Argument flags can be set to YIN_ATR_value values.
+ * @param[in] arg_flags Argument flags can be set to YIN_ARG_value values.
  * @param[in,out] exts Extension instance to add to.
  *
  * @return LY_ERR values.
@@ -346,6 +346,33 @@ yin_parse_simple_element(struct yin_parser_ctx *ctx, struct yin_arg_record *attr
 {
     LY_CHECK_RET(yin_parse_attribute(ctx, &attrs, arg_type, value, arg_flags, kw));
     struct yin_subelement subelems[1] = {{YANG_CUSTOM, NULL, 0}};
+
+    return yin_parse_content(ctx, subelems, 1, data, kw, NULL, exts);
+}
+
+/**
+ * @brief Parse simple element without any special constraints and argument mapped to yin attribute, that can have
+ * more instances, such as base or if-feature.
+ *
+ * @param[in,out] ctx YIN parser context for logging and to store current state.
+ * @param[in] attrs Attributes of current element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] kw Type of current element.
+ * @param[out] values Parsed values to add to.
+ * @param[in] arg_type Expected type of attribute.
+ * @param[in] arg_flags Argument flags, can be set to YIN_ARG_value values.
+ * @param[in,out] exts Extension instance to add to.
+ *
+ * @return LY_ERR values.
+ */
+static LY_ERR
+yin_parse_simple_elements(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data, enum yang_keyword kw,
+                          const char ***values, enum YIN_ARGUMENT arg_type, uint8_t arg_flags, struct lysp_ext_instance **exts)
+{
+    const char **value;
+    struct yin_subelement subelems[1] = {{YANG_CUSTOM, NULL, 0}};
+    LY_ARRAY_NEW_RET(ctx->xml_ctx.ctx, *values, value, LY_EMEM);
+    LY_CHECK_RET(yin_parse_attribute(ctx, &attrs, arg_type, value, arg_flags, kw));
 
     return yin_parse_content(ctx, subelems, 1, data, kw, NULL, exts);
 }
@@ -490,7 +517,8 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     goto cleanup;
                 }
 
-                /* TODO macro to check order */
+                /* TODO check relative order */
+
                 /* if element is unique and already defined log error */
                 if ((subelem_info_rec->flags & YIN_SUBELEM_UNIQUE) && (subelem_info_rec->flags & YIN_SUBELEM_PARSED)) {
                     LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LYVE_SYNTAX_YIN, "Redefinition of %s element in %s element.", ly_stmt2str(kw), ly_stmt2str(current_element));
@@ -564,6 +592,8 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 case YANG_IDENTITY:
                     break;
                 case YANG_IF_FEATURE:
+                    ret = yin_parse_simple_elements(ctx, subelem_attrs, data, kw,
+                                                    (const char ***)subelem_info_rec->dest, YIN_ARG_VALUE, YIN_ARG_MANDATORY, exts);
                     break;
                 case YANG_IMPORT:
                     ret = yin_parse_import(ctx, &subelem_attrs, data, (struct lysp_module *)subelem_info_rec->dest);
@@ -595,7 +625,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 case YANG_MUST:
                     break;
                 case YANG_NAMESPACE:
-                    ret = yin_parse_simple_element(ctx, subelem_attrs, data, current_element,
+                    ret = yin_parse_simple_element(ctx, subelem_attrs, data, kw,
                                                    (const char **)subelem_info_rec->dest, YIN_ARG_URI, YIN_ARG_MANDATORY, exts);
                     break;
                 case YANG_NOTIFICATION:
@@ -611,7 +641,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 case YANG_POSITION:
                     break;
                 case YANG_PREFIX:
-                    ret = yin_parse_simple_element(ctx, subelem_attrs, data, current_element,
+                    ret = yin_parse_simple_element(ctx, subelem_attrs, data, kw,
                                                    (const char **)subelem_info_rec->dest, YIN_ARG_VALUE, YIN_ARG_MANDATORY, exts);
                     break;
                 case YANG_PRESENCE:
