@@ -450,16 +450,6 @@ test_yin_parse_status(void **state)
     LY_ARRAY_FREE(args);
     args = NULL;
 
-    /* duplicit definition (no reset_state() call) */
-    data = "<status value=\"deprecated\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"/>";
-    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    yin_load_attributes(st->yin_ctx, &data, &args);
-    ret = yin_parse_status(st->yin_ctx, &args, &data, &flags, &exts);
-    assert_int_equal(ret, LY_EVALID);
-    logbuf_assert("Duplicate element \"status\". Line number 1.");
-    LY_ARRAY_FREE(args);
-    args = NULL;
-
     /* invalid status value */
     st = reset_state(state);
     flags = 0;
@@ -574,6 +564,7 @@ test_yin_parse_element_generic(void **state)
     lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     ret = yin_parse_element_generic(st->yin_ctx, name, name_len, prefix, prefix_len, &data, &exts.child);
     assert_int_equal(ret, LY_SUCCESS);
+    assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
     assert_string_equal(exts.child->stmt, "elem");
     assert_string_equal(exts.child->arg, "text_value");
     assert_string_equal(exts.child->child->stmt, "attr");
@@ -694,6 +685,7 @@ test_yin_parse_content(void **state)
                                          {YIN_TEXT, &value, 0}};
     ret = yin_parse_content(st->yin_ctx, subelems, 5, &data, YANG_PREFIX, NULL, &exts);
     assert_int_equal(ret, LY_SUCCESS);
+    assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
     assert_string_equal(exts->name, "custom");
     assert_string_equal(exts->argument, "totally amazing extension");
     assert_string_equal(value, "wsefsdf");
@@ -780,6 +772,7 @@ test_yin_parse_yangversion(void **state)
     yin_load_attributes(st->yin_ctx, &data, &attrs);
     ret = yin_parse_yangversion(st->yin_ctx, attrs, &data, &version, NULL);
     assert_int_equal(LY_SUCCESS, ret);
+    assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
     assert_true(version == LYS_VERSION_1_0);
     assert_true(st->yin_ctx->mod_version == LYS_VERSION_1_0);
     LY_ARRAY_FREE(attrs);
@@ -792,6 +785,7 @@ test_yin_parse_yangversion(void **state)
     yin_load_attributes(st->yin_ctx, &data, &attrs);
     ret = yin_parse_yangversion(st->yin_ctx, attrs, &data, &version, NULL);
     assert_int_equal(LY_SUCCESS, ret);
+    assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
     assert_true(version == LYS_VERSION_1_1);
     assert_true(st->yin_ctx->mod_version == LYS_VERSION_1_1);
     LY_ARRAY_FREE(attrs);
@@ -804,9 +798,77 @@ test_yin_parse_yangversion(void **state)
     yin_load_attributes(st->yin_ctx, &data, &attrs);
     ret = yin_parse_yangversion(st->yin_ctx, attrs, &data, &version, NULL);
     assert_int_equal(ret, LY_EVALID);
+    logbuf_assert("Invalid value \"randomvalue\" of \"yang-version\". Line number 1.");
     LY_ARRAY_FREE(attrs);
     attrs = NULL;
-    logbuf_assert("Invalid value \"randomvalue\" of \"yang-version\". Line number 1.");
+    st = reset_state(state);
+
+    data = "<yang-version xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">\n"
+           "</yang-version>";
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
+    yin_load_attributes(st->yin_ctx, &data, &attrs);
+    ret = yin_parse_yangversion(st->yin_ctx, attrs, &data, &version, NULL);
+    assert_int_equal(ret, LY_EVALID);
+    LY_ARRAY_FREE(attrs);
+    attrs = NULL;
+    logbuf_assert("Missing mandatory attribute value of yang-version element. Line number 1.");
+    st->finished_correctly = true;
+}
+
+static void
+test_yin_parse_mandatory(void **state)
+{
+    struct state *st = *state;
+    LY_ERR ret = LY_SUCCESS;
+    struct sized_string name, prefix;
+    struct yin_arg_record *attrs = NULL;
+    uint16_t man = 0;
+
+    const char *data = "<mandatory xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" value=\"true\">\n"
+                       "</mandatory>";
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
+    yin_load_attributes(st->yin_ctx, &data, &attrs);
+    ret = yin_parse_mandatory(st->yin_ctx, attrs, &data, &man, NULL);
+    assert_int_equal(LY_SUCCESS, ret);
+    assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
+    assert_true(man == LYS_MAND_TRUE);
+    LY_ARRAY_FREE(attrs);
+    attrs = NULL;
+    man = 0;
+    st = reset_state(state);
+
+    data = "<mandatory xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" value=\"false\" />";
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
+    yin_load_attributes(st->yin_ctx, &data, &attrs);
+    ret = yin_parse_mandatory(st->yin_ctx, attrs, &data, &man, NULL);
+    assert_int_equal(LY_SUCCESS, ret);
+    assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
+    assert_true(man == LYS_MAND_FALSE);
+    LY_ARRAY_FREE(attrs);
+    attrs = NULL;
+    man = 0;
+    st = reset_state(state);
+
+    data = "<mandatory xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" value=\"randomvalue\">\n"
+           "</mandatory>";
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
+    yin_load_attributes(st->yin_ctx, &data, &attrs);
+    ret = yin_parse_mandatory(st->yin_ctx, attrs, &data, &man, NULL);
+    assert_int_equal(ret, LY_EVALID);
+    LY_ARRAY_FREE(attrs);
+    logbuf_assert("Invalid value \"randomvalue\" of \"mandatory\". Line number 1.");
+    attrs = NULL;
+    man = 0;
+    st = reset_state(state);
+
+    data = "<mandatory xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">\n"
+           "</mandatory>";
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
+    yin_load_attributes(st->yin_ctx, &data, &attrs);
+    ret = yin_parse_mandatory(st->yin_ctx, attrs, &data, &man, NULL);
+    assert_int_equal(ret, LY_EVALID);
+    LY_ARRAY_FREE(attrs);
+    logbuf_assert("Missing mandatory attribute value of mandatory element. Line number 1.");
     st->finished_correctly = true;
 }
 
@@ -826,6 +888,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_yin_parse_extension_instance, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_yin_parse_content, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_yin_parse_yangversion, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_yin_parse_mandatory, setup_f, teardown_f),
         cmocka_unit_test(test_yin_match_argument_name),
     };
 

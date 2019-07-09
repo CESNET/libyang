@@ -158,6 +158,20 @@ enum yang_keyword yin_match_keyword(struct yin_parser_ctx *ctx, const char *name
                                     const char *prefix, size_t prefix_len);
 
 /**
+ * @brief Parse mandatory element.
+ *
+ * @param[in,out] ctx Yin parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of status element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] flags Flags to add to.
+ * @param[in,out] exts Extension instances to add to.
+ *
+ * @return LY_ERR values.
+ */
+LY_ERR yin_parse_mandatory(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+                           uint16_t *flags, struct lysp_ext_instance **exts);
+
+/**
  * @brief Parse status element.
  *
  * @param[in,out] ctx Yin parser context for logging and to store current state.

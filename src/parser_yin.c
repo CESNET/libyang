@@ -686,6 +686,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 case YANG_LIST:
                     break;
                 case YANG_MANDATORY:
+                    ret = yin_parse_mandatory(ctx, subelem_attrs, data, (uint16_t *)subelem_info_rec->dest, exts);
                     break;
                 case YANG_MAX_ELEMENTS:
                     break;
@@ -864,15 +865,33 @@ yin_parse_import(struct yin_parser_ctx *ctx, struct yin_arg_record **attrs, cons
 }
 
 LY_ERR
-yin_parse_status(struct yin_parser_ctx *ctx, struct yin_arg_record **attrs, const char **data, uint16_t *flags, struct lysp_ext_instance **exts)
+yin_parse_mandatory(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data, uint16_t *flags,
+                    struct lysp_ext_instance **exts)
+{
+    const char *temp_val = NULL;
+    struct yin_subelement subelems[1] = {{YANG_CUSTOM, NULL, 0}};
+
+    LY_CHECK_RET(yin_parse_attribute(ctx, &attrs, YIN_ARG_VALUE, &temp_val, Y_STR_ARG, YANG_MANDATORY));
+    if (strcmp(temp_val, "true") == 0) {
+        *flags |= LYS_MAND_TRUE;
+    } else if (strcmp(temp_val, "false") == 0) {
+        *flags |= LYS_MAND_FALSE;
+    } else {
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "mandatory");
+        FREE_STRING(ctx->xml_ctx.ctx, temp_val);
+        return LY_EVALID;
+    }
+    FREE_STRING(ctx->xml_ctx.ctx, temp_val);
+
+    return yin_parse_content(ctx, subelems, 1, data, YANG_MANDATORY, NULL, exts);
+}
+
+LY_ERR
+yin_parse_status(struct yin_parser_ctx *ctx, struct yin_arg_record **attrs, const char **data, uint16_t *flags,
+                 struct lysp_ext_instance **exts)
 {
     const char *value = NULL;
     struct yin_subelement subelems[1] = {{YANG_CUSTOM, NULL, 0}};
-
-    if (*flags & LYS_STATUS_MASK) {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_DUPELEM, "status");
-        return LY_EVALID;
-    }
 
     LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_VALUE, &value, Y_STR_ARG, YANG_STATUS));
     if (strcmp(value, "current") == 0) {
