@@ -370,8 +370,9 @@ yin_parse_simple_elements(struct yin_parser_ctx *ctx, struct yin_arg_record *att
                           const char ***values, enum YIN_ARGUMENT arg_type, uint8_t arg_flags, struct lysp_ext_instance **exts)
 {
     const char **value;
-    struct yin_subelement subelems[1] = {{YANG_CUSTOM, NULL, 0}};
     LY_ARRAY_NEW_RET(ctx->xml_ctx.ctx, *values, value, LY_EMEM);
+    uint32_t index = LY_ARRAY_SIZE(*values) - 1;
+    struct yin_subelement subelems[1] = {{YANG_CUSTOM, &index, 0}};
     LY_CHECK_RET(yin_parse_attribute(ctx, &attrs, arg_type, value, arg_flags, kw));
 
     return yin_parse_content(ctx, subelems, 1, data, kw, NULL, exts);
@@ -515,6 +516,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
     struct yin_arg_record *subelem_attrs = NULL;
     enum yang_keyword kw = YANG_NONE;
     struct yin_subelement *subelem_info_rec = NULL;
+    uint32_t index = 0;
     assert(is_ordered(subelem_info, subelem_info_size));
 
     if (ctx->xml_ctx.status == LYXML_ELEM_CONTENT) {
@@ -554,11 +556,10 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
 
                 switch (kw) {
                 case YANG_CUSTOM:
-                    /* TODO write function to calculate index instead of hardcoded 0 */
+                    index = (subelem_info_rec->dest) ? *((uint32_t*)subelem_info_rec->dest) : 0;
                     ret = yin_parse_extension_instance(ctx, &subelem_attrs, data, name2fullname(name.value, prefix.len),
                                                       namelen2fulllen(name.len, prefix.len),
-                                                      kw2lyext_substmt(current_element), 0, exts);
-                    LY_CHECK_GOTO(ret, cleanup);
+                                                      kw2lyext_substmt(current_element), index, exts);
                     break;
                 case YANG_ACTION:
                     break;
