@@ -3811,7 +3811,7 @@ parse_yinelement(struct lys_parser_ctx *ctx, const char **data, uint16_t *flags,
 }
 
 /**
- * @brief Parse the yin-element statement.
+ * @brief Parse the argument statement.
  *
  * @param[in] ctx yang parser context for logging.
  * @param[in,out] data Data to read from, always moved to currently handled character.
@@ -3835,7 +3835,7 @@ parse_argument(struct lys_parser_ctx *ctx, const char **data, const char **argum
     }
 
     /* get value */
-    LY_CHECK_RET(get_argument(ctx, data, Y_STR_ARG, NULL, &word, &buf, &word_len));
+    LY_CHECK_RET(get_argument(ctx, data, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
     INSERT_WORD(ctx, buf, *argument, word, word_len);
 
     YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret,) {
