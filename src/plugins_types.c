@@ -25,6 +25,8 @@
 #include "dict.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
+#include "tree_data_internal.h"
+#include "xml.h"
 #include "xpath.h"
 
 API LY_ERR
@@ -56,6 +58,58 @@ ly_type_parse_int(const char *datatype, int base, int64_t min, int64_t max, cons
 error:
     *err = ly_err_new(LY_LLERR, LY_EINVAL, LYVE_RESTRICTION, errmsg, NULL, NULL);
     return LY_EVALID;
+}
+
+API struct lyd_value_prefix *
+ly_type_get_prefixes(struct ly_ctx *ctx, const char *value, size_t value_len, ly_clb_resolve_prefix get_prefix, void *parser)
+{
+    LY_ERR ret;
+    const char *start, *stop;
+    struct lyd_value_prefix *prefixes = NULL;
+    const struct lys_module *mod;
+    unsigned int u;
+
+    for (stop = start = value; (size_t)(stop - value) <= value_len; stop++, start++) {
+        if (is_xmlqnamestartchar(*start)) {
+            int i = 1;
+            while (is_xmlqnamechar(stop[i])) {
+                i++;
+            }
+            if (stop[i] == ':') {
+                /* we have a possible prefix */
+                struct lyd_value_prefix *p;
+                size_t len = &stop[i] - start;
+                mod = NULL;
+
+                LY_ARRAY_FOR(prefixes, u) {
+                    if (!strncmp(prefixes[u].prefix, start, len) && prefixes[u].prefix[len] == '\0') {
+                        mod = prefixes[u].mod;
+                        break;
+                    }
+                }
+                if (!mod) {
+                    mod = get_prefix(ctx, start, len, parser);
+                    if (mod) {
+                        LY_ARRAY_NEW_GOTO(ctx, prefixes, p, ret, error);
+                        p->mod = mod;
+                        p->prefix = lydict_insert(ctx, start, len);
+                    }
+                } /* else the prefix already present */
+            }
+            start = stop = &stop[i];
+        }
+    }
+
+    return prefixes;
+
+error:
+    LY_ARRAY_FOR(prefixes, u) {
+        lydict_remove(ctx, prefixes[u].prefix);
+    }
+    LY_ARRAY_FREE(prefixes);
+
+    (void)ret;
+    return NULL;
 }
 
 API LY_ERR
@@ -325,8 +379,8 @@ ly_type_parse_int_builtin(LY_DATA_TYPE basetype, const char *value, size_t value
  */
 static LY_ERR
 ly_type_validate_int(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                     ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser),
-                     struct lyd_node *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                     ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
+                     const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
                      const char **canonized, struct ly_err_item **err, void **priv)
 {
     LY_ERR ret;
@@ -415,8 +469,8 @@ ly_type_parse_uint_builtin(LY_DATA_TYPE basetype, const char *value, size_t valu
  */
 static LY_ERR
 ly_type_validate_uint(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                      ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser),
-                      struct lyd_node *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                      ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
+                      const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
                       const char **canonized, struct ly_err_item **err, void **priv)
 {
     LY_ERR ret;
@@ -487,8 +541,8 @@ ly_type_store_uint(struct ly_ctx *UNUSED(ctx), struct lysc_type *type, int optio
  */
 static LY_ERR
 ly_type_validate_decimal64(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                           ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser),
-                           struct lyd_node *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                           ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
+                           const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
                            const char **canonized, struct ly_err_item **err, void **priv)
 {
     int64_t d;
@@ -587,19 +641,21 @@ ly_type_store_decimal64(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(typ
  */
 static LY_ERR
 ly_type_validate_binary(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                        ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser),
-                        struct lyd_node *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                        ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
+                        const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
                         const char **canonized, struct ly_err_item **err, void **UNUSED(priv))
 {
     size_t start = 0, stop = 0, count = 0, u, termination = 0;
     struct lysc_type_bin *type_bin = (struct lysc_type_bin *)type;
     char *errmsg;
 
+    LY_CHECK_ARG_RET(ctx, value, LY_EINVAL);
+
     /* initiate */
     *err = NULL;
 
     /* validate characters and remember the number of octets for length validation */
-    if (value && value_len) {
+    if (value_len) {
         /* silently skip leading/trailing whitespaces */
         for (start = 0; (start < value_len) && isspace(value[start]); start++);
         for (stop = value_len - 1; stop > start && isspace(value[stop]); stop--);
@@ -654,7 +710,7 @@ finish:
     }
 
     if (options & LY_TYPE_OPTS_CANONIZE) {
-        if (start != 0 || stop != value_len) {
+        if (start != 0 || (value_len && stop != value_len - 1)) {
             *canonized = lydict_insert_zc(ctx, strndup(&value[start], stop + 1 - start));
         } else if (options & LY_TYPE_OPTS_DYNAMIC) {
             *canonized = lydict_insert_zc(ctx, (char*)value);
@@ -683,8 +739,8 @@ error:
  */
 static LY_ERR
 ly_type_validate_string(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                        ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser),
-                        struct lyd_node *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                        ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
+                        const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
                         const char **canonized, struct ly_err_item **err, void **UNUSED(priv))
 {
     struct lysc_type_str *type_str = (struct lysc_type_str *)type;
@@ -722,8 +778,8 @@ ly_type_validate_string(struct ly_ctx *ctx, struct lysc_type *type, const char *
  */
 static LY_ERR
 ly_type_validate_bits(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                      ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser),
-                      struct lyd_node *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                      ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
+                      const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
                       const char **canonized, struct ly_err_item **err, void **priv)
 {
     LY_ERR ret = LY_EVALID;
@@ -916,8 +972,8 @@ ly_type_free_bits(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(type), st
  */
 static LY_ERR
 ly_type_validate_enum(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                      ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser),
-                      struct lyd_node *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                      ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
+                      const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
                       const char **canonized, struct ly_err_item **err, void **priv)
 {
     unsigned int u, v;
@@ -1001,8 +1057,8 @@ ly_type_store_enum(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(type), i
  */
 static LY_ERR
 ly_type_validate_boolean(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), const char *value, size_t value_len, int options,
-                         ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser),
-                         struct lyd_node *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                         ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
+                         const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
                          const char **canonized, struct ly_err_item **err, void **priv)
 {
     int8_t i;
@@ -1072,8 +1128,8 @@ ly_type_store_boolean(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(type)
  */
 static LY_ERR
 ly_type_validate_empty(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), const char *value, size_t value_len, int options,
-                       ly_type_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser),
-                       struct lyd_node *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                       ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
+                       const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
                        const char **canonized, struct ly_err_item **err, void **UNUSED(priv))
 {
     if (value_len) {
@@ -1086,6 +1142,18 @@ ly_type_validate_empty(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), const
     if (options & LY_TYPE_OPTS_CANONIZE) {
         *canonized = lydict_insert(ctx, "", 0);
     }
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Comparison callback for built-in empty type.
+ *
+ * Implementation of the ly_type_compare_clb.
+ */
+static LY_ERR
+ly_type_compare_empty(const struct lyd_value *UNUSED(val1), const struct lyd_value *UNUSED(val2))
+{
+    /* empty has just one value, so empty data must be always the same */
     return LY_SUCCESS;
 }
 
@@ -1112,8 +1180,8 @@ ly_type_identity_isderived(struct lysc_ident *base, struct lysc_ident *der)
  */
 static LY_ERR
 ly_type_validate_identityref(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                             ly_type_resolve_prefix get_prefix, void *parser,
-                             struct lyd_node *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                             ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT UNUSED(format),
+                             const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
                              const char **canonized, struct ly_err_item **err, void **priv)
 {
     struct lysc_type_identityref *type_ident = (struct lysc_type_identityref *)type;
@@ -1217,14 +1285,27 @@ ly_type_store_identityref(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(t
 }
 
 /**
- * @brief Validation of instance-identifier - check presence of the specific node in the (data/schema) tree.
+ * @brief Comparison callback for built-in identityref type.
+ *
+ * Implementation of the ly_type_compare_clb.
+ */
+static LY_ERR
+ly_type_compare_identityref(const struct lyd_value *val1, const struct lyd_value *val2)
+{
+    if (val1->ident == val2->ident) {
+        return LY_SUCCESS;
+    }
+    return LY_EVALID;
+}
+
+/**
+ * @brief Helper function for ly_type_validate_instanceid() to check presence of the specific node in the (data/schema) tree.
  *
  * In the case the instance-identifier type does not require instance (@p require_instance is 0) or the data @p trees
  * are not complete (called in the middle of data parsing), the @p token is checked only to match schema tree.
  * Otherwise, the provided data @p trees are used to find instance of the node specified by the token and @p node_d as
  * its parent.
  *
- * @param[in] ctx libyang context
  * @param[in] orig Complete instance-identifier expression for logging.
  * @param[in] orig_len Length of the @p orig string.
  * @param[in] options [Type plugin options ](@ref plugintypeopts) - only LY_TYPE_OPTS_INCOMPLETE_DATA is used.
@@ -1232,13 +1313,12 @@ ly_type_store_identityref(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(t
  * If the flag is zero, the data tree is not needed and the @p token is checked only by checking the schema tree.
  * @param[in,out] token Pointer to the specific position inside the @p orig string where the node-identifier starts.
  * The pointer is updated to point after the processed node-identifier.
- * @param[in,out] prefixes [Sized array](@ref sizedarrays) of known mappings between prefix used in the @p orig and modules from the context.
+ * @param[in] prefixes [Sized array](@ref sizedarrays) of known mappings between prefix used in the @p orig and modules from the context.
+ * @param[in] format Format of the input YANG data, since XML and JSON format differs in case of instance-identifiers.
  * @param[in,out] node_s Parent schema node as input, resolved schema node as output. Alternative parameter for @p node_d
  * in case the instance is not available (@p trees are not yet complete) or required.
  * @param[in,out] node_d Parent data node as input, resolved data node instance as output. Alternative parameter for @p node_s
  * in case the instance is required and @p trees are complete.
- * @param[in] get_prefix Callback to resolve (map it to a schema) prefix used in the @p token.
- * @param[in] parser Context data for @p get_prefix callback.
  * @param[in] trees [Sized array](@ref sizedarrays)) of data trees where the data instance is supposed to be present.
  * @param[out] errmsg Error message in case of failure. Function does not log on its own, instead it creates error message. Caller is supposed to
  * free (or store somewhere) the returned message.
@@ -1246,55 +1326,48 @@ ly_type_store_identityref(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(t
  * @return LY_EMEM or LY_EVALID in case of failure or when the node is not present in the schema/data tree.
  */
 static LY_ERR
-ly_type_validate_instanceid_checknodeid(struct ly_ctx *ctx, const char *orig, size_t orig_len, int options, int require_instance,
-                                        const char **token, struct lyd_value_prefix **prefixes,
+ly_type_validate_instanceid_checknodeid(const char *orig, size_t orig_len, int options, int require_instance,
+                                        const char **token, struct lyd_value_prefix *prefixes, LYD_FORMAT format,
                                         const struct lysc_node **node_s, const struct lyd_node **node_d,
-                                        ly_type_resolve_prefix get_prefix, void *parser, struct lyd_node **trees,
-                                        char **errmsg)
+                                        struct lyd_node **trees, char **errmsg)
 {
     const char *id, *prefix;
     size_t id_len, prefix_len;
     const struct lys_module *mod = NULL;
     unsigned int u;
-    int present_prefix = 0;
 
     if (ly_parse_nodeid(token, &prefix, &prefix_len, &id, &id_len)) {
-        asprintf(errmsg, "Invalid instance-identifier \"%.*s\" value at character %lu.",
-                 (int)orig_len, orig, *token - orig + 1);
+        asprintf(errmsg, "Invalid instance-identifier \"%.*s\" value at character %lu (%.*s).",
+                 (int)orig_len, orig, *token - orig + 1, (int)(orig_len - (*token - orig)), *token);
         return LY_EVALID;
     }
     if (!prefix || !prefix_len) {
-        asprintf(errmsg, "Invalid instance-identifier \"%.*s\" value - all node names (%.*s) MUST be qualified with explicit namespace prefix.",
-                 (int)orig_len, orig, (int)id_len + 1, &id[-1]);
-        return LY_EVALID;
-    }
-
-    /* map prefix to schema module */
-    LY_ARRAY_FOR(*prefixes, u) {
-        if (!strncmp((*prefixes)[u].prefix, prefix, prefix_len) && (*prefixes)[u].prefix[prefix_len] == '\0') {
-            mod = (*prefixes)[u].mod;
-            present_prefix = 1;
-            break;
+        if (format == LYD_XML || (!*node_s && !*node_d)) {
+            asprintf(errmsg, "Invalid instance-identifier \"%.*s\" value - all node names (%.*s) MUST be qualified with explicit namespace prefix.",
+                     (int)orig_len, orig, (int)id_len + 1, &id[-1]);
+            return LY_EVALID;
         }
-    }
-    if (!mod && get_prefix) {
-        mod = get_prefix(ctx, prefix, prefix_len, parser);
-    }
-    if (!mod) {
-        asprintf(errmsg, "Invalid instance-identifier \"%.*s\" value - unable to map prefix \"%.*s\" to YANG schema.",
-                 (int)orig_len, orig, (int)prefix_len, prefix);
-        return LY_EVALID;
-    }
-    if (!present_prefix) {
-        /* store the prefix record for later use */
-        struct lyd_value_prefix *p;
 
-        *errmsg = strdup("Memory allocation failed.");
-        LY_ARRAY_NEW_RET(ctx, *prefixes, p, LY_EMEM);
-        free(*errmsg);
-        *errmsg = NULL;
-        p->mod = mod;
-        p->prefix = lydict_insert(ctx, prefix, prefix_len);
+        /* non top-level node from JSON */
+        if (*node_d) {
+            mod = (*node_d)->schema->module;
+        } else {
+            mod = (*node_s)->module;
+        }
+    } else {
+        /* map prefix to schema module */
+        LY_ARRAY_FOR(prefixes, u) {
+            if (!strncmp(prefixes[u].prefix, prefix, prefix_len) && prefixes[u].prefix[prefix_len] == '\0') {
+                mod = prefixes[u].mod;
+                break;
+            }
+        }
+
+        if (!mod) {
+            asprintf(errmsg, "Invalid instance-identifier \"%.*s\" value - unable to map prefix \"%.*s\" to YANG schema.",
+                     (int)orig_len, orig, (int)prefix_len, prefix);
+            return LY_EVALID;
+        }
     }
 
     if ((options & LY_TYPE_OPTS_INCOMPLETE_DATA) || !require_instance) {
@@ -1336,30 +1409,173 @@ ly_type_validate_instanceid_checknodeid(struct ly_ctx *ctx, const char *orig, si
 }
 
 /**
+ * @brief Helper function for ly_type_validate_instanceid_parse_predicate_value() to provide prefix mapping for the
+ * validation callbacks for the values used in instance-identifier predicates.
+ *
+ * Implementation of the ly_clb_resolve_prefix.
+ */
+static const struct lys_module *
+ly_type_validate_instanceid_get_prefix(struct ly_ctx *UNUSED(ctx), const char *prefix, size_t prefix_len, void *private)
+{
+    struct lyd_value_prefix *prefixes = (struct lyd_value_prefix*)private;
+    unsigned int u;
+
+    LY_ARRAY_FOR(prefixes, u) {
+        if (!strncmp(prefixes[u].prefix, prefix, prefix_len) && prefixes[u].prefix[prefix_len] == '\0') {
+            return prefixes[u].mod;
+        }
+    }
+    return NULL;
+}
+
+/**
+ * @brief Helper function for ly_type_validate_instanceid() to prepare predicate's value structure into the lyd_value_path structure.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] key Schema key node of the predicate (list's key in case of key-predicate, leaf-list in case of leaf-list-predicate).
+ * @param[in] val Value string of the predicate.
+ * @param[in] val_len Length of the @p val.
+ * @param[in] prefixes [Sized array](@ref sizedarrays) of the prefix mappings used in the instance-identifier value.
+ * @param[in] format Input format of the data.
+ * @param[in,out] pred Prepared predicate structure where the predicate information will be added.
+ * @param[out] errmsg Error description in case the function fails. Caller is responsible to free the string.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+ly_type_validate_instanceid_parse_predicate_value(struct ly_ctx *ctx, const struct lysc_node *key, const char *val, size_t val_len,
+                                                  struct lyd_value_prefix *prefixes, LYD_FORMAT format,
+                                                  struct lyd_value_path_predicate *pred, char **errmsg)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lysc_type *type;
+    struct ly_err_item *err = NULL;
+    void *priv = NULL;
+    int options = LY_TYPE_OPTS_VALIDATE | LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_STORE | LY_TYPE_OPTS_INCOMPLETE_DATA;
+
+    pred->value = calloc(1, sizeof *pred->value);
+
+    type = ((struct lysc_node_leaf*)key)->type;
+    if (type->plugin->validate) {
+        ret = type->plugin->validate(ctx, type, val, val_len, options,
+                                    ly_type_validate_instanceid_get_prefix, prefixes, format, key, NULL,
+                                    &pred->value->canonized, &err, &priv);
+        if (ret == LY_EINCOMPLETE) {
+            /* actually expected success without complete data */
+            ret = LY_SUCCESS;
+        } else if (ret) {
+            if (err) {
+                *errmsg = err->msg;
+                err->msg = NULL;
+                ly_err_free(err);
+            } else {
+                *errmsg = strdup("Type validation failed with unknown error.");
+            }
+            goto error;
+        }
+    } else {
+        pred->value->canonized = lydict_insert(ctx, val, val_len);
+    }
+    pred->value->plugin = type->plugin;
+
+    if (type->plugin->store) {
+        ret = type->plugin->store(ctx, type, options, pred->value, &err, &priv);
+        if (ret) {
+            if (err) {
+                *errmsg = err->msg;
+                err->msg = NULL;
+                ly_err_free(err);
+            } else {
+                *errmsg = strdup("Data storing failed with unknown error.");
+            }
+            goto error;
+        }
+    }
+
+error:
+    return ret;
+}
+
+/**
+ * @brief Helper function for ly_type_validate_instanceid() to correctly find the end of the predicate section.
+ *
+ * @param[in] predicate Start of the beginning section.
+ * @return Pointer to the end of the predicate section.
+ */
+static const char *
+ly_type_validate_instanceid_predicate_end(const char *predicate)
+{
+    size_t i = 0;
+    while (predicate[i] != ']') {
+        if (predicate[i] == '\'') {
+            i++;
+            while (predicate[i] != '\'') {
+                i++;
+            }
+        }
+        if (predicate[i] == '"') {
+            i++;
+            while (predicate[i] != '"') {
+                if (predicate[i] == '\\') {
+                    i += 2;
+                    continue;
+                }
+                i++;
+            }
+        }
+        i++;
+    }
+    return &predicate[i];
+}
+
+/**
  * @brief Validate value of the YANG built-in instance-identifier type.
  *
  * Implementation of the ly_type_validate_clb.
  */
 static LY_ERR
 ly_type_validate_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                             ly_type_resolve_prefix get_prefix, void *parser,
-                             struct lyd_node *context_node, struct lyd_node **trees,
+                             ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format,
+                             const void *context_node, struct lyd_node **trees,
                              const char **canonized, struct ly_err_item **err, void **priv)
 {
     LY_ERR ret = LY_EVALID;
     struct lysc_type_instanceid *type_inst = (struct lysc_type_instanceid *)type;
-    const char *id, *prefix, *val, *token;
+    const char *id, *prefix, *val, *token, *node_start;
     size_t id_len, prefix_len, val_len;
     char *errmsg = NULL;
     const struct lysc_node *node_s = NULL;
     const struct lyd_node *node_d = NULL;
     struct lyd_value_prefix *prefixes = NULL;
     unsigned int u;
+    struct lyd_value_path *target = NULL, *t;
+    struct lyd_value_path_predicate *pred;
+    struct ly_set predicates = {0};
+    uint64_t pos;
+    int i;
 
-    if (((struct lyd_node_term*)context_node)->value.prefixes) {
-        /* the second run, the first one ended with LY_EINCOMPLETE */
-        prefixes = ((struct lyd_node_term*)context_node)->value.prefixes;
-        get_prefix = NULL;
+    /* init */
+    *err = NULL;
+
+    if (!(options & LY_TYPE_OPTS_INCOMPLETE_DATA) && ((struct lyd_node_term*)context_node)->value.target) {
+        /* the second run, the first one ended with LY_EINCOMPLETE, but we have prepared the target structure */
+
+        if (!lyd_target(((struct lyd_node_term*)context_node)->value.target, trees)) {
+            /* TODO print instance-identifier */
+            asprintf(&errmsg, "Invalid instance-identifier \"%s\" value - required instance not found.",
+                     "TODO");
+            goto error;
+        }
+        *priv = ((struct lyd_node_term*)context_node)->value.target;
+        return LY_SUCCESS;
+    } else {
+        /* first run without prepared target, we will need all the prefixes used in the instance-identifier value */
+        prefixes = ly_type_get_prefixes(ctx, value, value_len, get_prefix, parser);
+    }
+
+    if (value[0] != '/') {
+        asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - instance-identifier must starts with '/'.",
+                 (int)value_len, value);
+        goto error;
     }
 
     /* parse the value and try to resolve it in:
@@ -1368,67 +1584,266 @@ ly_type_validate_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const ch
     for(token = value; (size_t)(token - value) < value_len;) {
         if (token[0] == '/') {
             /* node identifier */
+            node_start = &token[1];
+
+            /* clean them to correctly check predicates presence restrictions */
+            pos = 0;
+            ly_set_clean(&predicates, NULL);
+
             token++;
-            if (ly_type_validate_instanceid_checknodeid(ctx, value, value_len, options, type_inst->require_instance,
-                                                        &token, &prefixes, &node_s, &node_d, get_prefix, parser, trees, &errmsg)) {
+            if (ly_type_validate_instanceid_checknodeid(value, value_len, options, type_inst->require_instance,
+                                                        &token, prefixes, format, &node_s, &node_d, trees, &errmsg)) {
                 goto error;
             }
 
+            if (node_d) {
+                node_s = node_d->schema;
+            }
+            if (token[0] == '[') {
+                /* predicate follows, this must be a list or leaf-list */
+                if (node_s->nodetype != LYS_LIST && node_s->nodetype != LYS_LEAFLIST) {
+                    asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - predicate \"%.*s\" for %s is not accepted.",
+                             (int)value_len, value, (int)(ly_type_validate_instanceid_predicate_end(token) - token) + 1, token,
+                             lys_nodetype2str(node_s->nodetype));
+                    goto error;
+                }
+            }
+
+            if (options & LY_TYPE_OPTS_STORE) {
+                /* prepare target path structure */
+                LY_ARRAY_NEW_GOTO(ctx, target, t, ret, error);
+                t->node = node_s;
+            }
         } else if (token[0] == '[') {
             /* predicate */
+            const char *pred_start = &token[0];
             const char *pred_errmsg = NULL;
             const struct lysc_node *key_s = node_s;
             const struct lyd_node *key_d = node_d;
 
-            if (ly_parse_instance_predicate(&token, value_len - (token - value), &prefix, &prefix_len, &id, &id_len, &val, &val_len, &pred_errmsg)) {
-                asprintf(&errmsg, "Invalid instance-identifier's predicate (%s).", pred_errmsg);
+            if (ly_parse_instance_predicate(&token, value_len - (token - value), format, &prefix, &prefix_len, &id, &id_len, &val, &val_len, &pred_errmsg)) {
+                asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value's predicate \"%.*s\" (%s).", (int)value_len, value,
+                         (int)(token - pred_start), pred_start, pred_errmsg);
                 goto error;
             }
-            if (prefix) {
+
+            if (options & LY_TYPE_OPTS_STORE) {
+                /* update target path structure by adding predicate info */
+                LY_ARRAY_NEW_GOTO(ctx, t->predicates, pred, ret, error);
+            }
+
+            if (prefix || (id && id[0] != '.')) {
                 /* key-predicate */
-                if (ly_type_validate_instanceid_checknodeid(ctx, value, value_len, options, type_inst->require_instance,
-                                                            &prefix, &prefixes, &key_s, &key_d, get_prefix, parser, trees, &errmsg)) {
+                const char *start, *t;
+                start = t = prefix ? prefix : id;
+
+                /* check that the parent is a list */
+                if (node_s->nodetype != LYS_LIST) {
+                    asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - key-predicate \"%.*s\" is accepted only for lists, not %s.",
+                             (int)value_len, value, (int)(token - pred_start), pred_start, lys_nodetype2str(node_s->nodetype));
+                    goto error;
+                }
+
+                /* resolve the key in predicate */
+                if (ly_type_validate_instanceid_checknodeid(value, value_len, options, type_inst->require_instance,
+                                                            &t, prefixes, format, &key_s, &key_d, trees, &errmsg)) {
                     goto error;
                 }
                 if (key_d) {
-                    /* TODO check value */
-                } else if (key_s) {
-                    /* TODO check type of the value with the type of the node */
-                } else {
-                    LOGINT(ctx);
+                    key_s = key_d->schema;
+                }
+
+                /* check the key in predicate is really a key */
+                if (!(key_s->flags & LYS_KEY)) {
+                    asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - node \"%s\" used in key-predicate \"%.*s\" must be a key.",
+                            (int)value_len, value, key_s->name, (int)(token - pred_start), pred_start);
                     goto error;
                 }
-            } else if (id) {
-                /* TODO leaf-list-predicate */
-            } else {
-                /* TODO pos predicate */
-            }
 
+                if (node_d) {
+                    while (node_d) {
+                        if (!lyd_value_compare((const struct lyd_node_term*)key_d, val, val_len, get_prefix, parser, format, trees)) {
+                            /* match */
+                            break;
+                        }
+                        /* go to another instance */
+                        t = start;
+                        node_d = lyd_search(node_d->next, node_s->module, node_s->name, strlen(node_s->name), LYS_LIST, NULL, 0);
+                        if (node_d) {
+                            key_d = node_d;
+                            if (ly_type_validate_instanceid_checknodeid(value, value_len, options, type_inst->require_instance,
+                                                                        &t, prefixes, format, &key_s, &key_d, trees, &errmsg)) {
+                                goto error;
+                            }
+                        }
+                    }
+                    if (!node_d) {
+                        asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - key-predicate \"%.*s\" does not match any \"%s\" instance.",
+                                 (int)value_len, value, (int)(token - pred_start), pred_start, node_s->name);
+                        goto error;
+                    }
+                } else {
+                    /* check value to the type */
+                    if (lys_value_validate(NULL, key_s, val, val_len, get_prefix, parser, format)) {
+                        asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - key-predicate \"%.*s\"'s key value is invalid.",
+                                 (int)value_len, value, (int)(token - pred_start), pred_start);
+                        goto error;
+                    }
+                }
+
+                if (options & LY_TYPE_OPTS_STORE) {
+                    /* update target path structure by adding predicate info */
+                    pred->type = 1;
+                    pred->key = key_s;
+                    LY_CHECK_GOTO(ly_type_validate_instanceid_parse_predicate_value(ctx, key_s, val, val_len, prefixes, format, pred, &errmsg), error);
+                }
+                i = predicates.count;
+                if (i != ly_set_add(&predicates, (void*)key_s, 0)) {
+                    /* the same key is used repeatedly */
+                    asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - key \"%s\" is referenced the second time in key-predicate \"%.*s\".",
+                             (int)value_len, value, key_s->name, (int)(token - pred_start), pred_start);
+                    goto error;
+                }
+                if (token[0] != '[') {
+                    /* now we should have all the keys */
+                    if (LY_ARRAY_SIZE(((struct lysc_node_list*)node_s)->keys) != predicates.count) {
+                        asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - missing %u key(s) for the list instance \"%.*s\".",
+                                 (int)value_len, value, LY_ARRAY_SIZE(((struct lysc_node_list*)node_s)->keys) - predicates.count,
+                                 (int)(token - node_start), node_start);
+                        goto error;
+                    }
+                }
+            } else if (id) {
+                /* leaf-list-predicate */
+                if (predicates.count) {
+                    asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - "
+                             "leaf-list-predicate (\"%.*s\") cannot be used repeatedly for a single node.",
+                             (int)value_len, value, (int)(token - pred_start), pred_start);
+                    goto error;
+                }
+
+                /* check that the parent is a leaf-list */
+                if (node_s->nodetype != LYS_LEAFLIST) {
+                    asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - leaf-list-predicate \"%.*s\" is accepted only for leaf-lists, not %s.",
+                             (int)value_len, value, (int)(token - pred_start), pred_start, lys_nodetype2str(node_s->nodetype));
+                    goto error;
+                }
+
+                if (key_d) {
+                    while (key_d) {
+                        if (!lyd_value_compare((const struct lyd_node_term*)key_d, val, val_len, get_prefix, parser, format, trees)) {
+                            /* match */
+                            break;
+                        }
+                        /* go to another instance */
+                        key_d = lyd_search(key_d->next, node_s->module, node_s->name, strlen(node_s->name), LYS_LEAFLIST, NULL, 0);
+                    }
+                    if (!key_d) {
+                        asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - leaf-list-predicate \"%.*s\" does not match any \"%s\" instance.",
+                                 (int)value_len, value, (int)(token - pred_start), pred_start, node_s->name);
+                        goto error;
+                    }
+                } else {
+                    /* check value to the type */
+                    if (lys_value_validate(NULL, key_s, val, val_len, get_prefix, parser, format)) {
+                        asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - leaf-list-predicate \"%.*s\"'s value is invalid.",
+                                 (int)value_len, value, (int)(token - pred_start), pred_start);
+                        goto error;
+                    }
+                }
+
+                if (options & LY_TYPE_OPTS_STORE) {
+                    /* update target path structure by adding predicate info */
+                    pred->type = 2;
+                    pred->key = node_s;
+                    LY_CHECK_GOTO(ly_type_validate_instanceid_parse_predicate_value(ctx, node_s, val, val_len, prefixes, format, pred, &errmsg), error);
+                }
+                ly_set_add(&predicates, (void*)node_s, 0);
+            } else {
+                /* pos predicate */
+                if (pos) {
+                    asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - "
+                             "position predicate (\"%.*s\") cannot be used repeatedly for a single node.",
+                             (int)value_len, value, (int)(token - pred_start), pred_start);
+                    goto error;
+                }
+
+                /* check that the parent is a list without keys
+                 * The check is actually commented, libyang does not want to be so strict here, since
+                 * we see usecases even for lists with keys and leaf-lists
+                if (node_s->nodetype != LYS_LIST || ((struct lysc_node_list*)node_s)->keys) {
+                    asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - position predicate \"%.*s\" is accepted only for lists without keys.",
+                             (int)value_len, value, (int)(token - pred_start), pred_start, lys_nodetype2str(node_s->nodetype));
+                    goto error;
+                }
+                */
+
+                if (ly_type_parse_uint("instance-identifier", 10, UINT64_MAX, val, val_len, &pos, err)) {
+                    goto error;
+                }
+                if (node_d) {
+                    /* get the correct instance */
+                    for (uint64_t u = pos; u > 1; u--) {
+                        node_d = lyd_search(node_d->next, node_s->module, node_s->name, strlen(node_s->name), node_s->nodetype, NULL, 0);
+                        if (!node_d) {
+                            asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - "
+                                     "position-predicate %"PRIu64" is bigger than number of instances in the data tree (%"PRIu64").",
+                                     (int)value_len, value, pos, pos - u + 1);
+                            goto error;
+                        }
+                    }
+                } else {
+                    /* check that there is not a limit below the position number */
+                    if (node_s->nodetype == LYS_LIST) {
+                        if (((struct lysc_node_list*)node_s)->max < pos) {
+                            asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - position-predicate %"PRIu64" is bigger than allowed max-elements (%u).",
+                                     (int)value_len, value, pos, ((struct lysc_node_list*)node_s)->max);
+                            goto error;
+                        }
+                    } else {
+                        if (((struct lysc_node_leaflist*)node_s)->max < pos) {
+                            asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - position-predicate %"PRIu64" is bigger than allowed max-elements (%u).",
+                                     (int)value_len, value, pos, ((struct lysc_node_leaflist*)node_s)->max);
+                            goto error;
+                        }
+                    }
+                }
+
+                if (options & LY_TYPE_OPTS_STORE) {
+                    /* update target path structure by adding predicate info */
+                    pred->type = 0;
+                    pred->position = pos;
+                }
+            }
         } else {
-            asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - unexpected character %lu.",
-                     (int)value_len, value, token - value + 1);
+            asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value at character %lu (%.*s).",
+                     (int)value_len, value, token - value + 1, (int)(value_len - (token - value)), token);
             goto error;
         }
     }
 
-    if ((options & LY_TYPE_OPTS_CANONIZE) && *canonized != value) {
-        if (options & LY_TYPE_OPTS_DYNAMIC) {
-            *canonized = lydict_insert_zc(ctx, (char*)value);
-            value = NULL;
-        } else {
-            *canonized = lydict_insert(ctx, value, value_len);
-        }
+    if ((options & LY_TYPE_OPTS_CANONIZE) && !(*canonized)) {
+        /* instance-identifier does not have a canonical form (lexical representation in in XML and JSON are
+         * even different) - to make it clear, the canonized form is represented as NULL to make the caller
+         * print it always via callback printer */
+        *canonized = NULL;
     }
-#if 0
+
     if (options & LY_TYPE_OPTS_STORE) {
-        *priv = ident;
+        *priv = target;
+    } else {
+        lyd_value_free_path(ctx, target);
     }
-#endif
+
+    LY_ARRAY_FOR(prefixes, u) {
+        lydict_remove(ctx, prefixes[u].prefix);
+    }
+    LY_ARRAY_FREE(prefixes);
+    ly_set_erase(&predicates, NULL);
+
     if (options & LY_TYPE_OPTS_DYNAMIC) {
         free((char*)value);
     }
-
-    *priv = prefixes;
 
     if ((options & LY_TYPE_OPTS_INCOMPLETE_DATA) && type_inst->require_instance) {
         return LY_EINCOMPLETE;
@@ -1437,13 +1852,17 @@ ly_type_validate_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const ch
     }
 
 error:
-    if (!((struct lyd_node_term*)context_node)->value.prefixes) {
-        LY_ARRAY_FOR(prefixes, u) {
-            lydict_remove(ctx, prefixes[u].prefix);
-        }
-        LY_ARRAY_FREE(prefixes);
+    LY_ARRAY_FOR(prefixes, u) {
+        lydict_remove(ctx, prefixes[u].prefix);
     }
-    *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_RESTRICTION, errmsg, NULL, NULL);
+    LY_ARRAY_FREE(prefixes);
+    ly_set_erase(&predicates, NULL);
+
+    lyd_value_free_path(ctx, target);
+
+    if (!*err) {
+        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_RESTRICTION, errmsg, NULL, NULL);
+    }
     return ret;
 }
 
@@ -1459,11 +1878,61 @@ ly_type_store_instanceid(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(ty
 {
     if (options & LY_TYPE_OPTS_VALIDATE) {
         /* the value was prepared by ly_type_validate_enum() */
-        value->prefixes = *priv;
+        value->target = *priv;
     } else {
         /* TODO if there is usecase for store without validate */
         LOGINT(NULL);
         return LY_EINT;
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Comparison callback checking the instance-identifier value.
+ *
+ * Implementation of the ly_type_compare_clb.
+ */
+static LY_ERR
+ly_type_compare_instanceid(const struct lyd_value *val1, const struct lyd_value *val2)
+{
+    unsigned int u, v;
+
+    if (val1 == val2) {
+        return LY_SUCCESS;
+    } else if (!val1->target || !val2->target || LY_ARRAY_SIZE(val1->target) != LY_ARRAY_SIZE(val2->target)) {
+        return LY_EVALID;
+    }
+
+    LY_ARRAY_FOR(val1->target, u) {
+        struct lyd_value_path *s1 = &val1->target[u];
+        struct lyd_value_path *s2 = &val2->target[u];
+
+        if (s1->node != s2->node || (s1->predicates && !s2->predicates) || (!s1->predicates && s2->predicates) ||
+                (s1->predicates && LY_ARRAY_SIZE(s1->predicates) != LY_ARRAY_SIZE(s2->predicates))) {
+            return LY_EVALID;
+        }
+        if (s1->predicates) {
+            LY_ARRAY_FOR(s1->predicates, v) {
+                struct lyd_value_path_predicate *pred1 = &s1->predicates[v];
+                struct lyd_value_path_predicate *pred2 = &s2->predicates[v];
+
+                if (pred1->type != pred2->type) {
+                    return LY_EVALID;
+                }
+                if (pred1->type == 0) {
+                    /* position predicate */
+                    if (pred1->position != pred2->position) {
+                        return LY_EVALID;
+                    }
+                } else {
+                    /* key-predicate or leaf-list-predicate */
+                    if (pred1->key != pred2->key || ((struct lysc_node_leaf*)pred1->key)->type->plugin->compare(pred1->value, pred2->value)) {
+                        return LY_EVALID;
+                    }
+                }
+            }
+        }
     }
 
     return LY_SUCCESS;
@@ -1477,35 +1946,45 @@ ly_type_store_instanceid(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(ty
 static void
 ly_type_free_instanceid(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), struct lyd_value *value)
 {
-    unsigned int u;
+    lyd_value_free_path(ctx, value->target);
+    value->target = NULL;
+}
 
-    LY_ARRAY_FOR(value->prefixes, u) {
-        lydict_remove(ctx, value->prefixes[u].prefix);
+/**
+ * @brief Generic comparison callback checking the canonical value.
+ *
+ * Implementation of the ly_type_compare_clb.
+ */
+static LY_ERR
+ly_type_compare_canonical(const struct lyd_value *val1, const struct lyd_value *val2)
+{
+    if (val1 == val2 || !strcmp(val1->canonized, val2->canonized)) {
+        return LY_SUCCESS;
     }
-    LY_ARRAY_FREE(value->prefixes);
-    value->prefixes = NULL;
+
+    return LY_EVALID;
 }
 
 struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT] = {
     {0}, /* LY_TYPE_UNKNOWN */
-    {.type = LY_TYPE_BINARY, .validate = ly_type_validate_binary, .store = NULL, .free = NULL},
-    {.type = LY_TYPE_UINT8, .validate = ly_type_validate_uint, .store = ly_type_store_uint, .free = NULL},
-    {.type = LY_TYPE_UINT16, .validate = ly_type_validate_uint, .store = ly_type_store_uint, .free = NULL},
-    {.type = LY_TYPE_UINT32, .validate = ly_type_validate_uint, .store = ly_type_store_uint, .free = NULL},
-    {.type = LY_TYPE_UINT64, .validate = ly_type_validate_uint, .store = ly_type_store_uint, .free = NULL},
-    {.type = LY_TYPE_STRING, .validate = ly_type_validate_string, .store = NULL, .free = NULL},
-    {.type = LY_TYPE_BITS, .validate = ly_type_validate_bits, .store = ly_type_store_bits, .free = ly_type_free_bits},
-    {.type = LY_TYPE_BOOL, .validate = ly_type_validate_boolean, .store = ly_type_store_boolean, .free = NULL},
-    {.type = LY_TYPE_DEC64, .validate = ly_type_validate_decimal64, .store = ly_type_store_decimal64, .free = NULL},
-    {.type = LY_TYPE_EMPTY, .validate = ly_type_validate_empty, .store = NULL, .free = NULL},
-    {.type = LY_TYPE_ENUM, .validate = ly_type_validate_enum, .store = ly_type_store_enum, .free = NULL},
-    {.type = LY_TYPE_IDENT, .validate = ly_type_validate_identityref, .store = ly_type_store_identityref, .free = NULL},
-    {.type = LY_TYPE_INST, .validate = ly_type_validate_instanceid, .store = ly_type_store_instanceid, .free = ly_type_free_instanceid},
+    {.type = LY_TYPE_BINARY, .validate = ly_type_validate_binary, .store = NULL, .compare = ly_type_compare_canonical, .free = NULL},
+    {.type = LY_TYPE_UINT8, .validate = ly_type_validate_uint, .store = ly_type_store_uint, .compare = ly_type_compare_canonical, .free = NULL},
+    {.type = LY_TYPE_UINT16, .validate = ly_type_validate_uint, .store = ly_type_store_uint, .compare = ly_type_compare_canonical, .free = NULL},
+    {.type = LY_TYPE_UINT32, .validate = ly_type_validate_uint, .store = ly_type_store_uint, .compare = ly_type_compare_canonical, .free = NULL},
+    {.type = LY_TYPE_UINT64, .validate = ly_type_validate_uint, .store = ly_type_store_uint, .compare = ly_type_compare_canonical, .free = NULL},
+    {.type = LY_TYPE_STRING, .validate = ly_type_validate_string, .store = NULL, .compare = ly_type_compare_canonical, .free = NULL},
+    {.type = LY_TYPE_BITS, .validate = ly_type_validate_bits, .store = ly_type_store_bits, .compare = ly_type_compare_canonical, .free = ly_type_free_bits},
+    {.type = LY_TYPE_BOOL, .validate = ly_type_validate_boolean, .store = ly_type_store_boolean, .compare = ly_type_compare_canonical, .free = NULL},
+    {.type = LY_TYPE_DEC64, .validate = ly_type_validate_decimal64, .store = ly_type_store_decimal64, .compare = ly_type_compare_canonical, .free = NULL},
+    {.type = LY_TYPE_EMPTY, .validate = ly_type_validate_empty, .store = NULL, .compare = ly_type_compare_empty, .free = NULL},
+    {.type = LY_TYPE_ENUM, .validate = ly_type_validate_enum, .store = ly_type_store_enum, .compare = ly_type_compare_canonical, .free = NULL},
+    {.type = LY_TYPE_IDENT, .validate = ly_type_validate_identityref, .store = ly_type_store_identityref, .compare = ly_type_compare_identityref, .free = NULL},
+    {.type = LY_TYPE_INST, .validate = ly_type_validate_instanceid, .store = ly_type_store_instanceid, .compare = ly_type_compare_instanceid, .free = ly_type_free_instanceid},
     {0}, /* TODO LY_TYPE_LEAFREF */
     {0}, /* TODO LY_TYPE_UNION */
-    {.type = LY_TYPE_INT8, .validate = ly_type_validate_int, .store = ly_type_store_int, .free = NULL},
-    {.type = LY_TYPE_INT16, .validate = ly_type_validate_int, .store = ly_type_store_int, .free = NULL},
-    {.type = LY_TYPE_INT32, .validate = ly_type_validate_int, .store = ly_type_store_int, .free = NULL},
-    {.type = LY_TYPE_INT64, .validate = ly_type_validate_int, .store = ly_type_store_int, .free = NULL},
+    {.type = LY_TYPE_INT8, .validate = ly_type_validate_int, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .free = NULL},
+    {.type = LY_TYPE_INT16, .validate = ly_type_validate_int, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .free = NULL},
+    {.type = LY_TYPE_INT32, .validate = ly_type_validate_int, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .free = NULL},
+    {.type = LY_TYPE_INT64, .validate = ly_type_validate_int, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .free = NULL},
 };
 

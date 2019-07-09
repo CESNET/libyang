@@ -82,20 +82,6 @@ void ly_err_free(void *ptr);
  */
 
 /**
- * @brief Callback provided by the data parsers to type plugins to resolve (format-specific) mapping between prefixes used in the value strings
- * to the YANG schemas.
- *
- * XML uses XML namespaces, JSON uses schema names as prefixes.
- *
- * @param[in] ctx libyang context to find the schema.
- * @param[in] prefix Prefix found in the value string
- * @param[in] prefix_len Length of the @p prefix.
- * @param[in] parser Internal parser's data.
- * @return Pointer to the YANG schema identified by the provided prefix or NULL if no mapping found.
- */
-typedef const struct lys_module *(*ly_type_resolve_prefix)(struct ly_ctx *ctx, const char *prefix, size_t prefix_len, void *parser);
-
-/**
  * @brief Callback to validate the given @p value according to the given @p type. Optionaly, it can be requested to canonize the value.
  *
  * Note that the \p value string is not necessarily zero-terminated. The provided \p value_len is always correct.
@@ -103,12 +89,15 @@ typedef const struct lys_module *(*ly_type_resolve_prefix)(struct ly_ctx *ctx, c
  * @param[in] ctx libyang Context
  * @param[in] type Type of the value being canonized.
  * @param[in] value Lexical representation of the value to be validated (and canonized).
+ *            It is never NULL, empty string is represented as "" with zero @p value_len.
  * @param[in] value_len Length of the given \p value.
  * @param[in] options [Type plugin options ](@ref plugintypeopts).
  *
  * @param[in] get_prefix Parser-specific getter to resolve prefixes used in the value strings.
  * @param[in] parser Parser's data for @p get_prefix
- * @param[in] context_node The @p value's node for the case that the require-instance restriction is supposed to be resolved.
+ * @param[in] format Input format of the data.
+ * @param[in] context_node The @p value's node for the case that the require-instance restriction is supposed to be resolved. This argument is of
+ *            lys_node (in case LY_TYPE_OPTS_INCOMPLETE_DATA set in @p options) or lyd_node structure.
  * @param[in] trees ([Sized array](@ref sizedarrays)) of external data trees (e.g. when validating RPC/Notification) where the required data
  *            instance can be placed.
  *
@@ -121,8 +110,8 @@ typedef const struct lys_module *(*ly_type_resolve_prefix)(struct ly_ctx *ctx, c
  * @return LY_ERR value if an error occurred and the value could not be canonized following the type's rules.
  */
 typedef LY_ERR (*ly_type_validate_clb)(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                                       ly_type_resolve_prefix get_prefix, void *parser,
-                                       struct lyd_node *context_node, struct lyd_node **trees,
+                                       ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format,
+                                       const void *context_node, struct lyd_node **trees,
                                        const char **canonized, struct ly_err_item **err, void **priv);
 
 /**
@@ -140,6 +129,18 @@ typedef LY_ERR (*ly_type_validate_clb)(struct ly_ctx *ctx, struct lysc_type *typ
  */
 typedef LY_ERR (*ly_type_store_clb)(struct ly_ctx *ctx, struct lysc_type *type, int options,
                                     struct lyd_value *value, struct ly_err_item **err, void **priv);
+
+/**
+ * @brief Callback for comparing 2 values of the same type.
+ *
+ * Caller is responsible to provide values of the SAME type.
+ *
+ * @param[in] val1 First value to compare.
+ * @param[in] val2 Second value to compare.
+ * @return LY_SUCCESS if values are same (according to the type's definition of being same).
+ * @return LY_EVALID if values differ.
+ */
+typedef LY_ERR (*ly_type_compare_clb)(const struct lyd_value *val1, const struct lyd_value *val2);
 
 /**
  * @brief Callback for freeing the user type values stored by ly_type_store_clb().
@@ -162,7 +163,8 @@ struct lysc_type_plugin {
     LY_DATA_TYPE type;               /**< implemented type, use LY_TYPE_UNKNOWN for derived data types */
     ly_type_validate_clb validate;   /**< function to validate and canonize given value */
     ly_type_store_clb store;         /**< function to store the value in the type-specific way */
-    ly_type_free_clb free;           /**< function to free the type-spceific way stored value */
+    ly_type_compare_clb compare;     /**< comparison callback to compare 2 values of the same type */
+    ly_type_free_clb free;           /**< optional function to free the type-spceific way stored value */
     uint32_t flags;                  /**< [type flags ](@ref plugintypeflags). */
 };
 
@@ -252,5 +254,18 @@ LY_ERR ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, i
  * @return LY_ESYS in case of PCRE2 error.
  */
 LY_ERR ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str, size_t str_len, struct ly_err_item **err);
+
+/**
+ * @brief Helper function for type validation callbacks to prepare list of all possible prefixes used in the value string.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] value Value string to be parsed.
+ * @param[in] value_len Length of the @p value string.
+ * @param[in] get_prefix Parser-specific getter to resolve prefixes used in the value strings.
+ * @param[in] parser Parser's data for @p get_prefix.
+ * @return Created [sized array](@ref sizedarrays) of prefix mappings, NULL in case of error.
+ */
+struct lyd_value_prefix *ly_type_get_prefixes(struct ly_ctx *ctx, const char *value, size_t value_len,
+                                              ly_clb_resolve_prefix get_prefix, void *parser);
 
 #endif /* LY_PLUGINS_TYPES_H_ */

@@ -14,6 +14,7 @@
 
 #include "common.h"
 
+#include <assert.h>
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -85,6 +86,197 @@ lyd_search(const struct lyd_node *first, const struct lys_module *module,
         return node;
     }
     return NULL;
+}
+
+LY_ERR
+lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len, int dynamic,
+                ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format, struct lyd_node **trees)
+{
+    LY_ERR ret = LY_SUCCESS, rc;
+    struct ly_err_item *err = NULL;
+    struct ly_ctx *ctx;
+    struct lysc_type *type;
+    void *priv = NULL;
+    int options = LY_TYPE_OPTS_VALIDATE | LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_STORE |
+            (dynamic ? LY_TYPE_OPTS_DYNAMIC : 0) | (trees ? 0 : LY_TYPE_OPTS_INCOMPLETE_DATA);
+    assert(node);
+
+    ctx = node->schema->module->ctx;
+    type = ((struct lysc_node_leaf*)node->schema)->type;
+    if (type->plugin->validate) {
+        rc = type->plugin->validate(ctx, type, value, value_len, options, get_prefix, parser, format,
+                                    trees ? (void*)node : (void*)node->schema, trees,
+                                    &node->value.canonized, &err, &priv);
+        if (rc == LY_EINCOMPLETE) {
+            ret = rc;
+            /* continue with storing, just remember what to return if storing is ok */
+        } else if (rc) {
+            ret = rc;
+            if (err) {
+                ly_err_print(err);
+                LOGVAL(ctx, LY_VLOG_STR, err->path, err->vecode, err->msg);
+                ly_err_free(err);
+            }
+            goto error;
+        }
+    } else if (dynamic) {
+        node->value.canonized = lydict_insert_zc(ctx, (char*)value);
+    } else {
+        node->value.canonized = lydict_insert(ctx, value, value_len);
+    }
+    node->value.plugin = type->plugin;
+
+    if (type->plugin->store) {
+        rc = type->plugin->store(ctx, type, options, &node->value, &err, &priv);
+        if (rc) {
+            ret = rc;
+            if (err) {
+                ly_err_print(err);
+                LOGVAL(ctx, LY_VLOG_STR, err->path, err->vecode, err->msg);
+                ly_err_free(err);
+            }
+            goto error;
+        }
+    }
+
+error:
+    return ret;
+}
+
+API LY_ERR
+lys_value_validate(struct ly_ctx *ctx, const struct lysc_node *node, const char *value, size_t value_len,
+                   ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format)
+{
+    LY_ERR rc = LY_SUCCESS;
+    struct ly_err_item *err = NULL;
+    struct lysc_type *type;
+    void *priv = NULL;
+    int options = LY_TYPE_OPTS_VALIDATE | LY_TYPE_OPTS_INCOMPLETE_DATA;
+
+    LY_CHECK_ARG_RET(ctx, node, value, LY_EINVAL);
+
+    if (!(node->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+        LOGARG(ctx, node);
+        return LY_EINVAL;
+    }
+
+    type = ((struct lysc_node_leaf*)node)->type;
+
+    if (type->plugin->validate) {
+        rc = type->plugin->validate(ctx ? ctx : node->module->ctx, type, value, value_len, options,
+                                     get_prefix, get_prefix_data, format, node, NULL, NULL, &err, &priv);
+        if (rc == LY_EINCOMPLETE) {
+            /* actually success since we do not provide the context tree and call validation with
+             * LY_TYPE_OPTS_INCOMPLETE_DATA */
+            rc = LY_SUCCESS;
+        } else if (rc && err) {
+            if (ctx) {
+                /* log only in case the ctx was provided as input parameter */
+                ly_err_print(err);
+                LOGVAL(ctx, LY_VLOG_STR, err->path, err->vecode, err->msg);
+            }
+            ly_err_free(err);
+        }
+    }
+
+    return rc;
+}
+
+API LY_ERR
+lyd_value_validate(struct ly_ctx *ctx, const struct lyd_node_term *node, const char *value, size_t value_len,
+                   ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format, struct lyd_node **trees)
+{
+    LY_ERR rc;
+    struct ly_err_item *err = NULL;
+    struct lysc_type *type;
+    void *priv = NULL;
+    int options = LY_TYPE_OPTS_VALIDATE | LY_TYPE_OPTS_STORE | (trees ? 0 : LY_TYPE_OPTS_INCOMPLETE_DATA);
+
+    LY_CHECK_ARG_RET(ctx, node, value, LY_EINVAL);
+
+    type = ((struct lysc_node_leaf*)node->schema)->type;
+
+    if (type->plugin->validate) {
+        rc = type->plugin->validate(ctx ? ctx : node->schema->module->ctx, type, value, value_len, options,
+                                     get_prefix, get_prefix_data, format, trees ? (void*)node : (void*)node->schema, trees,
+                                     NULL, &err, &priv);
+        if (rc == LY_EINCOMPLETE) {
+            return rc;
+        } else if (rc) {
+            if (err) {
+                if (ctx) {
+                    ly_err_print(err);
+                    LOGVAL(ctx, LY_VLOG_STR, err->path, err->vecode, err->msg);
+                }
+                ly_err_free(err);
+            }
+            return rc;
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
+API LY_ERR
+lyd_value_compare(const struct lyd_node_term *node, const char *value, size_t value_len,
+                  ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format, struct lyd_node **trees)
+{
+    LY_ERR ret = LY_SUCCESS, rc;
+    struct ly_err_item *err = NULL;
+    struct ly_ctx *ctx;
+    struct lysc_type *type;
+    void *priv = NULL;
+    struct lyd_value data = {0};
+    int options = LY_TYPE_OPTS_VALIDATE | LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_STORE | (trees ? 0 : LY_TYPE_OPTS_INCOMPLETE_DATA);
+
+    LY_CHECK_ARG_RET(node ? node->schema->module->ctx : NULL, node, value, LY_EINVAL);
+
+    ctx = node->schema->module->ctx;
+    type = ((struct lysc_node_leaf*)node->schema)->type;
+    if (type->plugin->validate) {
+        rc = type->plugin->validate(ctx, type, value, value_len, options,
+                                     get_prefix, get_prefix_data, format, (struct lyd_node*)node, trees,
+                                     &data.canonized, &err, &priv);
+        if (rc == LY_EINCOMPLETE) {
+            ret = rc;
+            /* continue with comparing, just remember what to return if storing is ok */
+        } else if (rc) {
+            /* value to compare is invalid */
+            ret = LY_EINVAL;
+            if (err) {
+                ly_err_free(err);
+            }
+            goto cleanup;
+        }
+    } else {
+        data.canonized = lydict_insert(ctx, value, value_len);
+    }
+
+    /* store the value to compare into a dummy storage to do a comparison */
+    if (type->plugin->store) {
+        if (type->plugin->store(ctx, type, options, &data, &err, &priv)) {
+            ret = LY_EINVAL;
+            if (err) {
+                ly_err_free(err);
+            }
+            goto cleanup;
+        }
+    }
+
+    /* compare data */
+    if (type->plugin->compare) {
+        ret = type->plugin->compare(&node->value, &data);
+    } else if (data.canonized != node->value.canonized) {
+        ret = LY_EVALID;
+    }
+
+cleanup:
+    if (type->plugin->free) {
+        type->plugin->free(ctx, type, &data);
+    }
+    lydict_remove(ctx, data.canonized);
+
+    return ret;
 }
 
 static struct lyd_node *
@@ -251,3 +443,82 @@ lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int opti
 
     return result;
 }
+
+API const struct lyd_node_term *
+lyd_target(struct lyd_value_path *path, struct lyd_node **trees)
+{
+    unsigned int u, v, x;
+    const struct lyd_node *node = NULL, *parent = NULL, *start_search;
+    uint64_t pos = 1;
+
+    LY_CHECK_ARG_RET(NULL, path, trees, NULL);
+
+    LY_ARRAY_FOR(path, u) {
+        if (parent) {
+            start_search = lyd_node_children(parent);
+search_inner:
+            node = lyd_search(start_search, path[u].node->module, path[u].node->name, strlen(path[u].node->name), path[u].node->nodetype, NULL, 0);
+        } else {
+            LY_ARRAY_FOR(trees, v) {
+                start_search = trees[v];
+search_toplevel:
+                /* WARNING! to use search_toplevel label correctly, variable v must be preserved and not changed! */
+                node = lyd_search(start_search, path[u].node->module, path[u].node->name, strlen(path[u].node->name), path[u].node->nodetype, NULL, 0);
+                if (node) {
+                    break;
+                }
+            }
+        }
+        if (!node) {
+            return NULL;
+        }
+
+        /* check predicate if any */
+        LY_ARRAY_FOR(path[u].predicates, x) {
+            if (path[u].predicates[x].type == 0) {
+                /* position predicate */
+                if (pos != path[u].predicates[x].position) {
+                    pos++;
+                    goto search_repeat;
+                }
+                /* done, no more predicates are allowed here */
+                break;
+            } else if (path[u].predicates[x].type == 1) {
+                /* key-predicate */
+                struct lysc_type *type = ((struct lysc_node_leaf*)path[u].predicates[x].key)->type;
+                const struct lyd_node *key = lyd_search(lyd_node_children(node), path[u].predicates[x].key->module,
+                                                        path[u].predicates[x].key->name, strlen(path[u].predicates[x].key->name),
+                                                        LYS_LEAF, NULL, 0);
+                if (!key) {
+                    /* probably error and we shouldn't be here due to previous checks when creating path */
+                    goto search_repeat;
+                }
+                if (type->plugin->compare(&((struct lyd_node_term*)key)->value, path[u].predicates[x].value)) {
+                    goto search_repeat;
+                }
+            } else if (path[u].predicates[x].type == 2) {
+                /* leaf-list-predicate */
+                struct lysc_type *type = ((struct lysc_node_leaf*)path[u].node)->type;
+                if (type->plugin->compare(&((struct lyd_node_term*)node)->value, path[u].predicates[x].value)) {
+                    goto search_repeat;
+                }
+            } else {
+                LOGINT(NULL);
+            }
+        }
+
+        parent = node;
+    }
+
+    return (const struct lyd_node_term*)node;
+
+search_repeat:
+    start_search = node->next;
+    if (parent) {
+        goto search_inner;
+    } else {
+        goto search_toplevel;
+    }
+}
+
+

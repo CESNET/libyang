@@ -254,7 +254,7 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
                 value = "";
                 value_len = 0;
             }
-            ret = lyd_value_parse((struct lyd_node_term*)cur, value, value_len, dynamic, lydxml_resolve_prefix, ctx, NULL);
+            ret = lyd_value_parse((struct lyd_node_term*)cur, value, value_len, dynamic, lydxml_resolve_prefix, ctx, LYD_XML, NULL);
             if (ret == LY_EINCOMPLETE) {
                 ly_set_add(&ctx->incomplete_type_validation, cur, LY_SET_OPT_USEASLIST);
             } else if (ret) {
@@ -315,7 +315,8 @@ lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, struct lyd_node
                 *tree = *result;
             }
             /* validate and store the value of the node */
-            ret = lyd_value_parse(node, node->value.canonized, strlen(node->value.canonized), 0, lydxml_resolve_prefix, ctx, trees);
+            ret = lyd_value_parse(node, node->value.canonized, node->value.canonized ? strlen(node->value.canonized) : 0, 0,
+                                  lydxml_resolve_prefix, ctx, LYD_XML, trees);
             LY_ARRAY_FREE(trees);
             if (ret) {
                 lyd_free_all(*result);

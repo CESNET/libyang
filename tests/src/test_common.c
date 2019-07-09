@@ -284,7 +284,7 @@ test_parse_instance_predicate(void **state)
     size_t prefix_len, id_len, value_len;
 
     str = "[ex:name='fred']";
-    assert_int_equal(LY_SUCCESS, ly_parse_instance_predicate(&str, strlen(str), &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
+    assert_int_equal(LY_SUCCESS, ly_parse_instance_predicate(&str, strlen(str), LYD_XML, &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
     assert_string_equal(str, "");
     assert_string_equal(prefix, "ex:name='fred']");
     assert_int_equal(prefix_len, 2);
@@ -294,7 +294,7 @@ test_parse_instance_predicate(void **state)
     assert_int_equal(value_len, 4);
 
     str = "[ex:ip = \"[192.0.2.1]\"][ex:port='80']";
-    assert_int_equal(LY_SUCCESS, ly_parse_instance_predicate(&str, strlen(str), &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
+    assert_int_equal(LY_SUCCESS, ly_parse_instance_predicate(&str, strlen(str), LYD_XML, &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
     assert_string_equal(str, "[ex:port='80']");
     assert_string_equal(prefix, "ex:ip = \"[192.0.2.1]\"][ex:port='80']");
     assert_int_equal(prefix_len, 2);
@@ -304,7 +304,7 @@ test_parse_instance_predicate(void **state)
     assert_int_equal(value_len, 11);
 
     str = "[. = 'blowfish-cbc']";
-    assert_int_equal(LY_SUCCESS, ly_parse_instance_predicate(&str, strlen(str), &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
+    assert_int_equal(LY_SUCCESS, ly_parse_instance_predicate(&str, strlen(str), LYD_XML, &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
     assert_string_equal(str, "");
     assert_null(prefix);
     assert_int_equal(prefix_len, 0);
@@ -314,7 +314,7 @@ test_parse_instance_predicate(void **state)
     assert_int_equal(value_len, 12);
 
     str = "[ 3 ]";
-    assert_int_equal(LY_SUCCESS, ly_parse_instance_predicate(&str, strlen(str), &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
+    assert_int_equal(LY_SUCCESS, ly_parse_instance_predicate(&str, strlen(str), LYD_XML, &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
     assert_string_equal(str, "");
     assert_null(prefix);
     assert_int_equal(prefix_len, 0);
@@ -326,48 +326,49 @@ test_parse_instance_predicate(void **state)
     /* invalid predicates */
     /* position must be positive integer */
     str = "[0]";
-    assert_int_equal(LY_EVALID, ly_parse_instance_predicate(&str, strlen(str), &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
+    assert_int_equal(LY_EVALID, ly_parse_instance_predicate(&str, strlen(str), LYD_XML, &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
     assert_string_equal(errmsg, "The position predicate cannot be zero.");
     str = "[-1]";
-    assert_int_equal(LY_EVALID, ly_parse_instance_predicate(&str, strlen(str), &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
+    assert_int_equal(LY_EVALID, ly_parse_instance_predicate(&str, strlen(str), LYD_XML, &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
     assert_string_equal(errmsg, "Invalid instance predicate format (negative position or invalid node-identifier).");
 
     /* invalid node-identifier */
     str = "[$node='value']";
-    assert_int_equal(LY_EVALID, ly_parse_instance_predicate(&str, strlen(str), &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
+    assert_int_equal(LY_EVALID, ly_parse_instance_predicate(&str, strlen(str), LYD_XML, &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
     assert_string_equal(errmsg, "Invalid node-identifier.");
     str = "[.node='value']";
-    assert_int_equal(LY_EVALID, ly_parse_instance_predicate(&str, strlen(str), &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
+    assert_int_equal(LY_EVALID, ly_parse_instance_predicate(&str, strlen(str), LYD_XML, &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
     assert_string_equal(errmsg, "Unexpected character instead of '=' in leaf-list-predicate.");
     str = "[13node='value']";
-    assert_int_equal(LY_EVALID, ly_parse_instance_predicate(&str, strlen(str), &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
+    assert_int_equal(LY_EVALID, ly_parse_instance_predicate(&str, strlen(str), LYD_XML, &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
     assert_string_equal(errmsg, "Predicate (pos) is not terminated by \']\' character.");
 
-    str = "[node]";
-    assert_int_equal(LY_EVALID, ly_parse_instance_predicate(&str, strlen(str), &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
+    str = "[ex:node]";
+    assert_int_equal(LY_EVALID, ly_parse_instance_predicate(&str, strlen(str), LYD_XML, &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
     assert_string_equal(errmsg, "Unexpected character instead of '=' in key-predicate.");
 
-    str = "[node=  value]";
-    assert_int_equal(LY_EVALID, ly_parse_instance_predicate(&str, strlen(str), &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
+    str = "[ex:node=  value]";
+    assert_int_equal(LY_EVALID, ly_parse_instance_predicate(&str, strlen(str), LYD_XML, &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
     assert_string_equal(errmsg, "String value is not quoted.");
 
-    str = "[node='value\"]";
-    assert_int_equal(LY_EVALID, ly_parse_instance_predicate(&str, strlen(str), &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
+    str = "[ex:node='value\"]";
+    assert_int_equal(LY_EVALID, ly_parse_instance_predicate(&str, strlen(str), LYD_XML, &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
     assert_string_equal(errmsg, "Value is not terminated quoted-string.");
 
-    str = "[node='value  ]";
-    assert_int_equal(LY_EVALID, ly_parse_instance_predicate(&str, strlen(str), &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
+    str = "[ex:node='value  ]";
+    assert_int_equal(LY_EVALID, ly_parse_instance_predicate(&str, strlen(str), LYD_XML, &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
     assert_string_equal(errmsg, "Value is not terminated quoted-string.");
 
-    str = "[node=\"value\"[3]";
-    assert_int_equal(LY_EVALID, ly_parse_instance_predicate(&str, strlen(str), &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
+    str = "[ex:node=\"value\"[3]";
+    assert_int_equal(LY_EVALID, ly_parse_instance_predicate(&str, strlen(str), LYD_XML, &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
     assert_string_equal(errmsg, "Predicate (key-predicate) is not terminated by \']\' character.");
     str = "[.=\"value\"[3]";
-    assert_int_equal(LY_EVALID, ly_parse_instance_predicate(&str, strlen(str), &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
+    assert_int_equal(LY_EVALID, ly_parse_instance_predicate(&str, strlen(str), LYD_XML, &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
     assert_string_equal(errmsg, "Predicate (leaf-list-predicate) is not terminated by \']\' character.");
 
-    str = "[node='value']";
-    assert_int_equal(LY_EINVAL, ly_parse_instance_predicate(&str, strlen(str) - 1, &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
+    /* the limit of the string is too short, it ends one character earlier */
+    str = "[ex:node='value']";
+    assert_int_equal(LY_EINVAL, ly_parse_instance_predicate(&str, strlen(str) - 1, LYD_XML, &prefix, &prefix_len, &id, &id_len, &value, &value_len, &errmsg));
     assert_string_equal(errmsg, "Predicate is incomplete.");
 
     *state = NULL;

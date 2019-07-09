@@ -181,6 +181,21 @@ struct lyd_value {
             const char *prefix;           /**< prefix string used in the canonized string to identify the mod of the YANG schema */
             const struct lys_module *mod; /**< YANG schema module identified by the prefix string */
         } *prefixes;                 /**< list of mappings between prefix in canonized value to a YANG schema ([sized array](@ref sizedarrays)) */
+
+        struct lyd_value_path {
+            const struct lysc_node *node;
+            struct lyd_value_path_predicate {
+                union {
+                    struct {
+                        const struct lysc_node *key;
+                        struct lyd_value *value;
+                    };
+                    uint64_t position;
+                };
+                uint8_t type; /**< 0 - position, 1 - key-predicate, 2 - leaf-list-predicate */
+            } *predicates;
+        } *target;
+
         int8_t int8;                 /**< 8-bit signed integer */
         int16_t int16;               /**< 16-bit signed integer */
         int32_t int32;               /**< 32-bit signed integer */
@@ -192,6 +207,11 @@ struct lyd_value {
         void *ptr;                   /**< generic data type structure used to store the data */
     };  /**< The union is just a list of shorthands to possible values stored by a type's plugin. libyang works only with the canonized string,
              this specific data type storage is just to simplify use of the values by the libyang users. */
+
+    struct lysc_type_plugin *plugin; /**< pointer to the type plugin which stored the data. This pointer can differ from the pointer
+                                          in the lysc_type structure since the plugin itself can use other plugins for storing data.
+                                          Speaking about built-in types, this is the case of leafref which stores data as its target type.
+                                          Similarly union types stores the currently used type plugin in its internal lyd_value structure. */
 };
 
 /**
@@ -409,7 +429,10 @@ const struct lyd_node *lyd_node_children(const struct lyd_node *node);
  * @param[in] name Name of the node to find (mandatory argument).
  * @param[in] name_len Optional length of the @p name argument in case it is not NULL-terminated string.
  * @param[in] nodetype Optional mask for the nodetype of the node to find, 0 is understood as all nodetypes.
- * @param[in] value Optional restriction for lyd_node_term nodes to select node with the specific value.
+ * @param[in] value Optional restriction for lyd_node_term nodes to select node with the specific value. Note that this
+ * search restriction is limited to compare canonical representation of the type. Some of the types have no canonical
+ * representation and 2 different strings can represent the same value (e.g. different prefixes of the same namespace in instance-identifiers).
+ * In this case there is more advanced lyd_value_compare() to check if the values matches.
  * @param[in] value_len Optional length of the @p value argument in case it is not NULL-terminated string.
  * @return The sibling node of the @p first (or itself), satisfying the given restrictions.
  * @return NULL in case there is no node satisfying the restrictions.
@@ -567,6 +590,55 @@ LY_ERR lyd_unlink_tree(struct lyd_node *node);
  * non-zero to destroy also all the subsequent attributes in the list.
  */
 void lyd_free_attr(struct ly_ctx *ctx, struct lyd_attr *attr, int recursive);
+
+/**
+ * @brief Check type restrictions applicable to the particular leaf/leaf-list with the given string @p value.
+ *
+ * The given node is not modified in any way - it is just checked if the @p value can be set to the node.
+ *
+ * If there is no data node instance and you are fine with checking just the type's restrictions without the
+ * data tree context (e.g. for the case of require-instance restriction), use lys_value_validate().
+ *
+ * @param[in] ctx libyang context for logging (function does not log errors when @p ctx is NULL)
+ * @param[in] node Data node for the @p value.
+ * @param[in] value String value to be checked.
+ * @param[in] value_len Length of the given @p value (mandatory).
+ * @param[in] get_prefix Callback function to resolve prefixes used in the @p value string.
+ * @param[in] get_prefix_data Private data for the @p get_prefix callback.
+ * @param[in] format Input format of the data.
+ * @param[in] trees ([Sized array](@ref sizedarrays)) of data trees (e.g. when validating RPC/Notification) where the required
+ *            data instance (leafref target, instance-identifier) can be placed. NULL in case the data tree are not yet complete,
+ *            then LY_EINCOMPLETE can be returned.
+ * @return LY_SUCCESS on success
+ * @return LY_EINCOMPLETE in case the @p trees is not provided and it was needed to finish the validation (e.g. due to require-instance).
+ * @return LY_ERR value if an error occurred.
+ */
+LY_ERR lyd_value_validate(struct ly_ctx *ctx, const struct lyd_node_term *node, const char *value, size_t value_len,
+                          ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format, struct lyd_node **trees);
+
+/**
+ * @brief Compare the node's value with the given string value. The string value is first validated according to the node's type.
+ *
+ * @param[in] node Data node to compare.
+ * @param[in] value String value to be compared. It does not need to be in a canonical form - as part of the process,
+ * it is validated and canonized if possible.
+ * @param[in] value_len Length of the given @p value (mandatory).
+ * @param[in] get_prefix Callback function to resolve prefixes used in the @p value string.
+ * @param[in] get_prefix_data Private data for the @p get_prefix callback.
+ * @param[in] format Input format of the data.
+ * @param[in] trees ([Sized array](@ref sizedarrays)) of data trees (e.g. when validating RPC/Notification) where the required
+ *            data instance (leafref target, instance-identifier) can be placed. NULL in case the data tree are not yet complete,
+ *            then LY_EINCOMPLETE can be returned in case the validation was not completed, but values matches.
+ * @return LY_SUCCESS on success
+ * @return LY_EINCOMPLETE in case of success when the @p trees is not provided and it was needed to finish the validation of
+ * the given string @p value (e.g. due to require-instance).
+ * @return LY_ERR value if an error occurred.
+ */
+LY_ERR lyd_value_compare(const struct lyd_node_term *node, const char *value, size_t value_len,
+                         ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format, struct lyd_node **trees);
+
+
+const struct lyd_node_term *lyd_target(struct lyd_value_path *path, struct lyd_node **trees);
 
 #ifdef __cplusplus
 }

@@ -25,6 +25,27 @@
 #include "tree_data_internal.h"
 #include "plugins_types.h"
 
+void
+lyd_value_free_path(struct ly_ctx *ctx, struct lyd_value_path *path)
+{
+    unsigned int u, v;
+
+    LY_ARRAY_FOR(path, u) {
+        LY_ARRAY_FOR(path[u].predicates, v) {
+            if (path[u].predicates[v].type > 0) {
+                struct lysc_type *t = ((struct lysc_node_leaf*)path[u].predicates[v].key)->type;
+                if (t->plugin->free) {
+                    t->plugin->free(ctx, t, path[u].predicates[v].value);
+                }
+                lydict_remove(ctx, path[u].predicates[v].value->canonized);
+                free(path[u].predicates[v].value);
+            }
+        }
+        LY_ARRAY_FREE(path[u].predicates);
+    }
+    LY_ARRAY_FREE(path);
+}
+
 API LY_ERR
 lyd_unlink_tree(struct lyd_node *node)
 {

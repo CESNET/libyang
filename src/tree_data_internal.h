@@ -42,11 +42,12 @@ LY_ERR lyd_parse_check_options(struct ly_ctx *ctx, int options, const char *func
  * @brief Validate, canonize and store the given @p value into the node according to the node's type's rules.
  *
  * @param[in] node Data node for with the @p value.
- * @param[in] value String value to be parsed.
+ * @param[in] value String value to be parsed, must not be NULL.
  * @param[in] value_len Length of the give @p value (mandatory).
  * @param[in] dynamic Flag if @p value is a dynamically allocated memory and should be directly consumed/freed inside the function.
- * @param[in] get_prefix Parser-specific getter to resolve prefixes used in the value strings.
+ * @param[in] get_prefix Parser-specific getter to resolve prefixes used in the @p value string.
  * @param[in] parser Parser's data for @p get_prefix
+ * @param[in] format Input format of the data.
  * @param[in] trees ([Sized array](@ref sizedarrays)) of data trees (e.g. when validating RPC/Notification) where the required
  *            data instance (leafref target, instance-identifier) can be placed. NULL in case the data tree are not yet complete,
  *            then LY_EINCOMPLETE can be returned.
@@ -55,7 +56,7 @@ LY_ERR lyd_parse_check_options(struct ly_ctx *ctx, int options, const char *func
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len, int dynamic,
-                       ly_type_resolve_prefix get_prefix, void *parser, struct lyd_node **trees);
+                       ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format,struct lyd_node **trees);
 
 /**
  * @brief Parse XML string as YANG data tree.
@@ -83,5 +84,13 @@ LY_ERR lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, struct l
 void lyd_unlink_hash(struct lyd_node *node);
 
 /** @} datahash */
+
+/**
+ * @brief Free path (target) structure of the lyd_value.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] path The structure ([sized array](@ref sizedarrays)) to free.
+ */
+void lyd_value_free_path(struct ly_ctx *ctx, struct lyd_value_path *path);
 
 #endif /* LY_TREE_DATA_INTERNAL_H_ */

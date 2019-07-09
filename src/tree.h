@@ -156,6 +156,20 @@ typedef enum
  */
 extern const char* ly_data_type2str[LY_DATA_TYPE_COUNT];
 
+/**
+ * @brief Callback provided by the data parsers to type plugins to resolve (format-specific) mapping between prefixes used in the value strings
+ * to the YANG schemas.
+ *
+ * XML uses XML namespaces, JSON uses schema names as prefixes.
+ *
+ * @param[in] ctx libyang context to find the schema.
+ * @param[in] prefix Prefix found in the value string
+ * @param[in] prefix_len Length of the @p prefix.
+ * @param[in] private Internal data needed by the callback.
+ * @return Pointer to the YANG schema identified by the provided prefix or NULL if no mapping found.
+ */
+typedef const struct lys_module *(*ly_clb_resolve_prefix)(struct ly_ctx *ctx, const char *prefix, size_t prefix_len, void *private);
+
 /** @} */
 
 #ifdef __cplusplus
