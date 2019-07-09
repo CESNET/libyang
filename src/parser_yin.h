@@ -117,6 +117,20 @@ LY_ERR yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *sube
                          struct lysp_ext_instance **exts);
 
 /**
+ * @brief Parse yang-version element.
+ *
+ * @param[in,out] ctx Yin parser context for logging and to store current state.
+ * @param[in] attrs Attributes of when element.
+ * @param[in] data Data to read from, always moved to currently handled character.
+ * @param[out] version Storage for the parsed information.
+ * @param[in,out] exts Extension instance to add to.
+ *
+ * @return LY_ERR values.
+ */
+LY_ERR yin_parse_yangversion(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data, uint8_t *version,
+                             struct lysp_ext_instance **exts);
+
+/**
  * @brief Parse import element.
  *
  * @param[in,out] ctx Yin parser context for logging and to store current state.

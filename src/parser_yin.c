@@ -723,6 +723,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     ret = yin_parse_when(ctx, subelem_attrs, data, (struct lysp_when **)subelem_info_rec->dest);
                     break;
                 case YANG_YANG_VERSION:
+                    ret = yin_parse_yangversion(ctx, subelem_attrs, data, (uint8_t *)subelem_info_rec->dest, exts);
                     break;
                 case YANG_YIN_ELEMENT:
                     ret = yin_parse_yin_element_element(ctx, subelem_attrs, data, (uint16_t *)subelem_info_rec->dest, exts);
@@ -775,18 +776,39 @@ LY_ERR
 yin_parse_revision_date(struct yin_parser_ctx *ctx, struct yin_arg_record **attrs, const char **data, char *rev,
                         struct lysp_ext_instance **exts)
 {
-    LY_ERR ret = LY_SUCCESS;
     const char *temp_rev;
     struct yin_subelement subelems[1] = {{YANG_CUSTOM, NULL, 0}};
 
     LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_DATE, &temp_rev, Y_STR_ARG, YANG_REVISION_DATE));
-    LY_CHECK_RET(ret != LY_SUCCESS, ret);
     LY_CHECK_RET(lysp_check_date((struct lys_parser_ctx *)ctx, temp_rev, strlen(temp_rev), "revision-date") != LY_SUCCESS, LY_EVALID);
 
     strcpy(rev, temp_rev);
     FREE_STRING(ctx->xml_ctx.ctx, temp_rev);
 
     return yin_parse_content(ctx, subelems, 1, data, YANG_REVISION_DATE, NULL, exts);
+}
+
+LY_ERR
+yin_parse_yangversion(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data, uint8_t *version,
+                      struct lysp_ext_instance **exts)
+{
+    const char *temp_version = NULL;
+    struct yin_subelement subelems[1] = {{YANG_CUSTOM, NULL, 0}};
+
+    LY_CHECK_RET(yin_parse_attribute(ctx, &attrs, YIN_ARG_VALUE, &temp_version, Y_STR_ARG, YANG_YANG_VERSION));
+    if (strcmp(temp_version, "1.0") == 0) {
+        *version = LYS_VERSION_1_0;
+    } else if (strcmp(temp_version, "1.1") == 0) {
+        *version = LYS_VERSION_1_1;
+    } else {
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_version, "yang-version");
+        FREE_STRING(ctx->xml_ctx.ctx, temp_version);
+        return LY_EVALID;
+    }
+    FREE_STRING(ctx->xml_ctx.ctx, temp_version);
+    ctx->mod_version = *version;
+
+    return yin_parse_content(ctx, subelems, 1, data, YANG_YANG_VERSION, NULL, exts);
 }
 
 LY_ERR
@@ -802,7 +824,7 @@ yin_parse_import(struct yin_parser_ctx *ctx, struct yin_arg_record **attrs, cons
                                          {YANG_REVISION_DATE, imp->rev, YIN_SUBELEM_UNIQUE},
                                          {YANG_CUSTOM, NULL, 0}};
 
-    /* parse import attributes  */
+    /* parse import attributes */
     LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_MODULE, &imp->name, Y_IDENTIF_ARG, YANG_IMPORT));
     LY_CHECK_RET(yin_parse_content(ctx, subelems, 5, data, YANG_IMPORT, NULL, &imp->exts));
     /* check prefix validity */

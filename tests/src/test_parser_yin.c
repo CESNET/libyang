@@ -765,6 +765,51 @@ test_yin_parse_content(void **state)
     st->finished_correctly = true;
 }
 
+static void
+test_yin_parse_yangversion(void **state)
+{
+    struct state *st = *state;
+    LY_ERR ret = LY_SUCCESS;
+    struct sized_string name, prefix;
+    struct yin_arg_record *attrs = NULL;
+    uint8_t version;
+
+    const char *data = "<yang-version xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" value=\"1.0\">\n"
+                       "</yang-version>";
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
+    yin_load_attributes(st->yin_ctx, &data, &attrs);
+    ret = yin_parse_yangversion(st->yin_ctx, attrs, &data, &version, NULL);
+    assert_int_equal(LY_SUCCESS, ret);
+    assert_true(version == LYS_VERSION_1_0);
+    assert_true(st->yin_ctx->mod_version == LYS_VERSION_1_0);
+    LY_ARRAY_FREE(attrs);
+    attrs = NULL;
+    st = reset_state(state);
+
+    data = "<yang-version xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" value=\"1.1\">\n"
+           "</yang-version>";
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
+    yin_load_attributes(st->yin_ctx, &data, &attrs);
+    ret = yin_parse_yangversion(st->yin_ctx, attrs, &data, &version, NULL);
+    assert_int_equal(LY_SUCCESS, ret);
+    assert_true(version == LYS_VERSION_1_1);
+    assert_true(st->yin_ctx->mod_version == LYS_VERSION_1_1);
+    LY_ARRAY_FREE(attrs);
+    attrs = NULL;
+    st = reset_state(state);
+
+    data = "<yang-version xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" value=\"randomvalue\">\n"
+           "</yang-version>";
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
+    yin_load_attributes(st->yin_ctx, &data, &attrs);
+    ret = yin_parse_yangversion(st->yin_ctx, attrs, &data, &version, NULL);
+    assert_int_equal(ret, LY_EVALID);
+    LY_ARRAY_FREE(attrs);
+    attrs = NULL;
+    logbuf_assert("Invalid value \"randomvalue\" of \"yang-version\". Line number 1.");
+    st->finished_correctly = true;
+}
+
 int
 main(void)
 {
@@ -780,6 +825,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_yin_parse_element_generic, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_yin_parse_extension_instance, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_yin_parse_content, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_yin_parse_yangversion, setup_f, teardown_f),
         cmocka_unit_test(test_yin_match_argument_name),
     };
 
