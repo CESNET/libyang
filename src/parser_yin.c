@@ -197,7 +197,7 @@ cleanup:
  * @brief Parse yin argument.
  *
  * @param[in,out] ctx Yin parser context for logging and to store current state.
- * @param[in] attrs Array of attributes.
+ * @param[in] attrs ([Sized array](@ref sizedarrays)) of attributes.
  * @param[in,out] data Data to read from.
  * @param[in] arg_type Type of argument that is expected in parsed element (use YIN_ARG_NONE for elements without special argument).
  * @param[out] arg_val Where value of argument should be stored. Can be NULL if arg_type is specified as YIN_ARG_NONE.
@@ -283,7 +283,17 @@ get_record(enum yang_keyword type, signed char array_size, struct yin_subelement
     return NULL;
 }
 
-LY_ERR
+/**
+ * @brief Helper function to check mandatory constraint of subelement.
+ *
+ * @param[in,out] ctx Yin parser context for logging and to store current state.
+ * @param[in] subelem_info Array of information about subelements.
+ * @param[in] subelem_info_size Size of subelem_info array.
+ * @param[in] current_element Identification of element that is currently being parsed, used for logging.
+ *
+ * @return LY_ERR values.
+ */
+static LY_ERR
 yin_check_subelem_mandatory_constraint(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_info,
                                        signed char subelem_info_size, enum yang_keyword current_element)
 {
@@ -299,7 +309,18 @@ yin_check_subelem_mandatory_constraint(struct yin_parser_ctx *ctx, struct yin_su
     return LY_SUCCESS;
 }
 
-LY_ERR
+/**
+ * @brief Helper function to check "first" constraint of subelement.
+ *
+ * @param[in,out] ctx Yin parser context for logging and to store current state.
+ * @param[in] subelem_info Array of information about subelements.
+ * @param[in] subelem_info_size Size of subelem_info array.
+ * @param[in] current_element Identification of element that is currently being parsed, used for logging.
+ * @param[in] exp_first Record in subelem_info array that is expected to be defined as first subelement.
+ *
+ * @return LY_ERR values.
+ */
+static LY_ERR
 yin_check_subelem_first_constraint(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_info,
                                    signed char subelem_info_size, enum yang_keyword current_element, struct yin_subelement *exp_first)
 {
@@ -315,7 +336,15 @@ yin_check_subelem_first_constraint(struct yin_parser_ctx *ctx, struct yin_subele
 }
 
 /* TODO add something like ifdef NDEBUG around this function, this is supposed to be checked only in debug mode */
-bool
+/**
+ * @brief Helper function to check if array of information about subelements is in ascending order.
+ *
+ * @param[in] subelem_info Array of information about subelements.
+ * @param[in] subelem_info_size Size of subelem_info array.
+ *
+ * @return True iff subelem_info array is in ascending order, False otherwise.
+ */
+static bool
 is_ordered(struct yin_subelement *subelem_info, signed char subelem_info_size)
 {
     enum yang_keyword current = YANG_NONE; /* 0 (minimal value) */
@@ -335,7 +364,7 @@ is_ordered(struct yin_subelement *subelem_info, signed char subelem_info_size)
  * for example prefix or namespace element.
  *
  * @param[in,out] ctx Yin parser context for logging and to store current state.
- * @param[in] attrs Attributes of current element.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
  * @param[in,out] data Data to read from, always moved to currently handled character.
  * @param[in] kw Type of current element.
  * @param[out] value Where value of attribute should be stored.
@@ -360,7 +389,7 @@ yin_parse_simple_element(struct yin_parser_ctx *ctx, struct yin_arg_record *attr
  * more instances, such as base or if-feature.
  *
  * @param[in,out] ctx YIN parser context for logging and to store current state.
- * @param[in] attrs Attributes of current element.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
  * @param[in,out] data Data to read from, always moved to currently handled character.
  * @param[in] kw Type of current element.
  * @param[out] values Parsed values to add to.
@@ -388,9 +417,10 @@ yin_parse_simple_elements(struct yin_parser_ctx *ctx, struct yin_arg_record *att
  * text element as child
  *
  * @param[in,out] ctx Yin parser context for logging and to store current state.
- * @param[in] args Sized array of arguments of current element.
  * @param[in,out] data Data to read from.
+ * @param[in] Type of element can be se to YANG_ORGANIZATION or YANG_CONTACT or YANG_DESCRIPTION or YANG_REFERENCE.
  * @param[out] value Where the content of meta element should be stored.
+ * @param[in,out] exts Extension instance to add to.
  *
  * @return LY_ERR values.
  */
@@ -491,7 +521,7 @@ kw2lyext_substmt(enum yang_keyword kw)
  * @brief Parse belongs-to element.
  *
  * @param[in] ctx Yin parser context for logging and to store current state.
- * @param[in] attrs Array of attributes of belongs-to element.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
  * @param[in,out] data Data to read from, always moved to currently handled character.
  * @param[out] submod Structure of submodule that is being parsed.
  * @param[in,out] exts Extension instances to add to.
