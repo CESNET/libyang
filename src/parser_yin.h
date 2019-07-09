@@ -69,10 +69,6 @@ struct yin_parser_ctx {
 #define YIN_SUBELEM_PARSED      0x80    /**< is set during parsing when given subelement is encountered for the first
                                              time to simply check validity of given constraints */
 
-/* flags to encode constraints of arguments */
-#define YIN_ARG_MANDATORY       0x01    /**< is set when attribute is mandatory */
-#define YIN_ARG_IDENTIFIER      0x02    /**< is set when argument value is supposed to be identifier */
-
 struct yin_subelement {
     enum yang_keyword type; /**< type of keyword */
     void *dest;             /**< meta infromation passed to responsible function (information about where parsed subelement should be stored) */
