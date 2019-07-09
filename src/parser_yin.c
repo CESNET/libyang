@@ -720,6 +720,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 case YANG_VALUE:
                     break;
                 case YANG_WHEN:
+                    ret = yin_parse_when(ctx, subelem_attrs, data, (struct lysp_when **)subelem_info_rec->dest);
                     break;
                 case YANG_YANG_VERSION:
                     break;
@@ -836,6 +837,21 @@ yin_parse_status(struct yin_parser_ctx *ctx, struct yin_arg_record **attrs, cons
     FREE_STRING(ctx->xml_ctx.ctx, value);
 
     return yin_parse_content(ctx, subelems, 1, data, YANG_STATUS, NULL, exts);
+}
+
+LY_ERR
+yin_parse_when(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data, struct lysp_when **when_p)
+{
+    struct lysp_when *when;
+    when = calloc(1, sizeof *when);
+    LY_CHECK_ERR_RET(!when, LOGMEM(ctx->xml_ctx.ctx), LY_EMEM);
+    yin_parse_attribute(ctx, &attrs, YIN_ARG_CONDITION, &when->cond, Y_STR_ARG, YANG_WHEN);
+    *when_p = when;
+    struct yin_subelement subelems[3] = {{YANG_DESCRIPTION, &when->dsc, YIN_SUBELEM_UNIQUE},
+                                         {YANG_REFERENCE, &when->ref, YIN_SUBELEM_UNIQUE},
+                                         {YANG_CUSTOM, NULL, 0}};
+
+    return yin_parse_content(ctx, subelems, 3, data, YANG_WHEN, NULL, &when->exts);
 }
 
 LY_ERR

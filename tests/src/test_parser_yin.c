@@ -30,6 +30,7 @@
 /* prototypes of static functions */
 void lysp_ext_instance_free(struct ly_ctx *ctx, struct lysp_ext_instance *ext);
 void lysp_ext_free(struct ly_ctx *ctx, struct lysp_ext *ext);
+void lysp_when_free(struct ly_ctx *ctx, struct lysp_when *when);
 
 struct state {
     struct ly_ctx *ctx;
@@ -671,32 +672,43 @@ test_yin_parse_content(void **state)
                             "</extension>"
                             "<text xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">wsefsdf</text>"
                             "<if-feature value=\"foo\"></if-feature>"
+                            "<when condition=\"condition...\">"
+                                "<reference><text>when_ref</text></reference>"
+                                "<description><text>when_desc</text></description>"
+                            "</when>"
                         "</prefix>";
     struct lysp_ext_instance *exts = NULL;
     const char **if_features = NULL;
     struct yin_arg_record *attrs = NULL;
     const char *value;
     struct lysp_ext *ext_def = NULL;
+    struct lysp_when *when_p = NULL;
 
     lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
     yin_load_attributes(st->yin_ctx, &data, &attrs);
 
-    struct yin_subelement subelems[4] = {{YANG_EXTENSION, &ext_def, 0},
+    struct yin_subelement subelems[5] = {{YANG_EXTENSION, &ext_def, 0},
                                          {YANG_IF_FEATURE, &if_features, 0},
+                                         {YANG_WHEN, &when_p, 0},
                                          {YANG_CUSTOM, NULL, 0},
                                          {YIN_TEXT, &value, 0}};
-    ret = yin_parse_content(st->yin_ctx, subelems, 4, &data, YANG_PREFIX, NULL, &exts);
+    ret = yin_parse_content(st->yin_ctx, subelems, 5, &data, YANG_PREFIX, NULL, &exts);
     assert_int_equal(ret, LY_SUCCESS);
     assert_string_equal(exts->name, "custom");
     assert_string_equal(exts->argument, "totally amazing extension");
     assert_string_equal(value, "wsefsdf");
+    assert_string_equal(when_p->cond, "condition...");
+    assert_string_equal(when_p->dsc, "when_desc");
+    assert_string_equal(when_p->ref, "when_ref");
     lysp_ext_instance_free(st->ctx, exts);
+    lysp_when_free(st->ctx, when_p);
     lysp_ext_free(st->ctx, ext_def);
     FREE_STRING(st->ctx, *if_features);
     LY_ARRAY_FREE(if_features);
     LY_ARRAY_FREE(exts);
     LY_ARRAY_FREE(ext_def);
     LY_ARRAY_FREE(attrs);
+    free(when_p);
     attrs = NULL;
     lydict_remove(st->ctx, value);
     st = reset_state(state);

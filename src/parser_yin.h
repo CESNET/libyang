@@ -158,6 +158,16 @@ LY_ERR yin_parse_status(struct yin_parser_ctx *ctx, struct yin_arg_record **attr
                         uint16_t *flags, struct lysp_ext_instance **exts);
 
 /**
+ * @brief Parse when element.
+ *
+ * @param[in,out] ctx Yin parser context for logging and to store current state.
+ * @param[in] attrs Attributes of when element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[out] when_p When pointer to parse to.
+ */
+LY_ERR yin_parse_when(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data, struct lysp_when **when_p);
+
+/**
  * @brief Parse revision date element.
  *
  * @param[in,out] ctx Yin parser context for logging and to store current state.
