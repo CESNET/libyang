@@ -743,6 +743,8 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 case YANG_TYPEDEF:
                     break;
                 case YANG_UNIQUE:
+                    ret = yin_parse_simple_elements(ctx, subelem_attrs, data, kw,
+                                                    (const char ***)subelem_info_rec->dest, YIN_ARG_TAG, Y_STR_ARG, exts);
                     break;
                 case YANG_UNITS:
                     break;
