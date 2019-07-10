@@ -27,6 +27,18 @@
 #define is_yangidentchar(c) ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || \
         c == '_' || c == '-' || c == '.')
 
+/* Macro to check YANG's yang-char grammar rule */
+#define is_yangutf8char(c) ((c >= 0x20 && c <= 0xd77) || c == 0x09 || c == 0x0a || c == 0x0d || \
+                            (c >= 0xe000 && c <= 0xfdcf)   || (c >= 0xfdf0 && c <= 0xfffd)   || \
+                            (c >= 0x10000 && c <= 0x1fffd) || (c >= 0x20000 && c <= 0x2fffd) || \
+                            (c >= 0x30000 && c <= 0x3fffd) || (c >= 0x40000 && c <= 0x2fffd) || \
+                            (c >= 0x50000 && c <= 0x5fffd) || (c >= 0x60000 && c <= 0x6fffd) || \
+                            (c >= 0x70000 && c <= 0x7fffd) || (c >= 0x80000 && c <= 0x8fffd) || \
+                            (c >= 0x90000 && c <= 0x9fffd) || (c >= 0xa0000 && c <= 0xafffd) || \
+                            (c >= 0xb0000 && c <= 0xbfffd) || (c >= 0xc0000 && c <= 0xcfffd) || \
+                            (c >= 0xd0000 && c <= 0xdfffd) || (c >= 0xe0000 && c <= 0xefffd) || \
+                            (c >= 0xf0000 && c <= 0xffffd) || (c >= 0x100000 && c <= 0x10fffd))
+
 /**
  * @brief List of YANG statement groups - the (sub)module's substatements
  */
@@ -78,6 +90,31 @@ struct lysc_ctx {
 #define LYSC_CTX_BUFSIZE 4078
     char path[LYSC_CTX_BUFSIZE];
 };
+
+/**
+ * @brief Check that \p c is valid UTF8 code point for YANG string.
+ *
+ * @param[in] ctx yang parser context for logging.
+ * @param[in] c UTF8 code point of a character to check.
+ * @return LY_ERR values.
+ */
+LY_ERR lysp_check_stringchar(struct lys_parser_ctx *ctx, unsigned int c);
+
+/**
+ * @brief Check that \p c is valid UTF8 code point for YANG identifier.
+ *
+ * @param[in] ctx yang parser context for logging.
+ * @param[in] c UTF8 code point of a character to check.
+ * @param[in] first Flag to check the first character of an identifier, which is more restricted.
+ * @param[in,out] prefix Storage for internally used flag in case of possible prefixed identifiers:
+ * 0 - colon not yet found (no prefix)
+ * 1 - \p c is the colon character
+ * 2 - prefix already processed, now processing the identifier
+ *
+ * If the identifier cannot be prefixed, NULL is expected.
+ * @return LY_ERR values.
+ */
+LY_ERR lysp_check_identifierchar(struct lys_parser_ctx *ctx, unsigned int c, int first, int *prefix);
 
 /**
  * @brief Check the currently present prefixes in the module for collision with the new one.

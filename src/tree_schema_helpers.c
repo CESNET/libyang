@@ -796,6 +796,41 @@ search_file:
 }
 
 LY_ERR
+lysp_check_stringchar(struct lys_parser_ctx *ctx, unsigned int c)
+{
+    if (!is_yangutf8char(c)) {
+        LOGVAL_PARSER(ctx, LY_VCODE_INCHAR, c);
+        return LY_EVALID;
+    }
+    return LY_SUCCESS;
+}
+
+LY_ERR
+lysp_check_identifierchar(struct lys_parser_ctx *ctx, unsigned int c, int first, int *prefix)
+{
+    if (first || (prefix && (*prefix) == 1)) {
+        if (!is_yangidentstartchar(c)) {
+            LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid identifier first character '%c'.", c);
+            return LY_EVALID;
+        }
+        if (prefix) {
+            if (first) {
+                (*prefix) = 0;
+            } else {
+                (*prefix) = 2;
+            }
+        }
+    } else if (c == ':' && prefix && (*prefix) == 0) {
+        (*prefix) = 1;
+    } else if (!is_yangidentchar(c)) {
+        LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid identifier character '%c'.", c);
+        return LY_EVALID;
+    }
+
+    return LY_SUCCESS;
+}
+
+LY_ERR
 lysp_load_submodule(struct lys_parser_ctx *ctx, struct lysp_module *mod, struct lysp_include *inc)
 {
     struct lysp_submodule *submod = NULL;

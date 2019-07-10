@@ -193,13 +193,44 @@ cleanup:
     return ret;
 }
 
+LY_ERR
+yin_validate_value(struct yin_parser_ctx *ctx, enum yang_arg val_type, char *val, size_t len)
+{
+    int prefix = 0;
+    unsigned int c;
+    size_t utf8_char_len;
+    size_t already_read = 0;
+    while (already_read < len) {
+        LY_CHECK_ERR_RET(ly_getutf8((const char **)&val, &c, &utf8_char_len),
+                         LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INCHAR, (val)[-utf8_char_len]), LY_EVALID);
+        already_read += utf8_char_len;
+        LY_CHECK_ERR_RET(already_read > len, LOGINT(ctx->xml_ctx.ctx), LY_EINT);
+
+        switch (val_type) {
+        case Y_IDENTIF_ARG:
+            LY_CHECK_RET(lysp_check_identifierchar((struct lys_parser_ctx *)ctx, c, !already_read, NULL));
+            break;
+        case Y_PREF_IDENTIF_ARG:
+            LY_CHECK_RET(lysp_check_identifierchar((struct lys_parser_ctx *)ctx, c, !already_read, &prefix));
+            break;
+        case Y_STR_ARG:
+        case Y_MAYBE_STR_ARG:
+            LY_CHECK_RET(lysp_check_stringchar((struct lys_parser_ctx *)ctx, c));
+            break;
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
 /**
  * @brief Parse yin argument.
  *
  * @param[in,out] ctx Yin parser context for logging and to store current state.
  * @param[in] attrs ([Sized array](@ref sizedarrays)) of attributes.
  * @param[in,out] data Data to read from.
- * @param[in] arg_type Type of argument that is expected in parsed element (use YIN_ARG_NONE for elements without special argument).
+ * @param[in] arg_type Type of argument that is expected in parsed element (use YIN_ARG_NONE for elements without
+ *            special argument).
  * @param[out] arg_val Where value of argument should be stored. Can be NULL if arg_type is specified as YIN_ARG_NONE.
  * @param[in] val_type Type of expected value of attribute.
  * @param[in] current_element Identification of current element, used for logging.
@@ -225,6 +256,7 @@ yin_parse_attribute(struct yin_parser_ctx *ctx, struct yin_arg_record **attrs, e
                 LY_CHECK_ERR_RET(found, LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LYVE_SYNTAX_YIN, "Duplicit definition of %s attribute in %s element",
                                  yin_attr2str(arg), ly_stmt2str(current_element)), LY_EVALID);
                 found = true;
+                LY_CHECK_RET(yin_validate_value(ctx, val_type, iter->content, iter->content_len));
                 if (iter->dynamic_content) {
                     *arg_val = lydict_insert_zc(ctx->xml_ctx.ctx, iter->content);
                     LY_CHECK_RET(!(*arg_val), LY_EMEM);
@@ -246,8 +278,6 @@ yin_parse_attribute(struct yin_parser_ctx *ctx, struct yin_arg_record **attrs, e
         LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LYVE_SYNTAX_YIN, "Missing mandatory attribute %s of %s element.", yin_attr2str(arg_type), ly_stmt2str(current_element));
         return LY_EVALID;
     }
-
-    /* TODO check validity according to val_type */
 
     return LY_SUCCESS;
 }

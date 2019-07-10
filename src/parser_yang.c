@@ -31,18 +31,6 @@
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 
-/* Macro to check YANG's yang-char grammar rule */
-#define is_yangutf8char(c) ((c >= 0x20 && c <= 0xd77) || c == 0x09 || c == 0x0a || c == 0x0d || \
-        (c >= 0xe000 && c <= 0xfdcf) || (c >= 0xfdf0 && c <= 0xfffd) || \
-        (c >= 0x10000 && c <= 0x1fffd) || (c >= 0x20000 && c <= 0x2fffd) || \
-        (c >= 0x30000 && c <= 0x3fffd) || (c >= 0x40000 && c <= 0x2fffd) || \
-        (c >= 0x50000 && c <= 0x5fffd) || (c >= 0x60000 && c <= 0x6fffd) || \
-        (c >= 0x70000 && c <= 0x7fffd) || (c >= 0x80000 && c <= 0x8fffd) || \
-        (c >= 0x90000 && c <= 0x9fffd) || (c >= 0xa0000 && c <= 0xafffd) || \
-        (c >= 0xb0000 && c <= 0xbfffd) || (c >= 0xc0000 && c <= 0xcfffd) || \
-        (c >= 0xd0000 && c <= 0xdfffd) || (c >= 0xe0000 && c <= 0xefffd) || \
-        (c >= 0xf0000 && c <= 0xffffd) || (c >= 0x100000 && c <= 0x10fffd))
-
 /**
  * @brief Try to find object with MEMBER string matching the IDENT in the given ARRAY.
  * Macro logs an error message and returns LY_EVALID in case of existence of a matching object.
@@ -169,62 +157,6 @@ buf_add_char(struct ly_ctx *ctx, const char **input, size_t len, char **buf, siz
 }
 
 /**
- * @brief Check that \p c is valid UTF8 code point for YANG string.
- *
- * @param[in] ctx yang parser context for logging.
- * @param[in] c UTF8 code point of a character to check.
- * @return LY_ERR values.
- */
-static LY_ERR
-check_stringchar(struct lys_parser_ctx *ctx, unsigned int c)
-{
-    if (!is_yangutf8char(c)) {
-        LOGVAL_PARSER(ctx, LY_VCODE_INCHAR, c);
-        return LY_EVALID;
-    }
-    return LY_SUCCESS;
-}
-
-/**
- * @brief Check that \p c is valid UTF8 code point for YANG identifier.
- *
- * @param[in] ctx yang parser context for logging.
- * @param[in] c UTF8 code point of a character to check.
- * @param[in] first Flag to check the first character of an identifier, which is more restricted.
- * @param[in,out] prefix Storage for internally used flag in case of possible prefixed identifiers:
- * 0 - colon not yet found (no prefix)
- * 1 - \p c is the colon character
- * 2 - prefix already processed, now processing the identifier
- *
- * If the identifier cannot be prefixed, NULL is expected.
- * @return LY_ERR values.
- */
-LY_ERR
-check_identifierchar(struct lys_parser_ctx *ctx, unsigned int c, int first, int *prefix)
-{
-    if (first || (prefix && (*prefix) == 1)) {
-        if (!is_yangidentstartchar(c)) {
-            LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid identifier first character '%c'.", c);
-            return LY_EVALID;
-        }
-        if (prefix) {
-            if (first) {
-                (*prefix) = 0;
-            } else {
-                (*prefix) = 2;
-            }
-        }
-    } else if (c == ':' && prefix && (*prefix) == 0) {
-        (*prefix) = 1;
-    } else if (!is_yangidentchar(c)) {
-        LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid identifier character '%c'.", c);
-        return LY_EVALID;
-    }
-
-    return LY_SUCCESS;
-}
-
-/**
  * @brief Store a single UTF8 character. It depends whether in a dynamically-allocated buffer or just as a pointer to the data.
  *
  * @param[in] ctx yang parser context for logging.
@@ -265,14 +197,14 @@ buf_store_char(struct lys_parser_ctx *ctx, const char **input, enum yang_arg arg
     /* check character validity */
     switch (arg) {
     case Y_IDENTIF_ARG:
-        LY_CHECK_RET(check_identifierchar(ctx, c, !(*word_len), NULL));
+        LY_CHECK_RET(lysp_check_identifierchar(ctx, c, !(*word_len), NULL));
         break;
     case Y_PREF_IDENTIF_ARG:
-        LY_CHECK_RET(check_identifierchar(ctx, c, !(*word_len), &prefix));
+        LY_CHECK_RET(lysp_check_identifierchar(ctx, c, !(*word_len), &prefix));
         break;
     case Y_STR_ARG:
     case Y_MAYBE_STR_ARG:
-        LY_CHECK_RET(check_stringchar(ctx, c));
+        LY_CHECK_RET(lysp_check_stringchar(ctx, c));
         break;
     }
 
@@ -809,7 +741,7 @@ extension:
                              LOGVAL_PARSER(ctx, LY_VCODE_INCHAR, (*data)[-len]), LY_EVALID);
             ++ctx->indent;
             /* check character validity */
-            LY_CHECK_RET(check_identifierchar(ctx, c, *data - len == word_start ? 1 : 0, &prefix));
+            LY_CHECK_RET(lysp_check_identifierchar(ctx, c, *data - len == word_start ? 1 : 0, &prefix));
         }
         if (!**data) {
             LOGVAL_PARSER(ctx, LY_VCODE_EOF);

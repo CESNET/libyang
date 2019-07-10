@@ -872,6 +872,20 @@ test_yin_parse_mandatory(void **state)
     st->finished_correctly = true;
 }
 
+static void
+test_validate_value(void **state)
+{
+    struct state *st = *state;
+    assert_int_equal(yin_validate_value(st->yin_ctx, Y_IDENTIF_ARG, "#invalid", 8), LY_EVALID);
+    logbuf_assert("Invalid identifier character '#'. Line number 1.");
+    assert_int_equal(yin_validate_value(st->yin_ctx, Y_STR_ARG, "", 0), LY_SUCCESS);
+    assert_int_equal(yin_validate_value(st->yin_ctx, Y_IDENTIF_ARG, "pre:b", 5), LY_EVALID);
+    assert_int_equal(yin_validate_value(st->yin_ctx, Y_PREF_IDENTIF_ARG, "pre:b", 5), LY_SUCCESS);
+    assert_int_equal(yin_validate_value(st->yin_ctx, Y_PREF_IDENTIF_ARG, "pre:pre:b", 9), LY_EVALID);
+
+    st->finished_correctly = true;
+}
+
 int
 main(void)
 {
@@ -889,6 +903,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_yin_parse_content, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_yin_parse_yangversion, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_yin_parse_mandatory, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_validate_value, setup_f, teardown_f),
         cmocka_unit_test(test_yin_match_argument_name),
     };
 

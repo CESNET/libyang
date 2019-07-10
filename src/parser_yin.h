@@ -71,7 +71,7 @@ struct yin_parser_ctx {
 
 struct yin_subelement {
     enum yang_keyword type; /**< type of keyword */
-    void *dest;             /**< meta infromation passed to responsible function (information about where parsed subelement should be stored) */
+    void *dest;             /**< meta infromation passed to responsible function (mostly information about where parsed subelement should be stored) */
     uint8_t flags;          /**< describes cardianlity of subelement can be set to YIN_SUBELEM_MANDATORY and YIN_SUBELEM_UNIQUE and YIN_SUBELEM_FIRST */
 };
 
@@ -129,6 +129,19 @@ LY_ERR yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *sube
  */
 LY_ERR yin_parse_yangversion(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data, uint8_t *version,
                              struct lysp_ext_instance **exts);
+
+/**
+ * @brief Check that val is valid UTF8 character sequence of val_type.
+ *        Doesn't check empty string, only character validity.
+ *
+ * @param[in] ctx Yin parser context for logging.
+ * @param[in] val_type Type of the input string to select method of checking character validity.
+ * @param[in] val Input to validate.
+ * @param[in] len Length of input.
+ *
+ * @return LY_ERR values.
+ */
+LY_ERR yin_validate_value(struct yin_parser_ctx *ctx, enum yang_arg val_type, char *val, size_t len);
 
 /**
  * @brief Parse import element.
