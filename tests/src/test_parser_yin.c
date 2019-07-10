@@ -667,6 +667,7 @@ test_yin_parse_content(void **state)
                                 "<reference><text>when_ref</text></reference>"
                                 "<description><text>when_desc</text></description>"
                             "</when>"
+                            "<config value=\"true\"/>"
                         "</prefix>";
     struct lysp_ext_instance *exts = NULL;
     const char **if_features = NULL;
@@ -674,16 +675,18 @@ test_yin_parse_content(void **state)
     const char *value;
     struct lysp_ext *ext_def = NULL;
     struct lysp_when *when_p = NULL;
+    uint8_t config = 0;
 
     lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
     yin_load_attributes(st->yin_ctx, &data, &attrs);
 
-    struct yin_subelement subelems[5] = {{YANG_EXTENSION, &ext_def, 0},
+    struct yin_subelement subelems[6] = {{YANG_CONFIG, &config, 0},
+                                         {YANG_EXTENSION, &ext_def, 0},
                                          {YANG_IF_FEATURE, &if_features, 0},
                                          {YANG_WHEN, &when_p, 0},
                                          {YANG_CUSTOM, NULL, 0},
                                          {YIN_TEXT, &value, 0}};
-    ret = yin_parse_content(st->yin_ctx, subelems, 5, &data, YANG_PREFIX, NULL, &exts);
+    ret = yin_parse_content(st->yin_ctx, subelems, 6, &data, YANG_PREFIX, NULL, &exts);
     assert_int_equal(ret, LY_SUCCESS);
     assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
     assert_string_equal(exts->name, "custom");
@@ -692,6 +695,7 @@ test_yin_parse_content(void **state)
     assert_string_equal(when_p->cond, "condition...");
     assert_string_equal(when_p->dsc, "when_desc");
     assert_string_equal(when_p->ref, "when_ref");
+    assert_int_equal(config, LYS_CONFIG_W);
     lysp_ext_instance_free(st->ctx, exts);
     lysp_when_free(st->ctx, when_p);
     lysp_ext_free(st->ctx, ext_def);

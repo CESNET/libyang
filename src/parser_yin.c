@@ -36,6 +36,10 @@
  */
 #define IS_YIN_NS(ns) (strcmp(ns, YIN_NS_URI) == 0)
 
+static LY_ERR
+yin_parse_config(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data, uint16_t *flags,
+                 struct lysp_ext_instance **exts);
+
 const char *const yin_attr_list[] = {
     [YIN_ARG_NAME] = "name",
     [YIN_ARG_TARGET_NODE] = "target-node",
@@ -352,7 +356,8 @@ yin_check_subelem_mandatory_constraint(struct yin_parser_ctx *ctx, struct yin_su
  */
 static LY_ERR
 yin_check_subelem_first_constraint(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_info,
-                                   signed char subelem_info_size, enum yang_keyword current_element, struct yin_subelement *exp_first)
+                                   signed char subelem_info_size, enum yang_keyword current_element,
+                                   struct yin_subelement *exp_first)
 {
     for (signed char i = 0; i < subelem_info_size; ++i) {
         if (subelem_info[i].flags & YIN_SUBELEM_PARSED) {
@@ -662,6 +667,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 case YANG_CHOICE:
                     break;
                 case YANG_CONFIG:
+                    ret = yin_parse_config(ctx, subelem_attrs, data, (uint16_t *)subelem_info_rec->dest, exts);
                     break;
                 case YANG_CONTACT:
                 case YANG_DESCRIPTION:
@@ -849,6 +855,39 @@ yin_parse_revision_date(struct yin_parser_ctx *ctx, struct yin_arg_record **attr
     FREE_STRING(ctx->xml_ctx.ctx, temp_rev);
 
     return yin_parse_content(ctx, subelems, 1, data, YANG_REVISION_DATE, NULL, exts);
+}
+
+/**
+ * @brief Parse config element.
+ *
+ * @param[in] ctx Yin parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of import element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] flags Flags to add to.
+ * @param[in,out] exts Extension instances to add to.
+ *
+ * @return LY_ERR values.
+ */
+static LY_ERR
+yin_parse_config(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data, uint16_t *flags,
+                 struct lysp_ext_instance **exts)
+{
+    const char *temp_val = NULL;
+    struct yin_subelement subelems[1] = {{YANG_CUSTOM, NULL, 0}};
+
+    LY_CHECK_RET(yin_parse_attribute(ctx, &attrs, YIN_ARG_VALUE, &temp_val, Y_STR_ARG, YANG_CONFIG));
+    if (strcmp(temp_val, "true") == 0) {
+        *flags |= LYS_CONFIG_W;
+    } else if (strcmp(temp_val, "false") == 0) {
+        *flags |= LYS_CONFIG_R;
+    } else {
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "config");
+        FREE_STRING(ctx->xml_ctx.ctx, temp_val);
+        return LY_EVALID;
+    }
+    FREE_STRING(ctx->xml_ctx.ctx, temp_val);
+
+    return yin_parse_content(ctx, subelems, 1, data, YANG_CONFIG, NULL, exts);
 }
 
 LY_ERR
