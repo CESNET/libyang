@@ -702,6 +702,8 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 case YANG_CONTAINER:
                     break;
                 case YANG_DEFAULT:
+                    ret = yin_parse_simple_element(ctx, subelem_attrs, data, kw, (const char **)subelem_info_rec->dest,
+                                                   YIN_ARG_VALUE, Y_STR_ARG, exts);
                     break;
                 case YANG_DEVIATE:
                     break;

@@ -673,11 +673,12 @@ test_yin_parse_content(void **state)
                             "</error-message>"
                             "<error-app-tag value=\"err-app-tag\"/>"
                             "<units name=\"radians\"></units>"
+                            "<default value=\"default-value\"/>"
                         "</prefix>";
     struct lysp_ext_instance *exts = NULL;
     const char **if_features = NULL;
     struct yin_arg_record *attrs = NULL;
-    const char *value, *err_msg, *app_tag, *units;
+    const char *value, *err_msg, *app_tag, *units, *def;
     struct lysp_ext *ext_def = NULL;
     struct lysp_when *when_p = NULL;
     uint8_t config = 0;
@@ -685,7 +686,8 @@ test_yin_parse_content(void **state)
     lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
     yin_load_attributes(st->yin_ctx, &data, &attrs);
 
-    struct yin_subelement subelems[9] = {{YANG_CONFIG, &config, 0},
+    struct yin_subelement subelems[10] = {{YANG_CONFIG, &config, 0},
+                                         {YANG_DEFAULT, &def, 0},
                                          {YANG_ERROR_APP_TAG, &app_tag, 0},
                                          {YANG_ERROR_MESSAGE, &err_msg, 0},
                                          {YANG_EXTENSION, &ext_def, 0},
@@ -694,10 +696,11 @@ test_yin_parse_content(void **state)
                                          {YANG_WHEN, &when_p, 0},
                                          {YANG_CUSTOM, NULL, 0},
                                          {YIN_TEXT, &value, 0}};
-    ret = yin_parse_content(st->yin_ctx, subelems, 9, &data, YANG_PREFIX, NULL, &exts);
+    ret = yin_parse_content(st->yin_ctx, subelems, 10, &data, YANG_PREFIX, NULL, &exts);
     assert_int_equal(ret, LY_SUCCESS);
     assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
     /* check parsed values */
+    assert_string_equal(def, "default-value");
     assert_string_equal(exts->name, "custom");
     assert_string_equal(exts->argument, "totally amazing extension");
     assert_string_equal(value, "wsefsdf");
@@ -716,6 +719,7 @@ test_yin_parse_content(void **state)
     FREE_STRING(st->ctx, err_msg);
     FREE_STRING(st->ctx, app_tag);
     FREE_STRING(st->ctx, units);
+    FREE_STRING(st->ctx, def);
     LY_ARRAY_FREE(if_features);
     LY_ARRAY_FREE(exts);
     LY_ARRAY_FREE(ext_def);
