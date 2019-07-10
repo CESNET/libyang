@@ -44,7 +44,6 @@ LY_ERR get_keyword(struct lys_parser_ctx *ctx, const char **data, enum yang_keyw
 LY_ERR get_argument(struct lys_parser_ctx *ctx, const char **data, enum yang_arg arg,
                     uint16_t *flags, char **word_p, char **word_b, size_t *word_len);
 LY_ERR skip_comment(struct lys_parser_ctx *ctx, const char **data, int comment);
-LY_ERR check_identifierchar(struct lys_parser_ctx *ctx, unsigned int c, int first, int *prefix);
 
 LY_ERR parse_action(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_action **actions);
 LY_ERR parse_any(struct lys_parser_ctx *ctx, const char **data, enum yang_keyword kw, struct lysp_node *parent, struct lysp_node **siblings);
@@ -188,21 +187,21 @@ test_helpers(void **state)
     free(buf);
 
     /* checking identifiers */
-    assert_int_equal(LY_EVALID, check_identifierchar(&ctx, ':', 0, NULL));
+    assert_int_equal(LY_EVALID, lysp_check_identifierchar(&ctx, ':', 0, NULL));
     logbuf_assert("Invalid identifier character ':'. Line number 1.");
-    assert_int_equal(LY_EVALID, check_identifierchar(&ctx, '#', 1, NULL));
+    assert_int_equal(LY_EVALID, lysp_check_identifierchar(&ctx, '#', 1, NULL));
     logbuf_assert("Invalid identifier first character '#'. Line number 1.");
 
-    assert_int_equal(LY_SUCCESS, check_identifierchar(&ctx, 'a', 1, &prefix));
+    assert_int_equal(LY_SUCCESS, lysp_check_identifierchar(&ctx, 'a', 1, &prefix));
     assert_int_equal(0, prefix);
-    assert_int_equal(LY_SUCCESS, check_identifierchar(&ctx, ':', 0, &prefix));
+    assert_int_equal(LY_SUCCESS, lysp_check_identifierchar(&ctx, ':', 0, &prefix));
     assert_int_equal(1, prefix);
-    assert_int_equal(LY_EVALID, check_identifierchar(&ctx, ':', 0, &prefix));
+    assert_int_equal(LY_EVALID, lysp_check_identifierchar(&ctx, ':', 0, &prefix));
     assert_int_equal(1, prefix);
-    assert_int_equal(LY_SUCCESS, check_identifierchar(&ctx, 'b', 0, &prefix));
+    assert_int_equal(LY_SUCCESS, lysp_check_identifierchar(&ctx, 'b', 0, &prefix));
     assert_int_equal(2, prefix);
     /* second colon is invalid */
-    assert_int_equal(LY_EVALID, check_identifierchar(&ctx, ':', 0, &prefix));
+    assert_int_equal(LY_EVALID, lysp_check_identifierchar(&ctx, ':', 0, &prefix));
     logbuf_assert("Invalid identifier character ':'. Line number 1.");
 }
 
@@ -1153,7 +1152,7 @@ test_identity(void **state)
     TEST_DUP("status", "current", "obsolete");
 
     /* full content */
-    str = " test {base \"a\";base b; description text;reference \'another text\';status current; if-feature x;if-feature y;prefix:ext;} ...";
+    str = " test {base \"a\";base pre:pre:b; description text;reference \'another text\';status current; if-feature x;if-feature y;prefix:ext;} ...";
     assert_int_equal(LY_SUCCESS, parse_identity(&ctx, &str, &ident));
     assert_non_null(ident);
     assert_string_equal(" ...", str);
