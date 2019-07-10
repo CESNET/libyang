@@ -710,6 +710,8 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 case YANG_ENUM:
                     break;
                 case YANG_ERROR_APP_TAG:
+                    ret = yin_parse_simple_element(ctx, subelem_attrs, data, kw, (const char **)subelem_info_rec->dest,
+                                                   YIN_ARG_VALUE, Y_STR_ARG, exts);
                     break;
                 case YANG_ERROR_MESSAGE:
                     ret = yin_parse_err_msg_element(ctx, data, (const char **)subelem_info_rec->dest, exts);
@@ -760,8 +762,8 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 case YANG_MUST:
                     break;
                 case YANG_NAMESPACE:
-                    ret = yin_parse_simple_element(ctx, subelem_attrs, data, kw,
-                                                   (const char **)subelem_info_rec->dest, YIN_ARG_URI, Y_STR_ARG, exts);
+                    ret = yin_parse_simple_element(ctx, subelem_attrs, data, kw, (const char **)subelem_info_rec->dest,
+                                                   YIN_ARG_URI, Y_STR_ARG, exts);
                     break;
                 case YANG_NOTIFICATION:
                     break;
