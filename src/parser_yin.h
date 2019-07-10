@@ -164,11 +164,12 @@ LY_ERR yin_parse_import(struct yin_parser_ctx *ctx, struct yin_arg_record **attr
  * @param[in] name_len Lenght of keyword name.
  * @param[in] prefix Start of keyword prefix.
  * @param[in] prefix_len lenght of prefix.
+ * @param[in] parrent Identification of parrent element, use YANG_NONE for elements without parrent.
  *
  * @return yang_keyword values.
  */
 enum yang_keyword yin_match_keyword(struct yin_parser_ctx *ctx, const char *name, size_t name_len,
-                                    const char *prefix, size_t prefix_len);
+                                    const char *prefix, size_t prefix_len, enum yang_keyword parrent);
 
 /**
  * @brief Parse mandatory element.

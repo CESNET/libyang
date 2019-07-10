@@ -53,7 +53,8 @@ const char *const yin_attr_list[] = {
 };
 
 enum yang_keyword
-yin_match_keyword(struct yin_parser_ctx *ctx, const char *name, size_t name_len, const char *prefix, size_t prefix_len)
+yin_match_keyword(struct yin_parser_ctx *ctx, const char *name, size_t name_len,
+                  const char *prefix, size_t prefix_len, enum yang_keyword parrent)
 {
     const char *start = NULL;
     enum yang_keyword kw = YANG_NONE;
@@ -73,11 +74,14 @@ yin_match_keyword(struct yin_parser_ctx *ctx, const char *name, size_t name_len,
         return YANG_NONE;
     }
 
-
     start = name;
     kw = lysp_match_kw(NULL, &name);
 
     if (name - start == (long int)name_len) {
+        /* this is done because of collision in yang statement value and yang argument mapped to yin element value */
+        if (kw == YANG_VALUE && parrent == YANG_ERROR_MESSAGE) {
+            return YIN_VALUE;
+        }
         return kw;
     } else {
         if (strncmp(start, "text", name_len) == 0) {
@@ -448,12 +452,12 @@ yin_parse_simple_elements(struct yin_parser_ctx *ctx, struct yin_arg_record *att
 }
 
 /**
- * @brief function to parse meta tags (description, contact, ...) eg. elements with
+ * @brief Function to parse meta tags (description, contact, ...) eg. elements with
  * text element as child
  *
  * @param[in,out] ctx Yin parser context for logging and to store current state.
  * @param[in,out] data Data to read from.
- * @param[in] Type of element can be se to YANG_ORGANIZATION or YANG_CONTACT or YANG_DESCRIPTION or YANG_REFERENCE.
+ * @param[in] Type of element can be set to YANG_ORGANIZATION or YANG_CONTACT or YANG_DESCRIPTION or YANG_REFERENCE.
  * @param[out] value Where the content of meta element should be stored.
  * @param[in,out] exts Extension instance to add to.
  *
@@ -469,6 +473,26 @@ yin_parse_meta_element(struct yin_parser_ctx *ctx, const char **data, enum yang_
                                          {YIN_TEXT, value, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE | YIN_SUBELEM_FIRST}};
 
     return yin_parse_content(ctx, subelems, 2, data, elem_type, NULL, exts);
+}
+
+/**
+ * @brief Parse error-message element.
+ *
+ * @param[in,out] ctx Yin parser context for logging and to store current state.
+ * @param[in,out] data Data to read from.
+ * @param[out] value Where the content of error-message element should be stored.
+ * @param[in,out] exts Extension instance to add to.
+ *
+ * @return LY_ERR values.
+ */
+static LY_ERR
+yin_parse_err_msg_element(struct yin_parser_ctx *ctx, const char **data, const char **value,
+                          struct lysp_ext_instance **exts)
+{
+    struct yin_subelement subelems[2] = {{YANG_CUSTOM, NULL, 0},
+                                         {YIN_VALUE, value, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE | YIN_SUBELEM_FIRST}};
+
+    return yin_parse_content(ctx, subelems, 2, data, YANG_ERROR_MESSAGE, NULL, exts);
 }
 
 /**
@@ -603,7 +627,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 }
                 ret = yin_load_attributes(ctx, data, &subelem_attrs);
                 LY_CHECK_GOTO(ret, cleanup);
-                kw = yin_match_keyword(ctx, name.value, name.len, prefix.value, prefix.len);
+                kw = yin_match_keyword(ctx, name.value, name.len, prefix.value, prefix.len, current_element);
 
                 /* check if this element can be child of current element */
                 subelem_info_rec = get_record(kw, subelem_info_size, subelem_info);
@@ -688,6 +712,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 case YANG_ERROR_APP_TAG:
                     break;
                 case YANG_ERROR_MESSAGE:
+                    ret = yin_parse_err_msg_element(ctx, data, (const char **)subelem_info_rec->dest, exts);
                     break;
                 case YANG_EXTENSION:
                     ret = yin_parse_extension(ctx, &subelem_attrs, data, (struct lysp_ext **)subelem_info_rec->dest);
@@ -798,9 +823,8 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     ret = yin_parse_yin_element_element(ctx, subelem_attrs, data, (uint16_t *)subelem_info_rec->dest, exts);
                     break;
                 case YIN_TEXT:
-                    ret = yin_parse_content(ctx, NULL, 0, data, YIN_TEXT, (const char **)subelem_info_rec->dest, NULL);
-                    break;
                 case YIN_VALUE:
+                    ret = yin_parse_content(ctx, NULL, 0, data, kw, (const char **)subelem_info_rec->dest, NULL);
                     break;
                 default:
                     LOGINT(ctx->xml_ctx.ctx);
@@ -1282,7 +1306,7 @@ yin_parse_module(struct ly_ctx *ctx, const char *data, struct lys_module *mod)
     LY_CHECK_GOTO(ret, cleanup);
     ret = yin_load_attributes(&yin_ctx, &data, &args);
     LY_CHECK_GOTO(ret, cleanup);
-    kw = yin_match_keyword(&yin_ctx, name, name_len, prefix, prefix_len);
+    kw = yin_match_keyword(&yin_ctx, name, name_len, prefix, prefix_len, YANG_NONE);
     if (kw == YANG_SUBMODULE) {
         LOGERR(ctx, LY_EDENIED, "Input data contains submodule which cannot be parsed directly without its main module.");
         ret = LY_EINVAL;

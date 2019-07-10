@@ -219,76 +219,76 @@ test_yin_match_keyword(void **state)
     yin_load_attributes(st->yin_ctx, &data, &args);
     LY_ARRAY_FREE(args);
 
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "anydatax", strlen("anydatax"), prefix, prefix_len), YANG_NONE);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "asdasd", strlen("asdasd"), prefix, prefix_len), YANG_NONE);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "", 0, prefix, prefix_len), YANG_NONE);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "anydata", strlen("anydata"), prefix, prefix_len), YANG_ANYDATA);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "anyxml", strlen("anyxml"), prefix, prefix_len), YANG_ANYXML);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "argument", strlen("argument"), prefix, prefix_len), YANG_ARGUMENT);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "augment", strlen("augment"), prefix, prefix_len), YANG_AUGMENT);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "base", strlen("base"), prefix, prefix_len), YANG_BASE);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "belongs-to", strlen("belongs-to"), prefix, prefix_len), YANG_BELONGS_TO);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "bit", strlen("bit"), prefix, prefix_len), YANG_BIT);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "case", strlen("case"), prefix, prefix_len), YANG_CASE);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "choice", strlen("choice"), prefix, prefix_len), YANG_CHOICE);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "config", strlen("config"), prefix, prefix_len), YANG_CONFIG);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "contact", strlen("contact"), prefix, prefix_len), YANG_CONTACT);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "container", strlen("container"), prefix, prefix_len), YANG_CONTAINER);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "default", strlen("default"), prefix, prefix_len), YANG_DEFAULT);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "description", strlen("description"), prefix, prefix_len), YANG_DESCRIPTION);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "deviate", strlen("deviate"), prefix, prefix_len), YANG_DEVIATE);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "deviation", strlen("deviation"), prefix, prefix_len), YANG_DEVIATION);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "enum", strlen("enum"), prefix, prefix_len), YANG_ENUM);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "error-app-tag", strlen("error-app-tag"), prefix, prefix_len), YANG_ERROR_APP_TAG);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "error-message", strlen("error-message"), prefix, prefix_len), YANG_ERROR_MESSAGE);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "extension", strlen("extension"), prefix, prefix_len), YANG_EXTENSION);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "feature", strlen("feature"), prefix, prefix_len), YANG_FEATURE);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "fraction-digits", strlen("fraction-digits"), prefix,  prefix_len), YANG_FRACTION_DIGITS);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "grouping", strlen("grouping"), prefix, prefix_len), YANG_GROUPING);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "identity", strlen("identity"), prefix, prefix_len), YANG_IDENTITY);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "if-feature", strlen("if-feature"), prefix, prefix_len), YANG_IF_FEATURE);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "import", strlen("import"), prefix, prefix_len), YANG_IMPORT);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "include", strlen("include"), prefix, prefix_len), YANG_INCLUDE);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "input", strlen("input"), prefix, prefix_len), YANG_INPUT);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "key", strlen("key"), prefix, prefix_len), YANG_KEY);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "leaf", strlen("leaf"), prefix, prefix_len), YANG_LEAF);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "leaf-list", strlen("leaf-list"), prefix, prefix_len), YANG_LEAF_LIST);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "length", strlen("length"), prefix, prefix_len), YANG_LENGTH);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "list", strlen("list"), prefix, prefix_len), YANG_LIST);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "mandatory", strlen("mandatory"), prefix, prefix_len), YANG_MANDATORY);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "max-elements", strlen("max-elements"), prefix, prefix_len), YANG_MAX_ELEMENTS);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "min-elements", strlen("min-elements"), prefix, prefix_len), YANG_MIN_ELEMENTS);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "modifier", strlen("modifier"), prefix, prefix_len), YANG_MODIFIER);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "module", strlen("module"), prefix, prefix_len), YANG_MODULE);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "must", strlen("must"), prefix, prefix_len), YANG_MUST);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "namespace", strlen("namespace"), prefix, prefix_len), YANG_NAMESPACE);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "notification", strlen("notification"), prefix, prefix_len), YANG_NOTIFICATION);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "ordered-by", strlen("ordered-by"), prefix, prefix_len), YANG_ORDERED_BY);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "organization", strlen("organization"), prefix, prefix_len), YANG_ORGANIZATION);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "output", strlen("output"), prefix, prefix_len), YANG_OUTPUT);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "path", strlen("path"), prefix, prefix_len), YANG_PATH);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "pattern", strlen("pattern"), prefix, prefix_len), YANG_PATTERN);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "position", strlen("position"), prefix, prefix_len), YANG_POSITION);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "prefix", strlen("prefix"), prefix, prefix_len), YANG_PREFIX);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "presence", strlen("presence"), prefix, prefix_len), YANG_PRESENCE);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "range", strlen("range"), prefix, prefix_len), YANG_RANGE);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "reference", strlen("reference"), prefix, prefix_len), YANG_REFERENCE);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "refine", strlen("refine"), prefix, prefix_len), YANG_REFINE);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "require-instance", strlen("require-instance"), prefix, prefix_len), YANG_REQUIRE_INSTANCE);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "revision", strlen("revision"), prefix, prefix_len), YANG_REVISION);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "revision-date", strlen("revision-date"), prefix, prefix_len), YANG_REVISION_DATE);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "rpc", strlen("rpc"), prefix, prefix_len), YANG_RPC);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "status", strlen("status"), prefix, prefix_len), YANG_STATUS);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "submodule", strlen("submodule"), prefix, prefix_len), YANG_SUBMODULE);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "type", strlen("type"), prefix, prefix_len), YANG_TYPE);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "typedef", strlen("typedef"), prefix, prefix_len), YANG_TYPEDEF);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "unique", strlen("unique"), prefix, prefix_len), YANG_UNIQUE);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "units", strlen("units"), prefix, prefix_len), YANG_UNITS);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "uses", strlen("uses"), prefix, prefix_len), YANG_USES);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "value", strlen("value"), prefix, prefix_len), YANG_VALUE);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "when", strlen("when"), prefix, prefix_len), YANG_WHEN);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "yang-version", strlen("yang-version"), prefix, prefix_len), YANG_YANG_VERSION);
-    assert_int_equal(yin_match_keyword(st->yin_ctx, "yin-element", strlen("yin-element"), prefix, prefix_len), YANG_YIN_ELEMENT);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "anydatax", strlen("anydatax"), prefix, prefix_len, YANG_NONE), YANG_NONE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "asdasd", strlen("asdasd"), prefix, prefix_len, YANG_NONE), YANG_NONE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "", 0, prefix, prefix_len, YANG_NONE), YANG_NONE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "anydata", strlen("anydata"), prefix, prefix_len, YANG_NONE), YANG_ANYDATA);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "anyxml", strlen("anyxml"), prefix, prefix_len, YANG_NONE), YANG_ANYXML);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "argument", strlen("argument"), prefix, prefix_len, YANG_NONE), YANG_ARGUMENT);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "augment", strlen("augment"), prefix, prefix_len, YANG_NONE), YANG_AUGMENT);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "base", strlen("base"), prefix, prefix_len, YANG_NONE), YANG_BASE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "belongs-to", strlen("belongs-to"), prefix, prefix_len, YANG_NONE), YANG_BELONGS_TO);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "bit", strlen("bit"), prefix, prefix_len, YANG_NONE), YANG_BIT);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "case", strlen("case"), prefix, prefix_len, YANG_NONE), YANG_CASE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "choice", strlen("choice"), prefix, prefix_len, YANG_NONE), YANG_CHOICE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "config", strlen("config"), prefix, prefix_len, YANG_NONE), YANG_CONFIG);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "contact", strlen("contact"), prefix, prefix_len, YANG_NONE), YANG_CONTACT);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "container", strlen("container"), prefix, prefix_len, YANG_NONE), YANG_CONTAINER);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "default", strlen("default"), prefix, prefix_len, YANG_NONE), YANG_DEFAULT);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "description", strlen("description"), prefix, prefix_len, YANG_NONE), YANG_DESCRIPTION);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "deviate", strlen("deviate"), prefix, prefix_len, YANG_NONE), YANG_DEVIATE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "deviation", strlen("deviation"), prefix, prefix_len, YANG_NONE), YANG_DEVIATION);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "enum", strlen("enum"), prefix, prefix_len, YANG_NONE), YANG_ENUM);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "error-app-tag", strlen("error-app-tag"), prefix, prefix_len, YANG_NONE), YANG_ERROR_APP_TAG);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "error-message", strlen("error-message"), prefix, prefix_len, YANG_NONE), YANG_ERROR_MESSAGE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "extension", strlen("extension"), prefix, prefix_len, YANG_NONE), YANG_EXTENSION);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "feature", strlen("feature"), prefix, prefix_len, YANG_NONE), YANG_FEATURE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "fraction-digits", strlen("fraction-digits"), prefix,  prefix_len, YANG_NONE), YANG_FRACTION_DIGITS);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "grouping", strlen("grouping"), prefix, prefix_len, YANG_NONE), YANG_GROUPING);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "identity", strlen("identity"), prefix, prefix_len, YANG_NONE), YANG_IDENTITY);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "if-feature", strlen("if-feature"), prefix, prefix_len, YANG_NONE), YANG_IF_FEATURE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "import", strlen("import"), prefix, prefix_len, YANG_NONE), YANG_IMPORT);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "include", strlen("include"), prefix, prefix_len, YANG_NONE), YANG_INCLUDE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "input", strlen("input"), prefix, prefix_len, YANG_NONE), YANG_INPUT);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "key", strlen("key"), prefix, prefix_len, YANG_NONE), YANG_KEY);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "leaf", strlen("leaf"), prefix, prefix_len, YANG_NONE), YANG_LEAF);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "leaf-list", strlen("leaf-list"), prefix, prefix_len, YANG_NONE), YANG_LEAF_LIST);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "length", strlen("length"), prefix, prefix_len, YANG_NONE), YANG_LENGTH);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "list", strlen("list"), prefix, prefix_len, YANG_NONE), YANG_LIST);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "mandatory", strlen("mandatory"), prefix, prefix_len, YANG_NONE), YANG_MANDATORY);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "max-elements", strlen("max-elements"), prefix, prefix_len, YANG_NONE), YANG_MAX_ELEMENTS);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "min-elements", strlen("min-elements"), prefix, prefix_len, YANG_NONE), YANG_MIN_ELEMENTS);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "modifier", strlen("modifier"), prefix, prefix_len, YANG_NONE), YANG_MODIFIER);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "module", strlen("module"), prefix, prefix_len, YANG_NONE), YANG_MODULE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "must", strlen("must"), prefix, prefix_len, YANG_NONE), YANG_MUST);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "namespace", strlen("namespace"), prefix, prefix_len, YANG_NONE), YANG_NAMESPACE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "notification", strlen("notification"), prefix, prefix_len, YANG_NONE), YANG_NOTIFICATION);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "ordered-by", strlen("ordered-by"), prefix, prefix_len, YANG_NONE), YANG_ORDERED_BY);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "organization", strlen("organization"), prefix, prefix_len, YANG_NONE), YANG_ORGANIZATION);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "output", strlen("output"), prefix, prefix_len, YANG_NONE), YANG_OUTPUT);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "path", strlen("path"), prefix, prefix_len, YANG_NONE), YANG_PATH);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "pattern", strlen("pattern"), prefix, prefix_len, YANG_NONE), YANG_PATTERN);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "position", strlen("position"), prefix, prefix_len, YANG_NONE), YANG_POSITION);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "prefix", strlen("prefix"), prefix, prefix_len, YANG_NONE), YANG_PREFIX);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "presence", strlen("presence"), prefix, prefix_len, YANG_NONE), YANG_PRESENCE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "range", strlen("range"), prefix, prefix_len, YANG_NONE), YANG_RANGE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "reference", strlen("reference"), prefix, prefix_len, YANG_NONE), YANG_REFERENCE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "refine", strlen("refine"), prefix, prefix_len, YANG_NONE), YANG_REFINE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "require-instance", strlen("require-instance"), prefix, prefix_len, YANG_NONE), YANG_REQUIRE_INSTANCE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "revision", strlen("revision"), prefix, prefix_len, YANG_NONE), YANG_REVISION);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "revision-date", strlen("revision-date"), prefix, prefix_len, YANG_NONE), YANG_REVISION_DATE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "rpc", strlen("rpc"), prefix, prefix_len, YANG_NONE), YANG_RPC);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "status", strlen("status"), prefix, prefix_len, YANG_NONE), YANG_STATUS);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "submodule", strlen("submodule"), prefix, prefix_len, YANG_NONE), YANG_SUBMODULE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "type", strlen("type"), prefix, prefix_len, YANG_NONE), YANG_TYPE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "typedef", strlen("typedef"), prefix, prefix_len, YANG_NONE), YANG_TYPEDEF);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "unique", strlen("unique"), prefix, prefix_len, YANG_NONE), YANG_UNIQUE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "units", strlen("units"), prefix, prefix_len, YANG_NONE), YANG_UNITS);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "uses", strlen("uses"), prefix, prefix_len, YANG_NONE), YANG_USES);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "value", strlen("value"), prefix, prefix_len, YANG_NONE), YANG_VALUE);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "when", strlen("when"), prefix, prefix_len, YANG_NONE), YANG_WHEN);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "yang-version", strlen("yang-version"), prefix, prefix_len, YANG_NONE), YANG_YANG_VERSION);
+    assert_int_equal(yin_match_keyword(st->yin_ctx, "yin-element", strlen("yin-element"), prefix, prefix_len, YANG_NONE), YANG_YIN_ELEMENT);
 
     st->finished_correctly = true;
 }
@@ -668,11 +668,14 @@ test_yin_parse_content(void **state)
                                 "<description><text>when_desc</text></description>"
                             "</when>"
                             "<config value=\"true\"/>"
+                            "<error-message>"
+                                "<value>error-msg</value>"
+                            "</error-message>"
                         "</prefix>";
     struct lysp_ext_instance *exts = NULL;
     const char **if_features = NULL;
     struct yin_arg_record *attrs = NULL;
-    const char *value;
+    const char *value, *err_msg;
     struct lysp_ext *ext_def = NULL;
     struct lysp_when *when_p = NULL;
     uint8_t config = 0;
@@ -680,13 +683,14 @@ test_yin_parse_content(void **state)
     lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
     yin_load_attributes(st->yin_ctx, &data, &attrs);
 
-    struct yin_subelement subelems[6] = {{YANG_CONFIG, &config, 0},
+    struct yin_subelement subelems[7] = {{YANG_CONFIG, &config, 0},
+                                         {YANG_ERROR_MESSAGE, &err_msg, 0},
                                          {YANG_EXTENSION, &ext_def, 0},
                                          {YANG_IF_FEATURE, &if_features, 0},
                                          {YANG_WHEN, &when_p, 0},
                                          {YANG_CUSTOM, NULL, 0},
                                          {YIN_TEXT, &value, 0}};
-    ret = yin_parse_content(st->yin_ctx, subelems, 6, &data, YANG_PREFIX, NULL, &exts);
+    ret = yin_parse_content(st->yin_ctx, subelems, 7, &data, YANG_PREFIX, NULL, &exts);
     assert_int_equal(ret, LY_SUCCESS);
     assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
     assert_string_equal(exts->name, "custom");
@@ -696,10 +700,12 @@ test_yin_parse_content(void **state)
     assert_string_equal(when_p->dsc, "when_desc");
     assert_string_equal(when_p->ref, "when_ref");
     assert_int_equal(config, LYS_CONFIG_W);
+    assert_string_equal(err_msg, "error-msg");
     lysp_ext_instance_free(st->ctx, exts);
     lysp_when_free(st->ctx, when_p);
     lysp_ext_free(st->ctx, ext_def);
     FREE_STRING(st->ctx, *if_features);
+    FREE_STRING(st->ctx, err_msg);
     LY_ARRAY_FREE(if_features);
     LY_ARRAY_FREE(exts);
     LY_ARRAY_FREE(ext_def);
