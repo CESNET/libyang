@@ -169,14 +169,17 @@ buf_add_char(struct ly_ctx *ctx, const char **input, size_t len, char **buf, siz
  * @param[in,out] word_b Word buffer. Is kept NULL as long as it is not requested (word is a substring of the data).
  * @param[in,out] buf_len Current length of \p word_b.
  * @param[in] need_buf Flag if the dynamically allocated buffer is required.
+ * @param[in,out] prefix Storage for internally used flag in case of possible prefixed identifiers:
+ * 0 - colon not yet found (no prefix)
+ * 1 - \p c is the colon character
+ * 2 - prefix already processed, now processing the identifier
  *
  * @return LY_ERR values.
  */
 LY_ERR
-buf_store_char(struct lys_parser_ctx *ctx, const char **input, enum yang_arg arg,
-               char **word_p, size_t *word_len, char **word_b, size_t *buf_len, int need_buf)
+buf_store_char(struct lys_parser_ctx *ctx, const char **input, enum yang_arg arg, char **word_p,
+               size_t *word_len, char **word_b, size_t *buf_len, int need_buf, int *prefix)
 {
-    int prefix = 0;
     unsigned int c;
     size_t len;
 
@@ -200,7 +203,7 @@ buf_store_char(struct lys_parser_ctx *ctx, const char **input, enum yang_arg arg
         LY_CHECK_RET(lysp_check_identifierchar(ctx, c, !(*word_len), NULL));
         break;
     case Y_PREF_IDENTIF_ARG:
-        LY_CHECK_RET(lysp_check_identifierchar(ctx, c, !(*word_len), &prefix));
+        LY_CHECK_RET(lysp_check_identifierchar(ctx, c, !(*word_len), prefix));
         break;
     case Y_STR_ARG:
     case Y_MAYBE_STR_ARG:
@@ -334,6 +337,7 @@ read_qstring(struct lys_parser_ctx *ctx, const char **data, enum yang_arg arg, c
      *         5 - string continues after +, skipping whitespaces */
     unsigned int string, block_indent = 0, current_indent = 0, need_buf = 0;
     const char *c;
+    int prefix = 0;
 
     if (**data == '\"') {
         string = 2;
@@ -355,7 +359,7 @@ read_qstring(struct lys_parser_ctx *ctx, const char **data, enum yang_arg arg, c
                 break;
             default:
                 /* check and store character */
-                LY_CHECK_RET(buf_store_char(ctx, data, arg, word_p, word_len, word_b, buf_len, need_buf));
+                LY_CHECK_RET(buf_store_char(ctx, data, arg, word_p, word_len, word_b, buf_len, need_buf, &prefix));
                 break;
             }
             break;
@@ -377,7 +381,7 @@ read_qstring(struct lys_parser_ctx *ctx, const char **data, enum yang_arg arg, c
                     MOVE_INPUT(ctx, data, 1);
                 } else {
                     /* check and store character */
-                    LY_CHECK_RET(buf_store_char(ctx, data, arg, word_p, word_len, word_b, buf_len, need_buf));
+                    LY_CHECK_RET(buf_store_char(ctx, data, arg, word_p, word_len, word_b, buf_len, need_buf, &prefix));
                 }
                 break;
             case '\t':
@@ -388,12 +392,12 @@ read_qstring(struct lys_parser_ctx *ctx, const char **data, enum yang_arg arg, c
                     for (; current_indent > block_indent; --current_indent, --ctx->indent) {
                         /* store leftover spaces from the tab */
                         c = " ";
-                        LY_CHECK_RET(buf_store_char(ctx, &c, arg, word_p, word_len, word_b, buf_len, need_buf));
+                        LY_CHECK_RET(buf_store_char(ctx, &c, arg, word_p, word_len, word_b, buf_len, need_buf, &prefix));
                     }
                     ++(*data);
                 } else {
                     /* check and store character */
-                    LY_CHECK_RET(buf_store_char(ctx, data, arg, word_p, word_len, word_b, buf_len, need_buf));
+                    LY_CHECK_RET(buf_store_char(ctx, data, arg, word_p, word_len, word_b, buf_len, need_buf, &prefix));
                     /* additional characters for indentation - only 1 was count in buf_store_char */
                     ctx->indent += 7;
                 }
@@ -413,7 +417,7 @@ read_qstring(struct lys_parser_ctx *ctx, const char **data, enum yang_arg arg, c
                 }
 
                 /* check and store character */
-                LY_CHECK_RET(buf_store_char(ctx, data, arg, word_p, word_len, word_b, buf_len, need_buf));
+                LY_CHECK_RET(buf_store_char(ctx, data, arg, word_p, word_len, word_b, buf_len, need_buf, &prefix));
 
                 /* maintain line number */
                 ++ctx->line;
@@ -426,7 +430,7 @@ read_qstring(struct lys_parser_ctx *ctx, const char **data, enum yang_arg arg, c
                 current_indent = block_indent;
 
                 /* check and store character */
-                LY_CHECK_RET(buf_store_char(ctx, data, arg, word_p, word_len, word_b, buf_len, need_buf));
+                LY_CHECK_RET(buf_store_char(ctx, data, arg, word_p, word_len, word_b, buf_len, need_buf, &prefix));
                 break;
             }
             break;
@@ -451,7 +455,7 @@ read_qstring(struct lys_parser_ctx *ctx, const char **data, enum yang_arg arg, c
             }
 
             /* check and store character */
-            LY_CHECK_RET(buf_store_char(ctx, &c, arg, word_p, word_len, word_b, buf_len, need_buf));
+            LY_CHECK_RET(buf_store_char(ctx, &c, arg, word_p, word_len, word_b, buf_len, need_buf, &prefix));
 
             string = 2;
             ++(*data);
@@ -531,7 +535,7 @@ get_argument(struct lys_parser_ctx *ctx, const char **data, enum yang_arg arg,
              uint16_t *flags, char **word_p, char **word_b, size_t *word_len)
 {
     size_t buf_len = 0;
-
+    int prefix = 0;
     /* word buffer - dynamically allocated */
     *word_b = NULL;
 
@@ -565,7 +569,7 @@ get_argument(struct lys_parser_ctx *ctx, const char **data, enum yang_arg arg,
                 LY_CHECK_RET(skip_comment(ctx, data, 2));
             } else {
                 /* not a comment after all */
-                LY_CHECK_RET(buf_store_char(ctx, data, arg, word_p, word_len, word_b, &buf_len, 0));
+                LY_CHECK_RET(buf_store_char(ctx, data, arg, word_p, word_len, word_b, &buf_len, 0, &prefix));
             }
             break;
         case ' ':
@@ -613,7 +617,7 @@ get_argument(struct lys_parser_ctx *ctx, const char **data, enum yang_arg arg,
                         "unquoted string character, optsep, semicolon or opening brace");
             return LY_EVALID;
         default:
-            LY_CHECK_RET(buf_store_char(ctx, data, arg, word_p, word_len, word_b, &buf_len, 0));
+            LY_CHECK_RET(buf_store_char(ctx, data, arg, word_p, word_len, word_b, &buf_len, 0, &prefix));
             break;
         }
     }

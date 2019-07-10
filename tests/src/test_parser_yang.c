@@ -38,8 +38,8 @@ void lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node);
 void lysp_when_free(struct ly_ctx *ctx, struct lysp_when *when);
 
 LY_ERR buf_add_char(struct ly_ctx *ctx, const char **input, size_t len, char **buf, size_t *buf_len, size_t *buf_used);
-LY_ERR buf_store_char(struct lys_parser_ctx *ctx, const char **input, enum yang_arg arg,
-                      char **word_p, size_t *word_len, char **word_b, size_t *buf_len, int need_buf);
+LY_ERR buf_store_char(struct lys_parser_ctx *ctx, const char **input, enum yang_arg arg, char **word_p,
+                      size_t *word_len, char **word_b, size_t *buf_len, int need_buf, int *prefix);
 LY_ERR get_keyword(struct lys_parser_ctx *ctx, const char **data, enum yang_keyword *kw, char **word_p, size_t *word_len);
 LY_ERR get_argument(struct lys_parser_ctx *ctx, const char **data, enum yang_arg arg,
                     uint16_t *flags, char **word_p, char **word_b, size_t *word_len);
@@ -140,10 +140,10 @@ test_helpers(void **state)
     const char *str;
     char *buf, *p;
     size_t len, size;
-    int prefix;
     struct lys_parser_ctx ctx;
     ctx.ctx = NULL;
     ctx.line = 1;
+    int prefix = 0;
 
     /* storing into buffer */
     str = "abcd";
@@ -160,31 +160,33 @@ test_helpers(void **state)
     /* invalid first characters */
     len = 0;
     str = "2invalid";
-    assert_int_equal(LY_EVALID, buf_store_char(&ctx, &str, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1));
+    assert_int_equal(LY_EVALID, buf_store_char(&ctx, &str, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1, &prefix));
     str = ".invalid";
-    assert_int_equal(LY_EVALID, buf_store_char(&ctx, &str, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1));
+    assert_int_equal(LY_EVALID, buf_store_char(&ctx, &str, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1, &prefix));
     str = "-invalid";
-    assert_int_equal(LY_EVALID, buf_store_char(&ctx, &str, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1));
+    assert_int_equal(LY_EVALID, buf_store_char(&ctx, &str, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1, &prefix));
     /* invalid following characters */
     len = 3; /* number of characters read before the str content */
     str = "!";
-    assert_int_equal(LY_EVALID, buf_store_char(&ctx, &str, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1));
+    assert_int_equal(LY_EVALID, buf_store_char(&ctx, &str, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1, &prefix));
     str = ":";
-    assert_int_equal(LY_EVALID, buf_store_char(&ctx, &str, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1));
+    assert_int_equal(LY_EVALID, buf_store_char(&ctx, &str, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1, &prefix));
     /* valid colon for prefixed identifiers */
     len = size = 0;
     p = NULL;
+    prefix = 0;
     str = "x:id";
-    assert_int_equal(LY_SUCCESS, buf_store_char(&ctx, &str, Y_PREF_IDENTIF_ARG, &p, &len, &buf, &size, 0));
+    assert_int_equal(LY_SUCCESS, buf_store_char(&ctx, &str, Y_PREF_IDENTIF_ARG, &p, &len, &buf, &size, 0, &prefix));
     assert_int_equal(1, len);
     assert_null(buf);
     assert_string_equal(":id", str);
     assert_int_equal('x', p[len - 1]);
-    assert_int_equal(LY_SUCCESS, buf_store_char(&ctx, &str, Y_PREF_IDENTIF_ARG, &p, &len, &buf, &size, 1));
+    assert_int_equal(LY_SUCCESS, buf_store_char(&ctx, &str, Y_PREF_IDENTIF_ARG, &p, &len, &buf, &size, 1, &prefix));
     assert_int_equal(2, len);
     assert_string_equal("id", str);
     assert_int_equal(':', p[len - 1]);
     free(buf);
+    prefix = 0;
 
     /* checking identifiers */
     assert_int_equal(LY_EVALID, lysp_check_identifierchar(&ctx, ':', 0, NULL));
@@ -280,6 +282,10 @@ test_arg(void **state)
     str = "hello}";
     assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
     logbuf_assert("Invalid character sequence \"}\", expected unquoted string character, optsep, semicolon or opening brace. Line number 1.");
+
+    /* invalid identifier-ref-arg-str */
+    str = "pre:pre:value";
+    assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_PREF_IDENTIF_ARG, NULL, &word, &buf, &len));
 
     str = "\"\";"; /* empty identifier is not allowed */
     assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_IDENTIF_ARG, NULL, &word, &buf, &len));
@@ -1152,7 +1158,7 @@ test_identity(void **state)
     TEST_DUP("status", "current", "obsolete");
 
     /* full content */
-    str = " test {base \"a\";base pre:pre:b; description text;reference \'another text\';status current; if-feature x;if-feature y;prefix:ext;} ...";
+    str = " test {base \"a\";base b; description text;reference \'another text\';status current; if-feature x;if-feature y;prefix:ext;} ...";
     assert_int_equal(LY_SUCCESS, parse_identity(&ctx, &str, &ident));
     assert_non_null(ident);
     assert_string_equal(" ...", str);
