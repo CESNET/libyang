@@ -153,7 +153,7 @@ LY_ERR yin_validate_value(struct yin_parser_ctx *ctx, enum yang_arg val_type, ch
  *
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_import(struct yin_parser_ctx *ctx, struct yin_arg_record **attrs,
+LY_ERR yin_parse_import(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs,
                         const char **data, struct lysp_module *mod);
 
 /**
@@ -196,7 +196,7 @@ LY_ERR yin_parse_mandatory(struct yin_parser_ctx *ctx, struct yin_arg_record *at
  *
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_status(struct yin_parser_ctx *ctx, struct yin_arg_record **attrs, const char **data,
+LY_ERR yin_parse_status(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
                         uint16_t *flags, struct lysp_ext_instance **exts);
 
 /**
@@ -221,7 +221,7 @@ LY_ERR yin_parse_when(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, 
  *
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_revision_date(struct yin_parser_ctx *ctx, struct yin_arg_record **attrs, const char **data,
+LY_ERR yin_parse_revision_date(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
                                char *rev, struct lysp_ext_instance **exts);
 
 /**
@@ -260,7 +260,7 @@ LY_ERR yin_parse_yin_element_element(struct yin_parser_ctx *ctx, struct yin_arg_
  *
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_argument_element(struct yin_parser_ctx *ctx, struct yin_arg_record **attrs, const char **data,
+LY_ERR yin_parse_argument_element(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
                                   struct yin_argument_meta *arg_meta, struct lysp_ext_instance **exts);
 
 /**
@@ -273,7 +273,7 @@ LY_ERR yin_parse_argument_element(struct yin_parser_ctx *ctx, struct yin_arg_rec
  *
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_extension(struct yin_parser_ctx *ctx, struct yin_arg_record **attrs,
+LY_ERR yin_parse_extension(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs,
                            const char **data, struct lysp_ext **extensions);
 
 /**
@@ -290,7 +290,7 @@ LY_ERR yin_parse_extension(struct yin_parser_ctx *ctx, struct yin_arg_record **a
  *
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_extension_instance(struct yin_parser_ctx *ctx, struct yin_arg_record **attrs, const char **data,
+LY_ERR yin_parse_extension_instance(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
                                     const char *ext_name, int ext_name_len, LYEXT_SUBSTMT subelem,
                                     uint32_t subelem_index, struct lysp_ext_instance **exts);
 

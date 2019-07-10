@@ -367,7 +367,7 @@ test_yin_parse_import(void **state)
     lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->yin_ctx, &data, &args);
     st->lysp_mod->mod->prefix = "b-mod";
-    ret = yin_parse_import(st->yin_ctx, &args, &data, st->lysp_mod);
+    ret = yin_parse_import(st->yin_ctx, args, &data, st->lysp_mod);
     assert_int_equal(ret, LY_SUCCESS);
     assert_string_equal(st->lysp_mod->imports->name, "a");
     assert_string_equal(st->lysp_mod->imports->prefix, "a_mod");
@@ -382,7 +382,7 @@ test_yin_parse_import(void **state)
     lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->yin_ctx, &data, &args);
     st->lysp_mod->mod->prefix = "a_mod";
-    ret = yin_parse_import(st->yin_ctx, &args, &data, st->lysp_mod);
+    ret = yin_parse_import(st->yin_ctx, args, &data, st->lysp_mod);
     assert_int_equal(ret, LY_EVALID);
     logbuf_assert("Prefix \"a_mod\" already used as module prefix. Line number 1.");
     LY_ARRAY_FREE(args);
@@ -396,7 +396,7 @@ test_yin_parse_import(void **state)
     lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->yin_ctx, &data, &args);
     st->lysp_mod->mod->prefix = "invalid_mod";
-    ret = yin_parse_import(st->yin_ctx, &args, &data, st->lysp_mod);
+    ret = yin_parse_import(st->yin_ctx, args, &data, st->lysp_mod);
     assert_int_equal(ret, LY_EVALID);
     logbuf_assert("Unexpected child element \"what\" of import element. Line number 1.");
     LY_ARRAY_FREE(args);
@@ -419,7 +419,7 @@ test_yin_parse_status(void **state)
     const char *data = "<status value=\"current\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"/>";
     lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->yin_ctx, &data, &args);
-    ret = yin_parse_status(st->yin_ctx, &args, &data, &flags, &exts);
+    ret = yin_parse_status(st->yin_ctx, args, &data, &flags, &exts);
     assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
     assert_int_equal(ret, LY_SUCCESS);
     assert_true(flags & LYS_STATUS_CURR);
@@ -431,7 +431,7 @@ test_yin_parse_status(void **state)
     data = "<status value=\"deprecated\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"/>";
     lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->yin_ctx, &data, &args);
-    ret = yin_parse_status(st->yin_ctx, &args, &data, &flags, &exts);
+    ret = yin_parse_status(st->yin_ctx, args, &data, &flags, &exts);
     assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
     assert_int_equal(ret, LY_SUCCESS);
     assert_true(flags & LYS_STATUS_DEPRC);
@@ -443,7 +443,7 @@ test_yin_parse_status(void **state)
     data = "<status value=\"obsolete\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"/>";
     lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->yin_ctx, &data, &args);
-    ret = yin_parse_status(st->yin_ctx, &args, &data, &flags, &exts);
+    ret = yin_parse_status(st->yin_ctx, args, &data, &flags, &exts);
     assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
     assert_int_equal(ret, LY_SUCCESS);
     assert_true(flags & LYS_STATUS_OBSLT);
@@ -456,7 +456,7 @@ test_yin_parse_status(void **state)
     data = "<status value=\"dunno\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"/>";
     lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->yin_ctx, &data, &args);
-    ret = yin_parse_status(st->yin_ctx, &args, &data, &flags, &exts);
+    ret = yin_parse_status(st->yin_ctx, args, &data, &flags, &exts);
     assert_int_equal(ret, LY_EVALID);
     logbuf_assert("Invalid value \"dunno\" of \"status\". Line number 1.");
     LY_ARRAY_FREE(args);
@@ -482,7 +482,7 @@ test_yin_parse_extension(void **state)
                         </extension>";
     lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->yin_ctx, &data, &args);
-    ret = yin_parse_extension(st->yin_ctx, &args, &data, &exts);
+    ret = yin_parse_extension(st->yin_ctx, args, &data, &exts);
     assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
     assert_int_equal(ret, LY_SUCCESS);
     LY_ARRAY_FOR_ITER(exts, struct lysp_ext, iter) {
@@ -598,7 +598,7 @@ test_yin_parse_extension_instance(void **state)
     const char *data = "<ext value1=\"test\" value=\"test2\"><subelem>text</subelem></ext>";
     lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->yin_ctx, &data, &args);
-    ret = yin_parse_extension_instance(st->yin_ctx, &args, &data, name2fullname(name, prefix_len),
+    ret = yin_parse_extension_instance(st->yin_ctx, args, &data, name2fullname(name, prefix_len),
                                        namelen2fulllen(name_len, prefix_len), LYEXT_SUBSTMT_CONTACT, 0, &exts);
     assert_int_equal(ret, LY_SUCCESS);
     assert_string_equal(exts->name, "ext");
@@ -630,7 +630,7 @@ test_yin_parse_extension_instance(void **state)
     data = "<extension-elem />";
     lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->yin_ctx, &data, &args);
-    ret = yin_parse_extension_instance(st->yin_ctx, &args, &data, name, name_len, LYEXT_SUBSTMT_CONTACT, 0, &exts);
+    ret = yin_parse_extension_instance(st->yin_ctx, args, &data, name, name_len, LYEXT_SUBSTMT_CONTACT, 0, &exts);
     assert_int_equal(ret, LY_SUCCESS);
     assert_string_equal(exts->name, "extension-elem");
     assert_null(exts->argument);
