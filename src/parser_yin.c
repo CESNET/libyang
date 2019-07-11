@@ -776,7 +776,8 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     return LY_EVALID;
                 }
                 if (subelem_info_rec->flags & YIN_SUBELEM_FIRST) {
-                    LY_CHECK_RET(yin_check_subelem_first_constraint(ctx, subelem_info, subelem_info_size, current_element, subelem_info_rec));
+                    ret = yin_check_subelem_first_constraint(ctx, subelem_info, subelem_info_size, current_element, subelem_info_rec);
+                    LY_CHECK_GOTO(ret, cleanup);
                 }
                 subelem_info_rec->flags |= YIN_SUBELEM_PARSED;
 
@@ -922,7 +923,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 case YANG_RANGE:
                     type = (struct lysp_type *)subelem_info_rec->dest;
                     type->range = calloc(1, sizeof *type->range);
-                    LY_CHECK_ERR_RET(!type->range, LOGMEM(ctx->xml_ctx.ctx), LY_EVALID);
+                    LY_CHECK_ERR_GOTO(!type->range, LOGMEM(ctx->xml_ctx.ctx); ret = LY_EMEM, cleanup);
                     ret = yin_parse_restriction(ctx, subelem_attrs, data, kw, type->range);
                     type->flags |= LYS_SET_RANGE;
                     break;
