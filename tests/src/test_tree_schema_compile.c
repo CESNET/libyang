@@ -1478,7 +1478,7 @@ test_type_bits(void **state)
     assert_int_equal(8, ((struct lysc_type_bits*)type)->bits[4].position);
 
     assert_non_null(mod = lys_parse_mem(ctx, "module b {yang-version 1.1;namespace urn:b;prefix b;feature f; typedef mytype {type bits {"
-                                        "bit automin; bit one;bit two; bit seven {value 7;}bit eight;}} leaf l { type mytype {bit eight;bit seven;bit automin;}}}",
+                                        "bit automin; bit one;bit two; bit seven {position 7;}bit eight;}} leaf l { type mytype {bit eight;bit seven;bit automin;}}}",
                                         LYS_IN_YANG));
     type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
     assert_non_null(type);
@@ -1501,8 +1501,8 @@ test_type_bits(void **state)
                                    "bit one {position -1;}}}}", LYS_IN_YANG));
     logbuf_assert("Invalid value \"-1\" of \"position\". Line number 1.");
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; leaf l {type bits {"
-                                   "bit one {value 4294967296;}}}}", LYS_IN_YANG));
-    logbuf_assert("Invalid value \"4294967296\" of \"value\". Line number 1.");
+                                   "bit one {position 4294967296;}}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid value \"4294967296\" of \"position\". Line number 1.");
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; leaf l {type bits {"
                                    "bit one; bit one;}}}", LYS_IN_YANG));
     logbuf_assert("Duplicate identifier \"one\" of bit statement. Line number 1.");
@@ -1526,7 +1526,7 @@ test_type_bits(void **state)
     assert_null(lys_parse_mem(ctx, "module ee {namespace urn:ee;prefix ee;leaf l {type bits {bit x {position 4294967295;}bit y;}}}", LYS_IN_YANG));
     logbuf_assert("Invalid bits - it is not possible to auto-assign bit position for \"y\" since the highest value is already 4294967295. /ee:l");
 
-    assert_null(lys_parse_mem(ctx, "module ff {namespace urn:ff;prefix ff;leaf l {type bits {bit x {value 1;}bit y {value 1;}}}}", LYS_IN_YANG));
+    assert_null(lys_parse_mem(ctx, "module ff {namespace urn:ff;prefix ff;leaf l {type bits {bit x {position 1;}bit y {position 1;}}}}", LYS_IN_YANG));
     logbuf_assert("Invalid bits - position 1 collide in items \"y\" and \"x\". /ff:l");
 
     assert_null(lys_parse_mem(ctx, "module gg {namespace urn:gg;prefix gg;typedef mytype {type bits;}"

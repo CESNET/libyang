@@ -1765,7 +1765,13 @@ parse_type_enum(struct lys_parser_ctx *ctx, const char **data, enum yang_keyword
             LY_CHECK_RET(parse_status(ctx, data, &enm->flags, &enm->exts));
             break;
         case YANG_VALUE:
+            LY_CHECK_ERR_RET(enum_kw == YANG_BIT, LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw),
+                             ly_stmt2str(enum_kw)), LY_EVALID);
+            LY_CHECK_RET(parse_type_enum_value_pos(ctx, data, kw, &enm->value, &enm->flags, &enm->exts));
+            break;
         case YANG_POSITION:
+            LY_CHECK_ERR_RET(enum_kw == YANG_ENUM, LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw),
+                             ly_stmt2str(enum_kw)), LY_EVALID);
             LY_CHECK_RET(parse_type_enum_value_pos(ctx, data, kw, &enm->value, &enm->flags, &enm->exts));
             break;
         case YANG_CUSTOM:

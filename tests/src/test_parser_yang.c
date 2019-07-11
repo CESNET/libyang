@@ -1062,6 +1062,15 @@ test_module(void **state)
     logbuf_assert("Invalid keyword \"prefix\", expected \"module\" or \"submodule\". Line number 3.");
     mod = mod_renew(&ctx);
 
+    str = "module " SCHEMA_BEGINNING "}";
+    str = "module " SCHEMA_BEGINNING "leaf enum {type enumeration {enum seven { position 7;}}}}";
+    m = mod->mod;
+    free(mod);
+    m->parsed = NULL;
+    assert_int_equal(LY_EVALID, yang_parse_module(&ctx, str, m));
+    logbuf_assert("Invalid keyword \"position\" as a child of \"enum\". Line number 3.");
+    mod = mod_renew(&ctx);
+
     /* extensions */
     TEST_GENERIC("prefix:test;}", mod->exts,
                  assert_string_equal("prefix:test", mod->exts[0].name);
