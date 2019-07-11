@@ -894,6 +894,11 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 case YANG_LEAF_LIST:
                     break;
                 case YANG_LENGTH:
+                    type = (struct lysp_type *)subelem_info_rec->dest;
+                    type->length = calloc(1, sizeof *type->length);
+                    LY_CHECK_ERR_GOTO(!type->length, LOGMEM(ctx->xml_ctx.ctx); ret = LY_EMEM, cleanup);
+                    ret = yin_parse_restriction(ctx, subelem_attrs, data, kw, type->length);
+                    type->flags |= LYS_SET_LENGTH;
                     break;
                 case YANG_LIST:
                     break;
@@ -940,7 +945,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     type->range = calloc(1, sizeof *type->range);
                     LY_CHECK_ERR_GOTO(!type->range, LOGMEM(ctx->xml_ctx.ctx); ret = LY_EMEM, cleanup);
                     ret = yin_parse_restriction(ctx, subelem_attrs, data, kw, type->range);
-                    type->flags |= LYS_SET_RANGE;
+                    type->flags |=  LYS_SET_RANGE;
                     break;
                 case YANG_REFINE:
                     break;

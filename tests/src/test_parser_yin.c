@@ -678,6 +678,7 @@ test_yin_parse_content(void **state)
                             "<value value=\"-5\"/>"
                             "<require-instance value=\"true\"></require-instance>"
                             "<range value=\"5..10\" />"
+                            "<length value=\"baf\"/>"
                         "</prefix>";
     struct lysp_ext_instance *exts = NULL;
     const char **if_features = NULL;
@@ -686,27 +687,30 @@ test_yin_parse_content(void **state)
     struct lysp_ext *ext_def = NULL;
     struct lysp_when *when_p = NULL;
     struct lysp_type_enum pos_enum = {}, val_enum = {};
-    struct lysp_type req_type = {}, range_type = {};
+    struct lysp_type req_type = {}, range_type = {}, len_type = {};
     uint8_t config = 0;
 
     lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
     yin_load_attributes(st->yin_ctx, &data, &attrs);
 
-    struct yin_subelement subelems[14] = {{YANG_CONFIG, &config, 0},
-                                         {YANG_DEFAULT, &def, 0},
-                                         {YANG_ERROR_APP_TAG, &app_tag, 0},
-                                         {YANG_ERROR_MESSAGE, &err_msg, 0},
-                                         {YANG_EXTENSION, &ext_def, 0},
-                                         {YANG_IF_FEATURE, &if_features, 0},
-                                         {YANG_POSITION, &pos_enum, 0},
-                                         {YANG_RANGE, &range_type, 0},
-                                         {YANG_REQUIRE_INSTANCE, &req_type, 0},
-                                         {YANG_UNITS, &units, 0},
-                                         {YANG_VALUE, &val_enum, 0},
-                                         {YANG_WHEN, &when_p, 0},
-                                         {YANG_CUSTOM, NULL, 0},
-                                         {YIN_TEXT, &value, 0}};
-    ret = yin_parse_content(st->yin_ctx, subelems, 14, &data, YANG_PREFIX, NULL, &exts);
+    struct yin_subelement subelems[15] = {
+                                            {YANG_CONFIG, &config, 0},
+                                            {YANG_DEFAULT, &def, 0},
+                                            {YANG_ERROR_APP_TAG, &app_tag, 0},
+                                            {YANG_ERROR_MESSAGE, &err_msg, 0},
+                                            {YANG_EXTENSION, &ext_def, 0},
+                                            {YANG_IF_FEATURE, &if_features, 0},
+                                            {YANG_LENGTH, &len_type, 0},
+                                            {YANG_POSITION, &pos_enum, 0},
+                                            {YANG_RANGE, &range_type, 0},
+                                            {YANG_REQUIRE_INSTANCE, &req_type, 0},
+                                            {YANG_UNITS, &units, 0},
+                                            {YANG_VALUE, &val_enum, 0},
+                                            {YANG_WHEN, &when_p, 0},
+                                            {YANG_CUSTOM, NULL, 0},
+                                            {YIN_TEXT, &value, 0}
+                                        };
+    ret = yin_parse_content(st->yin_ctx, subelems, 15, &data, YANG_PREFIX, NULL, &exts);
     assert_int_equal(ret, LY_SUCCESS);
     assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
     /* check parsed values */
@@ -729,6 +733,8 @@ test_yin_parse_content(void **state)
     assert_true(range_type.flags | LYS_SET_RANGE);
     assert_string_equal(err_msg, "error-msg");
     assert_string_equal(app_tag, "err-app-tag");
+    assert_string_equal(len_type.length->arg, "baf");
+    assert_true(len_type.flags | LYS_SET_LENGTH);
     /* cleanup */
     lysp_ext_instance_free(st->ctx, exts);
     lysp_when_free(st->ctx, when_p);
@@ -739,6 +745,7 @@ test_yin_parse_content(void **state)
     FREE_STRING(st->ctx, units);
     FREE_STRING(st->ctx, def);
     FREE_STRING(st->ctx, range_type.range->arg);
+    FREE_STRING(st->ctx, len_type.length->arg);
     FREE_STRING(st->ctx, value);
     LY_ARRAY_FREE(if_features);
     LY_ARRAY_FREE(exts);
@@ -746,6 +753,7 @@ test_yin_parse_content(void **state)
     LY_ARRAY_FREE(attrs);
     free(when_p);
     free(range_type.range);
+    free(len_type.length);
     attrs = NULL;
     st = reset_state(state);
 
