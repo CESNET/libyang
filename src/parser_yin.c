@@ -492,6 +492,48 @@ yin_pasrse_reqinstance(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs,
 }
 
 /**
+ * @brief Parse modifier element.
+ *
+ * @param[in,out] ctx Yin parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] pat Value to write to.
+ * @param[in,out] exts Extension instances to add to.
+ *
+ * @return LY_ERR values.
+ */
+static LY_ERR
+yin_parse_modifier(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+                   const char **pat, struct lysp_ext_instance **exts)
+{
+    const char *temp_val;
+    char *modified_val;
+    struct yin_subelement subelems[1] = {
+                                            {YANG_CUSTOM, NULL, 0}
+                                        };
+
+    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_VALUE, &temp_val, Y_STR_ARG, YANG_MODIFIER));
+    if (strcmp(temp_val, "invert-match") != 0) {
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "modifier");
+        FREE_STRING(ctx->xml_ctx.ctx, temp_val);
+        return LY_EVALID;
+    }
+    assert(temp_val[0] == 0x06);
+
+    /* allocate new value */
+    modified_val = malloc(strlen(temp_val) + 1);
+    LY_CHECK_ERR_RET(!modified_val, LOGMEM(ctx->xml_ctx.ctx), LY_EMEM);
+    strcpy(modified_val, temp_val);
+    lydict_remove(ctx->xml_ctx.ctx, temp_val);
+
+    /* modify the new value */
+    modified_val[0] = 0x15;
+    *pat = lydict_insert_zc(ctx->xml_ctx.ctx, modified_val);
+
+    return yin_parse_content(ctx, subelems, 1, data, YANG_MODIFIER, NULL, exts);
+}
+
+/**
  * @brief Parse a restriction element (length, range or one instance of must).
  *
  * @param[in,out] ctx Yin parser context for logging and to store current state.
@@ -929,6 +971,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 case YANG_MIN_ELEMENTS:
                     break;
                 case YANG_MODIFIER:
+                    ret = yin_parse_modifier(ctx, subelem_attrs, data, (const char **)subelem_info_rec->dest, exts);
                     break;
                 case YANG_MODULE:
                     break;
