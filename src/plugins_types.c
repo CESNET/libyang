@@ -413,6 +413,10 @@ ly_type_store_int(struct ly_ctx *ctx, struct lysc_type *type, const char *value,
     char *str;
     struct lysc_type_num *type_num = (struct lysc_type_num *)type;
 
+    if (options & LY_TYPE_OPTS_SECOND_CALL) {
+        return LY_SUCCESS;
+    }
+
     switch (type->basetype) {
     case LY_TYPE_INT8:
         LY_CHECK_RET(ly_type_parse_int("int16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, INT64_C(-128), INT64_C(127), value, value_len, &i, err));
@@ -472,6 +476,10 @@ ly_type_store_uint(struct ly_ctx *ctx, struct lysc_type *type, const char *value
     struct lysc_type_num* type_num = (struct lysc_type_num*)type;
     char *str;
 
+    if (options & LY_TYPE_OPTS_SECOND_CALL) {
+        return LY_SUCCESS;
+    }
+
     switch (type->basetype) {
     case LY_TYPE_UINT8:
         LY_CHECK_RET(ly_type_parse_uint("uint16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, UINT64_C(255), value, value_len, &u, err));
@@ -527,6 +535,10 @@ ly_type_store_decimal64(struct ly_ctx *ctx, struct lysc_type *type, const char *
     int64_t d;
     struct lysc_type_dec* type_dec = (struct lysc_type_dec*)type;
     char buf[22];
+
+    if (options & LY_TYPE_OPTS_SECOND_CALL) {
+        return LY_SUCCESS;
+    }
 
     if (!value || !value[0] || !value_len) {
         *err = ly_err_new(LY_LLERR, LY_EINVAL, LYVE_RESTRICTION, strdup("Invalid empty decimal64 value."), NULL, NULL);
@@ -600,6 +612,10 @@ ly_type_store_binary(struct ly_ctx *ctx, struct lysc_type *type, const char *val
 
     /* initiate */
     *err = NULL;
+
+    if (options & LY_TYPE_OPTS_SECOND_CALL) {
+        return LY_SUCCESS;
+    }
 
     /* validate characters and remember the number of octets for length validation */
     if (value_len) {
@@ -693,6 +709,10 @@ ly_type_store_string(struct ly_ctx *ctx, struct lysc_type *type, const char *val
 {
     struct lysc_type_str *type_str = (struct lysc_type_str *)type;
 
+    if (options & LY_TYPE_OPTS_SECOND_CALL) {
+        return LY_SUCCESS;
+    }
+
     /* length restriction of the string */
     if (type_str->length) {
         char buf[22];
@@ -744,6 +764,10 @@ ly_type_store_bits(struct ly_ctx *ctx, struct lysc_type *type, const char *value
     size_t ws_count;
     size_t lws_count; /* leading whitespace count */
     const char *can = NULL;
+
+    if (options & LY_TYPE_OPTS_SECOND_CALL) {
+        return LY_SUCCESS;
+    }
 
     /* remember the present items for further work */
     items = ly_set_new();
@@ -898,6 +922,10 @@ ly_type_store_enum(struct ly_ctx *ctx, struct lysc_type *type, const char *value
     char *errmsg = NULL;
     struct lysc_type_enum *type_enum = (struct lysc_type_enum*)type;
 
+    if (options & LY_TYPE_OPTS_SECOND_CALL) {
+        return LY_SUCCESS;
+    }
+
     /* find the matching enumeration value item */
     LY_ARRAY_FOR(type_enum->enums, u) {
         if (!strncmp(type_enum->enums[u].name, value, value_len) && type_enum->enums[u].name[value_len] == '\0') {
@@ -960,6 +988,10 @@ ly_type_store_boolean(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), const 
 {
     int8_t i;
 
+    if (options & LY_TYPE_OPTS_SECOND_CALL) {
+        return LY_SUCCESS;
+    }
+
     if (value_len == 4 && !strncmp(value, "true", 4)) {
         i = 1;
     } else if (value_len == 5 && !strncmp(value, "false", 5)) {
@@ -1002,6 +1034,10 @@ ly_type_store_empty(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), const ch
                     const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
                     struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
+    if (options & LY_TYPE_OPTS_SECOND_CALL) {
+        return LY_SUCCESS;
+    }
+
     if (value_len) {
         char *errmsg;
         asprintf(&errmsg, "Invalid empty value \"%.*s\".", (int)value_len, value);
@@ -1062,6 +1098,10 @@ ly_type_store_identityref(struct ly_ctx *ctx, struct lysc_type *type, const char
     const struct lys_module *mod;
     unsigned int u;
     struct lysc_ident *ident;
+
+    if (options & LY_TYPE_OPTS_SECOND_CALL) {
+        return LY_SUCCESS;
+    }
 
     /* locate prefix if any */
     for (prefix_len = 0; prefix_len < value_len && value[prefix_len] != ':'; ++prefix_len);
@@ -1386,7 +1426,7 @@ ly_type_store_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const char 
     /* init */
     *err = NULL;
 
-    if (!(options & LY_TYPE_OPTS_INCOMPLETE_DATA) && ((struct lyd_node_term*)context_node)->value.target) {
+    if (options & LY_TYPE_OPTS_SECOND_CALL) {
         /* the second run, the first one ended with LY_EINCOMPLETE, but we have prepared the target structure */
 
         if (!lyd_target(((struct lyd_node_term*)context_node)->value.target, trees)) {
@@ -1759,6 +1799,257 @@ ly_type_free_instanceid(struct ly_ctx *ctx, struct lysc_type *type, struct lyd_v
     ly_type_free_canonical(ctx, type, value);
 }
 
+/**
+ * @brief Validate, canonize and store value of the YANG built-in leafref type.
+ *
+ * Implementation of the ly_type_store_clb.
+ */
+static LY_ERR
+ly_type_store_leafref(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
+                      ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format,
+                      const void *context_node, struct lyd_node **trees,
+                      struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
+{
+    LY_ERR ret;
+    unsigned int u;
+    char *errmsg = NULL;
+    struct lysc_type_leafref *type_lr = (struct lysc_type_leafref*)type;
+    int storage_dummy = 0;
+    const char *first_pred = NULL;
+    const struct lyd_node *start_search;
+
+    if (!(options & (LY_TYPE_OPTS_STORE | LY_TYPE_OPTS_INCOMPLETE_DATA)) && type_lr->require_instance) {
+        /* if there is no storage, but we will check the instance presence in data tree(s),
+         * we need some (dummy) storage for data comparison */
+        storage = calloc(1, sizeof *storage);
+        storage_dummy = 1;
+    }
+    /* rewrite leafref plugin stored in the storage by default */
+    storage->plugin = type_lr->realtype->plugin;
+
+    /* check value according to the real type of the leafref target */
+    ret = type_lr->realtype->plugin->store(ctx, type_lr->realtype, value, value_len, options,
+                                             get_prefix, parser, format, context_node, trees,
+                                             storage, canonized, err);
+    if (ret != LY_SUCCESS && ret != LY_EINCOMPLETE) {
+        return ret;
+    }
+
+    if (type_lr->require_instance) {
+        if (options & LY_TYPE_OPTS_INCOMPLETE_DATA) {
+            return LY_EINCOMPLETE;
+        }
+
+        /* find corresponding data instance */
+        const char *token = type_lr->path;
+        const struct lyd_node *node;
+        struct lys_module *context_mod = ((const struct lyd_node*)context_node)->schema->module;
+
+        if (token[0] == '/') {
+            /* absolute-path */
+            node = NULL;
+        } else {
+            /*relative-path */
+            node = (const struct lyd_node*)context_node;
+        }
+
+        /* resolve leafref path */
+        while (*token) {
+            if (!strcmp(token, "../")) {
+                /* level up */
+                token += 2;
+                node = (struct lyd_node*)node->parent;
+            } else if (!strcmp(token, "/../")) {
+                /* level up */
+                token += 3;
+                node = (struct lyd_node*)node->parent;
+            } else if (*token == '/') {
+                /* level down */
+                const char *prefix, *id;
+                size_t prefix_len, id_len;
+                const struct lys_module *mod;
+
+                /* reset predicates */
+                first_pred = NULL;
+
+                token++;
+                ly_parse_nodeid(&token, &prefix, &prefix_len, &id, &id_len);
+                mod = lys_module_find_prefix(context_mod, prefix, prefix_len);
+
+                if (node) {
+                    /* inner node */
+                    start_search = lyd_node_children(node);
+next_instance_inner:
+                    if (start_search) {
+                        node = lyd_search(start_search, mod, id, id_len, 0, NULL, 0);
+                    } else {
+                        node = NULL;
+                    }
+                } else {
+                    /* top-level node */
+                    LY_ARRAY_FOR(trees, u) {
+                        start_search = trees[u];
+next_instance_toplevel:
+                        node = lyd_search(start_search, mod, id, id_len, 0, NULL, 0);
+                        if (node) {
+                            break;
+                        }
+                    }
+                }
+                if (!node) {
+                    /* node not found */
+                    asprintf(&errmsg, "Invalid leafref - required instance \"%.*s\" does not exists in the data tree(s).",
+                             (int)(token - type_lr->path), type_lr->path);
+                    goto error;
+                }
+            } else if (*token == '[') {
+                /* predicate */
+                const char *pred_start = token;
+                const struct lyd_node_term *key;
+                const struct lyd_node *value;
+                const struct lys_module *mod;
+                const char *pred_end = ly_type_store_instanceid_predicate_end(token);
+                const char *src_prefix, *src;
+                size_t src_prefix_len, src_len;
+
+                /* remember start of the first predicate to be able to return back when comparison fails
+                 * on a subsequent predicate in case of multiple predicates - on the next node instance
+                 * we have to start again with the first predicate */
+                if (!first_pred) {
+                    first_pred = pred_start;
+                }
+
+                /* move after "[ *WSP" */
+                token++;
+                for (; isspace(*token); token++);
+
+                /* parse node-identifier */
+                ly_parse_nodeid(&token, &src_prefix, &src_prefix_len, &src, &src_len);
+                mod = lys_module_find_prefix(context_mod, src_prefix, src_prefix_len);
+
+                key = (const struct lyd_node_term*)lyd_search(lyd_node_children(node), mod, src, src_len, LYS_LEAF, NULL, 0);
+                if (!key) {
+                    LOGINT(ctx);
+                    goto error;
+                }
+
+                /* move after "*WSP = *WSP" */
+                for (; *token != '='; token++);
+                for (token++; isspace(*token); token++);
+                /* move after "current() *WSP / *WSP 1*(.. *WSP /)" */
+                token += 8;
+                for (; *token != '/'; token++);
+                for (; *token != '.'; token++);
+                value = (struct lyd_node*)node->parent; /* level up by .. */
+                for (token += 2; *token != '/'; token++);
+
+                /* parse "*WSP *(node-identifier *WSP / *WSP) node-identifier */
+                do {
+                    for (token++; isspace(*token); token++);
+
+                    /* parse node-identifier */
+                    ly_parse_nodeid(&token, &src_prefix, &src_prefix_len, &src, &src_len);
+                    mod = lys_module_find_prefix(context_mod, src_prefix, src_prefix_len);
+
+                    if (!value) {
+                        /* top-level search */
+                        LY_ARRAY_FOR(trees, u) {
+                            value = lyd_search(trees[u], mod, src, src_len, 0, NULL, 0);
+                            if (value) {
+                                break;
+                            }
+                        }
+                    } else {
+                        /* inner node */
+                        value = lyd_search(lyd_node_children(value), mod, src, src_len, 0, NULL, 0);
+                    }
+                    if (!value) {
+                        /* node not found - try another instance */
+                        goto next_instance;
+                    }
+
+                    for (; isspace(*token); token++);
+                } while (*token == '/');
+
+                /* compare key and the value */
+                if (key->value.plugin->compare(&key->value, &((struct lyd_node_term*)value)->value)) {
+                    /* nodes does not match, try another instance */
+next_instance:
+                    token = first_pred;
+                    if (node->parent) {
+                        goto next_instance_inner;
+                    } else {
+                        goto next_instance_toplevel;
+                    }
+                }
+                /* match */
+
+                /* move after predicate */
+                assert(token == pred_end);
+                token = pred_end + 1;
+            }
+        }
+
+        /* check value */
+        while (node && type_lr->realtype->plugin->compare(&((struct lyd_node_term*)node)->value, storage)) {
+            /* values do not match, try another instance of the node */
+            const struct lysc_node *schema = node->schema;
+            LY_LIST_FOR(node->next, node) {
+                if (node->schema == schema) {
+                    break;
+                }
+            }
+        }
+        if (!node) {
+            /* node not found */
+            asprintf(&errmsg, "Invalid leafref value \"%.*s\" - required instance \"%.*s\" with this value does not exists in the data tree(s).",
+                     (int)value_len, value, (int)(token - type_lr->path), type_lr->path);
+            goto error;
+        }
+    }
+
+    if (storage_dummy) {
+        storage->plugin->free(ctx, type_lr->realtype, storage);
+        free(storage);
+    }
+    return ret;
+
+error:
+    if (!*err) {
+        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_RESTRICTION, errmsg, NULL, NULL);
+    }
+    if (storage_dummy) {
+        storage->plugin->free(ctx, type_lr->realtype, storage);
+        free(storage);
+    }
+    return LY_EVALID;
+
+}
+
+/**
+ * @brief Comparison callback checking the leafref value.
+ *
+ * Implementation of the ly_type_compare_clb.
+ */
+static LY_ERR
+ly_type_compare_leafref(const struct lyd_value *val1, const struct lyd_value *val2)
+{
+    return val1->plugin->compare(val1, val2);
+}
+
+/**
+ * @brief Free value of the YANG built-in leafref type.
+ *
+ * Implementation of the ly_type_free_clb.
+ */
+static void
+ly_type_free_leafref(struct ly_ctx *ctx, struct lysc_type *type, struct lyd_value *value)
+{
+    struct lysc_type *realtype = ((struct lysc_type_leafref*)type)->realtype;
+
+    realtype->plugin->free(ctx, realtype, value);
+}
+
 struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT] = {
     {0}, /* LY_TYPE_UNKNOWN */
     {.type = LY_TYPE_BINARY, .store = ly_type_store_binary, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},
@@ -1774,7 +2065,7 @@ struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT] = {
     {.type = LY_TYPE_ENUM, .store = ly_type_store_enum, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},
     {.type = LY_TYPE_IDENT, .store = ly_type_store_identityref, .compare = ly_type_compare_identityref, .free = ly_type_free_canonical},
     {.type = LY_TYPE_INST, .store = ly_type_store_instanceid, .compare = ly_type_compare_instanceid, .free = ly_type_free_instanceid},
-    {0}, /* TODO LY_TYPE_LEAFREF */
+    {.type = LY_TYPE_LEAFREF, .store = ly_type_store_leafref, .compare = ly_type_compare_leafref, .free = ly_type_free_leafref},
     {0}, /* TODO LY_TYPE_UNION */
     {.type = LY_TYPE_INT8, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},
     {.type = LY_TYPE_INT16, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},

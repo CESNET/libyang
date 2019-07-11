@@ -45,6 +45,7 @@ LY_ERR lyd_parse_check_options(struct ly_ctx *ctx, int options, const char *func
  * @param[in] value String value to be parsed, must not be NULL.
  * @param[in] value_len Length of the give @p value (mandatory).
  * @param[in] dynamic Flag if @p value is a dynamically allocated memory and should be directly consumed/freed inside the function.
+ * @param[in] second Flag for the second call after returning LY_EINCOMPLETE
  * @param[in] get_prefix Parser-specific getter to resolve prefixes used in the @p value string.
  * @param[in] parser Parser's data for @p get_prefix
  * @param[in] format Input format of the data.
@@ -55,7 +56,7 @@ LY_ERR lyd_parse_check_options(struct ly_ctx *ctx, int options, const char *func
  * @return LY_EINCOMPLETE in case the @p trees is not provided and it was needed to finish the validation.
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len, int dynamic,
+LY_ERR lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len, int dynamic, int second,
                        ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format,struct lyd_node **trees);
 
 /**

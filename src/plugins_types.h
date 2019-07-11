@@ -64,6 +64,8 @@ void ly_err_free(void *ptr);
                                             can (e.g. store the canonical/auxiliary value if it is requested) and in the case of need to use
                                             data trees (checking require-instance), it returns LY_EINCOMPLETE.
                                             Caller is supposed to call such validation callback again later with complete data trees. */
+#define LY_TYPE_OPTS_SECOND_CALL 0x20  /**< Flag for the second call of the callback when the first call returns LY_EINCOMPLETE,
+                                            other options should be the same as for the first call. */
 
 /**
  * @}

@@ -904,18 +904,21 @@ test_leafref(void **state)
     struct lyd_node *tree;
     struct lyd_node_term *leaf;
 
-    const char *data = "<leaflisttarget xmlns=\"urn:tests:types\">x</leaflisttarget><leaflisttarget xmlns=\"urn:tests:types\">y</leaflisttarget>"
-            "<lref xmlns=\"urn:tests:types\">y</lref>";
+    const char *data = "<leaflisttarget xmlns=\"urn:tests:types\">x</leaflisttarget><leaflisttarget xmlns=\"urn:tests:types\">ddd</leaflisttarget>"
+            "<lref xmlns=\"urn:tests:types\">xx</lref>";
 
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid leafref value \"xx\" - required instance \"/leaflisttarget\" with this value does not exists in the data tree(s). /");
+#if 0
     /* valid data */
     assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
     tree = tree->prev;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("lref", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
-    assert_string_equal("y", leaf->value.canonized);
+    assert_string_equal("xx", leaf->value.canonized);
     lyd_free_all(tree);
-
+#endif
     /* invalid value */
     data =  "<leaflisttarget xmlns=\"urn:tests:types\">x</leaflisttarget>"
             "<lref xmlns=\"urn:tests:types\">y</lref>";

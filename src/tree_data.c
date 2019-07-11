@@ -89,14 +89,15 @@ lyd_search(const struct lyd_node *first, const struct lys_module *module,
 }
 
 LY_ERR
-lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len, int dynamic,
+lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len, int dynamic, int second,
                 ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format, struct lyd_node **trees)
 {
     LY_ERR ret = LY_SUCCESS, rc;
     struct ly_err_item *err = NULL;
     struct ly_ctx *ctx;
     struct lysc_type *type;
-    int options = LY_TYPE_OPTS_STORE | (dynamic ? LY_TYPE_OPTS_DYNAMIC : 0) | (trees ? 0 : LY_TYPE_OPTS_INCOMPLETE_DATA);
+    int options = LY_TYPE_OPTS_STORE | (second ? LY_TYPE_OPTS_SECOND_CALL : 0) |
+            (dynamic ? LY_TYPE_OPTS_DYNAMIC : 0) | (trees ? 0 : LY_TYPE_OPTS_INCOMPLETE_DATA);
     assert(node);
 
     ctx = node->schema->module->ctx;
