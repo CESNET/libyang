@@ -2089,7 +2089,7 @@ parse_type(struct lys_parser_ctx *ctx, const char **data, struct lysp_type *type
                 return LY_EVALID;
             }
             type->range = calloc(1, sizeof *type->range);
-            LY_CHECK_ERR_RET(!type->range, LOGMEM(ctx->ctx), LY_EVALID);
+            LY_CHECK_ERR_RET(!type->range, LOGMEM(ctx->ctx), LY_EMEM);
 
             LY_CHECK_RET(parse_restr(ctx, data, kw, type->range));
             type->flags |= LYS_SET_RANGE;
