@@ -19,6 +19,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdbool.h>
+#include <errno.h>
 
 #include "context.h"
 #include "dict.h"
@@ -336,7 +337,7 @@ yin_check_subelem_mandatory_constraint(struct yin_parser_ctx *ctx, struct yin_su
                                        signed char subelem_info_size, enum yang_keyword current_element)
 {
     for (signed char i = 0; i < subelem_info_size; ++i) {
-        /* if there is element that is mandatory and isn't parsed log error and rturn LY_EVALID */
+        /* if there is element that is mandatory and isn't parsed log error and return LY_EVALID */
         if (subelem_info[i].flags & YIN_SUBELEM_MANDATORY && !(subelem_info[i].flags & YIN_SUBELEM_PARSED)) {
             LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LYVE_SYNTAX_YIN, "Missing mandatory subelement %s of %s element.",
                           ly_stmt2str(subelem_info[i].type), ly_stmt2str(current_element));
@@ -374,7 +375,6 @@ yin_check_subelem_first_constraint(struct yin_parser_ctx *ctx, struct yin_subele
     return LY_SUCCESS;
 }
 
-/* TODO add something like ifdef NDEBUG around this function, this is supposed to be checked only in debug mode */
 /**
  * @brief Helper function to check if array of information about subelements is in ascending order.
  *
@@ -383,6 +383,7 @@ yin_check_subelem_first_constraint(struct yin_parser_ctx *ctx, struct yin_subele
  *
  * @return True iff subelem_info array is in ascending order, False otherwise.
  */
+#ifndef NDEBUG
 static bool
 is_ordered(struct yin_subelement *subelem_info, signed char subelem_info_size)
 {
@@ -397,6 +398,7 @@ is_ordered(struct yin_subelement *subelem_info, signed char subelem_info_size)
 
     return true;
 }
+#endif
 
 /**
  * @brief Parse simple element without any special constraints and argument mapped to yin attribute,
@@ -449,6 +451,77 @@ yin_parse_simple_elements(struct yin_parser_ctx *ctx, struct yin_arg_record *att
     LY_CHECK_RET(yin_parse_attribute(ctx, attrs, arg_type, value, arg_val_type, kw));
 
     return yin_parse_content(ctx, subelems, 1, data, kw, NULL, exts);
+}
+
+/**
+ * @brief Parse position or value element.
+ *
+ * @param[in,out] ctx YIN parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] kw Type of current element, can be set to YANG_POSITION or YANG_VALUE.
+ * @param[out] enm Enum structure to save value, flags and extensions.
+ *
+ * @return LY_ERR values.
+ */
+static LY_ERR
+yin_parse_value_pos_element(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+                            enum yang_keyword kw, struct lysp_type_enum *enm)
+{
+    assert(kw == YANG_POSITION || kw == YANG_VALUE);
+    const char *temp_val = NULL;
+    char *ptr;
+    long int num;
+    unsigned long int unum;
+
+    /* set value flag */
+    enm->flags |= LYS_SET_VALUE;
+
+    /* get attribute value */
+    yin_parse_attribute(ctx, attrs, YIN_ARG_VALUE, &temp_val, Y_STR_ARG, kw);
+    if (!temp_val || (temp_val[0] == '+') || ((temp_val[0] == '0') && (temp_val[0] != '\0')) || ((kw == YANG_VALUE) && !strcmp(temp_val, "-0"))) {
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL, strlen(temp_val), temp_val, ly_stmt2str(kw));
+        goto error;
+    }
+
+    /* convert value */
+    errno = 0;
+    if (kw == YANG_VALUE) {
+        num = strtol(temp_val, &ptr, 10);
+        if (num < INT64_C(-2147483648) || num > INT64_C(2147483647)) {
+            LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL, strlen(temp_val), temp_val, ly_stmt2str(kw));
+            goto error;
+        }
+    } else {
+        unum = strtoul(temp_val, &ptr, 10);
+        if (unum > UINT64_C(4294967295)) {
+            LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL, strlen(temp_val), temp_val, ly_stmt2str(kw));
+            goto error;
+        }
+    }
+    /* check if whole argument value was converted */
+    if (*ptr != '\0') {
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL, strlen(temp_val), temp_val, ly_stmt2str(kw));
+    }
+    if (errno == ERANGE) {
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_OOB, strlen(temp_val), temp_val, ly_stmt2str(kw));
+        goto error;
+    }
+    /* save correctly ternary operator can't be used because num and unum have different signes */
+    if (kw == YANG_VALUE) {
+        enm->value = num;
+    } else {
+        enm->value = unum;
+    }
+    FREE_STRING(ctx->xml_ctx.ctx, temp_val);
+
+    /* parse subelements */
+    struct yin_subelement subelems[1] = {{YANG_CUSTOM, NULL, 0}};
+    return yin_parse_content(ctx, subelems, 1, data, kw, NULL, &enm->exts);
+
+    error:
+        FREE_STRING(ctx->xml_ctx.ctx, temp_val);
+        return LY_EVALID;
 }
 
 /**
@@ -574,7 +647,6 @@ kw2lyext_substmt(enum yang_keyword kw)
         return LYEXT_SUBSTMT_SELF;
     }
 }
-
 
 /**
  * @brief Parse belongs-to element.
@@ -777,7 +849,10 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     break;
                 case YANG_PATTERN:
                     break;
+                case YANG_VALUE:
                 case YANG_POSITION:
+                    ret = yin_parse_value_pos_element(ctx, subelem_attrs, data, kw,
+                                                      (struct lysp_type_enum *)subelem_info_rec->dest);
                     break;
                 case YANG_PREFIX:
                     ret = yin_parse_simple_element(ctx, subelem_attrs, data, kw,
@@ -816,8 +891,6 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                                                    YIN_ARG_NAME, Y_STR_ARG, exts);
                     break;
                 case YANG_USES:
-                    break;
-                case YANG_VALUE:
                     break;
                 case YANG_WHEN:
                     ret = yin_parse_when(ctx, subelem_attrs, data, (struct lysp_when **)subelem_info_rec->dest);
