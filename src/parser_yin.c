@@ -485,6 +485,34 @@ yin_pasrse_reqinstance(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs,
 }
 
 /**
+ * @brief Parse a restriction element (length, range or one instance of must).
+ *
+ * @param[in,out] ctx Yin parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] restr_kw Identificaton of element that is being parsed, can be set to YANG_MUST, YANG_LENGTH or YANG_RANGE.
+ * @param[in]
+ */
+static LY_ERR
+yin_parse_restriction(struct yin_parser_ctx *ctx,  struct yin_arg_record *attrs, const char **data,
+                      enum yang_keyword restr_kw, struct lysp_restr *restr)
+{
+    assert(restr_kw == YANG_MUST || restr_kw == YANG_LENGTH || restr_kw == YANG_RANGE);
+    struct yin_subelement subelems[5] = {
+                                                        {YANG_DESCRIPTION, &restr->dsc, YIN_SUBELEM_UNIQUE},
+                                                        {YANG_ERROR_APP_TAG, &restr->eapptag, YIN_SUBELEM_UNIQUE},
+                                                        {YANG_ERROR_MESSAGE, &restr->emsg, YIN_SUBELEM_UNIQUE},
+                                                        {YANG_REFERENCE, &restr->ref, YIN_SUBELEM_UNIQUE},
+                                                        {YANG_CUSTOM, NULL, 0}
+                                                    };
+    /* argument of must is called condition, but argument of length and range is called value */
+    enum YIN_ARGUMENT arg_type = (restr_kw == YANG_MUST) ? YIN_ARG_CONDITION : YIN_ARG_VALUE;
+    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, arg_type, &restr->arg, Y_STR_ARG, restr_kw));
+
+    return yin_parse_content(ctx, subelems, 5, data, restr_kw, NULL, &restr->exts);
+}
+
+/**
  * @brief Parse position or value element.
  *
  * @param[in,out] ctx YIN parser context for logging and to store current state.
@@ -892,6 +920,11 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 case YANG_PRESENCE:
                     break;
                 case YANG_RANGE:
+                    type = (struct lysp_type *)subelem_info_rec->dest;
+                    type->range = calloc(1, sizeof *type->range);
+                    LY_CHECK_ERR_RET(!type->range, LOGMEM(ctx->xml_ctx.ctx), LY_EVALID);
+                    ret = yin_parse_restriction(ctx, subelem_attrs, data, kw, type->range);
+                    type->flags |= LYS_SET_RANGE;
                     break;
                 case YANG_REFINE:
                     break;
