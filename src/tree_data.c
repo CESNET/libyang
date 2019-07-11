@@ -96,47 +96,27 @@ lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len,
     struct ly_err_item *err = NULL;
     struct ly_ctx *ctx;
     struct lysc_type *type;
-    void *priv = NULL;
-    int options = LY_TYPE_OPTS_VALIDATE | LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_STORE |
-            (dynamic ? LY_TYPE_OPTS_DYNAMIC : 0) | (trees ? 0 : LY_TYPE_OPTS_INCOMPLETE_DATA);
+    int options = LY_TYPE_OPTS_STORE | (dynamic ? LY_TYPE_OPTS_DYNAMIC : 0) | (trees ? 0 : LY_TYPE_OPTS_INCOMPLETE_DATA);
     assert(node);
 
     ctx = node->schema->module->ctx;
-    type = ((struct lysc_node_leaf*)node->schema)->type;
-    if (type->plugin->validate) {
-        rc = type->plugin->validate(ctx, type, value, value_len, options, get_prefix, parser, format,
-                                    trees ? (void*)node : (void*)node->schema, trees,
-                                    &node->value.canonized, &err, &priv);
-        if (rc == LY_EINCOMPLETE) {
-            ret = rc;
-            /* continue with storing, just remember what to return if storing is ok */
-        } else if (rc) {
-            ret = rc;
-            if (err) {
-                ly_err_print(err);
-                LOGVAL(ctx, LY_VLOG_STR, err->path, err->vecode, err->msg);
-                ly_err_free(err);
-            }
-            goto error;
-        }
-    } else if (dynamic) {
-        node->value.canonized = lydict_insert_zc(ctx, (char*)value);
-    } else {
-        node->value.canonized = lydict_insert(ctx, value, value_len);
-    }
-    node->value.plugin = type->plugin;
 
-    if (type->plugin->store) {
-        rc = type->plugin->store(ctx, type, options, &node->value, &err, &priv);
-        if (rc) {
-            ret = rc;
-            if (err) {
-                ly_err_print(err);
-                LOGVAL(ctx, LY_VLOG_STR, err->path, err->vecode, err->msg);
-                ly_err_free(err);
-            }
-            goto error;
+    type = ((struct lysc_node_leaf*)node->schema)->type;
+    node->value.plugin = type->plugin;
+    rc = type->plugin->store(ctx, type, value, value_len, options, get_prefix, parser, format,
+                             trees ? (void*)node : (void*)node->schema, trees,
+                             &node->value, NULL, &err);
+    if (rc == LY_EINCOMPLETE) {
+        ret = rc;
+        /* continue with storing, just remember what to return if storing is ok */
+    } else if (rc) {
+        ret = rc;
+        if (err) {
+            ly_err_print(err);
+            LOGVAL(ctx, LY_VLOG_STR, err->path, err->vecode, err->msg);
+            ly_err_free(err);
         }
+        goto error;
     }
 
 error:
@@ -150,8 +130,6 @@ lys_value_validate(struct ly_ctx *ctx, const struct lysc_node *node, const char 
     LY_ERR rc = LY_SUCCESS;
     struct ly_err_item *err = NULL;
     struct lysc_type *type;
-    void *priv = NULL;
-    int options = LY_TYPE_OPTS_VALIDATE | LY_TYPE_OPTS_INCOMPLETE_DATA;
 
     LY_CHECK_ARG_RET(ctx, node, value, LY_EINVAL);
 
@@ -161,22 +139,20 @@ lys_value_validate(struct ly_ctx *ctx, const struct lysc_node *node, const char 
     }
 
     type = ((struct lysc_node_leaf*)node)->type;
-
-    if (type->plugin->validate) {
-        rc = type->plugin->validate(ctx ? ctx : node->module->ctx, type, value, value_len, options,
-                                     get_prefix, get_prefix_data, format, node, NULL, NULL, &err, &priv);
-        if (rc == LY_EINCOMPLETE) {
-            /* actually success since we do not provide the context tree and call validation with
-             * LY_TYPE_OPTS_INCOMPLETE_DATA */
-            rc = LY_SUCCESS;
-        } else if (rc && err) {
-            if (ctx) {
-                /* log only in case the ctx was provided as input parameter */
-                ly_err_print(err);
-                LOGVAL(ctx, LY_VLOG_STR, err->path, err->vecode, err->msg);
-            }
-            ly_err_free(err);
+    /* just validate, no storing of enything */
+    rc = type->plugin->store(ctx ? ctx : node->module->ctx, type, value, value_len, LY_TYPE_OPTS_INCOMPLETE_DATA,
+                             get_prefix, get_prefix_data, format, node, NULL, NULL, NULL, &err);
+    if (rc == LY_EINCOMPLETE) {
+        /* actually success since we do not provide the context tree and call validation with
+         * LY_TYPE_OPTS_INCOMPLETE_DATA */
+        rc = LY_SUCCESS;
+    } else if (rc && err) {
+        if (ctx) {
+            /* log only in case the ctx was provided as input parameter */
+            ly_err_print(err);
+            LOGVAL(ctx, LY_VLOG_STR, err->path, err->vecode, err->msg);
         }
+        ly_err_free(err);
     }
 
     return rc;
@@ -189,29 +165,25 @@ lyd_value_validate(struct ly_ctx *ctx, const struct lyd_node_term *node, const c
     LY_ERR rc;
     struct ly_err_item *err = NULL;
     struct lysc_type *type;
-    void *priv = NULL;
-    int options = LY_TYPE_OPTS_VALIDATE | LY_TYPE_OPTS_STORE | (trees ? 0 : LY_TYPE_OPTS_INCOMPLETE_DATA);
+    int options = (trees ? 0 : LY_TYPE_OPTS_INCOMPLETE_DATA);
 
     LY_CHECK_ARG_RET(ctx, node, value, LY_EINVAL);
 
     type = ((struct lysc_node_leaf*)node->schema)->type;
-
-    if (type->plugin->validate) {
-        rc = type->plugin->validate(ctx ? ctx : node->schema->module->ctx, type, value, value_len, options,
-                                     get_prefix, get_prefix_data, format, trees ? (void*)node : (void*)node->schema, trees,
-                                     NULL, &err, &priv);
-        if (rc == LY_EINCOMPLETE) {
-            return rc;
-        } else if (rc) {
-            if (err) {
-                if (ctx) {
-                    ly_err_print(err);
-                    LOGVAL(ctx, LY_VLOG_STR, err->path, err->vecode, err->msg);
-                }
-                ly_err_free(err);
+    rc = type->plugin->store(ctx ? ctx : node->schema->module->ctx, type, value, value_len, options,
+                             get_prefix, get_prefix_data, format, trees ? (void*)node : (void*)node->schema, trees,
+                             NULL, NULL, &err);
+    if (rc == LY_EINCOMPLETE) {
+        return rc;
+    } else if (rc) {
+        if (err) {
+            if (ctx) {
+                ly_err_print(err);
+                LOGVAL(ctx, LY_VLOG_STR, err->path, err->vecode, err->msg);
             }
-            return rc;
+            ly_err_free(err);
         }
+        return rc;
     }
 
     return LY_SUCCESS;
@@ -225,56 +197,32 @@ lyd_value_compare(const struct lyd_node_term *node, const char *value, size_t va
     struct ly_err_item *err = NULL;
     struct ly_ctx *ctx;
     struct lysc_type *type;
-    void *priv = NULL;
     struct lyd_value data = {0};
-    int options = LY_TYPE_OPTS_VALIDATE | LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_STORE | (trees ? 0 : LY_TYPE_OPTS_INCOMPLETE_DATA);
+    int options = LY_TYPE_OPTS_STORE | (trees ? 0 : LY_TYPE_OPTS_INCOMPLETE_DATA);
 
     LY_CHECK_ARG_RET(node ? node->schema->module->ctx : NULL, node, value, LY_EINVAL);
 
     ctx = node->schema->module->ctx;
     type = ((struct lysc_node_leaf*)node->schema)->type;
-    if (type->plugin->validate) {
-        rc = type->plugin->validate(ctx, type, value, value_len, options,
-                                     get_prefix, get_prefix_data, format, (struct lyd_node*)node, trees,
-                                     &data.canonized, &err, &priv);
-        if (rc == LY_EINCOMPLETE) {
-            ret = rc;
-            /* continue with comparing, just remember what to return if storing is ok */
-        } else if (rc) {
-            /* value to compare is invalid */
-            ret = LY_EINVAL;
-            if (err) {
-                ly_err_free(err);
-            }
-            goto cleanup;
+    rc = type->plugin->store(ctx, type, value, value_len, options, get_prefix, get_prefix_data, format, (struct lyd_node*)node,
+                             trees, &data, NULL, &err);
+    if (rc == LY_EINCOMPLETE) {
+        ret = rc;
+        /* continue with comparing, just remember what to return if storing is ok */
+    } else if (rc) {
+        /* value to compare is invalid */
+        ret = LY_EINVAL;
+        if (err) {
+            ly_err_free(err);
         }
-    } else {
-        data.canonized = lydict_insert(ctx, value, value_len);
-    }
-
-    /* store the value to compare into a dummy storage to do a comparison */
-    if (type->plugin->store) {
-        if (type->plugin->store(ctx, type, options, &data, &err, &priv)) {
-            ret = LY_EINVAL;
-            if (err) {
-                ly_err_free(err);
-            }
-            goto cleanup;
-        }
+        goto cleanup;
     }
 
     /* compare data */
-    if (type->plugin->compare) {
-        ret = type->plugin->compare(&node->value, &data);
-    } else if (data.canonized != node->value.canonized) {
-        ret = LY_EVALID;
-    }
+    ret = type->plugin->compare(&node->value, &data);
 
 cleanup:
-    if (type->plugin->free) {
-        type->plugin->free(ctx, type, &data);
-    }
-    lydict_remove(ctx, data.canonized);
+    type->plugin->free(ctx, type, &data);
 
     return ret;
 }

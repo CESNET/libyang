@@ -52,16 +52,15 @@ void ly_err_free(void *ptr);
  * Options applicable to ly_type_validate_clb() and ly_typestore_clb.
  * @{
  */
-#define LY_TYPE_OPTS_VALIDATE     0x01 /**< Flag announcing calling of ly_type_validate_clb() of the type */
-#define LY_TYPE_OPTS_CANONIZE     0x02 /**< Canonize the given value and store it (insert into the context's dictionary)
+#define LY_TYPE_OPTS_CANONIZE     0x01 /**< Canonize the given value and store it (insert into the context's dictionary)
                                             as the value's canonized string */
-#define LY_TYPE_OPTS_DYNAMIC      0x04 /**< Flag for the dynamically allocated string value, in this case the value is supposed to be freed
+#define LY_TYPE_OPTS_DYNAMIC      0x02 /**< Flag for the dynamically allocated string value, in this case the value is supposed to be freed
                                             or directly inserted into the context's dictionary (e.g. in case of canonization).
                                             In any case, the caller of the callback does not free the provided string value after calling
                                             the type's callbacks with this option */
-#define LY_TYPE_OPTS_STORE        0x08 /**< Flag announcing calling of ly_type_store_clb() */
-#define LY_TYPE_OPTS_SCHEMA       0x10 /**< Flag for the value used in schema instead of the data tree */
-#define LY_TYPE_OPTS_INCOMPLETE_DATA 0x20 /**< Flag for the case the data trees are not yet complete. In this case the plagin should do what it
+#define LY_TYPE_OPTS_STORE        0x04 /**< Flag announcing calling of ly_type_store_clb() */
+#define LY_TYPE_OPTS_SCHEMA       0x08 /**< Flag for the value used in schema instead of the data tree */
+#define LY_TYPE_OPTS_INCOMPLETE_DATA 0x10 /**< Flag for the case the data trees are not yet complete. In this case the plagin should do what it
                                             can (e.g. store the canonical/auxiliary value if it is requested) and in the case of need to use
                                             data trees (checking require-instance), it returns LY_EINCOMPLETE.
                                             Caller is supposed to call such validation callback again later with complete data trees. */
@@ -82,7 +81,7 @@ void ly_err_free(void *ptr);
  */
 
 /**
- * @brief Callback to validate the given @p value according to the given @p type. Optionaly, it can be requested to canonize the value.
+ * @brief Callback to validate, canonize and store (optionally, according to the given @p options) the given @p value according to the given @p type.
  *
  * Note that the \p value string is not necessarily zero-terminated. The provided \p value_len is always correct.
  *
@@ -101,34 +100,22 @@ void ly_err_free(void *ptr);
  * @param[in] trees ([Sized array](@ref sizedarrays)) of external data trees (e.g. when validating RPC/Notification) where the required data
  *            instance can be placed.
  *
- * @param[out] canonized If LY_TYPE_VALIDATE_CANONIZE option set, the canonized string stored in the @p ctx dictionary is returned via this parameter.
+ * @param[in,out] storage If LY_TYPE_OPTS_STORE option set, the parsed data are stored into this structure in the type's specific way.
+ *             If the @p canonized differs from the storage's canonized member, the canonized value is also stored here despite the
+ *             LY_TYPE_OPTS_CANONIZE option.
+ * @param[out] canonized If LY_TYPE_OPTS_CANONIZE option set, the canonized string stored in the @p ctx dictionary is returned via this parameter.
+ *             This is usable mainly in the case the LY_TYPE_OPTS_STORE option is not set and the canonized value is needed outside the lyd_value
+ *             structure, otherwise the canonized value is stored in the @p storage automatically.
  * @param[out] err Optionally provided error information in case of failure. If not provided to the caller, a generic error message is prepared instead.
  * The error structure can be created by ly_err_new().
- * @param[out] priv Type's private data passed between all the callbacks. The last callback is supposed to free the data allocated beforehand.
  * @return LY_SUCCESS on success
  * @return LY_EINCOMPLETE in case the option included LY_TYPE_OPTS_INCOMPLETE_DATA flag and the data @p trees are needed to finish the validation.
  * @return LY_ERR value if an error occurred and the value could not be canonized following the type's rules.
  */
-typedef LY_ERR (*ly_type_validate_clb)(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                                       ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format,
-                                       const void *context_node, struct lyd_node **trees,
-                                       const char **canonized, struct ly_err_item **err, void **priv);
-
-/**
- * @brief Callback for storing user type values.
- *
- * @param[in] ctx libyang ctx to enable correct manipulation with values that are in the dictionary.
- * @param[in] type Type of the value being stored.
- * @param[in] options [Type plugin options ](@ref plugintypeopts).
- * @param[in,out] value Value structure to store the data in the type's specific way. The structure already contains canonized value string to be processed.
- * @param[out] err Optionally provided error information in case of failure. If not provided to the caller, a generic error message is prepared instead.
- * The error structure can be created by ly_err_new().
- * @param[out] priv Type's private data passed between all the callbacks. The last callback is supposed to free the data allocated beforehand.
- * @return LY_SUCCESS on success
- * @return LY_ERR value if an error occurred and the value could not be stored for any reason.
- */
-typedef LY_ERR (*ly_type_store_clb)(struct ly_ctx *ctx, struct lysc_type *type, int options,
-                                    struct lyd_value *value, struct ly_err_item **err, void **priv);
+typedef LY_ERR (*ly_type_store_clb)(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
+                                    ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format,
+                                    const void *context_node, struct lyd_node **trees,
+                                    struct lyd_value *storage, const char **canonized, struct ly_err_item **err);
 
 /**
  * @brief Callback for comparing 2 values of the same type.
@@ -145,6 +132,7 @@ typedef LY_ERR (*ly_type_compare_clb)(const struct lyd_value *val1, const struct
 /**
  * @brief Callback for freeing the user type values stored by ly_type_store_clb().
  *
+ * Note that this callback is responsible also for freeing the canonized member in the @p value.
  *
  * @param[in] ctx libyang ctx to enable correct manipulation with values that are in the dictionary.
  * @param[in] type Type of the stored value.
@@ -161,8 +149,7 @@ typedef void (*ly_type_free_clb)(struct ly_ctx *ctx, struct lysc_type *type, str
  */
 struct lysc_type_plugin {
     LY_DATA_TYPE type;               /**< implemented type, use LY_TYPE_UNKNOWN for derived data types */
-    ly_type_validate_clb validate;   /**< function to validate and canonize given value */
-    ly_type_store_clb store;         /**< function to store the value in the type-specific way */
+    ly_type_store_clb store;         /**< function to validate, canonize and store (according to the options) the value in the type-specific way */
     ly_type_compare_clb compare;     /**< comparison callback to compare 2 values of the same type */
     ly_type_free_clb free;           /**< optional function to free the type-spceific way stored value */
     uint32_t flags;                  /**< [type flags ](@ref plugintypeflags). */

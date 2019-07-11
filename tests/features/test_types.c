@@ -63,7 +63,7 @@ setup(void **state)
             "container cont {leaf leaftarget {type empty;}"
                             "list listtarget {key id; max-elements 5;leaf id {type uint8;} leaf value {type string;}}"
                             "leaf-list leaflisttarget {type uint8; max-elements 5;}}"
-            "list list {key id; leaf id {type string;} leaf value {type string;}}"
+            "list list {key id; leaf id {type string;} leaf value {type string;} leaf-list targets {type string;}}"
             "list list2 {key \"id value\"; leaf id {type string;} leaf value {type string;}}"
             "list list_inst {key id; leaf id {type instance-identifier {require-instance true;}} leaf value {type string;}}"
             "list list_ident {key id; leaf id {type identityref {base defs:interface-type;}} leaf value {type string;}}"
@@ -88,7 +88,9 @@ setup(void **state)
             "leaf empty {type empty;}"
             "leaf ident {type identityref {base defs:interface-type;}}"
             "leaf inst {type instance-identifier {require-instance true;}}"
-            "leaf inst-noreq {type instance-identifier {require-instance false;}}}";
+            "leaf inst-noreq {type instance-identifier {require-instance false;}}"
+            "leaf lref {type leafref {path /leaflisttarget; require-instance true;}}"
+            "leaf lref2 {type leafref {path \"/list[id = current()/../str-norestr]/targets\"; require-instance true;}}}";
 
     s = calloc(1, sizeof *s);
     assert_non_null(s);
@@ -892,6 +894,37 @@ test_instanceid(void **state)
     s->func = NULL;
 }
 
+
+static void
+test_leafref(void **state)
+{
+    struct state_s *s = (struct state_s*)(*state);
+    s->func = test_leafref;
+
+    struct lyd_node *tree;
+    struct lyd_node_term *leaf;
+
+    const char *data = "<leaflisttarget xmlns=\"urn:tests:types\">x</leaflisttarget><leaflisttarget xmlns=\"urn:tests:types\">y</leaflisttarget>"
+            "<lref xmlns=\"urn:tests:types\">y</lref>";
+
+    /* valid data */
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    tree = tree->prev;
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("lref", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("y", leaf->value.canonized);
+    lyd_free_all(tree);
+
+    /* invalid value */
+    data =  "<leaflisttarget xmlns=\"urn:tests:types\">x</leaflisttarget>"
+            "<lref xmlns=\"urn:tests:types\">y</lref>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid leafref value \"y\" - required instance \"/leaflisttarget\" with this value does not exists in the data tree(s). /");
+
+    s->func = NULL;
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -906,6 +939,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_empty, setup, teardown),
         cmocka_unit_test_setup_teardown(test_identityref, setup, teardown),
         cmocka_unit_test_setup_teardown(test_instanceid, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_leafref, setup, teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

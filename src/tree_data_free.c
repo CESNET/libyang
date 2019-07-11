@@ -34,10 +34,7 @@ lyd_value_free_path(struct ly_ctx *ctx, struct lyd_value_path *path)
         LY_ARRAY_FOR(path[u].predicates, v) {
             if (path[u].predicates[v].type > 0) {
                 struct lysc_type *t = ((struct lysc_node_leaf*)path[u].predicates[v].key)->type;
-                if (t->plugin->free) {
-                    t->plugin->free(ctx, t, path[u].predicates[v].value);
-                }
-                lydict_remove(ctx, path[u].predicates[v].value->canonized);
+                t->plugin->free(ctx, t, path[u].predicates[v].value);
                 free(path[u].predicates[v].value);
             }
         }
@@ -94,22 +91,6 @@ lyd_unlink_tree(struct lyd_node *node)
     return EXIT_SUCCESS;
 }
 
-/**
- * @brief Free the YANG data value content.
- * @param[in] ctx libyang context
- * @param[in] value Data value structure to clean - since it is mostly part of other structure, only content is freed.
- */
-static void
-lyd_free_value(struct ly_ctx *ctx, struct lyd_value *value, struct lysc_type *type)
-{
-    if (type->plugin->free) {
-        type->plugin->free(ctx, type, value);
-    }
-
-    FREE_STRING(ctx, value->canonized);
-
-}
-
 API void
 lyd_free_attr(struct ly_ctx *ctx, struct lyd_attr *attr, int recursive)
 {
@@ -148,7 +129,7 @@ lyd_free_attr(struct ly_ctx *ctx, struct lyd_attr *attr, int recursive)
         iter = iter->next;
 
         FREE_STRING(ctx, attr->name);
-        lyd_free_value(ctx, &attr->value, NULL /* TODO */);
+        /* TODO type->plugin->free(ctx, type, &attr->value); */
         free(attr);
     }
 }
@@ -205,7 +186,8 @@ lyd_free_subtree(struct ly_ctx *ctx, struct lyd_node *node, int top)
         }
 #endif
     } else if (node->schema->nodetype & LYD_NODE_TERM) {
-        lyd_free_value(ctx, &((struct lyd_node_term*)node)->value, ((struct lysc_node_leaf*)node->schema)->type);
+        struct lysc_type *type = ((struct lysc_node_leaf*)node->schema)->type;
+        type->plugin->free(ctx, type, &((struct lyd_node_term*)node)->value);
     }
 
     /* free the node's attributes */

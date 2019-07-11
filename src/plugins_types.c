@@ -29,6 +29,33 @@
 #include "xml.h"
 #include "xpath.h"
 
+/**
+ * @brief Generic comparison callback checking the canonical value.
+ *
+ * Implementation of the ly_type_compare_clb.
+ */
+static LY_ERR
+ly_type_compare_canonical(const struct lyd_value *val1, const struct lyd_value *val2)
+{
+    if (val1 == val2 || !strcmp(val1->canonized, val2->canonized)) {
+        return LY_SUCCESS;
+    }
+
+    return LY_EVALID;
+}
+
+/**
+ * @brief Free canonized value in lyd_value.
+ *
+ * Implementation of the ly_type_free_clb.
+ */
+static void
+ly_type_free_canonical(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), struct lyd_value *value)
+{
+    lydict_remove(ctx, value->canonized);
+    value->canonized = NULL;
+}
+
 API LY_ERR
 ly_type_parse_int(const char *datatype, int base, int64_t min, int64_t max, const char *value, size_t value_len, int64_t *ret, struct ly_err_item **err)
 {
@@ -352,43 +379,59 @@ error:
     return LY_EVALID;
 }
 
-static LY_ERR
-ly_type_parse_int_builtin(LY_DATA_TYPE basetype, const char *value, size_t value_len, int options, int64_t *val, struct ly_err_item **err)
+static void
+ly_type_store_canonized(struct ly_ctx *ctx, int options, const char *value, struct lyd_value *storage, const char **canonized)
 {
-    switch (basetype) {
-    case LY_TYPE_INT8:
-        return ly_type_parse_int("int16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, INT64_C(-128), INT64_C(127), value, value_len, val, err);
-    case LY_TYPE_INT16:
-        return ly_type_parse_int("int16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, INT64_C(-32768), INT64_C(32767), value, value_len, val, err);
-    case LY_TYPE_INT32:
-        return ly_type_parse_int("int32", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10,
-                         INT64_C(-2147483648), INT64_C(2147483647), value, value_len, val, err);
-    case LY_TYPE_INT64:
-        return ly_type_parse_int("int64", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10,
-                         INT64_C(-9223372036854775807) - INT64_C(1), INT64_C(9223372036854775807), value, value_len, val, err);
-    default:
-        LOGINT(NULL);
-        return LY_EINVAL;
+    if (options & LY_TYPE_OPTS_CANONIZE) {
+store_canonized:
+        *canonized = value;
+    }
+    if ((options & LY_TYPE_OPTS_STORE) && !storage->canonized) {
+        if (options & LY_TYPE_OPTS_CANONIZE) {
+            /* already stored outside the storage */
+            storage->canonized = lydict_insert(ctx, value, strlen(value));
+        } else {
+            canonized = &storage->canonized;
+            goto store_canonized;
+        }
     }
 }
 
 /**
- * @brief Validate and canonize value of the YANG built-in signed integer types.
+ * @brief Validate, canonize and store value of the YANG built-in signed integer types.
  *
- * Implementation of the ly_type_validate_clb.
+ * Implementation of the ly_type_store_clb.
  */
 static LY_ERR
-ly_type_validate_int(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                     ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
-                     const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
-                     const char **canonized, struct ly_err_item **err, void **priv)
+ly_type_store_int(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
+                  ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
+                  const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                  struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
     LY_ERR ret;
     int64_t i;
     char *str;
     struct lysc_type_num *type_num = (struct lysc_type_num *)type;
 
-    LY_CHECK_RET(ly_type_parse_int_builtin(type->basetype, value, value_len, options, &i, err));
+    switch (type->basetype) {
+    case LY_TYPE_INT8:
+        LY_CHECK_RET(ly_type_parse_int("int16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, INT64_C(-128), INT64_C(127), value, value_len, &i, err));
+        break;
+    case LY_TYPE_INT16:
+        LY_CHECK_RET(ly_type_parse_int("int16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, INT64_C(-32768), INT64_C(32767), value, value_len, &i, err));
+        break;
+    case LY_TYPE_INT32:
+        LY_CHECK_RET(ly_type_parse_int("int32", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10,
+                                       INT64_C(-2147483648), INT64_C(2147483647), value, value_len, &i, err));
+        break;
+    case LY_TYPE_INT64:
+        LY_CHECK_RET(ly_type_parse_int("int64", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10,
+                                       INT64_C(-9223372036854775807) - INT64_C(1), INT64_C(9223372036854775807), value, value_len, &i, err));
+        break;
+    default:
+        LOGINT(NULL);
+        return LY_EINVAL;
+    }
     asprintf(&str, "%"PRId64, i);
 
     /* range of the number */
@@ -396,20 +439,14 @@ ly_type_validate_int(struct ly_ctx *ctx, struct lysc_type *type, const char *val
         LY_CHECK_ERR_RET(ret = ly_type_validate_range(type->basetype, type_num->range, i, str, err), free(str), ret);
     }
 
-    if (options & LY_TYPE_OPTS_CANONIZE) {
-        *canonized = lydict_insert_zc(ctx, str);
+    if (options & (LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_STORE)) {
+        ly_type_store_canonized(ctx, options, lydict_insert_zc(ctx, str), storage, canonized);
     } else {
         free(str);
     }
 
     if (options & LY_TYPE_OPTS_STORE) {
-        /* save for the store callback */
-        *priv = malloc(sizeof i);
-        if (!(*priv)) {
-            *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
-            return LY_EMEM;
-        }
-        *(int64_t*)(*priv) = i;
+        storage->int64 = i;
     }
 
     if (options & LY_TYPE_OPTS_DYNAMIC) {
@@ -420,65 +457,38 @@ ly_type_validate_int(struct ly_ctx *ctx, struct lysc_type *type, const char *val
 }
 
 /**
- * @brief Store value of the YANG built-in signed integer types.
+ * @brief Validate and canonize value of the YANG built-in unsigned integer types.
  *
  * Implementation of the ly_type_store_clb.
  */
 static LY_ERR
-ly_type_store_int(struct ly_ctx *UNUSED(ctx), struct lysc_type *type, int options,
-                  struct lyd_value *value, struct ly_err_item **err, void **priv)
-{
-    int64_t i;
-
-    if (options & LY_TYPE_OPTS_VALIDATE) {
-        /* the value was prepared by ly_type_validate_int() */
-        i = *(int64_t*)(*priv);
-        free(*priv);
-    } else {
-        LY_CHECK_RET(ly_type_parse_int_builtin(type->basetype, value->canonized, strlen(value->canonized), options, &i, err));
-    }
-
-    /* store the result */
-    value->int64 = i;
-
-    return LY_SUCCESS;
-}
-
-static LY_ERR
-ly_type_parse_uint_builtin(LY_DATA_TYPE basetype, const char *value, size_t value_len, int options, uint64_t *val, struct ly_err_item **err)
-{
-    switch (basetype) {
-    case LY_TYPE_UINT8:
-        return ly_type_parse_uint("uint16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, UINT64_C(255), value, value_len, val, err);
-    case LY_TYPE_UINT16:
-        return ly_type_parse_uint("uint16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, UINT64_C(65535), value, value_len, val, err);
-    case LY_TYPE_UINT32:
-        return ly_type_parse_uint("uint32", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, UINT64_C(4294967295), value, value_len, val, err);
-    case LY_TYPE_UINT64:
-        return ly_type_parse_uint("uint64", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, UINT64_C(18446744073709551615), value, value_len, val, err);
-    default:
-        LOGINT(NULL);
-        return LY_EINVAL;
-    }
-}
-
-/**
- * @brief Validate and canonize value of the YANG built-in unsigned integer types.
- *
- * Implementation of the ly_type_validate_clb.
- */
-static LY_ERR
-ly_type_validate_uint(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                      ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
-                      const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
-                      const char **canonized, struct ly_err_item **err, void **priv)
+ly_type_store_uint(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
+                   ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
+                   const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                   struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
     LY_ERR ret;
     uint64_t u;
     struct lysc_type_num* type_num = (struct lysc_type_num*)type;
     char *str;
 
-    LY_CHECK_RET(ly_type_parse_uint_builtin(type->basetype, value, value_len, options, &u, err));
+    switch (type->basetype) {
+    case LY_TYPE_UINT8:
+        LY_CHECK_RET(ly_type_parse_uint("uint16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, UINT64_C(255), value, value_len, &u, err));
+        break;
+    case LY_TYPE_UINT16:
+        LY_CHECK_RET(ly_type_parse_uint("uint16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, UINT64_C(65535), value, value_len, &u, err));
+        break;
+    case LY_TYPE_UINT32:
+        LY_CHECK_RET(ly_type_parse_uint("uint32", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, UINT64_C(4294967295), value, value_len, &u, err));
+        break;
+    case LY_TYPE_UINT64:
+        LY_CHECK_RET(ly_type_parse_uint("uint64", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, UINT64_C(18446744073709551615), value, value_len, &u, err));
+        break;
+    default:
+        LOGINT(NULL);
+        return LY_EINVAL;
+    }
     asprintf(&str, "%"PRIu64, u);
 
     /* range of the number */
@@ -486,20 +496,14 @@ ly_type_validate_uint(struct ly_ctx *ctx, struct lysc_type *type, const char *va
         LY_CHECK_ERR_RET(ret = ly_type_validate_range(type->basetype, type_num->range, u, str, err), free(str), ret);
     }
 
-    if (options & LY_TYPE_OPTS_CANONIZE) {
-        *canonized = lydict_insert_zc(ctx, str);
+    if (options & (LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_STORE)) {
+        ly_type_store_canonized(ctx, options, lydict_insert_zc(ctx, str), storage, canonized);
     } else {
         free(str);
     }
 
     if (options & LY_TYPE_OPTS_STORE) {
-        /* save for the store callback */
-        *priv = malloc(sizeof u);
-        if (!(*priv)) {
-            *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
-            return LY_EMEM;
-        }
-        *(uint64_t*)(*priv) = u;
+        storage->uint64 = u;
     }
 
     if (options & LY_TYPE_OPTS_DYNAMIC) {
@@ -510,40 +514,15 @@ ly_type_validate_uint(struct ly_ctx *ctx, struct lysc_type *type, const char *va
 }
 
 /**
- * @brief Store value of the YANG built-in unsigned integer types.
+ * @brief Validate, canonize and store value of the YANG built-in decimal64 types.
  *
  * Implementation of the ly_type_store_clb.
  */
 static LY_ERR
-ly_type_store_uint(struct ly_ctx *UNUSED(ctx), struct lysc_type *type, int options,
-                   struct lyd_value *value, struct ly_err_item **err, void **priv)
-{
-    uint64_t u;
-
-    if (options & LY_TYPE_OPTS_VALIDATE) {
-        /* the value was prepared by ly_type_validate_uint() */
-        u = *(uint64_t*)(*priv);
-        free(*priv);
-    } else {
-        LY_CHECK_RET(ly_type_parse_uint_builtin(type->basetype, value->canonized, strlen(value->canonized), options, &u, err));
-    }
-
-    /* store the result */
-    value->uint64 = u;
-
-    return LY_SUCCESS;
-}
-
-/**
- * @brief Validate and canonize value of the YANG built-in decimal64 types.
- *
- * Implementation of the ly_type_validate_clb.
- */
-static LY_ERR
-ly_type_validate_decimal64(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                           ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
-                           const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
-                           const char **canonized, struct ly_err_item **err, void **priv)
+ly_type_store_decimal64(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
+                        ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
+                        const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                        struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
     int64_t d;
     struct lysc_type_dec* type_dec = (struct lysc_type_dec*)type;
@@ -587,17 +566,12 @@ ly_type_validate_decimal64(struct ly_ctx *ctx, struct lysc_type *type, const cha
         LY_CHECK_RET(ly_type_validate_range(type->basetype, type_dec->range, d, buf, err));
     }
 
-    if (options & LY_TYPE_OPTS_CANONIZE) {
-        *canonized = lydict_insert(ctx, buf, strlen(buf));
+    if (options & (LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_STORE)) {
+        ly_type_store_canonized(ctx, options, lydict_insert(ctx, buf, strlen(buf)), storage, canonized);
     }
+
     if (options & LY_TYPE_OPTS_STORE) {
-        /* save for the store callback */
-        *priv = malloc(sizeof d);
-        if (!(*priv)) {
-            *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
-            return LY_EMEM;
-        }
-        *(int64_t*)(*priv) = d;
+        storage->dec64 = d;
     }
 
     if (options & LY_TYPE_OPTS_DYNAMIC) {
@@ -608,42 +582,15 @@ ly_type_validate_decimal64(struct ly_ctx *ctx, struct lysc_type *type, const cha
 }
 
 /**
- * @brief Store value of the YANG built-in decimal64 types.
+ * @brief Validate, canonize and store value of the YANG built-in binary type.
  *
  * Implementation of the ly_type_store_clb.
  */
 static LY_ERR
-ly_type_store_decimal64(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(type), int options,
-                        struct lyd_value *value, struct ly_err_item **UNUSED(err), void **priv)
-{
-    int64_t d;
-
-    if (options & LY_TYPE_OPTS_VALIDATE) {
-        /* the value was prepared by ly_type_validate_uint() */
-        d = *(int64_t*)(*priv);
-        free(*priv);
-    } else {
-        /* TODO if there is usecase for store without validate */
-        LOGINT(NULL);
-        return LY_EINT;
-    }
-
-    /* store the result */
-    value->dec64 = d;
-
-    return LY_SUCCESS;
-}
-
-/**
- * @brief Validate and canonize value of the YANG built-in binary type.
- *
- * Implementation of the ly_type_validate_clb.
- */
-static LY_ERR
-ly_type_validate_binary(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                        ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
-                        const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
-                        const char **canonized, struct ly_err_item **err, void **UNUSED(priv))
+ly_type_store_binary(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
+                     ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
+                     const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                     struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
     size_t start = 0, stop = 0, count = 0, u, termination = 0;
     struct lysc_type_bin *type_bin = (struct lysc_type_bin *)type;
@@ -709,16 +656,17 @@ finish:
         LY_CHECK_RET(ly_type_validate_range(LY_TYPE_BINARY, type_bin->length, len, buf, err));
     }
 
-    if (options & LY_TYPE_OPTS_CANONIZE) {
+    if (options & (LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_STORE)) {
         if (start != 0 || (value_len && stop != value_len - 1)) {
-            *canonized = lydict_insert_zc(ctx, strndup(&value[start], stop + 1 - start));
+            ly_type_store_canonized(ctx, options, lydict_insert_zc(ctx, strndup(&value[start], stop + 1 - start)), storage, canonized);
         } else if (options & LY_TYPE_OPTS_DYNAMIC) {
-            *canonized = lydict_insert_zc(ctx, (char*)value);
+            ly_type_store_canonized(ctx, options, lydict_insert_zc(ctx, (char*)value), storage, canonized);
             value = NULL;
         } else {
-            *canonized = lydict_insert(ctx, value_len ? value : "", value_len);
+            ly_type_store_canonized(ctx, options, lydict_insert(ctx, value_len ? value : "", value_len), storage, canonized);
         }
     }
+
     if (options & LY_TYPE_OPTS_DYNAMIC) {
         free((char*)value);
     }
@@ -733,15 +681,15 @@ error:
 }
 
 /**
- * @brief Validate value of the YANG built-in string type.
+ * @brief Validate and store value of the YANG built-in string type.
  *
- * Implementation of the ly_type_validate_clb.
+ * Implementation of the ly_type_store_clb.
  */
 static LY_ERR
-ly_type_validate_string(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                        ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
-                        const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
-                        const char **canonized, struct ly_err_item **err, void **UNUSED(priv))
+ly_type_store_string(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
+                     ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
+                     const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                     struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
     struct lysc_type_str *type_str = (struct lysc_type_str *)type;
 
@@ -755,12 +703,12 @@ ly_type_validate_string(struct ly_ctx *ctx, struct lysc_type *type, const char *
     /* pattern restrictions */
     LY_CHECK_RET(ly_type_validate_patterns(type_str->patterns, value, value_len, err));
 
-    if (options & LY_TYPE_OPTS_CANONIZE) {
+    if (options & (LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_STORE)) {
         if (options & LY_TYPE_OPTS_DYNAMIC) {
-            *canonized = lydict_insert_zc(ctx, (char*)value);
+            ly_type_store_canonized(ctx, options, lydict_insert_zc(ctx, (char*)value), storage, canonized);
             value = NULL;
         } else {
-            *canonized = lydict_insert(ctx, value_len ? value : "", value_len);
+            ly_type_store_canonized(ctx, options, lydict_insert(ctx, value_len ? value : "", value_len), storage, canonized);
         }
     }
 
@@ -772,15 +720,15 @@ ly_type_validate_string(struct ly_ctx *ctx, struct lysc_type *type, const char *
 }
 
 /**
- * @brief Validate and canonize value of the YANG built-in bits type.
+ * @brief Validate, canonize and store value of the YANG built-in bits type.
  *
- * Implementation of the ly_type_validate_clb.
+ * Implementation of the ly_type_store_clb.
  */
 static LY_ERR
-ly_type_validate_bits(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                      ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
-                      const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
-                      const char **canonized, struct ly_err_item **err, void **priv)
+ly_type_store_bits(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
+                   ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
+                   const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                   struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
     LY_ERR ret = LY_EVALID;
     size_t item_len;
@@ -795,6 +743,7 @@ ly_type_validate_bits(struct ly_ctx *ctx, struct lysc_type *type, const char *va
     int iscanonical = 1;
     size_t ws_count;
     size_t lws_count; /* leading whitespace count */
+    const char *can = NULL;
 
     /* remember the present items for further work */
     items = ly_set_new();
@@ -850,58 +799,56 @@ next:
     }
     /* validation done */
 
-    if (options & LY_TYPE_OPTS_CANONIZE) {
-        if (options & LY_TYPE_OPTS_STORE) {
-            if (iscanonical) {
-                items_ordered = items;
-                items = NULL;
-            } else {
-                items_ordered = ly_set_dup(items, NULL);
-                LY_CHECK_ERR_GOTO(!items_ordered, LOGMEM(ctx); ret = LY_EMEM, error);
-                items_ordered->count = 0;
-            }
-        }
+    if (options & (LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_STORE)) {
         if (iscanonical) {
+            /* items are already ordered */
+            items_ordered = items;
+            items = NULL;
+
             if (!ws_count && !lws_count && (options & LY_TYPE_OPTS_DYNAMIC)) {
-                *canonized = lydict_insert_zc(ctx, (char*)value);
+                can = lydict_insert_zc(ctx, (char*)value);
                 value = NULL;
             } else {
-                *canonized = lydict_insert(ctx, value_len ? &value[lws_count] : "", value_len - ws_count - lws_count);
+                can = lydict_insert(ctx, value_len ? &value[lws_count] : "", value_len - ws_count - lws_count);
             }
         } else {
             buf = malloc(buf_size * sizeof *buf);
             LY_CHECK_ERR_GOTO(!buf, LOGMEM(ctx); ret = LY_EMEM, error);
             index = 0;
 
+            items_ordered = ly_set_dup(items, NULL);
+            LY_CHECK_ERR_GOTO(!items_ordered, LOGMEM(ctx); ret = LY_EMEM, error);
+            items_ordered->count = 0;
+
             /* generate ordered bits list */
             LY_ARRAY_FOR(type_bits->bits, u) {
-                int i = ly_set_contains(items, &type_bits->bits[u]);
-                if (i != -1) {
+                if (ly_set_contains(items, &type_bits->bits[u]) != -1) {
                     int c = sprintf(&buf[index], "%s%s", index ? " " : "", type_bits->bits[u].name);
                     LY_CHECK_ERR_GOTO(c < 0, LOGERR(ctx, LY_ESYS, "sprintf() failed."); ret = LY_ESYS, error);
                     index += c;
-                    if (items_ordered) {
-                        ly_set_add(items_ordered, &type_bits->bits[u], LY_SET_OPT_USEASLIST);
-                    }
+                    ly_set_add(items_ordered, &type_bits->bits[u], LY_SET_OPT_USEASLIST);
                 }
             }
             assert(buf_size == index + 1);
             /* termination NULL-byte */
             buf[index] = '\0';
 
-            *canonized = lydict_insert_zc(ctx, buf);
+            can = lydict_insert_zc(ctx, buf);
             buf = NULL;
         }
-    }
 
-    if (options & LY_TYPE_OPTS_STORE) {
-        /* remember the set to store */
-        if (items_ordered) {
-            *priv = items_ordered;
-        } else {
-            *priv = items;
-            items = NULL;
+        ly_type_store_canonized(ctx, options, can, storage, canonized);
+        can = NULL;
+
+        if (options & LY_TYPE_OPTS_STORE) {
+            /* store data */
+            LY_ARRAY_CREATE_GOTO(ctx, storage->bits_items, items_ordered->count, ret, error);
+            for (u = 0; u < items_ordered->count; u++) {
+                storage->bits_items[u] = items_ordered->objs[u];
+                LY_ARRAY_INCREMENT(storage->bits_items);
+            }
         }
+        ly_set_free(items_ordered, NULL);
     }
 
     if (options & LY_TYPE_OPTS_DYNAMIC) {
@@ -917,38 +864,7 @@ error:
     ly_set_free(items, NULL);
     ly_set_free(items_ordered, NULL);
     free(buf);
-    return ret;
-}
-
-/**
- * @brief Store value of the YANG built-in bits type.
- *
- * Implementation of the ly_type_store_clb.
- */
-static LY_ERR
-ly_type_store_bits(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), int options,
-                   struct lyd_value *value, struct ly_err_item **UNUSED(err), void **priv)
-{
-    LY_ERR ret = LY_SUCCESS;
-    struct ly_set *items = NULL;
-    unsigned int u;
-
-    if (options & LY_TYPE_OPTS_VALIDATE) {
-        /* the value was prepared by ly_type_validate_bits() */
-        items = (struct ly_set *)(*priv);
-        LY_ARRAY_CREATE_GOTO(ctx, value->bits_items, items->count, ret, cleanup);
-        for (u = 0; u < items->count; u++) {
-            value->bits_items[u] = items->objs[u];
-            LY_ARRAY_INCREMENT(value->bits_items);
-        }
-    } else {
-        /* TODO if there is usecase for store without validate */
-        LOGINT(NULL);
-        return LY_EINT;
-    }
-
-cleanup:
-    ly_set_free(items, NULL);
+    lydict_remove(ctx, can);
     return ret;
 }
 
@@ -958,23 +874,25 @@ cleanup:
  * Implementation of the ly_type_free_clb.
  */
 static void
-ly_type_free_bits(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(type), struct lyd_value *value)
+ly_type_free_bits(struct ly_ctx *ctx, struct lysc_type *type, struct lyd_value *value)
 {
     LY_ARRAY_FREE(value->bits_items);
     value->bits_items = NULL;
+
+    ly_type_free_canonical(ctx, type, value);
 }
 
 
 /**
- * @brief Validate and canonize value of the YANG built-in enumeration type.
+ * @brief Validate, canonize and store value of the YANG built-in enumeration type.
  *
- * Implementation of the ly_type_validate_clb.
+ * Implementation of the ly_type_store_clb.
  */
 static LY_ERR
-ly_type_validate_enum(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                      ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
-                      const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
-                      const char **canonized, struct ly_err_item **err, void **priv)
+ly_type_store_enum(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
+                   ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
+                   const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                   struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
     unsigned int u, v;
     char *errmsg = NULL;
@@ -1002,18 +920,18 @@ ly_type_validate_enum(struct ly_ctx *ctx, struct lysc_type *type, const char *va
 
 match:
     /* validation done */
-    if (options & LY_TYPE_OPTS_CANONIZE) {
+
+    if (options & (LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_STORE)) {
         if (options & LY_TYPE_OPTS_DYNAMIC) {
-            *canonized = lydict_insert_zc(ctx, (char*)value);
+            ly_type_store_canonized(ctx, options, lydict_insert_zc(ctx, (char*)value), storage, canonized);
             value = NULL;
         } else {
-            *canonized = lydict_insert(ctx, value_len ? value : "", value_len);
+            ly_type_store_canonized(ctx, options, lydict_insert(ctx, value_len ? value : "", value_len), storage, canonized);
         }
     }
 
     if (options & LY_TYPE_OPTS_STORE) {
-        /* remember the enum definition to store */
-        *priv = &type_enum->enums[u];
+        storage->enum_item = &type_enum->enums[u];
     }
 
     if (options & LY_TYPE_OPTS_DYNAMIC) {
@@ -1030,36 +948,15 @@ error:
 }
 
 /**
- * @brief Store value of the YANG built-in enumeration type.
+ * @brief Validate and store value of the YANG built-in boolean type.
  *
  * Implementation of the ly_type_store_clb.
  */
 static LY_ERR
-ly_type_store_enum(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(type), int options,
-                   struct lyd_value *value, struct ly_err_item **UNUSED(err), void **priv)
-{
-    if (options & LY_TYPE_OPTS_VALIDATE) {
-        /* the value was prepared by ly_type_validate_enum() */
-        value->enum_item = *priv;
-    } else {
-        /* TODO if there is usecase for store without validate */
-        LOGINT(NULL);
-        return LY_EINT;
-    }
-
-    return LY_SUCCESS;
-}
-
-/**
- * @brief Validate value of the YANG built-in boolean type.
- *
- * Implementation of the ly_type_validate_clb.
- */
-static LY_ERR
-ly_type_validate_boolean(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), const char *value, size_t value_len, int options,
-                         ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
-                         const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
-                         const char **canonized, struct ly_err_item **err, void **priv)
+ly_type_store_boolean(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), const char *value, size_t value_len, int options,
+                      ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
+                      const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                      struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
     int8_t i;
 
@@ -1074,22 +971,17 @@ ly_type_validate_boolean(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), con
         return LY_EVALID;
     }
 
-    if (options & LY_TYPE_OPTS_CANONIZE) {
-        if (i) {
-            *canonized = lydict_insert(ctx, "true", 4);
+    if (options & (LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_STORE)) {
+        if (options & LY_TYPE_OPTS_DYNAMIC) {
+            ly_type_store_canonized(ctx, options, lydict_insert_zc(ctx, (char*)value), storage, canonized);
+            value = NULL;
         } else {
-            *canonized = lydict_insert(ctx, "false", 5);
+            ly_type_store_canonized(ctx, options, lydict_insert(ctx, value, value_len), storage, canonized);
         }
     }
 
     if (options & LY_TYPE_OPTS_STORE) {
-        /* save for the store callback */
-        *priv = malloc(sizeof i);
-        if (!(*priv)) {
-            *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
-            return LY_EMEM;
-        }
-        *(int8_t*)(*priv) = i;
+        storage->boolean = i;
     }
 
     if (options & LY_TYPE_OPTS_DYNAMIC) {
@@ -1100,37 +992,15 @@ ly_type_validate_boolean(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), con
 }
 
 /**
- * @brief Store value of the YANG built-in boolean type.
+ * @brief Validate and store value of the YANG built-in empty type.
  *
  * Implementation of the ly_type_store_clb.
  */
 static LY_ERR
-ly_type_store_boolean(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(type), int options,
-                   struct lyd_value *value, struct ly_err_item **UNUSED(err), void **priv)
-{
-    if (options & LY_TYPE_OPTS_VALIDATE) {
-        /* the value was prepared by ly_type_validate_enum() */
-        value->boolean = *(int8_t*)(*priv);
-        free(*priv);
-    } else {
-        /* TODO if there is usecase for store without validate */
-        LOGINT(NULL);
-        return LY_EINT;
-    }
-
-    return LY_SUCCESS;
-}
-
-/**
- * @brief Validate value of the YANG built-in empty type.
- *
- * Implementation of the ly_type_validate_clb.
- */
-static LY_ERR
-ly_type_validate_empty(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), const char *value, size_t value_len, int options,
-                       ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
-                       const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
-                       const char **canonized, struct ly_err_item **err, void **UNUSED(priv))
+ly_type_store_empty(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), const char *value, size_t value_len, int options,
+                    ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
+                    const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                    struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
     if (value_len) {
         char *errmsg;
@@ -1139,9 +1009,10 @@ ly_type_validate_empty(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), const
         return LY_EVALID;
     }
 
-    if (options & LY_TYPE_OPTS_CANONIZE) {
-        *canonized = lydict_insert(ctx, "", 0);
+    if (options & (LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_STORE)) {
+        ly_type_store_canonized(ctx, options, lydict_insert(ctx, "", 0), storage, canonized);
     }
+
     return LY_SUCCESS;
 }
 
@@ -1174,15 +1045,15 @@ ly_type_identity_isderived(struct lysc_ident *base, struct lysc_ident *der)
 }
 
 /**
- * @brief Validate value of the YANG built-in identiytref type.
+ * @brief Validate, canonize and store value of the YANG built-in identiytref type.
  *
- * Implementation of the ly_type_validate_clb.
+ * Implementation of the ly_type_store_clb.
  */
 static LY_ERR
-ly_type_validate_identityref(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                             ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT UNUSED(format),
-                             const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
-                             const char **canonized, struct ly_err_item **err, void **priv)
+ly_type_store_identityref(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
+                          ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT UNUSED(format),
+                          const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                          struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
     struct lysc_type_identityref *type_ident = (struct lysc_type_identityref *)type;
     const char *id_name, *prefix = value;
@@ -1239,17 +1110,17 @@ ly_type_validate_identityref(struct ly_ctx *ctx, struct lysc_type *type, const c
         goto error;
     }
 
-    if (options & LY_TYPE_OPTS_CANONIZE) {
+    if (options & (LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_STORE)) {
         if (id_name == value && (options & LY_TYPE_OPTS_DYNAMIC)) {
-            *canonized = lydict_insert_zc(ctx, (char*)value);
+            ly_type_store_canonized(ctx, options, lydict_insert_zc(ctx, (char*)value), storage, canonized);
             value = NULL;
         } else {
-            *canonized = lydict_insert(ctx, id_name, id_len);
+            ly_type_store_canonized(ctx, options, lydict_insert(ctx, id_name, id_len), storage, canonized);
         }
     }
 
     if (options & LY_TYPE_OPTS_STORE) {
-        *priv = ident;
+        storage->ident = ident;
     }
 
     if (options & LY_TYPE_OPTS_DYNAMIC) {
@@ -1261,27 +1132,6 @@ ly_type_validate_identityref(struct ly_ctx *ctx, struct lysc_type *type, const c
 error:
     *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_RESTRICTION, errmsg, NULL, NULL);
     return LY_EVALID;
-}
-
-/**
- * @brief Store value of the YANG built-in identityref type.
- *
- * Implementation of the ly_type_store_clb.
- */
-static LY_ERR
-ly_type_store_identityref(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(type), int options,
-                          struct lyd_value *value, struct ly_err_item **UNUSED(err), void **priv)
-{
-    if (options & LY_TYPE_OPTS_VALIDATE) {
-        /* the value was prepared by ly_type_validate_enum() */
-        value->ident = *priv;
-    } else {
-        /* TODO if there is usecase for store without validate */
-        LOGINT(NULL);
-        return LY_EINT;
-    }
-
-    return LY_SUCCESS;
 }
 
 /**
@@ -1299,7 +1149,7 @@ ly_type_compare_identityref(const struct lyd_value *val1, const struct lyd_value
 }
 
 /**
- * @brief Helper function for ly_type_validate_instanceid() to check presence of the specific node in the (data/schema) tree.
+ * @brief Helper function for ly_type_store_instanceid() to check presence of the specific node in the (data/schema) tree.
  *
  * In the case the instance-identifier type does not require instance (@p require_instance is 0) or the data @p trees
  * are not complete (called in the middle of data parsing), the @p token is checked only to match schema tree.
@@ -1326,10 +1176,10 @@ ly_type_compare_identityref(const struct lyd_value *val1, const struct lyd_value
  * @return LY_EMEM or LY_EVALID in case of failure or when the node is not present in the schema/data tree.
  */
 static LY_ERR
-ly_type_validate_instanceid_checknodeid(const char *orig, size_t orig_len, int options, int require_instance,
-                                        const char **token, struct lyd_value_prefix *prefixes, LYD_FORMAT format,
-                                        const struct lysc_node **node_s, const struct lyd_node **node_d,
-                                        struct lyd_node **trees, char **errmsg)
+ly_type_store_instanceid_checknodeid(const char *orig, size_t orig_len, int options, int require_instance,
+                                     const char **token, struct lyd_value_prefix *prefixes, LYD_FORMAT format,
+                                     const struct lysc_node **node_s, const struct lyd_node **node_d,
+                                     struct lyd_node **trees, char **errmsg)
 {
     const char *id, *prefix;
     size_t id_len, prefix_len;
@@ -1409,13 +1259,13 @@ ly_type_validate_instanceid_checknodeid(const char *orig, size_t orig_len, int o
 }
 
 /**
- * @brief Helper function for ly_type_validate_instanceid_parse_predicate_value() to provide prefix mapping for the
+ * @brief Helper function for ly_type_store_instanceid_parse_predicate_value() to provide prefix mapping for the
  * validation callbacks for the values used in instance-identifier predicates.
  *
  * Implementation of the ly_clb_resolve_prefix.
  */
 static const struct lys_module *
-ly_type_validate_instanceid_get_prefix(struct ly_ctx *UNUSED(ctx), const char *prefix, size_t prefix_len, void *private)
+ly_type_store_instanceid_get_prefix(struct ly_ctx *UNUSED(ctx), const char *prefix, size_t prefix_len, void *private)
 {
     struct lyd_value_prefix *prefixes = (struct lyd_value_prefix*)private;
     unsigned int u;
@@ -1429,7 +1279,7 @@ ly_type_validate_instanceid_get_prefix(struct ly_ctx *UNUSED(ctx), const char *p
 }
 
 /**
- * @brief Helper function for ly_type_validate_instanceid() to prepare predicate's value structure into the lyd_value_path structure.
+ * @brief Helper function for ly_type_store_instanceid() to prepare predicate's value structure into the lyd_value_path structure.
  *
  * @param[in] ctx libyang context.
  * @param[in] key Schema key node of the predicate (list's key in case of key-predicate, leaf-list in case of leaf-list-predicate).
@@ -1442,53 +1292,33 @@ ly_type_validate_instanceid_get_prefix(struct ly_ctx *UNUSED(ctx), const char *p
  * @return LY_ERR value.
  */
 static LY_ERR
-ly_type_validate_instanceid_parse_predicate_value(struct ly_ctx *ctx, const struct lysc_node *key, const char *val, size_t val_len,
-                                                  struct lyd_value_prefix *prefixes, LYD_FORMAT format,
-                                                  struct lyd_value_path_predicate *pred, char **errmsg)
+ly_type_store_instanceid_parse_predicate_value(struct ly_ctx *ctx, const struct lysc_node *key, const char *val, size_t val_len,
+                                               struct lyd_value_prefix *prefixes, LYD_FORMAT format,
+                                               struct lyd_value_path_predicate *pred, char **errmsg)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysc_type *type;
     struct ly_err_item *err = NULL;
-    void *priv = NULL;
-    int options = LY_TYPE_OPTS_VALIDATE | LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_STORE | LY_TYPE_OPTS_INCOMPLETE_DATA;
+    int options = LY_TYPE_OPTS_STORE | LY_TYPE_OPTS_INCOMPLETE_DATA;
 
     pred->value = calloc(1, sizeof *pred->value);
 
     type = ((struct lysc_node_leaf*)key)->type;
-    if (type->plugin->validate) {
-        ret = type->plugin->validate(ctx, type, val, val_len, options,
-                                    ly_type_validate_instanceid_get_prefix, prefixes, format, key, NULL,
-                                    &pred->value->canonized, &err, &priv);
-        if (ret == LY_EINCOMPLETE) {
-            /* actually expected success without complete data */
-            ret = LY_SUCCESS;
-        } else if (ret) {
-            if (err) {
-                *errmsg = err->msg;
-                err->msg = NULL;
-                ly_err_free(err);
-            } else {
-                *errmsg = strdup("Type validation failed with unknown error.");
-            }
-            goto error;
-        }
-    } else {
-        pred->value->canonized = lydict_insert(ctx, val, val_len);
-    }
     pred->value->plugin = type->plugin;
-
-    if (type->plugin->store) {
-        ret = type->plugin->store(ctx, type, options, pred->value, &err, &priv);
-        if (ret) {
-            if (err) {
-                *errmsg = err->msg;
-                err->msg = NULL;
-                ly_err_free(err);
-            } else {
-                *errmsg = strdup("Data storing failed with unknown error.");
-            }
-            goto error;
+    ret = type->plugin->store(ctx, type, val, val_len, options, ly_type_store_instanceid_get_prefix, prefixes, format, key, NULL,
+                              pred->value, NULL, &err);
+    if (ret == LY_EINCOMPLETE) {
+        /* actually expected success without complete data */
+        ret = LY_SUCCESS;
+    } else if (ret) {
+        if (err) {
+            *errmsg = err->msg;
+            err->msg = NULL;
+            ly_err_free(err);
+        } else {
+            *errmsg = strdup("Type validation failed with unknown error.");
         }
+        goto error;
     }
 
 error:
@@ -1496,13 +1326,13 @@ error:
 }
 
 /**
- * @brief Helper function for ly_type_validate_instanceid() to correctly find the end of the predicate section.
+ * @brief Helper function for ly_type_store_instanceid() to correctly find the end of the predicate section.
  *
  * @param[in] predicate Start of the beginning section.
  * @return Pointer to the end of the predicate section.
  */
 static const char *
-ly_type_validate_instanceid_predicate_end(const char *predicate)
+ly_type_store_instanceid_predicate_end(const char *predicate)
 {
     size_t i = 0;
     while (predicate[i] != ']') {
@@ -1528,15 +1358,15 @@ ly_type_validate_instanceid_predicate_end(const char *predicate)
 }
 
 /**
- * @brief Validate value of the YANG built-in instance-identifier type.
+ * @brief Validate and store value of the YANG built-in instance-identifier type.
  *
- * Implementation of the ly_type_validate_clb.
+ * Implementation of the ly_type_store_clb.
  */
 static LY_ERR
-ly_type_validate_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                             ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format,
-                             const void *context_node, struct lyd_node **trees,
-                             const char **canonized, struct ly_err_item **err, void **priv)
+ly_type_store_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
+                         ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format,
+                         const void *context_node, struct lyd_node **trees,
+                         struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
     LY_ERR ret = LY_EVALID;
     struct lysc_type_instanceid *type_inst = (struct lysc_type_instanceid *)type;
@@ -1565,7 +1395,6 @@ ly_type_validate_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const ch
                      "TODO");
             goto error;
         }
-        *priv = ((struct lyd_node_term*)context_node)->value.target;
         return LY_SUCCESS;
     } else {
         /* first run without prepared target, we will need all the prefixes used in the instance-identifier value */
@@ -1591,7 +1420,7 @@ ly_type_validate_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const ch
             ly_set_clean(&predicates, NULL);
 
             token++;
-            if (ly_type_validate_instanceid_checknodeid(value, value_len, options, type_inst->require_instance,
+            if (ly_type_store_instanceid_checknodeid(value, value_len, options, type_inst->require_instance,
                                                         &token, prefixes, format, &node_s, &node_d, trees, &errmsg)) {
                 goto error;
             }
@@ -1603,7 +1432,7 @@ ly_type_validate_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const ch
                 /* predicate follows, this must be a list or leaf-list */
                 if (node_s->nodetype != LYS_LIST && node_s->nodetype != LYS_LEAFLIST) {
                     asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - predicate \"%.*s\" for %s is not accepted.",
-                             (int)value_len, value, (int)(ly_type_validate_instanceid_predicate_end(token) - token) + 1, token,
+                             (int)value_len, value, (int)(ly_type_store_instanceid_predicate_end(token) - token) + 1, token,
                              lys_nodetype2str(node_s->nodetype));
                     goto error;
                 }
@@ -1645,7 +1474,7 @@ ly_type_validate_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const ch
                 }
 
                 /* resolve the key in predicate */
-                if (ly_type_validate_instanceid_checknodeid(value, value_len, options, type_inst->require_instance,
+                if (ly_type_store_instanceid_checknodeid(value, value_len, options, type_inst->require_instance,
                                                             &t, prefixes, format, &key_s, &key_d, trees, &errmsg)) {
                     goto error;
                 }
@@ -1671,7 +1500,7 @@ ly_type_validate_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const ch
                         node_d = lyd_search(node_d->next, node_s->module, node_s->name, strlen(node_s->name), LYS_LIST, NULL, 0);
                         if (node_d) {
                             key_d = node_d;
-                            if (ly_type_validate_instanceid_checknodeid(value, value_len, options, type_inst->require_instance,
+                            if (ly_type_store_instanceid_checknodeid(value, value_len, options, type_inst->require_instance,
                                                                         &t, prefixes, format, &key_s, &key_d, trees, &errmsg)) {
                                 goto error;
                             }
@@ -1695,7 +1524,7 @@ ly_type_validate_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const ch
                     /* update target path structure by adding predicate info */
                     pred->type = 1;
                     pred->key = key_s;
-                    LY_CHECK_GOTO(ly_type_validate_instanceid_parse_predicate_value(ctx, key_s, val, val_len, prefixes, format, pred, &errmsg), error);
+                    LY_CHECK_GOTO(ly_type_store_instanceid_parse_predicate_value(ctx, key_s, val, val_len, prefixes, format, pred, &errmsg), error);
                 }
                 i = predicates.count;
                 if (i != ly_set_add(&predicates, (void*)key_s, 0)) {
@@ -1756,7 +1585,7 @@ ly_type_validate_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const ch
                     /* update target path structure by adding predicate info */
                     pred->type = 2;
                     pred->key = node_s;
-                    LY_CHECK_GOTO(ly_type_validate_instanceid_parse_predicate_value(ctx, node_s, val, val_len, prefixes, format, pred, &errmsg), error);
+                    LY_CHECK_GOTO(ly_type_store_instanceid_parse_predicate_value(ctx, node_s, val, val_len, prefixes, format, pred, &errmsg), error);
                 }
                 ly_set_add(&predicates, (void*)node_s, 0);
             } else {
@@ -1822,7 +1651,7 @@ ly_type_validate_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const ch
         }
     }
 
-    if ((options & LY_TYPE_OPTS_CANONIZE) && !(*canonized)) {
+    if (options & LY_TYPE_OPTS_CANONIZE) {
         /* instance-identifier does not have a canonical form (lexical representation in in XML and JSON are
          * even different) - to make it clear, the canonized form is represented as NULL to make the caller
          * print it always via callback printer */
@@ -1830,11 +1659,11 @@ ly_type_validate_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const ch
     }
 
     if (options & LY_TYPE_OPTS_STORE) {
-        *priv = target;
-    } else {
-        lyd_value_free_path(ctx, target);
+        storage->target = target;
+        storage->canonized = NULL;
     }
 
+    /* cleanup */
     LY_ARRAY_FOR(prefixes, u) {
         lydict_remove(ctx, prefixes[u].prefix);
     }
@@ -1864,28 +1693,6 @@ error:
         *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_RESTRICTION, errmsg, NULL, NULL);
     }
     return ret;
-}
-
-
-/**
- * @brief Store value of the YANG built-in instance-identifier type.
- *
- * Implementation of the ly_type_store_clb.
- */
-static LY_ERR
-ly_type_store_instanceid(struct ly_ctx *UNUSED(ctx), struct lysc_type *UNUSED(type), int options,
-                         struct lyd_value *value, struct ly_err_item **UNUSED(err), void **priv)
-{
-    if (options & LY_TYPE_OPTS_VALIDATE) {
-        /* the value was prepared by ly_type_validate_enum() */
-        value->target = *priv;
-    } else {
-        /* TODO if there is usecase for store without validate */
-        LOGINT(NULL);
-        return LY_EINT;
-    }
-
-    return LY_SUCCESS;
 }
 
 /**
@@ -1939,52 +1746,39 @@ ly_type_compare_instanceid(const struct lyd_value *val1, const struct lyd_value 
 }
 
 /**
- * @brief Free value of the YANG built-in instance-identifier type.
+ * @brief Free value of the YANG built-in instance-identifier types.
  *
  * Implementation of the ly_type_free_clb.
  */
 static void
-ly_type_free_instanceid(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), struct lyd_value *value)
+ly_type_free_instanceid(struct ly_ctx *ctx, struct lysc_type *type, struct lyd_value *value)
 {
     lyd_value_free_path(ctx, value->target);
     value->target = NULL;
-}
 
-/**
- * @brief Generic comparison callback checking the canonical value.
- *
- * Implementation of the ly_type_compare_clb.
- */
-static LY_ERR
-ly_type_compare_canonical(const struct lyd_value *val1, const struct lyd_value *val2)
-{
-    if (val1 == val2 || !strcmp(val1->canonized, val2->canonized)) {
-        return LY_SUCCESS;
-    }
-
-    return LY_EVALID;
+    ly_type_free_canonical(ctx, type, value);
 }
 
 struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT] = {
     {0}, /* LY_TYPE_UNKNOWN */
-    {.type = LY_TYPE_BINARY, .validate = ly_type_validate_binary, .store = NULL, .compare = ly_type_compare_canonical, .free = NULL},
-    {.type = LY_TYPE_UINT8, .validate = ly_type_validate_uint, .store = ly_type_store_uint, .compare = ly_type_compare_canonical, .free = NULL},
-    {.type = LY_TYPE_UINT16, .validate = ly_type_validate_uint, .store = ly_type_store_uint, .compare = ly_type_compare_canonical, .free = NULL},
-    {.type = LY_TYPE_UINT32, .validate = ly_type_validate_uint, .store = ly_type_store_uint, .compare = ly_type_compare_canonical, .free = NULL},
-    {.type = LY_TYPE_UINT64, .validate = ly_type_validate_uint, .store = ly_type_store_uint, .compare = ly_type_compare_canonical, .free = NULL},
-    {.type = LY_TYPE_STRING, .validate = ly_type_validate_string, .store = NULL, .compare = ly_type_compare_canonical, .free = NULL},
-    {.type = LY_TYPE_BITS, .validate = ly_type_validate_bits, .store = ly_type_store_bits, .compare = ly_type_compare_canonical, .free = ly_type_free_bits},
-    {.type = LY_TYPE_BOOL, .validate = ly_type_validate_boolean, .store = ly_type_store_boolean, .compare = ly_type_compare_canonical, .free = NULL},
-    {.type = LY_TYPE_DEC64, .validate = ly_type_validate_decimal64, .store = ly_type_store_decimal64, .compare = ly_type_compare_canonical, .free = NULL},
-    {.type = LY_TYPE_EMPTY, .validate = ly_type_validate_empty, .store = NULL, .compare = ly_type_compare_empty, .free = NULL},
-    {.type = LY_TYPE_ENUM, .validate = ly_type_validate_enum, .store = ly_type_store_enum, .compare = ly_type_compare_canonical, .free = NULL},
-    {.type = LY_TYPE_IDENT, .validate = ly_type_validate_identityref, .store = ly_type_store_identityref, .compare = ly_type_compare_identityref, .free = NULL},
-    {.type = LY_TYPE_INST, .validate = ly_type_validate_instanceid, .store = ly_type_store_instanceid, .compare = ly_type_compare_instanceid, .free = ly_type_free_instanceid},
+    {.type = LY_TYPE_BINARY, .store = ly_type_store_binary, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_UINT8, .store = ly_type_store_uint, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_UINT16, .store = ly_type_store_uint, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_UINT32, .store = ly_type_store_uint, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_UINT64, .store = ly_type_store_uint, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_STRING, .store = ly_type_store_string, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_BITS, .store = ly_type_store_bits, .compare = ly_type_compare_canonical, .free = ly_type_free_bits},
+    {.type = LY_TYPE_BOOL, .store = ly_type_store_boolean, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_DEC64, .store = ly_type_store_decimal64, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_EMPTY, .store = ly_type_store_empty, .compare = ly_type_compare_empty, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_ENUM, .store = ly_type_store_enum, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_IDENT, .store = ly_type_store_identityref, .compare = ly_type_compare_identityref, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_INST, .store = ly_type_store_instanceid, .compare = ly_type_compare_instanceid, .free = ly_type_free_instanceid},
     {0}, /* TODO LY_TYPE_LEAFREF */
     {0}, /* TODO LY_TYPE_UNION */
-    {.type = LY_TYPE_INT8, .validate = ly_type_validate_int, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .free = NULL},
-    {.type = LY_TYPE_INT16, .validate = ly_type_validate_int, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .free = NULL},
-    {.type = LY_TYPE_INT32, .validate = ly_type_validate_int, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .free = NULL},
-    {.type = LY_TYPE_INT64, .validate = ly_type_validate_int, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .free = NULL},
+    {.type = LY_TYPE_INT8, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_INT16, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_INT32, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_INT64, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},
 };
 
