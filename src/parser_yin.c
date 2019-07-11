@@ -454,6 +454,37 @@ yin_parse_simple_elements(struct yin_parser_ctx *ctx, struct yin_arg_record *att
 }
 
 /**
+ * @brief Parse require instance element.
+ *
+ * @param[in,out] ctx Yin parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @prama[out] type Type structure to store value, flag and extensions.
+ *
+ * @return LY_ERR values.
+ */
+static LY_ERR
+yin_pasrse_reqinstance(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs,
+                       const char **data,  struct lysp_type *type)
+{
+    const char *temp_val = NULL;
+    struct yin_subelement subelems[1] = {{YANG_CUSTOM, NULL, 0}};
+
+    type->flags |= LYS_SET_REQINST;
+    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_VALUE, &temp_val, Y_STR_ARG, YANG_REQUIRE_INSTANCE));
+    if (strcmp(temp_val, "true") == 0) {
+        type->require_instance = 1;
+    } else if (strcmp(temp_val, "false") != 0) {
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "require-instance");
+        FREE_STRING(ctx->xml_ctx.ctx, temp_val);
+        return LY_EVALID;
+    }
+    FREE_STRING(ctx->xml_ctx.ctx, temp_val);
+
+    return yin_parse_content(ctx, subelems, 1, data, YANG_REQUIRE_INSTANCE, NULL, &type->exts);
+}
+
+/**
  * @brief Parse position or value element.
  *
  * @param[in,out] ctx YIN parser context for logging and to store current state.
@@ -478,7 +509,7 @@ yin_parse_value_pos_element(struct yin_parser_ctx *ctx, struct yin_arg_record *a
     enm->flags |= LYS_SET_VALUE;
 
     /* get attribute value */
-    yin_parse_attribute(ctx, attrs, YIN_ARG_VALUE, &temp_val, Y_STR_ARG, kw);
+    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_VALUE, &temp_val, Y_STR_ARG, kw));
     if (!temp_val || (temp_val[0] == '+') || ((temp_val[0] == '0') && (temp_val[0] != '\0')) || ((kw == YANG_VALUE) && !strcmp(temp_val, "-0"))) {
         LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL, strlen(temp_val), temp_val, ly_stmt2str(kw));
         goto error;
@@ -529,7 +560,7 @@ yin_parse_value_pos_element(struct yin_parser_ctx *ctx, struct yin_arg_record *a
  * text element as child
  *
  * @param[in,out] ctx Yin parser context for logging and to store current state.
- * @param[in,out] data Data to read from.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
  * @param[in] Type of element can be set to YANG_ORGANIZATION or YANG_CONTACT or YANG_DESCRIPTION or YANG_REFERENCE.
  * @param[out] value Where the content of meta element should be stored.
  * @param[in,out] exts Extension instance to add to.
@@ -865,6 +896,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 case YANG_REFINE:
                     break;
                 case YANG_REQUIRE_INSTANCE:
+                    ret = yin_pasrse_reqinstance(ctx, subelem_attrs, data, (struct lysp_type *)subelem_info_rec->dest);
                     break;
                 case YANG_REVISION:
                     break;

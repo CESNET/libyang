@@ -676,6 +676,7 @@ test_yin_parse_content(void **state)
                             "<default value=\"default-value\"/>"
                             "<position value=\"25\"></position>"
                             "<value value=\"-5\"/>"
+                            "<require-instance value=\"true\"></require-instance>"
                         "</prefix>";
     struct lysp_ext_instance *exts = NULL;
     const char **if_features = NULL;
@@ -683,25 +684,27 @@ test_yin_parse_content(void **state)
     const char *value, *err_msg, *app_tag, *units, *def;
     struct lysp_ext *ext_def = NULL;
     struct lysp_when *when_p = NULL;
-    struct lysp_type_enum pos_enum = {.flags = 0}, val_enum = {.flags = 0};
+    struct lysp_type_enum pos_enum = {}, val_enum = {};
+    struct lysp_type req_type = {};
     uint8_t config = 0;
 
     lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
     yin_load_attributes(st->yin_ctx, &data, &attrs);
 
-    struct yin_subelement subelems[12] = {{YANG_CONFIG, &config, 0},
+    struct yin_subelement subelems[13] = {{YANG_CONFIG, &config, 0},
                                          {YANG_DEFAULT, &def, 0},
                                          {YANG_ERROR_APP_TAG, &app_tag, 0},
                                          {YANG_ERROR_MESSAGE, &err_msg, 0},
                                          {YANG_EXTENSION, &ext_def, 0},
                                          {YANG_IF_FEATURE, &if_features, 0},
                                          {YANG_POSITION, &pos_enum, 0},
+                                         {YANG_REQUIRE_INSTANCE, &req_type, 0},
                                          {YANG_UNITS, &units, 0},
                                          {YANG_VALUE, &val_enum, 0},
                                          {YANG_WHEN, &when_p, 0},
                                          {YANG_CUSTOM, NULL, 0},
                                          {YIN_TEXT, &value, 0}};
-    ret = yin_parse_content(st->yin_ctx, subelems, 12, &data, YANG_PREFIX, NULL, &exts);
+    ret = yin_parse_content(st->yin_ctx, subelems, 13, &data, YANG_PREFIX, NULL, &exts);
     assert_int_equal(ret, LY_SUCCESS);
     assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
     /* check parsed values */
@@ -718,6 +721,8 @@ test_yin_parse_content(void **state)
     assert_true(pos_enum.flags | LYS_SET_VALUE);
     assert_int_equal(val_enum.value, -5);
     assert_true(val_enum.flags | LYS_SET_VALUE);
+    assert_int_equal(req_type.require_instance, 1);
+    assert_true(req_type.flags |= LYS_SET_REQINST);
     assert_string_equal(err_msg, "error-msg");
     assert_string_equal(app_tag, "err-app-tag");
     /* cleanup */
