@@ -520,6 +520,25 @@ yin_parse_restriction(struct yin_parser_ctx *ctx,  struct yin_arg_record *attrs,
 }
 
 /**
+ * @brief Parse must element.
+ *
+ * @param[in,out] ctx YIN parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] restrs Restrictions to add to.
+ *
+ * @return LY_ERR values.
+ */
+static LY_ERR
+yin_parse_must(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data, struct lysp_restr **restrs)
+{
+    struct lysp_restr *restr;
+
+    LY_ARRAY_NEW_RET(ctx->xml_ctx.ctx, *restrs, restr, LY_EMEM);
+    return yin_parse_restriction(ctx, attrs, data, YANG_MUST, restr);
+}
+
+/**
  * @brief Parse position or value element.
  *
  * @param[in,out] ctx YIN parser context for logging and to store current state.
@@ -914,6 +933,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 case YANG_MODULE:
                     break;
                 case YANG_MUST:
+                    ret = yin_parse_must(ctx, subelem_attrs, data, (struct lysp_restr **)subelem_info_rec->dest);
                     break;
                 case YANG_NAMESPACE:
                     ret = yin_parse_simple_element(ctx, subelem_attrs, data, kw, (const char **)subelem_info_rec->dest,
