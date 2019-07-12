@@ -1855,11 +1855,11 @@ ly_type_store_leafref(struct ly_ctx *ctx, struct lysc_type *type, const char *va
 
         /* resolve leafref path */
         while (*token) {
-            if (!strcmp(token, "../")) {
+            if (!strncmp(token, "../", 3)) {
                 /* level up */
                 token += 2;
                 node = (struct lyd_node*)node->parent;
-            } else if (!strcmp(token, "/../")) {
+            } else if (!strncmp(token, "/../", 4)) {
                 /* level up */
                 token += 3;
                 node = (struct lyd_node*)node->parent;
@@ -1898,8 +1898,19 @@ next_instance_toplevel:
                 }
                 if (!node) {
                     /* node not found */
+                    const char *pathstr_end = token;
+                    if (first_pred) {
+                        /* some node instances actually exist, but they do not fit the predicate restrictions,
+                         * here we want to find the end of the list's predicate(s) */
+                        for (pathstr_end = ly_type_store_instanceid_predicate_end(token);
+                                pathstr_end[1] == '[';
+                                pathstr_end = ly_type_store_instanceid_predicate_end(pathstr_end + 1));
+                        /* move after last ']' (after each predicate follows "/something" since path must points to
+                         * a leaf/leaflist and predicates are allowed only for lists) */
+                        pathstr_end++;
+                    }
                     asprintf(&errmsg, "Invalid leafref - required instance \"%.*s\" does not exists in the data tree(s).",
-                             (int)(token - type_lr->path), type_lr->path);
+                             (int)(pathstr_end - type_lr->path), type_lr->path);
                     goto error;
                 }
             } else if (*token == '[') {
@@ -1936,17 +1947,18 @@ next_instance_toplevel:
                 /* move after "*WSP = *WSP" */
                 for (; *token != '='; token++);
                 for (token++; isspace(*token); token++);
-                /* move after "current() *WSP / *WSP 1*(.. *WSP /)" */
-                token += 8;
+                /* move after "current() *WSP / *WSP 1*(.. *WSP / *WSP)" */
+                token = strchr(token, ')') + 1;
                 for (; *token != '/'; token++);
                 for (; *token != '.'; token++);
-                value = (struct lyd_node*)node->parent; /* level up by .. */
-                for (token += 2; *token != '/'; token++);
-
-                /* parse "*WSP *(node-identifier *WSP / *WSP) node-identifier */
-                do {
+                for (value = (const struct lyd_node*)context_node; *token == '.'; ) {
+                    value = (struct lyd_node*)value->parent; /* level up by .. */
+                    for (token += 2; *token != '/'; token++);
                     for (token++; isspace(*token); token++);
+                }
 
+                /* parse "*(node-identifier *WSP / *WSP) node-identifier */
+                do {
                     /* parse node-identifier */
                     ly_parse_nodeid(&token, &src_prefix, &src_prefix_len, &src, &src_len);
                     mod = lys_module_find_prefix(context_mod, src_prefix, src_prefix_len);
@@ -1969,13 +1981,18 @@ next_instance_toplevel:
                     }
 
                     for (; isspace(*token); token++);
-                } while (*token == '/');
+                    if (*token == '/') {
+                        /* - move after it and consume whitespaces */
+                        for (token++; isspace(*token); token++);
+                    }
+                } while (*token != ']');
 
                 /* compare key and the value */
                 if (key->value.plugin->compare(&key->value, &((struct lyd_node_term*)value)->value)) {
                     /* nodes does not match, try another instance */
 next_instance:
                     token = first_pred;
+                    start_search = node->next;
                     if (node->parent) {
                         goto next_instance_inner;
                     } else {

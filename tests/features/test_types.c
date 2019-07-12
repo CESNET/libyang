@@ -90,7 +90,7 @@ setup(void **state)
             "leaf inst {type instance-identifier {require-instance true;}}"
             "leaf inst-noreq {type instance-identifier {require-instance false;}}"
             "leaf lref {type leafref {path /leaflisttarget; require-instance true;}}"
-            "leaf lref2 {type leafref {path \"/list[id = current()/../str-norestr]/targets\"; require-instance true;}}}";
+            "leaf lref2 {type leafref {path \"../list[id = current()/../str-norestr]/targets\"; require-instance true;}}}";
 
     s = calloc(1, sizeof *s);
     assert_non_null(s);
@@ -904,26 +904,111 @@ test_leafref(void **state)
     struct lyd_node *tree;
     struct lyd_node_term *leaf;
 
-    const char *data = "<leaflisttarget xmlns=\"urn:tests:types\">x</leaflisttarget><leaflisttarget xmlns=\"urn:tests:types\">ddd</leaflisttarget>"
-            "<lref xmlns=\"urn:tests:types\">xx</lref>";
+    /* types:lref: /leaflisttarget */
+    /* types:lref2: ../list[id = current()/../str-norestr]/targets */
 
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
-    logbuf_assert("Invalid leafref value \"xx\" - required instance \"/leaflisttarget\" with this value does not exists in the data tree(s). /");
-#if 0
+    const char *schema = "module leafrefs {yang-version 1.1; namespace urn:tests:leafrefs; prefix lr; import types {prefix t;}"
+            "container c { container x {leaf x {type string;}} list l {key \"id value\"; leaf id {type string;} leaf value {type string;}"
+                "leaf lr1 {type leafref {path \"../../../t:str-norestr\"; require-instance true;}}"
+                "leaf lr2 {type leafref {path \"../../l[id=current()/../../../t:str-norestr][value=current()/../../../t:str-norestr]/value\"; require-instance true;}}"
+                "leaf lr3 {type leafref {path \"/t:list[t:id=current ( )/../../x/x]/t:targets\";}}"
+            "}}}";
+
+    const char *data = "<leaflisttarget xmlns=\"urn:tests:types\">x</leaflisttarget><leaflisttarget xmlns=\"urn:tests:types\">y</leaflisttarget>"
+            "<lref xmlns=\"urn:tests:types\">y</lref>";
+
+    /* additional schema */
+    assert_non_null(lys_parse_mem(s->ctx, schema, LYS_IN_YANG));
+
     /* valid data */
     assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
     tree = tree->prev;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("lref", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
-    assert_string_equal("xx", leaf->value.canonized);
+    assert_string_equal("y", leaf->value.canonized);
     lyd_free_all(tree);
-#endif
+
+    data = "<list xmlns=\"urn:tests:types\"><id>x</id><targets>a</targets><targets>b</targets></list>"
+           "<list xmlns=\"urn:tests:types\"><id>y</id><targets>x</targets><targets>y</targets></list>"
+           "<str-norestr xmlns=\"urn:tests:types\">y</str-norestr><lref2 xmlns=\"urn:tests:types\">y</lref2>";
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    tree = tree->prev;
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("lref2", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("y", leaf->value.canonized);
+    lyd_free_all(tree);
+
+    data = "<str-norestr xmlns=\"urn:tests:types\">y</str-norestr>"
+           "<c xmlns=\"urn:tests:leafrefs\"><l><id>x</id><value>x</value><lr1>y</lr1></l></c>";
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    tree = tree->prev;
+    assert_int_equal(LYS_CONTAINER, tree->schema->nodetype);
+    leaf = (struct lyd_node_term*)(lyd_node_children(lyd_node_children(tree))->prev);
+    assert_int_equal(LYS_LEAF, leaf->schema->nodetype);
+    assert_string_equal("lr1", leaf->schema->name);
+    assert_string_equal("y", leaf->value.canonized);
+    lyd_free_all(tree);
+
+    data = "<str-norestr xmlns=\"urn:tests:types\">y</str-norestr>"
+           "<c xmlns=\"urn:tests:leafrefs\"><l><id>y</id><value>y</value></l>"
+              "<l><id>x</id><value>x</value><lr2>y</lr2></l></c>";
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    tree = tree->prev;
+    assert_int_equal(LYS_CONTAINER, tree->schema->nodetype);
+    leaf = (struct lyd_node_term*)(lyd_node_children(lyd_node_children(tree)->prev)->prev);
+    assert_int_equal(LYS_LEAF, leaf->schema->nodetype);
+    assert_string_equal("lr2", leaf->schema->name);
+    assert_string_equal("y", leaf->value.canonized);
+    lyd_free_all(tree);
+
+    data = "<list xmlns=\"urn:tests:types\"><id>x</id><targets>a</targets><targets>b</targets></list>"
+           "<list xmlns=\"urn:tests:types\"><id>y</id><targets>c</targets><targets>d</targets></list>"
+           "<c xmlns=\"urn:tests:leafrefs\"><x><x>y</x></x>"
+              "<l><id>x</id><value>x</value><lr3>c</lr3></l></c>";
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    tree = tree->prev;
+    assert_int_equal(LYS_CONTAINER, tree->schema->nodetype);
+    leaf = (struct lyd_node_term*)(lyd_node_children(lyd_node_children(tree)->prev)->prev);
+    assert_int_equal(LYS_LEAF, leaf->schema->nodetype);
+    assert_string_equal("lr3", leaf->schema->name);
+    assert_string_equal("c", leaf->value.canonized);
+    lyd_free_all(tree);
+
     /* invalid value */
     data =  "<leaflisttarget xmlns=\"urn:tests:types\">x</leaflisttarget>"
             "<lref xmlns=\"urn:tests:types\">y</lref>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
     logbuf_assert("Invalid leafref value \"y\" - required instance \"/leaflisttarget\" with this value does not exists in the data tree(s). /");
+
+    data = "<list xmlns=\"urn:tests:types\"><id>x</id><targets>a</targets><targets>b</targets></list>"
+           "<list xmlns=\"urn:tests:types\"><id>y</id><targets>x</targets><targets>y</targets></list>"
+           "<str-norestr xmlns=\"urn:tests:types\">y</str-norestr><lref2 xmlns=\"urn:tests:types\">b</lref2>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid leafref value \"b\" - required instance \"../list[id = current()/../str-norestr]/targets\" with this value does not exists in the data tree(s). /");
+
+    data = "<list xmlns=\"urn:tests:types\"><id>x</id><targets>a</targets><targets>b</targets></list>"
+           "<list xmlns=\"urn:tests:types\"><id>y</id><targets>x</targets><targets>y</targets></list>"
+           "<lref2 xmlns=\"urn:tests:types\">b</lref2>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid leafref - required instance \"../list[id = current()/../str-norestr]\" does not exists in the data tree(s). /");
+
+    data = "<str-norestr xmlns=\"urn:tests:types\">y</str-norestr><lref2 xmlns=\"urn:tests:types\">b</lref2>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid leafref - required instance \"../list\" does not exists in the data tree(s). /");
+
+    data = "<str-norestr xmlns=\"urn:tests:types\">y</str-norestr>"
+            "<c xmlns=\"urn:tests:leafrefs\"><l><id>x</id><value>x</value><lr1>a</lr1></l></c>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid leafref value \"a\" - required instance \"../../../t:str-norestr\" with this value does not exists in the data tree(s). /");
+
+    data = "<str-norestr xmlns=\"urn:tests:types\">z</str-norestr>"
+            "<c xmlns=\"urn:tests:leafrefs\"><l><id>y</id><value>y</value></l>"
+              "<l><id>x</id><value>x</value><lr2>z</lr2></l></c>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid leafref - required instance \"../../l[id=current()/../../../t:str-norestr][value=current()/../../../t:str-norestr]\" "
+                  "does not exists in the data tree(s). /");
 
     s->func = NULL;
 }

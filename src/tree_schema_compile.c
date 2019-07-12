@@ -2148,16 +2148,22 @@ lys_compile_leafref_predicate_validate(struct lysc_ctx *ctx, const char **predic
         dst_node = start_node;
 
         /* current-function-invocation *WSP "/" *WSP rel-path-keyexpr */
-        if (strncmp(path_key_expr, "current()", 9)) {
+        if (strncmp(path_key_expr, "current", 7)) {
+error_current_function_invocation:
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                    "Invalid leafref path predicate \"%.*s\" - missing current-function-invocation.",
                    *predicate - start, start);
             goto cleanup;
         }
-        path_key_expr += 9;
-        while (isspace(*path_key_expr)) {
-            ++path_key_expr;
+        for (path_key_expr += 7; isspace(*path_key_expr); ++path_key_expr);
+        if (*path_key_expr != '(') {
+            goto error_current_function_invocation;
         }
+        for (path_key_expr++; isspace(*path_key_expr); ++path_key_expr);
+        if (*path_key_expr != ')') {
+            goto error_current_function_invocation;
+        }
+        for (path_key_expr++; isspace(*path_key_expr); ++path_key_expr);
 
         if (*path_key_expr != '/') {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
@@ -2209,6 +2215,7 @@ lys_compile_leafref_predicate_validate(struct lysc_ctx *ctx, const char **predic
         }
 
         while(path_key_expr != pke_end) {
+            for (;*path_key_expr == '/' || isspace(*path_key_expr); ++path_key_expr);
             if (ly_parse_nodeid(&path_key_expr, &dst_prefix, &dst_prefix_len, &dst, &dst_len)) {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
                        "Invalid node identifier in leafref path predicate - character %d (of %.*s).",
