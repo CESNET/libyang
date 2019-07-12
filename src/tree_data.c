@@ -29,6 +29,66 @@
 #include "tree_data_internal.h"
 #include "tree_schema.h"
 
+API void
+lyd_trees_free(const struct lyd_node **trees, int free_data)
+{
+    if (!trees) {
+        return;
+    }
+
+    if (free_data) {
+        unsigned int u;
+        LY_ARRAY_FOR(trees, u) {
+            lyd_free_all((struct lyd_node *)trees[u]);
+        }
+    }
+    LY_ARRAY_FREE(trees);
+}
+
+static const struct lyd_node *
+lyd_trees_getstart(const struct lyd_node *tree)
+{
+    if (!tree) {
+        return NULL;
+    }
+    while (tree->prev->next) {
+        tree = tree->prev;
+    }
+    return tree;
+}
+
+API const struct lyd_node **
+lyd_trees_new(size_t count, const struct lyd_node *tree, ...)
+{
+    LY_ERR ret;
+    const struct lyd_node **trees = NULL;
+    va_list ap;
+
+    LY_CHECK_ARG_RET(NULL, tree, count > 0, NULL);
+
+    va_start(ap, tree);
+
+    LY_ARRAY_CREATE_GOTO(tree->schema->module->ctx, trees, count, ret, error);
+    /* first, mandatory, tree to insert */
+    trees[0] = lyd_trees_getstart(tree);
+    LY_ARRAY_INCREMENT(trees);
+
+    /* variable arguments */
+    for (unsigned int u = 1; u < count; ++u) {
+        trees[u] = lyd_trees_getstart(va_arg(ap, const struct lyd_node *));
+        LY_ARRAY_INCREMENT(trees);
+    }
+
+    va_end(ap);
+    return trees;
+
+error:
+    (void)ret; /* unused */
+    lyd_trees_free(trees, 1);
+    va_end(ap);
+    return NULL;
+}
+
 static int
 cmp_str(const char *refstr, const char *str, size_t str_len)
 {
@@ -90,7 +150,7 @@ lyd_search(const struct lyd_node *first, const struct lys_module *module,
 
 LY_ERR
 lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len, int dynamic, int second,
-                ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format, struct lyd_node **trees)
+                ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format, const struct lyd_node **trees)
 {
     LY_ERR ret = LY_SUCCESS, rc;
     struct ly_err_item *err = NULL;
@@ -161,7 +221,7 @@ lys_value_validate(struct ly_ctx *ctx, const struct lysc_node *node, const char 
 
 API LY_ERR
 lyd_value_validate(struct ly_ctx *ctx, const struct lyd_node_term *node, const char *value, size_t value_len,
-                   ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format, struct lyd_node **trees)
+                   ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format, const struct lyd_node **trees)
 {
     LY_ERR rc;
     struct ly_err_item *err = NULL;
@@ -192,7 +252,7 @@ lyd_value_validate(struct ly_ctx *ctx, const struct lyd_node_term *node, const c
 
 API LY_ERR
 lyd_value_compare(const struct lyd_node_term *node, const char *value, size_t value_len,
-                  ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format, struct lyd_node **trees)
+                  ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format,  const struct lyd_node **trees)
 {
     LY_ERR ret = LY_SUCCESS, rc;
     struct ly_err_item *err = NULL;
@@ -397,7 +457,7 @@ lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int opti
 }
 
 API const struct lyd_node_term *
-lyd_target(struct lyd_value_path *path, struct lyd_node **trees)
+lyd_target(struct lyd_value_path *path, const struct lyd_node **trees)
 {
     unsigned int u, v, x;
     const struct lyd_node *node = NULL, *parent = NULL, *start_search;

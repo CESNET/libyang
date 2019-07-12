@@ -116,7 +116,7 @@ void ly_err_free(void *ptr);
  */
 typedef LY_ERR (*ly_type_store_clb)(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
                                     ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format,
-                                    const void *context_node, struct lyd_node **trees,
+                                    const void *context_node, const struct lyd_node **trees,
                                     struct lyd_value *storage, const char **canonized, struct ly_err_item **err);
 
 /**

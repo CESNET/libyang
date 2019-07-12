@@ -405,7 +405,7 @@ store_canonized:
 static LY_ERR
 ly_type_store_int(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
                   ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
-                  const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                  const void *UNUSED(context_node), const struct lyd_node **UNUSED(trees),
                   struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
     LY_ERR ret;
@@ -468,7 +468,7 @@ ly_type_store_int(struct ly_ctx *ctx, struct lysc_type *type, const char *value,
 static LY_ERR
 ly_type_store_uint(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
                    ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
-                   const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                   const void *UNUSED(context_node), const struct lyd_node **UNUSED(trees),
                    struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
     LY_ERR ret;
@@ -529,7 +529,7 @@ ly_type_store_uint(struct ly_ctx *ctx, struct lysc_type *type, const char *value
 static LY_ERR
 ly_type_store_decimal64(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
                         ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
-                        const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                        const void *UNUSED(context_node), const struct lyd_node **UNUSED(trees),
                         struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
     int64_t d;
@@ -601,7 +601,7 @@ ly_type_store_decimal64(struct ly_ctx *ctx, struct lysc_type *type, const char *
 static LY_ERR
 ly_type_store_binary(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
                      ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
-                     const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                     const void *UNUSED(context_node), const struct lyd_node **UNUSED(trees),
                      struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
     size_t start = 0, stop = 0, count = 0, u, termination = 0;
@@ -704,7 +704,7 @@ error:
 static LY_ERR
 ly_type_store_string(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
                      ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
-                     const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                     const void *UNUSED(context_node), const struct lyd_node **UNUSED(trees),
                      struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
     struct lysc_type_str *type_str = (struct lysc_type_str *)type;
@@ -747,7 +747,7 @@ ly_type_store_string(struct ly_ctx *ctx, struct lysc_type *type, const char *val
 static LY_ERR
 ly_type_store_bits(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
                    ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
-                   const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                   const void *UNUSED(context_node), const struct lyd_node **UNUSED(trees),
                    struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
     LY_ERR ret = LY_EVALID;
@@ -915,7 +915,7 @@ ly_type_free_bits(struct ly_ctx *ctx, struct lysc_type *type, struct lyd_value *
 static LY_ERR
 ly_type_store_enum(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
                    ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
-                   const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                   const void *UNUSED(context_node), const struct lyd_node **UNUSED(trees),
                    struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
     unsigned int u, v;
@@ -983,7 +983,7 @@ error:
 static LY_ERR
 ly_type_store_boolean(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), const char *value, size_t value_len, int options,
                       ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
-                      const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                      const void *UNUSED(context_node), const struct lyd_node **UNUSED(trees),
                       struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
     int8_t i;
@@ -1031,7 +1031,7 @@ ly_type_store_boolean(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), const 
 static LY_ERR
 ly_type_store_empty(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), const char *value, size_t value_len, int options,
                     ly_clb_resolve_prefix UNUSED(get_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
-                    const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                    const void *UNUSED(context_node), const struct lyd_node **UNUSED(trees),
                     struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
     if (options & LY_TYPE_OPTS_SECOND_CALL) {
@@ -1088,7 +1088,7 @@ ly_type_identity_isderived(struct lysc_ident *base, struct lysc_ident *der)
 static LY_ERR
 ly_type_store_identityref(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
                           ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT UNUSED(format),
-                          const void *UNUSED(context_node), struct lyd_node **UNUSED(trees),
+                          const void *UNUSED(context_node), const struct lyd_node **UNUSED(trees),
                           struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
     struct lysc_type_identityref *type_ident = (struct lysc_type_identityref *)type;
@@ -1219,7 +1219,7 @@ static LY_ERR
 ly_type_store_instanceid_checknodeid(const char *orig, size_t orig_len, int options, int require_instance,
                                      const char **token, struct lyd_value_prefix *prefixes, LYD_FORMAT format,
                                      const struct lysc_node **node_s, const struct lyd_node **node_d,
-                                     struct lyd_node **trees, char **errmsg)
+                                     const struct lyd_node **trees, char **errmsg)
 {
     const char *id, *prefix;
     size_t id_len, prefix_len;
@@ -1405,7 +1405,7 @@ ly_type_store_instanceid_predicate_end(const char *predicate)
 static LY_ERR
 ly_type_store_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
                          ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format,
-                         const void *context_node, struct lyd_node **trees,
+                         const void *context_node, const struct lyd_node **trees,
                          struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
     LY_ERR ret = LY_EVALID;
@@ -1807,7 +1807,7 @@ ly_type_free_instanceid(struct ly_ctx *ctx, struct lysc_type *type, struct lyd_v
 static LY_ERR
 ly_type_store_leafref(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
                       ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format,
-                      const void *context_node, struct lyd_node **trees,
+                      const void *context_node, const struct lyd_node **trees,
                       struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
     LY_ERR ret;

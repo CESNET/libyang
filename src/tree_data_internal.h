@@ -57,7 +57,7 @@ LY_ERR lyd_parse_check_options(struct ly_ctx *ctx, int options, const char *func
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len, int dynamic, int second,
-                       ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format,struct lyd_node **trees);
+                       ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format, const struct lyd_node **trees);
 
 /**
  * @brief Parse XML string as YANG data tree.

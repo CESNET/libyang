@@ -592,6 +592,24 @@ LY_ERR lyd_unlink_tree(struct lyd_node *node);
 void lyd_free_attr(struct ly_ctx *ctx, struct lyd_attr *attr, int recursive);
 
 /**
+ * @brief Prepare ([sized array](@ref sizedarrays)) of data trees required by various (mostly validation) functions.
+ *
+ * @param[in] count Number of trees to include (including the mandatory @p tree).
+ * @param[in] tree First (and mandatory) tree to be included into the resulting ([sized array](@ref sizedarrays)).
+ * @return NULL in case of memory allocation failure or invalid argument, prepared ([sized array](@ref sizedarrays)) otherwise.
+ */
+const struct lyd_node **lyd_trees_new(size_t count, const struct lyd_node *tree, ...);
+
+/**
+ * @brief Free the trees ([sized array](@ref sizedarrays)).
+ *
+ * @param[in] trees ([Sized array](@ref sizedarrays)) of data trees.
+ * @param[in] free_data Flag to free also the particular trees in the @p trees ([sized array](@ref sizedarrays)).
+ * If set to zero, only the trees envelope is freed and data are untouched.
+ */
+void lyd_trees_free(const struct lyd_node **trees, int free_data);
+
+/**
  * @brief Check type restrictions applicable to the particular leaf/leaf-list with the given string @p value.
  *
  * The given node is not modified in any way - it is just checked if the @p value can be set to the node.
@@ -608,13 +626,13 @@ void lyd_free_attr(struct ly_ctx *ctx, struct lyd_attr *attr, int recursive);
  * @param[in] format Input format of the data.
  * @param[in] trees ([Sized array](@ref sizedarrays)) of data trees (e.g. when validating RPC/Notification) where the required
  *            data instance (leafref target, instance-identifier) can be placed. NULL in case the data tree are not yet complete,
- *            then LY_EINCOMPLETE can be returned.
+ *            then LY_EINCOMPLETE can be returned. To simply prepare this structure, use lyd_trees_new().
  * @return LY_SUCCESS on success
  * @return LY_EINCOMPLETE in case the @p trees is not provided and it was needed to finish the validation (e.g. due to require-instance).
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_value_validate(struct ly_ctx *ctx, const struct lyd_node_term *node, const char *value, size_t value_len,
-                          ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format, struct lyd_node **trees);
+                          ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format, const struct lyd_node **trees);
 
 /**
  * @brief Compare the node's value with the given string value. The string value is first validated according to the node's type.
@@ -628,17 +646,25 @@ LY_ERR lyd_value_validate(struct ly_ctx *ctx, const struct lyd_node_term *node, 
  * @param[in] format Input format of the data.
  * @param[in] trees ([Sized array](@ref sizedarrays)) of data trees (e.g. when validating RPC/Notification) where the required
  *            data instance (leafref target, instance-identifier) can be placed. NULL in case the data tree are not yet complete,
- *            then LY_EINCOMPLETE can be returned in case the validation was not completed, but values matches.
+ *            then LY_EINCOMPLETE can be returned in case the validation was not completed, but values matches. To simply prepare
+ *            this structure, use lyd_trees_new(). To simply prepare this structure, use lyd_trees_new().
  * @return LY_SUCCESS on success
  * @return LY_EINCOMPLETE in case of success when the @p trees is not provided and it was needed to finish the validation of
  * the given string @p value (e.g. due to require-instance).
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_value_compare(const struct lyd_node_term *node, const char *value, size_t value_len,
-                         ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format, struct lyd_node **trees);
+                         ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format, const struct lyd_node **trees);
 
-
-const struct lyd_node_term *lyd_target(struct lyd_value_path *path, struct lyd_node **trees);
+/**
+ * @brief Resolve instance-identifier defined by lyd_value_path structure.
+ *
+ * @param[in] path Path structure specifying the instance-identifier target.
+ * @param[in] trees ([Sized array](@ref sizedarrays)) of data trees to be searched.
+ *            To simply prepare this structure, use lyd_trees_new().
+ * @return Target node of the instance-identifier present in the given data @p trees.
+ */
+const struct lyd_node_term *lyd_target(struct lyd_value_path *path, const struct lyd_node **trees);
 
 #ifdef __cplusplus
 }
