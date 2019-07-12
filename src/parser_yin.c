@@ -20,6 +20,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <errno.h>
+#include <ctype.h>
 
 #include "context.h"
 #include "dict.h"
@@ -468,6 +469,42 @@ yin_parse_pattern(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, cons
                                             {YANG_CUSTOM, NULL, 0}
                                         };
     return yin_parse_content(ctx, subelems, 6, data, YANG_PATTERN, NULL, &restr->exts);
+}
+
+static LY_ERR
+yin_parse_fracdigits(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+                     struct lysp_type *type)
+{
+    const char *temp_val = NULL;
+    char *ptr;
+    unsigned long int num;
+
+    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_VALUE, &temp_val, Y_STR_ARG, YANG_FRACTION_DIGITS));
+
+    if (temp_val[0] == '\0' || (temp_val[0] == '0') || !isdigit(temp_val[0])) {
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL, strlen(temp_val), temp_val, "fraction-digits");
+        FREE_STRING(ctx->xml_ctx.ctx, temp_val);
+        return LY_EVALID;
+    }
+
+    errno = 0;
+    num = strtoul(temp_val, &ptr, 10);
+    if (*ptr != '\0') {
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL, strlen(temp_val), temp_val, "fraction-digits");
+        FREE_STRING(ctx->xml_ctx.ctx, temp_val);
+        return LY_EVALID;
+    }
+    if ((errno == ERANGE) || (num > 18)) {
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL, strlen(temp_val), temp_val, "fraction-digits");
+        FREE_STRING(ctx->xml_ctx.ctx, temp_val);
+        return LY_EVALID;
+    }
+    type->fraction_digits = num;
+    type->flags |= LYS_SET_FRDIGITS;
+    struct yin_subelement subelems[1] = {
+                                            {YANG_CUSTOM, &index, 0}
+                                        };
+    return yin_parse_content(ctx, subelems, 1, data, YANG_FRACTION_DIGITS, NULL, &type->exts);
 }
 
 /**
@@ -1013,6 +1050,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 case YANG_FEATURE:
                     break;
                 case YANG_FRACTION_DIGITS:
+                    ret = yin_parse_fracdigits(ctx, subelem_attrs, data, (struct lysp_type *)subelem_info_rec->dest);
                     break;
                 case YANG_GROUPING:
                     break;
