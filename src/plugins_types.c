@@ -1372,7 +1372,7 @@ error:
  * @return Pointer to the end of the predicate section.
  */
 static const char *
-ly_type_store_instanceid_predicate_end(const char *predicate)
+ly_type_path_predicate_end(const char *predicate)
 {
     size_t i = 0;
     while (predicate[i] != ']') {
@@ -1416,12 +1416,13 @@ ly_type_store_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const char 
     const struct lysc_node *node_s = NULL;
     const struct lyd_node *node_d = NULL;
     struct lyd_value_prefix *prefixes = NULL;
-    unsigned int u;
+    unsigned int u, c;
     struct lyd_value_path *target = NULL, *t;
     struct lyd_value_path_predicate *pred;
     struct ly_set predicates = {0};
     uint64_t pos;
     int i;
+    const char *first_pred = NULL;
 
     /* init */
     *err = NULL;
@@ -1458,6 +1459,7 @@ ly_type_store_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const char 
             /* clean them to correctly check predicates presence restrictions */
             pos = 0;
             ly_set_clean(&predicates, NULL);
+            first_pred = NULL;
 
             token++;
             if (ly_type_store_instanceid_checknodeid(value, value_len, options, type_inst->require_instance,
@@ -1472,7 +1474,7 @@ ly_type_store_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const char 
                 /* predicate follows, this must be a list or leaf-list */
                 if (node_s->nodetype != LYS_LIST && node_s->nodetype != LYS_LEAFLIST) {
                     asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - predicate \"%.*s\" for %s is not accepted.",
-                             (int)value_len, value, (int)(ly_type_store_instanceid_predicate_end(token) - token) + 1, token,
+                             (int)value_len, value, (int)(ly_type_path_predicate_end(token) - token) + 1, token,
                              lys_nodetype2str(node_s->nodetype));
                     goto error;
                 }
@@ -1490,6 +1492,12 @@ ly_type_store_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const char 
             const struct lysc_node *key_s = node_s;
             const struct lyd_node *key_d = node_d;
 
+            if (!first_pred) {
+                first_pred = pred_start;
+                c = predicates.count;
+            }
+
+check_predicates:
             if (ly_parse_instance_predicate(&token, value_len - (token - value), format, &prefix, &prefix_len, &id, &id_len, &val, &val_len, &pred_errmsg)) {
                 asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value's predicate \"%.*s\" (%s).", (int)value_len, value,
                          (int)(token - pred_start), pred_start, pred_errmsg);
@@ -1539,16 +1547,22 @@ ly_type_store_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const char 
                         t = start;
                         node_d = lyd_search(node_d->next, node_s->module, node_s->name, strlen(node_s->name), LYS_LIST, NULL, 0);
                         if (node_d) {
+                            /* reset variables to the first predicate of this list to check it completely */
                             key_d = node_d;
-                            if (ly_type_store_instanceid_checknodeid(value, value_len, options, type_inst->require_instance,
-                                                                        &t, prefixes, format, &key_s, &key_d, trees, &errmsg)) {
-                                goto error;
-                            }
+                            pred_start = token = first_pred;
+                            predicates.count = c;
+                            goto check_predicates;
                         }
                     }
                     if (!node_d) {
+                        const char *pathstr_end = token;
+                        /* there maybe multiple predicates and we want to print all here, since them all identify the instance */
+                        for (pathstr_end = ly_type_path_predicate_end(token);
+                                pathstr_end[1] == '[';
+                                pathstr_end = ly_type_path_predicate_end(pathstr_end + 1));
+                        pathstr_end++;
                         asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - key-predicate \"%.*s\" does not match any \"%s\" instance.",
-                                 (int)value_len, value, (int)(token - pred_start), pred_start, node_s->name);
+                                 (int)value_len, value, (int)(pathstr_end - first_pred), first_pred, node_s->name);
                         goto error;
                     }
                 } else {
@@ -1902,9 +1916,9 @@ next_instance_toplevel:
                     if (first_pred) {
                         /* some node instances actually exist, but they do not fit the predicate restrictions,
                          * here we want to find the end of the list's predicate(s) */
-                        for (pathstr_end = ly_type_store_instanceid_predicate_end(token);
+                        for (pathstr_end = ly_type_path_predicate_end(token);
                                 pathstr_end[1] == '[';
-                                pathstr_end = ly_type_store_instanceid_predicate_end(pathstr_end + 1));
+                                pathstr_end = ly_type_path_predicate_end(pathstr_end + 1));
                         /* move after last ']' (after each predicate follows "/something" since path must points to
                          * a leaf/leaflist and predicates are allowed only for lists) */
                         pathstr_end++;
@@ -1919,7 +1933,7 @@ next_instance_toplevel:
                 const struct lyd_node_term *key;
                 const struct lyd_node *value;
                 const struct lys_module *mod;
-                const char *pred_end = ly_type_store_instanceid_predicate_end(token);
+                const char *pred_end = ly_type_path_predicate_end(token);
                 const char *src_prefix, *src;
                 size_t src_prefix_len, src_len;
 
