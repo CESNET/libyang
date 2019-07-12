@@ -174,7 +174,7 @@ LY_ERR lysp_check_typedefs(struct lys_parser_ctx *ctx, struct lysp_module *mod);
 void lysp_sort_revisions(struct lysp_revision *revs);
 
 /**
- * @brief Find type specified type definition
+ * @brief Find type specified type definition.
  *
  * @param[in] id Name of the type including possible prefix. Module where the prefix is being searched is start_module.
  * @param[in] start_node Context node where the type is being instantiated to be able to search typedefs in parents.
@@ -186,6 +186,17 @@ void lysp_sort_revisions(struct lysp_revision *revs);
  */
 LY_ERR lysp_type_find(const char *id, struct lysp_node *start_node, struct lysp_module *start_module,
                       LY_DATA_TYPE *type, const struct lysp_tpdf **tpdf, struct lysp_node **node, struct lysp_module **module);
+
+/**
+ * @brief Validate enum name.
+ *
+ * @param[in] ctx yang parser context for logging.
+ * @param[in] name String to check.
+ * @param[in] name_len Length of name.
+ *
+ * @return LY_ERR values
+ */
+LY_ERR lysp_check_enum_name(struct lys_parser_ctx *ctx, char *name, size_t name_len);
 
 /**
  * @brief Find and parse module of the given name.

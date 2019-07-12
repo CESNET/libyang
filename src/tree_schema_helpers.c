@@ -424,6 +424,29 @@ lysp_type_find(const char *id, struct lysp_node *start_node, struct lysp_module 
     return LY_ENOTFOUND;
 }
 
+LY_ERR
+lysp_check_enum_name(struct lys_parser_ctx *ctx, char *name, size_t name_len)
+{
+    if (!name_len) {
+        LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Enum name must not be zero-length.");
+        return LY_EVALID;
+    } else if (isspace(name[0]) || isspace(name[name_len - 1])) {
+        LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Enum name must not have any leading or trailing whitespaces (\"%.*s\").",
+                    name_len, name);
+        return LY_EVALID;
+    } else {
+        for (size_t u = 0; u < name_len; ++u) {
+            if (iscntrl(name[u])) {
+                LOGWRN(ctx->ctx, "Control characters in enum name should be avoided (\"%.*s\", character number %d).",
+                    name_len, name, u + 1);
+                break;
+            }
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
 /*
  * @brief Check name of a new type to avoid name collisions.
  *

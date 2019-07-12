@@ -1693,7 +1693,7 @@ parse_type_enum(struct lys_parser_ctx *ctx, const char **data, enum yang_keyword
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
-    size_t word_len, u;
+    size_t word_len;
     enum yang_keyword kw;
     struct lysp_type_enum *enm;
 
@@ -1702,24 +1702,8 @@ parse_type_enum(struct lys_parser_ctx *ctx, const char **data, enum yang_keyword
     /* get value */
     LY_CHECK_RET(get_argument(ctx, data, enum_kw == YANG_ENUM ? Y_STR_ARG : Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
     if (enum_kw == YANG_ENUM) {
-        if (!word_len) {
-            LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Enum name must not be zero-length.");
-            free(buf);
-            return LY_EVALID;
-        } else if (isspace(word[0]) || isspace(word[word_len - 1])) {
-            LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Enum name must not have any leading or trailing whitespaces (\"%.*s\").",
-                        word_len, word);
-            free(buf);
-            return LY_EVALID;
-        } else {
-            for (u = 0; u < word_len; ++u) {
-                if (iscntrl(word[u])) {
-                    LOGWRN(ctx->ctx, "Control characters in enum name should be avoided (\"%.*s\", character number %d).",
-                           word_len, word, u + 1);
-                    break;
-                }
-            }
-        }
+        ret = lysp_check_enum_name(ctx, word, word_len);
+        LY_CHECK_ERR_RET(ret, free(buf), ret);
     } else { /* YANG_BIT */
 
     }
