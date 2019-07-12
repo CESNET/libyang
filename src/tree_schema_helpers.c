@@ -425,7 +425,7 @@ lysp_type_find(const char *id, struct lysp_node *start_node, struct lysp_module 
 }
 
 LY_ERR
-lysp_check_enum_name(struct lys_parser_ctx *ctx, char *name, size_t name_len)
+lysp_check_enum_name(struct lys_parser_ctx *ctx, const char *name, size_t name_len)
 {
     if (!name_len) {
         LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Enum name must not be zero-length.");

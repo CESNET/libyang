@@ -201,7 +201,7 @@ LY_ERR lysp_type_find(const char *id, struct lysp_node *start_node, struct lysp_
  *
  * @return LY_ERR values
  */
-LY_ERR lysp_check_enum_name(struct lys_parser_ctx *ctx, char *name, size_t name_len);
+LY_ERR lysp_check_enum_name(struct lys_parser_ctx *ctx, const char *name, size_t name_len);
 
 /**
  * @brief Find and parse module of the given name.

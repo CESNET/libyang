@@ -1697,7 +1697,7 @@ parse_type_enum(struct lys_parser_ctx *ctx, const char **data, enum yang_keyword
     /* get value */
     LY_CHECK_RET(get_argument(ctx, data, enum_kw == YANG_ENUM ? Y_STR_ARG : Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
     if (enum_kw == YANG_ENUM) {
-        ret = lysp_check_enum_name(ctx, word, word_len);
+        ret = lysp_check_enum_name(ctx, (const char *)word, word_len);
         LY_CHECK_ERR_RET(ret, free(buf), ret);
     } else { /* YANG_BIT */
 

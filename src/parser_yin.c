@@ -470,25 +470,41 @@ yin_parse_pattern(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, cons
     return yin_parse_content(ctx, subelems, 6, data, YANG_PATTERN, NULL, &restr->exts);
 }
 
+/**
+ * @brief Parse enum or bit element.
+ *
+ * @param[in,out] ctx YIN parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] enum_kw Identification of actual keyword, can be set to YANG_BIT or YANG_ENUM.
+ * @param[in,out] enums Enums or bits to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
-yin_parse_bit(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
-              struct lysp_type *type)
+yin_parse_enum_bit(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+                   enum yang_keyword enum_kw, struct lysp_type *type)
 {
-    struct lysp_type_enum *bit;
-    LY_ARRAY_NEW_RET(ctx->xml_ctx.ctx, type->bits, bit, LY_EMEM);
-    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NAME, &bit->name, Y_IDENTIF_ARG, YANG_BIT));
-    type->flags |= LYS_SET_BIT;
-    CHECK_UNIQUENESS((struct lys_parser_ctx *)ctx, type->bits, name, "bit", bit->name);
+    assert(enum_kw == YANG_BIT || enum_kw == YANG_ENUM);
+    struct lysp_type_enum *en;
+    LY_ARRAY_NEW_RET(ctx->xml_ctx.ctx, type->enums, en, LY_EMEM);
+    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NAME, &en->name, Y_IDENTIF_ARG, enum_kw));
+    type->flags |= (enum_kw == YANG_ENUM) ? LYS_SET_ENUM : LYS_SET_BIT;
+    if (enum_kw == YANG_ENUM) {
+        LY_CHECK_RET(lysp_check_enum_name((struct lys_parser_ctx *)ctx, en->name, strlen(en->name)));
+        YANG_CHECK_NONEMPTY((struct lys_parser_ctx *)ctx, NULL, strlen(en->name), "enum");
+    }
+    CHECK_UNIQUENESS((struct lys_parser_ctx *)ctx, type->enums, name, ly_stmt2str(enum_kw), en->name);
 
     struct yin_subelement subelems[6] = {
-                                            {YANG_DESCRIPTION, &bit->dsc, YIN_SUBELEM_UNIQUE},
-                                            {YANG_IF_FEATURE, &bit->iffeatures, 0},
-                                            {YANG_POSITION, &bit->value, YIN_SUBELEM_UNIQUE},
-                                            {YANG_REFERENCE, &bit->ref, YIN_SUBELEM_UNIQUE},
-                                            {YANG_STATUS, &bit->flags, YIN_SUBELEM_UNIQUE},
+                                            {YANG_DESCRIPTION, &en->dsc, YIN_SUBELEM_UNIQUE},
+                                            {YANG_IF_FEATURE, &en->iffeatures, 0},
+                                            {(enum_kw == YANG_ENUM) ? YANG_VALUE : YANG_POSITION, &en->value, YIN_SUBELEM_UNIQUE},
+                                            {YANG_REFERENCE, &en->ref, YIN_SUBELEM_UNIQUE},
+                                            {YANG_STATUS, &en->flags, YIN_SUBELEM_UNIQUE},
                                             {YANG_CUSTOM, NULL, 0}
                                         };
-    return yin_parse_content(ctx, subelems, 6, data, YANG_BIT, NULL, &bit->exts);
+    return yin_parse_content(ctx, subelems, 6, data, enum_kw, NULL, &en->exts);
 }
 
 /**
@@ -958,7 +974,8 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     ret = yin_parse_belongs_to(ctx, subelem_attrs, data, (struct lysp_submodule *)subelem_info_rec->dest, exts);
                     break;
                 case YANG_BIT:
-                    ret = yin_parse_bit(ctx, subelem_attrs, data, (struct lysp_type *)subelem_info_rec->dest);
+                case YANG_ENUM:
+                    ret = yin_parse_enum_bit(ctx, subelem_attrs, data, kw, (struct lysp_type *)subelem_info_rec->dest);
                     break;
                 case YANG_CASE:
                     break;
@@ -982,8 +999,6 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 case YANG_DEVIATE:
                     break;
                 case YANG_DEVIATION:
-                    break;
-                case YANG_ENUM:
                     break;
                 case YANG_ERROR_APP_TAG:
                     ret = yin_parse_simple_element(ctx, subelem_attrs, data, kw, (const char **)subelem_info_rec->dest,
