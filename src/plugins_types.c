@@ -91,21 +91,24 @@ API struct lyd_value_prefix *
 ly_type_get_prefixes(struct ly_ctx *ctx, const char *value, size_t value_len, ly_clb_resolve_prefix get_prefix, void *parser)
 {
     LY_ERR ret;
+    unsigned int c;
     const char *start, *stop;
     struct lyd_value_prefix *prefixes = NULL;
     const struct lys_module *mod;
     unsigned int u;
 
-    for (stop = start = value; (size_t)(stop - value) <= value_len; stop++, start++) {
-        if (is_xmlqnamestartchar(*start)) {
-            int i = 1;
-            while (is_xmlqnamechar(stop[i])) {
-                i++;
-            }
-            if (stop[i] == ':') {
+    for (stop = start = value; (size_t)(stop - value) < value_len; start = stop) {
+        size_t bytes;
+        ly_getutf8(&stop, &c, &bytes);
+        if (is_xmlqnamestartchar(c)) {
+            for (ly_getutf8(&stop, &c, &bytes);
+                    is_xmlqnamechar(c) && (size_t)(stop - value) < value_len;
+                    ly_getutf8(&stop, &c, &bytes));
+            stop = stop - bytes;
+            if (*stop == ':') {
                 /* we have a possible prefix */
                 struct lyd_value_prefix *p;
-                size_t len = &stop[i] - start;
+                size_t len = stop - start;
                 mod = NULL;
 
                 LY_ARRAY_FOR(prefixes, u) {
@@ -123,7 +126,7 @@ ly_type_get_prefixes(struct ly_ctx *ctx, const char *value, size_t value_len, ly
                     }
                 } /* else the prefix already present */
             }
-            start = stop = &stop[i];
+            stop = stop + bytes;
         }
     }
 
