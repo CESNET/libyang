@@ -24,6 +24,7 @@
 #include "log.h"
 #include "tree.h"
 #include "extensions.h"
+#include "tree_data.h"
 
 struct ly_ctx;
 
@@ -1642,6 +1643,25 @@ const struct lysc_node *lys_child(const struct lysc_node *parent, const struct l
  * - pointer to the node with the unsatisfied (disabling) if-feature expression.
  */
 const struct lysc_iffeature *lys_is_disabled(const struct lysc_node *node, int recursive);
+
+/**
+ * @brief Check type restrictions applicable to the particular leaf/leaf-list with the given string @p value.
+ *
+ * This function check just the type's restriction, if you want to check also the data tree context (e.g. in case of
+ * require-instance restriction), use lyd_value_validate().
+ *
+ * @param[in] ctx libyang context for logging (function does not log errors when @p ctx is NULL)
+ * @param[in] node Schema node for the @p value.
+ * @param[in] value String value to be checked.
+ * @param[in] value_len Length of the given @p value (mandatory).
+ * @param[in] get_prefix Callback function to resolve prefixes used in the @p value string.
+ * @param[in] get_prefix_data Private data for the @p get_prefix callback.
+ * @param[in] format Input format of the @p value.
+ * @return LY_SUCCESS on success
+ * @return LY_ERR value if an error occurred.
+ */
+LY_ERR lys_value_validate(struct ly_ctx *ctx, const struct lysc_node *node, const char *value, size_t value_len,
+                          ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format);
 
 /** @} */
 

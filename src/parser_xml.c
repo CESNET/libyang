@@ -254,7 +254,7 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
                 value = "";
                 value_len = 0;
             }
-            ret = lyd_value_parse((struct lyd_node_term*)cur, value, value_len, dynamic, lydxml_resolve_prefix, ctx, NULL);
+            ret = lyd_value_parse((struct lyd_node_term*)cur, value, value_len, dynamic, 0, lydxml_resolve_prefix, ctx, LYD_XML, NULL);
             if (ret == LY_EINCOMPLETE) {
                 ly_set_add(&ctx->incomplete_type_validation, cur, LY_SET_OPT_USEASLIST);
             } else if (ret) {
@@ -306,17 +306,16 @@ lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, struct lyd_node
         /* finish incompletely validated terminal values */
         for (unsigned int u = 0; u < xmlctx.incomplete_type_validation.count; u++) {
             struct lyd_node_term *node = (struct lyd_node_term*)xmlctx.incomplete_type_validation.objs[u];
-            struct lyd_node **trees = NULL;
+            const struct lyd_node **trees = NULL;
 
             /* prepare sized array for validator */
             if (*result) {
-                struct lyd_node **tree;
-                LY_ARRAY_NEW_RET(ctx, trees, tree, LY_EMEM);
-                *tree = *result;
+                trees = lyd_trees_new(1, *result);
             }
             /* validate and store the value of the node */
-            ret = lyd_value_parse(node, node->value.canonized, strlen(node->value.canonized), 0, lydxml_resolve_prefix, ctx, trees);
-            LY_ARRAY_FREE(trees);
+            ret = lyd_value_parse(node, node->value.canonized, node->value.canonized ? strlen(node->value.canonized) : 0, 0, 1,
+                                  lydxml_resolve_prefix, ctx, LYD_XML, trees);
+            lyd_trees_free(trees, 0);
             if (ret) {
                 lyd_free_all(*result);
                 *result = NULL;
