@@ -492,7 +492,7 @@ yin_parse_enum_bit(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, con
     type->flags |= (enum_kw == YANG_ENUM) ? LYS_SET_ENUM : LYS_SET_BIT;
     if (enum_kw == YANG_ENUM) {
         LY_CHECK_RET(lysp_check_enum_name((struct lys_parser_ctx *)ctx, en->name, strlen(en->name)));
-        YANG_CHECK_NONEMPTY((struct lys_parser_ctx *)ctx, NULL, strlen(en->name), "enum");
+        YANG_CHECK_NONEMPTY((struct lys_parser_ctx *)ctx, strlen(en->name), "enum");
     }
     CHECK_UNIQUENESS((struct lys_parser_ctx *)ctx, type->enums, name, ly_stmt2str(enum_kw), en->name);
 

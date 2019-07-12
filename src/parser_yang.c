@@ -1363,7 +1363,7 @@ parse_restr(struct lys_parser_ctx *ctx, const char **data, enum yang_keyword res
     /* get value */
     LY_CHECK_RET(get_argument(ctx, data, Y_STR_ARG, NULL, &word, &buf, &word_len));
 
-    YANG_CHECK_NONEMPTY(ctx, NULL, word_len, ly_stmt2str(restr_kw));
+    YANG_CHECK_NONEMPTY(ctx, word_len, ly_stmt2str(restr_kw));
     INSERT_WORD(ctx, buf, restr->arg, word, word_len);
     YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret,) {
         switch (kw) {
@@ -1489,7 +1489,7 @@ parse_when(struct lys_parser_ctx *ctx, const char **data, struct lysp_when **whe
 
     /* get value */
     LY_CHECK_ERR_RET(get_argument(ctx, data, Y_STR_ARG, NULL, &word, &buf, &word_len), free(when), LY_EMEM);
-    YANG_CHECK_NONEMPTY(ctx, when, word_len, "when");
+    YANG_CHECK_NONEMPTY(ctx, word_len, "when");
     INSERT_WORD(ctx, buf, when->cond, word, word_len);
 
     *when_p = when;
@@ -1703,7 +1703,7 @@ parse_type_enum(struct lys_parser_ctx *ctx, const char **data, enum yang_keyword
 
     }
     if (enum_kw == YANG_ENUM) {
-        YANG_CHECK_NONEMPTY(ctx, NULL, word_len, "enum");
+        YANG_CHECK_NONEMPTY(ctx, word_len, "enum");
     }
     INSERT_WORD(ctx, buf, enm->name, word, word_len);
     CHECK_UNIQUENESS(ctx, *enums, name, ly_stmt2str(enum_kw), enm->name);
@@ -2481,7 +2481,7 @@ parse_refine(struct lys_parser_ctx *ctx, const char **data, struct lysp_refine *
 
     /* get value */
     LY_CHECK_RET(get_argument(ctx, data, Y_STR_ARG, NULL, &word, &buf, &word_len));
-    YANG_CHECK_NONEMPTY(ctx, NULL, word_len, "refine");
+    YANG_CHECK_NONEMPTY(ctx, word_len, "refine");
     INSERT_WORD(ctx, buf, rf->nodeid, word, word_len);
 
     YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret,) {
@@ -2954,7 +2954,7 @@ parse_augment(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *p
 
     /* get value */
     LY_CHECK_RET(get_argument(ctx, data, Y_STR_ARG, NULL, &word, &buf, &word_len));
-    YANG_CHECK_NONEMPTY(ctx, NULL, word_len, "augment");
+    YANG_CHECK_NONEMPTY(ctx, word_len, "augment");
     INSERT_WORD(ctx, buf, aug->nodeid, word, word_len);
     aug->nodetype = LYS_AUGMENT;
     aug->parent = parent;
@@ -4040,7 +4040,7 @@ parse_deviation(struct lys_parser_ctx *ctx, const char **data, struct lysp_devia
 
     /* get value */
     LY_CHECK_RET(get_argument(ctx, data, Y_STR_ARG, NULL, &word, &buf, &word_len));
-    YANG_CHECK_NONEMPTY(ctx, NULL, word_len, "deviation");
+    YANG_CHECK_NONEMPTY(ctx, word_len, "deviation");
     INSERT_WORD(ctx, buf, dev->nodeid, word, word_len);
 
     YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret, goto checks) {

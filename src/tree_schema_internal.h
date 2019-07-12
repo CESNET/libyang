@@ -59,7 +59,7 @@
         } \
     }
 
-#define YANG_CHECK_NONEMPTY(CTX, OBJECT, VALUE_LEN, STMT) \
+#define YANG_CHECK_NONEMPTY(CTX, VALUE_LEN, STMT) \
     if (!VALUE_LEN) { \
         LOGWRN((CTX)->ctx, "Empty argument of %s statement does not make sense.", STMT); \
     }
