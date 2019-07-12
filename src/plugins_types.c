@@ -1957,6 +1957,8 @@ next_instance_toplevel:
 
                 key = (const struct lyd_node_term*)lyd_search(lyd_node_children(node), mod, src, src_len, LYS_LEAF, NULL, 0);
                 if (!key) {
+                    asprintf(&errmsg, "Internal error - missing expected list's key \"%.*s\" in module \"%s\" (%s:%d).",
+                             (int)src_len, src, mod->name, __FILE__, __LINE__);
                     LOGINT(ctx);
                     goto error;
                 }
