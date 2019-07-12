@@ -428,6 +428,49 @@ yin_parse_simple_element(struct yin_parser_ctx *ctx, struct yin_arg_record *attr
 }
 
 /**
+ * @brief Parse pattern element.
+ *
+ * @param[in,out] ctx Yin parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] patterns Restrictions to add to.
+ *
+ * @return LY_ERR values.
+ */
+static LY_ERR
+yin_parse_pattern(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+                  struct lysp_type *type)
+{
+    const char *real_value = NULL;
+    char *saved_value = NULL;
+    struct lysp_restr *restr;
+
+    LY_ARRAY_NEW_RET(ctx->xml_ctx.ctx, type->patterns, restr, LY_EMEM);
+    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_VALUE, &real_value, Y_STR_ARG, YANG_PATTERN));
+    size_t len = strlen(real_value);
+
+    saved_value = malloc(len + 2);
+    LY_CHECK_ERR_RET(!saved_value, LOGMEM(ctx->xml_ctx.ctx), LY_EMEM);
+    memmove(saved_value + 1, real_value, len);
+    FREE_STRING(ctx->xml_ctx.ctx, real_value);
+    saved_value[0] = 0x06;
+    saved_value[len + 1] = '\0';
+    restr->arg = lydict_insert_zc(ctx->xml_ctx.ctx, saved_value);
+    LY_CHECK_ERR_RET(!restr->arg, LOGMEM(ctx->xml_ctx.ctx), LY_EMEM);
+    type->flags |= LYS_SET_PATTERN;
+
+    struct yin_subelement subelems[6] = {
+                                            {YANG_DESCRIPTION, &restr->dsc, YIN_SUBELEM_UNIQUE},
+                                            {YANG_ERROR_APP_TAG, &restr->eapptag, YIN_SUBELEM_UNIQUE},
+                                            {YANG_ERROR_MESSAGE, &restr->emsg, YIN_SUBELEM_UNIQUE},
+                                            {YANG_MODIFIER, &restr->arg, YIN_SUBELEM_UNIQUE},
+                                            {YANG_REFERENCE, &restr->ref, YIN_SUBELEM_UNIQUE},
+                                            {YANG_CUSTOM, NULL, 0}
+                                        };
+    return yin_parse_content(ctx, subelems, 6, data, YANG_PATTERN, NULL, &restr->exts);
+}
+
+/**
  * @brief Parse simple element without any special constraints and argument mapped to yin attribute, that can have
  * more instances, such as base or if-feature.
  *
@@ -506,6 +549,7 @@ static LY_ERR
 yin_parse_modifier(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
                    const char **pat, struct lysp_ext_instance **exts)
 {
+    assert(**pat == 0x06);
     const char *temp_val;
     char *modified_val;
     struct yin_subelement subelems[1] = {
@@ -518,13 +562,13 @@ yin_parse_modifier(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, con
         FREE_STRING(ctx->xml_ctx.ctx, temp_val);
         return LY_EVALID;
     }
-    assert(temp_val[0] == 0x06);
+    lydict_remove(ctx->xml_ctx.ctx, temp_val);
 
     /* allocate new value */
-    modified_val = malloc(strlen(temp_val) + 1);
+    modified_val = malloc(strlen(*pat) + 1);
     LY_CHECK_ERR_RET(!modified_val, LOGMEM(ctx->xml_ctx.ctx), LY_EMEM);
-    strcpy(modified_val, temp_val);
-    lydict_remove(ctx->xml_ctx.ctx, temp_val);
+    strcpy(modified_val, *pat);
+    lydict_remove(ctx->xml_ctx.ctx, *pat);
 
     /* modify the new value */
     modified_val[0] = 0x15;
@@ -991,6 +1035,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 case YANG_PATH:
                     break;
                 case YANG_PATTERN:
+                    ret = yin_parse_pattern(ctx, subelem_attrs, data, (struct lysp_type *)subelem_info_rec->dest);
                     break;
                 case YANG_VALUE:
                 case YANG_POSITION:
