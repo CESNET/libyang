@@ -32,26 +32,6 @@
 #include "tree_schema_internal.h"
 
 /**
- * @brief Try to find object with MEMBER string matching the IDENT in the given ARRAY.
- * Macro logs an error message and returns LY_EVALID in case of existence of a matching object.
- *
- * @param[in] CTX yang parser context for logging.
- * @param[in] ARRAY [sized array](@ref sizedarrays) of a generic objects with member named MEMBER to search.
- * @param[in] MEMBER Name of the member of the objects in the ARRAY to compare.
- * @param[in] STMT Name of the compared YANG statements for logging.
- * @param[in] IDENT String trying to find in the ARRAY's objects inside the MEMBER member.
- */
-#define CHECK_UNIQUENESS(CTX, ARRAY, MEMBER, STMT, IDENT) \
-    if (ARRAY) { \
-        for (unsigned int u = 0; u < LY_ARRAY_SIZE(ARRAY) - 1; ++u) { \
-            if (!strcmp((ARRAY)[u].MEMBER, IDENT)) { \
-                LOGVAL_PARSER(CTX, LY_VCODE_DUPIDENT, IDENT, STMT); \
-                return LY_EVALID; \
-            } \
-        } \
-    }
-
-/**
  * @brief Insert WORD into the libyang context's dictionary and store as TARGET.
  * @param[in] CTX yang parser context to access libyang context.
  * @param[in] BUF buffer in case the word is not a constant and can be inserted directly (zero-copy)
