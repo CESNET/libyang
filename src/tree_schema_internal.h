@@ -59,6 +59,11 @@
         } \
     }
 
+#define YANG_CHECK_NONEMPTY(CTX, OBJECT, VALUE_LEN, STMT) \
+    if (!VALUE_LEN) { \
+        LOGWRN((CTX)->ctx, "Empty argument of %s statement does not make sense.", STMT); \
+    }
+
 /**
  * @brief List of YANG statement groups - the (sub)module's substatements
  */

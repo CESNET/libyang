@@ -87,11 +87,6 @@
 #define YANG_CHECK_STMTVER2_RET(CTX, KW, PARENT) \
     if ((CTX)->mod_version < 2) {LOGVAL_PARSER((CTX), LY_VCODE_INCHILDSTMT2, KW, PARENT); return LY_EVALID;}
 
-#define YANG_CHECK_NONEMPTY(CTX, OBJECT, VALUE_LEN, STMT) \
-    if (!VALUE_LEN) { \
-        LOGWRN((CTX)->ctx, "Empty argument of %s statement does not make sense.", STMT); \
-    }
-
 LY_ERR parse_container(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
 LY_ERR parse_uses(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
 LY_ERR parse_choice(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
