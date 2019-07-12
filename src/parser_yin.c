@@ -1033,6 +1033,10 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 case YANG_OUTPUT:
                     break;
                 case YANG_PATH:
+                    type = (struct lysp_type *)subelem_info_rec->dest;
+                    ret = yin_parse_simple_element(ctx, subelem_attrs, data, kw, &type->path,
+                                                   YIN_ARG_VALUE, Y_STR_ARG, exts);
+                    type->flags |= LYS_SET_PATH;
                     break;
                 case YANG_PATTERN:
                     ret = yin_parse_pattern(ctx, subelem_attrs, data, (struct lysp_type *)subelem_info_rec->dest);
