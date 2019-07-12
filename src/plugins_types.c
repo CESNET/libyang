@@ -1834,6 +1834,9 @@ ly_type_store_leafref(struct ly_ctx *ctx, struct lysc_type *type, const char *va
     int storage_dummy = 0;
     const char *first_pred = NULL;
     const struct lyd_node *start_search;
+    const char *prefix, *id;
+    size_t prefix_len, id_len;
+    const struct lys_module *mod_node;
 
     if (!(options & (LY_TYPE_OPTS_STORE | LY_TYPE_OPTS_INCOMPLETE_DATA)) && type_lr->require_instance) {
         /* if there is no storage, but we will check the instance presence in data tree(s),
@@ -1860,7 +1863,7 @@ ly_type_store_leafref(struct ly_ctx *ctx, struct lysc_type *type, const char *va
         /* find corresponding data instance */
         const char *token = type_lr->path;
         const struct lyd_node *node;
-        struct lys_module *context_mod = ((const struct lyd_node*)context_node)->schema->module;
+        struct lys_module *mod_context = ((const struct lyd_node*)context_node)->schema->module;
 
         if (token[0] == '/') {
             /* absolute-path */
@@ -1882,23 +1885,20 @@ ly_type_store_leafref(struct ly_ctx *ctx, struct lysc_type *type, const char *va
                 node = (struct lyd_node*)node->parent;
             } else if (*token == '/') {
                 /* level down */
-                const char *prefix, *id;
-                size_t prefix_len, id_len;
-                const struct lys_module *mod;
 
                 /* reset predicates */
                 first_pred = NULL;
 
                 token++;
                 ly_parse_nodeid(&token, &prefix, &prefix_len, &id, &id_len);
-                mod = lys_module_find_prefix(context_mod, prefix, prefix_len);
+                mod_node = lys_module_find_prefix(mod_context, prefix, prefix_len);
 
                 if (node) {
                     /* inner node */
                     start_search = lyd_node_children(node);
 next_instance_inner:
                     if (start_search) {
-                        node = lyd_search(start_search, mod, id, id_len, 0, NULL, 0);
+                        node = lyd_search(start_search, mod_node, id, id_len, 0, NULL, 0);
                     } else {
                         node = NULL;
                     }
@@ -1907,7 +1907,7 @@ next_instance_inner:
                     LY_ARRAY_FOR(trees, u) {
                         start_search = trees[u];
 next_instance_toplevel:
-                        node = lyd_search(start_search, mod, id, id_len, 0, NULL, 0);
+                        node = lyd_search(start_search, mod_node, id, id_len, 0, NULL, 0);
                         if (node) {
                             break;
                         }
@@ -1935,7 +1935,7 @@ next_instance_toplevel:
                 const char *pred_start = token;
                 const struct lyd_node_term *key;
                 const struct lyd_node *value;
-                const struct lys_module *mod;
+                const struct lys_module *mod_pred;
                 const char *pred_end = ly_type_path_predicate_end(token);
                 const char *src_prefix, *src;
                 size_t src_prefix_len, src_len;
@@ -1953,12 +1953,12 @@ next_instance_toplevel:
 
                 /* parse node-identifier */
                 ly_parse_nodeid(&token, &src_prefix, &src_prefix_len, &src, &src_len);
-                mod = lys_module_find_prefix(context_mod, src_prefix, src_prefix_len);
+                mod_pred = lys_module_find_prefix(mod_context, src_prefix, src_prefix_len);
 
-                key = (const struct lyd_node_term*)lyd_search(lyd_node_children(node), mod, src, src_len, LYS_LEAF, NULL, 0);
+                key = (const struct lyd_node_term*)lyd_search(lyd_node_children(node), mod_pred, src, src_len, LYS_LEAF, NULL, 0);
                 if (!key) {
                     asprintf(&errmsg, "Internal error - missing expected list's key \"%.*s\" in module \"%s\" (%s:%d).",
-                             (int)src_len, src, mod->name, __FILE__, __LINE__);
+                             (int)src_len, src, mod_pred->name, __FILE__, __LINE__);
                     LOGINT(ctx);
                     goto error;
                 }
@@ -1980,19 +1980,19 @@ next_instance_toplevel:
                 do {
                     /* parse node-identifier */
                     ly_parse_nodeid(&token, &src_prefix, &src_prefix_len, &src, &src_len);
-                    mod = lys_module_find_prefix(context_mod, src_prefix, src_prefix_len);
+                    mod_pred = lys_module_find_prefix(mod_context, src_prefix, src_prefix_len);
 
                     if (!value) {
                         /* top-level search */
                         LY_ARRAY_FOR(trees, u) {
-                            value = lyd_search(trees[u], mod, src, src_len, 0, NULL, 0);
+                            value = lyd_search(trees[u], mod_pred, src, src_len, 0, NULL, 0);
                             if (value) {
                                 break;
                             }
                         }
                     } else {
                         /* inner node */
-                        value = lyd_search(lyd_node_children(value), mod, src, src_len, 0, NULL, 0);
+                        value = lyd_search(lyd_node_children(value), mod_pred, src, src_len, 0, NULL, 0);
                     }
                     if (!value) {
                         /* node not found - try another instance */
