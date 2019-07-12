@@ -499,9 +499,9 @@ yin_parse_enum_bit(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, con
     struct yin_subelement subelems[6] = {
                                             {YANG_DESCRIPTION, &en->dsc, YIN_SUBELEM_UNIQUE},
                                             {YANG_IF_FEATURE, &en->iffeatures, 0},
-                                            {(enum_kw == YANG_ENUM) ? YANG_VALUE : YANG_POSITION, &en->value, YIN_SUBELEM_UNIQUE},
                                             {YANG_REFERENCE, &en->ref, YIN_SUBELEM_UNIQUE},
                                             {YANG_STATUS, &en->flags, YIN_SUBELEM_UNIQUE},
+                                            {(enum_kw == YANG_ENUM) ? YANG_VALUE : YANG_POSITION, &en->value, YIN_SUBELEM_UNIQUE},
                                             {YANG_CUSTOM, NULL, 0}
                                         };
     return yin_parse_content(ctx, subelems, 6, data, enum_kw, NULL, &en->exts);
