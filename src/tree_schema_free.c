@@ -137,7 +137,7 @@ lysp_type_enum_free(struct ly_ctx *ctx, struct lysp_type_enum *item)
 }
 
 void lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type);
-static void
+void
 lysp_type_free(struct ly_ctx *ctx, struct lysp_type *type)
 {
     FREE_STRING(ctx, type->name);

@@ -31,6 +31,7 @@
 void lysp_ext_instance_free(struct ly_ctx *ctx, struct lysp_ext_instance *ext);
 void lysp_ext_free(struct ly_ctx *ctx, struct lysp_ext *ext);
 void lysp_when_free(struct ly_ctx *ctx, struct lysp_when *when);
+void lysp_type_free(struct ly_ctx *ctx, struct lysp_type *type);
 
 struct state {
     struct ly_ctx *ctx;
@@ -313,243 +314,6 @@ test_yin_match_argument_name(void **state)
 }
 
 static void
-test_meta(void **state)
-{
-    LY_ERR ret = LY_SUCCESS;
-    struct state *st = *state;
-
-    ret = yin_parse_module(st->ctx,"<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\
-                                        name=\"example-foo\">\
-                                        <prefix value=\"foo\">ignored</prefix>\
-                                        <namespace uri=\"urn:example:foo\" xmlns:myext=\"urn:example:extensions\"/>\
-                                        <organization xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"><text>organization...</text></organization>\
-                                        <contact><text>contact...</text></contact>\
-                                        <description><text>description...</text></description>\
-                                        <reference><text>reference...</text></reference>\
-                                    </module>", st->mod);
-
-    assert_int_equal(ret, LY_SUCCESS);
-    assert_string_equal(st->mod->parsed->mod->org, "organization...");
-    assert_string_equal(st->mod->parsed->mod->contact, "contact...");
-    assert_string_equal(st->mod->parsed->mod->dsc, "description...");
-    assert_string_equal(st->mod->parsed->mod->ref, "reference...");
-
-    st = reset_state(state);
-    ret = yin_parse_module(st->ctx,"<module name=\"example-foo\">\
-                                        <organization test=\"invalid-argument\">organization...</organization>\
-                                    </module>", st->mod);
-    assert_int_equal(ret, LY_EVALID);
-
-    st->finished_correctly = true;
-}
-
-static void
-test_yin_parse_import(void **state)
-{
-    struct state *st = *state;
-    const char *prefix = NULL, *name = NULL;
-    size_t prefix_len = 0, name_len = 0;
-    LY_ERR ret = LY_SUCCESS;
-    struct yin_arg_record *args = NULL;
-
-    const char *data = "<import xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" module=\"a\">\
-                            <prefix value=\"a_mod\"/>\
-                            <revision-date date=\"2015-01-01\"></revision-date>\
-                            <description><text>import description</text></description>\
-                            <reference><text>import reference</text></reference>\
-                        </import>\
-                        \
-                        <import xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" module=\"a\">\
-                            <prefix value=\"a_mod\"/>\
-                            <revision-date date=\"2015-01-01\" />\
-                        </import>";
-    /* first import */
-    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    yin_load_attributes(st->yin_ctx, &data, &args);
-    st->lysp_mod->mod->prefix = "b-mod";
-    ret = yin_parse_import(st->yin_ctx, args, &data, st->lysp_mod);
-    assert_int_equal(ret, LY_SUCCESS);
-    assert_string_equal(st->lysp_mod->imports->name, "a");
-    assert_string_equal(st->lysp_mod->imports->prefix, "a_mod");
-    assert_string_equal(st->lysp_mod->imports->rev, "2015-01-01");
-    assert_string_equal(st->lysp_mod->imports->dsc, "import description");
-    assert_string_equal(st->lysp_mod->imports->ref, "import reference");
-    LY_ARRAY_FREE(args);
-    args = NULL;
-    st = reset_state(state);
-
-    /* second invalid import */
-    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    yin_load_attributes(st->yin_ctx, &data, &args);
-    st->lysp_mod->mod->prefix = "a_mod";
-    ret = yin_parse_import(st->yin_ctx, args, &data, st->lysp_mod);
-    assert_int_equal(ret, LY_EVALID);
-    logbuf_assert("Prefix \"a_mod\" already used as module prefix. Line number 1.");
-    LY_ARRAY_FREE(args);
-    args = NULL;
-
-    st = reset_state(state);
-    /* import with unknown child element */
-    data = "<import xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" module=\"a\">\
-                <what value=\"a_mod\"/>\
-            </import>";
-    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    yin_load_attributes(st->yin_ctx, &data, &args);
-    st->lysp_mod->mod->prefix = "invalid_mod";
-    ret = yin_parse_import(st->yin_ctx, args, &data, st->lysp_mod);
-    assert_int_equal(ret, LY_EVALID);
-    logbuf_assert("Unexpected child element \"what\" of import element. Line number 1.");
-    LY_ARRAY_FREE(args);
-
-    st->finished_correctly = true;
-}
-
-static void
-test_yin_parse_status(void **state)
-{
-    struct state *st = *state;
-    const char *prefix = NULL, *name = NULL;
-    size_t prefix_len = 0, name_len = 0;
-    LY_ERR ret = LY_SUCCESS;
-    uint16_t flags = 0;
-    struct lysp_ext_instance *exts;
-    struct yin_arg_record *args = NULL;
-
-    /* try all valid values */
-    const char *data = "<status value=\"current\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"/>";
-    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    yin_load_attributes(st->yin_ctx, &data, &args);
-    ret = yin_parse_status(st->yin_ctx, args, &data, &flags, &exts);
-    assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
-    assert_int_equal(ret, LY_SUCCESS);
-    assert_true(flags & LYS_STATUS_CURR);
-    LY_ARRAY_FREE(args);
-    args = NULL;
-
-    st = reset_state(state);
-    flags = 0;
-    data = "<status value=\"deprecated\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"/>";
-    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    yin_load_attributes(st->yin_ctx, &data, &args);
-    ret = yin_parse_status(st->yin_ctx, args, &data, &flags, &exts);
-    assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
-    assert_int_equal(ret, LY_SUCCESS);
-    assert_true(flags & LYS_STATUS_DEPRC);
-    LY_ARRAY_FREE(args);
-    args = NULL;
-
-    st = reset_state(state);
-    flags = 0;
-    data = "<status value=\"obsolete\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"/>";
-    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    yin_load_attributes(st->yin_ctx, &data, &args);
-    ret = yin_parse_status(st->yin_ctx, args, &data, &flags, &exts);
-    assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
-    assert_int_equal(ret, LY_SUCCESS);
-    assert_true(flags & LYS_STATUS_OBSLT);
-    LY_ARRAY_FREE(args);
-    args = NULL;
-
-    /* invalid status value */
-    st = reset_state(state);
-    flags = 0;
-    data = "<status value=\"dunno\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"/>";
-    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    yin_load_attributes(st->yin_ctx, &data, &args);
-    ret = yin_parse_status(st->yin_ctx, args, &data, &flags, &exts);
-    assert_int_equal(ret, LY_EVALID);
-    logbuf_assert("Invalid value \"dunno\" of \"status\". Line number 1.");
-    LY_ARRAY_FREE(args);
-
-    st->finished_correctly = true;
-}
-
-static void
-test_yin_parse_extension(void **state)
-{
-    struct state *st = *state;
-    const char *prefix = NULL, *name = NULL;
-    size_t prefix_len = 0, name_len = 0;
-    LY_ERR ret = LY_SUCCESS;
-    struct yin_arg_record *args = NULL;
-    struct lysp_ext *exts = NULL, *iter = NULL;
-
-    const char *data = "<extension name=\"b\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">\
-                            <argument name=\"argname\"></argument>\
-                            <description><text>desc</text></description>\
-                            <reference><text>ref</text></reference>\
-                            <status value=\"deprecated\"></status>\
-                        </extension>";
-    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    yin_load_attributes(st->yin_ctx, &data, &args);
-    ret = yin_parse_extension(st->yin_ctx, args, &data, &exts);
-    assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
-    assert_int_equal(ret, LY_SUCCESS);
-    LY_ARRAY_FOR_ITER(exts, struct lysp_ext, iter) {
-        assert_string_equal(iter->name, "b");
-        assert_string_equal(iter->dsc, "desc");
-        assert_string_equal(iter->ref, "ref");
-        assert_string_equal(iter->argument, "argname");
-        assert_true(iter->flags & LYS_STATUS_DEPRC);
-    }
-    lydict_remove(st->ctx, "b");
-    lydict_remove(st->ctx, "desc");
-    lydict_remove(st->ctx, "ref");
-    lydict_remove(st->ctx, "argname");
-    LY_ARRAY_FREE(args);
-    LY_ARRAY_FREE(exts);
-    st->finished_correctly = true;
-}
-
-static void
-test_yin_parse_yin_element_element(void **state)
-{
-    struct state *st = *state;
-    const char *prefix = NULL, *name = NULL;
-    size_t prefix_len = 0, name_len = 0;
-    LY_ERR ret = LY_SUCCESS;
-    uint16_t flags = 0;
-    struct lysp_ext_instance *exts;
-    struct yin_arg_record *args = NULL;
-
-    /* try all valid values */
-    const char *data = "<yin-element value=\"true\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"/>";
-    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    yin_load_attributes(st->yin_ctx, &data, &args);
-    ret = yin_parse_yin_element_element(st->yin_ctx, args, &data, &flags, &exts);
-    assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
-    assert_int_equal(ret, LY_SUCCESS);
-    assert_true(flags & LYS_YINELEM_TRUE);
-    LY_ARRAY_FREE(args);
-    args = NULL;
-
-    st = reset_state(state);
-    flags = 0;
-    data = "<yin-element value=\"false\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"/>";
-    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    yin_load_attributes(st->yin_ctx, &data, &args);
-    ret = yin_parse_yin_element_element(st->yin_ctx, args, &data, &flags, &exts);
-    assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
-    assert_int_equal(ret, LY_SUCCESS);
-    assert_true(flags & LYS_YINELEM_FALSE);
-    LY_ARRAY_FREE(args);
-    args = NULL;
-
-    /* invalid value */
-    st = reset_state(state);
-    flags = 0;
-    data = "<yin-element value=\"invalid\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"/>";
-    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    yin_load_attributes(st->yin_ctx, &data, &args);
-    ret = yin_parse_yin_element_element(st->yin_ctx, args, &data, &flags, &exts);
-    assert_int_equal(ret, LY_EVALID);
-    LY_ARRAY_FREE(args);
-    args = NULL;
-
-    st->finished_correctly = true;
-}
-
-static void
 test_yin_parse_element_generic(void **state)
 {
     const char *prefix, *name;
@@ -662,7 +426,7 @@ test_yin_parse_content(void **state)
                                 "<status value=\"deprecated\"></status>"
                             "</extension>"
                             "<text xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">wsefsdf</text>"
-                            "<if-feature value=\"foo\"></if-feature>"
+                            "<if-feature name=\"foo\"></if-feature>"
                             "<when condition=\"condition...\">"
                                 "<reference><text>when_ref</text></reference>"
                                 "<description><text>when_desc</text></description>"
@@ -824,121 +588,6 @@ test_yin_parse_content(void **state)
 }
 
 static void
-test_yin_parse_yangversion(void **state)
-{
-    struct state *st = *state;
-    LY_ERR ret = LY_SUCCESS;
-    struct sized_string name, prefix;
-    struct yin_arg_record *attrs = NULL;
-    uint8_t version;
-
-    const char *data = "<yang-version xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" value=\"1.0\">\n"
-                       "</yang-version>";
-    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
-    yin_load_attributes(st->yin_ctx, &data, &attrs);
-    ret = yin_parse_yangversion(st->yin_ctx, attrs, &data, &version, NULL);
-    assert_int_equal(LY_SUCCESS, ret);
-    assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
-    assert_true(version == LYS_VERSION_1_0);
-    assert_true(st->yin_ctx->mod_version == LYS_VERSION_1_0);
-    LY_ARRAY_FREE(attrs);
-    attrs = NULL;
-    st = reset_state(state);
-
-    data = "<yang-version xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" value=\"1.1\">\n"
-           "</yang-version>";
-    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
-    yin_load_attributes(st->yin_ctx, &data, &attrs);
-    ret = yin_parse_yangversion(st->yin_ctx, attrs, &data, &version, NULL);
-    assert_int_equal(LY_SUCCESS, ret);
-    assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
-    assert_true(version == LYS_VERSION_1_1);
-    assert_true(st->yin_ctx->mod_version == LYS_VERSION_1_1);
-    LY_ARRAY_FREE(attrs);
-    attrs = NULL;
-    st = reset_state(state);
-
-    data = "<yang-version xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" value=\"randomvalue\">\n"
-           "</yang-version>";
-    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
-    yin_load_attributes(st->yin_ctx, &data, &attrs);
-    ret = yin_parse_yangversion(st->yin_ctx, attrs, &data, &version, NULL);
-    assert_int_equal(ret, LY_EVALID);
-    logbuf_assert("Invalid value \"randomvalue\" of \"yang-version\". Line number 1.");
-    LY_ARRAY_FREE(attrs);
-    attrs = NULL;
-    st = reset_state(state);
-
-    data = "<yang-version xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">\n"
-           "</yang-version>";
-    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
-    yin_load_attributes(st->yin_ctx, &data, &attrs);
-    ret = yin_parse_yangversion(st->yin_ctx, attrs, &data, &version, NULL);
-    assert_int_equal(ret, LY_EVALID);
-    LY_ARRAY_FREE(attrs);
-    attrs = NULL;
-    logbuf_assert("Missing mandatory attribute value of yang-version element. Line number 1.");
-    st->finished_correctly = true;
-}
-
-static void
-test_yin_parse_mandatory(void **state)
-{
-    struct state *st = *state;
-    LY_ERR ret = LY_SUCCESS;
-    struct sized_string name, prefix;
-    struct yin_arg_record *attrs = NULL;
-    uint16_t man = 0;
-
-    const char *data = "<mandatory xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" value=\"true\">\n"
-                       "</mandatory>";
-    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
-    yin_load_attributes(st->yin_ctx, &data, &attrs);
-    ret = yin_parse_mandatory(st->yin_ctx, attrs, &data, &man, NULL);
-    assert_int_equal(LY_SUCCESS, ret);
-    assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
-    assert_true(man == LYS_MAND_TRUE);
-    LY_ARRAY_FREE(attrs);
-    attrs = NULL;
-    man = 0;
-    st = reset_state(state);
-
-    data = "<mandatory xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" value=\"false\" />";
-    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
-    yin_load_attributes(st->yin_ctx, &data, &attrs);
-    ret = yin_parse_mandatory(st->yin_ctx, attrs, &data, &man, NULL);
-    assert_int_equal(LY_SUCCESS, ret);
-    assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
-    assert_true(man == LYS_MAND_FALSE);
-    LY_ARRAY_FREE(attrs);
-    attrs = NULL;
-    man = 0;
-    st = reset_state(state);
-
-    data = "<mandatory xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" value=\"randomvalue\">\n"
-           "</mandatory>";
-    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
-    yin_load_attributes(st->yin_ctx, &data, &attrs);
-    ret = yin_parse_mandatory(st->yin_ctx, attrs, &data, &man, NULL);
-    assert_int_equal(ret, LY_EVALID);
-    LY_ARRAY_FREE(attrs);
-    logbuf_assert("Invalid value \"randomvalue\" of \"mandatory\". Line number 1.");
-    attrs = NULL;
-    man = 0;
-    st = reset_state(state);
-
-    data = "<mandatory xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">\n"
-           "</mandatory>";
-    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
-    yin_load_attributes(st->yin_ctx, &data, &attrs);
-    ret = yin_parse_mandatory(st->yin_ctx, attrs, &data, &man, NULL);
-    assert_int_equal(ret, LY_EVALID);
-    LY_ARRAY_FREE(attrs);
-    logbuf_assert("Missing mandatory attribute value of mandatory element. Line number 1.");
-    st->finished_correctly = true;
-}
-
-static void
 test_validate_value(void **state)
 {
     struct state *st = *state;
@@ -952,25 +601,464 @@ test_validate_value(void **state)
     st->finished_correctly = true;
 }
 
+static int
+setup_element_test(void **state)
+{
+    struct state *st = NULL;
+
+#if ENABLE_LOGGER_CHECKING
+    /* setup logger */
+    ly_set_log_clb(logger, 1);
+#endif
+
+    /* reset logbuf */
+    logbuf[0] = '\0';
+    /* allocate state variable */
+    (*state) = st = calloc(1, sizeof(*st));
+    if (!st) {
+        fprintf(stderr, "Memmory allocation failed");
+        return EXIT_FAILURE;
+    }
+
+    /* create new libyang context */
+    ly_ctx_new(NULL, 0, &st->ctx);
+
+    /* allocate parser context */
+    st->yin_ctx = calloc(1, sizeof(*st->yin_ctx));
+    st->yin_ctx->xml_ctx.ctx = st->ctx;
+    st->yin_ctx->xml_ctx.line = 1;
+
+    return EXIT_SUCCESS;
+}
+
+static int
+teardown_element_test(void **state)
+{
+    struct state *st = *(struct state **)state;
+
+#if ENABLE_LOGGER_CHECKING
+    /* teardown logger */
+    if (!st->finished_correctly && logbuf[0] != '\0') {
+        fprintf(stderr, "%s\n", logbuf);
+    }
+#endif
+
+    lyxml_context_clear(&st->yin_ctx->xml_ctx);
+    ly_ctx_destroy(st->ctx, NULL);
+    free(st->yin_ctx);
+    free(st);
+
+    return EXIT_SUCCESS;
+}
+
+#define ELEMENT_WRAPPER_START "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+#define ELEMENT_WRAPPER_END "</module>"
+
+/* helper function to simplify unit test of each element using parse_content function */
+LY_ERR
+test_element_helper(struct state *st, const char **data, void *dest, const char **text,
+                    struct lysp_ext_instance **exts, bool valid)
+{
+    struct yin_arg_record *attrs = NULL;
+    struct sized_string name, prefix;
+    LY_ERR ret = LY_SUCCESS;
+    struct yin_subelement subelems[71] = {
+                                            {YANG_ACTION, dest, 0},
+                                            {YANG_ANYDATA, dest, 0},
+                                            {YANG_ANYXML, dest, 0},
+                                            {YANG_ARGUMENT,dest, 0},
+                                            {YANG_AUGMENT, dest, 0},
+                                            {YANG_BASE, dest, 0},
+                                            {YANG_BELONGS_TO, dest, 0},
+                                            {YANG_BIT, dest, 0},
+                                            {YANG_CASE, dest, 0},
+                                            {YANG_CHOICE, dest, 0},
+                                            {YANG_CONFIG, dest, 0},
+                                            {YANG_CONTACT, dest, 0},
+                                            {YANG_CONTAINER, dest, 0},
+                                            {YANG_DEFAULT, dest, 0},
+                                            {YANG_DESCRIPTION, dest, 0},
+                                            {YANG_DEVIATE, dest, 0},
+                                            {YANG_DEVIATION, dest, 0},
+                                            {YANG_ENUM, dest, 0},
+                                            {YANG_ERROR_APP_TAG, dest, 0},
+                                            {YANG_ERROR_MESSAGE, dest, 0},
+                                            {YANG_EXTENSION, dest, 0},
+                                            {YANG_FEATURE, dest, 0},
+                                            {YANG_FRACTION_DIGITS, dest, 0},
+                                            {YANG_GROUPING, dest, 0},
+                                            {YANG_IDENTITY, dest, 0},
+                                            {YANG_IF_FEATURE, dest, 0},
+                                            {YANG_IMPORT, dest, 0},
+                                            {YANG_INCLUDE, dest, 0},
+                                            {YANG_INPUT, dest, 0},
+                                            {YANG_KEY, dest, 0},
+                                            {YANG_LEAF, dest, 0},
+                                            {YANG_LEAF_LIST, dest, 0},
+                                            {YANG_LENGTH, dest, 0},
+                                            {YANG_LIST, dest, 0},
+                                            {YANG_MANDATORY, dest, 0},
+                                            {YANG_MAX_ELEMENTS, dest, 0},
+                                            {YANG_MIN_ELEMENTS, dest, 0},
+                                            {YANG_MODIFIER, dest, 0},
+                                            {YANG_MODULE, dest, 0},
+                                            {YANG_MUST, dest, 0},
+                                            {YANG_NAMESPACE, dest, 0},
+                                            {YANG_NOTIFICATION, dest, 0},
+                                            {YANG_ORDERED_BY, dest, 0},
+                                            {YANG_ORGANIZATION, dest, 0},
+                                            {YANG_OUTPUT, dest, 0},
+                                            {YANG_PATH, dest, 0},
+                                            {YANG_PATTERN, dest, 0},
+                                            {YANG_POSITION, dest, 0},
+                                            {YANG_PREFIX, dest, 0},
+                                            {YANG_PRESENCE, dest, 0},
+                                            {YANG_RANGE, dest, 0},
+                                            {YANG_REFERENCE, dest, 0},
+                                            {YANG_REFINE, dest, 0},
+                                            {YANG_REQUIRE_INSTANCE, dest, 0},
+                                            {YANG_REVISION, dest, 0},
+                                            {YANG_REVISION_DATE, dest, 0},
+                                            {YANG_RPC, dest, 0},
+                                            {YANG_STATUS, dest, 0},
+                                            {YANG_SUBMODULE, dest, 0},
+                                            {YANG_TYPE, dest, 0},
+                                            {YANG_TYPEDEF, dest, 0},
+                                            {YANG_UNIQUE, dest, 0},
+                                            {YANG_UNITS, dest, 0},
+                                            {YANG_USES, dest, 0},
+                                            {YANG_VALUE, dest, 0},
+                                            {YANG_WHEN, dest, 0},
+                                            {YANG_YANG_VERSION, dest, 0},
+                                            {YANG_YIN_ELEMENT, dest, 0},
+                                            {YANG_CUSTOM, dest, 0},
+                                            {YIN_TEXT, dest, 0},
+                                            {YIN_VALUE, dest, 0}
+                                        };
+    LY_CHECK_RET(lyxml_get_element(&st->yin_ctx->xml_ctx, data, &prefix.value, &prefix.len, &name.value, &name.len));\
+    LY_CHECK_RET(yin_load_attributes(st->yin_ctx, data, &attrs));\
+    ret = yin_parse_content(st->yin_ctx, subelems, 71, data, YANG_MODULE, text, exts);
+    LY_ARRAY_FREE(attrs);
+    if (valid) {
+        assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
+    }
+    /* reset status */
+    st->yin_ctx->xml_ctx.status = LYXML_ELEMENT;
+    return ret;
+}
+
+static void
+test_enum_bit_elem(void **state)
+{
+    /* yin_parse_enum_bit is function that is being mainly tested by this test */
+    struct state *st = *state;
+    struct lysp_type type = {};
+    const char *data;
+    data = ELEMENT_WRAPPER_START
+           "<enum name=\"enum-name\">"
+                "<if-feature name=\"feature\" />"
+                "<value value=\"55\" />"
+                "<status value=\"deprecated\" />"
+                "<description><text>desc...</text></description>"
+                "<reference><text>ref...</text></reference>"
+           "</enum>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(*type.enums->iffeatures, "feature");
+    assert_int_equal(type.enums->value, 55);
+    assert_true(type.enums->flags | LYS_STATUS_DEPRC && type.enums->flags | LYS_SET_VALUE);
+    assert_string_equal(type.enums->dsc, "desc...");
+    assert_string_equal(type.enums->ref, "ref...");
+    lysp_type_free(st->ctx, &type);
+    memset(&type, 0, sizeof type);
+
+    /* todo bit element test */
+    st->finished_correctly = true;
+}
+
+static void
+test_meta_elem(void **state)
+{
+    struct state *st = *state;
+    char *value = NULL;
+    const char *data;
+
+    /* organization element */
+    data = ELEMENT_WRAPPER_START
+                "<organization><text>organization...</text></organization>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &value, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(value, "organization...");
+    FREE_STRING(st->ctx, value);
+    value = NULL;
+    /* contact element */
+    data = ELEMENT_WRAPPER_START
+                "<contact><text>contact...</text></contact>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &value, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(value, "contact...");
+    FREE_STRING(st->ctx, value);
+    value = NULL;
+    /* description element */
+    data = ELEMENT_WRAPPER_START
+                "<description><text>description...</text></description>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &value, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(value, "description...");
+    FREE_STRING(st->ctx, value);
+    value = NULL;
+    /* reference element */
+    data = ELEMENT_WRAPPER_START
+                "<reference><text>reference...</text></reference>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &value, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(value, "reference...");
+    FREE_STRING(st->ctx, value);
+    value = NULL;
+
+    /* missing text subelement */
+    data = ELEMENT_WRAPPER_START
+                "<reference>reference...</reference>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &value, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Missing mandatory subelement text of reference element. Line number 1.");
+
+    st->finished_correctly = true;
+}
+
+static void
+test_import_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct lys_module *lys_mod = calloc(1, sizeof *lys_mod);
+    struct lysp_module *lysp_mod = calloc(1, sizeof *lysp_mod);
+    lys_mod->ctx = st->ctx;
+    lysp_mod->mod = lys_mod;
+
+    /* max subelems */
+    data = ELEMENT_WRAPPER_START
+                "<import module=\"a\">"
+                    "<prefix value=\"a_mod\"/>"
+                    "<revision-date date=\"2015-01-01\"></revision-date>"
+                    "<description><text>import description</text></description>"
+                    "<reference><text>import reference</text></reference>"
+                "</import>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, lysp_mod, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(lysp_mod->imports->name, "a");
+    assert_string_equal(lysp_mod->imports->prefix, "a_mod");
+    assert_string_equal(lysp_mod->imports->rev, "2015-01-01");
+    assert_string_equal(lysp_mod->imports->dsc, "import description");
+    assert_string_equal(lysp_mod->imports->ref, "import reference");
+    lysp_module_free(lysp_mod);
+    lys_module_free(lys_mod, NULL);
+
+    /* min subelems */
+    lys_mod = calloc(1, sizeof *lys_mod);
+    lysp_mod = calloc(1, sizeof *lysp_mod);
+    lys_mod->ctx = st->ctx;
+    lysp_mod->mod = lys_mod;
+    data = ELEMENT_WRAPPER_START
+                "<import module=\"a\">"
+                    "<prefix value=\"a_mod\"/>"
+                "</import>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, lysp_mod, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(lysp_mod->imports->prefix, "a_mod");
+    lysp_module_free(lysp_mod);
+    lys_module_free(lys_mod, NULL);
+
+    /* invalid (missing prefix) */
+    lys_mod = calloc(1, sizeof *lys_mod);
+    lysp_mod = calloc(1, sizeof *lysp_mod);
+    lys_mod->ctx = st->ctx;
+    lysp_mod->mod = lys_mod;
+    data = ELEMENT_WRAPPER_START "<import module=\"a\">""</import>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, lysp_mod, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Missing mandatory subelement prefix of import element. Line number 1.");
+    lysp_module_free(lysp_mod);
+    lys_module_free(lys_mod, NULL);
+
+    /* invalid reused prefix */
+    lys_mod = calloc(1, sizeof *lys_mod);
+    lysp_mod = calloc(1, sizeof *lysp_mod);
+    lys_mod->ctx = st->ctx;
+    lysp_mod->mod = lys_mod;
+    data = ELEMENT_WRAPPER_START
+                "<import module=\"a\">"
+                    "<prefix value=\"a_mod\"/>"
+                "</import>"
+                "<import module=\"a\">"
+                    "<prefix value=\"a_mod\"/>"
+                "</import>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, lysp_mod, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Prefix \"a_mod\" already used to import \"a\" module. Line number 1.");
+    lysp_module_free(lysp_mod);
+    lys_module_free(lys_mod, NULL);
+
+    st->finished_correctly = true;
+}
+
+static void
+test_status_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    uint16_t flags = 0;
+
+    /* test valid values */
+    data = ELEMENT_WRAPPER_START "<status value=\"current\" />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &flags, NULL, NULL, true), LY_SUCCESS);
+    assert_true(flags | LYS_STATUS_CURR);
+
+    data = ELEMENT_WRAPPER_START "<status value=\"deprecated\" />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &flags, NULL, NULL, true), LY_SUCCESS);
+    assert_true(flags | LYS_STATUS_DEPRC);
+
+    data = ELEMENT_WRAPPER_START "<status value=\"obsolete\"></status>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &flags, NULL, NULL, true), LY_SUCCESS);
+    assert_true(flags | LYS_STATUS_OBSLT);
+
+    /* test invalid value */
+    data = ELEMENT_WRAPPER_START "<status value=\"invalid\"></status>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &flags, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Invalid value \"invalid\" of \"status\". Line number 1.");
+    st->finished_correctly = true;
+}
+
+static void
+test_ext_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct lysp_ext *ext = NULL;
+
+    /* max subelems */
+    data = ELEMENT_WRAPPER_START
+           "<extension name=\"ext_name\">"
+                "<argument name=\"arg\"></argument>"
+                "<status value=\"current\"/>"
+                "<description><text>ext_desc</text></description>"
+                "<reference><text>ext_ref</text></reference>"
+           "</extension>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &ext, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(ext->name, "ext_name");
+    assert_string_equal(ext->argument, "arg");
+    assert_true(ext->flags | LYS_STATUS_CURR);
+    assert_string_equal(ext->dsc, "ext_desc");
+    assert_string_equal(ext->ref, "ext_ref");
+    lysp_ext_free(st->ctx, ext);
+    LY_ARRAY_FREE(ext);
+    ext = NULL;
+
+    /* min subelems */
+    data = ELEMENT_WRAPPER_START "<extension name=\"ext_name\"></extension>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &ext, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(ext->name, "ext_name");
+    lysp_ext_free(st->ctx, ext);
+    LY_ARRAY_FREE(ext);
+    ext = NULL;
+
+    st->finished_correctly = true;
+}
+
+static void
+test_yin_element_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    uint16_t flags = 0;
+
+    data = ELEMENT_WRAPPER_START "<yin-element value=\"true\" />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &flags, NULL, NULL, true), LY_SUCCESS);
+    assert_true(flags | LYS_YINELEM_TRUE);
+
+    data = ELEMENT_WRAPPER_START "<yin-element value=\"false\" />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &flags, NULL, NULL, true), LY_SUCCESS);
+    assert_true(flags | LYS_YINELEM_TRUE);
+
+    data = ELEMENT_WRAPPER_START "<yin-element value=\"invalid\" />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &flags, NULL, NULL, false), LY_EVALID);
+    assert_true(flags | LYS_YINELEM_TRUE);
+    logbuf_assert("Invalid value \"invalid\" of \"yin-element\". Line number 1.");
+    st->finished_correctly = true;
+}
+
+static void
+test_yangversion_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    uint8_t version = 0;
+
+    /* valid values */
+    data = ELEMENT_WRAPPER_START "<yang-version value=\"1.0\" />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &version, NULL, NULL, true), LY_SUCCESS);
+    assert_true(version | LYS_VERSION_1_0);
+    assert_int_equal(st->yin_ctx->mod_version, LYS_VERSION_1_0);
+
+    data = ELEMENT_WRAPPER_START "<yang-version value=\"1.1\" />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &version, NULL, NULL, true), LY_SUCCESS);
+    assert_true(version | LYS_VERSION_1_1);
+    assert_int_equal(st->yin_ctx->mod_version, LYS_VERSION_1_1);
+
+    /* invalid value */
+    data = ELEMENT_WRAPPER_START "<yang-version value=\"version\" />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &version, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Invalid value \"version\" of \"yang-version\". Line number 1.");
+
+    st->finished_correctly = true;
+}
+
+static void
+test_mandatory_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    uint16_t man = 0;
+
+    /* valid values */
+    data = ELEMENT_WRAPPER_START "<mandatory value=\"true\" />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &man, NULL, NULL, true), LY_SUCCESS);
+    assert_int_equal(man, LYS_MAND_TRUE);
+    man = 0;
+
+    data = ELEMENT_WRAPPER_START "<mandatory value=\"false\" />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &man, NULL, NULL, true), LY_SUCCESS);
+    assert_int_equal(man, LYS_MAND_FALSE);
+
+    data = ELEMENT_WRAPPER_START "<mandatory value=\"invalid\" />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &man, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Invalid value \"invalid\" of \"mandatory\". Line number 1.");
+
+    st->finished_correctly = true;
+}
+
+
 int
 main(void)
 {
 
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_yin_parse_module, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_meta, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_yin_parse_import, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_yin_parse_status, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_yin_match_keyword, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_yin_parse_extension, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_yin_parse_yin_element_element, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_yin_parse_element_generic, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_yin_parse_extension_instance, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_yin_parse_content, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_yin_parse_yangversion, setup_f, teardown_f),
-        cmocka_unit_test_setup_teardown(test_yin_parse_mandatory, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_validate_value, setup_f, teardown_f),
         cmocka_unit_test(test_yin_match_argument_name),
+
+        cmocka_unit_test_setup_teardown(test_enum_bit_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_meta_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_import_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_status_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_ext_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_yin_element_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_yangversion_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_mandatory_elem, setup_element_test, teardown_element_test),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

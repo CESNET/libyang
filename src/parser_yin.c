@@ -538,7 +538,7 @@ yin_parse_enum_bit(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, con
                                             {YANG_IF_FEATURE, &en->iffeatures, 0},
                                             {YANG_REFERENCE, &en->ref, YIN_SUBELEM_UNIQUE},
                                             {YANG_STATUS, &en->flags, YIN_SUBELEM_UNIQUE},
-                                            {(enum_kw == YANG_ENUM) ? YANG_VALUE : YANG_POSITION, &en->value, YIN_SUBELEM_UNIQUE},
+                                            {(enum_kw == YANG_ENUM) ? YANG_VALUE : YANG_POSITION, en, YIN_SUBELEM_UNIQUE},
                                             {YANG_CUSTOM, NULL, 0}
                                         };
     return yin_parse_content(ctx, subelems, 6, data, enum_kw, NULL, &en->exts);
@@ -1058,7 +1058,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     break;
                 case YANG_IF_FEATURE:
                     ret = yin_parse_simple_elements(ctx, subelem_attrs, data, kw,
-                                                    (const char ***)subelem_info_rec->dest, YIN_ARG_VALUE, Y_STR_ARG, exts);
+                                                    (const char ***)subelem_info_rec->dest, YIN_ARG_NAME, Y_STR_ARG, exts);
                     break;
                 case YANG_IMPORT:
                     ret = yin_parse_import(ctx, subelem_attrs, data, (struct lysp_module *)subelem_info_rec->dest);
