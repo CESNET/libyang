@@ -816,11 +816,11 @@ test_instanceid(void **state)
 
     data =  "<cont xmlns=\"urn:tests:types\"/><t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaftarget</t:inst>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
-    logbuf_assert("Invalid instance-identifier \"TODO\" value - required instance not found. /");
+    logbuf_assert("Invalid instance-identifier \"/t:cont/t:leaftarget\" value - required instance not found. /");
 
     data =  "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaftarget</t:inst>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
-    logbuf_assert("Invalid instance-identifier \"TODO\" value - required instance not found. /");
+    logbuf_assert("Invalid instance-identifier \"/t:cont/t:leaftarget\" value - required instance not found. /");
 
     data =  "<leaflisttarget xmlns=\"urn:tests:types\">x</leaflisttarget><t:inst xmlns:t=\"urn:tests:types\">/t:leaflisttarget[1</t:inst>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
@@ -845,7 +845,7 @@ test_instanceid(void **state)
     data =  "<cont xmlns=\"urn:tests:types\"><leaflisttarget>1</leaflisttarget><leaflisttarget>2</leaflisttarget></cont>"
             "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaflisttarget[4]</t:inst>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
-    logbuf_assert("Invalid instance-identifier \"TODO\" value - required instance not found. /");
+    logbuf_assert("Invalid instance-identifier \"/t:cont/t:leaflisttarget[4]\" value - required instance not found. /");
 
     data =  "<t:inst-noreq xmlns:t=\"urn:tests:types\">/t:cont/t:leaflisttarget[6]</t:inst-noreq>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
@@ -876,7 +876,7 @@ test_instanceid(void **state)
     data =  "<cont xmlns=\"urn:tests:types\"><leaflisttarget>1</leaflisttarget></cont>"
             "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaflisttarget[.='2']</t:inst>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
-    logbuf_assert("Invalid instance-identifier \"TODO\" value - required instance not found. /");
+    logbuf_assert("Invalid instance-identifier \"/t:cont/t:leaflisttarget[.='2']\" value - required instance not found. /");
 
     data =  "<cont xmlns=\"urn:tests:types\"><leaflisttarget>1</leaflisttarget></cont>"
             "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaflisttarget[.='x']</t:inst>";
@@ -893,7 +893,7 @@ test_instanceid(void **state)
     data =  "<cont xmlns=\"urn:tests:types\"><listtarget><id>1</id><value>x</value></listtarget></cont>"
             "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:listtarget[t:id='2']</t:inst>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
-    logbuf_assert("Invalid instance-identifier \"TODO\" value - required instance not found. /");
+    logbuf_assert("Invalid instance-identifier \"/t:cont/t:listtarget[t:id='2']\" value - required instance not found. /");
 
     data = "<leaflisttarget xmlns=\"urn:tests:types\">a</leaflisttarget>"
            "<leaflisttarget xmlns=\"urn:tests:types\">b</leaflisttarget>"

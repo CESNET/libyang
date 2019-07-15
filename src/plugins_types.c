@@ -45,6 +45,22 @@ ly_type_compare_canonical(const struct lyd_value *val1, const struct lyd_value *
 }
 
 /**
+ * @brief Generic printer callback of the canonized value.
+ *
+ * Implementation of the ly_type_print_clb.
+ */
+static const char *
+ly_type_print_canonical(const struct lyd_value *value, LYD_FORMAT UNUSED(format), int prefixes, int *dynamic)
+{
+    *dynamic = 0;
+    if (prefixes) {
+        return "";
+    } else {
+        return (char*)value->canonized;
+    }
+}
+
+/**
  * @brief Free canonized value in lyd_value.
  *
  * Implementation of the ly_type_free_clb.
@@ -1435,8 +1451,12 @@ ly_type_store_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const char 
 
         if (!lyd_target(storage->target, trees)) {
             /* TODO print instance-identifier */
-            asprintf(&errmsg, "Invalid instance-identifier \"%s\" value - required instance not found.",
-                     "TODO");
+            int dynamic = 0;
+            const char *id = storage->realtype->plugin->print(storage, format, 0, &dynamic);
+            asprintf(&errmsg, "Invalid instance-identifier \"%s\" value - required instance not found.", id);
+            if (dynamic) {
+                free((char*)id);
+            }
             /* we have to clean up the storage */
             type->plugin->free(ctx, storage);
 
@@ -1805,6 +1825,141 @@ ly_type_compare_instanceid(const struct lyd_value *val1, const struct lyd_value 
     return LY_SUCCESS;
 }
 
+static void
+ly_type_print_prefixes_mod(char **str, struct ly_set *printed, struct lys_module *mod)
+{
+    unsigned int u = printed->count;
+    if (ly_set_add(printed, mod, 0) == (int)u) {
+        /* newly added module - print it */
+        asprintf(str, "%s%sxmlns:%s=\"%s\"", *str ? *str : "", *str ? " " : "", mod->prefix, mod->ns);
+    }
+}
+
+/**
+ * @brief Printer callback printing the instance-identifier value.
+ *
+ * Implementation of the ly_type_print_clb.
+ */
+static const char *
+ly_type_print_instanceid(const struct lyd_value *value, LYD_FORMAT format, int prefixes, int *dynamic)
+{
+    unsigned int u, v;
+    char *result = NULL;
+    struct ly_set printed_prefixes = {0};
+
+    if (prefixes) {
+        /* print namespace definition -only for XML, it does not make sense in JSON */
+        if (format == LYD_XML) {
+            LY_ARRAY_FOR(value->target, u) {
+                ly_type_print_prefixes_mod(&result, &printed_prefixes, value->target[u].node->module);
+                LY_ARRAY_FOR(value->target[u].predicates, v) {
+                    struct lyd_value_path_predicate *pred = &value->target[u].predicates[v];
+                    if (pred->type) {
+                        /* non-position predicate with a value
+                         * (key is of the same namespace as the list, so we don't need to handle its prefix) */
+                        int d = 0;
+                        char *token, *s = (char*)pred->value->realtype->plugin->print(pred->value, LYD_XML, 1, &d);
+                        if (s && s[0]) {
+                            char *start = s;
+                            if (!d) {
+                                start = s = strdup(s);
+                            }
+                            while ((token = strsep(&s, " "))) {
+                                unsigned int i;
+                                char *equal;
+                                equal = strchr(token, '=');
+                                /* check if we already have such a prefix */
+                                for (i = 0; i < printed_prefixes.count; i++) {
+                                    if (!strcmp(((struct lys_module *)printed_prefixes.objs[i])->ns, equal + 1)) {
+                                        /* match, do not print this namespace definition */
+                                        break;
+                                    }
+                                }
+                                if (i == printed_prefixes.count) {
+                                    /* not yet printed namespace */
+                                    ly_strcat(&result, "%s%s", result ? " " : "", token);
+                                }
+                            }
+                            free(start);
+                        }
+                    }
+                }
+            }
+        } else { /* JSON */
+            *dynamic = 0;
+            return "";
+        }
+    } else {
+        /* print value */
+        if (format == LYD_XML) {
+            /* everything is prefixed */
+            LY_ARRAY_FOR(value->target, u) {
+                 ly_strcat(&result, "/%s:%s", value->target[u].node->module->prefix, value->target[u].node->name);
+                LY_ARRAY_FOR(value->target[u].predicates, v) {
+                    struct lyd_value_path_predicate *pred = &value->target[u].predicates[v];
+                    if (pred->type == 0) {
+                        /* position predicate */
+                        ly_strcat(&result, "[%"PRIu64"]", pred->position);
+                    } else if (pred->type == 1) {
+                        /* key-predicate */
+                        int d = 0;
+                        const char *value = pred->value->realtype->plugin->print(pred->value, format, 0, &d);
+                        ly_strcat(&result, "[%s:%s='%s']", pred->key->module->prefix, pred->key->name, value);
+                        if (d) {
+                            free((char*)value);
+                        }
+                    } else if (pred->type == 2) {
+                        /* leaf-list-predicate */
+                        int d = 0;
+                        const char *value = pred->value->realtype->plugin->print(pred->value, format, 0, &d);
+                        ly_strcat(&result, "[.='%s']", value);
+                        if (d) {
+                            free((char*)value);
+                        }
+                    }
+                }
+            }
+        } else { /* LYD_JSON */
+            /* only the first node or the node changing module is prefixed */
+            struct lys_module *mod = NULL;
+            LY_ARRAY_FOR(value->target, u) {
+                if (mod != value->target[u].node->module) {
+                    mod = value->target[u].node->module;
+                    ly_strcat(&result, "/%s:%s", mod->name, value->target[u].node->name);
+                } else {
+                    ly_strcat(&result, "/%s", value->target[u].node->name);
+                }
+                LY_ARRAY_FOR(value->target[u].predicates, v) {
+                    struct lyd_value_path_predicate *pred = &value->target[u].predicates[v];
+                    if (pred->type == 0) {
+                        /* position predicate */
+                        ly_strcat(&result, "[%"PRIu64"]", pred->position);
+                    } else if (pred->type == 1) {
+                        /* key-predicate */
+                        int d = 0;
+                        const char *value = pred->value->realtype->plugin->print(pred->value, format, 0, &d);
+                        ly_strcat(&result, "[%s='%s']", pred->key->name, value);
+                        if (d) {
+                            free((char*)value);
+                        }
+                    } else if (pred->type == 2) {
+                        /* leaf-list-predicate */
+                        int d = 0;
+                        const char *value = pred->value->realtype->plugin->print(pred->value, format, 0, &d);
+                        ly_strcat(&result, "[.='%s']", value);
+                        if (d) {
+                            free((char*)value);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    *dynamic = 1;
+    return result;
+}
+
 /**
  * @brief Free value of the YANG built-in instance-identifier types.
  *
@@ -2077,6 +2232,17 @@ ly_type_compare_leafref(const struct lyd_value *val1, const struct lyd_value *va
 }
 
 /**
+ * @brief Printer callback printing the leafref value.
+ *
+ * Implementation of the ly_type_print_clb.
+ */
+static const char *
+ly_type_print_leafref(const struct lyd_value *value, LYD_FORMAT format, int prefixes, int *dynamic)
+{
+    return value->realtype->plugin->print(value, format, prefixes, dynamic);
+}
+
+/**
  * @brief Free value of the YANG built-in leafref type.
  *
  * Implementation of the ly_type_free_clb.
@@ -2221,6 +2387,34 @@ ly_type_compare_union(const struct lyd_value *val1, const struct lyd_value *val2
 }
 
 /**
+ * @brief Printer callback printing the union value.
+ *
+ * Implementation of the ly_type_print_clb.
+ */
+static const char *
+ly_type_print_union(const struct lyd_value *value, LYD_FORMAT format, int prefixes, int *dynamic)
+{
+    unsigned int u;
+    char *result = NULL;
+
+    if (prefixes) {
+        if (format == LYD_XML) {
+            LY_ARRAY_FOR(value->subvalue->prefixes, u) {
+                ly_strcat(&result, "%sxmlns:%s=\"%s\"", result ? " " : "",
+                          value->subvalue->prefixes[u].prefix, value->subvalue->prefixes[u].mod->ns);
+            }
+            *dynamic = 1;
+            return result;
+        } else {
+            *dynamic = 0;
+            return "";
+        }
+    } else {
+        return ly_type_print_canonical(value, format, 0, dynamic);
+    }
+}
+
+/**
  * @brief Free value of the YANG built-in union type.
  *
  * Implementation of the ly_type_free_clb.
@@ -2250,23 +2444,23 @@ ly_type_free_union(struct ly_ctx *ctx, struct lyd_value *value)
  */
 struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT] = {
     {0}, /* LY_TYPE_UNKNOWN */
-    {.type = LY_TYPE_BINARY, .store = ly_type_store_binary, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},
-    {.type = LY_TYPE_UINT8, .store = ly_type_store_uint, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},
-    {.type = LY_TYPE_UINT16, .store = ly_type_store_uint, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},
-    {.type = LY_TYPE_UINT32, .store = ly_type_store_uint, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},
-    {.type = LY_TYPE_UINT64, .store = ly_type_store_uint, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},
-    {.type = LY_TYPE_STRING, .store = ly_type_store_string, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},
-    {.type = LY_TYPE_BITS, .store = ly_type_store_bits, .compare = ly_type_compare_canonical, .free = ly_type_free_bits},
-    {.type = LY_TYPE_BOOL, .store = ly_type_store_boolean, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},
-    {.type = LY_TYPE_DEC64, .store = ly_type_store_decimal64, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},
-    {.type = LY_TYPE_EMPTY, .store = ly_type_store_empty, .compare = ly_type_compare_empty, .free = ly_type_free_canonical},
-    {.type = LY_TYPE_ENUM, .store = ly_type_store_enum, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},
-    {.type = LY_TYPE_IDENT, .store = ly_type_store_identityref, .compare = ly_type_compare_identityref, .free = ly_type_free_canonical},
-    {.type = LY_TYPE_INST, .store = ly_type_store_instanceid, .compare = ly_type_compare_instanceid, .free = ly_type_free_instanceid},
-    {.type = LY_TYPE_LEAFREF, .store = ly_type_store_leafref, .compare = ly_type_compare_leafref, .free = ly_type_free_leafref},
-    {.type = LY_TYPE_UNION, .store = ly_type_store_union, .compare = ly_type_compare_union, .free = ly_type_free_union},
-    {.type = LY_TYPE_INT8, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},
-    {.type = LY_TYPE_INT16, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},
-    {.type = LY_TYPE_INT32, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},
-    {.type = LY_TYPE_INT64, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_BINARY, .store = ly_type_store_binary, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_UINT8, .store = ly_type_store_uint, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_UINT16, .store = ly_type_store_uint, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_UINT32, .store = ly_type_store_uint, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_UINT64, .store = ly_type_store_uint, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_STRING, .store = ly_type_store_string, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_BITS, .store = ly_type_store_bits, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical, .free = ly_type_free_bits},
+    {.type = LY_TYPE_BOOL, .store = ly_type_store_boolean, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_DEC64, .store = ly_type_store_decimal64, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_EMPTY, .store = ly_type_store_empty, .compare = ly_type_compare_empty, .print = ly_type_print_canonical, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_ENUM, .store = ly_type_store_enum, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_IDENT, .store = ly_type_store_identityref, .compare = ly_type_compare_identityref, .print = ly_type_print_canonical, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_INST, .store = ly_type_store_instanceid, .compare = ly_type_compare_instanceid, .print = ly_type_print_instanceid, .free = ly_type_free_instanceid},
+    {.type = LY_TYPE_LEAFREF, .store = ly_type_store_leafref, .compare = ly_type_compare_leafref, .print = ly_type_print_leafref, .free = ly_type_free_leafref},
+    {.type = LY_TYPE_UNION, .store = ly_type_store_union, .compare = ly_type_compare_union, .print = ly_type_print_union, .free = ly_type_free_union},
+    {.type = LY_TYPE_INT8, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_INT16, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_INT32, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_INT64, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical, .free = ly_type_free_canonical},
 };

@@ -132,6 +132,22 @@ typedef LY_ERR (*ly_type_store_clb)(struct ly_ctx *ctx, struct lysc_type *type, 
 typedef LY_ERR (*ly_type_compare_clb)(const struct lyd_value *val1, const struct lyd_value *val2);
 
 /**
+ * @brief Callback to receive printed (canoncal) value of the data stored in @p value.
+ *
+ * @param[in] value Value to print.
+ * @param[in] format Format in which the data are supposed to be printed.
+ *            Only 2 formats are currently implemented: LYD_XML and LYD_JSON.
+ * @param[in] prefixes Flag to get printed prefix/namespace string instead of the value itself.
+ *            Since JSON uses YANG module names as prefixes, this option make sense only with LYD_XML @p format.
+ * @param[out] dynamic Flag if the returned string is dynamically allocated. In such a case the caller is responsible
+ *            for freeing it.
+ * @return String with the value of @p value in specified @p format. According to the returned @p dynamic flag, caller
+ *         can be responsible for freeing allocated memory.
+ * @return NULL in case of error.
+ */
+typedef const char *(*ly_type_print_clb)(const struct lyd_value *value, LYD_FORMAT format, int prefixes, int *dynamic);
+
+/**
  * @brief Callback for freeing the user type values stored by ly_type_store_clb().
  *
  * Note that this callback is responsible also for freeing the canonized member in the @p value.
@@ -152,6 +168,7 @@ struct lysc_type_plugin {
     LY_DATA_TYPE type;               /**< implemented type, use LY_TYPE_UNKNOWN for derived data types */
     ly_type_store_clb store;         /**< function to validate, canonize and store (according to the options) the value in the type-specific way */
     ly_type_compare_clb compare;     /**< comparison callback to compare 2 values of the same type */
+    ly_type_print_clb print;         /**< printer callback to get string representing the value */
     ly_type_free_clb free;           /**< optional function to free the type-spceific way stored value */
     uint32_t flags;                  /**< [type flags ](@ref plugintypeflags). */
 };
