@@ -249,7 +249,7 @@ lyxml_ns_get(struct lyxml_context *context, const char *prefix, size_t prefix_le
     for (u = context->ns.count - 1; u + 1 > 0; --u) {
         ns = (struct lyxml_ns *)context->ns.objs[u];
         if (prefix && prefix_len) {
-            if (!strncmp(prefix, ns->prefix, prefix_len) && ns->prefix[prefix_len] == '\0') {
+            if (ns->prefix && !strncmp(prefix, ns->prefix, prefix_len) && ns->prefix[prefix_len] == '\0') {
                 return ns;
             }
         } else if (!ns->prefix) {

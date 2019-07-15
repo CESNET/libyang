@@ -90,7 +90,11 @@ setup(void **state)
             "leaf inst {type instance-identifier {require-instance true;}}"
             "leaf inst-noreq {type instance-identifier {require-instance false;}}"
             "leaf lref {type leafref {path /leaflisttarget; require-instance true;}}"
-            "leaf lref2 {type leafref {path \"../list[id = current()/../str-norestr]/targets\"; require-instance true;}}}";
+            "leaf lref2 {type leafref {path \"../list[id = current()/../str-norestr]/targets\"; require-instance true;}}"
+            "leaf un1 {type union {"
+              "type leafref {path /int8; require-instance true;}"
+              "type union { type identityref {base defs:interface-type;} type instance-identifier {require-instance true;} }"
+              "type string {length 1..20;}}}}";
 
     s = calloc(1, sizeof *s);
     assert_non_null(s);
@@ -947,9 +951,13 @@ test_instanceid(void **state)
                   "position-predicate 4 is bigger than number of instances in the data tree (2). /");
     lyd_trees_free(trees, 1);
 
+    data = "<leaflisttarget xmlns=\"urn:tests:types\">b</leaflisttarget>"
+           "<inst xmlns=\"urn:tests:types\">/a:leaflisttarget[1]</inst>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid instance-identifier \"/a:leaflisttarget[1]\" value - unable to map prefix \"a\" to YANG schema. /");
+
     s->func = NULL;
 }
-
 
 static void
 test_leafref(void **state)
@@ -1069,6 +1077,109 @@ test_leafref(void **state)
     s->func = NULL;
 }
 
+static void
+test_union(void **state)
+{
+    struct state_s *s = (struct state_s*)(*state);
+    s->func = test_union;
+
+    struct lyd_node *tree;
+    struct lyd_node_term *leaf;
+
+    /*
+     * leaf un1 {type union {
+     *             type leafref {path /int8; require-instance true;}
+     *             type union {
+     *               type identityref {base defs:interface-type;}
+     *               type instance-identifier {require-instance true;}
+     *             }
+     *             type string {range 1..20;};
+     *           }
+     * }
+     */
+
+    const char *data = "<int8 xmlns=\"urn:tests:types\">11</int8><int8 xmlns=\"urn:tests:types\">12</int8>"
+            "<un1 xmlns=\"urn:tests:types\">12</un1>";
+
+    /* valid data */
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    tree = tree->prev;
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("un1", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("12", leaf->value.canonized);
+    assert_null(leaf->value.subvalue->prefixes);
+    assert_int_equal(LY_TYPE_LEAFREF, leaf->value.subvalue->type->basetype);
+    assert_int_equal(12, leaf->value.subvalue->value->int8);
+    lyd_free_all(tree);
+
+    data = "<int8 xmlns=\"urn:tests:types\">11</int8><int8 xmlns=\"urn:tests:types\">12</int8>"
+           "<un1 xmlns=\"urn:tests:types\">2</un1>";
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    tree = tree->prev;
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("un1", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("2", leaf->value.canonized);
+    assert_null(leaf->value.subvalue->prefixes);
+    assert_int_equal(LY_TYPE_STRING, leaf->value.subvalue->type->basetype);
+    lyd_free_all(tree);
+
+    data = "<un1 xmlns=\"urn:tests:types\" xmlns:d=\"urn:tests:defs\">d:fast-ethernet</un1>";
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("un1", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("d:fast-ethernet", leaf->value.canonized);
+    assert_non_null(leaf->value.subvalue->prefixes);
+    assert_int_equal(LY_TYPE_IDENT, leaf->value.subvalue->type->basetype);
+    assert_string_equal("fast-ethernet", leaf->value.subvalue->value->canonized);
+    lyd_free_all(tree);
+
+    data = "<un1 xmlns=\"urn:tests:types\" xmlns:d=\"urn:tests:defs\">d:superfast-ethernet</un1>";
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("un1", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("d:superfast-ethernet", leaf->value.canonized);
+    assert_non_null(leaf->value.subvalue->prefixes);
+    assert_int_equal(LY_TYPE_STRING, leaf->value.subvalue->type->basetype);
+    assert_string_equal("d:superfast-ethernet", leaf->value.subvalue->value->canonized);
+    lyd_free_all(tree);
+
+    data = "<leaflisttarget xmlns=\"urn:tests:types\">x</leaflisttarget><leaflisttarget xmlns=\"urn:tests:types\">y</leaflisttarget>"
+           "<un1 xmlns=\"urn:tests:types\" xmlns:a=\"urn:tests:types\">/a:leaflisttarget[2]</un1>";
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    tree = tree->prev;
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("un1", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("/a:leaflisttarget[2]", leaf->value.canonized);
+    assert_non_null(leaf->value.subvalue->prefixes);
+    assert_int_equal(LY_TYPE_INST, leaf->value.subvalue->type->basetype);
+    assert_null(leaf->value.subvalue->value->canonized);
+    lyd_free_all(tree);
+
+    data = "<leaflisttarget xmlns=\"urn:tests:types\">x</leaflisttarget><leaflisttarget xmlns=\"urn:tests:types\">y</leaflisttarget>"
+           "<un1 xmlns=\"urn:tests:types\" xmlns:a=\"urn:tests:types\">/a:leaflisttarget[3]</un1>";
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    tree = tree->prev;
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("un1", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("/a:leaflisttarget[3]", leaf->value.canonized);
+    assert_non_null(leaf->value.subvalue->prefixes);
+    assert_int_equal(LY_TYPE_STRING, leaf->value.subvalue->type->basetype);
+    assert_string_equal("/a:leaflisttarget[3]", leaf->value.subvalue->value->canonized);
+    lyd_free_all(tree);
+
+    data = "<un1 xmlns=\"urn:tests:types\">123456789012345678901</un1>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
+    logbuf_assert("Invalid union value \"123456789012345678901\" - no matching subtype found. /");
+
+    s->func = NULL;
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1084,6 +1195,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_identityref, setup, teardown),
         cmocka_unit_test_setup_teardown(test_instanceid, setup, teardown),
         cmocka_unit_test_setup_teardown(test_leafref, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_union, setup, teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

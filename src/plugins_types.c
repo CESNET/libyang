@@ -1308,7 +1308,7 @@ ly_type_store_instanceid_checknodeid(const char *orig, size_t orig_len, int opti
  * Implementation of the ly_clb_resolve_prefix.
  */
 static const struct lys_module *
-ly_type_store_instanceid_get_prefix(struct ly_ctx *UNUSED(ctx), const char *prefix, size_t prefix_len, void *private)
+ly_type_stored_prefixes_clb(struct ly_ctx *UNUSED(ctx), const char *prefix, size_t prefix_len, void *private)
 {
     struct lyd_value_prefix *prefixes = (struct lyd_value_prefix*)private;
     unsigned int u;
@@ -1348,7 +1348,7 @@ ly_type_store_instanceid_parse_predicate_value(struct ly_ctx *ctx, const struct 
 
     type = ((struct lysc_node_leaf*)key)->type;
     pred->value->plugin = type->plugin;
-    ret = type->plugin->store(ctx, type, val, val_len, options, ly_type_store_instanceid_get_prefix, prefixes, format, key, NULL,
+    ret = type->plugin->store(ctx, type, val, val_len, options, ly_type_stored_prefixes_clb, prefixes, format, key, NULL,
                               pred->value, NULL, &err);
     if (ret == LY_EINCOMPLETE) {
         /* actually expected success without complete data */
@@ -1408,7 +1408,7 @@ ly_type_path_predicate_end(const char *predicate)
 static LY_ERR
 ly_type_store_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
                          ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format,
-                         const void *context_node, const struct lyd_node **trees,
+                         const void *UNUSED(context_node), const struct lyd_node **trees,
                          struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
     LY_ERR ret = LY_EVALID;
@@ -1430,13 +1430,16 @@ ly_type_store_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const char 
     /* init */
     *err = NULL;
 
-    if (options & LY_TYPE_OPTS_SECOND_CALL) {
+    if ((options & LY_TYPE_OPTS_SECOND_CALL) && (options & LY_TYPE_OPTS_STORE)) {
         /* the second run, the first one ended with LY_EINCOMPLETE, but we have prepared the target structure */
 
-        if (!lyd_target(((struct lyd_node_term*)context_node)->value.target, trees)) {
+        if (!lyd_target(storage->target, trees)) {
             /* TODO print instance-identifier */
             asprintf(&errmsg, "Invalid instance-identifier \"%s\" value - required instance not found.",
                      "TODO");
+            /* we have to clean up the storage */
+            type->plugin->free(ctx, type, storage);
+
             goto error;
         }
         return LY_SUCCESS;
@@ -2086,6 +2089,162 @@ ly_type_free_leafref(struct ly_ctx *ctx, struct lysc_type *type, struct lyd_valu
     realtype->plugin->free(ctx, realtype, value);
 }
 
+/**
+ * @brief Validate, canonize and store value of the YANG built-in union type.
+ *
+ * Implementation of the ly_type_store_clb.
+ */
+static LY_ERR
+ly_type_store_union(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
+                    ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format,
+                    const void *context_node, const struct lyd_node **trees,
+                    struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
+{
+    LY_ERR ret;
+    unsigned int u;
+    struct lysc_type_union *type_u = (struct lysc_type_union*)type;
+    struct lyd_value_subvalue *subvalue;
+    int secondcall = 0;
+    char *errmsg = NULL;
+
+    if ((options & LY_TYPE_OPTS_SECOND_CALL) && (options & LY_TYPE_OPTS_STORE)) {
+        subvalue = storage->subvalue;
+        /* standalone second_call flag - the options flag can be removed, but we need information
+         * about the second call to avoid rewriting the canonized value */
+        secondcall = 1;
+
+        /* get u of the used type to call the store callback second time, if it fails
+         * we are continuing with another type in row, anyway now we should have the data */
+        LY_ARRAY_FOR(type_u->types, u) {
+            if (type_u->types[u] == subvalue->type) {
+                goto search_subtype;
+            }
+        }
+    } else {
+        /* prepare subvalue storage */
+        subvalue = calloc(1, sizeof *subvalue);
+        subvalue->value = calloc(1, sizeof *subvalue->value);
+
+        /* store prefixes for later use */
+        subvalue->prefixes = ly_type_get_prefixes(ctx, value, value_len, get_prefix, parser);
+
+        /* use the first usable sybtype to store the value */
+        LY_ARRAY_FOR(type_u->types, u) {
+            subvalue->value->plugin = type_u->types[u]->plugin;
+            subvalue->type = type_u->types[u];
+
+search_subtype:
+            ret = type_u->types[u]->plugin->store(ctx, type_u->types[u], value, value_len, options & ~(LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_DYNAMIC),
+                                                  ly_type_stored_prefixes_clb, subvalue->prefixes, format,
+                                                  context_node, trees, subvalue->value, NULL, err);
+            if (ret == LY_SUCCESS || ret == LY_EINCOMPLETE) {
+                /* success (or not yet complete) */
+                break;
+            }
+
+            if (options & LY_TYPE_OPTS_SECOND_CALL) {
+                /* if started as LY_TYPE_OPTS_SECOND_CALL, we need it just for a single call of the
+                 * store callback, because if it fails, another store callback is called for the first time */
+                options = options & ~LY_TYPE_OPTS_SECOND_CALL;
+            }
+            if (*err) {
+                ly_err_free(*err);
+                *err = NULL;
+            }
+        }
+    }
+    if (u == LY_ARRAY_SIZE(type_u->types)) {
+        asprintf(&errmsg, "Invalid union value \"%.*s\" - no matching subtype found.", (int)value_len, value);
+        goto error;
+    }
+    /* success */
+
+    if (!secondcall) {
+        if (options & (LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_STORE)) {
+            if (options & LY_TYPE_OPTS_DYNAMIC) {
+                ly_type_store_canonized(ctx, options, lydict_insert_zc(ctx, (char*)value), storage, canonized);
+                value = NULL;
+            } else {
+                ly_type_store_canonized(ctx, options, lydict_insert(ctx, value_len ? value : "", value_len), storage, canonized);
+            }
+        }
+
+        if (options & LY_TYPE_OPTS_DYNAMIC) {
+            free((char*)value);
+        }
+    }
+
+    if (options & LY_TYPE_OPTS_STORE) {
+        storage->subvalue = subvalue;
+    } else {
+        LY_ARRAY_FOR(subvalue->prefixes, u) {
+            lydict_remove(ctx, subvalue->prefixes[u].prefix);
+        }
+        LY_ARRAY_FREE(subvalue->prefixes);
+        free(subvalue->value);
+        free(subvalue);
+    }
+
+    return ret;
+
+error:
+
+    if (!*err) {
+        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_RESTRICTION, errmsg, NULL, NULL);
+    }
+    LY_ARRAY_FOR(subvalue->prefixes, u) {
+        lydict_remove(ctx, subvalue->prefixes[u].prefix);
+    }
+    LY_ARRAY_FREE(subvalue->prefixes);
+    free(subvalue->value);
+    free(subvalue);
+    if ((options & LY_TYPE_OPTS_SECOND_CALL) && (options & LY_TYPE_OPTS_STORE)) {
+        subvalue = NULL;
+    }
+
+    return LY_EVALID;
+}
+
+/**
+ * @brief Comparison callback checking the union value.
+ *
+ * Implementation of the ly_type_compare_clb.
+ */
+static LY_ERR
+ly_type_compare_union(const struct lyd_value *val1, const struct lyd_value *val2)
+{
+    if (val1->subvalue->type != val2->subvalue->type) {
+        return LY_EVALID;
+    }
+    return val1->subvalue->type->plugin->compare(val1->subvalue->value, val2->subvalue->value);
+}
+
+/**
+ * @brief Free value of the YANG built-in union type.
+ *
+ * Implementation of the ly_type_free_clb.
+ */
+static void
+ly_type_free_union(struct ly_ctx *ctx, struct lysc_type *type, struct lyd_value *value)
+{
+    unsigned int u;
+
+    if (value->subvalue) {
+        if (value->subvalue->value) {
+            value->subvalue->value->plugin->free(ctx, value->subvalue->type, value->subvalue->value);
+            LY_ARRAY_FOR(value->subvalue->prefixes, u) {
+                lydict_remove(ctx, value->subvalue->prefixes[u].prefix);
+            }
+            LY_ARRAY_FREE(value->subvalue->prefixes);
+            free(value->subvalue->value);
+        }
+        free(value->subvalue);
+        value->subvalue = NULL;
+    }
+    ly_type_free_canonical(ctx, type, value);
+}
+
+
 struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT] = {
     {0}, /* LY_TYPE_UNKNOWN */
     {.type = LY_TYPE_BINARY, .store = ly_type_store_binary, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},
@@ -2102,7 +2261,7 @@ struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT] = {
     {.type = LY_TYPE_IDENT, .store = ly_type_store_identityref, .compare = ly_type_compare_identityref, .free = ly_type_free_canonical},
     {.type = LY_TYPE_INST, .store = ly_type_store_instanceid, .compare = ly_type_compare_instanceid, .free = ly_type_free_instanceid},
     {.type = LY_TYPE_LEAFREF, .store = ly_type_store_leafref, .compare = ly_type_compare_leafref, .free = ly_type_free_leafref},
-    {0}, /* TODO LY_TYPE_UNION */
+    {.type = LY_TYPE_UNION, .store = ly_type_store_union, .compare = ly_type_compare_union, .free = ly_type_free_union},
     {.type = LY_TYPE_INT8, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},
     {.type = LY_TYPE_INT16, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},
     {.type = LY_TYPE_INT32, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},

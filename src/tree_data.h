@@ -177,10 +177,15 @@ struct lyd_value {
         struct lysc_type_bitenum_item *enum_item;  /**< pointer to the definition of the enumeration value */
         struct lysc_type_bitenum_item **bits_items; /**< list of set pointers to the specification of the set bits ([sized array](@ref sizedarrays)) */
         struct lysc_ident *ident;    /**< pointer to the schema definition of the identityref value */
-        struct lyd_value_prefix {
-            const char *prefix;           /**< prefix string used in the canonized string to identify the mod of the YANG schema */
-            const struct lys_module *mod; /**< YANG schema module identified by the prefix string */
-        } *prefixes;                 /**< list of mappings between prefix in canonized value to a YANG schema ([sized array](@ref sizedarrays)) */
+
+        struct lyd_value_subvalue {
+            struct lyd_value_prefix {
+                const char *prefix;           /**< prefix string used in the canonized string to identify the mod of the YANG schema */
+                const struct lys_module *mod; /**< YANG schema module identified by the prefix string */
+            } *prefixes;                 /**< list of mappings between prefix in canonized value to a YANG schema ([sized array](@ref sizedarrays)) */
+            struct lysc_type *type;
+            struct lyd_value *value;
+        } *subvalue;
 
         struct lyd_value_path {
             const struct lysc_node *node;
