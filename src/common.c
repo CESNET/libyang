@@ -15,9 +15,10 @@
 #include "common.h"
 
 #include <assert.h>
-#include <errno.h>
-#include <stdlib.h>
 #include <ctype.h>
+#include <errno.h>
+#include <stdarg.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -305,6 +306,32 @@ ly_munmap(void *addr, size_t length)
     if (munmap(addr, length)) {
         return LY_ESYS;
     }
+    return LY_SUCCESS;
+}
+
+LY_ERR
+ly_strcat(char **dest, const char *format, ...)
+{
+    va_list fp;
+    char *addition = NULL;
+    size_t len;
+
+    va_start(fp, format);
+    len = vasprintf(&addition, format, fp);
+    len += (*dest ? strlen(*dest) : 0) + 1;
+
+    if (*dest) {
+        *dest = ly_realloc(*dest, len);
+        if (!*dest) {
+            return LY_EMEM;
+        }
+        *dest = strcat(*dest, addition);
+        free(addition);
+    } else {
+        *dest = addition;
+    }
+
+    va_end(fp);
     return LY_SUCCESS;
 }
 
