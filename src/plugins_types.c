@@ -50,7 +50,7 @@ ly_type_compare_canonical(const struct lyd_value *val1, const struct lyd_value *
  * Implementation of the ly_type_free_clb.
  */
 static void
-ly_type_free_canonical(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), struct lyd_value *value)
+ly_type_free_canonical(struct ly_ctx *ctx, struct lyd_value *value)
 {
     lydict_remove(ctx, value->canonized);
     value->canonized = NULL;
@@ -901,12 +901,12 @@ error:
  * Implementation of the ly_type_free_clb.
  */
 static void
-ly_type_free_bits(struct ly_ctx *ctx, struct lysc_type *type, struct lyd_value *value)
+ly_type_free_bits(struct ly_ctx *ctx, struct lyd_value *value)
 {
     LY_ARRAY_FREE(value->bits_items);
     value->bits_items = NULL;
 
-    ly_type_free_canonical(ctx, type, value);
+    ly_type_free_canonical(ctx, value);
 }
 
 
@@ -1347,7 +1347,7 @@ ly_type_store_instanceid_parse_predicate_value(struct ly_ctx *ctx, const struct 
     pred->value = calloc(1, sizeof *pred->value);
 
     type = ((struct lysc_node_leaf*)key)->type;
-    pred->value->plugin = type->plugin;
+    pred->value->realtype = type;
     ret = type->plugin->store(ctx, type, val, val_len, options, ly_type_stored_prefixes_clb, prefixes, format, key, NULL,
                               pred->value, NULL, &err);
     if (ret == LY_EINCOMPLETE) {
@@ -1438,7 +1438,7 @@ ly_type_store_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const char 
             asprintf(&errmsg, "Invalid instance-identifier \"%s\" value - required instance not found.",
                      "TODO");
             /* we have to clean up the storage */
-            type->plugin->free(ctx, type, storage);
+            type->plugin->free(ctx, storage);
 
             goto error;
         }
@@ -1811,12 +1811,12 @@ ly_type_compare_instanceid(const struct lyd_value *val1, const struct lyd_value 
  * Implementation of the ly_type_free_clb.
  */
 static void
-ly_type_free_instanceid(struct ly_ctx *ctx, struct lysc_type *type, struct lyd_value *value)
+ly_type_free_instanceid(struct ly_ctx *ctx, struct lyd_value *value)
 {
     lyd_value_free_path(ctx, value->target);
     value->target = NULL;
 
-    ly_type_free_canonical(ctx, type, value);
+    ly_type_free_canonical(ctx, value);
 }
 
 /**
@@ -1848,7 +1848,7 @@ ly_type_store_leafref(struct ly_ctx *ctx, struct lysc_type *type, const char *va
         storage_dummy = 1;
     }
     /* rewrite leafref plugin stored in the storage by default */
-    storage->plugin = type_lr->realtype->plugin;
+    storage->realtype = type_lr->realtype;
 
     /* check value according to the real type of the leafref target */
     ret = type_lr->realtype->plugin->store(ctx, type_lr->realtype, value, value_len, options,
@@ -2010,7 +2010,7 @@ next_instance_toplevel:
                 } while (*token != ']');
 
                 /* compare key and the value */
-                if (key->value.plugin->compare(&key->value, &((struct lyd_node_term*)value)->value)) {
+                if (key->value.realtype->plugin->compare(&key->value, &((struct lyd_node_term*)value)->value)) {
                     /* nodes does not match, try another instance */
 next_instance:
                     token = first_pred;
@@ -2048,7 +2048,7 @@ next_instance:
     }
 
     if (storage_dummy) {
-        storage->plugin->free(ctx, type_lr->realtype, storage);
+        storage->realtype->plugin->free(ctx, storage);
         free(storage);
     }
     return ret;
@@ -2058,7 +2058,7 @@ error:
         *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_RESTRICTION, errmsg, NULL, NULL);
     }
     if (storage_dummy) {
-        storage->plugin->free(ctx, type_lr->realtype, storage);
+        storage->realtype->plugin->free(ctx, storage);
         free(storage);
     }
     return LY_EVALID;
@@ -2073,7 +2073,7 @@ error:
 static LY_ERR
 ly_type_compare_leafref(const struct lyd_value *val1, const struct lyd_value *val2)
 {
-    return val1->plugin->compare(val1, val2);
+    return val1->realtype->plugin->compare(val1, val2);
 }
 
 /**
@@ -2082,11 +2082,9 @@ ly_type_compare_leafref(const struct lyd_value *val1, const struct lyd_value *va
  * Implementation of the ly_type_free_clb.
  */
 static void
-ly_type_free_leafref(struct ly_ctx *ctx, struct lysc_type *type, struct lyd_value *value)
+ly_type_free_leafref(struct ly_ctx *ctx, struct lyd_value *value)
 {
-    struct lysc_type *realtype = ((struct lysc_type_leafref*)type)->realtype;
-
-    realtype->plugin->free(ctx, realtype, value);
+    value->realtype->plugin->free(ctx, value);
 }
 
 /**
@@ -2113,12 +2111,24 @@ ly_type_store_union(struct ly_ctx *ctx, struct lysc_type *type, const char *valu
          * about the second call to avoid rewriting the canonized value */
         secondcall = 1;
 
-        /* get u of the used type to call the store callback second time, if it fails
-         * we are continuing with another type in row, anyway now we should have the data */
-        LY_ARRAY_FOR(type_u->types, u) {
-            if (type_u->types[u] == subvalue->type) {
-                goto search_subtype;
-            }
+        /* call the callback second time */
+        ret = subvalue->value->realtype->plugin->store(ctx, subvalue->value->realtype, value, value_len,
+                                                       options & ~(LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_DYNAMIC),
+                                                       ly_type_stored_prefixes_clb, subvalue->prefixes, format,
+                                                       context_node, trees, subvalue->value, NULL, err);
+        if (ret) {
+            /* second call failed, we have to try another subtype of the union.
+             * Unfortunately, since the realtype can change (e.g. in leafref), we are not able to detect
+             * which of the subtype's were tried the last time, so we have to try all of them.
+             * We also have to remove the LY_TYPE_OPTS_SECOND_CALL flag since the callbacks will be now
+             * called for the first time.
+             * In the second call we should have all the data instances, so the LY_EINCOMPLETE should not
+             * happen again.
+             */
+            options = options & ~LY_TYPE_OPTS_SECOND_CALL;
+            ly_err_free(*err);
+            *err = NULL;
+            goto search_subtype;
         }
     } else {
         /* prepare subvalue storage */
@@ -2128,12 +2138,10 @@ ly_type_store_union(struct ly_ctx *ctx, struct lysc_type *type, const char *valu
         /* store prefixes for later use */
         subvalue->prefixes = ly_type_get_prefixes(ctx, value, value_len, get_prefix, parser);
 
+search_subtype:
         /* use the first usable sybtype to store the value */
         LY_ARRAY_FOR(type_u->types, u) {
-            subvalue->value->plugin = type_u->types[u]->plugin;
-            subvalue->type = type_u->types[u];
-
-search_subtype:
+            subvalue->value->realtype = type_u->types[u];
             ret = type_u->types[u]->plugin->store(ctx, type_u->types[u], value, value_len, options & ~(LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_DYNAMIC),
                                                   ly_type_stored_prefixes_clb, subvalue->prefixes, format,
                                                   context_node, trees, subvalue->value, NULL, err);
@@ -2141,21 +2149,14 @@ search_subtype:
                 /* success (or not yet complete) */
                 break;
             }
-
-            if (options & LY_TYPE_OPTS_SECOND_CALL) {
-                /* if started as LY_TYPE_OPTS_SECOND_CALL, we need it just for a single call of the
-                 * store callback, because if it fails, another store callback is called for the first time */
-                options = options & ~LY_TYPE_OPTS_SECOND_CALL;
-            }
-            if (*err) {
-                ly_err_free(*err);
-                *err = NULL;
-            }
+            ly_err_free(*err);
+            *err = NULL;
         }
-    }
-    if (u == LY_ARRAY_SIZE(type_u->types)) {
-        asprintf(&errmsg, "Invalid union value \"%.*s\" - no matching subtype found.", (int)value_len, value);
-        goto error;
+
+        if (u == LY_ARRAY_SIZE(type_u->types)) {
+            asprintf(&errmsg, "Invalid union value \"%.*s\" - no matching subtype found.", (int)value_len, value);
+            goto error;
+        }
     }
     /* success */
 
@@ -2199,7 +2200,7 @@ error:
     free(subvalue->value);
     free(subvalue);
     if ((options & LY_TYPE_OPTS_SECOND_CALL) && (options & LY_TYPE_OPTS_STORE)) {
-        subvalue = NULL;
+        storage->subvalue = NULL;
     }
 
     return LY_EVALID;
@@ -2213,10 +2214,10 @@ error:
 static LY_ERR
 ly_type_compare_union(const struct lyd_value *val1, const struct lyd_value *val2)
 {
-    if (val1->subvalue->type != val2->subvalue->type) {
+    if (val1->realtype != val2->realtype) {
         return LY_EVALID;
     }
-    return val1->subvalue->type->plugin->compare(val1->subvalue->value, val2->subvalue->value);
+    return val1->realtype->plugin->compare(val1->subvalue->value, val2->subvalue->value);
 }
 
 /**
@@ -2225,13 +2226,13 @@ ly_type_compare_union(const struct lyd_value *val1, const struct lyd_value *val2
  * Implementation of the ly_type_free_clb.
  */
 static void
-ly_type_free_union(struct ly_ctx *ctx, struct lysc_type *type, struct lyd_value *value)
+ly_type_free_union(struct ly_ctx *ctx, struct lyd_value *value)
 {
     unsigned int u;
 
     if (value->subvalue) {
         if (value->subvalue->value) {
-            value->subvalue->value->plugin->free(ctx, value->subvalue->type, value->subvalue->value);
+            value->subvalue->value->realtype->plugin->free(ctx, value->subvalue->value);
             LY_ARRAY_FOR(value->subvalue->prefixes, u) {
                 lydict_remove(ctx, value->subvalue->prefixes[u].prefix);
             }
@@ -2241,10 +2242,12 @@ ly_type_free_union(struct ly_ctx *ctx, struct lysc_type *type, struct lyd_value 
         free(value->subvalue);
         value->subvalue = NULL;
     }
-    ly_type_free_canonical(ctx, type, value);
+    ly_type_free_canonical(ctx, value);
 }
 
-
+/**
+ * @brief Set of type plugins for YANG built-in types
+ */
 struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT] = {
     {0}, /* LY_TYPE_UNKNOWN */
     {.type = LY_TYPE_BINARY, .store = ly_type_store_binary, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},
@@ -2267,4 +2270,3 @@ struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT] = {
     {.type = LY_TYPE_INT32, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},
     {.type = LY_TYPE_INT64, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .free = ly_type_free_canonical},
 };
-

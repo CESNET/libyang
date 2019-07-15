@@ -163,7 +163,9 @@ lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len,
     ctx = node->schema->module->ctx;
 
     type = ((struct lysc_node_leaf*)node->schema)->type;
-    node->value.plugin = type->plugin;
+    if (!second) {
+        node->value.realtype = type;
+    }
     rc = type->plugin->store(ctx, type, value, value_len, options, get_prefix, parser, format,
                              trees ? (void*)node : (void*)node->schema, trees,
                              &node->value, NULL, &err);
@@ -286,7 +288,7 @@ lyd_value_compare(const struct lyd_node_term *node, const char *value, size_t va
     }
 
 cleanup:
-    type->plugin->free(ctx, type, &data);
+    type->plugin->free(ctx, &data);
 
     return ret;
 }

@@ -137,10 +137,9 @@ typedef LY_ERR (*ly_type_compare_clb)(const struct lyd_value *val1, const struct
  * Note that this callback is responsible also for freeing the canonized member in the @p value.
  *
  * @param[in] ctx libyang ctx to enable correct manipulation with values that are in the dictionary.
- * @param[in] type Type of the stored value.
  * @param[in,out] value Value structure to free the data stored there by the plugin's ly_type_store_clb() callback
  */
-typedef void (*ly_type_free_clb)(struct ly_ctx *ctx, struct lysc_type *type, struct lyd_value *value);
+typedef void (*ly_type_free_clb)(struct ly_ctx *ctx, struct lyd_value *value);
 
 /**
  * @brief Hold type-specific functions for various operations with the data values.

@@ -183,7 +183,6 @@ struct lyd_value {
                 const char *prefix;           /**< prefix string used in the canonized string to identify the mod of the YANG schema */
                 const struct lys_module *mod; /**< YANG schema module identified by the prefix string */
             } *prefixes;                 /**< list of mappings between prefix in canonized value to a YANG schema ([sized array](@ref sizedarrays)) */
-            struct lysc_type *type;
             struct lyd_value *value;
         } *subvalue;
 
@@ -213,10 +212,13 @@ struct lyd_value {
     };  /**< The union is just a list of shorthands to possible values stored by a type's plugin. libyang works only with the canonized string,
              this specific data type storage is just to simplify use of the values by the libyang users. */
 
-    struct lysc_type_plugin *plugin; /**< pointer to the type plugin which stored the data. This pointer can differ from the pointer
-                                          in the lysc_type structure since the plugin itself can use other plugins for storing data.
-                                          Speaking about built-in types, this is the case of leafref which stores data as its target type.
-                                          Similarly union types stores the currently used type plugin in its internal lyd_value structure. */
+    struct lysc_type *realtype; /**< pointer to the real type of the data stored in the value structure. This type can differ from the type
+                                          in the schema node of the data node since the type's store plugin can use other types/plugins for
+                                          storing data. Speaking about built-in types, this is the case of leafref which stores data as its
+                                          target type. In contrast, union type also use its subtype's callbacks, but inside an internal data
+                                          lyd_value::subvalue structure, so here is the pointer to the union type.
+                                          In general, this type is used to get free callback for this lyd_value structure, so it must reflect
+                                          the type used to store data directly in the same lyd_value instance. */
 };
 
 /**
