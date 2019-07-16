@@ -224,6 +224,15 @@ test_element(void **state)
     logbuf_assert("Mixed XML content is not allowed (text <b>). Line number 1.");
     lyxml_context_clear(&ctx);
 
+    /* tag missmatch */
+    str = "<a>text</b>";
+    assert_int_equal(LY_SUCCESS, lyxml_get_element(&ctx, &str, &prefix, &prefix_len, &name, &name_len));
+    assert_string_equal("text</b>", str);
+    assert_int_equal(LYXML_ELEM_CONTENT, ctx.status);
+    assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &buf, &buf_len, &out, &len, &dynamic));
+    logbuf_assert("Opening and closing elements tag missmatch (\"b\"). Line number 1.");
+    lyxml_context_clear(&ctx);
+
 }
 
 static void
