@@ -1169,17 +1169,15 @@ ly_type_store_identityref(struct ly_ctx *ctx, struct lysc_type *type, const char
         goto error;
     }
 
-    if (options & (LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_STORE)) {
-        if (id_name == value && (options & LY_TYPE_OPTS_DYNAMIC)) {
-            ly_type_store_canonized(ctx, options, lydict_insert_zc(ctx, (char*)value), storage, canonized);
-            value = NULL;
-        } else {
-            ly_type_store_canonized(ctx, options, lydict_insert(ctx, id_name, id_len), storage, canonized);
-        }
+    if (options & LY_TYPE_OPTS_CANONIZE) {
+        /* identityref does not have a canonical form - to make it clear, the canonized form is represented as NULL
+         * to make the caller print it always via callback printer */
+        *canonized = NULL;
     }
 
     if (options & LY_TYPE_OPTS_STORE) {
         storage->ident = ident;
+        storage->canonized = NULL;
     }
 
     if (options & LY_TYPE_OPTS_DYNAMIC) {
@@ -1205,6 +1203,36 @@ ly_type_compare_identityref(const struct lyd_value *val1, const struct lyd_value
         return LY_SUCCESS;
     }
     return LY_EVALID;
+}
+
+/**
+ * @brief Printer callback printing identityref value.
+ *
+ * Implementation of the ly_type_print_clb.
+ */
+static const char *
+ly_type_print_identityref(const struct lyd_value *value, LYD_FORMAT format, int prefixes, int *dynamic)
+{
+    char *result = NULL;
+
+    if (prefixes) {
+        if (format == LYD_XML) {
+            *dynamic = 1;
+            asprintf(&result, "xmlns:%s=\"%s\"", value->ident->module->prefix, value->ident->module->ns);
+            return result;
+        } else {
+            *dynamic = 0;
+            return "";
+        }
+    } else {
+        *dynamic = 1;
+        if (format == LYD_XML) {
+            asprintf(&result, "%s:%s", value->ident->module->prefix, value->ident->name);
+        } else {
+            asprintf(&result, "%s:%s", value->ident->module->name, value->ident->name);
+        }
+        return result;
+    }
 }
 
 /**
@@ -2455,7 +2483,7 @@ struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT] = {
     {.type = LY_TYPE_DEC64, .store = ly_type_store_decimal64, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical, .free = ly_type_free_canonical},
     {.type = LY_TYPE_EMPTY, .store = ly_type_store_empty, .compare = ly_type_compare_empty, .print = ly_type_print_canonical, .free = ly_type_free_canonical},
     {.type = LY_TYPE_ENUM, .store = ly_type_store_enum, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical, .free = ly_type_free_canonical},
-    {.type = LY_TYPE_IDENT, .store = ly_type_store_identityref, .compare = ly_type_compare_identityref, .print = ly_type_print_canonical, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_IDENT, .store = ly_type_store_identityref, .compare = ly_type_compare_identityref, .print = ly_type_print_identityref, .free = ly_type_free_canonical},
     {.type = LY_TYPE_INST, .store = ly_type_store_instanceid, .compare = ly_type_compare_instanceid, .print = ly_type_print_instanceid, .free = ly_type_free_instanceid},
     {.type = LY_TYPE_LEAFREF, .store = ly_type_store_leafref, .compare = ly_type_compare_leafref, .print = ly_type_print_leafref, .free = ly_type_free_leafref},
     {.type = LY_TYPE_UNION, .store = ly_type_store_union, .compare = ly_type_compare_union, .print = ly_type_print_union, .free = ly_type_free_union},

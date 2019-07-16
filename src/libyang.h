@@ -30,6 +30,7 @@ extern "C" {
 #include "tree_schema.h"
 #include "printer_schema.h"
 #include "printer_data.h"
+#include "plugins_types.h"
 
 /**
  * @mainpage About

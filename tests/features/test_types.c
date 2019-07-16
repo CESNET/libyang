@@ -611,6 +611,25 @@ test_empty(void **state)
 }
 
 static void
+test_printed_value(struct lyd_value *value, const char *expected_prefixes, const char *expected_value)
+{
+    const char *str;
+    int dynamic;
+
+    assert_non_null(str = value->realtype->plugin->print(value, LYD_XML, 1, &dynamic));
+    assert_string_equal(expected_prefixes, str);
+    if (dynamic) {
+        free((char*)str);
+    }
+
+    assert_non_null(str = value->realtype->plugin->print(value, LYD_XML, 0, &dynamic));
+    assert_string_equal(expected_value, str);
+    if (dynamic) {
+        free((char*)str);
+    }
+}
+
+static void
 test_identityref(void **state)
 {
     struct state_s *s = (struct state_s*)(*state);
@@ -626,7 +645,8 @@ test_identityref(void **state)
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("ident", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
-    assert_string_equal("gigabit-ethernet", leaf->value.canonized);
+    assert_null(leaf->value.canonized);
+    test_printed_value(&leaf->value, "xmlns:t=\"urn:tests:types\"", "t:gigabit-ethernet");
     lyd_free_all(tree);
 
     data = "<ident xmlns=\"urn:tests:types\" xmlns:x=\"urn:tests:defs\">x:fast-ethernet</ident>";
@@ -634,7 +654,8 @@ test_identityref(void **state)
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("ident", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
-    assert_string_equal("fast-ethernet", leaf->value.canonized);
+    assert_null(leaf->value.canonized);
+    test_printed_value(&leaf->value, "xmlns:d=\"urn:tests:defs\"", "d:fast-ethernet");
     lyd_free_all(tree);
 
     /* invalid value */
@@ -1136,7 +1157,8 @@ test_union(void **state)
     assert_non_null(leaf->value.subvalue->prefixes);
     assert_int_equal(LY_TYPE_UNION, leaf->value.realtype->basetype);
     assert_int_equal(LY_TYPE_IDENT, leaf->value.subvalue->value->realtype->basetype);
-    assert_string_equal("fast-ethernet", leaf->value.subvalue->value->canonized);
+    assert_null(leaf->value.subvalue->value->canonized);
+    test_printed_value(leaf->value.subvalue->value, "xmlns:d=\"urn:tests:defs\"", "d:fast-ethernet");
     lyd_free_all(tree);
 
     data = "<un1 xmlns=\"urn:tests:types\" xmlns:d=\"urn:tests:defs\">d:superfast-ethernet</un1>";

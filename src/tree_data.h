@@ -167,8 +167,11 @@ typedef enum {
  * @brief YANG data representation
  */
 struct lyd_value {
-    const char *canonized;          /**< string representation of value (for comparison, printing,...), canonized according to the
-                                          rules implemented in the type's canonization callback (if any). */
+    const char *canonized;          /**< Canonical string representation of value (for comparison, printing,...), canonized according to the
+                                         rules implemented in the type's canonization callback (if any). Note that not all the types
+                                         have a canonical representation, so this value can be even NULL (identityref or instance-identifiers
+                                         are built-in examples of such a case). The lyd_value::realtype's print callback provides possibility
+                                         to get correct string representation of the value for the specific data format. */
     union {
         const char *string;         /**< original, non-canonized string value. Useful for example for unions where the type (and therefore
                                          the cannonization rules) can change by changing value (e.g. leafref target) somewhere else. */
