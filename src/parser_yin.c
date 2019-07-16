@@ -931,9 +931,9 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
 {
     LY_ERR ret = LY_SUCCESS;
     struct sized_string prefix, name;
-    char *out;
-    size_t out_len;
-    int dynamic;
+    char *out = NULL;
+    size_t out_len = 0;
+    int dynamic = 0;
     struct yin_arg_record *subelem_attrs = NULL;
     enum yang_keyword kw = YANG_NONE;
     struct yin_subelement *subelem_info_rec = NULL;

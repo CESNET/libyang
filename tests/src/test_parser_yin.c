@@ -78,16 +78,10 @@ logger(LY_LOG_LEVEL level, const char *msg, const char *path)
     logbuf_assert("Duplicate keyword \""MEMBER"\". Line number "LINE"."); \
     CLEANUP
 
-
-static int
-setup_f(void **state)
+int
+setup_ly_ctx(void **state)
 {
     struct state *st = NULL;
-
-#if ENABLE_LOGGER_CHECKING
-    /* setup logger */
-    ly_set_log_clb(logger, 1);
-#endif
 
     /* allocate state variable */
     (*state) = st = calloc(1, sizeof(*st));
@@ -98,6 +92,29 @@ setup_f(void **state)
 
     /* create new libyang context */
     ly_ctx_new(NULL, 0, &st->ctx);
+
+    return EXIT_SUCCESS;
+}
+
+int
+destroy_ly_ctx(void **state)
+{
+    struct state *st = *state;
+    ly_ctx_destroy(st->ctx, NULL);
+    free(st);
+
+    return EXIT_SUCCESS;
+}
+
+static int
+setup_f(void **state)
+{
+    struct state *st = *state;
+
+#if ENABLE_LOGGER_CHECKING
+    /* setup logger */
+    ly_set_log_clb(logger, 1);
+#endif
 
     /* allocate new module */
     st->mod = calloc(1, sizeof(*st->mod));
@@ -135,9 +152,7 @@ teardown_f(void **state)
     lys_module_free(st->mod, NULL);
     lysp_module_free(st->lysp_mod);
     lys_module_free(temp, NULL);
-    ly_ctx_destroy(st->ctx, NULL);
     free(st->yin_ctx);
-    free(st);
 
     return EXIT_SUCCESS;
 }
@@ -604,7 +619,7 @@ test_validate_value(void **state)
 static int
 setup_element_test(void **state)
 {
-    struct state *st = NULL;
+    struct state *st = *state;
 
 #if ENABLE_LOGGER_CHECKING
     /* setup logger */
@@ -613,15 +628,6 @@ setup_element_test(void **state)
 
     /* reset logbuf */
     logbuf[0] = '\0';
-    /* allocate state variable */
-    (*state) = st = calloc(1, sizeof(*st));
-    if (!st) {
-        fprintf(stderr, "Memmory allocation failed");
-        return EXIT_FAILURE;
-    }
-
-    /* create new libyang context */
-    ly_ctx_new(NULL, 0, &st->ctx);
 
     /* allocate parser context */
     st->yin_ctx = calloc(1, sizeof(*st->yin_ctx));
@@ -644,9 +650,7 @@ teardown_element_test(void **state)
 #endif
 
     lyxml_context_clear(&st->yin_ctx->xml_ctx);
-    ly_ctx_destroy(st->ctx, NULL);
     free(st->yin_ctx);
-    free(st);
 
     return EXIT_SUCCESS;
 }
@@ -737,7 +741,7 @@ test_element_helper(struct state *st, const char **data, void *dest, const char 
                                         };
     LY_CHECK_RET(lyxml_get_element(&st->yin_ctx->xml_ctx, data, &prefix.value, &prefix.len, &name.value, &name.len));\
     LY_CHECK_RET(yin_load_attributes(st->yin_ctx, data, &attrs));\
-    ret = yin_parse_content(st->yin_ctx, subelems, 71, data, YANG_MODULE, text, exts);
+    ret = yin_parse_content(st->yin_ctx, subelems, 71, data, yin_match_keyword(st->yin_ctx, name.value, name.len, prefix.value, prefix.len, YANG_NONE), text, exts);
     LY_ARRAY_FREE(attrs);
     if (valid) {
         assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
@@ -1037,6 +1041,447 @@ test_mandatory_elem(void **state)
     st->finished_correctly = true;
 }
 
+static void
+test_argument_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    uint16_t flags = 0;
+    const char *arg;
+    struct yin_argument_meta arg_meta = {&flags, &arg};
+    /* max subelems */
+    data = ELEMENT_WRAPPER_START
+           "<argument name=\"arg-name\">"
+                "<yin-element value=\"true\" />"
+           "</argument>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &arg_meta, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(arg, "arg-name");
+    assert_true(flags | LYS_YINELEM_TRUE);
+    flags = 0;
+    FREE_STRING(st->ctx, arg);
+    arg = NULL;
+
+    /* min subelems */
+    data = ELEMENT_WRAPPER_START
+           "<argument name=\"arg\">"
+           "</argument>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &arg_meta, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(arg, "arg");
+    assert_true(flags == 0);
+    FREE_STRING(st->ctx, arg);
+
+    st->finished_correctly = true;
+}
+
+static void
+test_base_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    const char **bases = NULL;
+    struct lysp_type type = {};
+
+    /* as identity subelement */
+    data = "<identity xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+                "<base name=\"base-name\"/>"
+           "</identity>";
+    assert_int_equal(test_element_helper(st, &data, &bases, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(*bases, "base-name");
+    FREE_STRING(st->ctx, *bases);
+    LY_ARRAY_FREE(bases);
+
+    /* as type subelement */
+    data = "<type xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+                "<base name=\"base-name\"/>"
+           "</type>";
+    assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(*type.bases, "base-name");
+    assert_true(type.flags | LYS_SET_BASE);
+    FREE_STRING(st->ctx, *type.bases);
+    LY_ARRAY_FREE(type.bases);
+
+    st->finished_correctly = true;
+}
+
+static void
+test_belongsto_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct lysp_submodule submod;
+
+    data = ELEMENT_WRAPPER_START
+                "<belongs-to module=\"module-name\"><prefix value=\"pref\"/></belongs-to>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &submod, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(submod.belongsto, "module-name");
+    assert_string_equal(submod.prefix, "pref");
+    FREE_STRING(st->ctx, submod.belongsto);
+    FREE_STRING(st->ctx, submod.prefix);
+
+    data = ELEMENT_WRAPPER_START "<belongs-to module=\"module-name\"></belongs-to>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &submod, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Missing mandatory subelement prefix of belongs-to element. Line number 1.");
+    FREE_STRING(st->ctx, submod.belongsto);
+
+    st->finished_correctly = true;
+}
+
+static void
+test_config_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    uint16_t flags = 0;
+
+    data = ELEMENT_WRAPPER_START "<config value=\"true\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &flags, NULL, NULL, true), LY_SUCCESS);
+    assert_true(flags | LYS_CONFIG_W);
+    flags = 0;
+
+    data = ELEMENT_WRAPPER_START "<config value=\"false\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &flags, NULL, NULL, true), LY_SUCCESS);
+    assert_true(flags | LYS_CONFIG_R);
+    flags = 0;
+
+    data = ELEMENT_WRAPPER_START "<config value=\"invalid\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &flags, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Invalid value \"invalid\" of \"config\". Line number 1.");
+
+    st->finished_correctly = true;
+}
+
+static void
+test_default_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    const char *val = NULL;
+
+    data = ELEMENT_WRAPPER_START "<default value=\"defaul-value\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &val, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(val, "defaul-value");
+    FREE_STRING(st->ctx, val);
+    val = NULL;
+
+    data = ELEMENT_WRAPPER_START "<default/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &val, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Missing mandatory attribute value of default element. Line number 1.");
+
+    st->finished_correctly = true;
+}
+
+static void
+test_err_app_tag_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    const char *val = NULL;
+
+    data = ELEMENT_WRAPPER_START "<error-app-tag value=\"val\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &val, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(val, "val");
+    FREE_STRING(st->ctx, val);
+    val = NULL;
+
+    data = ELEMENT_WRAPPER_START "<error-app-tag/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &val, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Missing mandatory attribute value of error-app-tag element. Line number 1.");
+
+    st->finished_correctly = true;
+}
+
+static void
+test_err_msg_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    const char *val = NULL;
+
+    data = ELEMENT_WRAPPER_START "<error-message><value>val</value></error-message>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &val, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(val, "val");
+    FREE_STRING(st->ctx, val);
+
+    data = ELEMENT_WRAPPER_START "<error-message></error-message>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &val, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Missing mandatory subelement value of error-message element. Line number 1.");
+
+    st->finished_correctly = true;
+}
+
+static void
+test_fracdigits_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct lysp_type type = {};
+
+    /* valid value */
+    data = ELEMENT_WRAPPER_START "<fraction-digits value=\"10\"></fraction-digits>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, true), LY_SUCCESS);
+    assert_int_equal(type.fraction_digits, 10);
+    assert_true(type.flags | LYS_SET_FRDIGITS);
+
+    /* invalid values */
+    data = ELEMENT_WRAPPER_START "<fraction-digits value=\"-1\"></fraction-digits>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Invalid value \"-1\" of \"fraction-digits\". Line number 1.");
+
+    data = ELEMENT_WRAPPER_START "<fraction-digits value=\"02\"></fraction-digits>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Invalid value \"02\" of \"fraction-digits\". Line number 1.");
+
+    data = ELEMENT_WRAPPER_START "<fraction-digits value=\"1p\"></fraction-digits>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Invalid value \"1p\" of \"fraction-digits\". Line number 1.");
+
+    data = ELEMENT_WRAPPER_START "<fraction-digits value=\"19\"></fraction-digits>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Invalid value \"19\" of \"fraction-digits\". Line number 1.");
+
+    data = ELEMENT_WRAPPER_START "<fraction-digits value=\"999999999999999999\"></fraction-digits>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Invalid value \"999999999999999999\" of \"fraction-digits\". Line number 1.");
+
+    st->finished_correctly = true;
+}
+
+static void
+test_iffeature_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    const char **iffeatures = NULL;
+
+    data = ELEMENT_WRAPPER_START "<if-feature name=\"local-storage\"></if-feature>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &iffeatures, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(*iffeatures, "local-storage");
+    FREE_STRING(st->ctx, *iffeatures);
+    LY_ARRAY_FREE(iffeatures);
+    iffeatures = NULL;
+
+    data = ELEMENT_WRAPPER_START "<if-feature/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &iffeatures, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Missing mandatory attribute name of if-feature element. Line number 1.");
+    LY_ARRAY_FREE(iffeatures);
+    iffeatures = NULL;
+
+    st->finished_correctly = true;
+}
+
+static void
+test_length_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct lysp_type type = {};
+
+    /* max subelems */
+    data = ELEMENT_WRAPPER_START
+                "<length value=\"length-str\">"
+                    "<error-message><value>err-msg</value></error-message>"
+                    "<error-app-tag value=\"err-app-tag\"/>"
+                    "<description><text>desc</text></description>"
+                    "<reference><text>ref</text></reference>"
+                "</length>"
+            ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(type.length->arg, "length-str");
+    assert_string_equal(type.length->emsg, "err-msg");
+    assert_string_equal(type.length->eapptag, "err-app-tag");
+    assert_string_equal(type.length->dsc, "desc");
+    assert_string_equal(type.length->ref, "ref");
+    assert_true(type.flags | LYS_SET_LENGTH);
+    lysp_type_free(st->ctx, &type);
+    memset(&type, 0, sizeof(type));
+
+    /* min subelems */
+    data = ELEMENT_WRAPPER_START
+                "<length value=\"length-str\">"
+                "</length>"
+            ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(type.length->arg, "length-str");
+    lysp_type_free(st->ctx, &type);
+    assert_true(type.flags | LYS_SET_LENGTH);
+    memset(&type, 0, sizeof(type));
+
+    data = ELEMENT_WRAPPER_START "<length></length>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Missing mandatory attribute value of length element. Line number 1.");
+    lysp_type_free(st->ctx, &type);
+    memset(&type, 0, sizeof(type));
+
+    st->finished_correctly = true;
+}
+
+static void
+test_modifier_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    const char *pat = lydict_insert(st->ctx, "\006pattern", 8);
+
+    data = ELEMENT_WRAPPER_START "<modifier value=\"invert-match\" />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &pat, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(pat, "\x015pattern");
+    FREE_STRING(st->ctx, pat);
+
+    pat = lydict_insert(st->ctx, "\006pattern", 8);
+    data = ELEMENT_WRAPPER_START "<modifier value=\"invert\" />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &pat, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Invalid value \"invert\" of \"modifier\". Line number 1.");
+    FREE_STRING(st->ctx, pat);
+
+    st->finished_correctly = true;
+}
+
+static void
+test_namespace_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    const char *ns;
+
+    data = ELEMENT_WRAPPER_START "<namespace uri=\"ns\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &ns, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(ns, "ns");
+    FREE_STRING(st->ctx, ns);
+
+    data = ELEMENT_WRAPPER_START "<namespace/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &ns, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Missing mandatory attribute uri of namespace element. Line number 1.");
+
+    st->finished_correctly = true;
+}
+
+static void
+test_path_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct lysp_type type = {};
+
+    data = ELEMENT_WRAPPER_START "<path value=\"path-val\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal("path-val", type.path);
+    assert_true(type.flags | LYS_SET_PATH);
+    lysp_type_free(st->ctx, &type);
+
+    st->finished_correctly = true;
+}
+
+static void
+test_pattern_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct lysp_type type = {};
+
+    /* max subelems */
+    data = ELEMENT_WRAPPER_START
+                "<pattern value=\"super_pattern\">"
+                    "<modifier value=\"invert-match\"/>"
+                    "<error-message><value>err-msg-value</value></error-message>"
+                    "<error-app-tag value=\"err-app-tag-value\"/>"
+                    "<description><text>pattern-desc</text></description>"
+                    "<reference><text>pattern-ref</text></reference>"
+                "</pattern>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, true), LY_SUCCESS);
+    assert_true(type.flags | LYS_SET_PATTERN);
+    assert_string_equal(type.patterns->arg, "\x015super_pattern");
+    assert_string_equal(type.patterns->dsc, "pattern-desc");
+    assert_string_equal(type.patterns->eapptag, "err-app-tag-value");
+    assert_string_equal(type.patterns->emsg, "err-msg-value");
+    assert_string_equal(type.patterns->dsc, "pattern-desc");
+    assert_string_equal(type.patterns->ref, "pattern-ref");
+    lysp_type_free(st->ctx, &type);
+    memset(&type, 0, sizeof(type));
+
+    /* min subelems */
+    data = ELEMENT_WRAPPER_START "<pattern value=\"pattern\"> </pattern>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(type.patterns->arg, "\x006pattern");
+    lysp_type_free(st->ctx, &type);
+    memset(&type, 0, sizeof(type));
+
+    st->finished_correctly = true;
+}
+
+static void
+test_value_position_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct lysp_type_enum en = {};
+
+    /* valid values */
+    data = ELEMENT_WRAPPER_START "<value value=\"55\" />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &en, NULL, NULL, true), LY_SUCCESS);
+    assert_int_equal(en.value, 55);
+    assert_true(en.flags | LYS_SET_VALUE);
+    memset(&en, 0, sizeof(en));
+
+    data = ELEMENT_WRAPPER_START "<value value=\"-55\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &en, NULL, NULL, true), LY_SUCCESS);
+    assert_int_equal(en.value, -55);
+    assert_true(en.flags | LYS_SET_VALUE);
+    memset(&en, 0, sizeof(en));
+
+    data = ELEMENT_WRAPPER_START "<value value=\"0\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &en, NULL, NULL, true), LY_SUCCESS);
+    assert_int_equal(en.value, 0);
+    assert_true(en.flags | LYS_SET_VALUE);
+    memset(&en, 0, sizeof(en));
+
+    data = ELEMENT_WRAPPER_START "<value value=\"-0\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &en, NULL, NULL, true), LY_SUCCESS);
+    assert_int_equal(en.value, 0);
+    assert_true(en.flags | LYS_SET_VALUE);
+    memset(&en, 0, sizeof(en));
+
+    /* valid positions */
+    data = ELEMENT_WRAPPER_START "<position value=\"55\" />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &en, NULL, NULL, true), LY_SUCCESS);
+    assert_int_equal(en.value, 55);
+    assert_true(en.flags | LYS_SET_VALUE);
+    memset(&en, 0, sizeof(en));
+
+    data = ELEMENT_WRAPPER_START "<position value=\"0\" />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &en, NULL, NULL, true), LY_SUCCESS);
+    assert_int_equal(en.value, 0);
+    assert_true(en.flags | LYS_SET_VALUE);
+    memset(&en, 0, sizeof(en));
+
+    /* invalid values */
+    data = ELEMENT_WRAPPER_START "<value value=\"99999999999999999999999\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &en, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Invalid value \"99999999999999999999999\" of \"value\". Line number 1.");
+
+    data = ELEMENT_WRAPPER_START "<value value=\"1k\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &en, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Invalid value \"1k\" of \"value\". Line number 1.");
+
+    /*invalid positions */
+    data = ELEMENT_WRAPPER_START "<position value=\"-5\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &en, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Invalid value \"-5\" of \"position\". Line number 1.");
+
+    data = ELEMENT_WRAPPER_START "<position value=\"-0\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &en, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Invalid value \"-0\" of \"position\". Line number 1.");
+
+    data = ELEMENT_WRAPPER_START "<position value=\"99999999999999999999\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &en, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Invalid value \"99999999999999999999\" of \"position\". Line number 1.");
+
+    /* TODO empty position and value */
+    st->finished_correctly = true;
+}
 
 int
 main(void)
@@ -1049,8 +1494,8 @@ main(void)
         cmocka_unit_test_setup_teardown(test_yin_parse_extension_instance, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_yin_parse_content, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_validate_value, setup_f, teardown_f),
-        cmocka_unit_test(test_yin_match_argument_name),
 
+        cmocka_unit_test(test_yin_match_argument_name),
         cmocka_unit_test_setup_teardown(test_enum_bit_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_meta_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_import_elem, setup_element_test, teardown_element_test),
@@ -1059,7 +1504,23 @@ main(void)
         cmocka_unit_test_setup_teardown(test_yin_element_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_yangversion_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_mandatory_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_argument_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_base_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_belongsto_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_config_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_default_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_err_app_tag_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_err_msg_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_fracdigits_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_iffeature_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_length_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_modifier_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_namespace_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_path_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_pattern_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_value_position_elem, setup_element_test, teardown_element_test),
+
     };
 
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    return cmocka_run_group_tests(tests, setup_ly_ctx, destroy_ly_ctx);
 }
