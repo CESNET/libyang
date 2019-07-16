@@ -1601,7 +1601,7 @@ parse_any(struct lys_parser_ctx *ctx, const char **data, enum yang_keyword kw, s
  *
  * @return LY_ERR values.
  */
-static LY_ERR
+LY_ERR
 parse_type_enum_value_pos(struct lys_parser_ctx *ctx, const char **data, enum yang_keyword val_kw, int64_t *value, uint16_t *flags,
                           struct lysp_ext_instance **exts)
 {
@@ -1621,7 +1621,7 @@ parse_type_enum_value_pos(struct lys_parser_ctx *ctx, const char **data, enum ya
     /* get value */
     LY_CHECK_RET(get_argument(ctx, data, Y_STR_ARG, NULL, &word, &buf, &word_len));
 
-    if (!word_len || (word[0] == '+') || ((word[0] == '0') && (word_len > 1)) || ((val_kw == YANG_VALUE) && !strncmp(word, "-0", 2))) {
+    if (!word_len || (word[0] == '+') || ((word[0] == '0') && (word_len > 1)) || ((val_kw == YANG_POSITION) && !strncmp(word, "-0", 2))) {
         LOGVAL_PARSER(ctx, LY_VCODE_INVAL, word_len, word, ly_stmt2str(val_kw));
         goto error;
     }

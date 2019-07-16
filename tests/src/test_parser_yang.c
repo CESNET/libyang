@@ -66,6 +66,7 @@ LY_ERR parse_notif(struct lys_parser_ctx *ctx, const char **data, struct lysp_no
 LY_ERR parse_submodule(struct lys_parser_ctx *ctx, const char **data, struct lysp_submodule *submod);
 LY_ERR parse_uses(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
 LY_ERR parse_when(struct lys_parser_ctx *ctx, const char **data, struct lysp_when **when_p);
+LY_ERR parse_type_enum_value_pos(struct lys_parser_ctx *ctx, const char **data, enum yang_keyword val_kw, int64_t *value, uint16_t *flags, struct lysp_ext_instance **exts);
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
@@ -2207,6 +2208,31 @@ test_when(void **state)
     ly_ctx_destroy(ctx.ctx, NULL);
 }
 
+static void
+test_value(void **state)
+{
+    *state = test_value;
+    struct lys_parser_ctx ctx;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
+    assert_non_null(ctx.ctx);
+    ctx.line = 1;
+    ctx.indent = 0;
+    int64_t val = 0;
+    uint16_t flags = 0;
+
+    const char *data = "-0;";
+    assert_int_equal(parse_type_enum_value_pos(&ctx, &data, YANG_VALUE, &val, &flags, NULL), LY_SUCCESS);
+    assert_int_equal(val, 0);
+
+    data = "-0;";
+    flags = 0;
+    assert_int_equal(parse_type_enum_value_pos(&ctx, &data, YANG_POSITION, &val, &flags, NULL), LY_EVALID);
+    logbuf_assert("Invalid value \"-0\" of \"position\". Line number 1.");
+
+    ly_ctx_destroy(ctx.ctx, NULL);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -2234,6 +2260,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_uses, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_augment, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_when, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_value, logger_setup, logger_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
