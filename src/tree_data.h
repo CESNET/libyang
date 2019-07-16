@@ -174,9 +174,17 @@ struct lyd_value {
                                          to get correct string representation of the value for the specific data format. */
     union {
         const char *string;         /**< original, non-canonized string value. Useful for example for unions where the type (and therefore
-                                         the cannonization rules) can change by changing value (e.g. leafref target) somewhere else. */
+                                         the canonization rules) can change by changing value (e.g. leafref target) somewhere else. */
         int8_t boolean;              /**< 0 as false, 1 as true */
         int64_t dec64;               /**< decimal64: value = dec64 / 10^fraction-digits  */
+        int8_t int8;                 /**< 8-bit signed integer */
+        int16_t int16;               /**< 16-bit signed integer */
+        int32_t int32;               /**< 32-bit signed integer */
+        int64_t int64;               /**< 64-bit signed integer */
+        uint8_t uint8;               /**< 8-bit unsigned integer */
+        uint16_t uint16;             /**< 16-bit signed integer */
+        uint32_t uint32;             /**< 32-bit signed integer */
+        uint64_t uint64;             /**< 64-bit signed integer */
         struct lysc_type_bitenum_item *enum_item;  /**< pointer to the definition of the enumeration value */
         struct lysc_type_bitenum_item **bits_items; /**< list of set pointers to the specification of the set bits ([sized array](@ref sizedarrays)) */
         struct lysc_ident *ident;    /**< pointer to the schema definition of the identityref value */
@@ -186,34 +194,31 @@ struct lyd_value {
                 const char *prefix;           /**< prefix string used in the canonized string to identify the mod of the YANG schema */
                 const struct lys_module *mod; /**< YANG schema module identified by the prefix string */
             } *prefixes;                 /**< list of mappings between prefix in canonized value to a YANG schema ([sized array](@ref sizedarrays)) */
-            struct lyd_value *value;
-        } *subvalue;
+            struct lyd_value *value;     /**< representation of the value according to the selected union's subtype (stored as lyd_value::realpath
+                                              here, in subvalue structure */
+        } *subvalue;                     /**< data to represent data with multiple types (union). Original value is stored in the main
+                                              lyd_value:canonized while the lyd_value_subvalue::value contains representation according to the
+                                              one of the union's type. The lyd_value_subvalue:prefixes provides (possible) mappings from prefixes
+                                              in original value to YANG modules. These prefixes are necessary to parse original value to the union's
+                                              subtypes. */
 
         struct lyd_value_path {
-            const struct lysc_node *node;
+            const struct lysc_node *node; /**< Schema node representing the path segment */
             struct lyd_value_path_predicate {
                 union {
                     struct {
-                        const struct lysc_node *key;
-                        struct lyd_value *value;
-                    };
-                    uint64_t position;
+                        const struct lysc_node *key; /**< key node of the predicate, in case of the leaf-list-predicate, it is the leaf-list node itself */
+                        struct lyd_value *value;     /**< value representation according to the key's type */
+                    };                    /**< key-value pair for leaf-list-predicate and key-predicate (type 1 and 2) */
+                    uint64_t position;    /**< position value for the position-predicate (type 0) */
                 };
-                uint8_t type; /**< 0 - position, 1 - key-predicate, 2 - leaf-list-predicate */
-            } *predicates;
-        } *target;
+                uint8_t type;        /**< Predicate types (see YANG ABNF): 0 - position, 1 - key-predicate, 2 - leaf-list-predicate */
+            } *predicates;           /**< [Sized array](@ref sizedarrays) of the path segment's predicates */
+        } *target;                   /**< [Sized array](@ref sizedarrays) of (instance-identifier's) path segments. */
 
-        int8_t int8;                 /**< 8-bit signed integer */
-        int16_t int16;               /**< 16-bit signed integer */
-        int32_t int32;               /**< 32-bit signed integer */
-        int64_t int64;               /**< 64-bit signed integer */
-        uint8_t uint8;               /**< 8-bit unsigned integer */
-        uint16_t uint16;             /**< 16-bit signed integer */
-        uint32_t uint32;             /**< 32-bit signed integer */
-        uint64_t uint64;             /**< 64-bit signed integer */
         void *ptr;                   /**< generic data type structure used to store the data */
-    };  /**< The union is just a list of shorthands to possible values stored by a type's plugin. libyang works only with the canonized string,
-             this specific data type storage is just to simplify use of the values by the libyang users. */
+    };  /**< The union is just a list of shorthands to possible values stored by a type's plugin. libyang itself uses the lyd_value::realtype
+             plugin's callbacks to work with the data. */
 
     struct lysc_type *realtype; /**< pointer to the real type of the data stored in the value structure. This type can differ from the type
                                           in the schema node of the data node since the type's store plugin can use other types/plugins for
