@@ -111,8 +111,8 @@ extern "C" {
 typedef enum {
     LYD_UNKNOWN = 0,     /**< unknown format, used as return value in case of error */
     LYD_XML,             /**< XML format of the instance data */
-#if 0
     LYD_JSON,            /**< JSON format of the instance data */
+#if 0
     LYD_LYB,             /**< LYB format of the instance data */
 #endif
 } LYD_FORMAT;

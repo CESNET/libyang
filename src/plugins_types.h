@@ -148,6 +148,16 @@ typedef LY_ERR (*ly_type_compare_clb)(const struct lyd_value *val1, const struct
 typedef const char *(*ly_type_print_clb)(const struct lyd_value *value, LYD_FORMAT format, int prefixes, int *dynamic);
 
 /**
+ * @brief Callback to duplicate data in data structure. Note that callback is even responsible for duplicating lyd_value::canonized.
+ *
+ * @param[in] ctx libyang context of the @p dup. Note that the context of @p original and @p dup might not be the same.
+ * @param[in] original Original data structure to be duplicated.
+ * @param[in,out] dup Prepared data structure to be filled with the duplicated data of @p original.
+ * @return LY_SUCCESS after successful duplication, other LY_ERR values otherwise.
+ */
+typedef LY_ERR (*ly_type_dup_clb)(struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup);
+
+/**
  * @brief Callback for freeing the user type values stored by ly_type_store_clb().
  *
  * Note that this callback is responsible also for freeing the canonized member in the @p value.
@@ -169,6 +179,7 @@ struct lysc_type_plugin {
     ly_type_store_clb store;         /**< function to validate, canonize and store (according to the options) the value in the type-specific way */
     ly_type_compare_clb compare;     /**< comparison callback to compare 2 values of the same type */
     ly_type_print_clb print;         /**< printer callback to get string representing the value */
+    ly_type_dup_clb duplicate;       /**< data duplication callback */
     ly_type_free_clb free;           /**< optional function to free the type-spceific way stored value */
     uint32_t flags;                  /**< [type flags ](@ref plugintypeflags). */
 };

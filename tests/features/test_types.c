@@ -149,6 +149,7 @@ test_int(void **state)
 
     struct lyd_node *tree;
     struct lyd_node_term *leaf;
+    struct lyd_value value = {0};
 
     const char *data = "<int8 xmlns=\"urn:tests:types\">\n 15 \t\n  </int8>";
 
@@ -159,6 +160,13 @@ test_int(void **state)
     leaf = (struct lyd_node_term*)tree;
     assert_string_equal("15", leaf->value.canonized);
     assert_int_equal(15, leaf->value.int8);
+
+    value.realtype = leaf->value.realtype;
+    assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
+    assert_string_equal(leaf->value.canonized, value.canonized);
+    assert_int_equal(15, value.int8);
+    value.realtype->plugin->free(s->ctx, &value);
+    memset(&value, 0, sizeof value);
     lyd_free_all(tree);
 
     /* invalid range */
@@ -198,6 +206,7 @@ test_uint(void **state)
 
     struct lyd_node *tree;
     struct lyd_node_term *leaf;
+    struct lyd_value value = {0};
 
     const char *data = "<uint8 xmlns=\"urn:tests:types\">\n 150 \t\n  </uint8>";
 
@@ -208,6 +217,13 @@ test_uint(void **state)
     leaf = (struct lyd_node_term*)tree;
     assert_string_equal("150", leaf->value.canonized);
     assert_int_equal(150, leaf->value.uint8);
+
+    value.realtype = leaf->value.realtype;
+    assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
+    assert_string_equal(leaf->value.canonized, value.canonized);
+    assert_int_equal(150, value.uint8);
+    value.realtype->plugin->free(s->ctx, &value);
+    memset(&value, 0, sizeof value);
     lyd_free_all(tree);
 
     /* invalid range */
@@ -247,6 +263,7 @@ test_dec64(void **state)
 
     struct lyd_node *tree;
     struct lyd_node_term *leaf;
+    struct lyd_value value = {0};
 
     const char *data = "<dec64 xmlns=\"urn:tests:types\">\n +8 \t\n  </dec64>";
 
@@ -257,6 +274,13 @@ test_dec64(void **state)
     leaf = (struct lyd_node_term*)tree;
     assert_string_equal("8.0", leaf->value.canonized);
     assert_int_equal(80, leaf->value.dec64);
+
+    value.realtype = leaf->value.realtype;
+    assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
+    assert_string_equal(leaf->value.canonized, value.canonized);
+    assert_int_equal(80, value.dec64);
+    value.realtype->plugin->free(s->ctx, &value);
+    memset(&value, 0, sizeof value);
     lyd_free_all(tree);
 
     data = "<dec64 xmlns=\"urn:tests:types\">8.00</dec64>";
@@ -363,6 +387,7 @@ test_bits(void **state)
 
     struct lyd_node *tree;
     struct lyd_node_term *leaf;
+    struct lyd_value value = {0};
 
     const char *data = "<bits xmlns=\"urn:tests:types\">\n two    \t\nzero\n  </bits>";
 
@@ -372,6 +397,18 @@ test_bits(void **state)
     assert_string_equal("bits", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
     assert_string_equal("zero two", leaf->value.canonized);
+    assert_int_equal(2, LY_ARRAY_SIZE(leaf->value.bits_items));
+    assert_string_equal("zero", leaf->value.bits_items[0]->name);
+    assert_string_equal("two", leaf->value.bits_items[1]->name);
+
+    value.realtype = leaf->value.realtype;
+    assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
+    assert_string_equal(leaf->value.canonized, value.canonized);
+    assert_int_equal(2, LY_ARRAY_SIZE(value.bits_items));
+    assert_string_equal("zero", value.bits_items[0]->name);
+    assert_string_equal("two", value.bits_items[1]->name);
+    value.realtype->plugin->free(s->ctx, &value);
+    memset(&value, 0, sizeof value);
     lyd_free_all(tree);
 
     data = "<bits xmlns=\"urn:tests:types\">zero  two</bits>";
@@ -394,6 +431,15 @@ test_bits(void **state)
     assert_string_equal("bits", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
     assert_string_equal("one", leaf->value.canonized);
+    assert_int_equal(1, LY_ARRAY_SIZE(leaf->value.bits_items));
+    assert_string_equal("one", leaf->value.bits_items[0]->name);
+
+    value.realtype = leaf->value.realtype;
+    assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
+    assert_string_equal(leaf->value.canonized, value.canonized);
+    assert_int_equal(1, LY_ARRAY_SIZE(value.bits_items));
+    assert_string_equal("one", value.bits_items[0]->name);
+    value.realtype->plugin->free(s->ctx, &value);
     lyd_free_all(tree);
 
     /* multiple instances of the bit */
@@ -417,6 +463,7 @@ test_enums(void **state)
 
     struct lyd_node *tree;
     struct lyd_node_term *leaf;
+    struct lyd_value value = {0};
 
     const char *data = "<enums xmlns=\"urn:tests:types\">white</enums>";
 
@@ -426,6 +473,13 @@ test_enums(void **state)
     assert_string_equal("enums", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
     assert_string_equal("white", leaf->value.canonized);
+    assert_string_equal("white", leaf->value.enum_item->name);
+
+    value.realtype = leaf->value.realtype;
+    assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
+    assert_string_equal(leaf->value.canonized, value.canonized);
+    assert_string_equal("white", value.enum_item->name);
+    value.realtype->plugin->free(s->ctx, &value);
     lyd_free_all(tree);
 
     /* disabled feature */
@@ -466,6 +520,7 @@ test_binary(void **state)
 
     struct lyd_node *tree;
     struct lyd_node_term *leaf;
+    struct lyd_value value = {0};
 
     const char *data = "<binary xmlns=\"urn:tests:types\">\n   aGVs\nbG8=  \t\n  </binary>"
                        "<binary-norestr xmlns=\"urn:tests:types\">TQ==</binary-norestr>";
@@ -481,6 +536,12 @@ test_binary(void **state)
     assert_string_equal("binary-norestr", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
     assert_string_equal("TQ==", leaf->value.canonized);
+
+    value.realtype = leaf->value.realtype;
+    assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
+    assert_string_equal(leaf->value.canonized, value.canonized);
+    value.realtype->plugin->free(s->ctx, &value);
+    memset(&value, 0, sizeof value);
     lyd_free_all(tree);
 
     /* no data */
@@ -611,18 +672,18 @@ test_empty(void **state)
 }
 
 static void
-test_printed_value(struct lyd_value *value, const char *expected_prefixes, const char *expected_value)
+test_printed_value(const struct lyd_value *value, const char *expected_prefixes, const char *expected_value, LYD_FORMAT format)
 {
     const char *str;
     int dynamic;
 
-    assert_non_null(str = value->realtype->plugin->print(value, LYD_XML, 1, &dynamic));
+    assert_non_null(str = value->realtype->plugin->print(value, format, 1, &dynamic));
     assert_string_equal(expected_prefixes, str);
     if (dynamic) {
         free((char*)str);
     }
 
-    assert_non_null(str = value->realtype->plugin->print(value, LYD_XML, 0, &dynamic));
+    assert_non_null(str = value->realtype->plugin->print(value, format, 0, &dynamic));
     assert_string_equal(expected_value, str);
     if (dynamic) {
         free((char*)str);
@@ -637,6 +698,7 @@ test_identityref(void **state)
 
     struct lyd_node *tree;
     struct lyd_node_term *leaf;
+    struct lyd_value value = {0};
 
     const char *data = "<ident xmlns=\"urn:tests:types\">gigabit-ethernet</ident>";
 
@@ -646,7 +708,14 @@ test_identityref(void **state)
     assert_string_equal("ident", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
     assert_null(leaf->value.canonized);
-    test_printed_value(&leaf->value, "xmlns:t=\"urn:tests:types\"", "t:gigabit-ethernet");
+    assert_string_equal("gigabit-ethernet", leaf->value.ident->name);
+    test_printed_value(&leaf->value, "xmlns:t=\"urn:tests:types\"", "t:gigabit-ethernet", LYD_XML);
+
+    value.realtype = leaf->value.realtype;
+    assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
+    assert_null(value.canonized);
+    assert_string_equal("gigabit-ethernet", value.ident->name);
+    value.realtype->plugin->free(s->ctx, &value);
     lyd_free_all(tree);
 
     data = "<ident xmlns=\"urn:tests:types\" xmlns:x=\"urn:tests:defs\">x:fast-ethernet</ident>";
@@ -655,7 +724,7 @@ test_identityref(void **state)
     assert_string_equal("ident", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
     assert_null(leaf->value.canonized);
-    test_printed_value(&leaf->value, "xmlns:d=\"urn:tests:defs\"", "d:fast-ethernet");
+    test_printed_value(&leaf->value, "xmlns:d=\"urn:tests:defs\"", "d:fast-ethernet", LYD_XML);
     lyd_free_all(tree);
 
     /* invalid value */
@@ -698,6 +767,7 @@ test_instanceid(void **state)
     struct lyd_node *tree;
     const struct lyd_node **trees;
     const struct lyd_node_term *leaf;
+    struct lyd_value value = {0};
 
     const char *data = "<cont xmlns=\"urn:tests:types\"><leaftarget/></cont>"
             "<xdf:inst xmlns:xdf=\"urn:tests:types\">/xdf:cont/xdf:leaftarget</xdf:inst>";
@@ -709,6 +779,21 @@ test_instanceid(void **state)
     assert_string_equal("inst", tree->schema->name);
     leaf = (const struct lyd_node_term*)tree;
     assert_null(leaf->value.canonized);
+    assert_int_equal(2, LY_ARRAY_SIZE(leaf->value.target));
+    assert_string_equal("cont", leaf->value.target[0].node->name);
+    assert_null(leaf->value.target[0].predicates);
+    assert_string_equal("leaftarget", leaf->value.target[1].node->name);
+    assert_null(leaf->value.target[1].predicates);
+
+    value.realtype = leaf->value.realtype;
+    assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
+    assert_null(value.canonized);
+    assert_true(LY_ARRAY_SIZE(leaf->value.target) == LY_ARRAY_SIZE(value.target));
+    assert_true(leaf->value.target[0].node == value.target[0].node);
+    assert_true(leaf->value.target[0].predicates == value.target[0].predicates); /* NULL */
+    assert_true(leaf->value.target[1].node == value.target[1].node);
+    assert_true(leaf->value.target[1].predicates == value.target[1].predicates); /* NULL */
+    value.realtype->plugin->free(s->ctx, &value);
     lyd_free_all(tree);
 
     data = "<list xmlns=\"urn:tests:types\"><id>a</id></list><list xmlns=\"urn:tests:types\"><id>b</id></list>"
@@ -751,6 +836,24 @@ test_instanceid(void **state)
     assert_string_equal("inst", tree->schema->name);
     leaf = (const struct lyd_node_term*)tree;
     assert_null(leaf->value.canonized);
+    assert_int_equal(2, LY_ARRAY_SIZE(leaf->value.target));
+    assert_string_equal("list_inst", leaf->value.target[0].node->name);
+    assert_int_equal(1, LY_ARRAY_SIZE(leaf->value.target[0].predicates));
+    assert_string_equal("value", leaf->value.target[1].node->name);
+    assert_null(leaf->value.target[1].predicates);
+
+    test_printed_value(&leaf->value, "xmlns:t=\"urn:tests:types\"", "/t:list_inst[t:id=\"/t:leaflisttarget[.='b']\"]/t:value", LYD_XML);
+    test_printed_value(&leaf->value, "", "/types:list_inst[id=\"/types:leaflisttarget[.='b']\"]/value", LYD_JSON);
+
+    value.realtype = leaf->value.realtype;
+    assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
+    assert_null(value.canonized);
+    assert_true(LY_ARRAY_SIZE(leaf->value.target) == LY_ARRAY_SIZE(value.target));
+    assert_true(leaf->value.target[0].node == value.target[0].node);
+    assert_true(LY_ARRAY_SIZE(leaf->value.target[0].predicates) == LY_ARRAY_SIZE(value.target[0].predicates));
+    assert_true(leaf->value.target[1].node == value.target[1].node);
+    assert_true(leaf->value.target[1].predicates == value.target[1].predicates); /* NULL */
+    value.realtype->plugin->free(s->ctx, &value);
     lyd_free_all(tree);
 
     data = "<list_inst xmlns=\"urn:tests:types\"><id xmlns:b=\"urn:tests:types\">/b:leaflisttarget[1]</id><value>x</value></list_inst>"
@@ -1012,6 +1115,7 @@ test_leafref(void **state)
     assert_string_equal("lref", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
     assert_string_equal("y", leaf->value.canonized);
+    assert_int_equal(LY_TYPE_STRING, leaf->value.realtype->plugin->type);
     lyd_free_all(tree);
 
     data = "<list xmlns=\"urn:tests:types\"><id>x</id><targets>a</targets><targets>b</targets></list>"
@@ -1106,6 +1210,7 @@ test_union(void **state)
 
     struct lyd_node *tree;
     struct lyd_node_term *leaf;
+    struct lyd_value value = {0};
 
     /*
      * leaf un1 {type union {
@@ -1133,6 +1238,17 @@ test_union(void **state)
     assert_int_equal(LY_TYPE_UNION, leaf->value.realtype->basetype);
     assert_int_equal(LY_TYPE_INT8, leaf->value.subvalue->value->realtype->basetype);
     assert_int_equal(12, leaf->value.subvalue->value->int8);
+
+    test_printed_value(&leaf->value, "", "12", LYD_XML);
+
+    value.realtype = leaf->value.realtype;
+    assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
+    assert_string_equal("12", value.canonized);
+    assert_string_equal("12", value.subvalue->value->canonized);
+    assert_null(value.subvalue->prefixes);
+    assert_int_equal(LY_TYPE_INT8, value.subvalue->value->realtype->basetype);
+    assert_int_equal(12, leaf->value.subvalue->value->int8);
+    value.realtype->plugin->free(s->ctx, &value);
     lyd_free_all(tree);
 
     data = "<int8 xmlns=\"urn:tests:types\">11</int8><int8 xmlns=\"urn:tests:types\">12</int8>"
@@ -1148,17 +1264,28 @@ test_union(void **state)
     assert_int_equal(LY_TYPE_STRING, leaf->value.subvalue->value->realtype->basetype);
     lyd_free_all(tree);
 
-    data = "<un1 xmlns=\"urn:tests:types\" xmlns:d=\"urn:tests:defs\">d:fast-ethernet</un1>";
+    data = "<un1 xmlns=\"urn:tests:types\" xmlns:x=\"urn:tests:defs\">x:fast-ethernet</un1>";
     assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0));
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("un1", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
-    assert_string_equal("d:fast-ethernet", leaf->value.canonized);
+    assert_string_equal("x:fast-ethernet", leaf->value.canonized);
     assert_non_null(leaf->value.subvalue->prefixes);
     assert_int_equal(LY_TYPE_UNION, leaf->value.realtype->basetype);
     assert_int_equal(LY_TYPE_IDENT, leaf->value.subvalue->value->realtype->basetype);
     assert_null(leaf->value.subvalue->value->canonized);
-    test_printed_value(leaf->value.subvalue->value, "xmlns:d=\"urn:tests:defs\"", "d:fast-ethernet");
+
+    test_printed_value(&leaf->value, "xmlns:x=\"urn:tests:defs\"", "x:fast-ethernet", LYD_XML);
+    test_printed_value(leaf->value.subvalue->value, "xmlns:d=\"urn:tests:defs\"", "d:fast-ethernet", LYD_XML);
+
+    value.realtype = leaf->value.realtype;
+    assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
+    assert_string_equal("x:fast-ethernet", value.canonized);
+    assert_null(value.subvalue->value->canonized);
+    assert_non_null(value.subvalue->prefixes);
+    assert_int_equal(LY_TYPE_IDENT, value.subvalue->value->realtype->basetype);
+    assert_string_equal("fast-ethernet", value.subvalue->value->ident->name);
+    value.realtype->plugin->free(s->ctx, &value);
     lyd_free_all(tree);
 
     data = "<un1 xmlns=\"urn:tests:types\" xmlns:d=\"urn:tests:defs\">d:superfast-ethernet</un1>";

@@ -61,6 +61,22 @@ ly_type_print_canonical(const struct lyd_value *value, LYD_FORMAT UNUSED(format)
 }
 
 /**
+ * @brief Generic duplication callback of the canonized value only.
+ *
+ * Implementation of the ly_type_dup_clb.
+ */
+static LY_ERR
+ly_type_dup_canonical(struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
+{
+    dup->canonized = lydict_insert(ctx, original->canonized, strlen(original->canonized));
+    if (dup->canonized) {
+        return LY_SUCCESS;
+    } else {
+        return LY_EINT;
+    }
+}
+
+/**
  * @brief Free canonized value in lyd_value.
  *
  * Implementation of the ly_type_free_clb.
@@ -479,6 +495,17 @@ ly_type_store_int(struct ly_ctx *ctx, struct lysc_type *type, const char *value,
     return LY_SUCCESS;
 }
 
+/* @brief Duplication callback of the signed integer values.
+ *
+ * Implementation of the ly_type_dup_clb.
+ */
+static LY_ERR
+ly_type_dup_int(struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
+{
+    dup->int64 = original->int64;
+    return ly_type_dup_canonical(ctx, original, dup);
+}
+
 /**
  * @brief Validate and canonize value of the YANG built-in unsigned integer types.
  *
@@ -538,6 +565,18 @@ ly_type_store_uint(struct ly_ctx *ctx, struct lysc_type *type, const char *value
     }
 
     return LY_SUCCESS;
+}
+
+/**
+ * @brief Duplication callback of the unsigned integer values.
+ *
+ * Implementation of the ly_type_dup_clb.
+ */
+static LY_ERR
+ly_type_dup_uint(struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
+{
+    dup->uint64 = original->uint64;
+    return ly_type_dup_canonical(ctx, original, dup);
 }
 
 /**
@@ -610,6 +649,17 @@ ly_type_store_decimal64(struct ly_ctx *ctx, struct lysc_type *type, const char *
     }
 
     return LY_SUCCESS;
+}
+
+/* @brief Duplication callback of the decimal64 values.
+ *
+ * Implementation of the ly_type_dup_clb.
+ */
+static LY_ERR
+ly_type_dup_decimal64(struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
+{
+   dup->dec64 = original->dec64;
+   return ly_type_dup_canonical(ctx, original, dup);
 }
 
 /**
@@ -911,6 +961,24 @@ error:
     return ret;
 }
 
+/* @brief Duplication callback of the bits values.
+ *
+ * Implementation of the ly_type_dup_clb.
+ */
+static LY_ERR
+ly_type_dup_bits(struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
+{
+    unsigned int u;
+
+    LY_ARRAY_CREATE_RET(ctx, dup->bits_items, LY_ARRAY_SIZE(original->bits_items), LY_EMEM);
+    LY_ARRAY_FOR(original->bits_items, u) {
+        LY_ARRAY_INCREMENT(dup->bits_items);
+        dup->bits_items[u] = original->bits_items[u];
+    }
+
+   return ly_type_dup_canonical(ctx, original, dup);
+}
+
 /**
  * @brief Free value of the YANG built-in bits type.
  *
@@ -992,6 +1060,17 @@ error:
         *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_RESTRICTION, errmsg, NULL, NULL);
     }
     return LY_EVALID;
+}
+
+/* @brief Duplication callback of the enumeration values.
+ *
+ * Implementation of the ly_type_dup_clb.
+ */
+static LY_ERR
+ly_type_dup_enum(struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
+{
+    dup->enum_item = original->enum_item;
+    return ly_type_dup_canonical(ctx, original, dup);
 }
 
 /**
@@ -1233,6 +1312,17 @@ ly_type_print_identityref(const struct lyd_value *value, LYD_FORMAT format, int 
         }
         return result;
     }
+}
+
+/* @brief Duplication callback of the identityref values.
+ *
+ * Implementation of the ly_type_dup_clb.
+ */
+static LY_ERR
+ly_type_dup_identityref(struct ly_ctx *UNUSED(ctx), const struct lyd_value *original, struct lyd_value *dup)
+{
+    dup->ident = original->ident;
+    return LY_SUCCESS;
 }
 
 /**
@@ -1873,11 +1963,12 @@ ly_type_print_instanceid(const struct lyd_value *value, LYD_FORMAT format, int p
 {
     unsigned int u, v;
     char *result = NULL;
-    struct ly_set printed_prefixes = {0};
 
     if (prefixes) {
         /* print namespace definition -only for XML, it does not make sense in JSON */
         if (format == LYD_XML) {
+            struct ly_set printed_prefixes = {0};
+
             LY_ARRAY_FOR(value->target, u) {
                 ly_type_print_prefixes_mod(&result, &printed_prefixes, value->target[u].node->module);
                 LY_ARRAY_FOR(value->target[u].predicates, v) {
@@ -1898,7 +1989,10 @@ ly_type_print_instanceid(const struct lyd_value *value, LYD_FORMAT format, int p
                                 equal = strchr(token, '=');
                                 /* check if we already have such a prefix */
                                 for (i = 0; i < printed_prefixes.count; i++) {
-                                    if (!strcmp(((struct lys_module *)printed_prefixes.objs[i])->ns, equal + 1)) {
+                                    /* equal points to =\"namespace\" and we need to compare just the namespace without quotation */
+                                    size_t len = strlen(equal) - 3;
+                                    size_t len_ns = strlen(((struct lys_module *)printed_prefixes.objs[i])->ns);
+                                    if (len == len_ns && !strncmp(((struct lys_module *)printed_prefixes.objs[i])->ns, equal + 2, len)) {
                                         /* match, do not print this namespace definition */
                                         break;
                                     }
@@ -1913,6 +2007,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LYD_FORMAT format, int p
                     }
                 }
             }
+            ly_set_erase(&printed_prefixes, NULL);
         } else { /* JSON */
             *dynamic = 0;
             return "";
@@ -1932,7 +2027,11 @@ ly_type_print_instanceid(const struct lyd_value *value, LYD_FORMAT format, int p
                         /* key-predicate */
                         int d = 0;
                         const char *value = pred->value->realtype->plugin->print(pred->value, format, 0, &d);
-                        ly_strcat(&result, "[%s:%s='%s']", pred->key->module->prefix, pred->key->name, value);
+                        char quot = '\'';
+                        if (strchr(value, quot)) {
+                            quot = '"';
+                        }
+                        ly_strcat(&result, "[%s:%s=%c%s%c]", pred->key->module->prefix, pred->key->name, quot, value, quot);
                         if (d) {
                             free((char*)value);
                         }
@@ -1940,7 +2039,11 @@ ly_type_print_instanceid(const struct lyd_value *value, LYD_FORMAT format, int p
                         /* leaf-list-predicate */
                         int d = 0;
                         const char *value = pred->value->realtype->plugin->print(pred->value, format, 0, &d);
-                        ly_strcat(&result, "[.='%s']", value);
+                        char quot = '\'';
+                        if (strchr(value, quot)) {
+                            quot = '"';
+                        }
+                        ly_strcat(&result, "[.=%c%s%c]", quot, value, quot);
                         if (d) {
                             free((char*)value);
                         }
@@ -1966,7 +2069,11 @@ ly_type_print_instanceid(const struct lyd_value *value, LYD_FORMAT format, int p
                         /* key-predicate */
                         int d = 0;
                         const char *value = pred->value->realtype->plugin->print(pred->value, format, 0, &d);
-                        ly_strcat(&result, "[%s='%s']", pred->key->name, value);
+                        char quot = '\'';
+                        if (strchr(value, quot)) {
+                            quot = '"';
+                        }
+                        ly_strcat(&result, "[%s=%c%s%c]", pred->key->name, quot, value, quot);
                         if (d) {
                             free((char*)value);
                         }
@@ -1974,7 +2081,11 @@ ly_type_print_instanceid(const struct lyd_value *value, LYD_FORMAT format, int p
                         /* leaf-list-predicate */
                         int d = 0;
                         const char *value = pred->value->realtype->plugin->print(pred->value, format, 0, &d);
-                        ly_strcat(&result, "[.='%s']", value);
+                        char quot = '\'';
+                        if (strchr(value, quot)) {
+                            quot = '"';
+                        }
+                        ly_strcat(&result, "[.=%c%s%c]", quot, value, quot);
                         if (d) {
                             free((char*)value);
                         }
@@ -1986,6 +2097,48 @@ ly_type_print_instanceid(const struct lyd_value *value, LYD_FORMAT format, int p
 
     *dynamic = 1;
     return result;
+}
+
+/* @brief Duplication callback of the instance-identifier values.
+ *
+ * Implementation of the ly_type_dup_clb.
+ */
+static LY_ERR
+ly_type_dup_instanceid(struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
+{
+    unsigned int u, v;
+
+    if (!original->target) {
+        return LY_SUCCESS;
+    }
+
+    LY_ARRAY_CREATE_RET(ctx, dup->target, LY_ARRAY_SIZE(original->target), LY_EMEM);
+    LY_ARRAY_FOR(original->target, u) {
+        LY_ARRAY_INCREMENT(dup->target);
+        dup->target[u].node = original->target[u].node;
+        if (original->target[u].predicates) {
+            LY_ARRAY_CREATE_RET(ctx, dup->target[u].predicates, LY_ARRAY_SIZE(original->target[u].predicates), LY_EMEM);
+            LY_ARRAY_FOR(original->target[u].predicates, v) {
+                struct lyd_value_path_predicate *pred = &original->target[u].predicates[v];
+
+                LY_ARRAY_INCREMENT(dup->target[u].predicates);
+                dup->target[u].predicates[v].type = pred->type;
+                if (pred->type) {
+                    /* key-predicate or leaf-list-predicate */
+                    dup->target[u].predicates[v].key = pred->key;
+                    dup->target[u].predicates[v].value = calloc(1, sizeof *pred->value);
+                    LY_CHECK_ERR_RET(!dup->target[u].predicates[v].value, LOGMEM(ctx), LY_EMEM);
+                    dup->target[u].predicates[v].value->realtype = pred->value->realtype;
+                    pred->value->realtype->plugin->duplicate(ctx, pred->value, dup->target[u].predicates[v].value);
+                } else {
+                    /* position-predicate */
+                    dup->target[u].predicates[v].position = pred->position;
+                }
+            }
+        }
+    }
+
+    return LY_SUCCESS;
 }
 
 /**
@@ -2270,6 +2423,16 @@ ly_type_print_leafref(const struct lyd_value *value, LYD_FORMAT format, int pref
     return value->realtype->plugin->print(value, format, prefixes, dynamic);
 }
 
+/* @brief Duplication callback of the leafref values.
+ *
+ * Implementation of the ly_type_dup_clb.
+ */
+static LY_ERR
+ly_type_dup_leafref(struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
+{
+    return original->realtype->plugin->duplicate(ctx, original, dup);
+}
+
 /**
  * @brief Free value of the YANG built-in leafref type.
  *
@@ -2431,8 +2594,13 @@ ly_type_print_union(const struct lyd_value *value, LYD_FORMAT format, int prefix
                 ly_strcat(&result, "%sxmlns:%s=\"%s\"", result ? " " : "",
                           value->subvalue->prefixes[u].prefix, value->subvalue->prefixes[u].mod->ns);
             }
-            *dynamic = 1;
-            return result;
+            if (result) {
+                *dynamic = 1;
+                return result;
+            } else {
+                *dynamic = 0;
+                return "";
+            }
         } else {
             *dynamic = 0;
             return "";
@@ -2440,6 +2608,33 @@ ly_type_print_union(const struct lyd_value *value, LYD_FORMAT format, int prefix
     } else {
         return ly_type_print_canonical(value, format, 0, dynamic);
     }
+}
+
+/* @brief Duplication callback of the union values.
+ *
+ * Implementation of the ly_type_dup_clb.
+ */
+static LY_ERR
+ly_type_dup_union(struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
+{
+    unsigned int u;
+
+    dup->subvalue = calloc(1, sizeof *dup->subvalue);
+    LY_CHECK_ERR_RET(!dup->subvalue, LOGMEM(ctx), LY_EMEM);
+    if (original->subvalue->prefixes) {
+        LY_ARRAY_CREATE_RET(ctx, dup->subvalue->prefixes, LY_ARRAY_SIZE(original->subvalue->prefixes), LY_EMEM);
+        LY_ARRAY_FOR(original->subvalue->prefixes, u) {
+            LY_ARRAY_INCREMENT(dup->subvalue->prefixes);
+            dup->subvalue->prefixes[u].mod = original->subvalue->prefixes[u].mod;
+            dup->subvalue->prefixes[u].prefix = lydict_insert(ctx, original->subvalue->prefixes[u].prefix, 0);
+        }
+    }
+    dup->subvalue->value = calloc(1, sizeof *dup->subvalue->value);
+    LY_CHECK_ERR_RET(!dup->subvalue->value, LOGMEM(ctx), LY_EMEM);
+    dup->subvalue->value->realtype = original->subvalue->value->realtype;
+    dup->subvalue->value->realtype->plugin->duplicate(ctx, original->subvalue->value, dup->subvalue->value);
+
+    return ly_type_dup_canonical(ctx, original, dup);
 }
 
 /**
@@ -2472,23 +2667,42 @@ ly_type_free_union(struct ly_ctx *ctx, struct lyd_value *value)
  */
 struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT] = {
     {0}, /* LY_TYPE_UNKNOWN */
-    {.type = LY_TYPE_BINARY, .store = ly_type_store_binary, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical, .free = ly_type_free_canonical},
-    {.type = LY_TYPE_UINT8, .store = ly_type_store_uint, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical, .free = ly_type_free_canonical},
-    {.type = LY_TYPE_UINT16, .store = ly_type_store_uint, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical, .free = ly_type_free_canonical},
-    {.type = LY_TYPE_UINT32, .store = ly_type_store_uint, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical, .free = ly_type_free_canonical},
-    {.type = LY_TYPE_UINT64, .store = ly_type_store_uint, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical, .free = ly_type_free_canonical},
-    {.type = LY_TYPE_STRING, .store = ly_type_store_string, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical, .free = ly_type_free_canonical},
-    {.type = LY_TYPE_BITS, .store = ly_type_store_bits, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical, .free = ly_type_free_bits},
-    {.type = LY_TYPE_BOOL, .store = ly_type_store_boolean, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical, .free = ly_type_free_canonical},
-    {.type = LY_TYPE_DEC64, .store = ly_type_store_decimal64, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical, .free = ly_type_free_canonical},
-    {.type = LY_TYPE_EMPTY, .store = ly_type_store_empty, .compare = ly_type_compare_empty, .print = ly_type_print_canonical, .free = ly_type_free_canonical},
-    {.type = LY_TYPE_ENUM, .store = ly_type_store_enum, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical, .free = ly_type_free_canonical},
-    {.type = LY_TYPE_IDENT, .store = ly_type_store_identityref, .compare = ly_type_compare_identityref, .print = ly_type_print_identityref, .free = ly_type_free_canonical},
-    {.type = LY_TYPE_INST, .store = ly_type_store_instanceid, .compare = ly_type_compare_instanceid, .print = ly_type_print_instanceid, .free = ly_type_free_instanceid},
-    {.type = LY_TYPE_LEAFREF, .store = ly_type_store_leafref, .compare = ly_type_compare_leafref, .print = ly_type_print_leafref, .free = ly_type_free_leafref},
-    {.type = LY_TYPE_UNION, .store = ly_type_store_union, .compare = ly_type_compare_union, .print = ly_type_print_union, .free = ly_type_free_union},
-    {.type = LY_TYPE_INT8, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical, .free = ly_type_free_canonical},
-    {.type = LY_TYPE_INT16, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical, .free = ly_type_free_canonical},
-    {.type = LY_TYPE_INT32, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical, .free = ly_type_free_canonical},
-    {.type = LY_TYPE_INT64, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_BINARY, .store = ly_type_store_binary, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical,
+     .duplicate = ly_type_dup_canonical, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_UINT8, .store = ly_type_store_uint, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical,
+     .duplicate = ly_type_dup_uint, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_UINT16, .store = ly_type_store_uint, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical,
+     .duplicate = ly_type_dup_uint, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_UINT32, .store = ly_type_store_uint, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical,
+     .duplicate = ly_type_dup_uint, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_UINT64, .store = ly_type_store_uint, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical,
+     .duplicate = ly_type_dup_uint, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_STRING, .store = ly_type_store_string, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical,
+     .duplicate = ly_type_dup_canonical, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_BITS, .store = ly_type_store_bits, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical,
+     .duplicate = ly_type_dup_bits, .free = ly_type_free_bits},
+    {.type = LY_TYPE_BOOL, .store = ly_type_store_boolean, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical,
+     .duplicate = ly_type_dup_int, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_DEC64, .store = ly_type_store_decimal64, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical,
+     .duplicate = ly_type_dup_decimal64, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_EMPTY, .store = ly_type_store_empty, .compare = ly_type_compare_empty, .print = ly_type_print_canonical,
+     .duplicate = ly_type_dup_canonical, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_ENUM, .store = ly_type_store_enum, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical,
+     .duplicate = ly_type_dup_enum, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_IDENT, .store = ly_type_store_identityref, .compare = ly_type_compare_identityref, .print = ly_type_print_identityref,
+     .duplicate = ly_type_dup_identityref, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_INST, .store = ly_type_store_instanceid, .compare = ly_type_compare_instanceid, .print = ly_type_print_instanceid,
+     .duplicate = ly_type_dup_instanceid, .free = ly_type_free_instanceid},
+    {.type = LY_TYPE_LEAFREF, .store = ly_type_store_leafref, .compare = ly_type_compare_leafref, .print = ly_type_print_leafref,
+     .duplicate = ly_type_dup_leafref, .free = ly_type_free_leafref},
+    {.type = LY_TYPE_UNION, .store = ly_type_store_union, .compare = ly_type_compare_union, .print = ly_type_print_union,
+     .duplicate = ly_type_dup_union, .free = ly_type_free_union},
+    {.type = LY_TYPE_INT8, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical,
+     .duplicate = ly_type_dup_int, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_INT16, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical,
+     .duplicate = ly_type_dup_int, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_INT32, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical,
+     .duplicate = ly_type_dup_int, .free = ly_type_free_canonical},
+    {.type = LY_TYPE_INT64, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical,
+     .duplicate = ly_type_dup_int, .free = ly_type_free_canonical},
 };
