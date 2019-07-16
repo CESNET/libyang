@@ -499,6 +499,7 @@ yin_parse_fracdigits(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, c
         FREE_STRING(ctx->xml_ctx.ctx, temp_val);
         return LY_EVALID;
     }
+    FREE_STRING(ctx->xml_ctx.ctx, temp_val);
     type->fraction_digits = num;
     type->flags |= LYS_SET_FRDIGITS;
     struct yin_subelement subelems[1] = {
