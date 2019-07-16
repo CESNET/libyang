@@ -725,7 +725,7 @@ yin_parse_value_pos_element(struct yin_parser_ctx *ctx, struct yin_arg_record *a
 
     /* get attribute value */
     LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_VALUE, &temp_val, Y_STR_ARG, kw));
-    if (!temp_val || (temp_val[0] == '+') || ((temp_val[0] == '0') && (temp_val[0] != '\0')) || ((kw == YANG_VALUE) && !strcmp(temp_val, "-0"))) {
+    if (!temp_val || (temp_val[0] == '+') || ((temp_val[0] == '0') && (temp_val[1] != '\0')) || ((kw == YANG_POSITION) && !strcmp(temp_val, "-0"))) {
         LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL, strlen(temp_val), temp_val, ly_stmt2str(kw));
         goto error;
     }
@@ -748,6 +748,7 @@ yin_parse_value_pos_element(struct yin_parser_ctx *ctx, struct yin_arg_record *a
     /* check if whole argument value was converted */
     if (*ptr != '\0') {
         LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL, strlen(temp_val), temp_val, ly_stmt2str(kw));
+        goto error;
     }
     if (errno == ERANGE) {
         LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_OOB, strlen(temp_val), temp_val, ly_stmt2str(kw));
