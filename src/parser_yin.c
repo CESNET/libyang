@@ -995,12 +995,12 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 case YANG_AUGMENT:
                     break;
                 case YANG_BASE:
-                    if (current_element == YANG_IDENTITY) {
+                    if (current_element == YANG_TYPE) {
                         type = (struct lysp_type *)subelem_info_rec->dest;
                         ret = yin_parse_simple_elements(ctx, subelem_attrs, data, kw, &type->bases, YIN_ARG_NAME,
                                                         Y_PREF_IDENTIF_ARG, exts);
                         type->flags |= LYS_SET_BASE;
-                    } else if (current_element == YANG_TYPE) {
+                    } else if (current_element == YANG_IDENTITY) {
                         ret = yin_parse_simple_elements(ctx, subelem_attrs, data, kw, (const char ***)subelem_info_rec->dest,
                                                         YIN_ARG_NAME, Y_PREF_IDENTIF_ARG, exts);
                     } else {
@@ -1191,6 +1191,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
         } else {
             /* elements with text or none content */
             /* save text content, if text_content isn't set, it's just ignored */
+            /* TODO add text validation */
             if (text_content) {
                 if (dynamic) {
                     *text_content = lydict_insert_zc(ctx->xml_ctx.ctx, out);
