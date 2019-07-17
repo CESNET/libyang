@@ -121,44 +121,15 @@ typedef enum {
  * @brief List of possible value types stored in ::lyd_node_anydata.
  */
 typedef enum {
-    LYD_ANYDATA_CONSTSTRING = 0x00, /**< value is constant string (const char *) which is internally duplicated for
-                                         storing in the anydata structure; XML sensitive characters (such as & or \>)
-                                         are automatically escaped when the anydata is printed in XML format. */
-    LYD_ANYDATA_STRING = 0x01,      /**< value is dynamically allocated string (char*), so the data are used directly
-                                         without duplication and caller is supposed to not manipulate with the data
-                                         after a successful call (including calling free() on the provided data); XML
-                                         sensitive characters (such as & or \>) are automatically escaped when the
-                                         anydata is printed in XML format */
-    LYD_ANYDATA_JSON = 0x02,        /**< value is string containing the data modeled by YANG and encoded as I-JSON. The
-                                         string is handled as constant string. In case of using the value as input
-                                         parameter, the #LYD_ANYDATA_JSOND can be used for dynamically allocated
-                                         string. */
-    LYD_ANYDATA_JSOND = 0x03,       /**< In case of using value as input parameter, this enumeration is supposed to be
-                                         used for dynamically allocated strings (it is actually combination of
-                                         #LYD_ANYDATA_JSON and #LYD_ANYDATA_STRING (and it can be also specified as
-                                         ORed value of the mentioned values. */
-    LYD_ANYDATA_SXML = 0x04,        /**< value is string containing the serialized XML data. The string is handled as
-                                         constant string. In case of using the value as input parameter, the
-                                         #LYD_ANYDATA_SXMLD can be used for dynamically allocated string. */
-    LYD_ANYDATA_SXMLD = 0x05,       /**< In case of using serialized XML value as input parameter, this enumeration is
-                                         supposed to be used for dynamically allocated strings (it is actually
-                                         combination of #LYD_ANYDATA_SXML and #LYD_ANYDATA_STRING (and it can be also
-                                         specified as ORed value of the mentioned values). */
-    LYD_ANYDATA_XML = 0x08,         /**< value is struct lyxml_elem*, the structure is directly connected into the
-                                         anydata node without duplication, caller is supposed to not manipulate with the
-                                         data after a successful call (including calling lyxml_free() on the provided
-                                         data) */
-    LYD_ANYDATA_DATATREE = 0x10,    /**< value is struct lyd_node* (first sibling), the structure is directly connected
-                                         into the anydata node without duplication, caller is supposed to not manipulate
-                                         with the data after a successful call (including calling lyd_free() on the
-                                         provided data) */
-    LYD_ANYDATA_LYB = 0x20,         /**< value is a memory with serialized data tree in LYB format. The data are handled
-                                         as a constant string. In case of using the value as input parameter,
-                                         the #LYD_ANYDATA_LYBD can be used for dynamically allocated string. */
-    LYD_ANYDATA_LYBD = 0x21,        /**< In case of using LYB value as input parameter, this enumeration is
-                                         supposed to be used for dynamically allocated strings (it is actually
-                                         combination of #LYD_ANYDATA_LYB and #LYD_ANYDATA_STRING (and it can be also
-                                         specified as ORed value of the mentioned values). */
+    LYD_ANYDATA_DATATREE = 0x01,     /**< Value is a pointer to lyd_node structure (first sibling). When provided as input parameter, the pointer
+                                          is directly connected into the anydata node without duplication, caller is supposed to not manipulate
+                                          with the data after a successful call (including calling lyd_free() on the provided data) */
+    LYD_ANYDATA_STRING = 0x02,       /**< Value is a generic string without any knowledge about its format (e.g. anyxml value in JSON encoded
+                                          as string). XML sensitive characters (such as & or \>) are automatically escaped when the anydata
+                                          is printed in XML format. */
+    LYD_ANYDATA_XML = 0x04,          /**< Value is a string containing the serialized XML data. */
+    LYD_ANYDATA_JSON = 0x08,         /**< Value is a string containing the data modeled by YANG and encoded as I-JSON. */
+    LYD_ANYDATA_LYB = 0x10,          /**< Value is a memory chunk with the serialized data tree in LYB format. */
 } LYD_ANYDATA_VALUETYPE;
 
 /** @} */
@@ -332,7 +303,14 @@ struct lyd_node_any {
     void *priv;                      /**< private user data, not used by libyang */
 #endif
 
-    /* TODO - anydata representation */
+    union {
+        struct lyd_node *tree;       /**< data tree */
+        const char *str;             /**< Generic string data */
+        const char *xml;             /**< Serialized XML data */
+        const char *json;            /**< I-JSON encoded string */
+        char *mem;                   /**< LYD_ANYDATA_LYB memory chunk */
+    } value;                         /**< pointer to the stored value representation of the anydata/anyxml node */
+    LYD_ANYDATA_VALUETYPE value_type;/**< type of the data stored as lyd_node_any::value */
 };
 
 /**

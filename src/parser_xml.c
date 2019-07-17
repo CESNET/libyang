@@ -275,12 +275,47 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
                     goto cleanup;
                 }
             }
+            /* process children */
             if (ctx->status == LYXML_ELEMENT && parents_count != ctx->elements.count) {
                 ret = lydxml_nodes(ctx, (struct lyd_node_inner*)cur, data, lyd_node_children_p(cur));
                 LY_CHECK_GOTO(ret, cleanup);
             }
+        } else if (snode->nodetype & LYD_NODE_ANY) {
+            unsigned int cur_element_index = ctx->elements.count;
+            const char *start = *data, *stop;
+            const char *p, *n;
+            size_t p_len, n_len;
+
+            /* skip children data and store them as a string */
+            while (cur_element_index <= ctx->elements.count) {
+                switch (ctx->status) {
+                case LYXML_ELEMENT:
+                    ret = lyxml_get_element((struct lyxml_context *)ctx, data, &p, &p_len, &n, &n_len);
+                    break;
+                case LYXML_ATTRIBUTE:
+                    lyxml_get_attribute((struct lyxml_context*)ctx, data, &p, &p_len, &n, &n_len);
+                    break;
+                case LYXML_ELEM_CONTENT:
+                case LYXML_ATTR_CONTENT:
+                    ret = lyxml_get_string((struct lyxml_context *)ctx, data, NULL, NULL, NULL, NULL, NULL);
+                    if (ret == LY_EINVAL) {
+                        /* not an error, just incorrect XML parser status */
+                        ret = LY_SUCCESS;
+                    }
+                    break;
+                case LYXML_END:
+                    /* unexpected end of data */
+                    LOGINT(ctx->ctx);
+                    goto cleanup;
+                }
+                LY_CHECK_GOTO(ret, cleanup);
+            }
+            /* data now points after the anydata's closing element tag, we need just end of its content */
+            for (stop = *data - 1; *stop != '<'; --stop);
+
+            ((struct lyd_node_any*)cur)->value_type = LYD_ANYDATA_XML;
+            ((struct lyd_node_any*)cur)->value.xml = lydict_insert(ctx->ctx, start, stop - start);
         }
-        /* TODO anyxml/anydata */
     }
 
 cleanup:

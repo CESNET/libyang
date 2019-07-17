@@ -146,6 +146,9 @@ LY_ERR lyxml_get_attribute(struct lyxml_context *context, const char **input,
  * reference which modify the input data. These constructs are replaced by their real value, so in case the output
  * string will be again printed as an XML data, it may be necessary to correctly encode such characters.
  *
+ * Optionally, the buffer, buffer_size, output, length and dynamic arguments (altogether) can be NULL.
+ * In such a case, the XML text in @p input is just checked, the @p input pointer is moved after the XML text, but nothing is stored.
+ *
  * @param[in] context XML context to track lines or store errors into libyang context.
  * @param[in,out] input Input string to process, updated according to the processed/read data.
  * @param[in, out] buffer Storage for the output string. If the parameter points to NULL, the buffer is allocated if needed.

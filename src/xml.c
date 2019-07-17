@@ -562,40 +562,52 @@ getbuffer:
     /* parse */
     while (in[offset]) {
         if (in[offset] == '&') {
-            if (!buf) {
-                /* it is necessary to modify the input, so we will need a dynamically allocated buffer */
-                goto getbuffer;
-            }
+            if (output) {
+                if (!buf) {
+                    /* it is necessary to modify the input, so we will need a dynamically allocated buffer */
+                    goto getbuffer;
+                }
 
-            if (offset) {
-                /* store what we have so far */
-                BUFSIZE_CHECK(ctx, buf, size, len, offset);
-                memcpy(&buf[len], in, offset);
-                len += offset;
-                in += offset;
-                offset = 0;
+                if (offset) {
+                    /* store what we have so far */
+                    BUFSIZE_CHECK(ctx, buf, size, len, offset);
+                    memcpy(&buf[len], in, offset);
+                    len += offset;
+                    in += offset;
+                    offset = 0;
+                }
+                /* process reference */
+                /* we will need 4 bytes at most since we support only the predefined
+                 * (one-char) entities and character references */
+                BUFSIZE_CHECK(ctx, buf, size, len, 4);
             }
-            /* process reference */
-            /* we will need 4 bytes at most since we support only the predefined
-             * (one-char) entities and character references */
-            BUFSIZE_CHECK(ctx, buf, size, len, 4);
             ++offset;
             if (in[offset] != '#') {
                 /* entity reference - only predefined references are supported */
                 if (!strncmp(&in[offset], "lt;", 3)) {
-                    buf[len++] = '<';
+                    if (output) {
+                        buf[len++] = '<';
+                    }
                     in += 4; /* &lt; */
                 } else if (!strncmp(&in[offset], "gt;", 3)) {
-                    buf[len++] = '>';
+                    if (output) {
+                        buf[len++] = '>';
+                    }
                     in += 4; /* &gt; */
                 } else if (!strncmp(&in[offset], "amp;", 4)) {
-                    buf[len++] = '&';
+                    if (output) {
+                        buf[len++] = '&';
+                    }
                     in += 5; /* &amp; */
                 } else if (!strncmp(&in[offset], "apos;", 5)) {
-                    buf[len++] = '\'';
+                    if (output) {
+                        buf[len++] = '\'';
+                    }
                     in += 6; /* &apos; */
                 } else if (!strncmp(&in[offset], "quot;", 5)) {
-                    buf[len++] = '\"';
+                    if (output) {
+                        buf[len++] = '\"';
+                    }
                     in += 6; /* &quot; */
                 } else {
                     LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX,
@@ -632,7 +644,12 @@ getbuffer:
                                          LY_VCODE_INSTREXP_len(&in[offset]), &in[offset], ";"),
                                   error);
                 ++offset;
-                rc = lyxml_pututf8(&buf[len], n, &u);
+                if (output) {
+                    rc = lyxml_pututf8(&buf[len], n, &u);
+                } else {
+                    char utf8[4];
+                    rc = lyxml_pututf8(&utf8[0], n, &u);
+                }
                 LY_CHECK_ERR_GOTO(rc, LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX,
                                              "Invalid character reference \"%.*s\" (0x%08x).", 12, p, n),
                                   error);
@@ -758,11 +775,12 @@ success:
         (*buffer_size) = size;
         (*output) = buf;
         (*dynamic) = 1;
-    } else {
+        (*length) = len;
+    } else if (output) {
         (*output) = (char*)start;
         (*dynamic) = 0;
+        (*length) = len;
     }
-    (*length) = len;
 
     if (context->status == LYXML_ATTRIBUTE) {
         /* skip whitespaces after the value */
