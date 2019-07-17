@@ -2230,6 +2230,7 @@ test_value(void **state)
     assert_int_equal(parse_type_enum_value_pos(&ctx, &data, YANG_POSITION, &val, &flags, NULL), LY_EVALID);
     logbuf_assert("Invalid value \"-0\" of \"position\". Line number 1.");
 
+    *state = NULL;
     ly_ctx_destroy(ctx.ctx, NULL);
 }
 

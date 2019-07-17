@@ -1729,6 +1729,54 @@ test_type_elem(void **state)
     st->finished_correctly = true;
 }
 
+static void
+test_max_elems_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct lysp_node_list list = {};
+    struct lysp_node_leaflist llist = {};
+    struct lysp_refine refine = {};
+
+    data = "<refine xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"unbounded\"/> </refine>";
+    assert_int_equal(test_element_helper(st, &data, &refine, NULL, NULL, true), LY_SUCCESS);
+    assert_int_equal(refine.max, 0);
+    assert_true(refine.flags | LYS_SET_MAX);
+
+    data = "<list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"5\"/> </list>";
+    assert_int_equal(test_element_helper(st, &data, &list, NULL, NULL, true), LY_SUCCESS);
+    assert_int_equal(list.max, 5);
+    assert_true(list.flags | LYS_SET_MAX);
+
+    data = "<leaf-list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"85\"/> </leaf-list>";
+    assert_int_equal(test_element_helper(st, &data, &llist, NULL, NULL, true), LY_SUCCESS);
+    assert_int_equal(llist.max, 85);
+    assert_true(llist.flags | LYS_SET_MAX);
+
+    data = "<refine xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"10\"/> </refine>";
+    assert_int_equal(test_element_helper(st, &data, &refine, NULL, NULL, true), LY_SUCCESS);
+    assert_int_equal(refine.max, 10);
+    assert_true(refine.flags | LYS_SET_MAX);
+
+    data = "<list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"0\"/> </list>";
+    assert_int_equal(test_element_helper(st, &data, &list, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Invalid value \"0\" of \"max-elements\". Line number 1.");
+
+    data = "<list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"-10\"/> </list>";
+    assert_int_equal(test_element_helper(st, &data, &list, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Invalid value \"-10\" of \"max-elements\". Line number 1.");
+
+    data = "<list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"k\"/> </list>";
+    assert_int_equal(test_element_helper(st, &data, &list, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Invalid value \"k\" of \"max-elements\". Line number 1.");
+
+    data = "<list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"u12\"/> </list>";
+    assert_int_equal(test_element_helper(st, &data, &list, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Invalid value \"u12\" of \"max-elements\". Line number 1.");
+
+    st->finished_correctly = true;
+}
+
 int
 main(void)
 {
@@ -1774,6 +1822,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_when_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_yin_text_value_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_type_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_max_elems_elem, setup_element_test, teardown_element_test),
     };
 
     return cmocka_run_group_tests(tests, setup_ly_ctx, destroy_ly_ctx);
