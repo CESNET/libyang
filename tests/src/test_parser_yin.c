@@ -487,10 +487,10 @@ test_yin_parse_content(void **state)
                                             {YANG_IF_FEATURE, &if_features, 0},
                                             {YANG_LENGTH, &len_type, 0},
                                             {YANG_PATTERN, &patter_type, 0},
-                                            {YANG_POSITION, &pos_enum, 0},
                                             {YANG_RANGE, &range_type, 0},
                                             {YANG_REQUIRE_INSTANCE, &req_type, 0},
                                             {YANG_UNITS, &units, 0},
+                                            {YANG_POSITION, &pos_enum, 0},
                                             {YANG_VALUE, &val_enum, 0},
                                             {YANG_WHEN, &when_p, 0},
                                             {YANG_CUSTOM, NULL, 0},
@@ -714,7 +714,6 @@ test_element_helper(struct state *st, const char **data, void *dest, const char 
                                             {YANG_OUTPUT, dest, 0},
                                             {YANG_PATH, dest, 0},
                                             {YANG_PATTERN, dest, 0},
-                                            {YANG_POSITION, dest, 0},
                                             {YANG_PREFIX, dest, 0},
                                             {YANG_PRESENCE, dest, 0},
                                             {YANG_RANGE, dest, 0},
@@ -731,6 +730,7 @@ test_element_helper(struct state *st, const char **data, void *dest, const char 
                                             {YANG_UNIQUE, dest, 0},
                                             {YANG_UNITS, dest, 0},
                                             {YANG_USES, dest, 0},
+                                            {YANG_POSITION, dest, 0},
                                             {YANG_VALUE, dest, 0},
                                             {YANG_WHEN, dest, 0},
                                             {YANG_YANG_VERSION, dest, 0},
@@ -1673,6 +1673,62 @@ test_yin_text_value_elem(void **state)
     st->finished_correctly = true;
 }
 
+static void
+test_type_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct lysp_type type = {};
+
+    /* max subelems */
+    data = ELEMENT_WRAPPER_START
+                "<type name=\"type-name\">"
+                    "<base name=\"base-name\"/>"
+                    "<bit name=\"bit\"/>"
+                    "<enum name=\"enum\"/>"
+                    "<fraction-digits value=\"2\"/>"
+                    "<length value=\"length\"/>"
+                    "<path value=\"path\"/>"
+                    "<pattern value=\"pattern\"/>"
+                    "<range value=\"range\" />"
+                    "<require-instance value=\"true\"/>"
+                    "<type name=\"sub-type-name\"/>"
+                "</type>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(type.name, "type-name");
+    assert_string_equal(*type.bases, "base-name");
+    assert_string_equal(type.bits->name,  "bit");
+    assert_string_equal(type.enums->name,  "enum");
+    assert_int_equal(type.fraction_digits, 2);
+    assert_string_equal(type.length->arg, "length");
+    assert_string_equal(type.path, "path");
+    assert_string_equal(type.patterns->arg, "\006pattern");
+    assert_string_equal(type.range->arg, "range");
+    assert_int_equal(type.require_instance, 1);
+    assert_string_equal(type.types->name, "sub-type-name");
+    lysp_type_free(st->ctx, &type);
+    assert_true(type.flags | LYS_SET_BASE);
+    assert_true(type.flags | LYS_SET_BIT);
+    assert_true(type.flags | LYS_SET_ENUM);
+    assert_true(type.flags | LYS_SET_FRDIGITS);
+    assert_true(type.flags | LYS_SET_LENGTH);
+    assert_true(type.flags | LYS_SET_PATH);
+    assert_true(type.flags | LYS_SET_PATTERN);
+    assert_true(type.flags | LYS_SET_RANGE);
+    assert_true(type.flags | LYS_SET_REQINST);
+    assert_true(type.flags | LYS_SET_TYPE);
+    memset(&type, 0, sizeof(type));
+
+    /* min subelems */
+    data = ELEMENT_WRAPPER_START "<type name=\"type-name\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, true), LY_SUCCESS);
+    lysp_type_free(st->ctx, &type);
+    memset(&type, 0, sizeof(type));
+
+    st->finished_correctly = true;
+}
+
 int
 main(void)
 {
@@ -1717,6 +1773,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_units_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_when_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_yin_text_value_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_type_elem, setup_element_test, teardown_element_test),
     };
 
     return cmocka_run_group_tests(tests, setup_ly_ctx, destroy_ly_ctx);

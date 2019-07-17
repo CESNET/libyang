@@ -835,6 +835,41 @@ yin_parse_err_msg_element(struct yin_parser_ctx *ctx, const char **data, const c
 }
 
 /**
+ * @brief parse type element.
+ *
+ * @brief Parse position or value element.
+ *
+ * @param[in,out] ctx YIN parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] type Type to wrote to.
+ * @param[in,out] exts Extension instance to add to.
+ *
+ * @return LY_ERR values.
+ */
+static LY_ERR
+yin_parse_type(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data, struct lysp_type *type)
+{
+    struct yin_subelement subelems[11] = {
+                                            {YANG_BASE, type, 0},
+                                            {YANG_BIT, type, 0},
+                                            {YANG_ENUM, type, 0},
+                                            {YANG_FRACTION_DIGITS, type, YIN_SUBELEM_UNIQUE},
+                                            {YANG_LENGTH, type, YIN_SUBELEM_UNIQUE},
+                                            {YANG_PATH, type, YIN_SUBELEM_UNIQUE},
+                                            {YANG_PATTERN, type, 0},
+                                            {YANG_RANGE, type, YIN_SUBELEM_UNIQUE},
+                                            {YANG_REQUIRE_INSTANCE, type, YIN_SUBELEM_UNIQUE},
+                                            {YANG_TYPE, type},
+                                            {YANG_CUSTOM, NULL, 0},
+                                        };
+    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NAME, &type->name, Y_PREF_IDENTIF_ARG, YANG_TYPE));
+    return yin_parse_content(ctx, subelems, 11, data, YANG_TYPE, NULL, &type->exts);
+}
+
+
+
+/**
  * @brief Map keyword type to substatement info.
  *
  * @param[in] kw Keyword type.
@@ -951,7 +986,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
     enum yang_keyword kw = YANG_NONE;
     struct yin_subelement *subelem_info_rec = NULL;
     uint32_t index = 0;
-    struct lysp_type *type;
+    struct lysp_type *type, *nested_type;
     assert(is_ordered(subelem_info, subelem_info_size));
 
     if (ctx->xml_ctx.status == LYXML_ELEM_CONTENT) {
@@ -1167,6 +1202,13 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 case YANG_SUBMODULE:
                     break;
                 case YANG_TYPE:
+                    /* type as child of another type */
+                    type = (struct lysp_type *)subelem_info_rec->dest;
+                    if (current_element == YANG_TYPE) {
+                        LY_ARRAY_NEW_GOTO(ctx->xml_ctx.ctx, type->types, nested_type, ret, cleanup);
+                        type = nested_type;
+                    }
+                    ret = yin_parse_type(ctx, subelem_attrs, data, type);
                     break;
                 case YANG_TYPEDEF:
                     break;
