@@ -1466,6 +1466,10 @@ test_value_position_elem(void **state)
     assert_int_equal(test_element_helper(st, &data, &en, NULL, NULL, false), LY_EVALID);
     logbuf_assert("Invalid value \"1k\" of \"value\". Line number 1.");
 
+    data = ELEMENT_WRAPPER_START "<value value=\"\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &en, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Invalid value \"\" of \"value\". Line number 1.");
+
     /*invalid positions */
     data = ELEMENT_WRAPPER_START "<position value=\"-5\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &en, NULL, NULL, false), LY_EVALID);
@@ -1479,7 +1483,193 @@ test_value_position_elem(void **state)
     assert_int_equal(test_element_helper(st, &data, &en, NULL, NULL, false), LY_EVALID);
     logbuf_assert("Invalid value \"99999999999999999999\" of \"position\". Line number 1.");
 
-    /* TODO empty position and value */
+    data = ELEMENT_WRAPPER_START "<position value=\"\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &en, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Invalid value \"\" of \"position\". Line number 1.");
+
+    st->finished_correctly = true;
+}
+
+static void
+test_prefix_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    const char *value = NULL;
+
+    data = ELEMENT_WRAPPER_START "<prefix value=\"pref\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &value, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(value, "pref");
+    FREE_STRING(st->ctx, value);
+
+    st->finished_correctly = true;
+}
+
+static void
+test_range_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct lysp_type type = {};
+
+    /* max subelems */
+    data = ELEMENT_WRAPPER_START
+                "<range value=\"range-str\">"
+                    "<error-message><value>err-msg</value></error-message>"
+                    "<error-app-tag value=\"err-app-tag\" />"
+                    "<description><text>desc</text></description>"
+                    "<reference><text>ref</text></reference>"
+                "</range>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(type.range->arg, "range-str");
+    assert_string_equal(type.range->dsc, "desc");
+    assert_string_equal(type.range->eapptag, "err-app-tag");
+    assert_string_equal(type.range->emsg, "err-msg");
+    assert_string_equal(type.range->ref, "ref");
+    assert_true(type.flags | LYS_SET_RANGE);
+    lysp_type_free(st->ctx, &type);
+    memset(&type, 0, sizeof(type));
+
+    /* min subelems */
+    data = ELEMENT_WRAPPER_START "<range value=\"range-str\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(type.range->arg, "range-str");
+    lysp_type_free(st->ctx, &type);
+    memset(&type, 0, sizeof(type));
+
+    st->finished_correctly = true;
+}
+
+static void
+test_reqinstance_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct lysp_type type = {};
+
+    data = ELEMENT_WRAPPER_START "<require-instance value=\"true\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, true), LY_SUCCESS);
+    assert_int_equal(type.require_instance, 1);
+    assert_true(type.flags | LYS_SET_REQINST);
+    memset(&type, 0, sizeof(type));
+
+    data = ELEMENT_WRAPPER_START "<require-instance value=\"false\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, true), LY_SUCCESS);
+    assert_int_equal(type.require_instance, 0);
+    assert_true(type.flags | LYS_SET_REQINST);
+    memset(&type, 0, sizeof(type));
+
+    data = ELEMENT_WRAPPER_START "<require-instance value=\"invalid\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, false), LY_EVALID);
+    memset(&type, 0, sizeof(type));
+    logbuf_assert("Invalid value \"invalid\" of \"require-instance\". Line number 1.");
+
+    st->finished_correctly = true;
+}
+
+static void
+test_revision_date_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    char rev[LY_REV_SIZE];
+
+    data = ELEMENT_WRAPPER_START "<revision-date date=\"2000-01-01\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, rev, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(rev, "2000-01-01");
+
+    data = ELEMENT_WRAPPER_START "<revision-date date=\"2000-50-05\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, rev, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Invalid value \"2000-50-05\" of \"revision-date\". Line number 1.");
+
+    st->finished_correctly = true;
+}
+
+static void
+test_unique_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    const char **values = NULL;
+
+    data = ELEMENT_WRAPPER_START "<unique tag=\"tag\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &values, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(*values, "tag");
+    FREE_STRING(st->ctx, *values);
+    LY_ARRAY_FREE(values);
+
+    st->finished_correctly = true;
+}
+
+static void
+test_units_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    const char *values = NULL;
+
+    data = ELEMENT_WRAPPER_START "<units name=\"name\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &values, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(values, "name");
+    FREE_STRING(st->ctx, values);
+
+    st->finished_correctly = true;
+}
+
+static void
+test_when_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct lysp_when *when = NULL;
+
+    data = ELEMENT_WRAPPER_START
+                "<when condition=\"cond\">"
+                    "<description><text>desc</text></description>"
+                    "<reference><text>ref</text></reference>"
+                "</when>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &when, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(when->cond, "cond");
+    assert_string_equal(when->dsc, "desc");
+    assert_string_equal(when->ref, "ref");
+    lysp_when_free(st->ctx, when);
+    free(when);
+    when = NULL;
+
+    data = ELEMENT_WRAPPER_START "<when condition=\"cond\" />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &when, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(when->cond, "cond");
+    lysp_when_free(st->ctx, when);
+    free(when);
+    when = NULL;
+
+    st->finished_correctly = true;
+}
+
+static void
+test_yin_text_value_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    const char *val;
+
+    data = ELEMENT_WRAPPER_START "<text>text</text>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &val, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(val, "text");
+    FREE_STRING(st->ctx, val);
+
+    data = "<error-message xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <value>text</value> </error-message>";
+    assert_int_equal(test_element_helper(st, &data, &val, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(val, "text");
+    FREE_STRING(st->ctx, val);
+
+    data = ELEMENT_WRAPPER_START "<text></text>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &val, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal("", val);
+    FREE_STRING(st->ctx, val);
+
     st->finished_correctly = true;
 }
 
@@ -1519,7 +1709,14 @@ main(void)
         cmocka_unit_test_setup_teardown(test_path_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_pattern_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_value_position_elem, setup_element_test, teardown_element_test),
-
+        cmocka_unit_test_setup_teardown(test_prefix_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_range_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_reqinstance_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_revision_date_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_unique_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_units_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_when_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_yin_text_value_elem, setup_element_test, teardown_element_test),
     };
 
     return cmocka_run_group_tests(tests, setup_ly_ctx, destroy_ly_ctx);
