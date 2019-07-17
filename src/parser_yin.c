@@ -529,14 +529,22 @@ yin_parse_enum_bit(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, con
 {
     assert(enum_kw == YANG_BIT || enum_kw == YANG_ENUM);
     struct lysp_type_enum *en;
-    LY_ARRAY_NEW_RET(ctx->xml_ctx.ctx, type->enums, en, LY_EMEM);
-    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NAME, &en->name, Y_IDENTIF_ARG, enum_kw));
+    struct lysp_type_enum **enums;
+
+    if (enum_kw == YANG_BIT) {
+        enums = &type->bits;
+    } else {
+        enums = &type->enums;
+    }
+
+    LY_ARRAY_NEW_RET(ctx->xml_ctx.ctx, *enums, en, LY_EMEM);
     type->flags |= (enum_kw == YANG_ENUM) ? LYS_SET_ENUM : LYS_SET_BIT;
+    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NAME, &en->name, Y_IDENTIF_ARG, enum_kw));
     if (enum_kw == YANG_ENUM) {
         LY_CHECK_RET(lysp_check_enum_name((struct lys_parser_ctx *)ctx, en->name, strlen(en->name)));
         YANG_CHECK_NONEMPTY((struct lys_parser_ctx *)ctx, strlen(en->name), "enum");
     }
-    CHECK_UNIQUENESS((struct lys_parser_ctx *)ctx, type->enums, name, ly_stmt2str(enum_kw), en->name);
+    CHECK_UNIQUENESS((struct lys_parser_ctx *)ctx, *enums, name, ly_stmt2str(enum_kw), en->name);
 
     struct yin_subelement subelems[6] = {
                                             {YANG_DESCRIPTION, &en->dsc, YIN_SUBELEM_UNIQUE},
