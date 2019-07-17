@@ -1230,7 +1230,8 @@ yin_parse_revision_date(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs
                                         };
 
     LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_DATE, &temp_rev, Y_STR_ARG, YANG_REVISION_DATE));
-    LY_CHECK_RET(lysp_check_date((struct lys_parser_ctx *)ctx, temp_rev, strlen(temp_rev), "revision-date") != LY_SUCCESS, LY_EVALID);
+    LY_CHECK_ERR_RET(lysp_check_date((struct lys_parser_ctx *)ctx, temp_rev, strlen(temp_rev), "revision-date") != LY_SUCCESS,
+                     FREE_STRING(ctx->xml_ctx.ctx, temp_rev), LY_EVALID);
 
     strcpy(rev, temp_rev);
     FREE_STRING(ctx->xml_ctx.ctx, temp_rev);
