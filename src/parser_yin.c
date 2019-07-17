@@ -1197,7 +1197,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
         } else {
             /* elements with text or none content */
             /* save text content, if text_content isn't set, it's just ignored */
-            /* TODO add text validation */
+            LY_CHECK_RET(yin_validate_value(ctx, Y_STR_ARG, out, out_len));
             if (text_content) {
                 if (dynamic) {
                     *text_content = lydict_insert_zc(ctx->xml_ctx.ctx, out);
