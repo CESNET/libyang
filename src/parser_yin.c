@@ -273,8 +273,12 @@ yin_parse_attribute(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, en
                     /* string is no longer supposed to be freed when the sized array is freed */
                     iter->dynamic_content = 0;
                 } else {
-                    *arg_val = lydict_insert(ctx->xml_ctx.ctx, iter->content, iter->content_len);
-                    LY_CHECK_RET(!(*arg_val), LY_EMEM);
+                    if (iter->content_len == 0) {
+                        *arg_val = lydict_insert(ctx->xml_ctx.ctx, "", 0);
+                    } else {
+                        *arg_val = lydict_insert(ctx->xml_ctx.ctx, iter->content, iter->content_len);
+                        LY_CHECK_RET(!(*arg_val), LY_EMEM);
+                    }
                 }
             } else {
                 LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LYVE_SYNTAX_YIN, "Unexpected attribute \"%.*s\" of %s element.", iter->name_len, iter->name, ly_stmt2str(current_element));
@@ -1202,7 +1206,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     }
                 } else {
                     if (out_len == 0) {
-                        *text_content = NULL;
+                        *text_content = lydict_insert(ctx->xml_ctx.ctx, "", 0);
                     } else {
                         *text_content = lydict_insert(ctx->xml_ctx.ctx, out, out_len);
                     }
