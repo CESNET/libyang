@@ -547,6 +547,16 @@ xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int
         /* no content */
         ly_print(out, "/>%s", level ? "\n" : "");
     } else {
+        if (any->value_type == LYD_ANYDATA_LYB) {
+            /* parse into a data tree */
+            iter = lyd_parse_mem(node->schema->module->ctx, any->value.mem, LYD_LYB, LYD_OPT_DATA | LYD_OPT_STRICT, NULL);
+            if (iter) {
+                /* successfully parsed */
+                free(any->value.mem);
+                any->value_type = LYD_ANYDATA_DATATREE;
+                any->value.tree = iter;
+            }
+        }
         if (any->value_type == LYD_ANYDATA_DATATREE) {
             /* print namespaces in the anydata data tree */
             LY_TREE_FOR(any->value.tree, iter) {
@@ -584,7 +594,7 @@ xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int
             break;
         case LYD_ANYDATA_JSON:
         case LYD_ANYDATA_LYB:
-            /* JSON and LYB format is not supported */
+            /* JSON format is not supported (LYB failed to be converted) */
             LOGWRN(node->schema->module->ctx, "Unable to print anydata content (type %d) as XML.", any->value_type);
             break;
         case LYD_ANYDATA_STRING:
