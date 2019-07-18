@@ -267,10 +267,10 @@ void ly_vlog_str(const struct ly_ctx *ctx, enum LY_VLOG_ELEM elem_type, const ch
  * @param[in] elem Element to print.
  * @param[in,out] path Resulting path printed.
  * @param[in] schema_all_prefixes Whether to include prefixes for all the nodes (only for schema paths).
- * @param[in] data_no_predicates Whether to skip generating predicates for all the nodes (only for data paths).
+ * @param[in] data_no_last_predicate Whether to skip generating predicate for the last node (only for data paths).
  * @return 0 on success, -1 on error.
  */
-int ly_vlog_build_path(enum LY_VLOG_ELEM elem_type, const void *elem, char **path, int schema_all_prefixes, int data_no_predicates);
+int ly_vlog_build_path(enum LY_VLOG_ELEM elem_type, const void *elem, char **path, int schema_all_prefixes, int data_no_last_predicate);
 
 /**
  * @brief Get module from a context based on its name and revision.

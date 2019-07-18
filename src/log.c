@@ -580,7 +580,7 @@ ly_vlog_build_path_print(char **path, uint16_t *index, const char *str, uint16_t
 }
 
 int
-ly_vlog_build_path(enum LY_VLOG_ELEM elem_type, const void *elem, char **path, int schema_all_prefixes, int data_no_predicates)
+ly_vlog_build_path(enum LY_VLOG_ELEM elem_type, const void *elem, char **path, int schema_all_prefixes, int data_no_last_predicate)
 {
     int i, j, yang_data_extension = 0;
     struct lys_node_list *slist;
@@ -674,7 +674,7 @@ ly_vlog_build_path(enum LY_VLOG_ELEM elem_type, const void *elem, char **path, i
             }
 
             /* handle predicates (keys) in case of lists */
-            if (!data_no_predicates) {
+            if (!data_no_last_predicate || index) {
                 if (((struct lyd_node *)elem)->schema->nodetype == LYS_LIST) {
                     dlist = (struct lyd_node *)elem;
                     slist = (struct lys_node_list *)((struct lyd_node *)elem)->schema;
