@@ -278,9 +278,9 @@ lyp_mmap(struct ly_ctx *ctx, int fd, size_t addsize, size_t *length, void **addr
         *addr = mmap(NULL, *length, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
     } else {
         /* there will not be enough bytes after the file content mapping for the additional bytes and some of them
-         * would overflow into another page that would not be zerroed and any access into it would generate SIGBUS.
+         * would overflow into another page that would not be zeroed and any access into it would generate SIGBUS.
          * Therefore we have to do the following hack with double mapping. First, the required number of bytes
-         * (including the additinal bytes) is required as anonymous and thus they will be really provided (actually more
+         * (including the additional bytes) is required as anonymous and thus they will be really provided (actually more
          * because of using whole pages) and also initialized by zeros. Then, the file is mapped to the same address
          * where the anonymous mapping starts. */
         *length = sb.st_size + pagesize;
@@ -740,7 +740,7 @@ max:
 
         if (*c == '|') {
             c++;
-            /* process next length-parth */
+            /* process next length-part */
             goto lengthpart;
         } else if (*c == '\0') {
             goto syntax_ok;
@@ -771,7 +771,7 @@ upper:
                 goto syntax_ok;
             } else if (*c == '|') {
                 c++;
-                /* process next length-parth */
+                /* process next length-part */
                 goto lengthpart;
             } else {
                 goto error;
@@ -1360,7 +1360,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             /* go back to the beginning of the identifier */
             c = c - len;
 
-            /* find bit definition, identifiers appear ordered by their posititon */
+            /* find bit definition, identifiers appear ordered by their position */
             for (found = i = 0; i < type->info.bits.count; i++) {
                 if (!strncmp(type->info.bits.bit[i].name, &value[c], len) && !type->info.bits.bit[i].name[len]) {
                     /* we have match, check if the value is enabled ... */
@@ -1652,7 +1652,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             ly_ilo_restore(NULL, prev_ilo, NULL, 0);
         } else {
             if (make_canonical(ctx, LY_TYPE_INST, &value, NULL, NULL)) {
-                /* if a change occured, value was removed from the dicionary so fix the pointers */
+                /* if a change occurred, value was removed from the dictionary so fix the pointers */
                 *value_ = value;
             }
         }
