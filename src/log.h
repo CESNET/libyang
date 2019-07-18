@@ -153,6 +153,7 @@ typedef enum
     LY_EDENIED,     /**< Operation is not allowed */
     LY_EINCOMPLETE, /**< The operation did not failed, but for some reason it was not possible to finish it completely.
                          According to the specific use case, the caller is usually supposed to perform the operation again. */
+    LY_ENOT,        /**< Negative result */
     LY_EOTHER       /**< Unknown error */
 } LY_ERR;
 

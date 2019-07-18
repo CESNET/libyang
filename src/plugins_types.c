@@ -41,7 +41,7 @@ ly_type_compare_canonical(const struct lyd_value *val1, const struct lyd_value *
         return LY_SUCCESS;
     }
 
-    return LY_EVALID;
+    return LY_ENOT;
 }
 
 /**
@@ -1281,7 +1281,7 @@ ly_type_compare_identityref(const struct lyd_value *val1, const struct lyd_value
     if (val1->ident == val2->ident) {
         return LY_SUCCESS;
     }
-    return LY_EVALID;
+    return LY_ENOT;
 }
 
 /**
@@ -1906,7 +1906,7 @@ ly_type_compare_instanceid(const struct lyd_value *val1, const struct lyd_value 
     if (val1 == val2) {
         return LY_SUCCESS;
     } else if (!val1->target || !val2->target || LY_ARRAY_SIZE(val1->target) != LY_ARRAY_SIZE(val2->target)) {
-        return LY_EVALID;
+        return LY_ENOT;
     }
 
     LY_ARRAY_FOR(val1->target, u) {
@@ -1915,7 +1915,7 @@ ly_type_compare_instanceid(const struct lyd_value *val1, const struct lyd_value 
 
         if (s1->node != s2->node || (s1->predicates && !s2->predicates) || (!s1->predicates && s2->predicates) ||
                 (s1->predicates && LY_ARRAY_SIZE(s1->predicates) != LY_ARRAY_SIZE(s2->predicates))) {
-            return LY_EVALID;
+            return LY_ENOT;
         }
         if (s1->predicates) {
             LY_ARRAY_FOR(s1->predicates, v) {
@@ -1923,17 +1923,17 @@ ly_type_compare_instanceid(const struct lyd_value *val1, const struct lyd_value 
                 struct lyd_value_path_predicate *pred2 = &s2->predicates[v];
 
                 if (pred1->type != pred2->type) {
-                    return LY_EVALID;
+                    return LY_ENOT;
                 }
                 if (pred1->type == 0) {
                     /* position predicate */
                     if (pred1->position != pred2->position) {
-                        return LY_EVALID;
+                        return LY_ENOT;
                     }
                 } else {
                     /* key-predicate or leaf-list-predicate */
                     if (pred1->key != pred2->key || ((struct lysc_node_leaf*)pred1->key)->type->plugin->compare(pred1->value, pred2->value)) {
-                        return LY_EVALID;
+                        return LY_ENOT;
                     }
                 }
             }
@@ -2572,7 +2572,7 @@ static LY_ERR
 ly_type_compare_union(const struct lyd_value *val1, const struct lyd_value *val2)
 {
     if (val1->realtype != val2->realtype) {
-        return LY_EVALID;
+        return LY_ENOT;
     }
     return val1->realtype->plugin->compare(val1->subvalue->value, val2->subvalue->value);
 }

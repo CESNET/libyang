@@ -167,9 +167,11 @@ lyd_free_subtree(struct ly_ctx *ctx, struct lyd_node *node, int top)
         case LYD_ANYDATA_JSON:
             FREE_STRING(node->schema->module->ctx, ((struct lyd_node_any*)node)->value.str);
             break;
+#if 0 /* TODO LYB format */
         case LYD_ANYDATA_LYB:
             free(((struct lyd_node_any*)node)->value.mem);
             break;
+#endif
         }
     } else if (node->schema->nodetype & LYD_NODE_TERM) {
         ((struct lysc_node_leaf*)node->schema)->type->plugin->free(ctx, &((struct lyd_node_term*)node)->value);

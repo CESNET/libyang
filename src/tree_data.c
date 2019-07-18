@@ -535,4 +535,141 @@ search_repeat:
     }
 }
 
+API LY_ERR
+lyd_compare(const struct lyd_node *node1, const struct lyd_node *node2, int options)
+{
+    const struct lyd_node *iter1, *iter2;
+    struct lyd_node_term *term1, *term2;
+    struct lyd_node_any *any1, *any2;
+    struct lysc_type *type;
+    size_t len1, len2;
 
+    if (!node1 || !node2) {
+        if (node1 == node2) {
+            return LY_SUCCESS;
+        } else {
+            return LY_ENOT;
+        }
+    }
+
+    if (node1->schema->module->ctx != node2->schema->module->ctx || node1->schema != node2 ->schema) {
+        return LY_ENOT;
+    }
+
+    if (node1->hash != node2->hash) {
+        return LY_ENOT;
+    }
+
+    /* equal hashes do not mean equal nodes, they can be just in collision so the nodes must be checked explicitly */
+
+    switch (node1->schema->nodetype) {
+    case LYS_LEAF:
+    case LYS_LEAFLIST:
+        if (options & LYD_COMPARE_DEFAULTS) {
+            if ((node1->flags & LYD_DEFAULT) != (node2->flags & LYD_DEFAULT)) {
+                return LY_ENOT;
+            }
+        }
+
+        term1 = (struct lyd_node_term*)node1;
+        term2 = (struct lyd_node_term*)node2;
+        type = ((struct lysc_node_leaf*)node1->schema)->type;
+
+        return type->plugin->compare(&term1->value, &term2->value);
+    case LYS_CONTAINER:
+        if (options & LYD_COMPARE_DEFAULTS) {
+            if ((node1->flags & LYD_DEFAULT) != (node2->flags & LYD_DEFAULT)) {
+                return LY_ENOT;
+            }
+        }
+        if (options & LYD_COMPARE_FULL_RECURSION) {
+            iter1 = ((struct lyd_node_inner*)node1)->child;
+            iter2 = ((struct lyd_node_inner*)node2)->child;
+            goto all_children_compare;
+        }
+        return LY_SUCCESS;
+    case LYS_ACTION:
+        if (options & LYD_COMPARE_FULL_RECURSION) {
+            /* TODO action/RPC
+            goto all_children_compare;
+            */
+        }
+        return LY_SUCCESS;
+    case LYS_NOTIF:
+        if (options & LYD_COMPARE_FULL_RECURSION) {
+            /* TODO Notification
+            goto all_children_compare;
+            */
+        }
+        return LY_SUCCESS;
+    case LYS_LIST:
+        iter1 = ((struct lyd_node_inner*)node1)->child;
+        iter2 = ((struct lyd_node_inner*)node2)->child;
+
+        if (((struct lysc_node_list*)node1->schema)->keys && (!options & LYD_COMPARE_FULL_RECURSION)) {
+            /* lists with keys, their equivalence is based on their keys */
+            unsigned int u;
+
+            LY_ARRAY_FOR(((struct lysc_node_list*)node1->schema)->keys, u) {
+                if (lyd_compare(iter1, iter2, options)) {
+                    return LY_ENOT;
+                }
+                iter1 = iter1->next;
+                iter2 = iter2->next;
+            }
+        } else {
+            /* lists without keys, their equivalence is based on equivalence of all the children (both direct and indirect) */
+
+all_children_compare:
+            if (!iter1 && !iter2) {
+                /* no children, nothing to compare */
+                return LY_SUCCESS;
+            }
+
+            for (; iter1 && iter2; iter1 = iter1->next, iter2 = iter2->next) {
+                if (lyd_compare(iter1, iter2, options | LYD_COMPARE_FULL_RECURSION)) {
+                    return LY_ENOT;
+                }
+            }
+            if (iter1 || iter2) {
+                return LY_ENOT;
+            }
+        }
+        return LY_SUCCESS;
+    case LYS_ANYXML:
+    case LYS_ANYDATA:
+        any1 = (struct lyd_node_any*)node1;
+        any2 = (struct lyd_node_any*)node2;
+
+        if (any1->value_type != any2->value_type) {
+            return LY_ENOT;
+        }
+        switch (any1->value_type) {
+        case LYD_ANYDATA_DATATREE:
+            iter1 = any1->value.tree;
+            iter2 = any2->value.tree;
+            goto all_children_compare;
+        case LYD_ANYDATA_STRING:
+        case LYD_ANYDATA_XML:
+        case LYD_ANYDATA_JSON:
+            len1 = strlen(any1->value.str);
+            len2 = strlen(any2->value.str);
+            if (len1 != len2 || strcmp(any1->value.str, any2->value.str)) {
+                return LY_ENOT;
+            }
+            return LY_SUCCESS;
+#if 0 /* TODO LYB format */
+        case LYD_ANYDATA_LYB:
+            int len1 = lyd_lyb_data_length(any1->value.mem);
+            int len2 = lyd_lyb_data_length(any2->value.mem);
+            if (len1 != len2 || memcmp(any1->value.mem, any2->value.mem, len1)) {
+                return LY_ENOT;
+            }
+            return LY_SUCCESS;
+#endif
+        }
+    }
+
+    LOGINT(node1->schema->module->ctx);
+    return LY_EINT;
+}

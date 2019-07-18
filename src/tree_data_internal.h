@@ -76,6 +76,22 @@ LY_ERR lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, struct l
  */
 
 /**
+ * @brief Generate hash for the node.
+ *
+ * @param[in] node Data node to (re)generate hash value.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_hash(struct lyd_node *node);
+
+/**
+ * @brief Insert hash of the node into the hash table of its parent.
+ *
+ * @param[in] node Data node which hash will be inserted into the lyd_node_inner::children_hash hash table of its parent.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_insert_hash(struct lyd_node *node);
+
+/**
  * @brief Maintain node's parent's children hash table when unlinking the node.
  *
  * When completely freeing data tree, it is expected to free the parent's children hash table first, at once.

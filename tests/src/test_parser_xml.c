@@ -56,6 +56,7 @@ setup(void **state)
     (void) state; /* unused */
 
     const char *schema_a = "module a {namespace urn:tests:a;prefix a;yang-version 1.1;"
+            "list l1 { key \"a b\"; leaf a {type string;} leaf b {type string;} leaf c {type string;}}"
             "leaf foo { type string;}"
             "anydata any {config false;} }";
 
@@ -141,11 +142,34 @@ test_anydata(void **state)
     *state = NULL;
 }
 
+static void
+test_list(void **state)
+{
+    *state = test_list;
+
+    const char *data = "<l1 xmlns=\"urn:tests:a\"><a>one</a><b>one</b><c>one</c></l1>";
+    struct lyd_node *tree, *iter;
+    struct lyd_node_inner *list;
+
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, 0, &tree));
+    assert_non_null(tree);
+    assert_int_equal(LYS_LIST, tree->schema->nodetype);
+    assert_string_equal("l1", tree->schema->name);
+    list = (struct lyd_node_inner*)tree;
+    LY_LIST_FOR(list->child, iter) {
+        assert_int_not_equal(0, iter->hash);
+    }
+
+    lyd_free_all(tree);
+    *state = NULL;
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_leaf, setup, teardown),
         cmocka_unit_test_setup_teardown(test_anydata, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_list, setup, teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

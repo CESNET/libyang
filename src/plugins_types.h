@@ -127,7 +127,7 @@ typedef LY_ERR (*ly_type_store_clb)(struct ly_ctx *ctx, struct lysc_type *type, 
  * @param[in] val1 First value to compare.
  * @param[in] val2 Second value to compare.
  * @return LY_SUCCESS if values are same (according to the type's definition of being same).
- * @return LY_EVALID if values differ.
+ * @return LY_ENOT if values differ.
  */
 typedef LY_ERR (*ly_type_compare_clb)(const struct lyd_value *val1, const struct lyd_value *val2);
 

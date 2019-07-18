@@ -178,7 +178,10 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
             }
         }
         attributes = NULL;
-        LY_CHECK_GOTO(lydxml_attributes(ctx, data, &attributes), cleanup);
+        if (ctx->status == LYXML_ATTRIBUTE) {
+            LY_CHECK_GOTO(lydxml_attributes(ctx, data, &attributes), cleanup);
+        }
+
         ns = lyxml_ns_get((struct lyxml_context *)ctx, prefix, prefix_len);
         if (!ns) {
             LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_REFERENCE, "Unknown XML prefix \"%*.s\".", prefix_len, prefix);
@@ -316,6 +319,10 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
             ((struct lyd_node_any*)cur)->value_type = LYD_ANYDATA_XML;
             ((struct lyd_node_any*)cur)->value.xml = lydict_insert(ctx->ctx, start, stop - start);
         }
+
+        /* calculate the hash and insert it into parent (list with keys is handled when its keys are inserted) */
+        lyd_hash(cur);
+        lyd_insert_hash(cur);
     }
 
 cleanup:

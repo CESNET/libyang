@@ -129,7 +129,9 @@ typedef enum {
                                           is printed in XML format. */
     LYD_ANYDATA_XML = 0x04,          /**< Value is a string containing the serialized XML data. */
     LYD_ANYDATA_JSON = 0x08,         /**< Value is a string containing the data modeled by YANG and encoded as I-JSON. */
+#if 0 /* TODO LYB format */
     LYD_ANYDATA_LYB = 0x10,          /**< Value is a memory chunk with the serialized data tree in LYB format. */
+#endif
 } LYD_ANYDATA_VALUETYPE;
 
 /** @} */
@@ -224,10 +226,38 @@ struct lyd_attr {
 #define LYD_NODE_ANY (LYS_ANYDATA)   /**< Schema nodetype mask for lyd_node_any */
 
 /**
+ * @defgroup dnodeflags Data nodes flags
+ * @ingroup datatree
+ * @{
+ *
+ * Various flags of data nodes.
+ *
+ *     1 - container    5 - anydata/anyxml
+ *     2 - list         6 - rpc/action
+ *     3 - leaf         7 - notification
+ *     4 - leaflist
+ *
+ *     bit name              1 2 3 4 5 6 7
+ *     ---------------------+-+-+-+-+-+-+-+
+ *       1 LYD_DEFAULT      |x| |x|x| | | |
+ *                          +-+-+-+-+-+-+-+
+ *       2                  | | | | | | | |
+ *     ---------------------+-+-+-+-+-+-+-+
+ *
+ */
+
+#define LYD_DEFAULT      0x01        /**< default (implicit) node; */
+/** @} */
+
+/**
  * @brief Generic structure for a data node.
  */
 struct lyd_node {
-    uint32_t hash;                   /**< hash of this particular node (module name + schema name + key string values if list) */
+    uint32_t hash;                   /**< hash of this particular node (module name + schema name + key string values if list or
+                                          hashes of all nodes of subtree in case of keyless list). Note that while hash can be
+                                          used to get know that nodes are not equal, it cannot be used to decide that the
+                                          nodes are equal due to possible collisions. */
+    uint32_t flags;                  /**< [data node flags](@ref dnodeflags) */
     const struct lysc_node *schema;  /**< pointer to the schema definition of this node */
     struct lyd_node_inner *parent;   /**< pointer to the parent node, NULL in case of root node */
     struct lyd_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
@@ -246,7 +276,11 @@ struct lyd_node {
  * @brief Data node structure for the inner data tree nodes - containers and lists.
  */
 struct lyd_node_inner {
-    uint32_t hash;                   /**< hash of this particular node (module name + schema name + key string values if list) */
+    uint32_t hash;                   /**< hash of this particular node (module name + schema name + key string values if list or
+                                          hashes of all nodes of subtree in case of keyless list). Note that while hash can be
+                                          used to get know that nodes are not equal, it cannot be used to decide that the
+                                          nodes are equal due to possible collisions. */
+    uint32_t flags;                  /**< [data node flags](@ref dnodeflags) */
     const struct lysc_node *schema;  /**< pointer to the schema definition of this node */
     struct lyd_node_inner *parent;   /**< pointer to the parent node, NULL in case of root node */
     struct lyd_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
@@ -262,13 +296,18 @@ struct lyd_node_inner {
 
     struct lyd_node *child;          /**< pointer to the first child node. */
     struct hash_table *children_ht;  /**< hash table with all the direct children (except keys for a list, lists without keys) */
+#define LYD_HT_MIN_ITEMS 4           /**< minimal number of children to create lyd_node_inner::children_ht hash table. */
 };
 
 /**
  * @brief Data node structure for the terminal data tree nodes - leafs and leaf-lists.
  */
 struct lyd_node_term {
-    uint32_t hash;                   /**< hash of this particular node (module name + schema name + key string values if list) */
+    uint32_t hash;                   /**< hash of this particular node (module name + schema name + key string values if list or
+                                          hashes of all nodes of subtree in case of keyless list). Note that while hash can be
+                                          used to get know that nodes are not equal, it cannot be used to decide that the
+                                          nodes are equal due to possible collisions. */
+    uint32_t flags;                  /**< [data node flags](@ref dnodeflags) */
     const struct lysc_node *schema;  /**< pointer to the schema definition of this node */
     struct lyd_node_inner *parent;   /**< pointer to the parent node, NULL in case of root node */
     struct lyd_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
@@ -289,7 +328,11 @@ struct lyd_node_term {
  * @brief Data node structure for the anydata data tree nodes - anydatas and anyxmls.
  */
 struct lyd_node_any {
-    uint32_t hash;                   /**< hash of this particular node (module name + schema name + key string values if list) */
+    uint32_t hash;                   /**< hash of this particular node (module name + schema name + key string values if list or
+                                          hashes of all nodes of subtree in case of keyless list). Note that while hash can be
+                                          used to get know that nodes are not equal, it cannot be used to decide that the
+                                          nodes are equal due to possible collisions. */
+    uint32_t flags;                  /**< [data node flags](@ref dnodeflags) */
     const struct lysc_node *schema;  /**< pointer to the schema definition of this node */
     struct lyd_node_inner *parent;   /**< pointer to the parent node, NULL in case of root node */
     struct lyd_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
@@ -648,6 +691,31 @@ LY_ERR lyd_value_validate(struct ly_ctx *ctx, const struct lyd_node_term *node, 
  */
 LY_ERR lyd_value_compare(const struct lyd_node_term *node, const char *value, size_t value_len,
                          ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format, const struct lyd_node **trees);
+
+/**
+ * @defgroup datacompareoptions Data compare options
+ * @ingroup datatree
+ *
+ * Various options to change the lyd_compare behavior.
+ */
+#define LYD_COMPARE_FULL_RECURSION 0x01 /* lists and containers are the same only in case all they children
+                                           (subtree, so direct as well as indirect children) are the same. By default,
+                                           containers are the same in case of the same schema node and lists are the same
+                                           in case of equal keys (keyless lists do the full recursion comparison all the time). */
+#define LYD_COMPARE_DEFAULTS 0x02       /* By default, implicit and explicit default nodes are considered to be equal. This flag
+                                           changes this behavior and implicit (automatically created default node) and explicit
+                                           (explicitly created node with the default value) default nodes are considered different. */
+/**@} dataparseroptions */
+
+/**
+ * @brief Compare 2 data nodes if they are equivalent.
+ *
+ * @param[in] node1 The first node to compare.
+ * @param[in] node2 The second node to compare.
+ * @return LY_SUCCESS if the nodes are equivalent.
+ * @return LY_ENOT if the nodes are not equivalent.
+ */
+LY_ERR lyd_compare(const struct lyd_node *node1, const struct lyd_node *node2, int options);
 
 /**
  * @brief Resolve instance-identifier defined by lyd_value_path structure.
