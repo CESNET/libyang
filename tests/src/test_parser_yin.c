@@ -47,7 +47,7 @@ char logbuf[BUFSIZE] = {0};
 int store = -1; /* negative for infinite logging, positive for limited logging */
 
 /* set to 0 to printing error messages to stderr instead of checking them in code */
-#define ENABLE_LOGGER_CHECKING 0
+#define ENABLE_LOGGER_CHECKING 1
 
 #if ENABLE_LOGGER_CHECKING
 static void
@@ -1926,6 +1926,64 @@ test_any_elem(void **state)
     st->finished_correctly = true;
 }
 
+static void
+test_leaf_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct lysp_node *siblings = NULL;
+    struct tree_node_meta node_meta = {.parent = NULL, .siblings = &siblings};
+    struct lysp_node_leaf *parsed = NULL;
+
+    /* max elements */
+    data = ELEMENT_WRAPPER_START
+                "<leaf name=\"leaf\">"
+                    "<config value=\"true\" />"
+                    "<default value=\"def-val\"/>"
+                    "<description><text>desc</text></description>"
+                    "<if-feature name=\"feature\" />"
+                    "<mandatory value=\"true\" />"
+                    "<must condition=\"must-cond\" />"
+                    "<reference><text>ref</text></reference>"
+                    "<status value=\"deprecated\"/>"
+                    "<type name=\"type\"/>"
+                    "<units name=\"uni\"/>"
+                    "<when condition=\"when-cond\"/>"
+                "</leaf>"
+            ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &node_meta, NULL, NULL, true), LY_SUCCESS);
+    parsed = (struct lysp_node_leaf *)siblings;
+    assert_null(parsed->parent);
+    assert_int_equal(parsed->nodetype, LYS_LEAF);
+    assert_true(parsed->flags | LYS_CONFIG_W);
+    assert_true(parsed->flags | LYS_MAND_TRUE);
+    assert_true(parsed->flags | LYS_STATUS_DEPRC);
+    assert_null(parsed->next);
+    assert_string_equal(parsed->name, "leaf");
+    assert_string_equal(parsed->dsc, "desc");
+    assert_string_equal(parsed->ref, "ref");
+    assert_string_equal(parsed->when->cond, "when-cond");
+    assert_string_equal(*parsed->iffeatures, "feature");
+    assert_null(parsed->exts);
+    assert_string_equal(parsed->musts->arg, "must-cond");
+    assert_string_equal(parsed->type.name, "type");
+    assert_string_equal(parsed->units, "uni");
+    assert_string_equal(parsed->dflt, "def-val");
+    lysp_node_free(st->ctx, siblings);
+    siblings = NULL;
+
+    /* min elements */
+    data = ELEMENT_WRAPPER_START "<leaf name=\"leaf\"> <type name=\"type\"/> </leaf>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &node_meta, NULL, NULL, true), LY_SUCCESS);
+    parsed = (struct lysp_node_leaf *)siblings;
+    assert_string_equal(parsed->name, "leaf");
+    assert_string_equal(parsed->type.name, "type");
+    lysp_node_free(st->ctx, siblings);
+    siblings = NULL;
+
+    st->finished_correctly = true;
+}
+
 int
 main(void)
 {
@@ -1975,6 +2033,8 @@ main(void)
         cmocka_unit_test_setup_teardown(test_min_elems_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_ordby_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_any_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_leaf_elem, setup_element_test, teardown_element_test),
+
     };
 
     return cmocka_run_group_tests(tests, setup_ly_ctx, destroy_ly_ctx);

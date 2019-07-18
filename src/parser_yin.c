@@ -1079,7 +1079,7 @@ yin_parse_any(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const ch
     }
 
     /* parser argument */
-    yin_parse_attribute(ctx, attrs, YIN_ARG_NAME, &any->name, Y_IDENTIF_ARG, any_kw);
+    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NAME, &any->name, Y_IDENTIF_ARG, any_kw));
 
     struct yin_subelement subelems[9] = {
                                             {YANG_CONFIG, &any->flags, YIN_SUBELEM_UNIQUE},
@@ -1093,6 +1093,58 @@ yin_parse_any(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const ch
                                             {YANG_CUSTOM, NULL, 0},
                                         };
     return yin_parse_content(ctx, subelems, 9, data, any_kw, NULL, &any->exts);
+}
+
+/**
+ * @brief parse leaf element.
+ *
+ * @param[in,out] ctx YIN parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] node_meta Meta information about node parent and siblings.
+ *
+ * @return LY_ERR values.
+ */
+static LY_ERR
+yin_parse_leaf(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+               struct tree_node_meta *node_meta)
+{
+    struct lysp_node *iter;
+    struct lysp_node_leaf *leaf;
+
+    /* create structure */
+    leaf = calloc(1, sizeof *leaf);
+    LY_CHECK_ERR_RET(!leaf, LOGMEM(ctx->xml_ctx.ctx), LY_EMEM);
+    leaf->nodetype = LYS_LEAF;
+    leaf->parent = node_meta->parent;
+
+    /* insert into siblings */
+    if (!*(node_meta->siblings)) {
+        *node_meta->siblings = (struct lysp_node *)leaf;
+    } else {
+        for (iter = *node_meta->siblings; iter->next; iter = iter->next);
+        iter->next = (struct lysp_node *)leaf;
+    }
+
+    /* parser argument */
+    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NAME, &leaf->name, Y_IDENTIF_ARG, YANG_LEAF));
+
+    /* parse content */
+    struct yin_subelement subelems[12] = {
+                                            {YANG_CONFIG, &leaf->flags, YIN_SUBELEM_UNIQUE},
+                                            {YANG_DEFAULT, &leaf->dflt, YIN_SUBELEM_UNIQUE},
+                                            {YANG_DESCRIPTION, &leaf->dsc, YIN_SUBELEM_UNIQUE},
+                                            {YANG_IF_FEATURE, &leaf->iffeatures, 0},
+                                            {YANG_MANDATORY, &leaf->flags, YIN_SUBELEM_UNIQUE},
+                                            {YANG_MUST, &leaf->musts, 0},
+                                            {YANG_REFERENCE, &leaf->ref, YIN_SUBELEM_UNIQUE},
+                                            {YANG_STATUS, &leaf->flags, YIN_SUBELEM_UNIQUE},
+                                            {YANG_TYPE, &leaf->type, YIN_SUBELEM_UNIQUE | YIN_SUBELEM_MANDATORY},
+                                            {YANG_UNITS, &leaf->units, YIN_SUBELEM_UNIQUE},
+                                            {YANG_WHEN, &leaf->when, YIN_SUBELEM_UNIQUE},
+                                            {YANG_CUSTOM, NULL, 0},
+                                        };
+    return yin_parse_content(ctx, subelems, 12, data, YANG_LEAF, NULL, &leaf->exts);
 }
 
 /**
@@ -1346,6 +1398,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 case YANG_KEY:
                     break;
                 case YANG_LEAF:
+                    ret = yin_parse_leaf(ctx, attrs, data, (struct tree_node_meta *)subelem->dest);
                     break;
                 case YANG_LEAF_LIST:
                     break;
