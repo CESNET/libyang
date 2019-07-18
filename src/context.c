@@ -42,8 +42,8 @@ extern unsigned int ext_plugins_ref;
 #define IETF_INET_TYPES_PATH "../models/ietf-inet-types@2013-07-15.h"
 #define IETF_YANG_TYPES_PATH "../models/ietf-yang-types@2013-07-15.h"
 #define IETF_DATASTORES "../models/ietf-datastores@2017-08-17.h"
-#define IETF_YANG_LIB_PATH "../models/ietf-yang-library@2018-01-17.h"
-#define IETF_YANG_LIB_REV "2018-01-17"
+#define IETF_YANG_LIB_PATH "../models/ietf-yang-library@2019-01-04.h"
+#define IETF_YANG_LIB_REV "2019-01-04"
 
 #include IETF_YANG_METADATA_PATH
 #include YANG_PATH
@@ -66,7 +66,7 @@ static struct internal_modules_s {
     {"ietf-yang-types", "2013-07-15", (const char*)ietf_yang_types_2013_07_15_yin, 0, LYS_IN_YIN},
     /* ietf-datastores and ietf-yang-library must be right here at the end of the list! */
     {"ietf-datastores", "2017-08-17", (const char*)ietf_datastores_2017_08_17_yin, 0, LYS_IN_YIN},
-    {"ietf-yang-library", IETF_YANG_LIB_REV, (const char*)ietf_yang_library_2018_01_17_yin, 1, LYS_IN_YIN}
+    {"ietf-yang-library", IETF_YANG_LIB_REV, (const char*)ietf_yang_library_2019_01_04_yin, 1, LYS_IN_YIN}
 };
 
 API unsigned int
@@ -260,7 +260,7 @@ ly_ctx_new_yl_common(const char *search_dir, const char *input, LYD_FORMAT forma
                 } else if (!strcmp(node->schema->name, "revision")) {
                     revision = ((struct lyd_node_leaf_list*)node)->value_str;
                 } else if (!strcmp(node->schema->name, "feature")) {
-                    ly_set_add(&features, node->child, LY_SET_OPT_USEASLIST);
+                    ly_set_add(&features, node, LY_SET_OPT_USEASLIST);
                 }
             }
 
@@ -1665,10 +1665,9 @@ ly_ctx_get_disabled_module_iter(const struct ly_ctx *ctx, uint32_t *idx)
 }
 
 static int
-ylib_feature(struct lyd_node *parent, struct lys_module *cur_mod, int bis)
+ylib_feature(struct lyd_node *parent, struct lys_module *cur_mod)
 {
     int i, j;
-    struct lyd_node *list;
 
     /* module features */
     for (i = 0; i < cur_mod->features_size; ++i) {
@@ -1676,11 +1675,7 @@ ylib_feature(struct lyd_node *parent, struct lys_module *cur_mod, int bis)
             continue;
         }
 
-        if (bis) {
-            if (!(list = lyd_new(parent, NULL, "feature")) || !lyd_new_leaf(list, NULL, "name", cur_mod->features[i].name)) {
-                return EXIT_FAILURE;
-            }
-        } else if (!lyd_new_leaf(parent, NULL, "feature", cur_mod->features[i].name)) {
+        if (!lyd_new_leaf(parent, NULL, "feature", cur_mod->features[i].name)) {
             return EXIT_FAILURE;
         }
     }
@@ -1692,12 +1687,7 @@ ylib_feature(struct lyd_node *parent, struct lys_module *cur_mod, int bis)
                 continue;
             }
 
-            if (bis) {
-                if (!(list = lyd_new(parent, NULL, "feature"))
-                        || !lyd_new_leaf(list, NULL, "name", cur_mod->inc[i].submodule->features[j].name)) {
-                    return EXIT_FAILURE;
-                }
-            } else if (!lyd_new_leaf(parent, NULL, "feature", cur_mod->inc[i].submodule->features[j].name)) {
+            if (!lyd_new_leaf(parent, NULL, "feature", cur_mod->inc[i].submodule->features[j].name)) {
                 return EXIT_FAILURE;
             }
         }
@@ -1723,16 +1713,15 @@ ylib_deviation(struct lyd_node *parent, struct lys_module *cur_mod, int bis)
             for (j = 0; j < mod->deviation_size; ++j) {
                 ptr = strstr(mod->deviation[j].target_name, cur_mod->name);
                 if (ptr && ptr[strlen(cur_mod->name)] == ':') {
-                    cont = lyd_new(parent, NULL, "deviation");
-                    if (!cont) {
-                        return EXIT_FAILURE;
-                    }
-
                     if (bis) {
-                        if (!lyd_new_leaf(cont, NULL, "module", mod->name)) {
+                        if (!lyd_new_leaf(parent, NULL, "deviation", mod->name)) {
                             return EXIT_FAILURE;
                         }
                     } else {
+                        cont = lyd_new(parent, NULL, "deviation");
+                        if (!cont) {
+                            return EXIT_FAILURE;
+                        }
                         if (!lyd_new_leaf(cont, NULL, "name", mod->name)) {
                             return EXIT_FAILURE;
                         }
@@ -1826,16 +1815,15 @@ ly_ctx_info(struct ly_ctx *ctx)
     }
 
     if (bis) {
-        if (!(root_bis = lyd_new(NULL, mod, "yang-library")) || !(set_bis = lyd_new(root_bis, NULL, "module-set"))) {
+        if (!(root_bis = lyd_new(NULL, mod, "yang-library"))) {
+            goto error;
+        }
+
+        if (!(set_bis = lyd_new(root_bis, NULL, "module-set"))) {
             goto error;
         }
 
         if (!lyd_new_leaf(set_bis, NULL, "name", "complete")) {
-            goto error;
-        }
-
-        sprintf(id, "%u", ctx->models.module_set_id);
-        if (!lyd_new_leaf(set_bis, NULL, "checksum", id)) {
             goto error;
         }
     }
@@ -1878,7 +1866,7 @@ ly_ctx_info(struct ly_ctx *ctx)
             goto error;
         }
         /* feature leaf-list */
-        if (ylib_feature(cont, ctx->models.list[i], 0)) {
+        if (ylib_feature(cont, ctx->models.list[i])) {
             goto error;
         }
         /* deviation list */
@@ -1938,7 +1926,7 @@ ly_ctx_info(struct ly_ctx *ctx)
             }
             if (ctx->models.list[i]->implemented) {
                 /* feature list */
-                if (ylib_feature(cont, ctx->models.list[i], 1)) {
+                if (ylib_feature(cont, ctx->models.list[i])) {
                     goto error;
                 }
                 /* deviation */
@@ -1953,7 +1941,7 @@ ly_ctx_info(struct ly_ctx *ctx)
     if (!lyd_new_leaf(root, NULL, "module-set-id", id)) {
         goto error;
     }
-    if (bis && !lyd_new_leaf(root_bis, NULL, "checksum", id)) {
+    if (bis && !lyd_new_leaf(root_bis, NULL, "content-id", id)) {
         goto error;
     }
 

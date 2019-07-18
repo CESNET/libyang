@@ -521,7 +521,7 @@ test_ly_ctx_clean2(void **state)
     /* get the target leaf in ietf-yang-library */
     mod = ctx->models.list[ctx->internal_module_count - 1];
     /* magic: leaf = /yl:modules-state/yl:module/yl:name */
-    leaf = (struct lys_node_leaf *)mod->data->prev->prev->child->next->child->prev->child->child;
+    leaf = (struct lys_node_leaf *)mod->data->prev->prev->prev->child->next->child->prev->child->child;
     assert_true(leaf->backlinks && leaf->backlinks->number == 1);
 
     /* clean the context ... */
