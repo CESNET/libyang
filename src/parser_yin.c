@@ -918,6 +918,88 @@ yin_parse_maxelements(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, 
 }
 
 /**
+ * @brief Parse max-elements element.
+ *
+ * @param[in,out] ctx YIN parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] min Value to write to.
+ * @param[in,out] flags Flags to write to.
+ * @param[in,out] exts Extension instances to add to.
+ *
+ * @return LY_ERR values.
+ */
+static LY_ERR
+yin_parse_minelements(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data, uint32_t *min,
+                      uint16_t *flags, struct lysp_ext_instance **exts)
+{
+    const char *temp_val = NULL;
+    char *ptr;
+    unsigned long int num;
+    struct yin_subelement subelems[1] = {
+                                            {YANG_CUSTOM, NULL, 0},
+                                        };
+
+    *flags |= LYS_SET_MIN;
+    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_VALUE, &temp_val, Y_STR_ARG, YANG_MAX_ELEMENTS));
+
+    if (!temp_val || temp_val[0] == '\0' || (temp_val[0] == '0' && temp_val[1] != '\0')) {
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL, strlen(temp_val), temp_val, "min-elements");
+        FREE_STRING(ctx->xml_ctx.ctx, temp_val);
+        return LY_EVALID;
+    }
+
+    errno = 0;
+    num = strtoul(temp_val, &ptr, 10);
+    if (ptr[0] != 0) {
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL, strlen(temp_val), temp_val, "min-elements");
+        FREE_STRING(ctx->xml_ctx.ctx, temp_val);
+        return LY_EVALID;
+    }
+    if (errno == ERANGE || num > UINT32_MAX) {
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_OOB, strlen(temp_val), temp_val, "min-elements");
+        FREE_STRING(ctx->xml_ctx.ctx, temp_val);
+        return LY_EVALID;
+    }
+    *min = num;
+    FREE_STRING(ctx->xml_ctx.ctx, temp_val);
+    return yin_parse_content(ctx, subelems, 1, data, YANG_MAX_ELEMENTS, NULL, exts);
+}
+
+static LY_ERR
+yin_parse_minmax(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+                 enum yang_keyword parent, enum yang_keyword current, void *dest)
+{
+    assert(current == YANG_MAX_ELEMENTS || current == YANG_MIN_ELEMENTS);
+    assert(parent == YANG_LEAF_LIST || parent == YANG_REFINE || parent == YANG_LIST);
+    uint32_t *lim;
+    uint16_t *flags;
+    struct lysp_ext_instance **exts;
+
+    if (parent == YANG_LEAF_LIST) {
+        lim = (current == YANG_MAX_ELEMENTS) ? &((struct lysp_node_leaflist *)dest)->max : &((struct lysp_node_leaflist *)dest)->min;
+        flags = &((struct lysp_node_leaflist *)dest)->flags;
+        exts = &((struct lysp_node_leaflist *)dest)->exts;
+    } else if (parent == YANG_REFINE) {
+        lim = (current == YANG_MAX_ELEMENTS) ? &((struct lysp_refine *)dest)->max : &((struct lysp_refine *)dest)->min;
+        flags = &((struct lysp_refine *)dest)->flags;
+        exts = &((struct lysp_refine *)dest)->exts;
+    } else {
+        lim = (current == YANG_MAX_ELEMENTS) ? &((struct lysp_node_list *)dest)->max : &((struct lysp_node_list *)dest)->min;
+        flags = &((struct lysp_node_list *)dest)->flags;
+        exts = &((struct lysp_node_list *)dest)->exts;
+    }
+
+    if (current == YANG_MAX_ELEMENTS) {
+        LY_CHECK_RET(yin_parse_maxelements(ctx, attrs, data, lim, flags, exts));
+    } else {
+        LY_CHECK_RET(yin_parse_minelements(ctx, attrs, data, lim, flags, exts));
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Map keyword type to substatement info.
  *
  * @param[in] kw Keyword type.
@@ -1034,6 +1116,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
     enum yang_keyword kw = YANG_NONE;
     struct yin_subelement *subelem = NULL;
     struct lysp_type *type, *nested_type;
+
     assert(is_ordered(subelem_info, subelem_info_size));
 
     if (ctx->xml_ctx.status == LYXML_ELEM_CONTENT) {
@@ -1184,16 +1267,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     break;
                 case YANG_MAX_ELEMENTS:
                 case YANG_MIN_ELEMENTS:
-                    if (current_element == YANG_LEAF_LIST) {
-                        ret = yin_parse_maxelements(ctx, attrs, data, &((struct lysp_node_leaflist *)subelem->dest)->max,
-                                                    &((struct lysp_node_leaflist *)subelem->dest)->flags, exts);
-                    } else if (current_element == YANG_REFINE) {
-                        ret = yin_parse_maxelements(ctx, attrs, data, &((struct lysp_refine *)subelem->dest)->max,
-                            &((struct lysp_refine *)subelem->dest)->flags, exts);
-                    } else {
-                        ret = yin_parse_maxelements(ctx, attrs, data, &((struct lysp_node_list *)subelem->dest)->max,
-                                                    &((struct lysp_node_list *)subelem->dest)->flags, exts);
-                    }
+                    ret = yin_parse_minmax(ctx, attrs, data, current_element, kw, subelem->dest);
                     break;
                 case YANG_MODIFIER:
                     ret = yin_parse_modifier(ctx, attrs, data, (const char **)subelem->dest, exts);

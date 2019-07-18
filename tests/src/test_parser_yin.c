@@ -1777,6 +1777,49 @@ test_max_elems_elem(void **state)
     st->finished_correctly = true;
 }
 
+static void
+test_min_elems_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct lysp_node_list list = {};
+    struct lysp_node_leaflist llist = {};
+    struct lysp_refine refine = {};
+
+    data = "<refine xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <min-elements value=\"0\"/> </refine>";
+    assert_int_equal(test_element_helper(st, &data, &refine, NULL, NULL, true), LY_SUCCESS);
+    assert_int_equal(refine.min, 0);
+    assert_true(refine.flags | LYS_SET_MIN);
+
+    data = "<list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <min-elements value=\"41\"/> </list>";
+    assert_int_equal(test_element_helper(st, &data, &list, NULL, NULL, true), LY_SUCCESS);
+    assert_int_equal(list.min, 41);
+    assert_true(list.flags | LYS_SET_MIN);
+
+    data = "<leaf-list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <min-elements value=\"50\"/> </leaf-list>";
+    assert_int_equal(test_element_helper(st, &data, &llist, NULL, NULL, true), LY_SUCCESS);
+    assert_int_equal(llist.min, 50);
+    assert_true(llist.flags | LYS_SET_MIN);
+
+    data = "<leaf-list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <min-elements value=\"-5\"/> </leaf-list>";
+    assert_int_equal(test_element_helper(st, &data, &llist, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Value \"-5\" is out of \"min-elements\" bounds. Line number 1.");
+
+    data = "<leaf-list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <min-elements value=\"99999999999999999\"/> </leaf-list>";
+    assert_int_equal(test_element_helper(st, &data, &llist, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Value \"99999999999999999\" is out of \"min-elements\" bounds. Line number 1.");
+
+    data = "<leaf-list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <min-elements value=\"5k\"/> </leaf-list>";
+    assert_int_equal(test_element_helper(st, &data, &llist, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Invalid value \"5k\" of \"min-elements\". Line number 1.");
+
+    data = "<leaf-list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <min-elements value=\"05\"/> </leaf-list>";
+    assert_int_equal(test_element_helper(st, &data, &llist, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Invalid value \"05\" of \"min-elements\". Line number 1.");
+
+    st->finished_correctly = true;
+}
+
 int
 main(void)
 {
@@ -1823,6 +1866,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_yin_text_value_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_type_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_max_elems_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_min_elems_elem, setup_element_test, teardown_element_test),
     };
 
     return cmocka_run_group_tests(tests, setup_ly_ctx, destroy_ly_ctx);
