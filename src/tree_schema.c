@@ -2991,7 +2991,15 @@ lys_ingrouping(const struct lys_node *node)
     const struct lys_node *iter = node;
     assert(node);
 
-    for(iter = node; iter && iter->nodetype != LYS_GROUPING; iter = lys_parent(iter));
+    iter = node;
+    while (iter && iter->nodetype != LYS_GROUPING) {
+        if (iter->parent && (iter->parent->nodetype == LYS_AUGMENT) && iter->parent->parent) {
+            /* for augments in uses, we do not care about the target */
+            iter = iter->parent->parent;
+        } else {
+            iter = lys_parent(iter);
+        }
+    }
     if (!iter) {
         return 0;
     } else {

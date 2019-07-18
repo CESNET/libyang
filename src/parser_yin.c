@@ -1295,12 +1295,9 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
 
     case LY_TYPE_LEAFREF:
         /* flag resolving for later use */
-        if (!parenttype) {
-            for (siter = parent; siter && siter->nodetype != LYS_GROUPING; siter = lys_parent(siter));
-            if (siter) {
-                /* just a flag - do not resolve */
-                parenttype = 1;
-            }
+        if (!parenttype && lys_ingrouping(parent)) {
+            /* just a flag - do not resolve */
+            parenttype = 1;
         }
 
         /* RFC 6020 9.9.2 - path */

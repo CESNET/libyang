@@ -895,12 +895,9 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
                 goto error;
             }
             /* flag resolving for later use */
-            if (!tpdftype) {
-                for (siter = parent; siter && siter->nodetype != LYS_GROUPING; siter = lys_parent(siter));
-                if (siter) {
-                    /* just a flag - do not resolve */
-                    tpdftype = 1;
-                }
+            if (!tpdftype && lys_ingrouping(parent)) {
+                /* just a flag - do not resolve */
+                tpdftype = 1;
             }
 
             if (type->info.lref.path) {
