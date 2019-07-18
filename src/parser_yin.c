@@ -874,7 +874,7 @@ yin_parse_type(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const c
  * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
  * @param[in,out] data Data to read from, always moved to currently handled character.
  * @param[in,out] max Value to write to.
- * @param[in,out] flags Flags to write to.
+ * @param[in] flags Flags to write to.
  * @param[in,out] exts Extension instances to add to.
  *
  * @return LY_ERR values.
@@ -924,7 +924,7 @@ yin_parse_maxelements(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, 
  * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
  * @param[in,out] data Data to read from, always moved to currently handled character.
  * @param[in,out] min Value to write to.
- * @param[in,out] flags Flags to write to.
+ * @param[in] flags Flags to write to.
  * @param[in,out] exts Extension instances to add to.
  *
  * @return LY_ERR values.
@@ -941,7 +941,7 @@ yin_parse_minelements(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, 
                                         };
 
     *flags |= LYS_SET_MIN;
-    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_VALUE, &temp_val, Y_STR_ARG, YANG_MAX_ELEMENTS));
+    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_VALUE, &temp_val, Y_STR_ARG, YANG_MIN_ELEMENTS));
 
     if (!temp_val || temp_val[0] == '\0' || (temp_val[0] == '0' && temp_val[1] != '\0')) {
         LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL, strlen(temp_val), temp_val, "min-elements");
@@ -963,9 +963,21 @@ yin_parse_minelements(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, 
     }
     *min = num;
     FREE_STRING(ctx->xml_ctx.ctx, temp_val);
-    return yin_parse_content(ctx, subelems, 1, data, YANG_MAX_ELEMENTS, NULL, exts);
+    return yin_parse_content(ctx, subelems, 1, data, YANG_MIN_ELEMENTS, NULL, exts);
 }
 
+/**
+ * @brief Parse min-elements or max-elements element.
+ *
+ * @param[in,out] ctx YIN parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] parent Identification of parent element.
+ * @param[in] current Identification of current element.
+ * @param[in] dest Where the parsed value and flags should be stored.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 yin_parse_minmax(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
                  enum yang_keyword parent, enum yang_keyword current, void *dest)
@@ -997,6 +1009,41 @@ yin_parse_minmax(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const
     }
 
     return LY_SUCCESS;
+}
+
+/**
+ * @brief Parser ordered-by element.
+ *
+ * @param[in,out] ctx YIN parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[out] flags Flags to write to.
+ * @param[in,out] exts Extension instance to add to.
+ *
+ * @return LY_ERR values.
+ */
+static LY_ERR
+yin_parse_orderedby(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+                    uint16_t *flags, struct lysp_ext_instance **exts)
+{
+    const char *temp_val;
+    struct yin_subelement subelems[1] = {
+                                            {YANG_CUSTOM, NULL, 0},
+                                        };
+
+    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_VALUE, &temp_val, Y_STR_ARG, YANG_ORDERED_BY));
+    if (strcmp(temp_val, "system") == 0) {
+        *flags |= LYS_ORDBY_SYSTEM;
+    } else if (strcmp(temp_val, "user") == 0) {
+        *flags |= LYS_ORDBY_USER;
+    } else {
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL, strlen(temp_val), temp_val, "ordered-by");
+        FREE_STRING(ctx->xml_ctx.ctx, temp_val);
+        return LY_EVALID;
+    }
+    FREE_STRING(ctx->xml_ctx.ctx, temp_val);
+
+    return yin_parse_content(ctx, subelems, 1, data, YANG_ORDERED_BY, NULL, exts);
 }
 
 /**
@@ -1284,6 +1331,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 case YANG_NOTIFICATION:
                     break;
                 case YANG_ORDERED_BY:
+                    ret = yin_parse_orderedby(ctx, attrs, data, (uint16_t *)subelem->dest, exts);
                     break;
                 case YANG_OUTPUT:
                     break;

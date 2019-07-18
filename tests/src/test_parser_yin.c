@@ -1820,6 +1820,28 @@ test_min_elems_elem(void **state)
     st->finished_correctly = true;
 }
 
+static void
+test_ordby_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    uint16_t flags = 0;
+
+    data = ELEMENT_WRAPPER_START "<ordered-by value=\"system\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &flags, NULL, NULL, true), LY_SUCCESS);
+    assert_true(flags | LYS_ORDBY_SYSTEM);
+
+    data = ELEMENT_WRAPPER_START "<ordered-by value=\"user\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &flags, NULL, NULL, true), LY_SUCCESS);
+    assert_true(flags | LYS_ORDBY_USER);
+
+    data = ELEMENT_WRAPPER_START "<ordered-by value=\"inv\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &flags, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Invalid value \"inv\" of \"ordered-by\". Line number 1.");
+
+    st->finished_correctly = true;
+}
+
 int
 main(void)
 {
@@ -1867,6 +1889,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_type_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_max_elems_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_min_elems_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_ordby_elem, setup_element_test, teardown_element_test),
     };
 
     return cmocka_run_group_tests(tests, setup_ly_ctx, destroy_ly_ctx);
