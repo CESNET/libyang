@@ -88,6 +88,12 @@ struct yin_argument_meta {
     const char **argument;  /**< Argument value */
 };
 
+/* Maet information passed to functions working with tree schema such as yin_parse_any */
+struct tree_node_meta {
+    struct lysp_node *parent;       /**< parent node */
+    struct lysp_node **siblings;    /**< linked list of siblings */
+};
+
 /**
  * @brief Match argument name.
  *

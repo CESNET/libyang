@@ -1047,6 +1047,55 @@ yin_parse_orderedby(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, co
 }
 
 /**
+ * @brief parse any-data or any-xml element.
+ *
+ * @param[in,out] ctx YIN parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] any_kw Identification of current element, can be set to YANG_ANY_DATA or YANG_ANY_XML
+ * @param[in] node_meta Meta information about node parent and siblings.
+ *
+ * @return LY_ERR values.
+ */
+static LY_ERR
+yin_parse_any(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+              enum yang_keyword any_kw, struct tree_node_meta *node_meta)
+{
+    struct lysp_node *iter;
+    struct lysp_node_anydata *any;
+
+    /* create structure */
+    any = calloc(1, sizeof *any);
+    LY_CHECK_ERR_RET(!any, LOGMEM(ctx->xml_ctx.ctx), LY_EMEM);
+    any->nodetype = (any_kw == YANG_ANYDATA) ? LYS_ANYDATA : LYS_ANYXML;
+    any->parent = node_meta->parent;
+
+    /* insert into siblings */
+    if (!*(node_meta->siblings)) {
+        *(node_meta->siblings) = (struct lysp_node *)any;
+    } else {
+        for (iter = *(node_meta->siblings); iter->next; iter = iter->next);
+        iter->next = (struct lysp_node *)any;
+    }
+
+    /* parser argument */
+    yin_parse_attribute(ctx, attrs, YIN_ARG_NAME, &any->name, Y_IDENTIF_ARG, any_kw);
+
+    struct yin_subelement subelems[9] = {
+                                            {YANG_CONFIG, &any->flags, YIN_SUBELEM_UNIQUE},
+                                            {YANG_DESCRIPTION, &any->dsc, YIN_SUBELEM_UNIQUE},
+                                            {YANG_IF_FEATURE, &any->iffeatures, 0},
+                                            {YANG_MANDATORY, &any->flags, YIN_SUBELEM_UNIQUE},
+                                            {YANG_MUST, &any->musts, 0},
+                                            {YANG_REFERENCE, &any->ref, YIN_SUBELEM_UNIQUE},
+                                            {YANG_STATUS, &any->flags, YIN_SUBELEM_UNIQUE},
+                                            {YANG_WHEN, &any->when, YIN_SUBELEM_UNIQUE},
+                                            {YANG_CUSTOM, NULL, 0},
+                                        };
+    return yin_parse_content(ctx, subelems, 9, data, any_kw, NULL, &any->exts);
+}
+
+/**
  * @brief Map keyword type to substatement info.
  *
  * @param[in] kw Keyword type.
@@ -1212,8 +1261,8 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 case YANG_ACTION:
                     break;
                 case YANG_ANYDATA:
-                    break;
                 case YANG_ANYXML:
+                    ret = yin_parse_any(ctx, attrs, data, kw, (struct tree_node_meta *)subelem->dest);
                     break;
                 case YANG_ARGUMENT:
                     ret = yin_parse_argument_element(ctx, attrs, data, (struct yin_argument_meta *)subelem->dest, exts);

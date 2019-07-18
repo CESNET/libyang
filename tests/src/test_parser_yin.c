@@ -32,6 +32,7 @@ void lysp_ext_instance_free(struct ly_ctx *ctx, struct lysp_ext_instance *ext);
 void lysp_ext_free(struct ly_ctx *ctx, struct lysp_ext *ext);
 void lysp_when_free(struct ly_ctx *ctx, struct lysp_when *when);
 void lysp_type_free(struct ly_ctx *ctx, struct lysp_type *type);
+void lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node);
 
 struct state {
     struct ly_ctx *ctx;
@@ -46,7 +47,7 @@ char logbuf[BUFSIZE] = {0};
 int store = -1; /* negative for infinite logging, positive for limited logging */
 
 /* set to 0 to printing error messages to stderr instead of checking them in code */
-#define ENABLE_LOGGER_CHECKING 1
+#define ENABLE_LOGGER_CHECKING 0
 
 #if ENABLE_LOGGER_CHECKING
 static void
@@ -1842,6 +1843,89 @@ test_ordby_elem(void **state)
     st->finished_correctly = true;
 }
 
+static void
+test_any_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct lysp_node *siblings = NULL;
+    struct tree_node_meta node_meta = {.parent = NULL, .siblings = &siblings};
+    struct lysp_node_anydata *parsed = NULL;
+
+    /* anyxml max subelems */
+    data = ELEMENT_WRAPPER_START
+                "<anyxml name=\"any-name\">"
+                    "<config value=\"true\" />"
+                    "<description><text>desc</text></description>"
+                    "<if-feature name=\"feature\" />"
+                    "<mandatory value=\"true\" />"
+                    "<must condition=\"must-cond\" />"
+                    "<reference><text>ref</text></reference>"
+                    "<status value=\"deprecated\"/>"
+                    "<when condition=\"when-cond\"/>"
+                "</anyxml>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &node_meta, NULL, NULL, true), LY_SUCCESS);
+    parsed = (struct lysp_node_anydata *)siblings;
+    assert_null(parsed->parent);
+    assert_int_equal(parsed->nodetype, LYS_ANYXML);
+    assert_true(parsed->flags | LYS_CONFIG_W);
+    assert_true(parsed->flags | LYS_MAND_TRUE);
+    assert_true(parsed->flags | LYS_STATUS_DEPRC);
+    assert_null(parsed->next);
+    assert_string_equal(parsed->name, "any-name");
+    assert_string_equal(parsed->dsc, "desc");
+    assert_string_equal(parsed->ref, "ref");
+    assert_string_equal(parsed->when->cond, "when-cond");
+    assert_string_equal(*parsed->iffeatures, "feature");
+    assert_null(parsed->exts);
+    lysp_node_free(st->ctx, siblings);
+    siblings = NULL;
+
+    /* anydata max subelems */
+    data = ELEMENT_WRAPPER_START
+                "<anydata name=\"any-name\">"
+                    "<config value=\"true\" />"
+                    "<description><text>desc</text></description>"
+                    "<if-feature name=\"feature\" />"
+                    "<mandatory value=\"true\" />"
+                    "<must condition=\"must-cond\" />"
+                    "<reference><text>ref</text></reference>"
+                    "<status value=\"deprecated\"/>"
+                    "<when condition=\"when-cond\"/>"
+                "</anydata>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &node_meta, NULL, NULL, true), LY_SUCCESS);
+    parsed = (struct lysp_node_anydata *)siblings;
+    assert_null(parsed->parent);
+    assert_int_equal(parsed->nodetype, LYS_ANYDATA);
+    assert_true(parsed->flags | LYS_CONFIG_W);
+    assert_true(parsed->flags | LYS_MAND_TRUE);
+    assert_true(parsed->flags | LYS_STATUS_DEPRC);
+    assert_null(parsed->next);
+    assert_string_equal(parsed->name, "any-name");
+    assert_string_equal(parsed->dsc, "desc");
+    assert_string_equal(parsed->ref, "ref");
+    assert_string_equal(parsed->when->cond, "when-cond");
+    assert_string_equal(*parsed->iffeatures, "feature");
+    assert_null(parsed->exts);
+    lysp_node_free(st->ctx, siblings);
+    siblings = NULL;
+
+    /* min subelems */
+    node_meta.parent = (void *)0x10;
+    data = ELEMENT_WRAPPER_START "<anydata name=\"any-name\"> </anydata>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &node_meta, NULL, NULL, true), LY_SUCCESS);
+    parsed = (struct lysp_node_anydata *)siblings;
+    assert_ptr_equal(parsed->parent, node_meta.parent);
+    assert_int_equal(parsed->nodetype, LYS_ANYDATA);
+    assert_null(parsed->next);
+    assert_null(parsed->exts);
+    lysp_node_free(st->ctx, siblings);
+
+    st->finished_correctly = true;
+}
+
 int
 main(void)
 {
@@ -1890,6 +1974,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_max_elems_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_min_elems_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_ordby_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_any_elem, setup_element_test, teardown_element_test),
     };
 
     return cmocka_run_group_tests(tests, setup_ly_ctx, destroy_ly_ctx);
