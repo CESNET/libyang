@@ -4205,6 +4205,14 @@ resolve_schema_leafref(struct lys_type *type, struct lys_node *parent, struct un
     int i, first_iter;
     struct ly_ctx *ctx = parent->module->ctx;
 
+    /* first check that we are not in an unresolved augment */
+    for (node = parent; lys_parent(node); node = lys_parent(node));
+    if (node->parent && (node->parent->nodetype == LYS_AUGMENT)) {
+        LOGVAL(ctx, LYE_SPEC, LY_VLOG_LYS, node->parent,
+               "Cannot resolve leafref \"%s\" because it is in an unresolved augment.", type->info.lref.path);
+        return EXIT_FAILURE;
+    }
+
     first_iter = 1;
     parent_times = 0;
     id = type->info.lref.path;
@@ -4245,15 +4253,6 @@ resolve_schema_leafref(struct lys_type *type, struct lys_node *parent, struct un
             } else if (parent_times > 0) {
                 /* we are looking for the right parent */
                 for (i = 0, node = parent; i < parent_times; i++) {
-                    if (node->parent && (node->parent->nodetype == LYS_AUGMENT)
-                            && !((struct lys_node_augment *)node->parent)->target) {
-                        /* we are in an unresolved augment, cannot evaluate */
-                        LOGVAL(ctx, LYE_SPEC, LY_VLOG_LYS, node->parent,
-                            "Cannot resolve leafref \"%s\" because it is in an unresolved augment.", type->info.lref.path);
-                        ly_set_free(node_set);
-                        return EXIT_FAILURE;
-                    }
-
                     /* path is supposed to be evaluated in data tree, so we have to skip
                      * all schema nodes that cannot be instantiated in data tree */
                     for (node = lys_parent(node);
@@ -4359,8 +4358,9 @@ resolve_schema_leafref(struct lys_type *type, struct lys_node *parent, struct un
     /* add the target node into a set so its parent chain modules can be implemented */
     ly_set_add(node_set, (void *)node, 0);
 
-    /* as the last thing traverse this leafref and make targets on the path implemented */
-    if (lys_node_module(parent)->implemented) {
+    /* find the actual module of this leafref, it can be in a foreign augment */
+    for (node = parent; lys_parent(node); node = lys_parent(node));
+    if (lys_node_module(node)->implemented) {
         /* make all the modules in the path implemented */
         for (i = 0; (unsigned)i < node_set->number; ++i) {
             for (node = node_set->set.s[i]; node; node = lys_parent(node)) {
