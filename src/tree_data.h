@@ -111,8 +111,8 @@ extern "C" {
 typedef enum {
     LYD_UNKNOWN = 0,     /**< unknown format, used as return value in case of error */
     LYD_XML,             /**< XML format of the instance data */
-#if 0
     LYD_JSON,            /**< JSON format of the instance data */
+#if 0
     LYD_LYB,             /**< LYB format of the instance data */
 #endif
 } LYD_FORMAT;
@@ -121,44 +121,17 @@ typedef enum {
  * @brief List of possible value types stored in ::lyd_node_anydata.
  */
 typedef enum {
-    LYD_ANYDATA_CONSTSTRING = 0x00, /**< value is constant string (const char *) which is internally duplicated for
-                                         storing in the anydata structure; XML sensitive characters (such as & or \>)
-                                         are automatically escaped when the anydata is printed in XML format. */
-    LYD_ANYDATA_STRING = 0x01,      /**< value is dynamically allocated string (char*), so the data are used directly
-                                         without duplication and caller is supposed to not manipulate with the data
-                                         after a successful call (including calling free() on the provided data); XML
-                                         sensitive characters (such as & or \>) are automatically escaped when the
-                                         anydata is printed in XML format */
-    LYD_ANYDATA_JSON = 0x02,        /**< value is string containing the data modeled by YANG and encoded as I-JSON. The
-                                         string is handled as constant string. In case of using the value as input
-                                         parameter, the #LYD_ANYDATA_JSOND can be used for dynamically allocated
-                                         string. */
-    LYD_ANYDATA_JSOND = 0x03,       /**< In case of using value as input parameter, this enumeration is supposed to be
-                                         used for dynamically allocated strings (it is actually combination of
-                                         #LYD_ANYDATA_JSON and #LYD_ANYDATA_STRING (and it can be also specified as
-                                         ORed value of the mentioned values. */
-    LYD_ANYDATA_SXML = 0x04,        /**< value is string containing the serialized XML data. The string is handled as
-                                         constant string. In case of using the value as input parameter, the
-                                         #LYD_ANYDATA_SXMLD can be used for dynamically allocated string. */
-    LYD_ANYDATA_SXMLD = 0x05,       /**< In case of using serialized XML value as input parameter, this enumeration is
-                                         supposed to be used for dynamically allocated strings (it is actually
-                                         combination of #LYD_ANYDATA_SXML and #LYD_ANYDATA_STRING (and it can be also
-                                         specified as ORed value of the mentioned values). */
-    LYD_ANYDATA_XML = 0x08,         /**< value is struct lyxml_elem*, the structure is directly connected into the
-                                         anydata node without duplication, caller is supposed to not manipulate with the
-                                         data after a successful call (including calling lyxml_free() on the provided
-                                         data) */
-    LYD_ANYDATA_DATATREE = 0x10,    /**< value is struct lyd_node* (first sibling), the structure is directly connected
-                                         into the anydata node without duplication, caller is supposed to not manipulate
-                                         with the data after a successful call (including calling lyd_free() on the
-                                         provided data) */
-    LYD_ANYDATA_LYB = 0x20,         /**< value is a memory with serialized data tree in LYB format. The data are handled
-                                         as a constant string. In case of using the value as input parameter,
-                                         the #LYD_ANYDATA_LYBD can be used for dynamically allocated string. */
-    LYD_ANYDATA_LYBD = 0x21,        /**< In case of using LYB value as input parameter, this enumeration is
-                                         supposed to be used for dynamically allocated strings (it is actually
-                                         combination of #LYD_ANYDATA_LYB and #LYD_ANYDATA_STRING (and it can be also
-                                         specified as ORed value of the mentioned values). */
+    LYD_ANYDATA_DATATREE = 0x01,     /**< Value is a pointer to lyd_node structure (first sibling). When provided as input parameter, the pointer
+                                          is directly connected into the anydata node without duplication, caller is supposed to not manipulate
+                                          with the data after a successful call (including calling lyd_free() on the provided data) */
+    LYD_ANYDATA_STRING = 0x02,       /**< Value is a generic string without any knowledge about its format (e.g. anyxml value in JSON encoded
+                                          as string). XML sensitive characters (such as & or \>) are automatically escaped when the anydata
+                                          is printed in XML format. */
+    LYD_ANYDATA_XML = 0x04,          /**< Value is a string containing the serialized XML data. */
+    LYD_ANYDATA_JSON = 0x08,         /**< Value is a string containing the data modeled by YANG and encoded as I-JSON. */
+#if 0 /* TODO LYB format */
+    LYD_ANYDATA_LYB = 0x10,          /**< Value is a memory chunk with the serialized data tree in LYB format. */
+#endif
 } LYD_ANYDATA_VALUETYPE;
 
 /** @} */
@@ -167,35 +140,16 @@ typedef enum {
  * @brief YANG data representation
  */
 struct lyd_value {
-    const char *canonized;          /**< string representation of value (for comparison, printing,...), canonized according to the
-                                          rules implemented in the type's canonization callback (if any). */
+    const char *canonized;          /**< Canonical string representation of value (for comparison, printing,...), canonized according to the
+                                         rules implemented in the type's canonization callback (if any). Note that not all the types
+                                         have a canonical representation, so this value can be even NULL (identityref or instance-identifiers
+                                         are built-in examples of such a case). The lyd_value::realtype's print callback provides possibility
+                                         to get correct string representation of the value for the specific data format. */
     union {
         const char *string;         /**< original, non-canonized string value. Useful for example for unions where the type (and therefore
-                                         the cannonization rules) can change by changing value (e.g. leafref target) somewhere else. */
+                                         the canonization rules) can change by changing value (e.g. leafref target) somewhere else. */
         int8_t boolean;              /**< 0 as false, 1 as true */
         int64_t dec64;               /**< decimal64: value = dec64 / 10^fraction-digits  */
-        struct lysc_type_bitenum_item *enum_item;  /**< pointer to the definition of the enumeration value */
-        struct lysc_type_bitenum_item **bits_items; /**< list of set pointers to the specification of the set bits ([sized array](@ref sizedarrays)) */
-        struct lysc_ident *ident;    /**< pointer to the schema definition of the identityref value */
-        struct lyd_value_prefix {
-            const char *prefix;           /**< prefix string used in the canonized string to identify the mod of the YANG schema */
-            const struct lys_module *mod; /**< YANG schema module identified by the prefix string */
-        } *prefixes;                 /**< list of mappings between prefix in canonized value to a YANG schema ([sized array](@ref sizedarrays)) */
-
-        struct lyd_value_path {
-            const struct lysc_node *node;
-            struct lyd_value_path_predicate {
-                union {
-                    struct {
-                        const struct lysc_node *key;
-                        struct lyd_value *value;
-                    };
-                    uint64_t position;
-                };
-                uint8_t type; /**< 0 - position, 1 - key-predicate, 2 - leaf-list-predicate */
-            } *predicates;
-        } *target;
-
         int8_t int8;                 /**< 8-bit signed integer */
         int16_t int16;               /**< 16-bit signed integer */
         int32_t int32;               /**< 32-bit signed integer */
@@ -204,14 +158,48 @@ struct lyd_value {
         uint16_t uint16;             /**< 16-bit signed integer */
         uint32_t uint32;             /**< 32-bit signed integer */
         uint64_t uint64;             /**< 64-bit signed integer */
-        void *ptr;                   /**< generic data type structure used to store the data */
-    };  /**< The union is just a list of shorthands to possible values stored by a type's plugin. libyang works only with the canonized string,
-             this specific data type storage is just to simplify use of the values by the libyang users. */
+        struct lysc_type_bitenum_item *enum_item;  /**< pointer to the definition of the enumeration value */
+        struct lysc_type_bitenum_item **bits_items; /**< list of set pointers to the specification of the set bits ([sized array](@ref sizedarrays)) */
+        struct lysc_ident *ident;    /**< pointer to the schema definition of the identityref value */
 
-    struct lysc_type_plugin *plugin; /**< pointer to the type plugin which stored the data. This pointer can differ from the pointer
-                                          in the lysc_type structure since the plugin itself can use other plugins for storing data.
-                                          Speaking about built-in types, this is the case of leafref which stores data as its target type.
-                                          Similarly union types stores the currently used type plugin in its internal lyd_value structure. */
+        struct lyd_value_subvalue {
+            struct lyd_value_prefix {
+                const char *prefix;           /**< prefix string used in the canonized string to identify the mod of the YANG schema */
+                const struct lys_module *mod; /**< YANG schema module identified by the prefix string */
+            } *prefixes;                 /**< list of mappings between prefix in canonized value to a YANG schema ([sized array](@ref sizedarrays)) */
+            struct lyd_value *value;     /**< representation of the value according to the selected union's subtype (stored as lyd_value::realpath
+                                              here, in subvalue structure */
+        } *subvalue;                     /**< data to represent data with multiple types (union). Original value is stored in the main
+                                              lyd_value:canonized while the lyd_value_subvalue::value contains representation according to the
+                                              one of the union's type. The lyd_value_subvalue:prefixes provides (possible) mappings from prefixes
+                                              in original value to YANG modules. These prefixes are necessary to parse original value to the union's
+                                              subtypes. */
+
+        struct lyd_value_path {
+            const struct lysc_node *node; /**< Schema node representing the path segment */
+            struct lyd_value_path_predicate {
+                union {
+                    struct {
+                        const struct lysc_node *key; /**< key node of the predicate, in case of the leaf-list-predicate, it is the leaf-list node itself */
+                        struct lyd_value *value;     /**< value representation according to the key's type */
+                    };                    /**< key-value pair for leaf-list-predicate and key-predicate (type 1 and 2) */
+                    uint64_t position;    /**< position value for the position-predicate (type 0) */
+                };
+                uint8_t type;        /**< Predicate types (see YANG ABNF): 0 - position, 1 - key-predicate, 2 - leaf-list-predicate */
+            } *predicates;           /**< [Sized array](@ref sizedarrays) of the path segment's predicates */
+        } *target;                   /**< [Sized array](@ref sizedarrays) of (instance-identifier's) path segments. */
+
+        void *ptr;                   /**< generic data type structure used to store the data */
+    };  /**< The union is just a list of shorthands to possible values stored by a type's plugin. libyang itself uses the lyd_value::realtype
+             plugin's callbacks to work with the data. */
+
+    struct lysc_type *realtype; /**< pointer to the real type of the data stored in the value structure. This type can differ from the type
+                                          in the schema node of the data node since the type's store plugin can use other types/plugins for
+                                          storing data. Speaking about built-in types, this is the case of leafref which stores data as its
+                                          target type. In contrast, union type also use its subtype's callbacks, but inside an internal data
+                                          lyd_value::subvalue structure, so here is the pointer to the union type.
+                                          In general, this type is used to get free callback for this lyd_value structure, so it must reflect
+                                          the type used to store data directly in the same lyd_value instance. */
 };
 
 /**
@@ -238,10 +226,38 @@ struct lyd_attr {
 #define LYD_NODE_ANY (LYS_ANYDATA)   /**< Schema nodetype mask for lyd_node_any */
 
 /**
+ * @defgroup dnodeflags Data nodes flags
+ * @ingroup datatree
+ * @{
+ *
+ * Various flags of data nodes.
+ *
+ *     1 - container    5 - anydata/anyxml
+ *     2 - list         6 - rpc/action
+ *     3 - leaf         7 - notification
+ *     4 - leaflist
+ *
+ *     bit name              1 2 3 4 5 6 7
+ *     ---------------------+-+-+-+-+-+-+-+
+ *       1 LYD_DEFAULT      |x| |x|x| | | |
+ *                          +-+-+-+-+-+-+-+
+ *       2                  | | | | | | | |
+ *     ---------------------+-+-+-+-+-+-+-+
+ *
+ */
+
+#define LYD_DEFAULT      0x01        /**< default (implicit) node; */
+/** @} */
+
+/**
  * @brief Generic structure for a data node.
  */
 struct lyd_node {
-    uint32_t hash;                   /**< hash of this particular node (module name + schema name + key string values if list) */
+    uint32_t hash;                   /**< hash of this particular node (module name + schema name + key string values if list or
+                                          hashes of all nodes of subtree in case of keyless list). Note that while hash can be
+                                          used to get know that nodes are not equal, it cannot be used to decide that the
+                                          nodes are equal due to possible collisions. */
+    uint32_t flags;                  /**< [data node flags](@ref dnodeflags) */
     const struct lysc_node *schema;  /**< pointer to the schema definition of this node */
     struct lyd_node_inner *parent;   /**< pointer to the parent node, NULL in case of root node */
     struct lyd_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
@@ -260,7 +276,11 @@ struct lyd_node {
  * @brief Data node structure for the inner data tree nodes - containers and lists.
  */
 struct lyd_node_inner {
-    uint32_t hash;                   /**< hash of this particular node (module name + schema name + key string values if list) */
+    uint32_t hash;                   /**< hash of this particular node (module name + schema name + key string values if list or
+                                          hashes of all nodes of subtree in case of keyless list). Note that while hash can be
+                                          used to get know that nodes are not equal, it cannot be used to decide that the
+                                          nodes are equal due to possible collisions. */
+    uint32_t flags;                  /**< [data node flags](@ref dnodeflags) */
     const struct lysc_node *schema;  /**< pointer to the schema definition of this node */
     struct lyd_node_inner *parent;   /**< pointer to the parent node, NULL in case of root node */
     struct lyd_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
@@ -276,13 +296,18 @@ struct lyd_node_inner {
 
     struct lyd_node *child;          /**< pointer to the first child node. */
     struct hash_table *children_ht;  /**< hash table with all the direct children (except keys for a list, lists without keys) */
+#define LYD_HT_MIN_ITEMS 4           /**< minimal number of children to create lyd_node_inner::children_ht hash table. */
 };
 
 /**
  * @brief Data node structure for the terminal data tree nodes - leafs and leaf-lists.
  */
 struct lyd_node_term {
-    uint32_t hash;                   /**< hash of this particular node (module name + schema name + key string values if list) */
+    uint32_t hash;                   /**< hash of this particular node (module name + schema name + key string values if list or
+                                          hashes of all nodes of subtree in case of keyless list). Note that while hash can be
+                                          used to get know that nodes are not equal, it cannot be used to decide that the
+                                          nodes are equal due to possible collisions. */
+    uint32_t flags;                  /**< [data node flags](@ref dnodeflags) */
     const struct lysc_node *schema;  /**< pointer to the schema definition of this node */
     struct lyd_node_inner *parent;   /**< pointer to the parent node, NULL in case of root node */
     struct lyd_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
@@ -303,7 +328,11 @@ struct lyd_node_term {
  * @brief Data node structure for the anydata data tree nodes - anydatas and anyxmls.
  */
 struct lyd_node_any {
-    uint32_t hash;                   /**< hash of this particular node (module name + schema name + key string values if list) */
+    uint32_t hash;                   /**< hash of this particular node (module name + schema name + key string values if list or
+                                          hashes of all nodes of subtree in case of keyless list). Note that while hash can be
+                                          used to get know that nodes are not equal, it cannot be used to decide that the
+                                          nodes are equal due to possible collisions. */
+    uint32_t flags;                  /**< [data node flags](@ref dnodeflags) */
     const struct lysc_node *schema;  /**< pointer to the schema definition of this node */
     struct lyd_node_inner *parent;   /**< pointer to the parent node, NULL in case of root node */
     struct lyd_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
@@ -317,7 +346,14 @@ struct lyd_node_any {
     void *priv;                      /**< private user data, not used by libyang */
 #endif
 
-    /* TODO - anydata representation */
+    union {
+        struct lyd_node *tree;       /**< data tree */
+        const char *str;             /**< Generic string data */
+        const char *xml;             /**< Serialized XML data */
+        const char *json;            /**< I-JSON encoded string */
+        char *mem;                   /**< LYD_ANYDATA_LYB memory chunk */
+    } value;                         /**< pointer to the stored value representation of the anydata/anyxml node */
+    LYD_ANYDATA_VALUETYPE value_type;/**< type of the data stored as lyd_node_any::value */
 };
 
 /**
@@ -655,6 +691,31 @@ LY_ERR lyd_value_validate(struct ly_ctx *ctx, const struct lyd_node_term *node, 
  */
 LY_ERR lyd_value_compare(const struct lyd_node_term *node, const char *value, size_t value_len,
                          ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format, const struct lyd_node **trees);
+
+/**
+ * @defgroup datacompareoptions Data compare options
+ * @ingroup datatree
+ *
+ * Various options to change the lyd_compare behavior.
+ */
+#define LYD_COMPARE_FULL_RECURSION 0x01 /* lists and containers are the same only in case all they children
+                                           (subtree, so direct as well as indirect children) are the same. By default,
+                                           containers are the same in case of the same schema node and lists are the same
+                                           in case of equal keys (keyless lists do the full recursion comparison all the time). */
+#define LYD_COMPARE_DEFAULTS 0x02       /* By default, implicit and explicit default nodes are considered to be equal. This flag
+                                           changes this behavior and implicit (automatically created default node) and explicit
+                                           (explicitly created node with the default value) default nodes are considered different. */
+/**@} dataparseroptions */
+
+/**
+ * @brief Compare 2 data nodes if they are equivalent.
+ *
+ * @param[in] node1 The first node to compare.
+ * @param[in] node2 The second node to compare.
+ * @return LY_SUCCESS if the nodes are equivalent.
+ * @return LY_ENOT if the nodes are not equivalent.
+ */
+LY_ERR lyd_compare(const struct lyd_node *node1, const struct lyd_node *node2, int options);
 
 /**
  * @brief Resolve instance-identifier defined by lyd_value_path structure.

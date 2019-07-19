@@ -450,6 +450,16 @@ LY_ERR ly_mmap(struct ly_ctx *ctx, int fd, size_t *length, void **addr);
 LY_ERR ly_munmap(void *addr, size_t length);
 
 /**
+ * @brief Concatenate formating string to the @p dest.
+ *
+ * @param[in, out] dest String to be concatenated by @p format.
+ *                 Note that the input string can be reallocated during concatenation.
+ * @param[in] format Formating string (as for printf) which is supposed to be added after @p dest.
+ * @return LY_SUCCESS or LY_EMEM.
+ */
+LY_ERR ly_strcat(char **dest, const char *format, ...);
+
+/**
  * @brief (Re-)Allocation of a ([sized array](@ref sizedarrays)).
  *
  * Increases the size information.

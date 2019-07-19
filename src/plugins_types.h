@@ -127,9 +127,35 @@ typedef LY_ERR (*ly_type_store_clb)(struct ly_ctx *ctx, struct lysc_type *type, 
  * @param[in] val1 First value to compare.
  * @param[in] val2 Second value to compare.
  * @return LY_SUCCESS if values are same (according to the type's definition of being same).
- * @return LY_EVALID if values differ.
+ * @return LY_ENOT if values differ.
  */
 typedef LY_ERR (*ly_type_compare_clb)(const struct lyd_value *val1, const struct lyd_value *val2);
+
+/**
+ * @brief Callback to receive printed (canoncal) value of the data stored in @p value.
+ *
+ * @param[in] value Value to print.
+ * @param[in] format Format in which the data are supposed to be printed.
+ *            Only 2 formats are currently implemented: LYD_XML and LYD_JSON.
+ * @param[in] prefixes Flag to get printed prefix/namespace string instead of the value itself.
+ *            Since JSON uses YANG module names as prefixes, this option make sense only with LYD_XML @p format.
+ * @param[out] dynamic Flag if the returned string is dynamically allocated. In such a case the caller is responsible
+ *            for freeing it.
+ * @return String with the value of @p value in specified @p format. According to the returned @p dynamic flag, caller
+ *         can be responsible for freeing allocated memory.
+ * @return NULL in case of error.
+ */
+typedef const char *(*ly_type_print_clb)(const struct lyd_value *value, LYD_FORMAT format, int prefixes, int *dynamic);
+
+/**
+ * @brief Callback to duplicate data in data structure. Note that callback is even responsible for duplicating lyd_value::canonized.
+ *
+ * @param[in] ctx libyang context of the @p dup. Note that the context of @p original and @p dup might not be the same.
+ * @param[in] original Original data structure to be duplicated.
+ * @param[in,out] dup Prepared data structure to be filled with the duplicated data of @p original.
+ * @return LY_SUCCESS after successful duplication, other LY_ERR values otherwise.
+ */
+typedef LY_ERR (*ly_type_dup_clb)(struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup);
 
 /**
  * @brief Callback for freeing the user type values stored by ly_type_store_clb().
@@ -137,10 +163,9 @@ typedef LY_ERR (*ly_type_compare_clb)(const struct lyd_value *val1, const struct
  * Note that this callback is responsible also for freeing the canonized member in the @p value.
  *
  * @param[in] ctx libyang ctx to enable correct manipulation with values that are in the dictionary.
- * @param[in] type Type of the stored value.
  * @param[in,out] value Value structure to free the data stored there by the plugin's ly_type_store_clb() callback
  */
-typedef void (*ly_type_free_clb)(struct ly_ctx *ctx, struct lysc_type *type, struct lyd_value *value);
+typedef void (*ly_type_free_clb)(struct ly_ctx *ctx, struct lyd_value *value);
 
 /**
  * @brief Hold type-specific functions for various operations with the data values.
@@ -153,6 +178,8 @@ struct lysc_type_plugin {
     LY_DATA_TYPE type;               /**< implemented type, use LY_TYPE_UNKNOWN for derived data types */
     ly_type_store_clb store;         /**< function to validate, canonize and store (according to the options) the value in the type-specific way */
     ly_type_compare_clb compare;     /**< comparison callback to compare 2 values of the same type */
+    ly_type_print_clb print;         /**< printer callback to get string representing the value */
+    ly_type_dup_clb duplicate;       /**< data duplication callback */
     ly_type_free_clb free;           /**< optional function to free the type-spceific way stored value */
     uint32_t flags;                  /**< [type flags ](@ref plugintypeflags). */
 };

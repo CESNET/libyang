@@ -33,8 +33,7 @@ lyd_value_free_path(struct ly_ctx *ctx, struct lyd_value_path *path)
     LY_ARRAY_FOR(path, u) {
         LY_ARRAY_FOR(path[u].predicates, v) {
             if (path[u].predicates[v].type > 0) {
-                struct lysc_type *t = ((struct lysc_node_leaf*)path[u].predicates[v].key)->type;
-                t->plugin->free(ctx, t, path[u].predicates[v].value);
+                ((struct lysc_node_leaf*)path[u].predicates[v].key)->type->plugin->free(ctx, path[u].predicates[v].value);
                 free(path[u].predicates[v].value);
             }
         }
@@ -159,35 +158,23 @@ lyd_free_subtree(struct ly_ctx *ctx, struct lyd_node *node, int top)
             lyd_free_subtree(ctx, iter, 0);
         }
     } else if (node->schema->nodetype & LYD_NODE_ANY) {
-        /* TODO anydata */
-#if 0
-        switch (((struct lyd_node_anydata *)node)->value_type) {
-        case LYD_ANYDATA_CONSTSTRING:
-        case LYD_ANYDATA_SXML:
-        case LYD_ANYDATA_JSON:
-            FREE_STRING(node->schema->module->ctx, ((struct lyd_node_anydata *)node)->value.str);
-            break;
+        switch (((struct lyd_node_any*)node)->value_type) {
         case LYD_ANYDATA_DATATREE:
-            lyd_free_withsiblings(((struct lyd_node_anydata *)node)->value.tree);
-            break;
-        case LYD_ANYDATA_XML:
-            lyxml_free_withsiblings(node->schema->module->ctx, ((struct lyd_node_anydata *)node)->value.xml);
-            break;
-        case LYD_ANYDATA_LYB:
-            free(((struct lyd_node_anydata *)node)->value.mem);
+            lyd_free_all(((struct lyd_node_any*)node)->value.tree);
             break;
         case LYD_ANYDATA_STRING:
-        case LYD_ANYDATA_SXMLD:
-        case LYD_ANYDATA_JSOND:
-        case LYD_ANYDATA_LYBD:
-            /* dynamic strings are used only as input parameters */
-            assert(0);
+        case LYD_ANYDATA_XML:
+        case LYD_ANYDATA_JSON:
+            FREE_STRING(node->schema->module->ctx, ((struct lyd_node_any*)node)->value.str);
             break;
-        }
+#if 0 /* TODO LYB format */
+        case LYD_ANYDATA_LYB:
+            free(((struct lyd_node_any*)node)->value.mem);
+            break;
 #endif
+        }
     } else if (node->schema->nodetype & LYD_NODE_TERM) {
-        struct lysc_type *type = ((struct lysc_node_leaf*)node->schema)->type;
-        type->plugin->free(ctx, type, &((struct lyd_node_term*)node)->value);
+        ((struct lysc_node_leaf*)node->schema)->type->plugin->free(ctx, &((struct lyd_node_term*)node)->value);
     }
 
     /* free the node's attributes */
