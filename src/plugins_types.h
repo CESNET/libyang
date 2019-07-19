@@ -94,8 +94,8 @@ void ly_err_free(void *ptr);
  * @param[in] value_len Length of the given \p value.
  * @param[in] options [Type plugin options ](@ref plugintypeopts).
  *
- * @param[in] get_prefix Parser-specific getter to resolve prefixes used in the value strings.
- * @param[in] parser Parser's data for @p get_prefix
+ * @param[in] resolve_prefix Parser-specific callback to resolve prefixes used in the value strings.
+ * @param[in] parser Parser's data for @p resolve_prefix
  * @param[in] format Input format of the data.
  * @param[in] context_node The @p value's node for the case that the require-instance restriction is supposed to be resolved. This argument is of
  *            lys_node (in case LY_TYPE_OPTS_INCOMPLETE_DATA set in @p options) or lyd_node structure.
@@ -115,7 +115,7 @@ void ly_err_free(void *ptr);
  * @return LY_ERR value if an error occurred and the value could not be canonized following the type's rules.
  */
 typedef LY_ERR (*ly_type_store_clb)(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                                    ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format,
+                                    ly_clb_resolve_prefix resolve_prefix, void *parser, LYD_FORMAT format,
                                     const void *context_node, const struct lyd_node **trees,
                                     struct lyd_value *storage, const char **canonized, struct ly_err_item **err);
 
@@ -137,15 +137,15 @@ typedef LY_ERR (*ly_type_compare_clb)(const struct lyd_value *val1, const struct
  * @param[in] value Value to print.
  * @param[in] format Format in which the data are supposed to be printed.
  *            Only 2 formats are currently implemented: LYD_XML and LYD_JSON.
- * @param[in] prefixes Flag to get printed prefix/namespace string instead of the value itself.
- *            Since JSON uses YANG module names as prefixes, this option make sense only with LYD_XML @p format.
+ * @param[in] get_prefix Callback to get prefix to use when printing objects supposed to be prefixed.
+ * @param[in] printer Private data for the @p get_prefix callback.
  * @param[out] dynamic Flag if the returned string is dynamically allocated. In such a case the caller is responsible
  *            for freeing it.
  * @return String with the value of @p value in specified @p format. According to the returned @p dynamic flag, caller
  *         can be responsible for freeing allocated memory.
  * @return NULL in case of error.
  */
-typedef const char *(*ly_type_print_clb)(const struct lyd_value *value, LYD_FORMAT format, int prefixes, int *dynamic);
+typedef const char *(*ly_type_print_clb)(const struct lyd_value *value, LYD_FORMAT format, ly_clb_get_prefix get_prefix, void *printer, int *dynamic);
 
 /**
  * @brief Callback to duplicate data in data structure. Note that callback is even responsible for duplicating lyd_value::canonized.

@@ -671,19 +671,19 @@ test_empty(void **state)
     s->func = NULL;
 }
 
+static const char *
+test_get_prefix(const struct lys_module *mod, void *private)
+{
+    return (const char *)private;
+}
+
 static void
-test_printed_value(const struct lyd_value *value, const char *expected_prefixes, const char *expected_value, LYD_FORMAT format)
+test_printed_value(const struct lyd_value *value, const char *expected_value, LYD_FORMAT format, const char *prefix)
 {
     const char *str;
     int dynamic;
 
-    assert_non_null(str = value->realtype->plugin->print(value, format, 1, &dynamic));
-    assert_string_equal(expected_prefixes, str);
-    if (dynamic) {
-        free((char*)str);
-    }
-
-    assert_non_null(str = value->realtype->plugin->print(value, format, 0, &dynamic));
+    assert_non_null(str = value->realtype->plugin->print(value, format, test_get_prefix, (void*)prefix, &dynamic));
     assert_string_equal(expected_value, str);
     if (dynamic) {
         free((char*)str);
@@ -709,7 +709,7 @@ test_identityref(void **state)
     leaf = (struct lyd_node_term*)tree;
     assert_null(leaf->value.canonized);
     assert_string_equal("gigabit-ethernet", leaf->value.ident->name);
-    test_printed_value(&leaf->value, "xmlns:t=\"urn:tests:types\"", "t:gigabit-ethernet", LYD_XML);
+    test_printed_value(&leaf->value, "t:gigabit-ethernet", LYD_XML, "t");
 
     value.realtype = leaf->value.realtype;
     assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
@@ -724,7 +724,7 @@ test_identityref(void **state)
     assert_string_equal("ident", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
     assert_null(leaf->value.canonized);
-    test_printed_value(&leaf->value, "xmlns:d=\"urn:tests:defs\"", "d:fast-ethernet", LYD_XML);
+    test_printed_value(&leaf->value, "d:fast-ethernet", LYD_XML, "d");
     lyd_free_all(tree);
 
     /* invalid value */
@@ -842,8 +842,8 @@ test_instanceid(void **state)
     assert_string_equal("value", leaf->value.target[1].node->name);
     assert_null(leaf->value.target[1].predicates);
 
-    test_printed_value(&leaf->value, "xmlns:t=\"urn:tests:types\"", "/t:list_inst[t:id=\"/t:leaflisttarget[.='b']\"]/t:value", LYD_XML);
-    test_printed_value(&leaf->value, "", "/types:list_inst[id=\"/types:leaflisttarget[.='b']\"]/value", LYD_JSON);
+    test_printed_value(&leaf->value, "/t:list_inst[t:id=\"/t:leaflisttarget[.='b']\"]/t:value", LYD_XML, "t");
+    test_printed_value(&leaf->value, "/types:list_inst[id=\"/types:leaflisttarget[.='b']\"]/value", LYD_JSON, "types");
 
     value.realtype = leaf->value.realtype;
     assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
@@ -940,11 +940,13 @@ test_instanceid(void **state)
 
     data =  "<cont xmlns=\"urn:tests:types\"/><t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaftarget</t:inst>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
-    logbuf_assert("Invalid instance-identifier \"/t:cont/t:leaftarget\" value - required instance not found. /");
+    /* instance-identifier is here in JSON format because it is already in internal representation without original prefixes */
+    logbuf_assert("Invalid instance-identifier \"/types:cont/leaftarget\" value - required instance not found. /");
 
     data =  "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaftarget</t:inst>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
-    logbuf_assert("Invalid instance-identifier \"/t:cont/t:leaftarget\" value - required instance not found. /");
+    /* instance-identifier is here in JSON format because it is already in internal representation without original prefixes */
+    logbuf_assert("Invalid instance-identifier \"/types:cont/leaftarget\" value - required instance not found. /");
 
     data =  "<leaflisttarget xmlns=\"urn:tests:types\">x</leaflisttarget><t:inst xmlns:t=\"urn:tests:types\">/t:leaflisttarget[1</t:inst>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
@@ -969,7 +971,8 @@ test_instanceid(void **state)
     data =  "<cont xmlns=\"urn:tests:types\"><leaflisttarget>1</leaflisttarget><leaflisttarget>2</leaflisttarget></cont>"
             "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaflisttarget[4]</t:inst>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
-    logbuf_assert("Invalid instance-identifier \"/t:cont/t:leaflisttarget[4]\" value - required instance not found. /");
+    /* instance-identifier is here in JSON format because it is already in internal representation without original prefixes */
+    logbuf_assert("Invalid instance-identifier \"/types:cont/leaflisttarget[4]\" value - required instance not found. /");
 
     data =  "<t:inst-noreq xmlns:t=\"urn:tests:types\">/t:cont/t:leaflisttarget[6]</t:inst-noreq>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
@@ -1000,7 +1003,8 @@ test_instanceid(void **state)
     data =  "<cont xmlns=\"urn:tests:types\"><leaflisttarget>1</leaflisttarget></cont>"
             "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaflisttarget[.='2']</t:inst>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
-    logbuf_assert("Invalid instance-identifier \"/t:cont/t:leaflisttarget[.='2']\" value - required instance not found. /");
+    /* instance-identifier is here in JSON format because it is already in internal representation without original prefixes */
+    logbuf_assert("Invalid instance-identifier \"/types:cont/leaflisttarget[.='2']\" value - required instance not found. /");
 
     data =  "<cont xmlns=\"urn:tests:types\"><leaflisttarget>1</leaflisttarget></cont>"
             "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaflisttarget[.='x']</t:inst>";
@@ -1017,7 +1021,8 @@ test_instanceid(void **state)
     data =  "<cont xmlns=\"urn:tests:types\"><listtarget><id>1</id><value>x</value></listtarget></cont>"
             "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:listtarget[t:id='2']</t:inst>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0));
-    logbuf_assert("Invalid instance-identifier \"/t:cont/t:listtarget[t:id='2']\" value - required instance not found. /");
+    /* instance-identifier is here in JSON format because it is already in internal representation without original prefixes */
+    logbuf_assert("Invalid instance-identifier \"/types:cont/listtarget[id='2']\" value - required instance not found. /");
 
     data = "<leaflisttarget xmlns=\"urn:tests:types\">a</leaflisttarget>"
            "<leaflisttarget xmlns=\"urn:tests:types\">b</leaflisttarget>"
@@ -1239,7 +1244,7 @@ test_union(void **state)
     assert_int_equal(LY_TYPE_INT8, leaf->value.subvalue->value->realtype->basetype);
     assert_int_equal(12, leaf->value.subvalue->value->int8);
 
-    test_printed_value(&leaf->value, "", "12", LYD_XML);
+    test_printed_value(&leaf->value, "12", LYD_XML, NULL);
 
     value.realtype = leaf->value.realtype;
     assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
@@ -1275,8 +1280,8 @@ test_union(void **state)
     assert_int_equal(LY_TYPE_IDENT, leaf->value.subvalue->value->realtype->basetype);
     assert_null(leaf->value.subvalue->value->canonized);
 
-    test_printed_value(&leaf->value, "xmlns:x=\"urn:tests:defs\"", "x:fast-ethernet", LYD_XML);
-    test_printed_value(leaf->value.subvalue->value, "xmlns:d=\"urn:tests:defs\"", "d:fast-ethernet", LYD_XML);
+    test_printed_value(&leaf->value, "x:fast-ethernet", LYD_XML, "x");
+    test_printed_value(leaf->value.subvalue->value, "d:fast-ethernet", LYD_XML, "d");
 
     value.realtype = leaf->value.realtype;
     assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
