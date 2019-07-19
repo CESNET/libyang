@@ -1163,7 +1163,6 @@ yin_parse_leaflist(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, con
 {
     struct lysp_node *iter;
     struct lysp_node_leaflist *llist;
-    LY_ERR ret = LY_SUCCESS;
 
     llist = calloc(1, sizeof *llist);
     LY_CHECK_ERR_RET(!llist, LOGMEM(ctx->xml_ctx.ctx), LY_EMEM);
@@ -1530,6 +1529,8 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                                                    (const char **)subelem->dest, YIN_ARG_VALUE, Y_IDENTIF_ARG, exts);
                     break;
                 case YANG_PRESENCE:
+                    ret = yin_parse_simple_element(ctx, attrs, data, kw, (const char **)subelem->dest, YIN_ARG_VALUE,
+                                                   Y_STR_ARG, exts);
                     break;
                 case YANG_RANGE:
                     type = (struct lysp_type *)subelem->dest;

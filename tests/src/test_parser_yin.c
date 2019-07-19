@@ -2153,6 +2153,25 @@ test_leaf_list_elem(void **state)
     st->finished_correctly = true;
 }
 
+static void
+test_presence_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    const char *val;
+
+    data = ELEMENT_WRAPPER_START "<presence value=\"presence-val\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &val, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(val, "presence-val");
+    FREE_STRING(st->ctx, val);
+
+    data = ELEMENT_WRAPPER_START "<presence/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &val, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Missing mandatory attribute value of presence element. Line number 1.");
+
+    st->finished_correctly = true;
+}
+
 int
 main(void)
 {
@@ -2204,6 +2223,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_any_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_leaf_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_leaf_list_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_presence_elem, setup_element_test, teardown_element_test),
 
     };
 
