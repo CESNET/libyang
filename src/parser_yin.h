@@ -57,8 +57,10 @@ struct yin_arg_record {
 };
 
 struct yin_parser_ctx {
-    struct lyxml_context xml_ctx;  /**< context for xml parser */
+    struct ly_set tpdfs_nodes;
+    struct ly_set grps_nodes;
     uint8_t mod_version;           /**< module's version */
+    struct lyxml_context xml_ctx;  /**< context for xml parser */
 };
 
 /* flags to encode cardinality of subelement */
@@ -88,10 +90,16 @@ struct yin_argument_meta {
     const char **argument;  /**< Argument value */
 };
 
-/* Maet information passed to functions working with tree schema such as yin_parse_any */
+/* Meta information passed to functions working with tree schema such as yin_parse_any */
 struct tree_node_meta {
     struct lysp_node *parent;       /**< parent node */
     struct lysp_node **siblings;    /**< linked list of siblings */
+};
+
+/* Meta information passed to yin_parse_typedef */
+struct typedef_meta {
+    struct lysp_node *parent;       /**< parent node */
+    struct lysp_tpdf **typedefs;    /**< [Sized array](@ref sizedarrays) of typedefs */
 };
 
 /**

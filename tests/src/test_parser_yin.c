@@ -33,6 +33,7 @@ void lysp_ext_free(struct ly_ctx *ctx, struct lysp_ext *ext);
 void lysp_when_free(struct ly_ctx *ctx, struct lysp_when *when);
 void lysp_type_free(struct ly_ctx *ctx, struct lysp_type *type);
 void lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node);
+void lysp_tpdf_free(struct ly_ctx *ctx, struct lysp_tpdf *tpdf);
 
 struct state {
     struct ly_ctx *ctx;
@@ -2191,6 +2192,50 @@ test_key_elem(void **state)
     st->finished_correctly = true;
 }
 
+static void
+test_typedef_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct lysp_tpdf *tpdfs = NULL;
+    struct typedef_meta typdef_meta = {NULL, &tpdfs};
+
+    data = ELEMENT_WRAPPER_START
+                "<typedef name=\"tpdf-name\">"
+                    "<default value=\"def-val\"/>"
+                    "<description><text>desc-text</text></description>"
+                    "<reference><text>ref-text</text></reference>"
+                    "<status value=\"current\"/>"
+                    "<type name=\"type\"/>"
+                    "<units name=\"uni\"/>"
+                "</typedef>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &typdef_meta, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(tpdfs[0].dflt, "def-val");
+    assert_string_equal(tpdfs[0].dsc, "desc-text");
+    assert_null(tpdfs[0].exts);
+    assert_string_equal(tpdfs[0].name, "tpdf-name");
+    assert_string_equal(tpdfs[0].ref, "ref-text");
+    assert_string_equal(tpdfs[0].type.name, "type");
+    assert_string_equal(tpdfs[0].units, "uni");
+    assert_true(tpdfs[0].flags & LYS_STATUS_CURR);
+    FREE_ARRAY(st->ctx, tpdfs, lysp_tpdf_free);
+    tpdfs = NULL;
+
+    data = ELEMENT_WRAPPER_START
+                "<typedef name=\"tpdf-name\">"
+                    "<type name=\"type\"/>"
+                "</typedef>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &typdef_meta, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(tpdfs[0].name, "tpdf-name");
+    assert_string_equal(tpdfs[0].type.name, "type");
+    FREE_ARRAY(st->ctx, tpdfs, lysp_tpdf_free);
+    tpdfs = NULL;
+
+    st->finished_correctly = true;
+}
+
 int
 main(void)
 {
@@ -2244,6 +2289,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_leaf_list_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_presence_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_key_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_typedef_elem, setup_element_test, teardown_element_test),
 
     };
 

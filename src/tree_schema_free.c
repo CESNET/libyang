@@ -155,7 +155,7 @@ lysp_type_free(struct ly_ctx *ctx, struct lysp_type *type)
     }
 }
 
-static void
+void
 lysp_tpdf_free(struct ly_ctx *ctx, struct lysp_tpdf *tpdf)
 {
     FREE_STRING(ctx, tpdf->name);

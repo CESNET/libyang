@@ -1215,6 +1215,46 @@ yin_parse_leaflist(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, con
 }
 
 /**
+ * @brief Parse typedef element.
+ *
+ * @param[in,out] ctx YIN parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] typedef_meta Meta information about node parent and typedefs to add to.
+ *
+ * @return LY_ERR values.
+ */
+static LY_ERR
+yin_parse_typedef(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+                  struct typedef_meta *typedef_meta)
+{
+    struct lysp_tpdf *tpdf;
+    LY_ARRAY_NEW_RET(ctx->xml_ctx.ctx, *typedef_meta->typedefs, tpdf, LY_EMEM);
+
+    /* parse argument */
+    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NAME, &tpdf->name, Y_IDENTIF_ARG, YANG_TYPEDEF));
+
+    /* parse content */
+    struct yin_subelement subelems[7] = {
+                                            {YANG_DEFAULT, &tpdf->dflt, YIN_SUBELEM_UNIQUE},
+                                            {YANG_DESCRIPTION, &tpdf->dsc, YIN_SUBELEM_UNIQUE},
+                                            {YANG_REFERENCE, &tpdf->ref, YIN_SUBELEM_UNIQUE},
+                                            {YANG_STATUS, &tpdf->flags, YIN_SUBELEM_UNIQUE},
+                                            {YANG_TYPE, &tpdf->type, YIN_SUBELEM_UNIQUE | YIN_SUBELEM_MANDATORY},
+                                            {YANG_UNITS, &tpdf->units, YIN_SUBELEM_UNIQUE},
+                                            {YANG_CUSTOM, NULL, 0},
+                                         };
+    LY_CHECK_RET(yin_parse_content(ctx, subelems, 7, data, YANG_TYPEDEF, NULL, &tpdf->exts));
+
+    /* store data for collision check */
+    if (typedef_meta->parent && !(typedef_meta->parent->nodetype & (LYS_GROUPING | LYS_ACTION | LYS_INOUT | LYS_NOTIF))) {
+        ly_set_add(&ctx->tpdfs_nodes, typedef_meta->parent, 0);
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Map keyword type to substatement info.
  *
  * @param[in] kw Keyword type.
@@ -1569,6 +1609,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     ret = yin_parse_type(ctx, attrs, data, type);
                     break;
                 case YANG_TYPEDEF:
+                    ret = yin_parse_typedef(ctx, attrs, data, (struct typedef_meta *)subelem->dest);
                     break;
                 case YANG_UNIQUE:
                     ret = yin_parse_simple_elements(ctx, attrs, data, kw, (const char ***)subelem->dest,
