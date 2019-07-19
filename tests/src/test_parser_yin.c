@@ -480,7 +480,7 @@ test_yin_parse_content(void **state)
 
     struct yin_subelement subelems[17] = {
                                             {YANG_CONFIG, &config, 0},
-                                            {YANG_DEFAULT, &def, 0},
+                                            {YANG_DEFAULT, &def, YIN_SUBELEM_UNIQUE},
                                             {YANG_ENUM, &enum_type, 0},
                                             {YANG_ERROR_APP_TAG, &app_tag, 0},
                                             {YANG_ERROR_MESSAGE, &err_msg, 0},
@@ -511,20 +511,20 @@ test_yin_parse_content(void **state)
     assert_string_equal(when_p->ref, "when_ref");
     assert_int_equal(config, LYS_CONFIG_W);
     assert_int_equal(pos_enum.value, 25);
-    assert_true(pos_enum.flags | LYS_SET_VALUE);
+    assert_true(pos_enum.flags & LYS_SET_VALUE);
     assert_int_equal(val_enum.value, -5);
-    assert_true(val_enum.flags | LYS_SET_VALUE);
+    assert_true(val_enum.flags & LYS_SET_VALUE);
     assert_int_equal(req_type.require_instance, 1);
-    assert_true(req_type.flags |= LYS_SET_REQINST);
+    assert_true(req_type.flags &= LYS_SET_REQINST);
     assert_string_equal(range_type.range->arg, "5..10");
-    assert_true(range_type.flags | LYS_SET_RANGE);
+    assert_true(range_type.flags & LYS_SET_RANGE);
     assert_string_equal(err_msg, "error-msg");
     assert_string_equal(app_tag, "err-app-tag");
     assert_string_equal(enum_type.enums->name, "yay");
     assert_string_equal(len_type.length->arg, "baf");
-    assert_true(len_type.flags | LYS_SET_LENGTH);
+    assert_true(len_type.flags & LYS_SET_LENGTH);
     assert_string_equal(patter_type.patterns->arg, "\x015pattern");
-    assert_true(patter_type.flags | LYS_SET_PATTERN);
+    assert_true(patter_type.flags & LYS_SET_PATTERN);
     /* cleanup */
     lysp_ext_instance_free(st->ctx, exts);
     lysp_when_free(st->ctx, when_p);
@@ -681,7 +681,7 @@ test_element_helper(struct state *st, const char **data, void *dest, const char 
                                             {YANG_CONFIG, dest, 0},
                                             {YANG_CONTACT, dest, 0},
                                             {YANG_CONTAINER, dest, 0},
-                                            {YANG_DEFAULT, dest, 0},
+                                            {YANG_DEFAULT, dest, YIN_SUBELEM_UNIQUE},
                                             {YANG_DESCRIPTION, dest, 0},
                                             {YANG_DEVIATE, dest, 0},
                                             {YANG_DEVIATION, dest, 0},
@@ -771,7 +771,7 @@ test_enum_bit_elem(void **state)
     assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, true), LY_SUCCESS);
     assert_string_equal(*type.enums->iffeatures, "feature");
     assert_int_equal(type.enums->value, 55);
-    assert_true(type.enums->flags | LYS_STATUS_DEPRC && type.enums->flags | LYS_SET_VALUE);
+    assert_true((type.enums->flags & LYS_STATUS_DEPRC) && (type.enums->flags & LYS_SET_VALUE));
     assert_string_equal(type.enums->dsc, "desc...");
     assert_string_equal(type.enums->ref, "ref...");
     lysp_type_free(st->ctx, &type);
@@ -916,15 +916,15 @@ test_status_elem(void **state)
     /* test valid values */
     data = ELEMENT_WRAPPER_START "<status value=\"current\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &flags, NULL, NULL, true), LY_SUCCESS);
-    assert_true(flags | LYS_STATUS_CURR);
+    assert_true(flags & LYS_STATUS_CURR);
 
     data = ELEMENT_WRAPPER_START "<status value=\"deprecated\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &flags, NULL, NULL, true), LY_SUCCESS);
-    assert_true(flags | LYS_STATUS_DEPRC);
+    assert_true(flags & LYS_STATUS_DEPRC);
 
     data = ELEMENT_WRAPPER_START "<status value=\"obsolete\"></status>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &flags, NULL, NULL, true), LY_SUCCESS);
-    assert_true(flags | LYS_STATUS_OBSLT);
+    assert_true(flags & LYS_STATUS_OBSLT);
 
     /* test invalid value */
     data = ELEMENT_WRAPPER_START "<status value=\"invalid\"></status>" ELEMENT_WRAPPER_END;
@@ -952,7 +952,7 @@ test_ext_elem(void **state)
     assert_int_equal(test_element_helper(st, &data, &ext, NULL, NULL, true), LY_SUCCESS);
     assert_string_equal(ext->name, "ext_name");
     assert_string_equal(ext->argument, "arg");
-    assert_true(ext->flags | LYS_STATUS_CURR);
+    assert_true(ext->flags & LYS_STATUS_CURR);
     assert_string_equal(ext->dsc, "ext_desc");
     assert_string_equal(ext->ref, "ext_ref");
     lysp_ext_free(st->ctx, ext);
@@ -979,15 +979,15 @@ test_yin_element_elem(void **state)
 
     data = ELEMENT_WRAPPER_START "<yin-element value=\"true\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &flags, NULL, NULL, true), LY_SUCCESS);
-    assert_true(flags | LYS_YINELEM_TRUE);
+    assert_true(flags & LYS_YINELEM_TRUE);
 
     data = ELEMENT_WRAPPER_START "<yin-element value=\"false\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &flags, NULL, NULL, true), LY_SUCCESS);
-    assert_true(flags | LYS_YINELEM_TRUE);
+    assert_true(flags & LYS_YINELEM_TRUE);
 
     data = ELEMENT_WRAPPER_START "<yin-element value=\"invalid\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &flags, NULL, NULL, false), LY_EVALID);
-    assert_true(flags | LYS_YINELEM_TRUE);
+    assert_true(flags & LYS_YINELEM_TRUE);
     logbuf_assert("Invalid value \"invalid\" of \"yin-element\". Line number 1.");
     st->finished_correctly = true;
 }
@@ -1002,12 +1002,12 @@ test_yangversion_elem(void **state)
     /* valid values */
     data = ELEMENT_WRAPPER_START "<yang-version value=\"1.0\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &version, NULL, NULL, true), LY_SUCCESS);
-    assert_true(version | LYS_VERSION_1_0);
+    assert_true(version & LYS_VERSION_1_0);
     assert_int_equal(st->yin_ctx->mod_version, LYS_VERSION_1_0);
 
     data = ELEMENT_WRAPPER_START "<yang-version value=\"1.1\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &version, NULL, NULL, true), LY_SUCCESS);
-    assert_true(version | LYS_VERSION_1_1);
+    assert_true(version & LYS_VERSION_1_1);
     assert_int_equal(st->yin_ctx->mod_version, LYS_VERSION_1_1);
 
     /* invalid value */
@@ -1058,7 +1058,7 @@ test_argument_elem(void **state)
            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &arg_meta, NULL, NULL, true), LY_SUCCESS);
     assert_string_equal(arg, "arg-name");
-    assert_true(flags | LYS_YINELEM_TRUE);
+    assert_true(flags & LYS_YINELEM_TRUE);
     flags = 0;
     FREE_STRING(st->ctx, arg);
     arg = NULL;
@@ -1099,7 +1099,7 @@ test_base_elem(void **state)
            "</type>";
     assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, true), LY_SUCCESS);
     assert_string_equal(*type.bases, "base-name");
-    assert_true(type.flags | LYS_SET_BASE);
+    assert_true(type.flags & LYS_SET_BASE);
     FREE_STRING(st->ctx, *type.bases);
     LY_ARRAY_FREE(type.bases);
 
@@ -1139,12 +1139,12 @@ test_config_elem(void **state)
 
     data = ELEMENT_WRAPPER_START "<config value=\"true\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &flags, NULL, NULL, true), LY_SUCCESS);
-    assert_true(flags | LYS_CONFIG_W);
+    assert_true(flags & LYS_CONFIG_W);
     flags = 0;
 
     data = ELEMENT_WRAPPER_START "<config value=\"false\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &flags, NULL, NULL, true), LY_SUCCESS);
-    assert_true(flags | LYS_CONFIG_R);
+    assert_true(flags & LYS_CONFIG_R);
     flags = 0;
 
     data = ELEMENT_WRAPPER_START "<config value=\"invalid\"/>" ELEMENT_WRAPPER_END;
@@ -1224,7 +1224,7 @@ test_fracdigits_elem(void **state)
     data = ELEMENT_WRAPPER_START "<fraction-digits value=\"10\"></fraction-digits>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, true), LY_SUCCESS);
     assert_int_equal(type.fraction_digits, 10);
-    assert_true(type.flags | LYS_SET_FRDIGITS);
+    assert_true(type.flags & LYS_SET_FRDIGITS);
 
     /* invalid values */
     data = ELEMENT_WRAPPER_START "<fraction-digits value=\"-1\"></fraction-digits>" ELEMENT_WRAPPER_END;
@@ -1295,7 +1295,7 @@ test_length_elem(void **state)
     assert_string_equal(type.length->eapptag, "err-app-tag");
     assert_string_equal(type.length->dsc, "desc");
     assert_string_equal(type.length->ref, "ref");
-    assert_true(type.flags | LYS_SET_LENGTH);
+    assert_true(type.flags & LYS_SET_LENGTH);
     lysp_type_free(st->ctx, &type);
     memset(&type, 0, sizeof(type));
 
@@ -1307,7 +1307,7 @@ test_length_elem(void **state)
     assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, true), LY_SUCCESS);
     assert_string_equal(type.length->arg, "length-str");
     lysp_type_free(st->ctx, &type);
-    assert_true(type.flags | LYS_SET_LENGTH);
+    assert_true(type.flags & LYS_SET_LENGTH);
     memset(&type, 0, sizeof(type));
 
     data = ELEMENT_WRAPPER_START "<length></length>" ELEMENT_WRAPPER_END;
@@ -1369,7 +1369,7 @@ test_path_elem(void **state)
     data = ELEMENT_WRAPPER_START "<path value=\"path-val\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, true), LY_SUCCESS);
     assert_string_equal("path-val", type.path);
-    assert_true(type.flags | LYS_SET_PATH);
+    assert_true(type.flags & LYS_SET_PATH);
     lysp_type_free(st->ctx, &type);
 
     st->finished_correctly = true;
@@ -1393,7 +1393,7 @@ test_pattern_elem(void **state)
                 "</pattern>"
            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, true), LY_SUCCESS);
-    assert_true(type.flags | LYS_SET_PATTERN);
+    assert_true(type.flags & LYS_SET_PATTERN);
     assert_string_equal(type.patterns->arg, "\x015super_pattern");
     assert_string_equal(type.patterns->dsc, "pattern-desc");
     assert_string_equal(type.patterns->eapptag, "err-app-tag-value");
@@ -1424,38 +1424,38 @@ test_value_position_elem(void **state)
     data = ELEMENT_WRAPPER_START "<value value=\"55\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &en, NULL, NULL, true), LY_SUCCESS);
     assert_int_equal(en.value, 55);
-    assert_true(en.flags | LYS_SET_VALUE);
+    assert_true(en.flags & LYS_SET_VALUE);
     memset(&en, 0, sizeof(en));
 
     data = ELEMENT_WRAPPER_START "<value value=\"-55\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &en, NULL, NULL, true), LY_SUCCESS);
     assert_int_equal(en.value, -55);
-    assert_true(en.flags | LYS_SET_VALUE);
+    assert_true(en.flags & LYS_SET_VALUE);
     memset(&en, 0, sizeof(en));
 
     data = ELEMENT_WRAPPER_START "<value value=\"0\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &en, NULL, NULL, true), LY_SUCCESS);
     assert_int_equal(en.value, 0);
-    assert_true(en.flags | LYS_SET_VALUE);
+    assert_true(en.flags & LYS_SET_VALUE);
     memset(&en, 0, sizeof(en));
 
     data = ELEMENT_WRAPPER_START "<value value=\"-0\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &en, NULL, NULL, true), LY_SUCCESS);
     assert_int_equal(en.value, 0);
-    assert_true(en.flags | LYS_SET_VALUE);
+    assert_true(en.flags & LYS_SET_VALUE);
     memset(&en, 0, sizeof(en));
 
     /* valid positions */
     data = ELEMENT_WRAPPER_START "<position value=\"55\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &en, NULL, NULL, true), LY_SUCCESS);
     assert_int_equal(en.value, 55);
-    assert_true(en.flags | LYS_SET_VALUE);
+    assert_true(en.flags & LYS_SET_VALUE);
     memset(&en, 0, sizeof(en));
 
     data = ELEMENT_WRAPPER_START "<position value=\"0\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &en, NULL, NULL, true), LY_SUCCESS);
     assert_int_equal(en.value, 0);
-    assert_true(en.flags | LYS_SET_VALUE);
+    assert_true(en.flags & LYS_SET_VALUE);
     memset(&en, 0, sizeof(en));
 
     /* invalid values */
@@ -1528,7 +1528,7 @@ test_range_elem(void **state)
     assert_string_equal(type.range->eapptag, "err-app-tag");
     assert_string_equal(type.range->emsg, "err-msg");
     assert_string_equal(type.range->ref, "ref");
-    assert_true(type.flags | LYS_SET_RANGE);
+    assert_true(type.flags & LYS_SET_RANGE);
     lysp_type_free(st->ctx, &type);
     memset(&type, 0, sizeof(type));
 
@@ -1552,13 +1552,13 @@ test_reqinstance_elem(void **state)
     data = ELEMENT_WRAPPER_START "<require-instance value=\"true\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, true), LY_SUCCESS);
     assert_int_equal(type.require_instance, 1);
-    assert_true(type.flags | LYS_SET_REQINST);
+    assert_true(type.flags & LYS_SET_REQINST);
     memset(&type, 0, sizeof(type));
 
     data = ELEMENT_WRAPPER_START "<require-instance value=\"false\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, true), LY_SUCCESS);
     assert_int_equal(type.require_instance, 0);
-    assert_true(type.flags | LYS_SET_REQINST);
+    assert_true(type.flags & LYS_SET_REQINST);
     memset(&type, 0, sizeof(type));
 
     data = ELEMENT_WRAPPER_START "<require-instance value=\"invalid\"/>" ELEMENT_WRAPPER_END;
@@ -1709,16 +1709,16 @@ test_type_elem(void **state)
     assert_int_equal(type.require_instance, 1);
     assert_string_equal(type.types->name, "sub-type-name");
     lysp_type_free(st->ctx, &type);
-    assert_true(type.flags | LYS_SET_BASE);
-    assert_true(type.flags | LYS_SET_BIT);
-    assert_true(type.flags | LYS_SET_ENUM);
-    assert_true(type.flags | LYS_SET_FRDIGITS);
-    assert_true(type.flags | LYS_SET_LENGTH);
-    assert_true(type.flags | LYS_SET_PATH);
-    assert_true(type.flags | LYS_SET_PATTERN);
-    assert_true(type.flags | LYS_SET_RANGE);
-    assert_true(type.flags | LYS_SET_REQINST);
-    assert_true(type.flags | LYS_SET_TYPE);
+    assert_true(type.flags & LYS_SET_BASE);
+    assert_true(type.flags & LYS_SET_BIT);
+    assert_true(type.flags & LYS_SET_ENUM);
+    assert_true(type.flags & LYS_SET_FRDIGITS);
+    assert_true(type.flags & LYS_SET_LENGTH);
+    assert_true(type.flags & LYS_SET_PATH);
+    assert_true(type.flags & LYS_SET_PATTERN);
+    assert_true(type.flags & LYS_SET_RANGE);
+    assert_true(type.flags & LYS_SET_REQINST);
+    assert_true(type.flags & LYS_SET_TYPE);
     memset(&type, 0, sizeof(type));
 
     /* min subelems */
@@ -1742,22 +1742,22 @@ test_max_elems_elem(void **state)
     data = "<refine xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"unbounded\"/> </refine>";
     assert_int_equal(test_element_helper(st, &data, &refine, NULL, NULL, true), LY_SUCCESS);
     assert_int_equal(refine.max, 0);
-    assert_true(refine.flags | LYS_SET_MAX);
+    assert_true(refine.flags & LYS_SET_MAX);
 
     data = "<list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"5\"/> </list>";
     assert_int_equal(test_element_helper(st, &data, &list, NULL, NULL, true), LY_SUCCESS);
     assert_int_equal(list.max, 5);
-    assert_true(list.flags | LYS_SET_MAX);
+    assert_true(list.flags & LYS_SET_MAX);
 
     data = "<leaf-list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"85\"/> </leaf-list>";
     assert_int_equal(test_element_helper(st, &data, &llist, NULL, NULL, true), LY_SUCCESS);
     assert_int_equal(llist.max, 85);
-    assert_true(llist.flags | LYS_SET_MAX);
+    assert_true(llist.flags & LYS_SET_MAX);
 
     data = "<refine xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"10\"/> </refine>";
     assert_int_equal(test_element_helper(st, &data, &refine, NULL, NULL, true), LY_SUCCESS);
     assert_int_equal(refine.max, 10);
-    assert_true(refine.flags | LYS_SET_MAX);
+    assert_true(refine.flags & LYS_SET_MAX);
 
     data = "<list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"0\"/> </list>";
     assert_int_equal(test_element_helper(st, &data, &list, NULL, NULL, false), LY_EVALID);
@@ -1790,17 +1790,17 @@ test_min_elems_elem(void **state)
     data = "<refine xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <min-elements value=\"0\"/> </refine>";
     assert_int_equal(test_element_helper(st, &data, &refine, NULL, NULL, true), LY_SUCCESS);
     assert_int_equal(refine.min, 0);
-    assert_true(refine.flags | LYS_SET_MIN);
+    assert_true(refine.flags & LYS_SET_MIN);
 
     data = "<list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <min-elements value=\"41\"/> </list>";
     assert_int_equal(test_element_helper(st, &data, &list, NULL, NULL, true), LY_SUCCESS);
     assert_int_equal(list.min, 41);
-    assert_true(list.flags | LYS_SET_MIN);
+    assert_true(list.flags & LYS_SET_MIN);
 
     data = "<leaf-list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <min-elements value=\"50\"/> </leaf-list>";
     assert_int_equal(test_element_helper(st, &data, &llist, NULL, NULL, true), LY_SUCCESS);
     assert_int_equal(llist.min, 50);
-    assert_true(llist.flags | LYS_SET_MIN);
+    assert_true(llist.flags & LYS_SET_MIN);
 
     data = "<leaf-list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <min-elements value=\"-5\"/> </leaf-list>";
     assert_int_equal(test_element_helper(st, &data, &llist, NULL, NULL, false), LY_EVALID);
@@ -1830,11 +1830,11 @@ test_ordby_elem(void **state)
 
     data = ELEMENT_WRAPPER_START "<ordered-by value=\"system\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &flags, NULL, NULL, true), LY_SUCCESS);
-    assert_true(flags | LYS_ORDBY_SYSTEM);
+    assert_true(flags & LYS_ORDBY_SYSTEM);
 
     data = ELEMENT_WRAPPER_START "<ordered-by value=\"user\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &flags, NULL, NULL, true), LY_SUCCESS);
-    assert_true(flags | LYS_ORDBY_USER);
+    assert_true(flags & LYS_ORDBY_USER);
 
     data = ELEMENT_WRAPPER_START "<ordered-by value=\"inv\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &flags, NULL, NULL, false), LY_EVALID);
@@ -1869,9 +1869,9 @@ test_any_elem(void **state)
     parsed = (struct lysp_node_anydata *)siblings;
     assert_null(parsed->parent);
     assert_int_equal(parsed->nodetype, LYS_ANYXML);
-    assert_true(parsed->flags | LYS_CONFIG_W);
-    assert_true(parsed->flags | LYS_MAND_TRUE);
-    assert_true(parsed->flags | LYS_STATUS_DEPRC);
+    assert_true(parsed->flags & LYS_CONFIG_W);
+    assert_true(parsed->flags & LYS_MAND_TRUE);
+    assert_true(parsed->flags & LYS_STATUS_DEPRC);
     assert_null(parsed->next);
     assert_string_equal(parsed->name, "any-name");
     assert_string_equal(parsed->dsc, "desc");
@@ -1899,9 +1899,9 @@ test_any_elem(void **state)
     parsed = (struct lysp_node_anydata *)siblings;
     assert_null(parsed->parent);
     assert_int_equal(parsed->nodetype, LYS_ANYDATA);
-    assert_true(parsed->flags | LYS_CONFIG_W);
-    assert_true(parsed->flags | LYS_MAND_TRUE);
-    assert_true(parsed->flags | LYS_STATUS_DEPRC);
+    assert_true(parsed->flags & LYS_CONFIG_W);
+    assert_true(parsed->flags & LYS_MAND_TRUE);
+    assert_true(parsed->flags & LYS_STATUS_DEPRC);
     assert_null(parsed->next);
     assert_string_equal(parsed->name, "any-name");
     assert_string_equal(parsed->dsc, "desc");
@@ -1955,9 +1955,9 @@ test_leaf_elem(void **state)
     parsed = (struct lysp_node_leaf *)siblings;
     assert_null(parsed->parent);
     assert_int_equal(parsed->nodetype, LYS_LEAF);
-    assert_true(parsed->flags | LYS_CONFIG_W);
-    assert_true(parsed->flags | LYS_MAND_TRUE);
-    assert_true(parsed->flags | LYS_STATUS_DEPRC);
+    assert_true(parsed->flags & LYS_CONFIG_W);
+    assert_true(parsed->flags & LYS_MAND_TRUE);
+    assert_true(parsed->flags & LYS_STATUS_DEPRC);
     assert_null(parsed->next);
     assert_string_equal(parsed->name, "leaf");
     assert_string_equal(parsed->dsc, "desc");
@@ -1978,6 +1978,175 @@ test_leaf_elem(void **state)
     parsed = (struct lysp_node_leaf *)siblings;
     assert_string_equal(parsed->name, "leaf");
     assert_string_equal(parsed->type.name, "type");
+    lysp_node_free(st->ctx, siblings);
+    siblings = NULL;
+
+    st->finished_correctly = true;
+}
+
+static void
+test_leaf_list_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct lysp_node *siblings = NULL;
+    struct tree_node_meta node_meta = {.parent = NULL, .siblings = &siblings};
+    struct lysp_node_leaflist *parsed = NULL;
+
+    data = ELEMENT_WRAPPER_START
+                "<leaf-list name=\"llist\">"
+                    "<config value=\"true\" />"
+                    "<default value=\"def-val0\"/>"
+                    "<default value=\"def-val1\"/>"
+                    "<description><text>desc</text></description>"
+                    "<if-feature name=\"feature\"/>"
+                    "<max-elements value=\"5\"/>"
+                    "<must condition=\"must-cond\"/>"
+                    "<ordered-by value=\"user\" />"
+                    "<reference><text>ref</text></reference>"
+                    "<status value=\"current\"/>"
+                    "<type name=\"type\"/>"
+                    "<units name=\"uni\"/>"
+                    "<when condition=\"when-cond\"/>"
+                "</leaf-list>"
+            ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &node_meta, NULL, NULL, true), LY_SUCCESS);
+    parsed = (struct lysp_node_leaflist *)siblings;
+    assert_string_equal(parsed->dflts[0], "def-val0");
+    assert_string_equal(parsed->dflts[1], "def-val1");
+    assert_string_equal(parsed->dsc, "desc");
+    assert_string_equal(*parsed->iffeatures, "feature");
+    assert_int_equal(parsed->max, 5);
+    assert_string_equal(parsed->musts->arg, "must-cond");
+    assert_string_equal(parsed->name, "llist");
+    assert_null(parsed->next);
+    assert_int_equal(parsed->nodetype, LYS_LEAFLIST);
+    assert_null(parsed->parent);
+    assert_string_equal(parsed->ref, "ref");
+    assert_string_equal(parsed->type.name, "type");
+    assert_string_equal(parsed->units, "uni");
+    assert_string_equal(parsed->when->cond, "when-cond");
+    assert_true(parsed->flags & LYS_CONFIG_W);
+    assert_true(parsed->flags & LYS_ORDBY_USER);
+    assert_true(parsed->flags & LYS_STATUS_CURR);
+    lysp_node_free(st->ctx, siblings);
+    siblings = NULL;
+
+    data = ELEMENT_WRAPPER_START
+                "<leaf-list name=\"llist\">"
+                    "<config value=\"true\" />"
+                    "<description><text>desc</text></description>"
+                    "<if-feature name=\"feature\"/>"
+                    "<min-elements value=\"5\"/>"
+                    "<must condition=\"must-cond\"/>"
+                    "<ordered-by value=\"user\" />"
+                    "<reference><text>ref</text></reference>"
+                    "<status value=\"current\"/>"
+                    "<type name=\"type\"/>"
+                    "<units name=\"uni\"/>"
+                    "<when condition=\"when-cond\"/>"
+                "</leaf-list>"
+            ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &node_meta, NULL, NULL, true), LY_SUCCESS);
+    parsed = (struct lysp_node_leaflist *)siblings;
+    assert_string_equal(parsed->dsc, "desc");
+    assert_string_equal(*parsed->iffeatures, "feature");
+    assert_int_equal(parsed->min, 5);
+    assert_string_equal(parsed->musts->arg, "must-cond");
+    assert_string_equal(parsed->name, "llist");
+    assert_null(parsed->next);
+    assert_int_equal(parsed->nodetype, LYS_LEAFLIST);
+    assert_null(parsed->parent);
+    assert_string_equal(parsed->ref, "ref");
+    assert_string_equal(parsed->type.name, "type");
+    assert_string_equal(parsed->units, "uni");
+    assert_string_equal(parsed->when->cond, "when-cond");
+    assert_true(parsed->flags & LYS_CONFIG_W);
+    assert_true(parsed->flags & LYS_ORDBY_USER);
+    assert_true(parsed->flags & LYS_STATUS_CURR);
+    lysp_node_free(st->ctx, siblings);
+    siblings = NULL;
+
+    data = ELEMENT_WRAPPER_START
+                "<leaf-list name=\"llist\">"
+                    "<config value=\"true\" />"
+                    "<description><text>desc</text></description>"
+                    "<if-feature name=\"feature\"/>"
+                    "<max-elements value=\"15\"/>"
+                    "<min-elements value=\"5\"/>"
+                    "<must condition=\"must-cond\"/>"
+                    "<ordered-by value=\"user\" />"
+                    "<reference><text>ref</text></reference>"
+                    "<status value=\"current\"/>"
+                    "<type name=\"type\"/>"
+                    "<units name=\"uni\"/>"
+                    "<when condition=\"when-cond\"/>"
+                "</leaf-list>"
+            ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &node_meta, NULL, NULL, true), LY_SUCCESS);
+    parsed = (struct lysp_node_leaflist *)siblings;
+    assert_string_equal(parsed->dsc, "desc");
+    assert_string_equal(*parsed->iffeatures, "feature");
+    assert_int_equal(parsed->min, 5);
+    assert_int_equal(parsed->max, 15);
+    assert_string_equal(parsed->musts->arg, "must-cond");
+    assert_string_equal(parsed->name, "llist");
+    assert_null(parsed->next);
+    assert_int_equal(parsed->nodetype, LYS_LEAFLIST);
+    assert_null(parsed->parent);
+    assert_string_equal(parsed->ref, "ref");
+    assert_string_equal(parsed->type.name, "type");
+    assert_string_equal(parsed->units, "uni");
+    assert_string_equal(parsed->when->cond, "when-cond");
+    assert_true(parsed->flags & LYS_CONFIG_W);
+    assert_true(parsed->flags & LYS_ORDBY_USER);
+    assert_true(parsed->flags & LYS_STATUS_CURR);
+    lysp_node_free(st->ctx, siblings);
+    siblings = NULL;
+
+    data = ELEMENT_WRAPPER_START
+                "<leaf-list name=\"llist\">"
+                    "<type name=\"type\"/>"
+                "</leaf-list>"
+            ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &node_meta, NULL, NULL, true), LY_SUCCESS);
+    parsed = (struct lysp_node_leaflist *)siblings;
+    assert_string_equal(parsed->name, "llist");
+    assert_string_equal(parsed->type.name, "type");
+    lysp_node_free(st->ctx, siblings);
+    siblings = NULL;
+
+    /* invalid combinations */
+    data = ELEMENT_WRAPPER_START
+                "<leaf-list name=\"llist\">"
+                    "<max-elements value=\"5\"/>"
+                    "<min-elements value=\"15\"/>"
+                    "<type name=\"type\"/>"
+                "</leaf-list>"
+            ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &node_meta, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Invalid combination of min-elements and max-elements: min value 15 is bigger than the max value 5. Line number 1.");
+    lysp_node_free(st->ctx, siblings);
+    siblings = NULL;
+
+    data = ELEMENT_WRAPPER_START
+                "<leaf-list name=\"llist\">"
+                    "<default value=\"def-val1\"/>"
+                    "<min-elements value=\"15\"/>"
+                    "<type name=\"type\"/>"
+                "</leaf-list>"
+            ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &node_meta, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Invalid combination of keywords \"min-elements\" and \"default\" as substatements of \"leaf-list\". Line number 1.");
+    lysp_node_free(st->ctx, siblings);
+    siblings = NULL;
+
+    data = ELEMENT_WRAPPER_START
+                "<leaf-list name=\"llist\">"
+                "</leaf-list>"
+            ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &node_meta, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Missing mandatory subelement type of leaf-list element. Line number 1.");
     lysp_node_free(st->ctx, siblings);
     siblings = NULL;
 
@@ -2034,6 +2203,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_ordby_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_any_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_leaf_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_leaf_list_elem, setup_element_test, teardown_element_test),
 
     };
 

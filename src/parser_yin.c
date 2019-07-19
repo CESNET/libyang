@@ -1148,6 +1148,74 @@ yin_parse_leaf(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const c
 }
 
 /**
+ * @brief Parse leaf-list element.
+ *
+ * @param[in,out] ctx YIN parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] node_meta Meta information about node parent and siblings.
+ *
+ * @return LY_ERR values.
+ */
+static LY_ERR
+yin_parse_leaflist(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+                   struct tree_node_meta *node_meta)
+{
+    struct lysp_node *iter;
+    struct lysp_node_leaflist *llist;
+    LY_ERR ret = LY_SUCCESS;
+
+    llist = calloc(1, sizeof *llist);
+    LY_CHECK_ERR_RET(!llist, LOGMEM(ctx->xml_ctx.ctx), LY_EMEM);
+    llist->nodetype = LYS_LEAFLIST;
+    llist->parent = node_meta->parent;
+
+    /* insert into siblings */
+    if (!*(node_meta->siblings)) {
+        *node_meta->siblings = (struct lysp_node *)llist;
+    } else {
+        for (iter = *node_meta->siblings; iter->next; iter = iter->next);
+        iter->next = (struct lysp_node *)llist;
+    }
+
+    /* parse argument */
+    yin_parse_attribute(ctx, attrs, YIN_ARG_NAME, &llist->name, Y_IDENTIF_ARG, YANG_LEAF_LIST);
+
+    /* parse content */
+    struct yin_subelement subelems[14] = {
+                                            {YANG_CONFIG, &llist->flags, YIN_SUBELEM_UNIQUE},
+                                            {YANG_DEFAULT, &llist->dflts, 0},
+                                            {YANG_DESCRIPTION, &llist->dsc, YIN_SUBELEM_UNIQUE},
+                                            {YANG_IF_FEATURE, &llist->iffeatures, 0},
+                                            {YANG_MAX_ELEMENTS, llist, YIN_SUBELEM_UNIQUE},
+                                            {YANG_MIN_ELEMENTS, llist, YIN_SUBELEM_UNIQUE},
+                                            {YANG_MUST, &llist->musts, 0},
+                                            {YANG_ORDERED_BY, &llist->flags, YIN_SUBELEM_UNIQUE},
+                                            {YANG_REFERENCE, &llist->ref, YIN_SUBELEM_UNIQUE},
+                                            {YANG_STATUS, &llist->flags, YIN_SUBELEM_UNIQUE},
+                                            {YANG_TYPE, &llist->type, YIN_SUBELEM_UNIQUE | YIN_SUBELEM_MANDATORY},
+                                            {YANG_UNITS, &llist->units, YIN_SUBELEM_UNIQUE},
+                                            {YANG_WHEN, &llist->when, YIN_SUBELEM_UNIQUE},
+                                            {YANG_CUSTOM, NULL, 0},
+                                         };
+    LY_CHECK_RET(yin_parse_content(ctx, subelems, 14, data, YANG_LEAF_LIST, NULL, &llist->exts));
+
+    /* invalid combination of subelements */
+    if ((llist->min) && (llist->dflts)) {
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INCHILDSTMSCOMB, "min-elements", "default", "leaf-list");
+        return LY_EVALID;
+    }
+    if (llist->max && llist->min > llist->max) {
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LYVE_SEMANTICS,
+                    "Invalid combination of min-elements and max-elements: min value %u is bigger than the max value %u.",
+                    llist->min, llist->max);
+        return LY_EVALID;
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Map keyword type to substatement info.
  *
  * @param[in] kw Keyword type.
@@ -1358,8 +1426,13 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 case YANG_CONTAINER:
                     break;
                 case YANG_DEFAULT:
-                    ret = yin_parse_simple_element(ctx, attrs, data, kw, (const char **)subelem->dest,
-                                                   YIN_ARG_VALUE, Y_STR_ARG, exts);
+                    if (subelem->flags & YIN_SUBELEM_UNIQUE) {
+                        ret = yin_parse_simple_element(ctx, attrs, data, kw, (const char **)subelem->dest,
+                                                       YIN_ARG_VALUE, Y_STR_ARG, exts);
+                    } else {
+                        ret = yin_parse_simple_elements(ctx, attrs, data, kw, (const char ***)subelem->dest,
+                                                        YIN_ARG_VALUE, Y_STR_ARG, exts);
+                    }
                     break;
                 case YANG_DEVIATE:
                     break;
@@ -1401,6 +1474,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     ret = yin_parse_leaf(ctx, attrs, data, (struct tree_node_meta *)subelem->dest);
                     break;
                 case YANG_LEAF_LIST:
+                    ret = yin_parse_leaflist(ctx, attrs, data, (struct tree_node_meta *)subelem->dest);
                     break;
                 case YANG_LENGTH:
                     type = (struct lysp_type *)subelem->dest;
@@ -1486,6 +1560,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     type = (struct lysp_type *)subelem->dest;
                     if (current_element == YANG_TYPE) {
                         LY_ARRAY_NEW_GOTO(ctx->xml_ctx.ctx, type->types, nested_type, ret, cleanup);
+                        type->flags |= LYS_SET_TYPE;
                         type = nested_type;
                     }
                     ret = yin_parse_type(ctx, attrs, data, type);
