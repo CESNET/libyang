@@ -1468,6 +1468,8 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 case YANG_INPUT:
                     break;
                 case YANG_KEY:
+                    ret = yin_parse_simple_element(ctx, attrs, data, kw, (const char **)subelem->dest, YIN_ARG_VALUE,
+                                                   Y_STR_ARG, exts);
                     break;
                 case YANG_LEAF:
                     ret = yin_parse_leaf(ctx, attrs, data, (struct tree_node_meta *)subelem->dest);

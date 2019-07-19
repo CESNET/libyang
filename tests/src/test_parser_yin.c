@@ -2172,6 +2172,25 @@ test_presence_elem(void **state)
     st->finished_correctly = true;
 }
 
+static void
+test_key_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    const char *val;
+
+    data = ELEMENT_WRAPPER_START "<key value=\"key-value\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &val, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(val, "key-value");
+    FREE_STRING(st->ctx, val);
+
+    data = ELEMENT_WRAPPER_START "<key/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &val, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Missing mandatory attribute value of key element. Line number 1.");
+
+    st->finished_correctly = true;
+}
+
 int
 main(void)
 {
@@ -2224,6 +2243,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_leaf_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_leaf_list_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_presence_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_key_elem, setup_element_test, teardown_element_test),
 
     };
 
