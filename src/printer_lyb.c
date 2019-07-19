@@ -506,13 +506,13 @@ lyb_write_string(const char *str, size_t str_len, int with_length, struct lyout 
     if (!str_len) {
         str_len = strlen(str);
     }
-    if (str_len > UINT16_MAX) {
-        LOGINT(lybs->ctx);
-        return -1;
-    }
 
     if (with_length) {
         /* print length on 2 bytes */
+        if (str_len > UINT16_MAX) {
+            LOGINT(lybs->ctx);
+            return -1;
+        }
         ret += (r = lyb_write_number(str_len, 2, out, lybs));
         if (r < 0) {
             return -1;
