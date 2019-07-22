@@ -1650,7 +1650,8 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 if (subelem->flags & YIN_SUBELEM_VER2) {
                     if (ctx->mod_version < 2) {
                         LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LYVCODE_INSUBELEM2, ly_stmt2str(kw), ly_stmt2str(current_element));
-                        return LY_EVALID;
+                        ret = LY_EVALID;
+                        goto cleanup;
                     }
                 }
                 subelem->flags |= YIN_SUBELEM_PARSED;
