@@ -1385,6 +1385,36 @@ yin_parse_revision(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, con
     return yin_parse_content(ctx, subelems, 3, data, YANG_REVISION, NULL, &rev->exts);
 }
 
+static LY_ERR
+yin_parse_include(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+                  struct include_meta *inc_meta)
+{
+    struct lysp_include *inc;
+
+    /* allocate new include */
+    LY_ARRAY_NEW_RET(ctx->xml_ctx.ctx, *inc_meta->includes, inc, LY_EMEM);
+
+    /* parse argument */
+    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_MODULE, &inc->name, Y_IDENTIF_ARG, YANG_INCLUDE));
+
+    /* submodules share the namespace with the module names, so there must not be
+     * a module of the same name in the context, no need for revision matching */
+    if (!strcmp(inc_meta->name, inc->name) || ly_ctx_get_module_latest(ctx->xml_ctx.ctx, inc->name)) {
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LYVE_SYNTAX_YANG,
+                      "Name collision between module and submodule of name \"%s\".", inc->name);
+        return LY_EVALID;
+    }
+
+    /* parse content */
+    struct yin_subelement subelems[4] = {
+                                            {YANG_DESCRIPTION, &inc->dsc, YIN_SUBELEM_UNIQUE | YIN_SUBELEM_VER2},
+                                            {YANG_REFERENCE, &inc->ref, YIN_SUBELEM_UNIQUE | YIN_SUBELEM_VER2},
+                                            {YANG_REVISION_DATE, &inc->rev, YIN_SUBELEM_UNIQUE},
+                                            {YANG_CUSTOM, NULL, 0},
+                                        };
+    return yin_parse_content(ctx, subelems, 4, data, YANG_INCLUDE, NULL, &inc->exts);
+}
+
 /**
  * @brief Map keyword type to substatement info.
  *
@@ -1530,6 +1560,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
 
                 /* TODO check relative order */
 
+                /* check flags */
                 /* if element is unique and already defined log error */
                 if ((subelem->flags & YIN_SUBELEM_UNIQUE) && (subelem->flags & YIN_SUBELEM_PARSED)) {
                     LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LYVE_SYNTAX_YIN, "Redefinition of %s element in %s element.", ly_stmt2str(kw), ly_stmt2str(current_element));
@@ -1538,6 +1569,12 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 if (subelem->flags & YIN_SUBELEM_FIRST) {
                     ret = yin_check_subelem_first_constraint(ctx, subelem_info, subelem_info_size, current_element, subelem);
                     LY_CHECK_GOTO(ret, cleanup);
+                }
+                if (subelem->flags & YIN_SUBELEM_VER2) {
+                    if (ctx->mod_version < 2) {
+                        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LYVCODE_INSUBELEM2, ly_stmt2str(kw), ly_stmt2str(current_element));
+                        return LY_EVALID;
+                    }
                 }
                 subelem->flags |= YIN_SUBELEM_PARSED;
 
@@ -1635,6 +1672,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     ret = yin_parse_import(ctx, attrs, data, (struct lysp_module *)subelem->dest);
                     break;
                 case YANG_INCLUDE:
+                    ret = yin_parse_include(ctx, attrs, data, (struct include_meta *)subelem->dest);
                     break;
                 case YANG_INPUT:
                     break;

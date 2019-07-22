@@ -64,7 +64,7 @@ lysp_import_free(struct ly_ctx *ctx, struct lysp_import *import)
     FREE_ARRAY(ctx, import->exts, lysp_ext_instance_free);
 }
 
-static void
+void
 lysp_include_free(struct ly_ctx *ctx, struct lysp_include *include)
 {
     if (include->submodule) {

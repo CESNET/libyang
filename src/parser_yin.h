@@ -67,6 +67,7 @@ struct yin_parser_ctx {
 #define YIN_SUBELEM_MANDATORY   0x01    /**< is set when subelement is mandatory */
 #define YIN_SUBELEM_UNIQUE      0x02    /**< is set when subelement is unique */
 #define YIN_SUBELEM_FIRST       0x04    /**< is set when subelement is actually yang argument mapped to yin element */
+#define YIN_SUBELEM_VER2        0x08    /**< subelemnt is allowed only in modules with version at least 2 (YANG 1.1) */
 
 #define YIN_SUBELEM_PARSED      0x80    /**< is set during parsing when given subelement is encountered for the first
                                              time to simply check validity of given constraints */
@@ -102,9 +103,16 @@ struct typedef_meta {
     struct lysp_tpdf **typedefs;    /**< [Sized array](@ref sizedarrays) of typedefs to add to */
 };
 
+/* Meta information passed to yin_parse_augment function */
 struct augment_meta {
     struct lysp_node *parent;       /**< parent node */
     struct lysp_augment **augments; /**< [Sized array](@ref sizedarrays) of augments to add to */
+};
+
+/* Meta information passed to yin_parse_include function */
+struct include_meta {
+    const char *name;               /**< module/submodule name */
+    struct lysp_include **includes; /**< [Sized array](@ref sizedarrays) of parsed includes to add to */
 };
 
 /**

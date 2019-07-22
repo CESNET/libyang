@@ -178,6 +178,7 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_EOF         LYVE_SYNTAX, "Unexpected end-of-input."
 #define LY_VCODE_NTERM       LYVE_SYNTAX, "%s not terminated."
 #define LY_VCODE_NSUPP       LYVE_SYNTAX, "%s not supported."
+
 #define LY_VCODE_INSTMT      LYVE_SYNTAX_YANG, "Invalid keyword \"%s\"."
 #define LY_VCODE_INCHILDSTMT LYVE_SYNTAX_YANG, "Invalid keyword \"%s\" as a child of \"%s\"."
 #define LY_VCODE_INCHILDSTMT2 LYVE_SYNTAX_YANG, "Invalid keyword \"%s\" as a child of \"%s\" - the statement is allowed only in YANG 1.1 modules."
@@ -191,13 +192,17 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_OOB         LYVE_SYNTAX_YANG, "Value \"%.*s\" is out of \"%s\" bounds."
 #define LY_VCODE_INDEV       LYVE_SYNTAX_YANG, "Deviate \"%s\" does not support keyword \"%s\"."
 #define LY_VCODE_INREGEXP    LYVE_SYNTAX_YANG, "Regular expression \"%s\" is not valid (\"%s\": %s)."
+
+#define LYVCODE_INSUBELEM2   LYVE_SYNTAX_YIN, "Invalid sub-elemnt \"%s\" of \"%s\" element - this sub-element is allowed only in modules with version 1.1 or newer."
 #define LY_VCODE_INVAL_YIN   LYVE_SYNTAX_YIN, "Invalid value \"%s\" of \"%s\"."
 #define LY_VCODE_DUPELEM     LYVE_SYNTAX_YIN, "Duplicate element \"%s\"."
 #define LY_VCODE_INCHILDSTMT_YIN LYVE_SYNTAX_YIN, "Invalid element \"%.*s\" as a child of \"%.*s\"."
 #define LY_VCODE_MISSATTR    LYVE_SYNTAX_YIN, "Missing mandatory child element \"%s\" of %s element ."
 #define LY_VCODE_UNEXP_SUBELEM LYVE_SYNTAX_YIN, "Unexpected child element \"%.*s\" of %s element."
+
 #define LY_VCODE_XP_EOE      LYVE_XPATH, "Unterminated string delimited with %c (%.15s)."
 #define LY_VCODE_XP_INEXPR   LYVE_XPATH, "Invalid character number %u of expression \'%s\'."
+
 #define LY_VCODE_DEV_NODETYPE LYVE_REFERENCE, "Invalid deviation of %s node - it is not possible to %s \"%s\" property."
 #define LY_VCODE_DEV_NOT_PRESENT LYVE_REFERENCE, "Invalid deviation %s \"%s\" property \"%s\" which is not present."
 

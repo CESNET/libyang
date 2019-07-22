@@ -36,6 +36,7 @@ void lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node);
 void lysp_tpdf_free(struct ly_ctx *ctx, struct lysp_tpdf *tpdf);
 void lysp_refine_free(struct ly_ctx *ctx, struct lysp_refine *ref);
 void lysp_revision_free(struct ly_ctx *ctx, struct lysp_revision *rev);
+void lysp_include_free(struct ly_ctx *ctx, struct lysp_include *include);
 
 struct state {
     struct ly_ctx *ctx;
@@ -2371,6 +2372,67 @@ test_revision_elem(void **state)
     st->finished_correctly = true;
 }
 
+static void
+test_include_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct lysp_include *includes = NULL;
+    struct include_meta inc_meta = {"module-name", &includes};
+
+    /* max subelems */
+    st->yin_ctx->mod_version = LYS_VERSION_1_1;
+    data = ELEMENT_WRAPPER_START
+                "<include module=\"mod\">"
+                    "<description><text>desc</text></description>"
+                    "<reference><text>ref</text></reference>"
+                    "<revision-date date=\"1999-09-09\"/>"
+                "</include>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &inc_meta, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(includes->name, "mod");
+    assert_string_equal(includes->dsc, "desc");
+    assert_string_equal(includes->ref, "ref");
+    assert_null(includes->exts);
+    assert_string_equal(includes->rev, "1999-09-09");
+    FREE_ARRAY(st->ctx, includes, lysp_include_free);
+    includes = NULL;
+
+    /* min subelems */
+    data = ELEMENT_WRAPPER_START "<include module=\"mod\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &inc_meta, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(includes->name, "mod");
+    FREE_ARRAY(st->ctx, includes, lysp_include_free);
+    includes = NULL;
+
+    /* invalid combinations */
+    st->yin_ctx->mod_version = LYS_VERSION_1_0;
+    data = ELEMENT_WRAPPER_START
+                "<include module=\"mod\">"
+                    "<description><text>desc</text></description>"
+                    "<revision-date date=\"1999-09-09\"/>"
+                "</include>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &inc_meta, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Invalid sub-elemnt \"description\" of \"include\" element - this sub-element is allowed only in modules with version 1.1 or newer. Line number 1.");
+    FREE_ARRAY(st->ctx, includes, lysp_include_free);
+    includes = NULL;
+
+    st->yin_ctx->mod_version = LYS_VERSION_1_0;
+    data = ELEMENT_WRAPPER_START
+                "<include module=\"mod\">"
+                    "<reference><text>ref</text></reference>"
+                    "<revision-date date=\"1999-09-09\"/>"
+                "</include>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &inc_meta, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Invalid sub-elemnt \"reference\" of \"include\" element - this sub-element is allowed only in modules with version 1.1 or newer. Line number 1.");
+    FREE_ARRAY(st->ctx, includes, lysp_include_free);
+    includes = NULL;
+
+    st->finished_correctly = true;
+}
+
 int
 main(void)
 {
@@ -2428,6 +2490,8 @@ main(void)
         cmocka_unit_test_setup_teardown(test_refine_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_uses_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_revision_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_include_elem, setup_element_test, teardown_element_test),
+
     };
 
     return cmocka_run_group_tests(tests, setup_ly_ctx, destroy_ly_ctx);
