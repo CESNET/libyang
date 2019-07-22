@@ -34,6 +34,7 @@ void lysp_when_free(struct ly_ctx *ctx, struct lysp_when *when);
 void lysp_type_free(struct ly_ctx *ctx, struct lysp_type *type);
 void lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node);
 void lysp_tpdf_free(struct ly_ctx *ctx, struct lysp_tpdf *tpdf);
+void lysp_refine_free(struct ly_ctx *ctx, struct lysp_refine *ref);
 
 struct state {
     struct ly_ctx *ctx;
@@ -2236,6 +2237,54 @@ test_typedef_elem(void **state)
     st->finished_correctly = true;
 }
 
+static void
+test_refine_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct lysp_refine *refines = NULL;
+
+    /* max subelems */
+    data = ELEMENT_WRAPPER_START
+                "<refine target-node=\"target\">"
+                    "<if-feature name=\"feature\" />"
+                    "<must condition=\"cond\" />"
+                    "<presence value=\"presence\" />"
+                    "<default value=\"def\" />"
+                    "<config value=\"true\" />"
+                    "<mandatory value=\"true\" />"
+                    "<min-elements value=\"10\" />"
+                    "<max-elements value=\"20\" />"
+                    "<description><text>desc</text></description>"
+                    "<reference><text>ref</text></reference>"
+                "</refine>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &refines, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(refines->nodeid, "target");
+    assert_string_equal(*refines->dflts, "def");
+    assert_string_equal(refines->dsc, "desc");
+    assert_null(refines->exts);
+    assert_true(refines->flags & LYS_CONFIG_W);
+    assert_true(refines->flags & LYS_MAND_TRUE);
+    assert_string_equal(*refines->iffeatures, "feature");
+    assert_int_equal(refines->max, 20);
+    assert_int_equal(refines->min, 10);
+    assert_string_equal(refines->musts->arg, "cond");
+    assert_string_equal(refines->presence, "presence");
+    assert_string_equal(refines->ref, "ref");
+    FREE_ARRAY(st->ctx, refines, lysp_refine_free);
+    refines = NULL;
+
+    /* min subelems */
+    data = ELEMENT_WRAPPER_START "<refine target-node=\"target\" />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &refines, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(refines->nodeid, "target");
+    FREE_ARRAY(st->ctx, refines, lysp_refine_free);
+    refines = NULL;
+
+    st->finished_correctly = true;
+}
+
 int
 main(void)
 {
@@ -2290,7 +2339,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_presence_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_key_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_typedef_elem, setup_element_test, teardown_element_test),
-
+        cmocka_unit_test_setup_teardown(test_refine_elem, setup_element_test, teardown_element_test),
     };
 
     return cmocka_run_group_tests(tests, setup_ly_ctx, destroy_ly_ctx);

@@ -305,7 +305,7 @@ lysp_deviation_free(struct ly_ctx *ctx, struct lysp_deviation *dev)
     FREE_ARRAY(ctx, dev->exts, lysp_ext_instance_free);
 }
 
-static void
+void
 lysp_refine_free(struct ly_ctx *ctx, struct lysp_refine *ref)
 {
     FREE_STRING(ctx, ref->nodeid);

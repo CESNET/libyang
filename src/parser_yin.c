@@ -166,7 +166,7 @@ yin_match_argument_name(const char *name, size_t len)
  */
 static void free_arg_rec(struct yin_parser_ctx *ctx, struct yin_arg_record *record) {
     (void)ctx; /* unused */
-    if (record->dynamic_content) {
+    if (record && record->dynamic_content) {
         free(record->content);
     }
 }
@@ -1255,6 +1255,46 @@ yin_parse_typedef(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, cons
 }
 
 /**
+ * @brief Parse refine element.
+ *
+ * @param[in,out] ctx YIN parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] refines Refines to add to.
+ *
+ * @return LY_ERR values.
+ */
+static LY_ERR
+yin_parse_refine(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+                 struct lysp_refine **refines)
+{
+    struct lysp_refine *rf;
+
+    /* allocate new refine */
+    LY_ARRAY_NEW_RET(ctx->xml_ctx.ctx, *refines, rf, LY_EMEM);
+
+    /* parse attribute */
+    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_TARGET_NODE, &rf->nodeid, Y_STR_ARG, YANG_REFINE));
+    YANG_CHECK_NONEMPTY((struct lys_parser_ctx *)ctx, strlen(rf->nodeid), "refine");
+
+    /* parse content */
+    struct yin_subelement subelems[11] = {
+                                            {YANG_CONFIG, &rf->flags, YIN_SUBELEM_UNIQUE},
+                                            {YANG_DEFAULT, &rf->dflts, 0},
+                                            {YANG_DESCRIPTION, &rf->dsc, YIN_SUBELEM_UNIQUE},
+                                            {YANG_IF_FEATURE, &rf->iffeatures, 0},
+                                            {YANG_MANDATORY, &rf->flags, YIN_SUBELEM_UNIQUE},
+                                            {YANG_MAX_ELEMENTS, rf, YIN_SUBELEM_UNIQUE},
+                                            {YANG_MIN_ELEMENTS, rf, YIN_SUBELEM_UNIQUE},
+                                            {YANG_MUST, &rf->musts, 0},
+                                            {YANG_PRESENCE, &rf->presence, YIN_SUBELEM_UNIQUE},
+                                            {YANG_REFERENCE, &rf->ref, YIN_SUBELEM_UNIQUE},
+                                            {YANG_CUSTOM, NULL, 0},
+                                         };
+    return yin_parse_content(ctx, subelems, 11, data, YANG_REFINE, NULL, &rf->exts);
+}
+
+/**
  * @brief Map keyword type to substatement info.
  *
  * @param[in] kw Keyword type.
@@ -1582,6 +1622,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     type->flags |=  LYS_SET_RANGE;
                     break;
                 case YANG_REFINE:
+                    ret = yin_parse_refine(ctx, attrs, data, (struct lysp_refine **)subelem->dest);
                     break;
                 case YANG_REQUIRE_INSTANCE:
                     ret = yin_pasrse_reqinstance(ctx, attrs, data, (struct lysp_type *)subelem->dest);
