@@ -570,7 +570,6 @@ int main(void)
         cmocka_unit_test_setup(test_attribute, logger_setup),
         cmocka_unit_test_setup(test_text, logger_setup),
         cmocka_unit_test_setup(test_ns, logger_setup),
-        cmocka_unit_test(test_simple_xml),
         cmocka_unit_test_setup(test_ns2, logger_setup),
         cmocka_unit_test_setup(test_simple_xml, logger_setup),
     };
