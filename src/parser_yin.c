@@ -1196,7 +1196,7 @@ yin_parse_leaflist(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, con
                                             {YANG_UNITS, &llist->units, YIN_SUBELEM_UNIQUE},
                                             {YANG_WHEN, &llist->when, YIN_SUBELEM_UNIQUE},
                                             {YANG_CUSTOM, NULL, 0},
-                                         };
+                                        };
     LY_CHECK_RET(yin_parse_content(ctx, subelems, 14, data, YANG_LEAF_LIST, NULL, &llist->exts));
 
     /* invalid combination of subelements */
@@ -1243,7 +1243,7 @@ yin_parse_typedef(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, cons
                                             {YANG_TYPE, &tpdf->type, YIN_SUBELEM_UNIQUE | YIN_SUBELEM_MANDATORY},
                                             {YANG_UNITS, &tpdf->units, YIN_SUBELEM_UNIQUE},
                                             {YANG_CUSTOM, NULL, 0},
-                                         };
+                                        };
     LY_CHECK_RET(yin_parse_content(ctx, subelems, 7, data, YANG_TYPEDEF, NULL, &tpdf->exts));
 
     /* store data for collision check */
@@ -1290,7 +1290,7 @@ yin_parse_refine(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const
                                             {YANG_PRESENCE, &rf->presence, YIN_SUBELEM_UNIQUE},
                                             {YANG_REFERENCE, &rf->ref, YIN_SUBELEM_UNIQUE},
                                             {YANG_CUSTOM, NULL, 0},
-                                         };
+                                        };
     return yin_parse_content(ctx, subelems, 11, data, YANG_REFINE, NULL, &rf->exts);
 }
 
@@ -1339,11 +1339,50 @@ yin_parse_uses(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const c
                                             {YANG_STATUS, &uses->flags, YIN_SUBELEM_UNIQUE},
                                             {YANG_WHEN, &uses->when, YIN_SUBELEM_UNIQUE},
                                             {YANG_CUSTOM, NULL, 0},
-                                         };
+                                        };
     LY_CHECK_RET(yin_parse_content(ctx, subelems, 8, data, YANG_USES, NULL, &uses->exts));
     LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, NULL, uses->augments, NULL, NULL));
 
     return LY_SUCCESS;
+}
+
+/**
+ * @brief Parse revision element.
+ *
+ * @param[in,out] ctx YIN parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] revs Parsed revisions to add to.
+ *
+ * @return LY_ERR values.
+ */
+static LY_ERR
+yin_parse_revision(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+                   struct lysp_revision **revs)
+{
+    struct lysp_revision *rev;
+    const char *temp_date = NULL;
+
+    /* allocate new reivison */
+    LY_ARRAY_NEW_RET(ctx->xml_ctx.ctx, *revs, rev, LY_EMEM);
+
+    /* parse argument */
+    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_DATE, &temp_date, Y_STR_ARG, YANG_REVISION));
+    /* check value */
+    if (lysp_check_date((struct lys_parser_ctx *)ctx, temp_date, strlen(temp_date), "revision")) {
+        FREE_STRING(ctx->xml_ctx.ctx, temp_date);
+        return LY_EVALID;
+    }
+    strcpy(rev->date, temp_date);
+    FREE_STRING(ctx->xml_ctx.ctx, temp_date);
+
+    /* parse content */
+    struct yin_subelement subelems[3] = {
+                                            {YANG_DESCRIPTION, &rev->dsc, YIN_SUBELEM_UNIQUE},
+                                            {YANG_REFERENCE, &rev->ref, YIN_SUBELEM_UNIQUE},
+                                            {YANG_CUSTOM, NULL, 0},
+                                        };
+    return yin_parse_content(ctx, subelems, 3, data, YANG_REVISION, NULL, &rev->exts);
 }
 
 /**
@@ -1680,6 +1719,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     ret = yin_pasrse_reqinstance(ctx, attrs, data, (struct lysp_type *)subelem->dest);
                     break;
                 case YANG_REVISION:
+                    ret = yin_parse_revision(ctx, attrs, data, (struct lysp_revision **)subelem->dest);
                     break;
                 case YANG_REVISION_DATE:
                     ret = yin_parse_revision_date(ctx, attrs, data, (char *)subelem->dest, exts);

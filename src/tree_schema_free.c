@@ -76,7 +76,7 @@ lysp_include_free(struct ly_ctx *ctx, struct lysp_include *include)
     FREE_ARRAY(ctx, include->exts, lysp_ext_instance_free);
 }
 
-static void
+void
 lysp_revision_free(struct ly_ctx *ctx, struct lysp_revision *rev)
 {
     FREE_STRING(ctx, rev->dsc);

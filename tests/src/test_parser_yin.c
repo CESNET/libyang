@@ -35,6 +35,7 @@ void lysp_type_free(struct ly_ctx *ctx, struct lysp_type *type);
 void lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node);
 void lysp_tpdf_free(struct ly_ctx *ctx, struct lysp_tpdf *tpdf);
 void lysp_refine_free(struct ly_ctx *ctx, struct lysp_refine *ref);
+void lysp_revision_free(struct ly_ctx *ctx, struct lysp_revision *rev);
 
 struct state {
     struct ly_ctx *ctx;
@@ -2332,6 +2333,44 @@ test_uses_elem(void **state)
     st->finished_correctly = true;
 }
 
+static void
+test_revision_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct lysp_revision *revs = NULL;
+
+    /* max subelems */
+    data = ELEMENT_WRAPPER_START
+                "<revision date=\"2018-12-25\">"
+                    "<description><text>desc</text></description>"
+                    "<reference><text>ref</text></reference>"
+                "</revision>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &revs, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(revs->date, "2018-12-25");
+    assert_string_equal(revs->dsc, "desc");
+    assert_string_equal(revs->ref, "ref");
+    FREE_ARRAY(st->ctx, revs, lysp_revision_free);
+    revs = NULL;
+
+    /* min subelems */
+    data = ELEMENT_WRAPPER_START "<revision date=\"2005-05-05\" />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &revs, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(revs->date, "2005-05-05");
+    FREE_ARRAY(st->ctx, revs, lysp_revision_free);
+    revs = NULL;
+
+    /* invalid value */
+    data = ELEMENT_WRAPPER_START "<revision date=\"05-05-2005\" />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &revs, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Invalid value \"05-05-2005\" of \"revision\". Line number 1.");
+    FREE_ARRAY(st->ctx, revs, lysp_revision_free);
+    revs = NULL;
+
+    st->finished_correctly = true;
+}
+
 int
 main(void)
 {
@@ -2388,6 +2427,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_typedef_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_refine_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_uses_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_revision_elem, setup_element_test, teardown_element_test),
     };
 
     return cmocka_run_group_tests(tests, setup_ly_ctx, destroy_ly_ctx);
