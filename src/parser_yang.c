@@ -1172,6 +1172,7 @@ parse_revision(struct lys_parser_ctx *ctx, const char **data, struct lysp_revisi
 
     /* check value */
     if (lysp_check_date(ctx, word, word_len, "revision")) {
+        free(buf);
         return LY_EVALID;
     }
 
