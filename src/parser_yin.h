@@ -99,7 +99,12 @@ struct tree_node_meta {
 /* Meta information passed to yin_parse_typedef */
 struct typedef_meta {
     struct lysp_node *parent;       /**< parent node */
-    struct lysp_tpdf **typedefs;    /**< [Sized array](@ref sizedarrays) of typedefs */
+    struct lysp_tpdf **typedefs;    /**< [Sized array](@ref sizedarrays) of typedefs to add to */
+};
+
+struct augment_meta {
+    struct lysp_node *parent;       /**< parent node */
+    struct lysp_augment **augments; /**< [Sized array](@ref sizedarrays) of augments to add to */
 };
 
 /**

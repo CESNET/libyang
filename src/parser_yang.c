@@ -2924,13 +2924,13 @@ parse_grouping(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *
     LY_CHECK_RET(ret);
 checks:
     /* finalize parent pointers to the reallocated items */
-    LY_CHECK_RET(parse_finalize_reallocated(ctx, grp->groupings, NULL, grp->actions, grp->notifs));
+    LY_CHECK_RET(lysp_parse_finalize_reallocated(ctx, grp->groupings, NULL, grp->actions, grp->notifs));
 
     return ret;
 }
 
 /**
- * @brief Parse the refine statement.
+ * @brief Parse the augment statement.
  *
  * @param[in] ctx yang parser context for logging.
  * @param[in,out] data Data to read from, always moved to currently handled character.

@@ -1295,6 +1295,58 @@ yin_parse_refine(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const
 }
 
 /**
+ * @brief Parse uses element.
+ *
+ * @param[in,out] ctx YIN parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] node_meta Meta information about node parent and siblings.
+ *
+ * @return LY_ERR values.
+ */
+static LY_ERR
+yin_parse_uses(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+               struct tree_node_meta *node_meta)
+{
+    struct lysp_node *iter;
+    struct lysp_node_uses *uses;
+
+    /* create structure */
+    uses = calloc(1, sizeof *uses);
+    LY_CHECK_ERR_RET(!uses, LOGMEM(ctx->xml_ctx.ctx), LY_EMEM);
+    uses->nodetype = LYS_USES;
+    uses->parent = node_meta->parent;
+
+    /* insert into siblings */
+    if (!*(node_meta->siblings)) {
+        *node_meta->siblings = (struct lysp_node *)uses;
+    } else {
+        for (iter = *node_meta->siblings; iter->next; iter = iter->next);
+        iter->next = (struct lysp_node *)uses;
+    }
+
+    /* parse argument */
+    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NAME, &uses->name, Y_PREF_IDENTIF_ARG, YANG_USES));
+
+    /* parse content */
+    struct augment_meta augments = {(struct lysp_node *)uses, &uses->augments};
+    struct yin_subelement subelems[8] = {
+                                            {YANG_AUGMENT, &augments, 0},
+                                            {YANG_DESCRIPTION, &uses->dsc, YIN_SUBELEM_UNIQUE},
+                                            {YANG_IF_FEATURE, &uses->iffeatures, 0},
+                                            {YANG_REFERENCE, &uses->ref, YIN_SUBELEM_UNIQUE},
+                                            {YANG_REFINE, &uses->refines, 0},
+                                            {YANG_STATUS, &uses->flags, YIN_SUBELEM_UNIQUE},
+                                            {YANG_WHEN, &uses->when, YIN_SUBELEM_UNIQUE},
+                                            {YANG_CUSTOM, NULL, 0},
+                                         };
+    LY_CHECK_RET(yin_parse_content(ctx, subelems, 8, data, YANG_USES, NULL, &uses->exts));
+    LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, NULL, uses->augments, NULL, NULL));
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Map keyword type to substatement info.
  *
  * @param[in] kw Keyword type.
@@ -1661,6 +1713,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                                                    YIN_ARG_NAME, Y_STR_ARG, exts);
                     break;
                 case YANG_USES:
+                    ret = yin_parse_uses(ctx, attrs, data, (struct tree_node_meta *)subelem->dest);
                     break;
                 case YANG_WHEN:
                     ret = yin_parse_when(ctx, attrs, data, (struct lysp_when **)subelem->dest);

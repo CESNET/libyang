@@ -2285,6 +2285,53 @@ test_refine_elem(void **state)
     st->finished_correctly = true;
 }
 
+static void
+test_uses_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct lysp_node *siblings = NULL;
+    struct tree_node_meta node_meta = {NULL, &siblings};
+    struct lysp_node_uses *parsed = NULL;
+
+    /* max subelems */
+    data = ELEMENT_WRAPPER_START
+                "<uses name=\"uses-name\">"
+                    "<when condition=\"cond\" />"
+                    "<if-feature name=\"feature\" />"
+                    "<status value=\"obsolete\" />"
+                    "<description><text>desc</text></description>"
+                    "<reference><text>ref</text></reference>"
+                    "<refine target-node=\"target\"/>"
+                    /* TODO add uses-augment-stmt instance */
+                "</uses>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &node_meta, NULL, NULL, true), LY_SUCCESS);
+    parsed = (struct lysp_node_uses *)&siblings[0];
+    assert_string_equal(parsed->name, "uses-name");
+    assert_string_equal(parsed->dsc, "desc");
+    assert_null(parsed->exts);
+    assert_true(parsed->flags & LYS_STATUS_OBSLT);
+    assert_string_equal(*parsed->iffeatures, "feature");
+    assert_null(parsed->next);
+    assert_int_equal(parsed->nodetype, LYS_USES);
+    assert_null(parsed->parent);
+    assert_string_equal(parsed->ref, "ref");
+    assert_string_equal(parsed->refines->nodeid, "target");
+    assert_string_equal(parsed->when->cond, "cond");
+    lysp_node_free(st->ctx, siblings);
+    siblings = NULL;
+
+    /* min subelems */
+    data = ELEMENT_WRAPPER_START "<uses name=\"uses-name\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &node_meta, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(siblings[0].name, "uses-name");
+    lysp_node_free(st->ctx, siblings);
+    siblings = NULL;
+
+    st->finished_correctly = true;
+}
+
 int
 main(void)
 {
@@ -2340,6 +2387,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_key_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_typedef_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_refine_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_uses_elem, setup_element_test, teardown_element_test),
     };
 
     return cmocka_run_group_tests(tests, setup_ly_ctx, destroy_ly_ctx);
