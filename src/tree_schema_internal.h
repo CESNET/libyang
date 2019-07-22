@@ -173,6 +173,19 @@ LY_ERR lysp_check_date(struct lys_parser_ctx *ctx, const char *date, int date_le
 LY_ERR lysp_check_typedefs(struct lys_parser_ctx *ctx, struct lysp_module *mod);
 
 /**
+ * @brief Finalize some of the structures in case they are stored in sized array,
+ * which can be possibly reallocated and some other data may point to them.
+ *
+ * Update parent pointers in the nodes inside grouping/augment/RPC/Notification, which could be reallocated.
+ *
+ * @param[in] mod Parsed module to be updated.
+ * @return LY_ERR value (currently only LY_SUCCESS, but it can change in future).
+ */
+LY_ERR
+lysp_parse_finalize_reallocated(struct lys_parser_ctx *ctx, struct lysp_grp *groupings, struct lysp_augment *augments,
+                                struct lysp_action *actions, struct lysp_notif *notifs);
+
+/**
  * @brief Just move the newest revision into the first position, does not sort the rest
  * @param[in] revs Sized-array of the revisions in a printable schema tree.
  */

@@ -94,9 +94,6 @@ LY_ERR parse_case(struct lys_parser_ctx *ctx, const char **data, struct lysp_nod
 LY_ERR parse_list(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
 LY_ERR parse_grouping(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_grp **groupings);
 
-static LY_ERR parse_finalize_reallocated(struct lys_parser_ctx *ctx, struct lysp_grp *groupings, struct lysp_augment *augments,
-                                         struct lysp_action *actions, struct lysp_notif *notifs);
-
 /**
  * @brief Add another character to dynamic buffer, a low-level function.
  *
@@ -2672,7 +2669,7 @@ parse_inout(struct lys_parser_ctx *ctx, const char **data, enum yang_keyword ino
     LY_CHECK_RET(ret);
 checks:
     /* finalize parent pointers to the reallocated items */
-    LY_CHECK_RET(parse_finalize_reallocated(ctx, inout_p->groupings, NULL, NULL, NULL));
+    LY_CHECK_RET(lysp_parse_finalize_reallocated(ctx, inout_p->groupings, NULL, NULL, NULL));
 
     return ret;
 }
@@ -2742,7 +2739,7 @@ parse_action(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *pa
     LY_CHECK_RET(ret);
 checks:
     /* finalize parent pointers to the reallocated items */
-    LY_CHECK_RET(parse_finalize_reallocated(ctx, act->groupings, NULL, NULL, NULL));
+    LY_CHECK_RET(lysp_parse_finalize_reallocated(ctx, act->groupings, NULL, NULL, NULL));
 
     return ret;
 }
@@ -2834,7 +2831,7 @@ parse_notif(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *par
     LY_CHECK_RET(ret);
 checks:
     /* finalize parent pointers to the reallocated items */
-    LY_CHECK_RET(parse_finalize_reallocated(ctx, notif->groupings, NULL, NULL, NULL));
+    LY_CHECK_RET(lysp_parse_finalize_reallocated(ctx, notif->groupings, NULL, NULL, NULL));
 
     return ret;
 }
@@ -3024,109 +3021,9 @@ parse_augment(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *p
     LY_CHECK_RET(ret);
 checks:
     /* finalize parent pointers to the reallocated items */
-    LY_CHECK_RET(parse_finalize_reallocated(ctx, NULL, NULL, aug->actions, aug->notifs));
+    LY_CHECK_RET(lysp_parse_finalize_reallocated(ctx, NULL, NULL, aug->actions, aug->notifs));
 
     return ret;
-}
-
-/**
- * @brief Finalize some of the structures in case they are stored in sized array,
- * which can be possibly reallocated and some other data may point to them.
- *
- * Update parent pointers in the nodes inside grouping/augment/RPC/Notification, which could be reallocated.
- *
- * @param[in] mod Parsed module to be updated.
- * @return LY_ERR value (currently only LY_SUCCESS, but it can change in future).
- */
-static LY_ERR
-parse_finalize_reallocated(struct lys_parser_ctx *ctx, struct lysp_grp *groupings, struct lysp_augment *augments,
-                           struct lysp_action *actions, struct lysp_notif *notifs)
-{
-    unsigned int u, v;
-    struct lysp_node *child;
-
-    /* finalize parent pointers to the reallocated items */
-
-    /* gropings */
-    LY_ARRAY_FOR(groupings, u) {
-        LY_LIST_FOR(groupings[u].data, child) {
-            child->parent = (struct lysp_node*)&groupings[u];
-        }
-        LY_ARRAY_FOR(groupings[u].actions, v) {
-            groupings[u].actions[v].parent = (struct lysp_node*)&groupings[u];
-        }
-        LY_ARRAY_FOR(groupings[u].notifs, v) {
-            groupings[u].notifs[v].parent = (struct lysp_node*)&groupings[u];
-        }
-        LY_ARRAY_FOR(groupings[u].groupings, v) {
-            groupings[u].groupings[v].parent = (struct lysp_node*)&groupings[u];
-        }
-        if (groupings[u].typedefs) {
-            ly_set_add(&ctx->tpdfs_nodes, &groupings[u], 0);
-        }
-    }
-
-    /* augments */
-    LY_ARRAY_FOR(augments, u) {
-        LY_LIST_FOR(augments[u].child, child) {
-            child->parent = (struct lysp_node*)&augments[u];
-        }
-        LY_ARRAY_FOR(augments[u].actions, v) {
-            augments[u].actions[v].parent = (struct lysp_node*)&augments[u];
-        }
-        LY_ARRAY_FOR(augments[u].notifs, v) {
-            augments[u].notifs[v].parent = (struct lysp_node*)&augments[u];
-        }
-    }
-
-    /* actions */
-    LY_ARRAY_FOR(actions, u) {
-        if (actions[u].input.parent) {
-            actions[u].input.parent = (struct lysp_node*)&actions[u];
-            LY_LIST_FOR(actions[u].input.data, child) {
-                child->parent = (struct lysp_node*)&actions[u].input;
-            }
-            LY_ARRAY_FOR(actions[u].input.groupings, v) {
-                actions[u].input.groupings[v].parent = (struct lysp_node*)&actions[u].input;
-            }
-            if (actions[u].input.typedefs) {
-                ly_set_add(&ctx->tpdfs_nodes, &actions[u].input, 0);
-            }
-        }
-        if (actions[u].output.parent) {
-            actions[u].output.parent = (struct lysp_node*)&actions[u];
-            LY_LIST_FOR(actions[u].output.data, child) {
-                child->parent = (struct lysp_node*)&actions[u].output;
-            }
-            LY_ARRAY_FOR(actions[u].output.groupings, v) {
-                actions[u].output.groupings[v].parent = (struct lysp_node*)&actions[u].output;
-            }
-            if (actions[u].output.typedefs) {
-                ly_set_add(&ctx->tpdfs_nodes, &actions[u].output, 0);
-            }
-        }
-        LY_ARRAY_FOR(actions[u].groupings, v) {
-            actions[u].groupings[v].parent = (struct lysp_node*)&actions[u];
-        }
-        if (actions[u].typedefs) {
-            ly_set_add(&ctx->tpdfs_nodes, &actions[u], 0);
-        }
-    }
-
-    /* notifications */
-    LY_ARRAY_FOR(notifs, u) {
-        LY_LIST_FOR(notifs[u].data, child) {
-            child->parent = (struct lysp_node*)&notifs[u];
-        }
-        LY_ARRAY_FOR(notifs[u].groupings, v) {
-            notifs[u].groupings[v].parent = (struct lysp_node*)&notifs[u];
-        }
-        if (notifs[u].typedefs) {
-            ly_set_add(&ctx->tpdfs_nodes, &notifs[u], 0);
-        }
-    }
-
-    return LY_SUCCESS;
 }
 
 /**
@@ -3201,7 +3098,7 @@ parse_uses(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *pare
     }
 checks:
     /* finalize parent pointers to the reallocated items */
-    LY_CHECK_RET(parse_finalize_reallocated(ctx, NULL, uses->augments, NULL, NULL));
+    LY_CHECK_RET(lysp_parse_finalize_reallocated(ctx, NULL, uses->augments, NULL, NULL));
 
     return ret;
 }
@@ -3518,7 +3415,7 @@ parse_container(struct lys_parser_ctx *ctx, const char **data, struct lysp_node 
     }
 checks:
     /* finalize parent pointers to the reallocated items */
-    LY_CHECK_RET(parse_finalize_reallocated(ctx, cont->groupings, NULL, cont->actions, cont->notifs));
+    LY_CHECK_RET(lysp_parse_finalize_reallocated(ctx, cont->groupings, NULL, cont->actions, cont->notifs));
     return ret;
 }
 
@@ -3649,7 +3546,7 @@ parse_list(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *pare
     LY_CHECK_RET(ret);
 checks:
     /* finalize parent pointers to the reallocated items */
-    LY_CHECK_RET(parse_finalize_reallocated(ctx, list->groupings, NULL, list->actions, list->notifs));
+    LY_CHECK_RET(lysp_parse_finalize_reallocated(ctx, list->groupings, NULL, list->actions, list->notifs));
 
     if (list->max && list->min > list->max) {
         LOGVAL_PARSER(ctx, LYVE_SEMANTICS,
@@ -4367,7 +4264,7 @@ parse_module(struct lys_parser_ctx *ctx, const char **data, struct lysp_module *
 
 checks:
     /* finalize parent pointers to the reallocated items */
-    LY_CHECK_RET(parse_finalize_reallocated(ctx, mod->groupings, mod->augments, mod->rpcs, mod->notifs));
+    LY_CHECK_RET(lysp_parse_finalize_reallocated(ctx, mod->groupings, mod->augments, mod->rpcs, mod->notifs));
 
     /* mandatory substatements */
     if (!mod->mod->ns) {
@@ -4573,7 +4470,7 @@ parse_submodule(struct lys_parser_ctx *ctx, const char **data, struct lysp_submo
 
 checks:
     /* finalize parent pointers to the reallocated items */
-    LY_CHECK_RET(parse_finalize_reallocated(ctx, submod->groupings, submod->augments, submod->rpcs, submod->notifs));
+    LY_CHECK_RET(lysp_parse_finalize_reallocated(ctx, submod->groupings, submod->augments, submod->rpcs, submod->notifs));
 
     /* mandatory substatements */
     if (!submod->belongsto) {

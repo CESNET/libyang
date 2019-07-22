@@ -535,6 +535,97 @@ lysp_id_cmp(void *val1, void *val2, int UNUSED(mod), void *UNUSED(cb_data))
 }
 
 LY_ERR
+lysp_parse_finalize_reallocated(struct lys_parser_ctx *ctx, struct lysp_grp *groupings, struct lysp_augment *augments,
+                                struct lysp_action *actions, struct lysp_notif *notifs)
+{
+    unsigned int u, v;
+    struct lysp_node *child;
+
+    /* finalize parent pointers to the reallocated items */
+
+    /* gropings */
+    LY_ARRAY_FOR(groupings, u) {
+        LY_LIST_FOR(groupings[u].data, child) {
+            child->parent = (struct lysp_node*)&groupings[u];
+        }
+        LY_ARRAY_FOR(groupings[u].actions, v) {
+            groupings[u].actions[v].parent = (struct lysp_node*)&groupings[u];
+        }
+        LY_ARRAY_FOR(groupings[u].notifs, v) {
+            groupings[u].notifs[v].parent = (struct lysp_node*)&groupings[u];
+        }
+        LY_ARRAY_FOR(groupings[u].groupings, v) {
+            groupings[u].groupings[v].parent = (struct lysp_node*)&groupings[u];
+        }
+        if (groupings[u].typedefs) {
+            ly_set_add(&ctx->tpdfs_nodes, &groupings[u], 0);
+        }
+    }
+
+    /* augments */
+    LY_ARRAY_FOR(augments, u) {
+        LY_LIST_FOR(augments[u].child, child) {
+            child->parent = (struct lysp_node*)&augments[u];
+        }
+        LY_ARRAY_FOR(augments[u].actions, v) {
+            augments[u].actions[v].parent = (struct lysp_node*)&augments[u];
+        }
+        LY_ARRAY_FOR(augments[u].notifs, v) {
+            augments[u].notifs[v].parent = (struct lysp_node*)&augments[u];
+        }
+    }
+
+    /* actions */
+    LY_ARRAY_FOR(actions, u) {
+        if (actions[u].input.parent) {
+            actions[u].input.parent = (struct lysp_node*)&actions[u];
+            LY_LIST_FOR(actions[u].input.data, child) {
+                child->parent = (struct lysp_node*)&actions[u].input;
+            }
+            LY_ARRAY_FOR(actions[u].input.groupings, v) {
+                actions[u].input.groupings[v].parent = (struct lysp_node*)&actions[u].input;
+            }
+            if (actions[u].input.typedefs) {
+                ly_set_add(&ctx->tpdfs_nodes, &actions[u].input, 0);
+            }
+        }
+        if (actions[u].output.parent) {
+            actions[u].output.parent = (struct lysp_node*)&actions[u];
+            LY_LIST_FOR(actions[u].output.data, child) {
+                child->parent = (struct lysp_node*)&actions[u].output;
+            }
+            LY_ARRAY_FOR(actions[u].output.groupings, v) {
+                actions[u].output.groupings[v].parent = (struct lysp_node*)&actions[u].output;
+            }
+            if (actions[u].output.typedefs) {
+                ly_set_add(&ctx->tpdfs_nodes, &actions[u].output, 0);
+            }
+        }
+        LY_ARRAY_FOR(actions[u].groupings, v) {
+            actions[u].groupings[v].parent = (struct lysp_node*)&actions[u];
+        }
+        if (actions[u].typedefs) {
+            ly_set_add(&ctx->tpdfs_nodes, &actions[u], 0);
+        }
+    }
+
+    /* notifications */
+    LY_ARRAY_FOR(notifs, u) {
+        LY_LIST_FOR(notifs[u].data, child) {
+            child->parent = (struct lysp_node*)&notifs[u];
+        }
+        LY_ARRAY_FOR(notifs[u].groupings, v) {
+            notifs[u].groupings[v].parent = (struct lysp_node*)&notifs[u];
+        }
+        if (notifs[u].typedefs) {
+            ly_set_add(&ctx->tpdfs_nodes, &notifs[u], 0);
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
+LY_ERR
 lysp_check_typedefs(struct lys_parser_ctx *ctx, struct lysp_module *mod)
 {
     struct hash_table *ids_global;
