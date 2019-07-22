@@ -80,6 +80,33 @@ struct lysc_ctx {
 };
 
 /**
+ * @brief Internal structure for lys_get_prefix().
+ */
+struct lys_get_prefix_data {
+    const struct lys_module *context_mod;
+    struct ly_set prefixes;
+};
+
+/**
+ * @brief Schema mapping of YANG modules to prefixes in values.
+ *
+ * Implementation of ly_clb_get_prefix. Inverse function to lys_resolve_prefix.
+ *
+ * In this case the @p mod is searched in the list of imports and the import's prefix
+ * (not the module's itself) prefix is returned.
+ */
+const char *lys_get_prefix(const struct lys_module *mod, void *private);
+
+/**
+ * @brief Schema mapping of prefix in values to YANG modules (imports).
+ *
+ * Implementation of ly_clb_resolve_prefix. Inverse function to lys_get_prefix().
+ *
+ * In this case the @p prefix is searched in the list of imports' prefixes (not the prefixes of the imported modules themselves).
+ */
+const struct lys_module *lys_resolve_prefix(struct ly_ctx *ctx, const char *prefix, size_t prefix_len, void *private);
+
+/**
  * @brief Check the currently present prefixes in the module for collision with the new one.
  *
  * @param[in] ctx Context for logging.

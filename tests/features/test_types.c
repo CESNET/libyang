@@ -674,6 +674,7 @@ test_empty(void **state)
 static const char *
 test_get_prefix(const struct lys_module *mod, void *private)
 {
+    (void)mod;
     return (const char *)private;
 }
 

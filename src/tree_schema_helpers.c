@@ -1275,4 +1275,39 @@ lysp_ext_instance_iter(struct lysp_ext_instance *ext, unsigned int index, LYEXT_
     return LY_ARRAY_SIZE(ext);
 }
 
+/**
+ * @brief Schema mapping of YANG modules to prefixes in values.
+ *
+ * Implementation of ly_clb_get_prefix. Inverse function to lys_resolve_prefix.
+ *
+ * In this case the @p mod is searched in the list of imports and the import's prefix
+ * (not the module's itself) prefix is returned.
+ */
+const char *
+lys_get_prefix(const struct lys_module *mod, void *private)
+{
+    struct lys_module *context_mod = (struct lys_module*)private;
+    unsigned int u;
 
+    LY_ARRAY_FOR(context_mod->compiled->imports, u) {
+        if (context_mod->compiled->imports[u].module == mod) {
+            /* match */
+            return mod->compiled->imports[u].prefix;
+        }
+    }
+
+    return NULL;
+}
+
+/**
+ * @brief Schema mapping of prefix in values to YANG modules (imports).
+ *
+ * Implementation of ly_clb_resolve_prefix. Inverse function to lys_get_prefix().
+ *
+ * In this case the @p prefix is searched in the list of imports' prefixes (not the prefixes of the imported modules themselves).
+ */
+const struct lys_module *
+lys_resolve_prefix(struct ly_ctx *UNUSED(ctx), const char *prefix, size_t prefix_len, void *private)
+{
+    return lys_module_find_prefix((const struct lys_module*)private, prefix, prefix_len);
+}

@@ -27,7 +27,7 @@
 #include "tree_schema.h"
 
 /**
- * @brief
+ * @brief JSON mapping of YANG modules to prefixes in values.
  *
  * Implementation of ly_clb_get_prefix.
  */
