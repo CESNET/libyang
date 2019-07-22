@@ -37,6 +37,7 @@ void lysp_tpdf_free(struct ly_ctx *ctx, struct lysp_tpdf *tpdf);
 void lysp_refine_free(struct ly_ctx *ctx, struct lysp_refine *ref);
 void lysp_revision_free(struct ly_ctx *ctx, struct lysp_revision *rev);
 void lysp_include_free(struct ly_ctx *ctx, struct lysp_include *include);
+void lysp_feature_free(struct ly_ctx *ctx, struct lysp_feature *feat);
 
 struct state {
     struct ly_ctx *ctx;
@@ -2433,6 +2434,42 @@ test_include_elem(void **state)
     st->finished_correctly = true;
 }
 
+static void
+test_feature_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct lysp_feature *features = NULL;
+
+    /* max subelems */
+    data = ELEMENT_WRAPPER_START
+                "<feature name=\"feature-name\">"
+                    "<if-feature name=\"iff\"/>"
+                    "<status value=\"deprecated\"/>"
+                    "<description><text>desc</text></description>"
+                    "<reference><text>ref</text></reference>"
+                "</feature>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &features, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(features->name, "feature-name");
+    assert_string_equal(features->dsc, "desc");
+    assert_null(features->exts);
+    assert_true(features->flags & LYS_STATUS_DEPRC);
+    assert_string_equal(*features->iffeatures, "iff");
+    assert_string_equal(features->ref, "ref");
+    FREE_ARRAY(st->ctx, features, lysp_feature_free);
+    features = NULL;
+
+    /* min subelems */
+    data = ELEMENT_WRAPPER_START "<feature name=\"feature-name\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &features, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(features->name, "feature-name");
+    FREE_ARRAY(st->ctx, features, lysp_feature_free);
+    features = NULL;
+
+    st->finished_correctly = true;
+}
+
 int
 main(void)
 {
@@ -2491,6 +2528,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_uses_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_revision_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_include_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_feature_elem, setup_element_test, teardown_element_test),
 
     };
 

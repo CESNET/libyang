@@ -1385,6 +1385,16 @@ yin_parse_revision(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, con
     return yin_parse_content(ctx, subelems, 3, data, YANG_REVISION, NULL, &rev->exts);
 }
 
+/**
+ * @brief Parse include element.
+ *
+ * @param[in,out] ctx YIN parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] inc_meta Meta informatinou about module/submodule name and includes to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 yin_parse_include(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
                   struct include_meta *inc_meta)
@@ -1413,6 +1423,39 @@ yin_parse_include(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, cons
                                             {YANG_CUSTOM, NULL, 0},
                                         };
     return yin_parse_content(ctx, subelems, 4, data, YANG_INCLUDE, NULL, &inc->exts);
+}
+
+/**
+ * @brief Parse feature element.
+ *
+ * @param[in,out] ctx YIN parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] features Features to add to.
+ *
+ * @return LY_ERR values.
+ */
+static LY_ERR
+yin_parse_feature(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+                  struct lysp_feature **features)
+{
+    struct lysp_feature *feat;
+
+    /* allocate new feature */
+    LY_ARRAY_NEW_RET(ctx->xml_ctx.ctx, *features, feat, LY_EMEM);
+
+    /* parse argument */
+    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NAME, &feat->name, Y_IDENTIF_ARG, YANG_FEATURE));
+
+    /* parse content */
+    struct yin_subelement subelems[5] = {
+                                            {YANG_DESCRIPTION, &feat->dsc, YIN_SUBELEM_UNIQUE},
+                                            {YANG_IF_FEATURE, &feat->iffeatures, 0},
+                                            {YANG_REFERENCE, &feat->ref, YIN_SUBELEM_UNIQUE},
+                                            {YANG_STATUS, &feat->flags, YIN_SUBELEM_UNIQUE},
+                                            {YANG_CUSTOM, NULL, 0},
+                                        };
+    return yin_parse_content(ctx, subelems, 5, data, YANG_FEATURE, NULL, &feat->exts);
 }
 
 /**
@@ -1656,6 +1699,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     ret = yin_parse_extension(ctx, attrs, data, (struct lysp_ext **)subelem->dest);
                     break;
                 case YANG_FEATURE:
+                    ret = yin_parse_feature(ctx, attrs, data, (struct lysp_feature **)subelem->dest);
                     break;
                 case YANG_FRACTION_DIGITS:
                     ret = yin_parse_fracdigits(ctx, attrs, data, (struct lysp_type *)subelem->dest);
