@@ -5631,7 +5631,8 @@ error:
 }
 
 static int
-lyd_dup_keys(struct lyd_node *new_list, const struct lyd_node *old_list, struct ly_ctx *log_ctx, int options)
+lyd_dup_keys(struct lyd_node *new_list, const struct lyd_node *old_list, struct lys_node *skip_key,
+        struct ly_ctx *log_ctx, int options)
 {
     struct lys_node_list *slist;
     struct lyd_node *key, *key_dup;
@@ -5646,6 +5647,9 @@ lyd_dup_keys(struct lyd_node *new_list, const struct lyd_node *old_list, struct 
         if (key->schema != (struct lys_node *)slist->keys[i]) {
             LOGVAL(log_ctx, LYE_PATH_INKEY, LY_VLOG_LYD, new_list, slist->keys[i]->name);
             return -1;
+        }
+        if (key->schema == skip_key) {
+            continue;
         }
 
         key_dup = lyd_dup(key, options & LYD_DUP_OPT_NO_ATTR);
@@ -5747,7 +5751,7 @@ lyd_dup_to_ctx(const struct lyd_node *node, int options, struct ly_ctx *ctx)
 
         if (options & LYD_DUP_OPT_WITH_KEYS) {
             /* copy only descendant keys */
-            if (lyd_dup_keys(new_node, elem, log_ctx, options)) {
+            if (lyd_dup_keys(new_node, elem, NULL, log_ctx, options)) {
                 goto error;
             }
             break;
@@ -5791,12 +5795,18 @@ lyd_dup_to_ctx(const struct lyd_node *node, int options, struct ly_ctx *ctx)
     /* dup all the parents */
     if (options & LYD_DUP_OPT_WITH_PARENTS) {
         parent = ret;
+        if (lys_is_key((struct lys_node_leaf *)ret->schema, NULL)) {
+            /* this key was being duplicated so do not add it twice */
+            schema = ret->schema;
+        } else {
+            schema = NULL;
+        }
         for (elem = node->parent; elem; elem = elem->parent) {
             new_node = lyd_dup(elem, options & LYD_DUP_OPT_NO_ATTR);
             LY_CHECK_ERR_GOTO(!new_node, LOGMEM(log_ctx), error);
 
             /* dup all list keys */
-            if (lyd_dup_keys(new_node, elem, log_ctx, options)) {
+            if (lyd_dup_keys(new_node, elem, schema, log_ctx, options)) {
                 goto error;
             }
 
