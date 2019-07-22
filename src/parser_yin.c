@@ -1459,6 +1459,40 @@ yin_parse_feature(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, cons
 }
 
 /**
+ * @brief Parse identity element.
+ *
+ * @param[in,out] ctx YIN parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] identities Identities to add to.
+ *
+ * @return LY_ERR values.
+ */
+static LY_ERR
+yin_parse_identity(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+                   struct lysp_ident **identities)
+{
+    struct lysp_ident *ident;
+
+    /* allocate new identity */
+    LY_ARRAY_NEW_RET(ctx->xml_ctx.ctx, *identities, ident, LY_EMEM);
+
+    /* parse argument */
+    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NAME, &ident->name, Y_IDENTIF_ARG, YANG_IDENTITY));
+
+    /* parse content */
+    struct yin_subelement subelems[6] = {
+                                            {YANG_BASE, &ident->bases, 0},
+                                            {YANG_DESCRIPTION, &ident->dsc, YIN_SUBELEM_UNIQUE},
+                                            {YANG_IF_FEATURE, &ident->iffeatures, YIN_SUBELEM_VER2},
+                                            {YANG_REFERENCE, &ident->ref, YIN_SUBELEM_UNIQUE},
+                                            {YANG_STATUS, &ident->flags, YIN_SUBELEM_UNIQUE},
+                                            {YANG_CUSTOM, NULL, 0},
+                                        };
+    return yin_parse_content(ctx, subelems, 6, data, YANG_IDENTITY, NULL, &ident->exts);
+}
+
+/**
  * @brief Map keyword type to substatement info.
  *
  * @param[in] kw Keyword type.
@@ -1707,6 +1741,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 case YANG_GROUPING:
                     break;
                 case YANG_IDENTITY:
+                    ret = yin_parse_identity(ctx, attrs, data, (struct lysp_ident **)subelem->dest);
                     break;
                 case YANG_IF_FEATURE:
                     ret = yin_parse_simple_elements(ctx, attrs, data, kw,

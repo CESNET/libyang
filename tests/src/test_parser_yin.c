@@ -38,6 +38,7 @@ void lysp_refine_free(struct ly_ctx *ctx, struct lysp_refine *ref);
 void lysp_revision_free(struct ly_ctx *ctx, struct lysp_revision *rev);
 void lysp_include_free(struct ly_ctx *ctx, struct lysp_include *include);
 void lysp_feature_free(struct ly_ctx *ctx, struct lysp_feature *feat);
+void lysp_ident_free(struct ly_ctx *ctx, struct lysp_ident *ident);
 
 struct state {
     struct ly_ctx *ctx;
@@ -2470,6 +2471,57 @@ test_feature_elem(void **state)
     st->finished_correctly = true;
 }
 
+static void
+test_identity_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct lysp_ident *identities = NULL;
+
+    /* max subelems */
+    st->yin_ctx->mod_version = LYS_VERSION_1_1;
+    data = ELEMENT_WRAPPER_START
+                "<identity name=\"ident-name\">"
+                    "<if-feature name=\"iff\"/>"
+                    "<base name=\"base-name\"/>"
+                    "<status value=\"deprecated\"/>"
+                    "<description><text>desc</text></description>"
+                    "<reference><text>ref</text></reference>"
+                "</identity>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &identities, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(identities->name, "ident-name");
+    assert_string_equal(*identities->bases, "base-name");
+    assert_string_equal(*identities->iffeatures, "iff");
+    assert_string_equal(identities->dsc, "desc");
+    assert_string_equal(identities->ref, "ref");
+    assert_true(identities->flags & LYS_STATUS_DEPRC);
+    assert_null(identities->exts);
+    FREE_ARRAY(st->ctx, identities, lysp_ident_free);
+    identities = NULL;
+
+    /* min subelems */
+    data = ELEMENT_WRAPPER_START "<identity name=\"ident-name\" />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &identities, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(identities->name, "ident-name");
+    FREE_ARRAY(st->ctx, identities, lysp_ident_free);
+    identities = NULL;
+
+    /* invalid */
+    st->yin_ctx->mod_version = LYS_VERSION_1_0;
+    data = ELEMENT_WRAPPER_START
+                "<identity name=\"ident-name\">"
+                    "<if-feature name=\"iff\"/>"
+                "</identity>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &identities, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Invalid sub-elemnt \"if-feature\" of \"identity\" element - this sub-element is allowed only in modules with version 1.1 or newer. Line number 1.");
+    FREE_ARRAY(st->ctx, identities, lysp_ident_free);
+    identities = NULL;
+
+    st->finished_correctly = true;
+}
+
 int
 main(void)
 {
@@ -2529,6 +2581,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_revision_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_include_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_feature_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_identity_elem, setup_element_test, teardown_element_test),
 
     };
 
