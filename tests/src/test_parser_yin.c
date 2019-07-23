@@ -40,6 +40,7 @@ void lysp_include_free(struct ly_ctx *ctx, struct lysp_include *include);
 void lysp_feature_free(struct ly_ctx *ctx, struct lysp_feature *feat);
 void lysp_ident_free(struct ly_ctx *ctx, struct lysp_ident *ident);
 void lysp_notif_free(struct ly_ctx *ctx, struct lysp_notif *notif);
+void lysp_grp_free(struct ly_ctx *ctx, struct lysp_grp *grp);
 
 struct state {
     struct ly_ctx *ctx;
@@ -2551,7 +2552,7 @@ test_list_elem(void **state)
                     // "<choice name=\"choice\"/>"
                     // "<action name=\"action\"/>"
                     // "<container name=\"cont\"/>"
-                    // "<grouping name=\"grp\"/>"
+                    "<grouping name=\"grp\"/>"
                     "<notification name=\"notf\"/>"
                     "<leaf name=\"leaf\"/>"
                     "<leaf-list name=\"llist\"/>"
@@ -2572,7 +2573,8 @@ test_list_elem(void **state)
     // assert_string_equal(parsed->actions->name, "action");
     // assert_string_equal(parsed->child->next->next->name, "cont");
     // assert_int_equal(parsed->child->next->next->nodetype, LYS_CONTAINER);
-    // assert_string_equal(parsed->groupings->name, "grp");
+    assert_string_equal(parsed->groupings->name, "grp");
+    assert_int_equal(parsed->groupings->nodetype, LYS_GROUPING);
     assert_string_equal(parsed->notifs->name, "notf");
     assert_null(parsed->exts);
     assert_true(parsed->flags & LYS_ORDBY_USER);
@@ -2631,7 +2633,7 @@ test_notification_elem(void **state)
                     "<uses name=\"uses-name\"/>"
                     // "<choice name=\"choice\"/>"
                     // "<container name=\"cont\"/>"
-                    // "<grouping name=\"grp\"/>"
+                    "<grouping name=\"grp\"/>"
                 "</notification>"
            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &notif_meta, NULL, NULL, true), LY_SUCCESS);
@@ -2648,7 +2650,8 @@ test_notification_elem(void **state)
     assert_int_equal(notifs->data->next->next->next->next->nodetype, LYS_LIST);
     assert_null(notifs->exts);
     assert_true(notifs->flags & LYS_STATUS_DEPRC);
-    // assert_string_equal(notifs->groupings->name, "grp");
+    assert_string_equal(notifs->groupings->name, "grp");
+    assert_int_equal(notifs->groupings->nodetype, LYS_GROUPING);
     // assert_int_equal(notifs->data->next->next->next->next->nodetype, LYS_CHOICE);
     // assert_string_equal(notifs->data->next->next->next->next->next->name, "choice");
     // assert_int_equal(notifs->data->next->next->next->next->next->nodetype, LYS_CONTAINER);
@@ -2668,6 +2671,68 @@ test_notification_elem(void **state)
     assert_int_equal(test_element_helper(st, &data, &notif_meta, NULL, NULL, true), LY_SUCCESS);
     assert_string_equal(notifs->name, "notif-name");
     FREE_ARRAY(st->ctx, notifs, lysp_notif_free);
+    notifs = NULL;
+
+    st->finished_correctly = true;
+}
+
+static void
+test_grouping_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct lysp_grp *grps = NULL;
+    struct grouping_meta grp_meta = {NULL, &grps};
+
+    /* max subelems */
+    data = ELEMENT_WRAPPER_START
+                "<grouping name=\"grp-name\">"
+                    "<anydata name=\"anyd\"/>"
+                    "<anyxml name=\"anyx\"/>"
+                    "<description><text>desc</text></description>"
+                    "<grouping name=\"sub-grp\"/>"
+                    "<leaf name=\"leaf\"/>"
+                    "<leaf-list name=\"llist\"/>"
+                    "<list name=\"list\"/>"
+                    "<notification name=\"notf\"/>"
+                    "<reference><text>ref</text></reference>"
+                    "<status value=\"current\"/>"
+                    "<typedef name=\"tpdf\"/>"
+                    "<uses name=\"uses-name\"/>"
+                    // "<action name=\"act\"/>"
+                    // "<container name=\"cont\"/>"
+                    // "<choice name=\"choice\"/>"
+                "</grouping>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &grp_meta, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(grps->name, "grp-name");
+    // assert_string_equal(grps->actions->name, "act");
+    assert_string_equal(grps->data->name, "anyd");
+    assert_string_equal(grps->data->next->name, "anyx");
+    assert_string_equal(grps->data->next->next->name, "leaf");
+    assert_string_equal(grps->data->next->next->next->name, "llist");
+    assert_string_equal(grps->data->next->next->next->next->name, "list");
+    assert_string_equal(grps->dsc, "desc");
+    assert_null(grps->exts);
+    assert_true(grps->flags & LYS_STATUS_CURR);
+    assert_string_equal(grps->groupings->name, "sub-grp");
+    assert_int_equal(grps->nodetype, LYS_GROUPING);
+    assert_string_equal(grps->notifs->name, "notf");
+    assert_null(grps->parent);
+    assert_string_equal(grps->ref, "ref");
+    assert_string_equal(grps->typedefs->name, "tpdf");
+    // assert_string_equal(grps->actions->name, "act");
+    // assert_string_equal(grps->data->next->next->next->next->next->name, "cont");
+    // assert_string_equal(grps->data->next->next->next->next->next->next->name, "choice");
+    FREE_ARRAY(st->ctx, grps, lysp_grp_free);
+    grps = NULL;
+
+    /* min subelems */
+    data = ELEMENT_WRAPPER_START "<grouping name=\"grp-name\" />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &grp_meta, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(grps->name, "grp-name");
+    FREE_ARRAY(st->ctx, grps, lysp_grp_free);
+    grps = NULL;
 
     st->finished_correctly = true;
 }
@@ -2734,6 +2799,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_identity_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_list_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_notification_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_grouping_elem, setup_element_test, teardown_element_test),
 
     };
 

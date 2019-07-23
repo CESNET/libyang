@@ -117,7 +117,12 @@ struct include_meta {
 
 struct notif_meta {
     struct lysp_node *parent;         /**< parent node */
-    struct lysp_notif **notifs; /**< [Sized array](@ref sizedarrays) of notifications to add to */
+    struct lysp_notif **notifs;       /**< [Sized array](@ref sizedarrays) of notifications to add to */
+};
+
+struct grouping_meta {
+    struct lysp_node *parent;         /**< parent node */
+    struct lysp_grp **groupings;      /**< [Sized array](@ref sizedarrays) of groupings to add to */
 };
 
 /**
