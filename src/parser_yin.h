@@ -115,6 +115,11 @@ struct include_meta {
     struct lysp_include **includes; /**< [Sized array](@ref sizedarrays) of parsed includes to add to */
 };
 
+struct notif_meta {
+    struct lysp_node *parent;         /**< parent node */
+    struct lysp_notif **notifs; /**< [Sized array](@ref sizedarrays) of notifications to add to */
+};
+
 /**
  * @brief Match argument name.
  *
