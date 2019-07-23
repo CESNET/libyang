@@ -481,6 +481,7 @@ test_node_leaflist(void **state)
     struct lys_module *mod;
     struct lysc_type *type;
     struct lysc_node_leaflist *ll;
+    struct lysc_node_leaf *l;
     const char *dflt;
     int dynamic;
 
@@ -556,6 +557,15 @@ test_node_leaflist(void **state)
                                         "notification event {leaf-list ll {type string; ordered-by user;}}}", LYS_IN_YANG));
     logbuf_assert("The ordered-by statement is ignored in lists representing notification content (/f:event/ll).");
 
+    /* forward reference in default */
+    assert_non_null(mod = lys_parse_mem(ctx, "module g {yang-version 1.1; namespace urn:g;prefix g;"
+                                        "leaf ref {type instance-identifier {require-instance true;} default \"/g:g\";}"
+                                        "leaf-list g {type string;}}", LYS_IN_YANG));
+    assert_non_null(l = (struct lysc_node_leaf*)mod->compiled->data);
+    assert_string_equal("ref", l->name);
+    assert_non_null(l->dflt);
+    assert_null(l->dflt->canonized);
+
     /* invalid */
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;leaf-list ll {type empty;}}", LYS_IN_YANG));
     logbuf_assert("Leaf-list of type \"empty\" is allowed only in YANG 1.1 modules. /aa:ll");
@@ -572,6 +582,11 @@ test_node_leaflist(void **state)
     assert_null(lys_parse_mem(ctx, "module dd {yang-version 1.1;namespace urn:dd;prefix dd;"
                               "leaf-list ll {type string; default one;default two;default one;}}", LYS_IN_YANG));
     logbuf_assert("Configuration leaf-list has multiple defaults of the same value \"one\". /dd:ll");
+
+    assert_null(lys_parse_mem(ctx, "module ee {yang-version 1.1; namespace urn:ee;prefix ee;"
+                              "leaf ref {type instance-identifier {require-instance true;} default \"/ee:g\";}}", LYS_IN_YANG));
+    logbuf_assert("Invalid default - value does not fit the type "
+                  "(Invalid instance-identifier \"/ee:g\" value - path \"/ee:g\" does not exists in the YANG schema.). /ee:ref");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
@@ -3102,13 +3117,38 @@ test_deviation(void **state)
     assert_int_equal(1, llist->dflts[0]->uint8);
 
     assert_non_null(mod = lys_parse_mem(ctx, "module q {yang-version 1.1; namespace urn:q;prefix q; import e {prefix e;}"
-                                        "leaf q {type instance-identifier; default \"/e:d2\";}}", LYS_IN_YANG));
+                                        "leaf q {type instance-identifier; default \"/e:d2\";}"
+                                        "leaf-list ql {type instance-identifier; default \"/e:d\"; default \"/e:d2\";}}", LYS_IN_YANG));
     assert_non_null(lys_parse_mem(ctx, "module qdev {yang-version 1.1; namespace urn:qdev;prefix qd; import q {prefix q;}"
-                                  "deviation /q:q { deviate replace {type string;}}}", LYS_IN_YANG));
+                                  "deviation /q:q { deviate replace {type string;}}"
+                                  "deviation /q:ql { deviate replace {type string;}}}", LYS_IN_YANG));
     assert_non_null(leaf = (struct lysc_node_leaf*)mod->compiled->data);
     assert_int_equal(LY_TYPE_STRING, leaf->dflt->realtype->basetype);
     assert_non_null(leaf->dflt->canonized);
     assert_string_equal("/e:d2", leaf->dflt->canonized);
+    assert_non_null(llist = (struct lysc_node_leaflist*)leaf->next);
+    assert_int_equal(2, LY_ARRAY_SIZE(llist->dflts));
+    assert_int_equal(2, LY_ARRAY_SIZE(llist->dflts_mods));
+    assert_ptr_equal(llist->dflts_mods[0], mod);
+    assert_int_equal(LY_TYPE_STRING, llist->dflts[0]->realtype->basetype);
+    assert_string_equal("/e:d", llist->dflts[0]->canonized);
+    assert_ptr_equal(llist->dflts_mods[1], mod);
+    assert_int_equal(LY_TYPE_STRING, llist->dflts[0]->realtype->basetype);
+    assert_string_equal("/e:d2", llist->dflts[1]->canonized);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module r {yang-version 1.1; namespace urn:r;prefix r;"
+                                        "typedef mytype {type uint8; default 200;}"
+                                        "leaf r {type mytype;} leaf-list lr {type mytype;}"
+                                        "deviation /r:r {deviate replace {type string;}}"
+                                        "deviation /r:lr {deviate replace {type string;}}}", LYS_IN_YANG));
+    assert_non_null(leaf = (struct lysc_node_leaf*)mod->compiled->data);
+    assert_string_equal("r", leaf->name);
+    assert_null(leaf->dflt);
+    assert_null(leaf->dflt_mod);
+    assert_non_null(llist = (struct lysc_node_leaflist* )leaf->next);
+    assert_string_equal("lr", llist->name);
+    assert_null(llist->dflts);
+    assert_null(llist->dflts_mods);
 
     assert_null(lys_parse_mem(ctx, "module aa1 {namespace urn:aa1;prefix aa1;import a {prefix a;}"
                               "deviation /a:top/a:z {deviate not-supported;}}", LYS_IN_YANG));
@@ -3165,6 +3205,12 @@ test_deviation(void **state)
     assert_null(lys_parse_mem(ctx, "module ff5 {namespace urn:ff5;prefix ff5; anyxml a;"
                               "deviation /a {deviate delete {default x;}}}", LYS_IN_YANG));
     logbuf_assert("Invalid deviation of anyxml node - it is not possible to delete \"default\" property. /ff5:{deviation='/a'}");
+    assert_null(lys_parse_mem(ctx, "module ff6 {namespace urn:ff6;prefix ff6; import e {prefix e;}"
+                              "deviation /e:c {deviate delete {default hi;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation deleting \"default\" property \"hi\" which does not match the target's property value \"hello\". /ff6:{deviation='/e:c'}");
+    assert_null(lys_parse_mem(ctx, "module ff7 {namespace urn:ff7;prefix ff7; import e {prefix e;}"
+                              "deviation /e:d {deviate delete {default hi;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation deleting \"default\" property \"hi\" which does not match any of the target's property values. /ff7:{deviation='/e:d'}");
 
     assert_null(lys_parse_mem(ctx, "module gg1 {namespace urn:gg1;prefix gg1; import e {prefix e;}"
                               "deviation /e:b {deviate add {default e:a;}}}", LYS_IN_YANG));
@@ -3288,6 +3334,19 @@ test_deviation(void **state)
     assert_null(lys_parse_mem(ctx, "module nn2 {namespace urn:nn2;prefix nn2; leaf-list x {type string;}"
                               "deviation /x {deviate replace {type empty;}}}", LYS_IN_YANG));
     logbuf_assert("Leaf-list of type \"empty\" is allowed only in YANG 1.1 modules. /nn2:{deviation='/x'}");
+
+    assert_null(lys_parse_mem(ctx, "module oo1 {namespace urn:oo1;prefix oo1; leaf x {type uint16; default 300;}"
+                                  "deviation /x {deviate replace {type uint8;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation replacing leaf's type - the leaf's default value \"300\" does not match the type "
+                  "(Value \"300\" is out of uint8's min/max bounds.). /oo1:{deviation='/x'}");
+    assert_null(lys_parse_mem(ctx, "module oo2 {yang-version 1.1;namespace urn:oo2;prefix oo2; leaf-list x {type uint16; default 10; default 300;}"
+                                  "deviation /x {deviate replace {type uint8;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation replacing leaf-list's type - the leaf-list's default value \"300\" does not match the type "
+                  "(Value \"300\" is out of uint8's min/max bounds.). /oo2:{deviation='/x'}");
+    assert_null(lys_parse_mem(ctx, "module oo3 {namespace urn:oo3;prefix oo3; leaf x {type uint8;}"
+                                  "deviation /x {deviate add {default 300;}}}", LYS_IN_YANG));
+    logbuf_assert("Invalid deviation setting \"default\" property \"300\" which does not fit the type "
+                  "(Value \"300\" is out of uint8's min/max bounds.). /oo3:{deviation='/x'}");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);

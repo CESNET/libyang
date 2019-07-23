@@ -464,7 +464,7 @@ struct lysp_deviation {
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *      11 LYS_SET_UNITS    | | |x|x| | | | | | | | | | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *      11 LYS_SET_CONFIG   |x|x|x|x|x|x|x| | |x|x| | | | |
+ *      12 LYS_SET_CONFIG   |x|x|x|x|x|x|x| | |x|x| | | | |
  *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  */
@@ -1455,10 +1455,13 @@ int lysc_feature_value(const struct lysc_feature *feature);
  *
  * @param[in] node Schema path of this node will be generated.
  * @param[in] pathtype Format of the path to generate.
+ * @param[in,out] buffer Prepared buffer of the @p buflen length to store the generated path.
+ *                If NULL, memory for the complete path is allocated.
+ * @param[in] buflen Size of the provided @p buffer.
  * @return NULL in case of memory allocation error, path of the node otherwise.
- * Returned string is dynamically allocated and caller is responsible to free it.
+ * In case the @p buffer is NULL, the returned string is dynamically allocated and caller is responsible to free it.
  */
-char *lysc_path(struct lysc_node *node, LY_PATH_TYPE pathtype);
+char *lysc_path(struct lysc_node *node, LY_PATH_TYPE pathtype, char *buffer, size_t buflen);
 
 /**
  * @brief Available YANG schema tree structures representing YANG module.
