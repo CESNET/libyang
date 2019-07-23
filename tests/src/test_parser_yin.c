@@ -2549,9 +2549,9 @@ test_list_elem(void **state)
                     "<reference><text>ref</text></reference>"
                     "<anydata name=\"anyd\"/>"
                     "<anyxml name=\"anyx\"/>"
+                    "<container name=\"cont\"/>"
                     // "<choice name=\"choice\"/>"
                     // "<action name=\"action\"/>"
-                    // "<container name=\"cont\"/>"
                     "<grouping name=\"grp\"/>"
                     "<notification name=\"notf\"/>"
                     "<leaf name=\"leaf\"/>"
@@ -2568,11 +2568,13 @@ test_list_elem(void **state)
     assert_int_equal(parsed->child->nodetype, LYS_ANYDATA);
     assert_string_equal(parsed->child->next->name, "anyx");
     assert_int_equal(parsed->child->next->nodetype, LYS_ANYXML);
-    // assert_string_equal(parsed->child->next->next->name, "choice");
-    // assert_int_equal(parsed->child->next->next, LYS_CHOICE);
-    // assert_string_equal(parsed->actions->name, "action");
-    // assert_string_equal(parsed->child->next->next->name, "cont");
-    // assert_int_equal(parsed->child->next->next->nodetype, LYS_CONTAINER);
+    assert_string_equal(parsed->child->next->next->name, "cont");
+    assert_int_equal(parsed->child->next->next->nodetype, LYS_CONTAINER);
+    // assert_string_equal(parsed->child->next->next->next->name, "choice");
+    // assert_int_equal(parsed->child->next->next->next->nodetype, LYS_CHOICE);
+    // assert_string_equal(parsed->child->next->next->next->next->name, "action");
+    // assert_int_equal(parsed->child->next->next->next->next->nodetype, LYS_ACTION);
+    // assert_null(parsed->child->next->next->next->next->next);
     assert_string_equal(parsed->groupings->name, "grp");
     assert_int_equal(parsed->groupings->nodetype, LYS_GROUPING);
     assert_string_equal(parsed->notifs->name, "notf");
@@ -2631,8 +2633,8 @@ test_notification_elem(void **state)
                     "<status value=\"deprecated\"/>"
                     "<typedef name=\"tpdf\"/>"
                     "<uses name=\"uses-name\"/>"
+                    "<container name=\"cont\"/>"
                     // "<choice name=\"choice\"/>"
-                    // "<container name=\"cont\"/>"
                     "<grouping name=\"grp\"/>"
                 "</notification>"
            ELEMENT_WRAPPER_END;
@@ -2652,11 +2654,13 @@ test_notification_elem(void **state)
     assert_true(notifs->flags & LYS_STATUS_DEPRC);
     assert_string_equal(notifs->groupings->name, "grp");
     assert_int_equal(notifs->groupings->nodetype, LYS_GROUPING);
-    // assert_int_equal(notifs->data->next->next->next->next->nodetype, LYS_CHOICE);
-    // assert_string_equal(notifs->data->next->next->next->next->next->name, "choice");
-    // assert_int_equal(notifs->data->next->next->next->next->next->nodetype, LYS_CONTAINER);
-    // assert_string_equal(notifs->data->next->next->next->next->next->next->name, "cont");
-    // assert_null(notifs->data->next->next->next->next->next->next->next);
+    assert_string_equal(notifs->data->next->next->next->next->next->name, "uses-name");
+    assert_int_equal(notifs->data->next->next->next->next->next->nodetype, LYS_USES);
+    assert_string_equal(notifs->data->next->next->next->next->next->next->name, "cont");
+    assert_int_equal(notifs->data->next->next->next->next->next->next->nodetype, LYS_CONTAINER);
+    // assert_int_equal(notifs->data->next->next->next->next->next->next->next->nodetype, LYS_CHOICE);
+    // assert_string_equal(notifs->data->next->next->next->next->next->next->next->name, "choice");
+    // assert_null(notifs->data->next->next->next->next->next->next->next->next);
     assert_string_equal(*notifs->iffeatures, "iff");
     assert_string_equal(notifs->musts->arg, "cond");
     assert_int_equal(notifs->nodetype, LYS_NOTIF);
@@ -2700,7 +2704,7 @@ test_grouping_elem(void **state)
                     "<typedef name=\"tpdf\"/>"
                     "<uses name=\"uses-name\"/>"
                     // "<action name=\"act\"/>"
-                    // "<container name=\"cont\"/>"
+                    "<container name=\"cont\"/>"
                     // "<choice name=\"choice\"/>"
                 "</grouping>"
            ELEMENT_WRAPPER_END;
@@ -2722,7 +2726,8 @@ test_grouping_elem(void **state)
     assert_string_equal(grps->ref, "ref");
     assert_string_equal(grps->typedefs->name, "tpdf");
     // assert_string_equal(grps->actions->name, "act");
-    // assert_string_equal(grps->data->next->next->next->next->next->name, "cont");
+    assert_string_equal(grps->data->next->next->next->next->next->name, "uses-name");
+    assert_string_equal(grps->data->next->next->next->next->next->next->name, "cont");
     // assert_string_equal(grps->data->next->next->next->next->next->next->name, "choice");
     FREE_ARRAY(st->ctx, grps, lysp_grp_free);
     grps = NULL;
@@ -2733,6 +2738,29 @@ test_grouping_elem(void **state)
     assert_string_equal(grps->name, "grp-name");
     FREE_ARRAY(st->ctx, grps, lysp_grp_free);
     grps = NULL;
+
+    st->finished_correctly = true;
+}
+
+static void
+test_container_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct lysp_node *siblings = NULL;
+    struct tree_node_meta node_meta = {NULL, &siblings};
+    struct lysp_node_container *parsed = NULL;
+
+    /* max subelems */
+    /* TODO */
+
+    /* min subelems */
+    data = ELEMENT_WRAPPER_START "<container name=\"cont-name\" />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &node_meta, NULL, NULL, true), LY_SUCCESS);
+    parsed = (struct lysp_node_container *)siblings;
+    assert_string_equal(parsed->name, "cont-name");
+    lysp_node_free(st->ctx, siblings);
+    siblings = NULL;
 
     st->finished_correctly = true;
 }
@@ -2800,6 +2828,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_list_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_notification_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_grouping_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_container_elem, setup_element_test, teardown_element_test),
 
     };
 

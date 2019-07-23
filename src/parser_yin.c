@@ -1503,7 +1503,8 @@ yin_parse_identity(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, con
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_list(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data, struct tree_node_meta *node_meta)
+yin_parse_list(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+               struct tree_node_meta *node_meta)
 {
     struct lysp_node *iter;
     struct lysp_node_list *list;
@@ -1538,8 +1539,7 @@ yin_parse_list(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const c
                                             /* TODO choice */
                                             {YANG_CHOICE, NULL, 0},
                                             {YANG_CONFIG, &list->flags, YIN_SUBELEM_UNIQUE},
-                                            /* TODO container */
-                                            {YANG_CONTAINER, NULL, 0},
+                                            {YANG_CONTAINER, &new_node_meta, 0},
                                             {YANG_DESCRIPTION, &list->dsc, YIN_SUBELEM_UNIQUE},
                                             {YANG_GROUPING, &gr_meta, 0},
                                             {YANG_IF_FEATURE, &list->iffeatures, 0},
@@ -1608,8 +1608,7 @@ yin_parse_notification(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs,
                                             {YANG_ANYXML, &node_meta, 0},
                                             /* TODO choice */
                                             {YANG_CHOICE, NULL, 0},
-                                            /* TODO container */
-                                            {YANG_CONTAINER, NULL, 0},
+                                            {YANG_CONTAINER, &node_meta, 0},
                                             {YANG_DESCRIPTION, &notif->dsc, YIN_SUBELEM_UNIQUE},
                                             {YANG_GROUPING, &gr_meta, 0},
                                             {YANG_IF_FEATURE, &notif->iffeatures, 0},
@@ -1667,7 +1666,6 @@ yin_parse_grouping(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, con
                                             {YANG_ANYXML, &node_meta, 0},
                                             /* TODO choice */
                                             {YANG_CHOICE, NULL, 0},
-                                            /* TODO container */
                                             {YANG_CONTAINER, &node_meta, 0},
                                             {YANG_DESCRIPTION, &grp->dsc, YIN_SUBELEM_UNIQUE},
                                             {YANG_GROUPING, &sub_grouping, 0},
@@ -1684,6 +1682,76 @@ yin_parse_grouping(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, con
     LY_CHECK_RET(yin_parse_content(ctx, subelems, 16, data, YANG_GROUPING, NULL, &grp->exts));
     /* finalize parent pointers to the reallocated items */
     LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, grp->groupings, NULL, grp->actions, grp->notifs));
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Parse list element.
+ *
+ * @param[in,out] ctx YIN parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] node_meta Meta information about node parent and siblings.
+ *
+ * @return LY_ERR values.
+ */
+static LY_ERR
+yin_parse_container(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+                    struct tree_node_meta *node_meta)
+{
+    struct lysp_node *iter;
+    struct lysp_node_container *cont;
+
+    /* create new container */
+    cont = calloc(1, sizeof *cont);
+    LY_CHECK_ERR_RET(!cont, LOGMEM(ctx->xml_ctx.ctx), LY_EMEM);
+    cont->nodetype = LYS_CONTAINER;
+    cont->parent = node_meta->parent;
+
+    /* insert into siblings */
+    if (!*(node_meta->siblings)) {
+        *node_meta->siblings = (struct lysp_node *)cont;
+    } else {
+        for (iter = *node_meta->siblings; iter->next; iter = iter->next);
+        iter->next = (struct lysp_node *)cont;
+    }
+
+    /* parse aegument */
+    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NAME,  &cont->name, Y_IDENTIF_ARG, YANG_CONTAINER));
+
+    /* parse container content */
+    struct tree_node_meta new_node_meta = {(struct lysp_node *)cont, &cont->child};
+    struct grouping_meta grp_meta = {(struct lysp_node *)cont, &cont->groupings};
+    struct typedef_meta typedef_meta = {(struct lysp_node *)cont, &cont->typedefs};
+    struct notif_meta notif_meta = {(struct lysp_node *)cont, &cont->notifs};
+    struct yin_subelement subelems[21] = {
+                                            /* TODO action */
+                                            {YANG_ACTION, NULL, YIN_SUBELEM_VER2},
+                                            {YANG_ANYDATA, &new_node_meta, YIN_SUBELEM_VER2},
+                                            {YANG_ANYXML, &new_node_meta, 0},
+                                            /* TODO choice */
+                                            {YANG_CHOICE, NULL, 0},
+                                            {YANG_CONFIG, &cont->flags, YIN_SUBELEM_UNIQUE},
+                                            {YANG_CONTAINER, &new_node_meta, 0},
+                                            {YANG_DESCRIPTION, &cont->dsc, YIN_SUBELEM_UNIQUE},
+                                            {YANG_GROUPING, &grp_meta, 0},
+                                            {YANG_IF_FEATURE, &cont->iffeatures, 0},
+                                            {YANG_LEAF, &new_node_meta, 0},
+                                            {YANG_LEAF_LIST, &new_node_meta, 0},
+                                            {YANG_LIST, &new_node_meta, 0},
+                                            {YANG_MUST, &cont->musts, 0},
+                                            {YANG_NOTIFICATION, &notif_meta, YIN_SUBELEM_VER2},
+                                            {YANG_PRESENCE, &cont->presence, YIN_SUBELEM_UNIQUE},
+                                            {YANG_REFERENCE, &cont->ref, YIN_SUBELEM_UNIQUE},
+                                            {YANG_STATUS, &cont->flags, YIN_SUBELEM_UNIQUE},
+                                            {YANG_TYPEDEF, &typedef_meta, 0},
+                                            {YANG_USES, &new_node_meta, 0},
+                                            {YANG_WHEN, &cont->when, YIN_SUBELEM_UNIQUE},
+                                            {YANG_CUSTOM, NULL, 0},
+                                         };
+    LY_CHECK_RET(yin_parse_content(ctx, subelems, 21, data, YANG_CONTAINER, NULL, &cont->exts));
+    LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, cont->groupings, NULL, cont->actions, cont->notifs));
 
     return LY_SUCCESS;
 }
@@ -1905,6 +1973,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     ret = yin_parse_meta_element(ctx, data, kw, (const char **)subelem->dest, exts);
                     break;
                 case YANG_CONTAINER:
+                    ret = yin_parse_container(ctx, attrs, data, (struct tree_node_meta *)subelem->dest);
                     break;
                 case YANG_DEFAULT:
                     if (subelem->flags & YIN_SUBELEM_UNIQUE) {
