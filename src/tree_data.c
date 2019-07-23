@@ -606,7 +606,7 @@ lyd_compare(const struct lyd_node *node1, const struct lyd_node *node2, int opti
         iter1 = ((struct lyd_node_inner*)node1)->child;
         iter2 = ((struct lyd_node_inner*)node2)->child;
 
-        if (((struct lysc_node_list*)node1->schema)->keys && (!options & LYD_COMPARE_FULL_RECURSION)) {
+        if (((struct lysc_node_list*)node1->schema)->keys && !(options & LYD_COMPARE_FULL_RECURSION)) {
             /* lists with keys, their equivalence is based on their keys */
             unsigned int u;
 
