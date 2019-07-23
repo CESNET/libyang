@@ -3101,6 +3101,15 @@ test_deviation(void **state)
     assert_int_equal(0, dynamic);
     assert_int_equal(1, llist->dflts[0]->uint8);
 
+    assert_non_null(mod = lys_parse_mem(ctx, "module q {yang-version 1.1; namespace urn:q;prefix q; import e {prefix e;}"
+                                        "leaf q {type instance-identifier; default \"/e:d2\";}}", LYS_IN_YANG));
+    assert_non_null(lys_parse_mem(ctx, "module qdev {yang-version 1.1; namespace urn:qdev;prefix qd; import q {prefix q;}"
+                                  "deviation /q:q { deviate replace {type string;}}}", LYS_IN_YANG));
+    assert_non_null(leaf = (struct lysc_node_leaf*)mod->compiled->data);
+    assert_int_equal(LY_TYPE_STRING, leaf->dflt->realtype->basetype);
+    assert_non_null(leaf->dflt->canonized);
+    assert_string_equal("/e:d2", leaf->dflt->canonized);
+
     assert_null(lys_parse_mem(ctx, "module aa1 {namespace urn:aa1;prefix aa1;import a {prefix a;}"
                               "deviation /a:top/a:z {deviate not-supported;}}", LYS_IN_YANG));
     logbuf_assert("Invalid absolute-schema-nodeid value \"/a:top/a:z\" - target node not found. /aa1:{deviation='/a:top/a:z'}");

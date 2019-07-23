@@ -978,6 +978,7 @@ struct lysc_must {
 struct lysc_type {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lyd_value *dflt;          /**< type's default value if any */
+    struct lys_module *dflt_mod;     /**< module where the lysc_type::dflt value was defined (needed to correctly map prefixes). */
     struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
@@ -986,6 +987,7 @@ struct lysc_type {
 struct lysc_type_num {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lyd_value *dflt;          /**< type's default value if any */
+    struct lys_module *dflt_mod;     /**< module where the lysc_type::dflt value was defined (needed to correctly map prefixes). */
     struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
@@ -995,6 +997,7 @@ struct lysc_type_num {
 struct lysc_type_dec {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lyd_value *dflt;          /**< type's default value if any */
+    struct lys_module *dflt_mod;     /**< module where the lysc_type::dflt value was defined (needed to correctly map prefixes). */
     struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
@@ -1005,6 +1008,7 @@ struct lysc_type_dec {
 struct lysc_type_str {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lyd_value *dflt;          /**< type's default value if any */
+    struct lys_module *dflt_mod;     /**< module where the lysc_type::dflt value was defined (needed to correctly map prefixes). */
     struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
@@ -1029,6 +1033,7 @@ struct lysc_type_bitenum_item {
 struct lysc_type_enum {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *dflt;                /**< type's default value if any */
+    struct lys_module *dflt_mod;     /**< module where the lysc_type::dflt value was defined (needed to correctly map prefixes). */
     struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
@@ -1038,6 +1043,7 @@ struct lysc_type_enum {
 struct lysc_type_bits {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *dflt;                /**< type's default value if any */
+    struct lys_module *dflt_mod;     /**< module where the lysc_type::dflt value was defined (needed to correctly map prefixes). */
     struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
@@ -1048,6 +1054,7 @@ struct lysc_type_bits {
 struct lysc_type_leafref {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *dflt;                /**< type's default value if any */
+    struct lys_module *dflt_mod;     /**< module where the lysc_type::dflt value was defined (needed to correctly map prefixes). */
     struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
@@ -1060,6 +1067,7 @@ struct lysc_type_leafref {
 struct lysc_type_identityref {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *dflt;                /**< type's default value if any */
+    struct lys_module *dflt_mod;     /**< module where the lysc_type::dflt value was defined (needed to correctly map prefixes). */
     struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
@@ -1070,6 +1078,7 @@ struct lysc_type_identityref {
 struct lysc_type_instanceid {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *dflt;                /**< type's default value if any */
+    struct lys_module *dflt_mod;     /**< module where the lysc_type::dflt value was defined (needed to correctly map prefixes). */
     struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
@@ -1079,6 +1088,7 @@ struct lysc_type_instanceid {
 struct lysc_type_union {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *dflt;                /**< type's default value if any */
+    struct lys_module *dflt_mod;     /**< module where the lysc_type::dflt value was defined (needed to correctly map prefixes). */
     struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
@@ -1088,6 +1098,7 @@ struct lysc_type_union {
 struct lysc_type_bin {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *dflt;                /**< type's default value if any */
+    struct lys_module *dflt_mod;     /**< module where the lysc_type::dflt value was defined (needed to correctly map prefixes). */
     struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
@@ -1254,6 +1265,7 @@ struct lysc_node_leaf {
 
     const char *units;               /**< units of the leaf's type */
     struct lyd_value *dflt;          /**< default value */
+    struct lys_module *dflt_mod;     /**< module where the lysc_node_leaf::dflt value was defined (needed to correctly map prefixes). */
 };
 
 struct lysc_node_leaflist {
@@ -1278,7 +1290,9 @@ struct lysc_node_leaflist {
     struct lysc_type *type;          /**< type of the leaf node (mandatory) */
 
     const char *units;               /**< units of the leaf's type */
-    struct lyd_value **dflts;        /**< list of default values ([sized array](@ref sizedarrays)) */
+    struct lyd_value **dflts;        /**< list ([sized array](@ref sizedarrays)) of default values */
+    struct lys_module **dflts_mods;  /**< list ([sized array](@ref sizedarrays)) of modules where the lysc_node_leaflist::dflts values were defined
+                                          (needed to correctly map prefixes). */
     uint32_t min;                    /**< min-elements constraint */
     uint32_t max;                    /**< max-elements constraint */
 
