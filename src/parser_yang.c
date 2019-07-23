@@ -1880,8 +1880,8 @@ parse_type_enum_value_pos(struct lys_parser_ctx *ctx, const char **data, enum ya
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word, *ptr;
     size_t word_len;
-    long int num;
-    unsigned long int unum;
+    long int num = 0;
+    unsigned long int unum = 0;
     enum yang_keyword kw;
 
     if (*flags & LYS_SET_VALUE) {
@@ -4106,10 +4106,10 @@ parse_deviate(struct lys_parser_ctx *ctx, const char **data, struct lysp_deviate
     struct lysp_deviate_add *d_add = NULL;
     struct lysp_deviate_rpl *d_rpl = NULL;
     struct lysp_deviate_del *d_del = NULL;
-    const char **d_units, ***d_uniques, ***d_dflts;
-    struct lysp_restr **d_musts;
-    uint16_t *d_flags;
-    uint32_t *d_min, *d_max;
+    const char **d_units = NULL, ***d_uniques = NULL, ***d_dflts = NULL;
+    struct lysp_restr **d_musts = NULL;
+    uint16_t *d_flags = 0;
+    uint32_t *d_min = 0, *d_max = 0;
 
     /* get value */
     LY_CHECK_RET(get_argument(ctx, data, Y_STR_ARG, NULL, &word, &buf, &word_len));

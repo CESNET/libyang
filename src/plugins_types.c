@@ -1530,7 +1530,7 @@ ly_type_store_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const char 
 {
     LY_ERR ret = LY_EVALID;
     struct lysc_type_instanceid *type_inst = (struct lysc_type_instanceid *)type;
-    const char *id, *prefix, *val, *token, *node_start;
+    const char *id, *prefix, *val, *token, *node_start = NULL;
     size_t id_len, prefix_len, val_len;
     char *errmsg = NULL;
     const struct lysc_node *node_s = NULL;
@@ -2115,7 +2115,7 @@ ly_type_store_leafref(struct ly_ctx *ctx, struct lysc_type *type, const char *va
                       struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
     LY_ERR ret;
-    unsigned int u;
+    unsigned int u = 0;
     char *errmsg = NULL;
     struct lysc_type_leafref *type_lr = (struct lysc_type_leafref*)type;
     int storage_dummy = 0;
@@ -2123,7 +2123,7 @@ ly_type_store_leafref(struct ly_ctx *ctx, struct lysc_type *type, const char *va
     const struct lyd_node *start_search;
     const char *prefix, *id;
     size_t prefix_len, id_len;
-    const struct lys_module *mod_node;
+    const struct lys_module *mod_node = NULL;
 
     if (!(options & (LY_TYPE_OPTS_STORE | LY_TYPE_OPTS_INCOMPLETE_DATA)) && type_lr->require_instance) {
         /* if there is no storage, but we will check the instance presence in data tree(s),

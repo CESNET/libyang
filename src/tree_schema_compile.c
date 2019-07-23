@@ -1895,7 +1895,7 @@ lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_
                        struct lysc_type_bitenum_item *base_enums, struct lysc_type_bitenum_item **enums)
 {
     LY_ERR ret = LY_SUCCESS;
-    unsigned int u, v, match;
+    unsigned int u, v, match = 0;
     int32_t value = 0;
     uint32_t position = 0;
     struct lysc_type_bitenum_item *e, storage;
