@@ -1493,6 +1493,89 @@ yin_parse_identity(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, con
 }
 
 /**
+ * @brief Parse list element.
+ *
+ * @param[in,out] ctx YIN parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] node_meta Meta information about node parent and siblings.
+ *
+ * @return LY_ERR values.
+ */
+static LY_ERR
+yin_parse_list(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data, struct tree_node_meta *node_meta)
+{
+    struct lysp_node *iter;
+    struct lysp_node_list *list;
+
+    /* create structure */
+    list = calloc(1, sizeof *list);
+    LY_CHECK_ERR_RET(!list, LOGMEM(ctx->xml_ctx.ctx), LY_EMEM);
+    list->nodetype = LYS_LIST;
+    list->parent = node_meta->parent;
+
+    /* insert into siblings */
+    if (!*(node_meta->siblings)) {
+        *node_meta->siblings = (struct lysp_node *)list;
+    } else {
+        for (iter = *node_meta->siblings; iter->next; iter = iter->next);
+        iter->next = (struct lysp_node *)list;
+    }
+
+    /* parse argument */
+    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NAME, &list->name, Y_IDENTIF_ARG, YANG_LIST));
+
+    /* parse list content */
+    struct tree_node_meta new_node_meta = {(struct lysp_node *)list, &list->child};
+    struct typedef_meta typedef_meta = {(struct lysp_node *)list, &list->typedefs};
+    struct yin_subelement subelems[25] = {
+                                            /* TODO action */
+                                            {YANG_ACTION, NULL, 0},
+                                            {YANG_ANYDATA, &new_node_meta, 0},
+                                            {YANG_ANYXML, &new_node_meta, 0},
+                                            /* TODO choice */
+                                            {YANG_CHOICE, NULL, 0},
+                                            {YANG_CONFIG, &list->flags, YIN_SUBELEM_UNIQUE},
+                                            /* TODO container */
+                                            {YANG_CONTAINER, NULL, 0},
+                                            {YANG_DESCRIPTION, &list->dsc, YIN_SUBELEM_UNIQUE},
+                                            /* TODO grouping */
+                                            {YANG_GROUPING, NULL, 0},
+                                            {YANG_IF_FEATURE, &list->iffeatures, 0},
+                                            {YANG_KEY, &list->key, YIN_SUBELEM_UNIQUE},
+                                            {YANG_LEAF, &new_node_meta, 0},
+                                            {YANG_LEAF_LIST, &new_node_meta, 0},
+                                            {YANG_LIST, &new_node_meta, 0},
+                                            {YANG_MAX_ELEMENTS, list, YIN_SUBELEM_UNIQUE},
+                                            {YANG_MIN_ELEMENTS, list, YIN_SUBELEM_UNIQUE},
+                                            {YANG_MUST, &list->musts, 0},
+                                            /* TODO notification */
+                                            {YANG_NOTIFICATION, NULL, 0},
+                                            {YANG_ORDERED_BY, &list->flags, YIN_SUBELEM_UNIQUE},
+                                            {YANG_REFERENCE, &list->ref, YIN_SUBELEM_UNIQUE},
+                                            {YANG_STATUS, &list->flags, YIN_SUBELEM_UNIQUE},
+                                            {YANG_TYPEDEF, &typedef_meta, 0},
+                                            {YANG_UNIQUE, &list->uniques, 0},
+                                            {YANG_USES, &new_node_meta, 0},
+                                            {YANG_WHEN, &list->when, YIN_SUBELEM_UNIQUE},
+                                            {YANG_CUSTOM, NULL, 0},
+                                         };
+    LY_CHECK_RET(yin_parse_content(ctx, subelems, 25, data, YANG_LIST, NULL, &list->exts));
+
+    /* finalize parent pointers to the reallocated items */
+    LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, list->groupings, NULL, list->actions, list->notifs));
+
+    if (list->max && list->min > list->max) {
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LYVE_SEMANTICS,
+                    "Invalid combination of min-elements and max-elements: min value %u is bigger than the max value %u.",
+                    list->min, list->max);
+        return LY_EVALID;
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Map keyword type to substatement info.
  *
  * @param[in] kw Keyword type.
@@ -1774,6 +1857,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     type->flags |= LYS_SET_LENGTH;
                     break;
                 case YANG_LIST:
+                    ret = yin_parse_list(ctx, attrs, data, (struct tree_node_meta *)subelem->dest);
                     break;
                 case YANG_MANDATORY:
                     ret = yin_parse_mandatory(ctx, attrs, data, (uint16_t *)subelem->dest, exts);

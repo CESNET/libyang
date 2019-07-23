@@ -53,7 +53,7 @@ char logbuf[BUFSIZE] = {0};
 int store = -1; /* negative for infinite logging, positive for limited logging */
 
 /* set to 0 to printing error messages to stderr instead of checking them in code */
-#define ENABLE_LOGGER_CHECKING 1
+#define ENABLE_LOGGER_CHECKING 0
 
 #if ENABLE_LOGGER_CHECKING
 static void
@@ -2522,6 +2522,88 @@ test_identity_elem(void **state)
     st->finished_correctly = true;
 }
 
+static void
+test_list_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct lysp_node *siblings = NULL;
+    struct tree_node_meta node_meta = {NULL, &siblings};
+    struct lysp_node_list *parsed = NULL;
+
+    /* max subelems */
+    data = ELEMENT_WRAPPER_START
+                "<list name=\"list-name\">"
+                    "<when condition=\"when\"/>"
+                    "<if-feature name=\"iff\"/>"
+                    "<must condition=\"must-cond\"/>"
+                    "<key value=\"key\"/>"
+                    "<unique tag=\"utag\"/>"
+                    "<config value=\"true\"/>"
+                    "<min-elements value=\"10\"/>"
+                    "<ordered-by value=\"user\"/>"
+                    "<status value=\"deprecated\"/>"
+                    "<description><text>desc</text></description>"
+                    "<reference><text>ref</text></reference>"
+                    "<anydata name=\"anyd\"/>"
+                    "<anyxml name=\"anyx\"/>"
+                    // "<choice name=\"choice\"/>"
+                    // "<action name=\"action\"/>"
+                    // "<container name=\"cont\"/>"
+                    // "<grouping name=\"grp\"/>"
+                    // "<notification name=\"notf\"/>"
+                    "<leaf name=\"leaf\"/>"
+                    "<leaf-list name=\"llist\"/>"
+                    "<list name=\"sub-list\"/>"
+                    "<typedef name=\"tpdf\"/>"
+                    "<uses name=\"uses-name\"/>"
+                "</list>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &node_meta, NULL, NULL, true), LY_SUCCESS);
+    parsed = (struct lysp_node_list *)&siblings[0];
+    assert_string_equal(parsed->dsc, "desc");
+    assert_string_equal(parsed->child->name, "anyd");
+    assert_int_equal(parsed->child->nodetype, LYS_ANYDATA);
+    assert_string_equal(parsed->child->next->name, "anyx");
+    assert_int_equal(parsed->child->next->nodetype, LYS_ANYXML);
+    // assert_string_equal(parsed->child->next->next->name, "choice");
+    // assert_int_equal(parsed->child->next->next, LYS_CHOICE);
+    // assert_string_equal(parsed->actions->name, "action");
+    // assert_string_equal(parsed->child->next->next->name, "cont");
+    // assert_int_equal(parsed->child->next->next->nodetype, LYS_CONTAINER);
+    // assert_string_equal(parsed->groupings->name, "grp");
+    // assert_string_equal(parsed->notifs->name, "notf");
+    assert_null(parsed->exts);
+    assert_true(parsed->flags & LYS_ORDBY_USER);
+    assert_true(parsed->flags & LYS_STATUS_DEPRC);
+    assert_true(parsed->flags & LYS_CONFIG_W);
+    assert_string_equal(*parsed->iffeatures, "iff");
+    assert_string_equal(parsed->key, "key");
+    assert_int_equal(parsed->min, 10);
+    assert_string_equal(parsed->musts->arg, "must-cond");
+    assert_string_equal(parsed->name, "list-name");
+    assert_null(parsed->next);
+    assert_int_equal(parsed->nodetype, LYS_LIST);
+    assert_null(parsed->parent);
+    assert_string_equal(parsed->ref, "ref");
+    assert_string_equal(parsed->typedefs->name, "tpdf");
+    assert_string_equal(*parsed->uniques, "utag");
+    assert_string_equal(parsed->when->cond, "when");
+    lysp_node_free(st->ctx, siblings);
+    ly_set_erase(&st->yin_ctx->tpdfs_nodes, NULL);
+    siblings = NULL;
+
+    /* min subelems */
+    data = ELEMENT_WRAPPER_START "<list name=\"list-name\" />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &node_meta, NULL, NULL, true), LY_SUCCESS);
+    parsed = (struct lysp_node_list *)&siblings[0];
+    assert_string_equal(parsed->name, "list-name");
+    lysp_node_free(st->ctx, siblings);
+    siblings = NULL;
+
+    st->finished_correctly = true;
+}
+
 int
 main(void)
 {
@@ -2582,7 +2664,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_include_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_feature_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_identity_elem, setup_element_test, teardown_element_test),
-
+        cmocka_unit_test_setup_teardown(test_list_elem, setup_element_test, teardown_element_test),
     };
 
     return cmocka_run_group_tests(tests, setup_ly_ctx, destroy_ly_ctx);
