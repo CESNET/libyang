@@ -323,6 +323,14 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
         /* calculate the hash and insert it into parent (list with keys is handled when its keys are inserted) */
         lyd_hash(cur);
         lyd_insert_hash(cur);
+
+        /* if we have empty non-presence container, we keep it, but mark it as default */
+        if (cur->schema->nodetype == LYS_CONTAINER && !((struct lyd_node_inner*)cur)->child &&
+                !cur->attr && !(((struct lysc_node_container*)cur->schema)->flags & LYS_PRESENCE)) {
+            cur->flags |= LYD_DEFAULT;
+        }
+
+        /* TODO context validation */
     }
 
 cleanup:

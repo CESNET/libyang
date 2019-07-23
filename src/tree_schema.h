@@ -980,7 +980,7 @@ struct lysc_must {
 
 struct lysc_type {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    const char *dflt;                /**< type's default value if any */
+    struct lyd_value *dflt;          /**< type's default value if any */
     struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
@@ -988,7 +988,7 @@ struct lysc_type {
 
 struct lysc_type_num {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    const char *dflt;                /**< type's default value if any */
+    struct lyd_value *dflt;          /**< type's default value if any */
     struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
@@ -997,7 +997,7 @@ struct lysc_type_num {
 
 struct lysc_type_dec {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    const char *dflt;                /**< type's default value if any */
+    struct lyd_value *dflt;          /**< type's default value if any */
     struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
@@ -1007,7 +1007,7 @@ struct lysc_type_dec {
 
 struct lysc_type_str {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    const char *dflt;                /**< type's default value if any */
+    struct lyd_value *dflt;          /**< type's default value if any */
     struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
@@ -1256,7 +1256,7 @@ struct lysc_node_leaf {
     struct lysc_type *type;          /**< type of the leaf node (mandatory) */
 
     const char *units;               /**< units of the leaf's type */
-    const char *dflt;                /**< default value */
+    struct lyd_value *dflt;          /**< default value */
 };
 
 struct lysc_node_leaflist {
@@ -1281,7 +1281,7 @@ struct lysc_node_leaflist {
     struct lysc_type *type;          /**< type of the leaf node (mandatory) */
 
     const char *units;               /**< units of the leaf's type */
-    const char **dflts;              /**< list of default values ([sized array](@ref sizedarrays)) */
+    struct lyd_value **dflts;        /**< list of default values ([sized array](@ref sizedarrays)) */
     uint32_t min;                    /**< min-elements constraint */
     uint32_t max;                    /**< max-elements constraint */
 

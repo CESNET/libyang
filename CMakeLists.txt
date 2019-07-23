@@ -211,6 +211,7 @@ set(libsrc
     src/parser_xml.c
     src/printer_data.c
     src/printer_xml.c
+    src/printer_json.c
     src/tree_schema.c
     src/tree_schema_free.c
     src/tree_schema_compile.c

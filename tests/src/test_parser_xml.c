@@ -58,6 +58,8 @@ setup(void **state)
     const char *schema_a = "module a {namespace urn:tests:a;prefix a;yang-version 1.1;"
             "list l1 { key \"a b\"; leaf a {type string;} leaf b {type string;} leaf c {type string;}}"
             "leaf foo { type string;}"
+            "container c { leaf x {type string;}}"
+            "container cp {presence \"container switch\"; leaf y {type string;}}"
             "anydata any {config false;} }";
 
 #if ENABLE_LOGGER_CHECKING
@@ -164,12 +166,42 @@ test_list(void **state)
     *state = NULL;
 }
 
+static void
+test_container(void **state)
+{
+    *state = test_container;
+
+    const char *data = "<c xmlns=\"urn:tests:a\"/>";
+    struct lyd_node *tree;
+    struct lyd_node_inner *cont;
+
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, 0, &tree));
+    assert_non_null(tree);
+    assert_int_equal(LYS_CONTAINER, tree->schema->nodetype);
+    assert_string_equal("c", tree->schema->name);
+    cont = (struct lyd_node_inner*)tree;
+    assert_true(cont->flags & LYD_DEFAULT);
+    lyd_free_all(tree);
+
+    data = "<cp xmlns=\"urn:tests:a\"/>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, 0, &tree));
+    assert_non_null(tree);
+    assert_int_equal(LYS_CONTAINER, tree->schema->nodetype);
+    assert_string_equal("cp", tree->schema->name);
+    cont = (struct lyd_node_inner*)tree;
+    assert_false(cont->flags & LYD_DEFAULT);
+    lyd_free_all(tree);
+
+    *state = NULL;
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_leaf, setup, teardown),
         cmocka_unit_test_setup_teardown(test_anydata, setup, teardown),
         cmocka_unit_test_setup_teardown(test_list, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_container, setup, teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

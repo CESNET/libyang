@@ -334,6 +334,20 @@ xml_print_node_open(struct xmlpr_ctx *ctx, const struct lyd_node *node)
 static LY_ERR xml_print_node(struct xmlpr_ctx *ctx, const struct lyd_node *node);
 
 /**
+ * @brief XML mapping of YANG modules to prefixes in values.
+ *
+ * Implementation of ly_clb_get_prefix
+ */
+static const char *
+xml_print_get_prefix(const struct lys_module *mod, void *private)
+{
+    struct ly_set *ns_list = (struct ly_set*)private;
+
+    ly_set_add(ns_list, (void*)mod, 0);
+    return mod->prefix;
+}
+
+/**
  * @brief Print XML element representing lyd_node_term.
  *
  * @param[in] ctx XML printer context.
@@ -344,17 +358,27 @@ static LY_ERR
 xml_print_term(struct xmlpr_ctx *ctx, const struct lyd_node_term *node)
 {
     LY_CHECK_RET(xml_print_node_open(ctx, (struct lyd_node *)node));
+    struct ly_set ns_list = {0};
+    unsigned int u;
+    int dynamic;
+    const char *value = node->value.realtype->plugin->print(&node->value, LYD_XML, xml_print_get_prefix, &ns_list, &dynamic);
 
-    if (((struct lysc_node_leaf*)node->schema)->type->plugin->flags & LY_TYPE_FLAG_PREFIXES) {
-        /* TODO get prefixes from the value and print namespaces */
+    /* print namespaces connected with the values's prefixes */
+    for (u = 0; u < ns_list.count; ++u) {
+        const struct lys_module *mod = (const struct lys_module*)ns_list.objs[u];
+        ly_print(ctx->out, "%sxmlns:%s=\"%s\"", u ? " " : "", mod->prefix, mod->ns);
     }
+    ly_set_erase(&ns_list, NULL);
 
-    if (!node->value.canonized || !node->value.canonized[0]) {
+    if (!value || !value[0]) {
         ly_print(ctx->out, "/>%s", LEVEL ? "\n" : "");
     } else {
         ly_print(ctx->out, ">");
-        lyxml_dump_text(ctx->out, node->value.canonized, 0);
+        lyxml_dump_text(ctx->out, value, 0);
         ly_print(ctx->out, "</%s>%s", node->schema->name, LEVEL ? "\n" : "");
+    }
+    if (dynamic) {
+        free((void*)value);
     }
 
     return LY_SUCCESS;

@@ -20,6 +20,7 @@
 #include "tree.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
+#include "plugins_types.h"
 #include "xpath.h"
 
 void lysp_grp_free(struct ly_ctx *ctx, struct lysp_grp *grp);
@@ -623,7 +624,11 @@ lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type)
         break;
     }
     FREE_ARRAY(ctx, type->exts, lysc_ext_instance_free);
-    FREE_STRING(ctx, type->dflt);
+    if (type->dflt) {
+        type->plugin->free(ctx, type->dflt);
+        lysc_type_free(ctx, type->dflt->realtype);
+        free(type->dflt);
+    }
     free(type);
 }
 
@@ -689,7 +694,11 @@ lysc_node_leaf_free(struct ly_ctx *ctx, struct lysc_node_leaf *node)
         lysc_type_free(ctx, node->type);
     }
     FREE_STRING(ctx, node->units);
-    FREE_STRING(ctx, node->dflt);
+    if (node->dflt) {
+        node->dflt->realtype->plugin->free(ctx, node->dflt);
+        lysc_type_free(ctx, node->dflt->realtype);
+        free(node->dflt);
+    }
 }
 
 static void
@@ -703,7 +712,9 @@ lysc_node_leaflist_free(struct ly_ctx *ctx, struct lysc_node_leaflist *node)
     }
     FREE_STRING(ctx, node->units);
     LY_ARRAY_FOR(node->dflts, u) {
-        lydict_remove(ctx, node->dflts[u]);
+        node->dflts[u]->realtype->plugin->free(ctx, node->dflts[u]);
+        lysc_type_free(ctx, node->dflts[u]->realtype);
+        free(node->dflts[u]);
     }
     LY_ARRAY_FREE(node->dflts);
 }

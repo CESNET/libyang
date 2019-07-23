@@ -57,7 +57,7 @@ lyd_hash(struct lyd_node *node)
             for (iter = list->child; keys_count; --keys_count, iter = iter->next) {
                 int dynamic = 0;
                 struct lysc_type *type = ((struct lysc_node_leaf*)iter->schema)->type;
-                const char *value = type->plugin->print(&((struct lyd_node_term*)iter)->value, LYD_JSON, 0, &dynamic);
+                const char *value = type->plugin->print(&((struct lyd_node_term*)iter)->value, LYD_JSON, json_print_get_prefix, NULL, &dynamic);
                 node->hash = dict_hash_multi(node->hash, value, strlen(value));
                 if (dynamic) {
                     free((char*)value);
@@ -70,7 +70,8 @@ lyd_hash(struct lyd_node *node)
     } else if (node->schema->nodetype == LYS_LEAFLIST) {
         struct lyd_node_term *llist = (struct lyd_node_term*)node;
         int dynamic = 0;
-        const char *value = ((struct lysc_node_leaflist*)node->schema)->type->plugin->print(&llist->value, LYD_JSON, 0, &dynamic);
+        const char *value = ((struct lysc_node_leaflist*)node->schema)->type->plugin->print(&llist->value, LYD_JSON,
+                                                                                            json_print_get_prefix, NULL, &dynamic);
         node->hash = dict_hash_multi(node->hash, value, strlen(value));
         if (dynamic) {
             free((char*)value);
