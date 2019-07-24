@@ -42,6 +42,7 @@ void lysp_ident_free(struct ly_ctx *ctx, struct lysp_ident *ident);
 void lysp_notif_free(struct ly_ctx *ctx, struct lysp_notif *notif);
 void lysp_grp_free(struct ly_ctx *ctx, struct lysp_grp *grp);
 void lysp_action_inout_free(struct ly_ctx *ctx, struct lysp_action_inout *inout);
+void lysp_action_free(struct ly_ctx *ctx, struct lysp_action *action);
 
 struct state {
     struct ly_ctx *ctx;
@@ -2552,7 +2553,7 @@ test_list_elem(void **state)
                     "<anyxml name=\"anyx\"/>"
                     "<container name=\"cont\"/>"
                     "<choice name=\"choice\"/>"
-                    // "<action name=\"action\"/>"
+                    "<action name=\"action\"/>"
                     "<grouping name=\"grp\"/>"
                     "<notification name=\"notf\"/>"
                     "<leaf name=\"leaf\"/>"
@@ -2573,10 +2574,17 @@ test_list_elem(void **state)
     assert_int_equal(parsed->child->next->next->nodetype, LYS_CONTAINER);
     assert_string_equal(parsed->child->next->next->next->name, "choice");
     assert_int_equal(parsed->child->next->next->next->nodetype, LYS_CHOICE);
-    // assert_string_equal(parsed->child->next->next->next->next->name, "action");
-    // assert_int_equal(parsed->child->next->next->next->next->nodetype, LYS_ACTION);
-    // assert_null(parsed->child->next->next->next->next->next);
+    assert_string_equal(parsed->child->next->next->next->next->name, "leaf");
+    assert_int_equal(parsed->child->next->next->next->next->nodetype, LYS_LEAF);
+    assert_string_equal(parsed->child->next->next->next->next->next->name, "llist");
+    assert_int_equal(parsed->child->next->next->next->next->next->nodetype, LYS_LEAFLIST);
+    assert_string_equal(parsed->child->next->next->next->next->next->next->name, "sub-list");
+    assert_int_equal(parsed->child->next->next->next->next->next->next->nodetype, LYS_LIST);
+    assert_string_equal(parsed->child->next->next->next->next->next->next->next->name, "uses-name");
+    assert_int_equal(parsed->child->next->next->next->next->next->next->next->nodetype, LYS_USES);
+    assert_null(parsed->child->next->next->next->next->next->next->next->next);
     assert_string_equal(parsed->groupings->name, "grp");
+    assert_string_equal(parsed->actions->name, "action");
     assert_int_equal(parsed->groupings->nodetype, LYS_GROUPING);
     assert_string_equal(parsed->notifs->name, "notf");
     assert_null(parsed->exts);
@@ -2704,7 +2712,7 @@ test_grouping_elem(void **state)
                     "<status value=\"current\"/>"
                     "<typedef name=\"tpdf\"/>"
                     "<uses name=\"uses-name\"/>"
-                    // "<action name=\"act\"/>"
+                    "<action name=\"act\"/>"
                     "<container name=\"cont\"/>"
                     "<choice name=\"choice\"/>"
                 "</grouping>"
@@ -2725,7 +2733,7 @@ test_grouping_elem(void **state)
     assert_null(grps->parent);
     assert_string_equal(grps->ref, "ref");
     assert_string_equal(grps->typedefs->name, "tpdf");
-    // assert_string_equal(grps->actions->name, "act");
+    assert_string_equal(grps->actions->name, "act");
     assert_string_equal(grps->data->next->next->next->next->next->name, "uses-name");
     assert_int_equal(grps->data->next->next->next->next->next->nodetype, LYS_USES);
     assert_string_equal(grps->data->next->next->next->next->next->next->name, "cont");
@@ -2776,7 +2784,7 @@ test_container_elem(void **state)
                     "<typedef name=\"tpdf\"/>"
                     "<uses name=\"uses-name\"/>"
                     "<when condition=\"when-cond\"/>"
-                    // "<action name=\"act\"/>"
+                    "<action name=\"act\"/>"
                     "<choice name=\"choice\"/>"
                 "</container>"
            ELEMENT_WRAPPER_END;
@@ -2815,7 +2823,7 @@ test_container_elem(void **state)
     assert_int_equal(parsed->child->next->next->next->next->next->next->next->nodetype, LYS_CHOICE);
     assert_null(parsed->child->next->next->next->next->next->next->next->next);
     assert_string_equal(parsed->notifs->name, "notf");
-    //assert_string_equal(parsed->actions->name, "act");
+    assert_string_equal(parsed->actions->name, "act");
     lysp_node_free(st->ctx, siblings);
     ly_set_erase(&st->yin_ctx->tpdfs_nodes, NULL);
     siblings = NULL;
@@ -3088,6 +3096,54 @@ test_inout_elem(void **state)
     st->finished_correctly = true;
 }
 
+static void
+test_action_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct lysp_action *actions = NULL;
+    struct action_meta act_meta = {NULL, &actions};
+
+    /* max subelems */
+    st->yin_ctx->mod_version = LYS_VERSION_1_1;
+    data = ELEMENT_WRAPPER_START
+                "<action name=\"act\">"
+                    "<description><text>desc</text></description>"
+                    "<grouping name=\"grouping\"/>"
+                    "<if-feature name=\"iff\"/>"
+                    "<input><uses name=\"uses-name\"/></input>"
+                    "<output><must condition=\"cond\"/></output>"
+                    "<reference><text>ref</text></reference>"
+                    "<status value=\"deprecated\"/>"
+                    "<typedef name=\"tpdf\"/>"
+                "</action>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &act_meta, NULL, NULL, true), LY_SUCCESS);
+    assert_null(actions->parent);
+    assert_int_equal(actions->nodetype, LYS_ACTION);
+    assert_true(actions->flags & LYS_STATUS_DEPRC);
+    assert_string_equal(actions->name, "act");
+    assert_string_equal(actions->dsc, "desc");
+    assert_string_equal(actions->ref, "ref");
+    assert_string_equal(*actions->iffeatures, "iff");
+    assert_string_equal(actions->typedefs->name, "tpdf");
+    assert_string_equal(actions->groupings->name, "grouping");
+    assert_string_equal(actions->input.data->name, "uses-name");
+    assert_string_equal(actions->output.musts->arg, "cond");
+    assert_null(actions->exts);
+    FREE_ARRAY(st->ctx, actions, lysp_action_free)
+    actions = NULL;
+
+    /* min subelems */
+    data = ELEMENT_WRAPPER_START "<action name=\"act\" />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &act_meta, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(actions->name, "act");
+    FREE_ARRAY(st->ctx, actions, lysp_action_free)
+    actions = NULL;
+
+    st->finished_correctly = true;
+}
+
 int
 main(void)
 {
@@ -3155,6 +3211,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_case_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_choice_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_inout_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_action_elem, setup_element_test, teardown_element_test),
     };
 
     return cmocka_run_group_tests(tests, setup_ly_ctx, destroy_ly_ctx);

@@ -129,8 +129,14 @@ struct grouping_meta {
 
 /* Meta information passed to yin_parse_grouping function */
 struct inout_meta {
-    struct lysp_node *parent;         /**< Parent node. */
+    struct lysp_node *parent;          /**< Parent node. */
     struct lysp_action_inout *inout_p; /**< inout_p Input/output pointer to write to. */
+};
+
+/* Meta information passed to yin_parse_action  */
+struct action_meta {
+    struct lysp_node *parent;         /**< Parent node. */
+    struct lysp_action **actions;     /**< Actions to add to. */
 };
 
 /**

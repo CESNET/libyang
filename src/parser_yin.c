@@ -1552,13 +1552,13 @@ yin_parse_list(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const c
     LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NAME, &list->name, Y_IDENTIF_ARG, YANG_LIST));
 
     /* parse list content */
+    struct action_meta act_meta = {(struct lysp_node *)list, &list->actions};
     struct tree_node_meta new_node_meta = {(struct lysp_node *)list, &list->child};
     struct typedef_meta typedef_meta = {(struct lysp_node *)list, &list->typedefs};
     struct notif_meta notif_meta = {(struct lysp_node *)list, &list->notifs};
     struct grouping_meta gr_meta = {(struct lysp_node *)list, &list->groupings};
     struct yin_subelement subelems[25] = {
-                                            /* TODO action */
-                                            {YANG_ACTION, NULL, 0},
+                                            {YANG_ACTION, &act_meta, 0},
                                             {YANG_ANYDATA, &new_node_meta, 0},
                                             {YANG_ANYXML, &new_node_meta, 0},
                                             {YANG_CHOICE, &new_node_meta, 0},
@@ -1678,13 +1678,13 @@ yin_parse_grouping(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, con
     LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NAME, &grp->name, Y_IDENTIF_ARG, YANG_GROUPING));
 
     /* parse grouping content */
+    struct action_meta act_meta = {(struct lysp_node *)grp, &grp->actions};
     struct tree_node_meta node_meta = {(struct lysp_node *)grp, &grp->data};
     struct typedef_meta typedef_meta = {(struct lysp_node *)grp, &grp->typedefs};
     struct grouping_meta sub_grouping = {(struct lysp_node *)grp, &grp->groupings};
     struct notif_meta notif_meta = {(struct lysp_node *)grp, &grp->notifs};
     struct yin_subelement subelems[16] = {
-                                            /* TODO action */
-                                            {YANG_ACTION, NULL, 0},
+                                            {YANG_ACTION, &act_meta, 0},
                                             {YANG_ANYDATA, &node_meta, 0},
                                             {YANG_ANYXML, &node_meta, 0},
                                             {YANG_CHOICE, &node_meta, 0},
@@ -1743,13 +1743,14 @@ yin_parse_container(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, co
     LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NAME,  &cont->name, Y_IDENTIF_ARG, YANG_CONTAINER));
 
     /* parse container content */
+    struct action_meta act_meta = {(struct lysp_node *)cont, &cont->actions};
     struct tree_node_meta new_node_meta = {(struct lysp_node *)cont, &cont->child};
     struct grouping_meta grp_meta = {(struct lysp_node *)cont, &cont->groupings};
     struct typedef_meta typedef_meta = {(struct lysp_node *)cont, &cont->typedefs};
     struct notif_meta notif_meta = {(struct lysp_node *)cont, &cont->notifs};
     struct yin_subelement subelems[21] = {
                                             /* TODO action */
-                                            {YANG_ACTION, NULL, YIN_SUBELEM_VER2},
+                                            {YANG_ACTION, &act_meta, YIN_SUBELEM_VER2},
                                             {YANG_ANYDATA, &new_node_meta, YIN_SUBELEM_VER2},
                                             {YANG_ANYXML, &new_node_meta, 0},
                                             {YANG_CHOICE, &new_node_meta, 0},
@@ -1938,6 +1939,42 @@ yin_parse_inout(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const 
     return LY_SUCCESS;
 }
 
+static LY_ERR
+yin_parse_action(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+                 struct action_meta *act_meta)
+{
+    struct lysp_action *act;
+
+    /* create new action */
+    LY_ARRAY_NEW_RET(ctx->xml_ctx.ctx, *act_meta->actions, act, LY_EMEM);
+    act->nodetype = LYS_ACTION;
+    act->parent = act_meta->parent;
+
+    /* parse argument */
+    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NAME, &act->name, Y_IDENTIF_ARG, YANG_ACTION));
+
+    /* parse content */
+    struct grouping_meta grp_meta = {(struct lysp_node *)act, &act->groupings};
+    struct typedef_meta typedef_meta = {(struct lysp_node *)act, &act->typedefs};
+    struct inout_meta input = {(struct lysp_node *)act, &act->input};
+    struct inout_meta output = {(struct lysp_node *)act, &act->output};
+    struct yin_subelement subelems[9] = {
+                                            {YANG_DESCRIPTION, &act->dsc, YIN_SUBELEM_UNIQUE},
+                                            {YANG_GROUPING, &grp_meta, 0},
+                                            {YANG_IF_FEATURE, &act->iffeatures, 0},
+                                            {YANG_INPUT, &input, YIN_SUBELEM_UNIQUE},
+                                            {YANG_OUTPUT, &output, YIN_SUBELEM_UNIQUE},
+                                            {YANG_REFERENCE, &act->ref, YIN_SUBELEM_UNIQUE},
+                                            {YANG_STATUS, &act->flags, YIN_SUBELEM_UNIQUE},
+                                            {YANG_TYPEDEF, &typedef_meta, 0},
+                                            {YANG_CUSTOM, NULL, 0},
+                                         };
+    LY_CHECK_RET(yin_parse_content(ctx, subelems, 9, data, YANG_ACTION, NULL, &act->exts));
+    LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, act->groupings, NULL, NULL, NULL));
+
+    return LY_SUCCESS;
+}
+
 /**
  * @brief Map keyword type to substatement info.
  *
@@ -2086,6 +2123,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                                                       (subelem->dest) ? *((uint32_t*)subelem->dest) : 0, exts);
                     break;
                 case YANG_ACTION:
+                    ret = yin_parse_action(ctx, attrs, data, (struct action_meta *)subelem->dest);
                     break;
                 case YANG_ANYDATA:
                 case YANG_ANYXML:
