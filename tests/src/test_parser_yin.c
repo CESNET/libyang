@@ -2752,7 +2752,70 @@ test_container_elem(void **state)
     struct lysp_node_container *parsed = NULL;
 
     /* max subelems */
-    /* TODO */
+    st->yin_ctx->mod_version = LYS_VERSION_1_1;
+    data = ELEMENT_WRAPPER_START
+                "<container name=\"cont-name\">"
+                    "<anydata name=\"anyd\"/>"
+                    "<anyxml name=\"anyx\"/>"
+                    "<config value=\"true\"/>"
+                    "<container name=\"subcont\"/>"
+                    "<description><text>desc</text></description>"
+                    "<grouping name=\"sub-grp\"/>"
+                    "<if-feature name=\"iff\"/>"
+                    "<leaf name=\"leaf\"/>"
+                    "<leaf-list name=\"llist\"/>"
+                    "<list name=\"list\"/>"
+                    "<must condition=\"cond\"/>"
+                    "<notification name=\"notf\"/>"
+                    "<presence value=\"presence\"/>"
+                    "<reference><text>ref</text></reference>"
+                    "<status value=\"current\"/>"
+                    "<typedef name=\"tpdf\"/>"
+                    "<uses name=\"uses-name\"/>"
+                    "<when condition=\"when-cond\"/>"
+                    // "<action name=\"act\"/>"
+                    // "<choice name=\"choice\"/>"
+                "</container>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &node_meta, NULL, NULL, true), LY_SUCCESS);
+    parsed = (struct lysp_node_container *)siblings;
+    assert_string_equal(parsed->name, "cont-name");
+    assert_null(parsed->parent);
+    assert_int_equal(parsed->nodetype, LYS_CONTAINER);
+    assert_true(parsed->flags & LYS_CONFIG_W);
+    assert_true(parsed->flags & LYS_STATUS_CURR);
+    assert_null(parsed->next);
+    assert_string_equal(parsed->dsc, "desc");
+    assert_string_equal(parsed->ref, "ref");
+    assert_string_equal(parsed->when->cond, "when-cond");
+    assert_string_equal(*parsed->iffeatures, "iff");
+    assert_null(parsed->exts);
+    assert_string_equal(parsed->musts->arg, "cond");
+    assert_string_equal(parsed->presence, "presence");
+    assert_string_equal(parsed->typedefs->name, "tpdf");
+    assert_string_equal(parsed->groupings->name, "sub-grp");
+    assert_string_equal(parsed->child->name, "anyd");
+    assert_int_equal(parsed->child->nodetype, LYS_ANYDATA);
+    assert_string_equal(parsed->child->next->name, "anyx");
+    assert_int_equal(parsed->child->next->nodetype, LYS_ANYXML);
+    assert_string_equal(parsed->child->next->next->name, "subcont");
+    assert_int_equal(parsed->child->next->next->nodetype, LYS_CONTAINER);
+    assert_string_equal(parsed->child->next->next->next->name, "leaf");
+    assert_int_equal(parsed->child->next->next->next->nodetype, LYS_LEAF);
+    assert_string_equal(parsed->child->next->next->next->next->name, "llist");
+    assert_int_equal(parsed->child->next->next->next->next->nodetype, LYS_LEAFLIST);
+    assert_string_equal(parsed->child->next->next->next->next->next->name, "list");
+    assert_int_equal(parsed->child->next->next->next->next->next->nodetype, LYS_LIST);
+    assert_string_equal(parsed->child->next->next->next->next->next->next->name, "uses-name");
+    assert_int_equal(parsed->child->next->next->next->next->next->next->nodetype, LYS_USES);
+    // assert_string_equal(parsed->child->next->next->next->next->next->next->next->name, "choice");
+    // assert_int_equal(parsed->child->next->next->next->next->next->next->next->nodetype, LYS_CHOICE);
+    // assert_null(parsed->child->next->next->next->next->next->next->next->next);
+    assert_string_equal(parsed->notifs->name, "notf");
+    //assert_string_equal(parsed->actions->name, "act");
+    lysp_node_free(st->ctx, siblings);
+    ly_set_erase(&st->yin_ctx->tpdfs_nodes, NULL);
+    siblings = NULL;
 
     /* min subelems */
     data = ELEMENT_WRAPPER_START "<container name=\"cont-name\" />" ELEMENT_WRAPPER_END;
