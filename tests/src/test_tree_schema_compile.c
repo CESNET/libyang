@@ -2842,6 +2842,7 @@ test_deviation(void **state)
     const struct lysc_node_list *list;
     const struct lysc_node_leaflist *llist;
     const struct lysc_node_leaf *leaf;
+    const char *str;
     int dynamic;
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
@@ -3152,6 +3153,17 @@ test_deviation(void **state)
     assert_null(llist->dflts);
     assert_null(llist->dflts_mods);
 
+    assert_non_null(mod = lys_parse_mem(ctx, "module s {yang-version 1.1; namespace urn:s;prefix s;"
+                                        "leaf s {type instance-identifier {require-instance true;} default /s:x;}"
+                                        "leaf x {type string;} leaf y {type string;}"
+                                        "deviation /s:s {deviate replace {default /s:y;}}}", LYS_IN_YANG));
+    assert_non_null(leaf = (struct lysc_node_leaf*)mod->compiled->data);
+    assert_string_equal("s", leaf->name);
+    assert_non_null(leaf->dflt);
+    assert_non_null(str = leaf->dflt->realtype->plugin->print(leaf->dflt, LYD_XML, lys_get_prefix, mod, &dynamic));
+    assert_string_equal("/s:y", str);
+    if (dynamic) { free((char*)str); }
+
     assert_null(lys_parse_mem(ctx, "module aa1 {namespace urn:aa1;prefix aa1;import a {prefix a;}"
                               "deviation /a:top/a:z {deviate not-supported;}}", LYS_IN_YANG));
     logbuf_assert("Invalid absolute-schema-nodeid value \"/a:top/a:z\" - target node not found. /aa1:{deviation='/a:top/a:z'}");
@@ -3349,6 +3361,14 @@ test_deviation(void **state)
                                   "deviation /x {deviate add {default 300;}}}", LYS_IN_YANG));
     logbuf_assert("Invalid deviation setting \"default\" property \"300\" which does not fit the type "
                   "(Value \"300\" is out of uint8's min/max bounds.). /oo3:{deviation='/x'}");
+
+/* TODO recompiling reference object after deviation changes schema tree
+    assert_non_null(lys_parse_mem(ctx, "module pp {namespace urn:pp;prefix pp; leaf l { type leafref {path /c/x;}}"
+                                  "container c {leaf x {type string;} leaf y {type string;}}}", LYS_IN_YANG));
+    assert_null(lys_parse_mem(ctx, "module pp1 {namespace urn:pp1;prefix pp1; import pp {prefix pp;}"
+                              "deviation /pp:c/pp:x {deviate not-supported;}}", LYS_IN_YANG));
+    logbuf_assert("???. /pp:l}");
+*/
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);

@@ -2100,6 +2100,7 @@ ly_type_free_instanceid(struct ly_ctx *ctx, struct lyd_value *value)
     lyd_value_free_path(ctx, value->target);
     value->target = NULL;
 
+    /* for the case of LY_EINCOMPLETE result on schema tree */
     ly_type_free_canonical(ctx, value);
 }
 
