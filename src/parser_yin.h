@@ -111,18 +111,26 @@ struct augment_meta {
 
 /* Meta information passed to yin_parse_include function */
 struct include_meta {
-    const char *name;               /**< module/submodule name */
-    struct lysp_include **includes; /**< [Sized array](@ref sizedarrays) of parsed includes to add to */
+    const char *name;               /**< Module/submodule name. */
+    struct lysp_include **includes; /**< [Sized array](@ref sizedarrays) of parsed includes to add to. */
 };
 
+/* Meta information passed to yin_parse_notification function */
 struct notif_meta {
-    struct lysp_node *parent;         /**< parent node */
-    struct lysp_notif **notifs;       /**< [Sized array](@ref sizedarrays) of notifications to add to */
+    struct lysp_node *parent;         /**< Parent node. */
+    struct lysp_notif **notifs;       /**< [Sized array](@ref sizedarrays) of notifications to add to. */
 };
 
+/* Meta information passed to yin_parse_grouping function */
 struct grouping_meta {
-    struct lysp_node *parent;         /**< parent node */
-    struct lysp_grp **groupings;      /**< [Sized array](@ref sizedarrays) of groupings to add to */
+    struct lysp_node *parent;         /**< Parent node. */
+    struct lysp_grp **groupings;      /**< [Sized array](@ref sizedarrays) of groupings to add to. */
+};
+
+/* Meta information passed to yin_parse_grouping function */
+struct inout_meta {
+    struct lysp_node *parent;         /**< Parent node. */
+    struct lysp_action_inout *inout_p; /**< inout_p Input/output pointer to write to. */
 };
 
 /**

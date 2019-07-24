@@ -786,6 +786,31 @@ yin_parse_value_pos_element(struct yin_parser_ctx *ctx, struct yin_arg_record *a
         return LY_EVALID;
 }
 
+
+/**
+ * @brief Parse belongs-to element.
+ *
+ * @param[in] ctx Yin parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[out] submod Structure of submodule that is being parsed.
+ * @param[in,out] exts Extension instances to add to.
+ *
+ * @return LY_ERR values
+ */
+static LY_ERR
+yin_parse_belongs_to(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+                     struct lysp_submodule *submod, struct lysp_ext_instance **exts)
+{
+    struct yin_subelement subelems[2] = {
+                                            {YANG_PREFIX, &submod->prefix, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE},
+                                            {YANG_CUSTOM, NULL, 0}
+                                        };
+    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_MODULE, &submod->belongsto, Y_IDENTIF_ARG, YANG_BELONGS_TO));
+
+    return yin_parse_content(ctx, subelems, 2, data, YANG_BELONGS_TO, NULL, exts);
+}
+
 /**
  * @brief Function to parse meta tags (description, contact, ...) eg. elements with
  * text element as child
@@ -1053,7 +1078,7 @@ yin_parse_orderedby(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, co
  * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
  * @param[in,out] data Data to read from, always moved to currently handled character.
  * @param[in] any_kw Identification of current element, can be set to YANG_ANY_DATA or YANG_ANY_XML
- * @param[in] node_meta Meta information about node parent and siblings.
+ * @param[in] node_meta Meta information about parent node and siblings.
  *
  * @return LY_ERR values.
  */
@@ -1101,7 +1126,7 @@ yin_parse_any(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const ch
  * @param[in,out] ctx YIN parser context for logging and to store current state.
  * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
  * @param[in,out] data Data to read from, always moved to currently handled character.
- * @param[in] node_meta Meta information about node parent and siblings.
+ * @param[in] node_meta Meta information about parent node and siblings.
  *
  * @return LY_ERR values.
  */
@@ -1143,7 +1168,7 @@ yin_parse_leaf(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const c
                                             {YANG_UNITS, &leaf->units, YIN_SUBELEM_UNIQUE},
                                             {YANG_WHEN, &leaf->when, YIN_SUBELEM_UNIQUE},
                                             {YANG_CUSTOM, NULL, 0},
-                                        };
+                                         };
     return yin_parse_content(ctx, subelems, 12, data, YANG_LEAF, NULL, &leaf->exts);
 }
 
@@ -1153,7 +1178,7 @@ yin_parse_leaf(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const c
  * @param[in,out] ctx YIN parser context for logging and to store current state.
  * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
  * @param[in,out] data Data to read from, always moved to currently handled character.
- * @param[in] node_meta Meta information about node parent and siblings.
+ * @param[in] node_meta Meta information about parent node and siblings.
  *
  * @return LY_ERR values.
  */
@@ -1220,7 +1245,7 @@ yin_parse_leaflist(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, con
  * @param[in,out] ctx YIN parser context for logging and to store current state.
  * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
  * @param[in,out] data Data to read from, always moved to currently handled character.
- * @param[in] typedef_meta Meta information about node parent and typedefs to add to.
+ * @param[in] typedef_meta Meta information about parent node and typedefs to add to.
  *
  * @return LY_ERR values.
  */
@@ -1300,7 +1325,7 @@ yin_parse_refine(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const
  * @param[in,out] ctx YIN parser context for logging and to store current state.
  * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
  * @param[in,out] data Data to read from, always moved to currently handled character.
- * @param[in] node_meta Meta information about node parent and siblings.
+ * @param[in] node_meta Meta information about parent node and siblings.
  *
  * @return LY_ERR values.
  */
@@ -1498,7 +1523,7 @@ yin_parse_identity(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, con
  * @param[in,out] ctx YIN parser context for logging and to store current state.
  * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
  * @param[in,out] data Data to read from, always moved to currently handled character.
- * @param[in] node_meta Meta information about node parent and siblings.
+ * @param[in] node_meta Meta information about parent node and siblings.
  *
  * @return LY_ERR values.
  */
@@ -1580,7 +1605,7 @@ yin_parse_list(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const c
  * @param[in,out] ctx YIN parser context for logging and to store current state.
  * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
  * @param[in,out] data Data to read from, always moved to currently handled character.
- * @param[in,out] notif_meta Meta information about node parent and notifications to add to.
+ * @param[in,out] notif_meta Meta information about parent node and notifications to add to.
  *
  * @return LY_ERR values.
  */
@@ -1634,7 +1659,7 @@ yin_parse_notification(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs,
  * @param[in,out] ctx YIN parser context for logging and to store current state.
  * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
  * @param[in,out] data Data to read from, always moved to currently handled character.
- * @param[in,out] notif_meta Meta information about node parent and notifications to add to.
+ * @param[in,out] notif_meta Meta information about parent node and notifications to add to.
  *
  * @return LY_ERR values.
  */
@@ -1689,7 +1714,7 @@ yin_parse_grouping(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, con
  * @param[in,out] ctx YIN parser context for logging and to store current state.
  * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
  * @param[in,out] data Data to read from, always moved to currently handled character.
- * @param[in] node_meta Meta information about node parent and siblings.
+ * @param[in] node_meta Meta information about parent node and siblings.
  *
  * @return LY_ERR values.
  */
@@ -1758,7 +1783,7 @@ yin_parse_container(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, co
  * @param[in,out] ctx YIN parser context for logging and to store current state.
  * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
  * @param[in,out] data Data to read from, always moved to currently handled character.
- * @param[in] node_meta Meta information about node parent and siblings.
+ * @param[in] node_meta Meta information about parent node and siblings.
  *
  * @return LY_ERR values.
  */
@@ -1808,12 +1833,12 @@ yin_parse_case(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const c
 }
 
 /**
- * @brief Parse case element.
+ * @brief Parse choice element.
  *
  * @param[in,out] ctx YIN parser context for logging and to store current state.
  * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
  * @param[in,out] data Data to read from, always moved to currently handled character.
- * @param[in] node_meta Meta information about node parent and siblings.
+ * @param[in] node_meta Meta information about parent node and siblings.
  *
  * @return LY_ERR values.
  */
@@ -1863,6 +1888,54 @@ yin_parse_choice(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const
                                             {YANG_CUSTOM, NULL, 0},
                                          };
     return yin_parse_content(ctx, subelems, 17, data, YANG_CHOICE, NULL, &choice->exts);
+}
+
+/**
+ * @brief Parse input or output element.
+ *
+ * @param[in,out] ctx YIN parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] inout_meta Meta information about parent node and siblings and input/output pointer to write to.
+ *
+ * @return LY_ERR values.
+ */
+static LY_ERR
+yin_parse_inout(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data, enum yang_keyword inout_kw,
+                struct inout_meta *inout_meta)
+{
+    /* initiate structure */
+    inout_meta->inout_p->nodetype = (inout_kw == YANG_INPUT) ? LYS_INPUT : LYS_OUTPUT;
+    inout_meta->inout_p->parent = inout_meta->parent;
+
+    /* check attributes */
+    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NONE, NULL, Y_MAYBE_STR_ARG, inout_kw));
+
+    /* parser input/output content */
+    struct tree_node_meta node_meta = {(struct lysp_node *)inout_meta->inout_p, &inout_meta->inout_p->data};
+    struct grouping_meta grp_meta = {(struct lysp_node *)inout_meta->inout_p, &inout_meta->inout_p->groupings};
+    struct typedef_meta typedef_meta = {(struct lysp_node *)inout_meta->inout_p, &inout_meta->inout_p->typedefs};
+    struct yin_subelement subelems[12] = {
+                                            {YANG_ANYDATA, &node_meta, YIN_SUBELEM_VER2},
+                                            {YANG_ANYXML, &node_meta, 0},
+                                            {YANG_CHOICE, &node_meta, 0},
+                                            {YANG_CONTAINER, &node_meta, 0},
+                                            {YANG_GROUPING, &grp_meta, 0},
+                                            {YANG_LEAF, &node_meta, 0},
+                                            {YANG_LEAF_LIST, &node_meta, 0},
+                                            {YANG_LIST, &node_meta, 0},
+                                            {YANG_MUST, &inout_meta->inout_p->musts, YIN_SUBELEM_VER2},
+                                            {YANG_TYPEDEF, &typedef_meta, 0},
+                                            {YANG_USES, &node_meta, 0},
+                                            {YANG_CUSTOM, NULL, 0},
+                                         };
+    LY_CHECK_RET(yin_parse_content(ctx, subelems, 12, data, inout_kw, NULL, &inout_meta->inout_p->exts));
+
+    /* finalize parent pointers to the reallocated items */
+    LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, inout_meta->inout_p->groupings,
+                                                  NULL, NULL, NULL));
+
+    return LY_SUCCESS;
 }
 
 /**
@@ -1943,30 +2016,6 @@ kw2lyext_substmt(enum yang_keyword kw)
     default:
         return LYEXT_SUBSTMT_SELF;
     }
-}
-
-/**
- * @brief Parse belongs-to element.
- *
- * @param[in] ctx Yin parser context for logging and to store current state.
- * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
- * @param[in,out] data Data to read from, always moved to currently handled character.
- * @param[out] submod Structure of submodule that is being parsed.
- * @param[in,out] exts Extension instances to add to.
- *
- * @return LY_ERR values
- */
-static LY_ERR
-yin_parse_belongs_to(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
-                     struct lysp_submodule *submod, struct lysp_ext_instance **exts)
-{
-    struct yin_subelement subelems[2] = {
-                                            {YANG_PREFIX, &submod->prefix, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE},
-                                            {YANG_CUSTOM, NULL, 0}
-                                        };
-    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_MODULE, &submod->belongsto, Y_IDENTIF_ARG, YANG_BELONGS_TO));
-
-    return yin_parse_content(ctx, subelems, 2, data, YANG_BELONGS_TO, NULL, exts);
 }
 
 LY_ERR
@@ -2132,6 +2181,8 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     ret = yin_parse_include(ctx, attrs, data, (struct include_meta *)subelem->dest);
                     break;
                 case YANG_INPUT:
+                case YANG_OUTPUT:
+                    ret = yin_parse_inout(ctx, attrs, data, kw, (struct inout_meta *)subelem->dest);
                     break;
                 case YANG_KEY:
                     ret = yin_parse_simple_element(ctx, attrs, data, kw, (const char **)subelem->dest, YIN_ARG_VALUE,
@@ -2177,8 +2228,6 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     break;
                 case YANG_ORDERED_BY:
                     ret = yin_parse_orderedby(ctx, attrs, data, (uint16_t *)subelem->dest, exts);
-                    break;
-                case YANG_OUTPUT:
                     break;
                 case YANG_PATH:
                     type = (struct lysp_type *)subelem->dest;

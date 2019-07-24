@@ -41,6 +41,7 @@ void lysp_feature_free(struct ly_ctx *ctx, struct lysp_feature *feat);
 void lysp_ident_free(struct ly_ctx *ctx, struct lysp_ident *ident);
 void lysp_notif_free(struct ly_ctx *ctx, struct lysp_notif *notif);
 void lysp_grp_free(struct ly_ctx *ctx, struct lysp_grp *grp);
+void lysp_action_inout_free(struct ly_ctx *ctx, struct lysp_action_inout *inout);
 
 struct state {
     struct ly_ctx *ctx;
@@ -2975,6 +2976,118 @@ test_choice_elem(void **state)
     st->finished_correctly = true;
 }
 
+static void
+test_inout_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct lysp_action_inout inout = {};
+    struct inout_meta inout_meta = {NULL, &inout};
+
+    /* max subelements */
+    st->yin_ctx->mod_version = LYS_VERSION_1_1;
+    data = ELEMENT_WRAPPER_START
+                "<input>"
+                    "<anydata name=\"anyd\"/>"
+                    "<anyxml name=\"anyx\"/>"
+                    "<choice name=\"choice\"/>"
+                    "<container name=\"subcont\"/>"
+                    "<grouping name=\"sub-grp\"/>"
+                    "<leaf name=\"leaf\"/>"
+                    "<leaf-list name=\"llist\"/>"
+                    "<list name=\"list\"/>"
+                    "<must condition=\"cond\"/>"
+                    "<typedef name=\"tpdf\"/>"
+                    "<uses name=\"uses-name\"/>"
+                "</input>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &inout_meta, NULL, NULL, true), LY_SUCCESS);
+    assert_null(inout.parent);
+    assert_int_equal(inout.nodetype, LYS_INPUT);
+    assert_string_equal(inout.musts->arg, "cond");
+    assert_string_equal(inout.typedefs->name, "tpdf");
+    assert_string_equal(inout.groupings->name, "sub-grp");
+    assert_string_equal(inout.data->name, "anyd");
+    assert_int_equal(inout.data->nodetype, LYS_ANYDATA);
+    assert_string_equal(inout.data->next->name, "anyx");
+    assert_int_equal(inout.data->next->nodetype, LYS_ANYXML);
+    assert_string_equal(inout.data->next->next->name, "choice");
+    assert_int_equal(inout.data->next->next->nodetype, LYS_CHOICE);
+    assert_string_equal(inout.data->next->next->next->name, "subcont");
+    assert_int_equal(inout.data->next->next->next->nodetype, LYS_CONTAINER);
+    assert_string_equal(inout.data->next->next->next->next->name, "leaf");
+    assert_int_equal(inout.data->next->next->next->next->nodetype, LYS_LEAF);
+    assert_string_equal(inout.data->next->next->next->next->next->name, "llist");
+    assert_int_equal(inout.data->next->next->next->next->next->nodetype, LYS_LEAFLIST);
+    assert_string_equal(inout.data->next->next->next->next->next->next->name, "list");
+    assert_int_equal(inout.data->next->next->next->next->next->next->nodetype, LYS_LIST);
+    assert_string_equal(inout.data->next->next->next->next->next->next->next->name, "uses-name");
+    assert_int_equal(inout.data->next->next->next->next->next->next->next->nodetype, LYS_USES);
+    assert_null(inout.data->next->next->next->next->next->next->next->next);
+    lysp_action_inout_free(st->ctx, &inout);
+    memset(&inout, 0, sizeof inout);
+
+    /* max subelements */
+    st->yin_ctx->mod_version = LYS_VERSION_1_1;
+    data = ELEMENT_WRAPPER_START
+                "<output>"
+                    "<anydata name=\"anyd\"/>"
+                    "<anyxml name=\"anyx\"/>"
+                    "<choice name=\"choice\"/>"
+                    "<container name=\"subcont\"/>"
+                    "<grouping name=\"sub-grp\"/>"
+                    "<leaf name=\"leaf\"/>"
+                    "<leaf-list name=\"llist\"/>"
+                    "<list name=\"list\"/>"
+                    "<must condition=\"cond\"/>"
+                    "<typedef name=\"tpdf\"/>"
+                    "<uses name=\"uses-name\"/>"
+                "</output>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &inout_meta, NULL, NULL, true), LY_SUCCESS);
+    assert_null(inout.parent);
+    assert_int_equal(inout.nodetype, LYS_OUTPUT);
+    assert_string_equal(inout.musts->arg, "cond");
+    assert_string_equal(inout.typedefs->name, "tpdf");
+    assert_string_equal(inout.groupings->name, "sub-grp");
+    assert_string_equal(inout.data->name, "anyd");
+    assert_int_equal(inout.data->nodetype, LYS_ANYDATA);
+    assert_string_equal(inout.data->next->name, "anyx");
+    assert_int_equal(inout.data->next->nodetype, LYS_ANYXML);
+    assert_string_equal(inout.data->next->next->name, "choice");
+    assert_int_equal(inout.data->next->next->nodetype, LYS_CHOICE);
+    assert_string_equal(inout.data->next->next->next->name, "subcont");
+    assert_int_equal(inout.data->next->next->next->nodetype, LYS_CONTAINER);
+    assert_string_equal(inout.data->next->next->next->next->name, "leaf");
+    assert_int_equal(inout.data->next->next->next->next->nodetype, LYS_LEAF);
+    assert_string_equal(inout.data->next->next->next->next->next->name, "llist");
+    assert_int_equal(inout.data->next->next->next->next->next->nodetype, LYS_LEAFLIST);
+    assert_string_equal(inout.data->next->next->next->next->next->next->name, "list");
+    assert_int_equal(inout.data->next->next->next->next->next->next->nodetype, LYS_LIST);
+    assert_string_equal(inout.data->next->next->next->next->next->next->next->name, "uses-name");
+    assert_int_equal(inout.data->next->next->next->next->next->next->next->nodetype, LYS_USES);
+    assert_null(inout.data->next->next->next->next->next->next->next->next);
+    lysp_action_inout_free(st->ctx, &inout);
+    memset(&inout, 0, sizeof inout);
+
+    /* min subelems */
+    data = ELEMENT_WRAPPER_START "<input />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &inout_meta, NULL, NULL, true), LY_SUCCESS);
+    memset(&inout, 0, sizeof inout);
+
+    data = ELEMENT_WRAPPER_START "<output />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &inout_meta, NULL, NULL, true), LY_SUCCESS);
+    memset(&inout, 0, sizeof inout);
+
+    /* invalid combinations */
+    data = ELEMENT_WRAPPER_START "<input name=\"test\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &inout_meta, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Unexpected attribute \"name\" of input element. Line number 1.");
+    memset(&inout, 0, sizeof inout);
+
+    st->finished_correctly = true;
+}
+
 int
 main(void)
 {
@@ -3041,6 +3154,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_container_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_case_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_choice_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_inout_elem, setup_element_test, teardown_element_test),
     };
 
     return cmocka_run_group_tests(tests, setup_ly_ctx, destroy_ly_ctx);
