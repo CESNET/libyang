@@ -2123,6 +2123,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                                                       (subelem->dest) ? *((uint32_t*)subelem->dest) : 0, exts);
                     break;
                 case YANG_ACTION:
+                case YANG_RPC:
                     ret = yin_parse_action(ctx, attrs, data, (struct action_meta *)subelem->dest);
                     break;
                 case YANG_ANYDATA:
@@ -2307,8 +2308,6 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     break;
                 case YANG_REVISION_DATE:
                     ret = yin_parse_revision_date(ctx, attrs, data, (char *)subelem->dest, exts);
-                    break;
-                case YANG_RPC:
                     break;
                 case YANG_STATUS:
                     ret = yin_parse_status(ctx, attrs, data, (uint16_t *)subelem->dest, exts);

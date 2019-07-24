@@ -3134,6 +3134,35 @@ test_action_elem(void **state)
     FREE_ARRAY(st->ctx, actions, lysp_action_free)
     actions = NULL;
 
+    st->yin_ctx->mod_version = LYS_VERSION_1_1;
+    data = ELEMENT_WRAPPER_START
+                "<rpc name=\"act\">"
+                    "<description><text>desc</text></description>"
+                    "<grouping name=\"grouping\"/>"
+                    "<if-feature name=\"iff\"/>"
+                    "<input><uses name=\"uses-name\"/></input>"
+                    "<output><must condition=\"cond\"/></output>"
+                    "<reference><text>ref</text></reference>"
+                    "<status value=\"deprecated\"/>"
+                    "<typedef name=\"tpdf\"/>"
+                "</rpc>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &act_meta, NULL, NULL, true), LY_SUCCESS);
+    assert_null(actions->parent);
+    assert_int_equal(actions->nodetype, LYS_ACTION);
+    assert_true(actions->flags & LYS_STATUS_DEPRC);
+    assert_string_equal(actions->name, "act");
+    assert_string_equal(actions->dsc, "desc");
+    assert_string_equal(actions->ref, "ref");
+    assert_string_equal(*actions->iffeatures, "iff");
+    assert_string_equal(actions->typedefs->name, "tpdf");
+    assert_string_equal(actions->groupings->name, "grouping");
+    assert_string_equal(actions->input.data->name, "uses-name");
+    assert_string_equal(actions->output.musts->arg, "cond");
+    assert_null(actions->exts);
+    FREE_ARRAY(st->ctx, actions, lysp_action_free)
+    actions = NULL;
+
     /* min subelems */
     data = ELEMENT_WRAPPER_START "<action name=\"act\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &act_meta, NULL, NULL, true), LY_SUCCESS);
