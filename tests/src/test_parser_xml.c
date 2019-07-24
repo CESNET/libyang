@@ -110,7 +110,7 @@ test_leaf(void **state)
     struct lyd_node *tree;
     struct lyd_node_term *leaf;
 
-    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, 0, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, 0, NULL, &tree));
     assert_non_null(tree);
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("foo", tree->schema->name);
@@ -132,7 +132,7 @@ test_anydata(void **state)
     struct lyd_node *tree;
     struct lyd_node_any *any;
 
-    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, 0, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, 0, NULL, &tree));
     assert_non_null(tree);
     assert_int_equal(LYS_ANYDATA, tree->schema->nodetype);
     assert_string_equal("any", tree->schema->name);
@@ -153,7 +153,7 @@ test_list(void **state)
     struct lyd_node *tree, *iter;
     struct lyd_node_inner *list;
 
-    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, 0, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, 0, NULL, &tree));
     assert_non_null(tree);
     assert_int_equal(LYS_LIST, tree->schema->nodetype);
     assert_string_equal("l1", tree->schema->name);
@@ -175,7 +175,7 @@ test_container(void **state)
     struct lyd_node *tree;
     struct lyd_node_inner *cont;
 
-    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, 0, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, 0, NULL, &tree));
     assert_non_null(tree);
     assert_int_equal(LYS_CONTAINER, tree->schema->nodetype);
     assert_string_equal("c", tree->schema->name);
@@ -184,7 +184,7 @@ test_container(void **state)
     lyd_free_all(tree);
 
     data = "<cp xmlns=\"urn:tests:a\"/>";
-    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, 0, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, 0, NULL, &tree));
     assert_non_null(tree);
     assert_int_equal(LYS_CONTAINER, tree->schema->nodetype);
     assert_string_equal("cp", tree->schema->name);

@@ -89,6 +89,19 @@ error:
     return NULL;
 }
 
+API const struct lyd_node **
+lyd_trees_add(const struct lyd_node **trees, const struct lyd_node *tree)
+{
+    const struct lyd_node **t = NULL;
+
+    LY_CHECK_ARG_RET(NULL, tree, trees, trees);
+
+    LY_ARRAY_NEW_RET(tree->schema->module->ctx, trees, t, NULL);
+    *t = lyd_trees_getstart(tree);
+
+    return trees;
+}
+
 static int
 cmp_str(const char *refstr, const char *str, size_t str_len)
 {
@@ -293,53 +306,30 @@ cleanup:
     return ret;
 }
 
-static struct lyd_node *
-lyd_parse_mem_(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options, va_list ap)
+API struct lyd_node *
+lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options, const struct lyd_node **trees)
 {
     struct lyd_node *result = NULL;
-    const struct lyd_node *rpc_act = NULL, *data_tree = NULL, *iter;
 #if 0
     const char *yang_data_name = NULL;
 #endif
 
-    if (lyd_parse_check_options(ctx, options, __func__)) {
+    LY_CHECK_ARG_RET(ctx, ctx, NULL);
+
+    if (lyd_parse_options_check(ctx, options, __func__)) {
         return NULL;
     }
 
     if (options & LYD_OPT_RPCREPLY) {
-        rpc_act = va_arg(ap, const struct lyd_node *);
-        if (!rpc_act || rpc_act->parent || !(rpc_act->schema->nodetype & (LYS_ACTION | LYS_LIST | LYS_CONTAINER))) {
-            LOGERR(ctx, LY_EINVAL, "Data parser invalid variable parameter (const struct lyd_node *rpc_act).");
+        /* first item in trees is mandatory - the RPC/action request */
+        LY_CHECK_ARG_RET(ctx, trees, LY_ARRAY_SIZE(trees) >= 1, NULL);
+        if (!trees[0] || trees[0]->parent || !(trees[0]->schema->nodetype & (LYS_ACTION | LYS_LIST | LYS_CONTAINER))) {
+            LOGERR(ctx, LY_EINVAL, "Data parser invalid argument trees - the first item in the array must be the RPC/action request when parsing %s.",
+                   lyd_parse_options_type2str(options));
             return NULL;
         }
     }
-    if (options & (LYD_OPT_RPC | LYD_OPT_NOTIF | LYD_OPT_RPCREPLY)) {
-        data_tree = va_arg(ap, const struct lyd_node *);
-        if (data_tree) {
-            if (options & LYD_OPT_NOEXTDEPS) {
-                LOGERR(ctx, LY_EINVAL, "%s: invalid parameter (variable arg const struct lyd_node *data_tree and LYD_OPT_NOEXTDEPS set).",
-                       __func__);
-                return NULL;
-            }
 
-            LY_LIST_FOR(data_tree, iter) {
-                if (iter->parent) {
-                    /* a sibling is not top-level */
-                    LOGERR(ctx, LY_EINVAL, "%s: invalid variable parameter (const struct lyd_node *data_tree).", __func__);
-                    return NULL;
-                }
-            }
-
-            /* move it to the beginning */
-            for (; data_tree->prev->next; data_tree = data_tree->prev);
-
-            /* LYD_OPT_NOSIBLINGS cannot be set in this case */
-            if (options & LYD_OPT_NOSIBLINGS) {
-                LOGERR(ctx, LY_EINVAL, "%s: invalid parameter (variable arg const struct lyd_node *data_tree with LYD_OPT_NOSIBLINGS).", __func__);
-                return NULL;
-            }
-        }
-    }
 #if 0
     if (options & LYD_OPT_DATA_TEMPLATE) {
         yang_data_name = va_arg(ap, const char *);
@@ -352,14 +342,14 @@ lyd_parse_mem_(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int opti
 
     switch (format) {
     case LYD_XML:
-        lyd_parse_xml(ctx, data, options, &result);
+        lyd_parse_xml(ctx, data, options, trees, &result);
         break;
 #if 0
     case LYD_JSON:
-        lyd_parse_json(ctx, data, options, rpc_act, data_tree, yang_data_name);
+        lyd_parse_json(ctx, data, options, trees, &result);
         break;
     case LYD_LYB:
-        lyd_parse_lyb(ctx, data, options, data_tree, yang_data_name, NULL);
+        lyd_parse_lyb(ctx, data, options, trees, &result);
         break;
 #endif
     case LYD_UNKNOWN:
@@ -371,20 +361,7 @@ lyd_parse_mem_(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int opti
 }
 
 API struct lyd_node *
-lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options, ...)
-{
-    va_list ap;
-    struct lyd_node *result;
-
-    va_start(ap, options);
-    result = lyd_parse_mem_(ctx, data, format, options, ap);
-    va_end(ap);
-
-    return result;
-}
-
-static struct lyd_node *
-lyd_parse_fd_(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, va_list ap)
+lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, const struct lyd_node **trees)
 {
     struct lyd_node *result;
     size_t length;
@@ -397,7 +374,7 @@ lyd_parse_fd_(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, va_lis
     }
 
     LY_CHECK_RET(ly_mmap(ctx, fd, &length, (void **)&addr), NULL);
-    result = lyd_parse_mem_(ctx, addr ? addr : "", format, options, ap);
+    result = lyd_parse_mem(ctx, addr ? addr : "", format, options, trees);
     if (addr) {
         ly_munmap(addr, length);
     }
@@ -406,25 +383,11 @@ lyd_parse_fd_(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, va_lis
 }
 
 API struct lyd_node *
-lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, ...)
-{
-    struct lyd_node *ret;
-    va_list ap;
-
-    va_start(ap, options);
-    ret = lyd_parse_fd_(ctx, fd, format, options, ap);
-    va_end(ap);
-
-    return ret;
-}
-
-API struct lyd_node *
-lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int options, ...)
+lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int options, const struct lyd_node **trees)
 {
     int fd;
     struct lyd_node *result;
     size_t len;
-    va_list ap;
 
     LY_CHECK_ARG_RET(ctx, ctx, path, NULL);
 
@@ -449,10 +412,7 @@ lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int opti
         } /* else still unknown, try later to detect it from the content */
     }
 
-    va_start(ap, options);
-    result = lyd_parse_fd_(ctx, fd, format, options, ap);
-
-    va_end(ap);
+    result = lyd_parse_fd(ctx, fd, format, options, trees);
     close(fd);
 
     return result;

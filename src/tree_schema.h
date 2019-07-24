@@ -67,6 +67,7 @@ typedef enum {
 #define LYS_ANYDATA 0x0120        /**< anydata statement node, in tests it can be used for both #LYS_ANYXML and #LYS_ANYDATA */
 
 #define LYS_ACTION 0x400          /**< RPC or action */
+#define LYS_RPC LYS_ACTION        /**< RPC or action (for backward compatibility) */
 #define LYS_NOTIF 0x800
 
 #define LYS_CASE 0x0040           /**< case statement node */

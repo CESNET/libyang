@@ -36,7 +36,14 @@ struct lyd_node **lyd_node_children_p(struct lyd_node *node);
  * @return LY_SUCCESS when options are ok
  * @return LY_EINVAL when multiple data types bits are set, or incompatible options are used together.
  */
-LY_ERR lyd_parse_check_options(struct ly_ctx *ctx, int options, const char *func);
+LY_ERR lyd_parse_options_check(struct ly_ctx *ctx, int options, const char *func);
+
+/**
+ * @brief Get string describing the type of the data according to the data parser options.
+ * @param[in] options Data parser options to examine.
+ * @return String description of the data set type.
+ */
+const char *lyd_parse_options_type2str(int options);
 
 /**
  * @brief Validate, canonize and store the given @p value into the node according to the node's type's rules.
@@ -65,10 +72,14 @@ LY_ERR lyd_value_parse(struct lyd_node_term *node, const char *value, size_t val
  * @param[in] ctx libyang context
  * @param[in] data Pointer to the XML string representation of the YANG data to parse.
  * @param[in] options @ref dataparseroptions
+ * @param[in] trees ([Sized array](@ref sizedarrays)) of data trees (e.g. when validating RPC/Notification) where the required
+ *            data instances (leafref target, instance-identifier, when, must) can be placed. To simply prepare this structure,
+ *            use lyd_trees_new(). In case of parsing RPC/action reply (LYD_OPT_RPCREPLY), the first tree in the array MUST be
+ *            complete RPC/action data tree (the source request) for the reply.
  * @param[out] result Resulting list of the parsed data trees. Note that NULL can be a valid result.
  * @reutn LY_ERR value.
  */
-LY_ERR lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, struct lyd_node **result);
+LY_ERR lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, const struct lyd_node **trees, struct lyd_node **result);
 
 /**
  * @defgroup datahash Data nodes hash manipulation

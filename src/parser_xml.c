@@ -200,6 +200,22 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
 
         /* allocate new node */
         switch (snode->nodetype) {
+        case LYS_ACTION:
+            if ((ctx->options & LYD_OPT_TYPEMASK) != LYD_OPT_RPC) {
+                LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_RESTRICTION, "Unexpected RPC/action element \"%.*s\" in %s data set.",
+                       name_len, name, lyd_parse_options_type2str(ctx->options & LYD_OPT_TYPEMASK));
+                goto cleanup;
+            }
+            cur = calloc(1, sizeof(struct lyd_node_inner));
+            break;
+        case LYS_NOTIF:
+            if ((ctx->options & LYD_OPT_TYPEMASK) != LYD_OPT_RPC) {
+                LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_RESTRICTION, "Unexpected Notification element \"%.*s\" in %s data set.",
+                       name_len, name, lyd_parse_options_type2str(ctx->options));
+                goto cleanup;
+            }
+            cur = calloc(1, sizeof(struct lyd_node_inner));
+            break;
         case LYS_CONTAINER:
         case LYS_LIST:
             cur = calloc(1, sizeof(struct lyd_node_inner));
@@ -212,7 +228,6 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
         case LYS_ANYXML:
             cur = calloc(1, sizeof(struct lyd_node_any));
             break;
-        /* TODO LYS_ACTION, LYS_NOTIF */
         default:
             LOGINT(ctx->ctx);
             goto cleanup;
@@ -333,22 +348,39 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
         /* TODO context validation */
     }
 
+    /* TODO add missing siblings default elements */
+
 cleanup:
     lyd_free_attr(ctx->ctx, attributes, 1);
     return ret;
 }
 
 LY_ERR
-lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, struct lyd_node **result)
+lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, const struct lyd_node **trees, struct lyd_node **result)
 {
     LY_ERR ret;
+    struct lyd_node_inner *parent = NULL;
     struct lyd_xml_ctx xmlctx = {0};
 
     xmlctx.options = options;
     xmlctx.ctx = ctx;
     xmlctx.line = 1;
 
-    ret = lydxml_nodes(&xmlctx, NULL, &data, result);
+    /* init */
+    *result = NULL;
+
+    if (!data || !data[0]) {
+        goto no_data;
+    }
+
+    if (options & LYD_OPT_RPCREPLY) {
+        /* TODO prepare container for RPC reply, for which we need RPC
+         * - prepare *result as top-level node
+         * - prepare parent as the RPC/action node */
+        (void)trees;
+    }
+
+    ret = lydxml_nodes(&xmlctx, parent, &data, *result ? &parent->child : result);
     if (ret) {
         lyd_free_all(*result);
         *result = NULL;
@@ -356,20 +388,33 @@ lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, struct lyd_node
         /* finish incompletely validated terminal values */
         for (unsigned int u = 0; u < xmlctx.incomplete_type_validation.count; u++) {
             struct lyd_node_term *node = (struct lyd_node_term*)xmlctx.incomplete_type_validation.objs[u];
-            const struct lyd_node **trees = NULL;
+            const struct lyd_node **result_trees = NULL;
 
             /* prepare sized array for validator */
             if (*result) {
-                trees = lyd_trees_new(1, *result);
+                result_trees = lyd_trees_new(1, *result);
             }
             /* validate and store the value of the node */
             ret = lyd_value_parse(node, node->value.canonized, node->value.canonized ? strlen(node->value.canonized) : 0, 0, 1,
-                                  lydxml_resolve_prefix, ctx, LYD_XML, trees);
-            lyd_trees_free(trees, 0);
+                                  lydxml_resolve_prefix, ctx, LYD_XML, result_trees);
+            lyd_trees_free(result_trees, 0);
             if (ret) {
                 lyd_free_all(*result);
                 *result = NULL;
                 break;
+            }
+        }
+
+        if (!(*result)) {
+no_data:
+            /* no data */
+            if (options & (LYD_OPT_RPC | LYD_OPT_NOTIF)) {
+                /* error, top level node identify RPC and Notification */
+                LOGERR(ctx, LY_EINVAL, "Invalid input data of data parser - expected %s which cannot be empty.",
+                       lyd_parse_options_type2str(options));
+            } else {
+                /* others - no work is needed, just check for missing mandatory nodes */
+                /* TODO lyd_validate(&result, options, ctx); */
             }
         }
     }

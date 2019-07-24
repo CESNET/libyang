@@ -543,7 +543,7 @@ detect_data_format(char *filepath)
 }
 
 static int
-parse_data(char *filepath, int *options, struct lyd_node *val_tree, const char *rpc_act_file,
+parse_data(char *filepath, int *options, const struct lyd_node **trees, const char *rpc_act_file,
            struct lyd_node **result)
 {
     LYD_FORMAT informat = LYD_UNKNOWN;
@@ -641,26 +641,41 @@ parse_data(char *filepath, int *options, struct lyd_node *val_tree, const char *
                 fprintf(stderr, "RPC/action reply data require additional argument (file with the RPC/action).\n");
                 return EXIT_FAILURE;
             }
-            rpc_act = lyd_parse_path(ctx, rpc_act_file, informat, LYD_OPT_RPC, val_tree);
+            rpc_act = lyd_parse_path(ctx, rpc_act_file, informat, LYD_OPT_RPC, trees);
             if (!rpc_act) {
                 fprintf(stderr, "Failed to parse RPC/action.\n");
                 return EXIT_FAILURE;
             }
-            data = lyd_parse_path(ctx, filepath, informat, opts, rpc_act, val_tree);
+            if (trees) {
+                const struct lyd_node **trees_new;
+                unsigned int u;
+                trees_new = lyd_trees_new(1, rpc_act);
+
+                LY_ARRAY_FOR(trees, u) {
+                    trees_new = lyd_trees_add(trees_new, trees[u]);
+                }
+                lyd_trees_free(trees, 0);
+                trees = trees_new;
+            } else {
+                trees = lyd_trees_new(1, rpc_act);
+            }
+            data = lyd_parse_path(ctx, filepath, informat, opts, trees);
         } else if (opts & (LYD_OPT_RPC | LYD_OPT_NOTIF)) {
-            data = lyd_parse_path(ctx, filepath, informat, opts, val_tree);
+            data = lyd_parse_path(ctx, filepath, informat, opts, trees);
+#if 0
         } else if (opts & LYD_OPT_DATA_TEMPLATE) {
             if (!rpc_act_file) {
                 fprintf(stderr, "YANG-DATA require additional argument (name instance of yang-data extension).\n");
                 return EXIT_FAILURE;
             }
             data = lyd_parse_path(ctx, filepath, informat, opts, rpc_act_file);
+#endif
         } else {
             if (!(opts & LYD_OPT_TYPEMASK)) {
                 /* automatically add yang-library data */
                 opts |= LYD_OPT_DATA_ADD_YANGLIB;
             }
-            data = lyd_parse_path(ctx, filepath, informat, opts);
+            data = lyd_parse_path(ctx, filepath, informat, opts, NULL);
         }
 #if 0
     }
@@ -686,6 +701,7 @@ cmd_data(const char *arg)
     char **argv = NULL, *ptr;
     const char *out_path = NULL;
     struct lyd_node *data = NULL, *val_tree = NULL;
+    const struct lyd_node **trees = NULL;
     LYD_FORMAT outformat = LYD_UNKNOWN;
     FILE *output = stdout;
     static struct option long_options[] = {
@@ -763,19 +779,20 @@ cmd_data(const char *arg)
             out_path = optarg;
             break;
         case 'r':
-            if (val_tree || (options & LYD_OPT_NOEXTDEPS)) {
-                fprintf(stderr, "The running datastore (-r) cannot be set multiple times.\n");
-                goto cleanup;
-            }
             if (optarg[0] == '!') {
                 /* ignore extenral dependencies to the running datastore */
                 options |= LYD_OPT_NOEXTDEPS;
             } else {
                 /* external file with the running datastore */
-                val_tree = lyd_parse_path(ctx, optarg, LYD_XML, LYD_OPT_DATA_NO_YANGLIB);
+                val_tree = lyd_parse_path(ctx, optarg, LYD_XML, LYD_OPT_DATA_NO_YANGLIB, trees);
                 if (!val_tree) {
                     fprintf(stderr, "Failed to parse the additional data tree for validation.\n");
                     goto cleanup;
+                }
+                if (!trees) {
+                    trees = lyd_trees_new(1, val_tree);
+                } else {
+                    trees = lyd_trees_add(trees, val_tree);
                 }
             }
             break;
@@ -822,7 +839,7 @@ cmd_data(const char *arg)
         goto cleanup;
     }
 
-    if (parse_data(argv[optind], &options, val_tree, argv[optind + 1], &data)) {
+    if (parse_data(argv[optind], &options, trees, argv[optind + 1], &data)) {
         goto cleanup;
     }
 
@@ -852,7 +869,7 @@ cleanup:
         fclose(output);
     }
 
-    lyd_free_all(val_tree);
+    lyd_trees_free(trees, 1);
     lyd_free_all(data);
 
     return ret;
