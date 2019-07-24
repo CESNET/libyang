@@ -161,7 +161,7 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
     const struct lysc_node *snode;
     struct lys_module *mod;
     unsigned int parents_count = ctx->elements.count;
-    struct lyd_node *cur = NULL, *prev = NULL;
+    struct lyd_node *cur = NULL, *prev = NULL, *last = NULL;
 
     (*node) = NULL;
 
@@ -235,22 +235,76 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
         if (!(*node)) {
             (*node) = cur;
         }
+        last = cur;
         cur->schema = snode;
+        cur->prev = cur;
         cur->parent = parent;
         if (parent) {
-            parent->child->prev = cur;
-        } else if (prev) {
-            struct lyd_node *iter;
-            for (iter = prev; iter->prev->next; iter = iter->prev);
-            iter->prev = cur;
-        }
-        if (prev) {
-            cur->prev = prev;
-            prev->next = cur;
+            if (prev && cur->schema->nodetype == LYS_LEAF && (cur->schema->flags & LYS_KEY)) {
+                /* it is key and we need to insert it into a correct place */
+                struct lysc_node_leaf **keys = ((struct lysc_node_list*)parent->schema)->keys;
+                unsigned int cur_index, key_index;
+                struct lyd_node *key;
+
+                for (cur_index = 0; keys[cur_index] != (struct lysc_node_leaf*)cur->schema; ++cur_index);
+                for (key = prev; !(key->schema->flags & LYS_KEY) && key->prev != prev; key = key->prev);
+                for (; key->schema->flags & LYS_KEY; key = key->prev) {
+                    for (key_index = 0; keys[key_index] != (struct lysc_node_leaf*)key->schema; ++key_index);
+                    if (key_index < cur_index) {
+                        /* cur key is supposed to be placed after the key */
+                        cur->next = key->next;
+                        cur->prev = key;
+                        key->next = cur;
+                        if (cur->next) {
+                            cur->next->prev = cur;
+                        } else {
+                            parent->child->prev = cur;
+                        }
+                        break;
+                    }
+                    if (key->prev == prev) {
+                        /* current key is supposed to be the first child from the current children */
+                        key = NULL;
+                        break;
+                    }
+                }
+                if (!key || !(key->schema->flags & LYS_KEY)) {
+                    /* current key is supposed to be the first child from the current children */
+                    cur->next = parent->child;
+                    cur->prev = parent->child->prev;
+                    parent->child->prev = cur;
+                    parent->child = cur;
+                }
+                if (cur->next) {
+                    last = prev;
+                    if (ctx->options & LYD_OPT_STRICT) {
+                        LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_RESTRICTION, "Invalid position of the key \"%.*s\" in a list.",
+                               name_len, name);
+                        goto cleanup;
+                    } else {
+                        LOGWRN(ctx->ctx, "Invalid position of the key \"%.*s\" in a list.", name_len, name);
+                    }
+                }
+            } else {
+                /* last child of the parent */
+                if (prev) {
+                    parent->child->prev = cur;
+                    prev->next = cur;
+                    cur->prev = prev;
+                }
+            }
         } else {
-            cur->prev = cur;
+            /* top level */
+            if (prev) {
+                /* last top level node */
+                struct lyd_node *iter;
+                for (iter = prev; iter->prev->next; iter = iter->prev);
+                iter->prev = cur;
+                prev->next = cur;
+                cur->prev = prev;
+            } /* first top level node - nothing more to do */
         }
-        prev = cur;
+        prev = last;
         cur->attr = attributes;
         attributes = NULL;
 

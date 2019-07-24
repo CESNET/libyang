@@ -56,7 +56,7 @@ setup(void **state)
     (void) state; /* unused */
 
     const char *schema_a = "module a {namespace urn:tests:a;prefix a;yang-version 1.1;"
-            "list l1 { key \"a b\"; leaf a {type string;} leaf b {type string;} leaf c {type string;}}"
+            "list l1 { key \"a b c\"; leaf a {type string;} leaf b {type string;} leaf c {type string;} leaf d {type string;}}"
             "leaf foo { type string;}"
             "container c { leaf x {type string;}}"
             "container cp {presence \"container switch\"; leaf y {type string;}}"
@@ -152,7 +152,9 @@ test_list(void **state)
     const char *data = "<l1 xmlns=\"urn:tests:a\"><a>one</a><b>one</b><c>one</c></l1>";
     struct lyd_node *tree, *iter;
     struct lyd_node_inner *list;
+    struct lyd_node_term *leaf;
 
+    /* check hashes */
     assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, 0, NULL, &tree));
     assert_non_null(tree);
     assert_int_equal(LYS_LIST, tree->schema->nodetype);
@@ -161,8 +163,45 @@ test_list(void **state)
     LY_LIST_FOR(list->child, iter) {
         assert_int_not_equal(0, iter->hash);
     }
-
     lyd_free_all(tree);
+
+    /* keys order */
+    data = "<l1 xmlns=\"urn:tests:a\"><d>d</d><a>a</a><c>c</c><b>b</b></l1>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, 0, NULL, &tree));
+    assert_non_null(tree);
+    assert_int_equal(LYS_LIST, tree->schema->nodetype);
+    assert_string_equal("l1", tree->schema->name);
+    list = (struct lyd_node_inner*)tree;
+    assert_non_null(leaf = (struct lyd_node_term*)list->child);
+    assert_string_equal("a", leaf->schema->name);
+    assert_non_null(leaf = (struct lyd_node_term*)leaf->next);
+    assert_string_equal("b", leaf->schema->name);
+    assert_non_null(leaf = (struct lyd_node_term*)leaf->next);
+    assert_string_equal("c", leaf->schema->name);
+    assert_non_null(leaf = (struct lyd_node_term*)leaf->next);
+    assert_string_equal("d", leaf->schema->name);
+    logbuf_assert("Invalid position of the key \"b\" in a list.");
+    lyd_free_all(tree);
+
+    data = "<l1 xmlns=\"urn:tests:a\"><c>c</c><b>b</b><a>a</a></l1>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, 0, NULL, &tree));
+    assert_non_null(tree);
+    assert_int_equal(LYS_LIST, tree->schema->nodetype);
+    assert_string_equal("l1", tree->schema->name);
+    list = (struct lyd_node_inner*)tree;
+    assert_non_null(leaf = (struct lyd_node_term*)list->child);
+    assert_string_equal("a", leaf->schema->name);
+    assert_non_null(leaf = (struct lyd_node_term*)leaf->next);
+    assert_string_equal("b", leaf->schema->name);
+    assert_non_null(leaf = (struct lyd_node_term*)leaf->next);
+    assert_string_equal("c", leaf->schema->name);
+    logbuf_assert("Invalid position of the key \"a\" in a list.");
+    logbuf_clean();
+    lyd_free_all(tree);
+
+    assert_int_equal(LY_EVALID, lyd_parse_xml(ctx, data, LYD_OPT_STRICT, NULL, &tree));
+    logbuf_assert("Invalid position of the key \"b\" in a list. Line number 1.");
+
     *state = NULL;
 }
 
