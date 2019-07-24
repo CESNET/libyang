@@ -225,6 +225,11 @@ lysc_path(struct lysc_node *node, LY_PATH_TYPE pathtype, char *buffer, size_t bu
     char *path = NULL;
     int len = 0;
 
+    LY_CHECK_ARG_RET(NULL, node, NULL);
+    if (buffer) {
+        LY_CHECK_ARG_RET(node->module->ctx, buflen > 1, NULL);
+    }
+
     switch (pathtype) {
     case LY_PATH_LOG:
         for (iter = node; iter && len >= 0; iter = iter->parent) {
@@ -274,8 +279,11 @@ lysc_path(struct lysc_node *node, LY_PATH_TYPE pathtype, char *buffer, size_t bu
             free(path);
             path = NULL;
         } else if (len == 0) {
-            path = strdup("/");
-            len = 1;
+            if (buffer) {
+                strcpy(buffer, "/");
+            } else {
+                path = strdup("/");
+            }
         }
         break;
     }
