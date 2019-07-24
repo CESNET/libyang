@@ -179,23 +179,23 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
         }
         attributes = NULL;
         if (ctx->status == LYXML_ATTRIBUTE) {
-            LY_CHECK_GOTO(lydxml_attributes(ctx, data, &attributes), cleanup);
+            LY_CHECK_GOTO(lydxml_attributes(ctx, data, &attributes), error);
         }
 
         ns = lyxml_ns_get((struct lyxml_context *)ctx, prefix, prefix_len);
         if (!ns) {
             LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_REFERENCE, "Unknown XML prefix \"%*.s\".", prefix_len, prefix);
-            goto cleanup;
+            goto error;
         }
         mod = ly_ctx_get_module_implemented_ns(ctx->ctx, ns->uri);
         if (!mod) {
             LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_REFERENCE, "No module with namespace \"%s\" in the context.", ns->uri);
-            goto cleanup;
+            goto error;
         }
         snode = lys_child(parent ? parent->schema : NULL, mod, name, name_len, 0, (ctx->options & LYD_OPT_RPCREPLY) ? LYS_GETNEXT_OUTPUT : 0);
         if (!snode) {
             LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_REFERENCE, "Element \"%.*s\" not found in the \"%s\" module.", name_len, name, mod->name);
-            goto cleanup;
+            goto error;
         }
 
         /* allocate new node */
@@ -204,7 +204,7 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
             if ((ctx->options & LYD_OPT_TYPEMASK) != LYD_OPT_RPC) {
                 LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_RESTRICTION, "Unexpected RPC/action element \"%.*s\" in %s data set.",
                        name_len, name, lyd_parse_options_type2str(ctx->options & LYD_OPT_TYPEMASK));
-                goto cleanup;
+                goto error;
             }
             cur = calloc(1, sizeof(struct lyd_node_inner));
             break;
@@ -212,7 +212,7 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
             if ((ctx->options & LYD_OPT_TYPEMASK) != LYD_OPT_RPC) {
                 LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_RESTRICTION, "Unexpected Notification element \"%.*s\" in %s data set.",
                        name_len, name, lyd_parse_options_type2str(ctx->options));
-                goto cleanup;
+                goto error;
             }
             cur = calloc(1, sizeof(struct lyd_node_inner));
             break;
@@ -230,6 +230,7 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
             break;
         default:
             LOGINT(ctx->ctx);
+            ret = LY_EINT;
             goto cleanup;
         }
         if (!(*node)) {
@@ -280,7 +281,7 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
                     if (ctx->options & LYD_OPT_STRICT) {
                         LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_RESTRICTION, "Invalid position of the key \"%.*s\" in a list.",
                                name_len, name);
-                        goto cleanup;
+                        goto error;
                     } else {
                         LOGWRN(ctx->ctx, "Invalid position of the key \"%.*s\" in a list.", name_len, name);
                     }
@@ -315,12 +316,13 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
 
             if (ctx->status == LYXML_ELEM_CONTENT) {
                 /* get the value */
-                LY_ERR r = lyxml_get_string((struct lyxml_context *)ctx, data, &buffer, &buffer_size, &value, &value_len, &dynamic);
-                if (r == LY_EINVAL) {
+                ret = lyxml_get_string((struct lyxml_context *)ctx, data, &buffer, &buffer_size, &value, &value_len, &dynamic);
+                if (ret == LY_EINVAL) {
                     /* just indentation of a child element found */
                     LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_SYNTAX, "Child element inside terminal node \"%s\" found.", cur->schema->name);
                     goto cleanup;
                 }
+                ret = LY_SUCCESS;
             } else {
                 /* no content - validate empty value */
                 value = "";
@@ -344,6 +346,7 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
                 LY_ERR r = lyxml_get_string((struct lyxml_context *)ctx, data, &buffer, &buffer_size, &value, &value_len, &dynamic);
                 if (r != LY_EINVAL && (r != LY_SUCCESS || value_len != 0)) {
                     LOGINT(ctx->ctx);
+                    ret = LY_EINT;
                     goto cleanup;
                 }
             }
@@ -378,6 +381,7 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
                 case LYXML_END:
                     /* unexpected end of data */
                     LOGINT(ctx->ctx);
+                    ret = LY_EINT;
                     goto cleanup;
                 }
                 LY_CHECK_GOTO(ret, cleanup);
@@ -407,6 +411,10 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
 cleanup:
     lyd_free_attr(ctx->ctx, attributes, 1);
     return ret;
+
+error:
+    ret = LY_EVALID;
+    goto cleanup;
 }
 
 LY_ERR
