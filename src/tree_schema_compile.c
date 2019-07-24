@@ -642,7 +642,7 @@ lys_compile_must(struct lysc_ctx *ctx, struct lysp_restr *must_p, struct lysc_mu
 
     must->cond = lyxp_expr_parse(ctx->ctx, must_p->arg);
     LY_CHECK_ERR_GOTO(!must->cond, ret = ly_errcode(ctx->ctx), done);
-
+    must->module = ctx->mod_def;
     DUP_STRING(ctx->ctx, must_p->eapptag, must->eapptag);
     DUP_STRING(ctx->ctx, must_p->emsg, must->emsg);
     DUP_STRING(ctx->ctx, must_p->dsc, must->dsc);

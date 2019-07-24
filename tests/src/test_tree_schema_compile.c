@@ -2944,7 +2944,7 @@ test_deviation(void **state)
                                   "deviation /x:b {deviate add {default x:b;}}"
                                   "deviation /x:c {deviate add {default bye;}}"
                                   "deviation /x:d {deviate add {default all; default people;}}"
-                                  "deviation /x:c2 {deviate add {default hi;}}"
+                                  "deviation /x:c2 {deviate add {default hi; must 1;}}"
                                   "deviation /x:d2 {deviate add {default hi; default all;}}}", LYS_IN_YANG));
     assert_non_null((mod = ly_ctx_get_module_implemented(ctx, "e")));
     assert_non_null(node = mod->compiled->data);
@@ -2970,6 +2970,8 @@ test_deviation(void **state)
     assert_int_equal(0, dynamic);
     assert_int_equal(6, leaf->dflt->realtype->refcount); /* 3x type reference, 3x default value reference
     - previous type's default values were replaced by node's default values where d2 now has 2 default values */
+    assert_int_equal(1, LY_ARRAY_SIZE(leaf->musts));
+    assert_ptr_equal(leaf->musts[0].module, ly_ctx_get_module_implemented(ctx, "g"));
     assert_non_null(llist = (struct lysc_node_leaflist*)leaf->next);
     assert_int_equal(2, LY_ARRAY_SIZE(llist->dflts));
     assert_string_equal("hi", llist->dflts[0]->realtype->plugin->print(llist->dflts[0], LYD_XML, NULL, NULL, &dynamic));
