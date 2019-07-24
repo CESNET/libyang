@@ -1749,7 +1749,6 @@ yin_parse_container(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, co
     struct typedef_meta typedef_meta = {(struct lysp_node *)cont, &cont->typedefs};
     struct notif_meta notif_meta = {(struct lysp_node *)cont, &cont->notifs};
     struct yin_subelement subelems[21] = {
-                                            /* TODO action */
                                             {YANG_ACTION, &act_meta, YIN_SUBELEM_VER2},
                                             {YANG_ANYDATA, &new_node_meta, YIN_SUBELEM_VER2},
                                             {YANG_ANYXML, &new_node_meta, 0},
@@ -1939,6 +1938,16 @@ yin_parse_inout(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const 
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Parse action element.
+ *
+ * @param[in,out] ctx YIN parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] act_meta Meta information about parent node and actions to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 yin_parse_action(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
                  struct action_meta *act_meta)
@@ -1971,6 +1980,61 @@ yin_parse_action(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const
                                          };
     LY_CHECK_RET(yin_parse_content(ctx, subelems, 9, data, YANG_ACTION, NULL, &act->exts));
     LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, act->groupings, NULL, NULL, NULL));
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Parse augment element.
+ *
+ * @param[in,out] ctx YIN parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] aug_meta Meta information about parent node and augments to add to.
+ *
+ * @return LY_ERR values.
+ */
+static LY_ERR
+yin_parse_augment(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+                  struct augment_meta *aug_meta)
+{
+    struct lysp_augment *aug;
+
+    /* create new augment */
+    LY_ARRAY_NEW_RET(ctx->xml_ctx.ctx, *aug_meta->augments, aug, LY_EMEM);
+    aug->nodetype = LYS_AUGMENT;
+    aug->parent = aug_meta->parent;
+
+    /* parse argument */
+    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_TARGET_NODE, &aug->nodeid, Y_STR_ARG, YANG_AUGMENT));
+    YANG_CHECK_NONEMPTY((struct lys_parser_ctx *)ctx, strlen(aug->nodeid), "augment");
+
+    /* parser augment content */
+    struct action_meta act_meta = {(struct lysp_node *)aug, &aug->actions};
+    struct tree_node_meta node_meta = {(struct lysp_node *)aug, &aug->child};
+    struct notif_meta notif_meta = {(struct lysp_node *)aug, &aug->notifs};
+    struct yin_subelement subelems[17] = {
+                                            {YANG_ACTION, &act_meta, YIN_SUBELEM_VER2},
+                                            {YANG_ANYDATA, &node_meta, YIN_SUBELEM_VER2},
+                                            {YANG_ANYXML, &node_meta, 0},
+                                            {YANG_CASE, &node_meta, 0},
+                                            {YANG_CHOICE, &node_meta, 0},
+                                            {YANG_CONTAINER, &node_meta, 0},
+                                            {YANG_DESCRIPTION, &aug->dsc, YIN_SUBELEM_UNIQUE},
+                                            {YANG_IF_FEATURE, &aug->iffeatures, 0},
+                                            {YANG_LEAF, &node_meta, 0},
+                                            {YANG_LEAF_LIST, &node_meta, 0},
+                                            {YANG_LIST, &node_meta, 0},
+                                            {YANG_NOTIFICATION, &notif_meta, YIN_SUBELEM_VER2},
+                                            {YANG_REFERENCE, &aug->ref, YIN_SUBELEM_UNIQUE},
+                                            {YANG_STATUS, &aug->flags, YIN_SUBELEM_UNIQUE},
+                                            {YANG_USES, &node_meta, 0},
+                                            {YANG_WHEN, &aug->when, YIN_SUBELEM_UNIQUE},
+                                            {YANG_CUSTOM, NULL, 0},
+                                         };
+    LY_CHECK_RET(yin_parse_content(ctx, subelems, 17, data, YANG_AUGMENT, NULL, &aug->exts));
+
+    LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, NULL, NULL, aug->actions, aug->notifs));
 
     return LY_SUCCESS;
 }
@@ -2134,6 +2198,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     ret = yin_parse_argument_element(ctx, attrs, data, (struct yin_argument_meta *)subelem->dest, exts);
                     break;
                 case YANG_AUGMENT:
+                    ret = yin_parse_augment(ctx, attrs, data, (struct augment_meta *)subelem->dest);
                     break;
                 case YANG_BASE:
                     if (current_element == YANG_TYPE) {

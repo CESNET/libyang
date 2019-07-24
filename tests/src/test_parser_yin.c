@@ -43,6 +43,7 @@ void lysp_notif_free(struct ly_ctx *ctx, struct lysp_notif *notif);
 void lysp_grp_free(struct ly_ctx *ctx, struct lysp_grp *grp);
 void lysp_action_inout_free(struct ly_ctx *ctx, struct lysp_action_inout *inout);
 void lysp_action_free(struct ly_ctx *ctx, struct lysp_action *action);
+void lysp_augment_free(struct ly_ctx *ctx, struct lysp_augment *augment);
 
 struct state {
     struct ly_ctx *ctx;
@@ -57,7 +58,7 @@ char logbuf[BUFSIZE] = {0};
 int store = -1; /* negative for infinite logging, positive for limited logging */
 
 /* set to 0 to printing error messages to stderr instead of checking them in code */
-#define ENABLE_LOGGER_CHECKING 1
+#define ENABLE_LOGGER_CHECKING 0
 
 #if ENABLE_LOGGER_CHECKING
 static void
@@ -2311,7 +2312,7 @@ test_uses_elem(void **state)
                     "<description><text>desc</text></description>"
                     "<reference><text>ref</text></reference>"
                     "<refine target-node=\"target\"/>"
-                    /* TODO add uses-augment-stmt instance */
+                    "<augment target-node=\"target\" />"
                 "</uses>"
            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &node_meta, NULL, NULL, true), LY_SUCCESS);
@@ -2327,6 +2328,7 @@ test_uses_elem(void **state)
     assert_string_equal(parsed->ref, "ref");
     assert_string_equal(parsed->refines->nodeid, "target");
     assert_string_equal(parsed->when->cond, "cond");
+    assert_string_equal(parsed->augments->nodeid, "target");
     lysp_node_free(st->ctx, siblings);
     siblings = NULL;
 
@@ -3173,6 +3175,78 @@ test_action_elem(void **state)
     st->finished_correctly = true;
 }
 
+static void
+test_augment_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct lysp_augment *augments = NULL;
+    struct augment_meta aug_meta = {NULL, &augments};
+
+    st->yin_ctx->mod_version = LYS_VERSION_1_1;
+    data = ELEMENT_WRAPPER_START
+                "<augment target-node=\"target\">"
+                    "<action name=\"action\"/>"
+                    "<anydata name=\"anyd\"/>"
+                    "<anyxml name=\"anyx\"/>"
+                    "<case name=\"case\"/>"
+                    "<choice name=\"choice\"/>"
+                    "<container name=\"subcont\"/>"
+                    "<description><text>desc</text></description>"
+                    "<if-feature name=\"iff\"/>"
+                    "<leaf name=\"leaf\"/>"
+                    "<leaf-list name=\"llist\"/>"
+                    "<list name=\"list\"/>"
+                    "<notification name=\"notif\"/>"
+                    "<reference><text>ref</text></reference>"
+                    "<status value=\"current\"/>"
+                    "<uses name=\"uses\"/>"
+                    "<when condition=\"when-cond\"/>"
+                "</augment>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &aug_meta, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(augments->nodeid, "target");
+    assert_null(augments->parent);
+    assert_int_equal(augments->nodetype, LYS_AUGMENT);
+    assert_true(augments->flags & LYS_STATUS_CURR);
+    assert_string_equal(augments->dsc, "desc");
+    assert_string_equal(augments->ref, "ref");
+    assert_string_equal(augments->when->cond, "when-cond");
+    assert_string_equal(*augments->iffeatures, "iff");
+    assert_string_equal(augments->child->name, "anyd");
+    assert_int_equal(augments->child->nodetype, LYS_ANYDATA);
+    assert_string_equal(augments->child->next->name, "anyx");
+    assert_int_equal(augments->child->next->nodetype, LYS_ANYXML);
+    assert_string_equal(augments->child->next->next->name, "case");
+    assert_int_equal(augments->child->next->next->nodetype, LYS_CASE);
+    assert_string_equal(augments->child->next->next->next->name, "choice");
+    assert_int_equal(augments->child->next->next->next->nodetype, LYS_CHOICE);
+    assert_string_equal(augments->child->next->next->next->next->name, "subcont");
+    assert_int_equal(augments->child->next->next->next->next->nodetype, LYS_CONTAINER);
+    assert_string_equal(augments->child->next->next->next->next->next->name, "leaf");
+    assert_int_equal(augments->child->next->next->next->next->next->nodetype, LYS_LEAF);
+    assert_string_equal(augments->child->next->next->next->next->next->next->name, "llist");
+    assert_int_equal(augments->child->next->next->next->next->next->next->nodetype, LYS_LEAFLIST);
+    assert_string_equal(augments->child->next->next->next->next->next->next->next->name, "list");
+    assert_int_equal(augments->child->next->next->next->next->next->next->next->nodetype, LYS_LIST);
+    assert_string_equal(augments->child->next->next->next->next->next->next->next->next->name, "uses");
+    assert_int_equal(augments->child->next->next->next->next->next->next->next->next->nodetype, LYS_USES);
+    assert_null(augments->child->next->next->next->next->next->next->next->next->next);
+    assert_string_equal(augments->actions->name, "action");
+    assert_string_equal(augments->notifs->name, "notif");
+    assert_null(augments->exts);
+    FREE_ARRAY(st->ctx, augments, lysp_augment_free)
+    augments = NULL;
+
+    data = ELEMENT_WRAPPER_START "<augment target-node=\"target\" />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &aug_meta, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(augments->nodeid, "target");
+    FREE_ARRAY(st->ctx, augments, lysp_augment_free)
+    augments = NULL;
+
+    st->finished_correctly = true;
+}
+
 int
 main(void)
 {
@@ -3241,6 +3315,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_choice_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_inout_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_action_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_augment_elem, setup_element_test, teardown_element_test),
     };
 
     return cmocka_run_group_tests(tests, setup_ly_ctx, destroy_ly_ctx);
