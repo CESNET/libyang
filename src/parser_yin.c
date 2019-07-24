@@ -1536,8 +1536,7 @@ yin_parse_list(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const c
                                             {YANG_ACTION, NULL, 0},
                                             {YANG_ANYDATA, &new_node_meta, 0},
                                             {YANG_ANYXML, &new_node_meta, 0},
-                                            /* TODO choice */
-                                            {YANG_CHOICE, NULL, 0},
+                                            {YANG_CHOICE, &new_node_meta, 0},
                                             {YANG_CONFIG, &list->flags, YIN_SUBELEM_UNIQUE},
                                             {YANG_CONTAINER, &new_node_meta, 0},
                                             {YANG_DESCRIPTION, &list->dsc, YIN_SUBELEM_UNIQUE},
@@ -1606,8 +1605,7 @@ yin_parse_notification(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs,
     struct yin_subelement subelems[16] = {
                                             {YANG_ANYDATA, &node_meta, 0},
                                             {YANG_ANYXML, &node_meta, 0},
-                                            /* TODO choice */
-                                            {YANG_CHOICE, NULL, 0},
+                                            {YANG_CHOICE, &node_meta, 0},
                                             {YANG_CONTAINER, &node_meta, 0},
                                             {YANG_DESCRIPTION, &notif->dsc, YIN_SUBELEM_UNIQUE},
                                             {YANG_GROUPING, &gr_meta, 0},
@@ -1664,8 +1662,7 @@ yin_parse_grouping(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, con
                                             {YANG_ACTION, NULL, 0},
                                             {YANG_ANYDATA, &node_meta, 0},
                                             {YANG_ANYXML, &node_meta, 0},
-                                            /* TODO choice */
-                                            {YANG_CHOICE, NULL, 0},
+                                            {YANG_CHOICE, &node_meta, 0},
                                             {YANG_CONTAINER, &node_meta, 0},
                                             {YANG_DESCRIPTION, &grp->dsc, YIN_SUBELEM_UNIQUE},
                                             {YANG_GROUPING, &sub_grouping, 0},
@@ -1730,8 +1727,7 @@ yin_parse_container(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, co
                                             {YANG_ACTION, NULL, YIN_SUBELEM_VER2},
                                             {YANG_ANYDATA, &new_node_meta, YIN_SUBELEM_VER2},
                                             {YANG_ANYXML, &new_node_meta, 0},
-                                            /* TODO choice */
-                                            {YANG_CHOICE, NULL, 0},
+                                            {YANG_CHOICE, &new_node_meta, 0},
                                             {YANG_CONFIG, &cont->flags, YIN_SUBELEM_UNIQUE},
                                             {YANG_CONTAINER, &new_node_meta, 0},
                                             {YANG_DESCRIPTION, &cont->dsc, YIN_SUBELEM_UNIQUE},
@@ -1795,8 +1791,7 @@ yin_parse_case(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const c
     struct yin_subelement subelems[14] = {
                                             {YANG_ANYDATA, &new_node_meta, YIN_SUBELEM_VER2},
                                             {YANG_ANYXML, &new_node_meta, 0},
-                                            /* TODO choice */
-                                            {YANG_CHOICE, NULL, 0},
+                                            {YANG_CHOICE, &new_node_meta, 0},
                                             {YANG_CONTAINER, &new_node_meta, 0},
                                             {YANG_DESCRIPTION, &cas->dsc, YIN_SUBELEM_UNIQUE},
                                             {YANG_IF_FEATURE, &cas->iffeatures, 0},
@@ -1810,6 +1805,64 @@ yin_parse_case(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const c
                                             {YANG_CUSTOM, NULL, 0},
                                          };
     return yin_parse_content(ctx, subelems, 14, data, YANG_CASE, NULL, &cas->exts);
+}
+
+/**
+ * @brief Parse case element.
+ *
+ * @param[in,out] ctx YIN parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] node_meta Meta information about node parent and siblings.
+ *
+ * @return LY_ERR values.
+ */
+LY_ERR
+yin_parse_choice(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+                 struct tree_node_meta *node_meta)
+{
+    struct lysp_node *iter;
+    struct lysp_node_choice *choice;
+
+    /* create new choice */
+    choice = calloc(1, sizeof *choice);
+    LY_CHECK_ERR_RET(!choice, LOGMEM(ctx->xml_ctx.ctx), LY_EMEM);
+    choice->nodetype = LYS_CHOICE;
+    choice->parent = node_meta->parent;
+
+    /* insert into siblings */
+    if (!*(node_meta->siblings)) {
+        *node_meta->siblings = (struct lysp_node *)choice;
+    } else {
+        for (iter = *node_meta->siblings; iter->next; iter = iter->next);
+        iter->next = (struct lysp_node *)choice;
+    }
+
+    /* parse argument */
+    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NAME, &choice->name, Y_IDENTIF_ARG, YANG_CHOICE));
+
+    /* parse choice content */
+    struct tree_node_meta new_node_meta = {(struct lysp_node *)choice, &choice->child};
+    struct yin_subelement subelems[17] = {
+                                            {YANG_ANYDATA, &new_node_meta, YIN_SUBELEM_VER2},
+                                            {YANG_ANYXML, &new_node_meta, 0},
+                                            {YANG_CASE, &new_node_meta, 0},
+                                            {YANG_CHOICE, &new_node_meta, YIN_SUBELEM_VER2},
+                                            {YANG_CONFIG, &choice->flags, YIN_SUBELEM_UNIQUE},
+                                            {YANG_CONTAINER, &new_node_meta, 0},
+                                            {YANG_DEFAULT, &choice->dflt, YIN_SUBELEM_UNIQUE},
+                                            {YANG_DESCRIPTION, &choice->dsc, YIN_SUBELEM_UNIQUE},
+                                            {YANG_IF_FEATURE, &choice->iffeatures, 0},
+                                            {YANG_LEAF, &new_node_meta, 0},
+                                            {YANG_LEAF_LIST, &new_node_meta, 0},
+                                            {YANG_LIST, &new_node_meta, 0},
+                                            {YANG_MANDATORY, &choice->flags, YIN_SUBELEM_UNIQUE},
+                                            {YANG_REFERENCE, &choice->ref, YIN_SUBELEM_UNIQUE},
+                                            {YANG_STATUS, &choice->flags, YIN_SUBELEM_UNIQUE},
+                                            {YANG_WHEN, &choice->when, YIN_SUBELEM_UNIQUE},
+                                            {YANG_CUSTOM, NULL, 0},
+                                         };
+    return yin_parse_content(ctx, subelems, 17, data, YANG_CHOICE, NULL, &choice->exts);
 }
 
 /**
@@ -2019,6 +2072,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     ret = yin_parse_case(ctx, attrs, data, (struct tree_node_meta *)subelem->dest);
                     break;
                 case YANG_CHOICE:
+                    ret = yin_parse_choice(ctx, attrs, data, (struct tree_node_meta *)subelem->dest);
                     break;
                 case YANG_CONFIG:
                     ret = yin_parse_config(ctx, attrs, data, (uint16_t *)subelem->dest, exts);

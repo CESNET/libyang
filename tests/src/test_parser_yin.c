@@ -55,7 +55,7 @@ char logbuf[BUFSIZE] = {0};
 int store = -1; /* negative for infinite logging, positive for limited logging */
 
 /* set to 0 to printing error messages to stderr instead of checking them in code */
-#define ENABLE_LOGGER_CHECKING 0
+#define ENABLE_LOGGER_CHECKING 1
 
 #if ENABLE_LOGGER_CHECKING
 static void
@@ -2550,7 +2550,7 @@ test_list_elem(void **state)
                     "<anydata name=\"anyd\"/>"
                     "<anyxml name=\"anyx\"/>"
                     "<container name=\"cont\"/>"
-                    // "<choice name=\"choice\"/>"
+                    "<choice name=\"choice\"/>"
                     // "<action name=\"action\"/>"
                     "<grouping name=\"grp\"/>"
                     "<notification name=\"notf\"/>"
@@ -2570,8 +2570,8 @@ test_list_elem(void **state)
     assert_int_equal(parsed->child->next->nodetype, LYS_ANYXML);
     assert_string_equal(parsed->child->next->next->name, "cont");
     assert_int_equal(parsed->child->next->next->nodetype, LYS_CONTAINER);
-    // assert_string_equal(parsed->child->next->next->next->name, "choice");
-    // assert_int_equal(parsed->child->next->next->next->nodetype, LYS_CHOICE);
+    assert_string_equal(parsed->child->next->next->next->name, "choice");
+    assert_int_equal(parsed->child->next->next->next->nodetype, LYS_CHOICE);
     // assert_string_equal(parsed->child->next->next->next->next->name, "action");
     // assert_int_equal(parsed->child->next->next->next->next->nodetype, LYS_ACTION);
     // assert_null(parsed->child->next->next->next->next->next);
@@ -2634,7 +2634,7 @@ test_notification_elem(void **state)
                     "<typedef name=\"tpdf\"/>"
                     "<uses name=\"uses-name\"/>"
                     "<container name=\"cont\"/>"
-                    // "<choice name=\"choice\"/>"
+                    "<choice name=\"choice\"/>"
                     "<grouping name=\"grp\"/>"
                 "</notification>"
            ELEMENT_WRAPPER_END;
@@ -2658,9 +2658,9 @@ test_notification_elem(void **state)
     assert_int_equal(notifs->data->next->next->next->next->next->nodetype, LYS_USES);
     assert_string_equal(notifs->data->next->next->next->next->next->next->name, "cont");
     assert_int_equal(notifs->data->next->next->next->next->next->next->nodetype, LYS_CONTAINER);
-    // assert_int_equal(notifs->data->next->next->next->next->next->next->next->nodetype, LYS_CHOICE);
-    // assert_string_equal(notifs->data->next->next->next->next->next->next->next->name, "choice");
-    // assert_null(notifs->data->next->next->next->next->next->next->next->next);
+    assert_int_equal(notifs->data->next->next->next->next->next->next->next->nodetype, LYS_CHOICE);
+    assert_string_equal(notifs->data->next->next->next->next->next->next->next->name, "choice");
+    assert_null(notifs->data->next->next->next->next->next->next->next->next);
     assert_string_equal(*notifs->iffeatures, "iff");
     assert_string_equal(notifs->musts->arg, "cond");
     assert_int_equal(notifs->nodetype, LYS_NOTIF);
@@ -2705,12 +2705,11 @@ test_grouping_elem(void **state)
                     "<uses name=\"uses-name\"/>"
                     // "<action name=\"act\"/>"
                     "<container name=\"cont\"/>"
-                    // "<choice name=\"choice\"/>"
+                    "<choice name=\"choice\"/>"
                 "</grouping>"
            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &grp_meta, NULL, NULL, true), LY_SUCCESS);
     assert_string_equal(grps->name, "grp-name");
-    // assert_string_equal(grps->actions->name, "act");
     assert_string_equal(grps->data->name, "anyd");
     assert_string_equal(grps->data->next->name, "anyx");
     assert_string_equal(grps->data->next->next->name, "leaf");
@@ -2727,8 +2726,11 @@ test_grouping_elem(void **state)
     assert_string_equal(grps->typedefs->name, "tpdf");
     // assert_string_equal(grps->actions->name, "act");
     assert_string_equal(grps->data->next->next->next->next->next->name, "uses-name");
+    assert_int_equal(grps->data->next->next->next->next->next->nodetype, LYS_USES);
     assert_string_equal(grps->data->next->next->next->next->next->next->name, "cont");
-    // assert_string_equal(grps->data->next->next->next->next->next->next->name, "choice");
+    assert_int_equal(grps->data->next->next->next->next->next->next->nodetype, LYS_CONTAINER);
+    assert_string_equal(grps->data->next->next->next->next->next->next->next->name, "choice");
+    assert_int_equal(grps->data->next->next->next->next->next->next->next->nodetype, LYS_CHOICE);
     FREE_ARRAY(st->ctx, grps, lysp_grp_free);
     grps = NULL;
 
@@ -2774,7 +2776,7 @@ test_container_elem(void **state)
                     "<uses name=\"uses-name\"/>"
                     "<when condition=\"when-cond\"/>"
                     // "<action name=\"act\"/>"
-                    // "<choice name=\"choice\"/>"
+                    "<choice name=\"choice\"/>"
                 "</container>"
            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &node_meta, NULL, NULL, true), LY_SUCCESS);
@@ -2808,9 +2810,9 @@ test_container_elem(void **state)
     assert_int_equal(parsed->child->next->next->next->next->next->nodetype, LYS_LIST);
     assert_string_equal(parsed->child->next->next->next->next->next->next->name, "uses-name");
     assert_int_equal(parsed->child->next->next->next->next->next->next->nodetype, LYS_USES);
-    // assert_string_equal(parsed->child->next->next->next->next->next->next->next->name, "choice");
-    // assert_int_equal(parsed->child->next->next->next->next->next->next->next->nodetype, LYS_CHOICE);
-    // assert_null(parsed->child->next->next->next->next->next->next->next->next);
+    assert_string_equal(parsed->child->next->next->next->next->next->next->next->name, "choice");
+    assert_int_equal(parsed->child->next->next->next->next->next->next->next->nodetype, LYS_CHOICE);
+    assert_null(parsed->child->next->next->next->next->next->next->next->next);
     assert_string_equal(parsed->notifs->name, "notf");
     //assert_string_equal(parsed->actions->name, "act");
     lysp_node_free(st->ctx, siblings);
@@ -2853,7 +2855,7 @@ test_case_elem(void **state)
                     "<status value=\"current\"/>"
                     "<uses name=\"uses-name\"/>"
                     "<when condition=\"when-cond\"/>"
-                    // "<choice name=\"choice\"/>"
+                    "<choice name=\"choice\"/>"
                 "</case>"
            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &node_meta, NULL, NULL, true), LY_SUCCESS);
@@ -2882,9 +2884,9 @@ test_case_elem(void **state)
     assert_int_equal(parsed->child->next->next->next->next->next->nodetype, LYS_LIST);
     assert_string_equal(parsed->child->next->next->next->next->next->next->name, "uses-name");
     assert_int_equal(parsed->child->next->next->next->next->next->next->nodetype, LYS_USES);
-    // assert_string_equal(parsed->child->next->next->next->next->next->next->next->name, "choice");
-    // assert_int_equal(parsed->child->next->next->next->next->next->next->next->nodetype, LYS_CHOICE);
-    // assert_null(parsed->child->next->next->next->next->next->next->next->next);
+    assert_string_equal(parsed->child->next->next->next->next->next->next->next->name, "choice");
+    assert_int_equal(parsed->child->next->next->next->next->next->next->next->nodetype, LYS_CHOICE);
+    assert_null(parsed->child->next->next->next->next->next->next->next->next);
     lysp_node_free(st->ctx, siblings);
     siblings = NULL;
 
@@ -2893,6 +2895,80 @@ test_case_elem(void **state)
     assert_int_equal(test_element_helper(st, &data, &node_meta, NULL, NULL, true), LY_SUCCESS);
     parsed = (struct lysp_node_case *)siblings;
     assert_string_equal(parsed->name, "case-name");
+    lysp_node_free(st->ctx, siblings);
+    siblings = NULL;
+
+    st->finished_correctly = true;
+}
+
+static void
+test_choice_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct lysp_node *siblings = NULL;
+    struct tree_node_meta node_meta = {NULL, &siblings};
+    struct lysp_node_choice *parsed = NULL;
+
+    /* max subelems */
+    st->yin_ctx->mod_version = LYS_VERSION_1_1;
+    data = ELEMENT_WRAPPER_START
+                "<choice name=\"choice-name\">"
+                    "<anydata name=\"anyd\"/>"
+                    "<anyxml name=\"anyx\"/>"
+                    "<case name=\"sub-case\"/>"
+                    "<choice name=\"choice\"/>"
+                    "<config value=\"true\"/>"
+                    "<container name=\"subcont\"/>"
+                    "<default value=\"def\"/>"
+                    "<description><text>desc</text></description>"
+                    "<if-feature name=\"iff\"/>"
+                    "<leaf name=\"leaf\"/>"
+                    "<leaf-list name=\"llist\"/>"
+                    "<list name=\"list\"/>"
+                    "<mandatory value=\"true\" />"
+                    "<reference><text>ref</text></reference>"
+                    "<status value=\"current\"/>"
+                    "<when condition=\"when-cond\"/>"
+                "</choice>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &node_meta, NULL, NULL, true), LY_SUCCESS);
+    parsed = (struct lysp_node_choice *)siblings;
+    assert_string_equal(parsed->name, "choice-name");
+    assert_null(parsed->parent);
+    assert_int_equal(parsed->nodetype, LYS_CHOICE);
+    assert_true(parsed->flags & LYS_CONFIG_W && parsed->flags & LYS_MAND_TRUE  && parsed->flags & LYS_STATUS_CURR);
+    assert_null(parsed->next);
+    assert_string_equal(parsed->dsc, "desc");
+    assert_string_equal(parsed->ref, "ref");
+    assert_string_equal(parsed->when->cond, "when-cond");
+    assert_string_equal(*parsed->iffeatures, "iff");
+    assert_null(parsed->exts);
+    assert_string_equal(parsed->child->name, "anyd");
+    assert_int_equal(parsed->child->nodetype, LYS_ANYDATA);
+    assert_string_equal(parsed->child->next->name, "anyx");
+    assert_int_equal(parsed->child->next->nodetype, LYS_ANYXML);
+    assert_string_equal(parsed->child->next->next->name, "sub-case");
+    assert_int_equal(parsed->child->next->next->nodetype, LYS_CASE);
+    assert_string_equal(parsed->child->next->next->next->name, "choice");
+    assert_int_equal(parsed->child->next->next->next->nodetype, LYS_CHOICE);
+    assert_string_equal(parsed->child->next->next->next->next->name, "subcont");
+    assert_int_equal(parsed->child->next->next->next->next->nodetype, LYS_CONTAINER);
+    assert_string_equal(parsed->child->next->next->next->next->next->name, "leaf");
+    assert_int_equal(parsed->child->next->next->next->next->next->nodetype, LYS_LEAF);
+    assert_string_equal(parsed->child->next->next->next->next->next->next->name, "llist");
+    assert_int_equal(parsed->child->next->next->next->next->next->next->nodetype, LYS_LEAFLIST);
+    assert_string_equal(parsed->child->next->next->next->next->next->next->next->name, "list");
+    assert_int_equal(parsed->child->next->next->next->next->next->next->next->nodetype, LYS_LIST);
+    assert_null(parsed->child->next->next->next->next->next->next->next->next);
+    lysp_node_free(st->ctx, siblings);
+    siblings = NULL;
+
+    /* min subelems */
+    data = ELEMENT_WRAPPER_START "<choice name=\"choice-name\" />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &node_meta, NULL, NULL, true), LY_SUCCESS);
+    parsed = (struct lysp_node_choice *)siblings;
+    assert_string_equal(parsed->name, "choice-name");
     lysp_node_free(st->ctx, siblings);
     siblings = NULL;
 
@@ -2964,7 +3040,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_grouping_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_container_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_case_elem, setup_element_test, teardown_element_test),
-
+        cmocka_unit_test_setup_teardown(test_choice_elem, setup_element_test, teardown_element_test),
     };
 
     return cmocka_run_group_tests(tests, setup_ly_ctx, destroy_ly_ctx);
