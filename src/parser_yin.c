@@ -1757,6 +1757,62 @@ yin_parse_container(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, co
 }
 
 /**
+ * @brief Parse case element.
+ *
+ * @param[in,out] ctx YIN parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] node_meta Meta information about node parent and siblings.
+ *
+ * @return LY_ERR values.
+ */
+static LY_ERR
+yin_parse_case(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+               struct tree_node_meta *node_meta)
+{
+    struct lysp_node *iter;
+    struct lysp_node_case *cas;
+
+    /* create new case */
+    cas = calloc(1, sizeof *cas);
+    LY_CHECK_ERR_RET(!cas, LOGMEM(ctx->xml_ctx.ctx), LY_EMEM);
+    cas->nodetype = LYS_CASE;
+    cas->parent = node_meta->parent;
+
+    /* insert into siblings */
+    if (!*(node_meta->siblings)) {
+        *node_meta->siblings = (struct lysp_node *)cas;
+    } else {
+        for (iter = *node_meta->siblings; iter->next; iter = iter->next);
+        iter->next = (struct lysp_node *)cas;
+    }
+
+    /* parse argument */
+    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NAME, &cas->name, Y_IDENTIF_ARG, YANG_CASE));
+
+    /* parse case content */
+    struct tree_node_meta new_node_meta = {(struct lysp_node *)cas, &cas->child};
+    struct yin_subelement subelems[14] = {
+                                            {YANG_ANYDATA, &new_node_meta, YIN_SUBELEM_VER2},
+                                            {YANG_ANYXML, &new_node_meta, 0},
+                                            /* TODO choice */
+                                            {YANG_CHOICE, NULL, 0},
+                                            {YANG_CONTAINER, &new_node_meta, 0},
+                                            {YANG_DESCRIPTION, &cas->dsc, YIN_SUBELEM_UNIQUE},
+                                            {YANG_IF_FEATURE, &cas->iffeatures, 0},
+                                            {YANG_LEAF, &new_node_meta, 0},
+                                            {YANG_LEAF_LIST, &new_node_meta, 0},
+                                            {YANG_LIST, &new_node_meta, 0},
+                                            {YANG_REFERENCE, &cas->ref, YIN_SUBELEM_UNIQUE},
+                                            {YANG_STATUS, &cas->flags, YIN_SUBELEM_UNIQUE},
+                                            {YANG_USES, &new_node_meta, 0},
+                                            {YANG_WHEN, &cas->when, YIN_SUBELEM_UNIQUE},
+                                            {YANG_CUSTOM, NULL, 0},
+                                         };
+    return yin_parse_content(ctx, subelems, 14, data, YANG_CASE, NULL, &cas->exts);
+}
+
+/**
  * @brief Map keyword type to substatement info.
  *
  * @param[in] kw Keyword type.
@@ -1960,6 +2016,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     ret = yin_parse_enum_bit(ctx, attrs, data, kw, (struct lysp_type *)subelem->dest);
                     break;
                 case YANG_CASE:
+                    ret = yin_parse_case(ctx, attrs, data, (struct tree_node_meta *)subelem->dest);
                     break;
                 case YANG_CHOICE:
                     break;
