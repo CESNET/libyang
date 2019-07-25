@@ -202,12 +202,12 @@ remove_nodelevel:
         if (nextlevel != 2) {
             if ((parent && parent->module == ctx->mod) || (!parent && ctx->path_len > 1 && name[0] == '{')) {
                 /* module not changed, print the name unprefixed */
-                len = sprintf(&ctx->path[ctx->path_len], "%s%s", nextlevel ? "/" : "", name);
+                len = snprintf(&ctx->path[ctx->path_len], LYSC_CTX_BUFSIZE - ctx->path_len, "%s%s", nextlevel ? "/" : "", name);
             } else {
-                len = sprintf(&ctx->path[ctx->path_len], "%s%s:%s", nextlevel ? "/" : "", ctx->mod->name, name);
+                len = snprintf(&ctx->path[ctx->path_len], LYSC_CTX_BUFSIZE - ctx->path_len, "%s%s:%s", nextlevel ? "/" : "", ctx->mod->name, name);
             }
         } else {
-            len = sprintf(&ctx->path[ctx->path_len], "='%s'}", name);
+            len = snprintf(&ctx->path[ctx->path_len], LYSC_CTX_BUFSIZE - ctx->path_len, "='%s'}", name);
         }
         ctx->path_len += len;
     }
