@@ -3780,7 +3780,6 @@ parse_deviate(struct lys_parser_ctx *ctx, const char **data, struct lysp_deviate
         d_uniques = &d_del->uniques;
         d_dflts = &d_del->dflts;
         d_musts = &d_del->musts;
-        d_flags = &d_del->flags;
         break;
     default:
         assert(0);

@@ -344,7 +344,6 @@ struct lysp_deviate_del {
     struct lysp_restr *musts;        /**< list of must restrictions ([sized array](@ref sizedarrays)) */
     const char **uniques;            /**< list of uniques specifications ([sized array](@ref sizedarrays)) */
     const char **dflts;              /**< list of default values ([sized array](@ref sizedarrays)) */
-    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
 };
 
 struct lysp_deviate_rpl {
