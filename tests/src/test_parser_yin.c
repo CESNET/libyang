@@ -45,6 +45,7 @@ void lysp_action_inout_free(struct ly_ctx *ctx, struct lysp_action_inout *inout)
 void lysp_action_free(struct ly_ctx *ctx, struct lysp_action *action);
 void lysp_augment_free(struct ly_ctx *ctx, struct lysp_augment *augment);
 void lysp_deviate_free(struct ly_ctx *ctx, struct lysp_deviate *d);
+void lysp_deviation_free(struct ly_ctx *ctx, struct lysp_deviation *dev);
 
 struct state {
     struct ly_ctx *ctx;
@@ -2559,10 +2560,10 @@ test_list_elem(void **state)
                     "<action name=\"action\"/>"
                     "<grouping name=\"grp\"/>"
                     "<notification name=\"notf\"/>"
-                    "<leaf name=\"leaf\"/>"
-                    "<leaf-list name=\"llist\"/>"
+                    "<leaf name=\"leaf\"> <type name=\"type\"/> </leaf>"
+                    "<leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>"
                     "<list name=\"sub-list\"/>"
-                    "<typedef name=\"tpdf\"/>"
+                    "<typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>"
                     "<uses name=\"uses-name\"/>"
                 "</list>"
            ELEMENT_WRAPPER_END;
@@ -2637,13 +2638,13 @@ test_notification_elem(void **state)
                     "<anyxml name=\"anyx\"/>"
                     "<description><text>desc</text></description>"
                     "<if-feature name=\"iff\"/>"
-                    "<leaf name=\"leaf\"/>"
-                    "<leaf-list name=\"llist\"/>"
+                    "<leaf name=\"leaf\"> <type name=\"type\"/> </leaf>"
+                    "<leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>"
                     "<list name=\"sub-list\"/>"
                     "<must condition=\"cond\"/>"
                     "<reference><text>ref</text></reference>"
                     "<status value=\"deprecated\"/>"
-                    "<typedef name=\"tpdf\"/>"
+                    "<typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>"
                     "<uses name=\"uses-name\"/>"
                     "<container name=\"cont\"/>"
                     "<choice name=\"choice\"/>"
@@ -2707,13 +2708,13 @@ test_grouping_elem(void **state)
                     "<anyxml name=\"anyx\"/>"
                     "<description><text>desc</text></description>"
                     "<grouping name=\"sub-grp\"/>"
-                    "<leaf name=\"leaf\"/>"
-                    "<leaf-list name=\"llist\"/>"
+                    "<leaf name=\"leaf\"> <type name=\"type\"/> </leaf>"
+                    "<leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>"
                     "<list name=\"list\"/>"
                     "<notification name=\"notf\"/>"
                     "<reference><text>ref</text></reference>"
                     "<status value=\"current\"/>"
-                    "<typedef name=\"tpdf\"/>"
+                    "<typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>"
                     "<uses name=\"uses-name\"/>"
                     "<action name=\"act\"/>"
                     "<container name=\"cont\"/>"
@@ -2776,15 +2777,15 @@ test_container_elem(void **state)
                     "<description><text>desc</text></description>"
                     "<grouping name=\"sub-grp\"/>"
                     "<if-feature name=\"iff\"/>"
-                    "<leaf name=\"leaf\"/>"
-                    "<leaf-list name=\"llist\"/>"
+                    "<leaf name=\"leaf\"> <type name=\"type\"/> </leaf>"
+                    "<leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>"
                     "<list name=\"list\"/>"
                     "<must condition=\"cond\"/>"
                     "<notification name=\"notf\"/>"
                     "<presence value=\"presence\"/>"
                     "<reference><text>ref</text></reference>"
                     "<status value=\"current\"/>"
-                    "<typedef name=\"tpdf\"/>"
+                    "<typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>"
                     "<uses name=\"uses-name\"/>"
                     "<when condition=\"when-cond\"/>"
                     "<action name=\"act\"/>"
@@ -2860,8 +2861,8 @@ test_case_elem(void **state)
                     "<container name=\"subcont\"/>"
                     "<description><text>desc</text></description>"
                     "<if-feature name=\"iff\"/>"
-                    "<leaf name=\"leaf\"/>"
-                    "<leaf-list name=\"llist\"/>"
+                    "<leaf name=\"leaf\"> <type name=\"type\"/> </leaf>"
+                    "<leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>"
                     "<list name=\"list\"/>"
                     "<reference><text>ref</text></reference>"
                     "<status value=\"current\"/>"
@@ -2935,8 +2936,8 @@ test_choice_elem(void **state)
                     "<default value=\"def\"/>"
                     "<description><text>desc</text></description>"
                     "<if-feature name=\"iff\"/>"
-                    "<leaf name=\"leaf\"/>"
-                    "<leaf-list name=\"llist\"/>"
+                    "<leaf name=\"leaf\"> <type name=\"type\"/> </leaf>"
+                    "<leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>"
                     "<list name=\"list\"/>"
                     "<mandatory value=\"true\" />"
                     "<reference><text>ref</text></reference>"
@@ -3004,11 +3005,11 @@ test_inout_elem(void **state)
                     "<choice name=\"choice\"/>"
                     "<container name=\"subcont\"/>"
                     "<grouping name=\"sub-grp\"/>"
-                    "<leaf name=\"leaf\"/>"
-                    "<leaf-list name=\"llist\"/>"
+                    "<leaf name=\"leaf\"> <type name=\"type\"/> </leaf>"
+                    "<leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>"
                     "<list name=\"list\"/>"
                     "<must condition=\"cond\"/>"
-                    "<typedef name=\"tpdf\"/>"
+                    "<typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>"
                     "<uses name=\"uses-name\"/>"
                 "</input>"
            ELEMENT_WRAPPER_END;
@@ -3047,11 +3048,11 @@ test_inout_elem(void **state)
                     "<choice name=\"choice\"/>"
                     "<container name=\"subcont\"/>"
                     "<grouping name=\"sub-grp\"/>"
-                    "<leaf name=\"leaf\"/>"
-                    "<leaf-list name=\"llist\"/>"
+                    "<leaf name=\"leaf\"> <type name=\"type\"/> </leaf>"
+                    "<leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>"
                     "<list name=\"list\"/>"
                     "<must condition=\"cond\"/>"
-                    "<typedef name=\"tpdf\"/>"
+                    "<typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>"
                     "<uses name=\"uses-name\"/>"
                 "</output>"
            ELEMENT_WRAPPER_END;
@@ -3118,7 +3119,7 @@ test_action_elem(void **state)
                     "<output><must condition=\"cond\"/></output>"
                     "<reference><text>ref</text></reference>"
                     "<status value=\"deprecated\"/>"
-                    "<typedef name=\"tpdf\"/>"
+                    "<typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>"
                 "</action>"
            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &act_meta, NULL, NULL, true), LY_SUCCESS);
@@ -3147,7 +3148,7 @@ test_action_elem(void **state)
                     "<output><must condition=\"cond\"/></output>"
                     "<reference><text>ref</text></reference>"
                     "<status value=\"deprecated\"/>"
-                    "<typedef name=\"tpdf\"/>"
+                    "<typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>"
                 "</rpc>"
            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &act_meta, NULL, NULL, true), LY_SUCCESS);
@@ -3195,8 +3196,8 @@ test_augment_elem(void **state)
                     "<container name=\"subcont\"/>"
                     "<description><text>desc</text></description>"
                     "<if-feature name=\"iff\"/>"
-                    "<leaf name=\"leaf\"/>"
-                    "<leaf-list name=\"llist\"/>"
+                    "<leaf name=\"leaf\"> <type name=\"type\"/> </leaf>"
+                    "<leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>"
                     "<list name=\"list\"/>"
                     "<notification name=\"notif\"/>"
                     "<reference><text>ref</text></reference>"
@@ -3405,6 +3406,51 @@ test_deviate_elem(void **state)
     st->finished_correctly = true;
 }
 
+static void
+test_deviation_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct lysp_deviation *deviations = NULL;
+
+    /* min subelems */
+    data = ELEMENT_WRAPPER_START
+                "<deviation target-node=\"target\">"
+                    "<deviate value=\"not-supported\"/>"
+                "</deviation>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &deviations, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(deviations->nodeid, "target");
+    assert_int_equal(deviations->deviates->mod, LYS_DEV_NOT_SUPPORTED);
+    FREE_ARRAY(st->ctx, deviations, lysp_deviation_free);
+    deviations = NULL;
+
+    /* max subelems */
+    data = ELEMENT_WRAPPER_START
+                "<deviation target-node=\"target\">"
+                    "<reference><text>ref</text></reference>"
+                    "<description><text>desc</text></description>"
+                    "<deviate value=\"add\"/>"
+                "</deviation>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &deviations, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(deviations->nodeid, "target");
+    assert_int_equal(deviations->deviates->mod, LYS_DEV_ADD);
+    assert_string_equal(deviations->ref, "ref");
+    assert_string_equal(deviations->dsc, "desc");
+    FREE_ARRAY(st->ctx, deviations, lysp_deviation_free);
+    deviations = NULL;
+
+    /* invalid */
+    data = ELEMENT_WRAPPER_START "<deviation target-node=\"target\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &deviations, NULL, NULL, false), LY_EVALID);
+    FREE_ARRAY(st->ctx, deviations, lysp_deviation_free);
+    deviations = NULL;
+    logbuf_assert("Missing mandatory subelement deviate of deviate element. Line number 1.");
+
+    st->finished_correctly = true;
+}
+
 int
 main(void)
 {
@@ -3475,6 +3521,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_action_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_augment_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_deviate_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_deviation_elem, setup_element_test, teardown_element_test),
     };
 
     return cmocka_run_group_tests(tests, setup_ly_ctx, destroy_ly_ctx);

@@ -2043,6 +2043,16 @@ yin_parse_augment(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, cons
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Parse deviate element.
+ *
+ * @param[in,out] ctx YIN parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] deviates Deviates to add to.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 yin_parse_deviate(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
                   struct lysp_deviate **deviates)
@@ -2146,8 +2156,38 @@ yin_parse_deviate(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, cons
 
 cleanup:
     free(d);
-    /* TODO log deviate error */
     return ret;
+}
+
+/**
+ * @brief Parse deviation element.
+ *
+ * @param[in,out] ctx YIN parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] deviations Deviations to add to.
+ *
+ * @return LY_ERR values.
+ */
+static LY_ERR
+yin_parse_deviation(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+                    struct lysp_deviation **deviations)
+{
+    struct lysp_deviation *dev;
+
+    /* create new deviation */
+    LY_ARRAY_NEW_RET(ctx->xml_ctx.ctx, *deviations, dev, LY_EMEM);
+
+    /* parse argument */
+    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_TARGET_NODE, &dev->nodeid, Y_STR_ARG, YANG_DEVIATE));
+    YANG_CHECK_NONEMPTY((struct lys_parser_ctx *)ctx, strlen(dev->nodeid), "deviation");
+    struct yin_subelement subelems[4] = {
+                                            {YANG_DESCRIPTION, &dev->dsc, YIN_SUBELEM_UNIQUE},
+                                            {YANG_DEVIATE, &dev->deviates, YIN_SUBELEM_MANDATORY},
+                                            {YANG_REFERENCE, &dev->ref, YIN_SUBELEM_UNIQUE},
+                                            {YANG_CUSTOM, NULL, 0},
+                                        };
+    return yin_parse_content(ctx, subelems, 4, data, YANG_DEVIATE, NULL, &dev->exts);
 }
 
 /**
@@ -2371,6 +2411,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     ret = yin_parse_deviate(ctx, attrs, data, (struct lysp_deviate **)subelem->dest);
                     break;
                 case YANG_DEVIATION:
+                    ret = yin_parse_deviation(ctx, attrs, data, (struct lysp_deviation **)subelem->dest);
                     break;
                 case YANG_ERROR_APP_TAG:
                     ret = yin_parse_simple_element(ctx, attrs, data, kw, (const char **)subelem->dest,
@@ -2574,10 +2615,9 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
             /* load closing element */
             LY_CHECK_RET(lyxml_get_element(&ctx->xml_ctx, data, &prefix.value, &prefix.len, &name.value, &name.len));
         }
-
-        /* mandatory subelemnts are checked only after whole element was succesfully parsed */
-        LY_CHECK_RET(yin_check_subelem_mandatory_constraint(ctx, subelem_info, subelem_info_size, current_element));
     }
+    /* mandatory subelemnts are checked only after whole element was succesfully parsed */
+    LY_CHECK_RET(yin_check_subelem_mandatory_constraint(ctx, subelem_info, subelem_info_size, current_element));
 
 cleanup:
     FREE_ARRAY(ctx, attrs, free_arg_rec);
