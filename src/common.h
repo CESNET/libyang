@@ -199,6 +199,7 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_INCHILDSTMT_YIN LYVE_SYNTAX_YIN, "Invalid element \"%.*s\" as a child of \"%.*s\"."
 #define LY_VCODE_MISSATTR    LYVE_SYNTAX_YIN, "Missing mandatory child element \"%s\" of %s element ."
 #define LY_VCODE_UNEXP_SUBELEM LYVE_SYNTAX_YIN, "Unexpected child element \"%.*s\" of %s element."
+#define LY_VCODE_INDEV_YIN   LYVE_SYNTAX_YIN, "Deviate of this type doesn't allow \"%s\" as it's sub-element."
 
 #define LY_VCODE_XP_EOE      LYVE_XPATH, "Unterminated string delimited with %c (%.15s)."
 #define LY_VCODE_XP_INEXPR   LYVE_XPATH, "Invalid character number %u of expression \'%s\'."

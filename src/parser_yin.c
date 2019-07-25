@@ -1008,7 +1008,7 @@ yin_parse_minmax(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const
                  enum yang_keyword parent, enum yang_keyword current, void *dest)
 {
     assert(current == YANG_MAX_ELEMENTS || current == YANG_MIN_ELEMENTS);
-    assert(parent == YANG_LEAF_LIST || parent == YANG_REFINE || parent == YANG_LIST);
+    assert(parent == YANG_LEAF_LIST || parent == YANG_REFINE || parent == YANG_LIST || parent == YANG_DEVIATE);
     uint32_t *lim;
     uint16_t *flags;
     struct lysp_ext_instance **exts;
@@ -1021,10 +1021,14 @@ yin_parse_minmax(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const
         lim = (current == YANG_MAX_ELEMENTS) ? &((struct lysp_refine *)dest)->max : &((struct lysp_refine *)dest)->min;
         flags = &((struct lysp_refine *)dest)->flags;
         exts = &((struct lysp_refine *)dest)->exts;
-    } else {
+    } else if (parent == YANG_LIST) {
         lim = (current == YANG_MAX_ELEMENTS) ? &((struct lysp_node_list *)dest)->max : &((struct lysp_node_list *)dest)->min;
         flags = &((struct lysp_node_list *)dest)->flags;
         exts = &((struct lysp_node_list *)dest)->exts;
+    } else {
+        lim = ((struct minmax_dev_meta *)dest)->lim;
+        flags = ((struct minmax_dev_meta *)dest)->flags;
+        exts = ((struct minmax_dev_meta *)dest)->exts;
     }
 
     if (current == YANG_MAX_ELEMENTS) {
@@ -2039,6 +2043,113 @@ yin_parse_augment(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, cons
     return LY_SUCCESS;
 }
 
+static LY_ERR
+yin_parse_deviate(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+                  struct lysp_deviate **deviates)
+{
+    LY_ERR ret = LY_SUCCESS;
+    uint8_t dev_mod;
+    const char *temp_val;
+    struct lysp_deviate *iter, *d;
+    struct lysp_deviate_add *d_add = NULL;
+    struct lysp_deviate_rpl *d_rpl = NULL;
+    struct lysp_deviate_del *d_del = NULL;
+
+    /* parse argument */
+    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_VALUE, &temp_val, Y_STR_ARG, YANG_DEVIATE));
+
+    if (strcmp(temp_val, "not-supported") == 0) {
+        dev_mod = LYS_DEV_NOT_SUPPORTED;
+    } else if (strcmp(temp_val, "add") == 0) {
+        dev_mod = LYS_DEV_ADD;
+    } else if (strcmp(temp_val, "replace") == 0) {
+        dev_mod = LYS_DEV_REPLACE;
+    } else if (strcmp(temp_val, "delete") == 0) {
+        dev_mod = LYS_DEV_DELETE;
+    } else {
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL, strlen(temp_val), temp_val, "deviate");
+        FREE_STRING(ctx->xml_ctx.ctx, temp_val);
+        return LY_EVALID;
+    }
+    FREE_STRING(ctx->xml_ctx.ctx, temp_val);
+
+    if (dev_mod == LYS_DEV_NOT_SUPPORTED) {
+        d = calloc(1, sizeof *d);
+        LY_CHECK_ERR_RET(!d, LOGMEM(ctx->xml_ctx.ctx), LY_EMEM);
+        struct yin_subelement subelems[1] = {
+                                                {YANG_CUSTOM, NULL, 0}
+                                            };
+        ret = yin_parse_content(ctx, subelems, 1, data, YANG_DEVIATE, NULL, &d->exts);
+
+    } else if (dev_mod == LYS_DEV_ADD) {
+        d_add = calloc(1, sizeof *d_add);
+        LY_CHECK_ERR_RET(!d_add, LOGMEM(ctx->xml_ctx.ctx), LY_EMEM);
+        d = (struct lysp_deviate *)d_add;
+        struct minmax_dev_meta min = {&d_add->min, &d_add->flags, &d_add->exts};
+        struct minmax_dev_meta max = {&d_add->max, &d_add->flags, &d_add->exts};
+        struct yin_subelement subelems[9] = {
+                                                {YANG_CONFIG, &d_add->flags, YIN_SUBELEM_UNIQUE},
+                                                {YANG_DEFAULT, &d_add->dflts, 0},
+                                                {YANG_MANDATORY, &d_add->flags, YIN_SUBELEM_UNIQUE},
+                                                {YANG_MAX_ELEMENTS, &max, YIN_SUBELEM_UNIQUE},
+                                                {YANG_MIN_ELEMENTS, &min, YIN_SUBELEM_UNIQUE},
+                                                {YANG_MUST, &d_add->musts, 0},
+                                                {YANG_UNIQUE, &d_add->uniques, 0},
+                                                {YANG_UNITS, &d_add->units, YIN_SUBELEM_UNIQUE},
+                                                {YANG_CUSTOM, NULL, 0},
+                                            };
+        ret = yin_parse_content(ctx, subelems, 9, data, YANG_DEVIATE, NULL, &d_add->exts);
+
+    } else if (dev_mod == LYS_DEV_REPLACE) {
+        d_rpl = calloc(1, sizeof *d_rpl);
+        LY_CHECK_ERR_RET(!d_rpl, LOGMEM(ctx->xml_ctx.ctx), LY_EMEM);
+        d = (struct lysp_deviate *)d_rpl;
+        struct minmax_dev_meta min = {&d_rpl->min, &d_rpl->flags, &d_rpl->exts};
+        struct minmax_dev_meta max = {&d_rpl->max, &d_rpl->flags, &d_rpl->exts};
+        struct yin_subelement subelems[8] = {
+                                                {YANG_CONFIG, &d_rpl->flags, YIN_SUBELEM_UNIQUE},
+                                                {YANG_DEFAULT, &d_rpl->dflt, YIN_SUBELEM_UNIQUE},
+                                                {YANG_MANDATORY, &d_rpl->flags, YIN_SUBELEM_UNIQUE},
+                                                {YANG_MAX_ELEMENTS, &max, YIN_SUBELEM_UNIQUE},
+                                                {YANG_MIN_ELEMENTS, &min, YIN_SUBELEM_UNIQUE},
+                                                {YANG_TYPE, &d_rpl->type, YIN_SUBELEM_UNIQUE},
+                                                {YANG_UNITS, &d_rpl->units, YIN_SUBELEM_UNIQUE},
+                                                {YANG_CUSTOM, NULL, 0},
+                                            };
+        ret = yin_parse_content(ctx, subelems, 8, data, YANG_DEVIATE, NULL, &d_rpl->exts);
+
+    } else {
+        d_del = calloc(1, sizeof *d_del);
+        LY_CHECK_ERR_RET(!d_del, LOGMEM(ctx->xml_ctx.ctx), LY_EMEM);
+        d = (struct lysp_deviate *)d_del;
+        struct yin_subelement subelems[5] = {
+                                                {YANG_DEFAULT, &d_del->dflts, 0},
+                                                {YANG_MUST, &d_del->musts, 0},
+                                                {YANG_UNIQUE, &d_del->uniques, 0},
+                                                {YANG_UNITS, &d_del->units, YIN_SUBELEM_UNIQUE},
+                                                {YANG_CUSTOM, NULL, 0},
+                                            };
+        ret = yin_parse_content(ctx, subelems, 5, data, YANG_DEVIATE, NULL, &d_del->exts);
+    }
+    LY_CHECK_GOTO(ret, cleanup);
+
+    d->mod = dev_mod;
+    /* insert into siblings */
+    if (!*deviates) {
+        *deviates = d;
+    } else {
+        for (iter = *deviates; iter->next; iter = iter->next);
+        iter->next = d;
+    }
+
+    return ret;
+
+cleanup:
+    free(d);
+    /* TODO log deviate error */
+    return ret;
+}
+
 /**
  * @brief Map keyword type to substatement info.
  *
@@ -2153,33 +2264,41 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 /* check if this element can be child of current element */
                 subelem = get_record(kw, subelem_info_size, subelem_info);
                 if (!subelem) {
-                    LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_UNEXP_SUBELEM, name.len, name.value, ly_stmt2str(current_element));
+                    if (current_element == YANG_DEVIATE && isdevsub(kw)) {
+                        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INDEV_YIN, ly_stmt2str(kw));
+                    } else {
+                        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_UNEXP_SUBELEM, name.len, name.value, ly_stmt2str(current_element));
+                    }
                     ret = LY_EVALID;
                     goto cleanup;
                 }
 
                 /* TODO check relative order */
 
-                /* check flags */
-                /* if element is unique and already defined log error */
+                /* flag check */
                 if ((subelem->flags & YIN_SUBELEM_UNIQUE) && (subelem->flags & YIN_SUBELEM_PARSED)) {
+                    /* subelement uniquenes */
                     LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LYVE_SYNTAX_YIN, "Redefinition of %s element in %s element.", ly_stmt2str(kw), ly_stmt2str(current_element));
                     return LY_EVALID;
                 }
                 if (subelem->flags & YIN_SUBELEM_FIRST) {
+                    /* subelement is supposed to be defined as first subelement */
                     ret = yin_check_subelem_first_constraint(ctx, subelem_info, subelem_info_size, current_element, subelem);
                     LY_CHECK_GOTO(ret, cleanup);
                 }
                 if (subelem->flags & YIN_SUBELEM_VER2) {
+                    /* subelement is supported only in version 1.1 or higher */
                     if (ctx->mod_version < 2) {
                         LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LYVCODE_INSUBELEM2, ly_stmt2str(kw), ly_stmt2str(current_element));
                         ret = LY_EVALID;
                         goto cleanup;
                     }
                 }
+                /* note that element was parsed for easy uniqueness check in next iterations */
                 subelem->flags |= YIN_SUBELEM_PARSED;
 
                 switch (kw) {
+                /* call responsible function */
                 case YANG_CUSTOM:
                     ret = yin_parse_extension_instance(ctx, attrs, data, name2fullname(name.value, prefix.len),
                                                       namelen2fulllen(name.len, prefix.len),
@@ -2249,6 +2368,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     }
                     break;
                 case YANG_DEVIATE:
+                    ret = yin_parse_deviate(ctx, attrs, data, (struct lysp_deviate **)subelem->dest);
                     break;
                 case YANG_DEVIATION:
                     break;
@@ -2380,8 +2500,14 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 case YANG_SUBMODULE:
                     break;
                 case YANG_TYPE:
+                    if (current_element == YANG_DEVIATE) {
+                        *(struct lysp_type **)subelem->dest = calloc(1, sizeof **(struct lysp_type **)subelem->dest);
+                        LY_CHECK_ERR_GOTO(!(*(struct lysp_type **)subelem->dest), LOGMEM(ctx->xml_ctx.ctx); ret = LY_EMEM, cleanup);
+                        type = *((struct lysp_type **)subelem->dest);
+                    } else  {
+                        type = (struct lysp_type *)subelem->dest;
+                    }
                     /* type as child of another type */
-                    type = (struct lysp_type *)subelem->dest;
                     if (current_element == YANG_TYPE) {
                         LY_ARRAY_NEW_GOTO(ctx->xml_ctx.ctx, type->types, nested_type, ret, cleanup);
                         type->flags |= LYS_SET_TYPE;
@@ -2428,6 +2554,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
         } else {
             /* elements with text or none content */
             /* save text content, if text_content isn't set, it's just ignored */
+            /* no resources are allocated in this branch so no need to use cleanup label */
             LY_CHECK_RET(yin_validate_value(ctx, Y_STR_ARG, out, out_len));
             if (text_content) {
                 if (dynamic) {
@@ -2448,6 +2575,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
             LY_CHECK_RET(lyxml_get_element(&ctx->xml_ctx, data, &prefix.value, &prefix.len, &name.value, &name.len));
         }
 
+        /* mandatory subelemnts are checked only after whole element was succesfully parsed */
         LY_CHECK_RET(yin_check_subelem_mandatory_constraint(ctx, subelem_info, subelem_info_size, current_element));
     }
 
@@ -2706,7 +2834,7 @@ yin_parse_extension_instance(struct yin_parser_ctx *ctx, struct yin_arg_record *
                     /* end of extension instance reached */
                     break;
                 }
-                LY_CHECK_RET(yin_parse_element_generic(ctx, name, name_len, prefix, prefix_len, data, &new_subelem));
+                LY_CHECK_RET(yin_parse_element_generic(ctx, name, name_len, data, &new_subelem));
                 if (!e->child) {
                     e->child = new_subelem;
                 } else {
@@ -2735,13 +2863,13 @@ yin_parse_extension_instance(struct yin_parser_ctx *ctx, struct yin_arg_record *
 }
 
 LY_ERR
-yin_parse_element_generic(struct yin_parser_ctx *ctx, const char *name, size_t name_len, const char *prefix,
-                          size_t prefix_len, const char **data, struct lysp_stmt **element)
+yin_parse_element_generic(struct yin_parser_ctx *ctx, const char *name, size_t name_len, const char **data,
+                          struct lysp_stmt **element)
 {
     LY_ERR ret = LY_SUCCESS;
     const char *temp_prefix, *temp_name;
     char *out = NULL;
-    size_t out_len, temp_name_len, temp_prefix_len;
+    size_t out_len, temp_name_len, temp_prefix_len, prefix_len;
     int dynamic;
     struct yin_arg_record *subelem_args = NULL;
     struct lysp_stmt *last = NULL, *new = NULL;
@@ -2800,7 +2928,7 @@ yin_parse_element_generic(struct yin_parser_ctx *ctx, const char *name, size_t n
                 /* end of element reached */
                 break;
             }
-            ret = yin_parse_element_generic(ctx, temp_name, temp_name_len, temp_prefix, temp_prefix_len, data, &last->next);
+            ret = yin_parse_element_generic(ctx, temp_name, temp_name_len, data, &last->next);
             LY_CHECK_GOTO(ret, err);
             last = last->next;
         }

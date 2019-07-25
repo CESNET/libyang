@@ -29,6 +29,14 @@ extern const char *const yin_attr_list[];
 #define name2fullname(name, prefix_len) (prefix_len != 0 ? name - (prefix_len + 1) : name)
 #define namelen2fulllen(name_len, prefix_len) (prefix_len != 0 ? name_len + prefix_len + 1 : name_len)
 
+/* shortcut to determin if keyword can in general be subelement of deviation regardles of it's type */
+#define isdevsub(kw) (kw == YANG_CONFIG || kw == YANG_DEFAULT || kw == YANG_MANDATORY || \
+                      kw == YANG_MAX_ELEMENTS || kw == YANG_MIN_ELEMENTS ||              \
+                      kw == YANG_MUST || kw == YANG_TYPE || kw == YANG_UNIQUE ||         \
+                      kw == YANG_UNITS || kw == YANG_CUSTOM)
+
+/* get deviate type from  */
+
 enum YIN_ARGUMENT {
     YIN_ARG_UNKNOWN = 0,   /**< parsed argument can not be matched with any supported yin argument keyword */
     YIN_ARG_NAME,          /**< argument name */
@@ -137,6 +145,12 @@ struct inout_meta {
 struct action_meta {
     struct lysp_node *parent;         /**< Parent node. */
     struct lysp_action **actions;     /**< Actions to add to. */
+};
+
+struct minmax_dev_meta {
+    uint32_t *lim;
+    uint16_t *flags;
+    struct lysp_ext_instance **exts;
 };
 
 /**
@@ -351,14 +365,12 @@ LY_ERR yin_parse_extension_instance(struct yin_parser_ctx *ctx, struct yin_arg_r
  * @param[in,out] ctx Yin parser context for logging and to store current state.
  * @param[in] name Name of element.
  * @param[in] name_len Length of elements Name.
- * @param[in] prefix Element prefix.
- * @param[in] prefix_len Length of element prefix.
  * @param[in,out] data Data to read from, always moved to currently handled character.
  * @param[out] element Where the element structure should be stored.
  *
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_element_generic(struct yin_parser_ctx *ctx, const char *name, size_t name_len, const char *prefix,
-                                 size_t prefix_len, const char **data, struct lysp_stmt **element);
+LY_ERR yin_parse_element_generic(struct yin_parser_ctx *ctx, const char *name, size_t name_len, const char **data,
+                                 struct lysp_stmt **element);
 
 #endif /* LY_PARSER_YIN_H_*/

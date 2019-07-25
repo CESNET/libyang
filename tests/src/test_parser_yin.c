@@ -44,6 +44,7 @@ void lysp_grp_free(struct ly_ctx *ctx, struct lysp_grp *grp);
 void lysp_action_inout_free(struct ly_ctx *ctx, struct lysp_action_inout *inout);
 void lysp_action_free(struct ly_ctx *ctx, struct lysp_action *action);
 void lysp_augment_free(struct ly_ctx *ctx, struct lysp_augment *augment);
+void lysp_deviate_free(struct ly_ctx *ctx, struct lysp_deviate *d);
 
 struct state {
     struct ly_ctx *ctx;
@@ -58,7 +59,7 @@ char logbuf[BUFSIZE] = {0};
 int store = -1; /* negative for infinite logging, positive for limited logging */
 
 /* set to 0 to printing error messages to stderr instead of checking them in code */
-#define ENABLE_LOGGER_CHECKING 0
+#define ENABLE_LOGGER_CHECKING 1
 
 #if ENABLE_LOGGER_CHECKING
 static void
@@ -353,7 +354,7 @@ test_yin_parse_element_generic(void **state)
 
     const char *data = "<elem attr=\"value\">text_value</elem>";
     lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    ret = yin_parse_element_generic(st->yin_ctx, name, name_len, prefix, prefix_len, &data, &exts.child);
+    ret = yin_parse_element_generic(st->yin_ctx, name, name_len, &data, &exts.child);
     assert_int_equal(ret, LY_SUCCESS);
     assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
     assert_string_equal(exts.child->stmt, "elem");
@@ -366,7 +367,7 @@ test_yin_parse_element_generic(void **state)
 
     data = "<elem></elem>";
     lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    ret = yin_parse_element_generic(st->yin_ctx, name, name_len, prefix, prefix_len, &data, &exts.child);
+    ret = yin_parse_element_generic(st->yin_ctx, name, name_len, &data, &exts.child);
     assert_int_equal(ret, LY_SUCCESS);
     assert_string_equal(exts.child->stmt, "elem");
     assert_null(exts.child->child);
@@ -3247,6 +3248,163 @@ test_augment_elem(void **state)
     st->finished_correctly = true;
 }
 
+static void
+test_deviate_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct lysp_deviate *deviates = NULL;
+    struct lysp_deviate_add *d_add;
+    struct lysp_deviate_rpl *d_rpl;
+    struct lysp_deviate_del *d_del;
+
+    /* all valid arguments with min subelems */
+    data = ELEMENT_WRAPPER_START "<deviate value=\"not-supported\" />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &deviates, NULL, NULL, true), LY_SUCCESS);
+    assert_int_equal(deviates->mod, LYS_DEV_NOT_SUPPORTED);
+    lysp_deviate_free(st->ctx, deviates);
+    free(deviates);
+    deviates = NULL;
+
+    data = ELEMENT_WRAPPER_START "<deviate value=\"add\" />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &deviates, NULL, NULL, true), LY_SUCCESS);
+    assert_int_equal(deviates->mod, LYS_DEV_ADD);
+    lysp_deviate_free(st->ctx, deviates);
+    free(deviates);
+    deviates = NULL;
+
+    data = ELEMENT_WRAPPER_START "<deviate value=\"replace\" />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &deviates, NULL, NULL, true), LY_SUCCESS);
+    assert_int_equal(deviates->mod, LYS_DEV_REPLACE);
+    lysp_deviate_free(st->ctx, deviates);
+    free(deviates);
+    deviates = NULL;
+
+    data = ELEMENT_WRAPPER_START "<deviate value=\"delete\" />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &deviates, NULL, NULL, true), LY_SUCCESS);
+    assert_int_equal(deviates->mod, LYS_DEV_DELETE);
+    lysp_deviate_free(st->ctx, deviates);
+    free(deviates);
+    deviates = NULL;
+
+    /* max subelems and valid arguments */
+    data = ELEMENT_WRAPPER_START
+                "<deviate value=\"not-supported\">"
+                "</deviate>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &deviates, NULL, NULL, true), LY_SUCCESS);
+    assert_int_equal(deviates->mod, LYS_DEV_NOT_SUPPORTED);
+    lysp_deviate_free(st->ctx, deviates);
+    free(deviates);
+    deviates = NULL;
+
+    data = ELEMENT_WRAPPER_START
+                "<deviate value=\"add\">"
+                    "<units name=\"units\"/>"
+                    "<must condition=\"cond\"/>"
+                    "<unique tag=\"utag\"/>"
+                    "<default value=\"def\"/>"
+                    "<config value=\"true\"/>"
+                    "<mandatory value=\"true\"/>"
+                    "<min-elements value=\"5\"/>"
+                    "<max-elements value=\"15\"/>"
+                "</deviate>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &deviates, NULL, NULL, true), LY_SUCCESS);
+    d_add = (struct lysp_deviate_add *)deviates;
+    assert_int_equal(d_add->mod, LYS_DEV_ADD);
+    assert_null(d_add->next);
+    assert_null(d_add->exts);
+    assert_string_equal(d_add->units, "units");
+    assert_string_equal(d_add->musts->arg, "cond");
+    assert_string_equal(*d_add->uniques, "utag");
+    assert_string_equal(*d_add->dflts, "def");
+    assert_true(d_add->flags & LYS_MAND_TRUE && d_add->flags & LYS_CONFIG_W);
+    assert_int_equal(d_add->min, 5);
+    assert_int_equal(d_add->max, 15);
+    lysp_deviate_free(st->ctx, deviates);
+    free(deviates);
+    deviates = NULL;
+
+    data = ELEMENT_WRAPPER_START
+                "<deviate value=\"replace\">"
+                    "<type name=\"newtype\"/>"
+                    "<units name=\"uni\"/>"
+                    "<default value=\"def\"/>"
+                    "<config value=\"true\"/>"
+                    "<mandatory value=\"true\"/>"
+                    "<min-elements value=\"5\"/>"
+                    "<max-elements value=\"15\"/>"
+                "</deviate>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &deviates, NULL, NULL, true), LY_SUCCESS);
+    d_rpl = (struct lysp_deviate_rpl *)deviates;
+    assert_int_equal(d_rpl->mod, LYS_DEV_REPLACE);
+    assert_null(d_rpl->next);
+    assert_null(d_rpl->exts);
+    assert_string_equal(d_rpl->type->name, "newtype");
+    assert_string_equal(d_rpl->units, "uni");
+    assert_string_equal(d_rpl->dflt, "def");
+    assert_true(d_rpl->flags & LYS_MAND_TRUE && d_rpl->flags & LYS_CONFIG_W);
+    assert_int_equal(d_rpl->min, 5);
+    assert_int_equal(d_rpl->max, 15);
+    lysp_deviate_free(st->ctx, deviates);
+    free(deviates);
+    deviates = NULL;
+
+    data = ELEMENT_WRAPPER_START
+                "<deviate value=\"delete\">"
+                    "<units name=\"u\"/>"
+                    "<must condition=\"c\"/>"
+                    "<unique tag=\"tag\"/>"
+                    "<default value=\"default\"/>"
+                "</deviate>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &deviates, NULL, NULL, true), LY_SUCCESS);
+    d_del = (struct lysp_deviate_del *)deviates;
+    assert_int_equal(d_del->mod, LYS_DEV_DELETE);
+    assert_null(d_del->next);
+    assert_null(d_del->exts);
+    assert_string_equal(d_del->units, "u");
+    assert_string_equal(d_del->musts->arg, "c");
+    assert_string_equal(*d_del->uniques, "tag");
+    assert_string_equal(*d_del->dflts, "default");
+    lysp_deviate_free(st->ctx, deviates);
+    free(deviates);
+    deviates = NULL;
+
+    /* invalid arguments */
+    data = ELEMENT_WRAPPER_START "<deviate value=\"\" />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &deviates, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Invalid value \"\" of \"deviate\". Line number 1.");
+    deviates = NULL;
+
+    data = ELEMENT_WRAPPER_START "<deviate value=\"invalid\" />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &deviates, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Invalid value \"invalid\" of \"deviate\". Line number 1.");
+    deviates = NULL;
+
+    data = ELEMENT_WRAPPER_START "<deviate value=\"ad\" />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &deviates, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Invalid value \"ad\" of \"deviate\". Line number 1.");
+    deviates = NULL;
+
+    data = ELEMENT_WRAPPER_START "<deviate value=\"adds\" />" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &deviates, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Invalid value \"adds\" of \"deviate\". Line number 1.");
+    deviates = NULL;
+
+    data = ELEMENT_WRAPPER_START
+                "<deviate value=\"not-supported\">"
+                    "<must condition=\"c\"/>"
+                "</deviate>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &deviates, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Deviate of this type doesn't allow \"must\" as it's sub-element. Line number 1.");
+
+    st->finished_correctly = true;
+}
+
 int
 main(void)
 {
@@ -3316,6 +3474,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_inout_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_action_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_augment_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_deviate_elem, setup_element_test, teardown_element_test),
     };
 
     return cmocka_run_group_tests(tests, setup_ly_ctx, destroy_ly_ctx);
