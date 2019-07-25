@@ -420,7 +420,7 @@ error:
 LY_ERR
 lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, const struct lyd_node **trees, struct lyd_node **result)
 {
-    LY_ERR ret;
+    LY_ERR ret = LY_SUCCESS;
     struct lyd_node_inner *parent = NULL;
     struct lyd_xml_ctx xmlctx = {0};
 
