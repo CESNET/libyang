@@ -545,11 +545,18 @@ struct lyd_node *lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int
 struct lyd_node *lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int options, const struct lyd_node **trees);
 
 /**
- * @brief Free all the nodes in the data tree.
+ * @brief Free all the nodes (even parents of the node) in the data tree.
  *
  * @param[in] node Any of the nodes inside the tree.
  */
 void lyd_free_all(struct lyd_node *node);
+
+/**
+ * @brief Free all the sibling nodes.
+ *
+ * @param[in] node Any of the sibling nodes to free.
+ */
+void lyd_free_withsiblings(struct lyd_node *node);
 
 /**
  * @brief Free (and unlink) the specified data (sub)tree.
