@@ -182,7 +182,7 @@ remove_nodelevel:
             for (; ctx->path[ctx->path_len] != '/' ; --ctx->path_len);
             if (ctx->path_len == 0) {
                 /* top-level (last segment) */
-                ++ctx->path_len;
+                ctx->path_len = 1;
             }
         }
         /* set new terminating NULL-byte */
@@ -209,7 +209,12 @@ remove_nodelevel:
         } else {
             len = snprintf(&ctx->path[ctx->path_len], LYSC_CTX_BUFSIZE - ctx->path_len, "='%s'}", name);
         }
-        ctx->path_len += len;
+        if (len >= LYSC_CTX_BUFSIZE - ctx->path_len) {
+            /* output truncated */
+            ctx->path_len = LYSC_CTX_BUFSIZE - 1;
+        } else {
+            ctx->path_len += len;
+        }
     }
 }
 
