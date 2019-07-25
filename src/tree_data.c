@@ -633,3 +633,230 @@ all_children_compare:
     LOGINT(node1->schema->module->ctx);
     return LY_EINT;
 }
+
+/**
+ * @brief Duplicates just a single node and interconnect it into a @p parent (if present) and after the @p prev
+ * sibling (if present).
+ *
+ * Ignores LYD_DUP_WITH_PARENTS and LYD_DUP_WITH_SIBLINGS which are supposed to be handled by lyd_dup().
+ */
+static struct lyd_node *
+lyd_dup_recursive(const struct lyd_node *node, struct lyd_node_inner *parent, struct lyd_node *prev, int options)
+{
+    struct ly_ctx *ctx;
+    struct lyd_node *dup = NULL;
+
+    LY_CHECK_ARG_RET(NULL, node, NULL);
+    ctx = node->schema->module->ctx;
+
+    switch (node->schema->nodetype) {
+    case LYS_ACTION:
+    case LYS_NOTIF:
+    case LYS_CONTAINER:
+    case LYS_LIST:
+        dup = calloc(1, sizeof(struct lyd_node_inner));
+        break;
+    case LYS_LEAF:
+    case LYS_LEAFLIST:
+        dup = calloc(1, sizeof(struct lyd_node_term));
+        break;
+    case LYS_ANYDATA:
+    case LYS_ANYXML:
+        dup = calloc(1, sizeof(struct lyd_node_any));
+        break;
+    default:
+        LOGINT(ctx);
+        goto error;
+    }
+
+    /* TODO implement LYD_DUP_WITH_WHEN */
+    dup->flags = node->flags;
+    dup->schema = node->schema;
+
+    /* interconnect the node at the end */
+    dup->parent = parent;
+    if (prev) {
+        dup->prev = prev;
+        prev->next = dup;
+    } else {
+        dup->prev = dup;
+        if (parent) {
+            parent->child = dup;
+        }
+    }
+    if (parent) {
+        parent->child->prev = dup;
+    } else if (prev) {
+        struct lyd_node *first;
+        for (first = prev; first->prev != prev; first = first->prev);
+        first->prev = dup;
+    }
+
+    /* TODO duplicate attributes, implement LYD_DUP_NO_ATTR */
+
+    /* nodetype-specific work */
+    if (dup->schema->nodetype & LYD_NODE_TERM) {
+        struct lyd_node_term *term = (struct lyd_node_term*)dup;
+        struct lyd_node_term *orig = (struct lyd_node_term*)node;
+
+        term->hash = orig->hash;
+        term->value.realtype = orig->value.realtype;
+        LY_CHECK_ERR_GOTO(term->value.realtype->plugin->duplicate(ctx, &orig->value, &term->value),
+                          LOGERR(ctx, LY_EINT, "Value duplication failed."), error);
+    } else if (dup->schema->nodetype & LYD_NODE_INNER) {
+        struct lyd_node_inner *inner = (struct lyd_node_inner*)dup;
+        struct lyd_node_inner *orig = (struct lyd_node_inner*)node;
+        struct lyd_node *child, *last = NULL;
+
+        if (options & LYD_DUP_RECURSIVE) {
+            /* duplicate all the children */
+            LY_LIST_FOR(orig->child, child) {
+                last = lyd_dup_recursive(child, inner, last, options);
+                LY_CHECK_GOTO(!last, error);
+            }
+        } else if (dup->schema->nodetype == LYS_LIST && ((struct lysc_node_list*)dup->schema)->keys) {
+            /* always duplicate keys of a list */
+            unsigned int u;
+
+            child = orig->child;
+            LY_ARRAY_FOR(((struct lysc_node_list*)dup->schema)->keys, u) {
+                if (!child) {
+                    /* possibly not keys are present in filtered tree */
+                    break;
+                }
+                last = lyd_dup_recursive(child, inner, last, options);
+                child = child->next;
+            }
+        }
+        lyd_hash(dup);
+    } else if (dup->schema->nodetype & LYD_NODE_ANY) {
+        struct lyd_node_any *any = (struct lyd_node_any*)dup;
+        struct lyd_node_any *orig = (struct lyd_node_any*)node;
+
+        any->hash = orig->hash;
+        any->value_type = orig->value_type;
+        switch (any->value_type) {
+        case LYD_ANYDATA_DATATREE:
+            if (orig->value.tree) {
+                any->value.tree = lyd_dup(orig->value.tree, NULL, LYD_DUP_RECURSIVE | LYD_DUP_WITH_SIBLINGS);
+                LY_CHECK_GOTO(!any->value.tree, error);
+            }
+            break;
+        case LYD_ANYDATA_STRING:
+        case LYD_ANYDATA_XML:
+        case LYD_ANYDATA_JSON:
+            if (orig->value.str) {
+                any->value.str = lydict_insert(ctx, orig->value.str, strlen(orig->value.str));
+            }
+            break;
+        }
+    }
+
+    lyd_insert_hash(dup);
+    return dup;
+
+error:
+    if (!parent && !prev) {
+        lyd_free_tree(dup);
+    }
+    return NULL;
+}
+
+API struct lyd_node *
+lyd_dup(const struct lyd_node *node, struct lyd_node_inner *parent, int options)
+{
+    struct ly_ctx *ctx;
+    const struct lyd_node *orig;          /* original node to be duplicated */
+    struct lyd_node *first = NULL;        /* the first duplicated node, this is returned */
+    struct lyd_node *last = NULL;         /* the last sibling of the duplicated nodes */
+    struct lyd_node *top = NULL;          /* the most higher created node */
+    struct lyd_node_inner *local_parent = NULL; /* the direct parent node for the duplicated node(s) */
+    int keyless_parent_list = 0;
+
+    LY_CHECK_ARG_RET(NULL, node, NULL);
+    ctx = node->schema->module->ctx;
+
+    if (options & LYD_DUP_WITH_PARENTS) {
+        struct lyd_node_inner *orig_parent, *iter;
+        int repeat = 1;
+        for (top = NULL, orig_parent = node->parent; repeat && orig_parent; orig_parent = orig_parent->parent) {
+            if (parent && parent->schema == orig_parent->schema) {
+                /* stop creating parents, connect what we have into the provided parent */
+                iter = parent;
+                repeat = 0;
+                /* get know if there is a keyless list which we will have to rehash */
+                for (struct lyd_node_inner *piter = parent; piter; piter = piter->parent) {
+                    if (piter->schema->nodetype == LYS_LIST && !((struct lysc_node_list*)piter->schema)->keys) {
+                        keyless_parent_list = 1;
+                        break;
+                    }
+                }
+            } else {
+                iter = (struct lyd_node_inner*)lyd_dup_recursive((struct lyd_node*)orig_parent, NULL, NULL, 0);
+                LY_CHECK_GOTO(!iter, error);
+            }
+            if (!local_parent) {
+                local_parent = iter;
+            }
+            if (iter->child) {
+                /* 1) list - add after keys
+                 * 2) provided parent with some children */
+                iter->child->prev->next = top;
+                if (top) {
+                    top->prev = iter->child->prev;
+                    iter->child->prev = top;
+                }
+            } else {
+                iter->child = top;
+                if (iter->schema->nodetype == LYS_LIST) {
+                    /* keyless list - we will need to rehash it since we are going to add nodes into it */
+                    keyless_parent_list = 1;
+                }
+            }
+            if (top) {
+                top->parent = iter;
+            }
+            top = (struct lyd_node*)iter;
+        }
+        if (repeat && parent) {
+            /* given parent and created parents chain actually do not interconnect */
+            LOGERR(ctx, LY_EINVAL, "Invalid argument parent (%s()) - does not interconnect with the created node's parents chain.", __func__);
+            goto error;
+        }
+    } else {
+        local_parent = parent;
+    }
+
+    if (local_parent && local_parent->child) {
+        last = local_parent->child->prev;
+    }
+
+    LY_LIST_FOR(node, orig) {
+        last = lyd_dup_recursive(orig, local_parent, last, options);
+        LY_CHECK_GOTO(!last, error);
+        if (!first) {
+            first = last;
+        }
+
+        if (!(options & LYD_DUP_WITH_SIBLINGS)) {
+            break;
+        }
+    }
+    if (keyless_parent_list) {
+        /* rehash */
+        for (; local_parent; local_parent = local_parent->parent) {
+            if (local_parent->schema->nodetype == LYS_LIST && !((struct lysc_node_list*)local_parent->schema)->keys) {
+                lyd_hash((struct lyd_node*)local_parent);
+            }
+        }
+    }
+    return first;
+
+error:
+    if (top) {
+        lyd_free_tree(top);
+    } else {
+        lyd_free_withsiblings(first);
+    }
+    return NULL;
+}

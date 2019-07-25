@@ -201,6 +201,11 @@ test_list(void **state)
 
     assert_int_equal(LY_EVALID, lyd_parse_xml(ctx, data, LYD_OPT_STRICT, NULL, &tree));
     logbuf_assert("Invalid position of the key \"b\" in a list. Line number 1.");
+/* TODO validation
+    data = "<l1 xmlns=\"urn:tests:a\"><a>a</a><c>c</c><d>d</d></l1>";
+    assert_int_equal(LY_EVALID, lyd_parse_xml(ctx, data, LYD_OPT_STRICT, NULL, &tree));
+    logbuf_assert("Missing key \"b\" in a list. Line number 1.");
+*/
 
     *state = NULL;
 }

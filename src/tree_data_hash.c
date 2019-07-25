@@ -54,7 +54,7 @@ lyd_hash(struct lyd_node *node)
         if (((struct lysc_node_list*)node->schema)->keys) {
             /* list's hash is made of its keys */
             unsigned int keys_count = LY_ARRAY_SIZE(((struct lysc_node_list*)node->schema)->keys);
-            for (iter = list->child; keys_count; --keys_count, iter = iter->next) {
+            for (iter = list->child; iter && keys_count; --keys_count, iter = iter->next) {
                 int dynamic = 0;
                 struct lysc_type *type = ((struct lysc_node_leaf*)iter->schema)->type;
                 const char *value = type->plugin->print(&((struct lyd_node_term*)iter)->value, LYD_JSON, json_print_get_prefix, NULL, &dynamic);

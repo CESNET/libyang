@@ -121,16 +121,16 @@ typedef enum {
  * @brief List of possible value types stored in ::lyd_node_anydata.
  */
 typedef enum {
-    LYD_ANYDATA_DATATREE = 0x01,     /**< Value is a pointer to lyd_node structure (first sibling). When provided as input parameter, the pointer
+    LYD_ANYDATA_DATATREE,            /**< Value is a pointer to lyd_node structure (first sibling). When provided as input parameter, the pointer
                                           is directly connected into the anydata node without duplication, caller is supposed to not manipulate
                                           with the data after a successful call (including calling lyd_free() on the provided data) */
-    LYD_ANYDATA_STRING = 0x02,       /**< Value is a generic string without any knowledge about its format (e.g. anyxml value in JSON encoded
+    LYD_ANYDATA_STRING,              /**< Value is a generic string without any knowledge about its format (e.g. anyxml value in JSON encoded
                                           as string). XML sensitive characters (such as & or \>) are automatically escaped when the anydata
                                           is printed in XML format. */
-    LYD_ANYDATA_XML = 0x04,          /**< Value is a string containing the serialized XML data. */
-    LYD_ANYDATA_JSON = 0x08,         /**< Value is a string containing the data modeled by YANG and encoded as I-JSON. */
+    LYD_ANYDATA_XML,                 /**< Value is a string containing the serialized XML data. */
+    LYD_ANYDATA_JSON,                /**< Value is a string containing the data modeled by YANG and encoded as I-JSON. */
 #if 0 /* TODO LYB format */
-    LYD_ANYDATA_LYB = 0x10,          /**< Value is a memory chunk with the serialized data tree in LYB format. */
+    LYD_ANYDATA_LYB,                 /**< Value is a memory chunk with the serialized data tree in LYB format. */
 #endif
 } LYD_ANYDATA_VALUETYPE;
 
@@ -670,7 +670,7 @@ LY_ERR lyd_value_compare(const struct lyd_node_term *node, const char *value, si
  * @defgroup datacompareoptions Data compare options
  * @ingroup datatree
  *
- * Various options to change the lyd_compare behavior.
+ * Various options to change the lyd_compare() behavior.
  */
 #define LYD_COMPARE_FULL_RECURSION 0x01 /* lists and containers are the same only in case all they children
                                            (subtree, so direct as well as indirect children) are the same. By default,
@@ -679,7 +679,7 @@ LY_ERR lyd_value_compare(const struct lyd_node_term *node, const char *value, si
 #define LYD_COMPARE_DEFAULTS 0x02       /* By default, implicit and explicit default nodes are considered to be equal. This flag
                                            changes this behavior and implicit (automatically created default node) and explicit
                                            (explicitly created node with the default value) default nodes are considered different. */
-/**@} dataparseroptions */
+/**@} datacompareoptions */
 
 /**
  * @brief Compare 2 data nodes if they are equivalent.
@@ -690,6 +690,47 @@ LY_ERR lyd_value_compare(const struct lyd_node_term *node, const char *value, si
  * @return LY_ENOT if the nodes are not equivalent.
  */
 LY_ERR lyd_compare(const struct lyd_node *node1, const struct lyd_node *node2, int options);
+
+/**
+ * @defgroup dupoptions Data duplication options
+ * @ingroup datatree
+ *
+ * Various options to change lyd_dup() behavior.
+ *
+ * Default behavior:
+ * - only the specified node is duplicated without siblings, parents, or children.
+ * - all the attributes of the duplicated nodes are also duplicated.
+ * @{
+ */
+
+#define LYD_DUP_RECURSIVE    0x01  /**< Duplicate not just the node but also all the children. Note that
+                                        list's keys are always duplicated. */
+#define LYD_DUP_NO_ATTR      0x02  /**< Do not duplicate attributes of any node. */
+#define LYD_DUP_WITH_PARENTS 0x04  /**< If a nested node is being duplicated, duplicate also all the parents.
+                                        Keys are also duplicated for lists. Return value does not change! */
+#define LYD_DUP_WITH_SIBLINGS 0x08 /**< Duplicate also all the sibling of the given node. */
+#define LYD_DUP_WITH_WHEN     0x10 /**< Also copy any when evaluation state flags. This is useful in case the copied
+                                        nodes are actually still part of the same datastore meaning no dependency data
+                                        could have changed. Otherwise nothing is assumed about the copied node when
+                                        state and it is evaluated from scratch during validation. */
+
+/** @} dupoptions */
+
+/**
+ * @brief Create a copy of the specified data tree \p node. Schema references are kept the same.
+ *
+ * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
+ *
+ * @param[in] node Data tree node to be duplicated.
+ * @param[in] parent Optional parent node where to connect the duplicated node(s).
+ * If set in combination with LYD_DUP_WITH_PARENTS, the parents chain is duplicated until it comes to and connect with the @p parent
+ * (if the parents chain does not match at some node the schema node of the provided @p parent, duplication fails).
+ * @param[in] options Bitmask of options flags, see @ref dupoptions.
+ * @return Created copy of the provided data \p node (the first of the duplicated siblings when LYD_DUP_WITH_SIBLINGS used).
+ * Note that in case the parents chain is duplicated for the duplicated node(s) (when LYD_DUP_WITH_PARENTS used), the first duplicated node
+ * is still returned, not a pointer to the duplicated parents.
+ */
+struct lyd_node *lyd_dup(const struct lyd_node *node, struct lyd_node_inner *parent, int options);
 
 /**
  * @brief Resolve instance-identifier defined by lyd_value_path structure.
