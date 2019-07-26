@@ -97,6 +97,12 @@ struct lys_parser_ctx {
     uint64_t indent;    /**< current position on the line for YANG indentation */
 };
 
+struct lysc_incomplete_dflt {
+    struct lyd_value *dflt;
+    struct lys_module *dflt_mod;
+    struct lysc_node *context_node;
+};
+
 /**
  * @brief internal context for compilation
  */
@@ -109,6 +115,7 @@ struct lysc_ctx {
                                      the target module (mod) */
     struct ly_set groupings;    /**< stack for groupings circular check */
     struct ly_set unres;        /**< to validate leafref's target and xpath of when/must */
+    struct ly_set dflts;        /**< set of incomplete default values */
     struct ly_set tpdf_chain;
     uint16_t path_len;
     int options;                /**< various @ref scflags. */

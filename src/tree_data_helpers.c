@@ -53,7 +53,7 @@ lyd_node_children(const struct lyd_node *node)
 }
 
 LY_ERR
-lyd_parse_check_options(struct ly_ctx *ctx, int options, const char *func)
+lyd_parse_options_check(struct ly_ctx *ctx, int options, const char *func)
 {
     int x = options & LYD_OPT_TYPEMASK;
 
@@ -81,4 +81,31 @@ lyd_parse_check_options(struct ly_ctx *ctx, int options, const char *func)
     }
 
     return LY_SUCCESS;
+}
+
+const char *
+lyd_parse_options_type2str(int options)
+{
+    switch (options & LYD_OPT_TYPEMASK) {
+    case LYD_OPT_DATA:
+        return "complete datastore";
+    case LYD_OPT_CONFIG:
+        return "configuration datastore";
+    case LYD_OPT_GET:
+        return "<get> RPC reply";
+    case LYD_OPT_GETCONFIG:
+        return "<get-config> RPC reply";
+    case LYD_OPT_EDIT:
+        return "<edit-config> configuration";
+    case LYD_OPT_RPC:
+        return "RPC/action input";
+    case LYD_OPT_RPCREPLY:
+        return "RPC/action output";
+    case LYD_OPT_NOTIF:
+        return "Notification";
+    case LYD_OPT_NOTIF_FILTER:
+        return "Notification filter";
+    }
+    LOGINT(NULL);
+    return NULL;
 }

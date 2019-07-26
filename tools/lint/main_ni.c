@@ -322,6 +322,7 @@ main_ni(int argc, char* argv[])
     struct *subroot, *next, *node;
 #endif
     struct lyd_node *oper = NULL;
+    const struct lyd_node **trees = NULL;
     struct dataitem {
         const char *filename;
         struct lyd_node *tree;
@@ -803,11 +804,12 @@ main_ni(int argc, char* argv[])
                 fprintf(stderr, "yanglint error: The operational data are expected in XML or JSON format.\n");
                 goto cleanup;
             }
-            oper = lyd_parse_path(ctx, oper_file, informat_d, LYD_OPT_DATA_NO_YANGLIB | LYD_OPT_TRUSTED);
+            oper = lyd_parse_path(ctx, oper_file, informat_d, LYD_OPT_DATA_NO_YANGLIB | LYD_OPT_TRUSTED, NULL);
             if (!oper) {
                 fprintf(stderr, "yanglint error: Failed to parse the operational datastore file for RPC/Notification validation.\n");
                 goto cleanup;
             }
+            trees = lyd_trees_new(1, oper);
         }
 
         for (data_item = data, data_prev = NULL; data_item; data_prev = data_item, data_item = data_item->next) {
@@ -973,7 +975,7 @@ parse_reply:
 #else
             {
 #endif
-                data_item->tree = lyd_parse_path(ctx, data_item->filename, data_item->format, options_parser, oper);
+                data_item->tree = lyd_parse_path(ctx, data_item->filename, data_item->format, options_parser, trees);
             }
             if (ly_err_first(ctx)) {
                 goto cleanup;
@@ -1107,7 +1109,7 @@ cleanup:
         lyd_free_all(data->tree);
         free(data);
     }
-    lyd_free_all(oper);
+    lyd_trees_free(trees, 1);
     ly_ctx_destroy(ctx, NULL);
 
     return ret;

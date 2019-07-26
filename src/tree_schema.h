@@ -67,6 +67,7 @@ typedef enum {
 #define LYS_ANYDATA 0x0120        /**< anydata statement node, in tests it can be used for both #LYS_ANYXML and #LYS_ANYDATA */
 
 #define LYS_ACTION 0x400          /**< RPC or action */
+#define LYS_RPC LYS_ACTION        /**< RPC or action (for backward compatibility) */
 #define LYS_NOTIF 0x800
 
 #define LYS_CASE 0x0040           /**< case statement node */
@@ -464,7 +465,7 @@ struct lysp_deviation {
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *      11 LYS_SET_UNITS    | | |x|x| | | | | | | | | | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *      11 LYS_SET_CONFIG   |x|x|x|x|x|x|x| | |x|x| | | | |
+ *      12 LYS_SET_CONFIG   |x|x|x|x|x|x|x| | |x|x| | | | |
  *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  */
@@ -980,6 +981,7 @@ struct lysc_must {
 struct lysc_type {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lyd_value *dflt;          /**< type's default value if any */
+    struct lys_module *dflt_mod;     /**< module where the lysc_type::dflt value was defined (needed to correctly map prefixes). */
     struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
@@ -988,6 +990,7 @@ struct lysc_type {
 struct lysc_type_num {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lyd_value *dflt;          /**< type's default value if any */
+    struct lys_module *dflt_mod;     /**< module where the lysc_type::dflt value was defined (needed to correctly map prefixes). */
     struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
@@ -997,6 +1000,7 @@ struct lysc_type_num {
 struct lysc_type_dec {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lyd_value *dflt;          /**< type's default value if any */
+    struct lys_module *dflt_mod;     /**< module where the lysc_type::dflt value was defined (needed to correctly map prefixes). */
     struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
@@ -1007,6 +1011,7 @@ struct lysc_type_dec {
 struct lysc_type_str {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lyd_value *dflt;          /**< type's default value if any */
+    struct lys_module *dflt_mod;     /**< module where the lysc_type::dflt value was defined (needed to correctly map prefixes). */
     struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
@@ -1031,6 +1036,7 @@ struct lysc_type_bitenum_item {
 struct lysc_type_enum {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *dflt;                /**< type's default value if any */
+    struct lys_module *dflt_mod;     /**< module where the lysc_type::dflt value was defined (needed to correctly map prefixes). */
     struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
@@ -1040,6 +1046,7 @@ struct lysc_type_enum {
 struct lysc_type_bits {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *dflt;                /**< type's default value if any */
+    struct lys_module *dflt_mod;     /**< module where the lysc_type::dflt value was defined (needed to correctly map prefixes). */
     struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
@@ -1050,6 +1057,7 @@ struct lysc_type_bits {
 struct lysc_type_leafref {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *dflt;                /**< type's default value if any */
+    struct lys_module *dflt_mod;     /**< module where the lysc_type::dflt value was defined (needed to correctly map prefixes). */
     struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
@@ -1062,6 +1070,7 @@ struct lysc_type_leafref {
 struct lysc_type_identityref {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *dflt;                /**< type's default value if any */
+    struct lys_module *dflt_mod;     /**< module where the lysc_type::dflt value was defined (needed to correctly map prefixes). */
     struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
@@ -1072,6 +1081,7 @@ struct lysc_type_identityref {
 struct lysc_type_instanceid {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *dflt;                /**< type's default value if any */
+    struct lys_module *dflt_mod;     /**< module where the lysc_type::dflt value was defined (needed to correctly map prefixes). */
     struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
@@ -1081,6 +1091,7 @@ struct lysc_type_instanceid {
 struct lysc_type_union {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *dflt;                /**< type's default value if any */
+    struct lys_module *dflt_mod;     /**< module where the lysc_type::dflt value was defined (needed to correctly map prefixes). */
     struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
@@ -1090,6 +1101,7 @@ struct lysc_type_union {
 struct lysc_type_bin {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     const char *dflt;                /**< type's default value if any */
+    struct lys_module *dflt_mod;     /**< module where the lysc_type::dflt value was defined (needed to correctly map prefixes). */
     struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
@@ -1256,6 +1268,7 @@ struct lysc_node_leaf {
 
     const char *units;               /**< units of the leaf's type */
     struct lyd_value *dflt;          /**< default value */
+    struct lys_module *dflt_mod;     /**< module where the lysc_node_leaf::dflt value was defined (needed to correctly map prefixes). */
 };
 
 struct lysc_node_leaflist {
@@ -1280,7 +1293,9 @@ struct lysc_node_leaflist {
     struct lysc_type *type;          /**< type of the leaf node (mandatory) */
 
     const char *units;               /**< units of the leaf's type */
-    struct lyd_value **dflts;        /**< list of default values ([sized array](@ref sizedarrays)) */
+    struct lyd_value **dflts;        /**< list ([sized array](@ref sizedarrays)) of default values */
+    struct lys_module **dflts_mods;  /**< list ([sized array](@ref sizedarrays)) of modules where the lysc_node_leaflist::dflts values were defined
+                                          (needed to correctly map prefixes). */
     uint32_t min;                    /**< min-elements constraint */
     uint32_t max;                    /**< max-elements constraint */
 
@@ -1443,10 +1458,13 @@ int lysc_feature_value(const struct lysc_feature *feature);
  *
  * @param[in] node Schema path of this node will be generated.
  * @param[in] pathtype Format of the path to generate.
+ * @param[in,out] buffer Prepared buffer of the @p buflen length to store the generated path.
+ *                If NULL, memory for the complete path is allocated.
+ * @param[in] buflen Size of the provided @p buffer.
  * @return NULL in case of memory allocation error, path of the node otherwise.
- * Returned string is dynamically allocated and caller is responsible to free it.
+ * In case the @p buffer is NULL, the returned string is dynamically allocated and caller is responsible to free it.
  */
-char *lysc_path(struct lysc_node *node, LY_PATH_TYPE pathtype);
+char *lysc_path(struct lysc_node *node, LY_PATH_TYPE pathtype, char *buffer, size_t buflen);
 
 /**
  * @brief Available YANG schema tree structures representing YANG module.

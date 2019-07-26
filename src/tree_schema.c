@@ -216,17 +216,24 @@ lys_child(const struct lysc_node *parent, const struct lys_module *module,
     return NULL;
 }
 
+
+
 API char *
-lysc_path(struct lysc_node *node, LY_PATH_TYPE pathtype)
+lysc_path(struct lysc_node *node, LY_PATH_TYPE pathtype, char *buffer, size_t buflen)
 {
     struct lysc_node *iter;
     char *path = NULL;
     int len = 0;
 
+    LY_CHECK_ARG_RET(NULL, node, NULL);
+    if (buffer) {
+        LY_CHECK_ARG_RET(node->module->ctx, buflen > 1, NULL);
+    }
+
     switch (pathtype) {
     case LY_PATH_LOG:
         for (iter = node; iter && len >= 0; iter = iter->parent) {
-            char *s = path;
+            char *s = buffer ? strdup(buffer) : path;
             char *id;
 
             switch (iter->nodetype) {
@@ -246,26 +253,46 @@ lysc_path(struct lysc_node *node, LY_PATH_TYPE pathtype)
 
             if (!iter->parent || iter->parent->module != iter->module) {
                 /* print prefix */
-                len = asprintf(&path, "/%s:%s%s", iter->module->name, id, s ? s : "");
+                if (buffer) {
+                    len = snprintf(buffer, buflen, "/%s:%s%s", iter->module->name, id, s ? s : "");
+                } else {
+                    len = asprintf(&path, "/%s:%s%s", iter->module->name, id, s ? s : "");
+                }
             } else {
                 /* prefix is the same as in parent */
-                len = asprintf(&path, "/%s%s", id, s ? s : "");
+                if (buffer) {
+                    len = snprintf(buffer, buflen, "/%s%s", id, s ? s : "");
+                } else {
+                    len = asprintf(&path, "/%s%s", id, s ? s : "");
+                }
             }
             free(s);
             free(id);
+
+            if (buffer && buflen <= (size_t)len) {
+                /* not enough space in buffer */
+                break;
+            }
         }
 
         if (len < 0) {
             free(path);
             path = NULL;
         } else if (len == 0) {
-            path = strdup("/");
-            len = 1;
+            if (buffer) {
+                strcpy(buffer, "/");
+            } else {
+                path = strdup("/");
+            }
         }
         break;
     }
 
-    return path;
+    if (buffer) {
+        return buffer;
+    } else {
+        return path;
+    }
 }
 
 API int

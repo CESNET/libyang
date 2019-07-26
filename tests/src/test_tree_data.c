@@ -111,8 +111,8 @@ test_compare(void **state)
 
     assert_int_equal(LY_SUCCESS, lyd_compare(NULL, NULL, 0));
 
-    assert_non_null(tree1 = lyd_parse_mem(ctx, data1, LYD_XML, LYD_OPT_DATA));
-    assert_non_null(tree2 = lyd_parse_mem(ctx, data2, LYD_XML, LYD_OPT_DATA));
+    assert_non_null(tree1 = lyd_parse_mem(ctx, data1, LYD_XML, LYD_OPT_DATA, NULL));
+    assert_non_null(tree2 = lyd_parse_mem(ctx, data2, LYD_XML, LYD_OPT_DATA, NULL));
     assert_int_equal(LY_SUCCESS, lyd_compare(tree1, tree2, 0));
     assert_int_equal(LY_ENOT, lyd_compare(tree1, tree2, LYD_COMPARE_FULL_RECURSION));
     assert_int_equal(LY_ENOT, lyd_compare(((struct lyd_node_inner*)tree1)->child, tree2, 0));
@@ -121,8 +121,8 @@ test_compare(void **state)
 
     data1 = "<l2 xmlns=\"urn:tests:a\"><c><x>a</x></c></l2><l2 xmlns=\"urn:tests:a\"><c><x>b</x></c></l2>";
     data2 = "<l2 xmlns=\"urn:tests:a\"><c><x>b</x></c></l2>";
-    assert_non_null(tree1 = lyd_parse_mem(ctx, data1, LYD_XML, LYD_OPT_DATA));
-    assert_non_null(tree2 = lyd_parse_mem(ctx, data2, LYD_XML, LYD_OPT_DATA));
+    assert_non_null(tree1 = lyd_parse_mem(ctx, data1, LYD_XML, LYD_OPT_DATA, NULL));
+    assert_non_null(tree2 = lyd_parse_mem(ctx, data2, LYD_XML, LYD_OPT_DATA, NULL));
     assert_int_equal(LY_ENOT, lyd_compare(tree1, tree2, 0));
     assert_int_equal(LY_SUCCESS, lyd_compare(tree1->next, tree2, 0));
     lyd_free_all(tree1);
@@ -130,8 +130,8 @@ test_compare(void **state)
 
     data1 = "<ll xmlns=\"urn:tests:a\">a</ll><ll xmlns=\"urn:tests:a\">b</ll>";
     data2 = "<ll xmlns=\"urn:tests:a\">b</ll>";
-    assert_non_null(tree1 = lyd_parse_mem(ctx, data1, LYD_XML, LYD_OPT_DATA));
-    assert_non_null(tree2 = lyd_parse_mem(ctx, data2, LYD_XML, LYD_OPT_DATA));
+    assert_non_null(tree1 = lyd_parse_mem(ctx, data1, LYD_XML, LYD_OPT_DATA, NULL));
+    assert_non_null(tree2 = lyd_parse_mem(ctx, data2, LYD_XML, LYD_OPT_DATA, NULL));
     assert_int_equal(LY_ENOT, lyd_compare(tree1, tree2, 0));
     assert_int_equal(LY_ENOT, lyd_compare(NULL, tree2, 0));
     assert_int_equal(LY_ENOT, lyd_compare(tree1, NULL, 0));
@@ -141,8 +141,8 @@ test_compare(void **state)
 
     data1 = "<c xmlns=\"urn:tests:a\"><x>x</x></c>";
     data2 = "<c xmlns=\"urn:tests:a\"><x>y</x></c>";
-    assert_non_null(tree1 = lyd_parse_mem(ctx, data1, LYD_XML, LYD_OPT_DATA));
-    assert_non_null(tree2 = lyd_parse_mem(ctx, data2, LYD_XML, LYD_OPT_DATA));
+    assert_non_null(tree1 = lyd_parse_mem(ctx, data1, LYD_XML, LYD_OPT_DATA, NULL));
+    assert_non_null(tree2 = lyd_parse_mem(ctx, data2, LYD_XML, LYD_OPT_DATA, NULL));
     assert_int_equal(LY_SUCCESS, lyd_compare(tree1, tree2, 0));
     assert_int_equal(LY_ENOT, lyd_compare(tree1, tree2, LYD_COMPARE_FULL_RECURSION));
     lyd_free_all(tree1);
@@ -150,8 +150,8 @@ test_compare(void **state)
 
     data1 = "<c xmlns=\"urn:tests:a\"><x>x</x></c>";
     data2 = "<c xmlns=\"urn:tests:a\"><x>x</x><x>y</x></c>";
-    assert_non_null(tree1 = lyd_parse_mem(ctx, data1, LYD_XML, LYD_OPT_DATA));
-    assert_non_null(tree2 = lyd_parse_mem(ctx, data2, LYD_XML, LYD_OPT_DATA));
+    assert_non_null(tree1 = lyd_parse_mem(ctx, data1, LYD_XML, LYD_OPT_DATA, NULL));
+    assert_non_null(tree2 = lyd_parse_mem(ctx, data2, LYD_XML, LYD_OPT_DATA, NULL));
     assert_int_equal(LY_SUCCESS, lyd_compare(tree1, tree2, 0));
     assert_int_equal(LY_ENOT, lyd_compare(tree1, tree2, LYD_COMPARE_FULL_RECURSION));
     lyd_free_all(tree1);
@@ -159,15 +159,105 @@ test_compare(void **state)
 
     data1 = "<any xmlns=\"urn:tests:a\"><x>x</x></any>";
     data2 = "<any xmlns=\"urn:tests:a\"><x>x</x><x>y</x></any>";
-    assert_non_null(tree1 = lyd_parse_mem(ctx, data1, LYD_XML, LYD_OPT_DATA));
-    assert_non_null(tree2 = lyd_parse_mem(ctx, data2, LYD_XML, LYD_OPT_DATA));
+    assert_non_null(tree1 = lyd_parse_mem(ctx, data1, LYD_XML, LYD_OPT_DATA, NULL));
+    assert_non_null(tree2 = lyd_parse_mem(ctx, data2, LYD_XML, LYD_OPT_DATA, NULL));
     assert_int_equal(LY_ENOT, lyd_compare(tree1, tree2, 0));
     lyd_free_all(tree1);
     data1 = "<any xmlns=\"urn:tests:a\"><x>x</x><x>y</x></any>";
-    assert_non_null(tree1 = lyd_parse_mem(ctx, data1, LYD_XML, LYD_OPT_DATA));
+    assert_non_null(tree1 = lyd_parse_mem(ctx, data1, LYD_XML, LYD_OPT_DATA, NULL));
     assert_int_equal(LY_SUCCESS, lyd_compare(tree1, tree2, 0));
     lyd_free_all(tree1);
     lyd_free_all(tree2);
+
+    *state = NULL;
+}
+
+
+static void
+test_dup(void **state)
+{
+    *state = test_dup;
+
+    struct lyd_node *tree1, *tree2;
+    const char *result;
+    const char *data = "<l1 xmlns=\"urn:tests:a\"><a>a</a><b>b</b><c>x</c></l1>";
+
+    assert_non_null(tree1 = lyd_parse_mem(ctx, data, LYD_XML, LYD_OPT_DATA, NULL));
+    assert_non_null(tree2 = lyd_dup(tree1, NULL, LYD_DUP_RECURSIVE));
+    assert_int_equal(LY_SUCCESS, lyd_compare(tree1, tree2, LYD_COMPARE_FULL_RECURSION));
+    lyd_free_all(tree1);
+    lyd_free_all(tree2);
+
+    data = "<l1 xmlns=\"urn:tests:a\"><a>a</a><b>b</b><c>x</c></l1>";
+    result = "<l1 xmlns=\"urn:tests:a\"><a>a</a><b>b</b></l1>";
+    assert_non_null(tree1 = lyd_parse_mem(ctx, data, LYD_XML, LYD_OPT_DATA, NULL));
+    assert_non_null(tree2 = lyd_dup(tree1, NULL, 0));
+    lyd_free_all(tree1);
+    assert_non_null(tree1 = lyd_parse_mem(ctx, result, LYD_XML, LYD_OPT_DATA, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_compare(tree1, tree2, LYD_COMPARE_FULL_RECURSION));
+    lyd_free_all(tree1);
+    lyd_free_all(tree2);
+
+    data = "<l2 xmlns=\"urn:tests:a\"><c><x>a</x></c></l2><l2 xmlns=\"urn:tests:a\"><c><x>b</x></c></l2>";
+    result = "<l2 xmlns=\"urn:tests:a\"><c><x>a</x></c></l2>";
+    assert_non_null(tree1 = lyd_parse_mem(ctx, data, LYD_XML, LYD_OPT_DATA, NULL));
+    assert_non_null(tree2 = lyd_dup(tree1, NULL, LYD_DUP_WITH_SIBLINGS | LYD_DUP_RECURSIVE));
+    assert_int_equal(LY_SUCCESS, lyd_compare(tree1, tree2, LYD_COMPARE_FULL_RECURSION));
+    lyd_free_all(tree2);
+
+    assert_non_null(tree2 = lyd_dup(tree1, NULL, LYD_DUP_RECURSIVE));
+    lyd_free_all(tree1);
+    assert_non_null(tree1 = lyd_parse_mem(ctx, result, LYD_XML, LYD_OPT_DATA, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_compare(tree1, tree2, LYD_COMPARE_FULL_RECURSION));
+    lyd_free_all(tree2);
+
+    assert_non_null(tree2 = lyd_dup(tree1, NULL, 0));
+    lyd_free_all(tree1);
+    result = "<l2 xmlns=\"urn:tests:a\"/>";
+    assert_non_null(tree1 = lyd_parse_mem(ctx, result, LYD_XML, LYD_OPT_DATA, NULL));
+    assert_int_equal(LY_SUCCESS, lyd_compare(tree1, tree2, LYD_COMPARE_FULL_RECURSION));
+    lyd_free_all(tree1);
+    lyd_free_all(tree2);
+
+    data = "<any xmlns=\"urn:tests:a\"><c><a>a</a></c></any>";
+    assert_non_null(tree1 = lyd_parse_mem(ctx, data, LYD_XML, LYD_OPT_DATA, NULL));
+    assert_non_null(tree2 = lyd_dup(tree1, NULL, 0));
+    assert_int_equal(LY_SUCCESS, lyd_compare(tree1, tree2, LYD_COMPARE_FULL_RECURSION));
+    lyd_free_all(tree1);
+    lyd_free_all(tree2);
+
+    data = "<l2 xmlns=\"urn:tests:a\"><c><x>b</x></c></l2>";
+    assert_non_null(tree1 = lyd_parse_mem(ctx, data, LYD_XML, LYD_OPT_DATA, NULL));
+    assert_non_null(tree2 = lyd_dup(((struct lyd_node_inner*)((struct lyd_node_inner*)tree1)->child)->child, NULL, LYD_DUP_WITH_PARENTS));
+    assert_string_equal("x", tree2->schema->name);
+    assert_non_null(tree2->parent);
+    assert_int_equal(LY_SUCCESS, lyd_compare(tree1, (struct lyd_node*)tree2->parent->parent, LYD_COMPARE_FULL_RECURSION));
+    lyd_free_all(tree1);
+    lyd_free_all(tree2);
+
+    data = "<l1 xmlns=\"urn:tests:a\"><a>a</a><b>b</b><c>c</c></l1>";
+    assert_non_null(tree1 = lyd_parse_mem(ctx, data, LYD_XML, LYD_OPT_DATA, NULL));
+    assert_non_null(tree2 = lyd_dup(((struct lyd_node_inner*)tree1)->child->prev, NULL, LYD_DUP_WITH_PARENTS));
+    assert_string_equal("c", tree2->schema->name);
+    assert_non_null(tree2->parent);
+    assert_int_equal(LY_SUCCESS, lyd_compare(tree1, (struct lyd_node*)tree2->parent, LYD_COMPARE_FULL_RECURSION));
+    lyd_free_all(tree1);
+    lyd_free_all(tree2);
+
+    data = "<l2 xmlns=\"urn:tests:a\"><c><x>b</x></c></l2>";
+    assert_non_null(tree1 = lyd_parse_mem(ctx, data, LYD_XML, LYD_OPT_DATA, NULL));
+    assert_non_null(tree2 = lyd_dup(tree1, NULL, 0));
+    assert_non_null(lyd_dup(((struct lyd_node_inner*)((struct lyd_node_inner*)tree1)->child)->child,
+                            (struct lyd_node_inner*)tree2, LYD_DUP_WITH_PARENTS));
+    assert_int_equal(LY_SUCCESS, lyd_compare(tree1, tree2, LYD_COMPARE_FULL_RECURSION));
+    lyd_free_all(tree1);
+    lyd_free_all(tree2);
+
+    /* invalid */
+    data = "<l1 xmlns=\"urn:tests:a\"><a>a</a><b>b</b><c>c</c></l1><l2 xmlns=\"urn:tests:a\"><c><x>b</x></c></l2>";
+    assert_non_null(tree1 = lyd_parse_mem(ctx, data, LYD_XML, LYD_OPT_DATA, NULL));
+    assert_null(lyd_dup(((struct lyd_node_inner*)tree1)->child->prev, (struct lyd_node_inner*)tree1->next, LYD_DUP_WITH_PARENTS));
+    lyd_free_all(tree1);
 
     *state = NULL;
 }
@@ -176,6 +266,7 @@ int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_compare, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_dup, setup, teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

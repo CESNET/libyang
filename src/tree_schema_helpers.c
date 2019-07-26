@@ -1642,10 +1642,13 @@ lys_get_prefix(const struct lys_module *mod, void *private)
     struct lys_module *context_mod = (struct lys_module*)private;
     unsigned int u;
 
+    if (context_mod == mod) {
+        return context_mod->prefix;
+    }
     LY_ARRAY_FOR(context_mod->compiled->imports, u) {
         if (context_mod->compiled->imports[u].module == mod) {
             /* match */
-            return mod->compiled->imports[u].prefix;
+            return context_mod->compiled->imports[u].prefix;
         }
     }
 

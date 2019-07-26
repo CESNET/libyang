@@ -89,6 +89,19 @@ error:
     return NULL;
 }
 
+API const struct lyd_node **
+lyd_trees_add(const struct lyd_node **trees, const struct lyd_node *tree)
+{
+    const struct lyd_node **t = NULL;
+
+    LY_CHECK_ARG_RET(NULL, tree, trees, trees);
+
+    LY_ARRAY_NEW_RET(tree->schema->module->ctx, trees, t, NULL);
+    *t = lyd_trees_getstart(tree);
+
+    return trees;
+}
+
 static int
 cmp_str(const char *refstr, const char *str, size_t str_len)
 {
@@ -293,53 +306,30 @@ cleanup:
     return ret;
 }
 
-static struct lyd_node *
-lyd_parse_mem_(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options, va_list ap)
+API struct lyd_node *
+lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options, const struct lyd_node **trees)
 {
     struct lyd_node *result = NULL;
-    const struct lyd_node *rpc_act = NULL, *data_tree = NULL, *iter;
 #if 0
     const char *yang_data_name = NULL;
 #endif
 
-    if (lyd_parse_check_options(ctx, options, __func__)) {
+    LY_CHECK_ARG_RET(ctx, ctx, NULL);
+
+    if (lyd_parse_options_check(ctx, options, __func__)) {
         return NULL;
     }
 
     if (options & LYD_OPT_RPCREPLY) {
-        rpc_act = va_arg(ap, const struct lyd_node *);
-        if (!rpc_act || rpc_act->parent || !(rpc_act->schema->nodetype & (LYS_ACTION | LYS_LIST | LYS_CONTAINER))) {
-            LOGERR(ctx, LY_EINVAL, "Data parser invalid variable parameter (const struct lyd_node *rpc_act).");
+        /* first item in trees is mandatory - the RPC/action request */
+        LY_CHECK_ARG_RET(ctx, trees, LY_ARRAY_SIZE(trees) >= 1, NULL);
+        if (!trees[0] || trees[0]->parent || !(trees[0]->schema->nodetype & (LYS_ACTION | LYS_LIST | LYS_CONTAINER))) {
+            LOGERR(ctx, LY_EINVAL, "Data parser invalid argument trees - the first item in the array must be the RPC/action request when parsing %s.",
+                   lyd_parse_options_type2str(options));
             return NULL;
         }
     }
-    if (options & (LYD_OPT_RPC | LYD_OPT_NOTIF | LYD_OPT_RPCREPLY)) {
-        data_tree = va_arg(ap, const struct lyd_node *);
-        if (data_tree) {
-            if (options & LYD_OPT_NOEXTDEPS) {
-                LOGERR(ctx, LY_EINVAL, "%s: invalid parameter (variable arg const struct lyd_node *data_tree and LYD_OPT_NOEXTDEPS set).",
-                       __func__);
-                return NULL;
-            }
 
-            LY_LIST_FOR(data_tree, iter) {
-                if (iter->parent) {
-                    /* a sibling is not top-level */
-                    LOGERR(ctx, LY_EINVAL, "%s: invalid variable parameter (const struct lyd_node *data_tree).", __func__);
-                    return NULL;
-                }
-            }
-
-            /* move it to the beginning */
-            for (; data_tree->prev->next; data_tree = data_tree->prev);
-
-            /* LYD_OPT_NOSIBLINGS cannot be set in this case */
-            if (options & LYD_OPT_NOSIBLINGS) {
-                LOGERR(ctx, LY_EINVAL, "%s: invalid parameter (variable arg const struct lyd_node *data_tree with LYD_OPT_NOSIBLINGS).", __func__);
-                return NULL;
-            }
-        }
-    }
 #if 0
     if (options & LYD_OPT_DATA_TEMPLATE) {
         yang_data_name = va_arg(ap, const char *);
@@ -352,14 +342,14 @@ lyd_parse_mem_(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int opti
 
     switch (format) {
     case LYD_XML:
-        lyd_parse_xml(ctx, data, options, &result);
+        lyd_parse_xml(ctx, data, options, trees, &result);
         break;
 #if 0
     case LYD_JSON:
-        lyd_parse_json(ctx, data, options, rpc_act, data_tree, yang_data_name);
+        lyd_parse_json(ctx, data, options, trees, &result);
         break;
     case LYD_LYB:
-        lyd_parse_lyb(ctx, data, options, data_tree, yang_data_name, NULL);
+        lyd_parse_lyb(ctx, data, options, trees, &result);
         break;
 #endif
     case LYD_UNKNOWN:
@@ -371,20 +361,7 @@ lyd_parse_mem_(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int opti
 }
 
 API struct lyd_node *
-lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options, ...)
-{
-    va_list ap;
-    struct lyd_node *result;
-
-    va_start(ap, options);
-    result = lyd_parse_mem_(ctx, data, format, options, ap);
-    va_end(ap);
-
-    return result;
-}
-
-static struct lyd_node *
-lyd_parse_fd_(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, va_list ap)
+lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, const struct lyd_node **trees)
 {
     struct lyd_node *result;
     size_t length;
@@ -397,7 +374,7 @@ lyd_parse_fd_(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, va_lis
     }
 
     LY_CHECK_RET(ly_mmap(ctx, fd, &length, (void **)&addr), NULL);
-    result = lyd_parse_mem_(ctx, addr ? addr : "", format, options, ap);
+    result = lyd_parse_mem(ctx, addr ? addr : "", format, options, trees);
     if (addr) {
         ly_munmap(addr, length);
     }
@@ -406,25 +383,11 @@ lyd_parse_fd_(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, va_lis
 }
 
 API struct lyd_node *
-lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, ...)
-{
-    struct lyd_node *ret;
-    va_list ap;
-
-    va_start(ap, options);
-    ret = lyd_parse_fd_(ctx, fd, format, options, ap);
-    va_end(ap);
-
-    return ret;
-}
-
-API struct lyd_node *
-lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int options, ...)
+lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int options, const struct lyd_node **trees)
 {
     int fd;
     struct lyd_node *result;
     size_t len;
-    va_list ap;
 
     LY_CHECK_ARG_RET(ctx, ctx, path, NULL);
 
@@ -449,10 +412,7 @@ lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int opti
         } /* else still unknown, try later to detect it from the content */
     }
 
-    va_start(ap, options);
-    result = lyd_parse_fd_(ctx, fd, format, options, ap);
-
-    va_end(ap);
+    result = lyd_parse_fd(ctx, fd, format, options, trees);
     close(fd);
 
     return result;
@@ -606,7 +566,7 @@ lyd_compare(const struct lyd_node *node1, const struct lyd_node *node2, int opti
         iter1 = ((struct lyd_node_inner*)node1)->child;
         iter2 = ((struct lyd_node_inner*)node2)->child;
 
-        if (((struct lysc_node_list*)node1->schema)->keys && (!options & LYD_COMPARE_FULL_RECURSION)) {
+        if (((struct lysc_node_list*)node1->schema)->keys && !(options & LYD_COMPARE_FULL_RECURSION)) {
             /* lists with keys, their equivalence is based on their keys */
             unsigned int u;
 
@@ -672,4 +632,231 @@ all_children_compare:
 
     LOGINT(node1->schema->module->ctx);
     return LY_EINT;
+}
+
+/**
+ * @brief Duplicates just a single node and interconnect it into a @p parent (if present) and after the @p prev
+ * sibling (if present).
+ *
+ * Ignores LYD_DUP_WITH_PARENTS and LYD_DUP_WITH_SIBLINGS which are supposed to be handled by lyd_dup().
+ */
+static struct lyd_node *
+lyd_dup_recursive(const struct lyd_node *node, struct lyd_node_inner *parent, struct lyd_node *prev, int options)
+{
+    struct ly_ctx *ctx;
+    struct lyd_node *dup = NULL;
+
+    LY_CHECK_ARG_RET(NULL, node, NULL);
+    ctx = node->schema->module->ctx;
+
+    switch (node->schema->nodetype) {
+    case LYS_ACTION:
+    case LYS_NOTIF:
+    case LYS_CONTAINER:
+    case LYS_LIST:
+        dup = calloc(1, sizeof(struct lyd_node_inner));
+        break;
+    case LYS_LEAF:
+    case LYS_LEAFLIST:
+        dup = calloc(1, sizeof(struct lyd_node_term));
+        break;
+    case LYS_ANYDATA:
+    case LYS_ANYXML:
+        dup = calloc(1, sizeof(struct lyd_node_any));
+        break;
+    default:
+        LOGINT(ctx);
+        goto error;
+    }
+
+    /* TODO implement LYD_DUP_WITH_WHEN */
+    dup->flags = node->flags;
+    dup->schema = node->schema;
+
+    /* interconnect the node at the end */
+    dup->parent = parent;
+    if (prev) {
+        dup->prev = prev;
+        prev->next = dup;
+    } else {
+        dup->prev = dup;
+        if (parent) {
+            parent->child = dup;
+        }
+    }
+    if (parent) {
+        parent->child->prev = dup;
+    } else if (prev) {
+        struct lyd_node *first;
+        for (first = prev; first->prev != prev; first = first->prev);
+        first->prev = dup;
+    }
+
+    /* TODO duplicate attributes, implement LYD_DUP_NO_ATTR */
+
+    /* nodetype-specific work */
+    if (dup->schema->nodetype & LYD_NODE_TERM) {
+        struct lyd_node_term *term = (struct lyd_node_term*)dup;
+        struct lyd_node_term *orig = (struct lyd_node_term*)node;
+
+        term->hash = orig->hash;
+        term->value.realtype = orig->value.realtype;
+        LY_CHECK_ERR_GOTO(term->value.realtype->plugin->duplicate(ctx, &orig->value, &term->value),
+                          LOGERR(ctx, LY_EINT, "Value duplication failed."), error);
+    } else if (dup->schema->nodetype & LYD_NODE_INNER) {
+        struct lyd_node_inner *inner = (struct lyd_node_inner*)dup;
+        struct lyd_node_inner *orig = (struct lyd_node_inner*)node;
+        struct lyd_node *child, *last = NULL;
+
+        if (options & LYD_DUP_RECURSIVE) {
+            /* duplicate all the children */
+            LY_LIST_FOR(orig->child, child) {
+                last = lyd_dup_recursive(child, inner, last, options);
+                LY_CHECK_GOTO(!last, error);
+            }
+        } else if (dup->schema->nodetype == LYS_LIST && ((struct lysc_node_list*)dup->schema)->keys) {
+            /* always duplicate keys of a list */
+            unsigned int u;
+
+            child = orig->child;
+            LY_ARRAY_FOR(((struct lysc_node_list*)dup->schema)->keys, u) {
+                if (!child) {
+                    /* possibly not keys are present in filtered tree */
+                    break;
+                }
+                last = lyd_dup_recursive(child, inner, last, options);
+                child = child->next;
+            }
+        }
+        lyd_hash(dup);
+    } else if (dup->schema->nodetype & LYD_NODE_ANY) {
+        struct lyd_node_any *any = (struct lyd_node_any*)dup;
+        struct lyd_node_any *orig = (struct lyd_node_any*)node;
+
+        any->hash = orig->hash;
+        any->value_type = orig->value_type;
+        switch (any->value_type) {
+        case LYD_ANYDATA_DATATREE:
+            if (orig->value.tree) {
+                any->value.tree = lyd_dup(orig->value.tree, NULL, LYD_DUP_RECURSIVE | LYD_DUP_WITH_SIBLINGS);
+                LY_CHECK_GOTO(!any->value.tree, error);
+            }
+            break;
+        case LYD_ANYDATA_STRING:
+        case LYD_ANYDATA_XML:
+        case LYD_ANYDATA_JSON:
+            if (orig->value.str) {
+                any->value.str = lydict_insert(ctx, orig->value.str, strlen(orig->value.str));
+            }
+            break;
+        }
+    }
+
+    lyd_insert_hash(dup);
+    return dup;
+
+error:
+    if (!parent && !prev) {
+        lyd_free_tree(dup);
+    }
+    return NULL;
+}
+
+API struct lyd_node *
+lyd_dup(const struct lyd_node *node, struct lyd_node_inner *parent, int options)
+{
+    struct ly_ctx *ctx;
+    const struct lyd_node *orig;          /* original node to be duplicated */
+    struct lyd_node *first = NULL;        /* the first duplicated node, this is returned */
+    struct lyd_node *last = NULL;         /* the last sibling of the duplicated nodes */
+    struct lyd_node *top = NULL;          /* the most higher created node */
+    struct lyd_node_inner *local_parent = NULL; /* the direct parent node for the duplicated node(s) */
+    int keyless_parent_list = 0;
+
+    LY_CHECK_ARG_RET(NULL, node, NULL);
+    ctx = node->schema->module->ctx;
+
+    if (options & LYD_DUP_WITH_PARENTS) {
+        struct lyd_node_inner *orig_parent, *iter;
+        int repeat = 1;
+        for (top = NULL, orig_parent = node->parent; repeat && orig_parent; orig_parent = orig_parent->parent) {
+            if (parent && parent->schema == orig_parent->schema) {
+                /* stop creating parents, connect what we have into the provided parent */
+                iter = parent;
+                repeat = 0;
+                /* get know if there is a keyless list which we will have to rehash */
+                for (struct lyd_node_inner *piter = parent; piter; piter = piter->parent) {
+                    if (piter->schema->nodetype == LYS_LIST && !((struct lysc_node_list*)piter->schema)->keys) {
+                        keyless_parent_list = 1;
+                        break;
+                    }
+                }
+            } else {
+                iter = (struct lyd_node_inner*)lyd_dup_recursive((struct lyd_node*)orig_parent, NULL, NULL, 0);
+                LY_CHECK_GOTO(!iter, error);
+            }
+            if (!local_parent) {
+                local_parent = iter;
+            }
+            if (iter->child) {
+                /* 1) list - add after keys
+                 * 2) provided parent with some children */
+                iter->child->prev->next = top;
+                if (top) {
+                    top->prev = iter->child->prev;
+                    iter->child->prev = top;
+                }
+            } else {
+                iter->child = top;
+                if (iter->schema->nodetype == LYS_LIST) {
+                    /* keyless list - we will need to rehash it since we are going to add nodes into it */
+                    keyless_parent_list = 1;
+                }
+            }
+            if (top) {
+                top->parent = iter;
+            }
+            top = (struct lyd_node*)iter;
+        }
+        if (repeat && parent) {
+            /* given parent and created parents chain actually do not interconnect */
+            LOGERR(ctx, LY_EINVAL, "Invalid argument parent (%s()) - does not interconnect with the created node's parents chain.", __func__);
+            goto error;
+        }
+    } else {
+        local_parent = parent;
+    }
+
+    if (local_parent && local_parent->child) {
+        last = local_parent->child->prev;
+    }
+
+    LY_LIST_FOR(node, orig) {
+        last = lyd_dup_recursive(orig, local_parent, last, options);
+        LY_CHECK_GOTO(!last, error);
+        if (!first) {
+            first = last;
+        }
+
+        if (!(options & LYD_DUP_WITH_SIBLINGS)) {
+            break;
+        }
+    }
+    if (keyless_parent_list) {
+        /* rehash */
+        for (; local_parent; local_parent = local_parent->parent) {
+            if (local_parent->schema->nodetype == LYS_LIST && !((struct lysc_node_list*)local_parent->schema)->keys) {
+                lyd_hash((struct lyd_node*)local_parent);
+            }
+        }
+    }
+    return first;
+
+error:
+    if (top) {
+        lyd_free_tree(top);
+    } else {
+        lyd_free_withsiblings(first);
+    }
+    return NULL;
 }

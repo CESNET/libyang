@@ -198,8 +198,8 @@ lyd_free_tree(struct lyd_node *node)
     lyd_free_subtree(node->schema->module->ctx, node, 1);
 }
 
-API void
-lyd_free_all(struct lyd_node *node)
+static void
+lyd_free_(struct lyd_node *node, int top)
 {
     struct lyd_node *iter, *next;
 
@@ -207,8 +207,10 @@ lyd_free_all(struct lyd_node *node)
         return;
     }
 
-    /* get the first top-level sibling */
-    for (; node->parent; node = (struct lyd_node*)node->parent);
+    /* get the first (top-level) sibling */
+    if (top) {
+        for (; node->parent; node = (struct lyd_node*)node->parent);
+    }
     while (node->prev->next) {
         node = node->prev;
     }
@@ -217,4 +219,16 @@ lyd_free_all(struct lyd_node *node)
         /* in case of the top-level nodes (node->parent is NULL), no unlinking needed */
         lyd_free_subtree(iter->schema->module->ctx, iter, iter->parent ? 1 : 0);
     }
+}
+
+API void
+lyd_free_withsiblings(struct lyd_node *node)
+{
+    lyd_free_(node, 0);
+}
+
+API void
+lyd_free_all(struct lyd_node *node)
+{
+    lyd_free_(node, 1);
 }

@@ -717,6 +717,7 @@ lysc_node_leaflist_free(struct ly_ctx *ctx, struct lysc_node_leaflist *node)
         free(node->dflts[u]);
     }
     LY_ARRAY_FREE(node->dflts);
+    LY_ARRAY_FREE(node->dflts_mods);
 }
 
 static void

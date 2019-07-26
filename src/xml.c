@@ -498,9 +498,9 @@ lyxml_get_string(struct lyxml_context *context, const char **input, char **buffe
     struct ly_ctx *ctx = context->ctx; /* shortcut */
     const char *in = (*input), *start;
     char *buf = NULL, delim;
-    size_t offset;  /* read offset in input buffer */
-    size_t len;     /* length of the output string (write offset in output buffer) */
-    size_t size;    /* size of the output buffer */
+    size_t offset;   /* read offset in input buffer */
+    size_t len;      /* length of the output string (write offset in output buffer) */
+    size_t size = 0; /* size of the output buffer */
     void *p;
     uint32_t n;
     size_t u, newlines;

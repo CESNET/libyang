@@ -59,8 +59,11 @@ void ly_err_free(void *ptr);
                                             In any case, the caller of the callback does not free the provided string value after calling
                                             the type's callbacks with this option */
 #define LY_TYPE_OPTS_STORE        0x04 /**< Flag announcing calling of ly_type_store_clb() */
-#define LY_TYPE_OPTS_SCHEMA       0x08 /**< Flag for the value used in schema instead of the data tree */
-#define LY_TYPE_OPTS_INCOMPLETE_DATA 0x10 /**< Flag for the case the data trees are not yet complete. In this case the plagin should do what it
+#define LY_TYPE_OPTS_SCHEMA       0x08 /**< Flag for the value used in schema instead of the data tree. With this flag also the meaning of
+                                            LY_TYPE_OPTS_INCOMPLETE_DATA changes and means that the schema tree is not complete (data tree
+                                            is not taken into account at all). */
+#define LY_TYPE_OPTS_INCOMPLETE_DATA 0x10 /**< Flag for the case the data trees (schema trees in case it is used in combination with
+                                            LY_TYPE_OPTS_SCHEMA) are not yet complete. In this case the plugin should do what it
                                             can (e.g. store the canonical/auxiliary value if it is requested) and in the case of need to use
                                             data trees (checking require-instance), it returns LY_EINCOMPLETE.
                                             Caller is supposed to call such validation callback again later with complete data trees. */
@@ -98,7 +101,7 @@ void ly_err_free(void *ptr);
  * @param[in] parser Parser's data for @p resolve_prefix
  * @param[in] format Input format of the data.
  * @param[in] context_node The @p value's node for the case that the require-instance restriction is supposed to be resolved. This argument is of
- *            lys_node (in case LY_TYPE_OPTS_INCOMPLETE_DATA set in @p options) or lyd_node structure.
+ *            lys_node (in case LY_TYPE_OPTS_INCOMPLETE_DATA or LY_TYPE_OPTS_SCHEMA set in @p options) or lyd_node structure.
  * @param[in] trees ([Sized array](@ref sizedarrays)) of external data trees (e.g. when validating RPC/Notification) where the required data
  *            instance can be placed.
  *

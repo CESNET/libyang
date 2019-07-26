@@ -451,7 +451,7 @@ ly_type_store_int(struct ly_ctx *ctx, struct lysc_type *type, const char *value,
 
     switch (type->basetype) {
     case LY_TYPE_INT8:
-        LY_CHECK_RET(ly_type_parse_int("int16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, INT64_C(-128), INT64_C(127), value, value_len, &i, err));
+        LY_CHECK_RET(ly_type_parse_int("int8", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, INT64_C(-128), INT64_C(127), value, value_len, &i, err));
         break;
     case LY_TYPE_INT16:
         LY_CHECK_RET(ly_type_parse_int("int16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, INT64_C(-32768), INT64_C(32767), value, value_len, &i, err));
@@ -525,7 +525,7 @@ ly_type_store_uint(struct ly_ctx *ctx, struct lysc_type *type, const char *value
 
     switch (type->basetype) {
     case LY_TYPE_UINT8:
-        LY_CHECK_RET(ly_type_parse_uint("uint16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, UINT64_C(255), value, value_len, &u, err));
+        LY_CHECK_RET(ly_type_parse_uint("uint8", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, UINT64_C(255), value, value_len, &u, err));
         break;
     case LY_TYPE_UINT16:
         LY_CHECK_RET(ly_type_parse_uint("uint16", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, UINT64_C(65535), value, value_len, &u, err));
@@ -1380,7 +1380,7 @@ ly_type_store_instanceid_checknodeid(const char *orig, size_t orig_len, int opti
         }
     }
 
-    if ((options & LY_TYPE_OPTS_INCOMPLETE_DATA) || !require_instance) {
+    if ((options & LY_TYPE_OPTS_INCOMPLETE_DATA) || (options & LY_TYPE_OPTS_SCHEMA) || !require_instance) {
         /* a) in schema tree */
         *node_s = lys_child(*node_s, mod, id, id_len, 0, 0);
         if (!(*node_s)) {
@@ -1468,7 +1468,7 @@ ly_type_store_instanceid_parse_predicate_value(struct ly_ctx *ctx, const struct 
     ret = type->plugin->store(ctx, type, val, val_len, options, ly_type_stored_prefixes_clb, prefixes, format, key, NULL,
                               pred->value, NULL, &err);
     if (ret == LY_EINCOMPLETE) {
-        /* actually expected success without complete data */
+        /* actually expected without complete data */
         ret = LY_SUCCESS;
     } else if (ret) {
         if (err) {
@@ -1530,7 +1530,7 @@ ly_type_store_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const char 
 {
     LY_ERR ret = LY_EVALID;
     struct lysc_type_instanceid *type_inst = (struct lysc_type_instanceid *)type;
-    const char *id, *prefix, *val, *token, *node_start;
+    const char *id, *prefix, *val, *token, *node_start = NULL;
     size_t id_len, prefix_len, val_len;
     char *errmsg = NULL;
     const struct lysc_node *node_s = NULL;
@@ -1547,9 +1547,20 @@ ly_type_store_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const char 
     /* init */
     *err = NULL;
 
-    if ((options & LY_TYPE_OPTS_SECOND_CALL) && (options & LY_TYPE_OPTS_STORE)) {
-        /* the second run, the first one ended with LY_EINCOMPLETE, but we have prepared the target structure */
+    if ((options & LY_TYPE_OPTS_SCHEMA) && (options & LY_TYPE_OPTS_INCOMPLETE_DATA)) {
+        if (options & LY_TYPE_OPTS_STORE) {
+            if (options & LY_TYPE_OPTS_DYNAMIC) {
+                ly_type_store_canonized(ctx, options, lydict_insert_zc(ctx, (char*)value), storage, NULL);
+                value = NULL;
+            } else {
+                ly_type_store_canonized(ctx, options, lydict_insert(ctx, value_len ? value : "", value_len), storage, NULL);
+            }
+        }
+        goto cleanup;
+    }
 
+    if (!(options & LY_TYPE_OPTS_SCHEMA) && (options & LY_TYPE_OPTS_SECOND_CALL) && (options & LY_TYPE_OPTS_STORE)) {
+        /* the second run in data tree, the first one ended with LY_EINCOMPLETE, but we have prepared the target structure */
         if (!lyd_target(storage->target, trees)) {
             /* in error message we print the JSON format of the instance-identifier - in case of XML, it is not possible
              * to get the exactly same string as original, JSON is less demanding and still well readable/understandable. */
@@ -1566,7 +1577,9 @@ ly_type_store_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const char 
         }
         return LY_SUCCESS;
     } else {
-        /* first run without prepared target, we will need all the prefixes used in the instance-identifier value */
+        /* a) first run without prepared target, we will need all the prefixes used in the instance-identifier value
+         * b) second run in schema tree - original value was stored as a canonical value and received now as value
+         */
         prefixes = ly_type_get_prefixes(ctx, value, value_len, resolve_prefix, parser);
     }
 
@@ -1842,9 +1855,15 @@ check_predicates:
 
     if (options & LY_TYPE_OPTS_STORE) {
         storage->target = target;
+
+        if ((options & LY_TYPE_OPTS_SCHEMA) && (options & LY_TYPE_OPTS_SECOND_CALL)) {
+            /* remove the dummy canonized value from the first call */
+            lydict_remove(ctx, storage->canonized);
+        }
         storage->canonized = NULL;
     }
 
+cleanup:
     /* cleanup */
     LY_ARRAY_FOR(prefixes, u) {
         lydict_remove(ctx, prefixes[u].prefix);
@@ -1856,7 +1875,7 @@ check_predicates:
         free((char*)value);
     }
 
-    if ((options & LY_TYPE_OPTS_INCOMPLETE_DATA) && type_inst->require_instance) {
+    if ((options & LY_TYPE_OPTS_INCOMPLETE_DATA) && ((options & LY_TYPE_OPTS_SCHEMA) || type_inst->require_instance)) {
         return LY_EINCOMPLETE;
     } else {
         return LY_SUCCESS;
@@ -1937,6 +1956,12 @@ ly_type_print_instanceid(const struct lyd_value *value, LYD_FORMAT format, ly_cl
 {
     unsigned int u, v;
     char *result = NULL;
+
+    if (!value->target && value->canonized) {
+        /* value was not fully processed, but we have the original value so return it's copy */
+        *dynamic = 1;
+        return strdup(value->canonized);
+    }
 
     if (format == LYD_XML) {
         /* everything is prefixed */
@@ -2075,6 +2100,7 @@ ly_type_free_instanceid(struct ly_ctx *ctx, struct lyd_value *value)
     lyd_value_free_path(ctx, value->target);
     value->target = NULL;
 
+    /* for the case of LY_EINCOMPLETE result on schema tree */
     ly_type_free_canonical(ctx, value);
 }
 
@@ -2090,7 +2116,7 @@ ly_type_store_leafref(struct ly_ctx *ctx, struct lysc_type *type, const char *va
                       struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
     LY_ERR ret;
-    unsigned int u;
+    unsigned int u = 0;
     char *errmsg = NULL;
     struct lysc_type_leafref *type_lr = (struct lysc_type_leafref*)type;
     int storage_dummy = 0;
@@ -2098,7 +2124,7 @@ ly_type_store_leafref(struct ly_ctx *ctx, struct lysc_type *type, const char *va
     const struct lyd_node *start_search;
     const char *prefix, *id;
     size_t prefix_len, id_len;
-    const struct lys_module *mod_node;
+    const struct lys_module *mod_node = NULL;
 
     if (!(options & (LY_TYPE_OPTS_STORE | LY_TYPE_OPTS_INCOMPLETE_DATA)) && type_lr->require_instance) {
         /* if there is no storage, but we will check the instance presence in data tree(s),
@@ -2117,7 +2143,7 @@ ly_type_store_leafref(struct ly_ctx *ctx, struct lysc_type *type, const char *va
         return ret;
     }
 
-    if (type_lr->require_instance) {
+    if (!(options & LY_TYPE_OPTS_SCHEMA) && type_lr->require_instance) {
         if (options & LY_TYPE_OPTS_INCOMPLETE_DATA) {
             return LY_EINCOMPLETE;
         }
