@@ -60,7 +60,7 @@ char logbuf[BUFSIZE] = {0};
 int store = -1; /* negative for infinite logging, positive for limited logging */
 
 /* set to 0 to printing error messages to stderr instead of checking them in code */
-#define ENABLE_LOGGER_CHECKING 1
+#define ENABLE_LOGGER_CHECKING 0
 
 #if ENABLE_LOGGER_CHECKING
 static void
@@ -186,53 +186,6 @@ void
 logbuf_clean(void)
 {
     logbuf[0] = '\0';
-}
-
-static void
-test_yin_parse_module(void **state)
-{
-    LY_ERR ret = LY_SUCCESS;
-    struct state *st = *state;
-
-    ret = yin_parse_module(st->ctx,
-                    "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\
-                        name=\"example-foo\"\
-                        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\
-                        xmlns:foo=\"urn:example:foo\"\
-                        xmlns:myext=\"urn:example:extensions\">\
-                        <namespace uri=\"urn:example:foo\" xmlns:myext=\"urn:example:extensions\"/>\
-                        <prefix xmlns:myxt=\"urn:emple:extensions\" value=\"foo\" xmlns:myext=\"urn:example:extensions\"/>\
-                     </module>",
-                st->mod);
-
-    assert_int_equal(ret, LY_SUCCESS);
-    assert_string_equal(st->mod->parsed->mod->name, "example-foo");
-    assert_string_equal(st->mod->parsed->mod->prefix, "foo");
-    assert_string_equal(st->mod->parsed->mod->ns, "urn:example:foo");
-
-    st = reset_state(state);
-    ret = yin_parse_module(st->ctx,
-                           "<module name=\"example-foo\">\
-                                <invalid-tag uri=\"urn:example:foo\"\"/>\
-                            </module>",
-                            st->mod);
-    assert_int_equal(ret, LY_EVALID);
-
-    st = reset_state(state);
-    ret = yin_parse_module(st->ctx,
-                           "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">\
-                            </module>",
-                           st->mod);
-    assert_int_equal(ret, LY_EVALID);
-    logbuf_assert("Missing mandatory attribute name of module element. Line number 1.");
-
-    st = reset_state(state);
-    ret = yin_parse_module(st->ctx,
-                    "",
-                st->mod);
-    assert_int_equal(ret, LY_EVALID);
-    logbuf_assert("Invalid keyword \"(null)\", expected \"module\" or \"submodule\". Line number 1.");
-    st->finished_correctly = true;
 }
 
 static void
@@ -753,8 +706,8 @@ test_element_helper(struct state *st, const char **data, void *dest, const char 
                                             {YIN_TEXT, dest, 0},
                                             {YIN_VALUE, dest, 0}
                                         };
-    LY_CHECK_RET(lyxml_get_element(&st->yin_ctx->xml_ctx, data, &prefix.value, &prefix.len, &name.value, &name.len));\
-    LY_CHECK_RET(yin_load_attributes(st->yin_ctx, data, &attrs));\
+    LY_CHECK_RET(lyxml_get_element(&st->yin_ctx->xml_ctx, data, &prefix.value, &prefix.len, &name.value, &name.len));
+    LY_CHECK_RET(yin_load_attributes(st->yin_ctx, data, &attrs));
     ret = yin_parse_content(st->yin_ctx, subelems, 71, data, yin_match_keyword(st->yin_ctx, name.value, name.len, prefix.value, prefix.len, YANG_NONE), text, exts);
     LY_ARRAY_FREE(attrs);
     if (valid) {
@@ -3451,12 +3404,123 @@ test_deviation_elem(void **state)
     st->finished_correctly = true;
 }
 
+static void
+test_module_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct yin_arg_record *attrs = NULL;
+    struct sized_string name, prefix;
+    struct lys_module *lys_mod = NULL;
+    struct lysp_module *lysp_mod = NULL;
+
+    /* max subelems */
+    st->yin_ctx->xml_ctx.status = LYXML_ELEMENT;
+    lys_mod = calloc(1, sizeof *lys_mod);
+    lysp_mod = calloc(1, sizeof *lysp_mod);
+    lys_mod->ctx = st->ctx;
+    lysp_mod->mod = lys_mod;
+    data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" name=\"mod\">\n"
+                "<yang-version value=\"1.1\"/>\n"
+                "<namespace uri=\"ns\"/>\n"
+                "<prefix value=\"pref\"/>\n"
+                "<include module=\"b-mod\"/>\n"
+                "<import module=\"a-mod\"><prefix value=\"imp-pref\"/></import>\n"
+                "<organization><text>org</text></organization>\n"
+                "<contact><text>contact</text></contact>\n"
+                "<description><text>desc</text></description>"
+                "<reference><text>ref</text></reference>\n"
+                "<revision date=\"2019-02-02\"/>\n"
+                "<anydata name=\"anyd\"/>\n"
+                "<anyxml name=\"anyx\"/>\n"
+                "<choice name=\"choice\"/>\n"
+                "<container name=\"cont\"/>\n"
+                "<leaf name=\"leaf\"> <type name=\"type\"/> </leaf>\n"
+                "<leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>\n"
+                "<list name=\"sub-list\"/>\n"
+                "<uses name=\"uses-name\"/>\n"
+                "<augment target-node=\"target\"/>\n"
+                "<deviation target-node=\"target\">""<deviate value=\"not-supported\"/>""</deviation>\n"
+                "<extension name=\"ext\"/>\n"
+                "<feature name=\"feature\"/>\n"
+                "<grouping name=\"grp\"/>\n"
+                "<identity name=\"ident-name\"/>\n"
+                "<notification name=\"notf\"/>\n"
+                "<rpc name=\"rpc-name\"/>\n"
+                "<typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>\n"
+           "</module>\n";
+    assert_int_equal(lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len), LY_SUCCESS);
+    assert_int_equal(yin_load_attributes(st->yin_ctx, &data, &attrs), LY_SUCCESS);
+    assert_int_equal(yin_parse_mod(st->yin_ctx, attrs, &data, lysp_mod), LY_SUCCESS);
+    assert_string_equal(lysp_mod->mod->name, "mod");
+    assert_string_equal(lysp_mod->revs, "2019-02-02");
+    assert_string_equal(lysp_mod->mod->ns, "ns");
+    assert_string_equal(lysp_mod->mod->prefix, "pref");
+    assert_null(lysp_mod->mod->filepath);
+    assert_string_equal(lysp_mod->mod->org, "org");
+    assert_string_equal(lysp_mod->mod->contact, "contact");
+    assert_string_equal(lysp_mod->mod->dsc, "desc");
+    assert_string_equal(lysp_mod->mod->ref, "ref");
+    assert_int_equal(lysp_mod->mod->version, LYS_VERSION_1_1);
+    assert_string_equal(lysp_mod->imports->name, "a-mod");
+    assert_string_equal(lysp_mod->includes->name, "b-mod");
+    assert_string_equal(lysp_mod->extensions->name, "ext");
+    assert_string_equal(lysp_mod->features->name, "feature");
+    assert_string_equal(lysp_mod->identities->name, "ident-name");
+    assert_string_equal(lysp_mod->typedefs->name, "tpdf");
+    assert_string_equal(lysp_mod->groupings->name, "grp");
+    assert_string_equal(lysp_mod->data->name, "anyd");
+    assert_int_equal(lysp_mod->data->nodetype, LYS_ANYDATA);
+    assert_string_equal(lysp_mod->data->next->name, "anyx");
+    assert_int_equal(lysp_mod->data->next->nodetype, LYS_ANYXML);
+    assert_string_equal(lysp_mod->data->next->next->name, "choice");
+    assert_int_equal(lysp_mod->data->next->next->nodetype, LYS_CHOICE);
+    assert_string_equal(lysp_mod->data->next->next->next->name, "cont");
+    assert_int_equal(lysp_mod->data->next->next->next->nodetype, LYS_CONTAINER);
+    assert_string_equal(lysp_mod->data->next->next->next->next->name, "leaf");
+    assert_int_equal(lysp_mod->data->next->next->next->next->nodetype, LYS_LEAF);
+    assert_string_equal(lysp_mod->data->next->next->next->next->next->name, "llist");
+    assert_int_equal(lysp_mod->data->next->next->next->next->next->nodetype, LYS_LEAFLIST);
+    assert_string_equal(lysp_mod->data->next->next->next->next->next->next->name, "sub-list");
+    assert_int_equal(lysp_mod->data->next->next->next->next->next->next->nodetype, LYS_LIST);
+    assert_string_equal(lysp_mod->data->next->next->next->next->next->next->next->name, "uses-name");
+    assert_int_equal(lysp_mod->data->next->next->next->next->next->next->next->nodetype, LYS_USES);
+    assert_null(lysp_mod->data->next->next->next->next->next->next->next->next);
+    assert_string_equal(lysp_mod->augments->nodeid, "target");
+    assert_string_equal(lysp_mod->rpcs->name, "rpc-name");
+    assert_string_equal(lysp_mod->notifs->name, "notf");
+    assert_string_equal(lysp_mod->deviations->nodeid, "target");
+    assert_null(lysp_mod->exts);
+    lysp_module_free(lysp_mod);
+    lys_module_free(lys_mod, NULL);
+    FREE_ARRAY(st->yin_ctx, attrs, free_arg_rec);
+    attrs = NULL;
+
+    /* min subelems */
+    st->yin_ctx->xml_ctx.status = LYXML_ELEMENT;
+    lys_mod = calloc(1, sizeof *lys_mod);
+    lysp_mod = calloc(1, sizeof *lysp_mod);
+    lys_mod->ctx = st->ctx;
+    lysp_mod->mod = lys_mod;
+    data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" name=\"mod\">"
+                "<namespace uri=\"ns\"/>"
+                "<prefix value=\"pref\"/>"
+                "<yang-version value=\"1.1\"/>"
+           "</module>";
+    assert_int_equal(lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len), LY_SUCCESS);
+    assert_int_equal(yin_load_attributes(st->yin_ctx, &data, &attrs), LY_SUCCESS);
+    assert_int_equal(yin_parse_mod(st->yin_ctx, attrs, &data, lysp_mod), LY_SUCCESS);
+    lysp_module_free(lysp_mod);
+    lys_module_free(lys_mod, NULL);
+    FREE_ARRAY(st->yin_ctx, attrs, free_arg_rec);
+    attrs = NULL;
+}
+
 int
 main(void)
 {
 
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup_teardown(test_yin_parse_module, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_yin_match_keyword, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_yin_parse_element_generic, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_yin_parse_extension_instance, setup_f, teardown_f),
@@ -3522,6 +3586,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_augment_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_deviate_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_deviation_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_module_elem, setup_element_test, teardown_element_test),
     };
 
     return cmocka_run_group_tests(tests, setup_ly_ctx, destroy_ly_ctx);

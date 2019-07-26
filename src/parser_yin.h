@@ -373,4 +373,26 @@ LY_ERR yin_parse_extension_instance(struct yin_parser_ctx *ctx, struct yin_arg_r
 LY_ERR yin_parse_element_generic(struct yin_parser_ctx *ctx, const char *name, size_t name_len, const char **data,
                                  struct lysp_stmt **element);
 
+/**
+ * @brief Parse module substatements.
+ *
+ * @param[in,out] ctx Yin parser context for logging and to store current state.
+ * @param[in] mod_attrs Attributes of module element.
+ * @param[in,out] data Data to read from.
+ * @param[out] mod Parsed module structure.
+ *
+ * @return LY_ERR values.
+ */
+LY_ERR
+yin_parse_mod(struct yin_parser_ctx *ctx, struct yin_arg_record *mod_attrs, const char **data, struct lysp_module *mod);
+
+
+/**
+ * @brief free argument record, content loaded from lyxml_get_string() can be
+ * dynamically allocated in some cases so it must be also freed.
+ *
+ * @param ctx unused just to fulfill
+ */
+void free_arg_rec(struct yin_parser_ctx *ctx, struct yin_arg_record *record);
+
 #endif /* LY_PARSER_YIN_H_*/
