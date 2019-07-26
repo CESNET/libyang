@@ -243,14 +243,20 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
         if (parent) {
             if (prev && cur->schema->nodetype == LYS_LEAF && (cur->schema->flags & LYS_KEY)) {
                 /* it is key and we need to insert it into a correct place */
-                struct lysc_node_leaf **keys = ((struct lysc_node_list*)parent->schema)->keys;
+                struct lysc_node *key_s;
                 unsigned int cur_index, key_index;
                 struct lyd_node *key;
 
-                for (cur_index = 0; keys[cur_index] != (struct lysc_node_leaf*)cur->schema; ++cur_index);
-                for (key = prev; !(key->schema->flags & LYS_KEY) && key->prev != prev; key = key->prev);
+                for (cur_index = 0, key_s = ((struct lysc_node_list*)parent->schema)->child;
+                        key_s && key_s != cur->schema;
+                        ++cur_index, key_s = key_s->next);
+                for (key = prev;
+                        !(key->schema->flags & LYS_KEY) && key->prev != prev;
+                        key = key->prev);
                 for (; key->schema->flags & LYS_KEY; key = key->prev) {
-                    for (key_index = 0; keys[key_index] != (struct lysc_node_leaf*)key->schema; ++key_index);
+                    for (key_index = 0, key_s = ((struct lysc_node_list*)parent->schema)->child;
+                            key_s && key_s != key->schema;
+                            ++key_index, key_s = key_s->next);
                     if (key_index < cur_index) {
                         /* cur key is supposed to be placed after the key */
                         cur->next = key->next;

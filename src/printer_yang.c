@@ -1725,11 +1725,11 @@ yprc_list(struct ypr_ctx *ctx, const struct lysc_node *node)
     LY_ARRAY_FOR(list->musts, u) {
         yprc_must(ctx, &list->musts[u], NULL);
     }
-    if (list->keys) {
+    if (!(list->flags & LYS_KEYLESS)) {
         ypr_open(ctx->out, &flag);
         ly_print(ctx->out, "%*skey \"", INDENT);
-        LY_ARRAY_FOR(list->keys, u) {
-            ly_print(ctx->out, "%s%s", u > 0 ? ", " : "", list->keys[u]->name);
+        for (struct lysc_node *key = list->child; key && key->nodetype == LYS_LEAF && (key->flags & LYS_KEY); key = key->next) {
+            ly_print(ctx->out, "%s%s", u > 0 ? ", " : "", key->name);
         }
         ly_print(ctx->out, "\";\n");
     }

@@ -1730,10 +1730,13 @@ check_predicates:
                 }
                 if (token[0] != '[') {
                     /* now we should have all the keys */
-                    if (LY_ARRAY_SIZE(((struct lysc_node_list*)node_s)->keys) != predicates.count) {
+                    unsigned int keys_count = 0;
+                    for (struct lysc_node *key = ((struct lysc_node_list*)node_s)->child;
+                            key && key->nodetype == LYS_LEAF && (key->flags & LYS_KEY);
+                            keys_count++, key = key->next);
+                    if (keys_count != predicates.count) {
                         asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - missing %u key(s) for the list instance \"%.*s\".",
-                                 (int)value_len, value, LY_ARRAY_SIZE(((struct lysc_node_list*)node_s)->keys) - predicates.count,
-                                 (int)(token - node_start), node_start);
+                                 (int)value_len, value, keys_count - predicates.count, (int)(token - node_start), node_start);
                         goto error;
                     }
                 }

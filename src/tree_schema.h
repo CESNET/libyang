@@ -462,6 +462,7 @@ struct lysp_deviation {
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *      10 LYS_SET_DFLT     | | |x|x| | |x| | | | | | | | |
  *         LYS_ISENUM       | | | | | | | | | | | | | | |x|
+ *         LYS_KEYLESS      | | | | |x| | | | | | | | | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *      11 LYS_SET_UNITS    | | |x|x| | | | | | | | | | | |
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -494,6 +495,7 @@ struct lysp_deviation {
 #define LYS_PRESENCE     0x80        /**< flag for presence property of a container, applicable only to ::lysc_node_container */
 #define LYS_UNIQUE       0x80        /**< flag for leafs being part of a unique set, applicable only to ::lysc_node_leaf */
 #define LYS_KEY          0x100       /**< flag for leafs being a key of a list, applicable only to ::lysc_node_leaf */
+#define LYS_KEYLESS      0x200       /**< flag for list without any key, applicable only to ::lysc_node_list */
 #define LYS_FENABLED     0x100       /**< feature enabled flag, applicable only to ::lysc_feature */
 #define LYS_ORDBY_SYSTEM 0x80        /**< ordered-by user lists, applicable only to ::lysc_node_leaflist/::lysp_node_leaflist and
                                           ::lysc_node_list/::lysp_node_list */
@@ -1322,7 +1324,6 @@ struct lysc_node_list {
     struct lysc_action *actions;     /**< list of actions ([sized array](@ref sizedarrays)) */
     struct lysc_notif *notifs;       /**< list of notifications ([sized array](@ref sizedarrays)) */
 
-    struct lysc_node_leaf **keys;    /**< list of pointers to the keys ([sized array](@ref sizedarrays)) */
     struct lysc_node_leaf ***uniques; /**< list of sized arrays of pointers to the unique nodes ([sized array](@ref sizedarrays)) */
     uint32_t min;                    /**< min-elements constraint */
     uint32_t max;                    /**< max-elements constraint */

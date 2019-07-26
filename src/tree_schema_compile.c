@@ -2107,7 +2107,7 @@ lys_compile_leafref_predicate_validate(struct lysc_ctx *ctx, const char **predic
     const struct lysc_node *src_node, *dst_node;
     const char *path_key_expr, *pke_start, *src, *src_prefix, *dst, *dst_prefix;
     size_t src_len, src_prefix_len, dst_len, dst_prefix_len;
-    unsigned int dest_parent_times, c, u;
+    unsigned int dest_parent_times, c;
     const char *start, *end, *pke_end;
     struct ly_set keys = {0};
     int i;
@@ -2167,10 +2167,11 @@ lys_compile_leafref_predicate_validate(struct lysc_ctx *ctx, const char **predic
             mod = start_node->module;
         }
         src_node = NULL;
-        if (context_node->keys) {
-            for (u = 0; u < LY_ARRAY_SIZE(context_node->keys); ++u) {
-                if (!strncmp(src, context_node->keys[u]->name, src_len) && context_node->keys[u]->name[src_len] == '\0') {
-                    src_node = (const struct lysc_node*)context_node->keys[u];
+        if (!(context_node->flags & LYS_KEYLESS)) {
+            struct lysc_node *key;
+            for (key = context_node->child; key && key->nodetype == LYS_LEAF && (key->flags & LYS_KEY); key = key->next) {
+                if (!strncmp(src, key->name, src_len) && key->name[src_len] == '\0') {
+                    src_node = key;
                     break;
                 }
             }
@@ -3785,7 +3786,7 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lys
     struct lysp_node_list *list_p = (struct lysp_node_list*)node_p;
     struct lysc_node_list *list = (struct lysc_node_list*)node;
     struct lysp_node *child_p;
-    struct lysc_node_leaf **key;
+    struct lysc_node_leaf *key, *prev_key = NULL;
     size_t len;
     unsigned int u;
     const char *keystr, *delim;
@@ -3811,6 +3812,10 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lys
 
     /* find all the keys (must be direct children) */
     keystr = list_p->key;
+    if (!keystr) {
+        /* keyless list */
+        list->flags |= LYS_KEYLESS;
+    }
     while (keystr) {
         delim = strpbrk(keystr, " \t\n");
         if (delim) {
@@ -3823,42 +3828,41 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lys
         }
 
         /* key node must be present */
-        LY_ARRAY_NEW_RET(ctx->ctx, list->keys, key, LY_EMEM);
-        *key = (struct lysc_node_leaf*)lys_child(node, node->module, keystr, len, LYS_LEAF, LYS_GETNEXT_NOCHOICE | LYS_GETNEXT_NOSTATECHECK);
-        if (!(*key)) {
+        key = (struct lysc_node_leaf*)lys_child(node, node->module, keystr, len, LYS_LEAF, LYS_GETNEXT_NOCHOICE | LYS_GETNEXT_NOSTATECHECK);
+        if (!(key)) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                    "The list's key \"%.*s\" not found.", len, keystr);
             return LY_EVALID;
         }
         /* keys must be unique */
-        for(u = 0; u < LY_ARRAY_SIZE(list->keys) - 1; ++u) {
-            if (*key == list->keys[u]) {
-                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                       "Duplicated key identifier \"%.*s\".", len, keystr);
-                return LY_EVALID;
-            }
+        if (key->flags & LYS_KEY) {
+            /* the node was already marked as a key */
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                   "Duplicated key identifier \"%.*s\".", len, keystr);
+            return LY_EVALID;
         }
-        lysc_update_path(ctx, (struct lysc_node*)list, (*key)->name);
+
+        lysc_update_path(ctx, (struct lysc_node*)list, key->name);
         /* key must have the same config flag as the list itself */
-        if ((list->flags & LYS_CONFIG_MASK) != ((*key)->flags & LYS_CONFIG_MASK)) {
+        if ((list->flags & LYS_CONFIG_MASK) != (key->flags & LYS_CONFIG_MASK)) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS, "Key of the configuration list must not be status leaf.");
             return LY_EVALID;
         }
         if (ctx->mod_def->version < LYS_VERSION_1_1) {
             /* YANG 1.0 denies key to be of empty type */
-            if ((*key)->type->basetype == LY_TYPE_EMPTY) {
+            if (key->type->basetype == LY_TYPE_EMPTY) {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
                        "List's key cannot be of \"empty\" type until it is in YANG 1.1 module.");
                 return LY_EVALID;
             }
         } else {
             /* when and if-feature are illegal on list keys */
-            if ((*key)->when) {
+            if (key->when) {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
                        "List's key must not have any \"when\" statement.");
                 return LY_EVALID;
             }
-            if ((*key)->iffeatures) {
+            if (key->iffeatures) {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
                        "List's key must not have any \"if-feature\" statement.");
                 return LY_EVALID;
@@ -3867,20 +3871,58 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lys
 
         /* check status */
         LY_CHECK_RET(lysc_check_status(ctx, list->flags, list->module, list->name,
-                                       (*key)->flags, (*key)->module, (*key)->name));
+                                       key->flags, key->module, key->name));
 
         /* ignore default values of the key */
-        if ((*key)->dflt) {
-            (*key)->dflt->realtype->plugin->free(ctx->ctx, (*key)->dflt);
-            lysc_type_free(ctx->ctx, (*key)->dflt->realtype);
-            free((*key)->dflt);
-            (*key)->dflt = NULL;
-            (*key)->dflt_mod = NULL;
+        if (key->dflt) {
+            key->dflt->realtype->plugin->free(ctx->ctx, key->dflt);
+            lysc_type_free(ctx->ctx, key->dflt->realtype);
+            free(key->dflt);
+            key->dflt = NULL;
+            key->dflt_mod = NULL;
         }
         /* mark leaf as key */
-        (*key)->flags |= LYS_KEY;
+        key->flags |= LYS_KEY;
+
+        /* move it to the correct position */
+        if ((prev_key && (struct lysc_node*)prev_key != key->prev) || (!prev_key && key->prev->next)) {
+            /* fix links in closest previous siblings of the key */
+            if (key->next) {
+                key->next->prev = key->prev;
+            } else {
+                /* last child */
+                list->child->prev = key->prev;
+            }
+            if (key->prev->next) {
+                key->prev->next = key->next;
+            }
+            /* fix links in the key */
+            if (prev_key) {
+                key->prev = (struct lysc_node*)prev_key;
+                key->next = prev_key->next;
+            } else {
+                key->prev = list->child->prev;
+                key->next = list->child;
+            }
+            /* fix links in closes future siblings of the key */
+            if (prev_key) {
+                if (prev_key->next) {
+                    prev_key->next->prev = (struct lysc_node*)key;
+                } else {
+                    list->child->prev = (struct lysc_node*)key;
+                }
+                prev_key->next = (struct lysc_node*)key;
+            } else {
+                list->child->prev = (struct lysc_node*)key;
+            }
+            /* fix links in parent */
+            if (!key->prev->next) {
+                list->child = (struct lysc_node*)key;
+            }
+        }
 
         /* next key value */
+        prev_key = key;
         keystr = delim;
         lysc_update_path(ctx, NULL, NULL);
     }
