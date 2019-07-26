@@ -436,10 +436,22 @@ lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, const struct ly
     }
 
     if (options & LYD_OPT_RPCREPLY) {
-        /* TODO prepare container for RPC reply, for which we need RPC
+        /* prepare container for RPC reply, for which we need RPC
          * - prepare *result as top-level node
          * - prepare parent as the RPC/action node */
-        (void)trees;
+        const struct lyd_node *action;
+        for (action = trees[0]; action && action->schema->nodetype != LYS_ACTION; action = lyd_node_children(action)) {
+            /* skip list's keys */
+            for ( ;action->schema->nodetype == LYS_LEAF; action = action->next);
+        }
+        if (!action) {
+            LOGERR(ctx, LY_EINVAL, "Data parser invalid argument trees - the first item in the array must be the RPC/action request when parsing %s.",
+                   lyd_parse_options_type2str(options));
+            return LY_EINVAL;
+        }
+        parent = (struct lyd_node_inner*)lyd_dup(action, NULL, LYD_DUP_WITH_PARENTS);
+        LY_CHECK_ERR_RET(!parent, LOGERR(ctx, ly_errcode(ctx), "Unable to duplicate RPC/action container for RPC/action reply."), ly_errcode(ctx));
+        for (*result = (struct lyd_node*)parent; (*result)->parent; *result = (struct lyd_node*)(*result)->parent);
     }
 
     ret = lydxml_nodes(&xmlctx, parent, &data, *result ? &parent->child : result);
@@ -467,16 +479,17 @@ lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, const struct ly
             }
         }
 
-        if (!(*result)) {
+        if (!(*result) || (parent && !parent->child)) {
 no_data:
             /* no data */
             if (options & (LYD_OPT_RPC | LYD_OPT_NOTIF)) {
-                /* error, top level node identify RPC and Notification */
+                /* error, missing top level node identify RPC and Notification */
                 LOGERR(ctx, LY_EINVAL, "Invalid input data of data parser - expected %s which cannot be empty.",
                        lyd_parse_options_type2str(options));
             } else {
                 /* others - no work is needed, just check for missing mandatory nodes */
-                /* TODO lyd_validate(&result, options, ctx); */
+                /* TODO lyd_validate(&result, options, ctx);
+                 * - according to the data tree type */
             }
         }
     }
