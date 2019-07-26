@@ -19,13 +19,14 @@
 
 #include "set.h"
 #include "tree_schema.h"
+#include "xml.h"
 
 #define LOGVAL_PARSER(CTX, ...) LOGVAL((CTX)->ctx, LY_VLOG_LINE, &(CTX)->line, __VA_ARGS__)
 
 /* These 2 macros checks YANG's identifier grammar rule */
 #define is_yangidentstartchar(c) ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_')
 #define is_yangidentchar(c) ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || \
-        c == '_' || c == '-' || c == '.')
+                              c == '_' || c == '-' || c == '.')
 
 /* Macro to check YANG's yang-char grammar rule */
 #define is_yangutf8char(c) ((c >= 0x20 && c <= 0xd77) || c == 0x09 || c == 0x0a || c == 0x0d || \
@@ -86,16 +87,38 @@ enum yang_arg {
 };
 
 /**
- * @brief internal context for schema parsers
+ * @brief Internal context for yang schema parser.
  */
 struct lys_parser_ctx {
-    struct ly_set tpdfs_nodes;
-    struct ly_set grps_nodes;
-    uint8_t mod_version; /**< module's version */
-    struct ly_ctx *ctx;
-    uint64_t line;      /**< line number */
-    uint64_t indent;    /**< current position on the line for YANG indentation */
+    struct ly_set tpdfs_nodes;  /**< set of typedef nodes */
+    struct ly_set grps_nodes;   /**< set of grouping nodes */
+    uint8_t mod_version;        /**< module's version */
+    struct ly_ctx *ctx;         /**< context of then yang schemas */
+    uint64_t line;              /**< line number */
+    uint64_t indent;            /**< current position on the line for YANG indentation */
 };
+
+/**
+ * @brief free lys parser context.
+ */
+void lys_parser_ctx_free(struct lys_parser_ctx *ctx);
+
+/**
+ * @brief Internal context for yin schema parser.
+ */
+struct yin_parser_ctx {
+    struct ly_set tpdfs_nodes;     /**< set of typedef nodes */
+    struct ly_set grps_nodes;      /**< set of grouping nodes */
+    uint8_t mod_version;           /**< module's version */
+    struct lyxml_context xml_ctx;  /**< context for xml parser */
+};
+
+/**
+ * @brief free yin parser context
+ *
+ * @param[in] ctx Context to free.
+ */
+void yin_parser_ctx_free(struct yin_parser_ctx *ctx);
 
 struct lysc_incomplete_dflt {
     struct lyd_value *dflt;

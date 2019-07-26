@@ -64,13 +64,6 @@ struct yin_arg_record {
     int dynamic_content;  /**< is set to 1 iff content is dynamically allocated 0 otherwise */
 };
 
-struct yin_parser_ctx {
-    struct ly_set tpdfs_nodes;
-    struct ly_set grps_nodes;
-    uint8_t mod_version;           /**< module's version */
-    struct lyxml_context xml_ctx;  /**< context for xml parser */
-};
-
 /* flags to encode cardinality of subelement */
 #define YIN_SUBELEM_MANDATORY   0x01    /**< is set when subelement is mandatory */
 #define YIN_SUBELEM_UNIQUE      0x02    /**< is set when subelement is unique */

@@ -3553,7 +3553,6 @@ test_submodule_elem(void **state)
 
     assert_string_equal(lysp_submod->name, "mod");
     assert_string_equal(lysp_submod->revs, "2019-02-02");
-    //assert_string_equal(lysp_submod->ns, "ns");
     assert_string_equal(lysp_submod->prefix, "pref");
     assert_null(lysp_submod->filepath);
     assert_string_equal(lysp_submod->org, "org");

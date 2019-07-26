@@ -862,3 +862,20 @@ lys_module_free(struct lys_module *module, void (*private_destructor)(const stru
 
     free(module);
 }
+
+void
+lys_parser_ctx_free(struct lys_parser_ctx *ctx)
+{
+    if (ctx) {
+        free(ctx);
+    }
+}
+
+void
+yin_parser_ctx_free(struct yin_parser_ctx *ctx)
+{
+    if (ctx) {
+        lyxml_context_clear(&ctx->xml_ctx);
+        free(ctx);
+    }
+}
