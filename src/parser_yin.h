@@ -147,6 +147,12 @@ struct action_meta {
     struct lysp_action **actions;     /**< Actions to add to. */
 };
 
+/* Meta information passed to yin_parse_import function */
+struct import_meta {
+    const char *prefix;             /**< module prefix. */
+    struct lysp_import **imports;   /**< imports to add to. */
+};
+
 struct minmax_dev_meta {
     uint32_t *lim;
     uint16_t *flags;
@@ -214,12 +220,12 @@ LY_ERR yin_validate_value(struct yin_parser_ctx *ctx, enum yang_arg val_type, ch
  * @param[in,out] ctx Yin parser context for logging and to store current state.
  * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of import element.
  * @param[in,out] data Data to read from, always moved to currently handled character.
- * @param[in,out] mod Structure of module that is being parsed.
+ * @param[in,out] imp_meta Meta information about prefix and imports to add to.
  *
  * @return LY_ERR values.
  */
 LY_ERR yin_parse_import(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs,
-                        const char **data, struct lysp_module *mod);
+                        const char **data, struct import_meta *imp_meta);
 
 /**
  * @brief Match yang keyword from yin data.
@@ -374,7 +380,7 @@ LY_ERR yin_parse_element_generic(struct yin_parser_ctx *ctx, const char *name, s
                                  struct lysp_stmt **element);
 
 /**
- * @brief Parse module substatements.
+ * @brief Parse module element.
  *
  * @param[in,out] ctx Yin parser context for logging and to store current state.
  * @param[in] mod_attrs Attributes of module element.
@@ -383,9 +389,22 @@ LY_ERR yin_parse_element_generic(struct yin_parser_ctx *ctx, const char *name, s
  *
  * @return LY_ERR values.
  */
-LY_ERR
-yin_parse_mod(struct yin_parser_ctx *ctx, struct yin_arg_record *mod_attrs, const char **data, struct lysp_module *mod);
+LY_ERR yin_parse_mod(struct yin_parser_ctx *ctx, struct yin_arg_record *mod_attrs,
+                     const char **data, struct lysp_module *mod);
 
+
+/**
+ * @brief Parse submodule element.
+ *
+ * @param[in,out] ctx Yin parser context for logging and to store current state.
+ * @param[in] mod_attrs Attributes of module element.
+ * @param[in,out] data Data to read from.
+ * @param[out] mod Parsed module structure.
+ *
+ * @return LY_ERR values.
+ */
+LY_ERR yin_parse_submod(struct yin_parser_ctx *ctx, struct yin_arg_record *mod_attrs,
+                        const char **data, struct lysp_submodule *submod);
 
 /**
  * @brief free argument record, content loaded from lyxml_get_string() can be

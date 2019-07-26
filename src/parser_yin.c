@@ -2436,7 +2436,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                                                     (const char ***)subelem->dest, YIN_ARG_NAME, Y_STR_ARG, exts);
                     break;
                 case YANG_IMPORT:
-                    ret = yin_parse_import(ctx, attrs, data, (struct lysp_module *)subelem->dest);
+                    ret = yin_parse_import(ctx, attrs, data, (struct import_meta *)subelem->dest);
                     break;
                 case YANG_INCLUDE:
                     ret = yin_parse_include(ctx, attrs, data, (struct include_meta *)subelem->dest);
@@ -2696,11 +2696,11 @@ yin_parse_yangversion(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, 
 }
 
 LY_ERR
-yin_parse_import(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data, struct lysp_module *mod)
+yin_parse_import(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data, struct import_meta *imp_meta)
 {
     struct lysp_import *imp;
     /* allocate new element in sized array for import */
-    LY_ARRAY_NEW_RET(ctx->xml_ctx.ctx, mod->imports, imp, LY_EMEM);
+    LY_ARRAY_NEW_RET(ctx->xml_ctx.ctx, *imp_meta->imports, imp, LY_EMEM);
 
     struct yin_subelement subelems[5] = {
                                             {YANG_DESCRIPTION, &imp->dsc, YIN_SUBELEM_UNIQUE},
@@ -2714,9 +2714,9 @@ yin_parse_import(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const
     LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_MODULE, &imp->name, Y_IDENTIF_ARG, YANG_IMPORT));
     LY_CHECK_RET(yin_parse_content(ctx, subelems, 5, data, YANG_IMPORT, NULL, &imp->exts));
     /* check prefix validity */
-    LY_CHECK_RET(lysp_check_prefix((struct lys_parser_ctx *)ctx, mod->imports, mod->mod->prefix, &imp->prefix), LY_EVALID);
+    LY_CHECK_RET(lysp_check_prefix((struct lys_parser_ctx *)ctx, *imp_meta->imports, imp_meta->prefix, &imp->prefix), LY_EVALID);
 
-    return yin_parse_content(ctx, subelems, 5, data, YANG_IMPORT, NULL, &imp->exts);
+    return LY_SUCCESS;
 }
 
 LY_ERR
@@ -3037,6 +3037,7 @@ yin_parse_mod(struct yin_parser_ctx *ctx, struct yin_arg_record *mod_attrs, cons
     struct notif_meta notif_meta = {NULL, &mod->notifs};
     struct action_meta act_meta = {NULL, &mod->rpcs};
     struct typedef_meta tpdf_meta = {NULL, &mod->typedefs};
+    struct import_meta imp_meta = {mod->mod->prefix, &mod->imports};
     struct yin_subelement subelems[28] = {
                                             {YANG_ANYDATA, &node_meta, YIN_SUBELEM_VER2},
                                             {YANG_ANYXML, &node_meta, 0},
@@ -3050,7 +3051,7 @@ yin_parse_mod(struct yin_parser_ctx *ctx, struct yin_arg_record *mod_attrs, cons
                                             {YANG_FEATURE, &mod->features, 0},
                                             {YANG_GROUPING, &grp_meta, 0},
                                             {YANG_IDENTITY, &mod->identities, 0},
-                                            {YANG_IMPORT, mod, 0},
+                                            {YANG_IMPORT, &imp_meta, 0},
                                             {YANG_INCLUDE, &inc_meta, 0},
                                             {YANG_LEAF, &node_meta, 0},
                                             {YANG_LEAF_LIST, &node_meta, 0},
@@ -3069,6 +3070,51 @@ yin_parse_mod(struct yin_parser_ctx *ctx, struct yin_arg_record *mod_attrs, cons
                                           };
 
     return yin_parse_content(ctx, subelems, 28, data, YANG_MODULE, NULL, &mod->exts);
+}
+
+LY_ERR
+yin_parse_submod(struct yin_parser_ctx *ctx, struct yin_arg_record *mod_attrs, const char **data, struct lysp_submodule *submod)
+{
+    LY_CHECK_RET(yin_parse_attribute(ctx, mod_attrs, YIN_ARG_NAME, &submod->name, Y_IDENTIF_ARG, YANG_SUBMODULE));
+    struct tree_node_meta node_meta = {NULL, &submod->data};
+    struct augment_meta aug_meta = {NULL, &submod->augments};
+    struct grouping_meta grp_meta = {NULL, &submod->groupings};
+    struct include_meta inc_meta = {submod->name, &submod->includes};
+    struct notif_meta notif_meta = {NULL, &submod->notifs};
+    struct action_meta act_meta = {NULL, &submod->rpcs};
+    struct typedef_meta tpdf_meta = {NULL, &submod->typedefs};
+    struct import_meta imp_meta = {submod->prefix, &submod->imports};
+    struct yin_subelement subelems[27] = {
+                                            {YANG_ANYDATA, &node_meta, YIN_SUBELEM_VER2},
+                                            {YANG_ANYXML, &node_meta, 0},
+                                            {YANG_AUGMENT, &aug_meta, 0},
+                                            {YANG_BELONGS_TO, submod, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE},
+                                            {YANG_CHOICE, &node_meta, 0},
+                                            {YANG_CONTACT, &submod->contact, YIN_SUBELEM_UNIQUE},
+                                            {YANG_CONTAINER, &node_meta, 0},
+                                            {YANG_DESCRIPTION, &submod->dsc, YIN_SUBELEM_UNIQUE},
+                                            {YANG_DEVIATION, &submod->deviations, 0},
+                                            {YANG_EXTENSION, &submod->extensions, 0},
+                                            {YANG_FEATURE, &submod->features, 0},
+                                            {YANG_GROUPING, &grp_meta, 0},
+                                            {YANG_IDENTITY, &submod->identities, 0},
+                                            {YANG_IMPORT, &imp_meta, 0},
+                                            {YANG_INCLUDE, &inc_meta, 0},
+                                            {YANG_LEAF, &node_meta, 0},
+                                            {YANG_LEAF_LIST, &node_meta, 0},
+                                            {YANG_LIST, &node_meta, 0},
+                                            {YANG_NOTIFICATION, &notif_meta, 0},
+                                            {YANG_ORGANIZATION, &submod->org, YIN_SUBELEM_UNIQUE},
+                                            {YANG_REFERENCE, &submod->ref, YIN_SUBELEM_UNIQUE},
+                                            {YANG_REVISION, &submod->revs, 0},
+                                            {YANG_RPC, &act_meta, 0},
+                                            {YANG_TYPEDEF, &tpdf_meta, 0},
+                                            {YANG_USES, &node_meta, 0},
+                                            {YANG_YANG_VERSION, &submod->version, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE},
+                                            {YANG_CUSTOM, NULL, 0}
+                                          };
+
+    return yin_parse_content(ctx, subelems, 27, data, YANG_SUBMODULE, NULL, &submod->exts);
 }
 
 LY_ERR

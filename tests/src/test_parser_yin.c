@@ -46,6 +46,8 @@ void lysp_action_free(struct ly_ctx *ctx, struct lysp_action *action);
 void lysp_augment_free(struct ly_ctx *ctx, struct lysp_augment *augment);
 void lysp_deviate_free(struct ly_ctx *ctx, struct lysp_deviate *d);
 void lysp_deviation_free(struct ly_ctx *ctx, struct lysp_deviation *dev);
+void lysp_submodule_free(struct ly_ctx *ctx, struct lysp_submodule *submod);
+void lysp_import_free(struct ly_ctx *ctx, struct lysp_import *import);
 
 struct state {
     struct ly_ctx *ctx;
@@ -60,7 +62,7 @@ char logbuf[BUFSIZE] = {0};
 int store = -1; /* negative for infinite logging, positive for limited logging */
 
 /* set to 0 to printing error messages to stderr instead of checking them in code */
-#define ENABLE_LOGGER_CHECKING 0
+#define ENABLE_LOGGER_CHECKING 1
 
 #if ENABLE_LOGGER_CHECKING
 static void
@@ -802,10 +804,8 @@ test_import_elem(void **state)
 {
     struct state *st = *state;
     const char *data;
-    struct lys_module *lys_mod = calloc(1, sizeof *lys_mod);
-    struct lysp_module *lysp_mod = calloc(1, sizeof *lysp_mod);
-    lys_mod->ctx = st->ctx;
-    lysp_mod->mod = lys_mod;
+    struct lysp_import *imports = NULL;
+    struct import_meta imp_meta = {"prefix", &imports};
 
     /* max subelems */
     data = ELEMENT_WRAPPER_START
@@ -816,58 +816,46 @@ test_import_elem(void **state)
                     "<reference><text>import reference</text></reference>"
                 "</import>"
            ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(st, &data, lysp_mod, NULL, NULL, true), LY_SUCCESS);
-    assert_string_equal(lysp_mod->imports->name, "a");
-    assert_string_equal(lysp_mod->imports->prefix, "a_mod");
-    assert_string_equal(lysp_mod->imports->rev, "2015-01-01");
-    assert_string_equal(lysp_mod->imports->dsc, "import description");
-    assert_string_equal(lysp_mod->imports->ref, "import reference");
-    lysp_module_free(lysp_mod);
-    lys_module_free(lys_mod, NULL);
+    assert_int_equal(test_element_helper(st, &data, &imp_meta, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(imports->name, "a");
+    assert_string_equal(imports->prefix, "a_mod");
+    assert_string_equal(imports->rev, "2015-01-01");
+    assert_string_equal(imports->dsc, "import description");
+    assert_string_equal(imports->ref, "import reference");
+    FREE_ARRAY(st->ctx, imports, lysp_import_free);
+    imports = NULL;
 
     /* min subelems */
-    lys_mod = calloc(1, sizeof *lys_mod);
-    lysp_mod = calloc(1, sizeof *lysp_mod);
-    lys_mod->ctx = st->ctx;
-    lysp_mod->mod = lys_mod;
     data = ELEMENT_WRAPPER_START
                 "<import module=\"a\">"
                     "<prefix value=\"a_mod\"/>"
                 "</import>"
            ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(st, &data, lysp_mod, NULL, NULL, true), LY_SUCCESS);
-    assert_string_equal(lysp_mod->imports->prefix, "a_mod");
-    lysp_module_free(lysp_mod);
-    lys_module_free(lys_mod, NULL);
+    assert_int_equal(test_element_helper(st, &data, &imp_meta, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(imports->prefix, "a_mod");
+    FREE_ARRAY(st->ctx, imports, lysp_import_free);
+    imports = NULL;
 
     /* invalid (missing prefix) */
-    lys_mod = calloc(1, sizeof *lys_mod);
-    lysp_mod = calloc(1, sizeof *lysp_mod);
-    lys_mod->ctx = st->ctx;
-    lysp_mod->mod = lys_mod;
-    data = ELEMENT_WRAPPER_START "<import module=\"a\">""</import>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(st, &data, lysp_mod, NULL, NULL, false), LY_EVALID);
+    data = ELEMENT_WRAPPER_START "<import module=\"a\"></import>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &imp_meta, NULL, NULL, false), LY_EVALID);
     logbuf_assert("Missing mandatory subelement prefix of import element. Line number 1.");
-    lysp_module_free(lysp_mod);
-    lys_module_free(lys_mod, NULL);
+    FREE_ARRAY(st->ctx, imports, lysp_import_free);
+    imports = NULL;
 
     /* invalid reused prefix */
-    lys_mod = calloc(1, sizeof *lys_mod);
-    lysp_mod = calloc(1, sizeof *lysp_mod);
-    lys_mod->ctx = st->ctx;
-    lysp_mod->mod = lys_mod;
     data = ELEMENT_WRAPPER_START
                 "<import module=\"a\">"
-                    "<prefix value=\"a_mod\"/>"
+                    "<prefix value=\"prefix\"/>"
                 "</import>"
                 "<import module=\"a\">"
-                    "<prefix value=\"a_mod\"/>"
+                    "<prefix value=\"prefix\"/>"
                 "</import>"
            ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(st, &data, lysp_mod, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Prefix \"a_mod\" already used to import \"a\" module. Line number 1.");
-    lysp_module_free(lysp_mod);
-    lys_module_free(lys_mod, NULL);
+    assert_int_equal(test_element_helper(st, &data, &imp_meta, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Prefix \"prefix\" already used as module prefix. Line number 1.");
+    FREE_ARRAY(st->ctx, imports, lysp_import_free);
+    imports = NULL;
 
     st->finished_correctly = true;
 }
@@ -3510,10 +3498,121 @@ test_module_elem(void **state)
     assert_int_equal(lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len), LY_SUCCESS);
     assert_int_equal(yin_load_attributes(st->yin_ctx, &data, &attrs), LY_SUCCESS);
     assert_int_equal(yin_parse_mod(st->yin_ctx, attrs, &data, lysp_mod), LY_SUCCESS);
+    assert_string_equal(lysp_mod->mod->name, "mod");
     lysp_module_free(lysp_mod);
     lys_module_free(lys_mod, NULL);
     FREE_ARRAY(st->yin_ctx, attrs, free_arg_rec);
     attrs = NULL;
+
+    st->finished_correctly = true;
+}
+
+static void
+test_submodule_elem(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct yin_arg_record *attrs = NULL;
+    struct sized_string name, prefix;
+    struct lysp_submodule *lysp_submod = NULL;
+
+    /* max subelements */
+    st->yin_ctx->xml_ctx.status = LYXML_ELEMENT;
+    lysp_submod = calloc(1, sizeof *lysp_submod);
+    data = "<submodule xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" name=\"mod\">\n"
+                "<yang-version value=\"1.1\"/>\n"
+                "<belongs-to module=\"mod-name\"><prefix value=\"pref\"/></belongs-to>"
+                "<include module=\"b-mod\"/>\n"
+                "<import module=\"a-mod\"><prefix value=\"imp-pref\"/></import>\n"
+                "<organization><text>org</text></organization>\n"
+                "<contact><text>contact</text></contact>\n"
+                "<description><text>desc</text></description>"
+                "<reference><text>ref</text></reference>\n"
+                "<revision date=\"2019-02-02\"/>\n"
+                "<anydata name=\"anyd\"/>\n"
+                "<anyxml name=\"anyx\"/>\n"
+                "<choice name=\"choice\"/>\n"
+                "<container name=\"cont\"/>\n"
+                "<leaf name=\"leaf\"> <type name=\"type\"/> </leaf>\n"
+                "<leaf-list name=\"llist\"> <type name=\"type\"/> </leaf-list>\n"
+                "<list name=\"sub-list\"/>\n"
+                "<uses name=\"uses-name\"/>\n"
+                "<augment target-node=\"target\"/>\n"
+                "<deviation target-node=\"target\">""<deviate value=\"not-supported\"/>""</deviation>\n"
+                "<extension name=\"ext\"/>\n"
+                "<feature name=\"feature\"/>\n"
+                "<grouping name=\"grp\"/>\n"
+                "<identity name=\"ident-name\"/>\n"
+                "<notification name=\"notf\"/>\n"
+                "<rpc name=\"rpc-name\"/>\n"
+                "<typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>\n"
+           "</submodule>\n";
+    assert_int_equal(lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len), LY_SUCCESS);
+    assert_int_equal(yin_load_attributes(st->yin_ctx, &data, &attrs), LY_SUCCESS);
+    assert_int_equal(yin_parse_submod(st->yin_ctx, attrs, &data, lysp_submod), LY_SUCCESS);
+
+    assert_string_equal(lysp_submod->name, "mod");
+    assert_string_equal(lysp_submod->revs, "2019-02-02");
+    //assert_string_equal(lysp_submod->ns, "ns");
+    assert_string_equal(lysp_submod->prefix, "pref");
+    assert_null(lysp_submod->filepath);
+    assert_string_equal(lysp_submod->org, "org");
+    assert_string_equal(lysp_submod->contact, "contact");
+    assert_string_equal(lysp_submod->dsc, "desc");
+    assert_string_equal(lysp_submod->ref, "ref");
+    assert_int_equal(lysp_submod->version, LYS_VERSION_1_1);
+    assert_string_equal(lysp_submod->imports->name, "a-mod");
+    assert_string_equal(lysp_submod->includes->name, "b-mod");
+    assert_string_equal(lysp_submod->extensions->name, "ext");
+    assert_string_equal(lysp_submod->features->name, "feature");
+    assert_string_equal(lysp_submod->identities->name, "ident-name");
+    assert_string_equal(lysp_submod->typedefs->name, "tpdf");
+    assert_string_equal(lysp_submod->groupings->name, "grp");
+    assert_string_equal(lysp_submod->data->name, "anyd");
+    assert_int_equal(lysp_submod->data->nodetype, LYS_ANYDATA);
+    assert_string_equal(lysp_submod->data->next->name, "anyx");
+    assert_int_equal(lysp_submod->data->next->nodetype, LYS_ANYXML);
+    assert_string_equal(lysp_submod->data->next->next->name, "choice");
+    assert_int_equal(lysp_submod->data->next->next->nodetype, LYS_CHOICE);
+    assert_string_equal(lysp_submod->data->next->next->next->name, "cont");
+    assert_int_equal(lysp_submod->data->next->next->next->nodetype, LYS_CONTAINER);
+    assert_string_equal(lysp_submod->data->next->next->next->next->name, "leaf");
+    assert_int_equal(lysp_submod->data->next->next->next->next->nodetype, LYS_LEAF);
+    assert_string_equal(lysp_submod->data->next->next->next->next->next->name, "llist");
+    assert_int_equal(lysp_submod->data->next->next->next->next->next->nodetype, LYS_LEAFLIST);
+    assert_string_equal(lysp_submod->data->next->next->next->next->next->next->name, "sub-list");
+    assert_int_equal(lysp_submod->data->next->next->next->next->next->next->nodetype, LYS_LIST);
+    assert_string_equal(lysp_submod->data->next->next->next->next->next->next->next->name, "uses-name");
+    assert_int_equal(lysp_submod->data->next->next->next->next->next->next->next->nodetype, LYS_USES);
+    assert_null(lysp_submod->data->next->next->next->next->next->next->next->next);
+    assert_string_equal(lysp_submod->augments->nodeid, "target");
+    assert_string_equal(lysp_submod->rpcs->name, "rpc-name");
+    assert_string_equal(lysp_submod->notifs->name, "notf");
+    assert_string_equal(lysp_submod->deviations->nodeid, "target");
+    assert_null(lysp_submod->exts);
+
+    lysp_submodule_free(st->ctx, lysp_submod);
+    FREE_ARRAY(st->yin_ctx, attrs, free_arg_rec);
+    attrs = NULL;
+
+    /* min subelemnts */
+    st->yin_ctx->xml_ctx.status = LYXML_ELEMENT;
+    lysp_submod = calloc(1, sizeof *lysp_submod);
+    data = "<submodule xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" name=\"submod\">"
+                "<yang-version value=\"1.0\"/>"
+                "<belongs-to module=\"mod-name\"><prefix value=\"pref\"/></belongs-to>"
+           "</submodule>";
+    assert_int_equal(lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len), LY_SUCCESS);
+    assert_int_equal(yin_load_attributes(st->yin_ctx, &data, &attrs), LY_SUCCESS);
+    assert_int_equal(yin_parse_submod(st->yin_ctx, attrs, &data, lysp_submod), LY_SUCCESS);
+    assert_string_equal(lysp_submod->prefix, "pref");
+    assert_string_equal(lysp_submod->belongsto, "mod-name");
+    assert_int_equal(lysp_submod->version, LYS_VERSION_1_0);
+    lysp_submodule_free(st->ctx, lysp_submod);
+    FREE_ARRAY(st->yin_ctx, attrs, free_arg_rec);
+    attrs = NULL;
+
+    st->finished_correctly = true;
 }
 
 int
@@ -3587,6 +3686,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_deviate_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_deviation_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_module_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_submodule_elem, setup_element_test, teardown_element_test),
     };
 
     return cmocka_run_group_tests(tests, setup_ly_ctx, destroy_ly_ctx);
