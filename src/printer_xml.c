@@ -121,10 +121,9 @@ xml_print_ns(struct xmlpr_ctx *ctx, const struct lyd_node *node)
         break;
     case LYS_CONTAINER:
     case LYS_LIST:
-#if 0
-    case LYS_RPC:
     case LYS_ACTION:
     case LYS_NOTIF:
+#if 0
         if (options & (LYP_WD_ALL_TAG | LYP_WD_IMPL_TAG)) {
             /* get with-defaults module and print its namespace */
             wdmod = ly_ctx_get_module(node->schema->module->ctx, "ietf-netconf-with-defaults", NULL, 1);
@@ -419,91 +418,73 @@ xml_print_inner(struct xmlpr_ctx *ctx, const struct lyd_node_inner *node)
     return LY_SUCCESS;
 }
 
-#if 0
-static int
-xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int toplevel, int options)
+static LY_ERR
+xml_print_anydata(struct xmlpr_ctx *ctx, const struct lyd_node_any *node)
 {
-    char *buf;
-    struct lyd_node_anydata *any = (struct lyd_node_anydata *)node;
+    struct lyd_node_any *any = (struct lyd_node_any *)node;
     struct lyd_node *iter;
-    const char *ns;
+    int options_backup;
 
-    LY_PRINT_SET;
+    LY_CHECK_RET(xml_print_node_open(ctx, (struct lyd_node *)node));
 
-    if (toplevel || !node->parent || nscmp(node, node->parent)) {
-        /* print "namespace" */
-        ns = lyd_node_module(node)->ns;
-        ly_print(out, "%*s<%s xmlns=\"%s\"", INDENT, node->schema->name, ns);
-    } else {
-        ly_print(out, "%*s<%s", INDENT, node->schema->name);
-    }
-
-    if (toplevel) {
-        xml_print_ns(out, node, options);
-    }
-    if (xml_print_attrs(out, node, options)) {
-        return EXIT_FAILURE;
-    }
-    if (!(void*)any->value.tree || (any->value_type == LYD_ANYDATA_CONSTSTRING && !any->value.str[0])) {
+    if (!any->value.tree) {
         /* no content */
-        ly_print(out, "/>%s", level ? "\n" : "");
+no_content:
+        ly_print(ctx->out, "/>%s", LEVEL ? "\n" : "");
+        return LY_SUCCESS;
     } else {
-        if (any->value_type == LYD_ANYDATA_DATATREE) {
-            /* print namespaces in the anydata data tree */
-            LY_TREE_FOR(any->value.tree, iter) {
-                xml_print_ns(out, iter, options);
-            }
-        }
-        /* close opening tag ... */
-        ly_print(out, ">");
-        /* ... and print anydata content */
         switch (any->value_type) {
-        case LYD_ANYDATA_CONSTSTRING:
-            lyxml_dump_text(out, any->value.str, LYXML_DATA_ELEM);
-            break;
         case LYD_ANYDATA_DATATREE:
-            if (any->value.tree) {
-                if (level) {
-                    ly_print(out, "\n");
-                }
-                LY_TREE_FOR(any->value.tree, iter) {
-                    if (xml_print_node(out, level ? level + 1 : 0, iter, 0, (options & ~(LYP_WITHSIBLINGS | LYP_NETCONF)))) {
-                        return EXIT_FAILURE;
-                    }
+            /* close opening tag and print data */
+            options_backup = ctx->options;
+            ctx->options &= ~(LYDP_WITHSIBLINGS | LYDP_NETCONF);
+            LEVEL_INC;
+
+            ly_print(ctx->out, ">%s", LEVEL ? "\n" : "");
+            LY_LIST_FOR(any->value.tree, iter) {
+                if (xml_print_node(ctx, iter)) {
+                    return EXIT_FAILURE;
                 }
             }
-            break;
-        case LYD_ANYDATA_XML:
-            lyxml_print_mem(&buf, any->value.xml, (level ? LYXML_PRINT_FORMAT | LYXML_PRINT_NO_LAST_NEWLINE : 0)
-                                                   | LYXML_PRINT_SIBLINGS);
-            ly_print(out, "%s%s", level ? "\n" : "", buf);
-            free(buf);
-            break;
-        case LYD_ANYDATA_SXML:
-            /* print without escaping special characters */
-            ly_print(out, "%s", any->value.str);
-            break;
-        case LYD_ANYDATA_JSON:
-        case LYD_ANYDATA_LYB:
-            /* JSON and LYB format is not supported */
-            LOGWRN(node->schema->module->ctx, "Unable to print anydata content (type %d) as XML.", any->value_type);
+
+            LEVEL_DEC;
+            ctx->options = options_backup;
             break;
         case LYD_ANYDATA_STRING:
-        case LYD_ANYDATA_SXMLD:
-        case LYD_ANYDATA_JSOND:
-        case LYD_ANYDATA_LYBD:
-            /* dynamic strings are used only as input parameters */
-            assert(0);
+            /* escape XML-sensitive characters */
+            if (!any->value.str[0]) {
+                goto no_content;
+            }
+            /* close opening tag and print data */
+            ly_print(ctx->out, ">");
+            lyxml_dump_text(ctx->out, any->value.str, 0);
             break;
+        case LYD_ANYDATA_XML:
+            /* print without escaping special characters */
+            if (!any->value.str[0]) {
+                goto no_content;
+            }
+            ly_print(ctx->out, ">%s", any->value.str);
+            break;
+        case LYD_ANYDATA_JSON:
+#if 0 /* TODO LYB format */
+        case LYD_ANYDATA_LYB:
+#endif
+            /* JSON and LYB format is not supported */
+            LOGWRN(node->schema->module->ctx, "Unable to print anydata content (type %d) as XML.", any->value_type);
+            goto no_content;
         }
 
         /* closing tag */
-        ly_print(out, "</%s>%s", node->schema->name, level ? "\n" : "");
+        if (any->value_type == LYD_ANYDATA_DATATREE) {
+            ly_print(ctx->out, "%*s</%s>%s", INDENT, node->schema->name, LEVEL ? "\n" : "");
+        } else {
+            ly_print(ctx->out, "</%s>%s", node->schema->name, LEVEL ? "\n" : "");
+        }
     }
 
-    LY_PRINT_RET(node->schema->module->ctx);
+    return LY_SUCCESS;
 }
-#endif
 
 /**
  * @brief Print XML element representing lyd_node.
@@ -525,24 +506,20 @@ xml_print_node(struct xmlpr_ctx *ctx, const struct lyd_node *node)
 #endif
 
     switch (node->schema->nodetype) {
-#if 0
-    case LYS_NOTIF:
-    case LYS_ACTION:
-#endif
     case LYS_CONTAINER:
     case LYS_LIST:
+    case LYS_NOTIF:
+    case LYS_ACTION:
         ret = xml_print_inner(ctx, (const struct lyd_node_inner*)node);
         break;
     case LYS_LEAF:
     case LYS_LEAFLIST:
         ret = xml_print_term(ctx, (const struct lyd_node_term*)node);
         break;
-#if 0
     case LYS_ANYXML:
     case LYS_ANYDATA:
-        ret = xml_print_anydata(ctx, node);
+        ret = xml_print_anydata(ctx, (const struct lyd_node_any*)node);
         break;
-#endif
     default:
         LOGINT(node->schema->module->ctx);
         ret = LY_EINT;

@@ -63,7 +63,7 @@
  * node of the data tree to print the specific subtree.
  * @param[in] format Data output format.
  * @param[in] options [Data printer flags](@ref dataprinterflags). With \p format LYD_LYB, only #LYP_WITHSIBLINGS option is accepted.
- * @return Number of printed bytes in case of success.
+ * @return Number of printed characters (excluding the null byte used to end the string) in case of success.
  * @return Negative value failure (absolute value corresponds to LY_ERR values).
  */
 ssize_t lyd_print_mem(char **strp, const struct lyd_node *root, LYD_FORMAT format, int options);
@@ -76,7 +76,7 @@ ssize_t lyd_print_mem(char **strp, const struct lyd_node *root, LYD_FORMAT forma
  * node of the data tree to print the specific subtree.
  * @param[in] format Data output format.
  * @param[in] options [Data printer flags](@ref dataprinterflags). With \p format LYD_LYB, only #LYP_WITHSIBLINGS option is accepted.
- * @return Number of printed bytes in case of success.
+ * @return Number of printed characters (excluding the null byte used to end the string) in case of success.
  * @return Negative value failure (absolute value corresponds to LY_ERR values).
  */
 ssize_t lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format, int options);
@@ -89,7 +89,7 @@ ssize_t lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format, int
  * node of the data tree to print the specific subtree.
  * @param[in] format Data output format.
  * @param[in] options [Data printer flags](@ref dataprinterflags). With \p format LYD_LYB, only #LYP_WITHSIBLINGS option is accepted.
- * @return Number of printed bytes in case of success.
+ * @return Number of printed characters (excluding the null byte used to end the string) in case of success.
  * @return Negative value failure (absolute value corresponds to LY_ERR values).
  */
 ssize_t lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format, int options);
@@ -102,7 +102,7 @@ ssize_t lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format, 
  * node of the data tree to print the specific subtree.
  * @param[in] format Data output format.
  * @param[in] options [Data printer flags](@ref dataprinterflags). With \p format LYD_LYB, only #LYP_WITHSIBLINGS option is accepted.
- * @return Number of printed bytes in case of success.
+ * @return Number of printed characters (excluding the null byte used to end the string) in case of success.
  * @return Negative value failure (absolute value corresponds to LY_ERR values).
  */
 ssize_t lyd_print_path(const char *path, const struct lyd_node *root, LYD_FORMAT format, int options);
@@ -116,7 +116,7 @@ ssize_t lyd_print_path(const char *path, const struct lyd_node *root, LYD_FORMAT
  * node of the data tree to print the specific subtree.
  * @param[in] format Data output format.
  * @param[in] options [Data printer flags](@ref dataprinterflags). With \p format LYD_LYB, only #LYP_WITHSIBLINGS option is accepted.
- * @return Number of printed bytes in case of success.
+ * @return Number of printed characters (excluding the null byte used to end the string) in case of success.
  * @return Negative value failure (absolute value corresponds to LY_ERR values).
  */
 ssize_t lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, const struct lyd_node *root,
