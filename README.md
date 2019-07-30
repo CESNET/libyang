@@ -233,6 +233,7 @@ $ make test
 Based on the tests run, it is possible to generate code coverage report via the
 make's `coverage` target:
 ```
+$ cmake -DENABLE_VALGRIND_TESTS=OFF -DENABLE_COVERAGE=ON ..
 $ make coverage
 ```
 
