@@ -32,6 +32,7 @@
 
 /**
  * @brief check if given string is URI of yin namespace.
+ *
  * @param ns Namespace URI to check.
  *
  * @return true if ns equals YIN_NS_URI false otherwise.
@@ -3118,36 +3119,86 @@ yin_parse_submod(struct yin_parser_ctx *ctx, struct yin_arg_record *mod_attrs, c
 }
 
 LY_ERR
-yin_parse_module(struct ly_ctx *ctx, const char *data, struct lys_module *mod)
+yin_parse_submodule(struct yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, const char *data, struct lysp_submodule **submod)
+{
+    enum yang_keyword kw = YANG_NONE;
+    LY_ERR ret = LY_SUCCESS;
+    const char *prefix, *name;
+    size_t prefix_len, name_len;
+    struct yin_arg_record *attrs = NULL;
+    struct lysp_submodule *mod_p = NULL;
+
+    /* create context */
+    *yin_ctx = calloc(1, sizeof **yin_ctx);
+    LY_CHECK_ERR_RET(!yin_ctx, LOGMEM(ctx), LY_EMEM);
+    (*yin_ctx)->xml_ctx.ctx = ctx;
+    (*yin_ctx)->xml_ctx.line = 1;
+
+    /* check submodule */
+    ret = lyxml_get_element(&(*yin_ctx)->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    LY_CHECK_GOTO(ret, cleanup);
+    ret = yin_load_attributes(*yin_ctx, &data, &attrs);
+    LY_CHECK_GOTO(ret, cleanup);
+    kw = yin_match_keyword(*yin_ctx, name, name_len, prefix, prefix_len, YANG_NONE);
+
+    if (kw == YANG_MODULE) {
+        LOGERR(ctx, LY_EDENIED, "Input data contains module in situation when a submodule is expected.");
+        ret = LY_EINVAL;
+        goto cleanup;
+    } else if (kw != YANG_SUBMODULE) {
+        LOGVAL_PARSER((struct lys_parser_ctx *)*yin_ctx, LYVE_SYNTAX, "Invalid keyword \"%s\", expected \"module\" or \"submodule\".",
+                    ly_stmt2str(kw));
+        ret = LY_EVALID;
+        goto cleanup;
+    }
+
+    mod_p = calloc(1, sizeof *mod_p);
+    LY_CHECK_ERR_GOTO(!mod_p, LOGMEM(ctx), cleanup);
+    mod_p->parsing = 1;
+
+    ret = yin_parse_submod(*yin_ctx, attrs, &data, mod_p);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    mod_p->parsing = 0;
+    *submod = mod_p;
+
+cleanup:
+    if (ret) {
+        lysp_submodule_free(ctx, mod_p);
+    }
+
+    FREE_ARRAY(*yin_ctx, attrs, free_arg_rec);
+    return ret;
+}
+
+LY_ERR
+yin_parse_module(struct yin_parser_ctx **yin_ctx, const char *data, struct lys_module *mod)
 {
     LY_ERR ret = LY_SUCCESS;
     enum yang_keyword kw = YANG_NONE;
     struct lysp_module *mod_p = NULL;
     const char *prefix, *name;
     size_t prefix_len, name_len;
-
     struct yin_arg_record *attrs = NULL;
 
-    struct yin_parser_ctx yin_ctx;
+    /* create context */
+    *yin_ctx = calloc(1, sizeof **yin_ctx);
+    LY_CHECK_ERR_RET(!yin_ctx, LOGMEM(mod->ctx), LY_EMEM);
+    (*yin_ctx)->xml_ctx.ctx = mod->ctx;
+    (*yin_ctx)->xml_ctx.line = 1;
 
-    /* initialize context */
-    memset(&yin_ctx, 0, sizeof yin_ctx);
-    yin_ctx.xml_ctx.ctx = ctx;
-    yin_ctx.xml_ctx.line = 1;
-
-
-    /* check submodule */
-    ret = lyxml_get_element(&yin_ctx.xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    /* check module */
+    ret = lyxml_get_element(&(*yin_ctx)->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     LY_CHECK_GOTO(ret, cleanup);
-    ret = yin_load_attributes(&yin_ctx, &data, &attrs);
+    ret = yin_load_attributes(*yin_ctx, &data, &attrs);
     LY_CHECK_GOTO(ret, cleanup);
-    kw = yin_match_keyword(&yin_ctx, name, name_len, prefix, prefix_len, YANG_NONE);
+    kw = yin_match_keyword(*yin_ctx, name, name_len, prefix, prefix_len, YANG_NONE);
     if (kw == YANG_SUBMODULE) {
-        LOGERR(ctx, LY_EDENIED, "Input data contains submodule which cannot be parsed directly without its main module.");
+        LOGERR(mod->ctx, LY_EDENIED, "Input data contains submodule which cannot be parsed directly without its main module.");
         ret = LY_EINVAL;
         goto cleanup;
     } else if (kw != YANG_MODULE) {
-        LOGVAL_PARSER((struct lys_parser_ctx *)&yin_ctx, LYVE_SYNTAX, "Invalid keyword \"%s\", expected \"module\" or \"submodule\".",
+        LOGVAL_PARSER((struct lys_parser_ctx *)*yin_ctx, LYVE_SYNTAX, "Invalid keyword \"%s\", expected \"module\" or \"submodule\".",
                     ly_stmt2str(kw));
         ret = LY_EVALID;
         goto cleanup;
@@ -3155,12 +3206,12 @@ yin_parse_module(struct ly_ctx *ctx, const char *data, struct lys_module *mod)
 
     /* allocate module */
     mod_p = calloc(1, sizeof *mod_p);
-    LY_CHECK_ERR_GOTO(!mod_p, LOGMEM(ctx), cleanup);
+    LY_CHECK_ERR_GOTO(!mod_p, LOGMEM(mod->ctx), cleanup);
     mod_p->mod = mod;
     mod_p->parsing = 1;
 
     /* parse module substatements */
-    ret = yin_parse_mod(&yin_ctx, attrs, &data, mod_p);
+    ret = yin_parse_mod(*yin_ctx, attrs, &data, mod_p);
     LY_CHECK_GOTO(ret, cleanup);
 
     mod_p->parsing = 0;
@@ -3170,7 +3221,6 @@ cleanup:
     if (ret != LY_SUCCESS) {
         lysp_module_free(mod_p);
     }
-    FREE_ARRAY(&yin_ctx, attrs, free_arg_rec);
-    lyxml_context_clear(&yin_ctx.xml_ctx);
+    FREE_ARRAY(*yin_ctx, attrs, free_arg_rec);
     return ret;
 }

@@ -190,6 +190,63 @@ logbuf_clean(void)
     logbuf[0] = '\0';
 }
 
+static int
+setup_logger(void **state)
+{
+    (void)state; /* unused */
+#if ENABLE_LOGGER_CHECKING
+    /* setup logger */
+    ly_set_log_clb(logger, 1);
+#endif
+
+    logbuf[0] = '\0';
+
+    return EXIT_SUCCESS;
+}
+
+static int
+teardown_logger(void **state)
+{
+    struct state *st = *state;
+
+#if ENABLE_LOGGER_CHECKING
+    /* teardown logger */
+    if (!st->finished_correctly && logbuf[0] != '\0') {
+        fprintf(stderr, "%s\n", logbuf);
+    }
+#endif
+
+    return EXIT_SUCCESS;
+}
+
+static int
+setup_element_test(void **state)
+{
+    setup_logger(state);
+    struct state *st = *state;
+
+    st->yin_ctx = calloc(1, sizeof(*st->yin_ctx));
+
+    /* allocate parser context */
+    st->yin_ctx->xml_ctx.ctx = st->ctx;
+    st->yin_ctx->xml_ctx.line = 1;
+
+    return EXIT_SUCCESS;
+}
+
+static int
+teardown_element_test(void **state)
+{
+    struct state *st = *(struct state **)state;
+
+    lyxml_context_clear(&st->yin_ctx->xml_ctx);
+    free(st->yin_ctx);
+
+    teardown_logger(state);
+
+    return EXIT_SUCCESS;
+}
+
 static void
 test_yin_match_keyword(void **state)
 {
@@ -583,45 +640,6 @@ test_validate_value(void **state)
     assert_int_equal(yin_validate_value(st->yin_ctx, Y_PREF_IDENTIF_ARG, "pre:pre:b", 9), LY_EVALID);
 
     st->finished_correctly = true;
-}
-
-static int
-setup_element_test(void **state)
-{
-    struct state *st = *state;
-
-#if ENABLE_LOGGER_CHECKING
-    /* setup logger */
-    ly_set_log_clb(logger, 1);
-#endif
-
-    /* reset logbuf */
-    logbuf[0] = '\0';
-
-    /* allocate parser context */
-    st->yin_ctx = calloc(1, sizeof(*st->yin_ctx));
-    st->yin_ctx->xml_ctx.ctx = st->ctx;
-    st->yin_ctx->xml_ctx.line = 1;
-
-    return EXIT_SUCCESS;
-}
-
-static int
-teardown_element_test(void **state)
-{
-    struct state *st = *(struct state **)state;
-
-#if ENABLE_LOGGER_CHECKING
-    /* teardown logger */
-    if (!st->finished_correctly && logbuf[0] != '\0') {
-        fprintf(stderr, "%s\n", logbuf);
-    }
-#endif
-
-    lyxml_context_clear(&st->yin_ctx->xml_ctx);
-    free(st->yin_ctx);
-
-    return EXIT_SUCCESS;
 }
 
 #define ELEMENT_WRAPPER_START "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
@@ -3614,6 +3632,113 @@ test_submodule_elem(void **state)
     st->finished_correctly = true;
 }
 
+static void
+test_yin_parse_module(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct lys_module *mod;
+    struct yin_parser_ctx *yin_ctx = NULL;
+
+    mod = calloc(1, sizeof *mod);
+    mod->ctx = st->ctx;
+    data =  "<module name=\"example-foo\""
+             "xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\""
+             "xmlns:foo=\"urn:example:foo\""
+             "xmlns:myext=\"urn:example:extensions\">\n"
+
+                "<yang-version value=\"1.0\"/>\n"
+
+                "<namespace uri=\"urn:example:foo\"/>\n"
+                "<prefix value=\"foo\"/>\n"
+
+                "<import module=\"example-extensions\">\n"
+                "<prefix value=\"myext\"/>\n"
+                "</import>\n"
+
+                "<list name=\"interface\">\n"
+                    "<key value=\"name\"/>\n"
+                    "<leaf name=\"name\">\n"
+                        "<type name=\"string\"/>\n"
+                    "</leaf>\n"
+                    "<leaf name=\"mtu\">\n"
+                        "<type name=\"uint32\"/>\n"
+                        "<description>\n"
+                            "<text>The MTU of the interface.</text>\n"
+                        "</description>\n"
+                        "<myext:c-define name=\"MY_MTU\"/>\n"
+                    "</leaf>\n"
+                "</list>\n"
+            "</module>\n";
+    assert_int_equal(yin_parse_module(&yin_ctx, data, mod), LY_SUCCESS);
+    lys_module_free(mod, NULL);
+    yin_parser_ctx_free(yin_ctx);
+    mod = NULL;
+    yin_ctx = NULL;
+
+    mod = calloc(1, sizeof *mod);
+    mod->ctx = st->ctx;
+    data =  "<submodule name=\"example-foo\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "</submodule>\n";
+    assert_int_equal(yin_parse_module(&yin_ctx, data, mod), LY_EINVAL);
+    logbuf_assert("Input data contains submodule which cannot be parsed directly without its main module.");
+    lys_module_free(mod, NULL);
+    yin_parser_ctx_free(yin_ctx);
+
+    st->finished_correctly = true;
+}
+
+static void
+test_yin_parse_submodule(void **state)
+{
+    struct state *st = *state;
+    const char *data;
+    struct yin_parser_ctx *yin_ctx = NULL;
+    struct lysp_submodule *submod = NULL;
+
+    data = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+            "<submodule name=\"asub\""
+              "xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\""
+              "xmlns:a=\"urn:a\">"
+                "<yang-version value=\"1.0\"/>\n"
+                "<belongs-to module=\"a\">"
+                    "<prefix value=\"a_pref\"/>"
+                "</belongs-to>"
+                "<include module=\"atop\"/>"
+                "<feature name=\"fox\"/>"
+                "<notification name=\"bar-notif\">"
+                    "<if-feature name=\"bar\"/>"
+                "</notification>"
+                "<notification name=\"fox-notif\">"
+                    "<if-feature name=\"fox\"/>"
+                "</notification>"
+                "<augment target-node=\"/a_pref:top\">"
+                    "<if-feature name=\"bar\"/>"
+                    "<container name=\"bar-sub\"/>"
+                "</augment>"
+                "<augment target-node=\"/top\">"
+                    "<container name=\"bar-sub2\"/>"
+                "</augment>"
+            "</submodule>";
+    assert_int_equal(yin_parse_submodule(&yin_ctx, st->ctx, data, &submod), LY_SUCCESS);
+    lysp_submodule_free(st->ctx, submod);
+    yin_parser_ctx_free(yin_ctx);
+    yin_ctx = NULL;
+    submod = NULL;
+
+    data = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+            "<module name=\"inval\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+            "</module>";
+    assert_int_equal(yin_parse_submodule(&yin_ctx, st->ctx, data, &submod), LY_EINVAL);
+    logbuf_assert("Input data contains module in situation when a submodule is expected.");
+    lysp_submodule_free(st->ctx, submod);
+    yin_parser_ctx_free(yin_ctx);
+    yin_ctx = NULL;
+    submod = NULL;
+
+    st->finished_correctly = true;
+}
+
 int
 main(void)
 {
@@ -3686,6 +3811,9 @@ main(void)
         cmocka_unit_test_setup_teardown(test_deviation_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_module_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_submodule_elem, setup_element_test, teardown_element_test),
+
+        cmocka_unit_test_setup_teardown(test_yin_parse_module, setup_logger, teardown_logger),
+        cmocka_unit_test_setup_teardown(test_yin_parse_submodule, setup_logger, teardown_logger),
     };
 
     return cmocka_run_group_tests(tests, setup_ly_ctx, destroy_ly_ctx);

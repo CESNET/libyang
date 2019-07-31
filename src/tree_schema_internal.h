@@ -806,13 +806,28 @@ LY_ERR yang_parse_module(struct lys_parser_ctx *ctx, const char *data, struct ly
 
 /**
  * @brief Parse module from YIN data.
- * @param[in] ctx Libyang context.
+ *
+ * @param[in,out] yin_ctx Context created during parsing, is used to finalize lysp_model after it's completly parsed.
  * @param[in] data Input data to be parsed.
  * @param[in,out] mod Prepared module structure where the parsed information, including the parsed
  * module structure, will be filled in.
+ *
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_module(struct ly_ctx *ctx, const char *data, struct lys_module *mod);
+LY_ERR yin_parse_module(struct yin_parser_ctx **yin_ctx, const char *data, struct lys_module *mod);
+
+/**
+ * @brief Parse submodule from YIN data.
+ *
+ * @param[in,out] yin_ctx Context created during parsing, is used to finalize lysp_model after it's completly parsed.
+ * @param[in] ctx Libyang context.
+ * @param[in,out] Data Input data to be parsed.
+ * @param[in,out] mod Submodule structure where the parsed information, will be filled in.
+ *
+ * @return LY_ERR values.
+ */
+LY_ERR yin_parse_submodule(struct yin_parser_ctx **yin_ctx, struct ly_ctx *ctx,
+                           const char *data, struct lysp_submodule **submod);
 
 /**
  * @brief Make the specific module implemented, use the provided value as flag.
