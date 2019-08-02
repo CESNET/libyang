@@ -3653,7 +3653,7 @@ test_yin_parse_module(void **state)
                 "<prefix value=\"foo\"/>\n"
 
                 "<import module=\"example-extensions\">\n"
-                "<prefix value=\"myext\"/>\n"
+                    "<prefix value=\"myext\"/>\n"
                 "</import>\n"
 
                 "<list name=\"interface\">\n"
@@ -3678,12 +3678,41 @@ test_yin_parse_module(void **state)
 
     mod = calloc(1, sizeof *mod);
     mod->ctx = st->ctx;
+    data =  "<module name=\"example-foo\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">\n"
+                "<yang-version value=\"1.0\"/>\n"
+                "<namespace uri=\"urn:example:foo\"/>\n"
+                "<prefix value=\"foo\"/>\n"
+            "</module>\n";
+    assert_int_equal(yin_parse_module(&yin_ctx, data, mod), LY_SUCCESS);
+    lys_module_free(mod, NULL);
+    yin_parser_ctx_free(yin_ctx);
+    mod = NULL;
+    yin_ctx = NULL;
+
+
+    mod = calloc(1, sizeof *mod);
+    mod->ctx = st->ctx;
     data =  "<submodule name=\"example-foo\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
             "</submodule>\n";
     assert_int_equal(yin_parse_module(&yin_ctx, data, mod), LY_EINVAL);
     logbuf_assert("Input data contains submodule which cannot be parsed directly without its main module.");
     lys_module_free(mod, NULL);
     yin_parser_ctx_free(yin_ctx);
+
+    mod = calloc(1, sizeof *mod);
+    mod->ctx = st->ctx;
+    data =  "<module name=\"example-foo\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">\n"
+                "<yang-version value=\"1.0\"/>\n"
+                "<namespace uri=\"urn:example:foo\"/>\n"
+                "<prefix value=\"foo\"/>\n"
+            "</module>"
+            "<module>";
+    assert_int_equal(yin_parse_module(&yin_ctx, data, mod), LY_EVALID);
+    logbuf_assert("Trailing garbage \"<module>\" after module, expected end-of-input. Line number 5.");
+    lys_module_free(mod, NULL);
+    yin_parser_ctx_free(yin_ctx);
+    mod = NULL;
+    yin_ctx = NULL;
 
     st->finished_correctly = true;
 }
@@ -3727,10 +3756,43 @@ test_yin_parse_submodule(void **state)
     submod = NULL;
 
     data = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+            "<submodule name=\"asub\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+                "<yang-version value=\"1.0\"/>\n"
+                "<belongs-to module=\"a\">"
+                    "<prefix value=\"a_pref\"/>"
+                "</belongs-to>"
+            "</submodule>";
+    assert_int_equal(yin_parse_submodule(&yin_ctx, st->ctx, data, &submod), LY_SUCCESS);
+    lysp_submodule_free(st->ctx, submod);
+    yin_parser_ctx_free(yin_ctx);
+    yin_ctx = NULL;
+    submod = NULL;
+
+    data = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
             "<module name=\"inval\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
             "</module>";
     assert_int_equal(yin_parse_submodule(&yin_ctx, st->ctx, data, &submod), LY_EINVAL);
     logbuf_assert("Input data contains module in situation when a submodule is expected.");
+    lysp_submodule_free(st->ctx, submod);
+    yin_parser_ctx_free(yin_ctx);
+    yin_ctx = NULL;
+    submod = NULL;
+
+    data = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
+            "<submodule name=\"asub\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+                "<yang-version value=\"1.0\"/>\n"
+                "<belongs-to module=\"a\">"
+                    "<prefix value=\"a_pref\"/>"
+                "</belongs-to>"
+            "</submodule>"
+            "<submodule name=\"asub\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+                "<yang-version value=\"1.0\"/>\n"
+                "<belongs-to module=\"a\">"
+                    "<prefix value=\"a_pref\"/>"
+                "</belongs-to>"
+            "</submodule>";
+    assert_int_equal(yin_parse_submodule(&yin_ctx, st->ctx, data, &submod), LY_EVALID);
+    logbuf_assert("Trailing garbage \"<submodule name...\" after submodule, expected end-of-input. Line number 2.");
     lysp_submodule_free(st->ctx, submod);
     yin_parser_ctx_free(yin_ctx);
     yin_ctx = NULL;

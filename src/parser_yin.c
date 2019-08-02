@@ -3159,6 +3159,19 @@ yin_parse_submodule(struct yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, const c
     ret = yin_parse_submod(*yin_ctx, attrs, &data, mod_p);
     LY_CHECK_GOTO(ret, cleanup);
 
+    name = NULL;
+    if ((*yin_ctx)->xml_ctx.status == LYXML_ELEMENT) {
+        const char *temp_data = data;
+        ret = lyxml_get_element(&(*yin_ctx)->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+        data = temp_data;
+    }
+    if ((*yin_ctx)->xml_ctx.status != LYXML_END || name) {
+        LOGVAL_PARSER((struct lys_parser_ctx *)*yin_ctx, LYVE_SYNTAX, "Trailing garbage \"%.*s%s\" after submodule, expected end-of-input.",
+                    15, data, strlen(data) > 15 ? "..." : "");
+        ret = LY_EVALID;
+        goto cleanup;
+    }
+
     mod_p->parsing = 0;
     *submod = mod_p;
 
@@ -3213,6 +3226,17 @@ yin_parse_module(struct yin_parser_ctx **yin_ctx, const char *data, struct lys_m
     /* parse module substatements */
     ret = yin_parse_mod(*yin_ctx, attrs, &data, mod_p);
     LY_CHECK_GOTO(ret, cleanup);
+
+    if ((*yin_ctx)->xml_ctx.status == LYXML_ELEMENT) {
+        ret = lyxml_get_element(&(*yin_ctx)->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    }
+    if ((*yin_ctx)->xml_ctx.status != LYXML_END || name) {
+        LOGVAL_PARSER((struct lys_parser_ctx *)*yin_ctx, LYVE_SYNTAX, "Trailing garbage \"%.*s%s\" after module, expected end-of-input.",
+                    15, data, strlen(data) > 15 ? "..." : "");
+
+        ret = LY_EVALID;
+        goto cleanup;
+    }
 
     mod_p->parsing = 0;
     mod->parsed = mod_p;
