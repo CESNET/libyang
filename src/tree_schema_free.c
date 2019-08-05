@@ -867,8 +867,6 @@ void
 lys_parser_ctx_free(struct lys_parser_ctx *ctx)
 {
     if (ctx) {
-        ly_set_erase(&ctx->tpdfs_nodes, NULL);
-        ly_set_erase(&ctx->tpdfs_nodes, NULL);
         free(ctx);
     }
 }
@@ -878,8 +876,6 @@ yin_parser_ctx_free(struct yin_parser_ctx *ctx)
 {
     if (ctx) {
         lyxml_context_clear(&ctx->xml_ctx);
-        ly_set_erase(&ctx->tpdfs_nodes, NULL);
-        ly_set_erase(&ctx->tpdfs_nodes, NULL);
         free(ctx);
     }
 }

@@ -787,12 +787,15 @@ void lys_module_free(struct lys_module *module, void (*private_destructor)(const
 
 /**
  * @brief Parse submodule from YANG data.
- * @param[in] ctx Parser context.
+ * @param[in,out] ctx Parser context.
+ * @param[in] ly_ctx Context of YANG schemas.
+ * @param[in] main_ctx Parser context of main module.
  * @param[in] data Input data to be parsed.
  * @param[out] submod Pointer to the parsed submodule structure.
  * @return LY_ERR value - LY_SUCCESS, LY_EINVAL or LY_EVALID.
  */
-LY_ERR yang_parse_submodule(struct lys_parser_ctx *ctx, const char *data, struct lysp_submodule **submod);
+LY_ERR yang_parse_submodule(struct lys_parser_ctx **context, struct ly_ctx *ly_ctx, struct lys_parser_ctx *main_ctx,
+                            const char *data, struct lysp_submodule **submod);
 
 /**
  * @brief Parse module from YANG data.
@@ -802,7 +805,7 @@ LY_ERR yang_parse_submodule(struct lys_parser_ctx *ctx, const char *data, struct
  * module structure, will be filled in.
  * @return LY_ERR value - LY_SUCCESS, LY_EINVAL or LY_EVALID.
  */
-LY_ERR yang_parse_module(struct lys_parser_ctx *ctx, const char *data, struct lys_module *mod);
+LY_ERR yang_parse_module(struct lys_parser_ctx **context, const char *data, struct lys_module *mod);
 
 /**
  * @brief Parse module from YIN data.
@@ -821,13 +824,15 @@ LY_ERR yin_parse_module(struct yin_parser_ctx **yin_ctx, const char *data, struc
  *
  * @param[in,out] yin_ctx Context created during parsing, is used to finalize lysp_model after it's completly parsed.
  * @param[in] ctx Libyang context.
- * @param[in,out] Data Input data to be parsed.
- * @param[in,out] mod Submodule structure where the parsed information, will be filled in.
+ * @param[in] main_ctx Parser context of main module.
+ * @param[in,out] data Input data to be parsed.
+ * @param[in,out] submod Submodule structure where the parsed information, will be filled in.
  *
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_submodule(struct yin_parser_ctx **yin_ctx, struct ly_ctx *ctx,
+LY_ERR yin_parse_submodule(struct yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, struct lys_parser_ctx *main_ctx,
                            const char *data, struct lysp_submodule **submod);
+
 
 /**
  * @brief Make the specific module implemented, use the provided value as flag.

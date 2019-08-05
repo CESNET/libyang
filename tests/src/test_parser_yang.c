@@ -1047,20 +1047,23 @@ test_module(void **state)
     assert_int_equal(2, mod->mod->version);
     mod = mod_renew(&ctx);
 
+    struct lys_parser_ctx *ctx_p = NULL;
     str = "module " SCHEMA_BEGINNING "} module q {namespace urn:q;prefixq;}";
     m = mod->mod;
     free(mod);
     m->parsed = NULL;
-    assert_int_equal(LY_EVALID, yang_parse_module(&ctx, str, m));
-    logbuf_assert("Trailing garbage \"module q {names...\" after module, expected end-of-input. Line number 3.");
+    assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, str, m));
+    logbuf_assert("Trailing garbage \"module q {names...\" after module, expected end-of-input. Line number 1.");
+    lys_parser_ctx_free(ctx_p);
     mod = mod_renew(&ctx);
 
     str = "prefix " SCHEMA_BEGINNING "}";
     m = mod->mod;
     free(mod);
     m->parsed = NULL;
-    assert_int_equal(LY_EVALID, yang_parse_module(&ctx, str, m));
-    logbuf_assert("Invalid keyword \"prefix\", expected \"module\" or \"submodule\". Line number 3.");
+    assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, str, m));
+    lys_parser_ctx_free(ctx_p);
+    logbuf_assert("Invalid keyword \"prefix\", expected \"module\" or \"submodule\". Line number 1.");
     mod = mod_renew(&ctx);
 
     str = "module " SCHEMA_BEGINNING "}";
@@ -1068,8 +1071,9 @@ test_module(void **state)
     m = mod->mod;
     free(mod);
     m->parsed = NULL;
-    assert_int_equal(LY_EVALID, yang_parse_module(&ctx, str, m));
-    logbuf_assert("Invalid keyword \"position\" as a child of \"enum\". Line number 3.");
+    assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, str, m));
+    lys_parser_ctx_free(ctx_p);
+    logbuf_assert("Invalid keyword \"position\" as a child of \"enum\". Line number 1.");
     mod = mod_renew(&ctx);
 
     /* extensions */
@@ -1123,12 +1127,14 @@ test_module(void **state)
     str = "submodule " SCHEMA_BEGINNING "} module q {namespace urn:q;prefixq;}";
     lysp_submodule_free(ctx.ctx, submod);
     submod = NULL;
-    assert_int_equal(LY_EVALID, yang_parse_submodule(&ctx, str, &submod));
-    logbuf_assert("Trailing garbage \"module q {names...\" after submodule, expected end-of-input. Line number 3.");
+    assert_int_equal(LY_EVALID, yang_parse_submodule(&ctx_p, ctx.ctx, &ctx, str, &submod));
+    lys_parser_ctx_free(ctx_p);
+    logbuf_assert("Trailing garbage \"module q {names...\" after submodule, expected end-of-input. Line number 1.");
 
     str = "prefix " SCHEMA_BEGINNING "}";
-    assert_int_equal(LY_EVALID, yang_parse_submodule(&ctx, str, &submod));
-    logbuf_assert("Invalid keyword \"prefix\", expected \"module\" or \"submodule\". Line number 3.");
+    assert_int_equal(LY_EVALID, yang_parse_submodule(&ctx_p, ctx.ctx, &ctx, str, &submod));
+    lys_parser_ctx_free(ctx_p);
+    logbuf_assert("Invalid keyword \"prefix\", expected \"module\" or \"submodule\". Line number 1.");
     submod = submod_renew(&ctx, submod);
 
 #undef TEST_GENERIC

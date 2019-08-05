@@ -3119,7 +3119,7 @@ yin_parse_submod(struct yin_parser_ctx *ctx, struct yin_arg_record *mod_attrs, c
 }
 
 LY_ERR
-yin_parse_submodule(struct yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, const char *data, struct lysp_submodule **submod)
+yin_parse_submodule(struct yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, struct lys_parser_ctx *main_ctx, const char *data, struct lysp_submodule **submod)
 {
     enum yang_keyword kw = YANG_NONE;
     LY_ERR ret = LY_SUCCESS;
@@ -3130,9 +3130,13 @@ yin_parse_submodule(struct yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, const c
 
     /* create context */
     *yin_ctx = calloc(1, sizeof **yin_ctx);
-    LY_CHECK_ERR_RET(!yin_ctx, LOGMEM(ctx), LY_EMEM);
+    LY_CHECK_ERR_RET(!(*yin_ctx), LOGMEM(ctx), LY_EMEM);
     (*yin_ctx)->xml_ctx.ctx = ctx;
     (*yin_ctx)->xml_ctx.line = 1;
+
+    /* map the typedefs and groupings list from main context to the submodule's context */
+    memcpy(&(*yin_ctx)->tpdfs_nodes, &main_ctx->tpdfs_nodes, sizeof main_ctx->tpdfs_nodes);
+    memcpy(&(*yin_ctx)->grps_nodes, &main_ctx->grps_nodes, sizeof main_ctx->grps_nodes);
 
     /* check submodule */
     ret = lyxml_get_element(&(*yin_ctx)->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
@@ -3178,6 +3182,8 @@ yin_parse_submodule(struct yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, const c
 cleanup:
     if (ret) {
         lysp_submodule_free(ctx, mod_p);
+        yin_parser_ctx_free(*yin_ctx);
+        *yin_ctx = NULL;
     }
 
     FREE_ARRAY(*yin_ctx, attrs, free_arg_rec);
@@ -3196,7 +3202,7 @@ yin_parse_module(struct yin_parser_ctx **yin_ctx, const char *data, struct lys_m
 
     /* create context */
     *yin_ctx = calloc(1, sizeof **yin_ctx);
-    LY_CHECK_ERR_RET(!yin_ctx, LOGMEM(mod->ctx), LY_EMEM);
+    LY_CHECK_ERR_RET(!(*yin_ctx), LOGMEM(mod->ctx), LY_EMEM);
     (*yin_ctx)->xml_ctx.ctx = mod->ctx;
     (*yin_ctx)->xml_ctx.line = 1;
 
@@ -3227,6 +3233,7 @@ yin_parse_module(struct yin_parser_ctx **yin_ctx, const char *data, struct lys_m
     ret = yin_parse_mod(*yin_ctx, attrs, &data, mod_p);
     LY_CHECK_GOTO(ret, cleanup);
 
+    /* check trailing characters */
     if ((*yin_ctx)->xml_ctx.status == LYXML_ELEMENT) {
         ret = lyxml_get_element(&(*yin_ctx)->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     }
@@ -3244,6 +3251,8 @@ yin_parse_module(struct yin_parser_ctx **yin_ctx, const char *data, struct lys_m
 cleanup:
     if (ret != LY_SUCCESS) {
         lysp_module_free(mod_p);
+        yin_parser_ctx_free(*yin_ctx);
+        *yin_ctx = NULL;
     }
     FREE_ARRAY(*yin_ctx, attrs, free_arg_rec);
     return ret;

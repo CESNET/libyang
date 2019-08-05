@@ -595,28 +595,21 @@ lys_parse_mem_submodule(struct ly_ctx *ctx, const char *data, LYS_INFORMAT forma
 {
     LY_ERR ret = LY_EINVAL;
     struct lysp_submodule *submod = NULL, *latest_sp;
-    struct lys_parser_ctx context = {0};
+    struct lys_parser_ctx *context = NULL;
+    struct yin_parser_ctx *yin_context = NULL;
 
     LY_CHECK_ARG_RET(ctx, ctx, data, NULL);
 
-    context.ctx = ctx;
-    context.line = 1;
-
-    /* map the typedefs and groupings list from main context to the submodule's context */
-    memcpy(&context.tpdfs_nodes, &main_ctx->tpdfs_nodes, sizeof main_ctx->tpdfs_nodes);
-    memcpy(&context.grps_nodes, &main_ctx->grps_nodes, sizeof main_ctx->grps_nodes);
-
     switch (format) {
-    /* TODO not yet supported
     case LYS_IN_YIN:
-        mod = yin_read_module();
+        ret = yin_parse_submodule(&yin_context, ctx, main_ctx, data, &submod);
+        context = (struct lys_parser_ctx *)yin_context;
         break;
-    */
     case LYS_IN_YANG:
-        ret = yang_parse_submodule(&context, data, &submod);
+        ret = yang_parse_submodule(&context, ctx, main_ctx, data, &submod);
         break;
     default:
-        LOGERR(context.ctx, LY_EINVAL, "Invalid schema input format.");
+        LOGERR((*context).ctx, LY_EINVAL, "Invalid schema input format.");
         break;
     }
     LY_CHECK_RET(ret, NULL);
@@ -625,11 +618,11 @@ lys_parse_mem_submodule(struct ly_ctx *ctx, const char *data, LYS_INFORMAT forma
     lysp_sort_revisions(submod->revs);
 
     if (custom_check) {
-        LY_CHECK_GOTO(custom_check(context.ctx, NULL, submod, check_data), error);
+        LY_CHECK_GOTO(custom_check((*context).ctx, NULL, submod, check_data), error);
     }
 
     /* decide the latest revision */
-    latest_sp = ly_ctx_get_submodule(context.ctx, submod->belongsto, submod->name, NULL);
+    latest_sp = ly_ctx_get_submodule((*context).ctx, submod->belongsto, submod->name, NULL);
     if (latest_sp) {
         if (submod->revs) {
             if (!latest_sp->revs) {
@@ -648,12 +641,23 @@ lys_parse_mem_submodule(struct ly_ctx *ctx, const char *data, LYS_INFORMAT forma
     }
 
     /* remap possibly changed and reallocated typedefs and groupings list back to the main context */
-    memcpy(&main_ctx->tpdfs_nodes, &context.tpdfs_nodes, sizeof main_ctx->tpdfs_nodes);
-    memcpy(&main_ctx->grps_nodes, &context.grps_nodes, sizeof main_ctx->grps_nodes);
+    memcpy(&main_ctx->tpdfs_nodes, &(*context).tpdfs_nodes, sizeof main_ctx->tpdfs_nodes);
+    memcpy(&main_ctx->grps_nodes, &(*context).grps_nodes, sizeof main_ctx->grps_nodes);
 
+    if (format == LYS_IN_YANG) {
+        lys_parser_ctx_free(context);
+    } else {
+        yin_parser_ctx_free(yin_context);
+    }
     return submod;
+
 error:
     lysp_submodule_free(ctx, submod);
+    if (format == LYS_IN_YANG) {
+        lys_parser_ctx_free(context);
+    } else {
+        yin_parser_ctx_free(yin_context);
+    }
     return NULL;
 }
 
@@ -667,23 +671,20 @@ lys_parse_mem_module(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, 
     struct lysp_include *inc;
     LY_ERR ret = LY_EINVAL;
     unsigned int u, i;
-    struct lys_parser_ctx context = {0};
+    struct lys_parser_ctx *context = NULL;
+    struct yin_parser_ctx *yin_context = NULL;
 
     LY_CHECK_ARG_RET(ctx, ctx, data, NULL);
-
-    context.ctx = ctx;
-    context.line = 1;
 
     mod = calloc(1, sizeof *mod);
     LY_CHECK_ERR_RET(!mod, LOGMEM(ctx), NULL);
     mod->ctx = ctx;
 
     switch (format) {
-    /* TODO not yet supported
     case LYS_IN_YIN:
-        mod = yin_read_module();
+        ret = yin_parse_module(&yin_context, data, mod);
+        context = (struct lys_parser_ctx *)yin_context;
         break;
-    */
     case LYS_IN_YANG:
         ret = yang_parse_module(&context, data, mod);
         break;
@@ -793,7 +794,7 @@ finish_parsing:
     }
     LY_ARRAY_FOR(mod->parsed->includes, u) {
         inc = &mod->parsed->includes[u];
-        if (!inc->submodule && lysp_load_submodule(&context, mod->parsed, inc)) {
+        if (!inc->submodule && lysp_load_submodule(context, mod->parsed, inc)) {
             goto error_ctx;
         }
         if (!mod->implemented) {
@@ -804,15 +805,26 @@ finish_parsing:
     mod->parsed->parsing = 0;
 
     /* check name collisions - typedefs and TODO groupings */
-    LY_CHECK_GOTO(lysp_check_typedefs(&context, mod->parsed), error_ctx);
+    LY_CHECK_GOTO(lysp_check_typedefs(context, mod->parsed), error_ctx);
 
+    if (format == LYS_IN_YANG) {
+        lys_parser_ctx_free(context);
+    } else {
+        yin_parser_ctx_free(yin_context);
+    }
     return mod;
 
 error_ctx:
     ly_set_rm(&ctx->list, mod, NULL);
 error:
     lys_module_free(mod, NULL);
-    ly_set_erase(&context.tpdfs_nodes, NULL);
+    ly_set_erase(&context->tpdfs_nodes, NULL);
+    if (format == LYS_IN_YANG) {
+        lys_parser_ctx_free(context);
+    } else {
+        yin_parser_ctx_free(yin_context);
+    }
+
     return NULL;
 }
 

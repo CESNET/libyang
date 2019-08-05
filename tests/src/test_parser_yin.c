@@ -3724,6 +3724,7 @@ test_yin_parse_submodule(void **state)
     const char *data;
     struct yin_parser_ctx *yin_ctx = NULL;
     struct lysp_submodule *submod = NULL;
+    struct lys_parser_ctx main_ctx = {};
 
     data = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
             "<submodule name=\"asub\""
@@ -3749,7 +3750,7 @@ test_yin_parse_submodule(void **state)
                     "<container name=\"bar-sub2\"/>"
                 "</augment>"
             "</submodule>";
-    assert_int_equal(yin_parse_submodule(&yin_ctx, st->ctx, data, &submod), LY_SUCCESS);
+    assert_int_equal(yin_parse_submodule(&yin_ctx, st->ctx, &main_ctx, data, &submod), LY_SUCCESS);
     lysp_submodule_free(st->ctx, submod);
     yin_parser_ctx_free(yin_ctx);
     yin_ctx = NULL;
@@ -3762,7 +3763,7 @@ test_yin_parse_submodule(void **state)
                     "<prefix value=\"a_pref\"/>"
                 "</belongs-to>"
             "</submodule>";
-    assert_int_equal(yin_parse_submodule(&yin_ctx, st->ctx, data, &submod), LY_SUCCESS);
+    assert_int_equal(yin_parse_submodule(&yin_ctx, st->ctx, &main_ctx, data, &submod), LY_SUCCESS);
     lysp_submodule_free(st->ctx, submod);
     yin_parser_ctx_free(yin_ctx);
     yin_ctx = NULL;
@@ -3771,7 +3772,7 @@ test_yin_parse_submodule(void **state)
     data = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>"
             "<module name=\"inval\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
             "</module>";
-    assert_int_equal(yin_parse_submodule(&yin_ctx, st->ctx, data, &submod), LY_EINVAL);
+    assert_int_equal(yin_parse_submodule(&yin_ctx, st->ctx, &main_ctx, data, &submod), LY_EINVAL);
     logbuf_assert("Input data contains module in situation when a submodule is expected.");
     lysp_submodule_free(st->ctx, submod);
     yin_parser_ctx_free(yin_ctx);
@@ -3791,7 +3792,7 @@ test_yin_parse_submodule(void **state)
                     "<prefix value=\"a_pref\"/>"
                 "</belongs-to>"
             "</submodule>";
-    assert_int_equal(yin_parse_submodule(&yin_ctx, st->ctx, data, &submod), LY_EVALID);
+    assert_int_equal(yin_parse_submodule(&yin_ctx, st->ctx, &main_ctx, data, &submod), LY_EVALID);
     logbuf_assert("Trailing garbage \"<submodule name...\" after submodule, expected end-of-input. Line number 2.");
     lysp_submodule_free(st->ctx, submod);
     yin_parser_ctx_free(yin_ctx);

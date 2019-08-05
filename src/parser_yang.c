@@ -4490,7 +4490,7 @@ checks:
 }
 
 LY_ERR
-yang_parse_submodule(struct lys_parser_ctx *context, const char *data, struct lysp_submodule **submod)
+yang_parse_submodule(struct lys_parser_ctx **context, struct ly_ctx *ly_ctx, struct lys_parser_ctx *main_ctx, const char *data, struct lysp_submodule **submod)
 {
     LY_ERR ret = LY_SUCCESS;
     char *word;
@@ -4498,27 +4498,37 @@ yang_parse_submodule(struct lys_parser_ctx *context, const char *data, struct ly
     enum yang_keyword kw;
     struct lysp_submodule *mod_p = NULL;
 
+    /* create context */
+    *context = calloc(1, sizeof **context);
+    LY_CHECK_ERR_RET(!(*context), LOGMEM(ly_ctx), LY_EMEM);
+    (*context)->ctx = ly_ctx;
+    (*context)->line = 1;
+
+    /* map the typedefs and groupings list from main context to the submodule's context */
+    memcpy(&(*context)->tpdfs_nodes, &main_ctx->tpdfs_nodes, sizeof main_ctx->tpdfs_nodes);
+    memcpy(&(*context)->grps_nodes, &main_ctx->grps_nodes, sizeof main_ctx->grps_nodes);
+
     /* "module"/"submodule" */
-    ret = get_keyword(context, &data, &kw, &word, &word_len);
+    ret = get_keyword(*context, &data, &kw, &word, &word_len);
     LY_CHECK_GOTO(ret, cleanup);
 
     if (kw == YANG_MODULE) {
-        LOGERR(context->ctx, LY_EDENIED, "Input data contains module in situation when a submodule is expected.");
+        LOGERR((*context)->ctx, LY_EDENIED, "Input data contains module in situation when a submodule is expected.");
         ret = LY_EINVAL;
         goto cleanup;
     } else if (kw != YANG_SUBMODULE) {
-        LOGVAL_PARSER(context, LYVE_SYNTAX, "Invalid keyword \"%s\", expected \"module\" or \"submodule\".",
+        LOGVAL_PARSER(*context, LYVE_SYNTAX, "Invalid keyword \"%s\", expected \"module\" or \"submodule\".",
                ly_stmt2str(kw));
         ret = LY_EVALID;
         goto cleanup;
     }
 
     mod_p = calloc(1, sizeof *mod_p);
-    LY_CHECK_ERR_GOTO(!mod_p, LOGMEM(context->ctx), cleanup);
+    LY_CHECK_ERR_GOTO(!mod_p, LOGMEM((*context)->ctx), cleanup);
     mod_p->parsing = 1;
 
     /* substatements */
-    ret = parse_submodule(context, &data, mod_p);
+    ret = parse_submodule(*context, &data, mod_p);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* read some trailing spaces or new lines */
@@ -4526,7 +4536,7 @@ yang_parse_submodule(struct lys_parser_ctx *context, const char *data, struct ly
         data++;
     }
     if (*data) {
-        LOGVAL_PARSER(context, LYVE_SYNTAX, "Trailing garbage \"%.*s%s\" after submodule, expected end-of-input.",
+        LOGVAL_PARSER(*context, LYVE_SYNTAX, "Trailing garbage \"%.*s%s\" after submodule, expected end-of-input.",
                     15, data, strlen(data) > 15 ? "..." : "");
         ret = LY_EVALID;
         goto cleanup;
@@ -4537,14 +4547,16 @@ yang_parse_submodule(struct lys_parser_ctx *context, const char *data, struct ly
 
 cleanup:
     if (ret) {
-        lysp_submodule_free(context->ctx, mod_p);
+        lysp_submodule_free((*context)->ctx, mod_p);
+        lys_parser_ctx_free(*context);
+        *context = NULL;
     }
 
     return ret;
 }
 
 LY_ERR
-yang_parse_module(struct lys_parser_ctx *context, const char *data, struct lys_module *mod)
+yang_parse_module(struct lys_parser_ctx **context, const char *data, struct lys_module *mod)
 {
     LY_ERR ret = LY_SUCCESS;
     char *word;
@@ -4552,28 +4564,34 @@ yang_parse_module(struct lys_parser_ctx *context, const char *data, struct lys_m
     enum yang_keyword kw;
     struct lysp_module *mod_p = NULL;
 
+    /* create context */
+    *context = calloc(1, sizeof **context);
+    LY_CHECK_ERR_RET(!(*context), LOGMEM(mod->ctx), LY_EMEM);
+    (*context)->ctx = mod->ctx;
+    (*context)->line = 1;
+
     /* "module"/"submodule" */
-    ret = get_keyword(context, &data, &kw, &word, &word_len);
+    ret = get_keyword(*context, &data, &kw, &word, &word_len);
     LY_CHECK_GOTO(ret, cleanup);
 
     if (kw == YANG_SUBMODULE) {
-        LOGERR(context->ctx, LY_EDENIED, "Input data contains submodule which cannot be parsed directly without its main module.");
+        LOGERR((*context)->ctx, LY_EDENIED, "Input data contains submodule which cannot be parsed directly without its main module.");
         ret = LY_EINVAL;
         goto cleanup;
     } else if (kw != YANG_MODULE) {
-        LOGVAL_PARSER(context, LYVE_SYNTAX, "Invalid keyword \"%s\", expected \"module\" or \"submodule\".",
+        LOGVAL_PARSER((*context), LYVE_SYNTAX, "Invalid keyword \"%s\", expected \"module\" or \"submodule\".",
                ly_stmt2str(kw));
         ret = LY_EVALID;
         goto cleanup;
     }
 
     mod_p = calloc(1, sizeof *mod_p);
-    LY_CHECK_ERR_GOTO(!mod_p, LOGMEM(context->ctx), cleanup);
+    LY_CHECK_ERR_GOTO(!mod_p, LOGMEM((*context)->ctx), cleanup);
     mod_p->mod = mod;
     mod_p->parsing = 1;
 
     /* substatements */
-    ret = parse_module(context, &data, mod_p);
+    ret = parse_module(*context, &data, mod_p);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* read some trailing spaces or new lines */
@@ -4581,7 +4599,7 @@ yang_parse_module(struct lys_parser_ctx *context, const char *data, struct lys_m
         data++;
     }
     if (*data) {
-        LOGVAL_PARSER(context, LYVE_SYNTAX, "Trailing garbage \"%.*s%s\" after module, expected end-of-input.",
+        LOGVAL_PARSER(*context, LYVE_SYNTAX, "Trailing garbage \"%.*s%s\" after module, expected end-of-input.",
                     15, data, strlen(data) > 15 ? "..." : "");
         ret = LY_EVALID;
         goto cleanup;
@@ -4593,6 +4611,8 @@ yang_parse_module(struct lys_parser_ctx *context, const char *data, struct lys_m
 cleanup:
     if (ret) {
         lysp_module_free(mod_p);
+        lys_parser_ctx_free(*context);
+        *context = NULL;
     }
 
     return ret;
