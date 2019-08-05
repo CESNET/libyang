@@ -513,10 +513,10 @@ test_yin_parse_content(void **state)
                                             {YANG_IF_FEATURE, &if_features, 0},
                                             {YANG_LENGTH, &len_type, 0},
                                             {YANG_PATTERN, &patter_type, 0},
+                                            {YANG_POSITION, &pos_enum, 0},
                                             {YANG_RANGE, &range_type, 0},
                                             {YANG_REQUIRE_INSTANCE, &req_type, 0},
                                             {YANG_UNITS, &units, 0},
-                                            {YANG_POSITION, &pos_enum, 0},
                                             {YANG_VALUE, &val_enum, 0},
                                             {YANG_WHEN, &when_p, 0},
                                             {YANG_CUSTOM, NULL, 0},
@@ -701,6 +701,7 @@ test_element_helper(struct state *st, const char **data, void *dest, const char 
                                             {YANG_OUTPUT, dest, 0},
                                             {YANG_PATH, dest, 0},
                                             {YANG_PATTERN, dest, 0},
+                                            {YANG_POSITION, dest, 0},
                                             {YANG_PREFIX, dest, 0},
                                             {YANG_PRESENCE, dest, 0},
                                             {YANG_RANGE, dest, 0},
@@ -717,7 +718,6 @@ test_element_helper(struct state *st, const char **data, void *dest, const char 
                                             {YANG_UNIQUE, dest, 0},
                                             {YANG_UNITS, dest, 0},
                                             {YANG_USES, dest, 0},
-                                            {YANG_POSITION, dest, 0},
                                             {YANG_VALUE, dest, 0},
                                             {YANG_WHEN, dest, 0},
                                             {YANG_YANG_VERSION, dest, 0},
@@ -739,9 +739,8 @@ test_element_helper(struct state *st, const char **data, void *dest, const char 
 }
 
 static void
-test_enum_bit_elem(void **state)
+test_enum_elem(void **state)
 {
-    /* yin_parse_enum_bit is function that is being mainly tested by this test */
     struct state *st = *state;
     struct lysp_type type = {};
     const char *data;
@@ -763,7 +762,33 @@ test_enum_bit_elem(void **state)
     lysp_type_free(st->ctx, &type);
     memset(&type, 0, sizeof type);
 
-    /* todo bit element test */
+    st->finished_correctly = true;
+}
+
+static void
+test_bit_elem(void **state)
+{
+    struct state *st = *state;
+    struct lysp_type type = {};
+    const char *data;
+    data = ELEMENT_WRAPPER_START
+           "<bit name=\"enum-name\">"
+                "<if-feature name=\"feature\" />"
+                "<position value=\"55\" />"
+                "<status value=\"deprecated\" />"
+                "<description><text>desc...</text></description>"
+                "<reference><text>ref...</text></reference>"
+           "</bit>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, true), LY_SUCCESS);
+    assert_string_equal(*type.bits->iffeatures, "feature");
+    assert_int_equal(type.bits->value, 55);
+    assert_true((type.bits->flags & LYS_STATUS_DEPRC) && (type.bits->flags & LYS_SET_VALUE));
+    assert_string_equal(type.bits->dsc, "desc...");
+    assert_string_equal(type.bits->ref, "ref...");
+    lysp_type_free(st->ctx, &type);
+    memset(&type, 0, sizeof type);
+
     st->finished_correctly = true;
 }
 
@@ -3814,7 +3839,8 @@ main(void)
         cmocka_unit_test_setup_teardown(test_validate_value, setup_f, teardown_f),
 
         cmocka_unit_test(test_yin_match_argument_name),
-        cmocka_unit_test_setup_teardown(test_enum_bit_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_enum_elem, setup_element_test, teardown_element_test),
+        cmocka_unit_test_setup_teardown(test_bit_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_meta_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_import_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_status_elem, setup_element_test, teardown_element_test),
