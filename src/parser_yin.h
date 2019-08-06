@@ -181,20 +181,6 @@ LY_ERR yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *sube
                          struct lysp_ext_instance **exts);
 
 /**
- * @brief Parse yang-version element.
- *
- * @param[in,out] ctx Yin parser context for logging and to store current state.
- * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of yang-version element.
- * @param[in] data Data to read from, always moved to currently handled character.
- * @param[out] version Storage for the parsed information.
- * @param[in,out] exts Extension instance to add to.
- *
- * @return LY_ERR values.
- */
-LY_ERR yin_parse_yangversion(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data, uint8_t *version,
-                             struct lysp_ext_instance **exts);
-
-/**
  * @brief Check that val is valid UTF8 character sequence of val_type.
  *        Doesn't check empty string, only character validity.
  *
@@ -206,19 +192,6 @@ LY_ERR yin_parse_yangversion(struct yin_parser_ctx *ctx, struct yin_arg_record *
  * @return LY_ERR values.
  */
 LY_ERR yin_validate_value(struct yin_parser_ctx *ctx, enum yang_arg val_type, char *val, size_t len);
-
-/**
- * @brief Parse import element.
- *
- * @param[in,out] ctx Yin parser context for logging and to store current state.
- * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of import element.
- * @param[in,out] data Data to read from, always moved to currently handled character.
- * @param[in,out] imp_meta Meta information about prefix and imports to add to.
- *
- * @return LY_ERR values.
- */
-LY_ERR yin_parse_import(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs,
-                        const char **data, struct import_meta *imp_meta);
 
 /**
  * @brief Match yang keyword from yin data.
@@ -236,59 +209,6 @@ enum yang_keyword yin_match_keyword(struct yin_parser_ctx *ctx, const char *name
                                     const char *prefix, size_t prefix_len, enum yang_keyword parrent);
 
 /**
- * @brief Parse mandatory element.
- *
- * @param[in,out] ctx Yin parser context for logging and to store current state.
- * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of status element.
- * @param[in,out] data Data to read from, always moved to currently handled character.
- * @param[in,out] flags Flags to add to.
- * @param[in,out] exts Extension instances to add to.
- *
- * @return LY_ERR values.
- */
-LY_ERR yin_parse_mandatory(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
-                           uint16_t *flags, struct lysp_ext_instance **exts);
-
-/**
- * @brief Parse status element.
- *
- * @param[in,out] ctx Yin parser context for logging and to store current state.
- * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of status element.
- * @param[in,out] data Data to read from, always moved to currently handled character.
- * @param[in,out] flags Flags to add to.
- * @param[in,out] exts Extension instances to add to.
- *
- * @return LY_ERR values.
- */
-LY_ERR yin_parse_status(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
-                        uint16_t *flags, struct lysp_ext_instance **exts);
-
-/**
- * @brief Parse when element.
- *
- * @param[in,out] ctx Yin parser context for logging and to store current state.
- * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of when element.
- * @param[in,out] data Data to read from, always moved to currently handled character.
- * @param[out] when_p When pointer to parse to.
- */
-LY_ERR yin_parse_when(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
-                      struct lysp_when **when_p);
-
-/**
- * @brief Parse revision date element.
- *
- * @param[in,out] ctx Yin parser context for logging and to store current state.
- * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of revision-date element.
- * @param[in,out] data Data to read from, always moved to currently handled character.
- * @param[in,out] rev Array to store the parsed value in.
- * @param[in,out] exts Extension instances to add to.
- *
- * @return LY_ERR values.
- */
-LY_ERR yin_parse_revision_date(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
-                               char *rev, struct lysp_ext_instance **exts);
-
-/**
  * @brief load all attributes of element into ([sized array](@ref sizedarrays)). Caller is suposed to free the array.
  *
  * @param[in,out] ctx Yin parser context for logging and to store current state.
@@ -298,47 +218,6 @@ LY_ERR yin_parse_revision_date(struct yin_parser_ctx *ctx, struct yin_arg_record
  * @return LY_ERR values.
  */
 LY_ERR yin_load_attributes(struct yin_parser_ctx *ctx, const char **data, struct yin_arg_record **attrs);
-
-/**
- * @brief Parse yin-elemenet element.
- *
- * @param[in,out] ctx Yin parser context for logging and to store current state.
- * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of yin-element element.
- * @param[in,out] data Data to read from, always moved to currently handled position.
- * @param[in,out] flags Flags to add to.
- * @prama[in,out] exts Extension instance to add to.
- *
- * @return LY_ERR values.
- */
-LY_ERR yin_parse_yin_element_element(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
-                                     uint16_t *flags, struct lysp_ext_instance **exts);
-
-/**
- * @brief Parse argument element.
- *
- * @param[in,out] xml_ctx Xml context.
- * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of argument element.
- * @param[in,out] data Data to read from, always moved to currently handled character.
- * @param[in,out] arg_meta Meta information about destionation af prased data.
- * @param[in,out] exts Extension instance to add to.
- *
- * @return LY_ERR values.
- */
-LY_ERR yin_parse_argument_element(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
-                                  struct yin_argument_meta *arg_meta, struct lysp_ext_instance **exts);
-
-/**
- * @brief Parse the extension statement.
- *
- * @param[in,out] ctx Yin parser context for logging and to store current state.
- * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of extension element.
- * @param[in,out] data Data to read from.
- * @param[in,out] extensions Extensions to add to.
- *
- * @return LY_ERR values.
- */
-LY_ERR yin_parse_extension(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs,
-                           const char **data, struct lysp_ext **extensions);
 
 /**
  * @brief Parse instance of extension.
