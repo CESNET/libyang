@@ -504,7 +504,7 @@ yin_parse_fracdigits(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, c
     type->fraction_digits = num;
     type->flags |= LYS_SET_FRDIGITS;
     struct yin_subelement subelems[1] = {
-                                            {YANG_CUSTOM, &index, 0}
+                                            {YANG_CUSTOM, NULL, 0}
                                         };
     return yin_parse_content(ctx, subelems, 1, data, YANG_FRACTION_DIGITS, NULL, &type->exts);
 }
@@ -2516,7 +2516,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 case YANG_PATH:
                     type = (struct lysp_type *)subelem->dest;
                     ret = yin_parse_simple_element(ctx, attrs, data, kw, &type->path,
-                                                   YIN_ARG_VALUE, Y_STR_ARG, exts);
+                                                   YIN_ARG_VALUE, Y_STR_ARG, &type->exts);
                     type->flags |= LYS_SET_PATH;
                     break;
                 case YANG_PATTERN:
