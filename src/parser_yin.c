@@ -1109,22 +1109,12 @@ static LY_ERR
 yin_parse_any(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
               enum yang_keyword any_kw, struct tree_node_meta *node_meta)
 {
-    struct lysp_node *iter;
     struct lysp_node_anydata *any;
 
-    /* create structure */
-    any = calloc(1, sizeof *any);
-    LY_CHECK_ERR_RET(!any, LOGMEM(ctx->xml_ctx.ctx), LY_EMEM);
+    /* create new sibling */
+    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->siblings, any, next);
     any->nodetype = (any_kw == YANG_ANYDATA) ? LYS_ANYDATA : LYS_ANYXML;
     any->parent = node_meta->parent;
-
-    /* insert into siblings */
-    if (!*(node_meta->siblings)) {
-        *(node_meta->siblings) = (struct lysp_node *)any;
-    } else {
-        for (iter = *(node_meta->siblings); iter->next; iter = iter->next);
-        iter->next = (struct lysp_node *)any;
-    }
 
     /* parser argument */
     LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NAME, &any->name, Y_IDENTIF_ARG, any_kw));
@@ -1157,22 +1147,12 @@ static LY_ERR
 yin_parse_leaf(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
                struct tree_node_meta *node_meta)
 {
-    struct lysp_node *iter;
     struct lysp_node_leaf *leaf;
 
-    /* create structure */
-    leaf = calloc(1, sizeof *leaf);
-    LY_CHECK_ERR_RET(!leaf, LOGMEM(ctx->xml_ctx.ctx), LY_EMEM);
+    /* create structure new leaf */
+    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->siblings, leaf, next);
     leaf->nodetype = LYS_LEAF;
     leaf->parent = node_meta->parent;
-
-    /* insert into siblings */
-    if (!*(node_meta->siblings)) {
-        *node_meta->siblings = (struct lysp_node *)leaf;
-    } else {
-        for (iter = *node_meta->siblings; iter->next; iter = iter->next);
-        iter->next = (struct lysp_node *)leaf;
-    }
 
     /* parser argument */
     LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NAME, &leaf->name, Y_IDENTIF_ARG, YANG_LEAF));
@@ -1209,21 +1189,12 @@ static LY_ERR
 yin_parse_leaflist(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
                    struct tree_node_meta *node_meta)
 {
-    struct lysp_node *iter;
     struct lysp_node_leaflist *llist;
 
-    llist = calloc(1, sizeof *llist);
-    LY_CHECK_ERR_RET(!llist, LOGMEM(ctx->xml_ctx.ctx), LY_EMEM);
+    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->siblings, llist, next);
+
     llist->nodetype = LYS_LEAFLIST;
     llist->parent = node_meta->parent;
-
-    /* insert into siblings */
-    if (!*(node_meta->siblings)) {
-        *node_meta->siblings = (struct lysp_node *)llist;
-    } else {
-        for (iter = *node_meta->siblings; iter->next; iter = iter->next);
-        iter->next = (struct lysp_node *)llist;
-    }
 
     /* parse argument */
     yin_parse_attribute(ctx, attrs, YIN_ARG_NAME, &llist->name, Y_IDENTIF_ARG, YANG_LEAF_LIST);
@@ -1356,22 +1327,12 @@ static LY_ERR
 yin_parse_uses(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
                struct tree_node_meta *node_meta)
 {
-    struct lysp_node *iter;
     struct lysp_node_uses *uses;
 
-    /* create structure */
-    uses = calloc(1, sizeof *uses);
-    LY_CHECK_ERR_RET(!uses, LOGMEM(ctx->xml_ctx.ctx), LY_EMEM);
+    /* create new uses */
+    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->siblings, uses, next);
     uses->nodetype = LYS_USES;
     uses->parent = node_meta->parent;
-
-    /* insert into siblings */
-    if (!*(node_meta->siblings)) {
-        *node_meta->siblings = (struct lysp_node *)uses;
-    } else {
-        for (iter = *node_meta->siblings; iter->next; iter = iter->next);
-        iter->next = (struct lysp_node *)uses;
-    }
 
     /* parse argument */
     LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NAME, &uses->name, Y_PREF_IDENTIF_ARG, YANG_USES));
@@ -1554,22 +1515,11 @@ static LY_ERR
 yin_parse_list(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
                struct tree_node_meta *node_meta)
 {
-    struct lysp_node *iter;
     struct lysp_node_list *list;
 
-    /* create structure */
-    list = calloc(1, sizeof *list);
-    LY_CHECK_ERR_RET(!list, LOGMEM(ctx->xml_ctx.ctx), LY_EMEM);
+    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->siblings, list, next);
     list->nodetype = LYS_LIST;
     list->parent = node_meta->parent;
-
-    /* insert into siblings */
-    if (!*(node_meta->siblings)) {
-        *node_meta->siblings = (struct lysp_node *)list;
-    } else {
-        for (iter = *node_meta->siblings; iter->next; iter = iter->next);
-        iter->next = (struct lysp_node *)list;
-    }
 
     /* parse argument */
     LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NAME, &list->name, Y_IDENTIF_ARG, YANG_LIST));
@@ -1745,22 +1695,12 @@ static LY_ERR
 yin_parse_container(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
                     struct tree_node_meta *node_meta)
 {
-    struct lysp_node *iter;
     struct lysp_node_container *cont;
 
     /* create new container */
-    cont = calloc(1, sizeof *cont);
-    LY_CHECK_ERR_RET(!cont, LOGMEM(ctx->xml_ctx.ctx), LY_EMEM);
+    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->siblings, cont, next);
     cont->nodetype = LYS_CONTAINER;
     cont->parent = node_meta->parent;
-
-    /* insert into siblings */
-    if (!*(node_meta->siblings)) {
-        *node_meta->siblings = (struct lysp_node *)cont;
-    } else {
-        for (iter = *node_meta->siblings; iter->next; iter = iter->next);
-        iter->next = (struct lysp_node *)cont;
-    }
 
     /* parse aegument */
     LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NAME,  &cont->name, Y_IDENTIF_ARG, YANG_CONTAINER));
@@ -1814,22 +1754,12 @@ static LY_ERR
 yin_parse_case(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
                struct tree_node_meta *node_meta)
 {
-    struct lysp_node *iter;
     struct lysp_node_case *cas;
 
     /* create new case */
-    cas = calloc(1, sizeof *cas);
-    LY_CHECK_ERR_RET(!cas, LOGMEM(ctx->xml_ctx.ctx), LY_EMEM);
+    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->siblings, cas, next);
     cas->nodetype = LYS_CASE;
     cas->parent = node_meta->parent;
-
-    /* insert into siblings */
-    if (!*(node_meta->siblings)) {
-        *node_meta->siblings = (struct lysp_node *)cas;
-    } else {
-        for (iter = *node_meta->siblings; iter->next; iter = iter->next);
-        iter->next = (struct lysp_node *)cas;
-    }
 
     /* parse argument */
     LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NAME, &cas->name, Y_IDENTIF_ARG, YANG_CASE));
@@ -1869,22 +1799,13 @@ LY_ERR
 yin_parse_choice(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
                  struct tree_node_meta *node_meta)
 {
-    struct lysp_node *iter;
     struct lysp_node_choice *choice;
 
     /* create new choice */
-    choice = calloc(1, sizeof *choice);
-    LY_CHECK_ERR_RET(!choice, LOGMEM(ctx->xml_ctx.ctx), LY_EMEM);
+    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->siblings, choice, next);
+
     choice->nodetype = LYS_CHOICE;
     choice->parent = node_meta->parent;
-
-    /* insert into siblings */
-    if (!*(node_meta->siblings)) {
-        *node_meta->siblings = (struct lysp_node *)choice;
-    } else {
-        for (iter = *node_meta->siblings; iter->next; iter = iter->next);
-        iter->next = (struct lysp_node *)choice;
-    }
 
     /* parse argument */
     LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NAME, &choice->name, Y_IDENTIF_ARG, YANG_CHOICE));
@@ -2079,7 +2000,7 @@ yin_parse_deviate(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, cons
     LY_ERR ret = LY_SUCCESS;
     uint8_t dev_mod;
     const char *temp_val;
-    struct lysp_deviate *iter, *d;
+    struct lysp_deviate *d;
     struct lysp_deviate_add *d_add = NULL;
     struct lysp_deviate_rpl *d_rpl = NULL;
     struct lysp_deviate_del *d_del = NULL;
@@ -2164,12 +2085,7 @@ yin_parse_deviate(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, cons
 
     d->mod = dev_mod;
     /* insert into siblings */
-    if (!*deviates) {
-        *deviates = d;
-    } else {
-        for (iter = *deviates; iter->next; iter = iter->next);
-        iter->next = d;
-    }
+    LY_LIST_INSERT(deviates, d, next);
 
     return ret;
 

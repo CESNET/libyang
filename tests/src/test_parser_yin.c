@@ -1628,10 +1628,14 @@ test_value_position_elem(void **state)
     memset(&en, 0, sizeof(en));
 
     /* valid positions */
-    data = ELEMENT_WRAPPER_START "<position value=\"55\" />" ELEMENT_WRAPPER_END;
+    data = ELEMENT_WRAPPER_START "<position value=\"55\">" EXT_SUBELEM "</position>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &en, NULL, NULL, true), LY_SUCCESS);
     assert_int_equal(en.value, 55);
     assert_true(en.flags & LYS_SET_VALUE);
+    assert_string_equal(en.exts[0].name, "myext:c-define");
+    assert_int_equal(en.exts[0].insubstmt_index, 0);
+    assert_int_equal(en.exts[0].insubstmt, LYEXT_SUBSTMT_POSITION);
+    FREE_ARRAY(st->ctx, en.exts, lysp_ext_instance_free);
     memset(&en, 0, sizeof(en));
 
     data = ELEMENT_WRAPPER_START "<position value=\"0\" />" ELEMENT_WRAPPER_END;

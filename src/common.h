@@ -603,4 +603,23 @@ LY_ERR ly_strcat(char **dest, const char *format, ...);
  */
 #define LY_ARRAY_FREE(ARRAY) \
         if (ARRAY){free((uint32_t*)(ARRAY) - 1);}
+
+#define LY_LIST_INSERT(LIST, NEW_ITEM, LINKER)\
+    if (!(*LIST)) { \
+        *LIST = (__typeof__(*(LIST)))NEW_ITEM; \
+    } else { \
+        do { \
+            __typeof__(*(LIST)) iterator; \
+            for (iterator = *(LIST); iterator->LINKER; iterator = iterator->LINKER); \
+            iterator->LINKER = (__typeof__(*(LIST)))NEW_ITEM; \
+        } while (0); \
+    }
+
+#define LY_LIST_NEW_RET(CTX, LIST, NEW_ITEM, LINKER) \
+    NEW_ITEM = calloc(1, sizeof *NEW_ITEM); \
+    LY_CHECK_ERR_RET(!(NEW_ITEM), LOGMEM(CTX), LY_EMEM); \
+    LY_LIST_INSERT(LIST, NEW_ITEM, LINKER)
+
+#define LY_LIST_NEW_GOTO(CTX, LIST, NEW_ITEM, LINKER, GOTO) \
+
 #endif /* LY_COMMON_H_ */
