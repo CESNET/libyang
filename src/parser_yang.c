@@ -1527,22 +1527,13 @@ parse_any(struct lys_parser_ctx *ctx, const char **data, enum yang_keyword kw, s
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
     size_t word_len;
-    struct lysp_node *iter;
     struct lysp_node_anydata *any;
 
-    /* create structure */
-    any = calloc(1, sizeof *any);
-    LY_CHECK_ERR_RET(!any, LOGMEM(ctx->ctx), LY_EMEM);
+    /* create new structure and insert into siblings */
+    LY_LIST_NEW_RET(ctx->ctx, siblings, any, next);
+
     any->nodetype = kw == YANG_ANYDATA ? LYS_ANYDATA : LYS_ANYXML;
     any->parent = parent;
-
-    /* insert into siblings */
-    if (!*siblings) {
-        *siblings = (struct lysp_node *)any;
-    } else {
-        for (iter = *siblings; iter->next; iter = iter->next);
-        iter->next = (struct lysp_node *)any;
-    }
 
     /* get name */
     LY_CHECK_RET(get_argument(ctx, data, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
@@ -2087,22 +2078,12 @@ parse_leaf(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *pare
     char *buf, *word;
     size_t word_len;
     enum yang_keyword kw;
-    struct lysp_node *iter;
     struct lysp_node_leaf *leaf;
 
-    /* create structure */
-    leaf = calloc(1, sizeof *leaf);
-    LY_CHECK_ERR_RET(!leaf, LOGMEM(ctx->ctx), LY_EMEM);
+    /* create new leaf structure */
+    LY_LIST_NEW_RET(ctx->ctx, siblings, leaf, next);
     leaf->nodetype = LYS_LEAF;
     leaf->parent = parent;
-
-    /* insert into siblings */
-    if (!*siblings) {
-        *siblings = (struct lysp_node *)leaf;
-    } else {
-        for (iter = *siblings; iter->next; iter = iter->next);
-        iter->next = (struct lysp_node *)leaf;
-    }
 
     /* get name */
     LY_CHECK_RET(get_argument(ctx, data, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
@@ -2364,22 +2345,12 @@ parse_leaflist(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *
     char *buf, *word;
     size_t word_len;
     enum yang_keyword kw;
-    struct lysp_node *iter;
     struct lysp_node_leaflist *llist;
 
-    /* create structure */
-    llist = calloc(1, sizeof *llist);
-    LY_CHECK_ERR_RET(!llist, LOGMEM(ctx->ctx), LY_EMEM);
+    /* create new leaf-list structure */
+    LY_LIST_NEW_RET(ctx->ctx, siblings, llist, next);
     llist->nodetype = LYS_LEAFLIST;
     llist->parent = parent;
-
-    /* insert into siblings */
-    if (!*siblings) {
-        *siblings = (struct lysp_node *)llist;
-    } else {
-        for (iter = *siblings; iter->next; iter = iter->next);
-        iter->next = (struct lysp_node *)llist;
-    }
 
     /* get name */
     LY_CHECK_RET(get_argument(ctx, data, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
@@ -3043,22 +3014,12 @@ parse_uses(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *pare
     char *buf, *word;
     size_t word_len;
     enum yang_keyword kw;
-    struct lysp_node *iter;
     struct lysp_node_uses *uses;
 
-    /* create structure */
-    uses = calloc(1, sizeof *uses);
-    LY_CHECK_ERR_RET(!uses, LOGMEM(ctx->ctx), LY_EMEM);
+    /* create uses structure */
+    LY_LIST_NEW_RET(ctx->ctx, siblings, uses, next);
     uses->nodetype = LYS_USES;
     uses->parent = parent;
-
-    /* insert into siblings */
-    if (!*siblings) {
-        *siblings = (struct lysp_node *)uses;
-    } else {
-        for (iter = *siblings; iter->next; iter = iter->next);
-        iter->next = (struct lysp_node *)uses;
-    }
 
     /* get name */
     LY_CHECK_RET(get_argument(ctx, data, Y_PREF_IDENTIF_ARG, NULL, &word, &buf, &word_len));
@@ -3120,22 +3081,12 @@ parse_case(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *pare
     char *buf, *word;
     size_t word_len;
     enum yang_keyword kw;
-    struct lysp_node *iter;
     struct lysp_node_case *cas;
 
-    /* create structure */
-    cas = calloc(1, sizeof *cas);
-    LY_CHECK_ERR_RET(!cas, LOGMEM(ctx->ctx), LY_EMEM);
+    /* create new case structure */
+    LY_LIST_NEW_RET(ctx->ctx, siblings, cas, next);
     cas->nodetype = LYS_CASE;
     cas->parent = parent;
-
-    /* insert into siblings */
-    if (!*siblings) {
-        *siblings = (struct lysp_node *)cas;
-    } else {
-        for (iter = *siblings; iter->next; iter = iter->next);
-        iter->next = (struct lysp_node *)cas;
-    }
 
     /* get name */
     LY_CHECK_RET(get_argument(ctx, data, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
@@ -3211,22 +3162,12 @@ parse_choice(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *pa
     char *buf, *word;
     size_t word_len;
     enum yang_keyword kw;
-    struct lysp_node *iter;
     struct lysp_node_choice *choice;
 
-    /* create structure */
-    choice = calloc(1, sizeof *choice);
-    LY_CHECK_ERR_RET(!choice, LOGMEM(ctx->ctx), LY_EMEM);
+    /* create new choice structure */
+    LY_LIST_NEW_RET(ctx->ctx, siblings, choice, next);
     choice->nodetype = LYS_CHOICE;
     choice->parent = parent;
-
-    /* insert into siblings */
-    if (!*siblings) {
-        *siblings = (struct lysp_node *)choice;
-    } else {
-        for (iter = *siblings; iter->next; iter = iter->next);
-        iter->next = (struct lysp_node *)choice;
-    }
 
     /* get name */
     LY_CHECK_RET(get_argument(ctx, data, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
@@ -3318,22 +3259,12 @@ parse_container(struct lys_parser_ctx *ctx, const char **data, struct lysp_node 
     char *buf, *word;
     size_t word_len;
     enum yang_keyword kw;
-    struct lysp_node *iter;
     struct lysp_node_container *cont;
 
-    /* create structure */
-    cont = calloc(1, sizeof *cont);
-    LY_CHECK_ERR_RET(!cont, LOGMEM(ctx->ctx), LY_EMEM);
+    /* create new container structure */
+    LY_LIST_NEW_RET(ctx->ctx, siblings, cont, next);
     cont->nodetype = LYS_CONTAINER;
     cont->parent = parent;
-
-    /* insert into siblings */
-    if (!*siblings) {
-        *siblings = (struct lysp_node *)cont;
-    } else {
-        for (iter = *siblings; iter->next; iter = iter->next);
-        iter->next = (struct lysp_node *)cont;
-    }
 
     /* get name */
     LY_CHECK_RET(get_argument(ctx, data, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
@@ -3436,22 +3367,12 @@ parse_list(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *pare
     char *buf, *word;
     size_t word_len;
     enum yang_keyword kw;
-    struct lysp_node *iter;
     struct lysp_node_list *list;
 
-    /* create structure */
-    list = calloc(1, sizeof *list);
-    LY_CHECK_ERR_RET(!list, LOGMEM(ctx->ctx), LY_EMEM);
+    /* create new list structure */
+    LY_LIST_NEW_RET(ctx->ctx, siblings, list, next);
     list->nodetype = LYS_LIST;
     list->parent = parent;
-
-    /* insert into siblings */
-    if (!*siblings) {
-        *siblings = (struct lysp_node *)list;
-    } else {
-        for (iter = *siblings; iter->next; iter = iter->next);
-        iter->next = (struct lysp_node *)list;
-    }
 
     /* get name */
     LY_CHECK_RET(get_argument(ctx, data, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
@@ -3718,7 +3639,7 @@ parse_deviate(struct lys_parser_ctx *ctx, const char **data, struct lysp_deviate
     char *buf, *word;
     size_t word_len, dev_mod;
     enum yang_keyword kw;
-    struct lysp_deviate *iter, *d;
+    struct lysp_deviate *d;
     struct lysp_deviate_add *d_add = NULL;
     struct lysp_deviate_rpl *d_rpl = NULL;
     struct lysp_deviate_del *d_del = NULL;
@@ -3788,12 +3709,7 @@ parse_deviate(struct lys_parser_ctx *ctx, const char **data, struct lysp_deviate
     d->mod = dev_mod;
 
     /* insert into siblings */
-    if (!*deviates) {
-        *deviates = d;
-    } else {
-        for (iter = *deviates; iter->next; iter = iter->next);
-        iter->next = d;
-    }
+    LY_LIST_INSERT(deviates, d, next);
 
     YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret,) {
         switch (kw) {
