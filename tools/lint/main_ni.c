@@ -202,26 +202,27 @@ libyang_verbclb(LY_LOG_LEVEL level, const char *msg, const char *path)
  * 2 - data format
  */
 static int
-get_fileformat(const char *filename, LYS_INFORMAT *schema/* TODO , LYD_FORMAT *data */)
+get_fileformat(const char *filename, LYS_INFORMAT *schema, LYD_FORMAT *data)
 {
     char *ptr;
     LYS_INFORMAT informat_s;
-#if 0
     LYD_FORMAT informat_d;
-#endif
+
     /* get the file format */
     if ((ptr = strrchr(filename, '.')) != NULL) {
         ++ptr;
         if (!strcmp(ptr, "yang")) {
             informat_s = LYS_IN_YANG;
-#if 0
             informat_d = 0;
+#if 0
         } else if (!strcmp(ptr, "yin")) {
             informat_s = LYS_IN_YIN;
             informat_d = 0;
+#endif
         } else if (!strcmp(ptr, "xml")) {
             informat_s = 0;
             informat_d = LYD_XML;
+#if 0
         } else if (!strcmp(ptr, "json")) {
             informat_s = 0;
             informat_d = LYD_JSON;
@@ -234,24 +235,20 @@ get_fileformat(const char *filename, LYS_INFORMAT *schema/* TODO , LYD_FORMAT *d
         fprintf(stderr, "yanglint error: input file \"%s\" without file extension - unknown format.\n", filename);
         return 0;
     }
-#if 0
+
     if (data) {
         (*data) = informat_d;
     }
-#endif
+
     if (schema) {
         (*schema) = informat_s;
     }
 
-#if 0
     if (informat_s) {
         return 1;
     } else {
         return 2;
     }
-#else
-    return 1;
-#endif
 }
 
 int
@@ -289,9 +286,9 @@ main_ni(int argc, char* argv[])
 #if 0
         {"running",          required_argument, NULL, 'r'},
         {"operational",      required_argument, NULL, 'O'},
+#endif
         {"strict",           no_argument,       NULL, 's'},
         {"type",             required_argument, NULL, 't'},
-#endif
         {"version",          no_argument,       NULL, 'v'},
         {"verbose",          no_argument,       NULL, 'V'},
 #ifndef NDEBUG
@@ -305,8 +302,9 @@ main_ni(int argc, char* argv[])
     const struct lys_module *mod;
     LYS_OUTFORMAT outformat_s = 0;
     LYS_INFORMAT informat_s;
+    LYD_FORMAT informat_d, outformat_d = 0;
 #if 0
-    LYD_FORMAT informat_d, outformat_d = 0, ylformat = 0;
+    LYD_FORMAT ylformat = 0;
 #endif
     struct ly_set *searchpaths = NULL;
     const char *outtarget_s = NULL;
@@ -314,21 +312,24 @@ main_ni(int argc, char* argv[])
     struct stat st;
     uint32_t u;
     int options_ctx = LY_CTX_NOYANGLIBRARY, list = 0, outoptions_s = 0, outline_length_s = 0;
+    int autodetection = 0, options_parser = 0, merge = 0;
+    const char *oper_file = NULL;
 #if 0
-    const char *oper_file = NULL, *envelope_s = NULL;
+    const char *envelope_s = NULL;
     char *ylpath = NULL;
-    int options_dflt = 0, options_parser = 0, envelope = 0, autodetection = 0, merge = 0;
+    int options_dflt = 0, envelope = 0;
+    struct lyxml_elem *iter, *elem;
+    struct *subroot, *next, *node;
+#endif
+    struct lyd_node *oper = NULL;
+    const struct lyd_node **trees = NULL;
     struct dataitem {
         const char *filename;
-        struct lyxml_elem *xml;
         struct lyd_node *tree;
         struct dataitem *next;
         LYD_FORMAT format;
         int type;
     } *data = NULL, *data_item, *data_prev = NULL;
-    struct lyxml_elem *iter, *elem;
-    struct lyd_node *oper = NULL, *subroot, *next, *node;
-#endif
     struct ly_set *mods = NULL;
     void *p;
     int index = 0;
@@ -367,8 +368,8 @@ main_ni(int argc, char* argv[])
         case 'f':
             if (!strcasecmp(optarg, "yang")) {
                 outformat_s = LYS_OUT_YANG;
-#if 0
                 outformat_d = 0;
+#if 0
             } else if (!strcasecmp(optarg, "tree")) {
                 outformat_s = LYS_OUT_TREE;
                 outformat_d = 0;
@@ -382,9 +383,11 @@ main_ni(int argc, char* argv[])
             } else if (!strcasecmp(optarg, "jsons")) {
                 outformat_s = LYS_OUT_JSON;
                 outformat_d = 0;
+#endif
             } else if (!strcasecmp(optarg, "xml")) {
                 outformat_s = 0;
                 outformat_d = LYD_XML;
+#if 0
             } else if (!strcasecmp(optarg, "json")) {
                 outformat_s = 0;
                 outformat_d = LYD_JSON;
@@ -504,6 +507,7 @@ main_ni(int argc, char* argv[])
                 oper_file = optarg;
             }
             break;
+#endif
         case 's':
             options_parser |= LYD_OPT_STRICT;
             break;
@@ -533,7 +537,6 @@ main_ni(int argc, char* argv[])
                 goto cleanup;
             }
             break;
-#endif
         case 'v':
             version();
             ret = EXIT_SUCCESS;
@@ -656,11 +659,11 @@ main_ni(int argc, char* argv[])
         /* ignore operational datastore file */
         oper_file = NULL;
     }
+#endif
     if ((options_parser & LYD_OPT_TYPEMASK) == LYD_OPT_DATA) {
         /* add option to ignore ietf-yang-library data for implicit data type */
         options_parser |= LYD_OPT_DATA_NO_YANGLIB;
     }
-#endif
 
     /* set callback for printing libyang messages */
     ly_set_log_clb(libyang_verbclb, 1);
@@ -695,7 +698,7 @@ main_ni(int argc, char* argv[])
     /* divide input files */
     for (i = 0; i < argc - optind; i++) {
         /* get the file format */
-        if (!get_fileformat(argv[optind + i], &informat_s/* TODO, &informat_d */)) {
+        if (!get_fileformat(argv[optind + i], &informat_s, &informat_d)) {
             goto cleanup;
         }
 
@@ -713,7 +716,6 @@ main_ni(int argc, char* argv[])
                 goto cleanup;
             }
             ly_set_add(mods, (void *)mod, 0);
-#if 0
         } else {
             if (autodetection && informat_d != LYD_XML) {
                 /* data file content autodetection is possible only for XML input */
@@ -733,17 +735,13 @@ main_ni(int argc, char* argv[])
             data_item->format = informat_d;
             data_item->type = options_parser & LYD_OPT_TYPEMASK;
             data_item->tree = NULL;
-            data_item->xml = NULL;
             data_item->next = NULL;
-#endif
         }
     }
-#if 0
     if (outformat_d && !data && !list) {
         fprintf(stderr, "yanglint error: no input data file for the specified data output format.\n");
         goto cleanup;
     }
-#endif
 
     /* enable specified features, if not specified, all the module's features are enabled */
     u = 4; /* skip internal libyang modules */
@@ -795,9 +793,7 @@ main_ni(int argc, char* argv[])
                 fputs("\n", out);
             }
         }
-#if 0
     } else if (data) {
-        ly_errno = 0;
 
         /* prepare operational datastore when specified for RPC/Notification */
         if (oper_file) {
@@ -808,15 +804,17 @@ main_ni(int argc, char* argv[])
                 fprintf(stderr, "yanglint error: The operational data are expected in XML or JSON format.\n");
                 goto cleanup;
             }
-            oper = lyd_parse_path(ctx, oper_file, informat_d, LYD_OPT_DATA_NO_YANGLIB | LYD_OPT_TRUSTED);
+            oper = lyd_parse_path(ctx, oper_file, informat_d, LYD_OPT_DATA_NO_YANGLIB | LYD_OPT_TRUSTED, NULL);
             if (!oper) {
                 fprintf(stderr, "yanglint error: Failed to parse the operational datastore file for RPC/Notification validation.\n");
                 goto cleanup;
             }
+            trees = lyd_trees_new(1, oper);
         }
 
         for (data_item = data, data_prev = NULL; data_item; data_prev = data_item, data_item = data_item->next) {
             /* parse data file - via LYD_OPT_TRUSTED postpone validation when all data are loaded and merged */
+#if 0
             if (autodetection) {
                 /* erase option not covered by LYD_OPT_TYPEMASK, but used according to the type */
                 options_parser &= ~LYD_OPT_DATA_NO_YANGLIB;
@@ -974,12 +972,15 @@ parse_reply:
                     continue;
                 }
             } else {
-                data_item->tree = lyd_parse_path(ctx, data_item->filename, data_item->format, options_parser, oper);
+#else
+            {
+#endif
+                data_item->tree = lyd_parse_path(ctx, data_item->filename, data_item->format, options_parser, trees);
             }
-            if (ly_errno) {
+            if (ly_err_first(ctx)) {
                 goto cleanup;
             }
-
+#if 0
             if (merge && data != data_item) {
                 if (!data->tree) {
                     data->tree = data_item->tree;
@@ -992,8 +993,9 @@ parse_reply:
                 }
                 data_item->tree = NULL;
             }
+#endif
         }
-
+#if 0
         if (merge) {
             /* validate the merged data tree, do not trust the input, invalidate all the data first */
             LY_TREE_FOR(data->tree, subroot) {
@@ -1025,13 +1027,14 @@ parse_reply:
                 goto cleanup;
             }
         }
-
+#endif
         /* print only if data output format specified */
         if (outformat_d) {
             for (data_item = data; data_item; data_item = data_item->next) {
                 if (!merge && verbose >= 2) {
                     fprintf(stdout, "File %s:\n", data_item->filename);
                 }
+#if 0
                 if (outformat_d == LYD_XML && envelope) {
                     switch (data_item->type) {
                     case LYD_OPT_DATA:
@@ -1065,8 +1068,10 @@ parse_reply:
                         fprintf(out, "<action xmlns=\"urn:ietf:params:xml:ns:yang:1\">\n");
                     }
                 }
-                lyd_print_file(out, (data_item->type == LYD_OPT_RPCREPLY) ? data_item->tree->child : data_item->tree,
-                               outformat_d, LYP_WITHSIBLINGS | LYP_FORMAT | options_dflt);
+#endif
+                lyd_print_file(out, (data_item->type == LYD_OPT_RPCREPLY) ? lyd_node_children(data_item->tree) : data_item->tree,
+                               outformat_d, LYDP_WITHSIBLINGS | LYDP_FORMAT /* TODO defaults | options_dflt */);
+#if 0
                 if (envelope_s) {
                     if (data_item->type == LYD_OPT_RPC && data_item->tree->schema->nodetype != LYS_RPC) {
                         fprintf(out, "</action>\n");
@@ -1077,9 +1082,9 @@ parse_reply:
                     /* stop after first item */
                     break;
                 }
+#endif
             }
         }
-#endif
     }
 #if 0
     if (list) {
@@ -1099,15 +1104,12 @@ cleanup:
         free(feat[i]);
     }
     free(feat);
-#if 0
     for (; data; data = data_item) {
         data_item = data->next;
-        lyxml_free(ctx, data->xml);
-        lyd_free_withsiblings(data->tree);
+        lyd_free_all(data->tree);
         free(data);
     }
-    lyd_free_withsiblings(oper);
-#endif
+    lyd_trees_free(trees, 1);
     ly_ctx_destroy(ctx, NULL);
 
     return ret;

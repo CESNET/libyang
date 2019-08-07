@@ -14,19 +14,25 @@
 
 #include "common.h"
 
+#include <assert.h>
 #include <dirent.h>
 #include <errno.h>
-#include <limits.h>
 #include <fcntl.h>
+#include <limits.h>
+#include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
-#include <sys/types.h>
 #include <unistd.h>
 
-#include "libyang.h"
 #include "context.h"
+#include "dict.h"
+#include "log.h"
+#include "set.h"
+#include "tree.h"
+#include "tree_schema.h"
 #include "tree_schema_internal.h"
-#include "xpath.h"
 
 API const struct lysc_node *
 lys_getnext(const struct lysc_node *last, const struct lysc_node *parent, const struct lysc_module *module, int options)
@@ -208,6 +214,85 @@ lys_child(const struct lysc_node *parent, const struct lys_module *module,
         }
     }
     return NULL;
+}
+
+
+
+API char *
+lysc_path(struct lysc_node *node, LY_PATH_TYPE pathtype, char *buffer, size_t buflen)
+{
+    struct lysc_node *iter;
+    char *path = NULL;
+    int len = 0;
+
+    LY_CHECK_ARG_RET(NULL, node, NULL);
+    if (buffer) {
+        LY_CHECK_ARG_RET(node->module->ctx, buflen > 1, NULL);
+    }
+
+    switch (pathtype) {
+    case LY_PATH_LOG:
+        for (iter = node; iter && len >= 0; iter = iter->parent) {
+            char *s = buffer ? strdup(buffer) : path;
+            char *id;
+
+            switch (iter->nodetype) {
+            case LYS_USES:
+                asprintf(&id, "{uses='%s'}", iter->name);
+                break;
+            case LYS_GROUPING:
+                asprintf(&id, "{grouping='%s'}", iter->name);
+                break;
+            case LYS_AUGMENT:
+                asprintf(&id, "{augment='%s'}", iter->name);
+                break;
+            default:
+                id = strdup(iter->name);
+                break;
+            }
+
+            if (!iter->parent || iter->parent->module != iter->module) {
+                /* print prefix */
+                if (buffer) {
+                    len = snprintf(buffer, buflen, "/%s:%s%s", iter->module->name, id, s ? s : "");
+                } else {
+                    len = asprintf(&path, "/%s:%s%s", iter->module->name, id, s ? s : "");
+                }
+            } else {
+                /* prefix is the same as in parent */
+                if (buffer) {
+                    len = snprintf(buffer, buflen, "/%s%s", id, s ? s : "");
+                } else {
+                    len = asprintf(&path, "/%s%s", id, s ? s : "");
+                }
+            }
+            free(s);
+            free(id);
+
+            if (buffer && buflen <= (size_t)len) {
+                /* not enough space in buffer */
+                break;
+            }
+        }
+
+        if (len < 0) {
+            free(path);
+            path = NULL;
+        } else if (len == 0) {
+            if (buffer) {
+                strcpy(buffer, "/");
+            } else {
+                path = strdup("/");
+            }
+        }
+        break;
+    }
+
+    if (buffer) {
+        return buffer;
+    } else {
+        return path;
+    }
 }
 
 API int
@@ -505,12 +590,12 @@ lys_is_disabled(const struct lysc_node *node, int recursive)
 }
 
 struct lysp_submodule *
-lys_parse_mem_submodule(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, struct ly_parser_ctx *main_ctx,
+lys_parse_mem_submodule(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, struct lys_parser_ctx *main_ctx,
                         LY_ERR (*custom_check)(struct ly_ctx*, struct lysp_module*, struct lysp_submodule*, void*), void *check_data)
 {
     LY_ERR ret = LY_EINVAL;
     struct lysp_submodule *submod = NULL, *latest_sp;
-    struct ly_parser_ctx context = {0};
+    struct lys_parser_ctx context = {0};
 
     LY_CHECK_ARG_RET(ctx, ctx, data, NULL);
 
@@ -582,7 +667,7 @@ lys_parse_mem_module(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, 
     struct lysp_include *inc;
     LY_ERR ret = LY_EINVAL;
     unsigned int u, i;
-    struct ly_parser_ctx context = {0};
+    struct lys_parser_ctx context = {0};
 
     LY_CHECK_ARG_RET(ctx, ctx, data, NULL);
 
@@ -667,7 +752,7 @@ lys_parse_mem_module(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, 
 
     if (!mod->implemented) {
         /* pre-compile features of the module */
-        LY_CHECK_GOTO(lys_feature_precompile(ctx, mod, mod->parsed->features, &mod->off_features), error);
+        LY_CHECK_GOTO(lys_feature_precompile(NULL, ctx, mod, mod->parsed->features, &mod->off_features), error);
     }
 
     /* decide the latest revision */
@@ -713,12 +798,12 @@ finish_parsing:
         }
         if (!mod->implemented) {
             /* pre-compile features of the module */
-            LY_CHECK_GOTO(lys_feature_precompile(ctx, mod, inc->submodule->features, &mod->off_features), error);
+            LY_CHECK_GOTO(lys_feature_precompile(NULL, ctx, mod, inc->submodule->features, &mod->off_features), error);
         }
     }
     mod->parsed->parsing = 0;
 
-    /* check name collisions - typedefs and groupings */
+    /* check name collisions - typedefs and TODO groupings */
     LY_CHECK_GOTO(lysp_check_typedefs(&context, mod->parsed), error_ctx);
 
     return mod;
@@ -769,7 +854,7 @@ lys_parse_set_filename(struct ly_ctx *ctx, const char **filename, int fd)
 }
 
 void *
-lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, int implement, struct ly_parser_ctx *main_ctx,
+lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, int implement, struct lys_parser_ctx *main_ctx,
                     LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data),
                     void *check_data)
 {
@@ -821,7 +906,7 @@ lys_parse_fd_module(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, int impleme
 }
 
 struct lysp_submodule *
-lys_parse_fd_submodule(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, struct ly_parser_ctx *main_ctx,
+lys_parse_fd_submodule(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, struct lys_parser_ctx *main_ctx,
                        LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data),
                        void *check_data)
 {

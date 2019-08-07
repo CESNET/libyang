@@ -12,25 +12,17 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "../../src/common.c"
-#include "../../src/log.c"
-#include "../../src/set.c"
-#include "../../src/parser_yang.c"
-#include "../../src/tree_schema.c"
-#include "../../src/tree_schema_compile.c"
-#include "../../src/tree_schema_free.c"
-#include "../../src/tree_schema_helpers.c"
-#include "../../src/hash_table.c"
-#include "../../src/xpath.c"
-#include "../../src/context.c"
-
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <setjmp.h>
 #include <cmocka.h>
 
-#include "libyang.h"
+#include <string.h>
+
+#include "../../src/common.h"
+#include "../../src/context.h"
+#include "../../src/tree_schema_internal.h"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
@@ -271,44 +263,12 @@ test_typedef(void **state)
     ly_ctx_destroy(ctx, NULL);
 }
 
-static void
-test_parse_nodeid(void **state)
-{
-    (void) state; /* unused */
-    const char *str;
-    const char *prefix, *name;
-    size_t prefix_len, name_len;
-
-    str = "123";
-    assert_int_equal(LY_EINVAL, lys_parse_nodeid(&str, &prefix, &prefix_len, &name, &name_len));
-
-    str = "a12_-.!";
-    assert_int_equal(LY_SUCCESS, lys_parse_nodeid(&str, &prefix, &prefix_len, &name, &name_len));
-    assert_null(prefix);
-    assert_int_equal(0, prefix_len);
-    assert_non_null(name);
-    assert_int_equal(6, name_len);
-    assert_int_equal(0, strncmp("a12_-.", name, name_len));
-    assert_string_equal("!", str);
-
-    str = "a12_-.:_b2 xxx";
-    assert_int_equal(LY_SUCCESS, lys_parse_nodeid(&str, &prefix, &prefix_len, &name, &name_len));
-    assert_non_null(prefix);
-    assert_int_equal(6, prefix_len);
-    assert_int_equal(0, strncmp("a12_-.", prefix, prefix_len));
-    assert_non_null(name);
-    assert_int_equal(3, name_len);
-    assert_int_equal(0, strncmp("_b2", name, name_len));
-    assert_string_equal(" xxx", str);
-}
-
 int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_date, logger_setup, logger_teardown),
-        cmocka_unit_test_setup(test_revisions, logger_setup),
+        cmocka_unit_test_setup_teardown(test_revisions, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_typedef, logger_setup, logger_teardown),
-        cmocka_unit_test_setup(test_parse_nodeid, logger_setup),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

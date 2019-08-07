@@ -16,11 +16,14 @@
 
 #include <assert.h>
 #include <inttypes.h>
+#include <pthread.h>
 #include <stdarg.h>
+#include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
-#include "libyang.h"
-#include "context.h"
+#include "log.h"
 
 THREAD_LOCAL enum int_log_opts log_opt;
 volatile uint8_t ly_log_level = LY_LLWRN;
@@ -106,6 +109,27 @@ ly_errapptag(const struct ly_ctx *ctx)
 }
 
 API struct ly_err_item *
+ly_err_new(LY_LOG_LEVEL level, LY_ERR no, LY_VECODE vecode, char *msg, char *path, char *apptag)
+{
+    struct ly_err_item *eitem;
+
+    eitem = malloc(sizeof *eitem);
+    LY_CHECK_ERR_RET(!eitem, LOGMEM(NULL), NULL);
+    eitem->prev = eitem;
+    eitem->next = NULL;
+
+    /* fill in the information */
+    eitem->level = level;
+    eitem->no = no;
+    eitem->vecode = vecode;
+    eitem->msg = msg;
+    eitem->path = path;
+    eitem->apptag = apptag;
+
+    return eitem;
+}
+
+API struct ly_err_item *
 ly_err_first(const struct ly_ctx *ctx)
 {
     LY_CHECK_ARG_RET(NULL, ctx, NULL);
@@ -113,7 +137,7 @@ ly_err_first(const struct ly_ctx *ctx)
     return pthread_getspecific(ctx->errlist_key);
 }
 
-void
+API void
 ly_err_free(void *ptr)
 {
     struct ly_err_item *i, *next;
@@ -454,3 +478,16 @@ ly_err_print(struct ly_err_item *eitem)
     }
 }
 
+void
+ly_err_last_set_apptag(const struct ly_ctx *ctx, const char *apptag)
+{
+    struct ly_err_item *i;
+
+    if (log_opt != ILO_IGNORE) {
+        i = ly_err_first(ctx);
+        if (i) {
+            i = i->prev;
+            i->apptag = strdup(apptag);
+        }
+    }
+}

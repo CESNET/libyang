@@ -15,6 +15,11 @@
 #ifndef LY_TREE_SCHEMA_INTERNAL_H_
 #define LY_TREE_SCHEMA_INTERNAL_H_
 
+#include <stdint.h>
+
+#include "set.h"
+#include "tree_schema.h"
+
 #define LOGVAL_YANG(CTX, ...) LOGVAL((CTX)->ctx, LY_VLOG_LINE, &(CTX)->line, __VA_ARGS__)
 
 /* These 2 macros checks YANG's identifier grammar rule */
@@ -46,13 +51,19 @@ enum yang_arg {
 /**
  * @brief internal context for schema parsers
  */
-struct ly_parser_ctx {
+struct lys_parser_ctx {
     struct ly_ctx *ctx;
     struct ly_set tpdfs_nodes;
     struct ly_set grps_nodes;
     uint64_t line;      /**< line number */
     uint64_t indent;    /**< current position on the line for YANG indentation */
     uint8_t mod_version; /**< module's version */
+};
+
+struct lysc_incomplete_dflt {
+    struct lyd_value *dflt;
+    struct lys_module *dflt_mod;
+    struct lysc_node *context_node;
 };
 
 /**
@@ -67,12 +78,40 @@ struct lysc_ctx {
                                      the target module (mod) */
     struct ly_set groupings;    /**< stack for groupings circular check */
     struct ly_set unres;        /**< to validate leafref's target and xpath of when/must */
+    struct ly_set dflts;        /**< set of incomplete default values */
     struct ly_set tpdf_chain;
     uint16_t path_len;
     int options;                /**< various @ref scflags. */
 #define LYSC_CTX_BUFSIZE 4078
     char path[LYSC_CTX_BUFSIZE];
 };
+
+/**
+ * @brief Internal structure for lys_get_prefix().
+ */
+struct lys_get_prefix_data {
+    const struct lys_module *context_mod;
+    struct ly_set prefixes;
+};
+
+/**
+ * @brief Schema mapping of YANG modules to prefixes in values.
+ *
+ * Implementation of ly_clb_get_prefix. Inverse function to lys_resolve_prefix.
+ *
+ * In this case the @p mod is searched in the list of imports and the import's prefix
+ * (not the module's itself) prefix is returned.
+ */
+const char *lys_get_prefix(const struct lys_module *mod, void *private);
+
+/**
+ * @brief Schema mapping of prefix in values to YANG modules (imports).
+ *
+ * Implementation of ly_clb_resolve_prefix. Inverse function to lys_get_prefix().
+ *
+ * In this case the @p prefix is searched in the list of imports' prefixes (not the prefixes of the imported modules themselves).
+ */
+const struct lys_module *lys_resolve_prefix(struct ly_ctx *ctx, const char *prefix, size_t prefix_len, void *private);
 
 /**
  * @brief Check the currently present prefixes in the module for collision with the new one.
@@ -83,7 +122,7 @@ struct lysc_ctx {
  * @param[in] value Newly added prefix value (including its location to distinguish collision with itself).
  * @return LY_EEXIST when prefix is already used in the module, LY_SUCCESS otherwise
  */
-LY_ERR lysp_check_prefix(struct ly_parser_ctx *ctx, struct lysp_import *imports, const char *module_prefix, const char **value);
+LY_ERR lysp_check_prefix(struct lys_parser_ctx *ctx, struct lysp_import *imports, const char *module_prefix, const char **value);
 
 /**
  * @brief Check date string (4DIGIT "-" 2DIGIT "-" 2DIGIT)
@@ -94,7 +133,7 @@ LY_ERR lysp_check_prefix(struct ly_parser_ctx *ctx, struct lysp_import *imports,
  * @param[in] stmt Statement name for error message.
  * @return LY_ERR value.
  */
-LY_ERR lysp_check_date(struct ly_parser_ctx *ctx, const char *date, int date_len, const char *stmt);
+LY_ERR lysp_check_date(struct lys_parser_ctx *ctx, const char *date, int date_len, const char *stmt);
 
 /**
  * @brief Check names of typedefs in the parsed module to detect collisions.
@@ -103,7 +142,7 @@ LY_ERR lysp_check_date(struct ly_parser_ctx *ctx, const char *date, int date_len
  * @param[in] mod Module where the type is being defined.
  * @return LY_ERR value.
  */
-LY_ERR lysp_check_typedefs(struct ly_parser_ctx *ctx, struct lysp_module *mod);
+LY_ERR lysp_check_typedefs(struct lys_parser_ctx *ctx, struct lysp_module *mod);
 
 /**
  * @brief Just move the newest revision into the first position, does not sort the rest
@@ -150,7 +189,7 @@ LY_ERR lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revisi
  * submodule is stored into this structure.
  * @return LY_ERR value.
  */
-LY_ERR lysp_load_submodule(struct ly_parser_ctx *ctx, struct lysp_module *mod, struct lysp_include *inc);
+LY_ERR lysp_load_submodule(struct lys_parser_ctx *ctx, struct lysp_module *mod, struct lysp_include *inc);
 
 /**
  * @defgroup scflags Schema compile flags
@@ -296,20 +335,6 @@ LY_ERR lysc_check_status(struct lysc_ctx *ctx,
                          uint16_t flags2, void *mod2, const char *name2);
 
 /**
- * @brief Parse a node-identifier.
- *
- * node-identifier     = [prefix ":"] identifier
- *
- * @param[in, out] id Identifier to parse. When returned, it points to the first character which is not part of the identifier.
- * @param[out] prefix Node's prefix, NULL if there is not any.
- * @param[out] prefix_len Length of the node's prefix, 0 if there is not any.
- * @param[out] name Node's name.
- * @param[out] nam_len Length of the node's name.
- * @return LY_ERR value: LY_SUCCESS or LY_EINVAL in case of invalid character in the id.
- */
-LY_ERR lys_parse_nodeid(const char **id, const char **prefix, size_t *prefix_len, const char **name, size_t *name_len);
-
-/**
  * @brief Find the node according to the given descendant/absolute schema nodeid.
  * Used in unique, refine and augment statements.
  *
@@ -405,7 +430,7 @@ struct lys_module *lys_parse_mem_module(struct ly_ctx *ctx, const char *data, LY
  * @param[in] check_data Caller's data to pass to the custom_check callback.
  * @return Pointer to the data model structure or NULL on error.
  */
-struct lysp_submodule *lys_parse_mem_submodule(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, struct ly_parser_ctx *main_ctx,
+struct lysp_submodule *lys_parse_mem_submodule(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, struct lys_parser_ctx *main_ctx,
                                                LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *check_data),
                                                void *check_data);
 
@@ -427,7 +452,7 @@ struct lysp_submodule *lys_parse_mem_submodule(struct ly_ctx *ctx, const char *d
  * @param[in] check_data Caller's data to pass to the custom_check callback.
  * @return Pointer to the data model structure or NULL on error.
  */
-void *lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, int implement, struct ly_parser_ctx *main_ctx,
+void *lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, int implement, struct lys_parser_ctx *main_ctx,
                     LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data),
                     void *check_data);
 
@@ -467,7 +492,7 @@ struct lys_module *lys_parse_fd_module(struct ly_ctx *ctx, int fd, LYS_INFORMAT 
  * @param[in] check_data Caller's data to pass to the custom_check callback.
  * @return Pointer to the data model structure or NULL on error.
  */
-struct lysp_submodule *lys_parse_fd_submodule(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, struct ly_parser_ctx *main_ctx,
+struct lysp_submodule *lys_parse_fd_submodule(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, struct lys_parser_ctx *main_ctx,
                                               LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *check_data),
                                               void *check_data);
 
@@ -506,7 +531,7 @@ struct lys_module *lys_parse_path_(struct ly_ctx *ctx, const char *path, LYS_INF
  * If it is a module, it is already in the context!
  * @return LY_ERR value, in case of LY_SUCCESS, the \arg result is always provided.
  */
-LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, int implement, struct ly_parser_ctx *main_ctx,
+LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, int implement, struct lys_parser_ctx *main_ctx,
                             void **result);
 
 /**
@@ -521,6 +546,7 @@ LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *re
  * the precompiled list is reused to finish the compilation to preserve pointers already used in various compiled
  * if-feature structures.
  *
+ * @param[in] ctx_sc Compile context - alternative to the combination of @p ctx and @p module.
  * @param[in] ctx libyang context.
  * @param[in] module Module of the features.
  * @param[in] features_p Array if the parsed features definitions to precompile.
@@ -529,7 +555,7 @@ LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *re
  * to be processed.
  * @return LY_ERR value.
  */
-LY_ERR lys_feature_precompile(struct ly_ctx *ctx, struct lys_module *module, struct lysp_feature *features_p, struct lysc_feature **features);
+LY_ERR lys_feature_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lys_module *module, struct lysp_feature *features_p, struct lysc_feature **features);
 
 /**
  * @brief Get the @ref ifftokens from the given position in the 2bits array
@@ -657,7 +683,7 @@ void lys_module_free(struct lys_module *module, void (*private_destructor)(const
  * @param[out] submod Pointer to the parsed submodule structure.
  * @return LY_ERR value - LY_SUCCESS, LY_EINVAL or LY_EVALID.
  */
-LY_ERR yang_parse_submodule(struct ly_parser_ctx *ctx, const char *data, struct lysp_submodule **submod);
+LY_ERR yang_parse_submodule(struct lys_parser_ctx *ctx, const char *data, struct lysp_submodule **submod);
 
 /**
  * @brief Parse module from YANG data.
@@ -667,7 +693,7 @@ LY_ERR yang_parse_submodule(struct ly_parser_ctx *ctx, const char *data, struct 
  * module structure, will be filled in.
  * @return LY_ERR value - LY_SUCCESS, LY_EINVAL or LY_EVALID.
  */
-LY_ERR yang_parse_module(struct ly_parser_ctx *ctx, const char *data, struct lys_module *mod);
+LY_ERR yang_parse_module(struct lys_parser_ctx *ctx, const char *data, struct lys_module *mod);
 
 /**
  * @brief Make the specific module implemented, use the provided value as flag.

@@ -12,25 +12,14 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "../../src/common.c"
-#include "../../src/log.c"
-#include "../../src/set.c"
-#include "../../src/parser_yang.c"
-#include "../../src/tree_schema.c"
-#include "../../src/tree_schema_compile.c"
-#include "../../src/tree_schema_free.c"
-#include "../../src/tree_schema_helpers.c"
-#include "../../src/hash_table.c"
-#include "../../src/xpath.c"
-#include "../../src/context.c"
-
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <setjmp.h>
 #include <cmocka.h>
 
-#include "libyang.h"
+#include "../../src/common.h"
+#include "../../src/tree_schema.h"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};

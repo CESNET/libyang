@@ -520,7 +520,7 @@ cleanup:
 
     return ret;
 }
-#if 0
+
 static LYD_FORMAT
 detect_data_format(char *filepath)
 {
@@ -531,21 +531,22 @@ detect_data_format(char *filepath)
     for (; isspace(filepath[len - 1]); len--, filepath[len] = '\0'); /* remove trailing whitespaces */
     if (len >= 5 && !strcmp(&filepath[len - 4], ".xml")) {
         return LYD_XML;
+#if 0
     } else if (len >= 6 && !strcmp(&filepath[len - 5], ".json")) {
         return LYD_JSON;
     } else if (len >= 5 && !strcmp(&filepath[len - 4], ".lyb")) {
         return LYD_LYB;
+#endif
     } else {
         return LYD_UNKNOWN;
     }
 }
 
 static int
-parse_data(char *filepath, int *options, struct lyd_node *val_tree, const char *rpc_act_file,
+parse_data(char *filepath, int *options, const struct lyd_node **trees, const char *rpc_act_file,
            struct lyd_node **result)
 {
     LYD_FORMAT informat = LYD_UNKNOWN;
-    struct lyxml_elem *xml = NULL;
     struct lyd_node *data = NULL, *rpc_act = NULL;
     int opts = *options;
 
@@ -556,8 +557,9 @@ parse_data(char *filepath, int *options, struct lyd_node *val_tree, const char *
         return EXIT_FAILURE;
     }
 
-    ly_errno = LY_SUCCESS;
+    ly_err_clean(ctx, NULL);
 
+#if 0
     if ((opts & LYD_OPT_TYPEMASK) == LYD_OPT_TYPEMASK) {
         /* automatically detect data type from the data top level */
         if (informat != LYD_XML) {
@@ -633,38 +635,56 @@ parse_data(char *filepath, int *options, struct lyd_node *val_tree, const char *
         }
         lyxml_free(ctx, xml);
     } else {
+#endif
         if (opts & LYD_OPT_RPCREPLY) {
             if (!rpc_act_file) {
                 fprintf(stderr, "RPC/action reply data require additional argument (file with the RPC/action).\n");
                 return EXIT_FAILURE;
             }
-            rpc_act = lyd_parse_path(ctx, rpc_act_file, informat, LYD_OPT_RPC, val_tree);
+            rpc_act = lyd_parse_path(ctx, rpc_act_file, informat, LYD_OPT_RPC, trees);
             if (!rpc_act) {
                 fprintf(stderr, "Failed to parse RPC/action.\n");
                 return EXIT_FAILURE;
             }
-            data = lyd_parse_path(ctx, filepath, informat, opts, rpc_act, val_tree);
+            if (trees) {
+                const struct lyd_node **trees_new;
+                unsigned int u;
+                trees_new = lyd_trees_new(1, rpc_act);
+
+                LY_ARRAY_FOR(trees, u) {
+                    trees_new = lyd_trees_add(trees_new, trees[u]);
+                }
+                lyd_trees_free(trees, 0);
+                trees = trees_new;
+            } else {
+                trees = lyd_trees_new(1, rpc_act);
+            }
+            data = lyd_parse_path(ctx, filepath, informat, opts, trees);
         } else if (opts & (LYD_OPT_RPC | LYD_OPT_NOTIF)) {
-            data = lyd_parse_path(ctx, filepath, informat, opts, val_tree);
+            data = lyd_parse_path(ctx, filepath, informat, opts, trees);
+#if 0
         } else if (opts & LYD_OPT_DATA_TEMPLATE) {
             if (!rpc_act_file) {
                 fprintf(stderr, "YANG-DATA require additional argument (name instance of yang-data extension).\n");
                 return EXIT_FAILURE;
             }
             data = lyd_parse_path(ctx, filepath, informat, opts, rpc_act_file);
+#endif
         } else {
             if (!(opts & LYD_OPT_TYPEMASK)) {
                 /* automatically add yang-library data */
                 opts |= LYD_OPT_DATA_ADD_YANGLIB;
             }
-            data = lyd_parse_path(ctx, filepath, informat, opts);
+            data = lyd_parse_path(ctx, filepath, informat, opts, NULL);
         }
+#if 0
     }
-    lyd_free_withsiblings(rpc_act);
+#endif
+    lyd_free_all(rpc_act);
 
-    if (ly_errno) {
+    if (ly_err_first(ctx)) {
         fprintf(stderr, "Failed to parse data.\n");
-        lyd_free_withsiblings(data);
+        lyd_free_all(data);
         return EXIT_FAILURE;
     }
 
@@ -681,6 +701,7 @@ cmd_data(const char *arg)
     char **argv = NULL, *ptr;
     const char *out_path = NULL;
     struct lyd_node *data = NULL, *val_tree = NULL;
+    const struct lyd_node **trees = NULL;
     LYD_FORMAT outformat = LYD_UNKNOWN;
     FILE *output = stdout;
     static struct option long_options[] = {
@@ -719,6 +740,7 @@ cmd_data(const char *arg)
         }
 
         switch (c) {
+#if 0
         case 'd':
             if (!strcmp(optarg, "all")) {
                 printopt = (printopt & ~LYP_WD_MASK) | LYP_WD_ALL;
@@ -730,6 +752,7 @@ cmd_data(const char *arg)
                 printopt = (printopt & ~LYP_WD_MASK) | LYP_WD_IMPL_TAG;
             }
             break;
+#endif
         case 'h':
             cmd_data_help();
             ret = 0;
@@ -737,10 +760,12 @@ cmd_data(const char *arg)
         case 'f':
             if (!strcmp(optarg, "xml")) {
                 outformat = LYD_XML;
+#if 0
             } else if (!strcmp(optarg, "json")) {
                 outformat = LYD_JSON;
             } else if (!strcmp(optarg, "lyb")) {
                 outformat = LYD_LYB;
+#endif
             } else {
                 fprintf(stderr, "Unknown output format \"%s\".\n", optarg);
                 goto cleanup;
@@ -754,19 +779,20 @@ cmd_data(const char *arg)
             out_path = optarg;
             break;
         case 'r':
-            if (val_tree || (options & LYD_OPT_NOEXTDEPS)) {
-                fprintf(stderr, "The running datastore (-r) cannot be set multiple times.\n");
-                goto cleanup;
-            }
             if (optarg[0] == '!') {
                 /* ignore extenral dependencies to the running datastore */
                 options |= LYD_OPT_NOEXTDEPS;
             } else {
                 /* external file with the running datastore */
-                val_tree = lyd_parse_path(ctx, optarg, LYD_XML, LYD_OPT_DATA_NO_YANGLIB);
+                val_tree = lyd_parse_path(ctx, optarg, LYD_XML, LYD_OPT_DATA_NO_YANGLIB, trees);
                 if (!val_tree) {
                     fprintf(stderr, "Failed to parse the additional data tree for validation.\n");
                     goto cleanup;
+                }
+                if (!trees) {
+                    trees = lyd_trees_new(1, val_tree);
+                } else {
+                    trees = lyd_trees_add(trees, val_tree);
                 }
             }
             break;
@@ -813,7 +839,7 @@ cmd_data(const char *arg)
         goto cleanup;
     }
 
-    if (parse_data(argv[optind], &options, val_tree, argv[optind + 1], &data)) {
+    if (parse_data(argv[optind], &options, trees, argv[optind + 1], &data)) {
         goto cleanup;
     }
 
@@ -827,9 +853,9 @@ cmd_data(const char *arg)
 
     if (outformat != LYD_UNKNOWN) {
         if (options & LYD_OPT_RPCREPLY) {
-            lyd_print_file(output, data->child, outformat, LYP_WITHSIBLINGS | LYP_FORMAT | printopt);
+            lyd_print_file(output, lyd_node_children(data), outformat, LYDP_WITHSIBLINGS | LYDP_FORMAT | printopt);
         } else {
-            lyd_print_file(output, data, outformat, LYP_WITHSIBLINGS | LYP_FORMAT | printopt);
+            lyd_print_file(output, data, outformat, LYDP_WITHSIBLINGS | LYDP_FORMAT | printopt);
         }
     }
 
@@ -843,12 +869,12 @@ cleanup:
         fclose(output);
     }
 
-    lyd_free_withsiblings(val_tree);
-    lyd_free_withsiblings(data);
+    lyd_trees_free(trees, 1);
+    lyd_free_all(data);
 
     return ret;
 }
-
+#if 0
 int
 cmd_xpath(const char *arg)
 {
@@ -1540,8 +1566,8 @@ COMMAND commands[] = {
         {"add", cmd_add, cmd_add_help, "Add a new model from a specific file"},
         {"load", cmd_load, cmd_load_help, "Load a new model from the searchdirs"},
         {"print", cmd_print, cmd_print_help, "Print a model"},
-#if 0
         {"data", cmd_data, cmd_data_help, "Load, validate and optionally print instance data"},
+#if 0
         {"xpath", cmd_xpath, cmd_xpath_help, "Get data nodes satisfying an XPath expression"},
         {"list", cmd_list, cmd_list_help, "List all the loaded models"},
 #endif

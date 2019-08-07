@@ -1,7 +1,7 @@
 /**
  * @file printer.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
- * @brief Wrapper for all libyang printers.
+ * @brief Generic libyang printers functions.
  *
  * Copyright (c) 2015 - 2019 CESNET, z.s.p.o.
  *
@@ -16,8 +16,12 @@
 
 #include <errno.h>
 #include <stdarg.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
+#include "log.h"
 #include "printer_internal.h"
 
 /**
@@ -159,15 +163,20 @@ ly_print_flush(struct lyout *out)
         fflush(out->method.f);
         break;
     case LYOUT_FD:
+        fsync(out->method.fd);
+        break;
     case LYOUT_MEMORY:
     case LYOUT_CALLBACK:
         /* nothing to do */
         break;
     }
+
+    free(out->buffered);
+    out->buf_size = out->buf_len = 0;
 }
 
 LY_ERR
-ly_write(struct lyout *out, const char *buf, size_t count)
+ly_write(struct lyout *out, const char *buf, size_t len)
 {
     int written = 0;
 
@@ -175,48 +184,48 @@ ly_write(struct lyout *out, const char *buf, size_t count)
 
     if (out->hole_count) {
         /* we are buffering data after a hole */
-        if (out->buf_len + count > out->buf_size) {
-            out->buffered = ly_realloc(out->buffered, out->buf_len + count);
+        if (out->buf_len + len > out->buf_size) {
+            out->buffered = ly_realloc(out->buffered, out->buf_len + len);
             if (!out->buffered) {
                 out->buf_len = 0;
                 out->buf_size = 0;
                 LOGMEM_RET(NULL);
             }
-            out->buf_size = out->buf_len + count;
+            out->buf_size = out->buf_len + len;
         }
 
-        memcpy(&out->buffered[out->buf_len], buf, count);
-        out->buf_len += count;
+        memcpy(&out->buffered[out->buf_len], buf, len);
+        out->buf_len += len;
         return LY_SUCCESS;
     }
 
 repeat:
     switch (out->type) {
     case LYOUT_MEMORY:
-        if (out->method.mem.len + count + 1 > out->method.mem.size) {
-            out->method.mem.buf = ly_realloc(out->method.mem.buf, out->method.mem.len + count + 1);
+        if (out->method.mem.len + len + 1 > out->method.mem.size) {
+            out->method.mem.buf = ly_realloc(out->method.mem.buf, out->method.mem.len + len + 1);
             if (!out->method.mem.buf) {
                 out->method.mem.len = 0;
                 out->method.mem.size = 0;
                 LOGMEM_RET(NULL);
             }
-            out->method.mem.size = out->method.mem.len + count + 1;
+            out->method.mem.size = out->method.mem.len + len + 1;
         }
-        memcpy(&out->method.mem.buf[out->method.mem.len], buf, count);
-        out->method.mem.len += count;
+        memcpy(&out->method.mem.buf[out->method.mem.len], buf, len);
+        out->method.mem.len += len;
         out->method.mem.buf[out->method.mem.len] = '\0';
 
-        out->printed += count;
+        out->printed += len;
         return LY_SUCCESS;
     case LYOUT_FD:
-        written = write(out->method.fd, buf, count);
+        written = write(out->method.fd, buf, len);
         break;
     case LYOUT_FDSTREAM:
     case LYOUT_STREAM:
-        written =  fwrite(buf, sizeof *buf, count, out->method.f);
+        written =  fwrite(buf, sizeof *buf, len, out->method.f);
         break;
     case LYOUT_CALLBACK:
-        written = out->method.clb.f(out->method.clb.arg, buf, count);
+        written = out->method.clb.f(out->method.clb.arg, buf, len);
         break;
     }
 
@@ -227,8 +236,8 @@ repeat:
         LOGERR(out->ctx, LY_ESYS, "%s: writing data failed (%s).", __func__, strerror(errno));
         out->status = LY_ESYS;
         return LY_ESYS;
-    } else if ((size_t)written != count) {
-        LOGERR(out->ctx, LY_ESYS, "%s: writing data failed (unable to write %u from %u data).", __func__, count - (size_t)written, count);
+    } else if ((size_t)written != len) {
+        LOGERR(out->ctx, LY_ESYS, "%s: writing data failed (unable to write %u from %u data).", __func__, len - (size_t)written, len);
         out->status = LY_ESYS;
         return LY_ESYS;
     } else {
@@ -330,163 +339,4 @@ ly_write_skipped(struct lyout *out, size_t position, const char *buf, size_t cou
     }
 
     return ret;
-}
-
-static LY_ERR
-lys_print_(struct lyout *out, const struct lys_module *module, LYS_OUTFORMAT format, int UNUSED(line_length), int UNUSED(options))
-{
-    LY_ERR ret;
-
-    switch (format) {
-    case LYS_OUT_YANG:
-        ret = yang_print_parsed(out, module);
-        break;
-    case LYS_OUT_YANG_COMPILED:
-        ret = yang_print_compiled(out, module);
-        break;
-    /* TODO not yet implemented
-    case LYS_OUT_YIN:
-        lys_disable_deviations((struct lys_module *)module);
-        ret = yin_print_model(out, module);
-        lys_enable_deviations((struct lys_module *)module);
-        break;
-    case LYS_OUT_TREE:
-        ret = tree_print_model(out, module, target_node, line_length, options);
-        break;
-    case LYS_OUT_INFO:
-        ret = info_print_model(out, module, target_node);
-        break;
-    case LYS_OUT_JSON:
-        ret = jsons_print_model(out, module, target_node);
-        break;
-    */
-    default:
-        LOGERR(module->ctx, LY_EINVAL, "Unknown output format.");
-        ret = LY_EINVAL;
-        break;
-    }
-
-    return ret;
-}
-
-API ssize_t
-lys_print_file(FILE *f, const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options)
-{
-    struct lyout out;
-    LY_ERR ret;
-
-    LY_CHECK_ARG_RET(NULL, f, module, LY_EINVAL);
-
-    memset(&out, 0, sizeof out);
-    out.ctx = module->ctx;
-    out.type = LYOUT_STREAM;
-    out.method.f = f;
-
-    ret = lys_print_(&out, module, format, line_length, options);
-    if (ret) {
-        /* error */
-        return (-1) * ret;
-    } else {
-        /* success */
-        return (ssize_t)out.printed;
-    }
-}
-
-API ssize_t
-lys_print_path(const char *path, const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options)
-{
-    FILE *f;
-    ssize_t ret;
-
-    LY_CHECK_ARG_RET(NULL, path, module, LY_EINVAL);
-
-    f = fopen(path, "w");
-    if (!f) {
-        LOGERR(module->ctx, LY_ESYS, "Failed to open file \"%s\" (%s).", path, strerror(errno));
-        return LY_ESYS;
-    }
-
-    ret = lys_print_file(f, module, format, line_length, options);
-    fclose(f);
-    return ret;
-}
-
-API ssize_t
-lys_print_fd(int fd, const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options)
-{
-    LY_ERR ret;
-    struct lyout out;
-
-    LY_CHECK_ARG_RET(NULL, fd >= 0, module, LY_EINVAL);
-
-    memset(&out, 0, sizeof out);
-    out.ctx = module->ctx;
-    out.type = LYOUT_FD;
-    out.method.fd = fd;
-
-    ret = lys_print_(&out, module, format, line_length, options);
-
-    if (out.type == LYOUT_FDSTREAM) {
-        /* close temporary stream based on the given file descriptor */
-        fclose(out.method.f);
-        /* move the original file descriptor to the end of the output file */
-        lseek(fd, 0, SEEK_END);
-    }
-
-    if (ret) {
-        /* error */
-        return (-1) * ret;
-    } else {
-        /* success */
-        return (ssize_t)out.printed;
-    }
-}
-
-API ssize_t
-lys_print_mem(char **strp, const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options)
-{
-    struct lyout out;
-    LY_ERR ret;
-
-    LY_CHECK_ARG_RET(NULL, strp, module, LY_EINVAL);
-
-    memset(&out, 0, sizeof out);
-    out.ctx = module->ctx;
-    out.type = LYOUT_MEMORY;
-
-    ret = lys_print_(&out, module, format, line_length, options);
-    if (ret) {
-        /* error */
-        *strp = NULL;
-        return (-1) * ret;
-    } else {
-        /* success */
-        *strp = out.method.mem.buf;
-        return (ssize_t)out.printed;
-    }
-}
-
-API ssize_t
-lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, const struct lys_module *module,
-              LYS_OUTFORMAT format, int line_length, int options)
-{
-    LY_ERR ret;
-    struct lyout out;
-
-    LY_CHECK_ARG_RET(NULL, writeclb, module, LY_EINVAL);
-
-    memset(&out, 0, sizeof out);
-    out.ctx = module->ctx;
-    out.type = LYOUT_CALLBACK;
-    out.method.clb.f = writeclb;
-    out.method.clb.arg = arg;
-
-    ret = lys_print_(&out, module, format, line_length, options);
-    if (ret) {
-        /* error */
-        return (-1) * ret;
-    } else {
-        /* success */
-        return (ssize_t)out.printed;
-    }
 }

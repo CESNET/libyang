@@ -1,7 +1,7 @@
 /**
  * @file tree_schema_helpers.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
- * @brief Parsing and validation helper functions
+ * @brief Parsing and validation helper functions for schema trees
  *
  * Copyright (c) 2015 - 2018 CESNET, z.s.p.o.
  *
@@ -13,76 +13,26 @@
  */
 #include "common.h"
 
+#include <assert.h>
 #include <ctype.h>
-#include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
+#include <stdint.h>
 #include <stdlib.h>
-#include <sys/stat.h>
-#include <sys/types.h>
+#include <string.h>
 #include <unistd.h>
 #include <time.h>
 
-#include "libyang.h"
+#include "context.h"
+#include "dict.h"
+#include "extensions.h"
+#include "hash_table.h"
+#include "log.h"
+#include "set.h"
+#include "tree.h"
+#include "tree_schema.h"
 #include "tree_schema_internal.h"
-
-/**
- * @brief Parse an identifier.
- *
- * ;; An identifier MUST NOT start with (('X'|'x') ('M'|'m') ('L'|'l'))
- * identifier          = (ALPHA / "_")
- *                       *(ALPHA / DIGIT / "_" / "-" / ".")
- *
- * @param[in,out] id Identifier to parse. When returned, it points to the first character which is not part of the identifier.
- * @return LY_ERR value: LY_SUCCESS or LY_EINVAL in case of invalid starting character.
- */
-static LY_ERR
-lys_parse_id(const char **id)
-{
-    assert(id && *id);
-
-    if (!is_yangidentstartchar(**id)) {
-        return LY_EINVAL;
-    }
-    ++(*id);
-
-    while (is_yangidentchar(**id)) {
-        ++(*id);
-    }
-    return LY_SUCCESS;
-}
-
-LY_ERR
-lys_parse_nodeid(const char **id, const char **prefix, size_t *prefix_len, const char **name, size_t *name_len)
-{
-    assert(id && *id);
-    assert(prefix && prefix_len);
-    assert(name && name_len);
-
-    *prefix = *id;
-    *prefix_len = 0;
-    *name = NULL;
-    *name_len = 0;
-
-    LY_CHECK_RET(lys_parse_id(id));
-    if (**id == ':') {
-        /* there is prefix */
-        *prefix_len = *id - *prefix;
-        ++(*id);
-        *name = *id;
-
-        LY_CHECK_RET(lys_parse_id(id));
-        *name_len = *id - *name;
-    } else {
-        /* there is no prefix, so what we have as prefix now is actually the name */
-        *name = *prefix;
-        *name_len = *id - *name;
-        *prefix = NULL;
-    }
-
-    return LY_SUCCESS;
-}
 
 LY_ERR
 lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodeid_len, const struct lysc_node *context_node,
@@ -128,7 +78,7 @@ lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodei
         ++id;
     }
 
-    while (*id && (ret = lys_parse_nodeid(&id, &prefix, &prefix_len, &name, &name_len)) == LY_SUCCESS) {
+    while (*id && (ret = ly_parse_nodeid(&id, &prefix, &prefix_len, &name, &name_len)) == LY_SUCCESS) {
         if (prefix) {
             mod = lys_module_find_prefix(context_module, prefix, prefix_len);
             if (!mod) {
@@ -201,7 +151,7 @@ getnext:
 }
 
 LY_ERR
-lysp_check_prefix(struct ly_parser_ctx *ctx, struct lysp_import *imports, const char *module_prefix, const char **value)
+lysp_check_prefix(struct lys_parser_ctx *ctx, struct lysp_import *imports, const char *module_prefix, const char **value)
 {
     struct lysp_import *i;
 
@@ -244,7 +194,7 @@ lysc_check_status(struct lysc_ctx *ctx,
 }
 
 LY_ERR
-lysp_check_date(struct ly_parser_ctx *ctx, const char *date, int date_len, const char *stmt)
+lysp_check_date(struct lys_parser_ctx *ctx, const char *date, int date_len, const char *stmt)
 {
     int i;
     struct tm tm, tm_;
@@ -487,7 +437,7 @@ lysp_type_find(const char *id, struct lysp_node *start_node, struct lysp_module 
  * @return LY_EEXIST in case of collision, LY_SUCCESS otherwise.
  */
 static LY_ERR
-lysp_check_typedef(struct ly_parser_ctx *ctx, struct lysp_node *node, const struct lysp_tpdf *tpdf,
+lysp_check_typedef(struct lys_parser_ctx *ctx, struct lysp_node *node, const struct lysp_tpdf *tpdf,
                    struct hash_table *tpdfs_global, struct hash_table *tpdfs_scoped)
 {
     struct lysp_node *parent;
@@ -562,7 +512,7 @@ lysp_id_cmp(void *val1, void *val2, int UNUSED(mod), void *UNUSED(cb_data))
 }
 
 LY_ERR
-lysp_check_typedefs(struct ly_parser_ctx *ctx, struct lysp_module *mod)
+lysp_check_typedefs(struct lys_parser_ctx *ctx, struct lysp_module *mod)
 {
     struct hash_table *ids_global;
     struct hash_table *ids_scoped;
@@ -679,7 +629,7 @@ lysp_load_module_check(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_
 }
 
 LY_ERR
-lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, int implement, struct ly_parser_ctx *main_ctx,
+lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, int implement, struct lys_parser_ctx *main_ctx,
                      void **result)
 {
     int fd;
@@ -846,7 +796,7 @@ search_file:
 }
 
 LY_ERR
-lysp_load_submodule(struct ly_parser_ctx *ctx, struct lysp_module *mod, struct lysp_include *inc)
+lysp_load_submodule(struct lys_parser_ctx *ctx, struct lysp_module *mod, struct lysp_include *inc)
 {
     struct lysp_submodule *submod = NULL;
     const char *submodule_data = NULL;
@@ -940,6 +890,9 @@ lys_module_find_prefix(const struct lys_module *mod, const char *prefix, size_t 
 {
     const struct lys_module *m = NULL;
 
+    if (!prefix) {
+        return (struct lys_module*)mod;
+    }
     if (mod->compiled) {
         FIND_MODULE(struct lysc_import, mod->compiled);
     } else {
@@ -1182,6 +1135,11 @@ API const struct lysp_node *
 lysp_node_children(const struct lysp_node *node)
 {
     struct lysp_node **children;
+
+    if (!node) {
+        return NULL;
+    }
+
     children = lysp_node_children_p((struct lysp_node*)node);
     if (children) {
         return *children;
@@ -1277,6 +1235,11 @@ API const struct lysc_node *
 lysc_node_children(const struct lysc_node *node, uint16_t flags)
 {
     struct lysc_node **children;
+
+    if (!node) {
+        return NULL;
+    }
+
     children = lysc_node_children_p((struct lysc_node*)node, flags);
     if (children) {
         return *children;
@@ -1312,4 +1275,42 @@ lysp_ext_instance_iter(struct lysp_ext_instance *ext, unsigned int index, LYEXT_
     return LY_ARRAY_SIZE(ext);
 }
 
+/**
+ * @brief Schema mapping of YANG modules to prefixes in values.
+ *
+ * Implementation of ly_clb_get_prefix. Inverse function to lys_resolve_prefix.
+ *
+ * In this case the @p mod is searched in the list of imports and the import's prefix
+ * (not the module's itself) prefix is returned.
+ */
+const char *
+lys_get_prefix(const struct lys_module *mod, void *private)
+{
+    struct lys_module *context_mod = (struct lys_module*)private;
+    unsigned int u;
 
+    if (context_mod == mod) {
+        return context_mod->prefix;
+    }
+    LY_ARRAY_FOR(context_mod->compiled->imports, u) {
+        if (context_mod->compiled->imports[u].module == mod) {
+            /* match */
+            return context_mod->compiled->imports[u].prefix;
+        }
+    }
+
+    return NULL;
+}
+
+/**
+ * @brief Schema mapping of prefix in values to YANG modules (imports).
+ *
+ * Implementation of ly_clb_resolve_prefix. Inverse function to lys_get_prefix().
+ *
+ * In this case the @p prefix is searched in the list of imports' prefixes (not the prefixes of the imported modules themselves).
+ */
+const struct lys_module *
+lys_resolve_prefix(struct ly_ctx *UNUSED(ctx), const char *prefix, size_t prefix_len, void *private)
+{
+    return lys_module_find_prefix((const struct lys_module*)private, prefix, prefix_len);
+}

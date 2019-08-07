@@ -15,27 +15,53 @@
 #include "common.h"
 
 #include <inttypes.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
+#include "extensions.h"
+#include "log.h"
 #include "printer_internal.h"
+#include "tree.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
+#include "plugins_types.h"
 #include "xpath.h"
 
-#define LEVEL ctx->level
-#define INDENT (LEVEL)*2,""
-
+/**
+ * @brief Types of the YANG printers
+ */
 enum schema_type {
-    YPR_PARSED,
-    YPR_COMPILED
+    YPR_PARSED,   /**< YANG printer of the parsed schema */
+    YPR_COMPILED  /**< YANG printer of the compiled schema */
 };
 
+/**
+ * @brief YANG printer context.
+ */
 struct ypr_ctx {
-    struct lyout *out;
-    unsigned int level;
-    const struct lys_module *module;
-    enum schema_type schema;
+    struct lyout *out;               /**< output specification */
+    unsigned int level;              /**< current indentation level: 0 - no formatting, >= 1 indentation levels */
+    const struct lys_module *module; /**< schema to print */
+    enum schema_type schema;         /**< type of the schema to print */
 };
 
+#define LEVEL ctx->level             /**< current level */
+#define INDENT (LEVEL)*2,""          /**< indentation parameters for printer functions */
+
+/**
+ * @brief Print the given text as content of a double quoted YANG string,
+ * including encoding characters that have special meanings. The quotation marks
+ * are not printed.
+ *
+ * Follows RFC 7950, section 6.1.3.
+ *
+ * @param[in] out Output specification.
+ * @param[in] text String to be printed.
+ * @param[in] len Length of the string from @p text to be printed. In case of 0,
+ * the @p text is printed completely as a NULL-terminated string.
+ */
 static void
 ypr_encode(struct lyout *out, const char *text, int len)
 {
@@ -455,7 +481,7 @@ yprc_iffeature(struct ypr_ctx *ctx, struct lysc_iffeature *feat, int *index_e, i
 static void
 yprc_iffeatures(struct ypr_ctx *ctx, struct lysc_iffeature *iff, struct lysc_ext_instance *exts, int *flag)
 {
-    unsigned int u;
+    unsigned int u, v;
     int extflag;
 
     LY_ARRAY_FOR(iff, u) {
@@ -470,11 +496,11 @@ yprc_iffeatures(struct ypr_ctx *ctx, struct lysc_iffeature *iff, struct lysc_ext
 
         /* extensions */
         LEVEL++;
-        LY_ARRAY_FOR(exts, u) {
-            if (exts[u].insubstmt != LYEXT_SUBSTMT_IFFEATURE || exts[u].insubstmt_index != u) {
+        LY_ARRAY_FOR(exts, v) {
+            if (exts[v].insubstmt != LYEXT_SUBSTMT_IFFEATURE || exts[v].insubstmt_index != u) {
                 continue;
             }
-            yprc_extension_instances(ctx, LYEXT_SUBSTMT_IFFEATURE, u, &exts[u], &extflag, 1);
+            yprc_extension_instances(ctx, LYEXT_SUBSTMT_IFFEATURE, u, &exts[v], &extflag, 1);
         }
         LEVEL--;
         ypr_close(ctx, extflag);
@@ -676,8 +702,12 @@ yprc_range(struct ypr_ctx *ctx, const struct lysc_range *range, LY_DATA_TYPE bas
     int inner_flag = 0;
     unsigned int u;
 
+    if (!range) {
+        return;
+    }
+
     ypr_open(ctx->out, flag);
-    ly_print(ctx->out, "%*s%s \"", (basetype == LY_TYPE_STRING || basetype == LY_TYPE_BINARY)? "length" : "range", INDENT);
+    ly_print(ctx->out, "%*s%s \"", INDENT, (basetype == LY_TYPE_STRING || basetype == LY_TYPE_BINARY) ? "length" : "range");
     LY_ARRAY_FOR(range->parts, u) {
         if (u > 0) {
             ly_print(ctx->out, " | ");
@@ -799,9 +829,13 @@ yprp_enum(struct ypr_ctx *ctx, const struct lysp_type_enum *items, LY_DATA_TYPE 
 
     LY_ARRAY_FOR(items, u) {
         ypr_open(ctx->out, flag);
-        ly_print(ctx->out, "%*s%s \"", INDENT, type == LY_TYPE_BITS ? "bit" : "enum");
-        ypr_encode(ctx->out, items[u].name, -1);
-        ly_print(ctx->out, "\"");
+        if (type == LY_TYPE_BITS) {
+            ly_print(ctx->out, "%*sbit %s", INDENT, items[u].name);
+        } else { /* LY_TYPE_ENUM */
+            ly_print(ctx->out, "%*senum \"", INDENT);
+            ypr_encode(ctx->out, items[u].name, -1);
+            ly_print(ctx->out, "\"");
+        }
         inner_flag = 0;
         LEVEL++;
         yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, items[u].exts, &inner_flag, 0);
@@ -865,6 +899,19 @@ yprp_type(struct ypr_ctx *ctx, const struct lysp_type *type)
 }
 
 static void
+yprc_dflt_value(struct ypr_ctx *ctx, const struct lyd_value *value, const struct lys_module *value_mod, struct lysc_ext_instance *exts)
+{
+    int dynamic;
+    const char *str;
+
+    str = value->realtype->plugin->print(value, LYD_JSON, lys_get_prefix, (void*)value_mod, &dynamic);
+    ypr_substmt(ctx, LYEXT_SUBSTMT_DEFAULT, 0, str, exts);
+    if (dynamic) {
+        free((void*)str);
+    }
+}
+
+static void
 yprc_type(struct ypr_ctx *ctx, const struct lysc_type *type)
 {
     unsigned int u;
@@ -876,7 +923,7 @@ yprc_type(struct ypr_ctx *ctx, const struct lysc_type *type)
     yprc_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, type->exts, &flag, 0);
     if (type->dflt) {
         ypr_open(ctx->out, &flag);
-        ypr_substmt(ctx, LYEXT_SUBSTMT_DEFAULT, 0, type->dflt, type->exts);
+        yprc_dflt_value(ctx, type->dflt, type->dflt_mod, type->exts);
     }
 
     switch(type->basetype) {
@@ -1248,7 +1295,7 @@ yprc_action(struct ypr_ctx *ctx, const struct lysc_action *action)
 static void
 yprp_node_common1(struct ypr_ctx *ctx, const struct lysp_node *node, int *flag)
 {
-    ly_print(ctx->out, "\n%*s%s %s%s", INDENT, lys_nodetype2str(node->nodetype), node->name, flag ? "" : " {\n");
+    ly_print(ctx->out, "%*s%s %s%s", INDENT, lys_nodetype2str(node->nodetype), node->name, flag ? "" : " {\n");
     LEVEL++;
 
     yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, node->exts, flag, 0);
@@ -1261,7 +1308,7 @@ yprc_node_common1(struct ypr_ctx *ctx, const struct lysc_node *node, int *flag)
 {
     unsigned int u;
 
-    ly_print(ctx->out, "\n%*s%s %s%s", INDENT, lys_nodetype2str(node->nodetype), node->name, flag ? "" : " {\n");
+    ly_print(ctx->out, "%*s%s %s%s", INDENT, lys_nodetype2str(node->nodetype), node->name, flag ? "" : " {\n");
     LEVEL++;
 
     yprc_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, node->exts, flag, 0);
@@ -1504,7 +1551,10 @@ yprc_leaf(struct ypr_ctx *ctx, const struct lysc_node *node)
     LY_ARRAY_FOR(leaf->musts, u) {
         yprc_must(ctx, &leaf->musts[u], NULL);
     }
-    ypr_substmt(ctx, LYEXT_SUBSTMT_DEFAULT, 0, leaf->dflt, leaf->exts);
+
+    if (leaf->dflt) {
+        yprc_dflt_value(ctx, leaf->dflt, leaf->dflt_mod, leaf->exts);
+    }
 
     yprc_node_common2(ctx, node, NULL);
 
@@ -1568,7 +1618,7 @@ yprc_leaflist(struct ypr_ctx *ctx, const struct lysc_node *node)
         yprc_must(ctx, &llist->musts[u], NULL);
     }
     LY_ARRAY_FOR(llist->dflts, u) {
-        ypr_substmt(ctx, LYEXT_SUBSTMT_DEFAULT, u, llist->dflts[u], llist->exts);
+        yprc_dflt_value(ctx, llist->dflts[u], llist->dflts_mods[u], llist->exts);
     }
 
     ypr_config(ctx, node->flags, node->exts, NULL);
@@ -1675,13 +1725,13 @@ yprc_list(struct ypr_ctx *ctx, const struct lysc_node *node)
     LY_ARRAY_FOR(list->musts, u) {
         yprc_must(ctx, &list->musts[u], NULL);
     }
-    if (list->keys) {
+    if (!(list->flags & LYS_KEYLESS)) {
         ypr_open(ctx->out, &flag);
         ly_print(ctx->out, "%*skey \"", INDENT);
-        LY_ARRAY_FOR(list->keys, u) {
-            ly_print(ctx->out, "%s%s", u > 0 ? ", " : "", list->keys[u]->name);
+        for (struct lysc_node *key = list->child; key && key->nodetype == LYS_LEAF && (key->flags & LYS_KEY); key = key->next) {
+            ly_print(ctx->out, "%s%s", u > 0 ? ", " : "", key->name);
         }
-        ypr_close(ctx, 0);
+        ly_print(ctx->out, "\";\n");
     }
     LY_ARRAY_FOR(list->uniques, u) {
         ypr_open(ctx->out, &flag);
@@ -2110,7 +2160,7 @@ yang_print_parsed(struct lyout *out, const struct lys_module *module)
 
     /* linkage-stmts */
     LY_ARRAY_FOR(modp->imports, u) {
-        ly_print(out, "\n%*simport %s {\n", INDENT, modp->imports[u].module->name);
+        ly_print(out, "%s%*simport %s {\n", u ? "" : "\n", INDENT, modp->imports[u].module->name);
         LEVEL++;
         yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, modp->imports[u].exts, NULL, 0);
         ypr_substmt(ctx, LYEXT_SUBSTMT_PREFIX, 0, modp->imports[u].prefix, modp->imports[u].exts);
@@ -2124,7 +2174,7 @@ yang_print_parsed(struct lyout *out, const struct lys_module *module)
     }
     LY_ARRAY_FOR(modp->includes, u) {
         if (modp->includes[u].rev[0] || modp->includes[u].dsc || modp->includes[u].ref || modp->includes[u].exts) {
-            ly_print(out, "\n%*sinclude %s {\n", INDENT, modp->includes[u].submodule->name);
+            ly_print(out, "%s%*sinclude %s {\n", u ? "" : "\n",  INDENT, modp->includes[u].submodule->name);
             LEVEL++;
             yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, modp->includes[u].exts, NULL, 0);
             if (modp->includes[u].rev[0]) {

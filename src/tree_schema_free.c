@@ -1,9 +1,9 @@
 /**
- * @file tree_schema.c
+ * @file tree_schema_free.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
- * @brief Schema tree implementation
+ * @brief Freeing functions for schema tree structures.
  *
- * Copyright (c) 2015 - 2018 CESNET, z.s.p.o.
+ * Copyright (c) 2019 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -14,13 +14,17 @@
 
 #include "common.h"
 
-#include "libyang.h"
-#include "context.h"
+#include <stdlib.h>
+
+#include "dict.h"
+#include "tree.h"
+#include "tree_schema.h"
 #include "tree_schema_internal.h"
+#include "plugins_types.h"
 #include "xpath.h"
 
-static void lysp_grp_free(struct ly_ctx *ctx, struct lysp_grp *grp);
-static void lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node);
+void lysp_grp_free(struct ly_ctx *ctx, struct lysp_grp *grp);
+void lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node);
 
 static void
 lysp_stmt_free(struct ly_ctx *ctx, struct lysp_stmt *stmt)
@@ -37,7 +41,7 @@ lysp_stmt_free(struct ly_ctx *ctx, struct lysp_stmt *stmt)
     free(stmt);
 }
 
-static void
+void
 lysp_ext_instance_free(struct ly_ctx *ctx, struct lysp_ext_instance *ext)
 {
     struct lysp_stmt *stmt, *next;
@@ -91,7 +95,7 @@ lysp_ext_free(struct ly_ctx *ctx, struct lysp_ext *ext)
     FREE_ARRAY(ctx, ext->exts, lysp_ext_instance_free);
 }
 
-static void
+void
 lysp_feature_free(struct ly_ctx *ctx, struct lysp_feature *feat)
 {
     FREE_STRING(ctx, feat->name);
@@ -101,7 +105,7 @@ lysp_feature_free(struct ly_ctx *ctx, struct lysp_feature *feat)
     FREE_ARRAY(ctx, feat->exts, lysp_ext_instance_free);
 }
 
-static void
+void
 lysp_ident_free(struct ly_ctx *ctx, struct lysp_ident *ident)
 {
     FREE_STRING(ctx, ident->name);
@@ -181,7 +185,7 @@ lysp_action_inout_free(struct ly_ctx *ctx, struct lysp_action_inout *inout)
 
 }
 
-static void
+void
 lysp_action_free(struct ly_ctx *ctx, struct lysp_action *action)
 {
     FREE_STRING(ctx, action->name);
@@ -195,7 +199,7 @@ lysp_action_free(struct ly_ctx *ctx, struct lysp_action *action)
     FREE_ARRAY(ctx, action->exts, lysp_ext_instance_free);
 }
 
-static void
+void
 lysp_notif_free(struct ly_ctx *ctx, struct lysp_notif *notif)
 {
     struct lysp_node *node, *next;
@@ -213,7 +217,7 @@ lysp_notif_free(struct ly_ctx *ctx, struct lysp_notif *notif)
     FREE_ARRAY(ctx, notif->exts, lysp_ext_instance_free);
 }
 
-static void
+void
 lysp_grp_free(struct ly_ctx *ctx, struct lysp_grp *grp)
 {
     struct lysp_node *node, *next;
@@ -231,7 +235,7 @@ lysp_grp_free(struct ly_ctx *ctx, struct lysp_grp *grp)
     FREE_ARRAY(ctx, grp->exts, lysp_ext_instance_free);
 }
 
-static void
+void
 lysp_when_free(struct ly_ctx *ctx, struct lysp_when *when)
 {
     FREE_STRING(ctx, when->cond);
@@ -240,7 +244,7 @@ lysp_when_free(struct ly_ctx *ctx, struct lysp_when *when)
     FREE_ARRAY(ctx, when->exts, lysp_ext_instance_free);
 }
 
-static void
+void
 lysp_augment_free(struct ly_ctx *ctx, struct lysp_augment *augment)
 {
     struct lysp_node *node, *next;
@@ -258,7 +262,7 @@ lysp_augment_free(struct ly_ctx *ctx, struct lysp_augment *augment)
     FREE_ARRAY(ctx, augment->exts, lysp_ext_instance_free);
 }
 
-static void
+void
 lysp_deviate_free(struct ly_ctx *ctx, struct lysp_deviate *d)
 {
     struct lysp_deviate_add *add = (struct lysp_deviate_add*)d;
@@ -287,7 +291,7 @@ lysp_deviate_free(struct ly_ctx *ctx, struct lysp_deviate *d)
     }
 }
 
-static void
+void
 lysp_deviation_free(struct ly_ctx *ctx, struct lysp_deviation *dev)
 {
     struct lysp_deviate *next, *iter;
@@ -315,7 +319,7 @@ lysp_refine_free(struct ly_ctx *ctx, struct lysp_refine *ref)
     FREE_ARRAY(ctx, ref->exts, lysp_ext_instance_free);
 }
 
-static void
+void
 lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node)
 {
     struct lysp_node *child, *next;
@@ -517,7 +521,7 @@ lysc_ident_free(struct ly_ctx *ctx, struct lysc_ident *ident)
     FREE_ARRAY(ctx, ident->exts, lysc_ext_instance_free);
 }
 
-static void
+void
 lysc_feature_free(struct ly_ctx *ctx, struct lysc_feature *feat)
 {
     FREE_STRING(ctx, feat->name);
@@ -620,8 +624,11 @@ lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type)
         break;
     }
     FREE_ARRAY(ctx, type->exts, lysc_ext_instance_free);
-    FREE_STRING(ctx, type->dflt);
-
+    if (type->dflt) {
+        type->plugin->free(ctx, type->dflt);
+        lysc_type_free(ctx, type->dflt->realtype);
+        free(type->dflt);
+    }
     free(type);
 }
 
@@ -687,7 +694,11 @@ lysc_node_leaf_free(struct ly_ctx *ctx, struct lysc_node_leaf *node)
         lysc_type_free(ctx, node->type);
     }
     FREE_STRING(ctx, node->units);
-    FREE_STRING(ctx, node->dflt);
+    if (node->dflt) {
+        node->dflt->realtype->plugin->free(ctx, node->dflt);
+        lysc_type_free(ctx, node->dflt->realtype);
+        free(node->dflt);
+    }
 }
 
 static void
@@ -701,9 +712,12 @@ lysc_node_leaflist_free(struct ly_ctx *ctx, struct lysc_node_leaflist *node)
     }
     FREE_STRING(ctx, node->units);
     LY_ARRAY_FOR(node->dflts, u) {
-        lydict_remove(ctx, node->dflts[u]);
+        node->dflts[u]->realtype->plugin->free(ctx, node->dflts[u]);
+        lysc_type_free(ctx, node->dflts[u]->realtype);
+        free(node->dflts[u]);
     }
     LY_ARRAY_FREE(node->dflts);
+    LY_ARRAY_FREE(node->dflts_mods);
 }
 
 static void
@@ -717,7 +731,6 @@ lysc_node_list_free(struct ly_ctx *ctx, struct lysc_node_list *node)
     }
     FREE_ARRAY(ctx, node->musts, lysc_must_free);
 
-    LY_ARRAY_FREE(node->keys);
     LY_ARRAY_FOR(node->uniques, u) {
         LY_ARRAY_FREE(node->uniques[u]);
     }

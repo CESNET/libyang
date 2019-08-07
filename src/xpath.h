@@ -17,11 +17,11 @@
 
 #include <stdint.h>
 
-#include "libyang.h"
-#include "tree_schema.h"
-#if 0
-#include "tree_data.h"
-#endif
+#include "log.h"
+
+struct ly_ctx;
+struct lysc_node;
+
 /*
  * XPath evaluator fully compliant with http://www.w3.org/TR/1999/REC-xpath-19991116/
  * except the following restrictions in the grammar.

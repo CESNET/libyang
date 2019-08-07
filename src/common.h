@@ -18,18 +18,19 @@
 #define _DEFAULT_SOURCE
 #define _GNU_SOURCE
 
-#include <assert.h>
 #include <pthread.h>
+#include <stddef.h>
 #include <stdint.h>
-#include <stdlib.h>
-#include <unistd.h>
 
 #include "config.h"
-#include "log.h"
+
 #include "context.h"
-#include "tree_schema.h"
-#include "set.h"
+#include "dict.h"
 #include "hash_table.h"
+#include "log.h"
+#include "set.h"
+
+struct ly_ctx;
 
 #if __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
 # define THREAD_LOCAL _Thread_local
@@ -53,12 +54,26 @@
  */
 #define API __attribute__((visibility("default")))
 
-#ifndef  __USE_GNU
-/*
- * If we don't have GNU extension, implement these function on your own
+
+/******************************************************************************
+ * Compatibility functions
+ *****************************************************************************/
+
+#ifndef HAVE_GET_CURRENT_DIR_NAME
+/**
+ * @brief Return a malloc'd string containing the current directory name.
  */
 char *get_current_dir_name(void);
 #endif
+
+#ifndef HAVE_STRNSTR
+/**
+ * @brief Find the first occurrence of find in s, where the search is limited to the
+ * first slen characters of s.
+ */
+char *strnstr(const char *s, const char *find, size_t slen);
+#endif
+
 
 /******************************************************************************
  * Logger
@@ -85,8 +100,32 @@ extern THREAD_LOCAL enum int_log_opts log_opt;
 extern volatile uint8_t ly_log_level;
 extern volatile uint8_t ly_log_opts;
 
-void ly_err_free(void *ptr);
+/**
+ * @brief Set error-app-tag to the last error record in the context.
+ * @param[in] ctx libyang context where the error records are present.
+ * @param[in] apptag The error-app-tag value to store.
+ */
+void ly_err_last_set_apptag(const struct ly_ctx *ctx, const char *apptag);
+
+/**
+ * @brief Print a log message and store it into the context (if provided).
+ *
+ * @param[in] ctx libyang context to store the error record. If not provided, the error is just printed.
+ * @param[in] level Log message level (error, warning, etc.)
+ * @param[in] no Error type code.
+ * @param[in] format Format string to print.
+ */
 void ly_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, const char *format, ...);
+
+/**
+ * @brief Print Validation error and store it into the context (if provided).
+ *
+ * @param[in] ctx libyang context to store the error record. If not provided, the error is just printed.
+ * @param[in] elem_type Type of the data in @p elem variable.
+ * @param[in] elem Object to provide more information about the place where the error appeared.
+ * @param[in] code Validation error code.
+ * @param[in] format Format string to print.
+ */
 void ly_vlog(const struct ly_ctx *ctx, enum LY_VLOG_ELEM elem_type, const void *elem, LY_VECODE code, const char *format, ...);
 
 #define LOGERR(ctx, errno, str, args...) ly_log(ctx, LY_LLERR, errno, str, ##args)
@@ -112,12 +151,12 @@ void ly_vlog(const struct ly_ctx *ctx, enum LY_VLOG_ELEM elem_type, const void *
 /*
  * Common code to check return value and perform appropriate action.
  */
-#define LY_CHECK_GOTO(COND, GOTO) if (COND) {goto GOTO;}
-#define LY_CHECK_ERR_GOTO(COND, ERR, GOTO) if (COND) {ERR; goto GOTO;}
+#define LY_CHECK_GOTO(COND, GOTO) if ((COND)) {goto GOTO;}
+#define LY_CHECK_ERR_GOTO(COND, ERR, GOTO) if ((COND)) {ERR; goto GOTO;}
 #define LY_CHECK_RET1(RETVAL) {LY_ERR ret__ = RETVAL;if (ret__ != LY_SUCCESS) {return ret__;}}
-#define LY_CHECK_RET2(COND, RETVAL) if (COND) {return RETVAL;}
+#define LY_CHECK_RET2(COND, RETVAL) if ((COND)) {return RETVAL;}
 #define LY_CHECK_RET(...) GETMACRO2(__VA_ARGS__, LY_CHECK_RET2, LY_CHECK_RET1)(__VA_ARGS__)
-#define LY_CHECK_ERR_RET(COND, ERR, RETVAL) if (COND) {ERR; return RETVAL;}
+#define LY_CHECK_ERR_RET(COND, ERR, RETVAL) if ((COND)) {ERR; return RETVAL;}
 
 #define LY_CHECK_ARG_GOTO1(CTX, ARG, GOTO) if (!(ARG)) {LOGARG(CTX, ARG);goto GOTO;}
 #define LY_CHECK_ARG_GOTO2(CTX, ARG1, ARG2, GOTO) LY_CHECK_ARG_GOTO1(CTX, ARG1, GOTO);LY_CHECK_ARG_GOTO1(CTX, ARG2, GOTO)
@@ -136,7 +175,7 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 
 #define LY_VCODE_INCHAR      LYVE_SYNTAX, "Invalid character 0x%x."
 #define LY_VCODE_INSTREXP    LYVE_SYNTAX, "Invalid character sequence \"%.*s\", expected %s."
-#define LY_VCODE_EOF         LYVE_SYNTAX, "Unexpected end-of-file."
+#define LY_VCODE_EOF         LYVE_SYNTAX, "Unexpected end-of-input."
 #define LY_VCODE_NTERM       LYVE_SYNTAX, "%s not terminated."
 #define LY_VCODE_NSUPP       LYVE_SYNTAX, "%s not supported."
 #define LY_VCODE_INSTMT      LYVE_SYNTAX_YANG, "Invalid keyword \"%s\"."
@@ -154,8 +193,8 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_INREGEXP    LYVE_SYNTAX_YANG, "Regular expression \"%s\" is not valid (\"%s\": %s)."
 #define LY_VCODE_XP_EOE      LYVE_XPATH, "Unterminated string delimited with %c (%.15s)."
 #define LY_VCODE_XP_INEXPR   LYVE_XPATH, "Invalid character number %u of expression \'%s\'."
-#define LY_VCODE_DEV_NODETYPE LYVE_REFERENCE, "Invalid deviation (%s) of %s node - it is not possible to %s \"%s\" property."
-#define LY_VCODE_DEV_NOT_PRESENT LYVE_REFERENCE, "Invalid deviation (%s) %s \"%s\" property \"%s\" which is not present."
+#define LY_VCODE_DEV_NODETYPE LYVE_REFERENCE, "Invalid deviation of %s node - it is not possible to %s \"%s\" property."
+#define LY_VCODE_DEV_NOT_PRESENT LYVE_REFERENCE, "Invalid deviation %s \"%s\" property \"%s\" which is not present."
 
 /******************************************************************************
  * Context
@@ -174,6 +213,21 @@ struct ly_ctx {
     uint16_t flags;                   /**< context settings, see @ref contextoptions. */
     pthread_key_t errlist_key;        /**< key for the thread-specific list of errors related to the context */
 };
+
+/**
+ * @defgroup contextflags Context flags
+ * @ingroup context
+ *
+ * Internal context flags.
+ *
+ * Note that the flags 0x00FF are reserved for @ref contextoptions.
+ * @{
+ */
+
+#define LY_CTX_CHANGED_TREE 0x8000    /**< Deviation changed tree of a module(s) in the context, it is necessary to recompile
+                                           leafref paths, default values and must/when expressions to check that they are still valid */
+
+/**@} contextflags */
 
 /**
  * @brief Try to find submodule in the context. Submodules are present only in the parsed (lysp_) schema trees, if only
@@ -312,6 +366,7 @@ LY_ERR ly_getutf8(const char **input, unsigned int *utf8_char, size_t *bytes_rea
  * @brief Parse signed integer with possible limitation.
  * @param[in] val_str String value containing signed integer, note that
  * nothing else than whitespaces are expected after the value itself.
+ * @param[in] val_len Length of the @p val_str string.
  * @param[in] min Limitation for the value which must not be lower than min.
  * @param[in] max Limitation for the value which must not be higher than max.
  * @param[in] base Numeric base for parsing:
@@ -323,12 +378,13 @@ LY_ERR ly_getutf8(const char **input, unsigned int *utf8_char, size_t *bytes_rea
  * LY_EVALID - string contains invalid value,
  * LY_SUCCESS - successful parsing.
  */
-LY_ERR ly_parse_int(const char *val_str, int64_t min, int64_t max, int base, int64_t *ret);
+LY_ERR ly_parse_int(const char *val_str, size_t val_len, int64_t min, int64_t max, int base, int64_t *ret);
 
 /**
  * @brief Parse unsigned integer with possible limitation.
  * @param[in] val_str String value containing unsigned integer, note that
  * nothing else than whitespaces are expected after the value itself.
+ * @param[in] val_len Length of the @p val_str string.
  * @param[in] max Limitation for the value which must not be higher than max.
  * @param[in] base Numeric base for parsing:
  *        0 - to accept decimal, octal, hexadecimal (e.g. in default value)
@@ -339,7 +395,52 @@ LY_ERR ly_parse_int(const char *val_str, int64_t min, int64_t max, int base, int
  * LY_EVALID - string contains invalid value,
  * LY_SUCCESS - successful parsing.
  */
-LY_ERR ly_parse_uint(const char *val_str, uint64_t max, int base, uint64_t *ret);
+LY_ERR ly_parse_uint(const char *val_str, size_t val_len, uint64_t max, int base, uint64_t *ret);
+
+/**
+ * @brief Parse a node-identifier.
+ *
+ * node-identifier     = [prefix ":"] identifier
+ *
+ * @param[in, out] id Identifier to parse. When returned, it points to the first character which is not part of the identifier.
+ * @param[out] prefix Node's prefix, NULL if there is not any.
+ * @param[out] prefix_len Length of the node's prefix, 0 if there is not any.
+ * @param[out] name Node's name.
+ * @param[out] nam_len Length of the node's name.
+ * @return LY_ERR value: LY_SUCCESS or LY_EINVAL in case of invalid character in the id.
+ */
+LY_ERR ly_parse_nodeid(const char **id, const char **prefix, size_t *prefix_len, const char **name, size_t *name_len);
+
+/**
+ * @brief parse instance-identifier's predicate, supports key-predicate, leaf-list-predicate and pos rules from YANG ABNF Grammar.
+ *
+ * @param[in, out] pred Predicate string (including the leading '[') to parse. The string is updated according to what was parsed
+ * (even for error case, so it can be used to determine which substring caused failure).
+ * @param[in] limit Limiting length of the @p pred. Function expects NULL terminated string which is not overread.
+ * The limit value is not checked with each character, so it can be overread and the failure is detected later.
+ * @param[in] format Input format of the data containing the @p pred.
+ * @param[out] prefix Start of the node-identifier's prefix if any, NULL in case of pos or leaf-list-predicate rules.
+ * @param[out] prefix_len Length of the parsed @p prefix.
+ * @param[out] id Start of the node-identifier's identifier string, NULL in case of pos rule, "." in case of leaf-list-predicate rule.
+ * @param[out] id_len Length of the parsed @p id.
+ * @param[out] value Start of the quoted-string (without quotation marks), not NULL in case of success.
+ * @param[out] value_len Length of the parsed @p value.
+ * @param[out] errmsg Error message string in case of error.
+ * @return LY_SUCCESS in case a complete predicate was parsed.
+ * @return LY_EVALID in case of invalid predicate form.
+ * @return LY_EINVAL in case of reaching @p limit when parsing @p pred.
+ */
+LY_ERR ly_parse_instance_predicate(const char **pred, size_t limit, LYD_FORMAT format,
+                                   const char **prefix, size_t *prefix_len, const char **id, size_t *id_len,
+                                   const char **value, size_t *value_len, const char **errmsg);
+
+/**
+ * @brief ly_clb_get_prefix implementation for JSON. For its simplicity, this implementation is used
+ * internally for various purposes.
+ *
+ * Implemented in printer_json.c
+ */
+const char *json_print_get_prefix(const struct lys_module *mod, void *private);
 
 /**
  * @brief mmap(2) wrapper to map input files into memory to unify parsing.
@@ -362,6 +463,16 @@ LY_ERR ly_mmap(struct ly_ctx *ctx, int fd, size_t *length, void **addr);
  * @return LY_ERR value.
  */
 LY_ERR ly_munmap(void *addr, size_t length);
+
+/**
+ * @brief Concatenate formating string to the @p dest.
+ *
+ * @param[in, out] dest String to be concatenated by @p format.
+ *                 Note that the input string can be reallocated during concatenation.
+ * @param[in] format Formating string (as for printf) which is supposed to be added after @p dest.
+ * @return LY_SUCCESS or LY_EMEM.
+ */
+LY_ERR ly_strcat(char **dest, const char *format, ...);
 
 /**
  * @brief (Re-)Allocation of a ([sized array](@ref sizedarrays)).

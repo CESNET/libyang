@@ -20,7 +20,7 @@ providing API) in C. The library is used e.g. in [libnetconf2](https://github.co
 * Manipulation with the instance data.
 * Support for default values in the instance data ([RFC 6243](https://tools.ietf.org/html/rfc6243)).
 * Support for YANG extensions.
-* Support for YANG Metadata ([RFC 7952](https://tools.ietf.org/html/rfc6243)).
+* Support for YANG Metadata ([RFC 7952](https://tools.ietf.org/html/rfc7952)).
 * [yanglint](#yanglint) - feature-rich YANG tool.
 
 Current implementation covers YANG 1.0 ([RFC 6020](https://tools.ietf.org/html/rfc6020))
@@ -39,14 +39,14 @@ master branch. If you want the latest code from the devel branch, install `libya
 
 * C compiler
 * cmake >= 2.8.12
-* libpcre (devel package)
+* libpcre2 >= 10.30 (including devel package)
  * note, that PCRE is supposed to be compiled with unicode support (configure's options
    `--enable-utf` and `--enable-unicode-properties`)
 
 #### Optional
 
 * doxygen (for generating documentation)
-* cmocka >= 1.0.0 (for [tests](#Tests)
+* cmocka >= 1.0.0 (for [tests](#Tests))
 * valgrind (for enhanced testing)
 * gcov (for code coverage)
 * lcov (for code coverage)
@@ -54,7 +54,7 @@ master branch. If you want the latest code from the devel branch, install `libya
 
 ### Runtime Requirements
 
-* libpcre
+* libpcre2 >= 10.30
 
 ## Building
 

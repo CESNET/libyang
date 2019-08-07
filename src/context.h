@@ -15,6 +15,8 @@
 #ifndef LY_CONTEXT_H_
 #define LY_CONTEXT_H_
 
+#include <stdint.h>
+
 #include "log.h"
 #include "tree_schema.h"
 
@@ -42,6 +44,9 @@ struct ly_ctx;
  * @ingroup context
  *
  * Options to change context behavior.
+ *
+ * Note that the flags 0xFF00 are reserved for internal use.
+ *
  * @{
  */
 

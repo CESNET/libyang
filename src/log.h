@@ -151,6 +151,9 @@ typedef enum
     LY_EVALID,      /**< Validation failure */
     LY_EPLUGIN,     /**< Error reported by a plugin */
     LY_EDENIED,     /**< Operation is not allowed */
+    LY_EINCOMPLETE, /**< The operation did not failed, but for some reason it was not possible to finish it completely.
+                         According to the specific use case, the caller is usually supposed to perform the operation again. */
+    LY_ENOT,        /**< Negative result */
     LY_EOTHER       /**< Unknown error */
 } LY_ERR;
 
@@ -166,7 +169,9 @@ typedef enum {
     LYVE_SYNTAX_YANG,  /**< YANG-related syntax error */
     LYVE_REFERENCE,    /**< invalid referencing or using an item */
     LYVE_XPATH,        /**< invalid XPath expression */
-    LYVE_SEMANTICS     /**< generic semantic error */
+    LYVE_SEMANTICS,    /**< generic semantic error */
+    LYVE_SYNTAX_XML,   /**< XML-related syntax error */
+    LYVE_RESTRICTION   /**< YANG data does not reflect some of the module restrictions */
 } LY_VECODE;
 
 /**
