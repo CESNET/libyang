@@ -49,6 +49,10 @@ void lysp_deviation_free(struct ly_ctx *ctx, struct lysp_deviation *dev);
 void lysp_submodule_free(struct ly_ctx *ctx, struct lysp_submodule *submod);
 void lysp_import_free(struct ly_ctx *ctx, struct lysp_import *import);
 
+/* wrapping element used for mocking has nothing to do with real module structure */
+#define ELEMENT_WRAPPER_START "<status xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+#define ELEMENT_WRAPPER_END "</status>"
+
 struct state {
     struct ly_ctx *ctx;
     struct lys_module *mod;
@@ -580,16 +584,16 @@ test_yin_parse_content(void **state)
     const char *prefix_value;
     struct yin_subelement subelems2[2] = {{YANG_PREFIX, &prefix_value, 0},
                                          {YIN_TEXT, &value, YIN_SUBELEM_UNIQUE}};
-    data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+    data = ELEMENT_WRAPPER_START
                 "<prefix value=\"inv_mod\" />"
                 "<text xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">wsefsdf</text>"
                 "<text xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">wsefsdf</text>"
-           "</module>";
+           ELEMENT_WRAPPER_END;
     lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
     yin_load_attributes(st->yin_ctx, &data, &attrs);
-    ret = yin_parse_content(st->yin_ctx, subelems2, 2, &data, YANG_MODULE, NULL, &exts);
+    ret = yin_parse_content(st->yin_ctx, subelems2, 2, &data, YANG_STATUS, NULL, &exts);
     assert_int_equal(ret, LY_EVALID);
-    logbuf_assert("Redefinition of text element in module element. Line number 1.");
+    logbuf_assert("Redefinition of text element in status element. Line number 1.");
     lydict_remove(st->ctx, prefix_value);
     lydict_remove(st->ctx, value);
     st = reset_state(state);
@@ -597,32 +601,31 @@ test_yin_parse_content(void **state)
     attrs = NULL;
 
     /* test first subelem */
-    data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+    data = ELEMENT_WRAPPER_START
                 "<prefix value=\"inv_mod\" />"
                 "<text xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">wsefsdf</text>"
                 "<text xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">wsefsdf</text>"
-           "</module>";
+           ELEMENT_WRAPPER_END;
     struct yin_subelement subelems3[2] = {{YANG_PREFIX, &prefix_value, 0},
                                          {YIN_TEXT, &value, YIN_SUBELEM_FIRST}};
     lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
     yin_load_attributes(st->yin_ctx, &data, &attrs);
-    ret = yin_parse_content(st->yin_ctx, subelems3, 2, &data, YANG_MODULE, NULL, &exts);
+    ret = yin_parse_content(st->yin_ctx, subelems3, 2, &data, YANG_STATUS, NULL, &exts);
     assert_int_equal(ret, LY_EVALID);
-    logbuf_assert("Subelement text of module element must be defined as first subelement. Line number 1.");
+    logbuf_assert("Subelement text of status element must be defined as first subelement. Line number 1.");
     lydict_remove(st->ctx, prefix_value);
     st = reset_state(state);
     LY_ARRAY_FREE(attrs);
     attrs = NULL;
 
     /* test mandatory subelem */
-    data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
-           "</module>";
+    data = ELEMENT_WRAPPER_START ELEMENT_WRAPPER_END;
     struct yin_subelement subelems4[1] = {{YANG_PREFIX, &prefix_value, YIN_SUBELEM_MANDATORY}};
     lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
     yin_load_attributes(st->yin_ctx, &data, &attrs);
-    ret = yin_parse_content(st->yin_ctx, subelems4, 1, &data, YANG_MODULE, NULL, &exts);
+    ret = yin_parse_content(st->yin_ctx, subelems4, 1, &data, YANG_STATUS, NULL, &exts);
     assert_int_equal(ret, LY_EVALID);
-    logbuf_assert("Missing mandatory subelement prefix of module element. Line number 1.");
+    logbuf_assert("Missing mandatory subelement prefix of status element. Line number 1.");
     LY_ARRAY_FREE(attrs);
 
     st->finished_correctly = true;
@@ -641,9 +644,6 @@ test_validate_value(void **state)
 
     st->finished_correctly = true;
 }
-
-#define ELEMENT_WRAPPER_START "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
-#define ELEMENT_WRAPPER_END "</module>"
 
 /* helper function to simplify unit test of each element using parse_content function */
 LY_ERR
@@ -3940,6 +3940,27 @@ test_module_elem(void **state)
     FREE_ARRAY(st->yin_ctx, attrs, free_arg_rec);
     attrs = NULL;
 
+    /* incorrect subelem order */
+    st->yin_ctx->xml_ctx.status = LYXML_ELEMENT;
+    lys_mod = calloc(1, sizeof *lys_mod);
+    lysp_mod = calloc(1, sizeof *lysp_mod);
+    lys_mod->ctx = st->ctx;
+    lysp_mod->mod = lys_mod;
+    data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" name=\"mod\">"
+                "<feature name=\"feature\"/>\n"
+                "<namespace uri=\"ns\"/>"
+                "<prefix value=\"pref\"/>"
+                "<yang-version value=\"1.1\"/>"
+           "</module>";
+    assert_int_equal(lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len), LY_SUCCESS);
+    assert_int_equal(yin_load_attributes(st->yin_ctx, &data, &attrs), LY_SUCCESS);
+    assert_int_equal(yin_parse_mod(st->yin_ctx, attrs, &data, lysp_mod), LY_EVALID);
+    logbuf_assert("Invalid order of module\'s subelements \"namespace\" can\'t appear after \"feature\". Line number 30.");
+    lysp_module_free(lysp_mod);
+    lys_module_free(lys_mod, NULL);
+    FREE_ARRAY(st->yin_ctx, attrs, free_arg_rec);
+    attrs = NULL;
+
     st->finished_correctly = true;
 }
 
@@ -4046,6 +4067,22 @@ test_submodule_elem(void **state)
     assert_string_equal(lysp_submod->prefix, "pref");
     assert_string_equal(lysp_submod->belongsto, "mod-name");
     assert_int_equal(lysp_submod->version, LYS_VERSION_1_0);
+    lysp_submodule_free(st->ctx, lysp_submod);
+    FREE_ARRAY(st->yin_ctx, attrs, free_arg_rec);
+    attrs = NULL;
+
+    /* incorrect subelem order */
+    st->yin_ctx->xml_ctx.status = LYXML_ELEMENT;
+    lysp_submod = calloc(1, sizeof *lysp_submod);
+    data = "<submodule xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" name=\"submod\">"
+                "<yang-version value=\"1.0\"/>"
+                "<reference><text>ref</text></reference>\n"
+                "<belongs-to module=\"mod-name\"><prefix value=\"pref\"/></belongs-to>"
+           "</submodule>";
+    assert_int_equal(lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len), LY_SUCCESS);
+    assert_int_equal(yin_load_attributes(st->yin_ctx, &data, &attrs), LY_SUCCESS);
+    assert_int_equal(yin_parse_submod(st->yin_ctx, attrs, &data, lysp_submod), LY_EVALID);
+    logbuf_assert("Invalid order of submodule's subelements \"belongs-to\" can't appear after \"reference\". Line number 28.");
     lysp_submodule_free(st->ctx, lysp_submod);
     FREE_ARRAY(st->yin_ctx, attrs, free_arg_rec);
     attrs = NULL;

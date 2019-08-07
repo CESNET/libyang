@@ -85,8 +85,6 @@ yin_match_keyword(struct yin_parser_ctx *ctx, const char *name, size_t name_len,
     } else {
         if (strncmp(start, "text", name_len) == 0) {
             return YIN_TEXT;
-        } else if (strncmp(start, "value", name_len) == 0) {
-            return YIN_VALUE;
         } else {
             return YANG_NONE;
         }
@@ -2522,6 +2520,80 @@ kw2lyext_substmt(enum yang_keyword kw)
     }
 }
 
+static LY_ERR
+kw2kw_group(struct yin_parser_ctx *ctx, enum yang_keyword kw, enum yang_module_stmt *group)
+{
+    switch (kw) {
+        /* module header */
+        case YANG_NONE:
+        case YANG_NAMESPACE:
+        case YANG_PREFIX:
+        case YANG_BELONGS_TO:
+        case YANG_YANG_VERSION:
+            *group = Y_MOD_MODULE_HEADER;
+            break;
+        /* linkage */
+        case YANG_INCLUDE:
+        case YANG_IMPORT:
+            *group = Y_MOD_LINKAGE;
+            break;
+        /* meta */
+        case YANG_ORGANIZATION:
+        case YANG_CONTACT:
+        case YANG_DESCRIPTION:
+        case YANG_REFERENCE:
+            *group = Y_MOD_META;
+            break;
+        /* revision */
+        case YANG_REVISION:
+            *group = Y_MOD_REVISION;
+            break;
+        /* body */
+        case YANG_ANYDATA:
+        case YANG_ANYXML:
+        case YANG_AUGMENT:
+        case YANG_CHOICE:
+        case YANG_CONTAINER:
+        case YANG_DEVIATION:
+        case YANG_EXTENSION:
+        case YANG_FEATURE:
+        case YANG_GROUPING:
+        case YANG_IDENTITY:
+        case YANG_LEAF:
+        case YANG_LEAF_LIST:
+        case YANG_LIST:
+        case YANG_NOTIFICATION:
+        case YANG_RPC:
+        case YANG_TYPEDEF:
+        case YANG_USES:
+        case YANG_CUSTOM:
+            *group = Y_MOD_BODY;
+            break;
+        default:
+            LOGINT(ctx->xml_ctx.ctx);
+            return LY_EINT;
+    }
+
+    return LY_SUCCESS;
+}
+
+static LY_ERR
+yin_check_relative_order(struct yin_parser_ctx *ctx, enum yang_keyword kw, enum yang_keyword next_kw, enum yang_keyword parrent)
+{
+    assert(parrent == YANG_MODULE || parrent == YANG_SUBMODULE);
+    enum yang_module_stmt gr, next_gr;
+
+    LY_CHECK_RET(kw2kw_group(ctx, kw, &gr));
+    LY_CHECK_RET(kw2kw_group(ctx, next_kw, &next_gr));
+
+    if (gr > next_gr) {
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INORDER_YIN, ly_stmt2str(parrent), ly_stmt2str(next_kw), ly_stmt2str(kw));
+        return LY_EVALID;
+    }
+
+    return LY_SUCCESS;
+}
+
 LY_ERR
 yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_info, signed char subelem_info_size,
                   const char **data, enum yang_keyword current_element, const char **text_content, struct lysp_ext_instance **exts)
@@ -2532,7 +2604,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
     size_t out_len = 0;
     int dynamic = 0;
     struct yin_arg_record *attrs = NULL;
-    enum yang_keyword kw = YANG_NONE;
+    enum yang_keyword kw = YANG_NONE, last_kw = YANG_NONE;
     struct yin_subelement *subelem = NULL;
     struct lysp_type *type, *nested_type;
 
@@ -2551,6 +2623,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 }
                 ret = yin_load_attributes(ctx, data, &attrs);
                 LY_CHECK_GOTO(ret, cleanup);
+                last_kw = kw;
                 kw = yin_match_keyword(ctx, name.value, name.len, prefix.value, prefix.len, current_element);
 
                 /* check if this element can be child of current element */
@@ -2565,7 +2638,10 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     goto cleanup;
                 }
 
-                /* TODO check relative order */
+                if (current_element == YANG_MODULE || current_element == YANG_SUBMODULE) {
+                    ret = yin_check_relative_order(ctx, last_kw, kw, current_element);
+                    LY_CHECK_GOTO(ret, cleanup);
+                }
 
                 /* flag check */
                 if ((subelem->flags & YIN_SUBELEM_UNIQUE) && (subelem->flags & YIN_SUBELEM_PARSED)) {

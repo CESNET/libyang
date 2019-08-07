@@ -200,6 +200,7 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_MISSATTR    LYVE_SYNTAX_YIN, "Missing mandatory child element \"%s\" of %s element ."
 #define LY_VCODE_UNEXP_SUBELEM LYVE_SYNTAX_YIN, "Unexpected child element \"%.*s\" of %s element."
 #define LY_VCODE_INDEV_YIN   LYVE_SYNTAX_YIN, "Deviate of this type doesn't allow \"%s\" as it's sub-element."
+#define LY_VCODE_INORDER_YIN LYVE_SYNTAX_YIN, "Invalid order of %s\'s subelements \"%s\" can't appear after \"%s\"."
 
 #define LY_VCODE_XP_EOE      LYVE_XPATH, "Unterminated string delimited with %c (%.15s)."
 #define LY_VCODE_XP_INEXPR   LYVE_XPATH, "Invalid character number %u of expression \'%s\'."
@@ -619,7 +620,5 @@ LY_ERR ly_strcat(char **dest, const char *format, ...);
     NEW_ITEM = calloc(1, sizeof *NEW_ITEM); \
     LY_CHECK_ERR_RET(!(NEW_ITEM), LOGMEM(CTX), LY_EMEM); \
     LY_LIST_INSERT(LIST, NEW_ITEM, LINKER)
-
-#define LY_LIST_NEW_GOTO(CTX, LIST, NEW_ITEM, LINKER, GOTO) \
 
 #endif /* LY_COMMON_H_ */
