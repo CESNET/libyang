@@ -829,6 +829,7 @@ yin_parse_belongs_to(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, c
  * text element as child
  *
  * @param[in,out] ctx Yin parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
  * @param[in,out] data Data to read from, always moved to currently handled character.
  * @param[in] Type of element can be set to YANG_ORGANIZATION or YANG_CONTACT or YANG_DESCRIPTION or YANG_REFERENCE.
  * @param[out] value Where the content of meta element should be stored.
@@ -837,8 +838,8 @@ yin_parse_belongs_to(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, c
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_meta_element(struct yin_parser_ctx *ctx, const char **data, enum yang_keyword elem_type,
-                       const char **value, struct lysp_ext_instance **exts)
+yin_parse_meta_element(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+                       enum yang_keyword elem_type, const char **value, struct lysp_ext_instance **exts)
 {
     assert(elem_type == YANG_ORGANIZATION || elem_type == YANG_CONTACT || elem_type == YANG_DESCRIPTION || elem_type == YANG_REFERENCE);
 
@@ -846,7 +847,10 @@ yin_parse_meta_element(struct yin_parser_ctx *ctx, const char **data, enum yang_
                                             {YANG_CUSTOM, NULL, 0},
                                             {YIN_TEXT, value, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE | YIN_SUBELEM_FIRST}
                                         };
+    /* check attributes */
+    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NONE, NULL, Y_MAYBE_STR_ARG, elem_type));
 
+    /* parse content */
     return yin_parse_content(ctx, subelems, 2, data, elem_type, NULL, exts);
 }
 
@@ -854,6 +858,7 @@ yin_parse_meta_element(struct yin_parser_ctx *ctx, const char **data, enum yang_
  * @brief Parse error-message element.
  *
  * @param[in,out] ctx Yin parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
  * @param[in,out] data Data to read from.
  * @param[out] value Where the content of error-message element should be stored.
  * @param[in,out] exts Extension instance to add to.
@@ -861,13 +866,16 @@ yin_parse_meta_element(struct yin_parser_ctx *ctx, const char **data, enum yang_
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_err_msg_element(struct yin_parser_ctx *ctx, const char **data, const char **value,
-                          struct lysp_ext_instance **exts)
+yin_parse_err_msg_element(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+                          const char **value, struct lysp_ext_instance **exts)
 {
     struct yin_subelement subelems[2] = {
                                             {YANG_CUSTOM, NULL, 0},
                                             {YIN_VALUE, value, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE | YIN_SUBELEM_FIRST}
                                         };
+
+    /* check attributes */
+    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NONE, NULL, Y_MAYBE_STR_ARG, YANG_ERROR_MESSAGE));
 
     return yin_parse_content(ctx, subelems, 2, data, YANG_ERROR_MESSAGE, NULL, exts);
 }
@@ -2720,7 +2728,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 case YANG_DESCRIPTION:
                 case YANG_ORGANIZATION:
                 case YANG_REFERENCE:
-                    ret = yin_parse_meta_element(ctx, data, kw, (const char **)subelem->dest, exts);
+                    ret = yin_parse_meta_element(ctx, attrs, data, kw, (const char **)subelem->dest, exts);
                     break;
                 case YANG_CONTAINER:
                     ret = yin_parse_container(ctx, attrs, data, (struct tree_node_meta *)subelem->dest);
@@ -2748,7 +2756,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                                                    YIN_ARG_VALUE, Y_STR_ARG, exts);
                     break;
                 case YANG_ERROR_MESSAGE:
-                    ret = yin_parse_err_msg_element(ctx, data, (const char **)subelem->dest, exts);
+                    ret = yin_parse_err_msg_element(ctx, attrs, data, (const char **)subelem->dest, exts);
                     break;
                 case YANG_EXTENSION:
                     ret = yin_parse_extension(ctx, attrs, data, (struct lysp_ext **)subelem->dest);

@@ -887,6 +887,17 @@ test_meta_elem(void **state)
     FREE_ARRAY(st->ctx, exts, lysp_ext_instance_free);
     exts = NULL;
 
+    /* reference element */
+    data = ELEMENT_WRAPPER_START
+                "<reference invalid=\"text\"><text>reference...</text>""</reference>"
+           ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &value, NULL, &exts, false), LY_EVALID);
+    logbuf_assert("Unexpected attribute \"invalid\" of reference element. Line number 1.");
+    FREE_STRING(st->ctx, value);
+    value = NULL;
+    FREE_ARRAY(st->ctx, exts, lysp_ext_instance_free);
+    exts = NULL;
+
     /* missing text subelement */
     data = ELEMENT_WRAPPER_START
                 "<reference>reference...</reference>"
@@ -1354,6 +1365,10 @@ test_err_msg_elem(void **state)
     data = ELEMENT_WRAPPER_START "<error-message></error-message>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &val, NULL, NULL, false), LY_EVALID);
     logbuf_assert("Missing mandatory subelement value of error-message element. Line number 1.");
+
+    data = ELEMENT_WRAPPER_START "<error-message invalid=\"text\"/>" ELEMENT_WRAPPER_END;
+    assert_int_equal(test_element_helper(st, &data, &val, NULL, NULL, false), LY_EVALID);
+    logbuf_assert("Unexpected attribute \"invalid\" of error-message element. Line number 1.");
 
     st->finished_correctly = true;
 }
