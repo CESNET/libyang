@@ -4433,8 +4433,7 @@ yang_parse_submodule(struct lys_parser_ctx **context, struct ly_ctx *ly_ctx, str
         ret = LY_EINVAL;
         goto cleanup;
     } else if (kw != YANG_SUBMODULE) {
-        LOGVAL_PARSER(*context, LYVE_SYNTAX, "Invalid keyword \"%s\", expected \"module\" or \"submodule\".",
-               ly_stmt2str(kw));
+        LOGVAL_PARSER(*context, LY_VCODE_MOD_SUBOMD, ly_stmt2str(kw));
         ret = LY_EVALID;
         goto cleanup;
     }
@@ -4452,8 +4451,7 @@ yang_parse_submodule(struct lys_parser_ctx **context, struct ly_ctx *ly_ctx, str
         data++;
     }
     if (*data) {
-        LOGVAL_PARSER(*context, LYVE_SYNTAX, "Trailing garbage \"%.*s%s\" after submodule, expected end-of-input.",
-                    15, data, strlen(data) > 15 ? "..." : "");
+        LOGVAL_PARSER(*context, LY_VCODE_TRAILING_SUBMOD, 15, data, strlen(data) > 15 ? "..." : "");
         ret = LY_EVALID;
         goto cleanup;
     }
@@ -4495,8 +4493,7 @@ yang_parse_module(struct lys_parser_ctx **context, const char *data, struct lys_
         ret = LY_EINVAL;
         goto cleanup;
     } else if (kw != YANG_MODULE) {
-        LOGVAL_PARSER((*context), LYVE_SYNTAX, "Invalid keyword \"%s\", expected \"module\" or \"submodule\".",
-               ly_stmt2str(kw));
+        LOGVAL_PARSER((*context), LY_VCODE_MOD_SUBOMD, ly_stmt2str(kw));
         ret = LY_EVALID;
         goto cleanup;
     }
@@ -4515,8 +4512,7 @@ yang_parse_module(struct lys_parser_ctx **context, const char *data, struct lys_
         data++;
     }
     if (*data) {
-        LOGVAL_PARSER(*context, LYVE_SYNTAX, "Trailing garbage \"%.*s%s\" after module, expected end-of-input.",
-                    15, data, strlen(data) > 15 ? "..." : "");
+        LOGVAL_PARSER(*context, LY_VCODE_TRAILING_MOD, 15, data, strlen(data) > 15 ? "..." : "");
         ret = LY_EVALID;
         goto cleanup;
     }

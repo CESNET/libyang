@@ -593,7 +593,7 @@ test_yin_parse_content(void **state)
     yin_load_attributes(st->yin_ctx, &data, &attrs);
     ret = yin_parse_content(st->yin_ctx, subelems2, 2, &data, YANG_STATUS, NULL, &exts);
     assert_int_equal(ret, LY_EVALID);
-    logbuf_assert("Redefinition of text element in status element. Line number 1.");
+    logbuf_assert("Redefinition of \"text\" sub-element in \"status\" element. Line number 1.");
     lydict_remove(st->ctx, prefix_value);
     lydict_remove(st->ctx, value);
     st = reset_state(state);
@@ -612,7 +612,7 @@ test_yin_parse_content(void **state)
     yin_load_attributes(st->yin_ctx, &data, &attrs);
     ret = yin_parse_content(st->yin_ctx, subelems3, 2, &data, YANG_STATUS, NULL, &exts);
     assert_int_equal(ret, LY_EVALID);
-    logbuf_assert("Subelement text of status element must be defined as first subelement. Line number 1.");
+    logbuf_assert("Sub-element \"text\" of \"status\" element must be defined as it's first sub-element. Line number 1.");
     lydict_remove(st->ctx, prefix_value);
     st = reset_state(state);
     LY_ARRAY_FREE(attrs);
@@ -625,7 +625,7 @@ test_yin_parse_content(void **state)
     yin_load_attributes(st->yin_ctx, &data, &attrs);
     ret = yin_parse_content(st->yin_ctx, subelems4, 1, &data, YANG_STATUS, NULL, &exts);
     assert_int_equal(ret, LY_EVALID);
-    logbuf_assert("Missing mandatory subelement prefix of status element. Line number 1.");
+    logbuf_assert("Missing mandatory sub-element \"prefix\" of \"status\" element. Line number 1.");
     LY_ARRAY_FREE(attrs);
 
     st->finished_correctly = true;
@@ -892,7 +892,7 @@ test_meta_elem(void **state)
                 "<reference invalid=\"text\"><text>reference...</text>""</reference>"
            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &value, NULL, &exts, false), LY_EVALID);
-    logbuf_assert("Unexpected attribute \"invalid\" of reference element. Line number 1.");
+    logbuf_assert("Unexpected attribute \"invalid\" of \"reference\" element. Line number 1.");
     FREE_STRING(st->ctx, value);
     value = NULL;
     FREE_ARRAY(st->ctx, exts, lysp_ext_instance_free);
@@ -903,14 +903,14 @@ test_meta_elem(void **state)
                 "<reference>reference...</reference>"
            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &value, NULL, &exts, false), LY_EVALID);
-    logbuf_assert("Missing mandatory subelement text of reference element. Line number 1.");
+    logbuf_assert("Missing mandatory sub-element \"text\" of \"reference\" element. Line number 1.");
 
     /* reference element */
     data = ELEMENT_WRAPPER_START
                 "<reference>" EXT_SUBELEM "<text>reference...</text></reference>"
            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &value, NULL, &exts, false), LY_EVALID);
-    logbuf_assert("Subelement text of reference element must be defined as first subelement. Line number 1.");
+    logbuf_assert("Sub-element \"text\" of \"reference\" element must be defined as it's first sub-element. Line number 1.");
     FREE_STRING(st->ctx, value);
     value = NULL;
     FREE_ARRAY(st->ctx, exts, lysp_ext_instance_free);
@@ -963,7 +963,7 @@ test_import_elem(void **state)
     /* invalid (missing prefix) */
     data = ELEMENT_WRAPPER_START "<import module=\"a\"></import>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &imp_meta, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Missing mandatory subelement prefix of import element. Line number 1.");
+    logbuf_assert("Missing mandatory sub-element \"prefix\" of \"import\" element. Line number 1.");
     FREE_ARRAY(st->ctx, imports, lysp_import_free);
     imports = NULL;
 
@@ -1013,7 +1013,7 @@ test_status_elem(void **state)
     /* test invalid value */
     data = ELEMENT_WRAPPER_START "<status value=\"invalid\"></status>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &flags, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"invalid\" of \"status\". Line number 1.");
+    logbuf_assert("Invalid value \"invalid\" of \"value\" attribute in \"status\" element. Line number 1.");
     st->finished_correctly = true;
 }
 
@@ -1081,7 +1081,7 @@ test_yin_element_elem(void **state)
     data = ELEMENT_WRAPPER_START "<yin-element value=\"invalid\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &flags, NULL, NULL, false), LY_EVALID);
     assert_true(flags & LYS_YINELEM_TRUE);
-    logbuf_assert("Invalid value \"invalid\" of \"yin-element\". Line number 1.");
+    logbuf_assert("Invalid value \"invalid\" of \"value\" attribute in \"yin-element\" element. Line number 1.");
     st->finished_correctly = true;
 }
 
@@ -1111,7 +1111,7 @@ test_yangversion_elem(void **state)
     /* invalid value */
     data = ELEMENT_WRAPPER_START "<yang-version value=\"version\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &version, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"version\" of \"yang-version\". Line number 1.");
+    logbuf_assert("Invalid value \"version\" of \"value\" attribute in \"yang-version\" element. Line number 1.");
 
     st->finished_correctly = true;
 }
@@ -1140,7 +1140,7 @@ test_mandatory_elem(void **state)
 
     data = ELEMENT_WRAPPER_START "<mandatory value=\"invalid\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &man, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"invalid\" of \"mandatory\". Line number 1.");
+    logbuf_assert("Invalid value \"invalid\" of \"value\" attribute in \"mandatory\" element. Line number 1.");
 
     st->finished_correctly = true;
 }
@@ -1256,7 +1256,7 @@ test_belongsto_elem(void **state)
 
     data = ELEMENT_WRAPPER_START "<belongs-to module=\"module-name\"></belongs-to>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &submod, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Missing mandatory subelement prefix of belongs-to element. Line number 1.");
+    logbuf_assert("Missing mandatory sub-element \"prefix\" of \"belongs-to\" element. Line number 1.");
     FREE_STRING(st->ctx, submod.belongsto);
 
     st->finished_correctly = true;
@@ -1287,7 +1287,7 @@ test_config_elem(void **state)
 
     data = ELEMENT_WRAPPER_START "<config value=\"invalid\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &flags, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"invalid\" of \"config\". Line number 1.");
+    logbuf_assert("Invalid value \"invalid\" of \"value\" attribute in \"config\" element. Line number 1.");
 
     st->finished_correctly = true;
 }
@@ -1364,11 +1364,11 @@ test_err_msg_elem(void **state)
 
     data = ELEMENT_WRAPPER_START "<error-message></error-message>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &val, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Missing mandatory subelement value of error-message element. Line number 1.");
+    logbuf_assert("Missing mandatory sub-element \"value\" of \"error-message\" element. Line number 1.");
 
     data = ELEMENT_WRAPPER_START "<error-message invalid=\"text\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &val, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Unexpected attribute \"invalid\" of error-message element. Line number 1.");
+    logbuf_assert("Unexpected attribute \"invalid\" of \"error-message\" element. Line number 1.");
 
     st->finished_correctly = true;
 }
@@ -1393,23 +1393,23 @@ test_fracdigits_elem(void **state)
     /* invalid values */
     data = ELEMENT_WRAPPER_START "<fraction-digits value=\"-1\"></fraction-digits>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"-1\" of \"fraction-digits\". Line number 1.");
+    logbuf_assert("Invalid value \"-1\" of \"value\" attribute in \"fraction-digits\" element. Line number 1.");
 
     data = ELEMENT_WRAPPER_START "<fraction-digits value=\"02\"></fraction-digits>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"02\" of \"fraction-digits\". Line number 1.");
+    logbuf_assert("Invalid value \"02\" of \"value\" attribute in \"fraction-digits\" element. Line number 1.");
 
     data = ELEMENT_WRAPPER_START "<fraction-digits value=\"1p\"></fraction-digits>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"1p\" of \"fraction-digits\". Line number 1.");
+    logbuf_assert("Invalid value \"1p\" of \"value\" attribute in \"fraction-digits\" element. Line number 1.");
 
     data = ELEMENT_WRAPPER_START "<fraction-digits value=\"19\"></fraction-digits>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"19\" of \"fraction-digits\". Line number 1.");
+    logbuf_assert("Invalid value \"19\" of \"value\" attribute in \"fraction-digits\" element. Line number 1.");
 
     data = ELEMENT_WRAPPER_START "<fraction-digits value=\"999999999999999999\"></fraction-digits>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"999999999999999999\" of \"fraction-digits\". Line number 1.");
+    logbuf_assert("Invalid value \"999999999999999999\" of \"value\" attribute in \"fraction-digits\" element. Line number 1.");
 
     st->finished_correctly = true;
 }
@@ -1514,7 +1514,7 @@ test_modifier_elem(void **state)
     pat = lydict_insert(st->ctx, "\006pattern", 8);
     data = ELEMENT_WRAPPER_START "<modifier value=\"invert\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &pat, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"invert\" of \"modifier\". Line number 1.");
+    logbuf_assert("Invalid value \"invert\" of \"value\" attribute in \"modifier\" element. Line number 1.");
     FREE_STRING(st->ctx, pat);
 
     st->finished_correctly = true;
@@ -1662,32 +1662,32 @@ test_value_position_elem(void **state)
     /* invalid values */
     data = ELEMENT_WRAPPER_START "<value value=\"99999999999999999999999\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &en, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"99999999999999999999999\" of \"value\". Line number 1.");
+    logbuf_assert("Invalid value \"99999999999999999999999\" of \"value\" attribute in \"value\" element. Line number 1.");
 
     data = ELEMENT_WRAPPER_START "<value value=\"1k\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &en, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"1k\" of \"value\". Line number 1.");
+    logbuf_assert("Invalid value \"1k\" of \"value\" attribute in \"value\" element. Line number 1.");
 
     data = ELEMENT_WRAPPER_START "<value value=\"\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &en, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"\" of \"value\". Line number 1.");
+    logbuf_assert("Invalid value \"\" of \"value\" attribute in \"value\" element. Line number 1.");
 
     /*invalid positions */
     data = ELEMENT_WRAPPER_START "<position value=\"-5\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &en, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"-5\" of \"position\". Line number 1.");
+    logbuf_assert("Invalid value \"-5\" of \"value\" attribute in \"position\" element. Line number 1.");
 
     data = ELEMENT_WRAPPER_START "<position value=\"-0\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &en, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"-0\" of \"position\". Line number 1.");
+    logbuf_assert("Invalid value \"-0\" of \"value\" attribute in \"position\" element. Line number 1.");
 
     data = ELEMENT_WRAPPER_START "<position value=\"99999999999999999999\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &en, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"99999999999999999999\" of \"position\". Line number 1.");
+    logbuf_assert("Invalid value \"99999999999999999999\" of \"value\" attribute in \"position\" element. Line number 1.");
 
     data = ELEMENT_WRAPPER_START "<position value=\"\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &en, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"\" of \"position\". Line number 1.");
+    logbuf_assert("Invalid value \"\" of \"value\" attribute in \"position\" element. Line number 1.");
 
     st->finished_correctly = true;
 }
@@ -1784,7 +1784,7 @@ test_reqinstance_elem(void **state)
     data = ELEMENT_WRAPPER_START "<require-instance value=\"invalid\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, false), LY_EVALID);
     memset(&type, 0, sizeof(type));
-    logbuf_assert("Invalid value \"invalid\" of \"require-instance\". Line number 1.");
+    logbuf_assert("Invalid value \"invalid\" of \"value\" attribute in \"require-instance\" element. Line number 1.");
 
     st->finished_correctly = true;
 }
@@ -2035,19 +2035,19 @@ test_max_elems_elem(void **state)
 
     data = "<list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"0\"/> </list>";
     assert_int_equal(test_element_helper(st, &data, &list, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"0\" of \"max-elements\". Line number 1.");
+    logbuf_assert("Invalid value \"0\" of \"value\" attribute in \"max-elements\" element. Line number 1.");
 
     data = "<list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"-10\"/> </list>";
     assert_int_equal(test_element_helper(st, &data, &list, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"-10\" of \"max-elements\". Line number 1.");
+    logbuf_assert("Invalid value \"-10\" of \"value\" attribute in \"max-elements\" element. Line number 1.");
 
     data = "<list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"k\"/> </list>";
     assert_int_equal(test_element_helper(st, &data, &list, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"k\" of \"max-elements\". Line number 1.");
+    logbuf_assert("Invalid value \"k\" of \"value\" attribute in \"max-elements\" element. Line number 1.");
 
     data = "<list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <max-elements value=\"u12\"/> </list>";
     assert_int_equal(test_element_helper(st, &data, &list, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"u12\" of \"max-elements\". Line number 1.");
+    logbuf_assert("Invalid value \"u12\" of \"value\" attribute in \"max-elements\" element. Line number 1.");
 
     st->finished_correctly = true;
 }
@@ -2090,19 +2090,19 @@ test_min_elems_elem(void **state)
 
     data = "<leaf-list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <min-elements value=\"-5\"/> </leaf-list>";
     assert_int_equal(test_element_helper(st, &data, &llist, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Value \"-5\" is out of \"min-elements\" bounds. Line number 1.");
+    logbuf_assert("Value \"-5\" of \"value\" attribute in \"min-elements\" element is out of bounds. Line number 1.");
 
     data = "<leaf-list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <min-elements value=\"99999999999999999\"/> </leaf-list>";
     assert_int_equal(test_element_helper(st, &data, &llist, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Value \"99999999999999999\" is out of \"min-elements\" bounds. Line number 1.");
+    logbuf_assert("Value \"99999999999999999\" of \"value\" attribute in \"min-elements\" element is out of bounds. Line number 1.");
 
     data = "<leaf-list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <min-elements value=\"5k\"/> </leaf-list>";
     assert_int_equal(test_element_helper(st, &data, &llist, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"5k\" of \"min-elements\". Line number 1.");
+    logbuf_assert("Invalid value \"5k\" of \"value\" attribute in \"min-elements\" element. Line number 1.");
 
     data = "<leaf-list xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"> <min-elements value=\"05\"/> </leaf-list>";
     assert_int_equal(test_element_helper(st, &data, &llist, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"05\" of \"min-elements\". Line number 1.");
+    logbuf_assert("Invalid value \"05\" of \"value\" attribute in \"min-elements\" element. Line number 1.");
 
     st->finished_correctly = true;
 }
@@ -2129,7 +2129,7 @@ test_ordby_elem(void **state)
 
     data = ELEMENT_WRAPPER_START "<ordered-by value=\"inv\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &flags, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"inv\" of \"ordered-by\". Line number 1.");
+    logbuf_assert("Invalid value \"inv\" of \"value\" attribute in \"ordered-by\" element. Line number 1.");
 
     st->finished_correctly = true;
 }
@@ -2445,7 +2445,7 @@ test_leaf_list_elem(void **state)
                 "</leaf-list>"
             ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &node_meta, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid combination of keywords \"min-elements\" and \"default\" as substatements of \"leaf-list\". Line number 1.");
+    logbuf_assert("Invalid combination of sub-elemnts \"min-elements\" and \"default\" in \"leaf-list\" element. Line number 1.");
     lysp_node_free(st->ctx, siblings);
     siblings = NULL;
 
@@ -2454,7 +2454,7 @@ test_leaf_list_elem(void **state)
                 "</leaf-list>"
             ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &node_meta, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Missing mandatory subelement type of leaf-list element. Line number 1.");
+    logbuf_assert("Missing mandatory sub-element \"type\" of \"leaf-list\" element. Line number 1.");
     lysp_node_free(st->ctx, siblings);
     siblings = NULL;
 
@@ -3457,7 +3457,7 @@ test_inout_elem(void **state)
     /* invalid combinations */
     data = ELEMENT_WRAPPER_START "<input name=\"test\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &inout_meta, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Unexpected attribute \"name\" of input element. Line number 1.");
+    logbuf_assert("Unexpected attribute \"name\" of \"input\" element. Line number 1.");
     memset(&inout, 0, sizeof inout);
 
     st->finished_correctly = true;
@@ -3762,22 +3762,22 @@ test_deviate_elem(void **state)
     /* invalid arguments */
     data = ELEMENT_WRAPPER_START "<deviate value=\"\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &deviates, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"\" of \"deviate\". Line number 1.");
+    logbuf_assert("Invalid value \"\" of \"value\" attribute in \"deviate\" element. Line number 1.");
     deviates = NULL;
 
     data = ELEMENT_WRAPPER_START "<deviate value=\"invalid\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &deviates, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"invalid\" of \"deviate\". Line number 1.");
+    logbuf_assert("Invalid value \"invalid\" of \"value\" attribute in \"deviate\" element. Line number 1.");
     deviates = NULL;
 
     data = ELEMENT_WRAPPER_START "<deviate value=\"ad\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &deviates, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"ad\" of \"deviate\". Line number 1.");
+    logbuf_assert("Invalid value \"ad\" of \"value\" attribute in \"deviate\" element. Line number 1.");
     deviates = NULL;
 
     data = ELEMENT_WRAPPER_START "<deviate value=\"adds\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &deviates, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"adds\" of \"deviate\". Line number 1.");
+    logbuf_assert("Invalid value \"adds\" of \"value\" attribute in \"deviate\" element. Line number 1.");
     deviates = NULL;
 
     data = ELEMENT_WRAPPER_START
@@ -3835,8 +3835,8 @@ test_deviation_elem(void **state)
     assert_int_equal(test_element_helper(st, &data, &deviations, NULL, NULL, false), LY_EVALID);
     FREE_ARRAY(st->ctx, deviations, lysp_deviation_free);
     deviations = NULL;
-    logbuf_assert("Missing mandatory subelement deviate of deviate element. Line number 1.");
-
+    logbuf_assert("Missing mandatory sub-element \"deviate\" of \"deviation\" element. Line number 1.");
+    /* TODO */
     st->finished_correctly = true;
 }
 
@@ -3970,7 +3970,7 @@ test_module_elem(void **state)
     assert_int_equal(lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len), LY_SUCCESS);
     assert_int_equal(yin_load_attributes(st->yin_ctx, &data, &attrs), LY_SUCCESS);
     assert_int_equal(yin_parse_mod(st->yin_ctx, attrs, &data, lysp_mod), LY_EVALID);
-    logbuf_assert("Invalid order of module\'s subelements \"namespace\" can\'t appear after \"feature\". Line number 30.");
+    logbuf_assert("Invalid order of module\'s sub-elements \"namespace\" can\'t appear after \"feature\". Line number 30.");
     lysp_module_free(lysp_mod);
     lys_module_free(lys_mod, NULL);
     FREE_ARRAY(st->yin_ctx, attrs, free_arg_rec);
@@ -4097,7 +4097,7 @@ test_submodule_elem(void **state)
     assert_int_equal(lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len), LY_SUCCESS);
     assert_int_equal(yin_load_attributes(st->yin_ctx, &data, &attrs), LY_SUCCESS);
     assert_int_equal(yin_parse_submod(st->yin_ctx, attrs, &data, lysp_submod), LY_EVALID);
-    logbuf_assert("Invalid order of submodule's subelements \"belongs-to\" can't appear after \"reference\". Line number 28.");
+    logbuf_assert("Invalid order of submodule's sub-elements \"belongs-to\" can't appear after \"reference\". Line number 28.");
     lysp_submodule_free(st->ctx, lysp_submod);
     FREE_ARRAY(st->yin_ctx, attrs, free_arg_rec);
     attrs = NULL;
