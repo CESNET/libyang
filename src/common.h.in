@@ -436,4 +436,6 @@ int64_t dec_pow(uint8_t exp);
 
 int dec64cmp(int64_t num1, uint8_t dig1, int64_t num2, uint8_t dig2);
 
+size_t strlen_utf8(const char *str);
+
 #endif /* LY_COMMON_H_ */
