@@ -459,7 +459,8 @@ test_yin_parse_content(void **state)
 {
     struct state *st = *state;
     LY_ERR ret = LY_SUCCESS;
-    struct sized_string name, prefix;
+    const char *name, *prefix;
+    size_t name_len, prefix_len;
     const char *data = "<prefix value=\"a_mod\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
                             "<custom xmlns=\"my-ext\">"
                                 "totally amazing extension"
@@ -504,7 +505,7 @@ test_yin_parse_content(void **state)
     struct lysp_type req_type = {}, range_type = {}, len_type = {}, patter_type = {}, enum_type = {};
     uint8_t config = 0;
 
-    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->yin_ctx, &data, &attrs);
 
     struct yin_subelement subelems[17] = {
@@ -589,7 +590,7 @@ test_yin_parse_content(void **state)
                 "<text xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">wsefsdf</text>"
                 "<text xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">wsefsdf</text>"
            ELEMENT_WRAPPER_END;
-    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->yin_ctx, &data, &attrs);
     ret = yin_parse_content(st->yin_ctx, subelems2, 2, &data, YANG_STATUS, NULL, &exts);
     assert_int_equal(ret, LY_EVALID);
@@ -608,7 +609,7 @@ test_yin_parse_content(void **state)
            ELEMENT_WRAPPER_END;
     struct yin_subelement subelems3[2] = {{YANG_PREFIX, &prefix_value, 0},
                                          {YIN_TEXT, &value, YIN_SUBELEM_FIRST}};
-    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->yin_ctx, &data, &attrs);
     ret = yin_parse_content(st->yin_ctx, subelems3, 2, &data, YANG_STATUS, NULL, &exts);
     assert_int_equal(ret, LY_EVALID);
@@ -621,7 +622,7 @@ test_yin_parse_content(void **state)
     /* test mandatory subelem */
     data = ELEMENT_WRAPPER_START ELEMENT_WRAPPER_END;
     struct yin_subelement subelems4[1] = {{YANG_PREFIX, &prefix_value, YIN_SUBELEM_MANDATORY}};
-    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len);
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->yin_ctx, &data, &attrs);
     ret = yin_parse_content(st->yin_ctx, subelems4, 1, &data, YANG_STATUS, NULL, &exts);
     assert_int_equal(ret, LY_EVALID);
@@ -651,7 +652,8 @@ test_element_helper(struct state *st, const char **data, void *dest, const char 
                     struct lysp_ext_instance **exts, bool valid)
 {
     struct yin_arg_record *attrs = NULL;
-    struct sized_string name, prefix;
+    const char *name, *prefix;
+    size_t name_len, prefix_len;
     LY_ERR ret = LY_SUCCESS;
     struct yin_subelement subelems[71] = {
                                             {YANG_ACTION, dest, 0},
@@ -726,9 +728,9 @@ test_element_helper(struct state *st, const char **data, void *dest, const char 
                                             {YIN_TEXT, dest, 0},
                                             {YIN_VALUE, dest, 0}
                                         };
-    LY_CHECK_RET(lyxml_get_element(&st->yin_ctx->xml_ctx, data, &prefix.value, &prefix.len, &name.value, &name.len));
+    LY_CHECK_RET(lyxml_get_element(&st->yin_ctx->xml_ctx, data, &prefix, &prefix_len, &name, &name_len));
     LY_CHECK_RET(yin_load_attributes(st->yin_ctx, data, &attrs));
-    ret = yin_parse_content(st->yin_ctx, subelems, 71, data, yin_match_keyword(st->yin_ctx, name.value, name.len, prefix.value, prefix.len, YANG_NONE), text, exts);
+    ret = yin_parse_content(st->yin_ctx, subelems, 71, data, yin_match_keyword(st->yin_ctx, name, name_len, prefix, prefix_len, YANG_NONE), text, exts);
     LY_ARRAY_FREE(attrs);
     if (valid) {
         assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
@@ -3844,9 +3846,9 @@ static void
 test_module_elem(void **state)
 {
     struct state *st = *state;
-    const char *data;
+    const char *data, *name, *prefix;
+    size_t name_len, prefix_len;
     struct yin_arg_record *attrs = NULL;
-    struct sized_string name, prefix;
     struct lys_module *lys_mod = NULL;
     struct lysp_module *lysp_mod = NULL;
 
@@ -3886,7 +3888,7 @@ test_module_elem(void **state)
                 "<typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>\n"
                 EXT_SUBELEM"\n"
            "</module>\n";
-    assert_int_equal(lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len), LY_SUCCESS);
+    assert_int_equal(lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len), LY_SUCCESS);
     assert_int_equal(yin_load_attributes(st->yin_ctx, &data, &attrs), LY_SUCCESS);
     assert_int_equal(yin_parse_mod(st->yin_ctx, attrs, &data, lysp_mod), LY_SUCCESS);
     assert_string_equal(lysp_mod->mod->name, "mod");
@@ -3946,7 +3948,7 @@ test_module_elem(void **state)
                 "<prefix value=\"pref\"/>"
                 "<yang-version value=\"1.1\"/>"
            "</module>";
-    assert_int_equal(lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len), LY_SUCCESS);
+    assert_int_equal(lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len), LY_SUCCESS);
     assert_int_equal(yin_load_attributes(st->yin_ctx, &data, &attrs), LY_SUCCESS);
     assert_int_equal(yin_parse_mod(st->yin_ctx, attrs, &data, lysp_mod), LY_SUCCESS);
     assert_string_equal(lysp_mod->mod->name, "mod");
@@ -3967,7 +3969,7 @@ test_module_elem(void **state)
                 "<prefix value=\"pref\"/>"
                 "<yang-version value=\"1.1\"/>"
            "</module>";
-    assert_int_equal(lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len), LY_SUCCESS);
+    assert_int_equal(lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len), LY_SUCCESS);
     assert_int_equal(yin_load_attributes(st->yin_ctx, &data, &attrs), LY_SUCCESS);
     assert_int_equal(yin_parse_mod(st->yin_ctx, attrs, &data, lysp_mod), LY_EVALID);
     logbuf_assert("Invalid order of module\'s sub-elements \"namespace\" can\'t appear after \"feature\". Line number 30.");
@@ -3983,9 +3985,9 @@ static void
 test_submodule_elem(void **state)
 {
     struct state *st = *state;
-    const char *data;
+    const char *data, *name, *prefix;
+    size_t name_len, prefix_len;
     struct yin_arg_record *attrs = NULL;
-    struct sized_string name, prefix;
     struct lysp_submodule *lysp_submod = NULL;
 
     /* max subelements */
@@ -4020,7 +4022,7 @@ test_submodule_elem(void **state)
                 "<typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>\n"
                 EXT_SUBELEM"\n"
            "</submodule>\n";
-    assert_int_equal(lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len), LY_SUCCESS);
+    assert_int_equal(lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len), LY_SUCCESS);
     assert_int_equal(yin_load_attributes(st->yin_ctx, &data, &attrs), LY_SUCCESS);
     assert_int_equal(yin_parse_submod(st->yin_ctx, attrs, &data, lysp_submod), LY_SUCCESS);
 
@@ -4076,7 +4078,7 @@ test_submodule_elem(void **state)
                 "<yang-version value=\"1.0\"/>"
                 "<belongs-to module=\"mod-name\"><prefix value=\"pref\"/></belongs-to>"
            "</submodule>";
-    assert_int_equal(lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len), LY_SUCCESS);
+    assert_int_equal(lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len), LY_SUCCESS);
     assert_int_equal(yin_load_attributes(st->yin_ctx, &data, &attrs), LY_SUCCESS);
     assert_int_equal(yin_parse_submod(st->yin_ctx, attrs, &data, lysp_submod), LY_SUCCESS);
     assert_string_equal(lysp_submod->prefix, "pref");
@@ -4094,7 +4096,7 @@ test_submodule_elem(void **state)
                 "<reference><text>ref</text></reference>\n"
                 "<belongs-to module=\"mod-name\"><prefix value=\"pref\"/></belongs-to>"
            "</submodule>";
-    assert_int_equal(lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix.value, &prefix.len, &name.value, &name.len), LY_SUCCESS);
+    assert_int_equal(lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len), LY_SUCCESS);
     assert_int_equal(yin_load_attributes(st->yin_ctx, &data, &attrs), LY_SUCCESS);
     assert_int_equal(yin_parse_submod(st->yin_ctx, attrs, &data, lysp_submod), LY_EVALID);
     logbuf_assert("Invalid order of submodule's sub-elements \"belongs-to\" can't appear after \"reference\". Line number 28.");

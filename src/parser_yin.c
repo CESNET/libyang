@@ -91,10 +91,10 @@ yin_match_keyword(struct yin_parser_ctx *ctx, const char *name, size_t name_len,
     }
 }
 
-enum YIN_ARGUMENT
+enum yin_argument
 yin_match_argument_name(const char *name, size_t len)
 {
-    enum YIN_ARGUMENT arg = YIN_ARG_UNKNOWN;
+    enum yin_argument arg = YIN_ARG_UNKNOWN;
     size_t already_read = 0;
     LY_CHECK_RET(len == 0, YIN_ARG_NONE);
 
@@ -167,19 +167,20 @@ yin_load_attributes(struct yin_parser_ctx *ctx, const char **data, struct yin_ar
 {
     LY_ERR ret = LY_SUCCESS;
     struct yin_arg_record *argument_record = NULL;
-    struct sized_string prefix, name;
+    const char *prefix, *name;
+    size_t prefix_len, name_len;
 
     /* load all attributes */
     while (ctx->xml_ctx.status == LYXML_ATTRIBUTE) {
-        ret = lyxml_get_attribute(&ctx->xml_ctx, data, &prefix.value, &prefix.len, &name.value, &name.len);
+        ret = lyxml_get_attribute(&ctx->xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
         LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
 
         if (ctx->xml_ctx.status == LYXML_ATTR_CONTENT) {
             LY_ARRAY_NEW_GOTO(ctx->xml_ctx.ctx, *attrs, argument_record, ret, cleanup);
-            argument_record->name = name.value;
-            argument_record->name_len = name.len;
-            argument_record->prefix = prefix.value;
-            argument_record->prefix_len = prefix.len;
+            argument_record->name = name;
+            argument_record->name_len = name_len;
+            argument_record->prefix = prefix;
+            argument_record->prefix_len = prefix_len;
             ret = lyxml_get_string(&ctx->xml_ctx, data, &argument_record->content, &argument_record->content_len,
                                    &argument_record->content, &argument_record->content_len, &argument_record->dynamic_content);
             LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
@@ -239,10 +240,10 @@ yin_validate_value(struct yin_parser_ctx *ctx, enum yang_arg val_type, char *val
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_attribute(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, enum YIN_ARGUMENT arg_type,
+yin_parse_attribute(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, enum yin_argument arg_type,
                     const char **arg_val, enum yang_arg val_type, enum yang_keyword current_element)
 {
-    enum YIN_ARGUMENT arg = YIN_ARG_UNKNOWN;
+    enum yin_argument arg = YIN_ARG_UNKNOWN;
     struct yin_arg_record *iter = NULL;
     bool found = false;
 
@@ -413,7 +414,7 @@ is_ordered(struct yin_subelement *subelem_info, signed char subelem_info_size)
  */
 static LY_ERR
 yin_parse_simple_element(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data, enum yang_keyword kw,
-                         const char **value, enum YIN_ARGUMENT arg_type, enum yang_arg arg_val_type, struct lysp_ext_instance **exts)
+                         const char **value, enum yin_argument arg_type, enum yang_arg arg_val_type, struct lysp_ext_instance **exts)
 {
     LY_CHECK_RET(yin_parse_attribute(ctx, attrs, arg_type, value, arg_val_type, kw));
     struct yin_subelement subelems[1] = {
@@ -466,6 +467,16 @@ yin_parse_pattern(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, cons
     return yin_parse_content(ctx, subelems, 6, data, YANG_PATTERN, NULL, &restr->exts);
 }
 
+/**
+ * @brief Parse fraction-digits element.
+ *
+ * @param[in,out] ctx Yin parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] type Type structure to store value, flags and extension instances.
+ *
+ * @return LY_ERR values.
+ */
 static LY_ERR
 yin_parse_fracdigits(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
                      struct lysp_type *type)
@@ -510,7 +521,7 @@ yin_parse_fracdigits(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, c
  * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
  * @param[in,out] data Data to read from, always moved to currently handled character.
  * @param[in] enum_kw Identification of actual keyword, can be set to YANG_BIT or YANG_ENUM.
- * @param[in,out] enums Enums or bits to add to.
+ * @param[in,out] type Type structure to store enum value, flags and extension instances.
  *
  * @return LY_ERR values.
  */
@@ -544,7 +555,7 @@ yin_parse_enum(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const c
  * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
  * @param[in,out] data Data to read from, always moved to currently handled character.
  * @param[in] enum_kw Identification of actual keyword, can be set to YANG_BIT or YANG_ENUM.
- * @param[in,out] enums Enums or bits to add to.
+ * @param[in,out] type Type structure to store bit value, flags and extension instances.
  *
  * @return LY_ERR values.
  */
@@ -587,7 +598,7 @@ yin_parse_bit(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const ch
  */
 static LY_ERR
 yin_parse_simple_elements(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data, enum yang_keyword kw,
-                          const char ***values, enum YIN_ARGUMENT arg_type, enum yang_arg arg_val_type, struct lysp_ext_instance **exts)
+                          const char ***values, enum yin_argument arg_type, enum yang_arg arg_val_type, struct lysp_ext_instance **exts)
 {
     const char **value;
     LY_ARRAY_NEW_RET(ctx->xml_ctx.ctx, *values, value, LY_EMEM);
@@ -699,7 +710,7 @@ yin_parse_restriction(struct yin_parser_ctx *ctx,  struct yin_arg_record *attrs,
                                             {YANG_CUSTOM, NULL, 0}
                                         };
     /* argument of must is called condition, but argument of length and range is called value */
-    enum YIN_ARGUMENT arg_type = (restr_kw == YANG_MUST) ? YIN_ARG_CONDITION : YIN_ARG_VALUE;
+    enum yin_argument arg_type = (restr_kw == YANG_MUST) ? YIN_ARG_CONDITION : YIN_ARG_VALUE;
     LY_CHECK_RET(yin_parse_attribute(ctx, attrs, arg_type, &restr->arg, Y_STR_ARG, restr_kw));
 
     return yin_parse_content(ctx, subelems, 5, data, restr_kw, NULL, &restr->exts);
@@ -2523,6 +2534,15 @@ kw2lyext_substmt(enum yang_keyword kw)
     }
 }
 
+/**
+ * @brief map keyword to keyword-group.
+ *
+ * @param[in] ctx YIN parser context used for logging.
+ * @param[in] kw Keyword that is child of module or submodule.
+ * @param[out] group Group of keyword.
+ *
+ * @return LY_SUCCESS on success LY_EINT if kw can't be mapped to kw_group, should not happen if called correctly.
+ */
 static LY_ERR
 kw2kw_group(struct yin_parser_ctx *ctx, enum yang_keyword kw, enum yang_module_stmt *group)
 {
@@ -2580,6 +2600,17 @@ kw2kw_group(struct yin_parser_ctx *ctx, enum yang_keyword kw, enum yang_module_s
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Check if relative order of two keywords is valid.
+ *
+ * @param[in] ctx YIN parser context used for logging.
+ * @param[in] kw Current keyword.
+ * @param[in] next_kw Next keyword.
+ * @param[in] parrent Identification of parrent element, can be se to to YANG_MODULE of YANG_SUBMODULE,
+ *            because relative order is required only in module and submodule sub-elements, used for logging.
+ *
+ * @return LY_SUCCESS on succes and LY_EVALID if relative order is invalid.
+ */
 static LY_ERR
 yin_check_relative_order(struct yin_parser_ctx *ctx, enum yang_keyword kw, enum yang_keyword next_kw, enum yang_keyword parrent)
 {
@@ -2602,9 +2633,9 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                   const char **data, enum yang_keyword current_element, const char **text_content, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct sized_string prefix, name;
     char *out = NULL;
-    size_t out_len = 0;
+    const char *prefix, *name;
+    size_t out_len = 0, prefix_len, name_len;
     int dynamic = 0;
     struct yin_arg_record *attrs = NULL;
     enum yang_keyword kw = YANG_NONE, last_kw = YANG_NONE;
@@ -2618,16 +2649,16 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
         /* current element has subelements as content */
         if (ret == LY_EINVAL) {
             while (ctx->xml_ctx.status == LYXML_ELEMENT) {
-                ret = lyxml_get_element(&ctx->xml_ctx, data, &prefix.value, &prefix.len, &name.value, &name.len);
+                ret = lyxml_get_element(&ctx->xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
                 LY_CHECK_GOTO(ret, cleanup);
-                if (!name.value) {
+                if (!name) {
                     /* end of current element reached */
                     break;
                 }
                 ret = yin_load_attributes(ctx, data, &attrs);
                 LY_CHECK_GOTO(ret, cleanup);
                 last_kw = kw;
-                kw = yin_match_keyword(ctx, name.value, name.len, prefix.value, prefix.len, current_element);
+                kw = yin_match_keyword(ctx, name, name_len, prefix, prefix_len, current_element);
 
                 /* check if this element can be child of current element */
                 subelem = get_record(kw, subelem_info_size, subelem_info);
@@ -2635,7 +2666,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     if (current_element == YANG_DEVIATE && isdevsub(kw)) {
                         LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INDEV_YIN, ly_stmt2str(kw));
                     } else {
-                        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_UNEXP_SUBELEM, name.len, name.value, ly_stmt2str(current_element));
+                        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_UNEXP_SUBELEM, name_len, name, ly_stmt2str(current_element));
                     }
                     ret = LY_EVALID;
                     goto cleanup;
@@ -2671,8 +2702,8 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 switch (kw) {
                 /* call responsible function */
                 case YANG_CUSTOM:
-                    ret = yin_parse_extension_instance(ctx, attrs, data, name2fullname(name.value, prefix.len),
-                                                      namelen2fulllen(name.len, prefix.len),
+                    ret = yin_parse_extension_instance(ctx, attrs, data, name2fullname(name, prefix_len),
+                                                      namelen2fulllen(name_len, prefix_len),
                                                       kw2lyext_substmt(current_element),
                                                       (subelem->dest) ? *((uint32_t*)subelem->dest) : 0, exts);
                     break;
@@ -2924,7 +2955,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
         } else {
             /* elements with text or none content */
             /* save text content, if text_content isn't set, it's just ignored */
-            /* no resources are allocated in this branch so no need to use cleanup label */
+            /* no resources are allocated in this branch, no need to use cleanup label */
             LY_CHECK_RET(yin_validate_value(ctx, Y_STR_ARG, out, out_len));
             if (text_content) {
                 if (dynamic) {
@@ -2942,7 +2973,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 }
             }
             /* load closing element */
-            LY_CHECK_RET(lyxml_get_element(&ctx->xml_ctx, data, &prefix.value, &prefix.len, &name.value, &name.len));
+            LY_CHECK_RET(lyxml_get_element(&ctx->xml_ctx, data, &prefix, &prefix_len, &name, &name_len));
         }
     }
     /* mandatory subelemnts are checked only after whole element was succesfully parsed */

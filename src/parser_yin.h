@@ -1,7 +1,7 @@
 /**
  * @file parser_yin.h
  * @author David Sedlák <xsedla1d@stud.fit.vutbr.cz>
- * @brief YIN parser.
+ * @brief YIN parser header file.
  *
  * Copyright (c) 2015 - 2019 CESNET, z.s.p.o.
  *
@@ -35,9 +35,7 @@ extern const char *const yin_attr_list[];
                       kw == YANG_MUST || kw == YANG_TYPE || kw == YANG_UNIQUE ||         \
                       kw == YANG_UNITS || kw == YANG_CUSTOM)
 
-/* get deviate type from  */
-
-enum YIN_ARGUMENT {
+enum yin_argument {
     YIN_ARG_UNKNOWN = 0,   /**< parsed argument can not be matched with any supported yin argument keyword */
     YIN_ARG_NAME,          /**< argument name */
     YIN_ARG_TARGET_NODE,   /**< argument target-node */
@@ -64,7 +62,7 @@ struct yin_arg_record {
     int dynamic_content;  /**< is set to 1 iff content is dynamically allocated 0 otherwise */
 };
 
-/* flags to encode cardinality of subelement */
+/* flags to set constraints of subelements */
 #define YIN_SUBELEM_MANDATORY   0x01    /**< is set when subelement is mandatory */
 #define YIN_SUBELEM_UNIQUE      0x02    /**< is set when subelement is unique */
 #define YIN_SUBELEM_FIRST       0x04    /**< is set when subelement is actually yang argument mapped to yin element */
@@ -76,13 +74,7 @@ struct yin_arg_record {
 struct yin_subelement {
     enum yang_keyword type; /**< type of keyword */
     void *dest;             /**< meta infromation passed to responsible function (mostly information about where parsed subelement should be stored) */
-    uint8_t flags;          /**< describes cardianlity of subelement can be set to YIN_SUBELEM_MANDATORY and YIN_SUBELEM_UNIQUE and YIN_SUBELEM_FIRST */
-};
-
-/* helper structure just to make code look simpler */
-struct sized_string {
-    const char *value;
-    size_t len;
+    uint8_t flags;          /**< describes constraints of subelement can be set to YIN_SUBELEM_MANDATORY, YIN_SUBELEM_UNIQUE, YIN_SUBELEM_FIRST and YIN_SUBELEM_VER2 */
 };
 
 /* Meta information passed to yin_parse_argument function,
@@ -160,7 +152,7 @@ struct minmax_dev_meta {
  *
  * @return YIN_ARGUMENT value.
  */
-enum YIN_ARGUMENT yin_match_argument_name(const char *name, size_t len);
+enum yin_argument yin_match_argument_name(const char *name, size_t len);
 
 /**
  * @brief Generic function for content parsing
@@ -171,9 +163,9 @@ enum YIN_ARGUMENT yin_match_argument_name(const char *name, size_t len);
  * @param[in] subelem_info_size Size of subelem_info array.
  * @param[in,out] data Data to read from, always moved to currently handled character.
  * @param[in] current_element Type of current element.
- * @param[out] text_content Where the text content of element should be stored if any. Text content is ignored if set to NULL.
+ * @param[out] text_content Where the text content of element should be stored if any. Text content is ignored if not set to NULL.
  * @param[in,out] exts Extension instance to add to. Can be se to null if element cannot have extension as subelements.
-
+ *
  * @return LY_ERR values.
  */
 LY_ERR yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_info, signed char subelem_info_size,
@@ -200,7 +192,7 @@ LY_ERR yin_validate_value(struct yin_parser_ctx *ctx, enum yang_arg val_type, ch
  * @param[in] name Start of keyword name
  * @param[in] name_len Lenght of keyword name.
  * @param[in] prefix Start of keyword prefix.
- * @param[in] prefix_len lenght of prefix.
+ * @param[in] prefix_len Lenght of prefix.
  * @param[in] parrent Identification of parrent element, use YANG_NONE for elements without parrent.
  *
  * @return yang_keyword values.
@@ -209,7 +201,7 @@ enum yang_keyword yin_match_keyword(struct yin_parser_ctx *ctx, const char *name
                                     const char *prefix, size_t prefix_len, enum yang_keyword parrent);
 
 /**
- * @brief load all attributes of element into ([sized array](@ref sizedarrays)). Caller is suposed to free the array.
+ * @brief Load all attributes of element into ([sized array](@ref sizedarrays)). Caller is suposed to free the array.
  *
  * @param[in,out] ctx Yin parser context for logging and to store current state.
  * @param[in,out] data Data to read from, always moved to currently handled character.
@@ -282,7 +274,8 @@ LY_ERR yin_parse_submod(struct yin_parser_ctx *ctx, struct yin_arg_record *mod_a
  * @brief free argument record, content loaded from lyxml_get_string() can be
  * dynamically allocated in some cases so it must be also freed.
  *
- * @param ctx unused just to fulfill
+ * @param ctx unused just to fulfill signature of callback for FREE_ARRAY.
+ * @param[in] record Record to free.
  */
 void free_arg_rec(struct yin_parser_ctx *ctx, struct yin_arg_record *record);
 
