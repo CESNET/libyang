@@ -1114,7 +1114,7 @@ yin_parse_orderedby(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, co
  * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
  * @param[in,out] data Data to read from, always moved to currently handled character.
  * @param[in] any_kw Identification of current element, can be set to YANG_ANY_DATA or YANG_ANY_XML
- * @param[in] node_meta Meta information about parent node and siblings.
+ * @param[in] node_meta Meta information about parent node and siblings to add to.
  *
  * @return LY_ERR values.
  */
@@ -1152,7 +1152,7 @@ yin_parse_any(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const ch
  * @param[in,out] ctx YIN parser context for logging and to store current state.
  * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
  * @param[in,out] data Data to read from, always moved to currently handled character.
- * @param[in] node_meta Meta information about parent node and siblings.
+ * @param[in] node_meta Meta information about parent node and siblings to add to.
  *
  * @return LY_ERR values.
  */
@@ -1194,7 +1194,7 @@ yin_parse_leaf(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const c
  * @param[in,out] ctx YIN parser context for logging and to store current state.
  * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
  * @param[in,out] data Data to read from, always moved to currently handled character.
- * @param[in] node_meta Meta information about parent node and siblings.
+ * @param[in] node_meta Meta information about parent node and siblings to add to.
  *
  * @return LY_ERR values.
  */
@@ -1331,7 +1331,7 @@ yin_parse_refine(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const
  * @param[in,out] ctx YIN parser context for logging and to store current state.
  * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
  * @param[in,out] data Data to read from, always moved to currently handled character.
- * @param[in] node_meta Meta information about parent node and siblings.
+ * @param[in] node_meta Meta information about parent node and siblings to add to.
  *
  * @return LY_ERR values.
  */
@@ -1839,7 +1839,7 @@ yin_parse_identity(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, con
  * @param[in,out] ctx YIN parser context for logging and to store current state.
  * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
  * @param[in,out] data Data to read from, always moved to currently handled character.
- * @param[in] node_meta Meta information about parent node and siblings.
+ * @param[in] node_meta Meta information about parent node and siblings to add to.
  *
  * @return LY_ERR values.
  */
@@ -2019,7 +2019,7 @@ yin_parse_grouping(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, con
  * @param[in,out] ctx YIN parser context for logging and to store current state.
  * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
  * @param[in,out] data Data to read from, always moved to currently handled character.
- * @param[in] node_meta Meta information about parent node and siblings.
+ * @param[in] node_meta Meta information about parent node and siblings to add to.
  *
  * @return LY_ERR values.
  */
@@ -2078,7 +2078,7 @@ yin_parse_container(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, co
  * @param[in,out] ctx YIN parser context for logging and to store current state.
  * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
  * @param[in,out] data Data to read from, always moved to currently handled character.
- * @param[in] node_meta Meta information about parent node and siblings.
+ * @param[in] node_meta Meta information about parent node and siblings to add to.
  *
  * @return LY_ERR values.
  */
@@ -2123,7 +2123,7 @@ yin_parse_case(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const c
  * @param[in,out] ctx YIN parser context for logging and to store current state.
  * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
  * @param[in,out] data Data to read from, always moved to currently handled character.
- * @param[in] node_meta Meta information about parent node and siblings.
+ * @param[in] node_meta Meta information about parent node and siblings to add to.
  *
  * @return LY_ERR values.
  */
