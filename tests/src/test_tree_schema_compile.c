@@ -614,28 +614,29 @@ test_node_list(void **state)
     struct ly_ctx *ctx;
     struct lys_module *mod;
     struct lysc_node_list *list;
+    struct lysc_node *child;
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
 
     assert_non_null(mod = lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;feature f;"
-                                        "list l1 {key \"x y\"; ordered-by user; leaf x {type string; when 1;}leaf y{type string;if-feature f;}}"
+                                        "list l1 {key \"x y\"; ordered-by user; leaf y{type string;if-feature f;} leaf x {type string; when 1;}}"
                                         "list l2 {config false;leaf value {type string;}}}", LYS_IN_YANG));
     list = (struct lysc_node_list*)mod->compiled->data;
     assert_non_null(list);
-    assert_non_null(list->keys);
-    assert_int_equal(2, LY_ARRAY_SIZE(list->keys));
-    assert_string_equal("x", list->keys[0]->name);
-    assert_string_equal("y", list->keys[1]->name);
+    assert_non_null(list->child);
+    assert_string_equal("x", list->child->name);
+    assert_true(list->child->flags & LYS_KEY);
+    assert_string_equal("y", list->child->next->name);
+    assert_true(list->child->next->flags & LYS_KEY);
     assert_non_null(list->child);
     assert_int_equal(LYS_CONFIG_W | LYS_STATUS_CURR | LYS_ORDBY_USER, list->flags);
     assert_true(list->child->flags & LYS_KEY);
     assert_true(list->child->next->flags & LYS_KEY);
     list = (struct lysc_node_list*)mod->compiled->data->next;
     assert_non_null(list);
-    assert_null(list->keys);
     assert_non_null(list->child);
-    assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM | LYS_SET_CONFIG, list->flags);
     assert_false(list->child->flags & LYS_KEY);
+    assert_int_equal(LYS_CONFIG_R | LYS_STATUS_CURR | LYS_ORDBY_SYSTEM | LYS_SET_CONFIG | LYS_KEYLESS, list->flags);
 
     assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;"
                                         "list l {key a; unique \"a c/b:b\"; unique \"c/e d\";"
@@ -644,11 +645,9 @@ test_node_list(void **state)
     list = (struct lysc_node_list*)mod->compiled->data;
     assert_non_null(list);
     assert_string_equal("l", list->name);
-    assert_non_null(list->keys);
-    assert_int_equal(1, LY_ARRAY_SIZE(list->keys));
-    assert_string_equal("a", list->keys[0]->name);
-    assert_true(list->keys[0]->flags & LYS_KEY);
-    assert_null(list->keys[0]->dflt);
+    assert_string_equal("a", list->child->name);
+    assert_true(list->child->flags & LYS_KEY);
+    assert_null(((struct lysc_node_leaf*)list->child)->dflt);
     assert_non_null(list->uniques);
     assert_int_equal(2, LY_ARRAY_SIZE(list->uniques));
     assert_int_equal(2, LY_ARRAY_SIZE(list->uniques[0]));
@@ -667,11 +666,28 @@ test_node_list(void **state)
     list = (struct lysc_node_list*)mod->compiled->data;
     assert_non_null(list);
     assert_string_equal("l", list->name);
-    assert_non_null(list->keys);
-    assert_int_equal(1, LY_ARRAY_SIZE(list->keys));
-    assert_string_equal("a", list->keys[0]->name);
-    assert_true(list->keys[0]->flags & LYS_KEY);
-    assert_int_equal(LY_TYPE_EMPTY, list->keys[0]->type->basetype);
+    assert_string_equal("a", list->child->name);
+    assert_true(list->child->flags & LYS_KEY);
+    assert_int_equal(LY_TYPE_EMPTY, ((struct lysc_node_leaf*)list->child)->type->basetype);
+
+    /* keys order */
+    assert_non_null(mod = lys_parse_mem(ctx, "module d {yang-version 1.1;namespace urn:d;prefix d;"
+                                        "list l {key \"d b c\";leaf a {type string;} leaf b {type string;} leaf c {type string;} leaf d {type string;}}}", LYS_IN_YANG));
+    list = (struct lysc_node_list*)mod->compiled->data;
+    assert_non_null(list);
+    assert_string_equal("l", list->name);
+    assert_non_null(child = list->child);
+    assert_string_equal("d", child->name);
+    assert_true(child->flags & LYS_KEY);
+    assert_non_null(child = child->next);
+    assert_string_equal("b", child->name);
+    assert_true(child->flags & LYS_KEY);
+    assert_non_null(child = child->next);
+    assert_string_equal("c", child->name);
+    assert_true(child->flags & LYS_KEY);
+    assert_non_null(child = child->next);
+    assert_string_equal("a", child->name);
+    assert_false(child->flags & LYS_KEY);
 
     /* invalid */
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;list l;}", LYS_IN_YANG));

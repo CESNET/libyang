@@ -566,11 +566,11 @@ lyd_compare(const struct lyd_node *node1, const struct lyd_node *node2, int opti
         iter1 = ((struct lyd_node_inner*)node1)->child;
         iter2 = ((struct lyd_node_inner*)node2)->child;
 
-        if (((struct lysc_node_list*)node1->schema)->keys && !(options & LYD_COMPARE_FULL_RECURSION)) {
+        if (!(node1->schema->flags & LYS_KEYLESS) && !(options & LYD_COMPARE_FULL_RECURSION)) {
             /* lists with keys, their equivalence is based on their keys */
-            unsigned int u;
-
-            LY_ARRAY_FOR(((struct lysc_node_list*)node1->schema)->keys, u) {
+            for (struct lysc_node *key = ((struct lysc_node_list*)node1->schema)->child;
+                    key && key->nodetype == LYS_LEAF && (key->flags & LYS_KEY);
+                    key = key->next) {
                 if (lyd_compare(iter1, iter2, options)) {
                     return LY_ENOT;
                 }
@@ -714,15 +714,19 @@ lyd_dup_recursive(const struct lyd_node *node, struct lyd_node_inner *parent, st
                 last = lyd_dup_recursive(child, inner, last, options);
                 LY_CHECK_GOTO(!last, error);
             }
-        } else if (dup->schema->nodetype == LYS_LIST && ((struct lysc_node_list*)dup->schema)->keys) {
+        } else if (dup->schema->nodetype == LYS_LIST && !(dup->schema->flags & LYS_KEYLESS)) {
             /* always duplicate keys of a list */
-            unsigned int u;
-
             child = orig->child;
-            LY_ARRAY_FOR(((struct lysc_node_list*)dup->schema)->keys, u) {
+            for (struct lysc_node *key = ((struct lysc_node_list*)dup->schema)->child;
+                    key && key->nodetype == LYS_LEAF && (key->flags & LYS_KEY);
+                    key = key->next) {
                 if (!child) {
                     /* possibly not keys are present in filtered tree */
                     break;
+                } else if (child->schema != key) {
+                    /* possibly not all keys are present in filtered tree,
+                     * but there can be also some non-key nodes */
+                    continue;
                 }
                 last = lyd_dup_recursive(child, inner, last, options);
                 child = child->next;
@@ -786,7 +790,7 @@ lyd_dup(const struct lyd_node *node, struct lyd_node_inner *parent, int options)
                 repeat = 0;
                 /* get know if there is a keyless list which we will have to rehash */
                 for (struct lyd_node_inner *piter = parent; piter; piter = piter->parent) {
-                    if (piter->schema->nodetype == LYS_LIST && !((struct lysc_node_list*)piter->schema)->keys) {
+                    if (piter->schema->nodetype == LYS_LIST && (piter->schema->flags & LYS_KEYLESS)) {
                         keyless_parent_list = 1;
                         break;
                     }
@@ -845,7 +849,7 @@ lyd_dup(const struct lyd_node *node, struct lyd_node_inner *parent, int options)
     if (keyless_parent_list) {
         /* rehash */
         for (; local_parent; local_parent = local_parent->parent) {
-            if (local_parent->schema->nodetype == LYS_LIST && !((struct lysc_node_list*)local_parent->schema)->keys) {
+            if (local_parent->schema->nodetype == LYS_LIST && (local_parent->schema->flags & LYS_KEYLESS)) {
                 lyd_hash((struct lyd_node*)local_parent);
             }
         }

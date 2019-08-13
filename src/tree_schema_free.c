@@ -731,7 +731,6 @@ lysc_node_list_free(struct ly_ctx *ctx, struct lysc_node_list *node)
     }
     FREE_ARRAY(ctx, node->musts, lysc_must_free);
 
-    LY_ARRAY_FREE(node->keys);
     LY_ARRAY_FOR(node->uniques, u) {
         LY_ARRAY_FREE(node->uniques[u]);
     }
