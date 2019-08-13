@@ -84,64 +84,46 @@ struct yin_argument_meta {
     const char **argument;  /**< Argument value */
 };
 
-/* Meta information passed to functions working with tree schema such as yin_parse_any */
+/**
+ * @brief Meta information passed to functions working with tree_schema,
+ *        that require additional information about parent node.
+ */
 struct tree_node_meta {
     struct lysp_node *parent;       /**< parent node */
     struct lysp_node **siblings;    /**< linked list of siblings */
 };
 
-/* Meta information passed to yin_parse_typedef */
-struct typedef_meta {
-    struct lysp_node *parent;       /**< parent node */
-    struct lysp_tpdf **typedefs;    /**< [Sized array](@ref sizedarrays) of typedefs to add to */
-};
-
-/* Meta information passed to yin_parse_augment function */
-struct augment_meta {
-    struct lysp_node *parent;       /**< parent node */
-    struct lysp_augment **augments; /**< [Sized array](@ref sizedarrays) of augments to add to */
-};
-
-/* Meta information passed to yin_parse_include function */
-struct include_meta {
-    const char *name;               /**< Module/submodule name. */
-    struct lysp_include **includes; /**< [Sized array](@ref sizedarrays) of parsed includes to add to. */
-};
-
-/* Meta information passed to yin_parse_notification function */
-struct notif_meta {
-    struct lysp_node *parent;         /**< Parent node. */
-    struct lysp_notif **notifs;       /**< [Sized array](@ref sizedarrays) of notifications to add to. */
-};
-
-/* Meta information passed to yin_parse_grouping function */
-struct grouping_meta {
-    struct lysp_node *parent;         /**< Parent node. */
-    struct lysp_grp **groupings;      /**< [Sized array](@ref sizedarrays) of groupings to add to. */
-};
-
-/* Meta information passed to yin_parse_grouping function */
-struct inout_meta {
-    struct lysp_node *parent;          /**< Parent node. */
-    struct lysp_action_inout *inout_p; /**< inout_p Input/output pointer to write to. */
-};
-
-/* Meta information passed to yin_parse_action function  */
-struct action_meta {
-    struct lysp_node *parent;         /**< Parent node. */
-    struct lysp_action **actions;     /**< Actions to add to. */
-};
-
-/* Meta information passed to yin_parse_import function */
+/**
+ * @brief Meta information passed to yin_parse_import function.
+ */
 struct import_meta {
     const char *prefix;             /**< module prefix. */
     struct lysp_import **imports;   /**< imports to add to. */
 };
 
+/**
+ * @brief Meta information passed to yin_parse_include function.
+ */
+struct include_meta {
+    const char *name;               /**< Module/submodule name. */
+    struct lysp_include **includes; /**< [Sized array](@ref sizedarrays) of parsed includes to add to. */
+};
+
+/**
+ * @brief Meta information passed to yin_parse_grouping function.
+ */
+struct inout_meta {
+    struct lysp_node *parent;          /**< Parent node. */
+    struct lysp_action_inout *inout_p; /**< inout_p Input/output pointer to write to. */
+};
+
+/**
+ * @brief Meta information passed to yin_parse_minmax function.
+ */
 struct minmax_dev_meta {
-    uint32_t *lim;
-    uint16_t *flags;
-    struct lysp_ext_instance **exts;
+    uint32_t *lim;                      /**< min/max value to write to. */
+    uint16_t *flags;                    /**< min/max flags to write to. */
+    struct lysp_ext_instance **exts;    /**< extension instances to add to. */
 };
 
 /**

@@ -2527,7 +2527,7 @@ test_typedef_elem(void **state)
     struct state *st = *state;
     const char *data;
     struct lysp_tpdf *tpdfs = NULL;
-    struct typedef_meta typdef_meta = {NULL, &tpdfs};
+    struct tree_node_meta typdef_meta = {NULL, (struct lysp_node **)&tpdfs};
 
     data = ELEMENT_WRAPPER_START
                 "<typedef name=\"tpdf-name\">"
@@ -2970,7 +2970,7 @@ test_notification_elem(void **state)
     struct state *st = *state;
     const char *data;
     struct lysp_notif *notifs = NULL;
-    struct notif_meta notif_meta = {NULL, &notifs};
+    struct tree_node_meta notif_meta = {NULL, (struct lysp_node **)&notifs};
 
     /* max subelems */
     st->yin_ctx->mod_version = LYS_VERSION_1_1;
@@ -3044,7 +3044,7 @@ test_grouping_elem(void **state)
     struct state *st = *state;
     const char *data;
     struct lysp_grp *grps = NULL;
-    struct grouping_meta grp_meta = {NULL, &grps};
+    struct tree_node_meta grp_meta = {NULL, (struct lysp_node **)&grps};
 
     /* max subelems */
     data = ELEMENT_WRAPPER_START
@@ -3471,7 +3471,7 @@ test_action_elem(void **state)
     struct state *st = *state;
     const char *data;
     struct lysp_action *actions = NULL;
-    struct action_meta act_meta = {NULL, &actions};
+    struct tree_node_meta act_meta = {NULL, (struct lysp_node **)&actions};
 
     /* max subelems */
     st->yin_ctx->mod_version = LYS_VERSION_1_1;
@@ -3554,7 +3554,7 @@ test_augment_elem(void **state)
     struct state *st = *state;
     const char *data;
     struct lysp_augment *augments = NULL;
-    struct augment_meta aug_meta = {NULL, &augments};
+    struct tree_node_meta aug_meta = {NULL, (struct lysp_node **)&augments};
 
     st->yin_ctx->mod_version = LYS_VERSION_1_1;
     data = ELEMENT_WRAPPER_START

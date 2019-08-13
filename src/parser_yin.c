@@ -1256,10 +1256,11 @@ yin_parse_leaflist(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, con
  */
 static LY_ERR
 yin_parse_typedef(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
-                  struct typedef_meta *typedef_meta)
+                  struct tree_node_meta *typedef_meta)
 {
     struct lysp_tpdf *tpdf;
-    LY_ARRAY_NEW_RET(ctx->xml_ctx.ctx, *typedef_meta->typedefs, tpdf, LY_EMEM);
+    struct lysp_tpdf **tpdfs = (struct lysp_tpdf **)typedef_meta->siblings;
+    LY_ARRAY_NEW_RET(ctx->xml_ctx.ctx, *tpdfs, tpdf, LY_EMEM);
 
     /* parse argument */
     LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NAME, &tpdf->name, Y_IDENTIF_ARG, YANG_TYPEDEF));
@@ -1349,7 +1350,7 @@ yin_parse_uses(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const c
     LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NAME, &uses->name, Y_PREF_IDENTIF_ARG, YANG_USES));
 
     /* parse content */
-    struct augment_meta augments = {(struct lysp_node *)uses, &uses->augments};
+    struct tree_node_meta augments = {(struct lysp_node *)uses, (struct lysp_node **)&uses->augments};
     struct yin_subelement subelems[8] = {
                                             {YANG_AUGMENT, &augments, 0},
                                             {YANG_DESCRIPTION, &uses->dsc, YIN_SUBELEM_UNIQUE},
@@ -1856,11 +1857,11 @@ yin_parse_list(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const c
     LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NAME, &list->name, Y_IDENTIF_ARG, YANG_LIST));
 
     /* parse list content */
-    struct action_meta act_meta = {(struct lysp_node *)list, &list->actions};
+    struct tree_node_meta act_meta = {(struct lysp_node *)list, (struct lysp_node **)&list->actions};
     struct tree_node_meta new_node_meta = {(struct lysp_node *)list, &list->child};
-    struct typedef_meta typedef_meta = {(struct lysp_node *)list, &list->typedefs};
-    struct notif_meta notif_meta = {(struct lysp_node *)list, &list->notifs};
-    struct grouping_meta gr_meta = {(struct lysp_node *)list, &list->groupings};
+    struct tree_node_meta typedef_meta = {(struct lysp_node *)list, (struct lysp_node **)&list->typedefs};
+    struct tree_node_meta notif_meta = {(struct lysp_node *)list, (struct lysp_node **)&list->notifs};
+    struct tree_node_meta gr_meta = {(struct lysp_node *)list, (struct lysp_node **)&list->groupings};
     struct yin_subelement subelems[25] = {
                                             {YANG_ACTION, &act_meta, 0},
                                             {YANG_ANYDATA, &new_node_meta, 0},
@@ -1913,12 +1914,13 @@ yin_parse_list(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const c
  */
 static LY_ERR
 yin_parse_notification(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
-                       struct notif_meta *notif_meta)
+                       struct tree_node_meta *notif_meta)
 {
     struct lysp_notif *notif;
+    struct lysp_notif **notifs = (struct lysp_notif **)notif_meta->siblings;
 
     /* allocate new notification */
-    LY_ARRAY_NEW_RET(ctx->xml_ctx.ctx, *notif_meta->notifs, notif, LY_EMEM);
+    LY_ARRAY_NEW_RET(ctx->xml_ctx.ctx, *notifs, notif, LY_EMEM);
     notif->nodetype = LYS_NOTIF;
     notif->parent = notif_meta->parent;
 
@@ -1927,8 +1929,8 @@ yin_parse_notification(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs,
 
     /* parse notification content */
     struct tree_node_meta node_meta = {(struct lysp_node *)notif, &notif->data};
-    struct typedef_meta typedef_meta = {(struct lysp_node *)notif, &notif->typedefs};
-    struct grouping_meta gr_meta = {(struct lysp_node *)notif, &notif->groupings};
+    struct tree_node_meta typedef_meta = {(struct lysp_node *)notif, (struct lysp_node **)&notif->typedefs};
+    struct tree_node_meta gr_meta = {(struct lysp_node *)notif, (struct lysp_node **)&notif->groupings};
     struct yin_subelement subelems[16] = {
                                             {YANG_ANYDATA, &node_meta, 0},
                                             {YANG_ANYXML, &node_meta, 0},
@@ -1967,12 +1969,13 @@ yin_parse_notification(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs,
  */
 static LY_ERR
 yin_parse_grouping(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
-                   struct grouping_meta *gr_meta)
+                   struct tree_node_meta *gr_meta)
 {
     struct lysp_grp *grp;
+    struct lysp_grp **grps = (struct lysp_grp **)gr_meta->siblings;
 
     /* create new grouping */
-    LY_ARRAY_NEW_RET(ctx->xml_ctx.ctx, *gr_meta->groupings, grp, LY_EMEM);
+    LY_ARRAY_NEW_RET(ctx->xml_ctx.ctx, *grps, grp, LY_EMEM);
     grp->nodetype = LYS_GROUPING;
     grp->parent = gr_meta->parent;
 
@@ -1980,11 +1983,11 @@ yin_parse_grouping(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, con
     LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NAME, &grp->name, Y_IDENTIF_ARG, YANG_GROUPING));
 
     /* parse grouping content */
-    struct action_meta act_meta = {(struct lysp_node *)grp, &grp->actions};
+    struct tree_node_meta act_meta = {(struct lysp_node *)grp, (struct lysp_node **)&grp->actions};
     struct tree_node_meta node_meta = {(struct lysp_node *)grp, &grp->data};
-    struct typedef_meta typedef_meta = {(struct lysp_node *)grp, &grp->typedefs};
-    struct grouping_meta sub_grouping = {(struct lysp_node *)grp, &grp->groupings};
-    struct notif_meta notif_meta = {(struct lysp_node *)grp, &grp->notifs};
+    struct tree_node_meta typedef_meta = {(struct lysp_node *)grp, (struct lysp_node **)&grp->typedefs};
+    struct tree_node_meta sub_grouping = {(struct lysp_node *)grp, (struct lysp_node **)&grp->groupings};
+    struct tree_node_meta notif_meta = {(struct lysp_node *)grp, (struct lysp_node **)&grp->notifs};
     struct yin_subelement subelems[16] = {
                                             {YANG_ACTION, &act_meta, 0},
                                             {YANG_ANYDATA, &node_meta, 0},
@@ -2035,11 +2038,11 @@ yin_parse_container(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, co
     LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NAME,  &cont->name, Y_IDENTIF_ARG, YANG_CONTAINER));
 
     /* parse container content */
-    struct action_meta act_meta = {(struct lysp_node *)cont, &cont->actions};
+    struct tree_node_meta act_meta = {(struct lysp_node *)cont, (struct lysp_node **)&cont->actions};
     struct tree_node_meta new_node_meta = {(struct lysp_node *)cont, &cont->child};
-    struct grouping_meta grp_meta = {(struct lysp_node *)cont, &cont->groupings};
-    struct typedef_meta typedef_meta = {(struct lysp_node *)cont, &cont->typedefs};
-    struct notif_meta notif_meta = {(struct lysp_node *)cont, &cont->notifs};
+    struct tree_node_meta grp_meta = {(struct lysp_node *)cont, (struct lysp_node **)&cont->groupings};
+    struct tree_node_meta typedef_meta = {(struct lysp_node *)cont, (struct lysp_node **)&cont->typedefs};
+    struct tree_node_meta notif_meta = {(struct lysp_node *)cont, (struct lysp_node **)&cont->notifs};
     struct yin_subelement subelems[21] = {
                                             {YANG_ACTION, &act_meta, YIN_SUBELEM_VER2},
                                             {YANG_ANYDATA, &new_node_meta, YIN_SUBELEM_VER2},
@@ -2186,8 +2189,8 @@ yin_parse_inout(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const 
 
     /* parser input/output content */
     struct tree_node_meta node_meta = {(struct lysp_node *)inout_meta->inout_p, &inout_meta->inout_p->data};
-    struct grouping_meta grp_meta = {(struct lysp_node *)inout_meta->inout_p, &inout_meta->inout_p->groupings};
-    struct typedef_meta typedef_meta = {(struct lysp_node *)inout_meta->inout_p, &inout_meta->inout_p->typedefs};
+    struct tree_node_meta grp_meta = {(struct lysp_node *)inout_meta->inout_p, (struct lysp_node **)&inout_meta->inout_p->groupings};
+    struct tree_node_meta typedef_meta = {(struct lysp_node *)inout_meta->inout_p, (struct lysp_node **)&inout_meta->inout_p->typedefs};
     struct yin_subelement subelems[12] = {
                                             {YANG_ANYDATA, &node_meta, YIN_SUBELEM_VER2},
                                             {YANG_ANYXML, &node_meta, 0},
@@ -2223,12 +2226,13 @@ yin_parse_inout(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const 
  */
 static LY_ERR
 yin_parse_action(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
-                 struct action_meta *act_meta)
+                 struct tree_node_meta *act_meta)
 {
     struct lysp_action *act;
+    struct lysp_action **acts = (struct lysp_action **)act_meta->siblings;
 
     /* create new action */
-    LY_ARRAY_NEW_RET(ctx->xml_ctx.ctx, *act_meta->actions, act, LY_EMEM);
+    LY_ARRAY_NEW_RET(ctx->xml_ctx.ctx, *acts, act, LY_EMEM);
     act->nodetype = LYS_ACTION;
     act->parent = act_meta->parent;
 
@@ -2236,8 +2240,8 @@ yin_parse_action(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const
     LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NAME, &act->name, Y_IDENTIF_ARG, YANG_ACTION));
 
     /* parse content */
-    struct grouping_meta grp_meta = {(struct lysp_node *)act, &act->groupings};
-    struct typedef_meta typedef_meta = {(struct lysp_node *)act, &act->typedefs};
+    struct tree_node_meta grp_meta = {(struct lysp_node *)act, (struct lysp_node **)&act->groupings};
+    struct tree_node_meta typedef_meta = {(struct lysp_node *)act, (struct lysp_node **)&act->typedefs};
     struct inout_meta input = {(struct lysp_node *)act, &act->input};
     struct inout_meta output = {(struct lysp_node *)act, &act->output};
     struct yin_subelement subelems[9] = {
@@ -2269,12 +2273,13 @@ yin_parse_action(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const
  */
 static LY_ERR
 yin_parse_augment(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
-                  struct augment_meta *aug_meta)
+                  struct tree_node_meta *aug_meta)
 {
     struct lysp_augment *aug;
+    struct lysp_augment **augs = (struct lysp_augment **)aug_meta->siblings;
 
     /* create new augment */
-    LY_ARRAY_NEW_RET(ctx->xml_ctx.ctx, *aug_meta->augments, aug, LY_EMEM);
+    LY_ARRAY_NEW_RET(ctx->xml_ctx.ctx, *augs, aug, LY_EMEM);
     aug->nodetype = LYS_AUGMENT;
     aug->parent = aug_meta->parent;
 
@@ -2283,9 +2288,9 @@ yin_parse_augment(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, cons
     YANG_CHECK_NONEMPTY((struct lys_parser_ctx *)ctx, strlen(aug->nodeid), "augment");
 
     /* parser augment content */
-    struct action_meta act_meta = {(struct lysp_node *)aug, &aug->actions};
+    struct tree_node_meta act_meta = {(struct lysp_node *)aug, (struct lysp_node **)&aug->actions};
     struct tree_node_meta node_meta = {(struct lysp_node *)aug, &aug->child};
-    struct notif_meta notif_meta = {(struct lysp_node *)aug, &aug->notifs};
+    struct tree_node_meta notif_meta = {(struct lysp_node *)aug, (struct lysp_node **)&aug->notifs};
     struct yin_subelement subelems[17] = {
                                             {YANG_ACTION, &act_meta, YIN_SUBELEM_VER2},
                                             {YANG_ANYDATA, &node_meta, YIN_SUBELEM_VER2},
@@ -2709,7 +2714,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     break;
                 case YANG_ACTION:
                 case YANG_RPC:
-                    ret = yin_parse_action(ctx, attrs, data, (struct action_meta *)subelem->dest);
+                    ret = yin_parse_action(ctx, attrs, data, (struct tree_node_meta *)subelem->dest);
                     break;
                 case YANG_ANYDATA:
                 case YANG_ANYXML:
@@ -2719,7 +2724,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     ret = yin_parse_argument_element(ctx, attrs, data, (struct yin_argument_meta *)subelem->dest, exts);
                     break;
                 case YANG_AUGMENT:
-                    ret = yin_parse_augment(ctx, attrs, data, (struct augment_meta *)subelem->dest);
+                    ret = yin_parse_augment(ctx, attrs, data, (struct tree_node_meta *)subelem->dest);
                     break;
                 case YANG_BASE:
                     if (current_element == YANG_TYPE) {
@@ -2794,7 +2799,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     ret = yin_parse_fracdigits(ctx, attrs, data, (struct lysp_type *)subelem->dest);
                     break;
                 case YANG_GROUPING:
-                    ret = yin_parse_grouping(ctx, attrs, data, (struct grouping_meta *)subelem->dest);
+                    ret = yin_parse_grouping(ctx, attrs, data, (struct tree_node_meta *)subelem->dest);
                     break;
                 case YANG_IDENTITY:
                     ret = yin_parse_identity(ctx, attrs, data, (struct lysp_ident **)subelem->dest);
@@ -2851,7 +2856,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                                                    YIN_ARG_URI, Y_STR_ARG, exts);
                     break;
                 case YANG_NOTIFICATION:
-                    ret = yin_parse_notification(ctx, attrs, data, (struct notif_meta *)subelem->dest);
+                    ret = yin_parse_notification(ctx, attrs, data, (struct tree_node_meta *)subelem->dest);
                     break;
                 case YANG_ORDERED_BY:
                     ret = yin_parse_orderedby(ctx, attrs, data, (uint16_t *)subelem->dest, exts);
@@ -2917,7 +2922,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     ret = yin_parse_type(ctx, attrs, data, type);
                     break;
                 case YANG_TYPEDEF:
-                    ret = yin_parse_typedef(ctx, attrs, data, (struct typedef_meta *)subelem->dest);
+                    ret = yin_parse_typedef(ctx, attrs, data, (struct tree_node_meta *)subelem->dest);
                     break;
                 case YANG_UNIQUE:
                     ret = yin_parse_simple_elements(ctx, attrs, data, kw, (const char ***)subelem->dest,
@@ -3172,12 +3177,12 @@ yin_parse_mod(struct yin_parser_ctx *ctx, struct yin_arg_record *mod_attrs, cons
 {
     LY_CHECK_RET(yin_parse_attribute(ctx, mod_attrs, YIN_ARG_NAME, &mod->mod->name, Y_IDENTIF_ARG, YANG_MODULE));
     struct tree_node_meta node_meta = {NULL, &mod->data};
-    struct augment_meta aug_meta = {NULL, &mod->augments};
-    struct grouping_meta grp_meta = {NULL, &mod->groupings};
+    struct tree_node_meta aug_meta = {NULL, (struct lysp_node **)&mod->augments};
+    struct tree_node_meta grp_meta = {NULL, (struct lysp_node **)&mod->groupings};
     struct include_meta inc_meta = {mod->mod->name, &mod->includes};
-    struct notif_meta notif_meta = {NULL, &mod->notifs};
-    struct action_meta act_meta = {NULL, &mod->rpcs};
-    struct typedef_meta tpdf_meta = {NULL, &mod->typedefs};
+    struct tree_node_meta notif_meta = {NULL, (struct lysp_node **)&mod->notifs};
+    struct tree_node_meta act_meta = {NULL, (struct lysp_node **)&mod->rpcs};
+    struct tree_node_meta tpdf_meta = {NULL, (struct lysp_node **)&mod->typedefs};
     struct import_meta imp_meta = {mod->mod->prefix, &mod->imports};
     struct yin_subelement subelems[28] = {
                                             {YANG_ANYDATA, &node_meta, YIN_SUBELEM_VER2},
@@ -3218,12 +3223,12 @@ yin_parse_submod(struct yin_parser_ctx *ctx, struct yin_arg_record *mod_attrs, c
 {
     LY_CHECK_RET(yin_parse_attribute(ctx, mod_attrs, YIN_ARG_NAME, &submod->name, Y_IDENTIF_ARG, YANG_SUBMODULE));
     struct tree_node_meta node_meta = {NULL, &submod->data};
-    struct augment_meta aug_meta = {NULL, &submod->augments};
-    struct grouping_meta grp_meta = {NULL, &submod->groupings};
+    struct tree_node_meta aug_meta = {NULL, (struct lysp_node **)&submod->augments};
+    struct tree_node_meta grp_meta = {NULL, (struct lysp_node **)&submod->groupings};
     struct include_meta inc_meta = {submod->name, &submod->includes};
-    struct notif_meta notif_meta = {NULL, &submod->notifs};
-    struct action_meta act_meta = {NULL, &submod->rpcs};
-    struct typedef_meta tpdf_meta = {NULL, &submod->typedefs};
+    struct tree_node_meta notif_meta = {NULL, (struct lysp_node **)&submod->notifs};
+    struct tree_node_meta act_meta = {NULL, (struct lysp_node **)&submod->rpcs};
+    struct tree_node_meta tpdf_meta = {NULL, (struct lysp_node **)&submod->typedefs};
     struct import_meta imp_meta = {submod->prefix, &submod->imports};
     struct yin_subelement subelems[27] = {
                                             {YANG_ANYDATA, &node_meta, YIN_SUBELEM_VER2},
