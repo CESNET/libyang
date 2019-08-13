@@ -110,7 +110,7 @@ struct include_meta {
 };
 
 /**
- * @brief Meta information passed to yin_parse_grouping function.
+ * @brief Meta information passed to yin_parse_inout function.
  */
 struct inout_meta {
     struct lysp_node *parent;          /**< Parent node. */
