@@ -363,6 +363,16 @@ void *ly_realloc(void *ptr, size_t size);
 LY_ERR ly_getutf8(const char **input, unsigned int *utf8_char, size_t *bytes_read);
 
 /**
+ * @brief Get number of characters in the @p str, taking multibyte characters into account.
+ * @param[in] str String to examine.
+ * @param[in] bytes Number of valid bytes that are supposed to be taken into account in @p str.
+ * This parameter is useful mainly for non NULL-terminated strings. In case of NULL-terminated
+ * string, strlen() can be used.
+ * @return Number of characters in (possibly) multibyte characters string.
+ */
+size_t ly_utf8len(const char *str, size_t bytes);
+
+/**
  * @brief Parse signed integer with possible limitation.
  * @param[in] val_str String value containing signed integer, note that
  * nothing else than whitespaces are expected after the value itself.
