@@ -32,7 +32,7 @@
 #include "tree_schema_internal.h"
 
 /* Macro to check YANG's yang-char grammar rule */
-#define is_yangutf8char(c) ((c >= 0x20 && c <= 0xd77) || c == 0x09 || c == 0x0a || c == 0x0d || \
+#define is_yangutf8char(c) ((c >= 0x20 && c <= 0xd7ff) || c == 0x09 || c == 0x0a || c == 0x0d || \
         (c >= 0xe000 && c <= 0xfdcf) || (c >= 0xfdf0 && c <= 0xfffd) || \
         (c >= 0x10000 && c <= 0x1fffd) || (c >= 0x20000 && c <= 0x2fffd) || \
         (c >= 0x30000 && c <= 0x3fffd) || (c >= 0x40000 && c <= 0x2fffd) || \
