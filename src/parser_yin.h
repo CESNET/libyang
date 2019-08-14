@@ -95,7 +95,7 @@ struct yin_argument_meta {
  */
 struct tree_node_meta {
     struct lysp_node *parent;       /**< parent node */
-    struct lysp_node **siblings;    /**< linked list of siblings */
+    struct lysp_node **nodes;    /**< linked list of siblings */
 };
 
 /**
@@ -137,7 +137,7 @@ struct minmax_dev_meta {
  * @param[in] name String representing name.
  * @param[in] len Lenght of the name.
  *
- * @return YIN_ARGUMENT value.
+ * @return yin_argument values.
  */
 enum yin_argument yin_match_argument_name(const char *name, size_t len);
 
@@ -150,8 +150,8 @@ enum yin_argument yin_match_argument_name(const char *name, size_t len);
  * @param[in] subelem_info_size Size of subelem_info array.
  * @param[in,out] data Data to read from, always moved to currently handled character.
  * @param[in] current_element Type of current element.
- * @param[out] text_content Where the text content of element should be stored if any. Text content is ignored if not set to NULL.
- * @param[in,out] exts Extension instance to add to. Can be se to null if element cannot have extension as subelements.
+ * @param[out] text_content Where the text content of element should be stored if any. Text content is ignored if set to NULL.
+ * @param[in,out] exts Extension instance to add to. Can be set to null if element cannot have extension as subelements.
  *
  * @return LY_ERR values.
  */
@@ -248,9 +248,9 @@ LY_ERR yin_parse_mod(struct yin_parser_ctx *ctx, struct yin_arg_record *mod_attr
  * @brief Parse submodule element.
  *
  * @param[in,out] ctx Yin parser context for logging and to store current state.
- * @param[in] mod_attrs Attributes of module element.
+ * @param[in] mod_attrs Attributes of submodule element.
  * @param[in,out] data Data to read from.
- * @param[out] mod Parsed module structure.
+ * @param[out] submod Parsed submodule structure.
  *
  * @return LY_ERR values.
  */

@@ -2142,7 +2142,7 @@ test_any_elem(void **state)
     struct state *st = *state;
     const char *data;
     struct lysp_node *siblings = NULL;
-    struct tree_node_meta node_meta = {.parent = NULL, .siblings = &siblings};
+    struct tree_node_meta node_meta = {.parent = NULL, .nodes = &siblings};
     struct lysp_node_anydata *parsed = NULL;
 
     /* anyxml max subelems */
@@ -2231,7 +2231,7 @@ test_leaf_elem(void **state)
     struct state *st = *state;
     const char *data;
     struct lysp_node *siblings = NULL;
-    struct tree_node_meta node_meta = {.parent = NULL, .siblings = &siblings};
+    struct tree_node_meta node_meta = {.parent = NULL, .nodes = &siblings};
     struct lysp_node_leaf *parsed = NULL;
 
     /* max elements */
@@ -2292,7 +2292,7 @@ test_leaf_list_elem(void **state)
     struct state *st = *state;
     const char *data;
     struct lysp_node *siblings = NULL;
-    struct tree_node_meta node_meta = {.parent = NULL, .siblings = &siblings};
+    struct tree_node_meta node_meta = {.parent = NULL, .nodes = &siblings};
     struct lysp_node_leaflist *parsed = NULL;
 
     data = ELEMENT_WRAPPER_START
