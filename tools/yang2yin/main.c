@@ -1794,6 +1794,8 @@ main(int argc, char **argv)
     case 2:
         if (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help")) {
             fprintf(stdout, "Usage:\n\t%s [input-file] [output-file]\n", argv[0]);
+            fprintf(stdout, "\n\tinput-file:   intput yang file path. If empty, input from stdin. \n");
+            fprintf(stdout, "\toutput-file:  output yin file path. If empty, output to stdout.  \n\n");
             return 0;
         }
         in_file = argv[1];
