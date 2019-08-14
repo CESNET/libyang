@@ -625,6 +625,13 @@ LY_ERR ly_strcat(char **dest, const char *format, ...);
 #define LY_ARRAY_FREE(ARRAY) \
         if (ARRAY){free((uint32_t*)(ARRAY) - 1);}
 
+/**
+ * @brief insert item into linked list.
+ *
+ * @param[in,out] LIST Linked list to add to.
+ * @param[in] NEW_ITEM New item, that will be appended to the list, must be already allocated.
+ * @param[in] LINKER name of structuin member that is used to connect items together.
+ */
 #define LY_LIST_INSERT(LIST, NEW_ITEM, LINKER)\
     if (!(*LIST)) { \
         *LIST = (__typeof__(*(LIST)))NEW_ITEM; \
@@ -636,6 +643,14 @@ LY_ERR ly_strcat(char **dest, const char *format, ...);
         } while (0); \
     }
 
+/**
+ * @brief allocate and insert new item inro linked list.
+ *
+ * @param[in] CTX used for loggin.
+ * @param[in,out] LIST Linker list to add to.
+ * @param[out] NEW_ITEM New item that was appended to the list.
+ * @param[in] LINKER name of structuin member that is used to connect items together.
+ */
 #define LY_LIST_NEW_RET(CTX, LIST, NEW_ITEM, LINKER) \
     NEW_ITEM = calloc(1, sizeof *NEW_ITEM); \
     LY_CHECK_ERR_RET(!(NEW_ITEM), LOGMEM(CTX), LY_EMEM); \

@@ -1015,7 +1015,7 @@ test_status_elem(void **state)
     /* test invalid value */
     data = ELEMENT_WRAPPER_START "<status value=\"invalid\"></status>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &flags, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"invalid\" of \"value\" attribute in \"status\" element. Line number 1.");
+    logbuf_assert("Invalid value \"invalid\" of \"value\" attribute in \"status\" element. Valid values are \"current\", \"deprecated\" and \"obsolete\". Line number 1.");
     st->finished_correctly = true;
 }
 
@@ -1083,7 +1083,7 @@ test_yin_element_elem(void **state)
     data = ELEMENT_WRAPPER_START "<yin-element value=\"invalid\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &flags, NULL, NULL, false), LY_EVALID);
     assert_true(flags & LYS_YINELEM_TRUE);
-    logbuf_assert("Invalid value \"invalid\" of \"value\" attribute in \"yin-element\" element. Line number 1.");
+    logbuf_assert("Invalid value \"invalid\" of \"value\" attribute in \"yin-element\" element. Valid values are \"true\" and \"false\". Line number 1.");
     st->finished_correctly = true;
 }
 
@@ -1113,7 +1113,7 @@ test_yangversion_elem(void **state)
     /* invalid value */
     data = ELEMENT_WRAPPER_START "<yang-version value=\"version\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &version, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"version\" of \"value\" attribute in \"yang-version\" element. Line number 1.");
+    logbuf_assert("Invalid value \"version\" of \"value\" attribute in \"yang-version\" element. Valid values are \"1.0\" and \"1.1\". Line number 1.");
 
     st->finished_correctly = true;
 }
@@ -1142,7 +1142,7 @@ test_mandatory_elem(void **state)
 
     data = ELEMENT_WRAPPER_START "<mandatory value=\"invalid\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &man, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"invalid\" of \"value\" attribute in \"mandatory\" element. Line number 1.");
+    logbuf_assert("Invalid value \"invalid\" of \"value\" attribute in \"mandatory\" element. Valid values are \"true\" and \"false\". Line number 1.");
 
     st->finished_correctly = true;
 }
@@ -1289,7 +1289,7 @@ test_config_elem(void **state)
 
     data = ELEMENT_WRAPPER_START "<config value=\"invalid\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &flags, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"invalid\" of \"value\" attribute in \"config\" element. Line number 1.");
+    logbuf_assert("Invalid value \"invalid\" of \"value\" attribute in \"config\" element. Valid values are \"true\" and \"false\". Line number 1.");
 
     st->finished_correctly = true;
 }
@@ -1516,7 +1516,7 @@ test_modifier_elem(void **state)
     pat = lydict_insert(st->ctx, "\006pattern", 8);
     data = ELEMENT_WRAPPER_START "<modifier value=\"invert\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &pat, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"invert\" of \"value\" attribute in \"modifier\" element. Line number 1.");
+    logbuf_assert("Invalid value \"invert\" of \"value\" attribute in \"modifier\" element. Only valid value is \"invert-match\". Line number 1.");
     FREE_STRING(st->ctx, pat);
 
     st->finished_correctly = true;
@@ -1786,7 +1786,7 @@ test_reqinstance_elem(void **state)
     data = ELEMENT_WRAPPER_START "<require-instance value=\"invalid\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, false), LY_EVALID);
     memset(&type, 0, sizeof(type));
-    logbuf_assert("Invalid value \"invalid\" of \"value\" attribute in \"require-instance\" element. Line number 1.");
+    logbuf_assert("Invalid value \"invalid\" of \"value\" attribute in \"require-instance\" element. Valid values are \"true\" and \"false\". Line number 1.");
 
     st->finished_correctly = true;
 }
@@ -2131,7 +2131,7 @@ test_ordby_elem(void **state)
 
     data = ELEMENT_WRAPPER_START "<ordered-by value=\"inv\"/>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &flags, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"inv\" of \"value\" attribute in \"ordered-by\" element. Line number 1.");
+    logbuf_assert("Invalid value \"inv\" of \"value\" attribute in \"ordered-by\" element. Valid values are \"system\" and \"user\". Line number 1.");
 
     st->finished_correctly = true;
 }
@@ -3764,22 +3764,22 @@ test_deviate_elem(void **state)
     /* invalid arguments */
     data = ELEMENT_WRAPPER_START "<deviate value=\"\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &deviates, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"\" of \"value\" attribute in \"deviate\" element. Line number 1.");
+    logbuf_assert("Invalid value \"\" of \"value\" attribute in \"deviate\" element. Valid values are \"not-supported\", \"add\", \"replace\" and \"delete\". Line number 1.");
     deviates = NULL;
 
     data = ELEMENT_WRAPPER_START "<deviate value=\"invalid\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &deviates, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"invalid\" of \"value\" attribute in \"deviate\" element. Line number 1.");
+    logbuf_assert("Invalid value \"invalid\" of \"value\" attribute in \"deviate\" element. Valid values are \"not-supported\", \"add\", \"replace\" and \"delete\". Line number 1.");
     deviates = NULL;
 
     data = ELEMENT_WRAPPER_START "<deviate value=\"ad\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &deviates, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"ad\" of \"value\" attribute in \"deviate\" element. Line number 1.");
+    logbuf_assert("Invalid value \"ad\" of \"value\" attribute in \"deviate\" element. Valid values are \"not-supported\", \"add\", \"replace\" and \"delete\". Line number 1.");
     deviates = NULL;
 
     data = ELEMENT_WRAPPER_START "<deviate value=\"adds\" />" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &deviates, NULL, NULL, false), LY_EVALID);
-    logbuf_assert("Invalid value \"adds\" of \"value\" attribute in \"deviate\" element. Line number 1.");
+    logbuf_assert("Invalid value \"adds\" of \"value\" attribute in \"deviate\" element. Valid values are \"not-supported\", \"add\", \"replace\" and \"delete\". Line number 1.");
     deviates = NULL;
 
     data = ELEMENT_WRAPPER_START

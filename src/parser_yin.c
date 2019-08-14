@@ -170,6 +170,12 @@ void free_arg_rec(struct yin_parser_ctx *ctx, struct yin_arg_record *record) {
 
 #define HAS_META(kw) (IS_NODE_ELEM(kw) || kw == YANG_ARGUMENT || kw == YANG_IMPORT || kw == YANG_INCLUDE || kw == YANG_INPUT || kw == YANG_OUTPUT)
 
+/**
+ * @brief Free subelems information allocated on heap.
+ *
+ * @param[in] count Size of subelems array.
+ * @param[in] subelems Subelems array to free.
+ */
 static void
 subelems_deallocator(size_t count, struct yin_subelement *subelems)
 {
@@ -182,6 +188,16 @@ subelems_deallocator(size_t count, struct yin_subelement *subelems)
     free(subelems);
 }
 
+/**
+ * @brief Allocate subelems information on heap.
+ *
+ * @param[in] ctx Yin parser context, used for logging.
+ * @param[in] count Number of subelements.
+ * @param[in] parent Parent node if any.
+ * @param[out] result Allocated subelems array.
+ *
+ * @return LY_SUCCESS on success LY_EMEM on memmory allocation failure.
+ */
 static LY_ERR
 subelems_allocator(struct yin_parser_ctx *ctx, size_t count, struct lysp_node *parent,
                    struct yin_subelement **result, ...)
@@ -258,7 +274,7 @@ yin_load_attributes(struct yin_parser_ctx *ctx, const char **data, struct yin_ar
     /* load all attributes */
     while (ctx->xml_ctx.status == LYXML_ATTRIBUTE) {
         ret = lyxml_get_attribute(&ctx->xml_ctx, data, &prefix, &prefix_len, &name, &name_len);
-        LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
+        LY_CHECK_GOTO(ret, cleanup);
 
         if (ctx->xml_ctx.status == LYXML_ATTR_CONTENT) {
             LY_ARRAY_NEW_GOTO(ctx->xml_ctx.ctx, *attrs, argument_record, ret, cleanup);
@@ -268,7 +284,7 @@ yin_load_attributes(struct yin_parser_ctx *ctx, const char **data, struct yin_ar
             argument_record->prefix_len = prefix_len;
             ret = lyxml_get_string(&ctx->xml_ctx, data, &argument_record->content, &argument_record->content_len,
                                    &argument_record->content, &argument_record->content_len, &argument_record->dynamic_content);
-            LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
+            LY_CHECK_GOTO(ret, cleanup);
         }
     }
 
@@ -354,8 +370,8 @@ yin_parse_attribute(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, en
                         *arg_val = lydict_insert(ctx->xml_ctx.ctx, "", 0);
                     } else {
                         *arg_val = lydict_insert(ctx->xml_ctx.ctx, iter->content, iter->content_len);
-                        LY_CHECK_RET(!(*arg_val), LY_EMEM);
                     }
+                    LY_CHECK_RET(!(*arg_val), LY_EMEM);
                 }
             } else {
                 LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_UNEXP_ATTR, iter->name_len, iter->name, ly_stmt2str(current_element));
@@ -627,7 +643,6 @@ yin_parse_fracdigits(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, c
  * @param[in,out] ctx YIN parser context for logging and to store current state.
  * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of current element.
  * @param[in,out] data Data to read from, always moved to currently handled character.
- * @param[in] enum_kw Identification of actual keyword, can be set to YANG_BIT or YANG_ENUM.
  * @param[in,out] type Type structure to store enum value, flags and extension instances.
  *
  * @return LY_ERR values.
@@ -806,7 +821,8 @@ yin_pasrse_reqinstance(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs,
     if (strcmp(temp_val, "true") == 0) {
         type->require_instance = 1;
     } else if (strcmp(temp_val, "false") != 0) {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", "require-instance");
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS2, temp_val, "value",
+                       "require-instance", "true", "false");
         FREE_STRING(ctx->xml_ctx.ctx, temp_val);
         return LY_EVALID;
     }
@@ -839,7 +855,8 @@ yin_parse_modifier(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, con
 
     LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_VALUE, &temp_val, Y_STR_ARG, YANG_MODIFIER));
     if (strcmp(temp_val, "invert-match") != 0) {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", "modifier");
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS1, temp_val, "value",
+                       "modifier", "invert-match");
         FREE_STRING(ctx->xml_ctx.ctx, temp_val);
         return LY_EVALID;
     }
@@ -1328,7 +1345,8 @@ yin_parse_orderedby(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, co
     } else if (strcmp(temp_val, "user") == 0) {
         *flags |= LYS_ORDBY_USER;
     } else {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", "ordered-by");
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS2, temp_val, "value",
+                       "ordered-by", "system", "user");
         FREE_STRING(ctx->xml_ctx.ctx, temp_val);
         return LY_EVALID;
     }
@@ -1731,7 +1749,8 @@ yin_parse_config(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const
     } else if (strcmp(temp_val, "false") == 0) {
         *flags |= LYS_CONFIG_R;
     } else {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", "config");
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS2, temp_val, "value", "config",
+                       "true", "false");
         FREE_STRING(ctx->xml_ctx.ctx, temp_val);
         return LY_EVALID;
     }
@@ -1766,7 +1785,8 @@ yin_parse_yangversion(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, 
     } else if (strcmp(temp_version, "1.1") == 0) {
         *version = LYS_VERSION_1_1;
     } else {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_version, "value", "yang-version");
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS2, temp_version, "value",
+                       "yang-version", "1.0", "1.1");
         FREE_STRING(ctx->xml_ctx.ctx, temp_version);
         return LY_EVALID;
     }
@@ -1836,7 +1856,8 @@ yin_parse_mandatory(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, co
     } else if (strcmp(temp_val, "false") == 0) {
         *flags |= LYS_MAND_FALSE;
     } else {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", "mandatory");
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS2, temp_val, "value",
+                       "mandatory", "true", "false");
         FREE_STRING(ctx->xml_ctx.ctx, temp_val);
         return LY_EVALID;
     }
@@ -1873,7 +1894,8 @@ yin_parse_status(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const
     } else if (strcmp(value, "obsolete") == 0) {
         *flags |= LYS_STATUS_OBSLT;
     } else {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, value, "value", "status");
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS3, value, "value",
+                       "status", "current", "deprecated", "obsolete");
         FREE_STRING(ctx->xml_ctx.ctx, value);
         return LY_EVALID;
     }
@@ -1933,7 +1955,8 @@ yin_parse_yin_element_element(struct yin_parser_ctx *ctx, struct yin_arg_record 
     } else if (strcmp(temp_val, "false") == 0) {
         *flags |= LYS_YINELEM_FALSE;
     } else {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", "yin-element");
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS2, temp_val, "value",
+                       "yin-element", "true", "false");
         FREE_STRING(ctx->xml_ctx.ctx, temp_val);
         return LY_EVALID;
     }
@@ -2591,7 +2614,8 @@ yin_parse_deviate(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, cons
     } else if (strcmp(temp_val, "delete") == 0) {
         dev_mod = LYS_DEV_DELETE;
     } else {
-        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", "deviate");
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN VALID_VALS4, temp_val, "value", "deviate",
+                       "not-supported", "add", "replace", "delete");
         FREE_STRING(ctx->xml_ctx.ctx, temp_val);
         return LY_EVALID;
     }

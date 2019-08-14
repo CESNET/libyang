@@ -29,6 +29,11 @@ extern const char *const yin_attr_list[];
 #define name2fullname(name, prefix_len) (prefix_len != 0 ? name - (prefix_len + 1) : name)
 #define namelen2fulllen(name_len, prefix_len) (prefix_len != 0 ? name_len + prefix_len + 1 : name_len)
 
+#define VALID_VALS1 " Only valid value is \"%s\"."
+#define VALID_VALS2 " Valid values are \"%s\" and \"%s\"."
+#define VALID_VALS3 " Valid values are \"%s\", \"%s\" and \"%s\"."
+#define VALID_VALS4 " Valid values are \"%s\", \"%s\", \"%s\" and \"%s\"."
+
 /* shortcut to determin if keyword can in general be subelement of deviation regardles of it's type */
 #define isdevsub(kw) (kw == YANG_CONFIG || kw == YANG_DEFAULT || kw == YANG_MANDATORY || \
                       kw == YANG_MAX_ELEMENTS || kw == YANG_MIN_ELEMENTS ||              \
