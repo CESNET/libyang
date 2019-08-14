@@ -3300,7 +3300,7 @@ xpath_concat(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur_no
                            i + 1, __func__, strnodetype(sleaf->nodetype), sleaf->name);
                     ret = EXIT_FAILURE;
                 } else if (!warn_is_string_type(&sleaf->type)) {
-                    LOGWRN(local_mod->ctx, "Argument #%u of %s is node \"%s\", not of string-type.", __func__, i + 1, sleaf->name);
+                    LOGWRN(local_mod->ctx, "Argument #%u of %s is node \"%s\", not of string-type.", i + 1, __func__, sleaf->name);
                     ret = EXIT_FAILURE;
                 }
             }
