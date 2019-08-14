@@ -125,7 +125,7 @@ struct lysp_stmt {
     const char *arg;                 /**< statement's argument */
     struct lysp_stmt *next;          /**< link to the next statement */
     struct lysp_stmt *child;         /**< list of the statement's substatements (linked list) */
-    uint16_t flags;                  /**< statement flags, can be se to LYS_YIN */
+    uint16_t flags;                  /**< statement flags, can be set to LYS_YIN_ATTR */
 };
 
 #define LYS_YIN 0x1 /**< used to specify input format of extension instance */
