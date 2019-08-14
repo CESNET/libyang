@@ -1527,7 +1527,7 @@ yin_parse_typedef(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, cons
 
     /* store data for collision check */
     if (typedef_meta->parent && !(typedef_meta->parent->nodetype & (LYS_GROUPING | LYS_ACTION | LYS_INOUT | LYS_NOTIF))) {
-        ly_set_add(&ctx->tpdfs_nodes, typedef_meta->parent, 0);
+        LY_CHECK_RET(ly_set_add(&ctx->tpdfs_nodes, typedef_meta->parent, 0) == -1, LY_EMEM);
     }
 
     return LY_SUCCESS;

@@ -2560,7 +2560,7 @@ checks:
 
     /* store data for collision check */
     if (parent && !(parent->nodetype & (LYS_GROUPING | LYS_ACTION | LYS_INOUT | LYS_NOTIF))) {
-        ly_set_add(&ctx->tpdfs_nodes, parent, 0);
+        LY_CHECK_RET(ly_set_add(&ctx->tpdfs_nodes, parent, 0) == -1, LY_EMEM);
     }
 
     return ret;
