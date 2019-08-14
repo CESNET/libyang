@@ -252,5 +252,9 @@ Currently supported bindings are:
 * JavaScript
  * cmake option: `JAVASCRIPT_BINDING`
  * [README](./swig/javascript/README.md)
+ 
+## Fuzzing
 
+A YANG fuzzing target and fuzzing instructions are available in the `tests/fuzz` directory.
 
+An asciinema example describing the process of fuzzing libyang2 with the yangfuzz fuzz harness is available at https://asciinema.org/a/260417.
