@@ -283,7 +283,7 @@ test_models(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
     assert_int_equal(ctx->module_set_id, ly_ctx_get_module_set_id(ctx));
 
-    assert_null(lys_parse_mem_module(ctx, "module x {namespace urn:x;prefix x;}", 3, 1, NULL, NULL));
+    assert_null(lys_parse_mem_module(ctx, "module x {namespace urn:x;prefix x;}", 4, 1, NULL, NULL));
     logbuf_assert("Invalid schema input format.");
 
     /* import callback */

@@ -424,6 +424,29 @@ lysp_type_find(const char *id, struct lysp_node *start_node, struct lysp_module 
     return LY_ENOTFOUND;
 }
 
+LY_ERR
+lysp_check_enum_name(struct lys_parser_ctx *ctx, const char *name, size_t name_len)
+{
+    if (!name_len) {
+        LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Enum name must not be zero-length.");
+        return LY_EVALID;
+    } else if (isspace(name[0]) || isspace(name[name_len - 1])) {
+        LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Enum name must not have any leading or trailing whitespaces (\"%.*s\").",
+                    name_len, name);
+        return LY_EVALID;
+    } else {
+        for (size_t u = 0; u < name_len; ++u) {
+            if (iscntrl(name[u])) {
+                LOGWRN(ctx->ctx, "Control characters in enum name should be avoided (\"%.*s\", character number %d).",
+                    name_len, name, u + 1);
+                break;
+            }
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
 /*
  * @brief Check name of a new type to avoid name collisions.
  *
@@ -509,6 +532,97 @@ static int
 lysp_id_cmp(void *val1, void *val2, int UNUSED(mod), void *UNUSED(cb_data))
 {
     return !strcmp(val1, val2);
+}
+
+LY_ERR
+lysp_parse_finalize_reallocated(struct lys_parser_ctx *ctx, struct lysp_grp *groupings, struct lysp_augment *augments,
+                                struct lysp_action *actions, struct lysp_notif *notifs)
+{
+    unsigned int u, v;
+    struct lysp_node *child;
+
+    /* finalize parent pointers to the reallocated items */
+
+    /* gropings */
+    LY_ARRAY_FOR(groupings, u) {
+        LY_LIST_FOR(groupings[u].data, child) {
+            child->parent = (struct lysp_node*)&groupings[u];
+        }
+        LY_ARRAY_FOR(groupings[u].actions, v) {
+            groupings[u].actions[v].parent = (struct lysp_node*)&groupings[u];
+        }
+        LY_ARRAY_FOR(groupings[u].notifs, v) {
+            groupings[u].notifs[v].parent = (struct lysp_node*)&groupings[u];
+        }
+        LY_ARRAY_FOR(groupings[u].groupings, v) {
+            groupings[u].groupings[v].parent = (struct lysp_node*)&groupings[u];
+        }
+        if (groupings[u].typedefs) {
+            ly_set_add(&ctx->tpdfs_nodes, &groupings[u], 0);
+        }
+    }
+
+    /* augments */
+    LY_ARRAY_FOR(augments, u) {
+        LY_LIST_FOR(augments[u].child, child) {
+            child->parent = (struct lysp_node*)&augments[u];
+        }
+        LY_ARRAY_FOR(augments[u].actions, v) {
+            augments[u].actions[v].parent = (struct lysp_node*)&augments[u];
+        }
+        LY_ARRAY_FOR(augments[u].notifs, v) {
+            augments[u].notifs[v].parent = (struct lysp_node*)&augments[u];
+        }
+    }
+
+    /* actions */
+    LY_ARRAY_FOR(actions, u) {
+        if (actions[u].input.parent) {
+            actions[u].input.parent = (struct lysp_node*)&actions[u];
+            LY_LIST_FOR(actions[u].input.data, child) {
+                child->parent = (struct lysp_node*)&actions[u].input;
+            }
+            LY_ARRAY_FOR(actions[u].input.groupings, v) {
+                actions[u].input.groupings[v].parent = (struct lysp_node*)&actions[u].input;
+            }
+            if (actions[u].input.typedefs) {
+                ly_set_add(&ctx->tpdfs_nodes, &actions[u].input, 0);
+            }
+        }
+        if (actions[u].output.parent) {
+            actions[u].output.parent = (struct lysp_node*)&actions[u];
+            LY_LIST_FOR(actions[u].output.data, child) {
+                child->parent = (struct lysp_node*)&actions[u].output;
+            }
+            LY_ARRAY_FOR(actions[u].output.groupings, v) {
+                actions[u].output.groupings[v].parent = (struct lysp_node*)&actions[u].output;
+            }
+            if (actions[u].output.typedefs) {
+                ly_set_add(&ctx->tpdfs_nodes, &actions[u].output, 0);
+            }
+        }
+        LY_ARRAY_FOR(actions[u].groupings, v) {
+            actions[u].groupings[v].parent = (struct lysp_node*)&actions[u];
+        }
+        if (actions[u].typedefs) {
+            ly_set_add(&ctx->tpdfs_nodes, &actions[u], 0);
+        }
+    }
+
+    /* notifications */
+    LY_ARRAY_FOR(notifs, u) {
+        LY_LIST_FOR(notifs[u].data, child) {
+            child->parent = (struct lysp_node*)&notifs[u];
+        }
+        LY_ARRAY_FOR(notifs[u].groupings, v) {
+            notifs[u].groupings[v].parent = (struct lysp_node*)&notifs[u];
+        }
+        if (notifs[u].typedefs) {
+            ly_set_add(&ctx->tpdfs_nodes, &notifs[u], 0);
+        }
+    }
+
+    return LY_SUCCESS;
 }
 
 LY_ERR
@@ -790,6 +904,41 @@ search_file:
     if (implement) {
         /* mark the module implemented, check for collision was already done */
         (*mod)->implemented = 1;
+    }
+
+    return LY_SUCCESS;
+}
+
+LY_ERR
+lysp_check_stringchar(struct lys_parser_ctx *ctx, unsigned int c)
+{
+    if (!is_yangutf8char(c)) {
+        LOGVAL_PARSER(ctx, LY_VCODE_INCHAR, c);
+        return LY_EVALID;
+    }
+    return LY_SUCCESS;
+}
+
+LY_ERR
+lysp_check_identifierchar(struct lys_parser_ctx *ctx, unsigned int c, int first, int *prefix)
+{
+    if (first || (prefix && (*prefix) == 1)) {
+        if (!is_yangidentstartchar(c)) {
+            LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid identifier first character '%c'.", c);
+            return LY_EVALID;
+        }
+        if (prefix) {
+            if (first) {
+                (*prefix) = 0;
+            } else {
+                (*prefix) = 2;
+            }
+        }
+    } else if (c == ':' && prefix && (*prefix) == 0) {
+        (*prefix) = 1;
+    } else if (!is_yangidentchar(c)) {
+        LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid identifier character '%c'.", c);
+        return LY_EVALID;
     }
 
     return LY_SUCCESS;
@@ -1259,6 +1408,210 @@ lysp_find_module(struct ly_ctx *ctx, const struct lysp_module *mod)
         }
     }
     return NULL;
+}
+
+enum yang_keyword
+lysp_match_kw(struct lys_parser_ctx *ctx, const char **data)
+{
+/**
+ * @brief Move the DATA pointer by COUNT items. Also updates the indent value in yang parser context
+ * @param[in] CTX yang parser context to update its indent value.
+ * @param[in,out] DATA pointer to move
+ * @param[in] COUNT number of items for which the DATA pointer is supposed to move on.
+ */
+#define MOVE_IN(CTX, DATA, COUNT) (*(DATA))+=COUNT;if(CTX){(CTX)->indent+=COUNT;}
+#define IF_KW(STR, LEN, STMT) if (!strncmp(*(data), STR, LEN)) {MOVE_IN(ctx, data, LEN);*kw=STMT;}
+#define IF_KW_PREFIX(STR, LEN) if (!strncmp(*(data), STR, LEN)) {MOVE_IN(ctx, data, LEN);
+#define IF_KW_PREFIX_END }
+
+    enum yang_keyword result = YANG_NONE;
+    enum yang_keyword *kw = &result;
+    /* read the keyword itself */
+    switch (**data) {
+    case 'a':
+        MOVE_IN(ctx, data, 1);
+        IF_KW("rgument", 7, YANG_ARGUMENT)
+        else IF_KW("ugment", 6, YANG_AUGMENT)
+        else IF_KW("ction", 5, YANG_ACTION)
+        else IF_KW_PREFIX("ny", 2)
+            IF_KW("data", 4, YANG_ANYDATA)
+            else IF_KW("xml", 3, YANG_ANYXML)
+        IF_KW_PREFIX_END
+        break;
+    case 'b':
+        MOVE_IN(ctx, data, 1);
+        IF_KW("ase", 3, YANG_BASE)
+        else IF_KW("elongs-to", 9, YANG_BELONGS_TO)
+        else IF_KW("it", 2, YANG_BIT)
+        break;
+    case 'c':
+        MOVE_IN(ctx, data, 1);
+        IF_KW("ase", 3, YANG_CASE)
+        else IF_KW("hoice", 5, YANG_CHOICE)
+        else IF_KW_PREFIX("on", 2)
+            IF_KW("fig", 3, YANG_CONFIG)
+            else IF_KW_PREFIX("ta", 2)
+                IF_KW("ct", 2, YANG_CONTACT)
+                else IF_KW("iner", 4, YANG_CONTAINER)
+            IF_KW_PREFIX_END
+        IF_KW_PREFIX_END
+        break;
+    case 'd':
+        MOVE_IN(ctx, data, 1);
+        IF_KW_PREFIX("e", 1)
+            IF_KW("fault", 5, YANG_DEFAULT)
+            else IF_KW("scription", 9, YANG_DESCRIPTION)
+            else IF_KW_PREFIX("viat", 4)
+                IF_KW("e", 1, YANG_DEVIATE)
+                else IF_KW("ion", 3, YANG_DEVIATION)
+            IF_KW_PREFIX_END
+        IF_KW_PREFIX_END
+        break;
+    case 'e':
+        MOVE_IN(ctx, data, 1);
+        IF_KW("num", 3, YANG_ENUM)
+        else IF_KW_PREFIX("rror-", 5)
+            IF_KW("app-tag", 7, YANG_ERROR_APP_TAG)
+            else IF_KW("message", 7, YANG_ERROR_MESSAGE)
+        IF_KW_PREFIX_END
+        else IF_KW("xtension", 8, YANG_EXTENSION)
+        break;
+    case 'f':
+        MOVE_IN(ctx, data, 1);
+        IF_KW("eature", 6, YANG_FEATURE)
+        else IF_KW("raction-digits", 14, YANG_FRACTION_DIGITS)
+        break;
+    case 'g':
+        MOVE_IN(ctx, data, 1);
+        IF_KW("rouping", 7, YANG_GROUPING)
+        break;
+    case 'i':
+        MOVE_IN(ctx, data, 1);
+        IF_KW("dentity", 7, YANG_IDENTITY)
+        else IF_KW("f-feature", 9, YANG_IF_FEATURE)
+        else IF_KW("mport", 5, YANG_IMPORT)
+        else IF_KW_PREFIX("n", 1)
+            IF_KW("clude", 5, YANG_INCLUDE)
+            else IF_KW("put", 3, YANG_INPUT)
+        IF_KW_PREFIX_END
+        break;
+    case 'k':
+        MOVE_IN(ctx, data, 1);
+        IF_KW("ey", 2, YANG_KEY)
+        break;
+    case 'l':
+        MOVE_IN(ctx, data, 1);
+        IF_KW_PREFIX("e", 1)
+            IF_KW("af-list", 7, YANG_LEAF_LIST)
+            else IF_KW("af", 2, YANG_LEAF)
+            else IF_KW("ngth", 4, YANG_LENGTH)
+        IF_KW_PREFIX_END
+        else IF_KW("ist", 3, YANG_LIST)
+        break;
+    case 'm':
+        MOVE_IN(ctx, data, 1);
+        IF_KW_PREFIX("a", 1)
+            IF_KW("ndatory", 7, YANG_MANDATORY)
+            else IF_KW("x-elements", 10, YANG_MAX_ELEMENTS)
+        IF_KW_PREFIX_END
+        else IF_KW("in-elements", 11, YANG_MIN_ELEMENTS)
+        else IF_KW("ust", 3, YANG_MUST)
+        else IF_KW_PREFIX("od", 2)
+            IF_KW("ule", 3, YANG_MODULE)
+            else IF_KW("ifier", 5, YANG_MODIFIER)
+        IF_KW_PREFIX_END
+        break;
+    case 'n':
+        MOVE_IN(ctx, data, 1);
+        IF_KW("amespace", 8, YANG_NAMESPACE)
+        else IF_KW("otification", 11, YANG_NOTIFICATION)
+        break;
+    case 'o':
+        MOVE_IN(ctx, data, 1);
+        IF_KW_PREFIX("r", 1)
+            IF_KW("dered-by", 8, YANG_ORDERED_BY)
+            else IF_KW("ganization", 10, YANG_ORGANIZATION)
+        IF_KW_PREFIX_END
+        else IF_KW("utput", 5, YANG_OUTPUT)
+        break;
+    case 'p':
+        MOVE_IN(ctx, data, 1);
+        IF_KW("ath", 3, YANG_PATH)
+        else IF_KW("attern", 6, YANG_PATTERN)
+        else IF_KW("osition", 7, YANG_POSITION)
+        else IF_KW_PREFIX("re", 2)
+            IF_KW("fix", 3, YANG_PREFIX)
+            else IF_KW("sence", 5, YANG_PRESENCE)
+        IF_KW_PREFIX_END
+        break;
+    case 'r':
+        MOVE_IN(ctx, data, 1);
+        IF_KW("ange", 4, YANG_RANGE)
+        else IF_KW_PREFIX("e", 1)
+            IF_KW_PREFIX("f", 1)
+                IF_KW("erence", 6, YANG_REFERENCE)
+                else IF_KW("ine", 3, YANG_REFINE)
+            IF_KW_PREFIX_END
+            else IF_KW("quire-instance", 14, YANG_REQUIRE_INSTANCE)
+            else IF_KW("vision-date", 11, YANG_REVISION_DATE)
+            else IF_KW("vision", 6, YANG_REVISION)
+        IF_KW_PREFIX_END
+        else IF_KW("pc", 2, YANG_RPC)
+        break;
+    case 's':
+        MOVE_IN(ctx, data, 1);
+        IF_KW("tatus", 5, YANG_STATUS)
+        else IF_KW("ubmodule", 8, YANG_SUBMODULE)
+        break;
+    case 't':
+        MOVE_IN(ctx, data, 1);
+        IF_KW("ypedef", 6, YANG_TYPEDEF)
+        else IF_KW("ype", 3, YANG_TYPE)
+        break;
+    case 'u':
+        MOVE_IN(ctx, data, 1);
+        IF_KW_PREFIX("ni", 2)
+            IF_KW("que", 3, YANG_UNIQUE)
+            else IF_KW("ts", 2, YANG_UNITS)
+        IF_KW_PREFIX_END
+        else IF_KW("ses", 3, YANG_USES)
+        break;
+    case 'v':
+        MOVE_IN(ctx, data, 1);
+        IF_KW("alue", 4, YANG_VALUE)
+        break;
+    case 'w':
+        MOVE_IN(ctx, data, 1);
+        IF_KW("hen", 3, YANG_WHEN)
+        break;
+    case 'y':
+        MOVE_IN(ctx, data, 1);
+        IF_KW("ang-version", 11, YANG_YANG_VERSION)
+        else IF_KW("in-element", 10, YANG_YIN_ELEMENT)
+        break;
+    default:
+        /* if context is not NULL we are matching keyword from YANG data*/
+        if (ctx) {
+            if (**data == ';') {
+                MOVE_IN(ctx, data, 1);
+                *kw = YANG_SEMICOLON;
+            } else if (**data == '{') {
+                MOVE_IN(ctx, data, 1);
+                *kw = YANG_LEFT_BRACE;
+            } else if (**data == '}') {
+                MOVE_IN(ctx, data, 1);
+                *kw = YANG_RIGHT_BRACE;
+            }
+        }
+        break;
+    }
+
+#undef IF_KW
+#undef IF_KW_PREFIX
+#undef IF_KW_PREFIX_END
+#undef MOVE_IN
+
+    return result;
 }
 
 unsigned int

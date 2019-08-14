@@ -219,6 +219,7 @@ set(libsrc
     src/tree_schema_compile.c
     src/tree_schema_helpers.c
     src/parser_yang.c
+    src/parser_yin.c
     src/printer.c
     src/printer_schema.c
     src/printer_yang.c

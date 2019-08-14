@@ -19,13 +19,51 @@
 
 #include "set.h"
 #include "tree_schema.h"
+#include "xml.h"
 
-#define LOGVAL_YANG(CTX, ...) LOGVAL((CTX)->ctx, LY_VLOG_LINE, &(CTX)->line, __VA_ARGS__)
+#define LOGVAL_PARSER(CTX, ...) LOGVAL((CTX)->ctx, LY_VLOG_LINE, &(CTX)->line, __VA_ARGS__)
 
 /* These 2 macros checks YANG's identifier grammar rule */
 #define is_yangidentstartchar(c) ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_')
 #define is_yangidentchar(c) ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || \
-        c == '_' || c == '-' || c == '.')
+                              c == '_' || c == '-' || c == '.')
+
+/* Macro to check YANG's yang-char grammar rule */
+#define is_yangutf8char(c) ((c >= 0x20 && c <= 0xd7ff) || c == 0x09 || c == 0x0a || c == 0x0d || \
+                            (c >= 0xe000 && c <= 0xfdcf)   || (c >= 0xfdf0 && c <= 0xfffd)   || \
+                            (c >= 0x10000 && c <= 0x1fffd) || (c >= 0x20000 && c <= 0x2fffd) || \
+                            (c >= 0x30000 && c <= 0x3fffd) || (c >= 0x40000 && c <= 0x2fffd) || \
+                            (c >= 0x50000 && c <= 0x5fffd) || (c >= 0x60000 && c <= 0x6fffd) || \
+                            (c >= 0x70000 && c <= 0x7fffd) || (c >= 0x80000 && c <= 0x8fffd) || \
+                            (c >= 0x90000 && c <= 0x9fffd) || (c >= 0xa0000 && c <= 0xafffd) || \
+                            (c >= 0xb0000 && c <= 0xbfffd) || (c >= 0xc0000 && c <= 0xcfffd) || \
+                            (c >= 0xd0000 && c <= 0xdfffd) || (c >= 0xe0000 && c <= 0xefffd) || \
+                            (c >= 0xf0000 && c <= 0xffffd) || (c >= 0x100000 && c <= 0x10fffd))
+
+/**
+ * @brief Try to find object with MEMBER string matching the IDENT in the given ARRAY.
+ * Macro logs an error message and returns LY_EVALID in case of existence of a matching object.
+ *
+ * @param[in] CTX yang parser context for logging.
+ * @param[in] ARRAY [sized array](@ref sizedarrays) of a generic objects with member named MEMBER to search.
+ * @param[in] MEMBER Name of the member of the objects in the ARRAY to compare.
+ * @param[in] STMT Name of the compared YANG statements for logging.
+ * @param[in] IDENT String trying to find in the ARRAY's objects inside the MEMBER member.
+ */
+#define CHECK_UNIQUENESS(CTX, ARRAY, MEMBER, STMT, IDENT) \
+    if (ARRAY) { \
+        for (unsigned int u = 0; u < LY_ARRAY_SIZE(ARRAY) - 1; ++u) { \
+            if (!strcmp((ARRAY)[u].MEMBER, IDENT)) { \
+                LOGVAL_PARSER(CTX, LY_VCODE_DUPIDENT, IDENT, STMT); \
+                return LY_EVALID; \
+            } \
+        } \
+    }
+
+#define YANG_CHECK_NONEMPTY(CTX, VALUE_LEN, STMT) \
+    if (!VALUE_LEN) { \
+        LOGWRN((CTX)->ctx, "Empty argument of %s statement does not make sense.", STMT); \
+    }
 
 /**
  * @brief List of YANG statement groups - the (sub)module's substatements
@@ -49,16 +87,38 @@ enum yang_arg {
 };
 
 /**
- * @brief internal context for schema parsers
+ * @brief Internal context for yang schema parser.
  */
 struct lys_parser_ctx {
-    struct ly_ctx *ctx;
-    struct ly_set tpdfs_nodes;
-    struct ly_set grps_nodes;
-    uint64_t line;      /**< line number */
-    uint64_t indent;    /**< current position on the line for YANG indentation */
-    uint8_t mod_version; /**< module's version */
+    struct ly_set tpdfs_nodes;  /**< set of typedef nodes */
+    struct ly_set grps_nodes;   /**< set of grouping nodes */
+    uint8_t mod_version;        /**< module's version */
+    struct ly_ctx *ctx;         /**< context of then yang schemas */
+    uint64_t line;              /**< line number */
+    uint64_t indent;            /**< current position on the line for YANG indentation */
 };
+
+/**
+ * @brief free lys parser context.
+ */
+void lys_parser_ctx_free(struct lys_parser_ctx *ctx);
+
+/**
+ * @brief Internal context for yin schema parser.
+ */
+struct yin_parser_ctx {
+    struct ly_set tpdfs_nodes;     /**< set of typedef nodes */
+    struct ly_set grps_nodes;      /**< set of grouping nodes */
+    uint8_t mod_version;           /**< module's version */
+    struct lyxml_context xml_ctx;  /**< context for xml parser */
+};
+
+/**
+ * @brief free yin parser context
+ *
+ * @param[in] ctx Context to free.
+ */
+void yin_parser_ctx_free(struct yin_parser_ctx *ctx);
 
 struct lysc_incomplete_dflt {
     struct lyd_value *dflt;
@@ -85,6 +145,31 @@ struct lysc_ctx {
 #define LYSC_CTX_BUFSIZE 4078
     char path[LYSC_CTX_BUFSIZE];
 };
+
+/**
+ * @brief Check that \p c is valid UTF8 code point for YANG string.
+ *
+ * @param[in] ctx yang parser context for logging.
+ * @param[in] c UTF8 code point of a character to check.
+ * @return LY_ERR values.
+ */
+LY_ERR lysp_check_stringchar(struct lys_parser_ctx *ctx, unsigned int c);
+
+/**
+ * @brief Check that \p c is valid UTF8 code point for YANG identifier.
+ *
+ * @param[in] ctx yang parser context for logging.
+ * @param[in] c UTF8 code point of a character to check.
+ * @param[in] first Flag to check the first character of an identifier, which is more restricted.
+ * @param[in,out] prefix Storage for internally used flag in case of possible prefixed identifiers:
+ * 0 - colon not yet found (no prefix)
+ * 1 - \p c is the colon character
+ * 2 - prefix already processed, now processing the identifier
+ *
+ * If the identifier cannot be prefixed, NULL is expected.
+ * @return LY_ERR values.
+ */
+LY_ERR lysp_check_identifierchar(struct lys_parser_ctx *ctx, unsigned int c, int first, int *prefix);
 
 /**
  * @brief Internal structure for lys_get_prefix().
@@ -145,13 +230,26 @@ LY_ERR lysp_check_date(struct lys_parser_ctx *ctx, const char *date, int date_le
 LY_ERR lysp_check_typedefs(struct lys_parser_ctx *ctx, struct lysp_module *mod);
 
 /**
+ * @brief Finalize some of the structures in case they are stored in sized array,
+ * which can be possibly reallocated and some other data may point to them.
+ *
+ * Update parent pointers in the nodes inside grouping/augment/RPC/Notification, which could be reallocated.
+ *
+ * @param[in] mod Parsed module to be updated.
+ * @return LY_ERR value (currently only LY_SUCCESS, but it can change in future).
+ */
+LY_ERR
+lysp_parse_finalize_reallocated(struct lys_parser_ctx *ctx, struct lysp_grp *groupings, struct lysp_augment *augments,
+                                struct lysp_action *actions, struct lysp_notif *notifs);
+
+/**
  * @brief Just move the newest revision into the first position, does not sort the rest
  * @param[in] revs Sized-array of the revisions in a printable schema tree.
  */
 void lysp_sort_revisions(struct lysp_revision *revs);
 
 /**
- * @brief Find type specified type definition
+ * @brief Find type specified type definition.
  *
  * @param[in] id Name of the type including possible prefix. Module where the prefix is being searched is start_module.
  * @param[in] start_node Context node where the type is being instantiated to be able to search typedefs in parents.
@@ -163,6 +261,17 @@ void lysp_sort_revisions(struct lysp_revision *revs);
  */
 LY_ERR lysp_type_find(const char *id, struct lysp_node *start_node, struct lysp_module *start_module,
                       LY_DATA_TYPE *type, const struct lysp_tpdf **tpdf, struct lysp_node **node, struct lysp_module **module);
+
+/**
+ * @brief Validate enum name.
+ *
+ * @param[in] ctx yang parser context for logging.
+ * @param[in] name String to check.
+ * @param[in] name_len Length of name.
+ *
+ * @return LY_ERR values
+ */
+LY_ERR lysp_check_enum_name(struct lys_parser_ctx *ctx, const char *name, size_t name_len);
 
 /**
  * @brief Find and parse module of the given name.
@@ -678,12 +787,15 @@ void lys_module_free(struct lys_module *module, void (*private_destructor)(const
 
 /**
  * @brief Parse submodule from YANG data.
- * @param[in] ctx Parser context.
+ * @param[in,out] ctx Parser context.
+ * @param[in] ly_ctx Context of YANG schemas.
+ * @param[in] main_ctx Parser context of main module.
  * @param[in] data Input data to be parsed.
  * @param[out] submod Pointer to the parsed submodule structure.
  * @return LY_ERR value - LY_SUCCESS, LY_EINVAL or LY_EVALID.
  */
-LY_ERR yang_parse_submodule(struct lys_parser_ctx *ctx, const char *data, struct lysp_submodule **submod);
+LY_ERR yang_parse_submodule(struct lys_parser_ctx **context, struct ly_ctx *ly_ctx, struct lys_parser_ctx *main_ctx,
+                            const char *data, struct lysp_submodule **submod);
 
 /**
  * @brief Parse module from YANG data.
@@ -693,7 +805,34 @@ LY_ERR yang_parse_submodule(struct lys_parser_ctx *ctx, const char *data, struct
  * module structure, will be filled in.
  * @return LY_ERR value - LY_SUCCESS, LY_EINVAL or LY_EVALID.
  */
-LY_ERR yang_parse_module(struct lys_parser_ctx *ctx, const char *data, struct lys_module *mod);
+LY_ERR yang_parse_module(struct lys_parser_ctx **context, const char *data, struct lys_module *mod);
+
+/**
+ * @brief Parse module from YIN data.
+ *
+ * @param[in,out] yin_ctx Context created during parsing, is used to finalize lysp_model after it's completly parsed.
+ * @param[in] data Input data to be parsed.
+ * @param[in,out] mod Prepared module structure where the parsed information, including the parsed
+ * module structure, will be filled in.
+ *
+ * @return LY_ERR values.
+ */
+LY_ERR yin_parse_module(struct yin_parser_ctx **yin_ctx, const char *data, struct lys_module *mod);
+
+/**
+ * @brief Parse submodule from YIN data.
+ *
+ * @param[in,out] yin_ctx Context created during parsing, is used to finalize lysp_model after it's completly parsed.
+ * @param[in] ctx Libyang context.
+ * @param[in] main_ctx Parser context of main module.
+ * @param[in,out] data Input data to be parsed.
+ * @param[in,out] submod Submodule structure where the parsed information, will be filled in.
+ *
+ * @return LY_ERR values.
+ */
+LY_ERR yin_parse_submodule(struct yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, struct lys_parser_ctx *main_ctx,
+                           const char *data, struct lysp_submodule **submod);
+
 
 /**
  * @brief Make the specific module implemented, use the provided value as flag.
@@ -706,5 +845,15 @@ LY_ERR yang_parse_module(struct lys_parser_ctx *ctx, const char *data, struct ly
  * same module which is already implemented.
  */
 LY_ERR ly_ctx_module_implement_internal(struct ly_ctx *ctx, struct lys_module *mod, uint8_t implemented);
+
+/**
+ * @brief match yang keyword
+ *
+ * param[in] ctx yang parser context for logging, can be NULL if keyword is from YIN data.
+ * param[in,out] data Data to read from, always moved to currently handled character.
+ *
+ * return yang_keyword values.
+ */
+enum yang_keyword lysp_match_kw(struct lys_parser_ctx *ctx, const char **data);
 
 #endif /* LY_TREE_SCHEMA_INTERNAL_H_ */

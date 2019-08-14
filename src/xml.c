@@ -720,7 +720,7 @@ element_endtag_check:
                     e = (struct lyxml_elem*)context->elements.objs[context->elements.count - 1];
                     LY_CHECK_ERR_GOTO(e->prefix_len != prefix_len || e->name_len != name_len
                                       || (prefix_len && strncmp(prefix, e->prefix, e->prefix_len)) || strncmp(name, e->name, e->name_len),
-                            free(e); LOGVAL(ctx, LY_VLOG_LINE, &fakecontext.line, LYVE_SYNTAX,
+                            free(e); --context->elements.count; LOGVAL(ctx, LY_VLOG_LINE, &fakecontext.line, LYVE_SYNTAX,
                                             "Opening and closing elements tag missmatch (\"%.*s\").", name_len, name),
                             error);
                     /* opening and closing element tags matches */

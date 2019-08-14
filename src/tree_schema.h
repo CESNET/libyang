@@ -125,19 +125,22 @@ struct lysp_stmt {
     const char *arg;                 /**< statement's argument */
     struct lysp_stmt *next;          /**< link to the next statement */
     struct lysp_stmt *child;         /**< list of the statement's substatements (linked list) */
-    uint16_t flags;
+    uint16_t flags;                  /**< statement flags, can be set to LYS_YIN_ATTR */
 };
+
+#define LYS_YIN 0x1 /**< used to specify input format of extension instance */
 
 /**
  * @brief YANG extension instance
  */
 struct lysp_ext_instance {
-    const char *name;                /**< extension identifier, including possible prefix */
-    const char *argument;            /**< optional value of the extension's argument */
-    struct lysp_stmt *child;         /**< list of the extension's substatements (linked list) */
-    LYEXT_SUBSTMT insubstmt;         /**< value identifying placement of the extension instance */
-    uint32_t insubstmt_index;        /**< in case the instance is in a substatement, this identifies
-                                          the index of that substatement */
+    const char *name;                       /**< extension identifier, including possible prefix */
+    const char *argument;                   /**< optional value of the extension's argument */
+    struct lysp_stmt *child;                /**< list of the extension's substatements (linked list) */
+    LYEXT_SUBSTMT insubstmt;                /**< value identifying placement of the extension instance */
+    uint32_t insubstmt_index;               /**< in case the instance is in a substatement, this identifies
+                                                 the index of that substatement */
+    uint8_t yin;                            /** flag for YIN source format, can be set to LYS_YIN */
 };
 
 /**
@@ -344,7 +347,6 @@ struct lysp_deviate_del {
     struct lysp_restr *musts;        /**< list of must restrictions ([sized array](@ref sizedarrays)) */
     const char **uniques;            /**< list of uniques specifications ([sized array](@ref sizedarrays)) */
     const char **dflts;              /**< list of default values ([sized array](@ref sizedarrays)) */
-    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
 };
 
 struct lysp_deviate_rpl {
@@ -419,6 +421,7 @@ struct lysp_deviation {
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *      11 LYS_SET_MAX      | | | |x|x| | | | | | | | | | | | |x| |x| | | |
  *         LYS_USED_GRP     | | | | | | | | | | | | | | | |x| | | | | | | |
+ *         LYS_YIN_ATTR     | | | | | | | | | | | | | | | | | | | | | | |x|
  *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  */
@@ -531,6 +534,8 @@ struct lysp_deviation {
 
 #define LYS_SINGLEQUOTED 0x100       /**< flag for single-quoted argument of an extension instance's substatement */
 #define LYS_DOUBLEQUOTED 0x200       /**< flag for double-quoted argument of an extension instance's substatement */
+
+#define LYS_YIN_ATTR     0x400       /**< flag to identify YIN attribute */
 
 #define LYS_ISENUM       0x200       /**< flag to simply distinguish type in struct lysc_type_bitenum_item */
 

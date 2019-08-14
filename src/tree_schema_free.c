@@ -54,7 +54,7 @@ lysp_ext_instance_free(struct ly_ctx *ctx, struct lysp_ext_instance *ext)
     }
 }
 
-static void
+void
 lysp_import_free(struct ly_ctx *ctx, struct lysp_import *import)
 {
     /* imported module is freed directly from the context's list */
@@ -65,7 +65,7 @@ lysp_import_free(struct ly_ctx *ctx, struct lysp_import *import)
     FREE_ARRAY(ctx, import->exts, lysp_ext_instance_free);
 }
 
-static void
+void
 lysp_include_free(struct ly_ctx *ctx, struct lysp_include *include)
 {
     if (include->submodule) {
@@ -77,7 +77,7 @@ lysp_include_free(struct ly_ctx *ctx, struct lysp_include *include)
     FREE_ARRAY(ctx, include->exts, lysp_ext_instance_free);
 }
 
-static void
+void
 lysp_revision_free(struct ly_ctx *ctx, struct lysp_revision *rev)
 {
     FREE_STRING(ctx, rev->dsc);
@@ -85,7 +85,7 @@ lysp_revision_free(struct ly_ctx *ctx, struct lysp_revision *rev)
     FREE_ARRAY(ctx, rev->exts, lysp_ext_instance_free);
 }
 
-static void
+void
 lysp_ext_free(struct ly_ctx *ctx, struct lysp_ext *ext)
 {
     FREE_STRING(ctx, ext->name);
@@ -138,7 +138,7 @@ lysp_type_enum_free(struct ly_ctx *ctx, struct lysp_type_enum *item)
 }
 
 void lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type);
-static void
+void
 lysp_type_free(struct ly_ctx *ctx, struct lysp_type *type)
 {
     FREE_STRING(ctx, type->name);
@@ -156,7 +156,7 @@ lysp_type_free(struct ly_ctx *ctx, struct lysp_type *type)
     }
 }
 
-static void
+void
 lysp_tpdf_free(struct ly_ctx *ctx, struct lysp_tpdf *tpdf)
 {
     FREE_STRING(ctx, tpdf->name);
@@ -306,7 +306,7 @@ lysp_deviation_free(struct ly_ctx *ctx, struct lysp_deviation *dev)
     FREE_ARRAY(ctx, dev->exts, lysp_ext_instance_free);
 }
 
-static void
+void
 lysp_refine_free(struct ly_ctx *ctx, struct lysp_refine *ref)
 {
     FREE_STRING(ctx, ref->nodeid);
@@ -860,4 +860,21 @@ lys_module_free(struct lys_module *module, void (*private_destructor)(const stru
     FREE_STRING(module->ctx, module->ref);
 
     free(module);
+}
+
+void
+lys_parser_ctx_free(struct lys_parser_ctx *ctx)
+{
+    if (ctx) {
+        free(ctx);
+    }
+}
+
+void
+yin_parser_ctx_free(struct yin_parser_ctx *ctx)
+{
+    if (ctx) {
+        lyxml_context_clear(&ctx->xml_ctx);
+        free(ctx);
+    }
 }

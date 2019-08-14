@@ -178,6 +178,12 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_EOF         LYVE_SYNTAX, "Unexpected end-of-input."
 #define LY_VCODE_NTERM       LYVE_SYNTAX, "%s not terminated."
 #define LY_VCODE_NSUPP       LYVE_SYNTAX, "%s not supported."
+#define LY_VCODE_MOD_SUBOMD  LYVE_SYNTAX, "Invalid keyword \"%s\", expected \"module\" or \"submodule\"."
+#define LY_VCODE_TRAILING_MOD LYVE_SYNTAX, "Trailing garbage \"%.*s%s\" after module, expected end-of-input."
+#define LY_VCODE_TRAILING_SUBMOD LYVE_SYNTAX, "Trailing garbage \"%.*s%s\" after submodule, expected end-of-input."
+
+#define LY_VCODE_INVAL_MINMAX LYVE_SEMANTICS, "Invalid combination of min-elements and max-elements: min value %u is bigger than the max value %u."
+
 #define LY_VCODE_INSTMT      LYVE_SYNTAX_YANG, "Invalid keyword \"%s\"."
 #define LY_VCODE_INCHILDSTMT LYVE_SYNTAX_YANG, "Invalid keyword \"%s\" as a child of \"%s\"."
 #define LY_VCODE_INCHILDSTMT2 LYVE_SYNTAX_YANG, "Invalid keyword \"%s\" as a child of \"%s\" - the statement is allowed only in YANG 1.1 modules."
@@ -191,8 +197,24 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_OOB         LYVE_SYNTAX_YANG, "Value \"%.*s\" is out of \"%s\" bounds."
 #define LY_VCODE_INDEV       LYVE_SYNTAX_YANG, "Deviate \"%s\" does not support keyword \"%s\"."
 #define LY_VCODE_INREGEXP    LYVE_SYNTAX_YANG, "Regular expression \"%s\" is not valid (\"%s\": %s)."
+
+#define LY_VCODE_INSUBELEM2   LYVE_SYNTAX_YIN, "Invalid sub-elemnt \"%s\" of \"%s\" element - this sub-element is allowed only in modules with version 1.1 or newer."
+#define LY_VCODE_INVAL_YIN   LYVE_SYNTAX_YIN, "Invalid value \"%s\" of \"%s\" attribute in \"%s\" element."
+#define LY_VCODE_UNEXP_SUBELEM LYVE_SYNTAX_YIN, "Unexpected sub-element \"%.*s\" of \"%s\" element."
+#define LY_VCODE_INDEV_YIN   LYVE_SYNTAX_YIN, "Deviate of this type doesn't allow \"%s\" as it's sub-element."
+#define LY_VCODE_INORDER_YIN LYVE_SYNTAX_YIN, "Invalid order of %s\'s sub-elements \"%s\" can't appear after \"%s\"."
+#define LY_VCODE_OOB_YIN      LYVE_SYNTAX_YIN, "Value \"%s\" of \"%s\" attribute in \"%s\" element is out of bounds."
+#define LY_VCODE_INCHILDSTMSCOMB_YIN LYVE_SYNTAX_YIN, "Invalid combination of sub-elemnts \"%s\" and \"%s\" in \"%s\" element."
+#define LY_VCODE_DUP_ATTR LYVE_SYNTAX_YIN, "Duplicit definition of \"%s\" attribute in \"%s\" element."
+#define LY_VCODE_UNEXP_ATTR LYVE_SYNTAX_YIN, "Unexpected attribute \"%.*s\" of \"%s\" element."
+#define LY_VCODE_MAND_SUBELEM LYVE_SYNTAX_YIN, "Missing mandatory sub-element \"%s\" of \"%s\" element."
+#define LY_VCODE_FIRT_SUBELEM LYVE_SYNTAX_YIN, "Sub-element \"%s\" of \"%s\" element must be defined as it's first sub-element."
+#define LY_VCODE_NAME_COL LYVE_SYNTAX_YIN, "Name collision between module and submodule of name \"%s\"."
+#define LY_VCODE_SUBELEM_REDEF LYVE_SYNTAX_YIN, "Redefinition of \"%s\" sub-element in \"%s\" element."
+
 #define LY_VCODE_XP_EOE      LYVE_XPATH, "Unterminated string delimited with %c (%.15s)."
 #define LY_VCODE_XP_INEXPR   LYVE_XPATH, "Invalid character number %u of expression \'%s\'."
+
 #define LY_VCODE_DEV_NODETYPE LYVE_REFERENCE, "Invalid deviation of %s node - it is not possible to %s \"%s\" property."
 #define LY_VCODE_DEV_NOT_PRESENT LYVE_REFERENCE, "Invalid deviation %s \"%s\" property \"%s\" which is not present."
 
@@ -320,7 +342,10 @@ enum yang_keyword {
     YANG_SEMICOLON,
     YANG_LEFT_BRACE,
     YANG_RIGHT_BRACE,
-    YANG_CUSTOM
+    YANG_CUSTOM,
+
+    YIN_TEXT,
+    YIN_VALUE
 };
 
 /* list of the YANG statements strings */
@@ -599,4 +624,36 @@ LY_ERR ly_strcat(char **dest, const char *format, ...);
  */
 #define LY_ARRAY_FREE(ARRAY) \
         if (ARRAY){free((uint32_t*)(ARRAY) - 1);}
+
+/**
+ * @brief insert item into linked list.
+ *
+ * @param[in,out] LIST Linked list to add to.
+ * @param[in] NEW_ITEM New item, that will be appended to the list, must be already allocated.
+ * @param[in] LINKER name of structuin member that is used to connect items together.
+ */
+#define LY_LIST_INSERT(LIST, NEW_ITEM, LINKER)\
+    if (!(*LIST)) { \
+        *LIST = (__typeof__(*(LIST)))NEW_ITEM; \
+    } else { \
+        do { \
+            __typeof__(*(LIST)) iterator; \
+            for (iterator = *(LIST); iterator->LINKER; iterator = iterator->LINKER); \
+            iterator->LINKER = (__typeof__(*(LIST)))NEW_ITEM; \
+        } while (0); \
+    }
+
+/**
+ * @brief allocate and insert new item inro linked list.
+ *
+ * @param[in] CTX used for loggin.
+ * @param[in,out] LIST Linker list to add to.
+ * @param[out] NEW_ITEM New item that was appended to the list.
+ * @param[in] LINKER name of structuin member that is used to connect items together.
+ */
+#define LY_LIST_NEW_RET(CTX, LIST, NEW_ITEM, LINKER) \
+    NEW_ITEM = calloc(1, sizeof *NEW_ITEM); \
+    LY_CHECK_ERR_RET(!(NEW_ITEM), LOGMEM(CTX), LY_EMEM); \
+    LY_LIST_INSERT(LIST, NEW_ITEM, LINKER)
+
 #endif /* LY_COMMON_H_ */
