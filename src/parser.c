@@ -1704,7 +1704,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         break;
 
     case LY_TYPE_STRING:
-        if (!trusted && validate_length_range(0, (value ? strlen_utf8(value) : 0), 0, 0, 0, type, value, contextnode)) {
+        if (!trusted && validate_length_range(0, (value ? ly_strlen_utf8(value) : 0), 0, 0, 0, type, value, contextnode)) {
             goto error;
         }
 

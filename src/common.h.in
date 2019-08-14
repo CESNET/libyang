@@ -436,6 +436,11 @@ int64_t dec_pow(uint8_t exp);
 
 int dec64cmp(int64_t num1, uint8_t dig1, int64_t num2, uint8_t dig2);
 
-size_t strlen_utf8(const char *str);
+/**
+ * @brief Get number of characters in the @p str, taking multibyte characters into account.
+ * @param[in] str String to examine.
+ * @return Number of characters in (possibly) multibyte characters string.
+ */
+size_t ly_strlen_utf8(const char *str);
 
 #endif /* LY_COMMON_H_ */
