@@ -125,9 +125,11 @@ struct lysp_stmt {
     const char *arg;                 /**< statement's argument */
     struct lysp_stmt *next;          /**< link to the next statement */
     struct lysp_stmt *child;         /**< list of the statement's substatements (linked list) */
-    uint16_t flags;                  /**<  */
+    uint16_t flags;                  /**< statement flags, can be se to LYS_YIN */
 };
-#define LYS_YIN 0x1
+
+#define LYS_YIN 0x1 /**< used to specify input format of extension instance */
+
 /**
  * @brief YANG extension instance
  */
@@ -138,7 +140,7 @@ struct lysp_ext_instance {
     LYEXT_SUBSTMT insubstmt;                /**< value identifying placement of the extension instance */
     uint32_t insubstmt_index;               /**< in case the instance is in a substatement, this identifies
                                                  the index of that substatement */
-    uint8_t yin;                            /** flag for YIN source format */
+    uint8_t yin;                            /** flag for YIN source format, can be set to LYS_YIN */
 };
 
 /**
@@ -419,6 +421,7 @@ struct lysp_deviation {
  *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *      11 LYS_SET_MAX      | | | |x|x| | | | | | | | | | | | |x| |x| | | |
  *         LYS_USED_GRP     | | | | | | | | | | | | | | | |x| | | | | | | |
+ *         LYS_YIN_ATTR     | | | | | | | | | | | | | | | | | | | | | | |x|
  *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  */
@@ -532,7 +535,7 @@ struct lysp_deviation {
 #define LYS_SINGLEQUOTED 0x100       /**< flag for single-quoted argument of an extension instance's substatement */
 #define LYS_DOUBLEQUOTED 0x200       /**< flag for double-quoted argument of an extension instance's substatement */
 
-#define LYS_YIN_ATTR     0x1000      /**< flag to identify YIN attribute */
+#define LYS_YIN_ATTR     0x400       /**< flag to identify YIN attribute */
 
 #define LYS_ISENUM       0x200       /**< flag to simply distinguish type in struct lysc_type_bitenum_item */
 
