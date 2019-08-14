@@ -782,8 +782,11 @@ ly_type_store_string(struct ly_ctx *ctx, struct lysc_type *type, const char *val
     /* length restriction of the string */
     if (type_str->length) {
         char buf[22];
-        snprintf(buf, 22, "%lu", value_len);
-        LY_CHECK_RET(ly_type_validate_range(LY_TYPE_BINARY, type_str->length, value_len, buf, err));
+        size_t char_count = ly_utf8len(value, value_len);
+
+        /* value_len is in bytes, but we need number of chaarcters here */
+        snprintf(buf, 22, "%lu", char_count);
+        LY_CHECK_RET(ly_type_validate_range(LY_TYPE_BINARY, type_str->length, char_count, buf, err));
     }
 
     /* pattern restrictions */

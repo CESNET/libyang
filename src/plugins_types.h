@@ -94,7 +94,7 @@ void ly_err_free(void *ptr);
  * @param[in] type Type of the value being canonized.
  * @param[in] value Lexical representation of the value to be validated (and canonized).
  *            It is never NULL, empty string is represented as "" with zero @p value_len.
- * @param[in] value_len Length of the given \p value.
+ * @param[in] value_len Length (number of bytes) of the given \p value.
  * @param[in] options [Type plugin options ](@ref plugintypeopts).
  *
  * @param[in] resolve_prefix Parser-specific callback to resolve prefixes used in the value strings.
@@ -266,7 +266,7 @@ LY_ERR ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, i
  * @param[in] patterns ([Sized array](@ref sizedarrays)) of the compiled list of pointers to the pattern restrictions.
  * The array can be found in the lysc_type_str::patterns structure.
  * @param[in] str String to validate.
- * @param[in] str_len Length of the string to validate (mandatory).
+ * @param[in] str_len Length (number of bytes) of the string to validate (mandatory).
  * @param[out] err Error information in case of failure or non-matching @p str. The error structure can be freed by ly_err_free().
  * @return LY_SUCCESS when @p matches all the patterns.
  * @return LY_EVALID when @p does not match any of the patterns.

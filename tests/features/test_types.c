@@ -84,6 +84,7 @@ setup(void **state)
             "leaf dec64-norestr {type decimal64 {fraction-digits 18;}}"
             "leaf str {type string {length 8..10; pattern '[a-z ]*';}}"
             "leaf str-norestr {type string;}"
+            "leaf str-utf8 {type string{length 2..5; pattern '€*';}}"
             "leaf bool {type boolean;}"
             "leaf empty {type empty;}"
             "leaf ident {type identityref {base defs:interface-type;}}"
@@ -361,6 +362,24 @@ test_string(void **state)
     leaf = (struct lyd_node_term*)tree;
     assert_string_equal("teststring", leaf->value.canonized);
     lyd_free_all(tree);
+
+    /* multibyte characters (€ encodes as 3-byte UTF8 character, length restriction is 2-5) */
+    data = "<str-utf8 xmlns=\"urn:tests:types\">€€</str-utf8>";
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("str-utf8", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("€€", leaf->value.canonized);
+    lyd_free_all(tree);
+    data = "<str-utf8 xmlns=\"urn:tests:types\">€</str-utf8>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    logbuf_assert("Length \"1\" does not satisfy the length constraint. /");
+    data = "<str-utf8 xmlns=\"urn:tests:types\">€€€€€€</str-utf8>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    logbuf_assert("Length \"6\" does not satisfy the length constraint. /");
+    data = "<str-utf8 xmlns=\"urn:tests:types\">€€x</str-utf8>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    logbuf_assert("String \"€€x\" does not conforms to the 1. pattern restriction of its type. /");
 
     /* invalid length */
     data = "<str xmlns=\"urn:tests:types\">short</str>";
