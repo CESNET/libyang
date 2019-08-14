@@ -490,11 +490,20 @@ repeat:
         }
         leaf->value_str = lydict_insert(ctx, &data[len], r);
         len += r;
-    } else if (!strncmp(&data[len], "[null]", 6)) {
-        /* empty */
+    } else if (data[len] == '[') {
+        /* empty '[' WSP 'null' WSP ']' */
+        for (r = len + 1; isspace(data[r]); ++r);
+        if (strncmp(&data[r], "null", 4)) {
+            goto inval;
+        }
+        for (r += 4; isspace(data[r]); ++r);
+        if (data[r] != ']') {
+            goto inval;
+        }
         leaf->value_str = lydict_insert(ctx, "", 0);
-        len += 6;
+        len = r + 1;
     } else {
+inval:
         /* error */
         LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_LYD, leaf, "JSON data (unexpected value)");
         return 0;
