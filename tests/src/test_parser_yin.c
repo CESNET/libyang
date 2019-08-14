@@ -512,7 +512,7 @@ test_yin_parse_content(void **state)
                                             {YANG_CONFIG, &config, 0},
                                             {YANG_DEFAULT, &def, YIN_SUBELEM_UNIQUE},
                                             {YANG_ENUM, &enum_type, 0},
-                                            {YANG_ERROR_APP_TAG, &app_tag, 0},
+                                            {YANG_ERROR_APP_TAG, &app_tag, YIN_SUBELEM_UNIQUE},
                                             {YANG_ERROR_MESSAGE, &err_msg, 0},
                                             {YANG_EXTENSION, &ext_def, 0},
                                             {YANG_IF_FEATURE, &if_features, 0},
@@ -521,7 +521,7 @@ test_yin_parse_content(void **state)
                                             {YANG_POSITION, &pos_enum, 0},
                                             {YANG_RANGE, &range_type, 0},
                                             {YANG_REQUIRE_INSTANCE, &req_type, 0},
-                                            {YANG_UNITS, &units, 0},
+                                            {YANG_UNITS, &units, YIN_SUBELEM_UNIQUE},
                                             {YANG_VALUE, &val_enum, 0},
                                             {YANG_WHEN, &when_p, 0},
                                             {YANG_CUSTOM, NULL, 0},
@@ -583,7 +583,7 @@ test_yin_parse_content(void **state)
 
     /* test unique subelem */
     const char *prefix_value;
-    struct yin_subelement subelems2[2] = {{YANG_PREFIX, &prefix_value, 0},
+    struct yin_subelement subelems2[2] = {{YANG_PREFIX, &prefix_value, YIN_SUBELEM_UNIQUE},
                                          {YIN_TEXT, &value, YIN_SUBELEM_UNIQUE}};
     data = ELEMENT_WRAPPER_START
                 "<prefix value=\"inv_mod\" />"
@@ -607,7 +607,7 @@ test_yin_parse_content(void **state)
                 "<text xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">wsefsdf</text>"
                 "<text xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">wsefsdf</text>"
            ELEMENT_WRAPPER_END;
-    struct yin_subelement subelems3[2] = {{YANG_PREFIX, &prefix_value, 0},
+    struct yin_subelement subelems3[2] = {{YANG_PREFIX, &prefix_value, YIN_SUBELEM_UNIQUE},
                                          {YIN_TEXT, &value, YIN_SUBELEM_FIRST}};
     lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->yin_ctx, &data, &attrs);
@@ -621,7 +621,7 @@ test_yin_parse_content(void **state)
 
     /* test mandatory subelem */
     data = ELEMENT_WRAPPER_START ELEMENT_WRAPPER_END;
-    struct yin_subelement subelems4[1] = {{YANG_PREFIX, &prefix_value, YIN_SUBELEM_MANDATORY}};
+    struct yin_subelement subelems4[1] = {{YANG_PREFIX, &prefix_value, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE}};
     lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->yin_ctx, &data, &attrs);
     ret = yin_parse_content(st->yin_ctx, subelems4, 1, &data, YANG_STATUS, NULL, &exts);
@@ -674,7 +674,7 @@ test_element_helper(struct state *st, const char **data, void *dest, const char 
                                             {YANG_DEVIATE, dest, 0},
                                             {YANG_DEVIATION, dest, 0},
                                             {YANG_ENUM, dest, 0},
-                                            {YANG_ERROR_APP_TAG, dest, 0},
+                                            {YANG_ERROR_APP_TAG, dest, YIN_SUBELEM_UNIQUE},
                                             {YANG_ERROR_MESSAGE, dest, 0},
                                             {YANG_EXTENSION, dest, 0},
                                             {YANG_FEATURE, dest, 0},
@@ -685,7 +685,7 @@ test_element_helper(struct state *st, const char **data, void *dest, const char 
                                             {YANG_IMPORT, dest, 0},
                                             {YANG_INCLUDE, dest, 0},
                                             {YANG_INPUT, dest, 0},
-                                            {YANG_KEY, dest, 0},
+                                            {YANG_KEY, dest, YIN_SUBELEM_UNIQUE},
                                             {YANG_LEAF, dest, 0},
                                             {YANG_LEAF_LIST, dest, 0},
                                             {YANG_LENGTH, dest, 0},
@@ -696,7 +696,7 @@ test_element_helper(struct state *st, const char **data, void *dest, const char 
                                             {YANG_MODIFIER, dest, 0},
                                             {YANG_MODULE, dest, 0},
                                             {YANG_MUST, dest, 0},
-                                            {YANG_NAMESPACE, dest, 0},
+                                            {YANG_NAMESPACE, dest, YIN_SUBELEM_UNIQUE},
                                             {YANG_NOTIFICATION, dest, 0},
                                             {YANG_ORDERED_BY, dest, 0},
                                             {YANG_ORGANIZATION, dest, 0},
@@ -704,8 +704,8 @@ test_element_helper(struct state *st, const char **data, void *dest, const char 
                                             {YANG_PATH, dest, 0},
                                             {YANG_PATTERN, dest, 0},
                                             {YANG_POSITION, dest, 0},
-                                            {YANG_PREFIX, dest, 0},
-                                            {YANG_PRESENCE, dest, 0},
+                                            {YANG_PREFIX, dest, YIN_SUBELEM_UNIQUE},
+                                            {YANG_PRESENCE, dest, YIN_SUBELEM_UNIQUE},
                                             {YANG_RANGE, dest, 0},
                                             {YANG_REFERENCE, dest, 0},
                                             {YANG_REFINE, dest, 0},
@@ -718,7 +718,7 @@ test_element_helper(struct state *st, const char **data, void *dest, const char 
                                             {YANG_TYPE, dest, 0},
                                             {YANG_TYPEDEF, dest, 0},
                                             {YANG_UNIQUE, dest, 0},
-                                            {YANG_UNITS, dest, 0},
+                                            {YANG_UNITS, dest, YIN_SUBELEM_UNIQUE},
                                             {YANG_USES, dest, 0},
                                             {YANG_VALUE, dest, 0},
                                             {YANG_WHEN, dest, 0},
