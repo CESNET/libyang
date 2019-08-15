@@ -609,7 +609,7 @@ lys_parse_mem_submodule(struct ly_ctx *ctx, const char *data, LYS_INFORMAT forma
         ret = yang_parse_submodule(&context, ctx, main_ctx, data, &submod);
         break;
     default:
-        LOGERR((*context).ctx, LY_EINVAL, "Invalid schema input format.");
+        LOGERR(ctx, LY_EINVAL, "Invalid schema input format.");
         break;
     }
     LY_CHECK_RET(ret, NULL);
