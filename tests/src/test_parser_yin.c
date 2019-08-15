@@ -1554,9 +1554,9 @@ test_path_elem(void **state)
     const char *data;
     struct lysp_type type = {};
 
-    data = ELEMENT_WRAPPER_START "<path value=\"path-val\">" EXT_SUBELEM "</path>" ELEMENT_WRAPPER_END;
+    data = ELEMENT_WRAPPER_START "<path value=\"p&amp;th-val\">" EXT_SUBELEM "</path>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, true), LY_SUCCESS);
-    assert_string_equal("path-val", type.path);
+    assert_string_equal("p&th-val", type.path);
     assert_true(type.flags & LYS_SET_PATH);
     assert_string_equal(type.exts[0].name, "myext:c-define");
     assert_int_equal(type.exts[0].insubstmt_index, 0);
@@ -1579,7 +1579,7 @@ test_pattern_elem(void **state)
                     "<modifier value=\"invert-match\"/>"
                     "<error-message><value>err-msg-value</value></error-message>"
                     "<error-app-tag value=\"err-app-tag-value\"/>"
-                    "<description><text>pattern-desc</text></description>"
+                    "<description><text>&quot;pattern-desc&quot;</text></description>"
                     "<reference><text>pattern-ref</text></reference>"
                     EXT_SUBELEM
                 "</pattern>"
@@ -1587,10 +1587,9 @@ test_pattern_elem(void **state)
     assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, true), LY_SUCCESS);
     assert_true(type.flags & LYS_SET_PATTERN);
     assert_string_equal(type.patterns->arg, "\x015super_pattern");
-    assert_string_equal(type.patterns->dsc, "pattern-desc");
+    assert_string_equal(type.patterns->dsc, "\"pattern-desc\"");
     assert_string_equal(type.patterns->eapptag, "err-app-tag-value");
     assert_string_equal(type.patterns->emsg, "err-msg-value");
-    assert_string_equal(type.patterns->dsc, "pattern-desc");
     assert_string_equal(type.patterns->ref, "pattern-ref");
     assert_string_equal(type.patterns->exts[0].name, "myext:c-define");
     assert_int_equal(type.patterns->exts[0].insubstmt_index, 0);

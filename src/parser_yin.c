@@ -359,19 +359,9 @@ yin_parse_attribute(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, en
                                  yin_attr2str(arg), ly_stmt2str(current_element)), LY_EVALID);
                 found = true;
                 LY_CHECK_RET(yin_validate_value(ctx, val_type, iter->content, iter->content_len));
-                if (iter->dynamic_content) {
-                    *arg_val = lydict_insert_zc(ctx->xml_ctx.ctx, iter->content);
-                    LY_CHECK_RET(!(*arg_val), LY_EMEM);
-                    /* string is no longer supposed to be freed when the sized array is freed */
-                    iter->dynamic_content = 0;
-                } else {
-                    if (iter->content_len == 0) {
-                        *arg_val = lydict_insert(ctx->xml_ctx.ctx, "", 0);
-                    } else {
-                        *arg_val = lydict_insert(ctx->xml_ctx.ctx, iter->content, iter->content_len);
-                    }
-                    LY_CHECK_RET(!(*arg_val), LY_EMEM);
-                }
+                INSERT_STRING(ctx->xml_ctx.ctx, *arg_val, iter->dynamic_content, iter->content, iter->content_len);
+                iter->dynamic_content = 0;
+                LY_CHECK_RET(!(*arg_val), LY_EMEM);
             } else {
                 LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_UNEXP_ATTR, iter->name_len, iter->name, ly_stmt2str(current_element));
                 return LY_EVALID;
@@ -3171,19 +3161,8 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
             /* no resources are allocated in this branch, no need to use cleanup label */
             LY_CHECK_RET(yin_validate_value(ctx, Y_STR_ARG, out, out_len));
             if (text_content) {
-                if (dynamic) {
-                    *text_content = lydict_insert_zc(ctx->xml_ctx.ctx, out);
-                    if (!*text_content) {
-                        free(out);
-                        return LY_EMEM;
-                    }
-                } else {
-                    if (out_len == 0) {
-                        *text_content = lydict_insert(ctx->xml_ctx.ctx, "", 0);
-                    } else {
-                        *text_content = lydict_insert(ctx->xml_ctx.ctx, out, out_len);
-                    }
-                }
+                INSERT_STRING(ctx->xml_ctx.ctx, *text_content, dynamic, out, out_len);
+                LY_CHECK_RET(!*text_content, LY_EMEM);
             }
             /* load closing element */
             LY_CHECK_RET(lyxml_get_element(&ctx->xml_ctx, data, &prefix, &prefix_len, &name, &name_len));
@@ -3232,17 +3211,10 @@ yin_parse_extension_instance(struct yin_parser_ctx *ctx, struct yin_arg_record *
 
             last_subelem->flags |= LYS_YIN_ATTR;
             last_subelem->stmt = lydict_insert(ctx->xml_ctx.ctx, iter->name, iter->name_len);
-            LY_CHECK_ERR_RET(!last_subelem->stmt, LOGMEM(ctx->xml_ctx.ctx), LY_EMEM);
-            if (iter->dynamic_content) {
-                last_subelem->arg = lydict_insert_zc(ctx->xml_ctx.ctx, iter->content);
-            } else {
-                if (iter->content_len == 0) {
-                    last_subelem->arg = lydict_insert(ctx->xml_ctx.ctx, "", 0);
-                } else {
-                    last_subelem->arg = lydict_insert(ctx->xml_ctx.ctx, iter->content, iter->content_len);
-                }
-            }
-            LY_CHECK_ERR_RET(!last_subelem->arg, LOGMEM(ctx->xml_ctx.ctx), LY_EMEM);
+            LY_CHECK_RET(!last_subelem->stmt, LY_EMEM);
+
+            INSERT_STRING(ctx->xml_ctx.ctx, last_subelem->arg, iter->dynamic_content, iter->content, iter->content_len);
+            LY_CHECK_RET(!last_subelem->arg, LY_EMEM);
         }
     }
 
@@ -3265,17 +3237,17 @@ yin_parse_extension_instance(struct yin_parser_ctx *ctx, struct yin_arg_record *
                 last_subelem = new_subelem;
             }
         } else {
-            /* save text content */
-            LY_CHECK_RET(ret);
-            if (dynamic) {
-                e->argument = lydict_insert_zc(ctx->xml_ctx.ctx, out);
-                LY_CHECK_ERR_RET(!e->argument, free(out), LY_EMEM);
-            } else {
-                e->argument = lydict_insert(ctx->xml_ctx.ctx, out, out_len);
+            if (out_len != 0) {
+                /* save text content */
+                LY_CHECK_RET(ret);
+
+                INSERT_STRING(ctx->xml_ctx.ctx, e->argument, dynamic, out, out_len);
                 LY_CHECK_RET(!e->argument, LY_EMEM);
+
+                /* load closing element */
+                LY_CHECK_RET(lyxml_get_element(&ctx->xml_ctx, data, &prefix, &prefix_len, &name, &name_len));
+                LY_CHECK_RET(name, LY_EINT);
             }
-            LY_CHECK_RET(lyxml_get_element(&ctx->xml_ctx, data, &prefix, &prefix_len, &name, &name_len));
-            LY_CHECK_RET(name, LY_EINT);
         }
     }
 
@@ -3322,19 +3294,15 @@ yin_parse_element_generic(struct yin_parser_ctx *ctx, const char *name, size_t n
         LY_CHECK_ERR_GOTO(!last->stmt, LOGMEM(ctx->xml_ctx.ctx); ret = LY_EMEM, err);
         /* attributes with prefix are ignored */
         if (!temp_prefix) {
-            if (dynamic) {
-                last->arg = lydict_insert_zc(ctx->xml_ctx.ctx, out);
-                LY_CHECK_ERR_GOTO(!last->arg, free(out); LOGMEM(ctx->xml_ctx.ctx); ret = LY_EMEM, err);
-            } else {
-                last->arg = lydict_insert(ctx->xml_ctx.ctx, out, out_len);
-                LY_CHECK_ERR_GOTO(!last->arg, LOGMEM(ctx->xml_ctx.ctx); ret = LY_EMEM, err);
-            }
+            INSERT_STRING(ctx->xml_ctx.ctx, last->arg, dynamic, out, out_len);
+            LY_CHECK_ERR_GOTO(!last->arg, ret = LY_EMEM, err);
         }
     }
 
     /* parse content of element */
     ret = lyxml_get_string(&ctx->xml_ctx, data, &out, &out_len, &out, &out_len, &dynamic);
     if (ret == LY_EINVAL) {
+        LY_CHECK_GOTO(ret, err);
         while (ctx->xml_ctx.status == LYXML_ELEMENT) {
             /* parse subelements */
             ret = lyxml_get_element(&ctx->xml_ctx, data, &temp_prefix, &temp_prefix_len, &temp_name, &temp_name_len);
@@ -3348,16 +3316,13 @@ yin_parse_element_generic(struct yin_parser_ctx *ctx, const char *name, size_t n
             last = last->next;
         }
     } else {
+        LY_CHECK_RET(ret);
         /* save element content */
         if (out_len != 0) {
-            if (dynamic) {
-                (*element)->arg = lydict_insert_zc(ctx->xml_ctx.ctx, out);
-                LY_CHECK_ERR_GOTO(!(*element)->arg, free(out); LOGMEM(ctx->xml_ctx.ctx); ret = LY_EMEM, err);
-            } else {
-                (*element)->arg = lydict_insert(ctx->xml_ctx.ctx, out, out_len);
-                LY_CHECK_ERR_GOTO(!(*element)->arg, LOGMEM(ctx->xml_ctx.ctx); ret = LY_EMEM, err);
-            }
+            INSERT_STRING(ctx->xml_ctx.ctx, (*element)->arg, dynamic, out, out_len);
+            LY_CHECK_ERR_GOTO(!(*element)->arg, ret = LY_EMEM, err);
         }
+
         /* read closing tag */
         ret = lyxml_get_element(&ctx->xml_ctx, data, &temp_prefix, &prefix_len, &temp_name, &temp_name_len);
         LY_CHECK_GOTO(ret, err);

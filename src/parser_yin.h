@@ -40,6 +40,22 @@ extern const char *const yin_attr_list[];
                       kw == YANG_MUST || kw == YANG_TYPE || kw == YANG_UNIQUE ||         \
                       kw == YANG_UNITS || kw == YANG_CUSTOM)
 
+/**
+ * @brief insert string into dictionary and store as target.
+ *
+ * @param[in] CTX libyang context.
+ * @param[out] TARGET variable where to store the pointer to the inserted value.
+ * @param[in] DYNAMIC Set to 1 if STR is dynamically allocated, 0 otherwise. If set to 1, zerocopy version of lydict_insert is used.
+ * @param[in] STR string to store.
+ * @param[in] LEN length of the string in WORD to store.
+ */
+#define INSERT_STRING(CTX, TARGET, DYNAMIC, STR, LEN) \
+    if (DYNAMIC) { \
+        TARGET = lydict_insert_zc(CTX, STR); \
+    } else { \
+         TARGET = lydict_insert(CTX, LEN ? STR : "", LEN); \
+    }
+
 enum yin_argument {
     YIN_ARG_UNKNOWN = 0,   /**< parsed argument can not be matched with any supported yin argument keyword */
     YIN_ARG_NAME,          /**< argument name */
