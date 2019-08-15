@@ -1912,9 +1912,13 @@ static LY_ERR
 yin_parse_when(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data, struct lysp_when **when_p)
 {
     struct lysp_when *when;
+    LY_ERR ret = LY_SUCCESS;
+
     when = calloc(1, sizeof *when);
     LY_CHECK_ERR_RET(!when, LOGMEM(ctx->xml_ctx.ctx), LY_EMEM);
-    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_CONDITION, &when->cond, Y_STR_ARG, YANG_WHEN));
+    ret = yin_parse_attribute(ctx, attrs, YIN_ARG_CONDITION, &when->cond, Y_STR_ARG, YANG_WHEN);
+    LY_CHECK_ERR_RET(ret, free(when), ret);
+
     *when_p = when;
     struct yin_subelement subelems[3] = {
                                             {YANG_DESCRIPTION, &when->dsc, YIN_SUBELEM_UNIQUE},
