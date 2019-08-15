@@ -184,6 +184,7 @@ struct lysc_type_plugin {
     ly_type_print_clb print;         /**< printer callback to get string representing the value */
     ly_type_dup_clb duplicate;       /**< data duplication callback */
     ly_type_free_clb free;           /**< optional function to free the type-spceific way stored value */
+    const char *id;                  /**< Plugin identification (mainly for distinguish incompatible versions when used by external tools) */
     uint32_t flags;                  /**< [type flags ](@ref plugintypeflags). */
 };
 
