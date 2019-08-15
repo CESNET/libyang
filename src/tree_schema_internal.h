@@ -19,6 +19,7 @@
 
 #include "set.h"
 #include "tree_schema.h"
+#include "extensions.h"
 
 #define LOGVAL_YANG(CTX, ...) LOGVAL((CTX)->ctx, LY_VLOG_LINE, &(CTX)->line, __VA_ARGS__)
 
@@ -64,26 +65,6 @@ struct lysc_incomplete_dflt {
     struct lyd_value *dflt;
     struct lys_module *dflt_mod;
     struct lysc_node *context_node;
-};
-
-/**
- * @brief internal context for compilation
- */
-struct lysc_ctx {
-    struct ly_ctx *ctx;
-    struct lys_module *mod;
-    struct lys_module *mod_def; /**< context module for the definitions of the nodes being currently
-                                     processed - groupings are supposed to be evaluated in place where
-                                     defined, but its content instances are supposed to be placed into
-                                     the target module (mod) */
-    struct ly_set groupings;    /**< stack for groupings circular check */
-    struct ly_set unres;        /**< to validate leafref's target and xpath of when/must */
-    struct ly_set dflts;        /**< set of incomplete default values */
-    struct ly_set tpdf_chain;
-    uint16_t path_len;
-    int options;                /**< various @ref scflags. */
-#define LYSC_CTX_BUFSIZE 4078
-    char path[LYSC_CTX_BUFSIZE];
 };
 
 /**

@@ -15,9 +15,13 @@
 #ifndef LY_EXTENSIONS_H_
 #define LY_EXTENSIONS_H_
 
+#include "set.h"
+#include "tree_schema.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 
 /**
  * @defgroup extensions YANG Extensions
@@ -26,80 +30,101 @@ extern "C" {
  */
 
 /**
- * @brief Extension instance structure parent enumeration
+ * @defgroup extensionscompile YANG Extensions - Compilation Helpers
+ * @ingroup extensions
+ * @brief Helper functions to compile (via lyext_clb_compile callback) statements inside the extension instance.
+ *
+ * NOTE: There is a lot of useful static functions in the tree_schema_compile.c which could be provided here. Since we don't want
+ * to have a large API with functions which will be never used, we provide here just the functions which are evidently needed.
+ * If you, as an extension plugin author, need to make some of the compile functions available, please contact libyang maintainers
+ * via the GITHUB issue tracker.
+ *
+ * @{
  */
-typedef enum {
-    LYEXT_PAR_MODULE, /**< ::lys_module or ::lys_submodule */
-    LYEXT_PAR_NODE, /**< ::lys_node (and the derived structures) */
-    LYEXT_PAR_TPDF, /**< ::lys_tpdf */
-    LYEXT_PAR_TYPE, /**< ::lys_type */
-    LYEXT_PAR_TYPE_BIT, /**< ::lys_type_bit */
-    LYEXT_PAR_TYPE_ENUM, /**< ::lys_type_enum */
-    LYEXT_PAR_FEATURE, /**< ::lys_feature */
-    LYEXT_PAR_RESTR, /**< ::lys_restr - YANG's must, range, length and pattern statements */
-    LYEXT_PAR_WHEN, /**< ::lys_when */
-    LYEXT_PAR_IDENT, /**< ::lys_ident */
-    LYEXT_PAR_EXT, /**< ::lys_ext */
-    LYEXT_PAR_EXTINST, /**< ::lys_ext_instance */
-    LYEXT_PAR_REFINE, /**< ::lys_refine */
-    LYEXT_PAR_DEVIATION, /**< ::lys_deviation */
-    LYEXT_PAR_DEVIATE, /**< ::lys_deviate */
-    LYEXT_PAR_IMPORT, /**< ::lys_import */
-    LYEXT_PAR_INCLUDE,           /**< ::lysp_include */
-    LYEXT_PAR_REVISION,          /**< ::lysc_revision */
-} LYEXT_PARENT;
 
 /**
- * @brief Enum of substatements in which extension instances can appear.
+ * @brief internal context for compilation
  */
-typedef enum {
-    LYEXT_SUBSTMT_SELF = 0,      /**< extension of the structure itself, not substatement's */
-    LYEXT_SUBSTMT_ARGUMENT,      /**< extension of the argument statement, can appear in lys_ext */
-    LYEXT_SUBSTMT_BASE,          /**< extension of the base statement, can appear (repeatedly) in lys_type and lys_ident */
-    LYEXT_SUBSTMT_BELONGSTO,     /**< extension of the belongs-to statement, can appear in lys_submodule */
-    LYEXT_SUBSTMT_CONTACT,       /**< extension of the contact statement, can appear in lys_module */
-    LYEXT_SUBSTMT_DEFAULT,       /**< extension of the default statement, can appear in lys_node_leaf, lys_node_leaflist,
-                                      lys_node_choice and lys_deviate */
-    LYEXT_SUBSTMT_DESCRIPTION,   /**< extension of the description statement, can appear in lys_module, lys_submodule,
-                                      lys_node, lys_import, lys_include, lys_ext, lys_feature, lys_tpdf, lys_restr,
-                                      lys_ident, lys_deviation, lys_type_enum, lys_type_bit, lys_when and lys_revision */
-    LYEXT_SUBSTMT_ERRTAG,        /**< extension of the error-app-tag statement, can appear in lys_restr */
-    LYEXT_SUBSTMT_ERRMSG,        /**< extension of the error-message statement, can appear in lys_restr */
-    LYEXT_SUBSTMT_KEY,           /**< extension of the key statement, can appear in lys_node_list */
-    LYEXT_SUBSTMT_NAMESPACE,     /**< extension of the namespace statement, can appear in lys_module */
-    LYEXT_SUBSTMT_ORGANIZATION,  /**< extension of the organization statement, can appear in lys_module and lys_submodule */
-    LYEXT_SUBSTMT_PATH,          /**< extension of the path statement, can appear in lys_type */
-    LYEXT_SUBSTMT_PREFIX,        /**< extension of the prefix statement, can appear in lys_module, lys_submodule (for
-                                      belongs-to's prefix) and lys_import */
-    LYEXT_SUBSTMT_PRESENCE,      /**< extension of the presence statement, can appear in lys_node_container */
-    LYEXT_SUBSTMT_REFERENCE,     /**< extension of the reference statement, can appear in lys_module, lys_submodule,
-                                      lys_node, lys_import, lys_include, lys_revision, lys_tpdf, lys_restr, lys_ident,
-                                      lys_ext, lys_feature, lys_deviation, lys_type_enum, lys_type_bit and lys_when */
-    LYEXT_SUBSTMT_REVISIONDATE,  /**< extension of the revision-date statement, can appear in lys_import and lys_include */
-    LYEXT_SUBSTMT_UNITS,         /**< extension of the units statement, can appear in lys_tpdf, lys_node_leaf,
-                                      lys_node_leaflist and lys_deviate */
-    LYEXT_SUBSTMT_VALUE,         /**< extension of the value statement, can appear in lys_type_enum */
-    LYEXT_SUBSTMT_VERSION,       /**< extension of the yang-version statement, can appear in lys_module and lys_submodule */
-    LYEXT_SUBSTMT_MODIFIER,      /**< extension of the modifier statement, can appear in lys_restr */
-    LYEXT_SUBSTMT_REQINSTANCE,   /**< extension of the require-instance statement, can appear in lys_type */
-    LYEXT_SUBSTMT_YINELEM,       /**< extension of the yin-element statement, can appear in lys_ext */
-    LYEXT_SUBSTMT_CONFIG,        /**< extension of the config statement, can appear in lys_node and lys_deviate */
-    LYEXT_SUBSTMT_MANDATORY,     /**< extension of the mandatory statement, can appear in lys_node_leaf, lys_node_choice,
-                                      lys_node_anydata and lys_deviate */
-    LYEXT_SUBSTMT_ORDEREDBY,     /**< extension of the ordered-by statement, can appear in lys_node_list and lys_node_leaflist */
-    LYEXT_SUBSTMT_STATUS,        /**< extension of the status statement, can appear in lys_tpdf, lys_node, lys_ident,
-                                      lys_ext, lys_feature, lys_type_enum and lys_type_bit */
-    LYEXT_SUBSTMT_FRACDIGITS,    /**< extension of the fraction-digits statement, can appear in lys_type */
-    LYEXT_SUBSTMT_MAX,           /**< extension of the max-elements statement, can appear in lys_node_list,
-                                      lys_node_leaflist and lys_deviate */
-    LYEXT_SUBSTMT_MIN,           /**< extension of the min-elements statement, can appear in lys_node_list,
-                                      lys_node_leaflist and lys_deviate */
-    LYEXT_SUBSTMT_POSITION,      /**< extension of the position statement, can appear in lys_type_bit */
-    LYEXT_SUBSTMT_UNIQUE,        /**< extension of the unique statement, can appear in lys_node_list and lys_deviate */
-    LYEXT_SUBSTMT_IFFEATURE,     /**< extension of the if-feature statement */
-} LYEXT_SUBSTMT;
+struct lysc_ctx {
+    struct ly_ctx *ctx;
+    struct lys_module *mod;
+    struct lys_module *mod_def; /**< context module for the definitions of the nodes being currently
+                                     processed - groupings are supposed to be evaluated in place where
+                                     defined, but its content instances are supposed to be placed into
+                                     the target module (mod) */
+    struct ly_set groupings;    /**< stack for groupings circular check */
+    struct ly_set unres;        /**< to validate leafref's target and xpath of when/must */
+    struct ly_set dflts;        /**< set of incomplete default values */
+    struct ly_set tpdf_chain;
+    uint16_t path_len;
+    int options;                /**< various @ref scflags. */
+#define LYSC_CTX_BUFSIZE 4078
+    char path[LYSC_CTX_BUFSIZE];
+};
 
-/** @} */
+/**
+ * @brief Update path in the compile context, which is used for logging where the compilation failed.
+ *
+ * @param[in] ctx Compile context with the path.
+ * @param[in] parent Parent of the current node to check difference of the node's module. The current module is taken from lysc_ctx::mod.
+ * @param[in] name Name of the node to update path with. If NULL, the last segment is removed. If the format is `{keyword}`, the following
+ * call updates the segment to the form `{keyword='name'}` (to remove this compound segment, 2 calls with NULL @p name must be used).
+ */
+void lysc_update_path(struct lysc_ctx *ctx, struct lysc_node *parent, const char *name);
+
+/** @} extensionscompile */
+
+/**
+ * @brief Callback to compile extension from the lysp_ext_instance to the lysc_ext_instance. The later structure is generally prepared
+ * and only the extension specific data are supposed to be added (if any).
+ *
+ * @param[in] cctx Current compile context.
+ * @param[in] p_ext Parsed extension instance data.
+ * @param[in,out] c_ext Prepared compiled extension instance structure where an addition, extension-specific, data are supposed to be placed
+ * for later use (data validation or use of external tool).
+ * @return LY_SUCCESS in case of success.
+ * @return LY_EVALID in case of non-conforming parsed data.
+ */
+typedef LY_ERR (*lyext_clb_compile)(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, struct lysc_ext_instance *c_ext);
+
+/**
+ * @brief Callback to free the extension specific data created by the lyext_clb_compile callback of the same extension plugin.
+ *
+ * @param[in,out] ext Compiled extension structure where the data to free are placed.
+ */
+typedef void (*lyext_clb_free)(struct lysc_ext_instance *ext);
+
+/**
+ * @brief Callback to decide if data instance is valid according to the schema.
+ *
+ * The callback is used only for the extension instances placed in the following parent statements
+ * (which is specified as lysc_ext_instance::parent_type):
+ *     - LYEXT_PAR_NODE - @p node is instance of the schema node where the extension instance was specified.
+ *     - LYEXT_PAR_TPDF - @p node is instance of the schema node with the value of the typedef's type where the extension instance was specified.
+ *     - LYEXT_PAR_TYPE - @p node is instance of the schema node with the value of the type where the extension instance was specified.
+ *     - LYEXT_PAR_TYPE_BIT - @p node is instance of the schema node with the value of the bit where the extension instance was specified.
+ *     - LYEXT_PAR_TYPE_ENUM - @p node is instance of the schema node with the value of the enum where the extension instance was specified.
+ *
+ * @param[in] ext Extension instance to be checked.
+ * @param[in] node Data node, where the extension data are supposed to be placed.
+ *
+ * @return LY_SUCCESS on data validation success.
+ * @return LY_EVALID in case the validation fails.
+ */
+typedef LY_ERR (*lyext_clb_data_validation)(struct lysc_ext_instance *ext, struct lyd_node *node);
+
+/**
+ * @brief Extension plugin implementing various aspects of a YANG extension
+ */
+struct lyext_plugin {
+    const char *id;                     /**< Plugin identification (mainly for distinguish incompatible versions of the plugins for external tools) */
+    lyext_clb_compile compile;          /**< Callback to compile extension instance from the parsed data */
+    lyext_clb_data_validation validate; /**< Callback to decide if data instance is valid according to the schema. */
+    /* TODO printers? (schema/data) */
+    lyext_clb_free free;                /**< Free the extension instance specific data created by lyext_plugin::compile callback */
+};
+
+/** @} extensions */
 
 #ifdef __cplusplus
 }

@@ -26,6 +26,7 @@
 #include "log.h"
 #include "set.h"
 #include "plugins_types.h"
+#include "extensions.h"
 #include "tree.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
@@ -153,15 +154,7 @@ lysc_incomplete_dflts_remove(struct lysc_ctx *ctx, struct lyd_value *dflt)
     }
 }
 
-/**
- * @brief Update path in the compile context.
- *
- * @param[in] ctx Compile context with the path.
- * @param[in] parent Parent of the current node to check difference of the node's module. The current module is taken from lysc_ctx::mod.
- * @param[in] name Name of the node to update path with. If NULL, the last segment is removed. If the format is `{keyword}`, the following
- * call updates the segment to the form `{keyword='name'}` (to remove this compound segment, 2 calls with NULL @p name must be used).
- */
-static void
+void
 lysc_update_path(struct lysc_ctx *ctx, struct lysc_node *parent, const char *name)
 {
     int len;
