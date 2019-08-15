@@ -966,7 +966,7 @@ yin_parse_must(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const c
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_value_pos_element(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+yin_parse_value_pos(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
                             enum yang_keyword kw, struct lysp_type_enum *enm)
 {
     assert(kw == YANG_POSITION || kw == YANG_VALUE);
@@ -1068,7 +1068,7 @@ yin_parse_belongs_to(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, c
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_meta_element(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+yin_parse_meta(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
                        enum yang_keyword elem_type, const char **value, struct lysp_ext_instance **exts)
 {
     assert(elem_type == YANG_ORGANIZATION || elem_type == YANG_CONTACT || elem_type == YANG_DESCRIPTION || elem_type == YANG_REFERENCE);
@@ -1096,7 +1096,7 @@ yin_parse_meta_element(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs,
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_err_msg_element(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+yin_parse_err_msg(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
                           const char **value, struct lysp_ext_instance **exts)
 {
     struct yin_subelement subelems[2] = {
@@ -1931,7 +1931,7 @@ yin_parse_when(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const c
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_yin_element_element(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+yin_parse_yin_element(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
                               uint16_t *flags, struct lysp_ext_instance **exts)
 {
     const char *temp_val = NULL;
@@ -1967,7 +1967,7 @@ yin_parse_yin_element_element(struct yin_parser_ctx *ctx, struct yin_arg_record 
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_argument_element(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+yin_parse_argument(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
                            struct yin_argument_meta *arg_meta, struct lysp_ext_instance **exts)
 {
     struct yin_subelement subelems[2] = {
@@ -2976,7 +2976,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     ret = yin_parse_any(ctx, attrs, data, kw, (struct tree_node_meta *)subelem->dest);
                     break;
                 case YANG_ARGUMENT:
-                    ret = yin_parse_argument_element(ctx, attrs, data, (struct yin_argument_meta *)subelem->dest, exts);
+                    ret = yin_parse_argument(ctx, attrs, data, (struct yin_argument_meta *)subelem->dest, exts);
                     break;
                 case YANG_AUGMENT:
                     ret = yin_parse_augment(ctx, attrs, data, (struct tree_node_meta *)subelem->dest);
@@ -3003,7 +3003,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 case YANG_DESCRIPTION:
                 case YANG_ORGANIZATION:
                 case YANG_REFERENCE:
-                    ret = yin_parse_meta_element(ctx, attrs, data, kw, (const char **)subelem->dest, exts);
+                    ret = yin_parse_meta(ctx, attrs, data, kw, (const char **)subelem->dest, exts);
                     break;
                 case YANG_CONTAINER:
                     ret = yin_parse_container(ctx, attrs, data, (struct tree_node_meta *)subelem->dest);
@@ -3024,7 +3024,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     ret = yin_parse_enum(ctx, attrs, data, (struct lysp_type *)subelem->dest);
                     break;
                 case YANG_ERROR_MESSAGE:
-                    ret = yin_parse_err_msg_element(ctx, attrs, data, (const char **)subelem->dest, exts);
+                    ret = yin_parse_err_msg(ctx, attrs, data, (const char **)subelem->dest, exts);
                     break;
                 case YANG_EXTENSION:
                     ret = yin_parse_extension(ctx, attrs, data, (struct lysp_ext **)subelem->dest);
@@ -3097,7 +3097,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     break;
                 case YANG_VALUE:
                 case YANG_POSITION:
-                    ret = yin_parse_value_pos_element(ctx, attrs, data, kw, (struct lysp_type_enum *)subelem->dest);
+                    ret = yin_parse_value_pos(ctx, attrs, data, kw, (struct lysp_type_enum *)subelem->dest);
                     break;
                 case YANG_PREFIX:
                     ret = yin_parse_simple_elem(ctx, attrs, data, kw, subelem, YIN_ARG_VALUE, Y_IDENTIF_ARG, exts);
@@ -3139,7 +3139,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                     ret = yin_parse_yangversion(ctx, attrs, data, (uint8_t *)subelem->dest, exts);
                     break;
                 case YANG_YIN_ELEMENT:
-                    ret = yin_parse_yin_element_element(ctx, attrs, data, (uint16_t *)subelem->dest, exts);
+                    ret = yin_parse_yin_element(ctx, attrs, data, (uint16_t *)subelem->dest, exts);
                     break;
                 case YIN_TEXT:
                 case YIN_VALUE:
