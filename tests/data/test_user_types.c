@@ -84,7 +84,11 @@ test_yang_types(void **state)
     assert_non_null(st->dt);
     lyd_free_withsiblings(st->dt);
 
-    st->dt = lyd_new_leaf(NULL, st->mod, "yang1", "2005-05-31T23:15:15-08:00");
+    st->dt = lyd_new_leaf(NULL, st->mod, "yang1", "2005-05-31T23:15:15-08:59");
+    assert_non_null(st->dt);
+    lyd_free_withsiblings(st->dt);
+
+    st->dt = lyd_new_leaf(NULL, st->mod, "yang1", "2005-05-31T23:15:15-23:00");
     assert_non_null(st->dt);
     lyd_free_withsiblings(st->dt);
 

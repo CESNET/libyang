@@ -33,72 +33,12 @@ LYTYPE_VERSION_CHECK
 #  define UNUSED(x) UNUSED_ ## x
 #endif
 
-static const char *gmt_offsets[] = {
-    "+00:00",
-    "+00:20",
-    "+00:30",
-    "+01:00",
-    "+01:24",
-    "+01:30",
-    "+02:00",
-    "+02:30",
-    "+03:00",
-    "+03:30",
-    "+04:00",
-    "+04:30",
-    "+04:51",
-    "+05:00",
-    "+05:30",
-    "+05:40",
-    "+05:45",
-    "+06:00",
-    "+06:30",
-    "+07:00",
-    "+07:20",
-    "+07:30",
-    "+08:00",
-    "+08:30",
-    "+08:45",
-    "+09:00",
-    "+09:30",
-    "+09:45",
-    "+10:00",
-    "+10:30",
-    "+11:00",
-    "+11:30",
-    "+12:00",
-    "+12:45",
-    "+13:00",
-    "+13:45",
-    "+14:00",
-    "-00:00",
-    "-00:44",
-    "-01:00",
-    "-02:00",
-    "-02:30",
-    "-03:00",
-    "-03:30",
-    "-04:00",
-    "-04:30",
-    "-05:00",
-    "-06:00",
-    "-07:00",
-    "-08:00",
-    "-08:30",
-    "-09:00",
-    "-09:30",
-    "-10:00",
-    "-10:30",
-    "-11:00",
-    "-12:00",
-};
-
 static int
 date_and_time_store_clb(struct ly_ctx *UNUSED(ctx), const char *UNUSED(type_name), const char **value_str,
                         lyd_val *UNUSED(value), char **err_msg)
 {
     struct tm tm, tm2;
-    uint32_t i, j, k;
+    uint32_t i, j;
     const char *val_str = *value_str;
     int ret;
 
@@ -235,16 +175,29 @@ date_and_time_store_clb(struct ly_ctx *UNUSED(ctx), const char *UNUSED(type_name
     case '+':
     case '-':
         /* timezone shift */
-        k = sizeof gmt_offsets / sizeof *gmt_offsets;
-        for (j = 0; j < k ; ++j) {
-            if (!strncmp(val_str + i, gmt_offsets[j], 6)) {
-                break;
-            }
-        }
-        if (j == k) {
+        if ((val_str[i + 1] < '0') || (val_str[i + 1] > '2')) {
             ret = asprintf(err_msg, "Invalid timezone \"%.6s\" in date-and-time value \"%s\".", val_str + i, val_str);
             goto error;
         }
+        if ((val_str[i + 2] < '0') || ((val_str[i + 1] == '2') && (val_str[i + 2] > '3')) || (val_str[i + 2] > '9')) {
+            ret = asprintf(err_msg, "Invalid timezone \"%.6s\" in date-and-time value \"%s\".", val_str + i, val_str);
+            goto error;
+        }
+
+        if (val_str[i + 3] != ':') {
+            ret = asprintf(err_msg, "Invalid timezone \"%.6s\" in date-and-time value \"%s\".", val_str + i, val_str);
+            goto error;
+        }
+
+        if ((val_str[i + 4] < '0') || (val_str[i + 4] > '5')) {
+            ret = asprintf(err_msg, "Invalid timezone \"%.6s\" in date-and-time value \"%s\".", val_str + i, val_str);
+            goto error;
+        }
+        if ((val_str[i + 5] < '0') || (val_str[i + 5] > '9')) {
+            ret = asprintf(err_msg, "Invalid timezone \"%.6s\" in date-and-time value \"%s\".", val_str + i, val_str);
+            goto error;
+        }
+
         i += 5;
         break;
     default:
