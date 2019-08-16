@@ -26,8 +26,8 @@ extern const char *const yin_attr_list[];
 #define yin_attr2str(STMT) yin_attr_list[STMT]
 
 #define YIN_NS_URI "urn:ietf:params:xml:ns:yang:yin:1"
-#define name2fullname(name, prefix_len) (prefix_len != 0 ? name - (prefix_len + 1) : name)
-#define namelen2fulllen(name_len, prefix_len) (prefix_len != 0 ? name_len + prefix_len + 1 : name_len)
+#define name2fname(name, prefix_len) (prefix_len != 0 ? name - (prefix_len + 1) : name)
+#define len2flen(name_len, prefix_len) (prefix_len != 0 ? name_len + prefix_len + 1 : name_len)
 
 #define VALID_VALS1 " Only valid value is \"%s\"."
 #define VALID_VALS2 " Valid values are \"%s\" and \"%s\"."

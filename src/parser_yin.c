@@ -168,7 +168,7 @@ void free_arg_rec(struct yin_parser_ctx *ctx, struct yin_arg_record *record) {
                           kw == YANG_GROUPING || kw == YANG_CONTAINER || kw == YANG_CASE || kw == YANG_CHOICE || \
                           kw == YANG_ACTION || kw == YANG_RPC || kw == YANG_AUGMENT)
 
-#define HAS_META(kw) (IS_NODE_ELEM(kw) || kw == YANG_ARGUMENT || kw == YANG_IMPORT || kw == YANG_INCLUDE || kw == YANG_INPUT || kw == YANG_OUTPUT)
+#define HAS_META(kw) (IS_NODE_ELEM(kw) || kw == YANG_IMPORT || kw == YANG_INCLUDE || kw == YANG_INPUT || kw == YANG_OUTPUT)
 
 /**
  * @brief Free subelems information allocated on heap.
@@ -219,13 +219,6 @@ subelems_allocator(struct yin_parser_ctx *ctx, size_t count, struct lysp_node *p
             node_meta->parent = parent;
             node_meta->nodes = va_arg(ap, void *);
             (*result)[i].dest = node_meta;
-        } else if ((*result)[i].type == YANG_ARGUMENT) {
-            struct yin_argument_meta *arg_meta = NULL;
-            arg_meta = calloc(1, sizeof *arg_meta);
-            LY_CHECK_GOTO(!arg_meta, mem_err);
-            arg_meta->argument = va_arg(ap, const char **);
-            arg_meta->flags = va_arg(ap, uint16_t *);
-            (*result)[i].dest = arg_meta;
         } else if ((*result)[i].type == YANG_IMPORT) {
             struct import_meta *imp_meta = NULL;
             imp_meta = calloc(1, sizeof *imp_meta);
@@ -2962,8 +2955,8 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 switch (kw) {
                 /* call responsible function */
                 case YANG_CUSTOM:
-                    ret = yin_parse_extension_instance(ctx, attrs, data, name2fullname(name, prefix_len),
-                                                      namelen2fulllen(name_len, prefix_len),
+                    ret = yin_parse_extension_instance(ctx, attrs, data, name2fname(name, prefix_len),
+                                                      len2flen(name_len, prefix_len),
                                                       kw2lyext_substmt(current_element),
                                                       (subelem->dest) ? *((uint32_t*)subelem->dest) : 0, exts);
                     break;
@@ -3228,7 +3221,8 @@ yin_parse_extension_instance(struct yin_parser_ctx *ctx, struct yin_arg_record *
                     /* end of extension instance reached */
                     break;
                 }
-                LY_CHECK_RET(yin_parse_element_generic(ctx, name, name_len, data, &new_subelem));
+                LY_CHECK_RET(yin_parse_element_generic(ctx, name2fname(name, prefix_len),
+                                                       len2flen(name_len, prefix_len), data, &new_subelem));
                 if (!e->child) {
                     e->child = new_subelem;
                 } else {
@@ -3287,39 +3281,53 @@ yin_parse_element_generic(struct yin_parser_ctx *ctx, const char *name, size_t n
 
         last->flags |= LYS_YIN_ATTR;
         LY_CHECK_RET(lyxml_get_attribute(&ctx->xml_ctx, data, &temp_prefix, &prefix_len, &temp_name, &temp_name_len));
-        LY_CHECK_RET(lyxml_get_string(&ctx->xml_ctx, data, &out, &out_len, &out, &out_len, &dynamic));
         last->stmt = lydict_insert(ctx->xml_ctx.ctx, temp_name, temp_name_len);
         LY_CHECK_RET(!last->stmt, LY_EMEM);
+
+        LY_CHECK_RET(lyxml_get_string(&ctx->xml_ctx, data, &out, &out_len, &out, &out_len, &dynamic));
         /* attributes with prefix are ignored */
         if (!temp_prefix) {
             INSERT_STRING(ctx->xml_ctx.ctx, last->arg, dynamic, out, out_len);
             LY_CHECK_RET(!last->arg, LY_EMEM);
+        } else {
+            if (dynamic) {
+                free(out);
+            }
         }
     }
 
-    /* parse content of element */
-    ret = lyxml_get_string(&ctx->xml_ctx, data, &out, &out_len, &out, &out_len, &dynamic);
-    if (ret == LY_EINVAL) {
-        while (ctx->xml_ctx.status == LYXML_ELEMENT) {
-            /* parse subelements */
-            LY_CHECK_RET(lyxml_get_element(&ctx->xml_ctx, data, &temp_prefix, &temp_prefix_len, &temp_name, &temp_name_len));
-            if (!name) {
-                /* end of element reached */
-                break;
+    /* parse content of element if any */
+    if (ctx->xml_ctx.status == LYXML_ELEM_CONTENT) {
+        ret = lyxml_get_string(&ctx->xml_ctx, data, &out, &out_len, &out, &out_len, &dynamic);
+        if (ret == LY_EINVAL) {
+            while (ctx->xml_ctx.status == LYXML_ELEMENT) {
+                /* parse subelements */
+                LY_CHECK_RET(lyxml_get_element(&ctx->xml_ctx, data, &temp_prefix, &temp_prefix_len, &temp_name, &temp_name_len));
+                if (!temp_name) {
+                    /* end of element reached */
+                    break;
+                }
+                LY_CHECK_RET(yin_parse_element_generic(ctx, name2fname(temp_name, temp_prefix_len),
+                                                       len2flen(temp_name_len, temp_prefix_len), data, &new));
+                if (!(*element)->child) {
+                    /* save first */
+                    (*element)->child = new;
+                } else {
+                    last->next = new;
+                }
+                last = new;
             }
-            LY_CHECK_RET(yin_parse_element_generic(ctx, temp_name, temp_name_len, data, &last->next));
-            last = last->next;
-        }
-    } else {
-        LY_CHECK_RET(ret);
-        /* save element content */
-        if (out_len != 0) {
-            INSERT_STRING(ctx->xml_ctx.ctx, (*element)->arg, dynamic, out, out_len);
-            LY_CHECK_RET(!(*element)->arg, LY_EMEM);
-        }
+        } else {
+            LY_CHECK_RET(ret);
+            /* save element content */
+            if (out_len != 0) {
+                INSERT_STRING(ctx->xml_ctx.ctx, (*element)->arg, dynamic, out, out_len);
+                LY_CHECK_RET(!(*element)->arg, LY_EMEM);
+            }
 
-        /* read closing tag */
-        LY_CHECK_RET(lyxml_get_element(&ctx->xml_ctx, data, &temp_prefix, &prefix_len, &temp_name, &temp_name_len));
+            /* read closing tag */
+            LY_CHECK_RET(lyxml_get_element(&ctx->xml_ctx, data, &temp_prefix, &prefix_len, &temp_name, &temp_name_len));
+        }
     }
 
     return LY_SUCCESS;
