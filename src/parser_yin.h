@@ -50,11 +50,8 @@ extern const char *const yin_attr_list[];
  * @param[in] LEN length of the string in WORD to store.
  */
 #define INSERT_STRING(CTX, TARGET, DYNAMIC, STR, LEN) \
-    if (DYNAMIC) { \
-        TARGET = lydict_insert_zc(CTX, STR); \
-    } else { \
-         TARGET = lydict_insert(CTX, LEN ? STR : "", LEN); \
-    }
+    if (DYNAMIC) {(TARGET) = lydict_insert_zc(CTX, STR);} \
+    else {(TARGET) = lydict_insert(CTX, LEN ? STR : "", LEN);}
 
 enum yin_argument {
     YIN_ARG_UNKNOWN = 0,   /**< parsed argument can not be matched with any supported yin argument keyword */
