@@ -83,7 +83,6 @@ ly_ctx_new(const char *search_dir, int options)
 {
     struct ly_ctx *ctx = NULL;
     struct lys_module *module;
-    char *cwd = NULL;
     char *search_dir_list;
     char *sep, *dir;
     int rc = EXIT_SUCCESS;
@@ -140,13 +139,10 @@ ly_ctx_new(const char *search_dir, int options)
         module->implemented = internal_modules[i].implemented;
     }
 
-    /* cleanup */
-    free(cwd);
-
     return ctx;
 
 error:
-    free(cwd);
+    /* cleanup */
     ly_ctx_destroy(ctx, NULL);
     return NULL;
 }
