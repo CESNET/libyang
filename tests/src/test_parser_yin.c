@@ -407,8 +407,8 @@ test_yin_parse_extension_instance(void **state)
     const char *data = "<ext value1=\"test\" value=\"test2\"><subelem>text</subelem></ext>";
     lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->yin_ctx, &data, &args);
-    ret = yin_parse_extension_instance(st->yin_ctx, args, &data, name2fullname(name, prefix_len),
-                                       namelen2fulllen(name_len, prefix_len), LYEXT_SUBSTMT_CONTACT, 0, &exts);
+    ret = yin_parse_extension_instance(st->yin_ctx, args, &data, name2fname(name, prefix_len),
+                                       len2flen(name_len, prefix_len), LYEXT_SUBSTMT_CONTACT, 0, &exts);
     assert_int_equal(ret, LY_SUCCESS);
     assert_string_equal(exts->name, "ext");
     assert_int_equal(exts->insubstmt_index, 0);
@@ -451,6 +451,85 @@ test_yin_parse_extension_instance(void **state)
     LY_ARRAY_FREE(args);
     lysp_ext_instance_free(st->ctx, exts);
     LY_ARRAY_FREE(exts);
+    exts = NULL;
+    args = NULL;
+    st = reset_state(state);
+
+    data = "<ext attr1=\"text1\" attr2=\"text2\">"
+                "<ext-sub1/>"
+                "<ext-sub2 sattr1=\"stext2\">"
+                    "<ext-sub21>"
+                        "<ext-sub211 sattr21=\"text21\"/>"
+                    "</ext-sub21>"
+                "</ext-sub2>"
+                "<ext-sub3 attr3=\"text3\"></ext-sub3>"
+           "</ext>";
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    yin_load_attributes(st->yin_ctx, &data, &args);
+    ret = yin_parse_extension_instance(st->yin_ctx, args, &data, name, name_len, LYEXT_SUBSTMT_CONTACT, 0, &exts);
+    assert_int_equal(ret, LY_SUCCESS);
+
+    assert_string_equal(exts->name, "ext");
+    assert_null(exts->argument);
+    assert_int_equal(exts->insubstmt, LYEXT_SUBSTMT_CONTACT);
+    assert_int_equal(exts->insubstmt_index, 0);
+    assert_true(exts->yin & LYS_YIN);
+    assert_string_equal(exts->child->stmt, "attr1");
+    assert_string_equal(exts->child->arg, "text1");
+    assert_null(exts->child->child);
+    assert_true(exts->child->flags & LYS_YIN_ATTR);
+
+    assert_string_equal(exts->child->next->stmt, "attr2");
+    assert_string_equal(exts->child->next->arg, "text2");
+    assert_null(exts->child->next->child);
+    assert_true(exts->child->next->flags & LYS_YIN_ATTR);
+
+    assert_string_equal(exts->child->next->next->stmt, "ext-sub1");
+    assert_null(exts->child->next->next->arg);
+    assert_null(exts->child->next->next->child);
+    assert_int_equal(exts->child->next->next->flags, 0);
+
+    assert_string_equal(exts->child->next->next->next->stmt, "ext-sub2");
+    assert_null(exts->child->next->next->next->arg);
+    assert_int_equal(exts->child->next->next->next->flags, 0);
+    assert_string_equal(exts->child->next->next->next->child->stmt, "sattr1");
+    assert_string_equal(exts->child->next->next->next->child->arg, "stext2");
+    assert_null(exts->child->next->next->next->child->child);
+    assert_true(exts->child->next->next->next->child->flags & LYS_YIN_ATTR);
+
+    assert_string_equal(exts->child->next->next->next->child->next->stmt, "ext-sub21");
+    assert_null(exts->child->next->next->next->child->next->arg);
+    assert_null(exts->child->next->next->next->child->next->next);
+    assert_int_equal(exts->child->next->next->next->child->next->flags, 0);
+
+    assert_string_equal(exts->child->next->next->next->child->next->child->stmt, "ext-sub211");
+    assert_null(exts->child->next->next->next->child->next->child->arg);
+    assert_int_equal(exts->child->next->next->next->child->next->child->flags, 0);
+    assert_null(exts->child->next->next->next->child->next->child->next);
+
+    assert_string_equal(exts->child->next->next->next->child->next->child->child->stmt, "sattr21");
+    assert_string_equal(exts->child->next->next->next->child->next->child->child->arg, "text21");
+    assert_null(exts->child->next->next->next->child->next->child->child->next);
+    assert_null(exts->child->next->next->next->child->next->child->child->child);
+    assert_true(exts->child->next->next->next->child->next->child->child->flags & LYS_YIN_ATTR);
+
+    assert_string_equal(exts->child->next->next->next->next->stmt, "ext-sub3");
+    assert_null(exts->child->next->next->next->next->arg);
+    assert_null(exts->child->next->next->next->next->next);
+    assert_int_equal(exts->child->next->next->next->next->flags, 0);
+
+    assert_string_equal(exts->child->next->next->next->next->child->stmt, "attr3");
+    assert_string_equal(exts->child->next->next->next->next->child->arg, "text3");
+    assert_null(exts->child->next->next->next->next->child->next);
+    assert_null(exts->child->next->next->next->next->child->child);
+    assert_true(exts->child->next->next->next->next->child->flags & LYS_YIN_ATTR);
+
+    LY_ARRAY_FREE(args);
+    lysp_ext_instance_free(st->ctx, exts);
+    LY_ARRAY_FREE(exts);
+    exts = NULL;
+    args = NULL;
+
     st->finished_correctly = true;
 }
 
@@ -1554,9 +1633,9 @@ test_path_elem(void **state)
     const char *data;
     struct lysp_type type = {};
 
-    data = ELEMENT_WRAPPER_START "<path value=\"path-val\">" EXT_SUBELEM "</path>" ELEMENT_WRAPPER_END;
+    data = ELEMENT_WRAPPER_START "<path value=\"p&amp;th-val\">" EXT_SUBELEM "</path>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, true), LY_SUCCESS);
-    assert_string_equal("path-val", type.path);
+    assert_string_equal("p&th-val", type.path);
     assert_true(type.flags & LYS_SET_PATH);
     assert_string_equal(type.exts[0].name, "myext:c-define");
     assert_int_equal(type.exts[0].insubstmt_index, 0);
@@ -1579,7 +1658,7 @@ test_pattern_elem(void **state)
                     "<modifier value=\"invert-match\"/>"
                     "<error-message><value>err-msg-value</value></error-message>"
                     "<error-app-tag value=\"err-app-tag-value\"/>"
-                    "<description><text>pattern-desc</text></description>"
+                    "<description><text>&quot;pattern-desc&quot;</text></description>"
                     "<reference><text>pattern-ref</text></reference>"
                     EXT_SUBELEM
                 "</pattern>"
@@ -1587,10 +1666,9 @@ test_pattern_elem(void **state)
     assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, true), LY_SUCCESS);
     assert_true(type.flags & LYS_SET_PATTERN);
     assert_string_equal(type.patterns->arg, "\x015super_pattern");
-    assert_string_equal(type.patterns->dsc, "pattern-desc");
+    assert_string_equal(type.patterns->dsc, "\"pattern-desc\"");
     assert_string_equal(type.patterns->eapptag, "err-app-tag-value");
     assert_string_equal(type.patterns->emsg, "err-msg-value");
-    assert_string_equal(type.patterns->dsc, "pattern-desc");
     assert_string_equal(type.patterns->ref, "pattern-ref");
     assert_string_equal(type.patterns->exts[0].name, "myext:c-define");
     assert_int_equal(type.patterns->exts[0].insubstmt_index, 0);

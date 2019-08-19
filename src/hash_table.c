@@ -206,6 +206,9 @@ dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zerocopy)
     } else {
         /* lyht_insert returned error */
         LOGINT(ctx);
+        if (zerocopy) {
+            free(value);
+        }
         return NULL;
     }
 

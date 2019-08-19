@@ -26,8 +26,26 @@ extern const char *const yin_attr_list[];
 #define yin_attr2str(STMT) yin_attr_list[STMT]
 
 #define YIN_NS_URI "urn:ietf:params:xml:ns:yang:yin:1"
-#define name2fullname(name, prefix_len) (prefix_len != 0 ? name - (prefix_len + 1) : name)
-#define namelen2fulllen(name_len, prefix_len) (prefix_len != 0 ? name_len + prefix_len + 1 : name_len)
+
+/**
+ * @brief Get start of full name including possible prefix.
+ *
+ * @param[in] name Start of name in input data.
+ * @param[in] prefix_len Lenght of prefix.
+ *
+ * @return Pointer to begining of full element name including prefix.
+ */
+#define name2fname(name, prefix_len) (prefix_len != 0 ? name - (prefix_len + 1) : name)
+
+/**
+ * @brief Get length of full name including possible prefix.
+ *
+ * @param[in] name_len Lenght of name without prefix.
+ * @param[in] prefix_len Lenght of prefix.
+ *
+ * @return Lenght of full name including possible prefix and ':' delimiter.
+ */
+#define len2flen(name_len, prefix_len) (prefix_len != 0 ? name_len + prefix_len + 1 : name_len)
 
 #define VALID_VALS1 " Only valid value is \"%s\"."
 #define VALID_VALS2 " Valid values are \"%s\" and \"%s\"."
@@ -39,6 +57,19 @@ extern const char *const yin_attr_list[];
                       kw == YANG_MAX_ELEMENTS || kw == YANG_MIN_ELEMENTS ||              \
                       kw == YANG_MUST || kw == YANG_TYPE || kw == YANG_UNIQUE ||         \
                       kw == YANG_UNITS || kw == YANG_CUSTOM)
+
+/**
+ * @brief insert string into dictionary and store as target.
+ *
+ * @param[in] CTX libyang context.
+ * @param[out] TARGET variable where to store the pointer to the inserted value.
+ * @param[in] DYNAMIC Set to 1 if STR is dynamically allocated, 0 otherwise. If set to 1, zerocopy version of lydict_insert is used.
+ * @param[in] STR string to store.
+ * @param[in] LEN length of the string in WORD to store.
+ */
+#define INSERT_STRING(CTX, TARGET, DYNAMIC, STR, LEN) \
+    if (DYNAMIC) {(TARGET) = lydict_insert_zc(CTX, STR);} \
+    else {(TARGET) = lydict_insert(CTX, LEN ? STR : "", LEN);}
 
 enum yin_argument {
     YIN_ARG_UNKNOWN = 0,   /**< parsed argument can not be matched with any supported yin argument keyword */
