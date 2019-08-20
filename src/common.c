@@ -24,7 +24,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "extensions.h"
+#include "plugins_exts.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 

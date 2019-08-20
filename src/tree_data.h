@@ -48,7 +48,7 @@ extern "C" {
      * 3   5   6
  * </pre>
  *
- * Use the same parameters for #LY_TREE_DFS_BEGIN and #LY_TREE_DFS_END. While
+ * Use the same parameters for #LYD_TREE_DFS_BEGIN and #LYD_TREE_DFS_END. While
  * START can be any of the lyd_node* types, NEXT and ELEM variables are expected
  * to be pointers to a generic struct lyd_node.
  *

@@ -26,9 +26,9 @@
 
 #include "context.h"
 #include "dict.h"
-#include "extensions.h"
 #include "hash_table.h"
 #include "log.h"
+#include "plugins_exts.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_schema.h"
@@ -925,7 +925,7 @@ lys_prefix_find_module(const struct lys_module *mod, const struct lys_module *im
     return NULL;
 }
 
-const char *
+API const char *
 lys_nodetype2str(uint16_t nodetype)
 {
     switch(nodetype) {

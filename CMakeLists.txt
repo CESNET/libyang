@@ -221,6 +221,7 @@ set(libsrc
     src/printer_schema.c
     src/printer_yang.c
     src/plugins_types.c
+    src/plugins_exts.c
     src/xml.c
     src/xpath.c)
 
@@ -243,7 +244,7 @@ set(headers
     src/printer_data.h
     src/tree_schema.h
     src/printer_schema.h
-    src/extensions.h
+    src/plugins_exts.h
     src/plugins_types.h
     src/dict.h
     src/log.h

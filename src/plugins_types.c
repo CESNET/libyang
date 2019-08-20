@@ -1,5 +1,5 @@
 /**
- * @file plugin_types.c
+ * @file plugins_types.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief Built-in types plugins and interface for user types plugins.
  *

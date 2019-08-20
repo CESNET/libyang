@@ -17,9 +17,9 @@
 
 #include <stdint.h>
 
+#include "plugins_exts.h"
 #include "set.h"
 #include "tree_schema.h"
-#include "extensions.h"
 
 #define LOGVAL_YANG(CTX, ...) LOGVAL((CTX)->ctx, LY_VLOG_LINE, &(CTX)->line, __VA_ARGS__)
 
@@ -366,13 +366,6 @@ struct lys_module *lys_module_find_prefix(const struct lys_module *mod, const ch
 const char *lys_prefix_find_module(const struct lys_module *mod, const struct lys_module *import);
 
 /**
- * @brief Stringify schema nodetype.
- * @param[in] nodetype Nodetype to stringify.
- * @return Constant string with the name of the node's type.
- */
-const char *lys_nodetype2str(uint16_t nodetype);
-
-/**
  * @brief Stringify YANG built-in type.
  * @param[in] basetype Built-in tyep ID to stringify.
  * @return Constant string with the name of the built-in type.
@@ -530,13 +523,14 @@ LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *re
  * @param[in] ctx_sc Compile context - alternative to the combination of @p ctx and @p module.
  * @param[in] ctx libyang context.
  * @param[in] module Module of the features.
- * @param[in] features_p Array if the parsed features definitions to precompile.
+ * @param[in] features_p Array of the parsed features definitions to precompile.
  * @param[in,out] features Pointer to the storage of the (pre)compiled features array where the new features are
  * supposed to be added. The storage is supposed to be initiated to NULL when the first parsed features are going
  * to be processed.
  * @return LY_ERR value.
  */
-LY_ERR lys_feature_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lys_module *module, struct lysp_feature *features_p, struct lysc_feature **features);
+LY_ERR lys_feature_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lys_module *module,
+                              struct lysp_feature *features_p, struct lysc_feature **features);
 
 /**
  * @brief Get the @ref ifftokens from the given position in the 2bits array
@@ -546,6 +540,21 @@ LY_ERR lys_feature_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struc
  */
 uint8_t lysc_iff_getop(uint8_t *list, int pos);
 
+/**
+ * @brief Internal wrapper around lys_compile_extension() to be able to prepare list of compiled extension definition
+ * even for the parsed (not-implemented) module - see lys_module::off_extensions.
+ *
+ * @param[in] ctx_sc Compile context - alternative to the combination of @p ctx and @p module.
+ * @param[in] ctx libyang context.
+ * @param[in] module Module of the extensions.
+ * @param[in] extensions_p Array of the parsed extension definitions to precompile.
+ * @param[in,out] extensions Pointer to the storage of the (pre)compiled extensions array where the new extensions are
+ * supposed to be added. The storage is supposed to be initiated to NULL when the first parsed extensions are going
+ * to be processed.
+ * @return LY_ERR value.
+ */
+LY_ERR lys_extension_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lys_module *module,
+                                struct lysp_ext *extensions_p, struct lysc_ext **extensions);
 /**
  * @brief Macro to free [sized array](@ref sizedarrays) of items using the provided free function. The ARRAY itself is also freed,
  * but the memory is not sanitized.

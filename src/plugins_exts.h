@@ -1,9 +1,9 @@
 /**
- * @file extesnions.h
+ * @file plugins_exts.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief libyang support for YANG extensions implementation.
  *
- * Copyright (c) 2015 - 2018 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2019 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -12,8 +12,8 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#ifndef LY_EXTENSIONS_H_
-#define LY_EXTENSIONS_H_
+#ifndef LY_PLUGINS_EXTS_H_
+#define LY_PLUGINS_EXTS_H_
 
 #include "set.h"
 #include "tree_schema.h"
@@ -28,6 +28,17 @@ extern "C" {
  *
  * @{
  */
+
+/**
+ * @brief Extensions API version
+ */
+#define LYEXT_API_VERSION 1
+
+/**
+ * @brief Macro to store version of extension plugins API in the plugins.
+ * It is matched when the plugin is being loaded by libyang.
+ */
+#define LYEXT_VERSION_CHECK int lyext_api_version = LYEXT_API_VERSION;
 
 /**
  * @defgroup extensionscompile YANG Extensions - Compilation Helpers
@@ -124,10 +135,33 @@ struct lyext_plugin {
     lyext_clb_free free;                /**< Free the extension instance specific data created by lyext_plugin::compile callback */
 };
 
+struct lyext_plugins_list {
+    const char *module;          /**< name of the module where the extension is defined */
+    const char *revision;        /**< optional module revision - if not specified, the plugin applies to any revision,
+                                      which is not an optimal approach due to a possible future revisions of the module.
+                                      Instead, there should be defined multiple items in the plugins list, each with the
+                                      different revision, but all with the same pointer to the plugin extension. The
+                                      only valid use case for the NULL revision is the case the module has no revision. */
+    const char *name;            /**< name of the extension */
+    struct lyext_plugin *plugin; /**< plugin for the extension */
+};
+
+
+/**
+ * @brief Provide a log message from an extension plugin.
+ *
+ * @param[in] ext Compiled extension structure providing generic information about the extension/plugin causing the message.
+ * @param[in] level Log message level (error, warning, etc.)
+ * @param[in] err_no Error type code.
+ * @param[in] path Path relevant to the message.
+ * @param[in] format Format string to print.
+ */
+void lyext_log(const struct lysc_ext_instance *ext, LY_LOG_LEVEL level, LY_ERR err_no, const char *path, const char *format, ...);
+
 /** @} extensions */
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* LY_TREE_SCHEMA_H_ */
+#endif /* LY_PLUGINS_EXTS_H_ */

@@ -20,8 +20,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "extensions.h"
 #include "log.h"
+#include "plugins_exts.h"
 #include "printer_internal.h"
 #include "tree.h"
 #include "tree_schema.h"

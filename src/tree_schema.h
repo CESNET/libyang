@@ -32,6 +32,90 @@ extern "C" {
 #endif
 
 /**
+ * @brief Macro to iterate via all elements in a schema tree which can be instantiated in data tree
+ * (skips cases, input, output). This is the opening part to the #LYS_TREE_DFS_END - they always have to be used together.
+ *
+ * The function follows deep-first search algorithm:
+ * <pre>
+ *     1
+ *    / \
+ *   2   4
+ *  /   / \
+ * 3   5   6
+ * </pre>
+ *
+ * Use the same parameters for #LYSC_TREE_DFS_BEGIN and #LYSC_TREE_DFS_END. While
+ * START can be any of the lysc_node* types (including lysc_action and lysc_notif),
+ * ELEM variable must be of the struct lysc_node* type.
+ *
+ * To skip a particular subtree, instead of the continue statement, set LYSC_TREE_DFS_continue
+ * variable to non-zero value.
+ *
+ * Use with opening curly bracket '{' after the macro.
+ *
+ * @param START Pointer to the starting element processed first.
+ * @param ELEM Iterator intended for use in the block.
+ */
+#define LYSC_TREE_DFS_BEGIN(START, ELEM) \
+    { int LYSC_TREE_DFS_continue = 0; struct lysc_node *LYSC_TREE_DFS_next; \
+    for ((ELEM) = (LYSC_TREE_DFS_next) = (START); \
+         (ELEM); \
+         (ELEM) = (LYSC_TREE_DFS_next), LYSC_TREE_DFS_continue = 0)
+
+/**
+ * @brief Macro to iterate via all elements in a (sub)tree. This is the closing part
+ * to the #LYSC_TREE_DFS_BEGIN - they always have to be used together.
+ *
+ * Use the same parameters for #LYSC_TREE_DFS_BEGIN and #LYSC_TREE_DFS_END. While
+ * START can be a pointer to any of the lysc_node* types (including lysc_action and lysc_notif),
+ * ELEM variable must be pointer to the lysc_node type.
+ *
+ * Use with closing curly bracket '}' after the macro.
+ *
+ * @param START Pointer to the starting element processed first.
+ * @param ELEM Iterator intended for use in the block.
+ */
+
+#define LYSC_TREE_DFS_END(START, ELEM) \
+    /* select element for the next run - children first */ \
+    if (LYSC_TREE_DFS_continue) { \
+        (LYSC_TREE_DFS_next) = NULL; \
+    } else { \
+        (LYSC_TREE_DFS_next) = (struct lysc_node*)lysc_node_children(ELEM, 0); \
+    }\
+    if (!(LYSC_TREE_DFS_next)) { \
+        /* in case of RPC/action, get also the output children */ \
+        if (!LYSC_TREE_DFS_continue && (ELEM)->nodetype == LYS_ACTION) { \
+            (LYSC_TREE_DFS_next) = (struct lysc_node*)lysc_node_children(ELEM, LYS_CONFIG_R); \
+        } \
+        if (!(LYSC_TREE_DFS_next)) { \
+            /* no children */ \
+            if ((ELEM) == (struct lysc_node*)(START)) { \
+                /* we are done, (START) has no children */ \
+                break; \
+            } \
+            /* try siblings */ \
+            (LYSC_TREE_DFS_next) = (ELEM)->next; \
+        } \
+    } \
+    while (!(LYSC_TREE_DFS_next)) { \
+        /* parent is already processed, go to its sibling */ \
+        (ELEM) = (ELEM)->parent; \
+        /* no siblings, go back through parents */ \
+        if ((ELEM) == (struct lysc_node*)(START)) { \
+            /* we are done, no next element to process */ \
+            break; \
+        } \
+        if ((ELEM)->nodetype == LYS_ACTION) { \
+            /* there is actually next node as a child of action's output */ \
+            (LYSC_TREE_DFS_next) = (struct lysc_node*)lysc_node_children(ELEM, LYS_CONFIG_R); \
+        } \
+        if (!(LYSC_TREE_DFS_next)) { \
+            (LYSC_TREE_DFS_next) = (ELEM)->next; \
+        } \
+    } } \
+
+/**
  * @brief Schema input formats accepted by libyang [parser functions](@ref howtoschemasparsers).
  */
 typedef enum {
@@ -81,25 +165,37 @@ typedef enum {
  * @brief Extension instance structure parent enumeration
  */
 typedef enum {
-    LYEXT_PAR_MODULE, /**< ::lys_module or ::lys_submodule */
-    LYEXT_PAR_NODE, /**< ::lys_node (and the derived structures) */
-    LYEXT_PAR_TPDF, /**< ::lys_tpdf */
-    LYEXT_PAR_TYPE, /**< ::lys_type */
-    LYEXT_PAR_TYPE_BIT, /**< ::lys_type_bit */
-    LYEXT_PAR_TYPE_ENUM, /**< ::lys_type_enum */
-    LYEXT_PAR_FEATURE, /**< ::lys_feature */
-    LYEXT_PAR_RESTR, /**< ::lys_restr - YANG's must, range, length and pattern statements */
-    LYEXT_PAR_WHEN, /**< ::lys_when */
-    LYEXT_PAR_IDENT, /**< ::lys_ident */
-    LYEXT_PAR_EXT, /**< ::lys_ext */
-    LYEXT_PAR_EXTINST, /**< ::lys_ext_instance */
-    LYEXT_PAR_REFINE, /**< ::lys_refine */
-    LYEXT_PAR_DEVIATION, /**< ::lys_deviation */
-    LYEXT_PAR_DEVIATE, /**< ::lys_deviate */
-    LYEXT_PAR_IMPORT, /**< ::lys_import */
-    LYEXT_PAR_INCLUDE,           /**< ::lysp_include */
-    LYEXT_PAR_REVISION,          /**< ::lysc_revision */
+    LYEXT_PAR_MODULE,    /**< ::lysc_module */
+    LYEXT_PAR_NODE,      /**< ::lysc_node (and the derived structures including ::lysc_action and ::lysc_notif) */
+    LYEXT_PAR_INPUT,     /**< ::lysc_action_inout */
+    LYEXT_PAR_OUTPUT,    /**< ::lysc_action_inout */
+    LYEXT_PAR_TYPE,      /**< ::lysc_type */
+    LYEXT_PAR_TYPE_BIT,  /**< ::lysc_type_bitenum_item */
+    LYEXT_PAR_TYPE_ENUM, /**< ::lysc_type_bitenum_item */
+    LYEXT_PAR_FEATURE,   /**< ::lysc_feature */
+    LYEXT_PAR_MUST,      /**< ::lysc_must */
+    LYEXT_PAR_PATTERN,   /**< ::lysc_pattern */
+    LYEXT_PAR_LENGTH,    /**< ::lysc_range */
+    LYEXT_PAR_RANGE,     /**< ::lysc_range */
+    LYEXT_PAR_WHEN,      /**< ::lysc_when */
+    LYEXT_PAR_IDENT,     /**< ::lysc_ident */
+    LYEXT_PAR_EXT,       /**< ::lysc_ext */
+    LYEXT_PAR_IMPORT,    /**< ::lysc_import */
+//    LYEXT_PAR_TPDF,      /**< ::lysp_tpdf */
+//    LYEXT_PAR_EXTINST,   /**< ::lysp_ext_instance */
+//    LYEXT_PAR_REFINE,    /**< ::lysp_refine */
+//    LYEXT_PAR_DEVIATION, /**< ::lysp_deviation */
+//    LYEXT_PAR_DEVIATE,   /**< ::lysp_deviate */
+//    LYEXT_PAR_INCLUDE,   /**< ::lysp_include */
+//    LYEXT_PAR_REVISION,  /**< ::lysp_revision */
 } LYEXT_PARENT;
+
+/**
+ * @brief Stringify extension instance parent type.
+ * @param[in] type Parent type to stringify.
+ * @return Constant string with the name of the parent statement.
+ */
+const char *lyext_parent2str(LYEXT_PARENT type);
 
 /**
  * @brief Enum of substatements in which extension instances can appear.
@@ -915,10 +1011,9 @@ void lysp_module_free(struct lysp_module *module);
 struct lysc_ext {
     const char *name;                /**< extension name */
     const char *argument;            /**< argument name, NULL if not specified */
-    const char *dsc;                 /**< description statement */
-    const char *ref;                 /**< reference statement */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lyext_plugin *plugin;     /**< Plugin implementing the specific extension */
+    struct lys_module *module;       /**< module structure */
     uint16_t flags;                  /**< LYS_STATUS_* value (@ref snodeflags) */
 };
 
@@ -926,7 +1021,7 @@ struct lysc_ext {
  * @brief YANG extension instance
  */
 struct lysc_ext_instance {
-    struct lysc_ext *ext;            /**< pointer to the extension definition */
+    struct lysc_ext *def;            /**< pointer to the extension definition */
     void *parent;                    /**< pointer to the parent element holding the extension instance(s), use
                                           ::lysc_ext_instance#parent_type to access the schema element */
     const char *argument;            /**< optional value of the extension's argument */
@@ -1445,6 +1540,7 @@ struct lysc_module {
     struct lysc_node *data;          /**< list of module's top-level data nodes (linked list) */
     struct lysc_action *rpcs;        /**< list of RPCs ([sized array](@ref sizedarrays)) */
     struct lysc_notif *notifs;       /**< list of notifications ([sized array](@ref sizedarrays)) */
+    struct lysc_ext *extensions;     /**< list of the extension definitions ([sized array](@ref sizedarrays)) */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 };
 
@@ -1569,6 +1665,11 @@ struct lys_module {
                                           from if-feature statements of the compiled schemas and their proper use in case
                                           the module became implemented in future (no matter if implicitly via augment/deviate
                                           or explicitly via ly_ctx_module_implement()). */
+    struct lysc_ext *off_extensions; /**< List of pre-compiled extension definitions of the module in non-implemented modules
+                                          ([sized array](@ref sizedarrays)). These extensions are prepared to be linked with the extension instances,
+                                          but they are not implemented (connected with any extension plugin). In case the module become
+                                          implemented, the list is moved into the compiled module structure and available extension plugins
+                                          are connected with the appropriate extension definision. */
 
     uint8_t implemented;             /**< flag if the module is implemented, not just imported. The module is implemented if
                                           the flag has non-zero value. Specific values are used internally:
@@ -1758,6 +1859,13 @@ const struct lysc_iffeature *lys_is_disabled(const struct lysc_node *node, int r
  */
 LY_ERR lys_value_validate(struct ly_ctx *ctx, const struct lysc_node *node, const char *value, size_t value_len,
                           ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format);
+
+/**
+ * @brief Stringify schema nodetype.
+ * @param[in] nodetype Nodetype to stringify.
+ * @return Constant string with the name of the node's type.
+ */
+const char *lys_nodetype2str(uint16_t nodetype);
 
 /** @} */
 

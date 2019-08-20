@@ -751,8 +751,9 @@ lys_parse_mem_module(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, 
 #endif
 
     if (!mod->implemented) {
-        /* pre-compile features of the module */
+        /* pre-compile features and extension definitions of the module */
         LY_CHECK_GOTO(lys_feature_precompile(NULL, ctx, mod, mod->parsed->features, &mod->off_features), error);
+        LY_CHECK_GOTO(lys_extension_precompile(NULL, ctx, mod, mod->parsed->extensions, &mod->off_extensions), error);
     }
 
     /* decide the latest revision */
@@ -797,8 +798,9 @@ finish_parsing:
             goto error_ctx;
         }
         if (!mod->implemented) {
-            /* pre-compile features of the module */
+            /* pre-compile features and extension definitions of the module */
             LY_CHECK_GOTO(lys_feature_precompile(NULL, ctx, mod, inc->submodule->features, &mod->off_features), error);
+            LY_CHECK_GOTO(lys_extension_precompile(NULL, ctx, mod, mod->parsed->extensions, &mod->off_extensions), error);
         }
     }
     mod->parsed->parsing = 0;

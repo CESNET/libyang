@@ -24,8 +24,8 @@
 
 #include "context.h"
 #include "dict.h"
-#include "extensions.h"
 #include "log.h"
+#include "plugins_exts.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_schema.h"

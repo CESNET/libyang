@@ -24,6 +24,7 @@
 #include <string.h>
 
 #include "log.h"
+#include "plugins_exts.h"
 
 THREAD_LOCAL enum int_log_opts log_opt;
 volatile uint8_t ly_log_level = LY_LLWRN;
@@ -461,6 +462,29 @@ ly_vlog(const struct ly_ctx *ctx, enum LY_VLOG_ELEM elem_type, const void *elem,
     log_vprintf(ctx, LY_LLERR, LY_EVALID, code, path, format, ap);
     /* path is spent and should not be freed! */
     va_end(ap);
+}
+
+API void
+lyext_log(const struct lysc_ext_instance *ext, LY_LOG_LEVEL level, LY_ERR err_no, const char *path, const char *format, ...)
+{
+    va_list ap;
+    char *plugin_msg;
+    int ret;
+
+    if (ly_log_level < level) {
+        return;
+    }
+    ret = asprintf(&plugin_msg, "Extension plugin \"%s\": %s)", ext->def->plugin->id, format);
+    if (ret == -1) {
+        LOGMEM(ext->def->module->ctx);
+        return;
+    }
+
+    va_start(ap, format);
+    log_vprintf(ext->def->module->ctx, level, (level == LY_LLERR ? LY_EPLUGIN : 0), err_no, path ? strdup(path) : NULL, plugin_msg, ap);
+    va_end(ap);
+
+    free(plugin_msg);
 }
 
 API void

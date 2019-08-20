@@ -1,7 +1,7 @@
 /*
- * @file test_parser_xml.c
+ * @file test_types.c
  * @author: Radek Krejci <rkrejci@cesnet.cz>
- * @brief unit tests for functions from parser_xml.c
+ * @brief unit tests for support of YANG data types
  *
  * Copyright (c) 2019 CESNET, z.s.p.o.
  *

@@ -24,9 +24,10 @@
 
 #include "dict.h"
 #include "log.h"
+#include "plugins_exts.h"
 #include "set.h"
 #include "plugins_types.h"
-#include "extensions.h"
+#include "plugins_exts_internal.h"
 #include "tree.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
@@ -58,6 +59,16 @@
         for (ITER = 0; ITER < LY_ARRAY_SIZE(ARRAY_P); ++ITER) { \
             LY_ARRAY_INCREMENT(ARRAY_C); \
             RET = FUNC(CTX, &(ARRAY_P)[ITER], PARENT, &(ARRAY_C)[ITER + __array_offset], USES_STATUS); \
+            LY_CHECK_GOTO(RET != LY_SUCCESS, GOTO); \
+        } \
+    }
+
+#define COMPILE_EXTS_GOTO(CTX, EXTS_P, EXT_C, PARENT, PARENT_TYPE, RET, GOTO) \
+    if (EXTS_P) { \
+        LY_ARRAY_CREATE_GOTO((CTX)->ctx, EXT_C, LY_ARRAY_SIZE(EXTS_P), RET, GOTO); \
+        for (uint32_t __exts_iter = 0, __array_offset = LY_ARRAY_SIZE(EXT_C); __exts_iter < LY_ARRAY_SIZE(EXTS_P); ++__exts_iter) { \
+            LY_ARRAY_INCREMENT(EXT_C); \
+            RET = lys_compile_ext(CTX, &(EXTS_P)[__exts_iter], &(EXT_C)[__exts_iter + __array_offset], PARENT, PARENT_TYPE); \
             LY_CHECK_GOTO(RET != LY_SUCCESS, GOTO); \
         } \
     }
@@ -414,16 +425,18 @@ lys_feature_find(struct lys_module *mod, const char *name, size_t len)
 }
 
 static LY_ERR
-lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct lysc_ext_instance *ext)
+lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct lysc_ext_instance *ext, void *parent, LYEXT_PARENT parent_type)
 {
     const char *name;
     unsigned int u;
     const struct lys_module *mod;
-    struct lysp_ext *edef = NULL;
+    struct lysc_ext *elist = NULL;
 
     DUP_STRING(ctx->ctx, ext_p->argument, ext->argument);
     ext->insubstmt = ext_p->insubstmt;
     ext->insubstmt_index = ext_p->insubstmt_index;
+    ext->parent = parent;
+    ext->parent_type = parent_type;
 
     /* get module where the extension definition should be placed */
     for (u = 0; ext_p->name[u] != ':'; ++u);
@@ -437,17 +450,100 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct ly
                             ext_p->name, mod->name),
                      LY_EVALID);
     name = &ext_p->name[u + 1];
+
     /* find the extension definition there */
-    for (ext = NULL, u = 0; u < LY_ARRAY_SIZE(mod->parsed->extensions); ++u) {
-        if (!strcmp(name, mod->parsed->extensions[u].name)) {
-            edef = &mod->parsed->extensions[u];
+    if (mod->off_extensions) {
+        elist = mod->off_extensions;
+    } else {
+        elist = mod->compiled->extensions;
+    }
+    LY_ARRAY_FOR(elist, u) {
+        if (!strcmp(name, elist[u].name)) {
+            ext->def = &elist[u];
             break;
         }
     }
-    LY_CHECK_ERR_RET(!edef, LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                                   "Extension definition of extension instance \"%s\" not found.", ext_p->name),
+    LY_CHECK_ERR_RET(!ext->def,
+                     LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                            "Extension definition of extension instance \"%s\" not found.", ext_p->name),
                      LY_EVALID);
-    /* TODO extension plugins */
+
+    if (ext->def->plugin && ext->def->plugin->compile) {
+        LY_CHECK_RET(ext->def->plugin->compile(ctx, ext_p, ext),LY_EVALID);
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Fill in the prepared compiled extensions definition structure according to the parsed extension definition.
+ */
+static LY_ERR
+lys_compile_extension(struct lysc_ctx *ctx, struct lysp_ext *ext_p, struct lysc_ext *ext)
+{
+    LY_ERR ret = LY_SUCCESS;
+
+    DUP_STRING(ctx->ctx, ext_p->name, ext->name);
+    DUP_STRING(ctx->ctx, ext_p->argument, ext->argument);
+    ext->module = ctx->mod_def;
+    COMPILE_EXTS_GOTO(ctx, ext_p->exts, ext->exts, ext, LYEXT_PAR_EXT, ret, done);
+
+done:
+    return ret;
+}
+
+/**
+ * @brief Link the extensions definitions with the available extension plugins.
+ *
+ * This is done only in the compiled (implemented) module. Extensions of a non-implemented modules
+ * are not connected with even available extension plugins.
+ *
+ * @param[in] extensions List of extensions to be processed ([sized array](@ref sizedarrays)).
+ */
+static void
+lys_compile_extension_plugins(struct lysc_ext *extensions)
+{
+    unsigned int u;
+
+    LY_ARRAY_FOR(extensions, u) {
+        extensions[u].plugin = lyext_get_plugin(&extensions[u]);
+    }
+}
+
+LY_ERR
+lys_extension_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lys_module *module,
+                         struct lysp_ext *extensions_p, struct lysc_ext **extensions)
+{
+    unsigned int offset = 0, u;
+    struct lysc_ctx context = {0};
+
+    assert(ctx_sc || ctx);
+
+    if (!ctx_sc) {
+        context.ctx = ctx;
+        context.mod = module;
+        context.path_len = 1;
+        context.path[0] = '/';
+        ctx_sc = &context;
+    }
+
+    if (!extensions_p) {
+        return LY_SUCCESS;
+    }
+    if (*extensions) {
+        offset = LY_ARRAY_SIZE(*extensions);
+    }
+
+    lysc_update_path(ctx_sc, NULL, "{extension}");
+    LY_ARRAY_CREATE_RET(ctx_sc->ctx, *extensions, LY_ARRAY_SIZE(extensions_p), LY_EMEM);
+    LY_ARRAY_FOR(extensions_p, u) {
+        lysc_update_path(ctx_sc, NULL, extensions_p[u].name);
+        LY_ARRAY_INCREMENT(*extensions);
+        COMPILE_CHECK_UNIQUENESS(ctx_sc, *extensions, name, &(*extensions)[offset + u], "extension", extensions_p[u].name);
+        LY_CHECK_RET(lys_compile_extension(ctx_sc, &extensions_p[u], &(*extensions)[offset + u]));
+        lysc_update_path(ctx_sc, NULL, NULL);
+    }
+    lysc_update_path(ctx_sc, NULL, NULL);
 
     return LY_SUCCESS;
 }
@@ -655,7 +751,6 @@ error:
 static LY_ERR
 lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, struct lysc_when **when)
 {
-    unsigned int u;
     LY_ERR ret = LY_SUCCESS;
 
     *when = calloc(1, sizeof **when);
@@ -664,7 +759,7 @@ lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, struct lysc_whe
     DUP_STRING(ctx->ctx, when_p->dsc, (*when)->dsc);
     DUP_STRING(ctx->ctx, when_p->ref, (*when)->ref);
     LY_CHECK_ERR_GOTO(!(*when)->cond, ret = ly_errcode(ctx->ctx), done);
-    COMPILE_ARRAY_GOTO(ctx, when_p->exts, (*when)->exts, u, lys_compile_ext, ret, done);
+    COMPILE_EXTS_GOTO(ctx, when_p->exts, (*when)->exts, (*when), LYEXT_PAR_WHEN, ret, done);
 
 done:
     return ret;
@@ -680,7 +775,6 @@ done:
 static LY_ERR
 lys_compile_must(struct lysc_ctx *ctx, struct lysp_restr *must_p, struct lysc_must *must)
 {
-    unsigned int u;
     LY_ERR ret = LY_SUCCESS;
 
     must->cond = lyxp_expr_parse(ctx->ctx, must_p->arg);
@@ -690,7 +784,7 @@ lys_compile_must(struct lysc_ctx *ctx, struct lysp_restr *must_p, struct lysc_mu
     DUP_STRING(ctx->ctx, must_p->emsg, must->emsg);
     DUP_STRING(ctx->ctx, must_p->dsc, must->dsc);
     DUP_STRING(ctx->ctx, must_p->ref, must->ref);
-    COMPILE_ARRAY_GOTO(ctx, must_p->exts, must->exts, u, lys_compile_ext, ret, done);
+    COMPILE_EXTS_GOTO(ctx, must_p->exts, must->exts, must, LYEXT_PAR_MUST, ret, done);
 
 done:
     return ret;
@@ -706,12 +800,11 @@ done:
 static LY_ERR
 lys_compile_import(struct lysc_ctx *ctx, struct lysp_import *imp_p, struct lysc_import *imp)
 {
-    unsigned int u;
     struct lys_module *mod = NULL;
     LY_ERR ret = LY_SUCCESS;
 
     DUP_STRING(ctx->ctx, imp_p->prefix, imp->prefix);
-    COMPILE_ARRAY_GOTO(ctx, imp_p->exts, imp->exts, u, lys_compile_ext, ret, done);
+    COMPILE_EXTS_GOTO(ctx, imp_p->exts, imp->exts, imp, LYEXT_PAR_IMPORT, ret, done);
     imp->module = imp_p->module;
 
     /* make sure that we have the parsed version (lysp_) of the imported module to import groupings or typedefs.
@@ -767,7 +860,7 @@ lys_compile_identity(struct lysc_ctx *ctx, struct lysp_ident *ident_p, struct ly
     ident->module = ctx->mod;
     COMPILE_ARRAY_GOTO(ctx, ident_p->iffeatures, ident->iffeatures, u, lys_compile_iffeature, ret, done);
     /* backlings (derived) can be added no sooner than when all the identities in the current module are present */
-    COMPILE_ARRAY_GOTO(ctx, ident_p->exts, ident->exts, u, lys_compile_ext, ret, done);
+    COMPILE_EXTS_GOTO(ctx, ident_p->exts, ident->exts, ident, LYEXT_PAR_IDENT, ret, done);
     ident->flags = ident_p->flags;
 
     lysc_update_path(ctx, NULL, NULL);
@@ -1062,7 +1155,7 @@ lys_feature_precompile_finish(struct lysc_ctx *ctx, struct lysp_feature *feature
         lysc_update_path(ctx, NULL, feature_p->name);
 
         /* finish compilation started in lys_feature_precompile() */
-        COMPILE_ARRAY_GOTO(ctx, feature_p->exts, feature->exts, u, lys_compile_ext, ret, done);
+        COMPILE_EXTS_GOTO(ctx, feature_p->exts, feature->exts, feature, LYEXT_PAR_FEATURE, ret, done);
         COMPILE_ARRAY_GOTO(ctx, feature_p->iffeatures, feature->iffeatures, u, lys_compile_iffeature, ret, done);
         if (feature->iffeatures) {
             for (u = 0; u < LY_ARRAY_SIZE(feature->iffeatures); ++u) {
@@ -1859,7 +1952,7 @@ lys_compile_type_patterns(struct lysc_ctx *ctx, struct lysp_restr *patterns_p,
                           struct lysc_pattern **base_patterns, struct lysc_pattern ***patterns)
 {
     struct lysc_pattern **pattern;
-    unsigned int u, v;
+    unsigned int u;
     LY_ERR ret = LY_SUCCESS;
 
     /* first, copy the patterns from the base type */
@@ -1884,7 +1977,7 @@ lys_compile_type_patterns(struct lysc_ctx *ctx, struct lysp_restr *patterns_p,
         DUP_STRING(ctx->ctx, patterns_p[u].emsg, (*pattern)->emsg);
         DUP_STRING(ctx->ctx, patterns_p[u].dsc, (*pattern)->dsc);
         DUP_STRING(ctx->ctx, patterns_p[u].ref, (*pattern)->ref);
-        COMPILE_ARRAY_GOTO(ctx, patterns_p[u].exts, (*pattern)->exts, v, lys_compile_ext, ret, done);
+        COMPILE_EXTS_GOTO(ctx, patterns_p[u].exts, (*pattern)->exts, (*pattern), LYEXT_PAR_PATTERN, ret, done);
     }
 done:
     return ret;
@@ -2055,7 +2148,7 @@ lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_
         }
 
         COMPILE_ARRAY_GOTO(ctx, enums_p[u].iffeatures, e->iffeatures, v, lys_compile_iffeature, ret, done);
-        COMPILE_ARRAY_GOTO(ctx, enums_p[u].exts, e->exts, v, lys_compile_ext, ret, done);
+        COMPILE_EXTS_GOTO(ctx, enums_p[u].exts, e->exts, e, basetype == LY_TYPE_ENUM ? LYEXT_PAR_TYPE_ENUM : LYEXT_PAR_TYPE_BIT, ret, done);
 
         if (basetype == LY_TYPE_BITS) {
             /* keep bits ordered by position */
@@ -2611,7 +2704,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16
             LY_CHECK_RET(lys_compile_type_range(ctx, type_p->length, basetype, 1, 0,
                                                 base ? ((struct lysc_type_bin*)base)->length : NULL, &bin->length));
             if (!tpdfname) {
-                COMPILE_ARRAY_GOTO(ctx, type_p->length->exts, bin->length->exts, u, lys_compile_ext, ret, done);
+                COMPILE_EXTS_GOTO(ctx, type_p->length->exts, bin->length->exts, bin->length, LYEXT_PAR_LENGTH, ret, done);
             }
         }
 
@@ -2682,7 +2775,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16
             LY_CHECK_RET(lys_compile_type_range(ctx, type_p->range, basetype, 0, dec->fraction_digits,
                                                 base ? ((struct lysc_type_dec*)base)->range : NULL, &dec->range));
             if (!tpdfname) {
-                COMPILE_ARRAY_GOTO(ctx, type_p->range->exts, dec->range->exts, u, lys_compile_ext, ret, done);
+                COMPILE_EXTS_GOTO(ctx, type_p->range->exts, dec->range->exts, dec->range, LYEXT_PAR_RANGE, ret, done);
             }
         }
 
@@ -2699,7 +2792,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16
             LY_CHECK_RET(lys_compile_type_range(ctx, type_p->length, basetype, 1, 0,
                                                 base ? ((struct lysc_type_str*)base)->length : NULL, &str->length));
             if (!tpdfname) {
-                COMPILE_ARRAY_GOTO(ctx, type_p->length->exts, str->length->exts, u, lys_compile_ext, ret, done);
+                COMPILE_EXTS_GOTO(ctx, type_p->length->exts, str->length->exts, str->length, LYEXT_PAR_LENGTH, ret, done);
             }
         } else if (base && ((struct lysc_type_str*)base)->length) {
             str->length = lysc_range_dup(ctx->ctx, ((struct lysc_type_str*)base)->length);
@@ -2759,7 +2852,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16
             LY_CHECK_RET(lys_compile_type_range(ctx, type_p->range, basetype, 0, 0,
                                                 base ? ((struct lysc_type_num*)base)->range : NULL, &num->range));
             if (!tpdfname) {
-                COMPILE_ARRAY_GOTO(ctx, type_p->range->exts, num->range->exts, u, lys_compile_ext, ret, done);
+                COMPILE_EXTS_GOTO(ctx, type_p->range->exts, num->range->exts, num->range, LYEXT_PAR_RANGE, ret, done);
             }
         }
 
@@ -3206,7 +3299,7 @@ preparenext:
         LY_CHECK_GOTO(ret, cleanup);
     }
 
-    COMPILE_ARRAY_GOTO(ctx, type_p->exts, (*type)->exts, u, lys_compile_ext, ret, cleanup);
+    COMPILE_EXTS_GOTO(ctx, type_p->exts, (*type)->exts, (*type), LYEXT_PAR_TYPE, ret, cleanup);
 
 cleanup:
     ly_set_erase(&tpdf_chain, free);
@@ -3357,12 +3450,12 @@ lys_compile_action(struct lysc_ctx *ctx, struct lysp_action *action_p,
     DUP_STRING(ctx->ctx, action_p->dsc, action->dsc);
     DUP_STRING(ctx->ctx, action_p->ref, action->ref);
     COMPILE_ARRAY_GOTO(ctx, action_p->iffeatures, action->iffeatures, u, lys_compile_iffeature, ret, cleanup);
-    COMPILE_ARRAY_GOTO(ctx, action_p->exts, action->exts, u, lys_compile_ext, ret, cleanup);
+    COMPILE_EXTS_GOTO(ctx, action_p->exts, action->exts, action, LYEXT_PAR_NODE, ret, cleanup);
 
     /* input */
     lysc_update_path(ctx, (struct lysc_node*)action, "input");
     COMPILE_ARRAY_GOTO(ctx, action_p->input.musts, action->input.musts, u, lys_compile_must, ret, cleanup);
-    COMPILE_ARRAY_GOTO(ctx, action_p->input.exts, action->input_exts, u, lys_compile_ext, ret, cleanup);
+    COMPILE_EXTS_GOTO(ctx, action_p->input.exts, action->input_exts, &action->input, LYEXT_PAR_INPUT, ret, cleanup);
     ctx->options |= LYSC_OPT_RPC_INPUT;
     LY_LIST_FOR(action_p->input.data, child_p) {
         LY_CHECK_RET(lys_compile_node(ctx, child_p, (struct lysc_node*)action, uses_status));
@@ -3373,7 +3466,7 @@ lys_compile_action(struct lysc_ctx *ctx, struct lysp_action *action_p,
     /* output */
     lysc_update_path(ctx, (struct lysc_node*)action, "output");
     COMPILE_ARRAY_GOTO(ctx, action_p->output.musts, action->output.musts, u, lys_compile_must, ret, cleanup);
-    COMPILE_ARRAY_GOTO(ctx, action_p->output.exts, action->output_exts, u, lys_compile_ext, ret, cleanup);
+    COMPILE_EXTS_GOTO(ctx, action_p->output.exts, action->output_exts, &action->output, LYEXT_PAR_OUTPUT, ret, cleanup);
     ctx->options |= LYSC_OPT_RPC_OUTPUT;
     LY_LIST_FOR(action_p->output.data, child_p) {
         LY_CHECK_RET(lys_compile_node(ctx, child_p, (struct lysc_node*)action, uses_status));
@@ -3437,8 +3530,8 @@ lys_compile_notif(struct lysc_ctx *ctx, struct lysp_notif *notif_p,
     DUP_STRING(ctx->ctx, notif_p->dsc, notif->dsc);
     DUP_STRING(ctx->ctx, notif_p->ref, notif->ref);
     COMPILE_ARRAY_GOTO(ctx, notif_p->iffeatures, notif->iffeatures, u, lys_compile_iffeature, ret, cleanup);
-    COMPILE_ARRAY_GOTO(ctx, notif_p->exts, notif->exts, u, lys_compile_ext, ret, cleanup);
     COMPILE_ARRAY_GOTO(ctx, notif_p->musts, notif->musts, u, lys_compile_must, ret, cleanup);
+    COMPILE_EXTS_GOTO(ctx, notif_p->exts, notif->exts, notif, LYEXT_PAR_NODE, ret, cleanup);
 
     ctx->options |= LYSC_OPT_NOTIFICATION;
     LY_LIST_FOR(notif_p->data, child_p) {
@@ -5376,10 +5469,11 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lysc_nod
         (*when)->context = lysc_xpath_context(node);
     }
     COMPILE_ARRAY_GOTO(ctx, node_p->iffeatures, node->iffeatures, u, lys_compile_iffeature, ret, error);
-    COMPILE_ARRAY_GOTO(ctx, node_p->exts, node->exts, u, lys_compile_ext, ret, error);
 
     /* nodetype-specific part */
     LY_CHECK_GOTO(node_compile_spec(ctx, node_p, node), error);
+
+    COMPILE_EXTS_GOTO(ctx, node_p->exts, node->exts, node, LYEXT_PAR_NODE, ret, error);
 
     /* inherit LYS_MAND_TRUE in parent containers */
     if (node->flags & LYS_MAND_TRUE) {
@@ -6513,8 +6607,12 @@ lys_compile_submodule(struct lysc_ctx *ctx, struct lysp_include *inc)
         /* features are compiled directly into the compiled module structure,
          * but it must be done in two steps to allow forward references (via if-feature) between the features themselves.
          * The features compilation is finished in the main module (lys_compile()). */
-        ret = lys_feature_precompile(ctx, NULL, NULL, submod->features,
-                                     mainmod->mod->off_features ? &mainmod->mod->off_features : &mainmod->features);
+        ret = lys_feature_precompile(ctx, NULL, NULL, submod->features, &mainmod->features);
+        LY_CHECK_GOTO(ret, error);
+    }
+    if (!mainmod->mod->off_extensions) {
+        /* extensions are compiled directly into the compiled module structure, compilation is finished in the main module (lys_compile()). */
+        ret = lys_extension_precompile(ctx, NULL, NULL, submod->extensions, &mainmod->extensions);
         LY_CHECK_GOTO(ret, error);
     }
 
@@ -6574,6 +6672,8 @@ lys_compile(struct lys_module *mod, int options)
         ret = lys_compile_submodule(&ctx, &sp->includes[u]);
         LY_CHECK_GOTO(ret != LY_SUCCESS, error);
     }
+
+    /* features */
     if (mod->off_features) {
         /* there is already precompiled array of features */
         mod_c->features = mod->off_features;
@@ -6602,6 +6702,20 @@ lys_compile(struct lys_module *mod, int options)
     }
     lysc_update_path(&ctx, NULL, NULL);
 
+    /* extensions */
+    /* 2-steps: a) prepare compiled structures and ... */
+    if (mod->off_extensions) {
+        /* there is already precompiled array of extension definitions */
+        mod_c->extensions = mod->off_extensions;
+        mod->off_extensions = NULL;
+    } else {
+        /* extension definitions are compiled directly into the compiled module structure */
+        ret = lys_extension_precompile(&ctx, NULL, NULL, sp->extensions, &mod_c->extensions);
+    }
+    /* ... b) connect the extension definitions with the appropriate extension plugins */
+    lys_compile_extension_plugins(mod_c->extensions);
+
+    /* identities */
     lysc_update_path(&ctx, NULL, "{identity}");
     COMPILE_ARRAY_UNIQUE_GOTO(&ctx, sp->identities, mod_c->identities, u, lys_compile_identity, ret, error);
     if (sp->identities) {
@@ -6630,7 +6744,8 @@ lys_compile(struct lys_module *mod, int options)
     ret = lys_compile_deviations(&ctx, sp);
     LY_CHECK_GOTO(ret, error);
 
-    COMPILE_ARRAY_GOTO(&ctx, sp->exts, mod_c->exts, u, lys_compile_ext, ret, error);
+    /* extension instances TODO cover extension instances from submodules */
+    COMPILE_EXTS_GOTO(&ctx, sp->exts, mod_c->exts, mod_c, LYEXT_PAR_MODULE, ret, error);
 
     /* validate leafref's paths and when/must xpaths */
     /* for leafref, we need 2 rounds - first detects circular chain by storing the first referred type (which
