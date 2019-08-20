@@ -38,13 +38,12 @@ void lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node);
 void lysp_when_free(struct ly_ctx *ctx, struct lysp_when *when);
 
 LY_ERR buf_add_char(struct ly_ctx *ctx, const char **input, size_t len, char **buf, size_t *buf_len, size_t *buf_used);
-LY_ERR buf_store_char(struct lys_parser_ctx *ctx, const char **input, enum yang_arg arg,
-                      char **word_p, size_t *word_len, char **word_b, size_t *buf_len, int need_buf);
+LY_ERR buf_store_char(struct lys_parser_ctx *ctx, const char **input, enum yang_arg arg, char **word_p,
+                      size_t *word_len, char **word_b, size_t *buf_len, int need_buf, int *prefix);
 LY_ERR get_keyword(struct lys_parser_ctx *ctx, const char **data, enum yang_keyword *kw, char **word_p, size_t *word_len);
 LY_ERR get_argument(struct lys_parser_ctx *ctx, const char **data, enum yang_arg arg,
                     uint16_t *flags, char **word_p, char **word_b, size_t *word_len);
 LY_ERR skip_comment(struct lys_parser_ctx *ctx, const char **data, int comment);
-LY_ERR check_identifierchar(struct lys_parser_ctx *ctx, unsigned int c, int first, int *prefix);
 
 LY_ERR parse_action(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_action **actions);
 LY_ERR parse_any(struct lys_parser_ctx *ctx, const char **data, enum yang_keyword kw, struct lysp_node *parent, struct lysp_node **siblings);
@@ -67,6 +66,7 @@ LY_ERR parse_notif(struct lys_parser_ctx *ctx, const char **data, struct lysp_no
 LY_ERR parse_submodule(struct lys_parser_ctx *ctx, const char **data, struct lysp_submodule *submod);
 LY_ERR parse_uses(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
 LY_ERR parse_when(struct lys_parser_ctx *ctx, const char **data, struct lysp_when **when_p);
+LY_ERR parse_type_enum_value_pos(struct lys_parser_ctx *ctx, const char **data, enum yang_keyword val_kw, int64_t *value, uint16_t *flags, struct lysp_ext_instance **exts);
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
@@ -141,10 +141,10 @@ test_helpers(void **state)
     const char *str;
     char *buf, *p;
     size_t len, size;
-    int prefix;
     struct lys_parser_ctx ctx;
     ctx.ctx = NULL;
     ctx.line = 1;
+    int prefix = 0;
 
     /* storing into buffer */
     str = "abcd";
@@ -161,48 +161,50 @@ test_helpers(void **state)
     /* invalid first characters */
     len = 0;
     str = "2invalid";
-    assert_int_equal(LY_EVALID, buf_store_char(&ctx, &str, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1));
+    assert_int_equal(LY_EVALID, buf_store_char(&ctx, &str, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1, &prefix));
     str = ".invalid";
-    assert_int_equal(LY_EVALID, buf_store_char(&ctx, &str, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1));
+    assert_int_equal(LY_EVALID, buf_store_char(&ctx, &str, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1, &prefix));
     str = "-invalid";
-    assert_int_equal(LY_EVALID, buf_store_char(&ctx, &str, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1));
+    assert_int_equal(LY_EVALID, buf_store_char(&ctx, &str, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1, &prefix));
     /* invalid following characters */
     len = 3; /* number of characters read before the str content */
     str = "!";
-    assert_int_equal(LY_EVALID, buf_store_char(&ctx, &str, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1));
+    assert_int_equal(LY_EVALID, buf_store_char(&ctx, &str, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1, &prefix));
     str = ":";
-    assert_int_equal(LY_EVALID, buf_store_char(&ctx, &str, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1));
+    assert_int_equal(LY_EVALID, buf_store_char(&ctx, &str, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1, &prefix));
     /* valid colon for prefixed identifiers */
     len = size = 0;
     p = NULL;
+    prefix = 0;
     str = "x:id";
-    assert_int_equal(LY_SUCCESS, buf_store_char(&ctx, &str, Y_PREF_IDENTIF_ARG, &p, &len, &buf, &size, 0));
+    assert_int_equal(LY_SUCCESS, buf_store_char(&ctx, &str, Y_PREF_IDENTIF_ARG, &p, &len, &buf, &size, 0, &prefix));
     assert_int_equal(1, len);
     assert_null(buf);
     assert_string_equal(":id", str);
     assert_int_equal('x', p[len - 1]);
-    assert_int_equal(LY_SUCCESS, buf_store_char(&ctx, &str, Y_PREF_IDENTIF_ARG, &p, &len, &buf, &size, 1));
+    assert_int_equal(LY_SUCCESS, buf_store_char(&ctx, &str, Y_PREF_IDENTIF_ARG, &p, &len, &buf, &size, 1, &prefix));
     assert_int_equal(2, len);
     assert_string_equal("id", str);
     assert_int_equal(':', p[len - 1]);
     free(buf);
+    prefix = 0;
 
     /* checking identifiers */
-    assert_int_equal(LY_EVALID, check_identifierchar(&ctx, ':', 0, NULL));
+    assert_int_equal(LY_EVALID, lysp_check_identifierchar(&ctx, ':', 0, NULL));
     logbuf_assert("Invalid identifier character ':'. Line number 1.");
-    assert_int_equal(LY_EVALID, check_identifierchar(&ctx, '#', 1, NULL));
+    assert_int_equal(LY_EVALID, lysp_check_identifierchar(&ctx, '#', 1, NULL));
     logbuf_assert("Invalid identifier first character '#'. Line number 1.");
 
-    assert_int_equal(LY_SUCCESS, check_identifierchar(&ctx, 'a', 1, &prefix));
+    assert_int_equal(LY_SUCCESS, lysp_check_identifierchar(&ctx, 'a', 1, &prefix));
     assert_int_equal(0, prefix);
-    assert_int_equal(LY_SUCCESS, check_identifierchar(&ctx, ':', 0, &prefix));
+    assert_int_equal(LY_SUCCESS, lysp_check_identifierchar(&ctx, ':', 0, &prefix));
     assert_int_equal(1, prefix);
-    assert_int_equal(LY_EVALID, check_identifierchar(&ctx, ':', 0, &prefix));
+    assert_int_equal(LY_EVALID, lysp_check_identifierchar(&ctx, ':', 0, &prefix));
     assert_int_equal(1, prefix);
-    assert_int_equal(LY_SUCCESS, check_identifierchar(&ctx, 'b', 0, &prefix));
+    assert_int_equal(LY_SUCCESS, lysp_check_identifierchar(&ctx, 'b', 0, &prefix));
     assert_int_equal(2, prefix);
     /* second colon is invalid */
-    assert_int_equal(LY_EVALID, check_identifierchar(&ctx, ':', 0, &prefix));
+    assert_int_equal(LY_EVALID, lysp_check_identifierchar(&ctx, ':', 0, &prefix));
     logbuf_assert("Invalid identifier character ':'. Line number 1.");
 }
 
@@ -281,6 +283,10 @@ test_arg(void **state)
     str = "hello}";
     assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
     logbuf_assert("Invalid character sequence \"}\", expected unquoted string character, optsep, semicolon or opening brace. Line number 1.");
+
+    /* invalid identifier-ref-arg-str */
+    str = "pre:pre:value";
+    assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_PREF_IDENTIF_ARG, NULL, &word, &buf, &len));
 
     str = "\"\";"; /* empty identifier is not allowed */
     assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_IDENTIF_ARG, NULL, &word, &buf, &len));
@@ -1041,20 +1047,33 @@ test_module(void **state)
     assert_int_equal(2, mod->mod->version);
     mod = mod_renew(&ctx);
 
+    struct lys_parser_ctx *ctx_p = NULL;
     str = "module " SCHEMA_BEGINNING "} module q {namespace urn:q;prefixq;}";
     m = mod->mod;
     free(mod);
     m->parsed = NULL;
-    assert_int_equal(LY_EVALID, yang_parse_module(&ctx, str, m));
-    logbuf_assert("Trailing garbage \"module q {names...\" after module, expected end-of-input. Line number 3.");
+    assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, str, m));
+    logbuf_assert("Trailing garbage \"module q {names...\" after module, expected end-of-input. Line number 1.");
+    lys_parser_ctx_free(ctx_p);
     mod = mod_renew(&ctx);
 
     str = "prefix " SCHEMA_BEGINNING "}";
     m = mod->mod;
     free(mod);
     m->parsed = NULL;
-    assert_int_equal(LY_EVALID, yang_parse_module(&ctx, str, m));
-    logbuf_assert("Invalid keyword \"prefix\", expected \"module\" or \"submodule\". Line number 3.");
+    assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, str, m));
+    lys_parser_ctx_free(ctx_p);
+    logbuf_assert("Invalid keyword \"prefix\", expected \"module\" or \"submodule\". Line number 1.");
+    mod = mod_renew(&ctx);
+
+    str = "module " SCHEMA_BEGINNING "}";
+    str = "module " SCHEMA_BEGINNING "leaf enum {type enumeration {enum seven { position 7;}}}}";
+    m = mod->mod;
+    free(mod);
+    m->parsed = NULL;
+    assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, str, m));
+    lys_parser_ctx_free(ctx_p);
+    logbuf_assert("Invalid keyword \"position\" as a child of \"enum\". Line number 1.");
     mod = mod_renew(&ctx);
 
     /* extensions */
@@ -1108,12 +1127,14 @@ test_module(void **state)
     str = "submodule " SCHEMA_BEGINNING "} module q {namespace urn:q;prefixq;}";
     lysp_submodule_free(ctx.ctx, submod);
     submod = NULL;
-    assert_int_equal(LY_EVALID, yang_parse_submodule(&ctx, str, &submod));
-    logbuf_assert("Trailing garbage \"module q {names...\" after submodule, expected end-of-input. Line number 3.");
+    assert_int_equal(LY_EVALID, yang_parse_submodule(&ctx_p, ctx.ctx, &ctx, str, &submod));
+    lys_parser_ctx_free(ctx_p);
+    logbuf_assert("Trailing garbage \"module q {names...\" after submodule, expected end-of-input. Line number 1.");
 
     str = "prefix " SCHEMA_BEGINNING "}";
-    assert_int_equal(LY_EVALID, yang_parse_submodule(&ctx, str, &submod));
-    logbuf_assert("Invalid keyword \"prefix\", expected \"module\" or \"submodule\". Line number 3.");
+    assert_int_equal(LY_EVALID, yang_parse_submodule(&ctx_p, ctx.ctx, &ctx, str, &submod));
+    lys_parser_ctx_free(ctx_p);
+    logbuf_assert("Invalid keyword \"prefix\", expected \"module\" or \"submodule\". Line number 1.");
     submod = submod_renew(&ctx, submod);
 
 #undef TEST_GENERIC
@@ -2193,6 +2214,32 @@ test_when(void **state)
     ly_ctx_destroy(ctx.ctx, NULL);
 }
 
+static void
+test_value(void **state)
+{
+    *state = test_value;
+    struct lys_parser_ctx ctx;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
+    assert_non_null(ctx.ctx);
+    ctx.line = 1;
+    ctx.indent = 0;
+    int64_t val = 0;
+    uint16_t flags = 0;
+
+    const char *data = "-0;";
+    assert_int_equal(parse_type_enum_value_pos(&ctx, &data, YANG_VALUE, &val, &flags, NULL), LY_SUCCESS);
+    assert_int_equal(val, 0);
+
+    data = "-0;";
+    flags = 0;
+    assert_int_equal(parse_type_enum_value_pos(&ctx, &data, YANG_POSITION, &val, &flags, NULL), LY_EVALID);
+    logbuf_assert("Invalid value \"-0\" of \"position\". Line number 1.");
+
+    *state = NULL;
+    ly_ctx_destroy(ctx.ctx, NULL);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -2220,6 +2267,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_uses, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_augment, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_when, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_value, logger_setup, logger_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

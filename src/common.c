@@ -54,7 +54,7 @@ const char *const ly_stmt_list[] = {
     [YANG_FEATURE] = "feature",
     [YANG_FRACTION_DIGITS] = "fraction-digits",
     [YANG_GROUPING] = "grouping",
-    [YANG_IDENTITY] = "identitiy",
+    [YANG_IDENTITY] = "identity",
     [YANG_IF_FEATURE] = "if-feature",
     [YANG_IMPORT] = "import",
     [YANG_INCLUDE] = "include",
@@ -101,6 +101,8 @@ const char *const ly_stmt_list[] = {
     [YANG_SEMICOLON] = ";",
     [YANG_LEFT_BRACE] = "{",
     [YANG_RIGHT_BRACE] = "}",
+    [YIN_TEXT] = "text",
+    [YIN_VALUE] = "value",
 };
 
 const char *const lyext_substmt_list[] = {
