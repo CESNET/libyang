@@ -99,7 +99,7 @@ ly_ctx_new(const char *search_dir, int options)
     ly_load_plugins();
 
     /* initialize thread-specific key */
-    if (pthread_key_create(&ctx->errlist_key, ly_err_free) == EAGAIN) {
+    if (pthread_key_create(&ctx->errlist_key, ly_err_free) != 0) {
         LOGERR(NULL, LY_ESYS, "pthread_key_create() in ly_ctx_new() failed");
         goto error;
     }
