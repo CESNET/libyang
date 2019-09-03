@@ -265,6 +265,17 @@ if(ENABLE_STATIC)
     set(CMAKE_EXE_LINK_DYNAMIC_C_FLAGS)       # remove -Wl,-Bdynamic
     set(CMAKE_EXE_LINK_DYNAMIC_CXX_FLAGS)
     add_library(yang STATIC ${libsrc})
+
+    # switch off the tests
+    if(ENABLE_BUILD_TESTS)
+        message(WARNING "Tests are disabled in case of static build")
+        set(ENABLE_BUILD_TESTS OFF)
+        set(ENABLE_VALGRIND_TESTS OFF)
+    endif(ENABLE_BUILD_TESTS)
+    if(ENABLE_VALGRIND_TESTS)
+        message(WARNING "Tests are disabled in case of static build")
+        set(ENABLE_VALGRIND_TESTS OFF)
+    endif(ENABLE_VALGRIND_TESTS)
 else()
     set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
     add_library(yangobj OBJECT ${libsrc})
@@ -287,11 +298,7 @@ target_link_libraries(yang m)
 # find pthreads
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 find_package(Threads REQUIRED)
-if(ENABLE_STATIC)
-    target_link_libraries(yang -Wl,--whole-archive ${CMAKE_THREAD_LIBS_INIT} -Wl,--no-whole-archive)
-else()
-    target_link_libraries(yang ${CMAKE_THREAD_LIBS_INIT})
-endif(ENABLE_STATIC)
+target_link_libraries(yang ${CMAKE_THREAD_LIBS_INIT})
 
 # find PCRE library
 unset(PCRE_LIBRARY CACHE)
