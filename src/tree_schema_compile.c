@@ -475,6 +475,37 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct ly
     return LY_SUCCESS;
 }
 
+LY_ERR
+lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_instance *ext, struct lysc_ext_substmt *substmts)
+{
+    unsigned int u;
+    struct lysp_stmt *stmt;
+
+    for (stmt = ext->child; stmt; stmt = stmt->next) {
+        const char *s = stmt->stmt;
+        enum ly_stmt kw = lysp_match_kw(NULL, &s);
+        if (!kw || *s != '\0') {
+            /* TODO handle other extension instances */
+            goto invalid_stmt;
+        }
+        for (u = 0; substmts[u].stmt; ++u) {
+            if (substmts[u].stmt == kw) {
+                break;
+            }
+        }
+        if (!substmts[u].stmt) {
+invalid_stmt:
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Invalid keyword \"%s\" as a child of \"%s\" extension instance.",
+                   ly_stmt2str(kw), ext->name);
+            return LY_EVALID;
+        }
+
+        /* TODO parse stmt to lysp */
+        /* TODO compile lysp to lysc */
+    }
+    return LY_SUCCESS;
+}
+
 /**
  * @brief Fill in the prepared compiled extensions definition structure according to the parsed extension definition.
  */
@@ -4191,7 +4222,7 @@ lys_compile_node_any(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lysc
 
     if (any->flags & LYS_CONFIG_W) {
         LOGWRN(ctx->ctx, "Use of %s to define configuration data is not recommended.",
-               ly_stmt2str(any->nodetype == LYS_ANYDATA ? YANG_ANYDATA : YANG_ANYXML));
+               ly_stmt2str(any->nodetype == LYS_ANYDATA ? LY_STMT_ANYDATA : LY_STMT_ANYXML));
     }
 done:
     return ret;

@@ -1,0 +1,91 @@
+/**
+ * @file plugins_exts_nacm.c
+ * @author Radek Krejci <rkrejci@cesnet.cz>
+ * @brief libyang extension plugin - Metadata (RFC 7952)
+ *
+ * Copyright (c) 2019 CESNET, z.s.p.o.
+ *
+ * This source code is licensed under BSD 3-Clause License (the "License").
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://opensource.org/licenses/BSD-3-Clause
+ */
+#include "common.h"
+
+#include <stdlib.h>
+
+#include "plugins_exts.h"
+#include "tree_schema.h"
+#include "plugins_exts_metadata.h"
+
+/**
+ * @brief Storage for ID used to check plugin API version compatibility.
+ * Ignored here in the internal plugin.
+LYEXT_VERSION_CHECK
+ */
+
+/**
+ * @brief Compile annotation extension instances.
+ *
+ * Implementation of lyext_clb_compile callback set as lyext_plugin::compile.
+ */
+LY_ERR
+annotation_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, struct lysc_ext_instance *c_ext)
+{
+    struct lyext_metadata *annotation;
+    struct lysc_module *mod_c;
+    struct lysp_stmt *stmt;
+    unsigned int u;
+    struct lysc_ext_substmt annotation_substmt[7] = {
+        {LY_STMT_IF_FEATURE, LY_STMT_CARD_ANY, NULL},
+        {LY_STMT_TYPE, LY_STMT_CARD_MAND, NULL},
+        {LY_STMT_UNITS, LY_STMT_CARD_OPT, NULL},
+        {LY_STMT_STATUS, LY_STMT_CARD_OPT, NULL},
+        {LY_STMT_DESCRIPTION, LY_STMT_CARD_OPT, NULL},
+        {LY_STMT_REFERENCE, LY_STMT_CARD_OPT, NULL},
+        {0, 0, 0} /* terminating item */
+    };
+
+    /* annotations can appear only at the top level of a YANG module or submodule */
+    if (c_ext->parent_type != LYEXT_PAR_MODULE) {
+        lyext_log(c_ext, LY_LLERR, LY_EVALID, cctx->path, "Extension %s is allowed only at the top level of a YANG module or submodule, but it is placed in \"%s\" statement.",
+                  p_ext->name, lyext_parent2str(c_ext->parent_type));
+        return LY_EVALID;
+    }
+
+    mod_c = (struct lysc_module *)c_ext->parent;
+
+    /* check for duplication */
+    LY_ARRAY_FOR(mod_c->exts, u) {
+        if (&mod_c->exts[u] != c_ext && mod_c->exts[u].def == c_ext->def) {
+            /* duplication of a annotation extension in a single module */
+            lyext_log(c_ext, LY_LLERR, LY_EVALID, cctx->path, "Extension %s is instantiated multiple times.", p_ext->name);
+            return LY_EVALID;
+        }
+    }
+
+    /* compile annotation substatements */
+    c_ext->data = annotation = calloc(1, sizeof *annotation);
+    LY_CHECK_RET(annotation, LY_EMEM);
+    annotation_substmt[0].storage = &annotation->iffeatures;
+    annotation_substmt[1].storage = &annotation->type;
+    annotation_substmt[2].storage = &annotation->units;
+    annotation_substmt[3].storage = &annotation->flags;
+    /* description and reference are allowed, but not compiled */
+
+    LY_CHECK_RET(lys_compile_extension_instance(cctx, p_ext, annotation_substmt));
+
+    return LY_SUCCESS;
+}
+
+
+/**
+ * @brief Plugin for the Metadata's annotation extension
+ */
+struct lyext_plugin metadata_plugin = {
+    .id = "libyang 2 - metadata, version 1",
+    .compile = &annotation_compile,
+    .validate = NULL,
+    .free = NULL
+};

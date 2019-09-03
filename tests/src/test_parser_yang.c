@@ -40,13 +40,13 @@ void lysp_when_free(struct ly_ctx *ctx, struct lysp_when *when);
 LY_ERR buf_add_char(struct ly_ctx *ctx, const char **input, size_t len, char **buf, size_t *buf_len, size_t *buf_used);
 LY_ERR buf_store_char(struct lys_parser_ctx *ctx, const char **input, enum yang_arg arg, char **word_p,
                       size_t *word_len, char **word_b, size_t *buf_len, int need_buf, int *prefix);
-LY_ERR get_keyword(struct lys_parser_ctx *ctx, const char **data, enum yang_keyword *kw, char **word_p, size_t *word_len);
+LY_ERR get_keyword(struct lys_parser_ctx *ctx, const char **data, enum ly_stmt *kw, char **word_p, size_t *word_len);
 LY_ERR get_argument(struct lys_parser_ctx *ctx, const char **data, enum yang_arg arg,
                     uint16_t *flags, char **word_p, char **word_b, size_t *word_len);
 LY_ERR skip_comment(struct lys_parser_ctx *ctx, const char **data, int comment);
 
 LY_ERR parse_action(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_action **actions);
-LY_ERR parse_any(struct lys_parser_ctx *ctx, const char **data, enum yang_keyword kw, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_any(struct lys_parser_ctx *ctx, const char **data, enum ly_stmt kw, struct lysp_node *parent, struct lysp_node **siblings);
 LY_ERR parse_augment(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_augment **augments);
 LY_ERR parse_case(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
 LY_ERR parse_container(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
@@ -66,7 +66,7 @@ LY_ERR parse_notif(struct lys_parser_ctx *ctx, const char **data, struct lysp_no
 LY_ERR parse_submodule(struct lys_parser_ctx *ctx, const char **data, struct lysp_submodule *submod);
 LY_ERR parse_uses(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
 LY_ERR parse_when(struct lys_parser_ctx *ctx, const char **data, struct lysp_when **when_p);
-LY_ERR parse_type_enum_value_pos(struct lys_parser_ctx *ctx, const char **data, enum yang_keyword val_kw, int64_t *value, uint16_t *flags, struct lysp_ext_instance **exts);
+LY_ERR parse_type_enum_value_pos(struct lys_parser_ctx *ctx, const char **data, enum ly_stmt val_kw, int64_t *value, uint16_t *flags, struct lysp_ext_instance **exts);
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
@@ -387,7 +387,7 @@ test_stmts(void **state)
 
     struct lys_parser_ctx ctx;
     const char *str, *p;
-    enum yang_keyword kw;
+    enum ly_stmt kw;
     char *word;
     size_t len;
 
@@ -396,19 +396,19 @@ test_stmts(void **state)
 
     str = "\n// comment\n\tinput\t{";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_INPUT, kw);
+    assert_int_equal(LY_STMT_INPUT, kw);
     assert_int_equal(5, len);
     assert_string_equal("input\t{", word);
     assert_string_equal("\t{", str);
 
     str = "\t /* comment */\t output\n\t{";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_OUTPUT, kw);
+    assert_int_equal(LY_STMT_OUTPUT, kw);
     assert_int_equal(6, len);
     assert_string_equal("output\n\t{", word);
     assert_string_equal("\n\t{", str);
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_LEFT_BRACE, kw);
+    assert_int_equal(LY_STMT_SYNTAX_LEFT_BRACE, kw);
     assert_int_equal(1, len);
     assert_string_equal("{", word);
     assert_string_equal("", str);
@@ -427,296 +427,296 @@ test_stmts(void **state)
 
     str = "action ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_ACTION, kw);
+    assert_int_equal(LY_STMT_ACTION, kw);
     assert_int_equal(6, len);
     str = "anydata ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_ANYDATA, kw);
+    assert_int_equal(LY_STMT_ANYDATA, kw);
     assert_int_equal(7, len);
     str = "anyxml ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_ANYXML, kw);
+    assert_int_equal(LY_STMT_ANYXML, kw);
     assert_int_equal(6, len);
     str = "argument ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_ARGUMENT, kw);
+    assert_int_equal(LY_STMT_ARGUMENT, kw);
     assert_int_equal(8, len);
     str = "augment ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_AUGMENT, kw);
+    assert_int_equal(LY_STMT_AUGMENT, kw);
     assert_int_equal(7, len);
     str = "base ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_BASE, kw);
+    assert_int_equal(LY_STMT_BASE, kw);
     assert_int_equal(4, len);
     str = "belongs-to ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_BELONGS_TO, kw);
+    assert_int_equal(LY_STMT_BELONGS_TO, kw);
     assert_int_equal(10, len);
     str = "bit ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_BIT, kw);
+    assert_int_equal(LY_STMT_BIT, kw);
     assert_int_equal(3, len);
     str = "case ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_CASE, kw);
+    assert_int_equal(LY_STMT_CASE, kw);
     assert_int_equal(4, len);
     str = "choice ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_CHOICE, kw);
+    assert_int_equal(LY_STMT_CHOICE, kw);
     assert_int_equal(6, len);
     str = "config ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_CONFIG, kw);
+    assert_int_equal(LY_STMT_CONFIG, kw);
     assert_int_equal(6, len);
     str = "contact ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_CONTACT, kw);
+    assert_int_equal(LY_STMT_CONTACT, kw);
     assert_int_equal(7, len);
     str = "container ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_CONTAINER, kw);
+    assert_int_equal(LY_STMT_CONTAINER, kw);
     assert_int_equal(9, len);
     str = "default ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_DEFAULT, kw);
+    assert_int_equal(LY_STMT_DEFAULT, kw);
     assert_int_equal(7, len);
     str = "description ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_DESCRIPTION, kw);
+    assert_int_equal(LY_STMT_DESCRIPTION, kw);
     assert_int_equal(11, len);
     str = "deviate ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_DEVIATE, kw);
+    assert_int_equal(LY_STMT_DEVIATE, kw);
     assert_int_equal(7, len);
     str = "deviation ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_DEVIATION, kw);
+    assert_int_equal(LY_STMT_DEVIATION, kw);
     assert_int_equal(9, len);
     str = "enum ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_ENUM, kw);
+    assert_int_equal(LY_STMT_ENUM, kw);
     assert_int_equal(4, len);
     str = "error-app-tag ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_ERROR_APP_TAG, kw);
+    assert_int_equal(LY_STMT_ERROR_APP_TAG, kw);
     assert_int_equal(13, len);
     str = "error-message ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_ERROR_MESSAGE, kw);
+    assert_int_equal(LY_STMT_ERROR_MESSAGE, kw);
     assert_int_equal(13, len);
     str = "extension ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_EXTENSION, kw);
+    assert_int_equal(LY_STMT_EXTENSION, kw);
     assert_int_equal(9, len);
     str = "feature ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_FEATURE, kw);
+    assert_int_equal(LY_STMT_FEATURE, kw);
     assert_int_equal(7, len);
     str = "fraction-digits ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_FRACTION_DIGITS, kw);
+    assert_int_equal(LY_STMT_FRACTION_DIGITS, kw);
     assert_int_equal(15, len);
     str = "grouping ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_GROUPING, kw);
+    assert_int_equal(LY_STMT_GROUPING, kw);
     assert_int_equal(8, len);
     str = "identity ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_IDENTITY, kw);
+    assert_int_equal(LY_STMT_IDENTITY, kw);
     assert_int_equal(8, len);
     str = "if-feature ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_IF_FEATURE, kw);
+    assert_int_equal(LY_STMT_IF_FEATURE, kw);
     assert_int_equal(10, len);
     str = "import ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_IMPORT, kw);
+    assert_int_equal(LY_STMT_IMPORT, kw);
     assert_int_equal(6, len);
     str = "include ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_INCLUDE, kw);
+    assert_int_equal(LY_STMT_INCLUDE, kw);
     assert_int_equal(7, len);
     str = "input{";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_INPUT, kw);
+    assert_int_equal(LY_STMT_INPUT, kw);
     assert_int_equal(5, len);
     str = "key ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_KEY, kw);
+    assert_int_equal(LY_STMT_KEY, kw);
     assert_int_equal(3, len);
     str = "leaf ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_LEAF, kw);
+    assert_int_equal(LY_STMT_LEAF, kw);
     assert_int_equal(4, len);
     str = "leaf-list ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_LEAF_LIST, kw);
+    assert_int_equal(LY_STMT_LEAF_LIST, kw);
     assert_int_equal(9, len);
     str = "length ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_LENGTH, kw);
+    assert_int_equal(LY_STMT_LENGTH, kw);
     assert_int_equal(6, len);
     str = "list ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_LIST, kw);
+    assert_int_equal(LY_STMT_LIST, kw);
     assert_int_equal(4, len);
     str = "mandatory ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_MANDATORY, kw);
+    assert_int_equal(LY_STMT_MANDATORY, kw);
     assert_int_equal(9, len);
     str = "max-elements ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_MAX_ELEMENTS, kw);
+    assert_int_equal(LY_STMT_MAX_ELEMENTS, kw);
     assert_int_equal(12, len);
     str = "min-elements ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_MIN_ELEMENTS, kw);
+    assert_int_equal(LY_STMT_MIN_ELEMENTS, kw);
     assert_int_equal(12, len);
     str = "modifier ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_MODIFIER, kw);
+    assert_int_equal(LY_STMT_MODIFIER, kw);
     assert_int_equal(8, len);
     str = "module ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_MODULE, kw);
+    assert_int_equal(LY_STMT_MODULE, kw);
     assert_int_equal(6, len);
     str = "must ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_MUST, kw);
+    assert_int_equal(LY_STMT_MUST, kw);
     assert_int_equal(4, len);
     str = "namespace ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_NAMESPACE, kw);
+    assert_int_equal(LY_STMT_NAMESPACE, kw);
     assert_int_equal(9, len);
     str = "notification ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_NOTIFICATION, kw);
+    assert_int_equal(LY_STMT_NOTIFICATION, kw);
     assert_int_equal(12, len);
     str = "ordered-by ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_ORDERED_BY, kw);
+    assert_int_equal(LY_STMT_ORDERED_BY, kw);
     assert_int_equal(10, len);
     str = "organization ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_ORGANIZATION, kw);
+    assert_int_equal(LY_STMT_ORGANIZATION, kw);
     assert_int_equal(12, len);
     str = "output ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_OUTPUT, kw);
+    assert_int_equal(LY_STMT_OUTPUT, kw);
     assert_int_equal(6, len);
     str = "path ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_PATH, kw);
+    assert_int_equal(LY_STMT_PATH, kw);
     assert_int_equal(4, len);
     str = "pattern ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_PATTERN, kw);
+    assert_int_equal(LY_STMT_PATTERN, kw);
     assert_int_equal(7, len);
     str = "position ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_POSITION, kw);
+    assert_int_equal(LY_STMT_POSITION, kw);
     assert_int_equal(8, len);
     str = "prefix ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_PREFIX, kw);
+    assert_int_equal(LY_STMT_PREFIX, kw);
     assert_int_equal(6, len);
     str = "presence ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_PRESENCE, kw);
+    assert_int_equal(LY_STMT_PRESENCE, kw);
     assert_int_equal(8, len);
     str = "range ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_RANGE, kw);
+    assert_int_equal(LY_STMT_RANGE, kw);
     assert_int_equal(5, len);
     str = "reference ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_REFERENCE, kw);
+    assert_int_equal(LY_STMT_REFERENCE, kw);
     assert_int_equal(9, len);
     str = "refine ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_REFINE, kw);
+    assert_int_equal(LY_STMT_REFINE, kw);
     assert_int_equal(6, len);
     str = "require-instance ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_REQUIRE_INSTANCE, kw);
+    assert_int_equal(LY_STMT_REQUIRE_INSTANCE, kw);
     assert_int_equal(16, len);
     str = "revision ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_REVISION, kw);
+    assert_int_equal(LY_STMT_REVISION, kw);
     assert_int_equal(8, len);
     str = "revision-date ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_REVISION_DATE, kw);
+    assert_int_equal(LY_STMT_REVISION_DATE, kw);
     assert_int_equal(13, len);
     str = "rpc ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_RPC, kw);
+    assert_int_equal(LY_STMT_RPC, kw);
     assert_int_equal(3, len);
     str = "status ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_STATUS, kw);
+    assert_int_equal(LY_STMT_STATUS, kw);
     assert_int_equal(6, len);
     str = "submodule ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_SUBMODULE, kw);
+    assert_int_equal(LY_STMT_SUBMODULE, kw);
     assert_int_equal(9, len);
     str = "type ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_TYPE, kw);
+    assert_int_equal(LY_STMT_TYPE, kw);
     assert_int_equal(4, len);
     str = "typedef ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_TYPEDEF, kw);
+    assert_int_equal(LY_STMT_TYPEDEF, kw);
     assert_int_equal(7, len);
     str = "unique ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_UNIQUE, kw);
+    assert_int_equal(LY_STMT_UNIQUE, kw);
     assert_int_equal(6, len);
     str = "units ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_UNITS, kw);
+    assert_int_equal(LY_STMT_UNITS, kw);
     assert_int_equal(5, len);
     str = "uses ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_USES, kw);
+    assert_int_equal(LY_STMT_USES, kw);
     assert_int_equal(4, len);
     str = "value ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_VALUE, kw);
+    assert_int_equal(LY_STMT_VALUE, kw);
     assert_int_equal(5, len);
     str = "when ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_WHEN, kw);
+    assert_int_equal(LY_STMT_WHEN, kw);
     assert_int_equal(4, len);
     str = "yang-version ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_YANG_VERSION, kw);
+    assert_int_equal(LY_STMT_YANG_VERSION, kw);
     assert_int_equal(12, len);
     str = "yin-element ";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_YIN_ELEMENT, kw);
+    assert_int_equal(LY_STMT_YIN_ELEMENT, kw);
     assert_int_equal(11, len);
     str = ";config false;";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_SEMICOLON, kw);
+    assert_int_equal(LY_STMT_SYNTAX_SEMICOLON, kw);
     assert_int_equal(1, len);
     assert_string_equal("config false;", str);
     str = "{ config false;";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_LEFT_BRACE, kw);
+    assert_int_equal(LY_STMT_SYNTAX_LEFT_BRACE, kw);
     assert_int_equal(1, len);
     assert_string_equal(" config false;", str);
     str = "}";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_RIGHT_BRACE, kw);
+    assert_int_equal(LY_STMT_SYNTAX_RIGHT_BRACE, kw);
     assert_int_equal(1, len);
     assert_string_equal("", str);
 
     /* geenric extension */
     str = p = "nacm:default-deny-write;";
     assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
-    assert_int_equal(YANG_CUSTOM, kw);
+    assert_int_equal(LY_STMT_EXTENSION_INSTANCE, kw);
     assert_int_equal(23, len);
     assert_ptr_equal(p, word);
 }
@@ -1812,7 +1812,7 @@ test_case(void **state)
 }
 
 static void
-test_any(void **state, enum yang_keyword kw)
+test_any(void **state, enum ly_stmt kw)
 {
     *state = test_any;
 
@@ -1823,7 +1823,7 @@ test_any(void **state, enum yang_keyword kw)
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
     ctx.line = 1;
-    if (kw == YANG_ANYDATA) {
+    if (kw == LY_STMT_ANYDATA) {
         ctx.mod_version = 2; /* simulate YANG 1.1 */
     } else {
         ctx.mod_version = 1; /* simulate YANG 1.0 */
@@ -1848,7 +1848,7 @@ test_any(void **state, enum yang_keyword kw)
     str = "any {config true;description test;if-feature f;mandatory true;must 'expr';reference test;status current;when true;m:ext;} ...";
     assert_int_equal(LY_SUCCESS, parse_any(&ctx, &str, kw, NULL, (struct lysp_node**)&any));
     assert_non_null(any);
-    assert_int_equal(kw == YANG_ANYDATA ? LYS_ANYDATA : LYS_ANYXML, any->nodetype);
+    assert_int_equal(kw == LY_STMT_ANYDATA ? LYS_ANYDATA : LYS_ANYXML, any->nodetype);
     assert_string_equal("any", any->name);
     assert_string_equal("test", any->dsc);
     assert_non_null(any->exts);
@@ -1868,13 +1868,13 @@ test_any(void **state, enum yang_keyword kw)
 static void
 test_anydata(void **state)
 {
-    return test_any(state, YANG_ANYDATA);
+    return test_any(state, LY_STMT_ANYDATA);
 }
 
 static void
 test_anyxml(void **state)
 {
-    return test_any(state, YANG_ANYXML);
+    return test_any(state, LY_STMT_ANYXML);
 }
 
 static void
@@ -2228,12 +2228,12 @@ test_value(void **state)
     uint16_t flags = 0;
 
     const char *data = "-0;";
-    assert_int_equal(parse_type_enum_value_pos(&ctx, &data, YANG_VALUE, &val, &flags, NULL), LY_SUCCESS);
+    assert_int_equal(parse_type_enum_value_pos(&ctx, &data, LY_STMT_VALUE, &val, &flags, NULL), LY_SUCCESS);
     assert_int_equal(val, 0);
 
     data = "-0;";
     flags = 0;
-    assert_int_equal(parse_type_enum_value_pos(&ctx, &data, YANG_POSITION, &val, &flags, NULL), LY_EVALID);
+    assert_int_equal(parse_type_enum_value_pos(&ctx, &data, LY_STMT_POSITION, &val, &flags, NULL), LY_EVALID);
     logbuf_assert("Invalid value \"-0\" of \"position\". Line number 1.");
 
     *state = NULL;

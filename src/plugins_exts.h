@@ -74,6 +74,35 @@ struct lysc_ctx {
 };
 
 /**
+ * @brief Possible cardinalities of the YANG statements.
+ *
+ * Used in extensions plugins to define cardinalities of the extension instance substatements.
+ */
+enum ly_stmt_cardinality {
+    LY_STMT_CARD_OPT,    /* 0..1 */
+    LY_STMT_CARD_MAND,   /* 1 */
+    LY_STMT_CARD_SOME,   /* 1..n */
+    LY_STMT_CARD_ANY     /* 0..n */
+};
+
+/**
+ * @brief Description of the extension instance substatements.
+ *
+ * Provided by extensions plugins to libyang's lyext_compile_stmts() to be able to correctly compile the content of extension instances.
+ */
+struct lysc_ext_substmt {
+    enum ly_stmt stmt;                     /**< allowed substatement */
+    enum ly_stmt_cardinality cardinality;  /**< cardinality of the substatement */
+    void *storage;                         /**< pointer to the storage of the compiled statement according to the specific
+                                                lysc_ext_substmt::stmt and lysc_ext_substmt::cardinality */
+};
+
+/**
+ * @brief Compile substatements of an extension instance.
+ */
+LY_ERR lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_instance *ext, struct lysc_ext_substmt *substmts);
+
+/**
  * @brief Update path in the compile context, which is used for logging where the compilation failed.
  *
  * @param[in] ctx Compile context with the path.

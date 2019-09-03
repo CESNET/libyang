@@ -53,10 +53,10 @@ extern const char *const yin_attr_list[];
 #define VALID_VALS4 " Valid values are \"%s\", \"%s\", \"%s\" and \"%s\"."
 
 /* shortcut to determin if keyword can in general be subelement of deviation regardles of it's type */
-#define isdevsub(kw) (kw == YANG_CONFIG || kw == YANG_DEFAULT || kw == YANG_MANDATORY || \
-                      kw == YANG_MAX_ELEMENTS || kw == YANG_MIN_ELEMENTS ||              \
-                      kw == YANG_MUST || kw == YANG_TYPE || kw == YANG_UNIQUE ||         \
-                      kw == YANG_UNITS || kw == YANG_CUSTOM)
+#define isdevsub(kw) (kw == LY_STMT_CONFIG || kw == LY_STMT_DEFAULT || kw == LY_STMT_MANDATORY || \
+                      kw == LY_STMT_MAX_ELEMENTS || kw == LY_STMT_MIN_ELEMENTS ||              \
+                      kw == LY_STMT_MUST || kw == LY_STMT_TYPE || kw == LY_STMT_UNIQUE ||         \
+                      kw == LY_STMT_UNITS || kw == LY_STMT_EXTENSION_INSTANCE)
 
 /**
  * @brief insert string into dictionary and store as target.
@@ -108,7 +108,7 @@ struct yin_arg_record {
                                              time to simply check validity of given constraints */
 
 struct yin_subelement {
-    enum yang_keyword type; /**< type of keyword */
+    enum ly_stmt type; /**< type of keyword */
     void *dest;             /**< meta infromation passed to responsible function (mostly information about where parsed subelement should be stored) */
     uint8_t flags;          /**< describes constraints of subelement can be set to YIN_SUBELEM_MANDATORY, YIN_SUBELEM_UNIQUE, YIN_SUBELEM_FIRST and YIN_SUBELEM_VER2 */
 };
@@ -187,7 +187,7 @@ enum yin_argument yin_match_argument_name(const char *name, size_t len);
  * @return LY_ERR values.
  */
 LY_ERR yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_info, signed char subelem_info_size,
-                         const char **data, enum yang_keyword current_element, const char **text_content,
+                         const char **data, enum ly_stmt current_element, const char **text_content,
                          struct lysp_ext_instance **exts);
 
 /**
@@ -211,12 +211,12 @@ LY_ERR yin_validate_value(struct yin_parser_ctx *ctx, enum yang_arg val_type, ch
  * @param[in] name_len Lenght of keyword name.
  * @param[in] prefix Start of keyword prefix.
  * @param[in] prefix_len Lenght of prefix.
- * @param[in] parrent Identification of parrent element, use YANG_NONE for elements without parrent.
+ * @param[in] parrent Identification of parrent element, use LY_STMT_NONE for elements without parrent.
  *
  * @return yang_keyword values.
  */
-enum yang_keyword yin_match_keyword(struct yin_parser_ctx *ctx, const char *name, size_t name_len,
-                                    const char *prefix, size_t prefix_len, enum yang_keyword parrent);
+enum ly_stmt yin_match_keyword(struct yin_parser_ctx *ctx, const char *name, size_t name_len,
+                                    const char *prefix, size_t prefix_len, enum ly_stmt parrent);
 
 /**
  * @brief Load all attributes of element into ([sized array](@ref sizedarrays)). Caller is suposed to free the array.

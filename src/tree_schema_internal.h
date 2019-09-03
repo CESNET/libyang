@@ -650,7 +650,7 @@ LY_ERR lys_feature_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struc
 uint8_t lysc_iff_getop(uint8_t *list, int pos);
 
 /**
- * @brief Internal wrapper around lys_compile_extension() to be able to prepare list of compiled extension definition
+ * @brief Internal wrapper around lys_compile_extension() to be able to prepare list of compiled extension definitions
  * even for the parsed (not-implemented) module - see lys_module::off_extensions.
  *
  * @param[in] ctx_sc Compile context - alternative to the combination of @p ctx and @p module.
@@ -844,6 +844,6 @@ LY_ERR ly_ctx_module_implement_internal(struct ly_ctx *ctx, struct lys_module *m
  *
  * return yang_keyword values.
  */
-enum yang_keyword lysp_match_kw(struct lys_parser_ctx *ctx, const char **data);
+enum ly_stmt lysp_match_kw(struct lys_parser_ctx *ctx, const char **data);
 
 #endif /* LY_TREE_SCHEMA_INTERNAL_H_ */
