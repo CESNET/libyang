@@ -382,7 +382,7 @@ lyd_keyless_list_hash_change(struct lyd_node *parent)
 {
     int r;
 
-    while (parent && !(parent->schema->flags & LYS_CONFIG_W)) {
+    while (parent && (parent->schema->flags & LYS_CONFIG_R)) {
         if (parent->schema->nodetype == LYS_LIST) {
             if (!((struct lys_node_list *)parent->schema)->keys_size) {
                 if (parent->parent && parent->parent->ht) {
@@ -416,46 +416,48 @@ _lyd_insert_hash(struct lyd_node *node, int keyless_list_check)
     int i;
 
     if (node->parent) {
-        if ((node->schema->nodetype == LYS_LEAF) && lys_is_key((struct lys_node_leaf *)node->schema, NULL)) {
-            /* we are adding a key which means that it may be the last missing key for our parent's hash */
-            if (!lyd_hash(node->parent)) {
-                /* yep, we successfully hashed node->parent so it is technically now added to its parent (hash-wise) */
-                _lyd_insert_hash(node->parent, 0);
-            }
-        }
-
-        /* create parent hash table if required, otherwise just add the new child */
-        if (!node->parent->ht) {
-            for (i = 0, iter = node->parent->child; iter; ++i, iter = iter->next) {
-                if ((iter->schema->nodetype == LYS_LIST) && !lyd_list_has_keys(iter)) {
-                    /* it will either never have keys and will never be hashed or has not all keys created yet */
-                    --i;
+        if ((node->schema->nodetype != LYS_LIST) || lyd_list_has_keys(node)) {
+            if ((node->schema->nodetype == LYS_LEAF) && lys_is_key((struct lys_node_leaf *)node->schema, NULL)) {
+                /* we are adding a key which means that it may be the last missing key for our parent's hash */
+                if (!lyd_hash(node->parent)) {
+                    /* yep, we successfully hashed node->parent so it is technically now added to its parent (hash-wise) */
+                    _lyd_insert_hash(node->parent, 0);
                 }
             }
-            assert(i <= LY_CACHE_HT_MIN_CHILDREN);
-            if (i == LY_CACHE_HT_MIN_CHILDREN) {
-                /* create hash table, insert all the children */
-                node->parent->ht = lyht_new(1, sizeof(struct lyd_node *), lyd_hash_table_val_equal, NULL, 1);
-                LY_TREE_FOR(node->parent->child, iter) {
+
+            /* create parent hash table if required, otherwise just add the new child */
+            if (!node->parent->ht) {
+                for (i = 0, iter = node->parent->child; iter; ++i, iter = iter->next) {
                     if ((iter->schema->nodetype == LYS_LIST) && !lyd_list_has_keys(iter)) {
-                        /* skip lists without keys */
-                        continue;
-                    }
-
-                    if (lyht_insert(node->parent->ht, &iter, iter->hash, NULL)) {
-                        assert(0);
+                        /* it will either never have keys and will never be hashed or has not all keys created yet */
+                        --i;
                     }
                 }
-            }
-        } else {
-            if (lyht_insert(node->parent->ht, &node, node->hash, NULL)) {
-                assert(0);
-            }
-        }
+                assert(i <= LY_CACHE_HT_MIN_CHILDREN);
+                if (i == LY_CACHE_HT_MIN_CHILDREN) {
+                    /* create hash table, insert all the children */
+                    node->parent->ht = lyht_new(1, sizeof(struct lyd_node *), lyd_hash_table_val_equal, NULL, 1);
+                    LY_TREE_FOR(node->parent->child, iter) {
+                        if ((iter->schema->nodetype == LYS_LIST) && !lyd_list_has_keys(iter)) {
+                            /* skip lists without keys */
+                            continue;
+                        }
 
-        /* if node was in a state data subtree, wasn't it a part of a key-less list hash? */
-        if (keyless_list_check) {
-            lyd_keyless_list_hash_change(node->parent);
+                        if (lyht_insert(node->parent->ht, &iter, iter->hash, NULL)) {
+                            assert(0);
+                        }
+                    }
+                }
+            } else {
+                if (lyht_insert(node->parent->ht, &node, node->hash, NULL)) {
+                    assert(0);
+                }
+            }
+
+            /* if node was in a state data subtree, wasn't it a part of a key-less list hash? */
+            if (keyless_list_check) {
+                lyd_keyless_list_hash_change(node->parent);
+            }
         }
     }
 }
