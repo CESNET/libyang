@@ -382,9 +382,9 @@ lyd_keyless_list_hash_change(struct lyd_node *parent)
 {
     int r;
 
-    while (parent && (parent->schema->flags & LYS_CONFIG_R)) {
+    while (parent && !(parent->schema->flags & LYS_CONFIG_W)) {
         if (parent->schema->nodetype == LYS_LIST) {
-            if (!((struct lys_node_list *)parent->schema)->keys_size) {
+            if (parent->hash && !((struct lys_node_list *)parent->schema)->keys_size) {
                 if (parent->parent && parent->parent->ht) {
                     /* remove the list from the parent */
                     r = lyht_remove(parent->parent->ht, &parent, parent->hash);

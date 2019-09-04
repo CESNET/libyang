@@ -557,6 +557,8 @@ test_parse_print_json(void **state)
     st->str2 = NULL;
     lyd_free(st->dt);
     st->dt = NULL;
+    lyd_free(st->rpc_act);
+    st->rpc_act = NULL;
 
     /* inline notif */
     fd = open(innotif, O_RDONLY);
@@ -569,6 +571,58 @@ test_parse_print_json(void **state)
     st->dt = lyd_parse_path(st->ctx, innotif, LYD_JSON, LYD_OPT_NOTIF, NULL);
     assert_ptr_not_equal(st->dt, NULL);
     lyd_print_mem(&(st->str2), st->dt, LYD_JSON, LYP_FORMAT);
+
+    assert_string_equal(st->str1, st->str2);
+}
+
+static void test_parse_print_keyless(void **state)
+{
+    struct state *st = (*state);
+    struct stat s;
+    int fd;
+    const char *yang = TESTS_DIR"/data/files/keyless.yang";
+    const char *json = TESTS_DIR"/data/files/keyless.json";
+    const char *xml = TESTS_DIR"/data/files/keyless.xml";
+
+
+    ly_ctx_destroy(st->ctx, NULL);
+    assert_non_null(st->ctx = ly_ctx_new(TESTS_DIR"/data/files", 0));
+    assert_non_null(st->mod = lys_parse_path(st->ctx, yang, LYS_IN_YANG));
+
+    /* keyless list - JSON */
+    fd = open(json, O_RDONLY);
+    fstat(fd, &s);
+    st->str1 = malloc(s.st_size + 1);
+    assert_ptr_not_equal(st->str1, NULL);
+    assert_int_equal(read(fd, st->str1, s.st_size), s.st_size);
+    st->str1[s.st_size] = '\0';
+
+    st->dt = lyd_parse_path(st->ctx, json, LYD_JSON, LYD_OPT_DATA | LYD_OPT_DATA_NO_YANGLIB, NULL);
+    assert_ptr_not_equal(st->dt, NULL);
+    lyd_print_mem(&(st->str2), st->dt, LYD_JSON, LYP_FORMAT);
+
+    assert_string_equal(st->str1, st->str2);
+
+    close(fd);
+    fd = -1;
+    free(st->str1);
+    st->str1 = NULL;
+    free(st->str2);
+    st->str2 = NULL;
+    lyd_free_withsiblings(st->dt);
+    st->dt = NULL;
+
+    /* keyless list - XML */
+    fd = open(xml, O_RDONLY);
+    fstat(fd, &s);
+    st->str1 = malloc(s.st_size + 1);
+    assert_ptr_not_equal(st->str1, NULL);
+    assert_int_equal(read(fd, st->str1, s.st_size), s.st_size);
+    st->str1[s.st_size] = '\0';
+
+    st->dt = lyd_parse_path(st->ctx, xml, LYD_XML, LYD_OPT_DATA | LYD_OPT_DATA_NO_YANGLIB, NULL);
+    assert_ptr_not_equal(st->dt, NULL);
+    lyd_print_mem(&(st->str2), st->dt, LYD_XML, LYP_FORMAT);
 
     assert_string_equal(st->str1, st->str2);
 }
@@ -982,6 +1036,7 @@ int main(void)
                     cmocka_unit_test_teardown(test_parse_print_yang, teardown_f),
                     cmocka_unit_test_setup_teardown(test_parse_print_xml, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_parse_print_json, setup_f, teardown_f),
+                    cmocka_unit_test_setup_teardown(test_parse_print_keyless, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_parse_print_lyb, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_parse_print_oookeys_xml, setup_f, teardown_f),
                     cmocka_unit_test_setup_teardown(test_parse_print_oookeys_json, setup_f, teardown_f),
