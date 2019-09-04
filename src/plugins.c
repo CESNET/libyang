@@ -645,7 +645,7 @@ lytype_free(const struct lys_type *type, lyd_val value, const char *value_str)
         /* find the original type */
         type = lyd_leaf_type(&leaf);
         if (!type) {
-            LOGINT(type->parent->module->ctx);
+            LOGINT(sleaf.module->ctx);
             return;
         }
     }
