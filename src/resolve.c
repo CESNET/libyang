@@ -5889,6 +5889,13 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
                 }
             }
         }
+
+        /* it can still be a default value in a foreign grouping */
+        if (!imod) {
+            str = strndup(mod_name, mod_name_len);
+            imod = (struct lys_module *)ly_ctx_get_module(ctx, str, NULL, 1);
+            free(str);
+        }
     } else {
         /* solving identityref in data - get the module from the context */
         for (i = 0; i < (unsigned)mod->ctx->models.used; ++i) {

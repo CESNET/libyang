@@ -3016,6 +3016,7 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
 {
     struct lys_node *retval = NULL, *iter, *p;
     struct ly_ctx *ctx = module->ctx;
+    enum int_log_opts prev_ilo;
     int i, j, rc;
     unsigned int size, size1, size2;
     struct unres_list_uniq *unique_info;
@@ -3309,7 +3310,14 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         leaf->units = lydict_insert(module->ctx, leaf_orig->units, 0);
 
         if (leaf_orig->dflt) {
-            leaf->dflt = lydict_insert(ctx, leaf_orig->dflt, 0);
+            /* transform into JSON format, may not be possible later */
+            ly_ilo_change(NULL, ILO_IGNORE, &prev_ilo, NULL);
+            leaf->dflt = transform_schema2json(lys_main_module(leaf_orig->module), leaf_orig->dflt);
+            ly_ilo_restore(NULL, prev_ilo, NULL, 0);
+            if (!leaf->dflt) {
+                /* invalid identityref format or it was already transformed, so ignore the error here */
+                leaf->dflt = lydict_insert(ctx, leaf_orig->dflt, 0);
+            }
         }
 
         if (leaf_orig->must) {
