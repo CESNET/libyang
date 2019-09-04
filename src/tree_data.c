@@ -481,32 +481,30 @@ _lyd_unlink_hash(struct lyd_node *node, struct lyd_node *orig_parent, int keyles
     }
 #endif
 
-    if (orig_parent) {
-        if ((node->schema->nodetype != LYS_LIST) || lyd_list_has_keys(node)) {
-            if (orig_parent->ht) {
-                if (lyht_remove(orig_parent->ht, &node, node->hash)) {
-                    assert(0);
-                }
-
-                /* if no longer enough children, free the whole hash table */
-                if (orig_parent->ht->used < LY_CACHE_HT_MIN_CHILDREN) {
-                    lyht_free(orig_parent->ht);
-                    orig_parent->ht = NULL;
-                }
+    if (orig_parent && node->hash && ((node->schema->nodetype != LYS_LIST) || lyd_list_has_keys(node))) {
+        if (orig_parent->ht) {
+            if (lyht_remove(orig_parent->ht, &node, node->hash)) {
+                assert(0);
             }
 
-            /* if the parent is missing a key now, remove hash, also from parent */
-            if (lys_is_key((struct lys_node_leaf *)node->schema, NULL) && orig_parent->hash) {
-                assert((orig_parent->schema->nodetype == LYS_LIST) && !lyd_list_has_keys(orig_parent));
-
-                _lyd_unlink_hash(orig_parent, orig_parent->parent, 0);
-                orig_parent->hash = 0;
+            /* if no longer enough children, free the whole hash table */
+            if (orig_parent->ht->used < LY_CACHE_HT_MIN_CHILDREN) {
+                lyht_free(orig_parent->ht);
+                orig_parent->ht = NULL;
             }
+        }
 
-            /* if node was in a state data subtree, shouldn't it be a part of a key-less list hash? */
-            if (keyless_list_check) {
-                lyd_keyless_list_hash_change(orig_parent);
-            }
+        /* if the parent is missing a key now, remove hash, also from parent */
+        if (lys_is_key((struct lys_node_leaf *)node->schema, NULL) && orig_parent->hash) {
+            assert((orig_parent->schema->nodetype == LYS_LIST) && !lyd_list_has_keys(orig_parent));
+
+            _lyd_unlink_hash(orig_parent, orig_parent->parent, 0);
+            orig_parent->hash = 0;
+        }
+
+        /* if node was in a state data subtree, shouldn't it be a part of a key-less list hash? */
+        if (keyless_list_check) {
+            lyd_keyless_list_hash_change(orig_parent);
         }
     }
 }
