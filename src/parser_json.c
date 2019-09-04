@@ -1181,6 +1181,17 @@ attr_repeat:
                        "JSON data (missing list instance's begin-object)");
                 goto error;
             }
+
+#ifdef LY_ENABLED_CACHE
+            /* in case of keyless lists, calculate the hash of an empty list and insert it into parent,
+             * the hash (and its record in the parent's hash table) is updated with each list's child.
+             * It is ineffective, but necessary with the current consequences in functions inserting hashes. */
+            if (!((struct lys_node_list *)list->schema)->keys_size) {
+                lyd_hash(list);
+                lyd_insert_hash(list);
+            }
+#endif
+
             diter = NULL;
             attrs_aux = NULL;
             do {
@@ -1197,14 +1208,6 @@ attr_repeat:
                     diter = list->child->prev;
                 }
             } while (data[len] == ',');
-
-#ifdef LY_ENABLED_CACHE
-            /* calculate the hash and insert it into parent */
-            if (!((struct lys_node_list *)list->schema)->keys_size) {
-                lyd_hash(list);
-                lyd_insert_hash(list);
-            }
-#endif
 
             /* store attributes */
             if (store_attrs(ctx, attrs_aux, list->child, options)) {
