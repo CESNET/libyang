@@ -48,7 +48,7 @@ const char *lyd_parse_options_type2str(int options);
 /**
  * @brief Validate, canonize and store the given @p value into the node according to the node's type's rules.
  *
- * @param[in] node Data node for with the @p value.
+ * @param[in] node Data node for the @p value.
  * @param[in] value String value to be parsed, must not be NULL.
  * @param[in] value_len Length of the give @p value (mandatory).
  * @param[in] dynamic Flag if @p value is a dynamically allocated memory and should be directly consumed/freed inside the function.
@@ -65,6 +65,27 @@ const char *lyd_parse_options_type2str(int options);
  */
 LY_ERR lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len, int dynamic, int second,
                        ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format, const struct lyd_node **trees);
+
+/**
+ * @brief Validate, canonize and store the given @p value into the attribute according to the metadata annotation type's rules.
+ *
+ * @param[in] attr Data attribute for the @p value.
+ * @param[in] value String value to be parsed, must not be NULL.
+ * @param[in] value_len Length of the give @p value (mandatory).
+ * @param[in] dynamic Flag if @p value is a dynamically allocated memory and should be directly consumed/freed inside the function.
+ * @param[in] second Flag for the second call after returning LY_EINCOMPLETE
+ * @param[in] get_prefix Parser-specific getter to resolve prefixes used in the @p value string.
+ * @param[in] parser Parser's data for @p get_prefix
+ * @param[in] format Input format of the data.
+ * @param[in] trees ([Sized array](@ref sizedarrays)) of data trees (e.g. when validating RPC/Notification) where the required
+ *            data instance (leafref target, instance-identifier) can be placed. NULL in case the data tree are not yet complete,
+ *            then LY_EINCOMPLETE can be returned.
+ * @return LY_SUCCESS on success
+ * @return LY_EINCOMPLETE in case the @p trees is not provided and it was needed to finish the validation.
+ * @return LY_ERR value if an error occurred.
+ */
+LY_ERR lyd_value_parse_attr(struct lyd_attr *attr, const char *value, size_t value_len, int dynamic, int second,
+                            ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format, const struct lyd_node **trees);
 
 /**
  * @brief Parse XML string as YANG data tree.

@@ -28,6 +28,7 @@
 #include "tree_data.h"
 #include "tree_data_internal.h"
 #include "tree_schema.h"
+#include "plugins_exts_metadata.h"
 
 API void
 lyd_trees_free(const struct lyd_node **trees, int free_data)
@@ -182,6 +183,44 @@ lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len,
     rc = type->plugin->store(ctx, type, value, value_len, options, get_prefix, parser, format,
                              trees ? (void*)node : (void*)node->schema, trees,
                              &node->value, NULL, &err);
+    if (rc == LY_EINCOMPLETE) {
+        ret = rc;
+        /* continue with storing, just remember what to return if storing is ok */
+    } else if (rc) {
+        ret = rc;
+        if (err) {
+            ly_err_print(err);
+            LOGVAL(ctx, LY_VLOG_STR, err->path, err->vecode, err->msg);
+            ly_err_free(err);
+        }
+        goto error;
+    }
+
+error:
+    return ret;
+}
+
+LY_ERR
+lyd_value_parse_attr(struct lyd_attr *attr, const char *value, size_t value_len, int dynamic, int second,
+                     ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format, const struct lyd_node **trees)
+{
+    LY_ERR ret = LY_SUCCESS, rc;
+    struct ly_err_item *err = NULL;
+    struct ly_ctx *ctx;
+    struct lyext_metadata *ant;
+    int options = LY_TYPE_OPTS_STORE | (second ? LY_TYPE_OPTS_SECOND_CALL : 0) |
+            (dynamic ? LY_TYPE_OPTS_DYNAMIC : 0) | (trees ? 0 : LY_TYPE_OPTS_INCOMPLETE_DATA);
+    assert(attr);
+
+    ctx = attr->parent->schema->module->ctx;
+    ant = attr->annotation->data;
+
+    if (!second) {
+        attr->value.realtype = ant->type;
+    }
+    rc = ant->type->plugin->store(ctx, ant->type, value, value_len, options, get_prefix, parser, format,
+                                  trees ? (void*)attr->parent : (void*)attr->parent->schema, trees,
+                                  &attr->value, NULL, &err);
     if (rc == LY_EINCOMPLETE) {
         ret = rc;
         /* continue with storing, just remember what to return if storing is ok */

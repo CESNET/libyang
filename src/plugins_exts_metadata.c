@@ -25,6 +25,16 @@
 LYEXT_VERSION_CHECK
  */
 
+struct lysc_ext_substmt annotation_substmt[7] = {
+    {LY_STMT_IF_FEATURE, LY_STMT_CARD_ANY, NULL},
+    {LY_STMT_UNITS, LY_STMT_CARD_OPT, NULL},
+    {LY_STMT_STATUS, LY_STMT_CARD_OPT, NULL},
+    {LY_STMT_TYPE, LY_STMT_CARD_MAND, NULL},
+    {LY_STMT_DESCRIPTION, LY_STMT_CARD_OPT, NULL},
+    {LY_STMT_REFERENCE, LY_STMT_CARD_OPT, NULL},
+    {0, 0, 0} /* terminating item */
+};
+
 /**
  * @brief Compile annotation extension instances.
  *
@@ -36,15 +46,6 @@ annotation_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext,
     struct lyext_metadata *annotation;
     struct lysc_module *mod_c;
     unsigned int u;
-    struct lysc_ext_substmt annotation_substmt[7] = {
-        {LY_STMT_IF_FEATURE, LY_STMT_CARD_ANY, NULL},
-        {LY_STMT_UNITS, LY_STMT_CARD_OPT, NULL},
-        {LY_STMT_STATUS, LY_STMT_CARD_OPT, NULL},
-        {LY_STMT_TYPE, LY_STMT_CARD_MAND, NULL},
-        {LY_STMT_DESCRIPTION, LY_STMT_CARD_OPT, NULL},
-        {LY_STMT_REFERENCE, LY_STMT_CARD_OPT, NULL},
-        {0, 0, 0} /* terminating item */
-    };
 
     /* annotations can appear only at the top level of a YANG module or submodule */
     if (c_ext->parent_type != LYEXT_PAR_MODULE) {
@@ -84,6 +85,23 @@ annotation_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext,
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Free annotation extension instances' data.
+ *
+ * Implementation of lyext_clb_free callback set as lyext_plugin::free.
+ */
+void
+annotation_free(struct ly_ctx *ctx, struct lysc_ext_instance *ext)
+{
+    struct lyext_metadata *annotation = (struct lyext_metadata*)ext->data;
+    annotation_substmt[0].storage = &annotation->iffeatures;
+    annotation_substmt[1].storage = &annotation->units;
+    annotation_substmt[2].storage = &annotation->flags;
+    annotation_substmt[3].storage = &annotation->type;
+
+   lysc_extension_instance_free(ctx, annotation_substmt);
+   free(ext->data);
+}
 
 /**
  * @brief Plugin for the Metadata's annotation extension
@@ -92,5 +110,5 @@ struct lyext_plugin metadata_plugin = {
     .id = "libyang 2 - metadata, version 1",
     .compile = &annotation_compile,
     .validate = NULL,
-    .free = NULL
+    .free = annotation_free
 };

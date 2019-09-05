@@ -215,9 +215,9 @@ struct lyd_value {
 struct lyd_attr {
     struct lyd_node *parent;         /**< data node where the attribute is placed */
     struct lyd_attr *next;           /**< pointer to the next attribute of the same element */
-    void *annotation;                /**< TODO pointer to the attribute/annotation's definition */
+    struct lysc_ext_instance *annotation; /**< pointer to the attribute/annotation's definition */
     const char *name;                /**< attribute name */
-    struct lyd_value value;            /**< attribute's value representation */
+    struct lyd_value value;          /**< attribute's value representation */
 };
 
 

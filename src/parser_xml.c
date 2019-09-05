@@ -27,6 +27,7 @@
 #include "tree_data_internal.h"
 #include "tree_schema.h"
 #include "xml.h"
+#include "plugins_exts_internal.h"
 
 /**
  * @brief internal context for XML YANG data parser.
@@ -45,6 +46,7 @@ struct lyd_xml_ctx {
 #define LYD_PARSER_BUFSIZE 4078
     char path[LYD_PARSER_BUFSIZE];   /**< buffer for the generated path */
     struct ly_set incomplete_type_validation; /**< set of nodes validated with LY_EINCOMPLETE result */
+    struct ly_set incomplete_type_validation_attrs; /**< set of attributes validated with LY_EINCOMPLETE result */
 };
 
 /**
@@ -78,45 +80,44 @@ static LY_ERR
 lydxml_attributes(struct lyd_xml_ctx *ctx, const char **data, struct lyd_attr **attributes)
 {
     LY_ERR ret = LY_SUCCESS;
-    unsigned int u;
+    unsigned int u, v;
     const char *prefix, *name;
     size_t prefix_len, name_len;
     struct lyd_attr *attr = NULL, *last = NULL;
     const struct lyxml_ns *ns;
-    struct ly_set attr_prefixes = {0};
-    struct attr_prefix_s {
+    struct ly_set attr_datas = {0};
+    struct attr_data_s {
         const char *prefix;
+        char *value;
         size_t prefix_len;
-    } *attr_prefix;
+        size_t value_len;
+        int dynamic;
+    } *attr_data;
     struct lys_module *mod;
 
     while(ctx->status == LYXML_ATTRIBUTE &&
             lyxml_get_attribute((struct lyxml_context*)ctx, data, &prefix, &prefix_len, &name, &name_len) == LY_SUCCESS) {
-        int dynamic = 0;
-        char *buffer = NULL, *value;
-        size_t buffer_size = 0, value_len;
+        char *buffer = NULL;
+        size_t buffer_size = 0;
 
         if (!name) {
             /* seems like all the attrributes were internally processed as namespace definitions */
             continue;
         }
 
-        /* get attribute value */
-        ret = lyxml_get_string((struct lyxml_context *)ctx, data, &buffer, &buffer_size, &value, &value_len, &dynamic);
-        LY_CHECK_GOTO(ret, cleanup);
+        /* auxiliary store the prefix information and value string, because we have to wait with resolving prefix
+         * to the time when all the namespaces, defined in this element, are parsed. With the prefix we can find the
+         * annotation definition for the attribute and correctly process the value */
+        attr_data = malloc(sizeof *attr_data);
+        attr_data->prefix = prefix;
+        attr_data->prefix_len = prefix_len;
+        ret = lyxml_get_string((struct lyxml_context *)ctx, data, &buffer, &buffer_size, &attr_data->value, &attr_data->value_len, &attr_data->dynamic);
+        LY_CHECK_ERR_GOTO(ret, free(attr_data), cleanup);
+        ly_set_add(&attr_datas, attr_data, LY_SET_OPT_USEASLIST);
 
         attr = calloc(1, sizeof *attr);
         LY_CHECK_ERR_GOTO(!attr, LOGMEM(ctx->ctx); ret = LY_EMEM, cleanup);
-
         attr->name = lydict_insert(ctx->ctx, name, name_len);
-        /* auxiliary store the prefix information and wait with resolving prefix to the time when all the namespaces,
-         * defined in this element, are parsed, so we will get the correct namespace for this prefix */
-        attr_prefix = malloc(sizeof *attr_prefix);
-        attr_prefix->prefix = prefix;
-        attr_prefix->prefix_len = prefix_len;
-        ly_set_add(&attr_prefixes, attr_prefix, LY_SET_OPT_USEASLIST);
-
-        /* TODO process value */
 
         if (last) {
             last->next = attr;
@@ -126,18 +127,43 @@ lydxml_attributes(struct lyd_xml_ctx *ctx, const char **data, struct lyd_attr **
         last = attr;
     }
 
-    /* resolve annotation pointers in all the attributes */
-    for (last = *attributes, u = 0; u < attr_prefixes.count && last; u++, last = last->next) {
-        attr_prefix = (struct attr_prefix_s*)attr_prefixes.objs[u];
-        ns = lyxml_ns_get((struct lyxml_context *)ctx, attr_prefix->prefix, attr_prefix->prefix_len);
+    /* resolve annotation pointers in all the attributes and process the attribute's values */
+    for (last = *attributes, u = 0; u < attr_datas.count && last; u++, last = last->next) {
+        attr_data = (struct attr_data_s*)attr_datas.objs[u];
+        ns = lyxml_ns_get((struct lyxml_context *)ctx, attr_data->prefix, attr_data->prefix_len);
         mod = ly_ctx_get_module_implemented_ns(ctx->ctx, ns->uri);
 
-        /* TODO get annotation */
+        LY_ARRAY_FOR(mod->compiled->exts, v) {
+            if (mod->compiled->exts[v].def->plugin == lyext_plugins_internal[LYEXT_PLUGIN_INTERNAL_ANNOTATION].plugin &&
+                    !strcmp(mod->compiled->exts[v].argument, last->name)) {
+                /* we have the annotation definition */
+                last->annotation = &mod->compiled->exts[v];
+                break;
+            }
+        }
+
+        if (!last->annotation) {
+            /* attribute is not defined as a metadata annotation (RFC 7952) */
+
+        }
+
+        ret = lyd_value_parse_attr(attr, attr_data->value, attr_data->value_len, attr_data->dynamic, 0, lydxml_resolve_prefix, ctx, LYD_XML, NULL);
+        if (ret == LY_EINCOMPLETE) {
+            ly_set_add(&ctx->incomplete_type_validation_attrs, attr, LY_SET_OPT_USEASLIST);
+        } else if (ret) {
+            goto cleanup;
+        }
+        attr_data->dynamic = 0; /* value eaten by lyd_value_parse_attr() */
     }
 
 cleanup:
 
-    ly_set_erase(&attr_prefixes, free);
+    for (u = 0; u < attr_datas.count; ++u) {
+        if (((struct attr_data_s*)attr_datas.objs[u])->dynamic) {
+            free(((struct attr_data_s*)attr_datas.objs[u])->value);
+        }
+    }
+    ly_set_erase(&attr_datas, free);
     return ret;
 }
 
@@ -488,6 +514,25 @@ lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, const struct ly
                 break;
             }
         }
+        /* ... and attribute values */
+        for (unsigned int u = 0; u < xmlctx.incomplete_type_validation_attrs.count; u++) {
+            struct lyd_attr *attr = (struct lyd_attr*)xmlctx.incomplete_type_validation_attrs.objs[u];
+            const struct lyd_node **result_trees = NULL;
+
+            /* prepare sized array for validator */
+            if (*result) {
+                result_trees = lyd_trees_new(1, *result);
+            }
+            /* validate and store the value of the node */
+            ret = lyd_value_parse_attr(attr, attr->value.canonized, attr->value.canonized ? strlen(attr->value.canonized) : 0, 0, 1,
+                                       lydxml_resolve_prefix, ctx, LYD_XML, result_trees);
+            lyd_trees_free(result_trees, 0);
+            if (ret) {
+                lyd_free_all(*result);
+                *result = NULL;
+                break;
+            }
+        }
 
         if (!(*result) || (parent && !parent->child)) {
 no_data:
@@ -505,6 +550,7 @@ no_data:
     }
 
     ly_set_erase(&xmlctx.incomplete_type_validation, NULL);
+    ly_set_erase(&xmlctx.incomplete_type_validation_attrs, NULL);
     lyxml_context_clear((struct lyxml_context*)&xmlctx);
     return ret;
 }

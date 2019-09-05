@@ -16,6 +16,19 @@
 #define LY_PLUGINS_EXTS_INTERNAL_H_
 
 #include "tree_schema.h"
+#include "plugins_exts.h"
+
+#include "plugins_exts_metadata.h"
+
+/**
+ * @brief List of internally implemented extension plugins.
+ */
+extern struct lyext_plugins_list *lyext_plugins_internal;
+
+/**
+ * @brief Index of Metadata's annotation extension plugin in lyext_plugins_internal
+ */
+#define LYEXT_PLUGIN_INTERNAL_ANNOTATION 4
 
 /**
  * @brief Find the extension plugin for the specified extension instance.

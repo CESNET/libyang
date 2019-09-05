@@ -100,8 +100,15 @@ struct lysc_ext_substmt {
 
 /**
  * @brief Compile substatements of an extension instance.
+ * TODO
  */
 LY_ERR lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_instance *ext, struct lysc_ext_substmt *substmts);
+
+/**
+ * @brief Free the extension instance's data compiled with lys_compile_extension_instance().
+ * TODO
+ */
+void lysc_extension_instance_free(struct ly_ctx *ctx, struct lysc_ext_substmt *substmts);
 
 /**
  * @brief Update path in the compile context, which is used for logging where the compilation failed.
@@ -131,9 +138,10 @@ typedef LY_ERR (*lyext_clb_compile)(struct lysc_ctx *cctx, const struct lysp_ext
 /**
  * @brief Callback to free the extension specific data created by the lyext_clb_compile callback of the same extension plugin.
  *
+ * @param[in] ctx libyang context.
  * @param[in,out] ext Compiled extension structure where the data to free are placed.
  */
-typedef void (*lyext_clb_free)(struct lysc_ext_instance *ext);
+typedef void (*lyext_clb_free)(struct ly_ctx *ctx, struct lysc_ext_instance *ext);
 
 /**
  * @brief Callback to decide if data instance is valid according to the schema.

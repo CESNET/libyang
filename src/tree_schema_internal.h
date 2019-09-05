@@ -703,6 +703,12 @@ LY_ERR lys_extension_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, str
  */
 void lysp_submodule_free(struct ly_ctx *ctx, struct lysp_submodule *submod);
 
+/**
+ * @brief Free the parsed type structure.
+ * @param[in] ctx libyang context where the string data resides in a dictionary.
+ * @param[in] type Parsed schema type structure to free. Note that since the type itself is not freed.
+ */
+void lysp_type_free(struct ly_ctx *ctx, struct lysp_type *type);
 
 LY_ERR lysp_stmt_parse(struct lysc_ctx *ctx, const struct lysp_stmt *stmt, enum ly_stmt kw, void **result);
 

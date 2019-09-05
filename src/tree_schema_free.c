@@ -467,6 +467,9 @@ lysp_module_free(struct lysp_module *module)
 void
 lysc_ext_instance_free(struct ly_ctx *ctx, struct lysc_ext_instance *ext)
 {
+    if (ext->def->plugin && ext->def->plugin->free) {
+        ext->def->plugin->free(ctx, ext);
+    }
     FREE_STRING(ctx, ext->argument);
     FREE_ARRAY(ctx, ext->exts, lysc_ext_instance_free);
 }
@@ -870,6 +873,74 @@ lys_module_free(struct lys_module *module, void (*private_destructor)(const stru
     FREE_STRING(module->ctx, module->ref);
 
     free(module);
+}
+API void
+lysc_extension_instance_free(struct ly_ctx *ctx, struct lysc_ext_substmt *substmts)
+{
+    for (unsigned int u = 0; substmts[u].stmt; ++u) {
+        if (!substmts[u].storage) {
+            continue;
+        }
+
+        switch(substmts[u].stmt) {
+        case LY_STMT_TYPE:
+            if (substmts[u].cardinality < LY_STMT_CARD_SOME) {
+                /* single item */
+                struct lysc_type *type = *((struct lysc_type**)substmts[u].storage);
+                if (!type) {
+                    break;
+                }
+                lysc_type_free(ctx, type);
+            } else {
+                /* multiple items */
+                struct lysc_type **types = *((struct lysc_type***)substmts[u].storage);
+                if (!types) {
+                    break;
+                }
+                FREE_ARRAY(ctx, types, lysc_type2_free);
+            }
+            break;
+        case LY_STMT_UNITS:
+            if (substmts[u].cardinality < LY_STMT_CARD_SOME) {
+                /* single item */
+                const char *str = *((const char**)substmts[u].storage);
+                if (!str) {
+                    break;
+                }
+                FREE_STRING(ctx, str);
+            } else {
+                /* multiple items */
+                const char **strs = *((const char***)substmts[u].storage);
+                if (!strs) {
+                    break;
+                }
+                FREE_STRINGS(ctx, strs);
+            }
+            break;
+        case LY_STMT_STATUS:
+            /* nothing to do */
+            break;
+        case LY_STMT_IF_FEATURE: {
+            struct lysc_iffeature *iff = *((struct lysc_iffeature**)substmts[u].storage);
+            if (!iff) {
+                break;
+            }
+            if (substmts[u].cardinality < LY_STMT_CARD_SOME) {
+                /* single item */
+                lysc_iffeature_free(ctx, iff);
+                free(iff);
+            } else {
+                /* multiple items */
+                FREE_ARRAY(ctx, iff, lysc_iffeature_free);
+            }
+            break;
+        }
+
+            /* TODO other statements */
+        default:
+            LOGINT(ctx);
+        }
+    }
 }
 
 void
