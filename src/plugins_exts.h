@@ -89,6 +89,7 @@ enum ly_stmt_cardinality {
  * @brief Description of the extension instance substatements.
  *
  * Provided by extensions plugins to libyang's lyext_compile_stmts() to be able to correctly compile the content of extension instances.
+ * Note that order of the defined records matters - just follow the values of enum ly_stmt and order the records from lower to higher values.
  */
 struct lysc_ext_substmt {
     enum ly_stmt stmt;                     /**< allowed substatement */

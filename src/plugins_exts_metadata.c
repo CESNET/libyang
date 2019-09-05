@@ -35,13 +35,12 @@ annotation_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext,
 {
     struct lyext_metadata *annotation;
     struct lysc_module *mod_c;
-    struct lysp_stmt *stmt;
     unsigned int u;
     struct lysc_ext_substmt annotation_substmt[7] = {
         {LY_STMT_IF_FEATURE, LY_STMT_CARD_ANY, NULL},
-        {LY_STMT_TYPE, LY_STMT_CARD_MAND, NULL},
         {LY_STMT_UNITS, LY_STMT_CARD_OPT, NULL},
         {LY_STMT_STATUS, LY_STMT_CARD_OPT, NULL},
+        {LY_STMT_TYPE, LY_STMT_CARD_MAND, NULL},
         {LY_STMT_DESCRIPTION, LY_STMT_CARD_OPT, NULL},
         {LY_STMT_REFERENCE, LY_STMT_CARD_OPT, NULL},
         {0, 0, 0} /* terminating item */
@@ -53,13 +52,19 @@ annotation_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext,
                   p_ext->name, lyext_parent2str(c_ext->parent_type));
         return LY_EVALID;
     }
+    /* check mandatory argument */
+    if (!c_ext->argument) {
+        lyext_log(c_ext, LY_LLERR, LY_EVALID, cctx->path, "Extension %s is instantiated without mandatory argument representing metadata name.",
+                  p_ext->name);
+        return LY_EVALID;
+    }
 
     mod_c = (struct lysc_module *)c_ext->parent;
 
     /* check for duplication */
     LY_ARRAY_FOR(mod_c->exts, u) {
-        if (&mod_c->exts[u] != c_ext && mod_c->exts[u].def == c_ext->def) {
-            /* duplication of a annotation extension in a single module */
+        if (&mod_c->exts[u] != c_ext && mod_c->exts[u].def == c_ext->def && !strcmp(mod_c->exts[u].argument, c_ext->argument)) {
+            /* duplication of the same annotation extension in a single module */
             lyext_log(c_ext, LY_LLERR, LY_EVALID, cctx->path, "Extension %s is instantiated multiple times.", p_ext->name);
             return LY_EVALID;
         }
@@ -67,11 +72,11 @@ annotation_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext,
 
     /* compile annotation substatements */
     c_ext->data = annotation = calloc(1, sizeof *annotation);
-    LY_CHECK_RET(annotation, LY_EMEM);
+    LY_CHECK_ERR_RET(!annotation, LOGMEM(cctx->ctx), LY_EMEM);
     annotation_substmt[0].storage = &annotation->iffeatures;
-    annotation_substmt[1].storage = &annotation->type;
-    annotation_substmt[2].storage = &annotation->units;
-    annotation_substmt[3].storage = &annotation->flags;
+    annotation_substmt[1].storage = &annotation->units;
+    annotation_substmt[2].storage = &annotation->flags;
+    annotation_substmt[3].storage = &annotation->type;
     /* description and reference are allowed, but not compiled */
 
     LY_CHECK_RET(lys_compile_extension_instance(cctx, p_ext, annotation_substmt));

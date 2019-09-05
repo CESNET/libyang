@@ -89,7 +89,7 @@ enum int_log_opts {
 
 enum LY_VLOG_ELEM {
     LY_VLOG_NONE = 0,
-    LY_VLOG_LINE,/* line number */
+    LY_VLOG_LINE,/* line number (uint64_t*) */
     LY_VLOG_LYS, /* struct lysc_node* */
     LY_VLOG_LYD, /* struct lyd_node* */
     LY_VLOG_STR, /* const char* */

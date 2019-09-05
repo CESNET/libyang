@@ -166,6 +166,13 @@ typedef enum {
  */
 enum ly_stmt {
     LY_STMT_NONE = 0,
+    LY_STMT_STATUS,
+    LY_STMT_CONFIG,
+    LY_STMT_MANDATORY,
+    LY_STMT_UNITS,
+    LY_STMT_DEFAULT,
+    LY_STMT_TYPE,
+
     LY_STMT_ACTION,
     LY_STMT_ANYDATA,
     LY_STMT_ANYXML,
@@ -176,10 +183,8 @@ enum ly_stmt {
     LY_STMT_BIT,
     LY_STMT_CASE,
     LY_STMT_CHOICE,
-    LY_STMT_CONFIG,
     LY_STMT_CONTACT,
     LY_STMT_CONTAINER,
-    LY_STMT_DEFAULT,
     LY_STMT_DESCRIPTION,
     LY_STMT_DEVIATE,
     LY_STMT_DEVIATION,
@@ -200,7 +205,6 @@ enum ly_stmt {
     LY_STMT_LEAF_LIST,
     LY_STMT_LENGTH,
     LY_STMT_LIST,
-    LY_STMT_MANDATORY,
     LY_STMT_MAX_ELEMENTS,
     LY_STMT_MIN_ELEMENTS,
     LY_STMT_MODIFIER,
@@ -223,12 +227,9 @@ enum ly_stmt {
     LY_STMT_REVISION,
     LY_STMT_REVISION_DATE,
     LY_STMT_RPC,
-    LY_STMT_STATUS,
     LY_STMT_SUBMODULE,
-    LY_STMT_TYPE,
     LY_STMT_TYPEDEF,
     LY_STMT_UNIQUE,
-    LY_STMT_UNITS,
     LY_STMT_USES,
     LY_STMT_VALUE,
     LY_STMT_WHEN,
@@ -378,6 +379,7 @@ struct lysp_stmt {
     struct lysp_stmt *next;          /**< link to the next statement */
     struct lysp_stmt *child;         /**< list of the statement's substatements (linked list) */
     uint16_t flags;                  /**< statement flags, can be set to LYS_YIN_ATTR */
+    enum ly_stmt kw;                 /**< numeric respresentation of the stmt value */
 };
 
 #define LYS_YIN 0x1 /**< used to specify input format of extension instance */
@@ -388,11 +390,14 @@ struct lysp_stmt {
 struct lysp_ext_instance {
     const char *name;                       /**< extension identifier, including possible prefix */
     const char *argument;                   /**< optional value of the extension's argument */
+    void *parent;                           /**< pointer to the parent element holding the extension instance(s), use
+                                                 ::lysp_ext_instance#parent_type to access the schema element */
     struct lysp_stmt *child;                /**< list of the extension's substatements (linked list) */
     LYEXT_SUBSTMT insubstmt;                /**< value identifying placement of the extension instance */
     uint32_t insubstmt_index;               /**< in case the instance is in a substatement, this identifies
                                                  the index of that substatement */
     uint8_t yin;                            /** flag for YIN source format, can be set to LYS_YIN */
+    LYEXT_PARENT parent_type;               /**< type of the parent structure */
 };
 
 /**

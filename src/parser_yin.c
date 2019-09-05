@@ -3503,6 +3503,7 @@ yin_parse_module(struct yin_parser_ctx **yin_ctx, const char *data, struct lys_m
     *yin_ctx = calloc(1, sizeof **yin_ctx);
     LY_CHECK_ERR_RET(!(*yin_ctx), LOGMEM(mod->ctx), LY_EMEM);
     (*yin_ctx)->xml_ctx.ctx = mod->ctx;
+    (*yin_ctx)->pos_type = LY_VLOG_LINE;
     (*yin_ctx)->xml_ctx.line = 1;
 
     /* check module */

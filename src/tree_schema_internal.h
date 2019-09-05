@@ -22,7 +22,17 @@
 #include "tree_schema.h"
 #include "xml.h"
 
-#define LOGVAL_PARSER(CTX, ...) LOGVAL((CTX)->ctx, LY_VLOG_LINE, &(CTX)->line, __VA_ARGS__)
+#define LOGVAL_PARSER(CTX, ...) LOGVAL((CTX)->ctx, (CTX)->pos_type, (CTX)->pos_type == LY_VLOG_LINE ? &(CTX)->line : (void*)(CTX)->path, __VA_ARGS__)
+
+/**
+ * @brief Check module version is at least 2 (YANG 1.1) because of the keyword presence.
+ * Logs error message and returns LY_EVALID in case of module in YANG version 1.0.
+ * @param[in] CTX yang parser context to get current module and for logging.
+ * @param[in] KW keyword allowed only in YANG version 1.1 (or later) - for logging.
+ * @param[in] PARENT parent statement where the KW is present - for logging.
+ */
+#define PARSER_CHECK_STMTVER2_RET(CTX, KW, PARENT) \
+    if ((CTX)->mod_version < 2) {LOGVAL_PARSER((CTX), LY_VCODE_INCHILDSTMT2, KW, PARENT); return LY_EVALID;}
 
 /* These 2 macros checks YANG's identifier grammar rule */
 #define is_yangidentstartchar(c) ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_')
@@ -94,8 +104,12 @@ struct lys_parser_ctx {
     struct ly_set tpdfs_nodes;  /**< set of typedef nodes */
     struct ly_set grps_nodes;   /**< set of grouping nodes */
     uint8_t mod_version;        /**< module's version */
+    enum LY_VLOG_ELEM pos_type; /**< */
     struct ly_ctx *ctx;         /**< context of then yang schemas */
-    uint64_t line;              /**< line number */
+    union {
+        uint64_t line;              /**< line number */
+        const char *path;           /**< path */
+    };
     uint64_t indent;            /**< current position on the line for YANG indentation */
 };
 
@@ -111,6 +125,7 @@ struct yin_parser_ctx {
     struct ly_set tpdfs_nodes;     /**< set of typedef nodes */
     struct ly_set grps_nodes;      /**< set of grouping nodes */
     uint8_t mod_version;           /**< module's version */
+    enum LY_VLOG_ELEM pos_type; /**< */
     struct lyxml_context xml_ctx;  /**< context for xml parser */
 };
 
@@ -687,6 +702,9 @@ LY_ERR lys_extension_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, str
  * @param[in,out] submod Parsed schema submodule structure to free.
  */
 void lysp_submodule_free(struct ly_ctx *ctx, struct lysp_submodule *submod);
+
+
+LY_ERR lysp_stmt_parse(struct lysc_ctx *ctx, const struct lysp_stmt *stmt, enum ly_stmt kw, void **result);
 
 /**
  * @brief Free the compiled type structure.

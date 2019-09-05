@@ -475,37 +475,6 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct ly
     return LY_SUCCESS;
 }
 
-LY_ERR
-lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_instance *ext, struct lysc_ext_substmt *substmts)
-{
-    unsigned int u;
-    struct lysp_stmt *stmt;
-
-    for (stmt = ext->child; stmt; stmt = stmt->next) {
-        const char *s = stmt->stmt;
-        enum ly_stmt kw = lysp_match_kw(NULL, &s);
-        if (!kw || *s != '\0') {
-            /* TODO handle other extension instances */
-            goto invalid_stmt;
-        }
-        for (u = 0; substmts[u].stmt; ++u) {
-            if (substmts[u].stmt == kw) {
-                break;
-            }
-        }
-        if (!substmts[u].stmt) {
-invalid_stmt:
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Invalid keyword \"%s\" as a child of \"%s\" extension instance.",
-                   ly_stmt2str(kw), ext->name);
-            return LY_EVALID;
-        }
-
-        /* TODO parse stmt to lysp */
-        /* TODO compile lysp to lysc */
-    }
-    return LY_SUCCESS;
-}
-
 /**
  * @brief Fill in the prepared compiled extensions definition structure according to the parsed extension definition.
  */
@@ -6661,6 +6630,107 @@ lys_compile_submodule(struct lysc_ctx *ctx, struct lysp_include *inc)
     COMPILE_ARRAY1_GOTO(ctx, submod->notifs, mainmod->notifs, NULL, u, lys_compile_notif, 0, ret, error);
 
 error:
+    return ret;
+}
+
+static void *
+lys_compile_extension_instance_storage(enum ly_stmt stmt, struct lysc_ext_substmt *substmts)
+{
+    for (unsigned int u = 0; substmts[u].stmt; ++u) {
+        if (substmts[u].stmt == stmt) {
+            return substmts[u].storage;
+        }
+    }
+    return NULL;
+}
+
+LY_ERR
+lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_instance *ext, struct lysc_ext_substmt *substmts)
+{
+    LY_ERR ret = LY_EVALID, r;
+    unsigned int u;
+    struct lysp_stmt *stmt;
+    void *parsed = NULL, **compiled = NULL;
+    struct ly_set mandatory_stmts = {0};
+
+    /* check for invalid substatements */
+    for (stmt = ext->child; stmt; stmt = stmt->next) {
+        for (u = 0; substmts[u].stmt; ++u) {
+            if (substmts[u].stmt == stmt->kw) {
+                break;
+            }
+        }
+        if (!substmts[u].stmt) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Invalid keyword \"%s\" as a child of \"%s\" extension instance.",
+                   stmt->stmt, ext->name);
+            goto cleanup;
+        }
+        if (substmts[u].cardinality == LY_STMT_CARD_MAND || substmts[u].cardinality == LY_STMT_CARD_SOME) {
+            ly_set_add(&mandatory_stmts, &substmts[u], LY_SET_OPT_USEASLIST);
+        }
+    }
+
+    /* keep order of the processing the same as the order in the defined substmts,
+     * the order is important for some of the statements depending on others (e.g. type needs status and units) */
+    for (u = 0; substmts[u].stmt; ++u) {
+        for (stmt = ext->child; stmt; stmt = stmt->next) {
+            if (substmts[u].stmt != stmt->kw) {
+                continue;
+            }
+
+            if (substmts[u].storage) {
+                switch (stmt->kw) {
+                case LY_STMT_TYPE: {
+                    uint16_t *flags = lys_compile_extension_instance_storage(LY_STMT_STATUS, substmts);
+                    const char **units = lys_compile_extension_instance_storage(LY_STMT_UNITS, substmts);
+
+                    if (substmts[u].cardinality < LY_STMT_CARD_SOME) {
+                        /* single item */
+                        if (*(struct lysc_type**)substmts->storage) {
+                            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DUPSTMT, stmt->stmt);
+                            goto cleanup;
+                        }
+                        compiled = substmts[u].storage;
+                    } else {
+                        /* sized array */
+                        struct lysc_type ***types = (struct lysc_type***)substmts[u].storage, **type = NULL;
+                        LY_ARRAY_NEW_GOTO(ctx->ctx, *types, type, ret, cleanup);
+                        compiled = (void*)type;
+                    }
+
+                    LY_CHECK_ERR_GOTO(r = lysp_stmt_parse(ctx, stmt, stmt->kw, &parsed), ret = r, cleanup);
+                    LY_CHECK_ERR_GOTO(r = lys_compile_type(ctx, ext->parent_type == LYEXT_PAR_NODE ? ((struct lysc_node*)ext->parent)->sp : NULL,
+                                      flags ? *flags : 0, ctx->mod_def->parsed, ext->name, parsed, (struct lysc_type**)compiled,
+                                      units && !*units ? units : NULL), ret = r, cleanup);
+                    break;
+                }
+                /* TODO support other substatements (parse stmt to lysp and then compile lysp to lysc) */
+                default:
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Statement \"%s\" is not supported as an extension (found in \"%s\") substatement.",
+                           stmt->stmt, ext->name);
+                    goto cleanup;
+                }
+            }
+
+            if (substmts[u].cardinality == LY_STMT_CARD_MAND || substmts[u].cardinality == LY_STMT_CARD_SOME) {
+                int i = ly_set_contains(&mandatory_stmts, &substmts[u]);
+                if (i != -1) {
+                    ly_set_rm_index(&mandatory_stmts, i, NULL);
+                }
+            }
+        }
+    }
+
+    if (mandatory_stmts.count) {
+        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_MISSTMT, "type", ext->name);
+        goto cleanup;
+    }
+
+    ret = LY_SUCCESS;
+
+cleanup:
+    ly_set_erase(&mandatory_stmts, NULL);
+
     return ret;
 }
 
