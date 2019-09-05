@@ -143,6 +143,7 @@ test_helpers(void **state)
     size_t len, size;
     struct lys_parser_ctx ctx;
     ctx.ctx = NULL;
+    ctx.pos_type = LY_VLOG_LINE;
     ctx.line = 1;
     int prefix = 0;
 
@@ -219,6 +220,7 @@ test_comments(void **state)
     size_t len;
 
     ctx.ctx = NULL;
+    ctx.pos_type = LY_VLOG_LINE;
     ctx.line = 1;
 
     str = " // this is a text of / one * line */ comment\nargument;";
@@ -255,6 +257,7 @@ test_arg(void **state)
     size_t len;
 
     ctx.ctx = NULL;
+    ctx.pos_type = LY_VLOG_LINE;
     ctx.line = 1;
 
     /* missing argument */
@@ -392,6 +395,7 @@ test_stmts(void **state)
     size_t len;
 
     ctx.ctx = NULL;
+    ctx.pos_type = LY_VLOG_LINE;
     ctx.line = 1;
 
     str = "\n// comment\n\tinput\t{";
@@ -734,6 +738,7 @@ test_minmax(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
+    ctx.pos_type = LY_VLOG_LINE;
     ctx.line = 1;
     ctx.mod_version = 2; /* simulate YANG 1.1 */
 
@@ -875,6 +880,7 @@ test_module(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
+    ctx.pos_type = LY_VLOG_LINE;
     ctx.line = 1;
     ctx.indent = 0;
 
@@ -1160,6 +1166,7 @@ test_identity(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
+    ctx.pos_type = LY_VLOG_LINE;
     ctx.line = 1;
     ctx.indent = 0;
     ctx.mod_version = 2; /* simulate YANG 1.1 */
@@ -1205,6 +1212,7 @@ test_feature(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
+    ctx.pos_type = LY_VLOG_LINE;
     ctx.line = 1;
     ctx.indent = 0;
 
@@ -1248,6 +1256,7 @@ test_deviation(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
+    ctx.pos_type = LY_VLOG_LINE;
     ctx.line = 1;
     ctx.indent = 0;
 
@@ -1297,6 +1306,7 @@ test_deviate(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
+    ctx.pos_type = LY_VLOG_LINE;
     ctx.line = 1;
     ctx.indent = 0;
 
@@ -1382,6 +1392,7 @@ test_container(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
+    ctx.pos_type = LY_VLOG_LINE;
     ctx.line = 1;
     ctx.mod_version = 2; /* simulate YANG 1.1 */
 
@@ -1455,6 +1466,7 @@ test_leaf(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
+    ctx.pos_type = LY_VLOG_LINE;
     ctx.line = 1;
     //ctx.mod->version = 2; /* simulate YANG 1.1 */
 
@@ -1533,6 +1545,7 @@ test_leaflist(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
+    ctx.pos_type = LY_VLOG_LINE;
     ctx.line = 1;
     ctx.mod_version = 2; /* simulate YANG 1.1 */
 
@@ -1631,6 +1644,7 @@ test_list(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
+    ctx.pos_type = LY_VLOG_LINE;
     ctx.line = 1;
     ctx.mod_version = 2; /* simulate YANG 1.1 */
 
@@ -1701,6 +1715,7 @@ test_choice(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
+    ctx.pos_type = LY_VLOG_LINE;
     ctx.line = 1;
     ctx.mod_version = 2; /* simulate YANG 1.1 */
 
@@ -1768,6 +1783,7 @@ test_case(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
+    ctx.pos_type = LY_VLOG_LINE;
     ctx.line = 1;
     ctx.mod_version = 2; /* simulate YANG 1.1 */
 
@@ -1822,6 +1838,7 @@ test_any(void **state, enum ly_stmt kw)
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
+    ctx.pos_type = LY_VLOG_LINE;
     ctx.line = 1;
     if (kw == LY_STMT_ANYDATA) {
         ctx.mod_version = 2; /* simulate YANG 1.1 */
@@ -1888,6 +1905,7 @@ test_grouping(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
+    ctx.pos_type = LY_VLOG_LINE;
     ctx.line = 1;
     ctx.mod_version = 2; /* simulate YANG 1.1 */
 
@@ -1945,6 +1963,7 @@ test_action(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
+    ctx.pos_type = LY_VLOG_LINE;
     ctx.line = 1;
     ctx.mod_version = 2; /* simulate YANG 1.1 */
 
@@ -2022,6 +2041,7 @@ test_notification(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
+    ctx.pos_type = LY_VLOG_LINE;
     ctx.line = 1;
     ctx.mod_version = 2; /* simulate YANG 1.1 */
 
@@ -2081,6 +2101,7 @@ test_uses(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
+    ctx.pos_type = LY_VLOG_LINE;
     ctx.line = 1;
     ctx.mod_version = 2; /* simulate YANG 1.1 */
 
@@ -2131,6 +2152,7 @@ test_augment(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
+    ctx.pos_type = LY_VLOG_LINE;
     ctx.line = 1;
     ctx.mod_version = 2; /* simulate YANG 1.1 */
 
@@ -2178,6 +2200,7 @@ test_when(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
+    ctx.pos_type = LY_VLOG_LINE;
     ctx.line = 1;
     ctx.mod_version = 2; /* simulate YANG 1.1 */
 
@@ -2222,6 +2245,7 @@ test_value(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
+    ctx.pos_type = LY_VLOG_LINE;
     ctx.line = 1;
     ctx.indent = 0;
     int64_t val = 0;

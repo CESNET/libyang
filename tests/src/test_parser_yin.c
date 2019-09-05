@@ -148,6 +148,7 @@ setup_f(void **state)
     /* allocate parser context */
     st->yin_ctx = calloc(1, sizeof(*st->yin_ctx));
     st->yin_ctx->xml_ctx.ctx = st->ctx;
+    st->yin_ctx->pos_type = LY_VLOG_LINE;
     st->yin_ctx->xml_ctx.line = 1;
 
     return EXIT_SUCCESS;
@@ -233,6 +234,7 @@ setup_element_test(void **state)
 
     /* allocate parser context */
     st->yin_ctx->xml_ctx.ctx = st->ctx;
+    st->yin_ctx->pos_type = LY_VLOG_LINE;
     st->yin_ctx->xml_ctx.line = 1;
 
     return EXIT_SUCCESS;

@@ -4406,6 +4406,7 @@ yang_parse_submodule(struct lys_parser_ctx **context, struct ly_ctx *ly_ctx, str
     *context = calloc(1, sizeof **context);
     LY_CHECK_ERR_RET(!(*context), LOGMEM(ly_ctx), LY_EMEM);
     (*context)->ctx = ly_ctx;
+    (*context)->pos_type = LY_VLOG_LINE;
     (*context)->line = 1;
 
     /* map the typedefs and groupings list from main context to the submodule's context */
