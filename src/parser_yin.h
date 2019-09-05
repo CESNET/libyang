@@ -176,8 +176,7 @@ enum yin_argument yin_match_argument_name(const char *name, size_t len);
  * @brief Generic function for content parsing
  *
  * @param[in,out] ctx Yin parser context for logging and to store current state.
- * @param[in] subelem_info array of valid subelement types and meta information,
- *            array must be ordered by subelem_info->type in ascending order.
+ * @param[in] subelem_info array of valid subelement types and meta information
  * @param[in] subelem_info_size Size of subelem_info array.
  * @param[in,out] data Data to read from, always moved to currently handled character.
  * @param[in] current_element Type of current element.
@@ -186,7 +185,7 @@ enum yin_argument yin_match_argument_name(const char *name, size_t len);
  *
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_info, signed char subelem_info_size,
+LY_ERR yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_info, size_t subelem_info_size,
                          const char **data, enum ly_stmt current_element, const char **text_content,
                          struct lysp_ext_instance **exts);
 

@@ -372,7 +372,7 @@ yin_parse_attribute(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, en
 }
 
 /**
- * @brief Get record with given type. Array must be sorted in ascending order by array[n].type.
+ * @brief Get record with given type.
  *
  * @param[in] type Type of wanted record.
  * @param[in] array_size Size of array.
@@ -381,24 +381,13 @@ yin_parse_attribute(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, en
  * @return Pointer to desired record on success, NULL if element is not in the array.
  */
 static struct yin_subelement *
-get_record(enum ly_stmt type, signed char array_size, struct yin_subelement *array)
+get_record(enum ly_stmt type, size_t array_size, struct yin_subelement *array)
 {
-    signed char left = 0, right = array_size - 1, middle;
-
-    while (left <= right) {
-        middle = left + (right - left) / 2;
-
-        if (array[middle].type == type) {
-            return &array[middle];
-        }
-
-        if (array[middle].type < type) {
-            left = middle + 1;
-        } else {
-            right = middle - 1;
+    for (unsigned int u = 0; u < array_size; ++u) {
+        if (array[u].type == type) {
+            return &array[u];
         }
     }
-
     return NULL;
 }
 
@@ -418,7 +407,7 @@ yin_check_subelem_mandatory_constraint(struct yin_parser_ctx *ctx, struct yin_su
 {
     for (signed char i = 0; i < subelem_info_size; ++i) {
         /* if there is element that is mandatory and isn't parsed log error and return LY_EVALID */
-        if (subelem_info[i].flags & YIN_SUBELEM_MANDATORY && !(subelem_info[i].flags & YIN_SUBELEM_PARSED)) {
+        if ((subelem_info[i].flags & YIN_SUBELEM_MANDATORY) && !(subelem_info[i].flags & YIN_SUBELEM_PARSED)) {
             LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_MAND_SUBELEM,
                           ly_stmt2str(subelem_info[i].type), ly_stmt2str(current_element));
             return LY_EVALID;
@@ -454,31 +443,6 @@ yin_check_subelem_first_constraint(struct yin_parser_ctx *ctx, struct yin_subele
 
     return LY_SUCCESS;
 }
-
-/**
- * @brief Helper function to check if array of information about subelements is in ascending order.
- *
- * @param[in] subelem_info Array of information about subelements.
- * @param[in] subelem_info_size Size of subelem_info array.
- *
- * @return True iff subelem_info array is in ascending order, False otherwise.
- */
-#ifndef NDEBUG
-static bool
-is_ordered(struct yin_subelement *subelem_info, signed char subelem_info_size)
-{
-    enum ly_stmt current = LY_STMT_NONE; /* 0 (minimal value) */
-
-    for (signed char i = 0; i < subelem_info_size; ++i) {
-        if (subelem_info[i].type <= current) {
-            return false;
-        }
-        current = subelem_info[i].type;
-    }
-
-    return true;
-}
-#endif
 
 /**
  * @brief Parse simple element without any special constraints and argument mapped to yin attribute,
@@ -2882,7 +2846,7 @@ yin_check_relative_order(struct yin_parser_ctx *ctx, enum ly_stmt kw, enum ly_st
 }
 
 LY_ERR
-yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_info, signed char subelem_info_size,
+yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_info, size_t subelem_info_size,
                   const char **data, enum ly_stmt current_element, const char **text_content, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -2893,8 +2857,6 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
     struct yin_arg_record *attrs = NULL;
     enum ly_stmt kw = LY_STMT_NONE, last_kw = LY_STMT_NONE;
     struct yin_subelement *subelem = NULL;
-
-    assert(is_ordered(subelem_info, subelem_info_size));
 
     if (ctx->xml_ctx.status == LYXML_ELEM_CONTENT) {
         ret = lyxml_get_string(&ctx->xml_ctx, data, &out, &out_len, &out, &out_len, &dynamic);
@@ -3434,6 +3396,7 @@ yin_parse_submodule(struct yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, struct 
     *yin_ctx = calloc(1, sizeof **yin_ctx);
     LY_CHECK_ERR_RET(!(*yin_ctx), LOGMEM(ctx), LY_EMEM);
     (*yin_ctx)->xml_ctx.ctx = ctx;
+    (*yin_ctx)->pos_type = LY_VLOG_LINE;
     (*yin_ctx)->xml_ctx.line = 1;
 
     /* map the typedefs and groupings list from main context to the submodule's context */
