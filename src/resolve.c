@@ -4309,8 +4309,11 @@ resolve_schema_leafref(struct lys_type *type, struct lys_node *parent, struct un
         }
 
         if (first_iter) {
+            /* find module whose data will actually contain this leafref */
+            for (tmp_parent = parent; lys_parent(tmp_parent); tmp_parent = lys_parent(tmp_parent));
+
             /* set external dependency flag, we can decide based on the first found node */
-            if (resolve_schema_leafref_valid_dep_flag(op_node, cur_module, node, (parent_times == -1 ? 1 : 0))) {
+            if (resolve_schema_leafref_valid_dep_flag(op_node, lys_node_module(tmp_parent), node, (parent_times == -1 ? 1 : 0))) {
                 parent->flags |= LYS_LEAFREF_DEP;
             }
             first_iter = 0;
