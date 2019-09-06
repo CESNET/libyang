@@ -214,11 +214,9 @@ get_fileformat(const char *filename, LYS_INFORMAT *schema, LYD_FORMAT *data)
         if (!strcmp(ptr, "yang")) {
             informat_s = LYS_IN_YANG;
             informat_d = 0;
-#if 0
         } else if (!strcmp(ptr, "yin")) {
             informat_s = LYS_IN_YIN;
             informat_d = 0;
-#endif
         } else if (!strcmp(ptr, "xml")) {
             informat_s = 0;
             informat_d = LYD_XML;

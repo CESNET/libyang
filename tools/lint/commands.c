@@ -174,10 +174,8 @@ get_schema_format(const char *path)
         ++ptr;
         if (!strcmp(ptr, "yang")) {
             return LYS_IN_YANG;
-        /* TODO YIN parser not yet implemented
         } else if (!strcmp(ptr, "yin")) {
              return LYS_IN_YIN;
-        */
         } else {
             fprintf(stderr, "Input file in an unknown format \"%s\".\n", ptr);
             return LYS_IN_UNKNOWN;
@@ -1409,7 +1407,7 @@ cmd_clear(const char *arg)
     } else {
 create_empty:
 #else
-    (void) arg; /* TODO unused */
+    (void) arg; /* TODO yang-library support */
     {
 #endif
         ly_ctx_new(NULL, options, &ctx_new);
