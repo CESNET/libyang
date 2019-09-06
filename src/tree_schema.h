@@ -33,7 +33,7 @@ extern "C" {
 
 /**
  * @brief Macro to iterate via all elements in a schema tree which can be instantiated in data tree
- * (skips cases, input, output). This is the opening part to the #LYS_TREE_DFS_END - they always have to be used together.
+ * (skips cases, input, output). This is the opening part to the #LYSC_TREE_DFS_END - they always have to be used together.
  *
  * The function follows deep-first search algorithm:
  * <pre>
@@ -166,12 +166,14 @@ typedef enum {
  */
 enum ly_stmt {
     LY_STMT_NONE = 0,
-    LY_STMT_STATUS,
-    LY_STMT_CONFIG,
+    LY_STMT_STATUS,             /**< in lysc_ext_substmt::storage stored as a pointer to `uint16_t`, only cardinality < #LY_STMT_CARD_SOME is allowed */
+    LY_STMT_CONFIG,             /**< in lysc_ext_substmt::storage stored as a pointer to `uint16_t`, only cardinality < #LY_STMT_CARD_SOME is allowed */
     LY_STMT_MANDATORY,
-    LY_STMT_UNITS,
+    LY_STMT_UNITS,              /**< in lysc_ext_substmt::storage stored as a pointer to `const char *` (cardinality < #LY_STMT_CARD_SOME)
+                                     or as a pointer to a [sized array](@ref sizedarrays) `const char **` */
     LY_STMT_DEFAULT,
-    LY_STMT_TYPE,
+    LY_STMT_TYPE,               /**< in lysc_ext_substmt::storage stored as a pointer to `struct lysc_type *` (cardinality < #LY_STMT_CARD_SOME)
+                                     or as a pointer to a [sized array](@ref sizedarrays) `struct lysc_type **` */
 
     LY_STMT_ACTION,
     LY_STMT_ANYDATA,
@@ -196,7 +198,8 @@ enum ly_stmt {
     LY_STMT_FRACTION_DIGITS,
     LY_STMT_GROUPING,
     LY_STMT_IDENTITY,
-    LY_STMT_IF_FEATURE,
+    LY_STMT_IF_FEATURE,         /**< in lysc_ext_substmt::storage stored as a pointer to `struct lysc_iffeature` (cardinality < #LY_STMT_CARD_SOME)
+                                     or as a pointer to a [sized array](@ref sizedarrays) `struct lysc_iffeature *` */
     LY_STMT_IMPORT,
     LY_STMT_INCLUDE,
     LY_STMT_INPUT,
@@ -1114,14 +1117,14 @@ struct lysc_ext {
  * @brief YANG extension instance
  */
 struct lysc_ext_instance {
-    struct lysc_ext *def;            /**< pointer to the extension definition */
+    uint32_t insubstmt_index;        /**< in case the instance is in a substatement that can appear multiple times,
+                                          this identifies the index of the substatement for this extension instance */
     struct lys_module *module;       /**< module where the extension instantiated is defined */
+    struct lysc_ext *def;            /**< pointer to the extension definition */
     void *parent;                    /**< pointer to the parent element holding the extension instance(s), use
                                           ::lysc_ext_instance#parent_type to access the schema element */
     const char *argument;            /**< optional value of the extension's argument */
     LYEXT_SUBSTMT insubstmt;         /**< value identifying placement of the extension instance */
-    uint32_t insubstmt_index;        /**< in case the instance is in a substatement that can appear multiple times,
-                                          this identifies the index of the substatement for this extension instance */
     LYEXT_PARENT parent_type;        /**< type of the parent structure */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     void *data;                      /**< private plugins's data, not used by libyang */

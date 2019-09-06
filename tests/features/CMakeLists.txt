@@ -1,7 +1,9 @@
 set(local_tests
     features_types
+    features_metadata
     features_nacm)
 set(local_tests_wraps
+    " "
     " "
     " ")
 set(tests ${tests} ${local_tests} PARENT_SCOPE)

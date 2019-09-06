@@ -136,14 +136,14 @@ test_deny_all(void **state)
             "nacm:default-deny-all;}";
     assert_null(lys_parse_mem(s->ctx, data, LYS_IN_YANG));
     logbuf_assert("Extension plugin \"libyang 2 - NACM, version 1\": "
-            "Extension nacm:default-deny-all is allowed only in a data nodes, but it is placed in \"module\" statement.) /");
+            "Extension nacm:default-deny-all is allowed only in a data nodes, but it is placed in \"module\" statement.) /aa:{extension='nacm:default-deny-all'}");
 
     data = "module aa {yang-version 1.1; namespace urn:tests:extensions:nacm:aa; prefix en;"
             "import ietf-netconf-acm {revision-date 2018-02-14; prefix nacm;}"
             "leaf l { type string; nacm:default-deny-all; nacm:default-deny-write;}}";
     assert_null(lys_parse_mem(s->ctx, data, LYS_IN_YANG));
     logbuf_assert("Extension plugin \"libyang 2 - NACM, version 1\": "
-            "Extension nacm:default-deny-write is mixed with nacm:default-deny-all.) /aa:l");
+            "Extension nacm:default-deny-write is mixed with nacm:default-deny-all.) /aa:l/{extension='nacm:default-deny-write'}");
 
     s->func = NULL;
 }
@@ -181,14 +181,14 @@ test_deny_write(void **state)
             "notification notif {nacm:default-deny-write;}}";
     assert_null(lys_parse_mem(s->ctx, data, LYS_IN_YANG));
     logbuf_assert("Extension plugin \"libyang 2 - NACM, version 1\": "
-            "Extension nacm:default-deny-write is not allowed in Notification statement.) /aa:notif");
+            "Extension nacm:default-deny-write is not allowed in Notification statement.) /aa:notif/{extension='nacm:default-deny-write'}");
 
     data = "module aa {yang-version 1.1; namespace urn:tests:extensions:nacm:aa; prefix en;"
             "import ietf-netconf-acm {revision-date 2018-02-14; prefix nacm;}"
             "leaf l { type string; nacm:default-deny-write; nacm:default-deny-write;}}";
     assert_null(lys_parse_mem(s->ctx, data, LYS_IN_YANG));
     logbuf_assert("Extension plugin \"libyang 2 - NACM, version 1\": "
-            "Extension nacm:default-deny-write is instantiated multiple times.) /aa:l");
+            "Extension nacm:default-deny-write is instantiated multiple times.) /aa:l/{extension='nacm:default-deny-write'}");
 
     s->func = NULL;
 }

@@ -918,6 +918,7 @@ lysc_extension_instance_free(struct ly_ctx *ctx, struct lysc_ext_substmt *substm
             }
             break;
         case LY_STMT_STATUS:
+        case LY_STMT_CONFIG:
             /* nothing to do */
             break;
         case LY_STMT_IF_FEATURE: {

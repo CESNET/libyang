@@ -752,8 +752,9 @@ lysp_stmt_type(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct 
 }
 
 LY_ERR
-lysp_stmt_parse(struct lysc_ctx *ctx, const struct lysp_stmt *stmt, enum ly_stmt kw, void **result)
+lysp_stmt_parse(struct lysc_ctx *ctx, const struct lysp_stmt *stmt, enum ly_stmt kw, void **result, struct lysp_ext_instance **exts)
 {
+    LY_ERR ret = LY_SUCCESS;
     struct lys_parser_ctx pctx = {0};
 
     pctx.ctx = ctx->ctx;
@@ -762,11 +763,15 @@ lysp_stmt_parse(struct lysc_ctx *ctx, const struct lysp_stmt *stmt, enum ly_stmt
     pctx.path = ctx->path;
 
     switch(kw) {
+    case LY_STMT_STATUS: {
+        ret = lysp_stmt_status(&pctx, stmt, *(uint16_t**)result, exts);
+        break;
+    }
     case LY_STMT_TYPE: {
         struct lysp_type *type;
         type = calloc(1, sizeof *type);
 
-        lysp_stmt_type(&pctx, stmt, type);
+        ret = lysp_stmt_type(&pctx, stmt, type);
         (*result) = type;
         break;
         }
@@ -775,5 +780,5 @@ lysp_stmt_parse(struct lysc_ctx *ctx, const struct lysp_stmt *stmt, enum ly_stmt
         return LY_EINT;
     }
 
-    return LY_SUCCESS;
+    return ret;
 }

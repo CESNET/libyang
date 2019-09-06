@@ -784,6 +784,7 @@ WARN_LOGFILE           =
 INPUT                  = ./src/libyang.h \
 			 ./src/context.h \
                          ./src/tree_schema.h \
+                         ./src/plugins_exts.h \
                          ./src/log.h \
                          ./src/set.h \
                          ./src/dict.h
