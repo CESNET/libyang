@@ -3329,7 +3329,7 @@ yin_parse_mod(struct yin_parser_ctx *ctx, struct yin_arg_record *mod_attrs, cons
                                             LY_STMT_RPC, &mod->rpcs, 0,
                                             LY_STMT_TYPEDEF, &mod->typedefs, 0,
                                             LY_STMT_USES, &mod->data, 0,
-                                            LY_STMT_YANG_VERSION, &mod->mod->version, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE,
+                                            LY_STMT_YANG_VERSION, &mod->mod->version, YIN_SUBELEM_UNIQUE,
                                             LY_STMT_EXTENSION_INSTANCE, NULL, 0
                                    ));
 
@@ -3372,7 +3372,7 @@ yin_parse_submod(struct yin_parser_ctx *ctx, struct yin_arg_record *mod_attrs, c
                                         LY_STMT_RPC, &submod->rpcs, 0,
                                         LY_STMT_TYPEDEF, &submod->typedefs, 0,
                                         LY_STMT_USES, &submod->data, 0,
-                                        LY_STMT_YANG_VERSION, &submod->version, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE,
+                                        LY_STMT_YANG_VERSION, &submod->version, YIN_SUBELEM_UNIQUE,
                                         LY_STMT_EXTENSION_INSTANCE, NULL, 0
                                    ));
 
