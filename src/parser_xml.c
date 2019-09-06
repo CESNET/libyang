@@ -67,6 +67,16 @@ lydxml_resolve_prefix(struct ly_ctx *ctx, const char *prefix, size_t prefix_len,
     return ly_ctx_get_module_implemented_ns(ctx, ns->uri);
 }
 
+struct attr_data_s {
+    const char *prefix;
+    const char *name;
+    char *value;
+    size_t prefix_len;
+    size_t name_len;
+    size_t value_len;
+    int dynamic;
+};
+
 /**
  * @brief Parse XML attributes of the XML element of YANG data.
  *
@@ -77,23 +87,13 @@ lydxml_resolve_prefix(struct ly_ctx *ctx, const char *prefix, size_t prefix_len,
  * @reutn LY_ERR value.
  */
 static LY_ERR
-lydxml_attributes(struct lyd_xml_ctx *ctx, const char **data, struct lyd_attr **attributes)
+lydxml_attributes_parse(struct lyd_xml_ctx *ctx, const char **data, struct ly_set *attrs_data)
 {
     LY_ERR ret = LY_SUCCESS;
-    unsigned int u, v;
+    unsigned int u;
     const char *prefix, *name;
     size_t prefix_len, name_len;
-    struct lyd_attr *attr = NULL, *last = NULL;
-    const struct lyxml_ns *ns;
-    struct ly_set attr_datas = {0};
-    struct attr_data_s {
-        const char *prefix;
-        char *value;
-        size_t prefix_len;
-        size_t value_len;
-        int dynamic;
-    } *attr_data;
-    struct lys_module *mod;
+    struct attr_data_s *attr_data;
 
     while(ctx->status == LYXML_ATTRIBUTE &&
             lyxml_get_attribute((struct lyxml_context*)ctx, data, &prefix, &prefix_len, &name, &name_len) == LY_SUCCESS) {
@@ -110,60 +110,122 @@ lydxml_attributes(struct lyd_xml_ctx *ctx, const char **data, struct lyd_attr **
          * annotation definition for the attribute and correctly process the value */
         attr_data = malloc(sizeof *attr_data);
         attr_data->prefix = prefix;
+        attr_data->name = name;
         attr_data->prefix_len = prefix_len;
+        attr_data->name_len = name_len;
         ret = lyxml_get_string((struct lyxml_context *)ctx, data, &buffer, &buffer_size, &attr_data->value, &attr_data->value_len, &attr_data->dynamic);
-        LY_CHECK_ERR_GOTO(ret, free(attr_data), cleanup);
-        ly_set_add(&attr_datas, attr_data, LY_SET_OPT_USEASLIST);
+        LY_CHECK_ERR_GOTO(ret, free(attr_data), error);
+        ly_set_add(attrs_data, attr_data, LY_SET_OPT_USEASLIST);
+    }
+
+    return LY_SUCCESS;
+
+error:
+    for (u = 0; u < attrs_data->count; ++u) {
+        if (((struct attr_data_s*)attrs_data->objs[u])->dynamic) {
+            free(((struct attr_data_s*)attrs_data->objs[u])->value);
+        }
+    }
+    ly_set_erase(attrs_data, free);
+    return ret;
+}
+
+static LY_ERR
+lydxml_attributes(struct lyd_xml_ctx *ctx, struct ly_set *attrs_data, struct lyd_node *parent)
+{
+    LY_ERR ret = LY_EVALID, rc;
+    struct lyd_attr *attr = NULL, *last = NULL;
+    const struct lyxml_ns *ns;
+    struct lys_module *mod;
+
+    for (unsigned int u = 0; u < attrs_data->count; ++u) {
+        unsigned int v;
+        struct lysc_ext_instance *ant = NULL;
+        struct attr_data_s *attr_data = (struct attr_data_s*)attrs_data->objs[u];
+
+        if (!attr_data->prefix_len) {
+            /* in XML, all attributes must be prefixed
+             * TODO exception for NETCONF filters which are supposed to map to the ietf-netconf without prefix */
+            if (ctx->options & LYD_OPT_STRICT) {
+                LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_REFERENCE, "Missing mandatory prefix for XML attribute \"%.*s\".",
+                       attr_data->name_len, attr_data->name);
+            }
+skip_attr:
+            if (attr_data->dynamic) {
+                free(attr_data->value);
+                attr_data->dynamic = 0;
+            }
+            continue;
+        }
+
+        /* get namespace of the attribute to find its annotation definition */
+        ns = lyxml_ns_get((struct lyxml_context *)ctx, attr_data->prefix, attr_data->prefix_len);
+        if (!ns) {
+            /* unknown namespace, ignore the attribute */
+            LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_REFERENCE, "Unknown XML prefix \"%.*s\".", attr_data->prefix_len, attr_data->prefix);
+            goto cleanup;
+        }
+        mod = ly_ctx_get_module_implemented_ns(ctx->ctx, ns->uri);
+        if (!mod) {
+            /* module is not implemented or not present in the schema */
+            if (ctx->options & LYD_OPT_STRICT) {
+                LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_REFERENCE,
+                       "Unknown (or not implemented) YANG module with namespace \"%s\" for attribute \"%.*s%s%.*s\".",
+                       ns, attr_data->prefix_len, attr_data->prefix, attr_data->prefix_len ? ":" : "", attr_data->name_len, attr_data->name);
+            }
+            goto skip_attr;
+        }
+
+        LY_ARRAY_FOR(mod->compiled->exts, v) {
+            if (mod->compiled->exts[v].def->plugin == lyext_plugins_internal[LYEXT_PLUGIN_INTERNAL_ANNOTATION].plugin &&
+                    !strncmp(mod->compiled->exts[v].argument, attr_data->name, attr_data->name_len) && !mod->compiled->exts[v].argument[attr_data->name_len]) {
+                /* we have the annotation definition */
+                ant = &mod->compiled->exts[v];
+                break;
+            }
+        }
+        if (!ant) {
+            /* attribute is not defined as a metadata annotation (RFC 7952) */
+            if (ctx->options & LYD_OPT_STRICT) {
+                LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_REFERENCE, "Annotation definition for attribute \"%s:%.*s\" not found.",
+                       mod->name, attr_data->name_len, attr_data->name);
+            }
+            goto skip_attr;
+        }
 
         attr = calloc(1, sizeof *attr);
         LY_CHECK_ERR_GOTO(!attr, LOGMEM(ctx->ctx); ret = LY_EMEM, cleanup);
-        attr->name = lydict_insert(ctx->ctx, name, name_len);
+        attr->parent = parent;
+        attr->annotation = ant;
+        rc = lyd_value_parse_attr(attr, attr_data->value, attr_data->value_len, attr_data->dynamic, 0, lydxml_resolve_prefix, ctx, LYD_XML, NULL);
+        if (rc == LY_EINCOMPLETE) {
+            ly_set_add(&ctx->incomplete_type_validation_attrs, attr, LY_SET_OPT_USEASLIST);
+        } else if (rc) {
+            ret = rc;
+            free(attr);
+            goto cleanup;
+        }
+        attr_data->dynamic = 0; /* value eaten by lyd_value_parse_attr() */
+        attr->name = lydict_insert(ctx->ctx, attr_data->name, attr_data->name_len);
 
         if (last) {
             last->next = attr;
         } else {
-            (*attributes) = attr;
+            parent->attr = attr;
         }
         last = attr;
     }
-
-    /* resolve annotation pointers in all the attributes and process the attribute's values */
-    for (last = *attributes, u = 0; u < attr_datas.count && last; u++, last = last->next) {
-        attr_data = (struct attr_data_s*)attr_datas.objs[u];
-        ns = lyxml_ns_get((struct lyxml_context *)ctx, attr_data->prefix, attr_data->prefix_len);
-        mod = ly_ctx_get_module_implemented_ns(ctx->ctx, ns->uri);
-
-        LY_ARRAY_FOR(mod->compiled->exts, v) {
-            if (mod->compiled->exts[v].def->plugin == lyext_plugins_internal[LYEXT_PLUGIN_INTERNAL_ANNOTATION].plugin &&
-                    !strcmp(mod->compiled->exts[v].argument, last->name)) {
-                /* we have the annotation definition */
-                last->annotation = &mod->compiled->exts[v];
-                break;
-            }
-        }
-
-        if (!last->annotation) {
-            /* attribute is not defined as a metadata annotation (RFC 7952) */
-
-        }
-
-        ret = lyd_value_parse_attr(attr, attr_data->value, attr_data->value_len, attr_data->dynamic, 0, lydxml_resolve_prefix, ctx, LYD_XML, NULL);
-        if (ret == LY_EINCOMPLETE) {
-            ly_set_add(&ctx->incomplete_type_validation_attrs, attr, LY_SET_OPT_USEASLIST);
-        } else if (ret) {
-            goto cleanup;
-        }
-        attr_data->dynamic = 0; /* value eaten by lyd_value_parse_attr() */
-    }
+    ret = LY_SUCCESS;
 
 cleanup:
 
-    for (u = 0; u < attr_datas.count; ++u) {
-        if (((struct attr_data_s*)attr_datas.objs[u])->dynamic) {
-            free(((struct attr_data_s*)attr_datas.objs[u])->value);
+    for (unsigned int u = 0; u < attrs_data->count; ++u) {
+        if (((struct attr_data_s*)attrs_data->objs[u])->dynamic) {
+            free(((struct attr_data_s*)attrs_data->objs[u])->value);
         }
     }
-    ly_set_erase(&attr_datas, free);
+    ly_set_erase(attrs_data, free);
+
     return ret;
 }
 
@@ -182,7 +244,7 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
     LY_ERR ret = LY_SUCCESS;
     const char *prefix, *name;
     size_t prefix_len, name_len;
-    struct lyd_attr *attributes = NULL;
+    struct ly_set attrs_data = {0};
     const struct lyxml_ns *ns;
     const struct lysc_node *snode;
     struct lys_module *mod;
@@ -203,14 +265,13 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
                 continue;
             }
         }
-        attributes = NULL;
         if (ctx->status == LYXML_ATTRIBUTE) {
-            LY_CHECK_GOTO(lydxml_attributes(ctx, data, &attributes), error);
+            LY_CHECK_GOTO(lydxml_attributes_parse(ctx, data, &attrs_data), error);
         }
 
         ns = lyxml_ns_get((struct lyxml_context *)ctx, prefix, prefix_len);
         if (!ns) {
-            LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_REFERENCE, "Unknown XML prefix \"%*.s\".", prefix_len, prefix);
+            LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_REFERENCE, "Unknown XML prefix \"%.*s\".", prefix_len, prefix);
             goto error;
         }
         mod = ly_ctx_get_module_implemented_ns(ctx->ctx, ns->uri);
@@ -338,8 +399,7 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
             } /* first top level node - nothing more to do */
         }
         prev = last;
-        cur->attr = attributes;
-        attributes = NULL;
+        LY_CHECK_GOTO(ret = lydxml_attributes(ctx, &attrs_data, cur), cleanup);
 
         if (snode->nodetype & LYD_NODE_TERM) {
             int dynamic = 0;
@@ -442,7 +502,12 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
     /* TODO add missing siblings default elements */
 
 cleanup:
-    lyd_free_attr(ctx->ctx, attributes, 1);
+    for (unsigned int u = 0; u < attrs_data.count; ++u) {
+        if (((struct attr_data_s*)attrs_data.objs[u])->dynamic) {
+            free(((struct attr_data_s*)attrs_data.objs[u])->value);
+        }
+    }
+    ly_set_erase(&attrs_data, free);
     return ret;
 
 error:

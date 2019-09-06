@@ -1115,6 +1115,7 @@ struct lysc_ext {
  */
 struct lysc_ext_instance {
     struct lysc_ext *def;            /**< pointer to the extension definition */
+    struct lys_module *module;       /**< module where the extension instantiated is defined */
     void *parent;                    /**< pointer to the parent element holding the extension instance(s), use
                                           ::lysc_ext_instance#parent_type to access the schema element */
     const char *argument;            /**< optional value of the extension's argument */

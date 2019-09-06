@@ -23,7 +23,7 @@
 /**
  * @brief List of internally implemented extension plugins.
  */
-extern struct lyext_plugins_list *lyext_plugins_internal;
+extern struct lyext_plugins_list lyext_plugins_internal[];
 
 /**
  * @brief Index of Metadata's annotation extension plugin in lyext_plugins_internal

@@ -476,12 +476,12 @@ lyext_log(const struct lysc_ext_instance *ext, LY_LOG_LEVEL level, LY_ERR err_no
     }
     ret = asprintf(&plugin_msg, "Extension plugin \"%s\": %s)", ext->def->plugin->id, format);
     if (ret == -1) {
-        LOGMEM(ext->def->module->ctx);
+        LOGMEM(ext->module->ctx);
         return;
     }
 
     va_start(ap, format);
-    log_vprintf(ext->def->module->ctx, level, (level == LY_LLERR ? LY_EPLUGIN : 0), err_no, path ? strdup(path) : NULL, plugin_msg, ap);
+    log_vprintf(ext->module->ctx, level, (level == LY_LLERR ? LY_EPLUGIN : 0), err_no, path ? strdup(path) : NULL, plugin_msg, ap);
     va_end(ap);
 
     free(plugin_msg);

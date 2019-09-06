@@ -128,7 +128,7 @@ lyd_free_attr(struct ly_ctx *ctx, struct lyd_attr *attr, int recursive)
         iter = iter->next;
 
         FREE_STRING(ctx, attr->name);
-        /* TODO type->plugin->free(ctx, type, &attr->value); */
+        attr->value.realtype->plugin->free(ctx, &attr->value);
         free(attr);
     }
 }

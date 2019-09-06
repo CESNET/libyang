@@ -50,7 +50,6 @@ struct mlist {
     struct lys_module *module;
 } *mlist = NULL, *mlist_new;
 
-#if 0
 static LY_ERR
 modlist_add(struct mlist **mlist, const struct lys_module *mod)
 {
@@ -72,7 +71,6 @@ modlist_add(struct mlist **mlist, const struct lys_module *mod)
 
     return LY_SUCCESS;
 }
-#endif
 
 /**
  * TODO
@@ -83,11 +81,10 @@ xml_print_ns(struct xmlpr_ctx *ctx, const struct lyd_node *node)
     struct lyd_node *next, *cur, *child;
     struct lyd_attr *attr;
 
-#if 0
     struct mlist *mlist = NULL, *miter;
-
+#if 0
     const struct lys_module *wdmod = NULL;
-
+#endif
     /* add node attribute modules */
     for (attr = node->attr; attr; attr = attr->next) {
         if (!strcmp(node->schema->name, "filter") &&
@@ -95,14 +92,10 @@ xml_print_ns(struct xmlpr_ctx *ctx, const struct lyd_node *node)
                  !strcmp(node->schema->module->name, "notifications"))) {
             /* exception for NETCONF's filter attributes */
             continue;
-        } else {
-            r = modlist_add(&mlist, lys_main_module(attr->annotation->module));
-        }
-        if (r) {
+        } else if (modlist_add(&mlist, attr->annotation->module)) {
             goto print;
         }
     }
-#endif
 
     /* add node children nodes and attribute modules */
     switch (node->schema->nodetype) {
@@ -150,7 +143,7 @@ xml_print_ns(struct xmlpr_ctx *ctx, const struct lyd_node *node)
     default:
         break;
     }
-#if 0
+
 print:
     /* print used namespaces */
     while (mlist) {
@@ -160,7 +153,20 @@ print:
         ly_print(ctx->out, " xmlns:%s=\"%s\"", miter->module->prefix, miter->module->ns);
         free(miter);
     }
-#endif
+}
+
+/**
+ * @brief XML mapping of YANG modules to prefixes in values.
+ *
+ * Implementation of ly_clb_get_prefix
+ */
+static const char *
+xml_print_get_prefix(const struct lys_module *mod, void *private)
+{
+    struct ly_set *ns_list = (struct ly_set*)private;
+
+    ly_set_add(ns_list, (void*)mod, 0);
+    return mod->prefix;
 }
 
 /**
@@ -169,11 +175,8 @@ print:
 static LY_ERR
 xml_print_attrs(struct xmlpr_ctx *ctx, const struct lyd_node *node)
 {
-    (void) ctx;
-    (void) node;
-
-#if 0
     struct lyd_attr *attr;
+#if 0
     const char **prefs, **nss;
     const char *xml_expr = NULL, *mod_name;
     uint32_t ns_count, i;
@@ -181,9 +184,12 @@ xml_print_attrs(struct xmlpr_ctx *ctx, const struct lyd_node *node)
     const struct lys_module *wdmod = NULL;
     char *p;
     size_t len;
+#endif
+    struct ly_set ns_list = {0};
+    int dynamic;
+    unsigned int u;
 
-    LY_PRINT_SET;
-
+#if 0
     /* with-defaults */
     if (node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
         if ((node->dflt && (options & (LYP_WD_ALL_TAG | LYP_WD_IMPL_TAG))) ||
@@ -202,8 +208,18 @@ xml_print_attrs(struct xmlpr_ctx *ctx, const struct lyd_node *node)
             && (!strcmp(node->schema->module->name, "ietf-netconf") || !strcmp(node->schema->module->name, "notifications"))) {
         rpc_filter = 1;
     }
-
+#endif
     for (attr = node->attr; attr; attr = attr->next) {
+        const char *value = attr->value.realtype->plugin->print(&attr->value, LYD_XML, xml_print_get_prefix, &ns_list, &dynamic);
+
+        /* print namespaces connected with the values's prefixes */
+        for (u = 0; u < ns_list.count; ++u) {
+            const struct lys_module *mod = (const struct lys_module*)ns_list.objs[u];
+            ly_print(ctx->out, " xmlns:%s=\"%s\"", mod->prefix, mod->ns);
+        }
+        ly_set_erase(&ns_list, NULL);
+
+#if 0
         if (rpc_filter) {
             /* exception for NETCONF's filter's attributes */
             if (!strcmp(attr->name, "select")) {
@@ -222,81 +238,20 @@ xml_print_attrs(struct xmlpr_ctx *ctx, const struct lyd_node *node)
             }
             ly_print(out, " %s=\"", attr->name);
         } else {
-            ly_print(out, " %s:%s=\"", attr->annotation->module->prefix, attr->name);
+#endif
+            ly_print(ctx->out, " %s:%s=\"", attr->annotation->module->prefix, attr->name);
+#if 0
         }
+#endif
 
-        switch (attr->value_type) {
-        case LY_TYPE_BINARY:
-        case LY_TYPE_STRING:
-        case LY_TYPE_BITS:
-        case LY_TYPE_ENUM:
-        case LY_TYPE_BOOL:
-        case LY_TYPE_DEC64:
-        case LY_TYPE_INT8:
-        case LY_TYPE_INT16:
-        case LY_TYPE_INT32:
-        case LY_TYPE_INT64:
-        case LY_TYPE_UINT8:
-        case LY_TYPE_UINT16:
-        case LY_TYPE_UINT32:
-        case LY_TYPE_UINT64:
-            if (attr->value_str) {
-                /* xml_expr can contain transformed xpath */
-                lyxml_dump_text(out, xml_expr ? xml_expr : attr->value_str, LYXML_DATA_ATTR);
-            }
-            break;
-
-        case LY_TYPE_IDENT:
-            if (!attr->value_str) {
-                break;
-            }
-            p = strchr(attr->value_str, ':');
-            assert(p);
-            len = p - attr->value_str;
-            mod_name = attr->annotation->module->name;
-            if (!strncmp(attr->value_str, mod_name, len) && !mod_name[len]) {
-                lyxml_dump_text(out, ++p, LYXML_DATA_ATTR);
-            } else {
-                /* avoid code duplication - use instance-identifier printer which gets necessary namespaces to print */
-                goto printinst;
-            }
-            break;
-        case LY_TYPE_INST:
-printinst:
-            xml_expr = transform_json2xml(node->schema->module, ((struct lyd_node_leaf_list *)node)->value_str, 1,
-                                          &prefs, &nss, &ns_count);
-            if (!xml_expr) {
-                /* error */
-                return EXIT_FAILURE;
-            }
-
-            for (i = 0; i < ns_count; ++i) {
-                ly_print(out, " xmlns:%s=\"%s\"", prefs[i], nss[i]);
-            }
-            free(prefs);
-            free(nss);
-
-            lyxml_dump_text(out, xml_expr, LYXML_DATA_ATTR);
-            lydict_remove(node->schema->module->ctx, xml_expr);
-            break;
-
-        /* LY_TYPE_LEAFREF not allowed */
-        case LY_TYPE_EMPTY:
-            break;
-
-        default:
-            /* error */
-            LOGINT(node->schema->module->ctx);
-            return EXIT_FAILURE;
+        if (value && value[0]) {
+            lyxml_dump_text(ctx->out, value, 1);
         }
-
-        ly_print(out, "\"");
-
-        if (xml_expr) {
-            lydict_remove(node->schema->module->ctx, xml_expr);
+        ly_print(ctx->out, "\"");
+        if (dynamic) {
+            free((void*)value);
         }
     }
-#endif
 
     return LY_SUCCESS;
 }
@@ -333,20 +288,6 @@ xml_print_node_open(struct xmlpr_ctx *ctx, const struct lyd_node *node)
 static LY_ERR xml_print_node(struct xmlpr_ctx *ctx, const struct lyd_node *node);
 
 /**
- * @brief XML mapping of YANG modules to prefixes in values.
- *
- * Implementation of ly_clb_get_prefix
- */
-static const char *
-xml_print_get_prefix(const struct lys_module *mod, void *private)
-{
-    struct ly_set *ns_list = (struct ly_set*)private;
-
-    ly_set_add(ns_list, (void*)mod, 0);
-    return mod->prefix;
-}
-
-/**
  * @brief Print XML element representing lyd_node_term.
  *
  * @param[in] ctx XML printer context.
@@ -356,11 +297,13 @@ xml_print_get_prefix(const struct lys_module *mod, void *private)
 static LY_ERR
 xml_print_term(struct xmlpr_ctx *ctx, const struct lyd_node_term *node)
 {
-    LY_CHECK_RET(xml_print_node_open(ctx, (struct lyd_node *)node));
     struct ly_set ns_list = {0};
     unsigned int u;
     int dynamic;
-    const char *value = node->value.realtype->plugin->print(&node->value, LYD_XML, xml_print_get_prefix, &ns_list, &dynamic);
+    const char *value;
+
+    LY_CHECK_RET(xml_print_node_open(ctx, (struct lyd_node *)node));
+    value = node->value.realtype->plugin->print(&node->value, LYD_XML, xml_print_get_prefix, &ns_list, &dynamic);
 
     /* print namespaces connected with the values's prefixes */
     for (u = 0; u < ns_list.count; ++u) {

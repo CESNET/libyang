@@ -435,6 +435,7 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct ly
     DUP_STRING(ctx->ctx, ext_p->argument, ext->argument);
     ext->insubstmt = ext_p->insubstmt;
     ext->insubstmt_index = ext_p->insubstmt_index;
+    ext->module = ctx->mod_def;
     ext->parent = parent;
     ext->parent_type = parent_type;
 
