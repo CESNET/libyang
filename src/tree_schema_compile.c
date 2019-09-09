@@ -6906,6 +6906,7 @@ lys_compile(struct lys_module *mod, int options)
     } else {
         /* extension definitions are compiled directly into the compiled module structure */
         ret = lys_extension_precompile(&ctx, NULL, NULL, sp->extensions, &mod_c->extensions);
+        LY_CHECK_GOTO(ret, error);
     }
     /* ... b) connect the extension definitions with the appropriate extension plugins */
     lys_compile_extension_plugins(mod_c->extensions);
