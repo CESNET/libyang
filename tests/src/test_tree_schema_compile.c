@@ -2298,7 +2298,7 @@ test_type_dflt(void **state)
     assert_non_null(type);
     assert_int_equal(3, type->refcount); /* 2x type reference, 1x default value's reference (typedf's default does not reference own type)*/
     assert_int_equal(LY_TYPE_STRING, type->basetype);
-    leaf = (struct lysc_node_leaf*)mod->compiled->data;
+    assert_non_null(leaf = (struct lysc_node_leaf*)mod->compiled->data);
     assert_string_equal("hello", leaf->dflt->realtype->plugin->print(leaf->dflt, LYD_XML, NULL, NULL, &dynamic));
     assert_int_equal(0, dynamic);
     assert_string_equal("xxx", leaf->units);
