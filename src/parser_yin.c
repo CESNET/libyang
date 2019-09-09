@@ -3223,7 +3223,7 @@ yin_parse_element_generic(struct yin_parser_ctx *ctx, const char *name, size_t n
     /* allocate new structure for element */
     *element = calloc(1, sizeof(**element));
     LY_CHECK_ERR_RET(!(*element), LOGMEM(ctx->xml_ctx.ctx), LY_EMEM);
-    (*element)->stmt = lydict_insert(ctx->xml_ctx.ctx, prefix ? prefix : name, 0);
+    (*element)->stmt = lydict_insert(ctx->xml_ctx.ctx, prefix ? prefix : name, prefix_len ? prefix_len + name_len + 1 : name_len);
     LY_CHECK_RET(!(*element)->stmt, LY_EMEM);
     /* TODO map prefix to module name */
     (*element)->kw = yin_match_keyword(ctx, name, name_len, prefix, prefix_len, LY_STMT_EXTENSION_INSTANCE);
