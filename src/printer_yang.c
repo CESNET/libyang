@@ -59,7 +59,7 @@ struct ypr_ctx {
  *
  * @param[in] out Output specification.
  * @param[in] text String to be printed.
- * @param[in] len Length of the string from @p text to be printed. In case of 0,
+ * @param[in] len Length of the string from @p text to be printed. In case of -1,
  * the @p text is printed completely as a NULL-terminated string.
  */
 static void
@@ -221,6 +221,8 @@ yprp_extension_instances(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t sub
 {
     unsigned int u;
     struct lysp_stmt *stmt;
+    int child_presence;
+    const char *argument;
 
     if (!count && ext) {
         count = LY_ARRAY_SIZE(ext);
@@ -229,26 +231,51 @@ yprp_extension_instances(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t sub
         if (!count) {
             break;
         }
-        if (ext->yin) {
-            ly_print(ctx->out, "%*s%s Model comes from different input format, extensions must be resolved first.", INDENT, ext[u].name);
-        } else if (ext->insubstmt == substmt && ext->insubstmt_index == substmt_index) {
-            ypr_open(ctx->out, flag);
-            if (ext[u].argument) {
-                ly_print(ctx->out, "%*s%s %s%s", INDENT, ext[u].name, ext[u].argument, ext[u].child ? " {\n" : ";\n");
-            } else {
-                ly_print(ctx->out, "%*s%s%s", INDENT, ext[u].name, ext[u].child ? " {\n" : ";\n");
-            }
 
-            if (ext[u].child) {
-                LEVEL++;
-                LY_LIST_FOR(ext[u].child, stmt) {
-                    yprp_stmt(ctx, stmt);
-                }
-                LEVEL--;
-                ly_print(ctx->out, "%*s}\n", INDENT);
-            }
-        }
         count--;
+        if (ext->insubstmt != substmt || ext->insubstmt_index != substmt_index) {
+            continue;
+        }
+
+        if (!ext->compiled && ext->yin) {
+            ly_print(ctx->out, "%*s%s; // Model comes from different input format, extensions must be resolved first.\n", INDENT, ext[u].name);
+            continue;
+        }
+
+
+        ypr_open(ctx->out, flag);
+        argument = NULL;
+        if (ext[u].compiled) {
+            argument = ext[u].compiled->argument;
+        } else {
+            argument = ext[u].argument;
+        }
+        if (argument) {
+            ly_print(ctx->out, "%*s%s \"", INDENT, ext[u].name);
+            ypr_encode(ctx->out, argument, -1);
+            ly_print(ctx->out, "\"");
+        } else {
+            ly_print(ctx->out, "%*s%s", INDENT, ext[u].name);
+        }
+
+        child_presence = 0;
+        LEVEL++;
+        LY_LIST_FOR(ext[u].child, stmt) {
+            if (stmt->flags & (LYS_YIN_ATTR | LYS_YIN_ARGUMENT)) {
+                continue;
+            }
+            if (!child_presence) {
+                ly_print(ctx->out, " {\n");
+                child_presence = 1;
+            }
+            yprp_stmt(ctx, stmt);
+        }
+        LEVEL--;
+        if (child_presence) {
+            ly_print(ctx->out, "%*s}\n", INDENT);
+        } else {
+            ly_print(ctx->out, ";\n");
+        }
     }
 }
 

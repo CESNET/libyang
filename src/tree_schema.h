@@ -370,7 +370,7 @@ struct lysp_ext {
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    uint16_t flags;                  /**< LYS_STATUS_* and LYS_YINELEM values (@ref snodeflags) */
+    uint16_t flags;                  /**< LYS_STATUS_* and LYS_YINELEM_* values (@ref snodeflags) */
 };
 
 /**
@@ -396,6 +396,8 @@ struct lysp_ext_instance {
     void *parent;                           /**< pointer to the parent element holding the extension instance(s), use
                                                  ::lysp_ext_instance#parent_type to access the schema element */
     struct lysp_stmt *child;                /**< list of the extension's substatements (linked list) */
+    struct lysc_ext_instance *compiled;     /**< pointer to the compiled data if any - in case the source format is YIN,
+                                                 some of the information (argument) are available only after compilation */
     LYEXT_SUBSTMT insubstmt;                /**< value identifying placement of the extension instance */
     uint32_t insubstmt_index;               /**< in case the instance is in a substatement, this identifies
                                                  the index of that substatement */
@@ -683,6 +685,8 @@ struct lysp_deviation {
  *         LYS_USED_GRP     | | | | | | | | | | | | | | | |x| | | | | | | |
  *         LYS_YIN_ATTR     | | | | | | | | | | | | | | | | | | | | | | |x|
  *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *     12 LYS_YIN_ARGUMENT  | | | | | | | | | | | | | | | | | | | | | | |x|
+ *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  */
 
@@ -792,10 +796,11 @@ struct lysp_deviation {
 #define LYS_SET_UNITS    0x0400      /**< flag to know if the leaf's/leaflist's units are their own (flag set) or it is taken from the type. */
 #define LYS_SET_CONFIG   0x0800      /**< flag to know if the config property was set explicitly (flag set) or it is inherited. */
 
-#define LYS_SINGLEQUOTED 0x100       /**< flag for single-quoted argument of an extension instance's substatement */
-#define LYS_DOUBLEQUOTED 0x200       /**< flag for double-quoted argument of an extension instance's substatement */
+#define LYS_SINGLEQUOTED 0x100       /**< flag for single-quoted argument of an extension instance's substatement, only when the source is YANG */
+#define LYS_DOUBLEQUOTED 0x200       /**< flag for double-quoted argument of an extension instance's substatement, only when the source is YANG */
 
-#define LYS_YIN_ATTR     0x400       /**< flag to identify YIN attribute */
+#define LYS_YIN_ATTR     0x400       /**< flag to identify YIN attribute parsed as extension's substatement, only when the source is YIN */
+#define LYS_YIN_ARGUMENT 0x800       /**< flag to identify statement representing extension's argument, only when the source is YIN */
 
 #define LYS_ISENUM       0x200       /**< flag to simply distinguish type in struct lysc_type_bitenum_item */
 
