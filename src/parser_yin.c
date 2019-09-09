@@ -3183,8 +3183,7 @@ yin_parse_extension_instance(struct yin_parser_ctx *ctx, struct yin_arg_record *
                     /* end of extension instance reached */
                     break;
                 }
-                LY_CHECK_RET(yin_parse_element_generic(ctx, name2fname(name, prefix_len),
-                                                       len2flen(name_len, prefix_len), data, &new_subelem));
+                LY_CHECK_RET(yin_parse_element_generic(ctx, name, name_len, prefix, prefix_len, data, &new_subelem));
                 if (!e->child) {
                     e->child = new_subelem;
                 } else {
@@ -3211,24 +3210,27 @@ yin_parse_extension_instance(struct yin_parser_ctx *ctx, struct yin_arg_record *
 }
 
 LY_ERR
-yin_parse_element_generic(struct yin_parser_ctx *ctx, const char *name, size_t name_len, const char **data,
+yin_parse_element_generic(struct yin_parser_ctx *ctx, const char *name, size_t name_len, const char *prefix, size_t prefix_len, const char **data,
                           struct lysp_stmt **element)
 {
     LY_ERR ret = LY_SUCCESS;
     const char *temp_prefix, *temp_name;
     char *out = NULL;
-    size_t out_len, temp_name_len, temp_prefix_len, prefix_len;
+    size_t out_len, temp_name_len, temp_prefix_len;
     int dynamic;
     struct lysp_stmt *last = NULL, *new = NULL;
 
     /* allocate new structure for element */
     *element = calloc(1, sizeof(**element));
     LY_CHECK_ERR_RET(!(*element), LOGMEM(ctx->xml_ctx.ctx), LY_EMEM);
-    (*element)->stmt = lydict_insert(ctx->xml_ctx.ctx, name, name_len);
+    (*element)->stmt = lydict_insert(ctx->xml_ctx.ctx, prefix ? prefix : name, 0);
     LY_CHECK_RET(!(*element)->stmt, LY_EMEM);
+    /* TODO map prefix to module name */
+    (*element)->kw = yin_match_keyword(ctx, name, name_len, prefix, prefix_len, LY_STMT_EXTENSION_INSTANCE);
 
     last = (*element)->child;
-    /* load attributes */
+    /* load attributes - TODO in case of non-extension keyword, the argument details are known,
+     * so the argument can be stored correctly instead of storing pure attributes */
     while(ctx->xml_ctx.status == LYXML_ATTRIBUTE) {
         /* add new element to linked-list */
         new = calloc(1, sizeof(*last));
@@ -3242,9 +3244,10 @@ yin_parse_element_generic(struct yin_parser_ctx *ctx, const char *name, size_t n
         last = new;
 
         last->flags |= LYS_YIN_ATTR;
-        LY_CHECK_RET(lyxml_get_attribute(&ctx->xml_ctx, data, &temp_prefix, &prefix_len, &temp_name, &temp_name_len));
+        LY_CHECK_RET(lyxml_get_attribute(&ctx->xml_ctx, data, &temp_prefix, &temp_prefix_len, &temp_name, &temp_name_len));
         last->stmt = lydict_insert(ctx->xml_ctx.ctx, temp_name, temp_name_len);
         LY_CHECK_RET(!last->stmt, LY_EMEM);
+        last->kw = yin_match_keyword(ctx, temp_name, temp_name_len, temp_prefix, temp_prefix_len, LY_STMT_EXTENSION_INSTANCE);
 
         LY_CHECK_RET(lyxml_get_string(&ctx->xml_ctx, data, &out, &out_len, &out, &out_len, &dynamic));
         /* attributes with prefix are ignored */
@@ -3269,8 +3272,7 @@ yin_parse_element_generic(struct yin_parser_ctx *ctx, const char *name, size_t n
                     /* end of element reached */
                     break;
                 }
-                LY_CHECK_RET(yin_parse_element_generic(ctx, name2fname(temp_name, temp_prefix_len),
-                                                       len2flen(temp_name_len, temp_prefix_len), data, &new));
+                LY_CHECK_RET(yin_parse_element_generic(ctx, temp_name, temp_name_len, temp_prefix, temp_prefix_len, data, &new));
                 if (!(*element)->child) {
                     /* save first */
                     (*element)->child = new;
@@ -3288,7 +3290,7 @@ yin_parse_element_generic(struct yin_parser_ctx *ctx, const char *name, size_t n
             }
 
             /* read closing tag */
-            LY_CHECK_RET(lyxml_get_element(&ctx->xml_ctx, data, &temp_prefix, &prefix_len, &temp_name, &temp_name_len));
+            LY_CHECK_RET(lyxml_get_element(&ctx->xml_ctx, data, &temp_prefix, &temp_prefix_len, &temp_name, &temp_name_len));
         }
     }
 

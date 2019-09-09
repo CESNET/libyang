@@ -373,7 +373,7 @@ test_yin_parse_element_generic(void **state)
 
     const char *data = "<elem attr=\"value\">text_value</elem>";
     lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    ret = yin_parse_element_generic(st->yin_ctx, name, name_len, &data, &exts.child);
+    ret = yin_parse_element_generic(st->yin_ctx, name, name_len, prefix, prefix_len, &data, &exts.child);
     assert_int_equal(ret, LY_SUCCESS);
     assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
     assert_string_equal(exts.child->stmt, "elem");
@@ -386,7 +386,7 @@ test_yin_parse_element_generic(void **state)
 
     data = "<elem></elem>";
     lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    ret = yin_parse_element_generic(st->yin_ctx, name, name_len, &data, &exts.child);
+    ret = yin_parse_element_generic(st->yin_ctx, name, name_len, prefix, prefix_len, &data, &exts.child);
     assert_int_equal(ret, LY_SUCCESS);
     assert_string_equal(exts.child->stmt, "elem");
     assert_null(exts.child->child);
