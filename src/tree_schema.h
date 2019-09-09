@@ -1156,10 +1156,11 @@ struct lysc_import {
  * @brief YANG when-stmt
  */
 struct lysc_when {
+    struct lys_module *module;       /**< module where the must was defined */
     struct lyxp_expr *cond;          /**< XPath when condition */
+    struct lysc_node *context;       /**< context node for evaluating the expression */
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
-    struct lysc_node *context;       /**< context node for evaluating the expression */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     uint32_t refcount;               /**< reference counter since some of the when statements are shared among several nodes */
 };
@@ -1247,6 +1248,7 @@ struct lysc_pattern {
 
 struct lysc_must {
     struct lys_module *module;       /**< module where the must was defined */
+    struct lysc_node *context;       /**< context node for evaluating the expression */
     struct lyxp_expr *cond;          /**< XPath when condition */
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */

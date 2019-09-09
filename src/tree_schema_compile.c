@@ -84,6 +84,18 @@
         } \
     }
 
+#define COMPILE_ARRAY_MUST_GOTO(CTX, ARRAY_P, ARRAY_C, ITER, PARENT, RET, GOTO) \
+    if (ARRAY_P) { \
+        LY_ARRAY_CREATE_GOTO((CTX)->ctx, ARRAY_C, LY_ARRAY_SIZE(ARRAY_P), RET, GOTO); \
+        size_t __array_offset = LY_ARRAY_SIZE(ARRAY_C); \
+        for (ITER = 0; ITER < LY_ARRAY_SIZE(ARRAY_P); ++ITER) { \
+            LY_ARRAY_INCREMENT(ARRAY_C); \
+            RET = lys_compile_must(CTX, &(ARRAY_P)[ITER], &(ARRAY_C)[ITER + __array_offset]); \
+            LY_CHECK_GOTO(RET != LY_SUCCESS, GOTO); \
+            (ARRAY_C)[ITER + __array_offset].context = lysc_xpath_context((struct lysc_node*)PARENT); \
+        } \
+    }
+
 #define COMPILE_MEMBER_GOTO(CTX, MEMBER_P, MEMBER_C, FUNC, RET, GOTO) \
     if (MEMBER_P) { \
         MEMBER_C = calloc(1, sizeof *(MEMBER_C)); \
@@ -807,6 +819,7 @@ lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, struct lysc_whe
     *when = calloc(1, sizeof **when);
     (*when)->refcount = 1;
     (*when)->cond = lyxp_expr_parse(ctx->ctx, when_p->cond);
+    (*when)->module = ctx->mod_def;
     DUP_STRING(ctx->ctx, when_p->dsc, (*when)->dsc);
     DUP_STRING(ctx->ctx, when_p->ref, (*when)->ref);
     LY_CHECK_ERR_GOTO(!(*when)->cond, ret = ly_errcode(ctx->ctx), done);
@@ -3448,6 +3461,20 @@ error:
     return LY_EEXIST;
 }
 
+/**
+ * @brief Get the XPath context node for the given schema node.
+ * @param[in] start The schema node where the XPath expression appears.
+ * @return The context node to evaluate XPath expression in given schema node.
+ * @return NULL in case the context node is the root node.
+ */
+static struct lysc_node *
+lysc_xpath_context(struct lysc_node *start)
+{
+    for (; start && !(start->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_ACTION | LYS_NOTIF));
+            start = start->parent);
+    return start;
+}
+
 static LY_ERR lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lysc_node *parent, uint16_t uses_status);
 
 /**
@@ -3505,7 +3532,7 @@ lys_compile_action(struct lysc_ctx *ctx, struct lysp_action *action_p,
 
     /* input */
     lysc_update_path(ctx, (struct lysc_node*)action, "input");
-    COMPILE_ARRAY_GOTO(ctx, action_p->input.musts, action->input.musts, u, lys_compile_must, ret, cleanup);
+    COMPILE_ARRAY_MUST_GOTO(ctx, action_p->input.musts, action->input.musts, u, action, ret, cleanup);
     COMPILE_EXTS_GOTO(ctx, action_p->input.exts, action->input_exts, &action->input, LYEXT_PAR_INPUT, ret, cleanup);
     ctx->options |= LYSC_OPT_RPC_INPUT;
     LY_LIST_FOR(action_p->input.data, child_p) {
@@ -3516,7 +3543,7 @@ lys_compile_action(struct lysc_ctx *ctx, struct lysp_action *action_p,
 
     /* output */
     lysc_update_path(ctx, (struct lysc_node*)action, "output");
-    COMPILE_ARRAY_GOTO(ctx, action_p->output.musts, action->output.musts, u, lys_compile_must, ret, cleanup);
+    COMPILE_ARRAY_MUST_GOTO(ctx, action_p->output.musts, action->output.musts, u, action, ret, cleanup);
     COMPILE_EXTS_GOTO(ctx, action_p->output.exts, action->output_exts, &action->output, LYEXT_PAR_OUTPUT, ret, cleanup);
     ctx->options |= LYSC_OPT_RPC_OUTPUT;
     LY_LIST_FOR(action_p->output.data, child_p) {
@@ -3581,7 +3608,7 @@ lys_compile_notif(struct lysc_ctx *ctx, struct lysp_notif *notif_p,
     DUP_STRING(ctx->ctx, notif_p->dsc, notif->dsc);
     DUP_STRING(ctx->ctx, notif_p->ref, notif->ref);
     COMPILE_ARRAY_GOTO(ctx, notif_p->iffeatures, notif->iffeatures, u, lys_compile_iffeature, ret, cleanup);
-    COMPILE_ARRAY_GOTO(ctx, notif_p->musts, notif->musts, u, lys_compile_must, ret, cleanup);
+    COMPILE_ARRAY_MUST_GOTO(ctx, notif_p->musts, notif->musts, u, notif, ret, cleanup);
     COMPILE_EXTS_GOTO(ctx, notif_p->exts, notif->exts, notif, LYEXT_PAR_NODE, ret, cleanup);
 
     ctx->options |= LYSC_OPT_NOTIFICATION;
@@ -3620,7 +3647,7 @@ lys_compile_node_container(struct lysc_ctx *ctx, struct lysp_node *node_p, struc
         LY_CHECK_RET(lys_compile_node(ctx, child_p, node, 0));
     }
 
-    COMPILE_ARRAY_GOTO(ctx, cont_p->musts, cont->musts, u, lys_compile_must, ret, done);
+    COMPILE_ARRAY_MUST_GOTO(ctx, cont_p->musts, cont->musts, u, node, ret, done);
     COMPILE_ARRAY1_GOTO(ctx, cont_p->actions, cont->actions, node, u, lys_compile_action, 0, ret, done);
     COMPILE_ARRAY1_GOTO(ctx, cont_p->notifs, cont->notifs, node, u, lys_compile_notif, 0, ret, done);
 
@@ -3701,7 +3728,7 @@ lys_compile_node_leaf(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lys
     unsigned int u;
     LY_ERR ret = LY_SUCCESS;
 
-    COMPILE_ARRAY_GOTO(ctx, leaf_p->musts, leaf->musts, u, lys_compile_must, ret, done);
+    COMPILE_ARRAY_MUST_GOTO(ctx, leaf_p->musts, leaf->musts, u, node, ret, done);
     if (leaf_p->units) {
         leaf->units = lydict_insert(ctx->ctx, leaf_p->units, 0);
         leaf->flags |= LYS_SET_UNITS;
@@ -3762,7 +3789,7 @@ lys_compile_node_leaflist(struct lysc_ctx *ctx, struct lysp_node *node_p, struct
     unsigned int u, v;
     LY_ERR ret = LY_SUCCESS;
 
-    COMPILE_ARRAY_GOTO(ctx, llist_p->musts, llist->musts, u, lys_compile_must, ret, done);
+    COMPILE_ARRAY_MUST_GOTO(ctx, llist_p->musts, llist->musts, u, node, ret, done);
     if (llist_p->units) {
         llist->units = lydict_insert(ctx->ctx, llist_p->units, 0);
         llist->flags |= LYS_SET_UNITS;
@@ -3943,7 +3970,7 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lys
         LY_CHECK_RET(lys_compile_node(ctx, child_p, node, 0));
     }
 
-    COMPILE_ARRAY_GOTO(ctx, list_p->musts, list->musts, u, lys_compile_must, ret, done);
+    COMPILE_ARRAY_MUST_GOTO(ctx, list_p->musts, list->musts, u, node, ret, done);
 
     /* keys */
     if ((list->flags & LYS_CONFIG_W) && (!list_p->key || !list_p->key[0])) {
@@ -4242,7 +4269,7 @@ lys_compile_node_any(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lysc
     unsigned int u;
     LY_ERR ret = LY_SUCCESS;
 
-    COMPILE_ARRAY_GOTO(ctx, any_p->musts, any->musts, u, lys_compile_must, ret, done);
+    COMPILE_ARRAY_MUST_GOTO(ctx, any_p->musts, any->musts, u, node, ret, done);
 
     if (any->flags & LYS_CONFIG_W) {
         LOGWRN(ctx->ctx, "Use of %s to define configuration data is not recommended.",
@@ -4294,20 +4321,6 @@ lys_compile_node_connect(struct lysc_ctx *ctx, struct lysc_node *parent, struct 
         }
     }
     return LY_SUCCESS;
-}
-
-/**
- * @brief Get the XPath context node for the given schema node.
- * @param[in] start The schema node where the XPath expression appears.
- * @return The context node to evaluate XPath expression in given schema node.
- * @return NULL in case the context node is the root node.
- */
-static struct lysc_node *
-lysc_xpath_context(struct lysc_node *start)
-{
-    for (; start && !(start->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_ACTION | LYS_NOTIF));
-            start = start->parent);
-    return start;
 }
 
 /**
@@ -5146,20 +5159,20 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
         if (rfn->musts) {
             switch (node->nodetype) {
             case LYS_LEAF:
-                COMPILE_ARRAY_GOTO(ctx, rfn->musts, ((struct lysc_node_leaf*)node)->musts, u, lys_compile_must, ret, cleanup);
+                COMPILE_ARRAY_MUST_GOTO(ctx, rfn->musts, ((struct lysc_node_leaf*)node)->musts, u, node, ret, cleanup);
                 break;
             case LYS_LEAFLIST:
-                COMPILE_ARRAY_GOTO(ctx, rfn->musts, ((struct lysc_node_leaflist*)node)->musts, u, lys_compile_must, ret, cleanup);
+                COMPILE_ARRAY_MUST_GOTO(ctx, rfn->musts, ((struct lysc_node_leaflist*)node)->musts, u, node, ret, cleanup);
                 break;
             case LYS_LIST:
-                COMPILE_ARRAY_GOTO(ctx, rfn->musts, ((struct lysc_node_list*)node)->musts, u, lys_compile_must, ret, cleanup);
+                COMPILE_ARRAY_MUST_GOTO(ctx, rfn->musts, ((struct lysc_node_list*)node)->musts, u, node, ret, cleanup);
                 break;
             case LYS_CONTAINER:
-                COMPILE_ARRAY_GOTO(ctx, rfn->musts, ((struct lysc_node_container*)node)->musts, u, lys_compile_must, ret, cleanup);
+                COMPILE_ARRAY_MUST_GOTO(ctx, rfn->musts, ((struct lysc_node_container*)node)->musts, u, node, ret, cleanup);
                 break;
             case LYS_ANYXML:
             case LYS_ANYDATA:
-                COMPILE_ARRAY_GOTO(ctx, rfn->musts, ((struct lysc_node_anydata*)node)->musts, u, lys_compile_must, ret, cleanup);
+                COMPILE_ARRAY_MUST_GOTO(ctx, rfn->musts, ((struct lysc_node_anydata*)node)->musts, u, node, ret, cleanup);
                 break;
             default:
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
@@ -5947,27 +5960,27 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p)
                     switch (devs[u]->target->nodetype) {
                     case LYS_CONTAINER:
                     case LYS_LIST:
-                        COMPILE_ARRAY_GOTO(ctx, d_add->musts, ((struct lysc_node_container*)devs[u]->target)->musts,
-                                           x, lys_compile_must, ret, cleanup);
+                        COMPILE_ARRAY_MUST_GOTO(ctx, d_add->musts, ((struct lysc_node_container*)devs[u]->target)->musts,
+                                                x, devs[u]->target, ret, cleanup);
                         break;
                     case LYS_LEAF:
                     case LYS_LEAFLIST:
                     case LYS_ANYDATA:
-                        COMPILE_ARRAY_GOTO(ctx, d_add->musts, ((struct lysc_node_leaf*)devs[u]->target)->musts,
-                                           x, lys_compile_must, ret, cleanup);
+                        COMPILE_ARRAY_MUST_GOTO(ctx, d_add->musts, ((struct lysc_node_leaf*)devs[u]->target)->musts,
+                                                x, devs[u]->target, ret, cleanup);
                         break;
                     case LYS_NOTIF:
-                        COMPILE_ARRAY_GOTO(ctx, d_add->musts, ((struct lysc_notif*)devs[u]->target)->musts,
-                                           x, lys_compile_must, ret, cleanup);
+                        COMPILE_ARRAY_MUST_GOTO(ctx, d_add->musts, ((struct lysc_notif*)devs[u]->target)->musts,
+                                                x, devs[u]->target, ret, cleanup);
                         break;
                     case LYS_ACTION:
                         if (devs[u]->flags & LYSC_OPT_RPC_INPUT) {
-                            COMPILE_ARRAY_GOTO(ctx, d_add->musts, ((struct lysc_action*)devs[u]->target)->input.musts,
-                                               x, lys_compile_must, ret, cleanup);
+                            COMPILE_ARRAY_MUST_GOTO(ctx, d_add->musts, ((struct lysc_action*)devs[u]->target)->input.musts,
+                                                    x, devs[u]->target, ret, cleanup);
                             break;
                         } else  if (devs[u]->flags & LYSC_OPT_RPC_OUTPUT) {
-                            COMPILE_ARRAY_GOTO(ctx, d_add->musts, ((struct lysc_action*)devs[u]->target)->output.musts,
-                                               x, lys_compile_must, ret, cleanup);
+                            COMPILE_ARRAY_MUST_GOTO(ctx, d_add->musts, ((struct lysc_action*)devs[u]->target)->output.musts,
+                                                    x, devs[u]->target, ret, cleanup);
                             break;
                         }
                         /* fall through */
