@@ -6921,24 +6921,20 @@ lys_compile(struct lys_module *mod, int options)
 
     /* data nodes */
     LY_LIST_FOR(sp->data, node_p) {
-        ret = lys_compile_node(&ctx, node_p, NULL, 0);
-        LY_CHECK_GOTO(ret, error);
+        LY_CHECK_GOTO(ret = lys_compile_node(&ctx, node_p, NULL, 0), error);
     }
 
     COMPILE_ARRAY1_GOTO(&ctx, sp->rpcs, mod_c->rpcs, NULL, u, lys_compile_action, 0, ret, error);
     COMPILE_ARRAY1_GOTO(&ctx, sp->notifs, mod_c->notifs, NULL, u, lys_compile_notif, 0, ret, error);
 
     /* augments - sort first to cover augments augmenting other augments */
-    ret = lys_compile_augment_sort(&ctx, sp->augments, sp->includes, &augments);
-    LY_CHECK_GOTO(ret, error);
+    LY_CHECK_GOTO(ret = lys_compile_augment_sort(&ctx, sp->augments, sp->includes, &augments), error);
     LY_ARRAY_FOR(augments, u) {
-        ret = lys_compile_augment(&ctx, augments[u], NULL);
-        LY_CHECK_GOTO(ret, error);
+        LY_CHECK_GOTO(ret = lys_compile_augment(&ctx, augments[u], NULL), error);
     }
 
     /* deviations TODO cover deviations from submodules */
-    ret = lys_compile_deviations(&ctx, sp);
-    LY_CHECK_GOTO(ret, error);
+    LY_CHECK_GOTO(ret = lys_compile_deviations(&ctx, sp), error);
 
     /* extension instances TODO cover extension instances from submodules */
     COMPILE_EXTS_GOTO(&ctx, sp->exts, mod_c->exts, mod_c, LYEXT_PAR_MODULE, ret, error);
@@ -6952,15 +6948,14 @@ lys_compile(struct lys_module *mod, int options)
             type = ((struct lysc_node_leaf*)ctx.unres.objs[u])->type;
             if (type->basetype == LY_TYPE_LEAFREF) {
                 /* validate the path */
-                ret = lys_compile_leafref_validate(&ctx, ((struct lysc_node*)ctx.unres.objs[u]), (struct lysc_type_leafref*)type);
-                LY_CHECK_GOTO(ret, error);
+                LY_CHECK_GOTO(ret = lys_compile_leafref_validate(&ctx, ((struct lysc_node*)ctx.unres.objs[u]), (struct lysc_type_leafref*)type), error);
             } else if (type->basetype == LY_TYPE_UNION) {
                 LY_ARRAY_FOR(((struct lysc_type_union*)type)->types, v) {
                     if (((struct lysc_type_union*)type)->types[v]->basetype == LY_TYPE_LEAFREF) {
                         /* validate the path */
-                        ret = lys_compile_leafref_validate(&ctx, ((struct lysc_node*)ctx.unres.objs[u]),
-                                                           (struct lysc_type_leafref*)((struct lysc_type_union*)type)->types[v]);
-                        LY_CHECK_GOTO(ret, error);
+                        LY_CHECK_GOTO(ret = lys_compile_leafref_validate(&ctx, ((struct lysc_node*)ctx.unres.objs[u]),
+                                                                         (struct lysc_type_leafref*)((struct lysc_type_union*)type)->types[v]),
+                                      error);
                     }
                 }
             }
@@ -7012,14 +7007,14 @@ lys_compile(struct lys_module *mod, int options)
     ctx.options |= LYSC_OPT_GROUPING;
     LY_ARRAY_FOR(sp->groupings, u) {
         if (!(sp->groupings[u].flags & LYS_USED_GRP)) {
-            LY_CHECK_GOTO((ret = lys_compile_grouping(&ctx, node_p, &sp->groupings[u])) != LY_SUCCESS, error);
+            LY_CHECK_GOTO(ret = lys_compile_grouping(&ctx, node_p, &sp->groupings[u]), error);
         }
     }
     LY_LIST_FOR(sp->data, node_p) {
         grps = (struct lysp_grp*)lysp_node_groupings(node_p);
         LY_ARRAY_FOR(grps, u) {
             if (!(grps[u].flags & LYS_USED_GRP)) {
-                LY_CHECK_GOTO((ret = lys_compile_grouping(&ctx, node_p, &grps[u])) != LY_SUCCESS, error);
+                LY_CHECK_GOTO(ret = lys_compile_grouping(&ctx, node_p, &grps[u]), error);
             }
         }
     }
