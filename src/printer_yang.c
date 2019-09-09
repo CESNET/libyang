@@ -525,19 +525,19 @@ yprp_extension(struct ypr_ctx *ctx, const struct lysp_ext *ext)
     if (ext->argument) {
         ypr_open(ctx->out, &flag);
         ly_print(ctx->out, "%*sargument %s", INDENT, ext->argument);
+        LEVEL++;
         if (ext->exts) {
-            LEVEL++;
             i = -1;
             while ((i = lysp_ext_instance_iter(ext->exts, i + 1, LYEXT_SUBSTMT_ARGUMENT)) != LY_ARRAY_SIZE(ext->exts)) {
                 yprp_extension_instances(ctx, LYEXT_SUBSTMT_ARGUMENT, 0, &ext->exts[i], &flag2, 1);
             }
-            LEVEL--;
         }
         if ((ext->flags & LYS_YINELEM_MASK) ||
                 (ext->exts && lysp_ext_instance_iter(ext->exts, 0, LYEXT_SUBSTMT_YINELEM) != LY_ARRAY_SIZE(ext->exts))) {
             ypr_open(ctx->out, &flag2);
             ypr_substmt(ctx, LYEXT_SUBSTMT_YINELEM, 0, (ext->flags & LYS_YINELEM_TRUE) ? "true" : "false", ext->exts);
         }
+        LEVEL--;
         ypr_close(ctx, flag2);
     }
 
