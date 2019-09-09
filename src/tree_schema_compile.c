@@ -3670,6 +3670,8 @@ lys_compile_node_leaf(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lys
     /* the dflt member is just filled to avoid getting the default value from the type */
     leaf->dflt = (void*)leaf_p->dflt;
     ret = lys_compile_node_type(ctx, node_p, &leaf_p->type, leaf);
+    leaf->dflt = NULL;
+    LY_CHECK_RET(ret);
 
     if (leaf_p->dflt) {
         struct ly_err_item *err = NULL;
@@ -3688,12 +3690,12 @@ lys_compile_node_leaf(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lys
         }
         if (ret == LY_EINCOMPLETE) {
             /* postpone default compilation when the tree is complete */
-            LY_CHECK_GOTO(lysc_incomplete_dflts_add(ctx, node, leaf->dflt, leaf->dflt_mod), done);
+            LY_CHECK_RET(lysc_incomplete_dflts_add(ctx, node, leaf->dflt, leaf->dflt_mod));
 
             /* but in general result is so far ok */
             ret = LY_SUCCESS;
         }
-        LY_CHECK_GOTO(ret, done);
+        LY_CHECK_RET(ret);
         leaf->flags |= LYS_SET_DFLT;
     }
 
