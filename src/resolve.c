@@ -8161,12 +8161,18 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int ignore_
     case UNRES_LEAFREF:
         assert(sleaf->type.base == LY_TYPE_LEAFREF);
         assert(leaf->validity & LYD_VAL_LEAFREF);
-        if ((ignore_fail == 1) || ((leaf->schema->flags & LYS_LEAFREF_DEP) && (ignore_fail == 2))) {
+        if (ignore_fail) {
             req_inst = -1;
         } else {
             req_inst = sleaf->type.info.lref.req;
         }
-        rc = resolve_leafref(leaf, sleaf->type.info.lref.path, req_inst, &ret);
+        if ((leaf->schema->flags & LYS_LEAFREF_DEP) && (ignore_fail == 2)) {
+            /* do not even try to resolve */
+            rc = 0;
+            ret = NULL;
+        } else {
+            rc = resolve_leafref(leaf, sleaf->type.info.lref.path, req_inst, &ret);
+        }
         if (!rc) {
             if (ret && !(leaf->schema->flags & LYS_LEAFREF_DEP)) {
                 /* valid resolved */
@@ -8197,12 +8203,18 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int ignore_
             return -1;
         }
 
-        if ((ignore_fail == 1) || (ext_dep && (ignore_fail == 2))) {
+        if (ignore_fail) {
             req_inst = -1;
         } else {
             req_inst = sleaf->type.info.inst.req;
         }
-        rc = resolve_instid(node, leaf->value_str, req_inst, &ret);
+        if (ext_dep && (ignore_fail == 2)) {
+            /* do not even try to resolve */
+            rc = 0;
+            ret = NULL;
+        } else {
+            rc = resolve_instid(node, leaf->value_str, req_inst, &ret);
+        }
         if (!rc) {
             if (ret && !ext_dep) {
                 /* valid resolved */
