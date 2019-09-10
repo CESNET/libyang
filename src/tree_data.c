@@ -4712,15 +4712,7 @@ lyd_insert_nextto(struct lyd_node *sibling, struct lyd_node *node, int before, i
                 }
             }
 
-#ifdef LY_ENABLED_CACHE
-            lyd_unlink_hash(ins, ins->parent);
-#endif
-
             ins->parent = sibling->parent;
-
-#ifdef LY_ENABLED_CACHE
-            lyd_insert_hash(ins);
-#endif
             last = ins;
         }
     }
@@ -4728,7 +4720,7 @@ lyd_insert_nextto(struct lyd_node *sibling, struct lyd_node *node, int before, i
     /* insert the (list of) node(s) to the specified position */
     if (before) {
         if (sibling->prev->next) {
-            /* adding into a middle */
+            /* adding into the middle */
             sibling->prev->next = node;
         } else if (sibling->parent) {
             /* at the beginning */
@@ -4739,7 +4731,7 @@ lyd_insert_nextto(struct lyd_node *sibling, struct lyd_node *node, int before, i
         last->next = sibling;
     } else { /* after */
         if (sibling->next) {
-            /* adding into a middle - fix the prev pointer of the node after inserted nodes */
+            /* adding into the middle - fix the prev pointer of the node after inserted nodes */
             last->next = sibling->next;
             sibling->next->prev = last;
         } else {
@@ -4749,6 +4741,18 @@ lyd_insert_nextto(struct lyd_node *sibling, struct lyd_node *node, int before, i
         sibling->next = node;
         node->prev = sibling;
     }
+
+#ifdef LY_ENABLED_CACHE
+    /* now that all the nodes are correctly inserted, fix hashes (node was already unlinked) */
+    lyd_insert_hash(node);
+
+    /* relink all following nodes */
+    iter = node;
+    for (iter = node; iter != last; iter = iter->next) {
+        lyd_unlink_hash(iter, iter->parent);
+        lyd_insert_hash(iter);
+    }
+#endif
 
     if (invalidate) {
         LY_TREE_FOR(node, next1) {
