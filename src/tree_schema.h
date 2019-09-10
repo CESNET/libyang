@@ -1248,7 +1248,6 @@ struct lysc_pattern {
 
 struct lysc_must {
     struct lys_module *module;       /**< module where the must was defined */
-    struct lysc_node *context;       /**< context node for evaluating the expression */
     struct lyxp_expr *cond;          /**< XPath when condition */
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
