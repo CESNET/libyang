@@ -696,45 +696,45 @@ struct lysp_deviation {
  *
  * Various flags for compiled schema nodes.
  *
- *     1 - container    6 - anydata/anyxml    11 - output
- *     2 - choice       7 - case              12 - feature
- *     3 - leaf         8 - notification      13 - identity
- *     4 - leaflist     9 - rpc               14 - extension
- *     5 - list        10 - input             15 - bitenum
+ *     1 - container    6 - anydata/anyxml    11 - identity
+ *     2 - choice       7 - case              12 - extension
+ *     3 - leaf         8 - notification      13 - bitenum
+ *     4 - leaflist     9 - rpc
+ *     5 - list        10 - feature
  *
- *                                             1 1 1 1 1 1
- *     bit name              1 2 3 4 5 6 7 8 9 0 1 2 3 4 5
- *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       1 LYS_CONFIG_W     |x|x|x|x|x|x|x| | | | | | | | |
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       2 LYS_CONFIG_R     |x|x|x|x|x|x|x| | | | | | | | |
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       3 LYS_STATUS_CURR  |x|x|x|x|x|x|x|x|x| | |x|x|x| |
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       4 LYS_STATUS_DEPRC |x|x|x|x|x|x|x|x|x| | |x|x|x| |
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       5 LYS_STATUS_OBSLT |x|x|x|x|x|x|x|x|x| | |x|x|x| |
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       6 LYS_MAND_TRUE    |x|x|x|x|x|x| | | | | | | | | |
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       7 LYS_ORDBY_USER   | | | |x|x| | | | | | | | | | |
- *         LYS_MAND_FALSE   | |x|x| | |x| | | | | | | | | |
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       8 LYS_ORDBY_SYSTEM | | | |x|x| | | | | | | | | | |
- *         LYS_PRESENCE     |x| | | | | | | | | | | | | | |
- *         LYS_UNIQUE       | | |x| | | | | | | | | | | | |
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *       9 LYS_KEY          | | |x| | | | | | | | | | | | |
- *         LYS_FENABLED     | | | | | | | | | | | |x| | | |
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *      10 LYS_SET_DFLT     | | |x|x| | |x| | | | | | | | |
- *         LYS_ISENUM       | | | | | | | | | | | | | | |x|
- *         LYS_KEYLESS      | | | | |x| | | | | | | | | | |
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *      11 LYS_SET_UNITS    | | |x|x| | | | | | | | | | | |
- *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *      12 LYS_SET_CONFIG   |x|x|x|x|x|x| | | | | | | | | |
- *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *                                             1 1 1 1
+ *     bit name              1 2 3 4 5 6 7 8 9 0 1 2 3
+ *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       1 LYS_CONFIG_W     |x|x|x|x|x|x|x| | | | | | |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       2 LYS_CONFIG_R     |x|x|x|x|x|x|x| | | | | | |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       3 LYS_STATUS_CURR  |x|x|x|x|x|x|x|x|x|x|x|x| |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       4 LYS_STATUS_DEPRC |x|x|x|x|x|x|x|x|x|x|x|x| |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       5 LYS_STATUS_OBSLT |x|x|x|x|x|x|x|x|x|x|x|x| |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       6 LYS_MAND_TRUE    |x|x|x|x|x|x| | | | | | | |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       7 LYS_ORDBY_USER   | | | |x|x| | | | | | | | |
+ *         LYS_MAND_FALSE   | |x|x| | |x| | | | | | | |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       8 LYS_ORDBY_SYSTEM | | | |x|x| | | | | | | | |
+ *         LYS_PRESENCE     |x| | | | | | | | | | | | |
+ *         LYS_UNIQUE       | | |x| | | | | | | | | | |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *       9 LYS_KEY          | | |x| | | | | | | | | | |
+ *         LYS_FENABLED     | | | | | | | | | |x| | | |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      10 LYS_SET_DFLT     | | |x|x| | |x| | | | | | |
+ *         LYS_ISENUM       | | | | | | | | | | | | |x|
+ *         LYS_KEYLESS      | | | | |x| | | | | | | | |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      11 LYS_SET_UNITS    | | |x|x| | | | | | | | | |
+ *                          +-+-+-+-+-+-+-+-+-+-+-+-+-+
+ *      12 LYS_SET_CONFIG   |x|x|x|x|x|x| | | | | | | |
+ *     ---------------------+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  */
 
