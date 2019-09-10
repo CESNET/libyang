@@ -564,16 +564,31 @@ LY_ERR ly_strcat(char **dest, const char *format, ...);
     }
 
 /**
- * @brief allocate and insert new item inro linked list.
+ * @brief allocate and insert new item into linked list.
  *
- * @param[in] CTX used for loggin.
- * @param[in,out] LIST Linker list to add to.
- * @param[out] NEW_ITEM New item that was appended to the list.
- * @param[in] LINKER name of structuin member that is used to connect items together.
+ * @param[in] CTX used for logging.
+ * @param[in,out] LIST Linked list to add to.
+ * @param[out] NEW_ITEM New item that is appended to the list.
+ * @param[in] LINKER name of structure member that is used to connect items together.
  */
 #define LY_LIST_NEW_RET(CTX, LIST, NEW_ITEM, LINKER) \
     NEW_ITEM = calloc(1, sizeof *NEW_ITEM); \
     LY_CHECK_ERR_RET(!(NEW_ITEM), LOGMEM(CTX), LY_EMEM); \
+    LY_LIST_INSERT(LIST, NEW_ITEM, LINKER)
+
+/**
+ * @brief allocate and insert new item into linked list.
+ *
+ * @param[in] CTX used for logging.
+ * @param[in,out] LIST Linked list to add to.
+ * @param[out] NEW_ITEM New item that is appended to the list.
+ * @param[in] LINKER name of structure member that is used to connect items together.
+ * @param[in] RET variable to store returned error type.
+ * @param[in] LABEL label to goto in case of error.
+ */
+#define LY_LIST_NEW_GOTO(CTX, LIST, NEW_ITEM, LINKER, RET, LABEL) \
+    NEW_ITEM = calloc(1, sizeof *NEW_ITEM); \
+    LY_CHECK_ERR_GOTO(!(NEW_ITEM), RET = LY_EMEM; LOGMEM(CTX), LABEL); \
     LY_LIST_INSERT(LIST, NEW_ITEM, LINKER)
 
 #endif /* LY_COMMON_H_ */
