@@ -70,20 +70,7 @@ void ly_err_free(void *ptr);
 #define LY_TYPE_OPTS_SECOND_CALL 0x20  /**< Flag for the second call of the callback when the first call returns LY_EINCOMPLETE,
                                             other options should be the same as for the first call. */
 
-/**
- * @}
- */
-
-/**
- * @defgroup plugintypeflags Various flags for type plugins usage.
- * Options applicable to ly_type_validate_clb().
- * @{
- */
-#define LY_TYPE_FLAG_PREFIXES 0x01     /**< The value contains prefixes, so when printing XML,
-                                            get the namespaces connected with the prefixes and print them. */
-/**
- * @}
- */
+/** @} plugintypeopts */
 
 /**
  * @brief Callback to validate, canonize and store (optionally, according to the given @p options) the given @p value according to the given @p type.
@@ -185,7 +172,6 @@ struct lysc_type_plugin {
     ly_type_dup_clb duplicate;       /**< data duplication callback */
     ly_type_free_clb free;           /**< optional function to free the type-spceific way stored value */
     const char *id;                  /**< Plugin identification (mainly for distinguish incompatible versions when used by external tools) */
-    uint32_t flags;                  /**< [type flags ](@ref plugintypeflags). */
 };
 
 /**
