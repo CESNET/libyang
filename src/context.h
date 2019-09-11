@@ -151,7 +151,7 @@ int ly_ctx_get_options(const struct ly_ctx *ctx);
  * @param[in] option Combination of the context's options to be set, see @ref contextoptions.
  * @return LY_ERR value.
  */
-LY_ERR ly_ctx_set_option(struct ly_ctx *ctx, int option);
+LY_ERR ly_ctx_set_options(struct ly_ctx *ctx, int option);
 
 /**
  * @brief Unset some of the context's options, see @ref contextoptions.
@@ -159,7 +159,7 @@ LY_ERR ly_ctx_set_option(struct ly_ctx *ctx, int option);
  * @param[in] option Combination of the context's options to be unset, see @ref contextoptions.
  * @return LY_ERR value.
  */
-LY_ERR ly_ctx_unset_option(struct ly_ctx *ctx, int option);
+LY_ERR ly_ctx_unset_options(struct ly_ctx *ctx, int option);
 
 /**
  * @brief Get current ID of the modules set. The value is available also

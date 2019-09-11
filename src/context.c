@@ -266,7 +266,7 @@ ly_ctx_get_options(const struct ly_ctx *ctx)
 }
 
 API LY_ERR
-ly_ctx_set_option(struct ly_ctx *ctx, int option)
+ly_ctx_set_options(struct ly_ctx *ctx, int option)
 {
     LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
     LY_CHECK_ERR_RET(option & LY_CTX_NOYANGLIBRARY, LOGARG(ctx, option), LY_EINVAL);
@@ -278,7 +278,7 @@ ly_ctx_set_option(struct ly_ctx *ctx, int option)
 }
 
 API LY_ERR
-ly_ctx_unset_option(struct ly_ctx *ctx, int option)
+ly_ctx_unset_options(struct ly_ctx *ctx, int option)
 {
     LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
     LY_CHECK_ERR_RET(option & LY_CTX_NOYANGLIBRARY, LOGARG(ctx, option), LY_EINVAL);
