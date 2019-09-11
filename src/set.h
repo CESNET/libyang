@@ -30,7 +30,7 @@ extern "C" {
  */
 
 /**
- * @brief Structure to hold a set of (not necessary somehow connected) objects. Usually used for ::lyd_node,
+ * @brief Structure to hold a set of (not necessary somehow connected) objects. Usually used for lyd_node,
  * ::lysp_node or ::lysc_node objects, but it is not limited to them. Caller is supposed to not mix the type of objects
  * added to the set and according to its knowledge about the set content, it can access objects via the members
  * of the set union.

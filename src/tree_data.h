@@ -118,7 +118,7 @@ typedef enum {
 } LYD_FORMAT;
 
 /**
- * @brief List of possible value types stored in ::lyd_node_anydata.
+ * @brief List of possible value types stored in ::lyd_node_any.
  */
 typedef enum {
     LYD_ANYDATA_DATATREE,            /**< Value is a pointer to lyd_node structure (first sibling). When provided as input parameter, the pointer
