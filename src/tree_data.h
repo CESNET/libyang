@@ -105,6 +105,11 @@ extern "C" {
     }
 
 /**
+ * @brief Macro to get context from a data tree node.
+ */
+#define LYD_NODE_CTX(node) ((node)->schema->module->ctx)
+
+/**
  * @brief Data input/output formats supported by libyang [parser](@ref howtodataparsers) and
  * [printer](@ref howtodataprinters) functions.
  */
@@ -247,6 +252,7 @@ struct lyd_attr {
  */
 
 #define LYD_DEFAULT      0x01        /**< default (implicit) node; */
+#define LYD_DUMMY        0x80000000  /**< dummy node (in XPath context, internal flag) */
 /** @} */
 
 /**
@@ -742,6 +748,44 @@ struct lyd_node *lyd_dup(const struct lyd_node *node, struct lyd_node_inner *par
  * @return Target node of the instance-identifier present in the given data @p trees.
  */
 const struct lyd_node_term *lyd_target(struct lyd_value_path *path, const struct lyd_node **trees);
+
+/**
+ * @brief Get string value of a term data \p node.
+ *
+ * @param[in] node Data tree node with the value.
+ * @param[out] dynamic Whether the string value was dynmically allocated.
+ * @return String value of @p node, if @p dynamic, needs to be freed.
+ */
+const char *lyd_value2str(const struct lyd_node_term *node, int *dynamic);
+
+/**
+ * @brief Get string value of an attribute \p attr.
+ *
+ * @param[in] attr Attribute with the value.
+ * @param[out] dynamic Whether the string value was dynmically allocated.
+ * @return String value of @p attr, if @p dynamic, needs to be freed.
+ */
+const char *lyd_attr2str(const struct lyd_attr *attr, int *dynamic);
+
+/**
+ * @brief Types of the different data paths.
+ */
+typedef enum {
+    LYD_PATH_LOG /**< Descriptive path format used in log messages */
+} LYD_PATH_TYPE;
+
+/**
+ * @brief Generate path of the given node in the requested format.
+ *
+ * @param[in] node Schema path of this node will be generated.
+ * @param[in] pathtype Format of the path to generate.
+ * @param[in,out] buffer Prepared buffer of the @p buflen length to store the generated path.
+ *                If NULL, memory for the complete path is allocated.
+ * @param[in] buflen Size of the provided @p buffer.
+ * @return NULL in case of memory allocation error, path of the node otherwise.
+ * In case the @p buffer is NULL, the returned string is dynamically allocated and caller is responsible to free it.
+ */
+char *lyd_path(const struct lyd_node *node, LYD_PATH_TYPE pathtype, char *buffer, size_t buflen);
 
 #ifdef __cplusplus
 }

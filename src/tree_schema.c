@@ -216,12 +216,10 @@ lys_child(const struct lysc_node *parent, const struct lys_module *module,
     return NULL;
 }
 
-
-
 API char *
-lysc_path(struct lysc_node *node, LY_PATH_TYPE pathtype, char *buffer, size_t buflen)
+lysc_path(const struct lysc_node *node, LYSC_PATH_TYPE pathtype, char *buffer, size_t buflen)
 {
-    struct lysc_node *iter;
+    const struct lysc_node *iter;
     char *path = NULL;
     int len = 0;
 
@@ -231,26 +229,12 @@ lysc_path(struct lysc_node *node, LY_PATH_TYPE pathtype, char *buffer, size_t bu
     }
 
     switch (pathtype) {
-    case LY_PATH_LOG:
+    case LYSC_PATH_LOG:
         for (iter = node; iter && len >= 0; iter = iter->parent) {
             char *s = buffer ? strdup(buffer) : path;
             char *id;
 
-            switch (iter->nodetype) {
-            case LYS_USES:
-                asprintf(&id, "{uses='%s'}", iter->name);
-                break;
-            case LYS_GROUPING:
-                asprintf(&id, "{grouping='%s'}", iter->name);
-                break;
-            case LYS_AUGMENT:
-                asprintf(&id, "{augment='%s'}", iter->name);
-                break;
-            default:
-                id = strdup(iter->name);
-                break;
-            }
-
+            id = strdup(iter->name);
             if (!iter->parent || iter->parent->module != iter->module) {
                 /* print prefix */
                 if (buffer) {

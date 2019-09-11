@@ -262,6 +262,26 @@ LY_ERR ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, i
 LY_ERR ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str, size_t str_len, struct ly_err_item **err);
 
 /**
+ * @brief Find leafref target in instance data.
+ *
+ * @param[in] ctx libyang Context
+ * @param[in] type Type of the value being canonized.
+ * @param[in] value Lexical representation of the value to be validated (and canonized).
+ *            It is never NULL, empty string is represented as "" with zero @p value_len.
+ * @param[in] value_len Length (number of bytes) of the given \p value.
+ * @param[in] context_node The @p value's node for the case that the require-instance restriction is supposed to be resolved.
+ * @param[in] trees ([Sized array](@ref sizedarrays)) of external data trees (e.g. when validating RPC/Notification) where the required data
+ *            instance can be placed.
+ *
+ * @param[in] storage Parsed @p value.
+ * @param[out] errmsg Error message in case of error.
+ * @return Leafref target node or NULL on error when @p errmsg is always set.
+ */
+const struct lyd_node *ly_type_find_leafref(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len,
+                                            const struct lyd_node *context_node, const struct lyd_node **trees,
+                                            struct lyd_value *storage, char **errmsg);
+
+/**
  * @brief Helper function for type validation callbacks to prepare list of all possible prefixes used in the value string.
  *
  * @param[in] ctx libyang context.

@@ -379,7 +379,7 @@ test_string(void **state)
     logbuf_assert("Length \"6\" does not satisfy the length constraint. /");
     data = "<str-utf8 xmlns=\"urn:tests:types\">€€x</str-utf8>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
-    logbuf_assert("String \"€€x\" does not conforms to the 1. pattern restriction of its type. /");
+    logbuf_assert("String \"€€x\" does not conform to the 1. pattern restriction of its type. /");
 
     /* invalid length */
     data = "<str xmlns=\"urn:tests:types\">short</str>";
@@ -393,7 +393,7 @@ test_string(void **state)
     /* invalid pattern */
     data = "<str xmlns=\"urn:tests:types\">string15</str>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
-    logbuf_assert("String \"string15\" does not conforms to the 1. pattern restriction of its type. /");
+    logbuf_assert("String \"string15\" does not conform to the 1. pattern restriction of its type. /");
 
     s->func = NULL;
 }

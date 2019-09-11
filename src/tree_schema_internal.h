@@ -647,6 +647,17 @@ LY_ERR lys_feature_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struc
 uint8_t lysc_iff_getop(uint8_t *list, int pos);
 
 /**
+ * @brief Checks pattern syntax.
+ *
+ * @param[in] ctx Context.
+ * @param[in] log_path Path for logging errors.
+ * @param[in] pattern Pattern to check.
+ * @param[in,out] pcre2_code Compiled PCRE2 pattern. If NULL, the compiled information used to validate pattern are freed.
+ * @return LY_ERR value - LY_SUCCESS, LY_EMEM, LY_EVALID.
+ */
+LY_ERR lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *log_path, const char *pattern, pcre2_code **code);
+
+/**
  * @brief Internal wrapper around lys_compile_extension() to be able to prepare list of compiled extension definitions
  * even for the parsed (not-implemented) module - see lys_module::off_extensions.
  *
