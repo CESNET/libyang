@@ -214,6 +214,17 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 
 #define LY_VCODE_XP_EOE      LYVE_XPATH, "Unterminated string delimited with %c (%.15s)."
 #define LY_VCODE_XP_INEXPR   LYVE_XPATH, "Invalid character number %u of expression \'%s\'."
+#define LY_VCODE_XP_DUMMY    LYVE_XPATH, "Accessing the value of the dummy node \"%s\"."
+#define LY_VCODE_XP_EOF      LYVE_XPATH, "Unexpected XPath expression end."
+#define LY_VCODE_XP_INTOK    LYVE_XPATH, "Unexpected XPath token %s (%.15s)."
+#define LY_VCODE_XP_INFUNC   LYVE_XPATH, "Unknown XPath function \"%.*s\"."
+#define LY_VCODE_XP_INARGCOUNT LYVE_XPATH, "Invalid number of arguments (%d) for the XPath function %.*s."
+#define LY_VCODE_XP_INARGTYPE LYVE_XPATH, "Wrong type of argument #%d (%s) for the XPath function %s."
+#define LY_VCODE_XP_INCTX    LYVE_XPATH, "Invalid context type %s in %s."
+#define LY_VCODE_XP_DUMMY    LYVE_XPATH, "Accessing the value of the dummy node \"%s\"."
+#define LY_VCODE_XP_INOP_1   LYVE_XPATH, "Cannot apply XPath operation %s on %s."
+#define LY_VCODE_XP_INOP_2   LYVE_XPATH, "Cannot apply XPath operation %s on %s and %s."
+#define LY_VCODE_XP_INMOD    LYVE_XPATH, "Unknown module \"%.*s\"."
 
 #define LY_VCODE_DEV_NODETYPE LYVE_REFERENCE, "Invalid deviation of %s node - it is not possible to %s \"%s\" property."
 #define LY_VCODE_DEV_NOT_PRESENT LYVE_REFERENCE, "Invalid deviation %s \"%s\" property \"%s\" which is not present."
@@ -296,6 +307,16 @@ extern const char *const ly_devmod_list[];
  * @return Pointer to the new memory, NULL on error.
  */
 void *ly_realloc(void *ptr, size_t size);
+
+/**
+ * @brief Just like strchr() function except limit the number of examined characters.
+ *
+ * @param[in] s String to search in.
+ * @param[in] c Character to search for.
+ * @param[in] len Limit the search to this number of characters in @p s.
+ * @return Pointer to first @p c occurence in @p s, NULL if not found in first @p len characters.
+ */
+char *ly_strnchr(const char *s, int c, unsigned int len);
 
 /**
  * @brief Get UTF8 code point of the next character in the input string.

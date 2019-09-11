@@ -105,6 +105,11 @@ extern "C" {
     }
 
 /**
+ * @brief Macro to get context from a data tree node.
+ */
+#define LYD_NODE_CTX(node) ((node)->schema->module->ctx)
+
+/**
  * @brief Data input/output formats supported by libyang [parser](@ref howtodataparsers) and
  * [printer](@ref howtodataprinters) functions.
  */
@@ -247,6 +252,7 @@ struct lyd_attr {
  */
 
 #define LYD_DEFAULT      0x01        /**< default (implicit) node; */
+#define LYD_DUMMY        0x80000000  /**< dummy node (in XPath context, internal flag) */
 /** @} */
 
 /**

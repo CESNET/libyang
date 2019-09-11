@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief YANG XPath evaluation functions header
  *
- * Copyright (c) 2015 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2019 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -124,6 +124,20 @@ enum lyxp_expr_type {
 };
 
 /**
+ * @brief Types of context nodes, #LYXP_NODE_ROOT_CONFIG used only in when or must conditions.
+ */
+enum lyxp_node_type {
+    /* XML document roots */
+    LYXP_NODE_ROOT,             /* access to all the data (node value first top-level node) */
+    LYXP_NODE_ROOT_CONFIG,      /* <running> data context, no state data (node value first top-level node) */
+
+    /* XML elements */
+    LYXP_NODE_ELEM,             /* XML element (most common) */
+    LYXP_NODE_TEXT,             /* XML text element (extremely specific use, unlikely to be ever needed) */
+    LYXP_NODE_ATTR              /* XML attribute (in YANG cannot happen, do not use for the context node) */
+};
+
+/**
  * @brief Structure holding a parsed XPath expression.
  */
 struct lyxp_expr {
@@ -172,13 +186,11 @@ struct lyxp_expr {
 enum lyxp_set_type {
     LYXP_SET_EMPTY = 0,
     LYXP_SET_NODE_SET,
-    LYXP_SET_SNODE_SET,
+    LYXP_SET_SCNODE_SET,
     LYXP_SET_BOOLEAN,
     LYXP_SET_NUMBER,
     LYXP_SET_STRING
 };
-#if 0
-#ifdef LY_ENABLED_CACHE
 
 /**
  * @brief Item stored in an XPath set hash table.
@@ -187,8 +199,6 @@ struct lyxp_set_hash_node {
     struct lyd_node *node;
     enum lyxp_node_type type;
 } _PACKED;
-
-#endif
 
 /**
  * @brief XPath set - (partial) result.
@@ -201,15 +211,15 @@ struct lyxp_set {
             enum lyxp_node_type type;
             uint32_t pos;
         } *nodes;
-        struct lyxp_set_snode {
-            struct lys_node *snode;
+        struct lyxp_set_scnode {
+            struct lysc_node *scnode;
             enum lyxp_node_type type;
-            /* 0 - snode was traversed, but not currently in the context,
-             * 1 - snode currently in context,
-             * 2 - snode in context and just added, so skip it for the current operation,
-             * >=3 - snode is not in context because we are in a predicate and this snode was used/will be used later */
+            /* 0 - scnode was traversed, but not currently in the context,
+             * 1 - scnode currently in context,
+             * 2 - scnode in context and just added, so skip it for the current operation,
+             * >=3 - scnode is not in context because we are in a predicate and this scnode was used/will be used later */
             uint32_t in_ctx;
-        } *snodes;
+        } *scnodes;
         struct lyxp_set_attr {
             struct lyd_attr *attr;
             enum lyxp_node_type type;
@@ -220,75 +230,79 @@ struct lyxp_set {
         int bool;
     } val;
 
-    /* this is valid only for type LYXP_SET_NODE_SET and LYXP_SET_SNODE_SET */
+    /* this is valid only for type LYXP_SET_NODE_SET and LYXP_SET_SCNODE_SET */
     uint32_t used;
     uint32_t size;
-#ifdef LY_ENABLED_CACHE
     struct hash_table *ht;
-#endif
-    /* this is valid only for type LYXP_SET_NODE_SET */
+
+    /* XPath context information, this is valid only for type LYXP_SET_NODE_SET */
     uint32_t ctx_pos;
     uint32_t ctx_size;
+
+    /* general context */
+    struct ly_ctx *ctx;
+    union {
+        const struct lyd_node *ctx_node;
+        const struct lysc_node *ctx_scnode;
+    };
+    const struct lys_module *local_mod;
+    const struct lyd_node **trees;
+    LYD_FORMAT format;
 };
 
 /**
- * @brief Evaluate the XPath expression \p expr on data. Be careful when using this function, the result can often
- * be confusing without thorough understanding of XPath evaluation rules defined in RFC 6020.
+ * @brief Evaluate an XPath expression on data. Be careful when using this function, the result can often
+ * be confusing without thorough understanding of XPath evaluation rules defined in RFC 7950.
  *
- * @param[in] expr XPath expression to evaluate. Must be in JSON format (prefixes are model names).
- * @param[in] cur_node Current (context) data node. If the node has #LYD_VAL_INUSE flag, it is considered dummy (intended
- * for but not restricted to evaluation with the LYXP_WHEN flag).
- * @param[in] cur_node_type Current (context) data node type. For every standard case use #LYXP_NODE_ELEM. But there are
- * cases when the context node \p cur_node is actually supposed to be the XML root, there is no such data node. So, in
- * this case just pass the first top-level node into \p cur_node and use an enum value for this kind of root
- * (#LYXP_NODE_ROOT_CONFIG if \p cur_node has config true, otherwise #LYXP_NODE_ROOT). #LYXP_NODE_TEXT and #LYXP_NODE_ATTR can also be used,
+ * @param[in] expr XPath expression to evaluate.
+ * @param[in] format Format of the XPath expression (more specifcally, of any used prefixes).
+ * @param[in] local_mod Local module relative to the @p expr.
+ * @param[in] ctx_node Current (context) data node.
+ * @param[in] ctx_node_type Current (context) data node type. For every standard case use #LYXP_NODE_ELEM. But there are
+ * cases when the context node @p ctx_node is actually supposed to be the XML root, there is no such data node. So, in
+ * this case just pass the first top-level node into @p ctx_node and use an enum value for this kind of root
+ * (#LYXP_NODE_ROOT_CONFIG if @p ctx_node has config true, otherwise #LYXP_NODE_ROOT). #LYXP_NODE_TEXT and #LYXP_NODE_ATTR can also be used,
  * but there are no use-cases in YANG.
- * @param[in] local_mod Local module relative to the \p expr. Used only to determine the internal canonical value for identities.
- * @param[out] set Result set. Must be valid and in the same libyang context as \p cur_node.
- * To be safe, always either zero or cast the \p set to empty. After done using, either cast
- * the \p set to empty (if allocated statically) or free it (if allocated dynamically) to
+ * @param[in] trees Data trees on which to perform the evaluation.
+ * @param[out] set Result set. Must be valid and in the same libyang context as @p ctx_node.
+ * To be safe, always either zero or cast the @p set to empty. After done using, either cast
+ * the @p set to empty (if allocated statically) or free it (if allocated dynamically) to
  * prevent memory leaks.
  * @param[in] options Whether to apply some evaluation restrictions.
- * LYXP_MUST - apply must data tree access restrictions.
- * LYXP_WHEN - apply when data tree access restrictions and consider LYD_WHEN flags in data nodes.
- *
- * @return EXIT_SUCCESS on success, EXIT_FAILURE on unresolved when dependency, -1 on error.
+ * @return LY_ERR
  */
-int lyxp_eval(const char *expr, const struct lyd_node *cur_node, enum lyxp_node_type cur_node_type,
-              const struct lys_module *local_mod, struct lyxp_set *set, int options);
+LY_ERR lyxp_eval(const char *expr, LYD_FORMAT format, const struct lys_module *local_mod, const struct lyd_node *ctx_node,
+                 enum lyxp_node_type ctx_node_type, const struct lyd_node **trees, struct lyxp_set *set, int options);
+
+#define LYXP_SCHEMA 0x01 /**< Apply data node access restrictions defined for 'when' and 'must' evaluation. */
 
 /**
- * @brief Get all the partial XPath nodes (atoms) that are required for \p expr to be evaluated.
+ * @brief Get all the partial XPath nodes (atoms) that are required for @p exp to be evaluated.
  *
- * If any LYXP_SNODE* options is set, only fatal errors are printed, otherwise they are downgraded
+ * If any LYXP_SCNODE* options is set, only fatal errors are printed, otherwise they are downgraded
  * to warnings.
  *
- * @param[in] expr XPath expression to be evaluated. Must be in JSON format (prefixes are model names).
- * @param[in] cur_snode Current (context) schema node.
- * @param[in] cur_snode_type Current (context) schema node type.
- * @param[out] set Result set. Must be valid and in the same libyang context as \p cur_snode.
- * To be safe, always either zero or cast the \p set to empty. After done using, either cast
- * the \p set to empty (if allocated statically) or free it (if allocated dynamically) to
+ * @param[in] exp Parsed XPath expression to be evaluated.
+ * @param[in] format Format of the XPath expression (more specifcally, of any used prefixes).
+ * @param[in] local_mod Local module relative to the @p exp.
+ * @param[in] ctx_scnode Current (context) schema node.
+ * @param[in] ctx_scnode_type Current (context) schema node type.
+ * @param[out] set Result set. Must be valid and in the same libyang context as @p ctx_scnode.
+ * To be safe, always either zero or cast the @p set to empty. After done using, either cast
+ * the @p set to empty (if allocated statically) or free it (if allocated dynamically) to
  * prevent memory leaks.
  * @param[in] options Whether to apply some evaluation restrictions, one flag must always be used.
- * LYXP_SNODE - no special data tree access modifiers.
- * LYXP_SNODE_MUST - apply must data tree access restrictions.
- * LYXP_SNODE_WHEN - apply when data tree access restrictions.
- * LYXP_SNODE_OUTPUT - search RPC/action output instead input
- * @param[out] ctx_snode Actual context node for the expression (it often changes for "when" expressions).
- *
- * @return EXIT_SUCCESS on success, -1 on error.
+ * @return LY_ERR
  */
-int lyxp_atomize(const char *expr, const struct lys_node *cur_snode, enum lyxp_node_type cur_snode_type,
-                 struct lyxp_set *set, int options, const struct lys_node **ctx_snode);
+LY_ERR lyxp_atomize(struct lyxp_expr *exp, LYD_FORMAT format, const struct lys_module *local_mod, const struct lysc_node *ctx_scnode,
+                    enum lyxp_node_type ctx_scnode_type, struct lyxp_set *set, int options);
 
 /* these are used only internally */
-#define LYXP_SNODE 0x04
-#define LYXP_SNODE_MUST 0x08
-#define LYXP_SNODE_WHEN 0x10
-#define LYXP_SNODE_OUTPUT 0x20
+#define LYXP_SCNODE 0x02        /**< No special data tree access modifiers. */
+#define LYXP_SCNODE_SCHEMA 0x04 /**< Apply schema node access restrictions defined for 'when' and 'must' evaluation. */
+#define LYXP_SCNODE_OUTPUT 0x08 /**< Search RPC/action output instead of input. */
 
-#define LYXP_SNODE_ALL 0x1C
+#define LYXP_SCNODE_ALL 0x0E
 
 /**
  * @brief Works like lyxp_atomize(), but it is executed on all the when and must expressions
@@ -297,59 +311,44 @@ int lyxp_atomize(const char *expr, const struct lys_node *cur_snode, enum lyxp_n
  * @param[in] node Node to examine.
  * @param[in,out] set Resulting set of atoms merged from all the expressions.
  * Will be cleared before use.
- * @param[in] set_ext_dep_flags Whether to set #LYS_XPCONF_DEP or #LYS_XPSTATE_DEP for conditions that
- * require foreign configuration or state subtree and also for the node itself, if it has any such condition.
- *
- * @return EXIT_SUCCESS on success, -1 on error.
+ * @param[in] set_ext_dep_flags Whether to set #LYS_XPATH_DEP for conditions that require data subtree
+ * and also for the node itself, if it has any such condition.
+ * @return LY_ERR
  */
-int lyxp_node_atomize(const struct lys_node *node, struct lyxp_set *set, int set_ext_dep_flags);
-#endif
-/**
- * @brief Check syntax of all the XPath expressions of the node.
- *
- * @param[in] node Node to examine.
- *
- * @return LY_ERR value.
- */
-LY_ERR lyxp_node_check_syntax(const struct lysc_node *node);
-#if 0
+LY_ERR lyxp_node_atomize(const struct lysc_node *node, struct lyxp_set *set, int set_ext_dep_flags);
+
 /**
  * @brief Cast XPath set to another type.
  *        Indirectly context position aware.
  *
  * @param[in] set Set to cast.
  * @param[in] target Target type to cast \p set into.
- * @param[in] cur_node Current (context) data node. Cannot be NULL.
- * @param[in] local_mod Local expression module.
  * @param[in] options Whether to apply some evaluation restrictions.
- *
- * @return EXIT_SUCCESS on success, -1 on error.
+ * @return LY_ERR
  */
-int lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target, const struct lyd_node *cur_node,
-                  const struct lys_module *local_mod, int options);
+LY_ERR lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target, int options);
 
 /**
- * @brief Free contents of an XPath \p set.
+ * @brief Free contents of an XPath @p set.
  *
  * @param[in] set Set to free.
  */
 void lyxp_set_free(struct lyxp_set *set);
-#endif
+
 /**
  * @brief Parse an XPath expression into a structure of tokens.
  *        Logs directly.
  *
- * http://www.w3.org/TR/1999/REC-xpath-19991116/ section 3.7
+ * https://www.w3.org/TR/1999/REC-xpath-19991116/#exprlex
  *
  * @param[in] ctx Context for errors.
  * @param[in] expr XPath expression to parse. It is duplicated.
- *
  * @return Filled expression structure or NULL on error.
  */
 struct lyxp_expr *lyxp_expr_parse(struct ly_ctx *ctx, const char *expr);
 
 /**
- * @brief Frees a parsed XPath expression. \p expr should not be used afterwards.
+ * @brief Frees a parsed XPath expression. @p expr should not be used afterwards.
  *
  * @param[in] ctx libyang context of the expression.
  * @param[in] expr Expression to free.

@@ -1788,13 +1788,14 @@ cleanup:
 /**
  * @brief Checks pattern syntax.
  *
- * @param[in] ctx Compile context.
+ * @param[in] ctx Context.
+ * @param[in] log_path Path for logging errors.
  * @param[in] pattern Pattern to check.
  * @param[in,out] pcre2_code Compiled PCRE2 pattern. If NULL, the compiled information used to validate pattern are freed.
  * @return LY_ERR value - LY_SUCCESS, LY_EMEM, LY_EVALID.
  */
-static LY_ERR
-lys_compile_type_pattern_check(struct lysc_ctx *ctx, const char *pattern, pcre2_code **code)
+LY_ERR
+lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *log_path, const char *pattern, pcre2_code **code)
 {
     int idx, idx2, start, end, count;
     char *perl_regex, *ptr;
@@ -1893,11 +1894,11 @@ lys_compile_type_pattern_check(struct lysc_ctx *ctx, const char *pattern, pcre2_
     /* adjust the expression to a Perl equivalent
      * http://www.w3.org/TR/2004/REC-xmlschema-2-20041028/#regexs */
 
-    /* we need to replace all "$" with "\$", count them now */
+    /* we need to replace all "$" and "^" with "\$" and "\^", count them now */
     for (count = 0, ptr = strpbrk(pattern, "^$"); ptr; ++count, ptr = strpbrk(ptr + 1, "^$"));
 
     perl_regex = malloc((strlen(pattern) + 4 + count) * sizeof(char));
-    LY_CHECK_ERR_RET(!perl_regex, LOGMEM(ctx->ctx), LY_EMEM);
+    LY_CHECK_ERR_RET(!perl_regex, LOGMEM(ctx), LY_EMEM);
     perl_regex[0] = '\0';
 
     ptr = perl_regex;
@@ -1921,7 +1922,7 @@ lys_compile_type_pattern_check(struct lysc_ctx *ctx, const char *pattern, pcre2_
 
         ptr = strchr(ptr, '}');
         if (!ptr) {
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_INREGEXP,
+            LOGVAL(ctx, LY_VLOG_STR, log_path, LY_VCODE_INREGEXP,
                    pattern, perl_regex + start + 2, "unterminated character property");
             free(perl_regex);
             return LY_EVALID;
@@ -1931,7 +1932,7 @@ lys_compile_type_pattern_check(struct lysc_ctx *ctx, const char *pattern, pcre2_
         /* need more space */
         if (end - start < URANGE_LEN) {
             perl_regex = ly_realloc(perl_regex, strlen(perl_regex) + (URANGE_LEN - (end - start)) + 1);
-            LY_CHECK_ERR_RET(!perl_regex, LOGMEM(ctx->ctx); free(perl_regex), LY_EMEM);
+            LY_CHECK_ERR_RET(!perl_regex, LOGMEM(ctx); free(perl_regex), LY_EMEM);
         }
 
         /* find our range */
@@ -1941,7 +1942,7 @@ lys_compile_type_pattern_check(struct lysc_ctx *ctx, const char *pattern, pcre2_
             }
         }
         if (!ublock2urange[idx][0]) {
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_INREGEXP,
+            LOGVAL(ctx, LY_VLOG_STR, log_path, LY_VCODE_INREGEXP,
                    pattern, perl_regex + start + 5, "unknown block name");
             free(perl_regex);
             return LY_EVALID;
@@ -1973,7 +1974,7 @@ lys_compile_type_pattern_check(struct lysc_ctx *ctx, const char *pattern, pcre2_
     if (!code_local) {
         PCRE2_UCHAR err_msg[256] = {0};
         pcre2_get_error_message(err_code, err_msg, 256);
-        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_INREGEXP, pattern, perl_regex + err_offset, err_msg);
+        LOGVAL(ctx, LY_VLOG_STR, log_path, LY_VCODE_INREGEXP, pattern, perl_regex + err_offset, err_msg);
         free(perl_regex);
         return LY_EVALID;
     }
@@ -2018,7 +2019,7 @@ lys_compile_type_patterns(struct lysc_ctx *ctx, struct lysp_restr *patterns_p,
         *pattern = calloc(1, sizeof **pattern);
         ++(*pattern)->refcount;
 
-        ret = lys_compile_type_pattern_check(ctx, &patterns_p[u].arg[1], &(*pattern)->code);
+        ret = lys_compile_type_pattern_check(ctx->ctx, ctx->path, &patterns_p[u].arg[1], &(*pattern)->code);
         LY_CHECK_RET(ret);
 
         if (patterns_p[u].arg[0] == 0x15) {
@@ -2219,7 +2220,7 @@ done:
 
 #define MOVE_PATH_PARENT(NODE, LIMIT_COND, TERM, ERR_MSG, ...) \
     for ((NODE) = (NODE)->parent; \
-         (NODE) && !((NODE)->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_ACTION | LYS_NOTIF | LYS_ACTION)); \
+         (NODE) && !((NODE)->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_NOTIF | LYS_ACTION)); \
          (NODE) = (NODE)->parent); \
     if (!(NODE) && (LIMIT_COND)) { /* we are going higher than top-level */ \
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE, ERR_MSG, ##__VA_ARGS__); \
@@ -2580,6 +2581,54 @@ cleanup:
 }
 
 /**
+ * @brief Check whether a leafref has an external dependency or not.
+ *
+ * @param[in] startnode Node with the leafref.
+ * @param[in] local_mod Local module for the leafref path.
+ * @param[in] first_node First found node when resolving the leafref.
+ * @param[in] abs_path Whether the leafref path is absolute or relative.
+ * @return 0 is the leafref does not require an external dependency, non-zero is it requires.
+ */
+static int
+lys_compile_leafref_has_dep_flag(const struct lysc_node *startnode, const struct lys_module *local_mod,
+                                 const struct lysc_node *first_node, int abs_path)
+{
+    int dep1, dep2;
+    const struct lysc_node *op_node, *node;
+
+    /* find operation schema we are in */
+    for (op_node = startnode->parent;
+        op_node && !(op_node->nodetype & (LYS_ACTION | LYS_NOTIF));
+        op_node = op_node->parent);
+
+    if (!op_node) {
+        /* leafref pointing to a different module */
+        if (local_mod != first_node->module) {
+            return 1;
+        }
+    } else if (op_node->parent) {
+        /* inner operation (notif/action) */
+        if (abs_path) {
+            return 1;
+        } else {
+            /* compare depth of both nodes */
+            for (dep1 = 0, node = op_node; node->parent; node = node->parent);
+            for (dep2 = 0, node = first_node; node->parent; node = node->parent);
+            if ((dep2 > dep1) || ((dep2 == dep1) && (op_node != first_node))) {
+                return 1;
+            }
+        }
+    } else {
+        /* top-level operation (notif/rpc) */
+        if (op_node != first_node) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+/**
  * @brief Validate the leafref path.
  * @param[in] ctx Compile context
  * @param[in] startnode Path context node (where the leafref path begins/is placed).
@@ -2589,7 +2638,7 @@ cleanup:
 static LY_ERR
 lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *startnode, struct lysc_type_leafref *leafref)
 {
-    const struct lysc_node *node = NULL, *parent = NULL;
+    const struct lysc_node *node = NULL, *parent = NULL, *tmp_parent;
     const struct lys_module *mod;
     struct lysc_type *type;
     const char *id, *prefix, *name;
@@ -2603,7 +2652,7 @@ lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *startnode, 
     assert(leafref);
 
     ctx->path[0] = '\0';
-    lysc_path(startnode, LY_PATH_LOG, ctx->path, LYSC_CTX_BUFSIZE);
+    lysc_path(startnode, LYSC_PATH_LOG, ctx->path, LYSC_CTX_BUFSIZE);
     ctx->path_len = strlen(ctx->path);
 
     iter = 0;
@@ -2645,6 +2694,16 @@ lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *startnode, 
             return LY_EVALID;
         }
         parent = node;
+
+        if (!iter) {
+            /* find module whose data will actually contain this leafref */
+            for (tmp_parent = parent; tmp_parent->parent; tmp_parent = tmp_parent->parent);
+
+            /* set external dependency flag, we can decide based on the first found node */
+            if (lys_compile_leafref_has_dep_flag(startnode, tmp_parent->module, node, (parent_times == -1 ? 1 : 0))) {
+                startnode->flags |= LYS_LEAFREF_DEP;
+            }
+        }
 
         if (has_predicate) {
             /* we have predicate, so the current result must be list */
@@ -6995,7 +7054,7 @@ lys_compile(struct lys_module *mod, int options)
         if (err) {
             ly_err_print(err);
             ctx.path[0] = '\0';
-            lysc_path(r->context_node, LY_PATH_LOG, ctx.path, LYSC_CTX_BUFSIZE);
+            lysc_path(r->context_node, LYSC_PATH_LOG, ctx.path, LYSC_CTX_BUFSIZE);
             LOGVAL(ctx.ctx, LY_VLOG_STR, ctx.path, LYVE_SEMANTICS,
                    "Invalid default - value does not fit the type (%s).", err->msg);
             ly_err_free(err);
