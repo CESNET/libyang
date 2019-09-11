@@ -1952,7 +1952,7 @@ LY_ERR lys_set_implemented(struct lys_module *mod);
  * @return - NULL if enabled,
  * - pointer to the node with the unsatisfied (disabling) if-feature expression.
  */
-const struct lysc_iffeature *lys_is_disabled(const struct lysc_node *node, int recursive);
+const struct lysc_iffeature *lysc_node_is_disabled(const struct lysc_node *node, int recursive);
 
 /**
  * @brief Check type restrictions applicable to the particular leaf/leaf-list with the given string @p value.

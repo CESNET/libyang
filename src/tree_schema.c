@@ -176,7 +176,7 @@ check:
 
     if (!(options & LYS_GETNEXT_NOSTATECHECK)) {
         /* check if the node is disabled by if-feature */
-        if (lys_is_disabled(next, 0)) {
+        if (lysc_node_is_disabled(next, 0)) {
             next = next->next;
             goto repeat;
         }
@@ -559,7 +559,7 @@ lys_feature_value(const struct lys_module *module, const char *feature)
 }
 
 API const struct lysc_iffeature *
-lys_is_disabled(const struct lysc_node *node, int recursive)
+lysc_node_is_disabled(const struct lysc_node *node, int recursive)
 {
     unsigned int u;
 
