@@ -686,6 +686,7 @@ LY_ERR lyd_value_compare(const struct lyd_node_term *node, const char *value, si
  *
  * @param[in] node1 The first node to compare.
  * @param[in] node2 The second node to compare.
+ * @param[in] options Various @ref datacompareoptions.
  * @return LY_SUCCESS if the nodes are equivalent.
  * @return LY_ENOT if the nodes are not equivalent.
  */
