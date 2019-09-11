@@ -535,46 +535,6 @@ ly_ctx_reset_latests(struct ly_ctx *ctx)
     }
 }
 
-LY_ERR
-ly_ctx_module_implement_internal(struct ly_ctx *ctx, struct lys_module *mod, uint8_t value)
-{
-    struct lys_module *m;
-
-    LY_CHECK_ARG_RET(ctx, mod, LY_EINVAL);
-
-    if (mod->implemented) {
-        return LY_SUCCESS;
-    }
-
-    /* we have module from the current context */
-    m = ly_ctx_get_module_implemented(ctx, mod->name);
-    if (m) {
-        if (m != mod) {
-            /* check collision with other implemented revision */
-            LOGERR(ctx, LY_EDENIED, "Module \"%s\" is present in the context in other implemented revision (%s).",
-                   mod->name, mod->revision ? mod->revision : "module without revision");
-            return LY_EDENIED;
-        } else {
-            /* mod is already implemented */
-            return LY_SUCCESS;
-        }
-    }
-
-    /* mark the module implemented, check for collision was already done */
-    mod->implemented = value;
-
-    /* compile the schema */
-    LY_CHECK_RET(lys_compile(mod, LYSC_OPT_INTERNAL));
-
-    return LY_SUCCESS;
-}
-
-API LY_ERR
-ly_ctx_module_implement(struct ly_ctx *ctx, struct lys_module *mod)
-{
-    return ly_ctx_module_implement_internal(ctx, mod, 1);
-}
-
 API void
 ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lysc_node *node, void *priv))
 {

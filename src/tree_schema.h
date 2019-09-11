@@ -1933,6 +1933,16 @@ const struct lysc_node *lys_child(const struct lysc_node *parent, const struct l
                                   const char *name, size_t name_len, uint16_t nodetype, int options);
 
 /**
+ * @brief Make the specific module implemented.
+ *
+ * @param[in] mod Module to make implemented. It is not an error
+ * to provide already implemented module, it just does nothing.
+ * @return LY_SUCCESS or LY_EDENIED in case the context contains some other revision of the
+ * same module which is already implemented.
+ */
+LY_ERR lys_set_implemented(struct lys_module *mod);
+
+/**
  * @brief Check if the schema node is disabled in the schema tree, i.e. there is any disabled if-feature statement
  * affecting the node.
  *

@@ -2459,7 +2459,7 @@ test_uses(void **state)
 
     /* make the imported module implemented and enable the feature */
     assert_non_null(mod = ly_ctx_get_module(ctx, "grp", NULL));
-    assert_int_equal(LY_SUCCESS, ly_ctx_module_implement(ctx, mod));
+    assert_int_equal(LY_SUCCESS, lys_set_implemented(mod));
     assert_int_equal(LY_SUCCESS, lys_feature_enable(mod, "f"));
     assert_string_equal("f", child->iffeatures[0].features[0]->name);
     assert_int_equal(1, lysc_iffeature_value(&child->iffeatures[0]));

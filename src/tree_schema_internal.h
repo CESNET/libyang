@@ -854,14 +854,12 @@ LY_ERR yin_parse_submodule(struct yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, 
 /**
  * @brief Make the specific module implemented, use the provided value as flag.
  *
- * @param[in] ctx libyang context to change.
- * @param[in] mod Module from the given context to make implemented. It is not an error
- * to provide already implemented module, it just does nothing.
+ * @param[in] mod Module to make implemented. It is not an error to provide already implemented module, it just does nothing.
  * @param[in] implemented Flag value for the ::lys_module#implemented item.
  * @return LY_SUCCESS or LY_EDENIED in case the context contains some other revision of the
  * same module which is already implemented.
  */
-LY_ERR ly_ctx_module_implement_internal(struct ly_ctx *ctx, struct lys_module *mod, uint8_t implemented);
+LY_ERR lys_set_implemented_internal(struct lys_module *mod, uint8_t implemented);
 
 /**
  * @brief match yang keyword

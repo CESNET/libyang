@@ -2299,7 +2299,7 @@ lys_compile_leafref_predicate_validate(struct lysc_ctx *ctx, const char **predic
             }
             if (!mod->implemented) {
                 /* make the module implemented */
-                ly_ctx_module_implement_internal(ctx->ctx, (struct lys_module*)mod, 2);
+                lys_set_implemented_internal((struct lys_module*)mod, 2);
             }
         } else {
             mod = start_node->module;
@@ -2425,7 +2425,7 @@ error_current_function_invocation:
             }
             if (!mod->implemented) {
                 /* make the module implemented */
-                ly_ctx_module_implement_internal(ctx->ctx, (struct lys_module*)mod, 2);
+                lys_set_implemented_internal((struct lys_module*)mod, 2);
             }
 
             dst_node = lys_child(dst_node, mod, dst, dst_len, 0, LYS_GETNEXT_NOSTATECHECK);
@@ -2635,7 +2635,7 @@ lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *startnode, 
         }
         if (!mod->implemented) {
             /* make the module implemented */
-            ly_ctx_module_implement_internal(ctx->ctx, (struct lys_module*)mod, 2);
+            lys_set_implemented_internal((struct lys_module*)mod, 2);
         }
 
         node = lys_child(parent, mod, name, name_len, 0, LYS_GETNEXT_NOSTATECHECK);

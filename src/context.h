@@ -319,17 +319,6 @@ struct lys_module *ly_ctx_get_module_implemented_ns(const struct ly_ctx *ctx, co
 void ly_ctx_reset_latests(struct ly_ctx *ctx);
 
 /**
- * @brief Make the specific module implemented.
- *
- * @param[in] ctx libyang context to change.
- * @param[in] mod Module from the given context to make implemented. It is not an error
- * to provide already implemented module, it just does nothing.
- * @return LY_SUCCESS or LY_EDENIED in case the context contains some other revision of the
- * same module which is already implemented.
- */
-LY_ERR ly_ctx_module_implement(struct ly_ctx *ctx, struct lys_module *mod);
-
-/**
  * @brief Try to find the model in the searchpaths of \p ctx and load it into it. If custom missing
  * module callback is set, it is used instead.
  *

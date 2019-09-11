@@ -589,6 +589,46 @@ lys_is_disabled(const struct lysc_node *node, int recursive)
     return NULL;
 }
 
+LY_ERR
+lys_set_implemented_internal(struct lys_module *mod, uint8_t value)
+{
+    struct lys_module *m;
+
+    LY_CHECK_ARG_RET(NULL, mod, LY_EINVAL);
+
+    if (mod->implemented) {
+        return LY_SUCCESS;
+    }
+
+    /* we have module from the current context */
+    m = ly_ctx_get_module_implemented(mod->ctx, mod->name);
+    if (m) {
+        if (m != mod) {
+            /* check collision with other implemented revision */
+            LOGERR(mod->ctx, LY_EDENIED, "Module \"%s\" is present in the context in other implemented revision (%s).",
+                   mod->name, mod->revision ? mod->revision : "module without revision");
+            return LY_EDENIED;
+        } else {
+            /* mod is already implemented */
+            return LY_SUCCESS;
+        }
+    }
+
+    /* mark the module implemented, check for collision was already done */
+    mod->implemented = value;
+
+    /* compile the schema */
+    LY_CHECK_RET(lys_compile(mod, LYSC_OPT_INTERNAL));
+
+    return LY_SUCCESS;
+}
+
+API LY_ERR
+lys_set_implemented(struct lys_module *mod)
+{
+    return lys_set_implemented_internal(mod, 1);
+}
+
 struct lysp_submodule *
 lys_parse_mem_submodule(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, struct lys_parser_ctx *main_ctx,
                         LY_ERR (*custom_check)(struct ly_ctx*, struct lysp_module*, struct lysp_submodule*, void*), void *check_data)
