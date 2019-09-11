@@ -512,8 +512,6 @@ ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *s
     return NULL;
 }
 
-/* TODO ly_ctx_load_module() via lysp_load_module() */
-
 API void
 ly_ctx_reset_latests(struct ly_ctx *ctx)
 {

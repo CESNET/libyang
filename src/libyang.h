@@ -74,7 +74,7 @@ extern "C" {
  */
 
 /**
- * @page howto How To ...
+ * @page howto libyang API Overview
  *
  * - @subpage howtocontext
  * - @subpage howtoschemas
