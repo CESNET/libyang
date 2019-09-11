@@ -345,6 +345,22 @@ cleanup:
     return ret;
 }
 
+API const char *
+lyd_value2str(const struct lyd_node_term *node, int *dynamic)
+{
+    LY_CHECK_ARG_RET(node ? node->schema->module->ctx : NULL, node, dynamic, NULL);
+
+    return node->value.realtype->plugin->print(&node->value, LYD_JSON, json_print_get_prefix, NULL, dynamic);
+}
+
+API const char *
+lyd_attr2str(const struct lyd_attr *attr, int *dynamic)
+{
+    LY_CHECK_ARG_RET(attr ? attr->parent->schema->module->ctx : NULL, attr, dynamic, NULL);
+
+    return attr->value.realtype->plugin->print(&attr->value, LYD_JSON, json_print_get_prefix, NULL, dynamic);
+}
+
 API struct lyd_node *
 lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options, const struct lyd_node **trees)
 {
@@ -902,4 +918,234 @@ error:
         lyd_free_withsiblings(first);
     }
     return NULL;
+}
+
+static LY_ERR
+lyd_path_str_enlarge(char **buffer, size_t *buflen, size_t reqlen, int is_static)
+{
+    if (reqlen > *buflen) {
+        if (is_static) {
+            return LY_EINCOMPLETE;
+        }
+
+        *buffer = ly_realloc(*buffer, reqlen * sizeof **buffer);
+        if (!*buffer) {
+            return LY_EMEM;
+        }
+
+        *buflen = reqlen;
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Append all list key predicates to path.
+ *
+ * @param[in] node Node with keys to print.
+ * @param[in,out] buffer Buffer to print to.
+ * @param[in,out] buflen Current buffer length.
+ * @param[in,out] bufused Current number of characters used in @p buffer.
+ * @param[in] is_static Whether buffer is static or can be reallocated.
+ * @return LY_ERR
+ */
+static LY_ERR
+lyd_path_list_predicate(const struct lyd_node *node, char **buffer, size_t *buflen, size_t *bufused, int is_static)
+{
+    const struct lyd_node *key;
+    int dynamic = 0;
+    size_t len;
+    const char *val;
+    char quot;
+    LY_ERR rc;
+
+    for (key = lyd_node_children(node); key && (key->flags & LYS_KEY); key = key->next) {
+        val = lyd_value2str((struct lyd_node_term *)key, &dynamic);
+        len = 1 + strlen(key->schema->name) + 2 + strlen(val) + 2;
+        rc = lyd_path_str_enlarge(buffer, buflen, *bufused + len, is_static);
+        if (rc != LY_SUCCESS) {
+            if (dynamic) {
+                free((char *)val);
+            }
+            return rc;
+        }
+
+        quot = '\'';
+        if (strchr(val, '\'')) {
+            quot = '"';
+        }
+        *bufused += sprintf(*buffer + *bufused, "[%s=%c%s%c]", key->schema->name, quot, val, quot);
+
+        if (dynamic) {
+            free((char *)val);
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
+/**
+ * @brief Append leaf-list value predicate to path.
+ *
+ * @param[in] node Node to print.
+ * @param[in,out] buffer Buffer to print to.
+ * @param[in,out] buflen Current buffer length.
+ * @param[in,out] bufused Current number of characters used in @p buffer.
+ * @param[in] is_static Whether buffer is static or can be reallocated.
+ * @return LY_ERR
+ */
+static LY_ERR
+lyd_path_leaflist_predicate(const struct lyd_node *node, char **buffer, size_t *buflen, size_t *bufused, int is_static)
+{
+    int dynamic = 0;
+    size_t len;
+    const char *val;
+    char quot;
+    LY_ERR rc;
+
+    val = lyd_value2str((struct lyd_node_term *)node, &dynamic);
+    len = 4 + strlen(val) + 2;
+    rc = lyd_path_str_enlarge(buffer, buflen, *bufused + len, is_static);
+    if (rc != LY_SUCCESS) {
+        goto cleanup;
+    }
+
+    quot = '\'';
+    if (strchr(val, '\'')) {
+        quot = '"';
+    }
+    *bufused += sprintf(*buffer + *bufused, "[.=%c%s%c]", quot, val, quot);
+
+cleanup:
+    if (dynamic) {
+        free((char *)val);
+    }
+    return rc;
+}
+
+/**
+ * @brief Append node position (relative to its other instances) predicate to path.
+ *
+ * @param[in] node Node to print.
+ * @param[in,out] buffer Buffer to print to.
+ * @param[in,out] buflen Current buffer length.
+ * @param[in,out] bufused Current number of characters used in @p buffer.
+ * @param[in] is_static Whether buffer is static or can be reallocated.
+ * @return LY_ERR
+ */
+static LY_ERR
+lyd_path_position_predicate(const struct lyd_node *node, char **buffer, size_t *buflen, size_t *bufused, int is_static)
+{
+    const struct lyd_node *first, *iter;
+    size_t len;
+    int pos;
+    char *val = NULL;
+    LY_ERR rc;
+
+    if (node->parent) {
+        first = node->parent->child;
+    } else {
+        for (first = node; node->prev->next; node = node->prev);
+    }
+    pos = 1;
+    for (iter = first; iter != node; iter = iter->next) {
+        if (iter->schema == node->schema) {
+            ++pos;
+        }
+    }
+    if (asprintf(&val, "%d", pos) == -1) {
+        return LY_EMEM;
+    }
+
+    len = 1 + strlen(val) + 1;
+    rc = lyd_path_str_enlarge(buffer, buflen, *bufused + len, is_static);
+    if (rc != LY_SUCCESS) {
+        goto cleanup;
+    }
+
+    *bufused += sprintf(*buffer + *bufused, "[%s]", val);
+
+cleanup:
+    free(val);
+    return rc;
+}
+
+API char *
+lyd_path(const struct lyd_node *node, LYD_PATH_TYPE pathtype, char *buffer, size_t buflen)
+{
+    int is_static = 0, i, j, depth;
+    size_t bufused = 1 /* ending zero */, len;
+    const struct lyd_node *iter;
+    const struct lys_module *mod;
+    LY_ERR rc;
+
+    LY_CHECK_ARG_RET(NULL, node, NULL);
+    if (buffer) {
+        LY_CHECK_ARG_RET(node->schema->module->ctx, buflen > 1, NULL);
+        is_static = 1;
+    }
+
+    switch (pathtype) {
+    case LYSC_PATH_LOG:
+        depth = 0;
+        for (iter = node; iter->parent; iter = (const struct lyd_node *)iter->parent) {
+            ++depth;
+        }
+
+        i = depth + 1;
+        goto iter_print;
+        while (i) {
+            /* find the right node */
+            for (iter = node, j = 0; j < i; iter = (const struct lyd_node *)iter->parent, ++j);
+iter_print:
+            /* print prefix and name */
+            mod = NULL;
+            if (!iter->parent || (iter->schema->module != iter->parent->schema->module)) {
+                mod = iter->schema->module;
+            }
+
+            /* realloc string */
+            len = 1 + (mod ? strlen(mod->name) + 1 : 0) + strlen(iter->schema->name);
+            rc = lyd_path_str_enlarge(&buffer, &buflen, bufused + len, is_static);
+            if (rc != LY_SUCCESS) {
+                break;
+            }
+
+            /* print next node */
+            bufused += sprintf(buffer + bufused, "/%s%s%s", mod ? mod->name : "", mod ? ":" : "", iter->schema->name);
+
+            switch (iter->schema->nodetype) {
+            case LYS_LIST:
+                if (iter->schema->flags & LYS_KEYLESS) {
+                    /* print its position */
+                    rc = lyd_path_position_predicate(iter, &buffer, &buflen, &bufused, is_static);
+                } else {
+                    /* print all list keys in predicates */
+                    rc = lyd_path_list_predicate(iter, &buffer, &buflen, &bufused, is_static);
+                }
+                break;
+            case LYS_LEAFLIST:
+                if (iter->schema->flags & LYS_CONFIG_W) {
+                    /* print leaf-list value */
+                    rc = lyd_path_leaflist_predicate(iter, &buffer, &buflen, &bufused, is_static);
+                } else {
+                    /* print its position */
+                    rc = lyd_path_position_predicate(iter, &buffer, &buflen, &bufused, is_static);
+                }
+                break;
+            default:
+                /* nothing to print more */
+                rc = LY_SUCCESS;
+                break;
+            }
+            if (rc != LY_SUCCESS) {
+                break;
+            }
+
+            --i;
+        }
+        break;
+    }
+
+    return buffer;
 }
