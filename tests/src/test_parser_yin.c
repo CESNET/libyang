@@ -373,7 +373,7 @@ test_yin_parse_element_generic(void **state)
 
     const char *data = "<myext:elem attr=\"value\" xmlns:myext=\"urn:example:extensions\">text_value</myext:elem>";
     lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    ret = yin_parse_element_generic(st->yin_ctx, name, name_len, prefix, prefix_len, &data, &exts.child);
+    ret = yin_parse_element_generic(st->yin_ctx, name, name_len, prefix, prefix_len, LY_STMT_EXTENSION_INSTANCE, &data, &exts.child);
     assert_int_equal(ret, LY_SUCCESS);
     assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
     assert_string_equal(exts.child->stmt, "myext:elem");
@@ -386,7 +386,7 @@ test_yin_parse_element_generic(void **state)
 
     data = "<myext:elem xmlns:myext=\"urn:example:extensions\"></myext:elem>";
     lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    ret = yin_parse_element_generic(st->yin_ctx, name, name_len, prefix, prefix_len, &data, &exts.child);
+    ret = yin_parse_element_generic(st->yin_ctx, name, name_len, prefix, prefix_len, LY_STMT_EXTENSION_INSTANCE, &data, &exts.child);
     assert_int_equal(ret, LY_SUCCESS);
     assert_string_equal(exts.child->stmt, "myext:elem");
     assert_null(exts.child->child);
@@ -4365,7 +4365,7 @@ main(void)
         cmocka_unit_test_setup_teardown(test_yin_match_keyword, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_yin_parse_element_generic, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_yin_parse_extension_instance, setup_f, teardown_f),
-        // cmocka_unit_test_setup_teardown(test_yin_parse_content, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_yin_parse_content, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_validate_value, setup_f, teardown_f),
 
         cmocka_unit_test(test_yin_match_argument_name),

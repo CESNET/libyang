@@ -252,15 +252,16 @@ LY_ERR yin_parse_extension_instance(struct yin_parser_ctx *ctx, struct yin_arg_r
  * @param[in,out] ctx Yin parser context for logging and to store current state.
  * @param[in] name Name of element.
  * @param[in] name_len Length of elements Name.
- * @param[in] name prefix of element.
- * @param[in] name_len Length of elements prefix.
+ * @param[in] prefix Prefix of element.
+ * @param[in] prefix_len Length of elements prefix.
+ * @param[in] parent Identification of parent element.
  * @param[in,out] data Data to read from, always moved to currently handled character.
  * @param[out] element Where the element structure should be stored.
  *
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_element_generic(struct yin_parser_ctx *ctx, const char *name, size_t name_len, const char *prefix, size_t prefix_len, const char **data,
-                                 struct lysp_stmt **element);
+LY_ERR yin_parse_element_generic(struct yin_parser_ctx *ctx, const char *name, size_t name_len, const char *prefix, size_t prefix_len, enum ly_stmt parent, 
+                                 const char **data, struct lysp_stmt **element);
 
 /**
  * @brief Parse module element.
