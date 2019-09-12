@@ -742,11 +742,13 @@ static void
 set_init(struct lyxp_set *new, struct lyxp_set *set)
 {
     memset(new, 0, sizeof *new);
-    new->ctx = set->ctx;
-    new->ctx_node = set->ctx_node;
-    new->local_mod = set->local_mod;
-    new->trees = set->trees;
-    new->format = set->format;
+    if (set) {
+        new->ctx = set->ctx;
+        new->ctx_node = set->ctx_node;
+        new->local_mod = set->local_mod;
+        new->trees = set->trees;
+        new->format = set->format;
+    }
 }
 
 /**
@@ -4086,6 +4088,8 @@ xpath_name(struct lyxp_set **args, uint16_t arg_count, struct lyxp_set *set, int
         case LYD_JSON:
             rc = asprintf(&str, "%s:%s", mod->name, name);
             break;
+        default:
+            LOGINT_RET(set->ctx);
         }
         LY_CHECK_ERR_RET(rc == -1, LOGMEM(set->ctx), LY_EMEM);
         set_fill_string(set, str, strlen(str));
@@ -5153,6 +5157,9 @@ moveto_resolve_model(const char *prefix, uint16_t len, LYD_FORMAT format, struct
         mod = ly_ctx_get_module(ctx, str, NULL);
         free(str);
         break;
+    default:
+        LOGINT(ctx);
+        return NULL;
     }
 
     if (!mod->implemented) {
@@ -6898,7 +6905,7 @@ eval_node_test(struct lyxp_expr *exp, uint16_t *exp_idx, int attr_axis, int all_
         break;
 
     default:
-        LOGINT_RET(set->ctx);
+        LOGINT_RET(set ? set->ctx : NULL);
     }
 
     return LY_SUCCESS;
@@ -7158,7 +7165,7 @@ step:
             break;
 
         default:
-            LOGINT_RET(set->ctx);
+            LOGINT_RET(set ? set->ctx : NULL);
         }
     } while ((exp->used > *exp_idx) && (exp->tokens[*exp_idx] == LYXP_TOKEN_OPERATOR_PATH));
 
@@ -7585,7 +7592,7 @@ eval_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyxp_set *set, i
             if (set) {
                 set_scnode_clear_ctx(set);
             }
-            rc = eval_number(set->ctx, exp, exp_idx, NULL);
+            rc = eval_number(NULL, exp, exp_idx, NULL);
         } else {
             rc = eval_number(set->ctx, exp, exp_idx, set);
         }
