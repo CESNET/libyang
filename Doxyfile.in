@@ -785,6 +785,7 @@ INPUT                  = ./src/libyang.h \
 			 ./src/context.h \
 			 ./src/tree.h \
                          ./src/tree_schema.h \
+                         ./src/plugins_types.h \
                          ./src/plugins_exts.h \
                          ./src/tree_data.h \
                          ./src/log.h \

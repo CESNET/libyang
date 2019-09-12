@@ -118,6 +118,17 @@ extern "C" {
  * The lists are structures connected via a `next` pointer. Iterating over the siblings can be simply done by ::LY_LIST_FOR macro.
  */
 
+/**
+ * @page howtoplugins Plugins
+ *
+ * libyang supports several types of plugins to better support generic features of YANG that need some specific code for
+ * their specific instances in YANG schemas. This is the case of YANG types, which are derived from YANG built-in types
+ * (which are implemented by libyang), but the description of the derived type can specify some additional requirements or
+ * restriction that cannot be implemented generically and some special code is needed. The second case for libyang plugins
+ * are YANG extensions. For YANG extensions, most of the specification stays in their description (e.g. allowed substatements
+ * or place of the extension instanciation) and libyang is not able to process such a text in a generic way. In both cases,
+ * libyang provides API to provide functionality implementing the specifics of each type or extension.
+ */
 #ifdef __cplusplus
 }
 #endif

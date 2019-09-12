@@ -108,8 +108,7 @@ cmp_str(const char *refstr, const char *str, size_t str_len)
 {
 
     if (str_len) {
-        int r = strncmp(refstr, str, str_len);
-        if (!r && !refstr[str_len]) {
+        if (!strncmp(refstr, str, str_len) && !refstr[str_len]) {
             return 0;
         } else {
             return 1;
@@ -148,7 +147,7 @@ lyd_search(const struct lyd_node *first, const struct lys_module *module,
             if (snode->nodetype == LYS_LIST) {
                 /* TODO handle value as keys of the list instance */
             } else if (snode->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
-                if (cmp_str(((struct lyd_node_term*)node)->value.canonized, value, value_len)) {
+                if (cmp_str(((struct lyd_node_term*)node)->value.original, value, value_len)) {
                     continue;
                 }
             } else {

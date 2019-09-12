@@ -7048,7 +7048,7 @@ lys_compile(struct lys_module *mod, int options)
     for (u = 0; u < ctx.dflts.count; ++u) {
         struct ly_err_item *err = NULL;
         struct lysc_incomplete_dflt *r = ctx.dflts.objs[u];
-        ret = r->dflt->realtype->plugin->store(ctx.ctx, r->dflt->realtype, r->dflt->canonized, strlen(r->dflt->canonized),
+        ret = r->dflt->realtype->plugin->store(ctx.ctx, r->dflt->realtype, r->dflt->original, strlen(r->dflt->original),
                                                LY_TYPE_OPTS_SCHEMA | LY_TYPE_OPTS_STORE | LY_TYPE_OPTS_SECOND_CALL, lys_resolve_prefix,
                                                (void*)r->dflt_mod, LYD_XML, r->context_node, NULL, r->dflt, NULL, &err);
         if (err) {
