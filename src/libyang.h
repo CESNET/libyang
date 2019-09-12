@@ -83,7 +83,17 @@ extern "C" {
  * - @subpage howtoxml
  * - @subpage howtothreads
  * - @subpage howtologger
+ * - @subpage howtoplugins
  * - @subpage howtostructures
+ */
+
+/**
+ * @internal
+ * @page internals Developers' Notes
+ * @tableofcontents
+ *
+ * Following texts describes various internal subsystems and mechanism in libyang which are hidden from external users, but important
+ * for libyang developers. The texts should explain various decisions made and internal processes utilized in libyang.
  */
 
 /**
