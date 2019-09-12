@@ -66,7 +66,7 @@ char logbuf[BUFSIZE] = {0};
 int store = -1; /* negative for infinite logging, positive for limited logging */
 
 /* set to 0 to printing error messages to stderr instead of checking them in code */
-#define ENABLE_LOGGER_CHECKING 1
+#define ENABLE_LOGGER_CHECKING 0
 
 #if ENABLE_LOGGER_CHECKING
 static void
@@ -531,6 +531,42 @@ test_yin_parse_extension_instance(void **state)
     LY_ARRAY_FREE(exts);
     exts = NULL;
     args = NULL;
+    st = reset_state(state);
+
+    data = "<myext:extension-elem xmlns:myext=\"urn:example:extensions\" xmlns:yin=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+                "<yin:action name=\"act-name\" pre:prefixed=\"ignored\"/>"
+                "<yin:augment target-node=\"target\"/>"
+                "<yin:status value=\"value\"/>"
+                "<yin:include module=\"mod\"/>"
+                "<yin:input />"
+                "<yin:must condition=\"cond\"/>"
+                "<yin:namespace uri=\"uri\"/>"
+                "<yin:revision date=\"data\"/>"
+                "<yin:unique tag=\"tag\"/>"
+                "<yin:contact><text>contact-val</text></yin:contact>"
+                "<yin:error-message><value>err-msg</value></yin:error-message>"
+           "</myext:extension-elem>";
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    yin_load_attributes(st->yin_ctx, &data, &args);
+    ret = yin_parse_extension_instance(st->yin_ctx, args, &data, name, name_len, LYEXT_SUBSTMT_CONTACT, 0, &exts);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_string_equal(exts->child->arg, "act-name");
+    assert_string_equal(exts->child->next->arg, "target");
+    assert_string_equal(exts->child->next->next->arg, "value");
+    assert_string_equal(exts->child->next->next->next->arg, "mod");
+    assert_null(exts->child->next->next->next->next->arg);
+    assert_string_equal(exts->child->next->next->next->next->next->arg, "cond");
+    assert_string_equal(exts->child->next->next->next->next->next->next->arg, "uri");
+    assert_string_equal(exts->child->next->next->next->next->next->next->next->arg, "data");
+    assert_string_equal(exts->child->next->next->next->next->next->next->next->next->arg, "tag");
+    assert_string_equal(exts->child->next->next->next->next->next->next->next->next->next->arg, "contact-val");
+    assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
+    LY_ARRAY_FREE(args);
+    lysp_ext_instance_free(st->ctx, exts);
+    LY_ARRAY_FREE(exts);
+    exts = NULL;
+    args = NULL;
+    st = reset_state(state);
 
     st->finished_correctly = true;
 }
@@ -546,12 +582,12 @@ test_yin_parse_content(void **state)
                             "<myext:custom xmlns:myext=\"urn:example:extensions\">"
                                 "totally amazing extension"
                             "</myext:custom>"
-                            "<myext:extension name=\"ext\" xmlns:myext=\"urn:example:extensions\">"
+                            "<extension name=\"ext\">"
                                 "<argument name=\"argname\"></argument>"
                                 "<description><text>desc</text></description>"
                                 "<reference><text>ref</text></reference>"
                                 "<status value=\"deprecated\"></status>"
-                            "</myext:extension>"
+                            "</extension>"
                             "<text xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">wsefsdf</text>"
                             "<if-feature name=\"foo\"></if-feature>"
                             "<when condition=\"condition...\">"
@@ -613,7 +649,7 @@ test_yin_parse_content(void **state)
     assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
     /* check parsed values */
     assert_string_equal(def, "default-value");
-    assert_string_equal(exts->name, "custom");
+    assert_string_equal(exts->name, "myext:custom");
     assert_string_equal(exts->argument, "totally amazing extension");
     assert_string_equal(value, "wsefsdf");
     assert_string_equal(units, "radians");

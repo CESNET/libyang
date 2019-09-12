@@ -546,7 +546,7 @@ LY_ERR ly_strcat(char **dest, const char *format, ...);
         if (ARRAY){free((uint32_t*)(ARRAY) - 1);}
 
 /**
- * @brief insert item into linked list.
+ * @brief Insert item into linked list.
  *
  * @param[in,out] LIST Linked list to add to.
  * @param[in] NEW_ITEM New item, that will be appended to the list, must be already allocated.
@@ -564,7 +564,7 @@ LY_ERR ly_strcat(char **dest, const char *format, ...);
     }
 
 /**
- * @brief allocate and insert new item into linked list.
+ * @brief Allocate and insert new item into linked list, return in case of error.
  *
  * @param[in] CTX used for logging.
  * @param[in,out] LIST Linked list to add to.
@@ -577,7 +577,7 @@ LY_ERR ly_strcat(char **dest, const char *format, ...);
     LY_LIST_INSERT(LIST, NEW_ITEM, LINKER)
 
 /**
- * @brief allocate and insert new item into linked list.
+ * @brief Allocate and insert new item into linked list, goto specified label in case of error.
  *
  * @param[in] CTX used for logging.
  * @param[in,out] LIST Linked list to add to.

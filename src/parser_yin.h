@@ -215,7 +215,7 @@ LY_ERR yin_validate_value(struct yin_parser_ctx *ctx, enum yang_arg val_type, ch
  * @return yang_keyword values.
  */
 enum ly_stmt yin_match_keyword(struct yin_parser_ctx *ctx, const char *name, size_t name_len,
-                                    const char *prefix, size_t prefix_len, enum ly_stmt parrent);
+                               const char *prefix, size_t prefix_len, enum ly_stmt parrent);
 
 /**
  * @brief Load all attributes of element into ([sized array](@ref sizedarrays)). Caller is suposed to free the array.
@@ -260,7 +260,7 @@ LY_ERR yin_parse_extension_instance(struct yin_parser_ctx *ctx, struct yin_arg_r
  *
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_element_generic(struct yin_parser_ctx *ctx, const char *name, size_t name_len, const char *prefix, size_t prefix_len, enum ly_stmt parent, 
+LY_ERR yin_parse_element_generic(struct yin_parser_ctx *ctx, const char *name, size_t name_len, const char *prefix, size_t prefix_len, enum ly_stmt parent,
                                  const char **data, struct lysp_stmt **element);
 
 /**
