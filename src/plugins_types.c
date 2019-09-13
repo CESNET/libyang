@@ -687,7 +687,7 @@ ly_type_store_decimal64(struct ly_ctx *ctx, struct lysc_type *type, const char *
     if (options & (LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_STORE)) {
         if (options & LY_TYPE_OPTS_STORE) {
             storage->dec64 = d;
-            ly_type_store_strval(ctx, options, lydict_insert(ctx, value_len ? value : "", value_len),
+            ly_type_store_strval(ctx, options, lydict_insert(ctx, value, value_len),
                                  lydict_insert(ctx, buf, strlen(buf)), storage, canonized);
         } else {
             ly_type_store_strval(ctx, options, NULL, lydict_insert(ctx, buf, strlen(buf)), storage, canonized);
@@ -1153,7 +1153,7 @@ ly_type_store_boolean(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), const 
         /* NOTE: despite the pointer is used in storage twice (original and canonical_cache), it is stored in dictionary
          * just once. This works even without storage - the string is returned as canonized. In case both options are used,
          * ly_type_store_strval() increases reference count in dictionary for canonized. */
-        const char *str = lydict_insert(ctx, value_len ? value : "", value_len);
+        const char *str = lydict_insert(ctx, value, value_len);
         if (options & LY_TYPE_OPTS_STORE) {
             storage->boolean = i;
         }
