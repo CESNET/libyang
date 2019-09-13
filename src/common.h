@@ -592,9 +592,9 @@ LY_ERR ly_strcat(char **dest, const char *format, ...);
  * @param[out] NEW_ITEM New item that is appended to the list.
  * @param[in] LINKER name of structure member that is used to connect items together.
  */
-#define LY_LIST_NEW_RET(CTX, LIST, NEW_ITEM, LINKER) \
+#define LY_LIST_NEW_RET(CTX, LIST, NEW_ITEM, LINKER, RETVAL) \
     NEW_ITEM = calloc(1, sizeof *NEW_ITEM); \
-    LY_CHECK_ERR_RET(!(NEW_ITEM), LOGMEM(CTX), LY_EMEM); \
+    LY_CHECK_ERR_RET(!(NEW_ITEM), LOGMEM(CTX), RETVAL); \
     LY_LIST_INSERT(LIST, NEW_ITEM, LINKER)
 
 /**

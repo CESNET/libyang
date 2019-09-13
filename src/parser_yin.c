@@ -1317,7 +1317,7 @@ yin_parse_any(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const ch
     struct lysp_node_anydata *any;
 
     /* create new sibling */
-    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->nodes, any, next);
+    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->nodes, any, next, LY_EMEM);
     any->nodetype = (any_kw == LY_STMT_ANYDATA) ? LYS_ANYDATA : LYS_ANYXML;
     any->parent = node_meta->parent;
 
@@ -1355,7 +1355,7 @@ yin_parse_leaf(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const c
     struct lysp_node_leaf *leaf;
 
     /* create structure new leaf */
-    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->nodes, leaf, next);
+    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->nodes, leaf, next, LY_EMEM);
     leaf->nodetype = LYS_LEAF;
     leaf->parent = node_meta->parent;
 
@@ -1396,7 +1396,7 @@ yin_parse_leaflist(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, con
 {
     struct lysp_node_leaflist *llist;
 
-    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->nodes, llist, next);
+    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->nodes, llist, next, LY_EMEM);
 
     llist->nodetype = LYS_LEAFLIST;
     llist->parent = node_meta->parent;
@@ -1534,7 +1534,7 @@ yin_parse_uses(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const c
     struct lysp_node_uses *uses;
 
     /* create new uses */
-    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->nodes, uses, next);
+    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->nodes, uses, next, LY_EMEM);
     uses->nodetype = LYS_USES;
     uses->parent = node_meta->parent;
 
@@ -2052,7 +2052,7 @@ yin_parse_list(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const c
     LY_ERR ret = LY_SUCCESS;
     struct yin_subelement *subelems = NULL;
 
-    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->nodes, list, next);
+    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->nodes, list, next, LY_EMEM);
     list->nodetype = LYS_LIST;
     list->parent = node_meta->parent;
 
@@ -2234,7 +2234,7 @@ yin_parse_container(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, co
     struct yin_subelement *subelems = NULL;
 
     /* create new container */
-    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->nodes, cont, next);
+    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->nodes, cont, next, LY_EMEM);
     cont->nodetype = LYS_CONTAINER;
     cont->parent = node_meta->parent;
 
@@ -2293,7 +2293,7 @@ yin_parse_case(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const c
     struct yin_subelement *subelems = NULL;;
 
     /* create new case */
-    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->nodes, cas, next);
+    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->nodes, cas, next, LY_EMEM);
     cas->nodetype = LYS_CASE;
     cas->parent = node_meta->parent;
 
@@ -2342,7 +2342,7 @@ yin_parse_choice(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const
     struct lysp_node_choice *choice;
 
     /* create new choice */
-    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->nodes, choice, next);
+    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->nodes, choice, next, LY_EMEM);
 
     choice->nodetype = LYS_CHOICE;
     choice->parent = node_meta->parent;
