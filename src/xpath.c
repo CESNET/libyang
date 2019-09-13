@@ -7202,7 +7202,7 @@ eval_absolute_location_path(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyx
                print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
         ++(*exp_idx);
 
-        if (exp_check_token(set->ctx, exp, *exp_idx, LYXP_TOKEN_NONE, 0)) {
+        if (exp_check_token(set ? set->ctx : NULL, exp, *exp_idx, LYXP_TOKEN_NONE, 0)) {
             return LY_SUCCESS;
         }
         switch (exp->tokens[*exp_idx]) {
