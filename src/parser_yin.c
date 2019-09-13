@@ -2846,6 +2846,19 @@ yin_check_relative_order(struct yin_parser_ctx *ctx, enum ly_stmt kw, enum ly_st
     return LY_SUCCESS;
 }
 
+char *
+name2nsname(struct yin_parser_ctx *ctx, const char *name, size_t name_len, const char *prefix, size_t prefix_len)
+{
+    const struct lyxml_ns *ns = lyxml_ns_get(&ctx->xml_ctx, prefix, prefix_len);
+    size_t len = strlen(ns->uri) + name_len + 1;
+
+    char *temp = malloc(sizeof(*temp) * len);
+    strcpy(temp, ns->uri);
+    strncat(temp, name, name_len);
+    
+    return lydict_insert_zc(ctx->xml_ctx.ctx, temp);
+}
+
 LY_ERR
 yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_info, size_t subelem_info_size,
                   const char **data, enum ly_stmt current_element, const char **text_content, struct lysp_ext_instance **exts)
