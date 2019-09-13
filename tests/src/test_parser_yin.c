@@ -542,8 +542,8 @@ test_yin_parse_extension_instance(void **state)
                 "<yin:namespace uri=\"uri\"/>"
                 "<yin:revision date=\"data\"/>"
                 "<yin:unique tag=\"tag\"/>"
-                "<yin:contact><text>contact-val</text></yin:contact>"
-                "<yin:error-message><value>err-msg</value></yin:error-message>"
+                "<yin:description><yin:text>contact-val</yin:text></yin:description>"
+                "<yin:error-message><yin:value>err-msg</yin:value></yin:error-message>"
            "</myext:extension-elem>";
     lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->yin_ctx, &data, &args);
@@ -4229,6 +4229,37 @@ test_yin_parse_module(void **state)
     const char *data;
     struct lys_module *mod;
     struct yin_parser_ctx *yin_ctx = NULL;
+
+    mod = calloc(1, sizeof *mod);
+    mod->ctx = st->ctx;
+    data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:md=\"urn:ietf:params:xml:ns:yang:ietf-yang-metadata\" name=\"a\"> \n"
+           "<yang-version value=\"1.1\"/>\n"
+           "<namespace uri=\"urn:tests:extensions:metadata:a\"/>\n"
+           "<prefix value=\"a\"/>\n"
+           "<import module=\"ietf-yang-metadata\">\n"
+                "<prefix value=\"md\"/>\n"
+           "</import>\n"
+           "<feature name=\"f\"/>\n"
+           "<md:annotation name=\"x\">\n"
+                "<description>\n"
+                "<text>test</text>\n"
+                "</description>\n"
+                "<reference>\n"
+                "<text>test</text>\n"
+                "</reference>\n"
+                "<if-feature name=\"f\"/>\n"
+                "<status value=\"current\"/>\n"
+                "<type name=\"uint8\"/>\n"
+                "<units name=\"meters\"/>\n"
+           "</md:annotation>\n"
+           "</module>\n";
+    assert_int_equal(yin_parse_module(&yin_ctx, data, mod), LY_SUCCESS);
+    assert_null(mod->parsed->exts->child->next->child);
+    assert_string_equal(mod->parsed->exts->child->next->arg, "test");
+    lys_module_free(mod, NULL);
+    yin_parser_ctx_free(yin_ctx);
+    mod = NULL;
+    yin_ctx = NULL;
 
     mod = calloc(1, sizeof *mod);
     mod->ctx = st->ctx;

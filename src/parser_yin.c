@@ -3257,7 +3257,7 @@ yin_parse_extension_instance(struct yin_parser_ctx *ctx, struct yin_arg_record *
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_ext_instance_arg(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data, enum ly_stmt elem_type,
+yin_parse_extension_instance_arg(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data, enum ly_stmt elem_type,
                            const char **arg)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -3363,8 +3363,8 @@ yin_parse_ext_instance_arg(struct yin_parser_ctx *ctx, struct yin_arg_record *at
                         LY_EVALID);
         LY_CHECK_RET(lyxml_get_element(&ctx->xml_ctx, data, &prefix, &prefix_len, &name, &name_len));
         child = yin_match_keyword(ctx, name, name_len, prefix, prefix_len, elem_type);
-        if ((elem_type == LY_STMT_ERROR_MESSAGE && child == LY_STMT_ARG_VALUE) ||
-            (elem_type != LY_STMT_ERROR_MESSAGE && child == LY_STMT_ARG_TEXT)) {
+        if ((elem_type == LY_STMT_ERROR_MESSAGE && child != LY_STMT_ARG_VALUE) ||
+            (elem_type != LY_STMT_ERROR_MESSAGE && child != LY_STMT_ARG_TEXT)) {
             LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_UNEXP_SUBELEM, name_len, name, ly_stmt2str(elem_type));
             return LY_EVALID;
         }
@@ -3420,7 +3420,7 @@ yin_parse_element_generic(struct yin_parser_ctx *ctx, const char *name, size_t n
         goto cleanup;
     } else if ((*element)->kw != LY_STMT_EXTENSION_INSTANCE) {
         /* element is known yang keyword, which means argument can be parsed correctly. */
-        ret = yin_parse_ext_instance_arg(ctx, attrs, data, (*element)->kw, &(*element)->arg);
+        ret = yin_parse_extension_instance_arg(ctx, attrs, data, (*element)->kw, &(*element)->arg);
         LY_CHECK_GOTO(ret, cleanup);
     } else {
         /* load attributes in generic way, save all attributes in linked list */
