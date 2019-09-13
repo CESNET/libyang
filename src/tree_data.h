@@ -105,6 +105,11 @@ extern "C" {
     }
 
 /**
+ * @brief Macro to get context from a data tree node.
+ */
+#define LYD_NODE_CTX(node) ((node)->schema->module->ctx)
+
+/**
  * @brief Data input/output formats supported by libyang [parser](@ref howtodataparsers) and
  * [printer](@ref howtodataprinters) functions.
  */
@@ -118,7 +123,7 @@ typedef enum {
 } LYD_FORMAT;
 
 /**
- * @brief List of possible value types stored in ::lyd_node_anydata.
+ * @brief List of possible value types stored in ::lyd_node_any.
  */
 typedef enum {
     LYD_ANYDATA_DATATREE,            /**< Value is a pointer to lyd_node structure (first sibling). When provided as input parameter, the pointer
@@ -140,14 +145,9 @@ typedef enum {
  * @brief YANG data representation
  */
 struct lyd_value {
-    const char *canonized;          /**< Canonical string representation of value (for comparison, printing,...), canonized according to the
-                                         rules implemented in the type's canonization callback (if any). Note that not all the types
-                                         have a canonical representation, so this value can be even NULL (identityref or instance-identifiers
-                                         are built-in examples of such a case). The lyd_value::realtype's print callback provides possibility
-                                         to get correct string representation of the value for the specific data format. */
+    const char *original;           /**< Original string representation of the value. It is never NULL, but (canonical) string representation
+                                         of the value should be always obtained via the type's printer callback (lyd_value::realtype::plugin::print). */
     union {
-        const char *string;         /**< original, non-canonized string value. Useful for example for unions where the type (and therefore
-                                         the canonization rules) can change by changing value (e.g. leafref target) somewhere else. */
         int8_t boolean;              /**< 0 as false, 1 as true */
         int64_t dec64;               /**< decimal64: value = dec64 / 10^fraction-digits  */
         int8_t int8;                 /**< 8-bit signed integer */
@@ -193,13 +193,16 @@ struct lyd_value {
     };  /**< The union is just a list of shorthands to possible values stored by a type's plugin. libyang itself uses the lyd_value::realtype
              plugin's callbacks to work with the data. */
 
-    struct lysc_type *realtype; /**< pointer to the real type of the data stored in the value structure. This type can differ from the type
+    struct lysc_type *realtype;      /**< pointer to the real type of the data stored in the value structure. This type can differ from the type
                                           in the schema node of the data node since the type's store plugin can use other types/plugins for
                                           storing data. Speaking about built-in types, this is the case of leafref which stores data as its
                                           target type. In contrast, union type also use its subtype's callbacks, but inside an internal data
                                           lyd_value::subvalue structure, so here is the pointer to the union type.
                                           In general, this type is used to get free callback for this lyd_value structure, so it must reflect
                                           the type used to store data directly in the same lyd_value instance. */
+    void *canonical_cache;           /**< Generic cache for type plugins to store data necessary to print canonical value. It can be the canonical
+                                          value itself or anything else useful to print the canonical form of the value. Plugin is responsible for
+                                          freeing the cache in its free callback. */
 };
 
 /**
@@ -247,6 +250,7 @@ struct lyd_attr {
  */
 
 #define LYD_DEFAULT      0x01        /**< default (implicit) node; */
+#define LYD_DUMMY        0x80000000  /**< dummy node (in XPath context, internal flag) */
 /** @} */
 
 /**
@@ -466,9 +470,10 @@ const struct lyd_node *lyd_node_children(const struct lyd_node *node);
  * @param[in] name_len Optional length of the @p name argument in case it is not NULL-terminated string.
  * @param[in] nodetype Optional mask for the nodetype of the node to find, 0 is understood as all nodetypes.
  * @param[in] value Optional restriction for lyd_node_term nodes to select node with the specific value. Note that this
- * search restriction is limited to compare canonical representation of the type. Some of the types have no canonical
- * representation and 2 different strings can represent the same value (e.g. different prefixes of the same namespace in instance-identifiers).
- * In this case there is more advanced lyd_value_compare() to check if the values matches.
+ * search restriction is limited to compare original string representation of the @p first value. Some of the types have
+ * canonical representation defined so the same value can be represented by multiple lexical representation. In such a
+ * case the @p value not matching the original representation of @p first may still be the same.
+ * For such a case there is more advanced lyd_value_compare() to check if the values matches.
  * @param[in] value_len Optional length of the @p value argument in case it is not NULL-terminated string.
  * @return The sibling node of the @p first (or itself), satisfying the given restrictions.
  * @return NULL in case there is no node satisfying the restrictions.
@@ -686,6 +691,7 @@ LY_ERR lyd_value_compare(const struct lyd_node_term *node, const char *value, si
  *
  * @param[in] node1 The first node to compare.
  * @param[in] node2 The second node to compare.
+ * @param[in] options Various @ref datacompareoptions.
  * @return LY_SUCCESS if the nodes are equivalent.
  * @return LY_ENOT if the nodes are not equivalent.
  */
@@ -741,6 +747,44 @@ struct lyd_node *lyd_dup(const struct lyd_node *node, struct lyd_node_inner *par
  * @return Target node of the instance-identifier present in the given data @p trees.
  */
 const struct lyd_node_term *lyd_target(struct lyd_value_path *path, const struct lyd_node **trees);
+
+/**
+ * @brief Get string value of a term data \p node.
+ *
+ * @param[in] node Data tree node with the value.
+ * @param[out] dynamic Whether the string value was dynmically allocated.
+ * @return String value of @p node, if @p dynamic, needs to be freed.
+ */
+const char *lyd_value2str(const struct lyd_node_term *node, int *dynamic);
+
+/**
+ * @brief Get string value of an attribute \p attr.
+ *
+ * @param[in] attr Attribute with the value.
+ * @param[out] dynamic Whether the string value was dynmically allocated.
+ * @return String value of @p attr, if @p dynamic, needs to be freed.
+ */
+const char *lyd_attr2str(const struct lyd_attr *attr, int *dynamic);
+
+/**
+ * @brief Types of the different data paths.
+ */
+typedef enum {
+    LYD_PATH_LOG /**< Descriptive path format used in log messages */
+} LYD_PATH_TYPE;
+
+/**
+ * @brief Generate path of the given node in the requested format.
+ *
+ * @param[in] node Schema path of this node will be generated.
+ * @param[in] pathtype Format of the path to generate.
+ * @param[in,out] buffer Prepared buffer of the @p buflen length to store the generated path.
+ *                If NULL, memory for the complete path is allocated.
+ * @param[in] buflen Size of the provided @p buffer.
+ * @return NULL in case of memory allocation error, path of the node otherwise.
+ * In case the @p buffer is NULL, the returned string is dynamically allocated and caller is responsible to free it.
+ */
+char *lyd_path(const struct lyd_node *node, LYD_PATH_TYPE pathtype, char *buffer, size_t buflen);
 
 #ifdef __cplusplus
 }

@@ -176,7 +176,7 @@ check:
 
     if (!(options & LYS_GETNEXT_NOSTATECHECK)) {
         /* check if the node is disabled by if-feature */
-        if (lys_is_disabled(next, 0)) {
+        if (lysc_node_is_disabled(next, 0)) {
             next = next->next;
             goto repeat;
         }
@@ -216,12 +216,10 @@ lys_child(const struct lysc_node *parent, const struct lys_module *module,
     return NULL;
 }
 
-
-
 API char *
-lysc_path(struct lysc_node *node, LY_PATH_TYPE pathtype, char *buffer, size_t buflen)
+lysc_path(const struct lysc_node *node, LYSC_PATH_TYPE pathtype, char *buffer, size_t buflen)
 {
-    struct lysc_node *iter;
+    const struct lysc_node *iter;
     char *path = NULL;
     int len = 0;
 
@@ -231,26 +229,12 @@ lysc_path(struct lysc_node *node, LY_PATH_TYPE pathtype, char *buffer, size_t bu
     }
 
     switch (pathtype) {
-    case LY_PATH_LOG:
+    case LYSC_PATH_LOG:
         for (iter = node; iter && len >= 0; iter = iter->parent) {
             char *s = buffer ? strdup(buffer) : path;
             char *id;
 
-            switch (iter->nodetype) {
-            case LYS_USES:
-                asprintf(&id, "{uses='%s'}", iter->name);
-                break;
-            case LYS_GROUPING:
-                asprintf(&id, "{grouping='%s'}", iter->name);
-                break;
-            case LYS_AUGMENT:
-                asprintf(&id, "{augment='%s'}", iter->name);
-                break;
-            default:
-                id = strdup(iter->name);
-                break;
-            }
-
+            id = strdup(iter->name);
             if (!iter->parent || iter->parent->module != iter->module) {
                 /* print prefix */
                 if (buffer) {
@@ -559,7 +543,7 @@ lys_feature_value(const struct lys_module *module, const char *feature)
 }
 
 API const struct lysc_iffeature *
-lys_is_disabled(const struct lysc_node *node, int recursive)
+lysc_node_is_disabled(const struct lysc_node *node, int recursive)
 {
     unsigned int u;
 
@@ -587,6 +571,46 @@ lys_is_disabled(const struct lysc_node *node, int recursive)
         node = node->parent;
     }
     return NULL;
+}
+
+LY_ERR
+lys_set_implemented_internal(struct lys_module *mod, uint8_t value)
+{
+    struct lys_module *m;
+
+    LY_CHECK_ARG_RET(NULL, mod, LY_EINVAL);
+
+    if (mod->implemented) {
+        return LY_SUCCESS;
+    }
+
+    /* we have module from the current context */
+    m = ly_ctx_get_module_implemented(mod->ctx, mod->name);
+    if (m) {
+        if (m != mod) {
+            /* check collision with other implemented revision */
+            LOGERR(mod->ctx, LY_EDENIED, "Module \"%s\" is present in the context in other implemented revision (%s).",
+                   mod->name, mod->revision ? mod->revision : "module without revision");
+            return LY_EDENIED;
+        } else {
+            /* mod is already implemented */
+            return LY_SUCCESS;
+        }
+    }
+
+    /* mark the module implemented, check for collision was already done */
+    mod->implemented = value;
+
+    /* compile the schema */
+    LY_CHECK_RET(lys_compile(mod, LYSC_OPT_INTERNAL));
+
+    return LY_SUCCESS;
+}
+
+API LY_ERR
+lys_set_implemented(struct lys_module *mod)
+{
+    return lys_set_implemented_internal(mod, 1);
 }
 
 struct lysp_submodule *

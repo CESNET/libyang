@@ -115,7 +115,7 @@ test_leaf(void **state)
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("foo", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
-    assert_string_equal("foo value", leaf->value.canonized);
+    assert_string_equal("foo value", leaf->value.original);
 
     lyd_free_all(tree);
     *state = NULL;

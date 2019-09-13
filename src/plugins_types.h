@@ -24,6 +24,52 @@
 #include "tree_data.h"
 
 /**
+ * @internal
+ * @page internals
+ *
+ * @section types Types Processing
+ *
+ * @subsection types_
+ */
+
+/**
+ * @defgroup types Plugins - Types
+ * @{
+ *
+ * Structures and functions to for libyang plugins implementing specific YANG types defined in YANG schemas
+ */
+
+/**
+ * @page howtoplugins
+ * @section Types
+ *
+ * YANG allows schemas to define new data types via *typedef* statement or even in leaf's/leaf-list's *type* statements.
+ * Such types are derived (directly or indirectly) from a set of [YANG built-in types](https://tools.ietf.org/html/rfc7950#section-4.2.4).
+ * libyang implements all handling of the data values of the YANG types via plugins. Internally, plugins for the built-in types
+ * and several others are implemented. Type plugin is supposed to
+ * - validate (and canonize) data value according to the type's restrictions,
+ * - store it as lyd_value,
+ * - print it,
+ * - compare two values (lyd_value) of the same type,
+ * - duplicate data in lyd_value and
+ * - free the connected data from lyd_value.
+ *
+ * All these functions are provided to libyang via a set of callback functions specified as lysc_type_plugin.
+ * All the callbacks are supposed to do not log directly via libyang logger. Instead, they return LY_ERR value and
+ * ly_err_item error structure(s) describing the detected error(s) (helper functions ly_err_new() and ly_err_free()
+ * are available).
+ *
+ * The main functionality is provided via ::ly_type_store_clb callback responsible for validating, canonizing and storing
+ * provided string representation of the value in specified format (XML and JSON supported). Valid value is stored in
+ * lyd_value structure - its union allows to store data as one of the predefined type or in a custom form behind
+ * lyd_value's ptr member (`void*`). The callback is also responsible for storing original string representation of the
+ * value as lyd_value::original. Optionally, the callback can utilize lyd_value::canonical_cache to store data for providing
+ * canonical string representation via the ::ly_type_print_clb callback. Canonical value cannot be available directly, since
+ * some types do not have/provide canonical value (respectively it may be multivalent according to the output format as
+ * in the case of instance-identifiers).
+ */
+
+/**
  * @brief Helper function for various plugin functions to generate error information structure.
  *
  * @param[in] level Error level of the error.
@@ -70,20 +116,7 @@ void ly_err_free(void *ptr);
 #define LY_TYPE_OPTS_SECOND_CALL 0x20  /**< Flag for the second call of the callback when the first call returns LY_EINCOMPLETE,
                                             other options should be the same as for the first call. */
 
-/**
- * @}
- */
-
-/**
- * @defgroup plugintypeflags Various flags for type plugins usage.
- * Options applicable to ly_type_validate_clb().
- * @{
- */
-#define LY_TYPE_FLAG_PREFIXES 0x01     /**< The value contains prefixes, so when printing XML,
-                                            get the namespaces connected with the prefixes and print them. */
-/**
- * @}
- */
+/** @} plugintypeopts */
 
 /**
  * @brief Callback to validate, canonize and store (optionally, according to the given @p options) the given @p value according to the given @p type.
@@ -109,8 +142,6 @@ void ly_err_free(void *ptr);
  *             If the @p canonized differs from the storage's canonized member, the canonized value is also stored here despite the
  *             LY_TYPE_OPTS_CANONIZE option.
  * @param[out] canonized If LY_TYPE_OPTS_CANONIZE option set, the canonized string stored in the @p ctx dictionary is returned via this parameter.
- *             This is usable mainly in the case the LY_TYPE_OPTS_STORE option is not set and the canonized value is needed outside the lyd_value
- *             structure, otherwise the canonized value is stored in the @p storage automatically.
  * @param[out] err Optionally provided error information in case of failure. If not provided to the caller, a generic error message is prepared instead.
  * The error structure can be created by ly_err_new().
  * @return LY_SUCCESS on success
@@ -185,11 +216,12 @@ struct lysc_type_plugin {
     ly_type_dup_clb duplicate;       /**< data duplication callback */
     ly_type_free_clb free;           /**< optional function to free the type-spceific way stored value */
     const char *id;                  /**< Plugin identification (mainly for distinguish incompatible versions when used by external tools) */
-    uint32_t flags;                  /**< [type flags ](@ref plugintypeflags). */
 };
 
 /**
  * @brief List of type plugins for built-in types.
+ *
+ * TODO hide behind some plugin getter
  */
 extern struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT];
 
@@ -255,11 +287,11 @@ LY_ERR ly_type_identity_isderived(struct lysc_ident *base, struct lysc_ident *de
  * @param[in] basetype Base built-in type of the type with the range specified to get know if the @p range structure represents range or length restriction.
  * @param[in] range Range (length) restriction information.
  * @param[in] value Value to check. In case of basetypes using unsigned integer values, the value is actually cast to uint64_t.
- * @param[in] canonized Canonized @p value for error logging.
+ * @param[in] strval String representation of the @p value for error logging.
  * @param[out] err Error information in case of failure. The error structure can be freed by ly_err_free().
  * @return LY_ERR value according to the result of the validation.
  */
-LY_ERR ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t value, const char *canonized, struct ly_err_item **err);
+LY_ERR ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t value, const char *strval, struct ly_err_item **err);
 
 /**
  * @brief Data type validator for pattern-restricted string values.
@@ -276,6 +308,26 @@ LY_ERR ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, i
 LY_ERR ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str, size_t str_len, struct ly_err_item **err);
 
 /**
+ * @brief Find leafref target in instance data.
+ *
+ * @param[in] ctx libyang Context
+ * @param[in] type Type of the value being canonized.
+ * @param[in] value Lexical representation of the value to be validated (and canonized).
+ *            It is never NULL, empty string is represented as "" with zero @p value_len.
+ * @param[in] value_len Length (number of bytes) of the given \p value.
+ * @param[in] context_node The @p value's node for the case that the require-instance restriction is supposed to be resolved.
+ * @param[in] trees ([Sized array](@ref sizedarrays)) of external data trees (e.g. when validating RPC/Notification) where the required data
+ *            instance can be placed.
+ *
+ * @param[in] storage Parsed @p value.
+ * @param[out] errmsg Error message in case of error.
+ * @return Leafref target node or NULL on error when @p errmsg is always set.
+ */
+const struct lyd_node *ly_type_find_leafref(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len,
+                                            const struct lyd_node *context_node, const struct lyd_node **trees,
+                                            struct lyd_value *storage, char **errmsg);
+
+/**
  * @brief Helper function for type validation callbacks to prepare list of all possible prefixes used in the value string.
  *
  * @param[in] ctx libyang context.
@@ -287,5 +339,7 @@ LY_ERR ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str
  */
 struct lyd_value_prefix *ly_type_get_prefixes(struct ly_ctx *ctx, const char *value, size_t value_len,
                                               ly_clb_resolve_prefix get_prefix, void *parser);
+
+/**@} types */
 
 #endif /* LY_PLUGINS_TYPES_H_ */

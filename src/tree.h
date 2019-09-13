@@ -20,13 +20,6 @@ extern "C" {
 #endif
 
 /**
- * @brief Types of the different schema and data paths.
- */
-typedef enum {
-    LY_PATH_LOG /**< Descriptive path format used in log messages */
-} LY_PATH_TYPE;
-
-/**
  * @brief Macro selector for other LY_ARRAY_* macros, do not use directly!
  */
 #define LY_ARRAY_SELECT(_1, _2, NAME, ...) NAME

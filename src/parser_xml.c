@@ -570,7 +570,7 @@ lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, const struct ly
                 result_trees = lyd_trees_new(1, *result);
             }
             /* validate and store the value of the node */
-            ret = lyd_value_parse(node, node->value.canonized, node->value.canonized ? strlen(node->value.canonized) : 0, 0, 1,
+            ret = lyd_value_parse(node, node->value.original, strlen(node->value.original), 0, 1,
                                   lydxml_resolve_prefix, ctx, LYD_XML, result_trees);
             lyd_trees_free(result_trees, 0);
             if (ret) {
@@ -589,7 +589,7 @@ lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, const struct ly
                 result_trees = lyd_trees_new(1, *result);
             }
             /* validate and store the value of the node */
-            ret = lyd_value_parse_attr(attr, attr->value.canonized, attr->value.canonized ? strlen(attr->value.canonized) : 0, 0, 1,
+            ret = lyd_value_parse_attr(attr, attr->value.original, strlen(attr->value.original), 0, 1,
                                        lydxml_resolve_prefix, ctx, LYD_XML, result_trees);
             lyd_trees_free(result_trees, 0);
             if (ret) {

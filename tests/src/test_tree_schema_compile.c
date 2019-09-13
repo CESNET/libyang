@@ -578,7 +578,7 @@ test_node_leaflist(void **state)
     assert_non_null(l = (struct lysc_node_leaf*)mod->compiled->data);
     assert_string_equal("ref", l->name);
     assert_non_null(l->dflt);
-    assert_null(l->dflt->canonized);
+    assert_null(l->dflt->canonical_cache);
 
     /* invalid */
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;leaf-list ll {type empty;}}", LYS_IN_YANG));
@@ -2459,7 +2459,7 @@ test_uses(void **state)
 
     /* make the imported module implemented and enable the feature */
     assert_non_null(mod = ly_ctx_get_module(ctx, "grp", NULL));
-    assert_int_equal(LY_SUCCESS, ly_ctx_module_implement(ctx, mod));
+    assert_int_equal(LY_SUCCESS, lys_set_implemented(mod));
     assert_int_equal(LY_SUCCESS, lys_feature_enable(mod, "f"));
     assert_string_equal("f", child->iffeatures[0].features[0]->name);
     assert_int_equal(1, lysc_iffeature_value(&child->iffeatures[0]));
@@ -3149,6 +3149,7 @@ test_deviation(void **state)
     assert_int_equal(0, dynamic);
     assert_int_equal(1, llist->dflts[0]->uint8);
 
+    /* instance-identifiers with NULL canonical_cach are changed to string types with a canonical_cache value equal to the original value */
     assert_non_null(mod = lys_parse_mem(ctx, "module q {yang-version 1.1; namespace urn:q;prefix q; import e {prefix e;}"
                                         "leaf q {type instance-identifier; default \"/e:d2\";}"
                                         "leaf-list ql {type instance-identifier; default \"/e:d\"; default \"/e:d2\";}}", LYS_IN_YANG));
@@ -3157,17 +3158,17 @@ test_deviation(void **state)
                                   "deviation /q:ql { deviate replace {type string;}}}", LYS_IN_YANG));
     assert_non_null(leaf = (struct lysc_node_leaf*)mod->compiled->data);
     assert_int_equal(LY_TYPE_STRING, leaf->dflt->realtype->basetype);
-    assert_non_null(leaf->dflt->canonized);
-    assert_string_equal("/e:d2", leaf->dflt->canonized);
+    assert_non_null(leaf->dflt->canonical_cache);
+    assert_string_equal("/e:d2", leaf->dflt->canonical_cache);
     assert_non_null(llist = (struct lysc_node_leaflist*)leaf->next);
     assert_int_equal(2, LY_ARRAY_SIZE(llist->dflts));
     assert_int_equal(2, LY_ARRAY_SIZE(llist->dflts_mods));
     assert_ptr_equal(llist->dflts_mods[0], mod);
     assert_int_equal(LY_TYPE_STRING, llist->dflts[0]->realtype->basetype);
-    assert_string_equal("/e:d", llist->dflts[0]->canonized);
+    assert_string_equal("/e:d", llist->dflts[0]->canonical_cache);
     assert_ptr_equal(llist->dflts_mods[1], mod);
     assert_int_equal(LY_TYPE_STRING, llist->dflts[0]->realtype->basetype);
-    assert_string_equal("/e:d2", llist->dflts[1]->canonized);
+    assert_string_equal("/e:d2", llist->dflts[1]->canonical_cache);
 
     assert_non_null(mod = lys_parse_mem(ctx, "module r {yang-version 1.1; namespace urn:r;prefix r;"
                                         "typedef mytype {type uint8; default 200;}"

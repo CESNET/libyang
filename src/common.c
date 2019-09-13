@@ -160,6 +160,17 @@ ly_realloc(void *ptr, size_t size)
     return new_mem;
 }
 
+char *
+ly_strnchr(const char *s, int c, unsigned int len)
+{
+    for (; *s != (char)c; ++s, --len) {
+        if ((*s == '\0') || (!len)) {
+            return NULL;
+        }
+    }
+    return (char *)s;
+}
+
 LY_ERR
 ly_getutf8(const char **input, unsigned int *utf8_char, size_t *bytes_read)
 {

@@ -37,7 +37,7 @@
 static LY_ERR
 ly_type_compare_canonical(const struct lyd_value *val1, const struct lyd_value *val2)
 {
-    if (val1 == val2 || !strcmp(val1->canonized, val2->canonized)) {
+    if (val1 == val2 || !strcmp(val1->canonical_cache, val2->canonical_cache)) {
         return LY_SUCCESS;
     }
 
@@ -54,23 +54,53 @@ ly_type_print_canonical(const struct lyd_value *value, LYD_FORMAT UNUSED(format)
                         ly_clb_get_prefix UNUSED(get_prefix), void *UNUSED(printer), int *dynamic)
 {
     *dynamic = 0;
-    return (char*)value->canonized;
+    return (char*)value->canonical_cache;
 }
 
 /**
- * @brief Generic duplication callback of the canonized value only.
+ * @brief Generic duplication callback of the original value only.
+ *
+ * Implementation of the ly_type_dup_clb.
+ */
+static LY_ERR
+ly_type_dup_original(struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
+{
+    dup->canonical_cache = original->canonical_cache;
+    dup->original = (void*)lydict_insert(ctx, original->original, strlen(original->original));
+    if (dup->original) {
+        return LY_SUCCESS;
+    } else {
+        return LY_EINT;
+    }
+}
+
+/**
+ * @brief Generic duplication callback of the canonized and original values only.
  *
  * Implementation of the ly_type_dup_clb.
  */
 static LY_ERR
 ly_type_dup_canonical(struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
-    dup->canonized = lydict_insert(ctx, original->canonized, strlen(original->canonized));
-    if (dup->canonized) {
+    ly_type_dup_original(ctx, original, dup);
+    dup->canonical_cache = (void*)lydict_insert(ctx, original->canonical_cache, strlen(original->canonical_cache));
+    if (dup->canonical_cache) {
         return LY_SUCCESS;
     } else {
         return LY_EINT;
     }
+}
+
+/**
+ * @brief Free original value in lyd_value.
+ *
+ * Implementation of the ly_type_free_clb.
+ */
+static void
+ly_type_free_original(struct ly_ctx *ctx, struct lyd_value *value)
+{
+    lydict_remove(ctx, value->original);
+    value->original = NULL;
 }
 
 /**
@@ -81,8 +111,9 @@ ly_type_dup_canonical(struct ly_ctx *ctx, const struct lyd_value *original, stru
 static void
 ly_type_free_canonical(struct ly_ctx *ctx, struct lyd_value *value)
 {
-    lydict_remove(ctx, value->canonized);
-    value->canonized = NULL;
+    ly_type_free_original(ctx, value);
+    lydict_remove(ctx, value->canonical_cache);
+    value->canonical_cache = NULL;
 }
 
 API LY_ERR
@@ -324,7 +355,7 @@ ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str, size_
 
         rc = pcre2_match(patterns[u]->code, (PCRE2_SPTR)str, str_len, 0, PCRE2_ANCHORED | PCRE2_ENDANCHORED, match_data, NULL);
         if (rc == PCRE2_ERROR_NOMATCH) {
-            asprintf(&errmsg, "String \"%.*s\" does not conforms to the %u. pattern restriction of its type.",
+            asprintf(&errmsg, "String \"%.*s\" does not conform to the %u. pattern restriction of its type.",
                      (int)str_len, str, u + 1);
             *err = ly_err_new(LY_LLERR, LY_ESYS, 0, errmsg, NULL, NULL);
             ret = LY_EVALID;
@@ -349,7 +380,7 @@ ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str, size_
 }
 
 API LY_ERR
-ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t value, const char *canonized, struct ly_err_item **err)
+ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t value, const char *strval, struct ly_err_item **err)
 {
     unsigned int u;
     char *errmsg = NULL;
@@ -362,7 +393,7 @@ ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t 
                     errmsg = strdup(range->emsg);
                 } else {
                     asprintf(&errmsg, "%s \"%s\" does not satisfy the %s constraint.",
-                           (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "Length" : "Value", canonized,
+                           (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "Length" : "Value", strval,
                            (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "length" : "range");
                 }
                 goto error;
@@ -375,7 +406,7 @@ ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t 
                     errmsg = strdup(range->emsg);
                 } else {
                     asprintf(&errmsg, "%s \"%s\" does not satisfy the %s constraint.",
-                           (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "Length" : "Value", canonized,
+                           (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "Length" : "Value", strval,
                            (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "length" : "range");
                 }
                 goto error;
@@ -386,7 +417,7 @@ ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t 
                 if (range->emsg) {
                     errmsg = strdup(range->emsg);
                 } else {
-                    asprintf(&errmsg, "Value \"%s\" does not satisfy the range constraint.", canonized);
+                    asprintf(&errmsg, "Value \"%s\" does not satisfy the range constraint.", strval);
                 }
                 goto error;
             } else if (value < range->parts[u].max_64) {
@@ -397,7 +428,7 @@ ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t 
                 if (range->emsg) {
                     errmsg = strdup(range->emsg);
                 } else {
-                    asprintf(&errmsg, "Value \"%s\" does not satisfy the range constraint.", canonized);
+                    asprintf(&errmsg, "Value \"%s\" does not satisfy the range constraint.", strval);
                 }
                 goto error;
             }
@@ -412,23 +443,39 @@ error:
 }
 
 static void
-ly_type_store_canonized(struct ly_ctx *ctx, int options, const char *value, struct lyd_value *storage, const char **canonized)
+ly_type_store_strval(struct ly_ctx *ctx, int options, const char *orig, const char *value,
+                     struct lyd_value *storage, const char **canonized)
 {
     if (options & LY_TYPE_OPTS_CANONIZE) {
-store_canonized:
         *canonized = value;
     }
-    if ((options & LY_TYPE_OPTS_STORE) && !storage->canonized) {
+    if (options & LY_TYPE_OPTS_STORE) {
+        storage->original = orig;
         if (options & LY_TYPE_OPTS_CANONIZE) {
-            /* already stored outside the storage */
-            storage->canonized = lydict_insert(ctx, value, strlen(value));
+            /* already stored outside the storage in canonized, so we have to add instance in dictionary */
+            storage->canonical_cache = (void*)lydict_insert(ctx, value, strlen(value));
         } else {
-            canonized = &storage->canonized;
-            goto store_canonized;
+            storage->canonical_cache = (void*)value;
         }
     }
 }
-
+#if 0
+static void
+ly_type_store_canonized(struct ly_ctx *ctx, int options, const char *value, struct lyd_value *storage, const char **canonized)
+{
+    if (options & LY_TYPE_OPTS_CANONIZE) {
+        *canonized = value;
+    }
+    if (options & LY_TYPE_OPTS_STORE) {
+        if (options & LY_TYPE_OPTS_CANONIZE) {
+            /* already stored outside the storage in canonized, so we have to add instance in dictionary */
+            storage->canonical_cache = (void*)lydict_insert(ctx, value, strlen(value));
+        } else {
+            storage->canonical_cache = (void*)value;
+        }
+    }
+}
+#endif
 /**
  * @brief Validate, canonize and store value of the YANG built-in signed integer types.
  *
@@ -468,6 +515,7 @@ ly_type_store_int(struct ly_ctx *ctx, struct lysc_type *type, const char *value,
         LOGINT(NULL);
         return LY_EINVAL;
     }
+
     asprintf(&str, "%"PRId64, i);
 
     /* range of the number */
@@ -476,15 +524,16 @@ ly_type_store_int(struct ly_ctx *ctx, struct lysc_type *type, const char *value,
     }
 
     if (options & (LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_STORE)) {
-        ly_type_store_canonized(ctx, options, lydict_insert_zc(ctx, str), storage, canonized);
-    } else {
-        free(str);
+        if (options & LY_TYPE_OPTS_STORE) {
+            storage->int64 = i;
+            ly_type_store_strval(ctx, options, lydict_insert(ctx, value_len ? value : "", value_len),
+                                 lydict_insert_zc(ctx, str), storage, canonized);
+        } else {
+            ly_type_store_strval(ctx, options, NULL, lydict_insert_zc(ctx, str), storage, canonized);
+        }
+        str = NULL;
     }
-
-    if (options & LY_TYPE_OPTS_STORE) {
-        storage->int64 = i;
-    }
-
+    free(str);
     if (options & LY_TYPE_OPTS_DYNAMIC) {
         free((char*)value);
     }
@@ -540,6 +589,7 @@ ly_type_store_uint(struct ly_ctx *ctx, struct lysc_type *type, const char *value
         LOGINT(NULL);
         return LY_EINVAL;
     }
+
     asprintf(&str, "%"PRIu64, u);
 
     /* range of the number */
@@ -548,15 +598,16 @@ ly_type_store_uint(struct ly_ctx *ctx, struct lysc_type *type, const char *value
     }
 
     if (options & (LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_STORE)) {
-        ly_type_store_canonized(ctx, options, lydict_insert_zc(ctx, str), storage, canonized);
-    } else {
-        free(str);
+        if (options & LY_TYPE_OPTS_STORE) {
+            storage->int64 = u;
+            ly_type_store_strval(ctx, options, lydict_insert(ctx, value_len ? value : "", value_len),
+                                 lydict_insert_zc(ctx, str), storage, canonized);
+        } else {
+            ly_type_store_strval(ctx, options, NULL, lydict_insert_zc(ctx, str), storage, canonized);
+        }
+        str = NULL;
     }
-
-    if (options & LY_TYPE_OPTS_STORE) {
-        storage->uint64 = u;
-    }
-
+    free(str);
     if (options & LY_TYPE_OPTS_DYNAMIC) {
         free((char*)value);
     }
@@ -634,13 +685,14 @@ ly_type_store_decimal64(struct ly_ctx *ctx, struct lysc_type *type, const char *
     }
 
     if (options & (LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_STORE)) {
-        ly_type_store_canonized(ctx, options, lydict_insert(ctx, buf, strlen(buf)), storage, canonized);
+        if (options & LY_TYPE_OPTS_STORE) {
+            storage->dec64 = d;
+            ly_type_store_strval(ctx, options, lydict_insert(ctx, value, value_len),
+                                 lydict_insert(ctx, buf, strlen(buf)), storage, canonized);
+        } else {
+            ly_type_store_strval(ctx, options, NULL, lydict_insert(ctx, buf, strlen(buf)), storage, canonized);
+        }
     }
-
-    if (options & LY_TYPE_OPTS_STORE) {
-        storage->dec64 = d;
-    }
-
     if (options & LY_TYPE_OPTS_DYNAMIC) {
         free((char*)value);
     }
@@ -739,16 +791,18 @@ finish:
     }
 
     if (options & (LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_STORE)) {
+        const char *c;
         if (start != 0 || (value_len && stop != value_len - 1)) {
-            ly_type_store_canonized(ctx, options, lydict_insert_zc(ctx, strndup(&value[start], stop + 1 - start)), storage, canonized);
-        } else if (options & LY_TYPE_OPTS_DYNAMIC) {
-            ly_type_store_canonized(ctx, options, lydict_insert_zc(ctx, (char*)value), storage, canonized);
-            value = NULL;
+            c = lydict_insert_zc(ctx, strndup(&value[start], stop + 1 - start));
         } else {
-            ly_type_store_canonized(ctx, options, lydict_insert(ctx, value_len ? value : "", value_len), storage, canonized);
+            c = lydict_insert(ctx, value_len ? value : "", value_len);
+        }
+        if (options & LY_TYPE_OPTS_STORE) {
+            ly_type_store_strval(ctx, options, lydict_insert(ctx, value_len ? value : "", value_len), c, storage, canonized);
+        } else {
+            ly_type_store_strval(ctx, options, NULL, c, storage, canonized);
         }
     }
-
     if (options & LY_TYPE_OPTS_DYNAMIC) {
         free((char*)value);
     }
@@ -793,14 +847,12 @@ ly_type_store_string(struct ly_ctx *ctx, struct lysc_type *type, const char *val
     LY_CHECK_RET(ly_type_validate_patterns(type_str->patterns, value, value_len, err));
 
     if (options & (LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_STORE)) {
-        if (options & LY_TYPE_OPTS_DYNAMIC) {
-            ly_type_store_canonized(ctx, options, lydict_insert_zc(ctx, (char*)value), storage, canonized);
-            value = NULL;
-        } else {
-            ly_type_store_canonized(ctx, options, lydict_insert(ctx, value_len ? value : "", value_len), storage, canonized);
-        }
+        /* NOTE: despite the pointer is used in storage twice (original and canonical_cache), it is stored in dictionary
+         * just once. This works even without storage - the string is returned as canonized. In case both options are used,
+         * ly_type_store_strval() increases reference count in dictionary for canonized. */
+        const char *str = lydict_insert(ctx, value_len ? value : "", value_len);
+        ly_type_store_strval(ctx, options, str, str, storage, canonized);
     }
-
     if (options & LY_TYPE_OPTS_DYNAMIC) {
         free((char*)value);
     }
@@ -930,8 +982,7 @@ next:
             buf = NULL;
         }
 
-        ly_type_store_canonized(ctx, options, can, storage, canonized);
-        can = NULL;
+        ly_type_store_strval(ctx, options, lydict_insert(ctx, value_len ? value : "", value_len), can, storage, canonized);
 
         if (options & LY_TYPE_OPTS_STORE) {
             /* store data */
@@ -1037,18 +1088,15 @@ match:
     /* validation done */
 
     if (options & (LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_STORE)) {
-        if (options & LY_TYPE_OPTS_DYNAMIC) {
-            ly_type_store_canonized(ctx, options, lydict_insert_zc(ctx, (char*)value), storage, canonized);
-            value = NULL;
-        } else {
-            ly_type_store_canonized(ctx, options, lydict_insert(ctx, value_len ? value : "", value_len), storage, canonized);
+        /* NOTE: despite the pointer is used in storage twice (original and canonical_cache), it is stored in dictionary
+         * just once. This works even without storage - the string is returned as canonized. In case both options are used,
+         * ly_type_store_strval() increases reference count in dictionary for canonized. */
+        const char *str = lydict_insert(ctx, value_len ? value : "", value_len);
+        if (options & LY_TYPE_OPTS_STORE) {
+            storage->enum_item = &type_enum->enums[u];
         }
+        ly_type_store_strval(ctx, options, str, str, storage, canonized);
     }
-
-    if (options & LY_TYPE_OPTS_STORE) {
-        storage->enum_item = &type_enum->enums[u];
-    }
-
     if (options & LY_TYPE_OPTS_DYNAMIC) {
         free((char*)value);
     }
@@ -1070,7 +1118,7 @@ static LY_ERR
 ly_type_dup_enum(struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     dup->enum_item = original->enum_item;
-    return ly_type_dup_canonical(ctx, original, dup);
+    return ly_type_dup_original(ctx, original, dup);
 }
 
 /**
@@ -1102,23 +1150,31 @@ ly_type_store_boolean(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), const 
     }
 
     if (options & (LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_STORE)) {
-        if (options & LY_TYPE_OPTS_DYNAMIC) {
-            ly_type_store_canonized(ctx, options, lydict_insert_zc(ctx, (char*)value), storage, canonized);
-            value = NULL;
-        } else {
-            ly_type_store_canonized(ctx, options, lydict_insert(ctx, value, value_len), storage, canonized);
+        /* NOTE: despite the pointer is used in storage twice (original and canonical_cache), it is stored in dictionary
+         * just once. This works even without storage - the string is returned as canonized. In case both options are used,
+         * ly_type_store_strval() increases reference count in dictionary for canonized. */
+        const char *str = lydict_insert(ctx, value, value_len);
+        if (options & LY_TYPE_OPTS_STORE) {
+            storage->boolean = i;
         }
+        ly_type_store_strval(ctx, options, str, str, storage, canonized);
     }
-
-    if (options & LY_TYPE_OPTS_STORE) {
-        storage->boolean = i;
-    }
-
     if (options & LY_TYPE_OPTS_DYNAMIC) {
         free((char*)value);
     }
 
     return LY_SUCCESS;
+}
+
+/* @brief Duplication callback of the boolean values.
+ *
+ * Implementation of the ly_type_dup_clb.
+ */
+static LY_ERR
+ly_type_dup_boolean(struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
+{
+    dup->int64 = original->int64;
+    return ly_type_dup_original(ctx, original, dup);
 }
 
 /**
@@ -1144,7 +1200,11 @@ ly_type_store_empty(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), const ch
     }
 
     if (options & (LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_STORE)) {
-        ly_type_store_canonized(ctx, options, lydict_insert(ctx, "", 0), storage, canonized);
+        /* NOTE: despite the pointer is used in storage twice (original and canonical_cache), it is stored in dictionary
+         * just once. This works even without storage - the string is returned as canonized. In case both options are used,
+         * ly_type_store_strval() increases reference count in dictionary for canonized. */
+        const char *str = lydict_insert(ctx, "", 0);
+        ly_type_store_strval(ctx, options, str, str, storage, canonized);
     }
 
     return LY_SUCCESS;
@@ -1249,14 +1309,14 @@ ly_type_store_identityref(struct ly_ctx *ctx, struct lysc_type *type, const char
     }
 
     if (options & LY_TYPE_OPTS_CANONIZE) {
-        /* identityref does not have a canonical form - to make it clear, the canonized form is represented as NULL
-         * to make the caller print it always via callback printer */
+        /* identityref does not have a canonical form - to make it clear, the canonized form is represented as NULL */
         *canonized = NULL;
     }
 
     if (options & LY_TYPE_OPTS_STORE) {
         storage->ident = ident;
-        storage->canonized = NULL;
+        storage->canonical_cache = NULL;
+        storage->original = lydict_insert(ctx, value, value_len);
     }
 
     if (options & LY_TYPE_OPTS_DYNAMIC) {
@@ -1551,13 +1611,9 @@ ly_type_store_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const char 
     *err = NULL;
 
     if ((options & LY_TYPE_OPTS_SCHEMA) && (options & LY_TYPE_OPTS_INCOMPLETE_DATA)) {
+        /* we have incomplete schema tree, so we are actually just storing the original value for future validation */
         if (options & LY_TYPE_OPTS_STORE) {
-            if (options & LY_TYPE_OPTS_DYNAMIC) {
-                ly_type_store_canonized(ctx, options, lydict_insert_zc(ctx, (char*)value), storage, NULL);
-                value = NULL;
-            } else {
-                ly_type_store_canonized(ctx, options, lydict_insert(ctx, value_len ? value : "", value_len), storage, NULL);
-            }
+            storage->original = lydict_insert(ctx, value_len ? value : "", value_len);
         }
         goto cleanup;
     }
@@ -1595,7 +1651,7 @@ ly_type_store_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const char 
     /* parse the value and try to resolve it in:
      * a) schema tree - instance is not required, just check that the path is instantiable
      * b) data tree - instance is required, so find it */
-    for(token = value; (size_t)(token - value) < value_len;) {
+    for (token = value; (size_t)(token - value) < value_len;) {
         if (token[0] == '/') {
             /* node identifier */
             node_start = &token[1];
@@ -1607,7 +1663,7 @@ ly_type_store_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const char 
 
             token++;
             if (ly_type_store_instanceid_checknodeid(value, value_len, options, type_inst->require_instance,
-                                                        &token, prefixes, format, &node_s, &node_d, trees, &errmsg)) {
+                                                     &token, prefixes, format, &node_s, &node_d, trees, &errmsg)) {
                 goto error;
             }
 
@@ -1642,7 +1698,8 @@ ly_type_store_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const char 
             }
 
 check_predicates:
-            if (ly_parse_instance_predicate(&token, value_len - (token - value), format, &prefix, &prefix_len, &id, &id_len, &val, &val_len, &pred_errmsg)) {
+            if (ly_parse_instance_predicate(&token, value_len - (token - value), format, &prefix, &prefix_len, &id,
+                    &id_len, &val, &val_len, &pred_errmsg)) {
                 asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value's predicate \"%.*s\" (%s).", (int)value_len, value,
                          (int)(token - pred_start), pred_start, pred_errmsg);
                 goto error;
@@ -1852,30 +1909,26 @@ check_predicates:
         }
     }
 
-    if (options & LY_TYPE_OPTS_CANONIZE) {
-        /* instance-identifier does not have a canonical form (lexical representation in in XML and JSON are
-         * even different) - to make it clear, the canonized form is represented as NULL to make the caller
-         * print it always via callback printer */
-        *canonized = NULL;
-    }
-
     if (options & LY_TYPE_OPTS_STORE) {
         storage->target = target;
-
-        if ((options & LY_TYPE_OPTS_SCHEMA) && (options & LY_TYPE_OPTS_SECOND_CALL)) {
-            /* remove the dummy canonized value from the first call */
-            lydict_remove(ctx, storage->canonized);
+        if (!storage->original) {
+            /* it may be already present from the first call, in case this is the second */
+            storage->original = lydict_insert(ctx, value_len ? value : "", value_len);
         }
-        storage->canonized = NULL;
     }
 
 cleanup:
-    /* cleanup */
     LY_ARRAY_FOR(prefixes, u) {
         lydict_remove(ctx, prefixes[u].prefix);
     }
     LY_ARRAY_FREE(prefixes);
     ly_set_erase(&predicates, NULL);
+
+    if (options & LY_TYPE_OPTS_CANONIZE) {
+        /* instance-identifier does not have a canonical form (lexical representation in in XML and JSON are
+         * even different) - to make it clear, the canonized form is represented as NULL */
+        *canonized = NULL;
+    }
 
     if (options & LY_TYPE_OPTS_DYNAMIC) {
         free((char*)value);
@@ -1963,10 +2016,10 @@ ly_type_print_instanceid(const struct lyd_value *value, LYD_FORMAT format, ly_cl
     unsigned int u, v;
     char *result = NULL;
 
-    if (!value->target && value->canonized) {
+    if (!value->target && value->canonical_cache) {
         /* value was not fully processed, but we have the original value so return it's copy */
         *dynamic = 1;
-        return strdup(value->canonized);
+        return strdup(value->canonical_cache);
     }
 
     if (format == LYD_XML) {
@@ -2053,7 +2106,8 @@ ly_type_print_instanceid(const struct lyd_value *value, LYD_FORMAT format, ly_cl
     return result;
 }
 
-/* @brief Duplication callback of the instance-identifier values.
+/**
+ * @brief Duplication callback of the instance-identifier values.
  *
  * Implementation of the ly_type_dup_clb.
  */
@@ -2105,9 +2159,206 @@ ly_type_free_instanceid(struct ly_ctx *ctx, struct lyd_value *value)
 {
     lyd_value_free_path(ctx, value->target);
     value->target = NULL;
+    ly_type_free_original(ctx, value);
+}
 
-    /* for the case of LY_EINCOMPLETE result on schema tree */
-    ly_type_free_canonical(ctx, value);
+/**
+ * @brief Find leafref target in instance data.
+ */
+const struct lyd_node *
+ly_type_find_leafref(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len,
+                     const struct lyd_node *context_node, const struct lyd_node **trees, struct lyd_value *storage, char **errmsg)
+{
+    struct lysc_type_leafref *type_lr = (struct lysc_type_leafref*)type;
+    const char *first_pred = NULL;
+    const struct lyd_node *start_search;
+    unsigned int u = 0;
+    const char *prefix, *id;
+    size_t prefix_len, id_len;
+    const struct lys_module *mod_node = NULL;
+    const char *token = type_lr->path;
+    const struct lyd_node *node;
+    struct lys_module *mod_context = context_node->schema->module;
+
+    if (token[0] == '/') {
+        /* absolute-path */
+        node = NULL;
+    } else {
+        /*relative-path */
+        node = context_node;
+    }
+
+    /* resolve leafref path */
+    while (*token) {
+        if (!strncmp(token, "../", 3)) {
+            /* level up */
+            token += 2;
+            node = (struct lyd_node*)node->parent;
+        } else if (!strncmp(token, "/../", 4)) {
+            /* level up */
+            token += 3;
+            node = (struct lyd_node*)node->parent;
+        } else if (*token == '/') {
+            /* level down */
+
+            /* reset predicates */
+            first_pred = NULL;
+
+            token++;
+            ly_parse_nodeid(&token, &prefix, &prefix_len, &id, &id_len);
+            mod_node = lys_module_find_prefix(mod_context, prefix, prefix_len);
+
+            if (node) {
+                /* inner node */
+                start_search = lyd_node_children(node);
+next_instance_inner:
+                if (start_search) {
+                    node = lyd_search(start_search, mod_node, id, id_len, 0, NULL, 0);
+                } else {
+                    node = NULL;
+                }
+            } else {
+                /* top-level node */
+                LY_ARRAY_FOR(trees, u) {
+                    start_search = trees[u];
+next_instance_toplevel:
+                    node = lyd_search(start_search, mod_node, id, id_len, 0, NULL, 0);
+                    if (node) {
+                        break;
+                    }
+                }
+            }
+            if (!node) {
+                /* node not found */
+                const char *pathstr_end = token;
+                if (first_pred) {
+                    /* some node instances actually exist, but they do not fit the predicate restrictions,
+                     * here we want to find the end of the list's predicate(s) */
+                    for (pathstr_end = ly_type_path_predicate_end(token);
+                            pathstr_end[1] == '[';
+                            pathstr_end = ly_type_path_predicate_end(pathstr_end + 1));
+                    /* move after last ']' (after each predicate follows "/something" since path must points to
+                     * a leaf/leaflist and predicates are allowed only for lists) */
+                    pathstr_end++;
+                }
+                asprintf(errmsg, "Invalid leafref - required instance \"%.*s\" does not exists in the data tree(s).",
+                         (int)(pathstr_end - type_lr->path), type_lr->path);
+                return NULL;
+            }
+        } else if (*token == '[') {
+            /* predicate */
+            const char *pred_start = token;
+            const struct lyd_node_term *key;
+            const struct lyd_node *value;
+            const struct lys_module *mod_pred;
+            const char *pred_end = ly_type_path_predicate_end(token);
+            const char *src_prefix, *src;
+            size_t src_prefix_len, src_len;
+
+            /* remember start of the first predicate to be able to return back when comparison fails
+             * on a subsequent predicate in case of multiple predicates - on the next node instance
+             * we have to start again with the first predicate */
+            if (!first_pred) {
+                first_pred = pred_start;
+            }
+
+            /* move after "[ *WSP" */
+            token++;
+            for (; isspace(*token); token++);
+
+            /* parse node-identifier */
+            ly_parse_nodeid(&token, &src_prefix, &src_prefix_len, &src, &src_len);
+            mod_pred = lys_module_find_prefix(mod_context, src_prefix, src_prefix_len);
+
+            key = (const struct lyd_node_term*)lyd_search(lyd_node_children(node), mod_pred, src, src_len, LYS_LEAF, NULL, 0);
+            if (!key) {
+                asprintf(errmsg, "Internal error - missing expected list's key \"%.*s\" in module \"%s\" (%s:%d).",
+                         (int)src_len, src, mod_pred->name, __FILE__, __LINE__);
+                LOGINT(ctx);
+                return NULL;
+            }
+
+            /* move after "*WSP = *WSP" */
+            for (; *token != '='; token++);
+            for (token++; isspace(*token); token++);
+            /* move after "current() *WSP / *WSP 1*(.. *WSP / *WSP)" */
+            token = strchr(token, ')') + 1;
+            for (; *token != '/'; token++);
+            for (; *token != '.'; token++);
+            for (value = (const struct lyd_node*)context_node; *token == '.'; ) {
+                value = (struct lyd_node*)value->parent; /* level up by .. */
+                for (token += 2; *token != '/'; token++);
+                for (token++; isspace(*token); token++);
+            }
+
+            /* parse "*(node-identifier *WSP / *WSP) node-identifier */
+            do {
+                /* parse node-identifier */
+                ly_parse_nodeid(&token, &src_prefix, &src_prefix_len, &src, &src_len);
+                mod_pred = lys_module_find_prefix(mod_context, src_prefix, src_prefix_len);
+
+                if (!value) {
+                    /* top-level search */
+                    LY_ARRAY_FOR(trees, u) {
+                        value = lyd_search(trees[u], mod_pred, src, src_len, 0, NULL, 0);
+                        if (value) {
+                            break;
+                        }
+                    }
+                } else {
+                    /* inner node */
+                    value = lyd_search(lyd_node_children(value), mod_pred, src, src_len, 0, NULL, 0);
+                }
+                if (!value) {
+                    /* node not found - try another instance */
+                    goto next_instance;
+                }
+
+                for (; isspace(*token); token++);
+                if (*token == '/') {
+                    /* - move after it and consume whitespaces */
+                    for (token++; isspace(*token); token++);
+                }
+            } while (*token != ']');
+
+            /* compare key and the value */
+            if (key->value.realtype->plugin->compare(&key->value, &((struct lyd_node_term*)value)->value)) {
+                /* nodes does not match, try another instance */
+next_instance:
+                token = first_pred;
+                start_search = node->next;
+                if (node->parent) {
+                    goto next_instance_inner;
+                } else {
+                    goto next_instance_toplevel;
+                }
+            }
+            /* match */
+
+            /* move after predicate */
+            assert(token == pred_end);
+            token = pred_end + 1;
+        }
+    }
+
+    /* check value */
+    while (node && type_lr->realtype->plugin->compare(&((struct lyd_node_term*)node)->value, storage)) {
+        /* values do not match, try another instance of the node */
+        const struct lysc_node *schema = node->schema;
+        LY_LIST_FOR(node->next, node) {
+            if (node->schema == schema) {
+                break;
+            }
+        }
+    }
+    if (!node) {
+        /* node not found */
+        asprintf(errmsg, "Invalid leafref value \"%.*s\" - required instance \"%.*s\" with this value does not exists"
+                 " in the data tree(s).", (int)value_len, value, (int)(token - type_lr->path), type_lr->path);
+        return NULL;
+    }
+
+    return node;
 }
 
 /**
@@ -2122,15 +2373,9 @@ ly_type_store_leafref(struct ly_ctx *ctx, struct lysc_type *type, const char *va
                       struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
     LY_ERR ret;
-    unsigned int u = 0;
     char *errmsg = NULL;
     struct lysc_type_leafref *type_lr = (struct lysc_type_leafref*)type;
     int storage_dummy = 0;
-    const char *first_pred = NULL;
-    const struct lyd_node *start_search;
-    const char *prefix, *id;
-    size_t prefix_len, id_len;
-    const struct lys_module *mod_node = NULL;
 
     if (!(options & (LY_TYPE_OPTS_STORE | LY_TYPE_OPTS_INCOMPLETE_DATA)) && type_lr->require_instance) {
         /* if there is no storage, but we will check the instance presence in data tree(s),
@@ -2155,185 +2400,7 @@ ly_type_store_leafref(struct ly_ctx *ctx, struct lysc_type *type, const char *va
         }
 
         /* find corresponding data instance */
-        const char *token = type_lr->path;
-        const struct lyd_node *node;
-        struct lys_module *mod_context = ((const struct lyd_node*)context_node)->schema->module;
-
-        if (token[0] == '/') {
-            /* absolute-path */
-            node = NULL;
-        } else {
-            /*relative-path */
-            node = (const struct lyd_node*)context_node;
-        }
-
-        /* resolve leafref path */
-        while (*token) {
-            if (!strncmp(token, "../", 3)) {
-                /* level up */
-                token += 2;
-                node = (struct lyd_node*)node->parent;
-            } else if (!strncmp(token, "/../", 4)) {
-                /* level up */
-                token += 3;
-                node = (struct lyd_node*)node->parent;
-            } else if (*token == '/') {
-                /* level down */
-
-                /* reset predicates */
-                first_pred = NULL;
-
-                token++;
-                ly_parse_nodeid(&token, &prefix, &prefix_len, &id, &id_len);
-                mod_node = lys_module_find_prefix(mod_context, prefix, prefix_len);
-
-                if (node) {
-                    /* inner node */
-                    start_search = lyd_node_children(node);
-next_instance_inner:
-                    if (start_search) {
-                        node = lyd_search(start_search, mod_node, id, id_len, 0, NULL, 0);
-                    } else {
-                        node = NULL;
-                    }
-                } else {
-                    /* top-level node */
-                    LY_ARRAY_FOR(trees, u) {
-                        start_search = trees[u];
-next_instance_toplevel:
-                        node = lyd_search(start_search, mod_node, id, id_len, 0, NULL, 0);
-                        if (node) {
-                            break;
-                        }
-                    }
-                }
-                if (!node) {
-                    /* node not found */
-                    const char *pathstr_end = token;
-                    if (first_pred) {
-                        /* some node instances actually exist, but they do not fit the predicate restrictions,
-                         * here we want to find the end of the list's predicate(s) */
-                        for (pathstr_end = ly_type_path_predicate_end(token);
-                                pathstr_end[1] == '[';
-                                pathstr_end = ly_type_path_predicate_end(pathstr_end + 1));
-                        /* move after last ']' (after each predicate follows "/something" since path must points to
-                         * a leaf/leaflist and predicates are allowed only for lists) */
-                        pathstr_end++;
-                    }
-                    asprintf(&errmsg, "Invalid leafref - required instance \"%.*s\" does not exists in the data tree(s).",
-                             (int)(pathstr_end - type_lr->path), type_lr->path);
-                    goto error;
-                }
-            } else if (*token == '[') {
-                /* predicate */
-                const char *pred_start = token;
-                const struct lyd_node_term *key;
-                const struct lyd_node *value;
-                const struct lys_module *mod_pred;
-                const char *pred_end = ly_type_path_predicate_end(token);
-                const char *src_prefix, *src;
-                size_t src_prefix_len, src_len;
-
-                /* remember start of the first predicate to be able to return back when comparison fails
-                 * on a subsequent predicate in case of multiple predicates - on the next node instance
-                 * we have to start again with the first predicate */
-                if (!first_pred) {
-                    first_pred = pred_start;
-                }
-
-                /* move after "[ *WSP" */
-                token++;
-                for (; isspace(*token); token++);
-
-                /* parse node-identifier */
-                ly_parse_nodeid(&token, &src_prefix, &src_prefix_len, &src, &src_len);
-                mod_pred = lys_module_find_prefix(mod_context, src_prefix, src_prefix_len);
-
-                key = (const struct lyd_node_term*)lyd_search(lyd_node_children(node), mod_pred, src, src_len, LYS_LEAF, NULL, 0);
-                if (!key) {
-                    asprintf(&errmsg, "Internal error - missing expected list's key \"%.*s\" in module \"%s\" (%s:%d).",
-                             (int)src_len, src, mod_pred->name, __FILE__, __LINE__);
-                    LOGINT(ctx);
-                    goto error;
-                }
-
-                /* move after "*WSP = *WSP" */
-                for (; *token != '='; token++);
-                for (token++; isspace(*token); token++);
-                /* move after "current() *WSP / *WSP 1*(.. *WSP / *WSP)" */
-                token = strchr(token, ')') + 1;
-                for (; *token != '/'; token++);
-                for (; *token != '.'; token++);
-                for (value = (const struct lyd_node*)context_node; *token == '.'; ) {
-                    value = (struct lyd_node*)value->parent; /* level up by .. */
-                    for (token += 2; *token != '/'; token++);
-                    for (token++; isspace(*token); token++);
-                }
-
-                /* parse "*(node-identifier *WSP / *WSP) node-identifier */
-                do {
-                    /* parse node-identifier */
-                    ly_parse_nodeid(&token, &src_prefix, &src_prefix_len, &src, &src_len);
-                    mod_pred = lys_module_find_prefix(mod_context, src_prefix, src_prefix_len);
-
-                    if (!value) {
-                        /* top-level search */
-                        LY_ARRAY_FOR(trees, u) {
-                            value = lyd_search(trees[u], mod_pred, src, src_len, 0, NULL, 0);
-                            if (value) {
-                                break;
-                            }
-                        }
-                    } else {
-                        /* inner node */
-                        value = lyd_search(lyd_node_children(value), mod_pred, src, src_len, 0, NULL, 0);
-                    }
-                    if (!value) {
-                        /* node not found - try another instance */
-                        goto next_instance;
-                    }
-
-                    for (; isspace(*token); token++);
-                    if (*token == '/') {
-                        /* - move after it and consume whitespaces */
-                        for (token++; isspace(*token); token++);
-                    }
-                } while (*token != ']');
-
-                /* compare key and the value */
-                if (key->value.realtype->plugin->compare(&key->value, &((struct lyd_node_term*)value)->value)) {
-                    /* nodes does not match, try another instance */
-next_instance:
-                    token = first_pred;
-                    start_search = node->next;
-                    if (node->parent) {
-                        goto next_instance_inner;
-                    } else {
-                        goto next_instance_toplevel;
-                    }
-                }
-                /* match */
-
-                /* move after predicate */
-                assert(token == pred_end);
-                token = pred_end + 1;
-            }
-        }
-
-        /* check value */
-        while (node && type_lr->realtype->plugin->compare(&((struct lyd_node_term*)node)->value, storage)) {
-            /* values do not match, try another instance of the node */
-            const struct lysc_node *schema = node->schema;
-            LY_LIST_FOR(node->next, node) {
-                if (node->schema == schema) {
-                    break;
-                }
-            }
-        }
-        if (!node) {
-            /* node not found */
-            asprintf(&errmsg, "Invalid leafref value \"%.*s\" - required instance \"%.*s\" with this value does not exists in the data tree(s).",
-                     (int)value_len, value, (int)(token - type_lr->path), type_lr->path);
+        if (!ly_type_find_leafref(ctx, type, value, value_len, (const struct lyd_node *)context_node, trees, storage, &errmsg)) {
             goto error;
         }
     }
@@ -2414,20 +2481,16 @@ ly_type_store_union(struct ly_ctx *ctx, struct lysc_type *type, const char *valu
     unsigned int u;
     struct lysc_type_union *type_u = (struct lysc_type_union*)type;
     struct lyd_value_subvalue *subvalue;
-    int secondcall = 0;
     char *errmsg = NULL;
 
     if ((options & LY_TYPE_OPTS_SECOND_CALL) && (options & LY_TYPE_OPTS_STORE)) {
         subvalue = storage->subvalue;
-        /* standalone second_call flag - the options flag can be removed, but we need information
-         * about the second call to avoid rewriting the canonized value */
-        secondcall = 1;
 
         /* call the callback second time */
         ret = subvalue->value->realtype->plugin->store(ctx, subvalue->value->realtype, value, value_len,
                                                        options & ~(LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_DYNAMIC),
                                                        ly_type_stored_prefixes_clb, subvalue->prefixes, format,
-                                                       context_node, trees, subvalue->value, NULL, err);
+                                                       context_node, trees, subvalue->value, canonized, err);
         if (ret) {
             /* second call failed, we have to try another subtype of the union.
              * Unfortunately, since the realtype can change (e.g. in leafref), we are not able to detect
@@ -2454,9 +2517,9 @@ search_subtype:
         /* use the first usable sybtype to store the value */
         LY_ARRAY_FOR(type_u->types, u) {
             subvalue->value->realtype = type_u->types[u];
-            ret = type_u->types[u]->plugin->store(ctx, type_u->types[u], value, value_len, options & ~(LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_DYNAMIC),
+            ret = type_u->types[u]->plugin->store(ctx, type_u->types[u], value, value_len, options & ~LY_TYPE_OPTS_DYNAMIC,
                                                   ly_type_stored_prefixes_clb, subvalue->prefixes, format,
-                                                  context_node, trees, subvalue->value, NULL, err);
+                                                  context_node, trees, subvalue->value, canonized, err);
             if (ret == LY_SUCCESS || ret == LY_EINCOMPLETE) {
                 /* success (or not yet complete) */
                 break;
@@ -2469,22 +2532,15 @@ search_subtype:
             asprintf(&errmsg, "Invalid union value \"%.*s\" - no matching subtype found.", (int)value_len, value);
             goto error;
         }
+
+        if ((options & LY_TYPE_OPTS_STORE) && !storage->original) {
+            storage->original = lydict_insert(ctx, value_len ? value : "", value_len);
+        }
     }
     /* success */
 
-    if (!secondcall) {
-        if (options & (LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_STORE)) {
-            if (options & LY_TYPE_OPTS_DYNAMIC) {
-                ly_type_store_canonized(ctx, options, lydict_insert_zc(ctx, (char*)value), storage, canonized);
-                value = NULL;
-            } else {
-                ly_type_store_canonized(ctx, options, lydict_insert(ctx, value_len ? value : "", value_len), storage, canonized);
-            }
-        }
-
-        if (options & LY_TYPE_OPTS_DYNAMIC) {
-            free((char*)value);
-        }
+    if (options & LY_TYPE_OPTS_DYNAMIC) {
+        free((char*)value);
     }
 
     if (options & LY_TYPE_OPTS_STORE) {
@@ -2540,7 +2596,7 @@ ly_type_compare_union(const struct lyd_value *val1, const struct lyd_value *val2
 static const char *
 ly_type_print_union(const struct lyd_value *value, LYD_FORMAT format, ly_clb_get_prefix get_prefix, void *printer, int *dynamic)
 {
-    return ly_type_print_canonical(value, format, get_prefix, printer, dynamic);
+    return value->subvalue->value->realtype->plugin->print(value->subvalue->value, format, get_prefix, printer, dynamic);
 }
 
 /* @brief Duplication callback of the union values.
@@ -2567,7 +2623,7 @@ ly_type_dup_union(struct ly_ctx *ctx, const struct lyd_value *original, struct l
     dup->subvalue->value->realtype = original->subvalue->value->realtype;
     dup->subvalue->value->realtype->plugin->duplicate(ctx, original->subvalue->value, dup->subvalue->value);
 
-    return ly_type_dup_canonical(ctx, original, dup);
+    return ly_type_dup_original(ctx, original, dup);
 }
 
 /**
@@ -2611,17 +2667,17 @@ struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT] = {
     {.type = LY_TYPE_UINT64, .store = ly_type_store_uint, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical,
      .duplicate = ly_type_dup_uint, .free = ly_type_free_canonical, .id = "libyang 2 - unsigned integer, version 1"},
     {.type = LY_TYPE_STRING, .store = ly_type_store_string, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical,
-     .duplicate = ly_type_dup_canonical, .free = ly_type_free_canonical, .id = "libyang 2 - string, version 1"},
+     .duplicate = ly_type_dup_original, .free = ly_type_free_original, .id = "libyang 2 - string, version 1"},
     {.type = LY_TYPE_BITS, .store = ly_type_store_bits, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical,
      .duplicate = ly_type_dup_bits, .free = ly_type_free_bits, .id = "libyang 2 - bits, version 1"},
     {.type = LY_TYPE_BOOL, .store = ly_type_store_boolean, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical,
-     .duplicate = ly_type_dup_int, .free = ly_type_free_canonical, .id = "libyang 2 - boolean, version 1"},
+     .duplicate = ly_type_dup_boolean, .free = ly_type_free_original, .id = "libyang 2 - boolean, version 1"},
     {.type = LY_TYPE_DEC64, .store = ly_type_store_decimal64, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical,
      .duplicate = ly_type_dup_decimal64, .free = ly_type_free_canonical, .id = "libyang 2 - decimal64, version 1"},
     {.type = LY_TYPE_EMPTY, .store = ly_type_store_empty, .compare = ly_type_compare_empty, .print = ly_type_print_canonical,
-     .duplicate = ly_type_dup_canonical, .free = ly_type_free_canonical, .id = "libyang 2 - empty, version 1"},
+     .duplicate = ly_type_dup_original, .free = ly_type_free_original, .id = "libyang 2 - empty, version 1"},
     {.type = LY_TYPE_ENUM, .store = ly_type_store_enum, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical,
-     .duplicate = ly_type_dup_enum, .free = ly_type_free_canonical, .id = "libyang 2 - enumeration, version 1"},
+     .duplicate = ly_type_dup_enum, .free = ly_type_free_original, .id = "libyang 2 - enumeration, version 1"},
     {.type = LY_TYPE_IDENT, .store = ly_type_store_identityref, .compare = ly_type_compare_identityref, .print = ly_type_print_identityref,
      .duplicate = ly_type_dup_identityref, .free = ly_type_free_canonical, .id = "libyang 2 - identityref, version 1"},
     {.type = LY_TYPE_INST, .store = ly_type_store_instanceid, .compare = ly_type_compare_instanceid, .print = ly_type_print_instanceid,

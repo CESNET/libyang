@@ -297,24 +297,6 @@ LY_ERR lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revisi
 LY_ERR lysp_load_submodule(struct lys_parser_ctx *ctx, struct lysp_module *mod, struct lysp_include *inc);
 
 /**
- * @defgroup scflags Schema compile flags
- * @ingroup schematree
- *
- * @{
- */
-#define LYSC_OPT_RPC_INPUT  LYS_CONFIG_W       /**< Internal option when compiling schema tree of RPC/action input */
-#define LYSC_OPT_RPC_OUTPUT LYS_CONFIG_R       /**< Internal option when compiling schema tree of RPC/action output */
-#define LYSC_OPT_RPC_MASK   LYS_CONFIG_MASK    /**< mask for the internal RPC options */
-#define LYSC_OPT_FREE_SP    0x04               /**< Free the input printable schema */
-#define LYSC_OPT_INTERNAL   0x08               /**< Internal compilation caused by dependency */
-#define LYSC_OPT_NOTIFICATION 0x10             /**< Internal option when compiling schema tree of Notification */
-
-#define LYSC_OPT_GROUPING   0x20               /** Compiling (validation) of a non-instantiated grouping.
-                                                   In this case not all the restrictions are checked since they can be valid only
-                                                   in the real placement of the grouping. TODO - what specifically is not done */
-/** @} scflags */
-
-/**
  * @brief Compile printable schema into a validated schema linking all the references.
  *
  * @param[in, out] mod Schema structure holding pointers to both schema structure types. The ::lys_module#parsed
@@ -665,6 +647,17 @@ LY_ERR lys_feature_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struc
 uint8_t lysc_iff_getop(uint8_t *list, int pos);
 
 /**
+ * @brief Checks pattern syntax.
+ *
+ * @param[in] ctx Context.
+ * @param[in] log_path Path for logging errors.
+ * @param[in] pattern Pattern to check.
+ * @param[in,out] pcre2_code Compiled PCRE2 pattern. If NULL, the compiled information used to validate pattern are freed.
+ * @return LY_ERR value - LY_SUCCESS, LY_EMEM, LY_EVALID.
+ */
+LY_ERR lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *log_path, const char *pattern, pcre2_code **code);
+
+/**
  * @brief Internal wrapper around lys_compile_extension() to be able to prepare list of compiled extension definitions
  * even for the parsed (not-implemented) module - see lys_module::off_extensions.
  *
@@ -854,14 +847,12 @@ LY_ERR yin_parse_submodule(struct yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, 
 /**
  * @brief Make the specific module implemented, use the provided value as flag.
  *
- * @param[in] ctx libyang context to change.
- * @param[in] mod Module from the given context to make implemented. It is not an error
- * to provide already implemented module, it just does nothing.
+ * @param[in] mod Module to make implemented. It is not an error to provide already implemented module, it just does nothing.
  * @param[in] implemented Flag value for the ::lys_module#implemented item.
  * @return LY_SUCCESS or LY_EDENIED in case the context contains some other revision of the
  * same module which is already implemented.
  */
-LY_ERR ly_ctx_module_implement_internal(struct ly_ctx *ctx, struct lys_module *mod, uint8_t implemented);
+LY_ERR lys_set_implemented_internal(struct lys_module *mod, uint8_t implemented);
 
 /**
  * @brief match yang keyword

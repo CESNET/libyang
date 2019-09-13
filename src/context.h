@@ -25,6 +25,109 @@ extern "C" {
 #endif
 
 /**
+ * @page howtocontext Context
+ *
+ * The context concept allows callers to work in environments with different sets of YANG schemas.
+ *
+ * The first step in libyang is to create a new context using ly_ctx_new(). It returns a handler
+ * used in the following work.
+ *
+ * When creating a new context, search dir can be specified (NULL is accepted) to provide directory
+ * where libyang will automatically search for schemas being imported or included. The search path
+ * can be later changed via ly_ctx_set_searchdir() and ly_ctx_unset_searchdir() functions. Before the search dirs,
+ * also the current working directory is (non-recursively) searched. For the case of the explicitly set search
+ * dirs, also all their subdirectories (and symlinks) are taken into account. Searching in the current working
+ * directory can be avoided with the context's #LY_CTX_DISABLE_SEARCHDIR_CWD option (or via ly_ctx_set_options()).
+ * Searching in all the context's search dirs (without removing them) can be avoided with the context's
+ * #LY_CTX_DISABLE_SEARCHDIRS option (or via ly_ctx_set_options()). This automatic searching can be preceded
+ * by a custom  module searching callback (#ly_module_imp_clb) set via ly_ctx_set_module_imp_clb(). The algorithm of
+ * searching in search dirs is also available via API as lys_search_localfile() function.
+ *
+ * Schemas are added into the context using [parser functions](@ref howtoschemasparsers) - \b lys_parse_*().
+ * Alternatively, also ly_ctx_load_module() can be used - in that case the #ly_module_imp_clb or automatic
+ * search in search dir and in the current working directory is used. YANG submodules cannot be loaded or even validated
+ * directly, they are loaded always only as includes of YANG modules.
+ *
+ * YANG schemas are loaded in two steps. First, the input YANG/YIN data are parsed into \b lysp_* structures that reflect
+ * the structure of the input schema. Mostly just syntax checks are done, no reference or type checking is performed in
+ * this step. If the module is supposed to be implemented, not just imported by another module, the second step is to compile
+ * it. The compiled schema may significantly differ in structure from the source schema structure. All the references
+ * are resolved, groupings are instantiated, types are resolved (and compiled by grouping all the relevant restrictions
+ * when derived from another types) and many other syntactical checks are done.
+ *
+ * Similarly, data trees can be parsed by \b lyd_parse_*() functions. Note, that functions for schemas have \b lys_
+ * prefix (or \b lysp_ for the parsed and \b lysc_ for the compiled schema) while functions for instance data have
+ * \b lyd_ prefix. It can happen during data parsing that a schema is required and __not found__ in the context or
+ * the schema is found, but is __only imported__, not implemented (so the data cannot actually be instantiated).
+ * In these cases, a callback is called, which should add this schema into the context or change its conformance
+ * to implemented. You can set the callback using ly_ctx_set_module_data_clb() (more in @ref howtodataparsers
+ * and @ref howtodatavalidation).
+ *
+ * Context can hold multiple revisions of the same schema, but only one of them can be implemented. The schema is not
+ * implemented in case it is automatically loaded as import for another module and it is not referenced in such
+ * a module (and no other) as target of leafref, augment or deviation. All modules with deviation definition are always
+ * marked as implemented. The imported (not implemented) module can be set implemented by lys_set_implemented(). But
+ * the implemented module cannot be changed back to just imported module. The imported modules are used only as a
+ * source of definitions for types and groupings for uses statements. The data in such modules are ignored - caller
+ * is not allowed to create the data (including instantiating identities) defined in the model via data parsers,
+ * the default nodes are not added into any data tree and mandatory nodes are not checked in the data trees. This
+ * can be changed by ly_ctx_new()'s #LY_CTX_ALLIMPLEMENTED option (or via ly_ctx_set_options()), which causes that
+ * all the imported modules are automatically set to be implemented.
+ *
+ * When loading/importing a module without revision, the latest revision of the required module is supposed to load.
+ * For a context, the first time the latest revision of a module is requested, it is properly searched for and loaded.
+ * However, when this module is requested (without revision) the second time, the one found previously is returned.
+ * This has the advantage of not searching for the module repeatedly but the drawback that if a later revision
+ * of the module is later made available, this context will not use it. However, to force libyang to re-search the
+ * latest revision, ly_ctx_reset_latests() can be used (not that it applies to all the schemas in the context).
+ *
+ * Context holds all schema modules internally. To get a specific module, use ly_ctx_get_module() (or ly_ctx_get_module_ns())
+ * The returned structure includes both, parsed and compiled, schema variants. If you need to do something with all the modules
+ * in the context, it is advised to iterate over them using ly_ctx_get_module_iter(), it is the most efficient way.
+ * Alternatively, the ly_ctx_info() function can be used to get complex information about the schemas in the context
+ * in the form of data tree defined by <a href="https://tools.ietf.org/html/rfc7895">ietf-yang-library</a> schema.
+ * To get a specific node defined in a module in the context, ly_ctx_find_path() or ly_ctx_get_node() can be used.
+ *
+ * Modules cannot be removed from their context. If you need to change the set of the schema modules in the context
+ * (use only a subset), a new context must be created. To remove the context, there is ly_ctx_destroy() function.
+ *
+ * - @subpage howtocontextdict
+ *
+ * \note API for this group of functions is available in the [context module](@ref context).
+ *
+ * Functions List
+ * --------------
+ * - ::ly_ctx_new()
+ * - ::ly_ctx_set_searchdir()
+ * - ::ly_ctx_unset_searchdir()
+ * - ::ly_ctx_unset_searchdirs()
+ * - ::ly_ctx_get_searchdirs()
+ * - ::ly_ctx_set_module_imp_clb()
+ * - ::ly_ctx_get_module_imp_clb()
+ * - ::ly_ctx_set_module_data_clb()
+ * - ::ly_ctx_get_module_data_clb()
+ * - ::ly_ctx_set_options()
+ * - ::ly_ctx_unset_options()
+ * - ::ly_ctx_get_options()
+ * - ::ly_ctx_load_module()
+ * - ::ly_ctx_info()
+ * - ::ly_ctx_get_module_iter()
+ * - ::ly_ctx_get_module()
+ * - ::ly_ctx_get_module_ns()
+ * - ::ly_ctx_get_module_implemented()
+ * - ::ly_ctx_get_module_implemented_ns()
+ * - ::ly_ctx_get_module_latest()
+ * - ::ly_ctx_get_module_latest_ns()
+ * - ::ly_ctx_reset_latests()
+ * - ::ly_ctx_get_module_set_id()
+ * - ::ly_ctx_get_node()
+ * - ::ly_ctx_find_path()
+ * - ::ly_ctx_destroy()
+ * - ::lys_set_implemented()
+ * - ::lys_search_localfile()
+ */
+
+/**
  * @defgroup context Context
  * @{
  *
@@ -151,7 +254,7 @@ int ly_ctx_get_options(const struct ly_ctx *ctx);
  * @param[in] option Combination of the context's options to be set, see @ref contextoptions.
  * @return LY_ERR value.
  */
-LY_ERR ly_ctx_set_option(struct ly_ctx *ctx, int option);
+LY_ERR ly_ctx_set_options(struct ly_ctx *ctx, int option);
 
 /**
  * @brief Unset some of the context's options, see @ref contextoptions.
@@ -159,7 +262,7 @@ LY_ERR ly_ctx_set_option(struct ly_ctx *ctx, int option);
  * @param[in] option Combination of the context's options to be unset, see @ref contextoptions.
  * @return LY_ERR value.
  */
-LY_ERR ly_ctx_unset_option(struct ly_ctx *ctx, int option);
+LY_ERR ly_ctx_unset_options(struct ly_ctx *ctx, int option);
 
 /**
  * @brief Get current ID of the modules set. The value is available also
@@ -250,14 +353,6 @@ struct lys_module *ly_ctx_get_module_latest(const struct ly_ctx *ctx, const char
 struct lys_module *ly_ctx_get_module_implemented(const struct ly_ctx *ctx, const char *name);
 
 /**
- * @brief Get the (only) implemented YANG module specified by its name.
- *
- * @param[in] ctx Context where to search.
- * @param[in] name Name of the YANG module to get.
- * @return The only implemented YANG module revision of the given name in the given context. NULL if there is no
- * implemented module of the given name.
- */
-/**
  * @brief Iterate over all modules in the given context.
  *
  * @param[in] ctx Context with the modules.
@@ -317,17 +412,6 @@ struct lys_module *ly_ctx_get_module_implemented_ns(const struct ly_ctx *ctx, co
  * @param[in] ctx libyang context where the latest revision information is going to be reset.
  */
 void ly_ctx_reset_latests(struct ly_ctx *ctx);
-
-/**
- * @brief Make the specific module implemented.
- *
- * @param[in] ctx libyang context to change.
- * @param[in] mod Module from the given context to make implemented. It is not an error
- * to provide already implemented module, it just does nothing.
- * @return LY_SUCCESS or LY_EDENIED in case the context contains some other revision of the
- * same module which is already implemented.
- */
-LY_ERR ly_ctx_module_implement(struct ly_ctx *ctx, struct lys_module *mod);
 
 /**
  * @brief Try to find the model in the searchpaths of \p ctx and load it into it. If custom missing
