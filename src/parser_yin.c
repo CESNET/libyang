@@ -2846,7 +2846,18 @@ yin_check_relative_order(struct yin_parser_ctx *ctx, enum ly_stmt kw, enum ly_st
     return LY_SUCCESS;
 }
 
-const char *
+/**
+ * @brief Get element name prefixed by full URI of xml namespace.
+ *
+ * @param[in] ctx YIN parser context used for logging and to get inormation about xml namespaces.
+ * @param[in] name Name of element.
+ * @param[in] name_len Length of element name.
+ * @param[in] prefix Prefix of element.
+ * @param[in] prefix_len Length of element prefix.
+ *
+ * @return Element name prefixed by URI on success, NULL on failure.
+ */
+static const char *
 name2nsname(struct yin_parser_ctx *ctx, const char *name, size_t name_len, const char *prefix, size_t prefix_len)
 {
     const struct lyxml_ns *ns = lyxml_ns_get(&ctx->xml_ctx, prefix, prefix_len);

@@ -27,26 +27,6 @@ extern const char *const yin_attr_list[];
 
 #define YIN_NS_URI "urn:ietf:params:xml:ns:yang:yin:1"
 
-/**
- * @brief Get start of full name including possible prefix.
- *
- * @param[in] name Start of name in input data.
- * @param[in] prefix_len Lenght of prefix.
- *
- * @return Pointer to begining of full element name including prefix.
- */
-#define name2fname(name, prefix_len) (prefix_len != 0 ? name - (prefix_len + 1) : name)
-
-/**
- * @brief Get length of full name including possible prefix.
- *
- * @param[in] name_len Lenght of name without prefix.
- * @param[in] prefix_len Lenght of prefix.
- *
- * @return Lenght of full name including possible prefix and ':' delimiter.
- */
-#define len2flen(name_len, prefix_len) (prefix_len != 0 ? name_len + prefix_len + 1 : name_len)
-
 #define VALID_VALS1 " Only valid value is \"%s\"."
 #define VALID_VALS2 " Valid values are \"%s\" and \"%s\"."
 #define VALID_VALS3 " Valid values are \"%s\", \"%s\" and \"%s\"."
