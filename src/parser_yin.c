@@ -2846,17 +2846,27 @@ yin_check_relative_order(struct yin_parser_ctx *ctx, enum ly_stmt kw, enum ly_st
     return LY_SUCCESS;
 }
 
-char *
+const char *
 name2nsname(struct yin_parser_ctx *ctx, const char *name, size_t name_len, const char *prefix, size_t prefix_len)
 {
     const struct lyxml_ns *ns = lyxml_ns_get(&ctx->xml_ctx, prefix, prefix_len);
-    size_t len = strlen(ns->uri) + name_len + 1;
+    LY_CHECK_ERR_RET(!ns, LOGINT(ctx->xml_ctx.ctx), NULL);
 
-    char *temp = malloc(sizeof(*temp) * len);
-    strcpy(temp, ns->uri);
-    strncat(temp, name, name_len);
-    
-    return lydict_insert_zc(ctx->xml_ctx.ctx, temp);
+    size_t ns_len = strlen(ns->uri);
+    size_t len = ns_len + name_len + 1; /* +1 because of ':' delimiter between ns and actual name */
+
+    char *result;
+    char *temp;
+    temp = result = malloc(sizeof(*temp) * (len + 1)); /* +1 for '\0' terminator */
+    LY_CHECK_ERR_RET(!temp, LOGMEM(ctx->xml_ctx.ctx), NULL);
+
+    strcpy(result, ns->uri);
+    result[ns_len] = ':';
+    temp = &result[ns_len + 1];
+    strncpy(temp, name, name_len);
+    result[len] = '\0';
+
+    return lydict_insert_zc(ctx->xml_ctx.ctx, result);
 }
 
 LY_ERR
@@ -2931,8 +2941,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 switch (kw) {
                 /* call responsible function */
                 case LY_STMT_EXTENSION_INSTANCE:
-                    ret = yin_parse_extension_instance(ctx, attrs, data, name2fname(name, prefix_len),
-                                                      len2flen(name_len, prefix_len),
+                    ret = yin_parse_extension_instance(ctx, attrs, data, name, name_len, prefix, prefix_len,
                                                       kw2lyext_substmt(current_element),
                                                       (subelem->dest) ? *((uint32_t*)subelem->dest) : 0, exts);
                     break;
@@ -3146,8 +3155,9 @@ cleanup:
 }
 
 LY_ERR
-yin_parse_extension_instance(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data, const char *ext_name,
-                             int ext_name_len, LYEXT_SUBSTMT subelem, uint32_t subelem_index, struct lysp_ext_instance **exts)
+yin_parse_extension_instance(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+                             const char *ext_name, size_t ext_name_len, const char *ext_prefix, size_t ext_prefix_len,
+                             LYEXT_SUBSTMT subelem, uint32_t subelem_index, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
     char *out;
@@ -3162,7 +3172,8 @@ yin_parse_extension_instance(struct yin_parser_ctx *ctx, struct yin_arg_record *
 
     e->yin = 0;
     /* store name and insubstmt info */
-    e->name = lydict_insert(ctx->xml_ctx.ctx, ext_name, ext_name_len);
+    e->name = name2nsname(ctx, ext_name, ext_name_len, ext_prefix, ext_prefix_len);
+    LY_CHECK_RET(!e->name, LY_EMEM);
     e->insubstmt = subelem;
     e->insubstmt_index = subelem_index;
     e->yin |= LYS_YIN;
@@ -3378,15 +3389,18 @@ yin_parse_element_generic(struct yin_parser_ctx *ctx, const char *name, size_t n
     struct yin_arg_record *attrs = NULL;
     struct yin_arg_record *iter = NULL;
 
-    /* allocate new structure for element */
-    *element = calloc(1, sizeof(**element));
-    LY_CHECK_ERR_RET(!(*element), LOGMEM(ctx->xml_ctx.ctx), LY_EMEM);
-    (*element)->stmt = lydict_insert(ctx->xml_ctx.ctx, prefix ? prefix : name, prefix_len ? prefix_len + name_len + 1 : name_len);
-    LY_CHECK_RET(!(*element)->stmt, LY_EMEM);
-    /* TODO map prefix to module name */
-
+    /* load all attributes for correct namespace evaluation */
     ret = yin_load_attributes(ctx, data, &attrs);
     LY_CHECK_GOTO(ret, cleanup);
+
+    /* allocate new structure for element */
+    *element = calloc(1, sizeof(**element));
+    LY_CHECK_ERR_GOTO(!(*element), LOGMEM(ctx->xml_ctx.ctx); ret = LY_EMEM, cleanup);
+    //(*element)->stmt = lydict_insert(ctx->xml_ctx.ctx, prefix ? prefix : name, prefix_len ? prefix_len + name_len + 1 : name_len);
+    (*element)->stmt = name2nsname(ctx, name, name_len, prefix, prefix_len);
+    LY_CHECK_ERR_GOTO(!(*element)->stmt, ret = LY_EMEM, cleanup);
+    /* TODO map prefix to module name */
+
     (*element)->kw = yin_match_keyword(ctx, name, name_len, prefix, prefix_len, parent);
 
     last = (*element)->child;

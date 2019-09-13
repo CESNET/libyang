@@ -234,8 +234,10 @@ LY_ERR yin_load_attributes(struct yin_parser_ctx *ctx, const char **data, struct
  * @param[in,out] ctx Yin parser context for logging and to store current state.
  * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of extension instance.
  * @param[in,out] data Data to read from, always moved to currently handled character.
- * @param[in] ext_name Name of the extension element.
- * @param[in] ext_name_len Length of extension name.
+ * @param[in] name Name of the extension element.
+ * @param[in] name_len Length of extension name.
+ * @param[in] prefix Prefix of extension name.
+ * @param[in] prefix_len Length of extension prefix.
  * @param[in] subelem Type of the keyword this extension instance is a subelement of.
  * @param[in] subelem_index Index of the keyword instance this extension instance is a subelement of
  * @param[in,out] exts Extension instance to add to.
@@ -243,8 +245,8 @@ LY_ERR yin_load_attributes(struct yin_parser_ctx *ctx, const char **data, struct
  * @return LY_ERR values.
  */
 LY_ERR yin_parse_extension_instance(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
-                                    const char *ext_name, int ext_name_len, LYEXT_SUBSTMT subelem,
-                                    uint32_t subelem_index, struct lysp_ext_instance **exts);
+                                    const char *ext_name, size_t ext_name_len, const char *ext_prefix, size_t ext_prefix_len,
+                                    LYEXT_SUBSTMT subelem, uint32_t subelem_index, struct lysp_ext_instance **exts);
 
 /**
  * @brief Parse yin element into generic structure.
@@ -260,8 +262,8 @@ LY_ERR yin_parse_extension_instance(struct yin_parser_ctx *ctx, struct yin_arg_r
  *
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_element_generic(struct yin_parser_ctx *ctx, const char *name, size_t name_len, const char *prefix, size_t prefix_len, enum ly_stmt parent,
-                                 const char **data, struct lysp_stmt **element);
+LY_ERR yin_parse_element_generic(struct yin_parser_ctx *ctx, const char *name, size_t name_len, const char *prefix,
+                                 size_t prefix_len, enum ly_stmt parent, const char **data, struct lysp_stmt **element);
 
 /**
  * @brief Parse module element.
