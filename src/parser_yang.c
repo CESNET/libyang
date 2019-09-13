@@ -1522,7 +1522,7 @@ parse_any(struct lys_parser_ctx *ctx, const char **data, enum ly_stmt kw, struct
     struct lysp_node_anydata *any;
 
     /* create new structure and insert into siblings */
-    LY_LIST_NEW_RET(ctx->ctx, siblings, any, next);
+    LY_LIST_NEW_RET(ctx->ctx, siblings, any, next, LY_EMEM);
 
     any->nodetype = kw == LY_STMT_ANYDATA ? LYS_ANYDATA : LYS_ANYXML;
     any->parent = parent;
@@ -2069,7 +2069,7 @@ parse_leaf(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *pare
     struct lysp_node_leaf *leaf;
 
     /* create new leaf structure */
-    LY_LIST_NEW_RET(ctx->ctx, siblings, leaf, next);
+    LY_LIST_NEW_RET(ctx->ctx, siblings, leaf, next, LY_EMEM);
     leaf->nodetype = LYS_LEAF;
     leaf->parent = parent;
 
@@ -2336,7 +2336,7 @@ parse_leaflist(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *
     struct lysp_node_leaflist *llist;
 
     /* create new leaf-list structure */
-    LY_LIST_NEW_RET(ctx->ctx, siblings, llist, next);
+    LY_LIST_NEW_RET(ctx->ctx, siblings, llist, next, LY_EMEM);
     llist->nodetype = LYS_LEAFLIST;
     llist->parent = parent;
 
@@ -3005,7 +3005,7 @@ parse_uses(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *pare
     struct lysp_node_uses *uses;
 
     /* create uses structure */
-    LY_LIST_NEW_RET(ctx->ctx, siblings, uses, next);
+    LY_LIST_NEW_RET(ctx->ctx, siblings, uses, next, LY_EMEM);
     uses->nodetype = LYS_USES;
     uses->parent = parent;
 
@@ -3072,7 +3072,7 @@ parse_case(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *pare
     struct lysp_node_case *cas;
 
     /* create new case structure */
-    LY_LIST_NEW_RET(ctx->ctx, siblings, cas, next);
+    LY_LIST_NEW_RET(ctx->ctx, siblings, cas, next, LY_EMEM);
     cas->nodetype = LYS_CASE;
     cas->parent = parent;
 
@@ -3153,7 +3153,7 @@ parse_choice(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *pa
     struct lysp_node_choice *choice;
 
     /* create new choice structure */
-    LY_LIST_NEW_RET(ctx->ctx, siblings, choice, next);
+    LY_LIST_NEW_RET(ctx->ctx, siblings, choice, next, LY_EMEM);
     choice->nodetype = LYS_CHOICE;
     choice->parent = parent;
 
@@ -3250,7 +3250,7 @@ parse_container(struct lys_parser_ctx *ctx, const char **data, struct lysp_node 
     struct lysp_node_container *cont;
 
     /* create new container structure */
-    LY_LIST_NEW_RET(ctx->ctx, siblings, cont, next);
+    LY_LIST_NEW_RET(ctx->ctx, siblings, cont, next, LY_EMEM);
     cont->nodetype = LYS_CONTAINER;
     cont->parent = parent;
 
@@ -3358,7 +3358,7 @@ parse_list(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *pare
     struct lysp_node_list *list;
 
     /* create new list structure */
-    LY_LIST_NEW_RET(ctx->ctx, siblings, list, next);
+    LY_LIST_NEW_RET(ctx->ctx, siblings, list, next, LY_EMEM);
     list->nodetype = LYS_LIST;
     list->parent = parent;
 

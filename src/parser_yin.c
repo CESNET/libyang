@@ -50,6 +50,7 @@ const char *const yin_attr_list[] = {
     [YIN_ARG_URI] = "uri",
     [YIN_ARG_DATE] = "date",
     [YIN_ARG_TAG] = "tag",
+    [YIN_ARG_NONE] = "none",
 };
 
 enum ly_stmt
@@ -600,7 +601,7 @@ yin_parse_enum(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const c
 
     LY_ARRAY_NEW_RET(ctx->xml_ctx.ctx, type->enums, en, LY_EMEM);
     type->flags |= LYS_SET_ENUM;
-    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NAME, &en->name, Y_IDENTIF_ARG, LY_STMT_ENUM));
+    LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NAME, &en->name, Y_STR_ARG, LY_STMT_ENUM));
     LY_CHECK_RET(lysp_check_enum_name((struct lys_parser_ctx *)ctx, en->name, strlen(en->name)));
     YANG_CHECK_NONEMPTY((struct lys_parser_ctx *)ctx, strlen(en->name), "enum");
     CHECK_UNIQUENESS((struct lys_parser_ctx *)ctx, type->enums, name, "enum", en->name);
@@ -1316,7 +1317,7 @@ yin_parse_any(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const ch
     struct lysp_node_anydata *any;
 
     /* create new sibling */
-    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->nodes, any, next);
+    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->nodes, any, next, LY_EMEM);
     any->nodetype = (any_kw == LY_STMT_ANYDATA) ? LYS_ANYDATA : LYS_ANYXML;
     any->parent = node_meta->parent;
 
@@ -1354,7 +1355,7 @@ yin_parse_leaf(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const c
     struct lysp_node_leaf *leaf;
 
     /* create structure new leaf */
-    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->nodes, leaf, next);
+    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->nodes, leaf, next, LY_EMEM);
     leaf->nodetype = LYS_LEAF;
     leaf->parent = node_meta->parent;
 
@@ -1395,7 +1396,7 @@ yin_parse_leaflist(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, con
 {
     struct lysp_node_leaflist *llist;
 
-    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->nodes, llist, next);
+    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->nodes, llist, next, LY_EMEM);
 
     llist->nodetype = LYS_LEAFLIST;
     llist->parent = node_meta->parent;
@@ -1533,7 +1534,7 @@ yin_parse_uses(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const c
     struct lysp_node_uses *uses;
 
     /* create new uses */
-    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->nodes, uses, next);
+    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->nodes, uses, next, LY_EMEM);
     uses->nodetype = LYS_USES;
     uses->parent = node_meta->parent;
 
@@ -2051,7 +2052,7 @@ yin_parse_list(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const c
     LY_ERR ret = LY_SUCCESS;
     struct yin_subelement *subelems = NULL;
 
-    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->nodes, list, next);
+    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->nodes, list, next, LY_EMEM);
     list->nodetype = LYS_LIST;
     list->parent = node_meta->parent;
 
@@ -2233,7 +2234,7 @@ yin_parse_container(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, co
     struct yin_subelement *subelems = NULL;
 
     /* create new container */
-    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->nodes, cont, next);
+    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->nodes, cont, next, LY_EMEM);
     cont->nodetype = LYS_CONTAINER;
     cont->parent = node_meta->parent;
 
@@ -2292,7 +2293,7 @@ yin_parse_case(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const c
     struct yin_subelement *subelems = NULL;;
 
     /* create new case */
-    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->nodes, cas, next);
+    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->nodes, cas, next, LY_EMEM);
     cas->nodetype = LYS_CASE;
     cas->parent = node_meta->parent;
 
@@ -2341,7 +2342,7 @@ yin_parse_choice(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const
     struct lysp_node_choice *choice;
 
     /* create new choice */
-    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->nodes, choice, next);
+    LY_LIST_NEW_RET(ctx->xml_ctx.ctx, node_meta->nodes, choice, next, LY_EMEM);
 
     choice->nodetype = LYS_CHOICE;
     choice->parent = node_meta->parent;
@@ -2845,6 +2846,40 @@ yin_check_relative_order(struct yin_parser_ctx *ctx, enum ly_stmt kw, enum ly_st
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Get element name prefixed by full URI of xml namespace.
+ *
+ * @param[in] ctx YIN parser context used for logging and to get inormation about xml namespaces.
+ * @param[in] name Name of element.
+ * @param[in] name_len Length of element name.
+ * @param[in] prefix Prefix of element.
+ * @param[in] prefix_len Length of element prefix.
+ *
+ * @return Element name prefixed by URI on success, NULL on failure.
+ */
+static const char *
+name2nsname(struct yin_parser_ctx *ctx, const char *name, size_t name_len, const char *prefix, size_t prefix_len)
+{
+    const struct lyxml_ns *ns = lyxml_ns_get(&ctx->xml_ctx, prefix, prefix_len);
+    LY_CHECK_ERR_RET(!ns, LOGINT(ctx->xml_ctx.ctx), NULL);
+
+    size_t ns_len = strlen(ns->uri);
+    size_t len = ns_len + name_len + 1; /* +1 because of ':' delimiter between ns and actual name */
+
+    char *result;
+    char *temp;
+    temp = result = malloc(sizeof(*temp) * (len + 1)); /* +1 for '\0' terminator */
+    LY_CHECK_ERR_RET(!temp, LOGMEM(ctx->xml_ctx.ctx), NULL);
+
+    strcpy(result, ns->uri);
+    result[ns_len] = ':';
+    temp = &result[ns_len + 1];
+    strncpy(temp, name, name_len);
+    result[len] = '\0';
+
+    return lydict_insert_zc(ctx->xml_ctx.ctx, result);
+}
+
 LY_ERR
 yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_info, size_t subelem_info_size,
                   const char **data, enum ly_stmt current_element, const char **text_content, struct lysp_ext_instance **exts)
@@ -2917,8 +2952,7 @@ yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_inf
                 switch (kw) {
                 /* call responsible function */
                 case LY_STMT_EXTENSION_INSTANCE:
-                    ret = yin_parse_extension_instance(ctx, attrs, data, name2fname(name, prefix_len),
-                                                      len2flen(name_len, prefix_len),
+                    ret = yin_parse_extension_instance(ctx, attrs, data, name, name_len, prefix, prefix_len,
                                                       kw2lyext_substmt(current_element),
                                                       (subelem->dest) ? *((uint32_t*)subelem->dest) : 0, exts);
                     break;
@@ -3132,8 +3166,9 @@ cleanup:
 }
 
 LY_ERR
-yin_parse_extension_instance(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data, const char *ext_name,
-                             int ext_name_len, LYEXT_SUBSTMT subelem, uint32_t subelem_index, struct lysp_ext_instance **exts)
+yin_parse_extension_instance(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
+                             const char *ext_name, size_t ext_name_len, const char *ext_prefix, size_t ext_prefix_len,
+                             LYEXT_SUBSTMT subelem, uint32_t subelem_index, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
     char *out;
@@ -3148,7 +3183,8 @@ yin_parse_extension_instance(struct yin_parser_ctx *ctx, struct yin_arg_record *
 
     e->yin = 0;
     /* store name and insubstmt info */
-    e->name = lydict_insert(ctx->xml_ctx.ctx, ext_name, ext_name_len);
+    e->name = name2nsname(ctx, ext_name, ext_name_len, ext_prefix, ext_prefix_len);
+    LY_CHECK_RET(!e->name, LY_EMEM);
     e->insubstmt = subelem;
     e->insubstmt_index = subelem_index;
     e->yin |= LYS_YIN;
@@ -3183,7 +3219,7 @@ yin_parse_extension_instance(struct yin_parser_ctx *ctx, struct yin_arg_record *
                     /* end of extension instance reached */
                     break;
                 }
-                LY_CHECK_RET(yin_parse_element_generic(ctx, name, name_len, prefix, prefix_len, data, &new_subelem));
+                LY_CHECK_RET(yin_parse_element_generic(ctx, name, name_len, prefix, prefix_len, LY_STMT_EXTENSION_INSTANCE, data, &new_subelem));
                 if (!e->child) {
                     e->child = new_subelem;
                 } else {
@@ -3209,9 +3245,151 @@ yin_parse_extension_instance(struct yin_parser_ctx *ctx, struct yin_arg_record *
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Parse argument of extension subelement that is classic yang keyword and not another instance of extension.
+ *
+ * @param[in,out] ctx Yin parser context for logging and to store current state.
+ * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of extension instance.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] elem_type Type of element that is currently being parsed.
+ * @param[out] arg Value to write to.
+ *
+ * @return LY_ERR values.
+ */
+static LY_ERR
+yin_parse_ext_instance_arg(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data, enum ly_stmt elem_type,
+                           const char **arg)
+{
+    LY_ERR ret = LY_SUCCESS;
+    char *out = NULL;
+    const char *name, *prefix;
+    size_t out_len, name_len, prefix_len;
+    int dynamic;
+    enum ly_stmt child;
+
+    switch (elem_type) {
+    case LY_STMT_ACTION:
+    case LY_STMT_ANYDATA:
+    case LY_STMT_ANYXML:
+    case LY_STMT_ARGUMENT:
+    case LY_STMT_BASE:
+    case LY_STMT_BIT:
+    case LY_STMT_CASE:
+    case LY_STMT_CHOICE:
+    case LY_STMT_CONTAINER:
+    case LY_STMT_ENUM:
+    case LY_STMT_EXTENSION:
+    case LY_STMT_FEATURE:
+    case LY_STMT_GROUPING:
+    case LY_STMT_IDENTITY:
+    case LY_STMT_IF_FEATURE:
+    case LY_STMT_LEAF:
+    case LY_STMT_LEAF_LIST:
+    case LY_STMT_LIST:
+    case LY_STMT_MODULE:
+    case LY_STMT_NOTIFICATION:
+    case LY_STMT_RPC:
+    case LY_STMT_SUBMODULE:
+    case LY_STMT_TYPE:
+    case LY_STMT_TYPEDEF:
+    case LY_STMT_UNITS:
+    case LY_STMT_USES:
+        LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NAME, arg, Y_MAYBE_STR_ARG, elem_type));
+        break;
+    case LY_STMT_AUGMENT:
+    case LY_STMT_DEVIATION:
+    case LY_STMT_REFINE:
+        LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_TARGET_NODE, arg, Y_MAYBE_STR_ARG, elem_type));
+        break;
+    case LY_STMT_CONFIG:
+    case LY_STMT_DEFAULT:
+    case LY_STMT_DEVIATE:
+    case LY_STMT_ERROR_APP_TAG:
+    case LY_STMT_FRACTION_DIGITS:
+    case LY_STMT_KEY:
+    case LY_STMT_LENGTH:
+    case LY_STMT_MANDATORY:
+    case LY_STMT_MAX_ELEMENTS:
+    case LY_STMT_MIN_ELEMENTS:
+    case LY_STMT_MODIFIER:
+    case LY_STMT_ORDERED_BY:
+    case LY_STMT_PATH:
+    case LY_STMT_PATTERN:
+    case LY_STMT_POSITION:
+    case LY_STMT_PREFIX:
+    case LY_STMT_PRESENCE:
+    case LY_STMT_RANGE:
+    case LY_STMT_REQUIRE_INSTANCE:
+    case LY_STMT_STATUS:
+    case LY_STMT_VALUE:
+    case LY_STMT_YANG_VERSION:
+    case LY_STMT_YIN_ELEMENT:
+        LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_VALUE, arg, Y_MAYBE_STR_ARG, elem_type));
+        break;
+    case LY_STMT_IMPORT:
+    case LY_STMT_INCLUDE:
+    case LY_STMT_BELONGS_TO:
+        LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_MODULE, arg, Y_MAYBE_STR_ARG, elem_type));
+        break;
+    case LY_STMT_INPUT:
+    case LY_STMT_OUTPUT:
+        LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NONE, arg, Y_MAYBE_STR_ARG, elem_type));
+        break;
+    case LY_STMT_MUST:
+    case LY_STMT_WHEN:
+        LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_CONDITION, arg, Y_MAYBE_STR_ARG, elem_type));
+        break;
+    case LY_STMT_NAMESPACE:
+        LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_URI, arg, Y_MAYBE_STR_ARG, elem_type));
+        break;
+    case LY_STMT_REVISION:
+    case LY_STMT_REVISION_DATE:
+        LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_DATE, arg, Y_MAYBE_STR_ARG, elem_type));
+        break;
+    case LY_STMT_UNIQUE:
+        LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_TAG, arg, Y_MAYBE_STR_ARG, elem_type));
+        break;
+    /* argument is mapped to yin element */
+    case LY_STMT_CONTACT:
+    case LY_STMT_DESCRIPTION:
+    case LY_STMT_ORGANIZATION:
+    case LY_STMT_REFERENCE:
+    case LY_STMT_ERROR_MESSAGE:
+        /* there shouldn't be any attribute, argument is supposed to be first subelement */
+        LY_CHECK_RET(yin_parse_attribute(ctx, attrs, YIN_ARG_NONE, arg, Y_MAYBE_STR_ARG, elem_type));
+        ret = lyxml_get_string(&ctx->xml_ctx, data, &out, &out_len, &out, &out_len, &dynamic);
+        LY_CHECK_ERR_RET(ret != LY_EINVAL, LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_FIRT_SUBELEM,
+                                                         elem_type == LY_STMT_ERROR_MESSAGE ? "value" : "text", ly_stmt2str(elem_type)),
+                        LY_EVALID);
+        LY_CHECK_RET(lyxml_get_element(&ctx->xml_ctx, data, &prefix, &prefix_len, &name, &name_len));
+        child = yin_match_keyword(ctx, name, name_len, prefix, prefix_len, elem_type);
+        if ((elem_type == LY_STMT_ERROR_MESSAGE && child == LY_STMT_ARG_VALUE) ||
+            (elem_type != LY_STMT_ERROR_MESSAGE && child == LY_STMT_ARG_TEXT)) {
+            LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_UNEXP_SUBELEM, name_len, name, ly_stmt2str(elem_type));
+            return LY_EVALID;
+        }
+        /* load and save content */
+        LY_CHECK_RET(lyxml_get_string(&ctx->xml_ctx, data, &out, &out_len, &out, &out_len, &dynamic));
+        INSERT_STRING(ctx->xml_ctx.ctx, *arg, dynamic, out, out_len);
+        LY_CHECK_RET(!*arg, LY_EMEM);
+        /* load closing tag of subelement */
+        LY_CHECK_RET(lyxml_get_element(&ctx->xml_ctx, data, &prefix, &prefix_len, &name, &name_len));
+        /* if only subelement was parsed as argument, load also closing tag */
+        if (ctx->xml_ctx.status == LYXML_ELEMENT) {
+            LY_CHECK_RET(lyxml_get_element(&ctx->xml_ctx, data, &prefix, &prefix_len, &name, &name_len));
+        }
+        break;
+    default:
+        LOGINT(ctx->xml_ctx.ctx);
+        return LY_EINT;
+    }
+
+    return LY_SUCCESS;
+}
+
 LY_ERR
-yin_parse_element_generic(struct yin_parser_ctx *ctx, const char *name, size_t name_len, const char *prefix, size_t prefix_len, const char **data,
-                          struct lysp_stmt **element)
+yin_parse_element_generic(struct yin_parser_ctx *ctx, const char *name, size_t name_len, const char *prefix, size_t prefix_len, enum ly_stmt parent,
+                          const char **data, struct lysp_stmt **element)
 {
     LY_ERR ret = LY_SUCCESS;
     const char *temp_prefix, *temp_name;
@@ -3219,44 +3397,53 @@ yin_parse_element_generic(struct yin_parser_ctx *ctx, const char *name, size_t n
     size_t out_len, temp_name_len, temp_prefix_len;
     int dynamic;
     struct lysp_stmt *last = NULL, *new = NULL;
+    struct yin_arg_record *attrs = NULL;
+    struct yin_arg_record *iter = NULL;
+
+    /* load all attributes for correct namespace evaluation */
+    ret = yin_load_attributes(ctx, data, &attrs);
+    LY_CHECK_GOTO(ret, cleanup);
 
     /* allocate new structure for element */
     *element = calloc(1, sizeof(**element));
-    LY_CHECK_ERR_RET(!(*element), LOGMEM(ctx->xml_ctx.ctx), LY_EMEM);
-    (*element)->stmt = lydict_insert(ctx->xml_ctx.ctx, prefix ? prefix : name, prefix_len ? prefix_len + name_len + 1 : name_len);
-    LY_CHECK_RET(!(*element)->stmt, LY_EMEM);
-    /* TODO map prefix to module name */
-    (*element)->kw = yin_match_keyword(ctx, name, name_len, prefix, prefix_len, LY_STMT_EXTENSION_INSTANCE);
+    LY_CHECK_ERR_GOTO(!(*element), LOGMEM(ctx->xml_ctx.ctx); ret = LY_EMEM, cleanup);
+    (*element)->stmt = name2nsname(ctx, name, name_len, prefix, prefix_len);
+    LY_CHECK_ERR_GOTO(!(*element)->stmt, ret = LY_EMEM, cleanup);
+
+    (*element)->kw = yin_match_keyword(ctx, name, name_len, prefix, prefix_len, parent);
 
     last = (*element)->child;
-    /* load attributes - TODO in case of non-extension keyword, the argument details are known,
-     * so the argument can be stored correctly instead of storing pure attributes */
-    while(ctx->xml_ctx.status == LYXML_ATTRIBUTE) {
-        /* add new element to linked-list */
-        new = calloc(1, sizeof(*last));
-        LY_CHECK_ERR_RET(!new, LOGMEM(ctx->xml_ctx.ctx), LY_EMEM);
-        if (!(*element)->child) {
-            /* save first */
-            (*element)->child = new;
-        } else {
-            last->next = new;
-        }
-        last = new;
+    if ((*element)->kw == LY_STMT_NONE) {
+        /* unrecognized element */
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_UNEXP_SUBELEM, name_len, name, ly_stmt2str(parent));
+        ret = LY_EVALID;
+        goto cleanup;
+    } else if ((*element)->kw != LY_STMT_EXTENSION_INSTANCE) {
+        /* element is known yang keyword, which means argument can be parsed correctly. */
+        ret = yin_parse_ext_instance_arg(ctx, attrs, data, (*element)->kw, &(*element)->arg);
+        LY_CHECK_GOTO(ret, cleanup);
+    } else {
+        /* load attributes in generic way, save all attributes in linked list */
+        LY_ARRAY_FOR(attrs, struct yin_arg_record, iter) {
+            new = calloc(1, sizeof(*last));
+            LY_CHECK_ERR_GOTO(!new, LOGMEM(ctx->xml_ctx.ctx); ret = LY_EMEM, cleanup);
+            if (!(*element)->child) {
+                /* save first */
+                (*element)->child = new;
+            } else {
+                last->next = new;
+            }
+            last = new;
 
-        last->flags |= LYS_YIN_ATTR;
-        LY_CHECK_RET(lyxml_get_attribute(&ctx->xml_ctx, data, &temp_prefix, &temp_prefix_len, &temp_name, &temp_name_len));
-        last->stmt = lydict_insert(ctx->xml_ctx.ctx, temp_name, temp_name_len);
-        LY_CHECK_RET(!last->stmt, LY_EMEM);
-        last->kw = yin_match_keyword(ctx, temp_name, temp_name_len, temp_prefix, temp_prefix_len, LY_STMT_EXTENSION_INSTANCE);
-
-        LY_CHECK_RET(lyxml_get_string(&ctx->xml_ctx, data, &out, &out_len, &out, &out_len, &dynamic));
-        /* attributes with prefix are ignored */
-        if (!temp_prefix) {
-            INSERT_STRING(ctx->xml_ctx.ctx, last->arg, dynamic, out, out_len);
-            LY_CHECK_RET(!last->arg, LY_EMEM);
-        } else {
-            if (dynamic) {
-                free(out);
+            last->flags |= LYS_YIN_ATTR;
+            last->stmt = lydict_insert(ctx->xml_ctx.ctx, iter->name, iter->name_len);
+            last->kw = LY_STMT_NONE;
+            /* attributes with prefix are ignored */
+            if (!iter->prefix) {
+                INSERT_STRING(ctx->xml_ctx.ctx, last->arg, iter->dynamic_content, iter->content, iter->content_len);
+                LY_CHECK_ERR_GOTO(!last->arg, ret = LY_EMEM, cleanup);
+                /* string is no longer supposed to be freed when the array is freed */
+                iter->dynamic_content = 0;
             }
         }
     }
@@ -3267,12 +3454,14 @@ yin_parse_element_generic(struct yin_parser_ctx *ctx, const char *name, size_t n
         if (ret == LY_EINVAL) {
             while (ctx->xml_ctx.status == LYXML_ELEMENT) {
                 /* parse subelements */
-                LY_CHECK_RET(lyxml_get_element(&ctx->xml_ctx, data, &temp_prefix, &temp_prefix_len, &temp_name, &temp_name_len));
+                ret = lyxml_get_element(&ctx->xml_ctx, data, &temp_prefix, &temp_prefix_len, &temp_name, &temp_name_len);
+                LY_CHECK_GOTO(ret , cleanup);
                 if (!temp_name) {
                     /* end of element reached */
                     break;
                 }
-                LY_CHECK_RET(yin_parse_element_generic(ctx, temp_name, temp_name_len, temp_prefix, temp_prefix_len, data, &new));
+                ret = yin_parse_element_generic(ctx, temp_name, temp_name_len, temp_prefix, temp_prefix_len, (*element)->kw, data, &new);
+                LY_CHECK_GOTO(ret, cleanup);
                 if (!(*element)->child) {
                     /* save first */
                     (*element)->child = new;
@@ -3281,20 +3470,24 @@ yin_parse_element_generic(struct yin_parser_ctx *ctx, const char *name, size_t n
                 }
                 last = new;
             }
+        ret = LY_SUCCESS;
         } else {
-            LY_CHECK_RET(ret);
+            LY_CHECK_GOTO(ret, cleanup);
             /* save element content */
             if (out_len != 0) {
                 INSERT_STRING(ctx->xml_ctx.ctx, (*element)->arg, dynamic, out, out_len);
-                LY_CHECK_RET(!(*element)->arg, LY_EMEM);
+                LY_CHECK_ERR_GOTO(!(*element)->arg, ret = LY_EMEM, cleanup);
             }
 
             /* read closing tag */
-            LY_CHECK_RET(lyxml_get_element(&ctx->xml_ctx, data, &temp_prefix, &temp_prefix_len, &temp_name, &temp_name_len));
+            ret = lyxml_get_element(&ctx->xml_ctx, data, &temp_prefix, &temp_prefix_len, &temp_name, &temp_name_len);
+            LY_CHECK_GOTO(ret, cleanup);
         }
     }
 
-    return LY_SUCCESS;
+cleanup:
+    FREE_ARRAY(ctx, attrs, free_arg_rec);
+    return ret;
 }
 
 LY_ERR
@@ -3302,6 +3495,7 @@ yin_parse_mod(struct yin_parser_ctx *ctx, struct yin_arg_record *mod_attrs, cons
 {
     LY_ERR ret = LY_SUCCESS;
     struct yin_subelement *subelems = NULL;
+    struct lysp_submodule *dup;
 
     LY_CHECK_RET(yin_parse_attribute(ctx, mod_attrs, YIN_ARG_NAME, &mod->mod->name, Y_IDENTIF_ARG, LY_STMT_MODULE));
     LY_CHECK_RET(subelems_allocator(ctx, 28, NULL, &subelems,
@@ -3337,8 +3531,20 @@ yin_parse_mod(struct yin_parser_ctx *ctx, struct yin_arg_record *mod_attrs, cons
 
     ret = yin_parse_content(ctx, subelems, 28, data, LY_STMT_MODULE, NULL, &mod->exts);
     subelems_deallocator(28, subelems);
+    LY_CHECK_RET(ret);
 
-    return ret;
+    /* finalize parent pointers to the reallocated items */
+    LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, mod->groupings, mod->augments, mod->rpcs, mod->notifs));
+
+    /* submodules share the namespace with the module names, so there must not be
+     * a submodule of the same name in the context, no need for revision matching */
+    dup = ly_ctx_get_submodule(ctx->xml_ctx.ctx, NULL, mod->mod->name, NULL);
+    if (dup) {
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LYVE_SYNTAX_YANG, "Name collision between module and submodule of name \"%s\".", mod->mod->name);
+        return LY_EVALID;
+    }
+
+    return LY_SUCCESS;
 }
 
 LY_ERR
@@ -3346,6 +3552,7 @@ yin_parse_submod(struct yin_parser_ctx *ctx, struct yin_arg_record *mod_attrs, c
 {
     LY_ERR ret = LY_SUCCESS;
     struct yin_subelement *subelems = NULL;
+    struct lysp_submodule *dup;
 
     LY_CHECK_RET(yin_parse_attribute(ctx, mod_attrs, YIN_ARG_NAME, &submod->name, Y_IDENTIF_ARG, LY_STMT_SUBMODULE));
     LY_CHECK_RET(subelems_allocator(ctx, 27, NULL, &subelems,
@@ -3380,8 +3587,20 @@ yin_parse_submod(struct yin_parser_ctx *ctx, struct yin_arg_record *mod_attrs, c
 
     ret = yin_parse_content(ctx, subelems, 27, data, LY_STMT_SUBMODULE, NULL, &submod->exts);
     subelems_deallocator(27, subelems);
+    LY_CHECK_RET(ret);
 
-    return ret;
+    /* finalize parent pointers to the reallocated items */
+    LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, submod->groupings, submod->augments, submod->rpcs, submod->notifs));
+
+    /* submodules share the namespace with the module names, so there must not be
+     * a submodule of the same name in the context, no need for revision matching */
+    dup = ly_ctx_get_submodule(ctx->xml_ctx.ctx, NULL, submod->name, NULL);
+    if (dup && strcmp(dup->belongsto, submod->belongsto)) {
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LYVE_SYNTAX_YANG, "Name collision between submodules of name \"%s\".", dup->name);
+        return LY_EVALID;
+    }
+
+    return LY_SUCCESS;
 }
 
 LY_ERR

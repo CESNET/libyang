@@ -371,12 +371,12 @@ test_yin_parse_element_generic(void **state)
 
     memset(&exts, 0, sizeof(exts));
 
-    const char *data = "<elem attr=\"value\">text_value</elem>";
+    const char *data = "<myext:elem attr=\"value\" xmlns:myext=\"urn:example:extensions\">text_value</myext:elem>";
     lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    ret = yin_parse_element_generic(st->yin_ctx, name, name_len, prefix, prefix_len, &data, &exts.child);
+    ret = yin_parse_element_generic(st->yin_ctx, name, name_len, prefix, prefix_len, LY_STMT_EXTENSION_INSTANCE, &data, &exts.child);
     assert_int_equal(ret, LY_SUCCESS);
     assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
-    assert_string_equal(exts.child->stmt, "elem");
+    assert_string_equal(exts.child->stmt, "urn:example:extensions:elem");
     assert_string_equal(exts.child->arg, "text_value");
     assert_string_equal(exts.child->child->stmt, "attr");
     assert_string_equal(exts.child->child->arg, "value");
@@ -384,11 +384,11 @@ test_yin_parse_element_generic(void **state)
     lysp_ext_instance_free(st->ctx, &exts);
     st = reset_state(state);
 
-    data = "<elem></elem>";
+    data = "<myext:elem xmlns:myext=\"urn:example:extensions\"></myext:elem>";
     lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
-    ret = yin_parse_element_generic(st->yin_ctx, name, name_len, prefix, prefix_len, &data, &exts.child);
+    ret = yin_parse_element_generic(st->yin_ctx, name, name_len, prefix, prefix_len, LY_STMT_EXTENSION_INSTANCE, &data, &exts.child);
     assert_int_equal(ret, LY_SUCCESS);
-    assert_string_equal(exts.child->stmt, "elem");
+    assert_string_equal(exts.child->stmt, "urn:example:extensions:elem");
     assert_null(exts.child->child);
     assert_null(exts.child->arg);
     assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
@@ -406,13 +406,12 @@ test_yin_parse_extension_instance(void **state)
     size_t prefix_len, name_len;
     struct yin_arg_record *args = NULL;
     struct lysp_ext_instance *exts = NULL;
-    const char *data = "<ext value1=\"test\" value=\"test2\"><subelem>text</subelem></ext>";
+    const char *data = "<myext:ext value1=\"test\" value=\"test2\" xmlns:myext=\"urn:example:extensions\"><myext:subelem>text</myext:subelem></myext:ext>";
     lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->yin_ctx, &data, &args);
-    ret = yin_parse_extension_instance(st->yin_ctx, args, &data, name2fname(name, prefix_len),
-                                       len2flen(name_len, prefix_len), LYEXT_SUBSTMT_CONTACT, 0, &exts);
+    ret = yin_parse_extension_instance(st->yin_ctx, args, &data, name, name_len, prefix, prefix_len, LYEXT_SUBSTMT_CONTACT, 0, &exts);
     assert_int_equal(ret, LY_SUCCESS);
-    assert_string_equal(exts->name, "ext");
+    assert_string_equal(exts->name, "urn:example:extensions:ext");
     assert_int_equal(exts->insubstmt_index, 0);
     assert_true(exts->insubstmt == LYEXT_SUBSTMT_CONTACT);
     assert_true(exts->yin & LYS_YIN);
@@ -425,7 +424,7 @@ test_yin_parse_extension_instance(void **state)
     assert_null(exts->child->next->child);
     assert_true(exts->child->next->flags & LYS_YIN_ATTR);
 
-    assert_string_equal(exts->child->next->next->stmt, "subelem");
+    assert_string_equal(exts->child->next->next->stmt, "urn:example:extensions:subelem");
     assert_string_equal(exts->child->next->next->arg, "text");
     assert_null(exts->child->next->next->child);
     assert_null(exts->child->next->next->next);
@@ -438,12 +437,12 @@ test_yin_parse_extension_instance(void **state)
     args = NULL;
     st = reset_state(state);
 
-    data = "<extension-elem />";
+    data = "<myext:extension-elem xmlns:myext=\"urn:example:extensions\" />";
     lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->yin_ctx, &data, &args);
-    ret = yin_parse_extension_instance(st->yin_ctx, args, &data, name, name_len, LYEXT_SUBSTMT_CONTACT, 0, &exts);
+    ret = yin_parse_extension_instance(st->yin_ctx, args, &data, name, name_len, prefix, prefix_len, LYEXT_SUBSTMT_CONTACT, 0, &exts);
     assert_int_equal(ret, LY_SUCCESS);
-    assert_string_equal(exts->name, "extension-elem");
+    assert_string_equal(exts->name, "urn:example:extensions:extension-elem");
     assert_null(exts->argument);
     assert_null(exts->child);
     assert_int_equal(exts->insubstmt, LYEXT_SUBSTMT_CONTACT);
@@ -457,21 +456,21 @@ test_yin_parse_extension_instance(void **state)
     args = NULL;
     st = reset_state(state);
 
-    data = "<ext attr1=\"text1\" attr2=\"text2\">"
-                "<ext-sub1/>"
-                "<ext-sub2 sattr1=\"stext2\">"
-                    "<ext-sub21>"
-                        "<ext-sub211 sattr21=\"text21\"/>"
-                    "</ext-sub21>"
-                "</ext-sub2>"
-                "<ext-sub3 attr3=\"text3\"></ext-sub3>"
-           "</ext>";
+    data = "<myext:ext attr1=\"text1\" attr2=\"text2\" xmlns:myext=\"urn:example:extensions\">"
+                "<myext:ext-sub1/>"
+                "<myext:ext-sub2 sattr1=\"stext2\">"
+                    "<myext:ext-sub21>"
+                        "<myext:ext-sub211 sattr21=\"text21\"/>"
+                    "</myext:ext-sub21>"
+                "</myext:ext-sub2>"
+                "<myext:ext-sub3 attr3=\"text3\"></myext:ext-sub3>"
+           "</myext:ext>";
     lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
     yin_load_attributes(st->yin_ctx, &data, &args);
-    ret = yin_parse_extension_instance(st->yin_ctx, args, &data, name, name_len, LYEXT_SUBSTMT_CONTACT, 0, &exts);
+    ret = yin_parse_extension_instance(st->yin_ctx, args, &data, name, name_len, prefix, prefix_len, LYEXT_SUBSTMT_CONTACT, 0, &exts);
     assert_int_equal(ret, LY_SUCCESS);
 
-    assert_string_equal(exts->name, "ext");
+    assert_string_equal(exts->name, "urn:example:extensions:ext");
     assert_null(exts->argument);
     assert_int_equal(exts->insubstmt, LYEXT_SUBSTMT_CONTACT);
     assert_int_equal(exts->insubstmt_index, 0);
@@ -486,12 +485,12 @@ test_yin_parse_extension_instance(void **state)
     assert_null(exts->child->next->child);
     assert_true(exts->child->next->flags & LYS_YIN_ATTR);
 
-    assert_string_equal(exts->child->next->next->stmt, "ext-sub1");
+    assert_string_equal(exts->child->next->next->stmt, "urn:example:extensions:ext-sub1");
     assert_null(exts->child->next->next->arg);
     assert_null(exts->child->next->next->child);
     assert_int_equal(exts->child->next->next->flags, 0);
 
-    assert_string_equal(exts->child->next->next->next->stmt, "ext-sub2");
+    assert_string_equal(exts->child->next->next->next->stmt, "urn:example:extensions:ext-sub2");
     assert_null(exts->child->next->next->next->arg);
     assert_int_equal(exts->child->next->next->next->flags, 0);
     assert_string_equal(exts->child->next->next->next->child->stmt, "sattr1");
@@ -499,12 +498,12 @@ test_yin_parse_extension_instance(void **state)
     assert_null(exts->child->next->next->next->child->child);
     assert_true(exts->child->next->next->next->child->flags & LYS_YIN_ATTR);
 
-    assert_string_equal(exts->child->next->next->next->child->next->stmt, "ext-sub21");
+    assert_string_equal(exts->child->next->next->next->child->next->stmt, "urn:example:extensions:ext-sub21");
     assert_null(exts->child->next->next->next->child->next->arg);
     assert_null(exts->child->next->next->next->child->next->next);
     assert_int_equal(exts->child->next->next->next->child->next->flags, 0);
 
-    assert_string_equal(exts->child->next->next->next->child->next->child->stmt, "ext-sub211");
+    assert_string_equal(exts->child->next->next->next->child->next->child->stmt, "urn:example:extensions:ext-sub211");
     assert_null(exts->child->next->next->next->child->next->child->arg);
     assert_int_equal(exts->child->next->next->next->child->next->child->flags, 0);
     assert_null(exts->child->next->next->next->child->next->child->next);
@@ -515,7 +514,7 @@ test_yin_parse_extension_instance(void **state)
     assert_null(exts->child->next->next->next->child->next->child->child->child);
     assert_true(exts->child->next->next->next->child->next->child->child->flags & LYS_YIN_ATTR);
 
-    assert_string_equal(exts->child->next->next->next->next->stmt, "ext-sub3");
+    assert_string_equal(exts->child->next->next->next->next->stmt, "urn:example:extensions:ext-sub3");
     assert_null(exts->child->next->next->next->next->arg);
     assert_null(exts->child->next->next->next->next->next);
     assert_int_equal(exts->child->next->next->next->next->flags, 0);
@@ -531,6 +530,42 @@ test_yin_parse_extension_instance(void **state)
     LY_ARRAY_FREE(exts);
     exts = NULL;
     args = NULL;
+    st = reset_state(state);
+
+    data = "<myext:extension-elem xmlns:myext=\"urn:example:extensions\" xmlns:yin=\"urn:ietf:params:xml:ns:yang:yin:1\">"
+                "<yin:action name=\"act-name\" pre:prefixed=\"ignored\"/>"
+                "<yin:augment target-node=\"target\"/>"
+                "<yin:status value=\"value\"/>"
+                "<yin:include module=\"mod\"/>"
+                "<yin:input />"
+                "<yin:must condition=\"cond\"/>"
+                "<yin:namespace uri=\"uri\"/>"
+                "<yin:revision date=\"data\"/>"
+                "<yin:unique tag=\"tag\"/>"
+                "<yin:contact><text>contact-val</text></yin:contact>"
+                "<yin:error-message><value>err-msg</value></yin:error-message>"
+           "</myext:extension-elem>";
+    lyxml_get_element(&st->yin_ctx->xml_ctx, &data, &prefix, &prefix_len, &name, &name_len);
+    yin_load_attributes(st->yin_ctx, &data, &args);
+    ret = yin_parse_extension_instance(st->yin_ctx, args, &data, name, name_len, prefix, prefix_len, LYEXT_SUBSTMT_CONTACT, 0, &exts);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_string_equal(exts->child->arg, "act-name");
+    assert_string_equal(exts->child->next->arg, "target");
+    assert_string_equal(exts->child->next->next->arg, "value");
+    assert_string_equal(exts->child->next->next->next->arg, "mod");
+    assert_null(exts->child->next->next->next->next->arg);
+    assert_string_equal(exts->child->next->next->next->next->next->arg, "cond");
+    assert_string_equal(exts->child->next->next->next->next->next->next->arg, "uri");
+    assert_string_equal(exts->child->next->next->next->next->next->next->next->arg, "data");
+    assert_string_equal(exts->child->next->next->next->next->next->next->next->next->arg, "tag");
+    assert_string_equal(exts->child->next->next->next->next->next->next->next->next->next->arg, "contact-val");
+    assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
+    LY_ARRAY_FREE(args);
+    lysp_ext_instance_free(st->ctx, exts);
+    LY_ARRAY_FREE(exts);
+    exts = NULL;
+    args = NULL;
+    st = reset_state(state);
 
     st->finished_correctly = true;
 }
@@ -543,9 +578,9 @@ test_yin_parse_content(void **state)
     const char *name, *prefix;
     size_t name_len, prefix_len;
     const char *data = "<prefix value=\"a_mod\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
-                            "<custom xmlns=\"my-ext\">"
+                            "<myext:custom xmlns:myext=\"urn:example:extensions\">"
                                 "totally amazing extension"
-                            "</custom>"
+                            "</myext:custom>"
                             "<extension name=\"ext\">"
                                 "<argument name=\"argname\"></argument>"
                                 "<description><text>desc</text></description>"
@@ -613,7 +648,7 @@ test_yin_parse_content(void **state)
     assert_int_equal(st->yin_ctx->xml_ctx.status, LYXML_END);
     /* check parsed values */
     assert_string_equal(def, "default-value");
-    assert_string_equal(exts->name, "custom");
+    assert_string_equal(exts->name, "urn:example:extensions:custom");
     assert_string_equal(exts->argument, "totally amazing extension");
     assert_string_equal(value, "wsefsdf");
     assert_string_equal(units, "radians");
@@ -846,7 +881,7 @@ test_enum_elem(void **state)
     assert_true((type.enums->flags & LYS_STATUS_DEPRC) && (type.enums->flags & LYS_SET_VALUE));
     assert_string_equal(type.enums->dsc, "desc...");
     assert_string_equal(type.enums->ref, "ref...");
-    assert_string_equal(type.enums->exts->name, "myext:c-define");
+    assert_string_equal(type.enums->exts->name, "urn:example:extensions:c-define");
     assert_int_equal(type.enums->exts->insubstmt_index, 0);
     assert_int_equal(type.enums->exts->insubstmt, LYEXT_SUBSTMT_SELF);
     lysp_type_free(st->ctx, &type);
@@ -886,7 +921,7 @@ test_bit_elem(void **state)
     assert_true((type.bits->flags & LYS_STATUS_DEPRC) && (type.bits->flags & LYS_SET_VALUE));
     assert_string_equal(type.bits->dsc, "desc...");
     assert_string_equal(type.bits->ref, "ref...");
-    assert_string_equal(type.bits->exts->name, "myext:c-define");
+    assert_string_equal(type.bits->exts->name, "urn:example:extensions:c-define");
     assert_int_equal(type.bits->exts->insubstmt_index, 0);
     assert_int_equal(type.bits->exts->insubstmt, LYEXT_SUBSTMT_SELF);
     lysp_type_free(st->ctx, &type);
@@ -916,10 +951,10 @@ test_meta_elem(void **state)
                 "<organization><text>organization...</text>" EXT_SUBELEM EXT_SUBELEM "</organization>"
            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &value, NULL, &exts, true), LY_SUCCESS);
-    assert_string_equal(exts[0].name, "myext:c-define");
+    assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(exts[0].insubstmt_index, 0);
     assert_int_equal(exts[0].insubstmt, LYEXT_SUBSTMT_ORGANIZATION);
-    assert_string_equal(exts[1].name, "myext:c-define");
+    assert_string_equal(exts[1].name, "urn:example:extensions:c-define");
     assert_int_equal(exts[1].insubstmt_index, 0);
     assert_int_equal(exts[1].insubstmt, LYEXT_SUBSTMT_ORGANIZATION);
     assert_string_equal(value, "organization...");
@@ -933,7 +968,7 @@ test_meta_elem(void **state)
                 "<contact><text>contact...</text>" EXT_SUBELEM "</contact>"
            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &value, NULL, &exts, true), LY_SUCCESS);
-    assert_string_equal(exts[0].name, "myext:c-define");
+    assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(exts[0].insubstmt_index, 0);
     assert_int_equal(exts[0].insubstmt, LYEXT_SUBSTMT_CONTACT);
     assert_string_equal(value, "contact...");
@@ -948,7 +983,7 @@ test_meta_elem(void **state)
            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &value, NULL, &exts, true), LY_SUCCESS);
     assert_string_equal(value, "description...");
-    assert_string_equal(exts[0].name, "myext:c-define");
+    assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(exts[0].insubstmt_index, 0);
     assert_int_equal(exts[0].insubstmt, LYEXT_SUBSTMT_DESCRIPTION);
     FREE_STRING(st->ctx, value);
@@ -962,7 +997,7 @@ test_meta_elem(void **state)
            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &value, NULL, &exts, true), LY_SUCCESS);
     assert_string_equal(value, "reference...");
-    assert_string_equal(exts[0].name, "myext:c-define");
+    assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(exts[0].insubstmt_index, 0);
     assert_int_equal(exts[0].insubstmt, LYEXT_SUBSTMT_REFERENCE);
     FREE_STRING(st->ctx, value);
@@ -1026,7 +1061,7 @@ test_import_elem(void **state)
     assert_string_equal(imports->rev, "2015-01-01");
     assert_string_equal(imports->dsc, "import description");
     assert_string_equal(imports->ref, "import reference");
-    assert_string_equal(imports->exts->name, "myext:c-define");
+    assert_string_equal(imports->exts->name, "urn:example:extensions:c-define");
     assert_int_equal(imports->exts->insubstmt, LYEXT_SUBSTMT_SELF);
     assert_int_equal(imports->exts->insubstmt_index, 0);
     FREE_ARRAY(st->ctx, imports, lysp_import_free);
@@ -1087,7 +1122,7 @@ test_status_elem(void **state)
     data = ELEMENT_WRAPPER_START "<status value=\"obsolete\">"EXT_SUBELEM"</status>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &flags, NULL, &exts, true), LY_SUCCESS);
     assert_true(flags & LYS_STATUS_OBSLT);
-    assert_string_equal(exts[0].name, "myext:c-define");
+    assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(exts[0].insubstmt_index, 0);
     assert_int_equal(exts[0].insubstmt, LYEXT_SUBSTMT_STATUS);
     FREE_ARRAY(st->ctx, exts, lysp_ext_instance_free);
@@ -1123,7 +1158,7 @@ test_ext_elem(void **state)
     assert_true(ext->flags & LYS_STATUS_CURR);
     assert_string_equal(ext->dsc, "ext_desc");
     assert_string_equal(ext->ref, "ext_ref");
-    assert_string_equal(ext->exts[0].name, "myext:c-define");
+    assert_string_equal(ext->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(ext->exts[0].insubstmt_index, 0);
     assert_int_equal(ext->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
     lysp_ext_free(st->ctx, ext);
@@ -1156,7 +1191,7 @@ test_yin_element_elem(void **state)
     data = ELEMENT_WRAPPER_START "<yin-element value=\"false\">" EXT_SUBELEM "</yin-element>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &flags, NULL, &exts, true), LY_SUCCESS);
     assert_true(flags & LYS_YINELEM_TRUE);
-    assert_string_equal(exts[0].name, "myext:c-define");
+    assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(exts[0].insubstmt_index, 0);
     assert_int_equal(exts[0].insubstmt, LYEXT_SUBSTMT_YINELEM);
     FREE_ARRAY(st->ctx, exts, lysp_ext_instance_free);
@@ -1186,7 +1221,7 @@ test_yangversion_elem(void **state)
     assert_int_equal(test_element_helper(st, &data, &version, NULL, &exts, true), LY_SUCCESS);
     assert_true(version & LYS_VERSION_1_1);
     assert_int_equal(st->yin_ctx->mod_version, LYS_VERSION_1_1);
-    assert_string_equal(exts[0].name, "myext:c-define");
+    assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(exts[0].insubstmt_index, 0);
     assert_int_equal(exts[0].insubstmt, LYEXT_SUBSTMT_VERSION);
     FREE_ARRAY(st->ctx, exts, lysp_ext_instance_free);
@@ -1216,7 +1251,7 @@ test_mandatory_elem(void **state)
     data = ELEMENT_WRAPPER_START "<mandatory value=\"false\">" EXT_SUBELEM "</mandatory>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &man, NULL, &exts, true), LY_SUCCESS);
     assert_int_equal(man, LYS_MAND_FALSE);
-    assert_string_equal(exts[0].name, "myext:c-define");
+    assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(exts[0].insubstmt_index, 0);
     assert_int_equal(exts[0].insubstmt, LYEXT_SUBSTMT_MANDATORY);
     FREE_ARRAY(st->ctx, exts, lysp_ext_instance_free);
@@ -1248,7 +1283,7 @@ test_argument_elem(void **state)
     assert_int_equal(test_element_helper(st, &data, &arg_meta, NULL, &exts, true), LY_SUCCESS);
     assert_string_equal(arg, "arg-name");
     assert_true(flags & LYS_YINELEM_TRUE);
-    assert_string_equal(exts[0].name, "myext:c-define");
+    assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(exts[0].insubstmt_index, 0);
     assert_int_equal(exts[0].insubstmt, LYEXT_SUBSTMT_ARGUMENT);
     FREE_ARRAY(st->ctx, exts, lysp_ext_instance_free);
@@ -1287,7 +1322,7 @@ test_base_elem(void **state)
            "</identity>";
     assert_int_equal(test_element_helper(st, &data, &bases, NULL, &exts, true), LY_SUCCESS);
     assert_string_equal(*bases, "base-name");
-    assert_string_equal(exts[0].name, "myext:c-define");
+    assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(exts[0].insubstmt_index, 0);
     assert_int_equal(exts[0].insubstmt, LYEXT_SUBSTMT_BASE);
     FREE_ARRAY(st->ctx, exts, lysp_ext_instance_free);
@@ -1304,7 +1339,7 @@ test_base_elem(void **state)
     assert_int_equal(test_element_helper(st, &data, &type, NULL, &exts, true), LY_SUCCESS);
     assert_string_equal(*type.bases, "base-name");
     assert_true(type.flags & LYS_SET_BASE);
-    assert_string_equal(exts[0].name, "myext:c-define");
+    assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(exts[0].insubstmt_index, 0);
     assert_int_equal(exts[0].insubstmt, LYEXT_SUBSTMT_BASE);
     FREE_ARRAY(st->ctx, exts, lysp_ext_instance_free);
@@ -1329,7 +1364,7 @@ test_belongsto_elem(void **state)
     assert_int_equal(test_element_helper(st, &data, &submod, NULL, &exts, true), LY_SUCCESS);
     assert_string_equal(submod.belongsto, "module-name");
     assert_string_equal(submod.prefix, "pref");
-    assert_string_equal(exts[0].name, "myext:c-define");
+    assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(exts[0].insubstmt_index, 0);
     assert_int_equal(exts[0].insubstmt, LYEXT_SUBSTMT_BELONGSTO);
     FREE_ARRAY(st->ctx, exts, lysp_ext_instance_free);
@@ -1356,7 +1391,7 @@ test_config_elem(void **state)
     data = ELEMENT_WRAPPER_START "<config value=\"true\">" EXT_SUBELEM "</config>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &flags, NULL, &exts, true), LY_SUCCESS);
     assert_true(flags & LYS_CONFIG_W);
-    assert_string_equal(exts[0].name, "myext:c-define");
+    assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(exts[0].insubstmt_index, 0);
     assert_int_equal(exts[0].insubstmt, LYEXT_SUBSTMT_CONFIG);
     FREE_ARRAY(st->ctx, exts, lysp_ext_instance_free);
@@ -1386,7 +1421,7 @@ test_default_elem(void **state)
     data = ELEMENT_WRAPPER_START "<default value=\"defaul-value\">"EXT_SUBELEM"</default>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &val, NULL, &exts, true), LY_SUCCESS);
     assert_string_equal(val, "defaul-value");
-    assert_string_equal(exts[0].name, "myext:c-define");
+    assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(exts[0].insubstmt_index, 0);
     assert_int_equal(exts[0].insubstmt, LYEXT_SUBSTMT_DEFAULT);
     FREE_ARRAY(st->ctx, exts, lysp_ext_instance_free);
@@ -1412,7 +1447,7 @@ test_err_app_tag_elem(void **state)
     data = ELEMENT_WRAPPER_START "<error-app-tag value=\"val\">"EXT_SUBELEM"</error-app-tag>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &val, NULL, &exts, true), LY_SUCCESS);
     assert_string_equal(val, "val");
-    assert_string_equal(exts[0].name, "myext:c-define");
+    assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(exts[0].insubstmt_index, 0);
     assert_int_equal(exts[0].insubstmt, LYEXT_SUBSTMT_ERRTAG);
     FREE_ARRAY(st->ctx, exts, lysp_ext_instance_free);
@@ -1438,7 +1473,7 @@ test_err_msg_elem(void **state)
     data = ELEMENT_WRAPPER_START "<error-message><value>val</value>"EXT_SUBELEM"</error-message>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &val, NULL, &exts, true), LY_SUCCESS);
     assert_string_equal(val, "val");
-    assert_string_equal(exts[0].name, "myext:c-define");
+    assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(exts[0].insubstmt_index, 0);
     assert_int_equal(exts[0].insubstmt, LYEXT_SUBSTMT_ERRMSG);
     FREE_ARRAY(st->ctx, exts, lysp_ext_instance_free);
@@ -1466,7 +1501,7 @@ test_fracdigits_elem(void **state)
     /* valid value */
     data = ELEMENT_WRAPPER_START "<fraction-digits value=\"10\">"EXT_SUBELEM"</fraction-digits>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, true), LY_SUCCESS);
-    assert_string_equal(type.exts[0].name, "myext:c-define");
+    assert_string_equal(type.exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(type.exts[0].insubstmt_index, 0);
     assert_int_equal(type.exts[0].insubstmt, LYEXT_SUBSTMT_FRACDIGITS);
     assert_int_equal(type.fraction_digits, 10);
@@ -1508,7 +1543,7 @@ test_iffeature_elem(void **state)
     data = ELEMENT_WRAPPER_START "<if-feature name=\"local-storage\">"EXT_SUBELEM"</if-feature>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &iffeatures, NULL, &exts, true), LY_SUCCESS);
     assert_string_equal(*iffeatures, "local-storage");
-    assert_string_equal(exts[0].name, "myext:c-define");
+    assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(exts[0].insubstmt_index, 0);
     assert_int_equal(exts[0].insubstmt, LYEXT_SUBSTMT_IFFEATURE);
     FREE_ARRAY(st->ctx, exts, lysp_ext_instance_free);
@@ -1550,7 +1585,7 @@ test_length_elem(void **state)
     assert_string_equal(type.length->dsc, "desc");
     assert_string_equal(type.length->ref, "ref");
     assert_true(type.flags & LYS_SET_LENGTH);
-    assert_string_equal(type.length->exts[0].name, "myext:c-define");
+    assert_string_equal(type.length->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(type.length->exts[0].insubstmt_index, 0);
     assert_int_equal(type.length->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
     lysp_type_free(st->ctx, &type);
@@ -1587,7 +1622,7 @@ test_modifier_elem(void **state)
     data = ELEMENT_WRAPPER_START "<modifier value=\"invert-match\">" EXT_SUBELEM "</modifier>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &pat, NULL, &exts, true), LY_SUCCESS);
     assert_string_equal(pat, "\x015pattern");
-    assert_string_equal(exts[0].name, "myext:c-define");
+    assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(exts[0].insubstmt_index, 0);
     assert_int_equal(exts[0].insubstmt, LYEXT_SUBSTMT_MODIFIER);
     FREE_ARRAY(st->ctx, exts, lysp_ext_instance_free);
@@ -1614,7 +1649,7 @@ test_namespace_elem(void **state)
     data = ELEMENT_WRAPPER_START "<namespace uri=\"ns\">" EXT_SUBELEM "</namespace>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &ns, NULL, &exts, true), LY_SUCCESS);
     assert_string_equal(ns, "ns");
-    assert_string_equal(exts[0].name, "myext:c-define");
+    assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(exts[0].insubstmt_index, 0);
     assert_int_equal(exts[0].insubstmt, LYEXT_SUBSTMT_NAMESPACE);
     FREE_ARRAY(st->ctx, exts, lysp_ext_instance_free);
@@ -1639,7 +1674,7 @@ test_path_elem(void **state)
     assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, true), LY_SUCCESS);
     assert_string_equal("p&th-val", type.path);
     assert_true(type.flags & LYS_SET_PATH);
-    assert_string_equal(type.exts[0].name, "myext:c-define");
+    assert_string_equal(type.exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(type.exts[0].insubstmt_index, 0);
     assert_int_equal(type.exts[0].insubstmt, LYEXT_SUBSTMT_PATH);
     lysp_type_free(st->ctx, &type);
@@ -1672,7 +1707,7 @@ test_pattern_elem(void **state)
     assert_string_equal(type.patterns->eapptag, "err-app-tag-value");
     assert_string_equal(type.patterns->emsg, "err-msg-value");
     assert_string_equal(type.patterns->ref, "pattern-ref");
-    assert_string_equal(type.patterns->exts[0].name, "myext:c-define");
+    assert_string_equal(type.patterns->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(type.patterns->exts[0].insubstmt_index, 0);
     assert_int_equal(type.patterns->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
     lysp_type_free(st->ctx, &type);
@@ -1700,7 +1735,7 @@ test_value_position_elem(void **state)
     assert_int_equal(test_element_helper(st, &data, &en, NULL, NULL, true), LY_SUCCESS);
     assert_int_equal(en.value, 55);
     assert_true(en.flags & LYS_SET_VALUE);
-    assert_string_equal(en.exts[0].name, "myext:c-define");
+    assert_string_equal(en.exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(en.exts[0].insubstmt_index, 0);
     assert_int_equal(en.exts[0].insubstmt, LYEXT_SUBSTMT_VALUE);
     FREE_ARRAY(st->ctx, en.exts, lysp_ext_instance_free);
@@ -1729,7 +1764,7 @@ test_value_position_elem(void **state)
     assert_int_equal(test_element_helper(st, &data, &en, NULL, NULL, true), LY_SUCCESS);
     assert_int_equal(en.value, 55);
     assert_true(en.flags & LYS_SET_VALUE);
-    assert_string_equal(en.exts[0].name, "myext:c-define");
+    assert_string_equal(en.exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(en.exts[0].insubstmt_index, 0);
     assert_int_equal(en.exts[0].insubstmt, LYEXT_SUBSTMT_POSITION);
     FREE_ARRAY(st->ctx, en.exts, lysp_ext_instance_free);
@@ -1785,7 +1820,7 @@ test_prefix_elem(void **state)
     data = ELEMENT_WRAPPER_START "<prefix value=\"pref\">" EXT_SUBELEM "</prefix>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &value, NULL, &exts, true), LY_SUCCESS);
     assert_string_equal(value, "pref");
-    assert_string_equal(exts[0].name, "myext:c-define");
+    assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(exts[0].insubstmt_index, 0);
     assert_int_equal(exts[0].insubstmt, LYEXT_SUBSTMT_PREFIX);
     FREE_ARRAY(st->ctx, exts, lysp_ext_instance_free);
@@ -1824,7 +1859,7 @@ test_range_elem(void **state)
     assert_string_equal(type.range->emsg, "err-msg");
     assert_string_equal(type.range->ref, "ref");
     assert_true(type.flags & LYS_SET_RANGE);
-    assert_string_equal(type.range->exts[0].name, "myext:c-define");
+    assert_string_equal(type.range->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(type.range->exts[0].insubstmt_index, 0);
     assert_int_equal(type.range->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
     lysp_type_free(st->ctx, &type);
@@ -1851,7 +1886,7 @@ test_reqinstance_elem(void **state)
     assert_int_equal(test_element_helper(st, &data, &type, NULL, NULL, true), LY_SUCCESS);
     assert_int_equal(type.require_instance, 1);
     assert_true(type.flags & LYS_SET_REQINST);
-    assert_string_equal(type.exts[0].name, "myext:c-define");
+    assert_string_equal(type.exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(type.exts[0].insubstmt_index, 0);
     assert_int_equal(type.exts[0].insubstmt, LYEXT_SUBSTMT_REQINSTANCE);
     lysp_type_free(st->ctx, &type);
@@ -1882,7 +1917,7 @@ test_revision_date_elem(void **state)
     data = ELEMENT_WRAPPER_START "<revision-date date=\"2000-01-01\">"EXT_SUBELEM"</revision-date>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, rev, NULL, &exts, true), LY_SUCCESS);
     assert_string_equal(rev, "2000-01-01");
-    assert_string_equal(exts[0].name, "myext:c-define");
+    assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(exts[0].insubstmt_index, 0);
     assert_int_equal(exts[0].insubstmt, LYEXT_SUBSTMT_REVISIONDATE);
     FREE_ARRAY(st->ctx, exts, lysp_ext_instance_free);
@@ -1909,7 +1944,7 @@ test_unique_elem(void **state)
     data = ELEMENT_WRAPPER_START "<unique tag=\"tag\">"EXT_SUBELEM"</unique>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &values, NULL, &exts, true), LY_SUCCESS);
     assert_string_equal(*values, "tag");
-    assert_string_equal(exts[0].name, "myext:c-define");
+    assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(exts[0].insubstmt_index, 0);
     assert_int_equal(exts[0].insubstmt, LYEXT_SUBSTMT_UNIQUE);
     FREE_ARRAY(st->ctx, exts, lysp_ext_instance_free);
@@ -1938,7 +1973,7 @@ test_units_elem(void **state)
     data = ELEMENT_WRAPPER_START "<units name=\"name\">"EXT_SUBELEM"</units>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &values, NULL, &exts, true), LY_SUCCESS);
     assert_string_equal(values, "name");
-    assert_string_equal(exts[0].name, "myext:c-define");
+    assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(exts[0].insubstmt_index, 0);
     assert_int_equal(exts[0].insubstmt, LYEXT_SUBSTMT_UNITS);
     FREE_ARRAY(st->ctx, exts, lysp_ext_instance_free);
@@ -1972,7 +2007,7 @@ test_when_elem(void **state)
     assert_string_equal(when->cond, "cond");
     assert_string_equal(when->dsc, "desc");
     assert_string_equal(when->ref, "ref");
-    assert_string_equal(when->exts[0].name, "myext:c-define");
+    assert_string_equal(when->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(when->exts[0].insubstmt_index, 0);
     assert_int_equal(when->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
     lysp_when_free(st->ctx, when);
@@ -2049,7 +2084,7 @@ test_type_elem(void **state)
     assert_string_equal(type.range->arg, "range");
     assert_int_equal(type.require_instance, 1);
     assert_string_equal(type.types->name, "sub-type-name");
-    assert_string_equal(type.exts[0].name, "myext:c-define");
+    assert_string_equal(type.exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(type.exts[0].insubstmt_index, 0);
     assert_int_equal(type.exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
     assert_true(type.flags & LYS_SET_BASE);
@@ -2087,7 +2122,7 @@ test_max_elems_elem(void **state)
     assert_int_equal(test_element_helper(st, &data, &refine, NULL, NULL, true), LY_SUCCESS);
     assert_int_equal(refine.max, 0);
     assert_true(refine.flags & LYS_SET_MAX);
-    assert_string_equal(refine.exts[0].name, "myext:c-define");
+    assert_string_equal(refine.exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(refine.exts[0].insubstmt_index, 0);
     assert_int_equal(refine.exts[0].insubstmt, LYEXT_SUBSTMT_MAX);
     FREE_ARRAY(st->ctx, refine.exts, lysp_ext_instance_free);
@@ -2096,7 +2131,7 @@ test_max_elems_elem(void **state)
     assert_int_equal(test_element_helper(st, &data, &list, NULL, NULL, true), LY_SUCCESS);
     assert_int_equal(list.max, 5);
     assert_true(list.flags & LYS_SET_MAX);
-    assert_string_equal(list.exts[0].name, "myext:c-define");
+    assert_string_equal(list.exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(list.exts[0].insubstmt_index, 0);
     assert_int_equal(list.exts[0].insubstmt, LYEXT_SUBSTMT_MAX);
     FREE_ARRAY(st->ctx, list.exts, lysp_ext_instance_free);
@@ -2105,7 +2140,7 @@ test_max_elems_elem(void **state)
     assert_int_equal(test_element_helper(st, &data, &llist, NULL, NULL, true), LY_SUCCESS);
     assert_int_equal(llist.max, 85);
     assert_true(llist.flags & LYS_SET_MAX);
-    assert_string_equal(llist.exts[0].name, "myext:c-define");
+    assert_string_equal(llist.exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(llist.exts[0].insubstmt_index, 0);
     assert_int_equal(llist.exts[0].insubstmt, LYEXT_SUBSTMT_MAX);
     FREE_ARRAY(st->ctx, llist.exts, lysp_ext_instance_free);
@@ -2147,7 +2182,7 @@ test_min_elems_elem(void **state)
     assert_int_equal(test_element_helper(st, &data, &refine, NULL, NULL, true), LY_SUCCESS);
     assert_int_equal(refine.min, 0);
     assert_true(refine.flags & LYS_SET_MIN);
-    assert_string_equal(refine.exts[0].name, "myext:c-define");
+    assert_string_equal(refine.exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(refine.exts[0].insubstmt_index, 0);
     assert_int_equal(refine.exts[0].insubstmt, LYEXT_SUBSTMT_MIN);
     FREE_ARRAY(st->ctx, refine.exts, lysp_ext_instance_free);
@@ -2156,7 +2191,7 @@ test_min_elems_elem(void **state)
     assert_int_equal(test_element_helper(st, &data, &list, NULL, NULL, true), LY_SUCCESS);
     assert_int_equal(list.min, 41);
     assert_true(list.flags & LYS_SET_MIN);
-    assert_string_equal(list.exts[0].name, "myext:c-define");
+    assert_string_equal(list.exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(list.exts[0].insubstmt_index, 0);
     assert_int_equal(list.exts[0].insubstmt, LYEXT_SUBSTMT_MIN);
     FREE_ARRAY(st->ctx, list.exts, lysp_ext_instance_free);
@@ -2165,7 +2200,7 @@ test_min_elems_elem(void **state)
     assert_int_equal(test_element_helper(st, &data, &llist, NULL, NULL, true), LY_SUCCESS);
     assert_int_equal(llist.min, 50);
     assert_true(llist.flags & LYS_SET_MIN);
-    assert_string_equal(llist.exts[0].name, "myext:c-define");
+    assert_string_equal(llist.exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(llist.exts[0].insubstmt_index, 0);
     assert_int_equal(llist.exts[0].insubstmt, LYEXT_SUBSTMT_MIN);
     FREE_ARRAY(st->ctx, llist.exts, lysp_ext_instance_free);
@@ -2200,7 +2235,7 @@ test_ordby_elem(void **state)
     data = ELEMENT_WRAPPER_START "<ordered-by value=\"system\">"EXT_SUBELEM"</ordered-by>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &flags, NULL, &exts, true), LY_SUCCESS);
     assert_true(flags & LYS_ORDBY_SYSTEM);
-    assert_string_equal(exts[0].name, "myext:c-define");
+    assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(exts[0].insubstmt_index, 0);
     assert_int_equal(exts[0].insubstmt, LYEXT_SUBSTMT_ORDEREDBY);
     FREE_ARRAY(st->ctx, exts, lysp_ext_instance_free);
@@ -2252,7 +2287,7 @@ test_any_elem(void **state)
     assert_string_equal(parsed->ref, "ref");
     assert_string_equal(parsed->when->cond, "when-cond");
     assert_string_equal(*parsed->iffeatures, "feature");
-    assert_string_equal(parsed->exts[0].name, "myext:c-define");
+    assert_string_equal(parsed->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(parsed->exts[0].insubstmt_index, 0);
     assert_int_equal(parsed->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
     lysp_node_free(st->ctx, siblings);
@@ -2285,7 +2320,7 @@ test_any_elem(void **state)
     assert_string_equal(parsed->ref, "ref");
     assert_string_equal(parsed->when->cond, "when-cond");
     assert_string_equal(*parsed->iffeatures, "feature");
-    assert_string_equal(parsed->exts[0].name, "myext:c-define");
+    assert_string_equal(parsed->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(parsed->exts[0].insubstmt_index, 0);
     assert_int_equal(parsed->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
     lysp_node_free(st->ctx, siblings);
@@ -2344,7 +2379,7 @@ test_leaf_elem(void **state)
     assert_string_equal(parsed->ref, "ref");
     assert_string_equal(parsed->when->cond, "when-cond");
     assert_string_equal(*parsed->iffeatures, "feature");
-    assert_string_equal(parsed->exts[0].name, "myext:c-define");
+    assert_string_equal(parsed->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(parsed->exts[0].insubstmt_index, 0);
     assert_int_equal(parsed->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
     assert_string_equal(parsed->musts->arg, "must-cond");
@@ -2412,7 +2447,7 @@ test_leaf_list_elem(void **state)
     assert_true(parsed->flags & LYS_CONFIG_W);
     assert_true(parsed->flags & LYS_ORDBY_USER);
     assert_true(parsed->flags & LYS_STATUS_CURR);
-    assert_string_equal(parsed->exts[0].name, "myext:c-define");
+    assert_string_equal(parsed->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(parsed->exts[0].insubstmt_index, 0);
     assert_int_equal(parsed->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
     lysp_node_free(st->ctx, siblings);
@@ -2451,7 +2486,7 @@ test_leaf_list_elem(void **state)
     assert_true(parsed->flags & LYS_CONFIG_W);
     assert_true(parsed->flags & LYS_ORDBY_USER);
     assert_true(parsed->flags & LYS_STATUS_CURR);
-    assert_string_equal(parsed->exts[0].name, "myext:c-define");
+    assert_string_equal(parsed->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(parsed->exts[0].insubstmt_index, 0);
     assert_int_equal(parsed->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
     lysp_node_free(st->ctx, siblings);
@@ -2554,7 +2589,7 @@ test_presence_elem(void **state)
     data = ELEMENT_WRAPPER_START "<presence value=\"presence-val\">"EXT_SUBELEM"</presence>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &val, NULL, &exts, true), LY_SUCCESS);
     assert_string_equal(val, "presence-val");
-    assert_string_equal(exts[0].name, "myext:c-define");
+    assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(exts[0].insubstmt_index, 0);
     assert_int_equal(exts[0].insubstmt, LYEXT_SUBSTMT_PRESENCE);
     FREE_ARRAY(st->ctx, exts, lysp_ext_instance_free);
@@ -2583,7 +2618,7 @@ test_key_elem(void **state)
     data = ELEMENT_WRAPPER_START "<key value=\"key-value\">"EXT_SUBELEM"</key>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &val, NULL, &exts, true), LY_SUCCESS);
     assert_string_equal(val, "key-value");
-    assert_string_equal(exts[0].name, "myext:c-define");
+    assert_string_equal(exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(exts[0].insubstmt_index, 0);
     assert_int_equal(exts[0].insubstmt, LYEXT_SUBSTMT_KEY);
     FREE_ARRAY(st->ctx, exts, lysp_ext_instance_free);
@@ -2628,7 +2663,7 @@ test_typedef_elem(void **state)
     assert_string_equal(tpdfs[0].type.name, "type");
     assert_string_equal(tpdfs[0].units, "uni");
     assert_true(tpdfs[0].flags & LYS_STATUS_CURR);
-    assert_string_equal(tpdfs[0].exts[0].name, "myext:c-define");
+    assert_string_equal(tpdfs[0].exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(tpdfs[0].exts[0].insubstmt_index, 0);
     assert_int_equal(tpdfs[0].exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
     FREE_ARRAY(st->ctx, tpdfs, lysp_tpdf_free);
@@ -2683,7 +2718,7 @@ test_refine_elem(void **state)
     assert_string_equal(refines->musts->arg, "cond");
     assert_string_equal(refines->presence, "presence");
     assert_string_equal(refines->ref, "ref");
-    assert_string_equal(refines->exts[0].name, "myext:c-define");
+    assert_string_equal(refines->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(refines->exts[0].insubstmt_index, 0);
     assert_int_equal(refines->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
     FREE_ARRAY(st->ctx, refines, lysp_refine_free);
@@ -2734,7 +2769,7 @@ test_uses_elem(void **state)
     assert_string_equal(parsed->refines->nodeid, "target");
     assert_string_equal(parsed->when->cond, "cond");
     assert_string_equal(parsed->augments->nodeid, "target");
-    assert_string_equal(parsed->exts[0].name, "myext:c-define");
+    assert_string_equal(parsed->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(parsed->exts[0].insubstmt_index, 0);
     assert_int_equal(parsed->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
     lysp_node_free(st->ctx, siblings);
@@ -2769,7 +2804,7 @@ test_revision_elem(void **state)
     assert_string_equal(revs->date, "2018-12-25");
     assert_string_equal(revs->dsc, "desc");
     assert_string_equal(revs->ref, "ref");
-    assert_string_equal(revs->exts[0].name, "myext:c-define");
+    assert_string_equal(revs->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(revs->exts[0].insubstmt_index, 0);
     assert_int_equal(revs->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
     FREE_ARRAY(st->ctx, revs, lysp_revision_free);
@@ -2815,7 +2850,7 @@ test_include_elem(void **state)
     assert_string_equal(includes->dsc, "desc");
     assert_string_equal(includes->ref, "ref");
     assert_string_equal(includes->rev, "1999-09-09");
-    assert_string_equal(includes->exts[0].name, "myext:c-define");
+    assert_string_equal(includes->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(includes->exts[0].insubstmt_index, 0);
     assert_int_equal(includes->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
     FREE_ARRAY(st->ctx, includes, lysp_include_free);
@@ -2879,7 +2914,7 @@ test_feature_elem(void **state)
     assert_true(features->flags & LYS_STATUS_DEPRC);
     assert_string_equal(*features->iffeatures, "iff");
     assert_string_equal(features->ref, "ref");
-    assert_string_equal(features->exts[0].name, "myext:c-define");
+    assert_string_equal(features->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(features->exts[0].insubstmt_index, 0);
     assert_int_equal(features->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
     FREE_ARRAY(st->ctx, features, lysp_feature_free);
@@ -2921,7 +2956,7 @@ test_identity_elem(void **state)
     assert_string_equal(identities->dsc, "desc");
     assert_string_equal(identities->ref, "ref");
     assert_true(identities->flags & LYS_STATUS_DEPRC);
-    assert_string_equal(identities->exts[0].name, "myext:c-define");
+    assert_string_equal(identities->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(identities->exts[0].insubstmt_index, 0);
     assert_int_equal(identities->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
     FREE_ARRAY(st->ctx, identities, lysp_ident_free);
@@ -3026,7 +3061,7 @@ test_list_elem(void **state)
     assert_string_equal(parsed->typedefs->name, "tpdf");
     assert_string_equal(*parsed->uniques, "utag");
     assert_string_equal(parsed->when->cond, "when");
-    assert_string_equal(parsed->exts[0].name, "myext:c-define");
+    assert_string_equal(parsed->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(parsed->exts[0].insubstmt_index, 0);
     assert_int_equal(parsed->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
     lysp_node_free(st->ctx, siblings);
@@ -3102,7 +3137,7 @@ test_notification_elem(void **state)
     assert_null(notifs->parent);
     assert_string_equal(notifs->ref, "ref");
     assert_string_equal(notifs->typedefs->name, "tpdf");
-    assert_string_equal(notifs->exts[0].name, "myext:c-define");
+    assert_string_equal(notifs->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(notifs->exts[0].insubstmt_index, 0);
     assert_int_equal(notifs->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
     FREE_ARRAY(st->ctx, notifs, lysp_notif_free);
@@ -3169,7 +3204,7 @@ test_grouping_elem(void **state)
     assert_int_equal(grps->data->next->next->next->next->next->next->nodetype, LYS_CONTAINER);
     assert_string_equal(grps->data->next->next->next->next->next->next->next->name, "choice");
     assert_int_equal(grps->data->next->next->next->next->next->next->next->nodetype, LYS_CHOICE);
-    assert_string_equal(grps->exts[0].name, "myext:c-define");
+    assert_string_equal(grps->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(grps->exts[0].insubstmt_index, 0);
     assert_int_equal(grps->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
     FREE_ARRAY(st->ctx, grps, lysp_grp_free);
@@ -3256,7 +3291,7 @@ test_container_elem(void **state)
     assert_null(parsed->child->next->next->next->next->next->next->next->next);
     assert_string_equal(parsed->notifs->name, "notf");
     assert_string_equal(parsed->actions->name, "act");
-    assert_string_equal(parsed->exts[0].name, "myext:c-define");
+    assert_string_equal(parsed->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(parsed->exts[0].insubstmt_index, 0);
     assert_int_equal(parsed->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
     lysp_node_free(st->ctx, siblings);
@@ -3331,7 +3366,7 @@ test_case_elem(void **state)
     assert_string_equal(parsed->child->next->next->next->next->next->next->next->name, "choice");
     assert_int_equal(parsed->child->next->next->next->next->next->next->next->nodetype, LYS_CHOICE);
     assert_null(parsed->child->next->next->next->next->next->next->next->next);
-    assert_string_equal(parsed->exts[0].name, "myext:c-define");
+    assert_string_equal(parsed->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(parsed->exts[0].insubstmt_index, 0);
     assert_int_equal(parsed->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
     lysp_node_free(st->ctx, siblings);
@@ -3408,7 +3443,7 @@ test_choice_elem(void **state)
     assert_string_equal(parsed->child->next->next->next->next->next->next->next->name, "list");
     assert_int_equal(parsed->child->next->next->next->next->next->next->next->nodetype, LYS_LIST);
     assert_null(parsed->child->next->next->next->next->next->next->next->next);
-    assert_string_equal(parsed->exts[0].name, "myext:c-define");
+    assert_string_equal(parsed->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(parsed->exts[0].insubstmt_index, 0);
     assert_int_equal(parsed->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
     lysp_node_free(st->ctx, siblings);
@@ -3474,7 +3509,7 @@ test_inout_elem(void **state)
     assert_string_equal(inout.data->next->next->next->next->next->next->next->name, "uses-name");
     assert_int_equal(inout.data->next->next->next->next->next->next->next->nodetype, LYS_USES);
     assert_null(inout.data->next->next->next->next->next->next->next->next);
-    assert_string_equal(inout.exts[0].name, "myext:c-define");
+    assert_string_equal(inout.exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(inout.exts[0].insubstmt_index, 0);
     assert_int_equal(inout.exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
     lysp_action_inout_free(st->ctx, &inout);
@@ -3521,7 +3556,7 @@ test_inout_elem(void **state)
     assert_string_equal(inout.data->next->next->next->next->next->next->next->name, "uses-name");
     assert_int_equal(inout.data->next->next->next->next->next->next->next->nodetype, LYS_USES);
     assert_null(inout.data->next->next->next->next->next->next->next->next);
-    assert_string_equal(inout.exts[0].name, "myext:c-define");
+    assert_string_equal(inout.exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(inout.exts[0].insubstmt_index, 0);
     assert_int_equal(inout.exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
     lysp_action_inout_free(st->ctx, &inout);
@@ -3580,7 +3615,7 @@ test_action_elem(void **state)
     assert_string_equal(actions->groupings->name, "grouping");
     assert_string_equal(actions->input.data->name, "uses-name");
     assert_string_equal(actions->output.musts->arg, "cond");
-    assert_string_equal(actions->exts[0].name, "myext:c-define");
+    assert_string_equal(actions->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(actions->exts[0].insubstmt_index, 0);
     assert_int_equal(actions->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
     FREE_ARRAY(st->ctx, actions, lysp_action_free)
@@ -3612,7 +3647,7 @@ test_action_elem(void **state)
     assert_string_equal(actions->groupings->name, "grouping");
     assert_string_equal(actions->input.data->name, "uses-name");
     assert_string_equal(actions->output.musts->arg, "cond");
-    assert_string_equal(actions->exts[0].name, "myext:c-define");
+    assert_string_equal(actions->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(actions->exts[0].insubstmt_index, 0);
     assert_int_equal(actions->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
     FREE_ARRAY(st->ctx, actions, lysp_action_free)
@@ -3688,7 +3723,7 @@ test_augment_elem(void **state)
     assert_null(augments->child->next->next->next->next->next->next->next->next->next);
     assert_string_equal(augments->actions->name, "action");
     assert_string_equal(augments->notifs->name, "notif");
-    assert_string_equal(augments->exts[0].name, "myext:c-define");
+    assert_string_equal(augments->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(augments->exts[0].insubstmt_index, 0);
     assert_int_equal(augments->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
     FREE_ARRAY(st->ctx, augments, lysp_augment_free)
@@ -3750,7 +3785,7 @@ test_deviate_elem(void **state)
            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &deviates, NULL, NULL, true), LY_SUCCESS);
     assert_int_equal(deviates->mod, LYS_DEV_NOT_SUPPORTED);
-    assert_string_equal(deviates->exts[0].name, "myext:c-define");
+    assert_string_equal(deviates->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(deviates->exts[0].insubstmt_index, 0);
     assert_int_equal(deviates->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
     lysp_deviate_free(st->ctx, deviates);
@@ -3781,7 +3816,7 @@ test_deviate_elem(void **state)
     assert_true(d_add->flags & LYS_MAND_TRUE && d_add->flags & LYS_CONFIG_W);
     assert_int_equal(d_add->min, 5);
     assert_int_equal(d_add->max, 15);
-    assert_string_equal(deviates->exts[0].name, "myext:c-define");
+    assert_string_equal(deviates->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(deviates->exts[0].insubstmt_index, 0);
     assert_int_equal(deviates->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
     lysp_deviate_free(st->ctx, deviates);
@@ -3810,7 +3845,7 @@ test_deviate_elem(void **state)
     assert_true(d_rpl->flags & LYS_MAND_TRUE && d_rpl->flags & LYS_CONFIG_W);
     assert_int_equal(d_rpl->min, 5);
     assert_int_equal(d_rpl->max, 15);
-    assert_string_equal(deviates->exts[0].name, "myext:c-define");
+    assert_string_equal(deviates->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(deviates->exts[0].insubstmt_index, 0);
     assert_int_equal(deviates->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
     lysp_deviate_free(st->ctx, deviates);
@@ -3834,7 +3869,7 @@ test_deviate_elem(void **state)
     assert_string_equal(d_del->musts->arg, "c");
     assert_string_equal(*d_del->uniques, "tag");
     assert_string_equal(*d_del->dflts, "default");
-    assert_string_equal(deviates->exts[0].name, "myext:c-define");
+    assert_string_equal(deviates->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(deviates->exts[0].insubstmt_index, 0);
     assert_int_equal(deviates->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
     lysp_deviate_free(st->ctx, deviates);
@@ -3906,7 +3941,7 @@ test_deviation_elem(void **state)
     assert_int_equal(deviations->deviates->mod, LYS_DEV_ADD);
     assert_string_equal(deviations->ref, "ref");
     assert_string_equal(deviations->dsc, "desc");
-    assert_string_equal(deviations->exts[0].name, "myext:c-define");
+    assert_string_equal(deviations->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(deviations->exts[0].insubstmt_index, 0);
     assert_int_equal(deviations->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
     FREE_ARRAY(st->ctx, deviations, lysp_deviation_free);
@@ -4009,7 +4044,7 @@ test_module_elem(void **state)
     assert_string_equal(lysp_mod->rpcs->name, "rpc-name");
     assert_string_equal(lysp_mod->notifs->name, "notf");
     assert_string_equal(lysp_mod->deviations->nodeid, "target");
-    assert_string_equal(lysp_mod->exts[0].name, "myext:c-define");
+    assert_string_equal(lysp_mod->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(lysp_mod->exts[0].insubstmt_index, 0);
     assert_int_equal(lysp_mod->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
     lysp_module_free(lysp_mod);
@@ -4143,7 +4178,7 @@ test_submodule_elem(void **state)
     assert_string_equal(lysp_submod->rpcs->name, "rpc-name");
     assert_string_equal(lysp_submod->notifs->name, "notf");
     assert_string_equal(lysp_submod->deviations->nodeid, "target");
-    assert_string_equal(lysp_submod->exts[0].name, "myext:c-define");
+    assert_string_equal(lysp_submod->exts[0].name, "urn:example:extensions:c-define");
     assert_int_equal(lysp_submod->exts[0].insubstmt_index, 0);
     assert_int_equal(lysp_submod->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
 
