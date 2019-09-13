@@ -591,6 +591,7 @@ LY_ERR ly_strcat(char **dest, const char *format, ...);
  * @param[in,out] LIST Linked list to add to.
  * @param[out] NEW_ITEM New item that is appended to the list.
  * @param[in] LINKER name of structure member that is used to connect items together.
+ * @param[in] RETVAL Return value for the case of error (memory allocation failure).
  */
 #define LY_LIST_NEW_RET(CTX, LIST, NEW_ITEM, LINKER, RETVAL) \
     NEW_ITEM = calloc(1, sizeof *NEW_ITEM); \
