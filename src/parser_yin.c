@@ -3257,8 +3257,8 @@ yin_parse_extension_instance(struct yin_parser_ctx *ctx, struct yin_arg_record *
  * @return LY_ERR values.
  */
 static LY_ERR
-yin_parse_arg_inext_known(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data, enum ly_stmt elem_type,
-                          const char **arg)
+yin_parse_ext_instance_arg(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data, enum ly_stmt elem_type,
+                           const char **arg)
 {
     LY_ERR ret = LY_SUCCESS;
     char *out = NULL;
@@ -3420,7 +3420,7 @@ yin_parse_element_generic(struct yin_parser_ctx *ctx, const char *name, size_t n
         goto cleanup;
     } else if ((*element)->kw != LY_STMT_EXTENSION_INSTANCE) {
         /* element is known yang keyword, which means argument can be parsed correctly. */
-        ret = yin_parse_arg_inext_known(ctx, attrs, data, (*element)->kw, &(*element)->arg);
+        ret = yin_parse_ext_instance_arg(ctx, attrs, data, (*element)->kw, &(*element)->arg);
         LY_CHECK_GOTO(ret, cleanup);
     } else {
         /* load attributes in generic way, save all attributes in linked list */
