@@ -3486,6 +3486,7 @@ yin_parse_mod(struct yin_parser_ctx *ctx, struct yin_arg_record *mod_attrs, cons
 {
     LY_ERR ret = LY_SUCCESS;
     struct yin_subelement *subelems = NULL;
+    struct lysp_submodule *dup;
 
     LY_CHECK_RET(yin_parse_attribute(ctx, mod_attrs, YIN_ARG_NAME, &mod->mod->name, Y_IDENTIF_ARG, LY_STMT_MODULE));
     LY_CHECK_RET(subelems_allocator(ctx, 28, NULL, &subelems,
@@ -3521,8 +3522,20 @@ yin_parse_mod(struct yin_parser_ctx *ctx, struct yin_arg_record *mod_attrs, cons
 
     ret = yin_parse_content(ctx, subelems, 28, data, LY_STMT_MODULE, NULL, &mod->exts);
     subelems_deallocator(28, subelems);
+    LY_CHECK_RET(ret);
 
-    return ret;
+    /* finalize parent pointers to the reallocated items */
+    LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, mod->groupings, mod->augments, mod->rpcs, mod->notifs));
+
+    /* submodules share the namespace with the module names, so there must not be
+     * a submodule of the same name in the context, no need for revision matching */
+    dup = ly_ctx_get_submodule(ctx->xml_ctx.ctx, NULL, mod->mod->name, NULL);
+    if (dup) {
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LYVE_SYNTAX_YANG, "Name collision between module and submodule of name \"%s\".", mod->mod->name);
+        return LY_EVALID;
+    }
+
+    return LY_SUCCESS;
 }
 
 LY_ERR
@@ -3530,6 +3543,7 @@ yin_parse_submod(struct yin_parser_ctx *ctx, struct yin_arg_record *mod_attrs, c
 {
     LY_ERR ret = LY_SUCCESS;
     struct yin_subelement *subelems = NULL;
+    struct lysp_submodule *dup;
 
     LY_CHECK_RET(yin_parse_attribute(ctx, mod_attrs, YIN_ARG_NAME, &submod->name, Y_IDENTIF_ARG, LY_STMT_SUBMODULE));
     LY_CHECK_RET(subelems_allocator(ctx, 27, NULL, &subelems,
@@ -3564,8 +3578,20 @@ yin_parse_submod(struct yin_parser_ctx *ctx, struct yin_arg_record *mod_attrs, c
 
     ret = yin_parse_content(ctx, subelems, 27, data, LY_STMT_SUBMODULE, NULL, &submod->exts);
     subelems_deallocator(27, subelems);
+    LY_CHECK_RET(ret);
 
-    return ret;
+    /* finalize parent pointers to the reallocated items */
+    LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, submod->groupings, submod->augments, submod->rpcs, submod->notifs));
+
+    /* submodules share the namespace with the module names, so there must not be
+     * a submodule of the same name in the context, no need for revision matching */
+    dup = ly_ctx_get_submodule(ctx->xml_ctx.ctx, NULL, submod->name, NULL);
+    if (dup && strcmp(dup->belongsto, submod->belongsto)) {
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LYVE_SYNTAX_YANG, "Name collision between submodules of name \"%s\".", dup->name);
+        return LY_EVALID;
+    }
+
+    return LY_SUCCESS;
 }
 
 LY_ERR
