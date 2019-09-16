@@ -2911,7 +2911,7 @@ yang_type_free(struct ly_ctx *ctx, struct lys_type *type)
 static void
 yang_tpdf_free(struct ly_ctx *ctx, struct lys_tpdf *tpdf, uint16_t start, uint16_t size)
 {
-    uint8_t i;
+    uint16_t i;
 
     assert(ctx);
     if (!tpdf) {
