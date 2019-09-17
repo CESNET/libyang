@@ -1018,6 +1018,13 @@ search_file:
         }
     }
 
+    if (mod && !revision && latest_mod && mod->rev_size && latest_mod->rev_size
+                && (strcmp(mod->rev[0].date, latest_mod->rev[0].date) < 0)) {
+        /* the found module has older revision as the one already in context and we are looking for the latest one, free it */
+        lys_free(mod, NULL, 1, 1);
+        mod = NULL;
+    }
+
     if (!mod && latest_mod) {
         /* consider the latest mod found as the latest available */
         mod = latest_mod;
