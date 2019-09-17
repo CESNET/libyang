@@ -1,12 +1,17 @@
-# - Try to find LibYANG
+# - Try to find LibYANG and its C++ bindings
 # Once done this will define
 #
 #  LIBYANG_FOUND - system has LibYANG
 #  LIBYANG_INCLUDE_DIRS - the LibYANG include directory
-#  LIBYANG_LIBRARIES - Link these to use LibSSH
+#  LIBYANG_LIBRARIES - Link these to use LibYANG
+#
+#  LIBYANG_CPP_FOUND - system has LibYANG C++ bindings
+#  LIBYANG_CPP_INCLUDE_DIRS - the LibYANG C++ include directory
+#  LIBYANG_CPP_LIBRARIES - Link these to use LibYANG C++ bindings
 #
 #  Author Radek Krejci <rkrejci@cesnet.cz>
-#  Copyright (c) 2015 CESNET, z.s.p.o.
+#  Author Michal Vasko <mvasko@cesnet.cz>
+#  Copyright (c) 2015 - 2019 CESNET, z.s.p.o.
 #
 #  Redistribution and use in source and binary forms, with or without
 #  modification, are permitted provided that the following conditions
@@ -17,7 +22,7 @@
 #  2. Redistributions in binary form must reproduce the copyright
 #     notice, this list of conditions and the following disclaimer in the
 #     documentation and/or other materials provided with the distribution.
-#  3. The name of the author may not be used to endorse or promote products 
+#  3. The name of the author may not be used to endorse or promote products
 #     derived from this software without specific prior written permission.
 #
 #  THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR
@@ -32,10 +37,11 @@
 #  THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #
 
+# C library
 if (LIBYANG_LIBRARIES AND LIBYANG_INCLUDE_DIRS)
   # in cache already
   set(LIBYANG_FOUND TRUE)
-else (LIBYANG_LIBRARIES AND LIBYANG_INCLUDE_DIRS)
+else ()
 
   find_path(LIBYANG_INCLUDE_DIR
     NAMES
@@ -48,7 +54,7 @@ else (LIBYANG_LIBRARIES AND LIBYANG_INCLUDE_DIRS)
       ${CMAKE_INCLUDE_PATH}
       ${CMAKE_INSTALL_PREFIX}/include
   )
-  
+
   find_library(LIBYANG_LIBRARY
     NAMES
       yang
@@ -64,11 +70,11 @@ else (LIBYANG_LIBRARIES AND LIBYANG_INCLUDE_DIRS)
       ${CMAKE_INSTALL_PREFIX}/lib
   )
 
-  if (LIBYANG_INCLUDE_DIR AND LIBYANG_LIBRARY)
+  if ()
     set(LIBYANG_FOUND TRUE)
-  else (LIBYANG_INCLUDE_DIR AND LIBYANG_LIBRARY)
+  else ()
     set(LIBYANG_FOUND FALSE)
-  endif (LIBYANG_INCLUDE_DIR AND LIBYANG_LIBRARY)
+  endif ()
 
   set(LIBYANG_INCLUDE_DIRS ${LIBYANG_INCLUDE_DIR})
   set(LIBYANG_LIBRARIES ${LIBYANG_LIBRARY})
@@ -76,5 +82,51 @@ else (LIBYANG_LIBRARIES AND LIBYANG_INCLUDE_DIRS)
   # show the LIBYANG_INCLUDE_DIRS and LIBYANG_LIBRARIES variables only in the advanced view
   mark_as_advanced(LIBYANG_INCLUDE_DIRS LIBYANG_LIBRARIES)
 
-endif (LIBYANG_LIBRARIES AND LIBYANG_INCLUDE_DIRS)
+endif ()
 
+#C++ bindings
+if (LIBYANG_CPP_LIBRARIES AND LIBYANG_CPP_INCLUDE_DIRS)
+  # in cache already
+  set(LIBYANG_CPP_FOUND TRUE)
+else ()
+
+  find_path(LIBYANG_CPP_INCLUDE_DIR
+    NAMES
+      libyang/Libyang.hpp
+    PATHS
+      /usr/include
+      /usr/local/include
+      /opt/local/include
+      /sw/include
+      ${CMAKE_INCLUDE_PATH}
+      ${CMAKE_INSTALL_PREFIX}/include
+  )
+
+  find_library(LIBYANG_CPP_LIBRARY
+    NAMES
+      yang-cpp
+      libyang-cpp
+    PATHS
+      /usr/lib
+      /usr/lib64
+      /usr/local/lib
+      /usr/local/lib64
+      /opt/local/lib
+      /sw/lib
+      ${CMAKE_LIBRARY_PATH}
+      ${CMAKE_INSTALL_PREFIX}/lib
+  )
+
+  if (LIBYANG_CPP_INCLUDE_DIR AND LIBYANG_CPP_LIBRARY)
+    set(LIBYANG_CPP_FOUND TRUE)
+  else ()
+    set(LIBYANG_CPP_FOUND FALSE)
+  endif ()
+
+  set(LIBYANG_CPP_INCLUDE_DIRS ${LIBYANG_CPP_INCLUDE_DIR})
+  set(LIBYANG_CPP_LIBRARIES ${LIBYANG_CPP_LIBRARY})
+
+  # show the LIBYANG_CPP_INCLUDE_DIRS and LIBYANG_CPP_LIBRARIES variables only in the advanced view
+  mark_as_advanced(LIBYANG_CPP_INCLUDE_DIRS LIBYANG_CPP_LIBRARIES)
+
+endif()
