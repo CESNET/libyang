@@ -176,10 +176,109 @@ test_yang(void **state)
     s->func = NULL;
 }
 
+static void
+test_yin(void **state)
+{
+    struct state_s *s = (struct state_s*)(*state);
+    s->func = test_yin;
+
+    struct lys_module *mod;
+    struct lysc_ext_instance *e;
+    struct lyext_metadata *ant;
+
+    const char *data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:md=\"urn:ietf:params:xml:ns:yang:ietf-yang-metadata\" name=\"a\">\n"
+            "<yang-version value=\"1.1\"/><namespace uri=\"urn:tests:extensions:metadata:a\"/><prefix value=\"a\"/>\n"
+            "<import module=\"ietf-yang-metadata\"><prefix value=\"md\"/></import>\n"
+            "<feature name=\"f\"/>\n"
+            "<md:annotation name=\"x\">\n"
+            "  <description><text>test</text></description>\n"
+            "  <reference><text>test</text></reference>\n"
+            "  <if-feature name=\"f\"/>\n"
+            "  <status value=\"current\"/>\n"
+            "  <type name=\"uint8\"/>\n"
+            "  <units name=\"meters\"/>\n"
+            "</md:annotation></module>";
+    assert_non_null(mod = lys_parse_mem(s->ctx, data, LYS_IN_YIN));
+    assert_int_equal(1, LY_ARRAY_SIZE(mod->compiled->exts));
+    e = &mod->compiled->exts[0];
+    assert_non_null(ant = (struct lyext_metadata*)e->data);
+    assert_string_equal("meters", ant->units);
+
+    /* invalid */
+    /* missing mandatory type substatement */
+    data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:md=\"urn:ietf:params:xml:ns:yang:ietf-yang-metadata\" name=\"aa\">\n"
+            "<yang-version value=\"1.1\"/><namespace uri=\"urn:tests:extensions:metadata:aa\"/><prefix value=\"aa\"/>\n"
+            "<import module=\"ietf-yang-metadata\"><prefix value=\"md\"/></import>\n"
+            "<md:annotation name=\"aa\"/>\n"
+            "</module>";
+    assert_null(lys_parse_mem(s->ctx, data, LYS_IN_YIN));
+    logbuf_assert("Missing mandatory keyword \"type\" as a child of \"md:annotation aa\". /aa:{extension='md:annotation'}/aa");
+
+    /* not allowed substatement */
+    data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:md=\"urn:ietf:params:xml:ns:yang:ietf-yang-metadata\" name=\"aa\">\n"
+            "<yang-version value=\"1.1\"/><namespace uri=\"urn:tests:extensions:metadata:aa\"/><prefix value=\"aa\"/>\n"
+            "<import module=\"ietf-yang-metadata\"><prefix value=\"md\"/></import>\n"
+            "<md:annotation name=\"aa\">\n"
+            "  <default value=\"x\"/>\n"
+            "</md:annotation></module>";
+    assert_null(lys_parse_mem(s->ctx, data, LYS_IN_YIN));
+    logbuf_assert("Invalid keyword \"default\" as a child of \"md:annotation aa\" extension instance. /aa:{extension='md:annotation'}/aa");
+
+    /* invalid cardinality of units substatement */
+    data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:md=\"urn:ietf:params:xml:ns:yang:ietf-yang-metadata\" name=\"aa\">\n"
+            "<yang-version value=\"1.1\"/><namespace uri=\"urn:tests:extensions:metadata:aa\"/><prefix value=\"aa\"/>\n"
+            "<import module=\"ietf-yang-metadata\"><prefix value=\"md\"/></import>\n"
+            "<md:annotation name=\"aa\">\n"
+            "  <type name=\"string\"/>\n"
+            "  <units name=\"x\"/>\n"
+            "  <units name=\"y\"/>\n"
+            "</md:annotation></module>";
+    assert_null(lys_parse_mem(s->ctx, data, LYS_IN_YIN));
+    logbuf_assert("Duplicate keyword \"units\". /aa:{extension='md:annotation'}/aa");
+
+    /* invalid cardinality of status substatement */
+    data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:md=\"urn:ietf:params:xml:ns:yang:ietf-yang-metadata\" name=\"aa\">\n"
+            "<yang-version value=\"1.1\"/><namespace uri=\"urn:tests:extensions:metadata:aa\"/><prefix value=\"aa\"/>\n"
+            "<import module=\"ietf-yang-metadata\"><prefix value=\"md\"/></import>\n"
+            "<md:annotation name=\"aa\">\n"
+            "  <type name=\"string\"/>\n"
+            "  <status value=\"current\"/>\n"
+            "  <status value=\"obsolete\"/>\n"
+            "</md:annotation></module>";
+    assert_null(lys_parse_mem(s->ctx, data, LYS_IN_YIN));
+    logbuf_assert("Duplicate keyword \"status\". /aa:{extension='md:annotation'}/aa");
+
+    /* invalid cardinality of status substatement */
+    data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:md=\"urn:ietf:params:xml:ns:yang:ietf-yang-metadata\" name=\"aa\">\n"
+            "<yang-version value=\"1.1\"/><namespace uri=\"urn:tests:extensions:metadata:aa\"/><prefix value=\"aa\"/>\n"
+            "<import module=\"ietf-yang-metadata\"><prefix value=\"md\"/></import>\n"
+            "<md:annotation name=\"aa\">\n"
+            "  <type name=\"string\"/>\n"
+            "  <type name=\"uint8\"/>\n"
+            "</md:annotation></module>";
+    assert_null(lys_parse_mem(s->ctx, data, LYS_IN_YIN));
+    logbuf_assert("Duplicate keyword \"type\". /aa:{extension='md:annotation'}/aa");
+
+    /* duplication of the same annotation */
+    data = "<module xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\" xmlns:md=\"urn:ietf:params:xml:ns:yang:ietf-yang-metadata\" name=\"aa\">\n"
+            "<yang-version value=\"1.1\"/><namespace uri=\"urn:tests:extensions:metadata:aa\"/><prefix value=\"aa\"/>\n"
+            "<import module=\"ietf-yang-metadata\"><prefix value=\"md\"/></import>\n"
+            "<md:annotation name=\"aa\">\n"
+            "  <type name=\"string\"/>\n"
+            "</md:annotation><md:annotation name=\"aa\">\n"
+            "  <type name=\"uint8\"/>\n"
+            "</md:annotation></module>";
+    assert_null(lys_parse_mem(s->ctx, data, LYS_IN_YIN));
+    logbuf_assert("Extension plugin \"libyang 2 - metadata, version 1\": "
+            "Extension md:annotation is instantiated multiple times.) /aa:{extension='md:annotation'}/aa");
+    s->func = NULL;
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_yang, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_yin, setup, teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

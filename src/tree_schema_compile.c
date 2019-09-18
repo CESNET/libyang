@@ -427,10 +427,12 @@ lys_feature_find(struct lys_module *mod, const char *name, size_t len)
 static LY_ERR
 lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct lysc_ext_instance *ext, void *parent, LYEXT_PARENT parent_type)
 {
+    LY_ERR ret = LY_EVALID;
     const char *name;
     unsigned int u;
     const struct lys_module *mod;
     struct lysc_ext *elist = NULL;
+    const char *prefixed_name = NULL;
 
     DUP_STRING(ctx->ctx, ext_p->argument, ext->argument);
     ext->insubstmt = ext_p->insubstmt;
@@ -440,20 +442,50 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct ly
     ext->parent_type = parent_type;
 
     lysc_update_path(ctx, ext->parent_type == LYEXT_PAR_NODE ? (struct lysc_node*)ext->parent : NULL, "{extension}");
-    lysc_update_path(ctx, NULL, ext_p->name );
 
     /* get module where the extension definition should be placed */
-    for (u = 0; ext_p->name[u] != ':'; ++u);
-    mod = lys_module_find_prefix(ctx->mod_def, ext_p->name, u);
-    LY_CHECK_ERR_RET(!mod, LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                                  "Invalid prefix \"%.*s\" used for extension instance identifier.", u, ext_p->name),
-                     LY_EVALID);
-    LY_CHECK_ERR_RET(!mod->parsed->extensions,
-                     LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                            "Extension instance \"%s\" refers \"%s\" module that does not contain extension definitions.",
-                            ext_p->name, mod->name),
-                     LY_EVALID);
-    name = &ext_p->name[u + 1];
+    for (u = strlen(ext_p->name); u && ext_p->name[u - 1] != ':'; --u);
+    if (ext_p->yin) {
+        /* YIN parser has to replace prefixes by the namespace - XML namespace/prefix pairs may differs form the YANG schema's
+         * namespace/prefix pair. YIN parser does not have the imports available, so mapping from XML namespace to the
+         * YANG (import) prefix must be done here. */
+        if (!ly_strncmp(ctx->mod_def->ns, ext_p->name, u - 1)) {
+            prefixed_name = lydict_insert(ctx->ctx, &ext_p->name[u], 0);
+            u = 0;
+        } else if (ctx->mod_def->compiled) {
+            unsigned int v;
+            LY_ARRAY_FOR(ctx->mod_def->compiled->imports, v) {
+                if (!ly_strncmp(ctx->mod_def->compiled->imports[v].module->ns, ext_p->name, u - 1)) {
+                    char *s;
+                    asprintf(&s, "%s:%s", ctx->mod_def->compiled->imports[v].prefix, &ext_p->name[u]);
+                    prefixed_name = lydict_insert_zc(ctx->ctx, s);
+                    u = strlen(ctx->mod_def->compiled->imports[v].prefix) + 1; /* add semicolon */
+                    break;
+                }
+            }
+        }
+        if (!prefixed_name) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                   "Invalid XML prefix of \"%.*s\" namespace used for extension instance identifier.", u, ext_p->name);
+            goto cleanup;
+        }
+    } else {
+        prefixed_name = ext_p->name;
+    }
+    lysc_update_path(ctx, NULL, prefixed_name);
+
+    mod = lys_module_find_prefix(ctx->mod_def, prefixed_name, u - 1);
+    if (!mod) {
+        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+               "Invalid prefix \"%.*s\" used for extension instance identifier.", u, prefixed_name);
+        goto cleanup;
+    } else if (!mod->parsed->extensions) {
+        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                "Extension instance \"%s\" refers \"%s\" module that does not contain extension definitions.",
+                prefixed_name, mod->name);
+        goto cleanup;
+    }
+    name = &prefixed_name[u];
 
     /* find the extension definition there */
     if (mod->off_extensions) {
@@ -467,15 +499,16 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct ly
             break;
         }
     }
-    LY_CHECK_ERR_RET(!ext->def,
-                     LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                            "Extension definition of extension instance \"%s\" not found.", ext_p->name),
-                     LY_EVALID);
+    if (!ext->def) {
+        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+               "Extension definition of extension instance \"%s\" not found.", prefixed_name);
+        goto cleanup;
+    }
 
     /* unify the parsed extension from YIN and YANG sources. Without extension definition, it is not possible
      * to get extension's argument from YIN source, so it is stored as one of the substatements. Here we have
      * to find it, mark it with LYS_YIN_ARGUMENT and store it in the compiled structure. */
-    if (ext_p->yin && ext->def->argument) {
+    if (ext_p->yin && ext->def->argument && !ext->argument) {
         /* Schema was parsed from YIN and an argument is expected, ... */
         struct lysp_stmt *stmt = NULL;
 
@@ -493,7 +526,6 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct ly
             for (stmt = ext_p->child; stmt && (stmt->flags & LYS_YIN_ATTR); stmt = stmt->next) {
                 if (!strcmp(stmt->stmt, ext->def->argument)) {
                     /* this is the extension's argument */
-                    ext->argument = lydict_insert(ctx->ctx, stmt->arg, 0);
                     break;
                 }
             }
@@ -501,29 +533,42 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct ly
         if (!stmt) {
             /* missing extension's argument */
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                   "Extension instance \"%s\" misses argument \"%s\".", ext_p->name, ext->def->argument);
-            return LY_EVALID;
+                   "Extension instance \"%s\" misses argument \"%s\".", prefixed_name, ext->def->argument);
+            goto cleanup;
 
         }
         ext->argument = lydict_insert(ctx->ctx, stmt->arg, 0);
         stmt->flags |= LYS_YIN_ARGUMENT;
+    }
+    if (prefixed_name != ext_p->name) {
+        lydict_remove(ctx->ctx, ext_p->name);
+        ext_p->name = prefixed_name;
+        if (!ext_p->argument && ext->argument) {
+            ext_p->argument = lydict_insert(ctx->ctx, ext->argument, 0);
+        }
     }
 
     if (ext->def->plugin && ext->def->plugin->compile) {
         if (ext->argument) {
             lysc_update_path(ctx, (struct lysc_node*)ext, ext->argument);
         }
-        LY_CHECK_RET(ext->def->plugin->compile(ctx, ext_p, ext), LY_EVALID);
+        LY_CHECK_GOTO(ext->def->plugin->compile(ctx, ext_p, ext), cleanup);
         if (ext->argument) {
             lysc_update_path(ctx, NULL, NULL);
         }
     }
     ext_p->compiled = ext;
 
+    ret = LY_SUCCESS;
+cleanup:
+    if (prefixed_name && prefixed_name != ext_p->name) {
+        lydict_remove(ctx->ctx, prefixed_name);
+    }
+
     lysc_update_path(ctx, NULL, NULL);
     lysc_update_path(ctx, NULL, NULL);
 
-    return LY_SUCCESS;
+    return ret;
 }
 
 /**
