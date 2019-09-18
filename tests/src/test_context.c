@@ -166,7 +166,7 @@ test_searchdirs(void **state)
     /* test searchdir list in ly_ctx_new() */
     assert_int_equal(LY_EINVAL, ly_ctx_new("/nonexistingfile", 0, &ctx));
     logbuf_assert("Unable to use search directory \"/nonexistingfile\" (No such file or directory).");
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC":/home:/home:"TESTS_SRC, 0, &ctx));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_SRC":/home:/home:"TESTS_SRC, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
     assert_int_equal(2, ctx->search_paths.count);
     assert_string_equal(TESTS_SRC, ctx->search_paths.objs[0]);
     assert_string_equal("/home", ctx->search_paths.objs[1]);
@@ -345,6 +345,51 @@ test_models(void **state)
 }
 
 static void
+test_imports(void **state)
+{
+    *state = test_imports;
+
+    struct ly_ctx *ctx;
+    struct lys_module *mod1, *mod2, *import;
+
+    /* import callback provides newer revision of module 'a' than present in context, so when importing 'a', the newer revision
+     * from the callback should be loaded into the context and used as an import */
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "module a {namespace urn:a; prefix a; revision 2019-09-17;}");
+    assert_non_null(mod1 = lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;revision 2019-09-16;}", LYS_IN_YANG));
+    assert_int_equal(1, mod1->latest_revision);
+    assert_int_equal(1, mod1->implemented);
+    assert_non_null(mod2 = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;import a {prefix a;}}", LYS_IN_YANG));
+    import = mod2->compiled->imports[0].module;
+    assert_int_equal(2, import->latest_revision);
+    assert_int_equal(0, mod1->latest_revision);
+    assert_ptr_not_equal(mod1, import);
+    assert_string_equal("2019-09-17", import->revision);
+    assert_int_equal(0, import->implemented);
+    assert_non_null(ly_ctx_get_module(ctx, "a", "2019-09-16"));
+    ly_ctx_destroy(ctx, NULL);
+
+    /* import callback provides older revision of module 'a' than present in context, so when importing a, the newer revision
+     * already present in the context should be selected and the callback's revision should not be loaded into the context */
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "module a {namespace urn:a; prefix a; revision 2019-09-17;}");
+    assert_non_null(mod1 = lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;revision 2019-09-18;}", LYS_IN_YANG));
+    assert_int_equal(1, mod1->latest_revision);
+    assert_int_equal(1, mod1->implemented);
+    assert_non_null(mod2 = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;import a {prefix a;}}", LYS_IN_YANG));
+    import = mod2->compiled->imports[0].module;
+    assert_ptr_equal(mod1, import);
+    assert_int_equal(2, import->latest_revision);
+    assert_int_equal(1, import->implemented);
+    assert_string_equal("2019-09-18", import->revision);
+    assert_null(ly_ctx_get_module(ctx, "a", "2019-09-17"));
+    ly_ctx_destroy(ctx, NULL);
+
+    /* cleanup */
+    *state = NULL;
+}
+
+static void
 test_get_models(void **state)
 {
     *state = test_get_models;
@@ -426,6 +471,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_searchdirs, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_options, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_models, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_imports, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_get_models, logger_setup, logger_teardown),
     };
 

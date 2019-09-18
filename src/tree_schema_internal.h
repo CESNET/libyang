@@ -397,7 +397,7 @@ struct lysp_module *lysp_module_find_prefix(const struct lysp_module *mod, const
  * @param[in] mod Schema module where the prefix was used.
  * @param[in] prefix Prefix used to reference a module.
  * @param[in] len Length of the prefix since it is not necessary NULL-terminated.
- * @return Pointer to the module or NULL if the module is not found.
+ * @return Pointer to the module or NULL if the module is not found or it is not compiled.
  */
 struct lysc_module *lysc_module_find_prefix(const struct lysc_module *mod, const char *prefix, size_t len);
 

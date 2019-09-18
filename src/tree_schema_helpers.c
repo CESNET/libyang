@@ -678,11 +678,13 @@ lysp_load_module_check(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_
 {
     struct lysp_load_module_check_data *info = data;
     const char *filename, *dot, *rev, *name;
+    uint8_t latest_revision;
     size_t len;
     struct lysp_revision *revs;
 
     name = mod ? mod->mod->name : submod->name;
     revs = mod ? mod->revs : submod->revs;
+    latest_revision = mod ? mod->mod->latest_revision : submod->latest_revision;
 
     if (info->name) {
         /* check name of the parsed model */
@@ -698,6 +700,9 @@ lysp_load_module_check(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_
                    revs ? revs[0].date : "none", info->revision);
             return LY_EINVAL;
         }
+    } else if (!latest_revision) {
+        /* do not log, we just need to drop the schema and use the latest revision from the context */
+        return LY_EEXIST;
     }
     if (submod) {
         assert(info->submoduleof);
@@ -804,7 +809,7 @@ lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, int
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
     void (*module_data_free)(void *module_data, void *user_data) = NULL;
     struct lysp_load_module_check_data check_data = {0};
-    struct lys_module *m;
+    struct lys_module *m = NULL;
 
     assert(mod);
 
@@ -824,6 +829,11 @@ lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, int
             /* get the requested module of the latest revision in the context */
 latest_in_the_context:
             *mod = (struct lys_module*)ly_ctx_get_module_latest(ctx, name);
+            if (*mod && (*mod)->latest_revision == 1) {
+                /* let us now search with callback and searchpaths to check if there is newer revision outside the context */
+                m = *mod;
+                *mod = NULL;
+            }
         }
     }
 
@@ -871,9 +881,12 @@ search_file:
             }
         }
 
-        if ((*mod) && !revision && ((*mod)->latest_revision == 1)) {
-            /* update the latest_revision flag - here we have selected the latest available schema,
-             * consider that even the callback provides correct latest revision */
+        /* update the latest_revision flag - here we have selected the latest available schema,
+         * consider that even the callback provides correct latest revision */
+        if (!(*mod) && m) {
+            m->latest_revision = 2;
+            *mod = m;
+        } else if ((*mod) && !revision && ((*mod)->latest_revision == 1)) {
             (*mod)->latest_revision = 2;
         }
     } else {

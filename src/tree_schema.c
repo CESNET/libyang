@@ -641,10 +641,6 @@ lys_parse_mem_submodule(struct ly_ctx *ctx, const char *data, LYS_INFORMAT forma
     /* make sure that the newest revision is at position 0 */
     lysp_sort_revisions(submod->revs);
 
-    if (custom_check) {
-        LY_CHECK_GOTO(custom_check((*context).ctx, NULL, submod, check_data), error);
-    }
-
     /* decide the latest revision */
     latest_sp = ly_ctx_get_submodule((*context).ctx, submod->belongsto, submod->name, NULL);
     if (latest_sp) {
@@ -652,16 +648,26 @@ lys_parse_mem_submodule(struct ly_ctx *ctx, const char *data, LYS_INFORMAT forma
             if (!latest_sp->revs) {
                 /* latest has no revision, so mod is anyway newer */
                 submod->latest_revision = latest_sp->latest_revision;
-                latest_sp->latest_revision = 0;
+                /* the latest_sp is zeroed later when the new module is being inserted into the context */
+            } else if (strcmp(submod->revs[0].date, latest_sp->revs[0].date) > 0) {
+                submod->latest_revision = latest_sp->latest_revision;
+                /* the latest_sp is zeroed later when the new module is being inserted into the context */
             } else {
-                if (strcmp(submod->revs[0].date, latest_sp->revs[0].date) > 0) {
-                    submod->latest_revision = latest_sp->latest_revision;
-                    latest_sp->latest_revision = 0;
-                }
+                latest_sp = NULL;
             }
+        } else {
+            latest_sp = NULL;
         }
     } else {
         submod->latest_revision = 1;
+    }
+
+    if (custom_check) {
+        LY_CHECK_GOTO(custom_check((*context).ctx, NULL, submod, check_data), error);
+    }
+
+    if (latest_sp) {
+        latest_sp->latest_revision = 0;
     }
 
     /* remap possibly changed and reallocated typedefs and groupings list back to the main context */
@@ -724,6 +730,27 @@ lys_parse_mem_module(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, 
         mod->revision = lydict_insert(ctx, mod->parsed->revs[0].date, 0);
     }
 
+    /* decide the latest revision */
+    latest = (struct lys_module*)ly_ctx_get_module_latest(ctx, mod->name);
+    if (latest) {
+        if (mod->revision) {
+            if (!latest->revision) {
+                /* latest has no revision, so mod is anyway newer */
+                mod->latest_revision = latest->latest_revision;
+                /* the latest is zeroed later when the new module is being inserted into the context */
+            } else if (strcmp(mod->revision, latest->revision) > 0) {
+                mod->latest_revision = latest->latest_revision;
+                /* the latest is zeroed later when the new module is being inserted into the context */
+            } else {
+                latest = NULL;
+            }
+        } else {
+            latest = NULL;
+        }
+    } else {
+        mod->latest_revision = 1;
+    }
+
     if (custom_check) {
         LY_CHECK_GOTO(custom_check(ctx, mod->parsed, NULL, check_data), error);
     }
@@ -781,21 +808,8 @@ lys_parse_mem_module(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, 
         LY_CHECK_GOTO(lys_extension_precompile(NULL, ctx, mod, mod->parsed->extensions, &mod->off_extensions), error);
     }
 
-    /* decide the latest revision */
-    latest = (struct lys_module*)ly_ctx_get_module_latest(ctx, mod->name);
     if (latest) {
-        if (mod->revision) {
-            if (!latest->revision) {
-                /* latest has no revision, so mod is anyway newer */
-                mod->latest_revision = latest->latest_revision;
-                latest->latest_revision = 0;
-            } else if (strcmp(mod->revision, latest->revision) > 0) {
-                mod->latest_revision = latest->latest_revision;
-                latest->latest_revision = 0;
-            }
-        }
-    } else {
-        mod->latest_revision = 1;
+        latest->latest_revision = 0;
     }
 
     /* add into context */
