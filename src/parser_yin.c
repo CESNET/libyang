@@ -2863,6 +2863,11 @@ name2nsname(struct yin_parser_ctx *ctx, const char *name, size_t name_len, const
     const struct lyxml_ns *ns = lyxml_ns_get(&ctx->xml_ctx, prefix, prefix_len);
     LY_CHECK_ERR_RET(!ns, LOGINT(ctx->xml_ctx.ctx), NULL);
 
+    if (!strcmp(ns->uri, YIN_NS_URI)) {
+        /* standard YANG statement in YIN namespace - keep it unprefixed as in case of YANG */
+        return lydict_insert(ctx->xml_ctx.ctx, name, name_len);
+    }
+    /* some statement in special namespace (extension instance) */
     size_t ns_len = strlen(ns->uri);
     size_t len = ns_len + name_len + 1; /* +1 because of ':' delimiter between ns and actual name */
 
