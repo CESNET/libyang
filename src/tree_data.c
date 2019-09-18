@@ -103,21 +103,6 @@ lyd_trees_add(const struct lyd_node **trees, const struct lyd_node *tree)
     return trees;
 }
 
-static int
-cmp_str(const char *refstr, const char *str, size_t str_len)
-{
-
-    if (str_len) {
-        if (!strncmp(refstr, str, str_len) && !refstr[str_len]) {
-            return 0;
-        } else {
-            return 1;
-        }
-    } else {
-        return strcmp(refstr, str);
-    }
-}
-
 API const struct lyd_node *
 lyd_search(const struct lyd_node *first, const struct lys_module *module,
           const char *name, size_t name_len, uint16_t nodetype, const char *value, size_t value_len)
@@ -139,7 +124,7 @@ lyd_search(const struct lyd_node *first, const struct lys_module *module,
             continue;
         }
 
-        if (cmp_str(snode->name, name, name_len)) {
+        if (ly_strncmp(snode->name, name, name_len)) {
             continue;
         }
 
@@ -147,7 +132,7 @@ lyd_search(const struct lyd_node *first, const struct lys_module *module,
             if (snode->nodetype == LYS_LIST) {
                 /* TODO handle value as keys of the list instance */
             } else if (snode->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
-                if (cmp_str(((struct lyd_node_term*)node)->value.original, value, value_len)) {
+                if (ly_strncmp(((struct lyd_node_term*)node)->value.original, value, value_len)) {
                     continue;
                 }
             } else {

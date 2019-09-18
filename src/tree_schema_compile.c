@@ -416,7 +416,7 @@ lys_feature_find(struct lys_module *mod, const char *name, size_t len)
     }
     LY_ARRAY_FOR(flist, i) {
         f = &flist[i];
-        if (!strncmp(f->name, name, len) && f->name[len] == '\0') {
+        if (!ly_strncmp(f->name, name, len)) {
             return f;
         }
     }
@@ -2309,7 +2309,7 @@ lys_compile_leafref_predicate_validate(struct lysc_ctx *ctx, const char **predic
         if (!(context_node->flags & LYS_KEYLESS)) {
             struct lysc_node *key;
             for (key = context_node->child; key && key->nodetype == LYS_LEAF && (key->flags & LYS_KEY); key = key->next) {
-                if (!strncmp(src, key->name, src_len) && key->name[src_len] == '\0') {
+                if (!ly_strncmp(key->name, src, src_len)) {
                     src_node = key;
                     break;
                 }
@@ -4181,7 +4181,7 @@ lys_compile_node_choice_dflt(struct lysc_ctx *ctx, const char *dflt, struct lysc
     } else {
         name = dflt;
     }
-    if (prefix && (strncmp(prefix, node->module->prefix, prefix_len) || node->module->prefix[prefix_len] != '\0')) {
+    if (prefix && ly_strncmp(node->module->prefix, prefix, prefix_len)) {
         /* prefixed default case make sense only for the prefix of the schema itself */
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                "Invalid default case referencing a case from different YANG module (by prefix \"%.*s\").",
@@ -6254,8 +6254,7 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p)
                             for (name = d_del->uniques[x], y = 0; name; name = nodeid, ++y) {
                                 nodeid = strpbrk(name, " \t\n");
                                 if (nodeid) {
-                                    if (strncmp(name, list->uniques[z][y]->name, nodeid - name)
-                                            || list->uniques[z][y]->name[nodeid - name] != '\0') {
+                                    if (ly_strncmp(list->uniques[z][y]->name, name, nodeid - name)) {
                                         break;
                                     }
                                     while (isspace(*nodeid)) {

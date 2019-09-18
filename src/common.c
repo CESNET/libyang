@@ -171,6 +171,17 @@ ly_strnchr(const char *s, int c, unsigned int len)
     return (char *)s;
 }
 
+int
+ly_strncmp(const char *refstr, const char *str, size_t str_len)
+{
+    int rc = strncmp(refstr, str, str_len);
+    if (!rc && refstr[str_len] == '\0') {
+        return 0;
+    } else {
+        return rc ? rc : 1;
+    }
+}
+
 LY_ERR
 ly_getutf8(const char **input, unsigned int *utf8_char, size_t *bytes_read)
 {

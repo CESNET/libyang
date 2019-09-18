@@ -319,6 +319,17 @@ void *ly_realloc(void *ptr, size_t size);
 char *ly_strnchr(const char *s, int c, unsigned int len);
 
 /**
+ * @brief Compare NULL-terminated @p refstr with @str_len bytes from @p str.
+ *
+ * @param[in] refstr NULL-terminated string which must match @str_len bytes from @str followed by NULL-byte.
+ * @param[in] str String to compare
+ * @param[in] str_len Number of bytes to take into comparison from @p str.
+ * @return An integer less than, equal to, or greater than zero if @p refstr matches,
+ * respectively, to be less than, to match, or be greater than @p str.
+ */
+int ly_strncmp(const char *refstr, const char *str, size_t str_len);
+
+/**
  * @brief Get UTF8 code point of the next character in the input string.
  *
  * @param[in,out] input Input string to process, updated according to the processed/read data.

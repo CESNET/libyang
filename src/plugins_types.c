@@ -172,7 +172,7 @@ ly_type_get_prefixes(struct ly_ctx *ctx, const char *value, size_t value_len, ly
                 mod = NULL;
 
                 LY_ARRAY_FOR(prefixes, u) {
-                    if (!strncmp(prefixes[u].prefix, start, len) && prefixes[u].prefix[len] == '\0') {
+                    if (!ly_strncmp(prefixes[u].prefix, start, len)) {
                         mod = prefixes[u].mod;
                         break;
                     }
@@ -909,7 +909,7 @@ ly_type_store_bits(struct ly_ctx *ctx, struct lysc_type *type, const char *value
         item = &value[index];
         for (item_len = 0; index + item_len < value_len && !isspace(item[item_len]); item_len++);
         LY_ARRAY_FOR(type_bits->bits, u) {
-            if (!strncmp(type_bits->bits[u].name, item, item_len) && type_bits->bits[u].name[item_len] == '\0') {
+            if (!ly_strncmp(type_bits->bits[u].name, item, item_len)) {
                 /* we have the match */
                 int inserted;
 
@@ -1066,7 +1066,7 @@ ly_type_store_enum(struct ly_ctx *ctx, struct lysc_type *type, const char *value
 
     /* find the matching enumeration value item */
     LY_ARRAY_FOR(type_enum->enums, u) {
-        if (!strncmp(type_enum->enums[u].name, value, value_len) && type_enum->enums[u].name[value_len] == '\0') {
+        if (!ly_strncmp(type_enum->enums[u].name, value, value_len)) {
             /* we have the match */
 
             /* check that the enumeration value is not disabled */
@@ -1284,7 +1284,7 @@ ly_type_store_identityref(struct ly_ctx *ctx, struct lysc_type *type, const char
     }
     LY_ARRAY_FOR(mod->compiled->identities, u) {
         ident = &mod->compiled->identities[u]; /* shortcut */
-        if (!strncmp(ident->name, id_name, id_len) && ident->name[id_len] == '\0') {
+        if (!ly_strncmp(ident->name, id_name, id_len)) {
             /* we have match */
             break;
         }
@@ -1430,7 +1430,7 @@ ly_type_store_instanceid_checknodeid(const char *orig, size_t orig_len, int opti
     } else {
         /* map prefix to schema module */
         LY_ARRAY_FOR(prefixes, u) {
-            if (!strncmp(prefixes[u].prefix, prefix, prefix_len) && prefixes[u].prefix[prefix_len] == '\0') {
+            if (!ly_strncmp(prefixes[u].prefix, prefix, prefix_len)) {
                 mod = prefixes[u].mod;
                 break;
             }
@@ -1494,7 +1494,7 @@ ly_type_stored_prefixes_clb(struct ly_ctx *UNUSED(ctx), const char *prefix, size
     unsigned int u;
 
     LY_ARRAY_FOR(prefixes, u) {
-        if (!strncmp(prefixes[u].prefix, prefix, prefix_len) && prefixes[u].prefix[prefix_len] == '\0') {
+        if (!ly_strncmp(prefixes[u].prefix, prefix, prefix_len)) {
             return prefixes[u].mod;
         }
     }

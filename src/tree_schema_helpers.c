@@ -96,9 +96,9 @@ lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodei
         }
         if (context_node && context_node->nodetype == LYS_ACTION) {
             /* move through input/output manually */
-            if (!strncmp("input", name, name_len)) {
+            if (!ly_strncmp("input", name, name_len)) {
                 (*result_flag) |= LYSC_OPT_RPC_INPUT;
-            } else if (!strncmp("output", name, name_len)) {
+            } else if (!ly_strncmp("output", name, name_len)) {
                 (*result_flag) |= LYSC_OPT_RPC_OUTPUT;
                 getnext_extra_flag = LYS_GETNEXT_OUTPUT;
             } else {
@@ -1015,14 +1015,14 @@ search_file:
 
 #define FIND_MODULE(TYPE, MOD) \
     TYPE *imp; \
-    if (!strncmp((MOD)->mod->prefix, prefix, len) && (MOD)->mod->prefix[len] == '\0') { \
+    if (!ly_strncmp((MOD)->mod->prefix, prefix, len)) { \
         /* it is the prefix of the module itself */ \
         m = ly_ctx_get_module((MOD)->mod->ctx, (MOD)->mod->name, (MOD)->mod->revision); \
     } \
     /* search in imports */ \
     if (!m) { \
         LY_ARRAY_FOR((MOD)->imports, TYPE, imp) { \
-            if (!strncmp(imp->prefix, prefix, len) && imp->prefix[len] == '\0') { \
+            if (!ly_strncmp(imp->prefix, prefix, len)) { \
                 m = imp->module; \
                 break; \
             } \

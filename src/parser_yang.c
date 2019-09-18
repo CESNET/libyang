@@ -2171,7 +2171,7 @@ parse_maxelements(struct lys_parser_ctx *ctx, const char **data, uint32_t *max, 
         return LY_EVALID;
     }
 
-    if (strncmp(word, "unbounded", word_len)) {
+    if (ly_strncmp("unbounded", word, word_len)) {
         errno = 0;
         num = strtoul(word, &ptr, 10);
         /* we have not parsed the whole argument */

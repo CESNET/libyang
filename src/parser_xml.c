@@ -178,7 +178,7 @@ skip_attr:
 
         LY_ARRAY_FOR(mod->compiled->exts, v) {
             if (mod->compiled->exts[v].def->plugin == lyext_plugins_internal[LYEXT_PLUGIN_INTERNAL_ANNOTATION].plugin &&
-                    !strncmp(mod->compiled->exts[v].argument, attr_data->name, attr_data->name_len) && !mod->compiled->exts[v].argument[attr_data->name_len]) {
+                    !ly_strncmp(mod->compiled->exts[v].argument, attr_data->name, attr_data->name_len)) {
                 /* we have the annotation definition */
                 ant = &mod->compiled->exts[v];
                 break;

@@ -204,7 +204,7 @@ lys_child(const struct lysc_node *parent, const struct lys_module *module,
         }
 
         if (name_len) {
-            if (!strncmp(node->name, name, name_len) && !node->name[name_len]) {
+            if (!ly_strncmp(node->name, name, name_len)) {
                 return node;
             }
         } else {
