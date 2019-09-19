@@ -3744,7 +3744,8 @@ check_key(struct lys_node_list *list, int index, const char *name, int len)
         return -1;
     }
 
-    /* key is not when/if-feature -conditional */
+    /* key is not when/if-feature -conditional
+     * note that j is really assigned in condition to distinguish when and if-feature, it is not supposed to be a comparison */
     j = 0;
     if (key->when || (key->iffeature_size && (j = 1))) {
         LOGVAL(ctx, LYE_INCHILDSTMT, LY_VLOG_LYS, key, j ? "if-feature" : "when", "leaf");
