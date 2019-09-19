@@ -337,7 +337,7 @@ lyht_dup(const struct hash_table *orig)
         return NULL;
     }
 
-    memcpy(ht->recs, orig->recs, orig->used * orig->rec_size);
+    memcpy(ht->recs, orig->recs, (size_t)orig->used * (size_t)orig->rec_size);
     ht->used = orig->used;
     return ht;
 }
