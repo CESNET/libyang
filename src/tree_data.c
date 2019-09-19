@@ -1969,7 +1969,7 @@ lyd_new_path(struct lyd_node *data_tree, const struct ly_ctx *ctx, const char *p
     if (is_relative) {
         /* we are relative to data_tree or parent if some part of the path already exists */
         if (!data_tree) {
-            LOGERR(ctx, LY_EINVAL, "%s: provided relative path (%s) without context node.", path);
+            LOGERR(ctx, LY_EINVAL, "%s: provided relative path (%s) without context node.", __func__, path);
             return NULL;
         } else if (!parent) {
             parent = data_tree;
@@ -5550,7 +5550,7 @@ _lyd_dup_node(const struct lyd_node *node, const struct lys_node *schema, struct
             if (r == -1) {
                 goto error;
             } else if (r) {
-                LOGERR(ctx, LY_EINT, "Value \"%s\" of node \"%s\" was stored as user-type before.");
+                LOGINT(ctx);
                 goto error;
             }
         }
