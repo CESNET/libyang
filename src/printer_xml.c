@@ -36,7 +36,7 @@
 struct mlist {
     struct mlist *next;
     struct lys_module *module;
-} *mlist = NULL, *mlist_new;
+};
 
 static int
 modlist_add(struct mlist **mlist, const struct lys_module *mod)
