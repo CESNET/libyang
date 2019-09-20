@@ -4406,7 +4406,11 @@ apply_aug(struct lys_node_augment *augment, struct unres_schema *unres)
             if (type->base == LY_TYPE_LEAFREF) {
                 /* must be resolved or in unres */
                 if (!type->info.lref.target) {
-                    assert(unres_schema_find(unres, -1, type, UNRES_TYPE_LEAFREF) > -1);
+                    if (unres_schema_find(unres, -1, type, UNRES_TYPE_LEAFREF) > -1) {
+                        if (unres_schema_add_node(lys_node_module(child), unres, type, UNRES_TYPE_LEAFREF, child) == -1) {
+                            return -1;
+                        }
+                    }
                 } else {
                     mod = lys_node_module((struct lys_node *)type->info.lref.target);
                     if (!mod->implemented) {
