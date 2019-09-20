@@ -250,4 +250,6 @@ Currently supported bindings are:
  * cmake option: `JAVASCRIPT_BINDING`
  * [README](./swig/javascript/README.md)
 
+## Project Information
 
+Project is hosted on [GitHub](https://github.com/CESNET/libyang) where you can find additional information and contact developers via the project's issue tracker. If you are interested in future plans announcements, please subscribe to the [Future Plans issue](https://github.com/CESNET/libyang/issues/880).
