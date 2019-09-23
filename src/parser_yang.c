@@ -900,11 +900,17 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
                 tpdftype = 1;
             }
 
-            if (type->info.lref.path) {
-                if (type->der->type.der) {
+            if (type->der->type.der) {
+                if (type->info.lref.path) {
                     LOGVAL(ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "path");
                     goto error;
+                } else if (type->info.lref.req) {
+                    LOGVAL(ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "require-instance");
+                    goto error;
                 }
+            }
+
+            if (type->info.lref.path) {
                 value = type->info.lref.path;
                 /* store in the JSON format */
                 type->info.lref.path = transform_schema2json(module, value);

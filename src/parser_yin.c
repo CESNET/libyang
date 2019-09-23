@@ -1304,7 +1304,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         LY_TREE_FOR(yin->child, node) {
             if (!strcmp(node->name, "path") && !type->der->type.der) {
                 /* keep path for later */
-            } else if (module->version >= 2 && !strcmp(node->name, "require-instance")) {
+            } else if (module->version >= 2 && !strcmp(node->name, "require-instance") && !type->der->type.der) {
                 if (type->info.lref.req) {
                     LOGVAL(ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, node->name, yin->name);
                     goto error;
