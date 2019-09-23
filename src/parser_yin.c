@@ -1371,6 +1371,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             } else {
                 /* copy leafref definition into the derived type */
                 type->info.lref.path = lydict_insert(ctx, type->der->type.info.lref.path, 0);
+                type->info.lref.req = type->der->type.info.lref.req;
                 /* and resolve the path at the place we are (if not in grouping/typedef) */
                 if (!parenttype && unres_schema_add_node(module, unres, type, UNRES_TYPE_LEAFREF, parent) == -1) {
                     goto error;
