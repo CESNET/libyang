@@ -4231,6 +4231,7 @@ API struct ly_set *
 lys_xpath_atomize(const struct lys_node *ctx_node, enum lyxp_node_type ctx_node_type, const char *expr, int options)
 {
     struct lyxp_set set;
+    const struct lys_node *parent;
     struct ly_set *ret_set;
     uint32_t i;
 
@@ -4248,7 +4249,11 @@ lys_xpath_atomize(const struct lys_node *ctx_node, enum lyxp_node_type ctx_node_
 
     memset(&set, 0, sizeof set);
 
-    if (options & LYXP_MUST) {
+    for (parent = ctx_node; parent && (parent->nodetype != LYS_OUTPUT); parent = lys_parent(parent));
+    if (parent) {
+        options &= ~(LYXP_MUST | LYXP_WHEN);
+        options |= LYXP_SNODE_OUTPUT;
+    } else if (options & LYXP_MUST) {
         options &= ~LYXP_MUST;
         options |= LYXP_SNODE_MUST;
     } else if (options & LYXP_WHEN) {
