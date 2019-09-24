@@ -956,6 +956,71 @@ set_remove_node(struct lyxp_set *set, uint32_t idx)
 }
 
 /**
+ * @brief Remove a node from a set by setting the node value to NULL.
+ *
+ * @param[in] set Set to use.
+ * @param[in] idx Index from @p set of the node to be removed.
+ */
+static void
+set_remove_node_null(struct lyxp_set *set, uint32_t idx)
+{
+    assert(set && (set->type == LYXP_SET_NODE_SET));
+    assert(idx < set->used);
+
+    set_remove_node_hash(set, set->val.nodes[idx].node, set->val.nodes[idx].type);
+    set->val.nodes[idx].node = NULL;
+}
+
+/**
+ * @brief Remove all NULL nodes from a set. Removing last node changes
+ *        set into LYXP_SET_EMPTY. Context position aware.
+ *
+ * @param[in] set Set to consolidate.
+ */
+static void
+set_remove_nodes_null(struct lyxp_set *set)
+{
+    uint16_t i, orig_used, end;
+    int32_t start;
+
+    assert(set && (set->type == LYXP_SET_NODE_SET));
+
+    orig_used = set->used;
+    set->used = 0;
+    for (i = 0; i < orig_used;) {
+        start = -1;
+        do {
+            if (set->val.nodes[i].node && (start == -1)) {
+                start = i;
+            } else if ((start > -1) && !set->val.nodes[i].node) {
+                end = i;
+                ++i;
+                break;
+            }
+
+            ++i;
+            if (i == orig_used) {
+                end = i;
+            }
+        } while (i < orig_used);
+
+        if (start > -1) {
+            /* move the whole chunk of valid nodes together */
+            if (set->used != (unsigned)start) {
+                memmove(&set->val.nodes[set->used], &set->val.nodes[start], (end - start) * sizeof *set->val.nodes);
+            }
+            set->used += end - start;
+        }
+    }
+
+    if (!set->used) {
+        set_free_content(set);
+        /* this changes it to LYXP_SET_EMPTY */
+        memset(set, 0, sizeof *set);
+    }
+}
+
+/**
  * @brief Check for duplicates in a node set.
  *
  * @param[in] set Set to check.
@@ -1574,14 +1639,14 @@ set_sorted_dup_node_clean(struct lyxp_set *set)
         while (i < set->used - 1) {
             if ((set->val.nodes[i].node == set->val.nodes[i + 1].node)
                     && (set->val.nodes[i].type == set->val.nodes[i + 1].type)) {
-                set_remove_node(set, i + 1);
-            ret = LY_EEXIST;
-            } else {
-                ++i;
+                set_remove_node_null(set, i + 1);
+                ret = LY_EEXIST;
             }
+            ++i;
         }
     }
 
+    set_remove_nodes_null(set);
     return ret;
 }
 
@@ -6348,7 +6413,7 @@ moveto_parent(struct lyxp_set *set, int all_desc, int options)
 
     root = moveto_get_root(set->ctx_node, options, &root_type);
 
-    for (i = 0; i < set->used; ) {
+    for (i = 0; i < set->used; ++i) {
         node = set->val.nodes[i].node;
 
         if (set->val.nodes[i].type == LYXP_NODE_ELEM) {
@@ -6362,7 +6427,7 @@ moveto_parent(struct lyxp_set *set, int all_desc, int options)
             }
         } else {
             /* root does not have a parent */
-            set_remove_node(set, i);
+            set_remove_node_null(set, i);
             continue;
         }
 
@@ -6403,13 +6468,13 @@ moveto_parent(struct lyxp_set *set, int all_desc, int options)
         assert((new_type == LYXP_NODE_ELEM) || ((new_type == root_type) && (new_node == root)));
 
         if (set_dup_node_check(set, new_node, new_type, -1)) {
-            set_remove_node(set, i);
+            set_remove_node_null(set, i);
         } else {
             set_replace_node(set, new_node, 0, new_type, i);
-            ++i;
         }
     }
 
+    set_remove_nodes_null(set);
     assert(!set_sort(set, options) && !set_sorted_dup_node_clean(set));
 
     return LY_SUCCESS;
@@ -6927,7 +6992,7 @@ static LY_ERR
 eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyxp_set *set, int options, int parent_pos_pred)
 {
     LY_ERR rc;
-    uint16_t i, orig_exp, brack2_exp, open_brack;
+    uint16_t i, orig_exp;
     uint32_t orig_pos, orig_size, pred_in_ctx;
     struct lyxp_set set2;
     struct lyd_node *orig_parent;
@@ -6951,17 +7016,6 @@ only_parse:
         }
 
         orig_exp = *exp_idx;
-
-        /* find the predicate end */
-        open_brack = 0;
-        for (brack2_exp = orig_exp; open_brack || (exp->tokens[brack2_exp] != LYXP_TOKEN_BRACK2); ++brack2_exp) {
-            if (exp->tokens[brack2_exp] == LYXP_TOKEN_BRACK1) {
-                ++open_brack;
-            } else if (exp->tokens[brack2_exp] == LYXP_TOKEN_BRACK2) {
-                --open_brack;
-            }
-        }
-
         orig_pos = 0;
         orig_size = set->used;
         orig_parent = NULL;
@@ -6999,12 +7053,11 @@ only_parse:
             lyxp_set_cast(&set2, LYXP_SET_BOOLEAN, options);
 
             /* predicate satisfied or not? */
-            if (set2.val.bool) {
-                ++i;
-            } else {
-                set_remove_node(set, i);
+            if (!set2.val.bool) {
+                set_remove_node_null(set, i);
             }
         }
+        set_remove_nodes_null(set);
 
     } else if (set->type == LYXP_SET_SCNODE_SET) {
         for (i = 0; i < set->used; ++i) {
@@ -7019,16 +7072,6 @@ only_parse:
         }
 
         orig_exp = *exp_idx;
-
-        /* find the predicate end */
-        open_brack = 0;
-        for (brack2_exp = orig_exp; open_brack || (exp->tokens[brack2_exp] != LYXP_TOKEN_BRACK2); ++brack2_exp) {
-            if (exp->tokens[brack2_exp] == LYXP_TOKEN_BRACK1) {
-                ++open_brack;
-            } else if (exp->tokens[brack2_exp] == LYXP_TOKEN_BRACK2) {
-                --open_brack;
-            }
-        }
 
         /* set special in_ctx to all the valid snodes */
         pred_in_ctx = set_scnode_new_in_ctx(set);
