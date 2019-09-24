@@ -2638,7 +2638,6 @@ static int
 lys_compile_leafref_has_dep_flag(const struct lysc_node *startnode, const struct lys_module *local_mod,
                                  const struct lysc_node *first_node, int abs_path)
 {
-    int dep1, dep2;
     const struct lysc_node *op_node, *node;
 
     /* find operation schema we are in */
@@ -2656,10 +2655,9 @@ lys_compile_leafref_has_dep_flag(const struct lysc_node *startnode, const struct
         if (abs_path) {
             return 1;
         } else {
-            /* compare depth of both nodes */
-            for (dep1 = 0, node = op_node; node->parent; node = node->parent);
-            for (dep2 = 0, node = first_node; node->parent; node = node->parent);
-            if ((dep2 > dep1) || ((dep2 == dep1) && (op_node != first_node))) {
+            /* if first_node parent is not op_node, it is external */
+            for (node = first_node; node && (node != op_node); node = node->parent);
+            if (!node) {
                 return 1;
             }
         }
