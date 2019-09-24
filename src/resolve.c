@@ -3913,7 +3913,6 @@ static int
 resolve_schema_leafref_valid_dep_flag(const struct lys_node *op_node, const struct lys_module *local_mod,
                                       const struct lys_node *first_node, int abs_path)
 {
-    int dep1, dep2;
     const struct lys_node *node;
 
     if (!op_node) {
@@ -3926,10 +3925,9 @@ resolve_schema_leafref_valid_dep_flag(const struct lys_node *op_node, const stru
         if (abs_path) {
             return 1;
         } else {
-            /* compare depth of both nodes */
-            for (dep1 = 0, node = op_node; lys_parent(node); node = lys_parent(node), ++dep1);
-            for (dep2 = 0, node = first_node; lys_parent(node); node = lys_parent(node), ++dep2);
-            if ((dep2 > dep1) || ((dep2 == dep1) && (op_node != first_node))) {
+            /* if first_node parent is not op_node, it is external */
+            for (node = first_node; node && (node != op_node); node = lys_parent(node));
+            if (!node) {
                 return 1;
             }
         }
