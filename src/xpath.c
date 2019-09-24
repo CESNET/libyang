@@ -5196,43 +5196,61 @@ xpath_true(struct lyxp_set **UNUSED(args), uint16_t UNUSED(arg_count), struct ly
  */
 
 /**
- * @brief Resolve and find a specific model. Does not log.
+ * @brief Skip prefix and return corresponding model if there is a prefix. Logs directly.
  *
- * @param[in] prefix Prefix with various meaning dependning on @p format.
- * @param[in] len Prefix length.
- * @param[in] format Format determining the meaning of @p prefix (LYD_UNKNOWN refers to schema).
- * @param[in] ctx libyang context.
- * @param[in] local_mod Local module of the XPath expression.
- * @return Corresponding module or NULL on error.
+ * @param[in,out] qname Qualified node name. If includes prefix, it is skipped.
+ * @param[in,out] qname_len Length of @p qname, is updated accordingly.
+ * @param[in] set Set with XPath context.
+ * @param[out] moveto_mod Expected module of a matching node.
+ * @return LY_ERR
  */
-static struct lys_module *
-moveto_resolve_model(const char *prefix, uint16_t len, LYD_FORMAT format, struct ly_ctx *ctx, const struct lys_module *local_mod)
+static LY_ERR
+moveto_resolve_model(const char **qname, uint16_t *qname_len, struct lyxp_set *set, const struct lys_module **moveto_mod)
 {
-    struct lys_module *mod = NULL;
+    const struct lys_module *mod;
+    const char *ptr;
+    int pref_len;
     char *str;
 
-    switch (format) {
-    case LYD_UNKNOWN:
-        /* schema, search all local module imports */
-        mod = lys_module_find_prefix(local_mod, prefix, len);
-        break;
-    case LYD_JSON:
-        /* JSON data, search in context */
-        str = strndup(prefix, len);
-        mod = ly_ctx_get_module(ctx, str, NULL);
-        free(str);
-        break;
-    default:
-        LOGINT(ctx);
-        return NULL;
-    }
+    if ((ptr = ly_strnchr(*qname, ':', *qname_len))) {
+        /* specific module */
+        pref_len = ptr - *qname;
 
-    if (!mod->implemented) {
-        /* non-implemented module is not valid */
+        switch (set->format) {
+        case LYD_UNKNOWN:
+            /* schema, search all local module imports */
+            mod = lys_module_find_prefix(set->local_mod, *qname, pref_len);
+            break;
+        case LYD_JSON:
+            /* JSON data, search in context */
+            str = strndup(*qname, pref_len);
+            mod = ly_ctx_get_module(set->ctx, str, NULL);
+            free(str);
+            break;
+        default:
+            LOGINT_RET(set->ctx);
+        }
+
+        if (!mod->implemented) {
+            /* non-implemented module is not valid */
+            mod = NULL;
+        }
+        if (!mod) {
+            LOGVAL(set->ctx, LY_VLOG_LYD, set->ctx_node, LY_VCODE_XP_INMOD, pref_len, *qname);
+            return LY_EVALID;
+        }
+        *qname += pref_len + 1;
+        *qname_len -= pref_len + 1;
+    } else if (((*qname)[0] == '*') && (*qname_len == 1)) {
+        /* all modules - special case */
         mod = NULL;
+    } else {
+        /* local module */
+        mod = set->local_mod;
     }
 
-    return mod;
+    *moveto_mod = mod;
+    return LY_SUCCESS;
 }
 
 /**
@@ -5339,7 +5357,8 @@ moveto_root(struct lyxp_set *set, int options)
  * @param[in] root_type XPath root node type.
  * @param[in] node_name Node name to move to. Must be in the dictionary!
  * @param[in] moveto_mod Expected module of the node.
- * @return LY_ERR (LY_EINCOMPLETE on unresolved when)
+ * @return LY_ERR (LY_ENOT if node does not match, LY_EINCOMPLETE on unresolved when,
+ * LY_EINVAL if netither node nor any children match)
  */
 static LY_ERR
 moveto_node_check(const struct lyd_node *node, enum lyxp_node_type root_type, const char *node_name,
@@ -5347,17 +5366,17 @@ moveto_node_check(const struct lyd_node *node, enum lyxp_node_type root_type, co
 {
     /* module check */
     if (moveto_mod && (node->schema->module != moveto_mod)) {
-        return LY_EINVAL;
+        return LY_ENOT;
     }
 
-    /* context check */
-    if ((root_type == LYXP_NODE_ROOT_CONFIG) && (node->schema->flags & LYS_CONFIG_R)) {
+    /* dummy and context check */
+    if ((node->flags & LYD_DUMMY) || ((root_type == LYXP_NODE_ROOT_CONFIG) && (node->schema->flags & LYS_CONFIG_R))) {
         return LY_EINVAL;
     }
 
     /* name check */
     if (strcmp(node_name, "*") && !strcmp(node->schema->name, node_name)) {
-        return LY_EINVAL;
+        return LY_ENOT;
     }
 
     /* TODO when check */
@@ -5377,7 +5396,7 @@ moveto_node_check(const struct lyd_node *node, enum lyxp_node_type root_type, co
  * @param[in] node_name Node name to move to. Must be in the dictionary!
  * @param[in] moveto_mod Expected module of the node.
  * @param[in] options XPath options.
- * @return LY_ERR
+ * @return LY_ERR (LY_ENOT if node does not match, LY_EINVAL if neither node nor any children match)
  */
 static LY_ERR
 moveto_scnode_check(const struct lysc_node *node, enum lyxp_node_type root_type, const char *node_name,
@@ -5399,7 +5418,7 @@ moveto_scnode_check(const struct lysc_node *node, enum lyxp_node_type root_type,
 
     /* module check */
     if (strcmp(node_name, "*") && (node->module != moveto_mod)) {
-        return LY_EINVAL;
+        return LY_ENOT;
     }
 
     /* context check */
@@ -5409,7 +5428,7 @@ moveto_scnode_check(const struct lysc_node *node, enum lyxp_node_type root_type,
 
     /* name check */
     if (strcmp(node_name, "*") && !strcmp(node->name, node_name)) {
-        return LY_EINVAL;
+        return LY_ENOT;
     }
 
     /* match */
@@ -5430,8 +5449,8 @@ static LY_ERR
 moveto_node(struct lyxp_set *set, const char *qname, uint16_t qname_len, int options)
 {
     uint32_t i;
-    int replaced, pref_len;
-    const char *ptr, *name_dict = NULL; /* optimization - so we can do (==) instead (!strncmp(...)) in moveto_node_check() */
+    int replaced;
+    const char *name_dict = NULL; /* optimization - so we can do (==) instead (!strncmp(...)) in moveto_node_check() */
     const struct lys_module *moveto_mod;
     const struct lyd_node *sub;
     enum lyxp_node_type root_type;
@@ -5447,25 +5466,8 @@ moveto_node(struct lyxp_set *set, const char *qname, uint16_t qname_len, int opt
     }
 
     moveto_get_root(set->ctx_node, options, &root_type);
-
-    /* prefix */
-    if ((ptr = ly_strnchr(qname, ':', qname_len))) {
-        /* specific module */
-        pref_len = ptr - qname;
-        moveto_mod = moveto_resolve_model(qname, pref_len, set->format, set->ctx, set->local_mod);
-        if (!moveto_mod) {
-            LOGVAL(set->ctx, LY_VLOG_LYD, set->ctx_node, LY_VCODE_XP_INMOD, pref_len, qname);
-            return LY_EVALID;
-        }
-        qname += pref_len + 1;
-        qname_len -= pref_len + 1;
-    } else if ((qname[0] == '*') && (qname_len == 1)) {
-        /* all modules - special case */
-        moveto_mod = NULL;
-    } else {
-        /* local module */
-        moveto_mod = set->local_mod;
-    }
+    rc = moveto_resolve_model(&qname, &qname_len, set, &moveto_mod);
+    LY_CHECK_RET(rc);
 
     /* name */
     name_dict = lydict_insert(set->ctx, qname, qname_len);
@@ -5558,12 +5560,13 @@ moveto_node(struct lyxp_set *set, const char *qname, uint16_t qname_len, int opt
 static LY_ERR
 moveto_scnode(struct lyxp_set *set, const char *qname, uint16_t qname_len, int options)
 {
-    int i, orig_used, pref_len, idx, temp_ctx = 0;
+    int i, orig_used, idx, temp_ctx = 0;
     uint32_t mod_idx;
-    const char *ptr, *name_dict = NULL; /* optimization - so we can do (==) instead (!strncmp(...)) in moveto_node_check() */
+    const char *name_dict = NULL; /* optimization - so we can do (==) instead (!strncmp(...)) in moveto_node_check() */
     const struct lys_module *moveto_mod;
     const struct lysc_node *sub, *start_parent;
     enum lyxp_node_type root_type;
+    LY_ERR rc;
 
     if (!set || (set->type == LYXP_SET_EMPTY)) {
         return LY_SUCCESS;
@@ -5575,24 +5578,8 @@ moveto_scnode(struct lyxp_set *set, const char *qname, uint16_t qname_len, int o
     }
 
     moveto_scnode_get_root(set->ctx_scnode, options, &root_type);
-
-    /* prefix */
-    if ((ptr = ly_strnchr(qname, ':', qname_len))) {
-        pref_len = ptr - qname;
-        moveto_mod = moveto_resolve_model(qname, pref_len, set->format, set->ctx, set->local_mod);
-        if (!moveto_mod) {
-            LOGVAL(set->ctx, LY_VLOG_LYS, set->ctx_scnode, LY_VCODE_XP_INMOD, pref_len, qname);
-            return LY_EVALID;
-        }
-        qname += pref_len + 1;
-        qname_len -= pref_len + 1;
-    } else if ((qname[0] == '*') && (qname_len == 1)) {
-        /* all modules - special case */
-        moveto_mod = NULL;
-    } else {
-        /* local module */
-        moveto_mod = set->local_mod;
-    }
+    rc = moveto_resolve_model(&qname, &qname_len, set, &moveto_mod);
+    LY_CHECK_RET(rc);
 
     /* name */
     name_dict = lydict_insert(set->ctx, qname, qname_len);
@@ -5674,7 +5661,7 @@ static LY_ERR
 moveto_node_alldesc(struct lyxp_set *set, const char *qname, uint16_t qname_len, int options)
 {
     uint32_t i;
-    int pref_len, all = 0, match;
+    const char *name_dict = NULL; /* optimization - so we can do (==) instead (!strncmp(...)) in moveto_node_check() */
     const struct lyd_node *next, *elem, *start;
     const struct lys_module *moveto_mod;
     enum lyxp_node_type root_type;
@@ -5691,71 +5678,36 @@ moveto_node_alldesc(struct lyxp_set *set, const char *qname, uint16_t qname_len,
     }
 
     moveto_get_root(set->ctx_node, options, &root_type);
-
-    /* prefix */
-    if (ly_strnchr(qname, ':', qname_len)) {
-        pref_len = ly_strnchr(qname, ':', qname_len) - qname;
-        moveto_mod = moveto_resolve_model(qname, pref_len, set->format, set->ctx, set->local_mod);
-        if (!moveto_mod) {
-            LOGVAL(set->ctx, LY_VLOG_LYD, set->ctx_node, LY_VCODE_XP_INMOD, pref_len, qname);
-            return LY_EVALID;
-        }
-        qname += pref_len + 1;
-        qname_len -= pref_len + 1;
-    } else {
-        moveto_mod = NULL;
-    }
+    rc = moveto_resolve_model(&qname, &qname_len, set, &moveto_mod);
+    LY_CHECK_RET(rc);
 
     /* replace the original nodes (and throws away all text and attr nodes, root is replaced by a child) */
     rc = moveto_node(set, "*", 1, options);
     LY_CHECK_RET(rc);
 
-    if ((qname_len == 1) && (qname[0] == '*')) {
-        all = 1;
-    }
+    /* name */
+    name_dict = lydict_insert(set->ctx, qname, qname_len);
 
-    /* this loop traverses all the nodes in the set and addds/keeps only
-     * those that match qname */
+    /* this loop traverses all the nodes in the set and adds/keeps only those that match qname */
     set_init(&ret_set, set);
     for (i = 0; i < set->used; ++i) {
 
         /* TREE DFS */
         start = set->val.nodes[i].node;
         for (elem = next = start; elem; elem = next) {
-
-            /* TODO when check */
-            /*if (!LYD_WHEN_DONE(elem->when_status)) {
-                return LY_EINCOMPLETE;
-            }*/
-
-            /* dummy and context check */
-            if ((elem->flags & LYD_DUMMY) || ((root_type == LYXP_NODE_ROOT_CONFIG) && (elem->schema->flags & LYS_CONFIG_R))) {
-                goto skip_children;
-            }
-
-            match = 1;
-
-            /* module check */
-            if (!all) {
-                if (moveto_mod && (elem->schema->module != moveto_mod)) {
-                    match = 0;
-                } else if (!moveto_mod && (elem->schema->module != set->ctx_node->schema->module)) {
-                    match = 0;
-                }
-            }
-
-            /* name check */
-            if (match && !all && (strncmp(elem->schema->name, qname, qname_len) || elem->schema->name[qname_len])) {
-                match = 0;
-            }
-
-            if (match) {
+            rc = moveto_node_check(elem, root_type, name_dict, moveto_mod);
+            if (!rc) {
                 /* add matching node into result set */
                 set_insert_node(&ret_set, elem, 0, LYXP_NODE_ELEM, ret_set.used);
                 if (set_dup_node_check(set, elem, LYXP_NODE_ELEM, i)) {
                     /* the node is a duplicate, we'll process it later in the set */
                     goto skip_children;
                 }
+            } else if (rc == LY_EINCOMPLETE) {
+                lydict_remove(set->ctx, name_dict);
+                return rc;
+            } else if (rc == LY_EINVAL) {
+                goto skip_children;
             }
 
             /* TREE DFS NEXT ELEM */
@@ -5794,6 +5746,7 @@ skip_children:
     set_free_content(set);
     memcpy(set, &ret_set, sizeof *set);
 
+    lydict_remove(set->ctx, name_dict);
     return LY_SUCCESS;
 }
 
@@ -5810,10 +5763,11 @@ skip_children:
 static LY_ERR
 moveto_scnode_alldesc(struct lyxp_set *set, const char *qname, uint16_t qname_len, int options)
 {
-    int i, orig_used, pref_len, all = 0, match, idx;
+    int i, orig_used, idx;
     const struct lysc_node *next, *elem, *start;
     const struct lys_module *moveto_mod;
     enum lyxp_node_type root_type;
+    LY_ERR rc;
 
     if (!set || (set->type == LYXP_SET_EMPTY)) {
         return LY_SUCCESS;
@@ -5825,24 +5779,8 @@ moveto_scnode_alldesc(struct lyxp_set *set, const char *qname, uint16_t qname_le
     }
 
     moveto_scnode_get_root(set->ctx_scnode, options, &root_type);
-
-    /* prefix */
-    if (ly_strnchr(qname, ':', qname_len)) {
-        pref_len = ly_strnchr(qname, ':', qname_len) - qname;
-        moveto_mod = moveto_resolve_model(qname, pref_len, set->format, set->ctx, set->local_mod);
-        if (!moveto_mod) {
-            LOGVAL(set->ctx, LY_VLOG_LYS, set->ctx_scnode, LY_VCODE_XP_INMOD, pref_len, qname);
-            return LY_EVALID;
-        }
-        qname += pref_len + 1;
-        qname_len -= pref_len + 1;
-    } else {
-        moveto_mod = NULL;
-    }
-
-    if ((qname_len == 1) && (qname[0] == '*')) {
-        all = 1;
-    }
+    rc = moveto_resolve_model(&qname, &qname_len, set, &moveto_mod);
+    LY_CHECK_RET(rc);
 
     orig_used = set->used;
     for (i = 0; i < orig_used; ++i) {
@@ -5854,44 +5792,13 @@ moveto_scnode_alldesc(struct lyxp_set *set, const char *qname, uint16_t qname_le
         /* TREE DFS */
         start = set->val.scnodes[i].scnode;
         for (elem = next = start; elem; elem = next) {
-
-            /* context/nodetype check */
-            if ((root_type == LYXP_NODE_ROOT_CONFIG) && (elem->flags & LYS_CONFIG_R)) {
-                /* valid node, but it is hidden in this context */
-                goto skip_children;
-            }
-            switch (elem->nodetype) {
-            case LYS_USES:
-            case LYS_CHOICE:
-            case LYS_CASE:
-                /* schema-only nodes */
+            if ((elem == start) || (elem->nodetype & (LYS_CHOICE | LYS_CASE))) {
+                /* schema-only nodes, skip root */
                 goto next_iter;
-            default:
-                break;
             }
 
-            match = 1;
-
-            /* skip root */
-            if (elem == start) {
-                match = 0;
-            }
-
-            /* module check */
-            if (match && !all) {
-                if (moveto_mod && (elem->module != moveto_mod)) {
-                    match = 0;
-                } else if (!moveto_mod && (elem->module != set->ctx_scnode->module)) {
-                    match = 0;
-                }
-            }
-
-            /* name check */
-            if (match && !all && (strncmp(elem->name, qname, qname_len) || elem->name[qname_len])) {
-                match = 0;
-            }
-
-            if (match) {
+            rc = moveto_scnode_check(elem, root_type, qname, moveto_mod, options);
+            if (!rc) {
                 if ((idx = set_scnode_dup_node_check(set, elem, LYXP_NODE_ELEM, i)) > -1) {
                     set->val.scnodes[idx].in_ctx = 1;
                     if (idx > i) {
@@ -5901,6 +5808,8 @@ moveto_scnode_alldesc(struct lyxp_set *set, const char *qname, uint16_t qname_le
                 } else {
                     set_scnode_insert_node(set, elem, LYXP_NODE_ELEM);
                 }
+            } else if (rc == LY_EINVAL) {
+                goto skip_children;
             }
 
 next_iter:
@@ -5951,9 +5860,10 @@ static LY_ERR
 moveto_attr(struct lyxp_set *set, const char *qname, uint16_t qname_len, int UNUSED(options))
 {
     uint32_t i;
-    int replaced, all = 0, pref_len;
-    struct lys_module *moveto_mod;
+    int replaced, all = 0;
+    const struct lys_module *moveto_mod;
     struct lyd_attr *sub;
+    LY_ERR rc;
 
     if (!set || (set->type == LYXP_SET_EMPTY)) {
         return LY_SUCCESS;
@@ -5964,19 +5874,8 @@ moveto_attr(struct lyxp_set *set, const char *qname, uint16_t qname_len, int UNU
         return LY_EVALID;
     }
 
-    /* prefix */
-    if (ly_strnchr(qname, ':', qname_len)) {
-        pref_len = ly_strnchr(qname, ':', qname_len) - qname;
-        moveto_mod = moveto_resolve_model(qname, pref_len, set->format, set->ctx, set->local_mod);
-        if (!moveto_mod) {
-            LOGVAL(set->ctx, LY_VLOG_LYD, set->ctx_node, LY_VCODE_XP_INMOD, pref_len, qname);
-            return LY_EVALID;
-        }
-        qname += pref_len + 1;
-        qname_len -= pref_len + 1;
-    } else {
-        moveto_mod = NULL;
-    }
+    rc = moveto_resolve_model(&qname, &qname_len, set, &moveto_mod);
+    LY_CHECK_RET(rc);
 
     if ((qname_len == 1) && (qname[0] == '*')) {
         all = 1;
@@ -6079,9 +5978,9 @@ static int
 moveto_attr_alldesc(struct lyxp_set *set, const char *qname, uint16_t qname_len, int options)
 {
     uint32_t i;
-    int pref_len, replaced, all = 0;
+    int replaced, all = 0;
     struct lyd_attr *sub;
-    struct lys_module *moveto_mod;
+    const struct lys_module *moveto_mod;
     struct lyxp_set *set_all_desc = NULL;
     LY_ERR rc;
 
@@ -6094,19 +5993,8 @@ moveto_attr_alldesc(struct lyxp_set *set, const char *qname, uint16_t qname_len,
         return LY_EVALID;
     }
 
-    /* prefix */
-    if (ly_strnchr(qname, ':', qname_len)) {
-        pref_len = ly_strnchr(qname, ':', qname_len) - qname;
-        moveto_mod = moveto_resolve_model(qname, pref_len, set->format, set->ctx, set->local_mod);
-        if (!moveto_mod) {
-            LOGVAL(set->ctx, LY_VLOG_LYD, set->ctx_node, LY_VCODE_XP_INMOD, pref_len, qname);
-            return LY_EVALID;
-        }
-        qname += pref_len + 1;
-        qname_len -= pref_len + 1;
-    } else {
-        moveto_mod = NULL;
-    }
+    rc = moveto_resolve_model(&qname, &qname_len, set, &moveto_mod);
+    LY_CHECK_RET(rc);
 
     /* can be optimized similarly to moveto_node_alldesc() and save considerable amount of memory,
      * but it likely won't be used much, so it's a waste of time */
