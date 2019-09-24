@@ -240,6 +240,9 @@ print_set_debug(struct lyxp_set *set)
                 LOGDBG(LY_LDGXPATH, "\t%d (pos %u): ATTR %s = %s", i + 1, item->pos, set->val.attrs[i].attr->name,
                        set->val.attrs[i].attr->value);
                 break;
+            default:
+                LOGINT(NULL);
+                break;
             }
         }
         break;
@@ -559,6 +562,8 @@ cast_node_set_to_string(struct lyxp_set *set, struct lyd_node *cur_node, struct 
             LOGMEM(local_mod->ctx);
         }
         return str;
+    default:
+        break;
     }
 
     LOGINT(local_mod->ctx);
@@ -934,6 +939,55 @@ set_remove_node(struct lyxp_set *set, uint32_t idx)
         memmove(&set->val.nodes[idx], &set->val.nodes[idx + 1],
                 (set->used - idx) * sizeof *set->val.nodes);
     } else {
+        set_free_content(set);
+        /* this changes it to LYXP_SET_EMPTY */
+        memset(set, 0, sizeof *set);
+    }
+}
+
+/**
+ * @brief Remove all none node types from a set. Removing last node changes
+ *        \p set into LYXP_SET_EMPTY. Hashes are expected to be already removed. Context position aware.
+ *
+ * @param[in] set Set to use.
+ * @param[in] idx Index from \p set of the node to be removed.
+ */
+static void
+set_remove_none_nodes(struct lyxp_set *set)
+{
+    uint16_t i, orig_used, end;
+    int32_t start;
+
+    assert(set && (set->type == LYXP_SET_NODE_SET));
+
+    orig_used = set->used;
+    set->used = 0;
+    for (i = 0; i < orig_used;) {
+        start = -1;
+        do {
+            if ((set->val.nodes[i].type != LYXP_NODE_NONE) && (start == -1)) {
+                start = i;
+            } else if ((start > -1) && (set->val.nodes[i].type == LYXP_NODE_NONE)) {
+                end = i;
+                ++i;
+                break;
+            }
+
+            ++i;
+            if (i == orig_used) {
+                end = i;
+            }
+        } while (i < orig_used);
+
+        if (start > -1) {
+            if (set->used != (unsigned)start) {
+                memmove(&set->val.nodes[set->used], &set->val.nodes[start], (end - start) * sizeof *set->val.nodes);
+            }
+            set->used += end - start;
+        }
+    }
+
+    if (!set->used) {
         set_free_content(set);
         /* this changes it to LYXP_SET_EMPTY */
         memset(set, 0, sizeof *set);
@@ -4021,6 +4075,9 @@ xpath_local_name(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cu
     case LYXP_NODE_ATTR:
         set_fill_string(set, ((struct lyd_attr *)item->node)->name, strlen(((struct lyd_attr *)item->node)->name));
         break;
+    default:
+        LOGINT(local_mod->ctx);
+        return -1;
     }
 
     return EXIT_SUCCESS;
@@ -4122,6 +4179,9 @@ xpath_namespace_uri(struct lyxp_set **args, uint16_t arg_count, struct lyd_node 
 
         set_fill_string(set, module->ns, strlen(module->ns));
         break;
+    default:
+        LOGINT(local_mod->ctx);
+        return -1;
     }
 
     return EXIT_SUCCESS;
@@ -4981,6 +5041,9 @@ xpath_text(struct lyxp_set **UNUSED(args), uint16_t UNUSED(arg_count), struct ly
         case LYXP_NODE_ATTR:
             set_remove_node(set, i);
             break;
+        default:
+            LOGINT(local_mod->ctx);
+            return -1;
         }
     }
 
@@ -6984,7 +7047,7 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyd_node *cur_no
                struct lyxp_set *set, int options, int parent_pos_pred)
 {
     int ret;
-    uint16_t i, orig_exp, brack2_exp, open_brack;
+    uint16_t i, orig_exp;
     uint32_t orig_pos, orig_size, pred_in_ctx;
     struct lyxp_set set2;
     struct lyd_node *orig_parent;
@@ -7010,21 +7073,10 @@ only_parse:
         }
 
         orig_exp = *exp_idx;
-
-        /* find the predicate end */
-        open_brack = 0;
-        for (brack2_exp = orig_exp; open_brack || (exp->tokens[brack2_exp] != LYXP_TOKEN_BRACK2); ++brack2_exp) {
-            if (exp->tokens[brack2_exp] == LYXP_TOKEN_BRACK1) {
-                ++open_brack;
-            } else if (exp->tokens[brack2_exp] == LYXP_TOKEN_BRACK2) {
-                --open_brack;
-            }
-        }
-
         orig_pos = 0;
         orig_size = set->used;
         orig_parent = NULL;
-        for (i = 0; i < set->used; ) {
+        for (i = 0; i < set->used; ++i) {
             memset(&set2, 0, sizeof set2);
             set_insert_node(&set2, set->val.nodes[i].node, set->val.nodes[i].pos, set->val.nodes[i].type, 0);
             /* remember the node context position for position() and context size for last(),
@@ -7058,12 +7110,16 @@ only_parse:
             lyxp_set_cast(&set2, LYXP_SET_BOOLEAN, cur_node, local_mod, options);
 
             /* predicate satisfied or not? */
-            if (set2.val.bool) {
-                ++i;
-            } else {
-                set_remove_node(set, i);
+            if (!set2.val.bool) {
+#ifdef LY_ENABLED_CACHE
+                set_remove_node_hash(set, set->val.nodes[i].node, set->val.nodes[i].type);
+#endif
+                set->val.nodes[i].type = LYXP_NODE_NONE;
             }
         }
+
+        /* now actually remove all nodes that have not satisfied the predicate */
+        set_remove_none_nodes(set);
 
     } else if (set->type == LYXP_SET_SNODE_SET) {
         for (i = 0; i < set->used; ++i) {
@@ -7078,16 +7134,6 @@ only_parse:
         }
 
         orig_exp = *exp_idx;
-
-        /* find the predicate end */
-        open_brack = 0;
-        for (brack2_exp = orig_exp; open_brack || (exp->tokens[brack2_exp] != LYXP_TOKEN_BRACK2); ++brack2_exp) {
-            if (exp->tokens[brack2_exp] == LYXP_TOKEN_BRACK1) {
-                ++open_brack;
-            } else if (exp->tokens[brack2_exp] == LYXP_TOKEN_BRACK2) {
-                --open_brack;
-            }
-        }
 
         /* set special in_ctx to all the valid snodes */
         pred_in_ctx = set_snode_new_in_ctx(set);

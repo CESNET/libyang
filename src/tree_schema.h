@@ -2300,7 +2300,9 @@ enum lyxp_node_type {
     /* XML elements */
     LYXP_NODE_ELEM,             /* XML element (most common) */
     LYXP_NODE_TEXT,             /* XML text element (extremely specific use, unlikely to be ever needed) */
-    LYXP_NODE_ATTR              /* XML attribute (in YANG cannot happen, do not use for the context node) */
+    LYXP_NODE_ATTR,             /* XML attribute (in YANG cannot happen, do not use for the context node) */
+
+    LYXP_NODE_NONE              /* invalid node type, do not use */
 };
 
 /**
