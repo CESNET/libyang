@@ -3553,6 +3553,10 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyd_node 
             ret = EXIT_FAILURE;
         }
         set_snode_clear_ctx(set);
+        if ((ret == EXIT_SUCCESS) && (sleaf->type.base == LY_TYPE_LEAFREF)) {
+            assert(sleaf->type.info.lref.target);
+            set_snode_insert_node(set, (struct lys_node *)sleaf->type.info.lref.target, LYXP_NODE_ELEM);
+        }
         return ret;
     }
 
