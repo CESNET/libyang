@@ -3531,8 +3531,10 @@ xpath_current(struct lyxp_set **args, uint16_t arg_count, struct lyxp_set *set, 
 static LY_ERR
 xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set *set, int options)
 {
+    struct lysc_ctx cctx;
     struct lyd_node_term *leaf;
     struct lysc_node_leaf *sleaf;
+    const struct lysc_node *target;
     const struct lyd_node *node;
     char *errmsg = NULL;
     const char *val;
@@ -3552,6 +3554,15 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set 
             rc = LY_EINVAL;
         }
         set_scnode_clear_ctx(set);
+        if ((rc == LY_SUCCESS) && (sleaf->type->basetype == LY_TYPE_LEAFREF)) {
+            cctx.ctx = set->ctx;
+            rc = lys_compile_leafref_validate(&cctx, (struct lysc_node *)sleaf, (struct lysc_type_leafref *)sleaf->type, &target);
+            /* it was already validated, it must succeed */
+            if (rc == LY_SUCCESS) {
+                set_scnode_insert_node(set, target, LYXP_NODE_ELEM);
+            }
+        }
+
         return rc;
     }
 

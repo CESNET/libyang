@@ -658,6 +658,17 @@ uint8_t lysc_iff_getop(uint8_t *list, int pos);
 LY_ERR lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *log_path, const char *pattern, pcre2_code **code);
 
 /**
+ * @brief Validate the leafref path.
+ * @param[in] ctx Compile context
+ * @param[in] startnode Path context node (where the leafref path begins/is placed).
+ * @param[in] leafref Leafref to validate.
+ * @param[out] target Optional resolved leafref target.
+ * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
+ */
+LY_ERR lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *startnode, struct lysc_type_leafref *leafref,
+                                    const struct lysc_node **target);
+
+/**
  * @brief Internal wrapper around lys_compile_extension() to be able to prepare list of compiled extension definitions
  * even for the parsed (not-implemented) module - see lys_module::off_extensions.
  *

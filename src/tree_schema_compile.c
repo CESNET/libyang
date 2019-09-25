@@ -2676,10 +2676,12 @@ lys_compile_leafref_has_dep_flag(const struct lysc_node *startnode, const struct
  * @param[in] ctx Compile context
  * @param[in] startnode Path context node (where the leafref path begins/is placed).
  * @param[in] leafref Leafref to validate.
+ * @param[out] target Optional resolved leafref target.
  * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
  */
-static LY_ERR
-lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *startnode, struct lysc_type_leafref *leafref)
+LY_ERR
+lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *startnode, struct lysc_type_leafref *leafref,
+                             const struct lysc_node **target)
 {
     const struct lysc_node *node = NULL, *parent = NULL, *tmp_parent;
     const struct lys_module *mod;
@@ -2812,6 +2814,9 @@ lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *startnode, 
 
     ctx->path_len = 1;
     ctx->path[1] = '\0';
+    if (target) {
+        *target = node;
+    }
     return LY_SUCCESS;
 }
 
@@ -7050,13 +7055,13 @@ lys_compile(struct lys_module *mod, int options)
             type = ((struct lysc_node_leaf*)ctx.unres.objs[u])->type;
             if (type->basetype == LY_TYPE_LEAFREF) {
                 /* validate the path */
-                LY_CHECK_GOTO(ret = lys_compile_leafref_validate(&ctx, ((struct lysc_node*)ctx.unres.objs[u]), (struct lysc_type_leafref*)type), error);
+                LY_CHECK_GOTO(ret = lys_compile_leafref_validate(&ctx, ((struct lysc_node*)ctx.unres.objs[u]), (struct lysc_type_leafref*)type, NULL), error);
             } else if (type->basetype == LY_TYPE_UNION) {
                 LY_ARRAY_FOR(((struct lysc_type_union*)type)->types, v) {
                     if (((struct lysc_type_union*)type)->types[v]->basetype == LY_TYPE_LEAFREF) {
                         /* validate the path */
                         LY_CHECK_GOTO(ret = lys_compile_leafref_validate(&ctx, ((struct lysc_node*)ctx.unres.objs[u]),
-                                                                         (struct lysc_type_leafref*)((struct lysc_type_union*)type)->types[v]),
+                                                                         (struct lysc_type_leafref*)((struct lysc_type_union*)type)->types[v], NULL),
                                       error);
                     }
                 }
