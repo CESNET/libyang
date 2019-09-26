@@ -109,7 +109,7 @@ lyb_check_augment_collision(struct hash_table *ht, struct lys_node *aug1, struct
     values_equal_cb cb = NULL;
     LYB_HASH hash1, hash2;
 
-    /* go throught combination of all nodes and check if coliding hash is used */
+    /* go through combination of all nodes and check if coliding hash is used */
     while ((iter1 = (struct lys_node *)lys_getnext(iter1, aug1, aug1->module, 0))) {
         iter2 = NULL;
         while ((iter2 = (struct lys_node *)lys_getnext(iter2, aug2, aug2->module, 0))) {

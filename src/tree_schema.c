@@ -4396,7 +4396,7 @@ apply_aug(struct lys_node_augment *augment, struct unres_schema *unres)
             *v = u;
             if (unres_schema_add_node(lys_main_module(augment->module), unres, &augment->target->ext,
                     UNRES_EXT_FINALIZE, (struct lys_node *)v) == -1) {
-                /* something really bad happend since the extension finalization is not actually
+                /* something really bad happened since the extension finalization is not actually
                  * being resolved while adding into unres, so something more serious with the unres
                  * list itself must happened */
                 return -1;

@@ -7118,7 +7118,7 @@ featurecheckdone:
                     LY_CHECK_ERR_RETURN(!u, LOGMEM(ctx), -1);
                     (*u) = ext_data->ext_index;
                     if (unres_schema_add_node(mod, unres, item, UNRES_EXT_FINALIZE, (struct lys_node *)u) == -1) {
-                        /* something really bad happend since the extension finalization is not actually
+                        /* something really bad happened since the extension finalization is not actually
                          * being resolved while adding into unres, so something more serious with the unres
                          * list itself must happened */
                         return -1;
