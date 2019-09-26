@@ -305,7 +305,7 @@ const struct lys_module *ly_ctx_load_sub_module(struct ly_ctx *ctx, struct lys_m
  * @param[in] accept String of characters that are searched for.
  * @param[in] s_len Backward length of \p s.
  *
- * @return Pointer to the first backward occurence of a character from
+ * @return Pointer to the first backward occurrence of a character from
  *         \p accept or \p s - \p s_len if not found.
  */
 const char *strpbrk_backwards(const char *s, const char *accept, unsigned int s_len);

@@ -736,7 +736,7 @@ struct lyd_node *lyd_new_leaf(struct lyd_node *parent, const struct lys_module *
  * or #LY_TYPE_IDENT, JSON node-id format is expected (nodes are prefixed with module names, not XML namespaces).
  * @return 0 if the leaf was changed successfully (either its value changed or at least its default flag was cleared),
  *         <0 on error,
- *         1 if the (canonical) value matched the original one and no value neither default flag change occured.
+ *         1 if the (canonical) value matched the original one and no value neither default flag change occurred.
  */
 int lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str);
 
@@ -975,7 +975,7 @@ struct lyd_node *lyd_dup_to_ctx(const struct lyd_node *node, int options, struct
  * @param[in] options Bitmask of the following option flags:
  * - #LYD_OPT_DESTRUCT - spend \p source in the function, otherwise \p source is left untouched,
  * - #LYD_OPT_NOSIBLINGS - merge only the \p source subtree (ignore siblings), otherwise merge
- * \p source and all its succeeding siblings (preceeding ones are still ignored!),
+ * \p source and all its succeeding siblings (preceding ones are still ignored!),
  * - #LYD_OPT_EXPLICIT - when merging an explicitly set node and a default node, always put
  * the explicit node into \p target, otherwise the node which is in \p source is used.
  * @return 0 on success, nonzero in case of an error.

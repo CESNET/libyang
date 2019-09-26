@@ -7,7 +7,7 @@ To build the fuzz targets, the ENABLE_BUILD_FUZZ_TARGETS option has to be enable
 To add AFL instrumentation when compiling the programs, the AFL clang-fast compiler
 should be used with the following cmake option:
 
-It is reccomended to set the build type to Release, since otherwise the fuzzer will detect failed asserts as crashes.
+It is recommended to set the build type to Release, since otherwise the fuzzer will detect failed asserts as crashes.
 
 ```
 $ cmake -DENABLE_BUILD_FUZZ_TARGETS=ON -DCMAKE_BUILD_TYPE=Release -DCMAKE_C_COMPILER=path_to_afl/afl-clang-fast ..

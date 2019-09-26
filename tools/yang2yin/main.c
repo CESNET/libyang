@@ -1695,7 +1695,7 @@ convert_yang2yin(FILE *out, FILE *in, const char *search_dir)
      * 1st module parsing
      */
 
-    /* learn whther it's a module or submodule */
+    /* learn whether it's a module or submodule */
     word = get_word(in, &buf, &buf_len);
     if (!word) {
         free(buf);

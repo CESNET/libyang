@@ -296,7 +296,7 @@ const char *lyxml_get_attr(const struct lyxml_elem *elem, const char *name, cons
  *
  * @param[in] elem Element where start namespace searching
  * @param[in] prefix Prefix of the namespace to search for
- * @return Namespace defintion or NULL if no such namespace exists
+ * @return Namespace definition or NULL if no such namespace exists
  */
 const struct lyxml_ns *lyxml_get_ns(const struct lyxml_elem *elem, const char *prefix);
 

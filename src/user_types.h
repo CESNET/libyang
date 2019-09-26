@@ -54,7 +54,7 @@ extern "C" {
  * @param[in,out] value_str String value to be stored.
  * @param[in,out] value Value union for the value to be stored in (already is but in the standard way).
  * @param[out] err_msg Can be filled on error. If not, a generic error message will be printed.
- * @return 0 on success, non-zero if an error occured and the value could not be stored for any reason.
+ * @return 0 on success, non-zero if an error occurred and the value could not be stored for any reason.
  */
 typedef int (*lytype_store_clb)(struct ly_ctx *ctx, const char *type_name, const char **value_str, lyd_val *value,
                                 char **err_msg);

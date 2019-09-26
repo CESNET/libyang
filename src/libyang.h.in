@@ -1446,7 +1446,7 @@ const struct lys_module *ly_ctx_get_module_older(const struct ly_ctx *ctx, const
  * @param[in] revision Optional revision date of the module. If not specified, it is
  * assumed that there is only one model revision in the searchpath (the first matching file
  * is parsed).
- * @return Pointer to the data model structure, NULL if not found or some error occured.
+ * @return Pointer to the data model structure, NULL if not found or some error occurred.
  */
 const struct lys_module *ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision);
 

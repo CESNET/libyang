@@ -3433,7 +3433,7 @@ xpath_count(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyd_node 
 
 /**
  * @brief Execute the XPath current() function. Returns LYXP_SET_NODE_SET
- *        with the context with the intial node.
+ *        with the context with the initial node.
  *
  * @param[in] args Array of arguments.
  * @param[in] arg_count Count of elements in \p args.
@@ -4732,7 +4732,7 @@ xpath_substring(struct lyxp_set **args, uint16_t arg_count, struct lyd_node *cur
 
 /**
  * @brief Execute the XPath substring-after(string, string) function.
- *        Returns LYXP_SET_STRING with the string succeeding the occurance
+ *        Returns LYXP_SET_STRING with the string succeeding the occurrence
  *        of the second argument in the first or an empty string.
  *
  * @param[in] args Array of arguments.
@@ -4794,7 +4794,7 @@ xpath_substring_after(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct
 
 /**
  * @brief Execute the XPath substring-before(string, string) function.
- *        Returns LYXP_SET_STRING with the string preceding the occurance
+ *        Returns LYXP_SET_STRING with the string preceding the occurrence
  *        of the second argument in the first or an empty string.
  *
  * @param[in] args Array of arguments.
