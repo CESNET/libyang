@@ -852,7 +852,7 @@ lyd_check_mandatory_tree(struct lyd_node *root, struct ly_ctx *ctx, const struct
     assert(root || ctx);
     assert(!(options & LYD_OPT_ACT_NOTIF));
 
-    if (options & (LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
+    if (options & (LYD_OPT_TRUSTED | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG)) {
         /* no check is needed */
         return EXIT_SUCCESS;
     }
