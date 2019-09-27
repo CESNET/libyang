@@ -946,19 +946,10 @@ ly_ctx_load_sub_module(struct ly_ctx *ctx, struct lys_module *module, const char
     int i;
 
     if (!module) {
-        /* exception for internal modules */
-        for (i = 0; i < ctx->internal_module_count; i++) {
-            if (ly_strequal(name, internal_modules[i].name, 0)) {
-                if (!revision || ly_strequal(revision, internal_modules[i].revision, 0)) {
-                    /* return internal module */
-                    return (struct lys_module *)ly_ctx_get_module(ctx, name, revision, 0);
-                }
-            }
-        }
         /* try to get the schema from the context (with or without revision),
          * include the disabled modules in the search to avoid their duplication,
          * they are enabled by the subsequent call to lys_set_implemented() */
-        for (i = ctx->internal_module_count, mod = NULL; i < ctx->models.used; i++) {
+        for (i = 0, mod = NULL; i < ctx->models.used; i++) {
             mod = ctx->models.list[i]; /* shortcut */
             if (ly_strequal(name, mod->name, 0)) {
                 /* first remember latest module if no other is found */
