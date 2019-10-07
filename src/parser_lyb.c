@@ -1305,6 +1305,8 @@ finish:
 API int
 lyd_lyb_data_length(const char *data)
 {
+    FUN_IN;
+
     struct lyb_state lybs;
     int r = 0, ret = 0, i;
     size_t len;

@@ -72,6 +72,8 @@ static struct internal_modules_s {
 API unsigned int
 ly_ctx_internal_modules_count(struct ly_ctx *ctx)
 {
+    FUN_IN;
+
     if (!ctx) {
         return 0;
     }
@@ -81,6 +83,8 @@ ly_ctx_internal_modules_count(struct ly_ctx *ctx)
 API struct ly_ctx *
 ly_ctx_new(const char *search_dir, int options)
 {
+    FUN_IN;
+
     struct ly_ctx *ctx = NULL;
     struct lys_module *module;
     char *search_dir_list;
@@ -302,12 +306,16 @@ error:
 API struct ly_ctx *
 ly_ctx_new_ylpath(const char *search_dir, const char *path, LYD_FORMAT format, int options)
 {
+    FUN_IN;
+
     return ly_ctx_new_yl_common(search_dir, path, format, options, lyd_parse_path);
 }
 
 API struct ly_ctx *
 ly_ctx_new_ylmem(const char *search_dir, const char *data, LYD_FORMAT format, int options)
 {
+    FUN_IN;
+
     return ly_ctx_new_yl_common(search_dir, data, format, options, lyd_parse_mem);
 }
 
@@ -334,72 +342,96 @@ ly_ctx_unset_option(struct ly_ctx *ctx, int options)
 API void
 ly_ctx_set_disable_searchdirs(struct ly_ctx *ctx)
 {
+    FUN_IN;
+
     ly_ctx_set_option(ctx, LY_CTX_DISABLE_SEARCHDIRS);
 }
 
 API void
 ly_ctx_unset_disable_searchdirs(struct ly_ctx *ctx)
 {
+    FUN_IN;
+
     ly_ctx_unset_option(ctx, LY_CTX_DISABLE_SEARCHDIRS);
 }
 
 API void
 ly_ctx_set_disable_searchdir_cwd(struct ly_ctx *ctx)
 {
+    FUN_IN;
+
     ly_ctx_set_option(ctx, LY_CTX_DISABLE_SEARCHDIR_CWD);
 }
 
 API void
 ly_ctx_unset_disable_searchdir_cwd(struct ly_ctx *ctx)
 {
+    FUN_IN;
+
     ly_ctx_unset_option(ctx, LY_CTX_DISABLE_SEARCHDIR_CWD);
 }
 
 API void
 ly_ctx_set_prefer_searchdirs(struct ly_ctx *ctx)
 {
+    FUN_IN;
+
     ly_ctx_set_option(ctx, LY_CTX_PREFER_SEARCHDIRS);
 }
 
 API void
 ly_ctx_unset_prefer_searchdirs(struct ly_ctx *ctx)
 {
+    FUN_IN;
+
     ly_ctx_unset_option(ctx, LY_CTX_PREFER_SEARCHDIRS);
 }
 
 API void
 ly_ctx_set_allimplemented(struct ly_ctx *ctx)
 {
+    FUN_IN;
+
     ly_ctx_set_option(ctx, LY_CTX_ALLIMPLEMENTED);
 }
 
 API void
 ly_ctx_unset_allimplemented(struct ly_ctx *ctx)
 {
+    FUN_IN;
+
     ly_ctx_unset_option(ctx, LY_CTX_ALLIMPLEMENTED);
 }
 
 API void
 ly_ctx_set_trusted(struct ly_ctx *ctx)
 {
+    FUN_IN;
+
     ly_ctx_set_option(ctx, LY_CTX_TRUSTED);
 }
 
 API void
 ly_ctx_unset_trusted(struct ly_ctx *ctx)
 {
+    FUN_IN;
+
     ly_ctx_unset_option(ctx, LY_CTX_TRUSTED);
 }
 
 API int
 ly_ctx_get_options(struct ly_ctx *ctx)
 {
+    FUN_IN;
+
     return ctx->models.flags;
 }
 
 API int
 ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
 {
+    FUN_IN;
+
     char *new_dir = NULL;
     int index = 0;
     void *r;
@@ -454,6 +486,8 @@ cleanup:
 API const char * const *
 ly_ctx_get_searchdirs(const struct ly_ctx *ctx)
 {
+    FUN_IN;
+
     if (!ctx) {
         LOGARG;
         return NULL;
@@ -464,6 +498,8 @@ ly_ctx_get_searchdirs(const struct ly_ctx *ctx)
 API void
 ly_ctx_unset_searchdirs(struct ly_ctx *ctx, int index)
 {
+    FUN_IN;
+
     int i;
 
     if (!ctx->models.search_paths) {
@@ -488,6 +524,8 @@ ly_ctx_unset_searchdirs(struct ly_ctx *ctx, int index)
 API void
 ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_node *node, void *priv))
 {
+    FUN_IN;
+
     int i;
 
     if (!ctx) {
@@ -525,6 +563,8 @@ ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_n
 API const struct lys_submodule *
 ly_ctx_get_submodule2(const struct lys_module *main_module, const char *submodule)
 {
+    FUN_IN;
+
     const struct lys_submodule *result;
     int i;
 
@@ -553,6 +593,8 @@ API const struct lys_submodule *
 ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *revision, const char *submodule,
                      const char *sub_revision)
 {
+    FUN_IN;
+
     const struct lys_module *mainmod;
     const struct lys_submodule *ret = NULL, *submod;
     uint32_t idx = 0;
@@ -670,12 +712,16 @@ ly_ctx_get_module_by(const struct ly_ctx *ctx, const char *key, size_t key_len, 
 API const struct lys_module *
 ly_ctx_get_module_by_ns(const struct ly_ctx *ctx, const char *ns, const char *revision, int implemented)
 {
+    FUN_IN;
+
     return ly_ctx_get_module_by(ctx, ns, 0, offsetof(struct lys_module, ns), revision, 0, implemented);
 }
 
 API const struct lys_module *
 ly_ctx_get_module(const struct ly_ctx *ctx, const char *name, const char *revision, int implemented)
 {
+    FUN_IN;
+
     return ly_ctx_get_module_by(ctx, name, 0, offsetof(struct lys_module, name), revision, 0, implemented);
 }
 
@@ -688,6 +734,8 @@ ly_ctx_nget_module(const struct ly_ctx *ctx, const char *name, size_t name_len, 
 API const struct lys_module *
 ly_ctx_get_module_older(const struct ly_ctx *ctx, const struct lys_module *module)
 {
+    FUN_IN;
+
     int i;
     const struct lys_module *result = NULL, *iter;
 
@@ -730,6 +778,8 @@ ly_ctx_get_module_older(const struct ly_ctx *ctx, const struct lys_module *modul
 API void
 ly_ctx_set_module_imp_clb(struct ly_ctx *ctx, ly_module_imp_clb clb, void *user_data)
 {
+    FUN_IN;
+
     if (!ctx) {
         LOGARG;
         return;
@@ -742,6 +792,8 @@ ly_ctx_set_module_imp_clb(struct ly_ctx *ctx, ly_module_imp_clb clb, void *user_
 API ly_module_imp_clb
 ly_ctx_get_module_imp_clb(const struct ly_ctx *ctx, void **user_data)
 {
+    FUN_IN;
+
     if (!ctx) {
         LOGARG;
         return NULL;
@@ -756,6 +808,8 @@ ly_ctx_get_module_imp_clb(const struct ly_ctx *ctx, void **user_data)
 API void
 ly_ctx_set_module_data_clb(struct ly_ctx *ctx, ly_module_data_clb clb, void *user_data)
 {
+    FUN_IN;
+
     if (!ctx) {
         LOGARG;
         return;
@@ -768,6 +822,8 @@ ly_ctx_set_module_data_clb(struct ly_ctx *ctx, ly_module_data_clb clb, void *use
 API ly_module_data_clb
 ly_ctx_get_module_data_clb(const struct ly_ctx *ctx, void **user_data)
 {
+    FUN_IN;
+
     if (!ctx) {
         LOGARG;
         return NULL;
@@ -784,6 +840,8 @@ ly_ctx_get_module_data_clb(const struct ly_ctx *ctx, void **user_data)
 API void
 ly_ctx_set_priv_dup_clb(struct ly_ctx *ctx, void *(*priv_dup_clb)(const void *priv))
 {
+    FUN_IN;
+
     ctx->priv_dup_clb = priv_dup_clb;
 }
 
@@ -1034,6 +1092,8 @@ search_file:
 API const struct lys_module *
 ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
 {
+    FUN_IN;
+
     if (!ctx || !name) {
         LOGARG;
         return NULL;
@@ -1232,6 +1292,8 @@ next_sibling:
 API int
 lys_set_disabled(const struct lys_module *module)
 {
+    FUN_IN;
+
     struct ly_ctx *ctx; /* shortcut */
     struct lys_module *mod;
     struct ly_set *mods;
@@ -1377,6 +1439,8 @@ lys_set_enabled_(struct ly_set *mods, struct lys_module *mod)
 API int
 lys_set_enabled(const struct lys_module *module)
 {
+    FUN_IN;
+
     struct ly_ctx *ctx; /* shortcut */
     struct lys_module *mod;
     struct ly_set *mods, *disabled;
@@ -1482,6 +1546,8 @@ API int
 ly_ctx_remove_module(const struct lys_module *module,
                      void (*private_destructor)(const struct lys_node *node, void *priv))
 {
+    FUN_IN;
+
     struct ly_ctx *ctx; /* shortcut */
     struct lys_module *mod = NULL;
     struct ly_set *mods;
@@ -1608,6 +1674,8 @@ imported:
 API void
 ly_ctx_clean(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_node *node, void *priv))
 {
+    FUN_IN;
+
     if (!ctx) {
         return;
     }
@@ -1630,6 +1698,8 @@ ly_ctx_clean(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_nod
 API const struct lys_module *
 ly_ctx_get_module_iter(const struct ly_ctx *ctx, uint32_t *idx)
 {
+    FUN_IN;
+
     if (!ctx || !idx) {
         LOGARG;
         return NULL;
@@ -1647,6 +1717,8 @@ ly_ctx_get_module_iter(const struct ly_ctx *ctx, uint32_t *idx)
 API const struct lys_module *
 ly_ctx_get_disabled_module_iter(const struct ly_ctx *ctx, uint32_t *idx)
 {
+    FUN_IN;
+
     if (!ctx || !idx) {
         LOGARG;
         return NULL;
@@ -1775,12 +1847,16 @@ ylib_submodules(struct lyd_node *parent, struct lys_module *cur_mod, int bis)
 API uint16_t
 ly_ctx_get_module_set_id(const struct ly_ctx *ctx)
 {
+    FUN_IN;
+
     return ctx->models.module_set_id;
 }
 
 API struct lyd_node *
 ly_ctx_info(struct ly_ctx *ctx)
 {
+    FUN_IN;
+
     int i, bis = 0;
     char id[8];
     char *str;
@@ -1965,6 +2041,8 @@ error:
 API const struct lys_node *
 ly_ctx_get_node(const struct ly_ctx *ctx, const struct lys_node *start, const char *nodeid, int output)
 {
+    FUN_IN;
+
     const struct lys_node *node;
 
     if ((!ctx && !start) || !nodeid || ((nodeid[0] != '/') && !start)) {
@@ -1985,6 +2063,8 @@ ly_ctx_get_node(const struct ly_ctx *ctx, const struct lys_node *start, const ch
 API struct ly_set *
 ly_ctx_find_path(struct ly_ctx *ctx, const char *path)
 {
+    FUN_IN;
+
     struct ly_set *resultset = NULL;
 
     if (!ctx || !path) {

@@ -559,6 +559,8 @@ error:
 API struct lyd_node *
 lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
 {
+    FUN_IN;
+
     va_list ap;
     int r;
     struct unres_data *unres = NULL;

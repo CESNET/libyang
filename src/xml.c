@@ -43,6 +43,8 @@ static struct lyxml_attr *lyxml_dup_attr(struct ly_ctx *ctx, struct lyxml_elem *
 API const struct lyxml_ns *
 lyxml_get_ns(const struct lyxml_elem *elem, const char *prefix)
 {
+    FUN_IN;
+
     struct lyxml_attr *attr;
 
     if (!elem) {
@@ -246,6 +248,8 @@ lyxml_dup_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, struct lyxml_elem *p
 API struct lyxml_elem *
 lyxml_dup(struct ly_ctx *ctx, struct lyxml_elem *root)
 {
+    FUN_IN;
+
     return lyxml_dup_elem(ctx, root, NULL, 1, 0);
 }
 
@@ -307,6 +311,8 @@ lyxml_unlink_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, int copy_ns)
 API void
 lyxml_unlink(struct ly_ctx *ctx, struct lyxml_elem *elem)
 {
+    FUN_IN;
+
     if (!elem) {
         return;
     }
@@ -391,6 +397,8 @@ lyxml_free_elem(struct ly_ctx *ctx, struct lyxml_elem *elem)
 API void
 lyxml_free(struct ly_ctx *ctx, struct lyxml_elem *elem)
 {
+    FUN_IN;
+
     if (!elem) {
         return;
     }
@@ -402,6 +410,8 @@ lyxml_free(struct ly_ctx *ctx, struct lyxml_elem *elem)
 API void
 lyxml_free_withsiblings(struct ly_ctx *ctx, struct lyxml_elem *elem)
 {
+    FUN_IN;
+
     struct lyxml_elem *iter, *aux;
 
     if (!elem) {
@@ -423,6 +433,8 @@ lyxml_free_withsiblings(struct ly_ctx *ctx, struct lyxml_elem *elem)
 API const char *
 lyxml_get_attr(const struct lyxml_elem *elem, const char *name, const char *ns)
 {
+    FUN_IN;
+
     struct lyxml_attr *a;
 
     assert(elem);
@@ -1141,6 +1153,8 @@ error:
 API struct lyxml_elem *
 lyxml_parse_mem(struct ly_ctx *ctx, const char *data, int options)
 {
+    FUN_IN;
+
     const char *c = data;
     unsigned int len;
     struct lyxml_elem *root, *first = NULL, *next;
@@ -1225,6 +1239,8 @@ error:
 API struct lyxml_elem *
 lyxml_parse_path(struct ly_ctx *ctx, const char *filename, int options)
 {
+    FUN_IN;
+
     struct lyxml_elem *elem = NULL;
     size_t length;
     int fd;
@@ -1431,6 +1447,8 @@ dump_siblings(struct lyout *out, const struct lyxml_elem *e, int options)
 API int
 lyxml_print_file(FILE *stream, const struct lyxml_elem *elem, int options)
 {
+    FUN_IN;
+
     struct lyout out;
 
     if (!stream || !elem) {
@@ -1452,6 +1470,8 @@ lyxml_print_file(FILE *stream, const struct lyxml_elem *elem, int options)
 API int
 lyxml_print_fd(int fd, const struct lyxml_elem *elem, int options)
 {
+    FUN_IN;
+
     struct lyout out;
 
     if (fd < 0 || !elem) {
@@ -1473,6 +1493,8 @@ lyxml_print_fd(int fd, const struct lyxml_elem *elem, int options)
 API int
 lyxml_print_mem(char **strp, const struct lyxml_elem *elem, int options)
 {
+    FUN_IN;
+
     struct lyout out;
     int r;
 
@@ -1497,6 +1519,8 @@ lyxml_print_mem(char **strp, const struct lyxml_elem *elem, int options)
 API int
 lyxml_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, const struct lyxml_elem *elem, int options)
 {
+    FUN_IN;
+
     struct lyout out;
 
     if (!writeclb || !elem) {
