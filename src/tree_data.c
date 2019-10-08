@@ -7337,6 +7337,9 @@ lyd_wd_add_subtree(struct lyd_node **root, struct lyd_node *last_parent, struct 
              * because accroding to RFC, the empty NP container is always part of
              * accessible tree (e.g. for evaluating when and must conditions) */
             subroot = _lyd_new(last_parent, schema, 1);
+            if (!subroot) {
+                goto error;
+            }
             /* useless to set mand flag */
             subroot->validity &= ~LYD_VAL_MAND;
 
