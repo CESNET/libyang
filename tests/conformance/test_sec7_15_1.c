@@ -1,7 +1,7 @@
 /**
- * @file test_sec7_2.c
+ * @file test_sec7_1.c
  * @author Pavol Vican
- * @brief Cmocka test for RFC 6020 section 7.2 conformance.
+ * @brief Cmocka test for RFC 6020 section 7.1 (without 7.1.3) conformance.
  *
  * Copyright (c) 2016 CESNET, z.s.p.o.
  *
@@ -25,10 +25,10 @@
 #include "tests/config.h"
 #include "libyang.h"
 
-#define TEST_DIR "sec7_2"
-#define TEST_NAME test_sec7_2
-#define TEST_SCHEMA_COUNT 7
-#define TEST_SCHEMA_LOAD_FAIL 1,1,1,1,1,0,1
+#define TEST_DIR "sec7_15_1"
+#define TEST_NAME test_sec7_15_1
+#define TEST_SCHEMA_COUNT 2
+#define TEST_SCHEMA_LOAD_FAIL 1,0
 #define TEST_DATA_FILE_COUNT 0
 #define TEST_DATA_FILE_LOAD_FAIL 0
 
@@ -71,8 +71,9 @@ teardown_f(void **state)
     return 0;
 }
 
+
 static void
-TEST_MODULE(void **state)
+TEST_ACTION(void **state)
 {
     struct state *st = (*state);
     const int schemas_fail[] = {TEST_SCHEMA_LOAD_FAIL};
@@ -136,7 +137,7 @@ int
 main(void)
 {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup_teardown(TEST_MODULE, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(TEST_ACTION, setup_f, teardown_f),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
