@@ -72,7 +72,7 @@ teardown_f(void **state)
 }
 
 static void
-TEST_CHOICE(void **state)
+TEST_ANYXML(void **state)
 {
     struct state *st = (*state);
     const int schemas_fail[] = {TEST_SCHEMA_LOAD_FAIL};
@@ -139,7 +139,7 @@ int
 main(void)
 {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup_teardown(TEST_CHOICE, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(TEST_ANYXML, setup_f, teardown_f),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
