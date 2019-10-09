@@ -36,12 +36,16 @@ THREAD_LOCAL int8_t ly_errno_glob;
 API LY_ERR *
 ly_errno_glob_address(void)
 {
+    FUN_IN;
+
     return (LY_ERR *)&ly_errno_glob;
 }
 
 API LY_VECODE
 ly_vecode(const struct ly_ctx *ctx)
 {
+    FUN_IN;
+
     struct ly_err_item *i;
 
     i = ly_err_first(ctx);
@@ -55,6 +59,8 @@ ly_vecode(const struct ly_ctx *ctx)
 API const char *
 ly_errmsg(const struct ly_ctx *ctx)
 {
+    FUN_IN;
+
     struct ly_err_item *i;
 
     i = ly_err_first(ctx);
@@ -68,6 +74,8 @@ ly_errmsg(const struct ly_ctx *ctx)
 API const char *
 ly_errpath(const struct ly_ctx *ctx)
 {
+    FUN_IN;
+
     struct ly_err_item *i;
 
     i = ly_err_first(ctx);
@@ -81,6 +89,8 @@ ly_errpath(const struct ly_ctx *ctx)
 API const char *
 ly_errapptag(const struct ly_ctx *ctx)
 {
+    FUN_IN;
+
     struct ly_err_item *i;
 
     i = ly_err_first(ctx);
@@ -94,6 +104,8 @@ ly_errapptag(const struct ly_ctx *ctx)
 API struct ly_err_item *
 ly_err_first(const struct ly_ctx *ctx)
 {
+    FUN_IN;
+
     if (!ctx) {
         return NULL;
     }
@@ -119,6 +131,8 @@ ly_err_free(void *ptr)
 API void
 ly_err_clean(struct ly_ctx *ctx, struct ly_err_item *eitem)
 {
+    FUN_IN;
+
     struct ly_err_item *i, *first;
 
     first = ly_err_first(ctx);
@@ -601,6 +615,8 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
 API char *
 ly_path_xml2json(struct ly_ctx *ctx, const char *xml_path, struct lyxml_elem *xml)
 {
+    FUN_IN;
+
     const char *json_path;
     char *ret = NULL;
 
@@ -1190,6 +1206,8 @@ error:
 API char *
 ly_path_data2schema(struct ly_ctx *ctx, const char *data_path)
 {
+    FUN_IN;
+
     struct lyxp_expr *exp;
     uint16_t out_used, cur_exp = 0;
     char *out;

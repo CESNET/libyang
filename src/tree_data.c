@@ -1034,6 +1034,8 @@ lyd_parse_data_(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int opt
 API struct lyd_node *
 lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options, ...)
 {
+    FUN_IN;
+
     va_list ap;
     struct lyd_node *result;
 
@@ -1073,6 +1075,8 @@ lyd_parse_fd_(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, va_lis
 API struct lyd_node *
 lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, ...)
 {
+    FUN_IN;
+
     struct lyd_node *ret;
     va_list ap;
 
@@ -1086,6 +1090,8 @@ lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, ...)
 API struct lyd_node *
 lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int options, ...)
 {
+    FUN_IN;
+
     int fd;
     struct lyd_node *ret;
     va_list ap;
@@ -1165,6 +1171,8 @@ _lyd_new(struct lyd_node *parent, const struct lys_node *schema, int dflt)
 API struct lyd_node *
 lyd_new(struct lyd_node *parent, const struct lys_module *module, const char *name)
 {
+    FUN_IN;
+
     const struct lys_node *snode = NULL, *siblings;
 
     if ((!parent && !module) || !name) {
@@ -1259,6 +1267,8 @@ _lyd_new_leaf(struct lyd_node *parent, const struct lys_node *schema, const char
 API struct lyd_node *
 lyd_new_leaf(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *val_str)
 {
+    FUN_IN;
+
     const struct lys_node *snode = NULL, *siblings;
 
     if ((!parent && !module) || !name) {
@@ -1369,6 +1379,8 @@ check_leaf_list_backlinks(struct lyd_node *node, int op)
 API int
 lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
 {
+    FUN_IN;
+
     const char *backup;
     int val_change, dflt_change;
     struct lyd_node *parent;
@@ -1507,6 +1519,8 @@ API struct lyd_node *
 lyd_new_anydata(struct lyd_node *parent, const struct lys_module *module, const char *name,
                 void *value, LYD_ANYDATA_VALUETYPE value_type)
 {
+    FUN_IN;
+
     const struct lys_node *siblings, *snode;
 
     if ((!parent && !module) || !name) {
@@ -1532,6 +1546,8 @@ lyd_new_anydata(struct lyd_node *parent, const struct lys_module *module, const 
 API struct lyd_node *
 lyd_new_yangdata(const struct lys_module *module, const char *name_template, const char *name)
 {
+    FUN_IN;
+
     const struct lys_node *schema = NULL, *snode;
 
     if (!module || !name_template || !name) {
@@ -1557,6 +1573,8 @@ lyd_new_yangdata(const struct lys_module *module, const char *name_template, con
 API struct lyd_node *
 lyd_new_output(struct lyd_node *parent, const struct lys_module *module, const char *name)
 {
+    FUN_IN;
+
     const struct lys_node *snode = NULL, *siblings;
 
     if ((!parent && !module) || !name) {
@@ -1583,6 +1601,8 @@ lyd_new_output(struct lyd_node *parent, const struct lys_module *module, const c
 API struct lyd_node *
 lyd_new_output_leaf(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *val_str)
 {
+    FUN_IN;
+
     const struct lys_node *snode = NULL, *siblings;
 
     if ((!parent && !module) || !name) {
@@ -1609,6 +1629,8 @@ API struct lyd_node *
 lyd_new_output_anydata(struct lyd_node *parent, const struct lys_module *module, const char *name,
                        void *value, LYD_ANYDATA_VALUETYPE value_type)
 {
+    FUN_IN;
+
     const struct lys_node *siblings, *snode;
 
     if ((!parent && !module) || !name) {
@@ -1864,6 +1886,8 @@ API struct lyd_node *
 lyd_new_path(struct lyd_node *data_tree, const struct ly_ctx *ctx, const char *path, void *value,
              LYD_ANYDATA_VALUETYPE value_type, int options)
 {
+    FUN_IN;
+
     char *str;
     const char *mod_name, *name, *val_name, *val, *node_mod_name, *id, *backup_mod_name = NULL, *yang_data_name = NULL;
     struct lyd_node *ret = NULL, *node, *parent = NULL;
@@ -2227,6 +2251,8 @@ lyd_new_path(struct lyd_node *data_tree, const struct ly_ctx *ctx, const char *p
 API unsigned int
 lyd_list_pos(const struct lyd_node *node)
 {
+    FUN_IN;
+
     unsigned int pos;
     struct lys_node *schema;
 
@@ -2971,6 +2997,8 @@ lyd_merge_siblings(struct lyd_node *target, struct lyd_node *source, int options
 API int
 lyd_merge_to_ctx(struct lyd_node **trg, const struct lyd_node *src, int options, struct ly_ctx *ctx)
 {
+    FUN_IN;
+
     struct lyd_node *node = NULL, *node2, *target, *trg_merge_start, *src_merge_start = NULL;
     const struct lyd_node *iter;
     struct lys_node *src_snode, *sch = NULL;
@@ -3231,6 +3259,8 @@ error:
 API int
 lyd_merge(struct lyd_node *target, const struct lyd_node *source, int options)
 {
+    FUN_IN;
+
     if (!target || !source) {
         LOGARG;
         return -1;
@@ -3242,6 +3272,8 @@ lyd_merge(struct lyd_node *target, const struct lyd_node *source, int options)
 API void
 lyd_free_diff(struct lyd_difflist *diff)
 {
+    FUN_IN;
+
     if (diff) {
         free(diff->type);
         free(diff->first);
@@ -3597,6 +3629,8 @@ lyd_diff_init_difflist(struct ly_ctx *ctx, unsigned int *size)
 API struct lyd_difflist *
 lyd_diff(struct lyd_node *first, struct lyd_node *second, int options)
 {
+    FUN_IN;
+
     struct ly_ctx *ctx;
     int rc;
     struct lyd_node *elem1, *elem2, *iter, *aux, *parent = NULL, *next1, *next2;
@@ -4556,6 +4590,8 @@ error:
 API int
 lyd_insert(struct lyd_node *parent, struct lyd_node *node)
 {
+    FUN_IN;
+
     if (!node || !parent || (parent->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
         LOGARG;
         return EXIT_FAILURE;
@@ -4567,6 +4603,8 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node)
 API int
 lyd_insert_sibling(struct lyd_node **sibling, struct lyd_node *node)
 {
+    FUN_IN;
+
     if (!sibling || !node) {
         LOGARG;
         return EXIT_FAILURE;
@@ -4782,6 +4820,8 @@ error:
 API int
 lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node)
 {
+    FUN_IN;
+
     if (!node || !sibling) {
         LOGARG;
         return EXIT_FAILURE;
@@ -4793,6 +4833,8 @@ lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node)
 API int
 lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node)
 {
+    FUN_IN;
+
     if (!node || !sibling) {
         LOGARG;
         return EXIT_FAILURE;
@@ -4869,6 +4911,8 @@ lyd_node_pos_cmp(const void *item1, const void *item2)
 API int
 lyd_schema_sort(struct lyd_node *sibling, int recursive)
 {
+    FUN_IN;
+
     uint32_t len, i;
     struct lyd_node *node;
     struct lys_node *first_ssibling = NULL;
@@ -5135,6 +5179,8 @@ cleanup:
 API int
 lyd_validate(struct lyd_node **node, int options, void *var_arg, ...)
 {
+    FUN_IN;
+
     struct lyd_node *iter, *data_tree = NULL;
     struct lyd_difflist **diff = NULL;
     struct ly_ctx *ctx = NULL;
@@ -5229,6 +5275,8 @@ lyd_validate(struct lyd_node **node, int options, void *var_arg, ...)
 API int
 lyd_validate_modules(struct lyd_node **node, const struct lys_module **modules, int mod_count, int options, ...)
 {
+    FUN_IN;
+
     struct ly_ctx *ctx;
     struct lyd_difflist **diff = NULL;
     va_list ap;
@@ -5272,6 +5320,8 @@ lyd_validate_modules(struct lyd_node **node, const struct lys_module **modules, 
 API int
 lyd_validate_value(struct lys_node *node, const char *value)
 {
+    FUN_IN;
+
     struct lyd_node_leaf_list leaf;
     struct lys_node_leaf *sleaf = (struct lys_node_leaf*)node;
     int ret = EXIT_SUCCESS;
@@ -5433,6 +5483,8 @@ lyd_unlink_internal(struct lyd_node *node, int permanent)
 API int
 lyd_unlink(struct lyd_node *node)
 {
+    FUN_IN;
+
     return lyd_unlink_internal(node, 1);
 }
 
@@ -5670,6 +5722,8 @@ lyd_dup_keys(struct lyd_node *new_list, const struct lyd_node *old_list, struct 
 API struct lyd_node *
 lyd_dup_to_ctx(const struct lyd_node *node, int options, struct ly_ctx *ctx)
 {
+    FUN_IN;
+
     struct ly_ctx *log_ctx;
     struct lys_node *schema;
     const char *yang_data_name;
@@ -5828,6 +5882,8 @@ error:
 API struct lyd_node *
 lyd_dup(const struct lyd_node *node, int options)
 {
+    FUN_IN;
+
     return lyd_dup_to_ctx(node, options, NULL);
 }
 
@@ -5946,6 +6002,8 @@ lyd_dup_withsiblings_to_ctx(const struct lyd_node *node, int options, struct ly_
 API struct lyd_node *
 lyd_dup_withsiblings(const struct lyd_node *node, int options)
 {
+    FUN_IN;
+
     if (!node) {
         return NULL;
     }
@@ -5956,6 +6014,8 @@ lyd_dup_withsiblings(const struct lyd_node *node, int options)
 API void
 lyd_free_attr(struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_attr *attr, int recursive)
 {
+    FUN_IN;
+
     struct lyd_attr *iter;
     struct lys_type **type;
 
@@ -6020,6 +6080,8 @@ lyd_attr_parent(const struct lyd_node *root, struct lyd_attr *attr)
 API struct lyd_attr *
 lyd_insert_attr(struct lyd_node *parent, const struct lys_module *mod, const char *name, const char *value)
 {
+    FUN_IN;
+
     struct lyd_attr *a, *iter;
     struct ly_ctx *ctx;
     const struct lys_module *module;
@@ -6224,6 +6286,8 @@ lyd_free_internal_r(struct lyd_node *node, int top)
 API void
 lyd_free(struct lyd_node *node)
 {
+    FUN_IN;
+
     lyd_free_internal_r(node, 1);
 }
 
@@ -6243,6 +6307,8 @@ lyd_free_withsiblings_r(struct lyd_node *first)
 API void
 lyd_free_withsiblings(struct lyd_node *node)
 {
+    FUN_IN;
+
     struct lyd_node *iter, *aux;
 
     if (!node) {
@@ -6392,6 +6458,8 @@ end:
 API char *
 lyd_path(const struct lyd_node *node)
 {
+    FUN_IN;
+
     char *buf = NULL;
 
     if (!node) {
@@ -6454,6 +6522,8 @@ lyd_build_relative_data_path(const struct lys_module *module, const struct lyd_n
 API struct ly_set *
 lyd_find_path(const struct lyd_node *ctx_node, const char *path)
 {
+    FUN_IN;
+
     struct lyxp_set xp_set;
     struct ly_set *set;
     char *yang_xpath;
@@ -6513,6 +6583,8 @@ lyd_find_path(const struct lyd_node *ctx_node, const char *path)
 API struct ly_set *
 lyd_find_instance(const struct lyd_node *data, const struct lys_node *schema)
 {
+    FUN_IN;
+
     struct ly_set *ret, *ret_aux, *spath;
     const struct lys_node *siter;
     struct lyd_node *iter;
@@ -6599,6 +6671,8 @@ error:
 API struct lyd_node *
 lyd_first_sibling(struct lyd_node *node)
 {
+    FUN_IN;
+
     struct lyd_node *start;
 
     if (!node) {
@@ -6618,6 +6692,8 @@ lyd_first_sibling(struct lyd_node *node)
 API struct ly_set *
 ly_set_new(void)
 {
+    FUN_IN;
+
     struct ly_set *new;
 
     new = calloc(1, sizeof(struct ly_set));
@@ -6628,6 +6704,8 @@ ly_set_new(void)
 API void
 ly_set_free(struct ly_set *set)
 {
+    FUN_IN;
+
     if (!set) {
         return;
     }
@@ -6639,6 +6717,8 @@ ly_set_free(struct ly_set *set)
 API int
 ly_set_contains(const struct ly_set *set, void *node)
 {
+    FUN_IN;
+
     unsigned int i;
 
     if (!set) {
@@ -6659,6 +6739,8 @@ ly_set_contains(const struct ly_set *set, void *node)
 API struct ly_set *
 ly_set_dup(const struct ly_set *set)
 {
+    FUN_IN;
+
     struct ly_set *new;
 
     if (!set) {
@@ -6679,6 +6761,8 @@ ly_set_dup(const struct ly_set *set)
 API int
 ly_set_add(struct ly_set *set, void *node, int options)
 {
+    FUN_IN;
+
     unsigned int i;
     void **new;
 
@@ -6712,6 +6796,8 @@ ly_set_add(struct ly_set *set, void *node, int options)
 API int
 ly_set_merge(struct ly_set *trg, struct ly_set *src, int options)
 {
+    FUN_IN;
+
     unsigned int i, ret;
     void **new;
 
@@ -6757,6 +6843,8 @@ ly_set_merge(struct ly_set *trg, struct ly_set *src, int options)
 API int
 ly_set_rm_index(struct ly_set *set, unsigned int index)
 {
+    FUN_IN;
+
     if (!set || (index + 1) > set->number) {
         LOGARG;
         return EXIT_FAILURE;
@@ -6778,6 +6866,8 @@ ly_set_rm_index(struct ly_set *set, unsigned int index)
 API int
 ly_set_rm(struct ly_set *set, void *node)
 {
+    FUN_IN;
+
     unsigned int i;
 
     if (!set || !node) {
@@ -6803,6 +6893,8 @@ ly_set_rm(struct ly_set *set, void *node)
 API int
 ly_set_clean(struct ly_set *set)
 {
+    FUN_IN;
+
     if (!set) {
         return EXIT_FAILURE;
     }
@@ -6814,6 +6906,8 @@ ly_set_clean(struct ly_set *set)
 API int
 lyd_wd_default(struct lyd_node_leaf_list *node)
 {
+    FUN_IN;
+
     struct lys_node_leaf *leaf;
     struct lys_node_leaflist *llist;
     struct lyd_node *iter;
@@ -6964,6 +7058,8 @@ unres_data_diff_rem(struct unres_data *unres, unsigned int idx)
 API void
 lyd_free_val_diff(struct lyd_difflist *diff)
 {
+    FUN_IN;
+
     uint32_t i;
 
     if (!diff) {
@@ -7805,6 +7901,8 @@ unlink_datatree:
 API struct lys_module *
 lyd_node_module(const struct lyd_node *node)
 {
+    FUN_IN;
+
     if (!node) {
         return NULL;
     }
@@ -7815,6 +7913,8 @@ lyd_node_module(const struct lyd_node *node)
 API double
 lyd_dec64_to_double(const struct lyd_node *node)
 {
+    FUN_IN;
+
     if (!node || !(node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))
             || (((struct lys_node_leaf *)node->schema)->type.base != LY_TYPE_DEC64)) {
         LOGARG;
@@ -7827,6 +7927,8 @@ lyd_dec64_to_double(const struct lyd_node *node)
 API const struct lys_type *
 lyd_leaf_type(const struct lyd_node_leaf_list *leaf)
 {
+    FUN_IN;
+
     struct lys_type *type;
 
     if (!leaf || !(leaf->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
@@ -7862,6 +7964,8 @@ lyd_leaf_type(const struct lyd_node_leaf_list *leaf)
 API void *
 lyd_set_private(const struct lyd_node *node, void *priv)
 {
+    FUN_IN;
+
     void *prev;
 
     if (!node) {

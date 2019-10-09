@@ -263,6 +263,9 @@ ly_log_dbg(int group, const char *format, ...)
     case LY_LDGDIFF:
         str_group = "DIFF";
         break;
+    case LY_LDGAPI:
+        str_group = "API";
+        break;
     default:
         LOGINT(NULL);
         return;

@@ -144,6 +144,8 @@ dict_hash_multi(uint32_t hash, const char *key_part, size_t len)
 API void
 lydict_remove(struct ly_ctx *ctx, const char *value)
 {
+    FUN_IN;
+
     size_t len;
     int ret;
     uint32_t hash;
@@ -233,6 +235,8 @@ dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zerocopy)
 API const char *
 lydict_insert(struct ly_ctx *ctx, const char *value, size_t len)
 {
+    FUN_IN;
+
     const char *result;
 
     if (!value) {
@@ -253,6 +257,8 @@ lydict_insert(struct ly_ctx *ctx, const char *value, size_t len)
 API const char *
 lydict_insert_zc(struct ly_ctx *ctx, char *value)
 {
+    FUN_IN;
+
     const char *result;
 
     if (!value) {

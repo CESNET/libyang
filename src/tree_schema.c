@@ -47,6 +47,8 @@ static int lys_type_dup(struct lys_module *mod, struct lys_node *parent, struct 
 API const struct lys_node_list *
 lys_is_key(const struct lys_node_leaf *node, uint8_t *index)
 {
+    FUN_IN;
+
     struct lys_node *parent = (struct lys_node *)node;
     struct lys_node_list *list;
     uint8_t i;
@@ -78,6 +80,8 @@ lys_is_key(const struct lys_node_leaf *node, uint8_t *index)
 API const struct lys_node *
 lys_is_disabled(const struct lys_node *node, int recursive)
 {
+    FUN_IN;
+
     int i;
 
     if (!node) {
@@ -128,6 +132,8 @@ check:
 API const struct lys_type *
 lys_getnext_union_type(const struct lys_type *last, const struct lys_type *type)
 {
+    FUN_IN;
+
     int found = 0;
 
     if (!type || (type->base != LY_TYPE_UNION)) {
@@ -249,6 +255,8 @@ lys_getnext_data(const struct lys_module *mod, const struct lys_node *parent, co
 API const struct lys_node *
 lys_getnext(const struct lys_node *last, const struct lys_node *parent, const struct lys_module *module, int options)
 {
+    FUN_IN;
+
     const struct lys_node *next, *aug_parent;
     struct lys_node **snode;
 
@@ -1078,6 +1086,8 @@ lys_parse_mem_(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const 
 API const struct lys_module *
 lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
 {
+    FUN_IN;
+
     return lys_parse_mem_(ctx, data, format, NULL, 0, 1);
 }
 
@@ -1123,6 +1133,8 @@ lys_sub_parse_mem(struct lys_module *module, const char *data, LYS_INFORMAT form
 API const struct lys_module *
 lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format)
 {
+    FUN_IN;
+
     int fd;
     const struct lys_module *ret;
     const char *rev, *dot, *filename;
@@ -1187,6 +1199,8 @@ lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format)
 API const struct lys_module *
 lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
 {
+    FUN_IN;
+
     return lys_parse_fd_(ctx, fd, format, NULL, 1);
 }
 
@@ -1289,6 +1303,8 @@ lys_sub_parse_fd(struct lys_module *module, int fd, LYS_INFORMAT format, struct 
 API int
 lys_search_localfile(const char * const *searchpaths, int cwd, const char *name, const char *revision, char **localfile, LYS_INFORMAT *format)
 {
+    FUN_IN;
+
     size_t len, flen, match_len = 0, dir_len;
     int i, implicit_cwd = 0, ret = EXIT_FAILURE;
     char *wd, *wn = NULL;
@@ -1647,6 +1663,8 @@ API void
 lys_iffeature_free(struct ly_ctx *ctx, struct lys_iffeature *iffeature, uint8_t iffeature_size,
                    int shallow, void (*private_destructor)(const struct lys_node *node, void *priv))
 {
+    FUN_IN;
+
     uint8_t i;
 
     for (i = 0; i < iffeature_size; ++i) {
@@ -1937,6 +1955,8 @@ lys_copy_union_leafrefs(struct lys_module *mod, struct lys_node *parent, struct 
 API const void *
 lys_ext_instance_substmt(const struct lys_ext_instance *ext)
 {
+    FUN_IN;
+
     if (!ext) {
         return NULL;
     }
@@ -2849,6 +2869,8 @@ lys_node_free(struct lys_node *node, void (*private_destructor)(const struct lys
 API struct lys_module *
 lys_implemented_module(const struct lys_module *mod)
 {
+    FUN_IN;
+
     struct ly_ctx *ctx;
     int i;
 
@@ -3942,18 +3964,24 @@ lys_features_change(const struct lys_module *module, const char *name, int op)
 API int
 lys_features_enable(const struct lys_module *module, const char *feature)
 {
+    FUN_IN;
+
     return lys_features_change(module, feature, 1);
 }
 
 API int
 lys_features_disable(const struct lys_module *module, const char *feature)
 {
+    FUN_IN;
+
     return lys_features_change(module, feature, 0);
 }
 
 API int
 lys_features_state(const struct lys_module *module, const char *feature)
 {
+    FUN_IN;
+
     int i, j;
 
     if (!module || !feature) {
@@ -3992,6 +4020,8 @@ lys_features_state(const struct lys_module *module, const char *feature)
 API const char **
 lys_features_list(const struct lys_module *module, uint8_t **states)
 {
+    FUN_IN;
+
     const char **result = NULL;
     int i, j;
     unsigned int count;
@@ -4050,6 +4080,8 @@ lys_features_list(const struct lys_module *module, uint8_t **states)
 API struct lys_module *
 lys_node_module(const struct lys_node *node)
 {
+    FUN_IN;
+
     if (!node) {
         return NULL;
     }
@@ -4060,6 +4092,8 @@ lys_node_module(const struct lys_node *node)
 API struct lys_module *
 lys_main_module(const struct lys_module *module)
 {
+    FUN_IN;
+
     if (!module) {
         return NULL;
     }
@@ -4070,6 +4104,8 @@ lys_main_module(const struct lys_module *module)
 API struct lys_node *
 lys_parent(const struct lys_node *node)
 {
+    FUN_IN;
+
     struct lys_node *parent;
 
     if (!node) {
@@ -4116,6 +4152,8 @@ lys_child(const struct lys_node *node, LYS_NODE nodetype)
 API void *
 lys_set_private(const struct lys_node *node, void *priv)
 {
+    FUN_IN;
+
     void *prev;
 
     if (!node) {
@@ -4230,6 +4268,8 @@ lys_data_path_reverse(const struct lys_node *node, char * const buf, uint32_t bu
 API struct ly_set *
 lys_xpath_atomize(const struct lys_node *ctx_node, enum lyxp_node_type ctx_node_type, const char *expr, int options)
 {
+    FUN_IN;
+
     struct lyxp_set set;
     const struct lys_node *parent;
     struct ly_set *ret_set;
@@ -4293,6 +4333,8 @@ lys_xpath_atomize(const struct lys_node *ctx_node, enum lyxp_node_type ctx_node_
 API struct ly_set *
 lys_node_xpath_atomize(const struct lys_node *node, int options)
 {
+    FUN_IN;
+
     const struct lys_node *next, *elem, *parent, *tmp;
     struct lyxp_set set;
     struct ly_set *ret_set;
@@ -4980,6 +5022,8 @@ nextsibling:
 API int
 lys_set_implemented(const struct lys_module *module)
 {
+    FUN_IN;
+
     struct unres_schema *unres;
     int disabled = 0;
 
@@ -5054,6 +5098,8 @@ lys_submodule_module_data_free(struct lys_submodule *submodule)
 API char *
 lys_path(const struct lys_node *node, int options)
 {
+    FUN_IN;
+
     char *buf = NULL;
 
     if (!node) {
@@ -5071,6 +5117,8 @@ lys_path(const struct lys_node *node, int options)
 API char *
 lys_data_path(const struct lys_node *node)
 {
+    FUN_IN;
+
     char *result = NULL, buf[1024];
     const char *separator, *name;
     int i, used;
@@ -5190,6 +5238,8 @@ lys_getnext_target_aug(struct lys_node_augment *last, const struct lys_module *m
 API struct ly_set *
 lys_find_path(const struct lys_module *cur_module, const struct lys_node *cur_node, const char *path)
 {
+    FUN_IN;
+
     struct ly_set *ret;
     int rc;
 

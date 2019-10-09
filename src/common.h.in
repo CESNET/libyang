@@ -127,6 +127,8 @@ void ly_log_dbg(int group, const char *format, ...);
 
 #endif
 
+#define FUN_IN LOGDBG(LY_LDGAPI, "%s", __func__);
+
 #define LOGMEM(ctx) LOGERR(ctx, LY_EMEM, "Memory allocation failed (%s()).", __func__)
 
 #define LOGINT(ctx) LOGERR(ctx, LY_EINT, "Internal error (%s:%d).", __FILE__, __LINE__)

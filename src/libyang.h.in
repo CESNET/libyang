@@ -1915,6 +1915,7 @@ int ly_log_options(int opts);
 #define LY_LDGYIN   0x04 /**< YIN parser messages. */
 #define LY_LDGXPATH 0x08 /**< XPath parsing end evaluation. */
 #define LY_LDGDIFF  0x10 /**< Diff processing and creation. */
+#define LY_LDGAPI   0x20 /**< API tracing. */
 
 /**
  * @}

@@ -52,12 +52,16 @@ static uint32_t plugin_refs;
 API const char * const *
 ly_get_loaded_plugins(void)
 {
+    FUN_IN;
+
     return (const char * const *)loaded_plugins;
 }
 
 API int
 ly_clean_plugins(void)
 {
+    FUN_IN;
+
     unsigned int u;
     int ret = EXIT_SUCCESS;
 
@@ -165,6 +169,8 @@ lytype_load_plugin(void *dlhandler, const char *file_name)
 API int
 ly_register_types(struct lytype_plugin_list *plugin, const char *log_name)
 {
+    FUN_IN;
+
     struct lytype_plugin_list *p;
     uint32_t u, v;
 
@@ -228,6 +234,8 @@ lyext_load_plugin(void *dlhandler, const char *file_name)
 API int
 ly_register_exts(struct lyext_plugin_list *plugin, const char *log_name)
 {
+    FUN_IN;
+
     struct lyext_plugin_list *p;
     struct lyext_plugin_complex *pluginc;
     uint32_t u, v;
@@ -378,6 +386,8 @@ ly_load_plugins_dir(DIR *dir, const char *dir_path, int ext_or_type)
 API void
 ly_load_plugins(void)
 {
+    FUN_IN;
+
     DIR* dir;
     const char *pluginsdir;
 
@@ -462,6 +472,8 @@ ext_get_plugin(const char *name, const char *module, const char *revision)
 API int
 lys_ext_instance_presence(struct lys_ext *def, struct lys_ext_instance **ext, uint8_t ext_size)
 {
+    FUN_IN;
+
     uint8_t index;
 
     if (!def || (ext_size && !ext)) {
@@ -492,6 +504,8 @@ lys_ext_instance_presence(struct lys_ext *def, struct lys_ext_instance **ext, ui
 API void *
 lys_ext_complex_get_substmt(LY_STMT stmt, struct lys_ext_instance_complex *ext, struct lyext_substmt **info)
 {
+    FUN_IN;
+
     int i;
 
     if (!ext || !ext->def || !ext->def->plugin || ext->def->plugin->type != LYEXT_COMPLEX) {
