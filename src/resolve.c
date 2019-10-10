@@ -4752,10 +4752,11 @@ static int
 resolve_augment(struct lys_node_augment *aug, struct lys_node *uses, struct unres_schema *unres)
 {
     int rc;
-    struct lys_node *sub;
+    struct lys_node *sub, *next;
     struct lys_module *mod;
     struct ly_set *set;
     struct ly_ctx *ctx;
+    struct lys_node_case *c;
 
     assert(aug);
     mod = lys_main_module(aug->module);
@@ -4837,6 +4838,41 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *uses, struct unre
     LY_TREE_FOR(aug->child, sub) {
         if (lys_check_id(sub, aug->target, NULL)) {
             return -1;
+        }
+    }
+
+    if (aug->target->nodetype == LYS_CHOICE) {
+        /* in the case of implicit cases, we have to create the nodes representing them
+         * to serve as a target of the augments, they won't be printed, but they are expected in the tree */
+        LY_TREE_FOR_SAFE(aug->child, next, sub) {
+            if (sub->nodetype == LYS_CASE) {
+                /* explicit case */
+                continue;
+            }
+
+            c = calloc(1, sizeof *c);
+            LY_CHECK_ERR_RETURN(!c, LOGMEM(ctx), EXIT_FAILURE);
+            c->name = lydict_insert(ctx, sub->name, 0);
+            c->flags = LYS_IMPLICIT | (sub->flags & LYS_CONFIG_MASK);
+            c->module = sub->module;
+            c->nodetype = LYS_CASE;
+            c->parent = sub->parent;
+            c->prev = sub->prev != sub ? sub->prev : (struct lys_node*)c;
+            if (c->prev->next) {
+                c->prev->next = (struct lys_node*)c;
+            } else {
+                c->parent->child = (struct lys_node*)c;
+            }
+            c->next = sub->next;
+            if (c->next) {
+                c->next->prev = (struct lys_node*)c;
+            } else {
+                c->parent->child->prev = (struct lys_node*)c;
+            }
+            c->child = sub;
+            sub->prev = sub;
+            sub->next = NULL;
+            sub->parent = (struct lys_node*)c;
         }
     }
 
