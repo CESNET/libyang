@@ -3167,7 +3167,7 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
                 /* there is something to duplicate */
 
                 /* duplicate compiled expression */
-                size = (size1 / 4) + (size1 % 4) ? 1 : 0;
+                size = (size1 / 4) + ((size1 % 4) ? 1 : 0);
                 retval->iffeature[i].expr = malloc(size * sizeof *retval->iffeature[i].expr);
                 LY_CHECK_ERR_GOTO(!retval->iffeature[i].expr, LOGMEM(ctx), error);
                 memcpy(retval->iffeature[i].expr, node->iffeature[i].expr, size * sizeof *retval->iffeature[i].expr);
