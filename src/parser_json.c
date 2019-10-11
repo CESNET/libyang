@@ -773,6 +773,83 @@ error:
     return -1;
 }
 
+/**
+ * @brief Skip subtree (find its end in the input data) of the current JSON item.
+ * @param[in] ctx libyang context for logging
+ * @param[in] parent parent node for logging
+ * @param[in] data input data (pointing to the beginning, @p len is used to go to the current position).
+ * @param[in, out] len Current position in the @p data, will be updated to the end of the element's subtree in the @p data
+ * @retun 0 on success
+ * @return -1 on error.
+ */
+static int
+json_skip_unknown(struct ly_ctx *ctx, struct lyd_node *parent, const char *data, unsigned int *len)
+{
+    int qstr = 0;
+    int objects = 0;
+    int arrays = 0;
+
+    while (data[*len]) {
+        switch (data[*len]) {
+        case '\"':
+            if (qstr) {
+                if (data[(*len) - 1] != '\\')  {
+                    qstr = 0;
+                }
+            } else if (data[(*len) - 1] != '\\') {
+                qstr = 1;
+            } else {
+                LOGVAL(ctx, LYE_INVAL, LY_VLOG_LYD, parent, "JSON data (missing quotation mark for a string data) ");
+                return -1;
+            }
+            break;
+        case '[':
+            if (!qstr) {
+                arrays++;
+            }
+            break;
+        case '{':
+            if (!qstr) {
+                objects++;
+            }
+            break;
+        case ']':
+            if (!qstr) {
+                arrays--;
+            }
+            break;
+        case '}':
+            if (!qstr) {
+                objects--;
+            }
+            break;
+        case ',':
+            if (!qstr && !objects && !arrays) {
+                /* do not eat the comma character */
+                return 0;
+            }
+        }
+
+        if (objects < 0) {
+            if (arrays) {
+                LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_LYD, parent, "JSON data (missing end-array)");
+                return -1;
+            }
+            return 0;
+        }
+        if (arrays < 0) {
+            if (objects) {
+                LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_LYD, parent, "JSON data (missing end-object)");
+                return -1;
+            }
+            return 0;
+        }
+        (*len)++;
+    }
+
+    return 0;
+}
+
 static unsigned int
 json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *schema_parent, struct lyd_node **parent,
                 struct lyd_node *first_sibling, struct lyd_node *prev, struct attr_cont **attrs, int options,
@@ -943,8 +1020,16 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
 
     module = lys_node_module(schema);
     if (!module || !module->implemented || module->disabled) {
-        LOGVAL(ctx, LYE_INELEM, (*parent ? LY_VLOG_LYD : LY_VLOG_NONE), (*parent), name);
-        goto error;
+        if (options & LYD_OPT_STRICT) {
+            LOGVAL(ctx, LYE_INELEM, (*parent ? LY_VLOG_LYD : LY_VLOG_NONE), (*parent), name);
+            goto error;
+        } else {
+            if (json_skip_unknown(ctx, *parent, data, &len)) {
+                goto error;
+            }
+            free(str);
+            return len;
+        }
     }
 
     if (str[0] == '@') {
