@@ -1326,17 +1326,14 @@ lyd_wd_update_parents(struct lyd_node *node)
     }
 }
 
-/* op - 0 add, 1 del, 2 mod (add + del) */
 static void
-check_leaf_list_backlinks(struct lyd_node *node, int op)
+check_leaf_list_backlinks(struct lyd_node *node)
 {
     struct lyd_node *next, *iter;
     struct lyd_node_leaf_list *leaf_list;
     struct ly_set *set, *data;
     uint32_t i, j;
     int validity_changed = 0;
-
-    assert((op == 0) || (op == 1) || (op == 2));
 
     /* fix leafrefs */
     LY_TREE_DFS_BEGIN(node, next, iter) {
@@ -1347,17 +1344,14 @@ check_leaf_list_backlinks(struct lyd_node *node, int op)
                 data = lyd_find_instance(iter, set->set.s[i]);
                 if (data) {
                     for (j = 0; j < data->number; j++) {
+                        /* invalidate the leafref, a change concerning it happened */
                         leaf_list = (struct lyd_node_leaf_list *)data->set.d[j];
-                        if (((op != 0) && (leaf_list->value_type == LY_TYPE_LEAFREF) && (leaf_list->value.leafref == iter))
-                                || ((op != 1) && (leaf_list->value_flags & LY_VALUE_UNRES))) {
-                            /* invalidate the leafref, a change concerning it happened */
-                            leaf_list->validity |= LYD_VAL_LEAFREF;
-                            validity_changed = 1;
-                            if (leaf_list->value_type == LY_TYPE_LEAFREF) {
-                                /* remove invalid link and put unresolved value back */
-                                lyp_parse_value(&((struct lys_node_leaf *)leaf_list->schema)->type, &leaf_list->value_str,
-                                                NULL, leaf_list, NULL, NULL, 1, leaf_list->dflt, 0);
-                            }
+                        leaf_list->validity |= LYD_VAL_LEAFREF;
+                        validity_changed = 1;
+                        if (leaf_list->value_type == LY_TYPE_LEAFREF) {
+                            /* remove invalid link and put unresolved value back */
+                            lyp_parse_value(&((struct lys_node_leaf *)leaf_list->schema)->type, &leaf_list->value_str,
+                                            NULL, leaf_list, NULL, NULL, 1, leaf_list->dflt, 0);
                         }
                     }
                     ly_set_free(data);
@@ -1425,7 +1419,7 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
         leaf->validity = ly_new_node_validity(leaf->schema);
 
         /* check possible leafref backlinks */
-        check_leaf_list_backlinks((struct lyd_node *)leaf, 2);
+        check_leaf_list_backlinks((struct lyd_node *)leaf);
     }
 
     if (val_change && (leaf->schema->flags & LYS_UNIQUE)) {
@@ -2520,7 +2514,7 @@ lyd_merge_node_update(struct lyd_node *target, struct lyd_node *source)
             }
             trg_leaf->dflt = src_leaf->dflt;
 
-            check_leaf_list_backlinks(target, 2);
+            check_leaf_list_backlinks(target);
         } else { /* ANYDATA */
             trg_any = (struct lyd_node_anydata *)target;
             src_any = (struct lyd_node_anydata *)source;
@@ -2601,7 +2595,7 @@ lyd_merge_node_update(struct lyd_node *target, struct lyd_node *source)
                 break;
             }
 
-            check_leaf_list_backlinks(target, 2);
+            check_leaf_list_backlinks(target);
         } else { /* ANYDATA */
             trg_any = (struct lyd_node_anydata *)target;
             src_any = (struct lyd_node_anydata *)source;
@@ -3166,7 +3160,7 @@ lyd_merge_to_ctx(struct lyd_node **trg, const struct lyd_node *src, int options,
     /* process source according to options */
     if (options & LYD_OPT_DESTRUCT) {
         LY_TREE_FOR(src, iter) {
-            check_leaf_list_backlinks((struct lyd_node *)iter, 2);
+            check_leaf_list_backlinks((struct lyd_node *)iter);
             if (options & LYD_OPT_NOSIBLINGS) {
                 break;
             }
@@ -4561,7 +4555,7 @@ lyd_insert_common(struct lyd_node *parent, struct lyd_node **sibling, struct lyd
 #endif
 
         if (invalidate) {
-            check_leaf_list_backlinks(ins, 0);
+            check_leaf_list_backlinks(ins);
         }
 
         if (invalid) {
@@ -4794,7 +4788,7 @@ lyd_insert_nextto(struct lyd_node *sibling, struct lyd_node *node, int before, i
 
     if (invalidate) {
         LY_TREE_FOR(node, next1) {
-            check_leaf_list_backlinks(next1, 0);
+            check_leaf_list_backlinks(next1);
             if (next1 == last) {
                 break;
             }
@@ -5434,7 +5428,7 @@ lyd_unlink_internal(struct lyd_node *node, int permanent)
     }
 
     if (permanent) {
-        check_leaf_list_backlinks(node, 1);
+        check_leaf_list_backlinks(node);
     }
 
     /* unlink from siblings */
