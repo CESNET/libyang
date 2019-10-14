@@ -4268,7 +4268,7 @@ nextsibling:
 }
 
 static void
-lyd_replace(struct lyd_node *orig, struct lyd_node *repl, int destroy)
+lyd_replace(struct lyd_node *orig, struct lyd_node *repl)
 {
     struct lyd_node *iter, *last;
 
@@ -4284,18 +4284,15 @@ lyd_replace(struct lyd_node *orig, struct lyd_node *repl, int destroy)
         last = repl;
     } else {
         /* get the last node of a possible list of nodes to be inserted */
-        for(last = repl; last->next; last = last->next) {
+        for (last = repl; last->next; last = last->next) {
             /* part of the parent changes */
             last->parent = orig->parent;
         }
     }
 
     /* parent */
-    if (orig->parent) {
-        if (orig->parent->child == orig) {
-            orig->parent->child = repl;
-        }
-        orig->parent = NULL;
+    if (orig->parent && (orig->parent->child == orig)) {
+        orig->parent->child = repl;
     }
 
     /* predecessor */
@@ -4327,9 +4324,7 @@ lyd_replace(struct lyd_node *orig, struct lyd_node *repl, int destroy)
 
 finish:
     /* remove the old one */
-    if (destroy) {
-        lyd_free(orig);
-    }
+    lyd_free(orig);
 }
 
 int
@@ -4474,7 +4469,7 @@ lyd_insert_common(struct lyd_node *parent, struct lyd_node **sibling, struct lyd
                 if (iter->schema == ins->schema) {
                     if (ins->dflt || iter->dflt) {
                         /* replace existing (either explicit or default) node with the new (either explicit or default) node */
-                        lyd_replace(iter, ins, 1);
+                        lyd_replace(iter, ins);
                     } else {
                         /* keep both explicit nodes, let the caller solve it later */
                         iter = NULL;
