@@ -5725,6 +5725,11 @@ lyd_dup_to_ctx(const struct lyd_node *node, int options, struct ly_ctx *ctx)
         return NULL;
     }
 
+    /* fix options */
+    if ((options & LYD_DUP_OPT_RECURSIVE) && (options & LYD_DUP_OPT_WITH_KEYS)) {
+        options &= ~LYD_DUP_OPT_WITH_KEYS;
+    }
+
     log_ctx = (ctx ? ctx : node->schema->module->ctx);
     if (ctx == node->schema->module->ctx) {
         /* target context is actually the same as the source context,
