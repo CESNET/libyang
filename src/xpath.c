@@ -2118,7 +2118,7 @@ reparse_function_call(struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *exp_i
     case 6:
         if (!strncmp(&exp->expr[exp->expr_pos[*exp_idx]], "concat", 6)) {
             min_arg_count = 2;
-            max_arg_count = 3;
+            max_arg_count = INT_MAX;
         } else if (!strncmp(&exp->expr[exp->expr_pos[*exp_idx]], "number", 6)) {
             min_arg_count = 0;
             max_arg_count = 1;
