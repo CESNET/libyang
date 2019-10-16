@@ -439,7 +439,7 @@ cast_string_recursive(struct lyd_node *node, struct lys_module *local_mod, int f
                 }
                 break;
             case LYD_ANYDATA_XML:
-                if (lyxml_print_mem(&buf, any->value.xml, LYXML_PRINT_SIBLINGS)) {
+                if (!lyxml_print_mem(&buf, any->value.xml, LYXML_PRINT_SIBLINGS)) {
                     return -1;
                 }
                 break;
