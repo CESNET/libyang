@@ -127,6 +127,15 @@ ly_print(struct lyout *out, const char *format, ...)
     case LYOUT_CALLBACK:
         count = vasprintf(&msg, format, ap);
         count = out->method.clb.f(out->method.clb.arg, msg, count);
+        if (count >= 0) {
+            /*
+             * Depending on what the callback function does, errno might
+             * contain non-zero values that are not real "errors" (EAGAIN or
+             * EINTR). Reset errno if the callback returns a zero or positive
+             * value.
+             */
+            errno = 0;
+        }
         free(msg);
         break;
     }
