@@ -44,7 +44,11 @@ BuildRequires:  libcmocka-devel
 %if 0%{?suse_version} + 0%{?fedora} > 0
 BuildRequires:  python3-devel
 %else
+%if 0%{?rhel} && 0%{?rhel} > 7
+BuildRequires:  python36-devel
+%else
 BuildRequires:  python34-devel
+%endif
 %endif
 %endif
 
