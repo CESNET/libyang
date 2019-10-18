@@ -2,20 +2,30 @@ language: c
 
 matrix:
   include:
-    - os: linux
+    - arch:
+        - amd64
+        - arm64
+      os: linux
       dist: trusty
       sudo: required
       compiler: clang
-    - os: linux
+    - arch:
+        - amd64
+        - arm64
+      os: linux
       dist: trusty
       sudo: required
       compiler: gcc
-    - os: linux
+    - arch:
+        - amd64
+        - arm64
+      os: linux
       dist: trusty
       sudo: required
       compiler: gcc
       env: ENABLE_STATIC=ON
-    - os: osx
+    - arch: amd64
+      os: osx
       compiler: gcc
   allow_failures:
     - os: osx
