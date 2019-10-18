@@ -607,12 +607,13 @@ struct lys_module *lys_parse_path_(struct ly_ctx *ctx, const char *path, LYS_INF
  * @param[in] revision Optional revision of the (sub)module to load, if NULL the newest revision is being loaded.
  * @param[in] implement Flag if the (sub)module is supposed to be marked as implemented.
  * @param[in] main_ctx Parser context of the main module in case of loading submodule.
+ * @param[in] main_name Main module name in case of loading submodule.
  * @param[out] result Parsed YANG schema tree of the requested module (struct lys_module*) or submodule (struct lysp_submodule*).
  * If it is a module, it is already in the context!
  * @return LY_ERR value, in case of LY_SUCCESS, the \arg result is always provided.
  */
-LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, int implement, struct lys_parser_ctx *main_ctx,
-                            void **result);
+LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, int implement,
+                            struct lys_parser_ctx *main_ctx, const char *main_name, void **result);
 
 /**
  * @brief Create pre-compiled features array.

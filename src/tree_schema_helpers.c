@@ -748,8 +748,8 @@ lysp_load_module_check(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_
 }
 
 LY_ERR
-lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, int implement, struct lys_parser_ctx *main_ctx,
-                     void **result)
+lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, int implement,
+                     struct lys_parser_ctx *main_ctx, const char *main_name, void **result)
 {
     int fd;
     char *filepath = NULL;
@@ -776,6 +776,7 @@ lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision,
     check_data.name = name;
     check_data.revision = revision;
     check_data.path = filepath;
+    check_data.submoduleof = main_name;
     mod = lys_parse_fd_(ctx, fd, format, implement, main_ctx,
                         lysp_load_module_check, &check_data);
     close(fd);
@@ -874,7 +875,7 @@ search_clb:
 search_file:
             if (!(ctx->flags & LY_CTX_DISABLE_SEARCHDIRS)) {
                 /* module was not received from the callback or there is no callback set */
-                lys_module_localfile(ctx, name, revision, implement, NULL, (void **)mod);
+                lys_module_localfile(ctx, name, revision, implement, NULL, NULL, (void **)mod);
             }
             if (!(*mod) && (ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
                 goto search_clb;
@@ -989,7 +990,7 @@ search_clb:
 search_file:
         if (!(ctx->ctx->flags & LY_CTX_DISABLE_SEARCHDIRS)) {
             /* submodule was not received from the callback or there is no callback set */
-            lys_module_localfile(ctx->ctx, inc->name, inc->rev[0] ? inc->rev : NULL, 0, ctx, (void**)&submod);
+            lys_module_localfile(ctx->ctx, inc->name, inc->rev[0] ? inc->rev : NULL, 0, ctx, mod->mod->name, (void**)&submod);
         }
         if (!submod && (ctx->ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
             goto search_clb;
