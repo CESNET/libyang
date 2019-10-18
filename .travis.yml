@@ -44,7 +44,7 @@ before_install:
   - cmake .. && make -j2 && sudo make install
   - cd ../..
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew update; fi
-  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo apt-get update -qq; sudo apt-get install -y valgrind osc libpcre3-dev python-dev; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo apt-get update -qq; sudo apt-get install -y valgrind osc libpcre3-dev python3-dev; fi
   - if [ "$TRAVIS_OS_NAME" = "linux" -a "$TRAVIS_ARCH" = "amd64" ]; then sudo dpkg -i ./swig/swig3.0_3.0.12-1.2_amd64.deb; sudo dpkg -i ./swig/swig_3.0.12-1_amd64.deb; fi
   - if [ "$TRAVIS_OS_NAME" = "linux" -a "$TRAVIS_ARCH" = "arm64" ]; then sudo dpkg -i ./swig/swig3.0_3.0.12-2_arm64.deb; sudo dpkg -i ./swig/swig_3.0.12-2_arm64.deb; fi
   - if [ "$TRAVIS_OS_NAME" = "linux" -a "$CC" = "gcc" ]; then pip install --user codecov; export CFLAGS="-coverage"; fi
