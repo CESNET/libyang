@@ -4,25 +4,25 @@ matrix:
   include:
     - arch: amd64
       os: linux
-      dist: trusty
+      dist: bionic
       sudo: required
       compiler: clang
       env: TRAVIS_ARCH="amd64"
     - arch: amd64
       os: linux
-      dist: trusty
+      dist: bionic
       sudo: required
       compiler: gcc
       env: TRAVIS_ARCH="amd64"
     - arch: arm64
       os: linux
-      dist: trusty
+      dist: bionic
       sudo: required
       compiler: gcc
       env: TRAVIS_ARCH="arm64"
     - arch: amd64
       os: linux
-      dist: trusty
+      dist: bionic
       sudo: required
       compiler: gcc
       env: TRAVIS_ARCH="amd64" ENABLE_STATIC=ON
@@ -44,9 +44,7 @@ before_install:
   - cmake .. && make -j2 && sudo make install
   - cd ../..
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew update; fi
-  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo apt-get update -qq; sudo apt-get install -y valgrind osc libpcre3-dev python3-dev; fi
-  - if [ "$TRAVIS_OS_NAME" = "linux" -a "$TRAVIS_ARCH" = "amd64" ]; then sudo dpkg -i ./swig/swig3.0_3.0.12-1.2_amd64.deb; sudo dpkg -i ./swig/swig_3.0.12-1_amd64.deb; fi
-  - if [ "$TRAVIS_OS_NAME" = "linux" -a "$TRAVIS_ARCH" = "arm64" ]; then sudo dpkg -i ./swig/swig3.0_3.0.12-2_arm64.deb; sudo dpkg -i ./swig/swig_3.0.12-2_arm64.deb; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo apt-get update -qq; sudo apt-get install -y valgrind; fi
   - if [ "$TRAVIS_OS_NAME" = "linux" -a "$CC" = "gcc" ]; then pip install --user codecov; export CFLAGS="-coverage"; fi
 
 script:

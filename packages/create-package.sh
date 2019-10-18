@@ -3,6 +3,10 @@
 if [ "$TRAVIS_PULL_REQUEST" == "true" -o "$TRAVIS_EVENT_TYPE" != "cron" ] ; then
     exit 0
 fi
+
+#install OSC
+sudo apt-get install -y osc
+
 # check osb_user and osb_pass
 if [ -z "${osb_user}" -o -z "${osb_pass}" ]; then
     exit 0
