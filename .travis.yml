@@ -2,23 +2,22 @@ language: c
 
 matrix:
   include:
-    - arch:
-        - amd64
-        - arm64
+    - arch: amd64
       os: linux
       dist: trusty
       sudo: required
       compiler: clang
-    - arch:
-        - amd64
-        - arm64
+    - arch: amd64
       os: linux
       dist: trusty
       sudo: required
       compiler: gcc
-    - arch:
-        - amd64
-        - arm64
+    - arch: arm64
+      os: linux
+      dist: trusty
+      sudo: required
+      compiler: gcc
+    - arch: amd64
       os: linux
       dist: trusty
       sudo: required
