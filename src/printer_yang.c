@@ -2021,10 +2021,11 @@ yprc_node(struct ypr_ctx *ctx, const struct lysc_node *node)
 static void
 yprp_deviation(struct ypr_ctx *ctx, const struct lysp_deviation *deviation)
 {
-    unsigned int u, v;
+    unsigned int v;
     struct lysp_deviate_add *add;
     struct lysp_deviate_rpl *rpl;
     struct lysp_deviate_del *del;
+    struct lysp_deviate *elem;
 
     ly_print(ctx->out, "%*sdeviation \"%s\" {\n", INDENT, deviation->nodeid);
     LEVEL++;
@@ -2033,20 +2034,20 @@ yprp_deviation(struct ypr_ctx *ctx, const struct lysp_deviation *deviation)
     ypr_description(ctx, deviation->dsc, deviation->exts, NULL);
     ypr_reference(ctx, deviation->ref, deviation->exts, NULL);
 
-    LY_ARRAY_FOR(deviation->deviates, u) {
+    LY_LIST_FOR(deviation->deviates, elem) {
         ly_print(ctx->out, "%*sdeviate ", INDENT);
-        if (deviation->deviates[u].mod == LYS_DEV_NOT_SUPPORTED) {
-            if (deviation->deviates[u].exts) {
+        if (elem->mod == LYS_DEV_NOT_SUPPORTED) {
+            if (elem->exts) {
                 ly_print(ctx->out, "not-supported {\n");
                 LEVEL++;
 
-                yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, deviation->deviates[u].exts, NULL, 0);
+                yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, elem->exts, NULL, 0);
             } else {
                 ly_print(ctx->out, "not-supported;\n");
                 continue;
             }
-        } else if (deviation->deviates[u].mod == LYS_DEV_ADD) {
-            add = (struct lysp_deviate_add*)&deviation->deviates[u];
+        } else if (elem->mod == LYS_DEV_ADD) {
+            add = (struct lysp_deviate_add*)elem;
             ly_print(ctx->out, "add {\n");
             LEVEL++;
 
@@ -2073,8 +2074,8 @@ yprp_deviation(struct ypr_ctx *ctx, const struct lysp_deviation *deviation)
                     ypr_substmt(ctx, LYEXT_SUBSTMT_MAX, 0, "unbounded", add->exts);
                 }
             }
-        } else if (deviation->deviates[u].mod == LYS_DEV_REPLACE) {
-            rpl = (struct lysp_deviate_rpl*)&deviation->deviates[u];
+        } else if (elem->mod == LYS_DEV_REPLACE) {
+            rpl = (struct lysp_deviate_rpl*)elem;
             ly_print(ctx->out, "replace {\n");
             LEVEL++;
 
@@ -2096,8 +2097,8 @@ yprp_deviation(struct ypr_ctx *ctx, const struct lysp_deviation *deviation)
                     ypr_substmt(ctx, LYEXT_SUBSTMT_MAX, 0, "unbounded", rpl->exts);
                 }
             }
-        } else if (deviation->deviates[u].mod == LYS_DEV_DELETE) {
-            del = (struct lysp_deviate_del*)&deviation->deviates[u];
+        } else if (elem->mod == LYS_DEV_DELETE) {
+            del = (struct lysp_deviate_del*)elem;
             ly_print(ctx->out, "delete {\n");
             LEVEL++;
 
