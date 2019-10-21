@@ -877,11 +877,13 @@ lyd_check_mandatory_tree(struct lyd_node *root, struct ly_ctx *ctx, const struct
                 }
             }
         } else {
-            for (i = (options & LYD_OPT_DATA_NO_YANGLIB) ? ctx->internal_module_count : ctx->internal_module_count - 1;
-                 i < ctx->models.used;
-                 i++) {
+            for (i = 0; i < ctx->models.used; i++) {
                 /* skip not implemented and disabled modules */
                 if (!ctx->models.list[i]->implemented || ctx->models.list[i]->disabled) {
+                    continue;
+                }
+                if ((options & LYD_OPT_DATA_NO_YANGLIB) && !strcmp(ctx->models.list[i]->name, "ietf-yang-library")) {
+                    /* skip ietf-yang-library */
                     continue;
                 }
                 LY_TREE_FOR(ctx->models.list[i]->data, siter) {
