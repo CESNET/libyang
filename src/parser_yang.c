@@ -401,9 +401,11 @@ read_qstring(struct lys_parser_ctx *ctx, const char **data, enum yang_arg arg, c
             switch (**data) {
             case 'n':
                 c = "\n";
+                need_buf = 1;
                 break;
             case 't':
                 c = "\t";
+                need_buf = 1;
                 break;
             case '\"':
                 c = *data;
