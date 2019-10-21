@@ -322,9 +322,10 @@ test_arg(void **state)
 
     str = "\"hello\\n\\t\\\"\\\\\";";
     assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
-    assert_null(buf);
+    assert_non_null(buf);
     assert_int_equal(9, len);
-    assert_string_equal("hello\\n\\t\\\"\\\\\";", word);
+    assert_string_equal("hello\n\t\"\\", word);
+    free(buf);
 
     ctx.indent = 14;
     str = "\"hello \t\n\t\t world!\"";
