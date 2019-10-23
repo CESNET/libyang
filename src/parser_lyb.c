@@ -257,7 +257,7 @@ lyb_parse_model(const char *data, const struct lys_module **mod, struct lyb_stat
     LYB_HAVE_READ_GOTO(r, data, error);
 
     if (rev) {
-        sprintf(mod_rev, "%04u-%02u-%02u", ((rev & 0xFE00) >> 9) + 2000, (rev & 0x01E0) >> 5, (rev & 0x001F));
+        sprintf(mod_rev, "%04u-%02u-%02u", ((rev & 0xFE00) >> 9) + 2000, (rev & 0x01E0) >> 5, (unsigned int)(rev & 0x001F));
         *mod = ly_ctx_get_module(lybs->ctx, mod_name, mod_rev, 0);
     } else {
         *mod = ly_ctx_get_module(lybs->ctx, mod_name, NULL, 0);
