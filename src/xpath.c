@@ -1776,6 +1776,64 @@ copy_nodes:
     return 0;
 }
 
+/**
+ * @brief Canonize value in the set (can be string or number).
+ *
+ * @param[in] set Set to canonize.
+ * @param[in] schema Schema node to read YANG canonization rules from.
+ *
+ * @return 0 on succes, -1 on error.
+ */
+static int
+set_canonize(struct lyxp_set *set, const struct lys_node *schema)
+{
+    char *num_str, *val_can, *ptr;
+    enum int_log_opts prev_ilo;
+
+    switch (set->type) {
+    case LYXP_SET_NUMBER:
+        /* canonize number */
+        if (asprintf(&num_str, "%Lf", set->val.num) == -1) {
+            LOGMEM(schema->module->ctx);
+            return -1;
+        }
+
+        /* ignore errors, the value may not satisfy schema constraints */
+        ly_ilo_change(NULL, ILO_IGNORE, &prev_ilo, NULL);
+        val_can = lyd_make_canonical(schema, num_str, strlen(num_str));
+        ly_ilo_restore(NULL, prev_ilo, NULL, 0);
+
+        free(num_str);
+        if (!val_can) {
+            break;
+        }
+        set->val.num = strtold(val_can, &ptr);
+        if (ptr[0]) {
+            free(val_can);
+            LOGINT(schema->module->ctx);
+            return -1;
+        }
+        free(val_can);
+        break;
+    case LYXP_SET_STRING:
+        /* canonize string */
+        ly_ilo_change(NULL, ILO_IGNORE, &prev_ilo, NULL);
+        val_can = lyd_make_canonical(schema, set->val.str, strlen(set->val.str));
+        ly_ilo_restore(NULL, prev_ilo, NULL, 0);
+        if (!val_can) {
+            break;
+        }
+        free(set->val.str);
+        set->val.str = val_can;
+        break;
+    default:
+        LOGINT(schema->module->ctx);
+        return -1;
+    }
+
+    return 0;
+}
+
 /*
  * (re)parse functions
  *
@@ -6669,6 +6727,12 @@ moveto_op_comp(struct lyxp_set *set1, struct lyxp_set *set2, const char *op, str
     /* iterative evaluation with node-sets */
     if ((set1->type == LYXP_SET_NODE_SET) || (set2->type == LYXP_SET_NODE_SET)) {
         if (set1->type == LYXP_SET_NODE_SET) {
+            if ((set2->type != LYXP_SET_NODE_SET) && (set1->val.nodes[0].node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+                /* canonize the value (wait until set1 is not node set if both are) */
+                if (set_canonize(set2, set1->val.nodes[0].node->schema)) {
+                    return -1;
+                }
+            }
             for (i = 0; i < set1->used; ++i) {
                 switch (set2->type) {
                 case LYXP_SET_NUMBER:
@@ -6700,6 +6764,12 @@ moveto_op_comp(struct lyxp_set *set1, struct lyxp_set *set2, const char *op, str
                 }
             }
         } else {
+            if (set2->val.nodes[0].node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
+                /* canonize the value */
+                if (set_canonize(set1, set2->val.nodes[0].node->schema)) {
+                    return -1;
+                }
+            }
             for (i = 0; i < set2->used; ++i) {
                 switch (set1->type) {
                     case LYXP_SET_NUMBER:
