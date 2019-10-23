@@ -1552,7 +1552,7 @@ lys_ext_dup(struct ly_ctx *ctx, struct lys_module *mod, struct lys_ext_instance 
 
                 ((struct lys_ext_instance_complex*)result[u])->substmt = ((struct lyext_plugin_complex*)orig[u]->def->plugin)->substmt;
                 /* TODO duplicate data in extension instance content */
-                memcpy((void*)result[u] + sizeof(**orig), (void*)orig[u] + sizeof(**orig), len - sizeof(**orig));
+                memcpy((char *)result[u] + sizeof(**orig), (char *)orig[u] + sizeof(**orig), len - sizeof(**orig));
                 break;
             }
             /* generic part */
