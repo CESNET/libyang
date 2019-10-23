@@ -217,7 +217,7 @@ date_and_time_store_clb(struct ly_ctx *UNUSED(ctx), const char *UNUSED(type_name
 
 error:
     if (ret == -1) {
-        err_msg = NULL;
+        *err_msg = NULL;
     }
     return 1;
 }
