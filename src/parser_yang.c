@@ -2804,20 +2804,14 @@ read_indent(const char *input, int indent, int size, int in_index, int *out_inde
         } else if (input[in_index] == '\t') {
             /* RFC 6020 6.1.3 tab character is treated as 8 space characters */
             k += 8;
-        } else  if (input[in_index] == '\\' && input[in_index + 1] == 't') {
-            /* RFC 6020 6.1.3 tab character is treated as 8 space characters */
-            k += 8;
-            ++in_index;
         } else {
             break;
         }
         ++in_index;
         if (k >= indent) {
             for (j = k - indent; j > 0; --j) {
+                ++(*out_index);
                 output[*out_index] = ' ';
-                if (j > 1) {
-                    ++(*out_index);
-                }
             }
             break;
         }
@@ -2844,26 +2838,21 @@ yang_read_string(struct ly_ctx *ctx, const char *input, char *output, int size, 
             ++space;
             break;
         case '\\':
+            space = 0;
             if (input[i + 1] == 'n') {
-                out_index -= space;
                 output[out_index] = '\n';
-                space = 0;
-                i = read_indent(input, indent, size, i + 2, &out_index, output);
             } else if (input[i + 1] == 't') {
                 output[out_index] = '\t';
-                ++i;
-                ++space;
             } else if (input[i + 1] == '\\') {
                 output[out_index] = '\\';
-                ++i;
             } else if ((i + 1) != size && input[i + 1] == '"') {
                 output[out_index] = '"';
-                ++i;
             } else {
                 /* backslash must not be followed by any other character */
                 LOGVAL(ctx, LYE_XML_INCHAR, LY_VLOG_NONE, NULL, input + i);
                 return NULL;
             }
+            ++i;
             break;
         default:
             output[out_index] = input[i];
