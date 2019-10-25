@@ -1826,6 +1826,9 @@ set_canonize(struct lyxp_set *set, const struct lys_node *schema)
         free(set->val.str);
         set->val.str = val_can;
         break;
+    case LYXP_SET_BOOLEAN:
+        /* always canonical */
+        break;
     default:
         LOGINT(schema->module->ctx);
         return -1;
