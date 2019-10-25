@@ -338,6 +338,24 @@ test_arg(void **state)
     assert_int_equal(14, len);
     assert_string_equal("hello\n  world!", word);
     free(buf);
+    /* In contrast to previous, the backslash-escaped tabs are expanded after trimming, so they are preserved */
+    ctx.indent = 14;
+    str = "\"hello \\t\n\t\\t world!\"";
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
+    assert_non_null(buf);
+    assert_ptr_equal(word, buf);
+    assert_int_equal(16, len);
+    assert_string_equal("hello \t\n\t world!", word);
+    free(buf);
+    /* Do not handle whitespaces after backslash-escaped newline as indentation */
+    ctx.indent = 14;
+    str = "\"hello\\n\t\t world!\"";
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
+    assert_non_null(buf);
+    assert_ptr_equal(word, buf);
+    assert_int_equal(15, len);
+    assert_string_equal("hello\n\t\t world!", word);
+    free(buf);
 
     ctx.indent = 14;
     str = "\"hello\n \tworld!\"";
@@ -362,7 +380,7 @@ test_arg(void **state)
     free(buf);
     str = "\"hel\"  +\t\nlo"; /* unquoted the second part */
     assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
-    logbuf_assert("Both string parts divided by '+' must be quoted. Line number 5.");
+    logbuf_assert("Both string parts divided by '+' must be quoted. Line number 6.");
 
     str = "\'he\'\t\n+ \"llo\"";
     assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
@@ -381,7 +399,7 @@ test_arg(void **state)
     /* missing argument */
     str = ";";
     assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
-    logbuf_assert("Invalid character sequence \";\", expected an argument. Line number 7.");
+    logbuf_assert("Invalid character sequence \";\", expected an argument. Line number 8.");
 }
 
 static void

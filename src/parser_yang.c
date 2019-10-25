@@ -300,6 +300,7 @@ read_qstring(struct lys_parser_ctx *ctx, const char **data, enum yang_arg arg, c
     unsigned int string, block_indent = 0, current_indent = 0, need_buf = 0;
     const char *c;
     int prefix = 0;
+    unsigned int trailing_ws = 0; /* current number of trailing whitespace characters */
 
     if (**data == '\"') {
         string = 2;
@@ -331,11 +332,24 @@ read_qstring(struct lys_parser_ctx *ctx, const char **data, enum yang_arg arg, c
                 /* string may be finished, but check for + */
                 string = 4;
                 MOVE_INPUT(ctx, data, 1);
+                trailing_ws = 0;
                 break;
             case '\\':
                 /* special character following */
                 string = 3;
+
+                /* the backslash sequence is substituted, so we will need a buffer to store the result */
+                need_buf = 1;
+
+                /* move forward to the escaped character */
                 ++(*data);
+
+                /* note that the trailing whitespaces are supposed to be trimmed before substitution of
+                 * backslash-escaped characters (RFC 7950, 6.1.3), so we have to zero the trailing whitespaces counter */
+                trailing_ws = 0;
+
+                /* since the backslash-escaped character is handled as first non-whitespace character, stop eating indentation */
+                current_indent = block_indent;
                 break;
             case ' ':
                 if (current_indent < block_indent) {
@@ -345,6 +359,7 @@ read_qstring(struct lys_parser_ctx *ctx, const char **data, enum yang_arg arg, c
                     /* check and store character */
                     LY_CHECK_RET(buf_store_char(ctx, data, arg, word_p, word_len, word_b, buf_len, need_buf, &prefix));
                 }
+                trailing_ws++;
                 break;
             case '\t':
                 if (current_indent < block_indent) {
@@ -363,6 +378,7 @@ read_qstring(struct lys_parser_ctx *ctx, const char **data, enum yang_arg arg, c
                     /* additional characters for indentation - only 1 was count in buf_store_char */
                     ctx->indent += 7;
                 }
+                trailing_ws++;
                 break;
             case '\n':
                 if (block_indent) {
@@ -370,11 +386,9 @@ read_qstring(struct lys_parser_ctx *ctx, const char **data, enum yang_arg arg, c
                     need_buf = 1;
 
                     /* remove trailing tabs and spaces */
-                    while ((*word_len) && ((*word_p)[(*word_len) - 1] == '\t' || (*word_p)[(*word_len) - 1] == ' ')) {
-                        --(*word_len);
-                    }
+                    (*word_len) = *word_len - trailing_ws;
 
-                    /* start indentation */
+                    /* restart indentation */
                     current_indent = 0;
                 }
 
@@ -386,6 +400,7 @@ read_qstring(struct lys_parser_ctx *ctx, const char **data, enum yang_arg arg, c
 
                 /* reset context indentation counter for possible string after this one */
                 ctx->indent = 0;
+                trailing_ws = 0;
                 break;
             default:
                 /* first non-whitespace character, stop eating indentation */
@@ -393,6 +408,7 @@ read_qstring(struct lys_parser_ctx *ctx, const char **data, enum yang_arg arg, c
 
                 /* check and store character */
                 LY_CHECK_RET(buf_store_char(ctx, data, arg, word_p, word_len, word_b, buf_len, need_buf, &prefix));
+                trailing_ws = 0;
                 break;
             }
             break;
@@ -401,11 +417,9 @@ read_qstring(struct lys_parser_ctx *ctx, const char **data, enum yang_arg arg, c
             switch (**data) {
             case 'n':
                 c = "\n";
-                need_buf = 1;
                 break;
             case 't':
                 c = "\t";
-                need_buf = 1;
                 break;
             case '\"':
                 c = *data;
