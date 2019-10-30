@@ -608,12 +608,14 @@ struct lys_module *lys_parse_path_(struct ly_ctx *ctx, const char *path, LYS_INF
  * @param[in] implement Flag if the (sub)module is supposed to be marked as implemented.
  * @param[in] main_ctx Parser context of the main module in case of loading submodule.
  * @param[in] main_name Main module name in case of loading submodule.
+ * @param[in] required Module is required so error (even if the input file not found) are important. If 0, there is some
+ * backup and it is actually ok if the input data are not found. However, parser reports errors even in this case.
  * @param[out] result Parsed YANG schema tree of the requested module (struct lys_module*) or submodule (struct lysp_submodule*).
  * If it is a module, it is already in the context!
  * @return LY_ERR value, in case of LY_SUCCESS, the \arg result is always provided.
  */
 LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, int implement,
-                            struct lys_parser_ctx *main_ctx, const char *main_name, void **result);
+                            struct lys_parser_ctx *main_ctx, const char *main_name, int required, void **result);
 
 /**
  * @brief Create pre-compiled features array.

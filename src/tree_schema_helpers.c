@@ -749,7 +749,7 @@ lysp_load_module_check(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_
 
 LY_ERR
 lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, int implement,
-                     struct lys_parser_ctx *main_ctx, const char *main_name, void **result)
+                     struct lys_parser_ctx *main_ctx, const char *main_name, int required, void **result)
 {
     int fd;
     char *filepath = NULL;
@@ -762,9 +762,8 @@ lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision,
 
     LY_CHECK_RET(lys_search_localfile(ly_ctx_get_searchdirs(ctx), !(ctx->flags & LY_CTX_DISABLE_SEARCHDIR_CWD), name, revision,
                                       &filepath, &format));
-    LY_CHECK_ERR_RET(!filepath, LOGERR(ctx, LY_ENOTFOUND, "Data model \"%s%s%s\" not found in local searchdirs.",
-                                       name, revision ? "@" : "", revision ? revision : ""), LY_ENOTFOUND);
-
+    LY_CHECK_ERR_RET(!filepath, if (required) {LOGERR(ctx, LY_ENOTFOUND, "Data model \"%s%s%s\" not found in local searchdirs.",
+                                       name, revision ? "@" : "", revision ? revision : "");}, LY_ENOTFOUND);
 
     LOGVRB("Loading schema from \"%s\" file.", filepath);
 
@@ -875,7 +874,7 @@ search_clb:
 search_file:
             if (!(ctx->flags & LY_CTX_DISABLE_SEARCHDIRS)) {
                 /* module was not received from the callback or there is no callback set */
-                lys_module_localfile(ctx, name, revision, implement, NULL, NULL, (void **)mod);
+                lys_module_localfile(ctx, name, revision, implement, NULL, NULL, m ? 0 : 1, (void **)mod);
             }
             if (!(*mod) && (ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
                 goto search_clb;
@@ -885,6 +884,7 @@ search_file:
         /* update the latest_revision flag - here we have selected the latest available schema,
          * consider that even the callback provides correct latest revision */
         if (!(*mod) && m) {
+            LOGVRB("Newer revision than %s-%s not found, using this as the latest revision.", m->name, m->revision);
             m->latest_revision = 2;
             *mod = m;
         } else if ((*mod) && !revision && ((*mod)->latest_revision == 1)) {
@@ -990,7 +990,7 @@ search_clb:
 search_file:
         if (!(ctx->ctx->flags & LY_CTX_DISABLE_SEARCHDIRS)) {
             /* submodule was not received from the callback or there is no callback set */
-            lys_module_localfile(ctx->ctx, inc->name, inc->rev[0] ? inc->rev : NULL, 0, ctx, mod->mod->name, (void**)&submod);
+            lys_module_localfile(ctx->ctx, inc->name, inc->rev[0] ? inc->rev : NULL, 0, ctx, mod->mod->name, 1, (void**)&submod);
         }
         if (!submod && (ctx->ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
             goto search_clb;
