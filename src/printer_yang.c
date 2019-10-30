@@ -30,14 +30,6 @@
 #include "xpath.h"
 
 /**
- * @brief Types of the YANG printers
- */
-enum schema_type {
-    YPR_PARSED,   /**< YANG printer of the parsed schema */
-    YPR_COMPILED  /**< YANG printer of the compiled schema */
-};
-
-/**
  * @brief YANG printer context.
  */
 struct ypr_ctx {

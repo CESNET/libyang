@@ -34,15 +34,7 @@
 #define YIN_NS_URI "urn:ietf:params:xml:ns:yang:yin:1"
 
 /**
- * @brief Types of the YANG printers
- */
-enum schema_type {
-    YPR_PARSED,   /**< YANG printer of the parsed schema */
-    YPR_COMPILED  /**< YANG printer of the compiled schema */
-};
-
-/**
- * @brief YANG printer context.
+ * @brief YIN printer context.
  */
 struct ypr_ctx {
     struct lyout *out;               /**< output specification */
@@ -456,9 +448,9 @@ yprc_identity(struct ypr_ctx *ctx, const struct lysc_ident *ident)
     LY_ARRAY_FOR(ident->derived, u) {
         ypr_close_parent(ctx, &flag);
         if (ctx->module != ident->derived[u]->module) {
-            ly_print(ctx->out, "%*sderived %s:%s;\n", INDENT, ident->derived[u]->module->prefix, ident->derived[u]->name);
+            ly_print(ctx->out, "%*s<derived name=\"%s:%s\"/>\n", INDENT, ident->derived[u]->module->prefix, ident->derived[u]->name);
         } else {
-            ly_print(ctx->out, "%*sderived %s;\n", INDENT, ident->derived[u]->name);
+            ly_print(ctx->out, "%*s<derived name=\"%s\"/>\n", INDENT, ident->derived[u]->name);
         }
     }
 

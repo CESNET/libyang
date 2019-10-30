@@ -401,9 +401,9 @@ cmd_print(const char *arg)
         case 'f':
             if (!strcmp(optarg, "yang")) {
                 format = LYS_OUT_YANG;
-#if 0
             } else if (!strcmp(optarg, "yin")) {
                 format = LYS_OUT_YIN;
+#if 0
             } else if (!strcmp(optarg, "tree")) {
                 format = LYS_OUT_TREE;
             } else if (!strcmp(optarg, "tree-rfc")) {
