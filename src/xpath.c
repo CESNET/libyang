@@ -1780,15 +1780,26 @@ copy_nodes:
  * @brief Canonize value in the set (can be string or number).
  *
  * @param[in] set Set to canonize.
+ * @param[in] set2 Set to canonize for.
  * @param[in] schema Schema node to read YANG canonization rules from.
  *
  * @return 0 on succes, -1 on error.
  */
 static int
-set_canonize(struct lyxp_set *set, const struct lys_node *schema)
+set_canonize(struct lyxp_set *set, const struct lyxp_set *set2)
 {
     char *num_str, *val_can, *ptr;
+    struct lys_node *schema;
     enum int_log_opts prev_ilo;
+
+    assert(set2->type == LYXP_SET_NODE_SET);
+
+    if ((set2->val.nodes[0].type == LYXP_NODE_ELEM) && (set2->val.nodes[0].node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+        schema = set2->val.nodes[0].node->schema;
+    } else {
+        /* nothing to canonize/not supported */
+        return 0;
+    }
 
     switch (set->type) {
     case LYXP_SET_NUMBER:
@@ -6730,9 +6741,9 @@ moveto_op_comp(struct lyxp_set *set1, struct lyxp_set *set2, const char *op, str
     /* iterative evaluation with node-sets */
     if ((set1->type == LYXP_SET_NODE_SET) || (set2->type == LYXP_SET_NODE_SET)) {
         if (set1->type == LYXP_SET_NODE_SET) {
-            if ((set2->type != LYXP_SET_NODE_SET) && (set1->val.nodes[0].node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+            if (set2->type != LYXP_SET_NODE_SET) {
                 /* canonize the value (wait until set1 is not node set if both are) */
-                if (set_canonize(set2, set1->val.nodes[0].node->schema)) {
+                if (set_canonize(set2, set1)) {
                     return -1;
                 }
             }
@@ -6767,11 +6778,9 @@ moveto_op_comp(struct lyxp_set *set1, struct lyxp_set *set2, const char *op, str
                 }
             }
         } else {
-            if (set2->val.nodes[0].node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
-                /* canonize the value */
-                if (set_canonize(set1, set2->val.nodes[0].node->schema)) {
-                    return -1;
-                }
+            /* canonize the value */
+            if (set_canonize(set1, set2)) {
+                return -1;
             }
             for (i = 0; i < set2->used; ++i) {
                 switch (set1->type) {
@@ -8291,23 +8300,6 @@ eval_equality_expr(struct lyxp_expr *exp, uint16_t *exp_idx, uint16_t repeat, st
             set_snode_merge(set, &set2);
             set_snode_clear_ctx(set);
         } else {
-            /* special handling of evaluations of identityref comparisons, always compare prefixed identites */
-            if ((set->type == LYXP_SET_NODE_SET) && (set->val.nodes[0].node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))
-                    && (((struct lys_node_leaf *)set->val.nodes[0].node->schema)->type.base == LY_TYPE_IDENT)) {
-                /* left operand is identityref */
-                if ((set2.type == LYXP_SET_STRING) && !strchr(set2.val.str, ':')) {
-                    /* missing prefix in the right operand */
-                    set2.val.str = ly_realloc(set2.val.str, strlen(local_mod->name) + 1 + strlen(set2.val.str) + 1);
-                    if (!set2.val.str) {
-                        goto finish;
-                    }
-
-                    memmove(set2.val.str + strlen(local_mod->name) + 1, set2.val.str, strlen(set2.val.str) + 1);
-                    memcpy(set2.val.str, local_mod->name, strlen(local_mod->name));
-                    set2.val.str[strlen(local_mod->name)] = ':';
-                }
-            }
-
             if (moveto_op_comp(set, &set2, &exp->expr[exp->expr_pos[this_op]], cur_node, local_mod, options)) {
                 ret = -1;
                 goto finish;
