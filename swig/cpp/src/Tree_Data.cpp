@@ -57,13 +57,13 @@ Data_Node::Data_Node(struct lyd_node *node, S_Deleter deleter):
 Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name) {
     lyd_node *new_node = nullptr;
 
-    if (!module) {
-        throw std::invalid_argument("Module can not be empty");
+    if (!module && !parent) {
+        throw std::invalid_argument("At least one of module or parent parameters must be set");
     }
 
-    new_node = lyd_new(parent ? parent->node : nullptr, module->module, name);
+    new_node = lyd_new(parent ? parent->node : NULL, module ? module->module : NULL, name);
     if (!new_node) {
-        check_libyang_error(module->module->ctx);
+        check_libyang_error(module ? module->module->ctx : parent->node->schema->module->ctx);
     }
 
     node = new_node;
@@ -72,13 +72,13 @@ Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name) {
 Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, const char *val_str) {
     lyd_node *new_node = nullptr;
 
-    if (!module) {
-        throw std::invalid_argument("Module can not be empty");
+    if (!module && !parent) {
+        throw std::invalid_argument("At least one of module or parent parameters must be set");
     }
 
-    new_node = lyd_new_leaf(parent ? parent->node : nullptr, module->module, name, val_str);
+    new_node = lyd_new_leaf(parent ? parent->node : NULL, module ? module->module : NULL, name, val_str);
     if (!new_node) {
-        check_libyang_error(module->module->ctx);
+        check_libyang_error(module ? module->module->ctx : parent->node->schema->module->ctx);
     }
 
     node = new_node;
@@ -87,13 +87,13 @@ Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, cons
 Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, const char *value, LYD_ANYDATA_VALUETYPE value_type) {
     lyd_node *new_node = nullptr;
 
-    if (!module) {
-        throw std::invalid_argument("Module can not be empty");
+    if (!module && !parent) {
+        throw std::invalid_argument("At least one of module or parent parameters must be set");
     }
 
-    new_node = lyd_new_anydata(parent ? parent->node : NULL, module->module, name, (void *) value, value_type);
+    new_node = lyd_new_anydata(parent ? parent->node : NULL, module ? module->module : NULL, name, (void *) value, value_type);
     if (!new_node) {
-        check_libyang_error(module->module->ctx);
+        check_libyang_error(module ? module->module->ctx : parent->node->schema->module->ctx);
     }
 
     node = new_node;
@@ -102,13 +102,14 @@ Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, cons
 Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, S_Data_Node value) {
     lyd_node *new_node = nullptr;
 
-    if (!module) {
-        throw std::invalid_argument("Module can not be empty");
+    if (!module && !parent) {
+        throw std::invalid_argument("At least one of module or parent parameters must be set");
     }
 
-    new_node = lyd_new_anydata(parent ? parent->node : NULL, module->module, name, (void *) value->node, LYD_ANYDATA_DATATREE);
+    new_node = lyd_new_anydata(parent ? parent->node : NULL, module ? module->module : NULL, name,
+                               value ? (void *)value->node : NULL, LYD_ANYDATA_DATATREE);
     if (!new_node) {
-        check_libyang_error(module->module->ctx);
+        check_libyang_error(module ? module->module->ctx : parent->node->schema->module->ctx);
     }
 
     node = new_node;
@@ -117,13 +118,14 @@ Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, S_Da
 Data_Node::Data_Node(S_Data_Node parent, S_Module module, const char *name, S_Xml_Elem value) {
     lyd_node *new_node = nullptr;
 
-    if (!module) {
-        throw std::invalid_argument("Module can not be empty");
+    if (!module && !parent) {
+        throw std::invalid_argument("At least one of module or parent parameters must be set");
     }
 
-    new_node = lyd_new_anydata(parent ? parent->node : NULL, module->module, name, (void *) value->elem, LYD_ANYDATA_XML);
+    new_node = lyd_new_anydata(parent ? parent->node : NULL, module->module, name,
+                               value ? (void *)value->elem : NULL, LYD_ANYDATA_XML);
     if (!new_node) {
-        check_libyang_error(module->module->ctx);
+        check_libyang_error(module ? module->module->ctx : parent->node->schema->module->ctx);
     }
 
     node = new_node;
@@ -224,35 +226,63 @@ S_Data_Node Data_Node::dup_withsiblings(int recursive) {
 S_Data_Node Data_Node::dup_to_ctx(int recursive, S_Context context) {
     struct lyd_node *new_node = nullptr;
 
+    if (!context) {
+        throw std::invalid_argument("Context can not be empty");
+    }
+
     new_node = lyd_dup_to_ctx(node, recursive, context->ctx);
 
     S_Deleter new_deleter = std::make_shared<Deleter>(new_node, context->deleter);
     return new_node ? std::make_shared<Data_Node>(new_node, new_deleter) : nullptr;
 }
 int Data_Node::merge(S_Data_Node source, int options) {
-    int ret = lyd_merge(node, source->node, options);
+    int ret;
+
+    if (!source) {
+        throw std::invalid_argument("Source can not be empty");
+    }
+
+    ret = lyd_merge(node, source->node, options);
     if (ret) {
         check_libyang_error(source->node->schema->module->ctx);
     }
     return ret;
 }
 int Data_Node::merge_to_ctx(S_Data_Node source, int options, S_Context context) {
-    int ret = lyd_merge_to_ctx(&node, source->node, options, context->ctx);
+    int ret;
+
+    if (!source) {
+        throw std::invalid_argument("Source can not be empty");
+    }
+
+    ret = lyd_merge_to_ctx(&node, source->node, options, context ? context->ctx : NULL);
     if (ret) {
-        check_libyang_error(context->ctx);
+        check_libyang_error(source->node->schema->module->ctx);
     }
     return ret;
 }
 int Data_Node::insert(S_Data_Node new_node) {
-    int ret = lyd_insert(node, new_node->node);
+    int ret;
+
+    if (!new_node) {
+        throw std::invalid_argument("New_node can not be empty");
+    }
+
+    ret = lyd_insert(node, new_node->node);
     if (ret) {
         check_libyang_error(node->schema->module->ctx);
     }
     return ret;
 }
 int Data_Node::insert_sibling(S_Data_Node new_node) {
+    struct lyd_node *dup_node;
+
+    if (!new_node) {
+        throw std::invalid_argument("New_node can not be empty");
+    }
+
     /* because of memory handling in C++ the node is duplicated before insertion */
-    struct lyd_node *dup_node = lyd_dup(new_node->node, 1);
+    dup_node = lyd_dup(new_node->node, 1);
     if (!dup_node) {
         check_libyang_error(node->schema->module->ctx);
     }
@@ -264,8 +294,14 @@ int Data_Node::insert_sibling(S_Data_Node new_node) {
     return ret;
 }
 int Data_Node::insert_before(S_Data_Node new_node) {
+    struct lyd_node *dup_node;
+
+    if (!new_node) {
+        throw std::invalid_argument("New_node can not be empty");
+    }
+
     /* because of memory handling in C++ the node is duplicated before insertion */
-    struct lyd_node *dup_node = lyd_dup(new_node->node, 1);
+    dup_node = lyd_dup(new_node->node, 1);
     if (!dup_node) {
         check_libyang_error(node->schema->module->ctx);
     }
@@ -277,8 +313,14 @@ int Data_Node::insert_before(S_Data_Node new_node) {
     return ret;
 }
 int Data_Node::insert_after(S_Data_Node new_node) {
+    struct lyd_node *dup_node;
+
+    if (!new_node) {
+        throw std::invalid_argument("New_node can not be empty");
+    }
+
     /* because of memory handling in C++ the node is duplicated before insertion */
-    struct lyd_node *dup_node = lyd_dup(new_node->node, 1);
+    dup_node = lyd_dup(new_node->node, 1);
     if (!dup_node) {
         check_libyang_error(node->schema->module->ctx);
     }
@@ -305,6 +347,11 @@ S_Set Data_Node::find_path(const char *expr) {
     return std::make_shared<Set>(set, std::make_shared<Deleter>(set, deleter));
 }
 S_Set Data_Node::find_instance(S_Schema_Node schema) {
+
+    if (!schema) {
+        throw std::invalid_argument("Schema can not be empty");
+    }
+
     struct ly_set *set = lyd_find_instance(node, schema->node);
     if (!set) {
         check_libyang_error(node->schema->module->ctx);
@@ -320,14 +367,20 @@ S_Data_Node Data_Node::first_sibling() {
     return new_node ? std::make_shared<Data_Node>(new_node, deleter) : nullptr;
 }
 int Data_Node::validate(int options, S_Context var_arg) {
-    int ret = lyd_validate(&node, options, (void *) var_arg->ctx);
+    int ret = lyd_validate(&node, options, var_arg ? (void *) var_arg->ctx : node->schema->module->ctx);
     if (ret) {
         check_libyang_error(node ? node->schema->module->ctx : var_arg->ctx);
     }
     return ret;
 }
 int Data_Node::validate(int options, S_Data_Node var_arg) {
-    int ret = lyd_validate(&node, options, (void *) var_arg->node);
+    int ret;
+
+    if (!var_arg) {
+        throw std::invalid_argument("var_arg must be a data node");
+    }
+
+    ret = lyd_validate(&node, options, (void *) var_arg->node);
     if (ret) {
         check_libyang_error(node->schema->module->ctx);
     }
@@ -344,6 +397,10 @@ int Data_Node::validate_value(const char *value) {
 S_Difflist Data_Node::diff(S_Data_Node second, int options) {
     struct lyd_difflist *diff;
 
+    if (!second) {
+        throw std::invalid_argument("Second can not be empty");
+    }
+
     diff = lyd_diff(node, second->node, options);
     if (!diff) {
         check_libyang_error(node->schema->module->ctx);
@@ -354,7 +411,7 @@ S_Difflist Data_Node::diff(S_Data_Node second, int options) {
 S_Data_Node Data_Node::new_path(S_Context ctx, const char *path, const char *value, LYD_ANYDATA_VALUETYPE value_type, int options) {
     struct lyd_node *new_node = nullptr;
 
-    new_node = lyd_new_path(node, ctx->ctx, path, (void *)value, value_type, options);
+    new_node = lyd_new_path(node, ctx ? ctx->ctx : NULL, path, (void *)value, value_type, options);
     if (!new_node) {
         check_libyang_error(node->schema->module->ctx);
     }
@@ -364,7 +421,11 @@ S_Data_Node Data_Node::new_path(S_Context ctx, const char *path, const char *val
 S_Data_Node Data_Node::new_path(S_Context ctx, const char *path, S_Data_Node value, int options) {
     struct lyd_node *new_node = nullptr;
 
-    new_node = lyd_new_path(node, ctx->ctx, path, (void *)value->node, LYD_ANYDATA_DATATREE, options);
+    if (!value) {
+        throw std::invalid_argument("Value can not be empty");
+    }
+
+    new_node = lyd_new_path(node, ctx ? ctx->ctx : NULL, path, (void *)value->node, LYD_ANYDATA_DATATREE, options);
     if (!new_node) {
         check_libyang_error(node->schema->module->ctx);
     }
@@ -374,7 +435,11 @@ S_Data_Node Data_Node::new_path(S_Context ctx, const char *path, S_Data_Node val
 S_Data_Node Data_Node::new_path(S_Context ctx, const char *path, S_Xml_Elem value, int options) {
     struct lyd_node *new_node = nullptr;
 
-    new_node = lyd_new_path(node, ctx->ctx, path, (void *)value->elem, LYD_ANYDATA_XML, options);
+    if (!value) {
+        throw std::invalid_argument("Value can not be empty");
+    }
+
+    new_node = lyd_new_path(node, ctx ? ctx->ctx : NULL, path, (void *)value->elem, LYD_ANYDATA_XML, options);
     if (!new_node) {
         check_libyang_error(node->schema->module->ctx);
     }
