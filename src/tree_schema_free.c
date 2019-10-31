@@ -467,7 +467,7 @@ lysp_module_free(struct lysp_module *module)
 void
 lysc_ext_instance_free(struct ly_ctx *ctx, struct lysc_ext_instance *ext)
 {
-    if (ext->def->plugin && ext->def->plugin->free) {
+    if (ext->def && ext->def->plugin && ext->def->plugin->free) {
         ext->def->plugin->free(ctx, ext);
     }
     FREE_STRING(ctx, ext->argument);
