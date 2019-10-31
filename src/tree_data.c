@@ -977,9 +977,15 @@ lyd_parse_(struct ly_ctx *ctx, const struct lyd_node *rpc_act, const char *data,
     if (ly_errno) {
         lyd_free_withsiblings(result);
         return NULL;
-    } else {
-        return result;
     }
+
+    if ((options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY)) && lyd_schema_sort(result, 1)) {
+        /* rpc and rpc-reply must be sorted */
+        lyd_free_withsiblings(result);
+        return NULL;
+    }
+
+    return result;
 }
 
 static struct lyd_node *
@@ -5128,6 +5134,11 @@ _lyd_validate(struct lyd_node **node, struct lyd_node *data_tree, struct ly_ctx 
         if (lyd_check_mandatory_tree(*node, ctx, modules, mod_count, options)) {
             goto cleanup;
         }
+    }
+
+    if ((options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY)) && *node && lyd_schema_sort(*node, 1)) {
+        /* rpc and rpc-reply must be sorted */
+        goto cleanup;
     }
 
     /* consolidate diff if created */
