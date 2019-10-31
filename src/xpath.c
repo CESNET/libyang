@@ -3707,6 +3707,7 @@ xpath_derived_from(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct ly
     uint16_t i, j;
     struct lyd_node_leaf_list *leaf;
     struct lys_node_leaf *sleaf;
+    lyd_val *val;
     int ret = EXIT_SUCCESS;
 
     if (options & LYXP_SNODE_ALL) {
@@ -3745,17 +3746,27 @@ xpath_derived_from(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct ly
     set_fill_boolean(set, 0);
     if (args[0]->type != LYXP_SET_EMPTY) {
         for (i = 0; i < args[0]->used; ++i) {
-            leaf = (struct lyd_node_leaf_list *)args[0]->val.nodes[i].node;
-            sleaf = (struct lys_node_leaf *)leaf->schema;
-            if ((sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST)) && (sleaf->type.base == LY_TYPE_IDENT)) {
-                for (j = 0; j < leaf->value.ident->base_size; ++j) {
-                    if (!xpath_derived_from_ident_cmp(leaf->value.ident->base[j], args[1]->val.str)) {
+            val = NULL;
+            if (args[0]->val.nodes[i].type == LYXP_NODE_ELEM) {
+                leaf = (struct lyd_node_leaf_list *)args[0]->val.nodes[i].node;
+                sleaf = (struct lys_node_leaf *)leaf->schema;
+                if ((sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST)) && (sleaf->type.base == LY_TYPE_IDENT)) {
+                    val = &leaf->value;
+                }
+            } else if (args[0]->val.nodes[i].type == LYXP_NODE_ATTR) {
+                if (args[0]->val.attrs[i].attr->value_type == LY_TYPE_IDENT) {
+                    val = &args[0]->val.attrs[i].attr->value;
+                }
+            }
+            if (val) {
+                for (j = 0; j < val->ident->base_size; ++j) {
+                    if (!xpath_derived_from_ident_cmp(val->ident->base[j], args[1]->val.str)) {
                         set_fill_boolean(set, 1);
                         break;
                     }
                 }
 
-                if (j < leaf->value.ident->base_size) {
+                if (j < val->ident->base_size) {
                     break;
                 }
             }
@@ -3785,6 +3796,7 @@ xpath_derived_from_or_self(struct lyxp_set **args, uint16_t UNUSED(arg_count), s
     uint16_t i, j;
     struct lyd_node_leaf_list *leaf;
     struct lys_node_leaf *sleaf;
+    lyd_val *val;
     int ret = EXIT_SUCCESS;
 
     if (options & LYXP_SNODE_ALL) {
@@ -3823,22 +3835,32 @@ xpath_derived_from_or_self(struct lyxp_set **args, uint16_t UNUSED(arg_count), s
     set_fill_boolean(set, 0);
     if (args[0]->type != LYXP_SET_EMPTY) {
         for (i = 0; i < args[0]->used; ++i) {
-            leaf = (struct lyd_node_leaf_list *)args[0]->val.nodes[i].node;
-            sleaf = (struct lys_node_leaf *)leaf->schema;
-            if ((sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST)) && (sleaf->type.base == LY_TYPE_IDENT)) {
-                if (!xpath_derived_from_ident_cmp(leaf->value.ident, args[1]->val.str)) {
+            val = NULL;
+            if (args[0]->val.nodes[i].type == LYXP_NODE_ELEM) {
+                leaf = (struct lyd_node_leaf_list *)args[0]->val.nodes[i].node;
+                sleaf = (struct lys_node_leaf *)leaf->schema;
+                if ((sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST)) && (sleaf->type.base == LY_TYPE_IDENT)) {
+                    val = &leaf->value;
+                }
+            } else if (args[0]->val.nodes[i].type == LYXP_NODE_ATTR) {
+                if (args[0]->val.attrs[i].attr->value_type == LY_TYPE_IDENT) {
+                    val = &args[0]->val.attrs[i].attr->value;
+                }
+            }
+            if (val) {
+                if (!xpath_derived_from_ident_cmp(val->ident, args[1]->val.str)) {
                     set_fill_boolean(set, 1);
                     break;
                 }
 
-                for (j = 0; j < leaf->value.ident->base_size; ++j) {
-                    if (!xpath_derived_from_ident_cmp(leaf->value.ident->base[j], args[1]->val.str)) {
+                for (j = 0; j < val->ident->base_size; ++j) {
+                    if (!xpath_derived_from_ident_cmp(val->ident->base[j], args[1]->val.str)) {
                         set_fill_boolean(set, 1);
                         break;
                     }
                 }
 
-                if (j < leaf->value.ident->base_size) {
+                if (j < val->ident->base_size) {
                     break;
                 }
             }
