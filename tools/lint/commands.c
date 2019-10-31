@@ -457,7 +457,11 @@ cmd_print(const char *arg)
 
     /* compiled format */
     if (compiled) {
-        format++;
+        if (format == LYS_OUT_YANG) {
+            format = LYS_OUT_YANG_COMPILED;
+        } else {
+            fprintf(stderr, "warning: --compiled option takes effect only in case of printing schemas in YANG format.\n");
+        }
     }
 #if 0
     /* tree fromat with or without gropings */
