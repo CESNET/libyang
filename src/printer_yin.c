@@ -40,7 +40,6 @@ struct ypr_ctx {
     struct lyout *out;               /**< output specification */
     unsigned int level;              /**< current indentation level: 0 - no formatting, >= 1 indentation levels */
     const struct lys_module *module; /**< schema to print */
-    enum schema_type schema;         /**< type of the schema to print */
 };
 
 #define LEVEL ctx->level             /**< current level */
@@ -1194,9 +1193,7 @@ yprp_deviation(struct ypr_ctx *ctx, const struct lysp_deviation *deviation)
 /**
  * @brief Minimal print of a schema.
  *
- * To print
- * a) compiled schema when it is not compiled or
- * b) parsed when the parsed form was already removed
+ * To print parsed schema when the parsed form was already removed
  */
 static LY_ERR
 ypr_missing_format(struct ypr_ctx *ctx, const struct lys_module *module)
@@ -1246,7 +1243,6 @@ ypr_xmlns(struct ypr_ctx *ctx, const struct lys_module *module)
         ly_print(ctx->out, "\n%s%*sxmlns:%s=\"%s\"", space, INDENT, modp->imports[u].prefix, modp->imports[u].module->ns);
     }
 }
-
 
 struct ext_substmt_info_s stmt_attr_info[] = {
     {NULL,               NULL,          0},              /**< LY_STMT_NONE*/
@@ -1432,7 +1428,7 @@ yin_print_parsed(struct lyout *out, const struct lys_module *module)
     unsigned int u;
     struct lysp_node *data;
     struct lysp_module *modp = module->parsed;
-    struct ypr_ctx ctx_ = {.out = out, .level = 0, .module = module, .schema = YPR_PARSED}, *ctx = &ctx_;
+    struct ypr_ctx ctx_ = {.out = out, .level = 0, .module = module}, *ctx = &ctx_;
 
     ly_print(ctx->out, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
     ly_print(ctx->out, "%*s<module name=\"%s\"\n", INDENT, module->name);

@@ -30,14 +30,6 @@ typedef enum LYOUT_TYPE {
 } LYOUT_TYPE;
 
 /**
- * @brief Types of the YANG printers
- */
-enum schema_type {
-    YPR_PARSED,   /**< YANG printer of the parsed schema */
-    YPR_COMPILED  /**< YANG printer of the compiled schema */
-};
-
-/**
  * @brief Printer output structure specifying where the data are printed.
  */
 struct lyout {
