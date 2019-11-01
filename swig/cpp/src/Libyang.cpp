@@ -162,7 +162,7 @@ S_Submodule Context::get_submodule2(S_Module main_module, const char *submodule)
 S_Schema_Node Context::get_node(S_Schema_Node start, const char *data_path, int output) {
     const struct lys_node *node = nullptr;
 
-    node = ly_ctx_get_node(ctx, start ? NULL : start->node, data_path, output);
+    node = ly_ctx_get_node(ctx, start ? start->node : NULL, data_path, output);
 
     return node ? std::make_shared<Schema_Node>((struct lys_node *) node, deleter) : nullptr;
 }
