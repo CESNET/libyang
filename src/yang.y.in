@@ -2789,23 +2789,23 @@ refine_body_opt_stmts: @EMPTYDIR@ { $$.refine = actual;
   |  refine_body_opt_stmts must_stmt stmtsep { actual = $1.refine;
                                                actual_type = REFINE_KEYWORD;
                                                if ($1.refine->target_type) {
-                                                 if ($1.refine->target_type & (LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYXML)) {
-                                                   $1.refine->target_type &= (LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYXML);
+                                                 if ($1.refine->target_type & (LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYDATA)) {
+                                                   $1.refine->target_type &= (LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYDATA);
                                                  } else {
                                                    LOGVAL(trg->ctx, LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "must", "refine");
                                                    LOGVAL(trg->ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid refine target nodetype for the substatements.");
                                                    YYABORT;
                                                  }
                                                } else {
-                                                 $1.refine->target_type = LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYXML;
+                                                 $1.refine->target_type = LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYDATA;
                                                }
                                              }
   |  refine_body_opt_stmts if_feature_stmt
-     stmtsep { /* leaf, leaf-list, list, container or anyxml */
+     stmtsep { /* leaf, leaf-list, list, container, choice, case, anydata or anyxml */
                /* check possibility of statements combination */
                if ($1.refine->target_type) {
-                 if ($1.refine->target_type & (LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYDATA)) {
-                   $1.refine->target_type &= (LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYDATA);
+                 if ($1.refine->target_type & (LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_CHOICE | LYS_CASE | LYS_ANYDATA)) {
+                   $1.refine->target_type &= (LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_CHOICE | LYS_CASE | LYS_ANYDATA);
                  } else {
                    free(s);
                    LOGVAL(trg->ctx, LYE_MISSCHILDSTMT, LY_VLOG_NONE, NULL, "if-feature", "refine");
@@ -2813,7 +2813,7 @@ refine_body_opt_stmts: @EMPTYDIR@ { $$.refine = actual;
                    YYABORT;
                  }
                } else {
-                 $1.refine->target_type = LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_ANYDATA;
+                 $1.refine->target_type = LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_CONTAINER | LYS_CHOICE | LYS_CASE | LYS_ANYDATA;
                }
              }
   |  refine_body_opt_stmts presence_stmt { if ($1.refine->target_type) {
@@ -2909,8 +2909,8 @@ refine_body_opt_stmts: @EMPTYDIR@ { $$.refine = actual;
                                          $$ = $1;
                                        }
   |  refine_body_opt_stmts mandatory_stmt { if ($1.refine->target_type) {
-                                              if ($1.refine->target_type & (LYS_LEAF | LYS_CHOICE | LYS_ANYXML)) {
-                                                $1.refine->target_type &= (LYS_LEAF | LYS_CHOICE | LYS_ANYXML);
+                                              if ($1.refine->target_type & (LYS_LEAF | LYS_CHOICE | LYS_ANYDATA)) {
+                                                $1.refine->target_type &= (LYS_LEAF | LYS_CHOICE | LYS_ANYDATA);
                                                 if ($1.refine->flags & LYS_MAND_MASK) {
                                                   LOGVAL(trg->ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, "mandatory", "refine");
                                                   YYABORT;
@@ -2922,7 +2922,7 @@ refine_body_opt_stmts: @EMPTYDIR@ { $$.refine = actual;
                                                 YYABORT;
                                               }
                                             } else {
-                                              $1.refine->target_type = LYS_LEAF | LYS_CHOICE | LYS_ANYXML;
+                                              $1.refine->target_type = LYS_LEAF | LYS_CHOICE | LYS_ANYDATA;
                                               $1.refine->flags |= $2;
                                             }
                                             $$ = $1;
