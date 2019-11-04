@@ -484,7 +484,7 @@ lyb_parse_val_2(struct lys_type *type, struct lyd_node_leaf_list *leaf, struct l
     struct lys_module *mod;
     struct lys_type *rtype = NULL;
     char num_str[22], *str;
-    int64_t frac;
+    int64_t frac, num;
     uint32_t i, str_len;
     uint8_t *value_flags, dig;
     const char **value_str;
@@ -634,15 +634,21 @@ lyb_parse_val_2(struct lys_type *type, struct lyd_node_leaf_list *leaf, struct l
         *value_str = lydict_insert(ctx, num_str, 0);
         break;
     case LY_TYPE_DEC64:
-        frac = value->dec64 % rtype->info.dec64.div;
+        num = value->dec64 / (int64_t)rtype->info.dec64.div;
+        frac = value->dec64 % (int64_t)rtype->info.dec64.div;
         dig = rtype->info.dec64.dig;
-        /* remove trailing zeros */
+
+        /* frac should always be positive, remove trailing zeros */
+        if (frac < 0) {
+            frac *= -1;
+        }
         while ((dig > 1) && !(frac % 10)) {
             frac /= 10;
             --dig;
         }
 
-        sprintf(num_str, "%"PRId64".%.*"PRId64, value->dec64 / (int64_t)rtype->info.dec64.div, dig, frac);
+        /* handle special case of int64_t not supporting printing -0 */
+        sprintf(num_str, "%s%"PRId64".%.*"PRId64, (num == 0) && (value->dec64 < 0) ? "-" : "", num, dig, frac);
         *value_str = lydict_insert(ctx, num_str, 0);
         break;
     default:
