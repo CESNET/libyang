@@ -1229,10 +1229,15 @@ ypr_missing_format(struct ypr_ctx *ctx, const struct lys_module *module)
 }
 
 static void
-ypr_xmlns(struct ypr_ctx *ctx, const struct lys_module *module)
+ypr_xmlns(struct ypr_ctx *ctx, const struct lys_module *module, unsigned int indent)
 {
     unsigned int u;
-    char *space = "        ";
+    char *space;
+    if(asprintf(&space, "%*s", indent, "") == -1) {
+        LOGMEM(ctx->module->ctx);
+        ctx->out->status = LY_EMEM;
+        return;
+    } 
 
     ly_print(ctx->out, "%s%*sxmlns=\"%s\"", space, INDENT, YIN_NS_URI);
     ly_print(ctx->out, "\n%s%*sxmlns:%s=\"%s\"", space, INDENT, module->prefix, module->ns);
@@ -1242,10 +1247,11 @@ ypr_xmlns(struct ypr_ctx *ctx, const struct lys_module *module)
     LY_ARRAY_FOR(modp->imports, u){
         ly_print(ctx->out, "\n%s%*sxmlns:%s=\"%s\"", space, INDENT, modp->imports[u].prefix, modp->imports[u].module->ns);
     }
+    free(space);
 }
 
 struct ext_substmt_info_s stmt_attr_info[] = {
-    {NULL,               NULL,          0},              /**< LY_STMT_NONE*/
+    {NULL,               NULL,          0},             /**< LY_STMT_NONE*/
     {"status",           "value",       SUBST_FLAG_ID}, /**< LY_STMT_STATUS */
     {"config",           "value",       SUBST_FLAG_ID}, /**< LY_STMT_CONFIG */
     {"mandatory",        "value",       SUBST_FLAG_ID}, /**< LY_STMT_MANDATORY */
@@ -1432,7 +1438,7 @@ yin_print_parsed(struct lyout *out, const struct lys_module *module)
 
     ly_print(ctx->out, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
     ly_print(ctx->out, "%*s<module name=\"%s\"\n", INDENT, module->name);
-    ypr_xmlns(ctx, module);
+    ypr_xmlns(ctx, module, 8);
     ly_print(ctx->out, ">\n");
 
     LEVEL++;
