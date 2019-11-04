@@ -30,9 +30,6 @@
 #include "xpath.h"
 #include "xml.h"
 
-
-#define YIN_NS_URI "urn:ietf:params:xml:ns:yang:yin:1"
-
 /**
  * @brief YIN printer context.
  */
