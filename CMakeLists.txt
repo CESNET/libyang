@@ -225,6 +225,7 @@ set(libsrc
     src/printer.c
     src/printer_schema.c
     src/printer_yang.c
+    src/printer_yin.c
     src/plugins_types.c
     src/plugins_exts.c
     src/xml.c

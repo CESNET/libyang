@@ -45,12 +45,10 @@ lys_print_(struct lyout *out, const struct lys_module *module, LYS_OUTFORMAT for
     case LYS_OUT_YANG_COMPILED:
         ret = yang_print_compiled(out, module);
         break;
-    /* TODO not yet implemented
     case LYS_OUT_YIN:
-        lys_disable_deviations((struct lys_module *)module);
-        ret = yin_print_model(out, module);
-        lys_enable_deviations((struct lys_module *)module);
+        ret = yin_print_parsed(out, module);
         break;
+    /* TODO not yet implemented
     case LYS_OUT_TREE:
         ret = tree_print_model(out, module, target_node, line_length, options);
         break;

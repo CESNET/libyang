@@ -401,9 +401,9 @@ cmd_print(const char *arg)
         case 'f':
             if (!strcmp(optarg, "yang")) {
                 format = LYS_OUT_YANG;
-#if 0
             } else if (!strcmp(optarg, "yin")) {
                 format = LYS_OUT_YIN;
+#if 0
             } else if (!strcmp(optarg, "tree")) {
                 format = LYS_OUT_TREE;
             } else if (!strcmp(optarg, "tree-rfc")) {
@@ -457,7 +457,11 @@ cmd_print(const char *arg)
 
     /* compiled format */
     if (compiled) {
-        format++;
+        if (format == LYS_OUT_YANG) {
+            format = LYS_OUT_YANG_COMPILED;
+        } else {
+            fprintf(stderr, "warning: --compiled option takes effect only in case of printing schemas in YANG format.\n");
+        }
     }
 #if 0
     /* tree fromat with or without gropings */

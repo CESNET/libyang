@@ -375,9 +375,11 @@ main_ni(int argc, char* argv[])
                 outformat_s = LYS_OUT_TREE;
                 outoptions_s |= LYS_OUTOPT_TREE_RFC;
                 outformat_d = 0;
+#endif
             } else if (!strcasecmp(optarg, "yin")) {
                 outformat_s = LYS_OUT_YIN;
                 outformat_d = 0;
+#if 0
             } else if (!strcasecmp(optarg, "jsons")) {
                 outformat_s = LYS_OUT_JSON;
                 outformat_d = 0;
@@ -613,10 +615,10 @@ main_ni(int argc, char* argv[])
         goto cleanup;
     }
     if (compiled) {
-        if (!outformat_s) {
-            fprintf(stderr, "yanglint warning: --compiled option takes effect only in case of printing schemas.\n");
+        if (outformat_s != LYS_OUT_YANG) {
+            fprintf(stderr, "yanglint warning: --compiled option takes effect only in case of printing schemas in YANG format.\n");
         } else {
-            outformat_s++;
+            outformat_s = LYS_OUT_YANG_COMPILED;
         }
     }
     if (outformat_s && outformat_s != LYS_OUT_TREE && (optind + 1) < argc) {

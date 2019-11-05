@@ -101,6 +101,15 @@ LY_ERR yang_print_parsed(struct lyout *out, const struct lys_module *module);
 LY_ERR yang_print_compiled(struct lyout *out, const struct lys_module *module);
 
 /**
+ * @brief YIN printer of the parsed schemas. Full YIN printer.
+ *
+ * @param[in] out Output specification.
+ * @param[in] module Schema to be printed (the parsed member is used).
+ * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
+ */
+LY_ERR yin_print_parsed(struct lyout *out, const struct lys_module *module);
+
+/**
  * @brief XML printer of the YANG data.
  *
  * @param[in] out Output specification.

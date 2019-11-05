@@ -25,8 +25,6 @@
 extern const char *const yin_attr_list[];
 #define yin_attr2str(STMT) yin_attr_list[STMT]
 
-#define YIN_NS_URI "urn:ietf:params:xml:ns:yang:yin:1"
-
 #define VALID_VALS1 " Only valid value is \"%s\"."
 #define VALID_VALS2 " Valid values are \"%s\" and \"%s\"."
 #define VALID_VALS3 " Valid values are \"%s\", \"%s\" and \"%s\"."
