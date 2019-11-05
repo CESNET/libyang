@@ -1229,22 +1229,15 @@ static void
 ypr_xmlns(struct ypr_ctx *ctx, const struct lys_module *module, unsigned int indent)
 {
     unsigned int u;
-    char *space;
-    if(asprintf(&space, "%*s", indent, "") == -1) {
-        LOGMEM(ctx->module->ctx);
-        ctx->out->status = LY_EMEM;
-        return;
-    } 
 
-    ly_print(ctx->out, "%s%*sxmlns=\"%s\"", space, INDENT, YIN_NS_URI);
-    ly_print(ctx->out, "\n%s%*sxmlns:%s=\"%s\"", space, INDENT, module->prefix, module->ns);
+    ly_print(ctx->out, "%*sxmlns=\"%s\"", indent + INDENT, YIN_NS_URI);
+    ly_print(ctx->out, "\n%*sxmlns:%s=\"%s\"", indent + INDENT, module->prefix, module->ns);
 
     struct lysp_module *modp = module->parsed;
 
     LY_ARRAY_FOR(modp->imports, u){
-        ly_print(ctx->out, "\n%s%*sxmlns:%s=\"%s\"", space, INDENT, modp->imports[u].prefix, modp->imports[u].module->ns);
+        ly_print(ctx->out, "\n%*sxmlns:%s=\"%s\"", indent + INDENT, modp->imports[u].prefix, modp->imports[u].module->ns);
     }
-    free(space);
 }
 
 struct ext_substmt_info_s stmt_attr_info[] = {

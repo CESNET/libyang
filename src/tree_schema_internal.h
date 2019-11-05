@@ -23,6 +23,7 @@
 #include "xml.h"
 
 #define YIN_NS_URI "urn:ietf:params:xml:ns:yang:yin:1"
+
 #define LOGVAL_PARSER(CTX, ...) LOGVAL((CTX)->ctx, (CTX)->pos_type, (CTX)->pos_type == LY_VLOG_LINE ? &(CTX)->line : (void*)(CTX)->path, __VA_ARGS__)
 
 /**
