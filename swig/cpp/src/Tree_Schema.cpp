@@ -218,8 +218,8 @@ Iffeature::~Iffeature() {};
 std::vector<S_Feature> Iffeature::features() {
     std::vector<S_Feature> s_vector;
 
-    for (size_t i = 0; i < sizeof(*iffeature->features); i++) {
-        s_vector.push_back(std::make_shared<Feature>(iffeature->features[i], deleter));
+    for (auto it = iffeature->features; *it != nullptr; it++) {
+        s_vector.push_back(std::make_shared<Feature>(*it, deleter));
     }
 
     return s_vector;
