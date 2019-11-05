@@ -1434,9 +1434,6 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
         for (parent = leaf->parent; parent && (parent->schema->nodetype != LYS_LIST); parent = parent->parent);
         if (parent) {
             parent->validity |= LYD_VAL_UNIQUE;
-        } else {
-            LOGINT(leaf->schema->module->ctx);
-            return -1;
         }
     }
 
