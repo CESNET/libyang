@@ -838,14 +838,30 @@ error:
 }
 
 /**
+ * @brief Get the XPath context node for the given schema node.
+ * @param[in] start The schema node where the XPath expression appears.
+ * @return The context node to evaluate XPath expression in given schema node.
+ * @return NULL in case the context node is the root node.
+ */
+static struct lysc_node *
+lysc_xpath_context(struct lysc_node *start)
+{
+    for (; start && !(start->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_ACTION | LYS_NOTIF));
+            start = start->parent);
+    return start;
+}
+
+/**
  * @brief Compile information from the when statement
  * @param[in] ctx Compile context.
  * @param[in] when_p The parsed when statement structure.
+ * @param[in] flags Flags of the node with the "when" defiition.
+ * @param[in] node Node that inherited the "when" definition, must be connected to parents.
  * @param[out] when Pointer where to store pointer to the created compiled when structure.
  * @return LY_ERR value.
  */
 static LY_ERR
-lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, struct lysc_when **when)
+lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, uint16_t flags, struct lysc_node *node, struct lysc_when **when)
 {
     LY_ERR ret = LY_SUCCESS;
 
@@ -853,10 +869,12 @@ lys_compile_when(struct lysc_ctx *ctx, struct lysp_when *when_p, struct lysc_whe
     (*when)->refcount = 1;
     (*when)->cond = lyxp_expr_parse(ctx->ctx, when_p->cond);
     (*when)->module = ctx->mod_def;
+    (*when)->context = lysc_xpath_context(node);
     DUP_STRING(ctx->ctx, when_p->dsc, (*when)->dsc);
     DUP_STRING(ctx->ctx, when_p->ref, (*when)->ref);
     LY_CHECK_ERR_GOTO(!(*when)->cond, ret = ly_errcode(ctx->ctx), done);
     COMPILE_EXTS_GOTO(ctx, when_p->exts, (*when)->exts, (*when), LYEXT_PAR_WHEN, ret, done);
+    (*when)->flags = flags & LYS_STATUS_MASK;
 
 done:
     return ret;
@@ -3556,20 +3574,6 @@ error:
     return LY_EEXIST;
 }
 
-/**
- * @brief Get the XPath context node for the given schema node.
- * @param[in] start The schema node where the XPath expression appears.
- * @return The context node to evaluate XPath expression in given schema node.
- * @return NULL in case the context node is the root node.
- */
-static struct lysc_node *
-lysc_xpath_context(struct lysc_node *start)
-{
-    for (; start && !(start->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_ACTION | LYS_NOTIF));
-            start = start->parent);
-    return start;
-}
-
 static LY_ERR lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lysc_node *parent, uint16_t uses_status);
 
 /**
@@ -4455,6 +4459,7 @@ lys_compile_node_case(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lys
         /* we have to add an implicit case node into the parent choice */
         cs = calloc(1, sizeof(struct lysc_node_case));
         DUP_STRING(ctx->ctx, child->name, cs->name);
+        cs->parent = (struct lysc_node*)ch;
         cs->flags = ch->flags & LYS_STATUS_MASK;
     } else if (node_p->nodetype == LYS_CASE) {
         if (ch->cases && (node_p == ch->cases->prev->sp)) {
@@ -4466,6 +4471,7 @@ lys_compile_node_case(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lys
         /* explicit parent case is not present (this is its first child) */
         cs = calloc(1, sizeof(struct lysc_node_case));
         DUP_STRING(ctx->ctx, node_p->name, cs->name);
+        cs->parent = (struct lysc_node*)ch;
         cs->flags = LYS_STATUS_MASK & node_p->flags;
         cs->sp = node_p;
 
@@ -4474,9 +4480,13 @@ lys_compile_node_case(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lys
 
         if (node_p->when) {
             LY_ARRAY_NEW_GOTO(ctx->ctx, cs->when, when, ret, error);
-            ret = lys_compile_when(ctx, node_p->when, when);
+            ret = lys_compile_when(ctx, node_p->when, node_p->flags, (struct lysc_node *)cs, when);
             LY_CHECK_GOTO(ret, error);
-            (*when)->context = lysc_xpath_context(ch->parent);
+
+            if (!(ctx->options & LYSC_OPT_GROUPING)) {
+                /* do not check "when" semantics in a grouping */
+                ly_set_add(&ctx->unres, cs, 0);
+            }
         }
         COMPILE_ARRAY_GOTO(ctx, node_p->iffeatures, cs->iffeatures, u, lys_compile_iffeature, ret, error);
     } else {
@@ -4487,7 +4497,6 @@ lys_compile_node_case(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lys
     cs->prev = (struct lysc_node*)cs;
     cs->nodetype = LYS_CASE;
     lys_compile_node_connect(ctx, (struct lysc_node*)ch, (struct lysc_node*)cs);
-    cs->parent = (struct lysc_node*)ch;
     cs->child = child;
 
     return cs;
@@ -4771,9 +4780,14 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, const stru
         if (aug_p->when) {
             LY_ARRAY_NEW_GOTO(ctx->ctx, node->when, when, ret, error);
             if (!when_shared) {
-                ret = lys_compile_when(ctx, aug_p->when, when);
+                ret = lys_compile_when(ctx, aug_p->when, aug_p->flags, target, when);
                 LY_CHECK_GOTO(ret, error);
-                (*when)->context = lysc_xpath_context(target);
+
+                if (!(ctx->options & LYSC_OPT_GROUPING)) {
+                    /* do not check "when" semantics in a grouping */
+                    ly_set_add(&ctx->unres, target, 0);
+                }
+
                 when_shared = *when;
             } else {
                 ++when_shared->refcount;
@@ -5042,8 +5056,13 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
         if (uses_p->when) {
             LY_ARRAY_NEW_GOTO(ctx->ctx, child->when, when, ret, cleanup);
             if (!when_shared) {
-                LY_CHECK_GOTO(lys_compile_when(ctx, uses_p->when, when), cleanup);
-                (*when)->context = lysc_xpath_context(parent);
+                LY_CHECK_GOTO(lys_compile_when(ctx, uses_p->when, uses_p->flags, parent, when), cleanup);
+
+                if (!(ctx->options & LYSC_OPT_GROUPING)) {
+                    /* do not check "when" semantics in a grouping */
+                    ly_set_add(&ctx->unres, child, 0);
+                }
+
                 when_shared = *when;
             } else {
                 ++when_shared->refcount;
@@ -5627,9 +5646,13 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lysc_nod
     DUP_STRING(ctx->ctx, node_p->ref, node->ref);
     if (node_p->when) {
         LY_ARRAY_NEW_GOTO(ctx->ctx, node->when, when, ret, error);
-        ret = lys_compile_when(ctx, node_p->when, when);
+        ret = lys_compile_when(ctx, node_p->when, node_p->flags, node, when);
         LY_CHECK_GOTO(ret, error);
-        (*when)->context = lysc_xpath_context(node);
+
+        if (!(ctx->options & LYSC_OPT_GROUPING)) {
+            /* do not check "when" semantics in a grouping */
+            ly_set_add(&ctx->unres, node, 0);
+        }
     }
     COMPILE_ARRAY_GOTO(ctx, node_p->iffeatures, node->iffeatures, u, lys_compile_iffeature, ret, error);
 
@@ -6935,6 +6958,145 @@ cleanup:
     return ret;
 }
 
+/**
+ * @brief Check when/must expressions of a node on a compiled schema tree.
+ * @param[in] ctx Compile context.
+ * @param[in] node Node to check.
+ * @return LY_ERR value
+ */
+static LY_ERR
+lys_compile_check_xpath(struct lysc_ctx *ctx, const struct lysc_node *node)
+{
+    struct lysc_node *parent, *elem;
+    struct lyxp_set tmp_set;
+    uint32_t i, j;
+    int opts;
+    struct lysc_when **when = NULL;
+    struct lysc_must *musts = NULL;
+    LY_ERR ret = LY_SUCCESS;
+
+    memset(&tmp_set, 0, sizeof tmp_set);
+
+    /* check if we will be traversing RPC output */
+    for (parent = (struct lysc_node *)node; parent && (parent->nodetype != LYS_ACTION); parent = parent->parent);
+    if (parent && (node->flags & LYS_CONFIG_R)) {
+        opts = LYXP_SCNODE_OUTPUT;
+    } else {
+        opts = LYXP_SCNODE_SCHEMA;
+    }
+
+    switch (node->nodetype) {
+    case LYS_CONTAINER:
+        when = ((struct lysc_node_container *)node)->when;
+        musts = ((struct lysc_node_container *)node)->musts;
+        break;
+    case LYS_CHOICE:
+        when = ((struct lysc_node_choice *)node)->when;
+        break;
+    case LYS_LEAF:
+        when = ((struct lysc_node_leaf *)node)->when;
+        musts = ((struct lysc_node_leaf *)node)->musts;
+        break;
+    case LYS_LEAFLIST:
+        when = ((struct lysc_node_leaflist *)node)->when;
+        musts = ((struct lysc_node_leaflist *)node)->musts;
+        break;
+    case LYS_LIST:
+        when = ((struct lysc_node_list *)node)->when;
+        musts = ((struct lysc_node_list *)node)->musts;
+        break;
+    case LYS_ANYXML:
+    case LYS_ANYDATA:
+        when = ((struct lysc_node_anydata *)node)->when;
+        musts = ((struct lysc_node_anydata *)node)->musts;
+        break;
+    case LYS_CASE:
+        when = ((struct lysc_node_case *)node)->when;
+        break;
+    case LYS_NOTIF:
+        musts = ((struct lysc_notif *)node)->musts;
+        break;
+    default:
+        /* nothing to check */
+        break;
+    }
+
+    /* find operation if in one, used later */
+    for (parent = (struct lysc_node *)node;
+         parent && !(parent->nodetype & (LYS_ACTION | LYS_NOTIF));
+         parent = parent->parent);
+
+
+    /* check "when" */
+    LY_ARRAY_FOR(when, i) {
+        lyxp_set_cast(&tmp_set, LYXP_SET_EMPTY);
+        ret = lyxp_atomize(when[i]->cond, LYD_UNKNOWN, when[i]->module, when[i]->context,
+                           when[i]->context ? LYXP_NODE_ELEM : LYXP_NODE_ROOT_CONFIG, &tmp_set, opts);
+        if (ret != LY_SUCCESS) {
+            LOGVAL(ctx->ctx, LY_VLOG_LYS, node, LYVE_SEMANTICS, "Invalid when condition \"%s\".", when[i]->cond->expr);
+            goto cleanup;
+        }
+
+        for (j = 0; j < tmp_set.used; ++j) {
+            /* skip roots'n'stuff */
+            if (tmp_set.val.scnodes[j].type == LYXP_NODE_ELEM) {
+                /* XPath expression cannot reference "lower" status than the node that has the definition */
+                lysc_path((struct lysc_node *)node, LYSC_PATH_LOG, ctx->path, LYSC_CTX_BUFSIZE);
+                ret = lysc_check_status(ctx, when[i]->flags, when[i]->module, node->name, tmp_set.val.scnodes[j].scnode->flags,
+                                        tmp_set.val.scnodes[j].scnode->module, tmp_set.val.scnodes[j].scnode->name);
+                LY_CHECK_GOTO(ret, cleanup);
+
+                if (parent) {
+                    for (elem = tmp_set.val.scnodes[j].scnode; elem && (elem != parent); elem = elem->parent);
+                    if (!elem) {
+                        /* not in node's RPC or notification subtree, set the correct dep flag */
+                        when[i]->flags |= LYS_XPATH_DEP;
+                        ((struct lysc_node *)node)->flags |= LYS_XPATH_DEP;
+                    }
+                }
+            }
+        }
+
+        lyxp_set_cast(&tmp_set, LYXP_SET_EMPTY);
+    }
+
+    /* check "must" */
+    LY_ARRAY_FOR(musts, i) {
+        lyxp_set_cast(&tmp_set, LYXP_SET_EMPTY);
+        ret = lyxp_atomize(musts[i].cond, LYD_UNKNOWN, musts[i].module, node, LYXP_NODE_ELEM, &tmp_set, opts);
+        if (ret != LY_SUCCESS) {
+            LOGVAL(ctx->ctx, LY_VLOG_LYS, node, LYVE_SEMANTICS, "Invalid must restriction \"%s\".", musts[i].cond->expr);
+            goto cleanup;
+        }
+
+        for (j = 0; j < tmp_set.used; ++j) {
+            /* skip roots'n'stuff */
+            if (tmp_set.val.scnodes[j].type == LYXP_NODE_ELEM) {
+                /* XPath expression cannot reference "lower" status than the node that has the definition */
+                lysc_path((struct lysc_node *)node, LYSC_PATH_LOG, ctx->path, LYSC_CTX_BUFSIZE);
+                ret = lysc_check_status(ctx, musts[i].flags, musts[i].module, node->name, tmp_set.val.scnodes[j].scnode->flags,
+                                        tmp_set.val.scnodes[j].scnode->module, tmp_set.val.scnodes[j].scnode->name);
+                LY_CHECK_GOTO(ret, cleanup);
+
+                if (parent) {
+                    for (elem = tmp_set.val.scnodes[j].scnode; elem && (elem != parent); elem = elem->parent);
+                    if (!elem) {
+                        /* not in node's RPC or notification subtree, set the correct dep flag */
+                        musts[i].flags |= LYS_XPATH_DEP;
+                        ((struct lysc_node *)node)->flags |= LYS_XPATH_DEP;
+                    }
+                }
+            }
+        }
+
+        lyxp_set_cast(&tmp_set, LYXP_SET_EMPTY);
+    }
+
+cleanup:
+    lyxp_set_cast(&tmp_set, LYXP_SET_EMPTY);
+    return ret;
+}
+
 LY_ERR
 lys_compile(struct lys_module *mod, int options)
 {
@@ -7060,13 +7222,16 @@ lys_compile(struct lys_module *mod, int options)
                 LY_ARRAY_FOR(((struct lysc_type_union*)type)->types, v) {
                     if (((struct lysc_type_union*)type)->types[v]->basetype == LY_TYPE_LEAFREF) {
                         /* validate the path */
-                        LY_CHECK_GOTO(ret = lys_compile_leafref_validate(&ctx, ((struct lysc_node*)ctx.unres.objs[u]),
-                                                                         (struct lysc_type_leafref*)((struct lysc_type_union*)type)->types[v], NULL),
-                                      error);
+                        ret = lys_compile_leafref_validate(&ctx, ((struct lysc_node*)ctx.unres.objs[u]),
+                                                           (struct lysc_type_leafref*)((struct lysc_type_union*)type)->types[v], NULL);
+                        LY_CHECK_GOTO(ret, error);
                     }
                 }
             }
         }
+
+        /* check xpath */
+        LY_CHECK_GOTO(ret = lys_compile_check_xpath(&ctx, ctx.unres.objs[u]), error);
     }
     for (u = 0; u < ctx.unres.count; ++u) {
         if (((struct lysc_node*)ctx.unres.objs[u])->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {

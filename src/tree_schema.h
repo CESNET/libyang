@@ -1165,12 +1165,12 @@ struct lysc_import {
 struct lysc_when {
     struct lys_module *module;       /**< module where the must was defined */
     struct lyxp_expr *cond;          /**< XPath when condition */
-    struct lysc_node *context;       /**< context node for evaluating the expression */
+    struct lysc_node *context;       /**< context node for evaluating the expression, NULL if the context is root node */
     const char *dsc;                 /**< description */
     const char *ref;                 /**< reference */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     uint32_t refcount;               /**< reference counter since some of the when statements are shared among several nodes */
-    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_XPATH_DEP is allowed */
+    uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_XPATH_DEP and LYS_STATUS are allowed */
 };
 
 /**

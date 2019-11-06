@@ -758,11 +758,13 @@ test_node_choice(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
 
     assert_non_null(mod = lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;feature f;"
-                                        "choice ch {default a:b; case a {leaf a1 {type string;}leaf a2 {type string;}}"
+                                        "choice ch {default a:b; when a2; case a {leaf a1 {type string;}leaf a2 {type string;}}"
                                         "leaf b {type string;}}}", LYS_IN_YANG));
     ch = (struct lysc_node_choice*)mod->compiled->data;
     assert_non_null(ch);
     assert_int_equal(LYS_CONFIG_W | LYS_STATUS_CURR, ch->flags);
+    assert_int_equal(1, LY_ARRAY_SIZE(ch->when));
+    assert_null(ch->when[0]->context);
     cs = ch->cases;
     assert_non_null(cs);
     assert_string_equal("a", cs->name);
@@ -2464,12 +2466,23 @@ test_uses(void **state)
     assert_string_equal("f", child->iffeatures[0].features[0]->name);
     assert_int_equal(1, lysc_iffeature_value(&child->iffeatures[0]));
 
-    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule bsub {belongs-to b {prefix b;} grouping grp {leaf b {when 1; type string;}}}");
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule bsub {belongs-to b {prefix b;} grouping grp {leaf b {when 1; type string;} leaf c {type string;}}}");
     assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;include bsub;uses grp {when 2;}}", LYS_IN_YANG));
     assert_non_null(mod->compiled->data);
     assert_int_equal(LYS_LEAF, mod->compiled->data->nodetype);
     assert_string_equal("b", mod->compiled->data->name);
     assert_int_equal(2, LY_ARRAY_SIZE(mod->compiled->data->when));
+    assert_int_equal(1, mod->compiled->data->when[0]->refcount);
+    assert_non_null(mod->compiled->data->when[0]->context);
+    assert_string_equal("b", mod->compiled->data->when[0]->context->name);
+    assert_int_equal(2, mod->compiled->data->when[1]->refcount);
+    assert_null(mod->compiled->data->when[1]->context);
+
+    assert_int_equal(LYS_LEAF, mod->compiled->data->next->nodetype);
+    assert_string_equal("c", mod->compiled->data->next->name);
+    assert_int_equal(1, LY_ARRAY_SIZE(mod->compiled->data->next->when));
+    assert_int_equal(2, mod->compiled->data->next->when[0]->refcount);
+    assert_null(mod->compiled->data->next->when[0]->context);
 
     logbuf_clean();
     assert_non_null(mod = lys_parse_mem(ctx, "module c {namespace urn:ii;prefix ii;"
