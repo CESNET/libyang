@@ -245,6 +245,7 @@ struct lyxp_set {
         const struct lyd_node *ctx_node;
         const struct lysc_node *ctx_scnode;
     };
+    enum lyxp_node_type root_type;
     const struct lys_module *local_mod;
     const struct lyd_node **trees;
     LYD_FORMAT format;
@@ -309,7 +310,7 @@ LY_ERR lyxp_atomize(struct lyxp_expr *exp, LYD_FORMAT format, const struct lys_m
  * which the node has.
  *
  * @param[in] node Node to examine.
- * @param[in,out] set Resulting set of atoms merged from all the expressions.
+ * @param[in,out] set Optional resulting set of atoms merged from all the expressions.
  * Will be cleared before use.
  * @param[in] set_ext_dep_flags Whether to set #LYS_XPATH_DEP for conditions that require data subtree
  * and also for the node itself, if it has any such condition.
@@ -323,17 +324,9 @@ LY_ERR lyxp_node_atomize(const struct lysc_node *node, struct lyxp_set *set, int
  *
  * @param[in] set Set to cast.
  * @param[in] target Target type to cast \p set into.
- * @param[in] options Whether to apply some evaluation restrictions.
  * @return LY_ERR
  */
-LY_ERR lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target, int options);
-
-/**
- * @brief Free contents of an XPath @p set.
- *
- * @param[in] set Set to free.
- */
-void lyxp_set_free(struct lyxp_set *set);
+LY_ERR lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target);
 
 /**
  * @brief Parse an XPath expression into a structure of tokens.
