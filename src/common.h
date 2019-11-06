@@ -79,14 +79,6 @@ char *strnstr(const char *s, const char *find, size_t slen);
  * Logger
  *****************************************************************************/
 
-/* internal logging options */
-enum int_log_opts {
-    ILO_LOG = 0, /* log normally */
-    ILO_STORE,   /* only store any messages, they will be processed higher on stack */
-    ILO_IGNORE,  /* completely ignore messages */
-    ILO_ERR2WRN, /* change errors to warnings */
-};
-
 enum LY_VLOG_ELEM {
     LY_VLOG_NONE = 0,
     LY_VLOG_LINE,/* line number (uint64_t*) */

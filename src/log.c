@@ -26,7 +26,6 @@
 #include "log.h"
 #include "plugins_exts.h"
 
-THREAD_LOCAL enum int_log_opts log_opt;
 volatile uint8_t ly_log_level = LY_LLWRN;
 volatile uint8_t ly_log_opts = LY_LOLOG | LY_LOSTORE_LAST;
 static void (*ly_log_clb)(LY_LOG_LEVEL level, const char *msg, const char *path);
@@ -252,7 +251,7 @@ log_store(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE vec
         } while (eitem->prev->next);
         /* last error was not found */
         assert(0);
-    } else if ((log_opt != ILO_STORE) && ((ly_log_opts & LY_LOSTORE_LAST) == LY_LOSTORE_LAST)) {
+    } else if ((ly_log_opts & LY_LOSTORE_LAST) == LY_LOSTORE_LAST) {
         /* overwrite last message */
         free(eitem->msg);
         free(eitem->path);
@@ -292,12 +291,7 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE v
     char *msg = NULL;
     int free_strs;
 
-    if ((log_opt == ILO_ERR2WRN) && (level == LY_LLERR)) {
-        /* change error to warning */
-        level = LY_LLWRN;
-    }
-
-    if ((log_opt == ILO_IGNORE) || (level > ly_log_level)) {
+    if (level > ly_log_level) {
         /* do not print or store the message */
         free(path);
         return;
@@ -309,7 +303,7 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE v
     }
 
     /* store the error/warning (if we need to store errors internally, it does not matter what are the user log options) */
-    if ((level < LY_LLVRB) && ctx && ((ly_log_opts & LY_LOSTORE) || (log_opt == ILO_STORE))) {
+    if ((level < LY_LLVRB) && ctx && (ly_log_opts & LY_LOSTORE)) {
         if (!format) {
             assert(path);
             /* postponed print of path related to the previous error, do not rewrite stored original message */
@@ -338,7 +332,7 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE v
     }
 
     /* if we are only storing errors internally, never print the message (yet) */
-    if ((ly_log_opts & LY_LOLOG) && (log_opt != ILO_STORE)) {
+    if (ly_log_opts & LY_LOLOG) {
         if (ly_log_clb) {
             ly_log_clb(level, msg, path);
         } else {
@@ -507,11 +501,9 @@ ly_err_last_set_apptag(const struct ly_ctx *ctx, const char *apptag)
 {
     struct ly_err_item *i;
 
-    if (log_opt != ILO_IGNORE) {
-        i = ly_err_first(ctx);
-        if (i) {
-            i = i->prev;
-            i->apptag = strdup(apptag);
-        }
+    i = ly_err_first(ctx);
+    if (i) {
+        i = i->prev;
+        i->apptag = strdup(apptag);
     }
 }
