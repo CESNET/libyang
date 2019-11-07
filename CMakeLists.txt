@@ -28,8 +28,8 @@ set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_
 # Major version is changed with every backward non-compatible API/ABI change in libyang, minor version changes
 # with backward compatible change and micro version is connected with any internal change of the library.
 set(LIBYANG_MAJOR_SOVERSION 1)
-set(LIBYANG_MINOR_SOVERSION 2)
-set(LIBYANG_MICRO_SOVERSION 14)
+set(LIBYANG_MINOR_SOVERSION 3)
+set(LIBYANG_MICRO_SOVERSION 0)
 set(LIBYANG_SOVERSION_FULL ${LIBYANG_MAJOR_SOVERSION}.${LIBYANG_MINOR_SOVERSION}.${LIBYANG_MICRO_SOVERSION})
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_SOVERSION})
 
