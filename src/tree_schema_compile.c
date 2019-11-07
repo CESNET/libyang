@@ -7037,11 +7037,12 @@ lys_compile_check_xpath(struct lysc_ctx *ctx, const struct lysc_node *node)
             goto cleanup;
         }
 
+        ctx->path[0] = '\0';
+        lysc_path((struct lysc_node *)node, LYSC_PATH_LOG, ctx->path, LYSC_CTX_BUFSIZE);
         for (j = 0; j < tmp_set.used; ++j) {
             /* skip roots'n'stuff */
             if (tmp_set.val.scnodes[j].type == LYXP_NODE_ELEM) {
                 /* XPath expression cannot reference "lower" status than the node that has the definition */
-                lysc_path((struct lysc_node *)node, LYSC_PATH_LOG, ctx->path, LYSC_CTX_BUFSIZE);
                 ret = lysc_check_status(ctx, when[i]->flags, when[i]->module, node->name, tmp_set.val.scnodes[j].scnode->flags,
                                         tmp_set.val.scnodes[j].scnode->module, tmp_set.val.scnodes[j].scnode->name);
                 LY_CHECK_GOTO(ret, cleanup);
@@ -7069,11 +7070,12 @@ lys_compile_check_xpath(struct lysc_ctx *ctx, const struct lysc_node *node)
             goto cleanup;
         }
 
+        ctx->path[0] = '\0';
+        lysc_path((struct lysc_node *)node, LYSC_PATH_LOG, ctx->path, LYSC_CTX_BUFSIZE);
         for (j = 0; j < tmp_set.used; ++j) {
             /* skip roots'n'stuff */
             if (tmp_set.val.scnodes[j].type == LYXP_NODE_ELEM) {
                 /* XPath expression cannot reference "lower" status than the node that has the definition */
-                lysc_path((struct lysc_node *)node, LYSC_PATH_LOG, ctx->path, LYSC_CTX_BUFSIZE);
                 ret = lysc_check_status(ctx, musts[i].flags, musts[i].module, node->name, tmp_set.val.scnodes[j].scnode->flags,
                                         tmp_set.val.scnodes[j].scnode->module, tmp_set.val.scnodes[j].scnode->name);
                 LY_CHECK_GOTO(ret, cleanup);
