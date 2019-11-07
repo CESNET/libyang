@@ -5308,7 +5308,7 @@ moveto_node_check(const struct lyd_node *node, enum lyxp_node_type root_type, co
     }
 
     /* name check */
-    if (strcmp(node_name, "*") && !strcmp(node->schema->name, node_name)) {
+    if (strcmp(node_name, "*") && (node->schema->name != node_name)) {
         return LY_ENOT;
     }
 
@@ -5360,7 +5360,7 @@ moveto_scnode_check(const struct lysc_node *node, enum lyxp_node_type root_type,
     }
 
     /* name check */
-    if (strcmp(node_name, "*") && !strcmp(node->name, node_name)) {
+    if (strcmp(node_name, "*") && (node->name != node_name)) {
         return LY_ENOT;
     }
 
