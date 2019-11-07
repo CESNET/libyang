@@ -5328,27 +5328,12 @@ moveto_node_check(const struct lyd_node *node, enum lyxp_node_type root_type, co
  * @param[in] root_type XPath root node type.
  * @param[in] node_name Node name to move to. Must be in the dictionary!
  * @param[in] moveto_mod Expected module of the node.
- * @param[in] options XPath options.
  * @return LY_ERR (LY_ENOT if node does not match, LY_EINVAL if neither node nor any children match)
  */
 static LY_ERR
 moveto_scnode_check(const struct lysc_node *node, enum lyxp_node_type root_type, const char *node_name,
-                    const struct lys_module *moveto_mod, int options)
+                    const struct lys_module *moveto_mod)
 {
-    struct lysc_node *parent;
-
-    /* RPC input/output check */
-    for (parent = node->parent; parent && (parent->nodetype != LYS_ACTION); parent = parent->parent);
-    if (options & LYXP_SCNODE_OUTPUT) {
-        if (parent && (node->flags & LYS_CONFIG_W)) {
-            return LY_EINVAL;
-        }
-    } else {
-        if (parent && (node->flags & LYS_CONFIG_R)) {
-            return LY_EINVAL;
-        }
-    }
-
     /* module check */
     if (strcmp(node_name, "*") && (node->module != moveto_mod)) {
         return LY_ENOT;
@@ -5472,7 +5457,7 @@ moveto_node(struct lyxp_set *set, const char *qname, uint16_t qname_len)
 static LY_ERR
 moveto_scnode(struct lyxp_set *set, const char *qname, uint16_t qname_len, int options)
 {
-    int i, orig_used, idx, temp_ctx = 0;
+    int i, orig_used, idx, temp_ctx = 0, getnext_opts;
     uint32_t mod_idx;
     const char *name_dict = NULL; /* optimization - so we can do (==) instead (!strncmp(...)) in moveto_node_check() */
     const struct lys_module *moveto_mod;
@@ -5494,6 +5479,12 @@ moveto_scnode(struct lyxp_set *set, const char *qname, uint16_t qname_len, int o
     /* name */
     name_dict = lydict_insert(set->ctx, qname, qname_len);
 
+    /* getnext opts */
+    getnext_opts = LYS_GETNEXT_NOSTATECHECK;
+    if (options & LYXP_SCNODE_OUTPUT) {
+        getnext_opts |= LYS_GETNEXT_OUTPUT;
+    }
+
     orig_used = set->used;
     for (i = 0; i < orig_used; ++i) {
         if (set->val.scnodes[i].in_ctx != 1) {
@@ -5509,8 +5500,8 @@ moveto_scnode(struct lyxp_set *set, const char *qname, uint16_t qname_len, int o
             mod_idx = 0;
             while (moveto_mod || (moveto_mod = (struct lys_module *)ly_ctx_get_module_iter(set->ctx, &mod_idx))) {
                 sub = NULL;
-                while ((sub = lys_getnext(sub, NULL, moveto_mod->compiled, LYS_GETNEXT_NOSTATECHECK))) {
-                    if (!moveto_scnode_check(sub, set->root_type, name_dict, moveto_mod, options)) {
+                while ((sub = lys_getnext(sub, NULL, moveto_mod->compiled, getnext_opts))) {
+                    if (!moveto_scnode_check(sub, set->root_type, name_dict, moveto_mod)) {
                         idx = set_scnode_insert_node(set, sub, LYXP_NODE_ELEM);
                         /* we need to prevent these nodes from being considered in this moveto */
                         if ((idx < orig_used) && (idx > i)) {
@@ -5531,8 +5522,8 @@ moveto_scnode(struct lyxp_set *set, const char *qname, uint16_t qname_len, int o
         /* skip nodes without children - leaves, leaflists, and anyxmls (ouput root will eval to true) */
         } else if (!(start_parent->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
             sub = NULL;
-            while ((sub = lys_getnext(sub, start_parent, NULL, LYS_GETNEXT_NOSTATECHECK))) {
-                if (!moveto_scnode_check(sub, set->root_type, name_dict, (moveto_mod ? moveto_mod : set->local_mod), options)) {
+            while ((sub = lys_getnext(sub, start_parent, NULL, getnext_opts))) {
+                if (!moveto_scnode_check(sub, set->root_type, name_dict, (moveto_mod ? moveto_mod : set->local_mod))) {
                     idx = set_scnode_insert_node(set, sub, LYXP_NODE_ELEM);
                     if ((idx < orig_used) && (idx > i)) {
                         set->val.scnodes[idx].in_ctx = 2;
@@ -5702,7 +5693,7 @@ moveto_scnode_alldesc(struct lyxp_set *set, const char *qname, uint16_t qname_le
                 goto next_iter;
             }
 
-            rc = moveto_scnode_check(elem, set->root_type, qname, moveto_mod, options);
+            rc = moveto_scnode_check(elem, set->root_type, qname, moveto_mod);
             if (!rc) {
                 if ((idx = set_scnode_dup_node_check(set, elem, LYXP_NODE_ELEM, i)) > -1) {
                     set->val.scnodes[idx].in_ctx = 1;
