@@ -218,13 +218,16 @@ Iffeature::~Iffeature() {};
 std::vector<S_Feature> Iffeature::features() {
     std::vector<S_Feature> s_vector;
 
-    for (auto it = iffeature->features; *it != nullptr; it++) {
-        s_vector.push_back(std::make_shared<Feature>(*it, deleter));
+    for (size_t i = 0; i < sizeof(*iffeature->features); i++) {
+        s_vector.push_back(std::make_shared<Feature>(iffeature->features[i], deleter));
     }
 
     return s_vector;
 };
 std::vector<S_Ext_Instance> Iffeature::ext() LY_NEW_P_LIST(iffeature, ext, ext_size, Ext_Instance);
+int Iffeature::value() {
+    return lys_iffeature_value(iffeature);
+}
 
 Ext_Instance::Ext_Instance(lys_ext_instance *ext_instance, S_Deleter deleter):
     ext_instance(ext_instance),

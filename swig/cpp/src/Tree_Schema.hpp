@@ -476,6 +476,8 @@ public:
     std::vector<S_Feature> features();
     /** get ext variable from [lys_iffeature](@ref lys_iffeature)*/
     std::vector<S_Ext_Instance> ext();
+    /** wrapper for [lys_iffeature_value](@ref lys_iffeature_value)*/
+    int value();
 
 private:
     struct lys_iffeature *iffeature;
