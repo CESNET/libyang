@@ -3649,8 +3649,13 @@ lys_compile_action(struct lysc_ctx *ctx, struct lysp_action *action_p,
         LY_CHECK_RET(lys_compile_node(ctx, child_p, (struct lysc_node*)action, uses_status));
     }
     lysc_update_path(ctx, NULL, NULL);
-
     lysc_update_path(ctx, NULL, NULL);
+
+    if ((action_p->input.musts || action_p->output.musts) && !(ctx->options & LYSC_OPT_GROUPING)) {
+        /* do not check "must" semantics in a grouping */
+        ly_set_add(&ctx->unres, action, 0);
+    }
+
 cleanup:
     ctx->options = opt_prev;
     return ret;
@@ -3708,6 +3713,10 @@ lys_compile_notif(struct lysc_ctx *ctx, struct lysp_notif *notif_p,
     DUP_STRING(ctx->ctx, notif_p->ref, notif->ref);
     COMPILE_ARRAY_GOTO(ctx, notif_p->iffeatures, notif->iffeatures, u, lys_compile_iffeature, ret, cleanup);
     COMPILE_ARRAY_GOTO(ctx, notif_p->musts, notif->musts, u, lys_compile_must, ret, cleanup);
+    if (notif_p->musts && !(ctx->options & LYSC_OPT_GROUPING)) {
+        /* do not check "must" semantics in a grouping */
+        ly_set_add(&ctx->unres, notif, 0);
+    }
     COMPILE_EXTS_GOTO(ctx, notif_p->exts, notif->exts, notif, LYEXT_PAR_NODE, ret, cleanup);
 
     ctx->options |= LYSC_OPT_NOTIFICATION;
@@ -3747,6 +3756,10 @@ lys_compile_node_container(struct lysc_ctx *ctx, struct lysp_node *node_p, struc
     }
 
     COMPILE_ARRAY_GOTO(ctx, cont_p->musts, cont->musts, u, lys_compile_must, ret, done);
+    if (cont_p->musts && !(ctx->options & LYSC_OPT_GROUPING)) {
+        /* do not check "must" semantics in a grouping */
+        ly_set_add(&ctx->unres, cont, 0);
+    }
     COMPILE_ARRAY1_GOTO(ctx, cont_p->actions, cont->actions, node, u, lys_compile_action, 0, ret, done);
     COMPILE_ARRAY1_GOTO(ctx, cont_p->notifs, cont->notifs, node, u, lys_compile_notif, 0, ret, done);
 
@@ -3828,6 +3841,10 @@ lys_compile_node_leaf(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lys
     LY_ERR ret = LY_SUCCESS;
 
     COMPILE_ARRAY_GOTO(ctx, leaf_p->musts, leaf->musts, u, lys_compile_must, ret, done);
+    if (leaf_p->musts && !(ctx->options & LYSC_OPT_GROUPING)) {
+        /* do not check "must" semantics in a grouping */
+        ly_set_add(&ctx->unres, leaf, 0);
+    }
     if (leaf_p->units) {
         leaf->units = lydict_insert(ctx->ctx, leaf_p->units, 0);
         leaf->flags |= LYS_SET_UNITS;
@@ -3889,6 +3906,10 @@ lys_compile_node_leaflist(struct lysc_ctx *ctx, struct lysp_node *node_p, struct
     LY_ERR ret = LY_SUCCESS;
 
     COMPILE_ARRAY_GOTO(ctx, llist_p->musts, llist->musts, u, lys_compile_must, ret, done);
+    if (llist_p->musts && !(ctx->options & LYSC_OPT_GROUPING)) {
+        /* do not check "must" semantics in a grouping */
+        ly_set_add(&ctx->unres, llist, 0);
+    }
     if (llist_p->units) {
         llist->units = lydict_insert(ctx->ctx, llist_p->units, 0);
         llist->flags |= LYS_SET_UNITS;
@@ -4070,6 +4091,10 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lys
     }
 
     COMPILE_ARRAY_GOTO(ctx, list_p->musts, list->musts, u, lys_compile_must, ret, done);
+    if (list_p->musts && !(ctx->options & LYSC_OPT_GROUPING)) {
+        /* do not check "must" semantics in a grouping */
+        ly_set_add(&ctx->unres, list, 0);
+    }
 
     /* keys */
     if ((list->flags & LYS_CONFIG_W) && (!list_p->key || !list_p->key[0])) {
@@ -4369,6 +4394,10 @@ lys_compile_node_any(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lysc
     LY_ERR ret = LY_SUCCESS;
 
     COMPILE_ARRAY_GOTO(ctx, any_p->musts, any->musts, u, lys_compile_must, ret, done);
+    if (any_p->musts && !(ctx->options & LYSC_OPT_GROUPING)) {
+        /* do not check "must" semantics in a grouping */
+        ly_set_add(&ctx->unres, any, 0);
+    }
 
     if (any->flags & LYS_CONFIG_W) {
         LOGWRN(ctx->ctx, "Use of %s to define configuration data is not recommended.",
@@ -5294,6 +5323,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
                        lys_nodetype2str(node->nodetype));
                 goto cleanup;
             }
+            ly_set_add(&ctx->unres, node, 0);
         }
 
         /* min/max-elements */
@@ -6107,6 +6137,7 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p)
                                lys_nodetype2str(devs[u]->target->nodetype), "add", "must");
                         goto cleanup;
                     }
+                    ly_set_add(&ctx->unres, devs[u]->target, 0);
                 }
 
                 /* *unique-stmt */
@@ -6970,20 +7001,13 @@ lys_compile_check_xpath(struct lysc_ctx *ctx, const struct lysc_node *node)
     struct lysc_node *parent, *elem;
     struct lyxp_set tmp_set;
     uint32_t i, j;
-    int opts;
+    int opts, input_done = 0;
     struct lysc_when **when = NULL;
     struct lysc_must *musts = NULL;
     LY_ERR ret = LY_SUCCESS;
 
     memset(&tmp_set, 0, sizeof tmp_set);
-
-    /* check if we will be traversing RPC output */
-    for (parent = (struct lysc_node *)node; parent && (parent->nodetype != LYS_ACTION); parent = parent->parent);
-    if (parent && (node->flags & LYS_CONFIG_R)) {
-        opts = LYXP_SCNODE_OUTPUT;
-    } else {
-        opts = LYXP_SCNODE_SCHEMA;
-    }
+    opts = LYXP_SCNODE_SCHEMA;
 
     switch (node->nodetype) {
     case LYS_CONTAINER:
@@ -7015,6 +7039,10 @@ lys_compile_check_xpath(struct lysc_ctx *ctx, const struct lysc_node *node)
         break;
     case LYS_NOTIF:
         musts = ((struct lysc_notif *)node)->musts;
+        break;
+    case LYS_ACTION:
+        /* first process input musts */
+        musts = ((struct lysc_action *)node)->input.musts;
         break;
     default:
         /* nothing to check */
@@ -7061,6 +7089,7 @@ lys_compile_check_xpath(struct lysc_ctx *ctx, const struct lysc_node *node)
         lyxp_set_cast(&tmp_set, LYXP_SET_EMPTY);
     }
 
+check_musts:
     /* check "must" */
     LY_ARRAY_FOR(musts, i) {
         lyxp_set_cast(&tmp_set, LYXP_SET_EMPTY);
@@ -7076,7 +7105,7 @@ lys_compile_check_xpath(struct lysc_ctx *ctx, const struct lysc_node *node)
             /* skip roots'n'stuff */
             if (tmp_set.val.scnodes[j].type == LYXP_NODE_ELEM) {
                 /* XPath expression cannot reference "lower" status than the node that has the definition */
-                ret = lysc_check_status(ctx, musts[i].flags, musts[i].module, node->name, tmp_set.val.scnodes[j].scnode->flags,
+                ret = lysc_check_status(ctx, node->flags, musts[i].module, node->name, tmp_set.val.scnodes[j].scnode->flags,
                                         tmp_set.val.scnodes[j].scnode->module, tmp_set.val.scnodes[j].scnode->name);
                 LY_CHECK_GOTO(ret, cleanup);
 
@@ -7092,6 +7121,14 @@ lys_compile_check_xpath(struct lysc_ctx *ctx, const struct lysc_node *node)
         }
 
         lyxp_set_cast(&tmp_set, LYXP_SET_EMPTY);
+    }
+
+    if ((node->nodetype == LYS_ACTION) && !input_done) {
+        /* now check output musts */
+        input_done = 1;
+        musts = ((struct lysc_action *)node)->output.musts;
+        opts = LYXP_SCNODE_OUTPUT;
+        goto check_musts;
     }
 
 cleanup:

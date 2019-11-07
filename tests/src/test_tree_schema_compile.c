@@ -871,13 +871,18 @@ test_action(void **state)
     assert_string_equal("a", rpc->name);
 
     assert_non_null(mod = lys_parse_mem(ctx, "module b {yang-version 1.1; namespace urn:b;prefix b; container top {"
-                                        "action b {input {leaf x {type int8;} leaf y {type int8;}} output {leaf result {type int16;}}}}}", LYS_IN_YANG));
+                                        "action b {input {leaf x {type int8;} leaf y {type int8;}}"
+                                        "output {must \"result > 25\"; must \"/top\"; leaf result {type int16;}}}}}", LYS_IN_YANG));
     rpc = lysc_node_actions(mod->compiled->data);
     assert_non_null(rpc);
     assert_int_equal(1, LY_ARRAY_SIZE(rpc));
     assert_int_equal(LYS_ACTION, rpc->nodetype);
-    assert_int_equal(LYS_STATUS_CURR, rpc->flags);
+    assert_int_equal(LYS_STATUS_CURR | LYS_XPATH_DEP, rpc->flags);
     assert_string_equal("b", rpc->name);
+    assert_null(rpc->input.musts);
+    assert_int_equal(2, LY_ARRAY_SIZE(rpc->output.musts));
+    assert_int_equal(0, rpc->output.musts[0].flags);
+    assert_int_equal(LYS_XPATH_DEP, rpc->output.musts[1].flags);
 
     /* invalid */
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;container top {action x;}}", LYS_IN_YANG));
@@ -936,7 +941,7 @@ test_notification(void **state)
     assert_null(notif[1].data);
 
     assert_non_null(mod = lys_parse_mem(ctx, "module b {yang-version 1.1; namespace urn:b;prefix b; container top {"
-                                        "notification b1 {leaf x {type int8;}} notification b2;}}", LYS_IN_YANG));
+                                        "notification b1 {leaf x {type int8;}} notification b2 {must \"/top\";}}}", LYS_IN_YANG));
     notif = lysc_node_notifs(mod->compiled->data);
     assert_non_null(notif);
     assert_int_equal(2, LY_ARRAY_SIZE(notif));
@@ -946,9 +951,11 @@ test_notification(void **state)
     assert_non_null(notif->data);
     assert_string_equal("x", notif->data->name);
     assert_int_equal(LYS_NOTIF, notif[1].nodetype);
-    assert_int_equal(LYS_STATUS_CURR, notif[1].flags);
+    assert_int_equal(LYS_STATUS_CURR | LYS_XPATH_DEP, notif[1].flags);
     assert_string_equal("b2", notif[1].name);
     assert_null(notif[1].data);
+    assert_int_equal(1, LY_ARRAY_SIZE(notif[1].musts));
+    assert_int_equal(LYS_XPATH_DEP, notif[1].musts[0].flags);
 
     /* invalid */
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;container top {notification x;}}", LYS_IN_YANG));
@@ -2185,7 +2192,6 @@ test_type_empty(void **state)
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
 }
-
 
 static void
 test_type_union(void **state)
