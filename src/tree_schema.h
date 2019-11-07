@@ -2221,6 +2221,14 @@ int lys_features_state(const struct lys_module *module, const char *feature);
 const struct lys_node *lys_is_disabled(const struct lys_node *node, int recursive);
 
 /**
+ * @brief Learn how the if-feature statement currently evaluates.
+ *
+ * @param[in] iff if-feature statement to evaluate.
+ * @return If the statement evaluates to true, 1 is returned. 0 is returned when the statement evaluates to false.
+ */
+int lys_iffeature_value(const struct lys_iffeature *iff);
+
+/**
  * @brief Check if the schema leaf node is used as a key for a list.
  *
  * @param[in] node Schema leaf node to check

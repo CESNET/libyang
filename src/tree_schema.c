@@ -129,6 +129,12 @@ check:
     goto check;
 }
 
+API int
+lys_iffeature_value(const struct lys_iffeature *iff)
+{
+    return resolve_iffeature((struct lys_iffeature *)iff);
+}
+
 API const struct lys_type *
 lys_getnext_union_type(const struct lys_type *last, const struct lys_type *type)
 {
