@@ -258,13 +258,14 @@ struct lyxp_set {
  * @param[in] expr XPath expression to evaluate.
  * @param[in] format Format of the XPath expression (more specifcally, of any used prefixes).
  * @param[in] local_mod Local module relative to the @p expr.
- * @param[in] ctx_node Current (context) data node.
+ * @param[in] ctx_node Current (context) data node, NULL for root node.
  * @param[in] ctx_node_type Current (context) data node type. For every standard case use #LYXP_NODE_ELEM. But there are
  * cases when the context node @p ctx_node is actually supposed to be the XML root, there is no such data node. So, in
- * this case just pass the first top-level node into @p ctx_node and use an enum value for this kind of root
- * (#LYXP_NODE_ROOT_CONFIG if @p ctx_node has config true, otherwise #LYXP_NODE_ROOT). #LYXP_NODE_TEXT and #LYXP_NODE_ATTR can also be used,
+ * this case just pass NULL for @p ctx_node and use an enum value for this kind of root (#LYXP_NODE_ROOT_CONFIG if
+ * @p ctx_node has config true, otherwise #LYXP_NODE_ROOT). #LYXP_NODE_TEXT and #LYXP_NODE_ATTR can also be used,
  * but there are no use-cases in YANG.
- * @param[in] trees Data trees on which to perform the evaluation.
+ * @param[in] trees Data trees on which to perform the evaluation, they must include all the available tree (including
+ * the tree of @p ctx_node).
  * @param[out] set Result set. Must be valid and in the same libyang context as @p ctx_node.
  * To be safe, always either zero or cast the @p set to empty. After done using, either cast
  * the @p set to empty (if allocated statically) or free it (if allocated dynamically) to
@@ -286,7 +287,7 @@ LY_ERR lyxp_eval(const char *expr, LYD_FORMAT format, const struct lys_module *l
  * @param[in] exp Parsed XPath expression to be evaluated.
  * @param[in] format Format of the XPath expression (more specifcally, of any used prefixes).
  * @param[in] local_mod Local module relative to the @p exp.
- * @param[in] ctx_scnode Current (context) schema node.
+ * @param[in] ctx_scnode Current (context) schema node, NULL for root node.
  * @param[in] ctx_scnode_type Current (context) schema node type.
  * @param[out] set Result set. Must be valid and in the same libyang context as @p ctx_scnode.
  * To be safe, always either zero or cast the @p set to empty. After done using, either cast
@@ -304,19 +305,6 @@ LY_ERR lyxp_atomize(struct lyxp_expr *exp, LYD_FORMAT format, const struct lys_m
 #define LYXP_SCNODE_OUTPUT 0x08 /**< Search RPC/action output instead of input. */
 
 #define LYXP_SCNODE_ALL 0x0E
-
-/**
- * @brief Works like lyxp_atomize(), but it is executed on all the when and must expressions
- * which the node has.
- *
- * @param[in] node Node to examine.
- * @param[in,out] set Optional resulting set of atoms merged from all the expressions.
- * Will be cleared before use.
- * @param[in] set_ext_dep_flags Whether to set #LYS_XPATH_DEP for conditions that require data subtree
- * and also for the node itself, if it has any such condition.
- * @return LY_ERR
- */
-LY_ERR lyxp_node_atomize(const struct lysc_node *node, struct lyxp_set *set, int set_ext_dep_flags);
 
 /**
  * @brief Cast XPath set to another type.
