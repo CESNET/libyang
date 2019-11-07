@@ -2381,6 +2381,11 @@ test_status(void **state)
                                         "container c {status obsolete; leaf l {status deprecated; type string;}}}", LYS_IN_YANG));
     logbuf_assert("A \"deprecated\" status is in conflict with the parent's \"obsolete\" status. /cc:c/l");
 
+    assert_null(lys_parse_mem(ctx, "module cc {namespace urn:dd;prefix d;"
+                                        "container c {leaf l {status obsolete; type string;}}"
+                                        "container d {leaf m {when \"../../c/l\"; type string;}}}", LYS_IN_YANG));
+    logbuf_assert("A current definition \"m\" is not allowed to reference obsolete definition \"l\". /cc:d/m");
+
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
 }
