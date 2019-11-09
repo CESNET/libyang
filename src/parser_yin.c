@@ -2788,7 +2788,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 /* check collision with mandatory/min-elements */
                 if ((dev_target->flags & LYS_MAND_TRUE) ||
                         (dev_target->nodetype == LYS_LEAFLIST && ((struct lys_node_leaflist *)dev_target)->min)) {
-                    LOGVAL(ctx, LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, child->name, child->parent->name);
+                    LOGVAL(ctx, LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "default", "deviation");
                     LOGVAL(ctx, LYE_SPEC, LY_VLOG_NONE, NULL,
                            "Adding the \"default\" statement is forbidden on %s statement.",
                            (dev_target->flags & LYS_MAND_TRUE) ? "nodes with the \"mandatory\"" : "leaflists with non-zero \"min-elements\"");
@@ -2798,7 +2798,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 /* check that there was a value before */
                 if (((dev_target->nodetype & (LYS_LEAF | LYS_LEAFLIST)) && !((struct lys_node_leaf *)dev_target)->dflt) ||
                         (dev_target->nodetype == LYS_CHOICE && !((struct lys_node_choice *)dev_target)->dflt)) {
-                    LOGVAL(ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, child->name);
+                    LOGVAL(ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "default");
                     LOGVAL(ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Replacing a property that does not exist.");
                     goto error;
                 }
