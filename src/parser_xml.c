@@ -667,6 +667,11 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
         xmlstart = *root;
     }
 
+    if((options & LYD_OPT_RPC) && (!(xmlstart->name) || !(xmlstart->ns))) {
+        LOGERR(ctx, LY_EINVAL, "Either name or namespace is missing in received rpc");
+        goto error;
+    }
+
     if ((options & LYD_OPT_RPC)
             && !strcmp(xmlstart->name, "action") && !strcmp(xmlstart->ns->value, "urn:ietf:params:xml:ns:yang:1")) {
         /* it's an action, not a simple RPC */
