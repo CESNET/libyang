@@ -214,6 +214,10 @@ lyxml_dup_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, struct lyxml_elem *p
 
         if (parent) {
             lyxml_add_child(ctx, parent, dup);
+        } else if (result) {
+            dup->prev = result->prev;
+            dup->prev->next = dup;
+            result->prev = dup;
         }
 
         /* keep old namespace for now */
