@@ -472,8 +472,6 @@ public:
     uint8_t *expr() {return iffeature->expr;};
     /** get ext_size variable from [lys_iffeature](@ref lys_iffeature)*/
     uint8_t ext_size() {return iffeature->ext_size;};
-    /** get features variable from [lys_iffeature](@ref lys_iffeature)*/
-    std::vector<S_Feature> features();
     /** get ext variable from [lys_iffeature](@ref lys_iffeature)*/
     std::vector<S_Ext_Instance> ext();
     /** wrapper for [lys_iffeature_value](@ref lys_iffeature_value)*/
