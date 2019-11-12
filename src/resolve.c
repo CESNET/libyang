@@ -8488,7 +8488,7 @@ resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node
                     /* auto-delete */
                     LOGVRB("Auto-deleting node \"%s\" due to when condition (%s)", ly_errpath(ctx), when->cond);
 
-                    /* only unlink now, the subtree can contain another nodes stored in the unres list */
+                    /* do not delete yet, the subtree can contain another nodes stored in the unres list */
                     /* if it has parent non-presence containers that would be empty, we should actually
                      * remove the container
                      */
@@ -8510,7 +8510,6 @@ resolve_unres_data(struct ly_ctx *ctx, struct unres_data *unres, struct lyd_node
                         *root = (*root)->next;
                     }
 
-                    lyd_unlink(unres->node[i]);
                     unres->type[i] = UNRES_DELETE;
                     del_items++;
 
