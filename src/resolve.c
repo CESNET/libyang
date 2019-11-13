@@ -8361,7 +8361,7 @@ resolve_unres_data_autodel_diff(struct unres_data *unres, uint32_t unres_i)
                 break;
             }
 
-            LY_TREE_DFS_BEGIN(unres->diff->second[i]->parent, next, child) {
+            LY_TREE_DFS_BEGIN(unres->diff->second[i], next, child) {
                 if (child == unres->node[unres_i]) {
                     /* 3) some default child of a default value was supposed to be created but has false when
                      * -> the subtree will be freed later and automatically disconnected from the diff parent node
@@ -8369,7 +8369,7 @@ resolve_unres_data_autodel_diff(struct unres_data *unres, uint32_t unres_i)
                     return;
                 }
 
-                LY_TREE_DFS_END(unres->diff->second[i]->parent, next, child);
+                LY_TREE_DFS_END(unres->diff->second[i], next, child);
             }
         }
     }
