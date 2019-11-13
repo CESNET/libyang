@@ -2644,52 +2644,6 @@ cleanup:
 }
 
 /**
- * @brief Check whether a leafref has an external dependency or not.
- *
- * @param[in] startnode Node with the leafref.
- * @param[in] local_mod Local module for the leafref path.
- * @param[in] first_node First found node when resolving the leafref.
- * @param[in] abs_path Whether the leafref path is absolute or relative.
- * @return 0 is the leafref does not require an external dependency, non-zero is it requires.
- */
-static int
-lys_compile_leafref_has_dep_flag(const struct lysc_node *startnode, const struct lys_module *local_mod,
-                                 const struct lysc_node *first_node, int abs_path)
-{
-    const struct lysc_node *op_node, *node;
-
-    /* find operation schema we are in */
-    for (op_node = startnode->parent;
-        op_node && !(op_node->nodetype & (LYS_ACTION | LYS_NOTIF));
-        op_node = op_node->parent);
-
-    if (!op_node) {
-        /* leafref pointing to a different module */
-        if (local_mod != first_node->module) {
-            return 1;
-        }
-    } else if (op_node->parent) {
-        /* inner operation (notif/action) */
-        if (abs_path) {
-            return 1;
-        } else {
-            /* if first_node parent is not op_node, it is external */
-            for (node = first_node; node && (node != op_node); node = node->parent);
-            if (!node) {
-                return 1;
-            }
-        }
-    } else {
-        /* top-level operation (notif/rpc) */
-        if (op_node != first_node) {
-            return 1;
-        }
-    }
-
-    return 0;
-}
-
-/**
  * @brief Validate the leafref path.
  * @param[in] ctx Compile context
  * @param[in] startnode Path context node (where the leafref path begins/is placed).
@@ -2701,7 +2655,7 @@ LY_ERR
 lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *startnode, struct lysc_type_leafref *leafref,
                              const struct lysc_node **target)
 {
-    const struct lysc_node *node = NULL, *parent = NULL, *tmp_parent;
+    const struct lysc_node *node = NULL, *parent = NULL;
     const struct lys_module *mod;
     struct lysc_type *type;
     const char *id, *prefix, *name;
@@ -2757,16 +2711,6 @@ lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *startnode, 
             return LY_EVALID;
         }
         parent = node;
-
-        if (!iter) {
-            /* find module whose data will actually contain this leafref */
-            for (tmp_parent = parent; tmp_parent->parent; tmp_parent = tmp_parent->parent);
-
-            /* set external dependency flag, we can decide based on the first found node */
-            if (lys_compile_leafref_has_dep_flag(startnode, tmp_parent->module, node, (parent_times == -1 ? 1 : 0))) {
-                startnode->flags |= LYS_LEAFREF_DEP;
-            }
-        }
 
         if (has_predicate) {
             /* we have predicate, so the current result must be list */
@@ -6990,6 +6934,97 @@ cleanup:
 }
 
 /**
+ * @brief Check when for cyclic dependencies.
+ * @param[in] set Set with all the referenced nodes.
+ * @param[in] node Node whose "when" referenced nodes are in @p set.
+ * @return LY_ERR value
+ */
+static LY_ERR
+lys_compile_check_cyclic_when(struct lyxp_set *set, const struct lysc_node *node)
+{
+    struct lyxp_set tmp_set;
+    struct lyxp_set_scnode *xp_scnode;
+    uint32_t i, j;
+    int idx;
+    struct lysc_when *when;
+    LY_ERR ret = LY_SUCCESS;
+
+    memset(&tmp_set, 0, sizeof tmp_set);
+
+    /* prepare in_ctx of the set */
+    for (i = 0; i < set->used; ++i) {
+        xp_scnode = &set->val.scnodes[i];
+
+        if ((xp_scnode->type == LYXP_NODE_ELEM) && (xp_scnode->scnode == node)) {
+            /* node when was already checked */
+            xp_scnode->in_ctx = 2;
+        } else {
+            /* check node when */
+            xp_scnode->in_ctx = 1;
+        }
+    }
+
+    for (i = 0; i < set->used; ++i) {
+        xp_scnode = &set->val.scnodes[i];
+        if (xp_scnode->in_ctx != 1) {
+            /* already checked */
+            continue;
+        }
+
+        if ((xp_scnode->type != LYXP_NODE_ELEM) || !xp_scnode->scnode->when) {
+            /* no when to check */
+            xp_scnode->in_ctx = 0;
+            continue;
+        }
+
+        node = xp_scnode->scnode;
+        do {
+            LY_ARRAY_FOR(node->when, i) {
+                when = node->when[i];
+                ret = lyxp_atomize(when->cond, LYD_UNKNOWN, when->module, when->context,
+                                when->context ? LYXP_NODE_ELEM : LYXP_NODE_ROOT_CONFIG, &tmp_set, LYXP_SCNODE_SCHEMA);
+                if (ret != LY_SUCCESS) {
+                    LOGVAL(set->ctx, LY_VLOG_LYS, node, LYVE_SEMANTICS, "Invalid when condition \"%s\".", when->cond->expr);
+                    goto cleanup;
+                }
+
+                for (j = 0; j < tmp_set.used; ++j) {
+                    /* skip roots'n'stuff */
+                    if (tmp_set.val.scnodes[j].type == LYXP_NODE_ELEM) {
+                        /* try to find this node in our set */
+                        idx = lyxp_set_scnode_dup_node_check(set, tmp_set.val.scnodes[j].scnode, LYXP_NODE_ELEM, -1);
+                        if ((idx > -1) && (set->val.scnodes[idx].in_ctx == 2)) {
+                            LOGVAL(set->ctx, LY_VLOG_LYS, node, LY_VCODE_CIRC_WHEN, node->name, set->val.scnodes[idx].scnode->name);
+                            ret = LY_EVALID;
+                            goto cleanup;
+                        }
+
+                        /* needs to be checked, if in both sets, will be ignored */
+                        tmp_set.val.scnodes[j].in_ctx = 1;
+                    } else {
+                        /* no when, nothing to check */
+                        tmp_set.val.scnodes[j].in_ctx = 0;
+                    }
+                }
+
+                /* merge this set into the global when set */
+                lyxp_set_scnode_merge(set, &tmp_set);
+            }
+
+            /* check when of non-data parents as well */
+            node = node->parent;
+        } while (node && (node->nodetype & (LYS_CASE | LYS_CHOICE)));
+
+        /* this node when was checked */
+        xp_scnode->in_ctx = 2;
+    }
+
+cleanup:
+    lyxp_set_cast(&tmp_set, LYXP_SET_EMPTY);
+    return ret;
+}
+
+/**
  * @brief Check when/must expressions of a node on a compiled schema tree.
  * @param[in] ctx Compile context.
  * @param[in] node Node to check.
@@ -6998,7 +7033,6 @@ cleanup:
 static LY_ERR
 lys_compile_check_xpath(struct lysc_ctx *ctx, const struct lysc_node *node)
 {
-    struct lysc_node *parent, *elem;
     struct lyxp_set tmp_set;
     uint32_t i, j;
     int opts, input_done = 0;
@@ -7049,15 +7083,8 @@ lys_compile_check_xpath(struct lysc_ctx *ctx, const struct lysc_node *node)
         break;
     }
 
-    /* find operation if in one, used later */
-    for (parent = (struct lysc_node *)node;
-         parent && !(parent->nodetype & (LYS_ACTION | LYS_NOTIF));
-         parent = parent->parent);
-
-
     /* check "when" */
     LY_ARRAY_FOR(when, i) {
-        lyxp_set_cast(&tmp_set, LYXP_SET_EMPTY);
         ret = lyxp_atomize(when[i]->cond, LYD_UNKNOWN, when[i]->module, when[i]->context,
                            when[i]->context ? LYXP_NODE_ELEM : LYXP_NODE_ROOT_CONFIG, &tmp_set, opts);
         if (ret != LY_SUCCESS) {
@@ -7068,23 +7095,23 @@ lys_compile_check_xpath(struct lysc_ctx *ctx, const struct lysc_node *node)
         ctx->path[0] = '\0';
         lysc_path((struct lysc_node *)node, LYSC_PATH_LOG, ctx->path, LYSC_CTX_BUFSIZE);
         for (j = 0; j < tmp_set.used; ++j) {
-            /* skip roots'n'stuff */
+            /* skip roots'n'stuff, set in_ctx for when checking */
             if (tmp_set.val.scnodes[j].type == LYXP_NODE_ELEM) {
-                /* XPath expression cannot reference "lower" status than the node that has the definition */
-                ret = lysc_check_status(ctx, when[i]->flags, when[i]->module, node->name, tmp_set.val.scnodes[j].scnode->flags,
-                                        tmp_set.val.scnodes[j].scnode->module, tmp_set.val.scnodes[j].scnode->name);
-                LY_CHECK_GOTO(ret, cleanup);
+                struct lysc_node *schema = tmp_set.val.scnodes[j].scnode;
 
-                if (parent) {
-                    for (elem = tmp_set.val.scnodes[j].scnode; elem && (elem != parent); elem = elem->parent);
-                    if (!elem) {
-                        /* not in node's RPC or notification subtree, set the correct dep flag */
-                        when[i]->flags |= LYS_XPATH_DEP;
-                        ((struct lysc_node *)node)->flags |= LYS_XPATH_DEP;
-                    }
-                }
+                /* XPath expression cannot reference "lower" status than the node that has the definition */
+                ret = lysc_check_status(ctx, when[i]->flags, when[i]->module, node->name, schema->flags, schema->module,
+                                        schema->name);
+                LY_CHECK_GOTO(ret, cleanup);
             }
         }
+
+        /* check dummy node accessing */
+        /* TODO */
+
+        /* check cyclic dependencies */
+        ret = lys_compile_check_cyclic_when(&tmp_set, node);
+        LY_CHECK_GOTO(ret, cleanup);
 
         lyxp_set_cast(&tmp_set, LYXP_SET_EMPTY);
     }
@@ -7092,7 +7119,6 @@ lys_compile_check_xpath(struct lysc_ctx *ctx, const struct lysc_node *node)
 check_musts:
     /* check "must" */
     LY_ARRAY_FOR(musts, i) {
-        lyxp_set_cast(&tmp_set, LYXP_SET_EMPTY);
         ret = lyxp_atomize(musts[i].cond, LYD_UNKNOWN, musts[i].module, node, LYXP_NODE_ELEM, &tmp_set, opts);
         if (ret != LY_SUCCESS) {
             LOGVAL(ctx->ctx, LY_VLOG_LYS, node, LYVE_SEMANTICS, "Invalid must restriction \"%s\".", musts[i].cond->expr);
@@ -7108,15 +7134,6 @@ check_musts:
                 ret = lysc_check_status(ctx, node->flags, musts[i].module, node->name, tmp_set.val.scnodes[j].scnode->flags,
                                         tmp_set.val.scnodes[j].scnode->module, tmp_set.val.scnodes[j].scnode->name);
                 LY_CHECK_GOTO(ret, cleanup);
-
-                if (parent) {
-                    for (elem = tmp_set.val.scnodes[j].scnode; elem && (elem != parent); elem = elem->parent);
-                    if (!elem) {
-                        /* not in node's RPC or notification subtree, set the correct dep flag */
-                        musts[i].flags |= LYS_XPATH_DEP;
-                        ((struct lysc_node *)node)->flags |= LYS_XPATH_DEP;
-                    }
-                }
             }
         }
 

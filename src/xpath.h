@@ -255,7 +255,7 @@ struct lyxp_set {
  * @brief Evaluate an XPath expression on data. Be careful when using this function, the result can often
  * be confusing without thorough understanding of XPath evaluation rules defined in RFC 7950.
  *
- * @param[in] expr XPath expression to evaluate.
+ * @param[in] exp Parsed XPath expression to be evaluated.
  * @param[in] format Format of the XPath expression (more specifcally, of any used prefixes).
  * @param[in] local_mod Local module relative to the @p expr.
  * @param[in] ctx_node Current (context) data node, NULL for root node.
@@ -271,9 +271,10 @@ struct lyxp_set {
  * the @p set to empty (if allocated statically) or free it (if allocated dynamically) to
  * prevent memory leaks.
  * @param[in] options Whether to apply some evaluation restrictions.
- * @return LY_ERR
+ * @return LY_ERR (LY_EINVAL, LY_EMEM, LY_EINT, LY_EVALID for invalid argument types/count,
+ * LY_EINCOMPLETE for unresolved when).
  */
-LY_ERR lyxp_eval(const char *expr, LYD_FORMAT format, const struct lys_module *local_mod, const struct lyd_node *ctx_node,
+LY_ERR lyxp_eval(struct lyxp_expr *exp, LYD_FORMAT format, const struct lys_module *local_mod, const struct lyd_node *ctx_node,
                  enum lyxp_node_type ctx_node_type, const struct lyd_node **trees, struct lyxp_set *set, int options);
 
 #define LYXP_SCHEMA 0x01 /**< Apply data node access restrictions defined for 'when' and 'must' evaluation. */
@@ -294,7 +295,7 @@ LY_ERR lyxp_eval(const char *expr, LYD_FORMAT format, const struct lys_module *l
  * the @p set to empty (if allocated statically) or free it (if allocated dynamically) to
  * prevent memory leaks.
  * @param[in] options Whether to apply some evaluation restrictions, one flag must always be used.
- * @return LY_ERR
+ * @return LY_ERR (same as lyxp_eval()).
  */
 LY_ERR lyxp_atomize(struct lyxp_expr *exp, LYD_FORMAT format, const struct lys_module *local_mod, const struct lysc_node *ctx_scnode,
                     enum lyxp_node_type ctx_scnode_type, struct lyxp_set *set, int options);
@@ -315,6 +316,36 @@ LY_ERR lyxp_atomize(struct lyxp_expr *exp, LYD_FORMAT format, const struct lys_m
  * @return LY_ERR
  */
 LY_ERR lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target);
+
+/**
+ * @brief Insert schema node into set.
+ *
+ * @param[in] set Set to insert into.
+ * @param[in] node Node to insert.
+ * @param[in] node_type Node type of @p node.
+ * @return Index of the inserted node in set.
+ */
+int lyxp_set_scnode_insert_node(struct lyxp_set *set, const struct lysc_node *node, enum lyxp_node_type node_type);
+
+/**
+ * @brief Check for duplicates in a schema node set.
+ *
+ * @param[in] set Set to check.
+ * @param[in] node Node to look for in @p set.
+ * @param[in] node_type Type of @p node.
+ * @param[in] skip_idx Index from @p set to skip.
+ * @return Index of the found node, -1 if not found.
+ */
+int lyxp_set_scnode_dup_node_check(struct lyxp_set *set, const struct lysc_node *node, enum lyxp_node_type node_type,
+                                   int skip_idx);
+
+/**
+ * @brief Merge 2 schema node sets.
+ *
+ * @param[in] set1 Set to merge into.
+ * @param[in] set2 Set to merge. Its content is freed.
+ */
+void lyxp_set_scnode_merge(struct lyxp_set *set1, struct lyxp_set *set2);
 
 /**
  * @brief Parse an XPath expression into a structure of tokens.

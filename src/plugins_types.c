@@ -143,7 +143,7 @@ ly_type_parse_int(const char *datatype, int base, int64_t min, int64_t max, cons
     }
 
 error:
-    *err = ly_err_new(LY_LLERR, LY_EINVAL, LYVE_RESTRICTION, errmsg, NULL, NULL);
+    *err = ly_err_new(LY_LLERR, LY_EINVAL, LYVE_DATA, errmsg, NULL, NULL);
     return LY_EVALID;
 }
 
@@ -230,7 +230,7 @@ ly_type_parse_uint(const char *datatype, int base, uint64_t max, const char *val
     }
 
 error:
-    *err = ly_err_new(LY_LLERR, LY_EINVAL, LYVE_RESTRICTION, errmsg, NULL, NULL);
+    *err = ly_err_new(LY_LLERR, LY_EINVAL, LYVE_DATA, errmsg, NULL, NULL);
     return LY_EVALID;
 }
 
@@ -330,7 +330,7 @@ decimal:
 
 error:
     if (errmsg) {
-        *err = ly_err_new(LY_LLERR, LY_EINVAL, LYVE_RESTRICTION, errmsg, NULL, NULL);
+        *err = ly_err_new(LY_LLERR, LY_EINVAL, LYVE_DATA, errmsg, NULL, NULL);
     }
     return rc;
 }
@@ -438,7 +438,7 @@ ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t 
     return LY_SUCCESS;
 
 error:
-    *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_RESTRICTION, errmsg, NULL, range->eapptag ? strdup(range->eapptag) : NULL);
+    *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, range->eapptag ? strdup(range->eapptag) : NULL);
     return LY_EVALID;
 }
 
@@ -647,7 +647,7 @@ ly_type_store_decimal64(struct ly_ctx *ctx, struct lysc_type *type, const char *
     }
 
     if (!value || !value[0] || !value_len) {
-        *err = ly_err_new(LY_LLERR, LY_EINVAL, LYVE_RESTRICTION, strdup("Invalid empty decimal64 value."), NULL, NULL);
+        *err = ly_err_new(LY_LLERR, LY_EINVAL, LYVE_DATA, strdup("Invalid empty decimal64 value."), NULL, NULL);
         return LY_EVALID;
     }
 
@@ -811,7 +811,7 @@ finish:
 
 error:
     if (!*err) {
-        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_RESTRICTION, errmsg, NULL, NULL);
+        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
     }
     return (*err)->no;
 }
@@ -1003,7 +1003,7 @@ next:
     return LY_SUCCESS;
 error:
     if (errmsg) {
-        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_RESTRICTION, errmsg, NULL, NULL);
+        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
     }
     ly_set_free(items, NULL);
     ly_set_free(items_ordered, NULL);
@@ -1105,7 +1105,7 @@ match:
 
 error:
     if (errmsg) {
-        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_RESTRICTION, errmsg, NULL, NULL);
+        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
     }
     return LY_EVALID;
 }
@@ -1145,7 +1145,7 @@ ly_type_store_boolean(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), const 
     } else {
         char *errmsg;
         asprintf(&errmsg, "Invalid boolean value \"%.*s\".", (int)value_len, value);
-        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_RESTRICTION, errmsg, NULL, NULL);
+        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
         return LY_EVALID;
     }
 
@@ -1195,7 +1195,7 @@ ly_type_store_empty(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), const ch
     if (value_len) {
         char *errmsg;
         asprintf(&errmsg, "Invalid empty value \"%.*s\".", (int)value_len, value);
-        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_RESTRICTION, errmsg, NULL, NULL);
+        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
         return LY_EVALID;
     }
 
@@ -1326,7 +1326,7 @@ ly_type_store_identityref(struct ly_ctx *ctx, struct lysc_type *type, const char
     return LY_SUCCESS;
 
 error:
-    *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_RESTRICTION, errmsg, NULL, NULL);
+    *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
     return LY_EVALID;
 }
 
@@ -1950,7 +1950,7 @@ error:
     lyd_value_free_path(ctx, target);
 
     if (!*err) {
-        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_RESTRICTION, errmsg, NULL, NULL);
+        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
     }
     return ret;
 }
@@ -2413,7 +2413,7 @@ ly_type_store_leafref(struct ly_ctx *ctx, struct lysc_type *type, const char *va
 
 error:
     if (!*err) {
-        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_RESTRICTION, errmsg, NULL, NULL);
+        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
     }
     if (storage_dummy) {
         storage->realtype->plugin->free(ctx, storage);
@@ -2559,7 +2559,7 @@ search_subtype:
 error:
 
     if (!*err) {
-        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_RESTRICTION, errmsg, NULL, NULL);
+        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
     }
     LY_ARRAY_FOR(subvalue->prefixes, u) {
         lydict_remove(ctx, subvalue->prefixes[u].prefix);

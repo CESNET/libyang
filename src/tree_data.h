@@ -262,7 +262,8 @@ struct lyd_node {
                                           used to get know that nodes are not equal, it cannot be used to decide that the
                                           nodes are equal due to possible collisions. */
     uint32_t flags;                  /**< [data node flags](@ref dnodeflags) */
-    const struct lysc_node *schema;  /**< pointer to the schema definition of this node */
+    const struct lysc_node *schema;  /**< pointer to the schema definition of this node, note that the target can be not just
+                                          ::struct lysc_node but ::struct lysc_action or ::struct lysc_notif as well */
     struct lyd_node_inner *parent;   /**< pointer to the parent node, NULL in case of root node */
     struct lyd_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
     struct lyd_node *prev;           /**< pointer to the previous sibling node \note Note that this pointer is

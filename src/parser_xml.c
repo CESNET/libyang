@@ -47,6 +47,7 @@ struct lyd_xml_ctx {
     char path[LYD_PARSER_BUFSIZE];   /**< buffer for the generated path */
     struct ly_set incomplete_type_validation; /**< set of nodes validated with LY_EINCOMPLETE result */
     struct ly_set incomplete_type_validation_attrs; /**< set of attributes validated with LY_EINCOMPLETE result */
+    struct ly_set when_check;        /**< set of nodes with "when" conditions */
 };
 
 /**
@@ -289,7 +290,7 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
         switch (snode->nodetype) {
         case LYS_ACTION:
             if ((ctx->options & LYD_OPT_TYPEMASK) != LYD_OPT_RPC) {
-                LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_RESTRICTION, "Unexpected RPC/action element \"%.*s\" in %s data set.",
+                LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_DATA, "Unexpected RPC/action element \"%.*s\" in %s data set.",
                        name_len, name, lyd_parse_options_type2str(ctx->options & LYD_OPT_TYPEMASK));
                 goto error;
             }
@@ -297,7 +298,7 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
             break;
         case LYS_NOTIF:
             if ((ctx->options & LYD_OPT_TYPEMASK) != LYD_OPT_RPC) {
-                LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_RESTRICTION, "Unexpected Notification element \"%.*s\" in %s data set.",
+                LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_DATA, "Unexpected Notification element \"%.*s\" in %s data set.",
                        name_len, name, lyd_parse_options_type2str(ctx->options));
                 goto error;
             }
@@ -372,7 +373,7 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
                 if (cur->next) {
                     last = prev;
                     if (ctx->options & LYD_OPT_STRICT) {
-                        LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_RESTRICTION, "Invalid position of the key \"%.*s\" in a list.",
+                        LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_DATA, "Invalid position of the key \"%.*s\" in a list.",
                                name_len, name);
                         goto error;
                     } else {

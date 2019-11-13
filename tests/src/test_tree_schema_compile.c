@@ -877,12 +877,10 @@ test_action(void **state)
     assert_non_null(rpc);
     assert_int_equal(1, LY_ARRAY_SIZE(rpc));
     assert_int_equal(LYS_ACTION, rpc->nodetype);
-    assert_int_equal(LYS_STATUS_CURR | LYS_XPATH_DEP, rpc->flags);
+    assert_int_equal(LYS_STATUS_CURR, rpc->flags);
     assert_string_equal("b", rpc->name);
     assert_null(rpc->input.musts);
     assert_int_equal(2, LY_ARRAY_SIZE(rpc->output.musts));
-    assert_int_equal(0, rpc->output.musts[0].flags);
-    assert_int_equal(LYS_XPATH_DEP, rpc->output.musts[1].flags);
 
     /* invalid */
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;container top {action x;}}", LYS_IN_YANG));
@@ -951,11 +949,10 @@ test_notification(void **state)
     assert_non_null(notif->data);
     assert_string_equal("x", notif->data->name);
     assert_int_equal(LYS_NOTIF, notif[1].nodetype);
-    assert_int_equal(LYS_STATUS_CURR | LYS_XPATH_DEP, notif[1].flags);
+    assert_int_equal(LYS_STATUS_CURR, notif[1].flags);
     assert_string_equal("b2", notif[1].name);
     assert_null(notif[1].data);
     assert_int_equal(1, LY_ARRAY_SIZE(notif[1].musts));
-    assert_int_equal(LYS_XPATH_DEP, notif[1].musts[0].flags);
 
     /* invalid */
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;container top {notification x;}}", LYS_IN_YANG));
@@ -3429,6 +3426,75 @@ test_deviation(void **state)
     ly_ctx_destroy(ctx, NULL);
 }
 
+static void
+test_when(void **state)
+{
+    *state = test_when;
+
+    struct ly_ctx *ctx;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+
+    assert_null(lys_parse_mem(ctx,
+        "module a {"
+            "namespace urn:a;"
+            "prefix a;"
+            "container cont {"
+                "leaf l {"
+                    "when \"/cont/lst[val='25']\";"
+                    "type empty;"
+                "}"
+                "list lst {"
+                    "key \"k\";"
+                    "leaf k {"
+                        "type uint8;"
+                    "}"
+                    "leaf val {"
+                        "when /cont2;"
+                        "type int32;"
+                    "}"
+                "}"
+            "}"
+            "container cont2 {"
+                "presence \"a\";"
+                "when ../cont/l;"
+            "}"
+        "}"
+    , LYS_IN_YANG));
+    logbuf_assert("When condition of \"cont2\" includes a self-reference (referenced by when of \"l\").");
+
+    assert_null(lys_parse_mem(ctx,
+        "module a {"
+            "namespace urn:a;"
+            "prefix a;"
+            "container cont {"
+                "leaf l {"
+                    "when \"/cont/lst[val='25']\";"
+                    "type empty;"
+                "}"
+                "list lst {"
+                    "key \"k\";"
+                    "leaf k {"
+                        "type uint8;"
+                    "}"
+                    "leaf val {"
+                        "when /cont2;"
+                        "type int32;"
+                    "}"
+                "}"
+            "}"
+            "container cont2 {"
+                "presence \"a\";"
+                "when ../cont/lst/val;"
+            "}"
+        "}"
+    , LYS_IN_YANG));
+    logbuf_assert("When condition of \"cont2\" includes a self-reference (referenced by when of \"val\").");
+
+    *state = NULL;
+    ly_ctx_destroy(ctx, NULL);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -3460,6 +3526,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_refine, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_augment, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_deviation, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_when, logger_setup, logger_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
