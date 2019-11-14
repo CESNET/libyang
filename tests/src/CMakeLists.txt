@@ -13,10 +13,12 @@ set(local_tests
     src_printer_yin
     src_tree_data
     src_parser_xml
-    src_printer_xml)
+    src_printer_xml
+    src_validation)
 set(local_tests_wraps
     " "
     "-Wl,--wrap=realloc"
+    " "
     " "
     " "
     " "

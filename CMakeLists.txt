@@ -229,7 +229,8 @@ set(libsrc
     src/plugins_types.c
     src/plugins_exts.c
     src/xml.c
-    src/xpath.c)
+    src/xpath.c
+    src/validation.c)
 
 set(lintsrc
     tools/lint/main.c

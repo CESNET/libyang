@@ -28,6 +28,7 @@
 #include "tree_schema.h"
 #include "xml.h"
 #include "plugins_exts_internal.h"
+#include "validation.h"
 
 /**
  * @brief internal context for XML YANG data parser.
@@ -487,6 +488,11 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
             }
         }
 
+        /* remember we need to evaluate this node's when */
+        if (!(snode->nodetype & (LYS_ACTION | LYS_NOTIF)) && snode->when) {
+            ly_set_add(&ctx->when_check, cur, LY_SET_OPT_USEASLIST);
+        }
+
         /* calculate the hash and insert it into parent (list with keys is handled when its keys are inserted) */
         lyd_hash(cur);
         lyd_insert_hash(cur);
@@ -496,8 +502,6 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
                 !cur->attr && !(((struct lysc_node_container*)cur->schema)->flags & LYS_PRESENCE)) {
             cur->flags |= LYD_DEFAULT;
         }
-
-        /* TODO context validation */
     }
 
     /* TODO add missing siblings default elements */
@@ -521,6 +525,7 @@ lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, const struct ly
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node_inner *parent = NULL;
+    const struct lyd_node **result_trees = NULL;
     struct lyd_xml_ctx xmlctx = {0};
 
     xmlctx.options = options;
@@ -553,70 +558,45 @@ lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, const struct ly
     }
 
     if (!data || !data[0]) {
-        goto no_data;
+        /* no data - just check for missing mandatory nodes */
+        goto validation;
     }
 
     ret = lydxml_nodes(&xmlctx, parent, &data, *result ? &parent->child : result);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* prepare sized array for validator */
+    if (*result) {
+        result_trees = lyd_trees_new(1, *result);
+    }
+
+    /* finish incompletely validated terminal values/attributes and when conditions */
+    ret = lyd_validate_unres(&xmlctx.incomplete_type_validation, &xmlctx.incomplete_type_validation_attrs,
+                             &xmlctx.when_check, LYD_XML, lydxml_resolve_prefix, ctx, result_trees);
+    LY_CHECK_GOTO(ret, cleanup);
+
+validation:
+    if ((!(*result) || (parent && !parent->child)) && (options & (LYD_OPT_RPC | LYD_OPT_NOTIF))) {
+        /* error, missing top level node identify RPC and Notification */
+        LOGERR(ctx, LY_EINVAL, "Invalid input data of data parser - expected %s which cannot be empty.",
+               lyd_parse_options_type2str(options));
+        ret = LY_EINVAL;
+        goto cleanup;
+    }
+
+    /* context node and other validation tasks that depend on other data nodes */
+    ret = lyd_validate_modules(result_trees, NULL, 0, ctx, options);
+    LY_CHECK_GOTO(result, cleanup);
+
+cleanup:
+    ly_set_erase(&xmlctx.incomplete_type_validation, NULL);
+    ly_set_erase(&xmlctx.incomplete_type_validation_attrs, NULL);
+    ly_set_erase(&xmlctx.when_check, NULL);
+    lyxml_context_clear((struct lyxml_context*)&xmlctx);
+    lyd_trees_free(result_trees, 0);
     if (ret) {
         lyd_free_all(*result);
         *result = NULL;
-    } else {
-        /* finish incompletely validated terminal values */
-        for (unsigned int u = 0; u < xmlctx.incomplete_type_validation.count; u++) {
-            struct lyd_node_term *node = (struct lyd_node_term*)xmlctx.incomplete_type_validation.objs[u];
-            const struct lyd_node **result_trees = NULL;
-
-            /* prepare sized array for validator */
-            if (*result) {
-                result_trees = lyd_trees_new(1, *result);
-            }
-            /* validate and store the value of the node */
-            ret = lyd_value_parse(node, node->value.original, strlen(node->value.original), 0, 1,
-                                  lydxml_resolve_prefix, ctx, LYD_XML, result_trees);
-            lyd_trees_free(result_trees, 0);
-            if (ret) {
-                lyd_free_all(*result);
-                *result = NULL;
-                break;
-            }
-        }
-        /* ... and attribute values */
-        for (unsigned int u = 0; u < xmlctx.incomplete_type_validation_attrs.count; u++) {
-            struct lyd_attr *attr = (struct lyd_attr*)xmlctx.incomplete_type_validation_attrs.objs[u];
-            const struct lyd_node **result_trees = NULL;
-
-            /* prepare sized array for validator */
-            if (*result) {
-                result_trees = lyd_trees_new(1, *result);
-            }
-            /* validate and store the value of the node */
-            ret = lyd_value_parse_attr(attr, attr->value.original, strlen(attr->value.original), 0, 1,
-                                       lydxml_resolve_prefix, ctx, LYD_XML, result_trees);
-            lyd_trees_free(result_trees, 0);
-            if (ret) {
-                lyd_free_all(*result);
-                *result = NULL;
-                break;
-            }
-        }
-
-        if (!(*result) || (parent && !parent->child)) {
-no_data:
-            /* no data */
-            if (options & (LYD_OPT_RPC | LYD_OPT_NOTIF)) {
-                /* error, missing top level node identify RPC and Notification */
-                LOGERR(ctx, LY_EINVAL, "Invalid input data of data parser - expected %s which cannot be empty.",
-                       lyd_parse_options_type2str(options));
-            } else {
-                /* others - no work is needed, just check for missing mandatory nodes */
-                /* TODO lyd_validate(&result, options, ctx);
-                 * - according to the data tree type */
-            }
-        }
     }
-
-    ly_set_erase(&xmlctx.incomplete_type_validation, NULL);
-    ly_set_erase(&xmlctx.incomplete_type_validation_attrs, NULL);
-    lyxml_context_clear((struct lyxml_context*)&xmlctx);
     return ret;
 }
