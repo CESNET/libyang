@@ -6954,7 +6954,7 @@ lys_compile_check_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
 {
     struct lyxp_set tmp_set;
     struct lyxp_set_scnode *xp_scnode;
-    uint32_t i, j;
+    uint32_t i, j, k;
     int idx;
     struct lysc_when *when;
     LY_ERR ret = LY_SUCCESS;
@@ -6986,8 +6986,8 @@ lys_compile_check_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
 
         node = xp_scnode->scnode;
         do {
-            LY_ARRAY_FOR(node->when, i) {
-                when = node->when[i];
+            LY_ARRAY_FOR(node->when, j) {
+                when = node->when[j];
                 ret = lyxp_atomize(when->cond, LYD_UNKNOWN, when->module, when->context,
                                 when->context ? LYXP_NODE_ELEM : LYXP_NODE_ROOT_CONFIG, &tmp_set, LYXP_SCNODE_SCHEMA);
                 if (ret != LY_SUCCESS) {
@@ -6995,11 +6995,11 @@ lys_compile_check_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
                     goto cleanup;
                 }
 
-                for (j = 0; j < tmp_set.used; ++j) {
+                for (k = 0; k < tmp_set.used; ++k) {
                     /* skip roots'n'stuff */
-                    if (tmp_set.val.scnodes[j].type == LYXP_NODE_ELEM) {
+                    if (tmp_set.val.scnodes[k].type == LYXP_NODE_ELEM) {
                         /* try to find this node in our set */
-                        idx = lyxp_set_scnode_dup_node_check(set, tmp_set.val.scnodes[j].scnode, LYXP_NODE_ELEM, -1);
+                        idx = lyxp_set_scnode_dup_node_check(set, tmp_set.val.scnodes[k].scnode, LYXP_NODE_ELEM, -1);
                         if ((idx > -1) && (set->val.scnodes[idx].in_ctx == -1)) {
                             LOGVAL(set->ctx, LY_VLOG_LYS, node, LY_VCODE_CIRC_WHEN, node->name, set->val.scnodes[idx].scnode->name);
                             ret = LY_EVALID;
@@ -7007,10 +7007,10 @@ lys_compile_check_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
                         }
 
                         /* needs to be checked, if in both sets, will be ignored */
-                        tmp_set.val.scnodes[j].in_ctx = 1;
+                        tmp_set.val.scnodes[k].in_ctx = 1;
                     } else {
                         /* no when, nothing to check */
-                        tmp_set.val.scnodes[j].in_ctx = 0;
+                        tmp_set.val.scnodes[k].in_ctx = 0;
                     }
                 }
 
@@ -7022,8 +7022,8 @@ lys_compile_check_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
             node = node->parent;
         } while (node && (node->nodetype & (LYS_CASE | LYS_CHOICE)));
 
-        /* this node when was checked */
-        xp_scnode->in_ctx = -1;
+        /* this node when was checked (xp_scnode could have been reallocd) */
+        set->val.scnodes[i].in_ctx = -1;
     }
 
 cleanup:
