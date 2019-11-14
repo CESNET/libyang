@@ -183,6 +183,7 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 
 #define LY_VCODE_INVAL_MINMAX   LYVE_SEMANTICS, "Invalid combination of min-elements and max-elements: min value %u is bigger than the max value %u."
 #define LY_VCODE_CIRC_WHEN      LYVE_SEMANTICS, "When condition of \"%s\" includes a self-reference (referenced by when of \"%s\")."
+#define LY_VCODE_DUMMY_WHEN     LYVE_SEMANTICS, "When condition of \"%s\" is accessing its own conditional node."
 
 #define LY_VCODE_INSTMT         LYVE_SYNTAX_YANG, "Invalid keyword \"%s\"."
 #define LY_VCODE_INCHILDSTMT    LYVE_SYNTAX_YANG, "Invalid keyword \"%s\" as a child of \"%s\"."
@@ -220,7 +221,6 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_XP_INARGCOUNT  LYVE_XPATH, "Invalid number of arguments (%d) for the XPath function %.*s."
 #define LY_VCODE_XP_INARGTYPE   LYVE_XPATH, "Wrong type of argument #%d (%s) for the XPath function %s."
 #define LY_VCODE_XP_INCTX       LYVE_XPATH, "Invalid context type %s in %s."
-#define LY_VCODE_XP_DUMMY       LYVE_XPATH, "Accessing the value of the dummy node \"%s\"."
 #define LY_VCODE_XP_INOP_1      LYVE_XPATH, "Cannot apply XPath operation %s on %s."
 #define LY_VCODE_XP_INOP_2      LYVE_XPATH, "Cannot apply XPath operation %s on %s and %s."
 #define LY_VCODE_XP_INMOD       LYVE_XPATH, "Unknown module \"%.*s\"."

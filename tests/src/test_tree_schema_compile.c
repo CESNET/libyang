@@ -758,7 +758,7 @@ test_node_choice(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
 
     assert_non_null(mod = lys_parse_mem(ctx, "module a {namespace urn:a;prefix a;feature f;"
-                                        "choice ch {default a:b; when a2; case a {leaf a1 {type string;}leaf a2 {type string;}}"
+                                        "choice ch {default a:b; when \"true()\"; case a {leaf a1 {type string;}leaf a2 {type string;}}"
                                         "leaf b {type string;}}}", LYS_IN_YANG));
     ch = (struct lysc_node_choice*)mod->compiled->data;
     assert_non_null(ch);
@@ -3490,6 +3490,49 @@ test_when(void **state)
         "}"
     , LYS_IN_YANG));
     logbuf_assert("When condition of \"cont2\" includes a self-reference (referenced by when of \"val\").");
+
+    assert_null(lys_parse_mem(ctx,
+        "module a {"
+            "namespace urn:a;"
+            "prefix a;"
+            "leaf val {"
+                "type int64;"
+                "when \"../val='25'\";"
+            "}"
+        "}"
+    , LYS_IN_YANG));
+    logbuf_assert("When condition of \"val\" is accessing its own conditional node.");
+
+    assert_null(lys_parse_mem(ctx,
+        "module a {"
+            "namespace urn:a;"
+            "prefix a;"
+            "grouping grp {"
+                "leaf val {"
+                    "type int64;"
+                "}"
+            "}"
+            "uses grp {"
+                "when \"val='25'\";"
+            "}"
+        "}"
+    , LYS_IN_YANG));
+    logbuf_assert("When condition of \"val\" is accessing its own conditional node.");
+
+    assert_null(lys_parse_mem(ctx,
+        "module a {"
+            "namespace urn:a;"
+            "prefix a;"
+            "augment /cont {"
+                "when \"val='25'\";"
+                "leaf val {"
+                    "type int64;"
+                "}"
+            "}"
+            "container cont;"
+        "}"
+    , LYS_IN_YANG));
+    logbuf_assert("When condition of \"val\" is accessing its own conditional node.");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);

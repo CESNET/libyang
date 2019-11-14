@@ -244,13 +244,13 @@ struct lyd_attr {
  *     ---------------------+-+-+-+-+-+-+-+
  *       1 LYD_DEFAULT      |x| |x|x| | | |
  *                          +-+-+-+-+-+-+-+
- *       2                  | | | | | | | |
+ *       2 LYD_WHEN_TRUE    |x|x|x|x|x| | |
  *     ---------------------+-+-+-+-+-+-+-+
  *
  */
 
-#define LYD_DEFAULT      0x01        /**< default (implicit) node; */
-#define LYD_DUMMY        0x80000000  /**< dummy node (in XPath context, internal flag) */
+#define LYD_DEFAULT      0x01        /**< default (implicit) node */
+#define LYD_WHEN_TRUE    0x02        /**< all when conditions of this node were evaluated to true */
 /** @} */
 
 /**

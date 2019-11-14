@@ -214,11 +214,13 @@ struct lyxp_set {
         struct lyxp_set_scnode {
             struct lysc_node *scnode;
             enum lyxp_node_type type;
-            /* 0 - scnode was traversed, but not currently in the context,
-             * 1 - scnode currently in context,
-             * 2 - scnode in context and just added, so skip it for the current operation,
+            /* -2 - scnode not traversed, currently (the only node) in context;
+             * -1 - scnode not traversed except for the eval start, not currently in the context;
+             * 0  - scnode was traversed, but not currently in the context;
+             * 1  - scnode currently in context;
+             * 2  - scnode in context and just added, so skip it for the current operation;
              * >=3 - scnode is not in context because we are in a predicate and this scnode was used/will be used later */
-            uint32_t in_ctx;
+            int32_t in_ctx;
         } *scnodes;
         struct lyxp_set_attr {
             struct lyd_attr *attr;

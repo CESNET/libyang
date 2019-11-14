@@ -4758,13 +4758,18 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, const stru
 
                 if (!(ctx->options & LYSC_OPT_GROUPING)) {
                     /* do not check "when" semantics in a grouping */
-                    ly_set_add(&ctx->unres, target, 0);
+                    ly_set_add(&ctx->unres, node, 0);
                 }
 
                 when_shared = *when;
             } else {
                 ++when_shared->refcount;
                 (*when) = when_shared;
+
+                if (!(ctx->options & LYSC_OPT_GROUPING)) {
+                    /* in this case check "when" again for all children because of dummy node check */
+                    ly_set_add(&ctx->unres, node, 0);
+                }
             }
         }
     }
@@ -5040,6 +5045,11 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
             } else {
                 ++when_shared->refcount;
                 (*when) = when_shared;
+
+                if (!(ctx->options & LYSC_OPT_GROUPING)) {
+                    /* in this case check "when" again for all children because of dummy node check */
+                    ly_set_add(&ctx->unres, child, 0);
+                }
             }
         }
     }
@@ -6940,7 +6950,7 @@ cleanup:
  * @return LY_ERR value
  */
 static LY_ERR
-lys_compile_check_cyclic_when(struct lyxp_set *set, const struct lysc_node *node)
+lys_compile_check_when_cyclic(struct lyxp_set *set, const struct lysc_node *node)
 {
     struct lyxp_set tmp_set;
     struct lyxp_set_scnode *xp_scnode;
@@ -6955,11 +6965,8 @@ lys_compile_check_cyclic_when(struct lyxp_set *set, const struct lysc_node *node
     for (i = 0; i < set->used; ++i) {
         xp_scnode = &set->val.scnodes[i];
 
-        if ((xp_scnode->type == LYXP_NODE_ELEM) && (xp_scnode->scnode == node)) {
-            /* node when was already checked */
-            xp_scnode->in_ctx = 2;
-        } else {
-            /* check node when */
+        if (xp_scnode->in_ctx != -1) {
+            /* check node when, skip the context node (it was just checked) */
             xp_scnode->in_ctx = 1;
         }
     }
@@ -6993,7 +7000,7 @@ lys_compile_check_cyclic_when(struct lyxp_set *set, const struct lysc_node *node
                     if (tmp_set.val.scnodes[j].type == LYXP_NODE_ELEM) {
                         /* try to find this node in our set */
                         idx = lyxp_set_scnode_dup_node_check(set, tmp_set.val.scnodes[j].scnode, LYXP_NODE_ELEM, -1);
-                        if ((idx > -1) && (set->val.scnodes[idx].in_ctx == 2)) {
+                        if ((idx > -1) && (set->val.scnodes[idx].in_ctx == -1)) {
                             LOGVAL(set->ctx, LY_VLOG_LYS, node, LY_VCODE_CIRC_WHEN, node->name, set->val.scnodes[idx].scnode->name);
                             ret = LY_EVALID;
                             goto cleanup;
@@ -7016,7 +7023,7 @@ lys_compile_check_cyclic_when(struct lyxp_set *set, const struct lysc_node *node
         } while (node && (node->nodetype & (LYS_CASE | LYS_CHOICE)));
 
         /* this node when was checked */
-        xp_scnode->in_ctx = 2;
+        xp_scnode->in_ctx = -1;
     }
 
 cleanup:
@@ -7095,22 +7102,26 @@ lys_compile_check_xpath(struct lysc_ctx *ctx, const struct lysc_node *node)
         ctx->path[0] = '\0';
         lysc_path((struct lysc_node *)node, LYSC_PATH_LOG, ctx->path, LYSC_CTX_BUFSIZE);
         for (j = 0; j < tmp_set.used; ++j) {
-            /* skip roots'n'stuff, set in_ctx for when checking */
-            if (tmp_set.val.scnodes[j].type == LYXP_NODE_ELEM) {
+            /* skip roots'n'stuff */
+            if ((tmp_set.val.scnodes[j].type == LYXP_NODE_ELEM) && (tmp_set.val.scnodes[j].in_ctx != -1)) {
                 struct lysc_node *schema = tmp_set.val.scnodes[j].scnode;
 
                 /* XPath expression cannot reference "lower" status than the node that has the definition */
                 ret = lysc_check_status(ctx, when[i]->flags, when[i]->module, node->name, schema->flags, schema->module,
                                         schema->name);
                 LY_CHECK_GOTO(ret, cleanup);
+
+                /* check dummy node accessing */
+                if (schema == node) {
+                    LOGVAL(ctx->ctx, LY_VLOG_LYS, node, LY_VCODE_DUMMY_WHEN, node->name);
+                    ret = LY_EVALID;
+                    goto cleanup;
+                }
             }
         }
 
-        /* check dummy node accessing */
-        /* TODO */
-
         /* check cyclic dependencies */
-        ret = lys_compile_check_cyclic_when(&tmp_set, node);
+        ret = lys_compile_check_when_cyclic(&tmp_set, node);
         LY_CHECK_GOTO(ret, cleanup);
 
         lyxp_set_cast(&tmp_set, LYXP_SET_EMPTY);
