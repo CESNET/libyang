@@ -552,21 +552,21 @@ struct lysp_refine {
 };
 
 /**
- * @brief YANG uses-augment-stmt and augment-stmt
+ * @brief YANG uses-augment-stmt and augment-stmt (compatible with struct lysp_node )
  */
 struct lysp_augment {
     struct lysp_node *parent;        /**< parent node (NULL if this is a top-level augment) */
     uint16_t nodetype;               /**< LYS_AUGMENT */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values are allowed */
+    struct lysp_node *child;         /**< list of data nodes (linked list) */
     const char *nodeid;              /**< target schema nodeid (mandatory) - absolute for global augments, descendant for uses's augments */
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
     struct lysp_when *when;          /**< when statement */
     const char **iffeatures;         /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
-    struct lysp_node *child;         /**< list of data nodes (linked list) */
+    struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lysp_action *actions;     /**< list of actions ([sized array](@ref sizedarrays)) */
     struct lysp_notif *notifs;       /**< list of notifications ([sized array](@ref sizedarrays)) */
-    struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 };
 
 /**
