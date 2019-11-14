@@ -5278,6 +5278,32 @@ moveto_root(struct lyxp_set *set, int options)
 }
 
 /**
+ * @brief Check whether a node has some unresolved "when".
+ *
+ * @param[in] node Node to check.
+ * @return LY_ERR value (LY_EINCOMPLETE if there are some unresolved "when")
+ */
+static LY_ERR
+moveto_when_check(const struct lyd_node *node)
+{
+    const struct lysc_node *schema;
+
+    if (!node) {
+        return LY_SUCCESS;
+    }
+
+    schema = node->schema;
+    do {
+        if (schema->when && !(node->flags & LYD_WHEN_TRUE)) {
+            return LY_EINCOMPLETE;
+        }
+        schema = schema->parent;
+    } while (schema && (schema->nodetype & (LYS_CASE | LYS_CHOICE)));
+
+    return LY_SUCCESS;
+}
+
+/**
  * @brief Check @p node as a part of NameTest processing.
  *
  * @param[in] node Node to check.
@@ -5306,10 +5332,10 @@ moveto_node_check(const struct lyd_node *node, enum lyxp_node_type root_type, co
         return LY_ENOT;
     }
 
-    /* TODO when check */
-    /*if (!LYD_WHEN_DONE(node->when_status)) {
+    /* when check */
+    if (moveto_when_check(node)) {
         return LY_EINCOMPLETE;
-    }*/
+    }
 
     /* match */
     return LY_SUCCESS;
@@ -5991,10 +6017,10 @@ moveto_self_add_children_r(const struct lyd_node *parent, uint32_t parent_pos, e
                     continue;
                 }
 
-                /* TODO when check */
-                /*if (!LYD_WHEN_DONE(sub->when_status)) {
+                /* when check */
+                if (moveto_when_check(sub)) {
                     return LY_EINCOMPLETE;
-                }*/
+                }
 
                 if (!set_dup_node_check(dup_check_set, sub, LYXP_NODE_ELEM, -1)) {
                     set_insert_node(to_set, sub, 0, LYXP_NODE_ELEM, to_set->used);
@@ -6207,10 +6233,10 @@ moveto_parent(struct lyxp_set *set, int all_desc, int options)
             continue;
         }
 
-        /* TODO when check */
-        /*if (new_node && !LYD_WHEN_DONE(new_node->when_status)) {
+        /* when check */
+        if (moveto_when_check(new_node)) {
             return LY_EINCOMPLETE;
-        }*/
+        }
 
         /* node already there can also be the root */
         if (!new_node) {
