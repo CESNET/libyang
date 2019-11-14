@@ -127,6 +127,8 @@ enum lyxp_expr_type {
  * @brief Types of context nodes, #LYXP_NODE_ROOT_CONFIG used only in when or must conditions.
  */
 enum lyxp_node_type {
+    LYXP_NODE_NONE,             /* invalid node type */
+
     /* XML document roots */
     LYXP_NODE_ROOT,             /* access to all the data (node value first top-level node) */
     LYXP_NODE_ROOT_CONFIG,      /* <running> data context, no state data (node value first top-level node) */
