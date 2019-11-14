@@ -5386,7 +5386,7 @@ moveto_scnode_check(const struct lysc_node *node, enum lyxp_node_type root_type,
 static LY_ERR
 moveto_node(struct lyxp_set *set, const char *qname, uint16_t qname_len)
 {
-    uint32_t i;
+    uint32_t i, j;
     int replaced;
     const char *name_dict = NULL; /* optimization - so we can do (==) instead (!strncmp(...)) in moveto_node_check() */
     const struct lys_module *moveto_mod;
@@ -5414,8 +5414,8 @@ moveto_node(struct lyxp_set *set, const char *qname, uint16_t qname_len)
         if ((set->val.nodes[i].type == LYXP_NODE_ROOT_CONFIG) || (set->val.nodes[i].type == LYXP_NODE_ROOT)) {
             assert(!set->val.nodes[i].node);
             /* search in all the trees */
-            LY_ARRAY_FOR(set->trees, i) {
-                for (sub = set->trees[i]; sub; sub = sub->next) {
+            LY_ARRAY_FOR(set->trees, j) {
+                for (sub = set->trees[j]; sub; sub = sub->next) {
                     rc = moveto_node_check(sub, set->root_type, name_dict, moveto_mod);
                     if (rc == LY_SUCCESS) {
                         /* pos filled later */
