@@ -1157,13 +1157,15 @@ lyb_parse_data_models(const char *data, struct lyb_state *lybs)
     ret += (r = lyb_read_number(&lybs->mod_count, sizeof lybs->mod_count, 2, data, lybs));
     LYB_HAVE_READ_RETURN(r, data, -1);
 
-    lybs->models = malloc(lybs->mod_count * sizeof *lybs->models);
-    LY_CHECK_ERR_RETURN(!lybs->models, LOGMEM(lybs->ctx), -1);
+    if (lybs->mod_count) {
+        lybs->models = malloc(lybs->mod_count * sizeof *lybs->models);
+        LY_CHECK_ERR_RETURN(!lybs->models, LOGMEM(lybs->ctx), -1);
 
-    /* read modules */
-    for (i = 0; i < lybs->mod_count; ++i) {
-        ret += (r = lyb_parse_model(data, &lybs->models[i], lybs));
-        LYB_HAVE_READ_RETURN(r, data, -1);
+        /* read modules */
+        for (i = 0; i < lybs->mod_count; ++i) {
+            ret += (r = lyb_parse_model(data, &lybs->models[i], lybs));
+            LYB_HAVE_READ_RETURN(r, data, -1);
+        }
     }
 
     return ret;
