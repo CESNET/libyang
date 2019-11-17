@@ -1938,6 +1938,25 @@ const struct lysc_node *lys_find_child(const struct lysc_node *parent, const str
                                        const char *name, size_t name_len, uint16_t nodetype, int options);
 
 /**
+ * @brief Get schema node specified by the schema path.
+ *
+ * In case the @p qpath uses prefixes (from imports or of the schema itself), the @p context_node must be specified
+ * even if the path is absolute. In case the @p context_node is not provided, the names of the schemas are expected as the
+ * node's prefixes in the @qpath. It also means that the relative paths are accepted only with the schema prefixes,
+ * not the full names.
+ *
+ * @param[in] ctx libyang context for logging and getting the correct schema if @p contet_node not provided.
+ * @param[in] context_node Context node for relative paths and/or as a source of the context module to resolve node's
+ * prefixes in @qpath.
+ * @param[in] qpath Schema path to be resolved. Not prefixed nodes inherits the prefix from its parent nodes. It means
+ * that the first node in the path must be prefixed. Both, import prefixes as well as full schema names are accepted as
+ * prefixes according to the @p context_node parameter presence.
+ * @return NULL in case of invalid path.
+ * @return found schema node.
+ */
+const struct lysc_node *lys_find_node(struct ly_ctx *ctx, const struct lysc_node *context_node, const char *qpath);
+
+/**
  * @brief Make the specific module implemented.
  *
  * @param[in] mod Module to make implemented. It is not an error
