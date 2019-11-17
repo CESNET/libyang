@@ -59,7 +59,7 @@ cmd_clear_help(void)
 void
 cmd_print_help(void)
 {
-    printf("print [-f (yang | yin | tree [<tree-options>] | info [-P <info-path>] | jsons)] [-o <output-file>]"
+    printf("print [-f (yang | yin | tree[-rfc] [<tree-options>] | info [-P <info-path>] | jsons)] [-o <output-file>]"
            " <model-name>[@<revision>]\n");
     printf("\n");
     printf("\ttree-options:\t--tree-print-groupings\t(print top-level groupings in a separate section)\n");

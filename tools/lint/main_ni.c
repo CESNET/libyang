@@ -68,7 +68,7 @@ help(int shortout)
         "                        has no effect for the auto, rpc, rpcreply and notif TYPEs.\n\n"
         "  -f FORMAT, --format=FORMAT\n"
         "                        Convert to FORMAT. Supported formats: \n"
-        "                        yang, yin, tree and jsons (JSON) for schemas,\n"
+        "                        yang, yin, tree, tree-rfc and jsons (JSON) for schemas,\n"
         "                        xml, json for data.\n"
         "  -a, --auto            Modify the xml output by adding envelopes for autodetection.\n\n"
         "  -i, --allimplemented  Make all the imported modules implemented.\n\n"
