@@ -125,7 +125,12 @@ help(int shortout)
         "                        Print only the specified subtree.\n"
         "  --tree-line-length=LINE_LENGTH\n"
         "                        Wrap lines if longer than the specified length (it is not a strict limit, longer lines\n"
-        "                        can often appear).\n"
+        "                        can often appear).\n\n"
+        "Info output specific options:\n"
+        "  -P INFOPATH, --info-path=INFOPATH\n"
+        "                        - Schema path with full module names used as node's prefixes, the path identify the root\n"
+        "                          node of the subtree to print information about.\n"
+        "  --single-node         - Print information about a single node instead of a subtree."
         "\n");
 }
 
@@ -280,10 +285,12 @@ main_ni(int argc, char* argv[])
 #endif
         {"output",           required_argument, NULL, 'o'},
         {"path",             required_argument, NULL, 'p'},
+        {"info-path",        required_argument, NULL, 'P'},
 #if 0
         {"running",          required_argument, NULL, 'r'},
         {"operational",      required_argument, NULL, 'O'},
 #endif
+        {"single-node",      no_argument,       NULL, 'q'},
         {"strict",           no_argument,       NULL, 's'},
         {"type",             required_argument, NULL, 't'},
         {"version",          no_argument,       NULL, 'v'},
@@ -422,9 +429,11 @@ main_ni(int argc, char* argv[])
         case 'n':
             outoptions_s |= LYS_OUTOPT_TREE_NO_LEAFREF;
             break;
+#endif
         case 'P':
             outtarget_s = optarg;
             break;
+#if 0
         case 'L':
             outline_length_s = atoi(optarg);
             break;
@@ -752,11 +761,15 @@ main_ni(int argc, char* argv[])
 
     /* convert (print) to FORMAT */
     if (outformat_s) {
-        for (u = 0; u < mods->count; u++) {
-            if (u) {
-                fputs("\n", out);
+        if (outtarget_s) {
+            lys_node_print_file(out, ctx, NULL, outformat_s, outtarget_s, outline_length_s, outoptions_s);
+        } else {
+            for (u = 0; u < mods->count; u++) {
+                if (u) {
+                    fputs("\n", out);
+                }
+                lys_print_file(out, (struct lys_module *)mods->objs[u], outformat_s, outline_length_s, outoptions_s);
             }
-            lys_print_file(out, (struct lys_module *)mods->objs[u], outformat_s, outline_length_s, outoptions_s);
         }
     } else if (data) {
 
