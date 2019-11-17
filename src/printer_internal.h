@@ -96,9 +96,24 @@ LY_ERR yang_print_parsed(struct lyout *out, const struct lys_module *module);
  *
  * @param[in] out Output specification.
  * @param[in] module Schema to be printed (the compiled member is used).
+ * @param[in] options Schema output options (see @ref schemaprinterflags).
  * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
  */
-LY_ERR yang_print_compiled(struct lyout *out, const struct lys_module *module);
+LY_ERR yang_print_compiled(struct lyout *out, const struct lys_module *module, int options);
+
+/**
+ * @brief YANG printer of the compiled schema node
+ *
+ * This printer provides information about modules how they are understood by libyang.
+ * Despite the format is inspired by YANG, it is not fully compatible and should not be
+ * used as a standard YANG format.
+ *
+ * @param[in] out Output specification.
+ * @param[in] node Schema node to be printed including all its substatements.
+ * @param[in] options Schema output options (see @ref schemaprinterflags).
+ * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
+ */
+LY_ERR yang_print_compiled_node(struct lyout *out, const struct lysc_node *node, int options);
 
 /**
  * @brief YIN printer of the parsed schemas. Full YIN printer.

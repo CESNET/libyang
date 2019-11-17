@@ -39,7 +39,7 @@ void
 help(int shortout)
 {
     fprintf(stdout, "Usage:\n");
-    fprintf(stdout, "    yanglint [options] [-f { yang | yin | tree | tree-rfc | jsons}] <file>...\n");
+    fprintf(stdout, "    yanglint [options] [-f { yang | yin | tree | tree-rfc | info}] <file>...\n");
     fprintf(stdout, "        Validates the YANG module in <file>, and all its dependencies.\n\n");
     fprintf(stdout, "    yanglint [options] [-f { xml | json }] <schema>... <file>...\n");
     fprintf(stdout, "        Validates the YANG modeled data in <file> according to the <schema>.\n\n");
@@ -71,7 +71,7 @@ help(int shortout)
         "                        has no effect for the auto, rpc, rpcreply and notif TYPEs.\n\n"
         "  -f FORMAT, --format=FORMAT\n"
         "                        Convert to FORMAT. Supported formats: \n"
-        "                        yang, yin, tree and jsons (JSON) for schemas,\n"
+        "                        yang, yin, tree and info for schemas,\n"
         "                        xml, json for data.\n"
         "  -a, --auto            Modify the xml output by adding envelopes for autodetection.\n\n"
         "  -i, --allimplemented  Make all the imported modules implemented.\n\n"
@@ -253,7 +253,7 @@ int
 main_ni(int argc, char* argv[])
 {
     int ret = EXIT_FAILURE;
-    int opt, opt_index = 0, i, featsize = 0, compiled = 0;
+    int opt, opt_index = 0, i, featsize = 0;
     struct option options[] = {
 #if 0
         {"auto",             no_argument,       NULL, 'a'},
@@ -268,7 +268,6 @@ main_ni(int argc, char* argv[])
         {"tree-path",        required_argument, NULL, 'P'},
         {"tree-line-length", required_argument, NULL, 'L'},
 #endif
-        {"compiled",         no_argument,       NULL, 'c'},
         {"help",             no_argument,       NULL, 'h'},
 #if 0
         {"tree-help",        no_argument,       NULL, 'H'},
@@ -359,9 +358,6 @@ main_ni(int argc, char* argv[])
             }
             break;
 #endif
-        case 'c':
-            compiled = 1;
-            break;
         case 'f':
             if (!strcasecmp(optarg, "yang")) {
                 outformat_s = LYS_OUT_YANG;
@@ -378,11 +374,9 @@ main_ni(int argc, char* argv[])
             } else if (!strcasecmp(optarg, "yin")) {
                 outformat_s = LYS_OUT_YIN;
                 outformat_d = 0;
-#if 0
-            } else if (!strcasecmp(optarg, "jsons")) {
-                outformat_s = LYS_OUT_JSON;
+            } else if (!strcasecmp(optarg, "info")) {
+                outformat_s = LYS_OUT_YANG_COMPILED;
                 outformat_d = 0;
-#endif
             } else if (!strcasecmp(optarg, "xml")) {
                 outformat_s = 0;
                 outformat_d = LYD_XML;
@@ -606,13 +600,6 @@ main_ni(int argc, char* argv[])
         fprintf(stderr, "yanglint error: missing <file> to process\n");
         goto cleanup;
     }
-    if (compiled) {
-        if (outformat_s != LYS_OUT_YANG) {
-            fprintf(stderr, "yanglint warning: --compiled option takes effect only in case of printing schemas in YANG format.\n");
-        } else {
-            outformat_s = LYS_OUT_YANG_COMPILED;
-        }
-    }
     if (outformat_s && outformat_s != LYS_OUT_TREE && (optind + 1) < argc) {
         /* we have multiple schemas to be printed as YIN or YANG */
         fprintf(stderr, "yanglint error: too many schemas to convert and store.\n");
@@ -765,25 +752,11 @@ main_ni(int argc, char* argv[])
 
     /* convert (print) to FORMAT */
     if (outformat_s) {
-        if (outformat_s == LYS_OUT_JSON && mods->count > 1) {
-            fputs("[", out);
-        }
         for (u = 0; u < mods->count; u++) {
             if (u) {
-                if (outformat_s == LYS_OUT_JSON) {
-                    fputs(",\n", out);
-                } else {
-                    fputs("\n", out);
-                }
-            }
-            lys_print_file(out, (struct lys_module *)mods->objs[u], outformat_s, outline_length_s, outoptions_s);
-        }
-        if (outformat_s == LYS_OUT_JSON) {
-            if (mods->count > 1) {
-                fputs("]\n", out);
-            } else if (mods->count == 1) {
                 fputs("\n", out);
             }
+            lys_print_file(out, (struct lys_module *)mods->objs[u], outformat_s, outline_length_s, outoptions_s);
         }
     } else if (data) {
 

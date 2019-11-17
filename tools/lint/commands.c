@@ -58,7 +58,7 @@ cmd_clear_help(void)
 void
 cmd_print_help(void)
 {
-    printf("print [-f (yang | yin | tree [<tree-options>] | info [-P <info-path>] | jsons)] [-o <output-file>]"
+    printf("print [-f (yang | yin | tree [<tree-options>] | info [-P <info-path>] [-(-s)ingle-node])] [-o <output-file>]"
            " <model-name>[@<revision>]\n");
     printf("\n");
     printf("\ttree-options:\t--tree-print-groupings\t(print top-level groupings in a separate section)\n");
@@ -68,10 +68,7 @@ cmd_print_help(void)
     printf("\t             \t--tree-line-length <line-length>\t(wrap lines if longer than line-length,\n");
     printf("\t             \t\tnot a strict limit, longer lines can often appear)\n");
     printf("\n");
-    printf("\tinfo-path:\t<schema-path> | typedef[<schema-path>]/<typedef-name> |\n");
-    printf("\t          \t| identity/<identity-name> | feature/<feature-name> |\n");
-    printf("\t          \t| grouping[<schema-path>]/<grouping-name> |\n");
-    printf("\t          \t| type/<schema-path-leaf-or-leaflist>\n");
+    printf("\tinfo-path:\t<schema-path> | identity/<identity-name> | feature/<feature-name>\n");
     printf("\n");
     printf("\tschema-path:\t( /<module-name>:<node-identifier> )+\n");
 }
@@ -344,14 +341,13 @@ cleanup:
 int
 cmd_print(const char *arg)
 {
-    int c, argc, option_index, ret = 1, tree_ll = 0, tree_opts = 0, compiled = 0;
+    int c, argc, option_index, ret = 1, tree_ll = 0, output_opts = 0;
     char **argv = NULL, *ptr, *model_name, *revision;
-    const char *out_path = NULL;
+    const char *out_path = NULL, *target_path = NULL;
     const struct lys_module *module;
     LYS_OUTFORMAT format = LYS_OUT_TREE;
     FILE *output = stdout;
     static struct option long_options[] = {
-        {"compiled", no_argument, 0, 'c'},
         {"help", no_argument, 0, 'h'},
         {"format", required_argument, 0, 'f'},
         {"output", required_argument, 0, 'o'},
@@ -360,7 +356,10 @@ cmd_print(const char *arg)
         {"tree-print-uses", no_argument, 0, 'u'},
         {"tree-no-leafref-target", no_argument, 0, 'n'},
         {"tree-path", required_argument, 0, 'P'},
+#endif
         {"info-path", required_argument, 0, 'P'},
+        {"single-node", no_argument, 0, 's'},
+#if 0
         {"tree-line-length", required_argument, 0, 'L'},
 #endif
         {NULL, 0, 0, 0}
@@ -385,15 +384,12 @@ cmd_print(const char *arg)
     optind = 0;
     while (1) {
         option_index = 0;
-        c = getopt_long(argc, argv, "chf:go:guP:L:", long_options, &option_index);
+        c = getopt_long(argc, argv, "chf:go:guP:sL:", long_options, &option_index);
         if (c == -1) {
             break;
         }
 
         switch (c) {
-        case 'c':
-            compiled = 1;
-            break;
         case 'h':
             cmd_print_help();
             ret = 0;
@@ -408,12 +404,10 @@ cmd_print(const char *arg)
                 format = LYS_OUT_TREE;
             } else if (!strcmp(optarg, "tree-rfc")) {
                 format = LYS_OUT_TREE;
-                tree_opts |= LYS_OUTOPT_TREE_RFC;
-            } else if (!strcmp(optarg, "info")) {
-                format = LYS_OUT_INFO;
-            } else if (!strcmp(optarg, "jsons")) {
-                format = LYS_OUT_JSON;
+                output_opts |= LYS_OUTOPT_TREE_RFC;
 #endif
+            } else if (!strcmp(optarg, "info")) {
+                format = LYS_OUT_YANG_COMPILED;
             } else {
                 fprintf(stderr, "Unknown output format \"%s\".\n", optarg);
                 goto cleanup;
@@ -428,17 +422,22 @@ cmd_print(const char *arg)
             break;
 #if 0
         case 'g':
-            tree_opts |= LYS_OUTOPT_TREE_GROUPING;
+            output_opts |= LYS_OUTOPT_TREE_GROUPING;
             break;
         case 'u':
-            tree_opts |= LYS_OUTOPT_TREE_USES;
+            output_opts |= LYS_OUTOPT_TREE_USES;
             break;
         case 'n':
-            tree_opts |= LYS_OUTOPT_TREE_NO_LEAFREF;
+            output_opts |= LYS_OUTOPT_TREE_NO_LEAFREF;
             break;
+#endif
         case 'P':
             target_path = optarg;
             break;
+        case 's':
+            output_opts |= LYS_OUTPUT_NO_SUBST;
+            break;
+#if 0
         case 'L':
             tree_ll = atoi(optarg);
             break;
@@ -450,53 +449,48 @@ cmd_print(const char *arg)
     }
 
     /* file name */
-    if (optind == argc) {
+    if (optind == argc && !target_path) {
         fprintf(stderr, "Missing the module name.\n");
         goto cleanup;
     }
 
-    /* compiled format */
-    if (compiled) {
-        if (format == LYS_OUT_YANG) {
-            format = LYS_OUT_YANG_COMPILED;
-        } else {
-            fprintf(stderr, "warning: --compiled option takes effect only in case of printing schemas in YANG format.\n");
-        }
-    }
 #if 0
     /* tree fromat with or without gropings */
-    if ((tree_opts || tree_ll) && format != LYS_OUT_TREE) {
+    if ((output_opts || tree_ll) && format != LYS_OUT_TREE) {
         fprintf(stderr, "--tree options take effect only in case of the tree output format.\n");
     }
 #endif
-    /* module, revision */
-    model_name = argv[optind];
-    revision = NULL;
-    if (strchr(model_name, '@')) {
-        revision = strchr(model_name, '@');
-        revision[0] = '\0';
-        ++revision;
-    }
 
-    if (revision) {
-        module = ly_ctx_get_module(ctx, model_name, revision);
-    } else {
-        module = ly_ctx_get_module_latest(ctx, model_name);
-    }
+    if (!target_path) {
+        /* module, revision */
+        model_name = argv[optind];
+        revision = NULL;
+        if (strchr(model_name, '@')) {
+            revision = strchr(model_name, '@');
+            revision[0] = '\0';
+            ++revision;
+        }
+
+        if (revision) {
+            module = ly_ctx_get_module(ctx, model_name, revision);
+        } else {
+            module = ly_ctx_get_module_latest(ctx, model_name);
+        }
 #if 0
-    if (!module) {
-        /* not a module, try to find it as a submodule */
-        module = (const struct lys_module *)ly_ctx_get_submodule(ctx, NULL, NULL, model_name, revision);
-    }
+        if (!module) {
+            /* not a module, try to find it as a submodule */
+            module = (const struct lys_module *)ly_ctx_get_submodule(ctx, NULL, NULL, model_name, revision);
+        }
 #endif
 
-    if (!module) {
-        if (revision) {
-            fprintf(stderr, "No (sub)module \"%s\" in revision %s found.\n", model_name, revision);
-        } else {
-            fprintf(stderr, "No (sub)module \"%s\" found.\n", model_name);
+        if (!module) {
+            if (revision) {
+                fprintf(stderr, "No (sub)module \"%s\" in revision %s found.\n", model_name, revision);
+            } else {
+                fprintf(stderr, "No (sub)module \"%s\" found.\n", model_name);
+            }
+            goto cleanup;
         }
-        goto cleanup;
     }
 
     if (out_path) {
@@ -507,9 +501,10 @@ cmd_print(const char *arg)
         }
     }
 
-    ret = lys_print_file(output, module, format, tree_ll, tree_opts);
-    if (format == LYS_OUT_JSON) {
-        fputs("\n", output);
+    if (target_path) {
+        ret = lys_node_print_file(output, ctx, NULL, format, target_path, tree_ll, output_opts);
+    } else {
+        ret = lys_print_file(output, module, format, tree_ll, output_opts);
     }
 
 cleanup:

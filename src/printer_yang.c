@@ -45,6 +45,7 @@ struct ypr_ctx {
     unsigned int level;              /**< current indentation level: 0 - no formatting, >= 1 indentation levels */
     const struct lys_module *module; /**< schema to print */
     enum schema_type schema;         /**< type of the schema to print */
+    int options;                     /**< Schema output options (see @ref schemaprinterflags). */
 };
 
 #define LEVEL ctx->level             /**< current level */
@@ -1184,8 +1185,10 @@ yprc_inout(struct ypr_ctx *ctx, const struct lysc_action *action, const struct l
         yprc_must(ctx, &inout->musts[u], NULL);
     }
 
-    LY_LIST_FOR(inout->data, data) {
-        yprc_node(ctx, data);
+    if (!(ctx->options & LYS_OUTPUT_NO_SUBST)) {
+        LY_LIST_FOR(inout->data, data) {
+            yprc_node(ctx, data);
+        }
     }
 
     LEVEL--;
@@ -1255,9 +1258,11 @@ yprc_notification(struct ypr_ctx *ctx, const struct lysc_notif *notif)
     ypr_description(ctx, notif->dsc, notif->exts, &flag);
     ypr_reference(ctx, notif->ref, notif->exts, &flag);
 
-    LY_LIST_FOR(notif->data, data) {
-        ypr_open(ctx->out, &flag);
-        yprc_node(ctx, data);
+    if (!(ctx->options & LYS_OUTPUT_NO_SUBST)) {
+        LY_LIST_FOR(notif->data, data) {
+            ypr_open(ctx->out, &flag);
+            yprc_node(ctx, data);
+        }
     }
 
     LEVEL--;
@@ -1440,19 +1445,21 @@ yprc_container(struct ypr_ctx *ctx, const struct lysc_node *node)
 
     yprc_node_common2(ctx, node, &flag);
 
-    LY_LIST_FOR(cont->child, child) {
-        ypr_open(ctx->out, &flag);
-        yprc_node(ctx, child);
-    }
+    if (!(ctx->options & LYS_OUTPUT_NO_SUBST)) {
+        LY_LIST_FOR(cont->child, child) {
+            ypr_open(ctx->out, &flag);
+            yprc_node(ctx, child);
+        }
 
-    LY_ARRAY_FOR(cont->actions, u) {
-        ypr_open(ctx->out, &flag);
-        yprc_action(ctx, &cont->actions[u]);
-    }
+        LY_ARRAY_FOR(cont->actions, u) {
+            ypr_open(ctx->out, &flag);
+            yprc_action(ctx, &cont->actions[u]);
+        }
 
-    LY_ARRAY_FOR(cont->notifs, u) {
-        ypr_open(ctx->out, &flag);
-        yprc_notification(ctx, &cont->notifs[u]);
+        LY_ARRAY_FOR(cont->notifs, u) {
+            ypr_open(ctx->out, &flag);
+            yprc_notification(ctx, &cont->notifs[u]);
+        }
     }
 
     LEVEL--;
@@ -1487,9 +1494,11 @@ yprc_case(struct ypr_ctx *ctx, const struct lysc_node_case *cs)
     yprc_node_common1(ctx, (struct lysc_node*)cs, &flag);
     yprc_node_common2(ctx, (struct lysc_node*)cs, &flag);
 
-    for (child = cs->child; child && child->parent == (struct lysc_node*)cs; child = child->next) {
-        ypr_open(ctx->out, &flag);
-        yprc_node(ctx, child);
+    if (!(ctx->options & LYS_OUTPUT_NO_SUBST)) {
+        for (child = cs->child; child && child->parent == (struct lysc_node*)cs; child = child->next) {
+            ypr_open(ctx->out, &flag);
+            yprc_node(ctx, child);
+        }
     }
 
     LEVEL--;
@@ -1786,19 +1795,21 @@ yprc_list(struct ypr_ctx *ctx, const struct lysc_node *node)
     ypr_description(ctx, node->dsc, node->exts, NULL);
     ypr_reference(ctx, node->ref, node->exts, NULL);
 
-    LY_LIST_FOR(list->child, child) {
-        ypr_open(ctx->out, &flag);
-        yprc_node(ctx, child);
-    }
+    if (!(ctx->options & LYS_OUTPUT_NO_SUBST)) {
+        LY_LIST_FOR(list->child, child) {
+            ypr_open(ctx->out, &flag);
+            yprc_node(ctx, child);
+        }
 
-    LY_ARRAY_FOR(list->actions, u) {
-        ypr_open(ctx->out, &flag);
-        yprc_action(ctx, &list->actions[u]);
-    }
+        LY_ARRAY_FOR(list->actions, u) {
+            ypr_open(ctx->out, &flag);
+            yprc_action(ctx, &list->actions[u]);
+        }
 
-    LY_ARRAY_FOR(list->notifs, u) {
-        ypr_open(ctx->out, &flag);
-        yprc_notification(ctx, &list->notifs[u]);
+        LY_ARRAY_FOR(list->notifs, u) {
+            ypr_open(ctx->out, &flag);
+            yprc_notification(ctx, &list->notifs[u]);
+        }
     }
 
     LEVEL--;
@@ -2289,12 +2300,23 @@ yang_print_parsed(struct lyout *out, const struct lys_module *module)
 }
 
 LY_ERR
-yang_print_compiled(struct lyout *out, const struct lys_module *module)
+yang_print_compiled_node(struct lyout *out, const struct lysc_node *node, int options)
+{
+    struct ypr_ctx ctx_ = {.out = out, .level = 0, .module = node->module, .options = options}, *ctx = &ctx_;
+
+    yprc_node(ctx, node);
+
+    ly_print_flush(out);
+    return LY_SUCCESS;
+}
+
+LY_ERR
+yang_print_compiled(struct lyout *out, const struct lys_module *module, int options)
 {
     LY_ARRAY_SIZE_TYPE u;
     struct lysc_node *data;
     struct lysc_module *modc = module->compiled;
-    struct ypr_ctx ctx_ = {.out = out, .level = 0, .module = module}, *ctx = &ctx_;
+    struct ypr_ctx ctx_ = {.out = out, .level = 0, .module = module, .options = options}, *ctx = &ctx_;
 
     ly_print(ctx->out, "%*smodule %s {\n", INDENT, module->name);
     LEVEL++;
@@ -2354,16 +2376,18 @@ yang_print_compiled(struct lyout *out, const struct lys_module *module)
         yprc_identity(ctx, &modc->identities[u]);
     }
 
-    LY_LIST_FOR(modc->data, data) {
-        yprc_node(ctx, data);
-    }
+    if (!(ctx->options & LYS_OUTPUT_NO_SUBST)) {
+        LY_LIST_FOR(modc->data, data) {
+            yprc_node(ctx, data);
+        }
 
-    LY_ARRAY_FOR(modc->rpcs, u) {
-        yprc_action(ctx, &modc->rpcs[u]);
-    }
+        LY_ARRAY_FOR(modc->rpcs, u) {
+            yprc_action(ctx, &modc->rpcs[u]);
+        }
 
-    LY_ARRAY_FOR(modc->notifs, u) {
-        yprc_notification(ctx, &modc->notifs[u]);
+        LY_ARRAY_FOR(modc->notifs, u) {
+            yprc_notification(ctx, &modc->notifs[u]);
+        }
     }
 
     LEVEL--;
