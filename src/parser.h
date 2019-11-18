@@ -33,7 +33,7 @@
  * @{
  */
 struct lys_module *yin_read_module(struct ly_ctx *ctx, const char *data, const char *revision, int implement);
-struct lys_submodule *yin_read_submodule(struct lys_module *module, const char *data,struct unres_schema *unres);
+struct lys_submodule *yin_read_submodule(struct lys_module *module, const char *data, struct unres_schema *unres);
 
 /**@} yin */
 

@@ -541,7 +541,7 @@ void unres_data_diff_rem(struct unres_data *unres, unsigned int idx);
  * @return EXIT_SUCCESS or EXIT_FAILURE
  */
 int lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, const struct lys_module **modules,
-                           int mod_count, const struct lyd_node *data_tree, struct lyd_node *act_notif,
+                           int mod_count, const struct lyd_node *data_tree, struct lyd_node **act_notif,
                            struct unres_data *unres, int wd);
 
 void lys_enable_deviations(struct lys_module *module);

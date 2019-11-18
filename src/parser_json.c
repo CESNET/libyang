@@ -1571,7 +1571,7 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
     }
 
     /* add/validate default values, unres */
-    if (lyd_defaults_add_unres(&result, options, ctx, NULL, 0, data_tree, act_notif, unres, 1)) {
+    if (lyd_defaults_add_unres(&result, options, ctx, NULL, 0, data_tree, &act_notif, unres, 1)) {
         goto error;
     }
 
