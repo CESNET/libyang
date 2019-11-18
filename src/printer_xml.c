@@ -699,7 +699,7 @@ xml_print_data(struct lyout *out, const struct lyd_node *root, int options)
     }
 
     if (action_input) {
-        ly_print(out, "%*s<action xmlns=\"urn:ietf:params:xml:ns:yang:1\">%s", LEVEL, INDENT, level ? "\n" : "");
+        ly_print(out, "%*s<action xmlns=\"%s\">%s", LEVEL, INDENT, LY_NSYANG, level ? "\n" : "");
         if (level) {
             ++level;
         }
