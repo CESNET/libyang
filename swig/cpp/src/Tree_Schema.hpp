@@ -69,6 +69,8 @@ public:
     uint8_t deviated() {return module->deviated;};
     /** get disabled variable from [lys_module](@ref lys_module)*/
     uint8_t disabled() {return module->disabled;};
+    /** get implemented variable from [lys_module](@ref lys_module)*/
+    uint8_t implemented() {return module->implemented;};
     /** get rev_size variable from [lys_module](@ref lys_module)*/
     uint8_t rev_size() {return module->rev_size;};
     /** get imp_size variable from [lys_module](@ref lys_module)*/
