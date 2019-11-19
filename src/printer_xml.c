@@ -43,6 +43,7 @@ static int
 modlist_add(struct mlist **mlist, const struct lys_module *mod)
 {
     struct mlist *iter;
+    
     for (iter = *mlist; iter; iter = iter->next) {
         if (mod == iter->module) {
             break;
@@ -63,12 +64,12 @@ modlist_add(struct mlist **mlist, const struct lys_module *mod)
 
 static void
 free_mlist(struct mlist **mlist) {
-  struct mlist *miter;
-  while(*mlist) {
-    miter = *mlist;
-    *mlist = miter->next;
-    free(miter);
-  }
+    struct mlist *miter;
+    while (*mlist) {
+        miter = *mlist;
+        *mlist = miter->next;
+        free(miter);
+    }
 }
 
 static void
@@ -151,11 +152,10 @@ print:
     while (miter) {
 
         if (!miter->printed) {
-          ly_print(out, " xmlns:%s=\"%s\"", miter->module->prefix, miter->module->ns);
-	  miter->printed = 1;
+            ly_print(out, " xmlns:%s=\"%s\"", miter->module->prefix, miter->module->ns);
+	    miter->printed = 1;
         }
         miter = miter->next;
-        // free(miter);
     }
 }
 
@@ -316,8 +316,8 @@ xml_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int to
     }
 
     if (toplevel) {
-      xml_print_ns(out, node, &mlist, options);
-      free_mlist(&mlist);
+        xml_print_ns(out, node, &mlist, options);
+        free_mlist(&mlist);
     }
 
     if (xml_print_attrs(out, node, options)) {
@@ -464,8 +464,8 @@ xml_print_container(struct lyout *out, int level, const struct lyd_node *node, i
     }
 
     if (toplevel) {
-      xml_print_ns(out, node, &mlist, options);
-      free_mlist(&mlist);
+        xml_print_ns(out, node, &mlist, options);
+        free_mlist(&mlist);
     }
 
     if (xml_print_attrs(out, node, options)) {
@@ -510,8 +510,8 @@ xml_print_list(struct lyout *out, int level, const struct lyd_node *node, int is
         }
 
         if (toplevel) {
-	  xml_print_ns(out, node, &mlist, options);
-	  free_mlist(&mlist);
+	    xml_print_ns(out, node, &mlist, options);
+	    free_mlist(&mlist);
         }
         if (xml_print_attrs(out, node, options)) {
             return EXIT_FAILURE;

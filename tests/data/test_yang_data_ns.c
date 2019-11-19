@@ -24,7 +24,7 @@
 
 struct state {
     struct ly_ctx *ctx;
-  const struct lys_module *mod1, *mod2, *mod_nc;
+    const struct lys_module *mod1, *mod2, *mod_nc;
     struct lyd_node *dt, *node1, *node2, *nodet;
 };
 
@@ -33,24 +33,24 @@ setup_f(void **state)
 {
     struct state *st;
     const char *yang1 = "module yang-data-config-ns1 {\n"
-                       "  prefix dcn1;\n"
-                       "  namespace \"urn:cesnet:yang-data-config-ns1\";\n"
-                       "  container con1 {\n"
-                       "    leaf leaf1 {\n"
-                       "        type string;\n"
-                       "    }\n"
-                       "  }\n"
-                       "}";
+	"  prefix dcn1;\n"
+	"  namespace \"urn:cesnet:yang-data-config-ns1\";\n"
+	"  container con1 {\n"
+	"    leaf leaf1 {\n"
+	"        type string;\n"
+	"    }\n"
+	"  }\n"
+	"}";
 
     const char *yang2 = "module yang-data-config-ns2 {\n"
-                       "  prefix dcn2;\n"
-                       "  namespace \"urn:cesnet:yang-data-config-ns2\";\n"
-                       "  container con2 {\n"
-                       "    leaf leaf2 {\n"
-                       "        type string;\n"
-                       "    }\n"
-                       "  }\n"
-                       "}";
+	"  prefix dcn2;\n"
+	"  namespace \"urn:cesnet:yang-data-config-ns2\";\n"
+	"  container con2 {\n"
+	"    leaf leaf2 {\n"
+	"        type string;\n"
+	"    }\n"
+	"  }\n"
+	"}";
 
     (*state) = st = calloc(1, sizeof *st);
     if (!st) {
@@ -94,41 +94,41 @@ teardown_f(void **state)
 static void
 test_anydata_ns(void **state)
 {
-  struct state *st = (*state);
-  struct lyd_attr *attr;
+    struct state *st = (*state);
+    struct lyd_attr *attr;
 
-  char *s;
-  const char *opentag = "<config xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\">";
+    char *s;
+    const char *opentag = "<config xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\">";
 
-  if(!(st->mod_nc = ly_ctx_get_module(st->ctx, "ietf-netconf", NULL, 0))) {
-      st->mod_nc = ly_ctx_load_module(st->ctx, "ietf-netconf", NULL);
-  }
-  assert_ptr_not_equal(st->mod_nc, NULL);
+    if(!(st->mod_nc = ly_ctx_get_module(st->ctx, "ietf-netconf", NULL, 0))) {
+	st->mod_nc = ly_ctx_load_module(st->ctx, "ietf-netconf", NULL);
+    }
+    assert_ptr_not_equal(st->mod_nc, NULL);
 
-  st->node1 = lyd_new(NULL, st->mod1, "con1");
-  assert_ptr_not_equal(st->node1, NULL);
+    st->node1 = lyd_new(NULL, st->mod1, "con1");
+    assert_ptr_not_equal(st->node1, NULL);
     
-  attr = lyd_insert_attr(st->node1, st->mod_nc, "operation", "create");
-  assert_ptr_not_equal(attr, NULL);
+    attr = lyd_insert_attr(st->node1, st->mod_nc, "operation", "create");
+    assert_ptr_not_equal(attr, NULL);
   
-  st->nodet = lyd_new_leaf(st->node1, st->mod1, "leaf1", "test1234");
-  assert_ptr_not_equal(st->nodet, NULL);
+    st->nodet = lyd_new_leaf(st->node1, st->mod1, "leaf1", "test1234");
+    assert_ptr_not_equal(st->nodet, NULL);
 
-  st->node2 = lyd_new(NULL, st->mod2, "con2");
-  assert_ptr_not_equal(st->node2, NULL);  
-  attr = lyd_insert_attr(st->node2, st->mod_nc, "operation", "merge");
-  assert_ptr_not_equal(attr, NULL);
+    st->node2 = lyd_new(NULL, st->mod2, "con2");
+    assert_ptr_not_equal(st->node2, NULL);  
+    attr = lyd_insert_attr(st->node2, st->mod_nc, "operation", "merge");
+    assert_ptr_not_equal(attr, NULL);
 
-  st->nodet = lyd_new_leaf(st->node2, st->mod2, "leaf2", "leaf2-test1234");
-  assert_ptr_not_equal(st->nodet, NULL);
+    st->nodet = lyd_new_leaf(st->node2, st->mod2, "leaf2", "leaf2-test1234");
+    assert_ptr_not_equal(st->nodet, NULL);
   
-  assert_return_code(lyd_insert_sibling(&(st->node1), st->node2), 0);
+    assert_return_code(lyd_insert_sibling(&(st->node1), st->node2), 0);
 
-  st->dt = lyd_new_anydata(NULL, st->mod_nc, "config", st->node1, LYD_ANYDATA_DATATREE);
-  assert_ptr_not_equal(st->dt, NULL);
+    st->dt = lyd_new_anydata(NULL, st->mod_nc, "config", st->node1, LYD_ANYDATA_DATATREE);
+    assert_ptr_not_equal(st->dt, NULL);
 
-  lyd_print_mem(&s, st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_FORMAT);
-  assert_return_code(strncmp(s, opentag, strlen(opentag)), 0);
+    lyd_print_mem(&s, st->dt, LYD_XML, LYP_WITHSIBLINGS | LYP_FORMAT);
+    assert_return_code(strncmp(s, opentag, strlen(opentag)), 0);
   
 }
 
