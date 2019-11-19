@@ -36,13 +36,13 @@
 struct mlist {
     struct mlist *next;
     struct lys_module *module;
+    uint8_t printed;
 };
 
 static int
 modlist_add(struct mlist **mlist, const struct lys_module *mod)
 {
     struct mlist *iter;
-
     for (iter = *mlist; iter; iter = iter->next) {
         if (mod == iter->module) {
             break;
@@ -54,19 +54,30 @@ modlist_add(struct mlist **mlist, const struct lys_module *mod)
         LY_CHECK_ERR_RETURN(!iter, LOGMEM(mod->ctx), EXIT_FAILURE);
         iter->next = *mlist;
         iter->module = (struct lys_module *)mod;
-        *mlist = iter;
+	iter->printed = 0;
+	*mlist = iter;
     }
 
     return EXIT_SUCCESS;
 }
 
 static void
-xml_print_ns(struct lyout *out, const struct lyd_node *node, int options)
+free_mlist(struct mlist **mlist) {
+  struct mlist *miter;
+  while(*mlist) {
+    miter = *mlist;
+    *mlist = miter->next;
+    free(miter);
+  }
+}
+
+static void
+xml_print_ns(struct lyout *out, const struct lyd_node *node, struct mlist **mlist, int options)
 {
     struct lyd_node *next, *cur, *node2;
     struct lyd_attr *attr;
     const struct lys_module *wdmod = NULL;
-    struct mlist *mlist = NULL, *miter;
+    struct mlist *miter;
     int r;
 
     assert(out);
@@ -80,7 +91,7 @@ xml_print_ns(struct lyout *out, const struct lyd_node *node, int options)
             /* exception for NETCONF's filter attributes */
             continue;
         } else {
-            r = modlist_add(&mlist, lys_main_module(attr->annotation->module));
+            r = modlist_add(mlist, lys_main_module(attr->annotation->module));
         }
         if (r) {
             goto print;
@@ -94,7 +105,7 @@ xml_print_ns(struct lyout *out, const struct lyd_node *node, int options)
         if (node->dflt && (options & (LYP_WD_ALL_TAG | LYP_WD_IMPL_TAG))) {
             /* get with-defaults module and print its namespace */
             wdmod = ly_ctx_get_module(node->schema->module->ctx, "ietf-netconf-with-defaults", NULL, 1);
-            if (wdmod && modlist_add(&mlist, wdmod)) {
+            if (wdmod && modlist_add(mlist, wdmod)) {
                 goto print;
             }
         }
@@ -107,7 +118,7 @@ xml_print_ns(struct lyout *out, const struct lyd_node *node, int options)
         if (options & (LYP_WD_ALL_TAG | LYP_WD_IMPL_TAG)) {
             /* get with-defaults module and print its namespace */
             wdmod = ly_ctx_get_module(node->schema->module->ctx, "ietf-netconf-with-defaults", NULL, 1);
-            if (wdmod && modlist_add(&mlist, wdmod)) {
+            if (wdmod && modlist_add(mlist, wdmod)) {
                 goto print;
             }
         }
@@ -121,7 +132,7 @@ xml_print_ns(struct lyout *out, const struct lyd_node *node, int options)
                         /* exception for NETCONF's filter attributes */
                         continue;
                     } else {
-                        r = modlist_add(&mlist, lys_main_module(attr->annotation->module));
+                        r = modlist_add(mlist, lys_main_module(attr->annotation->module));
                     }
                     if (r) {
                         goto print;
@@ -136,12 +147,15 @@ xml_print_ns(struct lyout *out, const struct lyd_node *node, int options)
 
 print:
     /* print used namespaces */
-    while (mlist) {
-        miter = mlist;
-        mlist = mlist->next;
+    miter = *mlist;
+    while (miter) {
 
-        ly_print(out, " xmlns:%s=\"%s\"", miter->module->prefix, miter->module->ns);
-        free(miter);
+        if (!miter->printed) {
+          ly_print(out, " xmlns:%s=\"%s\"", miter->module->prefix, miter->module->ns);
+	  miter->printed = 1;
+        }
+        miter = miter->next;
+        // free(miter);
     }
 }
 
@@ -289,6 +303,7 @@ xml_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int to
     char *p;
     size_t len;
     enum int_log_opts prev_ilo;
+    struct mlist *mlist = NULL;
 
     LY_PRINT_SET;
 
@@ -301,7 +316,8 @@ xml_print_leaf(struct lyout *out, int level, const struct lyd_node *node, int to
     }
 
     if (toplevel) {
-        xml_print_ns(out, node, options);
+      xml_print_ns(out, node, &mlist, options);
+      free_mlist(&mlist);
     }
 
     if (xml_print_attrs(out, node, options)) {
@@ -435,6 +451,7 @@ xml_print_container(struct lyout *out, int level, const struct lyd_node *node, i
 {
     struct lyd_node *child;
     const char *ns;
+    struct mlist *mlist = NULL;
 
     LY_PRINT_SET;
 
@@ -447,7 +464,8 @@ xml_print_container(struct lyout *out, int level, const struct lyd_node *node, i
     }
 
     if (toplevel) {
-        xml_print_ns(out, node, options);
+      xml_print_ns(out, node, &mlist, options);
+      free_mlist(&mlist);
     }
 
     if (xml_print_attrs(out, node, options)) {
@@ -477,6 +495,7 @@ xml_print_list(struct lyout *out, int level, const struct lyd_node *node, int is
 {
     struct lyd_node *child;
     const char *ns;
+    struct mlist *mlist = NULL;
 
     LY_PRINT_SET;
 
@@ -491,7 +510,8 @@ xml_print_list(struct lyout *out, int level, const struct lyd_node *node, int is
         }
 
         if (toplevel) {
-            xml_print_ns(out, node, options);
+	  xml_print_ns(out, node, &mlist, options);
+	  free_mlist(&mlist);
         }
         if (xml_print_attrs(out, node, options)) {
             return EXIT_FAILURE;
@@ -526,6 +546,7 @@ xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int
     struct lyd_node_anydata *any = (struct lyd_node_anydata *)node;
     struct lyd_node *iter;
     const char *ns;
+    struct mlist *mlist = NULL;
 
     LY_PRINT_SET;
 
@@ -538,7 +559,7 @@ xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int
     }
 
     if (toplevel) {
-        xml_print_ns(out, node, options);
+        xml_print_ns(out, node, &mlist, options);
     }
     if (xml_print_attrs(out, node, options)) {
         return EXIT_FAILURE;
@@ -561,11 +582,12 @@ xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int
         if (any->value_type == LYD_ANYDATA_DATATREE) {
             /* print namespaces in the anydata data tree */
             LY_TREE_FOR(any->value.tree, iter) {
-                xml_print_ns(out, iter, options);
+  	        xml_print_ns(out, iter, &mlist, options);
             }
         }
         /* close opening tag ... */
         ly_print(out, ">");
+	free_mlist(&mlist);
         /* ... and print anydata content */
         switch (any->value_type) {
         case LYD_ANYDATA_CONSTSTRING:
