@@ -24,7 +24,7 @@
 struct state {
     struct ly_ctx *ctx;
   const struct lys_module *mod1, *mod2, *mod_nc;
-    struct lyd_node *dt, *config, *node1, *node2, *nodet;;
+    struct lyd_node *dt, *node1, *node2, *nodet;
 };
 
 static int
@@ -83,6 +83,9 @@ teardown_f(void **state)
     struct state *st = (*state);
 
     lyd_free_withsiblings(st->dt);
+    lyd_free_withsiblings(st->node1);
+    lyd_free_withsiblings(st->node2);
+    lyd_free_withsiblings(st->nodet);
     ly_ctx_destroy(st->ctx, NULL);
     free(st);
     (*state) = NULL;
