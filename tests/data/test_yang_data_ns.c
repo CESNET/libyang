@@ -33,24 +33,24 @@ setup_f(void **state)
 {
     struct state *st;
     const char *yang1 = "module yang-data-config-ns1 {\n"
-	"  prefix dcn1;\n"
-	"  namespace \"urn:cesnet:yang-data-config-ns1\";\n"
-	"  container con1 {\n"
-	"    leaf leaf1 {\n"
-	"        type string;\n"
-	"    }\n"
-	"  }\n"
-	"}";
+        "  prefix dcn1;\n"
+        "  namespace \"urn:cesnet:yang-data-config-ns1\";\n"
+        "  container con1 {\n"
+        "    leaf leaf1 {\n"
+        "        type string;\n"
+        "    }\n"
+        "  }\n"
+        "}";
 
     const char *yang2 = "module yang-data-config-ns2 {\n"
-	"  prefix dcn2;\n"
-	"  namespace \"urn:cesnet:yang-data-config-ns2\";\n"
-	"  container con2 {\n"
-	"    leaf leaf2 {\n"
-	"        type string;\n"
-	"    }\n"
-	"  }\n"
-	"}";
+        "  prefix dcn2;\n"
+        "  namespace \"urn:cesnet:yang-data-config-ns2\";\n"
+        "  container con2 {\n"
+        "    leaf leaf2 {\n"
+        "        type string;\n"
+        "    }\n"
+        "  }\n"
+        "}";
 
     (*state) = st = calloc(1, sizeof *st);
     if (!st) {
@@ -101,7 +101,7 @@ test_anydata_ns(void **state)
     const char *opentag = "<config xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\">";
 
     if(!(st->mod_nc = ly_ctx_get_module(st->ctx, "ietf-netconf", NULL, 0))) {
-	st->mod_nc = ly_ctx_load_module(st->ctx, "ietf-netconf", NULL);
+        st->mod_nc = ly_ctx_load_module(st->ctx, "ietf-netconf", NULL);
     }
     assert_ptr_not_equal(st->mod_nc, NULL);
 
@@ -115,7 +115,7 @@ test_anydata_ns(void **state)
     assert_ptr_not_equal(st->nodet, NULL);
 
     st->node2 = lyd_new(NULL, st->mod2, "con2");
-    assert_ptr_not_equal(st->node2, NULL);  
+    assert_ptr_not_equal(st->node2, NULL);
     attr = lyd_insert_attr(st->node2, st->mod_nc, "operation", "merge");
     assert_ptr_not_equal(attr, NULL);
 
@@ -135,7 +135,7 @@ test_anydata_ns(void **state)
 int main(void)
 {
     const struct CMUnitTest tests[] = {
-	cmocka_unit_test_setup_teardown(test_anydata_ns, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_anydata_ns, setup_f, teardown_f),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

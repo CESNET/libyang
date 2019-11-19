@@ -43,7 +43,7 @@ static int
 modlist_add(struct mlist **mlist, const struct lys_module *mod)
 {
     struct mlist *iter;
-    
+
     for (iter = *mlist; iter; iter = iter->next) {
         if (mod == iter->module) {
             break;
@@ -582,7 +582,7 @@ xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int
         if (any->value_type == LYD_ANYDATA_DATATREE) {
             /* print namespaces in the anydata data tree */
             LY_TREE_FOR(any->value.tree, iter) {
-  	        xml_print_ns(out, iter, &mlist, options);
+		xml_print_ns(out, iter, &mlist, options);
             }
         }
         /* close opening tag ... */
