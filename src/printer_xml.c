@@ -55,8 +55,8 @@ modlist_add(struct mlist **mlist, const struct lys_module *mod)
         LY_CHECK_ERR_RETURN(!iter, LOGMEM(mod->ctx), EXIT_FAILURE);
         iter->next = *mlist;
         iter->module = (struct lys_module *)mod;
-	iter->printed = 0;
-	*mlist = iter;
+        iter->printed = 0;
+        *mlist = iter;
     }
 
     return EXIT_SUCCESS;
@@ -153,7 +153,7 @@ print:
 
         if (!miter->printed) {
             ly_print(out, " xmlns:%s=\"%s\"", miter->module->prefix, miter->module->ns);
-	    miter->printed = 1;
+            miter->printed = 1;
         }
         miter = miter->next;
     }
@@ -510,8 +510,8 @@ xml_print_list(struct lyout *out, int level, const struct lyd_node *node, int is
         }
 
         if (toplevel) {
-	    xml_print_ns(out, node, &mlist, options);
-	    free_mlist(&mlist);
+            xml_print_ns(out, node, &mlist, options);
+            free_mlist(&mlist);
         }
         if (xml_print_attrs(out, node, options)) {
             return EXIT_FAILURE;
@@ -582,12 +582,12 @@ xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int
         if (any->value_type == LYD_ANYDATA_DATATREE) {
             /* print namespaces in the anydata data tree */
             LY_TREE_FOR(any->value.tree, iter) {
-		xml_print_ns(out, iter, &mlist, options);
+                xml_print_ns(out, iter, &mlist, options);
             }
         }
         /* close opening tag ... */
         ly_print(out, ">");
-	free_mlist(&mlist);
+        free_mlist(&mlist);
         /* ... and print anydata content */
         switch (any->value_type) {
         case LYD_ANYDATA_CONSTSTRING:
