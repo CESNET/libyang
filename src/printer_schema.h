@@ -27,7 +27,7 @@
  *
  * @{
  */
-#define LYS_OUTPUT_NO_SUBST          0x10 /**< Print only top-level/referede node information,
+#define LYS_OUTPUT_NO_SUBSTMT        0x10 /**< Print only top-level/referede node information,
                                                do not print information from the substatements */
 //#define LYS_OUTOPT_TREE_RFC        0x01 /**< Conform to the RFC TODO tree output (only for tree format) */
 //#define LYS_OUTOPT_TREE_GROUPING   0x02 /**< Print groupings separately (only for tree format) */

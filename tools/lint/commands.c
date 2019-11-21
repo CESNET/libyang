@@ -435,7 +435,7 @@ cmd_print(const char *arg)
             target_path = optarg;
             break;
         case 's':
-            output_opts |= LYS_OUTPUT_NO_SUBST;
+            output_opts |= LYS_OUTPUT_NO_SUBSTMT;
             break;
 #if 0
         case 'L':

@@ -1185,7 +1185,7 @@ yprc_inout(struct ypr_ctx *ctx, const struct lysc_action *action, const struct l
         yprc_must(ctx, &inout->musts[u], NULL);
     }
 
-    if (!(ctx->options & LYS_OUTPUT_NO_SUBST)) {
+    if (!(ctx->options & LYS_OUTPUT_NO_SUBSTMT)) {
         LY_LIST_FOR(inout->data, data) {
             yprc_node(ctx, data);
         }
@@ -1258,7 +1258,7 @@ yprc_notification(struct ypr_ctx *ctx, const struct lysc_notif *notif)
     ypr_description(ctx, notif->dsc, notif->exts, &flag);
     ypr_reference(ctx, notif->ref, notif->exts, &flag);
 
-    if (!(ctx->options & LYS_OUTPUT_NO_SUBST)) {
+    if (!(ctx->options & LYS_OUTPUT_NO_SUBSTMT)) {
         LY_LIST_FOR(notif->data, data) {
             ypr_open(ctx->out, &flag);
             yprc_node(ctx, data);
@@ -1445,7 +1445,7 @@ yprc_container(struct ypr_ctx *ctx, const struct lysc_node *node)
 
     yprc_node_common2(ctx, node, &flag);
 
-    if (!(ctx->options & LYS_OUTPUT_NO_SUBST)) {
+    if (!(ctx->options & LYS_OUTPUT_NO_SUBSTMT)) {
         LY_LIST_FOR(cont->child, child) {
             ypr_open(ctx->out, &flag);
             yprc_node(ctx, child);
@@ -1494,7 +1494,7 @@ yprc_case(struct ypr_ctx *ctx, const struct lysc_node_case *cs)
     yprc_node_common1(ctx, (struct lysc_node*)cs, &flag);
     yprc_node_common2(ctx, (struct lysc_node*)cs, &flag);
 
-    if (!(ctx->options & LYS_OUTPUT_NO_SUBST)) {
+    if (!(ctx->options & LYS_OUTPUT_NO_SUBSTMT)) {
         for (child = cs->child; child && child->parent == (struct lysc_node*)cs; child = child->next) {
             ypr_open(ctx->out, &flag);
             yprc_node(ctx, child);
@@ -1795,7 +1795,7 @@ yprc_list(struct ypr_ctx *ctx, const struct lysc_node *node)
     ypr_description(ctx, node->dsc, node->exts, NULL);
     ypr_reference(ctx, node->ref, node->exts, NULL);
 
-    if (!(ctx->options & LYS_OUTPUT_NO_SUBST)) {
+    if (!(ctx->options & LYS_OUTPUT_NO_SUBSTMT)) {
         LY_LIST_FOR(list->child, child) {
             ypr_open(ctx->out, &flag);
             yprc_node(ctx, child);
@@ -2376,7 +2376,7 @@ yang_print_compiled(struct lyout *out, const struct lys_module *module, int opti
         yprc_identity(ctx, &modc->identities[u]);
     }
 
-    if (!(ctx->options & LYS_OUTPUT_NO_SUBST)) {
+    if (!(ctx->options & LYS_OUTPUT_NO_SUBSTMT)) {
         LY_LIST_FOR(modc->data, data) {
             yprc_node(ctx, data);
         }
