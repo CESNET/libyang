@@ -358,8 +358,8 @@ read_qstring(struct lys_parser_ctx *ctx, const char **data, enum yang_arg arg, c
                 } else {
                     /* check and store character */
                     LY_CHECK_RET(buf_store_char(ctx, data, arg, word_p, word_len, word_b, buf_len, need_buf, &prefix));
+                    trailing_ws++;
                 }
-                trailing_ws++;
                 break;
             case '\t':
                 if (current_indent < block_indent) {
@@ -377,8 +377,8 @@ read_qstring(struct lys_parser_ctx *ctx, const char **data, enum yang_arg arg, c
                     LY_CHECK_RET(buf_store_char(ctx, data, arg, word_p, word_len, word_b, buf_len, need_buf, &prefix));
                     /* additional characters for indentation - only 1 was count in buf_store_char */
                     ctx->indent += 7;
+                    trailing_ws++;
                 }
-                trailing_ws++;
                 break;
             case '\n':
                 if (block_indent) {
