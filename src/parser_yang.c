@@ -300,7 +300,7 @@ read_qstring(struct lys_parser_ctx *ctx, const char **data, enum yang_arg arg, c
     unsigned int string, block_indent = 0, current_indent = 0, need_buf = 0;
     const char *c;
     int prefix = 0;
-    unsigned int trailing_ws = 0; /* current number of trailing whitespace characters */
+    unsigned int trailing_ws = 0; /* current number of stored trailing whitespace characters */
 
     if (**data == '\"') {
         string = 2;
@@ -356,10 +356,10 @@ read_qstring(struct lys_parser_ctx *ctx, const char **data, enum yang_arg arg, c
                     ++current_indent;
                     MOVE_INPUT(ctx, data, 1);
                 } else {
-                    /* check and store character */
+                    /* check and store whitespace character */
                     LY_CHECK_RET(buf_store_char(ctx, data, arg, word_p, word_len, word_b, buf_len, need_buf, &prefix));
+                    trailing_ws++;
                 }
-                trailing_ws++;
                 break;
             case '\t':
                 if (current_indent < block_indent) {
@@ -370,15 +370,16 @@ read_qstring(struct lys_parser_ctx *ctx, const char **data, enum yang_arg arg, c
                         /* store leftover spaces from the tab */
                         c = " ";
                         LY_CHECK_RET(buf_store_char(ctx, &c, arg, word_p, word_len, word_b, buf_len, need_buf, &prefix));
+                        trailing_ws++;
                     }
                     ++(*data);
                 } else {
-                    /* check and store character */
+                    /* check and store whitespace character */
                     LY_CHECK_RET(buf_store_char(ctx, data, arg, word_p, word_len, word_b, buf_len, need_buf, &prefix));
+                    trailing_ws++;
                     /* additional characters for indentation - only 1 was count in buf_store_char */
                     ctx->indent += 7;
                 }
-                trailing_ws++;
                 break;
             case '\n':
                 if (block_indent) {
