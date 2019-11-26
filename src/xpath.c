@@ -5232,14 +5232,12 @@ moveto_resolve_model(const char **qname, uint16_t *qname_len, struct lyxp_set *s
             LOGINT_RET(set->ctx);
         }
 
-        if (!mod->implemented) {
-            /* non-implemented module is not valid */
-            mod = NULL;
-        }
-        if (!mod) {
+        /* Check for errors and non-implemented modules, as they are not valid */
+        if (!mod || !mod->implemented) {
             LOGVAL(set->ctx, LY_VLOG_LYD, set->ctx_node, LY_VCODE_XP_INMOD, pref_len, *qname);
             return LY_EVALID;
         }
+
         *qname += pref_len + 1;
         *qname_len -= pref_len + 1;
     } else if (((*qname)[0] == '*') && (*qname_len == 1)) {
