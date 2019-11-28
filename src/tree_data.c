@@ -6773,7 +6773,7 @@ ly_set_add(struct ly_set *set, void *node, int options)
     unsigned int i;
     void **new;
 
-    if (!set || !node) {
+    if (!set) {
         LOGARG;
         return -1;
     }

@@ -957,11 +957,6 @@ test_ly_set_add(void **state)
         fail();
     }
 
-    rc = ly_set_add(set, NULL, 0);
-    if(rc != -1) {
-        fail();
-    }
-
     rc = ly_set_add(set, root->child->schema, 0);
     if(rc == -1) {
         fail();
