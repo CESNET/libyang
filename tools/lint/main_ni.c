@@ -161,7 +161,7 @@ tree_help(void)
 void
 version(void)
 {
-    fprintf(stdout, "yanglint %d.%d.%d\n", LY_VERSION_MAJOR, LY_VERSION_MINOR, LY_VERSION_MICRO);
+    fprintf(stdout, "yanglint SO %d.%d.%d\n", LY_VERSION_MAJOR, LY_VERSION_MINOR, LY_VERSION_MICRO);
 }
 void
 libyang_verbclb(LY_LOG_LEVEL level, const char *msg, const char *path)
