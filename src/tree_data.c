@@ -3444,6 +3444,9 @@ lyd_diff_match(struct lyd_node *first, struct lyd_node *second, struct lyd_diffl
 
         /* falls through */
     case LYS_CONTAINER:
+    case LYS_RPC:
+    case LYS_ACTION:
+    case LYS_NOTIF:
         assert(!(second->validity & LYD_VAL_INUSE));
         second->validity |= LYD_VAL_INUSE;
         /* remember the matching node in first for keeping correct pointer in first
