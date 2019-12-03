@@ -502,9 +502,13 @@ char *lyd_path(const struct lyd_node *node);
                                      - leafrefs and instance-identifier resolution is allowed to fail
                                      - must and when evaluation skipped
                                      - status data are not allowed */
-#define LYD_OPT_RPC        0x10 /**< Data represents RPC or action input parameters. */
+#define LYD_OPT_RPC        0x10 /**< Data represents RPC or action input parameters. In case of an action, **only**
+                                     the parent nodes are expected ([RFC ref](https://tools.ietf.org/html/rfc7950#section-7.15.2)).
+                                     For validation an additional data tree with the references should be provided. */
 #define LYD_OPT_RPCREPLY   0x20 /**< Data represents RPC or action output parameters (maps to NETCONF <rpc-reply> data). */
-#define LYD_OPT_NOTIF      0x40 /**< Data represents an event notification data. */
+#define LYD_OPT_NOTIF      0x40 /**< Data represents an event notification data. In case of a nested notification, **only**
+                                     the parent nodes are expected ([RFC ref](https://tools.ietf.org/html/rfc7950#section-7.16.2)).
+                                     For validation an additional data tree with the references should be provided. */
 #define LYD_OPT_NOTIF_FILTER 0x80 /**< Data represents a filtered event notification data.
                                        Validation modification:
                                        - the only requirement is that the data tree matches the schema tree */
@@ -559,15 +563,17 @@ char *lyd_path(const struct lyd_node *node);
  *                  - no variable arguments expected.
  *                - #LYD_OPT_RPC:
  *                - #LYD_OPT_NOTIF:
- *                  - struct lyd_node *data_tree - additional data tree that will be used
- *                    when checking any "when" or "must" conditions in the parsed tree that require
- *                    some nodes outside their subtree. It must be a list of top-level elements!
+ *                  - struct ::lyd_node *data_tree - additional **validated** top-level siblings of a data tree that
+ *                    will be used when checking any references ("when", "must" conditions, leafrefs, ...)
+ *                    **in the action/nested notification subtree** that require some nodes outside their subtree.
+ *                    It is assumed that **all parents** of the action/nested notification exist as required
+ *                    ([RFC ref](https://tools.ietf.org/html/rfc8342#section-6.2)).
  *                - #LYD_OPT_RPCREPLY:
  *                  - const struct ::lyd_node *rpc_act - pointer to the whole RPC or (top-level) action operation
  *                    data tree (the request) of the reply.
- *                  - const struct ::lyd_node *data_tree - additional data tree that will be used
- *                    when checking any "when" or "must" conditions in the parsed tree that require
- *                    some nodes outside their subtree. It must be a list of top-level elements!
+ *                  - const struct ::lyd_node *data_tree - additional **validated** top-level siblings of a data tree that
+ *                    will be used when checking any references ("when", "must" conditions, leafrefs, ...)
+ *                    that require some nodes outside their subtree.
  * @return Pointer to the built data tree or NULL in case of empty \p data. To free the returned structure,
  *         use lyd_free(). In these cases, the function sets #ly_errno to LY_SUCCESS. In case of error,
  *         #ly_errno contains appropriate error code (see #LY_ERR).
@@ -597,15 +603,17 @@ struct lyd_node *lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT 
  *                  - no variable arguments expected.
  *                - #LYD_OPT_RPC:
  *                - #LYD_OPT_NOTIF:
- *                  - struct lyd_node *data_tree - additional data tree that will be used
- *                    when checking any "when" or "must" conditions in the parsed tree that require
- *                    some nodes outside their subtree. It must be a list of top-level elements!
+ *                  - struct ::lyd_node *data_tree - additional **validated** top-level siblings of a data tree that
+ *                    will be used when checking any references ("when", "must" conditions, leafrefs, ...)
+ *                    **in the action/nested notification subtree** that require some nodes outside their subtree.
+ *                    It is assumed that **all parents** of the action/nested notification exist as required
+ *                    ([RFC ref](https://tools.ietf.org/html/rfc8342#section-6.2)).
  *                - #LYD_OPT_RPCREPLY:
  *                  - const struct ::lyd_node *rpc_act - pointer to the whole RPC or action operation data
  *                    tree (the request) of the reply.
- *                  - const struct ::lyd_node *data_tree - additional data tree that will be used
- *                    when checking any "when" or "must" conditions in the parsed tree that require
- *                    some nodes outside their subtree. It must be a list of top-level elements!
+ *                  - const struct ::lyd_node *data_tree - additional **validated** top-level siblings of a data tree that
+ *                    will be used when checking any references ("when", "must" conditions, leafrefs, ...)
+ *                    that require some nodes outside their subtree.
  * @return Pointer to the built data tree or NULL in case of empty file. To free the returned structure,
  *         use lyd_free(). In these cases, the function sets #ly_errno to LY_SUCCESS. In case of error,
  *         #ly_errno contains appropriate error code (see #LY_ERR).
@@ -633,15 +641,17 @@ struct lyd_node *lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int
  *                  - no variable arguments expected.
  *                - #LYD_OPT_RPC:
  *                - #LYD_OPT_NOTIF:
- *                  - struct lyd_node *data_tree - additional data tree that will be used
- *                    when checking any "when" or "must" conditions in the parsed tree that require
- *                    some nodes outside their subtree. It must be a list of top-level elements!
+ *                  - struct ::lyd_node *data_tree - additional **validated** top-level siblings of a data tree that
+ *                    will be used when checking any references ("when", "must" conditions, leafrefs, ...)
+ *                    **in the action/nested notification subtree** that require some nodes outside their subtree.
+ *                    It is assumed that **all parents** of the action/nested notification exist as required
+ *                    ([RFC ref](https://tools.ietf.org/html/rfc8342#section-6.2)).
  *                - #LYD_OPT_RPCREPLY:
  *                  - const struct ::lyd_node *rpc_act - pointer to the whole RPC or action operation data
  *                    tree (the request) of the reply.
- *                  - const struct ::lyd_node *data_tree - additional data tree that will be used
- *                    when checking any "when" or "must" conditions in the parsed tree that require
- *                    some nodes outside their subtree. It must be a list of top-level elements!
+ *                  - const struct ::lyd_node *data_tree - additional **validated** top-level siblings of a data tree that
+ *                    will be used when checking any references ("when", "must" conditions, leafrefs, ...)
+ *                    that require some nodes outside their subtree.
  * @return Pointer to the built data tree or NULL in case of empty file. To free the returned structure,
  *         use lyd_free(). In these cases, the function sets #ly_errno to LY_SUCCESS. In case of error,
  *         #ly_errno contains appropriate error code (see #LY_ERR).
@@ -679,15 +689,17 @@ struct lyd_node *lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT
  *                  - no variable arguments expected.
  *                - #LYD_OPT_RPC:
  *                - #LYD_OPT_NOTIF:
- *                  - struct lyd_node *data_tree - additional data tree that will be used
- *                    when checking any "when" or "must" conditions in the parsed tree that require
- *                    some nodes outside their subtree. It must be a list of top-level elements!
+ *                  - struct ::lyd_node *data_tree - additional **validated** top-level siblings of a data tree that
+ *                    will be used when checking any references ("when", "must" conditions, leafrefs, ...)
+ *                    **in the action/nested notification subtree** that require some nodes outside their subtree.
+ *                    It is assumed that **all parents** of the action/nested notification exist as required
+ *                    ([RFC ref](https://tools.ietf.org/html/rfc8342#section-6.2)).
  *                - #LYD_OPT_RPCREPLY:
  *                  - const struct ::lyd_node *rpc_act - pointer to the whole RPC or action operation data
  *                    tree (the request) of the reply.
- *                  - const struct ::lyd_node *data_tree - additional data tree that will be used
- *                    when checking any "when" or "must" conditions in the parsed tree that require
- *                    some nodes outside their subtree. It must be a list of top-level elements!
+ *                  - const struct ::lyd_node *data_tree - additional **validated** top-level siblings of a data tree that
+ *                    will be used when checking any references ("when", "must" conditions, leafrefs, ...)
+ *                    that require some nodes outside their subtree.
  * @return Pointer to the built data tree or NULL in case of empty \p root. To free the returned structure,
  *         use lyd_free(). In these cases, the function sets #ly_errno to LY_SUCCESS. In case of error,
  *         #ly_errno contains appropriate error code (see #LY_ERR).
@@ -1165,14 +1177,15 @@ struct lyd_node *lyd_first_sibling(struct lyd_node *node);
  *                - #LYD_OPT_GETCONFIG:
  *                - #LYD_OPT_EDIT:
  *                  - struct ly_ctx *ctx - context to use when \p node is NULL (for checking an empty tree),
- *                                         otherwise can be NULL.
+ *                    otherwise can be NULL.
  *                - #LYD_OPT_RPC:
  *                - #LYD_OPT_RPCREPLY:
  *                - #LYD_OPT_NOTIF:
- *                  - struct ::lyd_node *data_tree - additional data tree that will be used when checking
- *                                                   any "when" or "must" conditions in the \p node tree
- *                                                   that require some nodes outside their subtree. If set,
- *                                                   it must be a list of top-level elements!
+ *                  - struct ::lyd_node *data_tree - additional **validated** top-level siblings of a data tree that
+ *                    will be used when checking any references ("when", "must" conditions, leafrefs, ...)
+ *                    **in the operation subtree** that require some nodes outside their subtree.
+ *                    It is assumed that **all parents** of the action/nested notification exist as required
+ *                    ([RFC ref](https://tools.ietf.org/html/rfc8342#section-6.2)).
  * @param[in] ... Used only if options include #LYD_OPT_VAL_DIFF. In that case a (struct lyd_difflist **)
  *                is expected into which all data node changes performed by the validation will be stored.
  *                Needs to be properly freed. Meaning of diff type is following:

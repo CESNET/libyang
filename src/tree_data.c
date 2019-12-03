@@ -5123,7 +5123,7 @@ _lyd_validate(struct lyd_node **node, struct lyd_node *data_tree, struct ly_ctx 
     }
 
     /* add default values, resolve unres and check for mandatory nodes in final tree */
-    if (lyd_defaults_add_unres(node, options, ctx, modules, mod_count, data_tree, &act_notif, unres, 1)) {
+    if (lyd_defaults_add_unres(node, options, ctx, modules, mod_count, data_tree, act_notif, unres, 1)) {
         goto cleanup;
     }
     if (act_notif) {
@@ -7732,16 +7732,15 @@ lyd_wd_add(struct lyd_node **root, struct ly_ctx *ctx, const struct lys_module *
 
 int
 lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, const struct lys_module **modules,
-                       int mod_count, const struct lyd_node *data_tree, struct lyd_node **act_notif,
+                       int mod_count, const struct lyd_node *data_tree, struct lyd_node *act_notif,
                        struct unres_data *unres, int wd)
 {
-    struct lyd_difflist *diff = NULL;
-    struct ly_set *set = NULL, *parent_set = NULL;
-    char *op_path = NULL;
-    int ret = EXIT_SUCCESS, r;
-    uint32_t i;
+    struct lyd_node *msg_sibling = NULL, *msg_parent = NULL, *data_tree_sibling, *data_tree_parent;
+    struct lys_node *msg_op = NULL;
+    struct ly_set *set;
+    int ret = EXIT_FAILURE;
 
-    assert(root && (*root || ctx) && act_notif && unres && !(options & LYD_OPT_ACT_NOTIF));
+    assert(root && (*root || ctx) && unres && !(options & LYD_OPT_ACT_NOTIF));
 
     if (!ctx) {
         ctx = (*root)->schema->module->ctx;
@@ -7757,18 +7756,21 @@ lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, 
             LOGERR(ctx, LY_EINVAL, "Cannot add default values to RPC, RPC reply, and notification without at least the empty container.");
             return EXIT_FAILURE;
         }
-        if ((options & LYD_OPT_RPC) && !*act_notif && ((*root)->schema->nodetype != LYS_RPC)) {
+        if ((options & LYD_OPT_RPC) && !act_notif && ((*root)->schema->nodetype != LYS_RPC)) {
             LOGERR(ctx, LY_EINVAL, "Not valid RPC/action data.");
             return EXIT_FAILURE;
         }
-        if ((options & LYD_OPT_RPCREPLY) && !*act_notif && ((*root)->schema->nodetype != LYS_RPC)) {
+        if ((options & LYD_OPT_RPCREPLY) && !act_notif && ((*root)->schema->nodetype != LYS_RPC)) {
             LOGERR(ctx, LY_EINVAL, "Not valid reply data.");
             return EXIT_FAILURE;
         }
-        if ((options & LYD_OPT_NOTIF) && !*act_notif && ((*root)->schema->nodetype != LYS_NOTIF)) {
+        if ((options & LYD_OPT_NOTIF) && !act_notif && ((*root)->schema->nodetype != LYS_NOTIF)) {
             LOGERR(ctx, LY_EINVAL, "Not valid notification data.");
             return EXIT_FAILURE;
         }
+
+        /* remember the operation/notification schema */
+        msg_op = act_notif ? act_notif->schema : (*root)->schema;
     } else if (*root && (*root)->parent) {
         /* we have inner node, so it will be considered as
          * a root of subtree where to add default nodes and
@@ -7777,7 +7779,7 @@ lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, 
     }
 
     /* add missing default nodes */
-    if (wd && lyd_wd_add((*act_notif ? act_notif : root), ctx, modules, mod_count, unres, options)) {
+    if (wd && lyd_wd_add((act_notif ? &act_notif : root), ctx, modules, mod_count, unres, options)) {
         return EXIT_FAILURE;
     }
 
@@ -7788,118 +7790,118 @@ lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, 
             return EXIT_FAILURE;
         }
 
-        /* create a merge of the additional data tree and the RPC/action/notification */
+        /* temporarily link the additional data tree to the RPC/action/notification */
         if (data_tree && (options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF))) {
-            /* merge data_tree into root but keep information for revert */
-            diff = lyd_diff(*root, (struct lyd_node *)data_tree, 0);
-            parent_set = ly_set_new();
-            if (!diff || !parent_set) {
-                LOGINT(ctx);
-                return EXIT_FAILURE;
-            }
-            for (i = 0; diff->type[i] != LYD_DIFF_END; ++i) {
-                if (diff->type[i] == LYD_DIFF_DELETED) {
-                    /* uninteresting, but keep the correct index */
-                    ly_set_add(parent_set, NULL, LY_SET_OPT_USEASLIST);
-                    continue;
+            /* duplicate the message tree - if it gets deleted we would not be able to positively identify it */
+            msg_parent = NULL;
+            msg_sibling = *root;
+
+            if (act_notif) {
+                /* fun case */
+                data_tree_parent = NULL;
+                data_tree_sibling = (struct lyd_node *)data_tree;
+                while (data_tree_sibling) {
+                    while (data_tree_sibling) {
+                        if ((data_tree_sibling->schema == msg_sibling->schema)
+                                && ((msg_sibling->schema->nodetype != LYS_LIST)
+                                    || lyd_list_equal(data_tree_sibling, msg_sibling, 0))) {
+                            /* match */
+                            break;
+                        }
+
+                        data_tree_sibling = data_tree_sibling->next;
+                    }
+
+                    if (data_tree_sibling) {
+                        /* prepare for the new data_tree iteration */
+                        data_tree_parent = data_tree_sibling;
+                        data_tree_sibling = data_tree_sibling->child;
+
+                        /* find new action sibling to search for later (skip list keys) */
+                        msg_parent = msg_sibling;
+                        assert(msg_sibling->child);
+                        for (msg_sibling = msg_sibling->child;
+                                msg_sibling->schema->nodetype == LYS_LEAF;
+                                msg_sibling = msg_sibling->next) {
+                            assert(msg_sibling->next);
+                        }
+                        if (msg_sibling->schema->nodetype & (LYS_ACTION | LYS_NOTIF)) {
+                            /* we are done */
+                            assert(act_notif->parent);
+                            assert(act_notif->parent->schema == data_tree_parent->schema);
+                            assert(msg_sibling == act_notif);
+                            break;
+                        }
+                    }
                 }
 
-                assert(diff->type[i] == LYD_DIFF_CREATED);
-                if (diff->second[i]->parent) {
-                    assert(diff->first[i]);
-                    /* remember the original parent */
-                    ly_set_add(parent_set, diff->second[i]->parent, LY_SET_OPT_USEASLIST);
-                    r = lyd_insert(diff->first[i], diff->second[i]);
-                } else {
-                    assert(!diff->first[i]);
-                    if (diff->second[i] == data_tree) {
-                        assert(!diff->second[i]->prev->next);
-                        if (diff->second[i]->next) {
-                            /* remember the next sibling */
-                            ly_set_add(parent_set, diff->second[i]->next, LY_SET_OPT_USEASLIST);
-                        } else {
-                            /* remember itself, there are no siblings */
-                            ly_set_add(parent_set, diff->second[i], LY_SET_OPT_USEASLIST);
-                        }
-                    } else {
-                        /* remember the previous sibling */
-                        assert(diff->second[i]->prev->next);
-                        ly_set_add(parent_set, diff->second[i]->prev, LY_SET_OPT_USEASLIST);
-                    }
-                    r = lyd_insert_sibling(root, diff->second[i]);
+                /* loop ended after the first iteration, set the values correctly */
+                if (!data_tree_parent) {
+                    data_tree_sibling = (struct lyd_node *)data_tree;
                 }
-                if (r) {
-                    ret = EXIT_FAILURE;
-                    goto cleanup;
+
+            } else {
+                /* easy case */
+                data_tree_parent = NULL;
+                data_tree_sibling = (struct lyd_node *)data_tree;
+            }
+
+            /* unlink msg_sibling if needed (won't do anything otherwise) */
+            lyd_unlink_internal(msg_sibling, 0);
+
+            /* now we can insert msg_sibling into data_tree_parent or next to data_tree_sibling */
+            assert(data_tree_parent || data_tree_sibling);
+            if (data_tree_parent) {
+                if (lyd_insert_common(data_tree_parent, NULL, msg_sibling, 0)) {
+                    goto unlink_datatree;
+                }
+            } else {
+                assert(!data_tree_sibling->parent);
+                if (lyd_insert_nextto(data_tree_sibling->prev, msg_sibling, 0, 0)) {
+                    goto unlink_datatree;
                 }
             }
         }
 
         if (resolve_unres_data(ctx, unres, root, options)) {
-            ret = EXIT_FAILURE;
+            goto unlink_datatree;
         }
 
+        /* we are done */
+        ret = EXIT_SUCCESS;
+
+        /* check that the operation/notification tree was not removed */
         if (options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF)) {
+            set = NULL;
             if (data_tree) {
-                /* first unlink all data tree subtrees */
-                assert(diff->type[parent_set->number] == LYD_DIFF_END);
-                for (i = 0; i < parent_set->number; ++i) {
-                    if (!parent_set->set.d[i]) {
-                        continue;
-                    }
-                    lyd_unlink(diff->second[i]);
-                }
-
-                /* put the operation tree back how it was */
-                i = parent_set->number;
-                do {
-                    --i;
-                    if (!parent_set->set.d[i]) {
-                        continue;
-                    }
-
-                    /* it was unlinked, so we cannot check the parent directly */
-                    if (diff->first[i]) {
-                        r = lyd_insert(parent_set->set.d[i], diff->second[i]);
-                    } else {
-                        if (diff->second[i] == data_tree) {
-                            if (parent_set->set.d[i] == diff->second[i]) {
-                                /* already unlinked */
-                                r = 0;
-                            } else {
-                                r = lyd_insert_before(parent_set->set.d[i], diff->second[i]);
-                            }
-                        } else {
-                            r = lyd_insert_after(parent_set->set.d[i], diff->second[i]);
-                        }
-                    }
-                    if (r) {
-                        ret = EXIT_FAILURE;
-                        goto cleanup;
-                    }
-                } while (i);
-            }
-
-            /* check that the operation/notification tree was not removed */
-            op_path = lys_data_path(*act_notif ? (*act_notif)->schema : (*root)->schema);
-            if (*root) {
-                set = lyd_find_path(*root, op_path);
+                set = lyd_find_instance(data_tree_parent ? data_tree_parent : data_tree_sibling, msg_op);
+                assert(set && ((set->number == 0) || (set->number == 1)));
+            } else if (*root) {
+                set = lyd_find_instance(*root, msg_op);
                 assert(set && ((set->number == 0) || (set->number == 1)));
             }
             if (!set || !set->number) {
-                /* it was removed */
-                LOGVAL(ctx, LYE_SPEC, LY_VLOG_LYS, op_path, "Operation/notification not supported because of the current configuration.");
+                /* it was removed, handle specially */
+                LOGVAL(ctx, LYE_SPEC, LY_VLOG_LYS, msg_op, "Operation/notification not supported because of the current configuration.");
                 ret = EXIT_FAILURE;
-                goto cleanup;
+            }
+            ly_set_free(set);
+        }
+
+unlink_datatree:
+        /* put the trees back in order */
+        if (data_tree && (options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF))) {
+            /* unlink and insert it back, if there is a parent  */
+            lyd_unlink_internal(msg_sibling, 0);
+            if (msg_parent) {
+                lyd_insert_common(msg_parent, NULL, msg_sibling, 0);
             }
         }
+    } else {
+        /* we are done */
+        ret = EXIT_SUCCESS;
     }
 
-cleanup:
-    free(op_path);
-    ly_set_free(set);
-    lyd_free_diff(diff);
-    ly_set_free(parent_set);
     return ret;
 }
 

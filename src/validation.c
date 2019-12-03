@@ -52,7 +52,7 @@ int
 lyv_data_context(const struct lyd_node *node, int options, struct unres_data *unres)
 {
     const struct lys_node *siter = NULL;
-    struct lys_node *sparent;
+    struct lys_node *sparent, *op;
     struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node;
     struct ly_ctx *ctx = node->schema->module->ctx;
 
@@ -65,7 +65,11 @@ lyv_data_context(const struct lyd_node *node, int options, struct unres_data *un
         return 1;
     }
 
-    if (!(options & (LYD_OPT_NOTIF_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG))) {
+    /* find (nested) operation node */
+    for (op = node->schema; op && !(op->nodetype & (LYS_NOTIF | LYS_RPC | LYS_ACTION)); op = lys_parent(op));
+
+    if (!(options & (LYD_OPT_NOTIF_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG))
+            && (!(options & (LYD_OPT_RPC | LYD_OPT_NOTIF)) || op)) {
         if (node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
             /* if union with leafref/intsid, leafref itself (invalid) or instance-identifier, store the node for later resolving */
             if ((((struct lys_node_leaf *)leaf->schema)->type.base == LY_TYPE_UNION)
@@ -108,7 +112,8 @@ lyv_data_context(const struct lyd_node *node, int options, struct unres_data *un
     }
 
     /* check elements order in case of RPC's input and output */
-    if (!(options & (LYD_OPT_TRUSTED | LYD_OPT_NOTIF_FILTER)) && (node->validity & LYD_VAL_MAND) && lyp_is_rpc_action(node->schema)) {
+    if (!(options & (LYD_OPT_TRUSTED | LYD_OPT_NOTIF_FILTER)) && (options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY))
+            && (node->validity & LYD_VAL_MAND) && op) {
         if ((node->prev != node) && node->prev->next) {
             /* find schema data parent */
             for (sparent = lys_parent(node->schema);

@@ -533,7 +533,7 @@ void unres_data_diff_rem(struct unres_data *unres, unsigned int idx);
  * @param[in] mod_count Number of module names in \p modules.
  * @param[in] data_tree Additional data tree for validating RPC/action/notification. The tree is used to satisfy
  *                      possible references to the datastore content.
- * @param[in] act_notif In case of nested action/notification, pointer to the subroot of the action/notification. Note
+ * @param[in] act_notif In case of nested action/notification, the subtree of the action/notification. Note
  *                      that in this case the \p root points to the top level data tree node which provides the context
  *                      for the nested action/notification
  * @param[in] unres     Unresolved data list, the newly added default nodes may need to add some unresolved items
@@ -541,7 +541,7 @@ void unres_data_diff_rem(struct unres_data *unres, unsigned int idx);
  * @return EXIT_SUCCESS or EXIT_FAILURE
  */
 int lyd_defaults_add_unres(struct lyd_node **root, int options, struct ly_ctx *ctx, const struct lys_module **modules,
-                           int mod_count, const struct lyd_node *data_tree, struct lyd_node **act_notif,
+                           int mod_count, const struct lyd_node *data_tree, struct lyd_node *act_notif,
                            struct unres_data *unres, int wd);
 
 void lys_enable_deviations(struct lys_module *module);
