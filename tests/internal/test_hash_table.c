@@ -364,5 +364,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_invalid_move2, setup_f, teardown_f),
     };
 
+    /*ly_verb(LY_LLDBG);
+    ly_verb_dbg(LY_LDGHASH);*/
     return cmocka_run_group_tests(tests, NULL, NULL);
 }

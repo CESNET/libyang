@@ -60,8 +60,8 @@ typedef int (*values_equal_cb)(void *val1_p, void *val2_p, int mod, void *cb_dat
  */
 struct ht_rec {
     uint32_t hash;        /* hash of the value */
-    int32_t hits;         /* collision/overflow value count - 1 (a filled entry has 1 hit,
-                           * special value -1 means a deleted record) */
+    int32_t hits;         /* (collision/overflow value count - 1) (a filled entry has 1 hit),
+                           * special value (-1) means a deleted record) */
     unsigned char val[1]; /* arbitrary-size value */
 } _PACKED;
 
@@ -87,7 +87,7 @@ struct hash_table {
 struct dict_rec {
     char *value;
     uint32_t refcount;
-};
+} _PACKED;
 
 /**
  * dictionary to store repeating strings

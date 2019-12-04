@@ -266,6 +266,9 @@ ly_log_dbg(int group, const char *format, ...)
     case LY_LDGAPI:
         str_group = "API";
         break;
+    case LY_LDGHASH:
+        str_group = "HASH";
+        break;
     default:
         LOGINT(NULL);
         return;

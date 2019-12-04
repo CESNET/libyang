@@ -606,6 +606,73 @@ lyht_find_next(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p
     return 1;
 }
 
+/* prints little-endian numbers, will also work on big-endian just the values will look weird */
+static char *
+lyht_dbgprint_val2str(void *val_p, int32_t hits, uint16_t rec_size)
+{
+    char *val;
+    int32_t i, j, val_size;
+
+    val_size = rec_size - (sizeof(struct ht_rec) - 1);
+
+    val = malloc(val_size * 2 + 1);
+    for (i = 0, j = val_size - 1; i < val_size; ++i, --j) {
+        if (hits > 0) {
+            sprintf(val + i * 2, "%02x", *(((uint8_t *)val_p) + j));
+        } else {
+            sprintf(val + i * 2, "  ");
+        }
+    }
+
+    return val;
+}
+
+static void
+lyht_dbgprint_ht(struct hash_table *ht, const char *info)
+{
+    struct ht_rec *rec;
+    uint32_t i, i_len;
+    char *val;
+
+    if (LY_LLDBG > ly_log_level) {
+        return;
+    }
+
+    LOGDBG(LY_LDGHASH, "");
+    LOGDBG(LY_LDGHASH, "hash table %s (used %u, size %u):", info, ht->used, ht->size);
+
+    val = malloc(11);
+    sprintf(val, "%u", ht->size);
+    i_len = strlen(val);
+    free(val);
+
+    for (i = 0; i < ht->size; ++i) {
+        rec = lyht_get_rec(ht->recs, ht->rec_size, i);
+        val = lyht_dbgprint_val2str(&rec->val, rec->hits, ht->rec_size);
+        if (rec->hits > 0) {
+            LOGDBG(LY_LDGHASH, "[%*u] val  %s  hash  %10u %% %*u  hits  %2d",
+                   (int)i_len, i, val, rec->hash, (int)i_len, rec->hash & (ht->size - 1), rec->hits);
+        } else {
+            LOGDBG(LY_LDGHASH, "[%*u] val  %s  hash  %10s %% %*s  hits  %2d",
+                   (int)i_len, i, val, "", (int)i_len, "", rec->hits);
+        }
+        free(val);
+    }
+    LOGDBG(LY_LDGHASH, "");
+}
+
+static void
+lyht_dbgprint_value(void *val_p, uint32_t hash, uint16_t rec_size, const char *operation)
+{
+    if (LY_LLDBG > ly_log_level) {
+        return;
+    }
+
+    char *val = lyht_dbgprint_val2str(val_p, 1, rec_size);
+    LOGDBG(LY_LDGHASH, "%s value %s with hash %u", operation, val, hash);
+    free(val);
+}
+
 int
 lyht_insert_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash,
                            values_equal_cb resize_val_equal, void **match_p)
@@ -614,6 +681,9 @@ lyht_insert_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash,
     int32_t i;
     int r, ret;
     values_equal_cb old_val_equal;
+
+    lyht_dbgprint_ht(ht, "before");
+    lyht_dbgprint_value(val_p, hash, ht->rec_size, "inserting");
 
     if (!lyht_find_first(ht, hash, &rec)) {
         /* we found matching shortened hash */
@@ -688,6 +758,8 @@ lyht_insert_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash,
             }
         }
     }
+
+    lyht_dbgprint_ht(ht, "after");
     return ret;
 }
 
@@ -704,8 +776,12 @@ lyht_remove(struct hash_table *ht, void *val_p, uint32_t hash)
     int32_t i;
     int first_matched = 0, r, ret;
 
+    lyht_dbgprint_ht(ht, "before");
+    lyht_dbgprint_value(val_p, hash, ht->rec_size, "removing");
+
     if (lyht_find_first(ht, hash, &rec)) {
         /* hash not found */
+        LOGDBG(LY_LDGHASH, "remove failed");
         return 1;
     }
     if ((rec->hash == hash) && ht->val_equal(val_p, &rec->val, 1, ht->cb_data)) {
@@ -743,6 +819,7 @@ lyht_remove(struct hash_table *ht, void *val_p, uint32_t hash)
     } else {
         /* value not found even in collisions */
         assert(!first_matched);
+        LOGDBG(LY_LDGHASH, "remove failed");
         return 1;
     }
 
@@ -757,5 +834,6 @@ lyht_remove(struct hash_table *ht, void *val_p, uint32_t hash)
         }
     }
 
+    lyht_dbgprint_ht(ht, "after");
     return ret;
 }
