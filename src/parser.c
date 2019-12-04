@@ -1021,8 +1021,10 @@ make_canonical(struct ly_ctx *ctx, int type, const char **value, void *data1, vo
         module_name = (const char *)data1;
         /* identity must always have a prefix */
         if (!strchr(*value, ':')) {
+            LY_CHECK_ERR_RETURN(strlen(module_name) + 1 + strlen(*value) > buf_len, LOGBUF(*value), -1);
             sprintf(buf, "%s:%s", module_name, *value);
         } else {
+            LY_CHECK_ERR_RETURN(strlen(*value) > buf_len, LOGBUF(*value), -1);
             strcpy(buf, *value);
         }
         break;
