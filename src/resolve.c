@@ -5472,7 +5472,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
                 if (usize1) {
                     /* there is something to duplicate */
                     /* duplicate compiled expression */
-                    usize = (usize1 / 4) + (usize1 % 4) ? 1 : 0;
+                    usize = (usize1 / 4) + ((usize1 % 4) ? 1 : 0);
                     iff[j].expr = malloc(usize * sizeof *iff[j].expr);
                     LY_CHECK_ERR_GOTO(!iff[j].expr, LOGMEM(ctx), fail);
                     memcpy(iff[j].expr, rfn->iffeature[k].expr, usize * sizeof *iff[j].expr);
