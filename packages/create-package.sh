@@ -30,21 +30,26 @@ cd $package
 # check versions
 VERSION=$(cat libyang.spec | grep "Version: " | awk '{print $NF}')
 OLDVERSION=$(cat ../libyang.spec | grep "Version: " | awk '{print $NF}')
-if [ "$VERSION" == "$OLDVERSION" ]; then
+if [ -z "$FORCEVERSION" -a "$VERSION" == "$OLDVERSION" ]; then
     exit 0
 fi
 
 # create new changelog and paste old changelog
-logtime=$(git log -i --grep="VERSION .* $OLDVERSION" | grep "Date: " | sed 's/Date:[ ]*//')
-echo -e "$name ($VERSION) stable; urgency=low\n" >debian.changelog
-git log --since="$logtime" --pretty=format:"  * %s (%aN)%n" | grep "BUGFIX\|CHANGE\|FEATURE" >>debian.changelog
-git log -1  --pretty=format:"%n -- %aN <%aE>  %aD%n" >>debian.changelog
-echo -e "\n" >>debian.changelog
+if [ "$VERSION" != "$OLDVERSION" ]; then
+    logtime=$(git log -i --grep="VERSION .* $OLDVERSION" | grep "Date: " | sed 's/Date:[ ]*//')
+    echo -e "$name ($VERSION) stable; urgency=low\n" >debian.changelog
+    git log --since="$logtime" --pretty=format:"  * %s (%aN)%n" | grep "BUGFIX\|CHANGE\|FEATURE" >>debian.changelog
+    git log -1  --pretty=format:"%n -- %aN <%aE>  %aD%n" >>debian.changelog
+    echo -e "\n" >>debian.changelog
+fi
 cat ../debian.changelog >>debian.changelog
-git log -1 --date=format:'%a %b %d %Y' --pretty=format:"* %ad  %aN <%aE>" | tr -d "\n" >>libyang.spec
-echo " $VERSION" >>libyang.spec
-git log --since="$logtime" --pretty=format:"- %s (%aN)"  | grep "BUGFIX\|CHANGE\|FEATURE" >>libyang.spec
-echo -e "\n" >>libyang.spec
+
+if [ "$VERSION" != "$OLDVERSION" ]; then
+    git log -1 --date=format:'%a %b %d %Y' --pretty=format:"* %ad  %aN <%aE>" | tr -d "\n" >>libyang.spec
+    echo " $VERSION" >>libyang.spec
+    git log --since="$logtime" --pretty=format:"- %s (%aN)"  | grep "BUGFIX\|CHANGE\|FEATURE" >>libyang.spec
+    echo -e "\n" >>libyang.spec
+fi
 cat ../libyang.spec | sed -e '1,/%changelog/d' >>libyang.spec
 
 # download source and update to opensuse build
