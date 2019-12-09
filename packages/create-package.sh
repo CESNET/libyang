@@ -41,8 +41,8 @@ if [ "$VERSION" != "$OLDVERSION" ]; then
     git log --since="$logtime" --pretty=format:"  * %s (%aN)%n" | grep "BUGFIX\|CHANGE\|FEATURE" >>debian.changelog
     git log -1  --pretty=format:"%n -- %aN <%aE>  %aD%n" >>debian.changelog
     echo -e "\n" >>debian.changelog
+    cat ../debian.changelog >>debian.changelog
 fi
-cat ../debian.changelog >>debian.changelog
 
 if [ "$VERSION" != "$OLDVERSION" ]; then
     git log -1 --date=format:'%a %b %d %Y' --pretty=format:"* %ad  %aN <%aE>" | tr -d "\n" >>libyang.spec
