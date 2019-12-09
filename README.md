@@ -39,10 +39,11 @@ and it occurs on the `master` branch, the **first response will likely be** to u
 
 ## Packages
 
-We are using openSUSE Build Service to automaticaly prepare binary packages for number of GNU/Linux distros. Check
-[this](https://software.opensuse.org//download.html?project=home%3Aliberouter&package=libyang) page and follow the
-instructions for your distro to install `libyang` package. The `libyang` package is built once a day from the
-master branch. If you want the latest code from the devel branch, install `libyang-experimental` package.
+We are using openSUSE Build Service to automaticaly prepare binary packages for number of GNU/Linux distros.
+There are [libyang](https://software.opensuse.org//download.html?project=home%3Aliberouter&package=libyang)
+packages from current `master` branch (latest release) and
+[libyang-experimental](https://software.opensuse.org/download/package?package=libyang-experimental&project=home%3Aliberouter)
+from the `devel` branch. Both packages are build once per day.
 
 ## Requirements
 
