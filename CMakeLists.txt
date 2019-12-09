@@ -161,11 +161,22 @@ else ()
     set(BUILD_TYPE "debug")
     set(CONFLICT_PACKAGE_NAME "libyang")
 endif()
-# change version in config files
+
+# setup package build
 configure_file(${PROJECT_SOURCE_DIR}/packages/libyang.spec.in ${PROJECT_BINARY_DIR}/build-packages/libyang.spec)
 configure_file(${PROJECT_SOURCE_DIR}/packages/libyang.dsc.in ${PROJECT_BINARY_DIR}/build-packages/libyang.dsc)
 configure_file(${PROJECT_SOURCE_DIR}/packages/debian.control.in ${PROJECT_BINARY_DIR}/build-packages/debian.control @ONLY)
 configure_file(${PROJECT_SOURCE_DIR}/packages/debian.rules.in ${PROJECT_BINARY_DIR}/build-packages/debian.rules)
+configure_file(${PROJECT_SOURCE_DIR}/packages/debian.libyang-cpp-dev.install
+               ${PROJECT_BINARY_DIR}/build-packages/debian.libyang-cpp${PACKAGE_PART_NAME}-dev.install COPYONLY)
+configure_file(${PROJECT_SOURCE_DIR}/packages/debian.libyang-cpp.install
+               ${PROJECT_BINARY_DIR}/build-packages/debian.libyang-cpp${PACKAGE_PART_NAME}.install COPYONLY)
+configure_file(${PROJECT_SOURCE_DIR}/packages/debian.libyang-dev.install
+               ${PROJECT_BINARY_DIR}/build-packages/debian.libyang${PACKAGE_PART_NAME}-dev.install COPYONLY)
+configure_file(${PROJECT_SOURCE_DIR}/packages/debian.libyang.install
+               ${PROJECT_BINARY_DIR}/build-packages/debian.libyang${PACKAGE_PART_NAME}.install COPYONLY)
+configure_file(${PROJECT_SOURCE_DIR}/packages/debian.python3-yang.install
+               ${PROJECT_BINARY_DIR}/build-packages/debian.python3-yang${PACKAGE_PART_NAME}.install COPYONLY)
 
 if (NOT DEB_BUILDER)
     message(WARNING "Missing tools (devscripts, debhelper package) for building deb package.\nYou won't be able to generate deb package from source code.\nCompiling libyang should still works fine.")
