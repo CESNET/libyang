@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 2.8.12)
 
 # force out-of-source build
-if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
+if(NOT FORCE_INSRC_BUILD AND ${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
     message(FATAL_ERROR "In-source build is not allowed. Please make a standalone build directory and run CMake from there. You may need to remove CMakeCache.txt.")
 endif()
 
