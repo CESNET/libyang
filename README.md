@@ -43,7 +43,9 @@ We are using openSUSE Build Service to automaticaly prepare binary packages for 
 There are [libyang](https://software.opensuse.org//download.html?project=home%3Aliberouter&package=libyang)
 packages from current `master` branch (latest release) and
 [libyang-experimental](https://software.opensuse.org/download/package?package=libyang-experimental&project=home%3Aliberouter)
-from the `devel` branch. Both packages are build once per day.
+from the `devel` branch. Both packages are build once per day. Also, if you are interested in any other packages
+(such as *devel* or C++ and Python bindings), you can browse
+[all packages](https://download.opensuse.org/repositories/home:/liberouter/) from our repository.
 
 ## Requirements
 
