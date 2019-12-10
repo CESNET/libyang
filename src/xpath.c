@@ -744,6 +744,7 @@ set_init(struct lyxp_set *new, struct lyxp_set *set)
     if (set) {
         new->ctx = set->ctx;
         new->ctx_node = set->ctx_node;
+        new->root_type = set->root_type;
         new->local_mod = set->local_mod;
         new->trees = set->trees;
         new->format = set->format;
