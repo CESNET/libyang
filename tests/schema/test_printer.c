@@ -162,6 +162,13 @@ test_tree_rfc_subtree(void **state)
     lys_print_mem(&str, moda, LYS_OUT_TREE, "/tree-a:notif1", 0, LYS_OUTOPT_TREE_RFC);
     assert_string_equal(str, temp3);
     free(str);
+    
+    const char temp4[] = "module: tree-a\n"
+    "  +--rw cont\n"
+    "     +--rw leaf3?   uint8\n";
+    lys_print_mem(&str, moda, LYS_OUT_TREE, "/tree-a:cont/leaf3", 0, LYS_OUTOPT_TREE_RFC);
+    assert_string_equal(str, temp4);
+    free(str);
 }
 
 static void
