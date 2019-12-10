@@ -5521,7 +5521,8 @@ moveto_scnode(struct lyxp_set *set, const char *qname, uint16_t qname_len, int o
             mod_idx = 0;
             while (moveto_mod || (moveto_mod = (struct lys_module *)ly_ctx_get_module_iter(set->ctx, &mod_idx))) {
                 sub = NULL;
-                while ((sub = lys_getnext(sub, NULL, moveto_mod->compiled, getnext_opts))) {
+                /* module may not be implemented */
+                while (moveto_mod->implemented && (sub = lys_getnext(sub, NULL, moveto_mod->compiled, getnext_opts))) {
                     if (!moveto_scnode_check(sub, set->root_type, name_dict, moveto_mod)) {
                         idx = lyxp_set_scnode_insert_node(set, sub, LYXP_NODE_ELEM);
                         /* we need to prevent these nodes from being considered in this moveto */
