@@ -6978,7 +6978,8 @@ lys_compile_check_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
             continue;
         }
 
-        if ((xp_scnode->type != LYXP_NODE_ELEM) || !xp_scnode->scnode->when) {
+        if ((xp_scnode->type != LYXP_NODE_ELEM) || (xp_scnode->scnode->nodetype & (LYS_ACTION | LYS_NOTIF))
+                || !xp_scnode->scnode->when) {
             /* no when to check */
             xp_scnode->in_ctx = 0;
             continue;
