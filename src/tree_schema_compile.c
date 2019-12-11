@@ -2674,6 +2674,12 @@ lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *startnode, 
 
     iter = 0;
     id = leafref->path;
+
+    if (!*id) {
+        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG, "Empty leafref path.");
+        return LY_EVALID;
+    }
+
     while(*id && (ret = lys_path_token(&id, &prefix, &prefix_len, &name, &name_len, &parent_times, &has_predicate)) == LY_SUCCESS) {
         if (!iter) { /* first iteration */
             /* precess ".." in relative paths */
