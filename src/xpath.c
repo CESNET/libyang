@@ -601,10 +601,15 @@ set_insert_node_hash(struct lyxp_set *set, struct lyd_node *node, enum lyxp_node
             r = lyht_insert(set->ht, &hnode, hash, NULL);
             assert(!r);
             (void)r;
-        }
-    } else if (set->ht) {
-        assert(node);
 
+            if (hnode.node == node) {
+                /* it was just added, do not add it twice */
+                node = NULL;
+            }
+        }
+    }
+
+    if (set->ht && node) {
         /* add the new node into hash table */
         hnode.node = node;
         hnode.type = type;
