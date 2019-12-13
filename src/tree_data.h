@@ -538,6 +538,7 @@ char *lyd_path(const struct lyd_node *node);
                                               preserved and option is ignored. */
 #define LYD_OPT_VAL_DIFF 0x40000 /**< Flag only for validation, store all the data node changes performed by the validation
                                       in a diff structure. */
+#define LYD_OPT_LYB_MOD_UPDATE 0x80000 /**< Allow to parse data using an updated revision of a module, relevant only for LYB format. */
 #define LYD_OPT_DATA_TEMPLATE 0x1000000 /**< Data represents YANG data template. */
 
 /**@} parseroptions */

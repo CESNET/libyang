@@ -350,8 +350,6 @@ lyd_hash(struct lyd_node *node)
     struct lyd_node *iter;
     int i;
 
-    assert(!node->hash || ((node->schema->nodetype == LYS_LIST) && !((struct lys_node_list *)node->schema)->keys_size));
-
     if ((node->schema->nodetype != LYS_LIST) || lyd_list_has_keys(node)) {
         node->hash = dict_hash_multi(0, lyd_node_module(node)->name, strlen(lyd_node_module(node)->name));
         node->hash = dict_hash_multi(node->hash, node->schema->name, strlen(node->schema->name));
@@ -498,8 +496,6 @@ _lyd_unlink_hash(struct lyd_node *node, struct lyd_node *orig_parent, int keyles
 
         /* if the parent is missing a key now, remove hash, also from parent */
         if (lys_is_key((struct lys_node_leaf *)node->schema, NULL) && orig_parent->hash) {
-            assert((orig_parent->schema->nodetype == LYS_LIST) && !lyd_list_has_keys(orig_parent));
-
             _lyd_unlink_hash(orig_parent, orig_parent->parent, 0);
             orig_parent->hash = 0;
         }

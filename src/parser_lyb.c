@@ -242,7 +242,7 @@ lyb_read_start_subtree(const char *data, struct lyb_state *lybs)
 }
 
 static int
-lyb_parse_model(const char *data, const struct lys_module **mod, struct lyb_state *lybs)
+lyb_parse_model(const char *data, const struct lys_module **mod, int options, struct lyb_state *lybs)
 {
     int r, ret = 0;
     char *mod_name = NULL, mod_rev[11];
@@ -259,6 +259,14 @@ lyb_parse_model(const char *data, const struct lys_module **mod, struct lyb_stat
     if (rev) {
         sprintf(mod_rev, "%04u-%02u-%02u", ((rev & 0xFE00) >> 9) + 2000, (rev & 0x01E0) >> 5, rev & 0x001Fu);
         *mod = ly_ctx_get_module(lybs->ctx, mod_name, mod_rev, 0);
+        if ((options & LYD_OPT_LYB_MOD_UPDATE) && !(*mod)) {
+            /* try to use an updated module */
+            *mod = ly_ctx_get_module(lybs->ctx, mod_name, NULL, 1);
+            if (*mod && (!(*mod)->implemented || !(*mod)->rev_size || (strcmp((*mod)->rev[0].date, mod_rev) < 0))) {
+                /* not an implemented module in a newer revision */
+                *mod = NULL;
+            }
+        }
     } else {
         *mod = ly_ctx_get_module(lybs->ctx, mod_name, NULL, 0);
     }
@@ -823,7 +831,7 @@ lyb_parse_attributes(struct lyd_node *node, const char *data, int options, struc
         LYB_HAVE_READ_GOTO(r, data, error);
 
         /* find model */
-        ret += (r = lyb_parse_model(data, &mod, lybs));
+        ret += (r = lyb_parse_model(data, &mod, options, lybs));
         LYB_HAVE_READ_GOTO(r, data, error);
 
         if (mod) {
@@ -1027,7 +1035,7 @@ lyb_parse_subtree(const char *data, struct lyd_node *parent, struct lyd_node **f
 
     if (!parent) {
         /* top-level, read module name */
-        ret += (r = lyb_parse_model(data, &mod, lybs));
+        ret += (r = lyb_parse_model(data, &mod, options, lybs));
         LYB_HAVE_READ_GOTO(r, data, error);
 
         if (mod) {
@@ -1149,7 +1157,7 @@ error:
 }
 
 static int
-lyb_parse_data_models(const char *data, struct lyb_state *lybs)
+lyb_parse_data_models(const char *data, int options, struct lyb_state *lybs)
 {
     int i, r, ret = 0;
 
@@ -1163,7 +1171,7 @@ lyb_parse_data_models(const char *data, struct lyb_state *lybs)
 
         /* read modules */
         for (i = 0; i < lybs->mod_count; ++i) {
-            ret += (r = lyb_parse_model(data, &lybs->models[i], lybs));
+            ret += (r = lyb_parse_model(data, &lybs->models[i], options, lybs));
             LYB_HAVE_READ_RETURN(r, data, -1);
         }
     }
@@ -1249,7 +1257,7 @@ lyd_parse_lyb(struct ly_ctx *ctx, const char *data, int options, const struct ly
     LYB_HAVE_READ_GOTO(r, data, finish);
 
     /* read used models */
-    ret += (r = lyb_parse_data_models(data, &lybs));
+    ret += (r = lyb_parse_data_models(data, options, &lybs));
     LYB_HAVE_READ_GOTO(r, data, finish);
 
     /* read subtree(s) */

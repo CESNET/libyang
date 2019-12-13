@@ -3482,12 +3482,9 @@ check_default(struct lys_type *type, const char **value, struct lys_module *modu
         /* the type was not resolved yet, nothing to do for now */
         ret = EXIT_FAILURE;
         goto cleanup;
-    } else if (!tpdf && !module->implemented) {
-        /* do not check defaults in not implemented module's data */
-        goto cleanup;
-    } else if (tpdf && !module->implemented && type->base == LY_TYPE_IDENT) {
-        /* identityrefs are checked when instantiated in data instead of typedef,
-         * but in typedef the value has to be modified to include the prefix */
+    } else if (!module->implemented && ((type->base == LY_TYPE_IDENT) || (type->base == LY_TYPE_INST))) {
+        /* /instidsidentityrefs are checked when instantiated in data instead of typedef,
+         * but the value has to be modified to include the prefix */
         if (*value) {
             if (strchr(*value, ':')) {
                 dflt = transform_schema2json(module, *value);
@@ -5472,7 +5469,7 @@ resolve_uses(struct lys_node_uses *uses, struct unres_schema *unres)
                 if (usize1) {
                     /* there is something to duplicate */
                     /* duplicate compiled expression */
-                    usize = (usize1 / 4) + (usize1 % 4) ? 1 : 0;
+                    usize = (usize1 / 4) + ((usize1 % 4) ? 1 : 0);
                     iff[j].expr = malloc(usize * sizeof *iff[j].expr);
                     LY_CHECK_ERR_GOTO(!iff[j].expr, LOGMEM(ctx), fail);
                     memcpy(iff[j].expr, rfn->iffeature[k].expr, usize * sizeof *iff[j].expr);

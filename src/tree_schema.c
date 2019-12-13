@@ -660,6 +660,9 @@ lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *
     case LYS_LIST:
     case LYS_CONTAINER:
     case LYS_CHOICE:
+    case LYS_RPC:
+    case LYS_NOTIF:
+    case LYS_ACTION:
     case LYS_ANYDATA:
         /* 6.2.1, rule 7 */
         if (parent) {
@@ -700,8 +703,8 @@ lys_check_id(struct lys_node *node, struct lys_node *parent, struct lys_module *
                 continue;
             }
 
-            if (iter->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_CONTAINER | LYS_CHOICE | LYS_ANYDATA)) {
-                if (iter->module == node->module && ly_strequal(iter->name, node->name, 1)) {
+            if (iter->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_CONTAINER | LYS_CHOICE | LYS_RPC | LYS_NOTIF | LYS_ACTION | LYS_ANYDATA)) {
+                if (lys_node_module(iter) == lys_node_module(node) && ly_strequal(iter->name, node->name, 1)) {
                     LOGVAL(module->ctx, LYE_DUPID, LY_VLOG_LYS, node, strnodetype(node->nodetype), node->name);
                     return EXIT_FAILURE;
                 }
