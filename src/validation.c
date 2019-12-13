@@ -69,7 +69,7 @@ lyv_data_context(const struct lyd_node *node, int options, struct unres_data *un
     for (op = node->schema; op && !(op->nodetype & (LYS_NOTIF | LYS_RPC | LYS_ACTION)); op = lys_parent(op));
 
     if (!(options & (LYD_OPT_NOTIF_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG))
-            && (!(options & (LYD_OPT_RPC | LYD_OPT_NOTIF)) || op)) {
+            && (!(options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF)) || op)) {
         if (node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
             /* if union with leafref/intsid, leafref itself (invalid) or instance-identifier, store the node for later resolving */
             if ((((struct lys_node_leaf *)leaf->schema)->type.base == LY_TYPE_UNION)
@@ -700,7 +700,7 @@ lyv_data_content(struct lyd_node *node, int options, struct unres_data *unres)
                 break;
             }
         }
-        if (!diter && (options & (LYD_OPT_NOTIF | LYD_OPT_RPC))) {
+        if (!diter && (options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF))) {
             /* validating parent of a nested notification/action, skip most checks */
             options |= LYD_OPT_TRUSTED;
         }
