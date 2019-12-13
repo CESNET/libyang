@@ -1076,8 +1076,8 @@ make_canonical(struct ly_ctx *ctx, int type, const char **value, void *data1, vo
                 count += exp->tok_len[i] - j;
             } else {
                 if (count + exp->tok_len[i] > buf_len) {
-                    lyxp_expr_free(exp);
                     LOGBUF(&exp->expr[exp->expr_pos[i]]);
+                    lyxp_expr_free(exp);
                     return -1;
                 }
                 strncpy(&buf[count], &exp->expr[exp->expr_pos[i]], exp->tok_len[i]);
