@@ -7407,7 +7407,7 @@ error:
     /* revert compilation of modules implemented by dependency */
     for (u = 0; u < ctx.ctx->list.count; ++u) {
         m = ctx.ctx->list.objs[u];
-        if (m->implemented == 2) {
+        if ((m->implemented == 2) && m->compiled) {
             /* revert features list to the precompiled state */
             lys_feature_precompile_revert(&ctx, m);
             /* mark module as imported-only / not-implemented */
