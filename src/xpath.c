@@ -5492,7 +5492,7 @@ moveto_scnode(struct lyxp_set *set, const char *qname, uint16_t qname_len, int o
     }
 
     if (set->type != LYXP_SET_SCNODE_SET) {
-        LOGVAL(set->ctx, LY_VLOG_LYS, set->ctx_scnode, LY_VCODE_XP_INOP_1, "path operator", print_set_type(set));
+        LOGVAL(set->ctx, LY_VLOG_LYSC, set->ctx_scnode, LY_VCODE_XP_INOP_1, "path operator", print_set_type(set));
         return LY_EVALID;
     }
 
@@ -5699,7 +5699,7 @@ moveto_scnode_alldesc(struct lyxp_set *set, const char *qname, uint16_t qname_le
     }
 
     if (set->type != LYXP_SET_SCNODE_SET) {
-        LOGVAL(set->ctx, LY_VLOG_LYS, set->ctx_scnode, LY_VCODE_XP_INOP_1, "path operator", print_set_type(set));
+        LOGVAL(set->ctx, LY_VLOG_LYSC, set->ctx_scnode, LY_VCODE_XP_INOP_1, "path operator", print_set_type(set));
         return LY_EVALID;
     }
 
@@ -6139,7 +6139,7 @@ moveto_scnode_self(struct lyxp_set *set, int all_desc, int options)
     }
 
     if (set->type != LYXP_SET_SCNODE_SET) {
-        LOGVAL(set->ctx, LY_VLOG_LYS, set->ctx_scnode, LY_VCODE_XP_INOP_1, "path operator", print_set_type(set));
+        LOGVAL(set->ctx, LY_VLOG_LYSC, set->ctx_scnode, LY_VCODE_XP_INOP_1, "path operator", print_set_type(set));
         return LY_EVALID;
     }
 
@@ -6287,7 +6287,7 @@ moveto_scnode_parent(struct lyxp_set *set, int all_desc, int options)
     }
 
     if (set->type != LYXP_SET_SCNODE_SET) {
-        LOGVAL(set->ctx, LY_VLOG_LYS, set->ctx_scnode, LY_VCODE_XP_INOP_1, "path operator", print_set_type(set));
+        LOGVAL(set->ctx, LY_VLOG_LYSC, set->ctx_scnode, LY_VCODE_XP_INOP_1, "path operator", print_set_type(set));
         return LY_EVALID;
     }
 

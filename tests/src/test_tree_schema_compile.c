@@ -3461,7 +3461,7 @@ test_when(void **state)
             "}"
         "}"
     , LYS_IN_YANG));
-    logbuf_assert("When condition of \"cont2\" includes a self-reference (referenced by when of \"l\").");
+    logbuf_assert("When condition of \"cont2\" includes a self-reference (referenced by when of \"l\"). /a:cont2");
 
     assert_null(lys_parse_mem(ctx,
         "module a {"
@@ -3489,7 +3489,7 @@ test_when(void **state)
             "}"
         "}"
     , LYS_IN_YANG));
-    logbuf_assert("When condition of \"cont2\" includes a self-reference (referenced by when of \"val\").");
+    logbuf_assert("When condition of \"cont2\" includes a self-reference (referenced by when of \"val\"). /a:cont2");
 
     assert_null(lys_parse_mem(ctx,
         "module a {"
@@ -3501,7 +3501,7 @@ test_when(void **state)
             "}"
         "}"
     , LYS_IN_YANG));
-    logbuf_assert("When condition of \"val\" is accessing its own conditional node.");
+    logbuf_assert("When condition of \"val\" is accessing its own conditional node. /a:val");
 
     assert_null(lys_parse_mem(ctx,
         "module a {"
@@ -3517,7 +3517,7 @@ test_when(void **state)
             "}"
         "}"
     , LYS_IN_YANG));
-    logbuf_assert("When condition of \"val\" is accessing its own conditional node.");
+    logbuf_assert("When condition of \"val\" is accessing its own conditional node. /a:val");
 
     assert_null(lys_parse_mem(ctx,
         "module a {"
@@ -3532,7 +3532,7 @@ test_when(void **state)
             "container cont;"
         "}"
     , LYS_IN_YANG));
-    logbuf_assert("When condition of \"val\" is accessing its own conditional node.");
+    logbuf_assert("When condition of \"val\" is accessing its own conditional node. /a:cont/val");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);

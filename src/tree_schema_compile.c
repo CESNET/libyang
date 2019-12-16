@@ -6998,7 +6998,7 @@ lys_compile_check_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
                 ret = lyxp_atomize(when->cond, LYD_UNKNOWN, when->module, when->context,
                                 when->context ? LYXP_NODE_ELEM : LYXP_NODE_ROOT_CONFIG, &tmp_set, LYXP_SCNODE_SCHEMA);
                 if (ret != LY_SUCCESS) {
-                    LOGVAL(set->ctx, LY_VLOG_LYS, node, LYVE_SEMANTICS, "Invalid when condition \"%s\".", when->cond->expr);
+                    LOGVAL(set->ctx, LY_VLOG_LYSC, node, LYVE_SEMANTICS, "Invalid when condition \"%s\".", when->cond->expr);
                     goto cleanup;
                 }
 
@@ -7008,7 +7008,7 @@ lys_compile_check_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
                         /* try to find this node in our set */
                         idx = lyxp_set_scnode_dup_node_check(set, tmp_set.val.scnodes[k].scnode, LYXP_NODE_ELEM, -1);
                         if ((idx > -1) && (set->val.scnodes[idx].in_ctx == -1)) {
-                            LOGVAL(set->ctx, LY_VLOG_LYS, node, LY_VCODE_CIRC_WHEN, node->name, set->val.scnodes[idx].scnode->name);
+                            LOGVAL(set->ctx, LY_VLOG_LYSC, node, LY_VCODE_CIRC_WHEN, node->name, set->val.scnodes[idx].scnode->name);
                             ret = LY_EVALID;
                             goto cleanup;
                         }
@@ -7102,7 +7102,7 @@ lys_compile_check_xpath(struct lysc_ctx *ctx, const struct lysc_node *node)
         ret = lyxp_atomize(when[i]->cond, LYD_UNKNOWN, when[i]->module, when[i]->context,
                            when[i]->context ? LYXP_NODE_ELEM : LYXP_NODE_ROOT_CONFIG, &tmp_set, opts);
         if (ret != LY_SUCCESS) {
-            LOGVAL(ctx->ctx, LY_VLOG_LYS, node, LYVE_SEMANTICS, "Invalid when condition \"%s\".", when[i]->cond->expr);
+            LOGVAL(ctx->ctx, LY_VLOG_LYSC, node, LYVE_SEMANTICS, "Invalid when condition \"%s\".", when[i]->cond->expr);
             goto cleanup;
         }
 
@@ -7120,7 +7120,7 @@ lys_compile_check_xpath(struct lysc_ctx *ctx, const struct lysc_node *node)
 
                 /* check dummy node accessing */
                 if (schema == node) {
-                    LOGVAL(ctx->ctx, LY_VLOG_LYS, node, LY_VCODE_DUMMY_WHEN, node->name);
+                    LOGVAL(ctx->ctx, LY_VLOG_LYSC, node, LY_VCODE_DUMMY_WHEN, node->name);
                     ret = LY_EVALID;
                     goto cleanup;
                 }
@@ -7139,7 +7139,7 @@ check_musts:
     LY_ARRAY_FOR(musts, i) {
         ret = lyxp_atomize(musts[i].cond, LYD_UNKNOWN, musts[i].module, node, LYXP_NODE_ELEM, &tmp_set, opts);
         if (ret != LY_SUCCESS) {
-            LOGVAL(ctx->ctx, LY_VLOG_LYS, node, LYVE_SEMANTICS, "Invalid must restriction \"%s\".", musts[i].cond->expr);
+            LOGVAL(ctx->ctx, LY_VLOG_LYSC, node, LYVE_SEMANTICS, "Invalid must restriction \"%s\".", musts[i].cond->expr);
             goto cleanup;
         }
 

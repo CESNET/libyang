@@ -82,11 +82,11 @@ char *strnstr(const char *s, const char *find, size_t slen);
 
 enum LY_VLOG_ELEM {
     LY_VLOG_NONE = 0,
-    LY_VLOG_LINE,/* line number (uint64_t*) */
-    LY_VLOG_LYS, /* struct lysc_node* */
-    LY_VLOG_LYD, /* struct lyd_node* */
-    LY_VLOG_STR, /* const char* */
-    LY_VLOG_PREV /* use exact same previous path */
+    LY_VLOG_LINE, /* line number (uint64_t*) */
+    LY_VLOG_LYSC, /* struct lysc_node* */
+    LY_VLOG_LYD,  /* struct lyd_node* */
+    LY_VLOG_STR,  /* const char* */
+    LY_VLOG_PREV  /* use exact same previous path */
 };
 
 extern THREAD_LOCAL enum int_log_opts log_opt;
