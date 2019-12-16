@@ -767,6 +767,7 @@ set_copy(struct lyxp_set *set)
 {
     struct lyxp_set *ret;
     uint16_t i;
+    int idx;
 
     if (!set) {
         return NULL;
@@ -780,11 +781,13 @@ set_copy(struct lyxp_set *set)
         ret->type = set->type;
 
         for (i = 0; i < set->used; ++i) {
-            if (set->val.scnodes[i].in_ctx == 1) {
-                if (lyxp_set_scnode_insert_node(ret, set->val.scnodes[i].scnode, set->val.scnodes[i].type)) {
+            if ((set->val.scnodes[i].in_ctx == 1) || (set->val.scnodes[i].in_ctx == -2)) {
+                idx = lyxp_set_scnode_insert_node(ret, set->val.scnodes[i].scnode, set->val.scnodes[i].type);
+                if (idx == -1) {
                     lyxp_set_free(ret);
                     return NULL;
                 }
+                ret->val.scnodes[idx].in_ctx = set->val.scnodes[i].in_ctx;
             }
         }
     } else if (set->type == LYXP_SET_NODE_SET) {
