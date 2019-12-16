@@ -5448,6 +5448,8 @@ moveto_scnode(struct lyxp_set *set, const char *qname, uint16_t qname_len, int o
 
             /* remember context node */
             set->val.scnodes[i].in_ctx = -1;
+        } else {
+            set->val.scnodes[i].in_ctx = 0;
         }
 
         start_parent = set->val.scnodes[i].scnode;
@@ -5646,6 +5648,8 @@ moveto_scnode_alldesc(struct lyxp_set *set, const char *qname, uint16_t qname_le
 
             /* remember context node */
             set->val.scnodes[i].in_ctx = -1;
+        } else {
+            set->val.scnodes[i].in_ctx = 0;
         }
 
         /* TREE DFS */
@@ -6237,6 +6241,8 @@ moveto_scnode_parent(struct lyxp_set *set, int all_desc, int options)
 
             /* remember context node */
             set->val.scnodes[i].in_ctx = -1;
+        } else {
+            set->val.scnodes[i].in_ctx = 0;
         }
 
         node = set->val.scnodes[i].scnode;
