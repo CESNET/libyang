@@ -45,48 +45,48 @@ class Value
 {
 public:
     /** wrapper for struct [lyd_val](@ref lyd_val), for internal use only */
-    Value(lyd_val value, LY_DATA_TYPE* value_type, uint8_t value_flags, S_Deleter deleter);
+    Value(lyd_val value, LY_DATA_TYPE* value_type, uint8_t value_flags, struct lys_type *type, S_Deleter deleter);
     ~Value();
     /** get binary variable from [lyd_val](@ref lyd_val)*/
-    const char *binary() {return LY_TYPE_BINARY == type ? value.binary : throw "wrong type";};
-    //struct lys_type_bit **bit();
-    //TODO, check size
-    //its size is always the number of defined bits in the schema
+    const char *binary() {return LY_TYPE_BINARY == value_type ? value.binary : throw "wrong type";};
+    /** get bit variable from [lyd_val](@ref lyd_val)*/
+    std::vector<S_Type_Bit> bit();
     /** get bln variable from [lyd_val](@ref lyd_val)*/
-    int8_t bln() {return LY_TYPE_BOOL == type ? value.bln : throw "wrong type";};
+    int8_t bln() {return LY_TYPE_BOOL == value_type ? value.bln : throw "wrong type";};
     /** get dec64 variable from [lyd_val](@ref lyd_val)*/
-    int64_t dec64() {return LY_TYPE_DEC64 == type ? value.dec64 : throw "wrong type";};
+    int64_t dec64() {return LY_TYPE_DEC64 == value_type ? value.dec64 : throw "wrong type";};
     /** get enm variable from [lyd_val](@ref lyd_val)*/
-    S_Type_Enum enm() {return LY_TYPE_ENUM == type ? std::make_shared<Type_Enum>(value.enm, deleter) : throw "wrong type";};
+    S_Type_Enum enm() {return LY_TYPE_ENUM == value_type ? std::make_shared<Type_Enum>(value.enm, deleter) : throw "wrong type";};
     /** get ident variable from [lyd_val](@ref lyd_val)*/
-    S_Ident ident() {return LY_TYPE_IDENT == type ? std::make_shared<Ident>(value.ident, deleter) : throw "wrong type";};
+    S_Ident ident() {return LY_TYPE_IDENT == value_type ? std::make_shared<Ident>(value.ident, deleter) : throw "wrong type";};
     /** get instance variable from [lyd_val](@ref lyd_val)*/
     S_Data_Node instance();
     /** get int8 variable from [lyd_val](@ref lyd_val)*/
-    int8_t int8() {return LY_TYPE_INT8 == type ? value.int8 : throw "wrong type";};
+    int8_t int8() {return LY_TYPE_INT8 == value_type ? value.int8 : throw "wrong type";};
     /** get int16 variable from [lyd_val](@ref lyd_val)*/
-    int16_t int16() {return LY_TYPE_INT16 == type ? value.int16 : throw "wrong type";};
+    int16_t int16() {return LY_TYPE_INT16 == value_type ? value.int16 : throw "wrong type";};
     /** get int32 variable from [lyd_val](@ref lyd_val)*/
-    int32_t int32() {return LY_TYPE_INT32 == type ? value.int32 : throw "wrong type";};
+    int32_t int32() {return LY_TYPE_INT32 == value_type ? value.int32 : throw "wrong type";};
     /** get int64 variable from [lyd_val](@ref lyd_val)*/
-    int64_t int64() {return LY_TYPE_INT64 == type ? value.int64 : throw "wrong type";};
+    int64_t int64() {return LY_TYPE_INT64 == value_type ? value.int64 : throw "wrong type";};
     /** get leafref variable from [lyd_val](@ref lyd_val)*/
     S_Data_Node leafref();
     /** get string variable from [lyd_val](@ref lyd_val)*/
-    const char *string() {return LY_TYPE_STRING == type ? value.string : throw "wrong type";};
+    const char *string() {return LY_TYPE_STRING == value_type ? value.string : throw "wrong type";};
     /** get uint8 variable from [lyd_val](@ref lyd_val)*/
-    uint8_t uint8() {return LY_TYPE_UINT8 == type ? value.uint8 : throw "wrong type";};
+    uint8_t uint8() {return LY_TYPE_UINT8 == value_type ? value.uint8 : throw "wrong type";};
     /** get uint16 variable from [lyd_val](@ref lyd_val)*/
-    uint16_t uint16() {return LY_TYPE_UINT16 == type ? value.uint16 : throw "wrong type";};
+    uint16_t uint16() {return LY_TYPE_UINT16 == value_type ? value.uint16 : throw "wrong type";};
     /** get uint32 variable from [lyd_val](@ref lyd_val)*/
-    uint32_t uintu32() {return LY_TYPE_UINT32 == type ? value.uint32 : throw "wrong type";};
+    uint32_t uintu32() {return LY_TYPE_UINT32 == value_type ? value.uint32 : throw "wrong type";};
     /** get uint64 variable from [lyd_val](@ref lyd_val)*/
-    uint64_t uint64() {return LY_TYPE_UINT64 == type ? value.uint64 : throw "wrong type";};
+    uint64_t uint64() {return LY_TYPE_UINT64 == value_type ? value.uint64 : throw "wrong type";};
 
 private:
     lyd_val value;
-    LY_DATA_TYPE type;
-    uint8_t flags;
+    LY_DATA_TYPE value_type;
+    uint8_t value_flags;
+    struct lys_type *type;
     S_Deleter deleter;
 };
 

@@ -30,21 +30,38 @@ extern "C" {
 
 namespace libyang {
 
-Value::Value(lyd_val value, LY_DATA_TYPE* value_type, uint8_t value_flags, S_Deleter deleter):
+Value::Value(lyd_val value, LY_DATA_TYPE* value_type, uint8_t value_flags, struct lys_type *type, S_Deleter deleter):
     value(value),
-    type(*value_type),
-    flags(value_flags),
+    value_type(*value_type),
+    value_flags(value_flags),
+    type(type),
     deleter(deleter)
 {};
 Value::~Value() {};
+std::vector<S_Type_Bit> Value::bit() {
+    if ((LY_TYPE_BITS != value_type) || (LY_TYPE_BITS != type->base)) {
+        throw "wrong type";
+    }
+    std::vector<S_Type_Bit> vec(type->info.bits.count);
+
+    for (unsigned int i = 0; i < type->info.bits.count; ++i) {
+        if (value.bit[i]) {
+            vec.push_back(std::make_shared<Type_Bit>(value.bit[i], deleter));
+        } else {
+            vec.push_back(nullptr);
+        }
+    }
+
+    return vec;
+}
 S_Data_Node Value::instance() {
-    if (LY_TYPE_INST != type) {
+    if (LY_TYPE_INST != value_type) {
         return nullptr;
     }
     return value.instance ? std::make_shared<Data_Node>(value.instance, deleter) : nullptr;
 }
 S_Data_Node Value::leafref() {
-    if (LY_TYPE_LEAFREF != type) {
+    if (LY_TYPE_LEAFREF != value_type) {
         return nullptr;
     }
     return value.leafref ? std::make_shared<Data_Node>(value.leafref, deleter) : nullptr;
@@ -539,8 +556,9 @@ Data_Node_Leaf_List::Data_Node_Leaf_List(struct lyd_node *node, S_Deleter delete
 {};
 Data_Node_Leaf_List::~Data_Node_Leaf_List() {};
 S_Value Data_Node_Leaf_List::value() {
-    struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *) node;
-    return std::make_shared<Value>(leaf->value, &leaf->value_type, leaf->value_flags, deleter);
+    struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node;
+    struct lys_type *type = (struct lys_type *)lyd_leaf_type(leaf);
+    return std::make_shared<Value>(leaf->value, &leaf->value_type, leaf->value_flags, type, deleter);
 }
 int Data_Node_Leaf_List::change_leaf(const char *val_str) {
     int ret = lyd_change_leaf((struct lyd_node_leaf_list *) node, val_str);
@@ -583,8 +601,8 @@ Attr::Attr(struct lyd_attr *attr, S_Deleter deleter):
 {};
 Attr::~Attr() {};
 S_Value Attr::value() {
-    struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *) attr;
-    return std::make_shared<Value>(leaf->value, &leaf->value_type, leaf->value_flags, deleter);
+    struct lys_type *type = *((struct lys_type **)lys_ext_complex_get_substmt(LY_STMT_TYPE, attr->annotation, NULL));
+    return std::make_shared<Value>(attr->value, &attr->value_type, attr->value_flags, type, deleter);
 }
 S_Attr Attr::next() LY_NEW(attr, next, Attr);
 
