@@ -1054,8 +1054,8 @@ lys_module_find_prefix(const struct lys_module *mod, const char *prefix, size_t 
 {
     const struct lys_module *m = NULL;
 
-    if (!prefix) {
-        return (struct lys_module*)mod;
+    if (!prefix || (!strncmp(prefix, mod->prefix, len) && !mod->prefix[len])) {
+        return (struct lys_module *)mod;
     }
     if (mod->compiled) {
         FIND_MODULE(struct lysc_import, mod->compiled);
