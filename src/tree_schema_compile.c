@@ -618,6 +618,7 @@ lys_extension_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lys
     if (!ctx_sc) {
         context.ctx = ctx;
         context.mod = module;
+        context.mod_def = module;
         context.path_len = 1;
         context.path[0] = '/';
         ctx_sc = &context;
