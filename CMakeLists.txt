@@ -107,8 +107,6 @@ set(GEN_JAVA_BINDINGS 0 CACHE BOOL "Enable Java bindings.")
 
 find_package(FLEX)
 find_package(BISON)
-find_program(DEB_BUILDER NAMES debuild)
-find_program(RPM_BUILDER NAMES rpmbuild)
 find_program(SED_TOOL NAMES sed)
 
 if(NOT BISON_FOUND)
@@ -128,77 +126,6 @@ else()
         COMMAND flex -8 -L -o parser_yang_lex.c --header-file=parser_yang_lex.h yang.l
         COMMAND ${SED_TOOL} -i 's/int yychar\;/int yychar\;\\nchar *s = NULL, *tmp_s = NULL, *ext_name = NULL\;\\nstruct lys_module *trg = NULL\;\\nstruct lys_node *tpdf_parent = NULL, *data_node = NULL\;\\nstruct lys_ext_instance_complex *ext_instance = NULL\;\\nint is_ext_instance\;\\nvoid *actual = NULL\;\\nenum yytokentype backup_type, actual_type = MODULE_KEYWORD\;\\nint64_t cnt_val = 0\;\\nint is_value = 0\;\\nvoid *yang_type = NULL\;/' parser_yang_bis.c
     )
-endif()
-
-if (NOT DEFINED ENV{TRAVIS_BRANCH})
-    execute_process(COMMAND "git" "rev-parse" "--abbrev-ref" "HEAD"
-                    OUTPUT_VARIABLE GIT_BRANCH
-                    OUTPUT_STRIP_TRAILING_WHITESPACE
-                    ERROR_QUIET
-                )
-    if (NOT GIT_BRANCH)
-        set(ENV{TRAVIS_BRANCH} "master")
-    else()
-        if (GIT_BRANCH MATCHES "master|devel")
-            set(ENV{TRAVIS_BRANCH} ${GIT_BRANCH})
-        else()
-            set(ENV{TRAVIS_BRANCH} "master")
-        endif()
-    endif()
-    set(GIT_BRANCH $ENV{TRAVIS_BRANCH})
-endif()
-
-if ($ENV{TRAVIS_BRANCH} STREQUAL "master")
-    set(PACKAGE_NAME "libyang")
-    set(PACKAGE_PART_NAME "")
-    set(BRANCH "master")
-    set(BUILD_TYPE "Package")
-    set(CONFLICT_PACKAGE_NAME "libyang-experimental")
-else ()
-    set(PACKAGE_NAME "libyang-experimental")
-    set(PACKAGE_PART_NAME "-experimental")
-    set(BRANCH "devel")
-    set(BUILD_TYPE "debug")
-    set(CONFLICT_PACKAGE_NAME "libyang")
-endif()
-
-# setup package build
-configure_file(${PROJECT_SOURCE_DIR}/packages/libyang.spec.in ${PROJECT_BINARY_DIR}/build-packages/libyang.spec)
-configure_file(${PROJECT_SOURCE_DIR}/packages/libyang.dsc.in ${PROJECT_BINARY_DIR}/build-packages/libyang.dsc)
-configure_file(${PROJECT_SOURCE_DIR}/packages/debian.control.in ${PROJECT_BINARY_DIR}/build-packages/debian.control @ONLY)
-configure_file(${PROJECT_SOURCE_DIR}/packages/debian.rules.in ${PROJECT_BINARY_DIR}/build-packages/debian.rules)
-configure_file(${PROJECT_SOURCE_DIR}/packages/debian.libyang-cpp-dev.install
-               ${PROJECT_BINARY_DIR}/build-packages/debian.libyang-cpp${PACKAGE_PART_NAME}-dev.install COPYONLY)
-configure_file(${PROJECT_SOURCE_DIR}/packages/debian.libyang-cpp.install
-               ${PROJECT_BINARY_DIR}/build-packages/debian.libyang-cpp${PACKAGE_PART_NAME}.install COPYONLY)
-configure_file(${PROJECT_SOURCE_DIR}/packages/debian.libyang-dev.install
-               ${PROJECT_BINARY_DIR}/build-packages/debian.libyang${PACKAGE_PART_NAME}-dev.install COPYONLY)
-configure_file(${PROJECT_SOURCE_DIR}/packages/debian.libyang.install
-               ${PROJECT_BINARY_DIR}/build-packages/debian.libyang${PACKAGE_PART_NAME}.install COPYONLY)
-configure_file(${PROJECT_SOURCE_DIR}/packages/debian.python3-yang.install
-               ${PROJECT_BINARY_DIR}/build-packages/debian.python3-yang${PACKAGE_PART_NAME}.install COPYONLY)
-
-if (NOT DEB_BUILDER)
-    message(WARNING "Missing tools (devscripts, debhelper package) for building deb package.\nYou won't be able to generate deb package from source code.\nCompiling libyang should still works fine.")
-else ()
-    # target for local build deb package
-    add_custom_target(build-deb
-                      WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
-                      COMMAND build-packages/local-deb.sh
-    )
-    configure_file(${PROJECT_SOURCE_DIR}/packages/local-deb.sh.in ${PROJECT_BINARY_DIR}/build-packages/local-deb.sh @ONLY)
-endif()
-
-if (NOT RPM_BUILDER)
-    message(WARNING "Missing tools (rpm package) for building rpm package. \nYou won't be able to generate rpm package from source code.\nCompiling libyang should still works fine.")
-else ()
-    # target for local build rpm package
-    string(REPLACE ${PROJECT_SOURCE_DIR} "." EXCLUDE_BUILD_DIR ${PROJECT_BINARY_DIR})
-    add_custom_target(build-rpm
-                      WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
-                      COMMAND build-packages/local-rpm.sh
-    )
-    configure_file(${PROJECT_SOURCE_DIR}/packages/local-rpm.sh.in ${PROJECT_BINARY_DIR}/build-packages/local-rpm.sh @ONLY)
 endif()
 
 # by default build shared library
@@ -421,6 +348,9 @@ install(FILES ${PROJECT_SOURCE_DIR}/tools/re/yangre.1 DESTINATION ${CMAKE_INSTAL
 
 # yang2yin
 add_executable(yang2yin ${yang2yinsrc})
+
+# packages
+add_subdirectory(packages)
 
 # uninstall
 add_custom_target(uninstall "${CMAKE_COMMAND}" -P "${CMAKE_MODULE_PATH}/uninstall.cmake")

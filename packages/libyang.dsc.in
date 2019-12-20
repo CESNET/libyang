@@ -1,7 +1,7 @@
 Format: 3.0 (quilt)
-Source: @PACKAGE_NAME@
-Binary: @PACKAGE_NAME@, @PACKAGE_NAME@-dbg, @PACKAGE_NAME@-dev, libyang-cpp@PACKAGE_PART_NAME@, libyang-cpp@PACKAGE_PART_NAME@-dev, libyang-cpp@PACKAGE_PART_NAME@-dbg, python3-yang@PACKAGE_PART_NAME@, python3-yang@PACKAGE_PART_NAME@-dbg
-Maintainer: CESNET <rkrejci@cesnet.cz>
+Source: @PACKAGE@
+Binary: @PACKAGE@, @PACKAGE@-dbg, @PACKAGE@-dev, @CPP_PACKAGE@, @CPP_PACKAGE@-dev, @CPP_PACKAGE@-dbg, @PYTHON_PACKAGE@, @PYTHON_PACKAGE@-dbg
+Maintainer: CESNET <mvasko@cesnet.cz>
 Version: @LIBYANG_VERSION@
 Architecture: any
 Standards-Version: 3.8.2
