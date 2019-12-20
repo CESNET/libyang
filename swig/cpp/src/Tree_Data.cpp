@@ -46,9 +46,7 @@ std::vector<S_Type_Bit> Value::bit() {
 
     for (unsigned int i = 0; i < type->info.bits.count; ++i) {
         if (value.bit[i]) {
-            vec.push_back(std::make_shared<Type_Bit>(value.bit[i], deleter));
-        } else {
-            vec.push_back(nullptr);
+            vec[i] = std::make_shared<Type_Bit>(value.bit[i], deleter);
         }
     }
 
