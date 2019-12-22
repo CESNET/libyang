@@ -1,2 +1,4 @@
 pybuild
 swigpy37
+0001-parser-BUGFIX-long-identity-name-buffer-overflow.patch
+0002-parser-BUGFIX-long-identityref-default-value-buffer-.patch

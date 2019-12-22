@@ -1,3 +1,9 @@
+libyang (0.16.105-2) UNRELEASED; urgency=medium
+
+  * fix CVE-2019-19333 & CVE-2019-19334 (Closes: #946217)
+
+ -- David Lamparter <equinox-debian@diac24.net>  Sun, 22 Dec 2019 11:02:55 +0100
+
 libyang (0.16.105-1) unstable; urgency=medium
 
   * upstream 0.16.105 (0.16-r3) release
