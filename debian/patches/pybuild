@@ -3,7 +3,7 @@ Description: support building multiple python targets including debug
  version, and on top of that there was no way to get things built for a debug
  version of python.
 Author: David Lamparter <equinox-debian@diac24.net>
-Last-Update: 2018-11-08
+Last-Update: 2019-12-22
 
 diff --git a/swig/CMakeLists.txt b/swig/CMakeLists.txt
 index a2b2616256da..d10b495f6297 100644
@@ -89,7 +89,7 @@ index 994b12349c78..97d215e7b887 100644
  
  set(CMAKE_SWIG_FLAGS "-c++")
 -set(CMAKE_SWIG_FLAGS "-I${PROJECT_SOURCE_DIR}")
-+set(CMAKE_SWIG_FLAGS "-I${PROJECT_SOURCE_DIR}" "-I${PROJECT_SOURCE_DIR}/cpp/src")
++set(CMAKE_SWIG_FLAGS "-I${PROJECT_SOURCE_DIR}" "-I${PROJECT_SOURCE_DIR}/cpp/src" "-interface" "_${PYTHON_SWIG_BINDING}")
  set(CMAKE_SWIG_OUTDIR ${CMAKE_CURRENT_BINARY_DIR})
  
 -set_source_files_properties(${PYTHON_SWIG_BINDING}.i PROPERTIES CPLUSPLUS ON PREFIX "")

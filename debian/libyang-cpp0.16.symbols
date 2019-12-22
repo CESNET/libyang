@@ -473,8 +473,6 @@ libyang-cpp.so.0.16 libyang-cpp0.16 #MINVER#
  _ZN7libyang9Type_InfoC2E13lys_type_infoP12LY_DATA_TYPEhSt10shared_ptrINS_7DeleterEE@Base 0.16.52
  _ZN7libyang9Type_InfoD1Ev@Base 0.16.52
  _ZN7libyang9Type_InfoD2Ev@Base 0.16.52
- _ZNSt8functionIFN7libyang7Context21mod_missing_cb_returnEPKcS4_S4_S4_EEC1ERKS6_@Base 0.16.52
- _ZNSt8functionIFN7libyang7Context21mod_missing_cb_returnEPKcS4_S4_S4_EEC2ERKS6_@Base 0.16.52
  _ZTIN7libyang11Schema_NodeE@Base 0.16.52
  _ZTIN7libyang15Schema_Node_GrpE@Base 0.16.52
  _ZTIN7libyang16Schema_Node_CaseE@Base 0.16.52
@@ -550,6 +548,8 @@ libyang-cpp.so.0.16 libyang-cpp0.16 #MINVER#
 # libstdc++ defaults.  The ones listed here apply on *most* platforms.
 #   (example: riscv64 seems to default to lock policy "1" while other arches
 #   use "2" and this causes non-critical fallout in several symbols here)
+ (optional)_ZNSt8functionIFN7libyang7Context21mod_missing_cb_returnEPKcS4_S4_S4_EEC1ERKS6_@Base 0.16.52
+ (optional)_ZNSt8functionIFN7libyang7Context21mod_missing_cb_returnEPKcS4_S4_S4_EEC2ERKS6_@Base 0.16.52
  (optional)_ZNSt12__shared_ptrIN7libyang11Schema_NodeELN9__gnu_cxx12_Lock_policyE2EEC1ISaIS1_EJRP8lys_nodeRSt10shared_ptrINS0_7DeleterEEEEESt19_Sp_make_shared_tagRKT_DpOT0_@Base 0.16.52
  (optional)_ZNSt12__shared_ptrIN7libyang11Schema_NodeELN9__gnu_cxx12_Lock_policyE2EEC2ISaIS1_EJRP8lys_nodeRSt10shared_ptrINS0_7DeleterEEEEESt19_Sp_make_shared_tagRKT_DpOT0_@Base 0.16.52
  (optional)_ZNSt12__shared_ptrIN7libyang12Ext_InstanceELN9__gnu_cxx12_Lock_policyE2EEC1ISaIS1_EJRP16lys_ext_instanceRSt10shared_ptrINS0_7DeleterEEEEESt19_Sp_make_shared_tagRKT_DpOT0_@Base 0.16.52
