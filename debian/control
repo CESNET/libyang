@@ -9,6 +9,7 @@ Build-Depends:
  bison,
  cmake,
  debhelper (>= 11~),
+ dh-python,
  libcmocka-dev <!nocheck>,
  libpcre3-dev,
  swig (>= 3.0.12),
