@@ -248,8 +248,7 @@ extern int yydebug;
 union YYSTYPE
 {
 
-
-  int32_t i;
+  int64_t i;
   uint32_t uint;
   char *str;
   char **p_str;
