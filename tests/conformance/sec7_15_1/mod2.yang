@@ -3,30 +3,36 @@ module mod2 {
    namespace "urn:cesnet:mod2";
 
    yang-version 1.1;
-  
+
    list aa {
      key name;
      leaf name {
-       type string;    
+       type string;
      }
-    
+
     action act {
        reference "test reference";
-       description "test description";    
+       description "test description";
 
        input {
          typedef in {
            type string;
          }
+         leaf il {
+           type empty;
+         }
        }
 
        output {
          typedef out {
-           type string;       
+           type string;
+         }
+         leaf ol {
+           type empty;
          }
       }
-       
+
      }
-   }   
+   }
 }
 
