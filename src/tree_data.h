@@ -154,8 +154,6 @@ struct lyd_attr {
                                       except ::lys_node_leaflist, it means checking that data node for duplicities.
                                       Additionally, it can be set on truly any node type and then status references
                                       are checked for this node if flag #LYD_OPT_OBSOLETE is used. */
-#define LYD_VAL_LEAFREF  0x08    /**< Node is a leafref, which needs to be resolved (it is invalid, new possible
-                                      resolvent, or something similar) */
 #define LYD_VAL_INUSE    0x80    /**< Internal flag for note about various processing on data, should be used only
                                       internally and removed before libyang returns the node to the caller */
 /**

@@ -312,10 +312,6 @@ lyb_new_node(const struct lys_node *schema)
     case LYS_LEAF:
     case LYS_LEAFLIST:
         node = calloc(sizeof(struct lyd_node_leaf_list), 1);
-
-        if (((struct lys_node_leaf *)schema)->type.base == LY_TYPE_LEAFREF) {
-            node->validity |= LYD_VAL_LEAFREF;
-        }
         break;
     case LYS_ANYDATA:
     case LYS_ANYXML:

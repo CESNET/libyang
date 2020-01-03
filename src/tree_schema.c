@@ -2561,9 +2561,6 @@ lys_leaf_free(struct ly_ctx *ctx, struct lys_node_leaf *leaf,
 {
     int i;
 
-    /* leafref backlinks */
-    ly_set_free((struct ly_set *)leaf->backlinks);
-
     for (i = 0; i < leaf->must_size; i++) {
         lys_restr_free(ctx, &leaf->must[i], private_destructor);
     }
@@ -4203,17 +4200,6 @@ lys_leaf_add_leafref_target(struct lys_node_leaf *leafref_target, struct lys_nod
             return -1;
         }
     }
-
-    /* create fake child - the ly_set structure to hold the list of
-     * leafrefs referencing the leaf(-list) */
-    if (!leafref_target->backlinks) {
-        leafref_target->backlinks = (void *)ly_set_new();
-        if (!leafref_target->backlinks) {
-            LOGMEM(ctx);
-            return -1;
-        }
-    }
-    ly_set_add(leafref_target->backlinks, leafref, 0);
 
     return 0;
 }

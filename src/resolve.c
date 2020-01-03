@@ -8192,7 +8192,6 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int ignore_
     switch (type) {
     case UNRES_LEAFREF:
         assert(sleaf->type.base == LY_TYPE_LEAFREF);
-        assert(leaf->validity & LYD_VAL_LEAFREF);
         if (ignore_fail) {
             req_inst = -1;
         } else {
@@ -8222,7 +8221,6 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int ignore_
                     }
                 }
             }
-            leaf->validity &= ~LYD_VAL_LEAFREF;
         } else {
             return rc;
         }

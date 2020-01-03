@@ -1330,50 +1330,6 @@ lyd_wd_update_parents(struct lyd_node *node)
     }
 }
 
-static void
-check_leaf_list_backlinks(struct lyd_node *node)
-{
-    struct lyd_node *next, *iter;
-    struct lyd_node_leaf_list *leaf_list;
-    struct ly_set *set, *data;
-    uint32_t i, j;
-    int validity_changed = 0;
-
-    /* fix leafrefs */
-    LY_TREE_DFS_BEGIN(node, next, iter) {
-        /* the node is target of a leafref */
-        if ((iter->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) && iter->schema->child) {
-            set = (struct ly_set *)iter->schema->child;
-            for (i = 0; i < set->number; i++) {
-                data = lyd_find_instance(iter, set->set.s[i]);
-                if (data) {
-                    for (j = 0; j < data->number; j++) {
-                        /* invalidate the leafref, a change concerning it happened */
-                        leaf_list = (struct lyd_node_leaf_list *)data->set.d[j];
-                        leaf_list->validity |= LYD_VAL_LEAFREF;
-                        validity_changed = 1;
-                        if (leaf_list->value_type == LY_TYPE_LEAFREF) {
-                            /* remove invalid link and put unresolved value back */
-                            lyp_parse_value(&((struct lys_node_leaf *)leaf_list->schema)->type, &leaf_list->value_str,
-                                            NULL, leaf_list, NULL, NULL, 1, leaf_list->dflt, 0);
-                        }
-                    }
-                    ly_set_free(data);
-                } else {
-                    LOGINT(node->schema->module->ctx);
-                    return;
-                }
-            }
-        }
-        LY_TREE_DFS_END(node, next, iter)
-    }
-
-    /* invalidate parent to make sure it will be checked in future validation */
-    if (validity_changed && node->parent) {
-        node->parent->validity |= LYD_VAL_MAND;
-    }
-}
-
 API int
 lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
 {
@@ -1421,9 +1377,6 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
     if (val_change) {
         /* make the node non-validated */
         leaf->validity = ly_new_node_validity(leaf->schema);
-
-        /* check possible leafref backlinks */
-        check_leaf_list_backlinks((struct lyd_node *)leaf);
     }
 
     if (val_change && (leaf->schema->flags & LYS_UNIQUE)) {
@@ -2505,7 +2458,6 @@ lyd_merge_node_update(struct lyd_node *target, struct lyd_node *source)
             trg_leaf->value_str = lydict_insert(ctx, src_leaf->value_str, 0);
             trg_leaf->value_type = src_leaf->value_type;
             if (trg_leaf->value_type == LY_TYPE_LEAFREF) {
-                trg_leaf->validity |= LYD_VAL_LEAFREF;
                 lyp_parse_value(&((struct lys_node_leaf *)trg_leaf->schema)->type, &trg_leaf->value_str,
                                 NULL, trg_leaf, NULL, NULL, 1, src_leaf->dflt, 0);
             } else {
@@ -2514,8 +2466,6 @@ lyd_merge_node_update(struct lyd_node *target, struct lyd_node *source)
                 trg_leaf->value = src_leaf->value;
             }
             trg_leaf->dflt = src_leaf->dflt;
-
-            check_leaf_list_backlinks(target);
         } else { /* ANYDATA */
             trg_any = (struct lyd_node_anydata *)target;
             src_any = (struct lyd_node_anydata *)source;
@@ -2570,7 +2520,6 @@ lyd_merge_node_update(struct lyd_node *target, struct lyd_node *source)
                 trg_leaf->value.string = trg_leaf->value_str;
                 break;
             case LY_TYPE_LEAFREF:
-                trg_leaf->validity |= LYD_VAL_LEAFREF;
                 lyp_parse_value(&((struct lys_node_leaf *)trg_leaf->schema)->type, &trg_leaf->value_str,
                                 NULL, trg_leaf, NULL, NULL, 1, trg_leaf->dflt, 0);
                 break;
@@ -2595,8 +2544,6 @@ lyd_merge_node_update(struct lyd_node *target, struct lyd_node *source)
                 trg_leaf->value = src_leaf->value;
                 break;
             }
-
-            check_leaf_list_backlinks(target);
         } else { /* ANYDATA */
             trg_any = (struct lyd_node_anydata *)target;
             src_any = (struct lyd_node_anydata *)source;
@@ -3160,13 +3107,6 @@ lyd_merge_to_ctx(struct lyd_node **trg, const struct lyd_node *src, int options,
 
     /* process source according to options */
     if (options & LYD_OPT_DESTRUCT) {
-        LY_TREE_FOR(src, iter) {
-            check_leaf_list_backlinks((struct lyd_node *)iter);
-            if (options & LYD_OPT_NOSIBLINGS) {
-                break;
-            }
-        }
-
         node = (struct lyd_node *)src;
         if ((node->prev != node) && (options & LYD_OPT_NOSIBLINGS)) {
             node2 = node->prev;
@@ -4553,10 +4493,6 @@ lyd_insert_common(struct lyd_node *parent, struct lyd_node **sibling, struct lyd
         lyd_insert_hash(ins);
 #endif
 
-        if (invalidate) {
-            check_leaf_list_backlinks(ins);
-        }
-
         if (invalid) {
             lyd_insert_setinvalid(ins);
         }
@@ -4784,15 +4720,6 @@ lyd_insert_nextto(struct lyd_node *sibling, struct lyd_node *node, int before, i
         lyd_insert_hash(iter);
     }
 #endif
-
-    if (invalidate) {
-        LY_TREE_FOR(node, next1) {
-            check_leaf_list_backlinks(next1);
-            if (next1 == last) {
-                break;
-            }
-        }
-    }
 
     return EXIT_SUCCESS;
 
@@ -5431,10 +5358,6 @@ lyd_unlink_internal(struct lyd_node *node, int permanent)
         return EXIT_FAILURE;
     }
 
-    if (permanent) {
-        check_leaf_list_backlinks(node);
-    }
-
     /* unlink from siblings */
     if (node->prev->next) {
         node->prev->next = node->next;
@@ -5562,7 +5485,6 @@ _lyd_dup_node(const struct lyd_node *node, const struct lys_node *schema, struct
             new_leaf->value.string = new_leaf->value_str;
             break;
         case LY_TYPE_LEAFREF:
-            new_leaf->validity |= LYD_VAL_LEAFREF;
             lyp_parse_value(&sleaf->type, &new_leaf->value_str, NULL, new_leaf, NULL, NULL, 1, node->dflt, 0);
             break;
         case LY_TYPE_INST:

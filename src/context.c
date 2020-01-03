@@ -1112,8 +1112,6 @@ ctx_modules_undo_backlinks(struct ly_ctx *ctx, struct ly_set *mods)
     uint8_t j;
     unsigned int u, v;
     struct lys_module *mod;
-    struct lys_node *elem, *next;
-    struct lys_node_leaf *leaf;
 
     /* maintain backlinks (start with internal ietf-yang-library which have leafs as possible targets of leafrefs */
     for (o = ctx->internal_module_count - 1; o < ctx->models.used; o++) {
@@ -1154,54 +1152,6 @@ ctx_modules_undo_backlinks(struct ly_ctx *ctx, struct ly_set *mods)
                 /* all backlinks removed */
                 ly_set_free(mod->ident[u].der);
                 mod->ident[u].der = NULL;
-            }
-        }
-
-        /* 3) leafrefs */
-        for (elem = next = mod->data; elem; elem = next) {
-            if (elem->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
-                leaf = (struct lys_node_leaf *)elem; /* shortcut */
-                if (leaf->backlinks) {
-                    if (!mods) {
-                        /* remove all backlinks */
-                        ly_set_free(leaf->backlinks);
-                        leaf->backlinks = NULL;
-                    } else {
-                        for (v = 0; v < leaf->backlinks->number; v++) {
-                            if (ly_set_contains(mods, leaf->backlinks->set.s[v]->module) != -1) {
-                                /* derived identity is in module to remove */
-                                ly_set_rm_index(leaf->backlinks, v);
-                                v--;
-                            }
-                        }
-                        if (!leaf->backlinks->number) {
-                            /* all backlinks removed */
-                            ly_set_free(leaf->backlinks);
-                            leaf->backlinks = NULL;
-                        }
-                    }
-                }
-            }
-
-            /* select next element to process */
-            next = elem->child;
-            /* child exception for leafs, leaflists, anyxml and groupings */
-            if (elem->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA | LYS_GROUPING)) {
-                next = NULL;
-            }
-            if (!next) {
-                /* no children,  try siblings */
-                next = elem->next;
-            }
-            while (!next) {
-                /* parent is already processed, go to its sibling */
-                elem = lys_parent(elem);
-                if (!elem) {
-                    /* we are done, no next element to process */
-                    break;
-                }
-                /* no siblings, go back through parents */
-                next = elem->next;
             }
         }
     }

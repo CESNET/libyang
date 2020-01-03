@@ -1305,12 +1305,6 @@ ly_new_node_validity(const struct lys_node *schema)
 
     validity = LYD_VAL_OK;
 
-    if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
-        if (((struct lys_node_leaf *)schema)->type.base == LY_TYPE_LEAFREF) {
-            /* leafref target validation */
-            validity |= LYD_VAL_LEAFREF;
-        }
-    }
     if (schema->nodetype & (LYS_LEAFLIST | LYS_LIST)) {
         /* duplicit instance check */
         validity |= LYD_VAL_DUP;

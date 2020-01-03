@@ -939,12 +939,6 @@ parse_reply:
                 LY_TREE_DFS_BEGIN(subroot, next, node) {
                     node->validity = LYD_VAL_OK;
                     switch (node->schema->nodetype) {
-                    case LYS_LEAFLIST:
-                    case LYS_LEAF:
-                        if (((struct lys_node_leaf *)node->schema)->type.base == LY_TYPE_LEAFREF) {
-                            node->validity |= LYD_VAL_LEAFREF;
-                        }
-                        break;
                     case LYS_LIST:
                         node->validity |= LYD_VAL_UNIQUE;
                         /* falls through */
