@@ -6,8 +6,8 @@ if [ "$GIT_PATH" != "" ]; then
     exit
 fi
 
-if [ $# -ne 2 ]; then
-    echo "Usage $0 <osb-user> <osb-pass>"
+if [ $# -ne 1 ]; then
+    echo "Usage $0 <osb-user>"
     exit
 fi
 
@@ -17,12 +17,14 @@ LC_TIME=en_US.UTF-8
 FORCEVERSION=1
 # needed so that the package is even created
 TRAVIS_EVENT_TYPE=cron
-# what package to upload (devel = libyang-experimental, master = libyang)
-TRAVIS_BRANCH=`git branch --show-current`
 
 # OSB login
 osb_user=$1
-osb_pass=$2
+
+# OSB password
+echo -n Password:
+read -s osb_pass
+echo
 
 # create and upload the package
 . ./packages/create-package.sh
