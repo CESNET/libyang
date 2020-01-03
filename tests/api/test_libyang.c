@@ -506,6 +506,7 @@ test_ly_ctx_clean2(void **state)
     const char *yang_dep = "module x {"
                     "  namespace uri:x;"
                     "  prefix x;"
+                    "  yang-version 1.1;"
                     "  import ietf-yang-library { prefix yl; }"
                     "  leaf x { config false; type leafref { path /yl:modules-state/yl:module/yl:name; } } }";
     struct ly_ctx *ctx;

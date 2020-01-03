@@ -2993,6 +2993,12 @@ lyp_check_import(struct lys_module *module, const char *value, struct lys_import
         return -1;
     }
 
+    if ((module->version < 2) && imp->rev[0] && (imp->module->version == 2)) {
+        LOGERR(ctx, LY_EVALID, "YANG 1.0 module \"%s\" import with revision of YANG 1.1 module \"%s\".",
+               module->name, imp->module->name);
+        return -1;
+    }
+
     if (dup) {
         /* check the revisions */
         if ((dup != imp->module) ||
