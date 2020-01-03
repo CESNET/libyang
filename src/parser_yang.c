@@ -4036,6 +4036,14 @@ yang_check_rpc_action(struct lys_module *module, struct lys_node_rpc_action *rpc
     }
     *child = NULL;
 
+    if (!(rpc->child->flags & LYS_IMPLICIT) && !rpc->child->child) {
+        LOGVAL(module->ctx, LYE_MISSCHILDSTMT, LY_VLOG_LYS, rpc->child, "schema-node", strnodetype(rpc->child->nodetype));
+        goto error;
+    } else if (!(rpc->child->next->flags & LYS_IMPLICIT) && !rpc->child->next->child) {
+        LOGVAL(module->ctx, LYE_MISSCHILDSTMT, LY_VLOG_LYS, rpc->child->next, "schema-node", strnodetype(rpc->child->next->nodetype));
+        goto error;
+    }
+
     return EXIT_SUCCESS;
 
 error:

@@ -6000,6 +6000,11 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
         }
     }
 
+    if (!root.child) {
+        LOGVAL(ctx, LYE_MISSCHILDSTMT, LY_VLOG_LYS, retval, "schema-node", strnodetype(retval->nodetype));
+        goto error;
+    }
+
     /* middle part - process nodes with cardinality of 0..n except the data nodes */
     if (c_tpdf) {
         inout->tpdf = calloc(c_tpdf, sizeof *inout->tpdf);
