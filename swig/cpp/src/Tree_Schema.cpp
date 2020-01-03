@@ -336,7 +336,6 @@ S_Schema_Node Schema_Node_Choice::dflt() {
 };
 
 Schema_Node_Leaf::~Schema_Node_Leaf() {};
-S_Set Schema_Node_Leaf::backlinks() LY_NEW_CASTED(lys_node_leaf, node, backlinks, Set);
 S_When Schema_Node_Leaf::when() LY_NEW_CASTED(lys_node_leaf, node, when, When);
 S_Type Schema_Node_Leaf::type() {return std::make_shared<Type>(&((struct lys_node_leaf *)node)->type, deleter);}
 S_Schema_Node_List Schema_Node_Leaf::is_key() {
@@ -347,7 +346,6 @@ S_Schema_Node_List Schema_Node_Leaf::is_key() {
 }
 
 Schema_Node_Leaflist::~Schema_Node_Leaflist() {};
-S_Set Schema_Node_Leaflist::backlinks() LY_NEW_CASTED(lys_node_leaflist, node, backlinks, Set);
 S_When Schema_Node_Leaflist::when() LY_NEW_CASTED(lys_node_leaflist, node, when, When);
 std::vector<std::string> Schema_Node_Leaflist::dflt() {
     struct lys_node_leaflist *node_leaflist = (struct lys_node_leaflist *)node;
