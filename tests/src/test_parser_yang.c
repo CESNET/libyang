@@ -1994,8 +1994,8 @@ test_action(void **state)
     FREE_ARRAY(ctx.ctx, rpcs, lysp_action_free); rpcs = NULL;
 
     TEST_DUP("description", "text1", "text2");
-    TEST_DUP("input", "", "");
-    TEST_DUP("output", "", "");
+    TEST_DUP("input", "{leaf l1 {type empty;}} description a", "{leaf l2 {type empty;}} description a");
+    TEST_DUP("output", "{leaf l1 {type empty;}} description a", "{leaf l2 {type empty;}} description a");
     TEST_DUP("reference", "1", "2");
     TEST_DUP("status", "current", "obsolete");
 #undef TEST_DUP

@@ -3563,12 +3563,14 @@ test_inout_elem(void **state)
     memset(&inout, 0, sizeof inout);
 
     /* min subelems */
-    data = ELEMENT_WRAPPER_START "<input />" ELEMENT_WRAPPER_END;
+    data = ELEMENT_WRAPPER_START "<input><leaf name=\"l\"><type name=\"empty\"/></leaf></input>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &inout_meta, NULL, NULL, true), LY_SUCCESS);
+    lysp_action_inout_free(st->ctx, &inout);
     memset(&inout, 0, sizeof inout);
 
-    data = ELEMENT_WRAPPER_START "<output />" ELEMENT_WRAPPER_END;
+    data = ELEMENT_WRAPPER_START "<output><leaf name=\"l\"><type name=\"empty\"/></leaf></output>" ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, &data, &inout_meta, NULL, NULL, true), LY_SUCCESS);
+    lysp_action_inout_free(st->ctx, &inout);
     memset(&inout, 0, sizeof inout);
 
     /* invalid combinations */
@@ -3596,7 +3598,7 @@ test_action_elem(void **state)
                     "<grouping name=\"grouping\"/>"
                     "<if-feature name=\"iff\"/>"
                     "<input><uses name=\"uses-name\"/></input>"
-                    "<output><must condition=\"cond\"/></output>"
+                    "<output><must condition=\"cond\"/><leaf name=\"l\"><type name=\"type\"/></leaf></output>"
                     "<reference><text>ref</text></reference>"
                     "<status value=\"deprecated\"/>"
                     "<typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>"
@@ -3628,7 +3630,7 @@ test_action_elem(void **state)
                     "<grouping name=\"grouping\"/>"
                     "<if-feature name=\"iff\"/>"
                     "<input><uses name=\"uses-name\"/></input>"
-                    "<output><must condition=\"cond\"/></output>"
+                    "<output><must condition=\"cond\"/><leaf name=\"l\"><type name=\"type\"/></leaf></output>"
                     "<reference><text>ref</text></reference>"
                     "<status value=\"deprecated\"/>"
                     "<typedef name=\"tpdf\"> <type name=\"type\"/> </typedef>"

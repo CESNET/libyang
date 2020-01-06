@@ -2644,9 +2644,15 @@ parse_inout(struct lys_parser_ctx *ctx, const char **data, enum ly_stmt inout_kw
         }
     }
     LY_CHECK_RET(ret);
+
 checks:
     /* finalize parent pointers to the reallocated items */
     LY_CHECK_RET(lysp_parse_finalize_reallocated(ctx, inout_p->groupings, NULL, NULL, NULL));
+
+    if (!inout_p->data) {
+        LOGVAL_PARSER(ctx, LY_VCODE_MISSTMT, "data-def-stmt", ly_stmt2str(inout_kw));
+        return LY_EVALID;
+    }
 
     return ret;
 }

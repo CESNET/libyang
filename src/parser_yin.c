@@ -2419,6 +2419,11 @@ yin_parse_inout(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const 
     subelems_deallocator(12, subelems);
     LY_CHECK_RET(ret);
 
+    if (!inout_meta->inout_p->data) {
+        LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_MISSTMT, "data-def-stmt", ly_stmt2str(inout_kw));
+        return LY_EVALID;
+    }
+
     /* finalize parent pointers to the reallocated items */
     LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, inout_meta->inout_p->groupings, NULL, NULL, NULL));
 
