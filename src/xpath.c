@@ -783,7 +783,8 @@ set_copy(struct lyxp_set *set)
         for (i = 0; i < set->used; ++i) {
             if ((set->val.scnodes[i].in_ctx == 1) || (set->val.scnodes[i].in_ctx == -2)) {
                 idx = lyxp_set_scnode_insert_node(ret, set->val.scnodes[i].scnode, set->val.scnodes[i].type);
-                if (idx == -1) {
+                /* coverity seems to think scnodes can be NULL */
+                if ((idx == -1) || !ret->val.scnodes) {
                     lyxp_set_free(ret);
                     return NULL;
                 }
