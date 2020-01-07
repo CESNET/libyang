@@ -634,7 +634,7 @@ lyht_dbgprint_ht(struct hash_table *ht, const char *info)
     uint32_t i, i_len;
     char *val;
 
-    if (LY_LLDBG > ly_log_level) {
+    if ((LY_LLDBG > ly_log_level) || !(ly_log_dbg_groups & LY_LDGHASH)) {
         return;
     }
 
@@ -664,7 +664,7 @@ lyht_dbgprint_ht(struct hash_table *ht, const char *info)
 static void
 lyht_dbgprint_value(void *val_p, uint32_t hash, uint16_t rec_size, const char *operation)
 {
-    if (LY_LLDBG > ly_log_level) {
+    if ((LY_LLDBG > ly_log_level) || !(ly_log_dbg_groups & LY_LDGHASH)) {
         return;
     }
 
