@@ -1913,10 +1913,19 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             if (xml) {
                 /* in case it should resolve into a instance-identifier, we can only do the JSON conversion here */
                 ly_ilo_change(NULL, ILO_IGNORE, &prev_ilo, NULL);
-                val->string = transform_xml2json(ctx, value, xml, 1, 1);
+                value = transform_xml2json(ctx, value, xml, 1, 1);
                 ly_ilo_restore(NULL, prev_ilo, NULL, 0);
-                if (!val->string) {
-                    /* invalid instance-identifier format, likely some other type */
+
+                /* update the changed value */
+                if (value) {
+                    lydict_remove(ctx, *value_);
+                    *value_ = value;
+                } else {
+                    value = *value_;
+                }
+
+                if (store) {
+                    /* store the (unresolved) result */
                     val->string = lydict_insert(ctx, value, 0);
                 }
             }
