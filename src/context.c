@@ -1162,8 +1162,6 @@ ctx_modules_redo_backlinks(struct ly_set *mods)
 {
     unsigned int i, j, k, s;
     struct lys_module *mod;
-    struct lys_node *next, *elem;
-    struct lys_type *type;
     struct lys_feature *feat;
 
     for (i = 0; i < mods->number; ++i) {
@@ -1189,49 +1187,6 @@ ctx_modules_redo_backlinks(struct ly_set *mods)
                     }
                     ly_set_add(feat->depfeatures, &mod->features[j], LY_SET_OPT_USEASLIST);
                 }
-            }
-        }
-
-        /* leafrefs */
-        LY_TREE_DFS_BEGIN(mod->data, next, elem) {
-            if (elem->nodetype == LYS_GROUPING) {
-                goto next_sibling;
-            }
-
-            if (elem->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
-                type = &((struct lys_node_leaf *)elem)->type; /* shortcut */
-                if (type->base == LY_TYPE_LEAFREF) {
-                    lys_leaf_add_leafref_target(type->info.lref.target, elem);
-                }
-            }
-
-            /* select element for the next run - children first */
-            next = elem->child;
-
-            /* child exception for leafs, leaflists and anyxml without children */
-            if (elem->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
-                next = NULL;
-            }
-            if (!next) {
-next_sibling:
-                /* no children */
-                if (elem == mod->data) {
-                    /* we are done, (START) has no children */
-                    break;
-                }
-                /* try siblings */
-                next = elem->next;
-            }
-            while (!next) {
-                /* parent is already processed, go to its sibling */
-                elem = lys_parent(elem);
-
-                /* no siblings, go back through parents */
-                if (lys_parent(elem) == lys_parent(mod->data)) {
-                    /* we are done, no next element to process */
-                    break;
-                }
-                next = elem->next;
             }
         }
     }
@@ -1472,7 +1427,7 @@ checkdependency:
         ly_set_add(disabled, mod, 0);
     }
 
-    /* maintain backlinks (start with internal ietf-yang-library which have leafs as possible targets of leafrefs */
+    /* maintain backlinks */
     ctx_modules_redo_backlinks(mods);
 
     /* re-apply the deviations and augments */
