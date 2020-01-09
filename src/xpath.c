@@ -400,6 +400,8 @@ cast_string_recursive(const struct lyd_node *node, int fake_cont, enum lyxp_node
             buf = strdup("");
             LY_CHECK_ERR_RET(!buf, LOGMEM(LYD_NODE_CTX(node)), LY_EMEM);
         } else {
+            struct lyp_out *out;
+
             switch (any->value_type) {
             case LYD_ANYDATA_STRING:
             case LYD_ANYDATA_XML:
@@ -408,8 +410,10 @@ cast_string_recursive(const struct lyd_node *node, int fake_cont, enum lyxp_node
                 LY_CHECK_ERR_RET(!buf, LOGMEM(LYD_NODE_CTX(node)), LY_EMEM);
                 break;
             case LYD_ANYDATA_DATATREE:
-                rc = lyd_print_mem(&buf, any->value.tree, LYD_XML, LYDP_WITHSIBLINGS);
-                LY_CHECK_RET(rc);
+                out = lyp_new_memory(&buf, 0);
+                rc = lyd_print(out, any->value.tree, LYD_XML, LYDP_WITHSIBLINGS);
+                lyp_free(out, NULL, 0);
+                LY_CHECK_RET(rc < 0, -rc);
                 break;
             /* TODO case LYD_ANYDATA_LYB:
                 LOGERR(LYD_NODE_CTX(node), LY_EINVAL, "Cannot convert LYB anydata into string.");

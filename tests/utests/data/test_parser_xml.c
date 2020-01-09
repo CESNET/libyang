@@ -175,6 +175,9 @@ test_anydata(void **state)
     char *str;
     struct lyd_node *tree;
 
+    struct lyp_out *out;
+    assert_non_null(out = lyp_new_memory(&str, 0));
+
     data =
     "<any xmlns=\"urn:tests:a\">"
         "<element1>"
@@ -187,7 +190,7 @@ test_anydata(void **state)
     assert_int_equal(LYS_ANYDATA, tree->schema->nodetype);
     assert_string_equal("any", tree->schema->name);
 
-    lyd_print_mem(&str, tree, LYD_XML, 0);
+    lyd_print(out, tree, LYD_XML, 0);
     assert_string_equal(str,
         "<any xmlns=\"urn:tests:a\">"
             "<element1>"
@@ -196,9 +199,11 @@ test_anydata(void **state)
             "<element1a/>"
         "</any>"
     );
-    free(str);
+    lyp_out_reset(out);
 
     lyd_free_all(tree);
+    lyp_free(out, NULL, 1);
+
     *state = NULL;
 }
 
@@ -319,6 +324,9 @@ test_opaq(void **state)
     char *str;
     struct lyd_node *tree;
 
+    struct lyp_out *out;
+    assert_non_null(out = lyp_new_memory(&str, 0));
+
     /* invalid value, no flags */
     data = "<foo3 xmlns=\"urn:tests:a\"/>";
     assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
@@ -332,9 +340,9 @@ test_opaq(void **state)
     assert_string_equal(((struct lyd_node_opaq *)tree)->name, "foo3");
     assert_string_equal(((struct lyd_node_opaq *)tree)->value, "");
 
-    lyd_print_mem(&str, tree, LYD_XML, 0);
+    lyd_print(out, tree, LYD_XML, 0);
     assert_string_equal(str, "<foo3 xmlns=\"urn:tests:a\"/>");
-    free(str);
+    lyp_out_reset(out);
     lyd_free_all(tree);
 
     /* missing key, no flags */
@@ -350,9 +358,9 @@ test_opaq(void **state)
     assert_string_equal(((struct lyd_node_opaq *)tree)->name, "l1");
     assert_string_equal(((struct lyd_node_opaq *)tree)->value, "");
 
-    lyd_print_mem(&str, tree, LYD_XML, 0);
+    lyd_print(out, tree, LYD_XML, 0);
     assert_string_equal(str, data);
-    free(str);
+    lyp_out_reset(out);
     lyd_free_all(tree);
 
     /* invalid key, no flags */
@@ -368,15 +376,17 @@ test_opaq(void **state)
     assert_string_equal(((struct lyd_node_opaq *)tree)->name, "l1");
     assert_string_equal(((struct lyd_node_opaq *)tree)->value, "");
 
-    lyd_print_mem(&str, tree, LYD_XML, 0);
+    lyd_print(out, tree, LYD_XML, 0);
     assert_string_equal(str, data);
-    free(str);
+    lyp_out_reset(out);
     lyd_free_all(tree);
 
     /* opaq flag and fail */
     assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, "<a xmlns=\"ns\"><b>x</b><c xml:id=\"D\">1</c></a>",
             LYD_OPT_OPAQ | LYD_VALOPT_DATA_ONLY, &tree));
     assert_null(tree);
+
+    lyp_free(out, NULL, 1);
 
     *state = NULL;
 }
@@ -390,6 +400,9 @@ test_rpc(void **state)
     char *str;
     struct lyd_node *tree, *op;
     const struct lyd_node *node;
+
+    struct lyp_out *out;
+    assert_non_null(out = lyp_new_memory(&str, 0));
 
     data =
         "<rpc xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" msgid=\"25\" custom-attr=\"val\">"
@@ -434,7 +447,7 @@ test_rpc(void **state)
     assert_null(node->schema);
     assert_string_equal(((struct lyd_node_opaq *)node)->name, "z");
 
-    lyd_print_mem(&str, tree, LYD_XML, 0);
+    lyd_print(out, tree, LYD_XML, 0);
     assert_string_equal(str,
         "<rpc xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" msgid=\"25\" custom-attr=\"val\">"
             "<edit-config>"
@@ -453,11 +466,13 @@ test_rpc(void **state)
                 "</config>"
             "</edit-config>"
         "</rpc>");
-    free(str);
+    lyp_out_reset(out);
     lyd_free_all(tree);
 
     /* wrong namespace, element name, whatever... */
     /* TODO */
+
+    lyp_free(out, NULL, 1);
 
     *state = NULL;
 }
@@ -471,6 +486,9 @@ test_action(void **state)
     char *str;
     struct lyd_node *tree, *op;
     const struct lyd_node *node;
+
+    struct lyp_out *out;
+    assert_non_null(out = lyp_new_memory(&str, 0));
 
     data =
         "<rpc xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" msgid=\"25\" custom-attr=\"val\">"
@@ -496,7 +514,7 @@ test_action(void **state)
     assert_string_equal(((struct lyd_node_opaq *)node)->name, "action");
     assert_null(((struct lyd_node_opaq *)node)->attr);
 
-    lyd_print_mem(&str, tree, LYD_XML, 0);
+    lyd_print(out, tree, LYD_XML, 0);
     assert_string_equal(str,
         "<rpc xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" msgid=\"25\" custom-attr=\"val\">"
             "<action xmlns=\"urn:ietf:params:xml:ns:yang:1\">"
@@ -507,11 +525,13 @@ test_action(void **state)
                 "</c>"
             "</action>"
         "</rpc>");
-    free(str);
+    lyp_out_reset(out);
     lyd_free_all(tree);
 
     /* wrong namespace, element name, whatever... */
     /* TODO */
+
+    lyp_free(out, NULL, 1);
 
     *state = NULL;
 }
@@ -525,6 +545,9 @@ test_notification(void **state)
     char *str;
     struct lyd_node *tree, *ntf;
     const struct lyd_node *node;
+
+    struct lyp_out *out;
+    assert_non_null(out = lyp_new_memory(&str, 0));
 
     data =
         "<notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\">"
@@ -553,9 +576,9 @@ test_notification(void **state)
     assert_non_null(node->schema);
     assert_string_equal(node->schema->name, "c");
 
-    lyd_print_mem(&str, tree, LYD_XML, 0);
+    lyd_print(out, tree, LYD_XML, 0);
     assert_string_equal(str, data);
-    free(str);
+    lyp_out_reset(out);
     lyd_free_all(tree);
 
     /* top-level notif without envelope */
@@ -568,13 +591,15 @@ test_notification(void **state)
     assert_non_null(tree);
     assert_ptr_equal(ntf, tree);
 
-    lyd_print_mem(&str, tree, LYD_XML, 0);
+    lyd_print(out, tree, LYD_XML, 0);
     assert_string_equal(str, data);
-    free(str);
+    lyp_out_reset(out);
     lyd_free_all(tree);
 
     /* wrong namespace, element name, whatever... */
     /* TODO */
+
+    lyp_free(out, NULL, 1);
 
     *state = NULL;
 }
@@ -588,6 +613,9 @@ test_reply(void **state)
     char *str;
     struct lyd_node *request, *tree, *op;
     const struct lyd_node *node;
+
+    struct lyp_out *out;
+    assert_non_null(out = lyp_new_memory(&str, 0));
 
     data =
         "<c xmlns=\"urn:tests:a\">"
@@ -619,14 +647,16 @@ test_reply(void **state)
     assert_string_equal(node->schema->name, "c");
 
     /* TODO print only rpc-reply node and then output subtree */
-    lyd_print_mem(&str, lyd_node_children(op), LYD_XML, 0);
+    lyd_print(out, lyd_node_children(op), LYD_XML, 0);
     assert_string_equal(str,
         "<al xmlns=\"urn:tests:a\">25</al>");
-    free(str);
+    lyp_out_reset(out);
     lyd_free_all(tree);
 
     /* wrong namespace, element name, whatever... */
     /* TODO */
+
+    lyp_free(out, NULL, 1);
 
     *state = NULL;
 }

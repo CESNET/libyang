@@ -301,7 +301,7 @@ main_ni(int argc, char* argv[])
         {NULL,               required_argument, NULL, 'y'},
         {NULL,               0,                 NULL, 0}
     };
-    FILE *out = stdout;
+    struct lyp_out *out = NULL;
     struct ly_ctx *ctx = NULL;
     const struct lys_module *mod;
     LYS_OUTFORMAT outformat_s = 0;
@@ -471,13 +471,17 @@ main_ni(int argc, char* argv[])
             break;
 #endif
         case 'o':
-            if (out != stdout) {
-                fclose(out);
-            }
-            out = fopen(optarg, "w");
-            if (!out) {
-                fprintf(stderr, "yanglint error: unable open output file %s (%s)\n", optarg, strerror(errno));
-                goto cleanup;
+            if (out) {
+                if (lyp_filepath(out, optarg) != NULL) {
+                    fprintf(stderr, "yanglint error: unable open output file %s (%s)\n", optarg, strerror(errno));
+                    goto cleanup;
+                }
+            } else {
+                out = lyp_new_filepath(optarg);
+                if (!out) {
+                    fprintf(stderr, "yanglint error: unable open output file %s (%s)\n", optarg, strerror(errno));
+                    goto cleanup;
+                }
             }
             break;
         case 'p':
@@ -762,13 +766,18 @@ main_ni(int argc, char* argv[])
     /* convert (print) to FORMAT */
     if (outformat_s) {
         if (outtarget_s) {
-            lys_node_print_file(out, ctx, NULL, outformat_s, outtarget_s, outline_length_s, outoptions_s);
+            const struct lysc_node *node = lys_find_node(ctx, NULL, outtarget_s);
+            if (node) {
+                lys_print_node(out, node, outformat_s, outline_length_s, outoptions_s);
+            } else {
+                fprintf(stderr, "yanglint error: The requested schema node \"%s\" does not exists.\n", outtarget_s);
+            }
         } else {
             for (u = 0; u < mods->count; u++) {
                 if (u) {
-                    fputs("\n", out);
+                    lyp_print(out, "\n");
                 }
-                lys_print_file(out, (struct lys_module *)mods->objs[u], outformat_s, outline_length_s, outoptions_s);
+                lys_print(out, (struct lys_module *)mods->objs[u], outformat_s, outline_length_s, outoptions_s);
             }
         }
     } else if (data) {
@@ -1046,7 +1055,7 @@ parse_reply:
                     }
                 }
 #endif
-                lyd_print_file(out, data_item->tree, outformat_d, LYDP_WITHSIBLINGS | LYDP_FORMAT /* TODO defaults | options_dflt */);
+                lyd_print(out, data_item->tree, outformat_d, LYDP_WITHSIBLINGS | LYDP_FORMAT /* TODO defaults | options_dflt */);
 #if 0
                 if (envelope_s) {
                     if (data_item->type == LYD_OPT_RPC && data_item->tree->schema->nodetype != LYS_RPC) {
@@ -1071,9 +1080,6 @@ parse_reply:
     ret = EXIT_SUCCESS;
 
 cleanup:
-    if (out && out != stdout) {
-        fclose(out);
-    }
     ly_set_free(mods, NULL);
     ly_set_free(searchpaths, NULL);
     for (i = 0; i < featsize; i++) {
@@ -1087,5 +1093,6 @@ cleanup:
     }
     ly_ctx_destroy(ctx, NULL);
 
+    lyp_free(out, NULL, 1);
     return ret;
 }

@@ -346,7 +346,7 @@ cmd_print(const char *arg)
     const char *out_path = NULL, *target_path = NULL;
     const struct lys_module *module;
     LYS_OUTFORMAT format = LYS_OUT_TREE;
-    FILE *output = stdout;
+    struct lyp_out *out = NULL;
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
         {"format", required_argument, 0, 'f'},
@@ -494,26 +494,31 @@ cmd_print(const char *arg)
     }
 
     if (out_path) {
-        output = fopen(out_path, "w");
-        if (!output) {
-            fprintf(stderr, "Could not open the output file (%s).\n", strerror(errno));
-            goto cleanup;
-        }
+        out = lyp_new_filepath(out_path);
+    } else {
+        out = lyp_new_file(stdout);
+    }
+    if (!out) {
+        fprintf(stderr, "Could not open the output file (%s).\n", strerror(errno));
+        goto cleanup;
     }
 
     if (target_path) {
-        ret = lys_node_print_file(output, ctx, NULL, format, target_path, tree_ll, output_opts);
+        const struct lysc_node *node = lys_find_node(ctx, NULL, target_path);
+        if (node) {
+            ret = lys_print_node(out, node, format, tree_ll, output_opts);
+        } else {
+            fprintf(stderr, "The requested schema node \"%s\" does not exists.\n", target_path);
+        }
     } else {
-        ret = lys_print_file(output, module, format, tree_ll, output_opts);
+        ret = lys_print(out, module, format, tree_ll, output_opts);
     }
 
 cleanup:
     free(*argv);
     free(argv);
 
-    if (output && (output != stdout)) {
-        fclose(output);
-    }
+    lyp_free(out, NULL, out_path ? 1 : 0);
 
     return ret;
 }
@@ -693,8 +698,9 @@ cmd_data(const char *arg)
     const char *out_path = NULL;
     struct lyd_node *data = NULL;
     struct lyd_node *tree = NULL;
+    const struct lyd_node **trees = NULL;
     LYD_FORMAT outformat = 0;
-    FILE *output = stdout;
+    struct lyp_out *out = NULL;
     static struct option long_options[] = {
         {"defaults", required_argument, 0, 'd'},
         {"help", no_argument, 0, 'h'},
@@ -829,15 +835,17 @@ cmd_data(const char *arg)
     }
 
     if (out_path) {
-        output = fopen(out_path, "w");
-        if (!output) {
-            fprintf(stderr, "Could not open the output file (%s).\n", strerror(errno));
-            goto cleanup;
-        }
+        out = lyp_new_filepath(out_path);
+    } else {
+        out = lyp_new_file(stdout);
+    }
+    if (!out) {
+        fprintf(stderr, "Could not open the output file (%s).\n", strerror(errno));
+        goto cleanup;
     }
 
     if (outformat) {
-        lyd_print_file(output, data, outformat, LYDP_WITHSIBLINGS | LYDP_FORMAT | printopt);
+        lyd_print(out, data, outformat, LYDP_WITHSIBLINGS | LYDP_FORMAT | printopt);
     }
 
     ret = 0;
@@ -846,9 +854,7 @@ cleanup:
     free(*argv);
     free(argv);
 
-    if (output && (output != stdout)) {
-        fclose(output);
-    }
+    lyp_free(out, NULL, out_path ? 1 : 0);
 
     lyd_free_all(data);
 

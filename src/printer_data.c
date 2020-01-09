@@ -21,6 +21,7 @@
 
 #include "log.h"
 #include "printer_internal.h"
+#include "printer_data.h"
 #include "tree_schema.h"
 #include "tree_data.h"
 
@@ -33,10 +34,15 @@
  * @param[in] options [Data printer flags](@ref dataprinterflags). With \p format LYD_LYB, only #LYP_WITHSIBLINGS option is accepted.
  * @return LY_ERR value.
  */
-static LY_ERR
-lyd_print_(struct lyout *out, const struct lyd_node *root, LYD_FORMAT format, int options)
+API ssize_t
+lyd_print(struct lyp_out *out, const struct lyd_node *root, LYD_FORMAT format, int options)
 {
     LY_ERR ret;
+    size_t printed_prev;
+
+    LY_CHECK_ARG_RET(NULL, out, root, -LY_EINVAL);
+
+    printed_prev = out->printed;
 
     switch (format) {
     case LYD_XML:
@@ -56,139 +62,11 @@ lyd_print_(struct lyout *out, const struct lyd_node *root, LYD_FORMAT format, in
         break;
     }
 
-    return ret;
-}
-
-API ssize_t
-lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format, int options)
-{
-    struct lyout out;
-    LY_ERR ret;
-
-    LY_CHECK_ARG_RET(NULL, f, LY_EINVAL);
-
-    memset(&out, 0, sizeof out);
-    out.type = LYOUT_STREAM;
-    out.method.f = f;
-
-    if (root) {
-        out.ctx = LYD_NODE_CTX(root);
-    }
-
-    ret = lyd_print_(&out, root, format, options);
     if (ret) {
         /* error */
         return (-1) * ret;
     } else {
         /* success */
-        return (ssize_t)out.printed;
-    }
-}
-
-API ssize_t
-lyd_print_path(const char *path, const struct lyd_node *root, LYD_FORMAT format, int options)
-{
-    FILE *f;
-    ssize_t ret;
-
-    LY_CHECK_ARG_RET(NULL, path, LY_EINVAL);
-
-    f = fopen(path, "w");
-    if (!f) {
-        LOGERR(root ? LYD_NODE_CTX(root) : NULL, LY_ESYS, "Failed to open file \"%s\" (%s).", path, strerror(errno));
-        return LY_ESYS;
-    }
-
-    ret = lyd_print_file(f, root, format, options);
-    fclose(f);
-    return ret;
-}
-
-API ssize_t
-lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format, int options)
-{
-    LY_ERR ret;
-    struct lyout out;
-
-    LY_CHECK_ARG_RET(NULL, fd >= 0, LY_EINVAL);
-
-    memset(&out, 0, sizeof out);
-    out.type = LYOUT_FD;
-    out.method.fd = fd;
-
-    if (root) {
-        out.ctx = LYD_NODE_CTX(root);
-    }
-
-    ret = lyd_print_(&out, root, format, options);
-
-    if (out.type == LYOUT_FDSTREAM) {
-        /* close temporary stream based on the given file descriptor */
-        fclose(out.method.f);
-        /* move the original file descriptor to the end of the output file */
-        lseek(fd, 0, SEEK_END);
-    }
-
-    if (ret) {
-        /* error */
-        return (-1) * ret;
-    } else {
-        /* success */
-        return (ssize_t)out.printed;
-    }
-}
-
-API ssize_t
-lyd_print_mem(char **strp, const struct lyd_node *root, LYD_FORMAT format, int options)
-{
-    struct lyout out;
-    LY_ERR ret;
-
-    LY_CHECK_ARG_RET(NULL, strp, LY_EINVAL);
-
-    memset(&out, 0, sizeof out);
-    out.type = LYOUT_MEMORY;
-
-    if (root) {
-        out.ctx = LYD_NODE_CTX(root);
-    }
-
-    ret = lyd_print_(&out, root, format, options);
-    if (ret) {
-        /* error */
-        *strp = NULL;
-        return (-1) * ret;
-    } else {
-        /* success */
-        *strp = out.method.mem.buf;
-        return (ssize_t)out.printed;
-    }
-}
-
-API ssize_t
-lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, const struct lyd_node *root,
-              LYD_FORMAT format, int options)
-{
-    LY_ERR ret;
-    struct lyout out;
-
-    LY_CHECK_ARG_RET(NULL, writeclb, LY_EINVAL);
-
-    memset(&out, 0, sizeof out);
-    out.type = LYOUT_CALLBACK;
-    out.method.clb.f = writeclb;
-    out.method.clb.arg = arg;
-
-    if (root) {
-        out.ctx = LYD_NODE_CTX(root);
-    }
-
-    ret = lyd_print_(&out, root, format, options);
-    if (ret) {
-        /* error */
-        return (-1) * ret;
-    } else {
-        /* success */
-        return (ssize_t)out.printed;
+        return (ssize_t)(out->printed - printed_prev);
     }
 }
