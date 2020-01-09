@@ -4161,11 +4161,16 @@ check_leafref_features(struct lys_type *type)
                 }
                 if ((unsigned)ly_set_add(features, iter->iffeature[j].features[size - 1], 0) >= x) {
                     /* the feature is not present in features set of target's parents chain */
-                    LOGVAL(ctx, LYE_NORESOLV, LY_VLOG_LYS, type->parent, "leafref", type->info.lref.path);
-                    LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL,
+                    LOGVAL(ctx, LYE_SPEC, LY_VLOG_LYS, type->parent,
                            "Leafref is not conditional based on \"%s\" feature as its target.",
                            iter->iffeature[j].features[size - 1]->name);
-                    ret = -1;
+                    for (iter = type->info.lref.target->parent; iter && (iter->nodetype != LYS_USES); iter = lys_parent(iter));
+                    if (iter) {
+                        /* we are in a uses so there can still be a refine that will add an if-feature */
+                        ret = EXIT_FAILURE;
+                    } else {
+                        ret = -1;
+                    }
                     goto cleanup;
                 }
             }
