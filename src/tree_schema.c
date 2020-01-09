@@ -4174,7 +4174,7 @@ lys_set_private(const struct lys_node *node, void *priv)
 }
 
 int
-lys_leaf_add_leafref_target(struct lys_node_leaf *leafref_target, struct lys_node *leafref)
+lys_leaf_check_leafref(struct lys_node_leaf *leafref_target, struct lys_node *leafref)
 {
     struct lys_node_leaf *iter;
     struct ly_ctx *ctx = leafref_target->module->ctx;

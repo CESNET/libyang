@@ -4372,8 +4372,8 @@ resolve_schema_leafref(struct lys_type *type, struct lys_node *parent, struct un
                 }
             }
 
-            /* store backlinks from leafref target into all nodes that can invalidate the value */
-            if (lys_leaf_add_leafref_target((struct lys_node_leaf *)node_set->set.s[i], (struct lys_node *)type->parent)) {
+            /* check leafref that it is allowed */
+            if (lys_leaf_check_leafref((struct lys_node_leaf *)node_set->set.s[i], (struct lys_node *)type->parent)) {
                 ly_set_free(node_set);
                 return -1;
             }
