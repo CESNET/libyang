@@ -723,6 +723,9 @@ parse_instance_identifier(const char *id, const char **model, int *mod_len, cons
     *name = id;
     *nam_len = ret;
 
+    *model = NULL;
+    *mod_len = 0;
+
     parsed += ret;
     id += ret;
 

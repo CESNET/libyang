@@ -606,6 +606,8 @@ lyht_find_next(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p
     return 1;
 }
 
+#ifndef NDEBUG
+
 /* prints little-endian numbers, will also work on big-endian just the values will look weird */
 static char *
 lyht_dbgprint_val2str(void *val_p, int32_t hits, uint16_t rec_size)
@@ -627,9 +629,12 @@ lyht_dbgprint_val2str(void *val_p, int32_t hits, uint16_t rec_size)
     return val;
 }
 
+#endif
+
 static void
 lyht_dbgprint_ht(struct hash_table *ht, const char *info)
 {
+#ifndef NDEBUG
     struct ht_rec *rec;
     uint32_t i, i_len;
     char *val;
@@ -659,11 +664,16 @@ lyht_dbgprint_ht(struct hash_table *ht, const char *info)
         free(val);
     }
     LOGDBG(LY_LDGHASH, "");
+#else
+    (void)ht;
+    (void)info;
+#endif
 }
 
 static void
 lyht_dbgprint_value(void *val_p, uint32_t hash, uint16_t rec_size, const char *operation)
 {
+#ifndef NDEBUG
     if ((LY_LLDBG > ly_log_level) || !(ly_log_dbg_groups & LY_LDGHASH)) {
         return;
     }
@@ -671,6 +681,12 @@ lyht_dbgprint_value(void *val_p, uint32_t hash, uint16_t rec_size, const char *o
     char *val = lyht_dbgprint_val2str(val_p, 1, rec_size);
     LOGDBG(LY_LDGHASH, "%s value %s with hash %u", operation, val, hash);
     free(val);
+#else
+    (void)val_p;
+    (void)hash;
+    (void)rec_size;
+    (void)operation;
+#endif
 }
 
 int
