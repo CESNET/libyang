@@ -3869,6 +3869,14 @@ lys_compile_node_leaflist(struct lysc_ctx *ctx, struct lysp_node *node_p, struct
     /* the dflts member is just filled to avoid getting the default value from the type */
     llist->dflts = (void*)llist_p->dflts;
     ret = lys_compile_node_type(ctx, node_p, &llist_p->type, (struct lysc_node_leaf*)llist);
+    if (ret != LY_SUCCESS) {
+        /* make sure the defaults are freed correctly */
+        if (llist_p->dflts) {
+            llist->dflts = NULL;
+        }
+        return ret;
+    }
+
     if (llist_p->dflts) {
         llist->dflts = NULL; /* reset the temporary llist_p->dflts */
         LY_ARRAY_CREATE_GOTO(ctx->ctx, llist->dflts_mods, LY_ARRAY_SIZE(llist_p->dflts), ret, done);
