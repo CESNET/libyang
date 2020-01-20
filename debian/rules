@@ -19,12 +19,9 @@ override_dh_auto_configure:
 			-e 's/python\([^ ]\+\)/\1;\1d/g' \
 			-e 's/ /;/g'`
 
-ifeq ($(filter-out mips%,$(DEB_HOST_GNU_TYPE)),)
 # building the SWIG generated Python bindings uses >= 1.5GB RAM per each
-# g++ process, and this will try to run in parallel as specified for the build.
-#
-# the mips{el,64el} machines in the Debian build pool don't have enough memory
-# to handle this, so below rule builds the Python bindings in sequence.
+# g++ process, and this will be attempted in parallel.  Just build these bits
+# in sequence to avoid OOM build failures.
 
 override_dh_auto_build:
 	dh_auto_build -- yang libyang-cpp
@@ -35,8 +32,6 @@ override_dh_auto_build:
 		dh_auto_build --no-parallel -- _yang$${V}; \
 	done
 	dh_auto_build
-
-endif
 
 override_dh_auto_install:
 	dh_auto_install
