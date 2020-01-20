@@ -2459,6 +2459,8 @@ lyd_merge_node_update(struct lyd_node *target, struct lyd_node *source)
                 lyd_free_value(trg_leaf->value, trg_leaf->value_type, trg_leaf->value_flags,
                                &((struct lys_node_leaf *)trg_leaf->schema)->type, trg_leaf->value_str, NULL, NULL, NULL);
                 trg_leaf->value = src_leaf->value;
+                /* so that it is not freed */
+                src_leaf->value.uint64 = 0;
             }
             trg_leaf->dflt = src_leaf->dflt;
         } else { /* ANYDATA */
