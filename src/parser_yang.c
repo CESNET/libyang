@@ -49,10 +49,26 @@ int
 yang_read_common(struct lys_module *module, char *value, enum yytokentype type)
 {
     int ret = 0;
+    uint8_t i;
 
     switch (type) {
     case MODULE_KEYWORD:
         module->name = lydict_insert_zc(module->ctx, value);
+
+        /* in some really invalid situations there can be a circular import and
+         * we can check it only after we have parsed the module name */
+        for (i = 0; i < module->ctx->models.parsing_sub_modules_count; ++i) {
+            if (module->ctx->models.parsing_sub_modules[i] == module) {
+                /* skip our own module */
+                continue;
+            }
+
+            if (!strcmp(module->ctx->models.parsing_sub_modules[i]->name, module->name)) {
+                LOGVAL(module->ctx, LYE_CIRC_IMPORTS, LY_VLOG_NONE, NULL, module->name);
+                ret = EXIT_FAILURE;
+                break;
+            }
+        }
         break;
     case NAMESPACE_KEYWORD:
         ret = yang_check_string(module, &module->ns, "namespace", "module", value, NULL);

@@ -7339,6 +7339,7 @@ yin_read_module_(struct ly_ctx *ctx, struct lyxml_elem *yin, const char *revisio
     struct unres_schema *unres;
     const char *value;
     int ret;
+    uint8_t i;
 
     unres = calloc(1, sizeof *unres);
     LY_CHECK_ERR_RETURN(!unres, LOGMEM(ctx), NULL);
@@ -7356,6 +7357,15 @@ yin_read_module_(struct ly_ctx *ctx, struct lyxml_elem *yin, const char *revisio
     GETVAL(ctx, value, yin, "name");
     if (lyp_check_identifier(ctx, value, LY_IDENT_NAME, NULL, NULL)) {
         goto error;
+    }
+
+    /* in some really invalid situations there can be a circular import and
+     * we can check it only after we have parsed the module name */
+    for (i = 0; i < ctx->models.parsing_sub_modules_count; ++i) {
+        if (!strcmp(ctx->models.parsing_sub_modules[i]->name, value)) {
+            LOGVAL(ctx, LYE_CIRC_IMPORTS, LY_VLOG_NONE, NULL, value);
+            goto error;
+        }
     }
 
     module = calloc(1, sizeof *module);
