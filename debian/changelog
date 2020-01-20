@@ -1,8 +1,8 @@
-libyang (0.16.105-3) UNRELEASED; urgency=medium
+libyang (0.16.105-3) unstable; urgency=medium
 
   * work around parallel build issues with python bindings (build only change)
 
- -- David Lamparter <equinox-debian@diac24.net>  Tue, 14 Jan 2020 14:24:24 +0100
+ -- David Lamparter <equinox-debian@diac24.net>  Mon, 20 Jan 2020 17:20:21 +0100
 
 libyang (0.16.105-2) unstable; urgency=medium
 
