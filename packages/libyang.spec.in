@@ -8,7 +8,7 @@ Source1: @PACKAGE@.rpmlintrc
 License: BSD-3-Clause
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}
 
-%if (0%{?rhel} && 0%{?rhel} < 8) || (0%{?fedora} && 0%{?fedora} < 27)
+%if 0%{?scientificlinux_version} == 700
     %define with_lang_bind 0
 %else
     %define with_lang_bind 1
@@ -22,10 +22,15 @@ BuildRequires:  gcc
 BuildRequires:  libcmocka-devel
 
 %if %{with_lang_bind}
-BuildRequires:  gcc-c++
-BuildRequires:  swig >= 3.0.12
 
-%if 0%{?suse_version} + 0%{?fedora} > 0
+BuildRequires:  gcc-c++
+%if 0%{?centos_version}
+BuildRequires:  swig3 >= 3.0.12
+%else
+BuildRequires:  swig >= 3.0.12
+%endif
+
+%if 0%{?suse_version} + 0%{?fedora} + 0%{?centos_version} > 0
 BuildRequires:  python3-devel
 %else
 BuildRequires:  python36-devel
