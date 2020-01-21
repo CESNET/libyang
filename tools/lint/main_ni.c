@@ -326,7 +326,7 @@ main_ni(int argc, char* argv[])
         struct lyd_node *tree;
         struct dataitem *next;
         LYD_FORMAT format;
-        int type;
+        int flags;
     } *data = NULL, *data_item, *data_prev = NULL;
     struct ly_set *mods = NULL;
     void *p;
@@ -513,24 +513,17 @@ main_ni(int argc, char* argv[])
             break;
         case 't':
             if (!strcmp(optarg, "auto")) {
-                options_parser = (options_parser & ~LYD_OPT_TYPEMASK);
                 autodetection = 1;
             } else if (!strcmp(optarg, "config")) {
-                options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_CONFIG;
+                options_parser |= LYD_OPT_CONFIG;
             } else if (!strcmp(optarg, "get")) {
-                options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_GET;
+                options_parser |= LYD_OPT_GET;
             } else if (!strcmp(optarg, "getconfig")) {
-                options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_GETCONFIG;
+                options_parser |= LYD_OPT_GETCONFIG;
             } else if (!strcmp(optarg, "edit")) {
-                options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_EDIT;
+                options_parser |= LYD_OPT_EDIT;
             } else if (!strcmp(optarg, "data")) {
-                options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_DATA_NO_YANGLIB;
-            } else if (!strcmp(optarg, "rpc")) {
-                options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPC;
-            } else if (!strcmp(optarg, "rpcreply")) {
-                options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPCREPLY;
-            } else if (!strcmp(optarg, "notif")) {
-                options_parser = (options_parser & ~LYD_OPT_TYPEMASK) | LYD_OPT_NOTIF;
+                /* no options */
             } else {
                 fprintf(stderr, "yanglint error: unknown data tree type %s\n", optarg);
                 help(1);
@@ -659,11 +652,11 @@ main_ni(int argc, char* argv[])
         /* ignore operational datastore file */
         oper_file = NULL;
     }
-#endif
     if ((options_parser & LYD_OPT_TYPEMASK) == LYD_OPT_DATA) {
         /* add option to ignore ietf-yang-library data for implicit data type */
         options_parser |= LYD_OPT_DATA_NO_YANGLIB;
     }
+#endif
 
     /* set callback for printing libyang messages */
     ly_set_log_clb(libyang_verbclb, 1);
@@ -733,7 +726,7 @@ main_ni(int argc, char* argv[])
             }
             data_item->filename = argv[optind + i];
             data_item->format = informat_d;
-            data_item->type = options_parser & LYD_OPT_TYPEMASK;
+            data_item->flags = options_parser;
             data_item->tree = NULL;
             data_item->next = NULL;
         }
@@ -804,7 +797,7 @@ main_ni(int argc, char* argv[])
                 fprintf(stderr, "yanglint error: The operational data are expected in XML or JSON format.\n");
                 goto cleanup;
             }
-            oper = lyd_parse_path(ctx, oper_file, informat_d, LYD_OPT_DATA_NO_YANGLIB | LYD_OPT_TRUSTED, NULL);
+            oper = lyd_parse_path(ctx, oper_file, informat_d, LYD_OPT_PARSE_ONLY);
             if (!oper) {
                 fprintf(stderr, "yanglint error: Failed to parse the operational datastore file for RPC/Notification validation.\n");
                 goto cleanup;
@@ -975,7 +968,7 @@ parse_reply:
 #else
             {
 #endif
-                data_item->tree = lyd_parse_path(ctx, data_item->filename, data_item->format, options_parser, trees);
+                data_item->tree = lyd_parse_path(ctx, data_item->filename, data_item->format, options_parser);
             }
             if (ly_err_first(ctx)) {
                 goto cleanup;
@@ -1069,8 +1062,7 @@ parse_reply:
                     }
                 }
 #endif
-                lyd_print_file(out, (data_item->type == LYD_OPT_RPCREPLY) ? lyd_node_children(data_item->tree) : data_item->tree,
-                               outformat_d, LYDP_WITHSIBLINGS | LYDP_FORMAT /* TODO defaults | options_dflt */);
+                lyd_print_file(out, data_item->tree, outformat_d, LYDP_WITHSIBLINGS | LYDP_FORMAT /* TODO defaults | options_dflt */);
 #if 0
                 if (envelope_s) {
                     if (data_item->type == LYD_OPT_RPC && data_item->tree->schema->nodetype != LYS_RPC) {

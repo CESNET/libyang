@@ -1112,7 +1112,7 @@ lys_nodetype2str(uint16_t nodetype)
     case LYS_ACTION:
         return "RPC/action";
     case LYS_NOTIF:
-        return "Notification";
+        return "notification";
     case LYS_USES:
         return "uses";
     default:

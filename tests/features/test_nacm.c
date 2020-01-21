@@ -181,7 +181,7 @@ test_deny_write(void **state)
             "notification notif {nacm:default-deny-write;}}";
     assert_null(lys_parse_mem(s->ctx, data, LYS_IN_YANG));
     logbuf_assert("Extension plugin \"libyang 2 - NACM, version 1\": "
-            "Extension nacm:default-deny-write is not allowed in Notification statement.) /aa:notif/{extension='nacm:default-deny-write'}");
+            "Extension nacm:default-deny-write is not allowed in notification statement.) /aa:notif/{extension='nacm:default-deny-write'}");
 
     data = "module aa {yang-version 1.1; namespace urn:tests:extensions:nacm:aa; prefix en;"
             "import ietf-netconf-acm {revision-date 2018-02-14; prefix nacm;}"

@@ -155,7 +155,7 @@ test_int(void **state)
     const char *data = "<int8 xmlns=\"urn:tests:types\">\n 15 \t\n  </int8>";
 
     /* valid data */
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("int8", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -172,28 +172,28 @@ test_int(void **state)
 
     /* invalid range */
     data = "<int8 xmlns=\"urn:tests:types\">1</int8>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Value \"1\" does not satisfy the range constraint. /");
 
     data = "<int16 xmlns=\"urn:tests:types\">100</int16>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Value \"100\" does not satisfy the range constraint. /");
 
     /* invalid value */
     data = "<int32 xmlns=\"urn:tests:types\">0x01</int32>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid int32 value \"0x01\". /");
 
     data = "<int64 xmlns=\"urn:tests:types\"></int64>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid empty int64 value. /");
 
     data = "<int64 xmlns=\"urn:tests:types\">   </int64>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid empty int64 value. /");
 
     data = "<int64 xmlns=\"urn:tests:types\">-10  xxx</int64>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid int64 value \"-10  xxx\". /");
 
     s->func = NULL;
@@ -212,7 +212,7 @@ test_uint(void **state)
     const char *data = "<uint8 xmlns=\"urn:tests:types\">\n 150 \t\n  </uint8>";
 
     /* valid data */
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("uint8", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -229,28 +229,28 @@ test_uint(void **state)
 
     /* invalid range */
     data = "<uint8 xmlns=\"urn:tests:types\">\n 15 \t\n  </uint8>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Value \"15\" does not satisfy the range constraint. /");
 
     data = "<uint16 xmlns=\"urn:tests:types\">\n 1500 \t\n  </uint16>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Value \"1500\" does not satisfy the range constraint. /");
 
     /* invalid value */
     data = "<uint32 xmlns=\"urn:tests:types\">-10</uint32>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Value \"-10\" is out of uint32's min/max bounds. /");
 
     data = "<uint64 xmlns=\"urn:tests:types\"/>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid empty uint64 value. /");
 
     data = "<uint64 xmlns=\"urn:tests:types\">   </uint64>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid empty uint64 value. /");
 
     data = "<uint64 xmlns=\"urn:tests:types\">10  xxx</uint64>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid uint64 value \"10  xxx\". /");
 
     s->func = NULL;
@@ -269,7 +269,7 @@ test_dec64(void **state)
     const char *data = "<dec64 xmlns=\"urn:tests:types\">\n +8 \t\n  </dec64>";
 
     /* valid data */
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("dec64", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -285,7 +285,7 @@ test_dec64(void **state)
     lyd_free_all(tree);
 
     data = "<dec64 xmlns=\"urn:tests:types\">8.00</dec64>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("dec64", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -294,7 +294,7 @@ test_dec64(void **state)
     lyd_free_all(tree);
 
     data = "<dec64-norestr xmlns=\"urn:tests:types\">-9.223372036854775808</dec64-norestr>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("dec64-norestr", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -303,7 +303,7 @@ test_dec64(void **state)
     lyd_free_all(tree);
 
     data = "<dec64-norestr xmlns=\"urn:tests:types\">9.223372036854775807</dec64-norestr>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("dec64-norestr", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -313,32 +313,32 @@ test_dec64(void **state)
 
     /* invalid range */
     data = "<dec64 xmlns=\"urn:tests:types\">\n 15 \t\n  </dec64>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Value \"15.0\" does not satisfy the range constraint. /");
 
     data = "<dec64 xmlns=\"urn:tests:types\">\n 0 \t\n  </dec64>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Value \"0.0\" does not satisfy the range constraint. /");
 
     /* invalid value */
     data = "<dec64 xmlns=\"urn:tests:types\">xxx</dec64>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid 1. character of decimal64 value \"xxx\". /");
 
     data = "<dec64 xmlns=\"urn:tests:types\"/>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid empty decimal64 value. /");
 
     data = "<dec64 xmlns=\"urn:tests:types\">   </dec64>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid empty decimal64 value. /");
 
     data = "<dec64 xmlns=\"urn:tests:types\">8.5  xxx</dec64>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid 6. character of decimal64 value \"8.5  xxx\". /");
 
     data = "<dec64 xmlns=\"urn:tests:types\">8.55  xxx</dec64>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Value \"8.55\" of decimal64 type exceeds defined number (1) of fraction digits. /");
 
     s->func = NULL;
@@ -356,7 +356,7 @@ test_string(void **state)
     const char *data = "<str xmlns=\"urn:tests:types\">teststring</str>";
 
     /* valid data */
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("str", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -365,34 +365,34 @@ test_string(void **state)
 
     /* multibyte characters (€ encodes as 3-byte UTF8 character, length restriction is 2-5) */
     data = "<str-utf8 xmlns=\"urn:tests:types\">€€</str-utf8>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("str-utf8", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
     assert_string_equal("€€", leaf->value.canonical_cache);
     lyd_free_all(tree);
     data = "<str-utf8 xmlns=\"urn:tests:types\">€</str-utf8>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Length \"1\" does not satisfy the length constraint. /");
     data = "<str-utf8 xmlns=\"urn:tests:types\">€€€€€€</str-utf8>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Length \"6\" does not satisfy the length constraint. /");
     data = "<str-utf8 xmlns=\"urn:tests:types\">€€x</str-utf8>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("String \"€€x\" does not conform to the 1. pattern restriction of its type. /");
 
     /* invalid length */
     data = "<str xmlns=\"urn:tests:types\">short</str>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Length \"5\" does not satisfy the length constraint. /");
 
     data = "<str xmlns=\"urn:tests:types\">tooooo long</str>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Length \"11\" does not satisfy the length constraint. /");
 
     /* invalid pattern */
     data = "<str xmlns=\"urn:tests:types\">string15</str>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("String \"string15\" does not conform to the 1. pattern restriction of its type. /");
 
     s->func = NULL;
@@ -411,7 +411,7 @@ test_bits(void **state)
     const char *data = "<bits xmlns=\"urn:tests:types\">\n two    \t\nzero\n  </bits>";
 
     /* valid data */
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("bits", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -431,7 +431,7 @@ test_bits(void **state)
     lyd_free_all(tree);
 
     data = "<bits xmlns=\"urn:tests:types\">zero  two</bits>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("bits", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -440,12 +440,12 @@ test_bits(void **state)
 
     /* disabled feature */
     data = "<bits xmlns=\"urn:tests:types\"> \t one \n\t </bits>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Bit \"one\" is disabled by its 1. if-feature condition. /");
 
     /* enable that feature */
     assert_int_equal(LY_SUCCESS, lys_feature_enable(ly_ctx_get_module(s->ctx, "types", NULL), "f"));
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("bits", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -463,12 +463,12 @@ test_bits(void **state)
 
     /* multiple instances of the bit */
     data = "<bits xmlns=\"urn:tests:types\">one zero one</bits>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Bit \"one\" used multiple times. /");
 
     /* invalid bit value */
     data = "<bits xmlns=\"urn:tests:types\">one xero one</bits>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid bit value \"xero\". /");
 
     s->func = NULL;
@@ -487,7 +487,7 @@ test_enums(void **state)
     const char *data = "<enums xmlns=\"urn:tests:types\">white</enums>";
 
     /* valid data */
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("enums", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -503,12 +503,12 @@ test_enums(void **state)
 
     /* disabled feature */
     data = "<enums xmlns=\"urn:tests:types\">yellow</enums>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Enumeration \"yellow\" is disabled by its 1. if-feature condition. /");
 
     /* enable that feature */
     assert_int_equal(LY_SUCCESS, lys_feature_enable(ly_ctx_get_module(s->ctx, "types", NULL), "f"));
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("enums", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -517,15 +517,15 @@ test_enums(void **state)
 
     /* leading/trailing whitespaces are not valid */
     data = "<enums xmlns=\"urn:tests:types\"> white</enums>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid enumeration value \" white\". /");
     data = "<enums xmlns=\"urn:tests:types\">white\n</enums>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid enumeration value \"white\n\". /");
 
     /* invalid enumeration value */
     data = "<enums xmlns=\"urn:tests:types\">black</enums>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid enumeration value \"black\". /");
 
     s->func = NULL;
@@ -545,7 +545,7 @@ test_binary(void **state)
                        "<binary-norestr xmlns=\"urn:tests:types\">TQ==</binary-norestr>";
 
     /* valid data (hello) */
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("binary", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -565,21 +565,21 @@ test_binary(void **state)
 
     /* no data */
     data = "<binary-norestr xmlns=\"urn:tests:types\">\n    \t\n  </binary-norestr>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("binary-norestr", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
     assert_string_equal("", leaf->value.canonical_cache);
     lyd_free_all(tree);
     data = "<binary-norestr xmlns=\"urn:tests:types\"></binary-norestr>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("binary-norestr", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
     assert_string_equal("", leaf->value.canonical_cache);
     lyd_free_all(tree);
     data = "<binary-norestr xmlns=\"urn:tests:types\"/>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("binary-norestr", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -588,23 +588,23 @@ test_binary(void **state)
 
     /* invalid base64 character */
     data = "<binary-norestr xmlns=\"urn:tests:types\">a@bcd=</binary-norestr>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid Base64 character (@). /");
 
     /* missing data */
     data = "<binary-norestr xmlns=\"urn:tests:types\">aGVsbG8</binary-norestr>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Base64 encoded value length must be divisible by 4. /");
     data = "<binary-norestr xmlns=\"urn:tests:types\">VsbG8=</binary-norestr>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Base64 encoded value length must be divisible by 4. /");
 
     /* invalid binary length */
     data = "<binary xmlns=\"urn:tests:types\">aGVsbG93b3JsZA==</binary>"; /* helloworld */
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("This base64 value must be of length 5. /");
     data = "<binary xmlns=\"urn:tests:types\">TQ==</binary>"; /* M */
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("This base64 value must be of length 5. /");
 
     s->func = NULL;
@@ -622,7 +622,7 @@ test_boolean(void **state)
     const char *data = "<bool xmlns=\"urn:tests:types\">true</bool>";
 
     /* valid data */
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("bool", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -631,7 +631,7 @@ test_boolean(void **state)
     lyd_free_all(tree);
 
     data = "<bool xmlns=\"urn:tests:types\">false</bool>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("bool", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -641,11 +641,11 @@ test_boolean(void **state)
 
     /* invalid value */
     data = "<bool xmlns=\"urn:tests:types\">unsure</bool>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid boolean value \"unsure\". /");
 
     data = "<bool xmlns=\"urn:tests:types\"> true</bool>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid boolean value \" true\". /");
 
     s->func = NULL;
@@ -663,7 +663,7 @@ test_empty(void **state)
     const char *data = "<empty xmlns=\"urn:tests:types\"></empty>";
 
     /* valid data */
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("empty", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -671,7 +671,7 @@ test_empty(void **state)
     lyd_free_all(tree);
 
     data = "<empty xmlns=\"urn:tests:types\"/>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("empty", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -680,11 +680,11 @@ test_empty(void **state)
 
     /* invalid value */
     data = "<empty xmlns=\"urn:tests:types\">x</empty>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid empty value \"x\". /");
 
     data = "<empty xmlns=\"urn:tests:types\"> </empty>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid empty value \" \". /");
 
     s->func = NULL;
@@ -723,7 +723,7 @@ test_identityref(void **state)
     const char *data = "<ident xmlns=\"urn:tests:types\">gigabit-ethernet</ident>";
 
     /* valid data */
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("ident", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -739,7 +739,7 @@ test_identityref(void **state)
     lyd_free_all(tree);
 
     data = "<ident xmlns=\"urn:tests:types\" xmlns:x=\"urn:tests:defs\">x:fast-ethernet</ident>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("ident", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -749,19 +749,19 @@ test_identityref(void **state)
 
     /* invalid value */
     data = "<ident xmlns=\"urn:tests:types\">fast-ethernet</ident>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid identityref \"fast-ethernet\" value - identity not found. /");
 
     data = "<ident xmlns=\"urn:tests:types\" xmlns:x=\"urn:tests:defs\">x:slow-ethernet</ident>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid identityref \"x:slow-ethernet\" value - identity not found. /");
 
     data = "<ident xmlns=\"urn:tests:types\" xmlns:x=\"urn:tests:defs\">x:crypto-alg</ident>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid identityref \"x:crypto-alg\" value - identity not accepted by the type specification. /");
 
     data = "<ident xmlns=\"urn:tests:types\" xmlns:x=\"urn:tests:unknown\">x:fast-ethernet</ident>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid identityref \"x:fast-ethernet\" value - unable to map prefix to YANG schema. /");
 
     s->func = NULL;
@@ -793,7 +793,7 @@ test_instanceid(void **state)
             "<xdf:inst xmlns:xdf=\"urn:tests:types\">/xdf:cont/xdf:leaftarget</xdf:inst>";
 
     /* valid data */
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     tree = tree->prev;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("inst", tree->schema->name);
@@ -818,7 +818,7 @@ test_instanceid(void **state)
 
     data = "<list xmlns=\"urn:tests:types\"><id>a</id></list><list xmlns=\"urn:tests:types\"><id>b</id></list>"
            "<xdf:inst xmlns:xdf=\"urn:tests:types\">/xdf:list[xdf:id='b']/xdf:id</xdf:inst>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     tree = tree->prev;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("inst", tree->schema->name);
@@ -828,7 +828,7 @@ test_instanceid(void **state)
 
     data = "<leaflisttarget xmlns=\"urn:tests:types\">1</leaflisttarget><leaflisttarget xmlns=\"urn:tests:types\">2</leaflisttarget>"
            "<xdf:inst xmlns:xdf=\"urn:tests:types\">/xdf:leaflisttarget[.='1']</xdf:inst>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     tree = tree->prev;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("inst", tree->schema->name);
@@ -838,7 +838,7 @@ test_instanceid(void **state)
 
     data = "<list xmlns=\"urn:tests:types\"><id>a</id></list><list xmlns=\"urn:tests:types\"><id>b</id><value>x</value></list>"
            "<xdf:inst xmlns:xdf=\"urn:tests:types\">/xdf:list[2]/xdf:value</xdf:inst>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     tree = tree->prev;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("inst", tree->schema->name);
@@ -850,7 +850,7 @@ test_instanceid(void **state)
            "<list_inst xmlns=\"urn:tests:types\"><id xmlns:b=\"urn:tests:types\">/b:leaflisttarget[.='b']</id><value>y</value></list_inst>"
            "<leaflisttarget xmlns=\"urn:tests:types\">a</leaflisttarget><leaflisttarget xmlns=\"urn:tests:types\">b</leaflisttarget>"
            "<a:inst xmlns:a=\"urn:tests:types\">/a:list_inst[a:id=\"/a:leaflisttarget[.='b']\"]/a:value</a:inst>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     tree = tree->prev;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("inst", tree->schema->name);
@@ -880,7 +880,7 @@ test_instanceid(void **state)
            "<list_inst xmlns=\"urn:tests:types\"><id xmlns:b=\"urn:tests:types\">/b:leaflisttarget[2]</id><value>y</value></list_inst>"
            "<leaflisttarget xmlns=\"urn:tests:types\">a</leaflisttarget><leaflisttarget xmlns=\"urn:tests:types\">b</leaflisttarget>"
            "<a:inst xmlns:a=\"urn:tests:types\">/a:list_inst[a:id=\"/a:leaflisttarget[2]\"]/a:value</a:inst>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     tree = tree->prev;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("inst", tree->schema->name);
@@ -891,7 +891,7 @@ test_instanceid(void **state)
     data = "<list_ident xmlns=\"urn:tests:types\"><id xmlns:dfs=\"urn:tests:defs\">dfs:ethernet</id><value>x</value></list_ident>"
            "<list_ident xmlns=\"urn:tests:types\"><id xmlns:dfs=\"urn:tests:defs\">dfs:fast-ethernet</id><value>y</value></list_ident>"
            "<a:inst xmlns:a=\"urn:tests:types\" xmlns:d=\"urn:tests:defs\">/a:list_ident[a:id='d:fast-ethernet']/a:value</a:inst>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     tree = tree->prev;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("inst", tree->schema->name);
@@ -902,7 +902,7 @@ test_instanceid(void **state)
     data = "<list2 xmlns=\"urn:tests:types\"><id>types:xxx</id><value>x</value></list2>"
            "<list2 xmlns=\"urn:tests:types\"><id>a:xxx</id><value>y</value></list2>"
            "<a:inst xmlns:a=\"urn:tests:types\">/a:list2[a:id='a:xxx'][a:value='y']/a:value</a:inst>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     tree = tree->prev;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("inst", tree->schema->name);
@@ -913,7 +913,7 @@ test_instanceid(void **state)
     data = "<list xmlns=\"urn:tests:types\"><id>types:xxx</id><value>x</value></list>"
            "<list xmlns=\"urn:tests:types\"><id>a:xxx</id><value>y</value></list>"
            "<a:inst xmlns:a=\"urn:tests:types\">/a:list[2]/a:value</a:inst>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     tree = tree->prev;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("inst", tree->schema->name);
@@ -925,7 +925,7 @@ test_instanceid(void **state)
            "<list2 xmlns=\"urn:tests:types\"><id>c</id><value>b</value></list2>"
            "<list2 xmlns=\"urn:tests:types\"><id>a</id><value>b</value></list2>"
            "<a:inst xmlns:a=\"urn:tests:types\">/a:list2[a:id='a'][a:value='b']/a:id</a:inst>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     tree = tree->prev;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("inst", tree->schema->name);
@@ -939,136 +939,136 @@ test_instanceid(void **state)
 
     /* invalid value */
     data =  "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:1leaftarget</t:inst>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid instance-identifier \"/t:cont/t:1leaftarget\" value at character 11 (1leaftarget). /");
 
     data =  "<t:inst xmlns:t=\"urn:tests:types\">/t:cont:t:1leaftarget</t:inst>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid instance-identifier \"/t:cont:t:1leaftarget\" value at character 8 (:t:1leaftarget). /");
 
     data =  "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:invalid/t:path</t:inst>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid instance-identifier \"/t:cont/t:invalid/t:path\" value - path \"/t:cont/t:invalid\" does not exists in the YANG schema. /");
 
     data =  "<inst xmlns=\"urn:tests:types\" xmlns:t=\"urn:tests:invalid\">/t:cont/t:leaftarget</inst>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid instance-identifier \"/t:cont/t:leaftarget\" value - unable to map prefix \"t\" to YANG schema. /");
 
     data =  "<inst xmlns=\"urn:tests:types\">/cont/leaftarget</inst>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid instance-identifier \"/cont/leaftarget\" value - all node names (/cont) MUST be qualified with explicit namespace prefix. /");
 
     data =  "<cont xmlns=\"urn:tests:types\"/><t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaftarget</t:inst>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     /* instance-identifier is here in JSON format because it is already in internal representation without original prefixes */
     logbuf_assert("Invalid instance-identifier \"/types:cont/leaftarget\" value - required instance not found. /");
 
     data =  "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaftarget</t:inst>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     /* instance-identifier is here in JSON format because it is already in internal representation without original prefixes */
     logbuf_assert("Invalid instance-identifier \"/types:cont/leaftarget\" value - required instance not found. /");
 
     data =  "<leaflisttarget xmlns=\"urn:tests:types\">x</leaflisttarget><t:inst xmlns:t=\"urn:tests:types\">/t:leaflisttarget[1</t:inst>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid instance-identifier \"/t:leaflisttarget[1\" value's predicate \"[1\" (Predicate (pos) is not terminated by ']' character.). /");
 
     data =  "<cont xmlns=\"urn:tests:types\"/><t:inst xmlns:t=\"urn:tests:types\">/t:cont[1]</t:inst>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid instance-identifier \"/t:cont[1]\" value - predicate \"[1]\" for container is not accepted. /");
 
     data =  "<cont xmlns=\"urn:tests:types\"/><t:inst xmlns:t=\"urn:tests:types\">[1]</t:inst>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid instance-identifier \"[1]\" value - instance-identifier must starts with '/'. /");
 
     data =  "<cont xmlns=\"urn:tests:types\"><leaflisttarget>1</leaflisttarget></cont><t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaflisttarget[id='1']</t:inst>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid instance-identifier \"/t:cont/t:leaflisttarget[id='1']\" value's predicate \"[id=\" (Missing prefix of a node name.). /");
 
     data =  "<cont xmlns=\"urn:tests:types\"><leaflisttarget>1</leaflisttarget></cont><t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaflisttarget[t:id='1']</t:inst>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid instance-identifier \"/t:cont/t:leaflisttarget[t:id='1']\" value - key-predicate \"[t:id='1']\" is accepted only for lists, not leaf-list. /");
 
     data =  "<cont xmlns=\"urn:tests:types\"><leaflisttarget>1</leaflisttarget><leaflisttarget>2</leaflisttarget></cont>"
             "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaflisttarget[4]</t:inst>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     /* instance-identifier is here in JSON format because it is already in internal representation without original prefixes */
     logbuf_assert("Invalid instance-identifier \"/types:cont/leaflisttarget[4]\" value - required instance not found. /");
 
     data =  "<t:inst-noreq xmlns:t=\"urn:tests:types\">/t:cont/t:leaflisttarget[6]</t:inst-noreq>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid instance-identifier \"/t:cont/t:leaflisttarget[6]\" value - "
             "position-predicate 6 is bigger than allowed max-elements (5). /");
 
     data =  "<cont xmlns=\"urn:tests:types\"><listtarget><id>1</id><value>x</value></listtarget></cont>"
             "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:listtarget[t:value='x']</t:inst>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid instance-identifier \"/t:cont/t:listtarget[t:value='x']\" value - "
             "node \"value\" used in key-predicate \"[t:value='x']\" must be a key. /");
     logbuf_clean();
     data =  "<t:inst-noreq xmlns:t=\"urn:tests:types\">/t:cont/t:listtarget[t:value='x']</t:inst-noreq>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid instance-identifier \"/t:cont/t:listtarget[t:value='x']\" value - "
             "node \"value\" used in key-predicate \"[t:value='x']\" must be a key. /");
     data =  "<t:inst-noreq xmlns:t=\"urn:tests:types\">/t:cont/t:listtarget[t:x='x']</t:inst-noreq>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid instance-identifier \"/t:cont/t:listtarget[t:x='x']\" value - "
             "path \"/t:cont/t:listtarget[t:x\" does not exists in the YANG schema. /");
 
     data =  "<cont xmlns=\"urn:tests:types\"><listtarget><id>1</id><value>x</value></listtarget></cont>"
             "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:listtarget[.='x']</t:inst>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid instance-identifier \"/t:cont/t:listtarget[.='x']\" value - "
             "leaf-list-predicate \"[.='x']\" is accepted only for leaf-lists, not list. /");
 
     data =  "<cont xmlns=\"urn:tests:types\"><leaflisttarget>1</leaflisttarget></cont>"
             "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaflisttarget[.='2']</t:inst>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     /* instance-identifier is here in JSON format because it is already in internal representation without original prefixes */
     logbuf_assert("Invalid instance-identifier \"/types:cont/leaflisttarget[.='2']\" value - required instance not found. /");
 
     data =  "<cont xmlns=\"urn:tests:types\"><leaflisttarget>1</leaflisttarget></cont>"
             "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaflisttarget[.='x']</t:inst>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid instance-identifier \"/t:cont/t:leaflisttarget[.='x']\" value - "
             "leaf-list-predicate \"[.='x']\"'s value is invalid. /");
 
     data =  "<cont xmlns=\"urn:tests:types\"><listtarget><id>1</id><value>x</value></listtarget></cont>"
             "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:listtarget[t:id='x']</t:inst>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid instance-identifier \"/t:cont/t:listtarget[t:id='x']\" value - "
             "key-predicate \"[t:id='x']\"'s key value is invalid. /");
 
     data =  "<cont xmlns=\"urn:tests:types\"><listtarget><id>1</id><value>x</value></listtarget></cont>"
             "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:listtarget[t:id='2']</t:inst>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     /* instance-identifier is here in JSON format because it is already in internal representation without original prefixes */
     logbuf_assert("Invalid instance-identifier \"/types:cont/listtarget[id='2']\" value - required instance not found. /");
 
     data = "<leaflisttarget xmlns=\"urn:tests:types\">a</leaflisttarget>"
            "<leaflisttarget xmlns=\"urn:tests:types\">b</leaflisttarget>"
            "<a:inst xmlns:a=\"urn:tests:types\">/a:leaflisttarget[1][2]</a:inst>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid instance-identifier \"/a:leaflisttarget[1][2]\" value - "
             "position predicate (\"[2]\") cannot be used repeatedly for a single node. /");
 
     data = "<leaflisttarget xmlns=\"urn:tests:types\">a</leaflisttarget>"
            "<leaflisttarget xmlns=\"urn:tests:types\">b</leaflisttarget>"
            "<a:inst xmlns:a=\"urn:tests:types\">/a:leaflisttarget[.='a'][.='b']</a:inst>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid instance-identifier \"/a:leaflisttarget[.='a'][.='b']\" value - "
             "leaf-list-predicate (\"[.='b']\") cannot be used repeatedly for a single node. /");
 
     data = "<list xmlns=\"urn:tests:types\"><id>a</id><value>x</value></list>"
            "<list xmlns=\"urn:tests:types\"><id>b</id><value>y</value></list>"
            "<a:inst xmlns:a=\"urn:tests:types\">/a:list[a:id='a'][a:id='b']/a:value</a:inst>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid instance-identifier \"/a:list[a:id='a'][a:id='b']/a:value\" value - "
                   "key \"id\" is referenced the second time in key-predicate \"[a:id='b']\". /");
 
     data = "<list2 xmlns=\"urn:tests:types\"><id>a</id><value>x</value></list2>"
            "<list2 xmlns=\"urn:tests:types\"><id>b</id><value>y</value></list2>"
            "<a:inst xmlns:a=\"urn:tests:types\">/a:list2[a:id='a']/a:value</a:inst>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid instance-identifier \"/a:list2[a:id='a']/a:value\" value - "
                   "missing 1 key(s) for the list instance \"a:list2[a:id='a']\". /");
 
@@ -1078,7 +1078,7 @@ test_instanceid(void **state)
            "<leaflisttarget xmlns=\"urn:tests:types\">a</leaflisttarget>"
            "<leaflisttarget xmlns=\"urn:tests:types\">b</leaflisttarget>"
            "<a:inst xmlns:a=\"urn:tests:types\">/a:list2[a:id='a'][a:value='a']/a:id</a:inst>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     trees = lyd_trees_new(1, tree);
     /* key-predicate */
     data = "/a:list2[a:id='a'][a:value='b']/a:id";
@@ -1102,7 +1102,7 @@ test_instanceid(void **state)
 
     data = "<leaflisttarget xmlns=\"urn:tests:types\">b</leaflisttarget>"
            "<inst xmlns=\"urn:tests:types\">/a:leaflisttarget[1]</inst>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid instance-identifier \"/a:leaflisttarget[1]\" value - unable to map prefix \"a\" to YANG schema. /");
 
     s->func = NULL;
@@ -1134,7 +1134,7 @@ test_leafref(void **state)
     assert_non_null(lys_parse_mem(s->ctx, schema, LYS_IN_YANG));
 
     /* valid data */
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     tree = tree->prev;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("lref", tree->schema->name);
@@ -1146,7 +1146,7 @@ test_leafref(void **state)
     data = "<list xmlns=\"urn:tests:types\"><id>x</id><targets>a</targets><targets>b</targets></list>"
            "<list xmlns=\"urn:tests:types\"><id>y</id><targets>x</targets><targets>y</targets></list>"
            "<str-norestr xmlns=\"urn:tests:types\">y</str-norestr><lref2 xmlns=\"urn:tests:types\">y</lref2>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     tree = tree->prev;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("lref2", tree->schema->name);
@@ -1156,7 +1156,7 @@ test_leafref(void **state)
 
     data = "<str-norestr xmlns=\"urn:tests:types\">y</str-norestr>"
            "<c xmlns=\"urn:tests:leafrefs\"><l><id>x</id><value>x</value><lr1>y</lr1></l></c>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     tree = tree->prev;
     assert_int_equal(LYS_CONTAINER, tree->schema->nodetype);
     leaf = (struct lyd_node_term*)(lyd_node_children(lyd_node_children(tree))->prev);
@@ -1168,7 +1168,7 @@ test_leafref(void **state)
     data = "<str-norestr xmlns=\"urn:tests:types\">y</str-norestr>"
            "<c xmlns=\"urn:tests:leafrefs\"><l><id>y</id><value>y</value></l>"
               "<l><id>x</id><value>x</value><lr2>y</lr2></l></c>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     tree = tree->prev;
     assert_int_equal(LYS_CONTAINER, tree->schema->nodetype);
     leaf = (struct lyd_node_term*)(lyd_node_children(lyd_node_children(tree)->prev)->prev);
@@ -1181,7 +1181,7 @@ test_leafref(void **state)
            "<list xmlns=\"urn:tests:types\"><id>y</id><targets>c</targets><targets>d</targets></list>"
            "<c xmlns=\"urn:tests:leafrefs\"><x><x>y</x></x>"
               "<l><id>x</id><value>x</value><lr3>c</lr3></l></c>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     tree = tree->prev;
     assert_int_equal(LYS_CONTAINER, tree->schema->nodetype);
     leaf = (struct lyd_node_term*)(lyd_node_children(lyd_node_children(tree)->prev)->prev);
@@ -1193,34 +1193,34 @@ test_leafref(void **state)
     /* invalid value */
     data =  "<leaflisttarget xmlns=\"urn:tests:types\">x</leaflisttarget>"
             "<lref xmlns=\"urn:tests:types\">y</lref>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid leafref value \"y\" - required instance \"/leaflisttarget\" with this value does not exists in the data tree(s). /");
 
     data = "<list xmlns=\"urn:tests:types\"><id>x</id><targets>a</targets><targets>b</targets></list>"
            "<list xmlns=\"urn:tests:types\"><id>y</id><targets>x</targets><targets>y</targets></list>"
            "<str-norestr xmlns=\"urn:tests:types\">y</str-norestr><lref2 xmlns=\"urn:tests:types\">b</lref2>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid leafref value \"b\" - required instance \"../list[id = current()/../str-norestr]/targets\" with this value does not exists in the data tree(s). /");
 
     data = "<list xmlns=\"urn:tests:types\"><id>x</id><targets>a</targets><targets>b</targets></list>"
            "<list xmlns=\"urn:tests:types\"><id>y</id><targets>x</targets><targets>y</targets></list>"
            "<lref2 xmlns=\"urn:tests:types\">b</lref2>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid leafref - required instance \"../list[id = current()/../str-norestr]\" does not exists in the data tree(s). /");
 
     data = "<str-norestr xmlns=\"urn:tests:types\">y</str-norestr><lref2 xmlns=\"urn:tests:types\">b</lref2>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid leafref - required instance \"../list\" does not exists in the data tree(s). /");
 
     data = "<str-norestr xmlns=\"urn:tests:types\">y</str-norestr>"
             "<c xmlns=\"urn:tests:leafrefs\"><l><id>x</id><value>x</value><lr1>a</lr1></l></c>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid leafref value \"a\" - required instance \"../../../t:str-norestr\" with this value does not exists in the data tree(s). /");
 
     data = "<str-norestr xmlns=\"urn:tests:types\">z</str-norestr>"
             "<c xmlns=\"urn:tests:leafrefs\"><l><id>y</id><value>y</value></l>"
               "<l><id>x</id><value>x</value><lr2>z</lr2></l></c>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid leafref - required instance \"../../l[id=current()/../../../t:str-norestr][value=current()/../../../t:str-norestr]\" "
                   "does not exists in the data tree(s). /");
 
@@ -1253,7 +1253,7 @@ test_union(void **state)
             "<un1 xmlns=\"urn:tests:types\">12</un1>";
 
     /* valid data */
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     tree = tree->prev;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("un1", tree->schema->name);
@@ -1281,7 +1281,7 @@ test_union(void **state)
 
     data = "<int8 xmlns=\"urn:tests:types\">11</int8><int8 xmlns=\"urn:tests:types\">12</int8>"
            "<un1 xmlns=\"urn:tests:types\">2</un1>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     tree = tree->prev;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("un1", tree->schema->name);
@@ -1295,7 +1295,7 @@ test_union(void **state)
     lyd_free_all(tree);
 
     data = "<un1 xmlns=\"urn:tests:types\" xmlns:x=\"urn:tests:defs\">x:fast-ethernet</un1>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("un1", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -1321,7 +1321,7 @@ test_union(void **state)
     lyd_free_all(tree);
 
     data = "<un1 xmlns=\"urn:tests:types\" xmlns:d=\"urn:tests:defs\">d:superfast-ethernet</un1>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("un1", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -1335,7 +1335,7 @@ test_union(void **state)
 
     data = "<leaflisttarget xmlns=\"urn:tests:types\">x</leaflisttarget><leaflisttarget xmlns=\"urn:tests:types\">y</leaflisttarget>"
            "<un1 xmlns=\"urn:tests:types\" xmlns:a=\"urn:tests:types\">/a:leaflisttarget[2]</un1>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     tree = tree->prev;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("un1", tree->schema->name);
@@ -1350,7 +1350,7 @@ test_union(void **state)
 
     data = "<leaflisttarget xmlns=\"urn:tests:types\">x</leaflisttarget><leaflisttarget xmlns=\"urn:tests:types\">y</leaflisttarget>"
            "<un1 xmlns=\"urn:tests:types\" xmlns:a=\"urn:tests:types\">/a:leaflisttarget[3]</un1>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     tree = tree->prev;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("un1", tree->schema->name);
@@ -1364,7 +1364,7 @@ test_union(void **state)
     lyd_free_all(tree);
 
     data = "<un1 xmlns=\"urn:tests:types\">123456789012345678901</un1>";
-    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, 0, NULL));
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     logbuf_assert("Invalid union value \"123456789012345678901\" - no matching subtype found. /");
 
     s->func = NULL;

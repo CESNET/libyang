@@ -159,7 +159,7 @@ test_leaf(void **state)
 
     data = "<int8 xmlns=\"urn:tests:types\">\n 15 \t\n  </int8>";
     result = "<int8 xmlns=\"urn:tests:types\">15</int8>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_DATA, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     assert_true((len = lyd_print_mem(&printed, tree, LYD_XML, 0)) >= 0);
     assert_int_equal(len, strlen(printed));
     assert_string_equal(printed, result);
@@ -181,7 +181,7 @@ test_anydata(void **state)
     s->func = test_anydata;
 
     data = "<any xmlns=\"urn:tests:types\"><somexml xmlns:x=\"url:x\" xmlns=\"example.com\"><x:x/></somexml></any>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_DATA, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     assert_true((len = lyd_print_mem(&printed, tree, LYD_XML, 0)) >= 0);
     assert_int_equal(len, strlen(printed));
     assert_string_equal(printed, data);
@@ -189,7 +189,7 @@ test_anydata(void **state)
     lyd_free_all(tree);
 
     data = "<any xmlns=\"urn:tests:types\"/>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_DATA, NULL));
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_OPT_VAL_DATA_ONLY));
     assert_true((len = lyd_print_mem(&printed, tree, LYD_XML, 0)) >= 0);
     assert_int_equal(len, strlen(printed));
     assert_string_equal(printed, data);
@@ -198,6 +198,8 @@ test_anydata(void **state)
 
     s->func = NULL;
 }
+
+#if 0
 
 static void
 test_rpc(void **state)
@@ -277,12 +279,13 @@ test_rpc(void **state)
     s->func = NULL;
 }
 
+#endif
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_leaf, setup, teardown),
         cmocka_unit_test_setup_teardown(test_anydata, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_rpc, setup, teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

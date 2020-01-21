@@ -229,6 +229,7 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_DEV_NOT_PRESENT LYVE_REFERENCE, "Invalid deviation %s \"%s\" property \"%s\" which is not present."
 
 #define LY_VCODE_NOWHEN         LYVE_DATA, "When condition \"%s\" not satisfied."
+#define LY_VCODE_NOMAND         LYVE_DATA, "Mandatory node \"%s\" instance does not exist."
 
 /******************************************************************************
  * Context

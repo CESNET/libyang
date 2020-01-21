@@ -75,6 +75,31 @@ setup(void **state)
                 "type string;"
             "}"
         "}";
+    const char *schema_b =
+        "module b {"
+            "namespace urn:tests:b;"
+            "prefix b;"
+            "yang-version 1.1;"
+
+            "choice choic {"
+                "mandatory true;"
+                "leaf a {"
+                    "type string;"
+                "}"
+                "case b {"
+                    "leaf l {"
+                        "type string;"
+                    "}"
+                "}"
+            "}"
+            "leaf c {"
+                "mandatory true;"
+                "type string;"
+            "}"
+            "leaf d {"
+                "type empty;"
+            "}"
+        "}";
 
 #if ENABLE_LOGGER_CHECKING
     ly_set_log_clb(logger, 1);
@@ -82,6 +107,7 @@ setup(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
     assert_non_null(lys_parse_mem(ctx, schema_a, LYS_IN_YANG));
+    assert_non_null(lys_parse_mem(ctx, schema_b, LYS_IN_YANG));
 
     return 0;
 }
@@ -124,19 +150,19 @@ test_when(void **state)
     struct lyd_node *tree;
 
     data = "<c xmlns=\"urn:tests:a\">hey</c>";
-    assert_int_equal(LY_EVALID, lyd_parse_xml(ctx, data, 0, NULL, &tree));
+    assert_int_equal(LY_EVALID, lyd_parse_xml(ctx, data, LYD_OPT_VAL_DATA_ONLY, &tree));
     assert_null(tree);
     logbuf_assert("When condition \"/cont/b = 'val_b'\" not satisfied.");
 
     data = "<cont xmlns=\"urn:tests:a\"><b>val_b</b></cont><c xmlns=\"urn:tests:a\">hey</c>";
-    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, 0, NULL, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, LYD_OPT_VAL_DATA_ONLY, &tree));
     assert_non_null(tree);
     assert_string_equal("c", tree->next->schema->name);
     assert_int_equal(LYD_WHEN_TRUE, tree->next->flags);
     lyd_free_all(tree);
 
     data = "<cont xmlns=\"urn:tests:a\"><a>val</a><b>val_b</b></cont><c xmlns=\"urn:tests:a\">val_c</c>";
-    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, 0, NULL, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, LYD_OPT_VAL_DATA_ONLY, &tree));
     assert_non_null(tree);
     assert_string_equal("a", lyd_node_children(tree)->schema->name);
     assert_int_equal(LYD_WHEN_TRUE, lyd_node_children(tree)->flags);
@@ -147,10 +173,42 @@ test_when(void **state)
     *state = NULL;
 }
 
+static void
+test_mandatory(void **state)
+{
+    *state = test_mandatory;
+
+    const char *data;
+    struct lyd_node *tree;
+
+    data = "<d xmlns=\"urn:tests:b\"/>";
+    assert_int_equal(LY_EVALID, lyd_parse_xml(ctx, data, LYD_OPT_VAL_DATA_ONLY, &tree));
+    assert_null(tree);
+    logbuf_assert("Mandatory node \"choic\" instance does not exist. /b:choic");
+
+    data = "<l xmlns=\"urn:tests:b\">string</l><d xmlns=\"urn:tests:b\"/>";
+    assert_int_equal(LY_EVALID, lyd_parse_xml(ctx, data, LYD_OPT_VAL_DATA_ONLY, &tree));
+    assert_null(tree);
+    logbuf_assert("Mandatory node \"c\" instance does not exist. /b:c");
+
+    data = "<a xmlns=\"urn:tests:b\">string</a>";
+    assert_int_equal(LY_EVALID, lyd_parse_xml(ctx, data, LYD_OPT_VAL_DATA_ONLY, &tree));
+    assert_null(tree);
+    logbuf_assert("Mandatory node \"c\" instance does not exist. /b:c");
+
+    data = "<a xmlns=\"urn:tests:b\">string</a><c xmlns=\"urn:tests:b\">string2</c>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, LYD_OPT_VAL_DATA_ONLY, &tree));
+    assert_non_null(tree);
+    lyd_free_withsiblings(tree);
+
+    *state = NULL;
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_when, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_mandatory, setup, teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

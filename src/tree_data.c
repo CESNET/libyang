@@ -346,7 +346,7 @@ lyd_attr2str(const struct lyd_attr *attr, int *dynamic)
 }
 
 API struct lyd_node *
-lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options, const struct lyd_node **trees)
+lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options)
 {
     struct lyd_node *result = NULL;
 #if 0
@@ -355,10 +355,7 @@ lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int optio
 
     LY_CHECK_ARG_RET(ctx, ctx, NULL);
 
-    if (lyd_parse_options_check(ctx, options, __func__)) {
-        return NULL;
-    }
-
+#if 0
     if (options & LYD_OPT_RPCREPLY) {
         /* first item in trees is mandatory - the RPC/action request */
         LY_CHECK_ARG_RET(ctx, trees, LY_ARRAY_SIZE(trees) >= 1, NULL);
@@ -369,7 +366,6 @@ lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int optio
         }
     }
 
-#if 0
     if (options & LYD_OPT_DATA_TEMPLATE) {
         yang_data_name = va_arg(ap, const char *);
     }
@@ -381,7 +377,7 @@ lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int optio
 
     switch (format) {
     case LYD_XML:
-        lyd_parse_xml(ctx, data, options, trees, &result);
+        lyd_parse_xml(ctx, data, options, &result);
         break;
 #if 0
     case LYD_JSON:
@@ -400,7 +396,7 @@ lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int optio
 }
 
 API struct lyd_node *
-lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, const struct lyd_node **trees)
+lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options)
 {
     struct lyd_node *result;
     size_t length;
@@ -413,7 +409,7 @@ lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, const s
     }
 
     LY_CHECK_RET(ly_mmap(ctx, fd, &length, (void **)&addr), NULL);
-    result = lyd_parse_mem(ctx, addr ? addr : "", format, options, trees);
+    result = lyd_parse_mem(ctx, addr ? addr : "", format, options);
     if (addr) {
         ly_munmap(addr, length);
     }
@@ -422,7 +418,7 @@ lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, const s
 }
 
 API struct lyd_node *
-lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int options, const struct lyd_node **trees)
+lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int options)
 {
     int fd;
     struct lyd_node *result;
@@ -451,7 +447,7 @@ lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int opti
         } /* else still unknown, try later to detect it from the content */
     }
 
-    result = lyd_parse_fd(ctx, fd, format, options, trees);
+    result = lyd_parse_fd(ctx, fd, format, options);
     close(fd);
 
     return result;

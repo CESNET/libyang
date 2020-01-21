@@ -281,7 +281,7 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
             LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_REFERENCE, "No module with namespace \"%s\" in the context.", ns->uri);
             goto error;
         }
-        snode = lys_child(parent ? parent->schema : NULL, mod, name, name_len, 0, (ctx->options & LYD_OPT_RPCREPLY) ? LYS_GETNEXT_OUTPUT : 0);
+        snode = lys_child(parent ? parent->schema : NULL, mod, name, name_len, 0, 0);
         if (!snode) {
             LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_REFERENCE, "Element \"%.*s\" not found in the \"%s\" module.", name_len, name, mod->name);
             goto error;
@@ -290,21 +290,17 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
         /* allocate new node */
         switch (snode->nodetype) {
         case LYS_ACTION:
-            if ((ctx->options & LYD_OPT_TYPEMASK) != LYD_OPT_RPC) {
-                LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_DATA, "Unexpected RPC/action element \"%.*s\" in %s data set.",
-                       name_len, name, lyd_parse_options_type2str(ctx->options & LYD_OPT_TYPEMASK));
-                goto error;
-            }
-            cur = calloc(1, sizeof(struct lyd_node_inner));
-            break;
+            LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_DATA, "Unexpected RPC/action element \"%.*s\".",
+                   name_len, name);
+            goto error;
+            /*cur = calloc(1, sizeof(struct lyd_node_inner));
+            break;*/
         case LYS_NOTIF:
-            if ((ctx->options & LYD_OPT_TYPEMASK) != LYD_OPT_RPC) {
-                LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_DATA, "Unexpected Notification element \"%.*s\" in %s data set.",
-                       name_len, name, lyd_parse_options_type2str(ctx->options));
-                goto error;
-            }
-            cur = calloc(1, sizeof(struct lyd_node_inner));
-            break;
+            LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_DATA, "Unexpected notification element \"%.*s\".",
+                   name_len, name);
+            goto error;
+            /*cur = calloc(1, sizeof(struct lyd_node_inner));
+            break;*/
         case LYS_CONTAINER:
         case LYS_LIST:
             cur = calloc(1, sizeof(struct lyd_node_inner));
@@ -521,7 +517,7 @@ error:
 }
 
 LY_ERR
-lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, const struct lyd_node **trees, struct lyd_node **result)
+lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, struct lyd_node **result)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node_inner *parent = NULL;
@@ -535,6 +531,7 @@ lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, const struct ly
     /* init */
     *result = NULL;
 
+#if 0
     if (options & LYD_OPT_RPCREPLY) {
         /* prepare container for RPC reply, for which we need RPC
          * - prepare *result as top-level node
@@ -556,6 +553,7 @@ lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, const struct ly
         LY_CHECK_ERR_RET(!parent, LOGERR(ctx, ly_errcode(ctx), "Unable to duplicate RPC/action container for RPC/action reply."), ly_errcode(ctx));
         for (*result = (struct lyd_node*)parent; (*result)->parent; *result = (struct lyd_node*)(*result)->parent);
     }
+#endif
 
     if (!data || !data[0]) {
         /* no data - just check for missing mandatory nodes */
@@ -576,6 +574,7 @@ lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, const struct ly
     LY_CHECK_GOTO(ret, cleanup);
 
 validation:
+#if 0
     if ((!(*result) || (parent && !parent->child)) && (options & (LYD_OPT_RPC | LYD_OPT_NOTIF))) {
         /* error, missing top level node identify RPC and Notification */
         LOGERR(ctx, LY_EINVAL, "Invalid input data of data parser - expected %s which cannot be empty.",
@@ -583,6 +582,7 @@ validation:
         ret = LY_EINVAL;
         goto cleanup;
     }
+#endif
 
     /* context node and other validation tasks that depend on other data nodes */
     ret = lyd_validate_modules(result_trees, NULL, 0, ctx, options);

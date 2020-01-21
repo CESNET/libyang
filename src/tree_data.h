@@ -393,63 +393,27 @@ struct lyd_node_any {
  */
 
 #define LYD_OPT_DATA       0x00 /**< Default type of data - complete datastore content with configuration as well as
-                                     state data. To handle possibly missing (but by default required) ietf-yang-library
-                                     data, use #LYD_OPT_DATA_NO_YANGLIB or #LYD_OPT_DATA_ADD_YANGLIB options. */
-#define LYD_OPT_CONFIG     0x01 /**< A configuration datastore - complete datastore without state data.
-                                     Validation modifications:
-                                     - status data are not allowed */
-#define LYD_OPT_GET        0x02 /**< Data content from a NETCONF reply message to the NETCONF \<get\> operation.
-                                     Validation modifications:
-                                     - mandatory nodes can be omitted
-                                     - leafrefs and instance-identifier resolution is allowed to fail
-                                     - list's keys/unique nodes are not required (so duplication is not checked)
-                                     - must and when evaluation skipped */
-#define LYD_OPT_GETCONFIG  0x04 /**< Data content from a NETCONF reply message to the NETCONF \<get-config\> operation
-                                     Validation modifications:
-                                     - mandatory nodes can be omitted
-                                     - leafrefs and instance-identifier resolution is allowed to fail
-                                     - list's keys/unique nodes are not required (so duplication is not checked)
-                                     - must and when evaluation skipped
-                                     - status data are not allowed */
-#define LYD_OPT_EDIT       0x08 /**< Content of the NETCONF \<edit-config\>'s config element.
-                                     Validation modifications:
-                                     - mandatory nodes can be omitted
-                                     - leafrefs and instance-identifier resolution is allowed to fail
-                                     - must and when evaluation skipped
-                                     - status data are not allowed */
-#define LYD_OPT_RPC        0x10 /**< Data represents RPC or action input parameters. */
-#define LYD_OPT_RPCREPLY   0x20 /**< Data represents RPC or action output parameters (maps to NETCONF <rpc-reply> data). */
-#define LYD_OPT_NOTIF      0x40 /**< Data represents an event notification data. */
-#define LYD_OPT_NOTIF_FILTER 0x80 /**< Data represents a filtered event notification data.
-                                       Validation modification:
-                                       - the only requirement is that the data tree matches the schema tree */
-#define LYD_OPT_TYPEMASK   0x10000ff /**< Mask to filter data type options. Always only a single data type option (only
-                                          single bit from the lower 8 bits) can be set. */
+                                     state data. */
+#define LYD_OPT_CONFIG     LYD_OPT_NO_STATE /**< A configuration datastore - complete datastore without state data. */
+#define LYD_OPT_GET        LYD_OPT_PARSE_ONLY /**< Data content from a NETCONF reply message to the NETCONF \<get\> operation. */
+#define LYD_OPT_GETCONFIG  LYD_OPT_PARSE_ONLY | LYD_OPT_NO_STATE /**< Data content from a NETCONF reply message to
+                                                                      the NETCONF \<get-config\> operation. */
+#define LYD_OPT_EDIT       LYD_OPT_PARSE_ONLY | LYD_OPT_EMPTY_INST /**< Content of the NETCONF \<edit-config\>'s config element. */
 
-/* 0x100 reserved, used internally */
-#define LYD_OPT_STRICT     0x0200 /**< Instead of silent ignoring data without schema definition, raise an error. */
-#define LYD_OPT_DESTRUCT   0x0400 /**< Free the provided XML tree during parsing the data. With this option, the
-                                       provided XML tree is affected and all successfully parsed data are freed.
-                                       This option is applicable only to lyd_parse_xml() function. */
-#define LYD_OPT_OBSOLETE   0x0800 /**< Raise an error when an obsolete statement (status set to obsolete) is used. */
-#define LYD_OPT_NOSIBLINGS 0x1000 /**< Parse only a single XML tree from the input. This option applies only to
-                                       XML input data. */
-#define LYD_OPT_TRUSTED    0x2000 /**< Data comes from a trusted source and it is not needed to validate them. Data
-                                       are connected with the schema, but the most validation checks (mandatory nodes,
-                                       list instance uniqueness, etc.) are not performed. This option does not make
-                                       sense for lyd_validate() so it is ignored by this function. */
-#define LYD_OPT_WHENAUTODEL 0x4000 /**< Automatically delete subtrees with false when-stmt condition. The flag is
-                                        applicable only in combination with #LYD_OPT_DATA and #LYD_OPT_CONFIG flags.
-                                        If used, libyang will not generate a validation error. */
-#define LYD_OPT_NOEXTDEPS  0x8000 /**< Allow external dependencies (external leafrefs, instance-identifiers, must,
-                                       and when) to not be resolved/satisfied during validation. */
-#define LYD_OPT_DATA_NO_YANGLIB  0x10000 /**< Ignore (possibly) missing ietf-yang-library data. Applicable only with #LYD_OPT_DATA. */
-#define LYD_OPT_DATA_ADD_YANGLIB 0x20000 /**< Add missing ietf-yang-library data into the validated data tree. Applicable
-                                              only with #LYD_OPT_DATA. If some ietf-yang-library data are present, they are
-                                              preserved and option is ignored. */
-#define LYD_OPT_VAL_DIFF 0x40000 /**< Flag only for validation, store all the data node changes performed by the validation
-                                      in a diff structure. */
-#define LYD_OPT_DATA_TEMPLATE 0x1000000 /**< Data represents YANG data template. */
+//#define LYD_OPT_STRICT     0x0001 /**< Instead of silent ignoring data without schema definition raise an error. */
+#define LYD_OPT_PARSE_ONLY 0x0002 /**< Data will be only parsed and no (only required) validation will be performed. */
+#define LYD_OPT_NO_STATE   0x0004 /**< Consider state data not allowed and raise an error if they are found. */
+#define LYD_OPT_EMPTY_INST 0x0008 /**< Allow leaf/leaf-list instances without values and lists without keys. */
+#define LYD_OPT_VAL_DATA_ONLY 0x0010 /**< Validate only modules whose data actually exist. */
+//#define LYD_OPT_DESTRUCT   0x0400 /**< Free the provided XML tree during parsing the data. With this option, the
+//                                       provided XML tree is affected and all successfully parsed data are freed.
+//                                       This option is applicable only to lyd_parse_xml() function. */
+//#define LYD_OPT_OBSOLETE   0x0800 /**< Raise an error when an obsolete statement (status set to obsolete) is used. */
+//#define LYD_OPT_NOSIBLINGS 0x1000 /**< Parse only a single XML tree from the input. This option applies only to
+//                                       XML input data. */
+//#define LYD_OPT_VAL_DIFF 0x40000 /**< Flag only for validation, store all the data node changes performed by the validation
+//                                      in a diff structure. */
+//#define LYD_OPT_DATA_TEMPLATE 0x1000000 /**< Data represents YANG data template. */
 
 /**@} dataparseroptions */
 
@@ -493,16 +457,12 @@ const struct lyd_node *lyd_search(const struct lyd_node *first, const struct lys
  * @param[in] ctx Context to connect with the data tree being built here.
  * @param[in] data Serialized data in the specified format.
  * @param[in] format Format of the input data to be parsed.
- * @param[in] options Parser options, see @ref parseroptions. \p format LYD_LYB uses #LYD_OPT_TRUSTED implicitly.
- * @param[in] trees ([Sized array](@ref sizedarrays)) of data trees (e.g. when validating RPC/Notification) where the required
- *            data instances (leafref target, instance-identifier, when, must) can be placed. To simply prepare this structure,
- *            use lyd_trees_new(). In case of parsing RPC/action reply (LYD_OPT_RPCREPLY), the first tree in the array MUST be
- *            complete RPC/action data tree (the source request) for the reply.
+ * @param[in] options Parser options, see @ref parseroptions. \p format LYD_LYB uses #LYD_OPT_PARSE_ONLY implicitly.
  * @return Pointer to the built data tree or NULL in case of empty \p data. To free the returned structure,
  *         use lyd_free_all().
  * @return NULL in case of error. The error information can be then obtained using ly_err* functions.
  */
-struct lyd_node *lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options, const struct lyd_node **trees);
+struct lyd_node *lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options);
 
 /**
  * @brief Read (and validate) data from the given file descriptor.
@@ -517,16 +477,12 @@ struct lyd_node *lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT 
  * @param[in] ctx Context to connect with the data tree being built here.
  * @param[in] fd The standard file descriptor of the file containing the data tree in the specified format.
  * @param[in] format Format of the input data to be parsed.
- * @param[in] options Parser options, see @ref parseroptions. \p format LYD_LYB uses #LYD_OPT_TRUSTED implicitly.
- * @param[in] trees ([Sized array](@ref sizedarrays)) of data trees (e.g. when validating RPC/Notification) where the required
- *            data instances (leafref target, instance-identifier, when, must) can be placed. To simply prepare this structure,
- *            use lyd_trees_new(). In case of parsing RPC/action reply (LYD_OPT_RPCREPLY), the first tree in the array MUST be
- *            complete RPC/action data tree (the source request) for the reply.
+ * @param[in] options Parser options, see @ref parseroptions. \p format LYD_LYB uses #LYD_OPT_PARSE_ONLY implicitly.
  * @return Pointer to the built data tree or NULL in case of empty file. To free the returned structure,
  *         use lyd_free_all().
  * @return NULL in case of error. The error information can be then obtained using ly_err* functions.
  */
-struct lyd_node *lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, const struct lyd_node **trees);
+struct lyd_node *lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options);
 
 /**
  * @brief Read (and validate) data from the given file path.
@@ -539,16 +495,12 @@ struct lyd_node *lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int
  * @param[in] ctx Context to connect with the data tree being built here.
  * @param[in] path Path to the file containing the data tree in the specified format.
  * @param[in] format Format of the input data to be parsed.
- * @param[in] options Parser options, see @ref parseroptions. \p format LYD_LYB uses #LYD_OPT_TRUSTED implicitly.
- * @param[in] trees ([Sized array](@ref sizedarrays)) of data trees (e.g. when validating RPC/Notification) where the required
- *            data instances (leafref target, instance-identifier, when, must) can be placed. To simply prepare this structure,
- *            use lyd_trees_new(). In case of parsing RPC/action reply (LYD_OPT_RPCREPLY), the first tree in the array MUST be
- *            complete RPC/action data tree (the source request) for the reply.
+ * @param[in] options Parser options, see @ref parseroptions. \p format LYD_LYB uses #LYD_OPT_PARSE_ONLY implicitly.
  * @return Pointer to the built data tree or NULL in case of empty file. To free the returned structure,
  *         use lyd_free_all().
  * @return NULL in case of error. The error information can be then obtained using ly_err* functions.
  */
-struct lyd_node *lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int options, const struct lyd_node **trees);
+struct lyd_node *lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int options);
 
 /**
  * @brief Free all the nodes (even parents of the node) in the data tree.

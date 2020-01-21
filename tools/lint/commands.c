@@ -637,7 +637,6 @@ parse_data(char *filepath, int *options, const struct lyd_node **trees, const ch
         }
         lyxml_free(ctx, xml);
     } else {
-#endif
         if (opts & LYD_OPT_RPCREPLY) {
             if (!rpc_act_file) {
                 fprintf(stderr, "RPC/action reply data require additional argument (file with the RPC/action).\n");
@@ -664,22 +663,17 @@ parse_data(char *filepath, int *options, const struct lyd_node **trees, const ch
             data = lyd_parse_path(ctx, filepath, informat, opts, trees);
         } else if (opts & (LYD_OPT_RPC | LYD_OPT_NOTIF)) {
             data = lyd_parse_path(ctx, filepath, informat, opts, trees);
-#if 0
         } else if (opts & LYD_OPT_DATA_TEMPLATE) {
             if (!rpc_act_file) {
                 fprintf(stderr, "YANG-DATA require additional argument (name instance of yang-data extension).\n");
                 return EXIT_FAILURE;
             }
             data = lyd_parse_path(ctx, filepath, informat, opts, rpc_act_file);
-#endif
         } else {
-            if (!(opts & LYD_OPT_TYPEMASK)) {
-                /* automatically add yang-library data */
-                opts |= LYD_OPT_DATA_ADD_YANGLIB;
-            }
-            data = lyd_parse_path(ctx, filepath, informat, opts, NULL);
-        }
+#endif
+            data = lyd_parse_path(ctx, filepath, informat, opts);
 #if 0
+        }
     }
 #endif
     lyd_free_all(rpc_act);
@@ -780,6 +774,7 @@ cmd_data(const char *arg)
             }
             out_path = optarg;
             break;
+#if 0
         case 'r':
             if (optarg[0] == '!') {
                 /* ignore extenral dependencies to the running datastore */
@@ -802,27 +797,20 @@ cmd_data(const char *arg)
             options |= LYD_OPT_STRICT;
             options |= LYD_OPT_OBSOLETE;
             break;
+#endif
         case 't':
             if (!strcmp(optarg, "auto")) {
-                options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_TYPEMASK;
+                /* no flags */
             } else if (!strcmp(optarg, "data")) {
-                options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_DATA;
+                /* no flags */
             } else if (!strcmp(optarg, "config")) {
-                options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_CONFIG;
+                options |= LYD_OPT_CONFIG;
             } else if (!strcmp(optarg, "get")) {
-                options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_GET;
+                options |= LYD_OPT_GET;
             } else if (!strcmp(optarg, "getconfig")) {
-                options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_GETCONFIG;
+                options |= LYD_OPT_GETCONFIG;
             } else if (!strcmp(optarg, "edit")) {
-                options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_EDIT;
-            } else if (!strcmp(optarg, "rpc")) {
-                options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPC;
-            } else if (!strcmp(optarg, "rpcreply")) {
-                options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_RPCREPLY;
-            } else if (!strcmp(optarg, "notif")) {
-                options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_NOTIF;
-            } else if (!strcmp(optarg, "yangdata")) {
-                options = (options & ~LYD_OPT_TYPEMASK) | LYD_OPT_DATA_TEMPLATE;
+                options |= LYD_OPT_EDIT;
             } else {
                 fprintf(stderr, "Invalid parser option \"%s\".\n", optarg);
                 cmd_data_help();
@@ -854,11 +842,7 @@ cmd_data(const char *arg)
     }
 
     if (outformat != LYD_UNKNOWN) {
-        if (options & LYD_OPT_RPCREPLY) {
-            lyd_print_file(output, lyd_node_children(data), outformat, LYDP_WITHSIBLINGS | LYDP_FORMAT | printopt);
-        } else {
-            lyd_print_file(output, data, outformat, LYDP_WITHSIBLINGS | LYDP_FORMAT | printopt);
-        }
+        lyd_print_file(output, data, outformat, LYDP_WITHSIBLINGS | LYDP_FORMAT | printopt);
     }
 
     ret = 0;

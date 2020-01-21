@@ -160,26 +160,103 @@ lyd_val_next_module(const struct lys_module **modules, int mod_count, struct ly_
 }
 
 static LY_ERR
-lyd_validate_children_r(struct lyd_node *sibling, const struct lysc_node *sparent, const struct lysc_module *mod, int options)
+lyd_validate_mandatory(const struct lysc_node *snode, struct lyd_node *sibling)
+{
+    struct lyd_node *node;
+    int is_choice = 0;
+
+    if (snode->nodetype == LYS_CHOICE) {
+        is_choice = 1;
+    }
+
+    for (node = sibling; node; node = node->next) {
+        if (is_choice) {
+            if (node->schema->parent && (node->schema->parent->nodetype & LYS_CASE) && (node->schema->parent->parent == snode)) {
+                /* case data instance found */
+                return LY_SUCCESS;
+            }
+        } else {
+            if (node->schema == snode) {
+                /* data instance found */
+                return LY_SUCCESS;
+            }
+        }
+    }
+
+    /* node instance not found */
+    LOGVAL(snode->module->ctx, LY_VLOG_LYSC, snode, LY_VCODE_NOMAND, snode->name);
+    return LY_EVALID;
+}
+
+static LY_ERR
+lyd_validate_minmax(const struct lysc_node *snode, uint32_t min, uint32_t max, struct lyd_node *sibling)
+{
+    /* TODO snode count in siblings */
+    return LY_SUCCESS;
+}
+
+static LY_ERR
+lyd_validate_unique(const struct lysc_node *snode, struct lysc_node_leaf ***uniques, struct lyd_node *sibling)
+{
+    /* TODO check uniques in siblings and children */
+    return LY_SUCCESS;
+}
+
+static LY_ERR
+lyd_validate_cases(const struct lysc_node_case *cases, struct lyd_node *sibling)
+{
+    /* TODO check there are nodes only from a single case,
+     * what if not? validation error or autodelete */
+    return LY_SUCCESS;
+}
+
+static LY_ERR
+lyd_validate_siblings_r(struct lyd_node *sibling, const struct lysc_node *sparent, const struct lysc_module *mod, int options)
 {
     LY_ERR ret;
     const struct lysc_node *snode = NULL;
+    struct lysc_node_list *slist;
     struct lyd_node *node;
 
-    while ((snode = lys_getnext(snode, sparent, mod, 0))) {
-        /* TODO mandatory - mandatory snode must exist */
-        /* TODO min/max elem - check snode element count */
-        /* TODO unique - check snode unique */
-        /* TODO choice - case duplicites/mandatory */
+    /* disabled nodes are skipped by lys_getnext */
+    while ((snode = lys_getnext(snode, sparent, mod, LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE))) {
+        /* check mandatory existence */
+        if (snode->flags & LYS_MAND_TRUE) {
+            LY_CHECK_RET(lyd_validate_mandatory(snode, sibling));
+        }
+
+        /* check min-elements and max-elements */
+        if (snode->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
+            slist = (struct lysc_node_list *)snode;
+            if (slist->min || slist->max) {
+                LY_CHECK_RET(lyd_validate_minmax(snode, slist->min, slist->max, sibling));
+            }
+        }
+
+        /* check unique */
+        if (snode->nodetype == LYS_LIST) {
+            slist = (struct lysc_node_list *)snode;
+            if (slist->uniques) {
+                LY_CHECK_RET(lyd_validate_unique(snode, slist->uniques, sibling));
+            }
+        }
+
+        /* check case duplicites */
+        if (snode->nodetype == LYS_CHOICE) {
+            LY_CHECK_RET(lyd_validate_cases(((struct lysc_node_choice *)snode)->cases, sibling));
+        }
     }
 
     for (node = sibling; node; node = node->next) {
         /* TODO node's must */
         /* TODO node instance duplicites */
         /* TODO node status */
+        /* TODO node's if-features */
+        /* TODO node list keys */
+        /* node value including if-feature is checked by plugins */
 
         /* validate all children */
-        LY_CHECK_RET(lyd_validate_children_r((struct lyd_node *)lyd_node_children(sibling), node->schema, mod, options));
+        LY_CHECK_RET(lyd_validate_siblings_r((struct lyd_node *)lyd_node_children(sibling), node->schema, mod, options));
     }
 
     return LY_SUCCESS;
@@ -194,24 +271,35 @@ lyd_validate_modules(const struct lyd_node **trees, const struct lys_module **mo
     const struct lys_module *mod;
     struct lyd_node *tree;
 
-    while ((mod = lyd_val_next_module(modules, mod_count, ctx, &i))) {
-        if (!mod->implemented) {
-            continue;
-        }
-
-        /* find data of this module, if any */
-        tree = NULL;
+    if (options & LYD_OPT_VAL_DATA_ONLY) {
         if (trees) {
             for (j = 0; j < LY_ARRAY_SIZE(trees); ++j) {
-                if (trees[j]->schema->module == mod) {
-                    tree = (struct lyd_node *)trees[j];
-                    break;
-                }
+                tree = (struct lyd_node *)trees[j];
+
+                /* validate all top-level nodes and then inner nodes recursively */
+                LY_CHECK_RET(lyd_validate_siblings_r(tree, NULL, tree->schema->module->compiled, options));
             }
         }
+    } else {
+        while ((mod = lyd_val_next_module(modules, mod_count, ctx, &i))) {
+            if (!mod->implemented) {
+                continue;
+            }
 
-        /* validate all top-level nodes and then inner nodes recursively */
-        LY_CHECK_RET(lyd_validate_children_r(tree, NULL, mod->compiled, options));
+            /* find data of this module, if any */
+            tree = NULL;
+            if (trees) {
+                for (j = 0; j < LY_ARRAY_SIZE(trees); ++j) {
+                    if (trees[j]->schema->module == mod) {
+                        tree = (struct lyd_node *)trees[j];
+                        break;
+                    }
+                }
+            }
+
+            /* validate all top-level nodes and then inner nodes recursively */
+            LY_CHECK_RET(lyd_validate_siblings_r(tree, NULL, mod->compiled, options));
+        }
     }
 
     return LY_SUCCESS;

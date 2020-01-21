@@ -3521,7 +3521,7 @@ lys_compile_node_uniqness(struct lysc_ctx *ctx, const struct lysc_node *children
     }
     return LY_SUCCESS;
 error:
-    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DUPIDENT, name, "data definition/RPC/action/Notification");
+    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DUPIDENT, name, "data definition/RPC/action/notification");
     return LY_EEXIST;
 }
 
@@ -3558,7 +3558,7 @@ lys_compile_action(struct lysc_ctx *ctx, struct lysp_action *action_p,
     if (ctx->options & (LYSC_OPT_RPC_MASK | LYSC_OPT_NOTIFICATION)) {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
                "Action \"%s\" is placed inside %s.", action_p->name,
-               ctx->options & LYSC_OPT_RPC_MASK ? "another RPC/action" : "Notification");
+               ctx->options & LYSC_OPT_RPC_MASK ? "another RPC/action" : "notification");
         return LY_EVALID;
     }
 
@@ -3643,7 +3643,7 @@ lys_compile_notif(struct lysc_ctx *ctx, struct lysp_notif *notif_p,
     if (ctx->options & (LYSC_OPT_RPC_MASK | LYSC_OPT_NOTIFICATION)) {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
                "Notification \"%s\" is placed inside %s.", notif_p->name,
-               ctx->options & LYSC_OPT_RPC_MASK ? "RPC/action" : "another Notification");
+               ctx->options & LYSC_OPT_RPC_MASK ? "RPC/action" : "another notification");
         return LY_EVALID;
     }
 
@@ -3987,7 +3987,7 @@ lys_compile_node_list_unique(struct lysc_ctx *ctx, struct lys_module *context_mo
             } else if (flags) {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                        "Unique's descendant-schema-nodeid \"%.*s\" refers into %s node.",
-                       len, keystr, flags & LYSC_OPT_NOTIFICATION ? "Notification" : "RPC/action");
+                       len, keystr, flags & LYSC_OPT_NOTIFICATION ? "notification" : "RPC/action");
                 return LY_EVALID;
             }
 
@@ -4813,7 +4813,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, const stru
         }
         if (aug_p->notifs) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                   "Invalid augment of %s node which is not allowed to contain Notification node \"%s\".",
+                   "Invalid augment of %s node which is not allowed to contain notification node \"%s\".",
                    lys_nodetype2str(target->nodetype), aug_p->notifs[0].name);
             return LY_EVALID;
         }
@@ -5247,7 +5247,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
                 LY_CHECK_GOTO(lys_compile_change_config(ctx, node, rfn->flags, 0, 1), cleanup);
             } else {
                 LOGWRN(ctx->ctx, "Refining config inside %s has no effect (%s).",
-                       flags & LYSC_OPT_NOTIFICATION ? "Notification" : "RPC/action", ctx->path);
+                       flags & LYSC_OPT_NOTIFICATION ? "notification" : "RPC/action", ctx->path);
             }
         }
 
@@ -6208,7 +6208,7 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p)
                     }
                     if (devs[u]->flags) {
                         LOGWRN(ctx->ctx, "Deviating config inside %s has no effect.",
-                               devs[u]->flags & LYSC_OPT_NOTIFICATION ? "Notification" : "RPC/action");
+                               devs[u]->flags & LYSC_OPT_NOTIFICATION ? "notification" : "RPC/action");
                     }
                     if (devs[u]->target->flags & LYS_SET_CONFIG) {
                         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
