@@ -1530,7 +1530,7 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
         result = reply_top;
     }
 
-    if (!result) {
+    if (!result && (options & LYD_OPT_STRICT)) {
         LOGERR(ctx, LY_EVALID, "Model for the data to be linked with not found.");
         goto error;
     }
