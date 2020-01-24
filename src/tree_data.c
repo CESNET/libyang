@@ -149,7 +149,7 @@ lyd_list_equal(struct lyd_node *node1, struct lyd_node *node2, int with_defaults
         break;
     case LYS_LIST:
         if (((struct lys_node_list *)node1->schema)->keys_size) {
-            /* lists with keys, their equivalence isb ased on their keys */
+            /* lists with keys, their equivalence is based on their keys */
             elem1 = node1->child;
             elem2 = node2->child;
             elem1_sch = NULL;
@@ -180,7 +180,7 @@ lyd_list_equal(struct lyd_node *node1, struct lyd_node *node2, int with_defaults
                 return 1;
             }
         } else {
-            /* lists wihtout keys, their equivalence is based on values of all the children (both dierct and indirect) */
+            /* lists wihtout keys, their equivalence is based on values of all the children (both direct and indirect) */
             if (!node1->child && !node2->child) {
                 /* no children, nothing to compare */
                 return 1;
