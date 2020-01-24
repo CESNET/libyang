@@ -1156,6 +1156,57 @@ struct ly_set *lyd_find_path(const struct lyd_node *ctx_node, const char *path);
 struct ly_set *lyd_find_instance(const struct lyd_node *data, const struct lys_node *schema);
 
 /**
+ * @brief Search in the given siblings for the target instance. If cache is enabled and the siblings
+ * are NOT top-level nodes, this function finds the node in a constant time!
+ *
+ * @param[in] siblings Siblings to search in including preceding and succeeding nodes.
+ * @param[in] target Target node to find. Lists must have all the keys.
+ * Invalid argument - key-less list or state (config false) leaf-list, use ::lyd_find_sibling_set instead.
+ * @param[out] match Found data node, NULL if not found.
+ * @return 0 on success (even on not found), -1 on error.
+ */
+int lyd_find_sibling(const struct lyd_node *siblings, const struct lyd_node *target, struct lyd_node **match);
+
+/**
+ * @brief Search in the given siblings for all target instances. If cache is enabled and the siblings
+ * are NOT top-level nodes, this function finds the node(s) in a constant time!
+ *
+ * @param[in] siblings Siblings to search in including preceding and succeeding nodes.
+ * @param[in] target Target node to find. Lists must have all the keys. Key-less lists are compared based on
+ * all its descendants (both direct and indirect).
+ * @param[out] set Found nodes in a set, can be empty.
+ * @return 0 on success (even on no nodes found), -1 on error.
+ * If an error occurs, NULL is returned.
+ */
+int lyd_find_sibling_set(const struct lyd_node *siblings, const struct lyd_node *target, struct ly_set **set);
+
+/**
+ * @brief Search in the given siblings for the schema instance. If cache is enabled and the siblings
+ * are NOT top-level nodes, this function finds the node in a constant time!
+ *
+ * @param[in] siblings Siblings to search in including preceding and succeeding nodes.
+ * @param[in] schema Schema node of the data node to find.
+ * Invalid argument - key-less list or state (config false) leaf-list, use ::lyd_find_sibling_set instead.
+ * @param[in] key_or_value Expected value depends on the type of \p schema:
+ *              LYS_CONTAINER:
+ *              LYS_LEAF:
+ *              LYS_ANYXML:
+ *              LYS_ANYDATA:
+ *              LYS_NOTIF:
+ *              LYS_RPC:
+ *              LYS_ACTION:
+ *                  NULL should be always set, will be ignored.
+ *              LYS_LEAFLIST:
+ *                  Searched instance value.
+ *              LYS_LIST:
+ *                  Searched instance all ordered key values in the form of "[key1='val1'][key2='val2']...".
+ * @param[out] match Found data node, NULL if not found.
+ * @return 0 on success (even on not found), -1 on error.
+ */
+int lyd_find_sibling_val(const struct lyd_node *siblings, const struct lys_node *schema, const char *key_or_value,
+                         struct lyd_node **match);
+
+/**
  * @brief Get the first sibling of the given node.
  *
  * @param[in] node Node which first sibling is going to be the result.

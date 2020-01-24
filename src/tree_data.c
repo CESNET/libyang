@@ -6590,6 +6590,350 @@ error:
     return NULL;
 }
 
+API int
+lyd_find_sibling(const struct lyd_node *siblings, const struct lyd_node *target, struct lyd_node **match)
+{
+    struct lyd_node **match_p;
+
+    /* argument checks */
+    if (!target || !match) {
+        LOGARG;
+        return -1;
+    }
+    if (target->schema->nodetype == LYS_LIST) {
+        if (!((struct lys_node_list *)target->schema)->keys_size) {
+            LOGERR(lyd_node_module(target)->ctx, LY_EINVAL, "Invalid arguments - key-less list (%s()).", __func__);
+            return -1;
+        } else if (!lyd_list_has_keys((struct lyd_node *)target)) {
+            LOGERR(lyd_node_module(target)->ctx, LY_EINVAL, "Invalid arguments - list without keys (%s()).", __func__);
+            return -1;
+        }
+    }
+    if ((target->schema->nodetype == LYS_LEAFLIST) && (target->schema->flags & LYS_CONFIG_R)) {
+        LOGERR(lyd_node_module(target)->ctx, LY_EINVAL, "Invalid arguments - state leaf-list (%s()).", __func__);
+        return -1;
+    }
+
+    if (!siblings) {
+        /* no data */
+        *match = NULL;
+        return 0;
+    }
+
+    /* find first sibling */
+    if (siblings->parent) {
+        siblings = siblings->parent->child;
+    } else {
+        while (siblings->prev->next) {
+            siblings = siblings->prev;
+        }
+    }
+
+#ifdef LY_ENABLED_CACHE
+    if (siblings->parent && siblings->parent->ht) {
+        assert(target->hash);
+
+        /* find by hash */
+        if (!lyht_find(siblings->parent->ht, &target, target->hash, (void **)&match_p)) {
+            siblings = *match_p;
+        } else {
+            /* not found */
+            siblings = NULL;
+        }
+    } else
+#endif
+    {
+        /* no hashes or no hash table */
+        for (; siblings; siblings = siblings->next) {
+            if (siblings->schema != target->schema) {
+                continue;
+            }
+
+            if (target->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
+                if (lyd_list_equal((struct lyd_node *)target, (struct lyd_node *)siblings, 0)) {
+                    /* a match */
+                    break;
+                }
+            } else {
+                /* schema match is enough for other nodes */
+                break;
+            }
+        }
+    }
+
+    *match = (struct lyd_node *)siblings;
+    return 0;
+}
+
+API int
+lyd_find_sibling_set(const struct lyd_node *siblings, const struct lyd_node *target, struct ly_set **set)
+{
+    struct lyd_node **match_p, *match;
+
+    /* argument checks */
+    if (!target || !set) {
+        LOGARG;
+        return -1;
+    }
+
+    *set = ly_set_new();
+    LY_CHECK_ERR_RETURN(!*set, LOGMEM(lyd_node_module(target)->ctx), -1);
+
+    if (!siblings) {
+        /* no data */
+        return 0;
+    }
+
+    /* find first sibling */
+    if (siblings->parent) {
+        siblings = siblings->parent->child;
+    } else {
+        while (siblings->prev->next) {
+            siblings = siblings->prev;
+        }
+    }
+
+    if (((target->schema->nodetype == LYS_LIST) && !((struct lys_node_list *)target->schema)->keys_size)
+            || ((target->schema->nodetype == LYS_LEAFLIST) && (target->schema->flags & LYS_CONFIG_R))) {
+
+        /* handle key-less lists and state leaf-lists ourselves because there can be more matching instances */
+#ifdef LY_ENABLED_CACHE
+        if (siblings->parent && siblings->parent->ht) {
+            assert(target->hash);
+
+            /* find by hash */
+            if (!lyht_find(siblings->parent->ht, &target, target->hash, (void **)&match_p)) {
+                match = *match_p;
+            } else {
+                /* not found */
+                match = NULL;
+            }
+            while (match) {
+                /* add all found nodes into the set */
+                if (ly_set_add(*set, match, LY_SET_OPT_USEASLIST) == -1) {
+                    goto error;
+                }
+
+                /* find next instance */
+                if (lyht_find_next(siblings->parent->ht, &match, match->hash, (void **)&match_p)) {
+                    match = NULL;
+                } else {
+                    match = *match_p;
+                }
+            }
+        } else
+#endif
+        {
+            /* no hashes or no hash table */
+            for (; siblings; siblings = siblings->next) {
+                if (siblings->schema != target->schema) {
+                    continue;
+                }
+
+                if (lyd_list_equal((struct lyd_node *)target, (struct lyd_node *)siblings, 0)) {
+                    /* a match */
+                    if (ly_set_add(*set, (struct lyd_node *)siblings, LY_SET_OPT_USEASLIST) == -1) {
+                        goto error;
+                    }
+                }
+            }
+        }
+    } else {
+        /* use another function */
+        if (lyd_find_sibling(siblings, target, &match)) {
+            goto error;
+        }
+        if (match && (ly_set_add(*set, match, LY_SET_OPT_USEASLIST) == -1)) {
+            goto error;
+        }
+    }
+
+    return 0;
+
+error:
+    ly_set_free(*set);
+    return -1;
+}
+
+static char *
+lyd_find_sibling_val_key_value(char **next_key, struct lys_node *key)
+{
+    char *ptr, *ptr2, *val, quot;
+
+    ptr = *next_key;
+
+    /* "[" */
+    if (ptr[0] != '[') {
+        goto error;
+    }
+    ++ptr;
+
+    /* key name */
+    if (strncmp(ptr, key->name, strlen(key->name))) {
+        goto error;
+    }
+    ptr += strlen(key->name);
+
+    /* "=" */
+    if (ptr[0] != '=') {
+        goto error;
+    }
+    ++ptr;
+
+    /* quote */
+    if ((ptr[0] != '\'') && (ptr[0] != '\"')) {
+        goto error;
+    }
+    quot = ptr[0];
+    ++ptr;
+
+    /* value, terminate it */
+    val = ptr;
+    if (!(ptr2 = strchr(ptr, quot))) {
+        goto error;
+    }
+    ptr2[0] = '\0';
+
+    /* \0, was quote */
+    ptr = ptr2 + 1;
+
+    /* "]" */
+    if (ptr[0] != ']') {
+        goto error;
+    }
+    ++ptr;
+
+    *next_key = ptr;
+    return val;
+
+error:
+    LOGERR(lys_node_module(key)->ctx, LY_EINVAL, "Invalid arguments - keys at \"%s\" (%s()).",
+           ptr, __func__);
+    return NULL;
+}
+
+API int
+lyd_find_sibling_val(const struct lyd_node *siblings, const struct lys_node *schema, const char *key_or_value,
+        struct lyd_node **match)
+{
+    struct lyd_node *target = NULL, *node;
+    struct lys_node *key;
+    uint8_t i;
+    char *keys = NULL, *val, *next_key;
+
+    /* argument checks */
+    if (!schema) {
+        LOGARG;
+        return -1;
+    }
+    switch (schema->nodetype) {
+    case LYS_CONTAINER:
+    case LYS_LEAF:
+    case LYS_ANYXML:
+    case LYS_ANYDATA:
+    case LYS_NOTIF:
+    case LYS_RPC:
+    case LYS_ACTION:
+        /* no argument check necessary */
+        break;
+    case LYS_LEAFLIST:
+        if (schema->flags & LYS_CONFIG_R) {
+            LOGERR(lys_node_module(schema)->ctx, LY_EINVAL, "Invalid arguments - state leaf-list (%s()).", __func__);
+            return -1;
+        } else if (!key_or_value) {
+            LOGERR(lys_node_module(schema)->ctx, LY_EINVAL, "Invalid arguments - no value for a leaf-list (%s()).", __func__);
+            return -1;
+        }
+        break;
+    case LYS_LIST:
+        if (!((struct lys_node_list *)schema)->keys_size) {
+            LOGERR(lys_node_module(schema)->ctx, LY_EINVAL, "Invalid arguments - key-less list (%s()).", __func__);
+            return -1;
+        } else if (!key_or_value) {
+            LOGERR(lys_node_module(schema)->ctx, LY_EINVAL, "Invalid arguments - no keys for a list (%s()).", __func__);
+            return -1;
+        }
+        break;
+    default:
+        LOGERR(lys_node_module(schema)->ctx, LY_EINVAL, "Invalid arguments - schema type %s (%s()).",
+               strnodetype(schema->nodetype), __func__);
+        return -1;
+    }
+
+    if (!siblings) {
+        /* no data */
+        *match = NULL;
+        return 0;
+    }
+
+    /* create data node */
+    switch (schema->nodetype) {
+    case LYS_CONTAINER:
+    case LYS_ANYXML:
+    case LYS_ANYDATA:
+    case LYS_NOTIF:
+    case LYS_RPC:
+    case LYS_ACTION:
+        /* used attributes: schema, hash */
+        target = _lyd_new(NULL, schema, 0);
+        LY_CHECK_RETURN(!target, -1);
+        break;
+    case LYS_LEAF:
+        /* used attributes: schema, hash */
+        target = lyd_create_leaf(schema, NULL, 0);
+        LY_CHECK_RETURN(!target, -1);
+        break;
+    case LYS_LEAFLIST:
+        /* used attributes: schema, hash, value_str */
+        target = lyd_create_leaf(schema, key_or_value, 0);
+        LY_CHECK_RETURN(!target, -1);
+        break;
+    case LYS_LIST:
+        /* used attributes: schema, hash, child (all keys) */
+        target = _lyd_new(NULL, schema, 0);
+        LY_CHECK_RETURN(!target, -1);
+
+        /* create all keys */
+        keys = strdup(key_or_value);
+        LY_CHECK_ERR_GOTO(!keys, LOGMEM(lys_node_module(schema)->ctx), error);
+        next_key = keys;
+        for (i = 0; i < ((struct lys_node_list *)schema)->keys_size; ++i) {
+            /* find key schema */
+            key = (struct lys_node *)((struct lys_node_list *)schema)->keys[i];
+
+            /* find key value */
+            val = lyd_find_sibling_val_key_value(&next_key, key);
+            LY_CHECK_GOTO(!val, error);
+
+            /* create and insert key */
+            node = lyd_create_leaf(key, val, 0);
+            if (!node || lyd_insert(target, node)) {
+                lyd_free(node);
+                goto error;
+            }
+        }
+        break;
+    default:
+        /* unreachable */
+        LOGARG;
+        goto error;
+    }
+
+    /* find it */
+    if (lyd_find_sibling(siblings, target, match)) {
+        goto error;
+    }
+
+    free(keys);
+    lyd_free(target);
+    return 0;
+
+error:
+    free(keys);
+    lyd_free(target);
+    return -1;
+}
+
 API struct lyd_node *
 lyd_first_sibling(struct lyd_node *node)
 {
