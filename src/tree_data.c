@@ -5349,6 +5349,7 @@ int
 lyd_unlink_internal(struct lyd_node *node, int permanent)
 {
     struct lyd_node *iter;
+    (void)permanent;
 
     if (!node) {
         LOGARG;
@@ -6593,8 +6594,6 @@ error:
 API int
 lyd_find_sibling(const struct lyd_node *siblings, const struct lyd_node *target, struct lyd_node **match)
 {
-    struct lyd_node **match_p;
-
     /* argument checks */
     if (!target || !match) {
         LOGARG;
@@ -6630,6 +6629,8 @@ lyd_find_sibling(const struct lyd_node *siblings, const struct lyd_node *target,
     }
 
 #ifdef LY_ENABLED_CACHE
+    struct lyd_node **match_p;
+
     if (siblings->parent && siblings->parent->ht) {
         assert(target->hash);
 
@@ -6668,7 +6669,7 @@ lyd_find_sibling(const struct lyd_node *siblings, const struct lyd_node *target,
 API int
 lyd_find_sibling_set(const struct lyd_node *siblings, const struct lyd_node *target, struct ly_set **set)
 {
-    struct lyd_node **match_p, *match;
+    struct lyd_node *match;
 
     /* argument checks */
     if (!target || !set) {
@@ -6698,6 +6699,8 @@ lyd_find_sibling_set(const struct lyd_node *siblings, const struct lyd_node *tar
 
         /* handle key-less lists and state leaf-lists ourselves because there can be more matching instances */
 #ifdef LY_ENABLED_CACHE
+        struct lyd_node **match_p;
+
         if (siblings->parent && siblings->parent->ht) {
             assert(target->hash);
 
