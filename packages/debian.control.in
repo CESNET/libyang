@@ -40,15 +40,3 @@ Depends: @CPP_PACKAGE@ (=@LIBYANG_VERSION@)
 Section: debug
 Architecture: any
 Description: Debug symbols of C++ bidings of libyang library.
-
-Package: @PYTHON_PACKAGE@
-Depends: @PACKAGE@ (=@LIBYANG_VERSION@), @CPP_PACKAGE@ (=@LIBYANG_VERSION@)
-Section: libs
-Architecture: any
-Description: Bindings of libyang library to python3 language.
-
-Package: @PYTHON_PACKAGE@-dbg
-Depends: @PYTHON_PACKAGE@ (=@LIBYANG_VERSION@)
-Section: debug
-Architecture: any
-Description: Debug symbols of python3 bidings of libyang library.
