@@ -559,6 +559,10 @@ lyd_is_when_false(struct lyd_node *root, struct lyd_node *last_parent, struct ly
         if (schema->nodetype == LYS_CHOICE) {
             schema = (struct lys_node *)lys_getnext(NULL, schema, NULL, LYS_GETNEXT_NOSTATECHECK);
         }
+        if (!schema) {
+            /* choice has no descendant data nodes */
+            return 0;
+        }
         dummy = lyd_new_dummy(root, last_parent, schema, NULL, 0);
         if (!dummy) {
             return -1;
