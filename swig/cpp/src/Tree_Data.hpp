@@ -78,7 +78,7 @@ public:
     /** get uint16 variable from [lyd_val](@ref lyd_val)*/
     uint16_t uint16() {return LY_TYPE_UINT16 == value_type ? value.uint16 : throw "wrong type";};
     /** get uint32 variable from [lyd_val](@ref lyd_val)*/
-    uint32_t uintu32() {return LY_TYPE_UINT32 == value_type ? value.uint32 : throw "wrong type";};
+    uint32_t uint32() {return LY_TYPE_UINT32 == value_type ? value.uint32 : throw "wrong type";};
     /** get uint64 variable from [lyd_val](@ref lyd_val)*/
     uint64_t uint64() {return LY_TYPE_UINT64 == value_type ? value.uint64 : throw "wrong type";};
 
