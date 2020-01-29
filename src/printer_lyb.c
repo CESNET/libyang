@@ -110,9 +110,9 @@ lyb_check_augment_collision(struct hash_table *ht, struct lys_node *aug1, struct
     LYB_HASH hash1, hash2;
 
     /* go through combination of all nodes and check if coliding hash is used */
-    while ((iter1 = (struct lys_node *)lys_getnext(iter1, aug1, aug1->module, 0))) {
+    while ((iter1 = (struct lys_node *)lys_getnext(iter1, aug1, lys_node_module(aug1), 0))) {
         iter2 = NULL;
-        while ((iter2 = (struct lys_node *)lys_getnext(iter2, aug2, aug2->module, 0))) {
+        while ((iter2 = (struct lys_node *)lys_getnext(iter2, aug2, lys_node_module(aug2), 0))) {
             coliding = 0;
             for (i = 0; i < LYB_HASH_BITS; i++) {
                 hash1 = lyb_hash(iter1, i);
@@ -125,9 +125,9 @@ lyb_check_augment_collision(struct hash_table *ht, struct lys_node *aug1, struct
                     cb = lyht_set_cb(ht, lyb_ptr_equal_cb);
                     if ((lyht_find(ht, &iter1, hash1, NULL) == 0) || (lyht_find(ht, &iter2, hash2, NULL) == 0)) {
                         LOGWRN(aug1->module->ctx, "Augmentations from modules \"%s\" and \"%s\" have fatal hash collision.",
-                               iter1->module->name, iter2->module->name);
+                               lys_node_module(iter1)->name, lys_node_module(iter2)->name);
                         LOGWRN(aug1->module->ctx, "It will cause no errors if module \"%s\" is always loaded before \"%s\".",
-                               iter1->module->name, iter2->module->name);
+                               lys_node_module(iter1)->name, lys_node_module(iter2)->name);
                         lyht_set_cb(ht, cb);
                         return 1;
                     }
