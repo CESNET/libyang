@@ -672,7 +672,7 @@ lyb_print_anydata(struct lyd_node_anydata *anydata, struct lyout *out, struct ly
     if (anydata->value_type == LYD_ANYDATA_XML) {
         /* transform XML into CONSTSTRING */
         lyxml_print_mem(&buf, anydata->value.xml, LYXML_PRINT_SIBLINGS);
-        lyxml_free(anydata->schema->module->ctx, anydata->value.xml);
+        lyxml_free_withsiblings(anydata->schema->module->ctx, anydata->value.xml);
 
         anydata->value_type = LYD_ANYDATA_CONSTSTRING;
         anydata->value.str = lydict_insert_zc(anydata->schema->module->ctx, buf);
