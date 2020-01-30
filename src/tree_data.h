@@ -552,7 +552,7 @@ char *lyd_path(const struct lyd_node *node);
  * @param[in] ctx Context to connect with the data tree being built here.
  * @param[in] data Serialized data in the specified format.
  * @param[in] format Format of the input data to be parsed.
- * @param[in] options Parser options, see @ref parseroptions. \p format LYD_LYB uses #LYD_OPT_TRUSTED implicitly.
+ * @param[in] options Parser options, see @ref parseroptions.
  * @param[in] ... Variable arguments depend on \p options. If they include:
  *                - #LYD_OPT_DATA:
  *                - #LYD_OPT_CONFIG:
@@ -592,7 +592,7 @@ struct lyd_node *lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT 
  * @param[in] ctx Context to connect with the data tree being built here.
  * @param[in] fd The standard file descriptor of the file containing the data tree in the specified format.
  * @param[in] format Format of the input data to be parsed.
- * @param[in] options Parser options, see @ref parseroptions. \p format LYD_LYB uses #LYD_OPT_TRUSTED implicitly.
+ * @param[in] options Parser options, see @ref parseroptions.
  * @param[in] ... Variable arguments depend on \p options. If they include:
  *                - #LYD_OPT_DATA:
  *                - #LYD_OPT_CONFIG:
@@ -630,7 +630,7 @@ struct lyd_node *lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int
  * @param[in] ctx Context to connect with the data tree being built here.
  * @param[in] path Path to the file containing the data tree in the specified format.
  * @param[in] format Format of the input data to be parsed.
- * @param[in] options Parser options, see @ref parseroptions. \p format LYD_LYB uses #LYD_OPT_TRUSTED implicitly.
+ * @param[in] options Parser options, see @ref parseroptions.
  * @param[in] ... Variable arguments depend on \p options. If they include:
  *                - #LYD_OPT_DATA:
  *                - #LYD_OPT_CONFIG:

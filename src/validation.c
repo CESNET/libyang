@@ -49,7 +49,7 @@ lyv_keys(const struct lyd_node *list)
 }
 
 int
-lyv_data_context(const struct lyd_node *node, int options, struct unres_data *unres)
+lyv_data_context(struct lyd_node *node, int options, struct unres_data *unres)
 {
     const struct lys_node *siter = NULL;
     struct lys_node *sparent, *op;
@@ -94,7 +94,9 @@ lyv_data_context(const struct lyd_node *node, int options, struct unres_data *un
 
         /* check all relevant when conditions */
         if (node->when_status & LYD_WHEN) {
-            if (unres_data_add(unres, (struct lyd_node *)node, UNRES_WHEN)) {
+            if (options & LYD_OPT_TRUSTED) {
+                node->when_status |= LYD_WHEN_TRUE;
+            } else if (unres_data_add(unres, (struct lyd_node *)node, UNRES_WHEN)) {
                 return 1;
             }
         }
