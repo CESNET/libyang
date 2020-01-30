@@ -2199,7 +2199,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     struct lys_type *t = NULL;
     uint8_t *trg_must_size = NULL;
     struct lys_restr **trg_must = NULL;
-    struct unres_schema tmp_unres;
+    struct unres_schema *tmp_unres;
     struct lys_module *mod;
     void *reallocated;
     size_t deviate_must_index;
@@ -2384,13 +2384,10 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
 
         /* store a shallow copy of the original node */
         if (!dev->orig_node) {
-            memset(&tmp_unres, 0, sizeof tmp_unres);
-            dev->orig_node = lys_node_dup(dev_target->module, NULL, dev_target, &tmp_unres, 1);
-            /* just to be safe */
-            if (tmp_unres.count) {
-                LOGINT(ctx);
-                goto error;
-            }
+            tmp_unres = calloc(1, sizeof *tmp_unres);
+            dev->orig_node = lys_node_dup(dev_target->module, NULL, dev_target, tmp_unres, 1);
+            /* such a case is not really supported but whatever */
+            unres_schema_free(dev_target->module, &tmp_unres, 1);
         }
 
         /* process deviation properties */

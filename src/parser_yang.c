@@ -4540,7 +4540,7 @@ yang_check_deviation(struct lys_module *module, struct unres_schema *unres, stru
     struct lys_node_leaflist *llist;
     struct lys_node_leaf *leaf;
     struct lys_node_inout *inout;
-    struct unres_schema tmp_unres;
+    struct unres_schema *tmp_unres;
     struct lys_module *mod;
 
     /* resolve target node */
@@ -4611,14 +4611,10 @@ yang_check_deviation(struct lys_module *module, struct unres_schema *unres, stru
         dev->orig_node = dev_target;
     } else {
         /* store a shallow copy of the original node */
-        memset(&tmp_unres, 0, sizeof tmp_unres);
-        dev->orig_node = lys_node_dup(dev_target->module, NULL, dev_target, &tmp_unres, 1);
-        /* just to be safe */
-        if (tmp_unres.count) {
-            LOGINT(module->ctx);
-            i = 0;
-            goto free_type_error;
-        }
+        tmp_unres = calloc(1, sizeof *tmp_unres);
+        dev->orig_node = lys_node_dup(dev_target->module, NULL, dev_target, tmp_unres, 1);
+        /* such a case is not really supported but whatever */
+        unres_schema_free(dev_target->module, &tmp_unres, 1);
     }
 
     if (yang_check_ext_instance(module, &dev->ext, dev->ext_size, dev, unres)) {
