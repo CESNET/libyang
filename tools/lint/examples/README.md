@@ -471,7 +471,7 @@ Data:      container "nacm"
 Command and its output:
 
 ```
-> print -f info -t /ietf-netconf-acm:nacm/ietf-netconf-acm:enable-nacm ietf-netconf-ac
+> print -f info -P /ietf-netconf-acm:nacm/ietf-netconf-acm:enable-nacm ietf-netconf-ac
 Leaf:      enable-nacm
 Module:    ietf-netconf-acm
 Desc:      Enables or disables all NETCONF access control
