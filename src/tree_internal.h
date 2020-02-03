@@ -314,14 +314,13 @@ void lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **
                                   void (*private_destructor)(const struct lys_node *node, void *priv));
 
 /**
- * @brief Add pointer to \p leafref to \p leafref_target children so that it knows there
- * are some leafrefs referring it.
+ * @brief Check that leafref and its target have allowed config combination and there are no cyclic references.
  *
  * @param[in] leafref_target Leaf that is \p leafref's target.
  * @param[in] leafref Leaf or leaflist of type #LY_TYPE_LEAFREF referring \p leafref_target.
  * @return 0 on success, -1 on error.
  */
-int lys_leaf_add_leafref_target(struct lys_node_leaf *leafref_target, struct lys_node *leafref);
+int lys_leaf_check_leafref(struct lys_node_leaf *leafref_target, struct lys_node *leafref);
 
 /**
  * @brief Free a schema when condition

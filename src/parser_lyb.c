@@ -297,7 +297,7 @@ error:
 }
 
 static struct lyd_node *
-lyb_new_node(const struct lys_node *schema)
+lyb_new_node(const struct lys_node *schema, int options)
 {
     struct lyd_node *node;
 
@@ -312,10 +312,6 @@ lyb_new_node(const struct lys_node *schema)
     case LYS_LEAF:
     case LYS_LEAFLIST:
         node = calloc(sizeof(struct lyd_node_leaf_list), 1);
-
-        if (((struct lys_node_leaf *)schema)->type.base == LY_TYPE_LEAFREF) {
-            node->validity |= LYD_VAL_LEAFREF;
-        }
         break;
     case LYS_ANYDATA:
     case LYS_ANYXML:
@@ -329,8 +325,12 @@ lyb_new_node(const struct lys_node *schema)
     /* fill basic info */
     node->schema = (struct lys_node *)schema;
     if (resolve_applies_when(schema, 0, NULL)) {
-        /* this data are considered trusted so if this node exists, it means its when must have been true */
-        node->when_status = LYD_WHEN | LYD_WHEN_TRUE;
+        node->when_status = LYD_WHEN;
+
+        if (options & LYD_OPT_TRUSTED) {
+            /* this data are considered trusted so if this node exists, it means its when must have been true */
+            node->when_status |= LYD_WHEN_TRUE;
+        }
     }
     node->prev = node;
 
@@ -1061,7 +1061,7 @@ lyb_parse_subtree(const char *data, struct lyd_node *parent, struct lyd_node **f
     /*
      * read the node
      */
-    node = lyb_new_node(snode);
+    node = lyb_new_node(snode, options);
     if (!node) {
         goto error;
     }

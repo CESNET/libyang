@@ -49,10 +49,26 @@ int
 yang_read_common(struct lys_module *module, char *value, enum yytokentype type)
 {
     int ret = 0;
+    uint8_t i;
 
     switch (type) {
     case MODULE_KEYWORD:
         module->name = lydict_insert_zc(module->ctx, value);
+
+        /* in some really invalid situations there can be a circular import and
+         * we can check it only after we have parsed the module name */
+        for (i = 0; i < module->ctx->models.parsing_sub_modules_count; ++i) {
+            if (module->ctx->models.parsing_sub_modules[i] == module) {
+                /* skip our own module */
+                continue;
+            }
+
+            if (!strcmp(module->ctx->models.parsing_sub_modules[i]->name, module->name)) {
+                LOGVAL(module->ctx, LYE_CIRC_IMPORTS, LY_VLOG_NONE, NULL, module->name);
+                ret = EXIT_FAILURE;
+                break;
+            }
+        }
         break;
     case NAMESPACE_KEYWORD:
         ret = yang_check_string(module, &module->ns, "namespace", "module", value, NULL);
@@ -4036,6 +4052,14 @@ yang_check_rpc_action(struct lys_module *module, struct lys_node_rpc_action *rpc
     }
     *child = NULL;
 
+    if (!(rpc->child->flags & LYS_IMPLICIT) && !rpc->child->child) {
+        LOGVAL(module->ctx, LYE_MISSCHILDSTMT, LY_VLOG_LYS, rpc->child, "schema-node", strnodetype(rpc->child->nodetype));
+        goto error;
+    } else if (!(rpc->child->next->flags & LYS_IMPLICIT) && !rpc->child->next->child) {
+        LOGVAL(module->ctx, LYE_MISSCHILDSTMT, LY_VLOG_LYS, rpc->child->next, "schema-node", strnodetype(rpc->child->next->nodetype));
+        goto error;
+    }
+
     return EXIT_SUCCESS;
 
 error:
@@ -4444,6 +4468,17 @@ yang_check_deviate(struct lys_module *module, struct unres_schema *unres, struct
     }
 
     if ((deviate->flags & LYS_CONFIG_MASK)) {
+        /* cannot add if it was explicitly set */
+        if ((deviate->mod == LY_DEVIATE_ADD) && (dev_target->flags & LYS_CONFIG_SET)) {
+            LOGVAL(module->ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "config");
+            LOGVAL(module->ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Adding property that already exists.");
+            goto error;
+        } else if ((deviate->mod == LY_DEVIATE_RPL) && !(dev_target->flags & LYS_CONFIG_SET)) {
+            LOGVAL(module->ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "config");
+            LOGVAL(module->ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Replacing a property that does not exist.");
+            goto error;
+        }
+
         /* add and replace are the same in this case */
         /* remove current config value of the target ... */
         dev_target->flags &= ~LYS_CONFIG_MASK;
@@ -4505,7 +4540,7 @@ yang_check_deviation(struct lys_module *module, struct unres_schema *unres, stru
     struct lys_node_leaflist *llist;
     struct lys_node_leaf *leaf;
     struct lys_node_inout *inout;
-    struct unres_schema tmp_unres;
+    struct unres_schema *tmp_unres;
     struct lys_module *mod;
 
     /* resolve target node */
@@ -4576,14 +4611,10 @@ yang_check_deviation(struct lys_module *module, struct unres_schema *unres, stru
         dev->orig_node = dev_target;
     } else {
         /* store a shallow copy of the original node */
-        memset(&tmp_unres, 0, sizeof tmp_unres);
-        dev->orig_node = lys_node_dup(dev_target->module, NULL, dev_target, &tmp_unres, 1);
-        /* just to be safe */
-        if (tmp_unres.count) {
-            LOGINT(module->ctx);
-            i = 0;
-            goto free_type_error;
-        }
+        tmp_unres = calloc(1, sizeof *tmp_unres);
+        dev->orig_node = lys_node_dup(dev_target->module, NULL, dev_target, tmp_unres, 1);
+        /* such a case is not really supported but whatever */
+        unres_schema_free(dev_target->module, &tmp_unres, 1);
     }
 
     if (yang_check_ext_instance(module, &dev->ext, dev->ext_size, dev, unres)) {

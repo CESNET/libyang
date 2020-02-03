@@ -154,8 +154,6 @@ struct lyd_attr {
                                       except ::lys_node_leaflist, it means checking that data node for duplicities.
                                       Additionally, it can be set on truly any node type and then status references
                                       are checked for this node if flag #LYD_OPT_OBSOLETE is used. */
-#define LYD_VAL_LEAFREF  0x08    /**< Node is a leafref, which needs to be resolved (it is invalid, new possible
-                                      resolvent, or something similar) */
 #define LYD_VAL_INUSE    0x80    /**< Internal flag for note about various processing on data, should be used only
                                       internally and removed before libyang returns the node to the caller */
 /**
@@ -554,7 +552,7 @@ char *lyd_path(const struct lyd_node *node);
  * @param[in] ctx Context to connect with the data tree being built here.
  * @param[in] data Serialized data in the specified format.
  * @param[in] format Format of the input data to be parsed.
- * @param[in] options Parser options, see @ref parseroptions. \p format LYD_LYB uses #LYD_OPT_TRUSTED implicitly.
+ * @param[in] options Parser options, see @ref parseroptions.
  * @param[in] ... Variable arguments depend on \p options. If they include:
  *                - #LYD_OPT_DATA:
  *                - #LYD_OPT_CONFIG:
@@ -594,7 +592,7 @@ struct lyd_node *lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT 
  * @param[in] ctx Context to connect with the data tree being built here.
  * @param[in] fd The standard file descriptor of the file containing the data tree in the specified format.
  * @param[in] format Format of the input data to be parsed.
- * @param[in] options Parser options, see @ref parseroptions. \p format LYD_LYB uses #LYD_OPT_TRUSTED implicitly.
+ * @param[in] options Parser options, see @ref parseroptions.
  * @param[in] ... Variable arguments depend on \p options. If they include:
  *                - #LYD_OPT_DATA:
  *                - #LYD_OPT_CONFIG:
@@ -632,7 +630,7 @@ struct lyd_node *lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int
  * @param[in] ctx Context to connect with the data tree being built here.
  * @param[in] path Path to the file containing the data tree in the specified format.
  * @param[in] format Format of the input data to be parsed.
- * @param[in] options Parser options, see @ref parseroptions. \p format LYD_LYB uses #LYD_OPT_TRUSTED implicitly.
+ * @param[in] options Parser options, see @ref parseroptions.
  * @param[in] ... Variable arguments depend on \p options. If they include:
  *                - #LYD_OPT_DATA:
  *                - #LYD_OPT_CONFIG:
@@ -1156,6 +1154,57 @@ struct ly_set *lyd_find_path(const struct lyd_node *ctx_node, const char *path);
  * In case of error, NULL is returned.
  */
 struct ly_set *lyd_find_instance(const struct lyd_node *data, const struct lys_node *schema);
+
+/**
+ * @brief Search in the given siblings for the target instance. If cache is enabled and the siblings
+ * are NOT top-level nodes, this function finds the node in a constant time!
+ *
+ * @param[in] siblings Siblings to search in including preceding and succeeding nodes.
+ * @param[in] target Target node to find. Lists must have all the keys.
+ * Invalid argument - key-less list or state (config false) leaf-list, use ::lyd_find_sibling_set instead.
+ * @param[out] match Found data node, NULL if not found.
+ * @return 0 on success (even on not found), -1 on error.
+ */
+int lyd_find_sibling(const struct lyd_node *siblings, const struct lyd_node *target, struct lyd_node **match);
+
+/**
+ * @brief Search in the given siblings for all target instances. If cache is enabled and the siblings
+ * are NOT top-level nodes, this function finds the node(s) in a constant time!
+ *
+ * @param[in] siblings Siblings to search in including preceding and succeeding nodes.
+ * @param[in] target Target node to find. Lists must have all the keys. Key-less lists are compared based on
+ * all its descendants (both direct and indirect).
+ * @param[out] set Found nodes in a set, can be empty.
+ * @return 0 on success (even on no nodes found), -1 on error.
+ * If an error occurs, NULL is returned.
+ */
+int lyd_find_sibling_set(const struct lyd_node *siblings, const struct lyd_node *target, struct ly_set **set);
+
+/**
+ * @brief Search in the given siblings for the schema instance. If cache is enabled and the siblings
+ * are NOT top-level nodes, this function finds the node in a constant time!
+ *
+ * @param[in] siblings Siblings to search in including preceding and succeeding nodes.
+ * @param[in] schema Schema node of the data node to find.
+ * Invalid argument - key-less list or state (config false) leaf-list, use ::lyd_find_sibling_set instead.
+ * @param[in] key_or_value Expected value depends on the type of \p schema:
+ *              LYS_CONTAINER:
+ *              LYS_LEAF:
+ *              LYS_ANYXML:
+ *              LYS_ANYDATA:
+ *              LYS_NOTIF:
+ *              LYS_RPC:
+ *              LYS_ACTION:
+ *                  NULL should be always set, will be ignored.
+ *              LYS_LEAFLIST:
+ *                  Searched instance value.
+ *              LYS_LIST:
+ *                  Searched instance all ordered key values in the form of "[key1='val1'][key2='val2']...".
+ * @param[out] match Found data node, NULL if not found.
+ * @return 0 on success (even on not found), -1 on error.
+ */
+int lyd_find_sibling_val(const struct lyd_node *siblings, const struct lys_node *schema, const char *key_or_value,
+                         struct lyd_node **match);
 
 /**
  * @brief Get the first sibling of the given node.

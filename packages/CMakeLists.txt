@@ -26,9 +26,9 @@ configure_file(${PROJECT_SOURCE_DIR}/packages/debian.${CPP_PACKAGE}-dev.install
 #configure_file(${PROJECT_SOURCE_DIR}/packages/debian.${PYTHON_PACKAGE}.install
 #               ${PROJECT_BINARY_DIR}/build-packages/debian.${PYTHON_PACKAGE}.install COPYONLY)
 
-if (NOT DEB_BUILDER)
+if(NOT DEB_BUILDER)
     message(STATUS "Missing tools (devscripts, debhelper package) for building DEB package.")
-else ()
+else()
     # target for local build deb package
     message(STATUS "To build local DEB package, use \"build-deb\" target.")
     add_custom_target(build-deb
@@ -38,9 +38,9 @@ else ()
     configure_file(${PROJECT_SOURCE_DIR}/packages/local-deb.sh.in ${PROJECT_BINARY_DIR}/build-packages/local-deb.sh @ONLY)
 endif()
 
-if (NOT RPM_BUILDER)
+if(NOT RPM_BUILDER)
     message(STATUS "Missing tools (rpm package) for building RPM package.")
-else ()
+else()
     # target for local build rpm package
     message(STATUS "To build local RPM package, use \"build-rpm\" target.")
     string(REPLACE ${PROJECT_SOURCE_DIR} "." EXCLUDE_BUILD_DIR ${PROJECT_BINARY_DIR})

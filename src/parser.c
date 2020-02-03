@@ -1913,10 +1913,19 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             if (xml) {
                 /* in case it should resolve into a instance-identifier, we can only do the JSON conversion here */
                 ly_ilo_change(NULL, ILO_IGNORE, &prev_ilo, NULL);
-                val->string = transform_xml2json(ctx, value, xml, 1, 1);
+                value = transform_xml2json(ctx, value, xml, 1, 1);
                 ly_ilo_restore(NULL, prev_ilo, NULL, 0);
-                if (!val->string) {
-                    /* invalid instance-identifier format, likely some other type */
+
+                /* update the changed value */
+                if (value) {
+                    lydict_remove(ctx, *value_);
+                    *value_ = value;
+                } else {
+                    value = *value_;
+                }
+
+                if (store) {
+                    /* store the (unresolved) result */
                     val->string = lydict_insert(ctx, value, 0);
                 }
             }
@@ -2990,6 +2999,12 @@ lyp_check_import(struct lys_module *module, const char *value, struct lys_import
     if (imp->rev[0] && imp->module->rev_size && strcmp(imp->rev, imp->module->rev[0].date)) {
         LOGERR(ctx, LY_EVALID, "\"%s\" import of module \"%s\" in revision \"%s\" not found.",
                module->name, value, imp->rev);
+        return -1;
+    }
+
+    if ((module->version < 2) && imp->rev[0] && (imp->module->version == 2)) {
+        LOGERR(ctx, LY_EVALID, "YANG 1.0 module \"%s\" import with revision of YANG 1.1 module \"%s\".",
+               module->name, imp->module->name);
         return -1;
     }
 

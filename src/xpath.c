@@ -960,7 +960,7 @@ set_remove_node(struct lyxp_set *set, uint32_t idx)
 static void
 set_remove_none_nodes(struct lyxp_set *set)
 {
-    uint16_t i, orig_used, end;
+    uint16_t i, orig_used, end = 0;
     int32_t start;
 
     assert(set && (set->type == LYXP_SET_NODE_SET));

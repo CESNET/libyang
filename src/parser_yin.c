@@ -2199,7 +2199,7 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
     struct lys_type *t = NULL;
     uint8_t *trg_must_size = NULL;
     struct lys_restr **trg_must = NULL;
-    struct unres_schema tmp_unres;
+    struct unres_schema *tmp_unres;
     struct lys_module *mod;
     void *reallocated;
     size_t deviate_must_index;
@@ -2384,13 +2384,10 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
 
         /* store a shallow copy of the original node */
         if (!dev->orig_node) {
-            memset(&tmp_unres, 0, sizeof tmp_unres);
-            dev->orig_node = lys_node_dup(dev_target->module, NULL, dev_target, &tmp_unres, 1);
-            /* just to be safe */
-            if (tmp_unres.count) {
-                LOGINT(ctx);
-                goto error;
-            }
+            tmp_unres = calloc(1, sizeof *tmp_unres);
+            dev->orig_node = lys_node_dup(dev_target->module, NULL, dev_target, tmp_unres, 1);
+            /* such a case is not really supported but whatever */
+            unres_schema_free(dev_target->module, &tmp_unres, 1);
         }
 
         /* process deviation properties */
@@ -2431,6 +2428,14 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                 if (d->mod == LY_DEVIATE_DEL) {
                     /* del config is forbidden */
                     LOGVAL(ctx, LYE_INCHILDSTMT, LY_VLOG_NONE, NULL, "config", "deviate delete");
+                    goto error;
+                } else if ((d->mod == LY_DEVIATE_ADD) && (dev_target->flags & LYS_CONFIG_SET)) {
+                    LOGVAL(ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "config");
+                    LOGVAL(ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Adding property that already exists.");
+                    goto error;
+                } else if ((d->mod == LY_DEVIATE_RPL) && !(dev_target->flags & LYS_CONFIG_SET)) {
+                    LOGVAL(ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "config");
+                    LOGVAL(ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Replacing a property that does not exist.");
                     goto error;
                 } else { /* add and replace are the same in this case */
                     /* remove current config value of the target ... */
@@ -6000,6 +6005,11 @@ read_yin_input_output(struct lys_module *module, struct lys_node *parent, struct
         }
     }
 
+    if (!root.child) {
+        LOGVAL(ctx, LYE_MISSCHILDSTMT, LY_VLOG_LYS, retval, "schema-node", strnodetype(retval->nodetype));
+        goto error;
+    }
+
     /* middle part - process nodes with cardinality of 0..n except the data nodes */
     if (c_tpdf) {
         inout->tpdf = calloc(c_tpdf, sizeof *inout->tpdf);
@@ -7326,6 +7336,7 @@ yin_read_module_(struct ly_ctx *ctx, struct lyxml_elem *yin, const char *revisio
     struct unres_schema *unres;
     const char *value;
     int ret;
+    uint8_t i;
 
     unres = calloc(1, sizeof *unres);
     LY_CHECK_ERR_RETURN(!unres, LOGMEM(ctx), NULL);
@@ -7343,6 +7354,15 @@ yin_read_module_(struct ly_ctx *ctx, struct lyxml_elem *yin, const char *revisio
     GETVAL(ctx, value, yin, "name");
     if (lyp_check_identifier(ctx, value, LY_IDENT_NAME, NULL, NULL)) {
         goto error;
+    }
+
+    /* in some really invalid situations there can be a circular import and
+     * we can check it only after we have parsed the module name */
+    for (i = 0; i < ctx->models.parsing_sub_modules_count; ++i) {
+        if (!strcmp(ctx->models.parsing_sub_modules[i]->name, value)) {
+            LOGVAL(ctx, LYE_CIRC_IMPORTS, LY_VLOG_NONE, NULL, value);
+            goto error;
+        }
     }
 
     module = calloc(1, sizeof *module);

@@ -723,6 +723,9 @@ parse_instance_identifier(const char *id, const char **model, int *mod_len, cons
     *name = id;
     *nam_len = ret;
 
+    *model = NULL;
+    *mod_len = 0;
+
     parsed += ret;
     id += ret;
 
@@ -4161,11 +4164,16 @@ check_leafref_features(struct lys_type *type)
                 }
                 if ((unsigned)ly_set_add(features, iter->iffeature[j].features[size - 1], 0) >= x) {
                     /* the feature is not present in features set of target's parents chain */
-                    LOGVAL(ctx, LYE_NORESOLV, LY_VLOG_LYS, type->parent, "leafref", type->info.lref.path);
-                    LOGVAL(ctx, LYE_SPEC, LY_VLOG_PREV, NULL,
+                    LOGVAL(ctx, LYE_SPEC, LY_VLOG_LYS, type->parent,
                            "Leafref is not conditional based on \"%s\" feature as its target.",
                            iter->iffeature[j].features[size - 1]->name);
-                    ret = -1;
+                    for (iter = type->info.lref.target->parent; iter && (iter->nodetype != LYS_USES); iter = lys_parent(iter));
+                    if (iter) {
+                        /* we are in a uses so there can still be a refine that will add an if-feature */
+                        ret = EXIT_FAILURE;
+                    } else {
+                        ret = -1;
+                    }
                     goto cleanup;
                 }
             }
@@ -4372,8 +4380,8 @@ resolve_schema_leafref(struct lys_type *type, struct lys_node *parent, struct un
                 }
             }
 
-            /* store backlinks from leafref target into all nodes that can invalidate the value */
-            if (lys_leaf_add_leafref_target((struct lys_node_leaf *)node_set->set.s[i], (struct lys_node *)type->parent)) {
+            /* check leafref that it is allowed */
+            if (lys_leaf_check_leafref((struct lys_node_leaf *)node_set->set.s[i], (struct lys_node *)type->parent)) {
                 ly_set_free(node_set);
                 return -1;
             }
@@ -5879,7 +5887,7 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
     char *str;
     int mod_name_len, nam_len, rc;
     int need_implemented = 0;
-    unsigned int i, j;
+    unsigned int i, j, found;
     struct lys_ident *der, *cur;
     struct lys_module *imod = NULL, *m, *tmod;
     struct ly_ctx *ctx;
@@ -5971,6 +5979,14 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
         goto fail;
     }
 
+    /* find the type with base definitions */
+    while (!type->info.ident.count && type->der) {
+        type = &type->der->type;
+    }
+    if (!type->info.ident.count) {
+        goto fail;
+    }
+
     if (m != imod || lys_main_module(type->parent->module) != mod) {
         /* the type is not referencing the same schema,
          * THEN, we may need to make the module with the identity implemented, but only if it really
@@ -6017,23 +6033,28 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
     }
 
     /* go through all the derived types of all the bases */
-    while (type->der) {
-        for (i = 0; i < type->info.ident.count; ++i) {
-            cur = type->info.ident.ref[i];
-
-            if (cur->der) {
-                /* there are some derived identities */
-                for (j = 0; j < cur->der->number; j++) {
-                    der = (struct lys_ident *)cur->der->set.g[j]; /* shortcut */
-                    if (!strcmp(der->name, name) && lys_main_module(der->module) == imod) {
-                        /* we have match */
-                        cur = der;
-                        goto match;
-                    }
+    found = 0;
+    for (i = 0; i < type->info.ident.count; ++i) {
+        cur = type->info.ident.ref[i];
+        if (cur->der) {
+            /* there are some derived identities */
+            for (j = 0; j < cur->der->number; j++) {
+                der = (struct lys_ident *)cur->der->set.g[j]; /* shortcut */
+                if (!strcmp(der->name, name) && lys_main_module(der->module) == imod) {
+                    /* we have a match on this base */
+                    ++found;
+                    break;
                 }
             }
         }
-        type = &type->der->type;
+    }
+    if (found == type->info.ident.count) {
+        /* match found for all bases */
+        cur = der;
+        goto match;
+    } else if (found) {
+        LOGVAL(ctx, LYE_SPEC, node ? LY_VLOG_LYD : LY_VLOG_NONE, node, "Identityref value is not derived from all its bases.");
+        goto fail;
     }
 
 fail:
@@ -8192,7 +8213,6 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int ignore_
     switch (type) {
     case UNRES_LEAFREF:
         assert(sleaf->type.base == LY_TYPE_LEAFREF);
-        assert(leaf->validity & LYD_VAL_LEAFREF);
         if (ignore_fail) {
             req_inst = -1;
         } else {
@@ -8222,7 +8242,6 @@ resolve_unres_data_item(struct lyd_node *node, enum UNRES_ITEM type, int ignore_
                     }
                 }
             }
-            leaf->validity &= ~LYD_VAL_LEAFREF;
         } else {
             return rc;
         }

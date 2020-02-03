@@ -570,9 +570,10 @@ xml_print_anydata(struct lyout *out, int level, const struct lyd_node *node, int
     } else {
         if (any->value_type == LYD_ANYDATA_LYB) {
             /* parse into a data tree */
+            ly_errno = 0;
             iter = lyd_parse_mem(node->schema->module->ctx, any->value.mem, LYD_LYB, LYD_OPT_DATA | LYD_OPT_STRICT
                                  | LYD_OPT_TRUSTED);
-            if (iter) {
+            if (!ly_errno) {
                 /* successfully parsed */
                 free(any->value.mem);
                 any->value_type = LYD_ANYDATA_DATATREE;

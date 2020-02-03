@@ -1010,6 +1010,115 @@ test_lyd_find_instance(void **state)
 }
 
 static void
+test_lyd_find_sibling(void **state)
+{
+    struct ly_ctx *ctx = (struct ly_ctx *)*state;
+    const char *yang =
+    "module test {"
+        "namespace urn:test;"
+        "prefix t;"
+        "yang-version 1.1;"
+        "container cont {"
+            "leaf l {"
+                "type string;"
+            "}"
+            "list lt {"
+                "key \"k1 k2\";"
+                "leaf k1 {"
+                    "type string;"
+                "}"
+                "leaf k2 {"
+                    "type string;"
+                "}"
+            "}"
+        "}"
+    "}";
+    const char *xml =
+    "<cont xmlns=\"urn:test\">"
+        "<lt>"
+            "<k1>a1</k1>"
+            "<k2>b1</k2>"
+        "</lt>"
+        "<lt>"
+            "<k1>a2</k1>"
+            "<k2>b2</k2>"
+        "</lt>"
+        "<lt>"
+            "<k1>a3</k1>"
+            "<k2>b3</k2>"
+        "</lt>"
+        "<lt>"
+            "<k1>a4</k1>"
+            "<k2>b4</k2>"
+        "</lt>"
+        "<lt>"
+            "<k1>a5</k1>"
+            "<k2>b5</k2>"
+        "</lt>"
+        "<lt>"
+            "<k1>a6</k1>"
+            "<k2>b6</k2>"
+        "</lt>"
+        "<lt>"
+            "<k1>a7</k1>"
+            "<k2>b7</k2>"
+        "</lt>"
+        "<l>val</l>"
+        "<lt>"
+            "<k1>a8</k1>"
+            "<k2>b8</k2>"
+        "</lt>"
+        "<lt>"
+            "<k1>a9</k1>"
+            "<k2>b9</k2>"
+        "</lt>"
+        "<lt>"
+            "<k1>a10</k1>"
+            "<k2>b10</k2>"
+        "</lt>"
+    "</cont>";
+    struct lyd_node *data, *match;
+    struct lys_node *schema;
+    const struct lys_module *mod;
+
+    mod = lys_parse_mem(ctx, yang, LYS_IN_YANG);
+    assert_non_null(mod);
+    schema = mod->data->child;
+    assert_string_equal(schema->name, "l");
+
+    data = lyd_parse_mem(ctx, xml, LYD_XML, LYD_OPT_CONFIG);
+    assert_ptr_not_equal(data, NULL);
+
+    /* test */
+    assert_int_equal(lyd_find_sibling_val(data->child, schema, NULL, &match), 0);
+    assert_non_null(match);
+    assert_ptr_equal(match->schema, schema);
+
+    schema = schema->next;
+    assert_string_equal(schema->name, "lt");
+
+    assert_int_equal(lyd_find_sibling_val(data->child, schema, NULL, &match), -1);
+    assert_int_equal(lyd_find_sibling_val(data->child, schema, "", &match), -1);
+    assert_int_equal(lyd_find_sibling_val(data->child, schema, "[key='val']", &match), -1);
+    assert_int_equal(lyd_find_sibling_val(data->child, schema, "[k1='val]", &match), -1);
+    assert_int_equal(lyd_find_sibling_val(data->child, schema, "[k1='val'][]", &match), -1);
+
+    assert_int_equal(lyd_find_sibling_val(data->child, schema, "[k1='val'][k2='']", &match), 0);
+    assert_null(match);
+    assert_int_equal(lyd_find_sibling_val(data->child, schema, "[k1='a5'][k2='b5']", &match), 0);
+    assert_non_null(match);
+    assert_int_equal(lyd_find_sibling_val(data->child, schema, "[k1='a10'][k2='b10']", &match), 0);
+    assert_non_null(match);
+    assert_int_equal(lyd_find_sibling_val(data->child, schema, "[k1='a1'][k2='b1']", &match), 0);
+    assert_non_null(match);
+    assert_int_equal(lyd_find_sibling_val(data->child, schema, "[k1='a1'][k2='bbbbbbb1']", &match), 0);
+    assert_null(match);
+
+    /* cleanup */
+    lyd_free_withsiblings(data);
+}
+
+static void
 test_lyd_validate(void **state)
 {
     (void) state; /* unused */
@@ -1931,6 +2040,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_lyd_schema_sort, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_find_path, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_find_instance, setup_f, teardown_f),
+        cmocka_unit_test_setup_teardown(test_lyd_find_sibling, setup_f2, teardown_f2),
         cmocka_unit_test_setup_teardown(test_lyd_validate, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_unlink, setup_f, teardown_f),
         cmocka_unit_test_setup_teardown(test_lyd_free, setup_f, teardown_f),

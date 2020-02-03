@@ -57,7 +57,7 @@ void yyerror(YYLTYPE *yylloc, void *scanner, struct yang_parameter *param, ...);
 %}
 
 %union {
-  int32_t i;
+  int64_t i;
   uint32_t uint;
   char *str;
   char **p_str;
@@ -396,7 +396,9 @@ module_arg_str: identifier_arg_str { if (param->submodule) {
                                        YYABORT;
                                      }
                                      trg = param->module;
-                                     yang_read_common(trg,s,MODULE_KEYWORD);
+                                     if (yang_read_common(trg,s,MODULE_KEYWORD)) {
+                                       YYABORT;
+                                     }
                                      s = NULL;
                                      actual_type = MODULE_KEYWORD;
                                    }
@@ -445,7 +447,9 @@ submodule_arg_str: identifier_arg_str { if (!param->submodule) {
                                           YYABORT;
                                         }
                                         trg = (struct lys_module *)param->submodule;
-                                        yang_read_common(trg,s,MODULE_KEYWORD);
+                                        if (yang_read_common(trg,s,MODULE_KEYWORD)) {
+                                          YYABORT;
+                                        }
                                         s = NULL;
                                         actual_type = SUBMODULE_KEYWORD;
                                       }

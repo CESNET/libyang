@@ -683,8 +683,6 @@ public:
         deleter(deleter)
     {};
     ~Schema_Node_Leaf();
-    /** get backlinks variable from [lys_node_leaf](@ref lys_node_leaf)*/
-    S_Set backlinks();
     /** get when variable from [lys_node_leaf](@ref lys_node_leaf)*/
     S_When when();
     /** get type variable from [lys_node_leaf](@ref lys_node_leaf)*/
@@ -727,8 +725,6 @@ public:
     uint8_t must_size() {return ((struct lys_node_leaflist *)node)->must_size;};
     /** get when variable from [lys_node_leaflist](@ref lys_node_leaflist)*/
     S_When when();
-    /** get backlinks variable from [lys_node_leaflist](@ref lys_node_leaflist)*/
-    S_Set backlinks();
     /** get must variable from [lys_node_leaflist](@ref lys_node_leaflist)*/
     std::vector<S_Restr> must();
     /** get type variable from [lys_node_leaflist](@ref lys_node_leaflist)*/

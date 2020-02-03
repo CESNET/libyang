@@ -49,7 +49,7 @@ lyv_keys(const struct lyd_node *list)
 }
 
 int
-lyv_data_context(const struct lyd_node *node, int options, struct unres_data *unres)
+lyv_data_context(struct lyd_node *node, int options, struct unres_data *unres)
 {
     const struct lys_node *siter = NULL;
     struct lys_node *sparent, *op;
@@ -77,12 +77,10 @@ lyv_data_context(const struct lyd_node *node, int options, struct unres_data *un
                 if (unres_data_add(unres, (struct lyd_node *)node, UNRES_UNION)) {
                     return 1;
                 }
-            } else if ((((struct lys_node_leaf *)leaf->schema)->type.base == LY_TYPE_LEAFREF)
-                    && ((leaf->validity & LYD_VAL_LEAFREF) || (leaf->value_flags & LY_VALUE_UNRES))) {
+            } else if (((struct lys_node_leaf *)leaf->schema)->type.base == LY_TYPE_LEAFREF) {
                 /* always retry validation on unres leafrefs, if again not possible, the correct flags should
                  * be set and the leafref will be kept unresolved */
                 leaf->value_flags &= ~LY_VALUE_UNRES;
-                leaf->validity |= LYD_VAL_LEAFREF;
 
                 if (unres_data_add(unres, (struct lyd_node *)node, UNRES_LEAFREF)) {
                     return 1;
@@ -96,13 +94,12 @@ lyv_data_context(const struct lyd_node *node, int options, struct unres_data *un
 
         /* check all relevant when conditions */
         if (node->when_status & LYD_WHEN) {
-            if (unres_data_add(unres, (struct lyd_node *)node, UNRES_WHEN)) {
+            if (options & LYD_OPT_TRUSTED) {
+                node->when_status |= LYD_WHEN_TRUE;
+            } else if (unres_data_add(unres, (struct lyd_node *)node, UNRES_WHEN)) {
                 return 1;
             }
         }
-    } else if (node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
-        /* just remove the flag if it was set */
-        leaf->validity &= ~LYD_VAL_LEAFREF;
     }
 
     /* check for (non-)presence of status data in edit-config data */

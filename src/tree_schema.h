@@ -1368,9 +1368,7 @@ struct lys_node_leaf {
 
     LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_LEAF */
     struct lys_node *parent;         /**< pointer to the parent node, NULL in case of a top level node */
-    struct ly_set *backlinks;        /**< replacement for ::lys_node's child member, it is NULL except the leaf/leaflist
-                                          is target of a leafref. In that case the set stores ::lys_node leafref objects
-                                          with path referencing the current ::lys_node_leaf */
+    void *child;                     /**< dummy attribute as a replacement for ::lys_node's child member */
     struct lys_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
     struct lys_node *prev;           /**< pointer to the previous sibling node \note Note that this pointer is
                                           never NULL. If there is no sibling node, pointer points to the node
