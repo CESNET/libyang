@@ -100,6 +100,34 @@ setup(void **state)
                 "type empty;"
             "}"
         "}";
+    const char *schema_c =
+        "module c {"
+            "namespace urn:tests:c;"
+            "prefix c;"
+            "yang-version 1.1;"
+
+            "choice choic {"
+                "leaf a {"
+                    "type string;"
+                "}"
+                "case b {"
+                    "leaf-list l {"
+                        "min-elements 3;"
+                        "type string;"
+                    "}"
+                "}"
+            "}"
+            "list lt {"
+                "max-elements 4;"
+                "key \"k\";"
+                "leaf k {"
+                    "type string;"
+                "}"
+            "}"
+            "leaf d {"
+                "type empty;"
+            "}"
+        "}";
 
 #if ENABLE_LOGGER_CHECKING
     ly_set_log_clb(logger, 1);
@@ -108,12 +136,23 @@ setup(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
     assert_non_null(lys_parse_mem(ctx, schema_a, LYS_IN_YANG));
     assert_non_null(lys_parse_mem(ctx, schema_b, LYS_IN_YANG));
+    assert_non_null(lys_parse_mem(ctx, schema_c, LYS_IN_YANG));
 
     return 0;
 }
 
 static int
 teardown(void **state)
+{
+    (void)state;
+    ly_ctx_destroy(ctx, NULL);
+    ctx = NULL;
+
+    return 0;
+}
+
+static int
+teardown_s(void **state)
 {
 #if ENABLE_LOGGER_CHECKING
     if (*state) {
@@ -122,9 +161,6 @@ teardown(void **state)
 #else
     (void) state; /* unused */
 #endif
-
-    ly_ctx_destroy(ctx, NULL);
-    ctx = NULL;
 
     return 0;
 }
@@ -204,12 +240,57 @@ test_mandatory(void **state)
     *state = NULL;
 }
 
+static void
+test_minmax(void **state)
+{
+    *state = test_minmax;
+
+    const char *data;
+    struct lyd_node *tree;
+
+    data = "<d xmlns=\"urn:tests:c\"/>";
+    assert_int_equal(LY_EVALID, lyd_parse_xml(ctx, data, LYD_OPT_VAL_DATA_ONLY, &tree));
+    assert_null(tree);
+    logbuf_assert("Too few \"l\" instances. /c:choic/b/l");
+
+    data =
+    "<l xmlns=\"urn:tests:c\">val1</l>"
+    "<l xmlns=\"urn:tests:c\">val2</l>";
+    assert_int_equal(LY_EVALID, lyd_parse_xml(ctx, data, LYD_OPT_VAL_DATA_ONLY, &tree));
+    assert_null(tree);
+    logbuf_assert("Too few \"l\" instances. /c:choic/b/l");
+
+    data =
+    "<l xmlns=\"urn:tests:c\">val1</l>"
+    "<l xmlns=\"urn:tests:c\">val2</l>"
+    "<l xmlns=\"urn:tests:c\">val3</l>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, LYD_OPT_VAL_DATA_ONLY, &tree));
+    assert_non_null(tree);
+    lyd_free_withsiblings(tree);
+
+    data =
+    "<l xmlns=\"urn:tests:c\">val1</l>"
+    "<l xmlns=\"urn:tests:c\">val2</l>"
+    "<l xmlns=\"urn:tests:c\">val3</l>"
+    "<lt xmlns=\"urn:tests:c\"><k>val1</k></lt>"
+    "<lt xmlns=\"urn:tests:c\"><k>val2</k></lt>"
+    "<lt xmlns=\"urn:tests:c\"><k>val3</k></lt>"
+    "<lt xmlns=\"urn:tests:c\"><k>val4</k></lt>"
+    "<lt xmlns=\"urn:tests:c\"><k>val5</k></lt>";
+    assert_int_equal(LY_EVALID, lyd_parse_xml(ctx, data, LYD_OPT_VAL_DATA_ONLY, &tree));
+    assert_null(tree);
+    logbuf_assert("Too many \"lt\" instances. /c:lt");
+
+    *state = NULL;
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
-        cmocka_unit_test_setup_teardown(test_when, setup, teardown),
-        cmocka_unit_test_setup_teardown(test_mandatory, setup, teardown),
+        cmocka_unit_test_teardown(test_when, teardown_s),
+        cmocka_unit_test_teardown(test_mandatory, teardown_s),
+        cmocka_unit_test_teardown(test_minmax, teardown_s),
     };
 
-    return cmocka_run_group_tests(tests, NULL, NULL);
+    return cmocka_run_group_tests(tests, setup, teardown);
 }

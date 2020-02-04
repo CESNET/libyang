@@ -169,7 +169,7 @@ lyd_validate_mandatory(const struct lysc_node *snode, struct lyd_node *sibling)
         is_choice = 1;
     }
 
-    for (node = sibling; node; node = node->next) {
+    LY_LIST_FOR(sibling, node) {
         if (is_choice) {
             if (node->schema->parent && (node->schema->parent->nodetype & LYS_CASE) && (node->schema->parent->parent == snode)) {
                 /* case data instance found */
@@ -191,7 +191,23 @@ lyd_validate_mandatory(const struct lysc_node *snode, struct lyd_node *sibling)
 static LY_ERR
 lyd_validate_minmax(const struct lysc_node *snode, uint32_t min, uint32_t max, struct lyd_node *sibling)
 {
-    /* TODO snode count in siblings */
+    uint32_t count = 0;
+    struct lyd_node *iter;
+
+    LY_LIST_FOR(sibling, iter) {
+        if (iter->schema == snode) {
+            ++count;
+        }
+    }
+
+    if (min && (count < min)) {
+        LOGVAL(snode->module->ctx, LY_VLOG_LYSC, snode, LY_VCODE_NOMIN, snode->name);
+        return LY_EVALID;
+    } else if (max && (count > max)) {
+        LOGVAL(snode->module->ctx, LY_VLOG_LYSC, snode, LY_VCODE_NOMAX, snode->name);
+        return LY_EVALID;
+    }
+
     return LY_SUCCESS;
 }
 
@@ -211,26 +227,24 @@ lyd_validate_cases(const struct lysc_node_case *cases, struct lyd_node *sibling)
 }
 
 static LY_ERR
-lyd_validate_siblings_r(struct lyd_node *sibling, const struct lysc_node *sparent, const struct lysc_module *mod, int options)
+lyd_validate_siblings_schema_r(struct lyd_node *sibling, const struct lysc_node *sparent, const struct lysc_module *mod,
+                               int options)
 {
-    LY_ERR ret;
     const struct lysc_node *snode = NULL;
     struct lysc_node_list *slist;
-    struct lyd_node *node;
 
     /* disabled nodes are skipped by lys_getnext */
     while ((snode = lys_getnext(snode, sparent, mod, LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE))) {
-        /* check mandatory existence */
-        if (snode->flags & LYS_MAND_TRUE) {
-            LY_CHECK_RET(lyd_validate_mandatory(snode, sibling));
-        }
-
         /* check min-elements and max-elements */
         if (snode->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
             slist = (struct lysc_node_list *)snode;
             if (slist->min || slist->max) {
                 LY_CHECK_RET(lyd_validate_minmax(snode, slist->min, slist->max, sibling));
             }
+
+        /* check generic mandatory existence */
+        } else if (snode->flags & LYS_MAND_TRUE) {
+            LY_CHECK_RET(lyd_validate_mandatory(snode, sibling));
         }
 
         /* check unique */
@@ -245,9 +259,25 @@ lyd_validate_siblings_r(struct lyd_node *sibling, const struct lysc_node *sparen
         if (snode->nodetype == LYS_CHOICE) {
             LY_CHECK_RET(lyd_validate_cases(((struct lysc_node_choice *)snode)->cases, sibling));
         }
+
+        if (snode->nodetype & (LYS_CHOICE | LYS_CASE)) {
+            /* go recursively for schema-only nodes */
+            LY_CHECK_RET(lyd_validate_siblings_schema_r(sibling, snode, mod, options));
+        }
     }
 
-    for (node = sibling; node; node = node->next) {
+    return LY_SUCCESS;
+}
+
+static LY_ERR
+lyd_validate_siblings_r(struct lyd_node *sibling, const struct lysc_node *sparent, const struct lysc_module *mod, int options)
+{
+    struct lyd_node *node;
+
+    /* validate schema-based restrictions */
+    LY_CHECK_RET(lyd_validate_siblings_schema_r(sibling, sparent, mod, options));
+
+    LY_LIST_FOR(sibling, node) {
         /* TODO node's must */
         /* TODO node instance duplicites */
         /* TODO node status */
@@ -263,8 +293,8 @@ lyd_validate_siblings_r(struct lyd_node *sibling, const struct lysc_node *sparen
 }
 
 LY_ERR
-lyd_validate_modules(const struct lyd_node **trees, const struct lys_module **modules, int mod_count, struct ly_ctx *ctx,
-                     int options)
+lyd_validate_data(const struct lyd_node **trees, const struct lys_module **modules, int mod_count, struct ly_ctx *ctx,
+                  int options)
 {
     LY_ERR ret;
     uint32_t i = 0, j;

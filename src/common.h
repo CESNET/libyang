@@ -230,6 +230,8 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 
 #define LY_VCODE_NOWHEN         LYVE_DATA, "When condition \"%s\" not satisfied."
 #define LY_VCODE_NOMAND         LYVE_DATA, "Mandatory node \"%s\" instance does not exist."
+#define LY_VCODE_NOMIN          LYVE_DATA, "Too few \"%s\" instances."
+#define LY_VCODE_NOMAX          LYVE_DATA, "Too many \"%s\" instances."
 
 /******************************************************************************
  * Context

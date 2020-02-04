@@ -44,7 +44,7 @@ LY_ERR lyd_validate_unres(struct ly_set *node_types, struct ly_set *attr_types, 
  * @param[in] options Validation options.
  * @return LY_ERR value.
  */
-LY_ERR lyd_validate_modules(const struct lyd_node **trees, const struct lys_module **modules, int mod_count,
-                            struct ly_ctx *ctx, int options);
+LY_ERR lyd_validate_data(const struct lyd_node **trees, const struct lys_module **modules, int mod_count,
+                         struct ly_ctx *ctx, int options);
 
 #endif /* LY_VALIDATION_H_ */

@@ -585,7 +585,7 @@ validation:
 #endif
 
     /* context node and other validation tasks that depend on other data nodes */
-    ret = lyd_validate_modules(result_trees, NULL, 0, ctx, options);
+    ret = lyd_validate_data(result_trees, NULL, 0, ctx, options);
     LY_CHECK_GOTO(result, cleanup);
 
 cleanup:

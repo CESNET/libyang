@@ -400,7 +400,7 @@ struct lyd_node_any {
                                                                       the NETCONF \<get-config\> operation. */
 #define LYD_OPT_EDIT       LYD_OPT_PARSE_ONLY | LYD_OPT_EMPTY_INST /**< Content of the NETCONF \<edit-config\>'s config element. */
 
-//#define LYD_OPT_STRICT     0x0001 /**< Instead of silent ignoring data without schema definition raise an error. */
+#define LYD_OPT_STRICT     0x0001 /**< Instead of silent ignoring data without schema definition raise an error. */
 #define LYD_OPT_PARSE_ONLY 0x0002 /**< Data will be only parsed and no (only required) validation will be performed. */
 #define LYD_OPT_NO_STATE   0x0004 /**< Consider state data not allowed and raise an error if they are found. */
 #define LYD_OPT_EMPTY_INST 0x0008 /**< Allow leaf/leaf-list instances without values and lists without keys. */
