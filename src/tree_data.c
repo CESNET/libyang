@@ -2437,7 +2437,7 @@ lyd_get_schema_inctx(const struct lyd_node *node, struct ly_ctx *ctx)
 
 /* both target and source were validated */
 static void
-lyd_merge_node_update(struct lyd_node *target, struct lyd_node *source)
+lyd_merge_node_update(struct lyd_node *target, struct lyd_node *source, int options)
 {
     struct ly_ctx *ctx;
     struct lyd_node_leaf_list *trg_leaf, *src_leaf;
@@ -2446,6 +2446,11 @@ lyd_merge_node_update(struct lyd_node *target, struct lyd_node *source)
 
     assert(target->schema->nodetype & (LYS_LEAF | LYS_ANYDATA));
     ctx = target->schema->module->ctx;
+
+    if (source->dflt && (options & LYD_OPT_EXPLICIT)) {
+        /* keep the target node whatever it is */
+        return;
+    }
 
     if (ctx == source->schema->module->ctx) {
         /* source and targets are in the same context */
@@ -2702,16 +2707,6 @@ lyd_merge_parent_children(struct lyd_node *target, struct lyd_node *source, int 
             src_elem;
             src_elem = src_next) {
 
-            /* it won't get inserted in this case */
-            if (src_elem->dflt && (options & LYD_OPT_EXPLICIT)) {
-                if (src_elem == src) {
-                    /* we are done with this subtree in this case */
-                    break;
-                }
-                trg_child = (struct lyd_node *)1;
-                goto src_skip;
-            }
-
             ret = 0;
 
 #ifdef LY_ENABLED_CACHE
@@ -2769,7 +2764,7 @@ lyd_merge_parent_children(struct lyd_node *target, struct lyd_node *source, int 
 
             if (ret > 0) {
                 if (trg_child->schema->nodetype & (LYS_LEAF | LYS_ANYDATA)) {
-                    lyd_merge_node_update(trg_child, src_elem);
+                    lyd_merge_node_update(trg_child, src_elem, options);
                 } else if (ret == 2) {
                     clear_flag = 1;
                 }
@@ -2788,7 +2783,6 @@ lyd_merge_parent_children(struct lyd_node *target, struct lyd_node *source, int 
                 src_next = src_elem->child;
                 trg_parent = trg_child;
             } else {
-src_skip:
                 /* no children (or the whole subtree will be inserted), try siblings */
                 if (src_elem == src) {
                     /* we are done with this subtree */
@@ -2883,7 +2877,7 @@ lyd_merge_siblings(struct lyd_node *target, struct lyd_node *source, int options
                 case LYS_LEAF:
                 case LYS_ANYXML:
                 case LYS_ANYDATA:
-                    lyd_merge_node_update(trg, src);
+                    lyd_merge_node_update(trg, src, options);
                     break;
                 case LYS_LEAFLIST:
                     /* it's already there, nothing to do */
