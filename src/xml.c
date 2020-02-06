@@ -413,18 +413,21 @@ lyxml_get_element(struct lyxml_context *context, const char **input,
             /* match opening and closing element tags */
             LY_CHECK_ERR_RET(
                     !context->elements.count,
-                    LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX, "Opening and closing elements tag missmatch (\"%.*s\").", *name_len, *name),
+                    LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX,
+                           "Opening and closing elements tag missmatch (\"%.*s\").", *name_len, *name),
                     LY_EVALID);
             e = (struct lyxml_elem*)context->elements.objs[context->elements.count - 1];
-            LY_CHECK_ERR_RET(e->prefix_len != *prefix_len || e->name_len != *name_len
-                             || (*prefix_len && strncmp(*prefix, e->prefix, e->prefix_len)) || strncmp(*name, e->name, e->name_len),
-                             LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX, "Opening and closing elements tag missmatch (\"%.*s\").", *name_len, *name),
-                             LY_EVALID);
+            if (e->prefix_len != *prefix_len || e->name_len != *name_len
+                    || (*prefix_len && strncmp(*prefix, e->prefix, e->prefix_len)) || strncmp(*name, e->name, e->name_len)) {
+                LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX,
+                       "Opening and closing elements tag missmatch (\"%.*s\").", *name_len, *name);
+                return LY_EVALID;
+            }
             /* opening and closing element tags matches, remove record from the opening tags list */
             free(e);
             --context->elements.count;
 
-            /* remove also the namespaces conneted with the element */
+            /* remove also the namespaces connected with the element */
             lyxml_ns_rm(context);
 
             /* do not return element information to announce closing element being currently processed */
@@ -484,7 +487,8 @@ success:
 }
 
 LY_ERR
-lyxml_get_string(struct lyxml_context *context, const char **input, char **buffer, size_t *buffer_size, char **output, size_t *length, int *dynamic)
+lyxml_get_string(struct lyxml_context *context, const char **input, char **buffer, size_t *buffer_size, char **output,
+                 size_t *length, int *dynamic)
 {
 #define BUFSIZE 4096
 #define BUFSIZE_STEP 4096
@@ -718,11 +722,15 @@ element_endtag_check:
                                    name_len, name),
                             error);
                     e = (struct lyxml_elem*)context->elements.objs[context->elements.count - 1];
-                    LY_CHECK_ERR_GOTO(e->prefix_len != prefix_len || e->name_len != name_len
-                                      || (prefix_len && strncmp(prefix, e->prefix, e->prefix_len)) || strncmp(name, e->name, e->name_len),
-                            free(e); --context->elements.count; LOGVAL(ctx, LY_VLOG_LINE, &fakecontext.line, LYVE_SYNTAX,
-                                            "Opening and closing elements tag missmatch (\"%.*s\").", name_len, name),
-                            error);
+                    if (e->prefix_len != prefix_len || e->name_len != name_len
+                            || (prefix_len && strncmp(prefix, e->prefix, e->prefix_len)) || strncmp(name, e->name, e->name_len)) {
+                        LOGVAL(ctx, LY_VLOG_LINE, &fakecontext.line, LYVE_SYNTAX,
+                               "Opening and closing elements tag missmatch (\"%.*s\", expected \"%.*s\").",
+                               name_len, name, e->name_len, e->name);
+                        free(e);
+                        --context->elements.count;
+                        goto error;
+                    }
                     /* opening and closing element tags matches */
                     /* return input back */
                     in = (*input);

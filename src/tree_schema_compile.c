@@ -3952,6 +3952,7 @@ lys_compile_node_list_unique(struct lysc_ctx *ctx, struct lys_module *context_mo
 {
     LY_ERR ret = LY_SUCCESS;
     struct lysc_node_leaf **key, ***unique;
+    struct lysc_node *parent;
     const char *keystr, *delim;
     size_t len;
     unsigned int v;
@@ -3995,12 +3996,21 @@ lys_compile_node_list_unique(struct lysc_ctx *ctx, struct lys_module *context_mo
             /* all referenced leafs must be of the same config type */
             if (config != -1 && ((((*key)->flags & LYS_CONFIG_W) && config == 0) || (((*key)->flags & LYS_CONFIG_R) && config == 1))) {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                       "Unique statement \"%s\" refers to leafs with different config type.", uniques[v]);
+                       "Unique statement \"%s\" refers to leaves with different config type.", uniques[v]);
                 return LY_EVALID;
             } else if ((*key)->flags & LYS_CONFIG_W) {
                 config = 1;
             } else { /* LYS_CONFIG_R */
                 config = 0;
+            }
+
+            /* we forbid referencing nested lists because it is unspecified what instance of such a list to use */
+            for (parent = (*key)->parent; parent != (struct lysc_node *)list; parent = parent->parent) {
+                if (parent->nodetype == LYS_LIST) {
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                       "Unique statement \"%s\" refers to a leaf in nested list \"%s\".", uniques[v], parent->name);
+                    return LY_EVALID;
+                }
             }
 
             /* check status */

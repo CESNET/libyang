@@ -128,6 +128,55 @@ setup(void **state)
                 "type empty;"
             "}"
         "}";
+    const char *schema_d =
+        "module d {"
+            "namespace urn:tests:d;"
+            "prefix d;"
+            "yang-version 1.1;"
+
+            "list lt {"
+                "key \"k\";"
+                "unique \"l1\";"
+                "leaf k {"
+                    "type string;"
+                "}"
+                "leaf l1 {"
+                    "type string;"
+                "}"
+            "}"
+            "list lt2 {"
+                "key \"k\";"
+                "unique \"cont/l2 l4\";"
+                "unique \"l5 l6\";"
+                "leaf k {"
+                    "type string;"
+                "}"
+                "container cont {"
+                    "leaf l2 {"
+                        "type string;"
+                    "}"
+                "}"
+                "leaf l4 {"
+                    "type string;"
+                "}"
+                "leaf l5 {"
+                    "type string;"
+                "}"
+                "leaf l6 {"
+                    "type string;"
+                "}"
+                "list lt3 {"
+                    "key \"kk\";"
+                    "unique \"l3\";"
+                    "leaf kk {"
+                        "type string;"
+                    "}"
+                    "leaf l3 {"
+                        "type string;"
+                    "}"
+                "}"
+            "}"
+        "}";
 
 #if ENABLE_LOGGER_CHECKING
     ly_set_log_clb(logger, 1);
@@ -137,6 +186,7 @@ setup(void **state)
     assert_non_null(lys_parse_mem(ctx, schema_a, LYS_IN_YANG));
     assert_non_null(lys_parse_mem(ctx, schema_b, LYS_IN_YANG));
     assert_non_null(lys_parse_mem(ctx, schema_c, LYS_IN_YANG));
+    assert_non_null(lys_parse_mem(ctx, schema_d, LYS_IN_YANG));
 
     return 0;
 }
@@ -284,12 +334,391 @@ test_minmax(void **state)
     *state = NULL;
 }
 
+static void
+test_unique(void **state)
+{
+    *state = test_unique;
+
+    const char *data;
+    struct lyd_node *tree;
+
+    data =
+    "<lt xmlns=\"urn:tests:d\">"
+        "<k>val1</k>"
+        "<l1>same</l1>"
+    "</lt>"
+    "<lt xmlns=\"urn:tests:d\">"
+        "<k>val2</k>"
+    "</lt>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, LYD_OPT_VAL_DATA_ONLY, &tree));
+    assert_non_null(tree);
+    lyd_free_withsiblings(tree);
+
+    data =
+    "<lt xmlns=\"urn:tests:d\">"
+        "<k>val1</k>"
+        "<l1>same</l1>"
+    "</lt>"
+    "<lt xmlns=\"urn:tests:d\">"
+        "<k>val2</k>"
+        "<l1>not-same</l1>"
+    "</lt>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, LYD_OPT_VAL_DATA_ONLY, &tree));
+    assert_non_null(tree);
+    lyd_free_withsiblings(tree);
+
+    data =
+    "<lt xmlns=\"urn:tests:d\">"
+        "<k>val1</k>"
+        "<l1>same</l1>"
+    "</lt>"
+    "<lt xmlns=\"urn:tests:d\">"
+        "<k>val2</k>"
+        "<l1>same</l1>"
+    "</lt>";
+    assert_int_equal(LY_EVALID, lyd_parse_xml(ctx, data, LYD_OPT_VAL_DATA_ONLY, &tree));
+    assert_null(tree);
+    logbuf_assert("Unique data leaf(s) \"l1\" not satisfied in \"/d:lt[k='val1']\" and \"/d:lt[k='val2']\".");
+
+    /* now try with more instances */
+    data =
+    "<lt xmlns=\"urn:tests:d\">"
+        "<k>val1</k>"
+        "<l1>1</l1>"
+    "</lt>"
+    "<lt xmlns=\"urn:tests:d\">"
+        "<k>val2</k>"
+        "<l1>2</l1>"
+    "</lt>"
+    "<lt xmlns=\"urn:tests:d\">"
+        "<k>val3</k>"
+        "<l1>3</l1>"
+    "</lt>"
+    "<lt xmlns=\"urn:tests:d\">"
+        "<k>val4</k>"
+        "<l1>4</l1>"
+    "</lt>"
+    "<lt xmlns=\"urn:tests:d\">"
+        "<k>val5</k>"
+        "<l1>5</l1>"
+    "</lt>"
+    "<lt xmlns=\"urn:tests:d\">"
+        "<k>val6</k>"
+        "<l1>6</l1>"
+    "</lt>"
+    "<lt xmlns=\"urn:tests:d\">"
+        "<k>val7</k>"
+        "<l1>7</l1>"
+    "</lt>"
+    "<lt xmlns=\"urn:tests:d\">"
+        "<k>val8</k>"
+        "<l1>8</l1>"
+    "</lt>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, LYD_OPT_VAL_DATA_ONLY, &tree));
+    assert_non_null(tree);
+    lyd_free_withsiblings(tree);
+
+    data =
+    "<lt xmlns=\"urn:tests:d\">"
+        "<k>val1</k>"
+        "<l1>1</l1>"
+    "</lt>"
+    "<lt xmlns=\"urn:tests:d\">"
+        "<k>val2</k>"
+        "<l1>2</l1>"
+    "</lt>"
+    "<lt xmlns=\"urn:tests:d\">"
+        "<k>val3</k>"
+        "<l1>3</l1>"
+    "</lt>"
+    "<lt xmlns=\"urn:tests:d\">"
+        "<k>val4</k>"
+    "</lt>"
+    "<lt xmlns=\"urn:tests:d\">"
+        "<k>val5</k>"
+        "<l1>5</l1>"
+    "</lt>"
+    "<lt xmlns=\"urn:tests:d\">"
+        "<k>val6</k>"
+        "<l1>6</l1>"
+    "</lt>"
+    "<lt xmlns=\"urn:tests:d\">"
+        "<k>val7</k>"
+    "</lt>"
+    "<lt xmlns=\"urn:tests:d\">"
+        "<k>val8</k>"
+    "</lt>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, LYD_OPT_VAL_DATA_ONLY, &tree));
+    assert_non_null(tree);
+    lyd_free_withsiblings(tree);
+
+    data =
+    "<lt xmlns=\"urn:tests:d\">"
+        "<k>val1</k>"
+        "<l1>1</l1>"
+    "</lt>"
+    "<lt xmlns=\"urn:tests:d\">"
+        "<k>val2</k>"
+        "<l1>2</l1>"
+    "</lt>"
+    "<lt xmlns=\"urn:tests:d\">"
+        "<k>val3</k>"
+    "</lt>"
+    "<lt xmlns=\"urn:tests:d\">"
+        "<k>val4</k>"
+        "<l1>4</l1>"
+    "</lt>"
+    "<lt xmlns=\"urn:tests:d\">"
+        "<k>val5</k>"
+    "</lt>"
+    "<lt xmlns=\"urn:tests:d\">"
+        "<k>val6</k>"
+    "</lt>"
+    "<lt xmlns=\"urn:tests:d\">"
+        "<k>val7</k>"
+        "<l1>2</l1>"
+    "</lt>"
+    "<lt xmlns=\"urn:tests:d\">"
+        "<k>val8</k>"
+        "<l1>8</l1>"
+    "</lt>";
+    assert_int_equal(LY_EVALID, lyd_parse_xml(ctx, data, LYD_OPT_VAL_DATA_ONLY, &tree));
+    assert_null(tree);
+    logbuf_assert("Unique data leaf(s) \"l1\" not satisfied in \"/d:lt[k='val7']\" and \"/d:lt[k='val2']\".");
+
+    *state = NULL;
+}
+
+static void
+test_unique_nested(void **state)
+{
+    *state = test_unique_nested;
+
+    const char *data;
+    struct lyd_node *tree;
+
+    /* nested list uniquest are compared only with instances in the same parent list instance */
+    data =
+    "<lt2 xmlns=\"urn:tests:d\">"
+        "<k>val1</k>"
+        "<cont>"
+            "<l2>1</l2>"
+        "</cont>"
+        "<l4>1</l4>"
+    "</lt2>"
+    "<lt2 xmlns=\"urn:tests:d\">"
+        "<k>val2</k>"
+        "<cont>"
+            "<l2>2</l2>"
+        "</cont>"
+        "<l4>2</l4>"
+        "<lt3>"
+            "<kk>val1</kk>"
+            "<l3>1</l3>"
+        "</lt3>"
+        "<lt3>"
+            "<kk>val2</kk>"
+            "<l3>2</l3>"
+        "</lt3>"
+    "</lt2>"
+    "<lt2 xmlns=\"urn:tests:d\">"
+        "<k>val3</k>"
+        "<cont>"
+            "<l2>3</l2>"
+        "</cont>"
+        "<l4>3</l4>"
+        "<lt3>"
+            "<kk>val1</kk>"
+            "<l3>2</l3>"
+        "</lt3>"
+    "</lt2>"
+    "<lt2 xmlns=\"urn:tests:d\">"
+        "<k>val4</k>"
+        "<cont>"
+            "<l2>4</l2>"
+        "</cont>"
+        "<l4>4</l4>"
+        "<lt3>"
+            "<kk>val1</kk>"
+            "<l3>3</l3>"
+        "</lt3>"
+    "</lt2>"
+    "<lt2 xmlns=\"urn:tests:d\">"
+        "<k>val5</k>"
+        "<cont>"
+            "<l2>5</l2>"
+        "</cont>"
+        "<l4>5</l4>"
+        "<lt3>"
+            "<kk>val1</kk>"
+            "<l3>3</l3>"
+        "</lt3>"
+    "</lt2>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, LYD_OPT_VAL_DATA_ONLY | LYD_OPT_STRICT, &tree));
+    assert_non_null(tree);
+    lyd_free_withsiblings(tree);
+
+    data =
+    "<lt2 xmlns=\"urn:tests:d\">"
+        "<k>val1</k>"
+        "<cont>"
+            "<l2>1</l2>"
+        "</cont>"
+        "<l4>1</l4>"
+    "</lt2>"
+    "<lt2 xmlns=\"urn:tests:d\">"
+        "<k>val2</k>"
+        "<cont>"
+            "<l2>2</l2>"
+        "</cont>"
+        "<lt3>"
+            "<kk>val1</kk>"
+            "<l3>1</l3>"
+        "</lt3>"
+        "<lt3>"
+            "<kk>val2</kk>"
+            "<l3>2</l3>"
+        "</lt3>"
+        "<lt3>"
+            "<kk>val3</kk>"
+            "<l3>1</l3>"
+        "</lt3>"
+    "</lt2>"
+    "<lt2 xmlns=\"urn:tests:d\">"
+        "<k>val3</k>"
+        "<cont>"
+            "<l2>3</l2>"
+        "</cont>"
+        "<l4>1</l4>"
+        "<lt3>"
+            "<kk>val1</kk>"
+            "<l3>2</l3>"
+        "</lt3>"
+    "</lt2>"
+    "<lt2 xmlns=\"urn:tests:d\">"
+        "<k>val4</k>"
+        "<cont>"
+            "<l2>4</l2>"
+        "</cont>"
+        "<lt3>"
+            "<kk>val1</kk>"
+            "<l3>3</l3>"
+        "</lt3>"
+    "</lt2>"
+    "<lt2 xmlns=\"urn:tests:d\">"
+        "<k>val5</k>"
+        "<cont>"
+            "<l2>5</l2>"
+        "</cont>"
+        "<lt3>"
+            "<kk>val1</kk>"
+            "<l3>3</l3>"
+        "</lt3>"
+    "</lt2>";
+    assert_int_equal(LY_EVALID, lyd_parse_xml(ctx, data, LYD_OPT_VAL_DATA_ONLY, &tree));
+    assert_null(tree);
+    logbuf_assert("Unique data leaf(s) \"l3\" not satisfied in \"/d:lt2[k='val2']/lt3[kk='val3']\" and"
+                  " \"/d:lt2[k='val2']/lt3[kk='val1']\".");
+
+    data =
+    "<lt2 xmlns=\"urn:tests:d\">"
+        "<k>val1</k>"
+        "<cont>"
+            "<l2>1</l2>"
+        "</cont>"
+        "<l4>1</l4>"
+    "</lt2>"
+    "<lt2 xmlns=\"urn:tests:d\">"
+        "<k>val2</k>"
+        "<cont>"
+            "<l2>2</l2>"
+        "</cont>"
+        "<l4>2</l4>"
+    "</lt2>"
+    "<lt2 xmlns=\"urn:tests:d\">"
+        "<k>val3</k>"
+        "<cont>"
+            "<l2>3</l2>"
+        "</cont>"
+        "<l4>3</l4>"
+    "</lt2>"
+    "<lt2 xmlns=\"urn:tests:d\">"
+        "<k>val4</k>"
+        "<cont>"
+            "<l2>2</l2>"
+        "</cont>"
+        "<l4>2</l4>"
+    "</lt2>"
+    "<lt2 xmlns=\"urn:tests:d\">"
+        "<k>val5</k>"
+        "<cont>"
+            "<l2>5</l2>"
+        "</cont>"
+        "<l4>5</l4>"
+    "</lt2>";
+    assert_int_equal(LY_EVALID, lyd_parse_xml(ctx, data, LYD_OPT_VAL_DATA_ONLY, &tree));
+    assert_null(tree);
+    logbuf_assert("Unique data leaf(s) \"cont/l2 l4\" not satisfied in \"/d:lt2[k='val4']\" and \"/d:lt2[k='val2']\".");
+
+    data =
+    "<lt2 xmlns=\"urn:tests:d\">"
+        "<k>val1</k>"
+        "<cont>"
+            "<l2>1</l2>"
+        "</cont>"
+        "<l4>1</l4>"
+        "<l5>1</l5>"
+        "<l6>1</l6>"
+    "</lt2>"
+    "<lt2 xmlns=\"urn:tests:d\">"
+        "<k>val2</k>"
+        "<cont>"
+            "<l2>2</l2>"
+        "</cont>"
+        "<l4>1</l4>"
+        "<l5>1</l5>"
+    "</lt2>"
+    "<lt2 xmlns=\"urn:tests:d\">"
+        "<k>val3</k>"
+        "<cont>"
+            "<l2>3</l2>"
+        "</cont>"
+        "<l4>1</l4>"
+        "<l5>3</l5>"
+        "<l6>3</l6>"
+    "</lt2>"
+    "<lt2 xmlns=\"urn:tests:d\">"
+        "<k>val4</k>"
+        "<cont>"
+            "<l2>4</l2>"
+        "</cont>"
+        "<l4>1</l4>"
+        "<l6>1</l6>"
+    "</lt2>"
+    "<lt2 xmlns=\"urn:tests:d\">"
+        "<k>val5</k>"
+        "<cont>"
+            "<l2>5</l2>"
+        "</cont>"
+        "<l4>1</l4>"
+        "<l5>3</l5>"
+        "<l6>3</l6>"
+    "</lt2>";
+    assert_int_equal(LY_EVALID, lyd_parse_xml(ctx, data, LYD_OPT_VAL_DATA_ONLY, &tree));
+    assert_null(tree);
+    logbuf_assert("Unique data leaf(s) \"l5 l6\" not satisfied in \"/d:lt2[k='val5']\" and \"/d:lt2[k='val3']\".");
+
+    *state = NULL;
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_teardown(test_when, teardown_s),
         cmocka_unit_test_teardown(test_mandatory, teardown_s),
         cmocka_unit_test_teardown(test_minmax, teardown_s),
+        cmocka_unit_test_teardown(test_unique, teardown_s),
+        cmocka_unit_test_teardown(test_unique_nested, teardown_s),
     };
 
     return cmocka_run_group_tests(tests, setup, teardown);

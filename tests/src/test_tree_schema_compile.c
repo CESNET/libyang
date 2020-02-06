@@ -719,7 +719,7 @@ test_node_list(void **state)
 
     assert_null(lys_parse_mem(ctx, "module hh {namespace urn:hh;prefix hh;"
                               "list l {key x; unique \"x y\";leaf x {type string;} leaf y {config false; type string;}}}", LYS_IN_YANG));
-    logbuf_assert("Unique statement \"x y\" refers to leafs with different config type. /hh:l");
+    logbuf_assert("Unique statement \"x y\" refers to leaves with different config type. /hh:l");
 
     assert_null(lys_parse_mem(ctx, "module ii {namespace urn:ii;prefix ii;"
                               "list l {key x; unique a:x;leaf x {type string;}}}", LYS_IN_YANG));

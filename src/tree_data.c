@@ -290,7 +290,7 @@ lyd_value_validate(struct ly_ctx *ctx, const struct lyd_node_term *node, const c
 
 API LY_ERR
 lyd_value_compare(const struct lyd_node_term *node, const char *value, size_t value_len,
-                  ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format,  const struct lyd_node **trees)
+                  ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format, const struct lyd_node **trees)
 {
     LY_ERR ret = LY_SUCCESS, rc;
     struct ly_err_item *err = NULL;
@@ -547,7 +547,7 @@ lyd_compare(const struct lyd_node *node1, const struct lyd_node *node2, int opti
         }
     }
 
-    if (node1->schema->module->ctx != node2->schema->module->ctx || node1->schema != node2 ->schema) {
+    if (node1->schema->module->ctx != node2->schema->module->ctx || node1->schema != node2->schema) {
         return LY_ENOT;
     }
 
@@ -903,6 +903,9 @@ error:
 static LY_ERR
 lyd_path_str_enlarge(char **buffer, size_t *buflen, size_t reqlen, int is_static)
 {
+    /* ending \0 */
+    ++reqlen;
+
     if (reqlen > *buflen) {
         if (is_static) {
             return LY_EINCOMPLETE;
@@ -939,7 +942,7 @@ lyd_path_list_predicate(const struct lyd_node *node, char **buffer, size_t *bufl
     char quot;
     LY_ERR rc;
 
-    for (key = lyd_node_children(node); key && (key->flags & LYS_KEY); key = key->next) {
+    for (key = lyd_node_children(node); key && (key->schema->flags & LYS_KEY); key = key->next) {
         val = lyd_value2str((struct lyd_node_term *)key, &dynamic);
         len = 1 + strlen(key->schema->name) + 2 + strlen(val) + 2;
         rc = lyd_path_str_enlarge(buffer, buflen, *bufused + len, is_static);
@@ -1053,8 +1056,8 @@ cleanup:
 API char *
 lyd_path(const struct lyd_node *node, LYD_PATH_TYPE pathtype, char *buffer, size_t buflen)
 {
-    int is_static = 0, i, j, depth;
-    size_t bufused = 1 /* ending zero */, len;
+    int is_static = 0, i, depth;
+    size_t bufused = 0, len;
     const struct lyd_node *iter;
     const struct lys_module *mod;
     LY_ERR rc;
@@ -1063,20 +1066,21 @@ lyd_path(const struct lyd_node *node, LYD_PATH_TYPE pathtype, char *buffer, size
     if (buffer) {
         LY_CHECK_ARG_RET(node->schema->module->ctx, buflen > 1, NULL);
         is_static = 1;
+    } else {
+        buflen = 0;
     }
 
     switch (pathtype) {
-    case LYSC_PATH_LOG:
-        depth = 0;
+    case LYD_PATH_LOG:
+        depth = 1;
         for (iter = node; iter->parent; iter = (const struct lyd_node *)iter->parent) {
             ++depth;
         }
 
-        i = depth + 1;
         goto iter_print;
-        while (i) {
+        while (depth) {
             /* find the right node */
-            for (iter = node, j = 0; j < i; iter = (const struct lyd_node *)iter->parent, ++j);
+            for (iter = node, i = 1; i < depth; iter = (const struct lyd_node *)iter->parent, ++i);
 iter_print:
             /* print prefix and name */
             mod = NULL;
@@ -1122,7 +1126,7 @@ iter_print:
                 break;
             }
 
-            --i;
+            --depth;
         }
         break;
     }

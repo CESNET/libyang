@@ -230,7 +230,7 @@ test_element(void **state)
     assert_string_equal("text</b>", str);
     assert_int_equal(LYXML_ELEM_CONTENT, ctx.status);
     assert_int_equal(LY_EVALID, lyxml_get_string(&ctx, &str, &buf, &buf_len, &out, &len, &dynamic));
-    logbuf_assert("Opening and closing elements tag missmatch (\"b\"). Line number 1.");
+    logbuf_assert("Opening and closing elements tag missmatch (\"b\", expected \"a\"). Line number 1.");
     lyxml_context_clear(&ctx);
 
 }

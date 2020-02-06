@@ -255,7 +255,7 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
 
     (*node) = NULL;
 
-    while(ctx->status == LYXML_ELEMENT) {
+    while (ctx->status == LYXML_ELEMENT) {
         ret = lyxml_get_element((struct lyxml_context *)ctx, data, &prefix, &prefix_len, &name, &name_len);
         LY_CHECK_GOTO(ret, cleanup);
         if (!name) {
@@ -407,18 +407,19 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
             if (ctx->status == LYXML_ELEM_CONTENT) {
                 /* get the value */
                 ret = lyxml_get_string((struct lyxml_context *)ctx, data, &buffer, &buffer_size, &value, &value_len, &dynamic);
-                if (ret == LY_EINVAL) {
-                    /* just indentation of a child element found */
-                    LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_SYNTAX, "Child element inside terminal node \"%s\" found.", cur->schema->name);
+                if (ret != LY_SUCCESS) {
+                    if (ret == LY_EINVAL) {
+                        /* just indentation of a child element found */
+                        LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_SYNTAX, "Child element inside terminal node \"%s\" found.", cur->schema->name);
+                    }
                     goto cleanup;
                 }
-                ret = LY_SUCCESS;
             } else {
                 /* no content - validate empty value */
                 value = "";
                 value_len = 0;
             }
-            ret = lyd_value_parse((struct lyd_node_term*)cur, value, value_len, dynamic, 0, lydxml_resolve_prefix, ctx, LYD_XML, NULL);
+            ret = lyd_value_parse((struct lyd_node_term *)cur, value, value_len, dynamic, 0, lydxml_resolve_prefix, ctx, LYD_XML, NULL);
             if (ret == LY_EINCOMPLETE) {
                 ly_set_add(&ctx->incomplete_type_validation, cur, LY_SET_OPT_USEASLIST);
             } else if (ret) {
@@ -442,7 +443,7 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
             }
             /* process children */
             if (ctx->status == LYXML_ELEMENT && parents_count != ctx->elements.count) {
-                ret = lydxml_nodes(ctx, (struct lyd_node_inner*)cur, data, lyd_node_children_p(cur));
+                ret = lydxml_nodes(ctx, (struct lyd_node_inner *)cur, data, lyd_node_children_p(cur));
                 LY_CHECK_GOTO(ret, cleanup);
             }
         } else if (snode->nodetype & LYD_NODE_ANY) {
@@ -458,7 +459,7 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
                     ret = lyxml_get_element((struct lyxml_context *)ctx, data, &p, &p_len, &n, &n_len);
                     break;
                 case LYXML_ATTRIBUTE:
-                    lyxml_get_attribute((struct lyxml_context*)ctx, data, &p, &p_len, &n, &n_len);
+                    lyxml_get_attribute((struct lyxml_context *)ctx, data, &p, &p_len, &n, &n_len);
                     break;
                 case LYXML_ELEM_CONTENT:
                 case LYXML_ATTR_CONTENT:
@@ -494,8 +495,8 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
         lyd_insert_hash(cur);
 
         /* if we have empty non-presence container, we keep it, but mark it as default */
-        if (cur->schema->nodetype == LYS_CONTAINER && !((struct lyd_node_inner*)cur)->child &&
-                !cur->attr && !(((struct lysc_node_container*)cur->schema)->flags & LYS_PRESENCE)) {
+        if (cur->schema->nodetype == LYS_CONTAINER && !((struct lyd_node_inner *)cur)->child &&
+                !cur->attr && !(((struct lysc_node_container *)cur->schema)->flags & LYS_PRESENCE)) {
             cur->flags |= LYD_DEFAULT;
         }
     }

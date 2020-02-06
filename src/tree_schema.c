@@ -216,8 +216,9 @@ lys_child(const struct lysc_node *parent, const struct lys_module *module,
     return NULL;
 }
 
-API char *
-lysc_path(const struct lysc_node *node, LYSC_PATH_TYPE pathtype, char *buffer, size_t buflen)
+char *
+lysc_path_until(const struct lysc_node *node, const struct lysc_node *parent, LYSC_PATH_TYPE pathtype, char *buffer,
+                size_t buflen)
 {
     const struct lysc_node *iter;
     char *path = NULL;
@@ -230,24 +231,30 @@ lysc_path(const struct lysc_node *node, LYSC_PATH_TYPE pathtype, char *buffer, s
 
     switch (pathtype) {
     case LYSC_PATH_LOG:
-        for (iter = node; iter && len >= 0; iter = iter->parent) {
+        for (iter = node; (iter != parent) && (len >= 0); iter = iter->parent) {
             char *s = buffer ? strdup(buffer) : path;
             char *id;
+            const char *slash;
 
             id = strdup(iter->name);
+            if (parent && (iter->parent == parent)) {
+                slash = "";
+            } else {
+                slash = "/";
+            }
             if (!iter->parent || iter->parent->module != iter->module) {
                 /* print prefix */
                 if (buffer) {
-                    len = snprintf(buffer, buflen, "/%s:%s%s", iter->module->name, id, s ? s : "");
+                    len = snprintf(buffer, buflen, "%s%s:%s%s", slash, iter->module->name, id, s ? s : "");
                 } else {
-                    len = asprintf(&path, "/%s:%s%s", iter->module->name, id, s ? s : "");
+                    len = asprintf(&path, "%s%s:%s%s", slash, iter->module->name, id, s ? s : "");
                 }
             } else {
                 /* prefix is the same as in parent */
                 if (buffer) {
-                    len = snprintf(buffer, buflen, "/%s%s", id, s ? s : "");
+                    len = snprintf(buffer, buflen, "%s%s%s", slash, id, s ? s : "");
                 } else {
-                    len = asprintf(&path, "/%s%s", id, s ? s : "");
+                    len = asprintf(&path, "%s%s%s", slash, id, s ? s : "");
                 }
             }
             free(s);
@@ -277,6 +284,12 @@ lysc_path(const struct lysc_node *node, LYSC_PATH_TYPE pathtype, char *buffer, s
     } else {
         return path;
     }
+}
+
+API char *
+lysc_path(const struct lysc_node *node, LYSC_PATH_TYPE pathtype, char *buffer, size_t buflen)
+{
+    return lysc_path_until(node, NULL, pathtype, buffer, buflen);
 }
 
 API int

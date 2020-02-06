@@ -723,7 +723,7 @@ const char *lyd_attr2str(const struct lyd_attr *attr, int *dynamic);
  * @brief Types of the different data paths.
  */
 typedef enum {
-    LYD_PATH_LOG /**< Descriptive path format used in log messages */
+    LYD_PATH_LOG, /**< Descriptive path format used in log messages */
 } LYD_PATH_TYPE;
 
 /**

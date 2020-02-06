@@ -18,6 +18,7 @@
 #include "common.h"
 #include "xpath.h"
 #include "tree_data_internal.h"
+#include "tree_schema_internal.h"
 
 /**
  * @brief Evaluate a single "when" condition.
@@ -211,11 +212,227 @@ lyd_validate_minmax(const struct lysc_node *snode, uint32_t min, uint32_t max, s
     return LY_SUCCESS;
 }
 
+static struct lyd_node *
+lyd_val_uniq_find_leaf(const struct lysc_node_leaf *uniq_leaf, struct lyd_node *list)
+{
+    struct ly_set *set;
+    struct lyd_node *node = NULL;
+
+    set = lyd_find_instance(lyd_node_children(list), (struct lysc_node *)uniq_leaf);
+    if (set && set->count) {
+        /* we were looking for a leaf */
+        assert(set->count == 1);
+        node = set->objs[0];
+    }
+    ly_set_free(set, NULL);
+    return node;
+}
+
+/*
+ * actions (cb_data):
+ * 0  - compare all uniques
+ * n  - compare n-th unique
+ */
+static int
+lyd_val_uniq_list_equal(void *val1_p, void *val2_p, int UNUSED(mod), void *cb_data)
+{
+    struct ly_ctx *ctx;
+    struct lysc_node_list *slist;
+    struct lyd_node *diter, *first, *second;
+    struct lyd_value *val1, *val2;
+    char *path1, *path2, *uniq_str, *ptr;
+    uint32_t i, j, action;
+
+    assert(val1_p && val2_p);
+
+    first = *((struct lyd_node **)val1_p);
+    second = *((struct lyd_node **)val2_p);
+    action = (uintptr_t)cb_data;
+
+    assert(first && (first->schema->nodetype == LYS_LIST));
+    assert(second && (second->schema == first->schema));
+
+    ctx = first->schema->module->ctx;
+
+    slist = (struct lysc_node_list *)first->schema;
+
+    /* compare unique leaves */
+    if (action > 0) {
+        i = action - 1;
+        if (i < LY_ARRAY_SIZE(slist->uniques)) {
+            goto uniquecheck;
+        }
+    }
+    LY_ARRAY_FOR(slist->uniques, i) {
+uniquecheck:
+        LY_ARRAY_FOR(slist->uniques[i], j) {
+            /* first */
+            diter = lyd_val_uniq_find_leaf(slist->uniques[i][j], first);
+            if (diter) {
+                val1 = &((struct lyd_node_term *)diter)->value;
+            } else {
+                /* use default value */
+                val1 = slist->uniques[i][j]->dflt;
+            }
+
+            /* second */
+            diter = lyd_val_uniq_find_leaf(slist->uniques[i][j], second);
+            if (diter) {
+                val2 = &((struct lyd_node_term *)diter)->value;
+            } else {
+                /* use default value */
+                val2 = slist->uniques[i][j]->dflt;
+            }
+
+            if (!val1 || !val2 || val1->realtype->plugin->compare(val1, val2)) {
+                /* values differ or either one is not set */
+                break;
+            }
+        }
+        if (j && (j == LY_ARRAY_SIZE(slist->uniques[i]))) {
+            /* all unique leafs are the same in this set, create this nice error */
+            path1 = lyd_path(first, LYD_PATH_LOG, NULL, 0);
+            path2 = lyd_path(second, LYD_PATH_LOG, NULL, 0);
+
+            /* use buffer to rebuild the unique string */
+            uniq_str = malloc(1024);
+            uniq_str[0] = '\0';
+            ptr = uniq_str;
+            LY_ARRAY_FOR(slist->uniques[i], j) {
+                if (j) {
+                    strcpy(ptr, " ");
+                    ++ptr;
+                }
+                ptr = lysc_path_until((struct lysc_node *)slist->uniques[i][j], (struct lysc_node *)slist, LYSC_PATH_LOG,
+                                      ptr, 1024 - (ptr - uniq_str));
+                if (!ptr) {
+                    /* path will be incomplete, whatever */
+                    break;
+                }
+
+                ptr += strlen(ptr);
+            }
+            LOGVAL(ctx, LY_VLOG_LYD, second, LY_VCODE_NOUNIQ, uniq_str, path1, path2);
+
+            free(path1);
+            free(path2);
+            free(uniq_str);
+            return 1;
+        }
+
+        if (action > 0) {
+            /* done */
+            return 0;
+        }
+    }
+
+    return 0;
+}
+
 static LY_ERR
 lyd_validate_unique(const struct lysc_node *snode, struct lysc_node_leaf ***uniques, struct lyd_node *sibling)
 {
-    /* TODO check uniques in siblings and children */
-    return LY_SUCCESS;
+    struct lyd_node *diter;
+    struct ly_set *set;
+    uint32_t i, j, n = 0;
+    LY_ERR ret = LY_SUCCESS;
+    uint32_t hash, u, usize = 0;
+    int dynamic;
+    const char *str;
+    struct hash_table **uniqtables = NULL;
+    struct lyd_value *val;
+    struct ly_ctx *ctx = snode->module->ctx;
+
+    assert(uniques);
+
+    /* get all list instances */
+    set = lyd_find_instance(sibling, snode);
+    LY_CHECK_RET(!set, LY_EINT);
+
+    if (set->count == 2) {
+        /* simple comparison */
+        if (lyd_val_uniq_list_equal(&set->objs[0], &set->objs[1], 0, (void *)0)) {
+            /* instance duplication */
+            ret = LY_EVALID;
+            goto cleanup;
+        }
+    } else if (set->count > 2) {
+        /* use hashes for comparison */
+        /* first, allocate the table, the size depends on number of items in the set */
+        for (u = 31; u > 0; u--) {
+            usize = set->count << u;
+            usize = usize >> u;
+            if (usize == set->count) {
+                break;
+            }
+        }
+        LY_CHECK_ERR_GOTO(!u, LOGINT(ctx); ret = LY_EINT, cleanup);
+        u = 32 - u;
+        usize = 1 << u;
+
+        uniqtables = malloc(LY_ARRAY_SIZE(uniques) * sizeof *uniqtables);
+        LY_CHECK_ERR_GOTO(!uniqtables, LOGMEM(ctx); ret = LY_EMEM, cleanup);
+        n = LY_ARRAY_SIZE(uniques);
+        for (j = 0; j < n; j++) {
+            uniqtables[j] = lyht_new(usize, sizeof(struct lyd_node *), lyd_val_uniq_list_equal, (void *)(j + 1L), 0);
+            LY_CHECK_ERR_GOTO(!uniqtables[j], LOGMEM(ctx); ret = LY_EMEM, cleanup);
+        }
+
+        for (u = 0; u < set->count; u++) {
+            /* loop for unique - get the hash for the instances */
+            for (i = 0; i < n; i++) {
+                val = NULL;
+                for (j = hash = 0; j < LY_ARRAY_SIZE(uniques[i]); j++) {
+                    diter = lyd_val_uniq_find_leaf(uniques[i][j], set->objs[u]);
+                    if (diter) {
+                        val = &((struct lyd_node_term *)diter)->value;
+                    } else {
+                        /* use default value */
+                        val = uniques[i][j]->dflt;
+                    }
+                    if (!val) {
+                        /* unique item not present nor has default value */
+                        break;
+                    }
+
+                    /* get canonical string value */
+                    str = val->realtype->plugin->print(val, LYD_JSON, json_print_get_prefix, NULL, &dynamic);
+                    hash = dict_hash_multi(hash, str, strlen(str));
+                    if (dynamic) {
+                        free((char *)str);
+                    }
+                }
+                if (!val) {
+                    /* skip this list instance since its unique set is incomplete */
+                    continue;
+                }
+
+                /* finish the hash value */
+                hash = dict_hash_multi(hash, NULL, 0);
+
+                /* insert into the hashtable */
+                ret = lyht_insert(uniqtables[i], &set->objs[u], hash, NULL);
+                if (ret == LY_EEXIST) {
+                    /* instance duplication */
+                    ret = LY_EVALID;
+                }
+                LY_CHECK_GOTO(ret != LY_SUCCESS, cleanup);
+            }
+        }
+    }
+
+cleanup:
+    ly_set_free(set, NULL);
+    for (j = 0; j < n; j++) {
+        if (!uniqtables[j]) {
+            /* failed when allocating uniquetables[j], following j are not allocated */
+            break;
+        }
+        lyht_free(uniqtables[j]);
+    }
+    free(uniqtables);
+
+    return ret;
 }
 
 static LY_ERR
@@ -274,9 +491,7 @@ lyd_validate_siblings_r(struct lyd_node *sibling, const struct lysc_node *sparen
 {
     struct lyd_node *node;
 
-    /* validate schema-based restrictions */
-    LY_CHECK_RET(lyd_validate_siblings_schema_r(sibling, sparent, mod, options));
-
+    /* validate all restrictions of nodes themselves */
     LY_LIST_FOR(sibling, node) {
         /* TODO node's must */
         /* TODO node instance duplicites */
@@ -284,9 +499,14 @@ lyd_validate_siblings_r(struct lyd_node *sibling, const struct lysc_node *sparen
         /* TODO node's if-features */
         /* TODO node list keys */
         /* node value including if-feature is checked by plugins */
+    }
 
-        /* validate all children */
-        LY_CHECK_RET(lyd_validate_siblings_r((struct lyd_node *)lyd_node_children(sibling), node->schema, mod, options));
+    /* validate schema-based restrictions */
+    LY_CHECK_RET(lyd_validate_siblings_schema_r(sibling, sparent, mod, options));
+
+    LY_LIST_FOR(sibling, node) {
+        /* validate all children recursively */
+        LY_CHECK_RET(lyd_validate_siblings_r((struct lyd_node *)lyd_node_children(node), node->schema, mod, options));
     }
 
     return LY_SUCCESS;

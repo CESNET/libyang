@@ -853,7 +853,6 @@ LY_ERR yin_parse_module(struct yin_parser_ctx **yin_ctx, const char *data, struc
  * @param[in] main_ctx Parser context of main module.
  * @param[in,out] data Input data to be parsed.
  * @param[in,out] submod Submodule structure where the parsed information, will be filled in.
- *
  * @return LY_ERR values.
  */
 LY_ERR yin_parse_submodule(struct yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, struct lys_parser_ctx *main_ctx,
@@ -873,11 +872,25 @@ LY_ERR lys_set_implemented_internal(struct lys_module *mod, uint8_t implemented)
 /**
  * @brief match yang keyword
  *
- * param[in] ctx yang parser context for logging, can be NULL if keyword is from YIN data.
- * param[in,out] data Data to read from, always moved to currently handled character.
- *
- * return yang_keyword values.
+ * @param[in] ctx yang parser context for logging, can be NULL if keyword is from YIN data.
+ * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @return yang_keyword values.
  */
 enum ly_stmt lysp_match_kw(struct lys_parser_ctx *ctx, const char **data);
+
+/**
+ * @brief Generate path of the given node in the requested format.
+ *
+ * @param[in] node Schema path of this node will be generated.
+ * @param[in] parent Build relative path only until this parent is found. If NULL, the full absolute path is printed.
+ * @param[in] pathtype Format of the path to generate.
+ * @param[in,out] buffer Prepared buffer of the @p buflen length to store the generated path.
+ *                If NULL, memory for the complete path is allocated.
+ * @param[in] buflen Size of the provided @p buffer.
+ * @return NULL in case of memory allocation error, path of the node otherwise.
+ * In case the @p buffer is NULL, the returned string is dynamically allocated and caller is responsible to free it.
+ */
+char *lysc_path_until(const struct lysc_node *node, const struct lysc_node *parent, LYSC_PATH_TYPE pathtype, char *buffer,
+                size_t buflen);
 
 #endif /* LY_TREE_SCHEMA_INTERNAL_H_ */

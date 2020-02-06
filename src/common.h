@@ -232,6 +232,7 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_NOMAND         LYVE_DATA, "Mandatory node \"%s\" instance does not exist."
 #define LY_VCODE_NOMIN          LYVE_DATA, "Too few \"%s\" instances."
 #define LY_VCODE_NOMAX          LYVE_DATA, "Too many \"%s\" instances."
+#define LY_VCODE_NOUNIQ         LYVE_DATA, "Unique data leaf(s) \"%s\" not satisfied in \"%s\" and \"%s\"."
 
 /******************************************************************************
  * Context
