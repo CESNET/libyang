@@ -58,6 +58,24 @@ ly_type_print_canonical(const struct lyd_value *value, LYD_FORMAT UNUSED(format)
 }
 
 /**
+ * @brief Generic has_canon callback returning always true.
+ */
+static int
+ly_type_canon_true(struct lysc_type *UNUSED(type))
+{
+    return 1;
+}
+
+/**
+ * @brief Generic has_canon callback returning always false.
+ */
+static int
+ly_type_canon_false(struct lysc_type *UNUSED(type))
+{
+    return 0;
+}
+
+/**
  * @brief Generic duplication callback of the original value only.
  *
  * Implementation of the ly_type_dup_clb.
@@ -218,7 +236,7 @@ ly_type_parse_uint(const char *datatype, int base, uint64_t max, const char *val
     }
 
     *err = NULL;
-    switch(ly_parse_uint(value, value_len, max, base, ret)) {
+    switch (ly_parse_uint(value, value_len, max, base, ret)) {
     case LY_EDENIED:
         asprintf(&errmsg, "Value \"%.*s\" is out of %s's min/max bounds.", (int)value_len, value, datatype);
         goto error;
@@ -1445,7 +1463,7 @@ ly_type_store_instanceid_checknodeid(const char *orig, size_t orig_len, int opti
 
     if ((options & LY_TYPE_OPTS_INCOMPLETE_DATA) || (options & LY_TYPE_OPTS_SCHEMA) || !require_instance) {
         /* a) in schema tree */
-        *node_s = lys_child(*node_s, mod, id, id_len, 0, 0);
+        *node_s = lys_find_child(*node_s, mod, id, id_len, 0, 0);
         if (!(*node_s)) {
             asprintf(errmsg, "Invalid instance-identifier \"%.*s\" value - path \"%.*s\" does not exists in the YANG schema.",
                      (int)orig_len, orig, (int)(*token - orig), orig);
@@ -1455,8 +1473,8 @@ ly_type_store_instanceid_checknodeid(const char *orig, size_t orig_len, int opti
         /* b) in data tree */
         if (*node_d) {
             /* internal node */
-            const struct lyd_node *children = lyd_node_children(*node_d);
-            if (!children || !(*node_d = lyd_search(children, mod, id, id_len, 0, NULL, 0))) {
+            lyd_find_sibling_next(lyd_node_children(*node_d), mod, id, id_len, NULL, 0, (struct lyd_node **)node_d);
+            if (!*node_d) {
                 asprintf(errmsg, "Invalid instance-identifier \"%.*s\" value - path \"%.*s\" does not exists in the data tree(s).",
                          (int)orig_len, orig, (int)(*token - orig), orig);
                 return LY_EVALID;
@@ -1464,7 +1482,7 @@ ly_type_store_instanceid_checknodeid(const char *orig, size_t orig_len, int opti
         } else {
             /* top-level node */
             LY_ARRAY_FOR(trees, u) {
-                *node_d = lyd_search(trees[u], mod, id, id_len, 0, NULL, 0);
+                lyd_find_sibling_next(trees[u], mod, id, id_len, NULL, 0, (struct lyd_node **)node_d);
                 if (*node_d) {
                     break;
                 }
@@ -1746,7 +1764,7 @@ check_predicates:
                         }
                         /* go to another instance */
                         t = start;
-                        node_d = lyd_search(node_d->next, node_s->module, node_s->name, strlen(node_s->name), LYS_LIST, NULL, 0);
+                        lyd_find_sibling_next(node_d->next, node_s->module, node_s->name, 0, NULL, 0, (struct lyd_node **)&node_d);
                         if (node_d) {
                             /* reset variables to the first predicate of this list to check it completely */
                             key_d = node_d;
@@ -1823,7 +1841,7 @@ check_predicates:
                             break;
                         }
                         /* go to another instance */
-                        key_d = lyd_search(key_d->next, node_s->module, node_s->name, strlen(node_s->name), LYS_LEAFLIST, NULL, 0);
+                        lyd_find_sibling_next(key_d->next, node_s->module, node_s->name, 0, NULL, 0, (struct lyd_node **)&key_d);
                     }
                     if (!key_d) {
                         asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - leaf-list-predicate \"%.*s\" does not match any \"%s\" instance.",
@@ -1871,7 +1889,7 @@ check_predicates:
                 if (node_d) {
                     /* get the correct instance */
                     for (uint64_t u = pos; u > 1; u--) {
-                        node_d = lyd_search(node_d->next, node_s->module, node_s->name, strlen(node_s->name), node_s->nodetype, NULL, 0);
+                        lyd_find_sibling_next(node_d->next, node_s->module, node_s->name, 0, NULL, 0, (struct lyd_node **)&node_d);
                         if (!node_d) {
                             asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - "
                                      "position-predicate %"PRIu64" is bigger than number of instances in the data tree (%"PRIu64").",
@@ -2213,7 +2231,7 @@ ly_type_find_leafref(struct ly_ctx *ctx, struct lysc_type *type, const char *val
                 start_search = lyd_node_children(node);
 next_instance_inner:
                 if (start_search) {
-                    node = lyd_search(start_search, mod_node, id, id_len, 0, NULL, 0);
+                    lyd_find_sibling_next(start_search, mod_node, id, id_len, NULL, 0, (struct lyd_node **)&node);
                 } else {
                     node = NULL;
                 }
@@ -2222,7 +2240,7 @@ next_instance_inner:
                 LY_ARRAY_FOR(trees, u) {
                     start_search = trees[u];
 next_instance_toplevel:
-                    node = lyd_search(start_search, mod_node, id, id_len, 0, NULL, 0);
+                    lyd_find_sibling_next(start_search, mod_node, id, id_len, NULL, 0, (struct lyd_node **)&node);
                     if (node) {
                         break;
                     }
@@ -2270,7 +2288,7 @@ next_instance_toplevel:
             ly_parse_nodeid(&token, &src_prefix, &src_prefix_len, &src, &src_len);
             mod_pred = lys_module_find_prefix(mod_context, src_prefix, src_prefix_len);
 
-            key = (const struct lyd_node_term*)lyd_search(lyd_node_children(node), mod_pred, src, src_len, LYS_LEAF, NULL, 0);
+            lyd_find_sibling_next(lyd_node_children(node), mod_pred, src, src_len, NULL, 0, (struct lyd_node **)&key);
             if (!key) {
                 asprintf(errmsg, "Internal error - missing expected list's key \"%.*s\" in module \"%s\" (%s:%d).",
                          (int)src_len, src, mod_pred->name, __FILE__, __LINE__);
@@ -2300,14 +2318,14 @@ next_instance_toplevel:
                 if (!value) {
                     /* top-level search */
                     LY_ARRAY_FOR(trees, u) {
-                        value = lyd_search(trees[u], mod_pred, src, src_len, 0, NULL, 0);
+                        lyd_find_sibling_next(trees[u], mod_pred, src, src_len, NULL, 0, (struct lyd_node **)&value);
                         if (value) {
                             break;
                         }
                     }
                 } else {
                     /* inner node */
-                    value = lyd_search(lyd_node_children(value), mod_pred, src, src_len, 0, NULL, 0);
+                    lyd_find_sibling_next(lyd_node_children(value), mod_pred, src, src_len, NULL, 0, (struct lyd_node **)&value);
                 }
                 if (!value) {
                     /* node not found - try another instance */
@@ -2388,8 +2406,8 @@ ly_type_store_leafref(struct ly_ctx *ctx, struct lysc_type *type, const char *va
 
     /* check value according to the real type of the leafref target */
     ret = type_lr->realtype->plugin->store(ctx, type_lr->realtype, value, value_len, options,
-                                             resolve_prefix, parser, format, context_node, trees,
-                                             storage, canonized, err);
+                                           resolve_prefix, parser, format, context_node, trees,
+                                           storage, canonized, err);
     if (ret != LY_SUCCESS && ret != LY_EINCOMPLETE) {
         return ret;
     }
@@ -2464,6 +2482,18 @@ static void
 ly_type_free_leafref(struct ly_ctx *ctx, struct lyd_value *value)
 {
     value->realtype->plugin->free(ctx, value);
+}
+
+/**
+ * @brief Has canonical of the YANG built-in leafref type.
+ */
+static int
+ly_type_canon_leafref(struct lysc_type *type)
+{
+    struct lysc_type_leafref *lref_type;
+
+    lref_type = (struct lysc_type_leafref *)type;
+    return lref_type->realtype->plugin->has_canon(lref_type->realtype);
 }
 
 /**
@@ -2652,46 +2682,86 @@ ly_type_free_union(struct ly_ctx *ctx, struct lyd_value *value)
 }
 
 /**
+ * @brief Has canonical of the YANG built-in union type.
+ */
+static int
+ly_type_canon_union(struct lysc_type *type)
+{
+    struct lysc_type_union *uni_type;
+    uint16_t i;
+
+    uni_type = (struct lysc_type_union *)type;
+
+    LY_ARRAY_FOR(uni_type->types, i) {
+        if (!uni_type->types[i]->plugin->has_canon(uni_type->types[i])) {
+            return 0;
+        }
+    }
+
+    /* all types have canonical value */
+    return 1;
+}
+
+/**
  * @brief Set of type plugins for YANG built-in types
  */
 struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT] = {
     {0}, /* LY_TYPE_UNKNOWN */
-    {.type = LY_TYPE_BINARY, .store = ly_type_store_binary, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical,
-     .duplicate = ly_type_dup_canonical, .free = ly_type_free_canonical, .id = "libyang 2 - binary, version 1"},
-    {.type = LY_TYPE_UINT8, .store = ly_type_store_uint, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical,
-     .duplicate = ly_type_dup_uint, .free = ly_type_free_canonical, .id = "libyang 2 - unsigned integer, version 1"},
-    {.type = LY_TYPE_UINT16, .store = ly_type_store_uint, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical,
-     .duplicate = ly_type_dup_uint, .free = ly_type_free_canonical, .id = "libyang 2 - unsigned integer, version 1"},
-    {.type = LY_TYPE_UINT32, .store = ly_type_store_uint, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical,
-     .duplicate = ly_type_dup_uint, .free = ly_type_free_canonical, .id = "libyang 2 - unsigned integer, version 1"},
-    {.type = LY_TYPE_UINT64, .store = ly_type_store_uint, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical,
-     .duplicate = ly_type_dup_uint, .free = ly_type_free_canonical, .id = "libyang 2 - unsigned integer, version 1"},
-    {.type = LY_TYPE_STRING, .store = ly_type_store_string, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical,
-     .duplicate = ly_type_dup_original, .free = ly_type_free_original, .id = "libyang 2 - string, version 1"},
-    {.type = LY_TYPE_BITS, .store = ly_type_store_bits, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical,
-     .duplicate = ly_type_dup_bits, .free = ly_type_free_bits, .id = "libyang 2 - bits, version 1"},
-    {.type = LY_TYPE_BOOL, .store = ly_type_store_boolean, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical,
-     .duplicate = ly_type_dup_boolean, .free = ly_type_free_original, .id = "libyang 2 - boolean, version 1"},
-    {.type = LY_TYPE_DEC64, .store = ly_type_store_decimal64, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical,
-     .duplicate = ly_type_dup_decimal64, .free = ly_type_free_canonical, .id = "libyang 2 - decimal64, version 1"},
-    {.type = LY_TYPE_EMPTY, .store = ly_type_store_empty, .compare = ly_type_compare_empty, .print = ly_type_print_canonical,
-     .duplicate = ly_type_dup_original, .free = ly_type_free_original, .id = "libyang 2 - empty, version 1"},
-    {.type = LY_TYPE_ENUM, .store = ly_type_store_enum, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical,
-     .duplicate = ly_type_dup_enum, .free = ly_type_free_original, .id = "libyang 2 - enumeration, version 1"},
-    {.type = LY_TYPE_IDENT, .store = ly_type_store_identityref, .compare = ly_type_compare_identityref, .print = ly_type_print_identityref,
-     .duplicate = ly_type_dup_identityref, .free = ly_type_free_canonical, .id = "libyang 2 - identityref, version 1"},
-    {.type = LY_TYPE_INST, .store = ly_type_store_instanceid, .compare = ly_type_compare_instanceid, .print = ly_type_print_instanceid,
-     .duplicate = ly_type_dup_instanceid, .free = ly_type_free_instanceid, .id = "libyang 2 - instance-identifier, version 1"},
-    {.type = LY_TYPE_LEAFREF, .store = ly_type_store_leafref, .compare = ly_type_compare_leafref, .print = ly_type_print_leafref,
-     .duplicate = ly_type_dup_leafref, .free = ly_type_free_leafref, .id = "libyang 2 - leafref, version 1"},
-    {.type = LY_TYPE_UNION, .store = ly_type_store_union, .compare = ly_type_compare_union, .print = ly_type_print_union,
-     .duplicate = ly_type_dup_union, .free = ly_type_free_union, .id = "libyang 2 - union,version 1"},
-    {.type = LY_TYPE_INT8, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical,
-     .duplicate = ly_type_dup_int, .free = ly_type_free_canonical, .id = "libyang 2 - integer, version 1"},
-    {.type = LY_TYPE_INT16, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical,
-     .duplicate = ly_type_dup_int, .free = ly_type_free_canonical, .id = "libyang 2 - integer, version 1"},
-    {.type = LY_TYPE_INT32, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical,
-     .duplicate = ly_type_dup_int, .free = ly_type_free_canonical, .id = "libyang 2 - integer, version 1"},
-    {.type = LY_TYPE_INT64, .store = ly_type_store_int, .compare = ly_type_compare_canonical, .print = ly_type_print_canonical,
-     .duplicate = ly_type_dup_int, .free = ly_type_free_canonical, .id = "libyang 2 - integer, version 1"},
+    {.type = LY_TYPE_BINARY, .store = ly_type_store_binary, .compare = ly_type_compare_canonical,
+        .print = ly_type_print_canonical, .duplicate = ly_type_dup_canonical, .free = ly_type_free_canonical,
+        .has_canon = ly_type_canon_true, .id = "libyang 2 - binary, version 1"},
+    {.type = LY_TYPE_UINT8, .store = ly_type_store_uint, .compare = ly_type_compare_canonical,
+        .print = ly_type_print_canonical, .duplicate = ly_type_dup_uint, .free = ly_type_free_canonical,
+        .has_canon = ly_type_canon_true, .id = "libyang 2 - unsigned integer, version 1"},
+    {.type = LY_TYPE_UINT16, .store = ly_type_store_uint, .compare = ly_type_compare_canonical,
+        .print = ly_type_print_canonical, .duplicate = ly_type_dup_uint, .free = ly_type_free_canonical,
+        .has_canon = ly_type_canon_true, .id = "libyang 2 - unsigned integer, version 1"},
+    {.type = LY_TYPE_UINT32, .store = ly_type_store_uint, .compare = ly_type_compare_canonical,
+        .print = ly_type_print_canonical, .duplicate = ly_type_dup_uint, .free = ly_type_free_canonical,
+        .has_canon = ly_type_canon_true, .id = "libyang 2 - unsigned integer, version 1"},
+    {.type = LY_TYPE_UINT64, .store = ly_type_store_uint, .compare = ly_type_compare_canonical,
+        .print = ly_type_print_canonical, .duplicate = ly_type_dup_uint, .free = ly_type_free_canonical,
+        .has_canon = ly_type_canon_true, .id = "libyang 2 - unsigned integer, version 1"},
+    {.type = LY_TYPE_STRING, .store = ly_type_store_string, .compare = ly_type_compare_canonical,
+        .print = ly_type_print_canonical, .duplicate = ly_type_dup_original, .free = ly_type_free_original,
+        .has_canon = ly_type_canon_true, .id = "libyang 2 - string, version 1"},
+    {.type = LY_TYPE_BITS, .store = ly_type_store_bits, .compare = ly_type_compare_canonical,
+        .print = ly_type_print_canonical, .duplicate = ly_type_dup_bits, .free = ly_type_free_bits,
+        .has_canon = ly_type_canon_true, .id = "libyang 2 - bits, version 1"},
+    {.type = LY_TYPE_BOOL, .store = ly_type_store_boolean, .compare = ly_type_compare_canonical,
+        .print = ly_type_print_canonical, .duplicate = ly_type_dup_boolean, .free = ly_type_free_original,
+        .has_canon = ly_type_canon_true, .id = "libyang 2 - boolean, version 1"},
+    {.type = LY_TYPE_DEC64, .store = ly_type_store_decimal64, .compare = ly_type_compare_canonical,
+        .print = ly_type_print_canonical, .duplicate = ly_type_dup_decimal64, .free = ly_type_free_canonical,
+        .has_canon = ly_type_canon_true, .id = "libyang 2 - decimal64, version 1"},
+    {.type = LY_TYPE_EMPTY, .store = ly_type_store_empty, .compare = ly_type_compare_empty,
+        .print = ly_type_print_canonical, .duplicate = ly_type_dup_original, .free = ly_type_free_original,
+        .has_canon = ly_type_canon_true, .id = "libyang 2 - empty, version 1"},
+    {.type = LY_TYPE_ENUM, .store = ly_type_store_enum, .compare = ly_type_compare_canonical,
+        .print = ly_type_print_canonical, .duplicate = ly_type_dup_enum, .free = ly_type_free_original,
+        .has_canon = ly_type_canon_true, .id = "libyang 2 - enumeration, version 1"},
+    {.type = LY_TYPE_IDENT, .store = ly_type_store_identityref, .compare = ly_type_compare_identityref,
+        .print = ly_type_print_identityref, .duplicate = ly_type_dup_identityref, .free = ly_type_free_canonical,
+        .has_canon = ly_type_canon_false, .id = "libyang 2 - identityref, version 1"},
+    {.type = LY_TYPE_INST, .store = ly_type_store_instanceid, .compare = ly_type_compare_instanceid,
+        .print = ly_type_print_instanceid, .duplicate = ly_type_dup_instanceid, .free = ly_type_free_instanceid,
+        .has_canon = ly_type_canon_false, .id = "libyang 2 - instance-identifier, version 1"},
+    {.type = LY_TYPE_LEAFREF, .store = ly_type_store_leafref, .compare = ly_type_compare_leafref,
+        .print = ly_type_print_leafref, .duplicate = ly_type_dup_leafref, .free = ly_type_free_leafref,
+        .has_canon = ly_type_canon_leafref, .id = "libyang 2 - leafref, version 1"},
+    {.type = LY_TYPE_UNION, .store = ly_type_store_union, .compare = ly_type_compare_union,
+        .print = ly_type_print_union, .duplicate = ly_type_dup_union, .free = ly_type_free_union,
+        .has_canon = ly_type_canon_union, .id = "libyang 2 - union,version 1"},
+    {.type = LY_TYPE_INT8, .store = ly_type_store_int, .compare = ly_type_compare_canonical,
+        .print = ly_type_print_canonical, .duplicate = ly_type_dup_int, .free = ly_type_free_canonical,
+        .has_canon = ly_type_canon_true, .id = "libyang 2 - integer, version 1"},
+    {.type = LY_TYPE_INT16, .store = ly_type_store_int, .compare = ly_type_compare_canonical,
+        .print = ly_type_print_canonical, .duplicate = ly_type_dup_int, .free = ly_type_free_canonical,
+        .has_canon = ly_type_canon_true, .id = "libyang 2 - integer, version 1"},
+    {.type = LY_TYPE_INT32, .store = ly_type_store_int, .compare = ly_type_compare_canonical,
+        .print = ly_type_print_canonical, .duplicate = ly_type_dup_int, .free = ly_type_free_canonical,
+        .has_canon = ly_type_canon_true, .id = "libyang 2 - integer, version 1"},
+    {.type = LY_TYPE_INT64, .store = ly_type_store_int, .compare = ly_type_compare_canonical,
+        .print = ly_type_print_canonical, .duplicate = ly_type_dup_int, .free = ly_type_free_canonical,
+        .has_canon = ly_type_canon_true, .id = "libyang 2 - integer, version 1"},
 };

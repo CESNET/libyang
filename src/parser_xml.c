@@ -281,7 +281,7 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
             LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_REFERENCE, "No module with namespace \"%s\" in the context.", ns->uri);
             goto error;
         }
-        snode = lys_child(parent ? parent->schema : NULL, mod, name, name_len, 0, 0);
+        snode = lys_find_child(parent ? parent->schema : NULL, mod, name, name_len, 0, 0);
         if (!snode) {
             LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_REFERENCE, "Element \"%.*s\" not found in the \"%s\" module.", name_len, name, mod->name);
             goto error;
@@ -490,7 +490,7 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
             ly_set_add(&ctx->when_check, cur, LY_SET_OPT_USEASLIST);
         }
 
-        /* calculate the hash and insert it into parent (list with keys is handled when its keys are inserted) */
+        /* calculate the hash and insert it into parent */
         lyd_hash(cur);
         lyd_insert_hash(cur);
 

@@ -1937,16 +1937,16 @@ const struct lysc_node *lys_getnext(const struct lysc_node *last, const struct l
  * @param[in] options [ORed options](@ref sgetnextflags).
  * @return Found node if any.
  */
-const struct lysc_node *lys_child(const struct lysc_node *parent, const struct lys_module *module,
-                                  const char *name, size_t name_len, uint16_t nodetype, int options);
+const struct lysc_node *lys_find_child(const struct lysc_node *parent, const struct lys_module *module,
+                                       const char *name, size_t name_len, uint16_t nodetype, int options);
 
 /**
  * @brief Make the specific module implemented.
  *
  * @param[in] mod Module to make implemented. It is not an error
  * to provide already implemented module, it just does nothing.
- * @return LY_SUCCESS or LY_EDENIED in case the context contains some other revision of the
- * same module which is already implemented.
+ * @return LY_SUCCESS on success.
+ * @return LY_EDENIED in case the context contains some other revision of the same module which is already implemented.
  */
 LY_ERR lys_set_implemented(struct lys_module *mod);
 
@@ -1957,8 +1957,8 @@ LY_ERR lys_set_implemented(struct lys_module *mod);
  * @param[in] node Schema node to check.
  * @param[in] recursive - 0 to check if-feature only in the \p node schema node,
  * - 1 to check if-feature in all ascendant schema nodes until there is a node possibly having an instance in a data tree
- * @return - NULL if enabled,
- * - pointer to the node with the unsatisfied (disabling) if-feature expression.
+ * @return NULL if enabled,
+ * @return pointer to the node with the unsatisfied (disabling) if-feature expression.
  */
 const struct lysc_iffeature *lysc_node_is_disabled(const struct lysc_node *node, int recursive);
 

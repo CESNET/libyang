@@ -2493,7 +2493,7 @@ error_current_function_invocation:
                 lys_set_implemented_internal((struct lys_module*)mod, 2);
             }
 
-            dst_node = lys_child(dst_node, mod, dst, dst_len, 0, LYS_GETNEXT_NOSTATECHECK);
+            dst_node = lys_find_child(dst_node, mod, dst, dst_len, 0, LYS_GETNEXT_NOSTATECHECK);
             if (!dst_node) {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                        "Invalid leafref path predicate \"%.*s\" - unable to find node \"%.*s\" in the rel-path-keyexpr.",
@@ -2711,7 +2711,7 @@ lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *startnode, 
             lys_set_implemented_internal((struct lys_module*)mod, 2);
         }
 
-        node = lys_child(parent, mod, name, name_len, 0, LYS_GETNEXT_NOSTATECHECK);
+        node = lys_find_child(parent, mod, name, name_len, 0, LYS_GETNEXT_NOSTATECHECK);
         if (!node) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                    "Invalid leafref path - unable to find \"%.*s\".", id - leafref->path, leafref->path);
@@ -4089,7 +4089,7 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lys
         }
 
         /* key node must be present */
-        key = (struct lysc_node_leaf*)lys_child(node, node->module, keystr, len, LYS_LEAF, LYS_GETNEXT_NOCHOICE | LYS_GETNEXT_NOSTATECHECK);
+        key = (struct lysc_node_leaf*)lys_find_child(node, node->module, keystr, len, LYS_LEAF, LYS_GETNEXT_NOCHOICE | LYS_GETNEXT_NOSTATECHECK);
         if (!(key)) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                    "The list's key \"%.*s\" not found.", len, keystr);
@@ -4234,7 +4234,7 @@ lys_compile_node_choice_dflt(struct lysc_ctx *ctx, const char *dflt, struct lysc
                prefix_len, prefix);
         return LY_EVALID;
     }
-    ch->dflt = (struct lysc_node_case*)lys_child(node, node->module, name, 0, LYS_CASE, LYS_GETNEXT_NOSTATECHECK | LYS_GETNEXT_WITHCASE);
+    ch->dflt = (struct lysc_node_case*)lys_find_child(node, node->module, name, 0, LYS_CASE, LYS_GETNEXT_NOSTATECHECK | LYS_GETNEXT_WITHCASE);
     if (!ch->dflt) {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
                "Default case \"%s\" not found.", dflt);
@@ -4285,7 +4285,7 @@ lys_compile_deviation_set_choice_dflt(struct lysc_ctx *ctx, const char *dflt, st
         mod = ctx->mod;
     }
     /* get the default case */
-    cs = (struct lysc_node_case*)lys_child((struct lysc_node*)ch, mod, name, 0, LYS_CASE, LYS_GETNEXT_NOSTATECHECK | LYS_GETNEXT_WITHCASE);
+    cs = (struct lysc_node_case*)lys_find_child((struct lysc_node*)ch, mod, name, 0, LYS_CASE, LYS_GETNEXT_NOSTATECHECK | LYS_GETNEXT_WITHCASE);
     if (!cs) {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                "Invalid deviation adding \"default\" property \"%s\" of choice - the specified case does not exists.", dflt);

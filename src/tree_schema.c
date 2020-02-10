@@ -185,8 +185,8 @@ check:
 }
 
 API const struct lysc_node *
-lys_child(const struct lysc_node *parent, const struct lys_module *module,
-          const char *name, size_t name_len, uint16_t nodetype, int options)
+lys_find_child(const struct lysc_node *parent, const struct lys_module *module, const char *name, size_t name_len,
+               uint16_t nodetype, int options)
 {
     const struct lysc_node *node = NULL;
 

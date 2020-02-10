@@ -393,12 +393,14 @@ struct lyd_node_any {
  */
 
 #define LYD_OPT_DATA       0x00 /**< Default type of data - complete datastore content with configuration as well as
-                                     state data. */
+                                state data. */
 #define LYD_OPT_CONFIG     LYD_OPT_NO_STATE /**< A configuration datastore - complete datastore without state data. */
-#define LYD_OPT_GET        LYD_OPT_PARSE_ONLY /**< Data content from a NETCONF reply message to the NETCONF \<get\> operation. */
+#define LYD_OPT_GET        LYD_OPT_PARSE_ONLY /**< Data content from a NETCONF reply message to the NETCONF
+                                \<get\> operation. */
 #define LYD_OPT_GETCONFIG  LYD_OPT_PARSE_ONLY | LYD_OPT_NO_STATE /**< Data content from a NETCONF reply message to
-                                                                      the NETCONF \<get-config\> operation. */
-#define LYD_OPT_EDIT       LYD_OPT_PARSE_ONLY | LYD_OPT_EMPTY_INST /**< Content of the NETCONF \<edit-config\>'s config element. */
+                                the NETCONF \<get-config\> operation. */
+#define LYD_OPT_EDIT       LYD_OPT_PARSE_ONLY | LYD_OPT_NO_STATE | LYD_OPT_EMPTY_INST /**< Content of
+                                the NETCONF \<edit-config\>'s config element. */
 
 #define LYD_OPT_STRICT     0x0001 /**< Instead of silent ignoring data without schema definition raise an error. */
 #define LYD_OPT_PARSE_ONLY 0x0002 /**< Data will be only parsed and no (only required) validation will be performed. */
@@ -425,26 +427,6 @@ struct lyd_node_any {
  * @return Pointer to the first child node (if any) of the \p node.
  */
 const struct lyd_node *lyd_node_children(const struct lyd_node *node);
-
-/**
- * @brief Find the node, in the list, satisfying the given restrictions.
- *
- * @param[in] first Starting child node for search.
- * @param[in] module Module of the node to find (mandatory argument).
- * @param[in] name Name of the node to find (mandatory argument).
- * @param[in] name_len Optional length of the @p name argument in case it is not NULL-terminated string.
- * @param[in] nodetype Optional mask for the nodetype of the node to find, 0 is understood as all nodetypes.
- * @param[in] value Optional restriction for lyd_node_term nodes to select node with the specific value. Note that this
- * search restriction is limited to compare original string representation of the @p first value. Some of the types have
- * canonical representation defined so the same value can be represented by multiple lexical representation. In such a
- * case the @p value not matching the original representation of @p first may still be the same.
- * For such a case there is more advanced lyd_value_compare() to check if the values matches.
- * @param[in] value_len Optional length of the @p value argument in case it is not NULL-terminated string.
- * @return The sibling node of the @p first (or itself), satisfying the given restrictions.
- * @return NULL in case there is no node satisfying the restrictions.
- */
-const struct lyd_node *lyd_search(const struct lyd_node *first, const struct lys_module *module,
-                                  const char *name, size_t name_len, uint16_t nodetype, const char *value, size_t value_len);
 
 /**
  * @brief Parse (and validate) data from memory.
@@ -738,6 +720,108 @@ typedef enum {
  * In case the @p buffer is NULL, the returned string is dynamically allocated and caller is responsible to free it.
  */
 char *lyd_path(const struct lyd_node *node, LYD_PATH_TYPE pathtype, char *buffer, size_t buflen);
+
+/**
+ * @brief Search in the given siblings for instances of the provided schema node, recursively.
+ * Does **not** use hashes - should not be used unless necessary for best performance.
+ *
+ * If \p sibling is the first top-level sibling, the whole data tree is effectively searched.
+ *
+ * @param[in] sibling Starting data sibling for the search.
+ * @param[in] schema Schema node of the data nodes caller wants to find.
+ * @return Set of found data nodes. If no data node is found, the returned set is empty.
+ * @return NULL in case of error.
+ */
+struct ly_set *lyd_find_instance(const struct lyd_node *sibling, const struct lysc_node *schema);
+
+/**
+ * @brief Find the node, in the list, satisfying the given restrictions.
+ * Does **not** use hashes - should not be used unless necessary for best performance.
+ *
+ * @param[in] first Starting sibling node for search, only succeeding ones are searched.
+ * @param[in] module Module of the node to find.
+ * @param[in] name Name of the node to find.
+ * @param[in] name_len Optional length of the @p name argument in case it is not NULL-terminated string.
+ * @param[in] key_or_value Expected value depends on the type of @p name node:
+ *              LYS_CONTAINER:
+ *              LYS_ANYXML:
+ *              LYS_ANYDATA:
+ *              LYS_NOTIF:
+ *              LYS_RPC:
+ *              LYS_ACTION:
+ *                  NULL should be always set, will be ignored.
+ *              LYS_LEAF:
+ *              LYS_LEAFLIST:
+ *                  Optional restriction on the specific leaf(-list) value. Can be set only if the node
+ *                  has a canonical value!
+ *              LYS_LIST:
+ *                  Optional keys values of the matching list instances in the form of "[key1='val1'][key2='val2']...".
+ *                  The keys do not have to be ordered and not all keys need to be specified, but they must have
+ *                  a canonical value!
+ * @param[in] val_len Optional length of the @p key_or_value argument in case it is not NULL-terminated string.
+ * @param[out] match Found data node.
+ * @return LY_SUCCESS on success, @p match set.
+ * @return LY_ENOTFOUND if not found, @p match set to NULL.
+ * @return LY_ERR value if another error occurred.
+ */
+LY_ERR lyd_find_sibling_next(const struct lyd_node *first, const struct lys_module *module, const char *name,
+                             size_t name_len, const char *key_or_value, size_t val_len, struct lyd_node **match);
+
+/**
+ * @brief Search in the given siblings (NOT recursively) for the first target instance.
+ * Uses hashes - should be used whenever possible for best performance.
+ *
+ * @param[in] siblings Siblings to search in including preceding and succeeding nodes.
+ * @param[in] target Target node to find.
+ * @param[out] match Found data node.
+ * @return LY_SUCCESS on success, @p match set.
+ * @return LY_ENOTFOUND if not found, @p match set to NULL.
+ * @return LY_ERR value if another error occurred.
+ */
+LY_ERR lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *target, struct lyd_node **match);
+
+/**
+ * @brief Search in the given siblings for all target instances.
+ * Uses hashes - should be used whenever possible for best performance.
+ *
+ * @param[in] siblings Siblings to search in including preceding and succeeding nodes.
+ * @param[in] target Target node to find. Key-less lists are compared based on
+ * all its descendants (both direct and indirect).
+ * @param[out] set Found nodes in a set in case of success.
+ * @return LY_SUCCESS on success.
+ * @return LY_ENOTFOUND if no matching siblings found.
+ * @return LY_ERR value if another error occurred.
+ */
+LY_ERR lyd_find_sibling_set(const struct lyd_node *siblings, const struct lyd_node *target, struct ly_set **set);
+
+/**
+ * @brief Search in the given siblings for the first schema instance.
+ * Uses hashes - should be used whenever possible for best performance.
+ *
+ * @param[in] siblings Siblings to search in including preceding and succeeding nodes.
+ * @param[in] schema Schema node of the data node to find.
+ * @param[in] key_or_value Expected value depends on the type of \p schema:
+ *              LYS_CONTAINER:
+ *              LYS_LEAF:
+ *              LYS_ANYXML:
+ *              LYS_ANYDATA:
+ *              LYS_NOTIF:
+ *              LYS_RPC:
+ *              LYS_ACTION:
+ *                  NULL should be always set, will be ignored.
+ *              LYS_LEAFLIST:
+ *                  Searched instance value.
+ *              LYS_LIST:
+ *                  Searched instance all key values in the form of "[key1='val1'][key2='val2']...".
+ *                  The keys do not have to be ordered.
+ * @param[out] match Found data node.
+ * @return LY_SUCCESS on success, @p match set.
+ * @return LY_ENOTFOUND if not found, @p match set to NULL.
+ * @return LY_EINVAL if @p schema is a key-less list.
+ * @return LY_ERR value if another error occurred.
+ */
+LY_ERR lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_node *schema, const char *key_or_value,
+                            size_t val_len, struct lyd_node **match);
 
 #ifdef __cplusplus
 }

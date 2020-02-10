@@ -108,7 +108,7 @@ lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodei
             current_nodetype = LYS_INOUT;
         } else {
 getnext:
-            context_node = lys_child(context_node, mod, name, name_len, 0,
+            context_node = lys_find_child(context_node, mod, name, name_len, 0,
                                      getnext_extra_flag | LYS_GETNEXT_NOSTATECHECK | LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE);
             if (!context_node) {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,

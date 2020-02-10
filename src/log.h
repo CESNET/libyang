@@ -48,7 +48,7 @@ typedef enum
  * @param[in] level Verbosity level.
  * @return Previous verbosity level.
  */
-LY_LOG_LEVEL ly_verb (LY_LOG_LEVEL level);
+LY_LOG_LEVEL ly_verb(LY_LOG_LEVEL level);
 
 /**
  * @defgroup logopts Logging options
@@ -75,7 +75,7 @@ LY_LOG_LEVEL ly_verb (LY_LOG_LEVEL level);
  * @param[in] opts Bitfield of @ref logopts.
  * @return Previous logger options.
  */
-int ly_log_options (int opts);
+int ly_log_options(int opts);
 
 #ifndef NDEBUG
 
@@ -102,7 +102,7 @@ int ly_log_options (int opts);
  * @brief Enable specific debugging messages (independent of log level).
  * @param[in] dbg_groups Bitfield of enabled debug message groups (see @ref dbggroup).
  */
-void ly_verb_dbg (int dbg_groups);
+void ly_verb_dbg(int dbg_groups);
 
 #endif
 
@@ -120,13 +120,13 @@ void ly_verb_dbg (int dbg_groups);
  *            presence) or it can be NULL, so consider it as an optional parameter. If the flag is 0, libyang will
  *            not bother with resolving the path.
  */
-void ly_set_log_clb (void(*clb) (LY_LOG_LEVEL level, const char *msg, const char *path), int path);
+void ly_set_log_clb(void(*clb)(LY_LOG_LEVEL level, const char *msg, const char *path), int path);
 
 /**
  * @brief Get logger callback.
  * @return Logger callback (can be NULL).
  */
-void (*ly_get_log_clb (void)) (LY_LOG_LEVEL, const char *, const char *);
+void (*ly_get_log_clb(void))(LY_LOG_LEVEL, const char *, const char *);
 
 /** @} log */
 

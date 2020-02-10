@@ -95,13 +95,14 @@ void ly_err_free(void *ptr);
 /**
  * @defgroup plugintypeopts Options for type plugin callbacks. The same set of the options is passed to all the type's callbacks used together.
  *
- * Options applicable to ly_type_validate_clb() and ly_typestore_clb.
+ * Options applicable to ly_type_validate_clb() and ly_type_store_clb.
  * @{
  */
 #define LY_TYPE_OPTS_CANONIZE     0x01 /**< Canonize the given value and store it (insert into the context's dictionary)
                                             as the value's canonized string */
-#define LY_TYPE_OPTS_DYNAMIC      0x02 /**< Flag for the dynamically allocated string value, in this case the value is supposed to be freed
-                                            or directly inserted into the context's dictionary (e.g. in case of canonization).
+#define LY_TYPE_OPTS_DYNAMIC      0x02 /**< Flag for the dynamically allocated string value, in this case the value
+                                            is supposed to be freed or directly inserted into the context's dictionary
+                                            (e.g. in case of canonization).
                                             In any case, the caller of the callback does not free the provided string value after calling
                                             the type's callbacks with this option */
 #define LY_TYPE_OPTS_STORE        0x04 /**< Flag announcing calling of ly_type_store_clb() */
@@ -130,22 +131,23 @@ void ly_err_free(void *ptr);
  * @param[in] value Lexical representation of the value to be validated (and canonized).
  *            It is never NULL, empty string is represented as "" with zero @p value_len.
  * @param[in] value_len Length (number of bytes) of the given \p value.
- * @param[in] options [Type plugin options ](@ref plugintypeopts).
- *
+ * @param[in] options [Type plugin options](@ref plugintypeopts).
  * @param[in] resolve_prefix Parser-specific callback to resolve prefixes used in the value strings.
  * @param[in] parser Parser's data for @p resolve_prefix
  * @param[in] format Input format of the data.
- * @param[in] context_node The @p value's node for the case that the require-instance restriction is supposed to be resolved. This argument is of
- *            lys_node (in case LY_TYPE_OPTS_INCOMPLETE_DATA or LY_TYPE_OPTS_SCHEMA set in @p options) or lyd_node structure.
- * @param[in] trees ([Sized array](@ref sizedarrays)) of external data trees (e.g. when validating RPC/Notification) where the required data
- *            instance can be placed.
- *
+ * @param[in] context_node The @p value's node for the case that the require-instance restriction is supposed to be resolved.
+ *            This argument is a lys_node (in case LY_TYPE_OPTS_INCOMPLETE_DATA or LY_TYPE_OPTS_SCHEMA set in @p options)
+ *            or lyd_node structure.
+ * @param[in] trees ([Sized array](@ref sizedarrays)) of external data trees (e.g. when validating RPC/Notification)
+ *            where the required data instance can be placed.
  * @param[in,out] storage If LY_TYPE_OPTS_STORE option set, the parsed data are stored into this structure in the type's specific way.
  *             If the @p canonized differs from the storage's canonized member, the canonized value is also stored here despite the
  *             LY_TYPE_OPTS_CANONIZE option.
- * @param[out] canonized If LY_TYPE_OPTS_CANONIZE option set, the canonized string stored in the @p ctx dictionary is returned via this parameter.
- * @param[out] err Optionally provided error information in case of failure. If not provided to the caller, a generic error message is prepared instead.
- * The error structure can be created by ly_err_new().
+ * @param[out] canonized If LY_TYPE_OPTS_CANONIZE option set, the canonized string stored in the @p ctx dictionary
+ *             is returned via this parameter.
+ * @param[out] err Optionally provided error information in case of failure. If not provided to the caller, a generic
+ *             error message is prepared instead.
+ *             The error structure can be created by ly_err_new().
  * @return LY_SUCCESS on success
  * @return LY_EINCOMPLETE in case the option included LY_TYPE_OPTS_INCOMPLETE_DATA flag and the data @p trees are needed to finish the validation.
  * @return LY_ERR value if an error occurred and the value could not be canonized following the type's rules.
@@ -168,7 +170,7 @@ typedef LY_ERR (*ly_type_store_clb)(struct ly_ctx *ctx, struct lysc_type *type, 
 typedef LY_ERR (*ly_type_compare_clb)(const struct lyd_value *val1, const struct lyd_value *val2);
 
 /**
- * @brief Callback to receive printed (canoncal) value of the data stored in @p value.
+ * @brief Callback to receive printed (canonical) value of the data stored in @p value.
  *
  * @param[in] value Value to print.
  * @param[in] format Format in which the data are supposed to be printed.
@@ -181,7 +183,8 @@ typedef LY_ERR (*ly_type_compare_clb)(const struct lyd_value *val1, const struct
  *         can be responsible for freeing allocated memory.
  * @return NULL in case of error.
  */
-typedef const char *(*ly_type_print_clb)(const struct lyd_value *value, LYD_FORMAT format, ly_clb_get_prefix get_prefix, void *printer, int *dynamic);
+typedef const char *(*ly_type_print_clb)(const struct lyd_value *value, LYD_FORMAT format, ly_clb_get_prefix get_prefix,
+                                         void *printer, int *dynamic);
 
 /**
  * @brief Callback to duplicate data in data structure. Note that callback is even responsible for duplicating lyd_value::canonized.
@@ -204,6 +207,18 @@ typedef LY_ERR (*ly_type_dup_clb)(struct ly_ctx *ctx, const struct lyd_value *or
 typedef void (*ly_type_free_clb)(struct ly_ctx *ctx, struct lyd_value *value);
 
 /**
+ * @brief Callback for returning information whether the type has a canonical value.
+ *
+ * Note that if it returns non-zero (true), this type's @p print and @p store callbacks must never use
+ * its @p format and @p get_prefix parameters! Also, @p print callback should never set @p dynamic to true!
+ *
+ * @param[in] type Type of the value.
+ * @return 0 if the type has no canonical value.
+ * @return non-zero if the type has a canonical value.
+ */
+typedef int (*ly_type_has_canon_clb)(struct lysc_type *type);
+
+/**
  * @brief Hold type-specific functions for various operations with the data values.
  *
  * libyang includes set of plugins for all the built-in types. They are, by default, inherited to the derived types.
@@ -217,6 +232,7 @@ struct lysc_type_plugin {
     ly_type_print_clb print;         /**< printer callback to get string representing the value */
     ly_type_dup_clb duplicate;       /**< data duplication callback */
     ly_type_free_clb free;           /**< optional function to free the type-spceific way stored value */
+    ly_type_has_canon_clb has_canon; /**< callback for checking whether a type has caonical value */
     const char *id;                  /**< Plugin identification (mainly for distinguish incompatible versions when used by external tools) */
 };
 

@@ -516,7 +516,6 @@ LY_ERR
 lyd_validate_data(const struct lyd_node **trees, const struct lys_module **modules, int mod_count, struct ly_ctx *ctx,
                   int options)
 {
-    LY_ERR ret;
     uint32_t i = 0, j;
     const struct lys_module *mod;
     struct lyd_node *tree;
