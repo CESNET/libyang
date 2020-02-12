@@ -231,7 +231,7 @@ lysc_path_until(const struct lysc_node *node, const struct lysc_node *parent, LY
 
     switch (pathtype) {
     case LYSC_PATH_LOG:
-        for (iter = node; (iter != parent) && (len >= 0); iter = iter->parent) {
+        for (iter = node; iter && (iter != parent) && (len >= 0); iter = iter->parent) {
             char *s = buffer ? strdup(buffer) : path;
             char *id;
             const char *slash;

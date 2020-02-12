@@ -1,8 +1,8 @@
 /**
- * @file printer_xml.c
+ * @file printer_json.c
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @author Radek Krejci <rkrejci@cesnet.cz>
- * @brief XML printer for libyang data structure
+ * @brief JSON printer for libyang data structure
  *
  * Copyright (c) 2015 - 2019 CESNET, z.s.p.o.
  *

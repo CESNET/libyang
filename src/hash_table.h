@@ -42,8 +42,8 @@ uint32_t dict_hash(const char *key, size_t len);
 /**
  * @brief Callback for checking hash table values equivalence.
  *
- * @param[in] val1_p Pointer to the first value.
- * @param[in] val2_p Pointer to the second value.
+ * @param[in] val1_p Pointer to the first value, the one being searched (inserted/removed).
+ * @param[in] val2_p Pointer to the second value, the one stored in the hash table.
  * @param[in] mod Whether the operation modifies the hash table (insert or remove) or not (find).
  * @param[in] cb_data User callback data.
  * @return 0 on non-equal, non-zero on equal.

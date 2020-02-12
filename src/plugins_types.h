@@ -207,18 +207,6 @@ typedef LY_ERR (*ly_type_dup_clb)(struct ly_ctx *ctx, const struct lyd_value *or
 typedef void (*ly_type_free_clb)(struct ly_ctx *ctx, struct lyd_value *value);
 
 /**
- * @brief Callback for returning information whether the type has a canonical value.
- *
- * Note that if it returns non-zero (true), this type's @p print and @p store callbacks must never use
- * its @p format and @p get_prefix parameters! Also, @p print callback should never set @p dynamic to true!
- *
- * @param[in] type Type of the value.
- * @return 0 if the type has no canonical value.
- * @return non-zero if the type has a canonical value.
- */
-typedef int (*ly_type_has_canon_clb)(struct lysc_type *type);
-
-/**
  * @brief Hold type-specific functions for various operations with the data values.
  *
  * libyang includes set of plugins for all the built-in types. They are, by default, inherited to the derived types.
@@ -232,7 +220,6 @@ struct lysc_type_plugin {
     ly_type_print_clb print;         /**< printer callback to get string representing the value */
     ly_type_dup_clb duplicate;       /**< data duplication callback */
     ly_type_free_clb free;           /**< optional function to free the type-spceific way stored value */
-    ly_type_has_canon_clb has_canon; /**< callback for checking whether a type has caonical value */
     const char *id;                  /**< Plugin identification (mainly for distinguish incompatible versions when used by external tools) */
 };
 

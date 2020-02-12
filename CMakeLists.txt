@@ -212,6 +212,7 @@ set(libsrc
     src/tree_data_helpers.c
     src/tree_data_hash.c
     src/parser_xml.c
+    src/parser_json.c
     src/printer_data.c
     src/printer_xml.c
     src/printer_json.c
@@ -272,7 +273,7 @@ else()
 
     #link dl
     target_link_libraries(yang ${CMAKE_DL_LIBS})
-    
+
     set_target_properties(yangobj PROPERTIES COMPILE_FLAGS "-fvisibility=hidden")
 endif(ENABLE_STATIC)
 

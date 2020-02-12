@@ -891,6 +891,6 @@ enum ly_stmt lysp_match_kw(struct lys_parser_ctx *ctx, const char **data);
  * In case the @p buffer is NULL, the returned string is dynamically allocated and caller is responsible to free it.
  */
 char *lysc_path_until(const struct lysc_node *node, const struct lysc_node *parent, LYSC_PATH_TYPE pathtype, char *buffer,
-                size_t buflen);
+                      size_t buflen);
 
 #endif /* LY_TREE_SCHEMA_INTERNAL_H_ */

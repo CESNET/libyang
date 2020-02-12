@@ -58,24 +58,6 @@ ly_type_print_canonical(const struct lyd_value *value, LYD_FORMAT UNUSED(format)
 }
 
 /**
- * @brief Generic has_canon callback returning always true.
- */
-static int
-ly_type_canon_true(struct lysc_type *UNUSED(type))
-{
-    return 1;
-}
-
-/**
- * @brief Generic has_canon callback returning always false.
- */
-static int
-ly_type_canon_false(struct lysc_type *UNUSED(type))
-{
-    return 0;
-}
-
-/**
  * @brief Generic duplication callback of the original value only.
  *
  * Implementation of the ly_type_dup_clb.
@@ -2485,18 +2467,6 @@ ly_type_free_leafref(struct ly_ctx *ctx, struct lyd_value *value)
 }
 
 /**
- * @brief Has canonical of the YANG built-in leafref type.
- */
-static int
-ly_type_canon_leafref(struct lysc_type *type)
-{
-    struct lysc_type_leafref *lref_type;
-
-    lref_type = (struct lysc_type_leafref *)type;
-    return lref_type->realtype->plugin->has_canon(lref_type->realtype);
-}
-
-/**
  * @brief Validate, canonize and store value of the YANG built-in union type.
  *
  * Implementation of the ly_type_store_clb.
@@ -2682,86 +2652,65 @@ ly_type_free_union(struct ly_ctx *ctx, struct lyd_value *value)
 }
 
 /**
- * @brief Has canonical of the YANG built-in union type.
- */
-static int
-ly_type_canon_union(struct lysc_type *type)
-{
-    struct lysc_type_union *uni_type;
-    uint16_t i;
-
-    uni_type = (struct lysc_type_union *)type;
-
-    LY_ARRAY_FOR(uni_type->types, i) {
-        if (!uni_type->types[i]->plugin->has_canon(uni_type->types[i])) {
-            return 0;
-        }
-    }
-
-    /* all types have canonical value */
-    return 1;
-}
-
-/**
  * @brief Set of type plugins for YANG built-in types
  */
 struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT] = {
     {0}, /* LY_TYPE_UNKNOWN */
     {.type = LY_TYPE_BINARY, .store = ly_type_store_binary, .compare = ly_type_compare_canonical,
         .print = ly_type_print_canonical, .duplicate = ly_type_dup_canonical, .free = ly_type_free_canonical,
-        .has_canon = ly_type_canon_true, .id = "libyang 2 - binary, version 1"},
+        .id = "libyang 2 - binary, version 1"},
     {.type = LY_TYPE_UINT8, .store = ly_type_store_uint, .compare = ly_type_compare_canonical,
         .print = ly_type_print_canonical, .duplicate = ly_type_dup_uint, .free = ly_type_free_canonical,
-        .has_canon = ly_type_canon_true, .id = "libyang 2 - unsigned integer, version 1"},
+        .id = "libyang 2 - unsigned integer, version 1"},
     {.type = LY_TYPE_UINT16, .store = ly_type_store_uint, .compare = ly_type_compare_canonical,
         .print = ly_type_print_canonical, .duplicate = ly_type_dup_uint, .free = ly_type_free_canonical,
-        .has_canon = ly_type_canon_true, .id = "libyang 2 - unsigned integer, version 1"},
+        .id = "libyang 2 - unsigned integer, version 1"},
     {.type = LY_TYPE_UINT32, .store = ly_type_store_uint, .compare = ly_type_compare_canonical,
         .print = ly_type_print_canonical, .duplicate = ly_type_dup_uint, .free = ly_type_free_canonical,
-        .has_canon = ly_type_canon_true, .id = "libyang 2 - unsigned integer, version 1"},
+        .id = "libyang 2 - unsigned integer, version 1"},
     {.type = LY_TYPE_UINT64, .store = ly_type_store_uint, .compare = ly_type_compare_canonical,
         .print = ly_type_print_canonical, .duplicate = ly_type_dup_uint, .free = ly_type_free_canonical,
-        .has_canon = ly_type_canon_true, .id = "libyang 2 - unsigned integer, version 1"},
+        .id = "libyang 2 - unsigned integer, version 1"},
     {.type = LY_TYPE_STRING, .store = ly_type_store_string, .compare = ly_type_compare_canonical,
         .print = ly_type_print_canonical, .duplicate = ly_type_dup_original, .free = ly_type_free_original,
-        .has_canon = ly_type_canon_true, .id = "libyang 2 - string, version 1"},
+        .id = "libyang 2 - string, version 1"},
     {.type = LY_TYPE_BITS, .store = ly_type_store_bits, .compare = ly_type_compare_canonical,
         .print = ly_type_print_canonical, .duplicate = ly_type_dup_bits, .free = ly_type_free_bits,
-        .has_canon = ly_type_canon_true, .id = "libyang 2 - bits, version 1"},
+        .id = "libyang 2 - bits, version 1"},
     {.type = LY_TYPE_BOOL, .store = ly_type_store_boolean, .compare = ly_type_compare_canonical,
         .print = ly_type_print_canonical, .duplicate = ly_type_dup_boolean, .free = ly_type_free_original,
-        .has_canon = ly_type_canon_true, .id = "libyang 2 - boolean, version 1"},
+        .id = "libyang 2 - boolean, version 1"},
     {.type = LY_TYPE_DEC64, .store = ly_type_store_decimal64, .compare = ly_type_compare_canonical,
         .print = ly_type_print_canonical, .duplicate = ly_type_dup_decimal64, .free = ly_type_free_canonical,
-        .has_canon = ly_type_canon_true, .id = "libyang 2 - decimal64, version 1"},
+        .id = "libyang 2 - decimal64, version 1"},
     {.type = LY_TYPE_EMPTY, .store = ly_type_store_empty, .compare = ly_type_compare_empty,
         .print = ly_type_print_canonical, .duplicate = ly_type_dup_original, .free = ly_type_free_original,
-        .has_canon = ly_type_canon_true, .id = "libyang 2 - empty, version 1"},
+        .id = "libyang 2 - empty, version 1"},
     {.type = LY_TYPE_ENUM, .store = ly_type_store_enum, .compare = ly_type_compare_canonical,
         .print = ly_type_print_canonical, .duplicate = ly_type_dup_enum, .free = ly_type_free_original,
-        .has_canon = ly_type_canon_true, .id = "libyang 2 - enumeration, version 1"},
+        .id = "libyang 2 - enumeration, version 1"},
     {.type = LY_TYPE_IDENT, .store = ly_type_store_identityref, .compare = ly_type_compare_identityref,
         .print = ly_type_print_identityref, .duplicate = ly_type_dup_identityref, .free = ly_type_free_canonical,
-        .has_canon = ly_type_canon_false, .id = "libyang 2 - identityref, version 1"},
+        .id = "libyang 2 - identityref, version 1"},
     {.type = LY_TYPE_INST, .store = ly_type_store_instanceid, .compare = ly_type_compare_instanceid,
         .print = ly_type_print_instanceid, .duplicate = ly_type_dup_instanceid, .free = ly_type_free_instanceid,
-        .has_canon = ly_type_canon_false, .id = "libyang 2 - instance-identifier, version 1"},
+        .id = "libyang 2 - instance-identifier, version 1"},
     {.type = LY_TYPE_LEAFREF, .store = ly_type_store_leafref, .compare = ly_type_compare_leafref,
         .print = ly_type_print_leafref, .duplicate = ly_type_dup_leafref, .free = ly_type_free_leafref,
-        .has_canon = ly_type_canon_leafref, .id = "libyang 2 - leafref, version 1"},
+        .id = "libyang 2 - leafref, version 1"},
     {.type = LY_TYPE_UNION, .store = ly_type_store_union, .compare = ly_type_compare_union,
         .print = ly_type_print_union, .duplicate = ly_type_dup_union, .free = ly_type_free_union,
-        .has_canon = ly_type_canon_union, .id = "libyang 2 - union,version 1"},
+        .id = "libyang 2 - union,version 1"},
     {.type = LY_TYPE_INT8, .store = ly_type_store_int, .compare = ly_type_compare_canonical,
         .print = ly_type_print_canonical, .duplicate = ly_type_dup_int, .free = ly_type_free_canonical,
-        .has_canon = ly_type_canon_true, .id = "libyang 2 - integer, version 1"},
+        .id = "libyang 2 - integer, version 1"},
     {.type = LY_TYPE_INT16, .store = ly_type_store_int, .compare = ly_type_compare_canonical,
         .print = ly_type_print_canonical, .duplicate = ly_type_dup_int, .free = ly_type_free_canonical,
-        .has_canon = ly_type_canon_true, .id = "libyang 2 - integer, version 1"},
+        .id = "libyang 2 - integer, version 1"},
     {.type = LY_TYPE_INT32, .store = ly_type_store_int, .compare = ly_type_compare_canonical,
         .print = ly_type_print_canonical, .duplicate = ly_type_dup_int, .free = ly_type_free_canonical,
-        .has_canon = ly_type_canon_true, .id = "libyang 2 - integer, version 1"},
+        .id = "libyang 2 - integer, version 1"},
     {.type = LY_TYPE_INT64, .store = ly_type_store_int, .compare = ly_type_compare_canonical,
         .print = ly_type_print_canonical, .duplicate = ly_type_dup_int, .free = ly_type_free_canonical,
-        .has_canon = ly_type_canon_true, .id = "libyang 2 - integer, version 1"},
+        .id = "libyang 2 - integer, version 1"},
 };

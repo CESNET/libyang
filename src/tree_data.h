@@ -752,12 +752,14 @@ struct ly_set *lyd_find_instance(const struct lyd_node *sibling, const struct ly
  *                  NULL should be always set, will be ignored.
  *              LYS_LEAF:
  *              LYS_LEAFLIST:
- *                  Optional restriction on the specific leaf(-list) value. Can be set only if the node
- *                  has a canonical value!
+ *                  Optional restriction on the specific leaf(-list) value.
  *              LYS_LIST:
  *                  Optional keys values of the matching list instances in the form of "[key1='val1'][key2='val2']...".
- *                  The keys do not have to be ordered and not all keys need to be specified, but they must have
- *                  a canonical value!
+ *                  The keys do not have to be ordered and not all keys need to be specified.
+ *
+ *              Note that any explicit values (leaf, leaf-list or list key values) will be canonized first
+ *              before comparison. But values that do not have a canonical value are expected to be in the
+ *              JSON format!
  * @param[in] val_len Optional length of the @p key_or_value argument in case it is not NULL-terminated string.
  * @param[out] match Found data node.
  * @return LY_SUCCESS on success, @p match set.
@@ -812,8 +814,12 @@ LY_ERR lyd_find_sibling_set(const struct lyd_node *siblings, const struct lyd_no
  *              LYS_LEAFLIST:
  *                  Searched instance value.
  *              LYS_LIST:
- *                  Searched instance all key values in the form of "[key1='val1'][key2='val2']...".
- *                  The keys do not have to be ordered.
+ *                  Searched instance key values in the form of "[key1='val1'][key2='val2']...".
+ *                  The keys do not have to be ordered but all of them must be set.
+ *
+ *              Note that any explicit values (leaf-list or list key values) will be canonized first
+ *              before comparison. But values that do not have a canonical value are expected to be in the
+ *              JSON format!
  * @param[out] match Found data node.
  * @return LY_SUCCESS on success, @p match set.
  * @return LY_ENOTFOUND if not found, @p match set to NULL.

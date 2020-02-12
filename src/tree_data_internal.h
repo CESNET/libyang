@@ -28,16 +28,111 @@
 struct lyd_node **lyd_node_children_p(struct lyd_node *node);
 
 /**
+ * @brief Create a term (leaf/leaf-list) node. Hash is not calculated.
+ *
+ * @param[in] schema Schema node of the new data node.
+ * @param[in] value String value to be parsed.
+ * @param[in] value_len Length of @p value.
+ * @param[in,out] dynamic Flag if @p value is dynamically allocated, is adjusted when @p value is consumed.
+ * @param[in] get_prefix Parser-specific getter to resolve prefixes used in the @p value string.
+ * @param[in] prefix_data User data for @p get_prefix.
+ * @param[in] format Input format of @p value.
+ * @param[out] node Created node.
+ * @return LY_SUCCESS on success.
+ * @return LY_EINCOMPLETE in case data tree is needed to finish the validation.
+ * @return LY_ERR value if an error occurred.
+ */
+LY_ERR lyd_create_term(const struct lysc_node *schema, const char *value, size_t value_len, int *dynamic,
+                       ly_clb_resolve_prefix get_prefix, void *prefix_data, LYD_FORMAT format, struct lyd_node **node);
+
+/**
+ * @brief Create an inner (container/list/RPC/action/notification) node. Hash is not calculated.
+ *
+ * @param[in] schema Schema node of the new data node.
+ * @param[out] node Created node.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR value if an error occurred.
+ */
+LY_ERR lyd_create_inner(const struct lysc_node *schema, struct lyd_node **node);
+
+/**
+ * @brief Create a list with all its keys (cannot be used for key-less list). Hash is not calculated.
+ *
+ * @param[in] schema Schema node of the new data node.
+ * @param[in] keys_str List instance key values in the form of "[key1='val1'][key2='val2']...".
+ *            The keys do not have to be ordered but all of them must be set.
+ * @param[in] keys_len Length of @p keys_str.
+ * @param[out] node Created node.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR value if an error occurred.
+ */
+LY_ERR lyd_create_list(const struct lysc_node *schema, const char *keys_str, size_t keys_len, struct lyd_node **node);
+
+/**
+ * @brief Create an anyxml/anydata node. Hash is not calculated.
+ *
+ * @param[in] schema Schema node of the new data node.
+ * @param[in] value Value of the any node, is directly assigned into the data node.
+ * @param[in] value_type Value type of the value.
+ * @param[out] node Created node.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR value if an error occurred.
+ */
+LY_ERR lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANYDATA_VALUETYPE value_type, struct lyd_node **node);
+
+/**
+ * @brief Find the key after which to insert the new key.
+ *
+ * @param[in] first_sibling List first sibling.
+ * @param[in] new_key Key that will be inserted.
+ * @return Key to insert after.
+ * @return NULL if the new key should be first.
+ */
+struct lyd_node *lyd_get_prev_key_anchor(const struct lyd_node *first_sibling, const struct lysc_node *new_key);
+
+/**
+ * @brief Insert a node into parent/siblings. In case a key is being inserted into a list, the correct position
+ * is found and inserted into. Otherwise it is inserted at the last place.
+ *
+ * @param[in] parent Parent to insert into, NULL if @p first_sibling is set.
+ * @param[in] first_sibling First top-level sibling, NULL if @p parent is set.
+ * @param[in] node Individual node (without siblings) to insert.
+ */
+void lyd_insert_node(struct lyd_node *parent, struct lyd_node *first_sibling, struct lyd_node *node);
+
+/**
+ * @brief Create and insert an attribute (last) into a parent.
+ *
+ * @param[in] parent Parent of the attribute.
+ * @param[in] mod Attribute module (with the annotation definition).
+ * @param[in] name Attribute name.
+ * @param[in] name_len Length of @p name.
+ * @param[in] value String value to be parsed.
+ * @param[in] value_len Length of @p value.
+ * @param[in,out] dynamic Flag if @p value is dynamically allocated, is adjusted when @p value is consumed.
+ * @param[in] get_prefix Parser-specific getter to resolve prefixes used in the @p value string.
+ * @param[in] prefix_data User data for @p get_prefix.
+ * @param[in] format Input format of @p value.
+ * @param[out] attr CReated attribute.
+ * @return LY_SUCCESS on success.
+ * @return LY_EINCOMPLETE in case data tree is needed to finish the validation.
+ * @return LY_ERR value if an error occurred.
+ */
+LY_ERR lyd_create_attr(struct lyd_node *parent, const struct lys_module *mod, const char *name, size_t name_len,
+                       const char *value, size_t value_len, int *dynamic, ly_clb_resolve_prefix get_prefix, void *prefix_data,
+                       LYD_FORMAT format, struct lyd_attr **attr);
+
+/**
  * @brief Validate, canonize and store the given @p value into the node according to the node's type's rules.
  *
  * @param[in] node Data node for the @p value.
  * @param[in] value String value to be parsed, must not be NULL.
  * @param[in] value_len Length of the give @p value (mandatory).
- * @param[in] dynamic Flag if @p value is a dynamically allocated memory and should be directly consumed/freed inside the function.
+ * @param[in,out] dynamic Flag if @p value is dynamically allocated, is adjusted when @p value is consumed.
  * @param[in] second Flag for the second call after returning LY_EINCOMPLETE
  * @param[in] get_prefix Parser-specific getter to resolve prefixes used in the @p value string.
  * @param[in] parser Parser's data for @p get_prefix
- * @param[in] format Input format of the data.
+ * @param[in] format Input format of @p value.
  * @param[in] trees ([Sized array](@ref sizedarrays)) of data trees (e.g. when validating RPC/Notification) where the required
  *            data instance (leafref target, instance-identifier) can be placed. NULL in case the data tree are not yet complete,
  *            then LY_EINCOMPLETE can be returned.
@@ -45,7 +140,7 @@ struct lyd_node **lyd_node_children_p(struct lyd_node *node);
  * @return LY_EINCOMPLETE in case the @p trees is not provided and it was needed to finish the validation.
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len, int dynamic, int second,
+LY_ERR lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len, int *dynamic, int second,
                        ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format, const struct lyd_node **trees);
 
 /**
@@ -54,7 +149,7 @@ LY_ERR lyd_value_parse(struct lyd_node_term *node, const char *value, size_t val
  * @param[in] attr Data attribute for the @p value.
  * @param[in] value String value to be parsed, must not be NULL.
  * @param[in] value_len Length of the give @p value (mandatory).
- * @param[in] dynamic Flag if @p value is a dynamically allocated memory and should be directly consumed/freed inside the function.
+ * @param[in,out] dynamic Flag if @p value is dynamically allocated, is adjusted when @p value is consumed.
  * @param[in] second Flag for the second call after returning LY_EINCOMPLETE
  * @param[in] get_prefix Parser-specific getter to resolve prefixes used in the @p value string.
  * @param[in] parser Parser's data for @p get_prefix
@@ -66,7 +161,7 @@ LY_ERR lyd_value_parse(struct lyd_node_term *node, const char *value, size_t val
  * @return LY_EINCOMPLETE in case the @p trees is not provided and it was needed to finish the validation.
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_value_parse_attr(struct lyd_attr *attr, const char *value, size_t value_len, int dynamic, int second,
+LY_ERR lyd_value_parse_attr(struct lyd_attr *attr, const char *value, size_t value_len, int *dynamic, int second,
                             ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format, const struct lyd_node **trees);
 
 /**
