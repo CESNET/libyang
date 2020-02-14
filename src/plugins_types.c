@@ -1454,7 +1454,7 @@ ly_type_store_instanceid_checknodeid(const char *orig, size_t orig_len, int opti
     } else {
         /* b) in data tree */
         if (*node_d) {
-            /* internal node */
+            /* inner node */
             lyd_find_sibling_next(lyd_node_children(*node_d), mod, id, id_len, NULL, 0, (struct lyd_node **)node_d);
             if (!*node_d) {
                 asprintf(errmsg, "Invalid instance-identifier \"%.*s\" value - path \"%.*s\" does not exists in the data tree(s).",

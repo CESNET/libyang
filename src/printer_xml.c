@@ -441,12 +441,10 @@ xml_print_node(struct xmlpr_ctx *ctx, const struct lyd_node *node)
 {
     LY_ERR ret = LY_SUCCESS;
 
-#if 0
-    if (!lyd_wd_toprint(node, ctx->options)) {
-        /* wd says do not print */
+    if (!ly_should_print(node, ctx->options)) {
+        /* do not print at all */
         return EXIT_SUCCESS;
     }
-#endif
 
     switch (node->schema->nodetype) {
     case LYS_CONTAINER:

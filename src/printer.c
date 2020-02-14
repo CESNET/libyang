@@ -20,9 +20,11 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <assert.h>
 
 #include "log.h"
 #include "printer_internal.h"
+#include "plugins_types.h"
 
 /**
  * @brief informational structure shared by printers
@@ -61,6 +63,92 @@ struct ext_substmt_info_s ext_substmt_info[] = {
   {"position", "value", SUBST_FLAG_ID},         /**< LYEXT_SUBSTMT_POSITION */
   {"unique", "tag", 0},                         /**< LYEXT_SUBSTMT_UNIQUE */
 };
+
+/**
+ * @brief Check whether a node value equals to its default one.
+ *
+ * @param[in] node Term node to test.
+ * @return 0 if no,
+ * @return non-zero if yes.
+ */
+static int
+ly_is_default(const struct lyd_node *node)
+{
+    const struct lysc_node_leaf *leaf;
+    const struct lysc_node_leaflist *llist;
+    const struct lyd_node_term *term;
+    size_t i;
+
+    assert(node->schema->nodetype & LYD_NODE_TERM);
+    term = (const struct lyd_node_term *)node;
+
+    if (node->schema->nodetype == LYS_LEAF) {
+        leaf = (const struct lysc_node_leaf *)node->schema;
+        if (!leaf->dflt) {
+            return 0;
+        }
+
+        /* compare with the default value */
+        if (leaf->type->plugin->compare(&term->value, leaf->dflt)) {
+            return 0;
+        }
+    } else {
+        llist = (const struct lysc_node_leaflist *)node->schema;
+        if (!llist->dflts) {
+            return 0;
+        }
+
+        LY_ARRAY_FOR(llist->dflts, i) {
+            /* compare with each possible default value */
+            if (llist->type->plugin->compare(&term->value, llist->dflts[i])) {
+                return 0;
+            }
+        }
+    }
+
+    return 1;
+}
+
+int
+ly_should_print(const struct lyd_node *node, int options)
+{
+    const struct lyd_node *next, *elem;
+
+    if (options & LYDP_WD_TRIM) {
+        /* do not print default nodes */
+        if (node->flags & LYD_DEFAULT) {
+            /* implicit default node/NP container with only default nodes */
+            return 0;
+        } else if (node->schema->nodetype & LYD_NODE_TERM) {
+            if (ly_is_default(node)) {
+                /* explicit default node */
+                return 0;
+            }
+        }
+    } else if ((node->flags & LYD_DEFAULT) && !(options & LYDP_WD_MASK) && !(node->schema->flags & LYS_CONFIG_R)) {
+        /* LYP_WD_EXPLICIT
+         * - print only if it contains status data in its subtree */
+        LYD_TREE_DFS_BEGIN(node, next, elem) {
+            if (elem->schema->flags & LYS_CONFIG_R) {
+                return 1;
+            }
+            LYD_TREE_DFS_END(node, next, elem)
+        }
+        return 0;
+    } else if ((node->flags & LYD_DEFAULT) && (node->schema->nodetype == LYS_CONTAINER) && !(options & LYDP_KEEPEMPTYCONT)) {
+        /* avoid empty default containers */
+        LYD_TREE_DFS_BEGIN(node, next, elem) {
+            if (elem->schema->nodetype != LYS_CONTAINER) {
+                return 1;
+            }
+            assert(elem->flags & LYD_DEFAULT);
+            LYD_TREE_DFS_END(node, next, elem)
+        }
+        return 0;
+    }
+
+    return 1;
+}
 
 LY_ERR
 ly_print(struct lyout *out, const char *format, ...)

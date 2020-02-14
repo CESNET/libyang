@@ -53,3 +53,14 @@ lyd_node_children(const struct lyd_node *node)
         return NULL;
     }
 }
+
+const struct lys_module *
+lyd_top_node_module(const struct lyd_node *node)
+{
+    const struct lysc_node *schema;
+
+    assert(node && !node->parent);
+
+    for (schema = node->schema; schema->parent; schema = schema->parent);
+    return schema->module;
+}

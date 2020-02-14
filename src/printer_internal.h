@@ -120,6 +120,16 @@ LY_ERR yin_print_parsed(struct lyout *out, const struct lys_module *module);
 LY_ERR xml_print_data(struct lyout *out, const struct lyd_node *root, int options);
 
 /**
+ * @brief Check whether the node should even be printed.
+ *
+ * @param[in] node Node to check.
+ * @param[in] options Printer options.
+ * @return 0 if no.
+ * @return non-zero if yes.
+ */
+int ly_should_print(const struct lyd_node *node, int options);
+
+/**
  * @brief Generic printer of the given format string into the specified output.
  *
  * Alternatively, ly_write() can be used.

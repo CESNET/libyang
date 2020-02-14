@@ -458,17 +458,50 @@ lyd_create_term(const struct lysc_node *schema, const char *value, size_t value_
     LY_ERR ret;
     struct lyd_node_term *term;
 
+    assert(schema->nodetype & LYD_NODE_TERM);
+
     term = calloc(1, sizeof *term);
     LY_CHECK_ERR_RET(!term, LOGMEM(schema->module->ctx), LY_EMEM);
 
     term->schema = schema;
     term->prev = (struct lyd_node *)term;
+    term->flags = LYD_NEW;
 
     ret = lyd_value_parse(term, value, value_len, dynamic, 0, get_prefix, prefix_data, format, NULL);
     if (ret && (ret != LY_EINCOMPLETE)) {
         free(term);
         return ret;
     }
+    lyd_hash((struct lyd_node *)term);
+
+    *node = (struct lyd_node *)term;
+    return ret;
+}
+
+LY_ERR
+lyd_create_term2(const struct lysc_node *schema, const struct lyd_value *val, struct lyd_node **node)
+{
+    LY_ERR ret;
+    struct lyd_node_term *term;
+    struct lysc_type *type;
+
+    assert(schema->nodetype & LYD_NODE_TERM);
+
+    term = calloc(1, sizeof *term);
+    LY_CHECK_ERR_RET(!term, LOGMEM(schema->module->ctx), LY_EMEM);
+
+    term->schema = schema;
+    term->prev = (struct lyd_node *)term;
+    term->flags = LYD_NEW;
+
+    type = ((struct lysc_node_leaf *)schema)->type;
+    ret = type->plugin->duplicate(schema->module->ctx, val, &term->value);
+    if (ret) {
+        LOGERR(schema->module->ctx, ret, "Value duplication failed.");
+        free(term);
+        return ret;
+    }
+    lyd_hash((struct lyd_node *)term);
 
     *node = (struct lyd_node *)term;
     return ret;
@@ -479,15 +512,22 @@ lyd_create_inner(const struct lysc_node *schema, struct lyd_node **node)
 {
     struct lyd_node_inner *in;
 
+    assert(schema->nodetype & LYD_NODE_INNER);
+
     in = calloc(1, sizeof *in);
     LY_CHECK_ERR_RET(!in, LOGMEM(schema->module->ctx), LY_EMEM);
 
     in->schema = schema;
     in->prev = (struct lyd_node *)in;
+    in->flags = LYD_NEW;
 
-    if ((schema->nodetype == LYS_CONTAINER) && !(((struct lysc_node_container *)schema)->flags & LYS_PRESENCE)) {
-        /* non-presence cotnainer, default */
-        in->flags = LYD_DEFAULT;
+    /* do not hash list with keys, we need them for the hash */
+    if ((schema->nodetype != LYS_LIST) || (schema->flags & LYS_KEYLESS)) {
+        lyd_hash((struct lyd_node *)in);
+    }
+    if ((schema->nodetype == LYS_CONTAINER) && !(schema->flags & LYS_PRESENCE)) {
+        /* NP cotnainer always a default */
+        in->flags |= LYD_DEFAULT;
     }
 
     *node = (struct lyd_node *)in;
@@ -652,6 +692,9 @@ lyd_create_list(const struct lysc_node *schema, const char *keys_str, size_t key
         lyd_insert_node(list, NULL, key);
     }
 
+    /* hash having all the keys */
+    lyd_hash(list);
+
     /* success */
     *node = list;
     list = NULL;
@@ -667,14 +710,18 @@ lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANYDATA_VA
 {
     struct lyd_node_any *any;
 
+    assert(schema->nodetype & LYD_NODE_ANY);
+
     any = calloc(1, sizeof *any);
     LY_CHECK_ERR_RET(!any, LOGMEM(schema->module->ctx), LY_EMEM);
 
     any->schema = schema;
     any->prev = (struct lyd_node *)any;
+    any->flags = LYD_NEW;
 
     any->value.xml = value;
     any->value_type = value_type;
+    lyd_hash((struct lyd_node *)any);
 
     *node = (struct lyd_node *)any;
     return LY_SUCCESS;
@@ -778,19 +825,22 @@ lyd_insert_last(struct lyd_node *parent, struct lyd_node *node)
 }
 
 void
-lyd_insert_node(struct lyd_node *parent, struct lyd_node *first_sibling, struct lyd_node *node)
+lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling, struct lyd_node *node)
 {
-    struct lyd_node *key_anchor;
+    struct lyd_node *anchor;
 
-    assert((!parent && first_sibling) || (!first_sibling && parent));
-    assert(node && node->hash);
+    assert((parent || first_sibling) && node && node->hash);
+
+    if (!parent && first_sibling && (*first_sibling) && (*first_sibling)->parent) {
+        parent = (struct lyd_node *)(*first_sibling)->parent;
+    }
 
     if (parent) {
         if (node->schema->flags & LYS_KEY) {
             /* it is key and we need to insert it at the correct place */
-            key_anchor = lyd_get_prev_key_anchor(lyd_node_children(parent), node->schema);
-            if (key_anchor) {
-                lyd_insert_after(key_anchor, node);
+            anchor = lyd_get_prev_key_anchor(lyd_node_children(parent), node->schema);
+            if (anchor) {
+                lyd_insert_after(anchor, node);
             } else if (lyd_node_children(parent)) {
                 lyd_insert_before((struct lyd_node *)lyd_node_children(parent), node);
             } else {
@@ -800,15 +850,26 @@ lyd_insert_node(struct lyd_node *parent, struct lyd_node *first_sibling, struct 
             /* last child */
             lyd_insert_last(parent, node);
         }
+    } else if (*first_sibling) {
+        /* top-level siblings, find the last one from this module, or simply the last */
+        anchor = (*first_sibling)->prev;
+        while (anchor->prev->next && (lyd_top_node_module(anchor) != lyd_top_node_module(node))) {
+            anchor = anchor->prev;
+        }
+
+        /* insert */
+        lyd_insert_after(anchor, node);
     } else {
-        /* last sibling */
-        lyd_insert_after(first_sibling->prev, node);
+        /* the only sibling */
+        *first_sibling = node;
     }
 
-    /* remove default flags from NP containers */
-    while (parent && (parent->flags & LYD_DEFAULT)) {
-        parent->flags &= ~LYD_DEFAULT;
-        parent = (struct lyd_node *)parent->parent;
+    if (!(node->flags & LYD_DEFAULT)) {
+        /* remove default flags from NP containers */
+        while (parent && (parent->flags & LYD_DEFAULT)) {
+            parent->flags &= ~LYD_DEFAULT;
+            parent = (struct lyd_node *)parent->parent;
+        }
     }
 
     /* insert into hash table */
@@ -1553,96 +1614,25 @@ iter_print:
     return buffer;
 }
 
-API struct ly_set *
-lyd_find_instance(const struct lyd_node *sibling, const struct lysc_node *schema)
-{
-    struct ly_set *ret, *ret_aux, *spath;
-    const struct lysc_node *siter, *sparent;
-    const struct lyd_node *iter;
-    unsigned int i, j;
-
-    LY_CHECK_ARG_RET(NULL, sibling, schema, NULL);
-    if (schema->nodetype & (LYS_CHOICE | LYS_CASE)) {
-        LOGARG(schema->module->ctx, schema);
-        return NULL;
-    }
-
-    ret = ly_set_new();
-    spath = ly_set_new();
-    LY_CHECK_ERR_GOTO(!ret || !spath, LOGMEM(schema->module->ctx), error);
-
-    /* build schema path until sibling parent */
-    sparent = sibling->parent ? sibling->parent->schema : NULL;
-    for (siter = schema; siter && (siter != sparent); siter = siter->parent) {
-        if (siter->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LIST | LYS_LEAFLIST | LYS_ANYDATA | LYS_NOTIF | LYS_RPC | LYS_ACTION)) {
-            /* standard data node */
-            ly_set_add(spath, (void *)siter, LY_SET_OPT_USEASLIST);
-
-        } /* else skip the rest node types */
-    }
-    /* no valid path */
-    LY_CHECK_GOTO(!spath->count, error);
-
-    /* start searching */
-    LY_LIST_FOR(sibling, iter) {
-        if (iter->schema == spath->objs[spath->count - 1]) {
-            ly_set_add(ret, (void *)iter, LY_SET_OPT_USEASLIST);
-        }
-    }
-    for (i = spath->count - 1; i; i--) {
-        if (!ret->count) {
-            /* nothing found */
-            break;
-        }
-
-        ret_aux = ly_set_new();
-        LY_CHECK_ERR_GOTO(!ret_aux, LOGMEM(schema->module->ctx), error);
-        for (j = 0; j < ret->count; j++) {
-            LY_LIST_FOR(lyd_node_children(ret->objs[j]), iter) {
-                if (iter->schema == spath->objs[i - 1]) {
-                    ly_set_add(ret_aux, (void *)iter, LY_SET_OPT_USEASLIST);
-                }
-            }
-        }
-        ly_set_free(ret, NULL);
-        ret = ret_aux;
-    }
-
-    ly_set_free(spath, NULL);
-    return ret;
-
-error:
-    ly_set_free(ret, NULL);
-    ly_set_free(spath, NULL);
-
-    return NULL;
-}
-
-API LY_ERR
-lyd_find_sibling_next(const struct lyd_node *first, const struct lys_module *module, const char *name, size_t name_len,
-                      const char *key_or_value, size_t val_len, struct lyd_node **match)
+LY_ERR
+lyd_find_sibling_next2(const struct lyd_node *first, const struct lysc_node *schema, const char *key_or_value,
+                       size_t val_len, struct lyd_node **match)
 {
     LY_ERR rc;
     const struct lyd_node *node = NULL;
     struct lyd_node_term *term;
-    const struct lysc_node *schema;
     struct ly_keys keys = {0};
     struct lyd_value val = {0};
     size_t i;
 
-    LY_CHECK_ARG_RET(NULL, module, name, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, schema, LY_EINVAL);
 
     if (!first) {
         /* no data */
-        *match = NULL;
+        if (match) {
+            *match = NULL;
+        }
         return LY_ENOTFOUND;
-    }
-
-    /* find schema */
-    schema = lys_find_child(first->parent ? first->parent->schema : NULL, module, name, name_len, 0, 0);
-    if (!schema) {
-        LOGERR(module->ctx, LY_EINVAL, "Schema node not found.");
-        return LY_EINVAL;
     }
 
     if (key_or_value && !val_len) {
@@ -1651,7 +1641,7 @@ lyd_find_sibling_next(const struct lyd_node *first, const struct lys_module *mod
 
     if (key_or_value && (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
         /* store the value */
-        LY_CHECK_GOTO(lyd_value_store(&val, schema, key_or_value, val_len, 0, lydjson_resolve_prefix, NULL, LYD_JSON), cleanup);
+        LY_CHECK_GOTO(rc = lyd_value_store(&val, schema, key_or_value, val_len, 0, lydjson_resolve_prefix, NULL, LYD_JSON), cleanup);
     } else if (key_or_value && (schema->nodetype == LYS_LIST)) {
         /* parse keys into canonical values */
         LY_CHECK_GOTO(rc = ly_keys_parse(schema, key_or_value, val_len, 1, &keys), cleanup);
@@ -1671,7 +1661,7 @@ lyd_find_sibling_next(const struct lyd_node *first, const struct lys_module *mod
                                           (struct lyd_node **)&term);
                 if (rc == LY_ENOTFOUND) {
                     /* all keys must always exist */
-                    LOGINT_RET(module->ctx);
+                    LOGINT_RET(schema->module->ctx);
                 }
                 LY_CHECK_GOTO(rc, cleanup);
 
@@ -1701,20 +1691,48 @@ lyd_find_sibling_next(const struct lyd_node *first, const struct lys_module *mod
 
     if (!node) {
         rc = LY_ENOTFOUND;
-        *match = NULL;
+        if (match) {
+            *match = NULL;
+        }
         goto cleanup;
     }
 
     /* success */
-    *match = (struct lyd_node *)node;
+    if (match) {
+        *match = (struct lyd_node *)node;
+    }
     rc = LY_SUCCESS;
 
 cleanup:
     ly_keys_clean(&keys);
     if (val.realtype) {
-        val.realtype->plugin->free(module->ctx, &val);
+        val.realtype->plugin->free(schema->module->ctx, &val);
     }
     return rc;
+}
+
+API LY_ERR
+lyd_find_sibling_next(const struct lyd_node *first, const struct lys_module *module, const char *name, size_t name_len,
+                      const char *key_or_value, size_t val_len, struct lyd_node **match)
+{
+    const struct lysc_node *schema;
+
+    LY_CHECK_ARG_RET(NULL, module, name, match, LY_EINVAL);
+
+    if (!first) {
+        /* no data */
+        *match = NULL;
+        return LY_ENOTFOUND;
+    }
+
+    /* find schema */
+    schema = lys_find_child(first->parent ? first->parent->schema : NULL, module, name, name_len, 0, 0);
+    if (!schema) {
+        LOGERR(module->ctx, LY_EINVAL, "Schema node not found.");
+        return LY_EINVAL;
+    }
+
+    return lyd_find_sibling_next2(first, schema, key_or_value, val_len, match);
 }
 
 API LY_ERR
@@ -1727,7 +1745,9 @@ lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *t
 
     if (!siblings) {
         /* no data */
-        *match = NULL;
+        if (match) {
+            *match = NULL;
+        }
         return LY_ENOTFOUND;
     }
 
@@ -1761,11 +1781,15 @@ lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *t
     }
 
     if (!siblings) {
-        *match = NULL;
+        if (match) {
+            *match = NULL;
+        }
         return LY_ENOTFOUND;
     }
 
-    *match = (struct lyd_node *)siblings;
+    if (match) {
+        *match = (struct lyd_node *)siblings;
+    }
     return LY_SUCCESS;
 }
 
@@ -1914,11 +1938,15 @@ lyd_find_sibling_schema(const struct lyd_node *siblings, const struct lysc_node 
     }
 
     if (!siblings) {
-        *match = NULL;
+        if (match) {
+            *match = NULL;
+        }
         return LY_ENOTFOUND;
     }
 
-    *match = (struct lyd_node *)siblings;
+    if (match) {
+        *match = (struct lyd_node *)siblings;
+    }
     return LY_SUCCESS;
 }
 
@@ -1944,7 +1972,9 @@ lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_node *sc
 
     if (!siblings) {
         /* no data */
-        *match = NULL;
+        if (match) {
+            *match = NULL;
+        }
         return LY_ENOTFOUND;
     }
 
@@ -1954,7 +1984,7 @@ lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_node *sc
     case LYS_ANYXML:
     case LYS_ANYDATA:
     case LYS_NOTIF:
-    case LYS_RPC:
+    case LYS_ACTION:
     case LYS_LEAF:
         /* find it based on schema only */
         rc = lyd_find_sibling_schema(siblings, schema, match);
@@ -1962,13 +1992,11 @@ lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_node *sc
     case LYS_LEAFLIST:
         /* target used attributes: schema, hash, value */
         LY_CHECK_RET(lyd_create_term(schema, key_or_value, val_len, NULL, lydjson_resolve_prefix, NULL, LYD_JSON, &target));
-        lyd_hash(target);
         /* fallthrough */
     case LYS_LIST:
         if (schema->nodetype == LYS_LIST) {
             /* target used attributes: schema, hash, child (all keys) */
             LY_CHECK_RET(lyd_create_list(schema, key_or_value, val_len, &target));
-            lyd_hash(target);
         }
 
         /* find it */

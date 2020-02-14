@@ -65,7 +65,7 @@ struct lyxml_elem {
  * @brief Status of the parser providing information what is expected next (which function is supposed to be called).
  */
 enum LYXML_PARSER_STATUS {
-    LYXML_ELEMENT,        /* expecting XML element, call lyxml_get_element() */
+    LYXML_ELEMENT = 0,    /* expecting XML element, call lyxml_get_element() */
     LYXML_ELEM_CONTENT,   /* expecting content of an element, call lyxml_get_string */
     LYXML_ATTRIBUTE,      /* expecting XML attribute, call lyxml_get_attribute() */
     LYXML_ATTR_CONTENT,   /* expecting value of an attribute, call lyxml_get_string */

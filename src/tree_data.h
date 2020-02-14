@@ -19,6 +19,7 @@
 #include <stdint.h>
 
 #include "log.h"
+#include "set.h"
 #include "tree.h"
 #include "tree_schema.h"
 
@@ -170,7 +171,7 @@ struct lyd_value {
             struct lyd_value *value;     /**< representation of the value according to the selected union's subtype (stored as lyd_value::realpath
                                               here, in subvalue structure */
         } *subvalue;                     /**< data to represent data with multiple types (union). Original value is stored in the main
-                                              lyd_value:canonized while the lyd_value_subvalue::value contains representation according to the
+                                              lyd_value:canonical_cache while the lyd_value_subvalue::value contains representation according to the
                                               one of the union's type. The lyd_value_subvalue:prefixes provides (possible) mappings from prefixes
                                               in original value to YANG modules. These prefixes are necessary to parse original value to the union's
                                               subtypes. */
@@ -229,7 +230,7 @@ struct lyd_attr {
 #define LYD_NODE_ANY (LYS_ANYDATA)   /**< Schema nodetype mask for lyd_node_any */
 
 /**
- * @defgroup dnodeflags Data nodes flags
+ * @defgroup dnodeflags Data node flags
  * @ingroup datatree
  * @{
  *
@@ -245,12 +246,15 @@ struct lyd_attr {
  *       1 LYD_DEFAULT      |x| |x|x| | | |
  *                          +-+-+-+-+-+-+-+
  *       2 LYD_WHEN_TRUE    |x|x|x|x|x| | |
+ *                          +-+-+-+-+-+-+-+
+ *       3 LYD_NEW          |x|x|x|x|x|x|x|
  *     ---------------------+-+-+-+-+-+-+-+
  *
  */
 
 #define LYD_DEFAULT      0x01        /**< default (implicit) node */
 #define LYD_WHEN_TRUE    0x02        /**< all when conditions of this node were evaluated to true */
+#define LYD_NEW          0x04        /**< node was created after the last validation, is needed for the next validation */
 /** @} */
 
 /**
@@ -367,57 +371,85 @@ struct lyd_node_any {
  *
  * Various options to change the data tree parsers behavior.
  *
- * Default behavior:
+ * Default parser behavior:
  * - in case of XML, parser reads all data from its input (file, memory, XML tree) including the case of not well-formed
  * XML document (multiple top-level elements) and if there is an unknown element, it is skipped including its subtree
  * (see the next point). This can be changed by the #LYD_OPT_NOSIBLINGS option which make parser to read only a single
- * tree (with a single root element) from its input.
- * - parser silently ignores the data without a matching node in schema trees. If the caller want to stop
+ * tree (with a single root element) from its input,
+ * - parser silently ignores the data without a matching node in schema trees. If the caller wants to stop
  * parsing in case of presence of unknown data, the #LYD_OPT_STRICT can be used. The strict mode is useful for
  * NETCONF servers, since NETCONF clients should always send data according to the capabilities announced by the server.
  * On the other hand, the default non-strict mode is useful for clients receiving data from NETCONF server since
  * clients are not required to understand everything the server does. Of course, the optimal strategy for clients is
- * to use filtering to get only the required data. Having an unknown element of the known namespace is always an error.
- * The behavior can be changed by #LYD_OPT_STRICT option.
- * - using obsolete statements (status set to obsolete) just generates a warning, but the processing continues. The
- * behavior can be changed by #LYD_OPT_OBSOLETE option.
- * - parser expects that the provided data provides complete datastore content (both the configuration and state data)
- * and performs data validation according to all YANG rules. This can be a problem in case of representing NETCONF's
- * subtree filter data, edit-config's data or other type of data set - such data do not represent a complete data set
- * and some of the validation rules can fail. Therefore there are other options (within lower 8 bits) to make parser
- * to accept such a data.
- * - when parser evaluates when-stmt condition to false, a validation error is raised. If the
- * #LYD_OPT_WHENAUTODEL is used, the invalid node is silently removed instead of an error. The option (and also this default
- * behavior) takes effect only in case of #LYD_OPT_DATA or #LYD_OPT_CONFIG type of data.
+ * to use filtering to get only the required data. Having an unknown element of the known namespace is always an error,
+ * - using obsolete statements (status set to obsolete) just generates a warning, but the processing continues
+ * (see #LYD_OPT_OBSOLETE).
+ *
+ * Default parser validation behavior:
+ * - the provided data are expected to provide complete datastore content (both the configuration and state data)
+ * and performs data validation according to all YANG rules, specifics follow,
+ * - all types are fully resolved (leafref/instance-identifier targets, unions) and must be valid (lists have
+ * all the keys, leaf(-lists) correct values),
+ * - when statements on existing nodes are evaluated, if not satisfied, a validation error is raised,
+ * - data from several cases cause a validation error,
+ * - default values are added.
  * @{
  */
 
-#define LYD_OPT_DATA       0x00 /**< Default type of data - complete datastore content with configuration as well as
+#define LYD_OPT_DATA       0x0 /**< Default type of data - complete datastore content with configuration as well as
                                 state data. */
-#define LYD_OPT_CONFIG     LYD_OPT_NO_STATE /**< A configuration datastore - complete datastore without state data. */
+#define LYD_OPT_CONFIG     LYD_VALOPT_NO_STATE /**< A configuration datastore - complete datastore without state data. */
 #define LYD_OPT_GET        LYD_OPT_PARSE_ONLY /**< Data content from a NETCONF reply message to the NETCONF
                                 \<get\> operation. */
-#define LYD_OPT_GETCONFIG  LYD_OPT_PARSE_ONLY | LYD_OPT_NO_STATE /**< Data content from a NETCONF reply message to
+#define LYD_OPT_GETCONFIG  LYD_OPT_PARSE_ONLY | LYD_VALOPT_NO_STATE /**< Data content from a NETCONF reply message to
                                 the NETCONF \<get-config\> operation. */
-#define LYD_OPT_EDIT       LYD_OPT_PARSE_ONLY | LYD_OPT_NO_STATE | LYD_OPT_EMPTY_INST /**< Content of
+#define LYD_OPT_EDIT       LYD_OPT_PARSE_ONLY | LYD_VALOPT_NO_STATE | LYD_OPT_EMPTY_INST /**< Content of
                                 the NETCONF \<edit-config\>'s config element. */
 
-#define LYD_OPT_STRICT     0x0001 /**< Instead of silent ignoring data without schema definition raise an error. */
-#define LYD_OPT_PARSE_ONLY 0x0002 /**< Data will be only parsed and no (only required) validation will be performed. */
-#define LYD_OPT_NO_STATE   0x0004 /**< Consider state data not allowed and raise an error if they are found. */
-#define LYD_OPT_EMPTY_INST 0x0008 /**< Allow leaf/leaf-list instances without values and lists without keys. */
-#define LYD_OPT_VAL_DATA_ONLY 0x0010 /**< Validate only modules whose data actually exist. */
-//#define LYD_OPT_DESTRUCT   0x0400 /**< Free the provided XML tree during parsing the data. With this option, the
-//                                       provided XML tree is affected and all successfully parsed data are freed.
-//                                       This option is applicable only to lyd_parse_xml() function. */
-//#define LYD_OPT_OBSOLETE   0x0800 /**< Raise an error when an obsolete statement (status set to obsolete) is used. */
+#define LYD_OPT_PARSE_ONLY      0x0001 /**< Data will be only parsed and no validation will be performed. When statements
+                                            are kept unevaluated, union types may not be fully resolved, and default values
+                                            are not added (only the ones parsed are present). */
+#define LYD_OPT_TRUSTED         0x0002 /**< Data are considered trusted so they will be parsed as validated. If the parsed
+                                            data are not valid, using this flag may lead to some unexpected behavior!
+                                            This flag can be used only with #LYD_OPT_PARSE_ONLY. */
+#define LYD_OPT_STRICT          0x0004 /**< Instead of silently ignoring data without schema definition raise an error. */
+#define LYD_OPT_EMPTY_INST      0x0008 /**< Allow leaf/leaf-list instances without values and lists without keys. */
 //#define LYD_OPT_NOSIBLINGS 0x1000 /**< Parse only a single XML tree from the input. This option applies only to
 //                                       XML input data. */
+
+/** @} dataparseroptions */
+
+/**
+ * @defgroup datavalidationoptions Data validation options
+ * @ingroup datatree
+ *
+ * Various options to change data validation behaviour, both for the parser and separate validation.
+ *
+ * Default separate validation behavior:
+ * - the provided data are expected to provide complete datastore content (both the configuration and state data)
+ * and performs data validation according to all YANG rules, specifics follow,
+ * - all types are fully resolved (leafref/instance-identifier targets, unions) and must be valid (lists have
+ * all the keys, leaf(-lists) correct values),
+ * - when statements on existing nodes are evaluated. Depending on the previous when state (from previous validation
+ * or parsing), the node is silently auto-deleted if the state changed from true to false, otherwise a validation error
+ * is raised if it evaluates to false,
+ * - data from several cases behave based on their previous state (from previous validation or parsing). If there existed
+ * already a case and another one was added, the previous one is silently auto-deleted. Otherwise (if data from 2 or
+ * more cases were created) a validation error is raised,
+ * - default values are added.
+ *
+ * @{
+ */
+
+#define LYD_VALOPT_NO_STATE     0x00010000 /**< Consider state data not allowed and raise an error if they are found. */
+#define LYD_VALOPT_DATA_ONLY    0x00020000 /**< Validate only modules whose data actually exist. */
+//#define LYD_VALOPT_OBSOLETE   0x0800 /**< Raise an error when an obsolete statement (status set to obsolete) is used. */
+
+/** @} datavalidationoptions */
+
 //#define LYD_OPT_VAL_DIFF 0x40000 /**< Flag only for validation, store all the data node changes performed by the validation
 //                                      in a diff structure. */
 //#define LYD_OPT_DATA_TEMPLATE 0x1000000 /**< Data represents YANG data template. */
-
-/**@} dataparseroptions */
 
 /**
  * @brief Get the node's children list if any.
@@ -722,19 +754,6 @@ typedef enum {
 char *lyd_path(const struct lyd_node *node, LYD_PATH_TYPE pathtype, char *buffer, size_t buflen);
 
 /**
- * @brief Search in the given siblings for instances of the provided schema node, recursively.
- * Does **not** use hashes - should not be used unless necessary for best performance.
- *
- * If \p sibling is the first top-level sibling, the whole data tree is effectively searched.
- *
- * @param[in] sibling Starting data sibling for the search.
- * @param[in] schema Schema node of the data nodes caller wants to find.
- * @return Set of found data nodes. If no data node is found, the returned set is empty.
- * @return NULL in case of error.
- */
-struct ly_set *lyd_find_instance(const struct lyd_node *sibling, const struct lysc_node *schema);
-
-/**
  * @brief Find the node, in the list, satisfying the given restrictions.
  * Does **not** use hashes - should not be used unless necessary for best performance.
  *
@@ -775,7 +794,7 @@ LY_ERR lyd_find_sibling_next(const struct lyd_node *first, const struct lys_modu
  *
  * @param[in] siblings Siblings to search in including preceding and succeeding nodes.
  * @param[in] target Target node to find.
- * @param[out] match Found data node.
+ * @param[out] match Can be NULL, otherwise the found data node.
  * @return LY_SUCCESS on success, @p match set.
  * @return LY_ENOTFOUND if not found, @p match set to NULL.
  * @return LY_ERR value if another error occurred.
@@ -820,7 +839,7 @@ LY_ERR lyd_find_sibling_set(const struct lyd_node *siblings, const struct lyd_no
  *              Note that any explicit values (leaf-list or list key values) will be canonized first
  *              before comparison. But values that do not have a canonical value are expected to be in the
  *              JSON format!
- * @param[out] match Found data node.
+ * @param[out] match Can be NULL, otherwise the found data node.
  * @return LY_SUCCESS on success, @p match set.
  * @return LY_ENOTFOUND if not found, @p match set to NULL.
  * @return LY_EINVAL if @p schema is a key-less list.

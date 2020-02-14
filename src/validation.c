@@ -160,27 +160,55 @@ lyd_val_next_module(const struct lys_module **modules, int mod_count, struct ly_
     return ly_ctx_get_module_iter(ctx, i);
 }
 
+static int
+lyd_val_has_choice_data(const struct lysc_node *snode, struct lyd_node *sibling)
+{
+    const struct lysc_node *iter = NULL;
+
+    assert(snode->nodetype == LYS_CHOICE);
+
+    while ((iter = lys_getnext(iter, snode, NULL, 0))) {
+        switch (iter->nodetype) {
+        case LYS_CONTAINER:
+        case LYS_ANYXML:
+        case LYS_ANYDATA:
+        case LYS_LEAF:
+            if (!lyd_find_sibling_val(sibling, iter, NULL, 0, NULL)) {
+                /* one case child data instance found */
+                return 1;
+            }
+            break;
+        case LYS_LIST:
+        case LYS_LEAFLIST:
+            if (!lyd_find_sibling_next2(sibling, iter, NULL, 0, NULL)) {
+                /* one case child data instance found */
+                return 1;
+            }
+            break;
+        default:
+            assert(0);
+            LOGINT(snode->module->ctx);
+            return 0;
+        }
+    }
+
+    return 0;
+}
+
 static LY_ERR
 lyd_validate_mandatory(const struct lysc_node *snode, struct lyd_node *sibling)
 {
-    struct lyd_node *node;
-    int is_choice = 0;
-
     if (snode->nodetype == LYS_CHOICE) {
-        is_choice = 1;
-    }
+        /* some data of a choice case exist */
+        if (lyd_val_has_choice_data(snode, sibling)) {
+            return LY_SUCCESS;
+        }
+    } else {
+        assert(snode->nodetype & (LYS_LEAF | LYS_CONTAINER | LYD_NODE_ANY));
 
-    LY_LIST_FOR(sibling, node) {
-        if (is_choice) {
-            if (node->schema->parent && (node->schema->parent->nodetype & LYS_CASE) && (node->schema->parent->parent == snode)) {
-                /* case data instance found */
-                return LY_SUCCESS;
-            }
-        } else {
-            if (node->schema == snode) {
-                /* data instance found */
-                return LY_SUCCESS;
-            }
+        if (!lyd_find_sibling_val(sibling, snode, NULL, 0, NULL)) {
+            /* data instance found */
+            return LY_SUCCESS;
         }
     }
 
@@ -195,13 +223,29 @@ lyd_validate_minmax(const struct lysc_node *snode, uint32_t min, uint32_t max, s
     uint32_t count = 0;
     struct lyd_node *iter;
 
+    assert(min || max);
+
     LY_LIST_FOR(sibling, iter) {
         if (iter->schema == snode) {
             ++count;
+
+            if (min && (count == min)) {
+                /* satisfied */
+                min = 0;
+                if (!max) {
+                    /* nothing more to check */
+                    break;
+                }
+            }
+            if (max && (count > max)) {
+                /* not satisifed */
+                break;
+            }
         }
     }
 
-    if (min && (count < min)) {
+    if (min) {
+        assert(count < min);
         LOGVAL(snode->module->ctx, LY_VLOG_LYSC, snode, LY_VCODE_NOMIN, snode->name);
         return LY_EVALID;
     } else if (max && (count > max)) {
@@ -215,16 +259,32 @@ lyd_validate_minmax(const struct lysc_node *snode, uint32_t min, uint32_t max, s
 static struct lyd_node *
 lyd_val_uniq_find_leaf(const struct lysc_node_leaf *uniq_leaf, struct lyd_node *list)
 {
-    struct ly_set *set;
-    struct lyd_node *node = NULL;
+    struct lyd_node *node;
+    const struct lysc_node *iter;
+    size_t depth = 0, i;
 
-    set = lyd_find_instance(lyd_node_children(list), (struct lysc_node *)uniq_leaf);
-    if (set && set->count) {
-        /* we were looking for a leaf */
-        assert(set->count == 1);
-        node = set->objs[0];
+    /* get leaf depth */
+    for (iter = (struct lysc_node *)uniq_leaf; iter && (iter != list->schema); iter = iter->parent) {
+        if (!(iter->nodetype & (LYS_CHOICE | LYS_CASE))) {
+            ++depth;
+        }
     }
-    ly_set_free(set, NULL);
+
+    node = list;
+    while (node && depth) {
+        /* find schema node with this depth */
+        for (i = depth - 1, iter = (struct lysc_node *)uniq_leaf; i; iter = iter->parent) {
+            if (!(iter->nodetype & (LYS_CHOICE | LYS_CASE))) {
+                --i;
+            }
+        }
+
+        /* find iter instance in children */
+        assert(iter->nodetype & (LYS_CONTAINER | LYS_LEAF));
+        lyd_find_sibling_val(lyd_node_children(node), iter, NULL, 0, &node);
+        --depth;
+    }
+
     return node;
 }
 
@@ -346,8 +406,13 @@ lyd_validate_unique(const struct lysc_node *snode, struct lysc_node_leaf ***uniq
     assert(uniques);
 
     /* get all list instances */
-    set = lyd_find_instance(sibling, snode);
-    LY_CHECK_RET(!set, LY_EINT);
+    set = ly_set_new();
+    LY_CHECK_ERR_RET(!set, LOGMEM(ctx), LY_EMEM);
+    LY_LIST_FOR(sibling, diter) {
+        if (diter->schema == snode) {
+            ly_set_add(set, diter, LY_SET_OPT_USEASLIST);
+        }
+    }
 
     if (set->count == 2) {
         /* simple comparison */
@@ -493,8 +558,8 @@ lyd_validate_siblings_r(struct lyd_node *sibling, const struct lysc_node *sparen
 
     /* validate all restrictions of nodes themselves */
     LY_LIST_FOR(sibling, node) {
+        /* TODO node instance duplicities */
         /* TODO node's must */
-        /* TODO node instance duplicites */
         /* TODO node status */
         /* TODO node's if-features */
         /* TODO node list keys */
@@ -505,6 +570,9 @@ lyd_validate_siblings_r(struct lyd_node *sibling, const struct lysc_node *sparen
     LY_CHECK_RET(lyd_validate_siblings_schema_r(sibling, sparent, mod, options));
 
     LY_LIST_FOR(sibling, node) {
+        /* this sibling is valid */
+        node->flags &= ~LYD_NEW;
+
         /* validate all children recursively */
         LY_CHECK_RET(lyd_validate_siblings_r((struct lyd_node *)lyd_node_children(node), node->schema, mod, options));
     }
@@ -514,19 +582,19 @@ lyd_validate_siblings_r(struct lyd_node *sibling, const struct lysc_node *sparen
 
 LY_ERR
 lyd_validate_data(const struct lyd_node **trees, const struct lys_module **modules, int mod_count, struct ly_ctx *ctx,
-                  int options)
+                  int val_opts)
 {
     uint32_t i = 0, j;
     const struct lys_module *mod;
     struct lyd_node *tree;
 
-    if (options & LYD_OPT_VAL_DATA_ONLY) {
+    if (val_opts & LYD_VALOPT_DATA_ONLY) {
         if (trees) {
             for (j = 0; j < LY_ARRAY_SIZE(trees); ++j) {
                 tree = (struct lyd_node *)trees[j];
 
                 /* validate all top-level nodes and then inner nodes recursively */
-                LY_CHECK_RET(lyd_validate_siblings_r(tree, NULL, tree->schema->module->compiled, options));
+                LY_CHECK_RET(lyd_validate_siblings_r(tree, NULL, tree->schema->module->compiled, val_opts));
             }
         }
     } else {
@@ -547,7 +615,112 @@ lyd_validate_data(const struct lyd_node **trees, const struct lys_module **modul
             }
 
             /* validate all top-level nodes and then inner nodes recursively */
-            LY_CHECK_RET(lyd_validate_siblings_r(tree, NULL, mod->compiled, options));
+            LY_CHECK_RET(lyd_validate_siblings_r(tree, NULL, mod->compiled, val_opts));
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
+LY_ERR
+lyd_validate_defaults_r(struct lyd_node_inner *parent, struct lyd_node **first, const struct lysc_node *schema,
+                        const struct lysc_module *mod, struct ly_set *node_types, struct ly_set *node_when)
+{
+    const struct lysc_node *iter = NULL;
+    struct lyd_node *node;
+    struct lyd_value **dflts;
+    size_t i;
+
+    assert(first && (schema || mod) && node_types && node_when);
+
+    while ((iter = lys_getnext(iter, schema, mod, LYS_GETNEXT_WITHCHOICE))) {
+        switch (iter->nodetype) {
+        case LYS_CHOICE:
+            if (((struct lysc_node_choice *)iter)->dflt && !lyd_val_has_choice_data(iter, *first)) {
+                /* create default case data */
+                LY_CHECK_RET(lyd_validate_defaults_r(parent, first, (struct lysc_node *)((struct lysc_node_choice *)iter)->dflt,
+                                                     NULL, node_types, node_when));
+            }
+            break;
+        case LYS_CONTAINER:
+            if (!(iter->flags & LYS_PRESENCE) && lyd_find_sibling_val(*first, iter, NULL, 0, NULL)) {
+                /* create default NP container (default flag automatically set) */
+                LY_CHECK_RET(lyd_create_inner(iter, &node));
+                lyd_insert_node((struct lyd_node *)parent, first, node);
+
+                if (iter->when) {
+                    /* remember to resolve when */
+                    ly_set_add(node_when, node, LY_SET_OPT_USEASLIST);
+                }
+            }
+            break;
+        case LYS_LEAF:
+            if (((struct lysc_node_leaf *)iter)->dflt && lyd_find_sibling_val(*first, iter, NULL, 0, NULL)) {
+                /* create default leaf */
+                LY_CHECK_RET(lyd_create_term2(iter, ((struct lysc_node_leaf *)iter)->dflt, &node));
+                node->flags |= LYD_DEFAULT;
+                lyd_insert_node((struct lyd_node *)parent, first, node);
+
+                if (iter->when) {
+                    /* remember to resolve when */
+                    ly_set_add(node_when, node, LY_SET_OPT_USEASLIST);
+                }
+            }
+            break;
+        case LYS_LEAFLIST:
+            if (((struct lysc_node_leaflist *)iter)->dflts && lyd_find_sibling_next2(*first, iter, NULL, 0, NULL)) {
+                /* create all default leaf-lists */
+                dflts = ((struct lysc_node_leaflist *)iter)->dflts;
+                LY_ARRAY_FOR(dflts, i) {
+                    LY_CHECK_RET(lyd_create_term2(iter, dflts[i], &node));
+                    node->flags |= LYD_DEFAULT;
+                    lyd_insert_node((struct lyd_node *)parent, first, node);
+
+                    if (iter->when) {
+                        /* remember to resolve when */
+                        ly_set_add(node_when, node, LY_SET_OPT_USEASLIST);
+                    }
+                }
+            }
+            break;
+        default:
+            /* without defaults */
+            break;
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
+LY_ERR
+lyd_validate_defaults_top(struct lyd_node **first, const struct lys_module **modules, int mod_count, struct ly_ctx *ctx,
+                          struct ly_set *node_types, struct ly_set *node_when, int val_opts)
+{
+    uint32_t i = 0;
+    const struct lys_module *mod;
+    struct lyd_node *sibling;
+
+    assert(node_types && node_when);
+
+    if (val_opts & LYD_VALOPT_DATA_ONLY) {
+        mod = NULL;
+        LY_LIST_FOR(*first, sibling) {
+            if (lyd_top_node_module(sibling) != mod) {
+                /* remember this module */
+                mod = lyd_top_node_module(sibling);
+
+                /* add all top-level defaults for this module */
+                LY_CHECK_RET(lyd_validate_defaults_r(NULL, first, NULL, mod->compiled, node_types, node_when));
+            }
+        }
+    } else {
+        while ((mod = lyd_val_next_module(modules, mod_count, ctx, &i))) {
+            if (!mod->implemented) {
+                continue;
+            }
+
+            /* add all top-level defaults for this module */
+            LY_CHECK_RET(lyd_validate_defaults_r(NULL, first, NULL, mod->compiled, node_types, node_when));
         }
     }
 

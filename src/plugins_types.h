@@ -122,7 +122,14 @@ void ly_err_free(void *ptr);
 /** @} plugintypeopts */
 
 /**
- * @brief Callback to validate, canonize and store (optionally, according to the given @p options) the given @p value according to the given @p type.
+ * @brief Callback to validate, canonize and store (optionally, according to the given @p options) the given @p value
+ * according to the given @p type.
+ *
+ * Even when the callback returns #LY_EINCOMPLETE, the value must be normally stored in the structure
+ * (meaning it can be printed/duplicated/compared). That basically means that the #LY_TYPE_OPTS_SECOND_CALL
+ * should only validate the value but not change the internal value! The only exception is union, when this could
+ * happen. However, even on the first call it is stored as a potentially matching value, which means the value
+ * structure is valid. That is all that is required.
  *
  * Note that the \p value string is not necessarily zero-terminated. The provided \p value_len is always correct.
  *
@@ -159,6 +166,8 @@ typedef LY_ERR (*ly_type_store_clb)(struct ly_ctx *ctx, struct lysc_type *type, 
 
 /**
  * @brief Callback for comparing 2 values of the same type.
+ * Must be able to compare values that are not fully resolved! Meaning, whose storing callback returned
+ * #LY_EINCOMPLETE and the was not called again.
  *
  * Caller is responsible to provide values of the SAME type.
  *
@@ -171,6 +180,8 @@ typedef LY_ERR (*ly_type_compare_clb)(const struct lyd_value *val1, const struct
 
 /**
  * @brief Callback to receive printed (canonical) value of the data stored in @p value.
+ * Must be able to print values that are not fully resolved! Meaning, whose storing callback returned
+ * #LY_EINCOMPLETE and the was not called again.
  *
  * @param[in] value Value to print.
  * @param[in] format Format in which the data are supposed to be printed.
@@ -188,11 +199,14 @@ typedef const char *(*ly_type_print_clb)(const struct lyd_value *value, LYD_FORM
 
 /**
  * @brief Callback to duplicate data in data structure. Note that callback is even responsible for duplicating lyd_value::canonized.
+ * Must be able to duplicate values that are not fully resolved! Meaning, whose storing callback returned
+ * #LY_EINCOMPLETE and the was not called again.
  *
  * @param[in] ctx libyang context of the @p dup. Note that the context of @p original and @p dup might not be the same.
  * @param[in] original Original data structure to be duplicated.
  * @param[in,out] dup Prepared data structure to be filled with the duplicated data of @p original.
- * @return LY_SUCCESS after successful duplication, other LY_ERR values otherwise.
+ * @return LY_SUCCESS after successful duplication.
+ * @return other LY_ERR values on error.
  */
 typedef LY_ERR (*ly_type_dup_clb)(struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup);
 

@@ -17,6 +17,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "context.h"
 #include "dict.h"
@@ -206,7 +207,7 @@ cleanup:
  * @param[in] parent Parent node where the children are inserted. NULL in case of parsing top-level elements.
  * @param[in,out] data Pointer to the XML string representation of the YANG data to parse.
  * @param[out] node Resulting list of the parsed nodes.
- * @reutn LY_ERR value.
+ * @return LY_ERR value.
  */
 static LY_ERR
 lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char **data, struct lyd_node **node)
@@ -294,9 +295,26 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
             /* buffer spent */
             buffer = NULL;
             if (ret == LY_EINCOMPLETE) {
-                ly_set_add(&ctx->incomplete_type_validation, cur, LY_SET_OPT_USEASLIST);
+                if (!(ctx->options & LYD_OPT_PARSE_ONLY)) {
+                    ly_set_add(&ctx->incomplete_type_validation, cur, LY_SET_OPT_USEASLIST);
+                }
             } else if (ret) {
                 goto cleanup;
+            }
+
+            if (parent && (cur->schema->flags & LYS_KEY)) {
+                /* check the key order, the anchor must always be the last child */
+                key_anchor = lyd_get_prev_key_anchor(parent->child, cur->schema);
+                if ((!key_anchor && parent->child) || (key_anchor && key_anchor->next)) {
+                    if (ctx->options & LYD_OPT_STRICT) {
+                        LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_DATA, "Invalid position of the key \"%s\" in a list.",
+                                cur->schema->name);
+                        ret = LY_EVALID;
+                        goto cleanup;
+                    } else {
+                        LOGWRN(ctx->ctx, "Invalid position of the key \"%s\" in a list.", cur->schema->name);
+                    }
+                }
             }
         } else if (snode->nodetype & LYD_NODE_INNER) {
             if (ctx->status == LYXML_ELEM_CONTENT) {
@@ -316,6 +334,18 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
             if (ctx->status == LYXML_ELEMENT && parents_count != ctx->elements.count) {
                 ret = lydxml_nodes(ctx, (struct lyd_node_inner *)cur, data, lyd_node_children_p(cur));
                 LY_CHECK_GOTO(ret, cleanup);
+            }
+
+            if (!(ctx->options & LYD_OPT_PARSE_ONLY)) {
+                /* add any missing default children */
+                ret = lyd_validate_defaults_r((struct lyd_node_inner *)cur, lyd_node_children_p(cur), cur->schema, NULL,
+                                              &ctx->incomplete_type_validation, &ctx->when_check);
+                LY_CHECK_GOTO(ret, cleanup);
+            }
+
+            /* hash now that all keys should be parsed, rehash for key-less list */
+            if (snode->nodetype == LYS_LIST) {
+                lyd_hash(cur);
             }
         } else if (snode->nodetype & LYD_NODE_ANY) {
             unsigned int cur_element_index = ctx->elements.count;
@@ -369,41 +399,26 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
         /* add attributes */
         LY_CHECK_GOTO(ret = lydxml_attributes(ctx, &attrs_data, cur), cleanup);
 
-        /* remember we need to evaluate this node's when */
+        /* correct flags */
         if (!(snode->nodetype & (LYS_ACTION | LYS_NOTIF)) && snode->when) {
-            ly_set_add(&ctx->when_check, cur, LY_SET_OPT_USEASLIST);
+            if (ctx->options & LYD_OPT_TRUSTED) {
+                /* just set it to true */
+                cur->flags |= LYD_WHEN_TRUE;
+            } else {
+                /* remember we need to evaluate this node's when */
+                ly_set_add(&ctx->when_check, cur, LY_SET_OPT_USEASLIST);
+            }
         }
-
-        /* hash */
-        lyd_hash(cur);
+        if (ctx->options & LYD_OPT_TRUSTED) {
+            /* node is valid */
+            cur->flags &= ~LYD_NEW;
+        }
 
         /* insert */
-        if (parent) {
-            if (cur->schema->flags & LYS_KEY) {
-                /* check the key order, the anchor must always be the last child */
-                key_anchor = lyd_get_prev_key_anchor(parent->child, cur->schema);
-                if ((!key_anchor && parent->child) || (key_anchor && key_anchor->next)) {
-                    if (ctx->options & LYD_OPT_STRICT) {
-                        LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_DATA, "Invalid position of the key \"%s\" in a list.",
-                               cur->schema->name);
-                        ret = LY_EVALID;
-                        goto cleanup;
-                    } else {
-                        LOGWRN(ctx->ctx, "Invalid position of the key \"%s\" in a list.", cur->schema->name);
-                    }
-                }
-            }
-            lyd_insert_node((struct lyd_node *)parent, NULL, cur);
-        } else if (*node) {
-            lyd_insert_node(NULL, *node, cur);
-        } else {
-            (*node) = cur;
-        }
+        lyd_insert_node((struct lyd_node *)parent, node, cur);
 
         cur = NULL;
     }
-
-    /* TODO add missing siblings default elements */
 
     /* success */
     ret = LY_SUCCESS;
@@ -428,7 +443,6 @@ LY_ERR
 lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, struct lyd_node **result)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lyd_node_inner *parent = NULL;
     const struct lyd_node **result_trees = NULL;
     struct lyd_xml_ctx xmlctx = {0};
 
@@ -439,68 +453,38 @@ lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, struct lyd_node
     /* init */
     *result = NULL;
 
-#if 0
-    if (options & LYD_OPT_RPCREPLY) {
-        /* prepare container for RPC reply, for which we need RPC
-         * - prepare *result as top-level node
-         * - prepare parent as the RPC/action node */
-        const struct lyd_node *action;
-        for (action = trees[0]; action && action->schema->nodetype != LYS_ACTION; action = lyd_node_children(action)) {
-            /* skip list's keys */
-            for ( ;action && action->schema->nodetype == LYS_LEAF; action = action->next);
-            if (action && action->schema->nodetype == LYS_ACTION) {
-                break;
-            }
-        }
-        if (!action) {
-            LOGERR(ctx, LY_EINVAL, "Data parser invalid argument trees - the first item in the array must be the RPC/action request when parsing %s.",
-                   lyd_parse_options_type2str(options));
-            return LY_EINVAL;
-        }
-        parent = (struct lyd_node_inner*)lyd_dup(action, NULL, LYD_DUP_WITH_PARENTS);
-        LY_CHECK_ERR_RET(!parent, LOGERR(ctx, ly_errcode(ctx), "Unable to duplicate RPC/action container for RPC/action reply."), ly_errcode(ctx));
-        for (*result = (struct lyd_node*)parent; (*result)->parent; *result = (struct lyd_node*)(*result)->parent);
-    }
-#endif
-
-    if (!data || !data[0]) {
-        /* no data - just check for missing mandatory nodes */
-        goto validation;
-    }
-
-    ret = lydxml_nodes(&xmlctx, parent, &data, *result ? &parent->child : result);
+    ret = lydxml_nodes(&xmlctx, NULL, &data, result);
     LY_CHECK_GOTO(ret, cleanup);
 
-    /* prepare sized array for validator */
-    if (*result) {
-        result_trees = lyd_trees_new(1, *result);
+    if (!(options & LYD_OPT_PARSE_ONLY)) {
+        /* add top-level default nodes */
+        ret = lyd_validate_defaults_top(result, NULL, 0, ctx, &xmlctx.incomplete_type_validation, &xmlctx.when_check, options);
+        LY_CHECK_GOTO(ret, cleanup);
+
+        /* prepare sized array for validator */
+        if (*result) {
+            result_trees = lyd_trees_new(1, *result);
+        }
+
+        /* finish incompletely validated terminal values/attributes and when conditions */
+        ret = lyd_validate_unres(&xmlctx.incomplete_type_validation, &xmlctx.incomplete_type_validation_attrs,
+                                 &xmlctx.when_check, LYD_XML, lydxml_resolve_prefix, ctx, result_trees);
+        LY_CHECK_GOTO(ret, cleanup);
+
+        /* context node and other validation tasks that depend on other data nodes */
+        ret = lyd_validate_data(result_trees, NULL, 0, ctx, options);
+        LY_CHECK_GOTO(result, cleanup);
     }
-
-    /* finish incompletely validated terminal values/attributes and when conditions */
-    ret = lyd_validate_unres(&xmlctx.incomplete_type_validation, &xmlctx.incomplete_type_validation_attrs,
-                             &xmlctx.when_check, LYD_XML, lydxml_resolve_prefix, ctx, result_trees);
-    LY_CHECK_GOTO(ret, cleanup);
-
-validation:
-#if 0
-    if ((!(*result) || (parent && !parent->child)) && (options & (LYD_OPT_RPC | LYD_OPT_NOTIF))) {
-        /* error, missing top level node identify RPC and Notification */
-        LOGERR(ctx, LY_EINVAL, "Invalid input data of data parser - expected %s which cannot be empty.",
-               lyd_parse_options_type2str(options));
-        ret = LY_EINVAL;
-        goto cleanup;
-    }
-#endif
-
-    /* context node and other validation tasks that depend on other data nodes */
-    ret = lyd_validate_data(result_trees, NULL, 0, ctx, options);
-    LY_CHECK_GOTO(result, cleanup);
 
 cleanup:
+    /* there should be no unresolved types stored */
+    assert(!(options & LYD_OPT_PARSE_ONLY) || (!xmlctx.incomplete_type_validation.count
+           && !xmlctx.incomplete_type_validation_attrs.count && !xmlctx.when_check.count));
+
     ly_set_erase(&xmlctx.incomplete_type_validation, NULL);
     ly_set_erase(&xmlctx.incomplete_type_validation_attrs, NULL);
     ly_set_erase(&xmlctx.when_check, NULL);
-    lyxml_context_clear((struct lyxml_context*)&xmlctx);
+    lyxml_context_clear((struct lyxml_context *)&xmlctx);
     lyd_trees_free(result_trees, 0);
     if (ret) {
         lyd_free_all(*result);
