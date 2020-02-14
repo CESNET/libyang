@@ -339,6 +339,11 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
             goto unlink_node_error;
         } else if (r == 1) {
 attr_error:
+            if (!strcmp(attr->name, "default") && !strcmp(attr->ns->value, "urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults")) {
+                /* we do not need to parse this attribute, just skip it */
+                continue;
+            }
+
             if (options & LYD_OPT_STRICT) {
                 LOGVAL(ctx, LYE_INATTR, LY_VLOG_LYD, *result, attr->name);
                 goto unlink_node_error;
