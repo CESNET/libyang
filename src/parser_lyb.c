@@ -520,7 +520,7 @@ lyb_parse_val_2(struct lys_type *type, struct lyd_node_leaf_list *leaf, struct l
     if (*value_flags & LY_VALUE_USER) {
         /* unfortunately, we need to also fill the value properly, so just parse it again */
         *value_flags &= ~LY_VALUE_USER;
-        if (!lyp_parse_value(type, value_str, NULL, leaf, attr, NULL, 1, (leaf ? leaf->dflt : 0), 1)) {
+        if (!lyp_parse_value(type, value_str, NULL, leaf, attr, NULL, 1, (leaf ? leaf->dflt : 0))) {
             return -1;
         }
 
