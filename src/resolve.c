@@ -7866,16 +7866,7 @@ check_instid_ext_dep(const struct lys_node *sleaf, const char *json_instid)
     return 0;
 }
 
-/**
- * @brief Resolve instance-identifier in JSON data format. Logs directly.
- *
- * @param[in] data Data node where the path is used
- * @param[in] path Instance-identifier node value.
- * @param[in,out] ret Resolved instance or NULL.
- *
- * @return 0 on success (even if unresolved and \p ret is NULL), -1 on error.
- */
-static int
+int
 resolve_instid(struct lyd_node *data, const char *path, int req_inst, struct lyd_node **ret)
 {
     int i = 0, j, parsed, cur_idx;
@@ -8002,7 +7993,7 @@ error:
     return -1;
 }
 
-static int
+int
 resolve_leafref(struct lyd_node_leaf_list *leaf, const char *path, int req_inst, struct lyd_node **ret)
 {
     struct lyxp_set xp_set;

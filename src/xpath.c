@@ -3615,6 +3615,7 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyd_node 
 {
     struct lyd_node_leaf_list *leaf;
     struct lys_node_leaf *sleaf;
+    struct lyd_node *target;
     int ret = EXIT_SUCCESS;
 
     if (options & LYXP_SNODE_ALL) {
@@ -3649,13 +3650,18 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyd_node 
         if ((sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))
                 && ((sleaf->type.base == LY_TYPE_LEAFREF) || (sleaf->type.base == LY_TYPE_INST))) {
             if (leaf->value_flags & LY_VALUE_UNRES) {
-                /* this is bad */
-                LOGVAL(local_mod->ctx, LYE_SPEC, LY_VLOG_LYD, args[0]->val.nodes[0].node,
-                       "Trying to dereference an unresolved leafref or instance-identifier.");
-                return -1;
+                /* this means that the target may exist except it cannot be stored in the value */
+                if (sleaf->type.base == LY_TYPE_LEAFREF) {
+                    resolve_leafref(leaf, sleaf->type.info.lref.path, -1, &target);
+                } else {
+                    resolve_instid((struct lyd_node *)leaf, leaf->value_str, -1, &target);
+                }
+            } else {
+                /* works for both leafref and instid */
+                target = leaf->value.leafref;
             }
-            /* works for both leafref and instid */
-            set_insert_node(set, leaf->value.leafref, 0, LYXP_NODE_ELEM, 0);
+
+            set_insert_node(set, target, 0, LYXP_NODE_ELEM, 0);
         }
     }
 
