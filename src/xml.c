@@ -357,6 +357,9 @@ lyxml_free_attr(struct ly_ctx *ctx, struct lyxml_elem *parent, struct lyxml_attr
     }
     lydict_remove(ctx, attr->name);
     lydict_remove(ctx, attr->value);
+    if (attr->type == LYXML_ATTR_STD_UNRES) {
+        free((char *)attr->ns);
+    }
     free(attr);
 }
 
@@ -374,6 +377,9 @@ lyxml_free_attrs(struct ly_ctx *ctx, struct lyxml_elem *elem)
 
         lydict_remove(ctx, a->name);
         lydict_remove(ctx, a->value);
+        if (a->type == LYXML_ATTR_STD_UNRES) {
+            free((char *)a->ns);
+        }
         free(a);
 
         a = next;
@@ -809,6 +815,12 @@ parse_attr(struct ly_ctx *ctx, const char *data, unsigned int *len, struct lyxml
                 memcpy(prefix, data, c - data);
                 prefix[c - data] = '\0';
                 attr->ns = lyxml_get_ns(parent, prefix);
+                if (!attr->ns) {
+                    /* remember the prefix for later resolution */
+                    attr->type = LYXML_ATTR_STD_UNRES;
+                    attr->ns = (struct lyxml_ns *)prefix;
+                    prefix = NULL;
+                }
             } else if (((*c == 'm') && (xml_flag == 1)) ||
                     ((*c == 'l') && (xml_flag == 2))) {
                 ++xml_flag;
@@ -1139,6 +1151,16 @@ store_content:
     if (!closed_flag) {
         LOGVAL(ctx, LYE_XML_MISS, LY_VLOG_XML, elem, "closing element tag", elem->name);
         goto error;
+    }
+
+    /* resolve all attribute prefixes */
+    LY_TREE_FOR(elem->attr, attr) {
+        if (attr->type == LYXML_ATTR_STD_UNRES) {
+            str = (char *)attr->ns;
+            attr->ns = lyxml_get_ns(elem, str);
+            free(str);
+            attr->type = LYXML_ATTR_STD;
+        }
     }
 
     if (!elem->ns && !nons_flag && parent) {
