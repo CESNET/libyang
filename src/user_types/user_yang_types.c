@@ -136,7 +136,9 @@ date_and_time_store_clb(struct ly_ctx *UNUSED(ctx), const char *UNUSED(type_name
 
     /* validate using mktime() */
     tm2 = tm;
-    if (mktime(&tm) == -1) {
+    errno = 0;
+    mktime(&tm);
+    if (errno) {
         ret = asprintf(err_msg, "Checking date-and-time value \"%s\" failed (%s).", val_str, strerror(errno));
         goto error;
     }
@@ -145,7 +147,9 @@ date_and_time_store_clb(struct ly_ctx *UNUSED(ctx), const char *UNUSED(type_name
     /* back it up again */
     tm = tm2;
     /* let mktime() correct date & time with having the other values correct now */
-    if (mktime(&tm) == -1) {
+    errno = 0;
+    mktime(&tm);
+    if (errno) {
         ret = asprintf(err_msg, "Checking date-and-time value \"%s\" failed (%s).", val_str, strerror(errno));
         goto error;
     }
