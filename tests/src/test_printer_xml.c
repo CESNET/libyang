@@ -20,6 +20,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "tests/config.h"
+
 #include "../../src/context.h"
 #include "../../src/printer_data.h"
 
@@ -99,6 +101,24 @@ setup(void **state)
               "type string {length 1..20;}}}"
             "anydata any;"
             "rpc sum {input {leaf x {type uint8;} leaf y {type uint8;}} output {leaf result {type uint16;}}}}";
+    const char *schema_c =
+    "module defaults {"
+        "namespace \"urn:defaults\";"
+        "prefix d;"
+        "leaf a {"
+            "type union {"
+                "type instance-identifier;"
+                "type string;"
+            "}"
+            "default \"/d:b\";"
+        "}"
+        "leaf b {"
+            "type string;"
+        "}"
+        "leaf c {"
+            "type string;"
+        "}"
+    "}";
 
     s = calloc(1, sizeof *s);
     assert_non_null(s);
@@ -107,9 +127,11 @@ setup(void **state)
     ly_set_log_clb(logger, 1);
 #endif
 
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &s->ctx));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_DIR_MODULES_YANG, 0, &s->ctx));
+    assert_non_null(ly_ctx_load_module(s->ctx, "ietf-netconf-with-defaults", "2011-06-01"));
     assert_non_null(lys_parse_mem(s->ctx, schema_a, LYS_IN_YANG));
     assert_non_null(lys_parse_mem(s->ctx, schema_b, LYS_IN_YANG));
+    assert_non_null(lys_parse_mem(s->ctx, schema_c, LYS_IN_YANG));
 
     *state = s;
 
@@ -194,6 +216,112 @@ test_anydata(void **state)
     assert_int_equal(len, strlen(printed));
     assert_string_equal(printed, data);
     free(printed);
+    lyd_free_all(tree);
+
+    s->func = NULL;
+}
+
+static void
+test_defaults(void **state)
+{
+    struct state_s *s = (struct state_s*)(*state);
+    struct lyd_node *tree;
+    const char *data;
+    char *printed;
+    ssize_t len;
+
+    s->func = test_defaults;
+
+    /* standard default value */
+    data = "<c xmlns=\"urn:defaults\">aa</c>";
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
+
+    assert_true((len = lyd_print_mem(&printed, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_TRIM)) >= 0);
+    assert_int_equal(len, strlen(printed));
+    assert_string_equal(printed, data);
+    free(printed);
+
+    assert_true((len = lyd_print_mem(&printed, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_ALL)) >= 0);
+    assert_int_equal(len, strlen(printed));
+    data = "<c xmlns=\"urn:defaults\">aa</c><a xmlns=\"urn:defaults\" xmlns:d=\"urn:defaults\">/d:b</a>";
+    assert_string_equal(printed, data);
+    free(printed);
+
+    assert_true((len = lyd_print_mem(&printed, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_ALL_TAG)) >= 0);
+    assert_int_equal(len, strlen(printed));
+    data = "<c xmlns=\"urn:defaults\">aa</c>"
+        "<a xmlns=\"urn:defaults\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\""
+        " ncwd:default=\"true\" xmlns:d=\"urn:defaults\">/d:b</a>";
+    assert_string_equal(printed, data);
+    free(printed);
+
+    assert_true((len = lyd_print_mem(&printed, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG)) >= 0);
+    assert_int_equal(len, strlen(printed));
+    data = "<c xmlns=\"urn:defaults\">aa</c>"
+        "<a xmlns=\"urn:defaults\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\""
+        " ncwd:default=\"true\" xmlns:d=\"urn:defaults\">/d:b</a>";
+    assert_string_equal(printed, data);
+    free(printed);
+
+    lyd_free_all(tree);
+
+    /* string value equal to the default but default is an unresolved instance-identifier, so they are not considered equal */
+    data = "<c xmlns=\"urn:defaults\">aa</c><a xmlns=\"urn:defaults\">/d:b</a>";
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
+
+    assert_true((len = lyd_print_mem(&printed, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_TRIM)) >= 0);
+    assert_int_equal(len, strlen(printed));
+    assert_string_equal(printed, data);
+    free(printed);
+
+    assert_true((len = lyd_print_mem(&printed, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_ALL)) >= 0);
+    assert_int_equal(len, strlen(printed));
+    assert_string_equal(printed, data);
+    free(printed);
+
+    assert_true((len = lyd_print_mem(&printed, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_ALL_TAG)) >= 0);
+    assert_int_equal(len, strlen(printed));
+    assert_string_equal(printed, data);
+    free(printed);
+
+    assert_true((len = lyd_print_mem(&printed, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG)) >= 0);
+    assert_int_equal(len, strlen(printed));
+    assert_string_equal(printed, data);
+    free(printed);
+
+    lyd_free_all(tree);
+
+    /* instance-identifier value equal to the default, should be considered equal */
+    data = "<c xmlns=\"urn:defaults\">aa</c><a xmlns=\"urn:defaults\" xmlns:d=\"urn:defaults\">/d:b</a><b xmlns=\"urn:defaults\">val</b>";
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
+
+    assert_true((len = lyd_print_mem(&printed, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_TRIM)) >= 0);
+    assert_int_equal(len, strlen(printed));
+    data = "<c xmlns=\"urn:defaults\">aa</c><b xmlns=\"urn:defaults\">val</b>";
+    assert_string_equal(printed, data);
+    free(printed);
+
+    assert_true((len = lyd_print_mem(&printed, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_ALL)) >= 0);
+    assert_int_equal(len, strlen(printed));
+    data = "<c xmlns=\"urn:defaults\">aa</c><a xmlns=\"urn:defaults\" xmlns:d=\"urn:defaults\">/d:b</a><b xmlns=\"urn:defaults\">val</b>";
+    assert_string_equal(printed, data);
+    free(printed);
+
+    assert_true((len = lyd_print_mem(&printed, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_ALL_TAG)) >= 0);
+    assert_int_equal(len, strlen(printed));
+    data = "<c xmlns=\"urn:defaults\">aa</c>"
+        "<a xmlns=\"urn:defaults\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\""
+        " ncwd:default=\"true\" xmlns:d=\"urn:defaults\">/d:b</a>"
+        "<b xmlns=\"urn:defaults\">val</b>";
+    assert_string_equal(printed, data);
+    free(printed);
+
+    assert_true((len = lyd_print_mem(&printed, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG)) >= 0);
+    assert_int_equal(len, strlen(printed));
+    data = "<c xmlns=\"urn:defaults\">aa</c><a xmlns=\"urn:defaults\" xmlns:d=\"urn:defaults\">/d:b</a><b xmlns=\"urn:defaults\">val</b>";
+    assert_string_equal(printed, data);
+    free(printed);
+
     lyd_free_all(tree);
 
     s->func = NULL;
@@ -286,6 +414,7 @@ int main(void)
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_leaf, setup, teardown),
         cmocka_unit_test_setup_teardown(test_anydata, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_defaults, setup, teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

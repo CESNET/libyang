@@ -133,10 +133,9 @@ error:
 }
 
 static LY_ERR
-lydxml_attributes(struct lyd_xml_ctx *ctx, struct ly_set *attrs_data, struct lyd_node *parent)
+lydxml_attributes(struct lyd_xml_ctx *ctx, struct ly_set *attrs_data, struct lyd_attr **attr)
 {
     LY_ERR ret = LY_EVALID, rc;
-    struct lyd_attr *attr = NULL;
     const struct lyxml_ns *ns;
     struct lys_module *mod;
 
@@ -177,8 +176,8 @@ skip_attr:
             goto skip_attr;
         }
 
-        rc = lyd_create_attr(parent, mod, attr_data->name, attr_data->name_len, attr_data->value, attr_data->value_len,
-                             &attr_data->dynamic, lydxml_resolve_prefix, ctx, LYD_XML, &attr);
+        rc = lyd_create_attr(NULL, attr, mod, attr_data->name, attr_data->name_len, attr_data->value,
+                             attr_data->value_len, &attr_data->dynamic, lydxml_resolve_prefix, ctx, LYD_XML);
         if (rc == LY_EINCOMPLETE) {
             ly_set_add(&ctx->incomplete_type_validation_attrs, attr, LY_SET_OPT_USEASLIST);
         } else if (rc) {
@@ -217,6 +216,7 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
     size_t prefix_len, name_len;
     struct ly_set attrs_data = {0};
     const struct lyxml_ns *ns;
+    struct lyd_attr *attr;
     const struct lysc_node *snode;
     struct lys_module *mod;
     unsigned int parents_count = ctx->elements.count;
@@ -237,11 +237,17 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
                 continue;
             }
         }
+
+        attr = NULL;
         if (ctx->status == LYXML_ATTRIBUTE) {
+            /* first parse all attributes so we have all the namespaces available */
             if (lydxml_attributes_parse(ctx, data, &attrs_data) != LY_SUCCESS) {
                 ret = LY_EVALID;
                 goto cleanup;
             }
+
+            /* create actual attributes so that prefixes are available in the context */
+            LY_CHECK_GOTO(ret = lydxml_attributes(ctx, &attrs_data, &attr), cleanup);
         }
 
         ns = lyxml_ns_get((struct lyxml_context *)ctx, prefix, prefix_len);
@@ -397,7 +403,9 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
         }
 
         /* add attributes */
-        LY_CHECK_GOTO(ret = lydxml_attributes(ctx, &attrs_data, cur), cleanup);
+        assert(!cur->attr);
+        cur->attr = attr;
+        attr = NULL;
 
         /* correct flags */
         if (!(snode->nodetype & (LYS_ACTION | LYS_NOTIF)) && snode->when) {
@@ -425,6 +433,7 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
 
 cleanup:
     free(buffer);
+    lyd_free_attr(ctx->ctx, attr, 1);
     lyd_free_tree(cur);
     for (unsigned int u = 0; u < attrs_data.count; ++u) {
         if (((struct attr_data_s*)attrs_data.objs[u])->dynamic) {

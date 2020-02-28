@@ -64,14 +64,7 @@ struct ext_substmt_info_s ext_substmt_info[] = {
   {"unique", "tag", 0},                         /**< LYEXT_SUBSTMT_UNIQUE */
 };
 
-/**
- * @brief Check whether a node value equals to its default one.
- *
- * @param[in] node Term node to test.
- * @return 0 if no,
- * @return non-zero if yes.
- */
-static int
+int
 ly_is_default(const struct lyd_node *node)
 {
     const struct lysc_node_leaf *leaf;

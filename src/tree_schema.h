@@ -1115,6 +1115,7 @@ struct lysc_ext {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lyext_plugin *plugin;     /**< Plugin implementing the specific extension */
     struct lys_module *module;       /**< module structure */
+    uint32_t refcount;               /**< reference counter since extension definition is shared among all its instances */
     uint16_t flags;                  /**< LYS_STATUS_* value (@ref snodeflags) */
 };
 
@@ -1644,7 +1645,7 @@ struct lysc_module {
     struct lysc_node *data;          /**< list of module's top-level data nodes (linked list) */
     struct lysc_action *rpcs;        /**< list of RPCs ([sized array](@ref sizedarrays)) */
     struct lysc_notif *notifs;       /**< list of notifications ([sized array](@ref sizedarrays)) */
-    struct lysc_ext *extensions;     /**< list of the extension definitions ([sized array](@ref sizedarrays)) */
+    struct lysc_ext **extensions;    /**< list of pointers to extension definitions ([sized array](@ref sizedarrays)) */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 };
 
@@ -1776,7 +1777,7 @@ struct lys_module {
                                           from if-feature statements of the compiled schemas and their proper use in case
                                           the module became implemented in future (no matter if implicitly via augment/deviate
                                           or explicitly via ly_ctx_module_implement()). */
-    struct lysc_ext *off_extensions; /**< List of pre-compiled extension definitions of the module in non-implemented modules
+    struct lysc_ext **off_extensions;/**< List of pointers to pre-compiled extension definitions of the module in non-implemented modules
                                           ([sized array](@ref sizedarrays)). These extensions are prepared to be linked with the extension instances,
                                           but they are not implemented (connected with any extension plugin). In case the module become
                                           implemented, the list is moved into the compiled module structure and available extension plugins

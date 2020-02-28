@@ -687,7 +687,7 @@ LY_ERR lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *star
  * @return LY_ERR value.
  */
 LY_ERR lys_extension_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lys_module *module,
-                                struct lysp_ext *extensions_p, struct lysc_ext **extensions);
+                                struct lysp_ext *extensions_p, struct lysc_ext ***extensions);
 /**
  * @brief Macro to free [sized array](@ref sizedarrays) of items using the provided free function. The ARRAY itself is also freed,
  * but the memory is not sanitized.

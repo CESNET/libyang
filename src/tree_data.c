@@ -877,14 +877,16 @@ lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling, struct
 }
 
 LY_ERR
-lyd_create_attr(struct lyd_node *parent, const struct lys_module *mod, const char *name, size_t name_len,
-                const char *value, size_t value_len, int *dynamic, ly_clb_resolve_prefix get_prefix, void *prefix_data,
-                LYD_FORMAT format, struct lyd_attr **attr)
+lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const struct lys_module *mod, const char *name,
+                size_t name_len, const char *value, size_t value_len, int *dynamic, ly_clb_resolve_prefix get_prefix,
+                void *prefix_data, LYD_FORMAT format)
 {
     LY_ERR ret;
     struct lysc_ext_instance *ant = NULL;
     struct lyd_attr *at, *last;
     uint32_t v;
+
+    assert(parent || attr);
 
     LY_ARRAY_FOR(mod->compiled->exts, v) {
         if (mod->compiled->exts[v].def->plugin == lyext_plugins_internal[LYEXT_PLUGIN_INTERNAL_ANNOTATION].plugin &&
@@ -912,12 +914,17 @@ lyd_create_attr(struct lyd_node *parent, const struct lys_module *mod, const cha
     }
     at->name = lydict_insert(mod->ctx, name, name_len);
 
-    /* insert into parent as the last attribute */
-    if (parent->attr) {
-        for (last = parent->attr; last->next; last = last->next);
+    /* insert as the last attribute */
+    if (parent) {
+        if (parent->attr) {
+            for (last = parent->attr; last->next; last = last->next);
+            last->next = at;
+        } else {
+            parent->attr = at;
+        }
+    } else if (*attr) {
+        for (last = *attr; last->next; last = last->next);
         last->next = at;
-    } else {
-        parent->attr = at;
     }
 
     /* remove default flags from NP containers */

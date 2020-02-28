@@ -465,19 +465,24 @@ lysp_module_free(struct lysp_module *module)
 }
 
 void
+lysc_extension_free(struct ly_ctx *ctx, struct lysc_ext **ext)
+{
+    if (--(*ext)->refcount) {
+        return;
+    }
+    FREE_STRING(ctx, (*ext)->name);
+    FREE_STRING(ctx, (*ext)->argument);
+    FREE_ARRAY(ctx, (*ext)->exts, lysc_ext_instance_free);
+    free(*ext);
+}
+
+void
 lysc_ext_instance_free(struct ly_ctx *ctx, struct lysc_ext_instance *ext)
 {
     if (ext->def && ext->def->plugin && ext->def->plugin->free) {
         ext->def->plugin->free(ctx, ext);
     }
-    FREE_STRING(ctx, ext->argument);
-    FREE_ARRAY(ctx, ext->exts, lysc_ext_instance_free);
-}
-
-void
-lysc_extension_free(struct ly_ctx *ctx, struct lysc_ext *ext)
-{
-    FREE_STRING(ctx, ext->name);
+    lysc_extension_free(ctx, &ext->def);
     FREE_STRING(ctx, ext->argument);
     FREE_ARRAY(ctx, ext->exts, lysc_ext_instance_free);
 }

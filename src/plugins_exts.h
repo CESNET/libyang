@@ -129,6 +129,16 @@ LY_ERR lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ex
 void lysc_extension_instance_free(struct ly_ctx *ctx, struct lysc_ext_substmt *substmts);
 
 /**
+ * @brief Duplicate the compiled extension (definition) structure.
+ * TODO should this be in API? currently required for nacm_compile()
+ * Instead of duplicating memory, the reference counter in the @p orig is increased.
+ *
+ * @param[in] orig The extension structure to duplicate.
+ * @return The duplicated structure to use.
+ */
+struct lysc_ext *lysc_ext_dup(struct lysc_ext *orig);
+
+/**
  * @brief Update path in the compile context, which is used for logging where the compilation failed.
  *
  * @param[in] ctx Compile context with the path.

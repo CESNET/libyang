@@ -128,7 +128,8 @@ void lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling, s
 /**
  * @brief Create and insert an attribute (last) into a parent.
  *
- * @param[in] parent Parent of the attribute.
+ * @param[in] parent Parent of the attribute, can be NULL.
+ * @param[in,out] attr Attribute list to add at its end if @p parent is NULL, returned created attribute.
  * @param[in] mod Attribute module (with the annotation definition).
  * @param[in] name Attribute name.
  * @param[in] name_len Length of @p name.
@@ -138,14 +139,13 @@ void lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling, s
  * @param[in] get_prefix Parser-specific getter to resolve prefixes used in the @p value string.
  * @param[in] prefix_data User data for @p get_prefix.
  * @param[in] format Input format of @p value.
- * @param[out] attr CReated attribute.
  * @return LY_SUCCESS on success.
  * @return LY_EINCOMPLETE in case data tree is needed to finish the validation.
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_create_attr(struct lyd_node *parent, const struct lys_module *mod, const char *name, size_t name_len,
-                       const char *value, size_t value_len, int *dynamic, ly_clb_resolve_prefix get_prefix, void *prefix_data,
-                       LYD_FORMAT format, struct lyd_attr **attr);
+LY_ERR lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const struct lys_module *mod, const char *name,
+                       size_t name_len, const char *value, size_t value_len, int *dynamic,
+                       ly_clb_resolve_prefix get_prefix, void *prefix_data, LYD_FORMAT format);
 
 /**
  * @brief Validate, canonize and store the given @p value into the node according to the node's type's rules.

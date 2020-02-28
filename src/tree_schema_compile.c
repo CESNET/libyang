@@ -101,7 +101,7 @@
         LY_CHECK_GOTO(RET != LY_SUCCESS, GOTO); \
     }
 
-#define COMPILE_CHECK_UNIQUENESS(CTX, ARRAY, MEMBER, EXCL, STMT, IDENT) \
+#define COMPILE_CHECK_UNIQUENESS_ARRAY(CTX, ARRAY, MEMBER, EXCL, STMT, IDENT) \
     if (ARRAY) { \
         for (unsigned int u__ = 0; u__ < LY_ARRAY_SIZE(ARRAY); ++u__) { \
             if (&(ARRAY)[u__] != EXCL && (void*)((ARRAY)[u__].MEMBER) == (void*)(IDENT)) { \
@@ -111,10 +111,27 @@
         } \
     }
 
+#define COMPILE_CHECK_UNIQUENESS_PARRAY(CTX, ARRAY, MEMBER, EXCL, STMT, IDENT) \
+    if (ARRAY) { \
+        for (unsigned int u__ = 0; u__ < LY_ARRAY_SIZE(ARRAY); ++u__) { \
+            if (&(ARRAY)[u__] != EXCL && (void*)((ARRAY)[u__]->MEMBER) == (void*)(IDENT)) { \
+                LOGVAL((CTX)->ctx, LY_VLOG_STR, (CTX)->path, LY_VCODE_DUPIDENT, IDENT, STMT); \
+                return LY_EVALID; \
+            } \
+        } \
+    }
+
+struct lysc_ext *
+lysc_ext_dup(struct lysc_ext *orig)
+{
+    ++orig->refcount;
+    return orig;
+}
+
 static struct lysc_ext_instance *
 lysc_ext_instance_dup(struct ly_ctx *ctx, struct lysc_ext_instance *orig)
 {
-    /* TODO - extensions */
+    /* TODO - extensions, increase refcount */
     (void) ctx;
     (void) orig;
     return NULL;
@@ -431,7 +448,7 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct ly
     const char *name;
     unsigned int u;
     const struct lys_module *mod;
-    struct lysc_ext *elist = NULL;
+    struct lysc_ext **elist = NULL;
     const char *prefixed_name = NULL;
 
     DUP_STRING(ctx->ctx, ext_p->argument, ext->argument);
@@ -494,8 +511,8 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct ly
         elist = mod->compiled->extensions;
     }
     LY_ARRAY_FOR(elist, u) {
-        if (!strcmp(name, elist[u].name)) {
-            ext->def = &elist[u];
+        if (!strcmp(name, elist[u]->name)) {
+            ext->def = lysc_ext_dup(elist[u]);
             break;
         }
     }
@@ -575,14 +592,16 @@ cleanup:
  * @brief Fill in the prepared compiled extensions definition structure according to the parsed extension definition.
  */
 static LY_ERR
-lys_compile_extension(struct lysc_ctx *ctx, struct lysp_ext *ext_p, struct lysc_ext *ext)
+lys_compile_extension(struct lysc_ctx *ctx, struct lysp_ext *ext_p, struct lysc_ext **ext)
 {
     LY_ERR ret = LY_SUCCESS;
 
-    DUP_STRING(ctx->ctx, ext_p->name, ext->name);
-    DUP_STRING(ctx->ctx, ext_p->argument, ext->argument);
-    ext->module = ctx->mod_def;
-    COMPILE_EXTS_GOTO(ctx, ext_p->exts, ext->exts, ext, LYEXT_PAR_EXT, ret, done);
+    *ext = calloc(1, sizeof **ext);
+    (*ext)->refcount = 1;
+    DUP_STRING(ctx->ctx, ext_p->name, (*ext)->name);
+    DUP_STRING(ctx->ctx, ext_p->argument, (*ext)->argument);
+    (*ext)->module = ctx->mod_def;
+    COMPILE_EXTS_GOTO(ctx, ext_p->exts, (*ext)->exts, *ext, LYEXT_PAR_EXT, ret, done);
 
 done:
     return ret;
@@ -594,21 +613,21 @@ done:
  * This is done only in the compiled (implemented) module. Extensions of a non-implemented modules
  * are not connected with even available extension plugins.
  *
- * @param[in] extensions List of extensions to be processed ([sized array](@ref sizedarrays)).
+ * @param[in] extensions List of pointers to extensions to be processed ([sized array](@ref sizedarrays)).
  */
 static void
-lys_compile_extension_plugins(struct lysc_ext *extensions)
+lys_compile_extension_plugins(struct lysc_ext **extensions)
 {
     unsigned int u;
 
     LY_ARRAY_FOR(extensions, u) {
-        extensions[u].plugin = lyext_get_plugin(&extensions[u]);
+        extensions[u]->plugin = lyext_get_plugin(extensions[u]);
     }
 }
 
 LY_ERR
 lys_extension_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lys_module *module,
-                         struct lysp_ext *extensions_p, struct lysc_ext **extensions)
+                         struct lysp_ext *extensions_p, struct lysc_ext ***extensions)
 {
     unsigned int offset = 0, u;
     struct lysc_ctx context = {0};
@@ -636,8 +655,8 @@ lys_extension_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lys
     LY_ARRAY_FOR(extensions_p, u) {
         lysc_update_path(ctx_sc, NULL, extensions_p[u].name);
         LY_ARRAY_INCREMENT(*extensions);
-        COMPILE_CHECK_UNIQUENESS(ctx_sc, *extensions, name, &(*extensions)[offset + u], "extension", extensions_p[u].name);
         LY_CHECK_RET(lys_compile_extension(ctx_sc, &extensions_p[u], &(*extensions)[offset + u]));
+        COMPILE_CHECK_UNIQUENESS_PARRAY(ctx_sc, *extensions, name, &(*extensions)[offset + u], "extension", extensions_p[u].name);
         lysc_update_path(ctx_sc, NULL, NULL);
     }
     lysc_update_path(ctx_sc, NULL, NULL);
@@ -969,7 +988,7 @@ lys_compile_identity(struct lysc_ctx *ctx, struct lysp_ident *ident_p, struct ly
 
     lysc_update_path(ctx, NULL, ident_p->name);
 
-    COMPILE_CHECK_UNIQUENESS(ctx, idents, name, ident, "identity", ident_p->name);
+    COMPILE_CHECK_UNIQUENESS_ARRAY(ctx, idents, name, ident, "identity", ident_p->name);
     DUP_STRING(ctx->ctx, ident_p->name, ident->name);
     DUP_STRING(ctx->ctx, ident_p->dsc, ident->dsc);
     DUP_STRING(ctx->ctx, ident_p->ref, ident->ref);
@@ -1175,7 +1194,7 @@ lys_feature_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lys_m
         lysc_update_path(ctx_sc, NULL, features_p[u].name);
 
         LY_ARRAY_INCREMENT(*features);
-        COMPILE_CHECK_UNIQUENESS(ctx_sc, *features, name, &(*features)[offset + u], "feature", features_p[u].name);
+        COMPILE_CHECK_UNIQUENESS_ARRAY(ctx_sc, *features, name, &(*features)[offset + u], "feature", features_p[u].name);
         DUP_STRING(ctx_sc->ctx, features_p[u].name, (*features)[offset + u].name);
         DUP_STRING(ctx_sc->ctx, features_p[u].dsc, (*features)[offset + u].dsc);
         DUP_STRING(ctx_sc->ctx, features_p[u].ref, (*features)[offset + u].ref);

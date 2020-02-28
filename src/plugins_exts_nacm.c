@@ -98,7 +98,7 @@ invalid_parent:
                 /* duplicate this one to inherit it to the child */
                 LY_ARRAY_NEW_RET(cctx->ctx, iter->exts, inherited, LY_EMEM);
 
-                inherited->def = c_ext->def;
+                inherited->def = lysc_ext_dup(c_ext->def);
                 inherited->parent = iter;
                 inherited->parent_type = LYEXT_PAR_NODE;
                 if (c_ext->argument) {
