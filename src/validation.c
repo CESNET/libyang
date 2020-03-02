@@ -92,8 +92,8 @@ lyd_validate_unres(struct ly_set *node_types, struct ly_set *attr_types, struct 
         struct lyd_attr *attr = (struct lyd_attr *)attr_types->objs[u];
 
         /* validate and store the value of the node */
-        ret = lyd_value_parse_attr(attr, attr->value.original, strlen(attr->value.original), 0, 1, get_prefix_clb,
-                                   parser_data, format, trees);
+        ret = lyd_value_parse_attr(attr->parent->schema->module->ctx, attr, attr->value.original,
+                                   strlen(attr->value.original), 0, 1, get_prefix_clb, parser_data, format, NULL, trees);
         LY_CHECK_RET(ret);
     }
 

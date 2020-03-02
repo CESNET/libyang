@@ -715,9 +715,16 @@ void lysp_submodule_free(struct ly_ctx *ctx, struct lysp_submodule *submod);
 /**
  * @brief Free the parsed type structure.
  * @param[in] ctx libyang context where the string data resides in a dictionary.
- * @param[in] type Parsed schema type structure to free. Note that since the type itself is not freed.
+ * @param[in] type Parsed schema type structure to free. Note that the type itself is not freed.
  */
 void lysp_type_free(struct ly_ctx *ctx, struct lysp_type *type);
+
+/**
+ * @brief Free the parsed extension instance structure.
+ * @param[in] ctx libyang context where the string data resides in a dictionary.
+ * @param[in] type Parsed extension instance structure to free. Note that the instance itself is not freed.
+ */
+void lysp_ext_instance_free(struct ly_ctx *ctx, struct lysp_ext_instance *ext);
 
 /**
  * @param[in,out] exts [sized array](@ref sizedarrays) For extension instances in case of statements that do not store extension instances in their own list.

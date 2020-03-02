@@ -20,6 +20,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "tests/config.h"
+
 #include "../../src/context.h"
 #include "../../src/tree_data_internal.h"
 
@@ -60,13 +62,15 @@ setup(void **state)
             "leaf foo { type string;}"
             "container c { leaf x {type string;}}"
             "container cp {presence \"container switch\"; leaf y {type string;}}"
-            "anydata any {config false;} }";
+            "anydata any {config false;}"
+            "leaf foo2 { type string; default \"default-val\"; }}";
 
 #if ENABLE_LOGGER_CHECKING
     ly_set_log_clb(logger, 1);
 #endif
 
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_DIR_MODULES_YANG, 0, &ctx));
+    assert_non_null(ly_ctx_load_module(ctx, "ietf-netconf-with-defaults", "2011-06-01"));
     assert_non_null(lys_parse_mem(ctx, schema_a, LYS_IN_YANG));
 
     return 0;
@@ -117,7 +121,38 @@ test_leaf(void **state)
     leaf = (struct lyd_node_term*)tree;
     assert_string_equal("foo value", leaf->value.original);
 
+    assert_int_equal(LYS_LEAF, tree->next->next->schema->nodetype);
+    assert_string_equal("foo2", tree->next->next->schema->name);
+    leaf = (struct lyd_node_term*)tree->next->next;
+    assert_string_equal("default-val", leaf->value.original);
+    assert_true(leaf->flags & LYD_DEFAULT);
+
     lyd_free_all(tree);
+
+    /* make foo2 explicit */
+    data = "<foo2 xmlns=\"urn:tests:a\">default-val</foo2>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_non_null(tree);
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("foo2", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("default-val", leaf->value.original);
+    assert_false(leaf->flags & LYD_DEFAULT);
+
+    lyd_free_all(tree);
+
+    /* parse foo2 but make it implicit */
+    data = "<foo2 xmlns=\"urn:tests:a\" xmlns:wd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" wd:default=\"true\">default-val</foo2>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_non_null(tree);
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("foo2", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("default-val", leaf->value.original);
+    assert_true(leaf->flags & LYD_DEFAULT);
+
+    lyd_free_all(tree);
+
     *state = NULL;
 }
 
@@ -201,11 +236,6 @@ test_list(void **state)
 
     assert_int_equal(LY_EVALID, lyd_parse_xml(ctx, data, LYD_OPT_STRICT, &tree));
     logbuf_assert("Invalid position of the key \"b\" in a list. Line number 1.");
-/* TODO validation
-    data = "<l1 xmlns=\"urn:tests:a\"><a>a</a><c>c</c><d>d</d></l1>";
-    assert_int_equal(LY_EVALID, lyd_parse_xml(ctx, data, LYD_OPT_STRICT, &tree));
-    logbuf_assert("Missing key \"b\" in a list. Line number 1.");
-*/
 
     *state = NULL;
 }

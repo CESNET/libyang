@@ -68,7 +68,7 @@
         LY_ARRAY_CREATE_GOTO((CTX)->ctx, EXT_C, LY_ARRAY_SIZE(EXTS_P), RET, GOTO); \
         for (uint32_t __exts_iter = 0, __array_offset = LY_ARRAY_SIZE(EXT_C); __exts_iter < LY_ARRAY_SIZE(EXTS_P); ++__exts_iter) { \
             LY_ARRAY_INCREMENT(EXT_C); \
-            RET = lys_compile_ext(CTX, &(EXTS_P)[__exts_iter], &(EXT_C)[__exts_iter + __array_offset], PARENT, PARENT_TYPE); \
+            RET = lys_compile_ext(CTX, &(EXTS_P)[__exts_iter], &(EXT_C)[__exts_iter + __array_offset], PARENT, PARENT_TYPE, NULL); \
             LY_CHECK_GOTO(RET != LY_SUCCESS, GOTO); \
         } \
     }
@@ -441,13 +441,23 @@ lys_feature_find(struct lys_module *mod, const char *name, size_t len)
     return NULL;
 }
 
+/**
+ * @brief Fill in the prepared compiled extension instance structure according to the parsed extension instance.
+ *
+ * @param[in] ctx Compilation context.
+ * @param[in] ext_p Parsed extension instance.
+ * @param[in,out] ext Prepared compiled extension instance.
+ * @param[in] parent Extension instance parent.
+ * @param[in] parent_type Extension instance parent type.
+ * @param[in] ext_mod Optional module with the extension instance extension definition, set only for internal annotations.
+ */
 static LY_ERR
-lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct lysc_ext_instance *ext, void *parent, LYEXT_PARENT parent_type)
+lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct lysc_ext_instance *ext, void *parent,
+                LYEXT_PARENT parent_type, const struct lys_module *ext_mod)
 {
     LY_ERR ret = LY_EVALID;
     const char *name;
     unsigned int u;
-    const struct lys_module *mod;
     struct lysc_ext **elist = NULL;
     const char *prefixed_name = NULL;
 
@@ -491,24 +501,26 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct ly
     }
     lysc_update_path(ctx, NULL, prefixed_name);
 
-    mod = lys_module_find_prefix(ctx->mod_def, prefixed_name, u - 1);
-    if (!mod) {
-        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-               "Invalid prefix \"%.*s\" used for extension instance identifier.", u, prefixed_name);
-        goto cleanup;
-    } else if (!mod->parsed->extensions) {
-        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                "Extension instance \"%s\" refers \"%s\" module that does not contain extension definitions.",
-                prefixed_name, mod->name);
-        goto cleanup;
+    if (!ext_mod) {
+        ext_mod = lys_module_find_prefix(ctx->mod_def, prefixed_name, u - 1);
+        if (!ext_mod) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                "Invalid prefix \"%.*s\" used for extension instance identifier.", u, prefixed_name);
+            goto cleanup;
+        } else if (!ext_mod->parsed->extensions) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                    "Extension instance \"%s\" refers \"%s\" module that does not contain extension definitions.",
+                    prefixed_name, ext_mod->name);
+            goto cleanup;
+        }
     }
     name = &prefixed_name[u];
 
     /* find the extension definition there */
-    if (mod->off_extensions) {
-        elist = mod->off_extensions;
+    if (ext_mod->off_extensions) {
+        elist = ext_mod->off_extensions;
     } else {
-        elist = mod->compiled->extensions;
+        elist = ext_mod->compiled->extensions;
     }
     LY_ARRAY_FOR(elist, u) {
         if (!strcmp(name, elist[u]->name)) {
@@ -7209,6 +7221,44 @@ cleanup:
     return ret;
 }
 
+static LY_ERR
+lys_compile_ietf_netconf_wd_annotation(struct lysc_ctx *ctx, struct lys_module *mod)
+{
+    struct lysc_ext_instance *ext;
+    struct lysp_ext_instance *ext_p = NULL;
+    struct lysp_stmt *stmt;
+    const struct lys_module *ext_mod;
+    LY_ERR ret = LY_SUCCESS;
+
+    /* create the parsed extension instance manually */
+    ext_p = calloc(1, sizeof *ext_p);
+    LY_CHECK_ERR_GOTO(!ext_p, LOGMEM(ctx->ctx); ret = LY_EMEM, cleanup);
+    ext_p->name = lydict_insert(ctx->ctx, "md:annotation", 0);
+    ext_p->argument = lydict_insert(ctx->ctx, "default", 0);
+    ext_p->insubstmt = LYEXT_SUBSTMT_SELF;
+    ext_p->insubstmt_index = 0;
+
+    stmt = calloc(1, sizeof *ext_p->child);
+    stmt->stmt = lydict_insert(ctx->ctx, "type", 0);
+    stmt->arg = lydict_insert(ctx->ctx, "boolean", 0);
+    stmt->kw = LY_STMT_TYPE;
+    ext_p->child = stmt;
+
+    /* allocate new extension instance */
+    LY_ARRAY_NEW_GOTO(mod->ctx, mod->compiled->exts, ext, ret, cleanup);
+
+    /* manually get extension definition module */
+    ext_mod = ly_ctx_get_module_latest(ctx->ctx, "ietf-yang-metadata");
+
+    /* compile the extension instance */
+    LY_CHECK_GOTO(ret = lys_compile_ext(ctx, ext_p, ext, mod->compiled, LYEXT_PAR_MODULE, ext_mod), cleanup);
+
+cleanup:
+    lysp_ext_instance_free(ctx->ctx, ext_p);
+    free(ext_p);
+    return ret;
+}
+
 LY_ERR
 lys_compile(struct lys_module *mod, int options)
 {
@@ -7406,6 +7456,24 @@ lys_compile(struct lys_module *mod, int options)
     if (ctx.ctx->flags & LY_CTX_CHANGED_TREE) {
         /* TODO Deviation has changed tree of a module(s) in the context (by deviate-not-supported), it is necessary to recompile
            leafref paths, default values and must/when expressions in all schemas of the context to check that they are still valid */
+    }
+
+#if 0
+    /* hack for NETCONF's edit-config's operation attribute. It is not defined in the schema, but since libyang
+     * implements YANG metadata (annotations), we need its definition. Because the ietf-netconf schema is not the
+     * internal part of libyang, we cannot add the annotation into the schema source, but we do it here to have
+     * the anotation definitions available in the internal schema structure. */
+    if (ly_strequal(mod->name, "ietf-netconf", 0)) {
+        if (lyp_add_ietf_netconf_annotations(mod)) {
+            lys_free(mod, NULL, 1, 1);
+            return NULL;
+        }
+    }
+#endif
+
+    /* add ietf-netconf-with-defaults "default" metadata to the compiled module */
+    if (!strcmp(mod->name, "ietf-netconf-with-defaults")) {
+        LY_CHECK_GOTO(ret = lys_compile_ietf_netconf_wd_annotation(&ctx, mod), error);
     }
 
     ly_set_erase(&ctx.dflts, free);

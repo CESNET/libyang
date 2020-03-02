@@ -139,13 +139,14 @@ void lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling, s
  * @param[in] get_prefix Parser-specific getter to resolve prefixes used in the @p value string.
  * @param[in] prefix_data User data for @p get_prefix.
  * @param[in] format Input format of @p value.
+ * @param[in] ctx_snode Context node for value resolution in schema.
  * @return LY_SUCCESS on success.
  * @return LY_EINCOMPLETE in case data tree is needed to finish the validation.
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const struct lys_module *mod, const char *name,
-                       size_t name_len, const char *value, size_t value_len, int *dynamic,
-                       ly_clb_resolve_prefix get_prefix, void *prefix_data, LYD_FORMAT format);
+                       size_t name_len, const char *value, size_t value_len, int *dynamic, ly_clb_resolve_prefix get_prefix,
+                       void *prefix_data, LYD_FORMAT format, const struct lysc_node *ctx_snode);
 
 /**
  * @brief Validate, canonize and store the given @p value into the node according to the node's type's rules.
@@ -171,6 +172,7 @@ LY_ERR lyd_value_parse(struct lyd_node_term *node, const char *value, size_t val
 /**
  * @brief Validate, canonize and store the given @p value into the attribute according to the metadata annotation type's rules.
  *
+ * @param[in] ctx libyang context.
  * @param[in] attr Data attribute for the @p value.
  * @param[in] value String value to be parsed, must not be NULL.
  * @param[in] value_len Length of the give @p value (mandatory).
@@ -179,6 +181,7 @@ LY_ERR lyd_value_parse(struct lyd_node_term *node, const char *value, size_t val
  * @param[in] get_prefix Parser-specific getter to resolve prefixes used in the @p value string.
  * @param[in] parser Parser's data for @p get_prefix
  * @param[in] format Input format of the data.
+ * @param[in] ctx_snode Context node for value resolution in schema.
  * @param[in] trees ([Sized array](@ref sizedarrays)) of data trees (e.g. when validating RPC/Notification) where the required
  *            data instance (leafref target, instance-identifier) can be placed. NULL in case the data tree are not yet complete,
  *            then LY_EINCOMPLETE can be returned.
@@ -186,8 +189,9 @@ LY_ERR lyd_value_parse(struct lyd_node_term *node, const char *value, size_t val
  * @return LY_EINCOMPLETE in case the @p trees is not provided and it was needed to finish the validation.
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_value_parse_attr(struct lyd_attr *attr, const char *value, size_t value_len, int *dynamic, int second,
-                            ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format, const struct lyd_node **trees);
+LY_ERR lyd_value_parse_attr(struct ly_ctx *ctx, struct lyd_attr *attr, const char *value, size_t value_len, int *dynamic,
+                            int second, ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format,
+                            const struct lysc_node *ctx_snode, const struct lyd_node **trees);
 
 /**
  * @brief Parse XML string as YANG data tree.

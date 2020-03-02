@@ -185,26 +185,25 @@ lyd_value_store(struct lyd_value *val, const struct lysc_node *schema, const cha
 }
 
 LY_ERR
-lyd_value_parse_attr(struct lyd_attr *attr, const char *value, size_t value_len, int *dynamic, int second,
-                     ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format, const struct lyd_node **trees)
+lyd_value_parse_attr(struct ly_ctx *ctx, struct lyd_attr *attr, const char *value, size_t value_len, int *dynamic,
+                     int second, ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format,
+                     const struct lysc_node *ctx_snode, const struct lyd_node **trees)
 {
     LY_ERR ret = LY_SUCCESS;
     struct ly_err_item *err = NULL;
-    struct ly_ctx *ctx;
     struct lyext_metadata *ant;
     int options = LY_TYPE_OPTS_STORE | (second ? LY_TYPE_OPTS_SECOND_CALL : 0) |
             (dynamic && *dynamic ? LY_TYPE_OPTS_DYNAMIC : 0) | (trees ? 0 : LY_TYPE_OPTS_INCOMPLETE_DATA);
-    assert(attr);
 
-    ctx = attr->parent->schema->module->ctx;
+    assert(ctx && attr && ((trees && attr->parent) || ctx_snode));
+
     ant = attr->annotation->data;
 
     if (!second) {
         attr->value.realtype = ant->type;
     }
     ret = ant->type->plugin->store(ctx, ant->type, value, value_len, options, get_prefix, parser, format,
-                                  trees ? (void*)attr->parent : (void*)attr->parent->schema, trees,
-                                  &attr->value, NULL, &err);
+                                  trees ? (void *)attr->parent : (void *)ctx_snode, trees, &attr->value, NULL, &err);
     if (ret && (ret != LY_EINCOMPLETE)) {
         if (err) {
             ly_err_print(err);
@@ -879,14 +878,14 @@ lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling, struct
 LY_ERR
 lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const struct lys_module *mod, const char *name,
                 size_t name_len, const char *value, size_t value_len, int *dynamic, ly_clb_resolve_prefix get_prefix,
-                void *prefix_data, LYD_FORMAT format)
+                void *prefix_data, LYD_FORMAT format, const struct lysc_node *ctx_snode)
 {
     LY_ERR ret;
     struct lysc_ext_instance *ant = NULL;
     struct lyd_attr *at, *last;
     uint32_t v;
 
-    assert(parent || attr);
+    assert((parent || attr) && mod);
 
     LY_ARRAY_FOR(mod->compiled->exts, v) {
         if (mod->compiled->exts[v].def->plugin == lyext_plugins_internal[LYEXT_PLUGIN_INTERNAL_ANNOTATION].plugin &&
@@ -907,7 +906,7 @@ lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const struct ly
     LY_CHECK_ERR_RET(!at, LOGMEM(mod->ctx), LY_EMEM);
     at->parent = parent;
     at->annotation = ant;
-    ret = lyd_value_parse_attr(at, value, value_len, dynamic, 0, get_prefix, prefix_data, format, NULL);
+    ret = lyd_value_parse_attr(mod->ctx, at, value, value_len, dynamic, 0, get_prefix, prefix_data, format, ctx_snode, NULL);
     if ((ret != LY_SUCCESS) && (ret != LY_EINCOMPLETE)) {
         free(at);
         return ret;

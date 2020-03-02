@@ -801,20 +801,6 @@ lys_parse_mem_module(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, 
         }
     }
 
-#if 0
-    /* hack for NETCONF's edit-config's operation attribute. It is not defined in the schema, but since libyang
-     * implements YANG metadata (annotations), we need its definition. Because the ietf-netconf schema is not the
-     * internal part of libyang, we cannot add the annotation into the schema source, but we do it here to have
-     * the anotation definitions available in the internal schema structure. There is another hack in schema
-     * printers to do not print this internally added annotation. */
-    if (ly_strequal(mod->name, "ietf-netconf", 0)) {
-        if (lyp_add_ietf_netconf_annotations(mod)) {
-            lys_free(mod, NULL, 1, 1);
-            return NULL;
-        }
-    }
-#endif
-
     if (!mod->implemented) {
         /* pre-compile features and extension definitions of the module */
         LY_CHECK_GOTO(lys_feature_precompile(NULL, ctx, mod, mod->parsed->features, &mod->off_features), error);
