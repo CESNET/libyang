@@ -1339,7 +1339,7 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
 {
     FUN_IN;
 
-    const char *backup;
+    const char *backup, *new_val;
     int val_change, dflt_change;
     struct lyd_node *parent;
 
@@ -1349,24 +1349,24 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
     }
 
     backup = leaf->value_str;
-    leaf->value_str = lydict_insert(leaf->schema->module->ctx, val_str ? val_str : "", 0);
-    /* leaf->value is erased by lyp_parse_value() */
+    new_val = lydict_insert(leaf->schema->module->ctx, val_str ? val_str : "", 0);
 
     /* parse the type correctly, makes the value canonical if needed */
-    if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, NULL, leaf, NULL, NULL, 1, 0)) {
+    if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &new_val, NULL, leaf, NULL, NULL, 1, 0)) {
         lydict_remove(leaf->schema->module->ctx, backup);
         return -1;
     }
 
-    if (!strcmp(backup, leaf->value_str)) {
+    if (!strcmp(backup, new_val)) {
         /* the value remains the same */
         val_change = 0;
     } else {
         val_change = 1;
     }
 
-    /* value is correct, remove backup */
-    lydict_remove(leaf->schema->module->ctx, backup);
+    /* value is correct, replace it */
+    lydict_remove(leaf->schema->module->ctx, leaf->value_str);
+    leaf->value_str = new_val;
 
     /* clear the default flag, the value is different */
     if (leaf->dflt) {

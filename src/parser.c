@@ -1252,12 +1252,17 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
     /* fully clear the value */
     if (store) {
-        old_val_str = lydict_insert(ctx, *value_, 0);
+        if (leaf) {
+            old_val_str = lydict_insert(ctx, leaf->value_str, 0);
+        } else {
+            old_val_str = lydict_insert(ctx, attr->value_str, 0);
+        }
         lyd_free_value(*val, *val_type, *val_flags, type, old_val_str, &old_val, &old_val_type, &old_val_flags);
         *val_flags &= ~LY_VALUE_UNRES;
         *val_flags &= ~LY_VALUE_USER;
     }
 
+    ret = type;
     switch (type->base) {
     case LY_TYPE_BINARY:
         /* get number of octets for length validation */
@@ -1720,7 +1725,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             *val_flags |= LY_VALUE_UNRES;
         }
 
-        type = t;
+        ret = t;
         break;
 
     case LY_TYPE_STRING:
@@ -1943,7 +1948,6 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             ret = lyp_parse_value(t, value_, xml, leaf, attr, NULL, store, dflt);
             if (ret) {
                 /* we have the result */
-                type = ret;
                 break;
             }
 
@@ -1977,8 +1981,8 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
     }
 
     /* search user types in case this value is supposed to be stored in a custom way */
-    if (store && type->der && type->der->module) {
-        c = lytype_store(type->der->module, type->der->name, value_, val);
+    if (store && ret->der && ret->der->module) {
+        c = lytype_store(ret->der->module, ret->der->name, value_, val);
         if (c == -1) {
             goto error;
         } else if (!c) {
@@ -1986,12 +1990,12 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         }
     }
 
-    /* free backup */
+    /* free backup (using the original type) */
     if (store) {
         lyd_free_value(old_val, old_val_type, old_val_flags, type, old_val_str, NULL, NULL, NULL);
         lydict_remove(ctx, old_val_str);
     }
-    return type;
+    return ret;
 
 error:
     /* restore the backup */
