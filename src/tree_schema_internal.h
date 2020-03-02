@@ -674,21 +674,6 @@ LY_ERR lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *star
                                     const struct lysc_node **target);
 
 /**
- * @brief Internal wrapper around lys_compile_extension() to be able to prepare list of compiled extension definitions
- * even for the parsed (not-implemented) module - see lys_module::off_extensions.
- *
- * @param[in] ctx_sc Compile context - alternative to the combination of @p ctx and @p module.
- * @param[in] ctx libyang context.
- * @param[in] module Module of the extensions.
- * @param[in] extensions_p Array of the parsed extension definitions to precompile.
- * @param[in,out] extensions Pointer to the storage of the (pre)compiled extensions array where the new extensions are
- * supposed to be added. The storage is supposed to be initiated to NULL when the first parsed extensions are going
- * to be processed.
- * @return LY_ERR value.
- */
-LY_ERR lys_extension_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lys_module *module,
-                                struct lysp_ext *extensions_p, struct lysc_ext ***extensions);
-/**
  * @brief Macro to free [sized array](@ref sizedarrays) of items using the provided free function. The ARRAY itself is also freed,
  * but the memory is not sanitized.
  */

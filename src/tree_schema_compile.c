@@ -33,6 +33,9 @@
 #include "tree_schema_internal.h"
 #include "xpath.h"
 
+static LY_ERR lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct lysc_ext_instance *ext,
+                              void *parent, LYEXT_PARENT parent_type, const struct lys_module *ext_mod);
+
 /**
  * @brief Duplicate string into dictionary
  * @param[in] CTX libyang context of the dictionary.
@@ -442,6 +445,39 @@ lys_feature_find(struct lys_module *mod, const char *name, size_t len)
 }
 
 /**
+ * @brief Fill in the prepared compiled extensions definition structure according to the parsed extension definition.
+ */
+static LY_ERR
+lys_compile_extension(struct lysc_ctx *ctx, const struct lys_module *ext_mod, struct lysp_ext *ext_p, struct lysc_ext **ext)
+{
+    LY_ERR ret = LY_SUCCESS;
+
+    if (!ext_p->compiled) {
+        lysc_update_path(ctx, NULL, "{extension}");
+        lysc_update_path(ctx, NULL, ext_p->name);
+
+        /* compile the extension definition */
+        ext_p->compiled = calloc(1, sizeof **ext);
+        ext_p->compiled->refcount = 1;
+        DUP_STRING(ctx->ctx, ext_p->name, ext_p->compiled->name);
+        DUP_STRING(ctx->ctx, ext_p->argument, ext_p->compiled->argument);
+        ext_p->compiled->module = (struct lys_module *)ext_mod;
+        COMPILE_EXTS_GOTO(ctx, ext_p->exts, ext_p->compiled->exts, *ext, LYEXT_PAR_EXT, ret, done);
+
+        lysc_update_path(ctx, NULL, NULL);
+        lysc_update_path(ctx, NULL, NULL);
+
+        /* find extension definition plugin */
+        ext_p->compiled->plugin = lyext_get_plugin(ext_p->compiled);
+    }
+
+    *ext = lysc_ext_dup(ext_p->compiled);
+
+done:
+    return ret;
+}
+
+/**
  * @brief Fill in the prepared compiled extension instance structure according to the parsed extension instance.
  *
  * @param[in] ctx Compilation context.
@@ -458,7 +494,6 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct ly
     LY_ERR ret = LY_EVALID;
     const char *name;
     unsigned int u;
-    struct lysc_ext **elist = NULL;
     const char *prefixed_name = NULL;
 
     DUP_STRING(ctx->ctx, ext_p->argument, ext->argument);
@@ -516,15 +551,11 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct ly
     }
     name = &prefixed_name[u];
 
-    /* find the extension definition there */
-    if (ext_mod->off_extensions) {
-        elist = ext_mod->off_extensions;
-    } else {
-        elist = ext_mod->compiled->extensions;
-    }
-    LY_ARRAY_FOR(elist, u) {
-        if (!strcmp(name, elist[u]->name)) {
-            ext->def = lysc_ext_dup(elist[u]);
+    /* find the parsed extension definition there */
+    LY_ARRAY_FOR(ext_mod->parsed->extensions, u) {
+        if (!strcmp(name, ext_mod->parsed->extensions[u].name)) {
+            /* compile extension definition and assign it */
+            LY_CHECK_RET(lys_compile_extension(ctx, ext_mod, &ext_mod->parsed->extensions[u], &ext->def));
             break;
         }
     }
@@ -598,82 +629,6 @@ cleanup:
     lysc_update_path(ctx, NULL, NULL);
 
     return ret;
-}
-
-/**
- * @brief Fill in the prepared compiled extensions definition structure according to the parsed extension definition.
- */
-static LY_ERR
-lys_compile_extension(struct lysc_ctx *ctx, struct lysp_ext *ext_p, struct lysc_ext **ext)
-{
-    LY_ERR ret = LY_SUCCESS;
-
-    *ext = calloc(1, sizeof **ext);
-    (*ext)->refcount = 1;
-    DUP_STRING(ctx->ctx, ext_p->name, (*ext)->name);
-    DUP_STRING(ctx->ctx, ext_p->argument, (*ext)->argument);
-    (*ext)->module = ctx->mod_def;
-    COMPILE_EXTS_GOTO(ctx, ext_p->exts, (*ext)->exts, *ext, LYEXT_PAR_EXT, ret, done);
-
-done:
-    return ret;
-}
-
-/**
- * @brief Link the extensions definitions with the available extension plugins.
- *
- * This is done only in the compiled (implemented) module. Extensions of a non-implemented modules
- * are not connected with even available extension plugins.
- *
- * @param[in] extensions List of pointers to extensions to be processed ([sized array](@ref sizedarrays)).
- */
-static void
-lys_compile_extension_plugins(struct lysc_ext **extensions)
-{
-    unsigned int u;
-
-    LY_ARRAY_FOR(extensions, u) {
-        extensions[u]->plugin = lyext_get_plugin(extensions[u]);
-    }
-}
-
-LY_ERR
-lys_extension_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lys_module *module,
-                         struct lysp_ext *extensions_p, struct lysc_ext ***extensions)
-{
-    unsigned int offset = 0, u;
-    struct lysc_ctx context = {0};
-
-    assert(ctx_sc || ctx);
-
-    if (!ctx_sc) {
-        context.ctx = ctx;
-        context.mod = module;
-        context.mod_def = module;
-        context.path_len = 1;
-        context.path[0] = '/';
-        ctx_sc = &context;
-    }
-
-    if (!extensions_p) {
-        return LY_SUCCESS;
-    }
-    if (*extensions) {
-        offset = LY_ARRAY_SIZE(*extensions);
-    }
-
-    lysc_update_path(ctx_sc, NULL, "{extension}");
-    LY_ARRAY_CREATE_RET(ctx_sc->ctx, *extensions, LY_ARRAY_SIZE(extensions_p), LY_EMEM);
-    LY_ARRAY_FOR(extensions_p, u) {
-        lysc_update_path(ctx_sc, NULL, extensions_p[u].name);
-        LY_ARRAY_INCREMENT(*extensions);
-        LY_CHECK_RET(lys_compile_extension(ctx_sc, &extensions_p[u], &(*extensions)[offset + u]));
-        COMPILE_CHECK_UNIQUENESS_PARRAY(ctx_sc, *extensions, name, &(*extensions)[offset + u], "extension", extensions_p[u].name);
-        lysc_update_path(ctx_sc, NULL, NULL);
-    }
-    lysc_update_path(ctx_sc, NULL, NULL);
-
-    return LY_SUCCESS;
 }
 
 /**
@@ -6836,11 +6791,6 @@ lys_compile_submodule(struct lysc_ctx *ctx, struct lysp_include *inc)
         ret = lys_feature_precompile(ctx, NULL, NULL, submod->features, &mainmod->features);
         LY_CHECK_GOTO(ret, error);
     }
-    if (!mainmod->mod->off_extensions) {
-        /* extensions are compiled directly into the compiled module structure, compilation is finished in the main module (lys_compile()). */
-        ret = lys_extension_precompile(ctx, NULL, NULL, submod->extensions, &mainmod->extensions);
-        LY_CHECK_GOTO(ret, error);
-    }
 
     lysc_update_path(ctx, NULL, "{identity}");
     COMPILE_ARRAY_UNIQUE_GOTO(ctx, submod->identities, mainmod->identities, u, lys_compile_identity, ret, error);
@@ -7327,20 +7277,6 @@ lys_compile(struct lys_module *mod, int options)
         lysc_update_path(&ctx, NULL, NULL);
     }
     lysc_update_path(&ctx, NULL, NULL);
-
-    /* extensions */
-    /* 2-steps: a) prepare compiled structures and ... */
-    if (mod->off_extensions) {
-        /* there is already precompiled array of extension definitions */
-        mod_c->extensions = mod->off_extensions;
-        mod->off_extensions = NULL;
-    } else {
-        /* extension definitions are compiled directly into the compiled module structure */
-        ret = lys_extension_precompile(&ctx, NULL, NULL, sp->extensions, &mod_c->extensions);
-        LY_CHECK_GOTO(ret, error);
-    }
-    /* ... b) connect the extension definitions with the appropriate extension plugins */
-    lys_compile_extension_plugins(mod_c->extensions);
 
     /* identities */
     lysc_update_path(&ctx, NULL, "{identity}");

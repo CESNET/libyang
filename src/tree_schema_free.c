@@ -25,6 +25,7 @@
 
 void lysp_grp_free(struct ly_ctx *ctx, struct lysp_grp *grp);
 void lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node);
+void lysc_extension_free(struct ly_ctx *ctx, struct lysc_ext **ext);
 
 static void
 lysp_stmt_free(struct ly_ctx *ctx, struct lysp_stmt *stmt)
@@ -93,6 +94,9 @@ lysp_ext_free(struct ly_ctx *ctx, struct lysp_ext *ext)
     FREE_STRING(ctx, ext->dsc);
     FREE_STRING(ctx, ext->ref);
     FREE_ARRAY(ctx, ext->exts, lysp_ext_instance_free);
+    if (ext->compiled) {
+        lysc_extension_free(ctx, &ext->compiled);
+    }
 }
 
 void
@@ -837,8 +841,6 @@ lysc_module_free_(struct lysc_module *module)
     }
     FREE_ARRAY(ctx, module->rpcs, lysc_action_free);
     FREE_ARRAY(ctx, module->notifs, lysc_notif_free);
-
-    FREE_ARRAY(ctx, module->extensions, lysc_extension_free);
     FREE_ARRAY(ctx, module->exts, lysc_ext_instance_free);
 
     free(module);
@@ -864,7 +866,6 @@ lys_module_free(struct lys_module *module, void (*private_destructor)(const stru
 
     lysc_module_free(module->compiled, private_destructor);
     FREE_ARRAY(module->ctx, module->off_features, lysc_feature_free);
-    FREE_ARRAY(module->ctx, module->off_extensions, lysc_extension_free);
     lysp_module_free(module->parsed);
 
     FREE_STRING(module->ctx, module->name);

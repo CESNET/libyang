@@ -371,6 +371,8 @@ struct lysp_ext {
     const char *ref;                 /**< reference statement */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     uint16_t flags;                  /**< LYS_STATUS_* and LYS_YINELEM_* values (@ref snodeflags) */
+
+    struct lysc_ext *compiled;       /**< pointer to the compiled extension definition */
 };
 
 /**
@@ -1645,7 +1647,6 @@ struct lysc_module {
     struct lysc_node *data;          /**< list of module's top-level data nodes (linked list) */
     struct lysc_action *rpcs;        /**< list of RPCs ([sized array](@ref sizedarrays)) */
     struct lysc_notif *notifs;       /**< list of notifications ([sized array](@ref sizedarrays)) */
-    struct lysc_ext **extensions;    /**< list of pointers to extension definitions ([sized array](@ref sizedarrays)) */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 };
 
@@ -1777,12 +1778,6 @@ struct lys_module {
                                           from if-feature statements of the compiled schemas and their proper use in case
                                           the module became implemented in future (no matter if implicitly via augment/deviate
                                           or explicitly via ly_ctx_module_implement()). */
-    struct lysc_ext **off_extensions;/**< List of pointers to pre-compiled extension definitions of the module in non-implemented modules
-                                          ([sized array](@ref sizedarrays)). These extensions are prepared to be linked with the extension instances,
-                                          but they are not implemented (connected with any extension plugin). In case the module become
-                                          implemented, the list is moved into the compiled module structure and available extension plugins
-                                          are connected with the appropriate extension definision. */
-
     uint8_t implemented;             /**< flag if the module is implemented, not just imported. The module is implemented if
                                           the flag has non-zero value. Specific values are used internally:
                                           1 - implemented module
