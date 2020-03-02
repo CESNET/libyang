@@ -1255,6 +1255,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         old_val_str = lydict_insert(ctx, *value_, 0);
         lyd_free_value(*val, *val_type, *val_flags, type, old_val_str, &old_val, &old_val_type, &old_val_flags);
         *val_flags &= ~LY_VALUE_UNRES;
+        *val_flags &= ~LY_VALUE_USER;
     }
 
     switch (type->base) {
