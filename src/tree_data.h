@@ -517,6 +517,70 @@ struct lyd_node *lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int
 struct lyd_node *lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int options);
 
 /**
+ * @brief Create a new inner node in a data tree.
+ *
+ * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
+ * @param[in] module Module with the node being created.
+ * @param[in] name Schema node name of the new data node. The node can be #LYS_CONTAINER, #LYS_NOTIF, #LYS_RPC, or #LYS_ACTION.
+ * @return New created node.
+ * @return NULL on error.
+ */
+struct lyd_node *lyd_new_inner(struct lyd_node *parent, const struct lys_module *module, const char *name);
+
+/**
+ * @brief Create a new list node in a data tree.
+ *
+ * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
+ * @param[in] module Module with the node being created.
+ * @param[in] name Schema node name of the new data node. The node must be #LYS_LIST.
+ * @param[in] ... Ordered key values of the new list instance, all must be set. In case of an instance-identifier
+ * or identityref value, the JSON format is expected (module names instead of prefixes).
+ * @return New created node.
+ * @return NULL on error.
+ */
+struct lyd_node *lyd_new_list(struct lyd_node *parent, const struct lys_module *module, const char *name, ...);
+
+/**
+ * @brief Create a new list node in a data tree.
+ *
+ * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
+ * @param[in] module Module with the node being created.
+ * @param[in] name Schema node name of the new data node. The node must be #LYS_LIST.
+ * @param[in] keys All key values predicate in the form of "[key1='val1'][key2='val2']...", they do not have to be ordered.
+ * In case of an instance-identifier or identityref value, the JSON format is expected (module names instead of prefixes).
+ * @return New created node.
+ * @return NULL on error.
+ */
+struct lyd_node *lyd_new_list2(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *keys);
+
+/**
+ * @brief Create a new term node in a data tree.
+ *
+ * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
+ * @param[in] module Module with the node being created.
+ * @param[in] name Schema node name of the new data node. The node can be #LYS_LEAF or #LYS_LEAFLIST.
+ * @param[in] val_str String form of the value of the node being created. In case of an instance-identifier or identityref
+ * value, the JSON format is expected (module names instead of prefixes).
+ * @return New created node.
+ * @return NULL on error.
+ */
+struct lyd_node *lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *val_str);
+
+/**
+ * @brief Create a new any node in a data tree.
+ *
+ * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
+ * @param[in] module Module with the node being created.
+ * @param[in] name Schema node name of the new data node. The node can be #LYS_ANYDATA or #LYS_ANYXML.
+ * @param[in] value Value to be directly assigned to the node. Expected type is determined by @p value_type.
+ * @param[in] value_type Type of the provided value in @p value.
+ * @return New created node.
+ * @return NULL on error.
+ */
+struct lyd_node *lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char *name,
+                             const void *value, LYD_ANYDATA_VALUETYPE value_type);
+
+/**
  * @brief Free all the nodes (even parents of the node) in the data tree.
  *
  * @param[in] node Any of the nodes inside the tree.

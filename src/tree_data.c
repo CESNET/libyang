@@ -726,6 +726,123 @@ lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANYDATA_VA
     return LY_SUCCESS;
 }
 
+API struct lyd_node *
+lyd_new_inner(struct lyd_node *parent, const struct lys_module *module, const char *name)
+{
+    struct lyd_node *ret = NULL;
+    const struct lysc_node *schema;
+    struct ly_ctx *ctx = parent ? parent->schema->module->ctx : (module ? module->ctx : NULL);
+
+    LY_CHECK_ARG_RET(ctx, parent || module, name, NULL);
+
+    schema = lys_find_child(parent ? parent->schema : NULL, module, name, 0, LYS_CONTAINER | LYS_NOTIF | LYS_ACTION, 0);
+    LY_CHECK_ERR_RET(!schema, LOGERR(ctx, LY_EINVAL, "Inner node \"%s\" not found.", name), NULL);
+
+    if (!lyd_create_inner(schema, &ret) && parent) {
+        lyd_insert_node(parent, NULL, ret);
+    }
+    return ret;
+}
+
+API struct lyd_node *
+lyd_new_list(struct lyd_node *parent, const struct lys_module *module, const char *name, ...)
+{
+    struct lyd_node *ret = NULL, *key;
+    const struct lysc_node *schema, *key_s;
+    struct ly_ctx *ctx = parent ? parent->schema->module->ctx : (module ? module->ctx : NULL);
+    va_list ap;
+    const char *key_val;
+    LY_ERR rc = LY_SUCCESS;
+
+    LY_CHECK_ARG_RET(ctx, parent || module, name, NULL);
+
+    schema = lys_find_child(parent ? parent->schema : NULL, module, name, 0, LYS_LIST, 0);
+    LY_CHECK_ERR_RET(!schema, LOGERR(ctx, LY_EINVAL, "List node \"%s\" not found.", name), NULL);
+
+    /* create list inner node */
+    LY_CHECK_RET(lyd_create_inner(schema, &ret), NULL);
+
+    va_start(ap, name);
+
+    /* create and insert all the keys */
+    for (key_s = lysc_node_children(schema, 0); key_s && (key_s->flags & LYS_KEY); key_s = key_s->next) {
+        key_val = va_arg(ap, const char *);
+
+        LY_CHECK_GOTO(rc = lyd_create_term(key_s, key_val, 0, NULL, lydjson_resolve_prefix, NULL, LYD_JSON, &key), cleanup);
+        lyd_insert_node(ret, NULL, key);
+    }
+
+    /* hash having all the keys */
+    lyd_hash(ret);
+
+    if (parent) {
+        lyd_insert_node(parent, NULL, ret);
+    }
+
+cleanup:
+    if (rc) {
+        lyd_free_tree(ret);
+        ret = NULL;
+    }
+    va_end(ap);
+    return ret;
+}
+
+API struct lyd_node *
+lyd_new_list2(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *keys)
+{
+    struct lyd_node *ret = NULL;
+    const struct lysc_node *schema;
+    struct ly_ctx *ctx = parent ? parent->schema->module->ctx : (module ? module->ctx : NULL);
+
+    LY_CHECK_ARG_RET(ctx, parent || module, name, NULL);
+
+    schema = lys_find_child(parent ? parent->schema : NULL, module, name, 0, LYS_LIST, 0);
+    LY_CHECK_ERR_RET(!schema, LOGERR(ctx, LY_EINVAL, "List node \"%s\" not found.", name), NULL);
+
+    if (!lyd_create_list(schema, keys, 0, &ret) && parent) {
+        lyd_insert_node(parent, NULL, ret);
+    }
+    return ret;
+}
+
+API struct lyd_node *
+lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *val_str)
+{
+    struct lyd_node *ret = NULL;
+    const struct lysc_node *schema;
+    struct ly_ctx *ctx = parent ? parent->schema->module->ctx : (module ? module->ctx : NULL);
+
+    LY_CHECK_ARG_RET(ctx, parent || module, name, NULL);
+
+    schema = lys_find_child(parent ? parent->schema : NULL, module, name, 0, LYD_NODE_TERM, 0);
+    LY_CHECK_ERR_RET(!schema, LOGERR(ctx, LY_EINVAL, "Term node \"%s\" not found.", name), NULL);
+
+    if (!lyd_create_term(schema, val_str, 0, NULL, lydjson_resolve_prefix, NULL, LYD_JSON, &ret) && parent) {
+        lyd_insert_node(parent, NULL, ret);
+    }
+    return ret;
+}
+
+API struct lyd_node *
+lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char *name, const void *value,
+            LYD_ANYDATA_VALUETYPE value_type)
+{
+    struct lyd_node *ret = NULL;
+    const struct lysc_node *schema;
+    struct ly_ctx *ctx = parent ? parent->schema->module->ctx : (module ? module->ctx : NULL);
+
+    LY_CHECK_ARG_RET(ctx, parent || module, name, NULL);
+
+    schema = lys_find_child(parent ? parent->schema : NULL, module, name, 0, LYD_NODE_ANY, 0);
+    LY_CHECK_ERR_RET(!schema, LOGERR(ctx, LY_EINVAL, "Any node \"%s\" not found.", name), NULL);
+
+    if (!lyd_create_any(schema, value, value_type, &ret) && parent) {
+        lyd_insert_node(parent, NULL, ret);
+    }
+    return ret;
+}
+
 struct lyd_node *
 lyd_get_prev_key_anchor(const struct lyd_node *first_sibling, const struct lysc_node *new_key)
 {
