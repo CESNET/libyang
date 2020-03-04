@@ -486,7 +486,9 @@ lysc_ext_instance_free(struct ly_ctx *ctx, struct lysc_ext_instance *ext)
     if (ext->def && ext->def->plugin && ext->def->plugin->free) {
         ext->def->plugin->free(ctx, ext);
     }
-    lysc_extension_free(ctx, &ext->def);
+    if (ext->def) {
+        lysc_extension_free(ctx, &ext->def);
+    }
     FREE_STRING(ctx, ext->argument);
     FREE_ARRAY(ctx, ext->exts, lysc_ext_instance_free);
 }
