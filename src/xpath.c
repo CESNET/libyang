@@ -751,7 +751,7 @@ set_init(struct lyxp_set *new, struct lyxp_set *set)
         new->ctx_node = set->ctx_node;
         new->root_type = set->root_type;
         new->local_mod = set->local_mod;
-        new->trees = set->trees;
+        new->tree = set->tree;
         new->format = set->format;
     }
 }
@@ -3560,7 +3560,7 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set 
                 /* find leafref target */
                 val = lyd_value2str(leaf, &dynamic);
                 node = ly_type_find_leafref(set->ctx, sleaf->type, val, strlen(val), (struct lyd_node *)leaf,
-                                            set->trees, &leaf->value, &errmsg);
+                                            set->tree, &leaf->value, &errmsg);
                 if (dynamic) {
                     free((char *)val);
                 }
@@ -3574,7 +3574,7 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set 
                 set_insert_node(set, node, 0, LYXP_NODE_ELEM, 0);
             } else {
                 assert(sleaf->type->basetype == LY_TYPE_INST);
-                node = (struct lyd_node *)lyd_target(leaf->value.target, set->trees);
+                node = (struct lyd_node *)lyd_target(leaf->value.target, set->tree);
                 if (!node) {
                     val = lyd_value2str(leaf, &dynamic);
                     LOGERR(set->ctx, LY_EVALID, "Invalid instance-identifier \"%s\" value - required instance not found.", val);
@@ -3649,7 +3649,7 @@ xpath_derived_from(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct ly
                 /* store args[1] into ident */
                 rc = sleaf->type->plugin->store(set->ctx, sleaf->type, args[1]->val.str, strlen(args[1]->val.str),
                                                 LY_TYPE_OPTS_STORE, lys_resolve_prefix, (void *)sleaf->dflt_mod, set->format,
-                                                (struct lyd_node *)leaf, set->trees, &data, NULL, &err);
+                                                (struct lyd_node *)leaf, set->tree, &data, NULL, &err);
                 if (err) {
                     ly_err_print(err);
                     ly_err_free(err);
@@ -3732,7 +3732,7 @@ xpath_derived_from_or_self(struct lyxp_set **args, uint16_t UNUSED(arg_count), s
                 /* store args[1] into ident */
                 rc = sleaf->type->plugin->store(set->ctx, sleaf->type, args[1]->val.str, strlen(args[1]->val.str),
                                                 LY_TYPE_OPTS_STORE, lys_resolve_prefix, (void *)sleaf->dflt_mod, set->format,
-                                                (struct lyd_node *)leaf, set->trees, &data, NULL, &err);
+                                                (struct lyd_node *)leaf, set->tree, &data, NULL, &err);
                 if (err) {
                     ly_err_print(err);
                     ly_err_free(err);
@@ -5326,7 +5326,7 @@ moveto_scnode_check(const struct lysc_node *node, enum lyxp_node_type root_type,
 static LY_ERR
 moveto_node(struct lyxp_set *set, const char *qname, uint16_t qname_len)
 {
-    uint32_t i, j;
+    uint32_t i;
     int replaced;
     const char *name_dict = NULL; /* optimization - so we can do (==) instead (!strncmp(...)) in moveto_node_check() */
     const struct lys_module *moveto_mod;
@@ -5354,22 +5354,20 @@ moveto_node(struct lyxp_set *set, const char *qname, uint16_t qname_len)
         if ((set->val.nodes[i].type == LYXP_NODE_ROOT_CONFIG) || (set->val.nodes[i].type == LYXP_NODE_ROOT)) {
             assert(!set->val.nodes[i].node);
             /* search in all the trees */
-            LY_ARRAY_FOR(set->trees, j) {
-                for (sub = set->trees[j]; sub; sub = sub->next) {
-                    rc = moveto_node_check(sub, set->root_type, name_dict, moveto_mod);
-                    if (rc == LY_SUCCESS) {
-                        /* pos filled later */
-                        if (!replaced) {
-                            set_replace_node(set, sub, 0, LYXP_NODE_ELEM, i);
-                            replaced = 1;
-                        } else {
-                            set_insert_node(set, sub, 0, LYXP_NODE_ELEM, i);
-                        }
-                        ++i;
-                    } else if (rc == LY_EINCOMPLETE) {
-                        lydict_remove(set->ctx, name_dict);
-                        return rc;
+            for (sub = set->tree; sub; sub = sub->next) {
+                rc = moveto_node_check(sub, set->root_type, name_dict, moveto_mod);
+                if (rc == LY_SUCCESS) {
+                    /* pos filled later */
+                    if (!replaced) {
+                        set_replace_node(set, sub, 0, LYXP_NODE_ELEM, i);
+                        replaced = 1;
+                    } else {
+                        set_insert_node(set, sub, 0, LYXP_NODE_ELEM, i);
                     }
+                    ++i;
+                } else if (rc == LY_EINCOMPLETE) {
+                    lydict_remove(set->ctx, name_dict);
+                    return rc;
                 }
             }
 
@@ -8025,7 +8023,7 @@ lyxp_get_root_type(const struct lyd_node *ctx_node, const struct lysc_node *ctx_
 
 LY_ERR
 lyxp_eval(struct lyxp_expr *exp, LYD_FORMAT format, const struct lys_module *local_mod, const struct lyd_node *ctx_node,
-          enum lyxp_node_type ctx_node_type, const struct lyd_node **trees, struct lyxp_set *set, int options)
+          enum lyxp_node_type ctx_node_type, const struct lyd_node *tree, struct lyxp_set *set, int options)
 {
     uint16_t exp_idx = 0;
     LY_ERR rc;
@@ -8041,7 +8039,7 @@ lyxp_eval(struct lyxp_expr *exp, LYD_FORMAT format, const struct lys_module *loc
     set->ctx_node = ctx_node;
     set->root_type = lyxp_get_root_type(ctx_node, NULL, options);
     set->local_mod = local_mod;
-    set->trees = trees;
+    set->tree = tree;
     set->format = format;
 
     /* evaluate */

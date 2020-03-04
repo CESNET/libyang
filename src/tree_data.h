@@ -309,7 +309,7 @@ struct lyd_node_inner {
 };
 
 /**
- * @brief Data node structure for the terminal data tree nodes - leafs and leaf-lists.
+ * @brief Data node structure for the terminal data tree nodes - leaves and leaf-lists.
  */
 struct lyd_node_term {
     uint32_t hash;                   /**< hash of this particular node (module name + schema name + key string values if list or
@@ -517,10 +517,21 @@ struct lyd_node *lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int
 struct lyd_node *lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int options);
 
 /**
+ * @brief Fully validate a data tree.
+ *
+ * @param[in] ctx libyang context. Can be NULL if @p node is set.
+ * @param[in,out] node Root data tree node to recursively validate. May be changed by validation.
+ * @param[in] val_opts Validation options (@ref datavalidationoptions).
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR error on error.
+ */
+LY_ERR lyd_validate(const struct ly_ctx *ctx, struct lyd_node **node, int val_opts);
+
+/**
  * @brief Create a new inner node in a data tree.
  *
  * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
- * @param[in] module Module with the node being created.
+ * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
  * @param[in] name Schema node name of the new data node. The node can be #LYS_CONTAINER, #LYS_NOTIF, #LYS_RPC, or #LYS_ACTION.
  * @return New created node.
  * @return NULL on error.
@@ -531,7 +542,7 @@ struct lyd_node *lyd_new_inner(struct lyd_node *parent, const struct lys_module 
  * @brief Create a new list node in a data tree.
  *
  * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
- * @param[in] module Module with the node being created.
+ * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
  * @param[in] name Schema node name of the new data node. The node must be #LYS_LIST.
  * @param[in] ... Ordered key values of the new list instance, all must be set. In case of an instance-identifier
  * or identityref value, the JSON format is expected (module names instead of prefixes).
@@ -544,7 +555,7 @@ struct lyd_node *lyd_new_list(struct lyd_node *parent, const struct lys_module *
  * @brief Create a new list node in a data tree.
  *
  * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
- * @param[in] module Module with the node being created.
+ * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
  * @param[in] name Schema node name of the new data node. The node must be #LYS_LIST.
  * @param[in] keys All key values predicate in the form of "[key1='val1'][key2='val2']...", they do not have to be ordered.
  * In case of an instance-identifier or identityref value, the JSON format is expected (module names instead of prefixes).
@@ -557,7 +568,7 @@ struct lyd_node *lyd_new_list2(struct lyd_node *parent, const struct lys_module 
  * @brief Create a new term node in a data tree.
  *
  * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
- * @param[in] module Module with the node being created.
+ * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
  * @param[in] name Schema node name of the new data node. The node can be #LYS_LEAF or #LYS_LEAFLIST.
  * @param[in] val_str String form of the value of the node being created. In case of an instance-identifier or identityref
  * value, the JSON format is expected (module names instead of prefixes).
@@ -570,7 +581,7 @@ struct lyd_node *lyd_new_term(struct lyd_node *parent, const struct lys_module *
  * @brief Create a new any node in a data tree.
  *
  * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
- * @param[in] module Module with the node being created.
+ * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
  * @param[in] name Schema node name of the new data node. The node can be #LYS_ANYDATA or #LYS_ANYXML.
  * @param[in] value Value to be directly assigned to the node. Expected type is determined by @p value_type.
  * @param[in] value_type Type of the provided value in @p value.
@@ -579,6 +590,52 @@ struct lyd_node *lyd_new_term(struct lyd_node *parent, const struct lys_module *
  */
 struct lyd_node *lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char *name,
                              const void *value, LYD_ANYDATA_VALUETYPE value_type);
+
+/**
+ * @brief Insert a child into a parent. It is inserted as the last child.
+ *
+ * - if the node is part of some other tree, it is automatically unlinked.
+ * - if the node is the first node of a node list (with no parent), all the subsequent nodes are also inserted.
+ *
+ * @param[in] parent Parent node to insert into.
+ * @param[in] node Node to insert.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR error on error.
+ */
+LY_ERR lyd_insert(struct lyd_node *parent, struct lyd_node *node);
+
+/**
+ * @brief Insert a node before another node that is its schema sibling.
+ *
+ * - if the node is part of some other tree, it is automatically unlinked.
+ * - if the node is the first node of a node list (with no parent), all the subsequent nodes are also inserted.
+ *
+ * @param[in] sibling Sibling node to insert before.
+ * @param[in] node Node to insert.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR error on error.
+ */
+LY_ERR lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node);
+
+/**
+ * @brief Insert a node after another node that is its schema sibling.
+ *
+ * - if the node is part of some other tree, it is automatically unlinked.
+ * - if the node is the first node of a node list (with no parent), all the subsequent nodes are also inserted.
+ *
+ * @param[in] sibling Sibling node to insert after.
+ * @param[in] node Node to insert.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR error on error.
+ */
+LY_ERR lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node);
+
+/**
+ * @brief Unlink the specified data subtree.
+ *
+ * @param[in] node Data tree node to be unlinked (together with all the children).
+ */
+void lyd_unlink_tree(struct lyd_node *node);
 
 /**
  * @brief Free all the nodes (even parents of the node) in the data tree.
@@ -592,31 +649,14 @@ void lyd_free_all(struct lyd_node *node);
  *
  * @param[in] node Any of the sibling nodes to free.
  */
-void lyd_free_withsiblings(struct lyd_node *node);
+void lyd_free_siblings(struct lyd_node *node);
 
 /**
  * @brief Free (and unlink) the specified data (sub)tree.
  *
- * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
- *
  * @param[in] node Root of the (sub)tree to be freed.
  */
 void lyd_free_tree(struct lyd_node *node);
-
-/**
- * @brief Unlink the specified data subtree. All referenced namespaces are copied.
- *
- * Note, that the node's connection with the schema tree is kept. Therefore, in case of
- * reconnecting the node to a data tree using lyd_paste() it is necessary to paste it
- * to the appropriate place in the data tree following the schema.
- *
- * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
- *
- * @param[in] node Data tree node to be unlinked (together with all children).
- * @return LY_SUCCESS for success
- * @return LY_E* values in case of error
- */
-LY_ERR lyd_unlink_tree(struct lyd_node *node);
 
 /**
  * @brief Destroy data attribute.
@@ -627,33 +667,6 @@ LY_ERR lyd_unlink_tree(struct lyd_node *node);
  * non-zero to destroy also all the subsequent attributes in the list.
  */
 void lyd_free_attr(struct ly_ctx *ctx, struct lyd_attr *attr, int recursive);
-
-/**
- * @brief Prepare ([sized array](@ref sizedarrays)) of data trees required by various (mostly validation) functions.
- *
- * @param[in] count Number of trees to include (including the mandatory @p tree).
- * @param[in] tree First (and mandatory) tree to be included into the resulting ([sized array](@ref sizedarrays)).
- * @return NULL in case of memory allocation failure or invalid argument, prepared ([sized array](@ref sizedarrays)) otherwise.
- */
-const struct lyd_node **lyd_trees_new(size_t count, const struct lyd_node *tree, ...);
-
-/**
- * @brief Add tree into the ([sized array](@ref sizedarrays)) of data trees created by lyd_trees_new(),
- *
- * @param[in] trees Existing [sized array](@ref sizedarrays)) of data trees to be extended.
- * @param[in] tree Data tree to be included into the provided @p trees ([sized array](@ref sizedarrays)).
- * @return NULL in case of memory allocation failure or invalid argument, extended @p trees ([sized array](@ref sizedarrays)) otherwise.
- */
-const struct lyd_node **lyd_trees_add(const struct lyd_node **trees, const struct lyd_node *tree);
-
-/**
- * @brief Free the trees ([sized array](@ref sizedarrays)).
- *
- * @param[in] trees ([Sized array](@ref sizedarrays)) of data trees.
- * @param[in] free_data Flag to free also the particular trees in the @p trees ([sized array](@ref sizedarrays)).
- * If set to zero, only the trees envelope is freed and data are untouched.
- */
-void lyd_trees_free(const struct lyd_node **trees, int free_data);
 
 /**
  * @brief Check type restrictions applicable to the particular leaf/leaf-list with the given string @p value.
@@ -670,15 +683,15 @@ void lyd_trees_free(const struct lyd_node **trees, int free_data);
  * @param[in] get_prefix Callback function to resolve prefixes used in the @p value string.
  * @param[in] get_prefix_data Private data for the @p get_prefix callback.
  * @param[in] format Input format of the data.
- * @param[in] trees ([Sized array](@ref sizedarrays)) of data trees (e.g. when validating RPC/Notification) where the required
- *            data instance (leafref target, instance-identifier) can be placed. NULL in case the data tree are not yet complete,
- *            then LY_EINCOMPLETE can be returned. To simply prepare this structure, use lyd_trees_new().
+ * @param[in] tree Data tree (e.g. when validating RPC/Notification) where the required data instance (leafref target,
+ *            instance-identifier) can be placed. NULL in case the data tree is not yet complete,
+ *            then LY_EINCOMPLETE can be returned.
  * @return LY_SUCCESS on success
  * @return LY_EINCOMPLETE in case the @p trees is not provided and it was needed to finish the validation (e.g. due to require-instance).
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_value_validate(struct ly_ctx *ctx, const struct lyd_node_term *node, const char *value, size_t value_len,
-                          ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format, const struct lyd_node **trees);
+                          ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format, const struct lyd_node *tree);
 
 /**
  * @brief Compare the node's value with the given string value. The string value is first validated according to the node's type.
@@ -690,17 +703,16 @@ LY_ERR lyd_value_validate(struct ly_ctx *ctx, const struct lyd_node_term *node, 
  * @param[in] get_prefix Callback function to resolve prefixes used in the @p value string.
  * @param[in] get_prefix_data Private data for the @p get_prefix callback.
  * @param[in] format Input format of the data.
- * @param[in] trees ([Sized array](@ref sizedarrays)) of data trees (e.g. when validating RPC/Notification) where the required
- *            data instance (leafref target, instance-identifier) can be placed. NULL in case the data tree are not yet complete,
- *            then LY_EINCOMPLETE can be returned in case the validation was not completed, but values matches. To simply prepare
- *            this structure, use lyd_trees_new(). To simply prepare this structure, use lyd_trees_new().
+ * @param[in] tree Data tree (e.g. when validating RPC/Notification) where the required data instance (leafref target,
+ *            instance-identifier) can be placed. NULL in case the data tree is not yet complete,
+ *            then LY_EINCOMPLETE can be returned.
  * @return LY_SUCCESS on success
  * @return LY_EINCOMPLETE in case of success when the @p trees is not provided and it was needed to finish the validation of
  * the given string @p value (e.g. due to require-instance).
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_value_compare(const struct lyd_node_term *node, const char *value, size_t value_len,
-                         ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format, const struct lyd_node **trees);
+                         ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format, const struct lyd_node *tree);
 
 /**
  * @defgroup datacompareoptions Data compare options
@@ -773,11 +785,10 @@ struct lyd_node *lyd_dup(const struct lyd_node *node, struct lyd_node_inner *par
  * @brief Resolve instance-identifier defined by lyd_value_path structure.
  *
  * @param[in] path Path structure specifying the instance-identifier target.
- * @param[in] trees ([Sized array](@ref sizedarrays)) of data trees to be searched.
- *            To simply prepare this structure, use lyd_trees_new().
- * @return Target node of the instance-identifier present in the given data @p trees.
+ * @param[in] tree Data tree to be searched.
+ * @return Target node of the instance-identifier present in the given data @p tree.
  */
-const struct lyd_node_term *lyd_target(struct lyd_value_path *path, const struct lyd_node **trees);
+const struct lyd_node_term *lyd_target(struct lyd_value_path *path, const struct lyd_node *tree);
 
 /**
  * @brief Get string value of a term data \p node.
@@ -824,7 +835,7 @@ char *lyd_path(const struct lyd_node *node, LYD_PATH_TYPE pathtype, char *buffer
  * @param[in] first Starting sibling node for search, only succeeding ones are searched.
  * @param[in] module Module of the node to find.
  * @param[in] name Name of the node to find.
- * @param[in] name_len Optional length of the @p name argument in case it is not NULL-terminated string.
+ * @param[in] name_len Optional length of @p name in case it is not 0-terminated string.
  * @param[in] key_or_value Expected value depends on the type of @p name node:
  *              LYS_CONTAINER:
  *              LYS_ANYXML:
@@ -843,7 +854,7 @@ char *lyd_path(const struct lyd_node *node, LYD_PATH_TYPE pathtype, char *buffer
  *              Note that any explicit values (leaf, leaf-list or list key values) will be canonized first
  *              before comparison. But values that do not have a canonical value are expected to be in the
  *              JSON format!
- * @param[in] val_len Optional length of the @p key_or_value argument in case it is not NULL-terminated string.
+ * @param[in] val_len Optional length of @p key_or_value in case it is not 0-terminated string.
  * @param[out] match Found data node.
  * @return LY_SUCCESS on success, @p match set.
  * @return LY_ENOTFOUND if not found, @p match set to NULL.
@@ -903,6 +914,7 @@ LY_ERR lyd_find_sibling_set(const struct lyd_node *siblings, const struct lyd_no
  *              Note that any explicit values (leaf-list or list key values) will be canonized first
  *              before comparison. But values that do not have a canonical value are expected to be in the
  *              JSON format!
+ * @param[in] val_len Optional length of @p key_or_value in case it is not 0-terminated.
  * @param[out] match Can be NULL, otherwise the found data node.
  * @return LY_SUCCESS on success, @p match set.
  * @return LY_ENOTFOUND if not found, @p match set to NULL.

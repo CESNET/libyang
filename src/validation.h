@@ -27,23 +27,23 @@
  * @param[in] format Format of the unresolved data.
  * @param[in] get_prefix_clb Format-specific getter to resolve prefixes.
  * @param[in] parser_data Parser's data for @p get_prefix_clb.
- * @param[in] trees Array of all data trees.
+ * @param[in] tree Data tree.
  * @return LY_ERR value.
  */
 LY_ERR lyd_validate_unres(struct ly_set *node_types, struct ly_set *attr_types, struct ly_set *node_when, LYD_FORMAT format,
-                          ly_clb_resolve_prefix get_prefix_clb, void *parser_data, const struct lyd_node **trees);
+                          ly_clb_resolve_prefix get_prefix_clb, void *parser_data, const struct lyd_node *tree);
 
 /**
  * @brief Perform all validation tasks, the data tree must be complete when calling this function.
  *
- * @param[in] trees Array of all data trees.
+ * @param[in,out] tree Data tree.
  * @param[in] modules Array of modules that should be validated, NULL for all modules.
  * @param[in] mod_count Modules count.
  * @param[in] ctx Context if all modules should be validated, NULL for only selected modules.
- * @param[in] val_opts Validation options.
+ * @param[in] val_opts Validation options (@ref datavalidationoptions).
  * @return LY_ERR value.
  */
-LY_ERR lyd_validate_data(const struct lyd_node **trees, const struct lys_module **modules, int mod_count,
+LY_ERR lyd_validate_data(struct lyd_node **tree, const struct lys_module **modules, int mod_count,
                          struct ly_ctx *ctx, int val_opts);
 
 /**

@@ -34,7 +34,7 @@ struct lyd_node **lyd_node_children_p(struct lyd_node *node);
  *
  * @param[in] schema Schema node of the new data node.
  * @param[in] value String value to be parsed.
- * @param[in] value_len Length of @p value.
+ * @param[in] value_len Length of @p value, must be set correctly.
  * @param[in,out] dynamic Flag if @p value is dynamically allocated, is adjusted when @p value is consumed.
  * @param[in] get_prefix Parser-specific getter to resolve prefixes used in the @p value string.
  * @param[in] prefix_data User data for @p get_prefix.
@@ -82,7 +82,7 @@ LY_ERR lyd_create_inner(const struct lysc_node *schema, struct lyd_node **node);
  * @param[in] schema Schema node of the new data node.
  * @param[in] keys_str List instance key values in the form of "[key1='val1'][key2='val2']...".
  *            The keys do not have to be ordered but all of them must be set.
- * @param[in] keys_len Length of @p keys_str.
+ * @param[in] keys_len Length of @p keys_str, must be set correctly.
  * @param[out] node Created node.
  * @return LY_SUCCESS on success.
  * @return LY_ERR value if an error occurred.
@@ -132,9 +132,9 @@ void lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling, s
  * @param[in,out] attr Attribute list to add at its end if @p parent is NULL, returned created attribute.
  * @param[in] mod Attribute module (with the annotation definition).
  * @param[in] name Attribute name.
- * @param[in] name_len Length of @p name.
+ * @param[in] name_len Length of @p name, must be set correctly.
  * @param[in] value String value to be parsed.
- * @param[in] value_len Length of @p value.
+ * @param[in] value_len Length of @p value, must be set correctly.
  * @param[in,out] dynamic Flag if @p value is dynamically allocated, is adjusted when @p value is consumed.
  * @param[in] get_prefix Parser-specific getter to resolve prefixes used in the @p value string.
  * @param[in] prefix_data User data for @p get_prefix.
@@ -153,13 +153,13 @@ LY_ERR lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const st
  *
  * @param[in] node Data node for the @p value.
  * @param[in] value String value to be parsed, must not be NULL.
- * @param[in] value_len Length of the give @p value (mandatory).
+ * @param[in] value_len Length of the give @p value, must be set correctly.
  * @param[in,out] dynamic Flag if @p value is dynamically allocated, is adjusted when @p value is consumed.
  * @param[in] second Flag for the second call after returning LY_EINCOMPLETE
  * @param[in] get_prefix Parser-specific getter to resolve prefixes used in the @p value string.
  * @param[in] parser Parser's data for @p get_prefix
  * @param[in] format Input format of @p value.
- * @param[in] trees ([Sized array](@ref sizedarrays)) of data trees (e.g. when validating RPC/Notification) where the required
+ * @param[in] tree Data tree (e.g. when validating RPC/Notification) where the required
  *            data instance (leafref target, instance-identifier) can be placed. NULL in case the data tree are not yet complete,
  *            then LY_EINCOMPLETE can be returned.
  * @return LY_SUCCESS on success
@@ -167,7 +167,7 @@ LY_ERR lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const st
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len, int *dynamic, int second,
-                       ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format, const struct lyd_node **trees);
+                       ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format, const struct lyd_node *tree);
 
 /**
  * @brief Validate, canonize and store the given @p value into the attribute according to the metadata annotation type's rules.
@@ -175,14 +175,14 @@ LY_ERR lyd_value_parse(struct lyd_node_term *node, const char *value, size_t val
  * @param[in] ctx libyang context.
  * @param[in] attr Data attribute for the @p value.
  * @param[in] value String value to be parsed, must not be NULL.
- * @param[in] value_len Length of the give @p value (mandatory).
+ * @param[in] value_len Length of the give @p value, must be set correctly.
  * @param[in,out] dynamic Flag if @p value is dynamically allocated, is adjusted when @p value is consumed.
  * @param[in] second Flag for the second call after returning LY_EINCOMPLETE
  * @param[in] get_prefix Parser-specific getter to resolve prefixes used in the @p value string.
  * @param[in] parser Parser's data for @p get_prefix
  * @param[in] format Input format of the data.
  * @param[in] ctx_snode Context node for value resolution in schema.
- * @param[in] trees ([Sized array](@ref sizedarrays)) of data trees (e.g. when validating RPC/Notification) where the required
+ * @param[in] tree Data tree (e.g. when validating RPC/Notification) where the required
  *            data instance (leafref target, instance-identifier) can be placed. NULL in case the data tree are not yet complete,
  *            then LY_EINCOMPLETE can be returned.
  * @return LY_SUCCESS on success
@@ -191,7 +191,7 @@ LY_ERR lyd_value_parse(struct lyd_node_term *node, const char *value, size_t val
  */
 LY_ERR lyd_value_parse_attr(struct ly_ctx *ctx, struct lyd_attr *attr, const char *value, size_t value_len, int *dynamic,
                             int second, ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format,
-                            const struct lysc_node *ctx_snode, const struct lyd_node **trees);
+                            const struct lysc_node *ctx_snode, const struct lyd_node *tree);
 
 /**
  * @brief Parse XML string as YANG data tree.

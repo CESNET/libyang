@@ -233,6 +233,8 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_NOMIN          LYVE_DATA, "Too few \"%s\" instances."
 #define LY_VCODE_NOMAX          LYVE_DATA, "Too many \"%s\" instances."
 #define LY_VCODE_NOUNIQ         LYVE_DATA, "Unique data leaf(s) \"%s\" not satisfied in \"%s\" and \"%s\"."
+#define LY_VCODE_DUP            LYVE_DATA, "Duplicate instance of \"%s\"."
+#define LY_VCODE_DUPCASE        LYVE_DATA, "Data for both cases \"%s\" and \"%s\" exist."
 
 /******************************************************************************
  * Context

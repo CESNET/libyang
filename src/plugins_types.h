@@ -145,8 +145,7 @@ void ly_err_free(void *ptr);
  * @param[in] context_node The @p value's node for the case that the require-instance restriction is supposed to be resolved.
  *            This argument is a lys_node (in case LY_TYPE_OPTS_INCOMPLETE_DATA or LY_TYPE_OPTS_SCHEMA set in @p options)
  *            or lyd_node structure.
- * @param[in] trees ([Sized array](@ref sizedarrays)) of external data trees (e.g. when validating RPC/Notification)
- *            where the required data instance can be placed.
+ * @param[in] tree External data tree (e.g. when validating RPC/Notification) where the required data instance can be placed.
  * @param[in,out] storage If LY_TYPE_OPTS_STORE option set, the parsed data are stored into this structure in the type's specific way.
  *             If the @p canonized differs from the storage's canonized member, the canonized value is also stored here despite the
  *             LY_TYPE_OPTS_CANONIZE option.
@@ -161,7 +160,7 @@ void ly_err_free(void *ptr);
  */
 typedef LY_ERR (*ly_type_store_clb)(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
                                     ly_clb_resolve_prefix resolve_prefix, void *parser, LYD_FORMAT format,
-                                    const void *context_node, const struct lyd_node **trees,
+                                    const void *context_node, const struct lyd_node *tree,
                                     struct lyd_value *storage, const char **canonized, struct ly_err_item **err);
 
 /**
@@ -335,7 +334,7 @@ LY_ERR ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str
  *            It is never NULL, empty string is represented as "" with zero @p value_len.
  * @param[in] value_len Length (number of bytes) of the given \p value.
  * @param[in] context_node The @p value's node for the case that the require-instance restriction is supposed to be resolved.
- * @param[in] trees ([Sized array](@ref sizedarrays)) of external data trees (e.g. when validating RPC/Notification) where the required data
+ * @param[in] tree External data tree (e.g. when validating RPC/Notification) where the required data
  *            instance can be placed.
  *
  * @param[in] storage Parsed @p value.
@@ -343,7 +342,7 @@ LY_ERR ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str
  * @return Leafref target node or NULL on error when @p errmsg is always set.
  */
 const struct lyd_node *ly_type_find_leafref(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len,
-                                            const struct lyd_node *context_node, const struct lyd_node **trees,
+                                            const struct lyd_node *context_node, const struct lyd_node *tree,
                                             struct lyd_value *storage, char **errmsg);
 
 /**

@@ -20,8 +20,11 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "tests/config.h"
+
 #include "../../src/context.h"
 #include "../../src/tree_data_internal.h"
+#include "../../src/printer_data.h"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
@@ -177,16 +180,127 @@ setup(void **state)
                 "}"
             "}"
         "}";
+    const char *schema_e =
+        "module e {"
+            "namespace urn:tests:e;"
+            "prefix e;"
+            "yang-version 1.1;"
+
+            "choice choic {"
+                "leaf a {"
+                    "type string;"
+                "}"
+                "case b {"
+                    "leaf-list l {"
+                        "type string;"
+                    "}"
+                "}"
+            "}"
+            "list lt {"
+                "key \"k\";"
+                "leaf k {"
+                    "type string;"
+                "}"
+            "}"
+            "leaf d {"
+                "type uint32;"
+            "}"
+            "leaf-list ll {"
+                "type string;"
+            "}"
+            "container cont {"
+                "list lt {"
+                    "key \"k\";"
+                    "leaf k {"
+                        "type string;"
+                    "}"
+                "}"
+                "leaf d {"
+                    "type uint32;"
+                "}"
+                "leaf-list ll {"
+                    "type string;"
+                "}"
+            "}"
+        "}";
+    const char *schema_f =
+        "module f {"
+            "namespace urn:tests:f;"
+            "prefix f;"
+            "yang-version 1.1;"
+
+            "choice choic {"
+                "default \"c\";"
+                "leaf a {"
+                    "type string;"
+                "}"
+                "case b {"
+                    "leaf l {"
+                        "type string;"
+                    "}"
+                "}"
+                "case c {"
+                    "leaf-list ll1 {"
+                        "type string;"
+                        "default \"def1\";"
+                        "default \"def2\";"
+                        "default \"def3\";"
+                    "}"
+                "}"
+            "}"
+            "leaf d {"
+                "type uint32;"
+                "default 15;"
+            "}"
+            "leaf-list ll2 {"
+                "type string;"
+                "default \"dflt1\";"
+                "default \"dflt2\";"
+            "}"
+            "container cont {"
+                "choice choic {"
+                    "default \"c\";"
+                    "leaf a {"
+                        "type string;"
+                    "}"
+                    "case b {"
+                        "leaf l {"
+                            "type string;"
+                        "}"
+                    "}"
+                    "case c {"
+                        "leaf-list ll1 {"
+                            "type string;"
+                            "default \"def1\";"
+                            "default \"def2\";"
+                            "default \"def3\";"
+                        "}"
+                    "}"
+                "}"
+                "leaf d {"
+                    "type uint32;"
+                    "default 15;"
+                "}"
+                "leaf-list ll2 {"
+                    "type string;"
+                    "default \"dflt1\";"
+                    "default \"dflt2\";"
+                "}"
+            "}"
+        "}";
 
 #if ENABLE_LOGGER_CHECKING
     ly_set_log_clb(logger, 1);
 #endif
 
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_DIR_MODULES_YANG, 0, &ctx));
+    assert_non_null(ly_ctx_load_module(ctx, "ietf-netconf-with-defaults", "2011-06-01"));
     assert_non_null(lys_parse_mem(ctx, schema_a, LYS_IN_YANG));
     assert_non_null(lys_parse_mem(ctx, schema_b, LYS_IN_YANG));
     assert_non_null(lys_parse_mem(ctx, schema_c, LYS_IN_YANG));
     assert_non_null(lys_parse_mem(ctx, schema_d, LYS_IN_YANG));
+    assert_non_null(lys_parse_mem(ctx, schema_e, LYS_IN_YANG));
+    assert_non_null(lys_parse_mem(ctx, schema_f, LYS_IN_YANG));
 
     return 0;
 }
@@ -285,7 +399,7 @@ test_mandatory(void **state)
     data = "<a xmlns=\"urn:tests:b\">string</a><c xmlns=\"urn:tests:b\">string2</c>";
     assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
     assert_non_null(tree);
-    lyd_free_withsiblings(tree);
+    lyd_free_siblings(tree);
 
     *state = NULL;
 }
@@ -316,7 +430,7 @@ test_minmax(void **state)
     "<l xmlns=\"urn:tests:c\">val3</l>";
     assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
     assert_non_null(tree);
-    lyd_free_withsiblings(tree);
+    lyd_free_siblings(tree);
 
     data =
     "<l xmlns=\"urn:tests:c\">val1</l>"
@@ -352,7 +466,7 @@ test_unique(void **state)
     "</lt>";
     assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
     assert_non_null(tree);
-    lyd_free_withsiblings(tree);
+    lyd_free_siblings(tree);
 
     data =
     "<lt xmlns=\"urn:tests:d\">"
@@ -365,7 +479,7 @@ test_unique(void **state)
     "</lt>";
     assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
     assert_non_null(tree);
-    lyd_free_withsiblings(tree);
+    lyd_free_siblings(tree);
 
     data =
     "<lt xmlns=\"urn:tests:d\">"
@@ -416,7 +530,7 @@ test_unique(void **state)
     "</lt>";
     assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
     assert_non_null(tree);
-    lyd_free_withsiblings(tree);
+    lyd_free_siblings(tree);
 
     data =
     "<lt xmlns=\"urn:tests:d\">"
@@ -450,7 +564,7 @@ test_unique(void **state)
     "</lt>";
     assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
     assert_non_null(tree);
-    lyd_free_withsiblings(tree);
+    lyd_free_siblings(tree);
 
     data =
     "<lt xmlns=\"urn:tests:d\">"
@@ -556,7 +670,7 @@ test_unique_nested(void **state)
     "</lt2>";
     assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY | LYD_OPT_STRICT, &tree));
     assert_non_null(tree);
-    lyd_free_withsiblings(tree);
+    lyd_free_siblings(tree);
 
     data =
     "<lt2 xmlns=\"urn:tests:d\">"
@@ -711,6 +825,193 @@ test_unique_nested(void **state)
     *state = NULL;
 }
 
+static void
+test_dup(void **state)
+{
+    *state = test_dup;
+
+    const char *data;
+    struct lyd_node *tree;
+
+    data = "<d xmlns=\"urn:tests:e\">25</d><d xmlns=\"urn:tests:e\">50</d>";
+    assert_int_equal(LY_EVALID, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_null(tree);
+    logbuf_assert("Duplicate instance of \"d\". /e:d");
+
+    data = "<lt xmlns=\"urn:tests:e\"><k>A</k></lt><lt xmlns=\"urn:tests:e\"><k>B</k></lt><lt xmlns=\"urn:tests:e\"><k>A</k></lt>";
+    assert_int_equal(LY_EVALID, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_null(tree);
+    logbuf_assert("Duplicate instance of \"lt\". /e:lt[k='A']");
+
+    data = "<ll xmlns=\"urn:tests:e\">A</ll><ll xmlns=\"urn:tests:e\">B</ll><ll xmlns=\"urn:tests:e\">B</ll>";
+    assert_int_equal(LY_EVALID, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_null(tree);
+    logbuf_assert("Duplicate instance of \"ll\". /e:ll[.='B']");
+
+    data = "<cont xmlns=\"urn:tests:e\"></cont><cont xmlns=\"urn:tests:e\"/>";
+    assert_int_equal(LY_EVALID, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_null(tree);
+    logbuf_assert("Duplicate instance of \"cont\". /e:cont");
+
+    /* same tests again but using hashes */
+    data = "<cont xmlns=\"urn:tests:e\"><d>25</d><d>50</d><ll>1</ll><ll>2</ll><ll>3</ll><ll>4</ll></cont>";
+    assert_int_equal(LY_EVALID, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_null(tree);
+    logbuf_assert("Duplicate instance of \"d\". /e:cont/d");
+
+    data = "<cont xmlns=\"urn:tests:e\"><ll>1</ll><ll>2</ll><ll>3</ll><ll>4</ll>"
+        "<lt><k>a</k></lt><lt><k>b</k></lt><lt><k>c</k></lt><lt><k>d</k></lt><lt><k>c</k></lt></cont>";
+    assert_int_equal(LY_EVALID, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_null(tree);
+    logbuf_assert("Duplicate instance of \"lt\". /e:cont/lt[k='c']");
+
+    data = "<cont xmlns=\"urn:tests:e\"><ll>1</ll><ll>2</ll><ll>3</ll><ll>4</ll>"
+        "<ll>a</ll><ll>b</ll><ll>c</ll><ll>d</ll><ll>d</ll></cont>";
+    assert_int_equal(LY_EVALID, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_null(tree);
+    logbuf_assert("Duplicate instance of \"ll\". /e:cont/ll[.='d']");
+
+    /* cases */
+    data = "<l xmlns=\"urn:tests:e\">a</l><l xmlns=\"urn:tests:e\">b</l><l xmlns=\"urn:tests:e\">c</l><l xmlns=\"urn:tests:e\">b</l>";
+    assert_int_equal(LY_EVALID, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_null(tree);
+    logbuf_assert("Duplicate instance of \"l\". /e:l[.='b']");
+
+    data = "<l xmlns=\"urn:tests:e\">a</l><l xmlns=\"urn:tests:e\">b</l><l xmlns=\"urn:tests:e\">c</l><a xmlns=\"urn:tests:e\">aa</a>";
+    assert_int_equal(LY_EVALID, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_null(tree);
+    logbuf_assert("Data for both cases \"a\" and \"b\" exist. /e:choic");
+
+    *state = NULL;
+}
+
+static void
+test_defaults(void **state)
+{
+    *state = test_defaults;
+
+    const char *data;
+    char *str;
+    struct lyd_node *tree, *node;
+    const struct lys_module *mod = ly_ctx_get_module_latest(ctx, "f");
+
+    data = "<cont xmlns=\"urn:tests:f\"/>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_non_null(tree);
+
+    /* check all defaults exist */
+    lyd_print_mem(&str, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG);
+    assert_string_equal(str,
+        "<cont xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
+            "<ll1 ncwd:default=\"true\">def1</ll1>"
+            "<ll1 ncwd:default=\"true\">def2</ll1>"
+            "<ll1 ncwd:default=\"true\">def3</ll1>"
+            "<d ncwd:default=\"true\">15</d>"
+            "<ll2 ncwd:default=\"true\">dflt1</ll2>"
+            "<ll2 ncwd:default=\"true\">dflt2</ll2>"
+        "</cont>"
+        "<ll1 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def1</ll1>"
+        "<ll1 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def2</ll1>"
+        "<ll1 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def3</ll1>"
+        "<d xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">15</d>"
+        "<ll2 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt1</ll2>"
+        "<ll2 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt2</ll2>");
+    free(str);
+
+    /* create another explicit case and validate */
+    node = lyd_new_term(NULL, mod, "l", "value");
+    assert_non_null(node);
+    assert_int_equal(lyd_insert_after(tree->prev, node), LY_SUCCESS);
+    assert_int_equal(lyd_validate(ctx, &tree, LYD_VALOPT_DATA_ONLY), LY_SUCCESS);
+
+    /* check data tree */
+    lyd_print_mem(&str, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG);
+    assert_string_equal(str,
+        "<cont xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
+            "<ll1 ncwd:default=\"true\">def1</ll1>"
+            "<ll1 ncwd:default=\"true\">def2</ll1>"
+            "<ll1 ncwd:default=\"true\">def3</ll1>"
+            "<d ncwd:default=\"true\">15</d>"
+            "<ll2 ncwd:default=\"true\">dflt1</ll2>"
+            "<ll2 ncwd:default=\"true\">dflt2</ll2>"
+        "</cont>"
+        "<d xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">15</d>"
+        "<ll2 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt1</ll2>"
+        "<ll2 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt2</ll2>"
+        "<l xmlns=\"urn:tests:f\">value</l>");
+    free(str);
+
+    /* create explicit leaf-list and leaf and validate */
+    node = lyd_new_term(NULL, mod, "d", "15");
+    assert_non_null(node);
+    assert_int_equal(lyd_insert_after(tree->prev, node), LY_SUCCESS);
+    node = lyd_new_term(NULL, mod, "ll2", "dflt2");
+    assert_non_null(node);
+    assert_int_equal(lyd_insert_after(tree->prev, node), LY_SUCCESS);
+    assert_int_equal(lyd_validate(ctx, &tree, LYD_VALOPT_DATA_ONLY), LY_SUCCESS);
+
+    /* check data tree */
+    lyd_print_mem(&str, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG);
+    assert_string_equal(str,
+        "<cont xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
+            "<ll1 ncwd:default=\"true\">def1</ll1>"
+            "<ll1 ncwd:default=\"true\">def2</ll1>"
+            "<ll1 ncwd:default=\"true\">def3</ll1>"
+            "<d ncwd:default=\"true\">15</d>"
+            "<ll2 ncwd:default=\"true\">dflt1</ll2>"
+            "<ll2 ncwd:default=\"true\">dflt2</ll2>"
+        "</cont>"
+        "<l xmlns=\"urn:tests:f\">value</l>"
+        "<d xmlns=\"urn:tests:f\">15</d>"
+        "<ll2 xmlns=\"urn:tests:f\">dflt2</ll2>");
+    free(str);
+
+//     /* create explicit container, which automatically becomes implicit */
+//     node = lyd_new_inner(NULL, mod, "cont");
+//     assert_non_null(node);
+//     assert_int_equal(lyd_insert_after(tree->prev, node), LY_SUCCESS);
+//     assert_int_equal(lyd_validate(ctx, &tree, LYD_VALOPT_DATA_ONLY), LY_SUCCESS);
+//
+//     /* check data tree */
+//     lyd_print_mem(&str, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG);
+//     assert_string_equal(str,
+//         "<cont xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
+//             "<ll1 ncwd:default=\"true\">def1</ll1>"
+//             "<ll1 ncwd:default=\"true\">def2</ll1>"
+//             "<ll1 ncwd:default=\"true\">def3</ll1>"
+//             "<d ncwd:default=\"true\">15</d>"
+//             "<ll2 ncwd:default=\"true\">dflt1</ll2>"
+//             "<ll2 ncwd:default=\"true\">dflt2</ll2>"
+//         "</cont>"
+//         "<l xmlns=\"urn:tests:f\">value</l>"
+//         "<d xmlns=\"urn:tests:f\">15</d>"
+//         "<ll2 xmlns=\"urn:tests:f\">dflt2</ll2>");
+//     free(str);
+
+    /* similar changes for nested defaults */
+    assert_non_null(lyd_new_term(tree, NULL, "ll1", "def3"));
+    assert_non_null(lyd_new_term(tree, NULL, "d", "5"));
+    assert_non_null(lyd_new_term(tree, NULL, "ll2", "non-dflt"));
+    assert_int_equal(lyd_validate(ctx, &tree, LYD_VALOPT_DATA_ONLY), LY_SUCCESS);
+
+    /* check data tree */
+    lyd_print_mem(&str, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG);
+    assert_string_equal(str,
+        "<cont xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
+            "<ll1>def3</ll1>"
+            "<d>5</d>"
+            "<ll2>non-dflt</ll2>"
+        "</cont>"
+        "<l xmlns=\"urn:tests:f\">value</l>"
+        "<d xmlns=\"urn:tests:f\">15</d>"
+        "<ll2 xmlns=\"urn:tests:f\">dflt2</ll2>");
+    free(str);
+
+    lyd_free_siblings(tree);
+
+    *state = NULL;
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -719,6 +1020,8 @@ int main(void)
         cmocka_unit_test_teardown(test_minmax, teardown_s),
         cmocka_unit_test_teardown(test_unique, teardown_s),
         cmocka_unit_test_teardown(test_unique_nested, teardown_s),
+        cmocka_unit_test_teardown(test_dup, teardown_s),
+        cmocka_unit_test_teardown(test_defaults, teardown_s),
     };
 
     return cmocka_run_group_tests(tests, setup, teardown);

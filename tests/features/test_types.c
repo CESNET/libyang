@@ -785,7 +785,6 @@ test_instanceid(void **state)
     s->func = test_instanceid;
 
     struct lyd_node *tree;
-    const struct lyd_node **trees;
     const struct lyd_node_term *leaf;
     struct lyd_value value = {0};
 
@@ -926,16 +925,14 @@ test_instanceid(void **state)
            "<list2 xmlns=\"urn:tests:types\"><id>a</id><value>b</value></list2>"
            "<a:inst xmlns:a=\"urn:tests:types\">/a:list2[a:id='a'][a:value='b']/a:id</a:inst>";
     assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
-    tree = tree->prev->prev;
-    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
-    assert_string_equal("inst", tree->schema->name);
-    leaf = (const struct lyd_node_term*)tree;
+    leaf = (const struct lyd_node_term*)tree->prev->prev;
+    assert_int_equal(LYS_LEAF, leaf->schema->nodetype);
+    assert_string_equal("inst", leaf->schema->name);
     assert_null(leaf->value.canonical_cache);
-    trees = lyd_trees_new(1, tree);
-    assert_non_null(leaf = lyd_target(leaf->value.target, trees));
+    assert_non_null(leaf = lyd_target(leaf->value.target, tree));
     assert_string_equal("a", leaf->value.canonical_cache);
     assert_string_equal("b", ((struct lyd_node_term*)leaf->next)->value.canonical_cache);
-    lyd_trees_free(trees, 1);
+    lyd_free_all(tree);
 
     /* invalid value */
     data =  "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:1leaftarget</t:inst>";
@@ -1079,31 +1076,30 @@ test_instanceid(void **state)
            "<leaflisttarget xmlns=\"urn:tests:types\">b</leaflisttarget>"
            "<a:inst xmlns:a=\"urn:tests:types\">/a:list2[a:id='a'][a:value='a']/a:id</a:inst>";
     assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
-    trees = lyd_trees_new(1, tree);
     /* key-predicate */
     data = "/a:list2[a:id='a'][a:value='b']/a:id";
     assert_int_equal(LY_EVALID, lyd_value_validate(s->ctx, (const struct lyd_node_term*)tree->prev->prev, data, strlen(data),
-                                                   test_instanceid_getprefix, tree->schema->module, LYD_XML, trees));
+                                                   test_instanceid_getprefix, tree->schema->module, LYD_XML, tree));
     logbuf_assert("Invalid instance-identifier \"/a:list2[a:id='a'][a:value='b']/a:id\" value - "
                   "key-predicate \"[a:id='a'][a:value='b']\" does not match any \"list2\" instance. /");
     /* leaf-list-predicate */
     data = "/a:leaflisttarget[.='c']";
     assert_int_equal(LY_EVALID, lyd_value_validate(s->ctx, (const struct lyd_node_term*)tree->prev->prev, data, strlen(data),
-                                                   test_instanceid_getprefix, tree->schema->module, LYD_XML, trees));
+                                                   test_instanceid_getprefix, tree->schema->module, LYD_XML, tree));
     logbuf_assert("Invalid instance-identifier \"/a:leaflisttarget[.='c']\" value - "
                   "leaf-list-predicate \"[.='c']\" does not match any \"leaflisttarget\" instance. /");
     /* position predicate */
     data = "/a:list2[4]";
     assert_int_equal(LY_EVALID, lyd_value_validate(s->ctx, (const struct lyd_node_term*)tree->prev->prev, data, strlen(data),
-                                                   test_instanceid_getprefix, tree->schema->module, LYD_XML, trees));
+                                                   test_instanceid_getprefix, tree->schema->module, LYD_XML, tree));
     logbuf_assert("Invalid instance-identifier \"/a:list2[4]\" value - "
                   "position-predicate 4 is bigger than number of instances in the data tree (2). /");
-    lyd_trees_free(trees, 1);
 
     data = "<leaflisttarget xmlns=\"urn:tests:types\">b</leaflisttarget>"
            "<inst xmlns=\"urn:tests:types\">/a:leaflisttarget[1]</inst>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
     logbuf_assert("Invalid instance-identifier \"/a:leaflisttarget[1]\" value - unable to map prefix \"a\" to YANG schema. /");
+    lyd_free_siblings(tree);
 
     s->func = NULL;
 }
@@ -1249,12 +1245,12 @@ test_union(void **state)
      * }
      */
 
-    const char *data = "<int8 xmlns=\"urn:tests:types\">11</int8><int8 xmlns=\"urn:tests:types\">12</int8>"
+    const char *data = "<int8 xmlns=\"urn:tests:types\">12</int8>"
             "<un1 xmlns=\"urn:tests:types\">12</un1>";
 
     /* valid data */
     assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
-    tree = tree->prev->prev;
+    tree = tree->next;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("un1", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
@@ -1279,10 +1275,10 @@ test_union(void **state)
     value.realtype->plugin->free(s->ctx, &value);
     lyd_free_all(tree);
 
-    data = "<int8 xmlns=\"urn:tests:types\">11</int8><int8 xmlns=\"urn:tests:types\">12</int8>"
+    data = "<int8 xmlns=\"urn:tests:types\">12</int8>"
            "<un1 xmlns=\"urn:tests:types\">2</un1>";
     assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
-    tree = tree->prev->prev;
+    tree = tree->next;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("un1", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;

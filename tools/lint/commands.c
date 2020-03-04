@@ -545,7 +545,7 @@ detect_data_format(char *filepath)
 }
 
 static int
-parse_data(char *filepath, int *options, const struct lyd_node **trees, const char *rpc_act_file,
+parse_data(char *filepath, int *options, const struct lyd_node *tree, const char *rpc_act_file,
            struct lyd_node **result)
 {
     LYD_FORMAT informat = LYD_UNKNOWN;
@@ -696,8 +696,8 @@ cmd_data(const char *arg)
     int options = 0, printopt = 0;
     char **argv = NULL, *ptr;
     const char *out_path = NULL;
-    struct lyd_node *data = NULL, *val_tree = NULL;
-    const struct lyd_node **trees = NULL;
+    struct lyd_node *data = NULL;
+    struct lyd_node *tree = NULL;
     LYD_FORMAT outformat = LYD_UNKNOWN;
     FILE *output = stdout;
     static struct option long_options[] = {
@@ -829,7 +829,7 @@ cmd_data(const char *arg)
         goto cleanup;
     }
 
-    if (parse_data(argv[optind], &options, trees, argv[optind + 1], &data)) {
+    if (parse_data(argv[optind], &options, tree, argv[optind + 1], &data)) {
         goto cleanup;
     }
 
@@ -855,7 +855,6 @@ cleanup:
         fclose(output);
     }
 
-    lyd_trees_free(trees, 1);
     lyd_free_all(data);
 
     return ret;

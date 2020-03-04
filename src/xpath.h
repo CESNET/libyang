@@ -251,7 +251,7 @@ struct lyxp_set {
     };
     enum lyxp_node_type root_type;
     const struct lys_module *local_mod;
-    const struct lyd_node **trees;
+    const struct lyd_node *tree;
     LYD_FORMAT format;
 };
 
@@ -268,7 +268,7 @@ struct lyxp_set {
  * this case just pass NULL for @p ctx_node and use an enum value for this kind of root (#LYXP_NODE_ROOT_CONFIG if
  * @p ctx_node has config true, otherwise #LYXP_NODE_ROOT). #LYXP_NODE_TEXT and #LYXP_NODE_ATTR can also be used,
  * but there are no use-cases in YANG.
- * @param[in] trees Data trees on which to perform the evaluation, they must include all the available tree (including
+ * @param[in] tree Data tree on which to perform the evaluation, it must include all the available data (including
  * the tree of @p ctx_node).
  * @param[out] set Result set. Must be valid and in the same libyang context as @p ctx_node.
  * To be safe, always either zero or cast the @p set to empty. After done using, either cast
@@ -279,7 +279,7 @@ struct lyxp_set {
  * LY_EINCOMPLETE for unresolved when).
  */
 LY_ERR lyxp_eval(struct lyxp_expr *exp, LYD_FORMAT format, const struct lys_module *local_mod, const struct lyd_node *ctx_node,
-                 enum lyxp_node_type ctx_node_type, const struct lyd_node **trees, struct lyxp_set *set, int options);
+                 enum lyxp_node_type ctx_node_type, const struct lyd_node *tree, struct lyxp_set *set, int options);
 
 #define LYXP_SCHEMA 0x01 /**< Apply data node access restrictions defined for 'when' and 'must' evaluation. */
 

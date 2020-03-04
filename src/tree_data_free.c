@@ -42,54 +42,6 @@ lyd_value_free_path(struct ly_ctx *ctx, struct lyd_value_path *path)
     LY_ARRAY_FREE(path);
 }
 
-API LY_ERR
-lyd_unlink_tree(struct lyd_node *node)
-{
-    struct lyd_node *iter;
-    struct lyd_node **first_sibling;
-
-    LY_CHECK_ARG_RET(NULL, node, LY_EINVAL);
-
-    if (node->parent) {
-        first_sibling = lyd_node_children_p((struct lyd_node*)node->parent);
-    }
-
-    /* unlink from siblings */
-    if (node->prev->next) {
-        node->prev->next = node->next;
-    }
-    if (node->next) {
-        node->next->prev = node->prev;
-    } else {
-        /* unlinking the last node */
-        if (node->parent) {
-            iter = *first_sibling;
-        } else {
-            iter = node->prev;
-            while (iter->prev != node) {
-                iter = iter->prev;
-            }
-        }
-        /* update the "last" pointer from the first node */
-        iter->prev = node->prev;
-    }
-
-    /* unlink from parent */
-    if (node->parent) {
-        if (*first_sibling == node) {
-            /* the node is the first child */
-            *first_sibling = node->next;
-        }
-        lyd_unlink_hash(node);
-        node->parent = NULL;
-    }
-
-    node->next = NULL;
-    node->prev = node;
-
-    return EXIT_SUCCESS;
-}
-
 API void
 lyd_free_attr(struct ly_ctx *ctx, struct lyd_attr *attr, int recursive)
 {
@@ -222,7 +174,7 @@ lyd_free_(struct lyd_node *node, int top)
 }
 
 API void
-lyd_free_withsiblings(struct lyd_node *node)
+lyd_free_siblings(struct lyd_node *node)
 {
     lyd_free_(node, 0);
 }

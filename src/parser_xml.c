@@ -450,7 +450,7 @@ cleanup:
     }
     ly_set_erase(&attrs_data, free);
     if (ret && *node) {
-        lyd_free_withsiblings(*node);
+        lyd_free_siblings(*node);
         *node = NULL;
     }
     return ret;
@@ -460,7 +460,6 @@ LY_ERR
 lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, struct lyd_node **result)
 {
     LY_ERR ret = LY_SUCCESS;
-    const struct lyd_node **result_trees = NULL;
     struct lyd_xml_ctx xmlctx = {0};
 
     xmlctx.options = options;
@@ -478,19 +477,14 @@ lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, struct lyd_node
         ret = lyd_validate_defaults_top(result, NULL, 0, ctx, &xmlctx.incomplete_type_validation, &xmlctx.when_check, options);
         LY_CHECK_GOTO(ret, cleanup);
 
-        /* prepare sized array for validator */
-        if (*result) {
-            result_trees = lyd_trees_new(1, *result);
-        }
-
         /* finish incompletely validated terminal values/attributes and when conditions */
         ret = lyd_validate_unres(&xmlctx.incomplete_type_validation, &xmlctx.incomplete_type_validation_attrs,
-                                 &xmlctx.when_check, LYD_XML, lydxml_resolve_prefix, ctx, result_trees);
+                                 &xmlctx.when_check, LYD_XML, lydxml_resolve_prefix, ctx, *result);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* context node and other validation tasks that depend on other data nodes */
-        ret = lyd_validate_data(result_trees, NULL, 0, ctx, options);
-        LY_CHECK_GOTO(result, cleanup);
+        ret = lyd_validate_data(result, NULL, 0, ctx, options);
+        LY_CHECK_GOTO(ret, cleanup);
     }
 
 cleanup:
@@ -502,7 +496,6 @@ cleanup:
     ly_set_erase(&xmlctx.incomplete_type_validation_attrs, NULL);
     ly_set_erase(&xmlctx.when_check, NULL);
     lyxml_context_clear((struct lyxml_context *)&xmlctx);
-    lyd_trees_free(result_trees, 0);
     if (ret) {
         lyd_free_all(*result);
         *result = NULL;
