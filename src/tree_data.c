@@ -819,6 +819,8 @@ lyd_get_prev_key_anchor(const struct lyd_node *first_sibling, const struct lysc_
 static void
 lyd_insert_after_node(struct lyd_node *sibling, struct lyd_node *node)
 {
+    struct lyd_node_inner *par;
+
     assert(!node->next && (node->prev == node));
 
     node->next = sibling->next;
@@ -837,6 +839,16 @@ lyd_insert_after_node(struct lyd_node *sibling, struct lyd_node *node)
         sibling->prev = node;
     }
     node->parent = sibling->parent;
+
+    if (!(node->flags & LYD_DEFAULT)) {
+        /* remove default flags from NP containers */
+        for (par = node->parent; par && (par->flags & LYD_DEFAULT); par = par->parent) {
+            par->flags &= ~LYD_DEFAULT;
+        }
+    }
+
+    /* insert into hash table */
+    lyd_insert_hash(node);
 }
 
 /**
@@ -848,6 +860,8 @@ lyd_insert_after_node(struct lyd_node *sibling, struct lyd_node *node)
 static void
 lyd_insert_before_node(struct lyd_node *sibling, struct lyd_node *node)
 {
+    struct lyd_node_inner *par;
+
     assert(!node->next && (node->prev == node));
 
     node->next = sibling;
@@ -862,6 +876,16 @@ lyd_insert_before_node(struct lyd_node *sibling, struct lyd_node *node)
         sibling->parent->child = node;
     }
     node->parent = sibling->parent;
+
+    if (!(node->flags & LYD_DEFAULT)) {
+        /* remove default flags from NP containers */
+        for (par = node->parent; par && (par->flags & LYD_DEFAULT); par = par->parent) {
+            par->flags &= ~LYD_DEFAULT;
+        }
+    }
+
+    /* insert into hash table */
+    lyd_insert_hash(node);
 }
 
 /**
@@ -875,7 +899,7 @@ lyd_insert_last_node(struct lyd_node *parent, struct lyd_node *node)
 {
     struct lyd_node_inner *par;
 
-    assert(!node->next && (node->prev == node));
+    assert(parent && !node->next && (node->prev == node));
     assert(parent->schema->nodetype & LYD_NODE_INNER);
 
     par = (struct lyd_node_inner *)parent;
@@ -888,6 +912,16 @@ lyd_insert_last_node(struct lyd_node *parent, struct lyd_node *node)
         par->child->prev = node;
     }
     node->parent = par;
+
+    if (!(node->flags & LYD_DEFAULT)) {
+        /* remove default flags from NP containers */
+        for (; par && (par->flags & LYD_DEFAULT); par = par->parent) {
+            par->flags &= ~LYD_DEFAULT;
+        }
+    }
+
+    /* insert into hash table */
+    lyd_insert_hash(node);
 }
 
 void
@@ -934,17 +968,6 @@ lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling, struct
         /* the only sibling */
         *first_sibling = node;
     }
-
-    if (!(node->flags & LYD_DEFAULT)) {
-        /* remove default flags from NP containers */
-        while (parent && (parent->flags & LYD_DEFAULT)) {
-            parent->flags &= ~LYD_DEFAULT;
-            parent = (struct lyd_node *)parent->parent;
-        }
-    }
-
-    /* insert into hash table */
-    lyd_insert_hash(node);
 }
 
 static LY_ERR
@@ -1033,6 +1056,54 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node)
     return LY_SUCCESS;
 }
 
+static LY_ERR
+lyd_insert_after_check_place(struct lyd_node *anchor, struct lyd_node *sibling, struct lyd_node *node)
+{
+    if (sibling->parent) {
+        /* nested, we do not care for the order */
+        return LY_SUCCESS;
+    }
+
+    if (anchor) {
+        if (anchor->next && (lyd_top_node_module(anchor) == lyd_top_node_module(anchor->next))
+                && (lyd_top_node_module(node) != lyd_top_node_module(anchor))) {
+            LOGERR(sibling->schema->module->ctx, LY_EINVAL, "Cannot insert top-level module \"%s\" data into module \"%s\" data.",
+                   lyd_top_node_module(node)->name, lyd_top_node_module(anchor)->name);
+            return LY_EINVAL;
+        }
+
+        if ((lyd_top_node_module(node) == lyd_top_node_module(anchor))
+                || (anchor->next && (lyd_top_node_module(node) == lyd_top_node_module(anchor->next)))) {
+            /* inserting before/after its module data */
+            return LY_SUCCESS;
+        }
+    }
+
+    /* find first sibling */
+    while (sibling->prev->next) {
+        sibling = sibling->prev;
+    }
+
+    if (!anchor) {
+        if (lyd_top_node_module(node) == lyd_top_node_module(sibling)) {
+            /* inserting before its module data */
+            return LY_SUCCESS;
+        }
+    }
+
+    /* check there are no data of this module */
+    LY_LIST_FOR(sibling, sibling) {
+        if (lyd_top_node_module(node) == lyd_top_node_module(sibling)) {
+            /* some data of this module found */
+            LOGERR(sibling->schema->module->ctx, LY_EINVAL, "Top-level data of module \"%s\" already exist,"
+                   " they must be directly connected.", lyd_top_node_module(node)->name);
+            return LY_EINVAL;
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
 API LY_ERR
 lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node)
 {
@@ -1049,6 +1120,8 @@ lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node)
         LOGERR(sibling->schema->module->ctx, LY_EINVAL, "Cannot insert into keys.");
         return LY_EINVAL;
     }
+
+    LY_CHECK_RET(lyd_insert_after_check_place(sibling->prev->next ? sibling->prev : NULL, sibling, node));
 
     if (node->parent || node->prev->next) {
         lyd_unlink_tree(node);
@@ -1085,6 +1158,8 @@ lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node)
         LOGERR(sibling->schema->module->ctx, LY_EINVAL, "Cannot insert into keys.");
         return LY_EINVAL;
     }
+
+    LY_CHECK_RET(lyd_insert_after_check_place(sibling, sibling, node));
 
     if (node->parent || node->prev->next) {
         lyd_unlink_tree(node);
