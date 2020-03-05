@@ -209,7 +209,7 @@ cleanup:
  * @return LY_ERR value.
  */
 static LY_ERR
-lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char **data, struct lyd_node **node)
+lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char **data, struct lyd_node **first)
 {
     LY_ERR ret = LY_SUCCESS;
     const char *prefix, *name;
@@ -344,8 +344,12 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
             }
 
             if (!(ctx->options & LYD_OPT_PARSE_ONLY)) {
+                /* new node validation, autodelete CANNOT occur, all nodes are new */
+                ret = lyd_validate_new(lyd_node_children_p(cur), snode, NULL);
+                LY_CHECK_GOTO(ret, cleanup);
+
                 /* add any missing default children */
-                ret = lyd_validate_defaults_r((struct lyd_node_inner *)cur, lyd_node_children_p(cur), cur->schema, NULL,
+                ret = lyd_validate_defaults_r((struct lyd_node_inner *)cur, lyd_node_children_p(cur), NULL, NULL,
                                               &ctx->incomplete_type_validation, &ctx->when_check);
                 LY_CHECK_GOTO(ret, cleanup);
             }
@@ -431,7 +435,7 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
         attr = NULL;
 
         /* insert */
-        lyd_insert_node((struct lyd_node *)parent, node, cur);
+        lyd_insert_node((struct lyd_node *)parent, first, cur);
 
         cur = NULL;
     }
@@ -449,42 +453,68 @@ cleanup:
         }
     }
     ly_set_erase(&attrs_data, free);
-    if (ret && *node) {
-        lyd_free_siblings(*node);
-        *node = NULL;
+    if (ret && *first) {
+        lyd_free_siblings(*first);
+        *first = NULL;
     }
     return ret;
 }
 
 LY_ERR
-lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, struct lyd_node **result)
+lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, struct lyd_node **tree)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_xml_ctx xmlctx = {0};
+    uint32_t i = 0;
+    const struct lys_module *mod;
+    struct lyd_node *first, *next, **first2;
 
     xmlctx.options = options;
     xmlctx.ctx = ctx;
     xmlctx.line = 1;
 
     /* init */
-    *result = NULL;
+    *tree = NULL;
 
-    ret = lydxml_nodes(&xmlctx, NULL, &data, result);
+    /* parse XML data */
+    ret = lydxml_nodes(&xmlctx, NULL, &data, tree);
     LY_CHECK_GOTO(ret, cleanup);
 
     if (!(options & LYD_OPT_PARSE_ONLY)) {
-        /* add top-level default nodes */
-        ret = lyd_validate_defaults_top(result, NULL, 0, ctx, &xmlctx.incomplete_type_validation, &xmlctx.when_check, options);
-        LY_CHECK_GOTO(ret, cleanup);
+        next = *tree;
+        while (1) {
+            if (options & LYD_VALOPT_DATA_ONLY) {
+                mod = lyd_data_next_module(&next, &first);
+            } else {
+                mod = lyd_mod_next_module(next, NULL, 0, ctx, &i, &first);
+            }
+            if (!mod) {
+                break;
+            }
+            if (first == *tree) {
+                /* make sure first2 changes are carried to tree */
+                first2 = tree;
+            } else {
+                first2 = &first;
+            }
 
-        /* finish incompletely validated terminal values/attributes and when conditions */
-        ret = lyd_validate_unres(&xmlctx.incomplete_type_validation, &xmlctx.incomplete_type_validation_attrs,
-                                 &xmlctx.when_check, LYD_XML, lydxml_resolve_prefix, ctx, *result);
-        LY_CHECK_GOTO(ret, cleanup);
+            /* validate new top-level nodes, autodelete CANNOT occur, all nodes are new */
+            ret = lyd_validate_new(first2, NULL, mod);
+            LY_CHECK_GOTO(ret, cleanup);
 
-        /* context node and other validation tasks that depend on other data nodes */
-        ret = lyd_validate_data(result, NULL, 0, ctx, options);
-        LY_CHECK_GOTO(ret, cleanup);
+            /* add all top-level defaults for this module */
+            ret = lyd_validate_defaults_r(NULL, first2, NULL, mod, &xmlctx.incomplete_type_validation, &xmlctx.when_check);
+            LY_CHECK_GOTO(ret, cleanup);
+
+            /* finish incompletely validated terminal values/attributes and when conditions */
+            ret = lyd_validate_unres(tree, &xmlctx.when_check, &xmlctx.incomplete_type_validation,
+                                     &xmlctx.incomplete_type_validation_attrs, LYD_XML, lydxml_resolve_prefix, ctx);
+            LY_CHECK_GOTO(ret, cleanup);
+
+            /* perform final validation that assumes the data tree is final */
+            ret = lyd_validate_siblings_r(*first2, NULL, mod, options);
+            LY_CHECK_GOTO(ret, cleanup);
+        }
     }
 
 cleanup:
@@ -497,8 +527,8 @@ cleanup:
     ly_set_erase(&xmlctx.when_check, NULL);
     lyxml_context_clear((struct lyxml_context *)&xmlctx);
     if (ret) {
-        lyd_free_all(*result);
-        *result = NULL;
+        lyd_free_all(*tree);
+        *tree = NULL;
     }
     return ret;
 }

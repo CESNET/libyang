@@ -1178,7 +1178,7 @@ test_leafref(void **state)
            "<c xmlns=\"urn:tests:leafrefs\"><x><x>y</x></x>"
               "<l><id>x</id><value>x</value><lr3>c</lr3></l></c>";
     assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
-    tree = tree->prev->prev->prev;
+    tree = tree->prev;
     assert_int_equal(LYS_CONTAINER, tree->schema->nodetype);
     leaf = (struct lyd_node_term*)(lyd_node_children(lyd_node_children(tree)->prev)->prev);
     assert_int_equal(LYS_LEAF, leaf->schema->nodetype);

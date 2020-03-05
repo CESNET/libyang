@@ -19,6 +19,14 @@
 #include "plugins_types.h"
 
 /**
+ * @brief Check whether a node to be deleted is the first top-level sibling.
+ *
+ * @param[in] first First sibling.
+ * @param[in] to_del Node to be deleted.
+ */
+#define LYD_DEL_IS_ROOT(first, to_del) (((first) == (to_del)) && !(first)->parent && !(first)->prev->next)
+
+/**
  * @brief Get address of a node's child pointer if any.
  *
  * @param[in] node Node to check.
@@ -199,10 +207,10 @@ LY_ERR lyd_value_parse_attr(struct ly_ctx *ctx, struct lyd_attr *attr, const cha
  * @param[in] ctx libyang context
  * @param[in] data Pointer to the XML string representation of the YANG data to parse.
  * @param[in] options @ref dataparseroptions
- * @param[out] result Resulting list of the parsed data trees. Note that NULL can be a valid result.
+ * @param[out] tree Parsed data tree. Note that NULL can be a valid result.
  * @reutn LY_ERR value.
  */
-LY_ERR lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, struct lyd_node **result);
+LY_ERR lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, struct lyd_node **tree);
 
 /**
  * @defgroup datahash Data nodes hash manipulation
@@ -285,5 +293,30 @@ LY_ERR lyd_find_sibling_next2(const struct lyd_node *first, const struct lysc_no
  * @return Module owner of the node.
  */
 const struct lys_module *lyd_top_node_module(const struct lyd_node *node);
+
+/**
+ * @brief Iterate over implemented modules for functions that accept specific modules or the whole context.
+ *
+ * @param[in] tree Data tree.
+ * @param[in] modules Selected modules, NULL for all.
+ * @param[in] mod_count Count of @p modules.
+ * @param[in] ctx Context, NULL for selected modules.
+ * @param[in,out] i Iterator, set to 0 on first call.
+ * @param[out] first First sibling of the returned module.
+ * @return Next module.
+ * @return NULL if all modules were traversed.
+ */
+const struct lys_module *lyd_mod_next_module(struct lyd_node *tree, const struct lys_module **modules, int mod_count,
+                                             const struct ly_ctx *ctx, uint32_t *i, struct lyd_node **first);
+
+/**
+ * @brief Iterate over modules for functions that want to traverse all the top-level data.
+ *
+ * @param[in,out] next Pointer to the next module data, set to first top-level sibling on first call.
+ * @param[out] first First sibling of the returned module.
+ * @return Next module.
+ * @return NULL if all modules were traversed.
+ */
+const struct lys_module *lyd_data_next_module(struct lyd_node **next, struct lyd_node **first);
 
 #endif /* LY_TREE_DATA_INTERNAL_H_ */

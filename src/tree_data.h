@@ -519,13 +519,25 @@ struct lyd_node *lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT
 /**
  * @brief Fully validate a data tree.
  *
- * @param[in] ctx libyang context. Can be NULL if @p node is set.
- * @param[in,out] node Root data tree node to recursively validate. May be changed by validation.
+ * @param[in,out] tree Data tree to recursively validate. May be changed by validation.
+ * @param[in] ctx libyang context. Can be NULL if @p tree is set.
  * @param[in] val_opts Validation options (@ref datavalidationoptions).
  * @return LY_SUCCESS on success.
  * @return LY_ERR error on error.
  */
-LY_ERR lyd_validate(const struct ly_ctx *ctx, struct lyd_node **node, int val_opts);
+LY_ERR lyd_validate(struct lyd_node **tree, const struct ly_ctx *ctx, int val_opts);
+
+/**
+ * @brief Fully validate a data tree.
+ *
+ * @param[in,out] tree Data tree to recursively validate. May be changed by validation.
+ * @param[in] modules Array of modules to validate.
+ * @param[in] mod_count Number of @p modules.
+ * @param[in] val_opts Validation options (@ref datavalidationoptions).
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR error on error.
+ */
+LY_ERR lyd_validate_modules(struct lyd_node **tree, const struct lys_module **modules, int mod_count, int val_opts);
 
 /**
  * @brief Create a new inner node in a data tree.
@@ -603,6 +615,19 @@ struct lyd_node *lyd_new_any(struct lyd_node *parent, const struct lys_module *m
  * @return LY_ERR error on error.
  */
 LY_ERR lyd_insert(struct lyd_node *parent, struct lyd_node *node);
+
+/**
+ * @brief Insert a node into siblings. It is inserted as the last sibling.
+ *
+ * - if the node is part of some other tree, it is automatically unlinked.
+ * - if the node is the first node of a node list (with no parent), all the subsequent nodes are also inserted.
+ *
+ * @param[in] sibling Siblings to insert into.
+ * @param[in] node Node to insert.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR error on error.
+ */
+LY_ERR lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node);
 
 /**
  * @brief Insert a node before another node that is its schema sibling.

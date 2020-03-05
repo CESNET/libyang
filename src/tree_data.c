@@ -1,5 +1,5 @@
 /**
- * @file tree_schema.c
+ * @file tree_data.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief Schema tree implementation
  *
@@ -450,10 +450,6 @@ lyd_create_inner(const struct lysc_node *schema, struct lyd_node **node)
     /* do not hash list with keys, we need them for the hash */
     if ((schema->nodetype != LYS_LIST) || (schema->flags & LYS_KEYLESS)) {
         lyd_hash((struct lyd_node *)in);
-    }
-    if ((schema->nodetype == LYS_CONTAINER) && !(schema->flags & LYS_PRESENCE)) {
-        /* NP cotnainer always a default */
-        in->flags |= LYD_DEFAULT;
     }
 
     *node = (struct lyd_node *)in;
@@ -921,14 +917,19 @@ lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling, struct
             lyd_insert_last_node(parent, node);
         }
     } else if (*first_sibling) {
-        /* top-level siblings, find the last one from this module, or simply the last */
+        /* top-level siblings */
         anchor = (*first_sibling)->prev;
         while (anchor->prev->next && (lyd_top_node_module(anchor) != lyd_top_node_module(node))) {
             anchor = anchor->prev;
         }
 
-        /* insert */
-        lyd_insert_after_node(anchor, node);
+        if (lyd_top_node_module(anchor) == lyd_top_node_module(node)) {
+            /* insert after last sibling from this module */
+            lyd_insert_after_node(anchor, node);
+        } else {
+            /* no data from this module, insert at the last position */
+            lyd_insert_after_node((*first_sibling)->prev, node);
+        }
     } else {
         /* the only sibling */
         *first_sibling = node;
@@ -1000,6 +1001,33 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node)
         iter = node->next;
         lyd_unlink_tree(node);
         lyd_insert_node(parent, NULL, node);
+        node = iter;
+    }
+    return LY_SUCCESS;
+}
+
+API LY_ERR
+lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node)
+{
+    struct lyd_node *iter;
+
+    LY_CHECK_ARG_RET(NULL, sibling, node, LY_EINVAL);
+
+    LY_CHECK_RET(lyd_insert_check_schema(sibling->schema->parent, node->schema));
+
+    if (node->schema->flags & LYS_KEY) {
+        LOGERR(sibling->schema->module->ctx, LY_EINVAL, "Cannot insert key \"%s\".", node->schema->name);
+        return LY_EINVAL;
+    }
+
+    if (node->parent || node->prev->next) {
+        lyd_unlink_tree(node);
+    }
+
+    while (node) {
+        iter = node->next;
+        lyd_unlink_tree(node);
+        lyd_insert_node(NULL, &sibling, node);
         node = iter;
     }
     return LY_SUCCESS;

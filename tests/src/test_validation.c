@@ -1,9 +1,9 @@
-/*
- * @file test_parser_xml.c
+/**
+ * @file test_validation.c
  * @author: Radek Krejci <rkrejci@cesnet.cz>
- * @brief unit tests for functions from parser_xml.c
+ * @brief unit tests for functions from validation.c
  *
- * Copyright (c) 2019 CESNET, z.s.p.o.
+ * Copyright (c) 2020 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -890,43 +890,46 @@ test_defaults(void **state)
 {
     *state = test_defaults;
 
-    const char *data;
     char *str;
     struct lyd_node *tree, *node;
     const struct lys_module *mod = ly_ctx_get_module_latest(ctx, "f");
 
-    data = "<cont xmlns=\"urn:tests:f\"/>";
-    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    /* get defaults */
+    tree = NULL;
+    assert_int_equal(lyd_validate_modules(&tree, &mod, 1, 0), LY_SUCCESS);
     assert_non_null(tree);
 
     /* check all defaults exist */
     lyd_print_mem(&str, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG);
     assert_string_equal(str,
-        "<cont xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
-            "<ll1 ncwd:default=\"true\">def1</ll1>"
-            "<ll1 ncwd:default=\"true\">def2</ll1>"
-            "<ll1 ncwd:default=\"true\">def3</ll1>"
-            "<d ncwd:default=\"true\">15</d>"
-            "<ll2 ncwd:default=\"true\">dflt1</ll2>"
-            "<ll2 ncwd:default=\"true\">dflt2</ll2>"
-        "</cont>"
         "<ll1 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def1</ll1>"
         "<ll1 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def2</ll1>"
         "<ll1 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def3</ll1>"
         "<d xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">15</d>"
         "<ll2 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt1</ll2>"
-        "<ll2 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt2</ll2>");
+        "<ll2 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt2</ll2>"
+        "<cont xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
+            "<ll1 ncwd:default=\"true\">def1</ll1>"
+            "<ll1 ncwd:default=\"true\">def2</ll1>"
+            "<ll1 ncwd:default=\"true\">def3</ll1>"
+            "<d ncwd:default=\"true\">15</d>"
+            "<ll2 ncwd:default=\"true\">dflt1</ll2>"
+            "<ll2 ncwd:default=\"true\">dflt2</ll2>"
+        "</cont>");
     free(str);
 
     /* create another explicit case and validate */
     node = lyd_new_term(NULL, mod, "l", "value");
     assert_non_null(node);
-    assert_int_equal(lyd_insert_after(tree->prev, node), LY_SUCCESS);
-    assert_int_equal(lyd_validate(ctx, &tree, LYD_VALOPT_DATA_ONLY), LY_SUCCESS);
+    assert_int_equal(lyd_insert_sibling(tree, node), LY_SUCCESS);
+    assert_int_equal(lyd_validate(&tree, ctx, LYD_VALOPT_DATA_ONLY), LY_SUCCESS);
 
     /* check data tree */
     lyd_print_mem(&str, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG);
     assert_string_equal(str,
+        "<d xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">15</d>"
+        "<ll2 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt1</ll2>"
+        "<ll2 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt2</ll2>"
         "<cont xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
             "<ll1 ncwd:default=\"true\">def1</ll1>"
             "<ll1 ncwd:default=\"true\">def2</ll1>"
@@ -935,20 +938,17 @@ test_defaults(void **state)
             "<ll2 ncwd:default=\"true\">dflt1</ll2>"
             "<ll2 ncwd:default=\"true\">dflt2</ll2>"
         "</cont>"
-        "<d xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">15</d>"
-        "<ll2 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt1</ll2>"
-        "<ll2 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt2</ll2>"
         "<l xmlns=\"urn:tests:f\">value</l>");
     free(str);
 
     /* create explicit leaf-list and leaf and validate */
     node = lyd_new_term(NULL, mod, "d", "15");
     assert_non_null(node);
-    assert_int_equal(lyd_insert_after(tree->prev, node), LY_SUCCESS);
+    assert_int_equal(lyd_insert_sibling(tree, node), LY_SUCCESS);
     node = lyd_new_term(NULL, mod, "ll2", "dflt2");
     assert_non_null(node);
-    assert_int_equal(lyd_insert_after(tree->prev, node), LY_SUCCESS);
-    assert_int_equal(lyd_validate(ctx, &tree, LYD_VALOPT_DATA_ONLY), LY_SUCCESS);
+    assert_int_equal(lyd_insert_sibling(tree, node), LY_SUCCESS);
+    assert_int_equal(lyd_validate(&tree, ctx, LYD_VALOPT_DATA_ONLY), LY_SUCCESS);
 
     /* check data tree */
     lyd_print_mem(&str, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG);
@@ -966,33 +966,56 @@ test_defaults(void **state)
         "<ll2 xmlns=\"urn:tests:f\">dflt2</ll2>");
     free(str);
 
-//     /* create explicit container, which automatically becomes implicit */
-//     node = lyd_new_inner(NULL, mod, "cont");
-//     assert_non_null(node);
-//     assert_int_equal(lyd_insert_after(tree->prev, node), LY_SUCCESS);
-//     assert_int_equal(lyd_validate(ctx, &tree, LYD_VALOPT_DATA_ONLY), LY_SUCCESS);
-//
-//     /* check data tree */
-//     lyd_print_mem(&str, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG);
-//     assert_string_equal(str,
-//         "<cont xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
-//             "<ll1 ncwd:default=\"true\">def1</ll1>"
-//             "<ll1 ncwd:default=\"true\">def2</ll1>"
-//             "<ll1 ncwd:default=\"true\">def3</ll1>"
-//             "<d ncwd:default=\"true\">15</d>"
-//             "<ll2 ncwd:default=\"true\">dflt1</ll2>"
-//             "<ll2 ncwd:default=\"true\">dflt2</ll2>"
-//         "</cont>"
-//         "<l xmlns=\"urn:tests:f\">value</l>"
-//         "<d xmlns=\"urn:tests:f\">15</d>"
-//         "<ll2 xmlns=\"urn:tests:f\">dflt2</ll2>");
-//     free(str);
+    /* create first explicit container, which should become implicit */
+    node = lyd_new_inner(NULL, mod, "cont");
+    assert_non_null(node);
+    assert_int_equal(lyd_insert_before(tree, node), LY_SUCCESS);
+    tree = tree->prev;
+    assert_int_equal(lyd_validate(&tree, ctx, LYD_VALOPT_DATA_ONLY), LY_SUCCESS);
+
+    /* check data tree */
+    lyd_print_mem(&str, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG);
+    assert_string_equal(str,
+        "<cont xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
+            "<ll1 ncwd:default=\"true\">def1</ll1>"
+            "<ll1 ncwd:default=\"true\">def2</ll1>"
+            "<ll1 ncwd:default=\"true\">def3</ll1>"
+            "<d ncwd:default=\"true\">15</d>"
+            "<ll2 ncwd:default=\"true\">dflt1</ll2>"
+            "<ll2 ncwd:default=\"true\">dflt2</ll2>"
+        "</cont>"
+        "<l xmlns=\"urn:tests:f\">value</l>"
+        "<d xmlns=\"urn:tests:f\">15</d>"
+        "<ll2 xmlns=\"urn:tests:f\">dflt2</ll2>");
+    free(str);
+
+    /* create second explicit container, which should become implicit, so the first tree node should be removed */
+    node = lyd_new_inner(NULL, mod, "cont");
+    assert_non_null(node);
+    assert_int_equal(lyd_insert_after(tree, node), LY_SUCCESS);
+    assert_int_equal(lyd_validate(&tree, ctx, LYD_VALOPT_DATA_ONLY), LY_SUCCESS);
+
+    /* check data tree */
+    lyd_print_mem(&str, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG);
+    assert_string_equal(str,
+        "<cont xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
+            "<ll1 ncwd:default=\"true\">def1</ll1>"
+            "<ll1 ncwd:default=\"true\">def2</ll1>"
+            "<ll1 ncwd:default=\"true\">def3</ll1>"
+            "<d ncwd:default=\"true\">15</d>"
+            "<ll2 ncwd:default=\"true\">dflt1</ll2>"
+            "<ll2 ncwd:default=\"true\">dflt2</ll2>"
+        "</cont>"
+        "<l xmlns=\"urn:tests:f\">value</l>"
+        "<d xmlns=\"urn:tests:f\">15</d>"
+        "<ll2 xmlns=\"urn:tests:f\">dflt2</ll2>");
+    free(str);
 
     /* similar changes for nested defaults */
     assert_non_null(lyd_new_term(tree, NULL, "ll1", "def3"));
     assert_non_null(lyd_new_term(tree, NULL, "d", "5"));
     assert_non_null(lyd_new_term(tree, NULL, "ll2", "non-dflt"));
-    assert_int_equal(lyd_validate(ctx, &tree, LYD_VALOPT_DATA_ONLY), LY_SUCCESS);
+    assert_int_equal(lyd_validate(&tree, ctx, LYD_VALOPT_DATA_ONLY), LY_SUCCESS);
 
     /* check data tree */
     lyd_print_mem(&str, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG);

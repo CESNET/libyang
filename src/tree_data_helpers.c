@@ -64,3 +64,61 @@ lyd_top_node_module(const struct lyd_node *node)
     for (schema = node->schema; schema->parent; schema = schema->parent);
     return schema->module;
 }
+
+const struct lys_module *
+lyd_mod_next_module(struct lyd_node *tree, const struct lys_module **modules, int mod_count, const struct ly_ctx *ctx,
+                    uint32_t *i, struct lyd_node **first)
+{
+    struct lyd_node *iter;
+    const struct lys_module *mod;
+
+    /* get the next module */
+    if (modules && mod_count) {
+        if (*i < (unsigned)mod_count) {
+            mod = modules[(*i)++];
+        } else {
+            mod = NULL;
+        }
+    } else {
+        do {
+            mod = ly_ctx_get_module_iter(ctx, i);
+        } while (mod && !mod->implemented);
+    }
+
+    /* find its data */
+    *first = NULL;
+    if (mod) {
+        LY_LIST_FOR(tree, iter) {
+            if (lyd_top_node_module(iter) == mod) {
+                *first = iter;
+                break;
+            }
+        }
+    }
+
+    return mod;
+}
+
+const struct lys_module *
+lyd_data_next_module(struct lyd_node **next, struct lyd_node **first)
+{
+    const struct lys_module *mod;
+
+    if (!*next) {
+        /* all data traversed */
+        *first = NULL;
+        return NULL;
+    }
+
+    *first = *next;
+
+    /* prepare next */
+    mod = lyd_top_node_module(*next);
+    LY_LIST_FOR(*next, *next) {
+        if (lyd_top_node_module(*next) != mod) {
+            break;
+        }
+    }
+
+    return mod;
+}

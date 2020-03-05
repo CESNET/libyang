@@ -19,60 +19,58 @@
 #include "tree_data.h"
 
 /**
- * @brief Finish validation of nodes and attributes. Specifically, type and when validation.
+ * @brief Finish validation of nodes and attributes. Specifically, when (is processed first) and type validation.
  *
+ * !! It is assumed autodeleted nodes cannot be in the unresolved node type set !!
+ *
+ * @param[in,out] tree Data tree, is updated if some nodes are autodeleted.
+ * @param[in] node_when Set with nodes with "when" conditions, can be NULL.
  * @param[in] node_types Set with nodes with unresolved types, can be NULL
  * @param[in] attr_types Set with attributes with unresolved types, can be NULL.
- * @param[in] node_when Set with nodes with "when" conditions, can be NULL.
  * @param[in] format Format of the unresolved data.
  * @param[in] get_prefix_clb Format-specific getter to resolve prefixes.
  * @param[in] parser_data Parser's data for @p get_prefix_clb.
- * @param[in] tree Data tree.
  * @return LY_ERR value.
  */
-LY_ERR lyd_validate_unres(struct ly_set *node_types, struct ly_set *attr_types, struct ly_set *node_when, LYD_FORMAT format,
-                          ly_clb_resolve_prefix get_prefix_clb, void *parser_data, const struct lyd_node *tree);
+LY_ERR lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, struct ly_set *node_types, struct ly_set *attr_types,
+                          LYD_FORMAT format, ly_clb_resolve_prefix get_prefix_clb, void *parser_data);
 
 /**
- * @brief Perform all validation tasks, the data tree must be complete when calling this function.
+ * @brief Validate new siblings. Specifically, check duplicated instances, autodelete default values and cases.
  *
- * @param[in,out] tree Data tree.
- * @param[in] modules Array of modules that should be validated, NULL for all modules.
- * @param[in] mod_count Modules count.
- * @param[in] ctx Context if all modules should be validated, NULL for only selected modules.
+ * !! It is assumed autodeleted nodes cannot yet be in the unresolved node type set !!
+ *
+ * @param[in,out] first First sibling.
+ * @param[in] sparent Schema parent of the siblings, NULL for top-level siblings.
+ * @param[in] mod Module of the siblings, NULL for nested siblings.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_validate_new(struct lyd_node **first, const struct lysc_node *sparent, const struct lys_module *mod);
+
+/**
+ * @brief Perform all remaining validation tasks, the data tree must be final when calling this function.
+ *
+ * @param[in] first First sibling.
+ * @param[in] sparent Schema parent of the siblings, NULL for top-level siblings.
+ * @param[in] mod Module of the siblings, NULL for nested siblings.
  * @param[in] val_opts Validation options (@ref datavalidationoptions).
  * @return LY_ERR value.
  */
-LY_ERR lyd_validate_data(struct lyd_node **tree, const struct lys_module **modules, int mod_count,
-                         struct ly_ctx *ctx, int val_opts);
+LY_ERR lyd_validate_siblings_r(struct lyd_node *first, const struct lysc_node *sparent, const struct lys_module *mod,
+                               int val_opts);
 
 /**
  * @brief Check the existence and create any non-existing default siblings, recursively for the created nodes.
  *
- * @param[in] parent Parent of the potential default values.
+ * @param[in] parent Parent of the potential default values, NULL for top-level siblings.
  * @param[in,out] first First sibling.
- * @param[in] schema Schema parent of the default values, NULL for top-level siblings.
- * @param[in] mod Module of the default values, NULL for nested (non top-level) siblings.
+ * @param[in] sparent Schema parent of the siblings, NULL if schema of @p parent can be used.
+ * @param[in] mod Module of the default values, NULL for nested siblings.
  * @param[in] node_types Set to add nodes with unresolved types into.
  * @param[in] node_when Set to add nodes with "when" conditions into.
  * @return LY_ERR value.
  */
-LY_ERR lyd_validate_defaults_r(struct lyd_node_inner *parent, struct lyd_node **first, const struct lysc_node *schema,
-                               const struct lysc_module *mod, struct ly_set *node_types, struct ly_set *node_when);
-
-/**
- * @brief Check the existence and create any non-existing default top-level nodes.
- *
- * @param[in,out] first First top-level sibling. There may be no explicit nodes.
- * @param[in] modules Array of modules that should be considered, NULL for all modules.
- * @param[in] mod_count Modules count.
- * @param[in] ctx Context if all modules should be considered, NULL for only selected modules.
- * @param[in] node_types Set to add nodes with unresolved types into, can be NULL if not needed.
- * @param[in] node_when Set to add nodes with "when" conditions into, can be NULL if not needed.
- * @param[in] val_opts Relevant validation options (#LYD_VALOPT_DATA_ONLY).
- * @return LY_ERR value.
- */
-LY_ERR lyd_validate_defaults_top(struct lyd_node **first, const struct lys_module **modules, int mod_count,
-                                 struct ly_ctx *ctx, struct ly_set *node_types, struct ly_set *node_when, int val_opts);
+LY_ERR lyd_validate_defaults_r(struct lyd_node_inner *parent, struct lyd_node **first, const struct lysc_node *sparent,
+                               const struct lys_module *mod, struct ly_set *node_types, struct ly_set *node_when);
 
 #endif /* LY_VALIDATION_H_ */
