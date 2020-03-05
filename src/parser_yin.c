@@ -6293,18 +6293,9 @@ read_yin_rpc_action(struct lys_module *module, struct lys_node *parent, struct l
     int c_tpdf = 0, c_ftrs = 0, c_input = 0, c_output = 0, c_ext = 0;
     void *reallocated;
 
-    if (!strcmp(yin->name, "action")) {
-        if (module->version < 2) {
-            LOGVAL(ctx, LYE_INSTMT, LY_VLOG_LYS, parent, "action");
-            return NULL;
-        }
-        for (node = parent; node; node = lys_parent(node)) {
-            if ((node->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF))
-                    || ((node->nodetype == LYS_LIST) && !((struct lys_node_list *)node)->keys_size)) {
-                LOGVAL(ctx, LYE_INPAR, LY_VLOG_LYS, parent, strnodetype(node->nodetype), "action");
-                return NULL;
-            }
-        }
+    if (!strcmp(yin->name, "action") && (module->version < 2)) {
+        LOGVAL(ctx, LYE_INSTMT, LY_VLOG_LYS, parent, "action");
+        return NULL;
     }
 
     /* init */

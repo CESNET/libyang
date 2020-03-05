@@ -4881,6 +4881,22 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *uses, struct unre
         }
     }
 
+    LY_TREE_DFS_BEGIN(aug->child, next, sub) {
+        if (sub->nodetype == LYS_ACTION) {
+            /* we need to check parents */
+            for (sub = aug->target; sub; sub = lys_parent(sub)) {
+                if ((sub->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF))
+                        || ((sub->nodetype == LYS_LIST) && !((struct lys_node_list *)sub)->keys)) {
+                    LOGVAL(ctx, LYE_INPAR, LY_VLOG_LYS, aug->target, strnodetype(sub->nodetype), "action");
+                    LOGVAL(ctx, LYE_INRESOLV, LY_VLOG_LYS, aug, "augment", aug->target_name);
+                    return -1;
+                }
+            }
+            break;
+        }
+        LY_TREE_DFS_END(aug->child, next, sub);
+    }
+
     if (!aug->child) {
         /* empty augment, nothing to connect, but it is techincally applied */
         LOGWRN(ctx, "Augment \"%s\" without children.", aug->target_name);
