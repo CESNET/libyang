@@ -5141,6 +5141,8 @@ xpath_true(struct lyxp_set **UNUSED(args), uint16_t UNUSED(arg_count), struct ly
 /**
  * @brief Skip prefix and return corresponding model if there is a prefix. Logs directly.
  *
+ * XPath @p set is expected to be a (sc)node set!
+ *
  * @param[in,out] qname Qualified node name. If includes prefix, it is skipped.
  * @param[in,out] qname_len Length of @p qname, is updated accordingly.
  * @param[in] set Set with XPath context.
@@ -5154,6 +5156,8 @@ moveto_resolve_model(const char **qname, uint16_t *qname_len, struct lyxp_set *s
     const char *ptr;
     int pref_len;
     char *str;
+
+    assert((set->type == LYXP_SET_NODE_SET) || (set->type == LYXP_SET_SCNODE_SET));
 
     if ((ptr = ly_strnchr(*qname, ':', *qname_len))) {
         /* specific module */
@@ -5176,7 +5180,11 @@ moveto_resolve_model(const char **qname, uint16_t *qname_len, struct lyxp_set *s
 
         /* Check for errors and non-implemented modules, as they are not valid */
         if (!mod || !mod->implemented) {
-            LOGVAL(set->ctx, LY_VLOG_LYD, set->ctx_node, LY_VCODE_XP_INMOD, pref_len, *qname);
+            if (set->type == LYXP_SET_SCNODE_SET) {
+                LOGVAL(set->ctx, LY_VLOG_LYSC, set->ctx_scnode, LY_VCODE_XP_INMOD, pref_len, *qname);
+            } else {
+                LOGVAL(set->ctx, LY_VLOG_LYD, set->ctx_node, LY_VCODE_XP_INMOD, pref_len, *qname);
+            }
             return LY_EVALID;
         }
 
