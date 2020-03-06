@@ -372,22 +372,19 @@ struct lyd_node_any {
  * Various options to change the data tree parsers behavior.
  *
  * Default parser behavior:
- * - in case of XML, parser reads all data from its input (file, memory, XML tree) including the case of not well-formed
- * XML document (multiple top-level elements) and if there is an unknown element, it is skipped including its subtree
- * (see the next point). This can be changed by the #LYD_OPT_NOSIBLINGS option which make parser to read only a single
- * tree (with a single root element) from its input,
- * - parser silently ignores the data without a matching node in schema trees. If the caller wants to stop
+ * - complete input file is always parsed. In case of XML, even not well-formed XML document (multiple top-level
+ * elements) is parsed in its entirety,
+ * - parser silently ignores data without matching schema node definition. If the caller wants to stop
  * parsing in case of presence of unknown data, the #LYD_OPT_STRICT can be used. The strict mode is useful for
  * NETCONF servers, since NETCONF clients should always send data according to the capabilities announced by the server.
  * On the other hand, the default non-strict mode is useful for clients receiving data from NETCONF server since
  * clients are not required to understand everything the server does. Of course, the optimal strategy for clients is
- * to use filtering to get only the required data. Having an unknown element of the known namespace is always an error,
- * - using obsolete statements (status set to obsolete) just generates a warning, but the processing continues
- * (see #LYD_OPT_OBSOLETE).
+ * to use filtering to get only the required data. Having an unknown element of the known namespace is always an error.
  *
  * Default parser validation behavior:
  * - the provided data are expected to provide complete datastore content (both the configuration and state data)
  * and performs data validation according to all YANG rules, specifics follow,
+ * - instantiated (status) obsolete data print a warning,
  * - all types are fully resolved (leafref/instance-identifier targets, unions) and must be valid (lists have
  * all the keys, leaf(-lists) correct values),
  * - when statements on existing nodes are evaluated, if not satisfied, a validation error is raised,
@@ -399,7 +396,7 @@ struct lyd_node_any {
 
 #define LYD_OPT_DATA       0x0 /**< Default type of data - complete datastore content with configuration as well as
                                 state data. */
-#define LYD_OPT_CONFIG     LYD_VALOPT_NO_STATE /**< A configuration datastore - complete datastore without state data. */
+#define LYD_OPT_CONFIG     LYD_OPT_NO_STATE /**< A configuration datastore - complete datastore without state data. */
 #define LYD_OPT_GET        LYD_OPT_PARSE_ONLY /**< Data content from a NETCONF reply message to the NETCONF
                                 \<get\> operation. */
 #define LYD_OPT_GETCONFIG  LYD_OPT_PARSE_ONLY | LYD_OPT_NO_STATE /**< Data content from a NETCONF reply message to
@@ -417,8 +414,6 @@ struct lyd_node_any {
 #define LYD_OPT_STRICT          0x0004 /**< Instead of silently ignoring data without schema definition raise an error. */
 #define LYD_OPT_EMPTY_INST      0x0008 /**< Allow leaf/leaf-list instances without values and lists without keys. */
 #define LYD_OPT_NO_STATE        0x0010 /**< Forbid state data in the parsed data. */
-//#define LYD_OPT_NOSIBLINGS 0x1000 /**< Parse only a single XML tree from the input. This option applies only to
-//                                       XML input data. */
 
 #define LYD_OPT_MASK            0xFFFF /**< Mask for all the parser options. */
 
@@ -433,6 +428,7 @@ struct lyd_node_any {
  * Default separate validation behavior:
  * - the provided data are expected to provide complete datastore content (both the configuration and state data)
  * and performs data validation according to all YANG rules, specifics follow,
+ * - instantiated (status) obsolete data print a warning,
  * - all types are fully resolved (leafref/instance-identifier targets, unions) and must be valid (lists have
  * all the keys, leaf(-lists) correct values),
  * - when statements on existing nodes are evaluated. Depending on the previous when state (from previous validation
@@ -449,7 +445,6 @@ struct lyd_node_any {
 
 #define LYD_VALOPT_NO_STATE     0x00010000 /**< Consider state data not allowed and raise an error if they are found. */
 #define LYD_VALOPT_DATA_ONLY    0x00020000 /**< Validate only modules whose data actually exist. */
-//#define LYD_VALOPT_OBSOLETE   0x0800 /**< Raise an error when an obsolete statement (status set to obsolete) is used. */
 
 #define LYD_VALOPT_MASK         0xFFFF0000 /**< Mask for all the validation options. */
 

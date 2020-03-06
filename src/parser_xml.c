@@ -355,7 +355,7 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
 
                 /* add any missing default children */
                 ret = lyd_validate_defaults_r((struct lyd_node_inner *)cur, lyd_node_children_p(cur), NULL, NULL,
-                                              &ctx->incomplete_type_validation, &ctx->when_check);
+                                              &ctx->incomplete_type_validation, &ctx->when_check, ctx->options);
                 LY_CHECK_GOTO(ret, cleanup);
             }
 
@@ -474,7 +474,7 @@ lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, struct lyd_node
     const struct lys_module *mod;
     struct lyd_node *first, *next, **first2;
 
-    xmlctx.options = options & LYD_OPT_MASK;
+    xmlctx.options = options;
     xmlctx.ctx = ctx;
     xmlctx.line = 1;
 
@@ -508,7 +508,8 @@ lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, struct lyd_node
             LY_CHECK_GOTO(ret, cleanup);
 
             /* add all top-level defaults for this module */
-            ret = lyd_validate_defaults_r(NULL, first2, NULL, mod, &xmlctx.incomplete_type_validation, &xmlctx.when_check);
+            ret = lyd_validate_defaults_r(NULL, first2, NULL, mod, &xmlctx.incomplete_type_validation,
+                                          &xmlctx.when_check, options & LYD_VALOPT_MASK);
             LY_CHECK_GOTO(ret, cleanup);
 
             /* finish incompletely validated terminal values/attributes and when conditions */

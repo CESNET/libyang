@@ -68,9 +68,10 @@ LY_ERR lyd_validate_siblings_r(struct lyd_node *first, const struct lysc_node *s
  * @param[in] mod Module of the default values, NULL for nested siblings.
  * @param[in] node_types Set to add nodes with unresolved types into.
  * @param[in] node_when Set to add nodes with "when" conditions into.
+ * @param[in] val_opts Validation options (@ref datavalidationoptions).
  * @return LY_ERR value.
  */
 LY_ERR lyd_validate_defaults_r(struct lyd_node_inner *parent, struct lyd_node **first, const struct lysc_node *sparent,
-                               const struct lys_module *mod, struct ly_set *node_types, struct ly_set *node_when);
+                               const struct lys_module *mod, struct ly_set *node_types, struct ly_set *node_when, int val_opts);
 
 #endif /* LY_VALIDATION_H_ */

@@ -732,13 +732,18 @@ cleanup:
 }
 
 static LY_ERR
-lyd_validate_siblings_schema_r(const struct lyd_node *first, const struct lysc_node *sparent, const struct lysc_module *mod)
+lyd_validate_siblings_schema_r(const struct lyd_node *first, const struct lysc_node *sparent,
+                               const struct lysc_module *mod, int val_opts)
 {
     const struct lysc_node *snode = NULL;
     struct lysc_node_list *slist;
 
     /* disabled nodes are skipped by lys_getnext */
     while ((snode = lys_getnext(snode, sparent, mod, LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE))) {
+        if ((val_opts & LYD_VALOPT_NO_STATE) && (snode->flags & LYS_CONFIG_R)) {
+            continue;
+        }
+
         /* check min-elements and max-elements */
         if (snode->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
             slist = (struct lysc_node_list *)snode;
@@ -761,11 +766,27 @@ lyd_validate_siblings_schema_r(const struct lyd_node *first, const struct lysc_n
 
         if (snode->nodetype & (LYS_CHOICE | LYS_CASE)) {
             /* go recursively for schema-only nodes */
-            LY_CHECK_RET(lyd_validate_siblings_schema_r(first, snode, mod));
+            LY_CHECK_RET(lyd_validate_siblings_schema_r(first, snode, mod, val_opts));
         }
     }
 
     return LY_SUCCESS;
+}
+
+static void
+lyd_validate_obsolete(const struct lyd_node *node)
+{
+    const struct lysc_node *snode;
+
+    snode = node->schema;
+    do {
+        if (snode->flags & LYS_STATUS_OBSLT) {
+            LOGWRN(snode->module->ctx, "Obsolete schema node \"%s\" instantiated in data.", snode->name);
+            break;
+        }
+
+        snode = snode->parent;
+    } while (snode && (snode->nodetype & (LYS_CHOICE | LYS_CASE)));
 }
 
 LY_ERR
@@ -782,10 +803,14 @@ lyd_validate_siblings_r(struct lyd_node *first, const struct lysc_node *sparent,
             break;
         }
 
+        /* no state data */
         if ((val_opts & LYD_VALOPT_NO_STATE) && (node->schema->flags & LYS_CONFIG_R)) {
             LOGVAL(node->schema->module->ctx, LY_VLOG_LYD, node, LY_VCODE_INSTATE, node->schema->name);
             return LY_EVALID;
         }
+
+        /* obsolete data */
+        lyd_validate_obsolete(node);
 
         /* node's schema if-features */
         if ((snode = lysc_node_is_disabled(node->schema, 1))) {
@@ -794,13 +819,12 @@ lyd_validate_siblings_r(struct lyd_node *first, const struct lysc_node *sparent,
         }
 
         /* TODO node's must */
-        /* TODO node status */
         /* TODO list all keys existence (take LYD_OPT_EMPTY_INST into consideration) */
         /* node value including if-feature is checked by plugins */
     }
 
     /* validate schema-based restrictions */
-    LY_CHECK_RET(lyd_validate_siblings_schema_r(first, sparent, mod ? mod->compiled : NULL));
+    LY_CHECK_RET(lyd_validate_siblings_schema_r(first, sparent, mod ? mod->compiled : NULL, val_opts));
 
     LY_LIST_FOR(first, node) {
         /* validate all children recursively */
@@ -824,7 +848,7 @@ lyd_validate_siblings_r(struct lyd_node *first, const struct lysc_node *sparent,
 
 LY_ERR
 lyd_validate_defaults_r(struct lyd_node *parent, struct lyd_node **first, const struct lysc_node *sparent,
-                        const struct lys_module *mod, struct ly_set *node_types, struct ly_set *node_when)
+                        const struct lys_module *mod, struct ly_set *node_types, struct ly_set *node_when, int val_opts)
 {
     LY_ERR ret;
     const struct lysc_node *iter = NULL;
@@ -839,12 +863,16 @@ lyd_validate_defaults_r(struct lyd_node *parent, struct lyd_node **first, const 
     }
 
     while ((iter = lys_getnext(iter, sparent, mod ? mod->compiled : NULL, LYS_GETNEXT_WITHCHOICE))) {
+        if ((val_opts & LYD_VALOPT_NO_STATE) && (iter->flags & LYS_CONFIG_R)) {
+            continue;
+        }
+
         switch (iter->nodetype) {
         case LYS_CHOICE:
             if (((struct lysc_node_choice *)iter)->dflt && !lys_getnext_data(NULL, *first, NULL, iter, NULL)) {
                 /* create default case data */
                 LY_CHECK_RET(lyd_validate_defaults_r(parent, first, (struct lysc_node *)((struct lysc_node_choice *)iter)->dflt,
-                                                     NULL, node_types, node_when));
+                                                     NULL, node_types, node_when, val_opts));
             }
             break;
         case LYS_CONTAINER:
@@ -860,7 +888,7 @@ lyd_validate_defaults_r(struct lyd_node *parent, struct lyd_node **first, const 
                 }
 
                 /* create any default children */
-                LY_CHECK_RET(lyd_validate_defaults_r(node, lyd_node_children_p(node), NULL, NULL, node_types, node_when));
+                LY_CHECK_RET(lyd_validate_defaults_r(node, lyd_node_children_p(node), NULL, NULL, node_types, node_when, val_opts));
             }
             break;
         case LYS_LEAF:
@@ -953,7 +981,7 @@ _lyd_validate(struct lyd_node **tree, const struct lys_module **modules, int mod
         LY_CHECK_GOTO(ret, cleanup);
 
         /* add all top-level defaults for this module */
-        ret = lyd_validate_defaults_r(NULL, first2, NULL, mod, &type_check, &when_check);
+        ret = lyd_validate_defaults_r(NULL, first2, NULL, mod, &type_check, &when_check, val_opts);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* process nested nodes */
@@ -976,7 +1004,7 @@ _lyd_validate(struct lyd_node **tree, const struct lys_module **modules, int mod
 
                         /* add nested defaults */
                         ret = lyd_validate_defaults_r(node, lyd_node_children_p((struct lyd_node *)node), NULL, NULL, &type_check,
-                                                    &when_check);
+                                                      &when_check, val_opts);
                         LY_CHECK_GOTO(ret, cleanup);
                     }
 
