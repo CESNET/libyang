@@ -266,6 +266,10 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
             ret = LY_EVALID;
             goto cleanup;
         }
+        if ((ctx->options & LYD_OPT_NO_STATE) && (snode->flags & LYS_CONFIG_R)) {
+            LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LY_VCODE_INSTATE, snode->name);
+            return LY_EVALID;
+        }
 
         /* create actual attributes so that prefixes are available in the context */
         if (attrs_data.count) {
@@ -470,7 +474,7 @@ lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, struct lyd_node
     const struct lys_module *mod;
     struct lyd_node *first, *next, **first2;
 
-    xmlctx.options = options;
+    xmlctx.options = options & LYD_OPT_MASK;
     xmlctx.ctx = ctx;
     xmlctx.line = 1;
 
@@ -513,7 +517,7 @@ lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, struct lyd_node
             LY_CHECK_GOTO(ret, cleanup);
 
             /* perform final validation that assumes the data tree is final */
-            ret = lyd_validate_siblings_r(*first2, NULL, mod, options);
+            ret = lyd_validate_siblings_r(*first2, NULL, mod, options & LYD_VALOPT_MASK);
             LY_CHECK_GOTO(ret, cleanup);
         }
     }

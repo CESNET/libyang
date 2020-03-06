@@ -782,6 +782,11 @@ lyd_validate_siblings_r(struct lyd_node *first, const struct lysc_node *sparent,
             break;
         }
 
+        if ((val_opts & LYD_VALOPT_NO_STATE) && (node->schema->flags & LYS_CONFIG_R)) {
+            LOGVAL(node->schema->module->ctx, LY_VLOG_LYD, node, LY_VCODE_INSTATE, node->schema->name);
+            return LY_EVALID;
+        }
+
         /* node's schema if-features */
         if ((snode = lysc_node_is_disabled(node->schema, 1))) {
             LOGVAL(node->schema->module->ctx, LY_VLOG_LYD, node, LY_VCODE_NOIFF, snode->name);
@@ -790,7 +795,7 @@ lyd_validate_siblings_r(struct lyd_node *first, const struct lysc_node *sparent,
 
         /* TODO node's must */
         /* TODO node status */
-        /* TODO list all keys existence */
+        /* TODO list all keys existence (take LYD_OPT_EMPTY_INST into consideration) */
         /* node value including if-feature is checked by plugins */
     }
 
@@ -920,6 +925,11 @@ _lyd_validate(struct lyd_node **tree, const struct lys_module **modules, int mod
     uint32_t i = 0;
 
     LY_CHECK_ARG_RET(NULL, tree, *tree || ctx || (modules && mod_count), LY_EINVAL);
+
+    if (val_opts & ~LYD_VALOPT_MASK) {
+        LOGERR(ctx, LY_EINVAL, "Some invalid flags passed to validation.");
+        return LY_EINVAL;
+    }
 
     next = *tree;
     while (1) {

@@ -402,9 +402,9 @@ struct lyd_node_any {
 #define LYD_OPT_CONFIG     LYD_VALOPT_NO_STATE /**< A configuration datastore - complete datastore without state data. */
 #define LYD_OPT_GET        LYD_OPT_PARSE_ONLY /**< Data content from a NETCONF reply message to the NETCONF
                                 \<get\> operation. */
-#define LYD_OPT_GETCONFIG  LYD_OPT_PARSE_ONLY | LYD_VALOPT_NO_STATE /**< Data content from a NETCONF reply message to
+#define LYD_OPT_GETCONFIG  LYD_OPT_PARSE_ONLY | LYD_OPT_NO_STATE /**< Data content from a NETCONF reply message to
                                 the NETCONF \<get-config\> operation. */
-#define LYD_OPT_EDIT       LYD_OPT_PARSE_ONLY | LYD_VALOPT_NO_STATE | LYD_OPT_EMPTY_INST /**< Content of
+#define LYD_OPT_EDIT       LYD_OPT_PARSE_ONLY | LYD_OPT_NO_STATE | LYD_OPT_EMPTY_INST /**< Content of
                                 the NETCONF \<edit-config\>'s config element. */
 
 #define LYD_OPT_PARSE_ONLY      0x0001 /**< Data will be only parsed and no validation will be performed. When statements
@@ -416,8 +416,11 @@ struct lyd_node_any {
                                             This flag can be used only with #LYD_OPT_PARSE_ONLY. */
 #define LYD_OPT_STRICT          0x0004 /**< Instead of silently ignoring data without schema definition raise an error. */
 #define LYD_OPT_EMPTY_INST      0x0008 /**< Allow leaf/leaf-list instances without values and lists without keys. */
+#define LYD_OPT_NO_STATE        0x0010 /**< Forbid state data in the parsed data. */
 //#define LYD_OPT_NOSIBLINGS 0x1000 /**< Parse only a single XML tree from the input. This option applies only to
 //                                       XML input data. */
+
+#define LYD_OPT_MASK            0xFFFF /**< Mask for all the parser options. */
 
 /** @} dataparseroptions */
 
@@ -447,6 +450,8 @@ struct lyd_node_any {
 #define LYD_VALOPT_NO_STATE     0x00010000 /**< Consider state data not allowed and raise an error if they are found. */
 #define LYD_VALOPT_DATA_ONLY    0x00020000 /**< Validate only modules whose data actually exist. */
 //#define LYD_VALOPT_OBSOLETE   0x0800 /**< Raise an error when an obsolete statement (status set to obsolete) is used. */
+
+#define LYD_VALOPT_MASK         0xFFFF0000 /**< Mask for all the validation options. */
 
 /** @} datavalidationoptions */
 
@@ -483,7 +488,7 @@ const struct lys_module *lyd_owner_module(const struct lyd_node *node);
  * @param[in] ctx Context to connect with the data tree being built here.
  * @param[in] data Serialized data in the specified format.
  * @param[in] format Format of the input data to be parsed.
- * @param[in] options Parser options, see @ref parseroptions. \p format LYD_LYB uses #LYD_OPT_PARSE_ONLY implicitly.
+ * @param[in] options Parser and validation options, see @ref parseroptions.
  * @return Pointer to the built data tree or NULL in case of empty \p data. To free the returned structure,
  *         use lyd_free_all().
  * @return NULL in case of error. The error information can be then obtained using ly_err* functions.

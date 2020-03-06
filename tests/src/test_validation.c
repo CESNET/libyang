@@ -323,6 +323,21 @@ setup(void **state)
                 "}"
             "}"
         "}";
+    const char *schema_h =
+        "module h {"
+            "namespace urn:tests:h;"
+            "prefix h;"
+            "yang-version 1.1;"
+
+            "container cont {"
+                "container cont2 {"
+                    "config false;"
+                    "leaf l {"
+                        "type string;"
+                    "}"
+                "}"
+            "}"
+        "}";
 
 #if ENABLE_LOGGER_CHECKING
     ly_set_log_clb(logger, 1);
@@ -337,6 +352,7 @@ setup(void **state)
     assert_non_null(lys_parse_mem(ctx, schema_e, LYS_IN_YANG));
     assert_non_null(lys_parse_mem(ctx, schema_f, LYS_IN_YANG));
     assert_non_null(lys_parse_mem(ctx, schema_g, LYS_IN_YANG));
+    assert_non_null(lys_parse_mem(ctx, schema_h, LYS_IN_YANG));
 
     return 0;
 }
@@ -1177,6 +1193,39 @@ test_iffeature(void **state)
     *state = NULL;
 }
 
+static void
+test_state(void **state)
+{
+    *state = test_iffeature;
+
+    const char *data;
+    struct lyd_node *tree;
+
+    data =
+    "<cont xmlns=\"urn:tests:h\">"
+        "<cont2>"
+            "<l>val</l>"
+        "</cont2>"
+    "</cont>";
+    assert_int_equal(LY_EVALID, lyd_parse_xml(ctx, data, LYD_OPT_PARSE_ONLY | LYD_OPT_NO_STATE, &tree));
+    assert_null(tree);
+    logbuf_assert("Invalid state data node \"cont2\" found. Line number 1.");
+
+    assert_int_equal(LY_EVALID, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY | LYD_VALOPT_NO_STATE, &tree));
+    assert_null(tree);
+    logbuf_assert("Invalid state data node \"cont2\" found. /h:cont/cont2");
+
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, LYD_OPT_PARSE_ONLY, &tree));
+    assert_non_null(tree);
+
+    assert_int_equal(LY_EVALID, lyd_validate(&tree, NULL, LYD_VALOPT_DATA_ONLY | LYD_VALOPT_NO_STATE));
+    logbuf_assert("Invalid state data node \"cont2\" found. /h:cont/cont2");
+
+    lyd_free_siblings(tree);
+
+    *state = NULL;
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1188,6 +1237,7 @@ int main(void)
         cmocka_unit_test_teardown(test_dup, teardown_s),
         cmocka_unit_test_teardown(test_defaults, teardown_s),
         cmocka_unit_test_teardown(test_iffeature, teardown_s),
+        cmocka_unit_test_teardown(test_state, teardown_s),
     };
 
     return cmocka_run_group_tests(tests, setup, teardown);

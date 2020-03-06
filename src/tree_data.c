@@ -279,6 +279,11 @@ lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int optio
 
     LY_CHECK_ARG_RET(ctx, ctx, NULL);
 
+    if ((options & LYD_OPT_PARSE_ONLY) && (options & LYD_VALOPT_MASK)) {
+        LOGERR(ctx, LY_EINVAL, "Passing validation flags with LYD_OPT_PARSE_ONLY is not allowed.");
+        return NULL;
+    }
+
 #if 0
     if (options & LYD_OPT_RPCREPLY) {
         /* first item in trees is mandatory - the RPC/action request */
