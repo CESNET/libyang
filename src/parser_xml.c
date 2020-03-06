@@ -258,7 +258,8 @@ lydxml_nodes(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char 
             ret = LY_EVALID;
             goto cleanup;
         }
-        snode = lys_find_child(parent ? parent->schema : NULL, mod, name, name_len, 0, 0);
+        /* leave if-feature check for validation */
+        snode = lys_find_child(parent ? parent->schema : NULL, mod, name, name_len, 0, LYS_GETNEXT_NOSTATECHECK);
         if (!snode) {
             LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_REFERENCE, "Element \"%.*s\" not found in the \"%s\" module.",
                    name_len, name, mod->name);

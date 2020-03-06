@@ -288,6 +288,41 @@ setup(void **state)
                 "}"
             "}"
         "}";
+    const char *schema_g =
+        "module g {"
+            "namespace urn:tests:g;"
+            "prefix g;"
+            "yang-version 1.1;"
+
+            "feature f1;"
+            "feature f2;"
+            "feature f3;"
+
+            "container cont {"
+                "if-feature \"f1\";"
+                "choice choic {"
+                    "if-feature \"f2 or f3\";"
+                    "leaf a {"
+                        "type string;"
+                    "}"
+                    "case b {"
+                        "if-feature \"f2 and f1\";"
+                        "leaf l {"
+                            "type string;"
+                        "}"
+                    "}"
+                "}"
+                "leaf d {"
+                    "type uint32;"
+                "}"
+                "container cont2 {"
+                    "if-feature \"f2\";"
+                    "leaf e {"
+                        "type string;"
+                    "}"
+                "}"
+            "}"
+        "}";
 
 #if ENABLE_LOGGER_CHECKING
     ly_set_log_clb(logger, 1);
@@ -301,6 +336,7 @@ setup(void **state)
     assert_non_null(lys_parse_mem(ctx, schema_d, LYS_IN_YANG));
     assert_non_null(lys_parse_mem(ctx, schema_e, LYS_IN_YANG));
     assert_non_null(lys_parse_mem(ctx, schema_f, LYS_IN_YANG));
+    assert_non_null(lys_parse_mem(ctx, schema_g, LYS_IN_YANG));
 
     return 0;
 }
@@ -1035,6 +1071,112 @@ test_defaults(void **state)
     *state = NULL;
 }
 
+static void
+test_iffeature(void **state)
+{
+    *state = test_iffeature;
+
+    const char *data;
+    struct lyd_node *tree;
+    const struct lys_module *mod = ly_ctx_get_module_latest(ctx, "g");
+
+    /* get empty data */
+    tree = NULL;
+    assert_int_equal(lyd_validate_modules(&tree, &mod, 1, 0), LY_SUCCESS);
+    assert_null(tree);
+
+    /* disabled by f1 */
+    data =
+    "<cont xmlns=\"urn:tests:g\">"
+        "<d>51</d>"
+    "</cont>";
+    assert_int_equal(LY_EVALID, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_null(tree);
+    logbuf_assert("Data are disabled by \"cont\" schema node if-feature. /g:cont");
+
+    /* enable f1 */
+    assert_int_equal(lys_feature_enable(mod, "f1"), LY_SUCCESS);
+
+    /* get data with default container */
+    assert_int_equal(lyd_validate_modules(&tree, &mod, 1, 0), LY_SUCCESS);
+    assert_non_null(tree);
+    lyd_free_siblings(tree);
+
+    /* disabled by f2 */
+    data =
+    "<cont xmlns=\"urn:tests:g\">"
+        "<cont2>"
+            "<e>val</e>"
+        "</cont2>"
+    "</cont>";
+    assert_int_equal(LY_EVALID, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_null(tree);
+    logbuf_assert("Data are disabled by \"cont2\" schema node if-feature. /g:cont/cont2");
+
+    data =
+    "<cont xmlns=\"urn:tests:g\">"
+        "<a>val</a>"
+    "</cont>";
+    assert_int_equal(LY_EVALID, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_null(tree);
+    logbuf_assert("Data are disabled by \"choic\" schema node if-feature. /g:cont/a");
+
+    /* enable f3 */
+    assert_int_equal(lys_feature_enable(mod, "f3"), LY_SUCCESS);
+
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_non_null(tree);
+    lyd_free_siblings(tree);
+
+    /* disabled by f2 */
+    data =
+    "<cont xmlns=\"urn:tests:g\">"
+        "<l>val</l>"
+    "</cont>";
+    assert_int_equal(LY_EVALID, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_null(tree);
+    logbuf_assert("Data are disabled by \"b\" schema node if-feature. /g:cont/l");
+
+    /* enable f2 */
+    assert_int_equal(lys_feature_enable(mod, "f2"), LY_SUCCESS);
+
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_non_null(tree);
+    lyd_free_siblings(tree);
+
+    /* try separate validation */
+    assert_int_equal(lys_feature_disable(mod, "f1"), LY_SUCCESS);
+    assert_int_equal(lys_feature_disable(mod, "f2"), LY_SUCCESS);
+    assert_int_equal(lys_feature_disable(mod, "f3"), LY_SUCCESS);
+
+    data =
+    "<cont xmlns=\"urn:tests:g\">"
+        "<l>val</l>"
+        "<d>51</d>"
+        "<cont2>"
+            "<e>val</e>"
+        "</cont2>"
+    "</cont>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, LYD_OPT_PARSE_ONLY, &tree));
+    assert_non_null(tree);
+
+    assert_int_equal(LY_EVALID, lyd_validate(&tree, NULL, LYD_VALOPT_DATA_ONLY));
+    logbuf_assert("Data are disabled by \"cont\" schema node if-feature. /g:cont");
+
+    assert_int_equal(lys_feature_enable(mod, "f1"), LY_SUCCESS);
+
+    assert_int_equal(LY_EVALID, lyd_validate(&tree, NULL, LYD_VALOPT_DATA_ONLY));
+    logbuf_assert("Data are disabled by \"b\" schema node if-feature. /g:cont/l");
+
+    assert_int_equal(lys_feature_enable(mod, "f2"), LY_SUCCESS);
+
+    assert_int_equal(LY_SUCCESS, lyd_validate(&tree, NULL, LYD_VALOPT_DATA_ONLY));
+
+    lyd_free_siblings(tree);
+
+    *state = NULL;
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1045,6 +1187,7 @@ int main(void)
         cmocka_unit_test_teardown(test_unique_nested, teardown_s),
         cmocka_unit_test_teardown(test_dup, teardown_s),
         cmocka_unit_test_teardown(test_defaults, teardown_s),
+        cmocka_unit_test_teardown(test_iffeature, teardown_s),
     };
 
     return cmocka_run_group_tests(tests, setup, teardown);

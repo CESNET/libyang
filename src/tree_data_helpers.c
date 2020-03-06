@@ -54,12 +54,14 @@ lyd_node_children(const struct lyd_node *node)
     }
 }
 
-const struct lys_module *
-lyd_top_node_module(const struct lyd_node *node)
+API const struct lys_module *
+lyd_owner_module(const struct lyd_node *node)
 {
     const struct lysc_node *schema;
 
-    assert(node && !node->parent);
+    if (!node) {
+        return NULL;
+    }
 
     for (schema = node->schema; schema->parent; schema = schema->parent);
     return schema->module;
@@ -89,7 +91,7 @@ lyd_mod_next_module(struct lyd_node *tree, const struct lys_module **modules, in
     *first = NULL;
     if (mod) {
         LY_LIST_FOR(tree, iter) {
-            if (lyd_top_node_module(iter) == mod) {
+            if (lyd_owner_module(iter) == mod) {
                 *first = iter;
                 break;
             }
@@ -113,9 +115,9 @@ lyd_data_next_module(struct lyd_node **next, struct lyd_node **first)
     *first = *next;
 
     /* prepare next */
-    mod = lyd_top_node_module(*next);
+    mod = lyd_owner_module(*next);
     LY_LIST_FOR(*next, *next) {
-        if (lyd_top_node_module(*next) != mod) {
+        if (lyd_owner_module(*next) != mod) {
             break;
         }
     }

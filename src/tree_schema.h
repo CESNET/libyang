@@ -1954,9 +1954,9 @@ LY_ERR lys_set_implemented(struct lys_module *mod);
  * @param[in] recursive - 0 to check if-feature only in the \p node schema node,
  * - 1 to check if-feature in all ascendant schema nodes until there is a node possibly having an instance in a data tree
  * @return NULL if enabled,
- * @return pointer to the node with the unsatisfied (disabling) if-feature expression.
+ * @return pointer to the node with the unsatisfied (disabled) if-feature expression.
  */
-const struct lysc_iffeature *lysc_node_is_disabled(const struct lysc_node *node, int recursive);
+const struct lysc_node *lysc_node_is_disabled(const struct lysc_node *node, int recursive);
 
 /**
  * @brief Check type restrictions applicable to the particular leaf/leaf-list with the given string @p value.

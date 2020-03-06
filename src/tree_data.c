@@ -953,11 +953,11 @@ lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling, struct
     } else if (*first_sibling) {
         /* top-level siblings */
         anchor = (*first_sibling)->prev;
-        while (anchor->prev->next && (lyd_top_node_module(anchor) != lyd_top_node_module(node))) {
+        while (anchor->prev->next && (lyd_owner_module(anchor) != lyd_owner_module(node))) {
             anchor = anchor->prev;
         }
 
-        if (lyd_top_node_module(anchor) == lyd_top_node_module(node)) {
+        if (lyd_owner_module(anchor) == lyd_owner_module(node)) {
             /* insert after last sibling from this module */
             lyd_insert_after_node(anchor, node);
         } else {
@@ -1065,15 +1065,15 @@ lyd_insert_after_check_place(struct lyd_node *anchor, struct lyd_node *sibling, 
     }
 
     if (anchor) {
-        if (anchor->next && (lyd_top_node_module(anchor) == lyd_top_node_module(anchor->next))
-                && (lyd_top_node_module(node) != lyd_top_node_module(anchor))) {
+        if (anchor->next && (lyd_owner_module(anchor) == lyd_owner_module(anchor->next))
+                && (lyd_owner_module(node) != lyd_owner_module(anchor))) {
             LOGERR(sibling->schema->module->ctx, LY_EINVAL, "Cannot insert top-level module \"%s\" data into module \"%s\" data.",
-                   lyd_top_node_module(node)->name, lyd_top_node_module(anchor)->name);
+                   lyd_owner_module(node)->name, lyd_owner_module(anchor)->name);
             return LY_EINVAL;
         }
 
-        if ((lyd_top_node_module(node) == lyd_top_node_module(anchor))
-                || (anchor->next && (lyd_top_node_module(node) == lyd_top_node_module(anchor->next)))) {
+        if ((lyd_owner_module(node) == lyd_owner_module(anchor))
+                || (anchor->next && (lyd_owner_module(node) == lyd_owner_module(anchor->next)))) {
             /* inserting before/after its module data */
             return LY_SUCCESS;
         }
@@ -1085,7 +1085,7 @@ lyd_insert_after_check_place(struct lyd_node *anchor, struct lyd_node *sibling, 
     }
 
     if (!anchor) {
-        if (lyd_top_node_module(node) == lyd_top_node_module(sibling)) {
+        if (lyd_owner_module(node) == lyd_owner_module(sibling)) {
             /* inserting before its module data */
             return LY_SUCCESS;
         }
@@ -1093,10 +1093,10 @@ lyd_insert_after_check_place(struct lyd_node *anchor, struct lyd_node *sibling, 
 
     /* check there are no data of this module */
     LY_LIST_FOR(sibling, sibling) {
-        if (lyd_top_node_module(node) == lyd_top_node_module(sibling)) {
+        if (lyd_owner_module(node) == lyd_owner_module(sibling)) {
             /* some data of this module found */
             LOGERR(sibling->schema->module->ctx, LY_EINVAL, "Top-level data of module \"%s\" already exist,"
-                   " they must be directly connected.", lyd_top_node_module(node)->name);
+                   " they must be directly connected.", lyd_owner_module(node)->name);
             return LY_EINVAL;
         }
     }

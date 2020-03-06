@@ -286,15 +286,6 @@ LY_ERR lyd_find_sibling_next2(const struct lyd_node *first, const struct lysc_no
                               size_t val_len, struct lyd_node **match);
 
 /**
- * @brief Get the module, whose data this top-level node belongs to. Useful for augments, when the augmented
- * module is the data owner. Handles top-level choice augments.
- *
- * @param[in] node Data node to examine.
- * @return Module owner of the node.
- */
-const struct lys_module *lyd_top_node_module(const struct lyd_node *node);
-
-/**
  * @brief Iterate over implemented modules for functions that accept specific modules or the whole context.
  *
  * @param[in] tree Data tree.

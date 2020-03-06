@@ -44,9 +44,9 @@ extern "C" {
  * <pre>
  *     1
  *    / \
-     *   2   4
+ *   2   4
  *  /   / \
-     * 3   5   6
+ * 3   5   6
  * </pre>
  *
  * Use the same parameters for #LYD_TREE_DFS_BEGIN and #LYD_TREE_DFS_END. While
@@ -391,7 +391,8 @@ struct lyd_node_any {
  * - all types are fully resolved (leafref/instance-identifier targets, unions) and must be valid (lists have
  * all the keys, leaf(-lists) correct values),
  * - when statements on existing nodes are evaluated, if not satisfied, a validation error is raised,
- * - data from several cases cause a validation error,
+ * - if-feature statements are evaluated,
+ * - invalid multiple data instances/data from several cases cause a validation error,
  * - default values are added.
  * @{
  */
@@ -407,8 +408,9 @@ struct lyd_node_any {
                                 the NETCONF \<edit-config\>'s config element. */
 
 #define LYD_OPT_PARSE_ONLY      0x0001 /**< Data will be only parsed and no validation will be performed. When statements
-                                            are kept unevaluated, union types may not be fully resolved, and default values
-                                            are not added (only the ones parsed are present). */
+                                            are kept unevaluated, union types may not be fully resolved, if-feature
+                                            statements are not checked, and default values are not added (only the ones
+                                            parsed are present). */
 #define LYD_OPT_TRUSTED         0x0002 /**< Data are considered trusted so they will be parsed as validated. If the parsed
                                             data are not valid, using this flag may lead to some unexpected behavior!
                                             This flag can be used only with #LYD_OPT_PARSE_ONLY. */
@@ -433,6 +435,7 @@ struct lyd_node_any {
  * - when statements on existing nodes are evaluated. Depending on the previous when state (from previous validation
  * or parsing), the node is silently auto-deleted if the state changed from true to false, otherwise a validation error
  * is raised if it evaluates to false,
+ * - if-feature statements are evaluated,
  * - data from several cases behave based on their previous state (from previous validation or parsing). If there existed
  * already a case and another one was added, the previous one is silently auto-deleted. Otherwise (if data from 2 or
  * more cases were created) a validation error is raised,
@@ -459,6 +462,15 @@ struct lyd_node_any {
  * @return Pointer to the first child node (if any) of the \p node.
  */
 const struct lyd_node *lyd_node_children(const struct lyd_node *node);
+
+/**
+ * @brief Get the owner module of the data node. It is the module of the top-level schema node. Generally,
+ * in case of augments it is the target module, recursively, otherwise it is the module where the data node is defined.
+ *
+ * @param[in] node Data node to examine.
+ * @return Module owner of the node.
+ */
+const struct lys_module *lyd_owner_module(const struct lyd_node *node);
 
 /**
  * @brief Parse (and validate) data from memory.

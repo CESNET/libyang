@@ -80,7 +80,7 @@ lys_getnext_data(const struct lyd_node *last, const struct lyd_node *sibling, co
  * @return LY_ERR value (LY_EINCOMPLETE if a referenced node does not have its when evaluated)
  */
 static LY_ERR
-lyd_val_when(struct lyd_node **tree, struct lyd_node *node, struct lysc_when *when)
+lyd_validate_when(struct lyd_node **tree, struct lyd_node *node, struct lysc_when *when)
 {
     LY_ERR ret = LY_SUCCESS;
     const struct lyd_node *ctx_node;
@@ -146,7 +146,7 @@ lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, struct ly_s
                 do {
                     uint32_t i;
                     LY_ARRAY_FOR(schema->when, i) {
-                        ret = lyd_val_when(tree, node, schema->when[i]);
+                        ret = lyd_validate_when(tree, node, schema->when[i]);
                         if (ret) {
                             break;
                         }
@@ -403,7 +403,7 @@ lyd_validate_new(struct lyd_node **first, const struct lysc_node *sparent, const
     }
 
     LY_LIST_FOR_SAFE(*first, next, node) {
-        if (mod && (lyd_top_node_module(node) != mod)) {
+        if (mod && (lyd_owner_module(node) != mod)) {
             /* all top-level data from this module checked */
             break;
         }
@@ -773,17 +773,23 @@ lyd_validate_siblings_r(struct lyd_node *first, const struct lysc_node *sparent,
                         int val_opts)
 {
     struct lyd_node *next, *node;
+    const struct lysc_node *snode;
 
     /* validate all restrictions of nodes themselves */
     LY_LIST_FOR_SAFE(first, next, node) {
-        if (mod && (lyd_top_node_module(node) != mod)) {
+        if (mod && (lyd_owner_module(node) != mod)) {
             /* all top-level data from this module checked */
             break;
         }
 
+        /* node's schema if-features */
+        if ((snode = lysc_node_is_disabled(node->schema, 1))) {
+            LOGVAL(node->schema->module->ctx, LY_VLOG_LYD, node, LY_VCODE_NOIFF, snode->name);
+            return LY_EVALID;
+        }
+
         /* TODO node's must */
         /* TODO node status */
-        /* TODO node's if-features */
         /* TODO list all keys existence */
         /* node value including if-feature is checked by plugins */
     }

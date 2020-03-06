@@ -555,23 +555,19 @@ lys_feature_value(const struct lys_module *module, const char *feature)
     return -1;
 }
 
-API const struct lysc_iffeature *
+API const struct lysc_node *
 lysc_node_is_disabled(const struct lysc_node *node, int recursive)
 {
     unsigned int u;
 
     LY_CHECK_ARG_RET(NULL, node, NULL);
 
-    while(node) {
-        if (node->nodetype & LYS_CHOICE) {
-            return NULL;
-        }
-
+    do {
         if (node->iffeatures) {
             /* check local if-features */
             LY_ARRAY_FOR(node->iffeatures, u) {
                 if (!lysc_iffeature_value(&node->iffeatures[u])) {
-                    return &node->iffeatures[u];
+                    return node;
                 }
             }
         }
@@ -580,9 +576,10 @@ lysc_node_is_disabled(const struct lysc_node *node, int recursive)
             return NULL;
         }
 
-        /* go through parents */
+        /* go through schema-only parents */
         node = node->parent;
-    }
+    } while (node && (node->nodetype & (LYS_CASE | LYS_CHOICE)));
+
     return NULL;
 }
 
