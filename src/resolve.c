@@ -3530,6 +3530,9 @@ check_default(struct lys_type *type, const char **value, struct lys_module *modu
         case LY_TYPE_IDENT:
             if (lys_main_module(base_tpdf->type.parent->module)->implemented) {
                 goto cleanup;
+            } else if ((type->base == LY_TYPE_IDENT) || (type->base == LY_TYPE_INST)) {
+                /* impossible to check with a non-implemented module */
+                goto cleanup;
             } else {
                 /* check the default value from typedef, but use also the typedef's module
                  * due to possible searching in imported modules which is expected in
