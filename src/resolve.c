@@ -6065,13 +6065,16 @@ resolve_identref(struct lys_type *type, const char *ident_name, struct lyd_node 
                     break;
                 }
             }
+        } else {
+            LOGWRN(ctx, "Identity \"%s\" has no derived identities, identityref with this base can never be instatiated.",
+                   cur->name);
         }
     }
     if (found == type->info.ident.count) {
         /* match found for all bases */
         cur = der;
         goto match;
-    } else if (found) {
+    } else {
         LOGVAL(ctx, LYE_SPEC, node ? LY_VLOG_LYD : LY_VLOG_NONE, node, "Identityref value is not derived from all its bases.");
         goto fail;
     }
