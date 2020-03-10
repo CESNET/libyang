@@ -237,6 +237,7 @@ size_t LY_VCODE_INSTREXP_len(const char *str);
 #define LY_VCODE_DUPCASE        LYVE_DATA, "Data for both cases \"%s\" and \"%s\" exist."
 #define LY_VCODE_NOIFF          LYVE_DATA, "Data are disabled by \"%s\" schema node if-feature."
 #define LY_VCODE_INSTATE        LYVE_DATA, "Invalid state data node \"%s\" found."
+#define LY_VCODE_NOKEY          LYVE_DATA, "List instance is missing its key \"%s\"."
 
 /******************************************************************************
  * Context

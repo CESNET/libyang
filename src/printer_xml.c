@@ -79,18 +79,18 @@ static void
 xml_print_ns(struct xmlpr_ctx *ctx, const struct lyd_node *node)
 {
     struct lyd_node *next, *cur, *child;
-    struct lyd_attr *attr;
+    struct lyd_meta *meta;
     struct mlist *mlist = NULL, *miter;
     const struct lys_module *wdmod = NULL;
 
-    /* add node attribute modules */
-    for (attr = node->attr; attr; attr = attr->next) {
+    /* add node metadata modules */
+    for (meta = node->meta; meta; meta = meta->next) {
         if (!strcmp(node->schema->name, "filter") &&
                 (!strcmp(node->schema->module->name, "ietf-netconf") ||
                  !strcmp(node->schema->module->name, "notifications"))) {
             /* exception for NETCONF's filter attributes */
             continue;
-        } else if (modlist_add(&mlist, attr->annotation->module)) {
+        } else if (modlist_add(&mlist, meta->annotation->module)) {
             goto print;
         }
     }
@@ -123,14 +123,14 @@ xml_print_ns(struct xmlpr_ctx *ctx, const struct lyd_node *node)
 
         LY_LIST_FOR(((struct lyd_node_inner*)node)->child, child) {
             LYD_TREE_DFS_BEGIN(child, next, cur) {
-                for (attr = cur->attr; attr; attr = attr->next) {
+                for (meta = cur->meta; meta; meta = meta->next) {
                     if (!strcmp(cur->schema->name, "filter") &&
                             (!strcmp(cur->schema->module->name, "ietf-netconf") ||
                              !strcmp(cur->schema->module->name, "notifications"))) {
                         /* exception for NETCONF's filter attributes */
                         continue;
                     } else {
-                        /* TODO annotations r = modlist_add(&mlist, lys_main_module(attr->annotation->module)); */
+                        /* TODO annotations r = modlist_add(&mlist, lys_main_module(meta->annotation->module)); */
                     }
                 }
             LYD_TREE_DFS_END(child, next, cur)}
@@ -169,9 +169,9 @@ xml_print_get_prefix(const struct lys_module *mod, void *private)
  * TODO
  */
 static LY_ERR
-xml_print_attrs(struct xmlpr_ctx *ctx, const struct lyd_node *node)
+xml_print_meta(struct xmlpr_ctx *ctx, const struct lyd_node *node)
 {
-    struct lyd_attr *attr;
+    struct lyd_meta *meta;
     const struct lys_module *wdmod = NULL;
 #if 0
     const char **prefs, **nss;
@@ -205,8 +205,8 @@ xml_print_attrs(struct xmlpr_ctx *ctx, const struct lyd_node *node)
         rpc_filter = 1;
     }
 #endif
-    for (attr = node->attr; attr; attr = attr->next) {
-        const char *value = attr->value.realtype->plugin->print(&attr->value, LYD_XML, xml_print_get_prefix, &ns_list, &dynamic);
+    for (meta = node->meta; meta; meta = meta->next) {
+        const char *value = meta->value.realtype->plugin->print(&meta->value, LYD_XML, xml_print_get_prefix, &ns_list, &dynamic);
 
         /* print namespaces connected with the values's prefixes */
         for (u = 0; u < ns_list.count; ++u) {
@@ -218,9 +218,9 @@ xml_print_attrs(struct xmlpr_ctx *ctx, const struct lyd_node *node)
 #if 0
         if (rpc_filter) {
             /* exception for NETCONF's filter's attributes */
-            if (!strcmp(attr->name, "select")) {
+            if (!strcmp(meta->name, "select")) {
                 /* xpath content, we have to convert the JSON format into XML first */
-                xml_expr = transform_json2xml(node->schema->module, attr->value_str, 0, &prefs, &nss, &ns_count);
+                xml_expr = transform_json2xml(node->schema->module, meta->value_str, 0, &prefs, &nss, &ns_count);
                 if (!xml_expr) {
                     /* error */
                     return EXIT_FAILURE;
@@ -232,10 +232,10 @@ xml_print_attrs(struct xmlpr_ctx *ctx, const struct lyd_node *node)
                 free(prefs);
                 free(nss);
             }
-            ly_print(out, " %s=\"", attr->name);
+            ly_print(out, " %s=\"", meta->name);
         } else {
 #endif
-            ly_print(ctx->out, " %s:%s=\"", attr->annotation->module->prefix, attr->name);
+            ly_print(ctx->out, " %s:%s=\"", meta->annotation->module->prefix, meta->name);
 #if 0
         }
 #endif
@@ -276,7 +276,7 @@ xml_print_node_open(struct xmlpr_ctx *ctx, const struct lyd_node *node)
         ctx->toplevel = 0;
     }
 
-    LY_CHECK_RET(xml_print_attrs(ctx, node));
+    LY_CHECK_RET(xml_print_meta(ctx, node));
 
     return LY_SUCCESS;
 }

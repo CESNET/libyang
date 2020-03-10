@@ -809,8 +809,8 @@ cmd_data(const char *arg)
                 options |= LYD_OPT_GET;
             } else if (!strcmp(optarg, "getconfig")) {
                 options |= LYD_OPT_GETCONFIG;
-            } else if (!strcmp(optarg, "edit")) {
-                options |= LYD_OPT_EDIT;
+            /*} else if (!strcmp(optarg, "edit")) {
+                options |= LYD_OPT_EDIT;*/
             } else {
                 fprintf(stderr, "Invalid parser option \"%s\".\n", optarg);
                 cmd_data_help();

@@ -125,7 +125,7 @@ lyd_validate_when(struct lyd_node **tree, struct lyd_node *node, struct lysc_whe
 }
 
 LY_ERR
-lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, struct ly_set *node_types, struct ly_set *attr_types,
+lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, struct ly_set *node_types, struct ly_set *meta_types,
                    LYD_FORMAT format, ly_clb_resolve_prefix get_prefix_clb, void *parser_data)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -196,21 +196,21 @@ lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, struct ly_s
         } while (u);
     }
 
-    if (attr_types && attr_types->count) {
-        /* ... and attribute values */
-        u = attr_types->count;
+    if (meta_types && meta_types->count) {
+        /* ... and metadata values */
+        u = meta_types->count;
         do {
             --u;
 
-            struct lyd_attr *attr = (struct lyd_attr *)attr_types->objs[u];
+            struct lyd_meta *meta = (struct lyd_meta *)meta_types->objs[u];
 
-            /* validate and store the value of the node */
-            ret = lyd_value_parse_attr(attr->parent->schema->module->ctx, attr, attr->value.original,
-                                    strlen(attr->value.original), 0, 1, get_prefix_clb, parser_data, format, NULL, *tree);
+            /* validate and store the value of the metadata */
+            ret = lyd_value_parse_meta(meta->parent->schema->module->ctx, meta, meta->value.original,
+                                       strlen(meta->value.original), 0, 1, get_prefix_clb, parser_data, format, NULL, *tree);
             LY_CHECK_RET(ret);
 
             /* remove this attr from the set */
-            ly_set_rm_index(attr_types, u, NULL);
+            ly_set_rm_index(meta_types, u, NULL);
         } while (u);
     }
 
@@ -948,8 +948,8 @@ _lyd_validate(struct lyd_node **tree, const struct lys_module **modules, int mod
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node *first, *next, *node, **first2;
     const struct lys_module *mod;
-    const struct lyd_attr *attr;
-    struct ly_set type_check = {0}, type_attr_check = {0}, when_check = {0};
+    const struct lyd_meta *meta;
+    struct ly_set type_check = {0}, type_meta_check = {0}, when_check = {0};
     uint32_t i = 0;
 
     LY_CHECK_ARG_RET(NULL, tree, *tree || ctx || (modules && mod_count), LY_EINVAL);
@@ -989,9 +989,9 @@ _lyd_validate(struct lyd_node **tree, const struct lys_module **modules, int mod
             LYD_TREE_DFS_BEGIN(first, next, node) {
                 /* skip added default nodes */
                 if ((node->flags & (LYD_DEFAULT | LYD_NEW)) != (LYD_DEFAULT | LYD_NEW)) {
-                    LY_LIST_FOR(node->attr, attr) {
-                        /* attribute type resolution */
-                        ly_set_add(&type_attr_check, (void *)attr, LY_SET_OPT_USEASLIST);
+                    LY_LIST_FOR(node->meta, meta) {
+                        /* metadata type resolution */
+                        ly_set_add(&type_meta_check, (void *)meta, LY_SET_OPT_USEASLIST);
                     }
 
                     if (node->schema->nodetype & LYD_NODE_TERM) {
@@ -1019,7 +1019,7 @@ _lyd_validate(struct lyd_node **tree, const struct lys_module **modules, int mod
         }
 
         /* finish incompletely validated terminal values/attributes and when conditions */
-        ret = lyd_validate_unres(tree, &when_check, &type_check, &type_attr_check, LYD_JSON, lydjson_resolve_prefix, NULL);
+        ret = lyd_validate_unres(tree, &when_check, &type_check, &type_meta_check, LYD_JSON, lydjson_resolve_prefix, NULL);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* perform final validation that assumes the data tree is final */
@@ -1029,7 +1029,7 @@ _lyd_validate(struct lyd_node **tree, const struct lys_module **modules, int mod
 
 cleanup:
     ly_set_erase(&type_check, NULL);
-    ly_set_erase(&type_attr_check, NULL);
+    ly_set_erase(&type_meta_check, NULL);
     ly_set_erase(&when_check, NULL);
     return ret;
 }

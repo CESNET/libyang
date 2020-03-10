@@ -114,7 +114,7 @@ test_leaf(void **state)
     struct lyd_node *tree;
     struct lyd_node_term *leaf;
 
-    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
     assert_non_null(tree);
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("foo", tree->schema->name);
@@ -131,7 +131,7 @@ test_leaf(void **state)
 
     /* make foo2 explicit */
     data = "<foo2 xmlns=\"urn:tests:a\">default-val</foo2>";
-    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
     assert_non_null(tree);
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("foo2", tree->schema->name);
@@ -143,7 +143,7 @@ test_leaf(void **state)
 
     /* parse foo2 but make it implicit */
     data = "<foo2 xmlns=\"urn:tests:a\" xmlns:wd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" wd:default=\"true\">default-val</foo2>";
-    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
     assert_non_null(tree);
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("foo2", tree->schema->name);
@@ -167,7 +167,7 @@ test_anydata(void **state)
     struct lyd_node *tree;
     struct lyd_node_any *any;
 
-    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
     assert_non_null(tree);
     assert_int_equal(LYS_ANYDATA, tree->schema->nodetype);
     assert_string_equal("any", tree->schema->name);
@@ -190,7 +190,7 @@ test_list(void **state)
     struct lyd_node_term *leaf;
 
     /* check hashes */
-    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
     assert_non_null(tree);
     assert_int_equal(LYS_LIST, tree->schema->nodetype);
     assert_string_equal("l1", tree->schema->name);
@@ -200,9 +200,27 @@ test_list(void **state)
     }
     lyd_free_all(tree);
 
+    /* missing keys */
+    data = "<l1 xmlns=\"urn:tests:a\"><c>c</c><b>b</b></l1>";
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    logbuf_assert("List instance is missing its key \"a\". /a:l1[b='b'][c='c']");
+
+    data = "<l1 xmlns=\"urn:tests:a\"><a>a</a></l1>";
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    logbuf_assert("List instance is missing its key \"b\". /a:l1[a='a']");
+
+    data = "<l1 xmlns=\"urn:tests:a\"><b>b</b><a>a</a></l1>";
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    logbuf_assert("List instance is missing its key \"c\". /a:l1[a='a'][b='b']");
+
+    /* key duplicate */
+    data = "<l1 xmlns=\"urn:tests:a\"><c>c</c><b>b</b><a>a</a><c>d</c></l1>";
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    logbuf_assert("Duplicate instance of \"c\". /a:l1[a='a'][b='b'][c='d'][c='c']/c");
+
     /* keys order */
     data = "<l1 xmlns=\"urn:tests:a\"><d>d</d><a>a</a><c>c</c><b>b</b></l1>";
-    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
     assert_non_null(tree);
     assert_int_equal(LYS_LIST, tree->schema->nodetype);
     assert_string_equal("l1", tree->schema->name);
@@ -219,7 +237,7 @@ test_list(void **state)
     lyd_free_all(tree);
 
     data = "<l1 xmlns=\"urn:tests:a\"><c>c</c><b>b</b><a>a</a></l1>";
-    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
     assert_non_null(tree);
     assert_int_equal(LYS_LIST, tree->schema->nodetype);
     assert_string_equal("l1", tree->schema->name);
@@ -234,7 +252,7 @@ test_list(void **state)
     logbuf_clean();
     lyd_free_all(tree);
 
-    assert_int_equal(LY_EVALID, lyd_parse_xml(ctx, data, LYD_OPT_STRICT, &tree));
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_OPT_STRICT, &tree));
     logbuf_assert("Invalid position of the key \"b\" in a list. Line number 1.");
 
     *state = NULL;
@@ -249,7 +267,7 @@ test_container(void **state)
     struct lyd_node *tree;
     struct lyd_node_inner *cont;
 
-    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
     assert_non_null(tree);
     assert_int_equal(LYS_CONTAINER, tree->schema->nodetype);
     assert_string_equal("c", tree->schema->name);
@@ -258,7 +276,7 @@ test_container(void **state)
     lyd_free_all(tree);
 
     data = "<cp xmlns=\"urn:tests:a\"/>";
-    assert_int_equal(LY_SUCCESS, lyd_parse_xml(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
     assert_non_null(tree);
     assert_int_equal(LYS_CONTAINER, tree->schema->nodetype);
     assert_string_equal("cp", tree->schema->name);

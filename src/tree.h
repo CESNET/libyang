@@ -15,6 +15,8 @@
 #ifndef LY_TREE_H_
 #define LY_TREE_H_
 
+#include "tree_data.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -117,6 +119,33 @@ extern "C" {
          (ELEM) = (NEXT))
 
 /**
+ * @brief Generic tree node structure.
+ */
+struct ly_node {
+    LYD_FORMAT format;
+    union {
+        struct {
+            const struct lysc_node *schema;
+            struct lyd_meta *meta;
+        } sch;
+        struct {
+            const char *name;
+            struct ly_attr *attr;
+        } xml;
+    };
+    const char *value;
+};
+
+/**
+ * @brief Generic attribute structure.
+ */
+struct ly_attr {
+    struct ly_attr *next;
+    const char *name;
+    const char *value;
+};
+
+/**
  * @brief YANG built-in types
  */
 typedef enum
@@ -148,36 +177,6 @@ typedef enum
  * @brief Stringified YANG built-in data types
  */
 extern const char* ly_data_type2str[LY_DATA_TYPE_COUNT];
-
-/**
- * @brief Callback provided by the data/schema parsers to type plugins to resolve (format-specific) mapping between prefixes used
- * in the value strings to the YANG schemas.
- *
- * Reverse function to ly_clb_get_prefix.
- *
- * XML uses XML namespaces, JSON uses schema names as prefixes, YIN/YANG uses prefixes of the imports.
- *
- * @param[in] ctx libyang context to find the schema.
- * @param[in] prefix Prefix found in the value string
- * @param[in] prefix_len Length of the @p prefix.
- * @param[in] private Internal data needed by the callback.
- * @return Pointer to the YANG schema identified by the provided prefix or NULL if no mapping found.
- */
-typedef const struct lys_module *(*ly_clb_resolve_prefix)(struct ly_ctx *ctx, const char *prefix, size_t prefix_len, void *private);
-
-/**
- * @brief Callback provided by the data/schema printers to type plugins to resolve (format-specific) mapping between YANG module of a data object
- * to prefixes used in the value strings.
- *
- * Reverse function to ly_clb_resolve_prefix.
- *
- * XML uses XML namespaces, JSON uses schema names as prefixes, YIN/YANG uses prefixes of the imports.
- *
- * @param[in] mod YANG module of the object.
- * @param[in] private Internal data needed by the callback.
- * @return String representing prefix for the object of the given YANG module @p mod.
- */
-typedef const char *(*ly_clb_get_prefix)(const struct lys_module *mod, void *private);
 
 /** @} */
 

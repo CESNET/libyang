@@ -26,13 +26,13 @@
  * @param[in,out] tree Data tree, is updated if some nodes are autodeleted.
  * @param[in] node_when Set with nodes with "when" conditions, can be NULL.
  * @param[in] node_types Set with nodes with unresolved types, can be NULL
- * @param[in] attr_types Set with attributes with unresolved types, can be NULL.
+ * @param[in] meta_types Set with metdata with unresolved types, can be NULL.
  * @param[in] format Format of the unresolved data.
  * @param[in] get_prefix_clb Format-specific getter to resolve prefixes.
  * @param[in] parser_data Parser's data for @p get_prefix_clb.
  * @return LY_ERR value.
  */
-LY_ERR lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, struct ly_set *node_types, struct ly_set *attr_types,
+LY_ERR lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, struct ly_set *node_types, struct ly_set *meta_types,
                           LYD_FORMAT format, ly_clb_resolve_prefix get_prefix_clb, void *parser_data);
 
 /**

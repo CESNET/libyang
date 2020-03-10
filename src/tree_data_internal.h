@@ -124,8 +124,9 @@ struct lyd_node *lyd_get_prev_key_anchor(const struct lyd_node *first_sibling, c
 
 /**
  * @brief Insert a node into parent/siblings. In case a key is being inserted into a list, the correct position
- * is found and inserted into. Also, in case we are inserting into top-level siblings, insert it as
- * the last sibling of all the module data siblings. Otherwise it is inserted at the very last place.
+ * is found, inserted into, and if it is the last key, parent list hash is calculated. Also, in case we are inserting
+ * into top-level siblings, insert it as the last sibling of all the module data siblings. Otherwise it is inserted at
+ * the very last place.
  *
  * @param[in] parent Parent to insert into, NULL for top-level sibling.
  * @param[in,out] first_sibling First sibling, NULL if no top-level sibling exist yet. Can be also NULL if @p parent is set.
@@ -137,8 +138,8 @@ void lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling, s
  * @brief Create and insert an attribute (last) into a parent.
  *
  * @param[in] parent Parent of the attribute, can be NULL.
- * @param[in,out] attr Attribute list to add at its end if @p parent is NULL, returned created attribute.
- * @param[in] mod Attribute module (with the annotation definition).
+ * @param[in,out] meta Metadata list to add at its end if @p parent is NULL, returned created attribute.
+ * @param[in] mod Metadata module (with the annotation definition).
  * @param[in] name Attribute name.
  * @param[in] name_len Length of @p name, must be set correctly.
  * @param[in] value String value to be parsed.
@@ -152,7 +153,7 @@ void lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling, s
  * @return LY_EINCOMPLETE in case data tree is needed to finish the validation.
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const struct lys_module *mod, const char *name,
+LY_ERR lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct lys_module *mod, const char *name,
                        size_t name_len, const char *value, size_t value_len, int *dynamic, ly_clb_resolve_prefix get_prefix,
                        void *prefix_data, LYD_FORMAT format, const struct lysc_node *ctx_snode);
 
@@ -178,10 +179,10 @@ LY_ERR lyd_value_parse(struct lyd_node_term *node, const char *value, size_t val
                        ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format, const struct lyd_node *tree);
 
 /**
- * @brief Validate, canonize and store the given @p value into the attribute according to the metadata annotation type's rules.
+ * @brief Validate, canonize and store the given @p value into the metadata according to the annotation type's rules.
  *
  * @param[in] ctx libyang context.
- * @param[in] attr Data attribute for the @p value.
+ * @param[in] meta Metadata for the @p value.
  * @param[in] value String value to be parsed, must not be NULL.
  * @param[in] value_len Length of the give @p value, must be set correctly.
  * @param[in,out] dynamic Flag if @p value is dynamically allocated, is adjusted when @p value is consumed.
@@ -197,7 +198,7 @@ LY_ERR lyd_value_parse(struct lyd_node_term *node, const char *value, size_t val
  * @return LY_EINCOMPLETE in case the @p trees is not provided and it was needed to finish the validation.
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_value_parse_attr(struct ly_ctx *ctx, struct lyd_attr *attr, const char *value, size_t value_len, int *dynamic,
+LY_ERR lyd_value_parse_meta(struct ly_ctx *ctx, struct lyd_meta *meta, const char *value, size_t value_len, int *dynamic,
                             int second, ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format,
                             const struct lysc_node *ctx_snode, const struct lyd_node *tree);
 
@@ -205,12 +206,31 @@ LY_ERR lyd_value_parse_attr(struct ly_ctx *ctx, struct lyd_attr *attr, const cha
  * @brief Parse XML string as YANG data tree.
  *
  * @param[in] ctx libyang context
- * @param[in] data Pointer to the XML string representation of the YANG data to parse.
+ * @param[in] data Pointer to the XML data to parse.
  * @param[in] options @ref dataparseroptions
  * @param[out] tree Parsed data tree. Note that NULL can be a valid result.
- * @reutn LY_ERR value.
+ * @return LY_ERR value.
  */
-LY_ERR lyd_parse_xml(struct ly_ctx *ctx, const char *data, int options, struct lyd_node **tree);
+LY_ERR lyd_parse_xml_data(struct ly_ctx *ctx, const char *data, int options, struct lyd_node **tree);
+
+/**
+ * @brief Parse XML string as YANG RPC/action invocation.
+ *
+ * Optional \<rpc\> envelope element, if present, is [checked](https://tools.ietf.org/html/rfc6241#section-4.1) and all
+ * its XML attributes returned. In that case an RPC is expected to be parsed.
+ *
+ * Can be followed by optional \<action\> envelope element, which is also
+ * [checked](https://tools.ietf.org/html/rfc7950#section-7.15.2) and then an action is expected to be parsed.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] data Pointer to the XML data to parse.
+ * @param[out] tree Parsed RPC/action data tree.
+ * @param[out] attr Any found attributes on the rpc envelope.
+ * @param[out] op Pointer to the actual operation. Useful mainly for action.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_parse_xml_rpc(struct ly_ctx *ctx, const char *data, struct lyd_node **tree, struct ly_attr **attr,
+                         struct lyd_node **op);
 
 /**
  * @defgroup datahash Data nodes hash manipulation
@@ -309,5 +329,13 @@ const struct lys_module *lyd_mod_next_module(struct lyd_node *tree, const struct
  * @return NULL if all modules were traversed.
  */
 const struct lys_module *lyd_data_next_module(struct lyd_node **next, struct lyd_node **first);
+
+/**
+ * @brief Check that a list has all its keys.
+ *
+ * @param[in] node List to check.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_parse_check_keys(struct lyd_node *node);
 
 #endif /* LY_TREE_DATA_INTERNAL_H_ */

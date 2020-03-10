@@ -134,9 +134,9 @@ enum lyxp_node_type {
     LYXP_NODE_ROOT_CONFIG,      /* <running> data context, no state data (node value first top-level node) */
 
     /* XML elements */
-    LYXP_NODE_ELEM,             /* XML element (most common) */
-    LYXP_NODE_TEXT,             /* XML text element (extremely specific use, unlikely to be ever needed) */
-    LYXP_NODE_ATTR              /* XML attribute (in YANG cannot happen, do not use for the context node) */
+    LYXP_NODE_ELEM,             /* YANG data element (most common) */
+    LYXP_NODE_TEXT,             /* YANG data text element (extremely specific use, unlikely to be ever needed) */
+    LYXP_NODE_META              /* YANG metadata (do not use for the context node) */
 };
 
 /**
@@ -224,11 +224,11 @@ struct lyxp_set {
              * >=3 - scnode is not in context because we are in a predicate and this scnode was used/will be used later */
             int32_t in_ctx;
         } *scnodes;
-        struct lyxp_set_attr {
-            struct lyd_attr *attr;
+        struct lyxp_set_meta {
+            struct lyd_meta *meta;
             enum lyxp_node_type type;
-            uint32_t pos; /* if node_type is LYXP_SET_NODE_ATTR, it is the parent node position */
-        } *attrs;
+            uint32_t pos; /* if node_type is LYXP_SET_NODE_META, it is the parent node position */
+        } *meta;
         char *str;
         long double num;
         int bool;

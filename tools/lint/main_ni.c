@@ -519,8 +519,8 @@ main_ni(int argc, char* argv[])
                 options_parser |= LYD_OPT_GET;
             } else if (!strcmp(optarg, "getconfig")) {
                 options_parser |= LYD_OPT_GETCONFIG;
-            } else if (!strcmp(optarg, "edit")) {
-                options_parser |= LYD_OPT_EDIT;
+            /*} else if (!strcmp(optarg, "edit")) {
+                options_parser |= LYD_OPT_EDIT;*/
             } else if (!strcmp(optarg, "data")) {
                 /* no options */
             } else {

@@ -207,21 +207,21 @@ struct lyd_value {
 };
 
 /**
- * @brief Attribute structure.
+ * @brief Metadata structure.
  *
- * The structure provides information about attributes of a data element. Such attributes must map to
+ * The structure provides information about metadata of a data element. Such attributes must map to
  * annotations as specified in RFC 7952. The only exception is the filter type (in NETCONF get operations)
  * and edit-config's operation attributes. In XML, they are represented as standard XML attributes. In JSON,
  * they are represented as JSON elements starting with the '@' character (for more information, see the
  * YANG metadata RFC.
  *
  */
-struct lyd_attr {
-    struct lyd_node *parent;         /**< data node where the attribute is placed */
-    struct lyd_attr *next;           /**< pointer to the next attribute of the same element */
-    struct lysc_ext_instance *annotation; /**< pointer to the attribute/annotation's definition */
-    const char *name;                /**< attribute name */
-    struct lyd_value value;          /**< attribute's value representation */
+struct lyd_meta {
+    struct lyd_node *parent;         /**< data node where the metadata is placed */
+    struct lyd_meta *next;           /**< pointer to the next metadata of the same element */
+    struct lysc_ext_instance *annotation; /**< pointer to the annotation's definition */
+    const char *name;                /**< metadata name */
+    struct lyd_value value;          /**< metadata value representation */
 };
 
 
@@ -258,6 +258,36 @@ struct lyd_attr {
 /** @} */
 
 /**
+ * @brief Callback provided by the data/schema parsers to type plugins to resolve (format-specific) mapping between prefixes used
+ * in the value strings to the YANG schemas.
+ *
+ * Reverse function to ly_clb_get_prefix.
+ *
+ * XML uses XML namespaces, JSON uses schema names as prefixes, YIN/YANG uses prefixes of the imports.
+ *
+ * @param[in] ctx libyang context to find the schema.
+ * @param[in] prefix Prefix found in the value string
+ * @param[in] prefix_len Length of the @p prefix.
+ * @param[in] private Internal data needed by the callback.
+ * @return Pointer to the YANG schema identified by the provided prefix or NULL if no mapping found.
+ */
+typedef const struct lys_module *(*ly_clb_resolve_prefix)(struct ly_ctx *ctx, const char *prefix, size_t prefix_len, void *private);
+
+/**
+ * @brief Callback provided by the data/schema printers to type plugins to resolve (format-specific) mapping between YANG module of a data object
+ * to prefixes used in the value strings.
+ *
+ * Reverse function to ly_clb_resolve_prefix.
+ *
+ * XML uses XML namespaces, JSON uses schema names as prefixes, YIN/YANG uses prefixes of the imports.
+ *
+ * @param[in] mod YANG module of the object.
+ * @param[in] private Internal data needed by the callback.
+ * @return String representing prefix for the object of the given YANG module @p mod.
+ */
+typedef const char *(*ly_clb_get_prefix)(const struct lys_module *mod, void *private);
+
+/**
  * @brief Generic structure for a data node.
  */
 struct lyd_node {
@@ -274,7 +304,7 @@ struct lyd_node {
                                           never NULL. If there is no sibling node, pointer points to the node
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
-    struct lyd_attr *attr;           /**< pointer to the list of attributes of this node */
+    struct lyd_meta *meta;           /**< pointer to the list of metadata of this node */
 
 #ifdef LY_ENABLED_LYD_PRIV
     void *priv;                      /**< private user data, not used by libyang */
@@ -297,7 +327,7 @@ struct lyd_node_inner {
                                           never NULL. If there is no sibling node, pointer points to the node
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
-    struct lyd_attr *attr;           /**< pointer to the list of attributes of this node */
+    struct lyd_meta *meta;           /**< pointer to the list of metadata of this node */
 
 #ifdef LY_ENABLED_LYD_PRIV
     void *priv;                      /**< private user data, not used by libyang */
@@ -324,7 +354,7 @@ struct lyd_node_term {
                                           never NULL. If there is no sibling node, pointer points to the node
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
-    struct lyd_attr *attr;           /**< pointer to the list of attributes of this node */
+    struct lyd_meta *meta;           /**< pointer to the list of metadata of this node */
 
 #ifdef LY_ENABLED_LYD_PRIV
     void *priv;                      /**< private user data, not used by libyang */
@@ -349,7 +379,7 @@ struct lyd_node_any {
                                           never NULL. If there is no sibling node, pointer points to the node
                                           itself. In case of the first node, this pointer points to the last
                                           node in the list. */
-    struct lyd_attr *attr;           /**< pointer to the list of attributes of this node */
+    struct lyd_meta *meta;           /**< pointer to the list of attributes of this node */
 
 #ifdef LY_ENABLED_LYD_PRIV
     void *priv;                      /**< private user data, not used by libyang */
@@ -374,16 +404,13 @@ struct lyd_node_any {
  * Default parser behavior:
  * - complete input file is always parsed. In case of XML, even not well-formed XML document (multiple top-level
  * elements) is parsed in its entirety,
- * - parser silently ignores data without matching schema node definition. If the caller wants to stop
- * parsing in case of presence of unknown data, the #LYD_OPT_STRICT can be used. The strict mode is useful for
- * NETCONF servers, since NETCONF clients should always send data according to the capabilities announced by the server.
- * On the other hand, the default non-strict mode is useful for clients receiving data from NETCONF server since
- * clients are not required to understand everything the server does. Of course, the optimal strategy for clients is
- * to use filtering to get only the required data. Having an unknown element of the known namespace is always an error.
+ * - parser silently ignores data without matching schema node definition,
+ * - list instances are checked whether they have all the keys, error is raised if not.
  *
  * Default parser validation behavior:
  * - the provided data are expected to provide complete datastore content (both the configuration and state data)
  * and performs data validation according to all YANG rules, specifics follow,
+ * - list instances are expected to have all the keys (it is not checked),
  * - instantiated (status) obsolete data print a warning,
  * - all types are fully resolved (leafref/instance-identifier targets, unions) and must be valid (lists have
  * all the keys, leaf(-lists) correct values),
@@ -401,8 +428,6 @@ struct lyd_node_any {
                                 \<get\> operation. */
 #define LYD_OPT_GETCONFIG  LYD_OPT_PARSE_ONLY | LYD_OPT_NO_STATE /**< Data content from a NETCONF reply message to
                                 the NETCONF \<get-config\> operation. */
-#define LYD_OPT_EDIT       LYD_OPT_PARSE_ONLY | LYD_OPT_NO_STATE | LYD_OPT_EMPTY_INST /**< Content of
-                                the NETCONF \<edit-config\>'s config element. */
 
 #define LYD_OPT_PARSE_ONLY      0x0001 /**< Data will be only parsed and no validation will be performed. When statements
                                             are kept unevaluated, union types may not be fully resolved, if-feature
@@ -412,8 +437,7 @@ struct lyd_node_any {
                                             data are not valid, using this flag may lead to some unexpected behavior!
                                             This flag can be used only with #LYD_OPT_PARSE_ONLY. */
 #define LYD_OPT_STRICT          0x0004 /**< Instead of silently ignoring data without schema definition raise an error. */
-#define LYD_OPT_EMPTY_INST      0x0008 /**< Allow leaf/leaf-list instances without values and lists without keys. */
-#define LYD_OPT_NO_STATE        0x0010 /**< Forbid state data in the parsed data. */
+#define LYD_OPT_NO_STATE        0x0008 /**< Forbid state data in the parsed data. */
 
 #define LYD_OPT_MASK            0xFFFF /**< Mask for all the parser options. */
 
@@ -696,14 +720,14 @@ void lyd_free_siblings(struct lyd_node *node);
 void lyd_free_tree(struct lyd_node *node);
 
 /**
- * @brief Destroy data attribute.
+ * @brief Destroy metadata.
  *
- * @param[in] ctx Context where the attribute was created.
- * @param[in] attr Attribute to destroy
- * @param[in] recursive Zero to destroy only the attribute (the attribute list is corrected),
- * non-zero to destroy also all the subsequent attributes in the list.
+ * @param[in] ctx Context where the metadata was created.
+ * @param[in] meta Metadata to destroy
+ * @param[in] recursive Zero to destroy only the metadata (the metadata list is corrected),
+ * non-zero to destroy also all the subsequent metadata in the list.
  */
-void lyd_free_attr(struct ly_ctx *ctx, struct lyd_attr *attr, int recursive);
+void lyd_free_meta(struct ly_ctx *ctx, struct lyd_meta *meta, int recursive);
 
 /**
  * @brief Check type restrictions applicable to the particular leaf/leaf-list with the given string @p value.
@@ -837,13 +861,13 @@ const struct lyd_node_term *lyd_target(struct lyd_value_path *path, const struct
 const char *lyd_value2str(const struct lyd_node_term *node, int *dynamic);
 
 /**
- * @brief Get string value of an attribute \p attr.
+ * @brief Get string value of a metadata \p meta.
  *
- * @param[in] attr Attribute with the value.
+ * @param[in] meta Metadata with the value.
  * @param[out] dynamic Whether the string value was dynmically allocated.
- * @return String value of @p attr, if @p dynamic, needs to be freed.
+ * @return String value of @p meta, if @p dynamic, needs to be freed.
  */
-const char *lyd_attr2str(const struct lyd_attr *attr, int *dynamic);
+const char *lyd_meta2str(const struct lyd_meta *meta, int *dynamic);
 
 /**
  * @brief Types of the different data paths.

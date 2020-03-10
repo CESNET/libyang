@@ -124,3 +124,24 @@ lyd_data_next_module(struct lyd_node **next, struct lyd_node **first)
 
     return mod;
 }
+
+LY_ERR
+lyd_parse_check_keys(struct lyd_node *node)
+{
+    const struct lysc_node *skey = NULL;
+    const struct lyd_node *key;
+
+    assert(node->schema->nodetype == LYS_LIST);
+
+    key = lyd_node_children(node);
+    while ((skey = lys_getnext(skey, node->schema, NULL, 0)) && (skey->flags & LYS_KEY)) {
+        if (!key || (key->schema != skey)) {
+            LOGVAL(node->schema->module->ctx, LY_VLOG_LYD, node, LY_VCODE_NOKEY, skey->name);
+            return LY_EVALID;
+        }
+
+        key = key->next;
+    }
+
+    return LY_SUCCESS;
+}

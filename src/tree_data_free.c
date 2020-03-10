@@ -43,45 +43,45 @@ lyd_value_free_path(struct ly_ctx *ctx, struct lyd_value_path *path)
 }
 
 API void
-lyd_free_attr(struct ly_ctx *ctx, struct lyd_attr *attr, int recursive)
+lyd_free_meta(struct ly_ctx *ctx, struct lyd_meta *meta, int recursive)
 {
-    struct lyd_attr *iter;
+    struct lyd_meta *iter;
 
     LY_CHECK_ARG_RET(NULL, ctx, );
-    if (!attr) {
+    if (!meta) {
         return;
     }
 
-    if (attr->parent) {
-        if (attr->parent->attr == attr) {
+    if (meta->parent) {
+        if (meta->parent->meta == meta) {
             if (recursive) {
-                attr->parent->attr = NULL;
+                meta->parent->meta = NULL;
             } else {
-                attr->parent->attr = attr->next;
+                meta->parent->meta = meta->next;
             }
         } else {
-            for (iter = attr->parent->attr; iter->next != attr; iter = iter->next);
+            for (iter = meta->parent->meta; iter->next != meta; iter = iter->next);
             if (iter->next) {
                 if (recursive) {
                     iter->next = NULL;
                 } else {
-                    iter->next = attr->next;
+                    iter->next = meta->next;
                 }
             }
         }
     }
 
     if (!recursive) {
-        attr->next = NULL;
+        meta->next = NULL;
     }
 
-    for(iter = attr; iter; ) {
-        attr = iter;
+    for(iter = meta; iter; ) {
+        meta = iter;
         iter = iter->next;
 
-        FREE_STRING(ctx, attr->name);
-        attr->value.realtype->plugin->free(ctx, &attr->value);
-        free(attr);
+        FREE_STRING(ctx, meta->name);
+        meta->value.realtype->plugin->free(ctx, &meta->value);
+        free(meta);
     }
 }
 
@@ -129,8 +129,8 @@ lyd_free_subtree(struct ly_ctx *ctx, struct lyd_node *node, int top)
         ((struct lysc_node_leaf*)node->schema)->type->plugin->free(ctx, &((struct lyd_node_term*)node)->value);
     }
 
-    /* free the node's attributes */
-    lyd_free_attr(ctx, node->attr, 1);
+    /* free the node's metadata */
+    lyd_free_meta(ctx, node->meta, 1);
 
     /* unlink only the nodes from the first level, nodes in subtree are freed all, so no unlink is needed */
     if (top) {

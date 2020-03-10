@@ -112,7 +112,7 @@ lyd_value_store(struct lyd_value *val, const struct lysc_node *schema, const cha
 }
 
 LY_ERR
-lyd_value_parse_attr(struct ly_ctx *ctx, struct lyd_attr *attr, const char *value, size_t value_len, int *dynamic,
+lyd_value_parse_meta(struct ly_ctx *ctx, struct lyd_meta *meta, const char *value, size_t value_len, int *dynamic,
                      int second, ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format,
                      const struct lysc_node *ctx_snode, const struct lyd_node *tree)
 {
@@ -122,15 +122,15 @@ lyd_value_parse_attr(struct ly_ctx *ctx, struct lyd_attr *attr, const char *valu
     int options = LY_TYPE_OPTS_STORE | (second ? LY_TYPE_OPTS_SECOND_CALL : 0) |
             (dynamic && *dynamic ? LY_TYPE_OPTS_DYNAMIC : 0) | (tree ? 0 : LY_TYPE_OPTS_INCOMPLETE_DATA);
 
-    assert(ctx && attr && ((tree && attr->parent) || ctx_snode));
+    assert(ctx && meta && ((tree && meta->parent) || ctx_snode));
 
-    ant = attr->annotation->data;
+    ant = meta->annotation->data;
 
     if (!second) {
-        attr->value.realtype = ant->type;
+        meta->value.realtype = ant->type;
     }
     ret = ant->type->plugin->store(ctx, ant->type, value, value_len, options, get_prefix, parser, format,
-                                  tree ? (void *)attr->parent : (void *)ctx_snode, tree, &attr->value, NULL, &err);
+                                  tree ? (void *)meta->parent : (void *)ctx_snode, tree, &meta->value, NULL, &err);
     if (ret && (ret != LY_EINCOMPLETE)) {
         if (err) {
             ly_err_print(err);
@@ -262,11 +262,11 @@ lyd_value2str(const struct lyd_node_term *node, int *dynamic)
 }
 
 API const char *
-lyd_attr2str(const struct lyd_attr *attr, int *dynamic)
+lyd_meta2str(const struct lyd_meta *meta, int *dynamic)
 {
-    LY_CHECK_ARG_RET(attr ? attr->parent->schema->module->ctx : NULL, attr, dynamic, NULL);
+    LY_CHECK_ARG_RET(meta ? meta->parent->schema->module->ctx : NULL, meta, dynamic, NULL);
 
-    return attr->value.realtype->plugin->print(&attr->value, LYD_JSON, json_print_get_prefix, NULL, dynamic);
+    return meta->value.realtype->plugin->print(&meta->value, LYD_JSON, json_print_get_prefix, NULL, dynamic);
 }
 
 API struct lyd_node *
@@ -306,7 +306,7 @@ lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int optio
 
     switch (format) {
     case LYD_XML:
-        lyd_parse_xml(ctx, data, options, &result);
+        lyd_parse_xml_data(ctx, data, options, &result);
         break;
 #if 0
     case LYD_JSON:
@@ -818,6 +818,8 @@ lyd_get_prev_key_anchor(const struct lyd_node *first_sibling, const struct lysc_
 /**
  * @brief Insert node after a sibling.
  *
+ * Handles inserting into NP containers and key-less lists.
+ *
  * @param[in] sibling Sibling to insert after.
  * @param[in] node Node to insert.
  */
@@ -845,10 +847,14 @@ lyd_insert_after_node(struct lyd_node *sibling, struct lyd_node *node)
     }
     node->parent = sibling->parent;
 
-    if (!(node->flags & LYD_DEFAULT)) {
-        /* remove default flags from NP containers */
-        for (par = node->parent; par && (par->flags & LYD_DEFAULT); par = par->parent) {
+    for (par = node->parent; par; par = par->parent) {
+        if ((par->flags & LYD_DEFAULT) && !(node->flags & LYD_DEFAULT)) {
+            /* remove default flags from NP containers */
             par->flags &= ~LYD_DEFAULT;
+        }
+        if ((par->schema->nodetype == LYS_LIST) && (par->schema->flags & LYS_KEYLESS)) {
+            /* rehash key-less list */
+            lyd_hash((struct lyd_node *)par);
         }
     }
 
@@ -858,6 +864,8 @@ lyd_insert_after_node(struct lyd_node *sibling, struct lyd_node *node)
 
 /**
  * @brief Insert node before a sibling.
+ *
+ * Handles inserting into NP containers and key-less lists.
  *
  * @param[in] sibling Sibling to insert before.
  * @param[in] node Node to insert.
@@ -882,10 +890,14 @@ lyd_insert_before_node(struct lyd_node *sibling, struct lyd_node *node)
     }
     node->parent = sibling->parent;
 
-    if (!(node->flags & LYD_DEFAULT)) {
-        /* remove default flags from NP containers */
-        for (par = node->parent; par && (par->flags & LYD_DEFAULT); par = par->parent) {
+    for (par = node->parent; par; par = par->parent) {
+        if ((par->flags & LYD_DEFAULT) && !(node->flags & LYD_DEFAULT)) {
+            /* remove default flags from NP containers */
             par->flags &= ~LYD_DEFAULT;
+        }
+        if ((par->schema->nodetype == LYS_LIST) && (par->schema->flags & LYS_KEYLESS)) {
+            /* rehash key-less list */
+            lyd_hash((struct lyd_node *)par);
         }
     }
 
@@ -895,6 +907,8 @@ lyd_insert_before_node(struct lyd_node *sibling, struct lyd_node *node)
 
 /**
  * @brief Insert node as the last child of a parent.
+ *
+ * Handles inserting into NP containers and key-less lists.
  *
  * @param[in] parent Parent to insert into.
  * @param[in] node Node to insert.
@@ -918,10 +932,14 @@ lyd_insert_last_node(struct lyd_node *parent, struct lyd_node *node)
     }
     node->parent = par;
 
-    if (!(node->flags & LYD_DEFAULT)) {
-        /* remove default flags from NP containers */
-        for (; par && (par->flags & LYD_DEFAULT); par = par->parent) {
+    for (; par; par = par->parent) {
+        if ((par->flags & LYD_DEFAULT) && !(node->flags & LYD_DEFAULT)) {
+            /* remove default flags from NP containers */
             par->flags &= ~LYD_DEFAULT;
+        }
+        if ((par->schema->nodetype == LYS_LIST) && (par->schema->flags & LYS_KEYLESS)) {
+            /* rehash key-less list */
+            lyd_hash((struct lyd_node *)par);
         }
     }
 
@@ -933,6 +951,8 @@ void
 lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling, struct lyd_node *node)
 {
     struct lyd_node *anchor;
+    const struct lysc_node *skey = NULL;
+    int has_keys;
 
     assert((parent || first_sibling) && node && node->hash);
 
@@ -951,6 +971,24 @@ lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling, struct
             } else {
                 lyd_insert_last_node(parent, node);
             }
+
+            /* hash list if all its keys were added */
+            assert(parent->schema->nodetype == LYS_LIST);
+            anchor = (struct lyd_node *)lyd_node_children(parent);
+            has_keys = 1;
+            while ((skey = lys_getnext(skey, parent->schema, NULL, 0)) && (skey->flags & LYS_KEY)) {
+                if (!anchor || (anchor->schema != skey)) {
+                    /* key missing */
+                    has_keys = 0;
+                    break;
+                }
+
+                anchor = anchor->next;
+            }
+            if (has_keys) {
+                lyd_hash(parent);
+            }
+
         } else {
             /* last child */
             lyd_insert_last_node(parent, node);
@@ -1236,16 +1274,16 @@ lyd_unlink_tree(struct lyd_node *node)
 }
 
 LY_ERR
-lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const struct lys_module *mod, const char *name,
+lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct lys_module *mod, const char *name,
                 size_t name_len, const char *value, size_t value_len, int *dynamic, ly_clb_resolve_prefix get_prefix,
                 void *prefix_data, LYD_FORMAT format, const struct lysc_node *ctx_snode)
 {
     LY_ERR ret;
     struct lysc_ext_instance *ant = NULL;
-    struct lyd_attr *at, *last;
+    struct lyd_meta *mt, *last;
     uint32_t v;
 
-    assert((parent || attr) && mod);
+    assert((parent || meta) && mod);
 
     LY_ARRAY_FOR(mod->compiled->exts, v) {
         if (mod->compiled->exts[v].def->plugin == lyext_plugins_internal[LYEXT_PLUGIN_INTERNAL_ANNOTATION].plugin &&
@@ -1262,28 +1300,28 @@ lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const struct ly
         return LY_EINVAL;
     }
 
-    at = calloc(1, sizeof *at);
-    LY_CHECK_ERR_RET(!at, LOGMEM(mod->ctx), LY_EMEM);
-    at->parent = parent;
-    at->annotation = ant;
-    ret = lyd_value_parse_attr(mod->ctx, at, value, value_len, dynamic, 0, get_prefix, prefix_data, format, ctx_snode, NULL);
+    mt = calloc(1, sizeof *mt);
+    LY_CHECK_ERR_RET(!mt, LOGMEM(mod->ctx), LY_EMEM);
+    mt->parent = parent;
+    mt->annotation = ant;
+    ret = lyd_value_parse_meta(mod->ctx, mt, value, value_len, dynamic, 0, get_prefix, prefix_data, format, ctx_snode, NULL);
     if ((ret != LY_SUCCESS) && (ret != LY_EINCOMPLETE)) {
-        free(at);
+        free(mt);
         return ret;
     }
-    at->name = lydict_insert(mod->ctx, name, name_len);
+    mt->name = lydict_insert(mod->ctx, name, name_len);
 
     /* insert as the last attribute */
     if (parent) {
-        if (parent->attr) {
-            for (last = parent->attr; last->next; last = last->next);
-            last->next = at;
+        if (parent->meta) {
+            for (last = parent->meta; last->next; last = last->next);
+            last->next = mt;
         } else {
-            parent->attr = at;
+            parent->meta = mt;
         }
-    } else if (*attr) {
-        for (last = *attr; last->next; last = last->next);
-        last->next = at;
+    } else if (*meta) {
+        for (last = *meta; last->next; last = last->next);
+        last->next = mt;
     }
 
     /* remove default flags from NP containers */
@@ -1292,8 +1330,8 @@ lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const struct ly
         parent = (struct lyd_node *)parent->parent;
     }
 
-    if (attr) {
-        *attr = at;
+    if (meta) {
+        *meta = mt;
     }
     return ret;
 }

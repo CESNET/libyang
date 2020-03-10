@@ -214,9 +214,9 @@ print_set_debug(struct lyxp_set *set)
                     }
                 }
                 break;
-            case LYXP_NODE_ATTR:
-                LOGDBG(LY_LDGXPATH, "\t%d (pos %u): ATTR %s = %s", i + 1, item->pos, set->val.attrs[i].attr->name,
-                       set->val.attrs[i].attr->value);
+            case LYXP_NODE_META:
+                LOGDBG(LY_LDGXPATH, "\t%d (pos %u): META %s = %s", i + 1, item->pos, set->val.meta[i].meta->name,
+                       set->val.meta[i].meta->value);
                 break;
             }
         }
@@ -515,8 +515,8 @@ cast_node_set_to_string(struct lyxp_set *set, char **str)
     case LYXP_NODE_ELEM:
     case LYXP_NODE_TEXT:
         return cast_string_elem(set->val.nodes[0].node, 0, set->root_type, str);
-    case LYXP_NODE_ATTR:
-        *str = (char *)lyd_attr2str(set->val.attrs[0].attr, &dynamic);
+    case LYXP_NODE_META:
+        *str = (char *)lyd_meta2str(set->val.meta[0].meta, &dynamic);
         if (!dynamic) {
             *str = strdup(*str);
             if (!*str) {
@@ -1397,8 +1397,8 @@ set_assign_pos(struct lyxp_set *set, const struct lyd_node *root, enum lyxp_node
         if (!set->val.nodes[i].pos) {
             tmp_node = NULL;
             switch (set->val.nodes[i].type) {
-            case LYXP_NODE_ATTR:
-                tmp_node = set->val.attrs[i].attr->parent;
+            case LYXP_NODE_META:
+                tmp_node = set->val.meta[i].meta->parent;
                 if (!tmp_node) {
                     LOGINT_RET(root->schema->module->ctx);
                 }
@@ -1421,22 +1421,22 @@ set_assign_pos(struct lyxp_set *set, const struct lyd_node *root, enum lyxp_node
 }
 
 /**
- * @brief Get unique @p attr position in the parent attributes.
+ * @brief Get unique @p meta position in the parent metadata.
  *
- * @param[in] attr Attr to use.
- * @return Attribute position.
+ * @param[in] meta Metadata to use.
+ * @return Metadata position.
  */
 static uint16_t
-get_attr_pos(struct lyd_attr *attr)
+get_meta_pos(struct lyd_meta *meta)
 {
     uint16_t pos = 0;
-    struct lyd_attr *attr2;
+    struct lyd_meta *meta2;
 
-    for (attr2 = attr->parent->attr; attr2 && (attr2 != attr); attr2 = attr2->next) {
+    for (meta2 = meta->parent->meta; meta2 && (meta2 != meta); meta2 = meta2->next) {
         ++pos;
     }
 
-    assert(attr2);
+    assert(meta2);
     return pos;
 }
 
@@ -1450,7 +1450,7 @@ get_attr_pos(struct lyd_attr *attr)
 static int
 set_sort_compare(struct lyxp_set_node *item1, struct lyxp_set_node *item2)
 {
-    uint32_t attr_pos1 = 0, attr_pos2 = 0;
+    uint32_t meta_pos1 = 0, meta_pos2 = 0;
 
     if (item1->pos < item2->pos) {
         return -1;
@@ -1474,39 +1474,39 @@ set_sort_compare(struct lyxp_set_node *item1, struct lyxp_set_node *item2)
         }
     }
 
-    /* we need attr positions now */
-    if (item1->type == LYXP_NODE_ATTR) {
-        attr_pos1 = get_attr_pos((struct lyd_attr *)item1->node);
+    /* we need meta positions now */
+    if (item1->type == LYXP_NODE_META) {
+        meta_pos1 = get_meta_pos((struct lyd_meta *)item1->node);
     }
-    if (item2->type == LYXP_NODE_ATTR) {
-        attr_pos2 = get_attr_pos((struct lyd_attr *)item2->node);
+    if (item2->type == LYXP_NODE_META) {
+        meta_pos2 = get_meta_pos((struct lyd_meta *)item2->node);
     }
 
-    /* 1st ROOT - 2nd ROOT, 1st ELEM - 2nd ELEM, 1st TEXT - 2nd TEXT, 1st ATTR - =pos= - 2nd ATTR */
+    /* 1st ROOT - 2nd ROOT, 1st ELEM - 2nd ELEM, 1st TEXT - 2nd TEXT, 1st META - =pos= - 2nd META */
     /* check for duplicates */
     if (item1->node == item2->node) {
-        assert((item1->type == item2->type) && ((item1->type != LYXP_NODE_ATTR) || (attr_pos1 == attr_pos2)));
+        assert((item1->type == item2->type) && ((item1->type != LYXP_NODE_META) || (meta_pos1 == meta_pos2)));
         return 0;
     }
 
-    /* 1st ELEM - 2nd TEXT, 1st ELEM - any pos - 2nd ATTR */
+    /* 1st ELEM - 2nd TEXT, 1st ELEM - any pos - 2nd META */
     /* elem is always first, 2nd node is after it */
     if (item1->type == LYXP_NODE_ELEM) {
         assert(item2->type != LYXP_NODE_ELEM);
         return -1;
     }
 
-    /* 1st TEXT - 2nd ELEM, 1st TEXT - any pos - 2nd ATTR, 1st ATTR - any pos - 2nd ELEM, 1st ATTR - >pos> - 2nd ATTR */
+    /* 1st TEXT - 2nd ELEM, 1st TEXT - any pos - 2nd META, 1st META - any pos - 2nd ELEM, 1st META - >pos> - 2nd META */
     /* 2nd is before 1st */
     if (((item1->type == LYXP_NODE_TEXT)
-            && ((item2->type == LYXP_NODE_ELEM) || (item2->type == LYXP_NODE_ATTR)))
-            || ((item1->type == LYXP_NODE_ATTR) && (item2->type == LYXP_NODE_ELEM))
-            || (((item1->type == LYXP_NODE_ATTR) && (item2->type == LYXP_NODE_ATTR))
-            && (attr_pos1 > attr_pos2))) {
+            && ((item2->type == LYXP_NODE_ELEM) || (item2->type == LYXP_NODE_META)))
+            || ((item1->type == LYXP_NODE_META) && (item2->type == LYXP_NODE_ELEM))
+            || (((item1->type == LYXP_NODE_META) && (item2->type == LYXP_NODE_META))
+            && (meta_pos1 > meta_pos2))) {
         return 1;
     }
 
-    /* 1st ATTR - any pos - 2nd TEXT, 1st ATTR <pos< - 2nd ATTR */
+    /* 1st META - any pos - 2nd TEXT, 1st META <pos< - 2nd META */
     /* 2nd is after 1st */
     return -1;
 }
@@ -3867,7 +3867,7 @@ xpath_lang(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set *
 {
     const struct lyd_node *node;
     struct lysc_node_leaf *sleaf;
-    struct lyd_attr *attr = NULL;
+    struct lyd_meta *meta = NULL;
     const char *val;
     int i, dynamic;
     LY_ERR rc = LY_SUCCESS;
@@ -3901,8 +3901,8 @@ xpath_lang(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set *
     case LYXP_NODE_TEXT:
         node = set->val.nodes[0].node;
         break;
-    case LYXP_NODE_ATTR:
-        node = set->val.attrs[0].attr->parent;
+    case LYXP_NODE_META:
+        node = set->val.meta[0].meta->parent;
         break;
     default:
         /* nothing to do with roots */
@@ -3910,25 +3910,25 @@ xpath_lang(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set *
         return LY_SUCCESS;
     }
 
-    /* find lang attribute */
+    /* find lang metadata */
     for (; node; node = (struct lyd_node *)node->parent) {
-        for (attr = node->attr; attr; attr = attr->next) {
+        for (meta = node->meta; meta; meta = meta->next) {
             /* annotations */
-            if (attr->name && !strcmp(attr->name, "lang") && !strcmp(attr->annotation->module->name, "xml")) {
+            if (meta->name && !strcmp(meta->name, "lang") && !strcmp(meta->annotation->module->name, "xml")) {
                 break;
             }
         }
 
-        if (attr) {
+        if (meta) {
             break;
         }
     }
 
     /* compare languages */
-    if (!attr) {
+    if (!meta) {
         set_fill_boolean(set, 0);
     } else {
-        val = lyd_attr2str(attr, &dynamic);
+        val = lyd_meta2str(meta, &dynamic);
         for (i = 0; args[0]->val.str[i]; ++i) {
             if (tolower(args[0]->val.str[i]) != tolower(val[i])) {
                 set_fill_boolean(set, 0);
@@ -4044,8 +4044,8 @@ xpath_local_name(struct lyxp_set **args, uint16_t arg_count, struct lyxp_set *se
     case LYXP_NODE_ELEM:
         set_fill_string(set, item->node->schema->name, strlen(item->node->schema->name));
         break;
-    case LYXP_NODE_ATTR:
-        set_fill_string(set, ((struct lyd_attr *)item->node)->name, strlen(((struct lyd_attr *)item->node)->name));
+    case LYXP_NODE_META:
+        set_fill_string(set, ((struct lyd_meta *)item->node)->name, strlen(((struct lyd_meta *)item->node)->name));
         break;
     }
 
@@ -4119,9 +4119,9 @@ xpath_name(struct lyxp_set **args, uint16_t arg_count, struct lyxp_set *set, int
         mod = item->node->schema->module;
         name = item->node->schema->name;
         break;
-    case LYXP_NODE_ATTR:
-        mod = ((struct lyd_attr *)item->node)->annotation->module;
-        name = ((struct lyd_attr *)item->node)->name;
+    case LYXP_NODE_META:
+        mod = ((struct lyd_meta *)item->node)->annotation->module;
+        name = ((struct lyd_meta *)item->node)->name;
         break;
     }
 
@@ -4208,12 +4208,12 @@ xpath_namespace_uri(struct lyxp_set **args, uint16_t arg_count, struct lyxp_set 
         set_fill_string(set, "", 0);
         break;
     case LYXP_NODE_ELEM:
-    case LYXP_NODE_ATTR:
+    case LYXP_NODE_META:
         if (item->type == LYXP_NODE_ELEM) {
             mod = item->node->schema->module;
-        } else { /* LYXP_NODE_ATTR */
+        } else { /* LYXP_NODE_META */
             /* annotations */
-            mod = ((struct lyd_attr *)item->node)->annotation->module;
+            mod = ((struct lyd_meta *)item->node)->annotation->module;
         }
 
         set_fill_string(set, mod->ns, strlen(mod->ns));
@@ -5001,7 +5001,7 @@ xpath_text(struct lyxp_set **UNUSED(args), uint16_t UNUSED(arg_count), struct ly
         case LYXP_NODE_ROOT:
         case LYXP_NODE_ROOT_CONFIG:
         case LYXP_NODE_TEXT:
-        case LYXP_NODE_ATTR:
+        case LYXP_NODE_META:
             set_remove_node(set, i);
             break;
         }
@@ -5551,7 +5551,7 @@ moveto_node_alldesc(struct lyxp_set *set, const char *qname, uint16_t qname_len)
     rc = moveto_resolve_model(&qname, &qname_len, set, &moveto_mod);
     LY_CHECK_RET(rc);
 
-    /* replace the original nodes (and throws away all text and attr nodes, root is replaced by a child) */
+    /* replace the original nodes (and throws away all text and meta nodes, root is replaced by a child) */
     rc = moveto_node(set, "*", 1);
     LY_CHECK_RET(rc);
 
@@ -5735,7 +5735,7 @@ moveto_attr(struct lyxp_set *set, const char *qname, uint16_t qname_len)
     uint32_t i;
     int replaced, all = 0;
     const struct lys_module *moveto_mod;
-    struct lyd_attr *sub;
+    struct lyd_meta *sub;
     LY_ERR rc;
 
     if (!set || (set->type == LYXP_SET_EMPTY)) {
@@ -5760,7 +5760,7 @@ moveto_attr(struct lyxp_set *set, const char *qname, uint16_t qname_len)
         /* only attributes of an elem (not dummy) can be in the result, skip all the rest;
          * our attributes are always qualified */
         if (set->val.nodes[i].type == LYXP_NODE_ELEM) {
-            for (sub = set->val.nodes[i].node->attr; sub; sub = sub->next) {
+            for (sub = set->val.nodes[i].node->meta; sub; sub = sub->next) {
 
                 /* check "namespace" */
                 if (moveto_mod && (sub->annotation->module != moveto_mod)) {
@@ -5770,12 +5770,12 @@ moveto_attr(struct lyxp_set *set, const char *qname, uint16_t qname_len)
                 if (all || (!strncmp(sub->name, qname, qname_len) && !sub->name[qname_len])) {
                     /* match */
                     if (!replaced) {
-                        set->val.attrs[i].attr = sub;
-                        set->val.attrs[i].type = LYXP_NODE_ATTR;
+                        set->val.meta[i].meta = sub;
+                        set->val.meta[i].type = LYXP_NODE_META;
                         /* pos does not change */
                         replaced = 1;
                     } else {
-                        set_insert_node(set, (struct lyd_node *)sub, set->val.nodes[i].pos, LYXP_NODE_ATTR, i + 1);
+                        set_insert_node(set, (struct lyd_node *)sub, set->val.nodes[i].pos, LYXP_NODE_META, i + 1);
                     }
                     ++i;
                 }
@@ -5850,7 +5850,7 @@ moveto_attr_alldesc(struct lyxp_set *set, const char *qname, uint16_t qname_len)
 {
     uint32_t i;
     int replaced, all = 0;
-    struct lyd_attr *sub;
+    struct lyd_meta *sub;
     const struct lys_module *moveto_mod;
     struct lyxp_set *set_all_desc = NULL;
     LY_ERR rc;
@@ -5895,7 +5895,7 @@ moveto_attr_alldesc(struct lyxp_set *set, const char *qname, uint16_t qname_len)
         /* only attributes of an elem can be in the result, skip all the rest,
          * we have all attributes qualified in lyd tree */
         if (set->val.nodes[i].type == LYXP_NODE_ELEM) {
-            for (sub = set->val.nodes[i].node->attr; sub; sub = sub->next) {
+            for (sub = set->val.nodes[i].node->meta; sub; sub = sub->next) {
                 /* check "namespace" */
                 if (moveto_mod && (sub->annotation->module != moveto_mod)) {
                     continue;
@@ -5904,12 +5904,12 @@ moveto_attr_alldesc(struct lyxp_set *set, const char *qname, uint16_t qname_len)
                 if (all || (!strncmp(sub->name, qname, qname_len) && !sub->name[qname_len])) {
                     /* match */
                     if (!replaced) {
-                        set->val.attrs[i].attr = sub;
-                        set->val.attrs[i].type = LYXP_NODE_ATTR;
+                        set->val.meta[i].meta = sub;
+                        set->val.meta[i].type = LYXP_NODE_META;
                         /* pos does not change */
                         replaced = 1;
                     } else {
-                        set_insert_node(set, (struct lyd_node *)sub, set->val.attrs[i].pos, LYXP_NODE_ATTR, i + 1);
+                        set_insert_node(set, (struct lyd_node *)sub, set->val.meta[i].pos, LYXP_NODE_META, i + 1);
                     }
                     ++i;
                 }
@@ -6038,7 +6038,7 @@ moveto_self(struct lyxp_set *set, int all_desc, int options)
         set_insert_node(&ret_set, set->val.nodes[i].node, set->val.nodes[i].pos, set->val.nodes[i].type, ret_set.used);
 
         /* do not touch attributes and text nodes */
-        if ((set->val.nodes[i].type == LYXP_NODE_TEXT) || (set->val.nodes[i].type == LYXP_NODE_ATTR)) {
+        if ((set->val.nodes[i].type == LYXP_NODE_TEXT) || (set->val.nodes[i].type == LYXP_NODE_META)) {
             continue;
         }
 
@@ -6173,8 +6173,8 @@ moveto_parent(struct lyxp_set *set, int all_desc, int options)
             new_node = (struct lyd_node *)node->parent;
         } else if (set->val.nodes[i].type == LYXP_NODE_TEXT) {
             new_node = node;
-        } else if (set->val.nodes[i].type == LYXP_NODE_ATTR) {
-            new_node = set->val.attrs[i].attr->parent;
+        } else if (set->val.nodes[i].type == LYXP_NODE_META) {
+            new_node = set->val.meta[i].meta->parent;
             if (!new_node) {
                 LOGINT_RET(set->ctx);
             }
