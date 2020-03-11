@@ -4195,6 +4195,7 @@ int
 lys_leaf_check_leafref(struct lys_node_leaf *leafref_target, struct lys_node *leafref)
 {
     struct lys_node_leaf *iter;
+    struct lys_node *op;
     struct ly_ctx *ctx = leafref_target->module->ctx;
 
     if (!(leafref_target->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
@@ -4202,8 +4203,11 @@ lys_leaf_check_leafref(struct lys_node_leaf *leafref_target, struct lys_node *le
         return -1;
     }
 
+    /* find the operation node if we are in one */
+    for (op = leafref; op && !(op->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)); op = lys_parent(op));
+
     /* check for config flag */
-    if (((struct lys_node_leaf*)leafref)->type.info.lref.req != -1 &&
+    if (!op && ((struct lys_node_leaf*)leafref)->type.info.lref.req != -1 &&
             (leafref->flags & LYS_CONFIG_W) && (leafref_target->flags & LYS_CONFIG_R)) {
         LOGVAL(ctx, LYE_SPEC, LY_VLOG_LYS, leafref,
                "The leafref %s is config but refers to a non-config %s.",
