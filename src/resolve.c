@@ -2156,7 +2156,8 @@ resolve_descendant_schema_nodeid(const char *nodeid, const struct lys_node *star
     while (1) {
         sibling = NULL;
         while ((sibling = lys_getnext(sibling, start_parent, module,
-                LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_PARENTUSES | LYS_GETNEXT_NOSTATECHECK))) {
+                LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | LYS_GETNEXT_WITHINOUT | LYS_GETNEXT_PARENTUSES
+                | LYS_GETNEXT_NOSTATECHECK))) {
             r = schema_nodeid_siblingcheck(sibling, module, mod_name, mod_name_len, name, nam_len);
             if (r == 0) {
                 if (!id[0]) {
