@@ -1984,6 +1984,9 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
     if (store && ret->der && ret->der->module) {
         c = lytype_store(ret->der->module, ret->der->name, value_, val);
         if (c == -1) {
+            if (leaf) {
+                LOGPATH(ctx, LY_VLOG_LYD, leaf);
+            }
             goto error;
         } else if (!c) {
             *val_flags |= LY_VALUE_USER;
