@@ -5381,6 +5381,7 @@ static const struct lyd_node *
 moveto_get_root(const struct lyd_node *cur_node, int options, enum lyxp_node_type *root_type)
 {
     const struct lyd_node *root;
+    const struct lys_node *op;
 
     if (!cur_node) {
         return NULL;
@@ -5394,7 +5395,9 @@ moveto_get_root(const struct lyd_node *cur_node, int options, enum lyxp_node_typ
         return root;
     }
 
-    if (cur_node->schema->flags & LYS_CONFIG_W) {
+    for (op = cur_node->schema; op && !(op->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)); op = lys_parent(op));
+
+    if (!op && (cur_node->schema->flags & LYS_CONFIG_W)) {
         *root_type = LYXP_NODE_ROOT_CONFIG;
     } else {
         *root_type = LYXP_NODE_ROOT;
@@ -5409,14 +5412,16 @@ moveto_get_root(const struct lyd_node *cur_node, int options, enum lyxp_node_typ
 static const struct lys_node *
 moveto_snode_get_root(const struct lys_node *cur_node, int options, enum lyxp_node_type *root_type)
 {
-    const struct lys_node *root;
+    const struct lys_node *root, *op;
 
     assert(cur_node && root_type);
+
+    for (op = cur_node; op && !(op->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)); op = lys_parent(op));
 
     if (options & LYXP_SNODE) {
         /* general root that can access everything */
         *root_type = LYXP_NODE_ROOT;
-    } else if (cur_node->flags & LYS_CONFIG_W) {
+    } else if (!op && (cur_node->flags & LYS_CONFIG_W)) {
         *root_type = LYXP_NODE_ROOT_CONFIG;
     } else {
         *root_type = LYXP_NODE_ROOT;
