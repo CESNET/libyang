@@ -12,6 +12,8 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
+#include "tests/config.h"
+
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
@@ -20,10 +22,9 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "tests/config.h"
-
 #include "../../src/context.h"
 #include "../../src/tree_data_internal.h"
+#include "../../src/printer_data.h"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
@@ -161,19 +162,32 @@ test_anydata(void **state)
 {
     *state = test_anydata;
 
-    const char *data = "<any xmlns=\"urn:tests:a\">"
-                         "<element1><x:element2 x:attr2=\"test\" xmlns:x=\"urn:x\">x:data</x:element2></element1><element1a/>"
-                       "</any>";
+    const char *data;
+    char *str;
     struct lyd_node *tree;
-    struct lyd_node_any *any;
 
+    data =
+    "<any xmlns=\"urn:tests:a\">"
+        "<element1>"
+            "<x:element2 x:attr2=\"test\" xmlns:a=\"urn:tests:a\" xmlns:x=\"urn:x\">a:data</x:element2>"
+        "</element1>"
+        "<element1a/>"
+    "</any>";
     assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
     assert_non_null(tree);
     assert_int_equal(LYS_ANYDATA, tree->schema->nodetype);
     assert_string_equal("any", tree->schema->name);
-    any = (struct lyd_node_any*)tree;
-    assert_int_equal(LYD_ANYDATA_XML, any->value_type);
-    assert_string_equal("<element1><x:element2 x:attr2=\"test\" xmlns:x=\"urn:x\">x:data</x:element2></element1><element1a/>", any->value.xml);
+
+    lyd_print_mem(&str, tree, LYD_XML, 0);
+    assert_string_equal(str,
+        "<any xmlns=\"urn:tests:a\">"
+            "<element1>"
+                "<element2 xmlns=\"urn:x\" xmlns:x=\"urn:x\" x:attr2=\"test\" xmlns:a=\"urn:tests:a\">a:data</element2>"
+            "</element1>"
+            "<element1a/>"
+        "</any>"
+    );
+    free(str);
 
     lyd_free_all(tree);
     *state = NULL;

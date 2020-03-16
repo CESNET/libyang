@@ -298,7 +298,7 @@ print_set_debug(struct lyxp_set *set)
  * @return LY_ERR
  */
 static LY_ERR
-cast_string_realloc(struct ly_ctx *ctx, uint16_t needed, char **str, uint16_t *used, uint16_t *size)
+cast_string_realloc(const struct ly_ctx *ctx, uint16_t needed, char **str, uint16_t *used, uint16_t *size)
 {
     if (*size - *used < needed) {
         do {
@@ -4127,13 +4127,13 @@ xpath_name(struct lyxp_set **args, uint16_t arg_count, struct lyxp_set *set, int
 
     if (mod && name) {
         switch (set->format) {
-        case LYD_UNKNOWN:
+        case LYD_SCHEMA:
             rc = asprintf(&str, "%s:%s", lys_prefix_find_module(set->local_mod, mod), name);
             break;
         case LYD_JSON:
             rc = asprintf(&str, "%s:%s", mod->name, name);
             break;
-        default:
+        case LYD_XML:
             LOGINT_RET(set->ctx);
         }
         LY_CHECK_ERR_RET(rc == -1, LOGMEM(set->ctx), LY_EMEM);
@@ -5164,7 +5164,7 @@ moveto_resolve_model(const char **qname, uint16_t *qname_len, struct lyxp_set *s
         pref_len = ptr - *qname;
 
         switch (set->format) {
-        case LYD_UNKNOWN:
+        case LYD_SCHEMA:
             /* schema, search all local module imports */
             mod = lys_module_find_prefix(set->local_mod, *qname, pref_len);
             break;
@@ -5174,7 +5174,7 @@ moveto_resolve_model(const char **qname, uint16_t *qname_len, struct lyxp_set *s
             mod = ly_ctx_get_module(set->ctx, str, NULL);
             free(str);
             break;
-        default:
+        case LYD_XML:
             LOGINT_RET(set->ctx);
         }
 

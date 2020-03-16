@@ -487,6 +487,38 @@ success:
 }
 
 LY_ERR
+lyxml_skip_element(struct lyxml_context *context, const char **input)
+{
+    LY_ERR ret;
+    unsigned int parents_count = context->elements.count;
+
+    while (context->elements.count >= parents_count) {
+        /* skip attributes */
+        while (context->status == LYXML_ATTRIBUTE) {
+            LY_CHECK_RET(lyxml_get_attribute(context, input, NULL, NULL, NULL, NULL));
+        }
+
+        /* skip content */
+        if (context->status == LYXML_ELEM_CONTENT) {
+            ret = lyxml_get_string(context, input, NULL, NULL, NULL, NULL, NULL);
+            if (ret && (ret != LY_EINVAL)) {
+                return ret;
+            }
+        }
+
+        if (context->status != LYXML_ELEMENT) {
+            LOGINT(context->ctx);
+            return LY_EINT;
+        }
+
+        /* nested element/closing element */
+        LY_CHECK_RET(lyxml_get_element(context, input, NULL, NULL, NULL, NULL));
+    }
+
+    return LY_SUCCESS;
+}
+
+LY_ERR
 lyxml_get_string(struct lyxml_context *context, const char **input, char **buffer, size_t *buffer_size, char **output,
                  size_t *length, int *dynamic)
 {
@@ -837,91 +869,92 @@ lyxml_get_attribute(struct lyxml_context *context, const char **input,
     unsigned int c;
     size_t endtag_len;
     int is_ns = 0;
-    const char *ns_prefix = NULL;
-    size_t ns_prefix_len = 0;
+    const char *ns_prefix;
+    size_t ns_prefix_len;
 
-start:
     /* initialize output variables */
     (*prefix) = (*name) = NULL;
     (*prefix_len) = (*name_len) = 0;
 
-    /* skip initial whitespaces */
-    ign_xmlws(context, in);
+    do {
+        /* skip initial whitespaces */
+        ign_xmlws(context, in);
 
-    if (in[0] == '\0') {
-        /* EOF - not expected at this place */
-        LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_EOF);
-        return LY_EVALID;
-    }
+        if (in[0] == '\0') {
+            /* EOF - not expected at this place */
+            LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_EOF);
+            return LY_EVALID;
+        }
 
-    /* remember the identifier start before checking its format */
-    id = in;
-    rc = lyxml_check_qname(context, &in, &c, &endtag_len);
-    LY_CHECK_RET(rc);
-    if (c == ':') {
-        /* we have prefixed identifier */
-        endtag = in - endtag_len;
-
+        /* remember the identifier start before checking its format */
+        id = in;
         rc = lyxml_check_qname(context, &in, &c, &endtag_len);
         LY_CHECK_RET(rc);
+        if (c == ':') {
+            /* we have prefixed identifier */
+            endtag = in - endtag_len;
 
-        (*prefix) = id;
-        (*prefix_len) = endtag - id;
-        id = endtag + 1;
-    }
-    if (!is_xmlws(c) && c != '=') {
-        in = in - endtag_len;
-        LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(in), in, "whitespace or '='");
-        return LY_EVALID;
-    }
-    in = in - endtag_len;
-    (*name) = id;
-    (*name_len) = in - id;
+            rc = lyxml_check_qname(context, &in, &c, &endtag_len);
+            LY_CHECK_RET(rc);
 
-    /* eat '=' and stop at the value beginning */
-    ign_xmlws(context, in);
-    if (in[0] != '=') {
-        LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(in), in, "'='");
-        return LY_EVALID;
-    }
-    ++in;
-    ign_xmlws(context, in);
-    if (in[0] != '\'' && in[0] != '"') {
-        LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_INSTREXP,
-               LY_VCODE_INSTREXP_len(in), in, "either single or double quotation mark");
-        return LY_EVALID;
-    }
-    context->status = LYXML_ATTR_CONTENT;
-
-    is_ns = 0;
-    if (*prefix && *prefix_len == 5 && !strncmp(*prefix, "xmlns", 5)) {
-        is_ns = 1;
-        ns_prefix = *name;
-        ns_prefix_len = *name_len;
-    } else if (*name_len == 5 && !strncmp(*name, "xmlns", 5)) {
-        is_ns = 1;
-    }
-    if (is_ns) {
-        /* instead of attribute, we have namespace specification,
-         * so process it automatically and then move to another attribute (if any) */
-        char *value = NULL;
-        size_t value_len = 0;
-        int dynamic = 0;
-
-        LY_CHECK_RET(lyxml_get_string(context, &in, &value, &value_len, &value, &value_len, &dynamic));
-        if ((rc = lyxml_ns_add(context, ns_prefix, ns_prefix_len, dynamic ? value : strndup(value, value_len)))) {
-            if (dynamic) {
-                free(value);
-                return rc;
-            }
+            (*prefix) = id;
+            (*prefix_len) = endtag - id;
+            id = endtag + 1;
         }
-        if (context->status == LYXML_ATTRIBUTE) {
-            goto start;
-        } else {
+        if (!is_xmlws(c) && c != '=') {
+            in = in - endtag_len;
+            LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(in), in, "whitespace or '='");
+            return LY_EVALID;
+        }
+        in = in - endtag_len;
+        (*name) = id;
+        (*name_len) = in - id;
+
+        /* eat '=' and stop at the value beginning */
+        ign_xmlws(context, in);
+        if (in[0] != '=') {
+            LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_INSTREXP, LY_VCODE_INSTREXP_len(in), in, "'='");
+            return LY_EVALID;
+        }
+        ++in;
+        ign_xmlws(context, in);
+        if (in[0] != '\'' && in[0] != '"') {
+            LOGVAL(ctx, LY_VLOG_LINE, &context->line, LY_VCODE_INSTREXP,
+                LY_VCODE_INSTREXP_len(in), in, "either single or double quotation mark");
+            return LY_EVALID;
+        }
+        context->status = LYXML_ATTR_CONTENT;
+
+        is_ns = 0;
+        if (*prefix && *prefix_len == 5 && !strncmp(*prefix, "xmlns", 5)) {
+            is_ns = 1;
+            ns_prefix = *name;
+            ns_prefix_len = *name_len;
+        } else if (*name_len == 5 && !strncmp(*name, "xmlns", 5)) {
+            is_ns = 1;
+            ns_prefix = NULL;
+            ns_prefix_len = 0;
+        }
+        if (is_ns) {
+            /* instead of attribute, we have namespace specification,
+            * so process it automatically and then move to another attribute (if any) */
+            char *value = NULL;
+            size_t value_len = 0;
+            int dynamic = 0;
+
+            LY_CHECK_RET(lyxml_get_string(context, &in, &value, &value_len, &value, &value_len, &dynamic));
+            if ((rc = lyxml_ns_add(context, ns_prefix, ns_prefix_len, dynamic ? value : strndup(value, value_len)))) {
+                if (dynamic) {
+                    free(value);
+                    return rc;
+                }
+            }
+
+            /* do not return ns */
             (*prefix) = (*name) = NULL;
             (*prefix_len) = (*name_len) = 0;
         }
-    }
+    } while (is_ns && (context->status == LYXML_ATTRIBUTE));
 
     /* move caller's input */
     (*input) = in;
@@ -980,3 +1013,118 @@ lyxml_dump_text(struct lyout *out, const char *text, int attribute)
     return ret;
 }
 
+LY_ERR
+lyxml_get_prefixes(struct lyxml_context *ctx, const char *value, size_t value_len, struct ly_prefix **val_prefs)
+{
+    LY_ERR ret;
+    uint32_t u, c;
+    const struct lyxml_ns *ns;
+    const char *start, *stop;
+    struct ly_prefix *prefixes = NULL;
+    size_t len;
+
+    for (stop = start = value; (size_t)(stop - value) < value_len; start = stop) {
+        size_t bytes;
+        ly_getutf8(&stop, &c, &bytes);
+        if (is_xmlqnamestartchar(c)) {
+            for (ly_getutf8(&stop, &c, &bytes);
+                    is_xmlqnamechar(c) && (size_t)(stop - value) < value_len;
+                    ly_getutf8(&stop, &c, &bytes));
+            stop = stop - bytes;
+            if (*stop == ':') {
+                /* we have a possible prefix */
+                len = stop - start;
+                ns = lyxml_ns_get(ctx, start, len);
+                if (ns) {
+                    struct ly_prefix *p = NULL;
+
+                    /* check whether we do not already have this prefix stored */
+                    LY_ARRAY_FOR(prefixes, u) {
+                        if (!ly_strncmp(prefixes[u].pref, start, len)) {
+                            p = &prefixes[u];
+                            break;
+                        }
+                    }
+                    if (!p) {
+                        LY_ARRAY_NEW_GOTO(ctx->ctx, prefixes, p, ret, error);
+                        p->pref = lydict_insert(ctx->ctx, start, len);
+                        p->ns = lydict_insert(ctx->ctx, ns->uri, 0);
+                    } /* else the prefix already present */
+                }
+            }
+            stop = stop + bytes;
+        }
+    }
+
+    *val_prefs = prefixes;
+    return LY_SUCCESS;
+
+error:
+    LY_ARRAY_FOR(prefixes, u) {
+        lydict_remove(ctx->ctx, prefixes[u].pref);
+    }
+    LY_ARRAY_FREE(prefixes);
+    return ret;
+}
+
+LY_ERR
+lyxml_value_compare(const char *value1, const struct ly_prefix *prefs1, const char *value2, const struct ly_prefix *prefs2)
+{
+    const char *ptr1, *ptr2, *ns1, *ns2;
+    uint32_t u1, u2;
+    int len;
+
+    if (!value1 && !value2) {
+        return LY_SUCCESS;
+    }
+    if ((value1 && !value2) || (!value1 && value2)) {
+        return LY_ENOT;
+    }
+
+    ptr1 = value1;
+    ptr2 = value2;
+    while (ptr1[0] && ptr2[0]) {
+        if (ptr1[0] != ptr2[0]) {
+            /* it can be a start of prefix that maps to the same module */
+            ns1 = ns2 = NULL;
+            if (prefs1) {
+                /* find module of the first prefix, if any */
+                LY_ARRAY_FOR(prefs1, u1) {
+                    len = strlen(prefs1[u1].pref);
+                    if (!strncmp(ptr1, prefs1[u1].pref, len) && (ptr1[len] == ':')) {
+                        ns1 = prefs1[u1].ns;
+                        break;
+                    }
+                }
+            }
+            if (prefs2) {
+                /* find module of the second prefix, if any */
+                LY_ARRAY_FOR(prefs2, u2) {
+                    len = strlen(prefs2[u2].pref);
+                    if (!strncmp(ptr2, prefs2[u2].pref, len) && (ptr2[len] == ':')) {
+                        ns2 = prefs2[u2].ns;
+                        break;
+                    }
+                }
+            }
+
+            if (!ns1 || !ns2 || (ns1 != ns2)) {
+                /* not a prefix or maps to different namespaces */
+                break;
+            }
+
+            /* skip prefixes in both values (':' is skipped as iter) */
+            ptr1 += strlen(prefs1[u1].pref);
+            ptr2 += strlen(prefs2[u2].pref);
+        }
+
+        ++ptr1;
+        ++ptr2;
+    }
+    if (ptr1[0] || ptr2[0]) {
+        /* not a match or simply different lengths */
+        return LY_ENOT;
+    }
+
+    return LY_SUCCESS;
+}

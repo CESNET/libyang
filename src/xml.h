@@ -22,6 +22,7 @@
 #include "set.h"
 
 struct lyout;
+struct ly_prefix;
 
 /* Macro to test if character is whitespace */
 #define is_xmlws(c) (c == 0x20 || c == 0x9 || c == 0xa || c == 0xd)
@@ -103,6 +104,15 @@ struct lyxml_context {
  */
 LY_ERR lyxml_get_element(struct lyxml_context *context, const char **input,
                          const char **prefix, size_t *prefix_len, const char **name, size_t *name_len);
+
+/**
+ * @brief Skip an element after its opening tag was parsed.
+ *
+ * @param[in] context XML context.
+ * @param[in,out] input Input string to process, updated according to the read data.
+ * @return LY_ERR values.
+ */
+LY_ERR lyxml_skip_element(struct lyxml_context *context, const char **input);
 
 /**
  * @brief Parse input expecting an XML attribute (including XML namespace).
@@ -192,5 +202,30 @@ LY_ERR lyxml_dump_text(struct lyout *out, const char *text, int attribute);
  * @param[in] context XML context to clear.
  */
 void lyxml_context_clear(struct lyxml_context *context);
+
+/**
+ * @brief Find all possible prefixes in a value.
+ *
+ * @param[in] ctx XML context to use.
+ * @param[in] value Value to check.
+ * @param[in] value_len Value length.
+ * @param[out] val_prefs Array of found prefixes.
+ * @return LY_ERR value.
+ */
+LY_ERR lyxml_get_prefixes(struct lyxml_context *ctx, const char *value, size_t value_len, struct ly_prefix **val_prefs);
+
+/**
+ * @brief Compare values and their prefix mappings.
+ *
+ * @param[in] value1 First value.
+ * @param[in] prefs1 First value prefixes.
+ * @param[in] value2 Second value.
+ * @param[in] prefs2 Second value prefixes.
+ * @return LY_SUCCESS if values are equal.
+ * @return LY_ENOT if values are not equal.
+ * @return LY_ERR on error.
+ */
+LY_ERR lyxml_value_compare(const char *value1, const struct ly_prefix *prefs1, const char *value2,
+                           const struct ly_prefix *prefs2);
 
 #endif /* LY_XML_H_ */

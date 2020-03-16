@@ -34,7 +34,7 @@
  * in the values to the schema via context module names.
  */
 const struct lys_module *
-lydjson_resolve_prefix(struct ly_ctx *ctx, const char *prefix, size_t prefix_len, void *UNUSED(parser))
+lydjson_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len, void *UNUSED(parser))
 {
     const struct lys_module *mod;
     char *name;

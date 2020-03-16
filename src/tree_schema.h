@@ -21,9 +21,9 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "tree_data.h"
 #include "log.h"
 #include "tree.h"
-#include "tree_data.h"
 
 struct ly_ctx;
 

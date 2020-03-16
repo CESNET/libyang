@@ -26,14 +26,19 @@ struct lyd_node **
 lyd_node_children_p(struct lyd_node *node)
 {
     assert(node);
-    switch (node->schema->nodetype) {
-    case LYS_CONTAINER:
-    case LYS_LIST:
-    case LYS_ACTION:
-    case LYS_NOTIF:
-        return &((struct lyd_node_inner*)node)->child;
-    default:
-        return NULL;
+
+    if (!node->schema) {
+        return &((struct lyd_node_opaq *)node)->child;
+    } else {
+        switch (node->schema->nodetype) {
+        case LYS_CONTAINER:
+        case LYS_LIST:
+        case LYS_ACTION:
+        case LYS_NOTIF:
+            return &((struct lyd_node_inner *)node)->child;
+        default:
+            return NULL;
+        }
     }
 }
 
@@ -59,7 +64,7 @@ lyd_owner_module(const struct lyd_node *node)
 {
     const struct lysc_node *schema;
 
-    if (!node) {
+    if (!node || !node->schema) {
         return NULL;
     }
 

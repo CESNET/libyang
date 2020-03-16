@@ -113,8 +113,6 @@ test_inval(void **state)
 
     assert_int_equal(-1, ly_set_add(NULL, NULL, 0));
     assert_string_equal(logbuf, "Invalid argument set (ly_set_add()).");
-    assert_int_equal(-1, ly_set_add(&set, NULL, 0));
-    assert_string_equal(logbuf, "Invalid argument object (ly_set_add()).");
 
     assert_int_equal(-1, ly_set_merge(NULL, NULL, 0, NULL));
     assert_string_equal(logbuf, "Invalid argument trg (ly_set_merge()).");

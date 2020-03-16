@@ -18,6 +18,11 @@
 #include "tree_data.h"
 #include "plugins_types.h"
 
+#include <assert.h>
+#include <stddef.h>
+
+static_assert(offsetof(struct lyd_node, flags) == offsetof(struct lyd_node_opaq, flags), "");
+
 /**
  * @brief Check whether a node to be deleted is the first top-level sibling.
  *
@@ -113,6 +118,28 @@ LY_ERR lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANY
                       struct lyd_node **node);
 
 /**
+ * @brief Create an opaque node.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] name Element name.
+ * @param[in] name_len Length of @p name, must be set correctly.
+ * @param[in] value String value to be parsed.
+ * @param[in] value_len Length of @p value, must be set correctly.
+ * @param[in,out] dynamic Flag if @p value is dynamically allocated, is adjusted when @p value is consumed.
+ * @param[in] format Input format of @p value and @p ns.
+ * @param[in] val_prefs Possible value prefixes, array is spent.
+ * @param[in] prefix Element prefix.
+ * @param[in] pref_len Length of @p prefix, must be set correctly.
+ * @param[in] ns Node namespace, meaning depends on @p format.
+ * @param[out] node Created node.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR value if an error occurred.
+ */
+LY_ERR lyd_create_opaq(const struct ly_ctx *ctx, const char *name, size_t name_len, const char *value, size_t value_len,
+                       int *dynamic, LYD_FORMAT format, struct ly_prefix *val_prefs, const char *prefix, size_t pref_len,
+                       const char *ns, struct lyd_node **node);
+
+/**
  * @brief Find the key after which to insert the new key.
  *
  * @param[in] first_sibling List first sibling.
@@ -135,9 +162,9 @@ struct lyd_node *lyd_get_prev_key_anchor(const struct lyd_node *first_sibling, c
 void lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling, struct lyd_node *node);
 
 /**
- * @brief Create and insert an attribute (last) into a parent.
+ * @brief Create and insert a metadata (last) into a parent.
  *
- * @param[in] parent Parent of the attribute, can be NULL.
+ * @param[in] parent Parent of the metadata, can be NULL.
  * @param[in,out] meta Metadata list to add at its end if @p parent is NULL, returned created attribute.
  * @param[in] mod Metadata module (with the annotation definition).
  * @param[in] name Attribute name.
@@ -145,7 +172,7 @@ void lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling, s
  * @param[in] value String value to be parsed.
  * @param[in] value_len Length of @p value, must be set correctly.
  * @param[in,out] dynamic Flag if @p value is dynamically allocated, is adjusted when @p value is consumed.
- * @param[in] get_prefix Parser-specific getter to resolve prefixes used in the @p value string.
+ * @param[in] resolve_prefix Parser-specific getter to resolve prefixes used in the @p value string.
  * @param[in] prefix_data User data for @p get_prefix.
  * @param[in] format Input format of @p value.
  * @param[in] ctx_snode Context node for value resolution in schema.
@@ -154,8 +181,31 @@ void lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling, s
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct lys_module *mod, const char *name,
-                       size_t name_len, const char *value, size_t value_len, int *dynamic, ly_clb_resolve_prefix get_prefix,
+                       size_t name_len, const char *value, size_t value_len, int *dynamic, ly_clb_resolve_prefix resolve_prefix,
                        void *prefix_data, LYD_FORMAT format, const struct lysc_node *ctx_snode);
+
+/**
+ * @brief Create and insert a generic attribute (last) into a parent.
+ *
+ * @param[in] parent Parent of the attribute, can be NULL.
+ * @param[in,out] attr Attribute list to add at its end if @p parent is NULL, returned created attribute.
+ * @param[in] ctx libyang context.
+ * @param[in] name Attribute name.
+ * @param[in] name_len Length of @p name, must be set correctly.
+ * @param[in] value String value to be parsed.
+ * @param[in] value_len Length of @p value, must be set correctly.
+ * @param[in,out] dynamic Flag if @p value is dynamically allocated, is adjusted when @p value is consumed.
+ * @param[in] format Input format of @p value and @p ns.
+ * @param[in] val_prefs Possible value prefixes, array is spent.
+ * @param[in] prefix Attribute prefix.
+ * @param[in] prefix_len Attribute prefix length.
+ * @param[in] ns Attribute namespace, meaning depends on @p format.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR value if an error occurred.
+ */
+LY_ERR ly_create_attr(struct lyd_node *parent, struct ly_attr **attr, const struct ly_ctx *ctx, const char *name,
+                      size_t name_len, const char *value, size_t value_len, int *dynamic, LYD_FORMAT format,
+                      struct ly_prefix *val_prefs, const char *prefix, size_t prefix_len, const char *ns);
 
 /**
  * @brief Validate, canonize and store the given @p value into the node according to the node's type's rules.
@@ -270,7 +320,7 @@ void lyd_unlink_hash(struct lyd_node *node);
  * @param[in] ctx libyang context.
  * @param[in] path The structure ([sized array](@ref sizedarrays)) to free.
  */
-void lyd_value_free_path(struct ly_ctx *ctx, struct lyd_value_path *path);
+void lyd_value_free_path(const struct ly_ctx *ctx, struct lyd_value_path *path);
 
 /**
  * @brief Find the node, in the list, satisfying the given restrictions.

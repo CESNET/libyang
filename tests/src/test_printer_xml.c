@@ -206,6 +206,8 @@ test_anydata(void **state)
     assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
     assert_true((len = lyd_print_mem(&printed, tree, LYD_XML, 0)) >= 0);
     assert_int_equal(len, strlen(printed));
+    /* canonized */
+    data = "<any xmlns=\"urn:tests:types\"><somexml xmlns=\"example.com\"><x xmlns=\"url:x\"/></somexml></any>";
     assert_string_equal(printed, data);
     free(printed);
     lyd_free_all(tree);
@@ -214,6 +216,38 @@ test_anydata(void **state)
     assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
     assert_true((len = lyd_print_mem(&printed, tree, LYD_XML, 0)) >= 0);
     assert_int_equal(len, strlen(printed));
+    assert_string_equal(printed, data);
+    free(printed);
+    lyd_free_all(tree);
+
+    data =
+        "<any xmlns=\"urn:tests:types\">"
+            "<cont>"
+                "<defs:elem1 xmlns:defs=\"urn:tests:defs\">"
+                    "<elem2 xmlns:defaults=\"urn:defaults\" defs:attr1=\"defaults:val\" attr2=\"/defaults:node/defs:node2\">"
+                    "</elem2>"
+                "</defs:elem1>"
+            "</cont>"
+        "</any>";
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
+    /* cont should be normally parsed */
+    assert_string_equal(tree->schema->name, "any");
+    assert_int_equal(((struct lyd_node_any *)tree)->value_type, LYD_ANYDATA_DATATREE);
+    assert_string_equal(((struct lyd_node_any *)tree)->value.tree->schema->name, "cont");
+    /* but its children not */
+    assert_null(((struct lyd_node_inner *)(((struct lyd_node_any *)tree)->value.tree))->child->schema);
+    assert_true((len = lyd_print_mem(&printed, tree, LYD_XML, 0)) >= 0);
+    assert_int_equal(len, strlen(printed));
+    /* canonized */
+    data =
+        "<any xmlns=\"urn:tests:types\">"
+            "<cont>"
+                "<elem1 xmlns=\"urn:tests:defs\">"
+                    "<elem2 xmlns=\"urn:tests:types\" xmlns:defs=\"urn:tests:defs\" xmlns:defaults=\"urn:defaults\""
+                    " defs:attr1=\"defaults:val\" attr2=\"/defaults:node/defs:node2\"/>"
+                "</elem1>"
+            "</cont>"
+        "</any>";
     assert_string_equal(printed, data);
     free(printed);
     lyd_free_all(tree);

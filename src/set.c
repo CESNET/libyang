@@ -16,6 +16,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
 #include "log.h"
 #include "set.h"
@@ -33,7 +34,7 @@ ly_set_new(void)
 API void
 ly_set_clean(struct ly_set *set, void (*destructor)(void *obj))
 {
-    unsigned int u;
+    uint32_t u;
 
     if (!set) {
         return;
@@ -76,7 +77,7 @@ ly_set_free(struct ly_set *set, void (*destructor)(void *obj))
 API int
 ly_set_contains(const struct ly_set *set, void *object)
 {
-    unsigned int i;
+    uint32_t i;
 
     LY_CHECK_ARG_RET(NULL, set, -1);
 
@@ -95,7 +96,7 @@ API struct ly_set *
 ly_set_dup(const struct ly_set *set, void *(*duplicator)(void *obj))
 {
     struct ly_set *new;
-    unsigned int u;
+    uint32_t u;
 
     LY_CHECK_ARG_RET(NULL, set, NULL);
 
@@ -119,10 +120,10 @@ ly_set_dup(const struct ly_set *set, void *(*duplicator)(void *obj))
 API int
 ly_set_add(struct ly_set *set, void *object, int options)
 {
-    unsigned int i;
+    uint32_t i;
     void **new;
 
-    LY_CHECK_ARG_RET(NULL, set, object, -1);
+    LY_CHECK_ARG_RET(NULL, set, -1);
 
     if (!(options & LY_SET_OPT_USEASLIST)) {
         /* search for duplication */
@@ -149,7 +150,7 @@ ly_set_add(struct ly_set *set, void *object, int options)
 API int
 ly_set_merge(struct ly_set *trg, struct ly_set *src, int options, void *(*duplicator)(void *obj))
 {
-    unsigned int u, c, ret = 0;
+    uint32_t u, c, ret = 0;
     int i;
     void *obj;
 
@@ -164,7 +165,7 @@ ly_set_merge(struct ly_set *trg, struct ly_set *src, int options, void *(*duplic
         }
         c = trg->count;
         i = ly_set_add(trg, obj, options);
-        if (i > 0 && (unsigned int)i == c) {
+        if (i > 0 && (unsigned)i == c) {
             ++ret;
         }
     }
@@ -173,7 +174,7 @@ ly_set_merge(struct ly_set *trg, struct ly_set *src, int options, void *(*duplic
 }
 
 API LY_ERR
-ly_set_rm_index(struct ly_set *set, unsigned int index, void (*destructor)(void *obj))
+ly_set_rm_index(struct ly_set *set, uint32_t index, void (*destructor)(void *obj))
 {
     LY_CHECK_ARG_RET(NULL, set, LY_EINVAL);
     LY_CHECK_ERR_RET(index >= set->count, LOGARG(NULL, index), LY_EINVAL);
@@ -197,7 +198,7 @@ ly_set_rm_index(struct ly_set *set, unsigned int index, void (*destructor)(void 
 API LY_ERR
 ly_set_rm(struct ly_set *set, void *object, void (*destructor)(void *obj))
 {
-    unsigned int i;
+    uint32_t i;
 
     LY_CHECK_ARG_RET(NULL, set, object, LY_EINVAL);
 

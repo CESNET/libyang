@@ -15,6 +15,8 @@
 #ifndef LY_SET_H_
 #define LY_SET_H_
 
+#include <stdint.h>
+
 #include "log.h"
 
 #ifdef __cplusplus
@@ -43,8 +45,8 @@ extern "C" {
  */
 struct ly_set
 {
-    unsigned int size;                /**< allocated size of the set array */
-    unsigned int count;               /**< number of elements in (used size of) the set array */
+    uint32_t size;                    /**< allocated size of the set array */
+    uint32_t count;                   /**< number of elements in (used size of) the set array */
     void **objs;                      /**< set array of generic object pointers */
 };
 
@@ -104,7 +106,8 @@ int ly_set_add(struct ly_set *set, void *object, int options);
 int ly_set_merge(struct ly_set *trg, struct ly_set *src, int options, void *(*duplicator)(void *obj));
 
 /**
- * @brief Get know if the set contains the specified object.
+ * @brief Learn whether the set contains the specified object.
+ *
  * @param[in] set Set to explore.
  * @param[in] object Object to be found in the set.
  * @return Index of the object in the set or -1 if the object is not present in the set.
@@ -143,7 +146,7 @@ LY_ERR ly_set_rm(struct ly_set *set, void *object, void (*destructor)(void *obj)
  * @param[in] destructor Optional function to free the objects being removed.
  * @return LY_ERR return value.
  */
-LY_ERR ly_set_rm_index(struct ly_set *set, unsigned int index, void (*destructor)(void *obj));
+LY_ERR ly_set_rm_index(struct ly_set *set, uint32_t index, void (*destructor)(void *obj));
 
 /**
  * @brief Free the ::ly_set data. If the destructor is not provided, it frees only the set structure

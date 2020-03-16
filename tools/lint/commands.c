@@ -540,7 +540,7 @@ detect_data_format(char *filepath)
         return LYD_LYB;
 #endif
     } else {
-        return LYD_UNKNOWN;
+        return 0;
     }
 }
 
@@ -548,13 +548,13 @@ static int
 parse_data(char *filepath, int *options, const struct lyd_node *tree, const char *rpc_act_file,
            struct lyd_node **result)
 {
-    LYD_FORMAT informat = LYD_UNKNOWN;
+    LYD_FORMAT informat = 0;
     struct lyd_node *data = NULL, *rpc_act = NULL;
     int opts = *options;
 
     /* detect input format according to file suffix */
     informat = detect_data_format(filepath);
-    if (informat == LYD_UNKNOWN) {
+    if (!informat) {
         fprintf(stderr, "Unable to resolve format of the input file, please add \".xml\", \".json\", or \".lyb\" suffix.\n");
         return EXIT_FAILURE;
     }
@@ -698,7 +698,7 @@ cmd_data(const char *arg)
     const char *out_path = NULL;
     struct lyd_node *data = NULL;
     struct lyd_node *tree = NULL;
-    LYD_FORMAT outformat = LYD_UNKNOWN;
+    LYD_FORMAT outformat = 0;
     FILE *output = stdout;
     static struct option long_options[] = {
         {"defaults", required_argument, 0, 'd'},
@@ -841,7 +841,7 @@ cmd_data(const char *arg)
         }
     }
 
-    if (outformat != LYD_UNKNOWN) {
+    if (outformat) {
         lyd_print_file(output, data, outformat, LYDP_WITHSIBLINGS | LYDP_FORMAT | printopt);
     }
 

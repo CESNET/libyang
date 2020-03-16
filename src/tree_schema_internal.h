@@ -194,7 +194,7 @@ const char *lys_get_prefix(const struct lys_module *mod, void *private);
  *
  * In this case the @p prefix is searched in the list of imports' prefixes (not the prefixes of the imported modules themselves).
  */
-const struct lys_module *lys_resolve_prefix(struct ly_ctx *ctx, const char *prefix, size_t prefix_len, void *private);
+const struct lys_module *lys_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len, void *private);
 
 /**
  * @brief Check the currently present prefixes in the module for collision with the new one.

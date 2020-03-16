@@ -108,16 +108,16 @@ extern "C" {
 /**
  * @brief Macro to get context from a data tree node.
  */
-#define LYD_NODE_CTX(node) ((node)->schema->module->ctx)
+#define LYD_NODE_CTX(node) ((node)->schema ? (node)->schema->module->ctx : ((struct lyd_node_opaq *)(node))->ctx)
 
 /**
  * @brief Data input/output formats supported by libyang [parser](@ref howtodataparsers) and
- * [printer](@ref howtodataprinters) functions.
+ * [printer](@ref howtodataprinters) functions. Also used for value prefix format.
  */
 typedef enum {
-    LYD_UNKNOWN = 0,     /**< unknown format, used as return value in case of error */
-    LYD_XML,             /**< XML format of the instance data */
-    LYD_JSON,            /**< JSON format of the instance data */
+    LYD_SCHEMA = 0,      /**< invalid instance data format, value prefixes map to YANG import prefixes */
+    LYD_XML,             /**< XML instance data format, value prefixes map to XML namespace prefixes */
+    LYD_JSON,            /**< JSON instance data format, value prefixes map to module names */
 #if 0
     LYD_LYB,             /**< LYB format of the instance data */
 #endif
@@ -224,6 +224,28 @@ struct lyd_meta {
     struct lyd_value value;          /**< metadata value representation */
 };
 
+/**
+ * @brief Generic prefix and namespace mapping, meaning depends on the format.
+ */
+struct ly_prefix {
+    const char *pref;
+    const char *ns;
+};
+
+/**
+ * @brief Generic attribute structure.
+ */
+struct ly_attr {
+    struct lyd_node_opaq *parent;   /**< data node where the attribute is placed */
+    struct ly_attr *next;
+    struct ly_prefix *val_prefs;    /**< list of prefixes in the value ([sized array](@ref sizedarrays)) */
+    const char *name;
+    const char *value;
+
+    LYD_FORMAT format;
+    struct ly_prefix prefix;        /**< name prefix, it is stored because they are a real pain to generate properly */
+
+};
 
 #define LYD_NODE_INNER (LYS_CONTAINER|LYS_LIST|LYS_ACTION|LYS_NOTIF) /**< Schema nodetype mask for lyd_node_inner */
 #define LYD_NODE_TERM (LYS_LEAF|LYS_LEAFLIST)   /**< Schema nodetype mask for lyd_node_term */
@@ -255,6 +277,7 @@ struct lyd_meta {
 #define LYD_DEFAULT      0x01        /**< default (implicit) node */
 #define LYD_WHEN_TRUE    0x02        /**< all when conditions of this node were evaluated to true */
 #define LYD_NEW          0x04        /**< node was created after the last validation, is needed for the next validation */
+
 /** @} */
 
 /**
@@ -271,7 +294,8 @@ struct lyd_meta {
  * @param[in] private Internal data needed by the callback.
  * @return Pointer to the YANG schema identified by the provided prefix or NULL if no mapping found.
  */
-typedef const struct lys_module *(*ly_clb_resolve_prefix)(struct ly_ctx *ctx, const char *prefix, size_t prefix_len, void *private);
+typedef const struct lys_module *(*ly_clb_resolve_prefix)(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len,
+                                                          void *private);
 
 /**
  * @brief Callback provided by the data/schema printers to type plugins to resolve (format-specific) mapping between YANG module of a data object
@@ -396,6 +420,31 @@ struct lyd_node_any {
 };
 
 /**
+ * @brief Data node structure for unparsed (opaque) nodes.
+ */
+struct lyd_node_opaq {
+    uint32_t hash;                  /**< always 0 */
+    uint32_t flags;                 /**< always 0 */
+    const struct lysc_node *schema; /**< always NULL */
+    struct lyd_node *parent;        /**< pointer to the parent node (NULL in case of root node) */
+    struct lyd_node *next;          /**< pointer to the next sibling node (NULL if there is no one) */
+    struct lyd_node *prev;          /**< pointer to the previous sibling node (last sibling if there is none) */
+    struct ly_attr *attr;
+
+#ifdef LY_ENABLED_LYD_PRIV
+    void *priv;                     /**< private user data, not used by libyang */
+#endif
+
+    struct lyd_node *child;         /**< pointer to the child node (NULL if there are none) */
+    const char *name;
+    LYD_FORMAT format;
+    struct ly_prefix prefix;        /**< name prefix */
+    struct ly_prefix *val_prefs;    /**< list of prefixes in the value ([sized array](@ref sizedarrays)) */
+    const char *value;              /**< original value */
+    const struct ly_ctx *ctx;       /**< libyang context */
+};
+
+/**
  * @defgroup dataparseroptions Data parser options
  * @ingroup datatree
  *
@@ -422,24 +471,31 @@ struct lyd_node_any {
  */
 
 #define LYD_OPT_DATA       0x0 /**< Default type of data - complete datastore content with configuration as well as
-                                state data. */
-#define LYD_OPT_CONFIG     LYD_OPT_NO_STATE /**< A configuration datastore - complete datastore without state data. */
-#define LYD_OPT_GET        LYD_OPT_PARSE_ONLY /**< Data content from a NETCONF reply message to the NETCONF
-                                \<get\> operation. */
-#define LYD_OPT_GETCONFIG  LYD_OPT_PARSE_ONLY | LYD_OPT_NO_STATE /**< Data content from a NETCONF reply message to
-                                the NETCONF \<get-config\> operation. */
+                                    state data. */
+#define LYD_OPT_CONFIG     LYD_OPT_NO_STATE
+                                        /**< A configuration datastore - complete datastore without state data. */
+#define LYD_OPT_GET        LYD_OPT_PARSE_ONLY
+                                        /**< Data content from a NETCONF reply message to the NETCONF \<get\> operation. */
+#define LYD_OPT_GETCONFIG  LYD_OPT_PARSE_ONLY | LYD_OPT_NO_STATE
+                                        /**< Data content from a NETCONF reply message to the NETCONF \<get-config\> operation. */
+#define LYD_OPT_EDIT       LYD_OPT_OPAQ
+                                        /**< Data content of a NETCONF RPC \<edit-config\> operation. */
 
-#define LYD_OPT_PARSE_ONLY      0x0001 /**< Data will be only parsed and no validation will be performed. When statements
-                                            are kept unevaluated, union types may not be fully resolved, if-feature
-                                            statements are not checked, and default values are not added (only the ones
-                                            parsed are present). */
-#define LYD_OPT_TRUSTED         0x0002 /**< Data are considered trusted so they will be parsed as validated. If the parsed
-                                            data are not valid, using this flag may lead to some unexpected behavior!
-                                            This flag can be used only with #LYD_OPT_PARSE_ONLY. */
-#define LYD_OPT_STRICT          0x0004 /**< Instead of silently ignoring data without schema definition raise an error. */
-#define LYD_OPT_NO_STATE        0x0008 /**< Forbid state data in the parsed data. */
 
-#define LYD_OPT_MASK            0xFFFF /**< Mask for all the parser options. */
+#define LYD_OPT_PARSE_ONLY      0x0001  /**< Data will be only parsed and no validation will be performed. When statements
+                                             are kept unevaluated, union types may not be fully resolved, if-feature
+                                             statements are not checked, and default values are not added (only the ones
+                                             parsed are present). */
+#define LYD_OPT_TRUSTED         0x0002  /**< Data are considered trusted so they will be parsed as validated. If the parsed
+                                             data are not valid, using this flag may lead to some unexpected behavior!
+                                             This flag can be used only with #LYD_OPT_PARSE_ONLY. */
+#define LYD_OPT_STRICT          0x0004  /**< Instead of silently ignoring data without schema definition raise an error.
+                                             Do not combine with #LYD_OPT_OPAQ. */
+#define LYD_OPT_OPAQ            0x0008  /**< Instead of silently ignoring data without definition, parse them into
+                                             an opaq node. Do not combine with #LYD_OPT_STRICT. */
+#define LYD_OPT_NO_STATE        0x0010  /**< Forbid state data in the parsed data. */
+
+#define LYD_OPT_MASK            0xFFFF  /**< Mask for all the parser options. */
 
 /** @} dataparseroptions */
 
@@ -724,10 +780,20 @@ void lyd_free_tree(struct lyd_node *node);
  *
  * @param[in] ctx Context where the metadata was created.
  * @param[in] meta Metadata to destroy
- * @param[in] recursive Zero to destroy only the metadata (the metadata list is corrected),
+ * @param[in] recursive Zero to destroy only the single metadata (the metadata list is corrected),
  * non-zero to destroy also all the subsequent metadata in the list.
  */
-void lyd_free_meta(struct ly_ctx *ctx, struct lyd_meta *meta, int recursive);
+void lyd_free_meta(const struct ly_ctx *ctx, struct lyd_meta *meta, int recursive);
+
+/**
+ * @brief Destroy attributes.
+ *
+ * @param[in] ctx Context where the attributes were created.
+ * @param[in] attr Attributes to destroy.
+ * @param[in] recursive Zero to destroy only the single attribute (the attribute list is corrected),
+ * non-zero to destroy also all the subsequent attributes in the list.
+ */
+void ly_free_attr(const struct ly_ctx *ctx, struct ly_attr *attr, int recursive);
 
 /**
  * @brief Check type restrictions applicable to the particular leaf/leaf-list with the given string @p value.

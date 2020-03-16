@@ -12,6 +12,8 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
+#include "tests/config.h"
+
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
@@ -19,8 +21,6 @@
 
 #include <stdio.h>
 #include <string.h>
-
-#include "tests/config.h"
 
 #include "../../src/context.h"
 #include "../../src/tree_data_internal.h"
@@ -966,13 +966,13 @@ test_defaults(void **state)
         "<d xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">15</d>"
         "<ll2 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt1</ll2>"
         "<ll2 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt2</ll2>"
-        "<cont xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
-            "<ll1 ncwd:default=\"true\">def1</ll1>"
-            "<ll1 ncwd:default=\"true\">def2</ll1>"
-            "<ll1 ncwd:default=\"true\">def3</ll1>"
-            "<d ncwd:default=\"true\">15</d>"
-            "<ll2 ncwd:default=\"true\">dflt1</ll2>"
-            "<ll2 ncwd:default=\"true\">dflt2</ll2>"
+        "<cont xmlns=\"urn:tests:f\">"
+            "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def1</ll1>"
+            "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def2</ll1>"
+            "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def3</ll1>"
+            "<d xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">15</d>"
+            "<ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt1</ll2>"
+            "<ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt2</ll2>"
         "</cont>");
     free(str);
 
@@ -988,13 +988,13 @@ test_defaults(void **state)
         "<d xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">15</d>"
         "<ll2 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt1</ll2>"
         "<ll2 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt2</ll2>"
-        "<cont xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
-            "<ll1 ncwd:default=\"true\">def1</ll1>"
-            "<ll1 ncwd:default=\"true\">def2</ll1>"
-            "<ll1 ncwd:default=\"true\">def3</ll1>"
-            "<d ncwd:default=\"true\">15</d>"
-            "<ll2 ncwd:default=\"true\">dflt1</ll2>"
-            "<ll2 ncwd:default=\"true\">dflt2</ll2>"
+        "<cont xmlns=\"urn:tests:f\">"
+            "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def1</ll1>"
+            "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def2</ll1>"
+            "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def3</ll1>"
+            "<d xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">15</d>"
+            "<ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt1</ll2>"
+            "<ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt2</ll2>"
         "</cont>"
         "<l xmlns=\"urn:tests:f\">value</l>");
     free(str);
@@ -1011,13 +1011,13 @@ test_defaults(void **state)
     /* check data tree */
     lyd_print_mem(&str, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG);
     assert_string_equal(str,
-        "<cont xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
-            "<ll1 ncwd:default=\"true\">def1</ll1>"
-            "<ll1 ncwd:default=\"true\">def2</ll1>"
-            "<ll1 ncwd:default=\"true\">def3</ll1>"
-            "<d ncwd:default=\"true\">15</d>"
-            "<ll2 ncwd:default=\"true\">dflt1</ll2>"
-            "<ll2 ncwd:default=\"true\">dflt2</ll2>"
+        "<cont xmlns=\"urn:tests:f\">"
+            "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def1</ll1>"
+            "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def2</ll1>"
+            "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def3</ll1>"
+            "<d xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">15</d>"
+            "<ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt1</ll2>"
+            "<ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt2</ll2>"
         "</cont>"
         "<l xmlns=\"urn:tests:f\">value</l>"
         "<d xmlns=\"urn:tests:f\">15</d>"
@@ -1034,13 +1034,13 @@ test_defaults(void **state)
     /* check data tree */
     lyd_print_mem(&str, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG);
     assert_string_equal(str,
-        "<cont xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
-            "<ll1 ncwd:default=\"true\">def1</ll1>"
-            "<ll1 ncwd:default=\"true\">def2</ll1>"
-            "<ll1 ncwd:default=\"true\">def3</ll1>"
-            "<d ncwd:default=\"true\">15</d>"
-            "<ll2 ncwd:default=\"true\">dflt1</ll2>"
-            "<ll2 ncwd:default=\"true\">dflt2</ll2>"
+        "<cont xmlns=\"urn:tests:f\">"
+            "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def1</ll1>"
+            "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def2</ll1>"
+            "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def3</ll1>"
+            "<d xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">15</d>"
+            "<ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt1</ll2>"
+            "<ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt2</ll2>"
         "</cont>"
         "<l xmlns=\"urn:tests:f\">value</l>"
         "<d xmlns=\"urn:tests:f\">15</d>"
@@ -1056,13 +1056,13 @@ test_defaults(void **state)
     /* check data tree */
     lyd_print_mem(&str, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG);
     assert_string_equal(str,
-        "<cont xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
-            "<ll1 ncwd:default=\"true\">def1</ll1>"
-            "<ll1 ncwd:default=\"true\">def2</ll1>"
-            "<ll1 ncwd:default=\"true\">def3</ll1>"
-            "<d ncwd:default=\"true\">15</d>"
-            "<ll2 ncwd:default=\"true\">dflt1</ll2>"
-            "<ll2 ncwd:default=\"true\">dflt2</ll2>"
+        "<cont xmlns=\"urn:tests:f\">"
+            "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def1</ll1>"
+            "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def2</ll1>"
+            "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def3</ll1>"
+            "<d xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">15</d>"
+            "<ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt1</ll2>"
+            "<ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt2</ll2>"
         "</cont>"
         "<l xmlns=\"urn:tests:f\">value</l>"
         "<d xmlns=\"urn:tests:f\">15</d>"
@@ -1078,7 +1078,7 @@ test_defaults(void **state)
     /* check data tree */
     lyd_print_mem(&str, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG);
     assert_string_equal(str,
-        "<cont xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\">"
+        "<cont xmlns=\"urn:tests:f\">"
             "<ll1>def3</ll1>"
             "<d>5</d>"
             "<ll2>non-dflt</ll2>"

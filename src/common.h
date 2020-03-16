@@ -15,7 +15,6 @@
 #ifndef LY_COMMON_H_
 #define LY_COMMON_H_
 
-#define _DEFAULT_SOURCE
 #define _GNU_SOURCE
 
 #include <pthread.h>
@@ -445,7 +444,7 @@ const char *json_print_get_prefix(const struct lys_module *mod, void *private);
  *
  * Implemented in parser_json.c
  */
-const struct lys_module *lydjson_resolve_prefix(struct ly_ctx *ctx, const char *prefix, size_t prefix_len, void *parser);
+const struct lys_module *lydjson_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len, void *parser);
 
 /**
  * @brief mmap(2) wrapper to map input files into memory to unify parsing.

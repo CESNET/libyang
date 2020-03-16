@@ -769,7 +769,7 @@ test_identityref(void **state)
 
 /* dummy get_prefix callback for test_instanceid() */
 const struct lys_module *
-test_instanceid_getprefix(struct ly_ctx *ctx, const char *prefix, size_t prefix_len, void *private)
+test_instanceid_getprefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len, void *private)
 {
     (void)ctx;
     (void)prefix;

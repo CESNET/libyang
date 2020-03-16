@@ -119,33 +119,6 @@ extern "C" {
          (ELEM) = (NEXT))
 
 /**
- * @brief Generic tree node structure.
- */
-struct ly_node {
-    LYD_FORMAT format;
-    union {
-        struct {
-            const struct lysc_node *schema;
-            struct lyd_meta *meta;
-        } sch;
-        struct {
-            const char *name;
-            struct ly_attr *attr;
-        } xml;
-    };
-    const char *value;
-};
-
-/**
- * @brief Generic attribute structure.
- */
-struct ly_attr {
-    struct ly_attr *next;
-    const char *name;
-    const char *value;
-};
-
-/**
  * @brief YANG built-in types
  */
 typedef enum

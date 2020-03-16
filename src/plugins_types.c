@@ -63,7 +63,7 @@ ly_type_print_canonical(const struct lyd_value *value, LYD_FORMAT UNUSED(format)
  * Implementation of the ly_type_dup_clb.
  */
 static LY_ERR
-ly_type_dup_original(struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
+ly_type_dup_original(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     dup->canonical_cache = original->canonical_cache;
     dup->original = (void*)lydict_insert(ctx, original->original, strlen(original->original));
@@ -80,7 +80,7 @@ ly_type_dup_original(struct ly_ctx *ctx, const struct lyd_value *original, struc
  * Implementation of the ly_type_dup_clb.
  */
 static LY_ERR
-ly_type_dup_canonical(struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
+ly_type_dup_canonical(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     ly_type_dup_original(ctx, original, dup);
     dup->canonical_cache = (void*)lydict_insert(ctx, original->canonical_cache, strlen(original->canonical_cache));
@@ -97,7 +97,7 @@ ly_type_dup_canonical(struct ly_ctx *ctx, const struct lyd_value *original, stru
  * Implementation of the ly_type_free_clb.
  */
 static void
-ly_type_free_original(struct ly_ctx *ctx, struct lyd_value *value)
+ly_type_free_original(const struct ly_ctx *ctx, struct lyd_value *value)
 {
     lydict_remove(ctx, value->original);
     value->original = NULL;
@@ -109,7 +109,7 @@ ly_type_free_original(struct ly_ctx *ctx, struct lyd_value *value)
  * Implementation of the ly_type_free_clb.
  */
 static void
-ly_type_free_canonical(struct ly_ctx *ctx, struct lyd_value *value)
+ly_type_free_canonical(const struct ly_ctx *ctx, struct lyd_value *value)
 {
     ly_type_free_original(ctx, value);
     lydict_remove(ctx, value->canonical_cache);
@@ -117,7 +117,8 @@ ly_type_free_canonical(struct ly_ctx *ctx, struct lyd_value *value)
 }
 
 API LY_ERR
-ly_type_parse_int(const char *datatype, int base, int64_t min, int64_t max, const char *value, size_t value_len, int64_t *ret, struct ly_err_item **err)
+ly_type_parse_int(const char *datatype, int base, int64_t min, int64_t max, const char *value, size_t value_len,
+                  int64_t *ret, struct ly_err_item **err)
 {
     char *errmsg = NULL;
 
@@ -148,7 +149,8 @@ error:
 }
 
 API struct lyd_value_prefix *
-ly_type_get_prefixes(struct ly_ctx *ctx, const char *value, size_t value_len, ly_clb_resolve_prefix resolve_prefix, void *parser)
+ly_type_get_prefixes(const struct ly_ctx *ctx, const char *value, size_t value_len, ly_clb_resolve_prefix resolve_prefix,
+                     void *parser)
 {
     LY_ERR ret;
     unsigned int c;
@@ -203,7 +205,8 @@ error:
 }
 
 API LY_ERR
-ly_type_parse_uint(const char *datatype, int base, uint64_t max, const char *value, size_t value_len, uint64_t *ret, struct ly_err_item **err)
+ly_type_parse_uint(const char *datatype, int base, uint64_t max, const char *value, size_t value_len, uint64_t *ret,
+                   struct ly_err_item **err)
 {
     char *errmsg = NULL;
 
@@ -380,7 +383,8 @@ ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str, size_
 }
 
 API LY_ERR
-ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t value, const char *strval, struct ly_err_item **err)
+ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t value, const char *strval,
+                       struct ly_err_item **err)
 {
     unsigned int u;
     char *errmsg = NULL;
@@ -443,7 +447,7 @@ error:
 }
 
 static void
-ly_type_store_strval(struct ly_ctx *ctx, int options, const char *orig, const char *value,
+ly_type_store_strval(const struct ly_ctx *ctx, int options, const char *orig, const char *value,
                      struct lyd_value *storage, const char **canonized)
 {
     if (options & LY_TYPE_OPTS_CANONIZE) {
@@ -461,7 +465,7 @@ ly_type_store_strval(struct ly_ctx *ctx, int options, const char *orig, const ch
 }
 #if 0
 static void
-ly_type_store_canonized(struct ly_ctx *ctx, int options, const char *value, struct lyd_value *storage, const char **canonized)
+ly_type_store_canonized(const struct ly_ctx *ctx, int options, const char *value, struct lyd_value *storage, const char **canonized)
 {
     if (options & LY_TYPE_OPTS_CANONIZE) {
         *canonized = value;
@@ -482,7 +486,7 @@ ly_type_store_canonized(struct ly_ctx *ctx, int options, const char *value, stru
  * Implementation of the ly_type_store_clb.
  */
 static LY_ERR
-ly_type_store_int(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
+ly_type_store_int(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
                   ly_clb_resolve_prefix UNUSED(resolve_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
                   const void *UNUSED(context_node), const struct lyd_node *UNUSED(tree),
                   struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
@@ -546,7 +550,7 @@ ly_type_store_int(struct ly_ctx *ctx, struct lysc_type *type, const char *value,
  * Implementation of the ly_type_dup_clb.
  */
 static LY_ERR
-ly_type_dup_int(struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
+ly_type_dup_int(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     dup->int64 = original->int64;
     return ly_type_dup_canonical(ctx, original, dup);
@@ -558,7 +562,7 @@ ly_type_dup_int(struct ly_ctx *ctx, const struct lyd_value *original, struct lyd
  * Implementation of the ly_type_store_clb.
  */
 static LY_ERR
-ly_type_store_uint(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
+ly_type_store_uint(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
                    ly_clb_resolve_prefix UNUSED(resolve_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
                    const void *UNUSED(context_node), const struct lyd_node *UNUSED(tree),
                    struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
@@ -621,7 +625,7 @@ ly_type_store_uint(struct ly_ctx *ctx, struct lysc_type *type, const char *value
  * Implementation of the ly_type_dup_clb.
  */
 static LY_ERR
-ly_type_dup_uint(struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
+ly_type_dup_uint(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     dup->uint64 = original->uint64;
     return ly_type_dup_canonical(ctx, original, dup);
@@ -633,7 +637,7 @@ ly_type_dup_uint(struct ly_ctx *ctx, const struct lyd_value *original, struct ly
  * Implementation of the ly_type_store_clb.
  */
 static LY_ERR
-ly_type_store_decimal64(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
+ly_type_store_decimal64(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
                         ly_clb_resolve_prefix UNUSED(resolve_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
                         const void *UNUSED(context_node), const struct lyd_node *UNUSED(tree),
                         struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
@@ -705,7 +709,7 @@ ly_type_store_decimal64(struct ly_ctx *ctx, struct lysc_type *type, const char *
  * Implementation of the ly_type_dup_clb.
  */
 static LY_ERR
-ly_type_dup_decimal64(struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
+ly_type_dup_decimal64(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
    dup->dec64 = original->dec64;
    return ly_type_dup_canonical(ctx, original, dup);
@@ -717,7 +721,7 @@ ly_type_dup_decimal64(struct ly_ctx *ctx, const struct lyd_value *original, stru
  * Implementation of the ly_type_store_clb.
  */
 static LY_ERR
-ly_type_store_binary(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
+ly_type_store_binary(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
                      ly_clb_resolve_prefix UNUSED(resolve_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
                      const void *UNUSED(context_node), const struct lyd_node *UNUSED(tree),
                      struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
@@ -822,7 +826,7 @@ error:
  * Implementation of the ly_type_store_clb.
  */
 static LY_ERR
-ly_type_store_string(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
+ly_type_store_string(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
                      ly_clb_resolve_prefix UNUSED(resolve_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
                      const void *UNUSED(context_node), const struct lyd_node *UNUSED(tree),
                      struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
@@ -866,7 +870,7 @@ ly_type_store_string(struct ly_ctx *ctx, struct lysc_type *type, const char *val
  * Implementation of the ly_type_store_clb.
  */
 static LY_ERR
-ly_type_store_bits(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
+ly_type_store_bits(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
                    ly_clb_resolve_prefix UNUSED(resolve_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
                    const void *UNUSED(context_node), const struct lyd_node *UNUSED(tree),
                    struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
@@ -1017,7 +1021,7 @@ error:
  * Implementation of the ly_type_dup_clb.
  */
 static LY_ERR
-ly_type_dup_bits(struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
+ly_type_dup_bits(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     unsigned int u;
 
@@ -1036,7 +1040,7 @@ ly_type_dup_bits(struct ly_ctx *ctx, const struct lyd_value *original, struct ly
  * Implementation of the ly_type_free_clb.
  */
 static void
-ly_type_free_bits(struct ly_ctx *ctx, struct lyd_value *value)
+ly_type_free_bits(const struct ly_ctx *ctx, struct lyd_value *value)
 {
     LY_ARRAY_FREE(value->bits_items);
     value->bits_items = NULL;
@@ -1051,7 +1055,7 @@ ly_type_free_bits(struct ly_ctx *ctx, struct lyd_value *value)
  * Implementation of the ly_type_store_clb.
  */
 static LY_ERR
-ly_type_store_enum(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
+ly_type_store_enum(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
                    ly_clb_resolve_prefix UNUSED(resolve_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
                    const void *UNUSED(context_node), const struct lyd_node *UNUSED(tree),
                    struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
@@ -1115,7 +1119,7 @@ error:
  * Implementation of the ly_type_dup_clb.
  */
 static LY_ERR
-ly_type_dup_enum(struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
+ly_type_dup_enum(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     dup->enum_item = original->enum_item;
     return ly_type_dup_original(ctx, original, dup);
@@ -1127,7 +1131,7 @@ ly_type_dup_enum(struct ly_ctx *ctx, const struct lyd_value *original, struct ly
  * Implementation of the ly_type_store_clb.
  */
 static LY_ERR
-ly_type_store_boolean(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), const char *value, size_t value_len, int options,
+ly_type_store_boolean(const struct ly_ctx *ctx, struct lysc_type *UNUSED(type), const char *value, size_t value_len, int options,
                       ly_clb_resolve_prefix UNUSED(resolve_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
                       const void *UNUSED(context_node), const struct lyd_node *UNUSED(tree),
                       struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
@@ -1171,7 +1175,7 @@ ly_type_store_boolean(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), const 
  * Implementation of the ly_type_dup_clb.
  */
 static LY_ERR
-ly_type_dup_boolean(struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
+ly_type_dup_boolean(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     dup->int64 = original->int64;
     return ly_type_dup_original(ctx, original, dup);
@@ -1183,7 +1187,7 @@ ly_type_dup_boolean(struct ly_ctx *ctx, const struct lyd_value *original, struct
  * Implementation of the ly_type_store_clb.
  */
 static LY_ERR
-ly_type_store_empty(struct ly_ctx *ctx, struct lysc_type *UNUSED(type), const char *value, size_t value_len, int options,
+ly_type_store_empty(const struct ly_ctx *ctx, struct lysc_type *UNUSED(type), const char *value, size_t value_len, int options,
                     ly_clb_resolve_prefix UNUSED(resolve_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
                     const void *UNUSED(context_node), const struct lyd_node *UNUSED(tree),
                     struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
@@ -1244,7 +1248,7 @@ ly_type_identity_isderived(struct lysc_ident *base, struct lysc_ident *der)
  * Implementation of the ly_type_store_clb.
  */
 static LY_ERR
-ly_type_store_identityref(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
+ly_type_store_identityref(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
                           ly_clb_resolve_prefix resolve_prefix, void *parser, LYD_FORMAT UNUSED(format),
                           const void *UNUSED(context_node), const struct lyd_node *UNUSED(tree),
                           struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
@@ -1365,7 +1369,7 @@ ly_type_print_identityref(const struct lyd_value *value, LYD_FORMAT UNUSED(forma
  * Implementation of the ly_type_dup_clb.
  */
 static LY_ERR
-ly_type_dup_identityref(struct ly_ctx *UNUSED(ctx), const struct lyd_value *original, struct lyd_value *dup)
+ly_type_dup_identityref(const struct ly_ctx *UNUSED(ctx), const struct lyd_value *original, struct lyd_value *dup)
 {
     dup->ident = original->ident;
     return LY_SUCCESS;
@@ -1483,7 +1487,7 @@ ly_type_store_instanceid_checknodeid(const char *orig, size_t orig_len, int opti
  * Implementation of the ly_clb_resolve_prefix.
  */
 static const struct lys_module *
-ly_type_stored_prefixes_clb(struct ly_ctx *UNUSED(ctx), const char *prefix, size_t prefix_len, void *private)
+ly_type_stored_prefixes_clb(const struct ly_ctx *UNUSED(ctx), const char *prefix, size_t prefix_len, void *private)
 {
     struct lyd_value_prefix *prefixes = (struct lyd_value_prefix*)private;
     unsigned int u;
@@ -1510,8 +1514,8 @@ ly_type_stored_prefixes_clb(struct ly_ctx *UNUSED(ctx), const char *prefix, size
  * @return LY_ERR value.
  */
 static LY_ERR
-ly_type_store_instanceid_parse_predicate_value(struct ly_ctx *ctx, const struct lysc_node *key, const char *val, size_t val_len,
-                                               struct lyd_value_prefix *prefixes, LYD_FORMAT format,
+ly_type_store_instanceid_parse_predicate_value(const struct ly_ctx *ctx, const struct lysc_node *key, const char *val,
+                                               size_t val_len, struct lyd_value_prefix *prefixes, LYD_FORMAT format,
                                                struct lyd_value_path_predicate *pred, char **errmsg)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -1581,7 +1585,7 @@ ly_type_path_predicate_end(const char *predicate)
  * Implementation of the ly_type_store_clb.
  */
 static LY_ERR
-ly_type_store_instanceid(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
+ly_type_store_instanceid(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
                          ly_clb_resolve_prefix resolve_prefix, void *parser, LYD_FORMAT format,
                          const void *UNUSED(context_node), const struct lyd_node *tree,
                          struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
@@ -2107,7 +2111,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LYD_FORMAT format, ly_cl
  * Implementation of the ly_type_dup_clb.
  */
 static LY_ERR
-ly_type_dup_instanceid(struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
+ly_type_dup_instanceid(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     unsigned int u, v;
 
@@ -2150,7 +2154,7 @@ ly_type_dup_instanceid(struct ly_ctx *ctx, const struct lyd_value *original, str
  * Implementation of the ly_type_free_clb.
  */
 static void
-ly_type_free_instanceid(struct ly_ctx *ctx, struct lyd_value *value)
+ly_type_free_instanceid(const struct ly_ctx *ctx, struct lyd_value *value)
 {
     lyd_value_free_path(ctx, value->target);
     value->target = NULL;
@@ -2161,7 +2165,7 @@ ly_type_free_instanceid(struct ly_ctx *ctx, struct lyd_value *value)
  * @brief Find leafref target in instance data.
  */
 const struct lyd_node *
-ly_type_find_leafref(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len,
+ly_type_find_leafref(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len,
                      const struct lyd_node *context_node, const struct lyd_node *tree, struct lyd_value *storage, char **errmsg)
 {
     struct lysc_type_leafref *type_lr = (struct lysc_type_leafref*)type;
@@ -2351,7 +2355,7 @@ next_instance:
  * Implementation of the ly_type_store_clb.
  */
 static LY_ERR
-ly_type_store_leafref(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
+ly_type_store_leafref(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
                       ly_clb_resolve_prefix resolve_prefix, void *parser, LYD_FORMAT format,
                       const void *context_node, const struct lyd_node *tree,
                       struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
@@ -2434,7 +2438,7 @@ ly_type_print_leafref(const struct lyd_value *value, LYD_FORMAT format, ly_clb_g
  * Implementation of the ly_type_dup_clb.
  */
 static LY_ERR
-ly_type_dup_leafref(struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
+ly_type_dup_leafref(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     return original->realtype->plugin->duplicate(ctx, original, dup);
 }
@@ -2445,7 +2449,7 @@ ly_type_dup_leafref(struct ly_ctx *ctx, const struct lyd_value *original, struct
  * Implementation of the ly_type_free_clb.
  */
 static void
-ly_type_free_leafref(struct ly_ctx *ctx, struct lyd_value *value)
+ly_type_free_leafref(const struct ly_ctx *ctx, struct lyd_value *value)
 {
     value->realtype->plugin->free(ctx, value);
 }
@@ -2456,7 +2460,7 @@ ly_type_free_leafref(struct ly_ctx *ctx, struct lyd_value *value)
  * Implementation of the ly_type_store_clb.
  */
 static LY_ERR
-ly_type_store_union(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
+ly_type_store_union(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
                     ly_clb_resolve_prefix resolve_prefix, void *parser, LYD_FORMAT format,
                     const void *context_node, const struct lyd_node *tree,
                     struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
@@ -2588,7 +2592,7 @@ ly_type_print_union(const struct lyd_value *value, LYD_FORMAT format, ly_clb_get
  * Implementation of the ly_type_dup_clb.
  */
 static LY_ERR
-ly_type_dup_union(struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
+ly_type_dup_union(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
     unsigned int u;
 
@@ -2616,7 +2620,7 @@ ly_type_dup_union(struct ly_ctx *ctx, const struct lyd_value *original, struct l
  * Implementation of the ly_type_free_clb.
  */
 static void
-ly_type_free_union(struct ly_ctx *ctx, struct lyd_value *value)
+ly_type_free_union(const struct ly_ctx *ctx, struct lyd_value *value)
 {
     unsigned int u;
 

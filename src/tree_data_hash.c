@@ -46,6 +46,10 @@ lyd_hash(struct lyd_node *node)
 {
     struct lyd_node *iter;
 
+    if (!node->schema) {
+        return LY_SUCCESS;
+    }
+
     node->hash = dict_hash_multi(0, node->schema->module->name, strlen(node->schema->module->name));
     node->hash = dict_hash_multi(node->hash, node->schema->name, strlen(node->schema->name));
 
@@ -117,7 +121,7 @@ lyd_insert_hash(struct lyd_node *node)
 {
     struct lyd_node *iter;
 
-    if (!node->parent) {
+    if (!node->parent || !node->schema || !node->parent->schema) {
         /* nothing to do */
         return LY_SUCCESS;
     }

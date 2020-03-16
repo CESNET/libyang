@@ -1,7 +1,7 @@
 /**
- * @file printer_schema.h
+ * @file printer_data.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
- * @brief Schema printers for libyang
+ * @brief Data printers for libyang
  *
  * Copyright (c) 2015-2019 CESNET, z.s.p.o.
  *

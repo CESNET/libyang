@@ -12,10 +12,13 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
+#include "common.h"
+
 #include <assert.h>
 #include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
 
-#include "common.h"
 #include "xpath.h"
 #include "tree_data_internal.h"
 #include "tree_schema_internal.h"
@@ -96,7 +99,7 @@ lyd_validate_when(struct lyd_node **tree, struct lyd_node *node, struct lysc_whe
     }
 
     /* evaluate when */
-    ret = lyxp_eval(when->cond, LYD_UNKNOWN, when->module, ctx_node, ctx_node ? LYXP_NODE_ELEM : LYXP_NODE_ROOT_CONFIG,
+    ret = lyxp_eval(when->cond, LYD_SCHEMA, when->module, ctx_node, ctx_node ? LYXP_NODE_ELEM : LYXP_NODE_ROOT_CONFIG,
                     *tree, &xp_set, LYXP_SCHEMA);
     lyxp_set_cast(&xp_set, LYXP_SET_BOOLEAN);
 

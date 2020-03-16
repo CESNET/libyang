@@ -17,6 +17,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "log.h"
 #include "plugins_types.h"
@@ -34,7 +35,9 @@ struct xmlpr_ctx {
     struct lyout *out;  /**< output specification */
     unsigned int level; /**< current indentation level: 0 - no formatting, >= 1 indentation levels */
     int options;        /**< [Data printer flags](@ref dataprinterflags) */
-    int toplevel;       /**< top-level flag */
+    const struct ly_ctx *ctx; /**< libyang context */
+    struct ly_set prefix;   /**< printed namespace prefixes */
+    struct ly_set ns;   /**< printed namespaces */
 };
 
 #define LEVEL ctx->level                     /**< current level */
@@ -42,113 +45,62 @@ struct xmlpr_ctx {
 #define LEVEL_INC if (LEVEL) {LEVEL++;}      /**< increase indentation level */
 #define LEVEL_DEC if (LEVEL) {LEVEL--;}      /**< decrease indentation level */
 
-/**
- * TODO
- */
-struct mlist {
-    struct mlist *next;
-    struct lys_module *module;
-} *mlist = NULL, *mlist_new;
-
-static LY_ERR
-modlist_add(struct mlist **mlist, const struct lys_module *mod)
-{
-    struct mlist *iter;
-
-    for (iter = *mlist; iter; iter = iter->next) {
-        if (mod == iter->module) {
-            break;
-        }
-    }
-
-    if (!iter) {
-        iter = malloc(sizeof *iter);
-        LY_CHECK_ERR_RET(!iter, LOGMEM(mod->ctx), LY_EMEM);
-        iter->next = *mlist;
-        iter->module = (struct lys_module *)mod;
-        *mlist = iter;
-    }
-
-    return LY_SUCCESS;
-}
+#define LYXML_PREFIX_REQUIRED 0x01  /**< The prefix is not just a suggestion but a requirement. */
 
 /**
- * TODO
+ * @brief Print a namespace if not already printed.
+ *
+ * @param[in] ctx XML printer context.
+ * @param[in] ns Namespace to print, expected to be in dictionary.
+ * @param[in] new_prefix Suggested new prefix, NULL for a default namespace without prefix. Stored in the dictionary.
+ * @param[in] prefix_opts Prefix options changing the meaning of parameters.
+ * @return Printed prefix of the namespace to use.
  */
-static void
-xml_print_ns(struct xmlpr_ctx *ctx, const struct lyd_node *node)
+static const char *
+xml_print_ns(struct xmlpr_ctx *ctx, const char *ns, const char *new_prefix, int prefix_opts)
 {
-    struct lyd_node *next, *cur, *child;
-    struct lyd_meta *meta;
-    struct mlist *mlist = NULL, *miter;
-    const struct lys_module *wdmod = NULL;
+    int i;
 
-    /* add node metadata modules */
-    for (meta = node->meta; meta; meta = meta->next) {
-        if (!strcmp(node->schema->name, "filter") &&
-                (!strcmp(node->schema->module->name, "ietf-netconf") ||
-                 !strcmp(node->schema->module->name, "notifications"))) {
-            /* exception for NETCONF's filter attributes */
-            continue;
-        } else if (modlist_add(&mlist, meta->annotation->module)) {
-            goto print;
-        }
-    }
-
-    /* add node children nodes and attribute modules */
-    switch (node->schema->nodetype) {
-    case LYS_LEAFLIST:
-    case LYS_LEAF:
-        /* ietf-netconf-with-defaults namespace */
-        if (((node->flags & LYD_DEFAULT) && (ctx->options & (LYDP_WD_ALL_TAG | LYDP_WD_IMPL_TAG))) ||
-                ((ctx->options & LYDP_WD_ALL_TAG) && ly_is_default(node))) {
-            /* get with-defaults module and print its namespace */
-            wdmod = ly_ctx_get_module_latest(node->schema->module->ctx, "ietf-netconf-with-defaults");
-            if (wdmod && modlist_add(&mlist, wdmod)) {
-                goto print;
-            }
-        }
-        break;
-    case LYS_CONTAINER:
-    case LYS_LIST:
-    case LYS_ACTION:
-    case LYS_NOTIF:
-        if (ctx->options & (LYDP_WD_ALL_TAG | LYDP_WD_IMPL_TAG)) {
-            /* get with-defaults module and print its namespace */
-            wdmod = ly_ctx_get_module_latest(node->schema->module->ctx, "ietf-netconf-with-defaults");
-            if (wdmod && modlist_add(&mlist, wdmod)) {
-                goto print;
-            }
-        }
-
-        LY_LIST_FOR(((struct lyd_node_inner*)node)->child, child) {
-            LYD_TREE_DFS_BEGIN(child, next, cur) {
-                for (meta = cur->meta; meta; meta = meta->next) {
-                    if (!strcmp(cur->schema->name, "filter") &&
-                            (!strcmp(cur->schema->module->name, "ietf-netconf") ||
-                             !strcmp(cur->schema->module->name, "notifications"))) {
-                        /* exception for NETCONF's filter attributes */
-                        continue;
-                    } else {
-                        /* TODO annotations r = modlist_add(&mlist, lys_main_module(meta->annotation->module)); */
-                    }
+    for (i = ctx->ns.count - 1; i > -1; --i) {
+        if (!new_prefix) {
+            /* find default namespace */
+            if (!ctx->prefix.objs[i]) {
+                if (ctx->ns.objs[i] != ns) {
+                    /* different default namespace */
+                    i = -1;
                 }
-            LYD_TREE_DFS_END(child, next, cur)}
+                break;
+            }
+        } else {
+            /* find prefixed namespace */
+            if (ctx->ns.objs[i] == ns) {
+                if (!ctx->prefix.objs[i]) {
+                    /* default namespace is not interesting */
+                    continue;
+                }
+
+                if (!strcmp(ctx->prefix.objs[i], new_prefix) || !(prefix_opts & LYXML_PREFIX_REQUIRED)) {
+                    /* the same prefix or can be any */
+                    break;
+                }
+            }
         }
-        break;
-    default:
-        break;
     }
 
-print:
-    /* print used namespaces */
-    while (mlist) {
-        miter = mlist;
-        mlist = mlist->next;
+    if (i == -1) {
+        /* suitable namespace not found, must be printed */
+        ly_print(ctx->out, " xmlns%s%s=\"%s\"", new_prefix ? ":" : "", new_prefix ? new_prefix : "", ns);
 
-        ly_print(ctx->out, " xmlns:%s=\"%s\"", miter->module->prefix, miter->module->ns);
-        free(miter);
+        /* and added into namespaces */
+        if (new_prefix) {
+            new_prefix = lydict_insert(ctx->ctx, new_prefix, 0);
+        }
+        ly_set_add(&ctx->prefix, (void *)new_prefix, LY_SET_OPT_USEASLIST);
+        i = ly_set_add(&ctx->ns, (void *)ns, LY_SET_OPT_USEASLIST);
     }
+
+    /* return it */
+    return ctx->prefix.objs[i];
 }
 
 /**
@@ -168,11 +120,12 @@ xml_print_get_prefix(const struct lys_module *mod, void *private)
 /**
  * TODO
  */
-static LY_ERR
+static void
 xml_print_meta(struct xmlpr_ctx *ctx, const struct lyd_node *node)
 {
     struct lyd_meta *meta;
-    const struct lys_module *wdmod = NULL;
+    const struct lys_module *mod;
+    struct ly_set ns_list = {0};
 #if 0
     const char **prefs, **nss;
     const char *xml_expr = NULL, *mod_name;
@@ -181,7 +134,6 @@ xml_print_meta(struct xmlpr_ctx *ctx, const struct lyd_node *node)
     char *p;
     size_t len;
 #endif
-    struct ly_set ns_list = {0};
     int dynamic;
     unsigned int u;
 
@@ -189,12 +141,10 @@ xml_print_meta(struct xmlpr_ctx *ctx, const struct lyd_node *node)
     if (node->schema->nodetype & LYD_NODE_TERM) {
         if (((node->flags & LYD_DEFAULT) && (ctx->options & (LYDP_WD_ALL_TAG | LYDP_WD_IMPL_TAG))) ||
                 ((ctx->options & LYDP_WD_ALL_TAG) && ly_is_default(node))) {
-            /* we have implicit OR explicit default node */
-            /* get with-defaults module */
-            wdmod = ly_ctx_get_module_latest(node->schema->module->ctx, "ietf-netconf-with-defaults");
-            if (wdmod) {
-                /* print attribute only if context include with-defaults schema */
-                ly_print(ctx->out, " %s:default=\"true\"", wdmod->prefix);
+            /* we have implicit OR explicit default node, print attribute only if context include with-defaults schema */
+            mod = ly_ctx_get_module_latest(node->schema->module->ctx, "ietf-netconf-with-defaults");
+            if (mod) {
+                ly_print(ctx->out, " %s:default=\"true\"", xml_print_ns(ctx, mod->ns, mod->prefix, 0));
             }
         }
     }
@@ -208,10 +158,10 @@ xml_print_meta(struct xmlpr_ctx *ctx, const struct lyd_node *node)
     for (meta = node->meta; meta; meta = meta->next) {
         const char *value = meta->value.realtype->plugin->print(&meta->value, LYD_XML, xml_print_get_prefix, &ns_list, &dynamic);
 
-        /* print namespaces connected with the values's prefixes */
+        /* print namespaces connected with the value's prefixes */
         for (u = 0; u < ns_list.count; ++u) {
-            const struct lys_module *mod = (const struct lys_module*)ns_list.objs[u];
-            ly_print(ctx->out, " xmlns:%s=\"%s\"", mod->prefix, mod->ns);
+            mod = (const struct lys_module *)ns_list.objs[u];
+            xml_print_ns(ctx, mod->ns, mod->prefix, 1);
         }
         ly_set_erase(&ns_list, NULL);
 
@@ -235,21 +185,22 @@ xml_print_meta(struct xmlpr_ctx *ctx, const struct lyd_node *node)
             ly_print(out, " %s=\"", meta->name);
         } else {
 #endif
-            ly_print(ctx->out, " %s:%s=\"", meta->annotation->module->prefix, meta->name);
+            /* print the metadata with its namespace */
+            mod = meta->annotation->module;
+            ly_print(ctx->out, " %s:%s=\"", xml_print_ns(ctx, mod->ns, mod->prefix, 1), meta->name);
 #if 0
         }
 #endif
 
+        /* print metadata value */
         if (value && value[0]) {
             lyxml_dump_text(ctx->out, value, 1);
         }
         ly_print(ctx->out, "\"");
         if (dynamic) {
-            free((void*)value);
+            free((void *)value);
         }
     }
-
-    return LY_SUCCESS;
 }
 
 /**
@@ -259,24 +210,75 @@ xml_print_meta(struct xmlpr_ctx *ctx, const struct lyd_node *node)
  *
  * @param[in] ctx XML printer context.
  * @param[in] node Data node to be printed.
- * @return LY_ERR value.
  */
-static LY_ERR
+static void
 xml_print_node_open(struct xmlpr_ctx *ctx, const struct lyd_node *node)
 {
-    if (ctx->toplevel || !node->parent || node->schema->module != node->parent->schema->module) {
-        /* print "namespace" */
-        ly_print(ctx->out, "%*s<%s xmlns=\"%s\"", INDENT, node->schema->name, node->schema->module->ns);
-    } else {
-        ly_print(ctx->out, "%*s<%s", INDENT, node->schema->name);
+    /* print node name */
+    ly_print(ctx->out, "%*s<%s", INDENT, node->schema->name);
+
+    /* print default namespace */
+    xml_print_ns(ctx, node->schema->module->ns, NULL, 0);
+
+    /* print metadata */
+    xml_print_meta(ctx, node);
+}
+
+static LY_ERR
+xml_print_attr(struct xmlpr_ctx *ctx, const struct lyd_node_opaq *node)
+{
+    const struct ly_attr *attr;
+    const char *pref;
+    uint32_t u;
+
+    LY_LIST_FOR(node->attr, attr) {
+        pref = NULL;
+        if (attr->prefix.pref) {
+            /* print attribute namespace */
+            switch (attr->format) {
+            case LYD_XML:
+                pref = xml_print_ns(ctx, attr->prefix.ns, attr->prefix.pref, 0);
+                break;
+            case LYD_SCHEMA:
+                /* cannot be created */
+                LOGINT(node->ctx);
+                return LY_EINT;
+            }
+        }
+
+        /* print namespaces connected with the value's prefixes */
+        if (attr->val_prefs) {
+            LY_ARRAY_FOR(attr->val_prefs, u) {
+                xml_print_ns(ctx, attr->val_prefs[u].ns, attr->val_prefs[u].pref, LYXML_PREFIX_REQUIRED);
+            }
+        }
+
+        /* print the attribute with its prefix and value */
+        ly_print(ctx->out, " %s%s%s=\"%s\"", pref ? pref : "", pref ? ":" : "", attr->name, attr->value);
     }
 
-    if (ctx->toplevel) {
-        xml_print_ns(ctx, node);
-        ctx->toplevel = 0;
+    return LY_SUCCESS;
+}
+
+static LY_ERR
+xml_print_opaq_open(struct xmlpr_ctx *ctx, const struct lyd_node_opaq *node)
+{
+    /* print node name */
+    ly_print(ctx->out, "%*s<%s", INDENT, node->name);
+
+    /* print default namespace */
+    switch (node->format) {
+    case LYD_XML:
+        xml_print_ns(ctx, node->prefix.ns, NULL, 0);
+        break;
+    case LYD_SCHEMA:
+        /* cannot be created */
+        LOGINT(node->ctx);
+        return LY_EINT;
     }
 
-    LY_CHECK_RET(xml_print_meta(ctx, node));
+    /* print attributes */
+    LY_CHECK_RET(xml_print_attr(ctx, node));
 
     return LY_SUCCESS;
 }
@@ -288,9 +290,8 @@ static LY_ERR xml_print_node(struct xmlpr_ctx *ctx, const struct lyd_node *node)
  *
  * @param[in] ctx XML printer context.
  * @param[in] node Data node to be printed.
- * @return LY_ERR value.
  */
-static LY_ERR
+static void
 xml_print_term(struct xmlpr_ctx *ctx, const struct lyd_node_term *node)
 {
     struct ly_set ns_list = {0};
@@ -298,7 +299,7 @@ xml_print_term(struct xmlpr_ctx *ctx, const struct lyd_node_term *node)
     int dynamic;
     const char *value;
 
-    LY_CHECK_RET(xml_print_node_open(ctx, (struct lyd_node *)node));
+    xml_print_node_open(ctx, (struct lyd_node *)node);
     value = ((struct lysc_node_leaf *)node->schema)->type->plugin->print(&node->value, LYD_XML, xml_print_get_prefix, &ns_list, &dynamic);
 
     /* print namespaces connected with the values's prefixes */
@@ -318,8 +319,6 @@ xml_print_term(struct xmlpr_ctx *ctx, const struct lyd_node_term *node)
     if (dynamic) {
         free((void *)value);
     }
-
-    return LY_SUCCESS;
 }
 
 /**
@@ -335,7 +334,7 @@ xml_print_inner(struct xmlpr_ctx *ctx, const struct lyd_node_inner *node)
     LY_ERR ret;
     struct lyd_node *child;
 
-    LY_CHECK_RET(xml_print_node_open(ctx, (struct lyd_node *)node));
+    xml_print_node_open(ctx, (struct lyd_node *)node);
 
     if (!node->child) {
         ly_print(ctx->out, "/>%s", ctx->level ? "\n" : "");
@@ -362,9 +361,10 @@ xml_print_anydata(struct xmlpr_ctx *ctx, const struct lyd_node_any *node)
 {
     struct lyd_node_any *any = (struct lyd_node_any *)node;
     struct lyd_node *iter;
-    int options_backup;
+    int prev_opts;
+    LY_ERR ret;
 
-    LY_CHECK_RET(xml_print_node_open(ctx, (struct lyd_node *)node));
+    xml_print_node_open(ctx, (struct lyd_node *)node);
 
     if (!any->value.tree) {
         /* no content */
@@ -375,19 +375,18 @@ no_content:
         switch (any->value_type) {
         case LYD_ANYDATA_DATATREE:
             /* close opening tag and print data */
-            options_backup = ctx->options;
+            prev_opts = ctx->options;
             ctx->options &= ~(LYDP_WITHSIBLINGS | LYDP_NETCONF);
             LEVEL_INC;
 
             ly_print(ctx->out, ">%s", LEVEL ? "\n" : "");
             LY_LIST_FOR(any->value.tree, iter) {
-                if (xml_print_node(ctx, iter)) {
-                    return EXIT_FAILURE;
-                }
+                ret = xml_print_node(ctx, iter);
+                LY_CHECK_ERR_RET(ret, LEVEL_DEC, ret);
             }
 
             LEVEL_DEC;
-            ctx->options = options_backup;
+            ctx->options = prev_opts;
             break;
         case LYD_ANYDATA_STRING:
             /* escape XML-sensitive characters */
@@ -425,6 +424,50 @@ no_content:
     return LY_SUCCESS;
 }
 
+static LY_ERR
+xml_print_opaq(struct xmlpr_ctx *ctx, const struct lyd_node_opaq *node)
+{
+    LY_ERR ret;
+    struct lyd_node *child;
+    uint32_t u;
+
+    LY_CHECK_RET(xml_print_opaq_open(ctx, node));
+
+    if (node->value[0]) {
+        /* print namespaces connected with the value's prefixes */
+        if (node->val_prefs) {
+            LY_ARRAY_FOR(node->val_prefs, u) {
+                xml_print_ns(ctx, node->val_prefs[u].ns, node->val_prefs[u].pref, LYXML_PREFIX_REQUIRED);
+            }
+        }
+
+        ly_print(ctx->out, ">%s", node->value);
+    }
+
+    if (node->child) {
+        /* children */
+        if (!node->value[0]) {
+            ly_print(ctx->out, ">%s", ctx->level ? "\n" : "");
+        }
+
+        LEVEL_INC;
+        LY_LIST_FOR(node->child, child) {
+            ret = xml_print_node(ctx, child);
+            LY_CHECK_ERR_RET(ret, LEVEL_DEC, ret);
+        }
+        LEVEL_DEC;
+
+        ly_print(ctx->out, "%*s</%s>%s", INDENT, node->name, LEVEL ? "\n" : "");
+    } else if (node->value[0]) {
+        ly_print(ctx->out, "</%s>%s", node->name, LEVEL ? "\n" : "");
+    } else {
+        /* no value or children */
+        ly_print(ctx->out, "/>%s", ctx->level ? "\n" : "");
+    }
+
+    return LY_SUCCESS;
+}
+
 /**
  * @brief Print XML element representing lyd_node.
  *
@@ -436,31 +479,46 @@ static LY_ERR
 xml_print_node(struct xmlpr_ctx *ctx, const struct lyd_node *node)
 {
     LY_ERR ret = LY_SUCCESS;
+    uint32_t ns_count;
 
     if (!ly_should_print(node, ctx->options)) {
         /* do not print at all */
-        return EXIT_SUCCESS;
+        return LY_SUCCESS;
     }
 
-    switch (node->schema->nodetype) {
-    case LYS_CONTAINER:
-    case LYS_LIST:
-    case LYS_NOTIF:
-    case LYS_ACTION:
-        ret = xml_print_inner(ctx, (const struct lyd_node_inner*)node);
-        break;
-    case LYS_LEAF:
-    case LYS_LEAFLIST:
-        ret = xml_print_term(ctx, (const struct lyd_node_term*)node);
-        break;
-    case LYS_ANYXML:
-    case LYS_ANYDATA:
-        ret = xml_print_anydata(ctx, (const struct lyd_node_any*)node);
-        break;
-    default:
-        LOGINT(node->schema->module->ctx);
-        ret = LY_EINT;
-        break;
+    /* remember namespace definition count on this level */
+    ns_count = ctx->ns.count;
+
+    if (!node->schema) {
+        ret = xml_print_opaq(ctx, (const struct lyd_node_opaq *)node);
+    } else {
+        switch (node->schema->nodetype) {
+        case LYS_CONTAINER:
+        case LYS_LIST:
+        case LYS_NOTIF:
+        case LYS_ACTION:
+            ret = xml_print_inner(ctx, (const struct lyd_node_inner *)node);
+            break;
+        case LYS_LEAF:
+        case LYS_LEAFLIST:
+            xml_print_term(ctx, (const struct lyd_node_term *)node);
+            break;
+        case LYS_ANYXML:
+        case LYS_ANYDATA:
+            ret = xml_print_anydata(ctx, (const struct lyd_node_any *)node);
+            break;
+        default:
+            LOGINT(node->schema->module->ctx);
+            ret = LY_EINT;
+            break;
+        }
+    }
+
+    /* remove all added namespaces */
+    while (ns_count < ctx->ns.count) {
+        FREE_STRING(ctx->ctx, ctx->prefix.objs[ctx->prefix.count - 1]);
+        ly_set_rm_index(&ctx->prefix, ctx->prefix.count - 1, NULL);
+        ly_set_rm_index(&ctx->ns, ctx->ns.count - 1, NULL);
     }
 
     return ret;
@@ -470,7 +528,7 @@ LY_ERR
 xml_print_data(struct lyout *out, const struct lyd_node *root, int options)
 {
     const struct lyd_node *node;
-    struct xmlpr_ctx ctx_ = {.out = out, .level = (options & LYDP_FORMAT ? 1 : 0), .options = options}, *ctx = &ctx_;
+    struct xmlpr_ctx ctx = {0};
 
     if (!root) {
         if (out->type == LYOUT_MEMORY || out->type == LYOUT_CALLBACK) {
@@ -479,18 +537,23 @@ xml_print_data(struct lyout *out, const struct lyd_node *root, int options)
         goto finish;
     }
 
+    ctx.out = out;
+    ctx.level = (options & LYDP_FORMAT ? 1 : 0);
+    ctx.options = options;
+    ctx.ctx = LYD_NODE_CTX(root);
+
     /* content */
     LY_LIST_FOR(root, node) {
-        ctx_.toplevel = 1;
-        if (xml_print_node(ctx, node)) {
-            return EXIT_FAILURE;
-        }
+        LY_CHECK_RET(xml_print_node(&ctx, node));
         if (!(options & LYDP_WITHSIBLINGS)) {
             break;
         }
     }
 
 finish:
+    assert(!ctx.prefix.count && !ctx.ns.count);
+    ly_set_erase(&ctx.prefix, NULL);
+    ly_set_erase(&ctx.ns, NULL);
     ly_print_flush(out);
     return LY_SUCCESS;
 }

@@ -158,8 +158,8 @@ void ly_err_free(void *ptr);
  * @return LY_EINCOMPLETE in case the option included LY_TYPE_OPTS_INCOMPLETE_DATA flag and the data @p trees are needed to finish the validation.
  * @return LY_ERR value if an error occurred and the value could not be canonized following the type's rules.
  */
-typedef LY_ERR (*ly_type_store_clb)(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                                    ly_clb_resolve_prefix resolve_prefix, void *parser, LYD_FORMAT format,
+typedef LY_ERR (*ly_type_store_clb)(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len,
+                                    int options, ly_clb_resolve_prefix resolve_prefix, void *parser, LYD_FORMAT format,
                                     const void *context_node, const struct lyd_node *tree,
                                     struct lyd_value *storage, const char **canonized, struct ly_err_item **err);
 
@@ -207,7 +207,7 @@ typedef const char *(*ly_type_print_clb)(const struct lyd_value *value, LYD_FORM
  * @return LY_SUCCESS after successful duplication.
  * @return other LY_ERR values on error.
  */
-typedef LY_ERR (*ly_type_dup_clb)(struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup);
+typedef LY_ERR (*ly_type_dup_clb)(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup);
 
 /**
  * @brief Callback for freeing the user type values stored by ly_type_store_clb().
@@ -217,7 +217,7 @@ typedef LY_ERR (*ly_type_dup_clb)(struct ly_ctx *ctx, const struct lyd_value *or
  * @param[in] ctx libyang ctx to enable correct manipulation with values that are in the dictionary.
  * @param[in,out] value Value structure to free the data stored there by the plugin's ly_type_store_clb() callback
  */
-typedef void (*ly_type_free_clb)(struct ly_ctx *ctx, struct lyd_value *value);
+typedef void (*ly_type_free_clb)(const struct ly_ctx *ctx, struct lyd_value *value);
 
 /**
  * @brief Hold type-specific functions for various operations with the data values.
@@ -341,8 +341,8 @@ LY_ERR ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str
  * @param[out] errmsg Error message in case of error.
  * @return Leafref target node or NULL on error when @p errmsg is always set.
  */
-const struct lyd_node *ly_type_find_leafref(struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len,
-                                            const struct lyd_node *context_node, const struct lyd_node *tree,
+const struct lyd_node *ly_type_find_leafref(const struct ly_ctx *ctx, struct lysc_type *type, const char *value,
+                                            size_t value_len, const struct lyd_node *context_node, const struct lyd_node *tree,
                                             struct lyd_value *storage, char **errmsg);
 
 /**
@@ -355,9 +355,9 @@ const struct lyd_node *ly_type_find_leafref(struct ly_ctx *ctx, struct lysc_type
  * @param[in] parser Parser's data for @p get_prefix.
  * @return Created [sized array](@ref sizedarrays) of prefix mappings, NULL in case of error.
  */
-struct lyd_value_prefix *ly_type_get_prefixes(struct ly_ctx *ctx, const char *value, size_t value_len,
+struct lyd_value_prefix *ly_type_get_prefixes(const struct ly_ctx *ctx, const char *value, size_t value_len,
                                               ly_clb_resolve_prefix get_prefix, void *parser);
 
-/**@} types */
+/** @} types */
 
 #endif /* LY_PLUGINS_TYPES_H_ */
