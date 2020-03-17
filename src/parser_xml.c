@@ -259,6 +259,91 @@ cleanup:
     return ret;
 }
 
+static LY_ERR
+lydxml_check_list(struct lyxml_context *xmlctx, const struct lysc_node *list, const char **data)
+{
+    LY_ERR ret;
+    struct ly_set key_set = {0};
+    const struct lysc_node *snode;
+    const char *name;
+    char *buffer = NULL, *value;
+    size_t name_len, buffer_size = 0, value_len;
+    int dynamic = 0;
+    uint32_t i, parents_count = xmlctx->elements.count;
+
+    assert(list && (list->nodetype == LYS_LIST));
+
+    /* get all keys into a set (keys do not have if-features or anything) */
+    snode = NULL;
+    while ((snode = lys_getnext(snode, list, NULL, LYS_GETNEXT_NOSTATECHECK)) && (snode->flags & LYS_KEY)) {
+        ly_set_add(&key_set, (void *)snode, LY_SET_OPT_USEASLIST);
+    }
+
+    while ((xmlctx->status == LYXML_ELEMENT) && key_set.count) {
+        /* keys must be from the same module */
+        LY_CHECK_GOTO(ret = lyxml_get_element(xmlctx, data, NULL, NULL, &name, &name_len), cleanup);
+        if (!name) {
+            /* closing previous element */
+            if (xmlctx->elements.count < parents_count) {
+                /* all siblings parsed */
+                break;
+            } else {
+                continue;
+            }
+        }
+
+        /* find key definition */
+        for (i = 0; i < key_set.count; ++i) {
+            snode = (const struct lysc_node *)key_set.objs[i];
+            if (!ly_strncmp(snode->name, name, name_len)) {
+                break;
+            }
+        }
+        if (i == key_set.count) {
+            /* uninteresting, skip it */
+            LY_CHECK_GOTO(ret = lyxml_skip_element(xmlctx, data), cleanup);
+            continue;
+        }
+
+        /* skip attributes */
+        while (xmlctx->status == LYXML_ATTRIBUTE) {
+            LY_CHECK_GOTO(ret = lyxml_get_attribute(xmlctx, data, NULL, NULL, NULL, NULL), cleanup);
+        }
+
+        /* get the value, if any */
+        if (dynamic) {
+            free(value);
+        }
+        value = "";
+        value_len = 0;
+        dynamic = 0;
+        if (xmlctx->status == LYXML_ELEM_CONTENT) {
+            ret = lyxml_get_string(xmlctx, data, &buffer, &buffer_size, &value, &value_len, &dynamic);
+            if (ret && (ret != LY_EINVAL)) {
+                goto cleanup;
+            }
+        }
+
+        /* validate it */
+        LY_CHECK_GOTO(ret = lys_value_validate(NULL, snode, value, value_len, lydxml_resolve_prefix, xmlctx->ctx, LYD_XML), cleanup);
+
+        /* key with a valid value, remove from the set */
+        ly_set_rm_index(&key_set, i, NULL);
+    }
+
+    if (key_set.count) {
+        /* some keys missing */
+        ret = LY_ENOT;
+    } else {
+        /* all keys found and validated */
+        ret = LY_SUCCESS;
+    }
+
+cleanup:
+    ly_set_erase(&key_set, NULL);
+    return ret;
+}
+
 /**
  * @brief Parse XML elements as YANG data node children the specified parent node.
  *
@@ -271,22 +356,21 @@ cleanup:
 static LY_ERR
 lydxml_data_r(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char **data, struct lyd_node **first)
 {
-    LY_ERR ret = LY_SUCCESS;
-    const char *prefix, *name;
-    size_t prefix_len, name_len;
+    LY_ERR ret = LY_SUCCESS, content_ret;
+    const char *prefix, *name, *backup_data;
+    char *buffer = NULL, *value;
+    size_t prefix_len, name_len, buffer_size = 0, value_len;
     struct ly_set attrs_data = {0};
+    struct lyxml_context backup_ctx;
     const struct lyxml_ns *ns;
     struct lyd_meta *meta = NULL, *meta2, *prev_meta;
     struct ly_attr *attr = NULL;
     const struct lysc_node *snode;
     struct lys_module *mod;
-    unsigned int parents_count = ctx->elements.count;
-    uint32_t prev_opts;
+    uint32_t prev_opts, parents_count = ctx->elements.count;
     struct lyd_node *cur = NULL, *anchor;
     struct ly_prefix *val_prefs;
     int dynamic = 0;
-    char *buffer = NULL, *value;
-    size_t buffer_size = 0, value_len;
 
     while (ctx->status == LYXML_ELEMENT) {
         ret = lyxml_get_element((struct lyxml_context *)ctx, data, &prefix, &prefix_len, &name, &name_len);
@@ -347,6 +431,50 @@ lydxml_data_r(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char
             }
         }
 
+        /* get the value, if any */
+        value = "";
+        value_len = 0;
+        dynamic = 0;
+        content_ret = LY_SUCCESS;
+        if (ctx->status == LYXML_ELEM_CONTENT) {
+            content_ret = lyxml_get_string((struct lyxml_context *)ctx, data, &buffer, &buffer_size, &value, &value_len, &dynamic);
+            if (content_ret && (content_ret != LY_EINVAL)) {
+                LOGINT(ctx->ctx);
+                ret = LY_EINT;
+                goto cleanup;
+            }
+        }
+
+        if (snode && (ctx->options & LYD_OPT_OPAQ)) {
+            if (snode->nodetype & LYD_NODE_TERM) {
+                /* value may not be valid in which case we parse it as an opaque node */
+                if (lys_value_validate(NULL, snode, value, value_len, lydxml_resolve_prefix, ctx, LYD_XML)) {
+                    snode = NULL;
+                }
+            } else if (snode->nodetype == LYS_LIST) {
+                /* use backup context and data pointer */
+                backup_ctx.ctx = ctx->ctx;
+                backup_ctx.line = ctx->line;
+                backup_ctx.status = ctx->status;
+                memset(&backup_ctx.elements, 0, sizeof backup_ctx.elements);
+                for (uint32_t i = 0; i < ctx->elements.count; ++i) {
+                    ly_set_add(&backup_ctx.elements, lyxml_elem_dup(ctx->elements.objs[i]), LY_SET_OPT_USEASLIST);
+                }
+                memset(&backup_ctx.ns, 0, sizeof backup_ctx.ns);
+                for (uint32_t i = 0; i < ctx->ns.count; ++i) {
+                    ly_set_add(&backup_ctx.ns, lyxml_ns_dup(ctx->ns.objs[i]), LY_SET_OPT_USEASLIST);
+                }
+                backup_data = *data;
+
+                /* list may be missing some keys, parse as opaque if it does */
+                if (lydxml_check_list(&backup_ctx, snode, &backup_data)) {
+                    snode = NULL;
+                }
+
+                lyxml_context_clear(&backup_ctx);
+            }
+        }
+
         /* create actual metadata so that prefixes are available in the context */
         if (attrs_data.count) {
             if (snode) {
@@ -369,23 +497,6 @@ lydxml_data_r(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char
 
         if (!snode) {
             if (ctx->options & LYD_OPT_OPAQ) {
-                /* get the value */
-                LY_ERR r = LY_EINVAL;
-                if (ctx->status == LYXML_ELEM_CONTENT) {
-                    r = lyxml_get_string((struct lyxml_context *)ctx, data, &buffer, &buffer_size, &value, &value_len, &dynamic);
-                    if (r && (r != LY_EINVAL)) {
-                        LOGINT(ctx->ctx);
-                        ret = LY_EINT;
-                        goto cleanup;
-                    }
-                }
-                if (r == LY_EINVAL) {
-                    /* empty value */
-                    value = "";
-                    value_len = 0;
-                    dynamic = 0;
-                }
-
                 /* get value prefixes */
                 ret = lyxml_get_prefixes((struct lyxml_context *)ctx, value, value_len, &val_prefs);
                 LY_CHECK_GOTO(ret, cleanup);
@@ -407,22 +518,12 @@ lydxml_data_r(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char
                 break;
             }
         } else if (snode->nodetype & LYD_NODE_TERM) {
-            if (ctx->status == LYXML_ELEM_CONTENT) {
-                /* get the value */
-                ret = lyxml_get_string((struct lyxml_context *)ctx, data, &buffer, &buffer_size, &value, &value_len, &dynamic);
-                if (ret != LY_SUCCESS) {
-                    if (ret == LY_EINVAL) {
-                        /* just indentation of a child element found */
-                        LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_SYNTAX, "Child element inside terminal node \"%s\" found.",
-                               snode->name);
-                    }
-                    goto cleanup;
-                }
-            } else {
-                /* no content - validate empty value */
-                value = "";
-                value_len = 0;
-                dynamic = 0;
+            if (content_ret == LY_EINVAL) {
+                /* just indentation of a child element found */
+                LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_SYNTAX, "Child element inside a terminal node \"%s\" found.",
+                       snode->name);
+                ret = LY_EVALID;
+                goto cleanup;
             }
 
             /* create node */
@@ -452,13 +553,13 @@ lydxml_data_r(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char
                 }
             }
         } else if (snode->nodetype & LYD_NODE_INNER) {
-            if (ctx->status == LYXML_ELEM_CONTENT) {
-                LY_ERR r = lyxml_get_string((struct lyxml_context *)ctx, data, &buffer, &buffer_size, &value, &value_len, &dynamic);
-                if (r != LY_EINVAL && (r != LY_SUCCESS || value_len != 0)) {
-                    LOGINT(ctx->ctx);
-                    ret = LY_EINT;
-                    goto cleanup;
-                }
+            if (value_len) {
+                /* value in inner node */
+                LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_SYNTAX, "Text value inside an inner node \"%s\" found.",
+                       snode->name);
+                ret = LY_EVALID;
+                goto cleanup;
+
             }
 
             /* create node */
@@ -473,8 +574,7 @@ lydxml_data_r(struct lyd_xml_ctx *ctx, struct lyd_node_inner *parent, const char
 
             if (snode->nodetype == LYS_LIST) {
                 /* check all keys exist */
-                ret = lyd_parse_check_keys(cur);
-                LY_CHECK_GOTO(ret, cleanup);
+                LY_CHECK_GOTO(ret = lyd_parse_check_keys(cur), cleanup);
             }
 
             if (!(ctx->options & LYD_OPT_PARSE_ONLY)) {
@@ -578,8 +678,8 @@ cleanup:
     ly_free_attr(ctx->ctx, attr, 1);
     lyd_free_tree(cur);
     for (uint32_t u = 0; u < attrs_data.count; ++u) {
-        if (((struct attr_data_s*)attrs_data.objs[u])->dynamic) {
-            free(((struct attr_data_s*)attrs_data.objs[u])->value);
+        if (((struct attr_data_s *)attrs_data.objs[u])->dynamic) {
+            free(((struct attr_data_s *)attrs_data.objs[u])->value);
         }
     }
     ly_set_erase(&attrs_data, free);

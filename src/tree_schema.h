@@ -1974,7 +1974,7 @@ const struct lysc_node *lysc_node_is_disabled(const struct lysc_node *node, int 
  * @return LY_SUCCESS on success
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lys_value_validate(struct ly_ctx *ctx, const struct lysc_node *node, const char *value, size_t value_len,
+LY_ERR lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const char *value, size_t value_len,
                           ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format);
 
 /**

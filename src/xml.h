@@ -20,6 +20,7 @@
 
 #include "log.h"
 #include "set.h"
+#include "tree_schema.h"
 
 struct lyout;
 struct ly_prefix;
@@ -94,16 +95,16 @@ struct lyxml_context {
  * @param[in] context XML context to track lines or store errors into libyang context.
  * @param[in,out] input Input string to process, updated according to the processed/read data.
  * @param[in] options Currently unused options to modify input processing.
- * @param[out] prefix Pointer to prefix if present in the element name, NULL otherwise.
- * @param[out] prefix_len Length of the prefix if any.
- * @param[out] name Element name. When LY_SUCCESS is returned but name is NULL, check context's status field:
+ * @param[out] prefix_p Pointer to prefix if present in the element name, NULL otherwise.
+ * @param[out] prefix_len_p Length of the prefix if any.
+ * @param[out] name_p Element name. When LY_SUCCESS is returned but name is NULL, check context's status field:
  * - LYXML_END - end of input was reached
  * - LYXML_ELEMENT - closing element found, expecting now a sibling element so call lyxml_get_element() again
- * @param[out] name_len Length of the element name.
+ * @param[out] name_len_p Length of the element name.
  * @return LY_ERR values.
  */
-LY_ERR lyxml_get_element(struct lyxml_context *context, const char **input,
-                         const char **prefix, size_t *prefix_len, const char **name, size_t *name_len);
+LY_ERR lyxml_get_element(struct lyxml_context *context, const char **input, const char **prefix_p, size_t *prefix_len_p,
+                         const char **name_p, size_t *name_len_p);
 
 /**
  * @brief Skip an element after its opening tag was parsed.
@@ -227,5 +228,9 @@ LY_ERR lyxml_get_prefixes(struct lyxml_context *ctx, const char *value, size_t v
  */
 LY_ERR lyxml_value_compare(const char *value1, const struct ly_prefix *prefs1, const char *value2,
                            const struct ly_prefix *prefs2);
+
+void *lyxml_elem_dup(void *item);
+
+void *lyxml_ns_dup(void *item);
 
 #endif /* LY_XML_H_ */

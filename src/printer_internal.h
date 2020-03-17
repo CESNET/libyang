@@ -55,7 +55,7 @@ struct lyout {
 
     size_t printed;      /**< Number of printed bytes */
 
-    struct ly_ctx *ctx;  /**< libyang context for error logging */
+    const struct ly_ctx *ctx;   /**< libyang context for error logging */
     LY_ERR status;       /**< current status of the printer */
 };
 

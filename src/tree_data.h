@@ -817,7 +817,7 @@ void ly_free_attr(const struct ly_ctx *ctx, struct ly_attr *attr, int recursive)
  * @return LY_EINCOMPLETE in case the @p trees is not provided and it was needed to finish the validation (e.g. due to require-instance).
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_value_validate(struct ly_ctx *ctx, const struct lyd_node_term *node, const char *value, size_t value_len,
+LY_ERR lyd_value_validate(const struct ly_ctx *ctx, const struct lyd_node_term *node, const char *value, size_t value_len,
                           ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format, const struct lyd_node *tree);
 
 /**

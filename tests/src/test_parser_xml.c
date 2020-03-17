@@ -59,12 +59,13 @@ setup(void **state)
     (void) state; /* unused */
 
     const char *schema_a = "module a {namespace urn:tests:a;prefix a;yang-version 1.1;"
-            "list l1 { key \"a b c\"; leaf a {type string;} leaf b {type string;} leaf c {type string;} leaf d {type string;}}"
+            "list l1 { key \"a b c\"; leaf a {type string;} leaf b {type string;} leaf c {type int16;} leaf d {type string;}}"
             "leaf foo { type string;}"
             "container c { leaf x {type string;}}"
             "container cp {presence \"container switch\"; leaf y {type string;}}"
             "anydata any {config false;}"
-            "leaf foo2 { type string; default \"default-val\"; }}";
+            "leaf foo2 { type string; default \"default-val\"; }"
+            "leaf foo3 { type uint32; }}";
 
 #if ENABLE_LOGGER_CHECKING
     ly_set_log_clb(logger, 1);
@@ -198,7 +199,7 @@ test_list(void **state)
 {
     *state = test_list;
 
-    const char *data = "<l1 xmlns=\"urn:tests:a\"><a>one</a><b>one</b><c>one</c></l1>";
+    const char *data = "<l1 xmlns=\"urn:tests:a\"><a>one</a><b>one</b><c>1</c></l1>";
     struct lyd_node *tree, *iter;
     struct lyd_node_inner *list;
     struct lyd_node_term *leaf;
@@ -215,9 +216,9 @@ test_list(void **state)
     lyd_free_all(tree);
 
     /* missing keys */
-    data = "<l1 xmlns=\"urn:tests:a\"><c>c</c><b>b</b></l1>";
+    data = "<l1 xmlns=\"urn:tests:a\"><c>1</c><b>b</b></l1>";
     assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
-    logbuf_assert("List instance is missing its key \"a\". /a:l1[b='b'][c='c']");
+    logbuf_assert("List instance is missing its key \"a\". /a:l1[b='b'][c='1']");
 
     data = "<l1 xmlns=\"urn:tests:a\"><a>a</a></l1>";
     assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
@@ -228,12 +229,12 @@ test_list(void **state)
     logbuf_assert("List instance is missing its key \"c\". /a:l1[a='a'][b='b']");
 
     /* key duplicate */
-    data = "<l1 xmlns=\"urn:tests:a\"><c>c</c><b>b</b><a>a</a><c>d</c></l1>";
+    data = "<l1 xmlns=\"urn:tests:a\"><c>1</c><b>b</b><a>a</a><c>1</c></l1>";
     assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
-    logbuf_assert("Duplicate instance of \"c\". /a:l1[a='a'][b='b'][c='d'][c='c']/c");
+    logbuf_assert("Duplicate instance of \"c\". /a:l1[a='a'][b='b'][c='1'][c='1']/c");
 
     /* keys order */
-    data = "<l1 xmlns=\"urn:tests:a\"><d>d</d><a>a</a><c>c</c><b>b</b></l1>";
+    data = "<l1 xmlns=\"urn:tests:a\"><d>d</d><a>a</a><c>1</c><b>b</b></l1>";
     assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
     assert_non_null(tree);
     assert_int_equal(LYS_LIST, tree->schema->nodetype);
@@ -250,7 +251,7 @@ test_list(void **state)
     logbuf_assert("Invalid position of the key \"b\" in a list.");
     lyd_free_all(tree);
 
-    data = "<l1 xmlns=\"urn:tests:a\"><c>c</c><b>b</b><a>a</a></l1>";
+    data = "<l1 xmlns=\"urn:tests:a\"><c>1</c><b>b</b><a>a</a></l1>";
     assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
     assert_non_null(tree);
     assert_int_equal(LYS_LIST, tree->schema->nodetype);
@@ -301,6 +302,72 @@ test_container(void **state)
     *state = NULL;
 }
 
+static void
+test_opaq(void **state)
+{
+    *state = test_opaq;
+
+    const char *data;
+    char *str;
+    struct lyd_node *tree;
+
+    /* invalid value, no flags */
+    data = "<foo3 xmlns=\"urn:tests:a\"/>";
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    logbuf_assert("Invalid empty uint32 value. /");
+    assert_null(tree);
+
+    /* opaq flag */
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_OPT_OPAQ | LYD_VALOPT_DATA_ONLY, &tree));
+    assert_non_null(tree);
+    assert_null(tree->schema);
+    assert_string_equal(((struct lyd_node_opaq *)tree)->name, "foo3");
+    assert_string_equal(((struct lyd_node_opaq *)tree)->value, "");
+
+    lyd_print_mem(&str, tree, LYD_XML, 0);
+    assert_string_equal(str, "<foo3 xmlns=\"urn:tests:a\"/>");
+    free(str);
+    lyd_free_all(tree);
+
+    /* missing key, no flags */
+    data = "<l1 xmlns=\"urn:tests:a\"><a>val_a</a><b>val_b</b><d>val_d</d></l1>";
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    logbuf_assert("List instance is missing its key \"c\". /a:l1[a='val_a'][b='val_b']");
+    assert_null(tree);
+
+    /* opaq flag */
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_OPT_OPAQ | LYD_VALOPT_DATA_ONLY, &tree));
+    assert_non_null(tree);
+    assert_null(tree->schema);
+    assert_string_equal(((struct lyd_node_opaq *)tree)->name, "l1");
+    assert_string_equal(((struct lyd_node_opaq *)tree)->value, "");
+
+    lyd_print_mem(&str, tree, LYD_XML, 0);
+    assert_string_equal(str, data);
+    free(str);
+    lyd_free_all(tree);
+
+    /* invalid key, no flags */
+    data = "<l1 xmlns=\"urn:tests:a\"><a>val_a</a><b>val_b</b><c>val_c</c></l1>";
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    logbuf_assert("Invalid int16 value \"val_c\". /");
+    assert_null(tree);
+
+    /* opaq flag */
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_OPT_OPAQ | LYD_VALOPT_DATA_ONLY, &tree));
+    assert_non_null(tree);
+    assert_null(tree->schema);
+    assert_string_equal(((struct lyd_node_opaq *)tree)->name, "l1");
+    assert_string_equal(((struct lyd_node_opaq *)tree)->value, "");
+
+    lyd_print_mem(&str, tree, LYD_XML, 0);
+    assert_string_equal(str, data);
+    free(str);
+    lyd_free_all(tree);
+
+    *state = NULL;
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -308,6 +375,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_anydata, setup, teardown),
         cmocka_unit_test_setup_teardown(test_list, setup, teardown),
         cmocka_unit_test_setup_teardown(test_container, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_opaq, setup, teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

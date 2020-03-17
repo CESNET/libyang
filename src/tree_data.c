@@ -148,7 +148,7 @@ error:
 }
 
 API LY_ERR
-lys_value_validate(struct ly_ctx *ctx, const struct lysc_node *node, const char *value, size_t value_len,
+lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const char *value, size_t value_len,
                    ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format)
 {
     LY_ERR rc = LY_SUCCESS;
@@ -183,7 +183,7 @@ lys_value_validate(struct ly_ctx *ctx, const struct lysc_node *node, const char 
 }
 
 API LY_ERR
-lyd_value_validate(struct ly_ctx *ctx, const struct lyd_node_term *node, const char *value, size_t value_len,
+lyd_value_validate(const struct ly_ctx *ctx, const struct lyd_node_term *node, const char *value, size_t value_len,
                    ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format, const struct lyd_node *tree)
 {
     LY_ERR rc;

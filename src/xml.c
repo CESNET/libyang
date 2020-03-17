@@ -240,6 +240,31 @@ lyxml_ns_rm(struct lyxml_context *context)
     }
 }
 
+void *
+lyxml_elem_dup(void *item)
+{
+    struct lyxml_elem *dup;
+
+    dup = malloc(sizeof *dup);
+    memcpy(dup, item, sizeof *dup);
+
+    return dup;
+}
+
+void *
+lyxml_ns_dup(void *item)
+{
+    struct lyxml_ns *dup, *orig;
+
+    orig = (struct lyxml_ns *)item;
+    dup = malloc(sizeof *dup);
+    dup->prefix = orig->prefix ? strdup(orig->prefix) : NULL;
+    dup->uri = strdup(orig->uri);
+    dup->depth = orig->depth;
+
+    return dup;
+}
+
 const struct lyxml_ns *
 lyxml_ns_get(struct lyxml_context *context, const char *prefix, size_t prefix_len)
 {
@@ -383,21 +408,17 @@ lyxml_parse_element_name(struct lyxml_context *context, const char **input, size
 }
 
 LY_ERR
-lyxml_get_element(struct lyxml_context *context, const char **input,
-                  const char **prefix, size_t *prefix_len, const char **name, size_t *name_len)
+lyxml_get_element(struct lyxml_context *context, const char **input, const char **prefix_p, size_t *prefix_len_p,
+                  const char **name_p, size_t *name_len_p)
 {
     struct ly_ctx *ctx = context->ctx; /* shortcut */
-    const char *in = (*input);
-    size_t endtag_len;
+    const char *in = (*input), *prefix = NULL, *name = NULL;
+    size_t endtag_len, prefix_len = 0, name_len = 0;
     bool loop = true;
     int closing = 0;
     unsigned int c;
     LY_ERR rc;
     struct lyxml_elem *e;
-
-    /* initialize output variables */
-    (*prefix) = (*name) = NULL;
-    (*prefix_len) = (*name_len) = 0;
 
     while (loop) {
         rc = lyxml_parse_element_start(context, &in, &closing);
@@ -407,20 +428,20 @@ lyxml_get_element(struct lyxml_context *context, const char **input,
             goto success;
         }
         /* we are at the begining of the element name, remember the identifier start before checking its format */
-        LY_CHECK_RET(rc = lyxml_parse_element_name(context, &in, &endtag_len, &c, prefix, prefix_len, name, name_len));
+        LY_CHECK_RET(rc = lyxml_parse_element_name(context, &in, &endtag_len, &c, &prefix, &prefix_len, &name, &name_len));
 
         if (closing) {
             /* match opening and closing element tags */
             LY_CHECK_ERR_RET(
                     !context->elements.count,
                     LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX,
-                           "Opening and closing elements tag missmatch (\"%.*s\").", *name_len, *name),
+                           "Opening and closing elements tag missmatch (\"%.*s\").", name_len, name),
                     LY_EVALID);
             e = (struct lyxml_elem*)context->elements.objs[context->elements.count - 1];
-            if (e->prefix_len != *prefix_len || e->name_len != *name_len
-                    || (*prefix_len && strncmp(*prefix, e->prefix, e->prefix_len)) || strncmp(*name, e->name, e->name_len)) {
+            if (e->prefix_len != prefix_len || e->name_len != name_len
+                    || (prefix_len && strncmp(prefix, e->prefix, e->prefix_len)) || strncmp(name, e->name, e->name_len)) {
                 LOGVAL(ctx, LY_VLOG_LINE, &context->line, LYVE_SYNTAX,
-                       "Opening and closing elements tag missmatch (\"%.*s\").", *name_len, *name);
+                       "Opening and closing elements tag missmatch (\"%.*s\").", name_len, name);
                 return LY_EVALID;
             }
             /* opening and closing element tags matches, remove record from the opening tags list */
@@ -430,9 +451,9 @@ lyxml_get_element(struct lyxml_context *context, const char **input,
             /* remove also the namespaces connected with the element */
             lyxml_ns_rm(context);
 
-            /* do not return element information to announce closing element being currently processed */
-            *name = *prefix = NULL;
-            *name_len = *prefix_len = 0;
+            /* clear closing element */
+            name = prefix = NULL;
+            name_len = prefix_len = 0;
 
             if (c == '>') {
                 /* end of closing element */
@@ -461,10 +482,10 @@ lyxml_get_element(struct lyxml_context *context, const char **input,
                 /* store element opening tag information */
                 e = malloc(sizeof *e);
                 LY_CHECK_ERR_RET(!e, LOGMEM(ctx), LY_EMEM);
-                e->name = *name;
-                e->prefix = *prefix;
-                e->name_len = *name_len;
-                e->prefix_len = *prefix_len;
+                e->name = name;
+                e->prefix = prefix;
+                e->name_len = name_len;
+                e->prefix_len = prefix_len;
                 ly_set_add(&context->elements, e, LY_SET_OPT_USEASLIST);
             }
         }
@@ -483,6 +504,15 @@ success:
     }
     /* move caller's input */
     (*input) = in;
+    /* return values */
+    if (prefix_p) {
+        *prefix_p = prefix;
+        *prefix_len_p = prefix_len;
+    }
+    if (name_p) {
+        *name_p = name;
+        *name_len_p = name_len;
+    }
     return LY_SUCCESS;
 }
 

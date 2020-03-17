@@ -384,7 +384,8 @@ const struct lys_module *lyd_data_next_module(struct lyd_node **next, struct lyd
  * @brief Check that a list has all its keys.
  *
  * @param[in] node List to check.
- * @return LY_ERR value.
+ * @return LY_SUCCESS on success.
+ * @return LY_ENOT on a missing key.
  */
 LY_ERR lyd_parse_check_keys(struct lyd_node *node);
 

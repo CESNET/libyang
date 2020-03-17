@@ -72,7 +72,7 @@ lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format, int opti
     out.method.f = f;
 
     if (root) {
-        out.ctx = root->schema->module->ctx;
+        out.ctx = LYD_NODE_CTX(root);
     }
 
     ret = lyd_print_(&out, root, format, options);
@@ -95,7 +95,7 @@ lyd_print_path(const char *path, const struct lyd_node *root, LYD_FORMAT format,
 
     f = fopen(path, "w");
     if (!f) {
-        LOGERR(root ? root->schema->module->ctx : NULL, LY_ESYS, "Failed to open file \"%s\" (%s).", path, strerror(errno));
+        LOGERR(root ? LYD_NODE_CTX(root) : NULL, LY_ESYS, "Failed to open file \"%s\" (%s).", path, strerror(errno));
         return LY_ESYS;
     }
 
@@ -117,7 +117,7 @@ lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format, int options
     out.method.fd = fd;
 
     if (root) {
-        out.ctx = root->schema->module->ctx;
+        out.ctx = LYD_NODE_CTX(root);
     }
 
     ret = lyd_print_(&out, root, format, options);
@@ -150,7 +150,7 @@ lyd_print_mem(char **strp, const struct lyd_node *root, LYD_FORMAT format, int o
     out.type = LYOUT_MEMORY;
 
     if (root) {
-        out.ctx = root->schema->module->ctx;
+        out.ctx = LYD_NODE_CTX(root);
     }
 
     ret = lyd_print_(&out, root, format, options);
@@ -180,7 +180,7 @@ lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), voi
     out.method.clb.arg = arg;
 
     if (root) {
-        out.ctx = root->schema->module->ctx;
+        out.ctx = LYD_NODE_CTX(root);
     }
 
     ret = lyd_print_(&out, root, format, options);
