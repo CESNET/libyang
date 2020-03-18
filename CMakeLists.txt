@@ -418,6 +418,13 @@ if(ENABLE_BUILD_TESTS)
 endif(ENABLE_BUILD_TESTS)
 
 if(ENABLE_FUZZ_TARGETS)
+	set(FUZZER "AFL" CACHE STRING "fuzzer type")
+	if(FUZZER STREQUAL "LibFuzzer")
+		if (NOT CMAKE_C_COMPILER_ID STREQUAL "Clang")
+			message(FATAL_ERROR "LibFuzzer works only with clang")
+		endif()
+		set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address,undefined")
+	endif()
 	add_subdirectory(tests/fuzz)
 endif(ENABLE_FUZZ_TARGETS)
 
