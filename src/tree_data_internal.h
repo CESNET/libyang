@@ -18,10 +18,7 @@
 #include "tree_data.h"
 #include "plugins_types.h"
 
-#include <assert.h>
 #include <stddef.h>
-
-static_assert(offsetof(struct lyd_node, flags) == offsetof(struct lyd_node_opaq, flags), "");
 
 /**
  * @brief Check whether a node to be deleted is the first top-level sibling.
