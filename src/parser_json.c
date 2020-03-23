@@ -798,7 +798,7 @@ json_skip_unknown(struct ly_ctx *ctx, struct lyd_node *parent, const char *data,
             } else if (data[(*len) - 1] != '\\') {
                 qstr = 1;
             } else {
-                LOGVAL(ctx, LYE_INVAL, LY_VLOG_LYD, parent, "JSON data (missing quotation mark for a string data) ");
+                LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_LYD, parent, "JSON data (missing quotation mark for a string data) ");
                 return -1;
             }
             break;
