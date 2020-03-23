@@ -68,7 +68,7 @@ lyjson_parse_text(struct ly_ctx *ctx, const char *data, unsigned int *len)
     int32_t value;
 
     for (*len = o = 0; data[*len] && data[*len] != '"'; o++) {
-        if (o > BUFSIZE - 3) {
+        if (o > BUFSIZE - 4) {
             /* add buffer into the result */
             if (result) {
                 size = size + o;
