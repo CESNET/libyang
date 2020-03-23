@@ -876,6 +876,10 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
     len++;
 
     str = lyjson_parse_text(ctx, &data[len], &r);
+    if (!str) {
+        goto error;
+    }
+
     if (!r) {
         goto error;
     } else if (data[len + r] != '"') {
