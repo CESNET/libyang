@@ -138,7 +138,8 @@ date_and_time_store_clb(struct ly_ctx *UNUSED(ctx), const char *UNUSED(type_name
     tm2 = tm;
     errno = 0;
     mktime(&tm);
-    if (errno) {
+    /* ENOENT is set when "/etc/localtime" is missing but the function suceeeds */
+    if (errno && (errno != ENOENT)) {
         ret = asprintf(err_msg, "Checking date-and-time value \"%s\" failed (%s).", val_str, strerror(errno));
         goto error;
     }
@@ -149,7 +150,7 @@ date_and_time_store_clb(struct ly_ctx *UNUSED(ctx), const char *UNUSED(type_name
     /* let mktime() correct date & time with having the other values correct now */
     errno = 0;
     mktime(&tm);
-    if (errno) {
+    if (errno && (errno != ENOENT)) {
         ret = asprintf(err_msg, "Checking date-and-time value \"%s\" failed (%s).", val_str, strerror(errno));
         goto error;
     }
