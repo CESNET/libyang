@@ -157,14 +157,12 @@ lysp_check_prefix(struct lys_parser_ctx *ctx, struct lysp_import *imports, const
     struct lysp_import *i;
 
     if (module_prefix && &module_prefix != value && !strcmp(module_prefix, *value)) {
-        LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_REFERENCE,
-               "Prefix \"%s\" already used as module prefix.", *value);
+        LOGVAL_PARSER(ctx, LYVE_REFERENCE, "Prefix \"%s\" already used as module prefix.", *value);
         return LY_EEXIST;
     }
     LY_ARRAY_FOR(imports, struct lysp_import, i) {
         if (i->prefix && &i->prefix != value && !strcmp(i->prefix, *value)) {
-            LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_REFERENCE, "Prefix \"%s\" already used to import \"%s\" module.",
-                   *value, i->name);
+            LOGVAL_PARSER(ctx, LYVE_REFERENCE, "Prefix \"%s\" already used to import \"%s\" module.", *value, i->name);
             return LY_EEXIST;
         }
     }
@@ -201,8 +199,8 @@ lysp_check_date(struct lys_parser_ctx *ctx, const char *date, int date_len, cons
     struct tm tm, tm_;
     char *r;
 
-    LY_CHECK_ARG_RET(ctx ? ctx->ctx : NULL, date, LY_EINVAL);
-    LY_CHECK_ERR_RET(date_len != LY_REV_SIZE - 1, LOGARG(ctx ? ctx->ctx : NULL, date_len), LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx ? PARSER_CTX(ctx) : NULL, date, LY_EINVAL);
+    LY_CHECK_ERR_RET(date_len != LY_REV_SIZE - 1, LOGARG(ctx ? PARSER_CTX(ctx) : NULL, date_len), LY_EINVAL);
 
     /* check format */
     for (i = 0; i < date_len; i++) {
@@ -234,7 +232,7 @@ lysp_check_date(struct lys_parser_ctx *ctx, const char *date, int date_len, cons
 error:
     if (stmt) {
         if (ctx) {
-            LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LY_VCODE_INVAL, date_len, date, stmt);
+            LOGVAL_PARSER(ctx, LY_VCODE_INVAL, date_len, date, stmt);
         } else {
             LOGVAL(NULL, LY_VLOG_NONE, NULL, LY_VCODE_INVAL, date_len, date, stmt);
         }
@@ -438,7 +436,7 @@ lysp_check_enum_name(struct lys_parser_ctx *ctx, const char *name, size_t name_l
     } else {
         for (size_t u = 0; u < name_len; ++u) {
             if (iscntrl(name[u])) {
-                LOGWRN(ctx->ctx, "Control characters in enum name should be avoided (\"%.*s\", character number %d).",
+                LOGWRN(PARSER_CTX(ctx), "Control characters in enum name should be avoided (\"%.*s\", character number %d).",
                     name_len, name, u + 1);
                 break;
             }
@@ -448,7 +446,7 @@ lysp_check_enum_name(struct lys_parser_ctx *ctx, const char *name, size_t name_l
     return LY_SUCCESS;
 }
 
-/*
+/**
  * @brief Check name of a new type to avoid name collisions.
  *
  * @param[in] ctx Parser context, module where the type is being defined is taken from here.
@@ -478,8 +476,7 @@ lysp_check_typedef(struct lys_parser_ctx *ctx, struct lysp_node *node, const str
     name_len = strlen(name);
 
     if (lysp_type_str2builtin(name, name_len)) {
-        LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_SYNTAX_YANG,
-               "Invalid name \"%s\" of typedef - name collision with a built-in type.", name);
+        LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid name \"%s\" of typedef - name collision with a built-in type.", name);
         return LY_EEXIST;
     }
 
@@ -491,16 +488,14 @@ lysp_check_typedef(struct lys_parser_ctx *ctx, struct lysp_node *node, const str
                 break;
             }
             if (!strcmp(name, typedefs[u].name)) {
-                LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_SYNTAX_YANG,
-                       "Invalid name \"%s\" of typedef - name collision with sibling type.", name);
+                LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid name \"%s\" of typedef - name collision with sibling type.", name);
                 return LY_EEXIST;
             }
         }
         /* search typedefs in parent's nodes */
         for (parent = node->parent; parent; parent = parent->parent) {
             if (lysp_type_match(name, parent)) {
-                LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_SYNTAX_YANG,
-                       "Invalid name \"%s\" of typedef - name collision with another scoped type.", name);
+                LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid name \"%s\" of typedef - name collision with another scoped type.", name);
                 return LY_EEXIST;
             }
         }
@@ -511,14 +506,12 @@ lysp_check_typedef(struct lys_parser_ctx *ctx, struct lysp_node *node, const str
     if (node) {
         lyht_insert(tpdfs_scoped, &name, hash, NULL);
         if (!lyht_find(tpdfs_global, &name, hash, NULL)) {
-            LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_SYNTAX_YANG,
-                   "Invalid name \"%s\" of typedef - scoped type collide with a top-level type.", name);
+            LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid name \"%s\" of typedef - scoped type collide with a top-level type.", name);
             return LY_EEXIST;
         }
     } else {
         if (lyht_insert(tpdfs_global, &name, hash, NULL)) {
-            LOGVAL(ctx->ctx, LY_VLOG_LINE, &ctx->line, LYVE_SYNTAX_YANG,
-                   "Invalid name \"%s\" of typedef - name collision with another top-level type.", name);
+            LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid name \"%s\" of typedef - name collision with another top-level type.", name);
             return LY_EEXIST;
         }
         /* it is not necessary to test collision with the scoped types - in lysp_check_typedefs, all the
@@ -675,7 +668,7 @@ struct lysp_load_module_check_data {
 };
 
 static LY_ERR
-lysp_load_module_check(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data)
+lysp_load_module_check(const struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data)
 {
     struct lysp_load_module_check_data *info = data;
     const char *filename, *dot, *rev, *name;
@@ -960,8 +953,9 @@ lysp_check_identifierchar(struct lys_parser_ctx *ctx, unsigned int c, int first,
 }
 
 LY_ERR
-lysp_load_submodule(struct lys_parser_ctx *ctx, struct lysp_module *mod, struct lysp_include *inc)
+lysp_load_submodule(struct lys_parser_ctx *pctx, struct lysp_module *mod, struct lysp_include *inc)
 {
+    struct ly_ctx *ctx = (struct ly_ctx *)(PARSER_CTX(pctx));
     struct lysp_submodule *submod = NULL;
     const char *submodule_data = NULL;
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
@@ -969,31 +963,31 @@ lysp_load_submodule(struct lys_parser_ctx *ctx, struct lysp_module *mod, struct 
     struct lysp_load_module_check_data check_data = {0};
 
     /* submodule not present in the context, get the input data and parse it */
-    if (!(ctx->ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
+    if (!(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
 search_clb:
-        if (ctx->ctx->imp_clb) {
-            if (ctx->ctx->imp_clb(mod->mod->name, NULL, inc->name, inc->rev[0] ? inc->rev : NULL, ctx->ctx->imp_clb_data,
+        if (ctx->imp_clb) {
+            if (ctx->imp_clb(mod->mod->name, NULL, inc->name, inc->rev[0] ? inc->rev : NULL, ctx->imp_clb_data,
                                   &format, &submodule_data, &submodule_data_free) == LY_SUCCESS) {
                 check_data.name = inc->name;
                 check_data.revision = inc->rev[0] ? inc->rev : NULL;
                 check_data.submoduleof = mod->mod->name;
-                submod = lys_parse_mem_submodule(ctx->ctx, submodule_data, format, ctx,
+                submod = lys_parse_mem_submodule(ctx, submodule_data, format, pctx,
                                                  lysp_load_module_check, &check_data);
                 if (submodule_data_free) {
-                    submodule_data_free((void*)submodule_data, ctx->ctx->imp_clb_data);
+                    submodule_data_free((void*)submodule_data, ctx->imp_clb_data);
                 }
             }
         }
-        if (!submod && !(ctx->ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
+        if (!submod && !(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
             goto search_file;
         }
     } else {
 search_file:
-        if (!(ctx->ctx->flags & LY_CTX_DISABLE_SEARCHDIRS)) {
+        if (!(ctx->flags & LY_CTX_DISABLE_SEARCHDIRS)) {
             /* submodule was not received from the callback or there is no callback set */
-            lys_module_localfile(ctx->ctx, inc->name, inc->rev[0] ? inc->rev : NULL, 0, ctx, mod->mod->name, 1, (void**)&submod);
+            lys_module_localfile(ctx, inc->name, inc->rev[0] ? inc->rev : NULL, 0, pctx, mod->mod->name, 1, (void**)&submod);
         }
-        if (!submod && (ctx->ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
+        if (!submod && (ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
             goto search_clb;
         }
     }
@@ -1007,7 +1001,7 @@ search_file:
         inc->submodule = submod;
     }
     if (!inc->submodule) {
-        LOGVAL(ctx->ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "Including \"%s\" submodule into \"%s\" failed.",
+        LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "Including \"%s\" submodule into \"%s\" failed.",
                inc->name, mod->mod->name);
         return LY_EVALID;
     }
@@ -1426,7 +1420,7 @@ lysp_find_module(struct ly_ctx *ctx, const struct lysp_module *mod)
 }
 
 enum ly_stmt
-lysp_match_kw(struct lys_parser_ctx *ctx, const char **data)
+lysp_match_kw(struct lys_yang_parser_ctx *ctx, const char **data)
 {
 /**
  * @brief Move the DATA pointer by COUNT items. Also updates the indent value in yang parser context

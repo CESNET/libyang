@@ -183,9 +183,9 @@ ly_strncmp(const char *refstr, const char *str, size_t str_len)
 }
 
 LY_ERR
-ly_getutf8(const char **input, unsigned int *utf8_char, size_t *bytes_read)
+ly_getutf8(const char **input, uint32_t *utf8_char, size_t *bytes_read)
 {
-    unsigned int c, len;
+    uint32_t c, len;
     int aux;
     int i;
 

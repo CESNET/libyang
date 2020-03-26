@@ -625,22 +625,24 @@ lys_set_implemented(struct lys_module *mod)
 
 struct lysp_submodule *
 lys_parse_mem_submodule(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, struct lys_parser_ctx *main_ctx,
-                        LY_ERR (*custom_check)(struct ly_ctx*, struct lysp_module*, struct lysp_submodule*, void*), void *check_data)
+                        LY_ERR (*custom_check)(const struct ly_ctx*, struct lysp_module*, struct lysp_submodule*, void*), void *check_data)
 {
     LY_ERR ret = LY_EINVAL;
     struct lysp_submodule *submod = NULL, *latest_sp;
-    struct lys_parser_ctx *context = NULL;
-    struct yin_parser_ctx *yin_context = NULL;
+    struct lys_yang_parser_ctx *yangctx = NULL;
+    struct lys_yin_parser_ctx *yinctx = NULL;
+    struct lys_parser_ctx *pctx;
 
     LY_CHECK_ARG_RET(ctx, ctx, data, NULL);
 
     switch (format) {
     case LYS_IN_YIN:
-        ret = yin_parse_submodule(&yin_context, ctx, main_ctx, data, &submod);
-        context = (struct lys_parser_ctx *)yin_context;
+        ret = yin_parse_submodule(&yinctx, ctx, main_ctx, data, &submod);
+        pctx = (struct lys_parser_ctx *)yinctx;
         break;
     case LYS_IN_YANG:
-        ret = yang_parse_submodule(&context, ctx, main_ctx, data, &submod);
+        ret = yang_parse_submodule(&yangctx, ctx, main_ctx, data, &submod);
+        pctx = (struct lys_parser_ctx *)yangctx;
         break;
     default:
         LOGERR(ctx, LY_EINVAL, "Invalid schema input format.");
@@ -652,7 +654,7 @@ lys_parse_mem_submodule(struct ly_ctx *ctx, const char *data, LYS_INFORMAT forma
     lysp_sort_revisions(submod->revs);
 
     /* decide the latest revision */
-    latest_sp = ly_ctx_get_submodule((*context).ctx, submod->belongsto, submod->name, NULL);
+    latest_sp = ly_ctx_get_submodule(PARSER_CTX(pctx), submod->belongsto, submod->name, NULL);
     if (latest_sp) {
         if (submod->revs) {
             if (!latest_sp->revs) {
@@ -673,7 +675,7 @@ lys_parse_mem_submodule(struct ly_ctx *ctx, const char *data, LYS_INFORMAT forma
     }
 
     if (custom_check) {
-        LY_CHECK_GOTO(custom_check((*context).ctx, NULL, submod, check_data), error);
+        LY_CHECK_GOTO(custom_check(PARSER_CTX(pctx), NULL, submod, check_data), error);
     }
 
     if (latest_sp) {
@@ -681,29 +683,29 @@ lys_parse_mem_submodule(struct ly_ctx *ctx, const char *data, LYS_INFORMAT forma
     }
 
     /* remap possibly changed and reallocated typedefs and groupings list back to the main context */
-    memcpy(&main_ctx->tpdfs_nodes, &(*context).tpdfs_nodes, sizeof main_ctx->tpdfs_nodes);
-    memcpy(&main_ctx->grps_nodes, &(*context).grps_nodes, sizeof main_ctx->grps_nodes);
+    memcpy(&main_ctx->tpdfs_nodes, &pctx->tpdfs_nodes, sizeof main_ctx->tpdfs_nodes);
+    memcpy(&main_ctx->grps_nodes, &pctx->grps_nodes, sizeof main_ctx->grps_nodes);
 
     if (format == LYS_IN_YANG) {
-        lys_parser_ctx_free(context);
+        yang_parser_ctx_free(yangctx);
     } else {
-        yin_parser_ctx_free(yin_context);
+        yin_parser_ctx_free(yinctx);
     }
     return submod;
 
 error:
     lysp_submodule_free(ctx, submod);
     if (format == LYS_IN_YANG) {
-        lys_parser_ctx_free(context);
+        yang_parser_ctx_free(yangctx);
     } else {
-        yin_parser_ctx_free(yin_context);
+        yin_parser_ctx_free(yinctx);
     }
     return NULL;
 }
 
 struct lys_module *
 lys_parse_mem_module(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int implement,
-                     LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data),
+                     LY_ERR (*custom_check)(const struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data),
                      void *check_data)
 {
     struct lys_module *mod = NULL, *latest, *mod_dup;
@@ -711,8 +713,9 @@ lys_parse_mem_module(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, 
     struct lysp_include *inc;
     LY_ERR ret = LY_EINVAL;
     unsigned int u, i;
-    struct lys_parser_ctx *context = NULL;
-    struct yin_parser_ctx *yin_context = NULL;
+    struct lys_yang_parser_ctx *yangctx = NULL;
+    struct lys_yin_parser_ctx *yinctx = NULL;
+    struct lys_parser_ctx *pctx;
 
     LY_CHECK_ARG_RET(ctx, ctx, data, NULL);
 
@@ -722,11 +725,12 @@ lys_parse_mem_module(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, 
 
     switch (format) {
     case LYS_IN_YIN:
-        ret = yin_parse_module(&yin_context, data, mod);
-        context = (struct lys_parser_ctx *)yin_context;
+        ret = yin_parse_module(&yinctx, data, mod);
+        pctx = (struct lys_parser_ctx *)yinctx;
         break;
     case LYS_IN_YANG:
-        ret = yang_parse_module(&context, data, mod);
+        ret = yang_parse_module(&yangctx, data, mod);
+        pctx = (struct lys_parser_ctx *)yangctx;
         break;
     default:
         LOGERR(ctx, LY_EINVAL, "Invalid schema input format.");
@@ -828,7 +832,7 @@ finish_parsing:
     }
     LY_ARRAY_FOR(mod->parsed->includes, u) {
         inc = &mod->parsed->includes[u];
-        if (!inc->submodule && lysp_load_submodule(context, mod->parsed, inc)) {
+        if (!inc->submodule && lysp_load_submodule(pctx, mod->parsed, inc)) {
             goto error_ctx;
         }
         if (!mod->implemented) {
@@ -839,12 +843,12 @@ finish_parsing:
     mod->parsed->parsing = 0;
 
     /* check name collisions - typedefs and TODO groupings */
-    LY_CHECK_GOTO(lysp_check_typedefs(context, mod->parsed), error_ctx);
+    LY_CHECK_GOTO(lysp_check_typedefs(pctx, mod->parsed), error_ctx);
 
     if (format == LYS_IN_YANG) {
-        lys_parser_ctx_free(context);
+        yang_parser_ctx_free(yangctx);
     } else {
-        yin_parser_ctx_free(yin_context);
+        yin_parser_ctx_free(yinctx);
     }
     return mod;
 
@@ -852,11 +856,11 @@ error_ctx:
     ly_set_rm(&ctx->list, mod, NULL);
 error:
     lys_module_free(mod, NULL);
-    ly_set_erase(&context->tpdfs_nodes, NULL);
+    ly_set_erase(&pctx->tpdfs_nodes, NULL);
     if (format == LYS_IN_YANG) {
-        lys_parser_ctx_free(context);
+        yang_parser_ctx_free(yangctx);
     } else {
-        yin_parser_ctx_free(yin_context);
+        yin_parser_ctx_free(yinctx);
     }
 
     return NULL;
@@ -901,8 +905,7 @@ lys_parse_set_filename(struct ly_ctx *ctx, const char **filename, int fd)
 
 void *
 lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, int implement, struct lys_parser_ctx *main_ctx,
-                    LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data),
-                    void *check_data)
+              lys_custom_check custom_check, void *check_data)
 {
     void *result;
     struct lys_module *mod = NULL;
@@ -944,8 +947,7 @@ lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, int implement, st
 }
 
 struct lys_module *
-lys_parse_fd_module(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, int implement,
-                    LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data),
+lys_parse_fd_module(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, int implement, lys_custom_check custom_check,
                     void *check_data)
 {
     return (struct lys_module*)lys_parse_fd_(ctx, fd, format, implement, NULL, custom_check, check_data);
@@ -953,8 +955,7 @@ lys_parse_fd_module(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, int impleme
 
 struct lysp_submodule *
 lys_parse_fd_submodule(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, struct lys_parser_ctx *main_ctx,
-                       LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data),
-                       void *check_data)
+                       lys_custom_check custom_check, void *check_data)
 {
     assert(main_ctx);
     return (struct lysp_submodule*)lys_parse_fd_(ctx, fd, format, 0, main_ctx, custom_check, check_data);
@@ -968,7 +969,7 @@ lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
 
 struct lys_module *
 lys_parse_path_(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, int implement,
-                LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data), void *check_data)
+                lys_custom_check custom_check, void *check_data)
 {
     int fd;
     struct lys_module *mod;

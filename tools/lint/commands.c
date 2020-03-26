@@ -803,13 +803,13 @@ cmd_data(const char *arg)
                 /* no flags */
             } else if (!strcmp(optarg, "data")) {
                 /* no flags */
-            } else if (!strcmp(optarg, "config")) {
+            /*} else if (!strcmp(optarg, "config")) {
                 options |= LYD_OPT_CONFIG;
             } else if (!strcmp(optarg, "get")) {
                 options |= LYD_OPT_GET;
             } else if (!strcmp(optarg, "getconfig")) {
                 options |= LYD_OPT_GETCONFIG;
-            /*} else if (!strcmp(optarg, "edit")) {
+            } else if (!strcmp(optarg, "edit")) {
                 options |= LYD_OPT_EDIT;*/
             } else {
                 fprintf(stderr, "Invalid parser option \"%s\".\n", optarg);

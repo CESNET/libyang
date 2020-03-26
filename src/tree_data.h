@@ -470,18 +470,6 @@ struct lyd_node_opaq {
  * @{
  */
 
-#define LYD_OPT_DATA       0x0 /**< Default type of data - complete datastore content with configuration as well as
-                                    state data. */
-#define LYD_OPT_CONFIG     LYD_OPT_NO_STATE
-                                        /**< A configuration datastore - complete datastore without state data. */
-#define LYD_OPT_GET        LYD_OPT_PARSE_ONLY
-                                        /**< Data content from a NETCONF reply message to the NETCONF \<get\> operation. */
-#define LYD_OPT_GETCONFIG  LYD_OPT_PARSE_ONLY | LYD_OPT_NO_STATE
-                                        /**< Data content from a NETCONF reply message to the NETCONF \<get-config\> operation. */
-#define LYD_OPT_EDIT       LYD_OPT_OPAQ
-                                        /**< Data content of a NETCONF RPC \<edit-config\> operation. */
-
-
 #define LYD_OPT_PARSE_ONLY      0x0001  /**< Data will be only parsed and no validation will be performed. When statements
                                              are kept unevaluated, union types may not be fully resolved, if-feature
                                              statements are not checked, and default values are not added (only the ones

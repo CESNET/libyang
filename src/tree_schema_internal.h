@@ -24,8 +24,6 @@
 
 #define YIN_NS_URI "urn:ietf:params:xml:ns:yang:yin:1"
 
-#define LOGVAL_PARSER(CTX, ...) LOGVAL((CTX)->ctx, (CTX)->pos_type, (CTX)->pos_type == LY_VLOG_LINE ? &(CTX)->line : (void*)(CTX)->path, __VA_ARGS__)
-
 /**
  * @brief Check module version is at least 2 (YANG 1.1) because of the keyword presence.
  * Logs error message and returns LY_EVALID in case of module in YANG version 1.0.
@@ -73,9 +71,9 @@
         } \
     }
 
-#define YANG_CHECK_NONEMPTY(CTX, VALUE_LEN, STMT) \
+#define CHECK_NONEMPTY(CTX, VALUE_LEN, STMT) \
     if (!VALUE_LEN) { \
-        LOGWRN((CTX)->ctx, "Empty argument of %s statement does not make sense.", STMT); \
+        LOGWRN(PARSER_CTX(CTX), "Empty argument of %s statement does not make sense.", STMT); \
     }
 
 /**
@@ -99,10 +97,30 @@ enum yang_arg {
     Y_MAYBE_STR_ARG       /**< optional YANG "string" rule */
 };
 
+#define PARSER_CTX(CTX) (CTX)->format == LYS_IN_YANG ? ((struct lys_yang_parser_ctx *)CTX)->ctx : ((struct lys_yin_parser_ctx *)CTX)->xmlctx->ctx
+
+#define LOGVAL_PARSER(CTX, ...) (CTX)->format == LYS_IN_YANG ? LOGVAL_YANG(CTX, __VA_ARGS__) : LOGVAL_YIN(CTX, __VA_ARGS__)
+
+#define LOGVAL_YANG(CTX, ...) LOGVAL(PARSER_CTX(CTX), ((struct lys_yang_parser_ctx *)CTX)->pos_type, \
+                                     ((struct lys_yang_parser_ctx *)CTX)->pos_type == LY_VLOG_LINE ? \
+                                        (void *)&((struct lys_yang_parser_ctx *)CTX)->line : \
+                                        (void *)((struct lys_yang_parser_ctx *)CTX)->path, __VA_ARGS__)
+
+#define LOGVAL_YIN(CTX, ...) LOGVAL(PARSER_CTX(CTX), LY_VLOG_LINE, \
+                                     &((struct lys_yin_parser_ctx *)CTX)->xmlctx->line, __VA_ARGS__)
+
+struct lys_parser_ctx {
+    LYS_INFORMAT format;        /**< parser format */
+    struct ly_set tpdfs_nodes;  /**< set of typedef nodes */
+    struct ly_set grps_nodes;   /**< set of grouping nodes */
+    uint8_t mod_version;        /**< module's version */
+};
+
 /**
  * @brief Internal context for yang schema parser.
  */
-struct lys_parser_ctx {
+struct lys_yang_parser_ctx {
+    LYS_INFORMAT format;        /**< parser format */
     struct ly_set tpdfs_nodes;  /**< set of typedef nodes */
     struct ly_set grps_nodes;   /**< set of grouping nodes */
     uint8_t mod_version;        /**< module's version */
@@ -118,17 +136,17 @@ struct lys_parser_ctx {
 /**
  * @brief free lys parser context.
  */
-void lys_parser_ctx_free(struct lys_parser_ctx *ctx);
+void yang_parser_ctx_free(struct lys_yang_parser_ctx *ctx);
 
 /**
  * @brief Internal context for yin schema parser.
  */
-struct yin_parser_ctx {
+struct lys_yin_parser_ctx {
+    LYS_INFORMAT format;           /**< parser format */
     struct ly_set tpdfs_nodes;     /**< set of typedef nodes */
     struct ly_set grps_nodes;      /**< set of grouping nodes */
     uint8_t mod_version;           /**< module's version */
-    enum LY_VLOG_ELEM pos_type; /**< */
-    struct lyxml_context xml_ctx;  /**< context for xml parser */
+    struct lyxml_ctx *xmlctx;      /**< context for xml parser */
 };
 
 /**
@@ -136,7 +154,7 @@ struct yin_parser_ctx {
  *
  * @param[in] ctx Context to free.
  */
-void yin_parser_ctx_free(struct yin_parser_ctx *ctx);
+void yin_parser_ctx_free(struct lys_yin_parser_ctx *ctx);
 
 struct lysc_incomplete_dflt {
     struct lyd_value *dflt;
@@ -147,7 +165,7 @@ struct lysc_incomplete_dflt {
 /**
  * @brief Check that \p c is valid UTF8 code point for YANG string.
  *
- * @param[in] ctx yang parser context for logging.
+ * @param[in] ctx parser context for logging.
  * @param[in] c UTF8 code point of a character to check.
  * @return LY_ERR values.
  */
@@ -156,7 +174,7 @@ LY_ERR lysp_check_stringchar(struct lys_parser_ctx *ctx, unsigned int c);
 /**
  * @brief Check that \p c is valid UTF8 code point for YANG identifier.
  *
- * @param[in] ctx yang parser context for logging.
+ * @param[in] ctx parser context for logging.
  * @param[in] c UTF8 code point of a character to check.
  * @param[in] first Flag to check the first character of an identifier, which is more restricted.
  * @param[in,out] prefix Storage for internally used flag in case of possible prefixed identifiers:
@@ -296,7 +314,7 @@ LY_ERR lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revisi
  * submodule is stored into this structure.
  * @return LY_ERR value.
  */
-LY_ERR lysp_load_submodule(struct lys_parser_ctx *ctx, struct lysp_module *mod, struct lysp_include *inc);
+LY_ERR lysp_load_submodule(struct lys_parser_ctx *pctx, struct lysp_module *mod, struct lysp_include *inc);
 
 /**
  * @brief Compile printable schema into a validated schema linking all the references.
@@ -480,8 +498,10 @@ const char *lys_prefix_find_module(const struct lys_module *mod, const struct ly
  */
 const char *lys_datatype2str(LY_DATA_TYPE basetype);
 
+typedef LY_ERR (*lys_custom_check)(const struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *check_data);
+
 /**
- * @brief Parse YANG module from a string.
+ * @brief Parse module from a string.
  *
  * The modules are added into the context and the latest_revision flag is updated.
  *
@@ -495,11 +515,10 @@ const char *lys_datatype2str(LY_DATA_TYPE basetype);
  * @return Pointer to the data model structure or NULL on error.
  */
 struct lys_module *lys_parse_mem_module(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int implement,
-                                        LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *check_data),
-                                        void *check_data);
+                                        lys_custom_check custom_check, void *check_data);
 
 /**
- * @brief Parse YANG submodule from a string.
+ * @brief Parse submodule from a string.
  *
  * The latest_revision flag of submodule is updated.
  *
@@ -513,11 +532,10 @@ struct lys_module *lys_parse_mem_module(struct ly_ctx *ctx, const char *data, LY
  * @return Pointer to the data model structure or NULL on error.
  */
 struct lysp_submodule *lys_parse_mem_submodule(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, struct lys_parser_ctx *main_ctx,
-                                               LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *check_data),
-                                               void *check_data);
+                                               lys_custom_check custom_check, void *check_data);
 
 /**
- * @brief Parse YANG module or submodule from a file descriptor.
+ * @brief Parse module or submodule from a file descriptor.
  *
  * The modules are added into the context, submodules not. The latest_revision flag is updated in both cases.
  *
@@ -535,8 +553,7 @@ struct lysp_submodule *lys_parse_mem_submodule(struct ly_ctx *ctx, const char *d
  * @return Pointer to the data model structure or NULL on error.
  */
 void *lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, int implement, struct lys_parser_ctx *main_ctx,
-                    LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data),
-                    void *check_data);
+                    lys_custom_check custom_check, void *check_data);
 
 /**
  * @brief Parse YANG module from a file descriptor.
@@ -555,11 +572,10 @@ void *lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, int impleme
  * @return Pointer to the data model structure or NULL on error.
  */
 struct lys_module *lys_parse_fd_module(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, int implement,
-                                           LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *check_data),
-                                           void *check_data);
+                                       lys_custom_check custom_check, void *check_data);
 
 /**
- * @brief Parse YANG submodule from a file descriptor.
+ * @brief Parse submodule from a file descriptor.
  *
  * The latest_revision flag of submodules is updated.
  *
@@ -575,8 +591,7 @@ struct lys_module *lys_parse_fd_module(struct ly_ctx *ctx, int fd, LYS_INFORMAT 
  * @return Pointer to the data model structure or NULL on error.
  */
 struct lysp_submodule *lys_parse_fd_submodule(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, struct lys_parser_ctx *main_ctx,
-                                              LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *check_data),
-                                              void *check_data);
+                                              lys_custom_check custom_check, void *check_data);
 
 /**
  * @brief Parse YANG module from a filepath.
@@ -594,8 +609,7 @@ struct lysp_submodule *lys_parse_fd_submodule(struct ly_ctx *ctx, int fd, LYS_IN
  * @return Pointer to the data model structure or NULL on error.
  */
 struct lys_module *lys_parse_path_(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, int implement,
-                                   LY_ERR (*custom_check)(struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data),
-                                   void *check_data);
+                                   lys_custom_check custom_check, void *check_data);
 
 /**
  * @brief Load the (sub)module into the context.
@@ -812,7 +826,7 @@ void lys_module_free(struct lys_module *module, void (*private_destructor)(const
  * @param[out] submod Pointer to the parsed submodule structure.
  * @return LY_ERR value - LY_SUCCESS, LY_EINVAL or LY_EVALID.
  */
-LY_ERR yang_parse_submodule(struct lys_parser_ctx **context, struct ly_ctx *ly_ctx, struct lys_parser_ctx *main_ctx,
+LY_ERR yang_parse_submodule(struct lys_yang_parser_ctx **context, struct ly_ctx *ly_ctx, struct lys_parser_ctx *main_ctx,
                             const char *data, struct lysp_submodule **submod);
 
 /**
@@ -823,7 +837,7 @@ LY_ERR yang_parse_submodule(struct lys_parser_ctx **context, struct ly_ctx *ly_c
  * module structure, will be filled in.
  * @return LY_ERR value - LY_SUCCESS, LY_EINVAL or LY_EVALID.
  */
-LY_ERR yang_parse_module(struct lys_parser_ctx **context, const char *data, struct lys_module *mod);
+LY_ERR yang_parse_module(struct lys_yang_parser_ctx **context, const char *data, struct lys_module *mod);
 
 /**
  * @brief Parse module from YIN data.
@@ -835,7 +849,7 @@ LY_ERR yang_parse_module(struct lys_parser_ctx **context, const char *data, stru
  *
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_module(struct yin_parser_ctx **yin_ctx, const char *data, struct lys_module *mod);
+LY_ERR yin_parse_module(struct lys_yin_parser_ctx **yin_ctx, const char *data, struct lys_module *mod);
 
 /**
  * @brief Parse submodule from YIN data.
@@ -847,7 +861,7 @@ LY_ERR yin_parse_module(struct yin_parser_ctx **yin_ctx, const char *data, struc
  * @param[in,out] submod Submodule structure where the parsed information, will be filled in.
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_submodule(struct yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, struct lys_parser_ctx *main_ctx,
+LY_ERR yin_parse_submodule(struct lys_yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, struct lys_parser_ctx *main_ctx,
                            const char *data, struct lysp_submodule **submod);
 
 
@@ -868,7 +882,7 @@ LY_ERR lys_set_implemented_internal(struct lys_module *mod, uint8_t implemented)
  * @param[in,out] data Data to read from, always moved to currently handled character.
  * @return yang_keyword values.
  */
-enum ly_stmt lysp_match_kw(struct lys_parser_ctx *ctx, const char **data);
+enum ly_stmt lysp_match_kw(struct lys_yang_parser_ctx *ctx, const char **data);
 
 /**
  * @brief Generate path of the given node in the requested format.

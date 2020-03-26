@@ -38,35 +38,35 @@ void lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node);
 void lysp_when_free(struct ly_ctx *ctx, struct lysp_when *when);
 
 LY_ERR buf_add_char(struct ly_ctx *ctx, const char **input, size_t len, char **buf, size_t *buf_len, size_t *buf_used);
-LY_ERR buf_store_char(struct lys_parser_ctx *ctx, const char **input, enum yang_arg arg, char **word_p,
+LY_ERR buf_store_char(struct lys_yang_parser_ctx *ctx, const char **input, enum yang_arg arg, char **word_p,
                       size_t *word_len, char **word_b, size_t *buf_len, int need_buf, int *prefix);
-LY_ERR get_keyword(struct lys_parser_ctx *ctx, const char **data, enum ly_stmt *kw, char **word_p, size_t *word_len);
-LY_ERR get_argument(struct lys_parser_ctx *ctx, const char **data, enum yang_arg arg,
+LY_ERR get_keyword(struct lys_yang_parser_ctx *ctx, const char **data, enum ly_stmt *kw, char **word_p, size_t *word_len);
+LY_ERR get_argument(struct lys_yang_parser_ctx *ctx, const char **data, enum yang_arg arg,
                     uint16_t *flags, char **word_p, char **word_b, size_t *word_len);
-LY_ERR skip_comment(struct lys_parser_ctx *ctx, const char **data, int comment);
+LY_ERR skip_comment(struct lys_yang_parser_ctx *ctx, const char **data, int comment);
 
-LY_ERR parse_action(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_action **actions);
-LY_ERR parse_any(struct lys_parser_ctx *ctx, const char **data, enum ly_stmt kw, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_augment(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_augment **augments);
-LY_ERR parse_case(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_container(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_deviate(struct lys_parser_ctx *ctx, const char **data, struct lysp_deviate **deviates);
-LY_ERR parse_deviation(struct lys_parser_ctx *ctx, const char **data, struct lysp_deviation **deviations);
-LY_ERR parse_feature(struct lys_parser_ctx *ctx, const char **data, struct lysp_feature **features);
-LY_ERR parse_grouping(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_grp **groupings);
-LY_ERR parse_choice(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_identity(struct lys_parser_ctx *ctx, const char **data, struct lysp_ident **identities);
-LY_ERR parse_leaf(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_leaflist(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_list(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_maxelements(struct lys_parser_ctx *ctx, const char **data, uint32_t *max, uint16_t *flags, struct lysp_ext_instance **exts);
-LY_ERR parse_minelements(struct lys_parser_ctx *ctx, const char **data, uint32_t *min, uint16_t *flags, struct lysp_ext_instance **exts);
-LY_ERR parse_module(struct lys_parser_ctx *ctx, const char **data, struct lysp_module *mod);
-LY_ERR parse_notif(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_notif **notifs);
-LY_ERR parse_submodule(struct lys_parser_ctx *ctx, const char **data, struct lysp_submodule *submod);
-LY_ERR parse_uses(struct lys_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_when(struct lys_parser_ctx *ctx, const char **data, struct lysp_when **when_p);
-LY_ERR parse_type_enum_value_pos(struct lys_parser_ctx *ctx, const char **data, enum ly_stmt val_kw, int64_t *value, uint16_t *flags, struct lysp_ext_instance **exts);
+LY_ERR parse_action(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_action **actions);
+LY_ERR parse_any(struct lys_yang_parser_ctx *ctx, const char **data, enum ly_stmt kw, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_augment(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_augment **augments);
+LY_ERR parse_case(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_container(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_deviate(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_deviate **deviates);
+LY_ERR parse_deviation(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_deviation **deviations);
+LY_ERR parse_feature(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_feature **features);
+LY_ERR parse_grouping(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_grp **groupings);
+LY_ERR parse_choice(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_identity(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_ident **identities);
+LY_ERR parse_leaf(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_leaflist(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_list(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_maxelements(struct lys_yang_parser_ctx *ctx, const char **data, uint32_t *max, uint16_t *flags, struct lysp_ext_instance **exts);
+LY_ERR parse_minelements(struct lys_yang_parser_ctx *ctx, const char **data, uint32_t *min, uint16_t *flags, struct lysp_ext_instance **exts);
+LY_ERR parse_module(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_module *mod);
+LY_ERR parse_notif(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_notif **notifs);
+LY_ERR parse_submodule(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_submodule *submod);
+LY_ERR parse_uses(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_when(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_when **when_p);
+LY_ERR parse_type_enum_value_pos(struct lys_yang_parser_ctx *ctx, const char **data, enum ly_stmt val_kw, int64_t *value, uint16_t *flags, struct lysp_ext_instance **exts);
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
@@ -141,7 +141,8 @@ test_helpers(void **state)
     const char *str;
     char *buf, *p;
     size_t len, size;
-    struct lys_parser_ctx ctx;
+    struct lys_yang_parser_ctx ctx;
+    ctx.format = LYS_IN_YANG;
     ctx.ctx = NULL;
     ctx.pos_type = LY_VLOG_LINE;
     ctx.line = 1;
@@ -191,21 +192,21 @@ test_helpers(void **state)
     prefix = 0;
 
     /* checking identifiers */
-    assert_int_equal(LY_EVALID, lysp_check_identifierchar(&ctx, ':', 0, NULL));
+    assert_int_equal(LY_EVALID, lysp_check_identifierchar((struct lys_parser_ctx *)&ctx, ':', 0, NULL));
     logbuf_assert("Invalid identifier character ':'. Line number 1.");
-    assert_int_equal(LY_EVALID, lysp_check_identifierchar(&ctx, '#', 1, NULL));
+    assert_int_equal(LY_EVALID, lysp_check_identifierchar((struct lys_parser_ctx *)&ctx, '#', 1, NULL));
     logbuf_assert("Invalid identifier first character '#'. Line number 1.");
 
-    assert_int_equal(LY_SUCCESS, lysp_check_identifierchar(&ctx, 'a', 1, &prefix));
+    assert_int_equal(LY_SUCCESS, lysp_check_identifierchar((struct lys_parser_ctx *)&ctx, 'a', 1, &prefix));
     assert_int_equal(0, prefix);
-    assert_int_equal(LY_SUCCESS, lysp_check_identifierchar(&ctx, ':', 0, &prefix));
+    assert_int_equal(LY_SUCCESS, lysp_check_identifierchar((struct lys_parser_ctx *)&ctx, ':', 0, &prefix));
     assert_int_equal(1, prefix);
-    assert_int_equal(LY_EVALID, lysp_check_identifierchar(&ctx, ':', 0, &prefix));
+    assert_int_equal(LY_EVALID, lysp_check_identifierchar((struct lys_parser_ctx *)&ctx, ':', 0, &prefix));
     assert_int_equal(1, prefix);
-    assert_int_equal(LY_SUCCESS, lysp_check_identifierchar(&ctx, 'b', 0, &prefix));
+    assert_int_equal(LY_SUCCESS, lysp_check_identifierchar((struct lys_parser_ctx *)&ctx, 'b', 0, &prefix));
     assert_int_equal(2, prefix);
     /* second colon is invalid */
-    assert_int_equal(LY_EVALID, lysp_check_identifierchar(&ctx, ':', 0, &prefix));
+    assert_int_equal(LY_EVALID, lysp_check_identifierchar((struct lys_parser_ctx *)&ctx, ':', 0, &prefix));
     logbuf_assert("Invalid identifier character ':'. Line number 1.");
 }
 
@@ -214,11 +215,12 @@ test_comments(void **state)
 {
     (void) state; /* unused */
 
-    struct lys_parser_ctx ctx;
+    struct lys_yang_parser_ctx ctx;
     const char *str, *p;
     char *word, *buf;
     size_t len;
 
+    ctx.format = LYS_IN_YANG;
     ctx.ctx = NULL;
     ctx.pos_type = LY_VLOG_LINE;
     ctx.line = 1;
@@ -251,11 +253,12 @@ test_arg(void **state)
 {
     (void) state; /* unused */
 
-    struct lys_parser_ctx ctx;
+    struct lys_yang_parser_ctx ctx;
     const char *str;
     char *word, *buf;
     size_t len;
 
+    ctx.format = LYS_IN_YANG;
     ctx.ctx = NULL;
     ctx.pos_type = LY_VLOG_LINE;
     ctx.line = 1;
@@ -407,12 +410,13 @@ test_stmts(void **state)
 {
     (void) state; /* unused */
 
-    struct lys_parser_ctx ctx;
+    struct lys_yang_parser_ctx ctx;
     const char *str, *p;
     enum ly_stmt kw;
     char *word;
     size_t len;
 
+    ctx.format = LYS_IN_YANG;
     ctx.ctx = NULL;
     ctx.pos_type = LY_VLOG_LINE;
     ctx.line = 1;
@@ -749,12 +753,13 @@ test_minmax(void **state)
 {
     *state = test_minmax;
 
-    struct lys_parser_ctx ctx = {0};
+    struct lys_yang_parser_ctx ctx = {0};
     uint16_t flags = 0;
     uint32_t value = 0;
     struct lysp_ext_instance *ext = NULL;
     const char *str;
 
+    ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
     ctx.pos_type = LY_VLOG_LINE;
@@ -842,7 +847,7 @@ test_minmax(void **state)
 }
 
 static struct lysp_module *
-mod_renew(struct lys_parser_ctx *ctx)
+mod_renew(struct lys_yang_parser_ctx *ctx)
 {
     struct lysp_module *mod_p;
     static struct lys_module mod = {0};
@@ -868,7 +873,7 @@ mod_renew(struct lys_parser_ctx *ctx)
 }
 
 static struct lysp_submodule *
-submod_renew(struct lys_parser_ctx *ctx, struct lysp_submodule *submod)
+submod_renew(struct lys_yang_parser_ctx *ctx, struct lysp_submodule *submod)
 {
     lysp_submodule_free(ctx->ctx, submod);
     submod = calloc(1, sizeof *submod);
@@ -891,12 +896,13 @@ test_module(void **state)
 {
     *state = test_module;
 
-    struct lys_parser_ctx ctx;
+    struct lys_yang_parser_ctx ctx;
     struct lysp_module *mod = NULL;
     struct lysp_submodule *submod = NULL;
     struct lys_module *m;
     const char *str;
 
+    ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
     ctx.pos_type = LY_VLOG_LINE;
@@ -1072,14 +1078,14 @@ test_module(void **state)
     assert_int_equal(2, mod->mod->version);
     mod = mod_renew(&ctx);
 
-    struct lys_parser_ctx *ctx_p = NULL;
+    struct lys_yang_parser_ctx *ctx_p = NULL;
     str = "module " SCHEMA_BEGINNING "} module q {namespace urn:q;prefixq;}";
     m = mod->mod;
     free(mod);
     m->parsed = NULL;
     assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, str, m));
     logbuf_assert("Trailing garbage \"module q {names...\" after module, expected end-of-input. Line number 1.");
-    lys_parser_ctx_free(ctx_p);
+    yang_parser_ctx_free(ctx_p);
     mod = mod_renew(&ctx);
 
     str = "prefix " SCHEMA_BEGINNING "}";
@@ -1087,7 +1093,7 @@ test_module(void **state)
     free(mod);
     m->parsed = NULL;
     assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, str, m));
-    lys_parser_ctx_free(ctx_p);
+    yang_parser_ctx_free(ctx_p);
     logbuf_assert("Invalid keyword \"prefix\", expected \"module\" or \"submodule\". Line number 1.");
     mod = mod_renew(&ctx);
 
@@ -1097,7 +1103,7 @@ test_module(void **state)
     free(mod);
     m->parsed = NULL;
     assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, str, m));
-    lys_parser_ctx_free(ctx_p);
+    yang_parser_ctx_free(ctx_p);
     logbuf_assert("Invalid keyword \"position\" as a child of \"enum\". Line number 1.");
     mod = mod_renew(&ctx);
 
@@ -1152,13 +1158,13 @@ test_module(void **state)
     str = "submodule " SCHEMA_BEGINNING "} module q {namespace urn:q;prefixq;}";
     lysp_submodule_free(ctx.ctx, submod);
     submod = NULL;
-    assert_int_equal(LY_EVALID, yang_parse_submodule(&ctx_p, ctx.ctx, &ctx, str, &submod));
-    lys_parser_ctx_free(ctx_p);
+    assert_int_equal(LY_EVALID, yang_parse_submodule(&ctx_p, ctx.ctx, (struct lys_parser_ctx *)&ctx, str, &submod));
+    yang_parser_ctx_free(ctx_p);
     logbuf_assert("Trailing garbage \"module q {names...\" after submodule, expected end-of-input. Line number 1.");
 
     str = "prefix " SCHEMA_BEGINNING "}";
-    assert_int_equal(LY_EVALID, yang_parse_submodule(&ctx_p, ctx.ctx, &ctx, str, &submod));
-    lys_parser_ctx_free(ctx_p);
+    assert_int_equal(LY_EVALID, yang_parse_submodule(&ctx_p, ctx.ctx, (struct lys_parser_ctx *)&ctx, str, &submod));
+    yang_parser_ctx_free(ctx_p);
     logbuf_assert("Invalid keyword \"prefix\", expected \"module\" or \"submodule\". Line number 1.");
     submod = submod_renew(&ctx, submod);
 
@@ -1179,10 +1185,11 @@ test_identity(void **state)
 {
     *state = test_identity;
 
-    struct lys_parser_ctx ctx;
+    struct lys_yang_parser_ctx ctx;
     struct lysp_ident *ident = NULL;
     const char *str;
 
+    ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
     ctx.pos_type = LY_VLOG_LINE;
@@ -1225,10 +1232,11 @@ test_feature(void **state)
 {
     (void) state; /* unused */
 
-    struct lys_parser_ctx ctx;
+    struct lys_yang_parser_ctx ctx;
     struct lysp_feature *features = NULL;
     const char *str;
 
+    ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
     ctx.pos_type = LY_VLOG_LINE;
@@ -1269,10 +1277,11 @@ test_deviation(void **state)
 {
     (void) state; /* unused */
 
-    struct lys_parser_ctx ctx;
+    struct lys_yang_parser_ctx ctx;
     struct lysp_deviation *d = NULL;
     const char *str;
 
+    ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
     ctx.pos_type = LY_VLOG_LINE;
@@ -1319,10 +1328,11 @@ test_deviate(void **state)
 {
     (void) state; /* unused */
 
-    struct lys_parser_ctx ctx;
+    struct lys_yang_parser_ctx ctx;
     struct lysp_deviate *d = NULL;
     const char *str;
 
+    ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
     ctx.pos_type = LY_VLOG_LINE;
@@ -1405,10 +1415,11 @@ test_container(void **state)
 {
     (void) state; /* unused */
 
-    struct lys_parser_ctx ctx = {0};
+    struct lys_yang_parser_ctx ctx = {0};
     struct lysp_node_container *c = NULL;
     const char *str;
 
+    ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
     ctx.pos_type = LY_VLOG_LINE;
@@ -1479,10 +1490,11 @@ test_leaf(void **state)
 {
     *state = test_leaf;
 
-    struct lys_parser_ctx ctx = {0};
+    struct lys_yang_parser_ctx ctx = {0};
     struct lysp_node_leaf *l = NULL;
     const char *str;
 
+    ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
     ctx.pos_type = LY_VLOG_LINE;
@@ -1558,10 +1570,11 @@ test_leaflist(void **state)
 {
     *state = test_leaf;
 
-    struct lys_parser_ctx ctx = {0};
+    struct lys_yang_parser_ctx ctx = {0};
     struct lysp_node_leaflist *ll = NULL;
     const char *str;
 
+    ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
     ctx.pos_type = LY_VLOG_LINE;
@@ -1657,10 +1670,11 @@ test_list(void **state)
 {
     *state = test_list;
 
-    struct lys_parser_ctx ctx = {0};
+    struct lys_yang_parser_ctx ctx = {0};
     struct lysp_node_list *l = NULL;
     const char *str;
 
+    ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
     ctx.pos_type = LY_VLOG_LINE;
@@ -1728,10 +1742,11 @@ test_choice(void **state)
 {
     *state = test_choice;
 
-    struct lys_parser_ctx ctx = {0};
+    struct lys_yang_parser_ctx ctx = {0};
     struct lysp_node_choice *ch = NULL;
     const char *str;
 
+    ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
     ctx.pos_type = LY_VLOG_LINE;
@@ -1796,10 +1811,11 @@ test_case(void **state)
 {
     *state = test_case;
 
-    struct lys_parser_ctx ctx = {0};
+    struct lys_yang_parser_ctx ctx = {0};
     struct lysp_node_case *cs = NULL;
     const char *str;
 
+    ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
     ctx.pos_type = LY_VLOG_LINE;
@@ -1851,10 +1867,11 @@ test_any(void **state, enum ly_stmt kw)
 {
     *state = test_any;
 
-    struct lys_parser_ctx ctx = {0};
+    struct lys_yang_parser_ctx ctx = {0};
     struct lysp_node_anydata *any = NULL;
     const char *str;
 
+    ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
     ctx.pos_type = LY_VLOG_LINE;
@@ -1918,10 +1935,11 @@ test_grouping(void **state)
 {
     *state = test_grouping;
 
-    struct lys_parser_ctx ctx = {0};
+    struct lys_yang_parser_ctx ctx = {0};
     struct lysp_grp *grp = NULL;
     const char *str;
 
+    ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
     ctx.pos_type = LY_VLOG_LINE;
@@ -1975,11 +1993,12 @@ test_action(void **state)
 {
     *state = test_action;
 
-    struct lys_parser_ctx ctx = {0};
+    struct lys_yang_parser_ctx ctx = {0};
     struct lysp_action *rpcs = NULL;
     struct lysp_node_container *c = NULL;
     const char *str;
 
+    ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
     ctx.pos_type = LY_VLOG_LINE;
@@ -2053,11 +2072,12 @@ test_notification(void **state)
 {
     *state = test_notification;
 
-    struct lys_parser_ctx ctx = {0};
+    struct lys_yang_parser_ctx ctx = {0};
     struct lysp_notif *notifs = NULL;
     struct lysp_node_container *c = NULL;
     const char *str;
 
+    ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
     ctx.pos_type = LY_VLOG_LINE;
@@ -2114,10 +2134,11 @@ test_uses(void **state)
 {
     *state = test_uses;
 
-    struct lys_parser_ctx ctx = {0};
+    struct lys_yang_parser_ctx ctx = {0};
     struct lysp_node_uses *u = NULL;
     const char *str;
 
+    ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
     ctx.pos_type = LY_VLOG_LINE;
@@ -2165,10 +2186,11 @@ test_augment(void **state)
 {
     *state = test_augment;
 
-    struct lys_parser_ctx ctx = {0};
+    struct lys_yang_parser_ctx ctx = {0};
     struct lysp_augment *a = NULL;
     const char *str;
 
+    ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
     ctx.pos_type = LY_VLOG_LINE;
@@ -2213,10 +2235,11 @@ test_when(void **state)
 {
     *state = test_when;
 
-    struct lys_parser_ctx ctx = {0};
+    struct lys_yang_parser_ctx ctx = {0};
     struct lysp_when *w = NULL;
     const char *str;
 
+    ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
     ctx.pos_type = LY_VLOG_LINE;
@@ -2260,8 +2283,9 @@ static void
 test_value(void **state)
 {
     *state = test_value;
-    struct lys_parser_ctx ctx;
+    struct lys_yang_parser_ctx ctx;
 
+    ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
     assert_non_null(ctx.ctx);
     ctx.pos_type = LY_VLOG_LINE;

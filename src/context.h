@@ -172,7 +172,7 @@ struct ly_ctx;
                                         recursively). */
 #define LY_CTX_PREFER_SEARCHDIRS 0x20 /**< When searching for schema, prefer searchdirs instead of user callback. */
 
-/**@} contextoptions */
+/** @} contextoptions */
 
 /**
  * @brief Create libyang context.

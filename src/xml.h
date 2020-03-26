@@ -52,7 +52,7 @@ struct ly_prefix;
 struct lyxml_ns {
     char *prefix;         /* prefix of the namespace, NULL for the default namespace */
     char *uri;            /* namespace URI */
-    unsigned int depth;   /* depth level of the element to maintain the list of accessible namespace definitions */
+    uint32_t depth;       /* depth level of the element to maintain the list of accessible namespace definitions */
 };
 
 /* element tag identifier for matching opening and closing tags */
@@ -67,125 +67,58 @@ struct lyxml_elem {
  * @brief Status of the parser providing information what is expected next (which function is supposed to be called).
  */
 enum LYXML_PARSER_STATUS {
-    LYXML_ELEMENT = 0,    /* expecting XML element, call lyxml_get_element() */
-    LYXML_ELEM_CONTENT,   /* expecting content of an element, call lyxml_get_string */
-    LYXML_ATTRIBUTE,      /* expecting XML attribute, call lyxml_get_attribute() */
-    LYXML_ATTR_CONTENT,   /* expecting value of an attribute, call lyxml_get_string */
+    LYXML_ELEMENT,        /* opening XML element parsed */
+    LYXML_ELEM_CLOSE,     /* closing XML element parsed */
+    LYXML_ELEM_CONTENT,   /* XML element context parsed */
+    LYXML_ATTRIBUTE,      /* XML attribute parsed */
+    LYXML_ATTR_CONTENT,   /* XML attribute content parsed */
     LYXML_END             /* end of input data */
 };
 
-struct lyxml_context {
-    struct ly_ctx *ctx;
+struct lyxml_ctx {
+    enum LYXML_PARSER_STATUS status; /* status providing information about the last parsed object, following attributes
+                                        are filled based on it */
+    union {
+        const char *prefix; /* LYXML_ELEMENT, LYXML_ATTRIBUTE */
+        const char *value;  /* LYXML_ELEM_CONTENT, LYXML_ATTR_CONTENT */
+    };
+    union {
+        size_t prefix_len;  /* LYXML_ELEMENT, LYXML_ATTRIBUTE */
+        size_t value_len;   /* LYXML_ELEM_CONTENT, LYXML_ATTR_CONTENT */
+    };
+    union {
+        const char *name;   /* LYXML_ELEMENT, LYXML_ATTRIBUTE */
+        int ws_only;        /* LYXML_ELEM_CONTENT, LYXML_ATTR_CONTENT */
+    };
+    union {
+        size_t name_len;    /* LYXML_ELEMENT, LYXML_ATTRIBUTE */
+        int dynamic;        /* LYXML_ELEM_CONTENT, LYXML_ATTR_CONTENT */
+    };
+
+    const struct ly_ctx *ctx;
     uint64_t line;
-    enum LYXML_PARSER_STATUS status; /* status providing information about the next expected object in input data */
+    const char *input;
     struct ly_set elements; /* list of not-yet-closed elements */
-    struct ly_set ns;     /* handled with LY_SET_OPT_USEASLIST */
+    struct ly_set ns;       /* handled with LY_SET_OPT_USEASLIST */
 };
 
-/**
- * @brief Parse input expecting an XML element.
- *
- * Able to silently skip comments, PIs and CData. DOCTYPE is not parseable, so it is reported as LY_EVALID error.
- * If '<' is not found in input, LY_EINVAL is returned (but no error is logged), so it is possible to continue
- * with parsing input as text content.
- *
- * Input string is not being modified, so the returned values are not NULL-terminated, instead their length
- * is returned.
- *
- * @param[in] context XML context to track lines or store errors into libyang context.
- * @param[in,out] input Input string to process, updated according to the processed/read data.
- * @param[in] options Currently unused options to modify input processing.
- * @param[out] prefix_p Pointer to prefix if present in the element name, NULL otherwise.
- * @param[out] prefix_len_p Length of the prefix if any.
- * @param[out] name_p Element name. When LY_SUCCESS is returned but name is NULL, check context's status field:
- * - LYXML_END - end of input was reached
- * - LYXML_ELEMENT - closing element found, expecting now a sibling element so call lyxml_get_element() again
- * @param[out] name_len_p Length of the element name.
- * @return LY_ERR values.
- */
-LY_ERR lyxml_get_element(struct lyxml_context *context, const char **input, const char **prefix_p, size_t *prefix_len_p,
-                         const char **name_p, size_t *name_len_p);
+LY_ERR lyxml_ctx_new(const struct ly_ctx *ctx, const char *input, struct lyxml_ctx **xmlctx);
 
-/**
- * @brief Skip an element after its opening tag was parsed.
- *
- * @param[in] context XML context.
- * @param[in,out] input Input string to process, updated according to the read data.
- * @return LY_ERR values.
- */
-LY_ERR lyxml_skip_element(struct lyxml_context *context, const char **input);
+LY_ERR lyxml_ctx_next(struct lyxml_ctx *xmlctx);
 
-/**
- * @brief Parse input expecting an XML attribute (including XML namespace).
- *
- * Input string is not being modified, so the returned values are not NULL-terminated, instead their length
- * is returned.
- *
- * Namespace definitions are processed automatically and stored internally. To get namespace for a specific
- * prefix, use lyxml_get_ns(). This also means, that in case there are only the namespace definitions,
- * lyxml_get_attribute() can succeed, but nothing (name, prefix) is returned.
- *
- * The status member of the context is updated to provide information what the caller is supposed to call
- * after this function.
- *
- * @param[in] context XML context to track lines or store errors into libyang context.
- * @param[in,out] input Input string to process, updated according to the processed/read data so,
- * when succeeded, it points to the opening quote of the attribute's value.
- * @param[out] prefix Pointer to prefix if present in the attribute name, NULL otherwise.
- * @param[out] prefix_len Length of the prefix if any.
- * @param[out] name Attribute name. Can be NULL only in case there is actually no attribute, but namespaces.
- * @param[out] name_len Length of the element name.
- * @return LY_ERR values.
- */
-LY_ERR lyxml_get_attribute(struct lyxml_context *context, const char **input,
-                           const char **prefix, size_t *prefix_len, const char **name, size_t *name_len);
-
-/**
- * @brief Parse input as XML text (attribute's values and element's content).
- *
- * Mixed content of XML elements is not allowed. Formating whitespaces before child element are ignored,
- * LY_EINVAL is returned in such a case (output is not set, no error is printed) and input is moved
- * to the beginning of a child definition.
- *
- * In the case of attribute's values, the input string is expected to start on a quotation mark to
- * select which delimiter (single or double quote) is used. Otherwise, the element content is being
- * parsed expected to be terminated by '<' character.
- *
- * If function succeeds, the string in a dynamically allocated output buffer is always NULL-terminated.
- *
- * The dynamically allocated buffer is used only when necessary because of a character or the supported entity
- * reference which modify the input data. These constructs are replaced by their real value, so in case the output
- * string will be again printed as an XML data, it may be necessary to correctly encode such characters.
- *
- * Optionally, the buffer, buffer_size, output, length and dynamic arguments (altogether) can be NULL.
- * In such a case, the XML text in @p input is just checked, the @p input pointer is moved after the XML text, but nothing is stored.
- *
- * @param[in] context XML context to track lines or store errors into libyang context.
- * @param[in,out] input Input string to process, updated according to the processed/read data.
- * @param[in, out] buffer Storage for the output string. If the parameter points to NULL, the buffer is allocated if needed.
- * Otherwise, when needed, the buffer is used and enlarged when necessary. Whenever the buffer is used, the string is NULL-terminated.
- * @param[in, out] buffer_size Allocated size of the returned buffer. If a buffer is provided by a caller, it
- * is not being reduced even if the string is shorter. On the other hand, it can be enlarged if needed.
- * @param[out] output Returns pointer to the resulting string - to the provided/allocated buffer if it was necessary to modify
- * the input string or directly into the input string (see the \p dynamic parameter).
- * @param[out] length Length of the \p output string.
- * @param[out] dynamic Flag if a dynamically allocated memory (\p buffer) was used and caller is supposed to free it at the end.
- * In case the value is zero, the \p output points directly into the \p input string.
- * @return LY_ERR value.
- */
-LY_ERR lyxml_get_string(struct lyxml_context *context, const char **input, char **buffer, size_t *buffer_size, char **output, size_t *length, int *dynamic);
+LY_ERR lyxml_ctx_peek(struct lyxml_ctx *xmlctx, enum LYXML_PARSER_STATUS *next);
 
 /**
  * @brief Get a namespace record for the given prefix in the current context.
  *
- * @param[in] context XML context to work with.
+ * @param[in] xmlctx XML context to work with.
  * @param[in] prefix Pointer to the namespace prefix as taken from lyxml_get_attribute() or lyxml_get_element().
  * Can be NULL for default namespace.
  * @param[in] prefix_len Length of the prefix string (since it is not NULL-terminated when returned from lyxml_get_attribute() or
  * lyxml_get_element()).
  * @return The namespace record or NULL if the record for the specified prefix not found.
  */
-const struct lyxml_ns *lyxml_ns_get(struct lyxml_context *context, const char *prefix, size_t prefix_len);
+const struct lyxml_ns *lyxml_ns_get(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_len);
 
 /**
  * @brief Print the given @p text as XML string which replaces some of the characters which cannot appear in XML data.
@@ -200,20 +133,20 @@ LY_ERR lyxml_dump_text(struct lyout *out, const char *text, int attribute);
 /**
  * @brief Remove the allocated working memory of the context.
  *
- * @param[in] context XML context to clear.
+ * @param[in] xmlctx XML context to clear.
  */
-void lyxml_context_clear(struct lyxml_context *context);
+void lyxml_ctx_free(struct lyxml_ctx *xmlctx);
 
 /**
  * @brief Find all possible prefixes in a value.
  *
- * @param[in] ctx XML context to use.
+ * @param[in] xmlctx XML context to use.
  * @param[in] value Value to check.
  * @param[in] value_len Value length.
  * @param[out] val_prefs Array of found prefixes.
  * @return LY_ERR value.
  */
-LY_ERR lyxml_get_prefixes(struct lyxml_context *ctx, const char *value, size_t value_len, struct ly_prefix **val_prefs);
+LY_ERR lyxml_get_prefixes(struct lyxml_ctx *xmlctx, const char *value, size_t value_len, struct ly_prefix **val_prefs);
 
 /**
  * @brief Compare values and their prefix mappings.

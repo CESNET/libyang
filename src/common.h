@@ -304,6 +304,17 @@ extern const char *const ly_devmod_list[];
  * Generic useful functions.
  *****************************************************************************/
 
+/**
+ * @brief Insert string into dictionary.
+ *
+ * @param[in] CTX libyang context.
+ * @param[in] STRING string to store.
+ * @param[in] LEN length of the string in WORD to store.
+ * @param[in,out] DYNAMIC Set to 1 if STR is dynamically allocated, 0 otherwise. If set to 1, zerocopy version of lydict_insert is used.
+ */
+#define INSERT_STRING(CTX, STRING, LEN, DYNAMIC) \
+    (DYNAMIC ? lydict_insert_zc(CTX, (char *)(STRING)) : lydict_insert(CTX, LEN ? (STRING) : "", LEN)); DYNAMIC = 0
+
 #define FREE_STRING(CTX, STRING) if (STRING) {lydict_remove(CTX, STRING);}
 
 /**
@@ -346,7 +357,7 @@ int ly_strncmp(const char *refstr, const char *str, size_t str_len);
  * @param[out] bytes_read Number of bytes used to encode the read utf8_char.
  * @return LY_ERR value
  */
-LY_ERR ly_getutf8(const char **input, unsigned int *utf8_char, size_t *bytes_read);
+LY_ERR ly_getutf8(const char **input, uint32_t *utf8_char, size_t *bytes_read);
 
 /**
  * @brief Get number of characters in the @p str, taking multibyte characters into account.

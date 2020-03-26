@@ -513,13 +513,13 @@ main_ni(int argc, char* argv[])
         case 't':
             if (!strcmp(optarg, "auto")) {
                 autodetection = 1;
-            } else if (!strcmp(optarg, "config")) {
+            /*} else if (!strcmp(optarg, "config")) {
                 options_parser |= LYD_OPT_CONFIG;
             } else if (!strcmp(optarg, "get")) {
                 options_parser |= LYD_OPT_GET;
             } else if (!strcmp(optarg, "getconfig")) {
                 options_parser |= LYD_OPT_GETCONFIG;
-            /*} else if (!strcmp(optarg, "edit")) {
+            } else if (!strcmp(optarg, "edit")) {
                 options_parser |= LYD_OPT_EDIT;*/
             } else if (!strcmp(optarg, "data")) {
                 /* no options */

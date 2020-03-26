@@ -36,19 +36,6 @@ extern const char *const yin_attr_list[];
                       kw == LY_STMT_MUST || kw == LY_STMT_TYPE || kw == LY_STMT_UNIQUE ||         \
                       kw == LY_STMT_UNITS || kw == LY_STMT_EXTENSION_INSTANCE)
 
-/**
- * @brief insert string into dictionary and store as target.
- *
- * @param[in] CTX libyang context.
- * @param[out] TARGET variable where to store the pointer to the inserted value.
- * @param[in] DYNAMIC Set to 1 if STR is dynamically allocated, 0 otherwise. If set to 1, zerocopy version of lydict_insert is used.
- * @param[in] STR string to store.
- * @param[in] LEN length of the string in WORD to store.
- */
-#define INSERT_STRING(CTX, TARGET, DYNAMIC, STR, LEN) \
-    if (DYNAMIC) {(TARGET) = lydict_insert_zc(CTX, STR);} \
-    else {(TARGET) = lydict_insert(CTX, LEN ? STR : "", LEN);}
-
 enum yin_argument {
     YIN_ARG_UNKNOWN = 0,   /**< parsed argument can not be matched with any supported yin argument keyword */
     YIN_ARG_NAME,          /**< argument name */
@@ -61,19 +48,6 @@ enum yin_argument {
     YIN_ARG_DATE,          /**< argument data */
     YIN_ARG_TAG,           /**< argument tag */
     YIN_ARG_NONE,          /**< empty (special value) */
-};
-
-/**
- * @brief structure to store instance of xml attribute
- */
-struct yin_arg_record {
-    const char *prefix;   /**< start of prefix */
-    size_t prefix_len;    /**< length of prefix */
-    const char *name;     /**< start of name */
-    size_t name_len;      /**< length of name */
-    char *content;        /**< start of content */
-    size_t content_len;   /**< length of content */
-    int dynamic_content;  /**< is set to 1 iff content is dynamically allocated 0 otherwise */
 };
 
 /* flags to set constraints of subelements */
@@ -156,16 +130,14 @@ enum yin_argument yin_match_argument_name(const char *name, size_t len);
  * @param[in,out] ctx Yin parser context for logging and to store current state.
  * @param[in] subelem_info array of valid subelement types and meta information
  * @param[in] subelem_info_size Size of subelem_info array.
- * @param[in,out] data Data to read from, always moved to currently handled character.
  * @param[in] current_element Type of current element.
  * @param[out] text_content Where the text content of element should be stored if any. Text content is ignored if set to NULL.
  * @param[in,out] exts Extension instance to add to. Can be set to null if element cannot have extension as subelements.
  *
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *subelem_info, size_t subelem_info_size,
-                         const char **data, enum ly_stmt current_element, const char **text_content,
-                         struct lysp_ext_instance **exts);
+LY_ERR yin_parse_content(struct lys_yin_parser_ctx *ctx, struct yin_subelement *subelem_info, size_t subelem_info_size,
+                         enum ly_stmt current_element, const char **text_content, struct lysp_ext_instance **exts);
 
 /**
  * @brief Check that val is valid UTF8 character sequence of val_type.
@@ -173,12 +145,10 @@ LY_ERR yin_parse_content(struct yin_parser_ctx *ctx, struct yin_subelement *sube
  *
  * @param[in] ctx Yin parser context for logging.
  * @param[in] val_type Type of the input string to select method of checking character validity.
- * @param[in] val Input to validate.
- * @param[in] len Length of input.
  *
  * @return LY_ERR values.
  */
-LY_ERR yin_validate_value(struct yin_parser_ctx *ctx, enum yang_arg val_type, char *val, size_t len);
+LY_ERR yin_validate_value(struct lys_yin_parser_ctx *ctx, enum yang_arg val_type);
 
 /**
  * @brief Match yang keyword from yin data.
@@ -192,91 +162,52 @@ LY_ERR yin_validate_value(struct yin_parser_ctx *ctx, enum yang_arg val_type, ch
  *
  * @return yang_keyword values.
  */
-enum ly_stmt yin_match_keyword(struct yin_parser_ctx *ctx, const char *name, size_t name_len,
+enum ly_stmt yin_match_keyword(struct lys_yin_parser_ctx *ctx, const char *name, size_t name_len,
                                const char *prefix, size_t prefix_len, enum ly_stmt parrent);
-
-/**
- * @brief Load all attributes of element into ([sized array](@ref sizedarrays)). Caller is suposed to free the array.
- *
- * @param[in,out] ctx Yin parser context for logging and to store current state.
- * @param[in,out] data Data to read from, always moved to currently handled character.
- * @param[out] attrs ([Sized array](@ref sizedarrays)) of attributes.
- *
- * @return LY_ERR values.
- */
-LY_ERR yin_load_attributes(struct yin_parser_ctx *ctx, const char **data, struct yin_arg_record **attrs);
 
 /**
  * @brief Parse instance of extension.
  *
  * @param[in,out] ctx Yin parser context for logging and to store current state.
- * @param[in] attrs [Sized array](@ref sizedarrays) of attributes of extension instance.
- * @param[in,out] data Data to read from, always moved to currently handled character.
- * @param[in] name Name of the extension element.
- * @param[in] name_len Length of extension name.
- * @param[in] prefix Prefix of extension name.
- * @param[in] prefix_len Length of extension prefix.
  * @param[in] subelem Type of the keyword this extension instance is a subelement of.
  * @param[in] subelem_index Index of the keyword instance this extension instance is a subelement of
  * @param[in,out] exts Extension instance to add to.
  *
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_extension_instance(struct yin_parser_ctx *ctx, struct yin_arg_record *attrs, const char **data,
-                                    const char *ext_name, size_t ext_name_len, const char *ext_prefix, size_t ext_prefix_len,
-                                    LYEXT_SUBSTMT subelem, uint32_t subelem_index, struct lysp_ext_instance **exts);
+LY_ERR yin_parse_extension_instance(struct lys_yin_parser_ctx *ctx, LYEXT_SUBSTMT subelem, uint32_t subelem_index,
+                                    struct lysp_ext_instance **exts);
 
 /**
  * @brief Parse yin element into generic structure.
  *
- * @param[in,out] ctx Yin parser context for logging and to store current state.
- * @param[in] name Name of element.
- * @param[in] name_len Length of elements Name.
- * @param[in] prefix Prefix of element.
- * @param[in] prefix_len Length of elements prefix.
+ * @param[in,out] ctx Yin parser context for XML context, logging, and to store current state.
  * @param[in] parent Identification of parent element.
- * @param[in,out] data Data to read from, always moved to currently handled character.
  * @param[out] element Where the element structure should be stored.
  *
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_element_generic(struct yin_parser_ctx *ctx, const char *name, size_t name_len, const char *prefix,
-                                 size_t prefix_len, enum ly_stmt parent, const char **data, struct lysp_stmt **element);
+LY_ERR yin_parse_element_generic(struct lys_yin_parser_ctx *ctx, enum ly_stmt parent, struct lysp_stmt **element);
 
 /**
  * @brief Parse module element.
  *
  * @param[in,out] ctx Yin parser context for logging and to store current state.
- * @param[in] mod_attrs Attributes of module element.
- * @param[in,out] data Data to read from.
  * @param[out] mod Parsed module structure.
  *
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_mod(struct yin_parser_ctx *ctx, struct yin_arg_record *mod_attrs,
-                     const char **data, struct lysp_module *mod);
-
+LY_ERR yin_parse_mod(struct lys_yin_parser_ctx *ctx, struct lysp_module *mod);
 
 /**
  * @brief Parse submodule element.
  *
  * @param[in,out] ctx Yin parser context for logging and to store current state.
  * @param[in] mod_attrs Attributes of submodule element.
- * @param[in,out] data Data to read from.
  * @param[out] submod Parsed submodule structure.
  *
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_submod(struct yin_parser_ctx *ctx, struct yin_arg_record *mod_attrs,
-                        const char **data, struct lysp_submodule *submod);
-
-/**
- * @brief free argument record, content loaded from lyxml_get_string() can be
- * dynamically allocated in some cases so it must be also freed.
- *
- * @param ctx unused just to fulfill signature of callback for FREE_ARRAY.
- * @param[in] record Record to free.
- */
-void free_arg_rec(struct yin_parser_ctx *ctx, struct yin_arg_record *record);
+LY_ERR yin_parse_submod(struct lys_yin_parser_ctx *ctx, struct lysp_submodule *submod);
 
 #endif /* LY_PARSER_YIN_H_*/

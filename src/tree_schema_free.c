@@ -953,7 +953,7 @@ lysc_extension_instance_free(struct ly_ctx *ctx, struct lysc_ext_substmt *substm
 }
 
 void
-lys_parser_ctx_free(struct lys_parser_ctx *ctx)
+yang_parser_ctx_free(struct lys_yang_parser_ctx *ctx)
 {
     if (ctx) {
         free(ctx);
@@ -961,10 +961,10 @@ lys_parser_ctx_free(struct lys_parser_ctx *ctx)
 }
 
 void
-yin_parser_ctx_free(struct yin_parser_ctx *ctx)
+yin_parser_ctx_free(struct lys_yin_parser_ctx *ctx)
 {
     if (ctx) {
-        lyxml_context_clear(&ctx->xml_ctx);
+        lyxml_ctx_free(ctx->xmlctx);
         free(ctx);
     }
 }

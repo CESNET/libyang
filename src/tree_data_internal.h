@@ -271,13 +271,11 @@ LY_ERR lyd_parse_xml_data(struct ly_ctx *ctx, const char *data, int options, str
  *
  * @param[in] ctx libyang context.
  * @param[in] data Pointer to the XML data to parse.
- * @param[out] tree Parsed RPC/action data tree.
- * @param[out] attr Any found attributes on the rpc envelope.
+ * @param[out] tree Parsed full RPC/action tree.
  * @param[out] op Pointer to the actual operation. Useful mainly for action.
  * @return LY_ERR value.
  */
-LY_ERR lyd_parse_xml_rpc(struct ly_ctx *ctx, const char *data, struct lyd_node **tree, struct ly_attr **attr,
-                         struct lyd_node **op);
+//LY_ERR lyd_parse_xml_rpc(struct ly_ctx *ctx, const char *data, struct lyd_node **tree, struct lyd_node **op);
 
 /**
  * @defgroup datahash Data nodes hash manipulation

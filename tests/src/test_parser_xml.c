@@ -62,10 +62,11 @@ setup(void **state)
             "list l1 { key \"a b c\"; leaf a {type string;} leaf b {type string;} leaf c {type int16;} leaf d {type string;}}"
             "leaf foo { type string;}"
             "container c { leaf x {type string;}}"
-            "container cp {presence \"container switch\"; leaf y {type string;}}"
+            "container cp {presence \"container switch\"; leaf y {type string;} leaf z {type int8;}}"
             "anydata any {config false;}"
             "leaf foo2 { type string; default \"default-val\"; }"
             "leaf foo3 { type uint32; }}";
+    const struct lys_module *mod;
 
 #if ENABLE_LOGGER_CHECKING
     ly_set_log_clb(logger, 1);
@@ -73,6 +74,8 @@ setup(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_DIR_MODULES_YANG, 0, &ctx));
     assert_non_null(ly_ctx_load_module(ctx, "ietf-netconf-with-defaults", "2011-06-01"));
+    assert_non_null((mod = ly_ctx_load_module(ctx, "ietf-netconf", "2011-06-01")));
+    assert_int_equal(LY_SUCCESS, lys_feature_enable(mod, "writable-running"));
     assert_non_null(lys_parse_mem(ctx, schema_a, LYS_IN_YANG));
 
     return 0;
@@ -368,6 +371,49 @@ test_opaq(void **state)
     *state = NULL;
 }
 
+static void
+test_rpc(void **state)
+{
+    *state = test_rpc;
+
+    const char *data;
+    char *str;
+    struct lyd_node *tree, *op;
+
+    data =
+        "<rpc xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" msgid=\"25\" custom-attr=\"val\">"
+            "<edit-config>"
+                "<target>"
+                    "<running/>"
+                    "<config xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\">"
+                        "<l1 xmlns=\"urn:tests:a\" nc:operation=\"replace\">"
+                            "<a>val_a</a>"
+                            "<b>val_b</b>"
+                            "<c>val_c</c>"
+                        "</l1>"
+                        "<cp xmlns=\"urn:tests:a\">"
+                            "<z nc:operation=\"delete\"/>"
+                        "</cp>"
+                    "</config>"
+                "</target>"
+            "</edit-config>"
+        "</rpc>";
+    //assert_int_equal(LY_SUCCESS, lyd_parse_xml_rpc(ctx, data, &tree, &op));
+    assert_non_null(tree);
+    assert_null(tree->schema);
+    assert_string_equal(((struct lyd_node_opaq *)tree)->name, "foo3");
+    assert_string_equal(((struct lyd_node_opaq *)tree)->value, "");
+
+    lyd_print_mem(&str, tree, LYD_XML, 0);
+    assert_string_equal(str, "<foo3 xmlns=\"urn:tests:a\"/>");
+    free(str);
+    lyd_free_all(tree);
+
+    /* wrong namespace, element name, whatever... */
+
+    *state = NULL;
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -376,6 +422,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_list, setup, teardown),
         cmocka_unit_test_setup_teardown(test_container, setup, teardown),
         cmocka_unit_test_setup_teardown(test_opaq, setup, teardown),
+        //cmocka_unit_test_setup_teardown(test_rpc, setup, teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
