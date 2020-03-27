@@ -344,6 +344,22 @@ setup(void **state)
                 "}"
             "}"
         "}";
+    const char *schema_i =
+        "module i {"
+            "namespace urn:tests:i;"
+            "prefix i;"
+            "yang-version 1.1;"
+
+            "container cont {"
+                "leaf l {"
+                    "type string;"
+                "}"
+                "leaf l2 {"
+                    "must \"../l = 'right'\";"
+                    "type string;"
+                "}"
+            "}"
+        "}";
 
 #if ENABLE_LOGGER_CHECKING
     ly_set_log_clb(logger, 1);
@@ -359,6 +375,7 @@ setup(void **state)
     assert_non_null(lys_parse_mem(ctx, schema_f, LYS_IN_YANG));
     assert_non_null(lys_parse_mem(ctx, schema_g, LYS_IN_YANG));
     assert_non_null(lys_parse_mem(ctx, schema_h, LYS_IN_YANG));
+    assert_non_null(lys_parse_mem(ctx, schema_i, LYS_IN_YANG));
 
     return 0;
 }
@@ -1202,7 +1219,7 @@ test_iffeature(void **state)
 static void
 test_state(void **state)
 {
-    *state = test_iffeature;
+    *state = test_state;
 
     const char *data;
     struct lyd_node *tree;
@@ -1232,6 +1249,35 @@ test_state(void **state)
     *state = NULL;
 }
 
+static void
+test_must(void **state)
+{
+    *state = test_must;
+
+    const char *data;
+    struct lyd_node *tree;
+
+    data =
+    "<cont xmlns=\"urn:tests:i\">"
+        "<l>wrong</l>"
+        "<l2>val</l2>"
+    "</cont>";
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_null(tree);
+    logbuf_assert("Must condition \"../l = 'right'\" not satisfied. /i:cont/l2");
+
+    data =
+    "<cont xmlns=\"urn:tests:i\">"
+        "<l>right</l>"
+        "<l2>val</l2>"
+    "</cont>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_non_null(tree);
+    lyd_free_tree(tree);
+
+    *state = NULL;
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1244,7 +1290,7 @@ int main(void)
         cmocka_unit_test_teardown(test_defaults, teardown_s),
         cmocka_unit_test_teardown(test_iffeature, teardown_s),
         cmocka_unit_test_teardown(test_state, teardown_s),
-        //cmocka_unit_test_teardown(test_edit, teardown_s),
+        cmocka_unit_test_teardown(test_must, teardown_s),
     };
 
     return cmocka_run_group_tests(tests, setup, teardown);

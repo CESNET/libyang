@@ -272,7 +272,7 @@ LY_ERR lyd_parse_xml_data(const struct ly_ctx *ctx, const char *data, int option
  * @param[in] ctx libyang context.
  * @param[in] data Pointer to the XML data to parse.
  * @param[out] tree Parsed full RPC/action tree.
- * @param[out] op Pointer to the actual operation. Useful mainly for action.
+ * @param[out] op Optional pointer to the actual operation. Useful mainly for action.
  * @return LY_ERR value.
  */
 LY_ERR lyd_parse_xml_rpc(const struct ly_ctx *ctx, const char *data, struct lyd_node **tree, struct lyd_node **op);
@@ -286,7 +286,7 @@ LY_ERR lyd_parse_xml_rpc(const struct ly_ctx *ctx, const char *data, struct lyd_
  * @param[in] ctx libyang context.
  * @param[in] data Pointer to the XML data to parse.
  * @param[out] tree Parsed full notification tree.
- * @param[out] op Pointer to the actual notification. Useful mainly for nested notifications.
+ * @param[out] op Optional pointer to the actual notification. Useful mainly for nested notifications.
  * @return LY_ERR value.
  */
 LY_ERR lyd_parse_xml_notif(const struct ly_ctx *ctx, const char *data, struct lyd_node **tree, struct lyd_node **ntf);

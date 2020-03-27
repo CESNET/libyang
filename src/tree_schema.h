@@ -1442,7 +1442,8 @@ struct lysc_node {
     uint16_t nodetype;               /**< type of the node (mandatory) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     struct lys_module *module;       /**< module structure */
-    struct lysp_node *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
+    struct lysp_node *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or
+                                          in case of implicit case node. */
     struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
     struct lysc_node *next;          /**< next sibling node (NULL if there is no one) */
     struct lysc_node *prev;          /**< pointer to the previous sibling node \note Note that this pointer is

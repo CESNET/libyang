@@ -116,7 +116,7 @@ lyd_validate_when(struct lyd_node **tree, struct lyd_node *node, struct lysc_whe
             lyd_free_tree(node);
         } else {
             /* invalid data */
-            LOGVAL(node->schema->module->ctx, LY_VLOG_LYD, node, LY_VCODE_NOWHEN, when->cond->expr);
+            LOGVAL(LYD_NODE_CTX(node), LY_VLOG_LYD, node, LY_VCODE_NOWHEN, when->cond->expr);
             ret = LY_EVALID;
         }
     } else {
@@ -792,6 +792,71 @@ lyd_validate_obsolete(const struct lyd_node *node)
     } while (snode && (snode->nodetype & (LYS_CHOICE | LYS_CASE)));
 }
 
+static LY_ERR
+lyd_validate_must(const struct lyd_node *node)
+{
+    struct lyxp_set xp_set;
+    struct lysc_must *musts;
+    const struct lyd_node *tree;
+    uint32_t u;
+
+    switch (node->schema->nodetype) {
+    case LYS_CONTAINER:
+        musts = ((struct lysc_node_container *)node->schema)->musts;
+        break;
+    case LYS_LEAF:
+        musts = ((struct lysc_node_leaf *)node->schema)->musts;
+        break;
+    case LYS_LEAFLIST:
+        musts = ((struct lysc_node_leaflist *)node->schema)->musts;
+        break;
+    case LYS_LIST:
+        musts = ((struct lysc_node_list *)node->schema)->musts;
+        break;
+    case LYS_ANYXML:
+    case LYS_ANYDATA:
+        musts = ((struct lysc_node_anydata *)node->schema)->musts;
+        break;
+    case LYS_NOTIF:
+        musts = ((struct lysc_notif *)node->schema)->musts;
+        break;
+    case LYS_RPC:
+    case LYS_ACTION:
+        musts = ((struct lysc_action *)node->schema)->input.musts;
+        break;
+    default:
+        LOGINT(LYD_NODE_CTX(node));
+        return LY_EINT;
+    }
+
+    if (!musts) {
+        /* no must to evaluate */
+        return LY_SUCCESS;
+    }
+
+    /* find first top-level node */
+    for (tree = node; tree->parent; tree = (struct lyd_node *)tree->parent);
+    while (tree->prev->next) {
+        tree = tree->prev;
+    }
+
+    LY_ARRAY_FOR(musts, u) {
+        memset(&xp_set, 0, sizeof xp_set);
+
+        /* evaluate must */
+        LY_CHECK_RET(lyxp_eval(musts[u].cond, LYD_SCHEMA, musts[u].module, node, LYXP_NODE_ELEM, tree, &xp_set, LYXP_SCHEMA));
+
+        /* check the result */
+        lyxp_set_cast(&xp_set, LYXP_SET_BOOLEAN);
+        if (!xp_set.val.bool) {
+            LOGVAL(LYD_NODE_CTX(node), LY_VLOG_LYD, node, LY_VCODE_NOMUST, musts[u].cond->expr);
+            return LY_EVALID;
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
 LY_ERR
 lyd_validate_siblings_r(struct lyd_node *first, const struct lysc_node *sparent, const struct lys_module *mod,
                         int val_opts)
@@ -821,8 +886,9 @@ lyd_validate_siblings_r(struct lyd_node *first, const struct lysc_node *sparent,
             return LY_EVALID;
         }
 
-        /* TODO node's must */
-        /* TODO list all keys existence (take LYD_OPT_EMPTY_INST into consideration) */
+        /* node's musts */
+        LY_CHECK_RET(lyd_validate_must(node));
+
         /* node value including if-feature is checked by plugins */
     }
 

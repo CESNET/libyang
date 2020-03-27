@@ -843,7 +843,9 @@ lyd_parse_xml_rpc(const struct ly_ctx *ctx, const char *data, struct lyd_node **
     lydctx.options = LYD_OPT_PARSE_ONLY | LYD_OPT_STRICT;
     lydctx.int_opts = LYD_INTOPT_RPC;
     *tree = NULL;
-    *op = NULL;
+    if (op) {
+        *op = NULL;
+    }
 
     /* parse "rpc", if any */
     LY_CHECK_GOTO(ret = lydxml_envelope(lydctx.xmlctx, "rpc", "urn:ietf:params:xml:ns:netconf:base:1.0", &rpc_e), cleanup);
@@ -895,7 +897,9 @@ lyd_parse_xml_rpc(const struct ly_ctx *ctx, const char *data, struct lyd_node **
         LY_CHECK_GOTO(ret = lyxml_ctx_next(lydctx.xmlctx), cleanup);
     }
 
-    *op = lydctx.op_ntf;
+    if (op) {
+        *op = lydctx.op_ntf;
+    }
     assert(*tree);
     if (act_e) {
         /* connect to the action */
@@ -917,7 +921,6 @@ cleanup:
         lyd_free_tree(act_e);
         lyd_free_tree(rpc_e);
         *tree = NULL;
-        *op = NULL;
     }
     return ret;
 }
@@ -1024,7 +1027,9 @@ lyd_parse_xml_notif(const struct ly_ctx *ctx, const char *data, struct lyd_node 
     lydctx.options = LYD_OPT_PARSE_ONLY | LYD_OPT_STRICT;
     lydctx.int_opts = LYD_INTOPT_NOTIF;
     *tree = NULL;
-    *ntf = NULL;
+    if (ntf) {
+        *ntf = NULL;
+    }
 
     /* parse "notification" and "eventTime", if present */
     LY_CHECK_GOTO(ret = lydxml_notif_envelope(lydctx.xmlctx, &ntf_e), cleanup);
@@ -1051,7 +1056,9 @@ lyd_parse_xml_notif(const struct ly_ctx *ctx, const char *data, struct lyd_node 
         LY_CHECK_GOTO(ret = lyxml_ctx_next(lydctx.xmlctx), cleanup);
     }
 
-    *ntf = lydctx.op_ntf;
+    if (ntf) {
+        *ntf = lydctx.op_ntf;
+    }
     assert(*tree);
     if (ntf_e) {
         /* connect to the notification */
@@ -1067,7 +1074,6 @@ cleanup:
         lyd_free_all(*tree);
         lyd_free_tree(ntf_e);
         *tree = NULL;
-        *ntf = NULL;
     }
     return ret;
 }

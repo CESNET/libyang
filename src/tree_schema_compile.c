@@ -3558,7 +3558,7 @@ lys_compile_action(struct lysc_ctx *ctx, struct lysp_action *action_p,
 
     /* status - it is not inherited by specification, but it does not make sense to have
      * current in deprecated or deprecated in obsolete, so we do print warning and inherit status */
-   LY_CHECK_RET(lys_compile_status(ctx, &action->flags, uses_status ? uses_status : (parent ? parent->flags : 0)));
+    LY_CHECK_RET(lys_compile_status(ctx, &action->flags, uses_status ? uses_status : (parent ? parent->flags : 0)));
 
     DUP_STRING(ctx->ctx, action_p->name, action->name);
     DUP_STRING(ctx->ctx, action_p->dsc, action->dsc);
@@ -6092,7 +6092,7 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p)
                             COMPILE_ARRAY_GOTO(ctx, d_add->musts, ((struct lysc_action*)devs[u]->target)->input.musts,
                                                x, lys_compile_must, ret, cleanup);
                             break;
-                        } else  if (devs[u]->flags & LYSC_OPT_RPC_OUTPUT) {
+                        } else if (devs[u]->flags & LYSC_OPT_RPC_OUTPUT) {
                             COMPILE_ARRAY_GOTO(ctx, d_add->musts, ((struct lysc_action*)devs[u]->target)->output.musts,
                                                x, lys_compile_must, ret, cleanup);
                             break;
