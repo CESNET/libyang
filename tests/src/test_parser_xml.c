@@ -61,11 +61,16 @@ setup(void **state)
     const char *schema_a = "module a {namespace urn:tests:a;prefix a;yang-version 1.1;"
             "list l1 { key \"a b c\"; leaf a {type string;} leaf b {type string;} leaf c {type int16;} leaf d {type string;}}"
             "leaf foo { type string;}"
-            "container c { leaf x {type string;}}"
+            "container c {"
+                "leaf x {type string;}"
+                "action act { input { leaf al {type string;} } }"
+                "notification n1 { leaf nl {type string;} }"
+            "}"
             "container cp {presence \"container switch\"; leaf y {type string;} leaf z {type int8;}}"
             "anydata any {config false;}"
             "leaf foo2 { type string; default \"default-val\"; }"
-            "leaf foo3 { type uint32; }}";
+            "leaf foo3 { type uint32; }"
+            "notification n2;}";
     const struct lys_module *mod;
 
 #if ENABLE_LOGGER_CHECKING
@@ -447,6 +452,124 @@ test_rpc(void **state)
     lyd_free_all(tree);
 
     /* wrong namespace, element name, whatever... */
+    /* TODO */
+
+    *state = NULL;
+}
+
+static void
+test_action(void **state)
+{
+    *state = test_action;
+
+    const char *data;
+    char *str;
+    struct lyd_node *tree, *op;
+    const struct lyd_node *node;
+
+    data =
+        "<rpc xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" msgid=\"25\" custom-attr=\"val\">"
+            "<action xmlns=\"urn:ietf:params:xml:ns:yang:1\">"
+                "<c xmlns=\"urn:tests:a\">"
+                    "<act>"
+                        "<al>value</al>"
+                    "</act>"
+                "</c>"
+            "</action>"
+        "</rpc>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_rpc(ctx, data, &tree, &op));
+
+    assert_non_null(op);
+    assert_string_equal(op->schema->name, "act");
+
+    assert_non_null(tree);
+    assert_null(tree->schema);
+    assert_string_equal(((struct lyd_node_opaq *)tree)->name, "rpc");
+    assert_non_null(((struct lyd_node_opaq *)tree)->attr);
+    node = lyd_node_children(tree);
+    assert_null(node->schema);
+    assert_string_equal(((struct lyd_node_opaq *)node)->name, "action");
+    assert_null(((struct lyd_node_opaq *)node)->attr);
+
+    lyd_print_mem(&str, tree, LYD_XML, 0);
+    assert_string_equal(str,
+        "<rpc xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" msgid=\"25\" custom-attr=\"val\">"
+            "<action xmlns=\"urn:ietf:params:xml:ns:yang:1\">"
+                "<c xmlns=\"urn:tests:a\">"
+                    "<act>"
+                        "<al>value</al>"
+                    "</act>"
+                "</c>"
+            "</action>"
+        "</rpc>");
+    free(str);
+    lyd_free_all(tree);
+
+    /* wrong namespace, element name, whatever... */
+    /* TODO */
+
+    *state = NULL;
+}
+
+static void
+test_notification(void **state)
+{
+    *state = test_notification;
+
+    const char *data;
+    char *str;
+    struct lyd_node *tree, *ntf;
+    const struct lyd_node *node;
+
+    data =
+        "<notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\">"
+            "<eventTime>2037-07-08T00:01:00Z</eventTime>"
+            "<c xmlns=\"urn:tests:a\">"
+                "<n1>"
+                    "<nl>value</nl>"
+                "</n1>"
+            "</c>"
+        "</notification>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_notif(ctx, data, &tree, &ntf));
+
+    assert_non_null(ntf);
+    assert_string_equal(ntf->schema->name, "n1");
+
+    assert_non_null(tree);
+    assert_null(tree->schema);
+    assert_string_equal(((struct lyd_node_opaq *)tree)->name, "notification");
+    assert_null(((struct lyd_node_opaq *)tree)->attr);
+    node = lyd_node_children(tree);
+    assert_null(node->schema);
+    assert_string_equal(((struct lyd_node_opaq *)node)->name, "eventTime");
+    assert_string_equal(((struct lyd_node_opaq *)node)->value, "2037-07-08T00:01:00Z");
+    assert_null(((struct lyd_node_opaq *)node)->attr);
+    node = node->next;
+    assert_non_null(node->schema);
+    assert_string_equal(node->schema->name, "c");
+
+    lyd_print_mem(&str, tree, LYD_XML, 0);
+    assert_string_equal(str, data);
+    free(str);
+    lyd_free_all(tree);
+
+    /* top-level notif without envelope */
+    data = "<n2 xmlns=\"urn:tests:a\"/>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_notif(ctx, data, &tree, &ntf));
+
+    assert_non_null(ntf);
+    assert_string_equal(ntf->schema->name, "n2");
+
+    assert_non_null(tree);
+    assert_ptr_equal(ntf, tree);
+
+    lyd_print_mem(&str, tree, LYD_XML, 0);
+    assert_string_equal(str, data);
+    free(str);
+    lyd_free_all(tree);
+
+    /* wrong namespace, element name, whatever... */
+    /* TODO */
 
     *state = NULL;
 }
@@ -460,6 +583,8 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_container, setup, teardown),
         cmocka_unit_test_setup_teardown(test_opaq, setup, teardown),
         cmocka_unit_test_setup_teardown(test_rpc, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_action, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_notification, setup, teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

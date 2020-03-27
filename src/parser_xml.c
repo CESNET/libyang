@@ -921,3 +921,153 @@ cleanup:
     }
     return ret;
 }
+
+static LY_ERR
+lydxml_notif_envelope(struct lyxml_ctx *xmlctx, struct lyd_node **envp)
+{
+    LY_ERR ret = LY_SUCCESS;
+    const struct lyxml_ns *ns = NULL;
+    struct ly_attr *attr = NULL;
+    struct lyd_node *et;
+    const char *prefix;
+    size_t prefix_len;
+
+    *envp = NULL;
+
+    /* container envelope */
+    LY_CHECK_GOTO(ret = lydxml_envelope(xmlctx, "notification", "urn:ietf:params:xml:ns:netconf:notification:1.0",
+                                        envp), cleanup);
+
+    /* no envelope, fine */
+    if (!*envp) {
+        goto cleanup;
+    }
+
+    /* child "eventTime" */
+    if ((xmlctx->status != LYXML_ELEMENT) || ly_strncmp("eventTime", xmlctx->name, xmlctx->name_len)) {
+        LOGVAL(xmlctx->ctx, LY_VLOG_LINE, &xmlctx->line, LYVE_REFERENCE, "Missing the \"eventTime\" element.");
+        ret = LY_EVALID;
+        goto cleanup;
+    }
+
+    prefix = xmlctx->prefix;
+    prefix_len = xmlctx->prefix_len;
+    ns = lyxml_ns_get(xmlctx, prefix, prefix_len);
+    if (!ns) {
+        LOGVAL(xmlctx->ctx, LY_VLOG_LINE, &xmlctx->line, LYVE_REFERENCE, "Unknown XML prefix \"%.*s\".",
+               prefix_len, prefix);
+        ret = LY_EVALID;
+        goto cleanup;
+    } else if (strcmp(ns->uri, "urn:ietf:params:xml:ns:netconf:notification:1.0")) {
+        LOGVAL(xmlctx->ctx, LY_VLOG_LINE, &xmlctx->line, LYVE_REFERENCE, "Invalid namespace \"%s\" of \"eventTime\".",
+               ns->uri);
+        ret = LY_EVALID;
+        goto cleanup;
+    }
+
+    LY_CHECK_RET(lyxml_ctx_next(xmlctx));
+
+    /* create attributes */
+    if (xmlctx->status == LYXML_ATTRIBUTE) {
+        LY_CHECK_RET(lydxml_attrs(xmlctx, &attr));
+    }
+
+    /* validate value */
+    /* TODO */
+    /*if (!xmlctx->ws_only) {
+        LOGVAL(xmlctx->ctx, LY_VLOG_LINE, &xmlctx->line, LYVE_SYNTAX, "Unexpected value \"%.*s\" in the \"%s\" element.",
+               xmlctx->value_len, xmlctx->value, name);
+        ret = LY_EVALID;
+        goto cleanup;
+    }*/
+
+    /* create node */
+    ret = lyd_create_opaq(xmlctx->ctx, "eventTime", 9, xmlctx->value, xmlctx->value_len, NULL, LYD_XML, NULL,
+                          prefix, prefix_len, ns->uri, &et);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* assign atributes */
+    ((struct lyd_node_opaq *)et)->attr = attr;
+    attr = NULL;
+
+    /* insert */
+    lyd_insert_node(*envp, NULL, et);
+
+    /* finish parsing */
+    LY_CHECK_GOTO(ret = lyxml_ctx_next(xmlctx), cleanup);
+    if (xmlctx->status != LYXML_ELEM_CLOSE) {
+        assert(xmlctx->status == LYXML_ELEMENT);
+        LOGVAL(xmlctx->ctx, LY_VLOG_LINE, &xmlctx->line, LYVE_SYNTAX, "Unexpected sibling element \"%.*s\" of \"eventTime\".",
+               xmlctx->name_len, xmlctx->name);
+        ret = LY_EVALID;
+        goto cleanup;
+    }
+    LY_CHECK_GOTO(ret = lyxml_ctx_next(xmlctx), cleanup);
+
+cleanup:
+    if (ret) {
+        lyd_free_tree(*envp);
+        ly_free_attr(xmlctx->ctx, attr, 1);
+    }
+    return ret;
+}
+
+LY_ERR
+lyd_parse_xml_notif(const struct ly_ctx *ctx, const char *data, struct lyd_node **tree, struct lyd_node **ntf)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lyd_xml_ctx lydctx = {0};
+    struct lyd_node *ntf_e = NULL;
+
+    /* init */
+    LY_CHECK_GOTO(ret = lyxml_ctx_new(ctx, data, &lydctx.xmlctx), cleanup);
+    lydctx.options = LYD_OPT_PARSE_ONLY | LYD_OPT_STRICT;
+    lydctx.int_opts = LYD_INTOPT_NOTIF;
+    *tree = NULL;
+    *ntf = NULL;
+
+    /* parse "notification" and "eventTime", if present */
+    LY_CHECK_GOTO(ret = lydxml_notif_envelope(lydctx.xmlctx, &ntf_e), cleanup);
+
+    /* parse the rest of data normally */
+    LY_CHECK_GOTO(ret = lydxml_data_r(&lydctx, NULL, tree), cleanup);
+
+    /* make sure we have parsed some notification */
+    if (!lydctx.op_ntf) {
+        LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_DATA, "Missing the \"notification\" node.");
+        ret = LY_EVALID;
+        goto cleanup;
+    }
+
+    /* finish XML parsing */
+    if (ntf_e) {
+        if (lydctx.xmlctx->status != LYXML_ELEM_CLOSE) {
+            assert(lydctx.xmlctx->status == LYXML_ELEMENT);
+            LOGVAL(ctx, LY_VLOG_LINE, &lydctx.xmlctx->line, LYVE_SYNTAX, "Unexpected sibling element \"%.*s\" of \"notification\".",
+                   lydctx.xmlctx->name_len, lydctx.xmlctx->name);
+            ret = LY_EVALID;
+            goto cleanup;
+        }
+        LY_CHECK_GOTO(ret = lyxml_ctx_next(lydctx.xmlctx), cleanup);
+    }
+
+    *ntf = lydctx.op_ntf;
+    assert(*tree);
+    if (ntf_e) {
+        /* connect to the notification */
+        lyd_insert_node(ntf_e, NULL, *tree);
+        *tree = ntf_e;
+    }
+
+cleanup:
+    /* we have used parse_only flag */
+    assert(!lydctx.unres_node_type.count && !lydctx.unres_meta_type.count && !lydctx.when_check.count);
+    lyxml_ctx_free(lydctx.xmlctx);
+    if (ret) {
+        lyd_free_all(*tree);
+        lyd_free_tree(ntf_e);
+        *tree = NULL;
+        *ntf = NULL;
+    }
+    return ret;
+}

@@ -264,7 +264,7 @@ LY_ERR lyd_parse_xml_data(const struct ly_ctx *ctx, const char *data, int option
  * @brief Parse XML string as YANG RPC/action invocation.
  *
  * Optional \<rpc\> envelope element, if present, is [checked](https://tools.ietf.org/html/rfc6241#section-4.1) and all
- * its XML attributes returned. In that case an RPC is expected to be parsed.
+ * its XML attributes parsed. In that case an RPC is expected to be parsed.
  *
  * Can be followed by optional \<action\> envelope element, which is also
  * [checked](https://tools.ietf.org/html/rfc7950#section-7.15.2) and then an action is expected to be parsed.
@@ -276,6 +276,20 @@ LY_ERR lyd_parse_xml_data(const struct ly_ctx *ctx, const char *data, int option
  * @return LY_ERR value.
  */
 LY_ERR lyd_parse_xml_rpc(const struct ly_ctx *ctx, const char *data, struct lyd_node **tree, struct lyd_node **op);
+
+/**
+ * @brief Parse XML string as YANG notification.
+ *
+ * Optional \<notification\> envelope element, if present, is [checked](https://tools.ietf.org/html/rfc5277#page-25)
+ * and parsed. Specifically, its namespace and the child \<eventTime\> element and its value.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] data Pointer to the XML data to parse.
+ * @param[out] tree Parsed full notification tree.
+ * @param[out] op Pointer to the actual notification. Useful mainly for nested notifications.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_parse_xml_notif(const struct ly_ctx *ctx, const char *data, struct lyd_node **tree, struct lyd_node **ntf);
 
 /**
  * @defgroup datahash Data nodes hash manipulation
