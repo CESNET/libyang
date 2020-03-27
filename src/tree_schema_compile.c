@@ -833,7 +833,7 @@ error:
 static struct lysc_node *
 lysc_xpath_context(struct lysc_node *start)
 {
-    for (; start && !(start->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_ACTION | LYS_NOTIF));
+    for (; start && !(start->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_RPC | LYS_ACTION | LYS_NOTIF));
             start = start->parent);
     return start;
 }
@@ -2270,7 +2270,7 @@ done:
 
 #define MOVE_PATH_PARENT(NODE, LIMIT_COND, TERM, ERR_MSG, ...) \
     for ((NODE) = (NODE)->parent; \
-         (NODE) && !((NODE)->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_NOTIF | LYS_ACTION)); \
+         (NODE) && !((NODE)->nodetype & (LYS_CONTAINER | LYS_LIST | LYS_NOTIF | LYS_RPC | LYS_ACTION)); \
          (NODE) = (NODE)->parent); \
     if (!(NODE) && (LIMIT_COND)) { /* we are going higher than top-level */ \
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE, ERR_MSG, ##__VA_ARGS__); \
@@ -3548,7 +3548,7 @@ lys_compile_action(struct lysc_ctx *ctx, struct lysp_action *action_p,
         return LY_EVALID;
     }
 
-    action->nodetype = LYS_ACTION;
+    action->nodetype = parent ? LYS_ACTION : LYS_RPC;
     action->module = ctx->mod;
     action->parent = parent;
     if (!(ctx->options & LYSC_OPT_FREE_SP)) {
@@ -4719,7 +4719,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, const stru
     LY_LIST_FOR(aug_p->child, node_p) {
         /* check if the subnode can be connected to the found target (e.g. case cannot be inserted into container) */
         if (!(target->nodetype == LYS_CHOICE && node_p->nodetype == LYS_CASE)
-                && !((target->nodetype & (LYS_CONTAINER | LYS_LIST)) && (node_p->nodetype & (LYS_ACTION | LYS_NOTIF)))
+                && !((target->nodetype & (LYS_CONTAINER | LYS_LIST)) && (node_p->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)))
                 && !(target->nodetype != LYS_CHOICE && node_p->nodetype == LYS_USES)
                 && !(node_p->nodetype & (LYS_ANYDATA | LYS_CONTAINER | LYS_CHOICE | LYS_LEAF | LYS_LIST | LYS_LEAFLIST))) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
@@ -5867,7 +5867,7 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p)
         /* resolve the target */
         LY_CHECK_GOTO(lys_resolve_schema_nodeid(ctx, dev->nodeid, 0, NULL, ctx->mod, 0, 1,
                                                 (const struct lysc_node**)&target, &flags), cleanup);
-        if (target->nodetype == LYS_ACTION) {
+        if (target->nodetype & (LYS_RPC | LYS_ACTION)) {
             /* move the target pointer to input/output to make them different from the action and
              * between them. Before the devs[] item is being processed, the target pointer must be fixed
              * back to the RPC/action node due to a better compatibility and decision code in this function.
@@ -6021,7 +6021,7 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p)
         LY_ARRAY_DECREMENT(ARRAY); \
     }
 
-            if (devs[u]->target->nodetype == LYS_ACTION) {
+            if (devs[u]->target->nodetype & (LYS_RPC | LYS_ACTION)) {
                 if (devs[u]->flags & LYSC_OPT_RPC_INPUT) {
                     /* remove RPC's/action's input */
                     lysc_action_inout_free(ctx->ctx, &((struct lysc_action*)devs[u]->target)->input);
@@ -6086,6 +6086,7 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p)
                         COMPILE_ARRAY_GOTO(ctx, d_add->musts, ((struct lysc_notif*)devs[u]->target)->musts,
                                            x, lys_compile_must, ret, cleanup);
                         break;
+                    case LYS_RPC:
                     case LYS_ACTION:
                         if (devs[u]->flags & LYSC_OPT_RPC_INPUT) {
                             COMPILE_ARRAY_GOTO(ctx, d_add->musts, ((struct lysc_action*)devs[u]->target)->input.musts,
@@ -6197,7 +6198,7 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p)
 
                 /* [config-stmt] */
                 if (d_add->flags & LYS_CONFIG_MASK) {
-                    if (devs[u]->target->nodetype & (LYS_CASE | LYS_INOUT | LYS_ACTION | LYS_NOTIF)) {
+                    if (devs[u]->target->nodetype & (LYS_CASE | LYS_INOUT | LYS_RPC | LYS_ACTION | LYS_NOTIF)) {
                         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NODETYPE,
                                lys_nodetype2str(devs[u]->target->nodetype), "add", "config");
                         goto cleanup;
@@ -6296,6 +6297,7 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p)
                     case LYS_NOTIF:
                         DEV_DEL_ARRAY(struct lysc_notif*, musts, musts, .arg, .cond->expr, &, lysc_must_free, "must");
                         break;
+                    case LYS_RPC:
                     case LYS_ACTION:
                         if (devs[u]->flags & LYSC_OPT_RPC_INPUT) {
                             DEV_DEL_ARRAY(struct lysc_action*, input.musts, musts, .arg, .cond->expr, &, lysc_must_free, "must");
@@ -6553,7 +6555,7 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p)
 
                 /* [config-stmt] */
                 if (d_rpl->flags & LYS_CONFIG_MASK) {
-                    if (devs[u]->target->nodetype & (LYS_CASE | LYS_INOUT | LYS_ACTION | LYS_NOTIF)) {
+                    if (devs[u]->target->nodetype & (LYS_CASE | LYS_INOUT | LYS_RPC | LYS_ACTION | LYS_NOTIF)) {
                         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NODETYPE,
                                lys_nodetype2str(devs[u]->target->nodetype), "replace", "config");
                         goto cleanup;
@@ -6984,7 +6986,7 @@ lys_compile_check_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
             continue;
         }
 
-        if ((xp_scnode->type != LYXP_NODE_ELEM) || (xp_scnode->scnode->nodetype & (LYS_ACTION | LYS_NOTIF))
+        if ((xp_scnode->type != LYXP_NODE_ELEM) || (xp_scnode->scnode->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF))
                 || !xp_scnode->scnode->when) {
             /* no when to check */
             xp_scnode->in_ctx = 0;
@@ -7088,6 +7090,7 @@ lys_compile_check_xpath(struct lysc_ctx *ctx, const struct lysc_node *node)
     case LYS_NOTIF:
         musts = ((struct lysc_notif *)node)->musts;
         break;
+    case LYS_RPC:
     case LYS_ACTION:
         /* first process input musts */
         musts = ((struct lysc_action *)node)->input.musts;
@@ -7158,7 +7161,7 @@ check_musts:
         lyxp_set_cast(&tmp_set, LYXP_SET_EMPTY);
     }
 
-    if ((node->nodetype == LYS_ACTION) && !input_done) {
+    if ((node->nodetype & (LYS_RPC | LYS_ACTION)) && !input_done) {
         /* now check output musts */
         input_done = 1;
         musts = ((struct lysc_action *)node)->output.musts;

@@ -455,7 +455,7 @@ LY_ERR lysc_check_status(struct lysc_ctx *ctx,
  * the given nodetype, LY_EDENIED is returned (and target is provided), but no error message is printed.
  * The value can be even an ORed value to allow multiple nodetypes.
  * @param[in] implement Flag if the modules mentioned in the nodeid are supposed to be made implemented.
- * @param[out] target Found target node if any. In case of RPC/action input/output node, LYS_ACTION node is actually returned
+ * @param[out] target Found target node if any. In case of RPC/action input/output node, LYS_RPC or LYS_ACTION node is actually returned
  * since the input/output has not a standalone node structure and it is part of ::lysc_action which is better compatible with ::lysc_node.
  * @param[out] result_flag Output parameter to announce if the schema nodeid goes through the action's input/output or a Notification.
  * The LYSC_OPT_RPC_INPUT, LYSC_OPT_RPC_OUTPUT and LYSC_OPT_NOTIFICATION are used as flags.
@@ -493,7 +493,7 @@ const char *lys_prefix_find_module(const struct lys_module *mod, const struct ly
 
 /**
  * @brief Stringify YANG built-in type.
- * @param[in] basetype Built-in tyep ID to stringify.
+ * @param[in] basetype Built-in type ID to stringify.
  * @return Constant string with the name of the built-in type.
  */
 const char *lys_datatype2str(LY_DATA_TYPE basetype);
@@ -863,7 +863,6 @@ LY_ERR yin_parse_module(struct lys_yin_parser_ctx **yin_ctx, const char *data, s
  */
 LY_ERR yin_parse_submodule(struct lys_yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, struct lys_parser_ctx *main_ctx,
                            const char *data, struct lysp_submodule **submod);
-
 
 /**
  * @brief Make the specific module implemented, use the provided value as flag.

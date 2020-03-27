@@ -75,7 +75,7 @@ next:
         /* test if the next can be returned */
         goto check;
 
-    } else if (last->nodetype == LYS_ACTION) {
+    } else if (last->nodetype & (LYS_RPC | LYS_ACTION)) {
         action_flag = 1;
         if (last->parent) {
             actions = lysc_node_actions(last->parent);
@@ -134,6 +134,7 @@ repeat:
     }
 check:
     switch (next->nodetype) {
+    case LYS_RPC:
     case LYS_ACTION:
     case LYS_NOTIF:
     case LYS_LEAF:

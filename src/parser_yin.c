@@ -1376,7 +1376,7 @@ yin_parse_typedef(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *typedef
     LY_CHECK_RET(yin_parse_content(ctx, subelems, 7, LY_STMT_TYPEDEF, NULL, &tpdf->exts));
 
     /* store data for collision check */
-    if (typedef_meta->parent && !(typedef_meta->parent->nodetype & (LYS_GROUPING | LYS_ACTION | LYS_INOUT | LYS_NOTIF))) {
+    if (typedef_meta->parent && !(typedef_meta->parent->nodetype & (LYS_GROUPING | LYS_RPC | LYS_ACTION | LYS_INOUT | LYS_NOTIF))) {
         LY_CHECK_RET(ly_set_add(&ctx->tpdfs_nodes, typedef_meta->parent, 0) == -1, LY_EMEM);
     }
 
@@ -2311,7 +2311,7 @@ yin_parse_action(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *act_meta
 
     /* create new action */
     LY_ARRAY_NEW_RET(ctx->xmlctx->ctx, *acts, act, LY_EMEM);
-    act->nodetype = LYS_ACTION;
+    act->nodetype = act_meta->parent ? LYS_ACTION : LYS_RPC;
     act->parent = act_meta->parent;
 
     /* parse argument */

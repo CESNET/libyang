@@ -95,7 +95,7 @@ lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodei
             ret = lys_set_implemented_internal((struct lys_module*)mod, 2);
             LY_CHECK_RET(ret);
         }
-        if (context_node && context_node->nodetype == LYS_ACTION) {
+        if (context_node && (context_node->nodetype & (LYS_RPC | LYS_ACTION))) {
             /* move through input/output manually */
             if (!ly_strncmp("input", name, name_len)) {
                 (*result_flag) |= LYSC_OPT_RPC_INPUT;
@@ -1103,8 +1103,10 @@ lys_nodetype2str(uint16_t nodetype)
         return "anydata";
     case LYS_CASE:
         return "case";
+    case LYS_RPC:
+        return "RPC";
     case LYS_ACTION:
-        return "RPC/action";
+        return "action";
     case LYS_NOTIF:
         return "notification";
     case LYS_USES:
@@ -1171,6 +1173,7 @@ lysp_node_typedefs(const struct lysp_node *node)
         return ((struct lysp_node_list*)node)->typedefs;
     case LYS_GROUPING:
         return ((struct lysp_grp*)node)->typedefs;
+    case LYS_RPC:
     case LYS_ACTION:
         return ((struct lysp_action*)node)->typedefs;
     case LYS_INOUT:
@@ -1192,6 +1195,7 @@ lysp_node_groupings(const struct lysp_node *node)
         return ((struct lysp_node_list*)node)->groupings;
     case LYS_GROUPING:
         return ((struct lysp_grp*)node)->groupings;
+    case LYS_RPC:
     case LYS_ACTION:
         return ((struct lysp_action*)node)->groupings;
     case LYS_INOUT:
@@ -1375,6 +1379,7 @@ lysc_node_children_p(const struct lysc_node *node, uint16_t flags)
         return &((struct lysc_node_case*)node)->child;
     case LYS_LIST:
         return &((struct lysc_node_list*)node)->child;
+    case LYS_RPC:
     case LYS_ACTION:
         if (flags & LYS_CONFIG_R) {
             return &((struct lysc_action*)node)->output.data;

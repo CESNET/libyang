@@ -710,7 +710,7 @@ lyd_new_inner(struct lyd_node *parent, const struct lys_module *module, const ch
         module = parent->schema->module;
     }
 
-    schema = lys_find_child(parent ? parent->schema : NULL, module, name, 0, LYS_CONTAINER | LYS_NOTIF | LYS_ACTION, 0);
+    schema = lys_find_child(parent ? parent->schema : NULL, module, name, 0, LYS_CONTAINER | LYS_NOTIF | LYS_RPC | LYS_ACTION, 0);
     LY_CHECK_ERR_RET(!schema, LOGERR(ctx, LY_EINVAL, "Inner node \"%s\" not found.", name), NULL);
 
     if (!lyd_create_inner(schema, &ret) && parent) {
@@ -1578,6 +1578,7 @@ lyd_compare(const struct lyd_node *node1, const struct lyd_node *node2, int opti
                 goto all_children_compare;
             }
             return LY_SUCCESS;
+        case LYS_RPC:
         case LYS_ACTION:
             if (options & LYD_COMPARE_FULL_RECURSION) {
                 /* TODO action/RPC
@@ -1684,6 +1685,7 @@ lyd_dup_recursive(const struct lyd_node *node, struct lyd_node *parent, struct l
         dup = calloc(1, sizeof(struct lyd_node_opaq));
     } else {
         switch (node->schema->nodetype) {
+        case LYS_RPC:
         case LYS_ACTION:
         case LYS_NOTIF:
         case LYS_CONTAINER:
@@ -2515,6 +2517,7 @@ lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_node *sc
     case LYS_ANYXML:
     case LYS_ANYDATA:
     case LYS_NOTIF:
+    case LYS_RPC:
     case LYS_ACTION:
     case LYS_LEAF:
         /* find it based on schema only */

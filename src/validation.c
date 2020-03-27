@@ -1011,7 +1011,7 @@ _lyd_validate(struct lyd_node **tree, const struct lys_module **modules, int mod
                         LY_CHECK_GOTO(ret, cleanup);
                     }
 
-                    if (!(node->schema->nodetype & (LYS_ACTION | LYS_NOTIF)) && node->schema->when) {
+                    if (!(node->schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) && node->schema->when) {
                         /* when evaluation */
                         ly_set_add(&when_check, (void *)node, LY_SET_OPT_USEASLIST);
                     }

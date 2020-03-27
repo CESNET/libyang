@@ -3597,8 +3597,11 @@ test_action_elem(void **state)
                     EXT_SUBELEM
                 "</action>"
            ELEMENT_WRAPPER_END;
+    /* there must be parent for action */
+    act_meta.parent = NULL + 1;
     assert_int_equal(test_element_helper(st, data, &act_meta, NULL, NULL), LY_SUCCESS);
-    assert_null(actions->parent);
+    act_meta.parent = NULL;
+    assert_non_null(actions->parent);
     assert_int_equal(actions->nodetype, LYS_ACTION);
     assert_true(actions->flags & LYS_STATUS_DEPRC);
     assert_string_equal(actions->name, "act");
@@ -3631,7 +3634,7 @@ test_action_elem(void **state)
            ELEMENT_WRAPPER_END;
     assert_int_equal(test_element_helper(st, data, &act_meta, NULL, NULL), LY_SUCCESS);
     assert_null(actions->parent);
-    assert_int_equal(actions->nodetype, LYS_ACTION);
+    assert_int_equal(actions->nodetype, LYS_RPC);
     assert_true(actions->flags & LYS_STATUS_DEPRC);
     assert_string_equal(actions->name, "act");
     assert_string_equal(actions->dsc, "desc");

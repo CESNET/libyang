@@ -2564,7 +2564,7 @@ checks:
     }
 
     /* store data for collision check */
-    if (parent && !(parent->nodetype & (LYS_GROUPING | LYS_ACTION | LYS_INOUT | LYS_NOTIF))) {
+    if (parent && !(parent->nodetype & (LYS_GROUPING | LYS_RPC | LYS_ACTION | LYS_INOUT | LYS_NOTIF))) {
         LY_CHECK_RET(ly_set_add(&ctx->tpdfs_nodes, parent, 0) == -1, LY_EMEM);
     }
 
@@ -2680,7 +2680,7 @@ parse_action(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_nod
     /* get value */
     LY_CHECK_RET(get_argument(ctx, data, Y_IDENTIF_ARG, NULL, &word, &buf, &word_len));
     INSERT_WORD(ctx, buf, act->name, word, word_len);
-    act->nodetype = LYS_ACTION;
+    act->nodetype = parent ? LYS_ACTION : LYS_RPC;
     act->parent = parent;
 
     YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret, goto checks) {

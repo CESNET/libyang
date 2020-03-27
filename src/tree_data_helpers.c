@@ -33,6 +33,7 @@ lyd_node_children_p(struct lyd_node *node)
         switch (node->schema->nodetype) {
         case LYS_CONTAINER:
         case LYS_LIST:
+        case LYS_RPC:
         case LYS_ACTION:
         case LYS_NOTIF:
             return &((struct lyd_node_inner *)node)->child;

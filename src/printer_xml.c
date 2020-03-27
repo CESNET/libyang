@@ -496,6 +496,7 @@ xml_print_node(struct xmlpr_ctx *ctx, const struct lyd_node *node)
         case LYS_CONTAINER:
         case LYS_LIST:
         case LYS_NOTIF:
+        case LYS_RPC:
         case LYS_ACTION:
             ret = xml_print_inner(ctx, (const struct lyd_node_inner *)node);
             break;

@@ -379,33 +379,70 @@ test_rpc(void **state)
     const char *data;
     char *str;
     struct lyd_node *tree, *op;
+    const struct lyd_node *node;
 
     data =
         "<rpc xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" msgid=\"25\" custom-attr=\"val\">"
             "<edit-config>"
                 "<target>"
                     "<running/>"
-                    "<config xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\">"
-                        "<l1 xmlns=\"urn:tests:a\" nc:operation=\"replace\">"
-                            "<a>val_a</a>"
-                            "<b>val_b</b>"
-                            "<c>val_c</c>"
-                        "</l1>"
-                        "<cp xmlns=\"urn:tests:a\">"
-                            "<z nc:operation=\"delete\"/>"
-                        "</cp>"
-                    "</config>"
                 "</target>"
+                "<config xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\">"
+                    "<l1 xmlns=\"urn:tests:a\" nc:operation=\"replace\">"
+                        "<a>val_a</a>"
+                        "<b>val_b</b>"
+                        "<c>val_c</c>"
+                    "</l1>"
+                    "<cp xmlns=\"urn:tests:a\">"
+                        "<z nc:operation=\"delete\"/>"
+                    "</cp>"
+                "</config>"
             "</edit-config>"
         "</rpc>";
-    //assert_int_equal(LY_SUCCESS, lyd_parse_xml_rpc(ctx, data, &tree, &op));
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_rpc(ctx, data, &tree, &op));
+
+    assert_non_null(op);
+    assert_string_equal(op->schema->name, "edit-config");
+
     assert_non_null(tree);
     assert_null(tree->schema);
-    assert_string_equal(((struct lyd_node_opaq *)tree)->name, "foo3");
-    assert_string_equal(((struct lyd_node_opaq *)tree)->value, "");
+    assert_string_equal(((struct lyd_node_opaq *)tree)->name, "rpc");
+    assert_non_null(((struct lyd_node_opaq *)tree)->attr);
+    node = lyd_node_children(tree);
+    assert_string_equal(node->schema->name, "edit-config");
+    node = lyd_node_children(node)->next;
+    assert_string_equal(node->schema->name, "config");
+    node = ((struct lyd_node_any *)node)->value.tree;
+    /* l1 key c has invalid value */
+    assert_null(node->schema);
+    assert_string_equal(((struct lyd_node_opaq *)node)->name, "l1");
+    node = node->next;
+    assert_non_null(node->schema);
+    assert_string_equal(node->schema->name, "cp");
+    node = lyd_node_children(node);
+    /* z has no value */
+    assert_null(node->schema);
+    assert_string_equal(((struct lyd_node_opaq *)node)->name, "z");
 
     lyd_print_mem(&str, tree, LYD_XML, 0);
-    assert_string_equal(str, "<foo3 xmlns=\"urn:tests:a\"/>");
+    assert_string_equal(str,
+        "<rpc xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" msgid=\"25\" custom-attr=\"val\">"
+            "<edit-config>"
+                "<target>"
+                    "<running/>"
+                "</target>"
+                "<config>"
+                    "<l1 xmlns=\"urn:tests:a\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:operation=\"replace\">"
+                        "<a>val_a</a>"
+                        "<b>val_b</b>"
+                        "<c>val_c</c>"
+                    "</l1>"
+                    "<cp xmlns=\"urn:tests:a\">"
+                        "<z xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:operation=\"delete\"/>"
+                    "</cp>"
+                "</config>"
+            "</edit-config>"
+        "</rpc>");
     free(str);
     lyd_free_all(tree);
 
@@ -422,7 +459,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_list, setup, teardown),
         cmocka_unit_test_setup_teardown(test_container, setup, teardown),
         cmocka_unit_test_setup_teardown(test_opaq, setup, teardown),
-        //cmocka_unit_test_setup_teardown(test_rpc, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_rpc, setup, teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

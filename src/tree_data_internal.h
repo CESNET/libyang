@@ -258,7 +258,7 @@ LY_ERR lyd_value_parse_meta(struct ly_ctx *ctx, struct lyd_meta *meta, const cha
  * @param[out] tree Parsed data tree. Note that NULL can be a valid result.
  * @return LY_ERR value.
  */
-LY_ERR lyd_parse_xml_data(struct ly_ctx *ctx, const char *data, int options, struct lyd_node **tree);
+LY_ERR lyd_parse_xml_data(const struct ly_ctx *ctx, const char *data, int options, struct lyd_node **tree);
 
 /**
  * @brief Parse XML string as YANG RPC/action invocation.
@@ -275,7 +275,7 @@ LY_ERR lyd_parse_xml_data(struct ly_ctx *ctx, const char *data, int options, str
  * @param[out] op Pointer to the actual operation. Useful mainly for action.
  * @return LY_ERR value.
  */
-//LY_ERR lyd_parse_xml_rpc(struct ly_ctx *ctx, const char *data, struct lyd_node **tree, struct lyd_node **op);
+LY_ERR lyd_parse_xml_rpc(const struct ly_ctx *ctx, const char *data, struct lyd_node **tree, struct lyd_node **op);
 
 /**
  * @defgroup datahash Data nodes hash manipulation

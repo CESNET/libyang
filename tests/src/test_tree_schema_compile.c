@@ -866,7 +866,7 @@ test_action(void **state)
     rpc = mod->compiled->rpcs;
     assert_non_null(rpc);
     assert_int_equal(1, LY_ARRAY_SIZE(rpc));
-    assert_int_equal(LYS_ACTION, rpc->nodetype);
+    assert_int_equal(LYS_RPC, rpc->nodetype);
     assert_int_equal(LYS_STATUS_CURR, rpc->flags);
     assert_string_equal("a", rpc->name);
 
@@ -2876,7 +2876,7 @@ test_augment(void **state)
 
     assert_null(lys_parse_mem(ctx, "module gg {namespace urn:gg;prefix gg; rpc func;"
                                         "augment /func {leaf x {type int8;}}}", LYS_IN_YANG));
-    logbuf_assert("Augment's absolute-schema-nodeid \"/func\" refers to a RPC/action node which is not an allowed augment's target. /gg:{augment='/func'}");
+    logbuf_assert("Augment's absolute-schema-nodeid \"/func\" refers to a RPC node which is not an allowed augment's target. /gg:{augment='/func'}");
 
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);

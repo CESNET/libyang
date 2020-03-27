@@ -85,7 +85,7 @@ extern "C" {
     }\
     if (!(LYSC_TREE_DFS_next)) { \
         /* in case of RPC/action, get also the output children */ \
-        if (!LYSC_TREE_DFS_continue && (ELEM)->nodetype == LYS_ACTION) { \
+        if (!LYSC_TREE_DFS_continue && (ELEM)->nodetype & (LYS_RPC | LYS_ACTION)) { \
             (LYSC_TREE_DFS_next) = (struct lysc_node*)lysc_node_children(ELEM, LYS_CONFIG_R); \
         } \
         if (!(LYSC_TREE_DFS_next)) { \
@@ -106,7 +106,7 @@ extern "C" {
             /* we are done, no next element to process */ \
             break; \
         } \
-        if ((ELEM)->nodetype == LYS_ACTION) { \
+        if ((ELEM)->nodetype & (LYS_RPC | LYS_ACTION)) { \
             /* there is actually next node as a child of action's output */ \
             (LYSC_TREE_DFS_next) = (struct lysc_node*)lysc_node_children(ELEM, LYS_CONFIG_R); \
         } \
@@ -149,17 +149,17 @@ typedef enum {
 #define LYS_ANYXML 0x0020         /**< anyxml statement node */
 #define LYS_ANYDATA 0x0120        /**< anydata statement node, in tests it can be used for both #LYS_ANYXML and #LYS_ANYDATA */
 
-#define LYS_ACTION 0x400          /**< RPC or action */
-#define LYS_RPC LYS_ACTION        /**< RPC or action (for backward compatibility) */
-#define LYS_NOTIF 0x800
+#define LYS_RPC 0x400             /**< RPC statement node */
+#define LYS_ACTION 0x800          /**< action statement node */
+#define LYS_NOTIF 0x1000           /**< notification statement node */
 
 #define LYS_CASE 0x0040           /**< case statement node */
 #define LYS_USES 0x0080           /**< uses statement node */
 #define LYS_INPUT 0x100
 #define LYS_OUTPUT 0x200
 #define LYS_INOUT 0x300
-#define LYS_GROUPING 0x1000
-#define LYS_AUGMENT 0x2000
+#define LYS_GROUPING 0x2000
+#define LYS_AUGMENT 0x4000
 
 /**
  * @brief List of YANG statements
@@ -745,8 +745,8 @@ struct lysp_deviation {
  * @ingroup schematree
  * @{
  */
-#define LYS_CONFIG_W     0x01        /**< config true; */
-#define LYS_CONFIG_R     0x02        /**< config false; */
+#define LYS_CONFIG_W     0x01        /**< config true; also set for input children nodes */
+#define LYS_CONFIG_R     0x02        /**< config false; also set for output and notification children nodes */
 #define LYS_CONFIG_MASK  0x03        /**< mask for config value */
 #define LYS_STATUS_CURR  0x04        /**< status current; */
 #define LYS_STATUS_DEPRC 0x08        /**< status deprecated; */
@@ -999,7 +999,7 @@ struct lysp_action_inout {
  */
 struct lysp_action {
     struct lysp_node *parent;        /**< parent node (NULL if this is a top-level node) */
-    uint16_t nodetype;               /**< LYS_ACTION */
+    uint16_t nodetype;               /**< LYS_RPC or LYS_ACTION */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     const char *name;                /**< grouping name reference (mandatory) */
     const char *dsc;                 /**< description statement */
@@ -1396,7 +1396,7 @@ struct lysc_action_inout {
 };
 
 struct lysc_action {
-    uint16_t nodetype;               /**< LYS_ACTION */
+    uint16_t nodetype;               /**< LYS_RPC or LYS_ACTION */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
     struct lys_module *module;       /**< module structure */
     struct lysp_action *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
