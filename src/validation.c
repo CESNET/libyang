@@ -871,9 +871,16 @@ lyd_validate_siblings_r(struct lyd_node *first, const struct lysc_node *sparent,
             break;
         }
 
+        /* opaque data */
+        if (!node->schema) {
+            LOGVAL(LYD_NODE_CTX(node), LY_VLOG_LYD, node, LYVE_DATA, "Opaque node \"%s\" found.",
+                   ((struct lyd_node_opaq *)node)->name);
+            return LY_EVALID;
+        }
+
         /* no state data */
         if ((val_opts & LYD_VALOPT_NO_STATE) && (node->schema->flags & LYS_CONFIG_R)) {
-            LOGVAL(node->schema->module->ctx, LY_VLOG_LYD, node, LY_VCODE_INSTATE, node->schema->name);
+            LOGVAL(LYD_NODE_CTX(node), LY_VLOG_LYD, node, LY_VCODE_INSTATE, node->schema->name);
             return LY_EVALID;
         }
 
@@ -882,14 +889,14 @@ lyd_validate_siblings_r(struct lyd_node *first, const struct lysc_node *sparent,
 
         /* node's schema if-features */
         if ((snode = lysc_node_is_disabled(node->schema, 1))) {
-            LOGVAL(node->schema->module->ctx, LY_VLOG_LYD, node, LY_VCODE_NOIFF, snode->name);
+            LOGVAL(LYD_NODE_CTX(node), LY_VLOG_LYD, node, LY_VCODE_NOIFF, snode->name);
             return LY_EVALID;
         }
 
         /* node's musts */
         LY_CHECK_RET(lyd_validate_must(node));
 
-        /* node value including if-feature is checked by plugins */
+        /* node value including if-feature was checked by plugins */
     }
 
     /* validate schema-based restrictions */
