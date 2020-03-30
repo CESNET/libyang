@@ -56,8 +56,8 @@ LY_ERR lyd_validate_new(struct lyd_node **first, const struct lysc_node *sparent
  * @param[in] val_opts Validation options (@ref datavalidationoptions).
  * @return LY_ERR value.
  */
-LY_ERR lyd_validate_siblings_r(struct lyd_node *first, const struct lysc_node *sparent, const struct lys_module *mod,
-                               int val_opts);
+LY_ERR lyd_validate_final_r(struct lyd_node *first, const struct lysc_node *sparent, const struct lys_module *mod,
+                            int val_opts);
 
 /**
  * @brief Check the existence and create any non-existing default siblings, recursively for the created nodes.

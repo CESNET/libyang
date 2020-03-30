@@ -752,7 +752,7 @@ lyd_parse_xml_data(const struct ly_ctx *ctx, const char *data, int options, stru
             LY_CHECK_GOTO(ret, cleanup);
 
             /* perform final validation that assumes the data tree is final */
-            LY_CHECK_GOTO(ret = lyd_validate_siblings_r(*first2, NULL, mod, options & LYD_VALOPT_MASK), cleanup);
+            LY_CHECK_GOTO(ret = lyd_validate_final_r(*first2, NULL, mod, options & LYD_VALOPT_MASK), cleanup);
         }
     }
 

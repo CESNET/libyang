@@ -66,8 +66,7 @@ lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len,
                              &node->value, NULL, &err);
     if (ret && (ret != LY_EINCOMPLETE)) {
         if (err) {
-            ly_err_print(err);
-            LOGVAL(ctx, LY_VLOG_STR, err->path, err->vecode, err->msg);
+            LOGVAL(ctx, LY_VLOG_LYD, node, err->vecode, err->msg);
             ly_err_free(err);
         }
         goto error;

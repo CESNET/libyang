@@ -360,6 +360,43 @@ setup(void **state)
                 "}"
             "}"
         "}";
+    const char *schema_j =
+        "module j {"
+            "namespace urn:tests:j;"
+            "prefix j;"
+            "yang-version 1.1;"
+
+            "feature feat1;"
+
+            "container cont {"
+                "must \"false()\";"
+                "list l1 {"
+                    "key \"k\";"
+                    "leaf k {"
+                        "type string;"
+                    "}"
+                    "action act {"
+                        "if-feature feat1;"
+                        "input {"
+                            "must \"../../lf1 = 'true'\";"
+                            "leaf lf2 {"
+                                "type leafref {"
+                                    "path /lf3;"
+                                "}"
+                            "}"
+                        "}"
+                    "}"
+                "}"
+
+                "leaf lf1 {"
+                    "type string;"
+                "}"
+            "}"
+
+            "leaf lf3 {"
+                "type string;"
+            "}"
+        "}";
 
 #if ENABLE_LOGGER_CHECKING
     ly_set_log_clb(logger, 1);
@@ -376,6 +413,7 @@ setup(void **state)
     assert_non_null(lys_parse_mem(ctx, schema_g, LYS_IN_YANG));
     assert_non_null(lys_parse_mem(ctx, schema_h, LYS_IN_YANG));
     assert_non_null(lys_parse_mem(ctx, schema_i, LYS_IN_YANG));
+    assert_non_null(lys_parse_mem(ctx, schema_j, LYS_IN_YANG));
 
     return 0;
 }
@@ -1278,6 +1316,69 @@ test_must(void **state)
     *state = NULL;
 }
 
+static void
+test_action(void **state)
+{
+    *state = test_action;
+
+    const char *data;
+    struct lyd_node *tree, *op_tree;
+    const struct lys_module *mod;
+
+    data =
+    "<cont xmlns=\"urn:tests:j\">"
+        "<l1>"
+            "<k>val1</k>"
+            "<act>"
+                "<lf2>target</lf2>"
+            "</act>"
+        "</l1>"
+    "</cont>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_rpc(ctx, data, &op_tree, NULL));
+    assert_non_null(op_tree);
+
+    /* missing leafref */
+    assert_int_equal(LY_EVALID, lyd_validate_rpc_notif(op_tree, NULL));
+    logbuf_assert("Invalid leafref - required instance \"/lf3\" does not exists in the data tree(s). /j:cont/l1[k='val1']/act/lf2");
+
+    data =
+    "<cont xmlns=\"urn:tests:j\">"
+        "<lf1>not true</lf1>"
+    "</cont>"
+    "<lf3 xmlns=\"urn:tests:j\">target</lf3>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_OPT_PARSE_ONLY | LYD_OPT_TRUSTED, &tree));
+    assert_non_null(tree);
+
+    /* disabled if-feature */
+    assert_int_equal(LY_EVALID, lyd_validate_rpc_notif(op_tree, tree));
+    logbuf_assert("Data are disabled by \"act\" schema node if-feature. /j:cont/l1[k='val1']/act");
+
+    mod = ly_ctx_get_module_latest(ctx, "j");
+    assert_non_null(mod);
+    assert_int_equal(LY_SUCCESS, lys_feature_enable(mod, "feat1"));
+
+    /* input must false */
+    assert_int_equal(LY_EVALID, lyd_validate_rpc_notif(op_tree, tree));
+    logbuf_assert("Must condition \"../../lf1 = 'true'\" not satisfied. /j:cont/l1[k='val1']/act");
+
+    lyd_free_siblings(tree);
+    data =
+    "<cont xmlns=\"urn:tests:j\">"
+        "<lf1>true</lf1>"
+    "</cont>"
+    "<lf3 xmlns=\"urn:tests:j\">target</lf3>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_OPT_PARSE_ONLY | LYD_OPT_TRUSTED, &tree));
+    assert_non_null(tree);
+
+    /* success */
+    assert_int_equal(LY_SUCCESS, lyd_validate_rpc_notif(op_tree, tree));
+
+    lyd_free_tree(op_tree);
+    lyd_free_siblings(tree);
+
+    *state = NULL;
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -1291,6 +1392,7 @@ int main(void)
         cmocka_unit_test_teardown(test_iffeature, teardown_s),
         cmocka_unit_test_teardown(test_state, teardown_s),
         cmocka_unit_test_teardown(test_must, teardown_s),
+        cmocka_unit_test_teardown(test_action, teardown_s),
     };
 
     return cmocka_run_group_tests(tests, setup, teardown);

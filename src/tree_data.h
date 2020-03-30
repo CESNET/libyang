@@ -620,6 +620,16 @@ LY_ERR lyd_validate(struct lyd_node **tree, const struct ly_ctx *ctx, int val_op
 LY_ERR lyd_validate_modules(struct lyd_node **tree, const struct lys_module **modules, int mod_count, int val_opts);
 
 /**
+ * @brief Validate an RPC/action/notification.
+ *
+ * @param[in,out] op_tree Operation tree with any parents in case of nested operations.
+ * @param[in] tree Tree to used forvalidating references from the operation.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR error on error.
+ */
+LY_ERR lyd_validate_rpc_notif(struct lyd_node *op_tree, const struct lyd_node *tree);
+
+/**
  * @brief Create a new inner node in a data tree.
  *
  * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
