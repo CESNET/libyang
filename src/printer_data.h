@@ -45,11 +45,6 @@
                                       are not explicitly present in the original data tree despite their
                                       value is equal to their default value.  There is the same limitation regarding
                                       the presence of ietf-netconf-with-defaults module in libyang context. */
-#define LYDP_NETCONF       0x100 /**< Print the data tree for use in NETCONF meaning:
-                                      - for RPC output - skip the top-level RPC node,
-                                      - for action output - skip all the parents of and the action node itself,
-                                      - for action input - enclose the data in an action element in the base YANG namespace,
-                                      - for all other data - print the whole data tree normally. */
 /**
  * @}
  */

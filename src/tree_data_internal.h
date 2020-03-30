@@ -292,6 +292,20 @@ LY_ERR lyd_parse_xml_rpc(const struct ly_ctx *ctx, const char *data, struct lyd_
 LY_ERR lyd_parse_xml_notif(const struct ly_ctx *ctx, const char *data, struct lyd_node **tree, struct lyd_node **ntf);
 
 /**
+ * @brief Parse XML string as YANG RPC/action reply.
+ *
+ * Optional \<rpc-reply\> envelope element, if present, is [checked](https://tools.ietf.org/html/rfc6241#section-4.2)
+ * and all its XML attributes parsed.
+ *
+ * @param[in] request Data tree of the RPC/action request.
+ * @param[in] data Pointer to the XML data to parse.
+ * @param[out] tree Parsed full reply tree. It always includes duplicated operation and parents of the @p request.
+ * @param[out] op Optional pointer to the reply operation. Useful mainly for action.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_parse_xml_reply(const struct lyd_node *request, const char *data, struct lyd_node **tree, struct lyd_node **op);
+
+/**
  * @defgroup datahash Data nodes hash manipulation
  * @ingroup datatree
  */

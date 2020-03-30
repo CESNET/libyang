@@ -1143,7 +1143,6 @@ lyd_validate_rpc_notif(struct lyd_node *op_tree, const struct lyd_node *tree)
         if (op->schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) {
             break;
         }
-
         LYD_TREE_DFS_END(op_tree, op_iter, op);
     }
     if (!(op->schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF))) {

@@ -63,7 +63,7 @@ setup(void **state)
             "leaf foo { type string;}"
             "container c {"
                 "leaf x {type string;}"
-                "action act { input { leaf al {type string;} } }"
+                "action act { input { leaf al {type string;} } output { leaf al {type uint8;} } }"
                 "notification n1 { leaf nl {type string;} }"
             "}"
             "container cp {presence \"container switch\"; leaf y {type string;} leaf z {type int8;}}"
@@ -322,7 +322,7 @@ test_opaq(void **state)
     /* invalid value, no flags */
     data = "<foo3 xmlns=\"urn:tests:a\"/>";
     assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
-    logbuf_assert("Invalid empty uint32 value. /");
+    logbuf_assert("Invalid empty uint32 value. /a:foo3");
     assert_null(tree);
 
     /* opaq flag */
@@ -358,7 +358,7 @@ test_opaq(void **state)
     /* invalid key, no flags */
     data = "<l1 xmlns=\"urn:tests:a\"><a>val_a</a><b>val_b</b><c>val_c</c></l1>";
     assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
-    logbuf_assert("Invalid int16 value \"val_c\". /");
+    logbuf_assert("Invalid int16 value \"val_c\". /a:c");
     assert_null(tree);
 
     /* opaq flag */
@@ -574,6 +574,58 @@ test_notification(void **state)
     *state = NULL;
 }
 
+static void
+test_reply(void **state)
+{
+    *state = test_reply;
+
+    const char *data;
+    char *str;
+    struct lyd_node *request, *tree, *op;
+    const struct lyd_node *node;
+
+    data =
+        "<c xmlns=\"urn:tests:a\">"
+            "<act>"
+                "<al>value</al>"
+            "</act>"
+        "</c>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_rpc(ctx, data, &request, NULL));
+    data =
+        "<rpc-reply xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" msgid=\"25\">"
+            "<al xmlns=\"urn:tests:a\">25</al>"
+        "</rpc-reply>";
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_reply(request, data, &tree, &op));
+    lyd_free_all(request);
+
+    assert_non_null(op);
+    assert_string_equal(op->schema->name, "act");
+    node = lyd_node_children(op);
+    assert_non_null(node->schema);
+    assert_string_equal(node->schema->name, "al");
+    assert_true(node->schema->flags & LYS_CONFIG_R);
+
+    assert_non_null(tree);
+    assert_null(tree->schema);
+    assert_string_equal(((struct lyd_node_opaq *)tree)->name, "rpc-reply");
+    assert_non_null(((struct lyd_node_opaq *)tree)->attr);
+    node = lyd_node_children(tree);
+    assert_non_null(node->schema);
+    assert_string_equal(node->schema->name, "c");
+
+    /* TODO print only rpc-reply node and then output subtree */
+    lyd_print_mem(&str, lyd_node_children(op), LYD_XML, 0);
+    assert_string_equal(str,
+        "<al xmlns=\"urn:tests:a\">25</al>");
+    free(str);
+    lyd_free_all(tree);
+
+    /* wrong namespace, element name, whatever... */
+    /* TODO */
+
+    *state = NULL;
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
@@ -585,6 +637,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_rpc, setup, teardown),
         cmocka_unit_test_setup_teardown(test_action, setup, teardown),
         cmocka_unit_test_setup_teardown(test_notification, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_reply, setup, teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

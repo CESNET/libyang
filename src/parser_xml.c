@@ -32,6 +32,7 @@
 
 #define LYD_INTOPT_RPC      0x01    /**< RPC/action invocation is being parsed */
 #define LYD_INTOPT_NOTIF    0x02    /**< notification is being parsed */
+#define LYD_INTOPT_REPLY    0x04    /**< RPC/action reply is being parsed */
 
 /**
  * @brief Internal context for XML YANG data parser.
@@ -466,9 +467,12 @@ lydxml_data_r(struct lyd_xml_ctx *lydctx, struct lyd_node_inner *parent, struct 
     uint32_t prev_opts;
     struct lyd_node *cur = NULL, *anchor;
     struct ly_prefix *val_prefs;
+    int getnext_opts;
 
     xmlctx = lydctx->xmlctx;
     ctx = xmlctx->ctx;
+    /* leave if-feature check for validation */
+    getnext_opts = LYS_GETNEXT_NOSTATECHECK | (lydctx->int_opts & LYD_INTOPT_REPLY ? LYS_GETNEXT_OUTPUT : 0);
 
     while (xmlctx->status == LYXML_ELEMENT) {
         /* remember element prefix and name */
@@ -498,8 +502,7 @@ lydxml_data_r(struct lyd_xml_ctx *lydctx, struct lyd_node_inner *parent, struct 
         /* get the schema node */
         snode = NULL;
         if (mod && (!parent || parent->schema)) {
-            /* leave if-feature check for validation */
-            snode = lys_find_child(parent ? parent->schema : NULL, mod, name, name_len, 0, LYS_GETNEXT_NOSTATECHECK);
+            snode = lys_find_child(parent ? parent->schema : NULL, mod, name, name_len, 0, getnext_opts);
             if (!snode) {
                 if (lydctx->options & LYD_OPT_STRICT) {
                     LOGVAL(ctx, LY_VLOG_LINE, &xmlctx->line, LYVE_REFERENCE, "Element \"%.*s\" not found in the \"%s\" module.",
@@ -1074,6 +1077,79 @@ cleanup:
         lyd_free_all(*tree);
         lyd_free_tree(ntf_e);
         *tree = NULL;
+    }
+    return ret;
+}
+
+LY_ERR
+lyd_parse_xml_reply(const struct lyd_node *request, const char *data, struct lyd_node **tree, struct lyd_node **op)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lyd_xml_ctx lydctx = {0};
+    struct lyd_node *rpcr_e = NULL, *iter, *req_op, *rep_op;
+
+    /* init */
+    LY_CHECK_GOTO(ret = lyxml_ctx_new(LYD_NODE_CTX(request), data, &lydctx.xmlctx), cleanup);
+    lydctx.options = LYD_OPT_PARSE_ONLY | LYD_OPT_STRICT;
+    lydctx.int_opts = LYD_INTOPT_REPLY;
+    *tree = NULL;
+    if (op) {
+        *op = NULL;
+    }
+
+    /* find request OP */
+    LYD_TREE_DFS_BEGIN((struct lyd_node *)request, iter, req_op) {
+        if (req_op->schema->nodetype & (LYS_RPC | LYS_ACTION)) {
+            break;
+        }
+        LYD_TREE_DFS_END(request, iter, req_op);
+    }
+    if (!(req_op->schema->nodetype & (LYS_RPC | LYS_ACTION))) {
+        LOGERR(LYD_NODE_CTX(request), LY_EINVAL, "No RPC/action in the request found.");
+        ret = LY_EINVAL;
+        goto cleanup;
+    }
+
+    /* duplicate request OP with parents */
+    rep_op = lyd_dup(req_op, NULL, LYD_DUP_WITH_PARENTS);
+    LY_CHECK_ERR_GOTO(!rep_op, ret = LY_EMEM, cleanup);
+
+    /* parse "rpc-reply", if any */
+    LY_CHECK_GOTO(ret = lydxml_envelope(lydctx.xmlctx, "rpc-reply", "urn:ietf:params:xml:ns:netconf:base:1.0", &rpcr_e), cleanup);
+
+    /* parse the rest of data normally but connect them to the duplicated operation */
+    LY_CHECK_GOTO(ret = lydxml_data_r(&lydctx, (struct lyd_node_inner *)rep_op, lyd_node_children_p(rep_op)), cleanup);
+
+    /* finish XML parsing and check operation type */
+    if (rpcr_e) {
+        if (lydctx.xmlctx->status != LYXML_ELEM_CLOSE) {
+            assert(lydctx.xmlctx->status == LYXML_ELEMENT);
+            LOGVAL(LYD_NODE_CTX(request), LY_VLOG_LINE, &lydctx.xmlctx->line, LYVE_SYNTAX,
+                   "Unexpected sibling element \"%.*s\" of \"rpc-reply\".", lydctx.xmlctx->name_len, lydctx.xmlctx->name);
+            ret = LY_EVALID;
+            goto cleanup;
+        }
+        LY_CHECK_GOTO(ret = lyxml_ctx_next(lydctx.xmlctx), cleanup);
+    }
+
+    if (op) {
+        *op = rep_op;
+    }
+    for (iter = rep_op; iter->parent; iter = (struct lyd_node *)iter->parent);
+    *tree = iter;
+    if (rpcr_e) {
+        /* connect to the operation */
+        lyd_insert_node(rpcr_e, NULL, *tree);
+        *tree = rpcr_e;
+    }
+
+cleanup:
+    /* we have used parse_only flag */
+    assert(!lydctx.unres_node_type.count && !lydctx.unres_meta_type.count && !lydctx.when_check.count);
+    lyxml_ctx_free(lydctx.xmlctx);
+    if (ret) {
+        lyd_free_all(rep_op);
+        lyd_free_tree(rpcr_e);
     }
     return ret;
 }

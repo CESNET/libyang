@@ -376,7 +376,7 @@ no_content:
         case LYD_ANYDATA_DATATREE:
             /* close opening tag and print data */
             prev_opts = ctx->options;
-            ctx->options &= ~(LYDP_WITHSIBLINGS | LYDP_NETCONF);
+            ctx->options &= ~LYDP_WITHSIBLINGS;
             LEVEL_INC;
 
             ly_print(ctx->out, ">%s", LEVEL ? "\n" : "");
