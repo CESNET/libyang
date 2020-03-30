@@ -513,6 +513,8 @@ struct lyd_node_opaq {
 
 #define LYD_VALOPT_NO_STATE     0x00010000 /**< Consider state data not allowed and raise an error if they are found. */
 #define LYD_VALOPT_DATA_ONLY    0x00020000 /**< Validate only modules whose data actually exist. */
+#define LYD_VALOPT_INPUT        0x00040000 /**< Validate RPC/action request (input parameters). */
+#define LYD_VALOPT_OUTPUT       0x00080000 /**< Validate RPC/action reply (output parameters). */
 
 #define LYD_VALOPT_MASK         0xFFFF0000 /**< Mask for all the validation options. */
 
@@ -620,14 +622,19 @@ LY_ERR lyd_validate(struct lyd_node **tree, const struct ly_ctx *ctx, int val_op
 LY_ERR lyd_validate_modules(struct lyd_node **tree, const struct lys_module **modules, int mod_count, int val_opts);
 
 /**
- * @brief Validate an RPC/action/notification.
+ * @brief Validate an RPC/action, notification, or RPC/action reply.
  *
- * @param[in,out] op_tree Operation tree with any parents in case of nested operations.
- * @param[in] tree Tree to used forvalidating references from the operation.
+ * @param[in,out] op_tree Operation tree with any parents. It can point to the operation itself or any of
+ * its parents, only the operation subtree is actually validated.
+ * @param[in] tree Tree to be used for validating references from the operation subtree.
+ * @param[in] val_opts Specific validation option (@ref datavalidationoptions):
+ *              0 - no validation option for validation notifications,
+ *              ::LYD_VALOPT_INPUT - for validating RPC/action request (input),
+ *              ::LYD_VALOPT_OUTPUT - for validatin RPC/action reply (output).
  * @return LY_SUCCESS on success.
  * @return LY_ERR error on error.
  */
-LY_ERR lyd_validate_rpc_notif(struct lyd_node *op_tree, const struct lyd_node *tree);
+LY_ERR lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *tree, int val_opts);
 
 /**
  * @brief Create a new inner node in a data tree.

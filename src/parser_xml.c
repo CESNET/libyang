@@ -321,7 +321,7 @@ lydxml_data_check_schema(struct lyd_xml_ctx *lydctx, const struct lysc_node **sn
     struct lyxml_ctx *xmlctx = lydctx->xmlctx;
 
     if ((lydctx->options & LYD_OPT_NO_STATE) && ((*snode)->flags & LYS_CONFIG_R)) {
-        LOGVAL(xmlctx->ctx, LY_VLOG_LINE, &xmlctx->line, LY_VCODE_INSTATE, (*snode)->name);
+        LOGVAL(xmlctx->ctx, LY_VLOG_LINE, &xmlctx->line, LY_VCODE_INNODE, "state", (*snode)->name);
         return LY_EVALID;
     }
 
