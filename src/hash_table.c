@@ -191,6 +191,29 @@ finish:
     pthread_mutex_unlock(&ctx->dict.lock);
 }
 
+static int
+lydict_resize_val_eq(void *val1_p, void *val2_p, int UNUSED(mod), void *UNUSED(cb_data))
+{
+    if (!val1_p || !val2_p) {
+        LOGARG;
+        return 0;
+    }
+
+    const char *str1 = ((struct dict_rec *)val1_p)->value;
+    const char *str2 = ((struct dict_rec *)val2_p)->value;
+
+    if (!str1 || !str2) {
+        LOGARG;
+        return 0;
+    }
+
+    if (strcmp(str1, str2) == 0) {
+        return 1;
+    }
+
+    return 0;
+}
+
 static char *
 dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zerocopy)
 {
@@ -206,7 +229,7 @@ dict_insert(struct ly_ctx *ctx, char *value, size_t len, int zerocopy)
     rec.refcount = 1;
 
     LOGDBG(LY_LDGDICT, "inserting \"%s\"", rec.value);
-    ret = lyht_insert(ctx->dict.hash_tab, (void *)&rec, hash, (void **)&match);
+    ret = lyht_insert_with_resize_cb(ctx->dict.hash_tab, (void *)&rec, hash, lydict_resize_val_eq, (void **)&match);
     if (ret == 1) {
         match->refcount++;
         if (zerocopy) {
