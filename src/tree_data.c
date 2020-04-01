@@ -1381,13 +1381,25 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
     if (val_change) {
         /* make the node non-validated */
         leaf->validity = ly_new_node_validity(leaf->schema);
-    }
 
-    if (val_change && (leaf->schema->flags & LYS_UNIQUE)) {
-        for (parent = leaf->parent; parent && (parent->schema->nodetype != LYS_LIST); parent = parent->parent);
-        if (parent) {
-            parent->validity |= LYD_VAL_UNIQUE;
+        /* set unique validation flag for parent list */
+        if (leaf->schema->flags & LYS_UNIQUE) {
+            for (parent = leaf->parent; parent && (parent->schema->nodetype != LYS_LIST); parent = parent->parent);
+            if (parent) {
+                parent->validity |= LYD_VAL_UNIQUE;
+            }
         }
+
+#ifdef LY_ENABLED_CACHE
+        /* rehash list if it's key was changed */
+        if (lys_is_key((struct lys_node_leaf *)leaf->schema, NULL)) {
+            _lyd_unlink_hash((struct lyd_node *)leaf, leaf->parent, 0);
+            if (leaf->parent) {
+                lyd_hash(leaf->parent);
+            }
+            lyd_insert_hash((struct lyd_node *)leaf);
+        }
+#endif
     }
 
     return (val_change || dflt_change ? 0 : 1);
