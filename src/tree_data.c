@@ -4138,7 +4138,7 @@ lyd_insert_setinvalid(struct lyd_node *node)
          parent_list = parent_list->parent);
     if (parent_list && !(parent_list->validity & LYD_VAL_UNIQUE)) {
         /* there is a list, so check if we inserted a leaf supposed to be unique */
-        for (elem = node; elem; elem = next) {
+        LY_TREE_DFS_BEGIN(node, next, elem) {
             if (elem->schema->nodetype == LYS_LIST) {
                 /* stop searching to the depth, children would be unique to a list in subtree */
                 goto nextsibling;
@@ -4150,38 +4150,33 @@ lyd_insert_setinvalid(struct lyd_node *node)
                 break;
             }
 
+            /* LY_TREE_DFS_END */
             if (elem->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
-                if (elem == node) {
-                    /* stop the loop */
-                    break;
-                }
-                goto nextsibling;
+                next = NULL;
+            } else {
+                next = elem->child;
             }
 
-            /* select next elem to process */
-            /* go into children */
-            next = elem->child;
-            /* go through siblings */
             if (!next) {
 nextsibling:
-                next = elem->next;
-                if (!next) {
-                    /* no sibling */
-                    if (elem == node) {
-                        /* we are done, back in start node */
-                        break;
-                    }
-                }
-            }
-            /* go back to parents */
-            while (!next) {
-                elem = elem->parent;
-                if (elem->parent == node->parent) {
-                    /* we are done, back in start node */
+                /* no children */
+                if (elem == node) {
+                    /* we are done, (START) has no children */
                     break;
                 }
-                /* parent was actually already processed, so go to the parent's sibling */
-                next = elem->parent->next;
+                /* try siblings */
+                next = elem->next;
+            }
+            while (!next) {
+                /* parent is already processed, go to its sibling */
+                elem = elem->parent;
+
+                /* no siblings, go back through parents */
+                if (elem->parent == node->parent) {
+                    /* we are done, no next element to process */
+                    break;
+                }
+                next = elem->next;
             }
         }
     }
