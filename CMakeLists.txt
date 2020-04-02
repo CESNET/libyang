@@ -65,6 +65,7 @@ option(ENABLE_LATEST_REVISIONS "Enable reusing of latest revisions of schemas" O
 option(ENABLE_LYD_PRIV "Add a private pointer also to struct lyd_node (data node structure), just like in struct lys_node, for arbitrary user data" OFF)
 option(ENABLE_FUZZ_TARGETS "Build target programs suitable for fuzzing with AFL" OFF)
 set(PLUGINS_DIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libyang" CACHE STRING "Directory with libyang plugins (extensions and user types)")
+option(BUILD_YANGRE "Build yangre regext testing tool" ON)
 
 if(ENABLE_CACHE)
     set(LY_ENABLED_CACHE 1)
@@ -354,10 +355,12 @@ install(TARGETS yanglint DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/tools/lint/yanglint.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 
 #yangre
-add_executable(yangre ${resrc})
-target_link_libraries(yangre yang)
-install(TARGETS yangre DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(FILES ${PROJECT_SOURCE_DIR}/tools/re/yangre.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
+if(BUILD_YANGRE)
+    add_executable(yangre ${resrc})
+    target_link_libraries(yangre yang)
+    install(TARGETS yangre DESTINATION ${CMAKE_INSTALL_BINDIR})
+    install(FILES ${PROJECT_SOURCE_DIR}/tools/re/yangre.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
+endif()
 
 # yang2yin
 add_executable(yang2yin ${yang2yinsrc})
