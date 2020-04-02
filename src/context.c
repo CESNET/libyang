@@ -1915,12 +1915,29 @@ ly_ctx_info(struct ly_ctx *ctx)
         }
     }
 
+    /* IDs */
     sprintf(id, "%u", ctx->models.module_set_id);
     if (!lyd_new_leaf(root, NULL, "module-set-id", id)) {
         goto error;
     }
-    if (bis && !lyd_new_leaf(root_bis, NULL, "content-id", id)) {
-        goto error;
+    if (bis) {
+        /* create one complete schema */
+        if (!(cont = lyd_new(root_bis, NULL, "schema"))) {
+            goto error;
+        }
+
+        if (!lyd_new_leaf(cont, NULL, "name", "complete")) {
+            goto error;
+        }
+
+        if (!lyd_new_leaf(cont, NULL, "module-set", "complete")) {
+            goto error;
+        }
+
+        /* content-id */
+        if (!lyd_new_leaf(root_bis, NULL, "content-id", id)) {
+            goto error;
+        }
     }
 
     if (root_bis) {
