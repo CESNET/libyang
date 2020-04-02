@@ -16,6 +16,7 @@
 #define LY_COMMON_H_
 
 #include <stdint.h>
+#include <stdarg.h>
 #include <errno.h>
 #include <inttypes.h>
 
