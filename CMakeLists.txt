@@ -34,6 +34,11 @@ set(LIBYANG_MICRO_SOVERSION 27)
 set(LIBYANG_SOVERSION_FULL ${LIBYANG_MAJOR_SOVERSION}.${LIBYANG_MINOR_SOVERSION}.${LIBYANG_MICRO_SOVERSION})
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_SOVERSION})
 
+# check the supported platform
+if(NOT UNIX)
+    message(FATAL_ERROR "Only *nix like systems are supported.")
+endif()
+
 # set default build type if not specified by user
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE debug)
@@ -82,10 +87,27 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL "Clang")
     set(COMPILER_UNUSED_ATTR "UNUSED_ ## x __attribute__((__unused__))")
     set(COMPILER_PACKED_ATTR "__attribute__((__packed__))")
 else()
-    message(WARNING "You are using an unknown compiler, it must support C11 standard \"_Generic\" statement or the \"__builtin_types_compatible_p\" built-in function.")
+    message(WARNING "You are using an unknown compiler, it must support C11 standard \"_Generic\" statement"
+        " or the \"__builtin_types_compatible_p\" built-in function.")
     set(COMPILER_UNUSED_ATTR "UNUSED_ ## x")
     set(COMPILER_PACKED_ATTR "")
 endif()
+
+# compatibility checks
+set(CMAKE_REQUIRED_DEFINITIONS -D_POSIX_C_SOURCE=200809L)
+list(APPEND CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
+check_symbol_exists(vdprintf "stdio.h;stdarg.h" HAVE_VDPRINTF)
+check_symbol_exists(asprintf "stdio.h" HAVE_ASPRINTF)
+check_symbol_exists(vasprintf "stdio.h" HAVE_VASPRINTF)
+
+check_symbol_exists(get_current_dir_name "unistd.h" HAVE_GET_CURRENT_DIR_NAME)
+
+list(APPEND CMAKE_REQUIRED_DEFINITIONS -D_POSIX_C_SOURCE=200809L)
+check_symbol_exists(strndup "string.h" HAVE_STRNDUP)
+
+unset(CMAKE_REQUIRED_DEFINITIONS)
+
+TEST_BIG_ENDIAN(BIG_ENDIAN)
 
 include_directories(${PROJECT_BINARY_DIR}/src ${PROJECT_SOURCE_DIR}/src)
 configure_file(${PROJECT_SOURCE_DIR}/src/libyang.h.in ${PROJECT_BINARY_DIR}/src/libyang.h @ONLY)
@@ -132,11 +154,6 @@ endif()
 # by default build shared library
 # static build requires static libpcre library
 option(ENABLE_STATIC "Build static (.a) library" OFF)
-
-# check the supported platform
-if(NOT UNIX)
-    message(FATAL_ERROR "Only *nix like systems are supported.")
-endif()
 
 set(libsrc
     src/common.c
@@ -190,14 +207,6 @@ set(headers
     src/user_types.h
     src/xml.h
     src/dict.h)
-
-# compatibility checks
-check_symbol_exists(vdprintf "stdio.h;stdarg.h" HAVE_VDPRINTF)
-if(HAVE_VDPRINTF)
-    add_definitions(-DHAVE_VDPRINTF)
-endif()
-
-TEST_BIG_ENDIAN(BIG_ENDIAN)
 
 # create static libyang library
 if(ENABLE_STATIC)

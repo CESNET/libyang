@@ -13,6 +13,7 @@
  */
 
 #define _GNU_SOURCE
+#define _ISOC99_SOURCE /* vsnprintf */
 
 #include <assert.h>
 #include <ctype.h>
@@ -20,6 +21,8 @@
 #include <limits.h>
 #include <pthread.h>
 #include <string.h>
+#include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -31,6 +34,89 @@
 
 THREAD_LOCAL enum int_log_opts log_opt;
 THREAD_LOCAL int8_t ly_errno_glob;
+
+#ifndef HAVE_VDPRINTF
+int
+vdprintf(int fd, const char *format, va_list ap)
+{
+    FILE *stream;
+    int count;
+
+    stream = fdopen(dup(fd), "a+");
+    if (stream) {
+        count = vfprintf(stream, format, ap);
+        fclose(stream);
+    }
+    return count;
+}
+#endif
+
+#ifndef HAVE_ASPRINTF
+int
+asprintf(char **strp, const char *fmt, ...)
+{
+    int ret;
+    va_list ap;
+
+    va_start(ap, fmt);
+    ret = vasprintf(strp, fmt, ap);
+    va_end(ap);
+    return ret;
+}
+#endif
+
+#ifndef HAVE_VASPRINTF
+int
+vasprintf(char **strp, const char *fmt, va_list ap)
+{
+    va_list ap2;
+    va_copy(ap2, ap);
+    int l = vsnprintf(0, 0, fmt, ap2);
+    va_end(ap2);
+
+    if (l < 0 || !(*strp = malloc(l + 1U))) {
+        return -1;
+    }
+
+    return vsnprintf(*strp, l + 1U, fmt, ap);
+}
+#endif
+
+#ifndef HAVE_STRNDUP
+char *
+strndup(const char *s, size_t n)
+{
+    char *buf;
+    size_t len = 0;
+
+    /* strnlen */
+    for (; (len < n) && (s[len] != '\0'); ++len);
+
+    if (!(buf = malloc(len + 1U))) {
+        return NULL;
+    }
+
+    memcpy(buf, s, len);
+    buf[len] = '\0';
+    return buf;
+}
+#endif
+
+#ifndef HAVE_GET_CURRENT_DIR_NAME
+char *
+get_current_dir_name(void)
+{
+    char tmp[PATH_MAX];
+    char *retval;
+
+    if (getcwd(tmp, sizeof(tmp))) {
+        retval = strdup(tmp);
+        LY_CHECK_ERR_RETURN(!retval, LOGMEM(NULL), NULL);
+        return retval;
+    }
+    return NULL;
+}
+#endif
 
 API LY_ERR *
 ly_errno_glob_address(void)
@@ -156,24 +242,6 @@ ly_err_clean(struct ly_ctx *ctx, struct ly_err_item *eitem)
         ly_errno = LY_SUCCESS;
     }
 }
-
-#ifndef  __USE_GNU
-
-char *
-get_current_dir_name(void)
-{
-    char tmp[PATH_MAX];
-    char *retval;
-
-    if (getcwd(tmp, sizeof(tmp))) {
-        retval = strdup(tmp);
-        LY_CHECK_ERR_RETURN(!retval, LOGMEM(NULL), NULL);
-        return retval;
-    }
-    return NULL;
-}
-
-#endif
 
 const char *
 strpbrk_backwards(const char *s, const char *accept, unsigned int s_len)
