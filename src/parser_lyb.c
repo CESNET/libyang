@@ -17,22 +17,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <inttypes.h>
-#ifdef __APPLE__
-# include <libkern/OSByteOrder.h>
-# define le64toh(x) OSSwapLittleToHostInt64(x)
-#elif defined(__FreeBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
-# include <sys/endian.h>
-#elif defined(__sun__)
-# include <endian.h>
-# include <sys/byteorder.h>
-# if defined(_BIG_ENDIAN)
-#  define le64toh(x) BSWAP_64(x)
-# else
-#  define le64toh(x) (x)
-# endif
-#else
-# include <endian.h>
-#endif
 
 #include "libyang.h"
 #include "common.h"

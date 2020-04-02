@@ -9,6 +9,7 @@ project(libyang C)
 
 include(GNUInstallDirs)
 include(CheckSymbolExists)
+include(TestBigEndian)
 
 set(LIBYANG_DESCRIPTION "libyang is YANG data modelling language parser and toolkit written (and providing API) in C.")
 
@@ -190,10 +191,13 @@ set(headers
     src/xml.h
     src/dict.h)
 
+# compatibility checks
 check_symbol_exists(vdprintf "stdio.h;stdarg.h" HAVE_VDPRINTF)
 if(HAVE_VDPRINTF)
     add_definitions(-DHAVE_VDPRINTF)
-endif(HAVE_VDPRINTF)
+endif()
+
+TEST_BIG_ENDIAN(BIG_ENDIAN)
 
 # create static libyang library
 if(ENABLE_STATIC)
@@ -226,7 +230,7 @@ else()
     target_link_libraries(yang ${CMAKE_DL_LIBS})
 
     set_target_properties(yangobj PROPERTIES COMPILE_FLAGS "-fvisibility=hidden")
-endif(ENABLE_STATIC)
+endif()
 
 set_target_properties(yang PROPERTIES VERSION ${LIBYANG_SOVERSION_FULL} SOVERSION ${LIBYANG_SOVERSION})
 
@@ -296,7 +300,7 @@ if(ENABLE_BUILD_TESTS)
     if(CMOCKA_FOUND AND CMAKE_BUILD_TYPE MATCHES debug)
         list(APPEND EXTENSIONS_LIST "libyang_ext_test")
     endif(CMOCKA_FOUND AND CMAKE_BUILD_TYPE MATCHES debug)
-endif(ENABLE_BUILD_TESTS)
+endif()
 
 if(ENABLE_STATIC)
     set(EXTENSIONS_LIST_SIZE " 0 ")
@@ -330,7 +334,7 @@ if(ENABLE_STATIC)
     set(STATIC_LOADED_PLUGINS_COUNT "${ITEM}")
 else()
     add_subdirectory(src/user_types)
-endif(ENABLE_STATIC)
+endif()
 
 configure_file(${PROJECT_SOURCE_DIR}/src/plugin_config.h.in ${PROJECT_BINARY_DIR}/src/plugin_config.h)
 
@@ -367,11 +371,11 @@ if(ENABLE_BUILD_TESTS)
         message(STATUS "Disabling tests because of missing CMocka")
         set(ENABLE_BUILD_TESTS NO)
     endif(CMOCKA_FOUND)
-endif(ENABLE_BUILD_TESTS)
+endif()
 
 if(ENABLE_BUILD_FUZZ_TARGETS)
     add_subdirectory(tests/fuzz)
-endif(ENABLE_BUILD_FUZZ_TARGETS)
+endif()
 
 if(GEN_LANGUAGE_BINDINGS AND GEN_CPP_BINDINGS)
     add_subdirectory(swig)
