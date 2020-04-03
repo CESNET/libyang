@@ -20,6 +20,7 @@
 #include <time.h>
 #include <ctype.h>
 
+#include "../src/compat.h"
 #include "../user_types.h"
 
 /**

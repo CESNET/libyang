@@ -19,6 +19,7 @@
 #include <errno.h>
 #include <inttypes.h>
 
+#include "compat.h"
 #include "libyang.h"
 #include "hash_table.h"
 #include "resolve.h"

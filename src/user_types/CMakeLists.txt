@@ -6,5 +6,5 @@ macro(USER_TYPE_PLUGIN PLUGIN_NAME SRCS)
 endmacro(USER_TYPE_PLUGIN)
 
 foreach(USER_TYPE ${USER_TYPE_LIST})
-    USER_TYPE_PLUGIN(${USER_TYPE} "${USER_TYPE}.c")
+    USER_TYPE_PLUGIN(${USER_TYPE} "${USER_TYPE}.c;../compat.c")
 endforeach()

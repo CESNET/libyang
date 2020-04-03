@@ -23,6 +23,7 @@
 #include <getopt.h>
 #include <libgen.h>
 
+#include "compat.h"
 #include "commands.h"
 #include "libyang.h"
 #include "../../src/tree_schema.h"
