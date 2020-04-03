@@ -192,7 +192,7 @@ finish:
 }
 
 static int
-lydict_resize_val_eq(void *val1_p, void *val2_p, int UNUSED(mod), void *UNUSED(cb_data))
+lydict_resize_val_eq(void *val1_p, void *val2_p, int mod, void *cb_data)
 {
     if (!val1_p || !val2_p) {
         LOGARG;
@@ -207,8 +207,14 @@ lydict_resize_val_eq(void *val1_p, void *val2_p, int UNUSED(mod), void *UNUSED(c
         return 0;
     }
 
-    if (strcmp(str1, str2) == 0) {
-        return 1;
+    if (mod) {
+        /* used when inserting new values */
+        if (strcmp(str1, str2) == 0) {
+            return 1;
+        }
+    } else {
+        /* used when finding the original value again in the resized table */
+        return lydict_val_eq(val1_p, val2_p, mod, cb_data);
     }
 
     return 0;
