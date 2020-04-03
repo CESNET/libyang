@@ -278,9 +278,9 @@ lyp_mmap(struct ly_ctx *ctx, int fd, size_t addsize, size_t *length, void **addr
         *addr = mmap(NULL, *length, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
     } else {
         /* there will not be enough bytes after the file content mapping for the additional bytes and some of them
-         * would overflow into another page that would not be zerroed and any access into it would generate SIGBUS.
+         * would overflow into another page that would not be zeroed and any access into it would generate SIGBUS.
          * Therefore we have to do the following hack with double mapping. First, the required number of bytes
-         * (including the additinal bytes) is required as anonymous and thus they will be really provided (actually more
+         * (including the additional bytes) is required as anonymous and thus they will be really provided (actually more
          * because of using whole pages) and also initialized by zeros. Then, the file is mapped to the same address
          * where the anonymous mapping starts. */
         *length = sb.st_size + pagesize;
@@ -740,7 +740,7 @@ max:
 
         if (*c == '|') {
             c++;
-            /* process next length-parth */
+            /* process next length-part */
             goto lengthpart;
         } else if (*c == '\0') {
             goto syntax_ok;
@@ -771,7 +771,7 @@ upper:
                 goto syntax_ok;
             } else if (*c == '|') {
                 c++;
-                /* process next length-parth */
+                /* process next length-part */
                 goto lengthpart;
             } else {
                 goto error;
@@ -979,7 +979,7 @@ lyp_precompile_pattern(struct ly_ctx *ctx, const char *pattern, pcre** pcre_cmp,
  * @param[in] data2 If \p type is #LY_TYPE_BITS: (int *) type bit field length,
  *                                #LY_TYPE_DEC64: (uint8_t *) number of fraction digits (position of the floating point),
  *                                otherwise ignored.
- * @return 1 if a conversion took place, 0 if the value was kept the same.
+ * @return 1 if a conversion took place, 0 if the value was kept the same, -1 on error.
  */
 static int
 make_canonical(struct ly_ctx *ctx, int type, const char **value, void *data1, void *data2)
@@ -994,6 +994,8 @@ make_canonical(struct ly_ctx *ctx, int type, const char **value, void *data1, vo
     uint64_t unum;
     uint8_t c;
 
+#define LOGBUF(str) LOGERR(ctx, LY_EINVAL, "Value \"%s\" is too long.", str)
+
     switch (type) {
     case LY_TYPE_BITS:
         bits = (struct lys_type_bit **)data1;
@@ -1006,8 +1008,10 @@ make_canonical(struct ly_ctx *ctx, int type, const char **value, void *data1, vo
                 continue;
             }
             if (buf[0]) {
+                LY_CHECK_ERR_RETURN(strlen(buf) + 1 + strlen(bits[i]->name) > buf_len, LOGBUF(bits[i]->name), -1);
                 sprintf(buf + strlen(buf), " %s", bits[i]->name);
             } else {
+                LY_CHECK_ERR_RETURN(strlen(bits[i]->name) > buf_len, LOGBUF(bits[i]->name), -1);
                 strcpy(buf, bits[i]->name);
             }
         }
@@ -1017,15 +1021,17 @@ make_canonical(struct ly_ctx *ctx, int type, const char **value, void *data1, vo
         module_name = (const char *)data1;
         /* identity must always have a prefix */
         if (!strchr(*value, ':')) {
+            LY_CHECK_ERR_RETURN(strlen(module_name) + 1 + strlen(*value) > buf_len, LOGBUF(*value), -1);
             sprintf(buf, "%s:%s", module_name, *value);
         } else {
+            LY_CHECK_ERR_RETURN(strlen(*value) > buf_len, LOGBUF(*value), -1);
             strcpy(buf, *value);
         }
         break;
 
     case LY_TYPE_INST:
         exp = lyxp_parse_expr(ctx, *value);
-        LY_CHECK_ERR_RETURN(!exp, LOGINT(ctx), 0);
+        LY_CHECK_ERR_RETURN(!exp, LOGINT(ctx), -1);
 
         module_name = NULL;
         count = 0;
@@ -1035,9 +1041,9 @@ make_canonical(struct ly_ctx *ctx, int type, const char **value, void *data1, vo
             /* copy WS */
             if (i && ((end = exp->expr + exp->expr_pos[i - 1] + exp->tok_len[i - 1]) != cur_expr)) {
                 if (count + (cur_expr - end) > buf_len) {
-                    LOGINT(ctx);
                     lyxp_expr_free(exp);
-                    return 0;
+                    LOGBUF(end);
+                    return -1;
                 }
                 strncpy(&buf[count], end, cur_expr - end);
                 count += cur_expr - end;
@@ -1051,9 +1057,9 @@ make_canonical(struct ly_ctx *ctx, int type, const char **value, void *data1, vo
                 if (!module_name || strncmp(cur_expr, module_name, j)) {
                     /* print module name with colon, it does not equal to the parent one */
                     if (count + j > buf_len) {
-                        LOGINT(ctx);
                         lyxp_expr_free(exp);
-                        return 0;
+                        LOGBUF(cur_expr);
+                        return -1;
                     }
                     strncpy(&buf[count], cur_expr, j);
                     count += j;
@@ -1062,17 +1068,17 @@ make_canonical(struct ly_ctx *ctx, int type, const char **value, void *data1, vo
 
                 /* copy the rest */
                 if (count + (exp->tok_len[i] - j) > buf_len) {
-                    LOGINT(ctx);
                     lyxp_expr_free(exp);
-                    return 0;
+                    LOGBUF(end);
+                    return -1;
                 }
                 strncpy(&buf[count], end, exp->tok_len[i] - j);
                 count += exp->tok_len[i] - j;
             } else {
                 if (count + exp->tok_len[i] > buf_len) {
-                    LOGINT(ctx);
+                    LOGBUF(&exp->expr[exp->expr_pos[i]]);
                     lyxp_expr_free(exp);
-                    return 0;
+                    return -1;
                 }
                 strncpy(&buf[count], &exp->expr[exp->expr_pos[i]], exp->tok_len[i]);
                 count += exp->tok_len[i];
@@ -1081,7 +1087,7 @@ make_canonical(struct ly_ctx *ctx, int type, const char **value, void *data1, vo
         if (count > buf_len) {
             LOGINT(ctx);
             lyxp_expr_free(exp);
-            return 0;
+            return -1;
         }
         buf[count] = '\0';
 
@@ -1146,6 +1152,8 @@ make_canonical(struct ly_ctx *ctx, int type, const char **value, void *data1, vo
     }
 
     return 0;
+
+#undef LOGBUF
 }
 
 static const char *
@@ -1210,7 +1218,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
     unsigned int i, j;
     int64_t num;
     uint64_t unum, uind, u = 0;
-    const char *ptr, *value = *value_, *itemname;
+    const char *ptr, *value = *value_, *itemname, *old_val_str = NULL;
     struct lys_type_bit **bits = NULL;
     struct lys_ident *ident;
     lyd_val *val, old_val;
@@ -1245,7 +1253,8 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
     /* fully clear the value */
     if (store) {
-        lyd_free_value(*val, *val_type, *val_flags, type, &old_val, &old_val_type, &old_val_flags);
+        old_val_str = lydict_insert(ctx, *value_, 0);
+        lyd_free_value(*val, *val_type, *val_flags, type, old_val_str, &old_val, &old_val_type, &old_val_flags);
         *val_flags &= ~LY_VALUE_UNRES;
     }
 
@@ -1359,7 +1368,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             /* go back to the beginning of the identifier */
             c = c - len;
 
-            /* find bit definition, identifiers appear ordered by their posititon */
+            /* find bit definition, identifiers appear ordered by their position */
             for (found = i = 0; i < type->info.bits.count; i++) {
                 if (!strncmp(type->info.bits.bit[i].name, &value[c], len) && !type->info.bits.bit[i].name[len]) {
                     /* we have match, check if the value is enabled ... */
@@ -1411,7 +1420,10 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             c = c + len;
         }
 
-        make_canonical(ctx, LY_TYPE_BITS, value_, bits, &type->info.bits.count);
+        if (make_canonical(ctx, LY_TYPE_BITS, value_, bits, &type->info.bits.count) == -1) {
+            free(bits);
+            goto error;
+        }
 
         if (store) {
             /* store the result */
@@ -1469,7 +1481,9 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             goto error;
         }
 
-        make_canonical(ctx, LY_TYPE_DEC64, value_, &num, &type->info.dec64.dig);
+        if (make_canonical(ctx, LY_TYPE_DEC64, value_, &num, &type->info.dec64.dig) == -1) {
+            goto error;
+        }
 
         if (store) {
             /* store the result */
@@ -1597,7 +1611,10 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             type->parent->flags |= LYS_DFLTJSON;
         }
 
-        make_canonical(ctx, LY_TYPE_IDENT, &value, (void*)lys_main_module(local_mod)->name, NULL);
+        if (make_canonical(ctx, LY_TYPE_IDENT, &value, (void*)lys_main_module(local_mod)->name, NULL) == -1) {
+            lydict_remove(ctx, value);
+            goto error;
+        }
 
         /* replace the old value with the new one (even if they may be the same) */
         lydict_remove(ctx, *value_);
@@ -1650,8 +1667,12 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             /* turn logging back on */
             ly_ilo_restore(NULL, prev_ilo, NULL, 0);
         } else {
-            if (make_canonical(ctx, LY_TYPE_INST, &value, NULL, NULL)) {
-                /* if a change occured, value was removed from the dicionary so fix the pointers */
+            if ((c = make_canonical(ctx, LY_TYPE_INST, &value, NULL, NULL))) {
+                if (c == -1) {
+                    goto error;
+                }
+
+                /* if a change occurred, value was removed from the dictionary so fix the pointers */
                 *value_ = value;
             }
         }
@@ -1690,11 +1711,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         t = lyp_parse_value(&type->info.lref.target->type, value_, xml, leaf, attr, NULL, store, dflt, trusted);
         value = *value_; /* refresh possibly changed value */
         if (!t) {
-            if (leaf) {
-                LOGVAL(ctx, LYE_INVAL, LY_VLOG_LYD, contextnode, value, itemname);
-            } else {
-                LOGVAL(ctx, LYE_INMETA, LY_VLOG_LYD, contextnode, "<none>", itemname, value);
-            }
+            /* already logged */
             goto error;
         }
 
@@ -1707,7 +1724,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
         break;
 
     case LY_TYPE_STRING:
-        if (!trusted && validate_length_range(0, (value ? strlen(value) : 0), 0, 0, 0, type, value, contextnode)) {
+        if (!trusted && validate_length_range(0, (value ? ly_strlen_utf8(value) : 0), 0, 0, 0, type, value, contextnode)) {
             goto error;
         }
 
@@ -1721,7 +1738,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
              tpdf = tpdf->type.der);
         if (tpdf->module && xml) {
             /* convert value into the json format */
-            value = transform_xml2json(ctx, value, xml, 1, 1);
+            value = transform_xml2json(ctx, value ? value : "", xml, 1, 1);
             if (!value) {
                 /* invalid instance-identifier format */
                 if (leaf) {
@@ -1752,7 +1769,9 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             goto error;
         }
 
-        make_canonical(ctx, LY_TYPE_INT8, value_, &num, NULL);
+        if (make_canonical(ctx, LY_TYPE_INT8, value_, &num, NULL) == -1) {
+            goto error;
+        }
 
         if (store) {
             /* store the result */
@@ -1767,7 +1786,9 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             goto error;
         }
 
-        make_canonical(ctx, LY_TYPE_INT16, value_, &num, NULL);
+        if (make_canonical(ctx, LY_TYPE_INT16, value_, &num, NULL) == -1) {
+            goto error;
+        }
 
         if (store) {
             /* store the result */
@@ -1782,7 +1803,9 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             goto error;
         }
 
-        make_canonical(ctx, LY_TYPE_INT32, value_, &num, NULL);
+        if (make_canonical(ctx, LY_TYPE_INT32, value_, &num, NULL) == -1) {
+            goto error;
+        }
 
         if (store) {
             /* store the result */
@@ -1798,7 +1821,9 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             goto error;
         }
 
-        make_canonical(ctx, LY_TYPE_INT64, value_, &num, NULL);
+        if (make_canonical(ctx, LY_TYPE_INT64, value_, &num, NULL) == -1) {
+            goto error;
+        }
 
         if (store) {
             /* store the result */
@@ -1813,7 +1838,9 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             goto error;
         }
 
-        make_canonical(ctx, LY_TYPE_UINT8, value_, &unum, NULL);
+        if (make_canonical(ctx, LY_TYPE_UINT8, value_, &unum, NULL) == -1) {
+            goto error;
+        }
 
         if (store) {
             /* store the result */
@@ -1828,7 +1855,9 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             goto error;
         }
 
-        make_canonical(ctx, LY_TYPE_UINT16, value_, &unum, NULL);
+        if (make_canonical(ctx, LY_TYPE_UINT16, value_, &unum, NULL) == -1) {
+            goto error;
+        }
 
         if (store) {
             /* store the result */
@@ -1843,7 +1872,9 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             goto error;
         }
 
-        make_canonical(ctx, LY_TYPE_UINT32, value_, &unum, NULL);
+        if (make_canonical(ctx, LY_TYPE_UINT32, value_, &unum, NULL) == -1) {
+            goto error;
+        }
 
         if (store) {
             /* store the result */
@@ -1858,7 +1889,9 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             goto error;
         }
 
-        make_canonical(ctx, LY_TYPE_UINT64, value_, &unum, NULL);
+        if (make_canonical(ctx, LY_TYPE_UINT64, value_, &unum, NULL) == -1) {
+            goto error;
+        }
 
         if (store) {
             /* store the result */
@@ -1880,10 +1913,19 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
             if (xml) {
                 /* in case it should resolve into a instance-identifier, we can only do the JSON conversion here */
                 ly_ilo_change(NULL, ILO_IGNORE, &prev_ilo, NULL);
-                val->string = transform_xml2json(ctx, value, xml, 1, 1);
+                value = transform_xml2json(ctx, value, xml, 1, 1);
                 ly_ilo_restore(NULL, prev_ilo, NULL, 0);
-                if (!val->string) {
-                    /* invalid instance-identifier format, likely some other type */
+
+                /* update the changed value */
+                if (value) {
+                    lydict_remove(ctx, *value_);
+                    *value_ = value;
+                } else {
+                    value = *value_;
+                }
+
+                if (store) {
+                    /* store the (unresolved) result */
                     val->string = lydict_insert(ctx, value, 0);
                 }
             }
@@ -1907,7 +1949,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
             if (store) {
                 /* erase possible present and invalid value data */
-                lyd_free_value(*val, *val_type, *val_flags, t, NULL, NULL, NULL);
+                lyd_free_value(*val, *val_type, *val_flags, t, *value_, NULL, NULL, NULL);
                 memset(val, 0, sizeof(lyd_val));
             }
         }
@@ -1936,7 +1978,7 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
     /* search user types in case this value is supposed to be stored in a custom way */
     if (store && type->der && type->der->module) {
-        c = lytype_store(type->der->module, type->der->name, *value_, val);
+        c = lytype_store(type->der->module, type->der->name, value_, val);
         if (c == -1) {
             goto error;
         } else if (!c) {
@@ -1946,7 +1988,8 @@ lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *x
 
     /* free backup */
     if (store) {
-        lyd_free_value(old_val, old_val_type, old_val_flags, type, NULL, NULL, NULL);
+        lyd_free_value(old_val, old_val_type, old_val_flags, type, old_val_str, NULL, NULL, NULL);
+        lydict_remove(ctx, old_val_str);
     }
     return type;
 
@@ -1956,6 +1999,7 @@ error:
         *val = old_val;
         *val_type = old_val_type;
         *val_flags = old_val_flags;
+        lydict_remove(ctx, old_val_str);
     }
     return NULL;
 }
@@ -2955,6 +2999,12 @@ lyp_check_import(struct lys_module *module, const char *value, struct lys_import
     if (imp->rev[0] && imp->module->rev_size && strcmp(imp->rev, imp->module->rev[0].date)) {
         LOGERR(ctx, LY_EVALID, "\"%s\" import of module \"%s\" in revision \"%s\" not found.",
                module->name, value, imp->rev);
+        return -1;
+    }
+
+    if ((module->version < 2) && imp->rev[0] && (imp->module->version == 2)) {
+        LOGERR(ctx, LY_EVALID, "YANG 1.0 module \"%s\" import with revision of YANG 1.1 module \"%s\".",
+               module->name, imp->module->name);
         return -1;
     }
 

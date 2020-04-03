@@ -324,7 +324,7 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
                 /* NETCONF filter's attributes, which we implement as non-standard annotations,
                  * they are unqualified (no namespace), but we know that we have internally defined
                  * them in the ietf-netconf module */
-                str = "urn:ietf:params:xml:ns:netconf:base:1.0";
+                str = LY_NSNC;
                 filterflag = 1;
             } else {
                 /* garbage */
@@ -559,6 +559,8 @@ error:
 API struct lyd_node *
 lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
 {
+    FUN_IN;
+
     va_list ap;
     int r;
     struct unres_data *unres = NULL;
@@ -666,7 +668,7 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     }
 
     if ((options & LYD_OPT_RPC)
-            && !strcmp(xmlstart->name, "action") && !strcmp(xmlstart->ns->value, "urn:ietf:params:xml:ns:yang:1")) {
+            && !strcmp(xmlstart->name, "action") && !strcmp(xmlstart->ns->value, LY_NSYANG)) {
         /* it's an action, not a simple RPC */
         xmlstart = xmlstart->child;
         if (options & LYD_OPT_DESTRUCT) {

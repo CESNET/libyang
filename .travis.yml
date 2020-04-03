@@ -2,16 +2,34 @@ language: c
 
 matrix:
   include:
-    - os: linux
-      dist: trusty
+    - arch: amd64
+      os: linux
+      dist: bionic
       sudo: required
       compiler: clang
-    - os: linux
-      dist: trusty
+      env: TRAVIS_ARCH="amd64"
+    - arch: amd64
+      os: linux
+      dist: bionic
       sudo: required
       compiler: gcc
-    - os: osx
+      env: TRAVIS_ARCH="amd64"
+    - arch: arm64
+      os: linux
+      dist: bionic
+      sudo: required
       compiler: gcc
+      env: TRAVIS_ARCH="arm64"
+    - arch: amd64
+      os: linux
+      dist: bionic
+      sudo: required
+      compiler: gcc
+      env: TRAVIS_ARCH="amd64" ENABLE_STATIC=ON
+    - arch: amd64
+      os: osx
+      compiler: gcc
+      env: TRAVIS_ARCH="amd64"
   allow_failures:
     - os: osx
 
@@ -21,21 +39,21 @@ branches:
     - devel
 
 before_install:
-  - eval "${MATRIX_EVAL}"
   - git clone git://git.cryptomilk.org/projects/cmocka.git
   - cd cmocka && mkdir build && cd build
   - cmake .. && make -j2 && sudo make install
   - cd ../..
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew update; fi
-  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo apt-get update -qq; sudo apt-get install -y valgrind osc; sudo dpkg -i ./swig/swig3.0_3.0.12-1.2_amd64.deb; sudo dpkg -i ./swig/swig_3.0.12-1_amd64.deb; fi
-  - if [ "$TRAVIS_OS_NAME" = "linux" -a "$CC" = "gcc-7" ]; then pip install --user codecov; export CFLAGS="-coverage"; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo apt-get update -qq; sudo apt-get install -y valgrind libpcre3-dev python3-dev swig; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" -a "$CC" = "gcc" -a "$TRAVIS_ARCH" = "amd64" ]; then pip install --user codecov; export CFLAGS="-coverage"; fi
 
 script:
   - mkdir build && cd build
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then cmake -DENABLE_VALGRIND_TESTS=OFF ..; fi
-  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then cmake -DGEN_LANGUAGE_BINDINGS=ON ..; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" -a "$TRAVIS_ARCH" = "amd64" ]; then cmake -DGEN_LANGUAGE_BINDINGS=ON -DENABLE_STATIC=${ENABLE_STATIC:-OFF} ..; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" -a "$TRAVIS_ARCH" = "arm64" ]; then cmake -DGEN_LANGUAGE_BINDINGS=ON -DENABLE_VALGRIND_TESTS=OFF ..; fi
   - make -j2 && ctest --output-on-failure
   - cd -
 
 after_success:
-  - if [ "$TRAVIS_OS_NAME" = "linux" -a "$CC" = "gcc-7" ]; then codecov; ./packages/create-package.sh; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" -a "$CC" = "gcc" -a "$TRAVIS_ARCH" = "amd64" -a "$TRAVIS_BRANCH" = "master" ]; then codecov; ./packages/create-package.sh; fi

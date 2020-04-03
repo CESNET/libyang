@@ -419,6 +419,10 @@ typedef enum {
 #define LYEXT_OPT_CONTENT    0x04    /**< content of lys_ext_instance_complex is copied from source (not dup, just memcpy). */
 /** @endcond */
 #define LYEXT_OPT_VALID      0x08    /**< needed to call calback for validation */
+#define LYEXT_OPT_VALID_SUBTREE 0x10 /**< The plugin needs to do validation on nodes in the subtree of the extended node
+                                          (i.e. not only the extended node nor its direct children). valid_data callback
+                                          will be called when any descendant node in the subtree of the extended node is
+                                          modified. */
 #define LYEXT_OPT_PLUGIN1    0x0100  /**< reserved flag for plugin-specific use */
 #define LYEXT_OPT_PLUGIN2    0x0200  /**< reserved flag for plugin-specific use */
 #define LYEXT_OPT_PLUGIN3    0x0400  /**< reserved flag for plugin-specific use */
@@ -1177,6 +1181,8 @@ struct lys_iffeature {
 #define LYS_NOTAPPLIED   0x01        /**< flag for the not applied augments to allow keeping the resolved target */
 #define LYS_YINELEM      0x01        /**< yin-element true for extension's argument */
 #define LYS_VALID_EXT    0x2000      /**< flag marking nodes that need to be validated using an extension validation function */
+#define LYS_VALID_EXT_SUBTREE 0x4000 /**< flag marking nodes that need to be validated using an extension
+                                          validation function when one of their children nodes is modified */
 
 /**
  * @}
@@ -1362,9 +1368,7 @@ struct lys_node_leaf {
 
     LYS_NODE nodetype;               /**< type of the node (mandatory) - #LYS_LEAF */
     struct lys_node *parent;         /**< pointer to the parent node, NULL in case of a top level node */
-    struct ly_set *backlinks;        /**< replacement for ::lys_node's child member, it is NULL except the leaf/leaflist
-                                          is target of a leafref. In that case the set stores ::lys_node leafref objects
-                                          with path referencing the current ::lys_node_leaf */
+    void *child;                     /**< dummy attribute as a replacement for ::lys_node's child member */
     struct lys_node *next;           /**< pointer to the next sibling node (NULL if there is no one) */
     struct lys_node *prev;           /**< pointer to the previous sibling node \note Note that this pointer is
                                           never NULL. If there is no sibling node, pointer points to the node
@@ -2215,6 +2219,14 @@ int lys_features_state(const struct lys_module *module, const char *feature);
 const struct lys_node *lys_is_disabled(const struct lys_node *node, int recursive);
 
 /**
+ * @brief Learn how the if-feature statement currently evaluates.
+ *
+ * @param[in] iff if-feature statement to evaluate.
+ * @return If the statement evaluates to true, 1 is returned. 0 is returned when the statement evaluates to false.
+ */
+int lys_iffeature_value(const struct lys_iffeature *iff);
+
+/**
  * @brief Check if the schema leaf node is used as a key for a list.
  *
  * @param[in] node Schema leaf node to check
@@ -2294,7 +2306,9 @@ enum lyxp_node_type {
     /* XML elements */
     LYXP_NODE_ELEM,             /* XML element (most common) */
     LYXP_NODE_TEXT,             /* XML text element (extremely specific use, unlikely to be ever needed) */
-    LYXP_NODE_ATTR              /* XML attribute (in YANG cannot happen, do not use for the context node) */
+    LYXP_NODE_ATTR,             /* XML attribute (in YANG cannot happen, do not use for the context node) */
+
+    LYXP_NODE_NONE              /* invalid node type, do not use */
 };
 
 /**

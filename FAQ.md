@@ -21,7 +21,7 @@ $ make
    or add the libyang's location to the linker paths in `/etc/ld.so.conf.d` and
    then run `ldconfig` to rebuild the linker cache.
 
-__Q: yanglint(1) does not start and, but prints the following error messages:__
+__Q: yanglint(1) does not start, but prints the following error messages:__
 ```
 ./yanglint
 libyang[0]: Invalid keyword "type" as a child to "annotation". (path: /)

@@ -43,6 +43,8 @@ static struct lyxml_attr *lyxml_dup_attr(struct ly_ctx *ctx, struct lyxml_elem *
 API const struct lyxml_ns *
 lyxml_get_ns(const struct lyxml_elem *elem, const char *prefix)
 {
+    FUN_IN;
+
     struct lyxml_attr *attr;
 
     if (!elem) {
@@ -193,44 +195,55 @@ lyxml_correct_elem_ns(struct ly_ctx *ctx, struct lyxml_elem *elem, int copy_ns, 
 }
 
 struct lyxml_elem *
-lyxml_dup_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, struct lyxml_elem *parent, int recursive)
+lyxml_dup_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, struct lyxml_elem *parent, int recursive, int with_siblings)
 {
-    struct lyxml_elem *result, *child;
+    struct lyxml_elem *dup, *result = NULL;
     struct lyxml_attr *attr;
 
     if (!elem) {
         return NULL;
     }
 
-    result = calloc(1, sizeof *result);
-    LY_CHECK_ERR_RETURN(!result, LOGMEM(ctx), NULL);
-    result->content = lydict_insert(ctx, elem->content, 0);
-    result->name = lydict_insert(ctx, elem->name, 0);
-    result->flags = elem->flags;
-    result->prev = result;
+    LY_TREE_FOR(elem, elem) {
+        dup = calloc(1, sizeof *dup);
+        LY_CHECK_ERR_RETURN(!dup, LOGMEM(ctx), NULL);
+        dup->content = lydict_insert(ctx, elem->content, 0);
+        dup->name = lydict_insert(ctx, elem->name, 0);
+        dup->flags = elem->flags;
+        dup->prev = dup;
 
-    if (parent) {
-        lyxml_add_child(ctx, parent, result);
-    }
+        if (parent) {
+            lyxml_add_child(ctx, parent, dup);
+        } else if (result) {
+            dup->prev = result->prev;
+            dup->prev->next = dup;
+            result->prev = dup;
+        }
 
-    /* keep old namespace for now */
-    result->ns = elem->ns;
+        /* keep old namespace for now */
+        dup->ns = elem->ns;
 
-    /* duplicate attributes */
-    for (attr = elem->attr; attr; attr = attr->next) {
-        lyxml_dup_attr(ctx, result, attr);
-    }
+        /* duplicate attributes */
+        for (attr = elem->attr; attr; attr = attr->next) {
+            lyxml_dup_attr(ctx, dup, attr);
+        }
 
-    /* correct namespaces */
-    lyxml_correct_elem_ns(ctx, result, 1, 0);
+        /* correct namespaces */
+        lyxml_correct_elem_ns(ctx, dup, 1, 0);
 
-    if (!recursive) {
-        return result;
-    }
+        if (recursive) {
+            /* duplicate children */
+            lyxml_dup_elem(ctx, elem->child, dup, 1, 1);
+        }
 
-    /* duplicate children */
-    LY_TREE_FOR(elem->child, child) {
-        lyxml_dup_elem(ctx, child, result, 1);
+        /* set result (first sibling) */
+        if (!result) {
+            result = dup;
+        }
+
+        if (!with_siblings) {
+            break;
+        }
     }
 
     return result;
@@ -239,7 +252,9 @@ lyxml_dup_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, struct lyxml_elem *p
 API struct lyxml_elem *
 lyxml_dup(struct ly_ctx *ctx, struct lyxml_elem *root)
 {
-    return lyxml_dup_elem(ctx, root, NULL, 1);
+    FUN_IN;
+
+    return lyxml_dup_elem(ctx, root, NULL, 1, 0);
 }
 
 void
@@ -300,6 +315,8 @@ lyxml_unlink_elem(struct ly_ctx *ctx, struct lyxml_elem *elem, int copy_ns)
 API void
 lyxml_unlink(struct ly_ctx *ctx, struct lyxml_elem *elem)
 {
+    FUN_IN;
+
     if (!elem) {
         return;
     }
@@ -384,6 +401,8 @@ lyxml_free_elem(struct ly_ctx *ctx, struct lyxml_elem *elem)
 API void
 lyxml_free(struct ly_ctx *ctx, struct lyxml_elem *elem)
 {
+    FUN_IN;
+
     if (!elem) {
         return;
     }
@@ -395,6 +414,8 @@ lyxml_free(struct ly_ctx *ctx, struct lyxml_elem *elem)
 API void
 lyxml_free_withsiblings(struct ly_ctx *ctx, struct lyxml_elem *elem)
 {
+    FUN_IN;
+
     struct lyxml_elem *iter, *aux;
 
     if (!elem) {
@@ -416,6 +437,8 @@ lyxml_free_withsiblings(struct ly_ctx *ctx, struct lyxml_elem *elem)
 API const char *
 lyxml_get_attr(const struct lyxml_elem *elem, const char *name, const char *ns)
 {
+    FUN_IN;
+
     struct lyxml_attr *a;
 
     assert(elem);
@@ -1134,6 +1157,8 @@ error:
 API struct lyxml_elem *
 lyxml_parse_mem(struct ly_ctx *ctx, const char *data, int options)
 {
+    FUN_IN;
+
     const char *c = data;
     unsigned int len;
     struct lyxml_elem *root, *first = NULL, *next;
@@ -1218,6 +1243,8 @@ error:
 API struct lyxml_elem *
 lyxml_parse_path(struct ly_ctx *ctx, const char *filename, int options)
 {
+    FUN_IN;
+
     struct lyxml_elem *elem = NULL;
     size_t length;
     int fd;
@@ -1424,6 +1451,8 @@ dump_siblings(struct lyout *out, const struct lyxml_elem *e, int options)
 API int
 lyxml_print_file(FILE *stream, const struct lyxml_elem *elem, int options)
 {
+    FUN_IN;
+
     struct lyout out;
 
     if (!stream || !elem) {
@@ -1445,6 +1474,8 @@ lyxml_print_file(FILE *stream, const struct lyxml_elem *elem, int options)
 API int
 lyxml_print_fd(int fd, const struct lyxml_elem *elem, int options)
 {
+    FUN_IN;
+
     struct lyout out;
 
     if (fd < 0 || !elem) {
@@ -1466,6 +1497,8 @@ lyxml_print_fd(int fd, const struct lyxml_elem *elem, int options)
 API int
 lyxml_print_mem(char **strp, const struct lyxml_elem *elem, int options)
 {
+    FUN_IN;
+
     struct lyout out;
     int r;
 
@@ -1490,6 +1523,8 @@ lyxml_print_mem(char **strp, const struct lyxml_elem *elem, int options)
 API int
 lyxml_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, const struct lyxml_elem *elem, int options)
 {
+    FUN_IN;
+
     struct lyout out;
 
     if (!writeclb || !elem) {

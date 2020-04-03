@@ -59,6 +59,11 @@ struct ext_substmt_info_s {
 #define SUBST_FLAG_ID 0x2  /**< the value is identifier -> no quotes */
 };
 
+#define LY_PRINT_SET errno = 0
+
+#define LY_PRINT_RET(ctx) if (errno) { LOGERR(ctx, LY_ESYS, "Print error (%s).", strerror(errno)); return EXIT_FAILURE; } else \
+        { return EXIT_SUCCESS; }
+
 /* filled in printer.c */
 extern struct ext_substmt_info_s ext_substmt_info[];
 
@@ -105,10 +110,10 @@ int lys_print_target(struct lyout *out, const struct lys_module *module, const c
                      void (*clb_print_output)(struct lyout*, const struct lys_node*, int*));
 
 /**
- * get know if the node is supposed to be printed according to the specified with-default mode
+ * get know if the node is supposed to be printed (mostly according to the specified with-default mode)
  * return 1 - print, 0 - do not print
  */
-int lyd_wd_toprint(const struct lyd_node *node, int options);
+int lyd_toprint(const struct lyd_node *node, int options);
 
 /* 0 - same, 1 - different */
 int nscmp(const struct lyd_node *node1, const struct lyd_node *node2);

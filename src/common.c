@@ -36,12 +36,16 @@ THREAD_LOCAL int8_t ly_errno_glob;
 API LY_ERR *
 ly_errno_glob_address(void)
 {
+    FUN_IN;
+
     return (LY_ERR *)&ly_errno_glob;
 }
 
 API LY_VECODE
 ly_vecode(const struct ly_ctx *ctx)
 {
+    FUN_IN;
+
     struct ly_err_item *i;
 
     i = ly_err_first(ctx);
@@ -55,6 +59,8 @@ ly_vecode(const struct ly_ctx *ctx)
 API const char *
 ly_errmsg(const struct ly_ctx *ctx)
 {
+    FUN_IN;
+
     struct ly_err_item *i;
 
     i = ly_err_first(ctx);
@@ -68,6 +74,8 @@ ly_errmsg(const struct ly_ctx *ctx)
 API const char *
 ly_errpath(const struct ly_ctx *ctx)
 {
+    FUN_IN;
+
     struct ly_err_item *i;
 
     i = ly_err_first(ctx);
@@ -81,6 +89,8 @@ ly_errpath(const struct ly_ctx *ctx)
 API const char *
 ly_errapptag(const struct ly_ctx *ctx)
 {
+    FUN_IN;
+
     struct ly_err_item *i;
 
     i = ly_err_first(ctx);
@@ -94,6 +104,8 @@ ly_errapptag(const struct ly_ctx *ctx)
 API struct ly_err_item *
 ly_err_first(const struct ly_ctx *ctx)
 {
+    FUN_IN;
+
     if (!ctx) {
         return NULL;
     }
@@ -119,6 +131,8 @@ ly_err_free(void *ptr)
 API void
 ly_err_clean(struct ly_ctx *ctx, struct ly_err_item *eitem)
 {
+    FUN_IN;
+
     struct ly_err_item *i, *first;
 
     first = ly_err_first(ctx);
@@ -601,6 +615,8 @@ transform_xml2json(struct ly_ctx *ctx, const char *expr, struct lyxml_elem *xml,
 API char *
 ly_path_xml2json(struct ly_ctx *ctx, const char *xml_path, struct lyxml_elem *xml)
 {
+    FUN_IN;
+
     const char *json_path;
     char *ret = NULL;
 
@@ -1190,6 +1206,8 @@ error:
 API char *
 ly_path_data2schema(struct ly_ctx *ctx, const char *data_path)
 {
+    FUN_IN;
+
     struct lyxp_expr *exp;
     uint16_t out_used, cur_exp = 0;
     char *out;
@@ -1287,12 +1305,6 @@ ly_new_node_validity(const struct lys_node *schema)
 
     validity = LYD_VAL_OK;
 
-    if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
-        if (((struct lys_node_leaf *)schema)->type.base == LY_TYPE_LEAFREF) {
-            /* leafref target validation */
-            validity |= LYD_VAL_LEAFREF;
-        }
-    }
     if (schema->nodetype & (LYS_LEAFLIST | LYS_LIST)) {
         /* duplicit instance check */
         validity |= LYD_VAL_DUP;
@@ -1425,4 +1437,42 @@ lyb_has_schema_model(struct lys_node *sibling, const struct lys_module **models,
     }
 
     return 0;
+}
+
+/**
+ * @brief Static table of the UTF8 characters lengths according to their first byte.
+ */
+static const unsigned char
+utf8_char_length_table[] = {
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+    3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
+    4, 4, 4, 4, 4, 4, 4, 4, 5, 5, 5, 5, 6, 6, 1, 1
+};
+
+/**
+ * @brief Use of utf8_char_length_table.
+ */
+#define UTF8LEN(x) utf8_char_length_table[((unsigned char)(x))]
+
+size_t
+ly_strlen_utf8(const char *str)
+{
+    size_t clen, len;
+    const char *ptr;
+
+    for (len = 0, clen = strlen(str), ptr = str; *ptr && len < clen; ++len, ptr += UTF8LEN(*ptr));
+    return len;
 }

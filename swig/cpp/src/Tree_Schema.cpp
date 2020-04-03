@@ -77,6 +77,15 @@ std::string Module::print_mem(LYS_OUTFORMAT format, const char *target, int opti
     free(strp);
     return s_strp;
 }
+int Module::feature_enable(const char *feature) {
+    return lys_features_enable(module, feature);
+}
+int Module::feature_disable(const char *feature) {
+    return lys_features_disable(module, feature);
+}
+int Module::feature_state(const char *feature) {
+    return lys_features_state(module, feature);
+}
 Submodule::~Submodule() {};
 S_Revision Submodule::rev() LY_NEW(submodule, rev, Revision);
 std::vector<S_Deviation> Submodule::deviation() LY_NEW_LIST(submodule, deviation, deviation_size, Deviation);
@@ -206,16 +215,10 @@ Iffeature::Iffeature(struct lys_iffeature *iffeature, S_Deleter deleter):
     deleter(deleter)
 {};
 Iffeature::~Iffeature() {};
-std::vector<S_Feature> Iffeature::features() {
-    std::vector<S_Feature> s_vector;
-
-    for (size_t i = 0; i < sizeof(*iffeature->features); i++) {
-        s_vector.push_back(std::make_shared<Feature>(iffeature->features[i], deleter));
-    }
-
-    return s_vector;
-};
 std::vector<S_Ext_Instance> Iffeature::ext() LY_NEW_P_LIST(iffeature, ext, ext_size, Ext_Instance);
+int Iffeature::value() {
+    return lys_iffeature_value(iffeature);
+}
 
 Ext_Instance::Ext_Instance(lys_ext_instance *ext_instance, S_Deleter deleter):
     ext_instance(ext_instance),
@@ -333,7 +336,6 @@ S_Schema_Node Schema_Node_Choice::dflt() {
 };
 
 Schema_Node_Leaf::~Schema_Node_Leaf() {};
-S_Set Schema_Node_Leaf::backlinks() LY_NEW_CASTED(lys_node_leaf, node, backlinks, Set);
 S_When Schema_Node_Leaf::when() LY_NEW_CASTED(lys_node_leaf, node, when, When);
 S_Type Schema_Node_Leaf::type() {return std::make_shared<Type>(&((struct lys_node_leaf *)node)->type, deleter);}
 S_Schema_Node_List Schema_Node_Leaf::is_key() {
@@ -344,7 +346,6 @@ S_Schema_Node_List Schema_Node_Leaf::is_key() {
 }
 
 Schema_Node_Leaflist::~Schema_Node_Leaflist() {};
-S_Set Schema_Node_Leaflist::backlinks() LY_NEW_CASTED(lys_node_leaflist, node, backlinks, Set);
 S_When Schema_Node_Leaflist::when() LY_NEW_CASTED(lys_node_leaflist, node, when, When);
 std::vector<std::string> Schema_Node_Leaflist::dflt() {
     struct lys_node_leaflist *node_leaflist = (struct lys_node_leaflist *)node;
