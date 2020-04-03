@@ -1,2 +1,2 @@
 usr/lib/*/libyang.so.*
-usr/lib/*/libyang/*
+usr/lib/*/libyang1/*

@@ -1,3 +1,10 @@
+libyang (1.0.130-1) UNRELEASED; urgency=medium
+
+  * major version bump (0.16 -> 1.0)
+  * this version is unlikely to be released due to known upstream bugs
+
+ -- David Lamparter <equinox-debian@diac24.net>  Fri, 03 Apr 2020 19:43:28 +0200
+
 libyang (0.16.105-3) unstable; urgency=medium
 
   * work around parallel build issues with python bindings (build only change)

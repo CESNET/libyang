@@ -4,7 +4,7 @@ Homepage: https://netopeer.liberouter.org/
 Maintainer: David Lamparter <equinox-debian@diac24.net>
 Uploaders: CESNET <rkrejci@cesnet.cz>
 Priority: optional
-Standards-Version: 4.2.1
+Standards-Version: 4.5.0
 Build-Depends:
  bison,
  cmake,
@@ -19,7 +19,7 @@ Build-Depends:
 Vcs-Browser: https://github.com/CESNET/libyang/tree/debian
 Vcs-Git: https://github.com/CESNET/libyang.git -b debian
 
-Package: libyang0.16
+Package: libyang1
 Depends:
  ${misc:Depends},
  ${shlibs:Depends}
@@ -40,7 +40,7 @@ Package: libyang-dev
 Depends:
  ${misc:Depends},
  libpcre3-dev,
- libyang0.16 (= ${binary:Version})
+ libyang1 (= ${binary:Version})
 Section: libdevel
 Architecture: any
 Description: parser toolkit for IETF YANG data modeling - development files
@@ -59,7 +59,7 @@ Package: yang-tools
 Depends:
  ${misc:Depends},
  ${shlibs:Depends},
- libyang0.16 (= ${binary:Version})
+ libyang1 (= ${binary:Version})
 Section: devel
 Architecture: any
 Description: parser toolkit for IETF YANG data modeling - executable tools
@@ -68,11 +68,11 @@ Description: parser toolkit for IETF YANG data modeling - executable tools
  useful for normal operation where libyang primarily processes configuration
  data, not schemas.
 
-Package: libyang-cpp0.16
+Package: libyang-cpp1
 Depends:
  ${misc:Depends},
  ${shlibs:Depends},
- libyang0.16 (= ${binary:Version})
+ libyang1 (= ${binary:Version})
 Architecture: any
 Description: parser toolkit for IETF YANG data modeling - C++ runtime
  Partially SWIG-generated bindings to use libyang with a C++ API.
@@ -82,7 +82,7 @@ Description: parser toolkit for IETF YANG data modeling - C++ runtime
 Package: libyang-cpp-dev
 Depends:
  ${misc:Depends},
- libyang-cpp0.16 (= ${binary:Version}),
+ libyang-cpp1 (= ${binary:Version}),
  libyang-dev (= ${binary:Version})
 Section: libdevel
 Architecture: any
@@ -99,7 +99,7 @@ Depends:
  ${misc:Depends},
  ${shlibs:Depends},
  ${python3:Depends},
- libyang-cpp0.16 (= ${binary:Version})
+ libyang-cpp1 (= ${binary:Version})
 Section: python
 Architecture: any
 Description: parser toolkit for IETF YANG data modeling - python3 support

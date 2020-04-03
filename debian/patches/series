@@ -1,5 +1,3 @@
 pybuild
 swigpy37
-0001-parser-BUGFIX-long-identity-name-buffer-overflow.patch
-0002-parser-BUGFIX-long-identityref-default-value-buffer-.patch
-0003-data-tree-BUGFIX-handle-hashes-for-lyd_dup_withsibli.patch
+plugindir

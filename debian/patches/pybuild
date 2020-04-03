@@ -6,10 +6,10 @@ Author: David Lamparter <equinox-debian@diac24.net>
 Last-Update: 2019-12-22
 
 diff --git a/swig/CMakeLists.txt b/swig/CMakeLists.txt
-index a2b2616256da..d10b495f6297 100644
+index cbd694db03fa..05c85ece4026 100644
 --- a/swig/CMakeLists.txt
 +++ b/swig/CMakeLists.txt
-@@ -20,27 +20,33 @@ endif()
+@@ -20,28 +20,34 @@ endif()
  
  # find Python package
  if(GEN_PYTHON_BINDINGS AND SWIG_FOUND)
@@ -19,23 +19,24 @@ index a2b2616256da..d10b495f6297 100644
 -    unset(PYTHON_INCLUDE_DIR CACHE)
 -    unset(PYTHON_LIBRARY_DEBUG CACHE)
 -    if(${GEN_PYTHON_VERSION} STREQUAL "2")
--        find_package(PythonLibs 2 REQUIRED)
 -        find_package(PythonInterp 2 REQUIRED)
+-        find_package(PythonLibs 2 REQUIRED)
 -        if(NOT PYTHONLIBS_FOUND)
 -            message(WARNING "Did not found Python version 2.x")
--            message(STATUS "Sysrepo supports Python 2.x and Python 3.x")
+-            message(STATUS "Libyang supports Python 2.x and Python 3.x")
 -        endif()
 -    elseif(${GEN_PYTHON_VERSION} STREQUAL "3")
--        find_package(PythonLibs 3 REQUIRED)
 -        find_package(PythonInterp 3 REQUIRED)
+-        find_package(PythonLibs 3 REQUIRED)
 -        if(NOT PYTHONLIBS_FOUND)
 -            message(WARNING "Did not found Python version 3.x")
--            message(STATUS "Sysrepo supports Python 2.x and Python 3.x")
+-            message(STATUS "Libyang supports Python 2.x and Python 3.x")
 -        endif()
 +    if(ENABLE_STATIC)
 +        message(WARNING "Can't create a static Python module")
      else()
--        message(WARNING "Sysrepo supports Python 2.x and Python 3.x")
+-        message(WARNING "Libyang supports Python 2.x and Python 3.x")
+-    endif()
 +        foreach(CUR_PYTHON_VERSION ${GEN_PYTHON_VERSION})
 +            message(STATUS "Python version ${CUR_PYTHON_VERSION} was selected")
 +
@@ -60,9 +61,10 @@ index a2b2616256da..d10b495f6297 100644
 +
 +            add_subdirectory(python python${CUR_PYTHON_VERSION})
 +        endforeach(CUR_PYTHON_VERSION)
-     endif()
++     endif()
  endif()
  
+ set(LIBYANG_CPP_SOURCES
 @@ -99,12 +105,6 @@ if (GEN_CPP_BINDINGS)
      endif()
  endif()
@@ -77,7 +79,7 @@ index a2b2616256da..d10b495f6297 100644
      message(WARNING "Can't create Javascript bindings with a shared library, please use -DENABLE_STATIC")
  elseif(ENABLE_STATIC AND GEN_JAVASCRIPT_BINDINGS)
 diff --git a/swig/python/CMakeLists.txt b/swig/python/CMakeLists.txt
-index 994b12349c78..97d215e7b887 100644
+index 994b12349c78..a7b431b4fc99 100644
 --- a/swig/python/CMakeLists.txt
 +++ b/swig/python/CMakeLists.txt
 @@ -1,30 +1,30 @@
