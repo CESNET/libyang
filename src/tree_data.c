@@ -5247,11 +5247,17 @@ lyd_validate_modules(struct lyd_node **node, const struct lys_module **modules, 
 API int
 lyd_validate_value(struct lys_node *node, const char *value)
 {
+    return lyd_value_type(node, value, NULL);
+}
+
+API int
+lyd_value_type(struct lys_node *node, const char *value, struct lys_type **type)
+{
     FUN_IN;
 
     struct lyd_node_leaf_list leaf;
     struct lys_node_leaf *sleaf = (struct lys_node_leaf*)node;
-    int ret = EXIT_SUCCESS;
+    struct lys_type *t = NULL;
 
     if (!node || !(node->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
         LOGARG;
@@ -5274,21 +5280,20 @@ repeat:
         if (!sleaf->type.info.lref.target) {
             /* it should either be unresolved leafref (leaf.value_type are ORed flags) or it will be resolved */
             LOGINT(node->module->ctx);
-            ret = EXIT_FAILURE;
             goto cleanup;
         }
         sleaf = sleaf->type.info.lref.target;
         goto repeat;
     } else {
-        if (!lyp_parse_value(&sleaf->type, &leaf.value_str, NULL, &leaf, NULL, NULL, 0, 0)) {
-            ret = EXIT_FAILURE;
-            goto cleanup;
-        }
+        t = lyp_parse_value(&sleaf->type, &leaf.value_str, NULL, &leaf, NULL, NULL, 0, 0);
     }
 
 cleanup:
     lydict_remove(node->module->ctx, leaf.value_str);
-    return ret;
+    if (type) {
+        *type = t;
+    }
+    return t ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
 /* create an attribute copy */
