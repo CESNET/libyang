@@ -2008,6 +2008,21 @@ test_type_leafref(void **state)
     assert_non_null(mod->compiled->data);
     assert_string_equal("j", mod->compiled->data->name);
 
+    /* leafref with a default value */
+    assert_non_null(mod = lys_parse_mem(ctx, "module l {namespace urn:l;prefix l;"
+                                        "leaf source {type leafref {path \"../target\";}default true;}"
+                                        "leaf target {type boolean;}}", LYS_IN_YANG));
+    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
+    assert_non_null(type);
+    assert_int_equal(1, type->refcount);
+    assert_int_equal(LY_TYPE_LEAFREF, type->basetype);
+    assert_string_equal("../target", ((struct lysc_type_leafref* )type)->path);
+    assert_non_null(((struct lysc_type_leafref*)type)->realtype);
+    assert_int_equal(LY_TYPE_BOOL, ((struct lysc_type_leafref*)type)->realtype->basetype);
+    assert_non_null(((struct lysc_node_leaf*)mod->compiled->data)->dflt);
+    assert_int_equal(LY_TYPE_BOOL, ((struct lysc_node_leaf*)mod->compiled->data)->dflt->realtype->basetype);
+    assert_int_equal(1, ((struct lysc_node_leaf*)mod->compiled->data)->dflt->boolean);
+
     /* invalid paths */
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;container a {leaf target2 {type uint8;}}"
                                         "leaf ref1 {type leafref {path ../a/invalid;}}}", LYS_IN_YANG));
@@ -2155,6 +2170,15 @@ test_type_leafref(void **state)
                                         "leaf address {type leafref{ path \"/interface[c=current()/../ifname]/ip\";}}}",
                                         LYS_IN_YANG));
     logbuf_assert("Invalid leafref path predicate \"[c=current()/../ifname]\" - predicate's key node \"c\" not found. /zzb:address");
+
+    assert_null(lys_parse_mem(ctx, "module zzc {namespace urn:zzc;prefix zzc;"
+                                        "leaf source {type leafref {path \"../target\";}default true;}}", LYS_IN_YANG));
+    logbuf_assert("Invalid leafref path - unable to find \"../target\". /zzc:source");
+
+    assert_null(lys_parse_mem(ctx, "module zzd {namespace urn:zzd;prefix zzd;"
+                                        "leaf source {type leafref {path \"../target\";}default true;}"
+                                        "leaf target {type uint8;}}", LYS_IN_YANG));
+    logbuf_assert("Invalid default - value does not fit the type (Invalid uint8 value \"true\".). /zzd:source");
 
     /* circular chain */
     assert_null(lys_parse_mem(ctx, "module aaa {namespace urn:aaa;prefix aaa;"

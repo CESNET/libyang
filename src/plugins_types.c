@@ -2364,6 +2364,24 @@ ly_type_store_leafref(const struct ly_ctx *ctx, struct lysc_type *type, const ch
     char *errmsg = NULL;
     struct lysc_type_leafref *type_lr = (struct lysc_type_leafref*)type;
     int storage_dummy = 0;
+    const char *orig = NULL;
+
+    if (!type_lr->realtype) {
+        if ((options & LY_TYPE_OPTS_SCHEMA) && (options & LY_TYPE_OPTS_INCOMPLETE_DATA)) {
+            /* leafref's path was not yet resolved - in schema trees, path can be resolved when
+             * the complete schema tree is present, in such a case we need to wait with validating
+             * default values */
+
+            /* keep the original value for the second call */
+            if (options & LY_TYPE_OPTS_STORE) {
+                storage->original = lydict_insert(ctx, value_len ? value : "", value_len);
+            }
+            return LY_EINCOMPLETE;
+        } else {
+            LOGINT(ctx);
+            return LY_EINT;
+        }
+    }
 
     if (!(options & (LY_TYPE_OPTS_STORE | LY_TYPE_OPTS_INCOMPLETE_DATA)) && type_lr->require_instance) {
         /* if there is no storage, but we will check the instance presence in data tree(s),
@@ -2374,17 +2392,37 @@ ly_type_store_leafref(const struct ly_ctx *ctx, struct lysc_type *type, const ch
     /* rewrite leafref plugin stored in the storage by default */
     storage->realtype = type_lr->realtype;
 
+    if ((options & LY_TYPE_OPTS_SCHEMA) && (options & LY_TYPE_OPTS_SECOND_CALL)) {
+        /* second call after missing resolved path (target's type) for a default value */
+        /* correct refcounts - leafref's realtype was set to itself in the first incomplete call,
+         * since we are now changing realtype to point to the target's realtype, we have to decrese
+         * leafref's refcount and increase realtype's refcount. */
+        type->refcount--;
+        storage->realtype->refcount++;
+
+        /* remove temporarily stored original value and let the following store callback
+         * to replace it via a target's type functions */
+        orig = storage->original;
+        storage->original = NULL;
+
+        /* hide the LY_TYPE_OPTS_SECOND_CALL option from the target's store callback, the option is connected
+         * only with the leafref's path, so it is not supposed to be used here. If the previous LY_EINCOMPLETE would
+         * be caused by the target's type, the target type's callback would be used directly, not via leafref's callback */
+        options &= ~LY_TYPE_OPTS_SECOND_CALL;
+    }
+
     /* check value according to the real type of the leafref target */
     ret = type_lr->realtype->plugin->store(ctx, type_lr->realtype, value, value_len, options,
                                            resolve_prefix, parser, format, context_node, tree,
                                            storage, canonized, err);
     if (ret != LY_SUCCESS && ret != LY_EINCOMPLETE) {
-        return ret;
+        goto cleanup;
     }
 
     if (!(options & LY_TYPE_OPTS_SCHEMA) && type_lr->require_instance) {
         if (options & LY_TYPE_OPTS_INCOMPLETE_DATA) {
-            return LY_EINCOMPLETE;
+            ret = LY_EINCOMPLETE;
+            goto cleanup;
         }
 
         /* find corresponding data instance */
@@ -2393,10 +2431,12 @@ ly_type_store_leafref(const struct ly_ctx *ctx, struct lysc_type *type, const ch
         }
     }
 
+cleanup:
     if (storage_dummy) {
         storage->realtype->plugin->free(ctx, storage);
         free(storage);
     }
+    lydict_remove(ctx, orig);
     return ret;
 
 error:
@@ -2407,6 +2447,8 @@ error:
         storage->realtype->plugin->free(ctx, storage);
         free(storage);
     }
+    lydict_remove(ctx, orig);
+
     return LY_EVALID;
 
 }
@@ -2451,7 +2493,13 @@ ly_type_dup_leafref(const struct ly_ctx *ctx, const struct lyd_value *original, 
 static void
 ly_type_free_leafref(const struct ly_ctx *ctx, struct lyd_value *value)
 {
-    value->realtype->plugin->free(ctx, value);
+    if (value->realtype->plugin != &ly_builtin_type_plugins[LY_TYPE_LEAFREF]) {
+        /* leafref's realtype is again leafref only in case of incomplete store */
+        value->realtype->plugin->free(ctx, value);
+    } else {
+        /* freeing incomplete type, there is original value to free */
+        ly_type_free_original(ctx, value);
+    }
 }
 
 /**
