@@ -1177,7 +1177,7 @@ ident_val_add_module_prefix(const char *value, const struct lyxml_elem *xml, str
 
     if (!ns) {
         /* no default namespace */
-        LOGINT(ctx);
+        LOGERR(ctx, LY_EINVAL, "Identity \"%s\" has no namespace.", value);
         return NULL;
     }
 
