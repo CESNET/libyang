@@ -21,7 +21,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 
-#include "../src/compat.h"
+#include "compat.h"
 #include "../user_types.h"
 
 /**

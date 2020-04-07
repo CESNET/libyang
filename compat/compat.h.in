@@ -12,24 +12,12 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#ifndef LY_COMPAT_H_
-#define LY_COMPAT_H_
+#ifndef _COMPAT_H_
+#define _COMPAT_H_
 
 #include <sys/types.h>
 #include <stdarg.h>
 #include <stdio.h>
-
-#if __STDC_VERSION__ >= 201112 && \
-    !defined __STDC_NO_THREADS__ && \
-    !defined __NetBSD__
-# define THREAD_LOCAL _Thread_local
-#elif defined __GNUC__ || \
-      defined __SUNPRO_C || \
-      defined __xlC__
-# define THREAD_LOCAL __thread
-#else
-# error "Cannot define THREAD_LOCAL"
-#endif
 
 #ifndef __WORDSIZE
 #  if defined __x86_64__ && !defined __ILP32__
@@ -103,4 +91,4 @@ ssize_t getline(char **lineptr, size_t *n, FILE *stream);
 char *get_current_dir_name(void);
 #endif
 
-#endif /* LY_COMPAT_H_ */
+#endif /* _COMPAT_H_ */

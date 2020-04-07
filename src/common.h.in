@@ -24,6 +24,18 @@
 #include "hash_table.h"
 #include "resolve.h"
 
+#if __STDC_VERSION__ >= 201112 && \
+    !defined __STDC_NO_THREADS__ && \
+    !defined __NetBSD__
+# define THREAD_LOCAL _Thread_local
+#elif defined __GNUC__ || \
+      defined __SUNPRO_C || \
+      defined __xlC__
+# define THREAD_LOCAL __thread
+#else
+# error "Cannot define THREAD_LOCAL"
+#endif
+
 #define UNUSED(x) @COMPILER_UNUSED_ATTR@
 
 #define LY_CHECK_GOTO(COND, GOTO) if (COND) {goto GOTO;}

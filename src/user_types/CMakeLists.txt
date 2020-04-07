@@ -1,10 +1,10 @@
 macro(USER_TYPE_PLUGIN PLUGIN_NAME SRCS)
     add_library(${PLUGIN_NAME} SHARED ${SRCS})
     set_target_properties(${PLUGIN_NAME} PROPERTIES PREFIX "")
-    target_link_libraries(${PLUGIN_NAME} yang)
+    target_link_libraries(${PLUGIN_NAME} yang compat)
     install(TARGETS ${PLUGIN_NAME} DESTINATION ${USER_TYPES_PLUGINS_DIR_MACRO})
 endmacro(USER_TYPE_PLUGIN)
 
 foreach(USER_TYPE ${USER_TYPE_LIST})
-    USER_TYPE_PLUGIN(${USER_TYPE} "${USER_TYPE}.c;../compat.c")
+    USER_TYPE_PLUGIN(${USER_TYPE} ${USER_TYPE}.c)
 endforeach()

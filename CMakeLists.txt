@@ -7,9 +7,12 @@ endif()
 
 project(libyang C)
 
+# include custom Modules
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMakeModules/")
+
 include(GNUInstallDirs)
 include(CheckSymbolExists)
-include(TestBigEndian)
+include(UseCompat)
 
 set(LIBYANG_DESCRIPTION "libyang is YANG data modelling language parser and toolkit written (and providing API) in C.")
 
@@ -93,33 +96,12 @@ else()
     set(COMPILER_PACKED_ATTR "")
 endif()
 
-# compatibility checks
-set(CMAKE_REQUIRED_DEFINITIONS -D_POSIX_C_SOURCE=200809L)
-list(APPEND CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
-check_symbol_exists(vdprintf "stdio.h;stdarg.h" HAVE_VDPRINTF)
-check_symbol_exists(asprintf "stdio.h" HAVE_ASPRINTF)
-check_symbol_exists(vasprintf "stdio.h" HAVE_VASPRINTF)
-
-check_symbol_exists(get_current_dir_name "unistd.h" HAVE_GET_CURRENT_DIR_NAME)
-
-list(APPEND CMAKE_REQUIRED_DEFINITIONS -D_POSIX_C_SOURCE=200809L)
-check_symbol_exists(strndup "string.h" HAVE_STRNDUP)
-check_symbol_exists(getline "stdio.h" HAVE_GETLINE)
-
-unset(CMAKE_REQUIRED_DEFINITIONS)
-
-TEST_BIG_ENDIAN(BIG_ENDIAN)
-
 include_directories(${PROJECT_BINARY_DIR}/src ${PROJECT_SOURCE_DIR}/src)
 configure_file(${PROJECT_SOURCE_DIR}/src/libyang.h.in ${PROJECT_BINARY_DIR}/src/libyang.h @ONLY)
-configure_file(${PROJECT_SOURCE_DIR}/src/compat.h.in ${PROJECT_BINARY_DIR}/src/compat.h @ONLY)
 configure_file(${PROJECT_SOURCE_DIR}/src/common.h.in ${PROJECT_BINARY_DIR}/src/common.h @ONLY)
 
 set(EXTENSIONS_PLUGINS_DIR_MACRO "${PLUGINS_DIR}/extensions")
 set(USER_TYPES_PLUGINS_DIR_MACRO "${PLUGINS_DIR}/user_types")
-
-# include custom Modules
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMakeModules/")
 
 # setup bindings
 set(GEN_LANGUAGE_BINDINGS 0 CACHE BOOL "Enable language bindings generation.")
@@ -158,7 +140,6 @@ endif()
 option(ENABLE_STATIC "Build static (.a) library" OFF)
 
 set(libsrc
-    src/compat.c
     src/common.c
     src/context.c
     src/log.c
@@ -195,12 +176,10 @@ set(lintsrc
     tools/lint/commands.c
     tools/lint/completion.c
     tools/lint/configuration.c
-    src/compat.c
     linenoise/linenoise.c)
 
 set(resrc
-    tools/re/main.c
-    src/compat.c)
+    tools/re/main.c)
 
 set(yang2yinsrc
     tools/yang2yin/main.c)
@@ -213,6 +192,9 @@ set(headers
     src/xml.h
     src/dict.h)
 
+# link compat
+use_compat()
+
 # create static libyang library
 if(ENABLE_STATIC)
     add_definitions(-DSTATIC)
@@ -220,7 +202,7 @@ if(ENABLE_STATIC)
     set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
     set(CMAKE_EXE_LINK_DYNAMIC_C_FLAGS)       # remove -Wl,-Bdynamic
     set(CMAKE_EXE_LINK_DYNAMIC_CXX_FLAGS)
-    add_library(yang STATIC ${libsrc})
+    add_library(yang STATIC ${libsrc} compat)
 
     # switch off the tests
     if(ENABLE_BUILD_TESTS)
@@ -235,7 +217,7 @@ if(ENABLE_STATIC)
 else()
     set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
     add_library(yangobj OBJECT ${libsrc})
-    add_library(yang SHARED $<TARGET_OBJECTS:yangobj>)
+    add_library(yang SHARED $<TARGET_OBJECTS:yangobj> compat)
 
     #only for tests with visible internal symbols
     add_library(yangobj_tests OBJECT ${libsrc})
@@ -354,13 +336,13 @@ configure_file(${PROJECT_SOURCE_DIR}/src/plugin_config.h.in ${PROJECT_BINARY_DIR
 
 # yanglint
 add_executable(yanglint ${lintsrc})
-target_link_libraries(yanglint yang)
+target_link_libraries(yanglint yang compat)
 install(TARGETS yanglint DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/tools/lint/yanglint.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 
 #yangre
 add_executable(yangre ${resrc})
-target_link_libraries(yangre yang)
+target_link_libraries(yangre yang compat)
 install(TARGETS yangre DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/tools/re/yangre.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 
