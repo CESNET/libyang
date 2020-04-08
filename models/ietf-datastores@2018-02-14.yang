@@ -27,11 +27,10 @@ module ietf-datastores {
                <rwilton@cisco.com>";
 
   description
-    "This YANG module defines two sets of identities for datastores.
-     The first identifies the datastores themselves, the second
-     identifies datastore properties.
+    "This YANG module defines a set of identities for identifying
+     datastores.
 
-     Copyright (c) 2017 IETF Trust and the persons identified as
+     Copyright (c) 2018 IETF Trust and the persons identified as
      authors of the code.  All rights reserved.
 
      Redistribution and use in source and binary forms, with or
@@ -39,17 +38,17 @@ module ietf-datastores {
      the license terms contained in, the Simplified BSD License set
      forth in Section 4.c of the IETF Trust's Legal Provisions
      Relating to IETF Documents
-     (http://trustee.ietf.org/license-info).
+     (https://trustee.ietf.org/license-info).
 
-     This version of this YANG module is part of RFC XXXX
-     (http://www.rfc-editor.org/info/rfcxxxx); see the RFC itself
+     This version of this YANG module is part of RFC 8342
+     (https://www.rfc-editor.org/info/rfc8342); see the RFC itself
      for full legal notices.";
 
-  revision 2017-08-17 {
+  revision 2018-02-14 {
     description
       "Initial revision.";
     reference
-      "RFC XXXX: Network Management Datastore Architecture";
+      "RFC 8342: Network Management Datastore Architecture (NMDA)";
   }
 
   /*
@@ -58,50 +57,50 @@ module ietf-datastores {
 
   identity datastore {
     description
-     "Abstract base identity for datastore identities.";
+      "Abstract base identity for datastore identities.";
   }
 
   identity conventional {
     base datastore;
     description
-     "Abstract base identity for conventional configuration
-      datastores.";
+      "Abstract base identity for conventional configuration
+       datastores.";
   }
 
   identity running {
     base conventional;
     description
-     "The running configuration datastore.";
+      "The running configuration datastore.";
   }
 
   identity candidate {
     base conventional;
     description
-     "The candidate configuration datastore.";
+      "The candidate configuration datastore.";
   }
 
   identity startup {
     base conventional;
     description
-     "The startup configuration datastore.";
+      "The startup configuration datastore.";
   }
 
   identity intended {
     base conventional;
     description
-     "The intended configuration datastore.";
+      "The intended configuration datastore.";
   }
 
   identity dynamic {
     base datastore;
     description
-     "Abstract base identity for dynamic configuration datastores.";
+      "Abstract base identity for dynamic configuration datastores.";
   }
 
   identity operational {
     base datastore;
     description
-     "The operational state datastore.";
+      "The operational state datastore.";
   }
 
   /*
@@ -115,5 +114,4 @@ module ietf-datastores {
     description
       "A datastore identity reference.";
   }
-
 }

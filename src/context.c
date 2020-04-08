@@ -41,7 +41,7 @@ extern unsigned int ext_plugins_ref;
 #define YANG_PATH "../models/yang@2017-02-20.h"
 #define IETF_INET_TYPES_PATH "../models/ietf-inet-types@2013-07-15.h"
 #define IETF_YANG_TYPES_PATH "../models/ietf-yang-types@2013-07-15.h"
-#define IETF_DATASTORES "../models/ietf-datastores@2017-08-17.h"
+#define IETF_DATASTORES "../models/ietf-datastores@2018-02-14.h"
 #define IETF_YANG_LIB_PATH "../models/ietf-yang-library@2019-01-04.h"
 #define IETF_YANG_LIB_REV "2019-01-04"
 
@@ -65,7 +65,7 @@ static struct internal_modules_s {
     {"ietf-inet-types", "2013-07-15", (const char*)ietf_inet_types_2013_07_15_yin, 0, LYS_IN_YIN},
     {"ietf-yang-types", "2013-07-15", (const char*)ietf_yang_types_2013_07_15_yin, 0, LYS_IN_YIN},
     /* ietf-datastores and ietf-yang-library must be right here at the end of the list! */
-    {"ietf-datastores", "2017-08-17", (const char*)ietf_datastores_2017_08_17_yin, 0, LYS_IN_YIN},
+    {"ietf-datastores", "2018-02-14", (const char*)ietf_datastores_2018_02_14_yin, 0, LYS_IN_YIN},
     {"ietf-yang-library", IETF_YANG_LIB_REV, (const char*)ietf_yang_library_2019_01_04_yin, 1, LYS_IN_YIN}
 };
 
