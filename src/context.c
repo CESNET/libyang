@@ -1778,7 +1778,7 @@ ly_ctx_info(struct ly_ctx *ctx)
         LOGERR(ctx, LY_EINVAL, "ietf-yang-library is not implemented.");
         return NULL;
     }
-    if (mod->rev && !strcmp(mod->rev[0].date, "2016-04-09")) {
+    if (mod->rev && !strcmp(mod->rev[0].date, "2016-06-21")) {
         bis = 0;
     } else if (mod->rev && !strcmp(mod->rev[0].date, IETF_YANG_LIB_REV)) {
         bis = 1;
