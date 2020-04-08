@@ -2770,7 +2770,9 @@ test_augment(void **state)
     const struct lysc_node *node;
     const struct lysc_node_choice *ch;
     const struct lysc_node_case *c;
+    const struct lysc_node_container *cont;
     const struct lysc_action *rpc;
+    const struct lysc_notif *notif;
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
 
@@ -2872,6 +2874,14 @@ test_augment(void **state)
     assert_non_null(rpc->output.data);
     assert_string_equal("y", rpc->output.data->name);
     assert_null(rpc->output.data->next);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module j {namespace urn:j;prefix j;yang-version 1.1; container root;"
+                                        "grouping grp {notification grp-notif;}"
+                                        "augment /root {uses grp;}}", LYS_IN_YANG));
+    assert_non_null(cont = (const struct lysc_node_container*)mod->compiled->data);
+    assert_null(cont->child);
+    assert_non_null(notif = cont->notifs);
+    assert_int_equal(1, LY_ARRAY_SIZE(notif));
 
     assert_null(lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; container c {leaf a {type string;}}"
                                         "augment /x {leaf a {type int8;}}}", LYS_IN_YANG));

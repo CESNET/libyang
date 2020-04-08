@@ -4749,7 +4749,12 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, const stru
             node = ((struct lysc_node_choice*)target)->cases->prev;
         } else {
             /* the compiled node is the last child of the target */
-            node = lysc_node_children(target, flags)->prev;
+            node = (struct lysc_node*)lysc_node_children(target, flags);
+            if (!node) {
+                /* there is no data children (compiled nodes is e.g. notification or action or nothing) */
+                break;
+            }
+            node = node->prev;
         }
 
         if (!allow_mandatory && (node->flags & LYS_CONFIG_W) && (node->flags & LYS_MAND_TRUE)) {
