@@ -202,7 +202,7 @@ if(ENABLE_STATIC)
     set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
     set(CMAKE_EXE_LINK_DYNAMIC_C_FLAGS)       # remove -Wl,-Bdynamic
     set(CMAKE_EXE_LINK_DYNAMIC_CXX_FLAGS)
-    add_library(yang STATIC ${libsrc} compat)
+    add_library(yang STATIC ${libsrc} $<TARGET_OBJECTS:compat>)
 
     # switch off the tests
     if(ENABLE_BUILD_TESTS)
@@ -217,7 +217,7 @@ if(ENABLE_STATIC)
 else()
     set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
     add_library(yangobj OBJECT ${libsrc})
-    add_library(yang SHARED $<TARGET_OBJECTS:yangobj> compat)
+    add_library(yang SHARED $<TARGET_OBJECTS:yangobj> $<TARGET_OBJECTS:compat>)
 
     #only for tests with visible internal symbols
     add_library(yangobj_tests OBJECT ${libsrc})
@@ -336,13 +336,13 @@ configure_file(${PROJECT_SOURCE_DIR}/src/plugin_config.h.in ${PROJECT_BINARY_DIR
 
 # yanglint
 add_executable(yanglint ${lintsrc})
-target_link_libraries(yanglint yang compat)
+target_link_libraries(yanglint yang $<TARGET_OBJECTS:compat>)
 install(TARGETS yanglint DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/tools/lint/yanglint.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 
 #yangre
 add_executable(yangre ${resrc})
-target_link_libraries(yangre yang compat)
+target_link_libraries(yangre yang $<TARGET_OBJECTS:compat>)
 install(TARGETS yangre DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/tools/re/yangre.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 
