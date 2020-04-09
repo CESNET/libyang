@@ -1,0 +1,5 @@
+To build a local / non-"official" Debian package, directly run the
+local-deb.py script in a git checkout.  It will copy and adapt the "official"
+Debian packaging from git.  A standard Debian source package (.dsc) will be
+output as a result.  You can use that, or directly run dpkg-buildpackage /
+debuild.
