@@ -20,7 +20,7 @@ cd ./build
 
 osc checkout home:liberouter
 cp home:liberouter/$package/$package.spec home:liberouter/$package/debian.changelog home:liberouter
-cp build-packages/debian* build-packages/$package* home:liberouter/$package
+cp build-packages/$package* home:liberouter/$package
 cd home:liberouter/$package
 
 # check versions
@@ -31,15 +31,6 @@ if [ -z "$FORCEVERSION" -a "$VERSION" == "$OLDVERSION" ]; then
 fi
 
 # create new changelog and paste old changelog
-if [ "$VERSION" != "$OLDVERSION" ]; then
-    logtime=$(git log -i --grep="VERSION .* $OLDVERSION" | grep "Date: " | sed 's/Date:[ ]*//')
-    echo -e "$package ($VERSION) stable; urgency=low\n" >debian.changelog
-    git log --since="$logtime" --pretty=format:"  * %s (%aN)%n" | grep "BUGFIX\|CHANGE\|FEATURE" >>debian.changelog
-    git log -1  --pretty=format:"%n -- %aN <%aE>  %aD%n" >>debian.changelog
-    echo -e "\n" >>debian.changelog
-    cat ../debian.changelog >>debian.changelog
-fi
-
 if [ "$VERSION" != "$OLDVERSION" ]; then
     git log -1 --date=format:'%a %b %d %Y' --pretty=format:"* %ad  %aN <%aE>" | tr -d "\n" >>$package.spec
     echo " $VERSION" >>$package.spec
