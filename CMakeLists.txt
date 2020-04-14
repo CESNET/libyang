@@ -335,14 +335,14 @@ endif()
 configure_file(${PROJECT_SOURCE_DIR}/src/plugin_config.h.in ${PROJECT_BINARY_DIR}/src/plugin_config.h)
 
 # yanglint
-add_executable(yanglint ${lintsrc})
-target_link_libraries(yanglint yang $<TARGET_OBJECTS:compat>)
+add_executable(yanglint ${lintsrc} $<TARGET_OBJECTS:compat>)
+target_link_libraries(yanglint yang)
 install(TARGETS yanglint DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/tools/lint/yanglint.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 
 #yangre
-add_executable(yangre ${resrc})
-target_link_libraries(yangre yang $<TARGET_OBJECTS:compat>)
+add_executable(yangre ${resrc} $<TARGET_OBJECTS:compat>)
+target_link_libraries(yangre yang)
 install(TARGETS yangre DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/tools/re/yangre.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 
