@@ -1353,7 +1353,7 @@ lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str)
 
     /* parse the type correctly, makes the value canonical if needed */
     if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &new_val, NULL, leaf, NULL, NULL, 1, 0)) {
-        lydict_remove(leaf->schema->module->ctx, backup);
+        lydict_remove(leaf->schema->module->ctx, new_val);
         return -1;
     }
 
