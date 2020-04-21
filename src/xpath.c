@@ -2651,6 +2651,10 @@ parse_ncname(struct ly_ctx *ctx, const char *ncname)
     }
 
     do {
+        if ((unsigned)UINT16_MAX - parsed < size) {
+            LOGERR(ctx, LY_EINVAL, "XPath name cannot be longer than %ud characters.", UINT16_MAX);
+            return 0;
+        }
         parsed += size;
         if (!ncname[parsed]) {
             break;
