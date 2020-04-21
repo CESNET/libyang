@@ -17,7 +17,7 @@ macro(USE_COMPAT)
     check_symbol_exists(strndup "string.h" HAVE_STRNDUP)
     check_symbol_exists(getline "stdio.h" HAVE_GETLINE)
 
-    TEST_BIG_ENDIAN(BIG_ENDIAN)
+    TEST_BIG_ENDIAN(IS_BIG_ENDIAN)
 
     # header and object file
     configure_file(${PROJECT_SOURCE_DIR}/compat/compat.h.in ${PROJECT_BINARY_DIR}/compat.h @ONLY)

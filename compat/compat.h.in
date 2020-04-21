@@ -53,14 +53,14 @@
 #undef le64toh
 #undef htole64
 
-#cmakedefine BIG_ENDIAN
+#cmakedefine IS_BIG_ENDIAN
 
-#ifdef BIG_ENDIAN
-# define le64toh(x) (x)
-# define htole64(x) (x)
-#else
+#ifdef IS_BIG_ENDIAN
 # define le64toh(x) bswap64(x)
 # define htole64(x) bswap64(x)
+#else
+# define le64toh(x) (x)
+# define htole64(x) (x)
 #endif
 
 #ifndef MAP_ANONYMOUS
