@@ -13,7 +13,6 @@ macro(USE_COMPAT)
 
     check_symbol_exists(get_current_dir_name "unistd.h" HAVE_GET_CURRENT_DIR_NAME)
 
-    list(APPEND CMAKE_REQUIRED_DEFINITIONS -D_POSIX_C_SOURCE=200809L)
     check_symbol_exists(strndup "string.h" HAVE_STRNDUP)
     check_symbol_exists(getline "stdio.h" HAVE_GETLINE)
 
