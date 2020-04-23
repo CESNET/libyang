@@ -833,7 +833,7 @@ error:
 int
 lyp_check_pattern(struct ly_ctx *ctx, const char *pattern, pcre **pcre_precomp)
 {
-    int idx, idx2, start, end, err_offset, count;
+    int idx, idx2, start, end, err_offset, count, end_anchor = 0;
     char *perl_regex, *ptr;
     const char *err_msg, *orig_ptr;
     pcre *precomp;
@@ -853,8 +853,10 @@ lyp_check_pattern(struct ly_ctx *ctx, const char *pattern, pcre **pcre_precomp)
 
     ptr = perl_regex;
 
-    if (strncmp(pattern + strlen(pattern) - 2, ".*", 2)) {
+    if ((strlen(pattern) > 1) && strncmp(pattern + strlen(pattern) - 2, ".*", 2)) {
         /* we wil add line-end anchoring */
+        end_anchor = 1;
+
         ptr[0] = '(';
         ++ptr;
     }
@@ -868,7 +870,7 @@ lyp_check_pattern(struct ly_ctx *ctx, const char *pattern, pcre **pcre_precomp)
         }
     }
 
-    if (strncmp(pattern + strlen(pattern) - 2, ".*", 2)) {
+    if (end_anchor) {
         ptr += sprintf(ptr, ")$");
     } else {
         ptr[0] = '\0';
