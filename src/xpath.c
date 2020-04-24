@@ -6325,22 +6325,28 @@ moveto_self_add_children_r(const struct lyd_node *parent, uint32_t parent_pos, e
                            struct lyxp_set *to_set, const struct lyxp_set *dup_check_set, enum lyxp_node_type root_type,
                            int options)
 {
-    struct lyd_node *sub;
+    const struct lyd_node *sub;
     int ret;
 
     switch (parent_type) {
     case LYXP_NODE_ROOT:
     case LYXP_NODE_ROOT_CONFIG:
-        /* add the same node but as an element */
-        if (!set_dup_node_check(dup_check_set, parent, LYXP_NODE_ELEM, -1)) {
-            set_insert_node(to_set, parent, 0, LYXP_NODE_ELEM, to_set->used);
+        /* add all top-level nodes as elements */
+        LY_TREE_FOR(parent, sub) {
+            if ((parent_type == LYXP_NODE_ROOT_CONFIG) && (sub->schema->flags & LYS_CONFIG_R)) {
+                continue;
+            }
 
-            /* skip anydata/anyxml and dummy nodes */
-            if (!(parent->schema->nodetype & LYS_ANYDATA) && !(parent->validity & LYD_VAL_INUSE)) {
-                /* also add all the children of this node, recursively */
-                ret = moveto_self_add_children_r(parent, 0, LYXP_NODE_ELEM, to_set, dup_check_set, root_type, options);
-                if (ret) {
-                    return ret;
+            if (!set_dup_node_check(dup_check_set, sub, LYXP_NODE_ELEM, -1)) {
+                set_insert_node(to_set, sub, 0, LYXP_NODE_ELEM, to_set->used);
+
+                /* skip anydata/anyxml and dummy nodes */
+                if (!(sub->schema->nodetype & LYS_ANYDATA) && !(sub->validity & LYD_VAL_INUSE)) {
+                    /* also add all the children of this node, recursively */
+                    ret = moveto_self_add_children_r(sub, 0, LYXP_NODE_ELEM, to_set, dup_check_set, root_type, options);
+                    if (ret) {
+                        return ret;
+                    }
                 }
             }
         }
