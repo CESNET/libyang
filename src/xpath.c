@@ -6786,6 +6786,7 @@ moveto_op_comp(struct lyxp_set *set1, struct lyxp_set *set2, const char *op, str
     int64_t i;
 
     iter1.type = LYXP_SET_EMPTY;
+    iter2.type = LYXP_SET_EMPTY;
 
     /* iterative evaluation with node-sets */
     if (LYXP_IS_NODE_SET_OR_EMPTY(set1->type) || LYXP_IS_NODE_SET_OR_EMPTY(set2->type)) {
