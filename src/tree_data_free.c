@@ -244,8 +244,7 @@ lyd_free_(struct lyd_node *node, int top)
     }
 
     LY_LIST_FOR_SAFE(node, next, iter) {
-        /* in case of the top-level nodes (node->parent is NULL), no unlinking needed */
-        lyd_free_subtree(iter, iter->parent ? 1 : 0);
+        lyd_free_subtree(iter, !iter->parent ? 1 : 0);
     }
 }
 
