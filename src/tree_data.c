@@ -5304,7 +5304,7 @@ lyd_dup_attr(struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_attr *attr)
 
     /* allocate new attr */
     if (!parent->attr) {
-        parent->attr = malloc(sizeof *parent->attr);
+        parent->attr = calloc(1, sizeof *ret);
         ret = parent->attr;
     } else {
         for (ret = parent->attr; ret->next; ret = ret->next);
@@ -5315,7 +5315,6 @@ lyd_dup_attr(struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_attr *attr)
 
     /* fill new attr except */
     ret->parent = parent;
-    ret->next = NULL;
     ret->annotation = attr->annotation;
     ret->name = lydict_insert(ctx, attr->name, 0);
     ret->value_str = lydict_insert(ctx, attr->value_str, 0);
