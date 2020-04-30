@@ -254,8 +254,8 @@ transform_module_name2import_prefix(const struct lys_module *module, const char 
 }
 
 static int
-_transform_json2xml_subexp(const struct lys_module *module, const char *expr, char **out, size_t *out_used, size_t *out_size, int schema, int inst_id, const char ***prefixes,
-                    const char ***namespaces, uint32_t *ns_count)
+_transform_json2xml_subexp(const struct lys_module *module, const char *expr, char **out, size_t *out_used, size_t *out_size,
+                           int schema, int inst_id, const char ***prefixes, const char ***namespaces, uint32_t *ns_count)
 {
     const char *cur_expr, *end, *prefix, *literal;
     char *name;
@@ -393,10 +393,6 @@ _transform_json2xml_subexp(const struct lys_module *module, const char *expr, ch
     return 0;
 
 error:
-    if (!schema && ns_count) {
-        free(*prefixes);
-        free(*namespaces);
-    }
     lyxp_expr_free(exp);
     return 1;
 }
@@ -433,6 +429,14 @@ _transform_json2xml(const struct lys_module *module, const char *expr, int schem
         return lydict_insert_zc(module->ctx, out);
     }
 
+    /* fail */
+    if (ns_count) {
+        *ns_count = 0;
+        free(*prefixes);
+        *prefixes = NULL;
+        free(*namespaces);
+        *namespaces = NULL;
+    }
     free(out);
     return NULL;
 }
