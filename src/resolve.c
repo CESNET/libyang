@@ -7573,6 +7573,7 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
     struct ly_err_item *prev_eitem;
     LY_ERR prev_ly_errno;
     struct lyxml_elem *yin;
+    struct lys_type *stype;
     struct ly_ctx *ctx = mod->ctx;
 
     assert(unres && (item || (type == UNRES_MOD_IMPLEMENT)) && ((type != UNRES_LEAFREF) && (type != UNRES_INSTID)
@@ -7603,6 +7604,23 @@ unres_schema_add_node(struct lys_module *mod, struct unres_schema *unres, void *
         if (rc != EXIT_FAILURE) {
             ly_ilo_restore(ctx, prev_ilo, prev_eitem, rc == -1 ? 1 : 0);
             if (rc != -1) {
+                /* print warnings here so that they are actually printed */
+                if ((type == UNRES_TYPE_DER_TPDF) || (type == UNRES_TYPE_DER)) {
+                    stype = item;
+                    if (stype->der->module && (((stype->base == LY_TYPE_LEAFREF)
+                            && (stype->info.lref.req != stype->der->type.info.lref.req)) || ((stype->base == LY_TYPE_INST)
+                            && (stype->info.inst.req != stype->der->type.info.inst.req)))) {
+                        if (type == UNRES_TYPE_DER_TPDF) {
+                            /* typedef */
+                            LOGWRN(ctx, "Derived typedef \"%s\" is changing the \"require-instance\" property, "
+                                   "which is discouraged.", stype->parent->name);
+                        } else {
+                            /* leaf */
+                            LOGWRN(ctx, "Node \"%s\" type is changing the \"require-instance\" property, "
+                                   "which is discouraged.", snode->name);
+                        }
+                    }
+                }
                 ly_errno = prev_ly_errno;
             }
 

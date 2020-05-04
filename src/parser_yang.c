@@ -639,7 +639,6 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
     struct ly_ctx *ctx = module->ctx;
     int rc, ret = -1;
     unsigned int i, j;
-    int8_t req;
     const char *name, *value, *module_name = NULL;
     LY_DATA_TYPE base = 0, base_tmp;
     struct lys_node *siter;
@@ -896,13 +895,16 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
         }
         break;
     case LY_TYPE_LEAFREF:
+    case LY_TYPE_INST:
         if (type->base == LY_TYPE_INST) {
             if (type->info.lref.path) {
                 LOGVAL(ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "path");
                 goto error;
             }
-            if ((req = type->info.lref.req)) {
-                type->info.inst.req = req;
+            if (type->info.lref.req) {
+                type->info.inst.req = type->info.lref.req;
+            } else if (type->der->type.der) {
+                type->info.inst.req = type->der->type.info.inst.req;
             }
         } else if (type->base == LY_TYPE_LEAFREF) {
             /* require-instance only YANG 1.1 */
@@ -916,17 +918,12 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
                 tpdftype = 1;
             }
 
-            if (type->der->type.der) {
-                if (type->info.lref.path) {
+            if (type->info.lref.path) {
+                if (type->der->type.der) {
                     LOGVAL(ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "path");
                     goto error;
-                } else if (type->info.lref.req) {
-                    LOGVAL(ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "require-instance");
-                    goto error;
                 }
-            }
 
-            if (type->info.lref.path) {
                 value = type->info.lref.path;
                 /* store in the JSON format */
                 type->info.lref.path = transform_schema2json(module, value);
@@ -950,7 +947,10 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
             } else {
                 /* copy leafref definition into the derived type */
                 type->info.lref.path = lydict_insert(ctx, type->der->type.info.lref.path, 0);
-                type->info.lref.req = type->der->type.info.lref.req;
+                if (!type->info.lref.req) {
+                    /* inherit require-instance only if not overwritten */
+                    type->info.lref.req = type->der->type.info.lref.req;
+                }
                 /* and resolve the path at the place we are (if not in grouping/typedef) */
                 if (!tpdftype && unres_schema_add_node(module, unres, type, UNRES_TYPE_LEAFREF, parent) == -1) {
                     goto error;
