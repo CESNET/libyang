@@ -157,7 +157,7 @@ lyd_insert_hash(struct lyd_node *node)
 void
 lyd_unlink_hash(struct lyd_node *node)
 {
-    if (node->parent && node->parent->children_ht) {
+    if (node->parent && node->parent->schema && node->parent->children_ht) {
         lyht_remove(node->parent->children_ht, &node, node->hash);
     }
 }

@@ -1298,7 +1298,7 @@ lyd_unlink_tree(struct lyd_node *node)
 
         /* check for keyless list and update its hash */
         for (iter = (struct lyd_node *)node->parent; iter; iter = (struct lyd_node *)iter->parent) {
-            if (iter->schema->flags & LYS_KEYLESS) {
+            if (iter->schema && (iter->schema->flags & LYS_KEYLESS)) {
                 lyd_hash(iter);
             }
         }

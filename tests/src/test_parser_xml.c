@@ -373,6 +373,11 @@ test_opaq(void **state)
     free(str);
     lyd_free_all(tree);
 
+    /* opaq flag and fail */
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, "<a xmlns=\"ns\"><b>x</b><c xml:id=\"D\">1</c></a>",
+            LYD_OPT_OPAQ | LYD_VALOPT_DATA_ONLY, &tree));
+    assert_null(tree);
+
     *state = NULL;
 }
 
