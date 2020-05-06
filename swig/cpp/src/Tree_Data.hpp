@@ -243,7 +243,7 @@ public:
     /** get value variable from [lyd_node_leaf_list](@ref lyd_node_leaf_list)*/
     S_Value value();
     /** get value_type variable from [lyd_node_leaf_list](@ref lyd_node_leaf_list)*/
-    uint16_t value_type() {return ((struct lyd_node_leaf_list *) node)->value_type;};
+    LY_DATA_TYPE value_type() {return ((struct lyd_node_leaf_list *) node)->value_type;};
     /** get child variable from [lyd_node_leaf_list](@ref lyd_node_leaf_list)*/
     S_Data_Node child() {return nullptr;};
 
@@ -306,7 +306,7 @@ public:
     /** get value variable from [lyd_attr](@ref lyd_attr)*/
     S_Value value();
     /** get value_type variable from [lyd_attr](@ref lyd_attr)*/
-    uint16_t value_type() {return attr->value_type;};
+    LY_DATA_TYPE value_type() {return attr->value_type;};
 private:
     struct lyd_attr *attr;
     S_Deleter deleter;
