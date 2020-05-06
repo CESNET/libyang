@@ -3383,7 +3383,7 @@ preparenext:
         ++(*type)->refcount;
         ret = lys_compile_type_(ctx, context_node_p, context_flags, context_mod, context_name, type_p, ctx->mod_def, basetype, NULL, base, type);
         LY_CHECK_GOTO(ret, cleanup);
-    } else {
+    } else if (basetype != LY_TYPE_BOOL && basetype != LY_TYPE_EMPTY) {
         /* no specific restriction in leaf's type definition, copy from the base */
         free(*type);
         (*type) = base;

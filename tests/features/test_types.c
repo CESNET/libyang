@@ -60,6 +60,8 @@ setup(void **state)
             "identity crypto-alg; identity interface-type; identity ethernet {base interface-type;} identity fast-ethernet {base ethernet;}}";
     const char *schema_b = "module types {namespace urn:tests:types;prefix t;yang-version 1.1; import defs {prefix defs;}"
             "feature f; identity gigabit-ethernet { base defs:ethernet;}"
+            "typedef tboolean {type boolean;}"
+            "typedef tempty {type empty;}"
             "container cont {leaf leaftarget {type empty;}"
                             "list listtarget {key id; max-elements 5;leaf id {type uint8;} leaf value {type string;}}"
                             "leaf-list leaflisttarget {type uint8; max-elements 5;}}"
@@ -86,7 +88,9 @@ setup(void **state)
             "leaf str-norestr {type string;}"
             "leaf str-utf8 {type string{length 2..5; pattern '€*';}}"
             "leaf bool {type boolean;}"
+            "leaf tbool {type tboolean;}"
             "leaf empty {type empty;}"
+            "leaf tempty {type tempty;}"
             "leaf ident {type identityref {base defs:interface-type;}}"
             "leaf inst {type instance-identifier {require-instance true;}}"
             "leaf inst-noreq {type instance-identifier {require-instance false;}}"
@@ -639,6 +643,15 @@ test_boolean(void **state)
     assert_int_equal(0, leaf->value.boolean);
     lyd_free_all(tree);
 
+    data = "<tbool xmlns=\"urn:tests:types\">false</tbool>";
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("tbool", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("false", leaf->value.canonical_cache);
+    assert_int_equal(0, leaf->value.boolean);
+    lyd_free_all(tree);
+
     /* invalid value */
     data = "<bool xmlns=\"urn:tests:types\">unsure</bool>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
@@ -674,6 +687,14 @@ test_empty(void **state)
     assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("empty", tree->schema->name);
+    leaf = (struct lyd_node_term*)tree;
+    assert_string_equal("", leaf->value.canonical_cache);
+    lyd_free_all(tree);
+
+    data = "<tempty xmlns=\"urn:tests:types\"/>";
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("tempty", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
     assert_string_equal("", leaf->value.canonical_cache);
     lyd_free_all(tree);
