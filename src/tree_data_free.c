@@ -155,7 +155,7 @@ lyd_free_subtree(struct lyd_node *node, int top)
         opaq = (struct lyd_node_opaq *)node;
 
         /* free the children */
-        children = (struct lyd_node *)lyd_node_children(node);
+        children = lyd_node_children(node);
         LY_LIST_FOR_SAFE(children, next, iter) {
             lyd_free_subtree(iter, 0);
         }
@@ -177,7 +177,7 @@ lyd_free_subtree(struct lyd_node *node, int top)
         ((struct lyd_node_inner *)node)->children_ht = NULL;
 
         /* free the children */
-        children = (struct lyd_node *)lyd_node_children(node);
+        children = lyd_node_children(node);
         LY_LIST_FOR_SAFE(children, next, iter) {
             lyd_free_subtree(iter, 0);
         }

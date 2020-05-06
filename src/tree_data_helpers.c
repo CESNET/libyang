@@ -43,7 +43,7 @@ lyd_node_children_p(struct lyd_node *node)
     }
 }
 
-API const struct lyd_node *
+API struct lyd_node *
 lyd_node_children(const struct lyd_node *node)
 {
     struct lyd_node **children;

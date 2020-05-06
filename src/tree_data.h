@@ -84,7 +84,7 @@ extern "C" {
 
 #define LYD_TREE_DFS_END(START, NEXT, ELEM) \
     /* select element for the next run - children first */ \
-    (NEXT) = (struct lyd_node*)lyd_node_children((struct lyd_node*)ELEM); \
+    (NEXT) = lyd_node_children((struct lyd_node*)ELEM); \
     if (!(NEXT)) { \
         /* no children */ \
         if ((ELEM) == (struct lyd_node*)(START)) { \
@@ -531,7 +531,7 @@ struct lyd_node_opaq {
  * @param[in] node Node to check.
  * @return Pointer to the first child node (if any) of the \p node.
  */
-const struct lyd_node *lyd_node_children(const struct lyd_node *node);
+struct lyd_node *lyd_node_children(const struct lyd_node *node);
 
 /**
  * @brief Get the owner module of the data node. It is the module of the top-level schema node. Generally,

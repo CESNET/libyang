@@ -1004,14 +1004,14 @@ lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling, struct
             if (anchor) {
                 lyd_insert_after_node(anchor, node);
             } else if (lyd_node_children(parent)) {
-                lyd_insert_before_node((struct lyd_node *)lyd_node_children(parent), node);
+                lyd_insert_before_node(lyd_node_children(parent), node);
             } else {
                 lyd_insert_last_node(parent, node);
             }
 
             /* hash list if all its keys were added */
             assert(parent->schema->nodetype == LYS_LIST);
-            anchor = (struct lyd_node *)lyd_node_children(parent);
+            anchor = lyd_node_children(parent);
             has_keys = 1;
             while ((skey = lys_getnext(skey, parent->schema, NULL, 0)) && (skey->flags & LYS_KEY)) {
                 if (!anchor || (anchor->schema != skey)) {

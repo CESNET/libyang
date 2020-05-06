@@ -919,11 +919,11 @@ lyd_validate_final_r(struct lyd_node *first, const struct lysc_node *sparent, co
 
     LY_LIST_FOR(first, node) {
         /* validate all children recursively */
-        LY_CHECK_RET(lyd_validate_final_r((struct lyd_node *)lyd_node_children(node), node->schema, NULL, val_opts));
+        LY_CHECK_RET(lyd_validate_final_r(lyd_node_children(node), node->schema, NULL, val_opts));
 
         /* set default for containers */
         if ((node->schema->nodetype == LYS_CONTAINER) && !(node->schema->flags & LYS_PRESENCE)) {
-            LY_LIST_FOR((struct lyd_node *)lyd_node_children(node), next) {
+            LY_LIST_FOR(lyd_node_children(node), next) {
                 if (!(next->flags & LYD_DEFAULT)) {
                     break;
                 }
@@ -1247,7 +1247,7 @@ lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *tree, int val_o
     LY_CHECK_GOTO(ret = lyd_validate_must(op, val_opts), cleanup);
 
     /* final validation of all the descendants */
-    LY_CHECK_GOTO(ret = lyd_validate_final_r((struct lyd_node *)lyd_node_children(op), op->schema, NULL, val_opts), cleanup);
+    LY_CHECK_GOTO(ret = lyd_validate_final_r(lyd_node_children(op), op->schema, NULL, val_opts), cleanup);
 
 cleanup:
     /* restore operation tree */
