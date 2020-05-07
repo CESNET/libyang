@@ -4235,7 +4235,12 @@ resolve_schema_leafref(struct lys_type *type, struct lys_node *parent, struct un
         op_node && !(op_node->nodetype & (LYS_ACTION | LYS_NOTIF | LYS_RPC));
         op_node = lys_parent(op_node));
 
-    cur_module = lys_node_module(parent);
+    if (type->der->module) {
+        /* typedef, take its local module */
+        cur_module = type->der->module;
+    } else {
+        cur_module = lys_node_module(parent);
+    }
     do {
         if ((i = parse_path_arg(cur_module, id, &prefix, &pref_len, &name, &nam_len, &parent_times, &has_predicate)) < 1) {
             LOGVAL(ctx, LYE_INCHAR, LY_VLOG_LYS, parent, id[-i], &id[-i]);
