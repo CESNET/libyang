@@ -1297,6 +1297,24 @@ void lyd_free_val_diff(struct lyd_difflist *diff);
 int lyd_validate_value(struct lys_node *node, const char *value);
 
 /**
+ * @brief Check restrictions applicable to the particular leaf/leaf-list on the given string value and optionally
+ * return its final type.
+ *
+ * Validates the value only using the types' restrictions. Do not check the rest of restrictions dependent on the
+ * data tree (must, when statements or uniqueness of the leaf-list item).
+ *
+ * The format of the data must follow rules for the lexical representation of the specific YANG type. Note
+ * that if there are some extensions of the lexical representation for the YANG module (default value), they are
+ * not supported by this function - it strictly follows rules for the lexical representations in data trees.
+ *
+ * @param[in] node Schema node of the leaf or leaf-list eventually holding the \p value.
+ * @param[in] value Value to be checked (NULL is checked as empty string).
+ * @param[out] type Optional resolved value type, useful mainly for unions.
+ * @return EXIT_SUCCESS if the \p value conforms to the restrictions, EXIT_FAILURE otherwise.
+ */
+int lyd_value_type(struct lys_node *node, const char *value, struct lys_type **type);
+
+/**
  * @brief Get know if the node contain (despite implicit or explicit) default value.
  *
  * @param[in] node The leaf or leaf-list to check. Note, that leaf-list is marked as default only when the complete

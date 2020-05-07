@@ -44,7 +44,8 @@ struct ly_ctx;
  */
 typedef enum lyxml_attr_type {
     LYXML_ATTR_STD = 1,              /**< standard XML attribute */
-    LYXML_ATTR_NS = 2                /**< XML namespace definition */
+    LYXML_ATTR_NS = 2,               /**< XML namespace definition */
+    LYXML_ATTR_STD_UNRES = 3         /**< standard XML attribute with unresolved namespace, its ns attribute is actually prefix */
 } LYXML_ATTR_TYPE;
 
 /**

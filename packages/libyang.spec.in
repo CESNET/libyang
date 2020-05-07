@@ -8,10 +8,16 @@ Source1: @PACKAGE@.rpmlintrc
 License: BSD-3-Clause
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}
 
-%if 0%{?scientificlinux_version} == 700
+%if 0%{?scientificlinux_version} == 700 || 0%{?centos_ver} < 7
     %define with_lang_bind 0
 %else
     %define with_lang_bind 1
+%endif
+
+%if 0%{?centos_ver} < 7
+    %define with_ly_cache 0
+%else
+    %define with_ly_cache 1
 %endif
 
 Requires:  pcre
@@ -24,7 +30,7 @@ BuildRequires:  libcmocka-devel
 %if %{with_lang_bind}
 
 BuildRequires:  gcc-c++
-%if 0%{?centos_version}
+%if 0%{?centos_version} || 0%{?centos_ver} == 7
 BuildRequires:  swig3 >= 3.0.12
 %else
 BuildRequires:  swig >= 3.0.12
@@ -85,12 +91,19 @@ cd build
 %else
     %define cmake_lang_bind "-DGEN_LANGUAGE_BINDINGS=OFF"
 %endif
+%if %{with_ly_cache}
+    %define cmake_ly_cache "-DENABLE_CACHE=ON"
+%else
+    %define cmake_ly_cache "-DENABLE_CACHE=OFF"
+%endif
+
 cmake -DCMAKE_INSTALL_PREFIX:PATH=/usr \
    -DCMAKE_BUILD_TYPE:String="Package" \
    -DENABLE_LYD_PRIV=ON \
    -DGEN_JAVA_BINDINGS=OFF \
    -DGEN_JAVASCRIPT_BINDINGS=OFF \
-   %{cmake_lang_bind} ..
+   %{cmake_lang_bind} \
+   %{cmake_ly_cache} ..
 make
 
 %check

@@ -83,23 +83,12 @@ ly_print(struct lyout *out, const char *format, ...)
     int count = 0;
     char *msg = NULL, *aux;
     va_list ap;
-#ifndef HAVE_VDPRINTF
-    FILE *stream;
-#endif
 
     va_start(ap, format);
 
     switch (out->type) {
     case LYOUT_FD:
-#ifdef HAVE_VDPRINTF
         count = vdprintf(out->method.fd, format, ap);
-#else
-        stream = fdopen(dup(out->method.fd), "a+");
-        if (stream) {
-            count = vfprintf(stream, format, ap);
-            fclose(stream);
-        }
-#endif
         break;
     case LYOUT_STREAM:
         count = vfprintf(out->method.f, format, ap);

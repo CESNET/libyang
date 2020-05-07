@@ -1205,7 +1205,6 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
     case LY_TYPE_INST:
         /* RFC 6020 9.13.2 - require-instance */
         LY_TREE_FOR(yin->child, node) {
-
             if (!strcmp(node->name, "require-instance")) {
                 if (type->info.inst.req) {
                     LOGVAL(ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, node->name, yin->name);
@@ -1229,6 +1228,11 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
                 LOGVAL(ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, node->name);
                 goto error;
             }
+        }
+
+        if (type->der->type.der && !type->info.inst.req) {
+            /* inherit require-instance property */
+            type->info.inst.req = type->der->type.info.inst.req;
         }
 
         break;
@@ -1304,7 +1308,7 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
         LY_TREE_FOR(yin->child, node) {
             if (!strcmp(node->name, "path") && !type->der->type.der) {
                 /* keep path for later */
-            } else if (module->version >= 2 && !strcmp(node->name, "require-instance") && !type->der->type.der) {
+            } else if (module->version >= 2 && !strcmp(node->name, "require-instance")) {
                 if (type->info.lref.req) {
                     LOGVAL(ctx, LYE_TOOMANY, LY_VLOG_NONE, NULL, node->name, yin->name);
                     goto error;
@@ -1371,7 +1375,9 @@ fill_yin_type(struct lys_module *module, struct lys_node *parent, struct lyxml_e
             } else {
                 /* copy leafref definition into the derived type */
                 type->info.lref.path = lydict_insert(ctx, type->der->type.info.lref.path, 0);
-                type->info.lref.req = type->der->type.info.lref.req;
+                if (!type->info.lref.req) {
+                    type->info.lref.req = type->der->type.info.lref.req;
+                }
                 /* and resolve the path at the place we are (if not in grouping/typedef) */
                 if (!parenttype && unres_schema_add_node(module, unres, type, UNRES_TYPE_LEAFREF, parent) == -1) {
                     goto error;
@@ -6293,18 +6299,9 @@ read_yin_rpc_action(struct lys_module *module, struct lys_node *parent, struct l
     int c_tpdf = 0, c_ftrs = 0, c_input = 0, c_output = 0, c_ext = 0;
     void *reallocated;
 
-    if (!strcmp(yin->name, "action")) {
-        if (module->version < 2) {
-            LOGVAL(ctx, LYE_INSTMT, LY_VLOG_LYS, parent, "action");
-            return NULL;
-        }
-        for (node = parent; node; node = lys_parent(node)) {
-            if ((node->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF))
-                    || ((node->nodetype == LYS_LIST) && !((struct lys_node_list *)node)->keys_size)) {
-                LOGVAL(ctx, LYE_INPAR, LY_VLOG_LYS, parent, strnodetype(node->nodetype), "action");
-                return NULL;
-            }
-        }
+    if (!strcmp(yin->name, "action") && (module->version < 2)) {
+        LOGVAL(ctx, LYE_INSTMT, LY_VLOG_LYS, parent, "action");
+        return NULL;
     }
 
     /* init */

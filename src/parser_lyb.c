@@ -17,22 +17,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <inttypes.h>
-#ifdef __APPLE__
-# include <libkern/OSByteOrder.h>
-# define le64toh(x) OSSwapLittleToHostInt64(x)
-#elif defined(__FreeBSD__) || defined(__NetBSD__) || defined(__DragonFly__)
-# include <sys/endian.h>
-#elif defined(__sun__)
-# include <endian.h>
-# include <sys/byteorder.h>
-# if defined(_BIG_ENDIAN)
-#  define le64toh(x) BSWAP_64(x)
-# else
-#  define le64toh(x) (x)
-# endif
-#else
-# include <endian.h>
-#endif
 
 #include "libyang.h"
 #include "common.h"
@@ -520,7 +504,7 @@ lyb_parse_val_2(struct lys_type *type, struct lyd_node_leaf_list *leaf, struct l
     if (*value_flags & LY_VALUE_USER) {
         /* unfortunately, we need to also fill the value properly, so just parse it again */
         *value_flags &= ~LY_VALUE_USER;
-        if (!lyp_parse_value(type, value_str, NULL, leaf, attr, NULL, 1, (leaf ? leaf->dflt : 0), 1)) {
+        if (!lyp_parse_value(type, value_str, NULL, leaf, attr, NULL, 1, (leaf ? leaf->dflt : 0))) {
             return -1;
         }
 

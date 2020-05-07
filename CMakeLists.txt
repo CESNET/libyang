@@ -7,8 +7,12 @@ endif()
 
 project(libyang C)
 
+# include custom Modules
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMakeModules/")
+
 include(GNUInstallDirs)
 include(CheckSymbolExists)
+include(UseCompat)
 
 set(LIBYANG_DESCRIPTION "libyang is YANG data modelling language parser and toolkit written (and providing API) in C.")
 
@@ -21,17 +25,22 @@ set(CMAKE_MACOSX_RPATH TRUE)
 # micro version is changed with a set of small changes or bugfixes anywhere in the project.
 set(LIBYANG_MAJOR_VERSION 1)
 set(LIBYANG_MINOR_VERSION 0)
-set(LIBYANG_MICRO_VERSION 130)
+set(LIBYANG_MICRO_VERSION 167)
 set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_MICRO_VERSION})
 
 # Version of the library
 # Major version is changed with every backward non-compatible API/ABI change in libyang, minor version changes
 # with backward compatible change and micro version is connected with any internal change of the library.
 set(LIBYANG_MAJOR_SOVERSION 1)
-set(LIBYANG_MINOR_SOVERSION 6)
-set(LIBYANG_MICRO_SOVERSION 7)
+set(LIBYANG_MINOR_SOVERSION 7)
+set(LIBYANG_MICRO_SOVERSION 11)
 set(LIBYANG_SOVERSION_FULL ${LIBYANG_MAJOR_SOVERSION}.${LIBYANG_MINOR_SOVERSION}.${LIBYANG_MICRO_SOVERSION})
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_SOVERSION})
+
+# check the supported platform
+if(NOT UNIX)
+    message(FATAL_ERROR "Only *nix like systems are supported.")
+endif()
 
 # set default build type if not specified by user
 if(NOT CMAKE_BUILD_TYPE)
@@ -81,7 +90,8 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL "Clang")
     set(COMPILER_UNUSED_ATTR "UNUSED_ ## x __attribute__((__unused__))")
     set(COMPILER_PACKED_ATTR "__attribute__((__packed__))")
 else()
-    message(WARNING "You are using an unknown compiler, it must support C11 standard \"_Generic\" statement or the \"__builtin_types_compatible_p\" built-in function.")
+    message(WARNING "You are using an unknown compiler, it must support C11 standard \"_Generic\" statement"
+        " or the \"__builtin_types_compatible_p\" built-in function.")
     set(COMPILER_UNUSED_ATTR "UNUSED_ ## x")
     set(COMPILER_PACKED_ATTR "")
 endif()
@@ -92,9 +102,6 @@ configure_file(${PROJECT_SOURCE_DIR}/src/common.h.in ${PROJECT_BINARY_DIR}/src/c
 
 set(EXTENSIONS_PLUGINS_DIR_MACRO "${PLUGINS_DIR}/extensions")
 set(USER_TYPES_PLUGINS_DIR_MACRO "${PLUGINS_DIR}/user_types")
-
-# include custom Modules
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMakeModules/")
 
 # setup bindings
 set(GEN_LANGUAGE_BINDINGS 0 CACHE BOOL "Enable language bindings generation.")
@@ -131,11 +138,6 @@ endif()
 # by default build shared library
 # static build requires static libpcre library
 option(ENABLE_STATIC "Build static (.a) library" OFF)
-
-# check the supported platform
-if(NOT UNIX)
-    message(FATAL_ERROR "Only *nix like systems are supported.")
-endif()
 
 set(libsrc
     src/common.c
@@ -190,10 +192,8 @@ set(headers
     src/xml.h
     src/dict.h)
 
-check_symbol_exists(vdprintf "stdio.h;stdarg.h" HAVE_VDPRINTF)
-if(HAVE_VDPRINTF)
-    add_definitions(-DHAVE_VDPRINTF)
-endif(HAVE_VDPRINTF)
+# link compat
+use_compat()
 
 # create static libyang library
 if(ENABLE_STATIC)
@@ -202,7 +202,7 @@ if(ENABLE_STATIC)
     set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
     set(CMAKE_EXE_LINK_DYNAMIC_C_FLAGS)       # remove -Wl,-Bdynamic
     set(CMAKE_EXE_LINK_DYNAMIC_CXX_FLAGS)
-    add_library(yang STATIC ${libsrc})
+    add_library(yang STATIC ${libsrc} $<TARGET_OBJECTS:compat>)
 
     # switch off the tests
     if(ENABLE_BUILD_TESTS)
@@ -217,7 +217,7 @@ if(ENABLE_STATIC)
 else()
     set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
     add_library(yangobj OBJECT ${libsrc})
-    add_library(yang SHARED $<TARGET_OBJECTS:yangobj>)
+    add_library(yang SHARED $<TARGET_OBJECTS:yangobj> $<TARGET_OBJECTS:compat>)
 
     #only for tests with visible internal symbols
     add_library(yangobj_tests OBJECT ${libsrc})
@@ -226,7 +226,7 @@ else()
     target_link_libraries(yang ${CMAKE_DL_LIBS})
 
     set_target_properties(yangobj PROPERTIES COMPILE_FLAGS "-fvisibility=hidden")
-endif(ENABLE_STATIC)
+endif()
 
 set_target_properties(yang PROPERTIES VERSION ${LIBYANG_SOVERSION_FULL} SOVERSION ${LIBYANG_SOVERSION})
 
@@ -296,7 +296,7 @@ if(ENABLE_BUILD_TESTS)
     if(CMOCKA_FOUND AND CMAKE_BUILD_TYPE MATCHES debug)
         list(APPEND EXTENSIONS_LIST "libyang_ext_test")
     endif(CMOCKA_FOUND AND CMAKE_BUILD_TYPE MATCHES debug)
-endif(ENABLE_BUILD_TESTS)
+endif()
 
 if(ENABLE_STATIC)
     set(EXTENSIONS_LIST_SIZE " 0 ")
@@ -330,18 +330,18 @@ if(ENABLE_STATIC)
     set(STATIC_LOADED_PLUGINS_COUNT "${ITEM}")
 else()
     add_subdirectory(src/user_types)
-endif(ENABLE_STATIC)
+endif()
 
 configure_file(${PROJECT_SOURCE_DIR}/src/plugin_config.h.in ${PROJECT_BINARY_DIR}/src/plugin_config.h)
 
 # yanglint
-add_executable(yanglint ${lintsrc})
+add_executable(yanglint ${lintsrc} $<TARGET_OBJECTS:compat>)
 target_link_libraries(yanglint yang)
 install(TARGETS yanglint DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/tools/lint/yanglint.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 
 #yangre
-add_executable(yangre ${resrc})
+add_executable(yangre ${resrc} $<TARGET_OBJECTS:compat>)
 target_link_libraries(yangre yang)
 install(TARGETS yangre DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/tools/re/yangre.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
@@ -367,11 +367,11 @@ if(ENABLE_BUILD_TESTS)
         message(STATUS "Disabling tests because of missing CMocka")
         set(ENABLE_BUILD_TESTS NO)
     endif(CMOCKA_FOUND)
-endif(ENABLE_BUILD_TESTS)
+endif()
 
 if(ENABLE_BUILD_FUZZ_TARGETS)
     add_subdirectory(tests/fuzz)
-endif(ENABLE_BUILD_FUZZ_TARGETS)
+endif()
 
 if(GEN_LANGUAGE_BINDINGS AND GEN_CPP_BINDINGS)
     add_subdirectory(swig)

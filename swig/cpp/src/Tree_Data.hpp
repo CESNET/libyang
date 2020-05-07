@@ -37,6 +37,12 @@ namespace libyang {
  * Class wrappers for data structures and functions to manipulate and access instance data tree.
  */
 
+struct Decimal64
+{
+    int64_t value;
+    uint8_t digits;
+};
+
 /**
  * @brief class for wrapping [lyd_val](@ref lyd_val).
  * @class Value
@@ -54,7 +60,7 @@ public:
     /** get bln variable from [lyd_val](@ref lyd_val)*/
     int8_t bln() {return LY_TYPE_BOOL == value_type ? value.bln : throw "wrong type";};
     /** get dec64 variable from [lyd_val](@ref lyd_val)*/
-    int64_t dec64() {return LY_TYPE_DEC64 == value_type ? value.dec64 : throw "wrong type";};
+    Decimal64 dec64() {return LY_TYPE_DEC64 == value_type ? Decimal64{ value.dec64, type->info.dec64.dig } : throw "wrong type";};
     /** get enm variable from [lyd_val](@ref lyd_val)*/
     S_Type_Enum enm() {return LY_TYPE_ENUM == value_type ? std::make_shared<Type_Enum>(value.enm, deleter) : throw "wrong type";};
     /** get ident variable from [lyd_val](@ref lyd_val)*/
@@ -237,7 +243,7 @@ public:
     /** get value variable from [lyd_node_leaf_list](@ref lyd_node_leaf_list)*/
     S_Value value();
     /** get value_type variable from [lyd_node_leaf_list](@ref lyd_node_leaf_list)*/
-    uint16_t value_type() {return ((struct lyd_node_leaf_list *) node)->value_type;};
+    LY_DATA_TYPE value_type() {return ((struct lyd_node_leaf_list *) node)->value_type;};
     /** get child variable from [lyd_node_leaf_list](@ref lyd_node_leaf_list)*/
     S_Data_Node child() {return nullptr;};
 
@@ -300,7 +306,7 @@ public:
     /** get value variable from [lyd_attr](@ref lyd_attr)*/
     S_Value value();
     /** get value_type variable from [lyd_attr](@ref lyd_attr)*/
-    uint16_t value_type() {return attr->value_type;};
+    LY_DATA_TYPE value_type() {return attr->value_type;};
 private:
     struct lyd_attr *attr;
     S_Deleter deleter;

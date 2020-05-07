@@ -12,7 +12,7 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#define _GNU_SOURCE
+#define _GNU_SOURCE /*strndup */
 
 #include <assert.h>
 #include <ctype.h>
@@ -20,8 +20,9 @@
 #include <limits.h>
 #include <pthread.h>
 #include <string.h>
+#include <stdarg.h>
+#include <stdio.h>
 #include <stdlib.h>
-#include <sys/syscall.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -158,24 +159,6 @@ ly_err_clean(struct ly_ctx *ctx, struct ly_err_item *eitem)
     }
 }
 
-#ifndef  __USE_GNU
-
-char *
-get_current_dir_name(void)
-{
-    char tmp[PATH_MAX];
-    char *retval;
-
-    if (getcwd(tmp, sizeof(tmp))) {
-        retval = strdup(tmp);
-        LY_CHECK_ERR_RETURN(!retval, LOGMEM(NULL), NULL);
-        return retval;
-    }
-    return NULL;
-}
-
-#endif
-
 const char *
 strpbrk_backwards(const char *s, const char *accept, unsigned int s_len)
 {
@@ -271,8 +254,8 @@ transform_module_name2import_prefix(const struct lys_module *module, const char 
 }
 
 static int
-_transform_json2xml_subexp(const struct lys_module *module, const char *expr, char **out, size_t *out_used, size_t *out_size, int schema, int inst_id, const char ***prefixes,
-                    const char ***namespaces, uint32_t *ns_count)
+_transform_json2xml_subexp(const struct lys_module *module, const char *expr, char **out, size_t *out_used, size_t *out_size,
+                           int schema, int inst_id, const char ***prefixes, const char ***namespaces, uint32_t *ns_count)
 {
     const char *cur_expr, *end, *prefix, *literal;
     char *name;
@@ -410,10 +393,6 @@ _transform_json2xml_subexp(const struct lys_module *module, const char *expr, ch
     return 0;
 
 error:
-    if (!schema && ns_count) {
-        free(*prefixes);
-        free(*namespaces);
-    }
     lyxp_expr_free(exp);
     return 1;
 }
@@ -450,6 +429,14 @@ _transform_json2xml(const struct lys_module *module, const char *expr, int schem
         return lydict_insert_zc(module->ctx, out);
     }
 
+    /* fail */
+    if (ns_count) {
+        *ns_count = 0;
+        free(*prefixes);
+        *prefixes = NULL;
+        free(*namespaces);
+        *namespaces = NULL;
+    }
     free(out);
     return NULL;
 }

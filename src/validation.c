@@ -66,7 +66,7 @@ lyv_data_context(struct lyd_node *node, int options, struct unres_data *unres)
     }
 
     /* find (nested) operation node */
-    for (op = node->schema; op && !(op->nodetype & (LYS_NOTIF | LYS_RPC | LYS_ACTION)); op = lys_parent(op));
+    for (op = node->schema; op && !(op->nodetype & (LYS_NOTIF | LYS_INPUT | LYS_OUTPUT)); op = lys_parent(op));
 
     if (!(options & (LYD_OPT_NOTIF_FILTER | LYD_OPT_EDIT | LYD_OPT_GET | LYD_OPT_GETCONFIG))
             && (!(options & (LYD_OPT_RPC | LYD_OPT_RPCREPLY | LYD_OPT_NOTIF)) || op)) {

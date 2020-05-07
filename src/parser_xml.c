@@ -75,7 +75,7 @@ xml_data_search_schemanode(struct lyxml_elem *xml, struct lys_node *start, int o
 
 /* logs directly */
 static int
-xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int editbits, int trusted)
+xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int editbits)
 {
     struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node;
 
@@ -92,7 +92,7 @@ xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int editbits, int t
 
     /* the value is here converted to a JSON format if needed in case of LY_TYPE_IDENT and LY_TYPE_INST or to a
      * canonical form of the value */
-    if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, xml, leaf, NULL, NULL, 1, 0, trusted)) {
+    if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, xml, leaf, NULL, NULL, 1, 0)) {
         return EXIT_FAILURE;
     }
 
@@ -334,11 +334,16 @@ xml_parse_data(struct ly_ctx *ctx, struct lyxml_elem *xml, struct lyd_node *pare
             str = attr->ns->value;
         }
 
-        r = lyp_fill_attr(ctx, *result, str, NULL, attr->name, attr->value, xml, options, &dattr);
+        r = lyp_fill_attr(ctx, *result, str, NULL, attr->name, attr->value, xml, &dattr);
         if (r == -1) {
             goto unlink_node_error;
         } else if (r == 1) {
 attr_error:
+            if (!strcmp(attr->name, "default") && !strcmp(attr->ns->value, "urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults")) {
+                /* we do not need to parse this attribute, just skip it */
+                continue;
+            }
+
             if (options & LYD_OPT_STRICT) {
                 LOGVAL(ctx, LYE_INATTR, LY_VLOG_LYD, *result, attr->name);
                 goto unlink_node_error;
@@ -453,7 +458,7 @@ attr_error:
     /* type specific processing */
     if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
         /* type detection and assigning the value */
-        if (xml_get_value(*result, xml, editbits, options & LYD_OPT_TRUSTED)) {
+        if (xml_get_value(*result, xml, editbits)) {
             goto unlink_node_error;
         }
     } else if (schema->nodetype & LYS_ANYDATA) {
