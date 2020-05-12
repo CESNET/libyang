@@ -2604,6 +2604,11 @@ test_uses(void **state)
                                         "container top {action i; uses grp {refine i {description \"ultra i\";}}}}", LYS_IN_YANG));
     logbuf_assert("Invalid descendant-schema-nodeid value \"i\" - target node not found. /ii:top/{uses='grp'}/{refine='i'}");
 
+    assert_null(lys_parse_mem(ctx, "module jj {yang-version 1.1;namespace urn:jj;prefix jj;"
+                              "grouping grp {leaf j { when \"1\"; type invalid;}}"
+                              "container top {uses grp;}}", LYS_IN_YANG));
+    logbuf_assert("Referenced type \"invalid\" not found. /jj:top/{uses='grp'}/j");
+
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
 }

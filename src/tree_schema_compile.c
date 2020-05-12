@@ -4370,6 +4370,7 @@ done:
  * the choice itself is expected instead of a specific case node.
  * @param[in] node Schema node to connect into the list.
  * @return LY_ERR value - LY_SUCCESS or LY_EEXIST.
+ * In case of LY_EEXIST, the node is actually kept in the tree, so do not free it directly.
  */
 static LY_ERR
 lys_compile_node_connect(struct lysc_ctx *ctx, struct lysc_node *parent, struct lysc_node *node)
@@ -5534,7 +5535,7 @@ lys_compile_grouping(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lysp
 static LY_ERR
 lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lysc_node *parent, uint16_t uses_status)
 {
-    LY_ERR ret = LY_EVALID;
+    LY_ERR ret = LY_SUCCESS;
     struct lysc_node *node;
     struct lysc_node_case *cs;
     struct lysc_when **when;
@@ -5613,6 +5614,7 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lysc_nod
     if (parent && (parent->flags & LYS_CONFIG_R) && (node->flags & LYS_CONFIG_W)) {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
                "Configuration node cannot be child of any state data node.");
+        ret = LY_EVALID;
         goto error;
     }
 
@@ -5635,7 +5637,7 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lysc_nod
     if (!parent || parent->nodetype != LYS_CHOICE) {
         /* in case of choice/case's children, postpone the check to the moment we know if
          * the parent is choice (parent here) or some case (so we have to get its flags to check) */
-        LY_CHECK_GOTO(lys_compile_status(ctx, &node->flags, uses_status ? uses_status : (parent ? parent->flags : 0)), error);
+        LY_CHECK_GOTO(ret = lys_compile_status(ctx, &node->flags, uses_status ? uses_status : (parent ? parent->flags : 0)), error);
     }
 
     if (!(ctx->options & LYSC_OPT_FREE_SP)) {
@@ -5646,8 +5648,7 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lysc_nod
     DUP_STRING(ctx->ctx, node_p->ref, node->ref);
     if (node_p->when) {
         LY_ARRAY_NEW_GOTO(ctx->ctx, node->when, when, ret, error);
-        ret = lys_compile_when(ctx, node_p->when, node_p->flags, node, when);
-        LY_CHECK_GOTO(ret, error);
+        LY_CHECK_GOTO(ret = lys_compile_when(ctx, node_p->when, node_p->flags, node, when), error);
 
         if (!(ctx->options & LYSC_OPT_GROUPING)) {
             /* do not check "when" semantics in a grouping */
@@ -5657,7 +5658,7 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lysc_nod
     COMPILE_ARRAY_GOTO(ctx, node_p->iffeatures, node->iffeatures, u, lys_compile_iffeature, ret, error);
 
     /* nodetype-specific part */
-    LY_CHECK_GOTO(node_compile_spec(ctx, node_p, node), error);
+    LY_CHECK_GOTO(ret = node_compile_spec(ctx, node_p, node), error);
 
     COMPILE_EXTS_GOTO(ctx, node_p->exts, node->exts, node, LYEXT_PAR_NODE, ret, error);
 
@@ -5684,7 +5685,7 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lysc_nod
             /* the postponed status check of the node and its real parent - in case of implicit case,
              * it directly gets the same status flags as the choice;
              * uses_status cannot be applied here since uses cannot be child statement of choice */
-            LY_CHECK_GOTO(lys_compile_status(ctx, &node->flags, cs->flags), error);
+            LY_CHECK_GOTO(ret = lys_compile_status(ctx, &node->flags, cs->flags), error);
             node->parent = (struct lysc_node*)cs;
             lysc_update_path(ctx, parent, node->name);
         } else { /* other than choice */
