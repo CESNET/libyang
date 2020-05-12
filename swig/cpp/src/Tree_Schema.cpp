@@ -39,6 +39,14 @@ Submodule::Submodule(struct lys_submodule *submodule, S_Deleter deleter):
     submodule(submodule),
     deleter(deleter)
 {};
+Submodule::Submodule(S_Module module):
+    submodule((lys_submodule*)module->module),
+    deleter(module->deleter)
+{
+    if (module->type() != 1) {
+        throw std::invalid_argument("Attempted to cast a YANG module into a YANG submodule");
+    }
+}
 std::vector<S_Schema_Node> Module::data_instantiables(int options) {
     std::vector<S_Schema_Node> s_vector;
     struct lys_node *iter = NULL;
