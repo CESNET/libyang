@@ -111,6 +111,7 @@ public:
 
     friend Context;
     friend Data_Node;
+    friend Submodule;
 
 private:
     struct lys_module *module;
@@ -126,6 +127,8 @@ class Submodule
 public:
     /** wrapper for struct [lys_submodule](@ref lys_submodule), for internal use only */
     Submodule(struct lys_submodule *submodule, S_Deleter deleter);
+    /** creates a Submodule from `module` if it is a submodule */
+    Submodule(S_Module module);
     ~Submodule();
     /** get ctx variable from [lys_submodule](@ref lys_submodule)*/
     S_Context ctx() LY_NEW(submodule, ctx, Context);
