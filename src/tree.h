@@ -21,6 +21,9 @@
 extern "C" {
 #endif
 
+/**
+ * @brief Type (i.e. size) of the [sized array](@ref sizedarrays)'s size counter.
+ */
 #define LY_ARRAY_SIZE_TYPE uint64_t
 
 /**
