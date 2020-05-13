@@ -3098,9 +3098,8 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16
                 if (un->types[u + additional]->basetype == LY_TYPE_UNION) {
                     /* add space for additional types from the union subtype */
                     un_aux = (struct lysc_type_union *)un->types[u + additional];
-                    p = ly_realloc(((uint32_t*)(un->types) - 1), sizeof(uint32_t) + ((LY_ARRAY_SIZE(type_p->types) + additional + LY_ARRAY_SIZE(un_aux->types) - 1) * sizeof *(un->types)));
-                    LY_CHECK_ERR_RET(!p, LOGMEM(ctx->ctx);lysc_type_free(ctx->ctx, (struct lysc_type*)un_aux), LY_EMEM);
-                    un->types = (void*)((uint32_t*)(p) + 1);
+                    LY_ARRAY_RESIZE_ERR_RET(ctx->ctx, un->types, (*((uint64_t*)(type_p->types) - 1)) + additional + LY_ARRAY_SIZE(un_aux->types) - 1,
+                                            lysc_type_free(ctx->ctx, (struct lysc_type*)un_aux), LY_EMEM);
 
                     /* copy subtypes of the subtype union */
                     for (v = 0; v < LY_ARRAY_SIZE(un_aux->types); ++v) {

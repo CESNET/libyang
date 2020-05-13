@@ -21,6 +21,8 @@
 extern "C" {
 #endif
 
+#define LY_ARRAY_SIZE_TYPE uint64_t
+
 /**
  * @brief Macro selector for other LY_ARRAY_* macros, do not use directly!
  */
@@ -37,7 +39,7 @@ extern "C" {
  */
 #define LY_ARRAY_FOR_ITER(ARRAY, TYPE, ITER) \
     for (ITER = ARRAY; \
-         (ARRAY) && ((void*)ITER - (void*)ARRAY)/(sizeof(TYPE)) < (*((uint32_t*)(ARRAY) - 1)); \
+         (ARRAY) && ((void*)ITER - (void*)ARRAY)/(sizeof(TYPE)) < (*((LY_ARRAY_SIZE_TYPE*)(ARRAY) - 1)); \
          ITER = (void*)((TYPE*)ITER + 1))
 
 /**
@@ -52,7 +54,7 @@ extern "C" {
  */
 #define LY_ARRAY_FOR_INDEX(ARRAY, INDEX) \
     for (INDEX = 0; \
-         ARRAY && INDEX < (*((uint32_t*)(ARRAY) - 1)); \
+         ARRAY && INDEX < (*((LY_ARRAY_SIZE_TYPE*)(ARRAY) - 1)); \
          ++INDEX)
 
 /**
@@ -67,7 +69,7 @@ extern "C" {
  *
  * Does not check if array exists!
  */
-#define LY_ARRAY_SIZE(ARRAY) (*((uint32_t*)(ARRAY) - 1))
+#define LY_ARRAY_SIZE(ARRAY) (*((LY_ARRAY_SIZE_TYPE*)(ARRAY) - 1))
 
 /**
  * @brief Sized-array iterator (for-loop).
