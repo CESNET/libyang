@@ -1430,74 +1430,76 @@ ly_create_attr(struct lyd_node *parent, struct ly_attr **attr, const struct ly_c
 API const struct lyd_node_term *
 lyd_target(struct lyd_value_path *path, const struct lyd_node *tree)
 {
-    unsigned int u, x;
-    const struct lyd_node *parent = NULL, *start_search;
+    uint32_t u, x;
+    const struct lyd_node *start_sibling;
     struct lyd_node *node = NULL;
     uint64_t pos = 1;
+    int match;
 
     LY_CHECK_ARG_RET(NULL, path, tree, NULL);
 
-    LY_ARRAY_FOR(path, u) {
-        if (parent) {
-            start_search = lyd_node_children(parent);
-search_inner:
-            lyd_find_sibling_next(start_search, path[u].node->module, path[u].node->name, 0, NULL, 0, &node);
-        } else {
-            start_search = tree;
-search_toplevel:
-            /* WARNING! to use search_toplevel label correctly, variable v must be preserved and not changed! */
-            lyd_find_sibling_next(start_search, path[u].node->module, path[u].node->name, 0, NULL, 0, &node);
-        }
+    /* first iteration */
+    start_sibling = tree;
+    u = 0;
+    while (u < LY_ARRAY_SIZE(path)) {
+        /* find next node instance */
+        lyd_find_sibling_next2(start_sibling, path[u].node, NULL, 0, &node);
         if (!node) {
-            return NULL;
+            break;
         }
 
         /* check predicate if any */
+        match = 1;
         LY_ARRAY_FOR(path[u].predicates, x) {
             if (path[u].predicates[x].type == 0) {
+                assert(LY_ARRAY_SIZE(path[u].predicates) == 1);
                 /* position predicate */
                 if (pos != path[u].predicates[x].position) {
                     pos++;
-                    goto search_repeat;
+                    match = 0;
                 }
-                /* done, no more predicates are allowed here */
-                break;
             } else if (path[u].predicates[x].type == 1) {
                 /* key-predicate */
-                struct lysc_type *type = ((struct lysc_node_leaf*)path[u].predicates[x].key)->type;
+                struct lysc_type *type = ((struct lysc_node_leaf *)path[u].predicates[x].key)->type;
                 struct lyd_node *key;
-                lyd_find_sibling_next(lyd_node_children(node), path[u].predicates[x].key->module,
-                                      path[u].predicates[x].key->name, 0, NULL, 0, &key);
+
+                lyd_find_sibling_next2(lyd_node_children(node), path[u].predicates[x].key, NULL, 0, &key);
                 if (!key) {
                     /* probably error and we shouldn't be here due to previous checks when creating path */
-                    goto search_repeat;
-                }
-                if (type->plugin->compare(&((struct lyd_node_term*)key)->value, path[u].predicates[x].value)) {
-                    goto search_repeat;
+                    match = 0;
+                } else if (type->plugin->compare(&((struct lyd_node_term *)key)->value, path[u].predicates[x].value)) {
+                    match = 0;
                 }
             } else if (path[u].predicates[x].type == 2) {
                 /* leaf-list-predicate */
-                struct lysc_type *type = ((struct lysc_node_leaf*)path[u].node)->type;
-                if (type->plugin->compare(&((struct lyd_node_term*)node)->value, path[u].predicates[x].value)) {
-                    goto search_repeat;
+                struct lysc_type *type = ((struct lysc_node_leaf *)path[u].node)->type;
+
+                if (type->plugin->compare(&((struct lyd_node_term *)node)->value, path[u].predicates[x].value)) {
+                    match = 0;
                 }
             } else {
                 LOGINT(NULL);
+                return NULL;
+            }
+
+            if (!match) {
+                /* useless to check more predicates */
+                break;
             }
         }
 
-        parent = node;
+        if (!match) {
+            /* try to match next sibling */
+            start_sibling = node->next;
+        } else {
+            /* matched, move to the next path segment */
+            ++u;
+            start_sibling = lyd_node_children(node);
+            pos = 1;
+        }
     }
 
-    return (const struct lyd_node_term*)node;
-
-search_repeat:
-    start_search = node->next;
-    if (parent) {
-        goto search_inner;
-    } else {
-        goto search_toplevel;
-    }
+    return (const struct lyd_node_term *)node;
 }
 
 API LY_ERR
