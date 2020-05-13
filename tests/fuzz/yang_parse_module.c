@@ -2,11 +2,8 @@
 #include <stdlib.h>
 #include <stdbool.h>
 
-#include "common.h"
-#include "tree_schema_internal.h"
-#include "libyang.h"
-
-LY_ERR yang_parse_module(struct lys_parser_ctx **context, const char *data, struct lys_module *mod);
+#include "../../src/common.h"
+#include "../../src/tree_schema_internal.h"
 
 int LLVMFuzzerTestOneInput(uint8_t const *buf, size_t len)
 {
