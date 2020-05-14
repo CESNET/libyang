@@ -1443,7 +1443,13 @@ lyd_target(struct lyd_value_path *path, const struct lyd_node *tree)
     u = 0;
     while (u < LY_ARRAY_SIZE(path)) {
         /* find next node instance */
-        lyd_find_sibling_next2(start_sibling, path[u].node, NULL, 0, &node);
+        if (start_sibling && !start_sibling->prev->next && !(path[u].node->nodetype & (LYS_LEAFLIST | LYS_LIST))) {
+            /* starting from the beginning using hashes */
+            lyd_find_sibling_val(start_sibling, path[u].node, NULL, 0, &node);
+        } else {
+            /* next matching sibling */
+            lyd_find_sibling_next2(start_sibling, path[u].node, NULL, 0, &node);
+        }
         if (!node) {
             break;
         }
@@ -1463,7 +1469,7 @@ lyd_target(struct lyd_value_path *path, const struct lyd_node *tree)
                 struct lysc_type *type = ((struct lysc_node_leaf *)path[u].predicates[x].key)->type;
                 struct lyd_node *key;
 
-                lyd_find_sibling_next2(lyd_node_children(node), path[u].predicates[x].key, NULL, 0, &key);
+                lyd_find_sibling_val(lyd_node_children(node), path[u].predicates[x].key, NULL, 0, &key);
                 if (!key) {
                     /* probably error and we shouldn't be here due to previous checks when creating path */
                     match = 0;
