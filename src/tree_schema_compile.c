@@ -2807,7 +2807,6 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16
     struct lysc_type_dec *dec;
     struct lysc_type_identityref *idref;
     struct lysc_type_union *un, *un_aux;
-    void *p;
 
     switch (basetype) {
     case LY_TYPE_BINARY:
