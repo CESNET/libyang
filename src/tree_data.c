@@ -1677,6 +1677,13 @@ lyd_compare(const struct lyd_node *node1, const struct lyd_node *node2, int opti
  * @brief Duplicate a single node and connect it into @p parent (if present) or last of @p first siblings.
  *
  * Ignores LYD_DUP_WITH_PARENTS and LYD_DUP_WITH_SIBLINGS which are supposed to be handled by lyd_dup().
+ *
+ * @param[in] node Original node to duplicate
+ * @param[in] parent Parent to insert into, NULL for top-level sibling.
+ * @param[in,out] first First sibling, NULL if no top-level sibling exist yet. Can be also NULL if @p parent is set.
+ * @param[in] options Bitmask of options flags, see @ref dupoptions.
+ * @param[out] dup_p Pointer where the created duplicated node is placed (besides connecting it int @p parent / @p first sibling).
+ * @return LY_ERR value
  */
 static LY_ERR
 lyd_dup_recursive(const struct lyd_node *node, struct lyd_node *parent, struct lyd_node **first, int options,
