@@ -149,12 +149,14 @@ typedef enum
     LY_ENOTFOUND,   /**< Item does not exists */
     LY_EINT,        /**< Internal error */
     LY_EVALID,      /**< Validation failure */
-    LY_EPLUGIN,     /**< Error reported by a plugin */
     LY_EDENIED,     /**< Operation is not allowed */
     LY_EINCOMPLETE, /**< The operation did not failed, but for some reason it was not possible to finish it completely.
                          According to the specific use case, the caller is usually supposed to perform the operation again. */
     LY_ENOT,        /**< Negative result */
-    LY_EOTHER       /**< Unknown error */
+    LY_EOTHER,      /**< Unknown error */
+
+    LY_EPLUGIN = 128/**< Error reported by a plugin - the highest bit in the first byte is set.
+                         This value is used ORed with one of the other LY_ERR value and can be simply masked. */
 } LY_ERR;
 
 /**
@@ -173,6 +175,8 @@ typedef enum {
     LYVE_SEMANTICS,    /**< generic semantic error */
     LYVE_SYNTAX_XML,   /**< XML-related syntax error */
     LYVE_DATA,         /**< YANG data does not reflect some of the module restrictions */
+
+    LYVE_OTHER         /**< Unknown error */
 } LY_VECODE;
 
 /**

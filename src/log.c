@@ -297,7 +297,7 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE v
         return;
     }
 
-    if ((no == LY_EVALID) && (vecode == LYVE_SUCCESS)) {
+    if (((no & ~LY_EPLUGIN) == LY_EVALID) && (vecode == LYVE_SUCCESS)) {
         /* assume we are inheriting the error, so inherit vecode as well */
         vecode = ly_vecode(ctx);
     }
@@ -483,7 +483,7 @@ lyext_log(const struct lysc_ext_instance *ext, LY_LOG_LEVEL level, LY_ERR err_no
     }
 
     va_start(ap, format);
-    log_vprintf(ext->module->ctx, level, (level == LY_LLERR ? LY_EPLUGIN : 0), err_no, path ? strdup(path) : NULL, plugin_msg, ap);
+    log_vprintf(ext->module->ctx, level, (level == LY_LLERR ? LY_EPLUGIN : 0) | err_no, LYVE_OTHER, path ? strdup(path) : NULL, plugin_msg, ap);
     va_end(ap);
 
     free(plugin_msg);
