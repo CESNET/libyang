@@ -1798,7 +1798,13 @@ lyd_dup_recursive(const struct lyd_node *node, struct lyd_node *parent, struct l
         case LYD_ANYDATA_DATATREE:
             if (orig->value.tree) {
                 any->value.tree = lyd_dup(orig->value.tree, NULL, LYD_DUP_RECURSIVE | LYD_DUP_WITH_SIBLINGS);
-                LY_CHECK_GOTO(!any->value.tree, error);
+                if (!any->value.tree) {
+                    /* get the last error's error code recorded by lyd_dup */
+                    struct ly_err_item *ei = ly_err_first(LYD_NODE_CTX(node));
+                    ret = ei ? ei->prev->no : LY_EOTHER;
+                    goto error;
+                }
+                LY_CHECK_ERR_GOTO(!any->value.tree, ret = 0 ,error);
             }
             break;
         case LYD_ANYDATA_STRING:
