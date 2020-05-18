@@ -112,7 +112,7 @@ extern "C" {
 
 /**
  * @brief Data input/output formats supported by libyang [parser](@ref howtodataparsers) and
- * [printer](@ref howtodataprinters) functions. Also used for value prefix format.
+ * [printer](@ref howtodataprinters) functions. Also used for value prefix format (TODO link to prefix formats descriptions).
  */
 typedef enum {
     LYD_SCHEMA = 0,      /**< invalid instance data format, value prefixes map to YANG import prefixes */
