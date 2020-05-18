@@ -60,7 +60,7 @@ enum yin_argument {
                                              time to simply check validity of given constraints */
 
 struct yin_subelement {
-    enum ly_stmt type; /**< type of keyword */
+    enum ly_stmt type;      /**< type of keyword */
     void *dest;             /**< meta infromation passed to responsible function (mostly information about where parsed subelement should be stored) */
     uint8_t flags;          /**< describes constraints of subelement can be set to YIN_SUBELEM_MANDATORY, YIN_SUBELEM_UNIQUE, YIN_SUBELEM_FIRST and YIN_SUBELEM_VER2 */
 };
@@ -175,7 +175,7 @@ enum ly_stmt yin_match_keyword(struct lys_yin_parser_ctx *ctx, const char *name,
  *
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_extension_instance(struct lys_yin_parser_ctx *ctx, LYEXT_SUBSTMT subelem, uint32_t subelem_index,
+LY_ERR yin_parse_extension_instance(struct lys_yin_parser_ctx *ctx, LYEXT_SUBSTMT subelem, LY_ARRAY_SIZE_TYPE subelem_index,
                                     struct lysp_ext_instance **exts);
 
 /**

@@ -23,6 +23,7 @@
 
 #include "plugins_types.h"
 #include "dict.h"
+#include "tree.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 #include "tree_data_internal.h"
@@ -157,7 +158,7 @@ ly_type_get_prefixes(const struct ly_ctx *ctx, const char *value, size_t value_l
     const char *start, *stop;
     struct lyd_value_prefix *prefixes = NULL;
     const struct lys_module *mod;
-    unsigned int u;
+    LY_ARRAY_SIZE_TYPE u;
 
     for (stop = start = value; (size_t)(stop - value) < value_len; start = stop) {
         size_t bytes;
@@ -343,7 +344,7 @@ ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str, size_
 {
     LY_ERR ret = LY_SUCCESS;
     int rc;
-    unsigned int u;
+    LY_ARRAY_SIZE_TYPE u;
     char *errmsg;
     pcre2_match_data *match_data = NULL;
 
@@ -358,7 +359,7 @@ ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str, size_
 
         rc = pcre2_match(patterns[u]->code, (PCRE2_SPTR)str, str_len, 0, PCRE2_ANCHORED | PCRE2_ENDANCHORED, match_data, NULL);
         if (rc == PCRE2_ERROR_NOMATCH) {
-            asprintf(&errmsg, "String \"%.*s\" does not conform to the %u. pattern restriction of its type.",
+            asprintf(&errmsg, "String \"%.*s\" does not conform to the %" LY_PRI_ARRAY_SIZE_TYPE ". pattern restriction of its type.",
                      (int)str_len, str, u + 1);
             *err = ly_err_new(LY_LLERR, LY_ESYS, 0, errmsg, NULL, NULL);
             ret = LY_EVALID;
@@ -386,7 +387,7 @@ API LY_ERR
 ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t value, const char *strval,
                        struct ly_err_item **err)
 {
-    unsigned int u;
+    LY_ARRAY_SIZE_TYPE u;
     char *errmsg = NULL;
 
     LY_ARRAY_FOR(range->parts, u) {
@@ -882,7 +883,7 @@ ly_type_store_bits(const struct ly_ctx *ctx, struct lysc_type *type, const char 
     size_t buf_size = 0;
     char *buf = NULL;
     size_t index;
-    unsigned int u, v;
+    LY_ARRAY_SIZE_TYPE u, v;
     char *errmsg = NULL;
     struct lysc_type_bits *type_bits = (struct lysc_type_bits*)type;
     int iscanonical = 1;
@@ -920,7 +921,7 @@ ly_type_store_bits(const struct ly_ctx *ctx, struct lysc_type *type, const char 
                 /* check that the bit is not disabled */
                 LY_ARRAY_FOR(type_bits->bits[u].iffeatures, v) {
                     if (!lysc_iffeature_value(&type_bits->bits[u].iffeatures[v])) {
-                        asprintf(&errmsg, "Bit \"%s\" is disabled by its %u. if-feature condition.",
+                        asprintf(&errmsg, "Bit \"%s\" is disabled by its %" LY_PRI_ARRAY_SIZE_TYPE ". if-feature condition.",
                                  type_bits->bits[u].name, v + 1);
                         goto error;
                     }
@@ -991,8 +992,8 @@ next:
         if (options & LY_TYPE_OPTS_STORE) {
             /* store data */
             LY_ARRAY_CREATE_GOTO(ctx, storage->bits_items, items_ordered->count, ret, error);
-            for (u = 0; u < items_ordered->count; u++) {
-                storage->bits_items[u] = items_ordered->objs[u];
+            for (uint32_t x = 0; x < items_ordered->count; x++) {
+                storage->bits_items[x] = items_ordered->objs[x];
                 LY_ARRAY_INCREMENT(storage->bits_items);
             }
         }
@@ -1023,7 +1024,7 @@ error:
 static LY_ERR
 ly_type_dup_bits(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
-    unsigned int u;
+    LY_ARRAY_SIZE_TYPE u;
 
     LY_ARRAY_CREATE_RET(ctx, dup->bits_items, LY_ARRAY_SIZE(original->bits_items), LY_EMEM);
     LY_ARRAY_FOR(original->bits_items, u) {
@@ -1060,7 +1061,7 @@ ly_type_store_enum(const struct ly_ctx *ctx, struct lysc_type *type, const char 
                    const void *UNUSED(context_node), const struct lyd_node *UNUSED(tree),
                    struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
-    unsigned int u, v;
+    LY_ARRAY_SIZE_TYPE u, v;
     char *errmsg = NULL;
     struct lysc_type_enum *type_enum = (struct lysc_type_enum*)type;
 
@@ -1076,7 +1077,7 @@ ly_type_store_enum(const struct ly_ctx *ctx, struct lysc_type *type, const char 
             /* check that the enumeration value is not disabled */
             LY_ARRAY_FOR(type_enum->enums[u].iffeatures, v) {
                 if (!lysc_iffeature_value(&type_enum->enums[u].iffeatures[v])) {
-                    asprintf(&errmsg, "Enumeration \"%s\" is disabled by its %u. if-feature condition.",
+                    asprintf(&errmsg, "Enumeration \"%s\" is disabled by its %" LY_PRI_ARRAY_SIZE_TYPE ". if-feature condition.",
                              type_enum->enums[u].name, v + 1);
                     goto error;
                 }
@@ -1229,7 +1230,7 @@ ly_type_compare_empty(const struct lyd_value *UNUSED(val1), const struct lyd_val
 API LY_ERR
 ly_type_identity_isderived(struct lysc_ident *base, struct lysc_ident *der)
 {
-    unsigned int u;
+    LY_ARRAY_SIZE_TYPE u;
 
     LY_ARRAY_FOR(base->derived, u) {
         if (der == base->derived[u]) {
@@ -1258,7 +1259,7 @@ ly_type_store_identityref(const struct ly_ctx *ctx, struct lysc_type *type, cons
     size_t id_len, prefix_len;
     char *errmsg = NULL;
     const struct lys_module *mod;
-    unsigned int u;
+    LY_ARRAY_SIZE_TYPE u;
     struct lysc_ident *ident;
 
     if (options & LY_TYPE_OPTS_SECOND_CALL) {
@@ -1411,7 +1412,7 @@ ly_type_store_instanceid_checknodeid(const char *orig, size_t orig_len, int opti
     const char *id, *prefix;
     size_t id_len, prefix_len;
     const struct lys_module *mod = NULL;
-    unsigned int u;
+    LY_ARRAY_SIZE_TYPE u;
 
     if (ly_parse_nodeid(token, &prefix, &prefix_len, &id, &id_len)) {
         asprintf(errmsg, "Invalid instance-identifier \"%.*s\" value at character %lu (%.*s).",
@@ -1490,7 +1491,7 @@ static const struct lys_module *
 ly_type_stored_prefixes_clb(const struct ly_ctx *UNUSED(ctx), const char *prefix, size_t prefix_len, void *private)
 {
     struct lyd_value_prefix *prefixes = (struct lyd_value_prefix*)private;
-    unsigned int u;
+    LY_ARRAY_SIZE_TYPE u;
 
     LY_ARRAY_FOR(prefixes, u) {
         if (!ly_strncmp(prefixes[u].prefix, prefix, prefix_len)) {
@@ -1598,7 +1599,8 @@ ly_type_store_instanceid(const struct ly_ctx *ctx, struct lysc_type *type, const
     const struct lysc_node *node_s = NULL;
     const struct lyd_node *node_d = NULL;
     struct lyd_value_prefix *prefixes = NULL;
-    unsigned int u, c;
+    LY_ARRAY_SIZE_TYPE u;
+    uint32_t c;
     struct lyd_value_path *target = NULL, *t;
     struct lyd_value_path_predicate *pred;
     struct ly_set predicates = {0};
@@ -1962,7 +1964,7 @@ error:
 static LY_ERR
 ly_type_compare_instanceid(const struct lyd_value *val1, const struct lyd_value *val2)
 {
-    unsigned int u, v;
+    LY_ARRAY_SIZE_TYPE u, v;
 
     if (val1 == val2) {
         return LY_SUCCESS;
@@ -2012,7 +2014,7 @@ ly_type_compare_instanceid(const struct lyd_value *val1, const struct lyd_value 
 static const char *
 ly_type_print_instanceid(const struct lyd_value *value, LYD_FORMAT format, ly_clb_get_prefix get_prefix, void *printer, int *dynamic)
 {
-    unsigned int u, v;
+    LY_ARRAY_SIZE_TYPE u, v;
     char *result = NULL;
 
     if (!value->target && value->canonical_cache) {
@@ -2113,7 +2115,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LYD_FORMAT format, ly_cl
 static LY_ERR
 ly_type_dup_instanceid(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
-    unsigned int u, v;
+    LY_ARRAY_SIZE_TYPE u, v;
 
     if (!original->target) {
         return LY_SUCCESS;
@@ -2514,7 +2516,7 @@ ly_type_store_union(const struct ly_ctx *ctx, struct lysc_type *type, const char
                     struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
     LY_ERR ret;
-    unsigned int u;
+    LY_ARRAY_SIZE_TYPE u;
     struct lysc_type_union *type_u = (struct lysc_type_union*)type;
     struct lyd_value_subvalue *subvalue;
     char *errmsg = NULL;
@@ -2642,7 +2644,7 @@ ly_type_print_union(const struct lyd_value *value, LYD_FORMAT format, ly_clb_get
 static LY_ERR
 ly_type_dup_union(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
-    unsigned int u;
+    LY_ARRAY_SIZE_TYPE u;
 
     dup->subvalue = calloc(1, sizeof *dup->subvalue);
     LY_CHECK_ERR_RET(!dup->subvalue, LOGMEM(ctx), LY_EMEM);
@@ -2670,7 +2672,7 @@ ly_type_dup_union(const struct ly_ctx *ctx, const struct lyd_value *original, st
 static void
 ly_type_free_union(const struct ly_ctx *ctx, struct lyd_value *value)
 {
-    unsigned int u;
+    LY_ARRAY_SIZE_TYPE u;
 
     if (value->subvalue) {
         if (value->subvalue->value) {

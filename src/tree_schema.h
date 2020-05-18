@@ -401,7 +401,7 @@ struct lysp_ext_instance {
     struct lysc_ext_instance *compiled;     /**< pointer to the compiled data if any - in case the source format is YIN,
                                                  some of the information (argument) are available only after compilation */
     LYEXT_SUBSTMT insubstmt;                /**< value identifying placement of the extension instance */
-    uint32_t insubstmt_index;               /**< in case the instance is in a substatement, this identifies
+    LY_ARRAY_SIZE_TYPE insubstmt_index;     /**< in case the instance is in a substatement, this identifies
                                                  the index of that substatement */
     uint8_t yin;                            /** flag for YIN source format, can be set to LYS_YIN */
     LYEXT_PARENT parent_type;               /**< type of the parent structure */

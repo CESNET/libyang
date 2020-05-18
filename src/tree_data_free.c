@@ -28,7 +28,7 @@
 void
 lyd_value_free_path(const struct ly_ctx *ctx, struct lyd_value_path *path)
 {
-    unsigned int u, v;
+    LY_ARRAY_SIZE_TYPE u, v;
 
     LY_ARRAY_FOR(path, u) {
         LY_ARRAY_FOR(path[u].predicates, v) {
@@ -89,7 +89,7 @@ API void
 ly_free_attr(const struct ly_ctx *ctx, struct ly_attr *attr, int recursive)
 {
     struct ly_attr *iter;
-    uint32_t u;
+    LY_ARRAY_SIZE_TYPE u;
 
     LY_CHECK_ARG_RET(NULL, ctx, );
     if (!attr) {
@@ -147,7 +147,7 @@ lyd_free_subtree(struct lyd_node *node, int top)
     struct lyd_node *iter, *next;
     struct lyd_node *children;
     struct lyd_node_opaq *opaq;
-    uint32_t u;
+    LY_ARRAY_SIZE_TYPE u;
 
     assert(node);
 

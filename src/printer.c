@@ -70,7 +70,7 @@ ly_is_default(const struct lyd_node *node)
     const struct lysc_node_leaf *leaf;
     const struct lysc_node_leaflist *llist;
     const struct lyd_node_term *term;
-    size_t i;
+    LY_ARRAY_SIZE_TYPE u;
 
     assert(node->schema->nodetype & LYD_NODE_TERM);
     term = (const struct lyd_node_term *)node;
@@ -91,9 +91,9 @@ ly_is_default(const struct lyd_node *node)
             return 0;
         }
 
-        LY_ARRAY_FOR(llist->dflts, i) {
+        LY_ARRAY_FOR(llist->dflts, u) {
             /* compare with each possible default value */
-            if (llist->type->plugin->compare(&term->value, llist->dflts[i])) {
+            if (llist->type->plugin->compare(&term->value, llist->dflts[u])) {
                 return 0;
             }
         }

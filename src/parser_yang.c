@@ -815,7 +815,7 @@ parse_ext_substmt(struct lys_yang_parser_ctx *ctx, const char **data, enum ly_st
  */
 static LY_ERR
 parse_ext(struct lys_yang_parser_ctx *ctx, const char **data, const char *ext_name, int ext_name_len, LYEXT_SUBSTMT insubstmt,
-          uint32_t insubstmt_index, struct lysp_ext_instance **exts)
+          LY_ARRAY_SIZE_TYPE insubstmt_index, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;

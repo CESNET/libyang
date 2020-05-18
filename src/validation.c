@@ -132,24 +132,24 @@ lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, struct ly_s
                    LYD_FORMAT format, ly_clb_resolve_prefix get_prefix_clb, void *parser_data)
 {
     LY_ERR ret = LY_SUCCESS;
-    uint32_t u;
+    uint32_t i;
 
     if (node_when) {
         /* evaluate all when conditions */
         uint32_t prev_count;
         do {
             prev_count = node_when->count;
-            u = 0;
-            while (u < node_when->count) {
+            i = 0;
+            while (i < node_when->count) {
                 /* evaluate all when expressions that affect this node's existence */
-                struct lyd_node *node = (struct lyd_node *)node_when->objs[u];
+                struct lyd_node *node = (struct lyd_node *)node_when->objs[i];
                 const struct lysc_node *schema = node->schema;
                 int unres_when = 0;
 
                 do {
-                    uint32_t i;
-                    LY_ARRAY_FOR(schema->when, i) {
-                        ret = lyd_validate_when(tree, node, schema->when[i]);
+                    LY_ARRAY_SIZE_TYPE u;
+                    LY_ARRAY_FOR(schema->when, u) {
+                        ret = lyd_validate_when(tree, node, schema->when[u]);
                         if (ret) {
                             break;
                         }
@@ -167,10 +167,10 @@ lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, struct ly_s
 
                 if (unres_when) {
                     /* keep in set and go to the next node */
-                    ++u;
+                    ++i;
                 } else {
                     /* remove this node from the set */
-                    ly_set_rm_index(node_when, u, NULL);
+                    ly_set_rm_index(node_when, i, NULL);
                 }
             }
 
@@ -183,11 +183,11 @@ lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, struct ly_s
 
     if (node_types && node_types->count) {
         /* finish incompletely validated terminal values (traverse from the end for efficient set removal) */
-        u = node_types->count;
+        i = node_types->count;
         do {
-            --u;
+            --i;
 
-            struct lyd_node_term *node = (struct lyd_node_term *)node_types->objs[u];
+            struct lyd_node_term *node = (struct lyd_node_term *)node_types->objs[i];
 
             /* validate and store the value of the node */
             ret = lyd_value_parse(node, node->value.original, strlen(node->value.original), 0, 1, get_prefix_clb,
@@ -195,17 +195,17 @@ lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, struct ly_s
             LY_CHECK_RET(ret);
 
             /* remove this node from the set */
-            ly_set_rm_index(node_types, u, NULL);
-        } while (u);
+            ly_set_rm_index(node_types, i, NULL);
+        } while (i);
     }
 
     if (meta_types && meta_types->count) {
         /* ... and metadata values */
-        u = meta_types->count;
+        i = meta_types->count;
         do {
-            --u;
+            --i;
 
-            struct lyd_meta *meta = (struct lyd_meta *)meta_types->objs[u];
+            struct lyd_meta *meta = (struct lyd_meta *)meta_types->objs[i];
 
             /* validate and store the value of the metadata */
             ret = lyd_value_parse_meta(meta->parent->schema->module->ctx, meta, meta->value.original,
@@ -213,8 +213,8 @@ lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, struct ly_s
             LY_CHECK_RET(ret);
 
             /* remove this attr from the set */
-            ly_set_rm_index(meta_types, u, NULL);
-        } while (u);
+            ly_set_rm_index(meta_types, i, NULL);
+        } while (i);
     }
 
     return ret;
@@ -535,13 +535,13 @@ lyd_val_uniq_list_equal(void *val1_p, void *val2_p, int UNUSED(mod), void *cb_da
     struct lyd_node *diter, *first, *second;
     struct lyd_value *val1, *val2;
     char *path1, *path2, *uniq_str, *ptr;
-    uint32_t i, j, action;
+    LY_ARRAY_SIZE_TYPE u, v, action;
 
     assert(val1_p && val2_p);
 
     first = *((struct lyd_node **)val1_p);
     second = *((struct lyd_node **)val2_p);
-    action = (uintptr_t)cb_data;
+    action = (LY_ARRAY_SIZE_TYPE)cb_data;
 
     assert(first && (first->schema->nodetype == LYS_LIST));
     assert(second && (second->schema == first->schema));
@@ -552,30 +552,30 @@ lyd_val_uniq_list_equal(void *val1_p, void *val2_p, int UNUSED(mod), void *cb_da
 
     /* compare unique leaves */
     if (action > 0) {
-        i = action - 1;
-        if (i < LY_ARRAY_SIZE(slist->uniques)) {
+        u = action - 1;
+        if (u < LY_ARRAY_SIZE(slist->uniques)) {
             goto uniquecheck;
         }
     }
-    LY_ARRAY_FOR(slist->uniques, i) {
+    LY_ARRAY_FOR(slist->uniques, u) {
 uniquecheck:
-        LY_ARRAY_FOR(slist->uniques[i], j) {
+        LY_ARRAY_FOR(slist->uniques[u], v) {
             /* first */
-            diter = lyd_val_uniq_find_leaf(slist->uniques[i][j], first);
+            diter = lyd_val_uniq_find_leaf(slist->uniques[u][v], first);
             if (diter) {
                 val1 = &((struct lyd_node_term *)diter)->value;
             } else {
                 /* use default value */
-                val1 = slist->uniques[i][j]->dflt;
+                val1 = slist->uniques[u][v]->dflt;
             }
 
             /* second */
-            diter = lyd_val_uniq_find_leaf(slist->uniques[i][j], second);
+            diter = lyd_val_uniq_find_leaf(slist->uniques[u][v], second);
             if (diter) {
                 val2 = &((struct lyd_node_term *)diter)->value;
             } else {
                 /* use default value */
-                val2 = slist->uniques[i][j]->dflt;
+                val2 = slist->uniques[u][v]->dflt;
             }
 
             if (!val1 || !val2 || val1->realtype->plugin->compare(val1, val2)) {
@@ -583,7 +583,7 @@ uniquecheck:
                 break;
             }
         }
-        if (j && (j == LY_ARRAY_SIZE(slist->uniques[i]))) {
+        if (v && (v == LY_ARRAY_SIZE(slist->uniques[u]))) {
             /* all unique leafs are the same in this set, create this nice error */
             path1 = lyd_path(first, LYD_PATH_LOG, NULL, 0);
             path2 = lyd_path(second, LYD_PATH_LOG, NULL, 0);
@@ -592,12 +592,12 @@ uniquecheck:
             uniq_str = malloc(1024);
             uniq_str[0] = '\0';
             ptr = uniq_str;
-            LY_ARRAY_FOR(slist->uniques[i], j) {
-                if (j) {
+            LY_ARRAY_FOR(slist->uniques[u], v) {
+                if (v) {
                     strcpy(ptr, " ");
                     ++ptr;
                 }
-                ptr = lysc_path_until((struct lysc_node *)slist->uniques[i][j], (struct lysc_node *)slist, LYSC_PATH_LOG,
+                ptr = lysc_path_until((struct lysc_node *)slist->uniques[u][v], (struct lysc_node *)slist, LYSC_PATH_LOG,
                                       ptr, 1024 - (ptr - uniq_str));
                 if (!ptr) {
                     /* path will be incomplete, whatever */
@@ -628,9 +628,9 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
 {
     const struct lyd_node *diter;
     struct ly_set *set;
-    uint32_t i, j, n = 0;
+    LY_ARRAY_SIZE_TYPE u, v, x = 0;
     LY_ERR ret = LY_SUCCESS;
-    uint32_t hash, u, usize = 0;
+    uint32_t hash, i, size = 0;
     int dynamic;
     const char *str;
     struct hash_table **uniqtables = NULL;
@@ -658,36 +658,36 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
     } else if (set->count > 2) {
         /* use hashes for comparison */
         /* first, allocate the table, the size depends on number of items in the set */
-        for (u = 31; u > 0; u--) {
-            usize = set->count << u;
-            usize = usize >> u;
-            if (usize == set->count) {
+        for (i = 31; i > 0; i--) {
+            size = set->count << i;
+            size = size >> i;
+            if (size == set->count) {
                 break;
             }
         }
-        LY_CHECK_ERR_GOTO(!u, LOGINT(ctx); ret = LY_EINT, cleanup);
-        u = 32 - u;
-        usize = 1 << u;
+        LY_CHECK_ERR_GOTO(!i, LOGINT(ctx); ret = LY_EINT, cleanup);
+        i = 32 - i;
+        size = 1 << i;
 
         uniqtables = malloc(LY_ARRAY_SIZE(uniques) * sizeof *uniqtables);
         LY_CHECK_ERR_GOTO(!uniqtables, LOGMEM(ctx); ret = LY_EMEM, cleanup);
-        n = LY_ARRAY_SIZE(uniques);
-        for (j = 0; j < n; j++) {
-            uniqtables[j] = lyht_new(usize, sizeof(struct lyd_node *), lyd_val_uniq_list_equal, (void *)(j + 1L), 0);
-            LY_CHECK_ERR_GOTO(!uniqtables[j], LOGMEM(ctx); ret = LY_EMEM, cleanup);
+        x = LY_ARRAY_SIZE(uniques);
+        for (v = 0; v < x; v++) {
+            uniqtables[v] = lyht_new(size, sizeof(struct lyd_node *), lyd_val_uniq_list_equal, (void *)(v + 1L), 0);
+            LY_CHECK_ERR_GOTO(!uniqtables[v], LOGMEM(ctx); ret = LY_EMEM, cleanup);
         }
 
-        for (u = 0; u < set->count; u++) {
+        for (i = 0; i < set->count; i++) {
             /* loop for unique - get the hash for the instances */
-            for (i = 0; i < n; i++) {
+            for (u = 0; u < x; u++) {
                 val = NULL;
-                for (j = hash = 0; j < LY_ARRAY_SIZE(uniques[i]); j++) {
-                    diter = lyd_val_uniq_find_leaf(uniques[i][j], set->objs[u]);
+                for (v = hash = 0; v < LY_ARRAY_SIZE(uniques[u]); v++) {
+                    diter = lyd_val_uniq_find_leaf(uniques[u][v], set->objs[i]);
                     if (diter) {
                         val = &((struct lyd_node_term *)diter)->value;
                     } else {
                         /* use default value */
-                        val = uniques[i][j]->dflt;
+                        val = uniques[u][v]->dflt;
                     }
                     if (!val) {
                         /* unique item not present nor has default value */
@@ -710,7 +710,7 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
                 hash = dict_hash_multi(hash, NULL, 0);
 
                 /* insert into the hashtable */
-                ret = lyht_insert(uniqtables[i], &set->objs[u], hash, NULL);
+                ret = lyht_insert(uniqtables[u], &set->objs[i], hash, NULL);
                 if (ret == LY_EEXIST) {
                     /* instance duplication */
                     ret = LY_EVALID;
@@ -722,12 +722,12 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
 
 cleanup:
     ly_set_free(set, NULL);
-    for (j = 0; j < n; j++) {
-        if (!uniqtables[j]) {
+    for (v = 0; v < x; v++) {
+        if (!uniqtables[v]) {
             /* failed when allocating uniquetables[j], following j are not allocated */
             break;
         }
-        lyht_free(uniqtables[j]);
+        lyht_free(uniqtables[v]);
     }
     free(uniqtables);
 
@@ -801,7 +801,7 @@ lyd_validate_must(const struct lyd_node *node, int val_opts)
     struct lyxp_set xp_set;
     struct lysc_must *musts;
     const struct lyd_node *tree;
-    uint32_t u;
+    LY_ARRAY_SIZE_TYPE u;
 
     switch (node->schema->nodetype) {
     case LYS_CONTAINER:
@@ -945,7 +945,7 @@ lyd_validate_defaults_r(struct lyd_node *parent, struct lyd_node **first, const 
     const struct lysc_node *iter = NULL;
     struct lyd_node *node;
     struct lyd_value **dflts;
-    size_t i;
+    LY_ARRAY_SIZE_TYPE u;
 
     assert(first && (parent || sparent || mod) && node_types && node_when);
 
@@ -1005,8 +1005,8 @@ lyd_validate_defaults_r(struct lyd_node *parent, struct lyd_node **first, const 
             if (((struct lysc_node_leaflist *)iter)->dflts && lyd_find_sibling_next2(*first, iter, NULL, 0, NULL)) {
                 /* create all default leaf-lists */
                 dflts = ((struct lysc_node_leaflist *)iter)->dflts;
-                LY_ARRAY_FOR(dflts, i) {
-                    ret = lyd_create_term2(iter, dflts[i], &node);
+                LY_ARRAY_FOR(dflts, u) {
+                    ret = lyd_create_term2(iter, dflts[u], &node);
                     if (ret == LY_EINCOMPLETE) {
                         /* remember to resolve type */
                         ly_set_add(node_types, node, LY_SET_OPT_USEASLIST);

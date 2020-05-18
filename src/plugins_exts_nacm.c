@@ -34,7 +34,7 @@ nacm_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, struc
 {
     struct lysc_node *parent = NULL, *iter;
     struct lysc_ext_instance *inherited;
-    unsigned int u;
+    LY_ARRAY_SIZE_TYPE u;
 
     static const uint8_t nacm_deny_all = 1;
     static const uint8_t nacm_deny_write = 2;

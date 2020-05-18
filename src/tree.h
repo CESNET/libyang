@@ -15,6 +15,8 @@
 #ifndef LY_TREE_H_
 #define LY_TREE_H_
 
+#include "inttypes.h"
+
 #include "tree_data.h"
 
 #ifdef __cplusplus
@@ -23,8 +25,15 @@ extern "C" {
 
 /**
  * @brief Type (i.e. size) of the [sized array](@ref sizedarrays)'s size counter.
+ *
+ * To print the value via a print format, use LY_PRI_ARRAY_SIZE_TYPE specifier.
  */
 #define LY_ARRAY_SIZE_TYPE uint64_t
+
+/**
+ * @brief Printing format specifier macro for LY_ARRAY_SIZE_TYPE values.
+ */
+#define LY_PRI_ARRAY_SIZE_TYPE PRIu64
 
 /**
  * @brief Macro selector for other LY_ARRAY_* macros, do not use directly!
@@ -88,7 +97,7 @@ extern "C" {
  *
  *     LY_ARRAY_FOR(ARRAY, INDEX)
  *
- * The ARRAY is again a sized-array to go through, the INDEX is a variable (unsigned integer) for storing iterating ARRAY's index
+ * The ARRAY is again a sized-array to go through, the INDEX is a variable (LY_ARRAY_SIZE_TYPE) for storing iterating ARRAY's index
  * to access the items of ARRAY in the loops. This functionality is provided by LY_ARRAY_FOR_INDEX macro.
  */
 #define LY_ARRAY_FOR(ARRAY, ...) LY_ARRAY_SELECT(__VA_ARGS__, LY_ARRAY_FOR_ITER, LY_ARRAY_FOR_INDEX)(ARRAY, __VA_ARGS__)

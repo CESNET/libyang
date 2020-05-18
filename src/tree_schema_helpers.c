@@ -264,7 +264,7 @@ static const struct lysp_tpdf *
 lysp_type_match(const char *name, struct lysp_node *node)
 {
     const struct lysp_tpdf *typedefs;
-    unsigned int u;
+    LY_ARRAY_SIZE_TYPE u;
 
     typedefs = lysp_node_typedefs(node);
     LY_ARRAY_FOR(typedefs, u) {
@@ -357,7 +357,7 @@ lysp_type_find(const char *id, struct lysp_node *start_node, struct lysp_module 
 {
     const char *str, *name;
     struct lysp_tpdf *typedefs;
-    unsigned int u, v;
+    LY_ARRAY_SIZE_TYPE u, v;
 
     assert(id);
     assert(start_module);
@@ -466,7 +466,7 @@ lysp_check_typedef(struct lys_parser_ctx *ctx, struct lysp_node *node, const str
     uint32_t hash;
     size_t name_len;
     const char *name;
-    unsigned int u;
+    LY_ARRAY_SIZE_TYPE u;
     const struct lysp_tpdf *typedefs;
 
     assert(ctx);
@@ -532,7 +532,7 @@ LY_ERR
 lysp_parse_finalize_reallocated(struct lys_parser_ctx *ctx, struct lysp_grp *groupings, struct lysp_augment *augments,
                                 struct lysp_action *actions, struct lysp_notif *notifs)
 {
-    unsigned int u, v;
+    LY_ARRAY_SIZE_TYPE u, v;
     struct lysp_node *child;
 
     /* finalize parent pointers to the reallocated items */
@@ -625,28 +625,29 @@ lysp_check_typedefs(struct lys_parser_ctx *ctx, struct lysp_module *mod)
     struct hash_table *ids_global;
     struct hash_table *ids_scoped;
     const struct lysp_tpdf *typedefs;
-    unsigned int i, u;
+    LY_ARRAY_SIZE_TYPE u, v;
+    uint32_t i;
     LY_ERR ret = LY_EVALID;
 
     /* check name collisions - typedefs and groupings */
     ids_global = lyht_new(8, sizeof(char*), lysp_id_cmp, NULL, 1);
     ids_scoped = lyht_new(8, sizeof(char*), lysp_id_cmp, NULL, 1);
-    LY_ARRAY_FOR(mod->typedefs, i) {
-        if (lysp_check_typedef(ctx, NULL, &mod->typedefs[i], ids_global, ids_scoped)) {
+    LY_ARRAY_FOR(mod->typedefs, v) {
+        if (lysp_check_typedef(ctx, NULL, &mod->typedefs[v], ids_global, ids_scoped)) {
             goto cleanup;
         }
     }
-    LY_ARRAY_FOR(mod->includes, i) {
-        LY_ARRAY_FOR(mod->includes[i].submodule->typedefs, u) {
-            if (lysp_check_typedef(ctx, NULL, &mod->includes[i].submodule->typedefs[u], ids_global, ids_scoped)) {
+    LY_ARRAY_FOR(mod->includes, v) {
+        LY_ARRAY_FOR(mod->includes[v].submodule->typedefs, u) {
+            if (lysp_check_typedef(ctx, NULL, &mod->includes[v].submodule->typedefs[u], ids_global, ids_scoped)) {
                 goto cleanup;
             }
         }
     }
-    for (u = 0; u < ctx->tpdfs_nodes.count; ++u) {
-        typedefs = lysp_node_typedefs((struct lysp_node *)ctx->tpdfs_nodes.objs[u]);
-        LY_ARRAY_FOR(typedefs, i) {
-            if (lysp_check_typedef(ctx, (struct lysp_node *)ctx->tpdfs_nodes.objs[u], &typedefs[i], ids_global, ids_scoped)) {
+    for (i = 0; i < ctx->tpdfs_nodes.count; ++i) {
+        typedefs = lysp_node_typedefs((struct lysp_node *)ctx->tpdfs_nodes.objs[i]);
+        LY_ARRAY_FOR(typedefs, u) {
+            if (lysp_check_typedef(ctx, (struct lysp_node *)ctx->tpdfs_nodes.objs[i], &typedefs[u], ids_global, ids_scoped)) {
                 goto cleanup;
             }
         }
@@ -1062,7 +1063,7 @@ lys_module_find_prefix(const struct lys_module *mod, const char *prefix, size_t 
 const char *
 lys_prefix_find_module(const struct lys_module *mod, const struct lys_module *import)
 {
-    unsigned int u;
+    LY_ARRAY_SIZE_TYPE u;
 
     if (import == mod) {
         return mod->prefix;
@@ -1628,8 +1629,8 @@ lysp_match_kw(struct lys_yang_parser_ctx *ctx, const char **data)
     return result;
 }
 
-unsigned int
-lysp_ext_instance_iter(struct lysp_ext_instance *ext, unsigned int index, LYEXT_SUBSTMT substmt)
+LY_ARRAY_SIZE_TYPE
+lysp_ext_instance_iter(struct lysp_ext_instance *ext, LY_ARRAY_SIZE_TYPE index, LYEXT_SUBSTMT substmt)
 {
     LY_CHECK_ARG_RET(NULL, ext, LY_EINVAL);
 
@@ -1654,7 +1655,7 @@ const char *
 lys_get_prefix(const struct lys_module *mod, void *private)
 {
     struct lys_module *context_mod = (struct lys_module*)private;
-    unsigned int u;
+    LY_ARRAY_SIZE_TYPE u;
 
     if (context_mod == mod) {
         return context_mod->prefix;

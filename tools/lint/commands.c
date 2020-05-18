@@ -1275,8 +1275,8 @@ cmd_feature(const char *arg)
     }
 
     if (!task) {
-        unsigned int len, max_len = 0;
-        unsigned int u;
+        size_t len, max_len = 0;
+        LY_ARRAY_SIZE_TYPE u;
         struct lysc_feature *features;
 
         printf("%s features:\n", module->name);
@@ -1296,7 +1296,7 @@ cmd_feature(const char *arg)
         }
 
         LY_ARRAY_FOR(features, u) {
-            printf("\t%-*s (%s)\n", max_len, features[u].name, (features[u].flags & LYS_FENABLED) ? "on" : "off");
+            printf("\t%-*s (%s)\n", (int)max_len, features[u].name, (features[u].flags & LYS_FENABLED) ? "on" : "off");
         }
         if (!u) {
             printf("\t(none)\n");

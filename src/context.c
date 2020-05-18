@@ -482,7 +482,8 @@ ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *s
 {
     const struct lys_module *mod;
     struct lysp_include *inc;
-    unsigned int v, u;
+    uint32_t v;
+    LY_ARRAY_SIZE_TYPE u;
 
     assert(submodule);
 
@@ -515,18 +516,17 @@ ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *s
 API void
 ly_ctx_reset_latests(struct ly_ctx *ctx)
 {
-    unsigned int u,v ;
     struct lys_module *mod;
 
-    for (u = 0; u < ctx->list.count; ++u) {
-        mod = ctx->list.objs[u];
+    for (uint32_t v = 0; v < ctx->list.count; ++v) {
+        mod = ctx->list.objs[v];
         if (mod->latest_revision == 2) {
             mod->latest_revision = 1;
         }
         if (mod->parsed && mod->parsed->includes) {
-            for (v = 0; v < LY_ARRAY_SIZE(mod->parsed->includes); ++v) {
-                if (mod->parsed->includes[v].submodule->latest_revision == 2) {
-                    mod->parsed->includes[v].submodule->latest_revision = 1;
+            for (LY_ARRAY_SIZE_TYPE u = 0; u < LY_ARRAY_SIZE(mod->parsed->includes); ++u) {
+                if (mod->parsed->includes[u].submodule->latest_revision == 2) {
+                    mod->parsed->includes[u].submodule->latest_revision = 1;
                 }
             }
         }

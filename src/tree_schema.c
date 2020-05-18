@@ -42,7 +42,7 @@ lys_getnext(const struct lysc_node *last, const struct lysc_node *parent, const 
     int action_flag = 0, notif_flag = 0;
     const struct lysc_action *actions;
     const struct lysc_notif *notifs;
-    unsigned int u;
+    LY_ARRAY_SIZE_TYPE u;
 
     LY_CHECK_ARG_RET(NULL, parent || module, NULL);
 
@@ -374,7 +374,8 @@ static LY_ERR
 lys_feature_change(const struct lys_module *mod, const char *name, int value)
 {
     int all = 0;
-    unsigned int u, changed_count, disabled_count;
+    LY_ARRAY_SIZE_TYPE u, disabled_count;
+    uint32_t changed_count;
     struct lysc_feature *f, **df;
     struct lysc_iffeature *iff;
     struct ly_set *changed;
@@ -535,7 +536,7 @@ lys_feature_value(const struct lys_module *module, const char *feature)
 {
     struct lysc_feature *f;
     struct lysc_module *mod;
-    unsigned int u;
+    LY_ARRAY_SIZE_TYPE u;
 
     LY_CHECK_ARG_RET(NULL, module, module->compiled, feature, -1);
     mod = module->compiled;
@@ -559,7 +560,7 @@ lys_feature_value(const struct lys_module *module, const char *feature)
 API const struct lysc_node *
 lysc_node_is_disabled(const struct lysc_node *node, int recursive)
 {
-    unsigned int u;
+    LY_ARRAY_SIZE_TYPE u;
 
     LY_CHECK_ARG_RET(NULL, node, NULL);
 
@@ -713,7 +714,7 @@ lys_parse_mem_module(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, 
     struct lysp_import *imp;
     struct lysp_include *inc;
     LY_ERR ret = LY_EINVAL;
-    unsigned int u, i;
+    LY_ARRAY_SIZE_TYPE u, v;
     struct lys_yang_parser_ctx *yangctx = NULL;
     struct lys_yin_parser_ctx *yinctx = NULL;
     struct lys_parser_ctx *pctx;
@@ -824,8 +825,8 @@ finish_parsing:
             goto error_ctx;
         }
         /* check for importing the same module twice */
-        for (i = 0; i < u; ++i) {
-            if (imp->module == mod->parsed->imports[i].module) {
+        for (v = 0; v < u; ++v) {
+            if (imp->module == mod->parsed->imports[v].module) {
                 LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "Single revision of the module \"%s\" referred twice.", imp->name);
                 goto error_ctx;
             }

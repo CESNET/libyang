@@ -65,7 +65,7 @@ lysp_stmt_validate_value(struct lys_parser_ctx *ctx, enum yang_arg val_type, con
  */
 static LY_ERR
 lysp_stmt_ext(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, LYEXT_SUBSTMT insubstmt,
-              uint32_t insubstmt_index, struct lysp_ext_instance **exts)
+              LY_ARRAY_SIZE_TYPE insubstmt_index, struct lysp_ext_instance **exts)
 {
     struct lysp_ext_instance *e;
 

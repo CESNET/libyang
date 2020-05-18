@@ -63,8 +63,8 @@
  */
 #define CHECK_UNIQUENESS(CTX, ARRAY, MEMBER, STMT, IDENT) \
     if (ARRAY) { \
-        for (unsigned int u = 0; u < LY_ARRAY_SIZE(ARRAY) - 1; ++u) { \
-            if (!strcmp((ARRAY)[u].MEMBER, IDENT)) { \
+        for (LY_ARRAY_SIZE_TYPE u_ = 0; u_ < LY_ARRAY_SIZE(ARRAY) - 1; ++u_) { \
+            if (!strcmp((ARRAY)[u_].MEMBER, IDENT)) { \
                 LOGVAL_PARSER(CTX, LY_VCODE_DUPIDENT, IDENT, STMT); \
                 return LY_EVALID; \
             } \
@@ -391,7 +391,7 @@ struct lysc_action **lysc_node_actions_p(struct lysc_node *node);
  *            #LYEXT_SUBSTMT_ALL to go through all the extensions in the array
  * @result index in the ext array, LY_ARRAY_SIZE(ext) value if not present.
  */
-unsigned int lysp_ext_instance_iter(struct lysp_ext_instance *ext, unsigned int index, LYEXT_SUBSTMT substmt);
+LY_ARRAY_SIZE_TYPE lysp_ext_instance_iter(struct lysp_ext_instance *ext, LY_ARRAY_SIZE_TYPE index, LYEXT_SUBSTMT substmt);
 
 /**
  * @brief Get the covering schema module structure for the given parsed module structure.
@@ -691,7 +691,7 @@ LY_ERR lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *star
  * @brief Macro to free [sized array](@ref sizedarrays) of items using the provided free function. The ARRAY itself is also freed,
  * but the memory is not sanitized.
  */
-#define FREE_ARRAY(CTX, ARRAY, FUNC) {uint64_t c__; LY_ARRAY_FOR(ARRAY, c__){FUNC(CTX, &(ARRAY)[c__]);}LY_ARRAY_FREE(ARRAY);}
+#define FREE_ARRAY(CTX, ARRAY, FUNC) {LY_ARRAY_SIZE_TYPE c__; LY_ARRAY_FOR(ARRAY, c__){FUNC(CTX, &(ARRAY)[c__]);}LY_ARRAY_FREE(ARRAY);}
 
 /**
  * @brief Macro to free the specified MEMBER of a structure using the provided free function. The memory is not sanitized.
@@ -702,7 +702,7 @@ LY_ERR lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *star
  * @brief Macro to free [sized array](@ref sizedarrays) of strings stored in the context's dictionary. The ARRAY itself is also freed,
  * but the memory is not sanitized.
  */
-#define FREE_STRINGS(CTX, ARRAY) {uint64_t c__; LY_ARRAY_FOR(ARRAY, c__){FREE_STRING(CTX, ARRAY[c__]);}LY_ARRAY_FREE(ARRAY);}
+#define FREE_STRINGS(CTX, ARRAY) {LY_ARRAY_SIZE_TYPE c__; LY_ARRAY_FOR(ARRAY, c__){FREE_STRING(CTX, ARRAY[c__]);}LY_ARRAY_FREE(ARRAY);}
 
 /**
  * @brief Free the parsed submodule structure.

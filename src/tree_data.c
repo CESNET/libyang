@@ -1318,15 +1318,15 @@ lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct ly
     LY_ERR ret;
     struct lysc_ext_instance *ant = NULL;
     struct lyd_meta *mt, *last;
-    uint32_t v;
+    LY_ARRAY_SIZE_TYPE u;
 
     assert((parent || meta) && mod);
 
-    LY_ARRAY_FOR(mod->compiled->exts, v) {
-        if (mod->compiled->exts[v].def->plugin == lyext_plugins_internal[LYEXT_PLUGIN_INTERNAL_ANNOTATION].plugin &&
-                !ly_strncmp(mod->compiled->exts[v].argument, name, name_len)) {
+    LY_ARRAY_FOR(mod->compiled->exts, u) {
+        if (mod->compiled->exts[u].def->plugin == lyext_plugins_internal[LYEXT_PLUGIN_INTERNAL_ANNOTATION].plugin &&
+                !ly_strncmp(mod->compiled->exts[u].argument, name, name_len)) {
             /* we have the annotation definition */
-            ant = &mod->compiled->exts[v];
+            ant = &mod->compiled->exts[u];
             break;
         }
     }
@@ -1430,7 +1430,7 @@ ly_create_attr(struct lyd_node *parent, struct ly_attr **attr, const struct ly_c
 API const struct lyd_node_term *
 lyd_target(struct lyd_value_path *path, const struct lyd_node *tree)
 {
-    uint32_t u, x;
+    LY_ARRAY_SIZE_TYPE u, v;
     const struct lyd_node *start_sibling;
     struct lyd_node *node = NULL;
     uint64_t pos = 1;
@@ -1456,31 +1456,31 @@ lyd_target(struct lyd_value_path *path, const struct lyd_node *tree)
 
         /* check predicate if any */
         match = 1;
-        LY_ARRAY_FOR(path[u].predicates, x) {
-            if (path[u].predicates[x].type == 0) {
+        LY_ARRAY_FOR(path[u].predicates, v) {
+            if (path[u].predicates[v].type == 0) {
                 assert(LY_ARRAY_SIZE(path[u].predicates) == 1);
                 /* position predicate */
-                if (pos != path[u].predicates[x].position) {
+                if (pos != path[u].predicates[v].position) {
                     pos++;
                     match = 0;
                 }
-            } else if (path[u].predicates[x].type == 1) {
+            } else if (path[u].predicates[v].type == 1) {
                 /* key-predicate */
-                struct lysc_type *type = ((struct lysc_node_leaf *)path[u].predicates[x].key)->type;
+                struct lysc_type *type = ((struct lysc_node_leaf *)path[u].predicates[v].key)->type;
                 struct lyd_node *key;
 
-                lyd_find_sibling_val(lyd_node_children(node), path[u].predicates[x].key, NULL, 0, &key);
+                lyd_find_sibling_val(lyd_node_children(node), path[u].predicates[v].key, NULL, 0, &key);
                 if (!key) {
                     /* probably error and we shouldn't be here due to previous checks when creating path */
                     match = 0;
-                } else if (type->plugin->compare(&((struct lyd_node_term *)key)->value, path[u].predicates[x].value)) {
+                } else if (type->plugin->compare(&((struct lyd_node_term *)key)->value, path[u].predicates[v].value)) {
                     match = 0;
                 }
-            } else if (path[u].predicates[x].type == 2) {
+            } else if (path[u].predicates[v].type == 2) {
                 /* leaf-list-predicate */
                 struct lysc_type *type = ((struct lysc_node_leaf *)path[u].node)->type;
 
-                if (type->plugin->compare(&((struct lyd_node_term *)node)->value, path[u].predicates[x].value)) {
+                if (type->plugin->compare(&((struct lyd_node_term *)node)->value, path[u].predicates[v].value)) {
                     match = 0;
                 }
             } else {
@@ -1691,7 +1691,7 @@ lyd_dup_recursive(const struct lyd_node *node, struct lyd_node *parent, struct l
 {
     LY_ERR ret;
     struct lyd_node *dup = NULL;
-    uint32_t u;
+    LY_ARRAY_SIZE_TYPE u;
 
     LY_CHECK_ARG_RET(NULL, node, LY_EINVAL);
 
