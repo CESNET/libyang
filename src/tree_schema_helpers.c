@@ -1439,6 +1439,7 @@ lysp_match_kw(struct lys_yang_parser_ctx *ctx, const char **data)
 #define IF_KW_PREFIX(STR, LEN) if (!strncmp(*(data), STR, LEN)) {MOVE_IN(ctx, data, LEN);
 #define IF_KW_PREFIX_END }
 
+    const char *start = *data;
     enum ly_stmt result = LY_STMT_NONE;
     enum ly_stmt *kw = &result;
     /* read the keyword itself */
@@ -1619,6 +1620,12 @@ lysp_match_kw(struct lys_yang_parser_ctx *ctx, const char **data)
             }
         }
         break;
+    }
+
+    if ((*kw < LY_STMT_SYNTAX_SEMICOLON) && isalnum(**data)) {
+        /* the keyword is not terminated */
+        *kw = LY_STMT_NONE;
+        *data = start;
     }
 
 #undef IF_KW
