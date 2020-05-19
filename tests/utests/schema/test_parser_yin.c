@@ -21,11 +21,11 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include "../../src/common.h"
-#include "../../src/tree_schema.h"
-#include "../../src/tree_schema_internal.h"
-#include "../../src/parser_yin.h"
-#include "../../src/xml.h"
+#include "../../../src/common.h"
+#include "../../../src/tree_schema.h"
+#include "../../../src/tree_schema_internal.h"
+#include "../../../src/parser_yin.h"
+#include "../../../src/xml.h"
 
 /* prototypes of static functions */
 void lysp_ext_instance_free(struct ly_ctx *ctx, struct lysp_ext_instance *ext);
@@ -53,7 +53,7 @@ void lysp_import_free(struct ly_ctx *ctx, struct lysp_import *import);
 #define ELEMENT_WRAPPER_START "<status xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
 #define ELEMENT_WRAPPER_END "</status>"
 
-struct state {
+struct test_parser_yin_state {
     struct ly_ctx *ctx;
     struct lys_module *mod;
     struct lysp_module *lysp_mod;
@@ -101,7 +101,7 @@ logger(LY_LOG_LEVEL level, const char *msg, const char *path)
 int
 setup_ly_ctx(void **state)
 {
-    struct state *st = NULL;
+    struct test_parser_yin_state *st = NULL;
 
     /* allocate state variable */
     (*state) = st = calloc(1, sizeof(*st));
@@ -119,7 +119,7 @@ setup_ly_ctx(void **state)
 int
 destroy_ly_ctx(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     ly_ctx_destroy(st->ctx, NULL);
     free(st);
 
@@ -129,7 +129,7 @@ destroy_ly_ctx(void **state)
 static int
 setup_f(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
 
 #if ENABLE_LOGGER_CHECKING
     /* setup logger */
@@ -155,7 +155,7 @@ setup_f(void **state)
 static int
 teardown_f(void **state)
 {
-    struct state *st = *(struct state **)state;
+    struct test_parser_yin_state *st = *(struct test_parser_yin_state **)state;
     struct lys_module *temp;
 
 #if ENABLE_LOGGER_CHECKING
@@ -176,10 +176,10 @@ teardown_f(void **state)
     return EXIT_SUCCESS;
 }
 
-static struct state*
+static struct test_parser_yin_state*
 reset_state(void **state)
 {
-    ((struct state *)*state)->finished_correctly = true;
+    ((struct test_parser_yin_state *)*state)->finished_correctly = true;
     logbuf[0] = '\0';
     teardown_f(state);
     setup_f(state);
@@ -210,7 +210,7 @@ setup_logger(void **state)
 static int
 teardown_logger(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
 
 #if ENABLE_LOGGER_CHECKING
     /* teardown logger */
@@ -226,7 +226,7 @@ static int
 setup_element_test(void **state)
 {
     setup_logger(state);
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
 
     st->yin_ctx = calloc(1, sizeof(*st->yin_ctx));
     st->yin_ctx->format = LYS_IN_YIN;
@@ -237,7 +237,7 @@ setup_element_test(void **state)
 static int
 teardown_element_test(void **state)
 {
-    struct state *st = *(struct state **)state;
+    struct test_parser_yin_state *st = *(struct test_parser_yin_state **)state;
 
     lyxml_ctx_free(st->yin_ctx->xmlctx);
     free(st->yin_ctx);
@@ -250,7 +250,7 @@ teardown_element_test(void **state)
 static void
 test_yin_match_keyword(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
 
     const char *prefix;
     size_t prefix_len;
@@ -356,7 +356,7 @@ test_yin_match_argument_name(void **state)
 static void
 test_yin_parse_element_generic(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     struct lysp_ext_instance exts;
     LY_ERR ret;
 
@@ -394,7 +394,7 @@ static void
 test_yin_parse_extension_instance(void **state)
 {
     LY_ERR ret;
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     struct lysp_ext_instance *exts = NULL;
     const char *data = "<myext:ext value1=\"test\" value=\"test2\" xmlns:myext=\"urn:example:extensions\"><myext:subelem>text</myext:subelem></myext:ext>";
     lyxml_ctx_new(st->ctx, data, &st->yin_ctx->xmlctx);
@@ -552,7 +552,7 @@ test_yin_parse_extension_instance(void **state)
 static void
 test_yin_parse_content(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     LY_ERR ret = LY_SUCCESS;
     const char *data = "<prefix value=\"a_mod\" xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\">"
                             "<myext:custom xmlns:myext=\"urn:example:extensions\">"
@@ -724,7 +724,7 @@ test_yin_parse_content(void **state)
 static void
 test_validate_value(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data = ELEMENT_WRAPPER_START ELEMENT_WRAPPER_END;
 
     /* create some XML context */
@@ -755,7 +755,7 @@ test_validate_value(void **state)
 
 /* helper function to simplify unit test of each element using parse_content function */
 LY_ERR
-test_element_helper(struct state *st, const char *data, void *dest, const char **text, struct lysp_ext_instance **exts)
+test_element_helper(struct test_parser_yin_state *st, const char *data, void *dest, const char **text, struct lysp_ext_instance **exts)
 {
     const char *name, *prefix;
     size_t name_len, prefix_len;
@@ -853,7 +853,7 @@ test_element_helper(struct state *st, const char *data, void *dest, const char *
 static void
 test_enum_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     struct lysp_type type = {};
     const char *data;
     data = ELEMENT_WRAPPER_START
@@ -893,7 +893,7 @@ test_enum_elem(void **state)
 static void
 test_bit_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     struct lysp_type type = {};
     const char *data;
     data = ELEMENT_WRAPPER_START
@@ -933,7 +933,7 @@ test_bit_elem(void **state)
 static void
 test_meta_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     char *value = NULL;
     const char *data;
     struct lysp_ext_instance *exts = NULL;
@@ -1032,7 +1032,7 @@ test_meta_elem(void **state)
 static void
 test_import_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lysp_import *imports = NULL;
     struct import_meta imp_meta = {"prefix", &imports};
@@ -1097,7 +1097,7 @@ test_import_elem(void **state)
 static void
 test_status_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     uint16_t flags = 0;
     struct lysp_ext_instance *exts = NULL;
@@ -1130,7 +1130,7 @@ test_status_elem(void **state)
 static void
 test_ext_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lysp_ext *ext = NULL;
 
@@ -1171,7 +1171,7 @@ test_ext_elem(void **state)
 static void
 test_yin_element_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     uint16_t flags = 0;
     struct lysp_ext_instance *exts = NULL;
@@ -1198,7 +1198,7 @@ test_yin_element_elem(void **state)
 static void
 test_yangversion_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     uint8_t version = 0;
     struct lysp_ext_instance *exts = NULL;
@@ -1229,7 +1229,7 @@ test_yangversion_elem(void **state)
 static void
 test_mandatory_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     uint16_t man = 0;
     struct lysp_ext_instance *exts = NULL;
@@ -1258,7 +1258,7 @@ test_mandatory_elem(void **state)
 static void
 test_argument_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     uint16_t flags = 0;
     const char *arg;
@@ -1300,7 +1300,7 @@ test_argument_elem(void **state)
 static void
 test_base_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     const char **bases = NULL;
     struct lysp_ext_instance *exts = NULL;
@@ -1345,7 +1345,7 @@ test_base_elem(void **state)
 static void
 test_belongsto_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lysp_submodule submod;
     struct lysp_ext_instance *exts = NULL;
@@ -1375,7 +1375,7 @@ test_belongsto_elem(void **state)
 static void
 test_config_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     uint16_t flags = 0;
     struct lysp_ext_instance *exts = NULL;
@@ -1405,7 +1405,7 @@ test_config_elem(void **state)
 static void
 test_default_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     const char *val = NULL;
     struct lysp_ext_instance *exts = NULL;
@@ -1431,7 +1431,7 @@ test_default_elem(void **state)
 static void
 test_err_app_tag_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     const char *val = NULL;
     struct lysp_ext_instance *exts = NULL;
@@ -1457,7 +1457,7 @@ test_err_app_tag_elem(void **state)
 static void
 test_err_msg_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     const char *val = NULL;
     struct lysp_ext_instance *exts = NULL;
@@ -1486,7 +1486,7 @@ test_err_msg_elem(void **state)
 static void
 test_fracdigits_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lysp_type type = {};
 
@@ -1527,7 +1527,7 @@ test_fracdigits_elem(void **state)
 static void
 test_iffeature_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     const char **iffeatures = NULL;
     struct lysp_ext_instance *exts = NULL;
@@ -1556,7 +1556,7 @@ test_iffeature_elem(void **state)
 static void
 test_length_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lysp_type type = {};
 
@@ -1606,7 +1606,7 @@ test_length_elem(void **state)
 static void
 test_modifier_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     const char *pat = lydict_insert(st->ctx, "\006pattern", 8);
     struct lysp_ext_instance *exts = NULL;
@@ -1633,7 +1633,7 @@ test_modifier_elem(void **state)
 static void
 test_namespace_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     const char *ns;
     struct lysp_ext_instance *exts = NULL;
@@ -1658,7 +1658,7 @@ test_namespace_elem(void **state)
 static void
 test_path_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lysp_type type = {};
 
@@ -1677,7 +1677,7 @@ test_path_elem(void **state)
 static void
 test_pattern_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lysp_type type = {};
 
@@ -1718,7 +1718,7 @@ test_pattern_elem(void **state)
 static void
 test_value_position_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lysp_type_enum en = {};
 
@@ -1804,7 +1804,7 @@ test_value_position_elem(void **state)
 static void
 test_prefix_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     const char *value = NULL;
     struct lysp_ext_instance *exts = NULL;
@@ -1830,7 +1830,7 @@ test_prefix_elem(void **state)
 static void
 test_range_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lysp_type type = {};
 
@@ -1870,7 +1870,7 @@ test_range_elem(void **state)
 static void
 test_reqinstance_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lysp_type type = {};
 
@@ -1901,7 +1901,7 @@ test_reqinstance_elem(void **state)
 static void
 test_revision_date_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     char rev[LY_REV_SIZE];
     struct lysp_ext_instance *exts = NULL;
@@ -1928,7 +1928,7 @@ test_revision_date_elem(void **state)
 static void
 test_unique_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     const char **values = NULL;
     struct lysp_ext_instance *exts = NULL;
@@ -1957,7 +1957,7 @@ test_unique_elem(void **state)
 static void
 test_units_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     const char *values = NULL;
     struct lysp_ext_instance *exts = NULL;
@@ -1984,7 +1984,7 @@ test_units_elem(void **state)
 static void
 test_when_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lysp_when *when = NULL;
 
@@ -2019,7 +2019,7 @@ test_when_elem(void **state)
 static void
 test_yin_text_value_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     const char *val;
 
@@ -2044,7 +2044,7 @@ test_yin_text_value_elem(void **state)
 static void
 test_type_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lysp_type type = {};
 
@@ -2104,7 +2104,7 @@ test_type_elem(void **state)
 static void
 test_max_elems_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lysp_node_list list = {};
     struct lysp_node_leaflist llist = {};
@@ -2164,7 +2164,7 @@ test_max_elems_elem(void **state)
 static void
 test_min_elems_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lysp_node_list list = {};
     struct lysp_node_leaflist llist = {};
@@ -2219,7 +2219,7 @@ test_min_elems_elem(void **state)
 static void
 test_ordby_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     uint16_t flags = 0;
     struct lysp_ext_instance *exts = NULL;
@@ -2246,7 +2246,7 @@ test_ordby_elem(void **state)
 static void
 test_any_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lysp_node *siblings = NULL;
     struct tree_node_meta node_meta = {.parent = NULL, .nodes = &siblings};
@@ -2335,7 +2335,7 @@ test_any_elem(void **state)
 static void
 test_leaf_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lysp_node *siblings = NULL;
     struct tree_node_meta node_meta = {.parent = NULL, .nodes = &siblings};
@@ -2396,7 +2396,7 @@ test_leaf_elem(void **state)
 static void
 test_leaf_list_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lysp_node *siblings = NULL;
     struct tree_node_meta node_meta = {.parent = NULL, .nodes = &siblings};
@@ -2573,7 +2573,7 @@ test_leaf_list_elem(void **state)
 static void
 test_presence_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     const char *val;
     struct lysp_ext_instance *exts = NULL;
@@ -2602,7 +2602,7 @@ test_presence_elem(void **state)
 static void
 test_key_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     const char *val;
     struct lysp_ext_instance *exts = NULL;
@@ -2631,7 +2631,7 @@ test_key_elem(void **state)
 static void
 test_typedef_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lysp_tpdf *tpdfs = NULL;
     struct tree_node_meta typdef_meta = {NULL, (struct lysp_node **)&tpdfs};
@@ -2678,7 +2678,7 @@ test_typedef_elem(void **state)
 static void
 test_refine_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lysp_refine *refines = NULL;
 
@@ -2729,7 +2729,7 @@ test_refine_elem(void **state)
 static void
 test_uses_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lysp_node *siblings = NULL;
     struct tree_node_meta node_meta = {NULL, &siblings};
@@ -2780,7 +2780,7 @@ test_uses_elem(void **state)
 static void
 test_revision_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lysp_revision *revs = NULL;
 
@@ -2822,7 +2822,7 @@ test_revision_elem(void **state)
 static void
 test_include_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lysp_include *includes = NULL;
     struct include_meta inc_meta = {"module-name", &includes};
@@ -2884,102 +2884,9 @@ test_include_elem(void **state)
 }
 
 static void
-test_feature_elem(void **state)
-{
-    struct state *st = *state;
-    const char *data;
-    struct lysp_feature *features = NULL;
-
-    /* max subelems */
-    data = ELEMENT_WRAPPER_START
-                "<feature name=\"feature-name\">"
-                    "<if-feature name=\"iff\"/>"
-                    "<status value=\"deprecated\"/>"
-                    "<description><text>desc</text></description>"
-                    "<reference><text>ref</text></reference>"
-                    EXT_SUBELEM
-                "</feature>"
-           ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(st, data, &features, NULL, NULL), LY_SUCCESS);
-    assert_string_equal(features->name, "feature-name");
-    assert_string_equal(features->dsc, "desc");
-    assert_true(features->flags & LYS_STATUS_DEPRC);
-    assert_string_equal(*features->iffeatures, "iff");
-    assert_string_equal(features->ref, "ref");
-    assert_string_equal(features->exts[0].name, "urn:example:extensions:c-define");
-    assert_int_equal(features->exts[0].insubstmt_index, 0);
-    assert_int_equal(features->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
-    FREE_ARRAY(st->ctx, features, lysp_feature_free);
-    features = NULL;
-
-    /* min subelems */
-    data = ELEMENT_WRAPPER_START "<feature name=\"feature-name\"/>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(st, data, &features, NULL, NULL), LY_SUCCESS);
-    assert_string_equal(features->name, "feature-name");
-    FREE_ARRAY(st->ctx, features, lysp_feature_free);
-    features = NULL;
-
-    st->finished_correctly = true;
-}
-
-static void
-test_identity_elem(void **state)
-{
-    struct state *st = *state;
-    const char *data;
-    struct lysp_ident *identities = NULL;
-
-    /* max subelems */
-    st->yin_ctx->mod_version = LYS_VERSION_1_1;
-    data = ELEMENT_WRAPPER_START
-                "<identity name=\"ident-name\">"
-                    "<if-feature name=\"iff\"/>"
-                    "<base name=\"base-name\"/>"
-                    "<status value=\"deprecated\"/>"
-                    "<description><text>desc</text></description>"
-                    "<reference><text>ref</text></reference>"
-                    EXT_SUBELEM
-                "</identity>"
-           ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(st, data, &identities, NULL, NULL), LY_SUCCESS);
-    assert_string_equal(identities->name, "ident-name");
-    assert_string_equal(*identities->bases, "base-name");
-    assert_string_equal(*identities->iffeatures, "iff");
-    assert_string_equal(identities->dsc, "desc");
-    assert_string_equal(identities->ref, "ref");
-    assert_true(identities->flags & LYS_STATUS_DEPRC);
-    assert_string_equal(identities->exts[0].name, "urn:example:extensions:c-define");
-    assert_int_equal(identities->exts[0].insubstmt_index, 0);
-    assert_int_equal(identities->exts[0].insubstmt, LYEXT_SUBSTMT_SELF);
-    FREE_ARRAY(st->ctx, identities, lysp_ident_free);
-    identities = NULL;
-
-    /* min subelems */
-    data = ELEMENT_WRAPPER_START "<identity name=\"ident-name\" />" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(st, data, &identities, NULL, NULL), LY_SUCCESS);
-    assert_string_equal(identities->name, "ident-name");
-    FREE_ARRAY(st->ctx, identities, lysp_ident_free);
-    identities = NULL;
-
-    /* invalid */
-    st->yin_ctx->mod_version = LYS_VERSION_1_0;
-    data = ELEMENT_WRAPPER_START
-                "<identity name=\"ident-name\">"
-                    "<if-feature name=\"iff\"/>"
-                "</identity>"
-           ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(st, data, &identities, NULL, NULL), LY_EVALID);
-    logbuf_assert("Invalid sub-elemnt \"if-feature\" of \"identity\" element - this sub-element is allowed only in modules with version 1.1 or newer. Line number 1.");
-    FREE_ARRAY(st->ctx, identities, lysp_ident_free);
-    identities = NULL;
-
-    st->finished_correctly = true;
-}
-
-static void
 test_list_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lysp_node *siblings = NULL;
     struct tree_node_meta node_meta = {NULL, &siblings};
@@ -3074,7 +2981,7 @@ test_list_elem(void **state)
 static void
 test_notification_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lysp_notif *notifs = NULL;
     struct tree_node_meta notif_meta = {NULL, (struct lysp_node **)&notifs};
@@ -3148,7 +3055,7 @@ test_notification_elem(void **state)
 static void
 test_grouping_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lysp_grp *grps = NULL;
     struct tree_node_meta grp_meta = {NULL, (struct lysp_node **)&grps};
@@ -3215,7 +3122,7 @@ test_grouping_elem(void **state)
 static void
 test_container_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lysp_node *siblings = NULL;
     struct tree_node_meta node_meta = {NULL, &siblings};
@@ -3304,7 +3211,7 @@ test_container_elem(void **state)
 static void
 test_case_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lysp_node *siblings = NULL;
     struct tree_node_meta node_meta = {NULL, &siblings};
@@ -3378,7 +3285,7 @@ test_case_elem(void **state)
 static void
 test_choice_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lysp_node *siblings = NULL;
     struct tree_node_meta node_meta = {NULL, &siblings};
@@ -3455,7 +3362,7 @@ test_choice_elem(void **state)
 static void
 test_inout_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lysp_action_inout inout = {};
     struct inout_meta inout_meta = {NULL, &inout};
@@ -3577,7 +3484,7 @@ test_inout_elem(void **state)
 static void
 test_action_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lysp_action *actions = NULL;
     struct tree_node_meta act_meta = {NULL, (struct lysp_node **)&actions};
@@ -3663,7 +3570,7 @@ test_action_elem(void **state)
 static void
 test_augment_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lysp_augment *augments = NULL;
     struct tree_node_meta aug_meta = {NULL, (struct lysp_node **)&augments};
@@ -3738,7 +3645,7 @@ test_augment_elem(void **state)
 static void
 test_deviate_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lysp_deviate *deviates = NULL;
     struct lysp_deviate_add *d_add;
@@ -3908,7 +3815,7 @@ test_deviate_elem(void **state)
 static void
 test_deviation_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lysp_deviation *deviations = NULL;
 
@@ -3957,7 +3864,7 @@ test_deviation_elem(void **state)
 static void
 test_module_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lys_module *lys_mod = NULL;
     struct lysp_module *lysp_mod = NULL;
@@ -4085,7 +3992,7 @@ test_module_elem(void **state)
 static void
 test_submodule_elem(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lysp_submodule *lysp_submod = NULL;
 
@@ -4199,7 +4106,7 @@ test_submodule_elem(void **state)
 static void
 test_yin_parse_module(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lys_module *mod;
     struct lys_yin_parser_ctx *yin_ctx = NULL;
@@ -4315,7 +4222,7 @@ test_yin_parse_module(void **state)
 static void
 test_yin_parse_submodule(void **state)
 {
-    struct state *st = *state;
+    struct test_parser_yin_state *st = *state;
     const char *data;
     struct lys_yin_parser_ctx *yin_ctx = NULL;
     struct lysp_submodule *submod = NULL;
@@ -4455,8 +4362,6 @@ main(void)
         cmocka_unit_test_setup_teardown(test_uses_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_revision_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_include_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_feature_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_identity_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_list_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_notification_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_grouping_elem, setup_element_test, teardown_element_test),

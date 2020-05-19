@@ -20,14 +20,12 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../../src/common.h"
-#include "../../src/tree_schema.h"
-#include "../../src/tree_schema_internal.h"
+#include "../../../src/common.h"
+#include "../../../src/tree_schema.h"
+#include "../../../src/tree_schema_internal.h"
 
 /* originally static functions from tree_schema_free.c and parser_yang.c */
 void lysp_ext_instance_free(struct ly_ctx *ctx, struct lysp_ext_instance *ext);
-void lysp_ident_free(struct ly_ctx *ctx, struct lysp_ident *ident);
-void lysp_feature_free(struct ly_ctx *ctx, struct lysp_feature *feat);
 void lysp_deviation_free(struct ly_ctx *ctx, struct lysp_deviation *dev);
 void lysp_grp_free(struct ly_ctx *ctx, struct lysp_grp *grp);
 void lysp_action_free(struct ly_ctx *ctx, struct lysp_action *action);
@@ -52,10 +50,8 @@ LY_ERR parse_case(struct lys_yang_parser_ctx *ctx, const char **data, struct lys
 LY_ERR parse_container(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
 LY_ERR parse_deviate(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_deviate **deviates);
 LY_ERR parse_deviation(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_deviation **deviations);
-LY_ERR parse_feature(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_feature **features);
 LY_ERR parse_grouping(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_grp **groupings);
 LY_ERR parse_choice(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_identity(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_ident **identities);
 LY_ERR parse_leaf(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
 LY_ERR parse_leaflist(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
 LY_ERR parse_list(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
@@ -1180,97 +1176,24 @@ test_module(void **state)
     *state = NULL;
 }
 
-static void
-test_identity(void **state)
-{
-    *state = test_identity;
 
-    struct lys_yang_parser_ctx ctx;
-    struct lysp_ident *ident = NULL;
-    const char *str;
 
-    ctx.format = LYS_IN_YANG;
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
-    assert_non_null(ctx.ctx);
-    ctx.pos_type = LY_VLOG_LINE;
-    ctx.line = 1;
-    ctx.indent = 0;
-    ctx.mod_version = 2; /* simulate YANG 1.1 */
 
-    /* invalid cardinality */
-#define TEST_DUP(MEMBER, VALUE1, VALUE2) \
-    TEST_DUP_GENERIC(" test {", MEMBER, VALUE1, VALUE2, parse_identity, \
-                     &ident, "1", FREE_ARRAY(ctx.ctx, ident, lysp_ident_free); ident = NULL)
 
-    TEST_DUP("description", "a", "b");
-    TEST_DUP("reference", "a", "b");
-    TEST_DUP("status", "current", "obsolete");
 
-    /* full content */
-    str = " test {base \"a\";base b; description text;reference \'another text\';status current; if-feature x;if-feature y;prefix:ext;} ...";
-    assert_int_equal(LY_SUCCESS, parse_identity(&ctx, &str, &ident));
-    assert_non_null(ident);
-    assert_string_equal(" ...", str);
-    FREE_ARRAY(ctx.ctx, ident, lysp_ident_free);
-    ident = NULL;
 
-    /* invalid substatement */
-    str = " test {organization XXX;}";
-    assert_int_equal(LY_EVALID, parse_identity(&ctx, &str, &ident));
-    logbuf_assert("Invalid keyword \"organization\" as a child of \"identity\". Line number 1.");
-    FREE_ARRAY(ctx.ctx, ident, lysp_ident_free);
-    ident = NULL;
 
-#undef TEST_DUP
 
-    *state = NULL;
-    ly_ctx_destroy(ctx.ctx, NULL);
-}
 
-static void
-test_feature(void **state)
-{
-    (void) state; /* unused */
 
-    struct lys_yang_parser_ctx ctx;
-    struct lysp_feature *features = NULL;
-    const char *str;
 
-    ctx.format = LYS_IN_YANG;
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
-    assert_non_null(ctx.ctx);
-    ctx.pos_type = LY_VLOG_LINE;
-    ctx.line = 1;
-    ctx.indent = 0;
 
-    /* invalid cardinality */
-#define TEST_DUP(MEMBER, VALUE1, VALUE2) \
-    TEST_DUP_GENERIC(" test {", MEMBER, VALUE1, VALUE2, parse_feature, \
-                     &features, "1", FREE_ARRAY(ctx.ctx, features, lysp_feature_free); features = NULL)
 
-    TEST_DUP("description", "a", "b");
-    TEST_DUP("reference", "a", "b");
-    TEST_DUP("status", "current", "obsolete");
 
-    /* full content */
-    str = " test {description text;reference \'another text\';status current; if-feature x;if-feature y;prefix:ext;} ...";
-    assert_int_equal(LY_SUCCESS, parse_feature(&ctx, &str, &features));
-    assert_non_null(features);
-    assert_string_equal(" ...", str);
-    FREE_ARRAY(ctx.ctx, features, lysp_feature_free);
-    features = NULL;
 
-    /* invalid substatement */
-    str = " test {organization XXX;}";
-    assert_int_equal(LY_EVALID, parse_feature(&ctx, &str, &features));
-    logbuf_assert("Invalid keyword \"organization\" as a child of \"feature\". Line number 1.");
-    FREE_ARRAY(ctx.ctx, features, lysp_feature_free);
-    features = NULL;
 
-#undef TEST_DUP
 
-    ly_ctx_destroy(ctx.ctx, NULL);
-}
+
 
 static void
 test_deviation(void **state)
@@ -2316,8 +2239,6 @@ int main(void)
         cmocka_unit_test_setup(test_stmts, logger_setup),
         cmocka_unit_test_setup_teardown(test_minmax, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_module, logger_setup, logger_teardown),
-        cmocka_unit_test_setup_teardown(test_identity, logger_setup, logger_teardown),
-        cmocka_unit_test_setup(test_feature, logger_setup),
         cmocka_unit_test_setup(test_deviation, logger_setup),
         cmocka_unit_test_setup(test_deviate, logger_setup),
         cmocka_unit_test_setup(test_container, logger_setup),
