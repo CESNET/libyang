@@ -5185,6 +5185,78 @@ cleanup:
     return result;
 }
 
+API char *
+lys_data_path_pattern(const struct lys_node *node, const char *placeholder)
+{
+    FUN_IN;
+
+    const struct lys_module *prev_mod, *mod;
+    char *result = NULL, keys[512], buf[2048];
+    const char *name, *separator;
+    struct ly_set *set;
+    size_t x;
+    int i;
+
+    if (!node || !placeholder) {
+        LOGARG;
+        return NULL;
+    }
+
+    buf[0] = '\0';
+    set = ly_set_new();
+    LY_CHECK_ERR_GOTO(!set, LOGMEM(node->module->ctx), cleanup);
+
+    /* collect all schema nodes that can be instantiated into a set */
+    while (node) {
+        ly_set_add(set, (void *)node, 0);
+        do {
+            node = lys_parent(node);
+        } while (node && (node->nodetype & (LYS_USES | LYS_CHOICE | LYS_CASE | LYS_INPUT | LYS_OUTPUT)));
+    }
+
+    x = 0;
+    prev_mod = NULL;
+
+    /* build path for all the collected nodes */
+    for (i = set->number - 1; i > -1; --i) {
+        size_t k = 0;
+        keys[0] = '\0';
+        node = set->set.s[i];
+        if (node->nodetype == LYS_EXT) {
+            if (strcmp(((struct lys_ext_instance *)node)->def->name, "yang-data")) {
+                continue;
+            }
+            name = ((struct lys_ext_instance *)node)->arg_value;
+            separator = ":#";
+        } else {
+            name = node->name;
+            separator = ":";
+        }
+        if (node->nodetype == LYS_LIST) {
+            /* add specific key values (placeholders) for list */
+            const struct lys_node_list *list;
+            list = (const struct lys_node_list *)node;
+            for (uint8_t j = 0; j < list->keys_size; j++) {
+                k += sprintf(keys + k, "[%s=%s]", list->keys[j]->name, placeholder);
+            }
+        }
+        mod = lys_node_module(node);
+        if (mod && mod != prev_mod) {
+            prev_mod = mod;
+            x += sprintf(buf + x, "/%s%s%s%s", mod->name, separator, name, keys);
+        } else {
+            x += sprintf(buf + x, "/%s%s", name, keys);
+        }
+    }
+
+    result = strdup(buf);
+    LY_CHECK_ERR_GOTO(!result, LOGMEM(node->module->ctx), cleanup);
+
+cleanup:
+    ly_set_free(set);
+    return result;
+}
+
 struct lys_node_augment *
 lys_getnext_target_aug(struct lys_node_augment *last, const struct lys_module *mod, const struct lys_node *aug_target)
 {
