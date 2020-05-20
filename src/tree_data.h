@@ -1324,6 +1324,15 @@ int lyd_value_type(struct lys_node *node, const char *value, struct lys_type **t
 int lyd_wd_default(struct lyd_node_leaf_list *node);
 
 /**
+ * @brief Learn if a node is supposed to be printed based on the options.
+ *
+ * @param[in] node Data node to examine.
+ * @param[in] options [printer flags](@ref printerflags). With-defaults flags and ::LYP_KEEPEMPTYCONT are relevant.
+ * @return non-zero if should be printed, 0 if not.
+ */
+int lyd_node_should_print(const struct lyd_node *node, int options);
+
+/**
  * @brief Unlink the specified data subtree. All referenced namespaces are copied.
  *
  * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).

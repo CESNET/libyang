@@ -948,8 +948,8 @@ trim_dfs_nextsibling:
     return 1;
 }
 
-int
-lyd_toprint(const struct lyd_node *node, int options)
+API int
+lyd_node_should_print(const struct lyd_node *node, int options)
 {
     struct lys_node *scase, *sparent;
     struct lyd_node *first;

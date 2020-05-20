@@ -642,7 +642,7 @@ xml_print_node(struct lyout *out, int level, const struct lyd_node *node, int to
 {
     int ret = EXIT_SUCCESS;
 
-    if (!lyd_toprint(node, options)) {
+    if (!lyd_node_should_print(node, options)) {
         /* wd says do not print */
         return EXIT_SUCCESS;
     }
