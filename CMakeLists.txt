@@ -67,7 +67,7 @@ option(ENABLE_CACHE "Enable data caching for schemas and hash tables for data (t
 option(ENABLE_LATEST_REVISIONS "Enable reusing of latest revisions of schemas" ON)
 option(ENABLE_LYD_PRIV "Add a private pointer also to struct lyd_node (data node structure), just like in struct lys_node, for arbitrary user data" OFF)
 option(ENABLE_FUZZ_TARGETS "Build target programs suitable for fuzzing with AFL" OFF)
-set(PLUGINS_DIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libyang${LIBYANG_MAJOR_VERSION}" CACHE STRING "Directory with libyang plugins (extensions and user types), should include major SO version")
+set(PLUGINS_DIR "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}/libyang${LIBYANG_MAJOR_SOVERSION}" CACHE STRING "Directory with libyang plugins (extensions and user types), should include major SO version")
 
 if(ENABLE_CACHE)
     set(LY_ENABLED_CACHE 1)
