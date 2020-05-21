@@ -531,8 +531,6 @@ ly_keys_parse(const struct lysc_node *list, const char *keys_str, size_t keys_le
 
     assert(list->nodetype == LYS_LIST);
 
-    memset(keys, 0, sizeof *keys);
-
     if (!keys_str) {
         /* nothing to parse */
         return LY_SUCCESS;
@@ -578,6 +576,8 @@ ly_keys_parse(const struct lysc_node *list, const char *keys_str, size_t keys_le
             ret = lyd_value_store(&keys->keys[keys->key_count].val, key, keys->keys[keys->key_count].value, 0, 0,
                                   lydjson_resolve_prefix, NULL, LYD_JSON);
             LY_CHECK_GOTO(ret, cleanup);
+        } else {
+            memset(&keys->keys[keys->key_count].val, 0, sizeof keys->keys[keys->key_count].val);
         }
 
         /* another valid key */
@@ -585,7 +585,6 @@ ly_keys_parse(const struct lysc_node *list, const char *keys_str, size_t keys_le
     }
 
 cleanup:
-    ly_keys_clean(keys);
     return ret;
 }
 
