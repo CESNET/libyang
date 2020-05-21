@@ -31,6 +31,7 @@ extern "C" {
 
 /**
  * @defgroup datatree Data Tree
+ * @ingroup trees
  * @{
  *
  * Data structures and functions to manipulate and access instance data tree.

@@ -32,6 +32,14 @@ extern "C" {
 #endif
 
 /**
+ * @defgroup schematree Schema Tree
+ * @ingroup trees
+ * @{
+ *
+ * Data structures and functions to manipulate and access schema tree.
+ */
+
+/**
  * @brief Macro to iterate via all elements in a schema tree which can be instantiated in data tree
  * (skips cases, input, output). This is the opening part to the #LYSC_TREE_DFS_END - they always have to be used together.
  *
@@ -577,7 +585,7 @@ struct lysp_augment {
 #define LYS_DEV_ADD 2                /**< deviate type add */
 #define LYS_DEV_DELETE 3             /**< deviate type delete */
 #define LYS_DEV_REPLACE 4            /**< deviate type replace */
-/** @} */
+/** @} deviatetypes */
 
 /**
  * @brief Generic deviate structure to get type and cast to lysp_deviate_* structure
@@ -740,7 +748,6 @@ struct lysp_deviation {
 
 /**
  * @defgroup snodeflags Schema nodes flags
- * @ingroup schematree
  * @{
  */
 #define LYS_CONFIG_W     0x01        /**< config true; also set for input children nodes */
@@ -805,7 +812,7 @@ struct lysp_deviation {
 #define LYS_ISENUM       0x200       /**< flag to simply distinguish type in struct lysc_type_bitenum_item */
 
 #define LYS_FLAGS_COMPILED_MASK 0xff /**< mask for flags that maps to the compiled structures */
-/** @} */
+/** @} snodeflags */
 
 /**
  * @brief Generic YANG data node
@@ -1206,9 +1213,7 @@ struct lysc_feature {
 #define LYS_IFF_AND  0x01 /**< operand "and" */
 #define LYS_IFF_OR   0x02 /**< operand "or" */
 #define LYS_IFF_F    0x03 /**< feature */
-/**
- * @}
- */
+/** @} ifftokens */
 
 /**
  * @brief Compiled YANG revision statement
@@ -1906,8 +1911,6 @@ const struct lysc_node *lys_getnext(const struct lysc_node *last, const struct l
 
 /**
  * @defgroup sgetnextflags lys_getnext() flags
- * @ingroup schematree
- *
  * @{
  */
 #define LYS_GETNEXT_WITHCHOICE   0x01 /**< lys_getnext() option to allow returning #LYS_CHOICE nodes instead of looking into them */
@@ -2002,7 +2005,7 @@ LY_ERR lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node
  */
 const char *lys_nodetype2str(uint16_t nodetype);
 
-/** @} */
+/** @} schematree */
 
 #ifdef __cplusplus
 }

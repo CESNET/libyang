@@ -21,11 +21,13 @@
 #include "printer.h"
 #include "tree_schema.h"
 
+/**
+ * @addtogroup schematree
+ * @{
+ */
 
 /**
  * @defgroup schemaprinterflags Schema output options
- * @ingroup schema
- *
  * @{
  */
 #define LYS_OUTPUT_NO_SUBSTMT        0x10 /**< Print only top-level/referede node information,
@@ -35,9 +37,7 @@
 //#define LYS_OUTOPT_TREE_USES       0x04 /**< Print only uses instead the resolved grouping nodes (only for tree format) */
 //#define LYS_OUTOPT_TREE_NO_LEAFREF 0x08 /**< Do not print the target of leafrefs (only for tree format) */
 
-/**
- * @} schemaprinterflags
- */
+/** @} schemaprinterflags */
 
 /**
  * @brief Schema module printer.
@@ -64,5 +64,7 @@ ssize_t lys_print(struct lyp_out *out, const struct lys_module *module, LYS_OUTF
  * @return Negative value failure (absolute value corresponds to LY_ERR values).
  */
 ssize_t lys_print_node(struct lyp_out *out, const struct lysc_node *node, LYS_OUTFORMAT format, int line_length, int options);
+
+/** @} schematree */
 
 #endif /* LY_PRINTER_SCHEMA_H_ */

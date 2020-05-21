@@ -333,6 +333,7 @@ if(DOXYGEN_FOUND)
     add_custom_target(doc
             COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/Doxyfile
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    string(REPLACE ";" " " DOXY_HEADERS "${headers}")
     configure_file(Doxyfile.in Doxyfile)
 endif()
 
