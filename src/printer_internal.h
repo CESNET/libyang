@@ -22,28 +22,28 @@
 /**
  * @brief Printer output structure specifying where the data are printed.
  */
-struct lyp_out {
-    LYP_OUT_TYPE type;     /**< type of the output to select the output method */
+struct ly_out {
+    LY_OUT_TYPE type;     /**< type of the output to select the output method */
     union {
-        int fd;          /**< file descriptor for LYP_OUT_FD type */
-        FILE *f;         /**< file structure for LYP_OUT_STREAM, LYP_OUT_FDSTREAM and LYP_OUT_FILEPATH types */
+        int fd;          /**< file descriptor for LY_OUT_FD type */
+        FILE *f;         /**< file structure for LY_OUT_FILE, LY_OUT_FDSTREAM and LY_OUT_FILEPATH types */
         struct {
-            FILE *f;          /**< file stream from the original file descriptor, variable is mapped to the LYP_OUT_STREAM's f */
+            FILE *f;          /**< file stream from the original file descriptor, variable is mapped to the LY_OUT_FILE's f */
             int fd;           /**< original file descriptor, which was not used directly because of missing vdprintf() */
-        } fdstream;      /**< structure for LYP_OUT_FDSTREAM type, which is LYP_OUT_FD when vdprintf() is missing */
+        } fdstream;      /**< structure for LY_OUT_FDSTREAM type, which is LY_OUT_FD when vdprintf() is missing */
         struct {
-            FILE *f;          /**< file structure for LYP_OUT_FILEPATH, variable is mapped to the LYP_OUT_STREAM's f */
+            FILE *f;          /**< file structure for LY_OUT_FILEPATH, variable is mapped to the LY_OUT_FILE's f */
             char *filepath;   /**< stored original filepath */
-        } fpath;         /**< filepath structure for LYP_OUT_FILEPATH */
+        } fpath;         /**< filepath structure for LY_OUT_FILEPATH */
         struct {
             char **buf;       /**< storage for the pointer to the memory buffer to store the output */
             size_t len;       /**< number of used bytes in the buffer */
             size_t size;      /**< allocated size of the buffer */
-        } mem;           /**< memory buffer information for LYP_OUT_MEMORY type */
+        } mem;           /**< memory buffer information for LY_OUT_MEMORY type */
         struct {
             ssize_t (*func)(void *arg, const void *buf, size_t count); /**< callback function */
             void *arg;        /**< optional argument for the callback function */
-        } clb;           /**< printer callback for LYP_OUT_CALLBACK type */
+        } clb;           /**< printer callback for LY_OUT_CALLBACK type */
     } method;            /**< type-specific information about the output */
 
     char *buffered;      /**< additional buffer for holes, used only for LYB data format */
@@ -83,7 +83,7 @@ extern struct ext_substmt_info_s ext_substmt_info[];
  * @param[in] module Schema to be printed (the parsed member is used).
  * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
  */
-LY_ERR yang_print_parsed(struct lyp_out *out, const struct lys_module *module);
+LY_ERR yang_print_parsed(struct ly_out *out, const struct lys_module *module);
 
 /**
  * @brief YANG printer of the compiled schemas.
@@ -97,7 +97,7 @@ LY_ERR yang_print_parsed(struct lyp_out *out, const struct lys_module *module);
  * @param[in] options Schema output options (see @ref schemaprinterflags).
  * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
  */
-LY_ERR yang_print_compiled(struct lyp_out *out, const struct lys_module *module, int options);
+LY_ERR yang_print_compiled(struct ly_out *out, const struct lys_module *module, int options);
 
 /**
  * @brief YANG printer of the compiled schema node
@@ -111,7 +111,7 @@ LY_ERR yang_print_compiled(struct lyp_out *out, const struct lys_module *module,
  * @param[in] options Schema output options (see @ref schemaprinterflags).
  * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
  */
-LY_ERR yang_print_compiled_node(struct lyp_out *out, const struct lysc_node *node, int options);
+LY_ERR yang_print_compiled_node(struct ly_out *out, const struct lysc_node *node, int options);
 
 /**
  * @brief YIN printer of the parsed schemas. Full YIN printer.
@@ -120,7 +120,7 @@ LY_ERR yang_print_compiled_node(struct lyp_out *out, const struct lysc_node *nod
  * @param[in] module Schema to be printed (the parsed member is used).
  * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
  */
-LY_ERR yin_print_parsed(struct lyp_out *out, const struct lys_module *module);
+LY_ERR yin_print_parsed(struct ly_out *out, const struct lys_module *module);
 
 /**
  * @brief XML printer of the YANG data.
@@ -130,7 +130,7 @@ LY_ERR yin_print_parsed(struct lyp_out *out, const struct lys_module *module);
  * @param[in] options [Data printer flags](@ref dataprinterflags).
  * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
  */
-LY_ERR xml_print_data(struct lyp_out *out, const struct lyd_node *root, int options);
+LY_ERR xml_print_data(struct ly_out *out, const struct lyd_node *root, int options);
 
 /**
  * @brief Check whether a node value equals to its default one.
@@ -155,7 +155,7 @@ int ly_should_print(const struct lyd_node *node, int options);
  * @brief Flush the output from any internal buffers and clean any auxiliary data.
  * @param[in] out Output specification.
  */
-void ly_print_flush(struct lyp_out *out);
+void ly_print_flush(struct ly_out *out);
 
 /**
  * @brief Create a hole in the output data that will be filled later.
@@ -166,7 +166,7 @@ void ly_print_flush(struct lyp_out *out);
  * @return LY_ERR value. The number of the printed bytes is updated in lyout::printed
  * only in case the data are really written into the output.
  */
-LY_ERR ly_write_skip(struct lyp_out *out, size_t len, size_t *position);
+LY_ERR ly_write_skip(struct ly_out *out, size_t len, size_t *position);
 
 /**
  * @brief Write data into the hole at given position.
@@ -179,6 +179,6 @@ LY_ERR ly_write_skip(struct lyp_out *out, size_t len, size_t *position);
  * @return LY_ERR value. The number of the printed bytes is updated in lyout::printed
  * only in case the data are really written into the output.
  */
-LY_ERR ly_write_skipped(struct lyp_out *out, size_t position, const char *buf, size_t len);
+LY_ERR ly_write_skipped(struct ly_out *out, size_t position, const char *buf, size_t len);
 
 #endif /* LY_PRINTER_INTERNAL_H_ */

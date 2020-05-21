@@ -579,9 +579,9 @@ test_module(void **state)
             "</module>\n";
 
     char *printed;
-    struct lyp_out *out;
+    struct ly_out *out;
 
-    assert_non_null(out = lyp_new_memory(&printed, 0));
+    assert_non_null(out = ly_out_new_memory(&printed, 0));
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
 
     assert_non_null(mod = lys_parse_mem(ctx, orig, LYS_IN_YANG));
@@ -598,7 +598,7 @@ test_module(void **state)
     free(printed);
 
     *state = NULL;
-    lyp_free(out, NULL, 0);
+    ly_out_free(out, NULL, 0);
     ly_ctx_destroy(ctx, NULL);
 }
 

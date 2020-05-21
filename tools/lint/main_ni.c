@@ -301,7 +301,7 @@ main_ni(int argc, char* argv[])
         {NULL,               required_argument, NULL, 'y'},
         {NULL,               0,                 NULL, 0}
     };
-    struct lyp_out *out = NULL;
+    struct ly_out *out = NULL;
     struct ly_ctx *ctx = NULL;
     const struct lys_module *mod;
     LYS_OUTFORMAT outformat_s = 0;
@@ -472,12 +472,12 @@ main_ni(int argc, char* argv[])
 #endif
         case 'o':
             if (out) {
-                if (lyp_filepath(out, optarg) != NULL) {
+                if (ly_out_filepath(out, optarg) != NULL) {
                     fprintf(stderr, "yanglint error: unable open output file %s (%s)\n", optarg, strerror(errno));
                     goto cleanup;
                 }
             } else {
-                out = lyp_new_filepath(optarg);
+                out = ly_out_new_filepath(optarg);
                 if (!out) {
                     fprintf(stderr, "yanglint error: unable open output file %s (%s)\n", optarg, strerror(errno));
                     goto cleanup;
@@ -775,7 +775,7 @@ main_ni(int argc, char* argv[])
         } else {
             for (u = 0; u < mods->count; u++) {
                 if (u) {
-                    lyp_print(out, "\n");
+                    ly_print(out, "\n");
                 }
                 lys_print(out, (struct lys_module *)mods->objs[u], outformat_s, outline_length_s, outoptions_s);
             }
@@ -1093,6 +1093,6 @@ cleanup:
     }
     ly_ctx_destroy(ctx, NULL);
 
-    lyp_free(out, NULL, 1);
+    ly_out_free(out, NULL, 1);
     return ret;
 }

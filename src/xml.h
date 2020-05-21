@@ -22,7 +22,7 @@
 #include "set.h"
 #include "tree_schema.h"
 
-struct lyp_out;
+struct ly_out;
 struct ly_prefix;
 
 /* Macro to test if character is whitespace */
@@ -128,7 +128,7 @@ const struct lyxml_ns *lyxml_ns_get(struct lyxml_ctx *xmlctx, const char *prefix
  * @param[in] attribute Flag for attribute's value where a double quotes must be replaced.
  * @return LY_ERR values.
  */
-LY_ERR lyxml_dump_text(struct lyp_out *out, const char *text, int attribute);
+LY_ERR lyxml_dump_text(struct ly_out *out, const char *text, int attribute);
 
 /**
  * @brief Remove the allocated working memory of the context.

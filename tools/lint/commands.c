@@ -346,7 +346,7 @@ cmd_print(const char *arg)
     const char *out_path = NULL, *target_path = NULL;
     const struct lys_module *module;
     LYS_OUTFORMAT format = LYS_OUT_TREE;
-    struct lyp_out *out = NULL;
+    struct ly_out *out = NULL;
     static struct option long_options[] = {
         {"help", no_argument, 0, 'h'},
         {"format", required_argument, 0, 'f'},
@@ -494,9 +494,9 @@ cmd_print(const char *arg)
     }
 
     if (out_path) {
-        out = lyp_new_filepath(out_path);
+        out = ly_out_new_filepath(out_path);
     } else {
-        out = lyp_new_file(stdout);
+        out = ly_out_new_file(stdout);
     }
     if (!out) {
         fprintf(stderr, "Could not open the output file (%s).\n", strerror(errno));
@@ -518,7 +518,7 @@ cleanup:
     free(*argv);
     free(argv);
 
-    lyp_free(out, NULL, out_path ? 1 : 0);
+    ly_out_free(out, NULL, out_path ? 1 : 0);
 
     return ret;
 }
@@ -700,7 +700,7 @@ cmd_data(const char *arg)
     struct lyd_node *tree = NULL;
     const struct lyd_node **trees = NULL;
     LYD_FORMAT outformat = 0;
-    struct lyp_out *out = NULL;
+    struct ly_out *out = NULL;
     static struct option long_options[] = {
         {"defaults", required_argument, 0, 'd'},
         {"help", no_argument, 0, 'h'},
@@ -835,9 +835,9 @@ cmd_data(const char *arg)
     }
 
     if (out_path) {
-        out = lyp_new_filepath(out_path);
+        out = ly_out_new_filepath(out_path);
     } else {
-        out = lyp_new_file(stdout);
+        out = ly_out_new_file(stdout);
     }
     if (!out) {
         fprintf(stderr, "Could not open the output file (%s).\n", strerror(errno));
@@ -854,7 +854,7 @@ cleanup:
     free(*argv);
     free(argv);
 
-    lyp_free(out, NULL, out_path ? 1 : 0);
+    ly_out_free(out, NULL, out_path ? 1 : 0);
 
     lyd_free_all(data);
 

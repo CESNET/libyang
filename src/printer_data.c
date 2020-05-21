@@ -31,11 +31,11 @@
  * @param[in] out Prepared structure defining the type and details of the printer output.
  * @param[in] root The root element of the (sub)tree to print.
  * @param[in] format Output format.
- * @param[in] options [Data printer flags](@ref dataprinterflags). With \p format LYD_LYB, only #LYP_WITHSIBLINGS option is accepted.
+ * @param[in] options [Data printer flags](@ref dataprinterflags). With \p format LYD_LYB, only #LYDP_WITHSIBLINGS option is accepted.
  * @return LY_ERR value.
  */
 API ssize_t
-lyd_print(struct lyp_out *out, const struct lyd_node *root, LYD_FORMAT format, int options)
+lyd_print(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, int options)
 {
     LY_ERR ret;
     size_t printed_prev;

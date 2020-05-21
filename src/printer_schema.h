@@ -42,7 +42,7 @@
 /**
  * @brief Schema module printer.
  *
- * @param[in] out Printer handler for a specific output. Use lyp_*() functions to create the handler and lyp_free() to remove the handler.
+ * @param[in] out Printer handler for a specific output. Use ly_out_*() functions to create and free the handler.
  * @param[in] module Schema to print.
  * @param[in] format Output format.
  * @param[in] line_length Maximum characters to be printed on a line, 0 for unlimited. Only for #LYS_OUT_TREE printer.
@@ -50,12 +50,12 @@
  * @return Number of printed bytes in case of success.
  * @return Negative value failure (absolute value corresponds to LY_ERR values).
  */
-ssize_t lys_print(struct lyp_out *out, const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options);
+ssize_t lys_print(struct ly_out *out, const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options);
 
 /**
  * @brief Schema node printer.
  *
- * @param[in] out Printer handler for a specific output. Use lyp_*() functions to create the handler and lyp_free() to remove the handler.
+ * @param[in] out Printer handler for a specific output. Use ly_out_*() functions to create and free the handler.
  * @param[in] node Schema node to print, lys_find_node() can be used to get it from a path string.
  * @param[in] format Output format.
  * @param[in] line_length Maximum characters to be printed on a line, 0 for unlimited. Only for #LYS_OUT_TREE printer.
@@ -63,7 +63,7 @@ ssize_t lys_print(struct lyp_out *out, const struct lys_module *module, LYS_OUTF
  * @return Number of printed bytes in case of success.
  * @return Negative value failure (absolute value corresponds to LY_ERR values).
  */
-ssize_t lys_print_node(struct lyp_out *out, const struct lysc_node *node, LYS_OUTFORMAT format, int line_length, int options);
+ssize_t lys_print_node(struct ly_out *out, const struct lysc_node *node, LYS_OUTFORMAT format, int line_length, int options);
 
 /** @} schematree */
 

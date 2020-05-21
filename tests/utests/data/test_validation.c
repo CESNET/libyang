@@ -1019,8 +1019,8 @@ test_defaults(void **state)
     struct lyd_node *tree, *node;
     const struct lys_module *mod = ly_ctx_get_module_latest(ctx, "f");
 
-    struct lyp_out *out;
-    assert_non_null(out = lyp_new_memory(&str, 0));
+    struct ly_out *out;
+    assert_non_null(out = ly_out_new_memory(&str, 0));
 
     /* get defaults */
     tree = NULL;
@@ -1044,7 +1044,7 @@ test_defaults(void **state)
             "<ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt1</ll2>"
             "<ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt2</ll2>"
         "</cont>");
-    lyp_out_reset(out);
+    ly_out_reset(out);
 
     /* create another explicit case and validate */
     node = lyd_new_term(NULL, mod, "l", "value");
@@ -1067,7 +1067,7 @@ test_defaults(void **state)
             "<ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt2</ll2>"
         "</cont>"
         "<l xmlns=\"urn:tests:f\">value</l>");
-    lyp_out_reset(out);
+    ly_out_reset(out);
 
     /* create explicit leaf-list and leaf and validate */
     node = lyd_new_term(NULL, mod, "d", "15");
@@ -1092,7 +1092,7 @@ test_defaults(void **state)
         "<l xmlns=\"urn:tests:f\">value</l>"
         "<d xmlns=\"urn:tests:f\">15</d>"
         "<ll2 xmlns=\"urn:tests:f\">dflt2</ll2>");
-    lyp_out_reset(out);
+    ly_out_reset(out);
 
     /* create first explicit container, which should become implicit */
     node = lyd_new_inner(NULL, mod, "cont");
@@ -1115,7 +1115,7 @@ test_defaults(void **state)
         "<l xmlns=\"urn:tests:f\">value</l>"
         "<d xmlns=\"urn:tests:f\">15</d>"
         "<ll2 xmlns=\"urn:tests:f\">dflt2</ll2>");
-    lyp_out_reset(out);
+    ly_out_reset(out);
 
     /* create second explicit container, which should become implicit, so the first tree node should be removed */
     node = lyd_new_inner(NULL, mod, "cont");
@@ -1137,7 +1137,7 @@ test_defaults(void **state)
         "<l xmlns=\"urn:tests:f\">value</l>"
         "<d xmlns=\"urn:tests:f\">15</d>"
         "<ll2 xmlns=\"urn:tests:f\">dflt2</ll2>");
-    lyp_out_reset(out);
+    ly_out_reset(out);
 
     /* similar changes for nested defaults */
     assert_non_null(lyd_new_term(tree, NULL, "ll1", "def3"));
@@ -1156,10 +1156,10 @@ test_defaults(void **state)
         "<l xmlns=\"urn:tests:f\">value</l>"
         "<d xmlns=\"urn:tests:f\">15</d>"
         "<ll2 xmlns=\"urn:tests:f\">dflt2</ll2>");
-    lyp_out_reset(out);
+    ly_out_reset(out);
 
     lyd_free_siblings(tree);
-    lyp_free(out, NULL, 1);
+    ly_out_free(out, NULL, 1);
 
     *state = NULL;
 }

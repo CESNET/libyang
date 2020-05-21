@@ -25,7 +25,7 @@
 #include "tree_schema.h"
 
 API ssize_t
-lys_print(struct lyp_out *out, const struct lys_module *module, LYS_OUTFORMAT format, int UNUSED(line_length), int options)
+lys_print(struct ly_out *out, const struct lys_module *module, LYS_OUTFORMAT format, int UNUSED(line_length), int options)
 {
     LY_ERR ret;
     size_t printed_prev;
@@ -68,7 +68,7 @@ lys_print(struct lyp_out *out, const struct lys_module *module, LYS_OUTFORMAT fo
 }
 
 API ssize_t
-lys_print_node(struct lyp_out *out, const struct lysc_node *node, LYS_OUTFORMAT format, int UNUSED(line_length), int options)
+lys_print_node(struct ly_out *out, const struct lysc_node *node, LYS_OUTFORMAT format, int UNUSED(line_length), int options)
 {
     LY_ERR ret;
     size_t printed_prev;
