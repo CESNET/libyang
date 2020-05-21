@@ -2580,3 +2580,48 @@ lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_node *sc
     lyd_free_tree(target);
     return rc;
 }
+
+API LY_ERR
+lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct ly_set **set)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lyxp_set xp_set;
+    struct lyxp_expr *exp;
+    uint32_t i;
+
+    LY_CHECK_ARG_RET(NULL, ctx_node, xpath, set, LY_EINVAL);
+
+    memset(&xp_set, 0, sizeof xp_set);
+
+    /* compile expression */
+    exp = lyxp_expr_parse((struct ly_ctx *)LYD_NODE_CTX(ctx_node), xpath);
+    LY_CHECK_ERR_GOTO(!exp, ret = LY_EINVAL, cleanup);
+
+    /* evaluate expression */
+    ret = lyxp_eval(exp, LYD_JSON, ctx_node->schema->module, ctx_node, LYXP_NODE_ELEM, ctx_node, &xp_set, 0);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* allocate return set */
+    *set = ly_set_new();
+    LY_CHECK_ERR_GOTO(!*set, LOGMEM(LYD_NODE_CTX(ctx_node)); ret = LY_EMEM, cleanup);
+
+    /* transform into ly_set */
+    if (xp_set.type == LYXP_SET_NODE_SET) {
+        /* allocate memory for all the elements once (even though not all items must be elements but most likely will be) */
+        (*set)->objs = malloc(xp_set.used * sizeof *(*set)->objs);
+        LY_CHECK_ERR_GOTO(!(*set)->objs, LOGMEM(LYD_NODE_CTX(ctx_node)); ret = LY_EMEM, cleanup);
+        (*set)->size = xp_set.used;
+
+        for (i = 0; i < xp_set.used; ++i) {
+            if (xp_set.val.nodes[i].type == LYXP_NODE_ELEM) {
+                ly_set_add(*set, xp_set.val.nodes[i].node, LY_SET_OPT_USEASLIST);
+            }
+        }
+    }
+
+cleanup:
+    //lyxp_set_free_content(&xp_set);
+    lyxp_set_cast(&xp_set, LYXP_SET_EMPTY);
+    lyxp_expr_free((struct ly_ctx *)LYD_NODE_CTX(ctx_node), exp);
+    return ret;
+}

@@ -1056,6 +1056,18 @@ LY_ERR lyd_find_sibling_set(const struct lyd_node *siblings, const struct lyd_no
 LY_ERR lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_node *schema, const char *key_or_value,
                             size_t val_len, struct lyd_node **match);
 
+/**
+ * @brief Search in the given data for instances of nodes matching the provided XPath.
+ *
+ * @param[in] ctx_node XPath context node.
+ * @param[in] xpath Data XPath expression filtering the matching nodes. ::LYD_JSON format is expected.
+ * @param[out] set Set of found data nodes. In case the result is a number, a string, or a boolean,
+ * the returned set is empty.
+ * @return LY_SUCCESS on success, @p set is returned.
+ * @return LY_ERR value if an error occurred.
+ */
+LY_ERR lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct ly_set **set);
+
 #ifdef __cplusplus
 }
 #endif
