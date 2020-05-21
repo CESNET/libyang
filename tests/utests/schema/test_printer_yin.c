@@ -578,20 +578,27 @@ test_module(void **state)
             "  </rpc>\n"
             "</module>\n";
 
-    char * printed;
+    char *printed;
+    struct lyp_out *out;
+
+    assert_non_null(out = lyp_new_memory(&printed, 0));
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
 
     assert_non_null(mod = lys_parse_mem(ctx, orig, LYS_IN_YANG));
-    assert_int_equal(strlen(ori_res), lys_print_mem(&printed, mod, LYS_OUT_YIN, 0, 0));
+    assert_int_equal(strlen(ori_res), lys_print(out, mod, LYS_OUT_YIN, 0, 0));
     assert_string_equal(printed, ori_res);
-    free(printed);
+
     /*
+    lyp_memory_clean(out);
     assert_int_equal(strlen(compiled), lys_print_mem(&printed, mod, LYS_OUT_YANG_COMPILED, 0, 0));
     assert_string_equal(printed, compiled);
-    free(printed);
     */
 
+    /* note that the printed is freed here, so it must not be freed via lyp_free()! */
+    free(printed);
+
     *state = NULL;
+    lyp_free(out, NULL, 0);
     ly_ctx_destroy(ctx, NULL);
 }
 

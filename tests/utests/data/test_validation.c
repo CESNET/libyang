@@ -1019,13 +1019,16 @@ test_defaults(void **state)
     struct lyd_node *tree, *node;
     const struct lys_module *mod = ly_ctx_get_module_latest(ctx, "f");
 
+    struct lyp_out *out;
+    assert_non_null(out = lyp_new_memory(&str, 0));
+
     /* get defaults */
     tree = NULL;
     assert_int_equal(lyd_validate_modules(&tree, &mod, 1, 0), LY_SUCCESS);
     assert_non_null(tree);
 
     /* check all defaults exist */
-    lyd_print_mem(&str, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG);
+    lyd_print(out, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG);
     assert_string_equal(str,
         "<ll1 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def1</ll1>"
         "<ll1 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def2</ll1>"
@@ -1041,7 +1044,7 @@ test_defaults(void **state)
             "<ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt1</ll2>"
             "<ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt2</ll2>"
         "</cont>");
-    free(str);
+    lyp_out_reset(out);
 
     /* create another explicit case and validate */
     node = lyd_new_term(NULL, mod, "l", "value");
@@ -1050,7 +1053,7 @@ test_defaults(void **state)
     assert_int_equal(lyd_validate(&tree, ctx, LYD_VALOPT_DATA_ONLY), LY_SUCCESS);
 
     /* check data tree */
-    lyd_print_mem(&str, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG);
+    lyd_print(out, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG);
     assert_string_equal(str,
         "<d xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">15</d>"
         "<ll2 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt1</ll2>"
@@ -1064,7 +1067,7 @@ test_defaults(void **state)
             "<ll2 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt2</ll2>"
         "</cont>"
         "<l xmlns=\"urn:tests:f\">value</l>");
-    free(str);
+    lyp_out_reset(out);
 
     /* create explicit leaf-list and leaf and validate */
     node = lyd_new_term(NULL, mod, "d", "15");
@@ -1076,7 +1079,7 @@ test_defaults(void **state)
     assert_int_equal(lyd_validate(&tree, ctx, LYD_VALOPT_DATA_ONLY), LY_SUCCESS);
 
     /* check data tree */
-    lyd_print_mem(&str, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG);
+    lyd_print(out, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG);
     assert_string_equal(str,
         "<cont xmlns=\"urn:tests:f\">"
             "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def1</ll1>"
@@ -1089,7 +1092,7 @@ test_defaults(void **state)
         "<l xmlns=\"urn:tests:f\">value</l>"
         "<d xmlns=\"urn:tests:f\">15</d>"
         "<ll2 xmlns=\"urn:tests:f\">dflt2</ll2>");
-    free(str);
+    lyp_out_reset(out);
 
     /* create first explicit container, which should become implicit */
     node = lyd_new_inner(NULL, mod, "cont");
@@ -1099,7 +1102,7 @@ test_defaults(void **state)
     assert_int_equal(lyd_validate(&tree, ctx, LYD_VALOPT_DATA_ONLY), LY_SUCCESS);
 
     /* check data tree */
-    lyd_print_mem(&str, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG);
+    lyd_print(out, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG);
     assert_string_equal(str,
         "<cont xmlns=\"urn:tests:f\">"
             "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def1</ll1>"
@@ -1112,7 +1115,7 @@ test_defaults(void **state)
         "<l xmlns=\"urn:tests:f\">value</l>"
         "<d xmlns=\"urn:tests:f\">15</d>"
         "<ll2 xmlns=\"urn:tests:f\">dflt2</ll2>");
-    free(str);
+    lyp_out_reset(out);
 
     /* create second explicit container, which should become implicit, so the first tree node should be removed */
     node = lyd_new_inner(NULL, mod, "cont");
@@ -1121,7 +1124,7 @@ test_defaults(void **state)
     assert_int_equal(lyd_validate(&tree, ctx, LYD_VALOPT_DATA_ONLY), LY_SUCCESS);
 
     /* check data tree */
-    lyd_print_mem(&str, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG);
+    lyd_print(out, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG);
     assert_string_equal(str,
         "<cont xmlns=\"urn:tests:f\">"
             "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def1</ll1>"
@@ -1134,7 +1137,7 @@ test_defaults(void **state)
         "<l xmlns=\"urn:tests:f\">value</l>"
         "<d xmlns=\"urn:tests:f\">15</d>"
         "<ll2 xmlns=\"urn:tests:f\">dflt2</ll2>");
-    free(str);
+    lyp_out_reset(out);
 
     /* similar changes for nested defaults */
     assert_non_null(lyd_new_term(tree, NULL, "ll1", "def3"));
@@ -1143,7 +1146,7 @@ test_defaults(void **state)
     assert_int_equal(lyd_validate(&tree, ctx, LYD_VALOPT_DATA_ONLY), LY_SUCCESS);
 
     /* check data tree */
-    lyd_print_mem(&str, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG);
+    lyd_print(out, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG);
     assert_string_equal(str,
         "<cont xmlns=\"urn:tests:f\">"
             "<ll1>def3</ll1>"
@@ -1153,9 +1156,10 @@ test_defaults(void **state)
         "<l xmlns=\"urn:tests:f\">value</l>"
         "<d xmlns=\"urn:tests:f\">15</d>"
         "<ll2 xmlns=\"urn:tests:f\">dflt2</ll2>");
-    free(str);
+    lyp_out_reset(out);
 
     lyd_free_siblings(tree);
+    lyp_free(out, NULL, 1);
 
     *state = NULL;
 }

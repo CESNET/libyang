@@ -213,6 +213,7 @@ set(libsrc
     src/tree_data_hash.c
     src/parser_xml.c
     src/parser_json.c
+    src/printer.c
     src/printer_data.c
     src/printer_xml.c
     src/printer_json.c
@@ -249,6 +250,7 @@ set(headers
     src/context.h
     src/tree.h
     src/tree_data.h
+    src/printer.h
     src/printer_data.h
     src/tree_schema.h
     src/printer_schema.h
@@ -331,6 +333,7 @@ if(DOXYGEN_FOUND)
     add_custom_target(doc
             COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/Doxyfile
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+    string(REPLACE ";" " " DOXY_HEADERS "${headers}")
     configure_file(Doxyfile.in Doxyfile)
 endif()
 

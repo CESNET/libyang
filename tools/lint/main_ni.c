@@ -39,7 +39,7 @@ void
 help(int shortout)
 {
     fprintf(stdout, "Usage:\n");
-    fprintf(stdout, "    yanglint [options] [-f { yang | yin | tree | tree-rfc | jsons}] <file>...\n");
+    fprintf(stdout, "    yanglint [options] [-f { yang | yin | tree | tree-rfc | info}] <file>...\n");
     fprintf(stdout, "        Validates the YANG module in <file>, and all its dependencies.\n\n");
     fprintf(stdout, "    yanglint [options] [-f { xml | json }] <schema>... <file>...\n");
     fprintf(stdout, "        Validates the YANG modeled data in <file> according to the <schema>.\n\n");
@@ -71,7 +71,7 @@ help(int shortout)
         "                        has no effect for the auto, rpc, rpcreply and notif TYPEs.\n\n"
         "  -f FORMAT, --format=FORMAT\n"
         "                        Convert to FORMAT. Supported formats: \n"
-        "                        yang, yin, tree and jsons (JSON) for schemas,\n"
+        "                        yang, yin, tree and info for schemas,\n"
         "                        xml, json for data.\n"
         "  -a, --auto            Modify the xml output by adding envelopes for autodetection.\n\n"
         "  -i, --allimplemented  Make all the imported modules implemented.\n\n"
@@ -125,7 +125,12 @@ help(int shortout)
         "                        Print only the specified subtree.\n"
         "  --tree-line-length=LINE_LENGTH\n"
         "                        Wrap lines if longer than the specified length (it is not a strict limit, longer lines\n"
-        "                        can often appear).\n"
+        "                        can often appear).\n\n"
+        "Info output specific options:\n"
+        "  -P INFOPATH, --info-path=INFOPATH\n"
+        "                        - Schema path with full module names used as node's prefixes, the path identify the root\n"
+        "                          node of the subtree to print information about.\n"
+        "  --single-node         - Print information about a single node instead of a subtree."
         "\n");
 }
 
@@ -253,7 +258,7 @@ int
 main_ni(int argc, char* argv[])
 {
     int ret = EXIT_FAILURE;
-    int opt, opt_index = 0, i, featsize = 0, compiled = 0;
+    int opt, opt_index = 0, i, featsize = 0;
     struct option options[] = {
 #if 0
         {"auto",             no_argument,       NULL, 'a'},
@@ -268,7 +273,6 @@ main_ni(int argc, char* argv[])
         {"tree-path",        required_argument, NULL, 'P'},
         {"tree-line-length", required_argument, NULL, 'L'},
 #endif
-        {"compiled",         no_argument,       NULL, 'c'},
         {"help",             no_argument,       NULL, 'h'},
 #if 0
         {"tree-help",        no_argument,       NULL, 'H'},
@@ -281,10 +285,12 @@ main_ni(int argc, char* argv[])
 #endif
         {"output",           required_argument, NULL, 'o'},
         {"path",             required_argument, NULL, 'p'},
+        {"info-path",        required_argument, NULL, 'P'},
 #if 0
         {"running",          required_argument, NULL, 'r'},
         {"operational",      required_argument, NULL, 'O'},
 #endif
+        {"single-node",      no_argument,       NULL, 'q'},
         {"strict",           no_argument,       NULL, 's'},
         {"type",             required_argument, NULL, 't'},
         {"version",          no_argument,       NULL, 'v'},
@@ -295,7 +301,7 @@ main_ni(int argc, char* argv[])
         {NULL,               required_argument, NULL, 'y'},
         {NULL,               0,                 NULL, 0}
     };
-    FILE *out = stdout;
+    struct lyp_out *out = NULL;
     struct ly_ctx *ctx = NULL;
     const struct lys_module *mod;
     LYS_OUTFORMAT outformat_s = 0;
@@ -359,9 +365,6 @@ main_ni(int argc, char* argv[])
             }
             break;
 #endif
-        case 'c':
-            compiled = 1;
-            break;
         case 'f':
             if (!strcasecmp(optarg, "yang")) {
                 outformat_s = LYS_OUT_YANG;
@@ -378,11 +381,9 @@ main_ni(int argc, char* argv[])
             } else if (!strcasecmp(optarg, "yin")) {
                 outformat_s = LYS_OUT_YIN;
                 outformat_d = 0;
-#if 0
-            } else if (!strcasecmp(optarg, "jsons")) {
-                outformat_s = LYS_OUT_JSON;
+            } else if (!strcasecmp(optarg, "info")) {
+                outformat_s = LYS_OUT_YANG_COMPILED;
                 outformat_d = 0;
-#endif
             } else if (!strcasecmp(optarg, "xml")) {
                 outformat_s = 0;
                 outformat_d = LYD_XML;
@@ -428,9 +429,11 @@ main_ni(int argc, char* argv[])
         case 'n':
             outoptions_s |= LYS_OUTOPT_TREE_NO_LEAFREF;
             break;
+#endif
         case 'P':
             outtarget_s = optarg;
             break;
+#if 0
         case 'L':
             outline_length_s = atoi(optarg);
             break;
@@ -468,13 +471,17 @@ main_ni(int argc, char* argv[])
             break;
 #endif
         case 'o':
-            if (out != stdout) {
-                fclose(out);
-            }
-            out = fopen(optarg, "w");
-            if (!out) {
-                fprintf(stderr, "yanglint error: unable open output file %s (%s)\n", optarg, strerror(errno));
-                goto cleanup;
+            if (out) {
+                if (lyp_filepath(out, optarg) != NULL) {
+                    fprintf(stderr, "yanglint error: unable open output file %s (%s)\n", optarg, strerror(errno));
+                    goto cleanup;
+                }
+            } else {
+                out = lyp_new_filepath(optarg);
+                if (!out) {
+                    fprintf(stderr, "yanglint error: unable open output file %s (%s)\n", optarg, strerror(errno));
+                    goto cleanup;
+                }
             }
             break;
         case 'p':
@@ -605,13 +612,6 @@ main_ni(int argc, char* argv[])
         help(1);
         fprintf(stderr, "yanglint error: missing <file> to process\n");
         goto cleanup;
-    }
-    if (compiled) {
-        if (outformat_s != LYS_OUT_YANG) {
-            fprintf(stderr, "yanglint warning: --compiled option takes effect only in case of printing schemas in YANG format.\n");
-        } else {
-            outformat_s = LYS_OUT_YANG_COMPILED;
-        }
     }
     if (outformat_s && outformat_s != LYS_OUT_TREE && (optind + 1) < argc) {
         /* we have multiple schemas to be printed as YIN or YANG */
@@ -765,24 +765,19 @@ main_ni(int argc, char* argv[])
 
     /* convert (print) to FORMAT */
     if (outformat_s) {
-        if (outformat_s == LYS_OUT_JSON && mods->count > 1) {
-            fputs("[", out);
-        }
-        for (u = 0; u < mods->count; u++) {
-            if (u) {
-                if (outformat_s == LYS_OUT_JSON) {
-                    fputs(",\n", out);
-                } else {
-                    fputs("\n", out);
-                }
+        if (outtarget_s) {
+            const struct lysc_node *node = lys_find_node(ctx, NULL, outtarget_s);
+            if (node) {
+                lys_print_node(out, node, outformat_s, outline_length_s, outoptions_s);
+            } else {
+                fprintf(stderr, "yanglint error: The requested schema node \"%s\" does not exists.\n", outtarget_s);
             }
-            lys_print_file(out, (struct lys_module *)mods->objs[u], outformat_s, outline_length_s, outoptions_s);
-        }
-        if (outformat_s == LYS_OUT_JSON) {
-            if (mods->count > 1) {
-                fputs("]\n", out);
-            } else if (mods->count == 1) {
-                fputs("\n", out);
+        } else {
+            for (u = 0; u < mods->count; u++) {
+                if (u) {
+                    lyp_print(out, "\n");
+                }
+                lys_print(out, (struct lys_module *)mods->objs[u], outformat_s, outline_length_s, outoptions_s);
             }
         }
     } else if (data) {
@@ -1060,7 +1055,7 @@ parse_reply:
                     }
                 }
 #endif
-                lyd_print_file(out, data_item->tree, outformat_d, LYDP_WITHSIBLINGS | LYDP_FORMAT /* TODO defaults | options_dflt */);
+                lyd_print(out, data_item->tree, outformat_d, LYDP_WITHSIBLINGS | LYDP_FORMAT /* TODO defaults | options_dflt */);
 #if 0
                 if (envelope_s) {
                     if (data_item->type == LYD_OPT_RPC && data_item->tree->schema->nodetype != LYS_RPC) {
@@ -1085,9 +1080,6 @@ parse_reply:
     ret = EXIT_SUCCESS;
 
 cleanup:
-    if (out && out != stdout) {
-        fclose(out);
-    }
     ly_set_free(mods, NULL);
     ly_set_free(searchpaths, NULL);
     for (i = 0; i < featsize; i++) {
@@ -1101,5 +1093,6 @@ cleanup:
     }
     ly_ctx_destroy(ctx, NULL);
 
+    lyp_free(out, NULL, 1);
     return ret;
 }

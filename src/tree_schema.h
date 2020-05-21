@@ -32,6 +32,14 @@ extern "C" {
 #endif
 
 /**
+ * @defgroup schematree Schema Tree
+ * @ingroup trees
+ * @{
+ *
+ * Data structures and functions to manipulate and access schema tree.
+ */
+
+/**
  * @brief Macro to iterate via all elements in a schema tree which can be instantiated in data tree
  * (skips cases, input, output). This is the opening part to the #LYSC_TREE_DFS_END - they always have to be used together.
  *
@@ -134,8 +142,6 @@ typedef enum {
     LYS_OUT_YIN = 3,     /**< YIN schema output format */
 
     LYS_OUT_TREE,        /**< Tree schema output format, for more information see the [printers](@ref howtoschemasprinters) page */
-    LYS_OUT_INFO,        /**< Info schema output format, for more information see the [printers](@ref howtoschemasprinters) page */
-    LYS_OUT_JSON,        /**< JSON schema output format, reflecting YIN format with conversion of attributes to object's members */
 } LYS_OUTFORMAT;
 
 #define LY_REV_SIZE 11   /**< revision data string length (including terminating NULL byte) */
@@ -579,7 +585,7 @@ struct lysp_augment {
 #define LYS_DEV_ADD 2                /**< deviate type add */
 #define LYS_DEV_DELETE 3             /**< deviate type delete */
 #define LYS_DEV_REPLACE 4            /**< deviate type replace */
-/** @} */
+/** @} deviatetypes */
 
 /**
  * @brief Generic deviate structure to get type and cast to lysp_deviate_* structure
@@ -742,7 +748,6 @@ struct lysp_deviation {
 
 /**
  * @defgroup snodeflags Schema nodes flags
- * @ingroup schematree
  * @{
  */
 #define LYS_CONFIG_W     0x01        /**< config true; also set for input children nodes */
@@ -807,7 +812,7 @@ struct lysp_deviation {
 #define LYS_ISENUM       0x200       /**< flag to simply distinguish type in struct lysc_type_bitenum_item */
 
 #define LYS_FLAGS_COMPILED_MASK 0xff /**< mask for flags that maps to the compiled structures */
-/** @} */
+/** @} snodeflags */
 
 /**
  * @brief Generic YANG data node
@@ -1208,9 +1213,7 @@ struct lysc_feature {
 #define LYS_IFF_AND  0x01 /**< operand "and" */
 #define LYS_IFF_OR   0x02 /**< operand "or" */
 #define LYS_IFF_F    0x03 /**< feature */
-/**
- * @}
- */
+/** @} ifftokens */
 
 /**
  * @brief Compiled YANG revision statement
@@ -1908,8 +1911,6 @@ const struct lysc_node *lys_getnext(const struct lysc_node *last, const struct l
 
 /**
  * @defgroup sgetnextflags lys_getnext() flags
- * @ingroup schematree
- *
  * @{
  */
 #define LYS_GETNEXT_WITHCHOICE   0x01 /**< lys_getnext() option to allow returning #LYS_CHOICE nodes instead of looking into them */
@@ -1936,6 +1937,25 @@ const struct lysc_node *lys_getnext(const struct lysc_node *last, const struct l
  */
 const struct lysc_node *lys_find_child(const struct lysc_node *parent, const struct lys_module *module,
                                        const char *name, size_t name_len, uint16_t nodetype, int options);
+
+/**
+ * @brief Get schema node specified by the schema path.
+ *
+ * In case the @p qpath uses prefixes (from imports or of the schema itself), the @p context_node must be specified
+ * even if the path is absolute. In case the @p context_node is not provided, the names of the schemas are expected as the
+ * node's prefixes in the @qpath. It also means that the relative paths are accepted only with the schema prefixes,
+ * not the full names.
+ *
+ * @param[in] ctx libyang context for logging and getting the correct schema if @p contet_node not provided.
+ * @param[in] context_node Context node for relative paths and/or as a source of the context module to resolve node's
+ * prefixes in @qpath.
+ * @param[in] qpath Schema path to be resolved. Not prefixed nodes inherits the prefix from its parent nodes. It means
+ * that the first node in the path must be prefixed. Both, import prefixes as well as full schema names are accepted as
+ * prefixes according to the @p context_node parameter presence.
+ * @return NULL in case of invalid path.
+ * @return found schema node.
+ */
+const struct lysc_node *lys_find_node(struct ly_ctx *ctx, const struct lysc_node *context_node, const char *qpath);
 
 /**
  * @brief Make the specific module implemented.
@@ -1985,7 +2005,7 @@ LY_ERR lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node
  */
 const char *lys_nodetype2str(uint16_t nodetype);
 
-/** @} */
+/** @} schematree */
 
 #ifdef __cplusplus
 }

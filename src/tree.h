@@ -24,6 +24,14 @@ extern "C" {
 #endif
 
 /**
+ * @defgroup trees Trees
+ *
+ * Generic macros, functions, etc. to work with both [schema](@ref schematree) and [data](@ref datatree) trees.
+ *
+ * @{
+ */
+
+/**
  * @brief Type (i.e. size) of the [sized array](@ref sizedarrays)'s size counter.
  *
  * To print the value via a print format, use LY_PRI_ARRAY_SIZE_TYPE specifier.
@@ -68,13 +76,6 @@ extern "C" {
     for (INDEX = 0; \
          ARRAY && INDEX < (*((LY_ARRAY_SIZE_TYPE*)(ARRAY) - 1)); \
          ++INDEX)
-
-/**
- * @defgroup schematree Schema Tree
- * @{
- *
- * Data structures and functions to manipulate and access schema tree.
- */
 
 /**
  * @brief Get a number of records in the ARRAY.
@@ -165,7 +166,7 @@ typedef enum
  */
 extern const char* ly_data_type2str[LY_DATA_TYPE_COUNT];
 
-/** @} */
+/** @} trees */
 
 #ifdef __cplusplus
 }

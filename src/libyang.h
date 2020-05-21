@@ -28,6 +28,8 @@ extern "C" {
 #include "tree.h"
 #include "tree_data.h"
 #include "tree_schema.h"
+#include "printer.h"
+#include "printer_data.h"
 #include "printer_schema.h"
 #include "printer_data.h"
 #include "plugins_types.h"
