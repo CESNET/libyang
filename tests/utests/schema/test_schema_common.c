@@ -1,0 +1,319 @@
+/*
+ * @file set.c
+ * @author: Radek Krejci <rkrejci@cesnet.cz>
+ * @brief unit tests for functions from common.c
+ *
+ * Copyright (c) 2018 CESNET, z.s.p.o.
+ *
+ * This source code is licensed under BSD 3-Clause License (the "License").
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://opensource.org/licenses/BSD-3-Clause
+ */
+
+#include <stdarg.h>
+#include <stddef.h>
+#include <stdio.h>
+#include <setjmp.h>
+#include <cmocka.h>
+
+#include <string.h>
+
+static void
+test_getnext(void **state)
+{
+    *state = test_getnext;
+
+    struct ly_ctx *ctx;
+    struct lys_module *mod;
+    const struct lysc_node *node = NULL, *four;
+    const struct lysc_node_container *cont;
+    const struct lysc_action *rpc;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module a {yang-version 1.1; namespace urn:a;prefix a;"
+                                        "container a { container one {presence test;} leaf two {type string;} leaf-list three {type string;}"
+                                        "  list four {config false;} choice x { leaf five {type string;} case y {leaf six {type string;}}}"
+                                        "  anyxml seven; action eight {input {leaf eight-input {type string;}} output {leaf eight-output {type string;}}}"
+                                        "  notification nine {leaf nine-data {type string;}}}"
+                                        "leaf b {type string;} leaf-list c {type string;} list d {config false;}"
+                                        "choice x { leaf e {type string;} case y {leaf f {type string;}}} anyxml g;"
+                                        "rpc h {input {leaf h-input {type string;}} output {leaf h-output {type string;}}}"
+                                        "rpc i;"
+                                        "notification j {leaf i-data {type string;}}"
+                                        "notification k;}", LYS_IN_YANG));
+    assert_non_null(node = lys_getnext(node, NULL, mod->compiled, 0));
+    assert_string_equal("a", node->name);
+    cont = (const struct lysc_node_container*)node;
+    assert_non_null(node = lys_getnext(node, NULL, mod->compiled, 0));
+    assert_string_equal("b", node->name);
+    assert_non_null(node = lys_getnext(node, NULL, mod->compiled, 0));
+    assert_string_equal("c", node->name);
+    assert_non_null(node = lys_getnext(node, NULL, mod->compiled, 0));
+    assert_string_equal("d", node->name);
+    assert_non_null(node = lys_getnext(node, NULL, mod->compiled, 0));
+    assert_string_equal("e", node->name);
+    assert_non_null(node = lys_getnext(node, NULL, mod->compiled, 0));
+    assert_string_equal("f", node->name);
+    assert_non_null(node = lys_getnext(node, NULL, mod->compiled, 0));
+    assert_string_equal("g", node->name);
+    assert_non_null(node = lys_getnext(node, NULL, mod->compiled, 0));
+    assert_string_equal("h", node->name);
+    rpc = (const struct lysc_action*)node;
+    assert_non_null(node = lys_getnext(node, NULL, mod->compiled, 0));
+    assert_string_equal("i", node->name);
+    assert_non_null(node = lys_getnext(node, NULL, mod->compiled, 0));
+    assert_string_equal("j", node->name);
+    assert_non_null(node = lys_getnext(node, NULL, mod->compiled, 0));
+    assert_string_equal("k", node->name);
+    assert_null(node = lys_getnext(node, NULL, mod->compiled, 0));
+    /* Inside container */
+    assert_non_null(node = lys_getnext(node, (const struct lysc_node*)cont, mod->compiled, 0));
+    assert_string_equal("one", node->name);
+    assert_non_null(node = lys_getnext(node, (const struct lysc_node*)cont, mod->compiled, 0));
+    assert_string_equal("two", node->name);
+    assert_non_null(node = lys_getnext(node, (const struct lysc_node*)cont, mod->compiled, 0));
+    assert_string_equal("three", node->name);
+    assert_non_null(node = four = lys_getnext(node, (const struct lysc_node*)cont, mod->compiled, 0));
+    assert_string_equal("four", node->name);
+    assert_non_null(node = lys_getnext(node, (const struct lysc_node*)cont, mod->compiled, 0));
+    assert_string_equal("five", node->name);
+    assert_non_null(node = lys_getnext(node, (const struct lysc_node*)cont, mod->compiled, 0));
+    assert_string_equal("six", node->name);
+    assert_non_null(node = lys_getnext(node, (const struct lysc_node*)cont, mod->compiled, 0));
+    assert_string_equal("seven", node->name);
+    assert_non_null(node = lys_getnext(node, (const struct lysc_node*)cont, mod->compiled, 0));
+    assert_string_equal("eight", node->name);
+    assert_non_null(node = lys_getnext(node, (const struct lysc_node*)cont, mod->compiled, 0));
+    assert_string_equal("nine", node->name);
+    assert_null(node = lys_getnext(node, (const struct lysc_node*)cont, mod->compiled, 0));
+    /* Inside RPC */
+    assert_non_null(node = lys_getnext(node, (const struct lysc_node*)rpc, mod->compiled, 0));
+    assert_string_equal("h-input", node->name);
+    assert_null(node = lys_getnext(node, (const struct lysc_node*)rpc, mod->compiled, 0));
+
+    /* options */
+    assert_non_null(node = lys_getnext(four, (const struct lysc_node*)cont, mod->compiled, LYS_GETNEXT_WITHCHOICE));
+    assert_string_equal("x", node->name);
+    assert_non_null(node = lys_getnext(node, (const struct lysc_node*)cont, mod->compiled, LYS_GETNEXT_WITHCHOICE));
+    assert_string_equal("seven", node->name);
+
+    assert_non_null(node = lys_getnext(four, (const struct lysc_node*)cont, mod->compiled, LYS_GETNEXT_NOCHOICE));
+    assert_string_equal("seven", node->name);
+
+    assert_non_null(node = lys_getnext(four, (const struct lysc_node*)cont, mod->compiled, LYS_GETNEXT_WITHCASE));
+    assert_string_equal("five", node->name);
+    assert_non_null(node = lys_getnext(node, (const struct lysc_node*)cont, mod->compiled, LYS_GETNEXT_WITHCASE));
+    assert_string_equal("y", node->name);
+    assert_non_null(node = lys_getnext(node, (const struct lysc_node*)cont, mod->compiled, LYS_GETNEXT_WITHCASE));
+    assert_string_equal("seven", node->name);
+
+    assert_non_null(node = lys_getnext(NULL, NULL, mod->compiled, LYS_GETNEXT_INTONPCONT));
+    assert_string_equal("one", node->name);
+
+    assert_non_null(node = lys_getnext(NULL, (const struct lysc_node*)rpc, mod->compiled, LYS_GETNEXT_OUTPUT));
+    assert_string_equal("h-output", node->name);
+    assert_null(node = lys_getnext(node, (const struct lysc_node*)rpc, mod->compiled, LYS_GETNEXT_OUTPUT));
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b; feature f;"
+                                        "leaf a {type string; if-feature f;}"
+                                        "leaf b {type string;}}", LYS_IN_YANG));
+    assert_non_null(node = lys_getnext(NULL, NULL, mod->compiled, 0));
+    assert_string_equal("b", node->name);
+    assert_non_null(node = lys_getnext(NULL, NULL, mod->compiled, LYS_GETNEXT_NOSTATECHECK));
+    assert_string_equal("a", node->name);
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module c {namespace urn:c;prefix c; rpc c;}", LYS_IN_YANG));
+    assert_non_null(node = lys_getnext(NULL, NULL, mod->compiled, 0));
+    assert_string_equal("c", node->name);
+    assert_null(node = lys_getnext(node, NULL, mod->compiled, LYS_GETNEXT_NOSTATECHECK));
+
+    assert_non_null(mod = lys_parse_mem(ctx, "module d {namespace urn:d;prefix d; notification d;}", LYS_IN_YANG));
+    assert_non_null(node = lys_getnext(NULL, NULL, mod->compiled, 0));
+    assert_string_equal("d", node->name);
+    assert_null(node = lys_getnext(node, NULL, mod->compiled, LYS_GETNEXT_NOSTATECHECK));
+
+    *state = NULL;
+    ly_ctx_destroy(ctx, NULL);
+}
+static void
+test_date(void **state)
+{
+    *state = test_date;
+
+    assert_int_equal(LY_EINVAL, lysp_check_date(NULL, NULL, 0, "date"));
+    logbuf_assert("Invalid argument date (lysp_check_date()).");
+    assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "x", 1, "date"));
+    logbuf_assert("Invalid argument date_len (lysp_check_date()).");
+    assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "nonsencexx", 10, "date"));
+    logbuf_assert("Invalid value \"nonsencexx\" of \"date\".");
+    assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "123x-11-11", 10, "date"));
+    logbuf_assert("Invalid value \"123x-11-11\" of \"date\".");
+    assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "2018-13-11", 10, "date"));
+    logbuf_assert("Invalid value \"2018-13-11\" of \"date\".");
+    assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "2018-11-41", 10, "date"));
+    logbuf_assert("Invalid value \"2018-11-41\" of \"date\".");
+    assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "2018-02-29", 10, "date"));
+    logbuf_assert("Invalid value \"2018-02-29\" of \"date\".");
+    assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "2018.02-28", 10, "date"));
+    logbuf_assert("Invalid value \"2018.02-28\" of \"date\".");
+    assert_int_equal(LY_EINVAL, lysp_check_date(NULL, "2018-02.28", 10, "date"));
+    logbuf_assert("Invalid value \"2018-02.28\" of \"date\".");
+
+    assert_int_equal(LY_SUCCESS, lysp_check_date(NULL, "2018-11-11", 10, "date"));
+    assert_int_equal(LY_SUCCESS, lysp_check_date(NULL, "2018-02-28", 10, "date"));
+    assert_int_equal(LY_SUCCESS, lysp_check_date(NULL, "2016-02-29", 10, "date"));
+
+    *state = NULL;
+}
+
+static void
+test_revisions(void **state)
+{
+    (void) state; /* unused */
+
+    struct lysp_revision *revs = NULL, *rev;
+
+    logbuf_clean();
+    /* no error, it just does nothing */
+    lysp_sort_revisions(NULL);
+    logbuf_assert("");
+
+    /* revisions are stored in wrong order - the newest is the last */
+    LY_ARRAY_NEW_RET(NULL, revs, rev,);
+    strcpy(rev->date, "2018-01-01");
+    LY_ARRAY_NEW_RET(NULL, revs, rev,);
+    strcpy(rev->date, "2018-12-31");
+
+    assert_int_equal(2, LY_ARRAY_SIZE(revs));
+    assert_string_equal("2018-01-01", &revs[0]);
+    assert_string_equal("2018-12-31", &revs[1]);
+    /* the order should be fixed, so the newest revision will be the first in the array */
+    lysp_sort_revisions(revs);
+    assert_string_equal("2018-12-31", &revs[0]);
+    assert_string_equal("2018-01-01", &revs[1]);
+
+    LY_ARRAY_FREE(revs);
+}
+
+LY_ERR test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), const char *UNUSED(submod_name),
+                    const char *UNUSED(sub_rev), void *user_data, LYS_INFORMAT *format,
+                    const char **module_data, void (**free_module_data)(void *model_data, void *user_data))
+{
+    *module_data = user_data;
+    *format = LYS_IN_YANG;
+    *free_module_data = NULL;
+    return LY_SUCCESS;
+}
+
+static void
+test_typedef(void **state)
+{
+    *state = test_typedef;
+
+    struct ly_ctx *ctx = NULL;
+    const char *str;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+
+    str = "module a {namespace urn:a; prefix a; typedef binary {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"binary\" of typedef - name collision with a built-in type. Line number 1.");
+    str = "module a {namespace urn:a; prefix a; typedef bits {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"bits\" of typedef - name collision with a built-in type. Line number 1.");
+    str = "module a {namespace urn:a; prefix a; typedef boolean {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"boolean\" of typedef - name collision with a built-in type. Line number 1.");
+    str = "module a {namespace urn:a; prefix a; typedef decimal64 {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"decimal64\" of typedef - name collision with a built-in type. Line number 1.");
+    str = "module a {namespace urn:a; prefix a; typedef empty {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"empty\" of typedef - name collision with a built-in type. Line number 1.");
+    str = "module a {namespace urn:a; prefix a; typedef enumeration {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"enumeration\" of typedef - name collision with a built-in type. Line number 1.");
+    str = "module a {namespace urn:a; prefix a; typedef int8 {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"int8\" of typedef - name collision with a built-in type. Line number 1.");
+    str = "module a {namespace urn:a; prefix a; typedef int16 {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"int16\" of typedef - name collision with a built-in type. Line number 1.");
+    str = "module a {namespace urn:a; prefix a; typedef int32 {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"int32\" of typedef - name collision with a built-in type. Line number 1.");
+    str = "module a {namespace urn:a; prefix a; typedef int64 {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"int64\" of typedef - name collision with a built-in type. Line number 1.");
+    str = "module a {namespace urn:a; prefix a; typedef instance-identifier {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"instance-identifier\" of typedef - name collision with a built-in type. Line number 1.");
+    str = "module a {namespace urn:a; prefix a; typedef identityref {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"identityref\" of typedef - name collision with a built-in type. Line number 1.");
+    str = "module a {namespace urn:a; prefix a; typedef leafref {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"leafref\" of typedef - name collision with a built-in type. Line number 1.");
+    str = "module a {namespace urn:a; prefix a; typedef string {type int8;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"string\" of typedef - name collision with a built-in type. Line number 1.");
+    str = "module a {namespace urn:a; prefix a; typedef union {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"union\" of typedef - name collision with a built-in type. Line number 1.");
+    str = "module a {namespace urn:a; prefix a; typedef uint8 {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"uint8\" of typedef - name collision with a built-in type. Line number 1.");
+    str = "module a {namespace urn:a; prefix a; typedef uint16 {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"uint16\" of typedef - name collision with a built-in type. Line number 1.");
+    str = "module a {namespace urn:a; prefix a; typedef uint32 {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"uint32\" of typedef - name collision with a built-in type. Line number 1.");
+    str = "module a {namespace urn:a; prefix a; typedef uint64 {type string;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"uint64\" of typedef - name collision with a built-in type. Line number 1.");
+
+    str = "module mytypes {namespace urn:types; prefix t; typedef binary_ {type string;} typedef bits_ {type string;} typedef boolean_ {type string;} "
+          "typedef decimal64_ {type string;} typedef empty_ {type string;} typedef enumeration_ {type string;} typedef int8_ {type string;} typedef int16_ {type string;}"
+          "typedef int32_ {type string;} typedef int64_ {type string;} typedef instance-identifier_ {type string;} typedef identityref_ {type string;}"
+          "typedef leafref_ {type string;} typedef string_ {type int8;} typedef union_ {type string;} typedef uint8_ {type string;} typedef uint16_ {type string;}"
+          "typedef uint32_ {type string;} typedef uint64_ {type string;}}";
+    assert_non_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+
+    str = "module a {namespace urn:a; prefix a; typedef test {type string;} typedef test {type int8;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"test\" of typedef - name collision with another top-level type. Line number 1.");
+
+    str = "module a {namespace urn:a; prefix a; typedef x {type string;} container c {typedef x {type int8;}}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"x\" of typedef - scoped type collide with a top-level type. Line number 1.");
+
+    str = "module a {namespace urn:a; prefix a; container c {container d {typedef y {type int8;}} typedef y {type string;}}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"y\" of typedef - name collision with another scoped type. Line number 1.");
+
+    str = "module a {namespace urn:a; prefix a; container c {typedef y {type int8;} typedef y {type string;}}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"y\" of typedef - name collision with sibling type. Line number 1.");
+
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule b {belongs-to a {prefix a;} typedef x {type string;}}");
+    str = "module a {namespace urn:a; prefix a; include b; typedef x {type int8;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"x\" of typedef - name collision with another top-level type. Line number 1.");
+
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule b {belongs-to a {prefix a;} container c {typedef x {type string;}}}");
+    str = "module a {namespace urn:a; prefix a; include b; typedef x {type int8;}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"x\" of typedef - scoped type collide with a top-level type. Line number 1.");
+
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule b {belongs-to a {prefix a;} typedef x {type int8;}}");
+    str = "module a {namespace urn:a; prefix a; include b; container c {typedef x {type string;}}}";
+    assert_null(lys_parse_mem(ctx, str, LYS_IN_YANG));
+    logbuf_assert("Invalid name \"x\" of typedef - scoped type collide with a top-level type. Line number 1.");
+
+    *state = NULL;
+    ly_ctx_destroy(ctx, NULL);
+}

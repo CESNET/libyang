@@ -96,8 +96,8 @@ test_searchdirs(void **state)
     logbuf_assert("Invalid argument ctx (ly_ctx_unset_searchdirs()).");
 
     /* readable and executable, but not a directory */
-    assert_int_equal(LY_EINVAL, ly_ctx_set_searchdir(ctx, TESTS_BIN"/src_context"));
-    logbuf_assert("Given search directory \""TESTS_BIN"/src_context\" is not a directory.");
+    assert_int_equal(LY_EINVAL, ly_ctx_set_searchdir(ctx, TESTS_BIN"/utest_context"));
+    logbuf_assert("Given search directory \""TESTS_BIN"/utest_context\" is not a directory.");
     /* not executable */
     assert_int_equal(LY_EINVAL, ly_ctx_set_searchdir(ctx, __FILE__));
     logbuf_assert("Unable to fully access search directory \""__FILE__"\" (Permission denied).");
@@ -110,14 +110,14 @@ test_searchdirs(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(ctx, NULL));
 
     /* correct path */
-    assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(ctx, TESTS_BIN"/src"));
+    assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(ctx, TESTS_BIN"/utests"));
     assert_int_equal(1, ctx->search_paths.count);
-    assert_string_equal(TESTS_BIN"/src", ctx->search_paths.objs[0]);
+    assert_string_equal(TESTS_BIN"/utests", ctx->search_paths.objs[0]);
 
     /* duplicated paths */
-    assert_int_equal(LY_EEXIST, ly_ctx_set_searchdir(ctx, TESTS_BIN"/src"));
+    assert_int_equal(LY_EEXIST, ly_ctx_set_searchdir(ctx, TESTS_BIN"/utests"));
     assert_int_equal(1, ctx->search_paths.count);
-    assert_string_equal(TESTS_BIN"/src", ctx->search_paths.objs[0]);
+    assert_string_equal(TESTS_BIN"/utests", ctx->search_paths.objs[0]);
 
     /* another paths - add 8 to fill the initial buffer of the searchpaths list */
     assert_int_equal(LY_SUCCESS, ly_ctx_set_searchdir(ctx, TESTS_BIN"/CMakeFiles"));
@@ -132,7 +132,7 @@ test_searchdirs(void **state)
     /* get searchpaths */
     list = ly_ctx_get_searchdirs(ctx);
     assert_non_null(list);
-    assert_string_equal(TESTS_BIN"/src", list[0]);
+    assert_string_equal(TESTS_BIN"/utests", list[0]);
     assert_string_equal(TESTS_BIN"/CMakeFiles", list[1]);
     assert_string_equal(TESTS_SRC, list[5]);
     assert_string_equal(TESTS_BIN, list[6]);
@@ -144,8 +144,8 @@ test_searchdirs(void **state)
     assert_int_equal(LY_EINVAL, ly_ctx_unset_searchdirs(ctx, "/nonexistingfile"));
     logbuf_assert("Invalid argument value (ly_ctx_unset_searchdirs()).");
     /* first */
-    assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdirs(ctx, TESTS_BIN"/src"));
-    assert_string_not_equal(TESTS_BIN"/src", list[0]);
+    assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdirs(ctx, TESTS_BIN"/utests"));
+    assert_string_not_equal(TESTS_BIN"/utests", list[0]);
     assert_int_equal(7, ctx->search_paths.count);
     /* middle */
     assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdirs(ctx, TESTS_SRC));

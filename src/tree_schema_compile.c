@@ -538,7 +538,7 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct ly
     lysc_update_path(ctx, NULL, prefixed_name);
 
     if (!ext_mod) {
-        ext_mod = lys_module_find_prefix(ctx->mod_def, prefixed_name, u - 1);
+        ext_mod = u ? lys_module_find_prefix(ctx->mod_def, prefixed_name, u - 1) : ctx->mod_def;
         if (!ext_mod) {
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                 "Invalid prefix \"%.*s\" used for extension instance identifier.", u, prefixed_name);
