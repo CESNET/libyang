@@ -7040,7 +7040,7 @@ lys_compile_check_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
     }
 
 cleanup:
-    lyxp_set_cast(&tmp_set, LYXP_SET_EMPTY);
+    lyxp_set_free_content(&tmp_set);
     return ret;
 }
 
@@ -7139,7 +7139,7 @@ lys_compile_check_xpath(struct lysc_ctx *ctx, const struct lysc_node *node)
         ret = lys_compile_check_when_cyclic(&tmp_set, node);
         LY_CHECK_GOTO(ret, cleanup);
 
-        lyxp_set_cast(&tmp_set, LYXP_SET_EMPTY);
+        lyxp_set_free_content(&tmp_set);
     }
 
 check_musts:
@@ -7163,7 +7163,7 @@ check_musts:
             }
         }
 
-        lyxp_set_cast(&tmp_set, LYXP_SET_EMPTY);
+        lyxp_set_free_content(&tmp_set);
     }
 
     if ((node->nodetype & (LYS_RPC | LYS_ACTION)) && !input_done) {
@@ -7175,7 +7175,7 @@ check_musts:
     }
 
 cleanup:
-    lyxp_set_cast(&tmp_set, LYXP_SET_EMPTY);
+    lyxp_set_free_content(&tmp_set);
     return ret;
 }
 

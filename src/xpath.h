@@ -43,30 +43,32 @@ struct lysc_node;
  * [4] RelativeLocationPath ::= Step | RelativeLocationPath '/' Step | RelativeLocationPath '//' Step
  * [5] Step ::= '@'? NodeTest Predicate* | '.' | '..'
  * [6] NodeTest ::= NameTest | NodeType '(' ')'
- * [7] Predicate ::= '[' Expr ']'
- * [8] PrimaryExpr ::= '(' Expr ')' | Literal | Number | FunctionCall
- * [9] FunctionCall ::= FunctionName '(' ( Expr ( ',' Expr )* )? ')'
- * [10] PathExpr ::= LocationPath | PrimaryExpr Predicate*
+ * [7] NameTest ::= '*' | NCName ':' '*' | QName
+ * [8] NodeType ::= 'text' | 'node'
+ * [9] Predicate ::= '[' Expr ']'
+ * [10] PrimaryExpr ::= '(' Expr ')' | Literal | Number | FunctionCall
+ * [11] FunctionCall ::= FunctionName '(' ( Expr ( ',' Expr )* )? ')'
+ * [12] PathExpr ::= LocationPath | PrimaryExpr Predicate*
  *                 | PrimaryExpr Predicate* '/' RelativeLocationPath
  *                 | PrimaryExpr Predicate* '//' RelativeLocationPath
- * [11] OrExpr ::= AndExpr | OrExpr 'or' AndExpr
- * [12] AndExpr ::= EqualityExpr | AndExpr 'and' EqualityExpr
- * [13] EqualityExpr ::= RelationalExpr | EqualityExpr '=' RelationalExpr
+ * [13] OrExpr ::= AndExpr | OrExpr 'or' AndExpr
+ * [14] AndExpr ::= EqualityExpr | AndExpr 'and' EqualityExpr
+ * [15] EqualityExpr ::= RelationalExpr | EqualityExpr '=' RelationalExpr
  *                     | EqualityExpr '!=' RelationalExpr
- * [14] RelationalExpr ::= AdditiveExpr
+ * [16] RelationalExpr ::= AdditiveExpr
  *                       | RelationalExpr '<' AdditiveExpr
  *                       | RelationalExpr '>' AdditiveExpr
  *                       | RelationalExpr '<=' AdditiveExpr
  *                       | RelationalExpr '>=' AdditiveExpr
- * [15] AdditiveExpr ::= MultiplicativeExpr
+ * [17] AdditiveExpr ::= MultiplicativeExpr
  *                     | AdditiveExpr '+' MultiplicativeExpr
  *                     | AdditiveExpr '-' MultiplicativeExpr
- * [16] MultiplicativeExpr ::= UnaryExpr
+ * [18] MultiplicativeExpr ::= UnaryExpr
  *                     | MultiplicativeExpr '*' UnaryExpr
  *                     | MultiplicativeExpr 'div' UnaryExpr
  *                     | MultiplicativeExpr 'mod' UnaryExpr
- * [17] UnaryExpr ::= UnionExpr | '-' UnaryExpr
- * [18] UnionExpr ::= PathExpr | UnionExpr '|' PathExpr
+ * [19] UnaryExpr ::= UnionExpr | '-' UnaryExpr
+ * [20] UnionExpr ::= PathExpr | UnionExpr '|' PathExpr
  */
 
 /* expression tokens allocation */
@@ -186,8 +188,7 @@ struct lyxp_expr {
  * @brief Supported types of (partial) XPath results.
  */
 enum lyxp_set_type {
-    LYXP_SET_EMPTY = 0,
-    LYXP_SET_NODE_SET,
+    LYXP_SET_NODE_SET = 0,
     LYXP_SET_SCNODE_SET,
     LYXP_SET_BOOLEAN,
     LYXP_SET_NUMBER,
@@ -320,6 +321,13 @@ LY_ERR lyxp_atomize(struct lyxp_expr *exp, LYD_FORMAT format, const struct lys_m
  * @return LY_ERR
  */
 LY_ERR lyxp_set_cast(struct lyxp_set *set, enum lyxp_set_type target);
+
+/**
+ * @brief Free dynamic content of a set.
+ *
+ * @param[in] set Set to modify.
+ */
+void lyxp_set_free_content(struct lyxp_set *set);
 
 /**
  * @brief Insert schema node into set.

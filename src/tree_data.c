@@ -27,8 +27,10 @@
 #include "tree.h"
 #include "tree_data.h"
 #include "tree_data_internal.h"
+#include "tree_schema_internal.h"
 #include "hash_table.h"
 #include "tree_schema.h"
+#include "xpath.h"
 #include "xml.h"
 #include "plugins_exts_metadata.h"
 #include "plugins_exts_internal.h"
@@ -520,9 +522,11 @@ error:
     return NULL;
 }
 
-/* fill keys structure; if store is set, fill also each val */
+/* fill keys structure that is expected to be zeroed and must always be cleaned (even on error);
+ * if store is set, fill also each val */
 static LY_ERR
-ly_keys_parse(const struct lysc_node *list, const char *keys_str, size_t keys_len, int store, struct ly_keys *keys)
+ly_keys_parse(const struct lysc_node *list, const char *keys_str, size_t keys_len, int store, int log,
+              struct ly_keys *keys)
 {
     LY_ERR ret = LY_SUCCESS;
     char *next_key, *name;
@@ -548,7 +552,9 @@ ly_keys_parse(const struct lysc_node *list, const char *keys_str, size_t keys_le
         /* fill */
         keys->keys[keys->key_count].value = ly_keys_parse_next(&next_key, &name);
         if (!keys->keys[keys->key_count].value) {
-            LOGERR(list->module->ctx, LY_EINVAL, "Invalid keys string (at \"%s\").", next_key);
+            if (log) {
+                LOGERR(list->module->ctx, LY_EINVAL, "Invalid keys string (at \"%s\").", next_key);
+            }
             ret = LY_EINVAL;
             goto cleanup;
         }
@@ -556,7 +562,9 @@ ly_keys_parse(const struct lysc_node *list, const char *keys_str, size_t keys_le
         /* find schema node */
         key = lys_find_child(list, list->module, name, 0, LYS_LEAF, 0);
         if (!key) {
-            LOGERR(list->module->ctx, LY_EINVAL, "List \"%s\" has no key \"%s\".", list->name, name);
+            if (log) {
+                LOGERR(list->module->ctx, LY_EINVAL, "List \"%s\" has no key \"%s\".", list->name, name);
+            }
             ret = LY_EINVAL;
             goto cleanup;
         }
@@ -565,7 +573,9 @@ ly_keys_parse(const struct lysc_node *list, const char *keys_str, size_t keys_le
         /* check that we do not have it already */
         for (i = 0; i < keys->key_count; ++i) {
             if (keys->keys[i].schema == keys->keys[keys->key_count].schema) {
-                LOGERR(list->module->ctx, LY_EINVAL, "Duplicit key \"%s\" value.", name);
+                if (log) {
+                    LOGERR(list->module->ctx, LY_EINVAL, "Duplicit key \"%s\" value.", name);
+                }
                 ret = LY_EINVAL;
                 goto cleanup;
             }
@@ -589,7 +599,8 @@ cleanup:
 }
 
 LY_ERR
-lyd_create_list(const struct lysc_node *schema, const char *keys_str, size_t keys_len, struct lyd_node **node)
+lyd_create_list(const struct lysc_node *schema, const char *keys_str, size_t keys_len, LYD_FORMAT keys_format, int log,
+                struct lyd_node **node)
 {
     LY_ERR ret = LY_SUCCESS;
     const struct lysc_node *key_s;
@@ -597,10 +608,10 @@ lyd_create_list(const struct lysc_node *schema, const char *keys_str, size_t key
     struct ly_keys keys = {0};
     size_t i;
 
-    assert((schema->nodetype == LYS_LIST) && !(schema->flags & LYS_KEYLESS));
+    assert((schema->nodetype == LYS_LIST) && !(schema->flags & LYS_KEYLESS) && (keys_format != LYD_XML));
 
     /* parse keys */
-    LY_CHECK_GOTO(ret = ly_keys_parse(schema, keys_str, keys_len, 0, &keys), cleanup);
+    LY_CHECK_GOTO(ret = ly_keys_parse(schema, keys_str, keys_len, 0, log, &keys), cleanup);
 
     /* create list */
     LY_CHECK_GOTO(ret = lyd_create_inner(schema, &list), cleanup);
@@ -611,15 +622,24 @@ lyd_create_list(const struct lysc_node *schema, const char *keys_str, size_t key
         ++i;
     }
     if (i != keys.key_count) {
-        LOGERR(schema->module->ctx, LY_EINVAL, "List \"%s\" is missing some keys.", schema->name);
+        if (log) {
+            LOGERR(schema->module->ctx, LY_EINVAL, "List \"%s\" is missing some keys.", schema->name);
+        }
         ret = LY_EINVAL;
         goto cleanup;
     }
 
     /* create and insert all the keys */
     for (i = 0; i < keys.key_count; ++i) {
-        LY_CHECK_GOTO(ret = lyd_create_term((struct lysc_node *)keys.keys[i].schema, keys.keys[i].value,
-                                            strlen(keys.keys[i].value), NULL, lydjson_resolve_prefix, NULL, LYD_JSON, &key), cleanup);
+        if (keys_format == LYD_JSON) {
+            ret = lyd_create_term((struct lysc_node *)keys.keys[i].schema, keys.keys[i].value, strlen(keys.keys[i].value),
+                                  NULL, lydjson_resolve_prefix, NULL, LYD_JSON, &key);
+        } else {
+            assert(keys_format == LYD_SCHEMA);
+            ret = lyd_create_term((struct lysc_node *)keys.keys[i].schema, keys.keys[i].value, strlen(keys.keys[i].value),
+                                  NULL, lys_resolve_prefix, NULL, LYD_SCHEMA, &key);
+        }
+        LY_CHECK_GOTO(ret, cleanup);
         lyd_insert_node(list, NULL, key);
     }
 
@@ -782,7 +802,7 @@ lyd_new_list2(struct lyd_node *parent, const struct lys_module *module, const ch
     schema = lys_find_child(parent ? parent->schema : NULL, module, name, 0, LYS_LIST, 0);
     LY_CHECK_ERR_RET(!schema, LOGERR(ctx, LY_EINVAL, "List node \"%s\" not found.", name), NULL);
 
-    if (!lyd_create_list(schema, keys, keys ? strlen(keys) : 0, &ret) && parent) {
+    if (!lyd_create_list(schema, keys, keys ? strlen(keys) : 0, LYD_JSON, 1, &ret) && parent) {
         lyd_insert_node(parent, NULL, ret);
     }
     return ret;
@@ -2192,7 +2212,7 @@ lyd_find_sibling_next2(const struct lyd_node *first, const struct lysc_node *sch
         LY_CHECK_GOTO(rc = lyd_value_store(&val, schema, key_or_value, val_len, 0, lydjson_resolve_prefix, NULL, LYD_JSON), cleanup);
     } else if (key_or_value && (schema->nodetype == LYS_LIST)) {
         /* parse keys into canonical values */
-        LY_CHECK_GOTO(rc = ly_keys_parse(schema, key_or_value, val_len, 1, &keys), cleanup);
+        LY_CHECK_GOTO(rc = ly_keys_parse(schema, key_or_value, val_len, 1, 1, &keys), cleanup);
     }
 
     /* find first matching value */
@@ -2549,7 +2569,7 @@ lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_node *sc
     case LYS_LIST:
         if (schema->nodetype == LYS_LIST) {
             /* target used attributes: schema, hash, child (all keys) */
-            LY_CHECK_RET(lyd_create_list(schema, key_or_value, val_len, &target));
+            LY_CHECK_RET(lyd_create_list(schema, key_or_value, val_len, LYD_JSON, 1, &target));
         }
 
         /* find it */

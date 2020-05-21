@@ -93,11 +93,14 @@ LY_ERR lyd_create_inner(const struct lysc_node *schema, struct lyd_node **node);
  * @param[in] keys_str List instance key values in the form of "[key1='val1'][key2='val2']...".
  *            The keys do not have to be ordered but all of them must be set.
  * @param[in] keys_len Length of @p keys_str, must be set correctly.
+ * @param[in] keys_format Format of the values for keys.
+ * @param[in] log If 0, do not log any problems with @p keys_str format.
  * @param[out] node Created node.
  * @return LY_SUCCESS on success.
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_create_list(const struct lysc_node *schema, const char *keys_str, size_t keys_len, struct lyd_node **node);
+LY_ERR lyd_create_list(const struct lysc_node *schema, const char *keys_str, size_t keys_len, LYD_FORMAT keys_format,
+                       int log, struct lyd_node **node);
 
 /**
  * @brief Create an anyxml/anydata node.
