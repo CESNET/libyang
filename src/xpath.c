@@ -6565,7 +6565,7 @@ only_parse:
         orig_pos = 0;
         orig_size = set->used;
         orig_parent = NULL;
-        for (i = 0; i < set->used; ) {
+        for (i = 0; i < set->used; ++i) {
             set_init(&set2, set);
             set_insert_node(&set2, set->val.nodes[i].node, set->val.nodes[i].pos, set->val.nodes[i].type, 0);
             /* remember the node context position for position() and context size for last(),
