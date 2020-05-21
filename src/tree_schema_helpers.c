@@ -1689,3 +1689,13 @@ lys_resolve_prefix(const struct ly_ctx *UNUSED(ctx), const char *prefix, size_t 
 {
     return lys_module_find_prefix((const struct lys_module*)private, prefix, prefix_len);
 }
+
+const struct lysc_node *
+lysc_data_parent(const struct lysc_node *schema)
+{
+    const struct lysc_node *parent;
+
+    for (parent = schema->parent; parent && (parent->nodetype & (LYS_CHOICE | LYS_CASE)); parent = parent->parent);
+
+    return parent;
+}

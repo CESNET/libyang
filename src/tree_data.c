@@ -1075,14 +1075,10 @@ lyd_insert_check_schema(const struct lysc_node *parent, const struct lysc_node *
     const struct lysc_node *par2;
 
     assert(schema);
-
-    /* adjust parent first */
-    while (parent && (parent->nodetype & (LYS_CASE | LYS_CHOICE))) {
-        parent = parent->parent;
-    }
+    assert(!parent || !(parent->nodetype & (LYS_CASE | LYS_CHOICE)));
 
     /* find schema parent */
-    for (par2 = schema->parent; par2 && (par2->nodetype & (LYS_CASE | LYS_CHOICE)); par2 = par2->parent);
+    par2 = lysc_data_parent(schema);
 
     if (parent) {
         /* inner node */
@@ -1135,7 +1131,7 @@ lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node)
 
     LY_CHECK_ARG_RET(NULL, sibling, node, LY_EINVAL);
 
-    LY_CHECK_RET(lyd_insert_check_schema(sibling->schema->parent, node->schema));
+    LY_CHECK_RET(lyd_insert_check_schema(lysc_data_parent(sibling->schema), node->schema));
 
     if (node->schema->flags & LYS_KEY) {
         LOGERR(sibling->schema->module->ctx, LY_EINVAL, "Cannot insert key \"%s\".", node->schema->name);
@@ -1210,7 +1206,7 @@ lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node)
 
     LY_CHECK_ARG_RET(NULL, sibling, node, LY_EINVAL);
 
-    LY_CHECK_RET(lyd_insert_check_schema(sibling->schema->parent, node->schema));
+    LY_CHECK_RET(lyd_insert_check_schema(lysc_data_parent(sibling->schema), node->schema));
 
     if (node->schema->flags & LYS_KEY) {
         LOGERR(sibling->schema->module->ctx, LY_EINVAL, "Cannot insert key \"%s\".", node->schema->name);
@@ -1248,7 +1244,7 @@ lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node)
 
     LY_CHECK_ARG_RET(NULL, sibling, node, LY_EINVAL);
 
-    LY_CHECK_RET(lyd_insert_check_schema(sibling->schema->parent, node->schema));
+    LY_CHECK_RET(lyd_insert_check_schema(lysc_data_parent(sibling->schema), node->schema));
 
     if (node->schema->flags & LYS_KEY) {
         LOGERR(sibling->schema->module->ctx, LY_EINVAL, "Cannot insert key \"%s\".", node->schema->name);
@@ -2311,8 +2307,8 @@ lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *t
 
     LY_CHECK_ARG_RET(NULL, target, LY_EINVAL);
 
-    if (!siblings) {
-        /* no data */
+    if (!siblings || (lysc_data_parent(siblings->schema) != lysc_data_parent(target->schema))) {
+        /* no data or schema mismatch */
         if (match) {
             *match = NULL;
         }
@@ -2371,8 +2367,8 @@ lyd_find_sibling_set(const struct lyd_node *siblings, const struct lyd_node *tar
 
     LY_CHECK_ARG_RET(NULL, target, set, LY_EINVAL);
 
-    if (!siblings) {
-        /* no data */
+    if (!siblings || (lysc_data_parent(siblings->schema) != lysc_data_parent(target->schema))) {
+        /* no data or schema mismatch */
         return LY_ENOTFOUND;
     }
 
@@ -2526,7 +2522,7 @@ lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_node *sc
     struct lyd_node *target = NULL;
 
     LY_CHECK_ARG_RET(NULL, schema, LY_EINVAL);
-    if ((schema->nodetype == LYS_LIST) && schema->flags & LYS_KEYLESS) {
+    if ((schema->nodetype == LYS_LIST) && (schema->flags & LYS_KEYLESS)) {
         LOGERR(schema->module->ctx, LY_EINVAL, "Invalid arguments - key-less list (%s()).", __func__);
         return LY_EINVAL;
     } else if ((schema->nodetype & (LYS_LEAFLIST | LYS_LIST)) && !key_or_value) {
@@ -2538,8 +2534,8 @@ lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_node *sc
         return LY_EINVAL;
     }
 
-    if (!siblings) {
-        /* no data */
+    if (!siblings || (lysc_data_parent(siblings->schema) != lysc_data_parent(schema))) {
+        /* no data or schema mismatch */
         if (match) {
             *match = NULL;
         }

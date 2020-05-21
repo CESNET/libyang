@@ -898,4 +898,12 @@ enum ly_stmt lysp_match_kw(struct lys_yang_parser_ctx *ctx, const char **data);
 char *lysc_path_until(const struct lysc_node *node, const struct lysc_node *parent, LYSC_PATH_TYPE pathtype, char *buffer,
                       size_t buflen);
 
+/**
+ * @brief Get schema parent that can be instantiated in data. In other words, skip any choice or case nodes.
+ *
+ * @param[in] schema Schema node to get the parent for.
+ * @return Parent, NULL if top-level (in data).
+ */
+const struct lysc_node *lysc_data_parent(const struct lysc_node *schema);
+
 #endif /* LY_TREE_SCHEMA_INTERNAL_H_ */

@@ -498,19 +498,15 @@ lyd_val_uniq_find_leaf(const struct lysc_node_leaf *uniq_leaf, struct lyd_node *
     size_t depth = 0, i;
 
     /* get leaf depth */
-    for (iter = (struct lysc_node *)uniq_leaf; iter && (iter != list->schema); iter = iter->parent) {
-        if (!(iter->nodetype & (LYS_CHOICE | LYS_CASE))) {
-            ++depth;
-        }
+    for (iter = (struct lysc_node *)uniq_leaf; iter && (iter != list->schema); iter = lysc_data_parent(iter)) {
+        ++depth;
     }
 
     node = list;
     while (node && depth) {
         /* find schema node with this depth */
-        for (i = depth - 1, iter = (struct lysc_node *)uniq_leaf; i; iter = iter->parent) {
-            if (!(iter->nodetype & (LYS_CHOICE | LYS_CASE))) {
-                --i;
-            }
+        for (i = depth - 1, iter = (struct lysc_node *)uniq_leaf; i; iter = lysc_data_parent(iter)) {
+            --i;
         }
 
         /* find iter instance in children */
