@@ -94,7 +94,6 @@ jobs:
         - tar -xf cmocka-1.1.2.tar.xz
         - cd cmocka-1.1.2 && mkdir build && cd build && cmake .. && make -j2 && sudo make install && cd ../..
         - brew update
-        - brew install pcre2
       script:
         - mkdir build && cd build && cmake -DENABLE_VALGRIND_TESTS=OFF .. && make -j2 && ctest --output-on-failure && cd -
 
