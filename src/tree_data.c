@@ -2620,8 +2620,7 @@ lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct ly_set
     }
 
 cleanup:
-    //lyxp_set_free_content(&xp_set);
-    lyxp_set_cast(&xp_set, LYXP_SET_EMPTY);
+    lyxp_set_free_content(&xp_set);
     lyxp_expr_free((struct ly_ctx *)LYD_NODE_CTX(ctx_node), exp);
     return ret;
 }
