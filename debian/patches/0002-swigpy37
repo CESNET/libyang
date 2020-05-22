@@ -1,12 +1,18 @@
-Description: work around swig python 3.7 tp_new issue
- Python 3.7dm checks that the first argument to tp_new is in fact a tuple.
- Swig passes Py_None instead, causing an assert failure.  Hack around by
- sed'ing the swig-generated files...
-Author: David Lamparter <equinox-debian@diac24.net>
+From: David Lamparter <equinox-debian@diac24.net>
+Date: Fri, 22 May 2020 10:02:37 +0200
+Subject: work around swig python 3.7 tp_new issue
+
 Last-Update: 2018-11-08
 
+Python 3.7dm checks that the first argument to tp_new is in fact a tuple.
+Swig passes Py_None instead, causing an assert failure.  Hack around by
+sed'ing the swig-generated files...
+---
+ swig/python/CMakeLists.txt | 8 ++++++++
+ 1 file changed, 8 insertions(+)
+
 diff --git a/swig/python/CMakeLists.txt b/swig/python/CMakeLists.txt
-index 97d215e7b887..5d18b8bfd9d0 100644
+index a7b431b..26d6f45 100644
 --- a/swig/python/CMakeLists.txt
 +++ b/swig/python/CMakeLists.txt
 @@ -22,6 +22,14 @@ set_target_properties(_${PYTHON_SWIG_TARGET} PROPERTIES OUTPUT_NAME "_yang${PYTH
