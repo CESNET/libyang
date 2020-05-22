@@ -222,6 +222,7 @@ set(libsrc
     src/tree_schema_free.c
     src/tree_schema_compile.c
     src/tree_schema_helpers.c
+    src/parser.c
     src/parser_yang.c
     src/parser_yin.c
     src/parser_stmt.c
@@ -251,6 +252,10 @@ set(headers
     src/context.h
     src/tree.h
     src/tree_data.h
+    src/parser.h
+    src/parser_schema.h
+    src/plugins_exts.h
+    src/plugins_types.h
     src/printer.h
     src/printer_data.h
     src/tree_schema.h

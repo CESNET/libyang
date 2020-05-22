@@ -20,10 +20,11 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../../src/common.h"
-#include "../../src/tree_schema_internal.h"
-#include "../../src/xpath.h"
-#include "../../src/plugins_types.h"
+#include "../../../src/common.h"
+#include "../../../src/tree_schema_internal.h"
+#include "../../../src/parser_internal.h"
+#include "../../../src/xpath.h"
+#include "../../../src/plugins_types.h"
 
 void lysc_feature_free(struct ly_ctx *ctx, struct lysc_feature *feat);
 void yang_parser_ctx_free(struct lys_yang_parser_ctx *ctx);
@@ -96,97 +97,60 @@ static LY_ERR test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_
 }
 
 static void
-reset_mod(struct lys_module *module)
-{
-    struct ly_ctx *ctx = module->ctx;
-    lysc_module_free(module->compiled, NULL);
-    lysp_module_free(module->parsed);
-
-    FREE_STRING(ctx, module->name);
-    FREE_STRING(ctx, module->ns);
-    FREE_STRING(ctx, module->prefix);
-    FREE_STRING(ctx, module->filepath);
-    FREE_STRING(ctx, module->org);
-    FREE_STRING(ctx, module->contact);
-    FREE_STRING(ctx, module->dsc);
-    FREE_STRING(ctx, module->ref);
-    FREE_ARRAY(ctx, module->off_features, lysc_feature_free);
-
-    memset(module, 0, sizeof *module);
-    module->ctx = ctx;
-    module->implemented = 1;
-}
-
-static void
 test_module(void **state)
 {
     *state = test_module;
 
     const char *str;
-    struct lys_yang_parser_ctx *ctx = NULL;
-    struct lys_module mod = {0};
+    struct ly_ctx *ctx = NULL;
+    struct lys_module *mod = NULL;
     struct lysc_feature *f;
     struct lysc_iffeature *iff;
 
     str = "module test {namespace urn:test; prefix t;"
           "feature f1;feature f2 {if-feature f1;}}";
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &mod.ctx));
-    reset_mod(&mod);
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
 
     assert_int_equal(LY_EINVAL, lys_compile(NULL, 0));
     logbuf_assert("Invalid argument mod (lys_compile()).");
     assert_int_equal(LY_EINVAL, lys_compile(&mod, 0));
-    logbuf_assert("Invalid argument mod->parsed (lys_compile()).");
-    assert_int_equal(LY_SUCCESS, yang_parse_module(&ctx, str, &mod));
-    yang_parser_ctx_free(ctx);
-    mod.implemented = 0;
+    logbuf_assert("Invalid argument *mod (lys_compile()).");
+    assert_non_null(mod = lys_parse_mem_module(ctx, str, LYS_IN_YANG, 0, NULL, NULL));
+    assert_int_equal(0, mod->implemented);
     assert_int_equal(LY_SUCCESS, lys_compile(&mod, 0));
-    assert_null(mod.compiled);
-    mod.implemented = 1;
+    assert_null(mod->compiled);
+    mod->implemented = 1;
     assert_int_equal(LY_SUCCESS, lys_compile(&mod, 0));
-    assert_non_null(mod.compiled);
-    assert_string_equal("test", mod.name);
-    assert_string_equal("urn:test", mod.ns);
-    assert_string_equal("t", mod.prefix);
+    assert_non_null(mod->compiled);
+    assert_string_equal("test", mod->name);
+    assert_string_equal("urn:test", mod->ns);
+    assert_string_equal("t", mod->prefix);
     /* features */
-    assert_non_null(mod.compiled->features);
-    assert_int_equal(2, LY_ARRAY_SIZE(mod.compiled->features));
-    f = &mod.compiled->features[1];
+    assert_non_null(mod->compiled->features);
+    assert_int_equal(2, LY_ARRAY_SIZE(mod->compiled->features));
+    f = &mod->compiled->features[1];
     assert_non_null(f->iffeatures);
     assert_int_equal(1, LY_ARRAY_SIZE(f->iffeatures));
     iff = &f->iffeatures[0];
     assert_non_null(iff->expr);
     assert_non_null(iff->features);
     assert_int_equal(1, LY_ARRAY_SIZE(iff->features));
-    assert_ptr_equal(&mod.compiled->features[0], iff->features[0]);
-
-    lysc_module_free(mod.compiled, NULL);
-
-    assert_int_equal(LY_SUCCESS, lys_compile(&mod, LYSC_OPT_FREE_SP));
-    assert_non_null(mod.compiled);
-
-    lysc_module_free(mod.compiled, NULL);
-    mod.compiled = NULL;
+    assert_ptr_equal(&mod->compiled->features[0], iff->features[0]);
 
     /* submodules cannot be compiled directly */
     str = "submodule test {belongs-to xxx {prefix x;}}";
-    assert_int_equal(LY_EINVAL, yang_parse_module(&ctx, str, &mod));
-    yang_parser_ctx_free(ctx);
+    assert_null(lys_parse_mem_module(ctx, str, LYS_IN_YANG, 1, NULL, NULL));
     logbuf_assert("Input data contains submodule which cannot be parsed directly without its main module.");
-    assert_null(mod.parsed);
-    reset_mod(&mod);
 
     /* data definition name collision in top level */
-    assert_int_equal(LY_SUCCESS, yang_parse_module(&ctx, "module aa {namespace urn:aa;prefix aa;"
-                                                  "leaf a {type string;} container a{presence x;}}", &mod));
-    yang_parser_ctx_free(ctx);
+    assert_non_null(mod = lys_parse_mem_module(ctx, "module aa {namespace urn:aa;prefix aa;"
+                                        "leaf a {type string;} container a{presence x;}}", LYS_IN_YANG, 1, NULL, NULL));
     assert_int_equal(LY_EVALID, lys_compile(&mod, 0));
     logbuf_assert("Duplicate identifier \"a\" of data definition/RPC/action/notification statement. /aa:a");
-    assert_null(mod.compiled);
-    reset_mod(&mod);
+    assert_null(mod);
 
     *state = NULL;
-    ly_ctx_destroy(mod.ctx, NULL);
+    ly_ctx_destroy(ctx, NULL);
 }
 
 

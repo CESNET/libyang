@@ -20,7 +20,6 @@
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <limits.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -37,6 +36,7 @@
 #include "tree.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
+#include "parser_internal.h"
 
 API const struct lysc_node *
 lys_getnext(const struct lysc_node *last, const struct lysc_node *parent, const struct lysc_module *module, int options)
@@ -737,7 +737,7 @@ lys_set_implemented_internal(struct lys_module *mod, uint8_t value)
     mod->implemented = value;
 
     /* compile the schema */
-    LY_CHECK_RET(lys_compile(mod, LYSC_OPT_INTERNAL));
+    LY_CHECK_RET(lys_compile(&mod, LYSC_OPT_INTERNAL));
 
     return LY_SUCCESS;
 }
@@ -992,165 +992,109 @@ error:
 }
 
 API struct lys_module *
-lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
+lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format)
 {
     struct lys_module *mod;
+    char *filename, *rev, *dot;
+    size_t len;
 
-    mod = lys_parse_mem_module(ctx, data, format, 1, NULL, NULL);
+    LY_CHECK_ARG_RET(NULL, ctx, in, format > LYS_IN_UNKNOWN, NULL);
+
+    mod = lys_parse_mem_module(ctx, in->current, format, 1, NULL, NULL);
     LY_CHECK_RET(!mod, NULL);
 
-    if (lys_compile(mod, 0)) {
-        ly_set_rm(&ctx->list, mod, NULL);
-        lys_module_free(mod, NULL);
-        return NULL;
+    switch (in->type) {
+    case LY_IN_FILEPATH:
+        /* check that name and revision match filename */
+        filename = strrchr(in->method.fpath.filepath, '/');
+        if (!filename) {
+            filename = in->method.fpath.filepath;
+        } else {
+            filename++;
+        }
+        rev = strchr(filename, '@');
+        dot = strrchr(filename, '.');
+
+        /* name */
+        len = strlen(mod->name);
+        if (strncmp(filename, mod->name, len) ||
+                ((rev && rev != &filename[len]) || (!rev && dot != &filename[len]))) {
+            LOGWRN(ctx, "File name \"%s\" does not match module name \"%s\".", filename, mod->name);
+        }
+        if (rev) {
+            len = dot - ++rev;
+            if (!mod->parsed->revs || len != 10 || strncmp(mod->parsed->revs[0].date, rev, len)) {
+                LOGWRN(ctx, "File name \"%s\" does not match module revision \"%s\".", filename,
+                       mod->parsed->revs ? mod->parsed->revs[0].date : "none");
+            }
+        }
+
+        break;
+    case LY_IN_FD:
+    case LY_IN_FILE:
+    case LY_IN_MEMORY:
+        /* nothing special to do */
+        break;
+    default:
+        LOGINT(ctx);
+        break;
     }
+
+    lys_parser_fill_filepath(ctx, in, &mod->filepath);
+    lys_compile(&mod, 0);
+
     return mod;
 }
 
-static void
-lys_parse_set_filename(struct ly_ctx *ctx, const char **filename, int fd)
+API struct lys_module *
+lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
 {
-    char path[PATH_MAX];
+	LY_ERR ret;
+    struct ly_in *in = NULL;
+    struct lys_module *result = NULL;
 
-#ifdef __APPLE__
-    if (fcntl(fd, F_GETPATH, path) != -1) {
-        *filename = lydict_insert(ctx, path, 0);
-    }
-#else
-    int len;
-    char proc_path[32];
+    LY_CHECK_ARG_RET(ctx, data, format != LYS_IN_UNKNOWN, NULL);
 
-    /* get URI if there is /proc */
-    sprintf(proc_path, "/proc/self/fd/%d", fd);
-    if ((len = readlink(proc_path, path, PATH_MAX - 1)) > 0) {
-        *filename = lydict_insert(ctx, path, len);
-    }
-#endif
-}
+    LY_CHECK_ERR_RET(ret = ly_in_new_memory(data, &in), LOGERR(ctx, ret, "Unable to create input handler."), NULL);
 
-void *
-lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, int implement, struct lys_parser_ctx *main_ctx,
-              lys_custom_check custom_check, void *check_data)
-{
-    void *result;
-    struct lys_module *mod = NULL;
-    struct lysp_submodule *submod = NULL;
-    size_t length;
-    char *addr;
-
-    LY_CHECK_ARG_RET(ctx, ctx, NULL);
-    if (fd < 0) {
-        LOGARG(ctx, fd);
-        return NULL;
-    }
-
-    LY_CHECK_RET(ly_mmap(ctx, fd, &length, (void **)&addr), NULL);
-    if (!addr) {
-        LOGERR(ctx, LY_EINVAL, "Empty schema file.");
-        return NULL;
-    }
-
-    if (main_ctx) {
-        result = submod = lys_parse_mem_submodule(ctx, addr, format, main_ctx, custom_check, check_data);
-    } else {
-        result = mod = lys_parse_mem_module(ctx, addr, format, implement, custom_check, check_data);
-        if (mod && implement && lys_compile(mod, 0)) {
-            ly_set_rm(&ctx->list, mod, NULL);
-            lys_module_free(mod, NULL);
-            result = mod = NULL;
-        }
-    }
-    ly_munmap(addr, length);
-
-    if (mod && !mod->filepath) {
-        lys_parse_set_filename(ctx, &mod->filepath, fd);
-    } else if (submod && !submod->filepath) {
-        lys_parse_set_filename(ctx, &submod->filepath, fd);
-    }
+    result = lys_parse(ctx, in, format);
+    ly_in_free(in, 0);
 
     return result;
-}
-
-struct lys_module *
-lys_parse_fd_module(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, int implement, lys_custom_check custom_check,
-                    void *check_data)
-{
-    return (struct lys_module*)lys_parse_fd_(ctx, fd, format, implement, NULL, custom_check, check_data);
-}
-
-struct lysp_submodule *
-lys_parse_fd_submodule(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, struct lys_parser_ctx *main_ctx,
-                       lys_custom_check custom_check, void *check_data)
-{
-    assert(main_ctx);
-    return (struct lysp_submodule*)lys_parse_fd_(ctx, fd, format, 0, main_ctx, custom_check, check_data);
 }
 
 API struct lys_module *
 lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
 {
-    return lys_parse_fd_module(ctx, fd, format, 1, NULL, NULL);
-}
+	LY_ERR ret;
+    struct ly_in *in = NULL;
+    struct lys_module *result = NULL;
 
-struct lys_module *
-lys_parse_path_(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, int implement,
-                lys_custom_check custom_check, void *check_data)
-{
-    int fd;
-    struct lys_module *mod;
-    const char *rev, *dot, *filename;
-    size_t len;
+    LY_CHECK_ARG_RET(ctx, fd != -1, format != LYS_IN_UNKNOWN, NULL);
 
-    LY_CHECK_ARG_RET(ctx, ctx, path, NULL);
+    LY_CHECK_ERR_RET(ret = ly_in_new_fd(fd, &in), LOGERR(ctx, ret, "Unable to create input handler."), NULL);
 
-    fd = open(path, O_RDONLY);
-    LY_CHECK_ERR_RET(fd == -1, LOGERR(ctx, LY_ESYS, "Opening file \"%s\" failed (%s).", path, strerror(errno)), NULL);
+    result = lys_parse(ctx, in, format);
+    ly_in_free(in, 0);
 
-    mod = lys_parse_fd_module(ctx, fd, format, implement, custom_check, check_data);
-    close(fd);
-    LY_CHECK_RET(!mod, NULL);
-
-    /* check that name and revision match filename */
-    filename = strrchr(path, '/');
-    if (!filename) {
-        filename = path;
-    } else {
-        filename++;
-    }
-    rev = strchr(filename, '@');
-    dot = strrchr(filename, '.');
-
-    /* name */
-    len = strlen(mod->name);
-    if (strncmp(filename, mod->name, len) ||
-            ((rev && rev != &filename[len]) || (!rev && dot != &filename[len]))) {
-        LOGWRN(ctx, "File name \"%s\" does not match module name \"%s\".", filename, mod->name);
-    }
-    if (rev) {
-        len = dot - ++rev;
-        if (!mod->parsed->revs || len != 10 || strncmp(mod->parsed->revs[0].date, rev, len)) {
-            LOGWRN(ctx, "File name \"%s\" does not match module revision \"%s\".", filename,
-                   mod->parsed->revs ? mod->parsed->revs[0].date : "none");
-        }
-    }
-
-    if (!mod->filepath) {
-        /* store URI */
-        char rpath[PATH_MAX];
-        if (realpath(path, rpath) != NULL) {
-            mod->filepath = lydict_insert(ctx, rpath, 0);
-        } else {
-            mod->filepath = lydict_insert(ctx, path, 0);
-        }
-    }
-
-    return mod;
+    return result;
 }
 
 API struct lys_module *
 lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format)
 {
-    return lys_parse_path_(ctx, path, format, 1, NULL, NULL);
+	LY_ERR ret;
+    struct ly_in *in = NULL;
+    struct lys_module *result = NULL;
+
+    LY_CHECK_ARG_RET(ctx, path, format != LYS_IN_UNKNOWN, NULL);
+
+    LY_CHECK_ERR_RET(ret = ly_in_new_filepath(path, 0, &in), LOGERR(ctx, ret, "Unable to create input handler for filepath %s.", path), NULL);
+
+    result = lys_parse(ctx, in, format);
+    ly_in_free(in, 0);
+
+    return result;
 }
 
 API LY_ERR

@@ -18,6 +18,7 @@
 #include <stdint.h>
 
 #include "log.h"
+#include "parser_schema.h"
 #include "tree_schema.h"
 
 #ifdef __cplusplus
