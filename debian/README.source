@@ -9,24 +9,26 @@ echo $VERSION
 
 Update debian/sid branch
 - git checkout debian/master
-- git merge $VERSION
+- git merge b$VERSION
 
 Update the debian/copyright file:
 - cme update dpkg-copyright
 See also https://github.com/dod38fr/config-model/wiki/Updating-debian-copyright-file-with-cme
 
 Check patches (and cleanup if necessary):
-- gbp rebase --commit --drop
+- gbp pq rebase --commit --drop
+
+Download upstream tarball:
+- uscan --download --verbose --version $VERSION
+
+Add pristine-tar:
+- pristine-tar --commit ../libyang_$VERSION.orig.tar.gz v$VERSION
 
 Generate a temporary changelog:
-- gbp dch --new-version=$VERSION-1 --snapshot --auto debian/ 
-
-Commit debian/changelog (otherwise, gbp buildpackage tries to build the
-old version):
-- git commit -m"new upstream version" debian/changelog
+- gbp dch --new-version=$VERSION-1 --snapshot --auto --commit debian/
 
 Test the first build and create a new pristine-tar:
-- gbp buildpackage --git-ignore-new --git-pristine-tar --git-pristine-tar-commit --git-no-purge
+- gbp buildpackage --git-ignore-new --git-pristine-tar --git-no-purge
 
 Regenerate the symbol file:
 - cd <build-area>/libuv1-1.xxx/ (if you get an error there, redo the previous
@@ -58,4 +60,4 @@ Push on salsa:
 For more details, see
 https://honk.sigxcpu.org/projects/git-buildpackage/manual-html/gbp.import.upstream-git.html#gbp.import.upstream.git.notarball
 
- -- Ondřej Surý <Ondřej Surý <ondrej@debian.org>>, Fri, 22 May 2020 09:52:20 +0200
+ -- Ondřej Surý <Ondřej Surý <ondrej@debian.org>>, Fri, 22 May 2020 10:10:31 +0200
