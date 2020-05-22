@@ -1,0 +1,61 @@
+This module uses gbp and upstream git repository
+
+To update this package, first import the changes from upstream:
+- git fetch --all
+
+Find the latest version:
+VERSION=$(git describe --tags $(git rev-list '--tags=v1*' --max-count=1) | sed 's/^v//')
+echo $VERSION
+
+Update debian/sid branch
+- git checkout debian/master
+- git merge $VERSION
+
+Update the debian/copyright file:
+- cme update dpkg-copyright
+See also https://github.com/dod38fr/config-model/wiki/Updating-debian-copyright-file-with-cme
+
+Check patches (and cleanup if necessary):
+- gbp rebase --commit --drop
+
+Generate a temporary changelog:
+- gbp dch --new-version=$VERSION-1 --snapshot --auto debian/ 
+
+Commit debian/changelog (otherwise, gbp buildpackage tries to build the
+old version):
+- git commit -m"new upstream version" debian/changelog
+
+Test the first build and create a new pristine-tar:
+- gbp buildpackage --git-ignore-new --git-pristine-tar --git-pristine-tar-commit --git-no-purge
+
+Regenerate the symbol file:
+- cd <build-area>/libuv1-1.xxx/ (if you get an error there, redo the previous
+  step without forgetting the --git-no-purge flag)
+- dpkg-gensymbols -plibuv1
+- review the diff (see links below)
+- create a patch : dpkg-gensymbols -plibuv1 | perl -p -E 's/([\d.]+)-\d.*/$1/;' > /tmp/sym.patch
+- cd -
+- apply the patch: patch debian/libuv1.symbols /tmp/sym.patch
+
+See https://www.debian.org/doc/manuals/maint-guide/advanced.en.html#librarysymbols
+and dpkg-gensymbols man page
+
+Once the new pristine-tar is created, you can rebuild (if needed) with
+the following command.
+- gbp buildpackage --git-ignore-new
+
+Note: only committed changes are used by gbp buildpackage
+
+Update the changelog:
+- gbp dch -Ra -c
+
+Once everything is fine, build a source package and tag:
+- gbp buildpackage -S --git-tag
+
+Push on salsa:
+- gbp push
+
+For more details, see
+https://honk.sigxcpu.org/projects/git-buildpackage/manual-html/gbp.import.upstream-git.html#gbp.import.upstream.git.notarball
+
+ -- Ondřej Surý <Ondřej Surý <ondrej@debian.org>>, Fri, 22 May 2020 09:52:20 +0200
