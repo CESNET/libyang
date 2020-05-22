@@ -6,20 +6,18 @@ Uploaders: CESNET <rkrejci@cesnet.cz>,
            Ondřej Surý <ondrej@debian.org>
 Priority: optional
 Standards-Version: 4.5.0
-Build-Depends:
- bison,
- cmake,
- debhelper (>= 9.20150101),
- libcmocka-dev <!nocheck>,
- libpcre3-dev,
- pkg-config
+Build-Depends: bison,
+               cmake,
+               debhelper (>= 9.20150101),
+               libcmocka-dev <!nocheck>,
+               libpcre3-dev,
+               pkg-config
 Vcs-Browser: https://github.com/CESNET/libyang/tree/debian/master
 Vcs-Git: https://github.com/CESNET/libyang.git -b debian/master
 
 Package: libyang1
-Depends:
- ${misc:Depends},
- ${shlibs:Depends}
+Depends: ${misc:Depends},
+         ${shlibs:Depends}
 Architecture: any
 Description: parser toolkit for IETF YANG data modeling - runtime
  Libyang implements functions to process schemas expressed in the
@@ -34,10 +32,9 @@ Description: parser toolkit for IETF YANG data modeling - runtime
  to use in processing configurations.
 
 Package: libyang-dev
-Depends:
- ${misc:Depends},
- libpcre3-dev,
- libyang1 (= ${binary:Version})
+Depends: libpcre3-dev,
+         libyang1 (= ${binary:Version}),
+         ${misc:Depends}
 Section: libdevel
 Architecture: any
 Description: parser toolkit for IETF YANG data modeling - development files
@@ -53,10 +50,9 @@ Description: parser toolkit for IETF YANG data modeling - development files
  for libyang.
 
 Package: yang-tools
-Depends:
- ${misc:Depends},
- ${shlibs:Depends},
- libyang1 (= ${binary:Version})
+Depends: libyang1 (= ${binary:Version}),
+         ${misc:Depends},
+         ${shlibs:Depends}
 Section: devel
 Architecture: any
 Description: parser toolkit for IETF YANG data modeling - executable tools
@@ -66,10 +62,9 @@ Description: parser toolkit for IETF YANG data modeling - executable tools
  data, not schemas.
 
 Package: libyang-cpp1
-Depends:
- ${misc:Depends},
- ${shlibs:Depends},
- libyang1 (= ${binary:Version})
+Depends: libyang1 (= ${binary:Version}),
+         ${misc:Depends},
+         ${shlibs:Depends}
 Architecture: any
 Description: parser toolkit for IETF YANG data modeling - C++ runtime
  Partially SWIG-generated bindings to use libyang with a C++ API.
@@ -77,10 +72,9 @@ Description: parser toolkit for IETF YANG data modeling - C++ runtime
  and uses libyang C code.
 
 Package: libyang-cpp-dev
-Depends:
- ${misc:Depends},
- libyang-cpp1 (= ${binary:Version}),
- libyang-dev (= ${binary:Version})
+Depends: libyang-cpp1 (= ${binary:Version}),
+         libyang-dev (= ${binary:Version}),
+         ${misc:Depends}
 Section: libdevel
 Architecture: any
 Description: parser toolkit for IETF YANG data modeling - C++ development files
