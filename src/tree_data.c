@@ -479,6 +479,9 @@ static char *
 ly_keys_parse_next(char **next_key, char **key_name)
 {
     char *ptr, *ptr2, *val, quot;
+    const char *pref;
+    size_t pref_len, key_len;
+    int have_equal = 0;
 
     ptr = *next_key;
 
@@ -486,15 +489,40 @@ ly_keys_parse_next(char **next_key, char **key_name)
     LY_CHECK_GOTO(ptr[0] != '[', error);
     ++ptr;
 
-    /* key name */
-    ptr2 = strchr(ptr, '=');
-    LY_CHECK_GOTO(!ptr2, error);
+    /* skip WS */
+    while (isspace(ptr[0])) {
+        ++ptr;
+    }
 
-    *key_name = ptr;
-    ptr2[0] = '\0';
+    /* key name without prefix */
+    LY_CHECK_GOTO(ly_parse_nodeid((const char **)&ptr, &pref, &pref_len, (const char **)key_name, &key_len), error);
+    if (pref) {
+        goto error;
+    }
 
-    /* \0, was '=' */
-    ptr = ptr2 + 1;
+    /* terminate it */
+    LY_CHECK_GOTO((ptr[0] != '=') && !isspace(ptr[0]), error);
+    if (ptr[0] == '=') {
+        have_equal = 1;
+    }
+    ptr[0] = '\0';
+    ++ptr;
+
+    if (!have_equal) {
+        /* skip WS */
+        while (isspace(ptr[0])) {
+            ++ptr;
+        }
+
+        /* '=' */
+        LY_CHECK_GOTO(ptr[0] != '=', error);
+        ++ptr;
+    }
+
+    /* skip WS */
+    while (isspace(ptr[0])) {
+        ++ptr;
+    }
 
     /* quote */
     LY_CHECK_GOTO((ptr[0] != '\'') && (ptr[0] != '\"'), error);
@@ -509,6 +537,11 @@ ly_keys_parse_next(char **next_key, char **key_name)
 
     /* \0, was quote */
     ptr = ptr2 + 1;
+
+    /* skip WS */
+    while (isspace(ptr[0])) {
+        ++ptr;
+    }
 
     /* "]" */
     LY_CHECK_GOTO(ptr[0] != ']', error);
