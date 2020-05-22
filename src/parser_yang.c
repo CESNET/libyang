@@ -639,7 +639,6 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
     struct ly_ctx *ctx = module->ctx;
     int rc, ret = -1;
     unsigned int i, j;
-    int8_t req;
     const char *name, *value, *module_name = NULL;
     LY_DATA_TYPE base = 0, base_tmp;
     struct lys_node *siter;
@@ -896,13 +895,16 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
         }
         break;
     case LY_TYPE_LEAFREF:
+    case LY_TYPE_INST:
         if (type->base == LY_TYPE_INST) {
             if (type->info.lref.path) {
                 LOGVAL(ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "path");
                 goto error;
             }
-            if ((req = type->info.lref.req)) {
-                type->info.inst.req = req;
+            if (type->info.lref.req) {
+                type->info.inst.req = type->info.lref.req;
+            } else if (type->der->type.der) {
+                type->info.inst.req = type->der->type.info.inst.req;
             }
         } else if (type->base == LY_TYPE_LEAFREF) {
             /* require-instance only YANG 1.1 */
@@ -916,17 +918,12 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
                 tpdftype = 1;
             }
 
-            if (type->der->type.der) {
-                if (type->info.lref.path) {
+            if (type->info.lref.path) {
+                if (type->der->type.der) {
                     LOGVAL(ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "path");
                     goto error;
-                } else if (type->info.lref.req) {
-                    LOGVAL(ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "require-instance");
-                    goto error;
                 }
-            }
 
-            if (type->info.lref.path) {
                 value = type->info.lref.path;
                 /* store in the JSON format */
                 type->info.lref.path = transform_schema2json(module, value);
@@ -950,7 +947,10 @@ yang_check_type(struct lys_module *module, struct lys_node *parent, struct yang_
             } else {
                 /* copy leafref definition into the derived type */
                 type->info.lref.path = lydict_insert(ctx, type->der->type.info.lref.path, 0);
-                type->info.lref.req = type->der->type.info.lref.req;
+                if (!type->info.lref.req) {
+                    /* inherit require-instance only if not overwritten */
+                    type->info.lref.req = type->der->type.info.lref.req;
+                }
                 /* and resolve the path at the place we are (if not in grouping/typedef) */
                 if (!tpdftype && unres_schema_add_node(module, unres, type, UNRES_TYPE_LEAFREF, parent) == -1) {
                     goto error;
@@ -1535,8 +1535,10 @@ yang_fill_deviate_default(struct ly_ctx *ctx, struct lys_deviate *deviate, struc
     struct lys_node_choice *choice;
     struct lys_node_leaf *leaf;
     struct lys_node_leaflist *llist;
+    enum int_log_opts prev_ilo;
     int rc, i, j;
     unsigned int u;
+    const char *orig_dflt;
 
     u = strlen(value);
     if (dev_target->nodetype == LYS_CHOICE) {
@@ -1570,11 +1572,24 @@ yang_fill_deviate_default(struct ly_ctx *ctx, struct lys_deviate *deviate, struc
     } else if (dev_target->nodetype == LYS_LEAF) {
         leaf = (struct lys_node_leaf *)dev_target;
         if (deviate->mod == LY_DEVIATE_DEL) {
-            if (!leaf->dflt || !ly_strequal(leaf->dflt, value, 1)) {
+            orig_dflt = NULL;
+            if (leaf->dflt) {
+                /* transform back into the original value */
+                ly_ilo_change(NULL, ILO_IGNORE, &prev_ilo, NULL);
+                orig_dflt = transform_json2schema(leaf->module, leaf->dflt);
+                ly_ilo_restore(NULL, prev_ilo, NULL, 0);
+                if (!orig_dflt) {
+                    orig_dflt = lydict_insert(ctx, leaf->dflt, 0);
+                }
+            }
+            if (!orig_dflt || !ly_strequal(orig_dflt, value, 1)) {
                 LOGVAL(ctx, LYE_INARG, LY_VLOG_NONE, NULL, value, "default");
                 LOGVAL(ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Value differs from the target being deleted.");
+                lydict_remove(ctx, orig_dflt);
                 goto error;
             }
+            lydict_remove(ctx, orig_dflt);
+
             /* remove value */
             lydict_remove(ctx, leaf->dflt);
             leaf->dflt = NULL;
@@ -1601,7 +1616,20 @@ yang_fill_deviate_default(struct ly_ctx *ctx, struct lys_deviate *deviate, struc
         if (deviate->mod == LY_DEVIATE_DEL) {
             /* find and remove the value in target list */
             for (i = 0; i < llist->dflt_size; i++) {
-                if (llist->dflt[i] && ly_strequal(llist->dflt[i], value, 1)) {
+                orig_dflt = NULL;
+                if (llist->dflt[i]) {
+                    /* transform back into the original value */
+                    ly_ilo_change(NULL, ILO_IGNORE, &prev_ilo, NULL);
+                    orig_dflt = transform_json2schema(llist->module, llist->dflt[i]);
+                    ly_ilo_restore(NULL, prev_ilo, NULL, 0);
+                    if (!orig_dflt) {
+                        orig_dflt = lydict_insert(ctx, llist->dflt[i], 0);
+                    }
+                }
+
+                if (orig_dflt && ly_strequal(orig_dflt, value, 1)) {
+                    lydict_remove(ctx, orig_dflt);
+
                     /* match, remove the value */
                     lydict_remove(llist->module->ctx, llist->dflt[i]);
                     llist->dflt[i] = NULL;
@@ -1618,6 +1646,7 @@ yang_fill_deviate_default(struct ly_ctx *ctx, struct lys_deviate *deviate, struc
                     }
                     break;
                 }
+                lydict_remove(ctx, orig_dflt);
             }
             if (i == llist->dflt_size) {
                 LOGVAL(ctx, LYE_INARG, LY_VLOG_NONE, NULL, value, "default");
@@ -4027,17 +4056,6 @@ static int
 yang_check_rpc_action(struct lys_module *module, struct lys_node_rpc_action *rpc, struct lys_node **child,
                       int options, struct unres_schema *unres)
 {
-    struct lys_node *node;
-
-    if (rpc->nodetype == LYS_ACTION) {
-        for (node = rpc->parent; node; node = lys_parent(node)) {
-            if ((node->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF))
-                    || ((node->nodetype == LYS_LIST) && !((struct lys_node_list *)node)->keys)) {
-                LOGVAL(module->ctx, LYE_INPAR, LY_VLOG_LYS, rpc->parent, strnodetype(node->nodetype), "action");
-                goto error;
-            }
-        }
-    }
     if (yang_check_typedef(module, (struct lys_node *)rpc, unres)) {
         goto error;
     }

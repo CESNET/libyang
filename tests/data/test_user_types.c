@@ -92,6 +92,14 @@ test_yang_types(void **state)
     assert_non_null(st->dt);
     lyd_free_withsiblings(st->dt);
 
+    /* test 1 second before epoch (mktime returns -1, but it is a correct value), with and without DST */
+    st->dt = lyd_new_leaf(NULL, st->mod, "yang1", "1970-01-01T00:59:59Z");
+    assert_non_null(st->dt);
+    lyd_free_withsiblings(st->dt);
+    st->dt = lyd_new_leaf(NULL, st->mod, "yang1", "1969-12-31T23:59:59Z");
+    assert_non_null(st->dt);
+    lyd_free_withsiblings(st->dt);
+
     st->dt = lyd_new_leaf(NULL, st->mod, "yang1", "2005-05-31T23:15:15.-08:00");
     assert_null(st->dt);
 

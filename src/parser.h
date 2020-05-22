@@ -97,13 +97,13 @@ struct lys_type *lyp_get_next_union_type(struct lys_type *type, struct lys_type 
 
 /* return: 0 - ret set, ok; 1 - ret not set, no log, unknown meta; -1 - ret not set, log, fatal error */
 int lyp_fill_attr(struct ly_ctx *ctx, struct lyd_node *parent, const char *module_ns, const char *module_name,
-                  const char *attr_name, const char *attr_value, struct lyxml_elem *xml, int options, struct lyd_attr **ret);
+                  const char *attr_name, const char *attr_value, struct lyxml_elem *xml, struct lyd_attr **ret);
 
 int lyp_check_edit_attr(struct ly_ctx *ctx, struct lyd_attr *attr, struct lyd_node *parent, int *editbits);
 
 struct lys_type *lyp_parse_value(struct lys_type *type, const char **value_, struct lyxml_elem *xml,
                                  struct lyd_node_leaf_list *leaf, struct lyd_attr *attr, struct lys_module *local_mod,
-                                 int store, int dflt, int trusted);
+                                 int store, int dflt);
 
 int lyp_check_length_range(struct ly_ctx *ctx, const char *expr, struct lys_type *type);
 

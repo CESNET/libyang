@@ -1017,26 +1017,38 @@ skip_nodetype_check:
     }
 
     /* create implicit input/output nodes to have available them as possible target for augment */
-    if ((child->nodetype & (LYS_RPC | LYS_ACTION)) && !child->child) {
-        in = calloc(1, sizeof *in);
-        out = calloc(1, sizeof *out);
-        if (!in || !out) {
-            LOGMEM(ctx);
-            free(in);
-            free(out);
-            return EXIT_FAILURE;
+    if (child->nodetype & (LYS_RPC | LYS_ACTION)) {
+        if (child->nodetype == LYS_ACTION) {
+            for (iter = child->parent; iter; iter = lys_parent(iter)) {
+                if ((iter->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF))
+                        || ((iter->nodetype == LYS_LIST) && !((struct lys_node_list *)iter)->keys)) {
+                    LOGVAL(module->ctx, LYE_INPAR, LY_VLOG_LYS, iter, strnodetype(iter->nodetype), "action");
+                    return EXIT_FAILURE;
+                }
+            }
         }
-        in->nodetype = LYS_INPUT;
-        in->name = lydict_insert(child->module->ctx, "input", 5);
-        out->nodetype = LYS_OUTPUT;
-        out->name = lydict_insert(child->module->ctx, "output", 6);
-        in->module = out->module = child->module;
-        in->parent = out->parent = child;
-        in->flags = out->flags = LYS_IMPLICIT;
-        in->next = (struct lys_node *)out;
-        in->prev = (struct lys_node *)out;
-        out->prev = (struct lys_node *)in;
-        child->child = (struct lys_node *)in;
+
+        if (!child->child) {
+            in = calloc(1, sizeof *in);
+            out = calloc(1, sizeof *out);
+            if (!in || !out) {
+                LOGMEM(ctx);
+                free(in);
+                free(out);
+                return EXIT_FAILURE;
+            }
+            in->nodetype = LYS_INPUT;
+            in->name = lydict_insert(child->module->ctx, "input", 5);
+            out->nodetype = LYS_OUTPUT;
+            out->name = lydict_insert(child->module->ctx, "output", 6);
+            in->module = out->module = child->module;
+            in->parent = out->parent = child;
+            in->flags = out->flags = LYS_IMPLICIT;
+            in->next = (struct lys_node *)out;
+            in->prev = (struct lys_node *)out;
+            out->prev = (struct lys_node *)in;
+            child->child = (struct lys_node *)in;
+        }
     }
     return EXIT_SUCCESS;
 }
@@ -3097,6 +3109,11 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
 
     case LYS_LIST:
         list = calloc(1, sizeof *list);
+        /* copy keys now so that when adding children, it can be properly checked in this parent */
+        list->keys = calloc(list_orig->keys_size, sizeof *list->keys);
+        LY_CHECK_ERR_GOTO(!list->keys, LOGMEM(ctx), error);
+        list->keys_size = list_orig->keys_size;
+
         retval = (struct lys_node *)list;
         break;
 
@@ -3403,10 +3420,11 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
         /* typedefs are not needed in instantiated grouping, nor the deviation's shallow copy */
 
         if (list_orig->keys_size) {
-            list->keys = calloc(list_orig->keys_size, sizeof *list->keys);
+            /* already done */
+            /*list->keys = calloc(list_orig->keys_size, sizeof *list->keys);
             LY_CHECK_ERR_GOTO(!list->keys, LOGMEM(ctx), error);
+            list->keys_size = list_orig->keys_size;*/
             list->keys_str = lydict_insert(ctx, list_orig->keys_str, 0);
-            list->keys_size = list_orig->keys_size;
 
             if (!shallow) {
                 if (unres_schema_add_node(module, unres, list, UNRES_LIST_KEYS, NULL) == -1) {
@@ -4177,6 +4195,7 @@ int
 lys_leaf_check_leafref(struct lys_node_leaf *leafref_target, struct lys_node *leafref)
 {
     struct lys_node_leaf *iter;
+    struct lys_node *op;
     struct ly_ctx *ctx = leafref_target->module->ctx;
 
     if (!(leafref_target->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
@@ -4184,8 +4203,11 @@ lys_leaf_check_leafref(struct lys_node_leaf *leafref_target, struct lys_node *le
         return -1;
     }
 
+    /* find the operation node if we are in one */
+    for (op = leafref; op && !(op->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)); op = lys_parent(op));
+
     /* check for config flag */
-    if (((struct lys_node_leaf*)leafref)->type.info.lref.req != -1 &&
+    if (!op && ((struct lys_node_leaf*)leafref)->type.info.lref.req != -1 &&
             (leafref->flags & LYS_CONFIG_W) && (leafref_target->flags & LYS_CONFIG_R)) {
         LOGVAL(ctx, LYE_SPEC, LY_VLOG_LYS, leafref,
                "The leafref %s is config but refers to a non-config %s.",

@@ -68,7 +68,7 @@ lyjson_parse_text(struct ly_ctx *ctx, const char *data, unsigned int *len)
     int32_t value;
 
     for (*len = o = 0; data[*len] && data[*len] != '"'; o++) {
-        if (o > BUFSIZE - 3) {
+        if (o > BUFSIZE - 4) {
             /* add buffer into the result */
             if (result) {
                 size = size + o;
@@ -511,8 +511,7 @@ inval:
 
     /* the value is here converted to a JSON format if needed in case of LY_TYPE_IDENT and LY_TYPE_INST or to a
      * canonical form of the value */
-    if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, NULL, leaf, NULL, NULL,
-                         1, 0, options & LYD_OPT_TRUSTED)) {
+    if (!lyp_parse_value(&((struct lys_node_leaf *)leaf->schema)->type, &leaf->value_str, NULL, leaf, NULL, NULL, 1, 0)) {
         return 0;
     }
 
@@ -646,7 +645,7 @@ repeat:
     len += r + 1;
     len += skip_ws(&data[len]);
 
-    ret = lyp_fill_attr(parent_module->ctx, NULL, NULL, prefix, name, value, NULL, options, &attr_new);
+    ret = lyp_fill_attr(parent_module->ctx, NULL, NULL, prefix, name, value, NULL, &attr_new);
     if (ret == -1) {
         free(value);
         goto error;
@@ -799,7 +798,7 @@ json_skip_unknown(struct ly_ctx *ctx, struct lyd_node *parent, const char *data,
             } else if (data[(*len) - 1] != '\\') {
                 qstr = 1;
             } else {
-                LOGVAL(ctx, LYE_INVAL, LY_VLOG_LYD, parent, "JSON data (missing quotation mark for a string data) ");
+                LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_LYD, parent, "JSON data (missing quotation mark for a string data) ");
                 return -1;
             }
             break;
@@ -877,6 +876,10 @@ json_parse_data(struct ly_ctx *ctx, const char *data, const struct lys_node *sch
     len++;
 
     str = lyjson_parse_text(ctx, &data[len], &r);
+    if (!str) {
+        goto error;
+    }
+
     if (!r) {
         goto error;
     } else if (data[len + r] != '"') {
