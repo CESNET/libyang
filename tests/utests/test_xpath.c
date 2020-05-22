@@ -1,0 +1,263 @@
+/*
+ * @file test_xpath.c
+ * @author: Michal Vasko <mvasko@cesnet.cz>
+ * @brief unit tests for XPath evaluation
+ *
+ * Copyright (c) 2020 CESNET, z.s.p.o.
+ *
+ * This source code is licensed under BSD 3-Clause License (the "License").
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     https://opensource.org/licenses/BSD-3-Clause
+ */
+
+#include "tests/config.h"
+
+#include <stdarg.h>
+#include <stddef.h>
+#include <setjmp.h>
+#include <cmocka.h>
+
+#include <stdio.h>
+#include <string.h>
+
+#include "../../src/context.h"
+#include "../../src/tree_data.h"
+
+#define BUFSIZE 1024
+char logbuf[BUFSIZE] = {0};
+int store = -1; /* negative for infinite logging, positive for limited logging */
+
+struct ly_ctx *ctx; /* context for tests */
+
+/* set to 0 to printing error messages to stderr instead of checking them in code */
+#define ENABLE_LOGGER_CHECKING 1
+
+#if ENABLE_LOGGER_CHECKING
+static void
+logger(LY_LOG_LEVEL level, const char *msg, const char *path)
+{
+    (void) level; /* unused */
+    if (store) {
+        if (path && path[0]) {
+            snprintf(logbuf, BUFSIZE - 1, "%s %s", msg, path);
+        } else {
+            strncpy(logbuf, msg, BUFSIZE - 1);
+        }
+        if (store > 0) {
+            --store;
+        }
+    }
+}
+#endif
+
+static int
+setup(void **state)
+{
+    (void) state; /* unused */
+
+    const char *schema_a =
+    "module a {"
+        "namespace urn:tests:a;"
+        "prefix a;"
+        "yang-version 1.1;"
+
+        "list l1 {"
+            "key \"a b\";"
+            "leaf a {"
+                "type string;"
+            "}"
+            "leaf b {"
+                "type string;"
+            "}"
+            "leaf c {"
+                "type string;"
+            "}"
+        "}"
+        "leaf foo {"
+            "type string;"
+        "}"
+        "container c {"
+            "leaf x {"
+                "type string;"
+            "}"
+            "list ll {"
+                "key \"a\";"
+                "leaf a {"
+                    "type string;"
+                "}"
+                "list ll {"
+                    "key \"a\";"
+                    "leaf a {"
+                        "type string;"
+                    "}"
+                    "leaf b {"
+                        "type string;"
+                    "}"
+                "}"
+            "}"
+        "}"
+    "}";
+
+#if ENABLE_LOGGER_CHECKING
+    ly_set_log_clb(logger, 1);
+#endif
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_DIR_MODULES_YANG, 0, &ctx));
+    assert_non_null(lys_parse_mem(ctx, schema_a, LYS_IN_YANG));
+
+    return 0;
+}
+
+static int
+teardown(void **state)
+{
+#if ENABLE_LOGGER_CHECKING
+    if (*state) {
+        fprintf(stderr, "%s\n", logbuf);
+    }
+#else
+    (void) state; /* unused */
+#endif
+
+    ly_ctx_destroy(ctx, NULL);
+    ctx = NULL;
+
+    return 0;
+}
+
+void
+logbuf_clean(void)
+{
+    logbuf[0] = '\0';
+}
+
+#if ENABLE_LOGGER_CHECKING
+#   define logbuf_assert(str) assert_string_equal(logbuf, str)
+#else
+#   define logbuf_assert(str)
+#endif
+
+static void
+test_hash(void **state)
+{
+    *state = test_hash;
+
+    const char *data =
+    "<l1 xmlns=\"urn:tests:a\">"
+        "<a>a1</a>"
+        "<b>b1</b>"
+        "<c>c1</c>"
+    "</l1>"
+    "<l1 xmlns=\"urn:tests:a\">"
+        "<a>a2</a>"
+        "<b>b2</b>"
+    "</l1>"
+    "<l1 xmlns=\"urn:tests:a\">"
+        "<a>a3</a>"
+        "<b>b3</b>"
+        "<c>c3</c>"
+    "</l1>"
+    "<foo xmlns=\"urn:tests:a\">foo value</foo>"
+    "<c xmlns=\"urn:tests:a\">"
+        "<x>val</x>"
+        "<ll>"
+            "<a>val_a</a>"
+            "<ll>"
+                "<a>val_a</a>"
+                "<b>val</b>"
+            "</ll>"
+            "<ll>"
+                "<a>val_b</a>"
+            "</ll>"
+        "</ll>"
+        "<ll>"
+            "<a>val_b</a>"
+            "<ll>"
+                "<a>val_a</a>"
+            "</ll>"
+            "<ll>"
+                "<a>val_b</a>"
+                "<b>val</b>"
+            "</ll>"
+        "</ll>"
+        "<ll>"
+            "<a>val_c</a>"
+            "<ll>"
+                "<a>val_a</a>"
+            "</ll>"
+            "<ll>"
+                "<a>val_b</a>"
+            "</ll>"
+        "</ll>"
+    "</c>";
+    struct lyd_node *tree, *node;
+    struct ly_set *set;
+    int dynamic;
+    const char *val_str;
+
+    tree = lyd_parse_mem(ctx, data, LYD_XML, LYD_OPT_STRICT | LYD_VALOPT_DATA_ONLY);
+    assert_non_null(tree);
+
+    /* top-level, so hash table is not ultimately used but instances can be compared based on hashes */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/a:l1[a='a3'][b='b3']", &set));
+    assert_int_equal(1, set->count);
+
+    node = set->objs[0];
+    assert_string_equal(node->schema->name, "l1");
+    node = lyd_node_children(node);
+    assert_string_equal(node->schema->name, "a");
+    val_str = lyd_value2str((struct lyd_node_term *)node, &dynamic);
+    assert_int_equal(0, dynamic);
+    assert_string_equal(val_str, "a3");
+
+    ly_set_free(set, NULL);
+
+    /* hashes should be used for both searches (well, there are not enough nested ll instances, so technically not true) */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/a:c/ll[a='val_b']/ll[a='val_b']", &set));
+    assert_int_equal(1, set->count);
+
+    node = set->objs[0];
+    assert_string_equal(node->schema->name, "ll");
+    node = lyd_node_children(node);
+    assert_string_equal(node->schema->name, "a");
+    val_str = lyd_value2str((struct lyd_node_term *)node, &dynamic);
+    assert_int_equal(0, dynamic);
+    assert_string_equal(val_str, "val_b");
+    node = node->next;
+    assert_string_equal(node->schema->name, "b");
+    assert_null(node->next);
+
+    ly_set_free(set, NULL);
+
+    /* hashes are not used */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/a:c//ll[a='val_b']", &set));
+    assert_int_equal(4, set->count);
+
+    ly_set_free(set, NULL);
+
+    /* not found using hashes */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/a:c/ll[a='val_d']", &set));
+    assert_int_equal(0, set->count);
+
+    ly_set_free(set, NULL);
+
+    /* white-spaces are also ok */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/a:c/ll[ \na = 'val_c' ]", &set));
+    assert_int_equal(1, set->count);
+
+    ly_set_free(set, NULL);
+
+    lyd_free_all(tree);
+    *state = NULL;
+}
+
+int main(void)
+{
+    const struct CMUnitTest tests[] = {
+        cmocka_unit_test_setup_teardown(test_hash, setup, teardown),
+    };
+
+    return cmocka_run_group_tests(tests, NULL, NULL);
+}
