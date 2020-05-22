@@ -8,13 +8,17 @@ Source1: @PACKAGE@.rpmlintrc
 License: BSD-3-Clause
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}
 
-%if 0%{?scientificlinux_version} == 700
+%if 0%{?scientificlinux_version} == 700 || ( 0%{?rhel} && 0%{?rhel} < 7 )
     %define with_lang_bind 0
 %else
     %define with_lang_bind 1
 %endif
 
-%define with_ly_cache 1
+%if ( 0%{?rhel} && 0%{?rhel} < 7 )
+    %define with_ly_cache 0
+%else
+    %define with_ly_cache 1
+%endif
 
 Requires:  pcre
 BuildRequires:  cmake
