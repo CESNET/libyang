@@ -258,8 +258,14 @@ More information about the specific binding can be found in their README files.
 Currently supported bindings are:
 
 * JavaScript
- * cmake option: `JAVASCRIPT_BINDING`
- * [README](./swig/javascript/README.md)
+    - cmake option: `JAVASCRIPT_BINDING`
+    - [README](./swig/javascript/README.md)
+* Python SWIG (uses SWIG, enabled by default if `GEN_LANGUAGE_BINDINGS` is set)
+    - cmake option: `GEN_PYTHON_BINDINGS` (depends on `GEN_CPP_BINDINGS`)
+    - [README](./swig/python/README.md)
+* Python CFFI (more "pythonic" API, not enabled by default)
+    - cmake option: `GEN_PYTHON_CFFI_BINDINGS`
+    - [README](./python/README.md)
 
 ## Project Information
 

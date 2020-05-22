@@ -13,7 +13,7 @@ cp "@PROJECT_SOURCE_DIR@/packages/debian.@PACKAGE@.install" debian/@PACKAGE@.ins
 cp "@PROJECT_SOURCE_DIR@/packages/debian.@PACKAGE@-dev.install" debian/@PACKAGE@-dev.install
 cp "@PROJECT_SOURCE_DIR@/packages/debian.@CPP_PACKAGE@.install" debian/@CPP_PACKAGE@.install
 cp "@PROJECT_SOURCE_DIR@/packages/debian.@CPP_PACKAGE@-dev.install" debian/@CPP_PACKAGE@-dev.install
-cp "@PROJECT_SOURCE_DIR@/packages/debian.@PYTHON_PACKAGE@.install" debian/@PYTHON_PACKAGE@.install
+cp "@PROJECT_SOURCE_DIR@/packages/debian.@PYTHON_CFFI_PACKAGE@.install" debian/@PYTHON_CFFI_PACKAGE@.install
 echo -e "@PACKAGE@ (@LIBYANG_VERSION@) stable; urgency=low\n" >debian/changelog
 git log -10 --pretty=format:'  * %s (%aN)%n' 2>/dev/null >>debian/changelog || echo -e "  * unknown changes \n" >>debian/changelog
 git log -1 --pretty=format:'%n -- %aN <%aE>  %aD%n' >>debian/changelog 2>/dev/null || echo " -- ${USER} <${USER}@`hostname`>  `date -R`" >>debian/changelog
