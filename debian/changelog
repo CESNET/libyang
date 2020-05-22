@@ -1,9 +1,21 @@
-libyang (1.0.130-1) UNRELEASED; urgency=medium
+libyang (1.0.167-1) experimental; urgency=medium
 
+  [ David Lamparter ]
   * major version bump (0.16 -> 1.0)
-  * this version is unlikely to be released due to known upstream bugs
 
- -- David Lamparter <equinox-debian@diac24.net>  Fri, 03 Apr 2020 19:43:28 +0200
+  [ Ondřej Surý ]
+  * Add d/gbp.conf
+  * Add README.source on how to work with upstream repository
+  * Rediff patches
+  * Drop the python bindings
+  * Use pkg-kde-tools to regenerate symbols
+  * Lower the dh_compat level to 10
+  * Add lintian-overrides for the plugins
+  * Move the maintainer notes to README.source
+  * Add myself to uploaders
+  * Add extensions to the libyang1.symbols file
+
+ -- Ondřej Surý <ondrej@debian.org>  Fri, 22 May 2020 10:54:51 +0200
 
 libyang (0.16.105-3) unstable; urgency=medium
 
