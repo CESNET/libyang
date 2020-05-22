@@ -32,6 +32,8 @@
 #include "hash_table.h"
 #include "log.h"
 #include "plugins_exts.h"
+#include "parser.h"
+#include "parser_internal.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_schema.h"
@@ -749,14 +751,12 @@ LY_ERR
 lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, int implement,
                      struct lys_parser_ctx *main_ctx, const char *main_name, int required, void **result)
 {
-    int fd;
+    struct ly_in *in;
     char *filepath = NULL;
-    const char **fp;
     LYS_INFORMAT format;
     void *mod = NULL;
     LY_ERR ret = LY_SUCCESS;
     struct lysp_load_module_check_data check_data = {0};
-    char rpath[PATH_MAX];
 
     LY_CHECK_RET(lys_search_localfile(ly_ctx_get_searchdirs(ctx), !(ctx->flags & LY_CTX_DISABLE_SEARCHDIR_CWD), name, revision,
                                       &filepath, &format));
@@ -765,31 +765,29 @@ lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision,
 
     LOGVRB("Loading schema from \"%s\" file.", filepath);
 
-    /* open the file */
-    fd = open(filepath, O_RDONLY);
-    LY_CHECK_ERR_GOTO(fd < 0, LOGERR(ctx, LY_ESYS, "Unable to open data model file \"%s\" (%s).",
-                                     filepath, strerror(errno)); ret = LY_ESYS, cleanup);
-
+    /* get the (sub)module */
+    LY_CHECK_ERR_GOTO(ret = ly_in_new_filepath(filepath, 0, &in), LOGERR(ctx, ret, "Unable to create input handler for filepath %s.", filepath), cleanup);
     check_data.name = name;
     check_data.revision = revision;
     check_data.path = filepath;
     check_data.submoduleof = main_name;
-    mod = lys_parse_fd_(ctx, fd, format, implement, main_ctx,
-                        lysp_load_module_check, &check_data);
-    close(fd);
-    LY_CHECK_ERR_GOTO(!mod, ly_errcode(ctx), cleanup);
+    if (main_ctx) {
+        mod = lys_parse_mem_submodule(ctx, in->current, format, main_ctx, lysp_load_module_check, &check_data);
+    } else {
+        mod = lys_parse_mem_module(ctx, in->current, format, implement, lysp_load_module_check, &check_data);
+
+    }
+    LY_CHECK_ERR_GOTO(!mod, ly_in_free(in, 1);ly_errcode(ctx), cleanup);
 
     if (main_ctx) {
-        fp = &((struct lysp_submodule*)mod)->filepath;
+        lys_parser_fill_filepath(ctx, in, &((struct lysp_submodule*)mod)->filepath);
     } else {
-        fp = &((struct lys_module*)mod)->filepath;
+        lys_parser_fill_filepath(ctx, in, &((struct lys_module*)mod)->filepath);
     }
-    if (!(*fp)) {
-        if (realpath(filepath, rpath) != NULL) {
-            (*fp) = lydict_insert(ctx, rpath, 0);
-        } else {
-            (*fp) = lydict_insert(ctx, filepath, 0);
-        }
+    ly_in_free(in, 1);
+
+    if (mod && implement) {
+        lys_compile((struct lys_module**)&mod, 0);
     }
 
     *result = mod;
@@ -858,10 +856,8 @@ search_clb:
                     if (module_data_free) {
                         module_data_free((void*)module_data, ctx->imp_clb_data);
                     }
-                    if (*mod && implement && lys_compile(*mod, 0)) {
-                        ly_set_rm(&ctx->list, *mod, NULL);
-                        lys_module_free(*mod, NULL);
-                        *mod = NULL;
+                    if (*mod && implement) {
+                        lys_compile(mod, 0);
                     }
                 }
             }

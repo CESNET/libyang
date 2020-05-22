@@ -22,6 +22,12 @@ extern "C" {
 #endif
 
 #include "log.h"
+#include "parser.h"
+#include "parser_schema.h"
+#include "plugins_types.h"
+#include "printer.h"
+#include "printer_data.h"
+#include "printer_schema.h"
 #include "set.h"
 #include "dict.h"
 #include "context.h"

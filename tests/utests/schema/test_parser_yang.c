@@ -23,6 +23,7 @@
 #include "../../../src/common.h"
 #include "../../../src/tree_schema.h"
 #include "../../../src/tree_schema_internal.h"
+#include "../../../src/parser_internal.h"
 
 /* originally static functions from tree_schema_free.c and parser_yang.c */
 void lysp_ext_instance_free(struct ly_ctx *ctx, struct lysp_ext_instance *ext);

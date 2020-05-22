@@ -325,17 +325,23 @@ test_models(void **state)
     /* reloading module in case only the compiled module resists in the context */
     mod1 = lys_parse_mem_module(ctx, "module w {namespace urn:w;prefix w;revision 2018-10-24;}", LYS_IN_YANG, 1, NULL, NULL);
     assert_non_null(mod1);
-    assert_int_equal(LY_SUCCESS, lys_compile(mod1, LYSC_OPT_FREE_SP));
+    assert_int_equal(LY_SUCCESS, lys_compile(&mod1, LYSC_OPT_FREE_SP));
     assert_non_null(mod1->compiled);
     assert_null(mod1->parsed);
+
     mod2 = lys_parse_mem_module(ctx, "module z {namespace urn:z;prefix z;import w {prefix w;revision-date 2018-10-24;}}", LYS_IN_YANG, 1, NULL, NULL);
     assert_non_null(mod2);
     /* mod1->parsed is necessary to compile mod2 because of possible groupings, typedefs, ... */
     ly_ctx_set_module_imp_clb(ctx, NULL, NULL);
-    assert_int_equal(LY_ENOTFOUND, lys_compile(mod2, 0));
+    assert_int_equal(LY_ENOTFOUND, lys_compile(&mod2, 0));
     logbuf_assert("Unable to reload \"w\" module to import it into \"z\", source data not found.");
+    assert_null(mod2);
+
+    mod2 = lys_parse_mem_module(ctx, "module z {namespace urn:z;prefix z;import w {prefix w;revision-date 2018-10-24;}}", LYS_IN_YANG, 1, NULL, NULL);
+    assert_non_null(mod2);
     ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "module w {namespace urn:w;prefix w;revision 2018-10-24;}");
-    assert_int_equal(LY_SUCCESS, lys_compile(mod2, 0));
+    assert_int_equal(LY_SUCCESS, lys_compile(&mod2, 0));
+    assert_non_null(mod2);
     assert_non_null(mod1->parsed);
     assert_string_equal("w", mod1->name);
 

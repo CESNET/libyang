@@ -24,6 +24,7 @@
 #include "../../../src/common.h"
 #include "../../../src/tree_schema.h"
 #include "../../../src/tree_schema_internal.h"
+#include "../../../src/parser_internal.h"
 #include "../../../src/parser_yin.h"
 #include "../../../src/xml.h"
 #include "../../../src/xpath.h"

@@ -2,6 +2,7 @@ set(local_tests
     utest:test_common
     utest:test_set
     utest:test_hash_table
+    utest:test_inout
     utest:test_context
     utest:test_xml
     utest:test_xpath
@@ -22,6 +23,7 @@ set(local_tests
     utest:extensions/test_nacm)
 set(local_tests_wraps
     "-Wl,--wrap=realloc"
+    " "
     " "
     " "
     " "

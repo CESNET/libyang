@@ -251,7 +251,7 @@ ly_ctx_new(const char *search_dir, int options, struct ly_ctx **new_ctx)
         module = (struct lys_module *)lys_parse_mem_module(ctx, internal_modules[i].data, internal_modules[i].format,
                                                            internal_modules[i].implemented, NULL, NULL);
         LY_CHECK_ERR_GOTO(!module, rc = ly_errcode(ctx), error);
-        LY_CHECK_GOTO((rc = lys_compile(module, 0)), error);
+        LY_CHECK_GOTO((rc = lys_compile(&module, 0)), error);
     }
 
     *new_ctx = ctx;

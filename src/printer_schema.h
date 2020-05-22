@@ -40,6 +40,18 @@ struct ly_out;
 /** @} schemaprinterflags */
 
 /**
+ * @brief Schema output formats accepted by libyang [printer functions](@ref howtoschemasprinters).
+ */
+typedef enum {
+    LYS_OUT_UNKNOWN = 0, /**< unknown format, used as return value in case of error */
+    LYS_OUT_YANG = 1,    /**< YANG schema output format */
+    LYS_OUT_YANG_COMPILED = 2, /**< YANG schema output format of the compiled schema tree */
+    LYS_OUT_YIN = 3,     /**< YIN schema output format */
+
+    LYS_OUT_TREE,        /**< Tree schema output format, for more information see the [printers](@ref howtoschemasprinters) page */
+} LYS_OUTFORMAT;
+
+/**
  * @brief Schema module printer.
  *
  * @param[in] out Printer handler for a specific output. Use ly_out_*() functions to create and free the handler.
