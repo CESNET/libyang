@@ -102,6 +102,22 @@ setup(void **state)
             "}"
         "}"
     "}";
+    const char *schema_b =
+    "module b {"
+        "namespace urn:tests:b;"
+        "prefix b;"
+        "yang-version 1.1;"
+
+        "list l2 {"
+            "key \"a\";"
+            "leaf a {"
+                "type uint16;"
+            "}"
+            "leaf b {"
+                "type uint16;"
+            "}"
+        "}"
+    "}";
 
 #if ENABLE_LOGGER_CHECKING
     ly_set_log_clb(logger, 1);
@@ -109,6 +125,7 @@ setup(void **state)
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_DIR_MODULES_YANG, 0, &ctx));
     assert_non_null(lys_parse_mem(ctx, schema_a, LYS_IN_YANG));
+    assert_non_null(lys_parse_mem(ctx, schema_b, LYS_IN_YANG));
 
     return 0;
 }
@@ -272,10 +289,86 @@ test_hash(void **state)
     *state = NULL;
 }
 
+static void
+test_toplevel(void **state)
+{
+    *state = test_toplevel;
+
+    const char *data =
+    "<l1 xmlns=\"urn:tests:a\">"
+        "<a>a1</a>"
+        "<b>b1</b>"
+        "<c>c1</c>"
+    "</l1>"
+    "<l1 xmlns=\"urn:tests:a\">"
+        "<a>a2</a>"
+        "<b>b2</b>"
+    "</l1>"
+    "<l1 xmlns=\"urn:tests:a\">"
+        "<a>a3</a>"
+        "<b>b3</b>"
+        "<c>c3</c>"
+    "</l1>"
+    "<foo xmlns=\"urn:tests:a\">foo value</foo>"
+    "<l2 xmlns=\"urn:tests:b\">"
+        "<a>1</a>"
+        "<b>1</b>"
+    "</l2>"
+    "<l2 xmlns=\"urn:tests:b\">"
+        "<a>2</a>"
+        "<b>1</b>"
+    "</l2>"
+    "<l2 xmlns=\"urn:tests:b\">"
+        "<a>3</a>"
+        "<b>1</b>"
+    "</l2>";
+    struct lyd_node *tree, *node;
+    struct ly_set *set;
+    int dynamic;
+    const char *val_str;
+
+    tree = lyd_parse_mem(ctx, data, LYD_XML, LYD_OPT_STRICT | LYD_VALOPT_DATA_ONLY);
+    assert_non_null(tree);
+
+    /* all top-level nodes from one module (default container as well) */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/a:*", &set));
+    assert_int_equal(5, set->count);
+
+    ly_set_free(set, NULL);
+
+    /* all top-level nodes from all modules */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/*", &set));
+    assert_int_equal(8, set->count);
+
+    ly_set_free(set, NULL);
+
+    /* all nodes from one module */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "//a:*", &set));
+    assert_int_equal(13, set->count);
+
+    ly_set_free(set, NULL);
+
+    /* all nodes from all modules */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "//*", &set));
+    assert_int_equal(22, set->count);
+
+    ly_set_free(set, NULL);
+
+    /* all nodes from all modules #2 */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "//.", &set));
+    assert_int_equal(22, set->count);
+
+    ly_set_free(set, NULL);
+
+    lyd_free_all(tree);
+    *state = NULL;
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_hash, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_toplevel, setup, teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

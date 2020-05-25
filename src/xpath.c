@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief YANG XPath evaluation functions
  *
- * Copyright (c) 2015 - 2019 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2020 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -5250,7 +5250,7 @@ moveto_node_check(const struct lyd_node *node, enum lyxp_node_type root_type, co
     }
 
     /* name check */
-    if (node_name && (node->schema->name != node_name)) {
+    if (node_name && strcmp(node_name, "*") && (node->schema->name != node_name)) {
         return LY_ENOT;
     }
 
@@ -5287,7 +5287,7 @@ moveto_scnode_check(const struct lysc_node *node, enum lyxp_node_type root_type,
     }
 
     /* name check */
-    if (node_name && (node->name != node_name)) {
+    if (node_name && strcmp(node_name, "*") && (node->name != node_name)) {
         return LY_ENOT;
     }
 
@@ -5627,7 +5627,7 @@ skip_children:
 }
 
 /**
- * @brief Move context @p set to a schema node and all its descendants. Result is LYXP_SET_NODE_SET (or LYXP_SET_EMPTY).
+ * @brief Move context @p set to a schema node and all its descendants. Result is LYXP_SET_NODE_SET.
  *
  * @param[in] set Set to use.
  * @param[in] mod Matching node module, NULL for any.
@@ -5718,8 +5718,7 @@ skip_children:
 }
 
 /**
- * @brief Move context @p set to an attribute.
- *        Result is LYXP_SET_NODE_SET (or LYXP_SET_EMPTY).
+ * @brief Move context @p set to an attribute. Result is LYXP_SET_NODE_SET.
  *        Indirectly context position aware.
  *
  * @param[in,out] set Set to use.
@@ -5782,7 +5781,7 @@ moveto_attr(struct lyxp_set *set, const struct lys_module *mod, const char *ncna
 
 /**
  * @brief Move context @p set1 to union with @p set2. @p set2 is emptied afterwards.
- *        Result is LYXP_SET_NODE_SET (or LYXP_SET_EMPTY). Context position aware.
+ *        Result is LYXP_SET_NODE_SET. Context position aware.
  *
  * @param[in,out] set1 Set to use for the result.
  * @param[in] set2 Set that is copied to @p set1.
@@ -5824,8 +5823,7 @@ moveto_union(struct lyxp_set *set1, struct lyxp_set *set2)
 }
 
 /**
- * @brief Move context @p set to an attribute in any of the descendants.
- *        Result is LYXP_SET_NODE_SET (or LYXP_SET_EMPTY).
+ * @brief Move context @p set to an attribute in any of the descendants. Result is LYXP_SET_NODE_SET.
  *        Context position aware.
  *
  * @param[in,out] set Set to use.
@@ -5906,8 +5904,8 @@ moveto_attr_alldesc(struct lyxp_set *set, const struct lys_module *mod, const ch
 }
 
 /**
- * @brief Move context @p set to self and al chilren, recursively. Handles '/' or '//' and '.'. Result is LYXP_SET_NODE_SET
- *        (or LYXP_SET_EMPTY). Context position aware.
+ * @brief Move context @p set to self and al chilren, recursively. Handles '/' or '//' and '.'. Result is LYXP_SET_NODE_SET.
+ *        Context position aware.
  *
  * @param[in] parent Current parent.
  * @param[in] parent_pos Position of @p parent.
@@ -5921,61 +5919,52 @@ static LY_ERR
 moveto_self_add_children_r(const struct lyd_node *parent, uint32_t parent_pos, enum lyxp_node_type parent_type,
                            struct lyxp_set *to_set, const struct lyxp_set *dup_check_set, int options)
 {
-    const struct lyd_node *sub;
+    const struct lyd_node *iter, *first;
     LY_ERR rc;
 
     switch (parent_type) {
     case LYXP_NODE_ROOT:
     case LYXP_NODE_ROOT_CONFIG:
-        /* add the same node but as an element */
-        if (!set_dup_node_check(dup_check_set, parent, LYXP_NODE_ELEM, -1)) {
-            set_insert_node(to_set, parent, 0, LYXP_NODE_ELEM, to_set->used);
+        assert(!parent);
 
-            /* skip anydata/anyxml and dummy nodes */
-            if (!(parent->schema->nodetype & LYS_ANYDATA)) {
-                /* also add all the children of this node, recursively */
-                rc = moveto_self_add_children_r(parent, 0, LYXP_NODE_ELEM, to_set, dup_check_set, options);
-                LY_CHECK_RET(rc);
-            }
-        }
+        /* add all top-level nodes as elements */
+        first = to_set->tree;
         break;
     case LYXP_NODE_ELEM:
-        /* add all the children ... */
-        if (!(parent->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
-            for (sub = lyd_node_children(parent); sub; sub = sub->next) {
-                /* context check */
-                if ((to_set->root_type == LYXP_NODE_ROOT_CONFIG) && (sub->schema->flags & LYS_CONFIG_R)) {
-                    continue;
-                }
-
-                /* when check */
-                if (moveto_when_check(sub)) {
-                    return LY_EINCOMPLETE;
-                }
-
-                if (!set_dup_node_check(dup_check_set, sub, LYXP_NODE_ELEM, -1)) {
-                    set_insert_node(to_set, sub, 0, LYXP_NODE_ELEM, to_set->used);
-
-                    /* skip anydata/anyxml nodes */
-                    if (sub->schema->nodetype & LYS_ANYDATA) {
-                        continue;
-                    }
-
-                    /* also add all the children of this node, recursively */
-                    rc = moveto_self_add_children_r(sub, 0, LYXP_NODE_ELEM, to_set, dup_check_set, options);
-                    LY_CHECK_RET(rc);
-                }
-            }
-
-        /* ... or add their text node, ... */
-        } else {
+        /* add just the text node of this term element node */
+        if (parent->schema->nodetype & (LYD_NODE_TERM | LYD_NODE_ANY)) {
             if (!set_dup_node_check(dup_check_set, parent, LYXP_NODE_TEXT, -1)) {
                 set_insert_node(to_set, parent, parent_pos, LYXP_NODE_TEXT, to_set->used);
             }
+            return LY_SUCCESS;
         }
+
+        /* add all the children of this node */
+        first = lyd_node_children(parent);
         break;
     default:
         LOGINT_RET(parent->schema->module->ctx);
+    }
+
+    /* add all top-level nodes as elements */
+    LY_LIST_FOR(first, iter) {
+        /* context check */
+        if ((parent_type == LYXP_NODE_ROOT_CONFIG) && (iter->schema->flags & LYS_CONFIG_R)) {
+            continue;
+        }
+
+        /* when check */
+        if (moveto_when_check(iter)) {
+            return LY_EINCOMPLETE;
+        }
+
+        if (!set_dup_node_check(dup_check_set, iter, LYXP_NODE_ELEM, -1)) {
+            set_insert_node(to_set, iter, 0, LYXP_NODE_ELEM, to_set->used);
+
+            /* also add all the children of this node, recursively */
+            rc = moveto_self_add_children_r(iter, 0, LYXP_NODE_ELEM, to_set, dup_check_set, options);
+            LY_CHECK_RET(rc);
+        }
     }
 
     return LY_SUCCESS;
@@ -6019,11 +6008,6 @@ moveto_self(struct lyxp_set *set, int all_desc, int options)
 
         /* do not touch attributes and text nodes */
         if ((set->val.nodes[i].type == LYXP_NODE_TEXT) || (set->val.nodes[i].type == LYXP_NODE_META)) {
-            continue;
-        }
-
-        /* skip anydata/anyxml nodes */
-        if (set->val.nodes[i].node->schema->nodetype & LYS_ANYDATA) {
             continue;
         }
 

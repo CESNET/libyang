@@ -1060,6 +1060,9 @@ LY_ERR lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_n
 /**
  * @brief Search in the given data for instances of nodes matching the provided XPath.
  *
+ * The expected format of the expression is JSON (::LYD_JSON) meaning the first node in every path
+ * must have its module name as prefix or be the special `*` value for all the nodes.
+ *
  * If a list instance is being selected with all its key values specified (but not necessarily ordered)
  * in the form `list[key1='val1'][key2='val2'][key3='val3']` or a leaf-list instance in the form
  * `leaf-list[.='val']`, these instances are found using hashes with constant (*O(1)*) complexity
