@@ -30,14 +30,8 @@ Generate a temporary changelog:
 Test the first build and create a new pristine-tar:
 - gbp buildpackage --git-ignore-new --git-pristine-tar --git-no-purge
 
-Regenerate the symbol file:
-- cd <build-area>/libuv1-1.xxx/ (if you get an error there, redo the previous
-  step without forgetting the --git-no-purge flag)
-- dpkg-gensymbols -plibuv1
-- review the diff (see links below)
-- create a patch : dpkg-gensymbols -plibuv1 | perl -p -E 's/([\d.]+)-\d.*/$1/;' > /tmp/sym.patch
-- cd -
-- apply the patch: patch debian/libuv1.symbols /tmp/sym.patch
+Regenerate the symbol file (See https://qt-kde-team.pages.debian.net/symbolfiles.html)
+- kgkde-symbolshelper batchpatch -v $VERSION < <path_to>/buildlog
 
 See https://www.debian.org/doc/manuals/maint-guide/advanced.en.html#librarysymbols
 and dpkg-gensymbols man page
@@ -60,4 +54,4 @@ Push on salsa:
 For more details, see
 https://honk.sigxcpu.org/projects/git-buildpackage/manual-html/gbp.import.upstream-git.html#gbp.import.upstream.git.notarball
 
- -- Ondřej Surý <Ondřej Surý <ondrej@debian.org>>, Fri, 22 May 2020 10:10:31 +0200
+ -- Ondřej Surý <Ondřej Surý <ondrej@debian.org>>, Fri, 22 May 2020 10:20:48 +0200
