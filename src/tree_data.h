@@ -1060,6 +1060,11 @@ LY_ERR lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_n
 /**
  * @brief Search in the given data for instances of nodes matching the provided XPath.
  *
+ * If a list instance is being selected with all its key values specified (but not necessarily ordered)
+ * in the form `list[key1='val1'][key2='val2'][key3='val3']` or a leaf-list instance in the form
+ * `leaf-list[.='val']`, these instances are found using hashes with constant (*O(1)*) complexity
+ * (unless they are defined in top-level). Other predicates can still follow the aforementioned ones.
+ *
  * @param[in] ctx_node XPath context node.
  * @param[in] xpath Data XPath expression filtering the matching nodes. ::LYD_JSON format is expected.
  * @param[out] set Set of found data nodes. In case the result is a number, a string, or a boolean,
