@@ -119,6 +119,7 @@ libyang.so.1 libyang1 #MINVER#
  lyd_validate@Base 1.0.130
  lyd_validate_modules@Base 1.0.130
  lyd_validate_value@Base 1.0.130
+ lyd_value_type@Base 1.0.167
  lyd_wd_default@Base 1.0.130
  lydict_insert@Base 1.0.130
  lydict_insert_zc@Base 1.0.130
