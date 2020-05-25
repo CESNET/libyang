@@ -97,6 +97,9 @@ setup(void **state)
                     "}"
                 "}"
             "}"
+            "leaf-list ll2 {"
+                "type string;"
+            "}"
         "}"
     "}";
 
@@ -191,6 +194,10 @@ test_hash(void **state)
                 "<a>val_b</a>"
             "</ll>"
         "</ll>"
+        "<ll2>one</ll2>"
+        "<ll2>two</ll2>"
+        "<ll2>three</ll2>"
+        "<ll2>four</ll2>"
     "</c>";
     struct lyd_node *tree, *node;
     struct ly_set *set;
@@ -234,6 +241,18 @@ test_hash(void **state)
     /* hashes are not used */
     assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/a:c//ll[a='val_b']", &set));
     assert_int_equal(4, set->count);
+
+    ly_set_free(set, NULL);
+
+    /* hashes used even for leaf-lists */
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/a:c/ll2[. = 'three']", &set));
+    assert_int_equal(1, set->count);
+
+    node = set->objs[0];
+    assert_string_equal(node->schema->name, "ll2");
+    val_str = lyd_value2str((struct lyd_node_term *)node, &dynamic);
+    assert_int_equal(0, dynamic);
+    assert_string_equal(val_str, "three");
 
     ly_set_free(set, NULL);
 
