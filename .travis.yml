@@ -55,5 +55,18 @@ script:
   - make -j2 && ctest --output-on-failure
   - cd -
 
-after_success:
-  - if [ "$TRAVIS_OS_NAME" = "linux" -a "$CC" = "gcc" -a "$TRAVIS_ARCH" = "amd64" -a "$TRAVIS_BRANCH" = "master" ]; then codecov; ./packages/create-package.sh; fi
+deploy:
+  - provider: script
+    script: codecov
+    skip_cleanup: true
+    verbose: true
+    on:
+      branch: master
+      condition: $TRAVIS_OS_NAME = linux && $CC = gcc && $TRAVIS_ARCH = amd64
+  - provider: script
+    script: ./packages/create-package.sh
+    skip_cleanup: true
+    verbose: true
+    on:
+      branch: master
+      condition: $TRAVIS_OS_NAME = linux && $CC = gcc && $TRAVIS_ARCH = amd64
