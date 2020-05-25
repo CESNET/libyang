@@ -1,4 +1,4 @@
-# SymbolsHelper-Confirmed: 1.0.130 amd64
+# SymbolsHelper-Confirmed: 1.0.167 amd64
 libyang-cpp.so.1 libyang-cpp1 #MINVER#
 * Build-Depends-Package: libyang-cpp-dev
  _ZN7libyang10Refine_Mod4listEv@Base 1.0.130
