@@ -322,10 +322,8 @@ test_toplevel(void **state)
         "<a>3</a>"
         "<b>1</b>"
     "</l2>";
-    struct lyd_node *tree, *node;
+    struct lyd_node *tree;
     struct ly_set *set;
-    int dynamic;
-    const char *val_str;
 
     tree = lyd_parse_mem(ctx, data, LYD_XML, LYD_OPT_STRICT | LYD_VALOPT_DATA_ONLY);
     assert_non_null(tree);
