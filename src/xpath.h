@@ -3,7 +3,7 @@
  * @author Michal Vasko <mvasko@cesnet.cz>
  * @brief YANG XPath evaluation functions header
  *
- * Copyright (c) 2015 - 2019 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2020 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -287,9 +287,6 @@ LY_ERR lyxp_eval(struct lyxp_expr *exp, LYD_FORMAT format, const struct lys_modu
 /**
  * @brief Get all the partial XPath nodes (atoms) that are required for @p exp to be evaluated.
  *
- * If any LYXP_SCNODE* options is set, only fatal errors are printed, otherwise they are downgraded
- * to warnings.
- *
  * @param[in] exp Parsed XPath expression to be evaluated.
  * @param[in] format Format of the XPath expression (more specifcally, of any used prefixes).
  * @param[in] local_mod Local module relative to the @p exp.
@@ -305,11 +302,7 @@ LY_ERR lyxp_eval(struct lyxp_expr *exp, LYD_FORMAT format, const struct lys_modu
 LY_ERR lyxp_atomize(struct lyxp_expr *exp, LYD_FORMAT format, const struct lys_module *local_mod, const struct lysc_node *ctx_scnode,
                     enum lyxp_node_type ctx_scnode_type, struct lyxp_set *set, int options);
 
-/* these are used only internally */
-#define LYXP_SCNODE 0x02        /**< No special data tree access modifiers. */
-#define LYXP_SCNODE_SCHEMA 0x04 /**< Apply schema node access restrictions defined for 'when' and 'must' evaluation. */
-#define LYXP_SCNODE_OUTPUT 0x08 /**< Search RPC/action output instead of input. */
-
+/* used only internally */
 #define LYXP_SCNODE_ALL 0x0E
 
 /**

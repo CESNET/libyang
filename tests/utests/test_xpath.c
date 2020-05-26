@@ -24,6 +24,7 @@
 
 #include "../../src/context.h"
 #include "../../src/tree_data.h"
+#include "../../src/tree_schema.h"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
@@ -362,11 +363,40 @@ test_toplevel(void **state)
     *state = NULL;
 }
 
+static void
+test_atomize(void **state)
+{
+    *state = test_atomize;
+
+    struct ly_set *set;
+    const struct lys_module *mod;
+
+    mod = ly_ctx_get_module_latest(ctx, "a");
+
+    /* some random paths just making sure the API function works */
+    assert_int_equal(LY_SUCCESS, lys_atomize_xpath(mod->compiled->data, "/a:*", 0, &set));
+    assert_int_equal(3, set->count);
+
+    ly_set_free(set, NULL);
+
+    /* all nodes from all modules (including internal, which can change easily, so check just the test modules) */
+    assert_int_equal(LY_SUCCESS, lys_atomize_xpath(mod->compiled->data, "//.", 0, &set));
+    assert_in_range(set->count, 16, UINT32_MAX);
+
+    ly_set_free(set, NULL);
+
+    assert_int_equal(LY_SUCCESS, lys_atomize_xpath(mod->compiled->data->next->next, "/a:c/ll[a='val1']/ll[a='val2']/b", 0, &set));
+    assert_int_equal(6, set->count);
+
+    ly_set_free(set, NULL);
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_hash, setup, teardown),
         cmocka_unit_test_setup_teardown(test_toplevel, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_atomize, setup, teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

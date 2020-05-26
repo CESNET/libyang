@@ -5455,7 +5455,7 @@ moveto_scnode(struct lyxp_set *set, const struct lys_module *mod, const char *nc
 {
     int i, orig_used, idx, temp_ctx = 0, getnext_opts;
     uint32_t mod_idx;
-    const struct lysc_node *sub, *start_parent;
+    const struct lysc_node *iter, *start_parent;
 
     if (!set) {
         return LY_SUCCESS;
@@ -5492,11 +5492,11 @@ moveto_scnode(struct lyxp_set *set, const struct lys_module *mod, const char *nc
              * so use it directly (root node itself is useless in this case) */
             mod_idx = 0;
             while (mod || (mod = (struct lys_module *)ly_ctx_get_module_iter(set->ctx, &mod_idx))) {
-                sub = NULL;
+                iter = NULL;
                 /* module may not be implemented */
-                while (mod->implemented && (sub = lys_getnext(sub, NULL, mod->compiled, getnext_opts))) {
-                    if (!moveto_scnode_check(sub, set->root_type, ncname, mod)) {
-                        idx = lyxp_set_scnode_insert_node(set, sub, LYXP_NODE_ELEM);
+                while (mod->implemented && (iter = lys_getnext(iter, NULL, mod->compiled, getnext_opts))) {
+                    if (!moveto_scnode_check(iter, set->root_type, ncname, mod)) {
+                        idx = lyxp_set_scnode_insert_node(set, iter, LYXP_NODE_ELEM);
                         /* we need to prevent these nodes from being considered in this moveto */
                         if ((idx < orig_used) && (idx > i)) {
                             set->val.scnodes[idx].in_ctx = 2;
@@ -5513,12 +5513,11 @@ moveto_scnode(struct lyxp_set *set, const struct lys_module *mod, const char *nc
                 mod = NULL;
             }
 
-        /* skip nodes without children - leaves, leaflists, and anyxmls (ouput root will eval to true) */
-        } else if (!(start_parent->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA))) {
-            sub = NULL;
-            while ((sub = lys_getnext(sub, start_parent, NULL, getnext_opts))) {
-                if (!moveto_scnode_check(sub, set->root_type, ncname, (mod ? mod : set->local_mod))) {
-                    idx = lyxp_set_scnode_insert_node(set, sub, LYXP_NODE_ELEM);
+        } else if (set->val.scnodes[i].type == LYXP_NODE_ELEM) {
+            iter = NULL;
+            while ((iter = lys_getnext(iter, start_parent, NULL, getnext_opts))) {
+                if (!moveto_scnode_check(iter, set->root_type, ncname, (mod ? mod : set->local_mod))) {
+                    idx = lyxp_set_scnode_insert_node(set, iter, LYXP_NODE_ELEM);
                     if ((idx < orig_used) && (idx > i)) {
                         set->val.scnodes[idx].in_ctx = 2;
                         temp_ctx = 1;
@@ -6041,8 +6040,10 @@ moveto_self(struct lyxp_set *set, int all_desc, int options)
 static LY_ERR
 moveto_scnode_self(struct lyxp_set *set, int all_desc, int options)
 {
-    const struct lysc_node *sub;
-    uint32_t i;
+    int getnext_opts;
+    uint32_t i, mod_idx;
+    const struct lysc_node *iter, *start_parent;
+    const struct lys_module *mod;
 
     if (!set) {
         return LY_SUCCESS;
@@ -6058,39 +6059,53 @@ moveto_scnode_self(struct lyxp_set *set, int all_desc, int options)
         return LY_SUCCESS;
     }
 
-    /* add all the children, they get added recursively */
+    /* getnext opts */
+    getnext_opts = LYS_GETNEXT_NOSTATECHECK;
+    if (options & LYXP_SCNODE_OUTPUT) {
+        getnext_opts |= LYS_GETNEXT_OUTPUT;
+    }
+
+    /* add all the children, recursively as they are being added into the same set */
     for (i = 0; i < set->used; ++i) {
         if (set->val.scnodes[i].in_ctx != 1) {
             if (set->val.scnodes[i].in_ctx != -2) {
                 continue;
             }
 
-            /* remember context node (it was traversed again so it changes to a normal node) */
-            set->val.scnodes[i].in_ctx = 1;
+            /* remember context node */
+            set->val.scnodes[i].in_ctx = -1;
+        } else {
+            set->val.scnodes[i].in_ctx = 0;
         }
 
-        /* add all the children */
-        if (set->val.scnodes[i].scnode->nodetype & (LYS_LIST | LYS_CONTAINER)) {
-            sub = NULL;
-            while ((sub = lys_getnext(sub, set->val.scnodes[i].scnode, NULL, LYS_GETNEXT_NOSTATECHECK))) {
-                /* RPC input/output check */
-                if (options & LYXP_SCNODE_OUTPUT) {
-                    if (sub->parent->nodetype == LYS_INPUT) {
-                        continue;
-                    }
-                } else {
-                    if (sub->parent->nodetype == LYS_OUTPUT) {
-                        continue;
-                    }
-                }
+        start_parent = set->val.scnodes[i].scnode;
 
+        if ((set->val.scnodes[i].type == LYXP_NODE_ROOT_CONFIG) || (set->val.scnodes[i].type == LYXP_NODE_ROOT)) {
+            /* it can actually be in any module, it's all <running> */
+            mod_idx = 0;
+            while ((mod = (struct lys_module *)ly_ctx_get_module_iter(set->ctx, &mod_idx))) {
+                iter = NULL;
+                /* module may not be implemented */
+                while (mod->implemented && (iter = lys_getnext(iter, NULL, mod->compiled, getnext_opts))) {
+                    /* context check */
+                    if ((set->root_type == LYXP_NODE_ROOT_CONFIG) && (iter->flags & LYS_CONFIG_R)) {
+                        continue;
+                    }
+
+                    lyxp_set_scnode_insert_node(set, iter, LYXP_NODE_ELEM);
+                    /* throw away the insert index, we want to consider that node again, recursively */
+                }
+            }
+
+        } else if (set->val.scnodes[i].type == LYXP_NODE_ELEM) {
+            iter = NULL;
+            while ((iter = lys_getnext(iter, start_parent, NULL, getnext_opts))) {
                 /* context check */
-                if ((set->root_type == LYXP_NODE_ROOT_CONFIG) && (sub->flags & LYS_CONFIG_R)) {
+                if ((set->root_type == LYXP_NODE_ROOT_CONFIG) && (iter->flags & LYS_CONFIG_R)) {
                     continue;
                 }
 
-                lyxp_set_scnode_insert_node(set, sub, LYXP_NODE_ELEM);
-                /* throw away the insert index, we want to consider that node again, recursively */
+                lyxp_set_scnode_insert_node(set, iter, LYXP_NODE_ELEM);
             }
         }
     }

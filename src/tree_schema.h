@@ -1731,12 +1731,28 @@ int lysc_iffeature_value(const struct lysc_iffeature *iff);
  * @brief Get the current status of the provided feature.
  *
  * @param[in] feature Compiled feature statement to examine.
- * @return
- * - 1 if feature is enabled,
- * - 0 if feature is disabled,
- * - -1 in case of error (invalid argument)
+ * @return 1 if feature is enabled,
+ * @return 0 if feature is disabled,
+ * @return -1 in case of error (invalid argument)
  */
 int lysc_feature_value(const struct lysc_feature *feature);
+
+/**
+ * @brief Get all the schema nodes (atoms) that are required for \p xpath to be evaluated.
+ *
+ * @param[in] ctx_node XPath schema context node.
+ * @param[in] xpath Data XPath expression filtering the matching nodes. ::LYD_JSON format is expected.
+ * @param[in] options Whether to apply some node access restrictions, one of the options should always be used.
+ * If none is set, ::LYXP_SCNODE is used.
+ * @param[out] set Set of found atoms (schema nodes).
+ * @return LY_SUCCESS on success, @p set is returned.
+ * @return LY_ERR value if an error occurred.
+ */
+LY_ERR lys_atomize_xpath(const struct lysc_node *ctx_node, const char *xpath, int options, struct ly_set **set);
+
+#define LYXP_SCNODE 0x02        /**< No special tree access modifiers. */
+#define LYXP_SCNODE_SCHEMA 0x04 /**< Apply node access restrictions defined for 'when' and 'must' evaluation. */
+#define LYXP_SCNODE_OUTPUT 0x08 /**< Search RPC/action output nodes instead of input ones. */
 
 /**
  * @brief Types of the different schema paths.
