@@ -2227,14 +2227,14 @@ test_uses(void **state)
     assert_string_equal("f", child->iffeatures[0].features[0]->name);
     assert_int_equal(LY_EINVAL, lys_feature_enable(mod->compiled->imports[0].module, "f"));
     logbuf_assert("Module \"grp\" is not implemented so all its features are permanently disabled without a chance to change it.");
-    assert_int_equal(0, lysc_iffeature_value(&child->iffeatures[0]));
+    assert_int_equal(LY_ENOT, lysc_iffeature_value(&child->iffeatures[0]));
 
     /* make the imported module implemented and enable the feature */
     assert_non_null(mod = ly_ctx_get_module(ctx, "grp", NULL));
     assert_int_equal(LY_SUCCESS, lys_set_implemented(mod));
     assert_int_equal(LY_SUCCESS, lys_feature_enable(mod, "f"));
     assert_string_equal("f", child->iffeatures[0].features[0]->name);
-    assert_int_equal(1, lysc_iffeature_value(&child->iffeatures[0]));
+    assert_int_equal(LY_SUCCESS, lysc_iffeature_value(&child->iffeatures[0]));
 
     ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule bsub {belongs-to b {prefix b;} grouping grp {leaf b {when 1; type string;} leaf c {type string;}}}");
     assert_non_null(mod = lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;include bsub;uses grp {when 2;}}", LYS_IN_YANG));

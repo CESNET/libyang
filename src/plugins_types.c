@@ -920,7 +920,7 @@ ly_type_store_bits(const struct ly_ctx *ctx, struct lysc_type *type, const char 
 
                 /* check that the bit is not disabled */
                 LY_ARRAY_FOR(type_bits->bits[u].iffeatures, v) {
-                    if (!lysc_iffeature_value(&type_bits->bits[u].iffeatures[v])) {
+                    if (lysc_iffeature_value(&type_bits->bits[u].iffeatures[v]) == LY_ENOT) {
                         asprintf(&errmsg, "Bit \"%s\" is disabled by its %" LY_PRI_ARRAY_SIZE_TYPE ". if-feature condition.",
                                  type_bits->bits[u].name, v + 1);
                         goto error;
@@ -1076,7 +1076,7 @@ ly_type_store_enum(const struct ly_ctx *ctx, struct lysc_type *type, const char 
 
             /* check that the enumeration value is not disabled */
             LY_ARRAY_FOR(type_enum->enums[u].iffeatures, v) {
-                if (!lysc_iffeature_value(&type_enum->enums[u].iffeatures[v])) {
+                if (lysc_iffeature_value(&type_enum->enums[u].iffeatures[v]) == LY_ENOT) {
                     asprintf(&errmsg, "Enumeration \"%s\" is disabled by its %" LY_PRI_ARRAY_SIZE_TYPE ". if-feature condition.",
                              type_enum->enums[u].name, v + 1);
                     goto error;

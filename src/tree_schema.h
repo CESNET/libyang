@@ -1723,19 +1723,21 @@ const struct lysc_node *lysc_node_children(const struct lysc_node *node, uint16_
  * @brief Get how the if-feature statement currently evaluates.
  *
  * @param[in] iff Compiled if-feature statement to evaluate.
- * @return If the statement evaluates to true, 1 is returned. 0 is returned when the statement evaluates to false.
+ * @return LY_SUCCESS if the statement evaluates to true,
+ * @return LY_ENOT if it evaluates to false,
+ * @return LY_ERR on error.
  */
-int lysc_iffeature_value(const struct lysc_iffeature *iff);
+LY_ERR lysc_iffeature_value(const struct lysc_iffeature *iff);
 
 /**
  * @brief Get the current status of the provided feature.
  *
  * @param[in] feature Compiled feature statement to examine.
- * @return 1 if feature is enabled,
- * @return 0 if feature is disabled,
- * @return -1 in case of error (invalid argument)
+ * @return LY_SUCCESS if feature is enabled,
+ * @return LY_ENOT if feature is disabled,
+ * @return LY_ERR in case of error (invalid argument)
  */
-int lysc_feature_value(const struct lysc_feature *feature);
+LY_ERR lysc_feature_value(const struct lysc_feature *feature);
 
 /**
  * @brief Get all the schema nodes (atoms) that are required for \p xpath to be evaluated.

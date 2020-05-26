@@ -405,11 +405,11 @@ lysc_path(const struct lysc_node *node, LYSC_PATH_TYPE pathtype, char *buffer, s
     return lysc_path_until(node, NULL, pathtype, buffer, buflen);
 }
 
-API int
+API LY_ERR
 lysc_feature_value(const struct lysc_feature *feature)
 {
-    LY_CHECK_ARG_RET(NULL, feature, -1);
-    return feature->flags & LYS_FENABLED ? 1 : 0;
+    LY_CHECK_ARG_RET(NULL, feature, LY_EINVAL);
+    return feature->flags & LYS_FENABLED ? LY_SUCCESS : LY_ENOT;
 }
 
 uint8_t
@@ -425,11 +425,11 @@ lysc_iff_getop(uint8_t *list, int pos)
     return result >> 2 * (pos % 4);
 }
 
-static int
+static LY_ERR
 lysc_iffeature_value_(const struct lysc_iffeature *iff, int *index_e, int *index_f)
 {
     uint8_t op;
-    int a, b;
+    LY_ERR a, b;
 
     op = lysc_iff_getop(iff->expr, *index_e);
     (*index_e)++;
@@ -440,22 +440,30 @@ lysc_iffeature_value_(const struct lysc_iffeature *iff, int *index_e, int *index
         return lysc_feature_value(iff->features[(*index_f)++]);
     case LYS_IFF_NOT:
         /* invert result */
-        return lysc_iffeature_value_(iff, index_e, index_f) ? 0 : 1;
+        return lysc_iffeature_value_(iff, index_e, index_f) == LY_SUCCESS ? LY_ENOT : LY_SUCCESS;
     case LYS_IFF_AND:
     case LYS_IFF_OR:
         a = lysc_iffeature_value_(iff, index_e, index_f);
         b = lysc_iffeature_value_(iff, index_e, index_f);
         if (op == LYS_IFF_AND) {
-            return a && b;
+            if ((a == LY_SUCCESS) && (b == LY_SUCCESS)) {
+                return LY_SUCCESS;
+            } else {
+                return LY_ENOT;
+            }
         } else { /* LYS_IFF_OR */
-            return a || b;
+            if ((a == LY_SUCCESS) || (b == LY_SUCCESS)) {
+                return LY_SUCCESS;
+            } else {
+                return LY_ENOT;
+            }
         }
     }
 
     return 0;
 }
 
-API int
+API LY_ERR
 lysc_iffeature_value(const struct lysc_iffeature *iff)
 {
     int index_e = 0, index_f = 0;
@@ -533,7 +541,7 @@ run:
             if (value) { /* enable */
                 /* check referenced features if they are enabled */
                 LY_ARRAY_FOR(f->iffeatures, struct lysc_iffeature, iff) {
-                    if (!lysc_iffeature_value(iff)) {
+                    if (lysc_iffeature_value(iff) == LY_ENOT) {
                         if (all) {
                             ++disabled_count;
                             goto next;
@@ -612,7 +620,7 @@ next:
             }
             /* check the feature's if-features which could change by the previous change of our feature */
             LY_ARRAY_FOR((*df)->iffeatures, struct lysc_iffeature, iff) {
-                if (!lysc_iffeature_value(iff)) {
+                if (lysc_iffeature_value(iff) == LY_ENOT) {
                     /* the feature must be disabled now */
                     (*df)->flags &= ~LYS_FENABLED;
                     /* add the feature into the list of changed features */
@@ -680,7 +688,7 @@ lysc_node_is_disabled(const struct lysc_node *node, int recursive)
         if (node->iffeatures) {
             /* check local if-features */
             LY_ARRAY_FOR(node->iffeatures, u) {
-                if (!lysc_iffeature_value(&node->iffeatures[u])) {
+                if (lysc_iffeature_value(&node->iffeatures[u]) == LY_ENOT) {
                     return node;
                 }
             }
