@@ -702,6 +702,21 @@ struct lyd_node *lyd_new_any(struct lyd_node *parent, const struct lys_module *m
                              const void *value, LYD_ANYDATA_VALUETYPE value_type);
 
 /**
+ * @brief Create new metadata for a data node.
+ *
+ * @param[in] parent Parent node for the metadata being created.
+ * @param[in] module Module of the metdata being created. If NULL, @p name must include module name as the prefix.
+ * @param[in] name Annotation name of the new metadata. It can include the annotation module as the prefix.
+ *            If the prefix is specified it is always used but if not specified, @p module must be set.
+ * @param[in] val_str String form of the value of the metadata being created. In case of an instance-identifier or identityref
+ * value, the JSON format is expected (module names instead of prefixes).
+ * @return New created metadata in the @p parent.
+ * @return NULL on error.
+ */
+struct lyd_meta *lyd_new_meta(struct lyd_node *parent, const struct lys_module *module, const char *name,
+                              const char *val_str);
+
+/**
  * @brief Insert a child into a parent. It is inserted as the last child.
  *
  * - if the node is part of some other tree, it is automatically unlinked.

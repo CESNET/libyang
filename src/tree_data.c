@@ -11,6 +11,7 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
+#define _POSIX_C_SOURCE 200809L /* strndup */
 
 #include "common.h"
 
@@ -884,6 +885,42 @@ lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char
     if (!lyd_create_any(schema, value, value_type, &ret) && parent) {
         lyd_insert_node(parent, NULL, ret);
     }
+    return ret;
+}
+
+API struct lyd_meta *
+lyd_new_meta(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *val_str)
+{
+    struct lyd_meta *ret = NULL;
+    struct ly_ctx *ctx = parent->schema->module->ctx;
+    const char *prefix, *tmp;
+    char *str;
+    size_t pref_len, name_len;
+
+    LY_CHECK_ARG_RET(ctx, parent, name, module || strchr(name, ':'), NULL);
+
+    /* parse the name */
+    tmp = name;
+    if (ly_parse_nodeid(&tmp, &prefix, &pref_len, &name, &name_len) || tmp[0]) {
+        LOGERR(ctx, LY_EINVAL, "Metadata name \"%s\" is not valid.", name);
+        return NULL;
+    }
+
+    /* find the module */
+    if (prefix) {
+        str = strndup(name, name_len);
+        module = ly_ctx_get_module_implemented(ctx, str);
+        free(str);
+        LY_CHECK_ERR_RET(!module, LOGERR(ctx, LY_EINVAL, "Module \"%*.s\" not found.", pref_len, prefix), NULL);
+    }
+
+    /* set value if none */
+    if (!val_str) {
+        val_str = "";
+    }
+
+    lyd_create_meta(parent, &ret, module, name, name_len, val_str, strlen(val_str), NULL, lydjson_resolve_prefix, NULL,
+                    LYD_JSON, parent->schema);
     return ret;
 }
 
