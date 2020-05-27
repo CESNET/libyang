@@ -52,8 +52,8 @@ LY_OUT_TYPE ly_out_type(const struct ly_out *out);
  *
  * Note that in case the underlying output is not seekable (stream referring a pipe/FIFO/socket or the callback output type),
  * nothing actually happens despite the function succeeds. Also note that the medium is not returned to the state it was when
- * the handler was created. For example, file is seeked into the offset zero, not to the offset where it was opened when
- * ly_out_new_file() was called.
+ * the handler was created. For example, file is seeked into the offset zero and truncated, the content from the time it was opened with
+ * ly_out_new_file() is not restored.
  *
  * @param[in] out Printer handler.
  * @return LY_SUCCESS in case of success
