@@ -764,7 +764,7 @@ lyd_new_inner(struct lyd_node *parent, const struct lys_module *module, const ch
     }
 
     schema = lys_find_child(parent ? parent->schema : NULL, module, name, 0, LYS_CONTAINER | LYS_NOTIF | LYS_RPC | LYS_ACTION, 0);
-    LY_CHECK_ERR_RET(!schema, LOGERR(ctx, LY_EINVAL, "Inner node \"%s\" not found.", name), NULL);
+    LY_CHECK_ERR_RET(!schema, LOGERR(ctx, LY_EINVAL, "Inner node (and not a list) \"%s\" not found.", name), NULL);
 
     if (!lyd_create_inner(schema, &ret) && parent) {
         lyd_insert_node(parent, NULL, ret);
