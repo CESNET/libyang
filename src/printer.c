@@ -486,9 +486,7 @@ ly_out_free(struct ly_out *out, void (*clb_arg_destructor)(void *arg), int destr
         break;
     case LY_OUT_FILEPATH:
         free(out->method.fpath.filepath);
-        if (destroy) {
-            fclose(out->method.fpath.f);
-        }
+        fclose(out->method.fpath.f);
         break;
     case LY_OUT_ERROR:
         LOGINT(NULL);
@@ -574,7 +572,7 @@ ly_print(struct ly_out *out, const char *format, ...)
     }
 }
 
-void
+API void
 ly_print_flush(struct ly_out *out)
 {
     switch (out->type) {
