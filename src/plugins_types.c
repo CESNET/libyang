@@ -351,6 +351,7 @@ ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str, size_
     LY_CHECK_ARG_RET(NULL, str, err, LY_EINVAL);
 
     LY_ARRAY_FOR(patterns, u) {
+        /* match_data needs to be allocated each time because of possible multi-threaded evaluation */
         match_data = pcre2_match_data_create_from_pattern(patterns[u]->code, NULL);
         if (!match_data) {
             *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
@@ -359,8 +360,7 @@ ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str, size_
 
         rc = pcre2_match(patterns[u]->code, (PCRE2_SPTR)str, str_len, 0, PCRE2_ANCHORED | PCRE2_ENDANCHORED, match_data, NULL);
         if (rc == PCRE2_ERROR_NOMATCH) {
-            asprintf(&errmsg, "String \"%.*s\" does not conform to the %" LY_PRI_ARRAY_SIZE_TYPE ". pattern restriction of its type.",
-                     (int)str_len, str, u + 1);
+            asprintf(&errmsg, "String \"%.*s\" does not conform to the pattern \"%s\".", (int)str_len, str, patterns[u]->expr);
             *err = ly_err_new(LY_LLERR, LY_ESYS, 0, errmsg, NULL, NULL);
             ret = LY_EVALID;
             goto cleanup;
