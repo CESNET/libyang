@@ -1544,7 +1544,7 @@ set_sort(struct lyxp_set *set)
     struct lyxp_set_hash_node hnode;
     uint64_t hash;
 
-    if ((set->type != LYXP_SET_NODE_SET) || (set->used == 1)) {
+    if ((set->type != LYXP_SET_NODE_SET) || (set->used < 2)) {
         return 0;
     }
 
