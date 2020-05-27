@@ -1,27 +1,29 @@
    module ietf-yang-library {
      yang-version 1.1;
      namespace "urn:ietf:params:xml:ns:yang:ietf-yang-library";
-     prefix "yanglib";
+     prefix yanglib;
 
      import ietf-yang-types {
        prefix yang;
-       reference "RFC 6991: Common YANG Data Types.";
+       reference
+         "RFC 6991: Common YANG Data Types";
      }
      import ietf-inet-types {
        prefix inet;
-       reference "RFC 6991: Common YANG Data Types.";
+       reference
+         "RFC 6991: Common YANG Data Types";
      }
      import ietf-datastores {
        prefix ds;
-       reference "I-D.ietf-revised-datastores:
-                  Network Management Datastore Architecture.";
+       reference
+         "RFC 8342: Network Management Datastore Architecture
+                    (NMDA)";
      }
 
      organization
        "IETF NETCONF (Network Configuration) Working Group";
-
      contact
-       "WG Web:   <http://tools.ietf.org/wg/netconf/>
+       "WG Web:   <https://datatracker.ietf.org/wg/netconf/>
         WG List:  <mailto:netconf@ietf.org>
 
         Author:   Andy Bierman
@@ -34,17 +36,22 @@
                   <mailto:j.schoenwaelder@jacobs-university.de>
 
         Author:   Kent Watsen
-                  <mailto:kwatsen@juniper.net>
+                  <mailto:kent+ietf@watsen.net>
 
-        Author:   Rob Wilton
-                  <rwilton@cisco.com>";
-
+        Author:   Robert Wilton
+                  <mailto:rwilton@cisco.com>";
      description
-       "This module contains information about the YANG server instance,
-        including the modules and datastores the server supports, and
-        which modules are present in which datastores.
+       "This module provides information about the YANG modules,
+        datastores, and datastore schemas used by a network
+        management server.
 
-        Copyright (c) 2018 IETF Trust and the persons identified as
+        The key words 'MUST', 'MUST NOT', 'REQUIRED', 'SHALL', 'SHALL
+        NOT', 'SHOULD', 'SHOULD NOT', 'RECOMMENDED', 'NOT RECOMMENDED',
+        'MAY', and 'OPTIONAL' in this document are to be interpreted as
+        described in BCP 14 (RFC 2119) (RFC 8174) when, and only when,
+        they appear in all capitals, as shown here.
+
+        Copyright (c) 2019 IETF Trust and the persons identified as
         authors of the code.  All rights reserved.
 
         Redistribution and use in source and binary forms, with or
@@ -52,26 +59,23 @@
         to the license terms contained in, the Simplified BSD License
         set forth in Section 4.c of the IETF Trust's Legal Provisions
         Relating to IETF Documents
-        (http://trustee.ietf.org/license-info).
+        (https://trustee.ietf.org/license-info).
 
-        This version of this YANG module is part of RFC XXXX; see
+        This version of this YANG module is part of RFC 8525; see
         the RFC itself for full legal notices.";
 
-     // RFC Ed.: update the date below with the date of RFC publication
-     // and remove this note.
-     // RFC Ed.: replace XXXX with actual RFC number and remove this
-     // note.
-     revision 2018-01-17 {
+     revision 2019-01-04 {
        description
-         "Added support for multiple datastores.";
+         "Added support for multiple datastores according to the
+          Network Management Datastore Architecture (NMDA).";
        reference
-         "RFC XXXX: YANG Library.";
+         "RFC 8525: YANG Library";
      }
      revision 2016-04-09 {
        description
          "Initial revision.";
        reference
-         "RFC 7895: YANG Module Library.";
+         "RFC 7895: YANG Module Library";
      }
 
      /*
@@ -93,7 +97,6 @@
      grouping module-identification-leafs {
        description
          "Parameters for identifying YANG modules and submodules.";
-
        leaf name {
          type yang:yang-identifier;
          mandatory true;
@@ -111,9 +114,8 @@
 
      grouping location-leaf-list {
        description
-         "Common location leaf list parameter for modules and
+         "Common leaf-list parameter for the locations of modules and
           submodules.";
-
        leaf-list location {
          type inet:uri;
          description
@@ -125,83 +127,60 @@
        }
      }
 
-     grouping implementation-parameters {
+     grouping module-implementation-parameters {
        description
          "Parameters for describing the implementation of a module.";
-
-       list feature {
-         key "name";
+       leaf-list feature {
+         type yang:yang-identifier;
          description
-           "List of YANG feature names from this module that are
+           "List of all YANG feature names from this module that are
             supported by the server, regardless whether they are defined
             in the module or any included submodule.";
-         leaf name {
-           type yang:yang-identifier;
-           description
-             "A feature supported by the server.";
-         }
        }
-       list deviation {
-         key "module";
-         description
-           "List of YANG deviation modules used by this server to modify
-            the conformance of the module associated with this entry.
-            Note that the same module can be used for deviations for
-            multiple modules, so the same entry MAY appear within
-            multiple 'module' entries.";
-
-         leaf module {
-           type leafref {
-             path "../../../module/name";
-           }
-           description
-             "A module that deviates the module associated with this
-              entry.";
+       leaf-list deviation {
+         type leafref {
+           path "../../module/name";
          }
+         description
+           "List of all YANG deviation modules used by this server to
+            modify the conformance of the module associated with this
+            entry.  Note that the same module can be used for deviations
+            for multiple modules, so the same entry MAY appear within
+            multiple 'module' entries.
+
+            This reference MUST NOT (directly or indirectly)
+            refer to the module being deviated.
+
+            Robust clients may want to make sure that they handle a
+            situation where a module deviates itself (directly or
+            indirectly) gracefully.";
        }
      }
 
      grouping module-set-parameters {
        description
          "A set of parameters that describe a module set.";
-
        leaf name {
          type string;
          description
            "An arbitrary name of the module set.";
        }
-       leaf checksum {
-         type string;
-         config false;
-         mandatory true;
-         description
-           "A server-generated checksum of the contents of the module
-            set.  The server MUST change the value of this leaf if the
-            information represented by the module set, except
-            'checksum', has changed.";
-       }
        list module {
          key "name";
          description
            "An entry in this list represents a module implemented by the
-            server with a particular set of supported features and
-            deviations.
-
-            The server implements one or more protocol-accessible
-            objects defined in the YANG module identified in this entry.
-            This includes deviation statements defined in the module.";
-
+            server, as per Section 5.6.5 of RFC 7950, with a particular
+            set of supported features and deviations.";
+         reference
+           "RFC 7950: The YANG 1.1 Data Modeling Language";
          uses module-identification-leafs;
-
          leaf namespace {
            type inet:uri;
            mandatory true;
            description
              "The XML namespace identifier for this module.";
          }
-
          uses location-leaf-list;
-
          list submodule {
            key "name";
            description
@@ -210,21 +189,19 @@
            uses module-identification-leafs;
            uses location-leaf-list;
          }
-
-         uses implementation-parameters;
+         uses module-implementation-parameters;
        }
        list import-only-module {
          key "name revision";
          description
            "An entry in this list indicates that the server imports
             reusable definitions from the specified revision of the
-            module, but does not implement any protocol accessible
+            module but does not implement any protocol-accessible
             objects from this revision.
 
             Multiple entries for the same module name MAY exist.  This
-            can occur if multiple modules import the same module, but
-            specify different revision-dates in the import statements.";
-
+            can occur if multiple modules import the same module but
+            specify different revision dates in the import statements.";
          leaf name {
            type yang:yang-identifier;
            description
@@ -234,11 +211,11 @@
            type union {
              type revision-identifier;
              type string {
-               length 0;
+               length "0";
              }
            }
            description
-             "The YANG module or revision date.
+             "The YANG module revision date.
               A zero-length string is used if no revision statement
               is present in the YANG module.";
          }
@@ -248,15 +225,12 @@
            description
              "The XML namespace identifier for this module.";
          }
-
          uses location-leaf-list;
-
          list submodule {
            key "name";
            description
              "Each entry represents one submodule within the
               parent module.";
-
            uses module-identification-leafs;
            uses location-leaf-list;
          }
@@ -268,45 +242,41 @@
          "The YANG library data structure is represented as a grouping
           so it can be reused in configuration or another monitoring
           data structure.";
-
        list module-set {
-         key name;
+         key "name";
          description
-           "A set of modules that may be used by one or more schemas.";
+           "A set of modules that may be used by one or more schemas.
 
+            A module set does not have to be referentially complete,
+            i.e., it may define modules that contain import statements
+            for other modules not included in the module set.";
          uses module-set-parameters;
        }
-
        list schema {
          key "name";
          description
            "A datastore schema that may be used by one or more
-            datastores.";
+            datastores.
 
+            The schema must be valid and referentially complete, i.e.,
+            it must contain modules to satisfy all used import
+            statements for all modules specified in the schema.";
          leaf name {
            type string;
            description
              "An arbitrary name of the schema.";
-         }
-         leaf checksum {
-           type string;
-           config false;
-           mandatory true;
-           description
-             "A server-generated checksum of the contents of the schema.
-              The server MUST change the value of this leaf if the
-              information represented by the schema, except 'checksum',
-              has changed.";
          }
          leaf-list module-set {
            type leafref {
              path "../../module-set/name";
            }
            description
-             "A set of module-sets that are included in this schema.";
+             "A set of module-sets that are included in this schema.
+              If a non-import-only module appears in multiple module
+              sets, then the module revision and the associated features
+              and deviations must be identical.";
          }
        }
-
        list datastore {
          key "name";
          description
@@ -316,14 +286,10 @@
 
             The server MUST instantiate one entry in this list per
             specific datastore it supports.
-
-            Each datstore entry with the same datastore schema SHOULD
+            Each datastore entry with the same datastore schema SHOULD
             reference the same schema.";
-
          leaf name {
-           type identityref {
-             base ds:datastore;
-           }
+           type ds:datastore-ref;
            description
              "The identity of the datastore.";
          }
@@ -332,9 +298,10 @@
              path "../../schema/name";
            }
            mandatory true;
-
            description
-             "A reference to the schema supported by this datastore.";
+             "A reference to the schema supported by this datastore.
+              All non-import-only modules of the schema are implemented
+              with their associated features and deviations.";
          }
        }
      }
@@ -346,19 +313,16 @@
      container yang-library {
        config false;
        description
-         "Container providing all the YANG meta information the
-          server possesses.";
-
+         "Container holding the entire YANG library of this server.";
        uses yang-library-parameters;
-
-       leaf checksum {
+       leaf content-id {
          type string;
          mandatory true;
          description
-           "A server-generated checksum of the contents of the
-            'yang-library' tree.  The server MUST change the value of
+           "A server-generated identifier of the contents of the
+            '/yang-library' tree.  The server MUST change the value of
             this leaf if the information represented by the
-            'yang-library' tree, except 'yang-library/checksum', has
+            '/yang-library' tree, except '/yang-library/content-id', has
             changed.";
        }
      }
@@ -371,6 +335,15 @@
        description
          "Generated when any YANG library information on the
           server has changed.";
+       leaf content-id {
+         type leafref {
+           path "/yanglib:yang-library/yanglib:content-id";
+         }
+         mandatory true;
+         description
+           "Contains the YANG library content identifier for the updated
+            YANG library at the time the notification is generated.";
+       }
      }
 
      /*
@@ -388,7 +361,6 @@
          status deprecated;
          description
            "Common parameters for YANG modules and submodules.";
-
          leaf name {
            type yang:yang-identifier;
            status deprecated;
@@ -399,7 +371,7 @@
            type union {
              type revision-identifier;
              type string {
-               length 0;
+               length "0";
              }
            }
            status deprecated;
@@ -409,13 +381,13 @@
               is present in the YANG module or submodule.";
          }
        }
+
        grouping schema-leaf {
          status deprecated;
          description
            "Common schema leaf parameter for modules and submodules.";
          leaf schema {
            type inet:uri;
-           status deprecated;
            description
              "Contains a URL that represents the YANG schema
               resource for this module or submodule.
@@ -424,21 +396,18 @@
               available for retrieval of the schema for this entry.";
          }
        }
-
        list module {
          key "name revision";
          status deprecated;
          description
            "Each entry represents one revision of one module
             currently supported by the server.";
-
          uses common-leafs {
            status deprecated;
          }
          uses schema-leaf {
            status deprecated;
          }
-
          leaf namespace {
            type inet:uri;
            mandatory true;
@@ -451,7 +420,7 @@
            status deprecated;
            description
              "List of YANG feature names from this module that are
-              supported by the server, regardless whether they are
+              supported by the server, regardless of whether they are
               defined in the module or any included submodule.";
          }
          list deviation {
@@ -483,23 +452,24 @@
                   statements defined in the module.
 
                   For YANG version 1.1 modules, there is at most one
-                  module entry with conformance type 'implement' for a
+                  'module' entry with conformance type 'implement' for a
                   particular module name, since YANG 1.1 requires that
                   at most one revision of a module is implemented.
 
                   For YANG version 1 modules, there SHOULD NOT be more
-                  than one module entry for a particular module name.";
+                  than one 'module' entry for a particular module
+                  name.";
              }
              enum import {
                description
                  "Indicates that the server imports reusable definitions
-                  from the specified revision of the module, but does
-                  not implement any protocol accessible objects from
+                  from the specified revision of the module but does
+                  not implement any protocol-accessible objects from
                   this revision.
 
-                  Multiple module entries for the same module name MAY
-                  exist. This can occur if multiple modules import the
-                  same module, but specify different revision-dates in
+                  Multiple 'module' entries for the same module name MAY
+                  exist.  This can occur if multiple modules import the
+                  same module but specify different revision dates in
                   the import statements.";
              }
            }
@@ -534,7 +504,6 @@
        status deprecated;
        description
          "Contains YANG module monitoring information.";
-
        leaf module-set-id {
          type string;
          mandatory true;
@@ -546,7 +515,6 @@
             information represented by the 'module' list instances
             has changed.";
        }
-
        uses module-list {
          status deprecated;
        }
@@ -573,5 +541,4 @@
             at the time the notification is generated.";
        }
      }
-
    }

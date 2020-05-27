@@ -36,9 +36,9 @@
 #include "../models/yang@2017-02-20.h"
 #include "../models/ietf-inet-types@2013-07-15.h"
 #include "../models/ietf-yang-types@2013-07-15.h"
-#include "../models/ietf-datastores@2017-08-17.h"
-#include "../models/ietf-yang-library@2018-01-17.h"
-#define IETF_YANG_LIB_REV "2018-01-17"
+#include "../models/ietf-datastores@2018-02-14.h"
+#include "../models/ietf-yang-library@2019-01-04.h"
+#define IETF_YANG_LIB_REV "2019-01-04"
 
 static struct internal_modules_s {
     const char *name;
@@ -52,8 +52,8 @@ static struct internal_modules_s {
     {"ietf-inet-types", "2013-07-15", (const char*)ietf_inet_types_2013_07_15_yang, 0, LYS_IN_YANG},
     {"ietf-yang-types", "2013-07-15", (const char*)ietf_yang_types_2013_07_15_yang, 0, LYS_IN_YANG},
     /* ietf-datastores and ietf-yang-library must be right here at the end of the list! */
-    {"ietf-datastores", "2017-08-17", (const char*)ietf_datastores_2017_08_17_yang, 1, LYS_IN_YANG},
-    {"ietf-yang-library", IETF_YANG_LIB_REV, (const char*)ietf_yang_library_2018_01_17_yang, 1, LYS_IN_YANG}
+    {"ietf-datastores", "2018-02-14", (const char*)ietf_datastores_2018_02_14_yang, 1, LYS_IN_YANG},
+    {"ietf-yang-library", IETF_YANG_LIB_REV, (const char*)ietf_yang_library_2019_01_04_yang, 1, LYS_IN_YANG}
 };
 
 API LY_ERR
