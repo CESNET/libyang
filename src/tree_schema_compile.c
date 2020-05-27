@@ -1848,7 +1848,7 @@ cleanup:
 LY_ERR
 lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *log_path, const char *pattern, pcre2_code **code)
 {
-    int idx, idx2, start, end, count;
+    int idx, idx2, start, end, size, brack;
     char *perl_regex, *ptr;
     int err_code;
     const char *orig_ptr;
@@ -1945,27 +1945,55 @@ lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *log_path, const c
     /* adjust the expression to a Perl equivalent
      * http://www.w3.org/TR/2004/REC-xmlschema-2-20041028/#regexs */
 
-    /* we need to replace all "$" and "^" with "\$" and "\^", count them now */
-    for (count = 0, ptr = strpbrk(pattern, "^$"); ptr; ++count, ptr = strpbrk(ptr + 1, "^$"));
-
-    perl_regex = malloc((strlen(pattern) + 4 + count) * sizeof(char));
+    /* allocate space for the transformed pattern */
+    size = strlen(pattern) + 1;
+    perl_regex = malloc(size);
     LY_CHECK_ERR_RET(!perl_regex, LOGMEM(ctx), LY_EMEM);
     perl_regex[0] = '\0';
 
-    ptr = perl_regex;
+    /* we need to replace all "$" and "^" (that are not in "[]") with "\$" and "\^" */
+    brack = 0;
+    idx = 0;
+    orig_ptr = pattern;
+    while (orig_ptr[0]) {
+        switch (orig_ptr[0]) {
+        case '$':
+        case '^':
+            if (!brack) {
+                /* make space for the extra character */
+                ++size;
+                perl_regex = ly_realloc(perl_regex, size);
+                LY_CHECK_ERR_RET(!perl_regex, LOGMEM(ctx), LY_EMEM);
 
-    for (orig_ptr = pattern; orig_ptr[0]; ++orig_ptr) {
-        if (orig_ptr[0] == '$') {
-            ptr += sprintf(ptr, "\\$");
-        } else if (orig_ptr[0] == '^') {
-            ptr += sprintf(ptr, "\\^");
-        } else {
-            ptr[0] = orig_ptr[0];
-            ++ptr;
+                /* print escape slash */
+                perl_regex[idx] = '\\';
+                ++idx;
+            }
+            break;
+        case '[':
+            /* must not be escaped */
+            if ((orig_ptr == pattern) || (orig_ptr[-1] != '\\')) {
+                ++brack;
+            }
+            break;
+        case ']':
+            if ((orig_ptr == pattern) || (orig_ptr[-1] != '\\')) {
+                /* pattern was checked and compiled already */
+                assert(brack);
+                --brack;
+            }
+            break;
+        default:
+            break;
         }
+
+        /* copy char */
+        perl_regex[idx] = orig_ptr[0];
+
+        ++idx;
+        ++orig_ptr;
     }
-    ptr[0] = '\0';
-    ++ptr;
+    perl_regex[idx] = '\0';
 
     /* substitute Unicode Character Blocks with exact Character Ranges */
     while ((ptr = strstr(perl_regex, "\\p{Is"))) {
@@ -2000,15 +2028,15 @@ lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *log_path, const c
         }
 
         /* make the space in the string and replace the block (but we cannot include brackets if it was already enclosed in them) */
-        for (idx2 = 0, count = 0; idx2 < start; ++idx2) {
+        for (idx2 = 0, idx = 0; idx2 < start; ++idx2) {
             if ((perl_regex[idx2] == '[') && (!idx2 || (perl_regex[idx2 - 1] != '\\'))) {
-                ++count;
+                ++idx;
             }
             if ((perl_regex[idx2] == ']') && (!idx2 || (perl_regex[idx2 - 1] != '\\'))) {
-                --count;
+                --idx;
             }
         }
-        if (count) {
+        if (idx) {
             /* skip brackets */
             memmove(perl_regex + start + (URANGE_LEN - 2), perl_regex + end, strlen(perl_regex + end) + 1);
             memcpy(perl_regex + start, ublock2urange[idx][1] + 1, URANGE_LEN - 2);
