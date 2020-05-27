@@ -678,7 +678,8 @@ lyd_create_list(const struct lysc_node *schema, const char *keys_str, size_t key
             ret = lyd_create_term((struct lysc_node *)keys.keys[i].schema, keys.keys[i].value, strlen(keys.keys[i].value),
                                   NULL, lys_resolve_prefix, NULL, LYD_SCHEMA, &key);
         }
-        LY_CHECK_GOTO(ret, cleanup);
+        LY_CHECK_GOTO(ret && (ret != LY_EINCOMPLETE), cleanup);
+        ret = LY_SUCCESS;
         lyd_insert_node(list, NULL, key);
     }
 
@@ -805,7 +806,8 @@ lyd_new_list(struct lyd_node *parent, const struct lys_module *module, const cha
         key_val = va_arg(ap, const char *);
 
         rc = lyd_create_term(key_s, key_val, key_val ? strlen(key_val) : 0, NULL, lydjson_resolve_prefix, NULL, LYD_JSON, &key);
-        LY_CHECK_GOTO(rc, cleanup);
+        LY_CHECK_GOTO(rc && (rc != LY_EINCOMPLETE), cleanup);
+        rc = LY_SUCCESS;
         lyd_insert_node(ret, NULL, key);
     }
 
@@ -850,6 +852,7 @@ lyd_new_list2(struct lyd_node *parent, const struct lys_module *module, const ch
 API struct lyd_node *
 lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *val_str)
 {
+    LY_ERR rc;
     struct lyd_node *ret = NULL;
     const struct lysc_node *schema;
     struct ly_ctx *ctx = parent ? parent->schema->module->ctx : (module ? module->ctx : NULL);
@@ -863,8 +866,10 @@ lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const cha
     schema = lys_find_child(parent ? parent->schema : NULL, module, name, 0, LYD_NODE_TERM, 0);
     LY_CHECK_ERR_RET(!schema, LOGERR(ctx, LY_EINVAL, "Term node \"%s\" not found.", name), NULL);
 
-    if (!lyd_create_term(schema, val_str, val_str ? strlen(val_str) : 0, NULL, lydjson_resolve_prefix, NULL, LYD_JSON, &ret)
-            && parent) {
+    rc = lyd_create_term(schema, val_str, val_str ? strlen(val_str) : 0, NULL, lydjson_resolve_prefix, NULL, LYD_JSON, &ret);
+    LY_CHECK_RET(rc && (rc != LY_EINCOMPLETE), NULL);
+
+    if (parent) {
         lyd_insert_node(parent, NULL, ret);
     }
     return ret;
@@ -2635,7 +2640,9 @@ lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_node *sc
         break;
     case LYS_LEAFLIST:
         /* target used attributes: schema, hash, value */
-        LY_CHECK_RET(lyd_create_term(schema, key_or_value, val_len, NULL, lydjson_resolve_prefix, NULL, LYD_JSON, &target));
+        rc = lyd_create_term(schema, key_or_value, val_len, NULL, lydjson_resolve_prefix, NULL, LYD_JSON, &target);
+        LY_CHECK_RET(rc && (rc != LY_EINCOMPLETE), rc);
+        rc = LY_SUCCESS;
         /* fallthrough */
     case LYS_LIST:
         if (schema->nodetype == LYS_LIST) {
