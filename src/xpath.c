@@ -5144,7 +5144,7 @@ moveto_resolve_model(const char **qname, uint16_t *qname_len, struct lyxp_set *s
         case LYD_JSON:
             /* JSON data, search in context */
             str = strndup(*qname, pref_len);
-            mod = ly_ctx_get_module(set->ctx, str, NULL);
+            mod = ly_ctx_get_module_implemented(set->ctx, str);
             free(str);
             break;
         case LYD_XML:
