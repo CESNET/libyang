@@ -152,12 +152,6 @@ int ly_is_default(const struct lyd_node *node);
 int ly_should_print(const struct lyd_node *node, int options);
 
 /**
- * @brief Flush the output from any internal buffers and clean any auxiliary data.
- * @param[in] out Output specification.
- */
-void ly_print_flush(struct ly_out *out);
-
-/**
  * @brief Create a hole in the output data that will be filled later.
  *
  * @param[in] out Output specification.

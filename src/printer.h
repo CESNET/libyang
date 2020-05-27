@@ -188,6 +188,12 @@ const char *ly_out_filepath(struct ly_out *out, const char *filepath);
 ssize_t ly_print(struct ly_out *out, const char *format, ...);
 
 /**
+ * @brief Flush the output from any internal buffers and clean any auxiliary data.
+ * @param[in] out Output specification.
+ */
+void ly_print_flush(struct ly_out *out);
+
+/**
  * @brief Generic printer of the given string buffer into the specified output.
  *
  * Alternatively, ly_print() can be used.
