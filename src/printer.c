@@ -485,14 +485,14 @@ ly_out_free(struct ly_out *out, void (*clb_arg_destructor)(void *arg), int destr
     free(out);
 }
 
-API LY_ERR
+API ssize_t
 ly_print(struct ly_out *out, const char *format, ...)
 {
     int count = 0;
     char *msg = NULL, *aux;
     va_list ap;
 
-    LYOUT_CHECK(out, out->status);
+    LYOUT_CHECK(out, -1 * out->status);
 
     va_start(ap, format);
 
@@ -504,7 +504,8 @@ ly_print(struct ly_out *out, const char *format, ...)
 #else
         /* never should be here since ly_out_fd() is supposed to set type to LY_OUT_FDSTREAM in case vdprintf() is missing */
         LOGINT(NULL);
-        return LY_EINT;
+        va_end(ap);
+        return -LY_EINT;
 #endif
     case LY_OUT_FDSTREAM:
     case LY_OUT_FILEPATH:
@@ -523,7 +524,7 @@ ly_print(struct ly_out *out, const char *format, ...)
                 out->method.mem.size = 0;
                 LOGMEM(NULL);
                 va_end(ap);
-                return LY_EMEM;
+                return -LY_EMEM;
             }
             *out->method.mem.buf = aux;
             out->method.mem.size = out->method.mem.len + count + 1;
@@ -542,6 +543,8 @@ ly_print(struct ly_out *out, const char *format, ...)
         break;
     case LY_OUT_ERROR:
         LOGINT(NULL);
+        va_end(ap);
+        return -LY_EINT;
     }
 
     va_end(ap);
@@ -549,14 +552,14 @@ ly_print(struct ly_out *out, const char *format, ...)
     if (count < 0) {
         LOGERR(out->ctx, LY_ESYS, "%s: writing data failed (%s).", __func__, strerror(errno));
         out->status = LY_ESYS;
-        return LY_ESYS;
+        return -LY_ESYS;
     } else {
         if (out->type == LY_OUT_FDSTREAM) {
             /* move the original file descriptor to the end of the output file */
             lseek(out->method.fdstream.fd, 0, SEEK_END);
         }
         out->printed += count;
-        return LY_SUCCESS;
+        return count;
     }
 }
 
@@ -588,12 +591,12 @@ ly_print_flush(struct ly_out *out)
     out->buf_size = out->buf_len = 0;
 }
 
-API LY_ERR
+API ssize_t
 ly_write(struct ly_out *out, const char *buf, size_t len)
 {
     int written = 0;
 
-    LYOUT_CHECK(out, out->status);
+    LYOUT_CHECK(out, -1 * out->status);
 
     if (out->hole_count) {
         /* we are buffering data after a hole */
@@ -602,14 +605,15 @@ ly_write(struct ly_out *out, const char *buf, size_t len)
             if (!out->buffered) {
                 out->buf_len = 0;
                 out->buf_size = 0;
-                LOGMEM_RET(NULL);
+                LOGMEM(NULL);
+                return -LY_EMEM;
             }
             out->buf_size = out->buf_len + len;
         }
 
         memcpy(&out->buffered[out->buf_len], buf, len);
         out->buf_len += len;
-        return LY_SUCCESS;
+        return len;
     }
 
 repeat:
@@ -620,7 +624,8 @@ repeat:
             if (!*out->method.mem.buf) {
                 out->method.mem.len = 0;
                 out->method.mem.size = 0;
-                LOGMEM_RET(NULL);
+                LOGMEM(NULL);
+                return -LY_EMEM;
             }
             out->method.mem.size = out->method.mem.len + len + 1;
         }
@@ -629,7 +634,7 @@ repeat:
         (*out->method.mem.buf)[out->method.mem.len] = '\0';
 
         out->printed += len;
-        return LY_SUCCESS;
+        return len;
     case LY_OUT_FD:
         written = write(out->method.fd, buf, len);
         break;
@@ -643,6 +648,7 @@ repeat:
         break;
     case LY_OUT_ERROR:
         LOGINT(NULL);
+        return -LY_EINT;
     }
 
     if (written < 0) {
@@ -651,25 +657,25 @@ repeat:
         }
         LOGERR(out->ctx, LY_ESYS, "%s: writing data failed (%s).", __func__, strerror(errno));
         out->status = LY_ESYS;
-        return LY_ESYS;
+        return -LY_ESYS;
     } else if ((size_t)written != len) {
         LOGERR(out->ctx, LY_ESYS, "%s: writing data failed (unable to write %u from %u data).", __func__, len - (size_t)written, len);
         out->status = LY_ESYS;
-        return LY_ESYS;
+        return -LY_ESYS;
     } else {
         if (out->type == LY_OUT_FDSTREAM) {
             /* move the original file descriptor to the end of the output file */
             lseek(out->method.fdstream.fd, 0, SEEK_END);
         }
         out->printed += written;
-        return LY_SUCCESS;
+        return written;
     }
 }
 
-LY_ERR
+ssize_t
 ly_write_skip(struct ly_out *out, size_t count, size_t *position)
 {
-    LYOUT_CHECK(out, out->status);
+    LYOUT_CHECK(out, -1 * out->status);
 
     switch (out->type) {
     case LY_OUT_MEMORY:
@@ -678,7 +684,7 @@ ly_write_skip(struct ly_out *out, size_t count, size_t *position)
             if (!(*out->method.mem.buf)) {
                 out->method.mem.len = 0;
                 out->method.mem.size = 0;
-                out->status = LY_ESYS;
+                out->status = LY_EMEM;
                 LOGMEM_RET(NULL);
             }
             out->method.mem.size = out->method.mem.len + count;
@@ -704,8 +710,9 @@ ly_write_skip(struct ly_out *out, size_t count, size_t *position)
             if (!out->buffered) {
                 out->buf_len = 0;
                 out->buf_size = 0;
-                out->status = LY_ESYS;
-                LOGMEM_RET(NULL);
+                out->status = LY_EMEM;
+                LOGMEM(NULL);
+                return -LY_EMEM;
             }
             out->buf_size = out->buf_len + count;
         }
@@ -722,17 +729,18 @@ ly_write_skip(struct ly_out *out, size_t count, size_t *position)
         break;
     case LY_OUT_ERROR:
         LOGINT(NULL);
+        return -LY_EINT;
     }
 
-    return LY_SUCCESS;
+    return count;
 }
 
-LY_ERR
+ssize_t
 ly_write_skipped(struct ly_out *out, size_t position, const char *buf, size_t count)
 {
-    LY_ERR ret = LY_SUCCESS;
+    ssize_t ret = LY_SUCCESS;
 
-    LYOUT_CHECK(out, out->status);
+    LYOUT_CHECK(out, -1 * out->status);
 
     switch (out->type) {
     case LY_OUT_MEMORY:
@@ -745,8 +753,9 @@ ly_write_skipped(struct ly_out *out, size_t position, const char *buf, size_t co
     case LY_OUT_FILE:
     case LY_OUT_CALLBACK:
         if (out->buf_len < position + count) {
-            out->status = LY_ESYS;
-            LOGMEM_RET(NULL);
+            out->status = LY_EMEM;
+            LOGMEM(NULL);
+            return -LY_EMEM;
         }
 
         /* write into the hole */
@@ -764,11 +773,12 @@ ly_write_skipped(struct ly_out *out, size_t position, const char *buf, size_t co
         break;
     case LY_OUT_ERROR:
         LOGINT(NULL);
+        return -LY_EINT;
     }
 
     if (out->type == LY_OUT_FILEPATH) {
         /* move the original file descriptor to the end of the output file */
         lseek(out->method.fdstream.fd, 0, SEEK_END);
     }
-    return ret;
+    return ret < 0 ? (-1 * ret) : LY_SUCCESS;
 }
