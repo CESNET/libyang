@@ -6985,7 +6985,9 @@ moveto:
     }
 
 cleanup:
-    lydict_remove(set->ctx, ncname);
+    if (set) {
+        lydict_remove(set->ctx, ncname);
+    }
     lyd_free_tree(list_inst);
     return rc;
 }
