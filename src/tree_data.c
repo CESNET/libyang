@@ -69,7 +69,8 @@ lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len,
                              &node->value, NULL, &err);
     if (ret && (ret != LY_EINCOMPLETE)) {
         if (err) {
-            LOGVAL(ctx, LY_VLOG_LYD, node, err->vecode, err->msg);
+            /* node may not be connected yet so use the schema node */
+            LOGVAL(ctx, LY_VLOG_LYSC, node->schema, err->vecode, err->msg);
             ly_err_free(err);
         }
         goto error;
