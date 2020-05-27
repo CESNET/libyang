@@ -427,7 +427,7 @@ test_get_models(void **state)
     assert_non_null(ly_ctx_get_module(ctx, "ietf-yang-metadata", "2016-08-05"));
     assert_non_null(ly_ctx_get_module(ctx, "ietf-yang-types", "2013-07-15"));
     assert_non_null(ly_ctx_get_module(ctx, "ietf-inet-types", "2013-07-15"));
-    assert_non_null(ly_ctx_get_module_ns(ctx, "urn:ietf:params:xml:ns:yang:ietf-datastores", "2017-08-17"));
+    assert_non_null(ly_ctx_get_module_ns(ctx, "urn:ietf:params:xml:ns:yang:ietf-datastores", "2018-02-14"));
 
     /* select module by revision */
     mod = lys_parse_mem_module(ctx, str1, LYS_IN_YANG, 1, NULL, NULL);

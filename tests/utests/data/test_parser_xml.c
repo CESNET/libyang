@@ -366,7 +366,7 @@ test_opaq(void **state)
     /* invalid key, no flags */
     data = "<l1 xmlns=\"urn:tests:a\"><a>val_a</a><b>val_b</b><c>val_c</c></l1>";
     assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
-    logbuf_assert("Invalid int16 value \"val_c\". /a:c");
+    logbuf_assert("Invalid int16 value \"val_c\". /a:l1/c");
     assert_null(tree);
 
     /* opaq flag */
