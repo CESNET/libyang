@@ -143,9 +143,10 @@ struct ly_out *ly_out_new_memory(char **strp, size_t size);
  * @brief Get or change memory where the data are dumped.
  *
  * @param[in] out Printer handler.
- * @param[in] strp A new string pointer to store the resulting data, same rules as in ly_out_new_memory() are applied.
+ * @param[in] strp Optional new string pointer to store the resulting data, same rules as in ly_out_new_memory() are applied.
  * @param[in] size Size of the buffer provided via @p strp. In case it is 0, the buffer for the printed data
- * is newly allocated even if @p strp points to a pointer to an existing buffer.
+ * is newly allocated even if @p strp points to a pointer to an existing buffer. In case the @p strp is NULL, this
+ * parameter is ignored.
  * @return Previous dumped data. Note that the caller is responsible to free the data in case of changing string pointer @p strp.
  */
 char *ly_out_memory(struct ly_out *out, char **strp, size_t size);
@@ -181,8 +182,10 @@ const char *ly_out_filepath(struct ly_out *out, const char *filepath);
  * @param[in] out Output specification.
  * @param[in] format format string to be printed.
  * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
+ * @return The number of printed bytes.
+ * @return Negative value in case of error, absolute value of the return code maps to LY_ERR value.
  */
-LY_ERR ly_print(struct ly_out *out, const char *format, ...);
+ssize_t ly_print(struct ly_out *out, const char *format, ...);
 
 /**
  * @brief Generic printer of the given string buffer into the specified output.
@@ -195,9 +198,10 @@ LY_ERR ly_print(struct ly_out *out, const char *format, ...);
  * @param[in] out Output specification.
  * @param[in] buf Memory buffer with the data to print.
  * @param[in] len Length of the data to print in the @p buf.
- * @return LY_ERR value, number of the printed bytes is updated in ly_out::printed.
+ * @return The number of printed bytes.
+ * @return Negative value in case of error, absolute value of the return code maps to LY_ERR value.
  */
-LY_ERR ly_write(struct ly_out *out, const char *buf, size_t len);
+ssize_t ly_write(struct ly_out *out, const char *buf, size_t len);
 
 /**
  * @brief Free the printer handler.

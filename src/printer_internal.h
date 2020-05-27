@@ -163,10 +163,11 @@ void ly_print_flush(struct ly_out *out);
  * @param[in] out Output specification.
  * @param[in] len Length of the created hole.
  * @param[out] position Position of the hole, value must be later provided to the ly_write_skipped() call.
- * @return LY_ERR value. The number of the printed bytes is updated in lyout::printed
+ * @return The number of bytes prepared for write. The number of the printed bytes is updated in lyout::printed
  * only in case the data are really written into the output.
+ * @return Negative value in case of error, absolute value of the return code maps to LY_ERR value.
  */
-LY_ERR ly_write_skip(struct ly_out *out, size_t len, size_t *position);
+ssize_t ly_write_skip(struct ly_out *out, size_t len, size_t *position);
 
 /**
  * @brief Write data into the hole at given position.
@@ -176,9 +177,10 @@ LY_ERR ly_write_skip(struct ly_out *out, size_t len, size_t *position);
  * @param[in] buf Memory buffer with the data to print.
  * @param[in] len Length of the data to print in the @p buf. Not that the length must correspond
  * to the len value specified in the corresponding ly_write_skip() call.
- * @return LY_ERR value. The number of the printed bytes is updated in lyout::printed
+ * @return The number of bytes prepared for write. The number of the printed bytes is updated in lyout::printed
  * only in case the data are really written into the output.
+ * @return Negative value in case of error, absolute value of the return code maps to LY_ERR value.
  */
-LY_ERR ly_write_skipped(struct ly_out *out, size_t position, const char *buf, size_t len);
+ssize_t ly_write_skipped(struct ly_out *out, size_t position, const char *buf, size_t len);
 
 #endif /* LY_PRINTER_INTERNAL_H_ */

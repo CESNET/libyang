@@ -1031,7 +1031,7 @@ lyxml_ctx_free(struct lyxml_ctx *xmlctx)
 LY_ERR
 lyxml_dump_text(struct ly_out *out, const char *text, int attribute)
 {
-    LY_ERR ret = LY_SUCCESS;
+    ssize_t ret = LY_SUCCESS;
     unsigned int u;
 
     if (!text) {
@@ -1057,11 +1057,11 @@ lyxml_dump_text(struct ly_out *out, const char *text, int attribute)
             }
             /* falls through */
         default:
-            ly_write(out, &text[u], 1);
+            ret = ly_write(out, &text[u], 1);
         }
     }
 
-    return ret;
+    return ret < 0 ? (-1 * ret) : 0;
 }
 
 LY_ERR
