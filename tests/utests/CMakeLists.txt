@@ -5,6 +5,7 @@ set(local_tests
     utest:test_context
     utest:test_xml
     utest:test_xpath
+    utest:test_yanglib
     utest:schema/test_schema
     utest:schema/test_parser_yang
     utest:schema/test_parser_yin
@@ -20,6 +21,7 @@ set(local_tests
     utest:extensions/test_nacm)
 set(local_tests_wraps
     "-Wl,--wrap=realloc"
+    " "
     " "
     " "
     " "

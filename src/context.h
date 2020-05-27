@@ -431,6 +431,25 @@ void ly_ctx_reset_latests(struct ly_ctx *ctx);
 const struct lys_module *ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision);
 
 /**
+ * @brief Get current ID of the modules set. The value is available also
+ * as module-set-id in ::ly_ctx_get_yanglib_data() result.
+ *
+ * @param[in] ctx Context to be examined.
+ * @return Numeric identifier of the current context's modules set.
+ */
+uint16_t ly_ctx_get_yanglib_id(const struct ly_ctx *ctx);
+
+/**
+ * @brief Get data of the internal ietf-yang-library module with information about all the loaded modules.
+ * ietf-yang-library module must be loaded.
+ *
+ * @param[in] ctx Context with the modules.
+ * @return Generated data, must be freed,
+ * @return NULL on error.
+ */
+struct lyd_node *ly_ctx_get_yanglib_data(const struct ly_ctx *ctx);
+
+/**
  * @brief Free all internal structures of the specified context.
  *
  * The function should be used before terminating the application to destroy

@@ -1652,6 +1652,7 @@ struct lysc_module {
     struct lysc_action *rpcs;        /**< list of RPCs ([sized array](@ref sizedarrays)) */
     struct lysc_notif *notifs;       /**< list of notifications ([sized array](@ref sizedarrays)) */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
+    struct lys_module **deviated_by; /**< List of modules that deviate this module ([sized array](@ref sizedarrays)) */
 };
 
 /**

@@ -11,6 +11,7 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
+#define _GNU_SOUCRE /* asprintf */
 
 #include "common.h"
 
@@ -531,6 +532,253 @@ ly_ctx_reset_latests(struct ly_ctx *ctx)
             }
         }
     }
+}
+
+static LY_ERR
+ylib_feature(struct lyd_node *parent, const struct lys_module *cur_mod)
+{
+    LY_ARRAY_SIZE_TYPE i;
+    struct lyd_node *node;
+
+    if (!cur_mod->implemented) {
+        /* no features can be enabled */
+        return LY_SUCCESS;
+    }
+
+    LY_ARRAY_FOR(cur_mod->compiled->features, i) {
+        if (!(cur_mod->compiled->features[i].flags & LYS_FENABLED)) {
+            continue;
+        }
+
+        node = lyd_new_term(parent, NULL, "feature", cur_mod->compiled->features[i].name);
+        LY_CHECK_RET(!node, LY_EOTHER);
+    }
+
+    return LY_SUCCESS;
+}
+
+static LY_ERR
+ylib_deviation(struct lyd_node *parent, const struct lys_module *cur_mod, int bis)
+{
+    LY_ARRAY_SIZE_TYPE i;
+    struct lyd_node *node;
+    struct lys_module *mod;
+
+    if (!cur_mod->implemented) {
+        /* no deviations of the module for certain */
+        return LY_SUCCESS;
+    }
+
+    LY_ARRAY_FOR(cur_mod->compiled->deviated_by, i) {
+        mod = cur_mod->compiled->deviated_by[i];
+
+        if (bis) {
+            node = lyd_new_term(parent, NULL, "deviation", mod->name);
+            LY_CHECK_RET(!node, LY_EOTHER);
+        } else {
+            node = lyd_new_list(parent, NULL, "deviation", mod->name, (mod->parsed->revs ? mod->parsed->revs[0].date : ""));
+            LY_CHECK_RET(!node, LY_EOTHER);
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
+static LY_ERR
+ylib_submodules(struct lyd_node *parent, const struct lys_module *cur_mod, int bis)
+{
+    LY_ARRAY_SIZE_TYPE i;
+    struct lyd_node *node, *cont;
+    struct lysp_submodule *submod;
+    int ret;
+    char *str;
+
+    LY_ARRAY_FOR(cur_mod->parsed->includes, i) {
+        submod = cur_mod->parsed->includes[i].submodule;
+
+        if (bis) {
+            cont = lyd_new_list(parent, NULL, "submodule", submod->name);
+            LY_CHECK_RET(!cont, LY_EOTHER);
+
+            if (submod->revs) {
+                node = lyd_new_term(cont, NULL, "revision", submod->revs[0].date);
+                LY_CHECK_RET(!node, LY_EOTHER);
+            }
+        } else {
+            cont = lyd_new_list(parent, NULL, "submodule", submod->name, (submod->revs ? submod->revs[0].date : ""));
+            LY_CHECK_RET(!cont, LY_EOTHER);
+        }
+
+        if (submod->filepath) {
+            ret = asprintf(&str, "file://%s", submod->filepath);
+            LY_CHECK_ERR_RET(ret == -1, LOGMEM(cur_mod->ctx), LY_EMEM);
+
+            node = lyd_new_term(cont, NULL, bis ? "location" : "schema", str);
+            LY_CHECK_RET(!node, LY_EOTHER);
+            free(str);
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
+API uint16_t
+ly_ctx_get_yanglib_id(const struct ly_ctx *ctx)
+{
+    return ctx->module_set_id;
+}
+
+API struct lyd_node *
+ly_ctx_get_yanglib_data(const struct ly_ctx *ctx)
+{
+    uint32_t i;
+    int bis = 0, ret;
+    char id[8], *str;
+    const struct lys_module *mod;
+    struct lyd_node *root = NULL, *root_bis = NULL, *cont, *set_bis, *node;
+
+    LY_CHECK_ARG_RET(ctx, ctx, NULL);
+
+    mod = ly_ctx_get_module_implemented(ctx, "ietf-yang-library");
+    LY_CHECK_ERR_RET(!mod, LOGERR(ctx, LY_EINVAL, "Module \"ietf-yang-library\" is not implemented."), NULL);
+
+    if (mod->parsed->revs && !strcmp(mod->parsed->revs[0].date, "2016-06-21")) {
+        bis = 0;
+    } else if (mod->parsed->revs && !strcmp(mod->parsed->revs[0].date, IETF_YANG_LIB_REV)) {
+        bis = 1;
+    } else {
+        LOGERR(ctx, LY_EINVAL, "Incompatible ietf-yang-library version in context.");
+        return NULL;
+    }
+
+    root = lyd_new_inner(NULL, mod, "modules-state");
+    LY_CHECK_GOTO(!root, error);
+
+    if (bis) {
+        root_bis = lyd_new_inner(NULL, mod, "yang-library");
+        LY_CHECK_GOTO(!root_bis, error);
+
+        set_bis = lyd_new_list(root_bis, NULL, "module-set", "complete");
+        LY_CHECK_GOTO(!set_bis, error);
+    }
+
+    for (i = 0; i < ctx->list.count; ++i) {
+        mod = ctx->list.objs[i];
+
+        /*
+         * deprecated legacy
+         */
+        cont = lyd_new_list(root, NULL, "module", mod->name, (mod->parsed->revs ? mod->parsed->revs[0].date : ""));
+        LY_CHECK_GOTO(!cont, error);
+
+        /* schema */
+        if (mod->filepath) {
+            ret = asprintf(&str, "file://%s", mod->filepath);
+            LY_CHECK_ERR_GOTO(ret == -1, LOGMEM(ctx), error);
+
+            node = lyd_new_term(cont, NULL, "schema", str);
+            free(str);
+            LY_CHECK_GOTO(!node, error);
+        }
+
+        /* namespace */
+        node = lyd_new_term(cont, NULL, "namespace", mod->ns);
+        LY_CHECK_GOTO(!node, error);
+
+        /* feature leaf-list */
+        LY_CHECK_GOTO(ylib_feature(cont, mod), error);
+
+        /* deviation list */
+        LY_CHECK_GOTO(ylib_deviation(cont, mod, 0), error);
+
+        /* conformance-type */
+        node = lyd_new_term(cont, NULL, "conformance-type", (mod->implemented ? "implement" : "import"));
+        LY_CHECK_GOTO(!node, error);
+
+        /* submodule list */
+        LY_CHECK_GOTO(ylib_submodules(cont, mod, 0), error);
+
+        /*
+         * current revision
+         */
+        if (bis) {
+            /* name and revision */
+            if (mod->implemented) {
+                cont = lyd_new_list(set_bis, NULL, "module", mod->name);
+                LY_CHECK_GOTO(!cont, error);
+
+                if (mod->parsed->revs) {
+                    node = lyd_new_term(cont, NULL, "revision", mod->parsed->revs[0].date);
+                    LY_CHECK_GOTO(!node, error);
+                }
+            } else {
+                cont = lyd_new_list(set_bis, NULL, "import-only-module", mod->name,
+                                    (mod->parsed->revs ? mod->parsed->revs[0].date : ""));
+                LY_CHECK_GOTO(!cont, error);
+            }
+
+            /* namespace */
+            node = lyd_new_term(cont, NULL, "namespace", mod->ns);
+            LY_CHECK_GOTO(!node, error);
+
+            /* location */
+            if (mod->filepath) {
+                ret = asprintf(&str, "file://%s", mod->filepath);
+                LY_CHECK_ERR_GOTO(ret == -1, LOGMEM(ctx), error);
+
+                node = lyd_new_term(cont, NULL, "schema", str);
+                free(str);
+                LY_CHECK_GOTO(!node, error);
+            }
+
+            /* submodule list */
+            LY_CHECK_GOTO(ylib_submodules(cont, mod, 1), error);
+
+            /* feature list */
+            LY_CHECK_GOTO(ylib_feature(cont, mod), error);
+
+            /* deviation */
+            LY_CHECK_GOTO(ylib_deviation(cont, mod, 1), error);
+        }
+    }
+
+    /* IDs */
+    sprintf(id, "%u", ctx->module_set_id);
+    node = lyd_new_term(root, NULL, "module-set-id", id);
+    LY_CHECK_GOTO(!node, error);
+
+    if (bis) {
+        /* create one complete schema */
+        cont = lyd_new_list(root_bis, NULL, "schema", "complete");
+        LY_CHECK_GOTO(!cont, error);
+
+        node = lyd_new_term(cont, NULL, "module-set", "complete");
+        LY_CHECK_GOTO(!node, error);
+
+        /* content-id */
+        node = lyd_new_term(root_bis, NULL, "content-id", id);
+        LY_CHECK_GOTO(!node, error);
+    }
+
+    if (root_bis) {
+        if (lyd_insert_sibling(root_bis, root)) {
+            goto error;
+        }
+        root = root_bis;
+        root_bis = 0;
+    }
+
+    /* TODO uncomment once lefref validation works
+    if (lyd_validate(&root, NULL, LYD_VALOPT_DATA_ONLY)) {
+        goto error;
+    }*/
+
+    return root;
+
+error:
+    lyd_free_all(root);
+    lyd_free_all(root_bis);
+    return NULL;
 }
 
 API void

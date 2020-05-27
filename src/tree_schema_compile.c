@@ -5869,7 +5869,7 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p)
     int i, changed_type;
     size_t prefix_len, name_len;
     const char *prefix, *name, *nodeid, *dflt;
-    struct lys_module *mod;
+    struct lys_module *mod, **dev_mod;
     uint32_t min, max;
     uint16_t flags;
 
@@ -6782,6 +6782,10 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p)
                    lys_nodetype2str(devs[u]->target->nodetype), devs[u]->target->name, devs[u]->target->parent->name);
             goto cleanup;
         }
+
+        /* add this module into the target module deviated_by */
+        LY_ARRAY_NEW_GOTO(ctx->ctx, devs[u]->target->module->compiled->deviated_by, dev_mod, ret, cleanup);
+        *dev_mod = mod_p->mod;
 
         lysc_update_path(ctx, NULL, NULL);
     }
