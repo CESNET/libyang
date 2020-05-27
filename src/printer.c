@@ -374,6 +374,10 @@ ly_out_reset(struct ly_out *out)
             LOGERR(NULL, LY_ESYS, "Seeking output file descriptor failed (%s).", strerror(errno));
             return LY_ESYS;
         }
+        if (errno != ESPIPE && ftruncate(out->method.fd, 0) == -1) {
+            LOGERR(NULL, LY_ESYS, "Truncating output file failed (%s).", strerror(errno));
+            return LY_ESYS;
+        }
         break;
     case LY_OUT_FDSTREAM:
     case LY_OUT_FILE:
@@ -382,8 +386,15 @@ ly_out_reset(struct ly_out *out)
             LOGERR(NULL, LY_ESYS, "Seeking output file stream failed (%s).", strerror(errno));
             return LY_ESYS;
         }
+        if (errno != ESPIPE && ftruncate(fileno(out->method.f), 0) == -1) {
+            LOGERR(NULL, LY_ESYS, "Truncating output file failed (%s).", strerror(errno));
+            return LY_ESYS;
+        }
         break;
     case LY_OUT_MEMORY:
+        if (out->method.mem.buf && *out->method.mem.buf) {
+            memset(*out->method.mem.buf, 0, out->method.mem.len);
+        }
         out->printed = 0;
         out->method.mem.len = 0;
         break;
