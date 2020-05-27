@@ -57,7 +57,8 @@ setup(void **state)
 {
     struct state_s *s;
     const char *schema_a = "module defs {namespace urn:tests:defs;prefix d;yang-version 1.1;"
-            "identity crypto-alg; identity interface-type; identity ethernet {base interface-type;} identity fast-ethernet {base ethernet;}}";
+            "identity crypto-alg; identity interface-type; identity ethernet {base interface-type;} identity fast-ethernet {base ethernet;}"
+            "typedef iref {type identityref {base interface-type;}}}";
     const char *schema_b = "module types {namespace urn:tests:types;prefix t;yang-version 1.1; import defs {prefix defs;}"
             "feature f; identity gigabit-ethernet { base defs:ethernet;}"
             "typedef tboolean {type boolean;}"
@@ -92,6 +93,7 @@ setup(void **state)
             "leaf empty {type empty;}"
             "leaf tempty {type tempty;}"
             "leaf ident {type identityref {base defs:interface-type;}}"
+            "leaf iref {type defs:iref;}"
             "leaf inst {type instance-identifier {require-instance true;}}"
             "leaf inst-noreq {type instance-identifier {require-instance false;}}"
             "leaf lref {type leafref {path /leaflisttarget; require-instance true;}}"

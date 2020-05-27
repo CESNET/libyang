@@ -1038,7 +1038,7 @@ cleanup:
  * @return LY_ERR value.
  */
 static LY_ERR
-lys_compile_identity_bases(struct lysc_ctx *ctx, const char **bases_p,  struct lysc_ident *ident, struct lysc_ident ***bases)
+lys_compile_identity_bases(struct lysc_ctx *ctx, struct lys_module *context_module, const char **bases_p,  struct lysc_ident *ident, struct lysc_ident ***bases)
 {
     LY_ARRAY_SIZE_TYPE u, v;
     const char *s, *name;
@@ -1058,10 +1058,10 @@ lys_compile_identity_bases(struct lysc_ctx *ctx, const char **bases_p,  struct l
         if (s) {
             /* prefixed identity */
             name = &s[1];
-            mod = lys_module_find_prefix(ctx->mod_def, bases_p[u], s - bases_p[u]);
+            mod = lys_module_find_prefix(context_module, bases_p[u], s - bases_p[u]);
         } else {
             name = bases_p[u];
-            mod = ctx->mod_def;
+            mod = context_module;
         }
         if (!mod) {
             if (ident) {
@@ -1127,7 +1127,7 @@ lys_compile_identities_derived(struct lysc_ctx *ctx, struct lysp_ident *idents_p
             continue;
         }
         lysc_update_path(ctx, NULL, idents[u].name);
-        LY_CHECK_RET(lys_compile_identity_bases(ctx, idents_p[u].bases, &idents[u], NULL));
+        LY_CHECK_RET(lys_compile_identity_bases(ctx, idents[u].module, idents_p[u].bases, &idents[u], NULL));
         lysc_update_path(ctx, NULL, NULL);
     }
     return LY_SUCCESS;
@@ -2786,7 +2786,7 @@ static LY_ERR lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_n
  * @param[in] context_mod Module of the context node or the referencing typedef to correctly check status of referencing and referenced objects.
  * @param[in] context_name Name of the context node or referencing typedef for logging.
  * @param[in] type_p Parsed type to compile.
- * @param[in] module Context module for the leafref path (to correctly resolve prefixes in path)
+ * @param[in] module Context module for the leafref path and identityref (to correctly resolve prefixes)
  * @param[in] basetype Base YANG built-in type of the type to compile.
  * @param[in] tpdfname Name of the type's typedef, serves as a flag - if it is leaf/leaf-list's type, it is NULL.
  * @param[in] base The latest base (compiled) type from which the current type is being derived.
@@ -2993,7 +2993,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16
                 }
                 return LY_EVALID;
             }
-            LY_CHECK_RET(lys_compile_identity_bases(ctx, type_p->bases, NULL, &idref->bases));
+            LY_CHECK_RET(lys_compile_identity_bases(ctx, module, type_p->bases, NULL, &idref->bases));
         }
 
         if (!base && !type_p->flags) {
