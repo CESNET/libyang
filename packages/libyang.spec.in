@@ -8,13 +8,17 @@ Source1: @PACKAGE@.rpmlintrc
 License: BSD-3-Clause
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}
 
-%if 0%{?scientificlinux_version} == 700
+%if 0%{?scientificlinux_version} == 700 || ( 0%{?rhel} && 0%{?rhel} < 7 )
     %define with_lang_bind 0
 %else
     %define with_lang_bind 1
 %endif
 
-%define with_ly_cache 1
+%if ( 0%{?rhel} && 0%{?rhel} < 7 )
+    %define with_ly_cache 0
+%else
+    %define with_ly_cache 1
+%endif
 
 Requires:  pcre
 BuildRequires:  cmake
@@ -26,7 +30,7 @@ BuildRequires:  libcmocka-devel
 %if %{with_lang_bind}
 
 BuildRequires:  gcc-c++
-%if 0%{?centos_version}
+%if 0%{?rhel} == 7
 BuildRequires:  swig3 >= 3.0.12
 %else
 BuildRequires:  swig >= 3.0.12
@@ -127,8 +131,8 @@ make DESTDIR=%{buildroot} install
 %{_datadir}/man/man1/yanglint.1.gz
 %{_datadir}/man/man1/yangre.1.gz
 %{_libdir}/libyang.so.*
-%{_libdir}/libyang/*
-%dir %{_libdir}/libyang/
+%{_libdir}/libyang1/*
+%dir %{_libdir}/libyang1/
 
 %files devel
 %defattr(-,root,root)
