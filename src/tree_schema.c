@@ -5235,8 +5235,9 @@ lys_data_path_pattern(const struct lys_node *node, const char *placeholder)
         if (node->nodetype == LYS_LIST) {
             /* add specific key values (placeholders) for list */
             const struct lys_node_list *list;
+            uint8_t j;
             list = (const struct lys_node_list *)node;
-            for (uint8_t j = 0; j < list->keys_size; j++) {
+            for (j = 0; j < list->keys_size; j++) {
                 k += sprintf(keys + k, "[%s=%s]", list->keys[j]->name, placeholder);
             }
         }
