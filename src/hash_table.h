@@ -227,4 +227,18 @@ int lyht_insert_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash
  */
 int lyht_remove(struct hash_table *ht, void *val_p, uint32_t hash);
 
+/**
+ * @brief Remove a value from a hash table. Same functionality as lyht_remove()
+ * but allows to specify a temporary val equal callback to be used in case the hash table
+ * will be resized after successful removal.
+ *
+ * @param[in] ht Hash table to remove from.
+ * @param[in] value_p Pointer to value to be removed. Be careful, if the values stored in the hash table
+ * are pointers, \p value_p must be a pointer to a pointer.
+ * @param[in] hash Hash of the stored value.
+ * @param[in] resize_val_equal Val equal callback to use for resizing.
+ * @return 0 on success, 1 if value was not found, -1 on error.
+ */
+int lyht_remove_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash, values_equal_cb resize_val_equal);
+
 #endif /* LY_HASH_TABLE_H_ */

@@ -141,6 +141,35 @@ dict_hash_multi(uint32_t hash, const char *key_part, size_t len)
     return hash;
 }
 
+static int
+lydict_resize_val_eq(void *val1_p, void *val2_p, int mod, void *cb_data)
+{
+    if (!val1_p || !val2_p) {
+        LOGARG;
+        return 0;
+    }
+
+    const char *str1 = ((struct dict_rec *)val1_p)->value;
+    const char *str2 = ((struct dict_rec *)val2_p)->value;
+
+    if (!str1 || !str2) {
+        LOGARG;
+        return 0;
+    }
+
+    if (mod) {
+        /* used when inserting new values */
+        if (strcmp(str1, str2) == 0) {
+            return 1;
+        }
+    } else {
+        /* used when finding the original value again in the resized table */
+        return lydict_val_eq(val1_p, val2_p, mod, cb_data);
+    }
+
+    return 0;
+}
+
 API void
 lydict_remove(struct ly_ctx *ctx, const char *value)
 {
@@ -181,7 +210,7 @@ lydict_remove(struct ly_ctx *ctx, const char *value)
              * free it after it is removed from hash table
              */
             val_p = match->value;
-            ret = lyht_remove(ctx->dict.hash_tab, &rec, hash);
+            ret = lyht_remove_with_resize_cb(ctx->dict.hash_tab, &rec, hash, lydict_resize_val_eq);
             free(val_p);
             LY_CHECK_ERR_GOTO(ret, LOGINT(ctx), finish);
         }
@@ -189,35 +218,6 @@ lydict_remove(struct ly_ctx *ctx, const char *value)
 
 finish:
     pthread_mutex_unlock(&ctx->dict.lock);
-}
-
-static int
-lydict_resize_val_eq(void *val1_p, void *val2_p, int mod, void *cb_data)
-{
-    if (!val1_p || !val2_p) {
-        LOGARG;
-        return 0;
-    }
-
-    const char *str1 = ((struct dict_rec *)val1_p)->value;
-    const char *str2 = ((struct dict_rec *)val2_p)->value;
-
-    if (!str1 || !str2) {
-        LOGARG;
-        return 0;
-    }
-
-    if (mod) {
-        /* used when inserting new values */
-        if (strcmp(str1, str2) == 0) {
-            return 1;
-        }
-    } else {
-        /* used when finding the original value again in the resized table */
-        return lydict_val_eq(val1_p, val2_p, mod, cb_data);
-    }
-
-    return 0;
 }
 
 static char *
@@ -815,11 +815,12 @@ lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p)
 }
 
 int
-lyht_remove(struct hash_table *ht, void *val_p, uint32_t hash)
+lyht_remove_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash, values_equal_cb resize_val_equal)
 {
     struct ht_rec *rec, *crec;
     int32_t i;
     int first_matched = 0, r, ret;
+    values_equal_cb old_val_equal;
 
     lyht_dbgprint_ht(ht, "before");
     lyht_dbgprint_value(val_p, hash, ht->rec_size, "removing");
@@ -874,11 +875,25 @@ lyht_remove(struct hash_table *ht, void *val_p, uint32_t hash)
     if (ht->resize == 2) {
         r = (ht->used * 100) / ht->size;
         if ((r < LYHT_SHRINK_PERCENTAGE) && (ht->size > LYHT_MIN_SIZE)) {
+            if (resize_val_equal) {
+                old_val_equal = lyht_set_cb(ht, resize_val_equal);
+            }
+
             /* shrink */
             ret = lyht_resize(ht, 0);
+
+            if (resize_val_equal) {
+                lyht_set_cb(ht, old_val_equal);
+            }
         }
     }
 
     lyht_dbgprint_ht(ht, "after");
     return ret;
+}
+
+int
+lyht_remove(struct hash_table *ht, void *val_p, uint32_t hash)
+{
+    return lyht_remove_with_resize_cb(ht, val_p, hash, NULL);
 }
