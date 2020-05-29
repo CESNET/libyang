@@ -12,8 +12,8 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#ifndef _XPATH_H
-#define _XPATH_H
+#ifndef LY_XPATH_H
+#define LY_XPATH_H
 
 #include <stdint.h>
 
@@ -104,7 +104,8 @@ enum lyxp_token {
     LYXP_TOKEN_OPERATOR_COMP, /* Operator '=', '!=', '<', '<=', '>', '>=' */
     LYXP_TOKEN_OPERATOR_MATH, /* Operator '+', '-', '*', 'div', 'mod', '-' (unary) */
     LYXP_TOKEN_OPERATOR_UNI,  /* Operator '|' */
-    LYXP_TOKEN_OPERATOR_PATH, /* Operator '/', '//' */
+    LYXP_TOKEN_OPERATOR_PATH, /* Operator '/' */
+    LYXP_TOKEN_OPERATOR_RPATH,/* Operator '//' (recursive path) */
     /* LYXP_TOKEN_AXISNAME,    * AxisName * axes not supported */
     LYXP_TOKEN_LITERAL,       /* Literal - with either single or double quote */
     LYXP_TOKEN_NUMBER         /* Number */
@@ -362,7 +363,20 @@ void lyxp_set_scnode_merge(struct lyxp_set *set1, struct lyxp_set *set2);
  * @param[in] expr XPath expression to parse. It is duplicated.
  * @return Filled expression structure or NULL on error.
  */
-struct lyxp_expr *lyxp_expr_parse(struct ly_ctx *ctx, const char *expr);
+struct lyxp_expr *lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr);
+
+/**
+ * @brief Look at the next token and check its kind.
+ *
+ * @param[in] ctx Context for logging, not logged if NULL.
+ * @param[in] exp Expression to use.
+ * @param[in] exp_idx Position in the expression \p exp.
+ * @param[in] want_tok Expected token.
+ * @return LY_EINCOMPLETE on EOF,
+ * @return LY_ENOT on non-matching token,
+ * @return LY_SUCCESS on success.
+ */
+LY_ERR lyxp_check_token(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t exp_idx, enum lyxp_token want_tok);
 
 /**
  * @brief Frees a parsed XPath expression. @p expr should not be used afterwards.
@@ -370,6 +384,6 @@ struct lyxp_expr *lyxp_expr_parse(struct ly_ctx *ctx, const char *expr);
  * @param[in] ctx libyang context of the expression.
  * @param[in] expr Expression to free.
  */
-void lyxp_expr_free(struct ly_ctx *ctx, struct lyxp_expr *expr);
+void lyxp_expr_free(const struct ly_ctx *ctx, struct lyxp_expr *expr);
 
-#endif /* _XPATH_H */
+#endif /* LY_XPATH_H */
