@@ -3284,17 +3284,6 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
                 }
             }
         }
-
-        if (finalize == 1) {
-            /* check that configuration lists have keys
-             * - we really want to check keys_size in original node, because the keys are
-             * not yet resolved here, it is done below in nodetype specific part */
-            if ((retval->nodetype == LYS_LIST) && (retval->flags & LYS_CONFIG_W)
-                    && !((struct lys_node_list *)node)->keys_size) {
-                LOGVAL(ctx, LYE_MISSCHILDSTMT, LY_VLOG_LYS, retval, "key", "list");
-                goto error;
-            }
-        }
     } else {
         memcpy(retval->iffeature, node->iffeature, retval->iffeature_size * sizeof *retval->iffeature);
     }
