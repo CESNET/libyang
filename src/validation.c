@@ -12,16 +12,23 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "common.h"
-
 #include <assert.h>
-#include <string.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
-#include "xpath.h"
+#include "common.h"
+#include "config.h"
+#include "hash_table.h"
+#include "log.h"
+#include "plugins_types.h"
+#include "set.h"
+#include "tree.h"
 #include "tree_data_internal.h"
+#include "tree_schema.h"
 #include "tree_schema_internal.h"
+#include "xpath.h"
 
 static struct lyd_node *
 lys_getnext_data(const struct lyd_node *last, const struct lyd_node *sibling, const struct lysc_node **slast,

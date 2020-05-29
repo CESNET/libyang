@@ -11,12 +11,14 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
-#include "common.h"
 
 #include "plugins_exts.h"
 
-#include "plugins_exts_nacm.c"
+#include <string.h>
+
+#include "common.h"
 #include "plugins_exts_metadata.c"
+#include "plugins_exts_nacm.c"
 
 /**
  * @brief list of all extension plugins implemented internally

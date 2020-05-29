@@ -17,10 +17,12 @@
 
 #include <stdint.h>
 
+#include "config.h"
 #include "log.h"
+#include "tree_data.h"
+#include "tree_schema.h"
 
 struct ly_ctx;
-struct lysc_node;
 
 /*
  * XPath evaluator fully compliant with http://www.w3.org/TR/1999/REC-xpath-19991116/

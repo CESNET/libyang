@@ -16,24 +16,29 @@
 /* needed by libmath functions isfinite(), isinf(), isnan(), signbit(), ... */
 #define _ISOC99_SOURCE
 
-#include "common.h"
+#include "xpath.h"
 
-#include <math.h>
+#include <assert.h>
 #include <ctype.h>
+#include <errno.h>
+#include <limits.h>
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
-#include <assert.h>
 
-#include "xpath.h"
+#include "common.h"
+#include "context.h"
 #include "dict.h"
-#include "xml.h"
-#include "printer_data.h"
-#include "tree_schema_internal.h"
-#include "tree_data_internal.h"
+#include "hash_table.h"
 #include "plugins_types.h"
+#include "printer.h"
+#include "printer_data.h"
+#include "tree.h"
+#include "tree_data_internal.h"
+#include "tree_schema_internal.h"
+#include "xml.h"
 
 static LY_ERR reparse_or_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *exp_idx);
 static LY_ERR eval_expr_select(struct lyxp_expr *exp, uint16_t *exp_idx, enum lyxp_expr_type etype, struct lyxp_set *set, int options);

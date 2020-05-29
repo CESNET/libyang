@@ -14,16 +14,7 @@
  */
 
 #include "common.h"
-
-#include <stdlib.h>
-#include <string.h>
-
-#include "log.h"
-#include "plugins_types.h"
-#include "printer_data.h"
-#include "printer_internal.h"
-#include "tree.h"
-#include "tree_data.h"
+#include "config.h"
 #include "tree_schema.h"
 
 /**

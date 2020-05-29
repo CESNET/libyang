@@ -19,11 +19,13 @@
 #include <stdint.h>
 
 #include "log.h"
-#include "set.h"
-#include "tree.h"
-#include "tree_schema.h"
 
 struct ly_ctx;
+struct ly_set;
+struct lyd_node;
+struct lyd_node_opaq;
+struct lys_module;
+struct lysc_node;
 
 #ifdef __cplusplus
 extern "C" {

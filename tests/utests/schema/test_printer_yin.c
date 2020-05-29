@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include "../../src/context.h"
+#include "../../src/printer.h"
 #include "../../src/printer_schema.h"
 
 #define BUFSIZE 1024

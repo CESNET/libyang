@@ -12,7 +12,7 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "config.h"
+#define _GNU_SOURCE
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -20,11 +20,15 @@
 #include <string.h>
 #include <unistd.h>
 
-#include "commands.h"
-#include "configuration.h"
-#include "completion.h"
-#include "./linenoise/linenoise.h"
 #include "libyang.h"
+
+#include "tools/config.h"
+
+#include "commands.h"
+#include "completion.h"
+#include "configuration.h"
+#include "linenoise/linenoise.h"
+
 
 int done;
 struct ly_ctx *ctx = NULL;

@@ -12,22 +12,19 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "common.h"
+#define _GNU_SOURCE
 
-#include <inttypes.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 
+#include "common.h"
 #include "log.h"
-#include "plugins_exts.h"
+#include "printer.h"
 #include "printer_internal.h"
 #include "tree.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
-#include "plugins_types.h"
-#include "xpath.h"
 #include "xml.h"
 
 /**

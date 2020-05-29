@@ -12,20 +12,19 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "config.h"
-
-#include <string.h>
-#include <stdio.h>
-#include <errno.h>
-#include <ctype.h>
-#include <assert.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <getopt.h>
-#include <libgen.h>
+#define _GNU_SOURCE
 
 #include "commands.h"
+
+#include <ctype.h>
+#include <errno.h>
+#include <getopt.h>
+#include <libgen.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+
 #include "libyang.h"
 
 COMMAND commands[];

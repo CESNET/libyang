@@ -11,24 +11,27 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
-#include "common.h"
+
+#define _GNU_SOURCE
+
+#include "plugins_types.h"
 
 #include <assert.h>
 #include <ctype.h>
-#include <errno.h>
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "plugins_types.h"
+#include "common.h"
+#include "config.h"
 #include "dict.h"
+#include "set.h"
 #include "tree.h"
+#include "tree_data_internal.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
-#include "tree_data_internal.h"
 #include "xml.h"
-#include "xpath.h"
 
 /**
  * @brief Generic comparison callback checking the canonical value.

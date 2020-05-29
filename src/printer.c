@@ -12,20 +12,26 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "common.h"
+#define _GNU_SOURCE
 
+#include "printer.h"
+
+#include <assert.h>
 #include <errno.h>
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/types.h>
 #include <unistd.h>
-#include <assert.h>
 
+#include "common.h"
+#include "config.h"
 #include "log.h"
-#include "printer_internal.h"
 #include "plugins_types.h"
+#include "printer_data.h"
+#include "printer_internal.h"
+#include "tree.h"
+#include "tree_schema.h"
 
 /**
  * @brief informational structure shared by printers

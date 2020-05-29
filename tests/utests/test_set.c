@@ -11,14 +11,16 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
-#include "common.h"
+
+#define _GNU_SOURCE
 
 #include <stdarg.h>
 #include <stddef.h>
+#include <stdlib.h>
 #include <setjmp.h>
-#include <cmocka.h>
-
 #include <string.h>
+
+#include <cmocka.h>
 
 #include "../../src/set.h"
 

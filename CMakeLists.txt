@@ -398,13 +398,13 @@ add_executable(yanglint ${lintsrc})
 target_link_libraries(yanglint yang)
 install(TARGETS yanglint DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/tools/lint/yanglint.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
-target_include_directories(yanglint BEFORE PRIVATE ${PROJECT_BINARY_DIR}/tools)
+target_include_directories(yanglint BEFORE PRIVATE ${PROJECT_BINARY_DIR})
 
 # yangre
 add_executable(yangre ${resrc})
 target_link_libraries(yangre yang)
 install(TARGETS yangre DESTINATION ${CMAKE_INSTALL_BINDIR})
-target_include_directories(yangre BEFORE PRIVATE ${PROJECT_BINARY_DIR}/tools)
+target_include_directories(yangre BEFORE PRIVATE ${PROJECT_BINARY_DIR})
 
 if(ENABLE_VALGRIND_TESTS)
     set(ENABLE_BUILD_TESTS ON)

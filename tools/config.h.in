@@ -15,9 +15,6 @@
 #ifndef YANGLINT_CONFIG_H_
 #define YANGLINT_CONFIG_H_
 
-#define _DEFAULT_SOURCE
-#define _GNU_SOURCE
-
 #define PROJECT_VERSION "@LIBYANG_VERSION@" /**< libyang project version string */
 
 #endif /* YANGLINT_CONFIG_H_ */

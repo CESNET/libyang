@@ -12,18 +12,18 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "config.h"
+#define _GNU_SOURCE
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <sys/types.h>
-#include <dirent.h>
 #include <errno.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
-#include "commands.h"
-#include "./linenoise/linenoise.h"
 #include "libyang.h"
+
+#include "commands.h"
+#include "linenoise/linenoise.h"
 
 extern struct ly_ctx *ctx;
 

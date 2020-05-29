@@ -16,12 +16,11 @@
 #ifndef LY_HASH_TABLE_H_
 #define LY_HASH_TABLE_H_
 
-#include "common.h"
-
 #include <pthread.h>
 #include <stddef.h>
 #include <stdint.h>
 
+#include "config.h"
 #include "log.h"
 
 /**

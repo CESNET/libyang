@@ -13,17 +13,21 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "common.h"
+#define _GNU_SOURCE
+
+#include "xml.h"
 
 #include <assert.h>
 #include <ctype.h>
-#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "xml.h"
-#include "printer_internal.h"
+#include "common.h"
+#include "dict.h"
+#include "printer.h"
+#include "tree.h"
+#include "tree_data.h"
 
 /* Move input p by s characters, if EOF log with lyxml_ctx c */
 #define move_input(c,s) c->input += s; LY_CHECK_ERR_RET(!c->input[0], LOGVAL(c->ctx, LY_VLOG_LINE, &c->line, LY_VCODE_EOF), LY_EVALID)

@@ -12,15 +12,17 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "common.h"
-
 #include <stdlib.h>
 
-#include "dict.h"
+#include "common.h"
+#include "config.h"
+#include "plugins_exts.h"
+#include "plugins_types.h"
 #include "tree.h"
+#include "tree_data.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
-#include "plugins_types.h"
+#include "xml.h"
 #include "xpath.h"
 
 void lysp_grp_free(struct ly_ctx *ctx, struct lysp_grp *grp);

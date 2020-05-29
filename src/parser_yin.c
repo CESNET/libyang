@@ -11,25 +11,25 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
-#include "common.h"
+#include "parser_yin.h"
 
 #include <assert.h>
+#include <ctype.h>
+#include <errno.h>
+#include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
-#include <stdbool.h>
-#include <errno.h>
-#include <ctype.h>
-#include <stdarg.h>
 
+#include "common.h"
 #include "context.h"
 #include "dict.h"
-#include "xml.h"
+#include "set.h"
 #include "tree.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
-#include "parser_yin.h"
+#include "xml.h"
 
 /**
  * @brief check if given string is URI of yin namespace.

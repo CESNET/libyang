@@ -12,12 +12,17 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "common.h"
-
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 
+#include "common.h"
+#include "dict.h"
+#include "log.h"
+#include "tree.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 

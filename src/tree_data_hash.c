@@ -11,12 +11,19 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
+
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
+
 #include "common.h"
-
+#include "config.h"
 #include "hash_table.h"
-#include "tree_data.h"
+#include "log.h"
 #include "plugins_types.h"
-
+#include "tree.h"
+#include "tree_data.h"
+#include "tree_schema.h"
 
 static void
 lyd_hash_keyless_list_dfs(struct lyd_node *child, uint32_t *hash)

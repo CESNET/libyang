@@ -15,11 +15,11 @@
 #ifndef LY_PRINTER_SCHEMA_H_
 #define LY_PRINTER_SCHEMA_H_
 
-#include <stdio.h>
 #include <unistd.h>
 
-#include "printer.h"
 #include "tree_schema.h"
+
+struct ly_out;
 
 /**
  * @addtogroup schematree

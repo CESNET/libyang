@@ -20,8 +20,13 @@
 
 #include "log.h"
 #include "tree.h"
-#include "tree_schema.h"
 #include "tree_data.h"
+
+struct ly_ctx;
+struct lysc_ident;
+struct lysc_pattern;
+struct lysc_range;
+struct lysc_type;
 
 /**
  * @internal
