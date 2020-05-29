@@ -12,7 +12,9 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "common.h"
+#define _GNU_SOURCE
+
+#include "log.h"
 
 #include <assert.h>
 #include <inttypes.h>
@@ -23,8 +25,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "log.h"
+#include "common.h"
 #include "plugins_exts.h"
+#include "tree_data.h"
+#include "tree_schema.h"
 
 volatile uint8_t ly_log_level = LY_LLWRN;
 volatile uint8_t ly_log_opts = LY_LOLOG | LY_LOSTORE_LAST;

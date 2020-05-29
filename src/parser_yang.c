@@ -12,8 +12,6 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "common.h"
-
 #include <assert.h>
 #include <ctype.h>
 #include <errno.h>
@@ -22,10 +20,10 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "common.h"
 #include "context.h"
 #include "dict.h"
 #include "log.h"
-#include "plugins_exts.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_schema.h"

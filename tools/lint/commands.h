@@ -21,8 +21,6 @@
 #  define UNUSED(x) UNUSED_ ## x
 #endif
 
-#include <stdlib.h>
-
 #include "libyang.h"
 
 #define PROMPT "> "

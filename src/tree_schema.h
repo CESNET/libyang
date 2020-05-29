@@ -18,14 +18,16 @@
 #define PCRE2_CODE_UNIT_WIDTH 8
 
 #include <pcre2.h>
+
 #include <stdint.h>
 #include <stdio.h>
 
-#include "tree_data.h"
 #include "log.h"
 #include "tree.h"
+#include "tree_data.h"
 
 struct ly_ctx;
+struct ly_set;
 
 #ifdef __cplusplus
 extern "C" {
@@ -1112,6 +1114,24 @@ struct lysp_submodule {
  * @param[in] module Printable YANG schema tree structure to free.
  */
 void lysp_module_free(struct lysp_module *module);
+
+/**
+ * @defgroup scflags Schema compile flags
+ * @ingroup schematree
+ *
+ * @{
+ */
+#define LYSC_OPT_RPC_INPUT  LYS_CONFIG_W       /**< Internal option when compiling schema tree of RPC/action input */
+#define LYSC_OPT_RPC_OUTPUT LYS_CONFIG_R       /**< Internal option when compiling schema tree of RPC/action output */
+#define LYSC_OPT_RPC_MASK   LYS_CONFIG_MASK    /**< mask for the internal RPC options */
+#define LYSC_OPT_FREE_SP    0x04               /**< Free the input printable schema */
+#define LYSC_OPT_INTERNAL   0x08               /**< Internal compilation caused by dependency */
+#define LYSC_OPT_NOTIFICATION 0x10             /**< Internal option when compiling schema tree of Notification */
+
+#define LYSC_OPT_GROUPING   0x20               /** Compiling (validation) of a non-instantiated grouping.
+                                                   In this case not all the restrictions are checked since they can be valid only
+                                                   in the real placement of the grouping. TODO - what specifically is not done */
+/** @} scflags */
 
 /**
  * @brief Compiled YANG extension-stmt

@@ -15,8 +15,6 @@
 #ifndef LY_COMMON_H_
 #define LY_COMMON_H_
 
-#define _GNU_SOURCE
-
 #include <pthread.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -29,8 +27,10 @@
 #include "log.h"
 #include "set.h"
 #include "tree.h"
+#include "tree_data.h"
 
 struct ly_ctx;
+struct lys_module;
 
 #if __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
 # define THREAD_LOCAL _Thread_local

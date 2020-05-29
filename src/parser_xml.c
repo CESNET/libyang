@@ -12,23 +12,20 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "common.h"
-
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
 
+#include "common.h"
 #include "context.h"
-#include "dict.h"
 #include "log.h"
-#include "plugins_types.h"
 #include "set.h"
-#include "tree_data.h"
+#include "tree.h"
 #include "tree_data_internal.h"
 #include "tree_schema.h"
-#include "xml.h"
 #include "validation.h"
+#include "xml.h"
 
 #define LYD_INTOPT_RPC      0x01    /**< RPC/action invocation is being parsed */
 #define LYD_INTOPT_NOTIF    0x02    /**< notification is being parsed */

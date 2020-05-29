@@ -12,7 +12,7 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "common.h"
+#define _GNU_SOURCE
 
 #include <assert.h>
 #include <ctype.h>
@@ -22,13 +22,16 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "common.h"
+#include "context.h"
 #include "dict.h"
 #include "log.h"
 #include "plugins_exts.h"
-#include "set.h"
 #include "plugins_types.h"
 #include "plugins_exts_internal.h"
+#include "set.h"
 #include "tree.h"
+#include "tree_data.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 #include "xpath.h"

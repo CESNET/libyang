@@ -12,17 +12,14 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "common.h"
+#include "printer_data.h"
 
-#include <errno.h>
 #include <stdio.h>
-#include <string.h>
 #include <unistd.h>
 
+#include "common.h"
 #include "log.h"
 #include "printer_internal.h"
-#include "printer_data.h"
-#include "tree_schema.h"
 #include "tree_data.h"
 
 /**

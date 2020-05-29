@@ -20,8 +20,8 @@
 
 #include "log.h"
 #include "set.h"
-#include "tree_schema.h"
 
+struct ly_ctx;
 struct ly_out;
 struct ly_prefix;
 

@@ -15,11 +15,13 @@
 #ifndef LY_PARSER_YIN_H_
 #define LY_PARSER_YIN_H_
 
+#include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 
 #include "log.h"
-#include "xml.h"
+#include "tree.h"
+#include "tree_schema.h"
+#include "tree_schema_internal.h"
 
 /* list of yin attribute strings */
 extern const char *const yin_attr_list[];

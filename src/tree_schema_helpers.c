@@ -11,7 +11,8 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
-#include "common.h"
+
+#define _GNU_SOURCE
 
 #include <assert.h>
 #include <ctype.h>
@@ -21,9 +22,11 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <time.h>
+#include <unistd.h>
 
+#include "common.h"
+#include "config.h"
 #include "context.h"
 #include "dict.h"
 #include "hash_table.h"

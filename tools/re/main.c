@@ -12,7 +12,7 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "config.h"
+#define _GNU_SOURCE
 
 #include <errno.h>
 #include <fcntl.h>
@@ -24,8 +24,9 @@
 #include <getopt.h>
 #include <unistd.h>
 
-#include "context.h"
-#include "plugins_types.h"
+#include "libyang.h"
+
+#include "tools/config.h"
 
 void
 help(void)

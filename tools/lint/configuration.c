@@ -12,19 +12,17 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "config.h"
-
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <errno.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <pwd.h>
-
 #include "configuration.h"
-#include "./linenoise/linenoise.h"
+
+#include <errno.h>
+#include <pwd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <unistd.h>
+
+#include "linenoise/linenoise.h"
 
 /* Yanglint home (appended to ~/) */
 #define YL_DIR ".yanglint"

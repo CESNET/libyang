@@ -12,22 +12,14 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "common.h"
+#define _GNU_SOURCE
 
-#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
+#include "common.h"
+#include "config.h"
 #include "context.h"
-#include "dict.h"
-#include "log.h"
-#include "plugins_types.h"
-#include "set.h"
-#include "tree_data.h"
-#include "tree_data_internal.h"
-#include "tree_schema.h"
-#include "xml.h"
-#include "validation.h"
 
 /**
  * @brief JSON-parser's implementation of ly_type_resolve_prefix() callback to provide mapping between prefixes used

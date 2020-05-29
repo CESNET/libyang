@@ -12,7 +12,7 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "common.h"
+#include "hash_table.h"
 
 #include <string.h>
 #include <stdint.h>
@@ -20,7 +20,8 @@
 #include <pthread.h>
 #include <assert.h>
 
-#include "hash_table.h"
+#include "common.h"
+#include "dict.h"
 
 static int
 lydict_val_eq(void *val1_p, void *val2_p, int UNUSED(mod), void *cb_data)

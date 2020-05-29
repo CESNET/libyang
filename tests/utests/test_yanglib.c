@@ -12,17 +12,20 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "tests/config.h"
-
 #include <stdarg.h>
 #include <stddef.h>
+#include <stdlib.h>
 #include <setjmp.h>
-#include <cmocka.h>
-
-#include <stdio.h>
 #include <string.h>
 
+#include <cmocka.h>
+
+#include "tests/config.h"
+
 #include "../../src/context.h"
+#include "../../src/log.h"
+#include "../../src/set.h"
+#include "../../src/tree_data.h"
 #include "../../src/tree_schema.h"
 
 #define BUFSIZE 1024

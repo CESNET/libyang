@@ -11,9 +11,10 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
-#define _POSIX_C_SOURCE 200809L /* strndup */
 
-#include "common.h"
+#define _GNU_SOURCE
+
+#include "tree_data.h"
 
 #include <assert.h>
 #include <ctype.h>
@@ -21,20 +22,28 @@
 #include <fcntl.h>
 #include <stdarg.h>
 #include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
-#include "log.h"
-#include "tree.h"
-#include "tree_data.h"
-#include "tree_data_internal.h"
-#include "tree_schema_internal.h"
+#include "common.h"
+#include "config.h"
+#include "context.h"
+#include "dict.h"
 #include "hash_table.h"
-#include "tree_schema.h"
-#include "xpath.h"
-#include "xml.h"
+#include "log.h"
+#include "plugins_exts.h"
 #include "plugins_exts_metadata.h"
 #include "plugins_exts_internal.h"
+#include "plugins_types.h"
+#include "set.h"
+#include "tree.h"
+#include "tree_data_internal.h"
+#include "tree_schema.h"
+#include "tree_schema_internal.h"
+#include "xml.h"
+#include "xpath.h"
 
 struct ly_keys {
     char *str;

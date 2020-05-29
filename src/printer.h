@@ -15,7 +15,10 @@
 #ifndef LY_PRINTER_H_
 #define LY_PRINTER_H_
 
+#include <stdio.h>
 #include <unistd.h>
+
+#include "log.h"
 
 /**
  * @brief Printer output structure specifying where the data are printed.

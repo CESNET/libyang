@@ -23,6 +23,7 @@
 #include "tests/config.h"
 
 #include "../../src/context.h"
+#include "../../src/printer.h"
 #include "../../src/printer_data.h"
 
 #define BUFSIZE 1024

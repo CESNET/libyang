@@ -23,6 +23,7 @@
 #include <string.h>
 
 #include "../../src/context.h"
+#include "../../src/set.h"
 #include "../../src/tree_data.h"
 #include "../../src/tree_schema.h"
 

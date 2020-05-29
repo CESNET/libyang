@@ -11,23 +11,25 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
-#define _GNU_SOUCRE /* asprintf */
+#define _GNU_SOURCE /* asprintf */
 
-#include "common.h"
+#include "context.h"
 
 #include <assert.h>
 #include <errno.h>
 #include <pthread.h>
 #include <stddef.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "context.h"
+#include "common.h"
 #include "hash_table.h"
 #include "set.h"
 #include "tree.h"
+#include "tree_data.h"
 #include "tree_schema_internal.h"
 #include "plugins_types.h"
 

@@ -12,15 +12,13 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "common.h"
 
 #include <assert.h>
 #include <stdlib.h>
 
+#include "common.h"
 #include "hash_table.h"
-#include "log.h"
 #include "tree.h"
-#include "tree_data.h"
 #include "tree_schema.h"
 #include "tree_data_internal.h"
 #include "plugins_types.h"
