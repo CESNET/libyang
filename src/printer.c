@@ -129,8 +129,10 @@ ly_should_print(const struct lyd_node *node, int options)
         /* LYDP_WD_EXPLICIT
          * - print only if it contains status data in its subtree */
         LYD_TREE_DFS_BEGIN(node, next, elem) {
-            if (elem->schema->flags & LYS_CONFIG_R) {
-                return 1;
+            if ((elem->schema->nodetype != LYS_CONTAINER) || (elem->schema->flags & LYS_PRESENCE)) {
+                if (elem->schema->flags & LYS_CONFIG_R) {
+                    return 1;
+                }
             }
             LYD_TREE_DFS_END(node, next, elem)
         }
