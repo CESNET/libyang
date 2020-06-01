@@ -102,12 +102,14 @@ enum lyxp_token {
     LYXP_TOKEN_NAMETEST,      /* NameTest */
     LYXP_TOKEN_NODETYPE,      /* NodeType */
     LYXP_TOKEN_FUNCNAME,      /* FunctionName */
-    LYXP_TOKEN_OPERATOR_LOG,  /* Operator 'and', 'or' */
-    LYXP_TOKEN_OPERATOR_COMP, /* Operator '=', '!=', '<', '<=', '>', '>=' */
-    LYXP_TOKEN_OPERATOR_MATH, /* Operator '+', '-', '*', 'div', 'mod', '-' (unary) */
-    LYXP_TOKEN_OPERATOR_UNI,  /* Operator '|' */
-    LYXP_TOKEN_OPERATOR_PATH, /* Operator '/' */
-    LYXP_TOKEN_OPERATOR_RPATH,/* Operator '//' (recursive path) */
+    LYXP_TOKEN_OPER_LOG,      /* Operator 'and', 'or' */
+    LYXP_TOKEN_OPER_EQUAL,    /* Operator '=' */
+    LYXP_TOKEN_OPER_NEQUAL,   /* Operator '!=' */
+    LYXP_TOKEN_OPER_COMP,     /* Operator '<', '<=', '>', '>=' */
+    LYXP_TOKEN_OPER_MATH,     /* Operator '+', '-', '*', 'div', 'mod', '-' (unary) */
+    LYXP_TOKEN_OPER_UNI,      /* Operator '|' */
+    LYXP_TOKEN_OPER_PATH,     /* Operator '/' */
+    LYXP_TOKEN_OPER_RPATH,    /* Operator '//' (recursive path) */
     /* LYXP_TOKEN_AXISNAME,    * AxisName * axes not supported */
     LYXP_TOKEN_LITERAL,       /* Literal - with either single or double quote */
     LYXP_TOKEN_NUMBER         /* Number */

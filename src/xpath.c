@@ -94,17 +94,21 @@ lyxp_print_token(enum lyxp_token tok)
         return "NodeType";
     case LYXP_TOKEN_FUNCNAME:
         return "FunctionName";
-    case LYXP_TOKEN_OPERATOR_LOG:
+    case LYXP_TOKEN_OPER_LOG:
         return "Operator(Logic)";
-    case LYXP_TOKEN_OPERATOR_COMP:
+    case LYXP_TOKEN_OPER_EQUAL:
+        return "Operator(Equal)";
+    case LYXP_TOKEN_OPER_NEQUAL:
+        return "Operator(Non-equal)";
+    case LYXP_TOKEN_OPER_COMP:
         return "Operator(Comparison)";
-    case LYXP_TOKEN_OPERATOR_MATH:
+    case LYXP_TOKEN_OPER_MATH:
         return "Operator(Math)";
-    case LYXP_TOKEN_OPERATOR_UNI:
+    case LYXP_TOKEN_OPER_UNI:
         return "Operator(Union)";
-    case LYXP_TOKEN_OPERATOR_PATH:
+    case LYXP_TOKEN_OPER_PATH:
         return "Operator(Path)";
-    case LYXP_TOKEN_OPERATOR_RPATH:
+    case LYXP_TOKEN_OPER_RPATH:
         return "Operator(Recursive Path)";
     case LYXP_TOKEN_LITERAL:
         return "Literal";
@@ -1957,7 +1961,7 @@ reparse_predicate:
                    lyxp_print_token(exp->tokens[*exp_idx]), &exp->expr[exp->tok_pos[*exp_idx]]);
             return LY_EVALID;
         }
-    } while (!exp_check_token2(NULL, exp, *exp_idx, LYXP_TOKEN_OPERATOR_PATH, LYXP_TOKEN_OPERATOR_RPATH));
+    } while (!exp_check_token2(NULL, exp, *exp_idx, LYXP_TOKEN_OPER_PATH, LYXP_TOKEN_OPER_RPATH));
 
     return LY_SUCCESS;
 }
@@ -1977,11 +1981,11 @@ reparse_absolute_location_path(const struct ly_ctx *ctx, struct lyxp_expr *exp, 
 {
     LY_ERR rc;
 
-    rc = exp_check_token2(ctx, exp, *exp_idx, LYXP_TOKEN_OPERATOR_PATH, LYXP_TOKEN_OPERATOR_RPATH);
+    rc = exp_check_token2(ctx, exp, *exp_idx, LYXP_TOKEN_OPER_PATH, LYXP_TOKEN_OPER_RPATH);
     LY_CHECK_RET(rc);
 
     /* '/' RelativeLocationPath? */
-    if (exp->tokens[*exp_idx] == LYXP_TOKEN_OPERATOR_PATH) {
+    if (exp->tokens[*exp_idx] == LYXP_TOKEN_OPER_PATH) {
         /* '/' */
         ++(*exp_idx);
 
@@ -2269,8 +2273,8 @@ reparse_path_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *exp
         LY_CHECK_RET(rc);
         goto predicate;
         break;
-    case LYXP_TOKEN_OPERATOR_PATH:
-    case LYXP_TOKEN_OPERATOR_RPATH:
+    case LYXP_TOKEN_OPER_PATH:
+    case LYXP_TOKEN_OPER_RPATH:
         /* AbsoluteLocationPath */
         rc = reparse_absolute_location_path(ctx, exp, exp_idx);
         LY_CHECK_RET(rc);
@@ -2301,7 +2305,7 @@ predicate:
     }
 
     /* ('/' or '//') RelativeLocationPath */
-    if (!exp_check_token2(NULL, exp, *exp_idx, LYXP_TOKEN_OPERATOR_PATH, LYXP_TOKEN_OPERATOR_RPATH)) {
+    if (!exp_check_token2(NULL, exp, *exp_idx, LYXP_TOKEN_OPER_PATH, LYXP_TOKEN_OPER_RPATH)) {
 
         /* '/' or '//' */
         ++(*exp_idx);
@@ -2332,7 +2336,7 @@ reparse_unary_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *ex
 
     /* ('-')* */
     prev_exp = *exp_idx;
-    while (!lyxp_check_token(NULL, exp, *exp_idx, LYXP_TOKEN_OPERATOR_MATH)
+    while (!lyxp_check_token(NULL, exp, *exp_idx, LYXP_TOKEN_OPER_MATH)
             && (exp->expr[exp->tok_pos[*exp_idx]] == '-')) {
         exp_repeat_push(exp, prev_exp, LYXP_EXPR_UNARY);
         ++(*exp_idx);
@@ -2344,7 +2348,7 @@ reparse_unary_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *ex
     LY_CHECK_RET(rc);
 
     /* ('|' PathExpr)* */
-    while (!lyxp_check_token(NULL, exp, *exp_idx, LYXP_TOKEN_OPERATOR_UNI)) {
+    while (!lyxp_check_token(NULL, exp, *exp_idx, LYXP_TOKEN_OPER_UNI)) {
         exp_repeat_push(exp, prev_exp, LYXP_EXPR_UNION);
         ++(*exp_idx);
 
@@ -2381,7 +2385,7 @@ reparse_additive_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t 
     goto reparse_multiplicative_expr;
 
     /* ('+' / '-' MultiplicativeExpr)* */
-    while (!lyxp_check_token(NULL, exp, *exp_idx, LYXP_TOKEN_OPERATOR_MATH)
+    while (!lyxp_check_token(NULL, exp, *exp_idx, LYXP_TOKEN_OPER_MATH)
             && ((exp->expr[exp->tok_pos[*exp_idx]] == '+') || (exp->expr[exp->tok_pos[*exp_idx]] == '-'))) {
         exp_repeat_push(exp, prev_add_exp, LYXP_EXPR_ADDITIVE);
         ++(*exp_idx);
@@ -2393,7 +2397,7 @@ reparse_multiplicative_expr:
         LY_CHECK_RET(rc);
 
         /* ('*' / 'div' / 'mod' UnaryExpr)* */
-        while (!lyxp_check_token(NULL, exp, *exp_idx, LYXP_TOKEN_OPERATOR_MATH)
+        while (!lyxp_check_token(NULL, exp, *exp_idx, LYXP_TOKEN_OPER_MATH)
                 && ((exp->expr[exp->tok_pos[*exp_idx]] == '*') || (exp->tok_len[*exp_idx] == 3))) {
             exp_repeat_push(exp, prev_mul_exp, LYXP_EXPR_MULTIPLICATIVE);
             ++(*exp_idx);
@@ -2432,8 +2436,7 @@ reparse_equality_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t 
     goto reparse_additive_expr;
 
     /* ('=' / '!=' RelationalExpr)* */
-    while (!lyxp_check_token(NULL, exp, *exp_idx, LYXP_TOKEN_OPERATOR_COMP)
-            && ((exp->expr[exp->tok_pos[*exp_idx]] == '=') || (exp->expr[exp->tok_pos[*exp_idx]] == '!'))) {
+    while (!exp_check_token2(NULL, exp, *exp_idx, LYXP_TOKEN_OPER_EQUAL, LYXP_TOKEN_OPER_NEQUAL)) {
         exp_repeat_push(exp, prev_eq_exp, LYXP_EXPR_EQUALITY);
         ++(*exp_idx);
 
@@ -2444,8 +2447,7 @@ reparse_additive_expr:
         LY_CHECK_RET(rc);
 
         /* ('<' / '>' / '<=' / '>=' AdditiveExpr)* */
-        while (!lyxp_check_token(NULL, exp, *exp_idx, LYXP_TOKEN_OPERATOR_COMP)
-                && ((exp->expr[exp->tok_pos[*exp_idx]] == '<') || (exp->expr[exp->tok_pos[*exp_idx]] == '>'))) {
+        while (!lyxp_check_token(NULL, exp, *exp_idx, LYXP_TOKEN_OPER_COMP)) {
             exp_repeat_push(exp, prev_rel_exp, LYXP_EXPR_RELATIONAL);
             ++(*exp_idx);
 
@@ -2478,7 +2480,7 @@ reparse_or_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *exp_i
     goto reparse_equality_expr;
 
     /* ('or' AndExpr)* */
-    while (!lyxp_check_token(NULL, exp, *exp_idx, LYXP_TOKEN_OPERATOR_LOG) && (exp->tok_len[*exp_idx] == 2)) {
+    while (!lyxp_check_token(NULL, exp, *exp_idx, LYXP_TOKEN_OPER_LOG) && (exp->tok_len[*exp_idx] == 2)) {
         exp_repeat_push(exp, prev_or_exp, LYXP_EXPR_OR);
         ++(*exp_idx);
 
@@ -2489,7 +2491,7 @@ reparse_equality_expr:
         LY_CHECK_RET(rc);
 
         /* ('and' EqualityExpr)* */
-        while (!lyxp_check_token(NULL, exp, *exp_idx, LYXP_TOKEN_OPERATOR_LOG) && (exp->tok_len[*exp_idx] == 3)) {
+        while (!lyxp_check_token(NULL, exp, *exp_idx, LYXP_TOKEN_OPER_LOG) && (exp->tok_len[*exp_idx] == 3)) {
             exp_repeat_push(exp, prev_and_exp, LYXP_EXPR_AND);
             ++(*exp_idx);
 
@@ -2721,64 +2723,77 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr)
             /* Operator '/', '//' */
             if (!strncmp(&expr[parsed], "//", 2)) {
                 tok_len = 2;
-                tok_type = LYXP_TOKEN_OPERATOR_RPATH;
+                tok_type = LYXP_TOKEN_OPER_RPATH;
             } else {
                 tok_len = 1;
-                tok_type = LYXP_TOKEN_OPERATOR_PATH;
+                tok_type = LYXP_TOKEN_OPER_PATH;
             }
 
-        } else if  (!strncmp(&expr[parsed], "!=", 2) || !strncmp(&expr[parsed], "<=", 2)
-                || !strncmp(&expr[parsed], ">=", 2)) {
+        } else if  (!strncmp(&expr[parsed], "!=", 2)) {
 
-            /* Operator '!=', '<=', '>=' */
+            /* Operator '!=' */
             tok_len = 2;
-            tok_type = LYXP_TOKEN_OPERATOR_COMP;
+            tok_type = LYXP_TOKEN_OPER_NEQUAL;
+
+        } else if (!strncmp(&expr[parsed], "<=", 2) || !strncmp(&expr[parsed], ">=", 2)) {
+
+            /* Operator '<=', '>=' */
+            tok_len = 2;
+            tok_type = LYXP_TOKEN_OPER_COMP;
 
         } else if (expr[parsed] == '|') {
 
             /* Operator '|' */
             tok_len = 1;
-            tok_type = LYXP_TOKEN_OPERATOR_UNI;
+            tok_type = LYXP_TOKEN_OPER_UNI;
 
         } else if ((expr[parsed] == '+') || (expr[parsed] == '-')) {
 
             /* Operator '+', '-' */
             tok_len = 1;
-            tok_type = LYXP_TOKEN_OPERATOR_MATH;
+            tok_type = LYXP_TOKEN_OPER_MATH;
 
-        } else if ((expr[parsed] == '=') || (expr[parsed] == '<') || (expr[parsed] == '>')) {
+        } else if (expr[parsed] == '=') {
 
-            /* Operator '=', '<', '>' */
+            /* Operator '=' */
             tok_len = 1;
-            tok_type = LYXP_TOKEN_OPERATOR_COMP;
+            tok_type = LYXP_TOKEN_OPER_EQUAL;
+
+        } else if ((expr[parsed] == '<') || (expr[parsed] == '>')) {
+
+            /* Operator '<', '>' */
+            tok_len = 1;
+            tok_type = LYXP_TOKEN_OPER_COMP;
 
         } else if (ret->used && (ret->tokens[ret->used - 1] != LYXP_TOKEN_AT)
                 && (ret->tokens[ret->used - 1] != LYXP_TOKEN_PAR1)
                 && (ret->tokens[ret->used - 1] != LYXP_TOKEN_BRACK1)
                 && (ret->tokens[ret->used - 1] != LYXP_TOKEN_COMMA)
-                && (ret->tokens[ret->used - 1] != LYXP_TOKEN_OPERATOR_LOG)
-                && (ret->tokens[ret->used - 1] != LYXP_TOKEN_OPERATOR_COMP)
-                && (ret->tokens[ret->used - 1] != LYXP_TOKEN_OPERATOR_MATH)
-                && (ret->tokens[ret->used - 1] != LYXP_TOKEN_OPERATOR_UNI)
-                && (ret->tokens[ret->used - 1] != LYXP_TOKEN_OPERATOR_PATH)
-                && (ret->tokens[ret->used - 1] != LYXP_TOKEN_OPERATOR_RPATH)) {
+                && (ret->tokens[ret->used - 1] != LYXP_TOKEN_OPER_LOG)
+                && (ret->tokens[ret->used - 1] != LYXP_TOKEN_OPER_EQUAL)
+                && (ret->tokens[ret->used - 1] != LYXP_TOKEN_OPER_NEQUAL)
+                && (ret->tokens[ret->used - 1] != LYXP_TOKEN_OPER_COMP)
+                && (ret->tokens[ret->used - 1] != LYXP_TOKEN_OPER_MATH)
+                && (ret->tokens[ret->used - 1] != LYXP_TOKEN_OPER_UNI)
+                && (ret->tokens[ret->used - 1] != LYXP_TOKEN_OPER_PATH)
+                && (ret->tokens[ret->used - 1] != LYXP_TOKEN_OPER_RPATH)) {
 
             /* Operator '*', 'or', 'and', 'mod', or 'div' */
             if (expr[parsed] == '*') {
                 tok_len = 1;
-                tok_type = LYXP_TOKEN_OPERATOR_MATH;
+                tok_type = LYXP_TOKEN_OPER_MATH;
 
             } else if (!strncmp(&expr[parsed], "or", 2)) {
                 tok_len = 2;
-                tok_type = LYXP_TOKEN_OPERATOR_LOG;
+                tok_type = LYXP_TOKEN_OPER_LOG;
 
             } else if (!strncmp(&expr[parsed], "and", 3)) {
                 tok_len = 3;
-                tok_type = LYXP_TOKEN_OPERATOR_LOG;
+                tok_type = LYXP_TOKEN_OPER_LOG;
 
             } else if (!strncmp(&expr[parsed], "mod", 3) || !strncmp(&expr[parsed], "div", 3)) {
                 tok_len = 3;
-                tok_type = LYXP_TOKEN_OPERATOR_MATH;
+                tok_type = LYXP_TOKEN_OPER_MATH;
 
             } else if (prev_function_check) {
                 LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_XPATH, "Invalid character 0x%x ('%c'), perhaps \"%.*s\" is supposed to be a function call.",
@@ -6730,34 +6745,23 @@ eval_name_test_parse_leaflist_predicate(struct lyxp_expr *exp, uint16_t *exp_idx
     cur_idx = *exp_idx;
 
     /* '[' */
-    if ((exp->used == cur_idx) || (exp->tokens[cur_idx] != LYXP_TOKEN_BRACK1)) {
-        return LY_EINVAL;
-    }
+    LY_CHECK_RET(lyxp_check_token(NULL, exp, *exp_idx, LYXP_TOKEN_BRACK1));
     ++cur_idx;
 
     /* '.' */
-    if ((exp->used == cur_idx) || (exp->tokens[cur_idx] != LYXP_TOKEN_DOT)) {
-        return LY_EINVAL;
-    }
+    LY_CHECK_RET(lyxp_check_token(NULL, exp, *exp_idx, LYXP_TOKEN_DOT));
     ++cur_idx;
 
     /* '=' */
-    if ((exp->used == cur_idx) || (exp->tokens[cur_idx] != LYXP_TOKEN_OPERATOR_COMP)
-            || (exp->expr[exp->tok_pos[cur_idx]] != '=')) {
-        return LY_EINVAL;
-    }
+    LY_CHECK_RET(lyxp_check_token(NULL, exp, *exp_idx, LYXP_TOKEN_OPER_EQUAL));
     ++cur_idx;
 
     /* value */
-    if ((exp->used == cur_idx) || (exp->tokens[cur_idx] != LYXP_TOKEN_LITERAL)) {
-        return LY_EINVAL;
-    }
+    LY_CHECK_RET(lyxp_check_token(NULL, exp, *exp_idx, LYXP_TOKEN_LITERAL));
     ++cur_idx;
 
     /* ']' */
-    if ((exp->used == cur_idx) || (exp->tokens[cur_idx] != LYXP_TOKEN_BRACK2)) {
-        return LY_EINVAL;
-    }
+    LY_CHECK_RET(lyxp_check_token(NULL, exp, *exp_idx, LYXP_TOKEN_BRACK2));
     ++cur_idx;
 
     /* success */
@@ -6800,34 +6804,23 @@ eval_name_test_parse_list_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, co
     cur_idx = *exp_idx;
     for (i = 0; i < key_count; ++i) {
         /* '[' */
-        if ((exp->used == cur_idx) || (exp->tokens[cur_idx] != LYXP_TOKEN_BRACK1)) {
-            return LY_EINVAL;
-        }
+        LY_CHECK_RET(lyxp_check_token(NULL, exp, cur_idx, LYXP_TOKEN_BRACK1));
         ++cur_idx;
 
         /* key-name */
-        if ((exp->used == cur_idx) || (exp->tokens[cur_idx] != LYXP_TOKEN_NAMETEST)) {
-            return LY_EINVAL;
-        }
+        LY_CHECK_RET(lyxp_check_token(NULL, exp, cur_idx, LYXP_TOKEN_NAMETEST));
         ++cur_idx;
 
         /* '=' */
-        if ((exp->used == cur_idx) || (exp->tokens[cur_idx] != LYXP_TOKEN_OPERATOR_COMP)
-                || (exp->expr[exp->tok_pos[cur_idx]] != '=')) {
-            return LY_EINVAL;
-        }
+        LY_CHECK_RET(lyxp_check_token(NULL, exp, cur_idx, LYXP_TOKEN_OPER_EQUAL));
         ++cur_idx;
 
         /* key-value */
-        if ((exp->used == cur_idx) || (exp->tokens[cur_idx] != LYXP_TOKEN_LITERAL)) {
-            return LY_EINVAL;
-        }
+        LY_CHECK_RET(lyxp_check_token(NULL, exp, cur_idx, LYXP_TOKEN_LITERAL));
         ++cur_idx;
 
         /* ']' */
-        if ((exp->used == cur_idx) || (exp->tokens[cur_idx] != LYXP_TOKEN_BRACK2)) {
-            return LY_EINVAL;
-        }
+        LY_CHECK_RET(lyxp_check_token(NULL, exp, cur_idx, LYXP_TOKEN_BRACK2));
         ++cur_idx;
     }
 
@@ -7161,7 +7154,7 @@ step:
         default:
             LOGINT_RET(set ? set->ctx : NULL);
         }
-    } while (!exp_check_token2(NULL, exp, *exp_idx, LYXP_TOKEN_OPERATOR_PATH, LYXP_TOKEN_OPERATOR_RPATH));
+    } while (!exp_check_token2(NULL, exp, *exp_idx, LYXP_TOKEN_OPER_PATH, LYXP_TOKEN_OPER_RPATH));
 
     return LY_SUCCESS;
 }
@@ -7552,8 +7545,8 @@ eval_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyxp_set *set, i
         parent_pos_pred = 1;
         goto predicate;
 
-    case LYXP_TOKEN_OPERATOR_PATH:
-    case LYXP_TOKEN_OPERATOR_RPATH:
+    case LYXP_TOKEN_OPER_PATH:
+    case LYXP_TOKEN_OPER_RPATH:
         /* AbsoluteLocationPath */
         rc = eval_absolute_location_path(exp, exp_idx, set, options);
         LY_CHECK_RET(rc);
@@ -7604,10 +7597,10 @@ predicate:
     }
 
     /* ('/' or '//') RelativeLocationPath */
-    if (!exp_check_token2(NULL, exp, *exp_idx, LYXP_TOKEN_OPERATOR_PATH, LYXP_TOKEN_OPERATOR_RPATH)) {
+    if (!exp_check_token2(NULL, exp, *exp_idx, LYXP_TOKEN_OPER_PATH, LYXP_TOKEN_OPER_RPATH)) {
 
         /* evaluate '/' or '//' */
-        if (exp->tokens[*exp_idx] == LYXP_TOKEN_OPERATOR_PATH) {
+        if (exp->tokens[*exp_idx] == LYXP_TOKEN_OPER_PATH) {
             all_desc = 0;
         } else {
             all_desc = 1;
@@ -7655,7 +7648,7 @@ eval_union_expr(struct lyxp_expr *exp, uint16_t *exp_idx, uint16_t repeat, struc
 
     /* ('|' PathExpr)* */
     for (i = 0; i < repeat; ++i) {
-        assert(exp->tokens[*exp_idx] == LYXP_TOKEN_OPERATOR_UNI);
+        assert(exp->tokens[*exp_idx] == LYXP_TOKEN_OPER_UNI);
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
         ++(*exp_idx);
@@ -7708,7 +7701,7 @@ eval_unary_expr(struct lyxp_expr *exp, uint16_t *exp_idx, uint16_t repeat, struc
     /* ('-')+ */
     this_op = *exp_idx;
     for (i = 0; i < repeat; ++i) {
-        assert(!lyxp_check_token(NULL, exp, *exp_idx, LYXP_TOKEN_OPERATOR_MATH) && (exp->expr[exp->tok_pos[*exp_idx]] == '-'));
+        assert(!lyxp_check_token(NULL, exp, *exp_idx, LYXP_TOKEN_OPER_MATH) && (exp->expr[exp->tok_pos[*exp_idx]] == '-'));
 
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
@@ -7767,7 +7760,7 @@ eval_multiplicative_expr(struct lyxp_expr *exp, uint16_t *exp_idx, uint16_t repe
     for (i = 0; i < repeat; ++i) {
         this_op = *exp_idx;
 
-        assert(exp->tokens[*exp_idx] == LYXP_TOKEN_OPERATOR_MATH);
+        assert(exp->tokens[*exp_idx] == LYXP_TOKEN_OPER_MATH);
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
         ++(*exp_idx);
@@ -7835,7 +7828,7 @@ eval_additive_expr(struct lyxp_expr *exp, uint16_t *exp_idx, uint16_t repeat, st
     for (i = 0; i < repeat; ++i) {
         this_op = *exp_idx;
 
-        assert(exp->tokens[*exp_idx] == LYXP_TOKEN_OPERATOR_MATH);
+        assert(exp->tokens[*exp_idx] == LYXP_TOKEN_OPER_MATH);
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
         ++(*exp_idx);
@@ -7905,7 +7898,7 @@ eval_relational_expr(struct lyxp_expr *exp, uint16_t *exp_idx, uint16_t repeat, 
     for (i = 0; i < repeat; ++i) {
         this_op = *exp_idx;
 
-        assert(exp->tokens[*exp_idx] == LYXP_TOKEN_OPERATOR_COMP);
+        assert(exp->tokens[*exp_idx] == LYXP_TOKEN_OPER_COMP);
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
         ++(*exp_idx);
@@ -7972,7 +7965,7 @@ eval_equality_expr(struct lyxp_expr *exp, uint16_t *exp_idx, uint16_t repeat, st
     for (i = 0; i < repeat; ++i) {
         this_op = *exp_idx;
 
-        assert(exp->tokens[*exp_idx] == LYXP_TOKEN_OPERATOR_COMP);
+        assert((exp->tokens[*exp_idx] == LYXP_TOKEN_OPER_EQUAL) || (exp->tokens[*exp_idx] == LYXP_TOKEN_OPER_NEQUAL));
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
                lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
         ++(*exp_idx);
@@ -8044,7 +8037,7 @@ eval_and_expr(struct lyxp_expr *exp, uint16_t *exp_idx, uint16_t repeat, struct 
 
     /* ('and' EqualityExpr)* */
     for (i = 0; i < repeat; ++i) {
-        assert(exp->tokens[*exp_idx] == LYXP_TOKEN_OPERATOR_LOG);
+        assert(exp->tokens[*exp_idx] == LYXP_TOKEN_OPER_LOG);
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (!set || !set->val.bool ? "skipped" : "parsed"),
             lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
         ++(*exp_idx);
@@ -8114,7 +8107,7 @@ eval_or_expr(struct lyxp_expr *exp, uint16_t *exp_idx, uint16_t repeat, struct l
 
     /* ('or' AndExpr)* */
     for (i = 0; i < repeat; ++i) {
-        assert(exp->tokens[*exp_idx] == LYXP_TOKEN_OPERATOR_LOG);
+        assert(exp->tokens[*exp_idx] == LYXP_TOKEN_OPER_LOG);
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (!set || set->val.bool ? "skipped" : "parsed"),
             lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
         ++(*exp_idx);
