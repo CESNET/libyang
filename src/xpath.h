@@ -260,6 +260,14 @@ struct lyxp_set {
 };
 
 /**
+ * @brief Print an XPath token \p tok type.
+ *
+ * @param[in] tok Token to print.
+ * @return Token type string.
+ */
+const char *lyxp_print_token(enum lyxp_token tok);
+
+/**
  * @brief Evaluate an XPath expression on data. Be careful when using this function, the result can often
  * be confusing without thorough understanding of XPath evaluation rules defined in RFC 7950.
  *
@@ -378,7 +386,7 @@ struct lyxp_expr *lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr);
  * @return LY_ENOT on non-matching token,
  * @return LY_SUCCESS on success.
  */
-LY_ERR lyxp_check_token(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t exp_idx, enum lyxp_token want_tok);
+LY_ERR lyxp_check_token(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint16_t exp_idx, enum lyxp_token want_tok);
 
 /**
  * @brief Frees a parsed XPath expression. @p expr should not be used afterwards.

@@ -68,14 +68,8 @@ print_set_type(struct lyxp_set *set)
     return NULL;
 }
 
-/**
- * @brief Print an XPath token \p tok type.
- *
- * @param[in] tok Token to use.
- * @return Token type string.
- */
-static const char *
-print_token(enum lyxp_token tok)
+const char *
+lyxp_print_token(enum lyxp_token tok)
 {
     switch (tok) {
     case LYXP_TOKEN_PAR1:
@@ -139,7 +133,7 @@ print_expr_struct_debug(struct lyxp_expr *exp)
 
     LOGDBG(LY_LDGXPATH, "expression \"%s\":", exp->expr);
     for (i = 0; i < exp->used; ++i) {
-        sprintf(tmp, "\ttoken %s, in expression \"%.*s\"", print_token(exp->tokens[i]), exp->tok_len[i],
+        sprintf(tmp, "\ttoken %s, in expression \"%.*s\"", lyxp_print_token(exp->tokens[i]), exp->tok_len[i],
                &exp->expr[exp->tok_pos[i]]);
         if (exp->repeat[i]) {
             sprintf(tmp + strlen(tmp), " (repeat %d", exp->repeat[i][0]);
@@ -1787,7 +1781,7 @@ copy_nodes:
  */
 
 LY_ERR
-lyxp_check_token(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t exp_idx, enum lyxp_token want_tok)
+lyxp_check_token(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint16_t exp_idx, enum lyxp_token want_tok)
 {
     if (exp->used == exp_idx) {
         if (ctx) {
@@ -1799,7 +1793,7 @@ lyxp_check_token(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t exp_i
     if (want_tok && (exp->tokens[exp_idx] != want_tok)) {
         if (ctx) {
             LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_INTOK,
-                   print_token(exp->tokens[exp_idx]), &exp->expr[exp->tok_pos[exp_idx]]);
+                   lyxp_print_token(exp->tokens[exp_idx]), &exp->expr[exp->tok_pos[exp_idx]]);
         }
         return LY_ENOT;
     }
@@ -1822,7 +1816,7 @@ exp_check_token2(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t exp_i
     if ((exp->tokens[exp_idx] != want_tok1) && (exp->tokens[exp_idx] != want_tok2)) {
         if (ctx) {
             LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_INTOK,
-                   print_token(exp->tokens[exp_idx]), &exp->expr[exp->tok_pos[exp_idx]]);
+                   lyxp_print_token(exp->tokens[exp_idx]), &exp->expr[exp->tok_pos[exp_idx]]);
         }
         return LY_ENOT;
     }
@@ -1929,7 +1923,7 @@ step:
             LY_CHECK_RET(rc);
             if ((exp->tokens[*exp_idx] != LYXP_TOKEN_NAMETEST) && (exp->tokens[*exp_idx] != LYXP_TOKEN_NODETYPE)) {
                 LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_INTOK,
-                       print_token(exp->tokens[*exp_idx]), &exp->expr[exp->tok_pos[*exp_idx]]);
+                       lyxp_print_token(exp->tokens[*exp_idx]), &exp->expr[exp->tok_pos[*exp_idx]]);
                 return LY_EVALID;
             }
             /* fall through */
@@ -1960,7 +1954,7 @@ reparse_predicate:
             break;
         default:
             LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_INTOK,
-                   print_token(exp->tokens[*exp_idx]), &exp->expr[exp->tok_pos[*exp_idx]]);
+                   lyxp_print_token(exp->tokens[*exp_idx]), &exp->expr[exp->tok_pos[*exp_idx]]);
             return LY_EVALID;
         }
     } while (!exp_check_token2(NULL, exp, *exp_idx, LYXP_TOKEN_OPERATOR_PATH, LYXP_TOKEN_OPERATOR_RPATH));
@@ -2293,7 +2287,7 @@ reparse_path_expr(const struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *exp
         break;
     default:
         LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_INTOK,
-               print_token(exp->tokens[*exp_idx]), &exp->expr[exp->tok_pos[*exp_idx]]);
+               lyxp_print_token(exp->tokens[*exp_idx]), &exp->expr[exp->tok_pos[*exp_idx]]);
         return LY_EVALID;
     }
 
@@ -2842,7 +2836,6 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr)
     /* fill repeat */
     LY_CHECK_GOTO(reparse_or_expr(ctx, ret, &exp_idx), error);
     if (ret->used > exp_idx) {
-        LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_INTOK, "Unknown", &ret->expr[ret->tok_pos[exp_idx]]);
         LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_XPATH, "Unparsed characters \"%s\" left at the end of an XPath expression.",
                &ret->expr[ret->tok_pos[exp_idx]]);
         goto error;
@@ -6570,7 +6563,7 @@ eval_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyxp_set *set, i
 
     /* '[' */
     LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-           print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
+           lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
     ++(*exp_idx);
 
     if (!set) {
@@ -6691,7 +6684,7 @@ only_parse:
     /* ']' */
     assert(exp->tokens[*exp_idx] == LYXP_TOKEN_BRACK2);
     LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-           print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
+           lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
     ++(*exp_idx);
 
     return LY_SUCCESS;
@@ -6715,7 +6708,7 @@ eval_literal(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyxp_set *set)
         }
     }
     LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
+               lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
     ++(*exp_idx);
 }
 
@@ -6874,7 +6867,7 @@ eval_name_test_with_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, int attr
     LY_ERR rc = LY_SUCCESS;
 
     LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-           print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
+           lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
     ++(*exp_idx);
 
     if (!set) {
@@ -7056,19 +7049,19 @@ eval_node_type_with_predicate(struct lyxp_expr *exp, uint16_t *exp_idx, int attr
         }
     }
     LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-           print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
+           lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
     ++(*exp_idx);
 
     /* '(' */
     assert(exp->tokens[*exp_idx] == LYXP_TOKEN_PAR1);
     LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-           print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
+           lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
     ++(*exp_idx);
 
     /* ')' */
     assert(exp->tokens[*exp_idx] == LYXP_TOKEN_PAR2);
     LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-           print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
+           lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
     ++(*exp_idx);
 
     /* Predicate* */
@@ -7110,7 +7103,7 @@ eval_relative_location_path(struct lyxp_expr *exp, uint16_t *exp_idx, int all_de
             all_desc = 1;
         }
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
+               lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
         ++(*exp_idx);
 
 step:
@@ -7119,7 +7112,7 @@ step:
             attr_axis = 1;
 
             LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
+               lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
             ++(*exp_idx);
         } else {
             attr_axis = 0;
@@ -7136,7 +7129,7 @@ step:
             }
             LY_CHECK_RET(rc);
             LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
+               lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
             ++(*exp_idx);
             break;
 
@@ -7149,7 +7142,7 @@ step:
             }
             LY_CHECK_RET(rc);
             LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
+               lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
             ++(*exp_idx);
             break;
 
@@ -7200,7 +7193,7 @@ eval_absolute_location_path(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyx
         /* evaluate '/' - deferred */
         all_desc = 0;
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
+               lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
         ++(*exp_idx);
 
         if (lyxp_check_token(NULL, exp, *exp_idx, LYXP_TOKEN_NONE)) {
@@ -7224,7 +7217,7 @@ eval_absolute_location_path(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyx
         /* evaluate '//' - deferred so as not to waste memory by remembering all the nodes */
         all_desc = 1;
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
+               lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
         ++(*exp_idx);
 
         rc = eval_relative_location_path(exp, exp_idx, all_desc, set, options);
@@ -7367,20 +7360,19 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyxp_set *se
         }
 
         if (!xpath_func) {
-            LOGVAL(set->ctx, LY_VLOG_LYD, set->ctx_node, LY_VCODE_XP_INTOK, "Unknown", &exp->expr[exp->tok_pos[*exp_idx]]);
             LOGVAL(set->ctx, LY_VLOG_LYD, set->ctx_node, LY_VCODE_XP_INFUNC, exp->tok_len[*exp_idx], &exp->expr[exp->tok_pos[*exp_idx]]);
             return LY_EVALID;
         }
     }
 
     LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
+               lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
     ++(*exp_idx);
 
     /* '(' */
     assert(exp->tokens[*exp_idx] == LYXP_TOKEN_PAR1);
     LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
+               lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
     ++(*exp_idx);
 
     /* ( Expr ( ',' Expr )* )? */
@@ -7404,7 +7396,7 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyxp_set *se
     }
     while (!lyxp_check_token(NULL, exp, *exp_idx, LYXP_TOKEN_COMMA)) {
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
+               lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
         ++(*exp_idx);
 
         if (set) {
@@ -7429,7 +7421,7 @@ eval_function_call(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyxp_set *se
     /* ')' */
     assert(exp->tokens[*exp_idx] == LYXP_TOKEN_PAR2);
     LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
+               lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
     ++(*exp_idx);
 
     if (set) {
@@ -7490,7 +7482,7 @@ eval_number(struct ly_ctx *ctx, struct lyxp_expr *exp, uint16_t *exp_idx, struct
     }
 
     LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
+               lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
     ++(*exp_idx);
     return LY_SUCCESS;
 }
@@ -7522,7 +7514,7 @@ eval_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyxp_set *set, i
 
         /* '(' */
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
+               lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
         ++(*exp_idx);
 
         /* Expr */
@@ -7532,7 +7524,7 @@ eval_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyxp_set *set, i
         /* ')' */
         assert(exp->tokens[*exp_idx] == LYXP_TOKEN_PAR2);
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
+               lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
         ++(*exp_idx);
 
         parent_pos_pred = 0;
@@ -7597,7 +7589,7 @@ eval_path_expr(struct lyxp_expr *exp, uint16_t *exp_idx, struct lyxp_set *set, i
         goto predicate;
 
     default:
-        LOGVAL(set->ctx, LY_VLOG_LYD, set->ctx_node, LY_VCODE_XP_INTOK, print_token(exp->tokens[*exp_idx]),
+        LOGVAL(set->ctx, LY_VLOG_LYD, set->ctx_node, LY_VCODE_XP_INTOK, lyxp_print_token(exp->tokens[*exp_idx]),
                &exp->expr[exp->tok_pos[*exp_idx]]);
         return LY_EVALID;
     }
@@ -7622,7 +7614,7 @@ predicate:
         }
 
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
+               lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
         ++(*exp_idx);
 
         rc = eval_relative_location_path(exp, exp_idx, all_desc, set, options);
@@ -7665,7 +7657,7 @@ eval_union_expr(struct lyxp_expr *exp, uint16_t *exp_idx, uint16_t repeat, struc
     for (i = 0; i < repeat; ++i) {
         assert(exp->tokens[*exp_idx] == LYXP_TOKEN_OPERATOR_UNI);
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
+               lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
         ++(*exp_idx);
 
         if (!set) {
@@ -7719,7 +7711,7 @@ eval_unary_expr(struct lyxp_expr *exp, uint16_t *exp_idx, uint16_t repeat, struc
         assert(!lyxp_check_token(NULL, exp, *exp_idx, LYXP_TOKEN_OPERATOR_MATH) && (exp->expr[exp->tok_pos[*exp_idx]] == '-'));
 
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
+               lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
         ++(*exp_idx);
     }
 
@@ -7777,7 +7769,7 @@ eval_multiplicative_expr(struct lyxp_expr *exp, uint16_t *exp_idx, uint16_t repe
 
         assert(exp->tokens[*exp_idx] == LYXP_TOKEN_OPERATOR_MATH);
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
+               lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
         ++(*exp_idx);
 
         if (!set) {
@@ -7845,7 +7837,7 @@ eval_additive_expr(struct lyxp_expr *exp, uint16_t *exp_idx, uint16_t repeat, st
 
         assert(exp->tokens[*exp_idx] == LYXP_TOKEN_OPERATOR_MATH);
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
+               lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
         ++(*exp_idx);
 
         if (!set) {
@@ -7915,7 +7907,7 @@ eval_relational_expr(struct lyxp_expr *exp, uint16_t *exp_idx, uint16_t repeat, 
 
         assert(exp->tokens[*exp_idx] == LYXP_TOKEN_OPERATOR_COMP);
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
+               lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
         ++(*exp_idx);
 
         if (!set) {
@@ -7982,7 +7974,7 @@ eval_equality_expr(struct lyxp_expr *exp, uint16_t *exp_idx, uint16_t repeat, st
 
         assert(exp->tokens[*exp_idx] == LYXP_TOKEN_OPERATOR_COMP);
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
-               print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
+               lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
         ++(*exp_idx);
 
         if (!set) {
@@ -8054,7 +8046,7 @@ eval_and_expr(struct lyxp_expr *exp, uint16_t *exp_idx, uint16_t repeat, struct 
     for (i = 0; i < repeat; ++i) {
         assert(exp->tokens[*exp_idx] == LYXP_TOKEN_OPERATOR_LOG);
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (!set || !set->val.bool ? "skipped" : "parsed"),
-            print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
+            lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
         ++(*exp_idx);
 
         /* lazy evaluation */
@@ -8124,7 +8116,7 @@ eval_or_expr(struct lyxp_expr *exp, uint16_t *exp_idx, uint16_t repeat, struct l
     for (i = 0; i < repeat; ++i) {
         assert(exp->tokens[*exp_idx] == LYXP_TOKEN_OPERATOR_LOG);
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (!set || set->val.bool ? "skipped" : "parsed"),
-            print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
+            lyxp_print_token(exp->tokens[*exp_idx]), exp->tok_pos[*exp_idx]);
         ++(*exp_idx);
 
         /* lazy evaluation */
