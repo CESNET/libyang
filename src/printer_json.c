@@ -524,76 +524,75 @@ json_print_nodes(struct lyout *out, int level, const struct lyd_node *root, int 
     LY_PRINT_SET;
 
     LY_TREE_FOR(root, node) {
-        if (!lyd_node_should_print(node, options)) {
-            /* wd says do not print */
-            continue;
-        }
-
-        switch (node->schema->nodetype) {
-        case LYS_RPC:
-        case LYS_ACTION:
-        case LYS_NOTIF:
-        case LYS_CONTAINER:
-            if (comma_flag) {
-                /* print the previous comma */
-                ly_print(out, ",%s", (level ? "\n" : ""));
-            }
-            if (json_print_container(out, level, node, toplevel, options)) {
-                return EXIT_FAILURE;
-            }
-            break;
-        case LYS_LEAF:
-            if (comma_flag) {
-                /* print the previous comma */
-                ly_print(out, ",%s", (level ? "\n" : ""));
-            }
-            if (json_print_leaf(out, level, node, 0, toplevel, options)) {
-                return EXIT_FAILURE;
-            }
-            break;
-        case LYS_LEAFLIST:
-        case LYS_LIST:
-            /* is it already printed? (root node is not) */
-            for (iter = node->prev; iter->next && node != root; iter = iter->prev) {
-                if (iter == node) {
-                    continue;
-                }
-                if (iter->schema == node->schema) {
-                    /* the list has alread some previous instance and therefore it is already printed */
-                    break;
-                }
-            }
-            if (!iter->next || node == root) {
+        if (lyd_node_should_print(node, options)) {
+            /* wd says to print */
+            switch (node->schema->nodetype) {
+            case LYS_RPC:
+            case LYS_ACTION:
+            case LYS_NOTIF:
+            case LYS_CONTAINER:
                 if (comma_flag) {
                     /* print the previous comma */
                     ly_print(out, ",%s", (level ? "\n" : ""));
                 }
-
-                /* print the list/leaflist */
-                if (json_print_leaf_list(out, level, node, node->schema->nodetype == LYS_LIST ? 1 : 0, toplevel, options)) {
+                if (json_print_container(out, level, node, toplevel, options)) {
                     return EXIT_FAILURE;
                 }
-            }
-            break;
-        case LYS_ANYXML:
-        case LYS_ANYDATA:
-            if (comma_flag) {
-                /* print the previous comma */
-                ly_print(out, ",%s", (level ? "\n" : ""));
-            }
-            if (json_print_anydataxml(out, level, node, toplevel, options)) {
+                break;
+            case LYS_LEAF:
+                if (comma_flag) {
+                    /* print the previous comma */
+                    ly_print(out, ",%s", (level ? "\n" : ""));
+                }
+                if (json_print_leaf(out, level, node, 0, toplevel, options)) {
+                    return EXIT_FAILURE;
+                }
+                break;
+            case LYS_LEAFLIST:
+            case LYS_LIST:
+                /* is it already printed? (root node is not) */
+                for (iter = node->prev; iter->next && node != root; iter = iter->prev) {
+                    if (iter == node) {
+                        continue;
+                    }
+                    if (iter->schema == node->schema) {
+                        /* the list has alread some previous instance and therefore it is already printed */
+                        break;
+                    }
+                }
+                if (!iter->next || node == root) {
+                    if (comma_flag) {
+                        /* print the previous comma */
+                        ly_print(out, ",%s", (level ? "\n" : ""));
+                    }
+
+                    /* print the list/leaflist */
+                    if (json_print_leaf_list(out, level, node, node->schema->nodetype == LYS_LIST ? 1 : 0, toplevel, options)) {
+                        return EXIT_FAILURE;
+                    }
+                }
+                break;
+            case LYS_ANYXML:
+            case LYS_ANYDATA:
+                if (comma_flag) {
+                    /* print the previous comma */
+                    ly_print(out, ",%s", (level ? "\n" : ""));
+                }
+                if (json_print_anydataxml(out, level, node, toplevel, options)) {
+                    return EXIT_FAILURE;
+                }
+                break;
+            default:
+                LOGINT(node->schema->module->ctx);
                 return EXIT_FAILURE;
             }
-            break;
-        default:
-            LOGINT(node->schema->module->ctx);
-            return EXIT_FAILURE;
+
+            comma_flag = 1;
         }
 
         if (!withsiblings) {
             break;
         }
-        comma_flag = 1;
     }
     if (root && level) {
         ly_print(out, "\n");
