@@ -13,7 +13,7 @@ matrix:
       dist: bionic
       sudo: required
       compiler: gcc
-      env: TRAVIS_ARCH="amd64"
+      env: TRAVIS_ARCH="amd64" DEPLOY_BUILD=TRUE
     - arch: arm64
       os: linux
       dist: bionic
@@ -45,7 +45,7 @@ before_install:
   - cd ../..
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew update; fi
   - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo apt-get update -qq; sudo apt-get install -y valgrind libpcre3-dev python3-dev swig python3-cffi python3-setuptools python3-pip; fi
-  - if [ "$TRAVIS_OS_NAME" = "linux" -a "$CC" = "gcc" -a "$TRAVIS_ARCH" = "amd64" ]; then pip3 install --user codecov==2.0.22 twine==3.1.1; export CFLAGS="-coverage"; fi
+  - if [ "$DEPLOY_BUILD" = "TRUE" ]; then pip3 install --user codecov==2.0.22 twine==3.1.1; export CFLAGS="-coverage"; fi
 
 script:
   - mkdir build && cd build
@@ -62,18 +62,18 @@ deploy:
     verbose: true
     on:
       branch: master
-      condition: $TRAVIS_OS_NAME = linux && $CC = gcc && $TRAVIS_ARCH = amd64
+      condition: $DEPLOY_BUILD = TRUE
   - provider: script
     script: ./packages/create-package.sh
     skip_cleanup: true
     verbose: true
     on:
       branch: master
-      condition: $TRAVIS_OS_NAME = linux && $CC = gcc && $TRAVIS_ARCH = amd64
+      condition: $DEPLOY_BUILD = TRUE
   - provider: script
     script: twine upload --skip-existing build/python/dist/*
     skip_cleanup: true
     verbose: true
     on:
       branch: master
-      condition: $TRAVIS_OS_NAME = linux && $CC = gcc && $TRAVIS_ARCH = amd64
+      condition: $DEPLOY_BUILD = TRUE
