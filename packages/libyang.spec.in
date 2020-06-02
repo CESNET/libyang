@@ -38,12 +38,8 @@ BuildRequires:  swig >= 3.0.12
 
 %if 0%{?suse_version} + 0%{?fedora} + 0%{?centos_version} > 0
 BuildRequires:  python3-devel
-BuildRequires:  python3-cffi
-BuildRequires:  python3-setuptools
 %else
 BuildRequires:  python36-devel
-BuildRequires:  python36-cffi
-BuildRequires:  python36-setuptools
 %endif
 
 %endif
@@ -68,17 +64,6 @@ Summary:    SWIG binding to python
 Requires:   @CPP_PACKAGE@ = %{version}-%{release}
 Requires:   %{name} = %{version}-%{release}
 
-%package -n @PYTHON_CFFI_PACKAGE@
-Summary:    CFFI binding to python
-Requires:   %{name} = %{version}-%{release}
-%if 0%{?suse_version} + 0%{?fedora} + 0%{?centos_version} > 0
-Requires:   python3
-Requires:   python3-cffi
-%else
-Requires:   python36
-Requires:   python36-cffi
-%endif
-
 %description -n @CPP_PACKAGE@
 Bindings of libyang library to C++ language.
 
@@ -87,9 +72,6 @@ Headers of bindings to c++ language.
 
 %description -n @PYTHON_PACKAGE@
 SWIG bindings of libyang library to python language.
-
-%description -n @PYTHON_CFFI_PACKAGE@
-CFFI bindings of libyang library to python language.
 %endif
 
 %description devel
@@ -105,7 +87,7 @@ mkdir build
 %build
 cd build
 %if %{with_lang_bind}
-    %define cmake_lang_bind "-DGEN_LANGUAGE_BINDINGS=ON -DGEN_PYTHON_CFFI_BINDINGS=ON"
+    %define cmake_lang_bind "-DGEN_LANGUAGE_BINDINGS=ON"
 %else
     %define cmake_lang_bind "-DGEN_LANGUAGE_BINDINGS=OFF"
 %endif
@@ -160,6 +142,7 @@ make DESTDIR=%{buildroot} install
 %dir %{_includedir}/libyang/
 
 %if %{with_lang_bind}
+
 %files -n @CPP_PACKAGE@
 %defattr(-,root,root)
 %{_libdir}/libyang-cpp.so.*
@@ -173,12 +156,8 @@ make DESTDIR=%{buildroot} install
 
 %files -n @PYTHON_PACKAGE@
 %defattr(-,root,root)
-%{_libdir}/python*/site-packages/yang*
+%{_libdir}/python*
 
-%files -n @PYTHON_CFFI_PACKAGE@
-%defattr(-,root,root)
-%{_libdir}/python3*/site-packages/libyang*
-%{_libdir}/python3*/site-packages/_libyang*.so
 %endif
 
 %changelog

@@ -1,7 +1,6 @@
 set(PACKAGE "libyang")
 set(CPP_PACKAGE "libyang-cpp")
 set(PYTHON_PACKAGE "python3-yang")
-set(PYTHON_CFFI_PACKAGE "python3-libyang")
 
 find_program(DEB_BUILDER NAMES debuild)
 find_program(RPM_BUILDER NAMES rpmbuild)
@@ -26,8 +25,6 @@ configure_file(${PROJECT_SOURCE_DIR}/packages/debian.${CPP_PACKAGE}-dev.install
 # no python package for Debian because there is only SWIG 3.10 on Debian 9 :-/
 #configure_file(${PROJECT_SOURCE_DIR}/packages/debian.${PYTHON_PACKAGE}.install
 #               ${PROJECT_BINARY_DIR}/build-packages/debian.${PYTHON_PACKAGE}.install COPYONLY)
-configure_file(${PROJECT_SOURCE_DIR}/packages/debian.${PYTHON_CFFI_PACKAGE}.install
-               ${PROJECT_BINARY_DIR}/build-packages/debian.${PYTHON_CFFI_PACKAGE}.install COPYONLY)
 
 if(NOT DEB_BUILDER)
     message(STATUS "Missing tools (devscripts, debhelper package) for building DEB package.")
