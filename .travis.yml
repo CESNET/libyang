@@ -80,7 +80,7 @@ jobs:
         - cd pcre2-10.30 && ./configure && make -j2 && sudo make install && cd ..
         - pip install --user codecov && export CFLAGS="-coverage"
       script:
-        - mkdir build && cd build && cmake .. && make -j2 && ctest --output-on-failure && cd -
+        - mkdir build && cd build && cmake .. && make -j2 VERBOSE=1 && ctest --output-on-failure && cd -
       after_success:
         - codecov
     - stage: Test
