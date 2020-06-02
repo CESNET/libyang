@@ -82,7 +82,7 @@ jobs:
       script:
         - mkdir build && cd build && cmake .. && make -j2 VERBOSE=1 && ctest --output-on-failure && cd -
       after_success:
-        - codecov
+        - bash <(curl -s https://codecov.io/bash)
     - stage: Test
       name: OS X with GCC
       os: osx
