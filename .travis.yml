@@ -79,9 +79,9 @@ jobs:
         - tar -xzf pcre2-10.30.tar.gz
         - cd pcre2-10.30 && ./configure && make -j2 && sudo make install && cd ..
         - pip install --user codecov && export CFLAGS="-coverage"
-        - `echo "CFLAGS: $CFLAGS"`
+        - `echo "CFLAGS content: $CFLAGS"`
       script:
-        - `echo "CFLAGS: $CFLAGS"`
+        - `echo "CFLAGS content: $CFLAGS"`
         - mkdir build && cd build && cmake .. && make -j2 VERBOSE=1 && ctest --output-on-failure && cd -
       after_success:
         - codecov
