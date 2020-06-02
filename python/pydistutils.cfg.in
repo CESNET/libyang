@@ -1,0 +1,13 @@
+[build]
+build-base=@CMAKE_BINARY_DIR@/python
+[egg_info]
+egg-base=@CMAKE_BINARY_DIR@/python
+[install]
+prefix=@CMAKE_INSTALL_PREFIX@
+install-lib=@PYTHON_MODULE_PATH@
+compile=false
+skip-build=true
+[sdist]
+dist-dir=@CMAKE_BINARY_DIR@/python/dist
+[easy_install]
+allow_hosts=None

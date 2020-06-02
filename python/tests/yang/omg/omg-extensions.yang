@@ -1,0 +1,15 @@
+module omg-extensions {
+  namespace "urn:yang:omg:extensions";
+  prefix e;
+
+  extension require-admin {
+    description
+      "Extend an rpc or node to require admin permissions.";
+  }
+
+  extension human-name {
+    description
+      "Extend a node to provide a human readable name.";
+    argument name;
+  }
+}
