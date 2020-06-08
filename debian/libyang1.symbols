@@ -1,3 +1,4 @@
+# SymbolsHelper-Confirmed: 1.0.167 amd64
 libyang.so.1 libyang1 #MINVER#
 * Build-Depends-Package: libyang-dev
  ly_clean_plugins@Base 1.0.130
