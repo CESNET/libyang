@@ -22,25 +22,19 @@ Download upstream tarball:
 - uscan --download --verbose --version $VERSION
 
 Add pristine-tar:
-- pristine-tar --commit ../libyang_$VERSION.orig.tar.gz v$VERSION
+- pristine-tar commit ../libyang_$VERSION.orig.tar.gz v$VERSION
 
 Generate a temporary changelog:
 - gbp dch --new-version=$VERSION-1 --snapshot --auto --commit debian/
 
-Test the first build and create a new pristine-tar:
+Test the first build::
 - gbp buildpackage --git-ignore-new --git-pristine-tar --git-no-purge
 
 Regenerate the symbol file (See https://qt-kde-team.pages.debian.net/symbolfiles.html)
-- kgkde-symbolshelper batchpatch -v $VERSION < <path_to>/buildlog
+- pkgkde-symbolshelper batchpatch -v $VERSION < <path_to>/buildlog
 
 See https://www.debian.org/doc/manuals/maint-guide/advanced.en.html#librarysymbols
 and dpkg-gensymbols man page
-
-Once the new pristine-tar is created, you can rebuild (if needed) with
-the following command.
-- gbp buildpackage --git-ignore-new
-
-Note: only committed changes are used by gbp buildpackage
 
 Update the changelog:
 - gbp dch -Ra -c
@@ -69,4 +63,4 @@ Maintainer Notes (moved from README.md)
   future release tags the same as the internal version number.  At that point
   the watch file will work.
 
- -- Ondřej Surý <Ondřej Surý <ondrej@debian.org>>, Fri, 22 May 2020 11:11:10 +0200
+ -- Ondřej Surý <Ondřej Surý <ondrej@debian.org>>, Mon,  8 Jun 2020 11:20:27 +0200
