@@ -4434,7 +4434,7 @@ lyd_insert_common(struct lyd_node *parent, struct lyd_node **sibling, struct lyd
                 }
             } else if (isrpc) {
                 /* add to the specific position in rpc/rpc-reply/action */
-                for (par1 = ins->schema->parent; !(par1->nodetype & (LYS_INPUT | LYS_OUTPUT)); par1 = lys_parent(par1));
+                for (par1 = lys_parent(ins->schema); !(par1->nodetype & (LYS_INPUT | LYS_OUTPUT)); par1 = lys_parent(par1));
                 siter = NULL;
                 LY_TREE_FOR(start, iter) {
                     while ((siter = lys_getnext(siter, par1, lys_node_module(par1), 0))) {

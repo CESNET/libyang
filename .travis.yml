@@ -13,7 +13,7 @@ matrix:
       dist: bionic
       sudo: required
       compiler: gcc
-      env: TRAVIS_ARCH="amd64"
+      env: TRAVIS_ARCH="amd64" DEPLOY_BUILD=TRUE
     - arch: arm64
       os: linux
       dist: bionic
@@ -44,16 +44,36 @@ before_install:
   - cmake .. && make -j2 && sudo make install
   - cd ../..
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew update; fi
-  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo apt-get update -qq; sudo apt-get install -y valgrind libpcre3-dev python3-dev swig; fi
-  - if [ "$TRAVIS_OS_NAME" = "linux" -a "$CC" = "gcc" -a "$TRAVIS_ARCH" = "amd64" ]; then pip install --user codecov; export CFLAGS="-coverage"; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ]; then sudo apt-get update -qq; sudo apt-get install -y valgrind libpcre3-dev python3-dev swig python3-cffi python3-setuptools python3-pip; fi
+  - if [ "$DEPLOY_BUILD" = "TRUE" ]; then pip3 install --user codecov==2.0.22 twine==3.1.1; export CFLAGS="-coverage"; fi
 
 script:
   - mkdir build && cd build
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then cmake -DENABLE_VALGRIND_TESTS=OFF ..; fi
-  - if [ "$TRAVIS_OS_NAME" = "linux" -a "$TRAVIS_ARCH" = "amd64" ]; then cmake -DGEN_LANGUAGE_BINDINGS=ON -DENABLE_STATIC=${ENABLE_STATIC:-OFF} ..; fi
-  - if [ "$TRAVIS_OS_NAME" = "linux" -a "$TRAVIS_ARCH" = "arm64" ]; then cmake -DGEN_LANGUAGE_BINDINGS=ON -DENABLE_VALGRIND_TESTS=OFF ..; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" -a "$TRAVIS_ARCH" = "amd64" ]; then cmake -DGEN_LANGUAGE_BINDINGS=ON -DENABLE_STATIC=${ENABLE_STATIC:-OFF} -DGEN_PYTHON_CFFI_BINDINGS=ON ..; fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" -a "$TRAVIS_ARCH" = "arm64" ]; then cmake -DGEN_LANGUAGE_BINDINGS=ON -DENABLE_VALGRIND_TESTS=OFF -DGEN_PYTHON_CFFI_BINDINGS=ON ..; fi
   - make -j2 && ctest --output-on-failure
   - cd -
 
-after_success:
-  - if [ "$TRAVIS_OS_NAME" = "linux" -a "$CC" = "gcc" -a "$TRAVIS_ARCH" = "amd64" -a "$TRAVIS_BRANCH" = "master" ]; then codecov; ./packages/create-package.sh; fi
+deploy:
+  - provider: script
+    script: codecov
+    skip_cleanup: true
+    verbose: true
+    on:
+      branch: master
+      condition: $DEPLOY_BUILD = TRUE
+  - provider: script
+    script: ./packages/create-package.sh
+    skip_cleanup: true
+    verbose: true
+    on:
+      branch: master
+      condition: $DEPLOY_BUILD = TRUE
+  - provider: script
+    script: twine upload --skip-existing build/python/dist/*
+    skip_cleanup: true
+    verbose: true
+    on:
+      branch: master
+      condition: $DEPLOY_BUILD = TRUE

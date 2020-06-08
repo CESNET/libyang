@@ -5668,6 +5668,16 @@ nextsibling:
     }
     free(refine_nodes);
 
+    /* check list config after all the refines were applied */
+    LY_TREE_DFS_BEGIN((struct lys_node *)uses, next, iter) {
+        if ((iter->nodetype == LYS_LIST) && (iter->flags & LYS_CONFIG_W)
+                && !((struct lys_node_list *)iter)->keys_size) {
+            LOGVAL(ctx, LYE_MISSCHILDSTMT, LY_VLOG_LYS, iter, "key", "list");
+            goto fail;
+        }
+        LY_TREE_DFS_END((struct lys_node *)uses, next, iter);
+    }
+
     return EXIT_SUCCESS;
 
 fail:

@@ -32,14 +32,14 @@
 #include "context.h"
 
 THREAD_LOCAL enum int_log_opts log_opt;
-THREAD_LOCAL int8_t ly_errno_glob;
+THREAD_LOCAL LY_ERR ly_errno_glob;
 
 API LY_ERR *
 ly_errno_glob_address(void)
 {
     FUN_IN;
 
-    return (LY_ERR *)&ly_errno_glob;
+    return &ly_errno_glob;
 }
 
 API LY_VECODE

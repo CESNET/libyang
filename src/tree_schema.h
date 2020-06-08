@@ -2360,6 +2360,21 @@ char *lys_path(const struct lys_node *node, int options);
 char *lys_data_path(const struct lys_node *node);
 
 /**
+ * @brief Build the data path pattern of a schema node.
+ *
+ * For example, when @p node is a leaf in a list with key1 and key2, in a container and `'%s'` is set as
+ * @p placeholder, the result would be `/model:container/list[key1='%s'][key2='%s']/leaf`. That can
+ * be used as `printf(3)` format string, for example.
+ *
+ * @param[in] node Schema node to be processed.
+ * @param[in] placeholder Placeholder to insert in the returned path when
+ *                        list key values are encountered.
+ * @return NULL on error, on success the buffer for the resulting path is
+ *         allocated and caller is supposed to free it with free().
+ */
+char *lys_data_path_pattern(const struct lys_node *node, const char *placeholder);
+
+/**
  * @brief Return parent node in the schema tree.
  *
  * In case of augmenting node, it returns the target tree node where the augmenting

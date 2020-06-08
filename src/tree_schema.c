@@ -3284,17 +3284,6 @@ lys_node_dup_recursion(struct lys_module *module, struct lys_node *parent, const
                 }
             }
         }
-
-        if (finalize == 1) {
-            /* check that configuration lists have keys
-             * - we really want to check keys_size in original node, because the keys are
-             * not yet resolved here, it is done below in nodetype specific part */
-            if ((retval->nodetype == LYS_LIST) && (retval->flags & LYS_CONFIG_W)
-                    && !((struct lys_node_list *)node)->keys_size) {
-                LOGVAL(ctx, LYE_MISSCHILDSTMT, LY_VLOG_LYS, retval, "key", "list");
-                goto error;
-            }
-        }
     } else {
         memcpy(retval->iffeature, node->iffeature, retval->iffeature_size * sizeof *retval->iffeature);
     }
@@ -5175,6 +5164,79 @@ lys_data_path(const struct lys_node *node)
         used += sprintf(buf + used, "/%s%s%s", (lys_node_module(node) == prev_mod ? "" : lys_node_module(node)->name),
                         (lys_node_module(node) == prev_mod ? "" : separator), name);
         prev_mod = lys_node_module(node);
+    }
+
+    result = strdup(buf);
+    LY_CHECK_ERR_GOTO(!result, LOGMEM(node->module->ctx), cleanup);
+
+cleanup:
+    ly_set_free(set);
+    return result;
+}
+
+API char *
+lys_data_path_pattern(const struct lys_node *node, const char *placeholder)
+{
+    FUN_IN;
+
+    const struct lys_module *prev_mod, *mod;
+    char *result = NULL, keys[512], buf[2048];
+    const char *name, *separator;
+    struct ly_set *set;
+    size_t x;
+    int i;
+
+    if (!node || !placeholder) {
+        LOGARG;
+        return NULL;
+    }
+
+    buf[0] = '\0';
+    set = ly_set_new();
+    LY_CHECK_ERR_GOTO(!set, LOGMEM(node->module->ctx), cleanup);
+
+    /* collect all schema nodes that can be instantiated into a set */
+    while (node) {
+        ly_set_add(set, (void *)node, 0);
+        do {
+            node = lys_parent(node);
+        } while (node && (node->nodetype & (LYS_USES | LYS_CHOICE | LYS_CASE | LYS_INPUT | LYS_OUTPUT)));
+    }
+
+    x = 0;
+    prev_mod = NULL;
+
+    /* build path for all the collected nodes */
+    for (i = set->number - 1; i > -1; --i) {
+        size_t k = 0;
+        keys[0] = '\0';
+        node = set->set.s[i];
+        if (node->nodetype == LYS_EXT) {
+            if (strcmp(((struct lys_ext_instance *)node)->def->name, "yang-data")) {
+                continue;
+            }
+            name = ((struct lys_ext_instance *)node)->arg_value;
+            separator = ":#";
+        } else {
+            name = node->name;
+            separator = ":";
+        }
+        if (node->nodetype == LYS_LIST) {
+            /* add specific key values (placeholders) for list */
+            const struct lys_node_list *list;
+            uint8_t j;
+            list = (const struct lys_node_list *)node;
+            for (j = 0; j < list->keys_size; j++) {
+                k += sprintf(keys + k, "[%s=%s]", list->keys[j]->name, placeholder);
+            }
+        }
+        mod = lys_node_module(node);
+        if (mod && mod != prev_mod) {
+            prev_mod = mod;
+            x += sprintf(buf + x, "/%s%s%s%s", mod->name, separator, name, keys);
+        } else {
+            x += sprintf(buf + x, "/%s%s", name, keys);
+        }
     }
 
     result = strdup(buf);

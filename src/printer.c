@@ -922,9 +922,11 @@ trim_dfs_nextsibling:
         /* LYP_WD_EXPLICIT
          * - print only if it contains status data in its subtree */
         LY_TREE_DFS_BEGIN(node, next, elem) {
-            if (elem->schema->flags & LYS_CONFIG_R) {
-                flag = 1;
-                break;
+            if ((elem->schema->nodetype != LYS_CONTAINER) || ((struct lys_node_container *)elem->schema)->presence) {
+                if (elem->schema->flags & LYS_CONFIG_R) {
+                    flag = 1;
+                    break;
+                }
             }
             LY_TREE_DFS_END(node, next, elem)
         }
@@ -948,8 +950,8 @@ trim_dfs_nextsibling:
     return 1;
 }
 
-int
-lyd_toprint(const struct lyd_node *node, int options)
+API int
+lyd_node_should_print(const struct lyd_node *node, int options)
 {
     struct lys_node *scase, *sparent;
     struct lyd_node *first;

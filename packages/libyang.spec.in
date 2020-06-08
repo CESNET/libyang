@@ -8,13 +8,13 @@ Source1: @PACKAGE@.rpmlintrc
 License: BSD-3-Clause
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}
 
-%if 0%{?scientificlinux_version} == 700 || 0%{?centos_ver} < 7
+%if 0%{?scientificlinux_version} == 700 || ( 0%{?rhel} && 0%{?rhel} < 7 )
     %define with_lang_bind 0
 %else
     %define with_lang_bind 1
 %endif
 
-%if 0%{?centos_ver} < 7
+%if ( 0%{?rhel} && 0%{?rhel} < 7 )
     %define with_ly_cache 0
 %else
     %define with_ly_cache 1
@@ -30,7 +30,7 @@ BuildRequires:  libcmocka-devel
 %if %{with_lang_bind}
 
 BuildRequires:  gcc-c++
-%if 0%{?centos_version} || 0%{?centos_ver} == 7
+%if 0%{?rhel} == 7
 BuildRequires:  swig3 >= 3.0.12
 %else
 BuildRequires:  swig >= 3.0.12
@@ -60,7 +60,7 @@ Requires:   @CPP_PACKAGE@ = %{version}-%{release}
 Requires:   pcre-devel
 
 %package -n @PYTHON_PACKAGE@
-Summary:    Binding to python
+Summary:    SWIG binding to python
 Requires:   @CPP_PACKAGE@ = %{version}-%{release}
 Requires:   %{name} = %{version}-%{release}
 
@@ -71,7 +71,7 @@ Bindings of libyang library to C++ language.
 Headers of bindings to c++ language.
 
 %description -n @PYTHON_PACKAGE@
-Bindings of libyang library to python language.
+SWIG bindings of libyang library to python language.
 %endif
 
 %description devel
@@ -131,8 +131,8 @@ make DESTDIR=%{buildroot} install
 %{_datadir}/man/man1/yanglint.1.gz
 %{_datadir}/man/man1/yangre.1.gz
 %{_libdir}/libyang.so.*
-%{_libdir}/libyang/*
-%dir %{_libdir}/libyang/
+%{_libdir}/libyang1/*
+%dir %{_libdir}/libyang1/
 
 %files devel
 %defattr(-,root,root)
@@ -142,6 +142,7 @@ make DESTDIR=%{buildroot} install
 %dir %{_includedir}/libyang/
 
 %if %{with_lang_bind}
+
 %files -n @CPP_PACKAGE@
 %defattr(-,root,root)
 %{_libdir}/libyang-cpp.so.*
@@ -156,6 +157,7 @@ make DESTDIR=%{buildroot} install
 %files -n @PYTHON_PACKAGE@
 %defattr(-,root,root)
 %{_libdir}/python*
+
 %endif
 
 %changelog

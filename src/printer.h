@@ -109,12 +109,6 @@ int lys_print_target(struct lyout *out, const struct lys_module *module, const c
                      void (*clb_print_input)(struct lyout*, const struct lys_node*, int*),
                      void (*clb_print_output)(struct lyout*, const struct lys_node*, int*));
 
-/**
- * get know if the node is supposed to be printed (mostly according to the specified with-default mode)
- * return 1 - print, 0 - do not print
- */
-int lyd_toprint(const struct lyd_node *node, int options);
-
 /* 0 - same, 1 - different */
 int nscmp(const struct lyd_node *node1, const struct lyd_node *node2);
 

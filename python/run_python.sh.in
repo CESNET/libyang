@@ -1,0 +1,17 @@
+#!/bin/sh
+
+# cmake does not support exporting environment variables for specific target
+# commands. The only portable way is to use an intermediate shell script.
+
+# To ensure setup.py options are all taken into account, we use a "user
+# configuration file" (i.e. ~/.pydistutils.cfg). This file is generated into
+# @CMAKE_CURRENT_BINARY_DIR@ by cmake according to what has been detected
+# during the configure phase. Force the value of HOME so that this file is used
+# instead of the actual one from the user running the build.
+export HOME="@CMAKE_CURRENT_BINARY_DIR@"
+
+# Used in cffi/build.py to determine include/library dirs
+export LIBYANG_HEADERS="@CMAKE_CURRENT_BINARY_DIR@/include"
+export LIBYANG_LIBRARIES="@CMAKE_BINARY_DIR@"
+
+exec "@PYTHON_EXECUTABLE@" -B "$@"
