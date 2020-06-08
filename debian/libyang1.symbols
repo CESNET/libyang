@@ -1,4 +1,4 @@
-# SymbolsHelper-Confirmed: 1.0.167 amd64
+# SymbolsHelper-Confirmed: 1.0.176 amd64
 libyang.so.1 libyang1 #MINVER#
 * Build-Depends-Package: libyang-dev
  ly_clean_plugins@Base 1.0.130
@@ -104,6 +104,7 @@ libyang.so.1 libyang1 #MINVER#
  lyd_new_path@Base 1.0.130
  lyd_new_yangdata@Base 1.0.130
  lyd_node_module@Base 1.0.130
+ lyd_node_should_print@Base 1.0.176
  lyd_parse_fd@Base 1.0.130
  lyd_parse_mem@Base 1.0.130
  lyd_parse_path@Base 1.0.130
@@ -128,6 +129,7 @@ libyang.so.1 libyang1 #MINVER#
  lyext_log@Base 1.0.130
  lyext_vlog@Base 1.0.130
  lys_data_path@Base 1.0.130
+ lys_data_path_pattern@Base 1.0.176
  lys_ext_complex_get_substmt@Base 1.0.130
  lys_ext_instance_presence@Base 1.0.130
  lys_ext_instance_substmt@Base 1.0.130

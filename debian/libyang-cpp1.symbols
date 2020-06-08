@@ -1,4 +1,4 @@
-# SymbolsHelper-Confirmed: 1.0.167 amd64
+# SymbolsHelper-Confirmed: 1.0.176 amd64
 libyang-cpp.so.1 libyang-cpp1 #MINVER#
 * Build-Depends-Package: libyang-cpp-dev
  _ZN7libyang10Refine_Mod4listEv@Base 1.0.130
@@ -456,7 +456,9 @@ libyang-cpp.so.1 libyang-cpp1 #MINVER#
  _ZN7libyang9Submodule3revEv@Base 1.0.130
  _ZN7libyang9Submodule9deviationEv@Base 1.0.130
  _ZN7libyang9SubmoduleC1EP13lys_submoduleSt10shared_ptrINS_7DeleterEE@Base 1.0.130
+ _ZN7libyang9SubmoduleC1ESt10shared_ptrINS_6ModuleEE@Base 1.0.176
  _ZN7libyang9SubmoduleC2EP13lys_submoduleSt10shared_ptrINS_7DeleterEE@Base 1.0.130
+ _ZN7libyang9SubmoduleC2ESt10shared_ptrINS_6ModuleEE@Base 1.0.176
  _ZN7libyang9SubmoduleD1Ev@Base 1.0.130
  _ZN7libyang9SubmoduleD2Ev@Base 1.0.130
  _ZN7libyang9Type_Enum3extEv@Base 1.0.130
