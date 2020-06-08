@@ -1,3 +1,11 @@
+libyang (1.0.176-1~1.gbpb4ed7d) UNRELEASED; urgency=medium
+
+  ** SNAPSHOT build @b4ed7d6aec9353ef842f0b4be14b9ff991e265bd **
+
+  * UNRELEASED
+
+ -- Ondřej Surý <ondrej@debian.org>  Mon, 08 Jun 2020 11:16:24 +0200
+
 libyang (1.0.167-1) experimental; urgency=medium
 
   [ David Lamparter ]
