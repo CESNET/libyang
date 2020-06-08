@@ -176,14 +176,14 @@ libyang.so.1 libyang1 #MINVER#
  lyxml_print_file@Base 1.0.130
  lyxml_print_mem@Base 1.0.130
  lyxml_unlink@Base 1.0.130
-metadata.so libfoo1 #MINVER#
+metadata.so libyang1 #MINVER#
  annotation@Base 1.0.167
  annotation_final_check@Base 1.0.167
  annotation_position@Base 1.0.167
  annotation_substmt@Base 1.0.167
  lyext_api_version@Base 1.0.167
  metadata@Base 1.0.167
-nacm.so libfoo1 #MINVER#
+nacm.so libyang1 #MINVER#
  lyext_api_version@Base 1.0.167
  nacm@Base 1.0.167
  nacm_cardinality@Base 1.0.167
@@ -197,7 +197,7 @@ user_inet_types.so libyang1 #MINVER#
 user_yang_types.so libyang1 #MINVER#
  lytype_api_version@Base 1.0.167
  user_yang_types@Base 1.0.167
-yangdata.so libfoo1 #MINVER#
+yangdata.so libyang1 #MINVER#
  check_choice@Base 1.0.167
  check_node@Base 1.0.167
  fix_schema@Base 1.0.167
