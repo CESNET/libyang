@@ -65,6 +65,83 @@ lys_print(struct ly_out *out, const struct lys_module *module, LYS_OUTFORMAT for
     }
 }
 
+static LY_ERR
+lys_print_(struct ly_out *out, const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options)
+{
+    ssize_t result;
+
+    LY_CHECK_ARG_RET(NULL, out, LY_EINVAL);
+
+    result = lys_print(out, module, format, line_length, options);
+
+    ly_out_free(out, NULL, 0);
+
+    if (result < 0) {
+        return (-1) * result;
+    } else {
+        return LY_SUCCESS;
+    }
+}
+
+API LY_ERR
+lys_print_mem(char **strp, const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options)
+{
+    struct ly_out *out;
+
+    LY_CHECK_ARG_RET(NULL, strp, module, LY_EINVAL);
+
+    /* init */
+    *strp = NULL;
+
+    out = ly_out_new_memory(strp, 0);
+    return lys_print_(out, module, format, line_length, options);
+}
+
+API LY_ERR
+lys_print_fd(int fd, const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options)
+{
+    struct ly_out *out;
+
+    LY_CHECK_ARG_RET(NULL, fd != -1, module, LY_EINVAL);
+
+    out = ly_out_new_fd(fd);
+    return lys_print_(out, module, format, line_length, options);
+}
+
+API LY_ERR
+lys_print_file(FILE *f, const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options)
+{
+    struct ly_out *out;
+
+    LY_CHECK_ARG_RET(NULL, f, module, LY_EINVAL);
+
+    out = ly_out_new_file(f);
+    return lys_print_(out, module, format, line_length, options);
+}
+
+API LY_ERR
+lys_print_path(const char *path, const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options)
+{
+    struct ly_out *out;
+
+    LY_CHECK_ARG_RET(NULL, path, module, LY_EINVAL);
+
+    out = ly_out_new_filepath(path);
+    return lys_print_(out, module, format, line_length, options);
+}
+
+API LY_ERR
+lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg,
+              const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options)
+{
+    struct ly_out *out;
+
+    LY_CHECK_ARG_RET(NULL, writeclb, module, LY_EINVAL);
+
+    out = ly_out_new_clb(writeclb, arg);
+    return lys_print_(out, module, format, line_length, options);
+}
+
 API ssize_t
 lys_print_node(struct ly_out *out, const struct lysc_node *node, LYS_OUTFORMAT format, int UNUSED(line_length), int options)
 {

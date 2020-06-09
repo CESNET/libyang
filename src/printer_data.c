@@ -19,6 +19,7 @@
 
 #include "common.h"
 #include "log.h"
+#include "printer.h"
 #include "printer_internal.h"
 #include "tree_data.h"
 
@@ -66,4 +67,81 @@ lyd_print(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, in
         /* success */
         return (ssize_t)(out->printed - printed_prev);
     }
+}
+
+static LY_ERR
+lyd_print_(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, int options)
+{
+    ssize_t result;
+
+    LY_CHECK_ARG_RET(NULL, out, LY_EINVAL);
+
+    result = lyd_print(out, root, format, options);
+
+    ly_out_free(out, NULL, 0);
+
+    if (result < 0) {
+        return (-1) * result;
+    } else {
+        return LY_SUCCESS;
+    }
+}
+
+API LY_ERR
+lyd_print_mem(char **strp, const struct lyd_node *root, LYD_FORMAT format, int options)
+{
+    struct ly_out *out;
+
+    LY_CHECK_ARG_RET(NULL, strp, root, LY_EINVAL);
+
+    /* init */
+    *strp = NULL;
+
+    out = ly_out_new_memory(strp, 0);
+    return lyd_print_(out, root, format, options);
+}
+
+API LY_ERR
+lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format, int options)
+{
+    struct ly_out *out;
+
+    LY_CHECK_ARG_RET(NULL, fd != -1, root, LY_EINVAL);
+
+    out = ly_out_new_fd(fd);
+    return lyd_print_(out, root, format, options);
+}
+
+API LY_ERR
+lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format, int options)
+{
+    struct ly_out *out;
+
+    LY_CHECK_ARG_RET(NULL, f, root, LY_EINVAL);
+
+    out = ly_out_new_file(f);
+    return lyd_print_(out, root, format, options);
+}
+
+API LY_ERR
+lyd_print_path(const char *path, const struct lyd_node *root, LYD_FORMAT format, int options)
+{
+    struct ly_out *out;
+
+    LY_CHECK_ARG_RET(NULL, path, root, LY_EINVAL);
+
+    out = ly_out_new_filepath(path);
+    return lyd_print_(out, root, format, options);
+}
+
+API LY_ERR
+lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg,
+              const struct lyd_node *root, LYD_FORMAT format, int options)
+{
+    struct ly_out *out;
+
+    LY_CHECK_ARG_RET(NULL, writeclb, root, LY_EINVAL);
+
+    out = ly_out_new_clb(writeclb, arg);
+    return lyd_print_(out, root, format, options);
 }
