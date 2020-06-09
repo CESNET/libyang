@@ -65,6 +65,84 @@ typedef enum {
 ssize_t lys_print(struct ly_out *out, const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options);
 
 /**
+ * @brief Print schema tree in the specified format into a memory block.
+ * It is up to caller to free the returned string by free().
+ *
+ * This is just a wrapper around lys_print() for simple use cases.
+ * In case of a complex use cases, use lys_print with ly_out output handler.
+ *
+ * @param[out] strp Pointer to store the resulting dump.
+ * @param[in] module Schema tree to print.
+ * @param[in] format Schema output format.
+ * @param[in] line_length Maximum characters to be printed on a line, 0 for unlimited. Only for #LYS_OUT_TREE printer.
+ * @param[in] options Schema output options (see @ref schemaprinterflags).
+ * @return LY_ERR value.
+ */
+LY_ERR lys_print_mem(char **strp, const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options);
+
+/**
+ * @brief Print schema tree in the specified format into a file descriptor.
+ *
+ * This is just a wrapper around lys_print() for simple use cases.
+ * In case of a complex use cases, use lys_print with ly_out output handler.
+ *
+ * @param[in] fd File descriptor where to print the data.
+ * @param[in] module Schema tree to print.
+ * @param[in] format Schema output format.
+ * @param[in] line_length Maximum characters to be printed on a line, 0 for unlimited. Only for #LYS_OUT_TREE format.
+ * @param[in] options Schema output options (see @ref schemaprinterflags).
+ * @return LY_ERR value.
+ */
+LY_ERR lys_print_fd(int fd, const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options);
+
+/**
+ * @brief Print schema tree in the specified format into a file stream.
+ *
+ * This is just a wrapper around lys_print() for simple use cases.
+ * In case of a complex use cases, use lys_print with ly_out output handler.
+ *
+ * @param[in] module Schema tree to print.
+ * @param[in] f File stream where to print the schema.
+ * @param[in] format Schema output format.
+ * @param[in] line_length Maximum characters to be printed on a line, 0 for unlimited. Only for #LYS_OUT_TREE printer.
+ * @param[in] options Schema output options (see @ref schemaprinterflags).
+ * @return LY_ERR value.
+ */
+LY_ERR lys_print_file(FILE *f, const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options);
+
+/**
+ * @brief Print schema tree in the specified format into a file.
+ *
+ * This is just a wrapper around lys_print() for simple use cases.
+ * In case of a complex use cases, use lys_print with ly_out output handler.
+ *
+ * @param[in] path File where to print the schema.
+ * @param[in] module Schema tree to print.
+ * @param[in] format Schema output format.
+ * @param[in] line_length Maximum characters to be printed on a line, 0 for unlimited. Only for #LYS_OUT_TREE printer.
+ * @param[in] options Schema output options (see @ref schemaprinterflags).
+ * @return LY_ERR value.
+ */
+LY_ERR lys_print_path(const char *path, const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options);
+
+/**
+ * @brief Print schema tree in the specified format using a provided callback.
+ *
+ * This is just a wrapper around lys_print() for simple use cases.
+ * In case of a complex use cases, use lys_print with ly_out output handler.
+ *
+ * @param[in] module Schema tree to print.
+ * @param[in] writeclb Callback function to write the data (see write(1)).
+ * @param[in] arg Optional caller-specific argument to be passed to the \p writeclb callback.
+ * @param[in] format Schema output format.
+ * @param[in] line_length Maximum characters to be printed on a line, 0 for unlimited. Only for #LYS_OUT_TREE printer.
+ * @param[in] options Schema output options (see @ref schemaprinterflags).
+ * @return LY_ERR value.
+ */
+LY_ERR lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg,
+                     const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options);
+
+/**
  * @brief Schema node printer.
  *
  * @param[in] out Printer handler for a specific output. Use ly_out_*() functions to create and free the handler.

@@ -15,8 +15,10 @@
 #ifndef LY_PRINTER_DATA_H_
 #define LY_PRINTER_DATA_H_
 
+#include <stdio.h>
 #include <unistd.h>
 
+#include "log.h"
 #include "tree_data.h"
 
 struct ly_out;
@@ -61,5 +63,66 @@ struct ly_out;
  * @return Negative value failure (absolute value corresponds to LY_ERR values).
  */
 ssize_t lyd_print(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, int options);
+
+/**
+* @brief Print data tree in the specified format.
+*
+* @param[out] strp Pointer to store the resulting dump.
+ * @param[in] root The root element of the (sub)tree to print.
+ * @param[in] format Output format.
+* @param[in] options [printer flags](@ref printerflags). \p format LYD_LYB accepts only #LYP_WITHSIBLINGS option.
+* @return LY_ERR value.
+*/
+LY_ERR lyd_print_mem(char **strp, const struct lyd_node *root, LYD_FORMAT format, int options);
+
+/**
+ * @brief Print data tree in the specified format.
+ *
+ * @param[in] fd File descriptor where to print the data.
+ * @param[in] root The root element of the (sub)tree to print.
+ * @param[in] format Output format.
+ * @param[in] options [printer flags](@ref printerflags). \p format LYD_LYB accepts only #LYP_WITHSIBLINGS option.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format, int options);
+
+/**
+ * @brief Print data tree in the specified format.
+ *
+ * @param[in] f File stream where to print the data.
+ * @param[in] root The root element of the (sub)tree to print.
+ * @param[in] format Output format.
+ * @param[in] options [printer flags](@ref printerflags). \p format LYD_LYB accepts only #LYP_WITHSIBLINGS option.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format, int options);
+
+/**
+ * @brief Print data tree in the specified format.
+ *
+ * @param[in] path File path where to print the data.
+ * @param[in] root The root element of the (sub)tree to print.
+ * @param[in] format Output format.
+ * @param[in] options [printer flags](@ref printerflags). \p format LYD_LYB accepts only #LYP_WITHSIBLINGS option.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_print_path(const char *path, const struct lyd_node *root, LYD_FORMAT format, int options);
+
+/**
+ * @brief Print data tree in the specified format.
+ *
+ * @param[in] writeclb Callback function to write the data (see write(1)).
+ * @param[in] arg Optional caller-specific argument to be passed to the \p writeclb callback.
+ * @param[in] root The root element of the (sub)tree to print.
+ * @param[in] format Output format.
+ * @param[in] options [printer flags](@ref printerflags). \p format LYD_LYB accepts only #LYP_WITHSIBLINGS option.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg,
+                     const struct lyd_node *root, LYD_FORMAT format, int options);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LY_PRINTER_DATA_H_ */
