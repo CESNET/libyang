@@ -11,7 +11,7 @@ libyang-cpp.so.1 libyang-cpp1 #MINVER#
  (c++)"libyang::Schema_Node::child_instantiables(int)@Base" 1.0.130
  (c++)"libyang::Schema_Node::ext()@Base" 1.0.130
  (c++)"libyang::Schema_Node::next()@Base" 1.0.130
- (c++)"libyang::Schema_Node::path[abi:cxx11](int)@Base" 1.0.130
+ (c++|optional=jessie)"libyang::Schema_Node::path[abi:cxx11](int)@Base" 1.0.130
  (c++)"libyang::Schema_Node::prev()@Base" 1.0.130
  (c++)"libyang::Schema_Node::child()@Base" 1.0.130
  (c++)"libyang::Schema_Node::module()@Base" 1.0.130
@@ -162,7 +162,7 @@ libyang-cpp.so.1 libyang-cpp1 #MINVER#
  (c++)"libyang::Schema_Node_Augment::~Schema_Node_Augment()@Base" 1.0.130
  (c++)"libyang::Schema_Node_Augment::~Schema_Node_Augment()@Base" 1.0.130
  (c++)"libyang::check_libyang_error(ly_ctx*)@Base" 1.0.130
- (c++)"libyang::Schema_Node_Leaflist::dflt[abi:cxx11]()@Base" 1.0.130
+ (c++|optional=jessie)"libyang::Schema_Node_Leaflist::dflt[abi:cxx11]()@Base" 1.0.130
  (c++)"libyang::Schema_Node_Leaflist::must()@Base" 1.0.130
  (c++)"libyang::Schema_Node_Leaflist::type()@Base" 1.0.130
  (c++)"libyang::Schema_Node_Leaflist::when()@Base" 1.0.130
@@ -256,8 +256,8 @@ libyang-cpp.so.1 libyang-cpp1 #MINVER#
  (c++)"libyang::Module::data_instantiables(int)@Base" 1.0.130
  (c++)"libyang::Module::rev()@Base" 1.0.130
  (c++)"libyang::Module::deviation()@Base" 1.0.130
- (c++)"libyang::Module::print_mem[abi:cxx11](LYS_OUTFORMAT, char const*, int)@Base" 1.0.130
- (c++)"libyang::Module::print_mem[abi:cxx11](LYS_OUTFORMAT, int)@Base" 1.0.130
+ (c++|optional=jessie)"libyang::Module::print_mem[abi:cxx11](LYS_OUTFORMAT, char const*, int)@Base" 1.0.130
+ (c++|optional=jessie)"libyang::Module::print_mem[abi:cxx11](LYS_OUTFORMAT, int)@Base" 1.0.130
  (c++)"libyang::Module::Module(lys_module*, std::shared_ptr<libyang::Deleter>)@Base" 1.0.130
  (c++)"libyang::Module::Module(lys_module*, std::shared_ptr<libyang::Deleter>)@Base" 1.0.130
  (c++)"libyang::Module::~Module()@Base" 1.0.130
@@ -284,7 +284,7 @@ libyang-cpp.so.1 libyang-cpp1 #MINVER#
  (c++)"libyang::Context::get_submodule(char const*, char const*, char const*, char const*)@Base" 1.0.130
  (c++)"libyang::Context::parse_data_fd(int, LYD_FORMAT, int)@Base" 1.0.130
  (c++)"libyang::Context::set_searchdir(char const*)@Base" 1.0.130
- (c++)"libyang::Context::get_searchdirs[abi:cxx11]()@Base" 1.0.130
+ (c++|optional=jessie)"libyang::Context::get_searchdirs[abi:cxx11]()@Base" 1.0.130
  (c++)"libyang::Context::get_submodule2(std::shared_ptr<libyang::Module>, char const*)@Base" 1.0.130
  (c++)"libyang::Context::parse_data_mem(char const*, LYD_FORMAT, int)@Base" 1.0.130
  (c++)"libyang::Context::parse_data_xml(std::shared_ptr<libyang::Xml_Elem>, int)@Base" 1.0.130
@@ -384,7 +384,7 @@ libyang-cpp.so.1 libyang-cpp1 #MINVER#
  (c++)"libyang::Xml_Elem::get_attr(char const*, char const*)@Base" 1.0.130
  (c++)"libyang::Xml_Elem::tree_dfs()@Base" 1.0.130
  (c++)"libyang::Xml_Elem::tree_for()@Base" 1.0.130
- (c++)"libyang::Xml_Elem::print_mem[abi:cxx11](int)@Base" 1.0.130
+ (c++|optional=jessie)"libyang::Xml_Elem::print_mem[abi:cxx11](int)@Base" 1.0.130
  (c++)"libyang::Xml_Elem::Xml_Elem(std::shared_ptr<libyang::Context>, lyxml_elem*, std::shared_ptr<libyang::Deleter>)@Base" 1.0.130
  (c++)"libyang::Xml_Elem::Xml_Elem(std::shared_ptr<libyang::Context>, lyxml_elem*, std::shared_ptr<libyang::Deleter>)@Base" 1.0.130
  (c++)"libyang::Xml_Elem::~Xml_Elem()@Base" 1.0.130
@@ -404,7 +404,7 @@ libyang-cpp.so.1 libyang-cpp1 #MINVER#
  (c++)"libyang::Data_Node::dup(int)@Base" 1.0.130
  (c++)"libyang::Data_Node::attr()@Base" 1.0.130
  (c++)"libyang::Data_Node::diff(std::shared_ptr<libyang::Data_Node>, int)@Base" 1.0.130
- (c++)"libyang::Data_Node::path[abi:cxx11]()@Base" 1.0.130
+ (c++|optional=jessie)"libyang::Data_Node::path[abi:cxx11]()@Base" 1.0.130
  (c++)"libyang::Data_Node::child()@Base" 1.0.130
  (c++)"libyang::Data_Node::merge(std::shared_ptr<libyang::Data_Node>, int)@Base" 1.0.130
  (c++)"libyang::Data_Node::insert(std::shared_ptr<libyang::Data_Node>)@Base" 1.0.130
@@ -418,7 +418,7 @@ libyang-cpp.so.1 libyang-cpp1 #MINVER#
  (c++)"libyang::Data_Node::validate(int, std::shared_ptr<libyang::Context>)@Base" 1.0.130
  (c++)"libyang::Data_Node::validate(int, std::shared_ptr<libyang::Data_Node>)@Base" 1.0.130
  (c++)"libyang::Data_Node::find_path(char const*)@Base" 1.0.130
- (c++)"libyang::Data_Node::print_mem[abi:cxx11](LYD_FORMAT, int)@Base" 1.0.130
+ (c++|optional=jessie)"libyang::Data_Node::print_mem[abi:cxx11](LYD_FORMAT, int)@Base" 1.0.130
  (c++)"libyang::Data_Node::Data_Node(lyd_node*, std::shared_ptr<libyang::Deleter>)@Base" 1.0.130
  (c++)"libyang::Data_Node::Data_Node(std::shared_ptr<libyang::Context>, char const*, std::shared_ptr<libyang::Xml_Elem>, int)@Base" 1.0.130
  (c++)"libyang::Data_Node::Data_Node(std::shared_ptr<libyang::Context>, char const*, std::shared_ptr<libyang::Data_Node>, int)@Base" 1.0.130
