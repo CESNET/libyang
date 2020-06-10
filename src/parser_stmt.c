@@ -22,6 +22,7 @@
 #include "common.h"
 #include "dict.h"
 #include "log.h"
+#include "path.h"
 #include "tree.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
@@ -678,6 +679,8 @@ lysp_stmt_type(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct 
 {
     struct lysp_type *nest_type;
     const struct lysp_stmt *child;
+    const char *str_path;
+    LY_ERR ret;
 
     if (type->name) {
         LOGVAL_PARSER(ctx, LY_VCODE_DUPSTMT, "type");
@@ -718,7 +721,11 @@ lysp_stmt_type(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct 
             type->flags |= LYS_SET_LENGTH;
             break;
         case LY_STMT_PATH:
-            LY_CHECK_RET(lysp_stmt_text_field(ctx, child, LYEXT_SUBSTMT_PATH, 0, &type->path, Y_STR_ARG, &type->exts));
+            LY_CHECK_RET(lysp_stmt_text_field(ctx, child, LYEXT_SUBSTMT_PATH, 0, &str_path, Y_STR_ARG, &type->exts));
+            ret = ly_path_parse(PARSER_CTX(ctx), str_path, 0, LY_PATH_BEGIN_EITHER, LY_PATH_LREF_TRUE,
+                                LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &type->path);
+            lydict_remove(PARSER_CTX(ctx), str_path);
+            LY_CHECK_RET(ret);
             type->flags |= LYS_SET_PATH;
             break;
         case LY_STMT_PATTERN:

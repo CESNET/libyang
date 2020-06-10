@@ -26,6 +26,7 @@
 #include "../../../src/tree_schema_internal.h"
 #include "../../../src/parser_yin.h"
 #include "../../../src/xml.h"
+#include "../../../src/xpath.h"
 
 /* prototypes of static functions */
 void lysp_ext_instance_free(struct ly_ctx *ctx, struct lysp_ext_instance *ext);
@@ -1656,25 +1657,6 @@ test_namespace_elem(void **state)
 }
 
 static void
-test_path_elem(void **state)
-{
-    struct test_parser_yin_state *st = *state;
-    const char *data;
-    struct lysp_type type = {};
-
-    data = ELEMENT_WRAPPER_START "<path value=\"p&amp;th-val\">" EXT_SUBELEM "</path>" ELEMENT_WRAPPER_END;
-    assert_int_equal(test_element_helper(st, data, &type, NULL, NULL), LY_SUCCESS);
-    assert_string_equal("p&th-val", type.path);
-    assert_true(type.flags & LYS_SET_PATH);
-    assert_string_equal(type.exts[0].name, "urn:example:extensions:c-define");
-    assert_int_equal(type.exts[0].insubstmt_index, 0);
-    assert_int_equal(type.exts[0].insubstmt, LYEXT_SUBSTMT_PATH);
-    lysp_type_free(st->ctx, &type);
-
-    st->finished_correctly = true;
-}
-
-static void
 test_pattern_elem(void **state)
 {
     struct test_parser_yin_state *st = *state;
@@ -2071,7 +2053,7 @@ test_type_elem(void **state)
     assert_string_equal(type.enums->name,  "enum");
     assert_int_equal(type.fraction_digits, 2);
     assert_string_equal(type.length->arg, "length");
-    assert_string_equal(type.path, "path");
+    assert_string_equal(type.path->expr, "path");
     assert_string_equal(type.patterns->arg, "\006pattern");
     assert_string_equal(type.range->arg, "range");
     assert_int_equal(type.require_instance, 1);
@@ -4337,7 +4319,6 @@ main(void)
         cmocka_unit_test_setup_teardown(test_length_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_modifier_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_namespace_elem, setup_element_test, teardown_element_test),
-        cmocka_unit_test_setup_teardown(test_path_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_pattern_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_value_position_elem, setup_element_test, teardown_element_test),
         cmocka_unit_test_setup_teardown(test_prefix_elem, setup_element_test, teardown_element_test),

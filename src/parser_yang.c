@@ -24,6 +24,7 @@
 #include "context.h"
 #include "dict.h"
 #include "log.h"
+#include "path.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_schema.h"
@@ -1984,6 +1985,7 @@ parse_type(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_type 
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
+    const char *str_path = NULL;
     size_t word_len;
     enum ly_stmt kw;
     struct lysp_type *nest_type;
@@ -2027,7 +2029,16 @@ parse_type(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_type 
             type->flags |= LYS_SET_LENGTH;
             break;
         case LY_STMT_PATH:
-            LY_CHECK_RET(parse_text_field(ctx, data, LYEXT_SUBSTMT_PATH, 0, &type->path, Y_STR_ARG, &type->exts));
+            if (type->path) {
+                LOGVAL_PARSER(ctx, LY_VCODE_DUPSTMT, lyext_substmt2str(LYEXT_SUBSTMT_PATH));
+                return LY_EVALID;
+            }
+
+            LY_CHECK_RET(parse_text_field(ctx, data, LYEXT_SUBSTMT_PATH, 0, &str_path, Y_STR_ARG, &type->exts));
+            ret = ly_path_parse(ctx->ctx, str_path, 0, LY_PATH_BEGIN_EITHER, LY_PATH_LREF_TRUE,
+                                LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &type->path);
+            lydict_remove(ctx->ctx, str_path);
+            LY_CHECK_RET(ret);
             type->flags |= LYS_SET_PATH;
             break;
         case LY_STMT_PATTERN:

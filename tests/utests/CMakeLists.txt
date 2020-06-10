@@ -13,6 +13,7 @@ set(local_tests
     utest:schema/test_printer_yang
     utest:schema/test_printer_yin
     utest:data/test_tree_data
+    utest:data/test_new
     utest:data/test_parser_xml
     utest:data/test_printer_xml
     utest:data/test_validation
@@ -21,6 +22,7 @@ set(local_tests
     utest:extensions/test_nacm)
 set(local_tests_wraps
     "-Wl,--wrap=realloc"
+    " "
     " "
     " "
     " "

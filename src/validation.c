@@ -114,7 +114,7 @@ lyd_validate_when(struct lyd_node **tree, struct lyd_node *node, struct lysc_whe
     LY_CHECK_RET(ret);
 
     /* take action based on the result */
-    if (!xp_set.val.bool) {
+    if (!xp_set.val.bln) {
         if (node->flags & LYD_WHEN_TRUE) {
             /* autodelete */
             if (LYD_DEL_IS_ROOT(*tree, node)) {
@@ -861,7 +861,7 @@ lyd_validate_must(const struct lyd_node *node, int val_opts)
 
         /* check the result */
         lyxp_set_cast(&xp_set, LYXP_SET_BOOLEAN);
-        if (!xp_set.val.bool) {
+        if (!xp_set.val.bln) {
             LOGVAL(LYD_NODE_CTX(node), LY_VLOG_LYD, node, LY_VCODE_NOMUST, musts[u].cond->expr);
             return LY_EVALID;
         }

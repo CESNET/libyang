@@ -16,6 +16,7 @@
 
 #include "common.h"
 #include "config.h"
+#include "path.h"
 #include "plugins_exts.h"
 #include "plugins_types.h"
 #include "tree.h"
@@ -144,6 +145,7 @@ lysp_type_enum_free(struct ly_ctx *ctx, struct lysp_type_enum *item)
 }
 
 void lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type);
+
 void
 lysp_type_free(struct ly_ctx *ctx, struct lysp_type *type)
 {
@@ -153,7 +155,7 @@ lysp_type_free(struct ly_ctx *ctx, struct lysp_type *type)
     FREE_ARRAY(ctx, type->patterns, lysp_restr_free);
     FREE_ARRAY(ctx, type->enums, lysp_type_enum_free);
     FREE_ARRAY(ctx, type->bits, lysp_type_enum_free);
-    FREE_STRING(ctx, type->path);
+    lyxp_expr_free(ctx, type->path);
     FREE_STRINGS(ctx, type->bases);
     FREE_ARRAY(ctx, type->types, lysp_type_free);
     FREE_ARRAY(ctx, type->exts, lysp_ext_instance_free);
@@ -638,7 +640,7 @@ lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type)
         FREE_ARRAY(ctx, ((struct lysc_type_union*)type)->types, lysc_type2_free);
         break;
     case LY_TYPE_LEAFREF:
-        FREE_STRING(ctx, ((struct lysc_type_leafref*)type)->path);
+        lyxp_expr_free(ctx, ((struct lysc_type_leafref*)type)->path);
         break;
     case LY_TYPE_INST:
     case LY_TYPE_BOOL:

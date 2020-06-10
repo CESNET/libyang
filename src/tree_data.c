@@ -33,6 +33,7 @@
 #include "dict.h"
 #include "hash_table.h"
 #include "log.h"
+#include "path.h"
 #include "plugins_exts.h"
 #include "plugins_exts_metadata.h"
 #include "plugins_exts_internal.h"
@@ -74,8 +75,7 @@ lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len,
         node->value.realtype = type;
     }
     ret = type->plugin->store(ctx, type, value, value_len, options, get_prefix, parser, format,
-                             tree ? (void *)node : (void *)node->schema, tree,
-                             &node->value, NULL, &err);
+                              tree ? (void *)node : (void *)node->schema, tree, &node->value, NULL, &err);
     if (ret && (ret != LY_EINCOMPLETE)) {
         if (err) {
             /* node may not be connected yet so use the schema node */
@@ -96,7 +96,7 @@ error:
 }
 
 /* similar to lyd_value_parse except can be used just to store the value, hence does also not support a second call */
-static LY_ERR
+LY_ERR
 lyd_value_store(struct lyd_value *val, const struct lysc_node *schema, const char *value, size_t value_len, int *dynamic,
                 ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format)
 {
@@ -647,48 +647,20 @@ cleanup:
 }
 
 LY_ERR
-lyd_create_list(const struct lysc_node *schema, const char *keys_str, size_t keys_len, LYD_FORMAT keys_format, int log,
-                struct lyd_node **node)
+lyd_create_list(const struct lysc_node *schema, const struct ly_path_predicate *predicates, struct lyd_node **node)
 {
     LY_ERR ret = LY_SUCCESS;
-    const struct lysc_node *key_s;
     struct lyd_node *list = NULL, *key;
-    struct ly_keys keys = {0};
-    size_t i;
+    LY_ARRAY_SIZE_TYPE u;
 
-    assert((schema->nodetype == LYS_LIST) && !(schema->flags & LYS_KEYLESS) && (keys_format != LYD_XML));
-
-    /* parse keys */
-    LY_CHECK_GOTO(ret = ly_keys_parse(schema, keys_str, keys_len, 0, log, &keys), cleanup);
+    assert((schema->nodetype == LYS_LIST) && !(schema->flags & LYS_KEYLESS));
 
     /* create list */
     LY_CHECK_GOTO(ret = lyd_create_inner(schema, &list), cleanup);
 
-    /* everything was checked except that all keys are set */
-    i = 0;
-    for (key_s = lysc_node_children(schema, 0); key_s && (key_s->flags & LYS_KEY); key_s = key_s->next) {
-        ++i;
-    }
-    if (i != keys.key_count) {
-        if (log) {
-            LOGERR(schema->module->ctx, LY_EINVAL, "List \"%s\" is missing some keys.", schema->name);
-        }
-        ret = LY_EINVAL;
-        goto cleanup;
-    }
-
     /* create and insert all the keys */
-    for (i = 0; i < keys.key_count; ++i) {
-        if (keys_format == LYD_JSON) {
-            ret = lyd_create_term((struct lysc_node *)keys.keys[i].schema, keys.keys[i].value, strlen(keys.keys[i].value),
-                                  NULL, lydjson_resolve_prefix, NULL, LYD_JSON, &key);
-        } else {
-            assert(keys_format == LYD_SCHEMA);
-            ret = lyd_create_term((struct lysc_node *)keys.keys[i].schema, keys.keys[i].value, strlen(keys.keys[i].value),
-                                  NULL, lys_resolve_prefix, NULL, LYD_SCHEMA, &key);
-        }
-        LY_CHECK_GOTO(ret && (ret != LY_EINCOMPLETE), cleanup);
-        ret = LY_SUCCESS;
+    LY_ARRAY_FOR(predicates, u) {
+        LY_CHECK_GOTO(ret = lyd_create_term2(predicates[u].key, &predicates[u].value, &key), cleanup);
         lyd_insert_node(list, NULL, key);
     }
 
@@ -701,7 +673,32 @@ lyd_create_list(const struct lysc_node *schema, const char *keys_str, size_t key
 
 cleanup:
     lyd_free_tree(list);
-    ly_keys_clean(&keys);
+    return ret;
+}
+
+static LY_ERR
+lyd_create_list2(const struct lysc_node *schema, const char *keys, size_t keys_len, struct lyd_node **node)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lyxp_expr *expr = NULL;
+    uint16_t exp_idx = 0;
+    enum ly_path_pred_type pred_type = 0;
+    struct ly_path_predicate *predicates = NULL;
+
+    /* parse keys */
+    LY_CHECK_GOTO(ret = ly_path_parse_predicate(schema->module->ctx, keys, keys_len, LY_PATH_PREFIX_OPTIONAL,
+                                                LY_PATH_PRED_KEYS, &expr), cleanup);
+
+    /* compile them */
+    LY_CHECK_GOTO(ret = ly_path_compile_predicate(schema->module, schema, expr, &exp_idx, lydjson_resolve_prefix, NULL,
+                                                  LYD_JSON, &predicates, &pred_type), cleanup);
+
+    /* create the list node */
+    LY_CHECK_GOTO(ret = lyd_create_list(schema, predicates, node), cleanup);
+
+cleanup:
+    lyxp_expr_free(schema->module->ctx, expr);
+    ly_path_predicates_free(schema->module->ctx, pred_type, NULL, predicates);
     return ret;
 }
 
@@ -848,11 +845,23 @@ lyd_new_list2(struct lyd_node *parent, const struct lys_module *module, const ch
     if (!module) {
         module = parent->schema->module;
     }
+    if (!keys) {
+        keys = "";
+    }
 
+    /* find schema node */
     schema = lys_find_child(parent ? parent->schema : NULL, module, name, 0, LYS_LIST, 0);
     LY_CHECK_ERR_RET(!schema, LOGERR(ctx, LY_EINVAL, "List node \"%s\" not found.", name), NULL);
 
-    if (!lyd_create_list(schema, keys, keys ? strlen(keys) : 0, LYD_JSON, 1, &ret) && parent) {
+    if ((schema->flags & LYS_KEYLESS) && !keys[0]) {
+        /* key-less list */
+        LY_CHECK_RET(lyd_create_inner(schema, &ret), NULL);
+    } else {
+        /* create the list node */
+        LY_CHECK_RET(lyd_create_list2(schema, keys, strlen(keys), &ret), NULL);
+    }
+
+    if (parent) {
         lyd_insert_node(parent, NULL, ret);
     }
     return ret;
@@ -930,7 +939,7 @@ lyd_new_meta(struct lyd_node *parent, const struct lys_module *module, const cha
         str = strndup(name, name_len);
         module = ly_ctx_get_module_implemented(ctx, str);
         free(str);
-        LY_CHECK_ERR_RET(!module, LOGERR(ctx, LY_EINVAL, "Module \"%*.s\" not found.", pref_len, prefix), NULL);
+        LY_CHECK_ERR_RET(!module, LOGERR(ctx, LY_EINVAL, "Module \"%.*s\" not found.", pref_len, prefix), NULL);
     }
 
     /* set value if none */
@@ -1532,84 +1541,15 @@ ly_create_attr(struct lyd_node *parent, struct ly_attr **attr, const struct ly_c
 }
 
 API const struct lyd_node_term *
-lyd_target(struct lyd_value_path *path, const struct lyd_node *tree)
+lyd_target(const struct ly_path *path, const struct lyd_node *tree)
 {
-    LY_ARRAY_SIZE_TYPE u, v;
-    const struct lyd_node *start_sibling;
-    struct lyd_node *node = NULL;
-    uint64_t pos = 1;
-    int match;
+    struct lyd_node *target;
 
-    LY_CHECK_ARG_RET(NULL, path, tree, NULL);
-
-    /* first iteration */
-    start_sibling = tree;
-    u = 0;
-    while (u < LY_ARRAY_SIZE(path)) {
-        /* find next node instance */
-        if (start_sibling && !start_sibling->prev->next && !(path[u].node->nodetype & (LYS_LEAFLIST | LYS_LIST))) {
-            /* starting from the beginning using hashes */
-            lyd_find_sibling_val(start_sibling, path[u].node, NULL, 0, &node);
-        } else {
-            /* next matching sibling */
-            lyd_find_sibling_next2(start_sibling, path[u].node, NULL, 0, &node);
-        }
-        if (!node) {
-            break;
-        }
-
-        /* check predicate if any */
-        match = 1;
-        LY_ARRAY_FOR(path[u].predicates, v) {
-            if (path[u].predicates[v].type == 0) {
-                assert(LY_ARRAY_SIZE(path[u].predicates) == 1);
-                /* position predicate */
-                if (pos != path[u].predicates[v].position) {
-                    pos++;
-                    match = 0;
-                }
-            } else if (path[u].predicates[v].type == 1) {
-                /* key-predicate */
-                struct lysc_type *type = ((struct lysc_node_leaf *)path[u].predicates[v].key)->type;
-                struct lyd_node *key;
-
-                lyd_find_sibling_val(lyd_node_children(node), path[u].predicates[v].key, NULL, 0, &key);
-                if (!key) {
-                    /* probably error and we shouldn't be here due to previous checks when creating path */
-                    match = 0;
-                } else if (type->plugin->compare(&((struct lyd_node_term *)key)->value, path[u].predicates[v].value)) {
-                    match = 0;
-                }
-            } else if (path[u].predicates[v].type == 2) {
-                /* leaf-list-predicate */
-                struct lysc_type *type = ((struct lysc_node_leaf *)path[u].node)->type;
-
-                if (type->plugin->compare(&((struct lyd_node_term *)node)->value, path[u].predicates[v].value)) {
-                    match = 0;
-                }
-            } else {
-                LOGINT(NULL);
-                return NULL;
-            }
-
-            if (!match) {
-                /* useless to check more predicates */
-                break;
-            }
-        }
-
-        if (!match) {
-            /* try to match next sibling */
-            start_sibling = node->next;
-        } else {
-            /* matched, move to the next path segment */
-            ++u;
-            start_sibling = lyd_node_children(node);
-            pos = 1;
-        }
+    if (ly_path_eval(path, tree, &target)) {
+        return NULL;
     }
 
-    return (const struct lyd_node_term *)node;
+    return (struct lyd_node_term *)target;
 }
 
 API LY_ERR
@@ -2644,7 +2584,7 @@ lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_node *sc
     case LYS_RPC:
     case LYS_ACTION:
     case LYS_LEAF:
-        /* find it based on schema only */
+        /* find it based on schema only, there cannot be more instances */
         rc = lyd_find_sibling_schema(siblings, schema, match);
         break;
     case LYS_LEAFLIST:
@@ -2656,7 +2596,7 @@ lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_node *sc
     case LYS_LIST:
         if (schema->nodetype == LYS_LIST) {
             /* target used attributes: schema, hash, child (all keys) */
-            LY_CHECK_RET(lyd_create_list(schema, key_or_value, val_len, LYD_JSON, 1, &target));
+            LY_CHECK_RET(lyd_create_list2(schema, key_or_value, val_len, &target));
         }
 
         /* find it */
@@ -2685,7 +2625,7 @@ lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct ly_set
     memset(&xp_set, 0, sizeof xp_set);
 
     /* compile expression */
-    exp = lyxp_expr_parse((struct ly_ctx *)LYD_NODE_CTX(ctx_node), xpath);
+    exp = lyxp_expr_parse((struct ly_ctx *)LYD_NODE_CTX(ctx_node), xpath, 0, 1);
     LY_CHECK_ERR_GOTO(!exp, ret = LY_EINVAL, cleanup);
 
     /* evaluate expression */

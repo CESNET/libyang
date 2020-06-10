@@ -26,12 +26,14 @@
 #include "common.h"
 #include "config.h"
 #include "dict.h"
+#include "path.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_data_internal.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 #include "xml.h"
+#include "xpath.h"
 
 /**
  * @brief Generic comparison callback checking the canonical value.
@@ -1380,111 +1382,6 @@ ly_type_dup_identityref(const struct ly_ctx *UNUSED(ctx), const struct lyd_value
 }
 
 /**
- * @brief Helper function for ly_type_store_instanceid() to check presence of the specific node in the (data/schema) tree.
- *
- * In the case the instance-identifier type does not require instance (@p require_instance is 0) or the data @p trees
- * are not complete (called in the middle of data parsing), the @p token is checked only to match schema tree.
- * Otherwise, the provided data @p trees are used to find instance of the node specified by the token and @p node_d as
- * its parent.
- *
- * @param[in] orig Complete instance-identifier expression for logging.
- * @param[in] orig_len Length of the @p orig string.
- * @param[in] options [Type plugin options ](@ref plugintypeopts) - only LY_TYPE_OPTS_INCOMPLETE_DATA is used.
- * @param[in] require_instance Flag if the instance-identifier requires presence of an instance in the data tree.
- * If the flag is zero, the data tree is not needed and the @p token is checked only by checking the schema tree.
- * @param[in,out] token Pointer to the specific position inside the @p orig string where the node-identifier starts.
- * The pointer is updated to point after the processed node-identifier.
- * @param[in] prefixes [Sized array](@ref sizedarrays) of known mappings between prefix used in the @p orig and modules from the context.
- * @param[in] format Format of the input YANG data, since XML and JSON format differs in case of instance-identifiers.
- * @param[in,out] node_s Parent schema node as input, resolved schema node as output. Alternative parameter for @p node_d
- * in case the instance is not available (@p trees are not yet complete) or required.
- * @param[in,out] node_d Parent data node as input, resolved data node instance as output. Alternative parameter for @p node_s
- * in case the instance is required and @p trees are complete.
- * @param[in] trees [Sized array](@ref sizedarrays)) of data trees where the data instance is supposed to be present.
- * @param[out] errmsg Error message in case of failure. Function does not log on its own, instead it creates error message. Caller is supposed to
- * free (or store somewhere) the returned message.
- * @return LY_SUCCESS when node found.
- * @return LY_EMEM or LY_EVALID in case of failure or when the node is not present in the schema/data tree.
- */
-static LY_ERR
-ly_type_store_instanceid_checknodeid(const char *orig, size_t orig_len, int options, int require_instance,
-                                     const char **token, struct lyd_value_prefix *prefixes, LYD_FORMAT format,
-                                     const struct lysc_node **node_s, const struct lyd_node **node_d,
-                                     const struct lyd_node *tree, char **errmsg)
-{
-    const char *id, *prefix;
-    size_t id_len, prefix_len;
-    const struct lys_module *mod = NULL;
-    LY_ARRAY_SIZE_TYPE u;
-
-    if (ly_parse_nodeid(token, &prefix, &prefix_len, &id, &id_len)) {
-        asprintf(errmsg, "Invalid instance-identifier \"%.*s\" value at character %lu (%.*s).",
-                 (int)orig_len, orig, *token - orig + 1, (int)(orig_len - (*token - orig)), *token);
-        return LY_EVALID;
-    }
-    if (!prefix || !prefix_len) {
-        if (format == LYD_XML || (!*node_s && !*node_d)) {
-            asprintf(errmsg, "Invalid instance-identifier \"%.*s\" value - all node names (%.*s) MUST be qualified with explicit namespace prefix.",
-                     (int)orig_len, orig, (int)id_len + 1, &id[-1]);
-            return LY_EVALID;
-        }
-
-        /* non top-level node from JSON */
-        if (*node_d) {
-            mod = (*node_d)->schema->module;
-        } else {
-            mod = (*node_s)->module;
-        }
-    } else {
-        /* map prefix to schema module */
-        LY_ARRAY_FOR(prefixes, u) {
-            if (!ly_strncmp(prefixes[u].prefix, prefix, prefix_len)) {
-                mod = prefixes[u].mod;
-                break;
-            }
-        }
-
-        if (!mod) {
-            asprintf(errmsg, "Invalid instance-identifier \"%.*s\" value - unable to map prefix \"%.*s\" to YANG schema.",
-                     (int)orig_len, orig, (int)prefix_len, prefix);
-            return LY_EVALID;
-        }
-    }
-
-    if ((options & LY_TYPE_OPTS_INCOMPLETE_DATA) || (options & LY_TYPE_OPTS_SCHEMA) || !require_instance) {
-        /* a) in schema tree */
-        *node_s = lys_find_child(*node_s, mod, id, id_len, 0, 0);
-        if (!(*node_s)) {
-            asprintf(errmsg, "Invalid instance-identifier \"%.*s\" value - path \"%.*s\" does not exists in the YANG schema.",
-                     (int)orig_len, orig, (int)(*token - orig), orig);
-            return LY_EVALID;
-        }
-    } else {
-        /* b) in data tree */
-        if (*node_d) {
-            /* inner node */
-            lyd_find_sibling_next(lyd_node_children(*node_d), mod, id, id_len, NULL, 0, (struct lyd_node **)node_d);
-            if (!*node_d) {
-                asprintf(errmsg, "Invalid instance-identifier \"%.*s\" value - path \"%.*s\" does not exists in the data tree(s).",
-                         (int)orig_len, orig, (int)(*token - orig), orig);
-                return LY_EVALID;
-            }
-        } else {
-            /* top-level node */
-            lyd_find_sibling_next(tree, mod, id, id_len, NULL, 0, (struct lyd_node **)node_d);
-            if (!(*node_d)) {
-                /* node not found */
-                asprintf(errmsg, "Invalid instance-identifier \"%.*s\" value - path \"%.*s\" does not exists in the data tree(s).",
-                         (int)orig_len, orig, (int)(*token - orig), orig);
-                return LY_EVALID;
-            }
-        }
-    }
-
-    return LY_SUCCESS;
-}
-
-/**
  * @brief Helper function for ly_type_store_instanceid_parse_predicate_value() to provide prefix mapping for the
  * validation callbacks for the values used in instance-identifier predicates.
  *
@@ -1505,85 +1402,6 @@ ly_type_stored_prefixes_clb(const struct ly_ctx *UNUSED(ctx), const char *prefix
 }
 
 /**
- * @brief Helper function for ly_type_store_instanceid() to prepare predicate's value structure into the lyd_value_path structure.
- *
- * @param[in] ctx libyang context.
- * @param[in] key Schema key node of the predicate (list's key in case of key-predicate, leaf-list in case of leaf-list-predicate).
- * @param[in] val Value string of the predicate.
- * @param[in] val_len Length of the @p val.
- * @param[in] prefixes [Sized array](@ref sizedarrays) of the prefix mappings used in the instance-identifier value.
- * @param[in] format Input format of the data.
- * @param[in,out] pred Prepared predicate structure where the predicate information will be added.
- * @param[out] errmsg Error description in case the function fails. Caller is responsible to free the string.
- * @return LY_ERR value.
- */
-static LY_ERR
-ly_type_store_instanceid_parse_predicate_value(const struct ly_ctx *ctx, const struct lysc_node *key, const char *val,
-                                               size_t val_len, struct lyd_value_prefix *prefixes, LYD_FORMAT format,
-                                               struct lyd_value_path_predicate *pred, char **errmsg)
-{
-    LY_ERR ret = LY_SUCCESS;
-    struct lysc_type *type;
-    struct ly_err_item *err = NULL;
-    int options = LY_TYPE_OPTS_STORE | LY_TYPE_OPTS_INCOMPLETE_DATA;
-
-    pred->value = calloc(1, sizeof *pred->value);
-
-    type = ((struct lysc_node_leaf*)key)->type;
-    pred->value->realtype = type;
-    ret = type->plugin->store(ctx, type, val, val_len, options, ly_type_stored_prefixes_clb, prefixes, format, key, NULL,
-                              pred->value, NULL, &err);
-    if (ret == LY_EINCOMPLETE) {
-        /* actually expected without complete data */
-        ret = LY_SUCCESS;
-    } else if (ret) {
-        if (err) {
-            *errmsg = err->msg;
-            err->msg = NULL;
-            ly_err_free(err);
-        } else {
-            *errmsg = strdup("Type validation failed with unknown error.");
-        }
-        goto error;
-    }
-
-error:
-    return ret;
-}
-
-/**
- * @brief Helper function for ly_type_store_instanceid() to correctly find the end of the predicate section.
- *
- * @param[in] predicate Start of the beginning section.
- * @return Pointer to the end of the predicate section.
- */
-static const char *
-ly_type_path_predicate_end(const char *predicate)
-{
-    size_t i = 0;
-    while (predicate[i] != ']') {
-        if (predicate[i] == '\'') {
-            i++;
-            while (predicate[i] != '\'') {
-                i++;
-            }
-        }
-        if (predicate[i] == '"') {
-            i++;
-            while (predicate[i] != '"') {
-                if (predicate[i] == '\\') {
-                    i += 2;
-                    continue;
-                }
-                i++;
-            }
-        }
-        i++;
-    }
-    return &predicate[i];
-}
-
-/**
  * @brief Validate and store value of the YANG built-in instance-identifier type.
  *
  * Implementation of the ly_type_store_clb.
@@ -1591,25 +1409,18 @@ ly_type_path_predicate_end(const char *predicate)
 static LY_ERR
 ly_type_store_instanceid(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
                          ly_clb_resolve_prefix resolve_prefix, void *parser, LYD_FORMAT format,
-                         const void *UNUSED(context_node), const struct lyd_node *tree,
-                         struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
+                         const void *context_node, const struct lyd_node *tree, struct lyd_value *storage,
+                         const char **canonized, struct ly_err_item **err)
 {
     LY_ERR ret = LY_EVALID;
     struct lysc_type_instanceid *type_inst = (struct lysc_type_instanceid *)type;
-    const char *id, *prefix, *val, *token, *node_start = NULL;
-    size_t id_len, prefix_len, val_len;
     char *errmsg = NULL;
-    const struct lysc_node *node_s = NULL;
-    const struct lyd_node *node_d = NULL;
     struct lyd_value_prefix *prefixes = NULL;
     LY_ARRAY_SIZE_TYPE u;
-    uint32_t c;
-    struct lyd_value_path *target = NULL, *t;
-    struct lyd_value_path_predicate *pred;
+    struct ly_path *path = NULL;
     struct ly_set predicates = {0};
-    uint64_t pos;
-    int i;
-    const char *first_pred = NULL;
+    struct lyxp_expr *exp = NULL;
+    const struct lys_module *cur_mod;
 
     /* init */
     *err = NULL;
@@ -1624,7 +1435,7 @@ ly_type_store_instanceid(const struct ly_ctx *ctx, struct lysc_type *type, const
 
     if (!(options & LY_TYPE_OPTS_SCHEMA) && (options & LY_TYPE_OPTS_SECOND_CALL) && (options & LY_TYPE_OPTS_STORE)) {
         /* the second run in data tree, the first one ended with LY_EINCOMPLETE, but we have prepared the target structure */
-        if (!lyd_target(storage->target, tree)) {
+        if (ly_path_eval(storage->target, tree, NULL)) {
             /* in error message we print the JSON format of the instance-identifier - in case of XML, it is not possible
              * to get the exactly same string as original, JSON is less demanding and still well readable/understandable. */
             int dynamic = 0;
@@ -1639,282 +1450,41 @@ ly_type_store_instanceid(const struct ly_ctx *ctx, struct lysc_type *type, const
             goto error;
         }
         return LY_SUCCESS;
-    } else {
-        /* a) first run without prepared target, we will need all the prefixes used in the instance-identifier value
-         * b) second run in schema tree - original value was stored as a canonical value and received now as value
-         */
-        prefixes = ly_type_get_prefixes(ctx, value, value_len, resolve_prefix, parser);
     }
 
-    if (value[0] != '/') {
-        asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - instance-identifier must starts with '/'.",
-                 (int)value_len, value);
+    /* get all used prefixes */
+    prefixes = ly_type_get_prefixes(ctx, value, value_len, resolve_prefix, parser);
+
+    /* parse the value */
+    ret = ly_path_parse(ctx, value, value_len, LY_PATH_BEGIN_ABSOLUTE, LY_PATH_LREF_FALSE, LY_PATH_PREFIX_MANDATORY,
+                        LY_PATH_PRED_SIMPLE, &exp);
+    if (ret) {
+        asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - syntax error.", (int)value_len, value);
         goto error;
     }
 
-    /* parse the value and try to resolve it in:
-     * a) schema tree - instance is not required, just check that the path is instantiable
-     * b) data tree - instance is required, so find it */
-    for (token = value; (size_t)(token - value) < value_len;) {
-        if (token[0] == '/') {
-            /* node identifier */
-            node_start = &token[1];
+    /* resolve it on schema tree */
+    cur_mod = (options & (LY_TYPE_OPTS_SCHEMA | LY_TYPE_OPTS_INCOMPLETE_DATA)) ?
+              ((struct lysc_node *)context_node)->module : ((struct lyd_node *)context_node)->schema->module;
+    ret = ly_path_compile(cur_mod, NULL, exp, LY_PATH_LREF_FALSE, ly_type_stored_prefixes_clb, prefixes, format, &path);
+    if (ret) {
+        asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - semantic error.", (int)value_len, value);
+        goto error;
+    }
 
-            /* clean them to correctly check predicates presence restrictions */
-            pos = 0;
-            ly_set_clean(&predicates, NULL);
-            first_pred = NULL;
-
-            token++;
-            if (ly_type_store_instanceid_checknodeid(value, value_len, options, type_inst->require_instance,
-                                                     &token, prefixes, format, &node_s, &node_d, tree, &errmsg)) {
-                goto error;
-            }
-
-            if (node_d) {
-                node_s = node_d->schema;
-            }
-            if (token[0] == '[') {
-                /* predicate follows, this must be a list or leaf-list */
-                if (node_s->nodetype != LYS_LIST && node_s->nodetype != LYS_LEAFLIST) {
-                    asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - predicate \"%.*s\" for %s is not accepted.",
-                             (int)value_len, value, (int)(ly_type_path_predicate_end(token) - token) + 1, token,
-                             lys_nodetype2str(node_s->nodetype));
-                    goto error;
-                }
-            }
-
-            if (options & LY_TYPE_OPTS_STORE) {
-                /* prepare target path structure */
-                LY_ARRAY_NEW_GOTO(ctx, target, t, ret, error);
-                t->node = node_s;
-            }
-        } else if (token[0] == '[') {
-            /* predicate */
-            const char *pred_start = &token[0];
-            const char *pred_errmsg = NULL;
-            const struct lysc_node *key_s = node_s;
-            const struct lyd_node *key_d = node_d;
-
-            if (!first_pred) {
-                first_pred = pred_start;
-                c = predicates.count;
-            }
-
-check_predicates:
-            if (ly_parse_instance_predicate(&token, value_len - (token - value), format, &prefix, &prefix_len, &id,
-                    &id_len, &val, &val_len, &pred_errmsg)) {
-                asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value's predicate \"%.*s\" (%s).", (int)value_len, value,
-                         (int)(token - pred_start), pred_start, pred_errmsg);
-                goto error;
-            }
-
-            if (options & LY_TYPE_OPTS_STORE) {
-                /* update target path structure by adding predicate info */
-                LY_ARRAY_NEW_GOTO(ctx, t->predicates, pred, ret, error);
-            }
-
-            if (prefix || (id && id[0] != '.')) {
-                /* key-predicate */
-                const char *start, *t;
-                start = t = prefix ? prefix : id;
-
-                /* check that the parent is a list */
-                if (node_s->nodetype != LYS_LIST) {
-                    asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - key-predicate \"%.*s\" is accepted only for lists, not %s.",
-                             (int)value_len, value, (int)(token - pred_start), pred_start, lys_nodetype2str(node_s->nodetype));
-                    goto error;
-                }
-
-                /* resolve the key in predicate */
-                if (ly_type_store_instanceid_checknodeid(value, value_len, options, type_inst->require_instance,
-                                                            &t, prefixes, format, &key_s, &key_d, tree, &errmsg)) {
-                    goto error;
-                }
-                if (key_d) {
-                    key_s = key_d->schema;
-                }
-
-                /* check the key in predicate is really a key */
-                if (!(key_s->flags & LYS_KEY)) {
-                    asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - node \"%s\" used in key-predicate \"%.*s\" must be a key.",
-                            (int)value_len, value, key_s->name, (int)(token - pred_start), pred_start);
-                    goto error;
-                }
-
-                if (node_d) {
-                    while (node_d) {
-                        if (!lyd_value_compare((const struct lyd_node_term*)key_d, val, val_len, resolve_prefix, parser, format, tree)) {
-                            /* match */
-                            break;
-                        }
-                        /* go to another instance */
-                        t = start;
-                        lyd_find_sibling_next(node_d->next, node_s->module, node_s->name, 0, NULL, 0, (struct lyd_node **)&node_d);
-                        if (node_d) {
-                            /* reset variables to the first predicate of this list to check it completely */
-                            key_d = node_d;
-                            pred_start = token = first_pred;
-                            predicates.count = c;
-                            goto check_predicates;
-                        }
-                    }
-                    if (!node_d) {
-                        const char *pathstr_end = token;
-                        /* there maybe multiple predicates and we want to print all here, since them all identify the instance */
-                        for (pathstr_end = ly_type_path_predicate_end(token);
-                                pathstr_end[1] == '[';
-                                pathstr_end = ly_type_path_predicate_end(pathstr_end + 1));
-                        pathstr_end++;
-                        asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - key-predicate \"%.*s\" does not match any \"%s\" instance.",
-                                 (int)value_len, value, (int)(pathstr_end - first_pred), first_pred, node_s->name);
-                        goto error;
-                    }
-                } else {
-                    /* check value to the type */
-                    if (lys_value_validate(NULL, key_s, val, val_len, resolve_prefix, parser, format)) {
-                        asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - key-predicate \"%.*s\"'s key value is invalid.",
-                                 (int)value_len, value, (int)(token - pred_start), pred_start);
-                        goto error;
-                    }
-                }
-
-                if (options & LY_TYPE_OPTS_STORE) {
-                    /* update target path structure by adding predicate info */
-                    pred->type = 1;
-                    pred->key = key_s;
-                    LY_CHECK_GOTO(ly_type_store_instanceid_parse_predicate_value(ctx, key_s, val, val_len, prefixes, format, pred, &errmsg), error);
-                }
-                i = predicates.count;
-                if (i != ly_set_add(&predicates, (void*)key_s, 0)) {
-                    /* the same key is used repeatedly */
-                    asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - key \"%s\" is referenced the second time in key-predicate \"%.*s\".",
-                             (int)value_len, value, key_s->name, (int)(token - pred_start), pred_start);
-                    goto error;
-                }
-                if (token[0] != '[') {
-                    /* now we should have all the keys */
-                    unsigned int keys_count = 0;
-                    for (struct lysc_node *key = ((struct lysc_node_list*)node_s)->child;
-                            key && key->nodetype == LYS_LEAF && (key->flags & LYS_KEY);
-                            keys_count++, key = key->next);
-                    if (keys_count != predicates.count) {
-                        asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - missing %u key(s) for the list instance \"%.*s\".",
-                                 (int)value_len, value, keys_count - predicates.count, (int)(token - node_start), node_start);
-                        goto error;
-                    }
-                }
-            } else if (id) {
-                /* leaf-list-predicate */
-                if (predicates.count) {
-                    asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - "
-                             "leaf-list-predicate (\"%.*s\") cannot be used repeatedly for a single node.",
-                             (int)value_len, value, (int)(token - pred_start), pred_start);
-                    goto error;
-                }
-
-                /* check that the parent is a leaf-list */
-                if (node_s->nodetype != LYS_LEAFLIST) {
-                    asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - leaf-list-predicate \"%.*s\" is accepted only for leaf-lists, not %s.",
-                             (int)value_len, value, (int)(token - pred_start), pred_start, lys_nodetype2str(node_s->nodetype));
-                    goto error;
-                }
-
-                if (key_d) {
-                    while (key_d) {
-                        if (!lyd_value_compare((const struct lyd_node_term*)key_d, val, val_len, resolve_prefix, parser, format, tree)) {
-                            /* match */
-                            break;
-                        }
-                        /* go to another instance */
-                        lyd_find_sibling_next(key_d->next, node_s->module, node_s->name, 0, NULL, 0, (struct lyd_node **)&key_d);
-                    }
-                    if (!key_d) {
-                        asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - leaf-list-predicate \"%.*s\" does not match any \"%s\" instance.",
-                                 (int)value_len, value, (int)(token - pred_start), pred_start, node_s->name);
-                        goto error;
-                    }
-                } else {
-                    /* check value to the type */
-                    if (lys_value_validate(NULL, key_s, val, val_len, resolve_prefix, parser, format)) {
-                        asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - leaf-list-predicate \"%.*s\"'s value is invalid.",
-                                 (int)value_len, value, (int)(token - pred_start), pred_start);
-                        goto error;
-                    }
-                }
-
-                if (options & LY_TYPE_OPTS_STORE) {
-                    /* update target path structure by adding predicate info */
-                    pred->type = 2;
-                    pred->key = node_s;
-                    LY_CHECK_GOTO(ly_type_store_instanceid_parse_predicate_value(ctx, node_s, val, val_len, prefixes, format, pred, &errmsg), error);
-                }
-                ly_set_add(&predicates, (void*)node_s, 0);
-            } else {
-                /* pos predicate */
-                if (pos) {
-                    asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - "
-                             "position predicate (\"%.*s\") cannot be used repeatedly for a single node.",
-                             (int)value_len, value, (int)(token - pred_start), pred_start);
-                    goto error;
-                }
-
-                /* check that the parent is a list without keys
-                 * The check is actually commented, libyang does not want to be so strict here, since
-                 * we see usecases even for lists with keys and leaf-lists
-                if (node_s->nodetype != LYS_LIST || ((struct lysc_node_list*)node_s)->keys) {
-                    asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - position predicate \"%.*s\" is accepted only for lists without keys.",
-                             (int)value_len, value, (int)(token - pred_start), pred_start, lys_nodetype2str(node_s->nodetype));
-                    goto error;
-                }
-                */
-
-                if (ly_type_parse_uint("instance-identifier", 10, UINT64_MAX, val, val_len, &pos, err)) {
-                    goto error;
-                }
-                if (node_d) {
-                    /* get the correct instance */
-                    for (uint64_t u = pos; u > 1; u--) {
-                        lyd_find_sibling_next(node_d->next, node_s->module, node_s->name, 0, NULL, 0, (struct lyd_node **)&node_d);
-                        if (!node_d) {
-                            asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - "
-                                     "position-predicate %"PRIu64" is bigger than number of instances in the data tree (%"PRIu64").",
-                                     (int)value_len, value, pos, pos - u + 1);
-                            goto error;
-                        }
-                    }
-                } else {
-                    /* check that there is not a limit below the position number */
-                    if (node_s->nodetype == LYS_LIST) {
-                        if (((struct lysc_node_list*)node_s)->max < pos) {
-                            asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - position-predicate %"PRIu64" is bigger than allowed max-elements (%u).",
-                                     (int)value_len, value, pos, ((struct lysc_node_list*)node_s)->max);
-                            goto error;
-                        }
-                    } else {
-                        if (((struct lysc_node_leaflist*)node_s)->max < pos) {
-                            asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - position-predicate %"PRIu64" is bigger than allowed max-elements (%u).",
-                                     (int)value_len, value, pos, ((struct lysc_node_leaflist*)node_s)->max);
-                            goto error;
-                        }
-                    }
-                }
-
-                if (options & LY_TYPE_OPTS_STORE) {
-                    /* update target path structure by adding predicate info */
-                    pred->type = 0;
-                    pred->position = pos;
-                }
-            }
-        } else {
-            asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value at character %lu (%.*s).",
-                     (int)value_len, value, token - value + 1, (int)(value_len - (token - value)), token);
+    /* find it in data */
+    if (!(options & LY_TYPE_OPTS_INCOMPLETE_DATA) && !(options & LY_TYPE_OPTS_SCHEMA) && type_inst->require_instance) {
+        ret = ly_path_eval(path, tree, NULL);
+        if (ret) {
+            asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - instance not found.", (int)value_len, value);
             goto error;
         }
     }
 
+    /* store resolved schema path */
     if (options & LY_TYPE_OPTS_STORE) {
-        storage->target = target;
+        storage->target = path;
+        path = NULL;
         if (!storage->original) {
             /* it may be already present from the first call, in case this is the second */
             storage->original = lydict_insert(ctx, value_len ? value : "", value_len);
@@ -1927,6 +1497,8 @@ cleanup:
     }
     LY_ARRAY_FREE(prefixes);
     ly_set_erase(&predicates, NULL);
+    lyxp_expr_free(ctx, exp);
+    ly_path_free(ctx, path);
 
     if (options & LY_TYPE_OPTS_CANONIZE) {
         /* instance-identifier does not have a canonical form (lexical representation in in XML and JSON are
@@ -1950,8 +1522,8 @@ error:
     }
     LY_ARRAY_FREE(prefixes);
     ly_set_erase(&predicates, NULL);
-
-    lyd_value_free_path(ctx, target);
+    lyxp_expr_free(ctx, exp);
+    ly_path_free(ctx, path);
 
     if (!*err) {
         *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
@@ -1976,29 +1548,36 @@ ly_type_compare_instanceid(const struct lyd_value *val1, const struct lyd_value 
     }
 
     LY_ARRAY_FOR(val1->target, u) {
-        struct lyd_value_path *s1 = &val1->target[u];
-        struct lyd_value_path *s2 = &val2->target[u];
+        struct ly_path *s1 = &val1->target[u];
+        struct ly_path *s2 = &val2->target[u];
 
-        if (s1->node != s2->node || (s1->predicates && !s2->predicates) || (!s1->predicates && s2->predicates) ||
+        if (s1->node != s2->node || (s1->pred_type != s2->pred_type) ||
                 (s1->predicates && LY_ARRAY_SIZE(s1->predicates) != LY_ARRAY_SIZE(s2->predicates))) {
             return LY_ENOT;
         }
         if (s1->predicates) {
             LY_ARRAY_FOR(s1->predicates, v) {
-                struct lyd_value_path_predicate *pred1 = &s1->predicates[v];
-                struct lyd_value_path_predicate *pred2 = &s2->predicates[v];
+                struct ly_path_predicate *pred1 = &s1->predicates[v];
+                struct ly_path_predicate *pred2 = &s2->predicates[v];
 
-                if (pred1->type != pred2->type) {
-                    return LY_ENOT;
-                }
-                if (pred1->type == 0) {
+                switch (s1->pred_type) {
+                case LY_PATH_PREDTYPE_NONE:
+                    break;
+                case LY_PATH_PREDTYPE_POSITION:
                     /* position predicate */
                     if (pred1->position != pred2->position) {
                         return LY_ENOT;
                     }
-                } else {
-                    /* key-predicate or leaf-list-predicate */
-                    if (pred1->key != pred2->key || ((struct lysc_node_leaf*)pred1->key)->type->plugin->compare(pred1->value, pred2->value)) {
+                    break;
+                case LY_PATH_PREDTYPE_LIST:
+                    /* key-predicate */
+                    if (pred1->key != pred2->key || ((struct lysc_node_leaf*)pred1->key)->type->plugin->compare(&pred1->value, &pred2->value)) {
+                        return LY_ENOT;
+                    }
+                    break;
+                case LY_PATH_PREDTYPE_LEAFLIST:
+                    /* leaf-list predicate */
+                    if (((struct lysc_node_leaflist *)s1->node)->type->plugin->compare(&pred1->value, &pred2->value)) {
                         return LY_ENOT;
                     }
                 }
@@ -2015,7 +1594,8 @@ ly_type_compare_instanceid(const struct lyd_value *val1, const struct lyd_value 
  * Implementation of the ly_type_print_clb.
  */
 static const char *
-ly_type_print_instanceid(const struct lyd_value *value, LYD_FORMAT format, ly_clb_get_prefix get_prefix, void *printer, int *dynamic)
+ly_type_print_instanceid(const struct lyd_value *value, LYD_FORMAT format, ly_clb_get_prefix get_prefix, void *printer,
+                         int *dynamic)
 {
     LY_ARRAY_SIZE_TYPE u, v;
     char *result = NULL;
@@ -2031,14 +1611,19 @@ ly_type_print_instanceid(const struct lyd_value *value, LYD_FORMAT format, ly_cl
         LY_ARRAY_FOR(value->target, u) {
             ly_strcat(&result, "/%s:%s", get_prefix(value->target[u].node->module, printer), value->target[u].node->name);
             LY_ARRAY_FOR(value->target[u].predicates, v) {
-                struct lyd_value_path_predicate *pred = &value->target[u].predicates[v];
-                if (pred->type == 0) {
+                struct ly_path_predicate *pred = &value->target[u].predicates[v];
+                switch (value->target[u].pred_type) {
+                case LY_PATH_PREDTYPE_NONE:
+                    break;
+                case LY_PATH_PREDTYPE_POSITION:
                     /* position predicate */
                     ly_strcat(&result, "[%"PRIu64"]", pred->position);
-                } else if (pred->type == 1) {
+                    break;
+                case LY_PATH_PREDTYPE_LIST:
+                {
                     /* key-predicate */
                     int d = 0;
-                    const char *value = pred->value->realtype->plugin->print(pred->value, format, get_prefix, printer, &d);
+                    const char *value = pred->value.realtype->plugin->print(&pred->value, format, get_prefix, printer, &d);
                     char quot = '\'';
                     if (strchr(value, quot)) {
                         quot = '"';
@@ -2047,10 +1632,13 @@ ly_type_print_instanceid(const struct lyd_value *value, LYD_FORMAT format, ly_cl
                     if (d) {
                         free((char*)value);
                     }
-                } else if (pred->type == 2) {
+                    break;
+                }
+                case LY_PATH_PREDTYPE_LEAFLIST:
+                {
                     /* leaf-list-predicate */
                     int d = 0;
-                    const char *value = pred->value->realtype->plugin->print(pred->value, format, get_prefix, printer, &d);
+                    const char *value = pred->value.realtype->plugin->print(&pred->value, format, get_prefix, printer, &d);
                     char quot = '\'';
                     if (strchr(value, quot)) {
                         quot = '"';
@@ -2059,6 +1647,8 @@ ly_type_print_instanceid(const struct lyd_value *value, LYD_FORMAT format, ly_cl
                     if (d) {
                         free((char*)value);
                     }
+                    break;
+                }
                 }
             }
         }
@@ -2073,14 +1663,19 @@ ly_type_print_instanceid(const struct lyd_value *value, LYD_FORMAT format, ly_cl
                 ly_strcat(&result, "/%s", value->target[u].node->name);
             }
             LY_ARRAY_FOR(value->target[u].predicates, v) {
-                struct lyd_value_path_predicate *pred = &value->target[u].predicates[v];
-                if (pred->type == 0) {
+                struct ly_path_predicate *pred = &value->target[u].predicates[v];
+                switch (value->target[u].pred_type) {
+                case LY_PATH_PREDTYPE_NONE:
+                    break;
+                case LY_PATH_PREDTYPE_POSITION:
                     /* position predicate */
                     ly_strcat(&result, "[%"PRIu64"]", pred->position);
-                } else if (pred->type == 1) {
+                    break;
+                case LY_PATH_PREDTYPE_LIST:
+                {
                     /* key-predicate */
                     int d = 0;
-                    const char *value = pred->value->realtype->plugin->print(pred->value, format, get_prefix, printer, &d);
+                    const char *value = pred->value.realtype->plugin->print(&pred->value, format, get_prefix, printer, &d);
                     char quot = '\'';
                     if (strchr(value, quot)) {
                         quot = '"';
@@ -2089,10 +1684,13 @@ ly_type_print_instanceid(const struct lyd_value *value, LYD_FORMAT format, ly_cl
                     if (d) {
                         free((char*)value);
                     }
-                } else if (pred->type == 2) {
+                    break;
+                }
+                case LY_PATH_PREDTYPE_LEAFLIST:
+                {
                     /* leaf-list-predicate */
                     int d = 0;
-                    const char *value = pred->value->realtype->plugin->print(pred->value, format, get_prefix, printer, &d);
+                    const char *value = pred->value.realtype->plugin->print(&pred->value, format, get_prefix, printer, &d);
                     char quot = '\'';
                     if (strchr(value, quot)) {
                         quot = '"';
@@ -2101,6 +1699,8 @@ ly_type_print_instanceid(const struct lyd_value *value, LYD_FORMAT format, ly_cl
                     if (d) {
                         free((char*)value);
                     }
+                    break;
+                }
                 }
             }
         }
@@ -2118,39 +1718,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LYD_FORMAT format, ly_cl
 static LY_ERR
 ly_type_dup_instanceid(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
-    LY_ARRAY_SIZE_TYPE u, v;
-
-    if (!original->target) {
-        return LY_SUCCESS;
-    }
-
-    LY_ARRAY_CREATE_RET(ctx, dup->target, LY_ARRAY_SIZE(original->target), LY_EMEM);
-    LY_ARRAY_FOR(original->target, u) {
-        LY_ARRAY_INCREMENT(dup->target);
-        dup->target[u].node = original->target[u].node;
-        if (original->target[u].predicates) {
-            LY_ARRAY_CREATE_RET(ctx, dup->target[u].predicates, LY_ARRAY_SIZE(original->target[u].predicates), LY_EMEM);
-            LY_ARRAY_FOR(original->target[u].predicates, v) {
-                struct lyd_value_path_predicate *pred = &original->target[u].predicates[v];
-
-                LY_ARRAY_INCREMENT(dup->target[u].predicates);
-                dup->target[u].predicates[v].type = pred->type;
-                if (pred->type) {
-                    /* key-predicate or leaf-list-predicate */
-                    dup->target[u].predicates[v].key = pred->key;
-                    dup->target[u].predicates[v].value = calloc(1, sizeof *pred->value);
-                    LY_CHECK_ERR_RET(!dup->target[u].predicates[v].value, LOGMEM(ctx), LY_EMEM);
-                    dup->target[u].predicates[v].value->realtype = pred->value->realtype;
-                    pred->value->realtype->plugin->duplicate(ctx, pred->value, dup->target[u].predicates[v].value);
-                } else {
-                    /* position-predicate */
-                    dup->target[u].predicates[v].position = pred->position;
-                }
-            }
-        }
-    }
-
-    return LY_SUCCESS;
+    return ly_path_dup(ctx, original->target, &dup->target);
 }
 
 /**
@@ -2161,197 +1729,62 @@ ly_type_dup_instanceid(const struct ly_ctx *ctx, const struct lyd_value *origina
 static void
 ly_type_free_instanceid(const struct ly_ctx *ctx, struct lyd_value *value)
 {
-    lyd_value_free_path(ctx, value->target);
+    ly_path_free(ctx, value->target);
     value->target = NULL;
     ly_type_free_original(ctx, value);
 }
 
-/**
- * @brief Find leafref target in instance data.
- */
-const struct lyd_node *
-ly_type_find_leafref(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len,
-                     const struct lyd_node *context_node, const struct lyd_node *tree, struct lyd_value *storage, char **errmsg)
+LY_ERR
+ly_type_find_leafref(const struct lysc_type_leafref *lref, const struct lyd_node *node, struct lyd_value *value,
+                     const struct lyd_node *tree, struct lyd_node **target, char **errmsg)
 {
-    struct lysc_type_leafref *type_lr = (struct lysc_type_leafref*)type;
-    const char *first_pred = NULL;
-    const struct lyd_node *start_search;
-    const char *prefix, *id;
-    size_t prefix_len, id_len;
-    const struct lys_module *mod_node = NULL;
-    const char *token = type_lr->path;
-    const struct lyd_node *node;
-    struct lys_module *mod_context = context_node->schema->module;
+    LY_ERR ret;
+    struct lyxp_set set = {0};
+    const char *val_str;
+    int dynamic;
+    uint32_t i;
 
-    if (token[0] == '/') {
-        /* absolute-path */
-        node = NULL;
-    } else {
-        /*relative-path */
-        node = context_node;
+    /* find all target data instances */
+    ret = lyxp_eval(lref->path, LYD_SCHEMA, lref->path_context, node, LYXP_NODE_ELEM, tree, &set, 0);
+    if (ret) {
+        val_str = lref->plugin->print(value, LYD_JSON, json_print_get_prefix, NULL, &dynamic);
+        asprintf(errmsg, "Invalid leafref value \"%s\" - XPath evaluation error.", val_str);
+        if (dynamic) {
+            free((char *)val_str);
+        }
+        goto error;
     }
 
-    /* resolve leafref path */
-    while (*token) {
-        if (!strncmp(token, "../", 3)) {
-            /* level up */
-            token += 2;
-            node = (struct lyd_node*)node->parent;
-        } else if (!strncmp(token, "/../", 4)) {
-            /* level up */
-            token += 3;
-            node = (struct lyd_node*)node->parent;
-        } else if (*token == '/') {
-            /* level down */
+    /* check whether any matches */
+    for (i = 0; i < set.used; ++i) {
+        if (set.val.nodes[i].type != LYXP_NODE_ELEM) {
+            continue;
+        }
 
-            /* reset predicates */
-            first_pred = NULL;
-
-            token++;
-            ly_parse_nodeid(&token, &prefix, &prefix_len, &id, &id_len);
-            mod_node = lys_module_find_prefix(mod_context, prefix, prefix_len);
-
-            if (node) {
-                /* inner node */
-                start_search = lyd_node_children(node);
-next_instance_inner:
-                if (start_search) {
-                    lyd_find_sibling_next(start_search, mod_node, id, id_len, NULL, 0, (struct lyd_node **)&node);
-                } else {
-                    node = NULL;
-                }
-            } else {
-                /* top-level node */
-                start_search = tree;
-next_instance_toplevel:
-                lyd_find_sibling_next(start_search, mod_node, id, id_len, NULL, 0, (struct lyd_node **)&node);
-            }
-            if (!node) {
-                /* node not found */
-                const char *pathstr_end = token;
-                if (first_pred) {
-                    /* some node instances actually exist, but they do not fit the predicate restrictions,
-                     * here we want to find the end of the list's predicate(s) */
-                    for (pathstr_end = ly_type_path_predicate_end(token);
-                            pathstr_end[1] == '[';
-                            pathstr_end = ly_type_path_predicate_end(pathstr_end + 1));
-                    /* move after last ']' (after each predicate follows "/something" since path must points to
-                     * a leaf/leaflist and predicates are allowed only for lists) */
-                    pathstr_end++;
-                }
-                asprintf(errmsg, "Invalid leafref - required instance \"%.*s\" does not exists in the data tree(s).",
-                         (int)(pathstr_end - type_lr->path), type_lr->path);
-                return NULL;
-            }
-        } else if (*token == '[') {
-            /* predicate */
-            const char *pred_start = token;
-            const struct lyd_node_term *key;
-            const struct lyd_node *value;
-            const struct lys_module *mod_pred;
-            const char *pred_end = ly_type_path_predicate_end(token);
-            const char *src_prefix, *src;
-            size_t src_prefix_len, src_len;
-
-            /* remember start of the first predicate to be able to return back when comparison fails
-             * on a subsequent predicate in case of multiple predicates - on the next node instance
-             * we have to start again with the first predicate */
-            if (!first_pred) {
-                first_pred = pred_start;
-            }
-
-            /* move after "[ *WSP" */
-            token++;
-            for (; isspace(*token); token++);
-
-            /* parse node-identifier */
-            ly_parse_nodeid(&token, &src_prefix, &src_prefix_len, &src, &src_len);
-            mod_pred = lys_module_find_prefix(mod_context, src_prefix, src_prefix_len);
-
-            lyd_find_sibling_next(lyd_node_children(node), mod_pred, src, src_len, NULL, 0, (struct lyd_node **)&key);
-            if (!key) {
-                asprintf(errmsg, "Internal error - missing expected list's key \"%.*s\" in module \"%s\" (%s:%d).",
-                         (int)src_len, src, mod_pred->name, __FILE__, __LINE__);
-                LOGINT(ctx);
-                return NULL;
-            }
-
-            /* move after "*WSP = *WSP" */
-            for (; *token != '='; token++);
-            for (token++; isspace(*token); token++);
-            /* move after "current() *WSP / *WSP 1*(.. *WSP / *WSP)" */
-            token = strchr(token, ')') + 1;
-            for (; *token != '/'; token++);
-            for (; *token != '.'; token++);
-            for (value = (const struct lyd_node*)context_node; *token == '.'; ) {
-                value = (struct lyd_node*)value->parent; /* level up by .. */
-                for (token += 2; *token != '/'; token++);
-                for (token++; isspace(*token); token++);
-            }
-
-            /* parse "*(node-identifier *WSP / *WSP) node-identifier */
-            do {
-                /* parse node-identifier */
-                ly_parse_nodeid(&token, &src_prefix, &src_prefix_len, &src, &src_len);
-                mod_pred = lys_module_find_prefix(mod_context, src_prefix, src_prefix_len);
-
-                if (!value) {
-                    /* top-level search */
-                    lyd_find_sibling_next(tree, mod_pred, src, src_len, NULL, 0, (struct lyd_node **)&value);
-                } else {
-                    /* inner node */
-                    lyd_find_sibling_next(lyd_node_children(value), mod_pred, src, src_len, NULL, 0, (struct lyd_node **)&value);
-                }
-                if (!value) {
-                    /* node not found - try another instance */
-                    goto next_instance;
-                }
-
-                for (; isspace(*token); token++);
-                if (*token == '/') {
-                    /* - move after it and consume whitespaces */
-                    for (token++; isspace(*token); token++);
-                }
-            } while (*token != ']');
-
-            /* compare key and the value */
-            if (key->value.realtype->plugin->compare(&key->value, &((struct lyd_node_term*)value)->value)) {
-                /* nodes does not match, try another instance */
-next_instance:
-                token = first_pred;
-                start_search = node->next;
-                if (node->parent) {
-                    goto next_instance_inner;
-                } else {
-                    goto next_instance_toplevel;
-                }
-            }
-            /* match */
-
-            /* move after predicate */
-            assert(token == pred_end);
-            token = pred_end + 1;
+        if (!lref->plugin->compare(&((struct lyd_node_term *)set.val.nodes[i].node)->value, value)) {
+            break;
         }
     }
-
-    /* check value */
-    while (node && type_lr->realtype->plugin->compare(&((struct lyd_node_term*)node)->value, storage)) {
-        /* values do not match, try another instance of the node */
-        const struct lysc_node *schema = node->schema;
-        LY_LIST_FOR(node->next, node) {
-            if (node->schema == schema) {
-                break;
-            }
+    if (i == set.used) {
+        val_str = lref->plugin->print(value, LYD_JSON, json_print_get_prefix, NULL, &dynamic);
+        asprintf(errmsg, "Invalid leafref value \"%s\" - no target instance \"%s\" with the same value.", val_str,
+                 lref->path->expr);
+        if (dynamic) {
+            free((char *)val_str);
         }
-    }
-    if (!node) {
-        /* node not found */
-        asprintf(errmsg, "Invalid leafref value \"%.*s\" - required instance \"%.*s\" with this value does not exists"
-                 " in the data tree(s).", (int)value_len, value, (int)(token - type_lr->path), type_lr->path);
-        return NULL;
+        goto error;
     }
 
-    return node;
+    if (target) {
+        *target = set.val.nodes[i].node;
+    }
+
+    lyxp_set_free_content(&set);
+    return LY_SUCCESS;
+
+error:
+    lyxp_set_free_content(&set);
+    return LY_ENOTFOUND;
 }
 
 /**
@@ -2365,11 +1798,13 @@ ly_type_store_leafref(const struct ly_ctx *ctx, struct lysc_type *type, const ch
                       const void *context_node, const struct lyd_node *tree,
                       struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
-    LY_ERR ret;
+    LY_ERR ret = LY_SUCCESS;
     char *errmsg = NULL;
     struct lysc_type_leafref *type_lr = (struct lysc_type_leafref*)type;
     int storage_dummy = 0;
     const char *orig = NULL;
+    struct ly_path *p = NULL;
+    struct ly_set *set = NULL;
 
     if (!type_lr->realtype) {
         if ((options & LY_TYPE_OPTS_SCHEMA) && (options & LY_TYPE_OPTS_INCOMPLETE_DATA)) {
@@ -2430,9 +1865,12 @@ ly_type_store_leafref(const struct ly_ctx *ctx, struct lysc_type *type, const ch
             goto cleanup;
         }
 
-        /* find corresponding data instance */
-        if (!ly_type_find_leafref(ctx, type, value, value_len, (const struct lyd_node *)context_node, tree, storage, &errmsg)) {
-            goto error;
+        /* check leafref target existence */
+        ret = ly_type_find_leafref(type_lr, (struct lyd_node *)context_node, storage, tree, NULL, &errmsg);
+        if (ret) {
+            *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
+            ret = LY_EVALID;
+            goto cleanup;
         }
     }
 
@@ -2442,20 +1880,9 @@ cleanup:
         free(storage);
     }
     lydict_remove(ctx, orig);
+    ly_path_free(ctx, p);
+    ly_set_free(set, NULL);
     return ret;
-
-error:
-    if (!*err) {
-        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
-    }
-    if (storage_dummy) {
-        storage->realtype->plugin->free(ctx, storage);
-        free(storage);
-    }
-    lydict_remove(ctx, orig);
-
-    return LY_EVALID;
-
 }
 
 /**
@@ -2523,6 +1950,7 @@ ly_type_store_union(const struct ly_ctx *ctx, struct lysc_type *type, const char
     struct lysc_type_union *type_u = (struct lysc_type_union*)type;
     struct lyd_value_subvalue *subvalue;
     char *errmsg = NULL;
+    int prev_lo;
 
     if ((options & LY_TYPE_OPTS_SECOND_CALL) && (options & LY_TYPE_OPTS_STORE)) {
         subvalue = storage->subvalue;
@@ -2558,9 +1986,14 @@ search_subtype:
         /* use the first usable sybtype to store the value */
         LY_ARRAY_FOR(type_u->types, u) {
             subvalue->value->realtype = type_u->types[u];
+
+            /* turn logging off */
+            prev_lo = ly_log_options(0);
             ret = type_u->types[u]->plugin->store(ctx, type_u->types[u], value, value_len, options & ~LY_TYPE_OPTS_DYNAMIC,
                                                   ly_type_stored_prefixes_clb, subvalue->prefixes, format,
                                                   context_node, tree, subvalue->value, canonized, err);
+            /* restore logging */
+            ly_log_options(prev_lo);
             if (ret == LY_SUCCESS || ret == LY_EINCOMPLETE) {
                 /* success (or not yet complete) */
                 break;

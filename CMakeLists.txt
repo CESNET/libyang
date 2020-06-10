@@ -206,6 +206,7 @@ set(libsrc
     src/log.c
     src/hash_table.c
     src/set.c
+    src/path.c
     src/context.c
     src/tree_data.c
     src/tree_data_free.c

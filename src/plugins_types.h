@@ -27,6 +27,7 @@ struct lysc_ident;
 struct lysc_pattern;
 struct lysc_range;
 struct lysc_type;
+struct lysc_type_leafref;
 
 /**
  * @internal
@@ -331,24 +332,18 @@ LY_ERR ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, i
 LY_ERR ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str, size_t str_len, struct ly_err_item **err);
 
 /**
- * @brief Find leafref target in instance data.
+ * @brief Find leafref target in data.
  *
- * @param[in] ctx libyang Context
- * @param[in] type Type of the value being canonized.
- * @param[in] value Lexical representation of the value to be validated (and canonized).
- *            It is never NULL, empty string is represented as "" with zero @p value_len.
- * @param[in] value_len Length (number of bytes) of the given \p value.
- * @param[in] context_node The @p value's node for the case that the require-instance restriction is supposed to be resolved.
- * @param[in] tree External data tree (e.g. when validating RPC/Notification) where the required data
- *            instance can be placed.
- *
- * @param[in] storage Parsed @p value.
+ * @param[in] lref Leafref type.
+ * @param[in] node Context node.
+ * @param[in] value Target value.
+ * @param[in] tree Full data tree to search in.
+ * @param[out] target Optional found target.
  * @param[out] errmsg Error message in case of error.
- * @return Leafref target node or NULL on error when @p errmsg is always set.
+ * @return LY_ERR value.
  */
-const struct lyd_node *ly_type_find_leafref(const struct ly_ctx *ctx, struct lysc_type *type, const char *value,
-                                            size_t value_len, const struct lyd_node *context_node, const struct lyd_node *tree,
-                                            struct lyd_value *storage, char **errmsg);
+LY_ERR ly_type_find_leafref(const struct lysc_type_leafref *lref, const struct lyd_node *node, struct lyd_value *value,
+                            const struct lyd_node *tree, struct lyd_node **target, char **errmsg);
 
 /**
  * @brief Helper function for type validation callbacks to prepare list of all possible prefixes used in the value string.

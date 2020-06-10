@@ -308,22 +308,14 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE v
 
     /* store the error/warning (if we need to store errors internally, it does not matter what are the user log options) */
     if ((level < LY_LLVRB) && ctx && (ly_log_opts & LY_LOSTORE)) {
-        if (!format) {
-            assert(path);
-            /* postponed print of path related to the previous error, do not rewrite stored original message */
-            if (log_store(ctx, level, no, vecode, NULL, path, NULL)) {
-                return;
-            }
-            msg = "Path is related to the previous error message.";
-        } else {
-            if (vasprintf(&msg, format, args) == -1) {
-                LOGMEM(ctx);
-                free(path);
-                return;
-            }
-            if (log_store(ctx, level, no, vecode, msg, path, NULL)) {
-                return;
-            }
+        assert(format);
+        if (vasprintf(&msg, format, args) == -1) {
+            LOGMEM(ctx);
+            free(path);
+            return;
+        }
+        if (log_store(ctx, level, no, vecode, msg, path, NULL)) {
+            return;
         }
         free_strs = 0;
     } else {

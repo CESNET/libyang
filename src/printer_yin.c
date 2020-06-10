@@ -26,6 +26,7 @@
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 #include "xml.h"
+#include "xpath.h"
 
 /**
  * @brief YIN printer context.
@@ -456,7 +457,7 @@ yprp_type(struct ypr_ctx *ctx, const struct lysp_type *type)
 
     if (type->path) {
         ypr_close_parent(ctx, &flag);
-        ypr_substmt(ctx, LYEXT_SUBSTMT_PATH, 0, type->path, type->exts);
+        ypr_substmt(ctx, LYEXT_SUBSTMT_PATH, 0, type->path->expr, type->exts);
     }
     if (type->flags & LYS_SET_REQINST) {
         ypr_close_parent(ctx, &flag);

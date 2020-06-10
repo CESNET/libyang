@@ -173,7 +173,8 @@ struct lysc_ctx {
                                      defined, but its content instances are supposed to be placed into
                                      the target module (mod) */
     struct ly_set groupings;    /**< stack for groupings circular check */
-    struct ly_set unres;        /**< to validate leafref's target and xpath of when/must */
+    struct ly_set xpath;        /**< to validate leafref's targets */
+    struct ly_set leafrefs;     /**< when/must to check */
     struct ly_set dflts;        /**< set of incomplete default values */
     struct ly_set tpdf_chain;
     uint16_t path_len;
@@ -695,17 +696,6 @@ uint8_t lysc_iff_getop(uint8_t *list, int pos);
  * @return LY_ERR value - LY_SUCCESS, LY_EMEM, LY_EVALID.
  */
 LY_ERR lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *log_path, const char *pattern, pcre2_code **code);
-
-/**
- * @brief Validate the leafref path.
- * @param[in] ctx Compile context
- * @param[in] startnode Path context node (where the leafref path begins/is placed).
- * @param[in] leafref Leafref to validate.
- * @param[out] target Optional resolved leafref target.
- * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
- */
-LY_ERR lys_compile_leafref_validate(struct lysc_ctx *ctx, struct lysc_node *startnode, struct lysc_type_leafref *leafref,
-                                    const struct lysc_node **target);
 
 /**
  * @brief Macro to free [sized array](@ref sizedarrays) of items using the provided free function. The ARRAY itself is also freed,
