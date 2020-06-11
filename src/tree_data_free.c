@@ -23,23 +23,6 @@
 #include "tree_data_internal.h"
 #include "plugins_types.h"
 
-void
-lyd_value_free_path(const struct ly_ctx *ctx, struct lyd_value_path *path)
-{
-    LY_ARRAY_SIZE_TYPE u, v;
-
-    LY_ARRAY_FOR(path, u) {
-        LY_ARRAY_FOR(path[u].predicates, v) {
-            if (path[u].predicates[v].type > 0) {
-                ((struct lysc_node_leaf*)path[u].predicates[v].key)->type->plugin->free(ctx, path[u].predicates[v].value);
-                free(path[u].predicates[v].value);
-            }
-        }
-        LY_ARRAY_FREE(path[u].predicates);
-    }
-    LY_ARRAY_FREE(path);
-}
-
 API void
 lyd_free_meta(const struct ly_ctx *ctx, struct lyd_meta *meta, int recursive)
 {

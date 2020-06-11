@@ -909,7 +909,7 @@ yprp_type(struct ypr_ctx *ctx, const struct lysp_type *type)
 
     if (type->path) {
         ypr_open(ctx->out, &flag);
-        ypr_substmt(ctx, LYEXT_SUBSTMT_PATH, 0, type->path, type->exts);
+        ypr_substmt(ctx, LYEXT_SUBSTMT_PATH, 0, type->path->expr, type->exts);
     }
     if (type->flags & LYS_SET_REQINST) {
         ypr_open(ctx->out, &flag);
@@ -1041,7 +1041,7 @@ yprc_type(struct ypr_ctx *ctx, const struct lysc_type *type)
     case LY_TYPE_LEAFREF: {
         struct lysc_type_leafref *lr = (struct lysc_type_leafref*)type;
         ypr_open(ctx->out, &flag);
-        ypr_substmt(ctx, LYEXT_SUBSTMT_PATH, 0, lr->path, lr->exts);
+        ypr_substmt(ctx, LYEXT_SUBSTMT_PATH, 0, lr->path->expr, lr->exts);
         ypr_substmt(ctx, LYEXT_SUBSTMT_REQINSTANCE, 0, lr->require_instance ? "true" : "false", lr->exts);
         yprc_type(ctx, lr->realtype);
         break;

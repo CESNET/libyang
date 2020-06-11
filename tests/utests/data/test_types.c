@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include "../../src/libyang.h"
+#include "../../src/path.h"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
@@ -70,6 +71,7 @@ setup(void **state)
             "list list2 {key \"id value\"; leaf id {type string;} leaf value {type string;}}"
             "list list_inst {key id; leaf id {type instance-identifier {require-instance true;}} leaf value {type string;}}"
             "list list_ident {key id; leaf id {type identityref {base defs:interface-type;}} leaf value {type string;}}"
+            "list list_keyless {config \"false\"; leaf id {type string;} leaf value {type string;}}"
             "leaf-list leaflisttarget {type string;}"
             "leaf binary {type binary {length 5 {error-message \"This base64 value must be of length 5.\";}}}"
             "leaf binary-norestr {type binary;}"
@@ -858,16 +860,6 @@ test_instanceid(void **state)
     assert_null(leaf->value.canonical_cache);
     lyd_free_all(tree);
 
-    data = "<list xmlns=\"urn:tests:types\"><id>a</id></list><list xmlns=\"urn:tests:types\"><id>b</id><value>x</value></list>"
-           "<xdf:inst xmlns:xdf=\"urn:tests:types\">/xdf:list[2]/xdf:value</xdf:inst>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
-    tree = tree->prev->prev;
-    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
-    assert_string_equal("inst", tree->schema->name);
-    leaf = (const struct lyd_node_term*)tree;
-    assert_null(leaf->value.canonical_cache);
-    lyd_free_all(tree);
-
     data = "<list_inst xmlns=\"urn:tests:types\"><id xmlns:b=\"urn:tests:types\">/b:leaflisttarget[.='a']</id><value>x</value></list_inst>"
            "<list_inst xmlns=\"urn:tests:types\"><id xmlns:b=\"urn:tests:types\">/b:leaflisttarget[.='b']</id><value>y</value></list_inst>"
            "<leaflisttarget xmlns=\"urn:tests:types\">a</leaflisttarget><leaflisttarget xmlns=\"urn:tests:types\">b</leaflisttarget>"
@@ -898,10 +890,20 @@ test_instanceid(void **state)
     value.realtype->plugin->free(s->ctx, &value);
     lyd_free_all(tree);
 
-    data = "<list_inst xmlns=\"urn:tests:types\"><id xmlns:b=\"urn:tests:types\">/b:leaflisttarget[1]</id><value>x</value></list_inst>"
-           "<list_inst xmlns=\"urn:tests:types\"><id xmlns:b=\"urn:tests:types\">/b:leaflisttarget[2]</id><value>y</value></list_inst>"
+    data = "<list xmlns=\"urn:tests:types\"><id>a</id></list><list xmlns=\"urn:tests:types\"><id>b</id><value>x</value></list>"
+           "<xdf:inst xmlns:xdf=\"urn:tests:types\">/xdf:list[xdf:id='b']/xdf:value</xdf:inst>";
+    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
+    tree = tree->prev->prev;
+    assert_int_equal(LYS_LEAF, tree->schema->nodetype);
+    assert_string_equal("inst", tree->schema->name);
+    leaf = (const struct lyd_node_term*)tree;
+    assert_null(leaf->value.canonical_cache);
+    lyd_free_all(tree);
+
+    data = "<list_inst xmlns=\"urn:tests:types\"><id xmlns:b=\"urn:tests:types\">/b:leaflisttarget[.='a']</id><value>x</value></list_inst>"
+           "<list_inst xmlns=\"urn:tests:types\"><id xmlns:b=\"urn:tests:types\">/b:leaflisttarget[.='b']</id><value>y</value></list_inst>"
            "<leaflisttarget xmlns=\"urn:tests:types\">a</leaflisttarget><leaflisttarget xmlns=\"urn:tests:types\">b</leaflisttarget>"
-           "<a:inst xmlns:a=\"urn:tests:types\">/a:list_inst[a:id=\"/a:leaflisttarget[2]\"]/a:value</a:inst>";
+           "<a:inst xmlns:a=\"urn:tests:types\">/a:list_inst[a:id=\"/a:leaflisttarget[.='a']\"]/a:value</a:inst>";
     assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
     tree = tree->prev->prev;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
@@ -934,7 +936,7 @@ test_instanceid(void **state)
 
     data = "<list xmlns=\"urn:tests:types\"><id>types:xxx</id><value>x</value></list>"
            "<list xmlns=\"urn:tests:types\"><id>a:xxx</id><value>y</value></list>"
-           "<a:inst xmlns:a=\"urn:tests:types\">/a:list[2]/a:value</a:inst>";
+           "<a:inst xmlns:a=\"urn:tests:types\">/a:list[a:id='a:xxx']/a:value</a:inst>";
     assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
     tree = tree->prev->prev;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
@@ -958,25 +960,30 @@ test_instanceid(void **state)
     lyd_free_all(tree);
 
     /* invalid value */
+    data = "<list xmlns=\"urn:tests:types\"><id>a</id></list><list xmlns=\"urn:tests:types\"><id>b</id><value>x</value></list>"
+           "<xdf:inst xmlns:xdf=\"urn:tests:types\">/xdf:list[2]/xdf:value</xdf:inst>";
+    assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
+    logbuf_assert("Invalid instance-identifier \"/xdf:list[2]/xdf:value\" value - semantic error. /types:inst");
+
     data =  "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:1leaftarget</t:inst>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
-    logbuf_assert("Invalid instance-identifier \"/t:cont/t:1leaftarget\" value at character 11 (1leaftarget). /types:inst");
+    logbuf_assert("Invalid instance-identifier \"/t:cont/t:1leaftarget\" value - syntax error. /types:inst");
 
     data =  "<t:inst xmlns:t=\"urn:tests:types\">/t:cont:t:1leaftarget</t:inst>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
-    logbuf_assert("Invalid instance-identifier \"/t:cont:t:1leaftarget\" value at character 8 (:t:1leaftarget). /types:inst");
+    logbuf_assert("Invalid instance-identifier \"/t:cont:t:1leaftarget\" value - syntax error. /types:inst");
 
     data =  "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:invalid/t:path</t:inst>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
-    logbuf_assert("Invalid instance-identifier \"/t:cont/t:invalid/t:path\" value - path \"/t:cont/t:invalid\" does not exists in the YANG schema. /types:inst");
+    logbuf_assert("Invalid instance-identifier \"/t:cont/t:invalid/t:path\" value - semantic error. /types:inst");
 
     data =  "<inst xmlns=\"urn:tests:types\" xmlns:t=\"urn:tests:invalid\">/t:cont/t:leaftarget</inst>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
-    logbuf_assert("Invalid instance-identifier \"/t:cont/t:leaftarget\" value - unable to map prefix \"t\" to YANG schema. /types:inst");
+    logbuf_assert("Invalid instance-identifier \"/t:cont/t:leaftarget\" value - semantic error. /types:inst");
 
     data =  "<inst xmlns=\"urn:tests:types\">/cont/leaftarget</inst>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
-    logbuf_assert("Invalid instance-identifier \"/cont/leaftarget\" value - all node names (/cont) MUST be qualified with explicit namespace prefix. /types:inst");
+    logbuf_assert("Invalid instance-identifier \"/cont/leaftarget\" value - syntax error. /types:inst");
 
     data =  "<cont xmlns=\"urn:tests:types\"/><t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaftarget</t:inst>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
@@ -990,57 +997,50 @@ test_instanceid(void **state)
 
     data =  "<leaflisttarget xmlns=\"urn:tests:types\">x</leaflisttarget><t:inst xmlns:t=\"urn:tests:types\">/t:leaflisttarget[1</t:inst>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
-    logbuf_assert("Invalid instance-identifier \"/t:leaflisttarget[1\" value's predicate \"[1\" (Predicate (pos) is not terminated by ']' character.). /types:inst");
+    logbuf_assert("Invalid instance-identifier \"/t:leaflisttarget[1\" value - syntax error. /types:inst");
 
     data =  "<cont xmlns=\"urn:tests:types\"/><t:inst xmlns:t=\"urn:tests:types\">/t:cont[1]</t:inst>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
-    logbuf_assert("Invalid instance-identifier \"/t:cont[1]\" value - predicate \"[1]\" for container is not accepted. /types:inst");
+    logbuf_assert("Invalid instance-identifier \"/t:cont[1]\" value - semantic error. /types:inst");
 
     data =  "<cont xmlns=\"urn:tests:types\"/><t:inst xmlns:t=\"urn:tests:types\">[1]</t:inst>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
-    logbuf_assert("Invalid instance-identifier \"[1]\" value - instance-identifier must starts with '/'. /types:inst");
+    logbuf_assert("Invalid instance-identifier \"[1]\" value - syntax error. /types:inst");
 
     data =  "<cont xmlns=\"urn:tests:types\"><leaflisttarget>1</leaflisttarget></cont><t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaflisttarget[id='1']</t:inst>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
-    logbuf_assert("Invalid instance-identifier \"/t:cont/t:leaflisttarget[id='1']\" value's predicate \"[id=\" (Missing prefix of a node name.). /types:inst");
+    logbuf_assert("Invalid instance-identifier \"/t:cont/t:leaflisttarget[id='1']\" value - syntax error. /types:inst");
 
     data =  "<cont xmlns=\"urn:tests:types\"><leaflisttarget>1</leaflisttarget></cont>"
         "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaflisttarget[t:id='1']</t:inst>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
-    logbuf_assert("Invalid instance-identifier \"/t:cont/t:leaflisttarget[t:id='1']\" value - key-predicate \"[t:id='1']\""
-        " is accepted only for lists, not leaf-list. /types:inst");
+    logbuf_assert("Invalid instance-identifier \"/t:cont/t:leaflisttarget[t:id='1']\" value - semantic error. /types:inst");
 
     data =  "<cont xmlns=\"urn:tests:types\"><leaflisttarget>1</leaflisttarget><leaflisttarget>2</leaflisttarget></cont>"
             "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaflisttarget[4]</t:inst>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
-    /* instance-identifier is here in JSON format because it is already in internal representation without original prefixes */
-    logbuf_assert("Invalid instance-identifier \"/types:cont/leaflisttarget[4]\" value - required instance not found. /types:inst");
+    logbuf_assert("Invalid instance-identifier \"/t:cont/t:leaflisttarget[4]\" value - semantic error. /types:inst");
 
     data =  "<t:inst-noreq xmlns:t=\"urn:tests:types\">/t:cont/t:leaflisttarget[6]</t:inst-noreq>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
-    logbuf_assert("Invalid instance-identifier \"/t:cont/t:leaflisttarget[6]\" value - "
-            "position-predicate 6 is bigger than allowed max-elements (5). /types:inst-noreq");
+    logbuf_assert("Invalid instance-identifier \"/t:cont/t:leaflisttarget[6]\" value - semantic error. /types:inst-noreq");
 
     data =  "<cont xmlns=\"urn:tests:types\"><listtarget><id>1</id><value>x</value></listtarget></cont>"
             "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:listtarget[t:value='x']</t:inst>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
-    logbuf_assert("Invalid instance-identifier \"/t:cont/t:listtarget[t:value='x']\" value - "
-            "node \"value\" used in key-predicate \"[t:value='x']\" must be a key. /types:inst");
+    logbuf_assert("Invalid instance-identifier \"/t:cont/t:listtarget[t:value='x']\" value - semantic error. /types:inst");
     logbuf_clean();
     data =  "<t:inst-noreq xmlns:t=\"urn:tests:types\">/t:cont/t:listtarget[t:value='x']</t:inst-noreq>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
-    logbuf_assert("Invalid instance-identifier \"/t:cont/t:listtarget[t:value='x']\" value - "
-            "node \"value\" used in key-predicate \"[t:value='x']\" must be a key. /types:inst-noreq");
+    logbuf_assert("Invalid instance-identifier \"/t:cont/t:listtarget[t:value='x']\" value - semantic error. /types:inst-noreq");
     data =  "<t:inst-noreq xmlns:t=\"urn:tests:types\">/t:cont/t:listtarget[t:x='x']</t:inst-noreq>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
-    logbuf_assert("Invalid instance-identifier \"/t:cont/t:listtarget[t:x='x']\" value - "
-            "path \"/t:cont/t:listtarget[t:x\" does not exists in the YANG schema. /types:inst-noreq");
+    logbuf_assert("Invalid instance-identifier \"/t:cont/t:listtarget[t:x='x']\" value - semantic error. /types:inst-noreq");
 
     data =  "<cont xmlns=\"urn:tests:types\"><listtarget><id>1</id><value>x</value></listtarget></cont>"
             "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:listtarget[.='x']</t:inst>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
-    logbuf_assert("Invalid instance-identifier \"/t:cont/t:listtarget[.='x']\" value - "
-            "leaf-list-predicate \"[.='x']\" is accepted only for leaf-lists, not list. /types:inst");
+    logbuf_assert("Invalid instance-identifier \"/t:cont/t:listtarget[.='x']\" value - semantic error. /types:inst");
 
     data =  "<cont xmlns=\"urn:tests:types\"><leaflisttarget>1</leaflisttarget></cont>"
             "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaflisttarget[.='2']</t:inst>";
@@ -1051,14 +1051,12 @@ test_instanceid(void **state)
     data =  "<cont xmlns=\"urn:tests:types\"><leaflisttarget>1</leaflisttarget></cont>"
             "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:leaflisttarget[.='x']</t:inst>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
-    logbuf_assert("Invalid instance-identifier \"/t:cont/t:leaflisttarget[.='x']\" value - "
-            "leaf-list-predicate \"[.='x']\"'s value is invalid. /types:inst");
+    logbuf_assert("Invalid instance-identifier \"/t:cont/t:leaflisttarget[.='x']\" value - semantic error. /types:inst");
 
     data =  "<cont xmlns=\"urn:tests:types\"><listtarget><id>1</id><value>x</value></listtarget></cont>"
             "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:listtarget[t:id='x']</t:inst>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
-    logbuf_assert("Invalid instance-identifier \"/t:cont/t:listtarget[t:id='x']\" value - "
-            "key-predicate \"[t:id='x']\"'s key value is invalid. /types:inst");
+    logbuf_assert("Invalid instance-identifier \"/t:cont/t:listtarget[t:id='x']\" value - semantic error. /types:inst");
 
     data =  "<cont xmlns=\"urn:tests:types\"><listtarget><id>1</id><value>x</value></listtarget></cont>"
             "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:listtarget[t:id='2']</t:inst>";
@@ -1070,29 +1068,25 @@ test_instanceid(void **state)
            "<leaflisttarget xmlns=\"urn:tests:types\">b</leaflisttarget>"
            "<a:inst xmlns:a=\"urn:tests:types\">/a:leaflisttarget[1][2]</a:inst>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
-    logbuf_assert("Invalid instance-identifier \"/a:leaflisttarget[1][2]\" value - "
-            "position predicate (\"[2]\") cannot be used repeatedly for a single node. /types:inst");
+    logbuf_assert("Invalid instance-identifier \"/a:leaflisttarget[1][2]\" value - syntax error. /types:inst");
 
     data = "<leaflisttarget xmlns=\"urn:tests:types\">a</leaflisttarget>"
            "<leaflisttarget xmlns=\"urn:tests:types\">b</leaflisttarget>"
            "<a:inst xmlns:a=\"urn:tests:types\">/a:leaflisttarget[.='a'][.='b']</a:inst>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
-    logbuf_assert("Invalid instance-identifier \"/a:leaflisttarget[.='a'][.='b']\" value - "
-            "leaf-list-predicate (\"[.='b']\") cannot be used repeatedly for a single node. /types:inst");
+    logbuf_assert("Invalid instance-identifier \"/a:leaflisttarget[.='a'][.='b']\" value - syntax error. /types:inst");
 
     data = "<list xmlns=\"urn:tests:types\"><id>a</id><value>x</value></list>"
            "<list xmlns=\"urn:tests:types\"><id>b</id><value>y</value></list>"
            "<a:inst xmlns:a=\"urn:tests:types\">/a:list[a:id='a'][a:id='b']/a:value</a:inst>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
-    logbuf_assert("Invalid instance-identifier \"/a:list[a:id='a'][a:id='b']/a:value\" value - "
-                  "key \"id\" is referenced the second time in key-predicate \"[a:id='b']\". /types:inst");
+    logbuf_assert("Invalid instance-identifier \"/a:list[a:id='a'][a:id='b']/a:value\" value - syntax error. /types:inst");
 
     data = "<list2 xmlns=\"urn:tests:types\"><id>a</id><value>x</value></list2>"
            "<list2 xmlns=\"urn:tests:types\"><id>b</id><value>y</value></list2>"
            "<a:inst xmlns:a=\"urn:tests:types\">/a:list2[a:id='a']/a:value</a:inst>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
-    logbuf_assert("Invalid instance-identifier \"/a:list2[a:id='a']/a:value\" value - "
-                  "missing 1 key(s) for the list instance \"a:list2[a:id='a']\". /types:inst");
+    logbuf_assert("Invalid instance-identifier \"/a:list2[a:id='a']/a:value\" value - semantic error. /types:inst");
 
     /* check for validting instance-identifier with a complete data tree */
     data = "<list2 xmlns=\"urn:tests:types\"><id>a</id><value>a</value></list2>"
@@ -1103,27 +1097,24 @@ test_instanceid(void **state)
     assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
     /* key-predicate */
     data = "/a:list2[a:id='a'][a:value='b']/a:id";
-    assert_int_equal(LY_EVALID, lyd_value_validate(s->ctx, (const struct lyd_node_term*)tree->prev->prev, data, strlen(data),
+    assert_int_equal(LY_ENOTFOUND, lyd_value_validate(s->ctx, (const struct lyd_node_term*)tree->prev->prev, data, strlen(data),
                                                    test_instanceid_getprefix, tree->schema->module, LYD_XML, tree));
-    logbuf_assert("Invalid instance-identifier \"/a:list2[a:id='a'][a:value='b']/a:id\" value - "
-                  "key-predicate \"[a:id='a'][a:value='b']\" does not match any \"list2\" instance. /");
+    logbuf_assert("Invalid instance-identifier \"/a:list2[a:id='a'][a:value='b']/a:id\" value - instance not found. /");
     /* leaf-list-predicate */
     data = "/a:leaflisttarget[.='c']";
-    assert_int_equal(LY_EVALID, lyd_value_validate(s->ctx, (const struct lyd_node_term*)tree->prev->prev, data, strlen(data),
+    assert_int_equal(LY_ENOTFOUND, lyd_value_validate(s->ctx, (const struct lyd_node_term*)tree->prev->prev, data, strlen(data),
                                                    test_instanceid_getprefix, tree->schema->module, LYD_XML, tree));
-    logbuf_assert("Invalid instance-identifier \"/a:leaflisttarget[.='c']\" value - "
-                  "leaf-list-predicate \"[.='c']\" does not match any \"leaflisttarget\" instance. /");
+    logbuf_assert("Invalid instance-identifier \"/a:leaflisttarget[.='c']\" value - instance not found. /");
     /* position predicate */
-    data = "/a:list2[4]";
-    assert_int_equal(LY_EVALID, lyd_value_validate(s->ctx, (const struct lyd_node_term*)tree->prev->prev, data, strlen(data),
+    data = "/a:list_keyless[4]";
+    assert_int_equal(LY_ENOTFOUND, lyd_value_validate(s->ctx, (const struct lyd_node_term*)tree->prev->prev, data, strlen(data),
                                                    test_instanceid_getprefix, tree->schema->module, LYD_XML, tree));
-    logbuf_assert("Invalid instance-identifier \"/a:list2[4]\" value - "
-                  "position-predicate 4 is bigger than number of instances in the data tree (2). /");
+    logbuf_assert("Invalid instance-identifier \"/a:list_keyless[4]\" value - instance not found. /");
 
     data = "<leaflisttarget xmlns=\"urn:tests:types\">b</leaflisttarget>"
            "<inst xmlns=\"urn:tests:types\">/a:leaflisttarget[1]</inst>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
-    logbuf_assert("Invalid instance-identifier \"/a:leaflisttarget[1]\" value - unable to map prefix \"a\" to YANG schema. /types:inst");
+    logbuf_assert("Invalid instance-identifier \"/a:leaflisttarget[1]\" value - semantic error. /types:inst");
     lyd_free_siblings(tree);
 
     s->func = NULL;
@@ -1215,39 +1206,39 @@ test_leafref(void **state)
     data =  "<leaflisttarget xmlns=\"urn:tests:types\">x</leaflisttarget>"
             "<lref xmlns=\"urn:tests:types\">y</lref>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
-    logbuf_assert("Invalid leafref value \"y\" - required instance \"/leaflisttarget\" with this value does not exists"
-        " in the data tree(s). /types:lref");
+    logbuf_assert("Invalid leafref value \"y\" - no target instance \"/leaflisttarget\" with the same value. /types:lref");
 
     data = "<list xmlns=\"urn:tests:types\"><id>x</id><targets>a</targets><targets>b</targets></list>"
            "<list xmlns=\"urn:tests:types\"><id>y</id><targets>x</targets><targets>y</targets></list>"
            "<str-norestr xmlns=\"urn:tests:types\">y</str-norestr><lref2 xmlns=\"urn:tests:types\">b</lref2>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
-    logbuf_assert("Invalid leafref value \"b\" - required instance \"../list[id = current()/../str-norestr]/targets\""
-        " with this value does not exists in the data tree(s). /types:lref2");
+    logbuf_assert("Invalid leafref value \"b\" - no target instance \"../list[id = current()/../str-norestr]/targets\" with"
+        " the same value. /types:lref2");
 
     data = "<list xmlns=\"urn:tests:types\"><id>x</id><targets>a</targets><targets>b</targets></list>"
            "<list xmlns=\"urn:tests:types\"><id>y</id><targets>x</targets><targets>y</targets></list>"
            "<lref2 xmlns=\"urn:tests:types\">b</lref2>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
-    logbuf_assert("Invalid leafref - required instance \"../list[id = current()/../str-norestr]\" does not exists"
-        " in the data tree(s). /types:lref2");
+    logbuf_assert("Invalid leafref value \"b\" - no target instance \"../list[id = current()/../str-norestr]/targets\""
+        " with the same value. /types:lref2");
 
     data = "<str-norestr xmlns=\"urn:tests:types\">y</str-norestr><lref2 xmlns=\"urn:tests:types\">b</lref2>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
-    logbuf_assert("Invalid leafref - required instance \"../list\" does not exists in the data tree(s). /types:lref2");
+    logbuf_assert("Invalid leafref value \"b\" - no target instance \"../list[id = current()/../str-norestr]/targets\""
+        " with the same value. /types:lref2");
 
     data = "<str-norestr xmlns=\"urn:tests:types\">y</str-norestr>"
             "<c xmlns=\"urn:tests:leafrefs\"><l><id>x</id><value>x</value><lr1>a</lr1></l></c>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
-    logbuf_assert("Invalid leafref value \"a\" - required instance \"../../../t:str-norestr\" with this value does not"
-        " exists in the data tree(s). /leafrefs:c/l[id='x'][value='x']/lr1");
+    logbuf_assert("Invalid leafref value \"a\" - no target instance \"../../../t:str-norestr\" with the same value."
+        " /leafrefs:c/l[id='x'][value='x']/lr1");
 
     data = "<str-norestr xmlns=\"urn:tests:types\">z</str-norestr>"
             "<c xmlns=\"urn:tests:leafrefs\"><l><id>y</id><value>y</value></l>"
               "<l><id>x</id><value>x</value><lr2>z</lr2></l></c>";
     assert_null(lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
-    logbuf_assert("Invalid leafref - required instance \"../../l[id=current()/../../../t:str-norestr][value=current()/../../../t:str-norestr]\" "
-                  "does not exists in the data tree(s). /leafrefs:c/l[id='x'][value='x']/lr2");
+    logbuf_assert("Invalid leafref value \"z\" - no target instance \"../../l[id=current()/../../../t:str-norestr]"
+        "[value=current()/../../../t:str-norestr]/value\" with the same value. /leafrefs:c/l[id='x'][value='x']/lr2");
 
     s->func = NULL;
 }
@@ -1359,13 +1350,13 @@ test_union(void **state)
     lyd_free_all(tree);
 
     data = "<leaflisttarget xmlns=\"urn:tests:types\">x</leaflisttarget><leaflisttarget xmlns=\"urn:tests:types\">y</leaflisttarget>"
-           "<un1 xmlns=\"urn:tests:types\" xmlns:a=\"urn:tests:types\">/a:leaflisttarget[2]</un1>";
+           "<un1 xmlns=\"urn:tests:types\" xmlns:a=\"urn:tests:types\">/a:leaflisttarget[.='y']</un1>";
     assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
     tree = tree->prev->prev;
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("un1", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
-    assert_string_equal("/a:leaflisttarget[2]", leaf->value.original);
+    assert_string_equal("/a:leaflisttarget[.='y']", leaf->value.original);
     assert_null(leaf->value.canonical_cache);
     assert_non_null(leaf->value.subvalue->prefixes);
     assert_int_equal(LY_TYPE_UNION, leaf->value.realtype->basetype);

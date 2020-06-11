@@ -21,6 +21,7 @@
 #include "log.h"
 
 struct ly_ctx;
+struct ly_path;
 struct ly_set;
 struct lyd_node;
 struct lyd_node_opaq;
@@ -179,19 +180,7 @@ struct lyd_value {
                                               in original value to YANG modules. These prefixes are necessary to parse original value to the union's
                                               subtypes. */
 
-        struct lyd_value_path {
-            const struct lysc_node *node; /**< Schema node representing the path segment */
-            struct lyd_value_path_predicate {
-                union {
-                    struct {
-                        const struct lysc_node *key; /**< key node of the predicate, in case of the leaf-list-predicate, it is the leaf-list node itself */
-                        struct lyd_value *value;     /**< value representation according to the key's type */
-                    };                    /**< key-value pair for leaf-list-predicate and key-predicate (type 1 and 2) */
-                    uint64_t position;    /**< position value for the position-predicate (type 0) */
-                };
-                uint8_t type;        /**< Predicate types (see YANG ABNF): 0 - position, 1 - key-predicate, 2 - leaf-list-predicate */
-            } *predicates;           /**< [Sized array](@ref sizedarrays) of the path segment's predicates */
-        } *target;                   /**< [Sized array](@ref sizedarrays) of (instance-identifier's) path segments. */
+        struct ly_path *target;          /**< Instance-identifier's target path. */
 
         void *ptr;                   /**< generic data type structure used to store the data */
     };  /**< The union is just a list of shorthands to possible values stored by a type's plugin. libyang itself uses the lyd_value::realtype
@@ -657,7 +646,8 @@ struct lyd_node *lyd_new_inner(struct lyd_node *parent, const struct lys_module 
  * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
  * @param[in] name Schema node name of the new data node. The node must be #LYS_LIST.
  * @param[in] ... Ordered key values of the new list instance, all must be set. In case of an instance-identifier
- * or identityref value, the JSON format is expected (module names instead of prefixes).
+ * or identityref value, the JSON format is expected (module names instead of prefixes). No keys are expected for
+ * key-less lists.
  * @return New created node.
  * @return NULL on error.
  */
@@ -671,6 +661,7 @@ struct lyd_node *lyd_new_list(struct lyd_node *parent, const struct lys_module *
  * @param[in] name Schema node name of the new data node. The node must be #LYS_LIST.
  * @param[in] keys All key values predicate in the form of "[key1='val1'][key2='val2']...", they do not have to be ordered.
  * In case of an instance-identifier or identityref value, the JSON format is expected (module names instead of prefixes).
+ * Use NULL or string of length 0 in case of key-less list.
  * @return New created node.
  * @return NULL on error.
  */
@@ -938,7 +929,7 @@ struct lyd_node *lyd_dup(const struct lyd_node *node, struct lyd_node_inner *par
  * @param[in] tree Data tree to be searched.
  * @return Target node of the instance-identifier present in the given data @p tree.
  */
-const struct lyd_node_term *lyd_target(struct lyd_value_path *path, const struct lyd_node *tree);
+const struct lyd_node_term *lyd_target(const struct ly_path *path, const struct lyd_node *tree);
 
 /**
  * @brief Get string value of a term data \p node.

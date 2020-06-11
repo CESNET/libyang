@@ -27,6 +27,7 @@
 #include "tree_data.h"
 
 struct ly_ctx;
+struct ly_path;
 struct ly_set;
 
 #ifdef __cplusplus
@@ -490,7 +491,7 @@ struct lysp_type {
     struct lysp_restr *patterns;     /**< list of patterns ([sized array](@ref sizedarrays)) - string */
     struct lysp_type_enum *enums;    /**< list of enum-stmts ([sized array](@ref sizedarrays)) - enum */
     struct lysp_type_enum *bits;     /**< list of bit-stmts ([sized array](@ref sizedarrays)) - bits */
-    const char *path;                /**< path - leafref */
+    struct lyxp_expr *path;          /**< parsed path - leafref */
     const char **bases;              /**< list of base identifiers ([sized array](@ref sizedarrays)) - identityref */
     struct lysp_type *types;         /**< list of sub-types ([sized array](@ref sizedarrays)) - union */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
@@ -1366,7 +1367,7 @@ struct lysc_type_leafref {
     struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
     uint32_t refcount;               /**< reference counter for type sharing */
-    const char *path;                /**< target path */
+    struct lyxp_expr *path;          /**< parsed target path, compiled path cannot be stored because of type sharing */
     struct lys_module *path_context; /**< module where the path is defined, so it provides context to resolve prefixes */
     struct lysc_type *realtype;      /**< pointer to the real (first non-leafref in possible leafrefs chain) type. */
     uint8_t require_instance;        /**< require-instance flag */

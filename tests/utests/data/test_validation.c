@@ -1356,7 +1356,8 @@ test_action(void **state)
 
     /* missing leafref */
     assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, NULL, LYD_VALOPT_INPUT));
-    logbuf_assert("Invalid leafref - required instance \"/lf3\" does not exists in the data tree(s). /j:cont/l1[k='val1']/act/lf2");
+    logbuf_assert("Invalid leafref value \"target\" - no target instance \"/lf3\" with the same value."
+        " /j:cont/l1[k='val1']/act/lf2");
 
     data =
     "<cont xmlns=\"urn:tests:j\">"
@@ -1424,7 +1425,8 @@ test_reply(void **state)
 
     /* missing leafref */
     assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, NULL, LYD_VALOPT_OUTPUT));
-    logbuf_assert("Invalid leafref - required instance \"/lf4\" does not exists in the data tree(s). /j:cont/l1[k='val1']/act/lf2");
+    logbuf_assert("Invalid leafref value \"target\" - no target instance \"/lf4\" with the same value."
+        " /j:cont/l1[k='val1']/act/lf2");
 
     data =
     "<cont xmlns=\"urn:tests:j\">"

@@ -25,6 +25,7 @@
 #include "common.h"
 #include "context.h"
 #include "dict.h"
+#include "path.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_schema.h"
@@ -454,7 +455,14 @@ yin_parse_simple_element(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, const 
 static LY_ERR
 yin_parse_path(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, struct lysp_type *type)
 {
-    LY_CHECK_RET(yin_parse_simple_element(ctx, kw, &type->path, YIN_ARG_VALUE, Y_STR_ARG, &type->exts));
+    LY_ERR ret;
+    const char *str_path;
+
+    LY_CHECK_RET(yin_parse_simple_element(ctx, kw, &str_path, YIN_ARG_VALUE, Y_STR_ARG, &type->exts));
+    ret = ly_path_parse(ctx->xmlctx->ctx, str_path, 0, LY_PATH_BEGIN_EITHER, LY_PATH_LREF_TRUE,
+                        LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_LEAFREF, &type->path);
+    lydict_remove(ctx->xmlctx->ctx, str_path);
+    LY_CHECK_RET(ret);
     type->flags |= LYS_SET_PATH;
 
     return LY_SUCCESS;

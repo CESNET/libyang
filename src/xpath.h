@@ -237,7 +237,7 @@ struct lyxp_set {
         } *meta;
         char *str;
         long double num;
-        int bool;
+        int bln;
     } val;
 
     /* this is valid only for type LYXP_SET_NODE_SET and LYXP_SET_SCNODE_SET */
@@ -276,26 +276,22 @@ const char *lyxp_print_token(enum lyxp_token tok);
  * @param[in] exp Parsed XPath expression to be evaluated.
  * @param[in] format Format of the XPath expression (more specifcally, of any used prefixes).
  * @param[in] local_mod Local module relative to the @p expr.
- * @param[in] ctx_node Current (context) data node, NULL for root node.
- * @param[in] ctx_node_type Current (context) data node type. For every standard case use #LYXP_NODE_ELEM. But there are
- * cases when the context node @p ctx_node is actually supposed to be the XML root, there is no such data node. So, in
- * this case just pass NULL for @p ctx_node and use an enum value for this kind of root (#LYXP_NODE_ROOT_CONFIG if
- * @p ctx_node has config true, otherwise #LYXP_NODE_ROOT). #LYXP_NODE_TEXT and #LYXP_NODE_ATTR can also be used,
- * but there are no use-cases in YANG.
+ * @param[in] ctx_node Current (context) data node. In case of a root node, set @p ctx_node_type correctly,
+ * but @p ctx_node must also be set to any node from the root node module - it will be used for resolving
+ * unqualified names.
+ * @param[in] ctx_node_type Current (context) data node type.
  * @param[in] tree Data tree on which to perform the evaluation, it must include all the available data (including
  * the tree of @p ctx_node).
- * @param[out] set Result set. Must be valid and in the same libyang context as @p ctx_node.
- * To be safe, always either zero or cast the @p set to empty. After done using, either cast
- * the @p set to empty (if allocated statically) or free it (if allocated dynamically) to
- * prevent memory leaks.
+ * @param[out] set Result set.
  * @param[in] options Whether to apply some evaluation restrictions.
- * @return LY_ERR (LY_EINVAL, LY_EMEM, LY_EINT, LY_EVALID for invalid argument types/count,
- * LY_EINCOMPLETE for unresolved when).
+ * @return LY_EVALID for invalid argument types/count,
+ * @return LY_EINCOMPLETE for unresolved when,
+ * @return LY_EINVAL, LY_EMEM, LY_EINT for other errors.
  */
 LY_ERR lyxp_eval(struct lyxp_expr *exp, LYD_FORMAT format, const struct lys_module *local_mod, const struct lyd_node *ctx_node,
                  enum lyxp_node_type ctx_node_type, const struct lyd_node *tree, struct lyxp_set *set, int options);
 
-#define LYXP_SCHEMA 0x01 /**< Apply data node access restrictions defined for 'when' and 'must' evaluation. */
+#define LYXP_SCHEMA 0x01        /**< Apply data node access restrictions defined for 'when' and 'must' evaluation. */
 
 /**
  * @brief Get all the partial XPath nodes (atoms) that are required for @p exp to be evaluated.
@@ -303,12 +299,11 @@ LY_ERR lyxp_eval(struct lyxp_expr *exp, LYD_FORMAT format, const struct lys_modu
  * @param[in] exp Parsed XPath expression to be evaluated.
  * @param[in] format Format of the XPath expression (more specifcally, of any used prefixes).
  * @param[in] local_mod Local module relative to the @p exp.
- * @param[in] ctx_scnode Current (context) schema node, NULL for root node.
+ * @param[in] ctx_scnode Current (context) schema node. In case of a root node, set @p ctx_scnode_type correctly,
+ * but @p ctx_scnode must also be set to any node from the root node module - it will be used for resolving
+ * unqualified names.
  * @param[in] ctx_scnode_type Current (context) schema node type.
- * @param[out] set Result set. Must be valid and in the same libyang context as @p ctx_scnode.
- * To be safe, always either zero or cast the @p set to empty. After done using, either cast
- * the @p set to empty (if allocated statically) or free it (if allocated dynamically) to
- * prevent memory leaks.
+ * @param[out] set Result set.
  * @param[in] options Whether to apply some evaluation restrictions, one flag must always be used.
  * @return LY_ERR (same as lyxp_eval()).
  */
@@ -373,22 +368,47 @@ void lyxp_set_scnode_merge(struct lyxp_set *set1, struct lyxp_set *set2);
  *
  * @param[in] ctx Context for errors.
  * @param[in] expr XPath expression to parse. It is duplicated.
+ * @param[in] expr_len Length of @p expr, can be 0 if @p expr is 0-terminated.
+ * @param[in] reparse Whether to re-parse the expression to finalize full XPath parsing and fill
+ * information about expressions and their operators (fill repeat).
  * @return Filled expression structure or NULL on error.
  */
-struct lyxp_expr *lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr);
+struct lyxp_expr *lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr, size_t expr_len, int reparse);
+
+/**
+ * @brief Duplicate parsed XPath expression.
+ *
+ * @param[in] ctx Context with a dictionary.
+ * @param[in] exp Parsed expression.
+ * @return Duplicated structure, NULL on error.
+ */
+struct lyxp_expr *lyxp_expr_dup(const struct ly_ctx *ctx, const struct lyxp_expr *exp);
 
 /**
  * @brief Look at the next token and check its kind.
  *
  * @param[in] ctx Context for logging, not logged if NULL.
  * @param[in] exp Expression to use.
- * @param[in] exp_idx Position in the expression \p exp.
+ * @param[in] tok_idx Token index in the expression \p exp.
  * @param[in] want_tok Expected token.
  * @return LY_EINCOMPLETE on EOF,
  * @return LY_ENOT on non-matching token,
  * @return LY_SUCCESS on success.
  */
-LY_ERR lyxp_check_token(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint16_t exp_idx, enum lyxp_token want_tok);
+LY_ERR lyxp_check_token(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint16_t tok_idx, enum lyxp_token want_tok);
+
+/**
+ * @brief Look at the next token and skip it if it matches the expected one.
+ *
+ * @param[in] ctx Context for logging, not logged if NULL.
+ * @param[in] exp Expression to use.
+ * @param[in,out] tok_idx Token index in the expression \p exp, is updated.
+ * @param[in] want_tok Expected token.
+ * @return LY_EINCOMPLETE on EOF,
+ * @return LY_ENOT on non-matching token,
+ * @return LY_SUCCESS on success.
+ */
+LY_ERR lyxp_next_token(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint16_t *tok_idx, enum lyxp_token want_tok);
 
 /**
  * @brief Frees a parsed XPath expression. @p expr should not be used afterwards.

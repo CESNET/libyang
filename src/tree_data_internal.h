@@ -20,6 +20,8 @@
 
 #include <stddef.h>
 
+struct ly_path_predicate;
+
 /**
  * @brief Check whether a node to be deleted is the first top-level sibling.
  *
@@ -90,17 +92,12 @@ LY_ERR lyd_create_inner(const struct lysc_node *schema, struct lyd_node **node);
  * Hash is calculated and new node flag is set.
  *
  * @param[in] schema Schema node of the new data node.
- * @param[in] keys_str List instance key values in the form of "[key1='val1'][key2='val2']...".
- *            The keys do not have to be ordered but all of them must be set.
- * @param[in] keys_len Length of @p keys_str, must be set correctly.
- * @param[in] keys_format Format of the values for keys.
- * @param[in] log If 0, do not log any problems with @p keys_str format.
+ * @param[in] predicates Compiled key list predicates.
  * @param[out] node Created node.
  * @return LY_SUCCESS on success.
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_create_list(const struct lysc_node *schema, const char *keys_str, size_t keys_len, LYD_FORMAT keys_format,
-                       int log, struct lyd_node **node);
+LY_ERR lyd_create_list(const struct lysc_node *schema, const struct ly_path_predicate *predicates, struct lyd_node **node);
 
 /**
  * @brief Create an anyxml/anydata node.
@@ -228,6 +225,10 @@ LY_ERR ly_create_attr(struct lyd_node *parent, struct ly_attr **attr, const stru
 LY_ERR lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len, int *dynamic, int second,
                        ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format, const struct lyd_node *tree);
 
+/* similar to lyd_value_parse except can be used just to store the value, hence does also not support a second call */
+LY_ERR lyd_value_store(struct lyd_value *val, const struct lysc_node *schema, const char *value, size_t value_len,
+                       int *dynamic, ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format);
+
 /**
  * @brief Validate, canonize and store the given @p value into the metadata according to the annotation type's rules.
  *
@@ -339,14 +340,6 @@ LY_ERR lyd_insert_hash(struct lyd_node *node);
 void lyd_unlink_hash(struct lyd_node *node);
 
 /** @} datahash */
-
-/**
- * @brief Free path (target) structure of the lyd_value.
- *
- * @param[in] ctx libyang context.
- * @param[in] path The structure ([sized array](@ref sizedarrays)) to free.
- */
-void lyd_value_free_path(const struct ly_ctx *ctx, struct lyd_value_path *path);
 
 /**
  * @brief Find the node, in the list, satisfying the given restrictions.

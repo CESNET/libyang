@@ -304,7 +304,7 @@ lys_atomize_xpath(const struct lysc_node *ctx_node, const char *xpath, int optio
     memset(&xp_set, 0, sizeof xp_set);
 
     /* compile expression */
-    exp = lyxp_expr_parse(ctx_node->module->ctx, xpath);
+    exp = lyxp_expr_parse(ctx_node->module->ctx, xpath, 0, 1);
     LY_CHECK_ERR_GOTO(!exp, ret = LY_EINVAL, cleanup);
 
     /* atomize expression */
@@ -321,7 +321,7 @@ lys_atomize_xpath(const struct lysc_node *ctx_node, const char *xpath, int optio
     (*set)->size = xp_set.used;
 
     for (i = 0; i < xp_set.used; ++i) {
-        if (xp_set.val.nodes[i].type == LYXP_NODE_ELEM) {
+        if (xp_set.val.scnodes[i].type == LYXP_NODE_ELEM) {
             ly_set_add(*set, xp_set.val.scnodes[i].scnode, LY_SET_OPT_USEASLIST);
         }
     }
