@@ -58,7 +58,8 @@ def path_flags(update=False, rpc_output=False, no_parent_ret=False):
 
 #------------------------------------------------------------------------------
 def parser_flags(data=False, config=False, get=False, strict=False,
-                 trusted=False, no_yanglib=False, rpc=False):
+                 trusted=False, no_yanglib=False, rpc=False, destruct=False,
+                 no_siblings=False, explicit=False):
     flags = 0
     if data:
         flags |= lib.LYD_OPT_DATA
@@ -74,6 +75,12 @@ def parser_flags(data=False, config=False, get=False, strict=False,
         flags |= lib.LYD_OPT_DATA_NO_YANGLIB
     if rpc:
         flags |= lib.LYD_OPT_RPC
+    if destruct:
+        flags |= lib.LYD_OPT_DESTRUCT
+    if no_siblings:
+        flags |= lib.LYD_OPT_NOSIBLINGS
+    if explicit:
+        flags |= lib.LYD_OPT_EXPLICIT
     return flags
 
 
@@ -164,6 +171,13 @@ class DNode:
         ret = lib.lyd_validate(node_p, flags, ffi.NULL)
         if ret != 0:
             self.context.error('validation failed')
+
+    def merge(self, source, destruct=False, no_siblings=False, explicit=False):
+        flags = parser_flags(destruct=destruct, no_siblings=no_siblings,
+                             explicit=explicit)
+        ret = lib.lyd_merge(self._node, source._node, flags)
+        if ret != 0:
+            raise self.context.error('merge failed')
 
     def print_mem(self, fmt,
                   with_siblings=False,
