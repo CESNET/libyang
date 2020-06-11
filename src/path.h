@@ -132,7 +132,7 @@ LY_ERR ly_path_compile_predicate(const struct lys_module *cur_mod, const struct 
                                  enum ly_path_pred_type *pred_type);
 
 /**
- * @brief Resolve the target defined by lyd_value_path structure. Not supported for leafref!
+ * @brief Resolve the target defined by ly_path structure. Not supported for leafref!
  *
  * @param[in] path Path structure specifying the target.
  * @param[in] tree Data tree to be searched.
