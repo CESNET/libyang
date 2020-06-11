@@ -23,15 +23,6 @@
 #include "printer_internal.h"
 #include "tree_data.h"
 
-/**
- * @brief Common YANG data printer.
- *
- * @param[in] out Prepared structure defining the type and details of the printer output.
- * @param[in] root The root element of the (sub)tree to print.
- * @param[in] format Output format.
- * @param[in] options [Data printer flags](@ref dataprinterflags). With \p format LYD_LYB, only #LYDP_WITHSIBLINGS option is accepted.
- * @return LY_ERR value.
- */
 API ssize_t
 lyd_print(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, int options)
 {
@@ -97,7 +88,7 @@ lyd_print_mem(char **strp, const struct lyd_node *root, LYD_FORMAT format, int o
     /* init */
     *strp = NULL;
 
-    out = ly_out_new_memory(strp, 0);
+    LY_CHECK_RET(ly_out_new_memory(strp, 0, &out));
     return lyd_print_(out, root, format, options);
 }
 
@@ -108,7 +99,7 @@ lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format, int options
 
     LY_CHECK_ARG_RET(NULL, fd != -1, root, LY_EINVAL);
 
-    out = ly_out_new_fd(fd);
+    LY_CHECK_RET(ly_out_new_fd(fd, &out));
     return lyd_print_(out, root, format, options);
 }
 
@@ -119,7 +110,7 @@ lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format, int opti
 
     LY_CHECK_ARG_RET(NULL, f, root, LY_EINVAL);
 
-    out = ly_out_new_file(f);
+    LY_CHECK_RET(ly_out_new_file(f, &out));
     return lyd_print_(out, root, format, options);
 }
 
@@ -130,7 +121,7 @@ lyd_print_path(const char *path, const struct lyd_node *root, LYD_FORMAT format,
 
     LY_CHECK_ARG_RET(NULL, path, root, LY_EINVAL);
 
-    out = ly_out_new_filepath(path);
+    LY_CHECK_RET(ly_out_new_filepath(path, &out));
     return lyd_print_(out, root, format, options);
 }
 
@@ -142,6 +133,6 @@ lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), voi
 
     LY_CHECK_ARG_RET(NULL, writeclb, root, LY_EINVAL);
 
-    out = ly_out_new_clb(writeclb, arg);
+    LY_CHECK_RET(ly_out_new_clb(writeclb, arg, &out));
     return lyd_print_(out, root, format, options);
 }

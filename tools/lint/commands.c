@@ -493,11 +493,11 @@ cmd_print(const char *arg)
     }
 
     if (out_path) {
-        out = ly_out_new_filepath(out_path);
+        ret = ly_out_new_filepath(out_path, &out);
     } else {
-        out = ly_out_new_file(stdout);
+        ret = ly_out_new_file(stdout, &out);
     }
-    if (!out) {
+    if (ret) {
         fprintf(stderr, "Could not open the output file (%s).\n", strerror(errno));
         goto cleanup;
     }
@@ -834,20 +834,19 @@ cmd_data(const char *arg)
     }
 
     if (out_path) {
-        out = ly_out_new_filepath(out_path);
+        ret = ly_out_new_filepath(out_path, &out);
     } else {
-        out = ly_out_new_file(stdout);
+        ret = ly_out_new_file(stdout, &out);
     }
-    if (!out) {
+    if (ret) {
         fprintf(stderr, "Could not open the output file (%s).\n", strerror(errno));
         goto cleanup;
     }
 
     if (outformat) {
-        lyd_print(out, data, outformat, LYDP_WITHSIBLINGS | LYDP_FORMAT | printopt);
+        ret = lyd_print(out, data, outformat, LYDP_WITHSIBLINGS | LYDP_FORMAT | printopt);
+        ret = ret < 0 ? ret * (-1) : 0;
     }
-
-    ret = 0;
 
 cleanup:
     free(*argv);

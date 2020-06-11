@@ -178,7 +178,7 @@ test_anydata(void **state)
     struct lyd_node *tree;
 
     struct ly_out *out;
-    assert_non_null(out = ly_out_new_memory(&str, 0));
+    assert_int_equal(LY_SUCCESS, ly_out_new_memory(&str, 0, &out));
 
     data =
     "<any xmlns=\"urn:tests:a\">"
@@ -327,7 +327,7 @@ test_opaq(void **state)
     struct lyd_node *tree;
 
     struct ly_out *out;
-    assert_non_null(out = ly_out_new_memory(&str, 0));
+    assert_int_equal(LY_SUCCESS, ly_out_new_memory(&str, 0, &out));
 
     /* invalid value, no flags */
     data = "<foo3 xmlns=\"urn:tests:a\"/>";
@@ -404,7 +404,7 @@ test_rpc(void **state)
     const struct lyd_node *node;
 
     struct ly_out *out;
-    assert_non_null(out = ly_out_new_memory(&str, 0));
+    assert_int_equal(LY_SUCCESS, ly_out_new_memory(&str, 0, &out));
 
     data =
         "<rpc xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" msgid=\"25\" custom-attr=\"val\">"
@@ -490,7 +490,7 @@ test_action(void **state)
     const struct lyd_node *node;
 
     struct ly_out *out;
-    assert_non_null(out = ly_out_new_memory(&str, 0));
+    assert_int_equal(LY_SUCCESS, ly_out_new_memory(&str, 0, &out));
 
     data =
         "<rpc xmlns=\"urn:ietf:params:xml:ns:netconf:base:1.0\" msgid=\"25\" custom-attr=\"val\">"
@@ -549,7 +549,7 @@ test_notification(void **state)
     const struct lyd_node *node;
 
     struct ly_out *out;
-    assert_non_null(out = ly_out_new_memory(&str, 0));
+    assert_int_equal(LY_SUCCESS, ly_out_new_memory(&str, 0, &out));
 
     data =
         "<notification xmlns=\"urn:ietf:params:xml:ns:netconf:notification:1.0\">"
@@ -617,7 +617,7 @@ test_reply(void **state)
     const struct lyd_node *node;
 
     struct ly_out *out;
-    assert_non_null(out = ly_out_new_memory(&str, 0));
+    assert_int_equal(LY_SUCCESS, ly_out_new_memory(&str, 0, &out));
 
     data =
         "<c xmlns=\"urn:tests:a\">"

@@ -416,7 +416,7 @@ cast_string_recursive(const struct lyd_node *node, int fake_cont, enum lyxp_node
                 LY_CHECK_ERR_RET(!buf, LOGMEM(LYD_NODE_CTX(node)), LY_EMEM);
                 break;
             case LYD_ANYDATA_DATATREE:
-                out = ly_out_new_memory(&buf, 0);
+                LY_CHECK_RET(ly_out_new_memory(&buf, 0, &out));
                 rc = lyd_print(out, any->value.tree, LYD_XML, LYDP_WITHSIBLINGS);
                 ly_out_free(out, NULL, 0);
                 LY_CHECK_RET(rc < 0, -rc);

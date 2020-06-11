@@ -95,7 +95,7 @@ lys_print_mem(char **strp, const struct lys_module *module, LYS_OUTFORMAT format
     /* init */
     *strp = NULL;
 
-    out = ly_out_new_memory(strp, 0);
+    LY_CHECK_RET(ly_out_new_memory(strp, 0, &out));
     return lys_print_(out, module, format, line_length, options);
 }
 
@@ -106,7 +106,7 @@ lys_print_fd(int fd, const struct lys_module *module, LYS_OUTFORMAT format, int 
 
     LY_CHECK_ARG_RET(NULL, fd != -1, module, LY_EINVAL);
 
-    out = ly_out_new_fd(fd);
+    LY_CHECK_RET(ly_out_new_fd(fd, &out));
     return lys_print_(out, module, format, line_length, options);
 }
 
@@ -117,7 +117,7 @@ lys_print_file(FILE *f, const struct lys_module *module, LYS_OUTFORMAT format, i
 
     LY_CHECK_ARG_RET(NULL, f, module, LY_EINVAL);
 
-    out = ly_out_new_file(f);
+    LY_CHECK_RET(ly_out_new_file(f, &out));
     return lys_print_(out, module, format, line_length, options);
 }
 
@@ -128,7 +128,7 @@ lys_print_path(const char *path, const struct lys_module *module, LYS_OUTFORMAT 
 
     LY_CHECK_ARG_RET(NULL, path, module, LY_EINVAL);
 
-    out = ly_out_new_filepath(path);
+    LY_CHECK_RET(ly_out_new_filepath(path, &out));
     return lys_print_(out, module, format, line_length, options);
 }
 
@@ -140,7 +140,7 @@ lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), voi
 
     LY_CHECK_ARG_RET(NULL, writeclb, module, LY_EINVAL);
 
-    out = ly_out_new_clb(writeclb, arg);
+    LY_CHECK_RET(ly_out_new_clb(writeclb, arg, &out));
     return lys_print_(out, module, format, line_length, options);
 }
 
