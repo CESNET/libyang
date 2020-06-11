@@ -389,13 +389,26 @@ struct lyxp_expr *lyxp_expr_dup(const struct ly_ctx *ctx, const struct lyxp_expr
  *
  * @param[in] ctx Context for logging, not logged if NULL.
  * @param[in] exp Expression to use.
- * @param[in] exp_idx Position in the expression \p exp.
+ * @param[in] tok_idx Token index in the expression \p exp.
  * @param[in] want_tok Expected token.
  * @return LY_EINCOMPLETE on EOF,
  * @return LY_ENOT on non-matching token,
  * @return LY_SUCCESS on success.
  */
-LY_ERR lyxp_check_token(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint16_t exp_idx, enum lyxp_token want_tok);
+LY_ERR lyxp_check_token(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint16_t tok_idx, enum lyxp_token want_tok);
+
+/**
+ * @brief Look at the next token and skip it if it matches the expected one.
+ *
+ * @param[in] ctx Context for logging, not logged if NULL.
+ * @param[in] exp Expression to use.
+ * @param[in,out] tok_idx Token index in the expression \p exp, is updated.
+ * @param[in] want_tok Expected token.
+ * @return LY_EINCOMPLETE on EOF,
+ * @return LY_ENOT on non-matching token,
+ * @return LY_SUCCESS on success.
+ */
+LY_ERR lyxp_next_token(const struct ly_ctx *ctx, const struct lyxp_expr *exp, uint16_t *tok_idx, enum lyxp_token want_tok);
 
 /**
  * @brief Frees a parsed XPath expression. @p expr should not be used afterwards.
