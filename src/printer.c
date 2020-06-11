@@ -159,19 +159,19 @@ ly_out_type(const struct ly_out *out)
     return out->type;
 }
 
-API struct ly_out *
-ly_out_new_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg)
+API LY_ERR
+ly_out_new_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, struct ly_out **out)
 {
-    struct ly_out *out;
+    LY_CHECK_ARG_RET(NULL, out, writeclb, LY_EINVAL);
 
-    out = calloc(1, sizeof *out);
-    LY_CHECK_ERR_RET(!out, LOGMEM(NULL), NULL);
+    *out = calloc(1, sizeof **out);
+    LY_CHECK_ERR_RET(!*out, LOGMEM(NULL), LY_EMEM);
 
-    out->type = LY_OUT_CALLBACK;
-    out->method.clb.func = writeclb;
-    out->method.clb.arg = arg;
+    (*out)->type = LY_OUT_CALLBACK;
+    (*out)->method.clb.func = writeclb;
+    (*out)->method.clb.arg = arg;
 
-    return out;
+    return LY_SUCCESS;
 }
 
 API ssize_t (*ly_out_clb(struct ly_out *out, ssize_t (*writeclb)(void *arg, const void *buf, size_t count)))(void *arg, const void *buf, size_t count)
@@ -205,41 +205,43 @@ ly_out_clb_arg(struct ly_out *out, void *arg)
     return prev_arg;
 }
 
-API struct ly_out *
-ly_out_new_fd(int fd)
+API LY_ERR
+ly_out_new_fd(int fd, struct ly_out **out)
 {
-    struct ly_out *out;
+    LY_CHECK_ARG_RET(NULL, out, fd != -1, LY_EINVAL);
 
-    out = calloc(1, sizeof *out);
-    LY_CHECK_ERR_RET(!out, LOGMEM(NULL), NULL);
+    *out = calloc(1, sizeof **out);
+    LY_CHECK_ERR_RET(!*out, LOGMEM(NULL), LY_EMEM);
 
 #ifdef HAVE_VDPRINTF
-    out->type = LY_OUT_FD;
-    out->method.fd = fd;
+    (*out)->type = LY_OUT_FD;
+    (*out)->method.fd = fd;
 #else
     /* Without vdfprintf(), change the printing method to printing to a FILE stream.
      * To preserve the original file descriptor, duplicate it and use it to open file stream. */
-    out->type = LY_OUT_FDSTREAM;
-    out->method.fdstream.fd = fd;
+    (*out)->type = LY_OUT_FDSTREAM;
+    (*out)->method.fdstream.fd = fd;
 
-    fd = dup(out->method.fdstream.fd);
+    fd = dup((*out)->method.fdstream.fd);
     if (fd < 0) {
         LOGERR(NULL, LY_ESYS, "Unable to duplicate provided file descriptor (%d) for printing the output (%s).",
-               out->method.fdstream.fd, strerror(errno));
-        free(out);
-        return NULL;
+               (*out)->method.fdstream.fd, strerror(errno));
+        free(*out);
+        *out = NULL;
+        return LY_ESYS;
     }
-    out->method.fdstream.f = fdopen(fd, "a");
-    if (!out->method.fdstream.f) {
+    (*out)->method.fdstream.f = fdopen(fd, "a");
+    if (!(*out)->method.fdstream.f) {
         LOGERR(NULL, LY_ESYS, "Unable to open provided file descriptor (%d) for printing the output (%s).",
-               out->method.fdstream.fd, strerror(errno));
-        free(out);
+               (*out)->method.fdstream.fd, strerror(errno));
+        free(*out);
+        *out = NULL;
         fclose(fd);
-        return NULL;
+        return LY_ESYS;
     }
 #endif
 
-    return out;
+    return LY_SUCCESS;
 }
 
 API int
@@ -284,18 +286,18 @@ ly_out_fd(struct ly_out *out, int fd)
     return prev_fd;
 }
 
-API struct ly_out *
-ly_out_new_file(FILE *f)
+API LY_ERR
+ly_out_new_file(FILE *f, struct ly_out **out)
 {
-    struct ly_out *out;
+    LY_CHECK_ARG_RET(NULL, out, f, LY_EINVAL);
 
-    out = calloc(1, sizeof *out);
-    LY_CHECK_ERR_RET(!out, LOGMEM(NULL), NULL);
+    *out = calloc(1, sizeof **out);
+    LY_CHECK_ERR_RET(!*out, LOGMEM(NULL), LY_EMEM);
 
-    out->type = LY_OUT_FILE;
-    out->method.f = f;
+    (*out)->type = LY_OUT_FILE;
+    (*out)->method.f = f;
 
-    return out;
+    return LY_SUCCESS;
 }
 
 API FILE *
@@ -314,25 +316,25 @@ ly_out_file(struct ly_out *out, FILE *f)
     return prev_f;
 }
 
-API struct ly_out *
-ly_out_new_memory(char **strp, size_t size)
+API LY_ERR
+ly_out_new_memory(char **strp, size_t size, struct ly_out **out)
 {
-    struct ly_out *out;
+    LY_CHECK_ARG_RET(NULL, out, strp, LY_EINVAL);
 
-    out = calloc(1, sizeof *out);
-    LY_CHECK_ERR_RET(!out, LOGMEM(NULL), NULL);
+    *out = calloc(1, sizeof **out);
+    LY_CHECK_ERR_RET(!*out, LOGMEM(NULL), LY_EMEM);
 
-    out->type = LY_OUT_MEMORY;
-    out->method.mem.buf = strp;
+    (*out)->type = LY_OUT_MEMORY;
+    (*out)->method.mem.buf = strp;
     if (!size) {
         /* buffer is supposed to be allocated */
         *strp = NULL;
     } else if (*strp) {
         /* there is already buffer to use */
-        out->method.mem.size = size;
+        (*out)->method.mem.size = size;
     }
 
-    return out;
+    return LY_SUCCESS;
 }
 
 char *
@@ -406,22 +408,22 @@ ly_out_reset(struct ly_out *out)
     return LY_SUCCESS;
 }
 
-API struct ly_out *
-ly_out_new_filepath(const char *filepath)
+API LY_ERR
+ly_out_new_filepath(const char *filepath, struct ly_out **out)
 {
-    struct ly_out *out;
+    LY_CHECK_ARG_RET(NULL, out, filepath, LY_EINVAL);
 
-    out = calloc(1, sizeof *out);
-    LY_CHECK_ERR_RET(!out, LOGMEM(NULL), NULL);
+    *out = calloc(1, sizeof **out);
+    LY_CHECK_ERR_RET(!*out, LOGMEM(NULL), LY_EMEM);
 
-    out->type = LY_OUT_FILEPATH;
-    out->method.fpath.f = fopen(filepath, "w");
-    if (!out->method.fpath.f) {
+    (*out)->type = LY_OUT_FILEPATH;
+    (*out)->method.fpath.f = fopen(filepath, "w");
+    if (!(*out)->method.fpath.f) {
         LOGERR(NULL, LY_ESYS, "Failed to open file \"%s\" (%s).", filepath, strerror(errno));
-        return NULL;
+        return LY_ESYS;
     }
-    out->method.fpath.filepath = strdup(filepath);
-    return out;
+    (*out)->method.fpath.filepath = strdup(filepath);
+    return LY_SUCCESS;
 }
 
 API const char *

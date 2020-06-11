@@ -481,8 +481,7 @@ main_ni(int argc, char* argv[])
                     goto cleanup;
                 }
             } else {
-                out = ly_out_new_filepath(optarg);
-                if (!out) {
+                if (ly_out_new_filepath(optarg, &out)) {
                     fprintf(stderr, "yanglint error: unable open output file %s (%s)\n", optarg, strerror(errno));
                     goto cleanup;
                 }

@@ -1022,7 +1022,7 @@ test_defaults(void **state)
     const struct lys_module *mod = ly_ctx_get_module_latest(ctx, "f");
 
     struct ly_out *out;
-    assert_non_null(out = ly_out_new_memory(&str, 0));
+    assert_int_equal(LY_SUCCESS, ly_out_new_memory(&str, 0, &out));
 
     /* get defaults */
     tree = NULL;

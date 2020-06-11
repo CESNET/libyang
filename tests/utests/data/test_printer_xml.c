@@ -182,7 +182,7 @@ test_leaf(void **state)
     struct ly_out *out;
 
     s->func = test_leaf;
-    assert_non_null(out = ly_out_new_memory(&printed, 0));
+    assert_int_equal(LY_SUCCESS, ly_out_new_memory(&printed, 0, &out));
 
     data = "<int8 xmlns=\"urn:tests:types\">\n 15 \t\n  </int8>";
     result = "<int8 xmlns=\"urn:tests:types\">15</int8>";
@@ -207,7 +207,7 @@ test_anydata(void **state)
     struct ly_out *out;
 
     s->func = test_anydata;
-    assert_non_null(out = ly_out_new_memory(&printed, 0));
+    assert_int_equal(LY_SUCCESS, ly_out_new_memory(&printed, 0, &out));
 
     data = "<any xmlns=\"urn:tests:types\"><somexml xmlns:x=\"url:x\" xmlns=\"example.com\"><x:x/></somexml></any>";
     assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
@@ -276,7 +276,7 @@ test_defaults(void **state)
 
     s->func = test_defaults;
 
-    assert_non_null(out = ly_out_new_memory(&printed, 0));
+    assert_int_equal(LY_SUCCESS, ly_out_new_memory(&printed, 0, &out));
 
     /* standard default value */
     data = "<c xmlns=\"urn:defaults\">aa</c>";

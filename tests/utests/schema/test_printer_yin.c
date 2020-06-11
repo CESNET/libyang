@@ -583,7 +583,7 @@ test_module(void **state)
     char *printed;
     struct ly_out *out;
 
-    assert_non_null(out = ly_out_new_memory(&printed, 0));
+    assert_int_equal(LY_SUCCESS, ly_out_new_memory(&printed, 0, &out));
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
 
     assert_non_null(mod = lys_parse_mem(ctx, orig, LYS_IN_YANG));

@@ -70,10 +70,11 @@ LY_ERR ly_out_reset(struct ly_out *out);
  *
  * @param[in] writeclb Pointer to the printer callback function writing the data (see write(2)).
  * @param[in] arg Optional caller-specific argument to be passed to the @p writeclb callback.
- * @return NULL in case of memory allocation error.
- * @return Created printer handler supposed to be passed to different ly*_print_*() functions.
+ * @param[out] out Created printer handler supposed to be passed to different ly*_print() functions.
+ * @return LY_SUCCESS in case of success
+ * @return LY_EMEM in case allocating the @p out handler fails.
  */
-struct ly_out *ly_out_new_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg);
+LY_ERR ly_out_new_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, struct ly_out **out);
 
 /**
  * @brief Get or reset callback function associated with a callback printer handler.
@@ -98,10 +99,11 @@ void *ly_out_clb_arg(struct ly_out *out, void *arg);
  * @brief Create printer handler using file descriptor.
  *
  * @param[in] fd File descriptor to use.
- * @return NULL in case of error.
- * @return Created printer handler supposed to be passed to different ly*_print_*() functions.
+ * @param[out] out Created printer handler supposed to be passed to different ly*_print() functions.
+ * @return LY_SUCCESS in case of success
+ * @return LY_ERR value in case of failure.
  */
-struct ly_out *ly_out_new_fd(int fd);
+LY_ERR ly_out_new_fd(int fd, struct ly_out **out);
 
 /**
  * @brief Get or reset file descriptor printer handler.
@@ -117,10 +119,11 @@ int ly_out_fd(struct ly_out *out, int fd);
  * @brief Create printer handler using file stream.
  *
  * @param[in] f File stream to use.
- * @return NULL in case of error.
- * @return Created printer handler supposed to be passed to different ly*_print_*() functions.
+ * @param[out] out Created printer handler supposed to be passed to different ly*_print() functions.
+ * @return LY_SUCCESS in case of success
+ * @return LY_ERR value in case of failure.
  */
-struct ly_out *ly_out_new_file(FILE *f);
+LY_ERR ly_out_new_file(FILE *f, struct ly_out **out);
 
 /**
  * @brief Get or reset file stream printer handler.
@@ -138,10 +141,11 @@ FILE *ly_out_file(struct ly_out *out, FILE *f);
  * @p size of the buffer is set, the buffer is used (and extended if needed) to store the printed data.
  * @param[in] size Size of the buffer provided via @p strp. In case it is 0, the buffer for the printed data
  * is newly allocated even if @p strp points to a pointer to an existing buffer.
- * @return NULL in case of error.
- * @return Created printer handler supposed to be passed to different ly*_print_*() functions.
+ * @param[out] out Created printer handler supposed to be passed to different ly*_print() functions.
+ * @return LY_SUCCESS in case of success
+ * @return LY_ERR value in case of failure.
  */
-struct ly_out *ly_out_new_memory(char **strp, size_t size);
+LY_ERR ly_out_new_memory(char **strp, size_t size, struct ly_out **out);
 
 /**
  * @brief Get or change memory where the data are dumped.
@@ -162,7 +166,7 @@ char *ly_out_memory(struct ly_out *out, char **strp, size_t size);
  * @return NULL in case of error.
  * @return Created printer handler supposed to be passed to different ly*_print_*() functions.
  */
-struct ly_out *ly_out_new_filepath(const char *filepath);
+LY_ERR ly_out_new_filepath(const char *filepath, struct ly_out **out);
 
 /**
  * @brief Get or change the filepath of the file where the printer prints the data.
