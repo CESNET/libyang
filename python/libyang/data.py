@@ -57,13 +57,15 @@ def path_flags(update=False, rpc_output=False, no_parent_ret=False):
 
 
 #------------------------------------------------------------------------------
-def parser_flags(data=False, config=False, strict=False, trusted=False,
-                 no_yanglib=False, rpc=False):
+def parser_flags(data=False, config=False, get=False, strict=False,
+                 trusted=False, no_yanglib=False, rpc=False):
     flags = 0
     if data:
         flags |= lib.LYD_OPT_DATA
     if config:
         flags |= lib.LYD_OPT_CONFIG
+    if get:
+        flags |= lib.LYD_OPT_GET
     if strict:
         flags |= lib.LYD_OPT_STRICT
     if trusted:
@@ -152,10 +154,10 @@ class DNode:
         finally:
             lib.free(path)
 
-    def validate(self, data=False, config=False, strict=False, trusted=False,
-                 no_yanglib=False):
+    def validate(self, data=False, config=False, get=False, strict=False,
+                 trusted=False, no_yanglib=False):
         flags = parser_flags(
-            data=data, config=config, strict=strict, trusted=trusted,
+            data=data, config=config, get=get, strict=strict, trusted=trusted,
             no_yanglib=no_yanglib)
         node_p = ffi.new('struct lyd_node **')
         node_p[0] = self._node
