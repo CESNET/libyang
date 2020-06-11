@@ -24,6 +24,7 @@
 
 #include "../../src/context.h"
 #include "../../src/tree_data_internal.h"
+#include "../../src/tree_schema.h"
 #include "../../src/printer.h"
 #include "../../src/printer_data.h"
 

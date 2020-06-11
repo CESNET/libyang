@@ -23,6 +23,7 @@
 #include "dict.h"
 #include "log.h"
 #include "path.h"
+#include "parser_schema.h"
 #include "tree.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"

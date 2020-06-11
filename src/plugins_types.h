@@ -22,6 +22,10 @@
 #include "tree.h"
 #include "tree_data.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct ly_ctx;
 struct lysc_ident;
 struct lysc_pattern;
@@ -359,5 +363,9 @@ struct lyd_value_prefix *ly_type_get_prefixes(const struct ly_ctx *ctx, const ch
                                               ly_clb_resolve_prefix get_prefix, void *parser);
 
 /** @} types */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LY_PLUGINS_TYPES_H_ */

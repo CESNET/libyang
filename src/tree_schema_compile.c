@@ -28,6 +28,7 @@
 #include "log.h"
 #include "path.h"
 #include "parser.h"
+#include "parser_schema.h"
 #include "plugins_exts.h"
 #include "plugins_types.h"
 #include "plugins_exts_internal.h"

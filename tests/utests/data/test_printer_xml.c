@@ -18,6 +18,7 @@
 #include <cmocka.h>
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "tests/config.h"
@@ -25,6 +26,7 @@
 #include "../../src/context.h"
 #include "../../src/printer.h"
 #include "../../src/printer_data.h"
+#include "../../src/tree_schema.h"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};

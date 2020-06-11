@@ -18,11 +18,14 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
+#include <string.h>
+
 #include "../../../src/common.h"
 #include "../../../src/context.h"
+#include "../../../src/log.h"
+#include "../../../src/parser_yin.h"
 #include "../../../src/tree_schema.h"
 #include "../../../src/tree_schema_internal.h"
-#include "../../../src/parser_yin.h"
 #include "../../../src/xml.h"
 
 

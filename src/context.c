@@ -27,11 +27,12 @@
 
 #include "common.h"
 #include "hash_table.h"
+#include "plugins_types.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_data.h"
+#include "tree_schema.h"
 #include "tree_schema_internal.h"
-#include "plugins_types.h"
 
 #define LY_INTERNAL_MODS_COUNT 6
 

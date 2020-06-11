@@ -15,7 +15,14 @@
 #ifndef LY_PARSER_H_
 #define LY_PARSER_H_
 
+#include <stdio.h>
 #include <unistd.h>
+
+#include "log.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /**
  * @brief Parser input structure specifying where the data are read.
@@ -154,5 +161,9 @@ const char *ly_in_filepath(struct ly_in *in, const char *filepath, size_t len);
  * close stream/file descriptor (for LY_IN_FD and LY_IN_FILE)
  */
 void ly_in_free(struct ly_in *in, int destroy);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LY_PARSER_H_ */

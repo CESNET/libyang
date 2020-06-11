@@ -12,10 +12,16 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
+
+
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
 #include <cmocka.h>
+
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
 
 #include "../../src/common.h"
 

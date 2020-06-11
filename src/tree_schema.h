@@ -26,13 +26,13 @@
 #include "tree.h"
 #include "tree_data.h"
 
-struct ly_ctx;
-struct ly_path;
-struct ly_set;
-
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+struct ly_path;
+struct ly_ctx;
+struct ly_set;
 
 /**
  * @defgroup schematree Schema Tree

@@ -15,11 +15,18 @@
 #ifndef LY_PRINTER_SCHEMA_H_
 #define LY_PRINTER_SCHEMA_H_
 
+#include <stdio.h>
 #include <unistd.h>
 
-#include "tree_schema.h"
+#include "log.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 struct ly_out;
+struct lys_module;
+struct lysc_node;
 
 /**
  * @addtogroup schematree
@@ -156,5 +163,9 @@ LY_ERR lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t coun
 ssize_t lys_print_node(struct ly_out *out, const struct lysc_node *node, LYS_OUTFORMAT format, int line_length, int options);
 
 /** @} schematree */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LY_PRINTER_SCHEMA_H_ */

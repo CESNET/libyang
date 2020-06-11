@@ -24,6 +24,7 @@
 #include <cmocka.h>
 
 #include <string.h>
+#include <stdlib.h>
 #include <stdio.h>
 
 #include "../../src/hash_table.h"

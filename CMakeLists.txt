@@ -250,21 +250,19 @@ set(resrc
 set(headers
     src/libyang.h
     src/context.h
-    src/tree.h
-    src/tree_data.h
+    src/dict.h
+    src/log.h
     src/parser.h
     src/parser_schema.h
     src/plugins_exts.h
     src/plugins_types.h
     src/printer.h
     src/printer_data.h
-    src/tree_schema.h
     src/printer_schema.h
-    src/plugins_exts.h
-    src/plugins_types.h
-    src/dict.h
-    src/log.h
-    src/set.h)
+    src/set.h
+    src/tree.h
+    src/tree_data.h
+    src/tree_schema.h)
 
 # create static libyang library
 if(ENABLE_STATIC)
