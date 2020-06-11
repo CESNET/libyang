@@ -12,14 +12,16 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
+#include "printer_schema.h"
+
 #include <stdio.h>
 #include <unistd.h>
 
 #include "common.h"
 #include "config.h"
 #include "log.h"
+#include "printer.h"
 #include "printer_internal.h"
-#include "printer_schema.h"
 #include "tree_schema.h"
 
 API ssize_t

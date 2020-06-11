@@ -26,6 +26,7 @@
 #include "context.h"
 #include "dict.h"
 #include "path.h"
+#include "parser_schema.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_schema.h"

@@ -20,6 +20,10 @@
 
 #include "log.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct ly_ctx;
 struct ly_path;
 struct ly_set;
@@ -27,10 +31,6 @@ struct lyd_node;
 struct lyd_node_opaq;
 struct lys_module;
 struct lysc_node;
-
-#ifdef __cplusplus
-extern "C" {
-#endif
 
 /**
  * @defgroup datatree Data Tree

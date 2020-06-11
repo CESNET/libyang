@@ -18,6 +18,7 @@
 #include <cmocka.h>
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "../../src/context.h"

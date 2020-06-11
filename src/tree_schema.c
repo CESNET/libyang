@@ -14,12 +14,11 @@
 
 #define _GNU_SOURCE
 
-#include "common.h"
+#include "tree_schema.h"
 
 #include <assert.h>
 #include <dirent.h>
 #include <errno.h>
-#include <fcntl.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -27,16 +26,17 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "common.h"
 #include "context.h"
 #include "dict.h"
 #include "log.h"
-#include "set.h"
-#include "xpath.h"
-#include "plugins_exts.h"
-#include "tree.h"
-#include "tree_schema.h"
-#include "tree_schema_internal.h"
+#include "parser.h"
 #include "parser_internal.h"
+#include "parser_schema.h"
+#include "set.h"
+#include "tree.h"
+#include "tree_schema_internal.h"
+#include "xpath.h"
 
 API const struct lysc_node *
 lys_getnext(const struct lysc_node *last, const struct lysc_node *parent, const struct lysc_module *module, int options)

@@ -19,11 +19,12 @@
 
 #include "log.h"
 #include "parser_schema.h"
-#include "tree_schema.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+struct lysc_node;
 
 /**
  * @page howtocontext Context

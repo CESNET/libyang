@@ -20,6 +20,10 @@
 
 #include "log.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Printer output structure specifying where the data are printed.
  */
@@ -217,5 +221,9 @@ ssize_t ly_write(struct ly_out *out, const char *buf, size_t len);
  * close stream/file descriptor (for LY_OUT_FD, LY_OUT_FDSTREAM and LY_OUT_FILE)
  */
 void ly_out_free(struct ly_out *out, void (*clb_arg_destructor)(void *arg), int destroy);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LY_PRINTER_H_ */

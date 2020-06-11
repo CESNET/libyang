@@ -16,23 +16,18 @@
 
 #include <assert.h>
 #include <ctype.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <limits.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
-#include <unistd.h>
 
 #include "common.h"
 #include "config.h"
 #include "context.h"
-#include "dict.h"
 #include "hash_table.h"
 #include "log.h"
-#include "plugins_exts.h"
 #include "parser.h"
+#include "parser_schema.h"
 #include "parser_internal.h"
 #include "set.h"
 #include "tree.h"

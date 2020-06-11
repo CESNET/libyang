@@ -14,6 +14,10 @@
 
 #include "common.h"
 
+#ifndef  HAVE_GET_CURRENT_DIR_NAME
+#	include <limits.h>
+#	include <unistd.h>
+#endif
 #include <string.h>
 
 #include "config.h"

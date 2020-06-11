@@ -21,6 +21,10 @@
 #include "log.h"
 #include "tree_data.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 struct ly_out;
 
 /**
