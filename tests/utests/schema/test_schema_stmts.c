@@ -20,10 +20,14 @@
 
 #include <string.h>
 
-#include "macros.h"
+#include "log.h"
+#include "context.h"
+#include "test_schema.h"
+#include "tree_schema.h"
 
+#include "test_schema.h"
 
-static void
+void
 test_identity(void **state)
 {
     *state = test_identity;
@@ -136,7 +140,7 @@ test_identity(void **state)
 }
 
 
-static void
+void
 test_feature(void **state)
 {
     *state = test_feature;

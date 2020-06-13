@@ -1,48 +1,22 @@
-set(local_tests
-    utest:test_common
-    utest:test_set
-    utest:test_hash_table
-    utest:test_inout
-    utest:test_context
-    utest:test_xml
-    utest:test_xpath
-    utest:test_yanglib
-    utest:schema/test_schema
-    utest:schema/test_parser_yang
-    utest:schema/test_parser_yin
-    utest:schema/test_tree_schema_compile
-    utest:schema/test_printer_yang
-    utest:schema/test_printer_yin
-    utest:data/test_tree_data
-    utest:data/test_new
-    utest:data/test_parser_xml
-    utest:data/test_printer_xml
-    utest:data/test_validation
-    utest:data/test_types
-    utest:extensions/test_metadata
-    utest:extensions/test_nacm)
-set(local_tests_wraps
-    "-Wl,--wrap=realloc"
-    " "
-    " "
-    " "
-    " "
-    " "
-    " "
-    " "
-    " "
-    " "
-    " "
-    " "
-    " "
-    " "
-    " "
-    " "
-    " "
-    " "
-    " "
-    " "
-    " "
-    " ")
-set(tests ${tests} ${local_tests} PARENT_SCOPE)
-set(tests_wraps ${tests_wraps} ${local_tests_wraps} PARENT_SCOPE)
+ly_add_utest(NAME common WRAP "-Wl,--wrap=realloc" SOURCES test_common.c)
+ly_add_utest(NAME set SOURCES test_set.c)
+ly_add_utest(NAME hash_table SOURCES test_hash_table.c)
+ly_add_utest(NAME inout SOURCES test_inout.c)
+ly_add_utest(NAME context SOURCES test_context.c)
+ly_add_utest(NAME xml SOURCES test_xml.c)
+ly_add_utest(NAME xpath SOURCES test_xpath.c)
+ly_add_utest(NAME yanglib SOURCES test_yanglib.c)
+ly_add_utest(NAME schema SOURCES schema/test_schema.c schema/test_schema_common.c schema/test_schema_stmts.c)
+ly_add_utest(NAME parses_yang SOURCES schema/test_parser_yang.c)
+ly_add_utest(NAME parses_yin SOURCES schema/test_parser_yin.c)
+ly_add_utest(NAME tree_schema_compile SOURCES schema/test_tree_schema_compile.c)
+ly_add_utest(NAME printer_yang SOURCES schema/test_printer_yang.c)
+ly_add_utest(NAME printer_yin SOURCES schema/test_printer_yin.c)
+ly_add_utest(NAME tree_data SOURCES data/test_tree_data.c)
+ly_add_utest(NAME new SOURCES data/test_new.c)
+ly_add_utest(NAME parser_xml SOURCES data/test_parser_xml.c)
+ly_add_utest(NAME printer_xml SOURCES data/test_printer_xml.c)
+ly_add_utest(NAME validation SOURCES data/test_validation.c)
+ly_add_utest(NAME types SOURCES data/test_types.c)
+ly_add_utest(NAME metadata SOURCES extensions/test_metadata.c)
+ly_add_utest(NAME nacm SOURCES extensions/test_nacm.c)

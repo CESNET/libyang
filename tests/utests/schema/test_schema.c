@@ -12,6 +12,8 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
+#include "test_schema.h"
+
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -20,23 +22,17 @@
 
 #include <string.h>
 
-#include "../../../src/common.h"
-#include "../../../src/context.h"
-#include "../../../src/log.h"
-#include "../../../src/parser_yin.h"
-#include "../../../src/tree_schema.h"
-#include "../../../src/tree_schema_internal.h"
-#include "../../../src/xml.h"
+#include "config.h"
+#include "log.h"
+#include "parser_schema.h"
+#include "tree_schema.h"
 
+#if ENABLE_LOGGER_CHECKING
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
 int store = -1; /* negative for infinite logging, positive for limited logging */
 
-/* set to 0 to printing error messages to stderr instead of checking them in code */
-#define ENABLE_LOGGER_CHECKING 1
-
-#if ENABLE_LOGGER_CHECKING
 static void
 logger(LY_LOG_LEVEL level, const char *msg, const char *path)
 {
@@ -82,20 +78,34 @@ logger_teardown(void **state)
 void
 logbuf_clean(void)
 {
+#if ENABLE_LOGGER_CHECKING
     logbuf[0] = '\0';
+#endif
 }
 
-#if ENABLE_LOGGER_CHECKING
-#   define logbuf_assert(str) assert_string_equal(logbuf, str)
-#else
-#   define logbuf_assert(str)
-#endif
+LY_ERR
+test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), const char *UNUSED(submod_name),
+             const char *UNUSED(sub_rev), void *user_data, LYS_INFORMAT *format,
+             const char **module_data, void (**free_module_data)(void *model_data, void *user_data))
+{
+    *module_data = user_data;
+    *format = LYS_IN_YANG;
+    *free_module_data = NULL;
+    return LY_SUCCESS;
+}
 
 /**
- * INCLUDE OTHER SCHEMA TESTS
+ * DECLARE OTHER SCHEMA TESTS
  */
-#include "test_schema_common.c"
-#include "test_schema_stmts.c"
+/* test_schema_common.c */
+void test_getnext(void **state);
+void test_date(void **state);
+void test_revisions(void **state);
+void test_typedef(void **state);
+
+/* test_schema_stmts.c */
+void test_identity(void **state);
+void test_feature(void **state);
 
 int main(void)
 {

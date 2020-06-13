@@ -11,8 +11,29 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
-#ifndef TESTS_UTESTS_SCHEMA_MACROS_H_
-#define TESTS_UTESTS_SCHEMA_MACROS_H_
+#ifndef TESTS_UTESTS_SCHEMA_TEST_SCHEMA_H_
+#define TESTS_UTESTS_SCHEMA_TEST_SCHEMA_H_
+
+#include "config.h"
+#include "log.h"
+#include "parser_schema.h"
+
+/* set to 0 to printing error messages to stderr instead of checking them in code */
+#define ENABLE_LOGGER_CHECKING 1
+
+#if ENABLE_LOGGER_CHECKING
+    extern char logbuf[];
+#   define logbuf_assert(str) assert_string_equal(logbuf, str)
+#else
+#   define logbuf_assert(str)
+#endif
+
+void logbuf_clean(void);
+
+LY_ERR test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), const char *UNUSED(submod_name),
+                    const char *UNUSED(sub_rev), void *user_data, LYS_INFORMAT *format,
+                    const char **module_data, void (**free_module_data)(void *model_data, void *user_data));
+
 
 #define TEST_YANG_MODULE_10(MOD_NAME, MOD_PREFIX, MOD_NS, CONTENT) \
     "module "MOD_NAME" { namespace "MOD_NS"; prefix "MOD_PREFIX"; "CONTENT"}"
@@ -69,4 +90,4 @@
 #define TEST_STMT_SUBSTM_ERR(CTX, RFC7950, STMT, SUBSTMT, VALUE); \
         TEST_SCHEMA_ERR(CTX, RFC7950, 0, "inv", STMT" test {"SUBSTMT" "VALUE";}", "Invalid keyword \""SUBSTMT"\" as a child of \""STMT"\". Line number 1.");
 
-#endif /* TESTS_UTESTS_SCHEMA_MACROS_H_ */
+#endif /* TESTS_UTESTS_SCHEMA_TEST_SCHEMA_H_ */

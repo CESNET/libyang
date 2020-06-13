@@ -13,41 +13,43 @@ configure_file("${PROJECT_SOURCE_DIR}/tests/config.h.in" "${PROJECT_BINARY_DIR}/
 include_directories(SYSTEM ${CMOCKA_INCLUDE_DIR})
 include_directories(${PROJECT_BINARY_DIR})
 
-set(tests)
-set(tests_wraps)
-add_subdirectory(utests)
+function(ly_add_utest)
+    cmake_parse_arguments(ADDTEST "" "NAME;WRAP" "SOURCES" ${ARGN})
+    set(TEST_NAME utest_${ADDTEST_NAME})
 
-foreach(test_id IN LISTS tests)
-    message(STATUS ${test_id})
-    string(REGEX REPLACE "([a-z]*):.*" "\\1" category "${test_id}")
-    string(REGEX REPLACE "[a-z]*:(.*)" "\\1" path "${test_id}")
-    string(REGEX REPLACE "[a-z:/]*test_(.*)" "\\1" name "${test_id}")
-    set(test_name ${category}_${name})
-    add_executable(${test_name} ${category}s/${path}.c $<TARGET_OBJECTS:yangobj>)
+    add_executable(${TEST_NAME} ${TEST_SOURCES} $<TARGET_OBJECTS:yangobj>)
+    foreach(TEST_SOURCE ${ADDTEST_SOURCES})
+        message(STATUS "SRC: ${CMAKE_CURRENT_SOURCE_DIR}/${TEST_SOURCE}")
+        target_sources(${TEST_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/${TEST_SOURCE})
+    endforeach()
 
-	# Set common attributes of all tests
-    target_link_libraries(${test_name} ${CMOCKA_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${PCRE2_LIBRARIES} m)
+    # Set common attributes of all tests
+    set_target_properties(${TEST_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/tests")
+    target_link_libraries(${TEST_NAME} ${CMOCKA_LIBRARIES} ${CMAKE_THREAD_LIBS_INIT} ${PCRE2_LIBRARIES} m)
     if (NOT APPLE)
-        list(GET tests_wraps 0 test_wrap)
-        set_target_properties(${test_name} PROPERTIES LINK_FLAGS "${test_wrap}")
-        list(REMOVE_AT tests_wraps 0)
+        if (ADDTEST_WRAP)
+            set_target_properties(${TEST_NAME} PROPERTIES LINK_FLAGS "${ADDTEST_WRAP}")
+        endif()
     endif()
-    add_test(NAME ${test_name} COMMAND ${test_name})
+
+    add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
 #    set_property(TEST ${test_name} PROPERTY ENVIRONMENT "LIBYANG_EXTENSIONS_PLUGINS_DIR=${CMAKE_BINARY_DIR}/src/extensions")
 #    set_property(TEST ${test_name} APPEND PROPERTY ENVIRONMENT "LIBYANG_USER_TYPES_PLUGINS_DIR=${CMAKE_BINARY_DIR}/src/user_types")
-    set_property(TEST ${test_name} APPEND PROPERTY ENVIRONMENT "MALLOC_CHECK_=3")
+    set_property(TEST ${TEST_NAME} APPEND PROPERTY ENVIRONMENT "MALLOC_CHECK_=3")
 
     if(ENABLE_VALGRIND_TESTS)
         if(VALGRIND_FOUND)
-            add_test(${test_name}_valgrind valgrind --leak-check=full --show-leak-kinds=all --suppressions=${PROJECT_SOURCE_DIR}/tests/ld.supp --error-exitcode=1
-               ${CMAKE_BINARY_DIR}/tests/${test_name})
+            add_test(${TEST_NAME}_valgrind valgrind --leak-check=full --show-leak-kinds=all --suppressions=${PROJECT_SOURCE_DIR}/tests/ld.supp --error-exitcode=1
+               ${CMAKE_BINARY_DIR}/tests/${TEST_NAME})
 #            set_property(TEST ${test_name}_valgrind PROPERTY ENVIRONMENT "LIBYANG_EXTENSIONS_PLUGINS_DIR=${CMAKE_BINARY_DIR}/src/extensions")
 #            set_property(TEST ${test_name}_valgrind APPEND PROPERTY ENVIRONMENT "LIBYANG_USER_TYPES_PLUGINS_DIR=${CMAKE_BINARY_DIR}/src/user_types")
         else(VALGRIND_FOUND)
             message(WARNING "valgrind executable not found! Disabling memory leaks tests.")
         endif(VALGRIND_FOUND)
     endif(ENABLE_VALGRIND_TESTS)
-endforeach()
+endfunction(ly_add_utest)
+
+add_subdirectory(utests)
 
 if(ENABLE_COVERAGE)
     # Destination
