@@ -20,7 +20,14 @@
 
 #include <string.h>
 
-static void
+#include "context.h"
+#include "log.h"
+#include "tree_schema.h"
+#include "tree_schema_internal.h"
+
+#include "test_schema.h"
+
+void
 test_getnext(void **state)
 {
     *state = test_getnext;
@@ -138,7 +145,7 @@ test_getnext(void **state)
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
 }
-static void
+void
 test_date(void **state)
 {
     *state = test_date;
@@ -169,7 +176,7 @@ test_date(void **state)
     *state = NULL;
 }
 
-static void
+void
 test_revisions(void **state)
 {
     (void) state; /* unused */
@@ -198,17 +205,7 @@ test_revisions(void **state)
     LY_ARRAY_FREE(revs);
 }
 
-LY_ERR test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), const char *UNUSED(submod_name),
-                    const char *UNUSED(sub_rev), void *user_data, LYS_INFORMAT *format,
-                    const char **module_data, void (**free_module_data)(void *model_data, void *user_data))
-{
-    *module_data = user_data;
-    *format = LYS_IN_YANG;
-    *free_module_data = NULL;
-    return LY_SUCCESS;
-}
-
-static void
+void
 test_typedef(void **state)
 {
     *state = test_typedef;
