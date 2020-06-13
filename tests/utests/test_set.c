@@ -22,7 +22,7 @@
 
 #include <cmocka.h>
 
-#include "../../src/set.h"
+#include "set.h"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};

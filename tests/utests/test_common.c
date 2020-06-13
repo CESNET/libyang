@@ -12,8 +12,6 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-
-
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
@@ -23,7 +21,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "../../src/common.h"
+#include "common.h"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};

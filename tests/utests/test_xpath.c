@@ -12,8 +12,6 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "tests/config.h"
-
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
@@ -22,10 +20,11 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../../src/context.h"
-#include "../../src/set.h"
-#include "../../src/tree_data.h"
-#include "../../src/tree_schema.h"
+#include "context.h"
+#include "set.h"
+#include "tests/config.h"
+#include "tree_data.h"
+#include "tree_schema.h"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};

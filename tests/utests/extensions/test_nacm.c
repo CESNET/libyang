@@ -12,8 +12,6 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "tests/config.h"
-
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
@@ -22,7 +20,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../../src/libyang.h"
+#include "libyang.h"
+#include "tests/config.h"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};

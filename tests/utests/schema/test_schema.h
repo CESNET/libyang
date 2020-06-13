@@ -14,9 +14,9 @@
 #ifndef TESTS_UTESTS_SCHEMA_TEST_SCHEMA_H_
 #define TESTS_UTESTS_SCHEMA_TEST_SCHEMA_H_
 
-#include "config.h"
 #include "log.h"
 #include "parser_schema.h"
+#include "tests/config.h"
 
 /* set to 0 to printing error messages to stderr instead of checking them in code */
 #define ENABLE_LOGGER_CHECKING 1

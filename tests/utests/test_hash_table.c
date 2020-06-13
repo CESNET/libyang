@@ -14,10 +14,6 @@
 
 #define _GNU_SOURCE
 
-#include "common.h"
-
-#include "tests/config.h"
-
 #include <stdarg.h>
 #include <stddef.h>
 #include <setjmp.h>
@@ -27,7 +23,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "../../src/hash_table.h"
+#include "common.h"
+#include "hash_table.h"
 
 struct ht_rec *lyht_get_rec(unsigned char *recs, uint16_t rec_size, uint32_t idx);
 

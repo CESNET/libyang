@@ -24,8 +24,8 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../../src/xml.h"
-#include "../../src/context.h"
+#include "xml.h"
+#include "context.h"
 
 LY_ERR lyxml_ns_add(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_len, char *uri);
 LY_ERR lyxml_ns_rm(struct lyxml_ctx *xmlctx);

@@ -12,7 +12,7 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#include "tests/config.h"
+#define _POSIX_C_SOURCE 200112L
 
 #include <stdarg.h>
 #include <stddef.h>
@@ -21,14 +21,15 @@
 
 #include <errno.h>
 #include <fcntl.h>
+#include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "../../src/common.h"
-#include "../../src/log.h"
-#include "../../src/printer.h"
-#include "../../src/parser.h"
+#include "common.h"
+#include "log.h"
+#include "printer.h"
+#include "parser.h"
 
 
 #define BUFSIZE 1024
