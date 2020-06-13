@@ -18,7 +18,7 @@
 #include <setjmp.h>
 #include <cmocka.h>
 
-#include "../../src/libyang.h"
+#include "libyang.h"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};

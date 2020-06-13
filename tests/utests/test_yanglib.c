@@ -20,13 +20,12 @@
 
 #include <cmocka.h>
 
+#include "context.h"
+#include "log.h"
+#include "set.h"
 #include "tests/config.h"
-
-#include "../../src/context.h"
-#include "../../src/log.h"
-#include "../../src/set.h"
-#include "../../src/tree_data.h"
-#include "../../src/tree_schema.h"
+#include "tree_data.h"
+#include "tree_schema.h"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};

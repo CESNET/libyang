@@ -21,13 +21,13 @@
 #include <string.h>
 #include <stdbool.h>
 
-#include "../../../src/common.h"
-#include "../../../src/tree_schema.h"
-#include "../../../src/tree_schema_internal.h"
-#include "../../../src/parser_internal.h"
-#include "../../../src/parser_yin.h"
-#include "../../../src/xml.h"
-#include "../../../src/xpath.h"
+#include "common.h"
+#include "parser_internal.h"
+#include "parser_yin.h"
+#include "tree_schema.h"
+#include "tree_schema_internal.h"
+#include "xml.h"
+#include "xpath.h"
 
 /* prototypes of static functions */
 void lysp_ext_instance_free(struct ly_ctx *ctx, struct lysp_ext_instance *ext);

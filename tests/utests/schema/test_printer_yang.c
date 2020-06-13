@@ -20,9 +20,9 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "../../src/context.h"
-#include "../../src/printer.h"
-#include "../../src/printer_schema.h"
+#include "context.h"
+#include "printer.h"
+#include "printer_schema.h"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};

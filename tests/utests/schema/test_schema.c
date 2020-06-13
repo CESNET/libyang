@@ -22,9 +22,9 @@
 
 #include <string.h>
 
-#include "config.h"
 #include "log.h"
 #include "parser_schema.h"
+#include "tests/config.h"
 #include "tree_schema.h"
 
 #if ENABLE_LOGGER_CHECKING
