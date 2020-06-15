@@ -204,10 +204,129 @@ test_top_level(void **state)
     *state = NULL;
 }
 
+static void
+test_opaq(void **state)
+{
+    *state = test_opaq;
+
+    struct lyd_node *root, *node;
+    struct lyd_node_opaq *opq;
+
+    root = lyd_new_opaq(NULL, ctx, "node1", NULL, "my-module");
+    assert_non_null(root);
+    assert_null(root->schema);
+    opq = (struct lyd_node_opaq *)root;
+    assert_string_equal(opq->name, "node1");
+    assert_string_equal(opq->value, "");
+    assert_string_equal(opq->prefix.ns, "my-module");
+
+    node = lyd_new_opaq(root, NULL, "node2", "value", "my-module2");
+    assert_non_null(node);
+    assert_null(node->schema);
+    opq = (struct lyd_node_opaq *)node;
+    assert_string_equal(opq->name, "node2");
+    assert_string_equal(opq->value, "value");
+    assert_string_equal(opq->prefix.ns, "my-module2");
+    assert_ptr_equal(opq->parent, root);
+
+    lyd_free_tree(root);
+
+    *state = NULL;
+}
+
+static void
+test_path(void **state)
+{
+    *state = test_path;
+
+    LY_ERR ret;
+    struct lyd_node *root, *node, *parent;
+    int dynamic;
+
+    /* create 2 nodes */
+    ret = lyd_new_path2(NULL, ctx, "/a:c/x[.='val']", "vvv", 0, 0, &root, &node);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_non_null(root);
+    assert_string_equal(root->schema->name, "c");
+    assert_non_null(node);
+    assert_string_equal(node->schema->name, "x");
+    assert_string_equal("val", lyd_value2str((struct lyd_node_term *)node, &dynamic));
+    assert_int_equal(dynamic, 0);
+
+    /* append another */
+    ret = lyd_new_path2(root, NULL, "/a:c/x", "val2", 0, 0, &parent, &node);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_ptr_equal(parent, node);
+    assert_string_equal(node->schema->name, "x");
+    assert_string_equal("val2", lyd_value2str((struct lyd_node_term *)node, &dynamic));
+    assert_int_equal(dynamic, 0);
+
+    /* and a last one */
+    ret = lyd_new_path2(root, NULL, "x", "val3", 0, 0, &parent, &node);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_ptr_equal(parent, node);
+    assert_string_equal(node->schema->name, "x");
+    assert_string_equal("val3", lyd_value2str((struct lyd_node_term *)node, &dynamic));
+    assert_int_equal(dynamic, 0);
+
+    lyd_free_tree(root);
+
+    /* try LYD_NEWOPT_OPAQ */
+    ret = lyd_new_path2(NULL, ctx, "/a:l1", NULL, 0, 0, NULL, NULL);
+    assert_int_equal(ret, LY_EINVAL);
+    logbuf_assert("Predicate missing for list \"l1\" in path.");
+
+    ret = lyd_new_path2(NULL, ctx, "/a:l1", NULL, 0, LYD_NEWOPT_OPAQ, NULL, &root);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_non_null(root);
+    assert_null(root->schema);
+
+    lyd_free_tree(root);
+
+    ret = lyd_new_path2(NULL, ctx, "/a:foo", NULL, 0, 0, NULL, NULL);
+    assert_int_equal(ret, LY_EVALID);
+    logbuf_assert("Invalid empty uint16 value. /a:foo");
+
+    ret = lyd_new_path2(NULL, ctx, "/a:foo", NULL, 0, LYD_NEWOPT_OPAQ, NULL, &root);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_non_null(root);
+    assert_null(root->schema);
+
+    lyd_free_tree(root);
+
+    /* try LYD_NEWOPT_UPDATE */
+    ret = lyd_new_path2(NULL, ctx, "/a:l2[1]/c/x", "val", 0, 0, &root, &node);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_non_null(root);
+    assert_string_equal(node->schema->name, "x");
+    assert_string_equal("val", lyd_value2str((struct lyd_node_term *)node, &dynamic));
+    assert_int_equal(dynamic, 0);
+
+    ret = lyd_new_path2(root, NULL, "/a:l2[1]/c/x", "val", 0, 0, NULL, &node);
+    assert_int_equal(ret, LY_EEXIST);
+
+    ret = lyd_new_path2(root, NULL, "/a:l2[1]/c/x", "val", 0, LYD_NEWOPT_UPDATE, NULL, &node);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_null(node);
+
+    ret = lyd_new_path2(root, NULL, "/a:l2[1]/c/x", "val2", 0, LYD_NEWOPT_UPDATE, NULL, &node);
+    assert_int_equal(ret, LY_SUCCESS);
+    assert_non_null(node);
+    assert_string_equal(node->schema->name, "x");
+    assert_string_equal("val2", lyd_value2str((struct lyd_node_term *)node, &dynamic));
+    assert_int_equal(dynamic, 0);
+
+    lyd_free_tree(root);
+
+    *state = NULL;
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_top_level, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_opaq, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_path, setup, teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

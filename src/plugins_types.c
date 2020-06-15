@@ -1420,7 +1420,7 @@ ly_type_store_instanceid(const struct ly_ctx *ctx, struct lysc_type *type, const
     struct ly_path *path = NULL;
     struct ly_set predicates = {0};
     struct lyxp_expr *exp = NULL;
-    const struct lys_module *cur_mod;
+    const struct lysc_node *ctx_scnode;
 
     /* init */
     *err = NULL;
@@ -1464,9 +1464,11 @@ ly_type_store_instanceid(const struct ly_ctx *ctx, struct lysc_type *type, const
     }
 
     /* resolve it on schema tree */
-    cur_mod = (options & (LY_TYPE_OPTS_SCHEMA | LY_TYPE_OPTS_INCOMPLETE_DATA)) ?
-              ((struct lysc_node *)context_node)->module : ((struct lyd_node *)context_node)->schema->module;
-    ret = ly_path_compile(cur_mod, NULL, exp, LY_PATH_LREF_FALSE, ly_type_stored_prefixes_clb, prefixes, format, &path);
+    ctx_scnode = (options & (LY_TYPE_OPTS_SCHEMA | LY_TYPE_OPTS_INCOMPLETE_DATA)) ?
+                 (struct lysc_node *)context_node : ((struct lyd_node *)context_node)->schema;
+    ret = ly_path_compile(ctx, ctx_scnode->module, NULL, exp, LY_PATH_LREF_FALSE, lysc_is_output(ctx_scnode) ?
+                          LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_SINGLE, ly_type_stored_prefixes_clb,
+                          prefixes, format, &path);
     if (ret) {
         asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - semantic error.", (int)value_len, value);
         goto error;

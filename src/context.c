@@ -771,10 +771,9 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx)
         root_bis = 0;
     }
 
-    /* TODO uncomment once lefref validation works
     if (lyd_validate(&root, NULL, LYD_VALOPT_DATA_ONLY)) {
         goto error;
-    }*/
+    }
 
     return root;
 

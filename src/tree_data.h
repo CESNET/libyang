@@ -401,7 +401,7 @@ struct lyd_node_any {
     void *priv;                      /**< private user data, not used by libyang */
 #endif
 
-    union {
+    union lyd_any_value {
         struct lyd_node *tree;       /**< data tree */
         const char *str;             /**< Generic string data */
         const char *xml;             /**< Serialized XML data */
@@ -629,7 +629,7 @@ LY_ERR lyd_validate_modules(struct lyd_node **tree, const struct lys_module **mo
 LY_ERR lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *tree, int val_opts);
 
 /**
- * @brief Create a new inner node in a data tree.
+ * @brief Create a new inner node in the data tree.
  *
  * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
  * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
@@ -640,7 +640,7 @@ LY_ERR lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *tree, in
 struct lyd_node *lyd_new_inner(struct lyd_node *parent, const struct lys_module *module, const char *name);
 
 /**
- * @brief Create a new list node in a data tree.
+ * @brief Create a new list node in the data tree.
  *
  * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
  * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
@@ -654,7 +654,7 @@ struct lyd_node *lyd_new_inner(struct lyd_node *parent, const struct lys_module 
 struct lyd_node *lyd_new_list(struct lyd_node *parent, const struct lys_module *module, const char *name, ...);
 
 /**
- * @brief Create a new list node in a data tree.
+ * @brief Create a new list node in the data tree.
  *
  * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
  * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
@@ -668,7 +668,7 @@ struct lyd_node *lyd_new_list(struct lyd_node *parent, const struct lys_module *
 struct lyd_node *lyd_new_list2(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *keys);
 
 /**
- * @brief Create a new term node in a data tree.
+ * @brief Create a new term node in the data tree.
  *
  * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
  * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
@@ -681,7 +681,7 @@ struct lyd_node *lyd_new_list2(struct lyd_node *parent, const struct lys_module 
 struct lyd_node *lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *val_str);
 
 /**
- * @brief Create a new any node in a data tree.
+ * @brief Create a new any node in the data tree.
  *
  * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
  * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
@@ -698,16 +698,140 @@ struct lyd_node *lyd_new_any(struct lyd_node *parent, const struct lys_module *m
  * @brief Create new metadata for a data node.
  *
  * @param[in] parent Parent node for the metadata being created.
- * @param[in] module Module of the metdata being created. If NULL, @p name must include module name as the prefix.
+ * @param[in] module Module of the metadata being created. If NULL, @p name must include module name as the prefix.
  * @param[in] name Annotation name of the new metadata. It can include the annotation module as the prefix.
  *            If the prefix is specified it is always used but if not specified, @p module must be set.
- * @param[in] val_str String form of the value of the metadata being created. In case of an instance-identifier or identityref
+ * @param[in] val_str String form of the value of the metadata. In case of an instance-identifier or identityref
  * value, the JSON format is expected (module names instead of prefixes).
- * @return New created metadata in the @p parent.
+ * @return New created metadata of @p parent.
  * @return NULL on error.
  */
 struct lyd_meta *lyd_new_meta(struct lyd_node *parent, const struct lys_module *module, const char *name,
                               const char *val_str);
+
+/**
+ * @brief Create a new opaque node in the data tree.
+ *
+ * @param[in] parent Parent node for the node beaing created. NULL in case of creating a top level element.
+ * @param[in] ctx libyang context. If NULL, @p parent context will be used.
+ * @param[in] name Node name.
+ * @param[in] value Node value, may be NULL.
+ * @param[in] module_name Node module name.
+ * @return New created node.
+ * @return NULL on error.
+ */
+struct lyd_node *lyd_new_opaq(struct lyd_node *parent, const struct ly_ctx *ctx, const char *name, const char *value,
+                              const char *module_name);
+
+/**
+ * @brief Create new attribute for an opaque data node.
+ *
+ * @param[in] parent Parent opaque node for the attribute being created.
+ * @param[in] module Module name of the attribute being created. There may be none.
+ * @param[in] name Attribute name. It can include the module name as the prefix.
+ * @param[in] val_str String value of the attribute. Is stored directly.
+ * @return New created attribute of @p parent.
+ * @return NULL on error.
+ */
+struct ly_attr *lyd_new_attr(struct lyd_node *parent, const char *module_name, const char *name, const char *val_str);
+
+/**
+ * @defgroup pathoptions Data path creation options
+ * @ingroup datatree
+ *
+ * Various options to change lyd_new_path*() behavior.
+ *
+ * Default behavior:
+ * - if the target node already exists (and is not default), an error is returned.
+ * - the whole path to the target node is created (with any missing parents) if necessary.
+ * - RPC output schema children are completely ignored in all modules. Input is searched and nodes created normally.
+ * @{
+ */
+
+#define LYD_NEWOPT_UPDATE 0x01 /**< If the target node exists, is a leaf, and it is updated with a new value or its
+                                    default flag is changed, it is returned. If the target node exists and is not
+                                    a leaf or generally no change occurs in the @p parent tree, NULL is returned and
+                                    no error set. */
+#define LYD_NEWOPT_OUTPUT 0x02 /**< Changes the behavior to ignoring RPC/action input schema nodes and using only
+                                    output ones. */
+#define LYD_NEWOPT_OPAQ   0x04 /**< Enables the creation of opaque nodes with some specific rules. If the __last node__
+                                    in the path is not uniquely defined ((leaf-)list without a predicate) or has an
+                                    invalid value (leaf/leaf-list), it is created as opaque. */
+
+/** @} pathoptions */
+
+/**
+ * @brief Create a new node in the data tree based on a path. Cannot be used for anyxml/anydata nodes,
+ * for those use ::lyd_new_path_any.
+ *
+ * If @p path points to a list key and the list instance does not exist, the key value from the predicate is used
+ * and @p value is ignored. Also, if a leaf-list is being created and both a predicate is defined in @p path
+ * and @p value is set, the predicate is preferred.
+ *
+ * @param[in] parent Data parent to add to/modify, can be NULL.
+ * @param[in] ctx libyang context, must be set if @p parent is NULL.
+ * @param[in] path Path to create (TODO ref path).
+ * @param[in] value Value of the new leaf/leaf-list. For other node types, it is ignored.
+ * @param[in] options Bitmask of options, see @ref pathoptions.
+ * @return (Last) created node.
+ * @return NULL on error.
+ */
+struct lyd_node *lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const char *value,
+                              int options);
+
+/**
+ * @brief Create a new node in the data tree based on a path. All node types can be created.
+ *
+ * If @p path points to a list key and the list instance does not exist, the key value from the predicate is used
+ * and @p value is ignored. Also, if a leaf-list is being created and both a predicate is defined in @p path
+ * and @p value is set, the predicate is preferred.
+ *
+ * @param[in] parent Data parent to add to/modify, can be NULL.
+ * @param[in] ctx libyang context, must be set if @p parent is NULL.
+ * @param[in] path Path to create (TODO ref path).
+ * @param[in] value Value of the new leaf/leaf-list/anyxml/anydata. For other node types, it is ignored.
+ * @param[in] value_type Anyxml/anydata node @p value type.
+ * @param[in] options Bitmask of options, see @ref pathoptions.
+ * @return (Last) created node.
+ * @return NULL on error.
+ */
+struct lyd_node *lyd_new_path_any(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const void *value,
+                                  LYD_ANYDATA_VALUETYPE value_type, int options);
+
+/**
+ * @brief Create a new node in the data tree based on a path. All node types can be created.
+ *
+ * If @p path points to a list key and the list instance does not exist, the key value from the predicate is used
+ * and @p value is ignored. Also, if a leaf-list is being created and both a predicate is defined in @p path
+ * and @p value is set, the predicate is preferred.
+ *
+ * @param[in] parent Data parent to add to/modify, can be NULL.
+ * @param[in] ctx libyang context, must be set if @p parent is NULL.
+ * @param[in] path Path to create (TODO ref path).
+ * @param[in] value Value of the new leaf/leaf-list/anyxml/anydata. For other node types, it is ignored.
+ * @param[in] value_type Anyxml/anydata node @p value type.
+ * @param[in] options Bitmask of options, see @ref pathoptions.
+ * @param[out] new_parent First parent node created, can be NULL. If only one node was created, equals to @p new_node.
+ * @param[out] new_node Last node created, can be NULL.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const void *value,
+                     LYD_ANYDATA_VALUETYPE value_type, int options, struct lyd_node **new_parent, struct lyd_node **new_node);
+
+/**
+ * @brief Change the value of a term (leaf or leaf-list) node.
+ *
+ * Node changed this way is always considered explicitly set, meaning its default flag
+ * is always cleared.
+ *
+ * @param[in] term Term node to change.
+ * @param[in] val_str New value to set, any prefixes are expected in JSON format.
+ * @return LY_SUCCESS if value was changed,
+ * @return LY_EEXIST if value was the same and only the default flag was cleared,
+ * @return LY_ENOT if the values were equal and no change occured,
+ * @return LY_ERR value on other errors.
+ */
+LY_ERR lyd_change_term(struct lyd_node *term, const char *val_str);
 
 /**
  * @brief Insert a child into a parent. It is inserted as the last child.

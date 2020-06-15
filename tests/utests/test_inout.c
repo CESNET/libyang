@@ -1,9 +1,9 @@
-/*
+/**
  * @file test_inout.c
  * @author: Radek Krejci <rkrejci@cesnet.cz>
  * @brief unit tests for input and output handlers functions
  *
- * Copyright (c) 2018 CESNET, z.s.p.o.
+ * Copyright (c) 2020 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.

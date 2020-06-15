@@ -1693,3 +1693,17 @@ lysc_data_parent(const struct lysc_node *schema)
 
     return parent;
 }
+
+int
+lysc_is_output(const struct lysc_node *schema)
+{
+    const struct lysc_node *parent;
+
+    assert(schema);
+
+    for (parent = schema->parent; parent && !(parent->nodetype & (LYS_RPC | LYS_ACTION)); parent = parent->parent);
+    if (parent && (schema->flags & LYS_CONFIG_R)) {
+        return 1;
+    }
+    return 0;
+}

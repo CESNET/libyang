@@ -3611,6 +3611,7 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set 
     char *errmsg = NULL;
     const char *val;
     int dynamic;
+    uint8_t oper;
     LY_ERR rc = LY_SUCCESS;
 
     if (options & LYXP_SCNODE_ALL) {
@@ -3625,15 +3626,16 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set 
         set_scnode_clear_ctx(set);
         if (sleaf && (sleaf->type->basetype == LY_TYPE_LEAFREF)) {
             lref = (struct lysc_type_leafref *)sleaf->type;
+            oper = lysc_is_output((struct lysc_node *)sleaf) ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT;
 
             /* it was already evaluated on schema, it must succeed */
             if (set->format == LYD_JSON) {
-                rc = ly_path_compile(sleaf->module, (struct lysc_node *)sleaf, lref->path, LY_PATH_LREF_TRUE,
-                                     lydjson_resolve_prefix, NULL, LYD_JSON, &p);
+                rc = ly_path_compile(set->ctx, sleaf->module, (struct lysc_node *)sleaf, lref->path, LY_PATH_LREF_TRUE,
+                                     oper, LY_PATH_TARGET_MANY, lydjson_resolve_prefix, NULL, LYD_JSON, &p);
             } else {
                 assert(set->format == LYD_SCHEMA);
-                rc = ly_path_compile(sleaf->module, (struct lysc_node *)sleaf, lref->path, LY_PATH_LREF_TRUE,
-                                     lys_resolve_prefix, lref->path_context, LYD_SCHEMA, &p);
+                rc = ly_path_compile(set->ctx, sleaf->module, (struct lysc_node *)sleaf, lref->path, LY_PATH_LREF_TRUE,
+                                     oper, LY_PATH_TARGET_MANY, lys_resolve_prefix, lref->path_context, LYD_SCHEMA, &p);
             }
             assert(!rc);
 
@@ -6906,12 +6908,12 @@ eval_name_test_try_compile_predicates(struct lyxp_expr *exp, uint16_t *tok_idx, 
     /* compile */
     switch (format) {
     case LYD_SCHEMA:
-        ret = ly_path_compile_predicate(scnode->module, scnode, exp2, &pred_idx, lys_resolve_prefix, scnode->module,
-                                        LYD_SCHEMA, predicates, pred_type);
+        ret = ly_path_compile_predicate(scnode->module->ctx, scnode->module, scnode, exp2, &pred_idx, lys_resolve_prefix,
+                                        scnode->module, LYD_SCHEMA, predicates, pred_type);
         break;
     case LYD_JSON:
-        ret = ly_path_compile_predicate(scnode->module, scnode, exp2, &pred_idx, lydjson_resolve_prefix, NULL, LYD_JSON,
-                                        predicates, pred_type);
+        ret = ly_path_compile_predicate(scnode->module->ctx, scnode->module, scnode, exp2, &pred_idx,
+                                        lydjson_resolve_prefix, NULL, LYD_JSON, predicates, pred_type);
         break;
     case LYD_XML:
         ret = LY_EINT;

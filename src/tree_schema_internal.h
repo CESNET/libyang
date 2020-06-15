@@ -802,4 +802,13 @@ char *lysc_path_until(const struct lysc_node *node, const struct lysc_node *pare
  */
 const struct lysc_node *lysc_data_parent(const struct lysc_node *schema);
 
+/**
+ * @brief Learn whether a node is in an operation output.
+ *
+ * @param[in] schema Schema node to examine.
+ * @return non-zero is the node is in output,
+ * @return 0 if it is not.
+ */
+int lysc_is_output(const struct lysc_node *schema);
+
 #endif /* LY_TREE_SCHEMA_INTERNAL_H_ */
