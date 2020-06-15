@@ -191,31 +191,6 @@ lyxml_ns_rm(struct lyxml_ctx *xmlctx)
     }
 }
 
-void *
-lyxml_elem_dup(void *item)
-{
-    struct lyxml_elem *dup;
-
-    dup = malloc(sizeof *dup);
-    memcpy(dup, item, sizeof *dup);
-
-    return dup;
-}
-
-void *
-lyxml_ns_dup(void *item)
-{
-    struct lyxml_ns *dup, *orig;
-
-    orig = (struct lyxml_ns *)item;
-    dup = malloc(sizeof *dup);
-    dup->prefix = orig->prefix ? strdup(orig->prefix) : NULL;
-    dup->uri = strdup(orig->uri);
-    dup->depth = orig->depth;
-
-    return dup;
-}
-
 const struct lyxml_ns *
 lyxml_ns_get(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_len)
 {
@@ -237,6 +212,13 @@ lyxml_ns_get(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_len)
     return NULL;
 }
 
+/**
+ * @brief Skip in the input until EOF or just after the opening tag.
+ * Handles special XML constructs (comment, cdata, doctype).
+ *
+ * @param[in] xmlctx XML context to use.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lyxml_skip_until_end_or_after_otag(struct lyxml_ctx *xmlctx)
 {
@@ -302,6 +284,16 @@ lyxml_skip_until_end_or_after_otag(struct lyxml_ctx *xmlctx)
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Parse QName.
+ *
+ * @param[in] xmlctx XML context to use.
+ * @param[out] prefix Parsed prefix, may be NULL.
+ * @param[out] prefix_len Length of @p prefix.
+ * @param[out] name Parsed name.
+ * @param[out] name_len Length of @p name.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lyxml_parse_qname(struct lyxml_ctx *xmlctx, const char **prefix, size_t *prefix_len, const char **name, size_t *name_len)
 {
@@ -388,6 +380,17 @@ lyxml_pututf8(char *dst, uint32_t value, size_t *bytes_written)
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Parse XML text content (value).
+ *
+ * @param[in] xmlctx XML context to use.
+ * @param[in] endchar Expected character to mark value end.
+ * @param[out] value Parsed value.
+ * @param[out] length Length of @p value.
+ * @param[out] ws_only Whether the value is empty/white-spaces only.
+ * @param[out] dynamic Whether the value was dynamically allocated.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lyxml_parse_value(struct lyxml_ctx *xmlctx, char endchar, char **value, size_t *length, int *ws_only, int *dynamic)
 {
@@ -559,6 +562,17 @@ success:
 #undef BUFSIZE_STEP
 }
 
+/**
+ * @brief Parse XML closing element and match it to a stored starting element.
+ *
+ * @param[in] xmlctx XML context to use.
+ * @param[in] prefix Expected closing element prefix.
+ * @param[in] prefix_len Length of @p prefix.
+ * @param[in] name Expected closing element name.
+ * @param[in] name_len Length of @p name.
+ * @param[in] empty Whether we are parsing a special "empty" element (with joined starting and closing tag) with no value.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lyxml_close_element(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_len, const char *name, size_t name_len,
                     int empty)
@@ -609,6 +623,16 @@ lyxml_close_element(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Store parsed opening element and parse any included namespaces.
+ *
+ * @param[in] xmlctx XML context to use.
+ * @param[in] prefix Parsed starting element prefix.
+ * @param[in] prefix_len Length of @p prefix.
+ * @param[in] name Parsed starting element name.
+ * @param[in] name_len Length of @p name.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lyxml_open_element(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_len, const char *name, size_t name_len)
 {
@@ -673,6 +697,16 @@ cleanup:
     return ret;
 }
 
+/**
+ * @brief Move parser to the attribute content and parse it.
+ *
+ * @param[in] xmlctx XML context to use.
+ * @param[out] value Parsed attribute value.
+ * @param[out] value_len Length of @p value.
+ * @param[out] ws_only Whether the value is empty/white-spaces only.
+ * @param[out] dynamic Whether the value was dynamically allocated.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lyxml_next_attr_content(struct lyxml_ctx *xmlctx, const char **value, size_t *value_len, int *ws_only, int *dynamic)
 {
@@ -718,6 +752,16 @@ lyxml_next_attr_content(struct lyxml_ctx *xmlctx, const char **value, size_t *va
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Move parser to the next attribute and parse it.
+ *
+ * @param[in] xmlctx XML context to use.
+ * @param[out] prefix Parsed attribute prefix.
+ * @param[out] prefix_len Length of @p prefix.
+ * @param[out] name Parsed attribute name.
+ * @param[out] name_len Length of @p name.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lyxml_next_attribute(struct lyxml_ctx *xmlctx, const char **prefix, size_t *prefix_len, const char **name, size_t *name_len)
 {
@@ -763,6 +807,16 @@ lyxml_next_attribute(struct lyxml_ctx *xmlctx, const char **prefix, size_t *pref
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Move parser to the next element and parse it.
+ *
+ * @param[in] xmlctx XML context to use.
+ * @param[out] prefix Parsed element prefix.
+ * @param[out] prefix_len Length of @p prefix.
+ * @param[out] name Parse element name.
+ * @param[out] name_len Length of @p name.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lyxml_next_element(struct lyxml_ctx *xmlctx, const char **prefix, size_t *prefix_len, const char **name, size_t *name_len,
                    int *closing)

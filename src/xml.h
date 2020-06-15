@@ -79,33 +79,57 @@ struct lyxml_ctx {
     enum LYXML_PARSER_STATUS status; /* status providing information about the last parsed object, following attributes
                                         are filled based on it */
     union {
-        const char *prefix; /* LYXML_ELEMENT, LYXML_ATTRIBUTE */
-        const char *value;  /* LYXML_ELEM_CONTENT, LYXML_ATTR_CONTENT */
+        const char *prefix; /* LYXML_ELEMENT, LYXML_ATTRIBUTE - elem/attr prefix */
+        const char *value;  /* LYXML_ELEM_CONTENT, LYXML_ATTR_CONTENT - elem/attr value */
     };
     union {
-        size_t prefix_len;  /* LYXML_ELEMENT, LYXML_ATTRIBUTE */
-        size_t value_len;   /* LYXML_ELEM_CONTENT, LYXML_ATTR_CONTENT */
+        size_t prefix_len;  /* LYXML_ELEMENT, LYXML_ATTRIBUTE - elem/attr prefix length */
+        size_t value_len;   /* LYXML_ELEM_CONTENT, LYXML_ATTR_CONTENT - elem/attr value length */
     };
     union {
-        const char *name;   /* LYXML_ELEMENT, LYXML_ATTRIBUTE */
-        int ws_only;        /* LYXML_ELEM_CONTENT, LYXML_ATTR_CONTENT */
+        const char *name;   /* LYXML_ELEMENT, LYXML_ATTRIBUTE - elem/attr name */
+        int ws_only;        /* LYXML_ELEM_CONTENT, LYXML_ATTR_CONTENT - whether elem/attr value is empty/white-space only */
     };
     union {
-        size_t name_len;    /* LYXML_ELEMENT, LYXML_ATTRIBUTE */
-        int dynamic;        /* LYXML_ELEM_CONTENT, LYXML_ATTR_CONTENT */
+        size_t name_len;    /* LYXML_ELEMENT, LYXML_ATTRIBUTE - elem/attr name length */
+        int dynamic;        /* LYXML_ELEM_CONTENT, LYXML_ATTR_CONTENT - whether elem/attr value is dynamically allocated */
     };
 
     const struct ly_ctx *ctx;
-    uint64_t line;
-    const char *input;
+    uint64_t line;          /* current line */
+    const char *input;      /* current input pointer */
     struct ly_set elements; /* list of not-yet-closed elements */
     struct ly_set ns;       /* handled with LY_SET_OPT_USEASLIST */
 };
 
+/**
+ * @brief Create a new XML parser context and start parsing.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] input XML string data to parse.
+ * @param[out] xmlctx New XML context with status ::LYXML_ELEMENT.
+ * @return LY_ERR value.
+ */
 LY_ERR lyxml_ctx_new(const struct ly_ctx *ctx, const char *input, struct lyxml_ctx **xmlctx);
 
+/**
+ * @brief Move to the next XML artefact and update parser status.
+ *
+ * LYXML_ELEMENT (-> LYXML_ATTRIBUTE -> LYXML_ATTR_CONTENT)* -> LYXML_ELEM_CONTENT -> LYXML_ELEM_CLOSE ...
+ *                                                                                 -> LYXML_ELEMENT ...
+ *
+ * @param[in] xmlctx XML context to move.
+ * @return LY_ERR value.
+ */
 LY_ERR lyxml_ctx_next(struct lyxml_ctx *xmlctx);
 
+/**
+ * @brief Peek at the next XML parser status without changing it.
+ *
+ * @param[in] xmlctx XML context to use.
+ * @param[out] next Next XML parser status.
+ * @return LY_ERR value.
+ */
 LY_ERR lyxml_ctx_peek(struct lyxml_ctx *xmlctx, enum LYXML_PARSER_STATUS *next);
 
 /**
@@ -161,9 +185,5 @@ LY_ERR lyxml_get_prefixes(struct lyxml_ctx *xmlctx, const char *value, size_t va
  */
 LY_ERR lyxml_value_compare(const char *value1, const struct ly_prefix *prefs1, const char *value2,
                            const struct ly_prefix *prefs2);
-
-void *lyxml_elem_dup(void *item);
-
-void *lyxml_ns_dup(void *item);
 
 #endif /* LY_XML_H_ */
