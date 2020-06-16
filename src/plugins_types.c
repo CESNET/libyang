@@ -2058,10 +2058,10 @@ error:
 static LY_ERR
 ly_type_compare_union(const struct lyd_value *val1, const struct lyd_value *val2)
 {
-    if (val1->realtype != val2->realtype) {
+    if (val1->subvalue->value->realtype != val2->subvalue->value->realtype) {
         return LY_ENOT;
     }
-    return val1->realtype->plugin->compare(val1->subvalue->value, val2->subvalue->value);
+    return val1->subvalue->value->realtype->plugin->compare(val1->subvalue->value, val2->subvalue->value);
 }
 
 /**
