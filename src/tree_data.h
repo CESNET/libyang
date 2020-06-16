@@ -1043,11 +1043,44 @@ LY_ERR lyd_compare(const struct lyd_node *node1, const struct lyd_node *node2, i
 struct lyd_node *lyd_dup(const struct lyd_node *node, struct lyd_node_inner *parent, int options);
 
 /**
- * @brief Resolve instance-identifier defined by lyd_value_path structure.
+ * @defgroup mergeoptions Data merge options.
+ * @ingroup datatree
  *
- * @param[in] path Path structure specifying the instance-identifier target.
+ * Various options to change lyd_merge() behavior.
+ *
+ * Default behavior:
+ * - source data tree is not modified in any way,
+ * - source data tree is merged with any succeeding siblings,
+ * - any default nodes from source replace explicit nodes in the target.
+ * @{
+ */
+
+#define LYD_MERGE_DESTRUCT      0x01 /**< Spend source data tree in the function, it cannot be used afterwards! */
+#define LYD_MERGE_NOSIBLINGS    0x02 /**< Merge only the single source data tree, no siblings. */
+#define LYD_MERGE_EXPLICIT      0x04 /**< Default nodes in the source tree are ignored if there are explicit nodes
+                                          in the target tree. */
+
+/** @} mergeoptions */
+
+/**
+ * @brief Merge the source data tree into the target data tree. Merge may not be complete until validation
+ * is called on the resulting data tree (data from more cases may be present, default and non-default values).
+ *
+ * @param[in,out] target Target data tree to merge into, must be a top-level tree.
+ * @param[in] source Source data tree to merge, must be a top-level tree.
+ * @param[in] options Bitmask of option flags, see @ref mergeoptions.
+ * @return LY_SUCCESS on success,
+ * @return LY_ERR value on error.
+ */
+LY_ERR lyd_merge(struct lyd_node **target, const struct lyd_node *source, int options);
+
+/**
+ * @brief Find the target in data of a compiled ly_path structure (instance-identifier).
+ *
+ * @param[in] path Compiled path structure.
  * @param[in] tree Data tree to be searched.
- * @return Target node of the instance-identifier present in the given data @p tree.
+ * @return Found target node,
+ * @return NULL if not found.
  */
 const struct lyd_node_term *lyd_target(const struct ly_path *path, const struct lyd_node *tree);
 

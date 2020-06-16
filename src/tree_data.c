@@ -740,6 +740,16 @@ lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char
     return ret;
 }
 
+/**
+ * @brief Update node value.
+ *
+ * @param[in] node Node to update.
+ * @param[in] value New value to set.
+ * @param[in] value_type Type of @p value for any node.
+ * @param[out] new_parent Set to @p node if the value was updated, otherwise set to NULL.
+ * @param[out] new_node Set to @p node if the value was updated, otherwise set to NULL.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lyd_new_path_update(struct lyd_node *node, const void *value, LYD_ANYDATA_VALUETYPE value_type,
                     struct lyd_node **new_parent, struct lyd_node **new_node)
@@ -2188,6 +2198,148 @@ error:
         lyd_free_siblings(first);
     }
     return NULL;
+}
+
+/**
+ * @brief Merge a source sibling into target siblings.
+ *
+ * @param[in,out] first_trg First target sibling, is updated if top-level.
+ * @param[in] parent_trg Target parent.
+ * @param[in,out] sibling_src Source sibling to merge, set to NULL if spent.
+ * @param[in] options Merge options.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyd_merge_sibling_r(struct lyd_node **first_trg, struct lyd_node *parent_trg, const struct lyd_node **sibling_src_p,
+                    int options)
+{
+    LY_ERR ret;
+    const struct lyd_node *child_src, *tmp, *sibling_src;
+    struct lyd_node *match_trg, *dup_src, *next, *elem;
+    struct lysc_type *type;
+    LYD_ANYDATA_VALUETYPE tmp_val_type;
+    union lyd_any_value tmp_val;
+
+    sibling_src = *sibling_src_p;
+    if (sibling_src->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
+        /* try to find the exact instance */
+        ret = lyd_find_sibling_first(*first_trg, sibling_src, &match_trg);
+    } else {
+        /* try to simply find the node, there cannot be more instances */
+        ret = lyd_find_sibling_val(*first_trg, sibling_src->schema, NULL, 0, &match_trg);
+    }
+
+    if (!ret) {
+        /* node found, make sure even value matches for all node types */
+        if ((match_trg->schema->nodetype == LYS_LEAF) && lyd_compare(sibling_src, match_trg, LYD_COMPARE_DEFAULTS)) {
+            /* since they are different, they cannot both be default */
+            assert(!(sibling_src->flags & LYD_DEFAULT) || !(match_trg->flags & LYD_DEFAULT));
+
+            /* update value (or only LYD_DEFAULT flag) only if no flag set or the source node is not default */
+            if (!(options & LYD_MERGE_EXPLICIT) || !(sibling_src->flags & LYD_DEFAULT)) {
+                type = ((struct lysc_node_leaf *)match_trg->schema)->type;
+                type->plugin->free(LYD_NODE_CTX(match_trg), &((struct lyd_node_term *)match_trg)->value);
+                LY_CHECK_RET(type->plugin->duplicate(LYD_NODE_CTX(match_trg), &((struct lyd_node_term *)sibling_src)->value,
+                                                     &((struct lyd_node_term *)match_trg)->value));
+
+                /* copy flags and add LYD_NEW */
+                match_trg->flags = sibling_src->flags | LYD_NEW;
+            }
+        } else if ((match_trg->schema->nodetype & LYS_ANYDATA) && lyd_compare(sibling_src, match_trg, 0)) {
+            if (options & LYD_MERGE_DESTRUCT) {
+                dup_src = (struct lyd_node *)sibling_src;
+                lyd_unlink_tree(dup_src);
+                /* spend it */
+                *sibling_src_p = NULL;
+            } else {
+                dup_src = lyd_dup(sibling_src, NULL, 0);
+                LY_CHECK_RET(!dup_src, LY_EMEM);
+            }
+            /* just switch values */
+            tmp_val_type = ((struct lyd_node_any *)match_trg)->value_type;
+            tmp_val = ((struct lyd_node_any *)match_trg)->value;
+            ((struct lyd_node_any *)match_trg)->value_type = ((struct lyd_node_any *)sibling_src)->value_type;
+            ((struct lyd_node_any *)match_trg)->value = ((struct lyd_node_any *)sibling_src)->value;
+            ((struct lyd_node_any *)sibling_src)->value_type = tmp_val_type;
+            ((struct lyd_node_any *)sibling_src)->value = tmp_val;
+
+            /* copy flags and add LYD_NEW */
+            match_trg->flags = sibling_src->flags | LYD_NEW;
+
+            /* dup_src is not needed, actually */
+            lyd_free_tree(dup_src);
+        } else {
+            /* check descendants, recursively */
+            LY_LIST_FOR_SAFE(lyd_node_children(sibling_src), tmp, child_src) {
+                if ((child_src->schema->nodetype == LYS_LEAF) && (child_src->schema->flags & LYS_KEY)) {
+                    /* skip keys */
+                    continue;
+                }
+
+                LY_CHECK_RET(lyd_merge_sibling_r(lyd_node_children_p(match_trg), match_trg, &child_src, options));
+            }
+        }
+    } else {
+        /* node not found, merge it */
+        if (options & LYD_MERGE_DESTRUCT) {
+            dup_src = (struct lyd_node *)sibling_src;
+            lyd_unlink_tree(dup_src);
+            /* spend it */
+            *sibling_src_p = NULL;
+        } else {
+            dup_src = lyd_dup(sibling_src, NULL, LYD_DUP_RECURSIVE | LYD_DUP_WITH_FLAGS);
+            LY_CHECK_RET(!dup_src, LY_EMEM);
+        }
+
+        /* set LYD_NEW for all the new nodes, required for validation */
+        LYD_TREE_DFS_BEGIN(dup_src, next, elem) {
+            elem->flags |= LYD_NEW;
+            LYD_TREE_DFS_END(dup_src, next, elem);
+        }
+
+        lyd_insert_node(parent_trg, first_trg, dup_src);
+    }
+
+    return LY_SUCCESS;
+}
+
+API LY_ERR
+lyd_merge(struct lyd_node **target, const struct lyd_node *source, int options)
+{
+    const struct lyd_node *sibling_src, *tmp;
+    int first;
+
+    LY_CHECK_ARG_RET(NULL, target, LY_EINVAL);
+
+    if (!source) {
+        /* nothing to merge */
+        return LY_SUCCESS;
+    }
+
+    if (lysc_data_parent((*target)->schema) || lysc_data_parent(source->schema)) {
+        LOGERR(LYD_NODE_CTX(source), LY_EINVAL, "Invalid arguments - can merge only 2 top-level subtrees (%s()).", __func__);
+        return LY_EINVAL;
+    }
+
+    LY_LIST_FOR_SAFE(source, tmp, sibling_src) {
+        first = sibling_src == source ? 1 : 0;
+        LY_CHECK_RET(lyd_merge_sibling_r(target, NULL, &sibling_src, options));
+        if (first && !sibling_src) {
+            /* source was spent (unlinked), move to the next node */
+            source = tmp;
+        }
+
+        if (options & LYD_MERGE_NOSIBLINGS) {
+            break;
+        }
+    }
+
+    if (options & LYD_MERGE_DESTRUCT) {
+        /* free any leftover source data that were not merged */
+        lyd_free_siblings((struct lyd_node *)source);
+    }
+
+    return LY_SUCCESS;
 }
 
 static LY_ERR
