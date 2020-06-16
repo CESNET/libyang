@@ -773,7 +773,7 @@ struct ly_attr *lyd_new_attr(struct lyd_node *parent, const char *module_name, c
  * @param[in] path Path to create (TODO ref path).
  * @param[in] value Value of the new leaf/leaf-list. For other node types, it is ignored.
  * @param[in] options Bitmask of options, see @ref pathoptions.
- * @return (Last) created node.
+ * @return First created node.
  * @return NULL on error.
  */
 struct lyd_node *lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const char *value,
@@ -792,7 +792,7 @@ struct lyd_node *lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx,
  * @param[in] value Value of the new leaf/leaf-list/anyxml/anydata. For other node types, it is ignored.
  * @param[in] value_type Anyxml/anydata node @p value type.
  * @param[in] options Bitmask of options, see @ref pathoptions.
- * @return (Last) created node.
+ * @return First created node.
  * @return NULL on error.
  */
 struct lyd_node *lyd_new_path_any(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const void *value,

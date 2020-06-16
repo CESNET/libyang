@@ -974,20 +974,20 @@ cleanup:
 API struct lyd_node *
 lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const char *value, int options)
 {
-    struct lyd_node *new_node = NULL;
+    struct lyd_node *new_parent = NULL;
 
-    lyd_new_path2(parent, ctx, path, value, 0, options, NULL, &new_node);
-    return new_node;
+    lyd_new_path2(parent, ctx, path, value, 0, options, &new_parent, NULL);
+    return new_parent;
 }
 
 API struct lyd_node *
 lyd_new_path_any(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const void *value,
                  LYD_ANYDATA_VALUETYPE value_type, int options)
 {
-    struct lyd_node *new_node = NULL;
+    struct lyd_node *new_parent = NULL;
 
-    lyd_new_path2(parent, ctx, path, value, value_type, options, NULL, &new_node);
-    return new_node;
+    lyd_new_path2(parent, ctx, path, value, value_type, options, &new_parent, NULL);
+    return new_parent;
 }
 
 API LY_ERR
