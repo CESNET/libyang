@@ -1772,7 +1772,6 @@ lyd_compare(const struct lyd_node *node1, const struct lyd_node *node2, int opti
     struct lyd_node_term *term1, *term2;
     struct lyd_node_any *any1, *any2;
     struct lyd_node_opaq *opaq1, *opaq2;
-    struct lysc_type *type;
     size_t len1, len2;
 
     if (!node1 || !node2) {
@@ -1825,11 +1824,13 @@ lyd_compare(const struct lyd_node *node1, const struct lyd_node *node2, int opti
                 }
             }
 
-            term1 = (struct lyd_node_term*)node1;
-            term2 = (struct lyd_node_term*)node2;
-            type = ((struct lysc_node_leaf*)node1->schema)->type;
+            term1 = (struct lyd_node_term *)node1;
+            term2 = (struct lyd_node_term *)node2;
+            if (term1->value.realtype != term2->value.realtype) {
+                return LY_ENOT;
+            }
 
-            return type->plugin->compare(&term1->value, &term2->value);
+            return term1->value.realtype->plugin->compare(&term1->value, &term2->value);
         case LYS_CONTAINER:
             if (options & LYD_COMPARE_DEFAULTS) {
                 if ((node1->flags & LYD_DEFAULT) != (node2->flags & LYD_DEFAULT)) {
