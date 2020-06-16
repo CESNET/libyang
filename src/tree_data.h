@@ -1023,17 +1023,13 @@ LY_ERR lyd_compare(const struct lyd_node *node1, const struct lyd_node *node2, i
 #define LYD_DUP_WITH_PARENTS 0x04  /**< If a nested node is being duplicated, duplicate also all the parents.
                                         Keys are also duplicated for lists. Return value does not change! */
 #define LYD_DUP_WITH_SIBLINGS 0x08 /**< Duplicate also all the sibling of the given node. */
-#define LYD_DUP_WITH_WHEN     0x10 /**< Also copy any when evaluation state flags. This is useful in case the copied
-                                        nodes are actually still part of the same datastore meaning no dependency data
-                                        could have changed. Otherwise nothing is assumed about the copied node when
-                                        state and it is evaluated from scratch during validation. */
+#define LYD_DUP_WITH_FLAGS    0x10 /**< Also copy any data node flags. That will cause the duplicated data to preserve
+                                        its validation/default node state. */
 
 /** @} dupoptions */
 
 /**
  * @brief Create a copy of the specified data tree \p node. Schema references are kept the same.
- *
- * __PARTIAL CHANGE__ - validate after the final change on the data tree (see @ref howtodatamanipulators).
  *
  * @param[in] node Data tree node to be duplicated.
  * @param[in] parent Optional parent node where to connect the duplicated node(s).

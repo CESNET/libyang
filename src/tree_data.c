@@ -1980,8 +1980,11 @@ lyd_dup_recursive(const struct lyd_node *node, struct lyd_node *parent, struct l
     }
     LY_CHECK_ERR_GOTO(!dup, LOGMEM(LYD_NODE_CTX(node)); ret = LY_EMEM, error);
 
-    /* TODO implement LYD_DUP_WITH_WHEN */
-    dup->flags = node->flags;
+    if (options & LYD_DUP_WITH_FLAGS) {
+        dup->flags = node->flags;
+    } else {
+        dup->flags = (node->flags & LYD_DEFAULT) | LYD_NEW;
+    }
     dup->schema = node->schema;
     dup->prev = dup;
 
