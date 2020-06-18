@@ -155,6 +155,7 @@ set(libsrc
     src/path.c
     src/diff.c
     src/context.c
+    src/json.c
     src/tree_data.c
     src/tree_data_free.c
     src/tree_data_helpers.c

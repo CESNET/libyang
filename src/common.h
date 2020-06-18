@@ -342,6 +342,25 @@ int ly_strncmp(const char *refstr, const char *str, size_t str_len);
 LY_ERR ly_getutf8(const char **input, uint32_t *utf8_char, size_t *bytes_read);
 
 /**
+ * Store UTF-8 character specified as 4byte integer into the dst buffer.
+ *
+ * UTF-8 mapping:
+ * 00000000 -- 0000007F:    0xxxxxxx
+ * 00000080 -- 000007FF:    110xxxxx 10xxxxxx
+ * 00000800 -- 0000FFFF:    1110xxxx 10xxxxxx 10xxxxxx
+ * 00010000 -- 001FFFFF:    11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
+ *
+ * Includes checking for valid characters (following RFC 7950, sec 9.4)
+ *
+ * @param[in, out] dst Destination buffer to store the UTF-8 character, must provide enough space (up to 4 bytes) for storing the UTF-8 character.
+ * @param[in] value 32b value of the UTF-8 character to store.
+ * @param[out] bytes_written Number of bytes written into @p dst (size of the written UTF-8 character).
+ * @return LY_SUCCESS on success
+ * @return LY_EINVAL in case of invalid UTF-8 @p value to store.
+ */
+LY_ERR ly_pututf8(char *dst, uint32_t value, size_t *bytes_written);
+
+/**
  * @brief Get number of characters in the @p str, taking multibyte characters into account.
  * @param[in] str String to examine.
  * @param[in] bytes Number of valid bytes that are supposed to be taken into account in @p str.
