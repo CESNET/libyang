@@ -8,6 +8,7 @@ from unittest.mock import patch
 
 from libyang import Context
 from libyang import LibyangError
+from libyang import lib
 from libyang.data import DContainer
 from libyang.data import DNode
 from libyang.data import DRpc
@@ -258,20 +259,35 @@ class DataTest(unittest.TestCase):
 
     def test_data_from_dict_invalid(self):
         module = self.ctx.get_module('yolo-system')
-        orig_create = Context.create_data_path
-        orig_free = DNode.free
+
         created = []
         freed = []
 
-        def wrapped_create(self, *args, **kwargs):
-            c = orig_create(self, *args, **kwargs)
-            if c is not None:
-                created.append(c)
-            return c
+        class FakeLib:
 
-        def wrapped_free(self, *args, **kwargs):
-            freed.append(self)
-            orig_free(self, *args, **kwargs)
+            def __init__(self, orig):
+                self.orig = orig
+
+            def lyd_new(self, *args):
+                c = self.orig.lyd_new(*args)
+                if c:
+                    created.append(c)
+                return c
+
+            def lyd_new_leaf(self, *args):
+                c = self.orig.lyd_new_leaf(*args)
+                if c:
+                    created.append(c)
+                return c
+
+            def lyd_free(self, dnode):
+                freed.append(dnode)
+                self.orig.lyd_free(dnode)
+
+            def __getattr__(self, name):
+                return getattr(self.orig, name)
+
+        fake_lib = FakeLib(lib)
 
         root = module.parse_data_dict({
             'conf': {
@@ -300,8 +316,7 @@ class DataTest(unittest.TestCase):
         }
 
         try:
-            with patch.object(Context, 'create_data_path', wrapped_create), \
-                    patch.object(DNode, 'free', wrapped_free):
+            with patch('libyang.data.lib', fake_lib):
                 with self.assertRaises(LibyangError):
                     root.merge_data_dict(invalid_dict)
             self.assertGreater(len(created), 0)

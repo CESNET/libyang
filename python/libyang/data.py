@@ -423,82 +423,132 @@ def dict_to_dnode(dic, module, parent=None, rpc=False, rpcreply=False):
 
     created = []
 
-    def _create(_schema, key, value=None):
-        nonlocal parent
-        dnode = _schema.context.create_data_path(
-            _schema.data_path() % key, parent=parent, value=value,
-            update=False, no_parent_ret=False,
-            force_return_value=False, rpc_output=rpcreply)
-        if dnode is not None:
-            created.append(dnode)
-            if parent is None:
-                parent = dnode
+    def _create_leaf(_parent, module, name, value, in_rpc_output=False):
+        if value is not None:
+            if isinstance(value, bool):
+                value = str(value).lower()
+            elif not isinstance(value, str):
+                value = str(value)
+        if in_rpc_output:
+            n = lib.lyd_new_output_leaf(
+                _parent, module._module, str2c(name), str2c(value))
+        else:
+            n = lib.lyd_new_leaf(
+                _parent, module._module, str2c(name), str2c(value))
+        if not n:
+            if _parent:
+                parent_path = repr(DNode.new(module.context, _parent).path())
+            else:
+                parent_path = 'module %r' % module.name()
+            raise module.context.error(
+                'failed to create leaf %r as a child of %s', name, parent_path)
+        created.append(n)
 
-    def _to_dnode(_dic, _schema, key=()):
-        name = _schema.name()
-        if name not in _dic:
-            name = _schema.fullname()
-            if name not in _dic:
-                return
-        data = _dic[name]
-        if isinstance(_schema, SContainer):
-            if not isinstance(data, dict):
-                raise TypeError('%s: python value is not a dict: %r'
-                                % (_schema.schema_path(), data))
-            _create(_schema, key)
-            for s in _schema:
-                _to_dnode(data, s, key)
-        elif isinstance(_schema, SRpc):
+    def _create_container(_parent, module, name, in_rpc_output=False):
+        if in_rpc_output:
+            n = lib.lyd_new_output(_parent, module._module, str2c(name))
+        else:
+            n = lib.lyd_new(_parent, module._module, str2c(name))
+        if not n:
+            if _parent:
+                parent_path = repr(DNode.new(module.context, _parent).path())
+            else:
+                parent_path = 'module %r' % module.name()
+            raise module.context.error(
+                'failed to create container/list/rpc %r as a child of %s',
+                name, parent_path)
+        created.append(n)
+        return n
+
+    schema_cache = {}
+
+    def _find_schema(schema_parent, name, prefix):
+        if isinstance(schema_parent, Module):
+            cache_key = (schema_parent._module, name, prefix)
+        else:
+            cache_key = (schema_parent._node, name, prefix)
+        snode, module = schema_cache.get(cache_key, (None, None))
+        if snode is not None:
+            return snode, module
+        if isinstance(schema_parent, SRpc):
             if rpc:
-                _schema = _schema.input()
+                schema_parent = schema_parent.input()
             elif rpcreply:
-                _schema = _schema.output()
+                schema_parent = schema_parent.output()
             else:
                 raise ValueError('rpc or rpcreply must be specified')
-            if not _schema:
+            if schema_parent is None:
                 # there may not be any input or any output node in the rpc
-                return
-            for s in _schema:
-                _to_dnode(data, s, key)
-        elif isinstance(_schema, SList):
-            if not isinstance(data, (list, tuple)):
-                raise TypeError('%s: python value is not a list/tuple: %r'
-                                % (_schema.schema_path(), data))
-            for element in data:
-                if not isinstance(element, dict):
-                    raise TypeError('%s: list element is not a dict: %r'
-                                    % (_schema.schema_path(), element))
-                try:
-                    next_key = []
-                    for k in _schema.keys():
-                        try:
-                            next_key.append(element[k.name()])
-                        except KeyError as _e:
-                            try:
-                                next_key.append(element[k.fullname()])
-                            except KeyError:
-                                raise _e
-                except KeyError as e:
-                    raise KeyError(
-                        "%s: key '%s' not present in list element: %r"
-                        % (_schema.schema_path(), e, element))
-                for s in _schema:
-                    _to_dnode(element, s, key + tuple(next_key))
-        elif isinstance(_schema, SLeafList):
-            if not isinstance(data, (list, tuple)):
-                raise TypeError('%s: python value is not a list/tuple: %r'
-                                % (_schema.schema_path(), data))
-            for element in data:
-                _create(_schema, key, element)
-        elif isinstance(_schema, SLeaf):
-            _create(_schema, key, data)
+                return None, None
+        for s in schema_parent:
+            if s.name() != name:
+                continue
+            mod = s.module()
+            if prefix is not None and mod.name() != prefix:
+                continue
+            snode = s
+            module = mod
+            break
+        schema_cache[cache_key] = (snode, module)
+        return snode, module
+
+    def _to_dnode(_dic, _schema, _parent=ffi.NULL, in_rpc_output=False):
+        for key, value in _dic.items():
+            if ':' in key:
+                prefix, name = name.split(':')
+            else:
+                prefix, name = None, key
+
+            s, module = _find_schema(_schema, name, prefix)
+            if not s:
+                continue
+
+            if isinstance(s, SLeaf):
+                _create_leaf(_parent, module, name, value, in_rpc_output)
+
+            elif isinstance(s, SLeafList):
+                if not isinstance(value, (list, tuple)):
+                    raise TypeError('%s: python value is not a list/tuple: %r'
+                                    % (s.schema_path(), value))
+                for v in value:
+                    _create_leaf(_parent, module, name, v, in_rpc_output)
+
+            elif isinstance(s, SRpc):
+                n = _create_container(_parent, module, name, in_rpc_output)
+                _to_dnode(value, s, n, rpcreply)
+
+            elif isinstance(s, SContainer):
+                n = _create_container(_parent, module, name, in_rpc_output)
+                _to_dnode(value, s, n, in_rpc_output)
+
+            elif isinstance(s, SList):
+                if not isinstance(value, (list, tuple)):
+                    raise TypeError('%s: python value is not a list/tuple: %r'
+                                    % (s.schema_path(), value))
+                for v in value:
+                    if not isinstance(v, dict):
+                        raise TypeError('%s: list element is not a dict: %r'
+                                        % (_schema.schema_path(), v))
+                    n = _create_container(_parent, module, name, in_rpc_output)
+                    _to_dnode(v, s, n, in_rpc_output)
+
+    result = None
 
     try:
-        for s in module:
-            _to_dnode(dic, s)
+        if parent is not None:
+            _parent = parent._node
+            _schema_parent = parent.schema()
+        else:
+            _parent = ffi.NULL
+            _schema_parent = module
+        _to_dnode(dic, _schema_parent, _parent,
+                  in_rpc_output=rpcreply and isinstance(parent, DRpc))
+        if created:
+            result = DNode.new(module.context, created[0])
+            result.validate(rpc=rpc, rpcreply=rpc)
     except:
         for c in reversed(created):
-            c.free(with_siblings=False)
+            lib.lyd_free(c)
         raise
 
-    return parent
+    return result
