@@ -325,71 +325,6 @@ lyxml_parse_qname(struct lyxml_ctx *xmlctx, const char **prefix, size_t *prefix_
 }
 
 /**
- * Store UTF-8 character specified as 4byte integer into the dst buffer.
- * Returns number of written bytes (4 max), expects that dst has enough space.
- *
- * UTF-8 mapping:
- * 00000000 -- 0000007F:    0xxxxxxx
- * 00000080 -- 000007FF:    110xxxxx 10xxxxxx
- * 00000800 -- 0000FFFF:    1110xxxx 10xxxxxx 10xxxxxx
- * 00010000 -- 001FFFFF:    11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
- *
- * Includes checking for valid characters (following RFC 7950, sec 9.4)
- */
-static LY_ERR
-lyxml_pututf8(char *dst, uint32_t value, size_t *bytes_written)
-{
-    if (value < 0x80) {
-        /* one byte character */
-        if (value < 0x20 &&
-                value != 0x09 &&
-                value != 0x0a &&
-                value != 0x0d) {
-            return LY_EINVAL;
-        }
-
-        dst[0] = value;
-        (*bytes_written) = 1;
-    } else if (value < 0x800) {
-        /* two bytes character */
-        dst[0] = 0xc0 | (value >> 6);
-        dst[1] = 0x80 | (value & 0x3f);
-        (*bytes_written) = 2;
-    } else if (value < 0xfffe) {
-        /* three bytes character */
-        if (((value & 0xf800) == 0xd800) ||
-                (value >= 0xfdd0 && value <= 0xfdef)) {
-            /* exclude surrogate blocks %xD800-DFFF */
-            /* exclude noncharacters %xFDD0-FDEF */
-            return LY_EINVAL;
-        }
-
-        dst[0] = 0xe0 | (value >> 12);
-        dst[1] = 0x80 | ((value >> 6) & 0x3f);
-        dst[2] = 0x80 | (value & 0x3f);
-
-        (*bytes_written) = 3;
-    } else if (value < 0x10fffe) {
-        if ((value & 0xffe) == 0xffe) {
-            /* exclude noncharacters %xFFFE-FFFF, %x1FFFE-1FFFF, %x2FFFE-2FFFF, %x3FFFE-3FFFF, %x4FFFE-4FFFF,
-             * %x5FFFE-5FFFF, %x6FFFE-6FFFF, %x7FFFE-7FFFF, %x8FFFE-8FFFF, %x9FFFE-9FFFF, %xAFFFE-AFFFF,
-             * %xBFFFE-BFFFF, %xCFFFE-CFFFF, %xDFFFE-DFFFF, %xEFFFE-EFFFF, %xFFFFE-FFFFF, %x10FFFE-10FFFF */
-            return LY_EINVAL;
-        }
-        /* four bytes character */
-        dst[0] = 0xf0 | (value >> 18);
-        dst[1] = 0x80 | ((value >> 12) & 0x3f);
-        dst[2] = 0x80 | ((value >> 6) & 0x3f);
-        dst[3] = 0x80 | (value & 0x3f);
-
-        (*bytes_written) = 4;
-    } else {
-	    return LY_EINVAL;
-    }
-    return LY_SUCCESS;
-}
-
-/**
  * @brief Parse XML text content (value).
  *
  * @param[in] xmlctx XML context to use.
@@ -507,7 +442,7 @@ lyxml_parse_value(struct lyxml_ctx *xmlctx, char endchar, char **value, size_t *
                                          LY_VCODE_INSTREXP_len(&in[offset]), &in[offset], ";"),
                                   error);
                 ++offset;
-                LY_CHECK_ERR_GOTO(lyxml_pututf8(&buf[len], n, &u),
+                LY_CHECK_ERR_GOTO(ly_pututf8(&buf[len], n, &u),
                                   LOGVAL(ctx, LY_VLOG_LINE, &xmlctx->line, LYVE_SYNTAX,
                                          "Invalid character reference \"%.*s\" (0x%08x).", 12, p, n),
                                   error);
