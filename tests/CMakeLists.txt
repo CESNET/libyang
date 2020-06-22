@@ -19,7 +19,6 @@ function(ly_add_utest)
 
     add_executable(${TEST_NAME} ${TEST_SOURCES} $<TARGET_OBJECTS:yangobj>)
     foreach(TEST_SOURCE ${ADDTEST_SOURCES})
-        message(STATUS "SRC: ${CMAKE_CURRENT_SOURCE_DIR}/${TEST_SOURCE}")
         target_sources(${TEST_NAME} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/${TEST_SOURCE})
     endforeach()
 
