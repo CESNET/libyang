@@ -184,7 +184,6 @@ class DataTest(unittest.TestCase):
             u.create_path('port', 8080)
             u.create_path('path', '/index.html')
             u.create_path('enabled', True)
-            state.validate(strict=True)
             self.assertEqual(state.print_mem('json', pretty=True), self.JSON_STATE)
         finally:
             state.free()

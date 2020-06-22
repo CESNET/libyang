@@ -186,12 +186,12 @@ class Context:
 
     def parse_data_mem(self, d, fmt, data=False, config=False, get=False,
                        strict=False, trusted=False, no_yanglib=False,
-                       rpc=False):
+                       rpc=False, rpcreply=False):
         if self._ctx is None:
             raise RuntimeError('context already destroyed')
         flags = parser_flags(
             data=data, config=config, get=get, strict=strict, trusted=trusted,
-            no_yanglib=no_yanglib, rpc=rpc)
+            no_yanglib=no_yanglib, rpc=rpc, rpcreply=rpcreply)
         fmt = data_format(fmt)
         if fmt == lib.LYD_LYB:
             d = str2c(d, encode=False)
@@ -206,12 +206,13 @@ class Context:
         return DNode.new(self, dnode)
 
     def parse_data_file(self, fileobj, fmt, data=False, config=False, get=False,
-                        strict=False, trusted=False, no_yanglib=False, rpc=False):
+                        strict=False, trusted=False, no_yanglib=False,
+                        rpc=False, rpcreply=False):
         if self._ctx is None:
             raise RuntimeError('context already destroyed')
         flags = parser_flags(
             data=data, config=config, get=get, strict=strict, trusted=trusted,
-            no_yanglib=no_yanglib, rpc=rpc)
+            no_yanglib=no_yanglib, rpc=rpc, rpcreply=rpcreply)
         fmt = data_format(fmt)
         args = []
         if rpc:

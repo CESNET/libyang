@@ -58,8 +58,8 @@ def path_flags(update=False, rpc_output=False, no_parent_ret=False):
 
 #------------------------------------------------------------------------------
 def parser_flags(data=False, config=False, get=False, strict=False,
-                 trusted=False, no_yanglib=False, rpc=False, destruct=False,
-                 no_siblings=False, explicit=False):
+                 trusted=False, no_yanglib=False, rpc=False, rpcreply=False,
+                 destruct=False, no_siblings=False, explicit=False):
     flags = 0
     if data:
         flags |= lib.LYD_OPT_DATA
@@ -75,6 +75,8 @@ def parser_flags(data=False, config=False, get=False, strict=False,
         flags |= lib.LYD_OPT_DATA_NO_YANGLIB
     if rpc:
         flags |= lib.LYD_OPT_RPC
+    if rpcreply:
+        flags |= lib.LYD_OPT_RPCREPLY
     if destruct:
         flags |= lib.LYD_OPT_DESTRUCT
     if no_siblings:
@@ -161,11 +163,11 @@ class DNode:
         finally:
             lib.free(path)
 
-    def validate(self, data=False, config=False, get=False, strict=False,
-                 trusted=False, no_yanglib=False):
+    def validate(self, data=False, config=False, get=False, rpc=False,
+                 rpcreply=False, no_yanglib=False):
         flags = parser_flags(
-            data=data, config=config, get=get, strict=strict, trusted=trusted,
-            no_yanglib=no_yanglib)
+            data=data, config=config, get=get, rpc=rpc,
+            rpcreply=rpcreply, no_yanglib=no_yanglib)
         node_p = ffi.new('struct lyd_node **')
         node_p[0] = self._node
         ret = lib.lyd_validate(node_p, flags, ffi.NULL)
