@@ -1,9 +1,9 @@
 /**
  * @file tree_data.c
  * @author Radek Krejci <rkrejci@cesnet.cz>
- * @brief Schema tree implementation
+ * @brief Data tree functions
  *
- * Copyright (c) 2015 - 2018 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2020 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -2097,7 +2097,6 @@ lyd_dup_recursive(const struct lyd_node *node, struct lyd_node *parent, struct l
 
     /* insert */
     lyd_insert_node(parent, first, dup);
-    lyd_insert_hash(dup);
 
     if (dup_p) {
         *dup_p = dup;
