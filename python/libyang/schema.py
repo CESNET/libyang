@@ -117,7 +117,8 @@ class Module:
         if ret != 0:
             raise self.context.error('cannot print module')
 
-    def parse_data_dict(self, dic, rpc=False, rpcreply=False):
+    def parse_data_dict(self, dic, rpc=False, rpcreply=False, strict=False,
+                        data=False, config=False, no_yanglib=False):
         """
         Convert a python dictionary to a DNode object following the schema of
         this module. The returned value is always a top-level data node (i.e.:
@@ -129,10 +130,23 @@ class Module:
             Data represents RPC or action input parameters.
         :arg bool rpcreply:
             Data represents RPC or action output parameters.
+        :arg bool strict:
+            Instead of ignoring (with a warning message) data without schema
+            definition, raise an error.
+        :arg bool data:
+            Complete datastore content with configuration as well as state
+            data. To handle possibly missing (but by default required)
+            ietf-yang-library data, use no_yanglib=True.
+        :arg bool config:
+            Complete datastore without state data.
+        :arg bool no_yanglib:
+            Ignore (possibly) missing ietf-yang-library data. Applicable only
+            with data=True.
         """
         from .data import dict_to_dnode  # circular import
         return dict_to_dnode(dic, self, parent=None,
-                             rpc=rpc, rpcreply=rpcreply)
+                             rpc=rpc, rpcreply=rpcreply, strict=strict,
+                             data=data, config=config, no_yanglib=no_yanglib)
 
 
 #------------------------------------------------------------------------------

@@ -249,7 +249,7 @@ class DataTest(unittest.TestCase):
 
     def test_data_from_dict_module(self):
         module = self.ctx.get_module('yolo-system')
-        dnode = module.parse_data_dict(self.DICT_CONFIG)
+        dnode = module.parse_data_dict(self.DICT_CONFIG, strict=True, config=True)
         self.assertIsInstance(dnode, DContainer)
         try:
             j = dnode.print_mem('json', pretty=True)
@@ -295,7 +295,7 @@ class DataTest(unittest.TestCase):
                 'speed': 1234,
                 'number': [1000, 2000, 3000],
             }
-        })
+        }, strict=True, config=True)
 
         invalid_dict = {
             'url': [
@@ -318,7 +318,7 @@ class DataTest(unittest.TestCase):
         try:
             with patch('libyang.data.lib', fake_lib):
                 with self.assertRaises(LibyangError):
-                    root.merge_data_dict(invalid_dict)
+                    root.merge_data_dict(invalid_dict, strict=True, config=True)
             self.assertGreater(len(created), 0)
             self.assertGreater(len(freed), 0)
             self.assertEqual(freed, list(reversed(created)))
@@ -328,7 +328,7 @@ class DataTest(unittest.TestCase):
     def test_data_from_dict_container(self):
         dnode = self.ctx.create_data_path('/yolo-system:conf')
         self.assertIsInstance(dnode, DContainer)
-        dnode.merge_data_dict(self.DICT_CONFIG['conf'])
+        dnode.merge_data_dict(self.DICT_CONFIG['conf'], strict=True, config=True)
         try:
             j = dnode.print_mem('json', pretty=True)
         finally:
@@ -338,7 +338,7 @@ class DataTest(unittest.TestCase):
     def test_data_from_dict_leaf(self):
         dnode = self.ctx.create_data_path('/yolo-system:state')
         self.assertIsInstance(dnode, DContainer)
-        dnode.merge_data_dict({'hostname': 'foo'})
+        dnode.merge_data_dict({'hostname': 'foo'}, strict=True, data=True, no_yanglib=True)
         try:
             j = dnode.print_mem('json')
         finally:
@@ -348,7 +348,7 @@ class DataTest(unittest.TestCase):
     def test_data_from_dict_rpc(self):
         dnode = self.ctx.create_data_path('/yolo-system:format-disk')
         self.assertIsInstance(dnode, DRpc)
-        dnode.merge_data_dict({'duration': 42}, rpcreply=True)
+        dnode.merge_data_dict({'duration': 42}, rpcreply=True, strict=True)
         try:
             j = dnode.print_mem('json')
         finally:

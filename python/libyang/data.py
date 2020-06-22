@@ -1,6 +1,8 @@
 # Copyright (c) 2020 6WIND S.A.
 # SPDX-License-Identifier: BSD-3-Clause
 
+import logging
+
 from _libyang import ffi
 from _libyang import lib
 
@@ -12,8 +14,12 @@ from .schema import SList
 from .schema import SNode
 from .schema import SRpc
 from .schema import Type
+from .util import LibyangError
 from .util import c2str
 from .util import str2c
+
+
+LOG = logging.getLogger(__name__)
 
 
 #------------------------------------------------------------------------------
@@ -282,7 +288,8 @@ class DNode:
             _to_dict(dnode, dic)
         return dic
 
-    def merge_data_dict(self, dic, rpc=False, rpcreply=False):
+    def merge_data_dict(self, dic, rpc=False, rpcreply=False, strict=False,
+                        data=False, config=False, no_yanglib=False):
         """
         Merge a python dictionary into this node. The returned value is the
         first created node.
@@ -293,9 +300,22 @@ class DNode:
             Data represents RPC or action input parameters.
         :arg bool rpcreply:
             Data represents RPC or action output parameters.
+        :arg bool strict:
+            Instead of ignoring (with a warning message) data without schema
+            definition, raise an error.
+        :arg bool data:
+            Complete datastore content with configuration as well as state
+            data. To handle possibly missing (but by default required)
+            ietf-yang-library data, use no_yanglib=True.
+        :arg bool config:
+            Complete datastore without state data.
+        :arg bool no_yanglib:
+            Ignore (possibly) missing ietf-yang-library data. Applicable only
+            with data=True.
         """
         return dict_to_dnode(dic, self.module(), parent=self,
-                             rpc=rpc, rpcreply=rpcreply)
+                             rpc=rpc, rpcreply=rpcreply, strict=strict,
+                             data=data, config=config, no_yanglib=no_yanglib)
 
     def free(self, with_siblings=True):
         try:
@@ -393,7 +413,8 @@ class DLeafList(DLeaf):
 
 
 #------------------------------------------------------------------------------
-def dict_to_dnode(dic, module, parent=None, rpc=False, rpcreply=False):
+def dict_to_dnode(dic, module, parent=None, rpc=False, rpcreply=False,
+                  strict=False, data=False, config=False, no_yanglib=False):
     """
     Convert a python dictionary to a DNode object given a YANG module object.
     The return value is the first created node. If parent is not set, a
@@ -410,6 +431,18 @@ def dict_to_dnode(dic, module, parent=None, rpc=False, rpcreply=False):
         Data represents RPC or action input parameters.
     :arg bool rpcreply:
         Data represents RPC or action output parameters.
+    :arg bool strict:
+        Instead of ignoring (with a warning message) data without schema
+        definition, raise an error.
+    :arg bool data:
+        Complete datastore content with configuration as well as state
+        data. To handle possibly missing (but by default required)
+        ietf-yang-library data, use no_yanglib=True.
+    :arg bool config:
+        Complete datastore without state data.
+    :arg bool no_yanglib:
+        Ignore (possibly) missing ietf-yang-library data. Applicable only
+        with data=True.
     """
     if not dic:
         return None
@@ -501,6 +534,15 @@ def dict_to_dnode(dic, module, parent=None, rpc=False, rpcreply=False):
 
             s, module = _find_schema(_schema, name, prefix)
             if not s:
+                if isinstance(_schema, Module):
+                    path = _schema.name()
+                elif isinstance(_schema, SNode):
+                    path = _schema.schema_path()
+                else:
+                    path = str(_schema)
+                if strict:
+                    raise LibyangError('%s: unknown element %r' % (path, key))
+                LOG.warning('%s: skipping unknown element %r', path, key)
                 continue
 
             if isinstance(s, SLeaf):
@@ -545,7 +587,8 @@ def dict_to_dnode(dic, module, parent=None, rpc=False, rpcreply=False):
                   in_rpc_output=rpcreply and isinstance(parent, DRpc))
         if created:
             result = DNode.new(module.context, created[0])
-            result.validate(rpc=rpc, rpcreply=rpc)
+            result.validate(rpc=rpc, rpcreply=rpc,
+                            data=data, config=config, no_yanglib=no_yanglib)
     except:
         for c in reversed(created):
             lib.lyd_free(c)
