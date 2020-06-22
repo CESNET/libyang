@@ -117,7 +117,7 @@ class Module:
         if ret != 0:
             raise self.context.error('cannot print module')
 
-    def parse_data_dict(self, dic, rpc_input=False, rpc_output=False):
+    def parse_data_dict(self, dic, rpc=False, rpcreply=False):
         """
         Convert a python dictionary to a DNode object following the schema of
         this module. The returned value is always a top-level data node (i.e.:
@@ -125,14 +125,14 @@ class Module:
 
         :arg dict dic:
             The python dictionary to convert.
-        :arg bool rpc_input:
-            If True, dic will be parsed by looking in the rpc input nodes.
-        :arg bool rpc_output:
-            If True, dic will be parsed by looking in the rpc output nodes.
+        :arg bool rpc:
+            Data represents RPC or action input parameters.
+        :arg bool rpcreply:
+            Data represents RPC or action output parameters.
         """
         from .data import dict_to_dnode  # circular import
         return dict_to_dnode(dic, self, parent=None,
-                             rpc_input=rpc_input, rpc_output=rpc_output)
+                             rpc=rpc, rpcreply=rpcreply)
 
 
 #------------------------------------------------------------------------------

@@ -282,20 +282,20 @@ class DNode:
             _to_dict(dnode, dic)
         return dic
 
-    def merge_data_dict(self, dic, rpc_input=False, rpc_output=False):
+    def merge_data_dict(self, dic, rpc=False, rpcreply=False):
         """
         Merge a python dictionary into this node. The returned value is the
         first created node.
 
         :arg dict dic:
             The python dictionary to convert.
-        :arg bool rpc_input:
-            If True, dic will be parsed by looking in the rpc input nodes.
-        :arg bool rpc_output:
-            If True, dic will be parsed by looking in the rpc output nodes.
+        :arg bool rpc:
+            Data represents RPC or action input parameters.
+        :arg bool rpcreply:
+            Data represents RPC or action output parameters.
         """
         return dict_to_dnode(dic, self.module(), parent=self,
-                             rpc_input=rpc_input, rpc_output=rpc_output)
+                             rpc=rpc, rpcreply=rpcreply)
 
     def free(self, with_siblings=True):
         try:
@@ -393,7 +393,7 @@ class DLeafList(DLeaf):
 
 
 #------------------------------------------------------------------------------
-def dict_to_dnode(dic, module, parent=None, rpc_input=False, rpc_output=False):
+def dict_to_dnode(dic, module, parent=None, rpc=False, rpcreply=False):
     """
     Convert a python dictionary to a DNode object given a YANG module object.
     The return value is the first created node. If parent is not set, a
@@ -406,12 +406,10 @@ def dict_to_dnode(dic, module, parent=None, rpc_input=False, rpc_output=False):
     :arg DNode parent:
         Optional parent to update. If not specified a new top-level DNode will
         be created.
-    :arg bool rpc_input:
-        If True, expect schema to be a SRpc object and dic will be parsed
-        by looking in the rpc input nodes.
-    :arg bool rpc_output:
-        If True, expect schema to be a SRpc object and dic will be parsed
-        by looking in the rpc output nodes.
+    :arg bool rpc:
+        Data represents RPC or action input parameters.
+    :arg bool rpcreply:
+        Data represents RPC or action output parameters.
     """
     if not dic:
         return None
@@ -430,7 +428,7 @@ def dict_to_dnode(dic, module, parent=None, rpc_input=False, rpc_output=False):
         dnode = _schema.context.create_data_path(
             _schema.data_path() % key, parent=parent, value=value,
             update=False, no_parent_ret=False,
-            force_return_value=False, rpc_output=rpc_output)
+            force_return_value=False, rpc_output=rpcreply)
         if dnode is not None:
             created.append(dnode)
             if parent is None:
@@ -451,12 +449,12 @@ def dict_to_dnode(dic, module, parent=None, rpc_input=False, rpc_output=False):
             for s in _schema:
                 _to_dnode(data, s, key)
         elif isinstance(_schema, SRpc):
-            if rpc_input:
+            if rpc:
                 _schema = _schema.input()
-            elif rpc_output:
+            elif rpcreply:
                 _schema = _schema.output()
             else:
-                raise ValueError('rpc_input or rpc_output must be specified')
+                raise ValueError('rpc or rpcreply must be specified')
             if not _schema:
                 # there may not be any input or any output node in the rpc
                 return
