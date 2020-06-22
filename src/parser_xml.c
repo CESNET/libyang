@@ -487,10 +487,17 @@ lydxml_data_r(struct lyd_xml_ctx *lydctx, struct lyd_node_inner *parent, struct 
             goto cleanup;
         }
         mod = ly_ctx_get_module_implemented_ns(ctx, ns->uri);
-        if (!mod && (lydctx->options & LYD_OPT_STRICT)) {
-            LOGVAL(ctx, LY_VLOG_LINE, &xmlctx->line, LYVE_REFERENCE, "No module with namespace \"%s\" in the context.", ns->uri);
-            ret = LY_EVALID;
-            goto cleanup;
+        if (!mod) {
+            if (lydctx->options & LYD_OPT_STRICT) {
+                LOGVAL(ctx, LY_VLOG_LINE, &xmlctx->line, LYVE_REFERENCE, "No module with namespace \"%s\" in the context.",
+                       ns->uri);
+                ret = LY_EVALID;
+                goto cleanup;
+            }
+
+            /* skip element with children */
+            LY_CHECK_GOTO(ret = lydxml_data_skip(xmlctx), cleanup);
+            continue;
         }
 
         /* parser next */
