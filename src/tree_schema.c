@@ -4481,24 +4481,26 @@ apply_aug(struct lys_node_augment *augment, struct unres_schema *unres)
         }
     }
 
-    /* check that all leafrefs point to implemented modules */
-    LY_TREE_DFS_BEGIN((struct lys_node *)augment, parent, child) {
-        if (child->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
-            type = &((struct lys_node_leaf *)child)->type;
-            if (type->base == LY_TYPE_LEAFREF) {
-                /* must be resolved or in unres */
-                if (!type->info.lref.target) {
-                    if (unres_schema_find(unres, -1, type, UNRES_TYPE_LEAFREF) > -1) {
-                        if (unres_schema_add_node(lys_node_module(child), unres, type, UNRES_TYPE_LEAFREF, child) == -1) {
-                            return -1;
+    if (lys_node_module((struct lys_node *)augment)->implemented) {
+        /* check that all leafrefs point to implemented modules */
+        LY_TREE_DFS_BEGIN((struct lys_node *)augment, parent, child) {
+            if (child->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
+                type = &((struct lys_node_leaf *)child)->type;
+                if (type->base == LY_TYPE_LEAFREF) {
+                    /* must be resolved or in unres */
+                    if (!type->info.lref.target) {
+                        if (unres_schema_find(unres, -1, type, UNRES_TYPE_LEAFREF) > -1) {
+                            if (unres_schema_add_node(lys_node_module(child), unres, type, UNRES_TYPE_LEAFREF, child) == -1) {
+                                return -1;
+                            }
                         }
-                    }
-                } else {
-                    mod = lys_node_module((struct lys_node *)type->info.lref.target);
-                    if (!mod->implemented) {
-                        mod->implemented = 1;
-                        if (unres_schema_add_node(mod, unres, NULL, UNRES_MOD_IMPLEMENT, NULL) == -1) {
-                            return -1;
+                    } else {
+                        mod = lys_node_module((struct lys_node *)type->info.lref.target);
+                        if (!mod->implemented) {
+                            mod->implemented = 1;
+                            if (unres_schema_add_node(mod, unres, NULL, UNRES_MOD_IMPLEMENT, NULL) == -1) {
+                                return -1;
+                            }
                         }
                     }
                 }

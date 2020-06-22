@@ -170,11 +170,11 @@ xml_print_attrs(struct lyout *out, const struct lyd_node *node, int options)
     struct lyd_attr *attr;
     const char **prefs, **nss;
     const char *xml_expr = NULL, *mod_name;
+    char *ident_val;
     uint32_t ns_count, i;
     int rpc_filter = 0;
-    const struct lys_module *wdmod = NULL;
-    char *p;
     size_t len;
+    const struct lys_module *wdmod = NULL;
 
     LY_PRINT_SET;
 
@@ -198,6 +198,38 @@ xml_print_attrs(struct lyout *out, const struct lyd_node *node, int options)
     }
 
     for (attr = node->attr; attr; attr = attr->next) {
+        ident_val = NULL;
+        if (attr->value_str && ((attr->value_type == LY_TYPE_INST) || (attr->value_type == LY_TYPE_IDENT)
+                || (!strcmp(attr->annotation->module->name, "yang") && !strcmp(attr->name, "key")))) {
+            if (attr->value_type == LY_TYPE_IDENT) {
+                ident_val = strchr(attr->value_str, ':');
+                assert(ident_val);
+                len = ident_val - attr->value_str;
+                mod_name = attr->annotation->module->name;
+                if (!strncmp(attr->value_str, mod_name, len) && !mod_name[len]) {
+                    /* skip local identity prefix */
+                    ++ident_val;
+                    goto normal_print;
+                }
+
+                /* print the prefix correctly below */
+                ident_val = NULL;
+            }
+
+            xml_expr = transform_json2xml(node->schema->module, attr->value_str, 1, &prefs, &nss, &ns_count);
+            if (!xml_expr) {
+                /* error */
+                return EXIT_FAILURE;
+            }
+
+            for (i = 0; i < ns_count; ++i) {
+                ly_print(out, " xmlns:%s=\"%s\"", prefs[i], nss[i]);
+            }
+            free(prefs);
+            free(nss);
+        }
+
+normal_print:
         if (rpc_filter) {
             /* exception for NETCONF's filter's attributes */
             if (!strcmp(attr->name, "select")) {
@@ -234,46 +266,22 @@ xml_print_attrs(struct lyout *out, const struct lyd_node *node, int options)
         case LY_TYPE_UINT16:
         case LY_TYPE_UINT32:
         case LY_TYPE_UINT64:
+        case LY_TYPE_INST:
             if (attr->value_str) {
                 /* xml_expr can contain transformed xpath */
                 lyxml_dump_text(out, xml_expr ? xml_expr : attr->value_str, LYXML_DATA_ATTR);
             }
             break;
-
         case LY_TYPE_IDENT:
-            if (!attr->value_str) {
-                break;
-            }
-            p = strchr(attr->value_str, ':');
-            assert(p);
-            len = p - attr->value_str;
-            mod_name = attr->annotation->module->name;
-            if (!strncmp(attr->value_str, mod_name, len) && !mod_name[len]) {
-                lyxml_dump_text(out, ++p, LYXML_DATA_ATTR);
-            } else {
-                /* avoid code duplication - use instance-identifier printer which gets necessary namespaces to print */
-                goto printinst;
+            if (attr->value_str) {
+                if (ident_val) {
+                    lyxml_dump_text(out, ident_val, LYXML_DATA_ATTR);
+                } else {
+                    /* xml_expr can contain transformed xpath */
+                    lyxml_dump_text(out, xml_expr ? xml_expr : attr->value_str, LYXML_DATA_ATTR);
+                }
             }
             break;
-        case LY_TYPE_INST:
-printinst:
-            xml_expr = transform_json2xml(node->schema->module, ((struct lyd_node_leaf_list *)node)->value_str, 1,
-                                          &prefs, &nss, &ns_count);
-            if (!xml_expr) {
-                /* error */
-                return EXIT_FAILURE;
-            }
-
-            for (i = 0; i < ns_count; ++i) {
-                ly_print(out, " xmlns:%s=\"%s\"", prefs[i], nss[i]);
-            }
-            free(prefs);
-            free(nss);
-
-            lyxml_dump_text(out, xml_expr, LYXML_DATA_ATTR);
-            lydict_remove(node->schema->module->ctx, xml_expr);
-            break;
-
         /* LY_TYPE_LEAFREF not allowed */
         case LY_TYPE_EMPTY:
             break;
@@ -288,6 +296,7 @@ printinst:
 
         if (xml_expr) {
             lydict_remove(node->schema->module->ctx, xml_expr);
+            xml_expr = NULL;
         }
     }
 

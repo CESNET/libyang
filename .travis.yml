@@ -57,7 +57,7 @@ script:
 
 deploy:
   - provider: script
-    script: codecov
+    script: bash <(curl -s https://codecov.io/bash)
     skip_cleanup: true
     verbose: true
     on:
