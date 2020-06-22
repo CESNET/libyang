@@ -16,7 +16,10 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <string.h>
-#include <unistd.h>
+
+#if !defined(_WINDOWS)
+  #include <unistd.h>
+#endif
 
 #include "compat.h"
 #include "commands.h"
@@ -43,7 +46,7 @@ main(int argc, char* argv[])
     }
 
     /* continue in interactive mode */
-    linenoiseSetCompletionCallback(complete_cmd);
+    linenoiseSetCompletionCallback(complete_cmd, NULL);
     load_config();
 
     ctx = ly_ctx_new(NULL, 0);

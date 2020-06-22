@@ -39,7 +39,7 @@ extern "C" {
 #ifdef STATIC
 #define LYTYPE_VERSION_CHECK
 #else
-#define LYTYPE_VERSION_CHECK int lytype_api_version = LYTYPE_API_VERSION;
+#define LYTYPE_VERSION_CHECK API_H int lytype_api_version = LYTYPE_API_VERSION;
 #endif
 
 

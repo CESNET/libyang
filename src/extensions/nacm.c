@@ -154,7 +154,7 @@ struct lyext_plugin nacm_deny_all = {
  *
  * MANDATORY object for all libyang extension plugins, the name must match the <name>.so
  */
-struct lyext_plugin_list nacm[] = {
+API_H struct lyext_plugin_list nacm[] = {
     {"ietf-netconf-acm", "2012-02-22", "default-deny-write", &nacm_deny_write},
     {"ietf-netconf-acm", "2012-02-22", "default-deny-all", &nacm_deny_all},
     {NULL, NULL, NULL, NULL} /* terminating item */

@@ -569,7 +569,7 @@ find_orig_type(struct lys_type *par_type, LY_DATA_TYPE base_type)
 static int
 lyv_extension(struct lys_ext_instance **ext, uint8_t size, struct lyd_node *node)
 {
-    uint i;
+    unsigned int i;
 
     for (i = 0; i < size; ++i) {
         if ((ext[i]->flags & LYEXT_OPT_VALID) && ext[i]->def->plugin->valid_data) {

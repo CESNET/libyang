@@ -257,7 +257,7 @@ hex_string_store_clb(struct ly_ctx *ctx, const char *UNUSED(type_name), const ch
 }
 
 /* Name of this array must match the file name! */
-struct lytype_plugin_list user_yang_types[] = {
+API_H struct lytype_plugin_list user_yang_types[] = {
     {"ietf-yang-types", "2013-07-15", "date-and-time", date_and_time_store_clb, NULL},
     {"ietf-yang-types", "2013-07-15", "phys-address", hex_string_store_clb, NULL},
     {"ietf-yang-types", "2013-07-15", "mac-address", hex_string_store_clb, NULL},

@@ -19,10 +19,14 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
+
+#if !defined(_WINDOWS)
+  #include <unistd.h>
+  #include <sys/mman.h>
+#endif
+
 #include <pthread.h>
 #include <sys/stat.h>
-#include <sys/mman.h>
 #include <fcntl.h>
 
 #include "common.h"
@@ -189,7 +193,12 @@ lyxml_correct_elem_ns(struct ly_ctx *ctx, struct lyxml_elem *elem, int copy_ns, 
                 lyxml_correct_attr_ns(ctx, attr, elem_root, copy_ns);
             }
         }
-        LY_TREE_DFS_END(elem, tmp, iter);
+
+        #if defined(TYPES_COMPATIBLE)
+          LY_TREE_DFS_END(elem, tmp, iter);
+        #else
+          LY_OTHER_TREE_DFS_END(elem, tmp, iter);
+        #endif
     }
 }
 

@@ -21,7 +21,13 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
+
+#if defined(_WINDOWS)
+#include <windows.h>
+  #define _POSIX_PATH_MAX MAX_PATH
+#else
+  #include <unistd.h>
+#endif
 
 #include "compat.h"
 

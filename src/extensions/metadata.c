@@ -165,7 +165,7 @@ struct lyext_plugin_complex annotation = {
  *
  * MANDATORY object for all libyang extension plugins, the name must match the <name>.so
  */
-struct lyext_plugin_list metadata[] = {
+API_H struct lyext_plugin_list metadata[] = {
     {"ietf-yang-metadata", "2016-08-05", "annotation", (struct lyext_plugin*)&annotation},
     {NULL, NULL, NULL, NULL} /* terminating item */
 };

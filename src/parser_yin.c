@@ -7857,10 +7857,10 @@ lyp_yin_parse_complex_ext(struct lys_module *mod, struct lys_ext_instance_comple
         *pp = reallocated;                                   \
         (*(TYPE**)pp)[i + 1] = 0;                            \
     }
-#define YIN_EXTCOMPLEX_PARSE_SNODE(STMT, FUNC, ARGS...)                              \
+#define YIN_EXTCOMPLEX_PARSE_SNODE(STMT, FUNC, ...)                              \
     pp = (void**)yin_getplace_for_extcomplex_node(node, ext, STMT);                  \
     if (!pp) { goto error; }                                                         \
-    if (!FUNC(mod, (struct lys_node*)ext, node, ##ARGS, LYS_PARSE_OPT_CFG_NOINHERIT, unres)) { goto error; }
+    if (!FUNC(mod, (struct lys_node*)ext, node, ##__VA_ARGS__, LYS_PARSE_OPT_CFG_NOINHERIT, unres)) { goto error; }
 #define YIN_EXTCOMPLEX_PARSE_RESTR(STMT)                                             \
     YIN_EXTCOMPLEX_GETPLACE(STMT, struct lys_restr*);                                \
     GETVAL(mod->ctx, value, node, "value");                                                    \

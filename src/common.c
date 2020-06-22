@@ -24,7 +24,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/types.h>
-#include <unistd.h>
+
+#if !defined(_WINDOWS)
+  #include <unistd.h>
+#endif
 
 #include "common.h"
 #include "parser.h"

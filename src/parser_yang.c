@@ -19,6 +19,10 @@
 #include "parser.h"
 #include "xpath.h"
 
+#if defined(_WINDOWS) && defined(_MSC_VER)
+  typedef unsigned int uint;
+#endif
+
 static void yang_free_import(struct ly_ctx *ctx, struct lys_import *imp, uint8_t start, uint8_t size);
 static int yang_check_must(struct lys_module *module, struct lys_restr *must, uint size, struct unres_schema *unres);
 static void yang_free_include(struct ly_ctx *ctx, struct lys_include *inc, uint8_t start, uint8_t size);
@@ -2687,6 +2691,7 @@ yang_read_module(struct ly_ctx *ctx, const char* data, unsigned int size, const 
     }
 
     ret = yang_parse_mem(module, NULL, unres, data, size, &node);
+
     if (ret == -1) {
         if (ly_vecode(ctx) == LYVE_SUBMODULE && !module->name) {
             /* Remove this module from the list of processed modules,

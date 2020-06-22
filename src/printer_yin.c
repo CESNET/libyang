@@ -1932,17 +1932,17 @@ yin_print_extension_instances(struct lyout *out, int level, const struct lys_mod
         yin_print_close_parent(out, &content);                                                \
         FUNC(out, level, (TYPE *)(*pp));                                                      \
     }
-#define YIN_PRINT_EXTCOMPLEX_STRUCT_M(STMT, TYPE, FUNC, ARGS...)                              \
+#define YIN_PRINT_EXTCOMPLEX_STRUCT_M(STMT, TYPE, FUNC, ...)                                  \
     pp = lys_ext_complex_get_substmt(STMT, (struct lys_ext_instance_complex *)ext[u], NULL);  \
     if (!pp || !(*pp)) { break; }                                                             \
     if (info[i].cardinality >= LY_STMT_CARD_SOME) { /* process array */                       \
         for (pp = *pp; *pp; pp++) {                                                           \
             yin_print_close_parent(out, &content);                                            \
-            FUNC(out, level, module, (TYPE *)(*pp), ##ARGS);                                  \
+            FUNC(out, level, module, (TYPE *)(*pp), ##__VA_ARGS__);                           \
         }                                                                                     \
     } else { /* single item */                                                                \
         yin_print_close_parent(out, &content);                                                \
-        FUNC(out, level, module, (TYPE *)(*pp), ##ARGS);                                      \
+        FUNC(out, level, module, (TYPE *)(*pp), ##__VA_ARGS__);                               \
     }
 #define YIN_PRINT_EXTCOMPLEX_INT(STMT, TYPE, SIGN)                                 \
     p = &((struct lys_ext_instance_complex*)ext[u])->content[info[i].offset];      \

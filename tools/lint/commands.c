@@ -19,9 +19,14 @@
 #include <assert.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <unistd.h>
 #include <getopt.h>
-#include <libgen.h>
+
+#if defined(_WINDOWS)
+  #include <stdlib.h>
+#else
+  #include <unistd.h>
+  #include <libgen.h>
+#endif
 
 #include "compat.h"
 #include "commands.h"

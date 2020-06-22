@@ -47,15 +47,25 @@ packages are always build from current `master` branch (latest release). If you 
 
 ## Requirements
 
-### Build Requirements
+### Build Requirements for *nix
 
-* C compiler (gcc >= 4.8.4, clang >= 3.0, ...)
+* C compiler (gcc >= 4.8.4, clang >= 3.0...)
 * cmake >= 2.8.12
 * libpcre (devel package)
  * note, that PCRE is supposed to be compiled with unicode support (configure's options
    `--enable-utf` and `--enable-unicode-properties`)
 * cmocka >= 1.0.0 (for tests only, see [Tests](#Tests))
 
+### Build Requirements for Win32
+* C compiler (msvc 14.0...)
+* cmake-gui >= 3.17.2 (https://cmake.org/download/)
+* pcre for Windows >= 7.0 (binaries)(http://gnuwin32.sourceforge.net/packages/pcre.htm)
+* Dirent API for Microsoft Visual Studio for Windows >= 1.21 (https://github.com/tronkko/dirent)
+* dlfcn-win32 >= 1.2.0 (https://github.com/dlfcn-win32/dlfcn-win32)
+* pthreads for Windows >= 3.0.0 (https://sourceforge.net/projects/pthreads4w/)
+* sed for Windows >= 4.2.1 (http://gnuwin32.sourceforge.net/packages/sed.htm)
+
+ 
 #### Optional
 
 * doxygen (for generating documentation)

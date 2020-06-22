@@ -38,7 +38,7 @@ extern "C" {
 #ifdef STATIC
 #define LYEXT_VERSION_CHECK
 #else
-#define LYEXT_VERSION_CHECK int lyext_api_version = LYEXT_API_VERSION;
+#define LYEXT_VERSION_CHECK API_H int lyext_api_version = LYEXT_API_VERSION;
 #endif
 
 /**
@@ -223,7 +223,7 @@ struct lyext_plugin_list {
 /**
  * @brief Logging function for extension plugins, use #LYEXT_LOG macro instead!
  */
-void lyext_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, const char *plugin, const char *function, const char *format, ...);
+API_H void lyext_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, const char *plugin, const char *function, const char *format, ...);
 
 /**
  * @brief Logging macro for extension plugins
@@ -234,8 +234,8 @@ void lyext_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, const char *plugin,
  * @param[in] str Format string as in case of printf function.
  * @param[in] args Parameters to expand in format string.
  */
-#define LYEXT_LOG(ctx, level, plugin, str, args...)       \
-    lyext_log(ctx, level, plugin, __func__, str, ##args); \
+#define LYEXT_LOG(ctx, level, plugin, str, ...)       \
+    lyext_log(ctx, level, plugin, __func__, str, ##__VA_ARGS__); \
 
 /**
  * @brief Type of object concerned by a validation error.
@@ -253,7 +253,7 @@ typedef enum {
 /**
  * @brief Validation logging function for extension plugins, use #LYEXT_VLOG macro instead!
  */
-void lyext_vlog(const struct ly_ctx *ctx, LY_VECODE vecode, const char *plugin, const char *function,
+API_H void lyext_vlog(const struct ly_ctx *ctx, LY_VECODE vecode, const char *plugin, const char *function,
                 LYEXT_VLOG_ELEM elem_type, const void *elem, const char *format, ...);
 
 /**
@@ -267,8 +267,8 @@ void lyext_vlog(const struct ly_ctx *ctx, LY_VECODE vecode, const char *plugin, 
  * @param[in] str Format string as in case of printf function.
  * @param[in] args Parameters to expand in format string.
  */
-#define LYEXT_VLOG(ctx, vecode, plugin, elem_type, elem, str, args...)    \
-    lyext_vlog(ctx, vecode, plugin, __func__, elem_type, elem, str, ##args)
+#define LYEXT_VLOG(ctx, vecode, plugin, elem_type, elem, str, ...)    \
+    lyext_vlog(ctx, vecode, plugin, __func__, elem_type, elem, str, ##__VA_ARGS__)
 
 /**
  * @brief Free iffeature structure. In API only for plugins that want to handle if-feature statements similarly
@@ -280,7 +280,7 @@ void lyext_vlog(const struct ly_ctx *ctx, LY_VECODE vecode, const char *plugin, 
  * @param[in] shallow Whether to make only shallow free.
  * @param[in] private_destructor Custom destructor for freeing any extension instances.
  */
-void lys_iffeature_free(struct ly_ctx *ctx, struct lys_iffeature *iffeature, uint8_t iffeature_size, int shallow,
+API_H void lys_iffeature_free(struct ly_ctx *ctx, struct lys_iffeature *iffeature, uint8_t iffeature_size, int shallow,
                         void (*private_destructor)(const struct lys_node *node, void *priv));
 
 /**

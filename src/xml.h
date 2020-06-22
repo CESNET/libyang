@@ -142,7 +142,7 @@ struct lyxml_elem {
  *         returned data, use lyxml_free(). In these cases, the function sets #ly_errno to LY_SUCCESS. In case
  *         of error, #ly_errno contains appropriate error code (see #LY_ERR).
  */
-struct lyxml_elem *lyxml_parse_mem(struct ly_ctx *ctx, const char *data, int options);
+API_H struct lyxml_elem *lyxml_parse_mem(struct ly_ctx *ctx, const char *data, int options);
 
 /**
  * @brief Parse XML from filesystem
@@ -154,7 +154,7 @@ struct lyxml_elem *lyxml_parse_mem(struct ly_ctx *ctx, const char *data, int opt
  *         returned data, use lyxml_free(). In these cases, the function sets #ly_errno to LY_SUCCESS. In case
  *         of error, #ly_errno contains appropriate error code (see #LY_ERR).
  */
-struct lyxml_elem *lyxml_parse_path(struct ly_ctx *ctx, const char *filename, int options);
+API_H struct lyxml_elem *lyxml_parse_path(struct ly_ctx *ctx, const char *filename, int options);
 
 /**
  * @defgroup xmldumpoptions XML printer options
@@ -204,7 +204,7 @@ struct lyxml_elem *lyxml_parse_path(struct ly_ctx *ctx, const char *filename, in
  * @param[in] options Dump options, see @ref xmldumpoptions.
  * @return number of printed characters.
  */
-int lyxml_print_file(FILE * stream, const struct lyxml_elem *elem, int options);
+API_H int lyxml_print_file(FILE * stream, const struct lyxml_elem *elem, int options);
 
 /**
  * @brief Dump XML tree to a IO stream
@@ -216,7 +216,7 @@ int lyxml_print_file(FILE * stream, const struct lyxml_elem *elem, int options);
  * @param[in] options Dump options, see @ref xmldumpoptions.
  * @return number of printed characters.
  */
-int lyxml_print_fd(int fd, const struct lyxml_elem *elem, int options);
+API_H int lyxml_print_fd(int fd, const struct lyxml_elem *elem, int options);
 
 /**
  * @brief Dump XML tree to a IO stream
@@ -229,7 +229,7 @@ int lyxml_print_fd(int fd, const struct lyxml_elem *elem, int options);
  * @param[in] options Dump options, see @ref xmldumpoptions.
  * @return number of printed characters.
  */
-int lyxml_print_mem(char **strp, const struct lyxml_elem *elem, int options);
+API_H int lyxml_print_mem(char **strp, const struct lyxml_elem *elem, int options);
 
 /**
  * @brief Dump XML tree to a IO stream
@@ -242,7 +242,7 @@ int lyxml_print_mem(char **strp, const struct lyxml_elem *elem, int options);
  * @param[in] options Dump options, see @ref xmldumpoptions.
  * @return number of printed characters.
  */
-int lyxml_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, const struct lyxml_elem *elem, int options);
+API_H int lyxml_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, const struct lyxml_elem *elem, int options);
 
 /**
  * @brief Duplicate the XML tree into the different content.
@@ -256,7 +256,7 @@ int lyxml_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count
  *            the parents are not duplicated and only the specified subtree is duplicated.
  * @result Pointer to the duplicated tree or NULL on error.
  */
-struct lyxml_elem *lyxml_dup(struct ly_ctx *ctx, struct lyxml_elem *root);
+API_H struct lyxml_elem *lyxml_dup(struct ly_ctx *ctx, struct lyxml_elem *root);
 
 /**
  * @brief Free (and unlink from the XML tree) the specified element with all
@@ -265,7 +265,7 @@ struct lyxml_elem *lyxml_dup(struct ly_ctx *ctx, struct lyxml_elem *root);
  * @param[in] ctx libyang context to use
  * @param[in] elem Pointer to the element to free.
  */
-void lyxml_free(struct ly_ctx *ctx, struct lyxml_elem *elem);
+API_H void lyxml_free(struct ly_ctx *ctx, struct lyxml_elem *elem);
 
 /**
  * @brief Free (and unlink from the XML tree) the specified (sub)tree with all
@@ -275,7 +275,7 @@ void lyxml_free(struct ly_ctx *ctx, struct lyxml_elem *elem);
  * @param[in] ctx libyang context to use
  * @param[in] elem Pointer to the element to free.
  */
-void lyxml_free_withsiblings(struct ly_ctx *ctx, struct lyxml_elem *elem);
+API_H void lyxml_free_withsiblings(struct ly_ctx *ctx, struct lyxml_elem *elem);
 
 /**
  * @brief Unlink the element from its parent. In contrast to lyxml_free(),
@@ -285,12 +285,12 @@ void lyxml_free_withsiblings(struct ly_ctx *ctx, struct lyxml_elem *elem);
  * @param[in] ctx libyang context to use.
  * @param[in] elem Element to unlink from its parent (if any).
  */
-void lyxml_unlink(struct ly_ctx *ctx, struct lyxml_elem *elem);
+API_H void lyxml_unlink(struct ly_ctx *ctx, struct lyxml_elem *elem);
 
 /**
  * @brief Get value of the attribute in the specified element.
  */
-const char *lyxml_get_attr(const struct lyxml_elem *elem, const char *name, const char *ns);
+API_H const char *lyxml_get_attr(const struct lyxml_elem *elem, const char *name, const char *ns);
 
 /**
  * @brief Get namespace definition of the given prefix in context of the specified element.
@@ -299,7 +299,7 @@ const char *lyxml_get_attr(const struct lyxml_elem *elem, const char *name, cons
  * @param[in] prefix Prefix of the namespace to search for
  * @return Namespace definition or NULL if no such namespace exists
  */
-const struct lyxml_ns *lyxml_get_ns(const struct lyxml_elem *elem, const char *prefix);
+API_H const struct lyxml_ns *lyxml_get_ns(const struct lyxml_elem *elem, const char *prefix);
 
 /**@}*/
 
