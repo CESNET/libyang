@@ -282,6 +282,21 @@ class DNode:
             _to_dict(dnode, dic)
         return dic
 
+    def merge_data_dict(self, dic, rpc_input=False, rpc_output=False):
+        """
+        Merge a python dictionary into this node. The returned value is the
+        first created node.
+
+        :arg dict dic:
+            The python dictionary to convert.
+        :arg bool rpc_input:
+            If True, dic will be parsed by looking in the rpc input nodes.
+        :arg bool rpc_output:
+            If True, dic will be parsed by looking in the rpc output nodes.
+        """
+        return dict_to_dnode(dic, self.module(), parent=self,
+                             rpc_input=rpc_input, rpc_output=rpc_output)
+
     def free(self, with_siblings=True):
         try:
             if with_siblings:
@@ -378,19 +393,16 @@ class DLeafList(DLeaf):
 
 
 #------------------------------------------------------------------------------
-def dict_to_dnode(dic, schema, parent=None, rpc_input=False, rpc_output=False):
+def dict_to_dnode(dic, module, parent=None, rpc_input=False, rpc_output=False):
     """
-    Convert a python dictionary to a DNode object given a YANG schema object.
-    The returned value is always a top-level data node (i.e.: without parent).
+    Convert a python dictionary to a DNode object given a YANG module object.
+    The return value is the first created node. If parent is not set, a
+    top-level node is returned.
 
     :arg dict dic:
         The python dictionary to convert.
-    :arg SNode or Module schema:
-        The libyang schema object associated with the dictionary. It must be at
-        the same "level" than the dictionary (i.e.: the dictionary must have a
-        key that matches the name of the SNode. In the case schema is a
-        Module, dic should have keys that are names of root nodes of the
-        module).
+    :arg Module module:
+        The libyang Module object associated with the dictionary.
     :arg DNode parent:
         Optional parent to update. If not specified a new top-level DNode will
         be created.
@@ -402,10 +414,14 @@ def dict_to_dnode(dic, schema, parent=None, rpc_input=False, rpc_output=False):
         by looking in the rpc output nodes.
     """
     if not dic:
-        return parent
+        return None
 
     if not isinstance(dic, dict):
         raise TypeError('dic argument must be a python dict')
+    if not isinstance(module, Module):
+        raise TypeError('module argument must be a Module object')
+    if parent is not None and not isinstance(parent, DNode):
+        raise TypeError('parent argument must be a DNode object or None')
 
     created = []
 
@@ -480,18 +496,11 @@ def dict_to_dnode(dic, schema, parent=None, rpc_input=False, rpc_output=False):
             _create(_schema, key, data)
 
     try:
-        if isinstance(schema, Module):
-            for s in schema:
-                _to_dnode(dic, s)
-        else:
-            _to_dnode(dic, schema)
+        for s in module:
+            _to_dnode(dic, s)
     except:
         for c in reversed(created):
             c.free(with_siblings=False)
         raise
-
-    if parent is not None:
-        # go back to the root of the created tree
-        parent = parent.root()
 
     return parent

@@ -117,8 +117,7 @@ class Module:
         if ret != 0:
             raise self.context.error('cannot print module')
 
-    def parse_data_dict(self, dic, parent=None,
-                        rpc_input=False, rpc_output=False):
+    def parse_data_dict(self, dic, rpc_input=False, rpc_output=False):
         """
         Convert a python dictionary to a DNode object following the schema of
         this module. The returned value is always a top-level data node (i.e.:
@@ -126,16 +125,13 @@ class Module:
 
         :arg dict dic:
             The python dictionary to convert.
-        :arg DNode parent:
-            Optional parent to update. If not specified a new top-level DNode
-            will be created.
         :arg bool rpc_input:
             If True, dic will be parsed by looking in the rpc input nodes.
         :arg bool rpc_output:
             If True, dic will be parsed by looking in the rpc output nodes.
         """
         from .data import dict_to_dnode  # circular import
-        return dict_to_dnode(dic, self, parent=parent,
+        return dict_to_dnode(dic, self, parent=None,
                              rpc_input=rpc_input, rpc_output=rpc_output)
 
 
@@ -720,27 +716,6 @@ class SNode:
 
     def __str__(self):
         return self.name()
-
-    def parse_data_dict(self, dic, parent=None,
-                        rpc_input=False, rpc_output=False):
-        """
-        Convert a python dictionary to a DNode object following the schema of
-        this module. The returned value is always a top-level data node (i.e.:
-        without parent).
-
-        :arg dict dic:
-            The python dictionary to convert.
-        :arg DNode parent:
-            Optional parent to update. If not specified a new top-level DNode
-            will be created.
-        :arg bool rpc_input:
-            If True, dic will be parsed by looking in the rpc input nodes.
-        :arg bool rpc_output:
-            If True, dic will be parsed by looking in the rpc output nodes.
-        """
-        from .data import dict_to_dnode  # circular import
-        return dict_to_dnode(dic, self, parent=parent,
-                             rpc_input=rpc_input, rpc_output=rpc_output)
 
     NODETYPE_CLASS = {}
 

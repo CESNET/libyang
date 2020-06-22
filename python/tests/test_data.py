@@ -282,30 +282,28 @@ class DataTest(unittest.TestCase):
         })
 
         invalid_dict = {
-            'conf': {
-                'url': [
-                    {
-                        'proto': 'https',
-                        'host': 'github.com',
-                        'path': '/rjarry/libyang-cffi',
-                        'enabled': False,
-                    },
-                    {
-                        'proto': 'http',
-                        'host': 'foobar.com',
-                        'port': 'INVALID.PORT',
-                        'path': '/index.html',
-                        'enabled': True,
-                    },
-                ],
-            },
+            'url': [
+                {
+                    'proto': 'https',
+                    'host': 'github.com',
+                    'path': '/rjarry/libyang-cffi',
+                    'enabled': False,
+                },
+                {
+                    'proto': 'http',
+                    'host': 'foobar.com',
+                    'port': 'INVALID.PORT',
+                    'path': '/index.html',
+                    'enabled': True,
+                },
+            ],
         }
 
         try:
             with patch.object(Context, 'create_data_path', wrapped_create), \
                     patch.object(DNode, 'free', wrapped_free):
                 with self.assertRaises(LibyangError):
-                    module.parse_data_dict(invalid_dict, parent=root)
+                    root.merge_data_dict(invalid_dict)
             self.assertGreater(len(created), 0)
             self.assertGreater(len(freed), 0)
             self.assertEqual(freed, list(reversed(created)))
@@ -313,10 +311,9 @@ class DataTest(unittest.TestCase):
             root.free()
 
     def test_data_from_dict_container(self):
-        snode = next(self.ctx.find_path('/yolo-system:conf'))
-        self.assertIsInstance(snode, SContainer)
-        dnode = snode.parse_data_dict(self.DICT_CONFIG)
+        dnode = self.ctx.create_data_path('/yolo-system:conf')
         self.assertIsInstance(dnode, DContainer)
+        dnode.merge_data_dict(self.DICT_CONFIG['conf'])
         try:
             j = dnode.print_mem('json', pretty=True)
         finally:
@@ -324,9 +321,9 @@ class DataTest(unittest.TestCase):
         self.assertEqual(json.loads(j), json.loads(self.JSON_CONFIG))
 
     def test_data_from_dict_leaf(self):
-        snode = next(self.ctx.find_path('/yolo-system:state/yolo-system:hostname'))
-        self.assertIsInstance(snode, SLeaf)
-        dnode = snode.parse_data_dict({'hostname': 'foo'})
+        dnode = self.ctx.create_data_path('/yolo-system:state')
+        self.assertIsInstance(dnode, DContainer)
+        dnode.merge_data_dict({'hostname': 'foo'})
         try:
             j = dnode.print_mem('json')
         finally:
@@ -334,11 +331,9 @@ class DataTest(unittest.TestCase):
         self.assertEqual(j, '{"yolo-system:state":{"hostname":"foo"}}')
 
     def test_data_from_dict_rpc(self):
-        snode = next(self.ctx.find_path('/yolo-system:format-disk'))
-        self.assertIsInstance(snode, SRpc)
-        dnode = snode.parse_data_dict({'format-disk': {'duration': 42}},
-                                      rpc_output=True)
+        dnode = self.ctx.create_data_path('/yolo-system:format-disk')
         self.assertIsInstance(dnode, DRpc)
+        dnode.merge_data_dict({'duration': 42}, rpc_output=True)
         try:
             j = dnode.print_mem('json')
         finally:
