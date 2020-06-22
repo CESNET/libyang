@@ -1101,7 +1101,7 @@ _lyd_validate(struct lyd_node **tree, const struct lys_module **modules, int mod
         if (!mod) {
             break;
         }
-        if (first == *tree) {
+        if (!first || (first == *tree)) {
             /* make sure first2 changes are carried to tree */
             first2 = tree;
         } else {
