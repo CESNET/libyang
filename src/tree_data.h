@@ -1029,7 +1029,7 @@ LY_ERR lyd_compare(const struct lyd_node *node1, const struct lyd_node *node2, i
 
 #define LYD_DUP_RECURSIVE    0x01  /**< Duplicate not just the node but also all the children. Note that
                                         list's keys are always duplicated. */
-#define LYD_DUP_NO_ATTR      0x02  /**< Do not duplicate attributes of any node. */
+#define LYD_DUP_NO_META      0x02  /**< Do not duplicate metadata of any node. */
 #define LYD_DUP_WITH_PARENTS 0x04  /**< If a nested node is being duplicated, duplicate also all the parents.
                                         Keys are also duplicated for lists. Return value does not change! */
 #define LYD_DUP_WITH_SIBLINGS 0x08 /**< Duplicate also all the sibling of the given node. */
