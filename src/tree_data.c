@@ -1423,7 +1423,7 @@ lyd_insert(struct lyd_node *parent, struct lyd_node *node)
 {
     struct lyd_node *iter;
 
-    LY_CHECK_ARG_RET(NULL, parent, node, !(parent->schema->nodetype & LYD_NODE_INNER), LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, parent, node, parent->schema->nodetype & LYD_NODE_INNER, LY_EINVAL);
 
     LY_CHECK_RET(lyd_insert_check_schema(parent->schema, node->schema));
 
