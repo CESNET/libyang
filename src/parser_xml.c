@@ -494,10 +494,11 @@ lydxml_data_r(struct lyd_xml_ctx *lydctx, struct lyd_node_inner *parent, struct 
                 ret = LY_EVALID;
                 goto cleanup;
             }
-
-            /* skip element with children */
-            LY_CHECK_GOTO(ret = lydxml_data_skip(xmlctx), cleanup);
-            continue;
+            if (!(lydctx->options & LYD_OPT_OPAQ)) {
+                /* skip element with children */
+                LY_CHECK_GOTO(ret = lydxml_data_skip(xmlctx), cleanup);
+                continue;
+            }
         }
 
         /* parser next */
