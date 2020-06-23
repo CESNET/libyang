@@ -19,6 +19,11 @@ module yang {
      else. libyang uses this module to implement various YANG attributes
      defined in RFC 6020.";
 
+  revision 2020-06-17 {
+    description
+      "Added metadata for diff.";
+  }
+
   revision 2017-02-20 {
     description
       "Added metadata for NETCONF's edit-config manipulation with ordered
@@ -73,5 +78,68 @@ module yang {
       "In user ordered list, the attribute must be used if the attribute
        insert is used and specifies before/after which existing instance the
        new instance should be inserted.";
+  }
+
+  md:annotation operation {
+    type enumeration {
+      enum none {
+        description
+          "The node existed in both data trees but there is a nested node
+           with another operation. In case of a leaf, only its default
+           flag changed.";
+      }
+      enum create {
+        description
+          "The node did not exist in the first tree and was created in the
+           second tree.";
+      }
+      enum delete {
+        description
+          "The node existed in the first tree and was deleted in the second
+           tree.";
+      }
+      enum replace {
+        description
+          "The node value was changed or the node was moved for
+           leaves/anyxml/anydata and user-ordered lists/leaf-lists,
+           respectively.";
+      }
+    }
+    reference "RFC6241 section 7.2.";
+    description
+      "Operation of a node in a diff. If a node has no operation,
+       it is inherited from its nearest parent with an operation.
+       Top-level nodes must always have an operation.
+
+       User-ordered lists/leaf-lists with operation 'create' and
+       'replace' MUST also have the 'key' or 'value' metadata defined.
+       It specifies the succeeding instance. In case the value of
+       this metadata is empty, the node was created/moved on the
+       last position.
+
+       All the operations keep the meaning of edit-config operations
+       with similar names but some are further restricted, meaning
+       they are used for only a subset of use-cases.";
+  }
+
+  md:annotation orig-default {
+    type boolean;
+    description
+      "Information about the previous default state of the node.";
+  }
+
+  md:annotation orig-value {
+    type string;
+    description
+      "Previous value of a changed leaf. Alternatly, its meaning
+       is the same as \"value\" attribute but identifies the original
+       leaf-list instance rather than the new one.";
+  }
+
+  md:annotation orig-key {
+    type string;
+    description
+      "Its meaning is the same as \"key\" attribute but identifies
+       the original list instance rather than the new one.";
   }
 }

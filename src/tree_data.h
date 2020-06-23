@@ -1085,6 +1085,86 @@ struct lyd_node *lyd_dup(const struct lyd_node *node, struct lyd_node_inner *par
 LY_ERR lyd_merge(struct lyd_node **target, const struct lyd_node *source, int options);
 
 /**
+ * @defgroup diffoptions Data diff options.
+ * @ingroup datatree
+ *
+ * Various options to change lyd_diff() behavior.
+ *
+ * Default behavior:
+ * - data trees are compared with all the siblings,
+ * - any default nodes are treated as non-existent and ignored.
+ * @{
+ */
+
+#define LYD_DIFF_NOSIBLINGS     0x01 /**< Only the single subtree is compared, no siblings. */
+#define LYD_DIFF_WITHDEFAULTS   0x02 /**< Default nodes in the trees are not ignored but treated similarly to explicit
+                                          nodes. Also, leaves and leaf-lists are added into diff even in case only their
+                                          default flag (state) was changed. */
+
+/** @} diffoptions */
+
+/**
+ * @brief Learn the differences between 2 data trees.
+ *
+ * The resulting diff is represented as a data tree with specific metadata from the internal 'yang'
+ * module. Most importantly, every node has an effective 'operation' metadata. If there is none
+ * defined on the node, it inherits the operation from the nearest parent. Top-level nodes must
+ * always have the 'operation' metadata defined. Additional metadata ('orig-default', 'value',
+ * 'orig-value', 'key', 'orig-key') are used for storing more information about the value in the first
+ * or the second tree.
+ *
+ * The diff tree is completely independent on the @p first and @p second trees, meaning all
+ * the information about the change is stored in the diff and the trees are not needed.
+ *
+ * !! Caution !!
+ * The diff tree should never be validated because it may easily not be valid! For example,
+ * when data from one case branch are deleted and data from another branch created - data from both
+ * branches are then stored in the diff tree simultaneously.
+ *
+ * @param[in] first First data tree.
+ * @param[in] second Second data tree.
+ * @param[in] options Bitmask of options flags, see @ref diffoptions.
+ * @param[out] diff Generated diff.
+ * @return LY_SUCCESS on success,
+ * @return LY_ERR on error.
+ */
+LY_ERR lyd_diff(const struct lyd_node *first, const struct lyd_node *second, int options, struct lyd_node **diff);
+
+/**
+ * @brief Callback for diff nodes.
+ *
+ * @param[in] diff_node Diff node.
+ * @param[in] data_node Matching node in data.
+ * @param[in] cb_data Arbitrary callback data.
+ * @return LY_ERR value.
+ */
+typedef LY_ERR (*lyd_diff_cb)(const struct lyd_node *diff_node, struct lyd_node *data_node, void *cb_data);
+
+/**
+ * @brief Apply a difference on a data tree but restrict the operation to one module.
+ *
+ * @param[in,out] data Data to apply the diff on.
+ * @param[in] diff Diff to apply.
+ * @param[in] mod Module, whose diff/data only to consider, NULL for all modules.
+ * @param[in] diff_cb Optional diff callback that will be called for every changed node.
+ * @param[in] cb_data Arbitrary callback data.
+ * @return LY_SUCCESS on success,
+ * @return LY_ERR on error.
+ */
+LY_ERR lyd_diff_apply_module(struct lyd_node **data, const struct lyd_node *diff, const struct lys_module *mod,
+                             lyd_diff_cb diff_cb, void *cb_data);
+
+/**
+ * @brief Apply a difference on a data tree.
+ *
+ * @param[in,out] data Data to apply the diff on.
+ * @param[in] diff Diff to apply.
+ * @return LY_SUCCESS on success,
+ * @return LY_ERR on error.
+ */
+LY_ERR lyd_diff_apply(struct lyd_node **data, const struct lyd_node *diff);
+
+/**
  * @brief Find the target in data of a compiled ly_path structure (instance-identifier).
  *
  * @param[in] path Compiled path structure.
