@@ -17,13 +17,17 @@
 #include <stdlib.h>
 #include <getopt.h>
 #include <errno.h>
-#include <libgen.h>
 #include <sys/stat.h>
-#include <sys/times.h>
 #include <sys/types.h>
 #include <string.h>
-#include <unistd.h>
 
+#if !defined(_WINDOWS)
+  #include <libgen.h>
+  #include <sys/times.h>
+  #include <unistd.h>
+#endif
+
+#include "compat.h"
 #include "commands.h"
 #include "libyang.h"
 
@@ -951,7 +955,11 @@ parse_reply:
                     default:
                         break;
                     }
-                    LY_TREE_DFS_END(subroot, next, node)
+#if defined(TYPES_COMPATIBLE)
+                      LY_TREE_DFS_END(subroot, next, node)
+#else
+                      LY_DATA_TREE_DFS_END(subroot, next, node)
+#endif
                 }
             }
             if (lyd_validate(&data->tree, options_parser & ~LYD_OPT_TRUSTED, ctx)) {

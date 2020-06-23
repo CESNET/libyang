@@ -21,7 +21,10 @@
 #include <string.h>
 #include <errno.h>
 #include <stdlib.h>
-#include <unistd.h>
+
+#if !defined(_WINDOWS)
+  #include <unistd.h>
+#endif
 
 #include "common.h"
 #include "tree_schema.h"
@@ -928,7 +931,11 @@ trim_dfs_nextsibling:
                     break;
                 }
             }
-            LY_TREE_DFS_END(node, next, elem)
+#if defined(TYPES_COMPATIBLE)
+              LY_TREE_DFS_END(node, next, elem)
+#else
+              LY_DATA_TREE_DFS_END(node, next, elem)
+#endif
         }
         if (!flag) {
             return 0;
@@ -940,7 +947,11 @@ trim_dfs_nextsibling:
                 flag = 1;
                 break;
             }
-            LY_TREE_DFS_END(node, next, elem)
+#if defined(TYPES_COMPATIBLE)
+              LY_TREE_DFS_END(node, next, elem)
+#else
+              LY_DATA_TREE_DFS_END(node, next, elem)
+#endif
         }
         if (!flag) {
             return 0;

@@ -365,7 +365,7 @@ struct lyd_difflist {
  *
  * @param[in] diff The lyd_diff() result to free.
  */
-void lyd_free_diff(struct lyd_difflist *diff);
+API_H void lyd_free_diff(struct lyd_difflist *diff);
 
 /**
  * @brief Compare two data trees and provide list of differences.
@@ -412,7 +412,7 @@ void lyd_free_diff(struct lyd_difflist *diff);
  * @return NULL on error, the list of differences on success. In case the trees are the same, the first item in the
  *         lyd_difflist::type array is #LYD_DIFF_END. The returned structure is supposed to be freed by lyd_free_diff().
  */
-struct lyd_difflist *lyd_diff(struct lyd_node *first, struct lyd_node *second, int options);
+API_H struct lyd_difflist *lyd_diff(struct lyd_node *first, struct lyd_node *second, int options);
 
 /**
  * @defgroup diffoptions Diff options
@@ -442,7 +442,7 @@ struct lyd_difflist *lyd_diff(struct lyd_node *first, struct lyd_node *second, i
  * @return NULL on error, on success the buffer for the resulting path is allocated and caller is supposed to free it
  * with free().
  */
-char *lyd_path(const struct lyd_node *node);
+API_H char *lyd_path(const struct lyd_node *node);
 
 /**
  * @defgroup parseroptions Data parser options
@@ -577,7 +577,7 @@ char *lyd_path(const struct lyd_node *node);
  *         use lyd_free(). In these cases, the function sets #ly_errno to LY_SUCCESS. In case of error,
  *         #ly_errno contains appropriate error code (see #LY_ERR).
  */
-struct lyd_node *lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options, ...);
+API_H struct lyd_node *lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options, ...);
 
 /**
  * @brief Read (and validate) data from the given file descriptor.
@@ -617,7 +617,7 @@ struct lyd_node *lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT 
  *         use lyd_free(). In these cases, the function sets #ly_errno to LY_SUCCESS. In case of error,
  *         #ly_errno contains appropriate error code (see #LY_ERR).
  */
-struct lyd_node *lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, ...);
+API_H struct lyd_node *lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options, ...);
 
 /**
  * @brief Read (and validate) data from the given file path.
@@ -655,7 +655,7 @@ struct lyd_node *lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int
  *         use lyd_free(). In these cases, the function sets #ly_errno to LY_SUCCESS. In case of error,
  *         #ly_errno contains appropriate error code (see #LY_ERR).
  */
-struct lyd_node *lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int options, ...);
+API_H struct lyd_node *lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int options, ...);
 
 /**
  * @brief Parse (and validate) XML tree.
@@ -703,7 +703,7 @@ struct lyd_node *lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT
  *         use lyd_free(). In these cases, the function sets #ly_errno to LY_SUCCESS. In case of error,
  *         #ly_errno contains appropriate error code (see #LY_ERR).
  */
-struct lyd_node *lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options,...);
+API_H struct lyd_node *lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options,...);
 
 /**
  * @brief Create a new container node in a data tree.
@@ -716,7 +716,7 @@ struct lyd_node *lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int
  * #LYS_NOTIF, #LYS_RPC, or #LYS_ACTION.
  * @return New node, NULL on error.
  */
-struct lyd_node *lyd_new(struct lyd_node *parent, const struct lys_module *module, const char *name);
+API_H struct lyd_node *lyd_new(struct lyd_node *parent, const struct lys_module *module, const char *name);
 
 /**
  * @brief Create a new leaf or leaflist node in a data tree with a string value that is converted to
@@ -731,7 +731,7 @@ struct lyd_node *lyd_new(struct lyd_node *parent, const struct lys_module *modul
  * or #LY_TYPE_IDENT, JSON node-id format is expected (nodes are prefixed with module names, not XML namespaces).
  * @return New node, NULL on error.
  */
-struct lyd_node *lyd_new_leaf(struct lyd_node *parent, const struct lys_module *module, const char *name,
+API_H struct lyd_node *lyd_new_leaf(struct lyd_node *parent, const struct lys_module *module, const char *name,
                               const char *val_str);
 
 /**
@@ -749,7 +749,7 @@ struct lyd_node *lyd_new_leaf(struct lyd_node *parent, const struct lys_module *
  *         <0 on error,
  *         1 if the (canonical) value matched the original one and no value neither default flag change occurred.
  */
-int lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str);
+API_H int lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str);
 
 /**
  * @brief Create a new anydata or anyxml node in a data tree.
@@ -767,8 +767,8 @@ int lyd_change_leaf(struct lyd_node_leaf_list *leaf, const char *val_str);
  * @param[in] value_type Type of the provided data \p value.
  * @return New node, NULL on error.
  */
-struct lyd_node *lyd_new_anydata(struct lyd_node *parent, const struct lys_module *module, const char *name,
-                                 void *value, LYD_ANYDATA_VALUETYPE value_type);
+API_H struct lyd_node *lyd_new_anydata(struct lyd_node *parent, const struct lys_module *module, const char *name,
+                                       void *value, LYD_ANYDATA_VALUETYPE value_type);
 
 /**
  * @brief Create a new container node in a data tree. Ignore RPC/action input nodes and instead use RPC/action output ones.
@@ -781,7 +781,7 @@ struct lyd_node *lyd_new_anydata(struct lyd_node *parent, const struct lys_modul
  * but accepted are also #LYS_NOTIF, #LYS_RPC, or #LYS_ACTION.
  * @return New node, NULL on error.
  */
-struct lyd_node *lyd_new_output(struct lyd_node *parent, const struct lys_module *module, const char *name);
+API_H struct lyd_node *lyd_new_output(struct lyd_node *parent, const struct lys_module *module, const char *name);
 
 /**
  * @brief Create a new leaf or leaflist node in a data tree with a string value that is converted to
@@ -796,8 +796,8 @@ struct lyd_node *lyd_new_output(struct lyd_node *parent, const struct lys_module
  * or #LY_TYPE_IDENT, JSON node-id format is expected (nodes are prefixed with module names, not XML namespaces).
  * @return New node, NULL on error.
  */
-struct lyd_node *lyd_new_output_leaf(struct lyd_node *parent, const struct lys_module *module, const char *name,
-                                     const char *val_str);
+API_H struct lyd_node *lyd_new_output_leaf(struct lyd_node *parent, const struct lys_module *module, const char *name,
+                                           const char *val_str);
 
 /**
  * @brief Create a new anydata or anyxml node in a data tree. Ignore RPC/action input nodes and instead use
@@ -816,8 +816,8 @@ struct lyd_node *lyd_new_output_leaf(struct lyd_node *parent, const struct lys_m
  * @param[in] value_type Type of the provided data \p value.
  * @return New node, NULL on error.
  */
-struct lyd_node *lyd_new_output_anydata(struct lyd_node *parent, const struct lys_module *module, const char *name,
-                                        void *value, LYD_ANYDATA_VALUETYPE value_type);
+API_H struct lyd_node *lyd_new_output_anydata(struct lyd_node *parent, const struct lys_module *module, const char *name,
+                                              void *value, LYD_ANYDATA_VALUETYPE value_type);
 
 /**
  * @brief Create a new yang-data template in a data tree. It creates container, which name is in third parameter.
@@ -829,7 +829,7 @@ struct lyd_node *lyd_new_output_anydata(struct lyd_node *parent, const struct ly
  * @param[in] name Schema node name of the new data node. This node is container.
  * @return New node, NULL on error.
  */
-struct lyd_node *lyd_new_yangdata(const struct lys_module *module, const char *name_template, const char *name);
+API_H struct lyd_node *lyd_new_yangdata(const struct lys_module *module, const char *name_template, const char *name);
 
 /**
  * @defgroup pathoptions Data path creation options
@@ -890,7 +890,7 @@ struct lyd_node *lyd_new_yangdata(const struct lys_module *module, const char *n
  * NULL if #LYD_PATH_OPT_UPDATE was used and the full path exists or the leaf original value matches \p value,
  * NULL and ly_errno is set on error.
  */
-struct lyd_node *lyd_new_path(struct lyd_node *data_tree, const struct ly_ctx *ctx, const char *path, void *value,
+API_H struct lyd_node *lyd_new_path(struct lyd_node *data_tree, const struct ly_ctx *ctx, const char *path, void *value,
                               LYD_ANYDATA_VALUETYPE value_type, int options);
 
 /**
@@ -900,7 +900,7 @@ struct lyd_node *lyd_new_path(struct lyd_node *data_tree, const struct ly_ctx *c
  * @param[in] node List or leaf-list to get the position of.
  * @return 0 on error or positive integer of the instance position.
  */
-unsigned int lyd_list_pos(const struct lyd_node *node);
+API_H unsigned int lyd_list_pos(const struct lyd_node *node);
 
 /**
  * @defgroup dupoptions Data duplication options
@@ -938,7 +938,7 @@ unsigned int lyd_list_pos(const struct lyd_node *node);
  * @param[in] options Bitmask of options flags, see @ref dupoptions.
  * @return Created copy of the provided data \p node.
  */
-struct lyd_node *lyd_dup(const struct lyd_node *node, int options);
+API_H struct lyd_node *lyd_dup(const struct lyd_node *node, int options);
 
 /**
  * @brief Create a copy of the specified data tree and all its siblings (preceding as well as following).
@@ -950,7 +950,7 @@ struct lyd_node *lyd_dup(const struct lyd_node *node, int options);
  * @param[in] options Bitmask of options flags, see @ref dupoptions.
  * @return Created copy of the provided data \p node and all of its siblings.
  */
-struct lyd_node *lyd_dup_withsiblings(const struct lyd_node *node, int options);
+API_H struct lyd_node *lyd_dup_withsiblings(const struct lyd_node *node, int options);
 
 /**
  * @brief Create a copy of the specified data tree \p node in the different context. All the
@@ -964,7 +964,7 @@ struct lyd_node *lyd_dup_withsiblings(const struct lyd_node *node, int options);
  * @param[in] ctx Target context for the duplicated data.
  * @return Created copy of the provided data \p node.
  */
-struct lyd_node *lyd_dup_to_ctx(const struct lyd_node *node, int options, struct ly_ctx *ctx);
+API_H struct lyd_node *lyd_dup_to_ctx(const struct lyd_node *node, int options, struct ly_ctx *ctx);
 
 /**
  * @brief Merge a (sub)tree into a data tree.
@@ -991,7 +991,7 @@ struct lyd_node *lyd_dup_to_ctx(const struct lyd_node *node, int options, struct
  * the explicit node into \p target, otherwise the node which is in \p source is used.
  * @return 0 on success, nonzero in case of an error.
  */
-int lyd_merge(struct lyd_node *target, const struct lyd_node *source, int options);
+API_H int lyd_merge(struct lyd_node *target, const struct lyd_node *source, int options);
 
 /**
  * @brief Same as lyd_merge(), but moves the resulting data into the specified context.
@@ -1013,7 +1013,7 @@ int lyd_merge(struct lyd_node *target, const struct lyd_node *source, int option
  *            all the used modules in the source and target data trees loaded in the target context.
  * @return 0 on success, nonzero in case of an error.
  */
-int lyd_merge_to_ctx(struct lyd_node **trg, const struct lyd_node *src, int options, struct ly_ctx *ctx);
+API_H int lyd_merge_to_ctx(struct lyd_node **trg, const struct lyd_node *src, int options, struct ly_ctx *ctx);
 
 #define LYD_OPT_EXPLICIT 0x0100
 
@@ -1045,7 +1045,7 @@ int lyd_merge_to_ctx(struct lyd_node **trg, const struct lyd_node *src, int opti
  * @return 0 on success, nonzero in case of error, e.g. when the node is being inserted to an inappropriate place
  * in the data tree.
  */
-int lyd_insert(struct lyd_node *parent, struct lyd_node *node);
+API_H int lyd_insert(struct lyd_node *parent, struct lyd_node *node);
 
 /**
  * @brief Insert the \p node element as a last sibling of the specified \p sibling element.
@@ -1076,7 +1076,7 @@ int lyd_insert(struct lyd_node *parent, struct lyd_node *node);
  * @return 0 on success, nonzero in case of error, e.g. when the node is being inserted to an inappropriate place
  * in the data tree.
  */
-int lyd_insert_sibling(struct lyd_node **sibling, struct lyd_node *node);
+API_H int lyd_insert_sibling(struct lyd_node **sibling, struct lyd_node *node);
 
 /**
  * @brief Insert the \p node element after the \p sibling element. If \p node and \p siblings are already
@@ -1095,7 +1095,7 @@ int lyd_insert_sibling(struct lyd_node **sibling, struct lyd_node *node);
  * @return 0 on success, nonzero in case of error, e.g. when the node is being inserted to an inappropriate place
  * in the data tree.
  */
-int lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node);
+API_H int lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node);
 
 /**
  * @brief Insert the \p node element after the \p sibling element. If \p node and \p siblings are already
@@ -1115,7 +1115,7 @@ int lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node);
  * @return 0 on success, nonzero in case of error, e.g. when the node is being inserted to an inappropriate place
  * in the data tree.
  */
-int lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node);
+API_H int lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node);
 
 /**
  * @brief Order siblings according to the schema node ordering.
@@ -1129,7 +1129,7 @@ int lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node);
  * @param[in] recursive Whether sort all siblings of siblings, recursively.
  * @return 0 on success, nonzero in case of an error.
  */
-int lyd_schema_sort(struct lyd_node *sibling, int recursive);
+API_H int lyd_schema_sort(struct lyd_node *sibling, int recursive);
 
 /**
  * @brief Search in the given data for instances of nodes matching the provided path.
@@ -1141,7 +1141,7 @@ int lyd_schema_sort(struct lyd_node *sibling, int recursive);
  * @return Set of found data nodes. If no nodes are matching \p path or the result
  * would be a number, a string, or a boolean, the returned set is empty. In case of an error, NULL is returned.
  */
-struct ly_set *lyd_find_path(const struct lyd_node *ctx_node, const char *path);
+API_H struct ly_set *lyd_find_path(const struct lyd_node *ctx_node, const char *path);
 
 /**
  * @brief Search in the given data for instances of the provided schema node.
@@ -1153,7 +1153,7 @@ struct ly_set *lyd_find_path(const struct lyd_node *ctx_node, const char *path);
  * @return Set of found data nodes. If no data node is found, the returned set is empty.
  * In case of error, NULL is returned.
  */
-struct ly_set *lyd_find_instance(const struct lyd_node *data, const struct lys_node *schema);
+API_H struct ly_set *lyd_find_instance(const struct lyd_node *data, const struct lys_node *schema);
 
 /**
  * @brief Search in the given siblings for the target instance. If cache is enabled and the siblings
@@ -1165,7 +1165,7 @@ struct ly_set *lyd_find_instance(const struct lyd_node *data, const struct lys_n
  * @param[out] match Found data node, NULL if not found.
  * @return 0 on success (even on not found), -1 on error.
  */
-int lyd_find_sibling(const struct lyd_node *siblings, const struct lyd_node *target, struct lyd_node **match);
+API_H int lyd_find_sibling(const struct lyd_node *siblings, const struct lyd_node *target, struct lyd_node **match);
 
 /**
  * @brief Search in the given siblings for all target instances. If cache is enabled and the siblings
@@ -1178,7 +1178,7 @@ int lyd_find_sibling(const struct lyd_node *siblings, const struct lyd_node *tar
  * @return 0 on success (even on no nodes found), -1 on error.
  * If an error occurs, NULL is returned.
  */
-int lyd_find_sibling_set(const struct lyd_node *siblings, const struct lyd_node *target, struct ly_set **set);
+API_H int lyd_find_sibling_set(const struct lyd_node *siblings, const struct lyd_node *target, struct ly_set **set);
 
 /**
  * @brief Search in the given siblings for the schema instance. If cache is enabled and the siblings
@@ -1203,7 +1203,7 @@ int lyd_find_sibling_set(const struct lyd_node *siblings, const struct lyd_node 
  * @param[out] match Found data node, NULL if not found.
  * @return 0 on success (even on not found), -1 on error.
  */
-int lyd_find_sibling_val(const struct lyd_node *siblings, const struct lys_node *schema, const char *key_or_value,
+API_H int lyd_find_sibling_val(const struct lyd_node *siblings, const struct lys_node *schema, const char *key_or_value,
                          struct lyd_node **match);
 
 /**
@@ -1212,7 +1212,7 @@ int lyd_find_sibling_val(const struct lyd_node *siblings, const struct lys_node 
  * @param[in] node Node which first sibling is going to be the result.
  * @return The first sibling of the given node or the node itself if it is the first child of the parent.
  */
-struct lyd_node *lyd_first_sibling(struct lyd_node *node);
+API_H struct lyd_node *lyd_first_sibling(struct lyd_node *node);
 
 /**
  * @brief Validate \p node data subtree.
@@ -1247,7 +1247,7 @@ struct lyd_node *lyd_first_sibling(struct lyd_node *node);
  *                      - second - Path identifying the original parent (format of lyd_path()).
  * @return 0 on success, nonzero in case of an error.
  */
-int lyd_validate(struct lyd_node **node, int options, void *var_arg, ...);
+API_H int lyd_validate(struct lyd_node **node, int options, void *var_arg, ...);
 
 /**
  * @brief Validate \p node data tree but only subtrees that belong to the schema found in \p modules. All other
@@ -1271,14 +1271,14 @@ int lyd_validate(struct lyd_node **node, int options, void *var_arg, ...);
  *                      - second - Path identifying the original parent (format of lyd_path()).
  * @return 0 on success, nonzero in case of an error.
  */
-int lyd_validate_modules(struct lyd_node **node, const struct lys_module **modules, int mod_count, int options, ...);
+API_H int lyd_validate_modules(struct lyd_node **node, const struct lys_module **modules, int mod_count, int options, ...);
 
 /**
  * @brief Free special diff that was returned by lyd_validate() or lyd_validate_modules().
  *
  * @param[in] diff Diff to free.
  */
-void lyd_free_val_diff(struct lyd_difflist *diff);
+API_H void lyd_free_val_diff(struct lyd_difflist *diff);
 
 /**
  * @brief Check restrictions applicable to the particular leaf/leaf-list on the given string value.
@@ -1294,7 +1294,7 @@ void lyd_free_val_diff(struct lyd_difflist *diff);
  * @param[in] value Value to be checked (NULL is checked as empty string).
  * @return EXIT_SUCCESS if the \p value conforms to the restrictions, EXIT_FAILURE otherwise.
  */
-int lyd_validate_value(struct lys_node *node, const char *value);
+API_H int lyd_validate_value(struct lys_node *node, const char *value);
 
 /**
  * @brief Check restrictions applicable to the particular leaf/leaf-list on the given string value and optionally
@@ -1312,7 +1312,7 @@ int lyd_validate_value(struct lys_node *node, const char *value);
  * @param[out] type Optional resolved value type, useful mainly for unions.
  * @return EXIT_SUCCESS if the \p value conforms to the restrictions, EXIT_FAILURE otherwise.
  */
-int lyd_value_type(struct lys_node *node, const char *value, struct lys_type **type);
+API_H int lyd_value_type(struct lys_node *node, const char *value, struct lys_type **type);
 
 /**
  * @brief Get know if the node contain (despite implicit or explicit) default value.
@@ -1321,7 +1321,7 @@ int lyd_value_type(struct lys_node *node, const char *value, struct lys_type **t
  *                 and only the default set is present (node's siblings are also checked).
  * @return 1 if the node contains the default value, 0 otherwise.
  */
-int lyd_wd_default(struct lyd_node_leaf_list *node);
+API_H int lyd_wd_default(struct lyd_node_leaf_list *node);
 
 /**
  * @brief Learn if a node is supposed to be printed based on the options.
@@ -1330,7 +1330,7 @@ int lyd_wd_default(struct lyd_node_leaf_list *node);
  * @param[in] options [printer flags](@ref printerflags). With-defaults flags and ::LYP_KEEPEMPTYCONT are relevant.
  * @return non-zero if should be printed, 0 if not.
  */
-int lyd_node_should_print(const struct lyd_node *node, int options);
+API_H int lyd_node_should_print(const struct lyd_node *node, int options);
 
 /**
  * @brief Unlink the specified data subtree. All referenced namespaces are copied.
@@ -1344,7 +1344,7 @@ int lyd_node_should_print(const struct lyd_node *node, int options);
  * @param[in] node Data tree node to be unlinked (together with all children).
  * @return 0 for success, nonzero for error
  */
-int lyd_unlink(struct lyd_node *node);
+API_H int lyd_unlink(struct lyd_node *node);
 
 /**
  * @brief Free (and unlink) the specified data subtree. Use carefully, since libyang silently creates default nodes,
@@ -1354,7 +1354,7 @@ int lyd_unlink(struct lyd_node *node);
  *
  * @param[in] node Root of the (sub)tree to be freed.
  */
-void lyd_free(struct lyd_node *node);
+API_H void lyd_free(struct lyd_node *node);
 
 /**
  * @brief Free (and unlink) the specified data tree and all its siblings (preceding as well as following).
@@ -1366,7 +1366,7 @@ void lyd_free(struct lyd_node *node);
  *
  * @param[in] node One of the siblings root element of the (sub)trees to be freed.
  */
-void lyd_free_withsiblings(struct lyd_node *node);
+API_H void lyd_free_withsiblings(struct lyd_node *node);
 
 /**
  * @brief Insert attribute into the data node.
@@ -1384,7 +1384,7 @@ void lyd_free_withsiblings(struct lyd_node *node);
  * @param[in] value Attribute value
  * @return pointer to the created attribute (which is already connected in \p parent) or NULL on error.
  */
-struct lyd_attr *lyd_insert_attr(struct lyd_node *parent, const struct lys_module *mod, const char *name,
+API_H struct lyd_attr *lyd_insert_attr(struct lyd_node *parent, const struct lys_module *mod, const char *name,
                                  const char *value);
 
 /**
@@ -1399,7 +1399,7 @@ struct lyd_attr *lyd_insert_attr(struct lyd_node *parent, const struct lys_modul
  * @param[in] recursive Zero to destroy only the attribute, non-zero to destroy also all the subsequent attributes
  *            in the list.
  */
-void lyd_free_attr(struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_attr *attr, int recursive);
+API_H void lyd_free_attr(struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_attr *attr, int recursive);
 
 /**
  * @brief Return main module of the data tree node.
@@ -1410,7 +1410,7 @@ void lyd_free_attr(struct ly_ctx *ctx, struct lyd_node *parent, struct lyd_attr 
  * @param[in] node Data tree node to be examined
  * @return pointer to the main module (schema structure), NULL in case of error.
  */
-struct lys_module *lyd_node_module(const struct lyd_node *node);
+API_H struct lys_module *lyd_node_module(const struct lyd_node *node);
 
 /**
  * @brief Get the type structure of a leaf.
@@ -1421,7 +1421,7 @@ struct lys_module *lyd_node_module(const struct lyd_node *node);
  * @param[in] leaf Leaf to examine.
  * @return Found type, NULL on error.
  */
-const struct lys_type *lyd_leaf_type(const struct lyd_node_leaf_list *leaf);
+API_H const struct lys_type *lyd_leaf_type(const struct lyd_node_leaf_list *leaf);
 
 /**
 * @brief Print data tree in the specified format.
@@ -1433,7 +1433,7 @@ const struct lys_type *lyd_leaf_type(const struct lyd_node_leaf_list *leaf);
 * @param[in] options [printer flags](@ref printerflags). \p format LYD_LYB accepts only #LYP_WITHSIBLINGS option.
 * @return 0 on success, 1 on failure (#ly_errno is set).
 */
-int lyd_print_mem(char **strp, const struct lyd_node *root, LYD_FORMAT format, int options);
+API_H int lyd_print_mem(char **strp, const struct lyd_node *root, LYD_FORMAT format, int options);
 
 /**
  * @brief Print data tree in the specified format.
@@ -1445,7 +1445,7 @@ int lyd_print_mem(char **strp, const struct lyd_node *root, LYD_FORMAT format, i
  * @param[in] options [printer flags](@ref printerflags). \p format LYD_LYB accepts only #LYP_WITHSIBLINGS option.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
-int lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format, int options);
+API_H int lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format, int options);
 
 /**
  * @brief Print data tree in the specified format.
@@ -1457,7 +1457,7 @@ int lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format, int opt
  * @param[in] options [printer flags](@ref printerflags). \p format LYD_LYB accepts only #LYP_WITHSIBLINGS option.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
-int lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format, int options);
+API_H int lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format, int options);
 
 /**
  * @brief Print data tree in the specified format.
@@ -1469,7 +1469,7 @@ int lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format, int 
  * @param[in] options [printer flags](@ref printerflags). \p format LYD_LYB accepts only #LYP_WITHSIBLINGS option.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
-int lyd_print_path(const char *path, const struct lyd_node *root, LYD_FORMAT format, int options);
+API_H int lyd_print_path(const char *path, const struct lyd_node *root, LYD_FORMAT format, int options);
 
 /**
  * @brief Print data tree in the specified format.
@@ -1482,7 +1482,7 @@ int lyd_print_path(const char *path, const struct lyd_node *root, LYD_FORMAT for
  * @param[in] options [printer flags](@ref printerflags). \p format LYD_LYB accepts only #LYP_WITHSIBLINGS option.
  * @return 0 on success, 1 on failure (#ly_errno is set).
  */
-int lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg,
+API_H int lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg,
                   const struct lyd_node *root, LYD_FORMAT format, int options);
 
 /**
@@ -1494,7 +1494,7 @@ int lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count),
  * @param[in] node Leaf/leaf-list of type decimal64.
  * @return Closest double equivalent to the decimal64 value.
  */
-double lyd_dec64_to_double(const struct lyd_node *node);
+API_H double lyd_dec64_to_double(const struct lyd_node *node);
 
 /**
  * @brief Get the length of a printed LYB data tree.
@@ -1502,7 +1502,7 @@ double lyd_dec64_to_double(const struct lyd_node *node);
  * @param[in] data LYB data.
  * @return \p data length or -1 on error.
  */
-int lyd_lyb_data_length(const char *data);
+API_H int lyd_lyb_data_length(const char *data);
 
 #ifdef LY_ENABLED_LYD_PRIV
 
@@ -1515,7 +1515,7 @@ int lyd_lyb_data_length(const char *data);
  * the caller is in this case responsible (if it is necessary) for freeing the replaced private object. In case
  * of invalid (NULL) \p node, NULL is returned and #ly_errno is set to #LY_EINVAL.
  */
-void *lyd_set_private(const struct lyd_node *node, void *priv);
+API_H void *lyd_set_private(const struct lyd_node *node, void *priv);
 
 #endif
 

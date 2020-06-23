@@ -37,17 +37,19 @@ set(LIBYANG_MICRO_SOVERSION 3)
 set(LIBYANG_SOVERSION_FULL ${LIBYANG_MAJOR_SOVERSION}.${LIBYANG_MINOR_SOVERSION}.${LIBYANG_MICRO_SOVERSION})
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_SOVERSION})
 
-# check the supported platform
-if(NOT UNIX)
-    message(FATAL_ERROR "Only *nix like systems are supported.")
-endif()
 
 # set default build type if not specified by user
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE debug)
 endif()
 
-set(CMAKE_C_FLAGS         "${CMAKE_C_FLAGS} -Wall -Wextra -std=gnu99")
+set(CMAKE_C_FLAGS         "${CMAKE_C_FLAGS} -Wall")
+
+# Enable extra warnings in *nix
+if(NOT MSVC)
+    set(CMAKE_C_FLAGS         "${CMAKE_C_FLAGS} -Wextra -std=gnu99")
+endif()
+
 set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG")
 set(CMAKE_C_FLAGS_PACKAGE "-g -O2 -DNDEBUG")
 set(CMAKE_C_FLAGS_DEBUG   "-g -Og")
@@ -88,6 +90,10 @@ elseif(CMAKE_C_COMPILER_ID STREQUAL "Clang")
     endif()
     set(COMPILER_UNUSED_ATTR "UNUSED_ ## x __attribute__((__unused__))")
     set(COMPILER_PACKED_ATTR "__attribute__((__packed__))")
+elseif(MSVC)
+    set(COMPILER_UNUSED_ATTR "UNUSED_ ## x __pragma(\"pack(1)\")")
+    set(COMPILER_PACKED_ATTR "__pragma(\"pack(1)\")")
+    add_definitions(/DLIBYANG_DLL_EXPORT)
 else()
     message(WARNING "You are using an unknown compiler, it must support C11 standard \"_Generic\" statement"
         " or the \"__builtin_types_compatible_p\" built-in function.")
@@ -125,13 +131,28 @@ else()
     else ()
         set(EMPTYDIR "%empty")
     endif()
+	
     configure_file(${PROJECT_SOURCE_DIR}/src/yang.y.in ${PROJECT_BINARY_DIR}/src/yang.y)
-    add_custom_target(bison
-        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
-        COMMAND bison -l -o parser_yang_bis.c --defines=parser_yang_bis.h ${PROJECT_BINARY_DIR}/src/yang.y
-        COMMAND flex -8 -L -o parser_yang_lex.c --header-file=parser_yang_lex.h yang.l
-        COMMAND ${SED_TOOL} -i 's/int yychar\;/int yychar\;\\nchar *s = NULL, *tmp_s = NULL, *ext_name = NULL\;\\nstruct lys_module *trg = NULL\;\\nstruct lys_node *tpdf_parent = NULL, *data_node = NULL\;\\nstruct lys_ext_instance_complex *ext_instance = NULL\;\\nint is_ext_instance\;\\nvoid *actual = NULL\;\\nenum yytokentype backup_type, actual_type = MODULE_KEYWORD\;\\nint64_t cnt_val = 0\;\\nint is_value = 0\;\\nvoid *yang_type = NULL\;/' parser_yang_bis.c
-    )
+	
+    if (WIN32)
+	    add_custom_target(bison
+            WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
+            COMMAND ${BISON_EXECUTABLE} -l -o parser_yang_bis.c --defines=parser_yang_bis.h ${PROJECT_BINARY_DIR}/src/yang.y
+            COMMAND ${FLEX_EXECUTABLE} -8 -L -o parser_yang_lex.c --header-file=parser_yang_lex.h yang.l
+            COMMAND ${SED_TOOL} -i "s/int yychar\;/int yychar\;\\nchar *s = NULL, *tmp_s = NULL, *ext_name = NULL\;\\nstruct lys_module *trg = NULL\;\\nstruct lys_node *tpdf_parent = NULL, *data_node = NULL\;\\nstruct lys_ext_instance_complex *ext_instance = NULL\;\\nint is_ext_instance\;\\nvoid *actual = NULL\;\\nenum yytokentype backup_type, actual_type = MODULE_KEYWORD\;\\nint64_t cnt_val = 0\;\\nint is_value = 0\;\\nvoid *yang_type = NULL\;/" parser_yang_bis.c
+        )
+	else()
+	    add_custom_target(bison
+            WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
+            COMMAND ${BISON_EXECUTABLE} -l -o parser_yang_bis.c --defines=parser_yang_bis.h ${PROJECT_BINARY_DIR}/src/yang.y
+            COMMAND ${FLEX_EXECUTABLE} -8 -L -o parser_yang_lex.c --header-file=parser_yang_lex.h yang.l
+            COMMAND ${SED_TOOL} -i 's/int yychar\;/int yychar\;\\nchar *s = NULL, *tmp_s = NULL, *ext_name = NULL\;\\nstruct lys_module *trg = NULL\;\\nstruct lys_node *tpdf_parent = NULL, *data_node = NULL\;\\nstruct lys_ext_instance_complex *ext_instance = NULL\;\\nint is_ext_instance\;\\nvoid *actual = NULL\;\\nenum yytokentype backup_type, actual_type = MODULE_KEYWORD\;\\nint64_t cnt_val = 0\;\\nint is_value = 0\;\\nvoid *yang_type = NULL\;/' parser_yang_bis.c
+        )
+	endif()	 
+    
+    if(WIN32)
+       add_definitions(/DYY_NO_UNISTD_H)
+    endif()
 endif()
 
 # by default build shared library
@@ -191,6 +212,13 @@ set(headers
     src/xml.h
     src/dict.h)
 
+if(WIN32)
+    # use a Windows getopt_long implementation
+    configure_file(${PROJECT_SOURCE_DIR}/src/getopt.h.in ${PROJECT_BINARY_DIR}/src/getopt.h)
+    set(libsrc ${libsrc} src/getopt.c)
+    set(headers ${headers} src/getopt.h)
+endif()
+
 # link compat
 use_compat()
 
@@ -229,16 +257,33 @@ endif()
 
 set_target_properties(yang PROPERTIES VERSION ${LIBYANG_SOVERSION_FULL} SOVERSION ${LIBYANG_SOVERSION})
 
-# link math
-target_link_libraries(yang m)
+if(WIN32)
+  # find dirent.h
+  find_package(dirent REQUIRED)
+  include_directories(yang ${DIRENT_INCLUDE_DIRS})
 
-# find pthreads
-set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
+  # find dlfcn-win32
+  find_package(dlfcn REQUIRED)
+  include_directories(yang ${DLFCN_INCLUDE_DIRS})
+  target_link_libraries(yang ${DLFCN_LIBRARIES})
+
+  # find pthreads
+  find_package(pthread REQUIRED)
+  include_directories(${PTHREAD_INCLUDE_DIRS})
+  target_link_libraries(yang ${PTHREAD_LIBRARIES})
+  set(CMAKE_REQUIRED_INCLUDES ${PTHREAD_INCLUDE_DIRS})
+  set(CMAKE_REQUIRED_LIBRARIES ${PTHREAD_LIBRARIES})
+else()
+  # link math
+  target_link_libraries(yang m)
+
+  # find PCRE library
+  unset(PCRE_LIBRARY CACHE)
+endif()
+
 find_package(Threads REQUIRED)
 target_link_libraries(yang ${CMAKE_THREAD_LIBS_INIT})
 
-# find PCRE library
-unset(PCRE_LIBRARY CACHE)
 find_package(PCRE REQUIRED)
 include_directories(${PCRE_INCLUDE_DIRS})
 target_link_libraries(yang ${PCRE_LIBRARIES})

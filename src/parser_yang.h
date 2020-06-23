@@ -24,6 +24,10 @@
 #include "tree_schema.h"
 #include "context.h"
 
+#if defined(_WINDOWS) && defined(_MSC_VER)
+  typedef unsigned int uint;
+#endif
+
 #define LYS_SYSTEMORDERED 0x40
 #define LYS_ORDERED_MASK 0xC0
 #define LYS_MIN_ELEMENTS 0x01

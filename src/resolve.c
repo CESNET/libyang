@@ -1945,7 +1945,11 @@ get_next_augment:
                             ly_set_add(*ret, (void *)elem, LY_SET_OPT_USEASLIST);
                         }
 
-                        LY_TREE_DFS_END(sibling, next, elem);
+#if defined(TYPES_COMPATIBLE)
+                          LY_TREE_DFS_END(sibling, next, elem);
+#else
+                          LY_SCHEMA_TREE_DFS_END(sibling, next, elem);
+#endif
                     }
                 }
             } else if (r == 3) {
@@ -1964,7 +1968,11 @@ get_next_augment:
                             ly_set_add(*ret, (void *)elem, LY_SET_OPT_USEASLIST);
                         }
 
-                        LY_TREE_DFS_END(sibling, next, elem);
+#if defined(TYPES_COMPATIBLE)
+                          LY_TREE_DFS_END(sibling, next, elem);
+#else
+                          LY_SCHEMA_TREE_DFS_END(sibling, next, elem);
+#endif
                     }
                 }
             } else {
@@ -4813,7 +4821,12 @@ resolve_augment(struct lys_node_augment *aug, struct lys_node *uses, struct unre
             }
             break;
         }
-        LY_TREE_DFS_END(aug->child, next, sub);
+
+#if defined(TYPES_COMPATIBLE)
+          LY_TREE_DFS_END(aug->child, next, sub);
+#else
+          LY_SCHEMA_TREE_DFS_END(aug->child, next, sub);
+#endif
     }
 
     if (!aug->child) {
@@ -5577,16 +5590,6 @@ nextsibling:
         }
     }
     free(refine_nodes);
-
-    /* check list config after all the refines were applied */
-    LY_TREE_DFS_BEGIN((struct lys_node *)uses, next, iter) {
-        if ((iter->nodetype == LYS_LIST) && (iter->flags & LYS_CONFIG_W)
-                && !((struct lys_node_list *)iter)->keys_size) {
-            LOGVAL(ctx, LYE_MISSCHILDSTMT, LY_VLOG_LYS, iter, "key", "list");
-            goto fail;
-        }
-        LY_TREE_DFS_END((struct lys_node *)uses, next, iter);
-    }
 
     return EXIT_SUCCESS;
 
@@ -8347,7 +8350,11 @@ resolve_unres_data_autodel_diff(struct unres_data *unres, uint32_t unres_i)
                     return;
                 }
 
-                LY_TREE_DFS_END(unres->diff->second[i], next, child);
+#if defined(TYPES_COMPATIBLE)
+                  LY_TREE_DFS_END(unres->diff->second[i], next, child);
+#else
+                  LY_DATA_TREE_DFS_END(unres->diff->second[i], next, child);
+#endif
             }
         }
     }

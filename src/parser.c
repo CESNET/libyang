@@ -21,14 +21,19 @@
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <unistd.h>
 #include <pcre.h>
 #include <time.h>
 
 #include "common.h"
+#if defined(_WINDOWS)
+  #include <Memoryapi.h>
+#else
+  #include <sys/mman.h>
+  #include <unistd.h>
+#endif
+
 #include "context.h"
 #include "libyang.h"
 #include "parser.h"
@@ -268,14 +273,41 @@ lyp_mmap(struct ly_ctx *ctx, int fd, size_t addsize, size_t *length, void **addr
         *addr = NULL;
         return 0;
     }
-    pagesize = sysconf(_SC_PAGESIZE);
+
+#if defined(_WINDOWS)
+      SYSTEM_INFO siSysInfo;
+      GetSystemInfo(&siSysInfo);
+      pagesize = siSysInfo.dwAllocationGranularity;
+#else
+      pagesize = sysconf(_SC_PAGESIZE);
+#endif
+
     ++addsize;                       /* at least one additional byte for terminating NULL byte */
 
     m = sb.st_size % pagesize;
     if (m && pagesize - m >= addsize) {
         /* there will be enough space after the file content mapping to provide zeroed additional bytes */
         *length = sb.st_size + addsize;
-        *addr = mmap(NULL, *length, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+
+#if defined(_WINDOWS)
+          HANDLE hMapFile = CreateFileMapping((HANDLE)_get_osfhandle(fd), // use paging file
+                                              NULL,                       // default security
+                                              PAGE_READONLY,
+                                              0,
+                                              0,                          // Map the whole file 
+                                              NULL);                      // anomymous mapping
+
+          if (hMapFile) {
+            *addr = (LPTSTR) MapViewOfFile(hMapFile,       // handle to map object
+                                           FILE_MAP_READ,  // read-only permission
+                                           0,
+                                           0,
+                                           0);             // View the whole mapping
+          } else {
+            *addr = NULL;
+          }
+#else
+          *addr = mmap(NULL, *length, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
     } else {
         /* there will not be enough bytes after the file content mapping for the additional bytes and some of them
          * would overflow into another page that would not be zeroed and any access into it would generate SIGBUS.
@@ -286,19 +318,32 @@ lyp_mmap(struct ly_ctx *ctx, int fd, size_t addsize, size_t *length, void **addr
         *length = sb.st_size + pagesize;
         *addr = mmap(NULL, *length, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
         *addr = mmap(*addr, sb.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_FIXED, fd, 0);
+#endif
     }
-    if (*addr == MAP_FAILED) {
+    if (*addr == MAP_FAILED)
+    {
+#if defined(_WINDOWS)
+        LPTSTR errorMessage = NULL;
+        getLastWINAPIErrorMessage(errorMessage);
+        LOGERR(ctx, LY_ESYS, "mmap() failed. %s", errorMessage);
+        LocalFree(errorMessage);
+#else
         LOGERR(ctx, LY_ESYS, "mmap() failed (%s).", strerror(errno));
+#endif
         return 1;
     }
-
+ 
     return 0;
 }
 
 int
 lyp_munmap(void *addr, size_t length)
 {
-    return munmap(addr, length);
+#if defined(_WINDOWS) 
+       return (UnmapViewOfFile(addr) ? 0 :  -1);
+#else
+      return munmap(addr, length);
+#endif
 }
 
 int
@@ -986,7 +1031,7 @@ lyp_precompile_pattern(struct ly_ctx *ctx, const char *pattern, pcre** pcre_cmp,
 static int
 make_canonical(struct ly_ctx *ctx, int type, const char **value, void *data1, void *data2)
 {
-    const uint16_t buf_len = 511;
+#define buf_len 511U
     char buf[buf_len + 1];
     struct lys_type_bit **bits = NULL;
     struct lyxp_expr *exp;
@@ -1156,6 +1201,7 @@ make_canonical(struct ly_ctx *ctx, int type, const char **value, void *data1, vo
     return 0;
 
 #undef LOGBUF
+#undef buf_len
 }
 
 static const char *
@@ -2507,10 +2553,18 @@ lyp_check_date(struct ly_ctx *ctx, const char *date)
 
     /* check content, e.g. 2018-02-31 */
     memset(&tm, 0, sizeof tm);
-    r = strptime(date, "%Y-%m-%d", &tm);
-    if (!r || r != &date[LY_REV_SIZE - 1]) {
+
+#if defined(_WINDOWS)
+      if (sscanf(date, "%d-%d-%d", &tm.tm_year, &tm.tm_mon, &tm.tm_mday) < 3) {
+          goto error;
+      }
+#else
+      r = strptime(date, "%Y-%m-%d", &tm);
+      if (!r || r != &date[LY_REV_SIZE - 1]) {
         goto error;
-    }
+      }
+#endif
+
     /* set some arbitrary non-0 value in case DST changes, it could move the day otherwise */
     tm.tm_hour = 12;
 
@@ -3268,7 +3322,11 @@ lyp_rfn_apply_ext(struct lys_module *module)
                     }
                 }
             }
-            LY_TREE_DFS_END(root, next, node)
+#if defined(TYPES_COMPATIBLE)
+              LY_TREE_DFS_END(root, next, node)
+#else
+              LY_SCHEMA_TREE_DFS_END(root, next, node)
+#endif
         }
 
         if (!nextroot && a < module->augment_size) {

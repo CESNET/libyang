@@ -1924,17 +1924,17 @@ yang_print_extension_instances(struct lyout *out, int level, const struct lys_mo
         yang_print_open(out, &content);                                                       \
         FUNC(out, level, (TYPE *)(*pp));                                                      \
     }
-#define YANG_PRINT_EXTCOMPLEX_STRUCT_M(STMT, TYPE, FUNC, ARGS...)                             \
+#define YANG_PRINT_EXTCOMPLEX_STRUCT_M(STMT, TYPE, FUNC, ...)                                 \
     pp = lys_ext_complex_get_substmt(STMT, (struct lys_ext_instance_complex *)ext[u], NULL);  \
     if (!pp || !(*pp)) { break; }                                                             \
     if (info[i].cardinality >= LY_STMT_CARD_SOME) { /* process array */                       \
         for (pp = *pp; *pp; pp++) {                                                           \
             yang_print_open(out, &content);                                                   \
-            FUNC(out, level, module, (TYPE *)(*pp), ##ARGS);                                  \
+            FUNC(out, level, module, (TYPE *)(*pp), ##__VA_ARGS__);                           \
         }                                                                                     \
     } else { /* single item */                                                                \
         yang_print_open(out, &content);                                                       \
-        FUNC(out, level, module, (TYPE *)(*pp), ##ARGS);                                      \
+        FUNC(out, level, module, (TYPE *)(*pp), ##__VA_ARGS__);                               \
     }
 #define YANG_PRINT_EXTCOMPLEX_INT(STMT, TYPE, SIGN)                                \
     p = &((struct lys_ext_instance_complex*)ext[u])->content[info[i].offset];      \

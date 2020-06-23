@@ -168,7 +168,11 @@ void fix_schema(struct lys_node *root, struct ly_ctx *ctx) {
             default:
                 break;
         }
-        LY_TREE_DFS_END(root, next, node)
+#if defined(TYPES_COMPATIBLE)
+          LY_TREE_DFS_END(root, next, node)
+#else
+          LY_SCHEMA_TREE_DFS_END(root, next, node)
+#endif
     }
 }
 
@@ -213,7 +217,7 @@ struct lyext_plugin_complex yang_data = {
  *
  * MANDATORY object for all libyang extension plugins, the name must match the <name>.so
  */
-struct lyext_plugin_list yangdata[] = {
+API_H struct lyext_plugin_list yangdata[] = {
     {"ietf-restconf", "2017-01-26", "yang-data", (struct lyext_plugin*)&yang_data},
     {NULL, NULL, NULL, NULL} /* terminating item */
 };

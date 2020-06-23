@@ -113,7 +113,7 @@ get_model_completion(const char *hint, char ***matches, unsigned int *match_coun
 }
 
 void
-complete_cmd(const char *buf, const char *hint, linenoiseCompletions *lc)
+complete_cmd(const char *buf, const char *hint, linenoiseCompletions *lc, void *userdata)
 {
     char **matches = NULL;
     unsigned int match_count = 0, i;

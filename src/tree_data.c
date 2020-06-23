@@ -20,10 +20,14 @@
 #include <stdarg.h>
 #include <stdlib.h>
 #include <sys/types.h>
-#include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <unistd.h>
+
+#if !defined(_WINDOWS)
+  #include <sys/mman.h>
+  #include <unistd.h>
+#endif
+
 #include <string.h>
 #include <errno.h>
 
@@ -3149,7 +3153,12 @@ lyd_merge_to_ctx(struct lyd_node **trg, const struct lyd_node *src, int options,
         /* clear remporary LYD_VAL_INUSE validation flags */
         LY_TREE_DFS_BEGIN(target, node2, node) {
             node->validity &= ~LYD_VAL_INUSE;
-            LY_TREE_DFS_END(target, node2, node);
+
+#if defined(TYPES_COMPATIBLE)
+              LY_TREE_DFS_END(target, node2, node);
+#else
+            LY_DATA_TREE_DFS_END(target, node2, node);
+#endif
         }
         ret = 0;
     } else if (ret) {
@@ -4413,7 +4422,7 @@ lyd_insert_common(struct lyd_node *parent, struct lyd_node **sibling, struct lyd
                 }
             } else if (isrpc) {
                 /* add to the specific position in rpc/rpc-reply/action */
-                for (par1 = lys_parent(ins->schema); !(par1->nodetype & (LYS_INPUT | LYS_OUTPUT)); par1 = lys_parent(par1));
+                for (par1 = ins->schema->parent; !(par1->nodetype & (LYS_INPUT | LYS_OUTPUT)); par1 = lys_parent(par1));
                 siter = NULL;
                 LY_TREE_FOR(start, iter) {
                     while ((siter = lys_getnext(siter, par1, lys_node_module(par1), 0))) {
@@ -4973,7 +4982,11 @@ _lyd_validate(struct lyd_node **node, struct lyd_node *data_tree, struct ly_ctx 
                 iter->dflt = 1;
             }
 
-            LY_TREE_DFS_END(root, next2, iter);
+#if defined(TYPES_COMPATIBLE)
+              LY_TREE_DFS_END(root, next2, iter);
+#else
+              LY_DATA_TREE_DFS_END(root, next2, iter);
+#endif
         }
 
         if (options & LYD_OPT_NOSIBLINGS) {
@@ -5982,7 +5995,11 @@ lyd_attr_parent(const struct lyd_node *root, struct lyd_attr *attr)
                 return elem;
             }
         }
-        LY_TREE_DFS_END(root, next, elem)
+#if defined(TYPES_COMPATIBLE)
+          LY_TREE_DFS_END(root, next, elem)
+#else
+          LY_DATA_TREE_DFS_END(root, next, elem)
+#endif
     }
 
     return NULL;

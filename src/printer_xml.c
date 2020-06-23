@@ -139,7 +139,12 @@ xml_print_ns(struct lyout *out, const struct lyd_node *node, struct mlist **mlis
                         goto print;
                     }
                 }
-            LY_TREE_DFS_END(node2, next, cur)}
+#if defined(TYPES_COMPATIBLE)
+            LY_TREE_DFS_END(node2, next, cur)
+#else
+            LY_DATA_TREE_DFS_END(node2, next, cur)
+#endif
+          }
         }
         break;
     default:
@@ -710,7 +715,11 @@ xml_print_data(struct lyout *out, const struct lyd_node *root, int options)
                 if (node->schema->nodetype == LYS_ACTION) {
                     break;
                 }
-                LY_TREE_DFS_END(root, next, node);
+#if defined(TYPES_COMPATIBLE)
+                  LY_TREE_DFS_END(root, next, node);
+#else
+                  LY_DATA_TREE_DFS_END(root, next, node);
+#endif
             }
         } else {
             node = root;

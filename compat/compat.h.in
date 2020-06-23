@@ -19,6 +19,19 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+#if defined(_WINDOWS)
+  #include <windows.h>
+  #include <basetsd.h>
+  #include <Pathcch.h>
+    
+  #pragma comment(lib, "Pathcch.lib")
+  #define ssize_t SSIZE_T
+  #define dirname(FILEPATH) (PathCchRemoveFileSpec(FILEPATH, strlen(FILEPATH) + 1), FILEPATH)
+  #define stat _stat
+  #define strcasecmp _stricmp
+  #define S_ISDIR(MODE) (MODE & _S_IFDIR)
+#endif
+
 #ifndef __WORDSIZE
 #  if defined __x86_64__ && !defined __ILP32__
 #   define __WORDSIZE 64

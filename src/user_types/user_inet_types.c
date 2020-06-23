@@ -17,9 +17,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
-#include <arpa/inet.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
+
+#if defined(_WINDOWS)
+  #include <Ws2tcpip.h>
+  #pragma comment(lib, "Ws2_32.lib")
+#else
+  #include <arpa/inet.h>
+  #include <sys/socket.h>
+  #include <netinet/in.h>
+#endif
 
 #include "compat.h"
 #include "../user_types.h"
@@ -293,7 +299,7 @@ ip_prefix_store_clb(struct ly_ctx *ctx, const char *type_name, const char **valu
 }
 
 /* Name of this array must match the file name! */
-struct lytype_plugin_list user_inet_types[] = {
+API_H struct lytype_plugin_list user_inet_types[] = {
     {"ietf-inet-types", "2013-07-15", "ip-address", ip_store_clb, NULL},
     {"ietf-inet-types", "2013-07-15", "ipv6-address", ip_store_clb, NULL},
     {"ietf-inet-types", "2013-07-15", "ip-address-no-zone", ip_store_clb, NULL},

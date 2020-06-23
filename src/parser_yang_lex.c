@@ -2493,7 +2493,7 @@ YY_RULE_SETUP
         /* exclude noncharacters %xFFFE-FFFF */
         LOGVAL(yyget_extra(yyscanner), LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 value 0x%08x", value);
         yylloc->first_line = -1;
-        return ERROR;
+        return TOKEN_ERROR;
     }
     size_str += 3;
 }
@@ -2508,7 +2508,7 @@ YY_RULE_SETUP
          * %xBFFFE-BFFFF, %xCFFFE-CFFFF, %xDFFFE-DFFFF, %xEFFFE-EFFFF, %xFFFFE-FFFFF, %x10FFFE-10FFFF */
         LOGVAL(yyget_extra(yyscanner), LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 value 0x%08x", value);
         yylloc->first_line = -1;
-        return ERROR;
+        return TOKEN_ERROR;
     }
     size_str += 4;
 }
@@ -2526,7 +2526,7 @@ YY_RULE_SETUP
 case YY_STATE_EOF(DOUBLEQUOTES):
 { LOGVAL(yyget_extra(yyscanner), LYE_SPEC, LY_VLOG_NONE, NULL, "Unterminated double-quoted string.");
                         yylloc->first_line = -1;
-                        return ERROR;
+                        return TOKEN_ERROR;
                       }
 	YY_BREAK
 case 100:
@@ -2553,7 +2553,7 @@ YY_RULE_SETUP
 case YY_STATE_EOF(SINGLEQUOTES):
 { LOGVAL(yyget_extra(yyscanner), LYE_SPEC, LY_VLOG_NONE, NULL, "Unterminated single-quoted string.");
                         yylloc->first_line = -1;
-                        return ERROR;
+                        return TOKEN_ERROR;
                       }
 	YY_BREAK
 case 103:
@@ -2657,7 +2657,7 @@ YY_RULE_SETUP
                 } else if (yytext[i] == '*' && yytext[i + 1] == '/') {
                     if (!i) {
                         yyless(1);
-                        return ERROR;
+                        return TOKEN_ERROR;
                     } else {
                         yyless(i);
                         return STRINGS;
@@ -2678,7 +2678,7 @@ YY_RULE_SETUP
                     /* exclude noncharacters %xFFFE-FFFF */
                     LOGVAL(yyget_extra(yyscanner), LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 value 0x%08x", value);
                     yylloc->first_line = -1;
-                    return ERROR;
+                    return TOKEN_ERROR;
                 }
                 i += 3;
             } else {
@@ -2690,7 +2690,7 @@ YY_RULE_SETUP
                      * %xBFFFE-BFFFF, %xCFFFE-CFFFF, %xDFFFE-DFFFF, %xEFFFE-EFFFF, %xFFFFE-FFFFF, %x10FFFE-10FFFF */
                     LOGVAL(yyget_extra(yyscanner), LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 value 0x%08x", value);
                     yylloc->first_line = -1;
-                    return ERROR;
+                    return TOKEN_ERROR;
                 }
                 i += 4;
             }
@@ -2716,7 +2716,7 @@ YY_RULE_SETUP
 {
     LOGVAL(yyget_extra(yyscanner), LYE_SPEC, LY_VLOG_NONE, NULL, "Invalid UTF-8 leading byte 0x%02x", yytext[0]);
     yylloc->first_line = -1;
-    return ERROR;
+    return TOKEN_ERROR;
 }
 	YY_BREAK
 case 132:

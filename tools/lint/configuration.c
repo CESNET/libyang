@@ -15,11 +15,17 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <pwd.h>
 
+#if defined(_WINDOWS)
+  #include <Shlobj.h>
+#else
+  #include <unistd.h>
+  #include <sys/stat.h>
+  #include <sys/types.h>
+  #include <pwd.h>
+#endif
+
+#include "common.h"
 #include "configuration.h"
 #include "../../linenoise/linenoise.h"
 
@@ -30,23 +36,50 @@ char *
 get_yanglint_dir(void)
 {
     int ret;
-    struct passwd *pw;
     char *user_home, *yl_dir;
 
+#if defined(_WINDOWS)
+    PWSTR wPath = NULL;
+
+     // Retrieve the LocalAppData standard folder's path
+    if (SHGetKnownFolderPath(&FOLDERID_LocalAppData, KF_FLAG_DEFAULT, NULL, &wPath) != S_OK) {
+
+      LPTSTR errorMessage = NULL;
+      getLastWINAPIErrorMessage(errorMessage);
+      fprintf(stderr, "Determining home directory failed. %s", errorMessage);
+      LocalFree(errorMessage);
+
+      return NULL;
+    }
+    // Convert Unicode path to UTF8
+    int utf8Size = WideCharToMultiByte(CP_UTF8, 0, wPath, -1, NULL, 0, NULL, NULL);
+    user_home = malloc(utf8Size);
+    WideCharToMultiByte(CP_UTF8, 0, wPath, -1, user_home, utf8Size, NULL, NULL);
+    CoTaskMemFree(wPath);
+#else
+    struct passwd *pw;
     if (!(pw = getpwuid(getuid()))) {
         fprintf(stderr, "Determining home directory failed (%s).\n", strerror(errno));
         return NULL;
     }
     user_home = pw->pw_dir;
+#endif
 
     yl_dir = malloc(strlen(user_home) + 1 + strlen(YL_DIR) + 1);
     if (!yl_dir) {
         fprintf(stderr, "Memory allocation failed (%s).\n", strerror(errno));
         return NULL;
     }
-    sprintf(yl_dir, "%s/%s", user_home, YL_DIR);
+
+#if defined(_WINDOWS)
+      sprintf(yl_dir, "%s\%s", user_home, YL_DIR);
+      free(user_home);
+#else
+      sprintf(yl_dir, "%s/%s", user_home, YL_DIR);
+#endif
 
     ret = access(yl_dir, R_OK | X_OK);
+
     if (ret == -1) {
         if (errno == ENOENT) {
             /* directory does not exist */

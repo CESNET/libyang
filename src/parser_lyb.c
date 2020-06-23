@@ -1275,7 +1275,11 @@ lyd_parse_lyb(struct ly_ctx *ctx, const char *data, int options, const struct ly
                 if (act_notif->schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) {
                     break;
                 }
-                LY_TREE_DFS_END(node, next, act_notif);
+#if defined(TYPES_COMPATIBLE)
+                  LY_TREE_DFS_END(node, next, act_notif);
+#else
+                  LY_DATA_TREE_DFS_END(node, next, act_notif);
+#endif
             }
         }
         if (lyd_defaults_add_unres(&node, options, ctx, NULL, 0, data_tree, act_notif, unres, 0)) {

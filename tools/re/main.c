@@ -20,8 +20,12 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <string.h>
+#include <dirent.h>
 #include <getopt.h>
-#include <unistd.h>
+
+#if !defined(_WINDOWS)
+  #include <unistd.h>
+#endif
 
 #include "compat.h"
 #include "libyang.h"

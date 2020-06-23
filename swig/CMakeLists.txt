@@ -1,6 +1,12 @@
 project(libyang-cpp)
 
-set(CMAKE_CXX_FLAGS         "${CMAKE_CXX_FLAGS} -Wall -Wextra -std=c++11")
+set(CMAKE_CXX_FLAGS         "${CMAKE_CXX_FLAGS} -Wall -std=c++11")
+
+# Enable extra warnings in *nix
+if(NOT MSVC)
+   set(CMAKE_CXX_FLAGS         "${CMAKE_CXX_FLAGS} -Wextra")
+endif()
+
 set(CMAKE_CXX_FLAGS_RELEASE "-O2 -DNDEBUG")
 set(CMAKE_CXX_FLAGS_PACKAGE "-g -O2 -DNDEBUG")
 set(CMAKE_CXX_FLAGS_DEBUG   "-g -Og")

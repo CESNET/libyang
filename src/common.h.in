@@ -32,11 +32,39 @@
       defined __SUNPRO_C || \
       defined __xlC__
 # define THREAD_LOCAL __thread
+#elif defined(_WINDOWS) && defined(_MSC_VER)
+# include <stdlib.h>
+# include <windows.h>
+
+# define PATH_MAX      MAX_PATH
+# define S_ISDIR(MODE) (MODE & _S_IFDIR)
+# define S_ISREG(MODE) (MODE & _S_IFREG)
+# define realpath(N,R) _fullpath((R),(N),_MAX_PATH)
+# define access(PATH, MODE) _access(PATH, MODE)
+# define strtok_r(STR, DELIM, SAVEPTR) strtok(STR, DELIM)
+# define mkdir(DIRNAME, PERMISSION) _mkdir(DIRNAME)
+# define THREAD_LOCAL __declspec(thread)
+# define F_OK        0                                   /* Test for existence.  */
+# define R_OK        4                                   /* Test for read permission.  */
+# define W_OK        2                                   /* Test for write permission.  */
+# define X_OK        F_OK                                /* execute permission - unsupported in windows*/
+# define MAP_FAILED  NULL                                /* mmap failed */
+# define getLastWINAPIErrorMessage(errorMessage)          \
+            FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM |    \
+                          FORMAT_MESSAGE_IGNORE_INSERTS | \
+                          FORMAT_MESSAGE_ARGUMENT_ARRAY | \
+                          FORMAT_MESSAGE_ALLOCATE_BUFFER, \
+                          NULL,                           \
+                          GetLastError(),                 \
+                          0,                              \
+                          (LPWSTR)&errorMessage,          \
+                          0,                              \
+                          NULL)
+
 #else
 # error "Cannot define THREAD_LOCAL"
 #endif
-
-#define UNUSED(x) @COMPILER_UNUSED_ATTR@
+#define UNUSED(x) @COMPILER_UNUSED_ATTR@ 
 
 #define LY_CHECK_GOTO(COND, GOTO) if (COND) {goto GOTO;}
 #define LY_CHECK_ERR_GOTO(COND, ERR, GOTO) if (COND) {ERR; goto GOTO;}
@@ -48,7 +76,11 @@
  * objects as hidden and export only objects explicitly marked to be part of
  * the public API.
  */
-#define API __attribute__((visibility("default")))
+#if defined(_WINDOWS) && defined(_MSC_VER)
+  #define API
+#else
+  #define API __attribute__((visibility("default")))
+#endif
 
 /* how many bytes add when enlarging buffers */
 #define LY_BUF_STEP 128
@@ -77,23 +109,23 @@ extern volatile int ly_log_dbg_groups;
 
 void ly_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, const char *format, ...);
 
-#define LOGERR(ctx, errno, str, args...)                            \
-    ly_log(ctx, LY_LLERR, errno, str, ##args);
+#define LOGERR(ctx, errno, str, ...)                            \
+    ly_log(ctx, LY_LLERR, errno, str, ##__VA_ARGS__);
 
-#define LOGWRN(ctx, str, args...)                                   \
-    ly_log(ctx, LY_LLWRN, 0, str, ##args);
+#define LOGWRN(ctx, str, ...)                                   \
+    ly_log(ctx, LY_LLWRN, 0, str, ##__VA_ARGS__);
 
-#define LOGVRB(str, args...)                                        \
-    ly_log(NULL, LY_LLVRB, 0, str, ##args);
+#define LOGVRB(str, ...)                                        \
+    ly_log(NULL, LY_LLVRB, 0, str, ##__VA_ARGS__);
 
 #ifdef NDEBUG
 
-#define LOGDBG(dbg_group, str, args...)
+#define LOGDBG(dbg_group, str, ...)
 
 #else
 
-#define LOGDBG(dbg_group, str, args...)                             \
-    ly_log_dbg(dbg_group, str, ##args);
+#define LOGDBG(dbg_group, str, ...)                             \
+    ly_log_dbg(dbg_group, str, ##__VA_ARGS__);
 
 void ly_log_dbg(int group, const char *format, ...);
 
@@ -216,8 +248,8 @@ enum LY_VLOG_ELEM {
 };
 
 void ly_vlog(const struct ly_ctx *ctx, LY_ECODE code, enum LY_VLOG_ELEM elem_type, const void *elem, ...);
-#define LOGVAL(ctx, code, elem_type, elem, args...)                      \
-    ly_vlog(ctx, code, elem_type, elem, ##args);
+#define LOGVAL(ctx, code, elem_type, elem, ...)                      \
+    ly_vlog(ctx, code, elem_type, elem, ##__VA_ARGS__);
 
 #define LOGPATH(ctx, elem_type, elem)                                    \
     ly_vlog(ctx, LYE_PATH, elem_type, elem);

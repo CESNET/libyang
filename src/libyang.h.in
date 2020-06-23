@@ -17,6 +17,19 @@
 
 #include <stdio.h>
 
+#if defined(_WINDOWS) && defined(_MSC_VER)
+  #include <basetsd.h>
+  #define ssize_t SSIZE_T
+  // By default, import symbols
+  #if defined(LIBYANG_DLL_EXPORT)
+    #define API_H __declspec(dllexport)
+  #else
+    #define API_H __declspec(dllimport)
+  #endif
+#else
+  #define API_H __attribute__((visibility("default")))
+#endif
+
 /**
  * @brief Whether to enable schema and data cache.
  */
@@ -1166,7 +1179,7 @@ struct ly_ctx;
  *
  * @return Pointer to the created libyang context, NULL in case of error.
  */
-struct ly_ctx *ly_ctx_new(const char *search_dir, int options);
+API_H struct ly_ctx *ly_ctx_new(const char *search_dir, int options);
 
 /**
  * @brief Create libyang context according to the content of the given yang-library data.
@@ -1194,7 +1207,7 @@ struct ly_ctx *ly_ctx_new(const char *search_dir, int options);
  * @param[in] options Context options, see @ref contextoptions.
  * @return Pointer to the created libyang context, NULL in case of error.
  */
-struct ly_ctx *ly_ctx_new_ylpath(const char *search_dir, const char *path, LYD_FORMAT format, int options);
+API_H struct ly_ctx *ly_ctx_new_ylpath(const char *search_dir, const char *path, LYD_FORMAT format, int options);
 
 /**
  * @brief Create libyang context according to the content of the given yang-library data.
@@ -1222,14 +1235,14 @@ struct ly_ctx *ly_ctx_new_ylpath(const char *search_dir, const char *path, LYD_F
  * @param[in] options Context options, see @ref contextoptions.
  * @return Pointer to the created libyang context, NULL in case of error.
  */
-struct ly_ctx *ly_ctx_new_ylmem(const char *search_dir, const char *data, LYD_FORMAT format, int options);
+API_H struct ly_ctx *ly_ctx_new_ylmem(const char *search_dir, const char *data, LYD_FORMAT format, int options);
 
 /**
  * @brief Number of internal modules, which are in the context and cannot be removed nor disabled.
  * @param[in] ctx Context to investigate.
  * @return Number of internal modules, 0 in case of invalid parameter.
  */
-unsigned int ly_ctx_internal_modules_count(struct ly_ctx *ctx);
+API_H unsigned int ly_ctx_internal_modules_count(struct ly_ctx *ctx);
 
 /**
  * @brief Add the search path into libyang context
@@ -1241,7 +1254,7 @@ unsigned int ly_ctx_internal_modules_count(struct ly_ctx *ctx);
  * @param[in] search_dir New search path to add to the current paths previously set in ctx.
  * @return EXIT_SUCCESS, EXIT_FAILURE.
  */
-int ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir);
+API_H int ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir);
 
 /**
  * @brief Clean the search path(s) from the libyang context
@@ -1250,7 +1263,7 @@ int ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir);
  * @param[in] index Index of the search path to be removed, use negative value to remove them all.
  *            Correct index value can be checked via ly_ctx_get_searchdirs().
  */
-void ly_ctx_unset_searchdirs(struct ly_ctx *ctx, int index);
+API_H void ly_ctx_unset_searchdirs(struct ly_ctx *ctx, int index);
 
 /**
  * @brief Get the NULL-terminated list of the search paths in libyang context.
@@ -1258,7 +1271,7 @@ void ly_ctx_unset_searchdirs(struct ly_ctx *ctx, int index);
  * @param[in] ctx Context to query.
  * @return NULL-terminated list (array) of the search paths, NULL if no searchpath was set.
  */
-const char * const *ly_ctx_get_searchdirs(const struct ly_ctx *ctx);
+API_H const char * const *ly_ctx_get_searchdirs(const struct ly_ctx *ctx);
 
 /**
  * @brief Get the currently set context's options.
@@ -1266,7 +1279,7 @@ const char * const *ly_ctx_get_searchdirs(const struct ly_ctx *ctx);
  * @param[in] ctx Context to query.
  * @return Combination of all the currently set context's options, see @ref contextoptions.
  */
-int ly_ctx_get_options(struct ly_ctx *ctx);
+API_H int ly_ctx_get_options(struct ly_ctx *ctx);
 
 /**
  * @brief Make context to stop searching for schemas (imported, included or requested via ly_ctx_load_module())
@@ -1278,14 +1291,14 @@ int ly_ctx_get_options(struct ly_ctx *ctx);
  *
  * @param[in] ctx Context to be modified.
  */
-void ly_ctx_set_disable_searchdirs(struct ly_ctx *ctx);
+API_H void ly_ctx_set_disable_searchdirs(struct ly_ctx *ctx);
 
 /**
  * @brief Reverse function to ly_ctx_set_disable_searchdirs().
  *
  * @param[in] ctx Context to be modified.
  */
-void ly_ctx_unset_disable_searchdirs(struct ly_ctx *ctx);
+API_H void ly_ctx_unset_disable_searchdirs(struct ly_ctx *ctx);
 
 /**
  * @brief Make context to stop implicitly searching for schemas (imported, included or requested via ly_ctx_load_module())
@@ -1296,14 +1309,14 @@ void ly_ctx_unset_disable_searchdirs(struct ly_ctx *ctx);
  *
  * @param[in] ctx Context to be modified.
  */
-void ly_ctx_set_disable_searchdir_cwd(struct ly_ctx *ctx);
+API_H void ly_ctx_set_disable_searchdir_cwd(struct ly_ctx *ctx);
 
 /**
  * @brief Reverse function to ly_ctx_set_disable_searchdir_cwd().
  *
  * @param[in] ctx Context to be modified.
  */
-void ly_ctx_unset_disable_searchdir_cwd(struct ly_ctx *ctx);
+API_H void ly_ctx_unset_disable_searchdir_cwd(struct ly_ctx *ctx);
 
 /**
  * @brief Prefer context's searchdirs before the user callback (ly_module_imp_clb) provided via ly_ctx_set_module_imp_clb()).
@@ -1313,14 +1326,14 @@ void ly_ctx_unset_disable_searchdir_cwd(struct ly_ctx *ctx);
  *
  * @param[in] ctx Context to be modified.
  */
-void ly_ctx_set_prefer_searchdirs(struct ly_ctx *ctx);
+API_H void ly_ctx_set_prefer_searchdirs(struct ly_ctx *ctx);
 
 /**
  * @brief Reverse function to ly_ctx_set_prefer_searchdirs().
  *
  * @param[in] ctx Context to be modified.
  */
-void ly_ctx_unset_prefer_searchdirs(struct ly_ctx *ctx);
+API_H void ly_ctx_unset_prefer_searchdirs(struct ly_ctx *ctx);
 
 /**
  * @brief Make context to set all the imported modules to be implemented. By default,
@@ -1335,14 +1348,14 @@ void ly_ctx_unset_prefer_searchdirs(struct ly_ctx *ctx);
  *
  * @param[in] ctx Context to be modified.
  */
-void ly_ctx_set_allimplemented(struct ly_ctx *ctx);
+API_H void ly_ctx_set_allimplemented(struct ly_ctx *ctx);
 
 /**
  * @brief Reverse function to ly_ctx_set_allimplemented().
  *
  * @param[in] ctx Context to be modified.
  */
-void ly_ctx_unset_allimplemented(struct ly_ctx *ctx);
+API_H void ly_ctx_unset_allimplemented(struct ly_ctx *ctx);
 
 /**
  * @brief Change the schema parser behavior when parsing new schemas forcing it to skip some of the schema
@@ -1356,14 +1369,14 @@ void ly_ctx_unset_allimplemented(struct ly_ctx *ctx);
  *
  * @param[in] ctx Context to be modified.
  */
-void ly_ctx_set_trusted(struct ly_ctx *ctx);
+API_H void ly_ctx_set_trusted(struct ly_ctx *ctx);
 
 /**
  * @brief Reverse function to ly_ctx_set_trusted().
  *
  * @param[in] ctx Context to be modified.
  */
-void ly_ctx_unset_trusted(struct ly_ctx *ctx);
+API_H void ly_ctx_unset_trusted(struct ly_ctx *ctx);
 
 /**
  * @brief Get current ID of the modules set. The value is available also
@@ -1372,7 +1385,7 @@ void ly_ctx_unset_trusted(struct ly_ctx *ctx);
  * @param[in] ctx Context to be examined.
  * @return Numeric identifier of the current context's modules set.
  */
-uint16_t ly_ctx_get_module_set_id(const struct ly_ctx *ctx);
+API_H uint16_t ly_ctx_get_module_set_id(const struct ly_ctx *ctx);
 
 /**
  * @brief Get data of an internal ietf-yang-library module.
@@ -1381,7 +1394,7 @@ uint16_t ly_ctx_get_module_set_id(const struct ly_ctx *ctx);
  * @return Root data node corresponding to the model, NULL on error.
  * Caller is responsible for freeing the returned data tree using lyd_free().
  */
-struct lyd_node *ly_ctx_info(struct ly_ctx *ctx);
+API_H struct lyd_node *ly_ctx_info(struct ly_ctx *ctx);
 
 /**
  * @brief Iterate over all (enabled) modules in a context.
@@ -1390,7 +1403,7 @@ struct lyd_node *ly_ctx_info(struct ly_ctx *ctx);
  * @param[in,out] idx Index of the next module to be returned. Value of 0 starts from the beginning.
  * @return Next context module, NULL if the last was already returned.
  */
-const struct lys_module *ly_ctx_get_module_iter(const struct ly_ctx *ctx, uint32_t *idx);
+API_H const struct lys_module *ly_ctx_get_module_iter(const struct ly_ctx *ctx, uint32_t *idx);
 
 /**
  * @brief Iterate over the disabled modules in a context.
@@ -1399,7 +1412,7 @@ const struct lys_module *ly_ctx_get_module_iter(const struct ly_ctx *ctx, uint32
  * @param[in,out] idx Index of the next module to be returned. Value of 0 starts from the beginning.
  * @return Next context module, NULL if the last was already returned.
  */
-const struct lys_module *ly_ctx_get_disabled_module_iter(const struct ly_ctx *ctx, uint32_t *idx);
+API_H const struct lys_module *ly_ctx_get_disabled_module_iter(const struct ly_ctx *ctx, uint32_t *idx);
 
 /**
  * @brief Get pointer to the schema tree of the module of the specified name.
@@ -1413,7 +1426,7 @@ const struct lys_module *ly_ctx_get_disabled_module_iter(const struct ly_ctx *ct
  * @return Pointer to the data model structure, NULL if no schema following the name and
  * revision requirements is present in the context.
  */
-const struct lys_module *ly_ctx_get_module(const struct ly_ctx *ctx, const char *name, const char *revision, int implemented);
+API_H const struct lys_module *ly_ctx_get_module(const struct ly_ctx *ctx, const char *name, const char *revision, int implemented);
 
 /**
  * @brief Get pointer to the older schema tree to the specified one in the provided context.
@@ -1432,7 +1445,7 @@ const struct lys_module *ly_ctx_get_module(const struct ly_ctx *ctx, const char 
  * @param[in] module YANG module to compare with
  * @return Pointer to the data model structure, NULL if no older schema is present in the context.
  */
-const struct lys_module *ly_ctx_get_module_older(const struct ly_ctx *ctx, const struct lys_module *module);
+API_H const struct lys_module *ly_ctx_get_module_older(const struct ly_ctx *ctx, const struct lys_module *module);
 
 /**
  * @brief Try to find the model in the searchpath of \p ctx and load it into it. If custom missing
@@ -1448,7 +1461,7 @@ const struct lys_module *ly_ctx_get_module_older(const struct ly_ctx *ctx, const
  * is parsed).
  * @return Pointer to the data model structure, NULL if not found or some error occurred.
  */
-const struct lys_module *ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision);
+API_H const struct lys_module *ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision);
 
 /**
  * @brief Callback for retrieving missing included or imported models in a custom way.
@@ -1478,7 +1491,7 @@ typedef const char *(*ly_module_imp_clb)(const char *mod_name, const char *mod_r
  * @param[in] clb Callback responsible for returning the missing model.
  * @param[in] user_data Arbitrary data that will always be passed to the callback \p clb.
  */
-void ly_ctx_set_module_imp_clb(struct ly_ctx *ctx, ly_module_imp_clb clb, void *user_data);
+API_H void ly_ctx_set_module_imp_clb(struct ly_ctx *ctx, ly_module_imp_clb clb, void *user_data);
 
 /**
  * @brief Get the custom callback for missing import/include module retrieval.
@@ -1487,7 +1500,7 @@ void ly_ctx_set_module_imp_clb(struct ly_ctx *ctx, ly_module_imp_clb clb, void *
  * @param[in] user_data Optional pointer for getting the user-supplied callback data.
  * @return Callback or NULL if not set.
  */
-ly_module_imp_clb ly_ctx_get_module_imp_clb(const struct ly_ctx *ctx, void **user_data);
+API_H ly_module_imp_clb ly_ctx_get_module_imp_clb(const struct ly_ctx *ctx, void **user_data);
 
 /**
  * @brief Callback for retrieving missing modules in the context, for which some data was found.
@@ -1515,7 +1528,7 @@ typedef const struct lys_module *(*ly_module_data_clb)(struct ly_ctx *ctx, const
  * @param[in] clb Callback responsible for returning the missing model.
  * @param[in] user_data Arbitrary data that will always be passed to the callback \p clb.
  */
-void ly_ctx_set_module_data_clb(struct ly_ctx *ctx, ly_module_data_clb clb, void *user_data);
+API_H void ly_ctx_set_module_data_clb(struct ly_ctx *ctx, ly_module_data_clb clb, void *user_data);
 
 /**
  * @brief Get the missing data module calback.
@@ -1524,7 +1537,7 @@ void ly_ctx_set_module_data_clb(struct ly_ctx *ctx, ly_module_data_clb clb, void
  * @param[in] user_data Optional pointer for getting the user-supplied callback data.
  * @return Callback or NULL if not set.
  */
-ly_module_data_clb ly_ctx_get_module_data_clb(const struct ly_ctx *ctx, void **user_data);
+API_H ly_module_data_clb ly_ctx_get_module_data_clb(const struct ly_ctx *ctx, void **user_data);
 
 #ifdef LY_ENABLED_LYD_PRIV
 
@@ -1544,7 +1557,7 @@ void ly_ctx_set_priv_dup_clb(struct ly_ctx *ctx, void *(*priv_dup_clb)(const voi
  * @return Pointer to the data model structure, NULL if no schema following the namespace and
  * revision requirements is present in the context.
  */
-const struct lys_module *ly_ctx_get_module_by_ns(const struct ly_ctx *ctx, const char *ns, const char *revision, int implemented);
+API_H const struct lys_module *ly_ctx_get_module_by_ns(const struct ly_ctx *ctx, const char *ns, const char *revision, int implemented);
 
 /**
  * @brief Get submodule of a main module.
@@ -1560,7 +1573,7 @@ const struct lys_module *ly_ctx_get_module_by_ns(const struct ly_ctx *ctx, const
  * is returned.
  * @return Pointer to the data model structure.
  */
-const struct lys_submodule *ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *revision,
+API_H const struct lys_submodule *ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *revision,
                                                  const char *submodule, const char *sub_revision);
 
 /**
@@ -1573,7 +1586,7 @@ const struct lys_submodule *ly_ctx_get_submodule(const struct ly_ctx *ctx, const
  * @param[in] submodule Name of the submodule to get.
  * @return Pointer to the data model structure.
  */
-const struct lys_submodule *ly_ctx_get_submodule2(const struct lys_module *main_module, const char *submodule);
+API_H const struct lys_submodule *ly_ctx_get_submodule2(const struct lys_module *main_module, const char *submodule);
 
 /**
  * @brief Get schema node according to the given data path (JSON format, see @ref howtoxpath).
@@ -1590,7 +1603,7 @@ const struct lys_submodule *ly_ctx_get_submodule2(const struct lys_module *main_
  * @param[in] output Search operation output instead input.
  * @return Resolved schema node or NULL.
  */
-const struct lys_node *ly_ctx_get_node(const struct ly_ctx *ctx, const struct lys_node *start, const char *data_path, int output);
+API_H const struct lys_node *ly_ctx_get_node(const struct ly_ctx *ctx, const struct lys_node *start, const char *data_path, int output);
 
 /**
  * @brief Get schema node according to the given schema path (see @ref howtoxpath).
@@ -1603,7 +1616,7 @@ const struct lys_node *ly_ctx_get_node(const struct ly_ctx *ctx, const struct ly
  * @return Set of found schema nodes. If no nodes are matching \p path the returned set is empty.
  * In case of an error, NULL is returned.
  */
-struct ly_set *ly_ctx_find_path(struct ly_ctx *ctx, const char *path);
+API_H struct ly_set *ly_ctx_find_path(struct ly_ctx *ctx, const char *path);
 
 /**
  * @brief Remove the specified module from its context.
@@ -1618,8 +1631,8 @@ struct ly_set *ly_ctx_find_path(struct ly_ctx *ctx, const char *path);
  * to the nodes via lys_set_private(). If NULL, the private objects are not freed by libyang.
  * @return EXIT_SUCCESS or EXIT_FAILURE (in case of invalid parameter).
  */
-int ly_ctx_remove_module(const struct lys_module *module,
-                         void (*private_destructor)(const struct lys_node *node, void *priv));
+API_H int ly_ctx_remove_module(const struct lys_module *module,
+                               void (*private_destructor)(const struct lys_node *node, void *priv));
 
 /**
  * @brief Remove all the modules from the context except the internal modules. Also the addition data in
@@ -1629,7 +1642,7 @@ int ly_ctx_remove_module(const struct lys_module *module,
  * @param[in] private_destructor Optional destructor function for private objects assigned
  * to the nodes via lys_set_private(). If NULL, the private objects are not freed by libyang.
  */
-void ly_ctx_clean(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_node *node, void *priv));
+API_H void ly_ctx_clean(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_node *node, void *priv));
 
 /**
  * @brief Free all internal structures of the specified context.
@@ -1647,7 +1660,7 @@ void ly_ctx_clean(struct ly_ctx *ctx, void (*private_destructor)(const struct ly
  * Remember the differences between the structures derived from ::lys_node and always check
  * ::lys_node#nodetype.
  */
-void ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_node *node, void *priv));
+API_H void ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lys_node *node, void *priv));
 
 /**
  * @brief Transform a data path in XML format (node prefixes are XML namespace prefixes of module namespaces)
@@ -1658,7 +1671,7 @@ void ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct 
  * @param[in] xml XML tree to be used for XML namespace prefix resolution.
  * @return Transformed JSON data path, needs to be freed. NULL on error.
  */
-char *ly_path_xml2json(struct ly_ctx *ctx, const char *xml_path, struct lyxml_elem *xml);
+API_H char *ly_path_xml2json(struct ly_ctx *ctx, const char *xml_path, struct lyxml_elem *xml);
 
 /**
  * @brief Transform a data path into schema path (see @ref howtoxpath).
@@ -1671,7 +1684,7 @@ char *ly_path_xml2json(struct ly_ctx *ctx, const char *xml_path, struct lyxml_el
  * @param[in] data_path Data path to be transformed.
  * @return Created schema path, NULL on error.
  */
-char *ly_path_data2schema(struct ly_ctx *ctx, const char *data_path);
+API_H char *ly_path_data2schema(struct ly_ctx *ctx, const char *data_path);
 
 /** @} context */
 
@@ -1722,7 +1735,7 @@ struct ly_set {
  *
  * @return Created ::ly_set structure or NULL in case of error.
  */
-struct ly_set *ly_set_new(void);
+API_H struct ly_set *ly_set_new(void);
 
 /**
  * @brief Duplicate the existing set.
@@ -1730,7 +1743,7 @@ struct ly_set *ly_set_new(void);
  * @param[in] set Original set to duplicate
  * @return Duplication of the original set.
  */
-struct ly_set *ly_set_dup(const struct ly_set *set);
+API_H struct ly_set *ly_set_dup(const struct ly_set *set);
 
 /**
  * @brief Add a ::lyd_node or ::lys_node object into the set
@@ -1745,7 +1758,7 @@ struct ly_set *ly_set_dup(const struct ly_set *set);
  * - #LY_SET_OPT_USEASLIST - do not check for duplicities
  * @return -1 on failure, index of the \p node in the set on success
  */
-int ly_set_add(struct ly_set *set, void *node, int options);
+API_H int ly_set_add(struct ly_set *set, void *node, int options);
 
 /**
  * @brief Add all objects from \p src to \p trg.
@@ -1759,7 +1772,7 @@ int ly_set_add(struct ly_set *set, void *node, int options);
  * - #LY_SET_OPT_USEASLIST - do not check for duplicities
  * @return -1 on failure, number of objects added into \p trg on success.
  */
-int ly_set_merge(struct ly_set *trg, struct ly_set *src, int options);
+API_H int ly_set_merge(struct ly_set *trg, struct ly_set *src, int options);
 
 /**
  * @brief Get know if the set contains the specified object.
@@ -1767,7 +1780,7 @@ int ly_set_merge(struct ly_set *trg, struct ly_set *src, int options);
  * @param[in] node Object to be found in the set.
  * @return Index of the object in the set or -1 if the object is not present in the set.
  */
-int ly_set_contains(const struct ly_set *set, void *node);
+API_H int ly_set_contains(const struct ly_set *set, void *node);
 
 /**
  * @brief Remove all objects from the set, but keep the set container for further use.
@@ -1775,7 +1788,7 @@ int ly_set_contains(const struct ly_set *set, void *node);
  * @param[in] set Set to clean.
  * @return 0 on success
  */
-int ly_set_clean(struct ly_set *set);
+API_H int ly_set_clean(struct ly_set *set);
 
 /**
  * @brief Remove a ::lyd_node or ::lys_node object from the set.
@@ -1787,7 +1800,7 @@ int ly_set_clean(struct ly_set *set);
  * @param[in] node The ::lyd_node or ::lys_node object to be removed from the \p set;
  * @return 0 on success
  */
-int ly_set_rm(struct ly_set *set, void *node);
+API_H int ly_set_rm(struct ly_set *set, void *node);
 
 /**
  * @brief Remove a ::lyd_node or ::lys_node object from the set index.
@@ -1799,14 +1812,14 @@ int ly_set_rm(struct ly_set *set, void *node);
  * @param[in] index Index of the ::lyd_node or ::lys_node object in the \p set to be removed from the \p set;
  * @return 0 on success
  */
-int ly_set_rm_index(struct ly_set *set, unsigned int index);
+API_H int ly_set_rm_index(struct ly_set *set, unsigned int index);
 
 /**
  * @brief Free the ::ly_set data. Frees only the set structure content, not the referred data.
  *
  * @param[in] set The set to be freed.
  */
-void ly_set_free(struct ly_set *set);
+API_H void ly_set_free(struct ly_set *set);
 
 /**@} nodeset */
 
@@ -1870,7 +1883,7 @@ typedef enum {
  * @param[in] level Verbosity level.
  * @return Previous verbosity level.
  */
-LY_LOG_LEVEL ly_verb(LY_LOG_LEVEL level);
+API_H LY_LOG_LEVEL ly_verb(LY_LOG_LEVEL level);
 
 /**
  * @defgroup logopts Logging options
@@ -1897,7 +1910,7 @@ LY_LOG_LEVEL ly_verb(LY_LOG_LEVEL level);
  * @param[in] opts Bitfield of @ref logopts.
  * @return Previous logger options.
  */
-int ly_log_options(int opts);
+API_H int ly_log_options(int opts);
 
 #ifndef NDEBUG
 
@@ -1926,7 +1939,7 @@ int ly_log_options(int opts);
  * @brief Enable specific debugging messages (independent of log level).
  * @param[in] dbg_groups Bitfield of enabled debug message groups (see @ref dbggroup).
  */
-void ly_verb_dbg(int dbg_groups);
+API_H void ly_verb_dbg(int dbg_groups);
 
 #endif
 
@@ -1944,13 +1957,13 @@ void ly_verb_dbg(int dbg_groups);
  *            presence) or it can be NULL, so consider it as an optional parameter. If the flag is 0, libyang will
  *            not bother with resolving the path.
  */
-void ly_set_log_clb(void (*clb)(LY_LOG_LEVEL level, const char *msg, const char *path), int path);
+API_H void ly_set_log_clb(void (*clb)(LY_LOG_LEVEL level, const char *msg, const char *path), int path);
 
 /**
  * @brief Get logger callback.
  * @return Logger callback (can be NULL).
  */
-void (*ly_get_log_clb(void))(LY_LOG_LEVEL, const char *, const char *);
+API_H void (*ly_get_log_clb(void))(LY_LOG_LEVEL, const char *, const char *);
 
 /**
  * @typedef LY_ERR
@@ -2073,7 +2086,7 @@ typedef enum {
  * @cond INTERNAL
  * Get address of (thread-specific) `ly_errno' variable.
  */
-LY_ERR *ly_errno_glob_address(void);
+API_H LY_ERR *ly_errno_glob_address(void);
 
 /**
  * @endcond INTERNAL
@@ -2089,7 +2102,7 @@ LY_ERR *ly_errno_glob_address(void);
  * @param[in] ctx Relative context.
  * @return Validation error code.
  */
-LY_VECODE ly_vecode(const struct ly_ctx *ctx);
+API_H LY_VECODE ly_vecode(const struct ly_ctx *ctx);
 
 /**
  * @brief Get the last (thread, context-specific) error message. If the corresponding module defined
@@ -2101,7 +2114,7 @@ LY_VECODE ly_vecode(const struct ly_ctx *ctx);
  * @param[in] ctx Relative context.
  * @return Text of the last error message, empty string if there is no error.
  */
-const char *ly_errmsg(const struct ly_ctx *ctx);
+API_H const char *ly_errmsg(const struct ly_ctx *ctx);
 
 /**
  * @brief Get the last (thread, context-specific) path of the element where was an error.
@@ -2116,7 +2129,7 @@ const char *ly_errmsg(const struct ly_ctx *ctx);
  * @param[in] ctx Relative context.
  * @return Path of the error element, empty string if error path does not apply to the last error.
  */
-const char *ly_errpath(const struct ly_ctx *ctx);
+API_H const char *ly_errpath(const struct ly_ctx *ctx);
 
 /**
  * @brief Get the last (thread, context-specific) error-app-tag if there was a specific one defined
@@ -2128,7 +2141,7 @@ const char *ly_errpath(const struct ly_ctx *ctx);
  * @param[in] ctx Relative context.
  * @return Error-app-tag of the last error, empty string if the error-app-tag does not apply to the last error.
  */
-const char *ly_errapptag(const struct ly_ctx *ctx);
+API_H const char *ly_errapptag(const struct ly_ctx *ctx);
 
 /**
  * @brief Libyang full error structure.
@@ -2150,14 +2163,14 @@ struct ly_err_item {
  * @param[in] ctx Relative context.
  * @return First error structure (can be NULL), do not modify!
  */
-struct ly_err_item *ly_err_first(const struct ly_ctx *ctx);
+API_H struct ly_err_item *ly_err_first(const struct ly_ctx *ctx);
 
 /**
  * @brief Print the error structure as if just generated.
  *
  * @param[in] eitem Error item structure to print.
  */
-void ly_err_print(struct ly_err_item *eitem);
+API_H void ly_err_print(struct ly_err_item *eitem);
 
 /**
  * @brief Free error structures from a context.
@@ -2167,7 +2180,7 @@ void ly_err_print(struct ly_err_item *eitem);
  * @param[in] ctx Relative context.
  * @param[in] eitem Oldest error structure to remove, optional.
  */
-void ly_err_clean(struct ly_ctx *ctx, struct ly_err_item *eitem);
+API_H void ly_err_clean(struct ly_ctx *ctx, struct ly_err_item *eitem);
 
 /**
  * @} logger

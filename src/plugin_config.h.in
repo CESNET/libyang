@@ -24,6 +24,9 @@
 #elif defined __APPLE__
 #  define LY_PLUGIN_SUFFIX ".dylib"
 #  define LY_PLUGIN_SUFFIX_LEN 6
+#elif defined _WINDOWS
+#  define LY_PLUGIN_SUFFIX ".dll"
+#  define LY_PLUGIN_SUFFIX_LEN 4
 #endif
 
 #ifdef STATIC

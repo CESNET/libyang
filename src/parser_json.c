@@ -1441,7 +1441,11 @@ lyd_parse_json(struct ly_ctx *ctx, const char *data, int options, const struct l
                 if (reply_parent->schema->nodetype == LYS_ACTION) {
                     break;
                 }
-                LY_TREE_DFS_END(reply_top, iter, reply_parent);
+#if defined(TYPES_COMPATIBLE)
+                  LY_TREE_DFS_END(reply_top, iter, reply_parent);
+#else
+                  LY_DATA_TREE_DFS_END(reply_top, iter, reply_parent);
+#endif
             }
             if (!reply_parent) {
                 LOGERR(ctx, LY_EINVAL, "%s: invalid variable parameter (const struct lyd_node *rpc_act).", __func__);

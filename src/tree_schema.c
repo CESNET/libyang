@@ -21,14 +21,17 @@
 #include <ctype.h>
 #include <limits.h>
 #include <stdlib.h>
-#include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <string.h>
-#include <unistd.h>
-#include <errno.h>
 #include <dirent.h>
+
+#if !defined(_WINDOWS)
+  #include <sys/mman.h>
+  #include <unistd.h>
+  #include <errno.h>
+#endif
 
 #include "common.h"
 #include "context.h"
@@ -1239,6 +1242,14 @@ lys_parse_set_filename(struct ly_ctx *ctx, const char **filename, int fd)
     if (fcntl(fd, F_GETPATH, path) != -1) {
         *filename = lydict_insert(ctx, path, 0);
     }
+#elif defined(_WINDOWS) && defined(_MSC_VER)
+  HANDLE hdl = (HANDLE)_get_osfhandle(fd);
+  if (hdl != INVALID_HANDLE_VALUE) {
+    DWORD ret = GetFinalPathNameByHandle(hdl, path, PATH_MAX, VOLUME_NAME_DOS);
+    if (ret > 0 && ret < PATH_MAX) {
+      *filename = lydict_insert(ctx, path, ret);
+    }
+  }
 #else
     /* get URI if there is /proc */
     sprintf(proc_path, "/proc/self/fd/%d", fd);
@@ -1268,7 +1279,13 @@ lys_parse_fd_(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, const char *revis
         return NULL;
     }
 
-    module = lys_parse_mem_(ctx, addr, format, revision, 1, implement);
+#if defined(_WINDOWS) && defined(_MSC_VER)
+      int internal = 0;
+#else
+      int internal = 1;
+#endif
+
+    module = lys_parse_mem_(ctx, addr, format, revision, internal, implement);
     lyp_munmap(addr, length);
 
     if (module && !module->filepath) {
@@ -2367,7 +2384,11 @@ lys_type_free(struct ly_ctx *ctx, struct lys_type *type,
 #ifdef LY_ENABLED_CACHE
             if (type->info.str.patterns_pcre) {
                 pcre_free((pcre*)type->info.str.patterns_pcre[2 * i]);
+  #if PCRE_MAJOR < 8 || (PCRE_MAJOR == 8 &&  PCRE_MINOR < 20)
+                pcre_free((pcre_extra*)type->info.str.patterns_pcre[2 * i + 1]);
+  #else
                 pcre_free_study((pcre_extra*)type->info.str.patterns_pcre[2 * i + 1]);
+  #endif
             }
 #endif
         }
@@ -2716,7 +2737,11 @@ lys_deviation_free(struct lys_module *module, struct lys_deviation *dev,
             LY_TREE_DFS_BEGIN(dev->orig_node, next, elem) {
                 elem->module = module;
 
-                LY_TREE_DFS_END(dev->orig_node, next, elem);
+#if defined(TYPES_COMPATIBLE)
+                  LY_TREE_DFS_END(dev->orig_node, next, elem);
+#else
+                  LY_SCHEMA_TREE_DFS_END(dev->orig_node, next, elem);
+#endif
             }
             lys_node_free(dev->orig_node, NULL, 0);
         } else {
@@ -3655,7 +3680,7 @@ lys_node_dup(struct lys_module *module, struct lys_node *parent, const struct ly
 static void
 lys_node_switch(struct lys_node *node1, struct lys_node *node2)
 {
-    const size_t mem_size = 104;
+    #define mem_size 104UL
     uint8_t mem[mem_size];
     size_t offset, size;
 
@@ -4444,7 +4469,11 @@ lys_node_xpath_atomize(const struct lys_node *node, int options)
             break;
         }
 next_iter:
-        LY_TREE_DFS_END(node, next, elem);
+#if defined(TYPES_COMPATIBLE)
+          LY_TREE_DFS_END(node, next, elem);
+#else
+          LY_SCHEMA_TREE_DFS_END(node, next, elem);
+#endif
     }
 
     return ret_set;
@@ -4519,8 +4548,11 @@ apply_aug(struct lys_node_augment *augment, struct unres_schema *unres)
                     }
                 }
             }
-
-            LY_TREE_DFS_END((struct lys_node *)augment, parent, child);
+#if defined(TYPES_COMPATIBLE)
+          LY_TREE_DFS_END((struct lys_node *)augment, parent, child);
+#else
+          LY_SCHEMA_TREE_DFS_END((struct lys_node *)augment, parent, child);
+#endif
         }
     }
 
@@ -5422,17 +5454,17 @@ lys_extension_instances_free(struct ly_ctx *ctx, struct lys_ext_instance **e, un
     void **pp, **start;
     struct lys_node *siter, *snext;
 
-#define EXTCOMPLEX_FREE_STRUCT(STMT, TYPE, FUNC, FREE, ARGS...)                               \
+#define EXTCOMPLEX_FREE_STRUCT(STMT, TYPE, FUNC, FREE, ...)                                   \
     pp = lys_ext_complex_get_substmt(STMT, (struct lys_ext_instance_complex *)e[i], NULL);    \
     if (!pp || !(*pp)) { break; }                                                             \
     if (substmt[j].cardinality >= LY_STMT_CARD_SOME) { /* process array */                    \
         for (start = pp = *pp; *pp; pp++) {                                                   \
-            FUNC(ctx, (TYPE *)(*pp), ##ARGS, private_destructor);                             \
+            FUNC(ctx, (TYPE *)(*pp), ##__VA_ARGS__, private_destructor);                      \
             if (FREE) { free(*pp); }                                                          \
         }                                                                                     \
         free(start);                                                                          \
     } else { /* single item */                                                                \
-        FUNC(ctx, (TYPE *)(*pp), ##ARGS, private_destructor);                                 \
+        FUNC(ctx, (TYPE *)(*pp), ##__VA_ARGS__, private_destructor);                          \
         if (FREE) { free(*pp); }                                                              \
     }
 
