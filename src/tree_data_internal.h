@@ -31,6 +31,14 @@ struct ly_path_predicate;
 #define LYD_DEL_IS_ROOT(first, to_del) (((first) == (to_del)) && !(first)->parent && !(first)->prev->next)
 
 /**
+ * @brief Shorthand for getting data children without its keys.
+ *
+ * @param[in] node Node, whose children to traverse.
+ * @return Node children, skipping any keys of a list.
+ */
+#define LYD_CHILD(node) lyd_node_children(node, LYD_CHILDREN_SKIP_KEYS)
+
+/**
  * @brief Get address of a node's child pointer if any.
  *
  * @param[in] node Node to check.

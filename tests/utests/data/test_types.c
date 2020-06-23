@@ -1171,7 +1171,7 @@ test_leafref(void **state)
     assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
     tree = tree->prev;
     assert_int_equal(LYS_CONTAINER, tree->schema->nodetype);
-    leaf = (struct lyd_node_term*)(lyd_node_children(lyd_node_children(tree))->prev);
+    leaf = (struct lyd_node_term*)(lyd_node_children(lyd_node_children(tree, 0), 0)->prev);
     assert_int_equal(LYS_LEAF, leaf->schema->nodetype);
     assert_string_equal("lr1", leaf->schema->name);
     assert_string_equal("y", leaf->value.canonical_cache);
@@ -1183,7 +1183,7 @@ test_leafref(void **state)
     assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
     tree = tree->prev;
     assert_int_equal(LYS_CONTAINER, tree->schema->nodetype);
-    leaf = (struct lyd_node_term*)(lyd_node_children(lyd_node_children(tree)->prev->prev)->prev);
+    leaf = (struct lyd_node_term*)(lyd_node_children(lyd_node_children(tree, 0)->prev->prev, 0)->prev);
     assert_int_equal(LYS_LEAF, leaf->schema->nodetype);
     assert_string_equal("lr2", leaf->schema->name);
     assert_string_equal("y", leaf->value.canonical_cache);
@@ -1196,7 +1196,7 @@ test_leafref(void **state)
     assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
     tree = tree->prev;
     assert_int_equal(LYS_CONTAINER, tree->schema->nodetype);
-    leaf = (struct lyd_node_term*)(lyd_node_children(lyd_node_children(tree)->prev)->prev);
+    leaf = (struct lyd_node_term*)(lyd_node_children(lyd_node_children(tree, 0)->prev, 0)->prev);
     assert_int_equal(LYS_LEAF, leaf->schema->nodetype);
     assert_string_equal("lr3", leaf->schema->name);
     assert_string_equal("c", leaf->value.canonical_cache);

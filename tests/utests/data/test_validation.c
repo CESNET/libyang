@@ -490,8 +490,8 @@ test_when(void **state)
     data = "<cont xmlns=\"urn:tests:a\"><a>val</a><b>val_b</b></cont><c xmlns=\"urn:tests:a\">val_c</c>";
     assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
     assert_non_null(tree);
-    assert_string_equal("a", lyd_node_children(tree)->schema->name);
-    assert_int_equal(LYD_WHEN_TRUE, lyd_node_children(tree)->flags);
+    assert_string_equal("a", lyd_node_children(tree, 0)->schema->name);
+    assert_int_equal(LYD_WHEN_TRUE, lyd_node_children(tree, 0)->flags);
     assert_string_equal("c", tree->next->schema->name);
     assert_int_equal(LYD_WHEN_TRUE, tree->next->flags);
     lyd_free_all(tree);

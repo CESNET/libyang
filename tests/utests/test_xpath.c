@@ -231,7 +231,7 @@ test_hash(void **state)
 
     node = set->objs[0];
     assert_string_equal(node->schema->name, "l1");
-    node = lyd_node_children(node);
+    node = lyd_node_children(node, 0);
     assert_string_equal(node->schema->name, "a");
     val_str = lyd_value2str((struct lyd_node_term *)node, &dynamic);
     assert_int_equal(0, dynamic);
@@ -245,7 +245,7 @@ test_hash(void **state)
 
     node = set->objs[0];
     assert_string_equal(node->schema->name, "ll");
-    node = lyd_node_children(node);
+    node = lyd_node_children(node, 0);
     assert_string_equal(node->schema->name, "a");
     val_str = lyd_value2str((struct lyd_node_term *)node, &dynamic);
     assert_int_equal(0, dynamic);

@@ -518,7 +518,7 @@ lyd_val_uniq_find_leaf(const struct lysc_node_leaf *uniq_leaf, struct lyd_node *
 
         /* find iter instance in children */
         assert(iter->nodetype & (LYS_CONTAINER | LYS_LEAF));
-        lyd_find_sibling_val(lyd_node_children(node), iter, NULL, 0, &node);
+        lyd_find_sibling_val(lyd_node_children(node, 0), iter, NULL, 0, &node);
         --depth;
     }
 
@@ -922,11 +922,11 @@ lyd_validate_final_r(struct lyd_node *first, const struct lysc_node *sparent, co
 
     LY_LIST_FOR(first, node) {
         /* validate all children recursively */
-        LY_CHECK_RET(lyd_validate_final_r(lyd_node_children(node), node->schema, NULL, val_opts));
+        LY_CHECK_RET(lyd_validate_final_r(lyd_node_children(node, 0), node->schema, NULL, val_opts));
 
         /* set default for containers */
         if ((node->schema->nodetype == LYS_CONTAINER) && !(node->schema->flags & LYS_PRESENCE)) {
-            LY_LIST_FOR(lyd_node_children(node), next) {
+            LY_LIST_FOR(lyd_node_children(node, 0), next) {
                 if (!(next->flags & LYD_DEFAULT)) {
                     break;
                 }
@@ -1178,7 +1178,7 @@ lyd_val_op_merge_find(const struct lyd_node *op_tree, const struct lyd_node *op,
         }
 
         /* move tree_iter */
-        tree_iter = lyd_node_children(match);
+        tree_iter = lyd_node_children(match, 0);
 
         /* move depth */
         --cur_depth;
@@ -1250,7 +1250,7 @@ lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *tree, int val_o
     LY_CHECK_GOTO(ret = lyd_validate_must(op, val_opts), cleanup);
 
     /* final validation of all the descendants */
-    LY_CHECK_GOTO(ret = lyd_validate_final_r(lyd_node_children(op), op->schema, NULL, val_opts), cleanup);
+    LY_CHECK_GOTO(ret = lyd_validate_final_r(lyd_node_children(op, 0), op->schema, NULL, val_opts), cleanup);
 
 cleanup:
     /* restore operation tree */

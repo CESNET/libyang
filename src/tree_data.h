@@ -88,7 +88,7 @@ struct lysc_node;
 
 #define LYD_TREE_DFS_END(START, NEXT, ELEM) \
     /* select element for the next run - children first */ \
-    (NEXT) = lyd_node_children((struct lyd_node*)ELEM); \
+    (NEXT) = lyd_node_children((struct lyd_node*)ELEM, 0); \
     if (!(NEXT)) { \
         /* no children */ \
         if ((ELEM) == (struct lyd_node*)(START)) { \
@@ -517,13 +517,23 @@ struct lyd_node_opaq {
 //#define LYD_OPT_DATA_TEMPLATE 0x1000000 /**< Data represents YANG data template. */
 
 /**
+ * @defgroup children_options Children traversal options.
+ * @ingroup datatree
+ */
+
+#define LYD_CHILDREN_SKIP_KEYS  0x01    /**< If list children are returned, skip its keys. */
+
+/** @} children_options */
+
+/**
  * @brief Get the node's children list if any.
  *
  * Decides the node's type and in case it has a children list, returns it.
  * @param[in] node Node to check.
+ * @param[in] options Bitmask of options, see @ref
  * @return Pointer to the first child node (if any) of the \p node.
  */
-struct lyd_node *lyd_node_children(const struct lyd_node *node);
+struct lyd_node *lyd_node_children(const struct lyd_node *node, int options);
 
 /**
  * @brief Get the owner module of the data node. It is the module of the top-level schema node. Generally,
