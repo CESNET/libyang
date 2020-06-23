@@ -1875,7 +1875,7 @@ lyd_compare(const struct lyd_node *node1, const struct lyd_node *node2, int opti
             if (!(node1->schema->flags & LYS_KEYLESS) && !(options & LYD_COMPARE_FULL_RECURSION)) {
                 /* lists with keys, their equivalence is based on their keys */
                 for (struct lysc_node *key = ((struct lysc_node_list*)node1->schema)->child;
-                        key && key->nodetype == LYS_LEAF && (key->flags & LYS_KEY);
+                        key && (key->flags & LYS_KEY);
                         key = key->next) {
                     if (lyd_compare(iter1, iter2, options)) {
                         return LY_ENOT;
@@ -2051,7 +2051,7 @@ lyd_dup_recursive(const struct lyd_node *node, struct lyd_node *parent, struct l
             /* always duplicate keys of a list */
             child = orig->child;
             for (struct lysc_node *key = ((struct lysc_node_list *)dup->schema)->child;
-                    key && key->nodetype == LYS_LEAF && (key->flags & LYS_KEY);
+                    key && (key->flags & LYS_KEY);
                     key = key->next) {
                 if (!child) {
                     /* possibly not keys are present in filtered tree */
