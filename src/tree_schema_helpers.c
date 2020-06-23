@@ -1707,3 +1707,13 @@ lysc_is_output(const struct lysc_node *schema)
     }
     return 0;
 }
+
+API int
+lysc_is_userordered(const struct lysc_node *schema)
+{
+    if (!schema || !(schema->nodetype & (LYS_LEAFLIST | LYS_LIST)) || !(schema->flags & LYS_ORDBY_USER)) {
+        return 0;
+    }
+
+    return 1;
+}

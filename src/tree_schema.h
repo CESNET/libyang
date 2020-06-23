@@ -1721,6 +1721,15 @@ const struct lysc_notif *lysc_node_notifs(const struct lysc_node *node);
 const struct lysc_node *lysc_node_children(const struct lysc_node *node, uint16_t flags);
 
 /**
+ * @brief Examine whether a node is user-ordered list or leaf-list.
+ *
+ * @param[in] node Node to examine.
+ * @return non-zero if it is,
+ * @return 0 if not.
+ */
+int lysc_is_userordered(const struct lysc_node *schema);
+
+/**
  * @brief Get how the if-feature statement currently evaluates.
  *
  * @param[in] iff Compiled if-feature statement to evaluate.
