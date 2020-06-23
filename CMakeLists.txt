@@ -141,6 +141,7 @@ else()
             COMMAND ${FLEX_EXECUTABLE} -8 -L -o parser_yang_lex.c --header-file=parser_yang_lex.h yang.l
             COMMAND ${SED_TOOL} -i "s/int yychar\;/int yychar\;\\nchar *s = NULL, *tmp_s = NULL, *ext_name = NULL\;\\nstruct lys_module *trg = NULL\;\\nstruct lys_node *tpdf_parent = NULL, *data_node = NULL\;\\nstruct lys_ext_instance_complex *ext_instance = NULL\;\\nint is_ext_instance\;\\nvoid *actual = NULL\;\\nenum yytokentype backup_type, actual_type = MODULE_KEYWORD\;\\nint64_t cnt_val = 0\;\\nint is_value = 0\;\\nvoid *yang_type = NULL\;/" parser_yang_bis.c
         )
+		add_definitions(/DYY_NO_UNISTD_H)
 	else()
 	    add_custom_target(bison
             WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src
@@ -148,11 +149,7 @@ else()
             COMMAND ${FLEX_EXECUTABLE} -8 -L -o parser_yang_lex.c --header-file=parser_yang_lex.h yang.l
             COMMAND ${SED_TOOL} -i 's/int yychar\;/int yychar\;\\nchar *s = NULL, *tmp_s = NULL, *ext_name = NULL\;\\nstruct lys_module *trg = NULL\;\\nstruct lys_node *tpdf_parent = NULL, *data_node = NULL\;\\nstruct lys_ext_instance_complex *ext_instance = NULL\;\\nint is_ext_instance\;\\nvoid *actual = NULL\;\\nenum yytokentype backup_type, actual_type = MODULE_KEYWORD\;\\nint64_t cnt_val = 0\;\\nint is_value = 0\;\\nvoid *yang_type = NULL\;/' parser_yang_bis.c
         )
-	endif()	 
-    
-    if(WIN32)
-       add_definitions(/DYY_NO_UNISTD_H)
-    endif()
+	endif()	   
 endif()
 
 # by default build shared library

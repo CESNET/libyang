@@ -72,7 +72,7 @@ get_yanglint_dir(void)
     }
 
 #if defined(_WINDOWS)
-      sprintf(yl_dir, "%s\%s", user_home, YL_DIR);
+      sprintf(yl_dir, "%s\\%s", user_home, YL_DIR);
       free(user_home);
 #else
       sprintf(yl_dir, "%s/%s", user_home, YL_DIR);

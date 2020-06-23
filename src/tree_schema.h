@@ -2428,7 +2428,7 @@ enum lyxp_node_type {
  *
  * @return Set of atoms (schema nodes), NULL on error.
  */
-struct ly_set *lys_xpath_atomize(const struct lys_node *ctx_node, enum lyxp_node_type ctx_node_type,
+API_H struct ly_set *lys_xpath_atomize(const struct lys_node *ctx_node, enum lyxp_node_type ctx_node_type,
                                  const char *expr, int options);
 
 #define LYXP_MUST 0x01 /**< lys_xpath_atomize() option to apply must statement data tree access restrictions */
@@ -2441,7 +2441,7 @@ struct ly_set *lys_xpath_atomize(const struct lys_node *ctx_node, enum lyxp_node
  * @param[in] node Node to examine.
  * @param[in] options Bitmask of #LYXP_RECURSIVE and #LYXP_NO_LOCAL.
  */
-struct ly_set *lys_node_xpath_atomize(const struct lys_node *node, int options);
+API_H struct ly_set *lys_node_xpath_atomize(const struct lys_node *node, int options);
 
 #define LYXP_RECURSIVE 0x01 /**< lys_node_xpath_atomize() option to return schema node dependencies of all the expressions in the subtree */
 #define LYXP_NO_LOCAL 0x02  /**< lys_node_xpath_atomize() option to discard schema node dependencies from the local subtree */
@@ -2484,7 +2484,7 @@ API_H char *lys_data_path(const struct lys_node *node);
  * @return NULL on error, on success the buffer for the resulting path is
  *         allocated and caller is supposed to free it with free().
  */
-char *lys_data_path_pattern(const struct lys_node *node, const char *placeholder);
+API_H char *lys_data_path_pattern(const struct lys_node *node, const char *placeholder);
 
 /**
  * @brief Return parent node in the schema tree.
