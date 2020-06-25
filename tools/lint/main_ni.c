@@ -518,7 +518,7 @@ main_ni(int argc, char* argv[])
             break;
 #endif
         case 's':
-            options_parser |= LYD_OPT_STRICT;
+            options_parser |= LYD_PARSE_STRICT;
             break;
         case 't':
             if (!strcmp(optarg, "auto")) {
@@ -787,18 +787,19 @@ main_ni(int argc, char* argv[])
 
         /* prepare operational datastore when specified for RPC/Notification */
         if (oper_file) {
-            /* get the file format */
-            if (!get_fileformat(oper_file, NULL, &informat_d)) {
-                goto cleanup;
-            } else if (!informat_d) {
-                fprintf(stderr, "yanglint error: The operational data are expected in XML or JSON format.\n");
+            struct ly_in *in;
+            tree = NULL;
+
+            if (ly_in_new_filepath(oper_file, 0, &in)) {
+                fprintf(stderr, "yanglint error: Unable to open an operational data file \"%s\".\n", oper_file);
                 goto cleanup;
             }
-            tree = lyd_parse_path(ctx, oper_file, informat_d, LYD_OPT_PARSE_ONLY);
-            if (!tree) {
+            if (lyd_parse_data(ctx, in, 0, LYD_PARSE_ONLY, 0, &tree) || !tree) {
                 fprintf(stderr, "yanglint error: Failed to parse the operational datastore file for RPC/Notification validation.\n");
+                ly_in_free(in, 0);
                 goto cleanup;
             }
+            ly_in_free(in, 0);
         }
 
         for (data_item = data, data_prev = NULL; data_item; data_prev = data_item, data_item = data_item->next) {
@@ -964,10 +965,18 @@ parse_reply:
 #else
             {
 #endif
-                data_item->tree = lyd_parse_path(ctx, data_item->filename, data_item->format, options_parser);
-            }
-            if (ly_err_first(ctx)) {
-                goto cleanup;
+                /* TODO optimize use of ly_in in the loop */
+                struct ly_in *in;
+                if (ly_in_new_filepath(data_item->filename, 0, &in)) {
+                    fprintf(stderr, "yanglint error: input data file \"%s\".\n", data_item->filename);
+                    goto cleanup;
+                }
+                if (lyd_parse_data(ctx, in, 0, options_parser, 0, &data_item->tree)) {
+                    fprintf(stderr, "yanglint error: Failed to parse input data file \"%s\".\n", data_item->filename);
+                    ly_in_free(in, 0);
+                    goto cleanup;
+                }
+                ly_in_free(in, 0);
             }
 #if 0
             if (merge && data != data_item) {
@@ -1058,7 +1067,7 @@ parse_reply:
                     }
                 }
 #endif
-                lyd_print(out, data_item->tree, outformat_d, LYDP_WITHSIBLINGS | LYDP_FORMAT /* TODO defaults | options_dflt */);
+                lyd_print(out, data_item->tree, outformat_d, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_FORMAT /* TODO defaults | options_dflt */);
 #if 0
                 if (envelope_s) {
                     if (data_item->type == LYD_OPT_RPC && data_item->tree->schema->nodetype != LYS_RPC) {

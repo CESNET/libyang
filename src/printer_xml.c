@@ -22,6 +22,7 @@
 #include "context.h"
 #include "dict.h"
 #include "log.h"
+#include "parser_data.h"
 #include "plugins_types.h"
 #include "printer.h"
 #include "printer_data.h"
@@ -142,8 +143,8 @@ xml_print_meta(struct xmlpr_ctx *ctx, const struct lyd_node *node)
 
     /* with-defaults */
     if (node->schema->nodetype & LYD_NODE_TERM) {
-        if (((node->flags & LYD_DEFAULT) && (ctx->options & (LYDP_WD_ALL_TAG | LYDP_WD_IMPL_TAG))) ||
-                ((ctx->options & LYDP_WD_ALL_TAG) && ly_is_default(node))) {
+        if (((node->flags & LYD_DEFAULT) && (ctx->options & (LYD_PRINT_WD_ALL_TAG | LYD_PRINT_WD_IMPL_TAG))) ||
+                ((ctx->options & LYD_PRINT_WD_ALL_TAG) && ly_is_default(node))) {
             /* we have implicit OR explicit default node, print attribute only if context include with-defaults schema */
             mod = ly_ctx_get_module_latest(node->schema->module->ctx, "ietf-netconf-with-defaults");
             if (mod) {
@@ -382,22 +383,22 @@ no_content:
             prev_lo = ly_log_options(0);
 
             /* try to parse it into a data tree */
-            iter = lyd_parse_mem((struct ly_ctx *)LYD_NODE_CTX(node), any->value.mem, LYD_LYB,
-                                 LYD_OPT_PARSE_ONLY | LYD_OPT_OPAQ | LYD_OPT_STRICT);
-            ly_log_options(prev_lo);
-            if (!ly_errcode(LYD_NODE_CTX(node))) {
+            if (lyd_parse_data_mem((struct ly_ctx *)LYD_NODE_CTX(node), any->value.mem, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_OPAQ | LYD_PARSE_STRICT, 0, &iter) == LY_SUCCESS) {
                 /* successfully parsed */
                 free(any->value.mem);
                 any->value.tree = iter;
                 any->value_type = LYD_ANYDATA_DATATREE;
             }
+
+            /* turn loggin on again */
+            ly_log_options(prev_lo);
         }
 
         switch (any->value_type) {
         case LYD_ANYDATA_DATATREE:
             /* close opening tag and print data */
             prev_opts = ctx->options;
-            ctx->options &= ~LYDP_WITHSIBLINGS;
+            ctx->options &= ~LYD_PRINT_WITHSIBLINGS;
             LEVEL_INC;
 
             ly_print(ctx->out, ">%s", LEVEL ? "\n" : "");
@@ -558,14 +559,14 @@ xml_print_data(struct ly_out *out, const struct lyd_node *root, int options)
     }
 
     ctx.out = out;
-    ctx.level = (options & LYDP_FORMAT ? 1 : 0);
+    ctx.level = (options & LYD_PRINT_FORMAT ? 1 : 0);
     ctx.options = options;
     ctx.ctx = LYD_NODE_CTX(root);
 
     /* content */
     LY_LIST_FOR(root, node) {
         LY_CHECK_RET(xml_print_node(&ctx, node));
-        if (!(options & LYDP_WITHSIBLINGS)) {
+        if (!(options & LYD_PRINT_WITHSIBLINGS)) {
             break;
         }
     }

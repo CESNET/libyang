@@ -1652,7 +1652,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LYD_FORMAT format, ly_cl
                 }
             }
         }
-    } else { /* LYD_JSON */
+    } else if (format == LYD_JSON) {
         /* only the first node or the node changing module is prefixed */
         struct lys_module *mod = NULL;
         LY_ARRAY_FOR(value->target, u) {
@@ -1704,6 +1704,10 @@ ly_type_print_instanceid(const struct lyd_value *value, LYD_FORMAT format, ly_cl
                 }
             }
         }
+    } else {
+        /* not supported format */
+        free(result);
+        return NULL;
     }
 
     *dynamic = 1;

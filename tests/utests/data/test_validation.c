@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include "context.h"
+#include "parser_data.h"
 #include "printer.h"
 #include "printer_data.h"
 #include "tests/config.h"
@@ -476,19 +477,19 @@ test_when(void **state)
     struct lyd_node *tree;
 
     data = "<c xmlns=\"urn:tests:a\">hey</c>";
-    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("When condition \"/cont/b = 'val_b'\" not satisfied. /a:c");
 
     data = "<cont xmlns=\"urn:tests:a\"><b>val_b</b></cont><c xmlns=\"urn:tests:a\">hey</c>";
-    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
     assert_string_equal("c", tree->next->schema->name);
     assert_int_equal(LYD_WHEN_TRUE, tree->next->flags);
     lyd_free_all(tree);
 
     data = "<cont xmlns=\"urn:tests:a\"><a>val</a><b>val_b</b></cont><c xmlns=\"urn:tests:a\">val_c</c>";
-    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
     assert_string_equal("a", lyd_node_children(tree, 0)->schema->name);
     assert_int_equal(LYD_WHEN_TRUE, lyd_node_children(tree, 0)->flags);
@@ -508,22 +509,22 @@ test_mandatory(void **state)
     struct lyd_node *tree;
 
     data = "<d xmlns=\"urn:tests:b\"/>";
-    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("Mandatory node \"choic\" instance does not exist. /b:choic");
 
     data = "<l xmlns=\"urn:tests:b\">string</l><d xmlns=\"urn:tests:b\"/>";
-    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("Mandatory node \"c\" instance does not exist. /b:c");
 
     data = "<a xmlns=\"urn:tests:b\">string</a>";
-    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("Mandatory node \"c\" instance does not exist. /b:c");
 
     data = "<a xmlns=\"urn:tests:b\">string</a><c xmlns=\"urn:tests:b\">string2</c>";
-    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
     lyd_free_siblings(tree);
 
@@ -539,14 +540,14 @@ test_minmax(void **state)
     struct lyd_node *tree;
 
     data = "<d xmlns=\"urn:tests:c\"/>";
-    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("Too few \"l\" instances. /c:choic/b/l");
 
     data =
     "<l xmlns=\"urn:tests:c\">val1</l>"
     "<l xmlns=\"urn:tests:c\">val2</l>";
-    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("Too few \"l\" instances. /c:choic/b/l");
 
@@ -554,7 +555,7 @@ test_minmax(void **state)
     "<l xmlns=\"urn:tests:c\">val1</l>"
     "<l xmlns=\"urn:tests:c\">val2</l>"
     "<l xmlns=\"urn:tests:c\">val3</l>";
-    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
     lyd_free_siblings(tree);
 
@@ -567,7 +568,7 @@ test_minmax(void **state)
     "<lt xmlns=\"urn:tests:c\"><k>val3</k></lt>"
     "<lt xmlns=\"urn:tests:c\"><k>val4</k></lt>"
     "<lt xmlns=\"urn:tests:c\"><k>val5</k></lt>";
-    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("Too many \"lt\" instances. /c:lt");
 
@@ -590,7 +591,7 @@ test_unique(void **state)
     "<lt xmlns=\"urn:tests:d\">"
         "<k>val2</k>"
     "</lt>";
-    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
     lyd_free_siblings(tree);
 
@@ -603,7 +604,7 @@ test_unique(void **state)
         "<k>val2</k>"
         "<l1>not-same</l1>"
     "</lt>";
-    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
     lyd_free_siblings(tree);
 
@@ -616,7 +617,7 @@ test_unique(void **state)
         "<k>val2</k>"
         "<l1>same</l1>"
     "</lt>";
-    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("Unique data leaf(s) \"l1\" not satisfied in \"/d:lt[k='val1']\" and \"/d:lt[k='val2']\". /d:lt[k='val2']");
 
@@ -654,7 +655,7 @@ test_unique(void **state)
         "<k>val8</k>"
         "<l1>8</l1>"
     "</lt>";
-    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
     lyd_free_siblings(tree);
 
@@ -688,7 +689,7 @@ test_unique(void **state)
     "<lt xmlns=\"urn:tests:d\">"
         "<k>val8</k>"
     "</lt>";
-    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
     lyd_free_siblings(tree);
 
@@ -722,7 +723,7 @@ test_unique(void **state)
         "<k>val8</k>"
         "<l1>8</l1>"
     "</lt>";
-    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("Unique data leaf(s) \"l1\" not satisfied in \"/d:lt[k='val7']\" and \"/d:lt[k='val2']\". /d:lt[k='val2']");
 
@@ -794,7 +795,7 @@ test_unique_nested(void **state)
             "<l3>3</l3>"
         "</lt3>"
     "</lt2>";
-    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY | LYD_OPT_STRICT, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
     lyd_free_siblings(tree);
 
@@ -855,7 +856,7 @@ test_unique_nested(void **state)
             "<l3>3</l3>"
         "</lt3>"
     "</lt2>";
-    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("Unique data leaf(s) \"l3\" not satisfied in \"/d:lt2[k='val2']/lt3[kk='val3']\" and"
                   " \"/d:lt2[k='val2']/lt3[kk='val1']\". /d:lt2[k='val2']/lt3[kk='val1']");
@@ -896,7 +897,7 @@ test_unique_nested(void **state)
         "</cont>"
         "<l4>5</l4>"
     "</lt2>";
-    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("Unique data leaf(s) \"cont/l2 l4\" not satisfied in \"/d:lt2[k='val4']\" and \"/d:lt2[k='val2']\". /d:lt2[k='val2']");
 
@@ -944,7 +945,7 @@ test_unique_nested(void **state)
         "<l5>3</l5>"
         "<l6>3</l6>"
     "</lt2>";
-    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("Unique data leaf(s) \"l5 l6\" not satisfied in \"/d:lt2[k='val5']\" and \"/d:lt2[k='val3']\". /d:lt2[k='val3']");
 
@@ -960,51 +961,51 @@ test_dup(void **state)
     struct lyd_node *tree;
 
     data = "<d xmlns=\"urn:tests:e\">25</d><d xmlns=\"urn:tests:e\">50</d>";
-    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("Duplicate instance of \"d\". /e:d");
 
     data = "<lt xmlns=\"urn:tests:e\"><k>A</k></lt><lt xmlns=\"urn:tests:e\"><k>B</k></lt><lt xmlns=\"urn:tests:e\"><k>A</k></lt>";
-    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("Duplicate instance of \"lt\". /e:lt[k='A']");
 
     data = "<ll xmlns=\"urn:tests:e\">A</ll><ll xmlns=\"urn:tests:e\">B</ll><ll xmlns=\"urn:tests:e\">B</ll>";
-    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("Duplicate instance of \"ll\". /e:ll[.='B']");
 
     data = "<cont xmlns=\"urn:tests:e\"></cont><cont xmlns=\"urn:tests:e\"/>";
-    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("Duplicate instance of \"cont\". /e:cont");
 
     /* same tests again but using hashes */
     data = "<cont xmlns=\"urn:tests:e\"><d>25</d><d>50</d><ll>1</ll><ll>2</ll><ll>3</ll><ll>4</ll></cont>";
-    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("Duplicate instance of \"d\". /e:cont/d");
 
     data = "<cont xmlns=\"urn:tests:e\"><ll>1</ll><ll>2</ll><ll>3</ll><ll>4</ll>"
         "<lt><k>a</k></lt><lt><k>b</k></lt><lt><k>c</k></lt><lt><k>d</k></lt><lt><k>c</k></lt></cont>";
-    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("Duplicate instance of \"lt\". /e:cont/lt[k='c']");
 
     data = "<cont xmlns=\"urn:tests:e\"><ll>1</ll><ll>2</ll><ll>3</ll><ll>4</ll>"
         "<ll>a</ll><ll>b</ll><ll>c</ll><ll>d</ll><ll>d</ll></cont>";
-    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("Duplicate instance of \"ll\". /e:cont/ll[.='d']");
 
     /* cases */
     data = "<l xmlns=\"urn:tests:e\">a</l><l xmlns=\"urn:tests:e\">b</l><l xmlns=\"urn:tests:e\">c</l><l xmlns=\"urn:tests:e\">b</l>";
-    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("Duplicate instance of \"l\". /e:l[.='b']");
 
     data = "<l xmlns=\"urn:tests:e\">a</l><l xmlns=\"urn:tests:e\">b</l><l xmlns=\"urn:tests:e\">c</l><a xmlns=\"urn:tests:e\">aa</a>";
-    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("Data for both cases \"a\" and \"b\" exist. /e:choic");
 
@@ -1029,7 +1030,7 @@ test_defaults(void **state)
     assert_non_null(tree);
 
     /* check all defaults exist */
-    lyd_print(out, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG);
+    lyd_print(out, tree, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_IMPL_TAG);
     assert_string_equal(str,
         "<ll1 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def1</ll1>"
         "<ll1 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def2</ll1>"
@@ -1051,10 +1052,10 @@ test_defaults(void **state)
     node = lyd_new_term(NULL, mod, "l", "value");
     assert_non_null(node);
     assert_int_equal(lyd_insert_sibling(tree, node), LY_SUCCESS);
-    assert_int_equal(lyd_validate(&tree, ctx, LYD_VALOPT_DATA_ONLY), LY_SUCCESS);
+    assert_int_equal(lyd_validate(&tree, ctx, LYD_VALIDATE_PRESENT), LY_SUCCESS);
 
     /* check data tree */
-    lyd_print(out, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG);
+    lyd_print(out, tree, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_IMPL_TAG);
     assert_string_equal(str,
         "<d xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">15</d>"
         "<ll2 xmlns=\"urn:tests:f\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">dflt1</ll2>"
@@ -1077,10 +1078,10 @@ test_defaults(void **state)
     node = lyd_new_term(NULL, mod, "ll2", "dflt2");
     assert_non_null(node);
     assert_int_equal(lyd_insert_sibling(tree, node), LY_SUCCESS);
-    assert_int_equal(lyd_validate(&tree, ctx, LYD_VALOPT_DATA_ONLY), LY_SUCCESS);
+    assert_int_equal(lyd_validate(&tree, ctx, LYD_VALIDATE_PRESENT), LY_SUCCESS);
 
     /* check data tree */
-    lyd_print(out, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG);
+    lyd_print(out, tree, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_IMPL_TAG);
     assert_string_equal(str,
         "<cont xmlns=\"urn:tests:f\">"
             "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def1</ll1>"
@@ -1100,10 +1101,10 @@ test_defaults(void **state)
     assert_non_null(node);
     assert_int_equal(lyd_insert_before(tree, node), LY_SUCCESS);
     tree = tree->prev;
-    assert_int_equal(lyd_validate(&tree, ctx, LYD_VALOPT_DATA_ONLY), LY_SUCCESS);
+    assert_int_equal(lyd_validate(&tree, ctx, LYD_VALIDATE_PRESENT), LY_SUCCESS);
 
     /* check data tree */
-    lyd_print(out, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG);
+    lyd_print(out, tree, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_IMPL_TAG);
     assert_string_equal(str,
         "<cont xmlns=\"urn:tests:f\">"
             "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def1</ll1>"
@@ -1122,10 +1123,10 @@ test_defaults(void **state)
     node = lyd_new_inner(NULL, mod, "cont");
     assert_non_null(node);
     assert_int_equal(lyd_insert_after(tree, node), LY_SUCCESS);
-    assert_int_equal(lyd_validate(&tree, ctx, LYD_VALOPT_DATA_ONLY), LY_SUCCESS);
+    assert_int_equal(lyd_validate(&tree, ctx, LYD_VALIDATE_PRESENT), LY_SUCCESS);
 
     /* check data tree */
-    lyd_print(out, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG);
+    lyd_print(out, tree, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_IMPL_TAG);
     assert_string_equal(str,
         "<cont xmlns=\"urn:tests:f\">"
             "<ll1 xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\" ncwd:default=\"true\">def1</ll1>"
@@ -1144,10 +1145,10 @@ test_defaults(void **state)
     assert_non_null(lyd_new_term(tree, NULL, "ll1", "def3"));
     assert_non_null(lyd_new_term(tree, NULL, "d", "5"));
     assert_non_null(lyd_new_term(tree, NULL, "ll2", "non-dflt"));
-    assert_int_equal(lyd_validate(&tree, ctx, LYD_VALOPT_DATA_ONLY), LY_SUCCESS);
+    assert_int_equal(lyd_validate(&tree, ctx, LYD_VALIDATE_PRESENT), LY_SUCCESS);
 
     /* check data tree */
-    lyd_print(out, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG);
+    lyd_print(out, tree, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_IMPL_TAG);
     assert_string_equal(str,
         "<cont xmlns=\"urn:tests:f\">"
             "<ll1>def3</ll1>"
@@ -1184,7 +1185,7 @@ test_iffeature(void **state)
     "<cont xmlns=\"urn:tests:g\">"
         "<d>51</d>"
     "</cont>";
-    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("Data are disabled by \"cont\" schema node if-feature. /g:cont");
 
@@ -1203,7 +1204,7 @@ test_iffeature(void **state)
             "<e>val</e>"
         "</cont2>"
     "</cont>";
-    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("Data are disabled by \"cont2\" schema node if-feature. /g:cont/cont2");
 
@@ -1211,14 +1212,14 @@ test_iffeature(void **state)
     "<cont xmlns=\"urn:tests:g\">"
         "<a>val</a>"
     "</cont>";
-    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("Data are disabled by \"choic\" schema node if-feature. /g:cont/a");
 
     /* enable f3 */
     assert_int_equal(lys_feature_enable(mod, "f3"), LY_SUCCESS);
 
-    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
     lyd_free_siblings(tree);
 
@@ -1227,14 +1228,14 @@ test_iffeature(void **state)
     "<cont xmlns=\"urn:tests:g\">"
         "<l>val</l>"
     "</cont>";
-    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("Data are disabled by \"b\" schema node if-feature. /g:cont/l");
 
     /* enable f2 */
     assert_int_equal(lys_feature_enable(mod, "f2"), LY_SUCCESS);
 
-    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
     lyd_free_siblings(tree);
 
@@ -1251,20 +1252,20 @@ test_iffeature(void **state)
             "<e>val</e>"
         "</cont2>"
     "</cont>";
-    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_OPT_PARSE_ONLY, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_PARSE_ONLY, 0, &tree));
     assert_non_null(tree);
 
-    assert_int_equal(LY_EVALID, lyd_validate(&tree, NULL, LYD_VALOPT_DATA_ONLY));
+    assert_int_equal(LY_EVALID, lyd_validate(&tree, NULL, LYD_VALIDATE_PRESENT));
     logbuf_assert("Data are disabled by \"cont\" schema node if-feature. /g:cont");
 
     assert_int_equal(lys_feature_enable(mod, "f1"), LY_SUCCESS);
 
-    assert_int_equal(LY_EVALID, lyd_validate(&tree, NULL, LYD_VALOPT_DATA_ONLY));
+    assert_int_equal(LY_EVALID, lyd_validate(&tree, NULL, LYD_VALIDATE_PRESENT));
     logbuf_assert("Data are disabled by \"b\" schema node if-feature. /g:cont/l");
 
     assert_int_equal(lys_feature_enable(mod, "f2"), LY_SUCCESS);
 
-    assert_int_equal(LY_SUCCESS, lyd_validate(&tree, NULL, LYD_VALOPT_DATA_ONLY));
+    assert_int_equal(LY_SUCCESS, lyd_validate(&tree, NULL, LYD_VALIDATE_PRESENT));
 
     lyd_free_siblings(tree);
 
@@ -1285,18 +1286,18 @@ test_state(void **state)
             "<l>val</l>"
         "</cont2>"
     "</cont>";
-    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_OPT_PARSE_ONLY | LYD_OPT_NO_STATE, &tree));
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_PARSE_ONLY | LYD_PARSE_NO_STATE, 0, &tree));
     assert_null(tree);
     logbuf_assert("Invalid state data node \"cont2\" found. Line number 1.");
 
-    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY | LYD_VALOPT_NO_STATE, &tree));
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT | LYD_VALIDATE_NO_STATE, &tree));
     assert_null(tree);
     logbuf_assert("Invalid state data node \"cont2\" found. /h:cont/cont2");
 
-    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_OPT_PARSE_ONLY, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_PARSE_ONLY, 0, &tree));
     assert_non_null(tree);
 
-    assert_int_equal(LY_EVALID, lyd_validate(&tree, NULL, LYD_VALOPT_DATA_ONLY | LYD_VALOPT_NO_STATE));
+    assert_int_equal(LY_EVALID, lyd_validate(&tree, NULL, LYD_VALIDATE_PRESENT | LYD_VALIDATE_NO_STATE));
     logbuf_assert("Invalid state data node \"cont2\" found. /h:cont/cont2");
 
     lyd_free_siblings(tree);
@@ -1317,7 +1318,7 @@ test_must(void **state)
         "<l>wrong</l>"
         "<l2>val</l2>"
     "</cont>";
-    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_EVALID, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_null(tree);
     logbuf_assert("Must condition \"../l = 'right'\" not satisfied. /i:cont/l2");
 
@@ -1326,7 +1327,7 @@ test_must(void **state)
         "<l>right</l>"
         "<l2>val</l2>"
     "</cont>";
-    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_VALOPT_DATA_ONLY, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
     lyd_free_tree(tree);
 
@@ -1355,7 +1356,7 @@ test_action(void **state)
     assert_non_null(op_tree);
 
     /* missing leafref */
-    assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, NULL, LYD_VALOPT_INPUT));
+    assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, NULL, LYD_VALIDATE_OP_RPC));
     logbuf_assert("Invalid leafref value \"target\" - no target instance \"/lf3\" with the same value."
         " /j:cont/l1[k='val1']/act/lf2");
 
@@ -1364,11 +1365,11 @@ test_action(void **state)
         "<lf1>not true</lf1>"
     "</cont>"
     "<lf3 xmlns=\"urn:tests:j\">target</lf3>";
-    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_OPT_PARSE_ONLY | LYD_OPT_TRUSTED, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_PARSE_ONLY | LYD_PARSE_TRUSTED, 0, &tree));
     assert_non_null(tree);
 
     /* disabled if-feature */
-    assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, tree, LYD_VALOPT_INPUT));
+    assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, tree, LYD_VALIDATE_OP_RPC));
     logbuf_assert("Data are disabled by \"act\" schema node if-feature. /j:cont/l1[k='val1']/act");
 
     mod = ly_ctx_get_module_latest(ctx, "j");
@@ -1376,7 +1377,7 @@ test_action(void **state)
     assert_int_equal(LY_SUCCESS, lys_feature_enable(mod, "feat1"));
 
     /* input must false */
-    assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, tree, LYD_VALOPT_INPUT));
+    assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, tree, LYD_VALIDATE_OP_RPC));
     logbuf_assert("Must condition \"../../lf1 = 'true'\" not satisfied. /j:cont/l1[k='val1']/act");
 
     lyd_free_siblings(tree);
@@ -1385,11 +1386,11 @@ test_action(void **state)
         "<lf1>true</lf1>"
     "</cont>"
     "<lf3 xmlns=\"urn:tests:j\">target</lf3>";
-    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_OPT_PARSE_ONLY | LYD_OPT_TRUSTED, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_PARSE_ONLY | LYD_PARSE_TRUSTED, 0, &tree));
     assert_non_null(tree);
 
     /* success */
-    assert_int_equal(LY_SUCCESS, lyd_validate_op(op_tree, tree, LYD_VALOPT_INPUT));
+    assert_int_equal(LY_SUCCESS, lyd_validate_op(op_tree, tree, LYD_VALIDATE_OP_RPC));
 
     lys_feature_disable(mod, "feat1");
     lyd_free_tree(op_tree);
@@ -1424,7 +1425,7 @@ test_reply(void **state)
     assert_non_null(op_tree);
 
     /* missing leafref */
-    assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, NULL, LYD_VALOPT_OUTPUT));
+    assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, NULL, LYD_VALIDATE_OP_REPLY));
     logbuf_assert("Invalid leafref value \"target\" - no target instance \"/lf4\" with the same value."
         " /j:cont/l1[k='val1']/act/lf2");
 
@@ -1433,11 +1434,11 @@ test_reply(void **state)
         "<lf1>not true</lf1>"
     "</cont>"
     "<lf4 xmlns=\"urn:tests:j\">target</lf4>";
-    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_OPT_PARSE_ONLY | LYD_OPT_TRUSTED, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_PARSE_ONLY | LYD_PARSE_TRUSTED, 0, &tree));
     assert_non_null(tree);
 
     /* disabled if-feature */
-    assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, tree, LYD_VALOPT_OUTPUT));
+    assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, tree, LYD_VALIDATE_OP_REPLY));
     logbuf_assert("Data are disabled by \"act\" schema node if-feature. /j:cont/l1[k='val1']/act");
 
     mod = ly_ctx_get_module_latest(ctx, "j");
@@ -1445,7 +1446,7 @@ test_reply(void **state)
     assert_int_equal(LY_SUCCESS, lys_feature_enable(mod, "feat1"));
 
     /* input must false */
-    assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, tree, LYD_VALOPT_OUTPUT));
+    assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, tree, LYD_VALIDATE_OP_REPLY));
     logbuf_assert("Must condition \"../../lf1 = 'true2'\" not satisfied. /j:cont/l1[k='val1']/act");
 
     lyd_free_siblings(tree);
@@ -1454,11 +1455,11 @@ test_reply(void **state)
         "<lf1>true2</lf1>"
     "</cont>"
     "<lf4 xmlns=\"urn:tests:j\">target</lf4>";
-    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_OPT_PARSE_ONLY | LYD_OPT_TRUSTED, &tree));
+    assert_int_equal(LY_SUCCESS, lyd_parse_xml_data(ctx, data, LYD_PARSE_ONLY | LYD_PARSE_TRUSTED, 0, &tree));
     assert_non_null(tree);
 
     /* success */
-    assert_int_equal(LY_SUCCESS, lyd_validate_op(op_tree, tree, LYD_VALOPT_OUTPUT));
+    assert_int_equal(LY_SUCCESS, lyd_validate_op(op_tree, tree, LYD_VALIDATE_OP_REPLY));
 
     lys_feature_disable(mod, "feat1");
     lyd_free_tree(op_tree);

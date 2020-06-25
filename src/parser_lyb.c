@@ -25,6 +25,8 @@
 #include "context.h"
 #include "dict.h"
 #include "log.h"
+#include "parser_data.h"
+#include "parser_internal.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_data_internal.h"
@@ -272,7 +274,7 @@ lyb_parse_model(struct lyd_lyb_ctx *lybctx, const struct lys_module **mod)
     if (rev) {
         sprintf(mod_rev, "%04u-%02u-%02u", ((rev & 0xFE00) >> 9) + 2000, (rev & 0x01E0) >> 5, rev & 0x001Fu);
         *mod = ly_ctx_get_module(lybctx->ctx, mod_name, mod_rev);
-        if ((lybctx->options & LYD_OPT_LYB_MOD_UPDATE) && !(*mod)) {
+        if ((lybctx->parse_options & LYD_PARSE_LYB_MOD_UPDATE) && !(*mod)) {
             /* try to use an updated module */
             *mod = ly_ctx_get_module_implemented(lybctx->ctx, mod_name);
             if (*mod && (!(*mod)->revision || (strcmp((*mod)->revision, mod_rev) < 0))) {
@@ -293,7 +295,7 @@ lyb_parse_model(struct lyd_lyb_ctx *lybctx, const struct lys_module **mod)
     }*/
 
     if (!*mod || !(*mod)->implemented) {
-        if (lybctx->options & LYD_OPT_STRICT) {
+        if (lybctx->parse_options & LYD_PARSE_STRICT) {
             if (!*mod) {
                 LOGERR(lybctx->ctx, LY_EINVAL, "Invalid context for LYB data parsing, missing module \"%s%s%s\".",
                     mod_name, rev ? "@" : "", rev ? mod_rev : "");
@@ -571,7 +573,7 @@ lyb_parse_check_schema(struct lyd_lyb_ctx *lybctx, const struct lysc_node *snode
 {
     LY_ERR ret = LY_SUCCESS;
 
-    if ((lybctx->options & LYD_OPT_NO_STATE) && (snode->flags & LYS_CONFIG_R)) {
+    if ((lybctx->parse_options & LYD_PARSE_NO_STATE) && (snode->flags & LYS_CONFIG_R)) {
         LOGVAL(lybctx->ctx, LY_VLOG_LYSC, snode, LY_VCODE_INNODE, "state", snode->name);
         return LY_EVALID;
     }
@@ -669,7 +671,7 @@ lyb_parse_schema_hash(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparen
         }
     }
 
-    if (!sibling && (lybctx->options & LYD_OPT_STRICT)) {
+    if (!sibling && (lybctx->parse_options & LYD_PARSE_STRICT)) {
         if (mod) {
             LOGVAL(lybctx->ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "Failed to find matching hash for a top-level node"
                    " from \"%s\".", mod->name);
@@ -748,7 +750,7 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node_inner *parent, s
         LY_CHECK_GOTO(ret, cleanup);
     }
 
-     if (!snode && !(lybctx->options & LYD_OPT_OPAQ)) {
+     if (!snode && !(lybctx->parse_options & LYD_PARSE_OPAQ)) {
         /* unknown data, skip them */
         lyb_skip_subtree(lybctx);
         goto stop_subtree;
@@ -812,7 +814,7 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node_inner *parent, s
         }
         value = NULL;
         if (ret == LY_EINCOMPLETE) {
-            if (!(lybctx->options & LYD_OPT_PARSE_ONLY)) {
+            if (!(lybctx->parse_options & LYD_PARSE_ONLY)) {
                 ly_set_add(&lybctx->unres_node_type, node, LY_SET_OPT_USEASLIST);
             }
             ret = LY_SUCCESS;
@@ -830,14 +832,14 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node_inner *parent, s
             LY_CHECK_GOTO(ret, cleanup);
         }
 
-        if (!(lybctx->options & LYD_OPT_PARSE_ONLY)) {
+        if (!(lybctx->parse_options & LYD_PARSE_ONLY)) {
             /* new node validation, autodelete CANNOT occur, all nodes are new */
             ret = lyd_validate_new(lyd_node_children_p(node), snode, NULL);
             LY_CHECK_GOTO(ret, cleanup);
 
             /* add any missing default children */
             ret = lyd_validate_defaults_r((struct lyd_node_inner *)node, lyd_node_children_p(node), NULL, NULL,
-                                          &lybctx->unres_node_type, &lybctx->when_check, lybctx->options);
+                                          &lybctx->unres_node_type, &lybctx->when_check, lybctx->validate_options);
             LY_CHECK_GOTO(ret, cleanup);
         }
 
@@ -867,15 +869,15 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node_inner *parent, s
             prev_lo = ly_log_options(0);
 
             /* try to parse LYB into a data tree */
-            tree = lyd_parse_mem((struct ly_ctx *)lybctx->ctx, value, LYD_LYB,
-                                 LYD_OPT_PARSE_ONLY | LYD_OPT_OPAQ | LYD_OPT_STRICT);
-            ly_log_options(prev_lo);
-            if (!ly_errcode(lybctx->ctx)) {
+            if (lyd_parse_data_mem((struct ly_ctx *)lybctx->ctx, value, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_OPAQ | LYD_PARSE_STRICT, 0, &tree) == LY_SUCCESS) {
                 /* successfully parsed */
                 free(value);
                 value = (char *)tree;
                 value_type = LYD_ANYDATA_DATATREE;
             }
+
+            /* turn logging on again */
+            ly_log_options(prev_lo);
         }
 
         /* create node */
@@ -889,7 +891,7 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node_inner *parent, s
 
     /* add/correct flags */
     if (snode) {
-        lyd_parse_set_data_flags(node, &lybctx->when_check, &meta, lybctx->options);
+        lyd_parse_set_data_flags(node, &lybctx->when_check, &meta, lybctx->parse_options);
     }
 
     /* add metadata/attributes */
@@ -1018,16 +1020,20 @@ lyb_parse_header(struct lyd_lyb_ctx *lybctx)
 }
 
 LY_ERR
-lyd_parse_lyb_data(struct ly_ctx *ctx, const char *data, int options, struct lyd_node **tree, int *parsed_bytes)
+lyd_parse_lyb_data(const struct ly_ctx *ctx, const char *data, int parse_options, int validate_options, struct lyd_node **tree, int *parsed_bytes)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_lyb_ctx lybctx = {0};
+
+    assert(!(parse_options & ~LYD_PARSE_OPTS_MASK));
+    assert(!(validate_options & ~LYD_VALIDATE_OPTS_MASK));
 
     *tree = NULL;
 
     lybctx.data = data;
     lybctx.ctx = ctx;
-    lybctx.options = options;
+    lybctx.parse_options = parse_options;
+    lybctx.validate_options = validate_options;
 
     /* read magic number */
     ret = lyb_parse_magic_number(&lybctx);
@@ -1071,14 +1077,14 @@ cleanup:
 }
 
 LY_ERR
-lyd_parse_lyb_rpc(struct ly_ctx *ctx, const char *data, struct lyd_node **tree, struct lyd_node **op, int *parsed_bytes)
+lyd_parse_lyb_rpc(const struct ly_ctx *ctx, const char *data, struct lyd_node **tree, struct lyd_node **op, int *parsed_bytes)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_lyb_ctx lybctx = {0};
 
     lybctx.data = data;
     lybctx.ctx = ctx;
-    lybctx.options = LYD_OPT_PARSE_ONLY | LYD_OPT_STRICT;
+    lybctx.parse_options = LYD_PARSE_ONLY | LYD_PARSE_STRICT;
     lybctx.int_opts = LYD_INTOPT_RPC;
 
     *tree = NULL;
@@ -1136,14 +1142,14 @@ cleanup:
 }
 
 LY_ERR
-lyd_parse_lyb_notif(struct ly_ctx *ctx, const char *data, struct lyd_node **tree, struct lyd_node **ntf, int *parsed_bytes)
+lyd_parse_lyb_notif(const struct ly_ctx *ctx, const char *data, struct lyd_node **tree, struct lyd_node **ntf, int *parsed_bytes)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_lyb_ctx lybctx = {0};
 
     lybctx.data = data;
     lybctx.ctx = ctx;
-    lybctx.options = LYD_OPT_PARSE_ONLY | LYD_OPT_STRICT;
+    lybctx.parse_options = LYD_PARSE_ONLY | LYD_PARSE_STRICT;
     lybctx.int_opts = LYD_INTOPT_NOTIF;
 
     *tree = NULL;
@@ -1201,7 +1207,7 @@ cleanup:
 }
 
 LY_ERR
-lyd_parse_lyb_reply(struct lyd_node *request, const char *data, struct lyd_node **tree, struct lyd_node **op,
+lyd_parse_lyb_reply(const struct lyd_node *request, const char *data, struct lyd_node **tree, struct lyd_node **op,
                     int *parsed_bytes)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -1210,7 +1216,7 @@ lyd_parse_lyb_reply(struct lyd_node *request, const char *data, struct lyd_node 
 
     lybctx.data = data;
     lybctx.ctx = LYD_NODE_CTX(request);
-    lybctx.options = LYD_OPT_PARSE_ONLY | LYD_OPT_STRICT;
+    lybctx.parse_options = LYD_PARSE_ONLY | LYD_PARSE_STRICT;
     lybctx.int_opts = LYD_INTOPT_REPLY;
 
     *tree = NULL;

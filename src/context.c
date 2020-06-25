@@ -27,6 +27,7 @@
 
 #include "common.h"
 #include "hash_table.h"
+#include "parser_data.h"
 #include "plugins_types.h"
 #include "set.h"
 #include "tree.h"
@@ -771,7 +772,7 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx)
         root_bis = 0;
     }
 
-    if (lyd_validate(&root, NULL, LYD_VALOPT_DATA_ONLY)) {
+    if (lyd_validate(&root, NULL, LYD_VALIDATE_PRESENT)) {
         goto error;
     }
 
