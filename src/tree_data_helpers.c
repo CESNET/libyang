@@ -22,6 +22,7 @@
 #include "hash_table.h"
 #include "log.h"
 #include "lyb.h"
+#include "parser_data.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_data.h"
@@ -170,7 +171,7 @@ lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *when_check, struc
     struct lyd_meta *meta2, *prev_meta = NULL;
 
     if (!(node->schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) && node->schema->when) {
-        if (options & LYD_OPT_TRUSTED) {
+        if (options & LYD_PARSE_TRUSTED) {
             /* just set it to true */
             node->flags |= LYD_WHEN_TRUE;
         } else {
@@ -179,7 +180,7 @@ lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *when_check, struc
         }
     }
 
-    if (options & LYD_OPT_TRUSTED) {
+    if (options & LYD_PARSE_TRUSTED) {
         /* node is valid */
         node->flags &= ~LYD_NEW;
     }

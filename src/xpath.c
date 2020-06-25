@@ -33,6 +33,7 @@
 #include "context.h"
 #include "dict.h"
 #include "hash_table.h"
+#include "parser_data.h"
 #include "path.h"
 #include "plugins_types.h"
 #include "printer.h"
@@ -412,14 +413,13 @@ cast_string_recursive(const struct lyd_node *node, int fake_cont, enum lyxp_node
 
             if (any->value_type == LYD_ANYDATA_LYB) {
                 /* try to parse it into a data tree */
-                tree = lyd_parse_mem((struct ly_ctx *)LYD_NODE_CTX(node), any->value.mem, LYD_LYB,
-                                     LYD_OPT_PARSE_ONLY | LYD_OPT_STRICT);
-                if (!ly_errcode(LYD_NODE_CTX(node))) {
+                if (lyd_parse_data_mem((struct ly_ctx *)LYD_NODE_CTX(node), any->value.mem, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &tree) == LY_SUCCESS) {
                     /* successfully parsed */
                     free(any->value.mem);
                     any->value.tree = tree;
                     any->value_type = LYD_ANYDATA_DATATREE;
                 }
+                /* error is covered by the following switch where LYD_ANYDATA_LYB causes failure */
             }
 
             switch (any->value_type) {
@@ -431,7 +431,7 @@ cast_string_recursive(const struct lyd_node *node, int fake_cont, enum lyxp_node
                 break;
             case LYD_ANYDATA_DATATREE:
                 LY_CHECK_RET(ly_out_new_memory(&buf, 0, &out));
-                rc = lyd_print(out, any->value.tree, LYD_XML, LYDP_WITHSIBLINGS);
+                rc = lyd_print(out, any->value.tree, LYD_XML, LYD_PRINT_WITHSIBLINGS);
                 ly_out_free(out, NULL, 0);
                 LY_CHECK_RET(rc < 0, -rc);
                 break;

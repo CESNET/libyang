@@ -27,6 +27,7 @@
 #include "context.h"
 #include "hash_table.h"
 #include "log.h"
+#include "parser_data.h"
 #include "printer.h"
 #include "printer_data.h"
 #include "printer_internal.h"
@@ -678,7 +679,7 @@ lyb_print_anydata(struct lyd_node_any *anydata, struct ly_out *out, struct lyd_l
     if (anydata->value_type == LYD_ANYDATA_DATATREE) {
         /* print LYB data tree to memory */
         LY_CHECK_GOTO(ret = ly_out_new_memory(&buf, 0, &out2), cleanup);
-        LY_CHECK_GOTO(ret = lyb_print_data(out2, anydata->value.tree, LYDP_WITHSIBLINGS), cleanup);
+        LY_CHECK_GOTO(ret = lyb_print_data(out2, anydata->value.tree, LYD_PRINT_WITHSIBLINGS), cleanup);
 
         len = lyd_lyb_data_length(buf);
         assert(len != -1);
@@ -747,8 +748,8 @@ lyb_print_metadata(struct ly_out *out, const struct lyd_node *node, struct lyd_l
 
     /* with-defaults */
     if (node->schema->nodetype & LYD_NODE_TERM) {
-        if (((node->flags & LYD_DEFAULT) && (lybctx->options & (LYDP_WD_ALL_TAG | LYDP_WD_IMPL_TAG))) ||
-                ((lybctx->options & LYDP_WD_ALL_TAG) && ly_is_default(node))) {
+        if (((node->flags & LYD_DEFAULT) && (lybctx->print_options & (LYD_PRINT_WD_ALL_TAG | LYD_PRINT_WD_IMPL_TAG))) ||
+                ((lybctx->print_options & LYD_PRINT_WD_ALL_TAG) && ly_is_default(node))) {
             /* we have implicit OR explicit default node, print attribute only if context include with-defaults schema */
             wd_mod = ly_ctx_get_module_latest(node->schema->module->ctx, "ietf-netconf-with-defaults");
         }
@@ -1005,7 +1006,7 @@ lyb_print_data(struct ly_out *out, const struct lyd_node *root, int options)
     const struct lys_module *prev_mod = NULL;
     struct lyd_lyb_ctx lybctx = {0};
 
-    lybctx.options = options;
+    lybctx.print_options = options;
     if (root) {
         lybctx.ctx = LYD_NODE_CTX(root);
 
@@ -1033,7 +1034,7 @@ lyb_print_data(struct ly_out *out, const struct lyd_node *root, int options)
 
         LY_CHECK_GOTO(ret = lyb_print_subtree(out, root, &top_sibling_ht, &lybctx), cleanup);
 
-        if (!(options & LYDP_WITHSIBLINGS)) {
+        if (!(options & LYD_PRINT_WITHSIBLINGS)) {
             break;
         }
     }

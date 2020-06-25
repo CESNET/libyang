@@ -433,89 +433,6 @@ struct lyd_node_opaq {
 };
 
 /**
- * @defgroup dataparseroptions Data parser options
- * @ingroup datatree
- *
- * Various options to change the data tree parsers behavior.
- *
- * Default parser behavior:
- * - complete input file is always parsed. In case of XML, even not well-formed XML document (multiple top-level
- * elements) is parsed in its entirety,
- * - parser silently ignores data without matching schema node definition,
- * - list instances are checked whether they have all the keys, error is raised if not.
- *
- * Default parser validation behavior:
- * - the provided data are expected to provide complete datastore content (both the configuration and state data)
- * and performs data validation according to all YANG rules, specifics follow,
- * - list instances are expected to have all the keys (it is not checked),
- * - instantiated (status) obsolete data print a warning,
- * - all types are fully resolved (leafref/instance-identifier targets, unions) and must be valid (lists have
- * all the keys, leaf(-lists) correct values),
- * - when statements on existing nodes are evaluated, if not satisfied, a validation error is raised,
- * - if-feature statements are evaluated,
- * - invalid multiple data instances/data from several cases cause a validation error,
- * - default values are added.
- * @{
- */
-
-#define LYD_OPT_PARSE_ONLY      0x0001  /**< Data will be only parsed and no validation will be performed. When statements
-                                             are kept unevaluated, union types may not be fully resolved, if-feature
-                                             statements are not checked, and default values are not added (only the ones
-                                             parsed are present). */
-#define LYD_OPT_TRUSTED         0x0002  /**< Data are considered trusted so they will be parsed as validated. If the parsed
-                                             data are not valid, using this flag may lead to some unexpected behavior!
-                                             This flag can be used only with #LYD_OPT_PARSE_ONLY. */
-#define LYD_OPT_STRICT          0x0004  /**< Instead of silently ignoring data without schema definition raise an error.
-                                             Do not combine with #LYD_OPT_OPAQ. */
-#define LYD_OPT_OPAQ            0x0008  /**< Instead of silently ignoring data without definition, parse them into
-                                             an opaq node. Do not combine with #LYD_OPT_STRICT. */
-#define LYD_OPT_NO_STATE        0x0010  /**< Forbid state data in the parsed data. */
-#define LYD_OPT_LYB_MOD_UPDATE  0x0020  /**< Only for LYB format, allow parsing data printed using a specific module
-                                             revision to be loaded even with a module with the same name but newer
-                                             revision. */
-
-#define LYD_OPT_MASK            0xFFFF  /**< Mask for all the parser options. */
-
-/** @} dataparseroptions */
-
-/**
- * @defgroup datavalidationoptions Data validation options
- * @ingroup datatree
- *
- * Various options to change data validation behaviour, both for the parser and separate validation.
- *
- * Default separate validation behavior:
- * - the provided data are expected to provide complete datastore content (both the configuration and state data)
- * and performs data validation according to all YANG rules, specifics follow,
- * - instantiated (status) obsolete data print a warning,
- * - all types are fully resolved (leafref/instance-identifier targets, unions) and must be valid (lists have
- * all the keys, leaf(-lists) correct values),
- * - when statements on existing nodes are evaluated. Depending on the previous when state (from previous validation
- * or parsing), the node is silently auto-deleted if the state changed from true to false, otherwise a validation error
- * is raised if it evaluates to false,
- * - if-feature statements are evaluated,
- * - data from several cases behave based on their previous state (from previous validation or parsing). If there existed
- * already a case and another one was added, the previous one is silently auto-deleted. Otherwise (if data from 2 or
- * more cases were created) a validation error is raised,
- * - default values are added.
- *
- * @{
- */
-
-#define LYD_VALOPT_NO_STATE     0x00010000 /**< Consider state data not allowed and raise an error if they are found. */
-#define LYD_VALOPT_DATA_ONLY    0x00020000 /**< Validate only modules whose data actually exist. */
-#define LYD_VALOPT_INPUT        0x00040000 /**< Validate RPC/action request (input parameters). */
-#define LYD_VALOPT_OUTPUT       0x00080000 /**< Validate RPC/action reply (output parameters). */
-
-#define LYD_VALOPT_MASK         0xFFFF0000 /**< Mask for all the validation options. */
-
-/** @} datavalidationoptions */
-
-//#define LYD_OPT_VAL_DIFF 0x40000 /**< Flag only for validation, store all the data node changes performed by the validation
-//                                      in a diff structure. */
-//#define LYD_OPT_DATA_TEMPLATE 0x1000000 /**< Data represents YANG data template. */
-
-/**
  * @defgroup children_options Children traversal options.
  * @ingroup datatree
  */
@@ -544,62 +461,6 @@ struct lyd_node *lyd_node_children(const struct lyd_node *node, int options);
 const struct lys_module *lyd_owner_module(const struct lyd_node *node);
 
 /**
- * @brief Parse (and validate) data from memory.
- *
- * In case of LY_XML format, the data string is parsed completely. It means that when it contains
- * a non well-formed XML with multiple root elements, all those sibling XML trees are parsed. The
- * returned data node is a root of the first tree with other trees connected via the next pointer.
- * This behavior can be changed by #LYD_OPT_NOSIBLINGS option.
- *
- * @param[in] ctx Context to connect with the data tree being built here.
- * @param[in] data Serialized data in the specified format.
- * @param[in] format Format of the input data to be parsed.
- * @param[in] options Parser and validation options, see @ref parseroptions.
- * @return Pointer to the built data tree or NULL in case of empty \p data. To free the returned structure,
- *         use lyd_free_all().
- * @return NULL in case of error. The error information can be then obtained using ly_err* functions.
- */
-struct lyd_node *lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options);
-
-/**
- * @brief Read (and validate) data from the given file descriptor.
- *
- * \note Current implementation supports only reading data from standard (disk) file, not from sockets, pipes, etc.
- *
- * In case of LY_XML format, the file content is parsed completely. It means that when it contains
- * a non well-formed XML with multiple root elements, all those sibling XML trees are parsed. The
- * returned data node is a root of the first tree with other trees connected via the next pointer.
- * This behavior can be changed by #LYD_OPT_NOSIBLINGS option.
- *
- * @param[in] ctx Context to connect with the data tree being built here.
- * @param[in] fd The standard file descriptor of the file containing the data tree in the specified format.
- * @param[in] format Format of the input data to be parsed.
- * @param[in] options Parser options, see @ref parseroptions. \p format LYD_LYB uses #LYD_OPT_PARSE_ONLY implicitly.
- * @return Pointer to the built data tree or NULL in case of empty file. To free the returned structure,
- *         use lyd_free_all().
- * @return NULL in case of error. The error information can be then obtained using ly_err* functions.
- */
-struct lyd_node *lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options);
-
-/**
- * @brief Read (and validate) data from the given file path.
- *
- * In case of LY_XML format, the file content is parsed completely. It means that when it contains
- * a non well-formed XML with multiple root elements, all those sibling XML trees are parsed. The
- * returned data node is a root of the first tree with other trees connected via the next pointer.
- * This behavior can be changed by #LYD_OPT_NOSIBLINGS option.
- *
- * @param[in] ctx Context to connect with the data tree being built here.
- * @param[in] path Path to the file containing the data tree in the specified format.
- * @param[in] format Format of the input data to be parsed.
- * @param[in] options Parser options, see @ref parseroptions. \p format LYD_LYB uses #LYD_OPT_PARSE_ONLY implicitly.
- * @return Pointer to the built data tree or NULL in case of empty file. To free the returned structure,
- *         use lyd_free_all().
- * @return NULL in case of error. The error information can be then obtained using ly_err* functions.
- */
-struct lyd_node *lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int options);
-
-/**
  * @brief Learn the length of LYB data.
  *
  * @param[in] data LYB data to examine.
@@ -607,44 +468,6 @@ struct lyd_node *lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT
  * @return -1 on error.
  */
 int lyd_lyb_data_length(const char *data);
-
-/**
- * @brief Fully validate a data tree.
- *
- * @param[in,out] tree Data tree to recursively validate. May be changed by validation.
- * @param[in] ctx libyang context. Can be NULL if @p tree is set.
- * @param[in] val_opts Validation options (@ref datavalidationoptions).
- * @return LY_SUCCESS on success.
- * @return LY_ERR error on error.
- */
-LY_ERR lyd_validate(struct lyd_node **tree, const struct ly_ctx *ctx, int val_opts);
-
-/**
- * @brief Fully validate a data tree.
- *
- * @param[in,out] tree Data tree to recursively validate. May be changed by validation.
- * @param[in] modules Array of modules to validate.
- * @param[in] mod_count Number of @p modules.
- * @param[in] val_opts Validation options (@ref datavalidationoptions).
- * @return LY_SUCCESS on success.
- * @return LY_ERR error on error.
- */
-LY_ERR lyd_validate_modules(struct lyd_node **tree, const struct lys_module **modules, int mod_count, int val_opts);
-
-/**
- * @brief Validate an RPC/action, notification, or RPC/action reply.
- *
- * @param[in,out] op_tree Operation tree with any parents. It can point to the operation itself or any of
- * its parents, only the operation subtree is actually validated.
- * @param[in] tree Tree to be used for validating references from the operation subtree.
- * @param[in] val_opts Specific validation option (@ref datavalidationoptions):
- *              0 - no validation option for validation notifications,
- *              ::LYD_VALOPT_INPUT - for validating RPC/action request (input),
- *              ::LYD_VALOPT_OUTPUT - for validatin RPC/action reply (output).
- * @return LY_SUCCESS on success.
- * @return LY_ERR error on error.
- */
-LY_ERR lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *tree, int val_opts);
 
 /**
  * @brief Create a new inner node in the data tree.
