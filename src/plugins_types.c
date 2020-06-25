@@ -150,7 +150,7 @@ ly_type_parse_int(const char *datatype, int base, int64_t min, int64_t max, cons
     }
 
 error:
-    *err = ly_err_new(LY_LLERR, LY_EINVAL, LYVE_DATA, errmsg, NULL, NULL);
+    *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
     return LY_EVALID;
 }
 
@@ -239,14 +239,14 @@ ly_type_parse_uint(const char *datatype, int base, uint64_t max, const char *val
     }
 
 error:
-    *err = ly_err_new(LY_LLERR, LY_EINVAL, LYVE_DATA, errmsg, NULL, NULL);
+    *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
     return LY_EVALID;
 }
 
 API LY_ERR
 ly_type_parse_dec64(uint8_t fraction_digits, const char *value, size_t value_len, int64_t *ret, struct ly_err_item **err)
 {
-    LY_ERR rc = LY_EINVAL;
+    LY_ERR rc = LY_EVALID;
     char *errmsg = NULL;
     char *valcopy = NULL;
     size_t fraction = 0, size, len = 0, trailing_zeros;
@@ -339,7 +339,7 @@ decimal:
 
 error:
     if (errmsg) {
-        *err = ly_err_new(LY_LLERR, LY_EINVAL, LYVE_DATA, errmsg, NULL, NULL);
+        *err = ly_err_new(LY_LLERR, rc, LYVE_DATA, errmsg, NULL, NULL);
     }
     return rc;
 }
@@ -522,8 +522,7 @@ ly_type_store_int(const struct ly_ctx *ctx, struct lysc_type *type, const char *
                                        INT64_C(-9223372036854775807) - INT64_C(1), INT64_C(9223372036854775807), value, value_len, &i, err));
         break;
     default:
-        LOGINT(NULL);
-        return LY_EINVAL;
+        LOGINT_RET(NULL);
     }
 
     asprintf(&str, "%"PRId64, i);
@@ -596,8 +595,7 @@ ly_type_store_uint(const struct ly_ctx *ctx, struct lysc_type *type, const char 
         LY_CHECK_RET(ly_type_parse_uint("uint64", (options & LY_TYPE_OPTS_SCHEMA) ? 0 : 10, UINT64_C(18446744073709551615), value, value_len, &u, err));
         break;
     default:
-        LOGINT(NULL);
-        return LY_EINVAL;
+        LOGINT_RET(NULL);
     }
 
     asprintf(&str, "%"PRIu64, u);
@@ -657,7 +655,7 @@ ly_type_store_decimal64(const struct ly_ctx *ctx, struct lysc_type *type, const 
     }
 
     if (!value || !value[0] || !value_len) {
-        *err = ly_err_new(LY_LLERR, LY_EINVAL, LYVE_DATA, strdup("Invalid empty decimal64 value."), NULL, NULL);
+        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, strdup("Invalid empty decimal64 value."), NULL, NULL);
         return LY_EVALID;
     }
 
