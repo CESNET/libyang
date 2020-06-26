@@ -24,4 +24,18 @@ int main(void) {
 	return 0;
 }
 
+#else
+int main(void) {
+	int ret;
+	uint8_t buf[64 * 1024];
+
+	ret = fread(buf, 1, sizeof(buf), stdin);
+	if (ret < 0) {
+		return 0;
+	}
+
+	LLVMFuzzerTestOneInput(buf, ret);
+
+	return 0;
+}
 #endif /* __AFL_COMPILER */

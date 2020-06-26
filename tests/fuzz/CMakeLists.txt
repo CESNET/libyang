@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 2.8.12)
 
-set(fuzz_targets lys_parse_mem buf_add_char yang_parse_module)
+set(fuzz_targets lys_parse_mem lyd_parse_mem buf_add_char yang_parse_module)
 
 if(FUZZER STREQUAL "AFL")
 	foreach(target_name IN LISTS fuzz_targets)

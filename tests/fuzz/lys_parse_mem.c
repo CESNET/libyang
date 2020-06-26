@@ -8,6 +8,7 @@ int LLVMFuzzerTestOneInput(uint8_t const *buf, size_t len)
 {
 	struct ly_ctx *ctx = NULL;
 	static bool log = false;
+	char *data = NULL;
 	LY_ERR err;
 
 	if (!log) {
@@ -21,7 +22,16 @@ int LLVMFuzzerTestOneInput(uint8_t const *buf, size_t len)
 		exit(EXIT_FAILURE);
 	}
 
-	lys_parse_mem(ctx, buf, LYS_IN_YANG);
+	data = malloc(len + 1);
+	if (data == NULL) {
+		return 0;
+	}
+
+	memcpy(data, buf, len);
+	data[len] = 0;
+
+	lys_parse_mem(ctx, data, LYS_IN_YANG);
 	ly_ctx_destroy(ctx, NULL);
+	free(data);
 	return 0;
 }
