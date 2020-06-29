@@ -236,7 +236,7 @@ ly_out_new_fd(int fd, struct ly_out **out)
                (*out)->method.fdstream.fd, strerror(errno));
         free(*out);
         *out = NULL;
-        fclose(fd);
+        close(fd);
         return LY_ESYS;
     }
 #endif
