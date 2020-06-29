@@ -4354,6 +4354,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, const stru
     struct lysc_node *target; /* target target of the augment */
     struct lysc_node *node;
     struct lysc_when **when, *when_shared;
+    struct lys_module **aug_mod;
     int allow_mandatory = 0;
     uint16_t flags = 0;
     unsigned int u;
@@ -4487,8 +4488,13 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, const stru
         }
     }
 
+    /* add this module into the target module augmented_by */
+    LY_ARRAY_NEW_GOTO(ctx->ctx, target->module->compiled->augmented_by, aug_mod, ret, error);
+    *aug_mod = ctx->mod;
+
     lysc_update_path(ctx, NULL, NULL);
     lysc_update_path(ctx, NULL, NULL);
+
 error:
     ctx->options = opt_prev;
     return ret;
