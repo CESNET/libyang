@@ -457,8 +457,8 @@ lydxml_data_r(struct lyd_xml_ctx *lydctx, struct lyd_node_inner *parent, struct 
     struct lyxml_ctx *xmlctx;
     const struct ly_ctx *ctx;
     const struct lyxml_ns *ns;
-    struct lyd_meta *meta = NULL;
-    struct ly_attr *attr = NULL;
+    struct lyd_meta *meta = NULL, *m;
+    struct ly_attr *attr = NULL, *a;
     const struct lysc_node *snode;
     struct lys_module *mod;
     uint32_t prev_opts;
@@ -680,10 +680,16 @@ lydxml_data_r(struct lyd_xml_ctx *lydctx, struct lyd_node_inner *parent, struct 
 
         /* add metadata/attributes */
         if (snode) {
+            LY_LIST_FOR(meta, m) {
+                m->parent = cur;
+            }
             cur->meta = meta;
             meta = NULL;
         } else {
             assert(!cur->schema);
+            LY_LIST_FOR(attr, a) {
+                a->parent = (struct lyd_node_opaq *)cur;
+            }
             ((struct lyd_node_opaq *)cur)->attr = attr;
             attr = NULL;
         }
