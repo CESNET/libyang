@@ -7,8 +7,12 @@ endif()
 
 project(libyang C)
 
+# include custom Modules
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMakeModules/")
+
 include(GNUInstallDirs)
 include(CheckSymbolExists)
+include(UseCompat)
 
 set(LIBYANG_DESCRIPTION "libyang is YANG data modelling language parser and toolkit written (and providing API) in C.")
 
@@ -106,19 +110,11 @@ set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG")
 set(CMAKE_C_FLAGS_PACKAGE "-g -O2 -DNDEBUG")
 set(CMAKE_C_FLAGS_DEBUG   "-g -O0")
 
-list(APPEND CMAKE_REQUIRED_DEFINITIONS -D_GNU_SOURCE)
-check_symbol_exists(get_current_dir_name unistd.h HAVE_GET_CURRENT_DIR_NAME)
-check_symbol_exists(vdprintf stdio.h HAVE_VDPRINTF)
-check_symbol_exists(strnstr string.h HAVE_STRNSTR)
-
 include_directories(${PROJECT_BINARY_DIR}/src ${PROJECT_SOURCE_DIR}/src)
 configure_file(${PROJECT_SOURCE_DIR}/src/config.h.in ${PROJECT_BINARY_DIR}/src/config.h @ONLY)
 
 #set(EXTENSIONS_PLUGINS_DIR_MACRO "${PLUGINS_DIR}/extensions")
 #set(USER_TYPES_PLUGINS_DIR_MACRO "${PLUGINS_DIR}/user_types")
-
-# include custom Modules
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMakeModules/")
 
 # setup bindings
 #set(GEN_LANGUAGE_BINDINGS 0 CACHE BOOL "Enable language bindings generation.")
@@ -127,69 +123,6 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMakeModules/")
 #set(GEN_PYTHON_BINDINGS 1 CACHE BOOL "Enable Python bindings.")
 #set(GEN_PYTHON_VERSION "3" CACHE STRING "Python version")
 #set(GEN_JAVASCRIPT_BINDINGS 0 CACHE BOOL "Enable JavaScript bindings.")
-
-#find_program(DEB_BUILDER NAMES debuild)
-#find_program(RPM_BUILDER NAMES rpmbuild)
-
-#if (NOT DEFINED ENV{TRAVIS_BRANCH})
-#    execute_process(COMMAND "git" "rev-parse" "--abbrev-ref" "HEAD"
-#                    OUTPUT_VARIABLE GIT_BRANCH
-#                    OUTPUT_STRIP_TRAILING_WHITESPACE
-#                    ERROR_QUIET
-#                )
-#    if (NOT GIT_BRANCH)
-#        set(ENV{TRAVIS_BRANCH} "master")
-#    else()
-#        if (GIT_BRANCH MATCHES "master|devel")
-#            set(ENV{TRAVIS_BRANCH} ${GIT_BRANCH})
-#        else()
-#            set(ENV{TRAVIS_BRANCH} "master")
-#        endif()
-#    endif()
-#    set(GIT_BRANCH $ENV{TRAVIS_BRANCH})
-#endif()
-#
-#if ($ENV{TRAVIS_BRANCH} STREQUAL "master")
-#    set(PACKAGE_NAME "libyang")
-#    set(PACKAGE_PART_NAME "")
-#    set(BRANCH "master")
-#    set(BUILD_TYPE "Package")
-#    set(CONFLICT_PACKAGE_NAME "libyang-experimental")
-#else ()
-#    set(PACKAGE_NAME "libyang-experimental")
-#    set(PACKAGE_PART_NAME "-experimental")
-#    set(BRANCH "devel")
-#    set(BUILD_TYPE "debug")
-#    set(CONFLICT_PACKAGE_NAME "libyang")
-#endif()
-# change version in config files
-#configure_file(${PROJECT_SOURCE_DIR}/packages/libyang.spec.in ${PROJECT_BINARY_DIR}/build-packages/libyang.spec)
-#configure_file(${PROJECT_SOURCE_DIR}/packages/libyang.dsc.in ${PROJECT_BINARY_DIR}/build-packages/libyang.dsc)
-#configure_file(${PROJECT_SOURCE_DIR}/packages/debian.control.in ${PROJECT_BINARY_DIR}/build-packages/debian.control @ONLY)
-#configure_file(${PROJECT_SOURCE_DIR}/packages/debian.rules.in ${PROJECT_BINARY_DIR}/build-packages/debian.rules)
-
-#if (NOT DEB_BUILDER)
-#    message(WARNING "Missing tools (devscripts, debhelper package) for building deb package.\nYou won't be able to generate deb package from source code.\nCompiling libyang should still works fine.")
-#else ()
-#    # target for local build deb package
-#    add_custom_target(build-deb
-#                      WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
-#                      COMMAND build-packages/local-deb.sh
-#    )
-#    configure_file(${PROJECT_SOURCE_DIR}/packages/local-deb.sh.in ${PROJECT_BINARY_DIR}/build-packages/local-deb.sh @ONLY)
-#endif()
-
-#if (NOT RPM_BUILDER)
-#    message(WARNING "Missing tools (rpm package) for building rpm package. \nYou won't be able to generate rpm package from source code.\nCompiling libyang should still works fine.")
-#else ()
-#    # target for local build rpm package
-#    string(REPLACE ${PROJECT_SOURCE_DIR} "." EXCLUDE_BUILD_DIR ${PROJECT_BINARY_DIR})
-#    add_custom_target(build-rpm
-#                      WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
-#                      COMMAND build-packages/local-rpm.sh
-#    )
-#    configure_file(${PROJECT_SOURCE_DIR}/packages/local-rpm.sh.in ${PROJECT_BINARY_DIR}/build-packages/local-rpm.sh @ONLY)
-#endif()
 
 # by default build shared library
 # static build requires static libpcre2 library
@@ -202,7 +135,6 @@ endif()
 
 set(libsrc
     src/common.c
-    src/compat.c
     src/log.c
     src/hash_table.c
     src/set.c
@@ -264,6 +196,9 @@ set(headers
     src/tree_data.h
     src/tree_schema.h)
 
+# link compat
+use_compat()
+
 # create static libyang library
 if(ENABLE_STATIC)
     add_definitions(-DSTATIC)
@@ -271,17 +206,17 @@ if(ENABLE_STATIC)
     set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
     set(CMAKE_EXE_LINK_DYNAMIC_C_FLAGS)       # remove -Wl,-Bdynamic
     set(CMAKE_EXE_LINK_DYNAMIC_CXX_FLAGS)
-    add_library(yang STATIC ${libsrc})
+    add_library(yang STATIC ${libsrc} $<TARGET_OBJECTS:compat>)
 else()
     set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
     add_library(yangobj OBJECT ${libsrc})
-    add_library(yang SHARED $<TARGET_OBJECTS:yangobj>)
+    add_library(yang SHARED $<TARGET_OBJECTS:yangobj> $<TARGET_OBJECTS:compat>)
 
     #link dl
     target_link_libraries(yang ${CMAKE_DL_LIBS})
 
     set_target_properties(yangobj PROPERTIES COMPILE_FLAGS "-fvisibility=hidden")
-endif(ENABLE_STATIC)
+endif()
 
 set_target_properties(yang PROPERTIES VERSION ${LIBYANG_SOVERSION_FULL} SOVERSION ${LIBYANG_SOVERSION})
 
@@ -295,7 +230,7 @@ if(ENABLE_STATIC)
     target_link_libraries(yang -Wl,--whole-archive ${CMAKE_THREAD_LIBS_INIT} -Wl,--no-whole-archive)
 else()
     target_link_libraries(yang ${CMAKE_THREAD_LIBS_INIT})
-endif(ENABLE_STATIC)
+endif()
 
 # find PCRE2 library
 unset(PCRE2_LIBRARY CACHE)
@@ -398,14 +333,14 @@ endif(ENABLE_BUILD_TESTS)
 configure_file(${PROJECT_SOURCE_DIR}/tools/config.h.in ${PROJECT_BINARY_DIR}/tools/config.h @ONLY)
 
 # yanglint
-add_executable(yanglint ${lintsrc})
+add_executable(yanglint ${lintsrc} $<TARGET_OBJECTS:compat>)
 target_link_libraries(yanglint yang)
 install(TARGETS yanglint DESTINATION ${CMAKE_INSTALL_BINDIR})
 install(FILES ${PROJECT_SOURCE_DIR}/tools/lint/yanglint.1 DESTINATION ${CMAKE_INSTALL_MANDIR}/man1)
 target_include_directories(yanglint BEFORE PRIVATE ${PROJECT_BINARY_DIR})
 
 # yangre
-add_executable(yangre ${resrc})
+add_executable(yangre ${resrc} $<TARGET_OBJECTS:compat>)
 target_link_libraries(yangre yang)
 install(TARGETS yangre DESTINATION ${CMAKE_INSTALL_BINDIR})
 target_include_directories(yangre BEFORE PRIVATE ${PROJECT_BINARY_DIR})
@@ -418,22 +353,22 @@ if(ENABLE_BUILD_TESTS)
     if(CMOCKA_FOUND)
         enable_testing()
         add_subdirectory(tests)
-    else(CMOCKA_FOUND)
+    else()
         message(STATUS "Disabling tests because of missing CMocka")
         set(ENABLE_BUILD_TESTS NO)
-    endif(CMOCKA_FOUND)
-endif(ENABLE_BUILD_TESTS)
+    endif()
+endif()
 
 if(ENABLE_FUZZ_TARGETS)
-	set(FUZZER "AFL" CACHE STRING "fuzzer type")
-	if(FUZZER STREQUAL "LibFuzzer")
-		if (NOT CMAKE_C_COMPILER_ID STREQUAL "Clang")
-			message(FATAL_ERROR "LibFuzzer works only with clang")
-		endif()
-		set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address,undefined -fno-omit-frame-pointer")
-	endif()
-	add_subdirectory(tests/fuzz)
-endif(ENABLE_FUZZ_TARGETS)
+    set(FUZZER "AFL" CACHE STRING "fuzzer type")
+    if(FUZZER STREQUAL "LibFuzzer")
+        if (NOT CMAKE_C_COMPILER_ID STREQUAL "Clang")
+            message(FATAL_ERROR "LibFuzzer works only with clang")
+        endif()
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fsanitize=address,undefined -fno-omit-frame-pointer")
+    endif()
+    add_subdirectory(tests/fuzz)
+endif()
 
 #if(GEN_LANGUAGE_BINDINGS AND GEN_CPP_BINDINGS)
 #    add_subdirectory(swig)

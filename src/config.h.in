@@ -15,14 +15,6 @@
 #ifndef LY_CONFIG_H_
 #define LY_CONFIG_H_
 
-#cmakedefine APPLE
-
-#cmakedefine HAVE_GET_CURRENT_DIR_NAME
-
-#cmakedefine HAVE_VDPRINTF
-
-#cmakedefine HAVE_STRNSTR
-
 /**
  * @brief Compiler flag for unused function attributes
  */

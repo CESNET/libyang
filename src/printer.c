@@ -25,7 +25,7 @@
 #include <unistd.h>
 
 #include "common.h"
-#include "config.h"
+#include "compat.h"
 #include "log.h"
 #include "plugins_types.h"
 #include "printer_data.h"
@@ -212,34 +212,8 @@ ly_out_new_fd(int fd, struct ly_out **out)
 
     *out = calloc(1, sizeof **out);
     LY_CHECK_ERR_RET(!*out, LOGMEM(NULL), LY_EMEM);
-
-#ifdef HAVE_VDPRINTF
     (*out)->type = LY_OUT_FD;
     (*out)->method.fd = fd;
-#else
-    /* Without vdfprintf(), change the printing method to printing to a FILE stream.
-     * To preserve the original file descriptor, duplicate it and use it to open file stream. */
-    (*out)->type = LY_OUT_FDSTREAM;
-    (*out)->method.fdstream.fd = fd;
-
-    fd = dup((*out)->method.fdstream.fd);
-    if (fd < 0) {
-        LOGERR(NULL, LY_ESYS, "Unable to duplicate provided file descriptor (%d) for printing the output (%s).",
-               (*out)->method.fdstream.fd, strerror(errno));
-        free(*out);
-        *out = NULL;
-        return LY_ESYS;
-    }
-    (*out)->method.fdstream.f = fdopen(fd, "a");
-    if (!(*out)->method.fdstream.f) {
-        LOGERR(NULL, LY_ESYS, "Unable to open provided file descriptor (%d) for printing the output (%s).",
-               (*out)->method.fdstream.fd, strerror(errno));
-        free(*out);
-        *out = NULL;
-        close(fd);
-        return LY_ESYS;
-    }
-#endif
 
     return LY_SUCCESS;
 }
@@ -509,15 +483,8 @@ ly_print(struct ly_out *out, const char *format, ...)
 
     switch (out->type) {
     case LY_OUT_FD:
-#ifdef HAVE_VDPRINTF
         count = vdprintf(out->method.fd, format, ap);
         break;
-#else
-        /* never should be here since ly_out_fd() is supposed to set type to LY_OUT_FDSTREAM in case vdprintf() is missing */
-        LOGINT(NULL);
-        va_end(ap);
-        return -LY_EINT;
-#endif
     case LY_OUT_FDSTREAM:
     case LY_OUT_FILEPATH:
     case LY_OUT_FILE:
