@@ -849,6 +849,7 @@ lysc_module_free_(struct lysc_module *module)
     FREE_ARRAY(ctx, module->notifs, lysc_notif_free);
     FREE_ARRAY(ctx, module->exts, lysc_ext_instance_free);
     LY_ARRAY_FREE(module->deviated_by);
+    LY_ARRAY_FREE(module->augmented_by);
 
     free(module);
 }
