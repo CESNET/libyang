@@ -1016,6 +1016,16 @@ LY_ERR lyd_value_compare(const struct lyd_node_term *node, const char *value, si
 LY_ERR lyd_compare(const struct lyd_node *node1, const struct lyd_node *node2, int options);
 
 /**
+ * @brief Compare 2 metadata.
+ *
+ * @param[in] meta1 First metadata.
+ * @param[in] meta2 Second metadata.
+ * @return LY_SUCCESS if the metadata are equivalent.
+ * @return LY_ENOT if not.
+ */
+LY_ERR lyd_compare_meta(const struct lyd_meta *meta1, const struct lyd_meta *meta2);
+
+/**
  * @defgroup dupoptions Data duplication options
  * @ingroup datatree
  *

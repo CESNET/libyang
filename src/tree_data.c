@@ -1942,6 +1942,28 @@ lyd_compare(const struct lyd_node *node1, const struct lyd_node *node2, int opti
     return LY_EINT;
 }
 
+API LY_ERR
+lyd_compare_meta(const struct lyd_meta *meta1, const struct lyd_meta *meta2)
+{
+    if (!meta1 || !meta2) {
+        if (meta1 == meta2) {
+            return LY_SUCCESS;
+        } else {
+            return LY_ENOT;
+        }
+    }
+
+    if ((LYD_NODE_CTX(meta1->parent) != LYD_NODE_CTX(meta2->parent)) || (meta1->annotation != meta2->annotation)) {
+        return LY_ENOT;
+    }
+
+    if (meta1->value.realtype != meta2->value.realtype) {
+        return LY_ENOT;
+    }
+
+    return meta1->value.realtype->plugin->compare(&meta1->value, &meta2->value);
+}
+
 /**
  * @brief Duplicate a single node and connect it into @p parent (if present) or last of @p first siblings.
  *
