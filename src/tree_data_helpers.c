@@ -57,7 +57,7 @@ lyd_node_children(const struct lyd_node *node, int options)
     if (children) {
         child = *children;
         if (options & LYD_CHILDREN_SKIP_KEYS) {
-            while (child && (child->schema->flags & LYS_KEY)) {
+            while (child && child->schema && (child->schema->flags & LYS_KEY)) {
                 child = child->next;
             }
         }
