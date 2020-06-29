@@ -27,6 +27,7 @@
 #include "libyang.h"
 
 #include "tools/config.h"
+#include "compat.h"
 
 void
 help(void)

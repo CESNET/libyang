@@ -20,6 +20,7 @@
 #include <stdlib.h>
 
 #include "common.h"
+#include "compat.h"
 #include "log.h"
 #include "plugins_types.h"
 #include "tree_data_internal.h"

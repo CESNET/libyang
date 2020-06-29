@@ -25,6 +25,7 @@
 #include <string.h>
 #include <sys/stat.h>
 
+#include "compat.h"
 #include "libyang.h"
 
 COMMAND commands[];

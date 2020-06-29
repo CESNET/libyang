@@ -22,6 +22,7 @@
 
 #include "libyang.h"
 
+#include "compat.h"
 #include "tools/config.h"
 
 #include "commands.h"

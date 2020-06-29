@@ -23,6 +23,7 @@
 #include <string.h>
 
 #include "common.h"
+#include "compat.h"
 #include "context.h"
 #include "dict.h"
 #include "log.h"

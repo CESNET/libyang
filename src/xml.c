@@ -25,6 +25,7 @@
 #include <sys/types.h>
 
 #include "common.h"
+#include "compat.h"
 #include "dict.h"
 #include "printer.h"
 #include "tree.h"

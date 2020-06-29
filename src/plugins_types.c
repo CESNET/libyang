@@ -24,6 +24,7 @@
 #include <string.h>
 
 #include "common.h"
+#include "compat.h"
 #include "config.h"
 #include "dict.h"
 #include "path.h"

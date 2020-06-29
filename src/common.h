@@ -57,26 +57,6 @@ struct lys_module;
 
 
 /******************************************************************************
- * Compatibility functions
- *****************************************************************************/
-
-#ifndef HAVE_GET_CURRENT_DIR_NAME
-/**
- * @brief Return a malloc'd string containing the current directory name.
- */
-char *get_current_dir_name(void);
-#endif
-
-#ifndef HAVE_STRNSTR
-/**
- * @brief Find the first occurrence of find in s, where the search is limited to the
- * first slen characters of s.
- */
-char *strnstr(const char *s, const char *find, size_t slen);
-#endif
-
-
-/******************************************************************************
  * Logger
  *****************************************************************************/
 
@@ -271,7 +251,7 @@ struct ly_ctx {
 #define LY_CTX_CHANGED_TREE 0x8000    /**< Deviation changed tree of a module(s) in the context, it is necessary to recompile
                                            leafref paths, default values and must/when expressions to check that they are still valid */
 
-/**@} contextflags */
+/** @} contextflags */
 
 /**
  * @brief Try to find submodule in the context. Submodules are present only in the parsed (lysp_) schema trees, if only

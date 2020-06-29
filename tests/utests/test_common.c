@@ -121,7 +121,7 @@ test_utf8(void **state)
     assert_int_equal(LY_EINVAL, ly_getutf8(&str, &c, &len));
 }
 
-#ifndef APPLE
+#ifndef __APPLE__
 void *__real_realloc(void *ptr, size_t size);
 void *__wrap_realloc(void *ptr, size_t size)
 {
@@ -158,7 +158,7 @@ test_lyrealloc(void **state)
 
     /* ptr should be freed by ly_realloc() */
 }
-#endif /* not APPLE */
+#endif /* not __APPLE__ */
 
 static void
 test_parse_int(void **state)
@@ -382,7 +382,7 @@ int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_utf8, logger_setup, logger_teardown),
-#ifndef APPLE
+#ifndef __APPLE__
         cmocka_unit_test(test_lyrealloc),
 #endif
         cmocka_unit_test_setup_teardown(test_parse_int, logger_setup, logger_teardown),

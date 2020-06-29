@@ -25,6 +25,7 @@
 #include <unistd.h>
 
 #include "common.h"
+#include "compat.h"
 #include "dict.h"
 #include "log.h"
 #include "parser_internal.h"
@@ -239,8 +240,10 @@ void
 lys_parser_fill_filepath(struct ly_ctx *ctx, struct ly_in *in, const char **filepath)
 {
     char path[PATH_MAX];
+#ifndef __APPLE__
     char proc_path[32];
     int len;
+#endif
 
     LY_CHECK_ARG_RET(NULL, ctx, in, filepath, );
     if (*filepath) {

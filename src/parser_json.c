@@ -18,6 +18,7 @@
 #include <string.h>
 
 #include "common.h"
+#include "compat.h"
 #include "config.h"
 #include "context.h"
 
