@@ -21,6 +21,7 @@
 #include "log.h"
 #include "tree.h"
 #include "tree_data.h"
+#include "tree_data_internal.h"
 #include "tree_schema.h"
 
 struct lyd_node **
@@ -157,4 +158,99 @@ lyd_parse_check_keys(struct lyd_node *node)
     }
 
     return LY_SUCCESS;
+}
+
+void
+lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *when_check, struct lyd_meta **meta, int options)
+{
+    struct lyd_meta *meta2, *prev_meta = NULL;
+
+    if (!(node->schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) && node->schema->when) {
+        if (options & LYD_OPT_TRUSTED) {
+            /* just set it to true */
+            node->flags |= LYD_WHEN_TRUE;
+        } else {
+            /* remember we need to evaluate this node's when */
+            ly_set_add(when_check, node, LY_SET_OPT_USEASLIST);
+        }
+    }
+
+    if (options & LYD_OPT_TRUSTED) {
+        /* node is valid */
+        node->flags &= ~LYD_NEW;
+    }
+
+    LY_LIST_FOR(*meta, meta2) {
+        if (!strcmp(meta2->name, "default") && !strcmp(meta2->annotation->module->name, "ietf-netconf-with-defaults")
+                && meta2->value.boolean) {
+            /* node is default according to the metadata */
+            node->flags |= LYD_DEFAULT;
+
+            /* delete the metadata */
+            if (prev_meta) {
+                prev_meta->next = meta2->next;
+            } else {
+                *meta = (*meta)->next;
+            }
+            lyd_free_meta(LYD_NODE_CTX(node), meta2, 0);
+            break;
+        }
+
+        prev_meta = meta2;
+    }
+}
+
+LYB_HASH
+lyb_hash(struct lysc_node *sibling, uint8_t collision_id)
+{
+    const struct lys_module *mod;
+    int ext_len;
+    uint32_t full_hash;
+    LYB_HASH hash;
+
+    if ((collision_id < LYS_NODE_HASH_COUNT) && sibling->hash[collision_id]) {
+        return sibling->hash[collision_id];
+    }
+
+    mod = sibling->module;
+
+    full_hash = dict_hash_multi(0, mod->name, strlen(mod->name));
+    full_hash = dict_hash_multi(full_hash, sibling->name, strlen(sibling->name));
+    if (collision_id) {
+        if (collision_id > strlen(mod->name)) {
+            /* fine, we will not hash more bytes, just use more bits from the hash than previously */
+            ext_len = strlen(mod->name);
+        } else {
+            /* use one more byte from the module name than before */
+            ext_len = collision_id;
+        }
+        full_hash = dict_hash_multi(full_hash, mod->name, ext_len);
+    }
+    full_hash = dict_hash_multi(full_hash, NULL, 0);
+
+    /* use the shortened hash */
+    hash = full_hash & (LYB_HASH_MASK >> collision_id);
+    /* add colision identificator */
+    hash |= LYB_HASH_COLLISION_ID >> collision_id;
+
+    /* save this hash */
+    if (collision_id < LYS_NODE_HASH_COUNT) {
+        sibling->hash[collision_id] = hash;
+    }
+
+    return hash;
+}
+
+int
+lyb_has_schema_model(const struct lysc_node *sibling, const struct lys_module **models)
+{
+    LY_ARRAY_SIZE_TYPE u;
+
+    LY_ARRAY_FOR(models, u) {
+        if (sibling->module == models[u]) {
+            return 1;
+        }
+    }
+
+    return 0;
 }

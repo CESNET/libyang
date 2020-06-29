@@ -41,12 +41,12 @@ lyd_print(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, in
     case LYD_JSON:
         ret = json_print_data(out, root, options);
         break;
+#endif
     case LYD_LYB:
         ret = lyb_print_data(out, root, options);
         break;
-#endif
-    default:
-        LOGERR(out->ctx, LY_EINVAL, "Unknown output format.");
+    case LYD_SCHEMA:
+        LOGERR(out->ctx, LY_EINVAL, "Invalid output format.");
         ret = LY_EINVAL;
         break;
     }

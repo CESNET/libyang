@@ -337,6 +337,7 @@ cast_string_recursive(const struct lyd_node *node, int fake_cont, enum lyxp_node
     const char *value_str;
     int dynamic;
     const struct lyd_node *child;
+    struct lyd_node *tree;
     struct lyd_node_any *any;
     LY_ERR rc;
 
@@ -409,6 +410,18 @@ cast_string_recursive(const struct lyd_node *node, int fake_cont, enum lyxp_node
         } else {
             struct ly_out *out;
 
+            if (any->value_type == LYD_ANYDATA_LYB) {
+                /* try to parse it into a data tree */
+                tree = lyd_parse_mem((struct ly_ctx *)LYD_NODE_CTX(node), any->value.mem, LYD_LYB,
+                                     LYD_OPT_PARSE_ONLY | LYD_OPT_STRICT);
+                if (!ly_errcode(LYD_NODE_CTX(node))) {
+                    /* successfully parsed */
+                    free(any->value.mem);
+                    any->value.tree = tree;
+                    any->value_type = LYD_ANYDATA_DATATREE;
+                }
+            }
+
             switch (any->value_type) {
             case LYD_ANYDATA_STRING:
             case LYD_ANYDATA_XML:
@@ -422,9 +435,9 @@ cast_string_recursive(const struct lyd_node *node, int fake_cont, enum lyxp_node
                 ly_out_free(out, NULL, 0);
                 LY_CHECK_RET(rc < 0, -rc);
                 break;
-            /* TODO case LYD_ANYDATA_LYB:
+            case LYD_ANYDATA_LYB:
                 LOGERR(LYD_NODE_CTX(node), LY_EINVAL, "Cannot convert LYB anydata into string.");
-                return -1;*/
+                return LY_EINVAL;
             }
         }
 
@@ -4226,6 +4239,7 @@ xpath_name(struct lyxp_set **args, uint16_t arg_count, struct lyxp_set *set, int
             rc = asprintf(&str, "%s:%s", mod->name, name);
             break;
         case LYD_XML:
+        case LYD_LYB:
             LOGINT_RET(set->ctx);
         }
         LY_CHECK_ERR_RET(rc == -1, LOGMEM(set->ctx), LY_EMEM);
@@ -5261,6 +5275,7 @@ moveto_resolve_model(const char **qname, uint16_t *qname_len, struct lyxp_set *s
             free(str);
             break;
         case LYD_XML:
+        case LYD_LYB:
             LOGINT_RET(set->ctx);
         }
 
@@ -6916,6 +6931,7 @@ eval_name_test_try_compile_predicates(struct lyxp_expr *exp, uint16_t *tok_idx, 
                                         lydjson_resolve_prefix, NULL, LYD_JSON, predicates, pred_type);
         break;
     case LYD_XML:
+    case LYD_LYB:
         ret = LY_EINT;
         goto cleanup;
     }

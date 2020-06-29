@@ -123,7 +123,7 @@ LY_ERR yang_print_compiled_node(struct ly_out *out, const struct lysc_node *node
 LY_ERR yin_print_parsed(struct ly_out *out, const struct lys_module *module);
 
 /**
- * @brief XML printer of the YANG data.
+ * @brief XML printer of YANG data.
  *
  * @param[in] out Output specification.
  * @param[in] root The root element of the (sub)tree to print.
@@ -131,6 +131,16 @@ LY_ERR yin_print_parsed(struct ly_out *out, const struct lys_module *module);
  * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
  */
 LY_ERR xml_print_data(struct ly_out *out, const struct lyd_node *root, int options);
+
+/**
+ * @brief LYB printer of YANG data.
+ *
+ * @param[in] out Output structure.
+ * @param[in] root The root element of the (sub)tree to print.
+ * @param[in] options [Data printer flags](@ref dataprinterflags).
+ * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
+ */
+LY_ERR lyb_print_data(struct ly_out *out, const struct lyd_node *root, int options);
 
 /**
  * @brief Check whether a node value equals to its default one.

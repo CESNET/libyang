@@ -138,7 +138,7 @@ lyd_insert_hash(struct lyd_node *node)
         unsigned int u;
 
         /* the hash table is created only when the number of children in a node exceeds the
-         * defined minimal limit LY_CACHE_HT_MIN_CHILDREN
+         * defined minimal limit LYD_HT_MIN_ITEMS
          */
         for (u = 0, iter = node->parent->child; iter; ++u, iter = iter->next);
         if (u >= LYD_HT_MIN_ITEMS) {

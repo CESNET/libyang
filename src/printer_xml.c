@@ -243,6 +243,7 @@ xml_print_attr(struct xmlpr_ctx *ctx, const struct lyd_node_opaq *node)
                 pref = xml_print_ns(ctx, attr->prefix.ns, attr->prefix.pref, 0);
                 break;
             case LYD_SCHEMA:
+            case LYD_LYB:
                 /* cannot be created */
                 LOGINT(node->ctx);
                 return LY_EINT;
@@ -275,6 +276,7 @@ xml_print_opaq_open(struct xmlpr_ctx *ctx, const struct lyd_node_opaq *node)
         xml_print_ns(ctx, node->prefix.ns, NULL, 0);
         break;
     case LYD_SCHEMA:
+    case LYD_LYB:
         /* cannot be created */
         LOGINT(node->ctx);
         return LY_EINT;
@@ -364,7 +366,7 @@ xml_print_anydata(struct xmlpr_ctx *ctx, const struct lyd_node_any *node)
 {
     struct lyd_node_any *any = (struct lyd_node_any *)node;
     struct lyd_node *iter;
-    int prev_opts;
+    int prev_opts, prev_lo;
     LY_ERR ret;
 
     xml_print_node_open(ctx, (struct lyd_node *)node);
@@ -375,6 +377,22 @@ no_content:
         ly_print(ctx->out, "/>%s", LEVEL ? "\n" : "");
         return LY_SUCCESS;
     } else {
+        if (any->value_type == LYD_ANYDATA_LYB) {
+            /* turn logging off */
+            prev_lo = ly_log_options(0);
+
+            /* try to parse it into a data tree */
+            iter = lyd_parse_mem((struct ly_ctx *)LYD_NODE_CTX(node), any->value.mem, LYD_LYB,
+                                 LYD_OPT_PARSE_ONLY | LYD_OPT_OPAQ | LYD_OPT_STRICT);
+            ly_log_options(prev_lo);
+            if (!ly_errcode(LYD_NODE_CTX(node))) {
+                /* successfully parsed */
+                free(any->value.mem);
+                any->value.tree = iter;
+                any->value_type = LYD_ANYDATA_DATATREE;
+            }
+        }
+
         switch (any->value_type) {
         case LYD_ANYDATA_DATATREE:
             /* close opening tag and print data */
@@ -408,11 +426,9 @@ no_content:
             ly_print(ctx->out, ">%s", any->value.str);
             break;
         case LYD_ANYDATA_JSON:
-#if 0 /* TODO LYB format */
         case LYD_ANYDATA_LYB:
-#endif
             /* JSON and LYB format is not supported */
-            LOGWRN(node->schema->module->ctx, "Unable to print anydata content (type %d) as XML.", any->value_type);
+            LOGWRN(LYD_NODE_CTX(node), "Unable to print anydata content (type %d) as XML.", any->value_type);
             goto no_content;
         }
 

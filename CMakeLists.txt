@@ -146,10 +146,12 @@ set(libsrc
     src/tree_data_hash.c
     src/parser_xml.c
     src/parser_json.c
+    src/parser_lyb.c
     src/printer.c
     src/printer_data.c
     src/printer_xml.c
     src/printer_json.c
+    src/printer_lyb.c
     src/tree_schema.c
     src/tree_schema_free.c
     src/tree_schema_compile.c

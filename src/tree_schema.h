@@ -1398,9 +1398,15 @@ struct lysc_action_inout {
     struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
 };
 
+/**
+ * @brief Maximum number of hashes stored in a schema node.
+ */
+#define LYS_NODE_HASH_COUNT 4
+
 struct lysc_action {
     uint16_t nodetype;               /**< LYS_RPC or LYS_ACTION */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
+    uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
     struct lys_module *module;       /**< module structure */
     struct lysp_action *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
     struct lysc_node *parent;        /**< parent node (NULL in case of top level node - RPC) */
@@ -1423,6 +1429,7 @@ struct lysc_action {
 struct lysc_notif {
     uint16_t nodetype;               /**< LYS_NOTIF */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
+    uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
     struct lys_module *module;       /**< module structure */
     struct lysp_notif *sp;           /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
     struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
@@ -1444,6 +1451,7 @@ struct lysc_notif {
 struct lysc_node {
     uint16_t nodetype;               /**< type of the node (mandatory) */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
+    uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
     struct lys_module *module;       /**< module structure */
     struct lysp_node *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or
                                           in case of implicit case node. */
@@ -1464,6 +1472,7 @@ struct lysc_node {
 struct lysc_node_container {
     uint16_t nodetype;               /**< LYS_CONTAINER */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
+    uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
     struct lys_module *module;       /**< module structure */
     struct lysp_node *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
     struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
@@ -1488,6 +1497,7 @@ struct lysc_node_container {
 struct lysc_node_case {
     uint16_t nodetype;               /**< LYS_CASE */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
+    uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser, unused */
     struct lys_module *module;       /**< module structure */
     struct lysp_node *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
     struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
@@ -1510,6 +1520,7 @@ struct lysc_node_case {
 struct lysc_node_choice {
     uint16_t nodetype;               /**< LYS_CHOICE */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
+    uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser, unused */
     struct lys_module *module;       /**< module structure */
     struct lysp_node *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
     struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
@@ -1534,6 +1545,7 @@ struct lysc_node_choice {
 struct lysc_node_leaf {
     uint16_t nodetype;               /**< LYS_LEAF */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
+    uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
     struct lys_module *module;       /**< module structure */
     struct lysp_node *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
     struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
@@ -1560,6 +1572,7 @@ struct lysc_node_leaf {
 struct lysc_node_leaflist {
     uint16_t nodetype;               /**< LYS_LEAFLIST */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
+    uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
     struct lys_module *module;       /**< module structure */
     struct lysp_node *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
     struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
@@ -1590,6 +1603,7 @@ struct lysc_node_leaflist {
 struct lysc_node_list {
     uint16_t nodetype;               /**< LYS_LIST */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
+    uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
     struct lys_module *module;       /**< module structure */
     struct lysp_node *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
     struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */
@@ -1618,6 +1632,7 @@ struct lysc_node_list {
 struct lysc_node_anydata {
     uint16_t nodetype;               /**< LYS_ANYXML or LYS_ANYDATA */
     uint16_t flags;                  /**< [schema node flags](@ref snodeflags) */
+    uint8_t hash[LYS_NODE_HASH_COUNT]; /**< schema hash required for LYB printer/parser */
     struct lys_module *module;       /**< module structure */
     struct lysp_node *sp;            /**< simply parsed (SP) original of the node, NULL if the SP schema was removed or in case of implicit case node. */
     struct lysc_node *parent;        /**< parent node (NULL in case of top level node) */

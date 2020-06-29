@@ -320,10 +320,10 @@ lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int optio
     case LYD_JSON:
         lyd_parse_json(ctx, data, options, trees, &result);
         break;
-    case LYD_LYB:
-        lyd_parse_lyb(ctx, data, options, trees, &result);
-        break;
 #endif
+    case LYD_LYB:
+        lyd_parse_lyb_data(ctx, data, options, &result, NULL);
+        break;
     case LYD_SCHEMA:
         LOGINT(ctx);
         break;
@@ -1815,6 +1815,7 @@ lyd_compare(const struct lyd_node *node1, const struct lyd_node *node2, int opti
             }
             break;
         case LYD_SCHEMA:
+        case LYD_LYB:
             /* not allowed */
             LOGINT(LYD_NODE_CTX(node1));
             return LY_EINT;
@@ -1925,15 +1926,13 @@ lyd_compare(const struct lyd_node *node1, const struct lyd_node *node2, int opti
                     return LY_ENOT;
                 }
                 return LY_SUCCESS;
-    #if 0 /* TODO LYB format */
             case LYD_ANYDATA_LYB:
-                int len1 = lyd_lyb_data_length(any1->value.mem);
-                int len2 = lyd_lyb_data_length(any2->value.mem);
+                len1 = lyd_lyb_data_length(any1->value.mem);
+                len2 = lyd_lyb_data_length(any2->value.mem);
                 if (len1 != len2 || memcmp(any1->value.mem, any2->value.mem, len1)) {
                     return LY_ENOT;
                 }
                 return LY_SUCCESS;
-    #endif
             }
         }
     }
@@ -1981,6 +1980,7 @@ lyd_dup_recursive(const struct lyd_node *node, struct lyd_node *parent, struct l
                   struct lyd_node **dup_p)
 {
     LY_ERR ret;
+    int len;
     struct lyd_node *dup = NULL;
     LY_ARRAY_SIZE_TYPE u;
 
@@ -2105,7 +2105,7 @@ lyd_dup_recursive(const struct lyd_node *node, struct lyd_node *parent, struct l
                     ret = ei ? ei->prev->no : LY_EOTHER;
                     goto error;
                 }
-                LY_CHECK_ERR_GOTO(!any->value.tree, ret = 0 ,error);
+                LY_CHECK_ERR_GOTO(!any->value.tree, ret = 0, error);
             }
             break;
         case LYD_ANYDATA_STRING:
@@ -2113,6 +2113,14 @@ lyd_dup_recursive(const struct lyd_node *node, struct lyd_node *parent, struct l
         case LYD_ANYDATA_JSON:
             if (orig->value.str) {
                 any->value.str = lydict_insert(LYD_NODE_CTX(node), orig->value.str, strlen(orig->value.str));
+            }
+            break;
+        case LYD_ANYDATA_LYB:
+            if (orig->value.mem) {
+                len = lyd_lyb_data_length(orig->value.mem);
+                any->value.mem = malloc(len);
+                LY_CHECK_ERR_GOTO(!any->value.mem, LOGMEM(LYD_NODE_CTX(node)); ret = LY_EMEM, error);
+                memcpy(any->value.mem, orig->value.mem, len);
             }
             break;
         }
