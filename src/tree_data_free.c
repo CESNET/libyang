@@ -117,6 +117,18 @@ ly_free_attr(const struct ly_ctx *ctx, struct ly_attr *attr, int recursive)
     }
 }
 
+void
+ly_free_val_prefs(const struct ly_ctx *ctx, struct ly_prefix *val_prefs)
+{
+    LY_ARRAY_SIZE_TYPE u;
+
+    LY_ARRAY_FOR(val_prefs, u) {
+        FREE_STRING(ctx, val_prefs[u].pref);
+        FREE_STRING(ctx, val_prefs[u].ns);
+    }
+    LY_ARRAY_FREE(val_prefs);
+}
+
 /**
  * @brief Free Data (sub)tree.
  * @param[in] node Data node to be freed.
@@ -128,7 +140,6 @@ lyd_free_subtree(struct lyd_node *node, int top)
     struct lyd_node *iter, *next;
     struct lyd_node *children;
     struct lyd_node_opaq *opaq;
-    LY_ARRAY_SIZE_TYPE u;
 
     assert(node);
 
@@ -144,13 +155,7 @@ lyd_free_subtree(struct lyd_node *node, int top)
         FREE_STRING(LYD_NODE_CTX(opaq), opaq->name);
         FREE_STRING(LYD_NODE_CTX(opaq), opaq->prefix.pref);
         FREE_STRING(LYD_NODE_CTX(opaq), opaq->prefix.ns);
-        if (opaq->val_prefs) {
-            LY_ARRAY_FOR(opaq->val_prefs, u) {
-                FREE_STRING(LYD_NODE_CTX(opaq), opaq->val_prefs[u].pref);
-                FREE_STRING(LYD_NODE_CTX(opaq), opaq->val_prefs[u].ns);
-            }
-            LY_ARRAY_FREE(opaq->val_prefs);
-        }
+        ly_free_val_prefs(LYD_NODE_CTX(opaq), opaq->val_prefs);
         FREE_STRING(LYD_NODE_CTX(opaq), opaq->value);
     } else if (node->schema->nodetype & LYD_NODE_INNER) {
         /* remove children hash table in case of inner data node */
@@ -172,11 +177,9 @@ lyd_free_subtree(struct lyd_node *node, int top)
         case LYD_ANYDATA_JSON:
             FREE_STRING(LYD_NODE_CTX(node), ((struct lyd_node_any *)node)->value.str);
             break;
-#if 0 /* TODO LYB format */
         case LYD_ANYDATA_LYB:
             free(((struct lyd_node_any *)node)->value.mem);
             break;
-#endif
         }
     } else if (node->schema->nodetype & LYD_NODE_TERM) {
         ((struct lysc_node_leaf *)node->schema)->type->plugin->free(LYD_NODE_CTX(node), &((struct lyd_node_term *)node)->value);

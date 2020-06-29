@@ -122,9 +122,7 @@ typedef enum {
     LYD_SCHEMA = 0,      /**< invalid instance data format, value prefixes map to YANG import prefixes */
     LYD_XML,             /**< XML instance data format, value prefixes map to XML namespace prefixes */
     LYD_JSON,            /**< JSON instance data format, value prefixes map to module names */
-#if 0
-    LYD_LYB,             /**< LYB format of the instance data */
-#endif
+    LYD_LYB,             /**< LYB instance data format, invalid value prefix format (same as LYD_JSON) */
 } LYD_FORMAT;
 
 /**
@@ -139,9 +137,7 @@ typedef enum {
                                           is printed in XML format. */
     LYD_ANYDATA_XML,                 /**< Value is a string containing the serialized XML data. */
     LYD_ANYDATA_JSON,                /**< Value is a string containing the data modeled by YANG and encoded as I-JSON. */
-#if 0 /* TODO LYB format */
     LYD_ANYDATA_LYB,                 /**< Value is a memory chunk with the serialized data tree in LYB format. */
-#endif
 } LYD_ANYDATA_VALUETYPE;
 
 /** @} */
@@ -474,6 +470,9 @@ struct lyd_node_opaq {
 #define LYD_OPT_OPAQ            0x0008  /**< Instead of silently ignoring data without definition, parse them into
                                              an opaq node. Do not combine with #LYD_OPT_STRICT. */
 #define LYD_OPT_NO_STATE        0x0010  /**< Forbid state data in the parsed data. */
+#define LYD_OPT_LYB_MOD_UPDATE  0x0020  /**< Only for LYB format, allow parsing data printed using a specific module
+                                             revision to be loaded even with a module with the same name but newer
+                                             revision. */
 
 #define LYD_OPT_MASK            0xFFFF  /**< Mask for all the parser options. */
 
@@ -599,6 +598,15 @@ struct lyd_node *lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int
  * @return NULL in case of error. The error information can be then obtained using ly_err* functions.
  */
 struct lyd_node *lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int options);
+
+/**
+ * @brief Learn the length of LYB data.
+ *
+ * @param[in] data LYB data to examine.
+ * @return Length of the LYB data chunk,
+ * @return -1 on error.
+ */
+int lyd_lyb_data_length(const char *data);
 
 /**
  * @brief Fully validate a data tree.
@@ -1002,7 +1010,7 @@ LY_ERR lyd_value_compare(const struct lyd_node_term *node, const char *value, si
 #define LYD_COMPARE_DEFAULTS 0x02       /* By default, implicit and explicit default nodes are considered to be equal. This flag
                                            changes this behavior and implicit (automatically created default node) and explicit
                                            (explicitly created node with the default value) default nodes are considered different. */
-/**@} datacompareoptions */
+/** @} datacompareoptions */
 
 /**
  * @brief Compare 2 data nodes if they are equivalent.

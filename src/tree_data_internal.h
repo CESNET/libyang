@@ -3,7 +3,7 @@
  * @author Radek Krejci <rkrejci@cesnet.cz>
  * @brief internal functions for YANG schema trees.
  *
- * Copyright (c) 2015 - 2019 CESNET, z.s.p.o.
+ * Copyright (c) 2015 - 2020 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -15,12 +15,40 @@
 #ifndef LY_TREE_DATA_INTERNAL_H_
 #define LY_TREE_DATA_INTERNAL_H_
 
-#include "tree_data.h"
+#include "lyb.h"
 #include "plugins_types.h"
+#include "set.h"
+#include "tree_data.h"
 
 #include <stddef.h>
 
 struct ly_path_predicate;
+
+/**
+ * @brief Internal data parser flags.
+ */
+#define LYD_INTOPT_RPC      0x01    /**< RPC/action invocation is being parsed */
+#define LYD_INTOPT_NOTIF    0x02    /**< notification is being parsed */
+#define LYD_INTOPT_REPLY    0x04    /**< RPC/action reply is being parsed */
+
+/**
+ * @brief Hash schema sibling to be used for LYB data.
+ *
+ * @param[in] sibling Sibling to hash.
+ * @param[in] collision_id Collision ID of the hash to generate.
+ * @return Generated hash.
+ */
+LYB_HASH lyb_hash(struct lysc_node *sibling, uint8_t collision_id);
+
+/**
+ * @brief Check whether a sibling module is in a module array.
+ *
+ * @param[in] sibling Sibling to check.
+ * @param[in] models Modules in a sized array.
+ * @return non-zero if the module was found,
+ * @return 0 if not found.
+ */
+int lyb_has_schema_model(const struct lysc_node *sibling, const struct lys_module **models);
 
 /**
  * @brief Check whether a node to be deleted is the first top-level sibling.
@@ -318,6 +346,57 @@ LY_ERR lyd_parse_xml_notif(const struct ly_ctx *ctx, const char *data, struct ly
 LY_ERR lyd_parse_xml_reply(const struct lyd_node *request, const char *data, struct lyd_node **tree, struct lyd_node **op);
 
 /**
+ * @brief Parse binary data as YANG data tree.
+ *
+ * @param[in] ctx libyang context
+ * @param[in] data Pointer to the input data to parse.
+ * @param[in] options @ref dataparseroptions
+ * @param[out] tree Parsed data tree. Note that NULL can be a valid result.
+ * @param[out] parsed_bytes Optional number of parsed bytes.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_parse_lyb_data(struct ly_ctx *ctx, const char *data, int options, struct lyd_node **tree, int *parsed_bytes);
+
+/**
+ * @brief Parse binary data as YANG RPC/action invocation.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] data Pointer to the input data to parse.
+ * @param[out] tree Parsed full RPC/action tree.
+ * @param[out] op Optional pointer to the actual operation. Useful mainly for action.
+ * @param[out] parsed_bytes Optional number of parsed bytes.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_parse_lyb_rpc(struct ly_ctx *ctx, const char *data, struct lyd_node **tree, struct lyd_node **op,
+                         int *parsed_bytes);
+
+/**
+ * @brief Parse binary data as YANG notification.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] data Pointer to the input data to parse.
+ * @param[out] tree Parsed full notification tree.
+ * @param[out] op Optional pointer to the actual notification. Useful mainly for nested notifications.
+ * @param[out] parsed_bytes Optional number of parsed bytes.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_parse_lyb_notif(struct ly_ctx *ctx, const char *data, struct lyd_node **tree, struct lyd_node **ntf,
+                           int *parsed_bytes);
+
+/**
+ * @brief Parse binary data as YANG RPC/action reply.
+ *
+ * @param[in] request Data tree of the RPC/action request.
+ * @param[in] data Pointer to the input data to parse.
+ * @param[out] tree Parsed full reply tree. It always includes duplicated operation and parents of the @p request.
+ * @param[out] op Optional pointer to the reply operation. Useful mainly for action.
+ * @param[out] parsed_bytes Optional number of parsed bytes.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_parse_lyb_reply(struct lyd_node *request, const char *data, struct lyd_node **tree, struct lyd_node **op,
+                           int *parsed_bytes);
+
+/**
  * @defgroup datahash Data nodes hash manipulation
  * @ingroup datatree
  */
@@ -415,5 +494,23 @@ const struct lys_module *lyd_data_next_module(struct lyd_node **next, struct lyd
  * @return LY_ENOT on a missing key.
  */
 LY_ERR lyd_parse_check_keys(struct lyd_node *node);
+
+/**
+ * @brief Set data flags for a newly parsed node.
+ *
+ * @param[in] node Node to use.
+ * @param[in] when_check Set of nodes with unresolved when.
+ * @param[in,out] meta Node metadata, may be removed from.
+ * @param[in] options Parse options.
+ */
+void lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *when_check, struct lyd_meta **meta, int options);
+
+/**
+ * @brief Free value prefixes.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] val_prefis Value prefixes to free, sized array (@ref sizedarrays).
+ */
+void ly_free_val_prefs(const struct ly_ctx *ctx, struct ly_prefix *val_prefs);
 
 #endif /* LY_TREE_DATA_INTERNAL_H_ */

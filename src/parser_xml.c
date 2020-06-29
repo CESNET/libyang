@@ -27,10 +27,6 @@
 #include "validation.h"
 #include "xml.h"
 
-#define LYD_INTOPT_RPC      0x01    /**< RPC/action invocation is being parsed */
-#define LYD_INTOPT_NOTIF    0x02    /**< notification is being parsed */
-#define LYD_INTOPT_REPLY    0x04    /**< RPC/action reply is being parsed */
-
 /**
  * @brief Internal context for XML YANG data parser.
  */
@@ -67,7 +63,7 @@ lydxml_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefi
 }
 
 static LY_ERR
-lydxml_metadata(struct lyxml_ctx *xmlctx, const struct lysc_node *sparent, int strict, struct ly_set *type_meta_check,
+lydxml_metadata(struct lyxml_ctx *xmlctx, const struct lysc_node *sparent, int strict, struct ly_set *unres_meta_type,
                 struct lyd_meta **meta)
 {
     LY_ERR ret = LY_EVALID;
@@ -116,7 +112,7 @@ skip_attr:
             goto skip_attr;
         }
 
-        /* remember attr name and get its content */
+        /* remember meta name and get its content */
         name = xmlctx->name;
         name_len = xmlctx->name_len;
         LY_CHECK_GOTO(ret = lyxml_ctx_next(xmlctx), cleanup);
@@ -126,8 +122,8 @@ skip_attr:
         ret = lyd_create_meta(NULL, meta, mod, name, name_len, xmlctx->value, xmlctx->value_len, &xmlctx->dynamic,
                               lydxml_resolve_prefix, xmlctx, LYD_XML, sparent);
         if (ret == LY_EINCOMPLETE) {
-            if (type_meta_check) {
-                ly_set_add(type_meta_check, meta, LY_SET_OPT_USEASLIST);
+            if (unres_meta_type) {
+                ly_set_add(unres_meta_type, *meta, LY_SET_OPT_USEASLIST);
             }
         } else if (ret) {
             goto cleanup;
@@ -400,46 +396,6 @@ restore:
     return ret;
 }
 
-static void
-lydxml_data_flags(struct lyd_xml_ctx *lydctx, struct lyd_node *node, struct lyd_meta **meta)
-{
-    struct lyd_meta *meta2, *prev_meta = NULL;
-
-    if (!(node->schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) && node->schema->when) {
-        if (lydctx->options & LYD_OPT_TRUSTED) {
-            /* just set it to true */
-            node->flags |= LYD_WHEN_TRUE;
-        } else {
-            /* remember we need to evaluate this node's when */
-            ly_set_add(&lydctx->when_check, node, LY_SET_OPT_USEASLIST);
-        }
-    }
-
-    if (lydctx->options & LYD_OPT_TRUSTED) {
-        /* node is valid */
-        node->flags &= ~LYD_NEW;
-    }
-
-    LY_LIST_FOR(*meta, meta2) {
-        if (!strcmp(meta2->name, "default") && !strcmp(meta2->annotation->module->name, "ietf-netconf-with-defaults")
-                && meta2->value.boolean) {
-            /* node is default according to the metadata */
-            node->flags |= LYD_DEFAULT;
-
-            /* delete the metadata */
-            if (prev_meta) {
-                prev_meta->next = meta2->next;
-            } else {
-                *meta = (*meta)->next;
-            }
-            lyd_free_meta(lydctx->xmlctx->ctx, meta2, 0);
-            break;
-        }
-
-        prev_meta = meta2;
-    }
-}
-
 /**
  * @brief Parse XML elements as YANG data node children the specified parent node.
  *
@@ -675,7 +631,7 @@ lydxml_data_r(struct lyd_xml_ctx *lydctx, struct lyd_node_inner *parent, struct 
 
         /* add/correct flags */
         if (snode) {
-            lydxml_data_flags(lydctx, cur, &meta);
+            lyd_parse_set_data_flags(cur, &lydctx->when_check, &meta, lydctx->options);
         }
 
         /* add metadata/attributes */
