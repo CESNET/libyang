@@ -713,12 +713,12 @@ ly_write_skip(struct ly_out *out, size_t count, size_t *position)
     return count;
 }
 
-ssize_t
+LY_ERR
 ly_write_skipped(struct ly_out *out, size_t position, const char *buf, size_t count)
 {
-    ssize_t ret = LY_SUCCESS;
+    LY_ERR ret = LY_SUCCESS;
 
-    LYOUT_CHECK(out, -1 * out->status);
+    LYOUT_CHECK(out, out->status);
 
     switch (out->type) {
     case LY_OUT_MEMORY:
@@ -732,8 +732,7 @@ ly_write_skipped(struct ly_out *out, size_t position, const char *buf, size_t co
     case LY_OUT_CALLBACK:
         if (out->buf_len < position + count) {
             out->status = LY_EMEM;
-            LOGMEM(NULL);
-            return -LY_EMEM;
+            LOGMEM_RET(NULL);
         }
 
         /* write into the hole */
@@ -750,13 +749,12 @@ ly_write_skipped(struct ly_out *out, size_t position, const char *buf, size_t co
         }
         break;
     case LY_OUT_ERROR:
-        LOGINT(NULL);
-        return -LY_EINT;
+        LOGINT_RET(NULL);
     }
 
     if (out->type == LY_OUT_FILEPATH) {
         /* move the original file descriptor to the end of the output file */
         lseek(out->method.fdstream.fd, 0, SEEK_END);
     }
-    return ret < 0 ? (-1 * ret) : LY_SUCCESS;
+    return ret;
 }
