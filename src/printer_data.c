@@ -53,7 +53,7 @@ lyd_print(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, in
 
     if (ret) {
         /* error */
-        return (-1) * ret;
+        return (-1) * (signed)ret;
     } else {
         /* success */
         return (ssize_t)(out->printed - printed_prev);
