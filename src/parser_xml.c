@@ -673,7 +673,8 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     }
 
     if ((options & LYD_OPT_RPC)
-            && !strcmp(xmlstart->name, "action") && !strcmp(xmlstart->ns->value, LY_NSYANG)) {
+            && !strcmp(xmlstart->name, "action")
+            && xmlstart->ns && !strcmp(xmlstart->ns->value, LY_NSYANG)) {
         /* it's an action, not a simple RPC */
         xmlstart = xmlstart->child;
         if (options & LYD_OPT_DESTRUCT) {
