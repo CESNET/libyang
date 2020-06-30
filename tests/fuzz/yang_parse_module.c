@@ -5,10 +5,12 @@
 #include "../../src/common.h"
 #include "../../src/tree_schema_internal.h"
 
+LY_ERR yang_parse_module(struct lys_yang_parser_ctx **context, const char *data, struct lys_module *mod);
+
 int LLVMFuzzerTestOneInput(uint8_t const *buf, size_t len)
 {
 	struct lys_module *mod = NULL;
-	struct lys_parser_ctx *context = NULL;
+	struct lys_yang_parser_ctx *context = NULL;
 	uint8_t *data = NULL;
 	struct ly_ctx *ctx = NULL;
 	static bool log = false; 
@@ -30,8 +32,8 @@ int LLVMFuzzerTestOneInput(uint8_t const *buf, size_t len)
 		fprintf(stderr, "Out of memory\n");
 		return 0;
 	}
-	data[len] = 0;
 	memcpy(data, buf, len);
+	data[len] = 0;
 
 	mod = calloc(1, sizeof *mod);
 	if (mod == NULL) {
