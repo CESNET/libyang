@@ -15,14 +15,18 @@
 #include "lyb.h"
 
 #include <assert.h>
-#include <errno.h>
-#include <inttypes.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "common.h"
 #include "compat.h"
+#include "context.h"
+#include "dict.h"
+#include "log.h"
+#include "set.h"
+#include "tree.h"
 #include "tree_data_internal.h"
 #include "tree_schema.h"
 #include "validation.h"

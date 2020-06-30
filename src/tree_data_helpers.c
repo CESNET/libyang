@@ -15,10 +15,14 @@
 #include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "common.h"
 #include "context.h"
+#include "hash_table.h"
 #include "log.h"
+#include "lyb.h"
+#include "set.h"
 #include "tree.h"
 #include "tree_data.h"
 #include "tree_data_internal.h"

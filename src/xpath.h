@@ -16,6 +16,7 @@
 #define LY_XPATH_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 #include "config.h"
 #include "log.h"

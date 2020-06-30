@@ -16,7 +16,6 @@
 #define LY_PARSER_H_
 
 #include <stdio.h>
-#include <unistd.h>
 
 #include "log.h"
 

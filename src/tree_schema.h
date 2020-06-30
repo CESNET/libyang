@@ -30,7 +30,6 @@
 extern "C" {
 #endif
 
-struct ly_path;
 struct ly_ctx;
 struct ly_set;
 
