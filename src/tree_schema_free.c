@@ -16,7 +16,6 @@
 
 #include "common.h"
 #include "config.h"
-#include "path.h"
 #include "plugins_exts.h"
 #include "plugins_types.h"
 #include "tree.h"

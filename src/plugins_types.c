@@ -30,7 +30,6 @@
 #include "path.h"
 #include "set.h"
 #include "tree.h"
-#include "tree_data_internal.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 #include "xml.h"

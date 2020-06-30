@@ -15,12 +15,15 @@
 #ifndef LY_PATH_H_
 #define LY_PATH_H_
 
+#include <stddef.h>
 #include <stdint.h>
 
 #include "log.h"
 #include "tree.h"
 #include "tree_data.h"
 
+struct ly_ctx;
+struct lys_module;
 struct lysc_node;
 struct lyxp_expr;
 
