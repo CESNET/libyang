@@ -469,7 +469,7 @@ attr_error:
             xml->child = NULL;
             LY_TREE_FOR(child, next) {
                 next->parent = NULL;
-                lyxml_correct_elem_ns(ctx, next, 1, 1);
+                lyxml_correct_elem_ns(ctx, next, xml, 1, 1);
             }
 
             ((struct lyd_node_anydata *)*result)->value_type = LYD_ANYDATA_XML;
