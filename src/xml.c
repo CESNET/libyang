@@ -954,7 +954,12 @@ lyxml_ctx_next(struct lyxml_ctx *xmlctx)
 
         if (xmlctx->input[0] == '>') {
             /* no attributes but a closing tag */
-            move_input(xmlctx, 1);
+            ++xmlctx->input;
+            if (!xmlctx->input[0]) {
+                LOGVAL(xmlctx->ctx, LY_VLOG_LINE, &xmlctx->line, LY_VCODE_EOF);
+                ret = LY_EVALID;
+                goto cleanup;
+            }
 
             /* parse element content */
             LY_CHECK_GOTO(ret = lyxml_parse_value(xmlctx, '<', (char **)&xmlctx->value, &xmlctx->value_len, &xmlctx->ws_only,
