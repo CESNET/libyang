@@ -4,16 +4,16 @@
 export DH_VERBOSE=1
 
 %:
-	dh $@ --with python3
+	dh $@
 
 override_dh_strip:
 	dh_strip -p@PACKAGE@  --dbg-package=@PACKAGE@-dbg
 	dh_strip -p@CPP_PACKAGE@ --dbg-package=@CPP_PACKAGE@-dbg
-	dh_strip -p@PYTHON_CFFI_PACKAGE@ --dbg-package=@PYTHON_CFFI_PACKAGE@-dbg
+#	dh_strip -p@PYTHON_PACKAGE@ --dbg-package=@PYTHON_PACKAGE@-dbg
 
 override_dh_auto_configure:
 	cmake -DCMAKE_INSTALL_PREFIX=/usr -DFORCE_INSRC_BUILD=ON -DCMAKE_BUILD_TYPE="Package" -DENABLE_LYD_PRIV=ON \
-	-DGEN_LANGUAGE_BINDINGS=ON -DGEN_PYTHON_BINDINGS=OFF -DGEN_PYTHON_CFFI_BINDINGS=ON .
+	-DGEN_LANGUAGE_BINDINGS=ON -DGEN_PYTHON_BINDINGS=OFF .
 
 override_dh_auto_test:
 	ctest --output-on-failure

@@ -263,9 +263,8 @@ Currently supported bindings are:
 * Python SWIG (uses SWIG, enabled by default if `GEN_LANGUAGE_BINDINGS` is set)
     - cmake option: `GEN_PYTHON_BINDINGS` (depends on `GEN_CPP_BINDINGS`)
     - [README](./swig/python/README.md)
-* Python CFFI (more "pythonic" API, not enabled by default)
-    - cmake option: `GEN_PYTHON_CFFI_BINDINGS`
-    - [README](./python/README.md)
+* Python CFFI (more "pythonic" API)
+    - Hosted in a separate project: https://github.com/CESNET/libyang-python
 
 ## Project Information
 
