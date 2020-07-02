@@ -342,6 +342,7 @@ lyb_write_start_subtree(struct ly_out *out, struct lyd_lyb_ctx *lybctx)
     LY_ARRAY_SIZE_TYPE u;
 
     if (!lybctx->subtrees) {
+        assert(lybctx->subtree_size == 0);
         u = 0;
     } else {
         u = LY_ARRAY_SIZE(lybctx->subtrees);

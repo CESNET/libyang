@@ -1467,13 +1467,13 @@ lyd_insert_check_schema(const struct lysc_node *parent, const struct lysc_node *
     if (parent) {
         /* inner node */
         if (par2 != parent) {
-            LOGERR(parent->module->ctx, LY_EINVAL, "Cannot insert, parent of \"%s\" is not \"%s\".", schema->name, parent->name);
+            LOGERR(schema->module->ctx, LY_EINVAL, "Cannot insert, parent of \"%s\" is not \"%s\".", schema->name, parent->name);
             return LY_EINVAL;
         }
     } else {
         /* top-level node */
         if (par2) {
-            LOGERR(parent->module->ctx, LY_EINVAL, "Cannot insert, node \"%s\" is not top-level.", schema->name);
+            LOGERR(schema->module->ctx, LY_EINVAL, "Cannot insert, node \"%s\" is not top-level.", schema->name);
             return LY_EINVAL;
         }
     }
