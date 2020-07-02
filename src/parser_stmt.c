@@ -680,7 +680,7 @@ lysp_stmt_type(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct 
 {
     struct lysp_type *nest_type;
     const struct lysp_stmt *child;
-    const char *str_path;
+    const char *str_path = NULL;
     LY_ERR ret;
 
     if (type->name) {

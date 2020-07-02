@@ -6999,6 +6999,8 @@ eval_name_test_with_predicate(struct lyxp_expr *exp, uint16_t *tok_idx, int attr
                     && (!scnode || (lysc_data_parent(scnode) != set->val.nodes[i].node->schema))) {
                 /* do not repeat the same search */
                 tmp = lys_find_child(set->val.nodes[i].node->schema, moveto_mod, ncname, ncname_len, 0, 0);
+            } else {
+                tmp = NULL;
             }
 
             /* additional context check */
@@ -7015,7 +7017,6 @@ eval_name_test_with_predicate(struct lyxp_expr *exp, uint16_t *tok_idx, int attr
                     /* remember the found schema node and continue to make sure it can be used */
                     scnode = tmp;
                 }
-                tmp = NULL;
             }
         }
 

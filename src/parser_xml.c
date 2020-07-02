@@ -1057,7 +1057,7 @@ lyd_parse_xml_reply(const struct lyd_node *request, const char *data, struct lyd
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_xml_ctx lydctx = {0};
-    struct lyd_node *rpcr_e = NULL, *iter, *req_op, *rep_op;
+    struct lyd_node *rpcr_e = NULL, *iter, *req_op, *rep_op = NULL;
 
     /* init */
     LY_CHECK_GOTO(ret = lyxml_ctx_new(LYD_NODE_CTX(request), data, &lydctx.xmlctx), cleanup);
