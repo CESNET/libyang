@@ -394,6 +394,8 @@ ly_out_new_filepath(const char *filepath, struct ly_out **out)
     (*out)->method.fpath.f = fopen(filepath, "w");
     if (!(*out)->method.fpath.f) {
         LOGERR(NULL, LY_ESYS, "Failed to open file \"%s\" (%s).", filepath, strerror(errno));
+        free(*out);
+        *out = NULL;
         return LY_ESYS;
     }
     (*out)->method.fpath.filepath = strdup(filepath);

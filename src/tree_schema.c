@@ -774,7 +774,7 @@ lys_parse_mem_submodule(struct ly_ctx *ctx, const char *data, LYS_INFORMAT forma
         LOGERR(ctx, LY_EINVAL, "Invalid schema input format.");
         break;
     }
-    LY_CHECK_RET(ret, NULL);
+    LY_CHECK_GOTO(ret, error);
 
     /* make sure that the newest revision is at position 0 */
     lysp_sort_revisions(submod->revs);
@@ -841,7 +841,7 @@ lys_parse_mem_module(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, 
     LY_ARRAY_SIZE_TYPE u, v;
     struct lys_yang_parser_ctx *yangctx = NULL;
     struct lys_yin_parser_ctx *yinctx = NULL;
-    struct lys_parser_ctx *pctx;
+    struct lys_parser_ctx *pctx = NULL;
 
     LY_CHECK_ARG_RET(ctx, ctx, data, NULL);
 
@@ -862,7 +862,7 @@ lys_parse_mem_module(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, 
         LOGERR(ctx, LY_EINVAL, "Invalid schema input format.");
         break;
     }
-    LY_CHECK_ERR_RET(ret, lys_module_free(mod, NULL), NULL);
+    LY_CHECK_GOTO(ret, error);
 
     /* make sure that the newest revision is at position 0 */
     lysp_sort_revisions(mod->parsed->revs);
@@ -982,7 +982,9 @@ error_ctx:
     ly_set_rm(&ctx->list, mod, NULL);
 error:
     lys_module_free(mod, NULL);
-    ly_set_erase(&pctx->tpdfs_nodes, NULL);
+    if (pctx) {
+        ly_set_erase(&pctx->tpdfs_nodes, NULL);
+    }
     if (format == LYS_IN_YANG) {
         yang_parser_ctx_free(yangctx);
     } else {
