@@ -5502,7 +5502,6 @@ moveto_node_hash(struct lyxp_set *set, const struct lysc_node *scnode, const str
 {
     LY_ERR ret = LY_SUCCESS;
     uint32_t i;
-    int replaced;
     const struct lyd_node *siblings;
     struct lyd_node *sub, *inst = NULL;
 
@@ -5532,7 +5531,6 @@ moveto_node_hash(struct lyxp_set *set, const struct lysc_node *scnode, const str
     }
 
     for (i = 0; i < set->used; ) {
-        replaced = 0;
         siblings = NULL;
 
         if ((set->val.nodes[i].type == LYXP_NODE_ROOT_CONFIG) || (set->val.nodes[i].type == LYXP_NODE_ROOT)) {
@@ -5560,16 +5558,9 @@ moveto_node_hash(struct lyxp_set *set, const struct lysc_node *scnode, const str
 
         if (sub) {
             /* pos filled later */
-            if (!replaced) {
-                set_replace_node(set, sub, 0, LYXP_NODE_ELEM, i);
-                replaced = 1;
-            } else {
-                set_insert_node(set, sub, 0, LYXP_NODE_ELEM, i);
-            }
+            set_replace_node(set, sub, 0, LYXP_NODE_ELEM, i);
             ++i;
-        }
-
-        if (!replaced) {
+        } else {
             /* no match */
             set_remove_node(set, i);
         }
