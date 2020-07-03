@@ -73,6 +73,7 @@ before_install:
   - if [ ! -d "cmocka/build" ] || [ ! -f "cmocka/build/Makefile" ]; then mkdir -p cmocka/build && (cd cmocka/build && cmake ..); fi
   - if [ "$TRAVIS_OS_NAME" = "osx" ] && [ ! -f "cmocka/build/src/libcmocka.dylib" ]; then (cd cmocka/build && make -j2); fi
   - if [ "$TRAVIS_OS_NAME" = "linux" ] && [ ! -f "cmocka/build/src/libcmocka.so" ]; then (cd cmocka/build && make -j2); fi
+  - if [ "$DEPLOY_BUILD" = "TRUE" ]; then sudo snap install universal-ctags; fi
   - if [ "$DEPLOY_BUILD" = "TRUE" ]; then pip3 install --user codecov==2.0.22; export CFLAGS="-coverage"; fi
 
 script:
