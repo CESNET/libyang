@@ -6888,11 +6888,6 @@ eval_name_test_try_compile_predicates(struct lyxp_expr *exp, uint16_t *tok_idx, 
             /* another presumably key predicate parsed */
             --key_count;
         }
-
-        if (key_count) {
-            /* some keys missing for sure */
-            return LY_EINVAL;
-        }
     } else {
         /* learn just where this single predicate ends */
         e_idx = *tok_idx;
