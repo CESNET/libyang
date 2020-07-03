@@ -4373,7 +4373,7 @@ lys_compile_augment_sort(struct lysc_ctx *ctx, struct lysp_augment *aug_p, struc
 LY_ERR
 lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, const struct lysc_node *parent)
 {
-    LY_ERR ret = LY_SUCCESS;
+    LY_ERR ret = LY_SUCCESS, rc;
     struct lysp_node *node_p, *case_node_p;
     struct lysc_node *target; /* target target of the augment */
     struct lysc_node *node;
@@ -4381,7 +4381,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, const stru
     struct lys_module **aug_mod;
     int allow_mandatory = 0;
     uint16_t flags = 0;
-    unsigned int u;
+    LY_ARRAY_COUNT_TYPE u, v;
     int opt_prev = ctx->options;
 
     lysc_update_path(ctx, NULL, "{augment}");
@@ -4512,9 +4512,18 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, const stru
         }
     }
 
-    /* add this module into the target module augmented_by */
-    LY_ARRAY_NEW_GOTO(ctx->ctx, target->module->compiled->augmented_by, aug_mod, ret, error);
-    *aug_mod = ctx->mod;
+    /* add this module into the target module augmented_by, if not there already */
+    rc = LY_SUCCESS;
+    LY_ARRAY_FOR(target->module->compiled->augmented_by, v) {
+        if (target->module->compiled->augmented_by[v] == ctx->mod) {
+            rc = LY_EEXIST;
+            break;
+        }
+    }
+    if (!rc) {
+        LY_ARRAY_NEW_GOTO(ctx->ctx, target->module->compiled->augmented_by, aug_mod, ret, error);
+        *aug_mod = ctx->mod;
+    }
 
     lysc_update_path(ctx, NULL, NULL);
     lysc_update_path(ctx, NULL, NULL);
@@ -6455,9 +6464,18 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p)
             goto cleanup;
         }
 
-        /* add this module into the target module deviated_by */
-        LY_ARRAY_NEW_GOTO(ctx->ctx, devs[u]->target->module->compiled->deviated_by, dev_mod, ret, cleanup);
-        *dev_mod = mod_p->mod;
+        /* add this module into the target module deviated_by, if not there already */
+        rc = LY_SUCCESS;
+        LY_ARRAY_FOR(devs[u]->target->module->compiled->deviated_by, v) {
+            if (devs[u]->target->module->compiled->deviated_by[v] == mod_p->mod) {
+                rc = LY_EEXIST;
+                break;
+            }
+        }
+        if (!rc) {
+            LY_ARRAY_NEW_GOTO(ctx->ctx, devs[u]->target->module->compiled->deviated_by, dev_mod, ret, cleanup);
+            *dev_mod = mod_p->mod;
+        }
 
         lysc_update_path(ctx, NULL, NULL);
     }
