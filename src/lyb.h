@@ -39,7 +39,13 @@ struct lyd_lyb_ctx {
 
     size_t byte_count;  /**< printed/parsed bytes */
     const struct ly_ctx *ctx;
-    int options;
+    union {
+        struct {
+            int parse_options;
+            int validate_options;
+        };
+        int print_options;
+    };
 
     /* LYB parser only */
     const char *data;

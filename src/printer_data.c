@@ -26,7 +26,7 @@
 API ssize_t
 lyd_print(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, int options)
 {
-    LY_ERR ret;
+    LY_ERR ret = LY_EINVAL;
     size_t printed_prev;
 
     LY_CHECK_ARG_RET(NULL, out, root, -LY_EINVAL);

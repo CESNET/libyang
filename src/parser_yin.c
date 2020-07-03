@@ -1758,7 +1758,10 @@ yin_parse_when(struct lys_yin_parser_ctx *ctx, struct lysp_when **when_p)
 
     when = calloc(1, sizeof *when);
     LY_CHECK_ERR_RET(!when, LOGMEM(ctx->xmlctx->ctx), LY_EMEM);
-    LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
+
+    ret = lyxml_ctx_next(ctx->xmlctx);
+    LY_CHECK_ERR_RET(ret, free(when), ret);
+
     ret = yin_parse_attribute(ctx, YIN_ARG_CONDITION, &when->cond, Y_STR_ARG, LY_STMT_WHEN);
     LY_CHECK_ERR_RET(ret, free(when), ret);
 

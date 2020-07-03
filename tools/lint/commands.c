@@ -523,43 +523,18 @@ cleanup:
     return ret;
 }
 
-static LYD_FORMAT
-detect_data_format(char *filepath)
-{
-    size_t len;
-
-    /* detect input format according to file suffix */
-    len = strlen(filepath);
-    for (; isspace(filepath[len - 1]); len--, filepath[len] = '\0'); /* remove trailing whitespaces */
-    if (len >= 5 && !strcmp(&filepath[len - 4], ".xml")) {
-        return LYD_XML;
-#if 0
-    } else if (len >= 6 && !strcmp(&filepath[len - 5], ".json")) {
-        return LYD_JSON;
-    } else if (len >= 5 && !strcmp(&filepath[len - 4], ".lyb")) {
-        return LYD_LYB;
-#endif
-    } else {
-        return 0;
-    }
-}
-
 static int
 parse_data(char *filepath, int *options, const struct lyd_node *tree, const char *rpc_act_file,
            struct lyd_node **result)
 {
-    LYD_FORMAT informat = 0;
     struct lyd_node *data = NULL, *rpc_act = NULL;
     int opts = *options;
+    struct ly_in *in;
 
-    /* detect input format according to file suffix */
-    informat = detect_data_format(filepath);
-    if (!informat) {
-        fprintf(stderr, "Unable to resolve format of the input file, please add \".xml\", \".json\", or \".lyb\" suffix.\n");
+    if (ly_in_new_filepath(filepath, 0, &in)) {
+        fprintf(stderr, "Unable to open input YANG data file \"%s\".", filepath);
         return EXIT_FAILURE;
     }
-
-    ly_err_clean(ctx, NULL);
 
 #if 0
     if ((opts & LYD_OPT_TYPEMASK) == LYD_OPT_TYPEMASK) {
@@ -671,11 +646,14 @@ parse_data(char *filepath, int *options, const struct lyd_node *tree, const char
             data = lyd_parse_path(ctx, filepath, informat, opts, rpc_act_file);
         } else {
 #endif
-            data = lyd_parse_path(ctx, filepath, informat, opts);
+
+            lyd_parse_data(ctx, in, 0, opts, 0, &data);
 #if 0
         }
     }
 #endif
+    ly_in_free(in, 0);
+
     lyd_free_all(rpc_act);
 
     if (ly_err_first(ctx)) {
@@ -698,7 +676,6 @@ cmd_data(const char *arg)
     const char *out_path = NULL;
     struct lyd_node *data = NULL;
     struct lyd_node *tree = NULL;
-    const struct lyd_node **trees = NULL;
     LYD_FORMAT outformat = 0;
     struct ly_out *out = NULL;
     static struct option long_options[] = {
@@ -845,7 +822,7 @@ cmd_data(const char *arg)
     }
 
     if (outformat) {
-        ret = lyd_print(out, data, outformat, LYDP_WITHSIBLINGS | LYDP_FORMAT | printopt);
+        ret = lyd_print(out, data, outformat, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_FORMAT | printopt);
         ret = ret < 0 ? ret * (-1) : 0;
     }
 

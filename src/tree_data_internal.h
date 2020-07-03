@@ -294,20 +294,19 @@ LY_ERR lyd_value_parse_meta(struct ly_ctx *ctx, struct lyd_meta *meta, const cha
  *
  * @param[in] ctx libyang context
  * @param[in] data Pointer to the XML data to parse.
- * @param[in] options @ref dataparseroptions
+ * @param[in] parse_options Options for parser, see @ref dataparseroptions.
+ * @param[in] validate_options Options for the validation phase, see @ref datavalidationoptions.
  * @param[out] tree Parsed data tree. Note that NULL can be a valid result.
  * @return LY_ERR value.
  */
-LY_ERR lyd_parse_xml_data(const struct ly_ctx *ctx, const char *data, int options, struct lyd_node **tree);
+LY_ERR lyd_parse_xml_data(const struct ly_ctx *ctx, const char *data, int parse_options, int validate_options, struct lyd_node **tree);
 
 /**
  * @brief Parse XML string as YANG RPC/action invocation.
  *
- * Optional \<rpc\> envelope element, if present, is [checked](https://tools.ietf.org/html/rfc6241#section-4.1) and all
- * its XML attributes parsed. In that case an RPC is expected to be parsed.
- *
- * Can be followed by optional \<action\> envelope element, which is also
- * [checked](https://tools.ietf.org/html/rfc7950#section-7.15.2) and then an action is expected to be parsed.
+ * Optional \<rpc\> envelope element is accepted if present. It is [checked](https://tools.ietf.org/html/rfc6241#section-4.1) and all
+ * its XML attributes are parsed. As a content of the enveloper, an RPC data or \<action\> envelope element is expected. The \<action\> envelope element is
+ * also [checked](https://tools.ietf.org/html/rfc7950#section-7.15.2) and then an action data is expected as a content of this envelope.
  *
  * @param[in] ctx libyang context.
  * @param[in] data Pointer to the XML data to parse.
@@ -350,12 +349,13 @@ LY_ERR lyd_parse_xml_reply(const struct lyd_node *request, const char *data, str
  *
  * @param[in] ctx libyang context
  * @param[in] data Pointer to the input data to parse.
- * @param[in] options @ref dataparseroptions
+ * @param[in] parse_options Options for parser, see @ref dataparseroptions.
+ * @param[in] validate_options Options for the validation phase, see @ref datavalidationoptions.
  * @param[out] tree Parsed data tree. Note that NULL can be a valid result.
  * @param[out] parsed_bytes Optional number of parsed bytes.
  * @return LY_ERR value.
  */
-LY_ERR lyd_parse_lyb_data(struct ly_ctx *ctx, const char *data, int options, struct lyd_node **tree, int *parsed_bytes);
+LY_ERR lyd_parse_lyb_data(const struct ly_ctx *ctx, const char *data, int parse_options, int validate_options, struct lyd_node **tree, int *parsed_bytes);
 
 /**
  * @brief Parse binary data as YANG RPC/action invocation.
@@ -367,7 +367,7 @@ LY_ERR lyd_parse_lyb_data(struct ly_ctx *ctx, const char *data, int options, str
  * @param[out] parsed_bytes Optional number of parsed bytes.
  * @return LY_ERR value.
  */
-LY_ERR lyd_parse_lyb_rpc(struct ly_ctx *ctx, const char *data, struct lyd_node **tree, struct lyd_node **op,
+LY_ERR lyd_parse_lyb_rpc(const struct ly_ctx *ctx, const char *data, struct lyd_node **tree, struct lyd_node **op,
                          int *parsed_bytes);
 
 /**
@@ -380,7 +380,7 @@ LY_ERR lyd_parse_lyb_rpc(struct ly_ctx *ctx, const char *data, struct lyd_node *
  * @param[out] parsed_bytes Optional number of parsed bytes.
  * @return LY_ERR value.
  */
-LY_ERR lyd_parse_lyb_notif(struct ly_ctx *ctx, const char *data, struct lyd_node **tree, struct lyd_node **ntf,
+LY_ERR lyd_parse_lyb_notif(const struct ly_ctx *ctx, const char *data, struct lyd_node **tree, struct lyd_node **ntf,
                            int *parsed_bytes);
 
 /**
@@ -393,7 +393,7 @@ LY_ERR lyd_parse_lyb_notif(struct ly_ctx *ctx, const char *data, struct lyd_node
  * @param[out] parsed_bytes Optional number of parsed bytes.
  * @return LY_ERR value.
  */
-LY_ERR lyd_parse_lyb_reply(struct lyd_node *request, const char *data, struct lyd_node **tree, struct lyd_node **op,
+LY_ERR lyd_parse_lyb_reply(const struct lyd_node *request, const char *data, struct lyd_node **tree, struct lyd_node **op,
                            int *parsed_bytes);
 
 /**

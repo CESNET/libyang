@@ -54,10 +54,11 @@ LY_ERR lyd_validate_new(struct lyd_node **first, const struct lysc_node *sparent
  * @param[in] sparent Schema parent of the siblings, NULL for top-level siblings.
  * @param[in] mod Module of the siblings, NULL for nested siblings.
  * @param[in] val_opts Validation options (@ref datavalidationoptions).
+ * @param[in] op Operation to validate (@ref datavalidateop) or 0 for data tree
  * @return LY_ERR value.
  */
 LY_ERR lyd_validate_final_r(struct lyd_node *first, const struct lysc_node *sparent, const struct lys_module *mod,
-                            int val_opts);
+                            int val_opts, LYD_VALIDATE_OP op);
 
 /**
  * @brief Check the existence and create any non-existing default siblings, recursively for the created nodes.

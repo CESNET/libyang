@@ -19,6 +19,16 @@
 #include "tree_schema_internal.h"
 
 /**
+ * @brief Mask for checking LYD_PARSE_ options (@ref dataparseroptions)
+ */
+#define LYD_PARSE_OPTS_MASK    0xFFFF0000
+
+/**
+ * @brief Mask for checking LYD_VALIDATEP_ options (@ref datavalidationoptions)
+ */
+#define LYD_VALIDATE_OPTS_MASK 0x0000FFFF
+
+/**
  * @brief Parser input structure specifying where the data are read.
  */
 struct ly_in {

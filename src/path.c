@@ -274,7 +274,7 @@ ly_path_parse(const struct ly_ctx *ctx, const char *str_path, size_t path_len, u
 
 error:
     lyxp_expr_free(ctx, exp);
-    return LY_EINVAL;
+    return LY_EVALID;
 }
 
 LY_ERR
@@ -306,7 +306,7 @@ ly_path_parse_predicate(const struct ly_ctx *ctx, const char *str_path, size_t p
 
 error:
     lyxp_expr_free(ctx, exp);
-    return LY_EINVAL;
+    return LY_EVALID;
 }
 
 /**
@@ -346,11 +346,11 @@ ly_path_compile_prefix(const struct ly_ctx *ctx, const struct lys_module *cur_mo
         if (!*mod) {
             LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_XPATH, "Prefix \"%.*s\" not found of a module in path.",
                    len, expr->expr + expr->tok_pos[tok_idx]);
-            return LY_EINVAL;
+            return LY_EVALID;
         } else if (!(*mod)->implemented) {
             if (lref == LY_PATH_LREF_FALSE) {
                 LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_XPATH, "Not implemented module \"%s\" in path.", (*mod)->name);
-                return LY_EINVAL;
+                return LY_EVALID;
             }
             lys_set_implemented_internal((struct lys_module *)*mod, 2);
         }
@@ -410,11 +410,11 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lys_module *cur
         if (ctx_node->nodetype != LYS_LIST) {
             LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_XPATH, "List predicate defined for %s \"%s\" in path.",
                    lys_nodetype2str(ctx_node->nodetype), ctx_node->name);
-            return LY_EINVAL;
+            return LY_EVALID;
         } else if (ctx_node->flags & LYS_KEYLESS) {
             LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_XPATH, "List predicate defined for keyless %s \"%s\" in path.",
                    lys_nodetype2str(ctx_node->nodetype), ctx_node->name);
-            return LY_EINVAL;
+            return LY_EVALID;
         }
 
         do {
@@ -424,11 +424,11 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lys_module *cur
             key = lys_find_child(ctx_node, mod, name, name_len, 0, LYS_GETNEXT_NOSTATECHECK);
             if (!key) {
                 LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_XPATH, "Not found node \"%.*s\" in path.", name_len, name);
-                return LY_EINVAL;
+                return LY_EVALID;
             } else if ((key->nodetype != LYS_LEAF) || !(key->flags & LYS_KEY)) {
                 LOGVAL(ctx, LY_VLOG_LYSC, key, LYVE_XPATH, "Key expected instead of %s \"%s\" in path.",
                        lys_nodetype2str(key->nodetype), key->name);
-                return LY_EINVAL;
+                return LY_EVALID;
             }
             ++(*tok_idx);
 
@@ -468,14 +468,14 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lys_module *cur
                    lys_nodetype2str(ctx_node->nodetype), ctx_node->name);
             ly_path_predicates_free(ctx, LY_PATH_PREDTYPE_LIST, NULL, *predicates);
             *predicates = NULL;
-            return LY_EINVAL;
+            return LY_EVALID;
         }
 
     } else if (expr->tokens[*tok_idx] == LYXP_TOKEN_DOT) {
         if (ctx_node->nodetype != LYS_LEAFLIST) {
             LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_XPATH, "Leaf-list predicate defined for %s \"%s\" in path.",
                    lys_nodetype2str(ctx_node->nodetype), ctx_node->name);
-            return LY_EINVAL;
+            return LY_EVALID;
         }
         ++(*tok_idx);
 
@@ -501,11 +501,11 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lys_module *cur
         if (!(ctx_node->nodetype & (LYS_LEAFLIST | LYS_LIST))) {
             LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_XPATH, "Positional predicate defined for %s \"%s\" in path.",
                    lys_nodetype2str(ctx_node->nodetype), ctx_node->name);
-            return LY_EINVAL;
+            return LY_EVALID;
         } else if (ctx_node->flags & LYS_CONFIG_W) {
             LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_XPATH, "Positional predicate defined for configuration"
                    " %s \"%s\" in path.", lys_nodetype2str(ctx_node->nodetype), ctx_node->name);
-            return LY_EINVAL;
+            return LY_EVALID;
         }
 
         /* new predicate */
@@ -555,11 +555,11 @@ ly_path_compile_predicate_leafref(const struct lysc_node *ctx_node, const struct
     if (ctx_node->nodetype != LYS_LIST) {
         LOGVAL(cur_node->module->ctx, LY_VLOG_NONE, NULL, LYVE_XPATH, "List predicate defined for %s \"%s\" in path.",
                lys_nodetype2str(ctx_node->nodetype), ctx_node->name);
-        return LY_EINVAL;
+        return LY_EVALID;
     } else if (ctx_node->flags & LYS_KEYLESS) {
         LOGVAL(cur_node->module->ctx, LY_VLOG_NONE, NULL, LYVE_XPATH, "List predicate defined for keyless %s \"%s\" in path.",
                lys_nodetype2str(ctx_node->nodetype), ctx_node->name);
-        return LY_EINVAL;
+        return LY_EVALID;
     }
 
     do {
@@ -569,11 +569,11 @@ ly_path_compile_predicate_leafref(const struct lysc_node *ctx_node, const struct
         key = lys_find_child(ctx_node, mod, name, name_len, 0, LYS_GETNEXT_NOSTATECHECK);
         if (!key) {
             LOGVAL(cur_node->module->ctx, LY_VLOG_NONE, NULL, LYVE_XPATH, "Not found node \"%.*s\" in path.", name_len, name);
-            return LY_EINVAL;
+            return LY_EVALID;
         } else if ((key->nodetype != LYS_LEAF) || !(key->flags & LYS_KEY)) {
             LOGVAL(cur_node->module->ctx, LY_VLOG_NONE, NULL, LYVE_XPATH, "Key expected instead of %s \"%s\" in path.",
                    lys_nodetype2str(key->nodetype), key->name);
-            return LY_EINVAL;
+            return LY_EVALID;
         }
         ++(*tok_idx);
 
@@ -607,7 +607,7 @@ ly_path_compile_predicate_leafref(const struct lysc_node *ctx_node, const struct
             /* go to parent */
             if (!node) {
                 LOGVAL(cur_node->module->ctx, LY_VLOG_NONE, NULL, LYVE_XPATH, "Too many parent references in path.");
-                return LY_EINVAL;
+                return LY_EVALID;
             }
             node = lysc_data_parent(node);
 
@@ -629,7 +629,7 @@ ly_path_compile_predicate_leafref(const struct lysc_node *ctx_node, const struct
             if (!node2) {
                 LOGVAL(cur_node->module->ctx, LY_VLOG_NONE, NULL, LYVE_XPATH, "Not found node \"%.*s\" in path.",
                        name_len, name);
-                return LY_EINVAL;
+                return LY_EVALID;
             }
             node = node2;
             ++(*tok_idx);
@@ -639,7 +639,7 @@ ly_path_compile_predicate_leafref(const struct lysc_node *ctx_node, const struct
         if (node->nodetype != LYS_LEAF) {
             LOGVAL(cur_node->module->ctx, LY_VLOG_NONE, NULL, LYVE_XPATH, "Leaf expected instead of %s \"%s\" in"
                    " leafref predicate in path.", lys_nodetype2str(node->nodetype), node->name);
-            return LY_EINVAL;
+            return LY_EVALID;
         }
 
         /* we are not actually compiling, throw the rightside node away */
@@ -697,7 +697,7 @@ ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, cons
         while ((lref == LY_PATH_LREF_TRUE) && (expr->tokens[tok_idx] == LYXP_TOKEN_DDOT)) {
             if (!ctx_node) {
                 LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_XPATH, "Too many parent references in path.");
-                return LY_EINVAL;
+                return LY_EVALID;
             }
 
             /* get parent */
@@ -718,7 +718,7 @@ ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, cons
         if (p && (lref == LY_PATH_LREF_FALSE) && (p->node->nodetype == LYS_LIST) && !p->predicates) {
             LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_XPATH, "Predicate missing for %s \"%s\" in path.",
                    lys_nodetype2str(p->node->nodetype), p->node->name);
-            return LY_EINVAL;
+            return LY_EVALID;
         }
 
         /* get module and node name */
@@ -730,7 +730,7 @@ ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, cons
         node2 = lys_find_child(ctx_node, mod, name, name_len, 0, getnext_opts);
         if (!node2) {
             LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_XPATH, "Not found node \"%.*s\" in path.", name_len, name);
-            ret = LY_EINVAL;
+            ret = LY_EVALID;
             goto cleanup;
         }
         ctx_node = node2;
@@ -754,7 +754,7 @@ ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, cons
             && (p->node->nodetype & (LYS_LIST | LYS_LEAFLIST)) && !p->predicates) {
         LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_XPATH, "Predicate missing for %s \"%s\" in path.",
                lys_nodetype2str(p->node->nodetype), p->node->name);
-        return LY_EINVAL;
+        return LY_EVALID;
     }
 
 cleanup:

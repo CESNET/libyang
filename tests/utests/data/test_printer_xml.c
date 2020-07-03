@@ -22,6 +22,7 @@
 #include <string.h>
 
 #include "context.h"
+#include "parser_data.h"
 #include "printer.h"
 #include "printer_data.h"
 #include "tests/config.h"
@@ -185,7 +186,7 @@ test_leaf(void **state)
 
     data = "<int8 xmlns=\"urn:tests:types\">\n 15 \t\n  </int8>";
     result = "<int8 xmlns=\"urn:tests:types\">15</int8>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(s->ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_true((len = lyd_print(out, tree, LYD_XML, 0)) >= 0);
     assert_int_equal(len, strlen(printed));
     assert_string_equal(printed, result);
@@ -209,7 +210,7 @@ test_anydata(void **state)
     assert_int_equal(LY_SUCCESS, ly_out_new_memory(&printed, 0, &out));
 
     data = "<any xmlns=\"urn:tests:types\"><somexml xmlns:x=\"url:x\" xmlns=\"example.com\"><x:x/></somexml></any>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(s->ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_true((len = lyd_print(out, tree, LYD_XML, 0)) >= 0);
     assert_int_equal(len, strlen(printed));
     /* canonized */
@@ -219,7 +220,7 @@ test_anydata(void **state)
     lyd_free_all(tree);
 
     data = "<any xmlns=\"urn:tests:types\"/>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(s->ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_true((len = lyd_print(out, tree, LYD_XML, 0)) >= 0);
     assert_int_equal(len, strlen(printed));
     assert_string_equal(printed, data);
@@ -235,7 +236,7 @@ test_anydata(void **state)
                 "</defs:elem1>"
             "</cont>"
         "</any>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(s->ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
     /* cont should be normally parsed */
     assert_string_equal(tree->schema->name, "any");
     assert_int_equal(((struct lyd_node_any *)tree)->value_type, LYD_ANYDATA_DATATREE);
@@ -279,20 +280,20 @@ test_defaults(void **state)
 
     /* standard default value */
     data = "<c xmlns=\"urn:defaults\">aa</c>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(s->ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
 
-    assert_true((len = lyd_print(out, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_TRIM)) >= 0);
+    assert_true((len = lyd_print(out, tree, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_TRIM)) >= 0);
     assert_int_equal(len, strlen(printed));
     assert_string_equal(printed, data);
     ly_out_reset(out);
 
-    assert_true((len = lyd_print(out, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_ALL)) >= 0);
+    assert_true((len = lyd_print(out, tree, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_ALL)) >= 0);
     assert_int_equal(len, strlen(printed));
     data = "<c xmlns=\"urn:defaults\">aa</c><a xmlns=\"urn:defaults\" xmlns:d=\"urn:defaults\">/d:b</a>";
     assert_string_equal(printed, data);
     ly_out_reset(out);
 
-    assert_true((len = lyd_print(out, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_ALL_TAG)) >= 0);
+    assert_true((len = lyd_print(out, tree, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_ALL_TAG)) >= 0);
     assert_int_equal(len, strlen(printed));
     data = "<c xmlns=\"urn:defaults\">aa</c>"
         "<a xmlns=\"urn:defaults\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\""
@@ -300,7 +301,7 @@ test_defaults(void **state)
     assert_string_equal(printed, data);
     ly_out_reset(out);
 
-    assert_true((len = lyd_print(out, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG)) >= 0);
+    assert_true((len = lyd_print(out, tree, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_IMPL_TAG)) >= 0);
     assert_int_equal(len, strlen(printed));
     data = "<c xmlns=\"urn:defaults\">aa</c>"
         "<a xmlns=\"urn:defaults\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\""
@@ -312,24 +313,24 @@ test_defaults(void **state)
 
     /* string value equal to the default but default is an unresolved instance-identifier, so they are not considered equal */
     data = "<c xmlns=\"urn:defaults\">aa</c><a xmlns=\"urn:defaults\">/d:b</a>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(s->ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
 
-    assert_true((len = lyd_print(out, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_TRIM)) >= 0);
+    assert_true((len = lyd_print(out, tree, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_TRIM)) >= 0);
     assert_int_equal(len, strlen(printed));
     assert_string_equal(printed, data);
     ly_out_reset(out);
 
-    assert_true((len = lyd_print(out, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_ALL)) >= 0);
+    assert_true((len = lyd_print(out, tree, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_ALL)) >= 0);
     assert_int_equal(len, strlen(printed));
     assert_string_equal(printed, data);
     ly_out_reset(out);
 
-    assert_true((len = lyd_print(out, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_ALL_TAG)) >= 0);
+    assert_true((len = lyd_print(out, tree, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_ALL_TAG)) >= 0);
     assert_int_equal(len, strlen(printed));
     assert_string_equal(printed, data);
     ly_out_reset(out);
 
-    assert_true((len = lyd_print(out, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG)) >= 0);
+    assert_true((len = lyd_print(out, tree, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_IMPL_TAG)) >= 0);
     assert_int_equal(len, strlen(printed));
     assert_string_equal(printed, data);
     ly_out_reset(out);
@@ -338,21 +339,21 @@ test_defaults(void **state)
 
     /* instance-identifier value equal to the default, should be considered equal */
     data = "<c xmlns=\"urn:defaults\">aa</c><a xmlns=\"urn:defaults\" xmlns:d=\"urn:defaults\">/d:b</a><b xmlns=\"urn:defaults\">val</b>";
-    assert_non_null(tree = lyd_parse_mem(s->ctx, data, LYD_XML, LYD_VALOPT_DATA_ONLY));
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(s->ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
 
-    assert_true((len = lyd_print(out, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_TRIM)) >= 0);
+    assert_true((len = lyd_print(out, tree, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_TRIM)) >= 0);
     assert_int_equal(len, strlen(printed));
     data = "<c xmlns=\"urn:defaults\">aa</c><b xmlns=\"urn:defaults\">val</b>";
     assert_string_equal(printed, data);
     ly_out_reset(out);
 
-    assert_true((len = lyd_print(out, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_ALL)) >= 0);
+    assert_true((len = lyd_print(out, tree, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_ALL)) >= 0);
     assert_int_equal(len, strlen(printed));
     data = "<c xmlns=\"urn:defaults\">aa</c><a xmlns=\"urn:defaults\" xmlns:d=\"urn:defaults\">/d:b</a><b xmlns=\"urn:defaults\">val</b>";
     assert_string_equal(printed, data);
     ly_out_reset(out);
 
-    assert_true((len = lyd_print(out, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_ALL_TAG)) >= 0);
+    assert_true((len = lyd_print(out, tree, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_ALL_TAG)) >= 0);
     assert_int_equal(len, strlen(printed));
     data = "<c xmlns=\"urn:defaults\">aa</c>"
         "<a xmlns=\"urn:defaults\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\""
@@ -361,7 +362,7 @@ test_defaults(void **state)
     assert_string_equal(printed, data);
     ly_out_reset(out);
 
-    assert_true((len = lyd_print(out, tree, LYD_XML, LYDP_WITHSIBLINGS | LYDP_WD_IMPL_TAG)) >= 0);
+    assert_true((len = lyd_print(out, tree, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_IMPL_TAG)) >= 0);
     assert_int_equal(len, strlen(printed));
     data = "<c xmlns=\"urn:defaults\">aa</c><a xmlns=\"urn:defaults\" xmlns:d=\"urn:defaults\">/d:b</a><b xmlns=\"urn:defaults\">val</b>";
     assert_string_equal(printed, data);

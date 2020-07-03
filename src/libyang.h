@@ -25,6 +25,7 @@ extern "C" {
 #include "dict.h"
 #include "log.h"
 #include "parser.h"
+#include "parser_data.h"
 #include "parser_schema.h"
 #include "plugins_types.h"
 #include "printer.h"

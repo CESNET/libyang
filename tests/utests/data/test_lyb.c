@@ -260,13 +260,13 @@ test_ietf_interfaces(void **state)
     assert_non_null(ly_ctx_load_module(st->ctx, "ietf-ip", NULL));
     assert_non_null(ly_ctx_load_module(st->ctx, "iana-if-type", NULL));
 
-    st->dt1 = lyd_parse_mem(st->ctx, data_xml, LYD_XML, LYD_OPT_PARSE_ONLY);
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(st->ctx, data_xml, LYD_XML, LYD_PARSE_ONLY, 0, &st->dt1));
     assert_ptr_not_equal(st->dt1, NULL);
 
-    ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, LYDP_WITHSIBLINGS);
+    ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, LYD_PRINT_WITHSIBLINGS);
     assert_int_equal(ret, 0);
 
-    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_PARSE_ONLY | LYD_OPT_STRICT);
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(st->ctx, st->mem, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &st->dt2));
     assert_ptr_not_equal(st->dt2, NULL);
 
     check_data_tree(st->dt1, st->dt2);
@@ -307,13 +307,13 @@ test_origin(void **state)
     assert_non_null(lys_parse_mem(st->ctx, origin_yang, LYS_IN_YANG));
     lys_set_implemented(ly_ctx_get_module_latest(st->ctx, "ietf-origin"));
 
-    st->dt1 = lyd_parse_mem(st->ctx, data_xml, LYD_XML, LYD_OPT_PARSE_ONLY);
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(st->ctx, data_xml, LYD_XML, LYD_PARSE_ONLY, 0, &st->dt1));
     assert_ptr_not_equal(st->dt1, NULL);
 
-    ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, LYDP_WITHSIBLINGS);
+    ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, LYD_PRINT_WITHSIBLINGS);
     assert_int_equal(ret, 0);
 
-    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_PARSE_ONLY | LYD_OPT_STRICT);
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(st->ctx, st->mem, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &st->dt2));
     assert_ptr_not_equal(st->dt2, NULL);
 
     check_data_tree(st->dt1, st->dt2);
@@ -517,13 +517,13 @@ test_statements(void **state)
     assert_non_null(lys_parse_mem(st->ctx, links_yang, LYS_IN_YANG));
     assert_non_null(lys_parse_mem(st->ctx, statements_yang, LYS_IN_YANG));
 
-    st->dt1 = lyd_parse_mem(st->ctx, data_xml, LYD_XML, LYD_OPT_PARSE_ONLY);
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(st->ctx, data_xml, LYD_XML, LYD_PARSE_ONLY, 0, &st->dt1));
     assert_ptr_not_equal(st->dt1, NULL);
 
-    ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, LYDP_WITHSIBLINGS);
+    ret = lyd_print_mem(&st->mem, st->dt1, LYD_LYB, LYD_PRINT_WITHSIBLINGS);
     assert_int_equal(ret, 0);
 
-    st->dt2 = lyd_parse_mem(st->ctx, st->mem, LYD_LYB, LYD_OPT_PARSE_ONLY | LYD_OPT_STRICT);
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(st->ctx, st->mem, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &st->dt2));
     assert_ptr_not_equal(st->dt2, NULL);
 
     check_data_tree(st->dt1, st->dt2);

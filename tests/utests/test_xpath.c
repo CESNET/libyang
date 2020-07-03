@@ -21,6 +21,7 @@
 #include <string.h>
 
 #include "context.h"
+#include "parser_data.h"
 #include "set.h"
 #include "tests/config.h"
 #include "tree_data.h"
@@ -222,7 +223,7 @@ test_hash(void **state)
     int dynamic;
     const char *val_str;
 
-    tree = lyd_parse_mem(ctx, data, LYD_XML, LYD_OPT_STRICT | LYD_VALOPT_DATA_ONLY);
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
 
     /* top-level, so hash table is not ultimately used but instances can be compared based on hashes */
@@ -326,7 +327,7 @@ test_toplevel(void **state)
     struct lyd_node *tree;
     struct ly_set *set;
 
-    tree = lyd_parse_mem(ctx, data, LYD_XML, LYD_OPT_STRICT | LYD_VALOPT_DATA_ONLY);
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, LYD_PARSE_STRICT , LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
 
     /* all top-level nodes from one module (default container as well) */

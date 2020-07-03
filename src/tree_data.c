@@ -34,6 +34,8 @@
 #include "dict.h"
 #include "hash_table.h"
 #include "log.h"
+#include "parser_data.h"
+#include "parser_internal.h"
 #include "path.h"
 #include "plugins_exts.h"
 #include "plugins_exts_metadata.h"
@@ -280,98 +282,14 @@ lyd_meta2str(const struct lyd_meta *meta, int *dynamic)
     return meta->value.realtype->plugin->print(&meta->value, LYD_JSON, json_print_get_prefix, NULL, dynamic);
 }
 
-API struct lyd_node *
-lyd_parse_mem(struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int options)
+static LYD_FORMAT
+lyd_parse_get_format(struct ly_in *in, LYD_FORMAT format)
 {
-    struct lyd_node *result = NULL;
-#if 0
-    const char *yang_data_name = NULL;
-#endif
 
-    LY_CHECK_ARG_RET(ctx, ctx, NULL);
-
-    if ((options & LYD_OPT_PARSE_ONLY) && (options & LYD_VALOPT_MASK)) {
-        LOGERR(ctx, LY_EINVAL, "Passing validation flags with LYD_OPT_PARSE_ONLY is not allowed.");
-        return NULL;
-    }
-
-#if 0
-    if (options & LYD_OPT_RPCREPLY) {
-        /* first item in trees is mandatory - the RPC/action request */
-        LY_CHECK_ARG_RET(ctx, trees, LY_ARRAY_SIZE(trees) >= 1, NULL);
-        if (!trees[0] || trees[0]->parent || !(trees[0]->schema->nodetype & (LYS_ACTION | LYS_LIST | LYS_CONTAINER))) {
-            LOGERR(ctx, LY_EINVAL, "Data parser invalid argument trees - the first item in the array must be the RPC/action request when parsing %s.",
-                   lyd_parse_options_type2str(options));
-            return NULL;
-        }
-    }
-
-    if (options & LYD_OPT_DATA_TEMPLATE) {
-        yang_data_name = va_arg(ap, const char *);
-    }
-#endif
-
-    if (!format) {
-        /* TODO try to detect format from the content */
-    }
-
-    switch (format) {
-    case LYD_XML:
-        lyd_parse_xml_data(ctx, data, options, &result);
-        break;
-#if 0
-    case LYD_JSON:
-        lyd_parse_json(ctx, data, options, trees, &result);
-        break;
-#endif
-    case LYD_LYB:
-        lyd_parse_lyb_data(ctx, data, options, &result, NULL);
-        break;
-    case LYD_SCHEMA:
-        LOGINT(ctx);
-        break;
-    }
-
-    return result;
-}
-
-API struct lyd_node *
-lyd_parse_fd(struct ly_ctx *ctx, int fd, LYD_FORMAT format, int options)
-{
-    struct lyd_node *result;
-    size_t length;
-    char *addr;
-
-    LY_CHECK_ARG_RET(ctx, ctx, NULL);
-    if (fd < 0) {
-        LOGARG(ctx, fd);
-        return NULL;
-    }
-
-    LY_CHECK_RET(ly_mmap(ctx, fd, &length, (void **)&addr), NULL);
-    result = lyd_parse_mem(ctx, addr ? addr : "", format, options);
-    if (addr) {
-        ly_munmap(addr, length);
-    }
-
-    return result;
-}
-
-API struct lyd_node *
-lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int options)
-{
-    int fd;
-    struct lyd_node *result;
-    size_t len;
-
-    LY_CHECK_ARG_RET(ctx, ctx, path, NULL);
-
-    fd = open(path, O_RDONLY);
-    LY_CHECK_ERR_RET(fd == -1, LOGERR(ctx, LY_ESYS, "Opening file \"%s\" failed (%s).", path, strerror(errno)), NULL);
-
-    if (!format) {
+    if (!format && in->type == LY_IN_FILEPATH) {
         /* unknown format - try to detect it from filename's suffix */
-        len = strlen(path);
+        const char *path = in->method.fpath.filepath;
+        size_t len = strlen(path);
 
         /* ignore trailing whitespaces */
         for (; len > 0 && isspace(path[len - 1]); len--);
@@ -381,16 +299,157 @@ lyd_parse_path(struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int opti
 #if 0
         } else if (len >= 6 && !strncmp(&path[len - 5], ".json", 5)) {
             format = LYD_JSON;
+#endif
         } else if (len >= 5 && !strncmp(&path[len - 4], ".lyb", 4)) {
             format = LYD_LYB;
-#endif
-        } /* else still unknown, try later to detect it from the content */
+        } /* else still unknown */
     }
 
-    result = lyd_parse_fd(ctx, fd, format, options);
-    close(fd);
+    return format;
+}
 
-    return result;
+API LY_ERR
+lyd_parse_data(const struct ly_ctx *ctx, struct ly_in *in, LYD_FORMAT format, int parse_options, int validate_options, struct lyd_node **tree)
+{
+    LY_CHECK_ARG_RET(ctx, ctx, in, tree, LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, !(parse_options & ~LYD_PARSE_OPTS_MASK), LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, !(validate_options & ~LYD_VALIDATE_OPTS_MASK), LY_EINVAL);
+
+    format = lyd_parse_get_format(in, format);
+    LY_CHECK_ARG_RET(ctx, format, LY_EINVAL);
+
+    LY_CHECK_ARG_RET(ctx, format, LY_EINVAL);
+
+    switch (format) {
+    case LYD_XML:
+        return lyd_parse_xml_data(ctx, in->current, parse_options, validate_options, tree);
+#if 0
+    case LYD_JSON:
+        return lyd_parse_json_data(ctx, in->current, parse_options, validate_options, tree);
+#endif
+    case LYD_LYB:
+        return lyd_parse_lyb_data(ctx, in->current, parse_options, validate_options, tree, NULL);
+    case LYD_SCHEMA:
+        LOGINT_RET(ctx);
+    }
+
+    /* TODO move here the top-level validation from parser_xml.c's lyd_parse_xml_data() and make
+     * it common for all the lyd_parse_*_data() functions */
+
+    LOGINT_RET(ctx);
+}
+
+API LY_ERR
+lyd_parse_data_mem(const struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int parse_options, int validate_options, struct lyd_node **tree)
+{
+    LY_ERR ret;
+    struct ly_in *in;
+
+    LY_CHECK_RET(ly_in_new_memory(data, &in));
+    ret = lyd_parse_data(ctx, in, format, parse_options, validate_options, tree);
+
+    ly_in_free(in, 0);
+    return ret;
+}
+
+API LY_ERR
+lyd_parse_data_fd(const struct ly_ctx *ctx, int fd, LYD_FORMAT format, int parse_options, int validate_options, struct lyd_node **tree)
+{
+    LY_ERR ret;
+    struct ly_in *in;
+
+    LY_CHECK_RET(ly_in_new_fd(fd, &in));
+    ret = lyd_parse_data(ctx, in, format, parse_options, validate_options, tree);
+
+    ly_in_free(in, 0);
+    return ret;
+}
+
+API LY_ERR
+lyd_parse_data_path(const struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int parse_options, int validate_options, struct lyd_node **tree)
+{
+    LY_ERR ret;
+    struct ly_in *in;
+
+    LY_CHECK_RET(ly_in_new_filepath(path, 0, &in));
+    ret = lyd_parse_data(ctx, in, format, parse_options, validate_options, tree);
+
+    ly_in_free(in, 0);
+    return ret;
+}
+
+
+API LY_ERR
+lyd_parse_rpc(const struct ly_ctx *ctx, struct ly_in *in, LYD_FORMAT format, struct lyd_node **tree, struct lyd_node **op)
+{
+    LY_CHECK_ARG_RET(ctx, ctx, in, tree, LY_EINVAL);
+
+    format = lyd_parse_get_format(in, format);
+    LY_CHECK_ARG_RET(ctx, format, LY_EINVAL);
+
+    switch (format) {
+    case LYD_XML:
+        return lyd_parse_xml_rpc(ctx, in->current, tree, op);
+#if 0
+    case LYD_JSON:
+        return lyd_parse_json_rpc(ctx, in->current, tree, op);
+#endif
+    case LYD_LYB:
+        return lyd_parse_lyb_rpc(ctx, in->current, tree, op, NULL);
+    case LYD_SCHEMA:
+        LOGINT_RET(ctx);
+    }
+
+    LOGINT_RET(ctx);
+}
+
+API LY_ERR
+lyd_parse_reply(const struct lyd_node *request, struct ly_in *in, LYD_FORMAT format, struct lyd_node **tree, struct lyd_node **op)
+{
+    LY_CHECK_ARG_RET(NULL, request, LY_EINVAL);
+    LY_CHECK_ARG_RET(LYD_NODE_CTX(request), in, tree, LY_EINVAL);
+
+    format = lyd_parse_get_format(in, format);
+    LY_CHECK_ARG_RET(LYD_NODE_CTX(request), format, LY_EINVAL);
+
+    switch (format) {
+    case LYD_XML:
+        return lyd_parse_xml_reply(request, in->current, tree, op);
+#if 0
+    case LYD_JSON:
+        return lyd_parse_json_reply(request, in->current, tree, op);
+#endif
+    case LYD_LYB:
+        return lyd_parse_lyb_reply(request, in->current, tree, op, NULL);
+    case LYD_SCHEMA:
+        LOGINT_RET(LYD_NODE_CTX(request));
+    }
+
+    LOGINT_RET(LYD_NODE_CTX(request));
+}
+
+API LY_ERR
+lyd_parse_notif(const struct ly_ctx *ctx, struct ly_in *in, LYD_FORMAT format, struct lyd_node **tree, struct lyd_node **ntf)
+{
+    LY_CHECK_ARG_RET(ctx, ctx, in, tree, LY_EINVAL);
+
+    format = lyd_parse_get_format(in, format);
+    LY_CHECK_ARG_RET(ctx, format, LY_EINVAL);
+
+    switch (format) {
+    case LYD_XML:
+        return lyd_parse_xml_notif(ctx, in->current, tree, ntf);
+#if 0
+    case LYD_JSON:
+        return lyd_parse_json_notif(ctx, in->current, tree, ntf);
+#endif
+    case LYD_LYB:
+        return lyd_parse_lyb_notif(ctx, in->current, tree, ntf, NULL);
+    case LYD_SCHEMA:
+        LOGINT_RET(ctx);
+    }
+
+    LOGINT_RET(ctx);
 }
 
 LY_ERR
@@ -1408,13 +1467,13 @@ lyd_insert_check_schema(const struct lysc_node *parent, const struct lysc_node *
     if (parent) {
         /* inner node */
         if (par2 != parent) {
-            LOGERR(parent->module->ctx, LY_EINVAL, "Cannot insert, parent of \"%s\" is not \"%s\".", schema->name, parent->name);
+            LOGERR(schema->module->ctx, LY_EINVAL, "Cannot insert, parent of \"%s\" is not \"%s\".", schema->name, parent->name);
             return LY_EINVAL;
         }
     } else {
         /* top-level node */
         if (par2) {
-            LOGERR(parent->module->ctx, LY_EINVAL, "Cannot insert, node \"%s\" is not top-level.", schema->name);
+            LOGERR(schema->module->ctx, LY_EINVAL, "Cannot insert, node \"%s\" is not top-level.", schema->name);
             return LY_EINVAL;
         }
     }
