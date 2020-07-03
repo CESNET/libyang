@@ -50,7 +50,7 @@ endif()
 set(CMAKE_C_FLAGS         "${CMAKE_C_FLAGS} -Wall -Wextra -std=gnu99")
 set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG")
 set(CMAKE_C_FLAGS_PACKAGE "-g -O2 -DNDEBUG")
-set(CMAKE_C_FLAGS_DEBUG   "-g -O0")
+set(CMAKE_C_FLAGS_DEBUG   "-g -Og")
 
 # options
 if((CMAKE_BUILD_TYPE STREQUAL debug) OR (CMAKE_BUILD_TYPE STREQUAL Package))
