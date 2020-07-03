@@ -4,8 +4,9 @@ env:
   - CMOCKA_VERSION: 1.1.5
 
 cache:
+  pip: true
   directories:
-  - cmocka
+    - cmocka
 
 matrix:
   include:
