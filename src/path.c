@@ -462,7 +462,7 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lys_module *cur
         for (key = lysc_node_children(ctx_node, 0); key && (key->flags & LYS_KEY); key = key->next) {
             ++key_count;
         }
-        if (LY_ARRAY_SIZE(*predicates) != key_count) {
+        if (LY_ARRAY_COUNT(*predicates) != key_count) {
             /* names (keys) are unique - it was checked when parsing */
             LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_XPATH, "Predicate missing for a key of %s \"%s\" in path.",
                    lys_nodetype2str(ctx_node->nodetype), ctx_node->name);
@@ -766,10 +766,10 @@ cleanup:
 }
 
 LY_ERR
-ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *start, LY_ARRAY_SIZE_TYPE *path_idx,
+ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *start, LY_ARRAY_COUNT_TYPE *path_idx,
                      struct lyd_node **match)
 {
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
     struct lyd_node *prev_node = NULL, *node, *target;
     uint64_t pos;
 
@@ -888,18 +888,18 @@ ly_path_eval(const struct ly_path *path, const struct lyd_node *start, struct ly
 LY_ERR
 ly_path_dup(const struct ly_ctx *ctx, const struct ly_path *path, struct ly_path **dup)
 {
-    LY_ARRAY_SIZE_TYPE u, v;
+    LY_ARRAY_COUNT_TYPE u, v;
 
     if (!path) {
         return LY_SUCCESS;
     }
 
-    LY_ARRAY_CREATE_RET(ctx, *dup, LY_ARRAY_SIZE(path), LY_EMEM);
+    LY_ARRAY_CREATE_RET(ctx, *dup, LY_ARRAY_COUNT(path), LY_EMEM);
     LY_ARRAY_FOR(path, u) {
         LY_ARRAY_INCREMENT(*dup);
         (*dup)[u].node = path[u].node;
         if (path[u].predicates) {
-            LY_ARRAY_CREATE_RET(ctx, (*dup)[u].predicates, LY_ARRAY_SIZE(path[u].predicates), LY_EMEM);
+            LY_ARRAY_CREATE_RET(ctx, (*dup)[u].predicates, LY_ARRAY_COUNT(path[u].predicates), LY_EMEM);
             (*dup)[u].pred_type = path[u].pred_type;
             LY_ARRAY_FOR(path[u].predicates, v) {
                 struct ly_path_predicate *pred = &path[u].predicates[v];
@@ -931,7 +931,7 @@ void
 ly_path_predicates_free(const struct ly_ctx *ctx, enum ly_path_pred_type pred_type, const struct lysc_node *llist,
                         struct ly_path_predicate *predicates)
 {
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
     if (!predicates) {
         return;
@@ -957,7 +957,7 @@ ly_path_predicates_free(const struct ly_ctx *ctx, enum ly_path_pred_type pred_ty
 void
 ly_path_free(const struct ly_ctx *ctx, struct ly_path *path)
 {
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
     LY_ARRAY_FOR(path, u) {
         ly_path_predicates_free(ctx, path[u].pred_type, path[u].node, path[u].predicates);

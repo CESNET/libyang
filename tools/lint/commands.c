@@ -1253,7 +1253,7 @@ cmd_feature(const char *arg)
 
     if (!task) {
         size_t len, max_len = 0;
-        LY_ARRAY_SIZE_TYPE u;
+        LY_ARRAY_COUNT_TYPE u;
         struct lysc_feature *features;
 
         printf("%s features:\n", module->name);

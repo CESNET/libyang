@@ -122,7 +122,7 @@ test_yang(void **state)
             "  units meters;"
             "}}";
     assert_non_null(mod = lys_parse_mem(s->ctx, data, LYS_IN_YANG));
-    assert_int_equal(1, LY_ARRAY_SIZE(mod->compiled->exts));
+    assert_int_equal(1, LY_ARRAY_COUNT(mod->compiled->exts));
     e = &mod->compiled->exts[0];
     assert_non_null(ant = (struct lyext_metadata*)e->data);
     assert_string_equal("meters", ant->units);
@@ -197,7 +197,7 @@ test_yin(void **state)
             "  <units name=\"meters\"/>\n"
             "</md:annotation></module>";
     assert_non_null(mod = lys_parse_mem(s->ctx, data, LYS_IN_YIN));
-    assert_int_equal(1, LY_ARRAY_SIZE(mod->compiled->exts));
+    assert_int_equal(1, LY_ARRAY_COUNT(mod->compiled->exts));
     e = &mod->compiled->exts[0];
     assert_non_null(ant = (struct lyext_metadata*)e->data);
     assert_string_equal("meters", ant->units);

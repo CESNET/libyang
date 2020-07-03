@@ -1129,7 +1129,7 @@ LY_ERR
 lyxml_get_prefixes(struct lyxml_ctx *xmlctx, const char *value, size_t value_len, struct ly_prefix **val_prefs)
 {
     LY_ERR ret;
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
     uint32_t c;
     const struct lyxml_ns *ns;
     const char *start, *stop;
@@ -1184,7 +1184,7 @@ LY_ERR
 lyxml_value_compare(const char *value1, const struct ly_prefix *prefs1, const char *value2, const struct ly_prefix *prefs2)
 {
     const char *ptr1, *ptr2, *ns1, *ns2;
-    LY_ARRAY_SIZE_TYPE u1, u2;
+    LY_ARRAY_COUNT_TYPE u1, u2;
     int len;
 
     if (!value1 && !value2) {

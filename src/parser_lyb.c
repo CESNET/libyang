@@ -44,7 +44,7 @@ static void
 lyb_read(uint8_t *buf, size_t count, struct lyd_lyb_ctx *lybctx)
 {
     int parsed = 0;
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
     struct lyd_lyb_subtree *empty;
     size_t to_read;
     uint8_t meta_buf[LYB_META_BYTES];
@@ -220,13 +220,13 @@ static LY_ERR
 lyb_read_start_subtree(struct lyd_lyb_ctx *lybctx)
 {
     uint8_t meta_buf[LYB_META_BYTES];
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
     if (!lybctx->subtrees) {
         assert(lybctx->subtree_size == 0);
         u = 0;
     } else {
-        u = LY_ARRAY_SIZE(lybctx->subtrees);
+        u = LY_ARRAY_COUNT(lybctx->subtrees);
     }
     if (u == lybctx->subtree_size) {
         LY_ARRAY_CREATE_RET(lybctx->ctx, lybctx->subtrees, u + LYB_SUBTREE_STEP, LY_EMEM);
@@ -946,7 +946,7 @@ lyb_parse_data_models(struct lyd_lyb_ctx *lybctx)
 {
     LY_ERR ret;
     uint32_t count;
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
     /* read model count */
     lyb_read_number(&count, sizeof count, 2, lybctx);

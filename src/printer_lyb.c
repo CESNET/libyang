@@ -225,7 +225,7 @@ lyb_hash_find(struct hash_table *ht, struct lysc_node *node, LYB_HASH *hash_p)
 static LY_ERR
 lyb_write(struct ly_out *out, const uint8_t *buf, size_t count, struct lyd_lyb_ctx *lybctx)
 {
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
     struct lyd_lyb_subtree *full, *iter;
     ssize_t r, to_write;
     uint8_t meta_buf[LYB_META_BYTES];
@@ -339,13 +339,13 @@ static LY_ERR
 lyb_write_start_subtree(struct ly_out *out, struct lyd_lyb_ctx *lybctx)
 {
     ssize_t r;
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
     if (!lybctx->subtrees) {
         assert(lybctx->subtree_size == 0);
         u = 0;
     } else {
-        u = LY_ARRAY_SIZE(lybctx->subtrees);
+        u = LY_ARRAY_COUNT(lybctx->subtrees);
     }
     if (u == lybctx->subtree_size) {
         LY_ARRAY_CREATE_RET(lybctx->ctx, lybctx->subtrees, u + LYB_SUBTREE_STEP, LY_EMEM);
@@ -357,7 +357,7 @@ lyb_write_start_subtree(struct ly_out *out, struct lyd_lyb_ctx *lybctx)
     LYB_LAST_SUBTREE(lybctx).inner_chunks = 0;
 
     /* another inner chunk */
-    for (u = 0; u < LY_ARRAY_SIZE(lybctx->subtrees) - 1; ++u) {
+    for (u = 0; u < LY_ARRAY_COUNT(lybctx->subtrees) - 1; ++u) {
         if (lybctx->subtrees[u].inner_chunks == LYB_INCHUNK_MAX) {
             LOGINT(lybctx->ctx);
             return -1;
@@ -489,7 +489,7 @@ static LY_ERR
 lyb_print_data_models(struct ly_out *out, const struct lyd_node *root, struct lyd_lyb_ctx *lybctx)
 {
     struct ly_set *set;
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
     LY_ERR ret = LY_SUCCESS;
     struct lys_module *mod;
     const struct lyd_node *node;
@@ -593,14 +593,14 @@ static LY_ERR
 lyb_print_opaq_prefixes(struct ly_out *out, const struct ly_prefix *prefs, struct lyd_lyb_ctx *lybctx)
 {
     uint8_t count;
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
-    if (prefs && (LY_ARRAY_SIZE(prefs) > UINT8_MAX)) {
+    if (prefs && (LY_ARRAY_COUNT(prefs) > UINT8_MAX)) {
         LOGERR(lybctx->ctx, LY_EINT, "Maximum supported number of prefixes is %u.", UINT8_MAX);
         return LY_EINT;
     }
 
-    count = prefs ? LY_ARRAY_SIZE(prefs) : 0;
+    count = prefs ? LY_ARRAY_COUNT(prefs) : 0;
 
     /* write number of prefixes on 1 byte */
     LY_CHECK_RET(lyb_write(out, &count, 1, lybctx));
@@ -875,7 +875,7 @@ lyb_print_attributes(struct ly_out *out, const struct lyd_node_opaq *node, struc
 static LY_ERR
 lyb_print_schema_hash(struct ly_out *out, struct lysc_node *schema, struct hash_table **sibling_ht, struct lyd_lyb_ctx *lybctx)
 {
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
     uint32_t i;
     LYB_HASH hash;
     struct lyd_lyb_sib_ht *sib_ht;
@@ -1002,7 +1002,7 @@ lyb_print_data(struct ly_out *out, const struct lyd_node *root, int options)
 {
     LY_ERR ret = LY_SUCCESS;
     uint8_t zero = 0;
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
     struct hash_table *top_sibling_ht = NULL;
     const struct lys_module *prev_mod = NULL;
     struct lyd_lyb_ctx lybctx = {0};

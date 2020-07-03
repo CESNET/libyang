@@ -79,7 +79,7 @@ last_is_opt(const char *hint)
 static void
 get_model_completion(const char *hint, char ***matches, unsigned int *match_count)
 {
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
     uint32_t idx = 0;
     const struct lys_module *module;
     void *p;

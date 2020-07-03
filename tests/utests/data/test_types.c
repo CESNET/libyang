@@ -368,14 +368,14 @@ test_bits(void **state)
     assert_string_equal("bits", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
     assert_string_equal("zero two", leaf->value.canonical_cache);
-    assert_int_equal(2, LY_ARRAY_SIZE(leaf->value.bits_items));
+    assert_int_equal(2, LY_ARRAY_COUNT(leaf->value.bits_items));
     assert_string_equal("zero", leaf->value.bits_items[0]->name);
     assert_string_equal("two", leaf->value.bits_items[1]->name);
 
     value.realtype = leaf->value.realtype;
     assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
     assert_string_equal(leaf->value.canonical_cache, value.canonical_cache);
-    assert_int_equal(2, LY_ARRAY_SIZE(value.bits_items));
+    assert_int_equal(2, LY_ARRAY_COUNT(value.bits_items));
     assert_string_equal("zero", value.bits_items[0]->name);
     assert_string_equal("two", value.bits_items[1]->name);
     value.realtype->plugin->free(s->ctx, &value);
@@ -399,13 +399,13 @@ test_bits(void **state)
     assert_string_equal("bits", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
     assert_string_equal("one", leaf->value.canonical_cache);
-    assert_int_equal(1, LY_ARRAY_SIZE(leaf->value.bits_items));
+    assert_int_equal(1, LY_ARRAY_COUNT(leaf->value.bits_items));
     assert_string_equal("one", leaf->value.bits_items[0]->name);
 
     value.realtype = leaf->value.realtype;
     assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
     assert_string_equal(leaf->value.canonical_cache, value.canonical_cache);
-    assert_int_equal(1, LY_ARRAY_SIZE(value.bits_items));
+    assert_int_equal(1, LY_ARRAY_COUNT(value.bits_items));
     assert_string_equal("one", value.bits_items[0]->name);
     value.realtype->plugin->free(s->ctx, &value);
     lyd_free_all(tree);
@@ -726,7 +726,7 @@ test_instanceid(void **state)
     assert_string_equal("inst", tree->schema->name);
     leaf = (const struct lyd_node_term*)tree;
     assert_null(leaf->value.canonical_cache);
-    assert_int_equal(2, LY_ARRAY_SIZE(leaf->value.target));
+    assert_int_equal(2, LY_ARRAY_COUNT(leaf->value.target));
     assert_string_equal("cont", leaf->value.target[0].node->name);
     assert_null(leaf->value.target[0].predicates);
     assert_string_equal("leaftarget", leaf->value.target[1].node->name);
@@ -735,7 +735,7 @@ test_instanceid(void **state)
     value.realtype = leaf->value.realtype;
     assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
     assert_null(value.canonical_cache);
-    assert_true(LY_ARRAY_SIZE(leaf->value.target) == LY_ARRAY_SIZE(value.target));
+    assert_true(LY_ARRAY_COUNT(leaf->value.target) == LY_ARRAY_COUNT(value.target));
     assert_true(leaf->value.target[0].node == value.target[0].node);
     assert_true(leaf->value.target[0].predicates == value.target[0].predicates); /* NULL */
     assert_true(leaf->value.target[1].node == value.target[1].node);
@@ -770,9 +770,9 @@ test_instanceid(void **state)
     assert_string_equal("inst", tree->schema->name);
     leaf = (const struct lyd_node_term*)tree;
     assert_null(leaf->value.canonical_cache);
-    assert_int_equal(2, LY_ARRAY_SIZE(leaf->value.target));
+    assert_int_equal(2, LY_ARRAY_COUNT(leaf->value.target));
     assert_string_equal("list_inst", leaf->value.target[0].node->name);
-    assert_int_equal(1, LY_ARRAY_SIZE(leaf->value.target[0].predicates));
+    assert_int_equal(1, LY_ARRAY_COUNT(leaf->value.target[0].predicates));
     assert_string_equal("value", leaf->value.target[1].node->name);
     assert_null(leaf->value.target[1].predicates);
 
@@ -782,9 +782,9 @@ test_instanceid(void **state)
     value.realtype = leaf->value.realtype;
     assert_int_equal(LY_SUCCESS, value.realtype->plugin->duplicate(s->ctx, &leaf->value, &value));
     assert_null(value.canonical_cache);
-    assert_true(LY_ARRAY_SIZE(leaf->value.target) == LY_ARRAY_SIZE(value.target));
+    assert_true(LY_ARRAY_COUNT(leaf->value.target) == LY_ARRAY_COUNT(value.target));
     assert_true(leaf->value.target[0].node == value.target[0].node);
-    assert_true(LY_ARRAY_SIZE(leaf->value.target[0].predicates) == LY_ARRAY_SIZE(value.target[0].predicates));
+    assert_true(LY_ARRAY_COUNT(leaf->value.target[0].predicates) == LY_ARRAY_COUNT(value.target[0].predicates));
     assert_true(leaf->value.target[1].node == value.target[1].node);
     assert_true(leaf->value.target[1].predicates == value.target[1].predicates); /* NULL */
     value.realtype->plugin->free(s->ctx, &value);

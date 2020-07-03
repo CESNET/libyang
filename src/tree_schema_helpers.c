@@ -246,7 +246,7 @@ lysp_sort_revisions(struct lysp_revision *revs)
     uint8_t i, r;
     struct lysp_revision rev;
 
-    for (i = 1, r = 0; revs && i < LY_ARRAY_SIZE(revs); i++) {
+    for (i = 1, r = 0; revs && i < LY_ARRAY_COUNT(revs); i++) {
         if (strcmp(revs[i].date, revs[r].date) > 0) {
             r = i;
         }
@@ -264,7 +264,7 @@ static const struct lysp_tpdf *
 lysp_type_match(const char *name, struct lysp_node *node)
 {
     const struct lysp_tpdf *typedefs;
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
     typedefs = lysp_node_typedefs(node);
     LY_ARRAY_FOR(typedefs, u) {
@@ -357,7 +357,7 @@ lysp_type_find(const char *id, struct lysp_node *start_node, struct lysp_module 
 {
     const char *str, *name;
     struct lysp_tpdf *typedefs;
-    LY_ARRAY_SIZE_TYPE u, v;
+    LY_ARRAY_COUNT_TYPE u, v;
 
     assert(id);
     assert(start_module);
@@ -466,7 +466,7 @@ lysp_check_typedef(struct lys_parser_ctx *ctx, struct lysp_node *node, const str
     uint32_t hash;
     size_t name_len;
     const char *name;
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
     const struct lysp_tpdf *typedefs;
 
     assert(ctx);
@@ -532,7 +532,7 @@ LY_ERR
 lysp_parse_finalize_reallocated(struct lys_parser_ctx *ctx, struct lysp_grp *groupings, struct lysp_augment *augments,
                                 struct lysp_action *actions, struct lysp_notif *notifs)
 {
-    LY_ARRAY_SIZE_TYPE u, v;
+    LY_ARRAY_COUNT_TYPE u, v;
     struct lysp_node *child;
 
     /* finalize parent pointers to the reallocated items */
@@ -625,7 +625,7 @@ lysp_check_typedefs(struct lys_parser_ctx *ctx, struct lysp_module *mod)
     struct hash_table *ids_global;
     struct hash_table *ids_scoped;
     const struct lysp_tpdf *typedefs;
-    LY_ARRAY_SIZE_TYPE u, v;
+    LY_ARRAY_COUNT_TYPE u, v;
     uint32_t i;
     LY_ERR ret = LY_EVALID;
 
@@ -1057,7 +1057,7 @@ lys_module_find_prefix(const struct lys_module *mod, const char *prefix, size_t 
 const char *
 lys_prefix_find_module(const struct lys_module *mod, const struct lys_module *import)
 {
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
     if (import == mod) {
         return mod->prefix;
@@ -1630,18 +1630,18 @@ lysp_match_kw(struct lys_yang_parser_ctx *ctx, const char **data)
     return result;
 }
 
-LY_ARRAY_SIZE_TYPE
-lysp_ext_instance_iter(struct lysp_ext_instance *ext, LY_ARRAY_SIZE_TYPE index, LYEXT_SUBSTMT substmt)
+LY_ARRAY_COUNT_TYPE
+lysp_ext_instance_iter(struct lysp_ext_instance *ext, LY_ARRAY_COUNT_TYPE index, LYEXT_SUBSTMT substmt)
 {
     LY_CHECK_ARG_RET(NULL, ext, LY_EINVAL);
 
-    for (; index < LY_ARRAY_SIZE(ext); index++) {
+    for (; index < LY_ARRAY_COUNT(ext); index++) {
         if (ext[index].insubstmt == substmt) {
             return index;
         }
     }
 
-    return LY_ARRAY_SIZE(ext);
+    return LY_ARRAY_COUNT(ext);
 }
 
 /**
@@ -1656,7 +1656,7 @@ const char *
 lys_get_prefix(const struct lys_module *mod, void *private)
 {
     struct lys_module *context_mod = (struct lys_module*)private;
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
     if (context_mod == mod) {
         return context_mod->prefix;

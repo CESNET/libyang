@@ -249,7 +249,7 @@ lyb_hash(struct lysc_node *sibling, uint8_t collision_id)
 int
 lyb_has_schema_model(const struct lysc_node *sibling, const struct lys_module **models)
 {
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
     LY_ARRAY_FOR(models, u) {
         if (sibling->module == models[u]) {

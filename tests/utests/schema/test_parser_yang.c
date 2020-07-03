@@ -1534,7 +1534,7 @@ test_leaflist(void **state)
     assert_string_equal("ll", ll->name);
     assert_string_equal("test", ll->dsc);
     assert_non_null(ll->dflts);
-    assert_int_equal(2, LY_ARRAY_SIZE(ll->dflts));
+    assert_int_equal(2, LY_ARRAY_COUNT(ll->dflts));
     assert_string_equal("xxx", ll->dflts[0]);
     assert_string_equal("yyy", ll->dflts[1]);
     assert_string_equal("zzz", ll->units);
@@ -1634,7 +1634,7 @@ test_list(void **state)
     assert_string_equal("test", l->dsc);
     assert_string_equal("l", l->key);
     assert_non_null(l->uniques);
-    assert_int_equal(2, LY_ARRAY_SIZE(l->uniques));
+    assert_int_equal(2, LY_ARRAY_COUNT(l->uniques));
     assert_string_equal("xxx", l->uniques[0]);
     assert_string_equal("yyy", l->uniques[1]);
     assert_int_equal(10, l->max);

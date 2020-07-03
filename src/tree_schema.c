@@ -47,7 +47,7 @@ lys_getnext(const struct lysc_node *last, const struct lysc_node *parent, const 
     int action_flag = 0, notif_flag = 0;
     const struct lysc_action *actions;
     const struct lysc_notif *notifs;
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
     LY_CHECK_ARG_RET(NULL, parent || module, NULL);
 
@@ -92,7 +92,7 @@ next:
                 break;
             }
         }
-        if (u + 1 < LY_ARRAY_SIZE(actions)) {
+        if (u + 1 < LY_ARRAY_COUNT(actions)) {
             next = (struct lysc_node*)(&actions[u + 1]);
         }
         goto repeat;
@@ -108,7 +108,7 @@ next:
                 break;
             }
         }
-        if (u + 1 < LY_ARRAY_SIZE(notifs)) {
+        if (u + 1 < LY_ARRAY_COUNT(notifs)) {
             next = (struct lysc_node*)(&notifs[u + 1]);
         }
         goto repeat;
@@ -498,7 +498,7 @@ static LY_ERR
 lys_feature_change(const struct lys_module *mod, const char *name, int value)
 {
     int all = 0;
-    LY_ARRAY_SIZE_TYPE u, disabled_count;
+    LY_ARRAY_COUNT_TYPE u, disabled_count;
     uint32_t changed_count;
     struct lysc_feature *f, **df;
     struct lysc_iffeature *iff;
@@ -528,7 +528,7 @@ lys_feature_change(const struct lys_module *mod, const char *name, int value)
     changed_count = 0;
 
 run:
-    for (disabled_count = u = 0; u < LY_ARRAY_SIZE(mod->compiled->features); ++u) {
+    for (disabled_count = u = 0; u < LY_ARRAY_COUNT(mod->compiled->features); ++u) {
         f = &mod->compiled->features[u];
         if (all || !strcmp(f->name, name)) {
             if ((value && (f->flags & LYS_FENABLED)) || (!value && !(f->flags & LYS_FENABLED))) {
@@ -587,7 +587,7 @@ next:
         if (changed_count == changed->count) {
             /* no change in last run -> not able to enable all ... */
             /* ... print errors */
-            for (u = 0; disabled_count && u < LY_ARRAY_SIZE(mod->compiled->features); ++u) {
+            for (u = 0; disabled_count && u < LY_ARRAY_COUNT(mod->compiled->features); ++u) {
                 if (!(mod->compiled->features[u].flags & LYS_FENABLED)) {
                     LOGERR(ctx, LY_EDENIED,
                            "Feature \"%s\" cannot be enabled since it is disabled by its if-feature condition(s).",
@@ -660,13 +660,13 @@ lys_feature_value(const struct lys_module *module, const char *feature)
 {
     struct lysc_feature *f;
     struct lysc_module *mod;
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
     LY_CHECK_ARG_RET(NULL, module, module->compiled, feature, -1);
     mod = module->compiled;
 
     /* search for the specified feature */
-    for (u = 0; u < LY_ARRAY_SIZE(mod->features); ++u) {
+    for (u = 0; u < LY_ARRAY_COUNT(mod->features); ++u) {
         f = &mod->features[u];
         if (!strcmp(f->name, feature)) {
             if (f->flags & LYS_FENABLED) {
@@ -684,7 +684,7 @@ lys_feature_value(const struct lys_module *module, const char *feature)
 API const struct lysc_node *
 lysc_node_is_disabled(const struct lysc_node *node, int recursive)
 {
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
     LY_CHECK_ARG_RET(NULL, node, NULL);
 
@@ -838,7 +838,7 @@ lys_parse_mem_module(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, 
     struct lysp_import *imp;
     struct lysp_include *inc;
     LY_ERR ret = LY_EINVAL;
-    LY_ARRAY_SIZE_TYPE u, v;
+    LY_ARRAY_COUNT_TYPE u, v;
     struct lys_yang_parser_ctx *yangctx = NULL;
     struct lys_yin_parser_ctx *yinctx = NULL;
     struct lys_parser_ctx *pctx = NULL;

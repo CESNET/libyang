@@ -2997,7 +2997,7 @@ warn_is_numeric_type(struct lysc_type *type)
 {
     struct lysc_type_union *uni;
     int ret;
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
     switch (type->basetype) {
     case LY_TYPE_DEC64:
@@ -3039,7 +3039,7 @@ warn_is_string_type(struct lysc_type *type)
 {
     struct lysc_type_union *uni;
     int ret;
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
     switch (type->basetype) {
     case LY_TYPE_BITS:
@@ -3078,7 +3078,7 @@ warn_is_specific_type(struct lysc_type *type, LY_DATA_TYPE base)
 {
     struct lysc_type_union *uni;
     int ret;
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
     if (type->basetype == base) {
         return 1;
@@ -3112,7 +3112,7 @@ warn_is_equal_type_next_type(struct lysc_type *type, struct lysc_type *prev_type
 {
     struct lysc_type_union *uni;
     int found = 0;
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
     switch (type->basetype) {
     case LY_TYPE_UNION:
@@ -3319,7 +3319,7 @@ xpath_bit_is_set(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp
     struct lysc_node_leaf *sleaf;
     struct lysc_type_bits *bits;
     LY_ERR rc = LY_SUCCESS;
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
     if (options & LYXP_SCNODE_ALL) {
         if ((args[0]->type != LYXP_SET_SCNODE_SET) || !(sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[0]))) {
@@ -3654,7 +3654,7 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set 
             assert(!rc);
 
             /* get the target node */
-            target = p[LY_ARRAY_SIZE(p) - 1].node;
+            target = p[LY_ARRAY_COUNT(p) - 1].node;
             ly_path_free(set->ctx, p);
 
             lyxp_set_scnode_insert_node(set, target, LYXP_NODE_ELEM);
@@ -3716,7 +3716,7 @@ static LY_ERR
 xpath_derived_from(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set *set, int options)
 {
     uint16_t i;
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
     struct lyd_node_term *leaf;
     struct lysc_node_leaf *sleaf;
     struct lyd_value data = {0};
@@ -3799,7 +3799,7 @@ static LY_ERR
 xpath_derived_from_or_self(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set *set, int options)
 {
     uint16_t i;
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
     struct lyd_node_term *leaf;
     struct lysc_node_leaf *sleaf;
     struct lyd_value data = {0};

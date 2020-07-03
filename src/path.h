@@ -189,7 +189,7 @@ LY_ERR ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lys_modu
  * @return LY_SUCCESS when the last node in the path was found,
  * @return LY_ERR on another error.
  */
-LY_ERR ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *start, LY_ARRAY_SIZE_TYPE *path_idx,
+LY_ERR ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *start, LY_ARRAY_COUNT_TYPE *path_idx,
                             struct lyd_node **match);
 
 /**

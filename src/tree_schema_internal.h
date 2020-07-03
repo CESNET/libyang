@@ -63,7 +63,7 @@
  */
 #define CHECK_UNIQUENESS(CTX, ARRAY, MEMBER, STMT, IDENT) \
     if (ARRAY) { \
-        for (LY_ARRAY_SIZE_TYPE u_ = 0; u_ < LY_ARRAY_SIZE(ARRAY) - 1; ++u_) { \
+        for (LY_ARRAY_COUNT_TYPE u_ = 0; u_ < LY_ARRAY_COUNT(ARRAY) - 1; ++u_) { \
             if (!strcmp((ARRAY)[u_].MEMBER, IDENT)) { \
                 LOGVAL_PARSER(CTX, LY_VCODE_DUPIDENT, IDENT, STMT); \
                 return LY_EVALID; \
@@ -408,12 +408,12 @@ struct lysc_action **lysc_node_actions_p(struct lysc_node *node);
  *
  * @param[in] ext ([Sized array](@ref sizedarrays)) of extensions to explore
  * @param[in] index Index in the \p ext array where to start searching (first call with 0, the consequent calls with
- *            the returned index increased by 1 (until the iteration is not terminated by returning LY_ARRAY_SIZE(ext).
+ *            the returned index increased by 1 (until the iteration is not terminated by returning LY_ARRAY_COUNT(ext).
  * @param[in] substmt Type of the extension (its belongins to the specific substatement) to iterate, use
  *            #LYEXT_SUBSTMT_ALL to go through all the extensions in the array
- * @result index in the ext array, LY_ARRAY_SIZE(ext) value if not present.
+ * @result index in the ext array, LY_ARRAY_COUNT(ext) value if not present.
  */
-LY_ARRAY_SIZE_TYPE lysp_ext_instance_iter(struct lysp_ext_instance *ext, LY_ARRAY_SIZE_TYPE index, LYEXT_SUBSTMT substmt);
+LY_ARRAY_COUNT_TYPE lysp_ext_instance_iter(struct lysp_ext_instance *ext, LY_ARRAY_COUNT_TYPE index, LYEXT_SUBSTMT substmt);
 
 /**
  * @brief Get the covering schema module structure for the given parsed module structure.
@@ -651,7 +651,7 @@ LY_ERR lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *log_path, 
  * @brief Macro to free [sized array](@ref sizedarrays) of items using the provided free function. The ARRAY itself is also freed,
  * but the memory is not sanitized.
  */
-#define FREE_ARRAY(CTX, ARRAY, FUNC) {LY_ARRAY_SIZE_TYPE c__; LY_ARRAY_FOR(ARRAY, c__){FUNC(CTX, &(ARRAY)[c__]);}LY_ARRAY_FREE(ARRAY);}
+#define FREE_ARRAY(CTX, ARRAY, FUNC) {LY_ARRAY_COUNT_TYPE c__; LY_ARRAY_FOR(ARRAY, c__){FUNC(CTX, &(ARRAY)[c__]);}LY_ARRAY_FREE(ARRAY);}
 
 /**
  * @brief Macro to free the specified MEMBER of a structure using the provided free function. The memory is not sanitized.
@@ -662,7 +662,7 @@ LY_ERR lys_compile_type_pattern_check(struct ly_ctx *ctx, const char *log_path, 
  * @brief Macro to free [sized array](@ref sizedarrays) of strings stored in the context's dictionary. The ARRAY itself is also freed,
  * but the memory is not sanitized.
  */
-#define FREE_STRINGS(CTX, ARRAY) {LY_ARRAY_SIZE_TYPE c__; LY_ARRAY_FOR(ARRAY, c__){FREE_STRING(CTX, ARRAY[c__]);}LY_ARRAY_FREE(ARRAY);}
+#define FREE_STRINGS(CTX, ARRAY) {LY_ARRAY_COUNT_TYPE c__; LY_ARRAY_FOR(ARRAY, c__){FREE_STRING(CTX, ARRAY[c__]);}LY_ARRAY_FREE(ARRAY);}
 
 /**
  * @brief Free the parsed submodule structure.

@@ -168,7 +168,7 @@ lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, struct ly_s
                 int unres_when = 0;
 
                 do {
-                    LY_ARRAY_SIZE_TYPE u;
+                    LY_ARRAY_COUNT_TYPE u;
                     LY_ARRAY_FOR(schema->when, u) {
                         ret = lyd_validate_when(tree, node, schema->when[u]);
                         if (ret) {
@@ -604,13 +604,13 @@ lyd_val_uniq_list_equal(void *val1_p, void *val2_p, int UNUSED(mod), void *cb_da
     struct lyd_node *diter, *first, *second;
     struct lyd_value *val1, *val2;
     char *path1, *path2, *uniq_str, *ptr;
-    LY_ARRAY_SIZE_TYPE u, v, action;
+    LY_ARRAY_COUNT_TYPE u, v, action;
 
     assert(val1_p && val2_p);
 
     first = *((struct lyd_node **)val1_p);
     second = *((struct lyd_node **)val2_p);
-    action = (LY_ARRAY_SIZE_TYPE)cb_data;
+    action = (LY_ARRAY_COUNT_TYPE)cb_data;
 
     assert(first && (first->schema->nodetype == LYS_LIST));
     assert(second && (second->schema == first->schema));
@@ -622,7 +622,7 @@ lyd_val_uniq_list_equal(void *val1_p, void *val2_p, int UNUSED(mod), void *cb_da
     /* compare unique leaves */
     if (action > 0) {
         u = action - 1;
-        if (u < LY_ARRAY_SIZE(slist->uniques)) {
+        if (u < LY_ARRAY_COUNT(slist->uniques)) {
             goto uniquecheck;
         }
     }
@@ -652,7 +652,7 @@ uniquecheck:
                 break;
             }
         }
-        if (v && (v == LY_ARRAY_SIZE(slist->uniques[u]))) {
+        if (v && (v == LY_ARRAY_COUNT(slist->uniques[u]))) {
             /* all unique leafs are the same in this set, create this nice error */
             path1 = lyd_path(first, LYD_PATH_LOG, NULL, 0);
             path2 = lyd_path(second, LYD_PATH_LOG, NULL, 0);
@@ -705,7 +705,7 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
 {
     const struct lyd_node *diter;
     struct ly_set *set;
-    LY_ARRAY_SIZE_TYPE u, v, x = 0;
+    LY_ARRAY_COUNT_TYPE u, v, x = 0;
     LY_ERR ret = LY_SUCCESS;
     uint32_t hash, i, size = 0;
     int dynamic;
@@ -746,9 +746,9 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
         i = 32 - i;
         size = 1 << i;
 
-        uniqtables = malloc(LY_ARRAY_SIZE(uniques) * sizeof *uniqtables);
+        uniqtables = malloc(LY_ARRAY_COUNT(uniques) * sizeof *uniqtables);
         LY_CHECK_ERR_GOTO(!uniqtables, LOGMEM(ctx); ret = LY_EMEM, cleanup);
-        x = LY_ARRAY_SIZE(uniques);
+        x = LY_ARRAY_COUNT(uniques);
         for (v = 0; v < x; v++) {
             uniqtables[v] = lyht_new(size, sizeof(struct lyd_node *), lyd_val_uniq_list_equal, (void *)(v + 1L), 0);
             LY_CHECK_ERR_GOTO(!uniqtables[v], LOGMEM(ctx); ret = LY_EMEM, cleanup);
@@ -758,7 +758,7 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
             /* loop for unique - get the hash for the instances */
             for (u = 0; u < x; u++) {
                 val = NULL;
-                for (v = hash = 0; v < LY_ARRAY_SIZE(uniques[u]); v++) {
+                for (v = hash = 0; v < LY_ARRAY_COUNT(uniques[u]); v++) {
                     diter = lyd_val_uniq_find_leaf(uniques[u][v], set->objs[i]);
                     if (diter) {
                         val = &((struct lyd_node_term *)diter)->value;
@@ -900,7 +900,7 @@ lyd_validate_must(const struct lyd_node *node, LYD_VALIDATE_OP op)
     struct lyxp_set xp_set;
     struct lysc_must *musts;
     const struct lyd_node *tree;
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
     switch (node->schema->nodetype) {
     case LYS_CONTAINER:
@@ -1044,7 +1044,7 @@ lyd_validate_defaults_r(struct lyd_node *parent, struct lyd_node **first, const 
     const struct lysc_node *iter = NULL;
     struct lyd_node *node;
     struct lyd_value **dflts;
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
     assert(first && (parent || sparent || mod) && node_types && node_when);
 

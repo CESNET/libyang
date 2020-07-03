@@ -41,7 +41,7 @@ struct ypr_ctx {
 #define INDENT (LEVEL)*2,""          /**< indentation parameters for printer functions */
 
 static void yprp_extension_instances(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t substmt_index,
-                               struct lysp_ext_instance *ext, int *flag, LY_ARRAY_SIZE_TYPE count);
+                               struct lysp_ext_instance *ext, int *flag, LY_ARRAY_COUNT_TYPE count);
 
 static void
 ypr_open(struct ypr_ctx *ctx, const char *elem_name, const char *attr_name, const char *attr_value,  int flag)
@@ -94,7 +94,7 @@ ypr_yin_arg(struct ypr_ctx *ctx, const char *arg, const char *text)
 static void
 ypr_substmt(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t substmt_index, const char *text, void *ext)
 {
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
     int extflag = 0;
 
     if (!text) {
@@ -227,7 +227,7 @@ ypr_reference(struct ypr_ctx *ctx, const char *ref, void *exts, int *flag)
 static void
 yprp_iffeatures(struct ypr_ctx *ctx, const char **iff, struct lysp_ext_instance *exts, int *flag)
 {
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
     int extflag;
 
     LY_ARRAY_FOR(iff, u) {
@@ -253,7 +253,7 @@ static void
 yprp_extension(struct ypr_ctx *ctx, const struct lysp_ext *ext)
 {
     int flag = 0, flag2 = 0;
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
     ypr_open(ctx, "extension", "name", ext->name, flag);
     LEVEL++;
@@ -270,13 +270,13 @@ yprp_extension(struct ypr_ctx *ctx, const struct lysp_ext *ext)
         LEVEL++;
         if (ext->exts) {
             u = -1;
-            while ((u = lysp_ext_instance_iter(ext->exts, u + 1, LYEXT_SUBSTMT_ARGUMENT)) != LY_ARRAY_SIZE(ext->exts)) {
+            while ((u = lysp_ext_instance_iter(ext->exts, u + 1, LYEXT_SUBSTMT_ARGUMENT)) != LY_ARRAY_COUNT(ext->exts)) {
                 ypr_close_parent(ctx, &flag2);
                 yprp_extension_instances(ctx, LYEXT_SUBSTMT_ARGUMENT, 0, &ext->exts[u], &flag2, 1);
             }
         }
         if ((ext->flags & LYS_YINELEM_MASK) ||
-                (ext->exts && lysp_ext_instance_iter(ext->exts, 0, LYEXT_SUBSTMT_YINELEM) != LY_ARRAY_SIZE(ext->exts))) {
+                (ext->exts && lysp_ext_instance_iter(ext->exts, 0, LYEXT_SUBSTMT_YINELEM) != LY_ARRAY_COUNT(ext->exts))) {
             ypr_close_parent(ctx, &flag2);
             ypr_substmt(ctx, LYEXT_SUBSTMT_YINELEM, 0, (ext->flags & LYS_YINELEM_TRUE) ? "true" : "false", ext->exts);
         }
@@ -312,7 +312,7 @@ static void
 yprp_identity(struct ypr_ctx *ctx, const struct lysp_ident *ident)
 {
     int flag = 0;
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
     ypr_open(ctx, "identity", "name", ident->name, flag);
     LEVEL++;
@@ -394,7 +394,7 @@ yprp_when(struct ypr_ctx *ctx, struct lysp_when *when, int *flag)
 static void
 yprp_enum(struct ypr_ctx *ctx, const struct lysp_type_enum *items, LY_DATA_TYPE type, int *flag)
 {
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
     int inner_flag;
     (void)flag;
 
@@ -432,7 +432,7 @@ yprp_enum(struct ypr_ctx *ctx, const struct lysp_type_enum *items, LY_DATA_TYPE 
 static void
 yprp_type(struct ypr_ctx *ctx, const struct lysp_type *type)
 {
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
     int flag = 0;
 
     if (!ctx || !type) {
@@ -513,7 +513,7 @@ static void yprp_action(struct ypr_ctx *ctx, const struct lysp_action *action);
 static void
 yprp_grouping(struct ypr_ctx *ctx, const struct lysp_grp *grp)
 {
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
     int flag = 0;
     struct lysp_node *data;
 
@@ -554,7 +554,7 @@ yprp_grouping(struct ypr_ctx *ctx, const struct lysp_grp *grp)
 static void
 yprp_inout(struct ypr_ctx *ctx, const struct lysp_action_inout *inout, int *flag)
 {
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
     struct lysp_node *data;
 
     if (!inout->nodetype) {
@@ -588,7 +588,7 @@ yprp_inout(struct ypr_ctx *ctx, const struct lysp_action_inout *inout, int *flag
 static void
 yprp_notification(struct ypr_ctx *ctx, const struct lysp_notif *notif)
 {
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
     int flag = 0;
     struct lysp_node *data;
 
@@ -630,7 +630,7 @@ yprp_notification(struct ypr_ctx *ctx, const struct lysp_notif *notif)
 static void
 yprp_action(struct ypr_ctx *ctx, const struct lysp_action *action)
 {
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
     int flag = 0;
 
     LYOUT_CHECK(ctx->out);
@@ -687,7 +687,7 @@ yprp_node_common2(struct ypr_ctx *ctx, const struct lysp_node *node, int *flag)
 static void
 yprp_container(struct ypr_ctx *ctx, const struct lysp_node *node)
 {
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
     int flag = 0;
     struct lysp_node *child;
     struct lysp_node_container *cont = (struct lysp_node_container *)node;
@@ -781,7 +781,7 @@ yprp_choice(struct ypr_ctx *ctx, const struct lysp_node *node)
 static void
 yprp_leaf(struct ypr_ctx *ctx, const struct lysp_node *node)
 {
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
     struct lysp_node_leaf *leaf = (struct lysp_node_leaf *)node;
 
     int flag = 1;
@@ -803,7 +803,7 @@ yprp_leaf(struct ypr_ctx *ctx, const struct lysp_node *node)
 static void
 yprp_leaflist(struct ypr_ctx *ctx, const struct lysp_node *node)
 {
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
     struct lysp_node_leaflist *llist = (struct lysp_node_leaflist *)node;
     int flag = 1;
 
@@ -846,7 +846,7 @@ yprp_leaflist(struct ypr_ctx *ctx, const struct lysp_node *node)
 static void
 yprp_list(struct ypr_ctx *ctx, const struct lysp_node *node)
 {
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
     int flag = 0;
     struct lysp_node *child;
     struct lysp_node_list *list = (struct lysp_node_list *)node;
@@ -920,7 +920,7 @@ yprp_list(struct ypr_ctx *ctx, const struct lysp_node *node)
 static void
 yprp_refine(struct ypr_ctx *ctx, struct lysp_refine *refine)
 {
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
     int flag = 0;
 
     ypr_open(ctx, "refine", "target-node", refine->nodeid, flag);
@@ -970,7 +970,7 @@ yprp_refine(struct ypr_ctx *ctx, struct lysp_refine *refine)
 static void
 yprp_augment(struct ypr_ctx *ctx, const struct lysp_augment *aug)
 {
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
     struct lysp_node *child;
 
     ypr_open(ctx, "augment", "target-node", aug->nodeid, 1);
@@ -1003,7 +1003,7 @@ yprp_augment(struct ypr_ctx *ctx, const struct lysp_augment *aug)
 static void
 yprp_uses(struct ypr_ctx *ctx, const struct lysp_node *node)
 {
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
     int flag = 0;
     struct lysp_node_uses *uses = (struct lysp_node_uses *)node;
 
@@ -1027,7 +1027,7 @@ yprp_uses(struct ypr_ctx *ctx, const struct lysp_node *node)
 static void
 yprp_anydata(struct ypr_ctx *ctx, const struct lysp_node *node)
 {
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
     int flag = 0;
     struct lysp_node_anydata *any = (struct lysp_node_anydata *)node;
 
@@ -1083,7 +1083,7 @@ yprp_node(struct ypr_ctx *ctx, const struct lysp_node *node)
 static void
 yprp_deviation(struct ypr_ctx *ctx, const struct lysp_deviation *deviation)
 {
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
     struct lysp_deviate_add *add;
     struct lysp_deviate_rpl *rpl;
     struct lysp_deviate_del *del;
@@ -1226,7 +1226,7 @@ ypr_missing_format(struct ypr_ctx *ctx, const struct lys_module *module)
 static void
 ypr_xmlns(struct ypr_ctx *ctx, const struct lys_module *module, unsigned int indent)
 {
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
     ly_print(ctx->out, "%*sxmlns=\"%s\"", indent + INDENT, YIN_NS_URI);
     ly_print(ctx->out, "\n%*sxmlns:%s=\"%s\"", indent + INDENT, module->prefix, module->ns);
@@ -1351,16 +1351,16 @@ yprp_stmt(struct ypr_ctx *ctx, struct lysp_stmt *stmt)
  */
 static void
 yprp_extension_instances(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t substmt_index,
-                               struct lysp_ext_instance *ext, int *flag, LY_ARRAY_SIZE_TYPE count)
+                               struct lysp_ext_instance *ext, int *flag, LY_ARRAY_COUNT_TYPE count)
 {
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
     char *str;
     struct lysp_stmt *stmt;
     const char *argument;
     const char *ext_argument;
 
     if (!count && ext) {
-        count = LY_ARRAY_SIZE(ext);
+        count = LY_ARRAY_COUNT(ext);
     }
     LY_ARRAY_FOR(ext, u) {
         if (!count) {

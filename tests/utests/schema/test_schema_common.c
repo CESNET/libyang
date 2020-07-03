@@ -194,7 +194,7 @@ test_revisions(void **state)
     LY_ARRAY_NEW_RET(NULL, revs, rev,);
     strcpy(rev->date, "2018-12-31");
 
-    assert_int_equal(2, LY_ARRAY_SIZE(revs));
+    assert_int_equal(2, LY_ARRAY_COUNT(revs));
     assert_string_equal("2018-01-01", &revs[0]);
     assert_string_equal("2018-12-31", &revs[1]);
     /* the order should be fixed, so the newest revision will be the first in the array */

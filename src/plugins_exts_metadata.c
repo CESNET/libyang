@@ -45,7 +45,7 @@ annotation_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext,
 {
     struct lyext_metadata *annotation;
     struct lysc_module *mod_c;
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
     /* annotations can appear only at the top level of a YANG module or submodule */
     if (c_ext->parent_type != LYEXT_PAR_MODULE) {

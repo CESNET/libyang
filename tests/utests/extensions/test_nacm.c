@@ -123,8 +123,8 @@ test_deny_all(void **state)
     assert_non_null(cont = (struct lysc_node_container*)mod->compiled->data);
     assert_non_null(leaf = (struct lysc_node_leaf*)cont->child);
     assert_non_null(e = &cont->exts[0]);
-    assert_int_equal(LY_ARRAY_SIZE(cont->exts), 1);
-    assert_int_equal(LY_ARRAY_SIZE(leaf->exts), 1); /* NACM extensions inherit */
+    assert_int_equal(LY_ARRAY_COUNT(cont->exts), 1);
+    assert_int_equal(LY_ARRAY_COUNT(leaf->exts), 1); /* NACM extensions inherit */
     assert_ptr_equal(e->def, leaf->exts[0].def);
     assert_int_equal(1, *((uint8_t*)e->data)); /* plugin's value for default-deny-all */
     assert_null(cont->next->exts);
@@ -168,8 +168,8 @@ test_deny_write(void **state)
     assert_non_null(cont = (struct lysc_node_container*)mod->compiled->data);
     assert_non_null(leaf = (struct lysc_node_leaf*)cont->child);
     assert_non_null(e = &cont->exts[0]);
-    assert_int_equal(LY_ARRAY_SIZE(cont->exts), 1);
-    assert_int_equal(LY_ARRAY_SIZE(leaf->exts), 1); /* NACM extensions inherit */
+    assert_int_equal(LY_ARRAY_COUNT(cont->exts), 1);
+    assert_int_equal(LY_ARRAY_COUNT(leaf->exts), 1); /* NACM extensions inherit */
     assert_ptr_equal(e->def, leaf->exts[0].def);
     assert_int_equal(2, *((uint8_t*)e->data)); /* plugin's value for default-deny-write */
     assert_null(cont->next->exts);

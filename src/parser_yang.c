@@ -815,7 +815,7 @@ parse_ext_substmt(struct lys_yang_parser_ctx *ctx, const char **data, enum ly_st
  */
 static LY_ERR
 parse_ext(struct lys_yang_parser_ctx *ctx, const char **data, const char *ext_name, int ext_name_len, LYEXT_SUBSTMT insubstmt,
-          LY_ARRAY_SIZE_TYPE insubstmt_index, struct lysp_ext_instance **exts)
+          LY_ARRAY_COUNT_TYPE insubstmt_index, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -1239,7 +1239,7 @@ parse_text_fields(struct lys_yang_parser_ctx *ctx, const char **data, LYEXT_SUBS
     YANG_READ_SUBSTMT_FOR(ctx, data, kw, word, word_len, ret,) {
         switch (kw) {
         case LY_STMT_EXTENSION_INSTANCE:
-            LY_CHECK_RET(parse_ext(ctx, data, word, word_len, substmt, LY_ARRAY_SIZE(*texts) - 1, exts));
+            LY_CHECK_RET(parse_ext(ctx, data, word, word_len, substmt, LY_ARRAY_COUNT(*texts) - 1, exts));
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw), lyext_substmt2str(substmt));

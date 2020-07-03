@@ -77,7 +77,7 @@ ly_is_default(const struct lyd_node *node)
     const struct lysc_node_leaf *leaf;
     const struct lysc_node_leaflist *llist;
     const struct lyd_node_term *term;
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
     assert(node->schema->nodetype & LYD_NODE_TERM);
     term = (const struct lyd_node_term *)node;

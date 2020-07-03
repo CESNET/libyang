@@ -488,7 +488,7 @@ ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *s
     const struct lys_module *mod;
     struct lysp_include *inc;
     uint32_t v;
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
     assert(submodule);
 
@@ -529,7 +529,7 @@ ly_ctx_reset_latests(struct ly_ctx *ctx)
             mod->latest_revision = 1;
         }
         if (mod->parsed && mod->parsed->includes) {
-            for (LY_ARRAY_SIZE_TYPE u = 0; u < LY_ARRAY_SIZE(mod->parsed->includes); ++u) {
+            for (LY_ARRAY_COUNT_TYPE u = 0; u < LY_ARRAY_COUNT(mod->parsed->includes); ++u) {
                 if (mod->parsed->includes[u].submodule->latest_revision == 2) {
                     mod->parsed->includes[u].submodule->latest_revision = 1;
                 }
@@ -541,7 +541,7 @@ ly_ctx_reset_latests(struct ly_ctx *ctx)
 static LY_ERR
 ylib_feature(struct lyd_node *parent, const struct lys_module *cur_mod)
 {
-    LY_ARRAY_SIZE_TYPE i;
+    LY_ARRAY_COUNT_TYPE i;
     struct lyd_node *node;
 
     if (!cur_mod->implemented) {
@@ -564,7 +564,7 @@ ylib_feature(struct lyd_node *parent, const struct lys_module *cur_mod)
 static LY_ERR
 ylib_deviation(struct lyd_node *parent, const struct lys_module *cur_mod, int bis)
 {
-    LY_ARRAY_SIZE_TYPE i;
+    LY_ARRAY_COUNT_TYPE i;
     struct lyd_node *node;
     struct lys_module *mod;
 
@@ -591,7 +591,7 @@ ylib_deviation(struct lyd_node *parent, const struct lys_module *cur_mod, int bi
 static LY_ERR
 ylib_submodules(struct lyd_node *parent, const struct lys_module *cur_mod, int bis)
 {
-    LY_ARRAY_SIZE_TYPE i;
+    LY_ARRAY_COUNT_TYPE i;
     struct lyd_node *node, *cont;
     struct lysp_submodule *submod;
     int ret;

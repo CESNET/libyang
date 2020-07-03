@@ -70,7 +70,7 @@ API void
 ly_free_attr(const struct ly_ctx *ctx, struct ly_attr *attr, int recursive)
 {
     struct ly_attr *iter;
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
     LY_CHECK_ARG_RET(NULL, ctx, );
     if (!attr) {
@@ -120,7 +120,7 @@ ly_free_attr(const struct ly_ctx *ctx, struct ly_attr *attr, int recursive)
 void
 ly_free_val_prefs(const struct ly_ctx *ctx, struct ly_prefix *val_prefs)
 {
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
     LY_ARRAY_FOR(val_prefs, u) {
         FREE_STRING(ctx, val_prefs[u].pref);

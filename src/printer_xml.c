@@ -233,7 +233,7 @@ xml_print_attr(struct xmlpr_ctx *ctx, const struct lyd_node_opaq *node)
 {
     const struct ly_attr *attr;
     const char *pref;
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
     LY_LIST_FOR(node->attr, attr) {
         pref = NULL;
@@ -449,7 +449,7 @@ xml_print_opaq(struct xmlpr_ctx *ctx, const struct lyd_node_opaq *node)
 {
     LY_ERR ret;
     struct lyd_node *child;
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
     LY_CHECK_RET(xml_print_opaq_open(ctx, node));
 

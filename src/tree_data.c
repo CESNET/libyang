@@ -538,7 +538,7 @@ lyd_create_list(const struct lysc_node *schema, const struct ly_path_predicate *
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node *list = NULL, *key;
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
     assert((schema->nodetype == LYS_LIST) && !(schema->flags & LYS_KEYLESS));
 
@@ -1072,7 +1072,7 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
     struct ly_path *p = NULL;
     struct lyd_node *nparent = NULL, *nnode = NULL, *node = NULL, *cur_parent;
     const struct lysc_node *schema;
-    LY_ARRAY_SIZE_TYPE path_idx = 0;
+    LY_ARRAY_COUNT_TYPE path_idx = 0;
     struct ly_path_predicate *pred;
 
     LY_CHECK_ARG_RET(ctx, parent || ctx, path, (path[0] == '/') || parent, LY_EINVAL);
@@ -1090,17 +1090,17 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
                                         options & LYD_NEWOPT_OUTPUT ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT,
                                         LY_PATH_TARGET_MANY, lydjson_resolve_prefix, NULL, LYD_JSON, &p), cleanup);
 
-    schema = p[LY_ARRAY_SIZE(p) - 1].node;
-    if ((schema->nodetype == LYS_LIST) && (p[LY_ARRAY_SIZE(p) - 1].pred_type == LY_PATH_PREDTYPE_NONE)
+    schema = p[LY_ARRAY_COUNT(p) - 1].node;
+    if ((schema->nodetype == LYS_LIST) && (p[LY_ARRAY_COUNT(p) - 1].pred_type == LY_PATH_PREDTYPE_NONE)
             && !(options & LYD_NEWOPT_OPAQ)) {
         LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_XPATH, "Predicate missing for %s \"%s\" in path.",
                lys_nodetype2str(schema->nodetype), schema->name);
         ret = LY_EINVAL;
         goto cleanup;
-    } else if ((schema->nodetype == LYS_LEAFLIST) && (p[LY_ARRAY_SIZE(p) - 1].pred_type == LY_PATH_PREDTYPE_NONE)) {
+    } else if ((schema->nodetype == LYS_LEAFLIST) && (p[LY_ARRAY_COUNT(p) - 1].pred_type == LY_PATH_PREDTYPE_NONE)) {
         /* parse leafref value into a predicate, if not defined in the path */
-        p[LY_ARRAY_SIZE(p) - 1].pred_type = LY_PATH_PREDTYPE_LEAFLIST;
-        LY_ARRAY_NEW_GOTO(ctx, p[LY_ARRAY_SIZE(p) - 1].predicates, pred, ret, cleanup);
+        p[LY_ARRAY_COUNT(p) - 1].pred_type = LY_PATH_PREDTYPE_LEAFLIST;
+        LY_ARRAY_NEW_GOTO(ctx, p[LY_ARRAY_COUNT(p) - 1].predicates, pred, ret, cleanup);
 
         if (!value) {
             value = "";
@@ -1135,7 +1135,7 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
             ++path_idx;
         } else if (ret == LY_ENOTFOUND) {
             /* we will create the nodes from top-level, default behavior (absolute path), or from the parent (relative path) */
-            if (lysc_data_parent(p[LY_ARRAY_SIZE(p) - 1].node)) {
+            if (lysc_data_parent(p[LY_ARRAY_COUNT(p) - 1].node)) {
                 node = parent;
             }
         } else {
@@ -1145,7 +1145,7 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
     }
 
     /* create all the non-existing nodes in a loop */
-    for (; path_idx < LY_ARRAY_SIZE(p); ++path_idx) {
+    for (; path_idx < LY_ARRAY_COUNT(p); ++path_idx) {
         cur_parent = node;
         schema = p[path_idx].node;
 
@@ -1717,7 +1717,7 @@ lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct ly
     LY_ERR ret;
     struct lysc_ext_instance *ant = NULL;
     struct lyd_meta *mt, *last;
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
     assert((parent || meta) && mod);
 
@@ -2044,7 +2044,7 @@ lyd_dup_recursive(const struct lyd_node *node, struct lyd_node *parent, struct l
     LY_ERR ret;
     int len;
     struct lyd_node *dup = NULL;
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
     LY_CHECK_ARG_RET(NULL, node, LY_EINVAL);
 
@@ -2106,7 +2106,7 @@ lyd_dup_recursive(const struct lyd_node *node, struct lyd_node *parent, struct l
             opaq->prefix.ns = lydict_insert(LYD_NODE_CTX(node), orig->prefix.ns, 0);
         }
         if (orig->val_prefs) {
-            LY_ARRAY_CREATE_GOTO(LYD_NODE_CTX(node), opaq->val_prefs, LY_ARRAY_SIZE(orig->val_prefs), ret, error);
+            LY_ARRAY_CREATE_GOTO(LYD_NODE_CTX(node), opaq->val_prefs, LY_ARRAY_COUNT(orig->val_prefs), ret, error);
             LY_ARRAY_FOR(orig->val_prefs, u) {
                 opaq->val_prefs[u].pref = lydict_insert(LYD_NODE_CTX(node), orig->val_prefs[u].pref, 0);
                 opaq->val_prefs[u].ns = lydict_insert(LYD_NODE_CTX(node), orig->val_prefs[u].ns, 0);
@@ -2594,7 +2594,7 @@ lyd_diff_userord_get(const struct lyd_node *first, const struct lysc_node *schem
 {
     struct lyd_diff_userord *item;
     const struct lyd_node *iter, **node;
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
     LY_ARRAY_FOR(*userord, u) {
         if ((*userord)[u].schema == schema) {
@@ -2675,12 +2675,12 @@ lyd_diff_userord_attrs(const struct lyd_node *first, const struct lyd_node *seco
 
     /* find user-ordered first position */
     if (first) {
-        for (first_pos = second_pos; first_pos < LY_ARRAY_SIZE(userord_item->inst); ++first_pos) {
+        for (first_pos = second_pos; first_pos < LY_ARRAY_COUNT(userord_item->inst); ++first_pos) {
             if (userord_item->inst[first_pos] == first) {
                 break;
             }
         }
-        assert(first_pos < LY_ARRAY_SIZE(userord_item->inst));
+        assert(first_pos < LY_ARRAY_COUNT(userord_item->inst));
     }
 
     /* learn operation first */
@@ -2771,20 +2771,20 @@ lyd_diff_userord_attrs(const struct lyd_node *first, const struct lyd_node *seco
      */
     if (*op == LYD_DIFF_OP_CREATE) {
         /* insert the instance */
-        LY_ARRAY_RESIZE_ERR_RET(schema->module->ctx, userord_item->inst, LY_ARRAY_SIZE(userord_item->inst) + 1,
+        LY_ARRAY_RESIZE_ERR_RET(schema->module->ctx, userord_item->inst, LY_ARRAY_COUNT(userord_item->inst) + 1,
                                 ;, LY_EMEM);
-        if (second_pos < LY_ARRAY_SIZE(userord_item->inst)) {
+        if (second_pos < LY_ARRAY_COUNT(userord_item->inst)) {
             memmove(userord_item->inst + second_pos + 1, userord_item->inst + second_pos,
-                    (LY_ARRAY_SIZE(userord_item->inst) - second_pos) * sizeof *userord_item->inst);
+                    (LY_ARRAY_COUNT(userord_item->inst) - second_pos) * sizeof *userord_item->inst);
         }
         LY_ARRAY_INCREMENT(userord_item->inst);
         userord_item->inst[second_pos] = second;
 
     } else if (*op == LYD_DIFF_OP_DELETE) {
         /* remove the instance */
-        if (first_pos + 1 < LY_ARRAY_SIZE(userord_item->inst)) {
+        if (first_pos + 1 < LY_ARRAY_COUNT(userord_item->inst)) {
             memmove(userord_item->inst + first_pos, userord_item->inst + first_pos + 1,
-                    (LY_ARRAY_SIZE(userord_item->inst) - first_pos - 1) * sizeof *userord_item->inst);
+                    (LY_ARRAY_COUNT(userord_item->inst) - first_pos - 1) * sizeof *userord_item->inst);
         }
         LY_ARRAY_DECREMENT(userord_item->inst);
 
@@ -2944,7 +2944,7 @@ lyd_diff_siblings_r(const struct lyd_node *first, const struct lyd_node *second,
     struct lyd_node *match_second, *match_first;
     int nosiblings = 0;
     struct lyd_diff_userord *userord = NULL;
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
     enum lyd_diff_op op;
     const char *orig_default;
     char *orig_value, *key, *value, *orig_key;
@@ -3691,7 +3691,7 @@ lyd_find_sibling_next2(const struct lyd_node *first, const struct lysc_node *sch
     struct ly_path_predicate *predicates = NULL;
     enum ly_path_pred_type pred_type = 0;
     struct lyd_value val = {0};
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
     LY_CHECK_ARG_RET(NULL, schema, LY_EINVAL);
 
@@ -3743,7 +3743,7 @@ lyd_find_sibling_next2(const struct lyd_node *first, const struct lysc_node *sch
                 }
             }
 
-            if (u < LY_ARRAY_SIZE(predicates)) {
+            if (u < LY_ARRAY_COUNT(predicates)) {
                 /* not a match */
                 continue;
             }

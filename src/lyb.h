@@ -35,7 +35,7 @@ struct lyd_lyb_ctx {
         size_t position;
         uint8_t inner_chunks;
     } *subtrees;
-    LY_ARRAY_SIZE_TYPE subtree_size;
+    LY_ARRAY_COUNT_TYPE subtree_size;
 
     size_t byte_count;  /**< printed/parsed bytes */
     const struct ly_ctx *ctx;
@@ -87,7 +87,7 @@ struct lyd_lyb_ctx {
  */
 
 /* just a shortcut */
-#define LYB_LAST_SUBTREE(lybctx) lybctx->subtrees[LY_ARRAY_SIZE(lybctx->subtrees) - 1]
+#define LYB_LAST_SUBTREE(lybctx) lybctx->subtrees[LY_ARRAY_COUNT(lybctx->subtrees) - 1]
 
 /* struct lyd_lyb_subtree allocation step */
 #define LYB_SUBTREE_STEP 4

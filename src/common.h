@@ -484,15 +484,15 @@ LY_ERR ly_strcat(char **dest, const char *format, ...);
  */
 #define LY_ARRAY_NEW_RET(CTX, ARRAY, NEW_ITEM, RETVAL) \
         if (!(ARRAY)) { \
-            ARRAY = malloc(sizeof(LY_ARRAY_SIZE_TYPE) + sizeof *(ARRAY)); \
-            *((LY_ARRAY_SIZE_TYPE*)(ARRAY)) = 1; \
+            ARRAY = malloc(sizeof(LY_ARRAY_COUNT_TYPE) + sizeof *(ARRAY)); \
+            *((LY_ARRAY_COUNT_TYPE*)(ARRAY)) = 1; \
         } else { \
-            ++(*((LY_ARRAY_SIZE_TYPE*)(ARRAY) - 1)); \
-            ARRAY = ly_realloc(((LY_ARRAY_SIZE_TYPE*)(ARRAY) - 1), sizeof(LY_ARRAY_SIZE_TYPE) + (*((LY_ARRAY_SIZE_TYPE*)(ARRAY) - 1) * sizeof *(ARRAY))); \
+            ++(*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1)); \
+            ARRAY = ly_realloc(((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1), sizeof(LY_ARRAY_COUNT_TYPE) + (*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1) * sizeof *(ARRAY))); \
             LY_CHECK_ERR_RET(!(ARRAY), LOGMEM(CTX), RETVAL); \
         } \
-        ARRAY = (void*)((LY_ARRAY_SIZE_TYPE*)(ARRAY) + 1); \
-        (NEW_ITEM) = &(ARRAY)[*((LY_ARRAY_SIZE_TYPE*)(ARRAY) - 1) - 1]; \
+        ARRAY = (void*)((LY_ARRAY_COUNT_TYPE*)(ARRAY) + 1); \
+        (NEW_ITEM) = &(ARRAY)[*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1) - 1]; \
         memset(NEW_ITEM, 0, sizeof *(NEW_ITEM))
 
 /**
@@ -509,15 +509,15 @@ LY_ERR ly_strcat(char **dest, const char *format, ...);
  */
 #define LY_ARRAY_NEW_GOTO(CTX, ARRAY, NEW_ITEM, RET, GOTO) \
         if (!(ARRAY)) { \
-            ARRAY = malloc(sizeof(LY_ARRAY_SIZE_TYPE) + sizeof *(ARRAY)); \
-            *((LY_ARRAY_SIZE_TYPE*)(ARRAY)) = 1; \
+            ARRAY = malloc(sizeof(LY_ARRAY_COUNT_TYPE) + sizeof *(ARRAY)); \
+            *((LY_ARRAY_COUNT_TYPE*)(ARRAY)) = 1; \
         } else { \
-            ++(*((LY_ARRAY_SIZE_TYPE*)(ARRAY) - 1)); \
-            ARRAY = ly_realloc(((LY_ARRAY_SIZE_TYPE*)(ARRAY) - 1), sizeof(LY_ARRAY_SIZE_TYPE) + (*((LY_ARRAY_SIZE_TYPE*)(ARRAY) - 1) * sizeof *(ARRAY))); \
+            ++(*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1)); \
+            ARRAY = ly_realloc(((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1), sizeof(LY_ARRAY_COUNT_TYPE) + (*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1) * sizeof *(ARRAY))); \
             LY_CHECK_ERR_GOTO(!(ARRAY), LOGMEM(CTX); RET = LY_EMEM, GOTO); \
         } \
-        ARRAY = (void*)((LY_ARRAY_SIZE_TYPE*)(ARRAY) + 1); \
-        (NEW_ITEM) = &(ARRAY)[*((LY_ARRAY_SIZE_TYPE*)(ARRAY) - 1) - 1]; \
+        ARRAY = (void*)((LY_ARRAY_COUNT_TYPE*)(ARRAY) + 1); \
+        (NEW_ITEM) = &(ARRAY)[*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1) - 1]; \
         memset(NEW_ITEM, 0, sizeof *(NEW_ITEM))
 
 /**
@@ -535,21 +535,21 @@ LY_ERR ly_strcat(char **dest, const char *format, ...);
  */
 #define LY_ARRAY_CREATE_RET(CTX, ARRAY, SIZE, RETVAL) \
         if (ARRAY) { \
-            ARRAY = ly_realloc(((LY_ARRAY_SIZE_TYPE*)(ARRAY) - 1), sizeof(LY_ARRAY_SIZE_TYPE) + ((*((LY_ARRAY_SIZE_TYPE*)(ARRAY) - 1) + SIZE) * sizeof *(ARRAY))); \
+            ARRAY = ly_realloc(((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1), sizeof(LY_ARRAY_COUNT_TYPE) + ((*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1) + SIZE) * sizeof *(ARRAY))); \
             LY_CHECK_ERR_RET(!(ARRAY), LOGMEM(CTX), RETVAL); \
-            ARRAY = (void*)((LY_ARRAY_SIZE_TYPE*)(ARRAY) + 1); \
-            memset(&(ARRAY)[*((LY_ARRAY_SIZE_TYPE*)(ARRAY) - 1)], 0, SIZE * sizeof *(ARRAY)); \
+            ARRAY = (void*)((LY_ARRAY_COUNT_TYPE*)(ARRAY) + 1); \
+            memset(&(ARRAY)[*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1)], 0, SIZE * sizeof *(ARRAY)); \
         } else { \
-            ARRAY = calloc(1, sizeof(LY_ARRAY_SIZE_TYPE) + SIZE * sizeof *(ARRAY)); \
+            ARRAY = calloc(1, sizeof(LY_ARRAY_COUNT_TYPE) + SIZE * sizeof *(ARRAY)); \
             LY_CHECK_ERR_RET(!(ARRAY), LOGMEM(CTX), RETVAL); \
-            ARRAY = (void*)((LY_ARRAY_SIZE_TYPE*)(ARRAY) + 1); \
+            ARRAY = (void*)((LY_ARRAY_COUNT_TYPE*)(ARRAY) + 1); \
         }
 
 /**
  * @brief Allocate a ([sized array](@ref sizedarrays)) for the specified number of items.
  * If the ARRAY already exists, it is resized (space for SIZE items is added).
  *
- * Does not set the size information, it is supposed to be incremented via ::LY_ARRAY_INCREMENT
+ * Does not set the count information, it is supposed to be incremented via ::LY_ARRAY_INCREMENT
  * when the items are filled.
  *
  * @param[in] CTX libyang context for logging.
@@ -561,20 +561,20 @@ LY_ERR ly_strcat(char **dest, const char *format, ...);
  */
 #define LY_ARRAY_CREATE_GOTO(CTX, ARRAY, SIZE, RET, GOTO) \
         if (ARRAY) { \
-            ARRAY = ly_realloc(((LY_ARRAY_SIZE_TYPE*)(ARRAY) - 1), sizeof(LY_ARRAY_SIZE_TYPE) + ((*((LY_ARRAY_SIZE_TYPE*)(ARRAY) - 1) + (SIZE)) * sizeof *(ARRAY))); \
+            ARRAY = ly_realloc(((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1), sizeof(LY_ARRAY_COUNT_TYPE) + ((*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1) + (SIZE)) * sizeof *(ARRAY))); \
             LY_CHECK_ERR_GOTO(!(ARRAY), LOGMEM(CTX); RET = LY_EMEM, GOTO); \
-            ARRAY = (void*)((LY_ARRAY_SIZE_TYPE*)(ARRAY) + 1); \
-            memset(&(ARRAY)[*((LY_ARRAY_SIZE_TYPE*)(ARRAY) - 1)], 0, (SIZE) * sizeof *(ARRAY)); \
+            ARRAY = (void*)((LY_ARRAY_COUNT_TYPE*)(ARRAY) + 1); \
+            memset(&(ARRAY)[*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1)], 0, (SIZE) * sizeof *(ARRAY)); \
         } else { \
-            ARRAY = calloc(1, sizeof(LY_ARRAY_SIZE_TYPE) + (SIZE) * sizeof *(ARRAY)); \
+            ARRAY = calloc(1, sizeof(LY_ARRAY_COUNT_TYPE) + (SIZE) * sizeof *(ARRAY)); \
             LY_CHECK_ERR_GOTO(!(ARRAY), LOGMEM(CTX); RET = LY_EMEM, GOTO); \
-            ARRAY = (void*)((LY_ARRAY_SIZE_TYPE*)(ARRAY) + 1); \
+            ARRAY = (void*)((LY_ARRAY_COUNT_TYPE*)(ARRAY) + 1); \
         }
 
 /**
  * @brief Resize a ([sized array](@ref sizedarrays)) to the the specified number of items.
  *
- * Does not change the size information, it is supposed to be incremented via ::LY_ARRAY_INCREMENT
+ * Does not change the count information, it is supposed to be incremented via ::LY_ARRAY_INCREMENT
  * when the items are filled.
  *
  * @param[in] CTX libyang context for logging.
@@ -585,9 +585,9 @@ LY_ERR ly_strcat(char **dest, const char *format, ...);
  * @param[in] RETVAL Return value for the case of error (memory allocation failure).
  */
 #define LY_ARRAY_RESIZE_ERR_RET(CTX, ARRAY, SIZE, ERR, RETVAL) \
-        ARRAY = ly_realloc(((LY_ARRAY_SIZE_TYPE*)(ARRAY) - 1), sizeof(LY_ARRAY_SIZE_TYPE) + ((SIZE) * sizeof *(ARRAY))); \
+        ARRAY = ly_realloc(((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1), sizeof(LY_ARRAY_COUNT_TYPE) + ((SIZE) * sizeof *(ARRAY))); \
         LY_CHECK_ERR_RET(!(ARRAY), LOGMEM(CTX); ERR, RETVAL); \
-        ARRAY = (void*)((LY_ARRAY_SIZE_TYPE*)(ARRAY) + 1);
+        ARRAY = (void*)((LY_ARRAY_COUNT_TYPE*)(ARRAY) + 1);
 
 /**
  * @brief Increment the items counter in a ([sized array](@ref sizedarrays)).
@@ -598,7 +598,7 @@ LY_ERR ly_strcat(char **dest, const char *format, ...);
  * @param[in] ARRAY Pointer to the array to affect.
  */
 #define LY_ARRAY_INCREMENT(ARRAY) \
-        ++(*((LY_ARRAY_SIZE_TYPE*)(ARRAY) - 1))
+        ++(*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1))
 
 /**
  * @brief Decrement the items counter in a ([sized array](@ref sizedarrays)).
@@ -609,7 +609,7 @@ LY_ERR ly_strcat(char **dest, const char *format, ...);
  * @param[in] ARRAY Pointer to the array to affect.
  */
 #define LY_ARRAY_DECREMENT(ARRAY) \
-        --(*((LY_ARRAY_SIZE_TYPE*)(ARRAY) - 1))
+        --(*((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1))
 
 /**
  * @brief Free the space allocated for the ([sized array](@ref sizedarrays)).
@@ -619,7 +619,7 @@ LY_ERR ly_strcat(char **dest, const char *format, ...);
  * @param[in] ARRAY A ([sized array](@ref sizedarrays)) to be freed.
  */
 #define LY_ARRAY_FREE(ARRAY) \
-        if (ARRAY){free((LY_ARRAY_SIZE_TYPE*)(ARRAY) - 1);}
+        if (ARRAY){free((LY_ARRAY_COUNT_TYPE*)(ARRAY) - 1);}
 
 /**
  * @brief Insert item into linked list.

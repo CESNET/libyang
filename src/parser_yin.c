@@ -631,7 +631,7 @@ yin_parse_simple_elements(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, const
 {
     const char **value;
     LY_ARRAY_NEW_RET(ctx->xmlctx->ctx, *values, value, LY_EMEM);
-    LY_ARRAY_SIZE_TYPE index = LY_ARRAY_SIZE(*values) - 1;
+    LY_ARRAY_COUNT_TYPE index = LY_ARRAY_COUNT(*values) - 1;
     struct yin_subelement subelems[1] = {
                                             {LY_STMT_EXTENSION_INSTANCE, &index, 0}
                                         };
@@ -2832,7 +2832,7 @@ yin_parse_content(struct lys_yin_parser_ctx *ctx, struct yin_subelement *subelem
             /* call responsible function */
             case LY_STMT_EXTENSION_INSTANCE:
                 ret = yin_parse_extension_instance(ctx, kw2lyext_substmt(current_element),
-                                                   (subelem->dest) ? *((LY_ARRAY_SIZE_TYPE*)subelem->dest) : 0, exts);
+                                                   (subelem->dest) ? *((LY_ARRAY_COUNT_TYPE*)subelem->dest) : 0, exts);
                 break;
             case LY_STMT_ACTION:
             case LY_STMT_RPC:
@@ -3049,7 +3049,7 @@ cleanup:
 }
 
 LY_ERR
-yin_parse_extension_instance(struct lys_yin_parser_ctx *ctx, LYEXT_SUBSTMT subelem, LY_ARRAY_SIZE_TYPE subelem_index,
+yin_parse_extension_instance(struct lys_yin_parser_ctx *ctx, LYEXT_SUBSTMT subelem, LY_ARRAY_COUNT_TYPE subelem_index,
                              struct lysp_ext_instance **exts)
 {
     struct lysp_ext_instance *e;

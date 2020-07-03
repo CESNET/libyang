@@ -177,7 +177,7 @@ enum ly_stmt yin_match_keyword(struct lys_yin_parser_ctx *ctx, const char *name,
  *
  * @return LY_ERR values.
  */
-LY_ERR yin_parse_extension_instance(struct lys_yin_parser_ctx *ctx, LYEXT_SUBSTMT subelem, LY_ARRAY_SIZE_TYPE subelem_index,
+LY_ERR yin_parse_extension_instance(struct lys_yin_parser_ctx *ctx, LYEXT_SUBSTMT subelem, LY_ARRAY_COUNT_TYPE subelem_index,
                                     struct lysp_ext_instance **exts);
 
 /**

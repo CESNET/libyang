@@ -729,7 +729,7 @@ lysc_node_leaf_free(struct ly_ctx *ctx, struct lysc_node_leaf *node)
 static void
 lysc_node_leaflist_free(struct ly_ctx *ctx, struct lysc_node_leaflist *node)
 {
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
 
     FREE_ARRAY(ctx, node->musts, lysc_must_free);
     if (node->type) {
@@ -748,7 +748,7 @@ lysc_node_leaflist_free(struct ly_ctx *ctx, struct lysc_node_leaflist *node)
 static void
 lysc_node_list_free(struct ly_ctx *ctx, struct lysc_node_list *node)
 {
-    LY_ARRAY_SIZE_TYPE u;
+    LY_ARRAY_COUNT_TYPE u;
     struct lysc_node *child, *child_next;
 
     LY_LIST_FOR_SAFE(node->child, child_next, child) {
