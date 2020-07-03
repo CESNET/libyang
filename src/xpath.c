@@ -2934,7 +2934,7 @@ lyxp_expr_dup(const struct ly_ctx *ctx, const struct lyxp_expr *exp)
             /* the ending 0 as well */
             ++j;
 
-            dup->repeat[i] = malloc(j * sizeof *dup->repeat);
+            dup->repeat[i] = malloc(j * sizeof **dup->repeat);
             LY_CHECK_ERR_GOTO(!dup->repeat[i], LOGMEM(ctx), error);
             memcpy(dup->repeat[i], exp->repeat[i], j * sizeof **dup->repeat);
             dup->repeat[i][j - 1] = 0;
