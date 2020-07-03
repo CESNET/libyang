@@ -6,4 +6,8 @@ PATH=/snap/bin:$PATH abi-dumper ./build/libyang.so -o ./build/libyang.dump -lver
 abi-compliance-checker -l libyang.so -old ./libyang.dump -new ./build/libyang.dump -s || status=$?
 # Generate and dump text output
 w3m -dump -O ascii -T text/html "$(find "compat_reports/${SONAME}" -name '*.html')"
+# Dump the new libyang ABI dump if it differs
+if [ "$status" -ne 0 ]; then
+    cat ./build/libyang.dump
+fi
 exit $status
