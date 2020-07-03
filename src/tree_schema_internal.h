@@ -588,6 +588,23 @@ LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *re
                             struct lys_parser_ctx *main_ctx, const char *main_name, int required, void **result);
 
 /**
+ * @brief Compile information from the identity statement
+ *
+ * The backlinks to the identities derived from this one are supposed to be filled later via lys_compile_identity_bases().
+ *
+ * @param[in] ctx_sc Compile context - alternative to the combination of @p ctx and @p module.
+ * @param[in] ctx libyang context.
+ * @param[in] module Module of the features.
+ * @param[in] identities_p Array of the parsed identity definitions to precompile.
+ * @param[in,out] identities Pointer to the storage of the (pre)compiled identities array where the new identities are
+ * supposed to be added. The storage is supposed to be initiated to NULL when the first parsed identities are going
+ * to be processed.
+ * @return LY_ERR value.
+ */
+LY_ERR lys_identity_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lys_module *module,
+                               struct lysp_ident *identities_p, struct lysc_ident **identities);
+
+/**
  * @brief Create pre-compiled features array.
  *
  * Features are compiled in two steps to allow forward references between them via their if-feature statements.

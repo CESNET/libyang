@@ -1819,12 +1819,16 @@ struct lys_module {
     struct lysp_module *parsed;      /**< Simply parsed (unresolved) YANG schema tree */
     struct lysc_module *compiled;    /**< Compiled and fully validated YANG schema tree for data parsing.
                                           Available only for implemented modules. */
-    struct lysc_feature *off_features;/**< List of pre-compiled features of the module in non implemented modules ([sized array](@ref sizedarrays)).
+    struct lysc_feature *dis_features;/**< List of pre-compiled features in a non implemented module ([sized array](@ref sizedarrays)).
                                           These features are always disabled and cannot be enabled until the module
-                                          become implemented. The features are present in this form to allow their linkage
+                                          is implemented. The features are present in this form to allow their linkage
                                           from if-feature statements of the compiled schemas and their proper use in case
                                           the module became implemented in future (no matter if implicitly via augment/deviate
                                           or explicitly via ly_ctx_module_implement()). */
+    struct lysc_ident *dis_identities;/**< List of pre-compiled identities in a non-implemented module ([sized array](@ref sizedarrays))
+                                          These identities cannot be instantiated in data (in identityrefs) until
+                                          the module is implemented but can be linked by identities in implemented
+                                          modules. */
     uint8_t implemented;             /**< flag if the module is implemented, not just imported. The module is implemented if
                                           the flag has non-zero value. Specific values are used internally:
                                           1 - implemented module

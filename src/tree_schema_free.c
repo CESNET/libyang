@@ -872,7 +872,8 @@ lys_module_free(struct lys_module *module, void (*private_destructor)(const stru
     }
 
     lysc_module_free(module->compiled, private_destructor);
-    FREE_ARRAY(module->ctx, module->off_features, lysc_feature_free);
+    FREE_ARRAY(module->ctx, module->dis_features, lysc_feature_free);
+    FREE_ARRAY(module->ctx, module->dis_identities, lysc_ident_free);
     lysp_module_free(module->parsed);
 
     FREE_STRING(module->ctx, module->name);
@@ -887,6 +888,7 @@ lys_module_free(struct lys_module *module, void (*private_destructor)(const stru
 
     free(module);
 }
+
 API void
 lysc_extension_instance_free(struct ly_ctx *ctx, struct lysc_ext_substmt *substmts)
 {

@@ -127,6 +127,21 @@ test_identity(void **state)
     TEST_SCHEMA_ERR(ctx, 0, 0,"inv", "identity i1 {base i2;}identity i2 {base i3;}identity i3 {base i1;}",
                     "Identity \"i1\" is indirectly derived from itself. /inv:{identity='i3'}");
 
+    /* base in non-implemented module */
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb,
+                              "module base {namespace \"urn\"; prefix b; identity i1; identity i2 {base i1;}}");
+    TEST_SCHEMA_OK(ctx, 0, 0, "ident", "import base {prefix b;} identity ii {base b:i1;}", mod);
+
+    /* default value from non-implemented module */
+    TEST_SCHEMA_ERR(ctx, 0, 0, "ident2", "import base {prefix b;} leaf l {type identityref {base b:i1;} default b:i2;}",
+                    "Invalid leaf's default value \"b:i2\" which does not fit the type (Invalid identityref \"b:i2\" value"
+                    " - identity found in non-implemented module \"base\".). /ident2:l");
+
+    /* default value in typedef from non-implemented module */
+    TEST_SCHEMA_ERR(ctx, 0, 0, "ident2", "import base {prefix b;} typedef t1 {type identityref {base b:i1;} default b:i2;}"
+                    "leaf l {type t1;}", "Invalid type's default value \"b:i2\" which does not fit the type (Invalid"
+                    " identityref \"b:i2\" value - identity found in non-implemented module \"base\".). /ident2:l");
+
     /*
      * printing
      */

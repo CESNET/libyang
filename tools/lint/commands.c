@@ -1284,7 +1284,7 @@ cmd_feature(const char *arg)
         if (module->compiled) {
             features = module->compiled->features;
         } else {
-            features = module->off_features;
+            features = module->dis_features;
         }
 
         /* get the max len */

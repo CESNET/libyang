@@ -440,7 +440,7 @@ lys_feature_find(struct lys_module *mod, const char *name, size_t len)
         /* module is implemented so there is already the compiled schema */
         flist = mod->compiled->features;
     } else {
-        flist = mod->off_features;
+        flist = mod->dis_features;
     }
     LY_ARRAY_FOR(flist, u) {
         f = &flist[u];
@@ -948,36 +948,52 @@ done:
     return ret;
 }
 
-/**
- * @brief Compile information from the identity statement
- *
- * The backlinks to the identities derived from this one are supposed to be filled later via lys_compile_identity_bases().
- *
- * @param[in] ctx Compile context.
- * @param[in] ident_p The parsed identity statement structure.
- * @param[in] idents List of so far compiled identities to check the name uniqueness.
- * @param[in,out] ident Prepared (empty) compiled identity structure to fill.
- * @return LY_ERR value.
- */
-static LY_ERR
-lys_compile_identity(struct lysc_ctx *ctx, struct lysp_ident *ident_p, struct lysc_ident *idents, struct lysc_ident *ident)
+LY_ERR
+lys_identity_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lys_module *module,
+                        struct lysp_ident *identities_p, struct lysc_ident **identities)
 {
-    unsigned int u;
+    LY_ARRAY_SIZE_TYPE offset = 0, u, v;
+    struct lysc_ctx context = {0};
     LY_ERR ret = LY_SUCCESS;
 
-    lysc_update_path(ctx, NULL, ident_p->name);
+    assert(ctx_sc || ctx);
 
-    COMPILE_CHECK_UNIQUENESS_ARRAY(ctx, idents, name, ident, "identity", ident_p->name);
-    DUP_STRING(ctx->ctx, ident_p->name, ident->name);
-    DUP_STRING(ctx->ctx, ident_p->dsc, ident->dsc);
-    DUP_STRING(ctx->ctx, ident_p->ref, ident->ref);
-    ident->module = ctx->mod;
-    COMPILE_ARRAY_GOTO(ctx, ident_p->iffeatures, ident->iffeatures, u, lys_compile_iffeature, ret, done);
-    /* backlings (derived) can be added no sooner than when all the identities in the current module are present */
-    COMPILE_EXTS_GOTO(ctx, ident_p->exts, ident->exts, ident, LYEXT_PAR_IDENT, ret, done);
-    ident->flags = ident_p->flags;
+    if (!ctx_sc) {
+        context.ctx = ctx;
+        context.mod = module;
+        context.path_len = 1;
+        context.path[0] = '/';
+        ctx_sc = &context;
+    }
 
-    lysc_update_path(ctx, NULL, NULL);
+    if (!identities_p) {
+        return LY_SUCCESS;
+    }
+    if (*identities) {
+        offset = LY_ARRAY_SIZE(*identities);
+    }
+
+    lysc_update_path(ctx_sc, NULL, "{identity}");
+    LY_ARRAY_CREATE_RET(ctx_sc->ctx, *identities, LY_ARRAY_SIZE(identities_p), LY_EMEM);
+    LY_ARRAY_FOR(identities_p, u) {
+        lysc_update_path(ctx_sc, NULL, identities_p[u].name);
+
+        LY_ARRAY_INCREMENT(*identities);
+        COMPILE_CHECK_UNIQUENESS_ARRAY(ctx_sc, *identities, name, &(*identities)[offset + u], "identity", identities_p[u].name);
+        DUP_STRING(ctx_sc->ctx, identities_p[u].name, (*identities)[offset + u].name);
+        DUP_STRING(ctx_sc->ctx, identities_p[u].dsc, (*identities)[offset + u].dsc);
+        DUP_STRING(ctx_sc->ctx, identities_p[u].ref, (*identities)[offset + u].ref);
+        (*identities)[offset + u].module = ctx_sc->mod;
+        COMPILE_ARRAY_GOTO(ctx_sc, identities_p[u].iffeatures, (*identities)[offset + u].iffeatures, v,
+                           lys_compile_iffeature, ret, done);
+        /* backlinks (derived) can be added no sooner than when all the identities in the current module are present */
+        COMPILE_EXTS_GOTO(ctx_sc, identities_p[u].exts, (*identities)[offset + u].exts, &(*identities)[offset + u],
+                          LYEXT_PAR_IDENT, ret, done);
+        (*identities)[offset + u].flags = identities_p[u].flags;
+
+        lysc_update_path(ctx_sc, NULL, NULL);
+    }
+    lysc_update_path(ctx_sc, NULL, NULL);
 done:
     return ret;
 }
@@ -1044,17 +1060,18 @@ cleanup:
  *
  * @param[in] ctx Compile context, not only for logging but also to get the current module to resolve prefixes.
  * @param[in] bases_p Array of names (including prefix if necessary) of base identities.
- * @param[in] ident Referencing identity to work with.
+ * @param[in] ident Referencing identity to work with, NULL for identityref.
  * @param[in] bases Array of bases of identityref to fill in.
  * @return LY_ERR value.
  */
 static LY_ERR
-lys_compile_identity_bases(struct lysc_ctx *ctx, struct lys_module *context_module, const char **bases_p,  struct lysc_ident *ident, struct lysc_ident ***bases)
+lys_compile_identity_bases(struct lysc_ctx *ctx, struct lys_module *context_module, const char **bases_p,
+                           struct lysc_ident *ident, struct lysc_ident ***bases)
 {
     LY_ARRAY_SIZE_TYPE u, v;
     const char *s, *name;
     struct lys_module *mod;
-    struct lysc_ident **idref;
+    struct lysc_ident **idref, *identities;
 
     assert(ident || bases);
 
@@ -1064,7 +1081,7 @@ lys_compile_identity_bases(struct lysc_ctx *ctx, struct lys_module *context_modu
         return LY_EVALID;
     }
 
-    for (u = 0; u < LY_ARRAY_SIZE(bases_p); ++u) {
+    LY_ARRAY_FOR(bases_p, u) {
         s = strchr(bases_p[u], ':');
         if (s) {
             /* prefixed identity */
@@ -1084,27 +1101,31 @@ lys_compile_identity_bases(struct lysc_ctx *ctx, struct lys_module *context_modu
             }
             return LY_EVALID;
         }
+
         idref = NULL;
-        if (mod->compiled && mod->compiled->identities) {
-            for (v = 0; v < LY_ARRAY_SIZE(mod->compiled->identities); ++v) {
-                if (!strcmp(name, mod->compiled->identities[v].name)) {
-                    if (ident) {
-                        if (ident == &mod->compiled->identities[v]) {
-                            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                                   "Identity \"%s\" is derived from itself.", ident->name);
-                            return LY_EVALID;
-                        }
-                        LY_CHECK_RET(lys_compile_identity_circular_check(ctx, &mod->compiled->identities[v], ident->derived));
-                        /* we have match! store the backlink */
-                        LY_ARRAY_NEW_RET(ctx->ctx, mod->compiled->identities[v].derived, idref, LY_EMEM);
-                        *idref = ident;
-                    } else {
-                        /* we have match! store the found identity */
-                        LY_ARRAY_NEW_RET(ctx->ctx, *bases, idref, LY_EMEM);
-                        *idref = &mod->compiled->identities[v];
+        if (mod->compiled) {
+            identities = mod->compiled->identities;
+        } else {
+            identities = mod->dis_identities;
+        }
+        LY_ARRAY_FOR(identities, v) {
+            if (!strcmp(name, identities[v].name)) {
+                if (ident) {
+                    if (ident == &identities[v]) {
+                        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                               "Identity \"%s\" is derived from itself.", ident->name);
+                        return LY_EVALID;
                     }
-                    break;
+                    LY_CHECK_RET(lys_compile_identity_circular_check(ctx, &identities[v], ident->derived));
+                    /* we have match! store the backlink */
+                    LY_ARRAY_NEW_RET(ctx->ctx, identities[v].derived, idref, LY_EMEM);
+                    *idref = ident;
+                } else {
+                    /* we have match! store the found identity */
+                    LY_ARRAY_NEW_RET(ctx->ctx, *bases, idref, LY_EMEM);
+                    *idref = &identities[v];
                 }
+                break;
             }
         }
         if (!idref || !(*idref)) {
@@ -1133,6 +1154,7 @@ lys_compile_identities_derived(struct lysc_ctx *ctx, struct lysp_ident *idents_p
 {
     LY_ARRAY_SIZE_TYPE u;
 
+    lysc_update_path(ctx, NULL, "{identity}");
     for (u = 0; u < LY_ARRAY_SIZE(idents_p); ++u) {
         if (!idents_p[u].bases) {
             continue;
@@ -1141,11 +1163,13 @@ lys_compile_identities_derived(struct lysc_ctx *ctx, struct lysp_ident *idents_p
         LY_CHECK_RET(lys_compile_identity_bases(ctx, idents[u].module, idents_p[u].bases, &idents[u], NULL));
         lysc_update_path(ctx, NULL, NULL);
     }
+    lysc_update_path(ctx, NULL, NULL);
     return LY_SUCCESS;
 }
 
 LY_ERR
-lys_feature_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lys_module *module, struct lysp_feature *features_p, struct lysc_feature **features)
+lys_feature_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lys_module *module,
+                       struct lysp_feature *features_p, struct lysc_feature **features)
 {
     LY_ARRAY_SIZE_TYPE offset = 0, u;
     struct lysc_ctx context = {0};
@@ -1305,35 +1329,35 @@ lys_feature_precompile_finish(struct lysc_ctx *ctx, struct lysp_feature *feature
  * @brief Revert compiled list of features back to the precompiled state.
  *
  * Function is needed in case the compilation failed and the schema is expected to revert back to the non-compiled status.
- * The features are supposed to be stored again as off_features in ::lys_module structure.
+ * The features are supposed to be stored again as dis_features in ::lys_module structure.
  *
  * @param[in] ctx Compilation context.
  * @param[in] mod The module structure still holding the compiled (but possibly not finished, only the list of compiled features is taken) schema
- * and supposed to hold the off_features list.
+ * and supposed to hold the dis_features list.
  */
 static void
 lys_feature_precompile_revert(struct lysc_ctx *ctx, struct lys_module *mod)
 {
     LY_ARRAY_SIZE_TYPE u, v;
 
-    /* keep the off_features list until the complete lys_module is freed */
-    mod->off_features = mod->compiled->features;
+    /* keep the dis_features list until the complete lys_module is freed */
+    mod->dis_features = mod->compiled->features;
     mod->compiled->features = NULL;
 
-    /* in the off_features list, remove all the parts (from finished compiling process)
+    /* in the dis_features list, remove all the parts (from finished compiling process)
      * which may points into the data being freed here */
-    LY_ARRAY_FOR(mod->off_features, u) {
-        LY_ARRAY_FOR(mod->off_features[u].iffeatures, v) {
-            lysc_iffeature_free(ctx->ctx, &mod->off_features[u].iffeatures[v]);
+    LY_ARRAY_FOR(mod->dis_features, u) {
+        LY_ARRAY_FOR(mod->dis_features[u].iffeatures, v) {
+            lysc_iffeature_free(ctx->ctx, &mod->dis_features[u].iffeatures[v]);
         }
-        LY_ARRAY_FREE(mod->off_features[u].iffeatures);
-        mod->off_features[u].iffeatures = NULL;
+        LY_ARRAY_FREE(mod->dis_features[u].iffeatures);
+        mod->dis_features[u].iffeatures = NULL;
 
-        LY_ARRAY_FOR(mod->off_features[u].exts, v) {
-            lysc_ext_instance_free(ctx->ctx, &(mod->off_features[u].exts)[v]);
+        LY_ARRAY_FOR(mod->dis_features[u].exts, v) {
+            lysc_ext_instance_free(ctx->ctx, &(mod->dis_features[u].exts)[v]);
         }
-        LY_ARRAY_FREE(mod->off_features[u].exts);
-        mod->off_features[u].exts = NULL;
+        LY_ARRAY_FREE(mod->dis_features[u].exts);
+        mod->dis_features[u].exts = NULL;
     }
 }
 
@@ -6469,7 +6493,7 @@ lys_compile_submodule(struct lysc_ctx *ctx, struct lysp_include *inc)
     struct lysc_module *mainmod = ctx->mod->compiled;
     struct lysp_node *node_p;
 
-    if (!mainmod->mod->off_features) {
+    if (!mainmod->mod->dis_features) {
         /* features are compiled directly into the compiled module structure,
          * but it must be done in two steps to allow forward references (via if-feature) between the features themselves.
          * The features compilation is finished in the main module (lys_compile()). */
@@ -6477,9 +6501,10 @@ lys_compile_submodule(struct lysc_ctx *ctx, struct lysp_include *inc)
         LY_CHECK_GOTO(ret, error);
     }
 
-    lysc_update_path(ctx, NULL, "{identity}");
-    COMPILE_ARRAY_UNIQUE_GOTO(ctx, submod->identities, mainmod->identities, u, lys_compile_identity, ret, error);
-    lysc_update_path(ctx, NULL, NULL);
+    if (!mainmod->mod->dis_identities) {
+        ret = lys_identity_precompile(ctx, NULL, NULL, submod->identities, &mainmod->identities);
+        LY_CHECK_GOTO(ret, error);
+    }
 
     /* data nodes */
     LY_LIST_FOR(submod->data, node_p) {
@@ -7078,16 +7103,17 @@ lys_compile(struct lys_module **mod, int options)
     }
 
     /* features */
-    if ((*mod)->off_features) {
+    if ((*mod)->dis_features) {
         /* there is already precompiled array of features */
-        mod_c->features = (*mod)->off_features;
-        (*mod)->off_features = NULL;
+        mod_c->features = (*mod)->dis_features;
+        (*mod)->dis_features = NULL;
     } else {
         /* features are compiled directly into the compiled module structure,
          * but it must be done in two steps to allow forward references (via if-feature) between the features themselves */
         ret = lys_feature_precompile(&ctx, NULL, NULL, sp->features, &mod_c->features);
         LY_CHECK_GOTO(ret, error);
     }
+
     /* finish feature compilation, not only for the main module, but also for the submodules.
      * Due to possible forward references, it must be done when all the features (including submodules)
      * are present. */
@@ -7106,11 +7132,25 @@ lys_compile(struct lys_module **mod, int options)
     }
     lysc_update_path(&ctx, NULL, NULL);
 
-    /* identities */
-    lysc_update_path(&ctx, NULL, "{identity}");
-    COMPILE_ARRAY_UNIQUE_GOTO(&ctx, sp->identities, mod_c->identities, u, lys_compile_identity, ret, error);
+    /* identities, work similarly to features with the precompilation */
+    if ((*mod)->dis_identities) {
+        mod_c->identities = (*mod)->dis_identities;
+        (*mod)->dis_identities = NULL;
+    } else {
+        ret = lys_identity_precompile(&ctx, NULL, NULL, sp->identities, &mod_c->identities);
+        LY_CHECK_GOTO(ret, error);
+    }
     if (sp->identities) {
         LY_CHECK_GOTO(ret = lys_compile_identities_derived(&ctx, sp->identities, mod_c->identities), error);
+    }
+    lysc_update_path(&ctx, NULL, "{submodule}");
+    LY_ARRAY_FOR(sp->includes, v) {
+        if (sp->includes[v].submodule->identities) {
+            lysc_update_path(&ctx, NULL, sp->includes[v].name);
+            ret = lys_compile_identities_derived(&ctx, sp->includes[v].submodule->identities, mod_c->identities);
+            LY_CHECK_GOTO(ret, error);
+            lysc_update_path(&ctx, NULL, NULL);
+        }
     }
     lysc_update_path(&ctx, NULL, NULL);
 

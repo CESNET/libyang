@@ -1265,7 +1265,7 @@ ly_type_store_identityref(const struct ly_ctx *ctx, struct lysc_type *type, cons
     char *errmsg = NULL;
     const struct lys_module *mod;
     LY_ARRAY_SIZE_TYPE u;
-    struct lysc_ident *ident;
+    struct lysc_ident *ident, *identities;
 
     if (options & LY_TYPE_OPTS_SECOND_CALL) {
         return LY_SUCCESS;
@@ -1292,16 +1292,26 @@ ly_type_store_identityref(const struct ly_ctx *ctx, struct lysc_type *type, cons
         asprintf(&errmsg, "Invalid identityref \"%.*s\" value - unable to map prefix to YANG schema.", (int)value_len, value);
         goto error;
     }
-    LY_ARRAY_FOR(mod->compiled->identities, u) {
-        ident = &mod->compiled->identities[u]; /* shortcut */
+    if (mod->compiled) {
+        identities = mod->compiled->identities;
+    } else {
+        identities = mod->dis_identities;
+    }
+    LY_ARRAY_FOR(identities, u) {
+        ident = &identities[u]; /* shortcut */
         if (!ly_strncmp(ident->name, id_name, id_len)) {
             /* we have match */
             break;
         }
     }
-    if (u == LY_ARRAY_SIZE(mod->compiled->identities)) {
+    if (u == LY_ARRAY_SIZE(identities)) {
         /* no match */
         asprintf(&errmsg, "Invalid identityref \"%.*s\" value - identity not found.", (int)value_len, value);
+        goto error;
+    } else if (!mod->compiled) {
+        /* non-implemented module */
+        asprintf(&errmsg, "Invalid identityref \"%.*s\" value - identity found in non-implemented module \"%s\".",
+                 (int)value_len, value, mod->name);
         goto error;
     }
 
