@@ -62,9 +62,11 @@ addons:
     packages:
     - curl
     update: true
+  snaps:
+    - universal-ctags
 
 before_install:
-  - if d[ -f "cmocka/CMakeLists.txt" ] && [ "$(sed -n 's/project(cmocka VERSION \([0-9.]\) LANGUAGES C)/\1/p' cmocka/CMakeLists.txt)" != "$CMOCKA_VERSION" ]; then rm -rf cmocka; fi
+  - if [ -f "cmocka/CMakeLists.txt" ] && [ "$(sed -n 's/project(cmocka VERSION \([0-9.]\) LANGUAGES C)/\1/p' cmocka/CMakeLists.txt)" != "$CMOCKA_VERSION" ]; then rm -rf cmocka; fi
   - if [ ! -d "cmocka" ] || [ ! -f "cmocka/CMakeLists.txt" ]; then rm -rf cmocka && curl -SLO https://cmocka.org/files/1.1/cmocka-$CMOCKA_VERSION.tar.xz && tar -xJf cmocka-$CMOCKA_VERSION.tar.xz && mv "cmocka-$CMOCKA_VERSION" cmocka; fi
   - if [ ! -d "cmocka/build" ]; then mkdir cmocka/build; fi
   - if [ ! -f "cmocka/build/Makefile" ]; then (cd cmocka/build && cmake ..); fi
