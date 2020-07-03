@@ -1,4 +1,11 @@
 language: c
+env:
+  global:
+  - CMOCKA_VERSION: 1.1.5
+
+cache:
+  directories:
+  - cmocka
 
 matrix:
   include:
@@ -60,10 +67,12 @@ addons:
     update: true
 
 before_install:
-  - git clone git://git.cryptomilk.org/projects/cmocka.git
-  - cd cmocka && mkdir build && cd build
-  - cmake .. && make -j2 && sudo make install
-  - cd ../..
+  - OLD_CMOCKA_VERSION=$(sed -n 's/project(cmocka VERSION \([0-9.]*\) LANGUAGES C)/\1/p' cmocka/CMakeLists.txt)
+  - if [ -f "cmocka/CMakeLists.txt" ] && [ "$OLD_CMOCKA_VERSION" != "$CMOCKA_VERSION" ]; then echo "Purging the cmocka-$OLD_CMOCKA_VERSION from cache"; rm -rf cmocka; fi
+  - if [ ! -d "cmocka" ] || [ ! -f "cmocka/CMakeLists.txt" ]; then echo "Downloading cmocka-$CMOCKA_VERSION"; rm -rf cmocka && curl -SLO https://cmocka.org/files/1.1/cmocka-$CMOCKA_VERSION.tar.xz && tar -xJf cmocka-$CMOCKA_VERSION.tar.xz && mv "cmocka-$CMOCKA_VERSION" cmocka; fi
+  - if [ ! -d "cmocka/build" ] || [ ! -f "cmocka/build/Makefile" ]; then mkdir -p cmocka/build && (cd cmocka/build && cmake ..); fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ] && [ ! -f "cmocka/build/src/libcmocka.dylib" ]; then (cd cmocka/build && make -j2); fi
+  - if [ "$TRAVIS_OS_NAME" = "linux" ] && [ ! -f "cmocka/build/src/libcmocka.so" ]; then (cd cmocka/build && make -j2); fi
   - if [ "$DEPLOY_BUILD" = "TRUE" ]; then pip3 install --user codecov==2.0.22; export CFLAGS="-coverage"; fi
 
 script:
