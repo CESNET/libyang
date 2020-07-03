@@ -31,6 +31,19 @@
 #include "tree_schema_internal.h"
 #include "xpath.h"
 
+/**
+ * @brief Just like lys_getnext() but iterates over all data instances of the schema nodes.
+ *
+ * @param[in] last Last returned data node.
+ * @param[in] sibling Data node sibling to search in.
+ * @param[in,out] slast Schema last node, set to NULL for first call and do not change afterwards.
+ * May not be set if the function is used only for any suitable node existence check (such as the existence
+ * of any choice case data).
+ * @param[in] parent Schema parent of the iterated children nodes.
+ * @param[in] module Schema module of the iterated top-level nodes.
+ * @return Next matching data node,
+ * @return NULL if last data node was already returned.
+ */
 static struct lyd_node *
 lys_getnext_data(const struct lyd_node *last, const struct lyd_node *sibling, const struct lysc_node **slast,
                  const struct lysc_node *parent, const struct lysc_module *module)
@@ -228,6 +241,13 @@ lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, struct ly_s
     return ret;
 }
 
+/**
+ * @brief Validate instance duplication.
+ *
+ * @param[in] first First sibling to search in.
+ * @param[in] node Data node instance to check.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lyd_validate_duplicates(const struct lyd_node *first, const struct lyd_node *node)
 {
@@ -269,6 +289,13 @@ lyd_validate_duplicates(const struct lyd_node *first, const struct lyd_node *nod
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Validate multiple case data existence with possible autodelete.
+ *
+ * @param[in,out] first First sibling to search in, is updated if needed.
+ * @param[in] choic Choice node whose cases to check.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lyd_validate_cases(struct lyd_node **first, const struct lysc_node_choice *choic)
 {
@@ -336,6 +363,13 @@ lyd_validate_cases(struct lyd_node **first, const struct lysc_node_choice *choic
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Check whether a schema node can have some default values (true for NP containers as well).
+ *
+ * @param[in] schema Schema node to check.
+ * @return non-zero if yes,
+ * @return 0 otherwise.
+ */
 static int
 lyd_val_has_default(const struct lysc_node *schema)
 {
@@ -362,6 +396,13 @@ lyd_val_has_default(const struct lysc_node *schema)
     return 0;
 }
 
+/**
+ * @brief Autodelete old instances to prevent validation errors.
+ *
+ * @param[in,out] first First sibling to search in, is updated if needed.
+ * @param[in] node Data node instance to check.
+ * @param[in,out] next_p Temporary LY_LIST_FOR_SAFE next pointer, is updated if needed.
+ */
 static void
 lyd_validate_autodel_dup(struct lyd_node **first, struct lyd_node *node, struct lyd_node **next_p)
 {
@@ -437,6 +478,13 @@ lyd_validate_new(struct lyd_node **first, const struct lysc_node *sparent, const
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Validate mandatory node existence.
+ *
+ * @param[in] first First sibling to search in.
+ * @param[in] snode Schema node to validate.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lyd_validate_mandatory(const struct lyd_node *first, const struct lysc_node *snode)
 {
@@ -459,6 +507,15 @@ lyd_validate_mandatory(const struct lyd_node *first, const struct lysc_node *sno
     return LY_EVALID;
 }
 
+/**
+ * @brief Validate min/max-elements constraints, if any.
+ *
+ * @param[in] first First sibling to search in.
+ * @param[in] snode Schema node to validate.
+ * @param[in] min Minimum number of elements, 0 for no restriction.
+ * @param[in] max Max number of elements, 0 for no restriction.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lyd_validate_minmax(const struct lyd_node *first, const struct lysc_node *snode, uint32_t min, uint32_t max)
 {
@@ -498,8 +555,16 @@ lyd_validate_minmax(const struct lyd_node *first, const struct lysc_node *snode,
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Find node referenced by a list unique statement.
+ *
+ * @param[in] uniq_leaf Unique leaf to find.
+ * @param[in] list List instance to use for the search.
+ * @return Found leaf,
+ * @return NULL if no leaf found.
+ */
 static struct lyd_node *
-lyd_val_uniq_find_leaf(const struct lysc_node_leaf *uniq_leaf, struct lyd_node *list)
+lyd_val_uniq_find_leaf(const struct lysc_node_leaf *uniq_leaf, const struct lyd_node *list)
 {
     struct lyd_node *node;
     const struct lysc_node *iter;
@@ -510,7 +575,7 @@ lyd_val_uniq_find_leaf(const struct lysc_node_leaf *uniq_leaf, struct lyd_node *
         ++depth;
     }
 
-    node = list;
+    node = (struct lyd_node *)list;
     while (node && depth) {
         /* find schema node with this depth */
         for (i = depth - 1, iter = (struct lysc_node *)uniq_leaf; i; iter = lysc_data_parent(iter)) {
@@ -526,10 +591,10 @@ lyd_val_uniq_find_leaf(const struct lysc_node_leaf *uniq_leaf, struct lyd_node *
     return node;
 }
 
-/*
- * actions (cb_data):
- * 0  - compare all uniques
- * n  - compare n-th unique
+/**
+ * @brief Callback for comparing 2 list unique leaf values.
+ *
+ * @param[in] cb_data 0 to compare all uniques, n to compare only n-th unique.
  */
 static int
 lyd_val_uniq_list_equal(void *val1_p, void *val2_p, int UNUSED(mod), void *cb_data)
@@ -627,8 +692,16 @@ uniquecheck:
     return 0;
 }
 
+/**
+ * @brief Validate list unique leaves.
+ *
+ * @param[in] first First sibling to search in.
+ * @param[in] snode Schema node to validate.
+ * @param[in] uniques List unique arrays to validate.
+ * @return LY_ERR value.
+ */
 static LY_ERR
-lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode, struct lysc_node_leaf ***uniques)
+lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode, const struct lysc_node_leaf ***uniques)
 {
     const struct lyd_node *diter;
     struct ly_set *set;
@@ -738,6 +811,16 @@ cleanup:
     return ret;
 }
 
+/**
+ * @brief Validate data siblings based on generic schema node restrictions, recursively for schema-only nodes.
+ *
+ * @param[in] first First sibling to search in.
+ * @param[in] sparent Schema parent of the nodes to check.
+ * @param[in] mod Module of the nodes to check.
+ * @param[in] val_opts Validation options, see @ref datavalidationoptions.
+ * @param[in] op Operation being validated, if any.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lyd_validate_siblings_schema_r(const struct lyd_node *first, const struct lysc_node *sparent,
                                const struct lysc_module *mod, int val_opts, LYD_VALIDATE_OP op)
@@ -770,7 +853,7 @@ lyd_validate_siblings_schema_r(const struct lyd_node *first, const struct lysc_n
         if (snode->nodetype == LYS_LIST) {
             slist = (struct lysc_node_list *)snode;
             if (slist->uniques) {
-                LY_CHECK_RET(lyd_validate_unique(first, snode, slist->uniques));
+                LY_CHECK_RET(lyd_validate_unique(first, snode, (const struct lysc_node_leaf ***)slist->uniques));
             }
         }
 
@@ -783,6 +866,11 @@ lyd_validate_siblings_schema_r(const struct lyd_node *first, const struct lysc_n
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Validate obsolete nodes, only warnings are printed.
+ *
+ * @param[in] node Node to check.
+ */
 static void
 lyd_validate_obsolete(const struct lyd_node *node)
 {
@@ -799,6 +887,13 @@ lyd_validate_obsolete(const struct lyd_node *node)
     } while (snode && (snode->nodetype & (LYS_CHOICE | LYS_CASE)));
 }
 
+/**
+ * @brief Validate must conditions of a data node.
+ *
+ * @param[in] node Node to validate.
+ * @param[in] op Operation being validated, if any.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 lyd_validate_must(const struct lyd_node *node, LYD_VALIDATE_OP op)
 {
@@ -1037,11 +1132,18 @@ lyd_validate_defaults_r(struct lyd_node *parent, struct lyd_node **first, const 
 }
 
 /**
- * @param[in] validate_options Options for the validation phase, see @ref datavalidationoptions.
+ * @brief Validate the whole data subtree.
+ *
+ * @param[in] root Subtree root.
+ * @param[in,out] type_check Set for unres node types.
+ * @param[in,out] type_meta_check Set for unres metadata types.
+ * @param[in,out] when_check Set for nodes with when conditions.
+ * @param[in] val_opts Validation options, see @ref datavalidationoptions.
+ * @return LY_ERR value.
  */
 static LY_ERR
 lyd_validate_subtree(struct lyd_node *root, struct ly_set *type_check, struct ly_set *type_meta_check,
-                     struct ly_set *when_check, int validate_options)
+                     struct ly_set *when_check, int val_opts)
 {
     const struct lyd_meta *meta;
     struct lyd_node *next, *node;
@@ -1063,7 +1165,7 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *type_check, struct ly
 
                 /* add nested defaults */
                 LY_CHECK_RET(lyd_validate_defaults_r(node, lyd_node_children_p((struct lyd_node *)node), NULL, NULL, type_check,
-                                                     when_check, validate_options));
+                                                     when_check, val_opts));
             }
 
             if (!(node->schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) && node->schema->when) {
@@ -1078,6 +1180,16 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *type_check, struct ly
     return LY_SUCCESS;
 }
 
+/**
+ * @brief Validate data tree.
+ *
+ * @param[in,out] tree Data tree to validate, nodes may be autodeleted.
+ * @param[in] modules Array of modules to validate, NULL for all modules.
+ * @param[in] mod_count Count of @p modules.
+ * @param[in] ly_ctx libyang context.
+ * @param[in] val_opts Validation options, see @ref datavalidationoptions.
+ * @return LY_ERR value.
+ */
 static LY_ERR
 _lyd_validate(struct lyd_node **tree, const struct lys_module **modules, int mod_count, const struct ly_ctx *ctx,
               int val_opts)
@@ -1145,9 +1257,18 @@ lyd_validate_modules(struct lyd_node **tree, const struct lys_module **modules, 
     return _lyd_validate(tree, modules, mod_count, NULL, val_opts);
 }
 
+/**
+ * @brief Find nodes for merging an operation into data tree for validation.
+ *
+ * @param[in] op_tree Full operation data tree.
+ * @param[in] op_node Operation node itself.
+ * @param[in] tree Data tree to be merged into.
+ * @param[out] op_subtree Operation subtree to merge.
+ * @param[out] tree_sibling Data tree sibling to merge next to.
+ */
 static void
-lyd_val_op_merge_find(const struct lyd_node *op_tree, const struct lyd_node *op, const struct lyd_node *tree,
-                      struct lyd_node **op_node, struct lyd_node **tree_sibling)
+lyd_val_op_merge_find(const struct lyd_node *op_tree, const struct lyd_node *op_node, const struct lyd_node *tree,
+                      struct lyd_node **op_subtree, struct lyd_node **tree_sibling)
 {
     const struct lyd_node *tree_iter, *op_iter;
     struct lyd_node *match;
@@ -1155,17 +1276,17 @@ lyd_val_op_merge_find(const struct lyd_node *op_tree, const struct lyd_node *op,
 
     /* learn op depth (top-level being depth 0) */
     op_depth = 0;
-    for (op_iter = op; op_iter != op_tree; op_iter = (struct lyd_node *)op_iter->parent) {
+    for (op_iter = op_node; op_iter != op_tree; op_iter = (struct lyd_node *)op_iter->parent) {
         ++op_depth;
     }
 
     /* find where to merge op */
     tree_iter = tree;
     cur_depth = op_depth;
-    op_iter = op;
+    op_iter = op_node;
     while (cur_depth) {
         /* find next op parent */
-        op_iter = op;
+        op_iter = op_node;
         for (i = 0; i < cur_depth; ++i) {
             op_iter = (struct lyd_node *)op_iter->parent;
         }
@@ -1183,7 +1304,7 @@ lyd_val_op_merge_find(const struct lyd_node *op_tree, const struct lyd_node *op,
         --cur_depth;
     }
 
-    *op_node = (struct lyd_node *)op_iter;
+    *op_subtree = (struct lyd_node *)op_iter;
     *tree_sibling = (struct lyd_node *)tree_iter;
 }
 
