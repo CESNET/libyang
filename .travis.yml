@@ -38,7 +38,12 @@ branches:
     - master
     - devel
 
+addons:
+  apt:
+    update: true
+
 before_install:
+  - if [ "$DEPLOY_BUILD" = "TRUE" ]; then sudo apt-get -y install abi-dumper abi-compliance-checker pkg-config; fi
   - git clone git://git.cryptomilk.org/projects/cmocka.git
   - cd cmocka && mkdir build && cd build
   - cmake .. && make -j2 && sudo make install
@@ -54,6 +59,7 @@ script:
   - if [ "$TRAVIS_OS_NAME" = "linux" -a "$TRAVIS_ARCH" = "arm64" ]; then cmake -DGEN_LANGUAGE_BINDINGS=ON -DENABLE_VALGRIND_TESTS=OFF ..; fi
   - make -j2 && ctest --output-on-failure
   - cd -
+  - if [ "$DEPLOY_BUILD" = "TRUE" ]; then ./tools/abi-check.sh; fi
 
 deploy:
   - provider: script
