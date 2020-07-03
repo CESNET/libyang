@@ -327,9 +327,9 @@ static LY_ERR
 lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparent, struct lyd_meta **meta)
 {
     LY_ERR ret = LY_SUCCESS;
-    int dynamic = 0;
+    int dynamic;
     uint8_t i, count = 0;
-    char *meta_name = NULL, *meta_value = NULL;
+    char *meta_name = NULL, *meta_value;
     const struct lys_module *mod;
 
     /* read number of attributes stored */
@@ -372,7 +372,6 @@ lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparent, 
             free(meta_value);
             dynamic = 0;
         }
-        meta_value = NULL;
 
         if (ret == LY_EINCOMPLETE) {
             ly_set_add(&lybctx->unres_meta_type, *meta, LY_SET_OPT_USEASLIST);
@@ -387,9 +386,6 @@ stop_subtree:
 
 cleanup:
     free(meta_name);
-    if (dynamic) {
-        free(meta_value);
-    }
     if (ret) {
         lyd_free_meta(lybctx->ctx, *meta, 1);
         *meta = NULL;
