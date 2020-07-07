@@ -2,8 +2,6 @@ language: c
 
 cache:
   pip: true
-  directories:
-    - cmocka
 
 matrix:
   include:
