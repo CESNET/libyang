@@ -4491,10 +4491,6 @@ yang_check_deviate(struct lys_module *module, struct unres_schema *unres, struct
             LOGVAL(module->ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "config");
             LOGVAL(module->ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Adding property that already exists.");
             goto error;
-        } else if ((deviate->mod == LY_DEVIATE_RPL) && !(dev_target->flags & LYS_CONFIG_SET)) {
-            LOGVAL(module->ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "config");
-            LOGVAL(module->ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Replacing a property that does not exist.");
-            goto error;
         }
 
         /* add and replace are the same in this case */

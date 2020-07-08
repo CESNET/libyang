@@ -1,0 +1,14 @@
+module mod14 {
+    prefix abc;
+    namespace "urn:cesnet:mod14";
+
+    import mod {
+        prefix mod;
+    }
+
+    deviation "/mod:test1" {
+        deviate replace {
+            config true;
+        }
+    }
+}

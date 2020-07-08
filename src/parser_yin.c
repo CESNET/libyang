@@ -2439,10 +2439,6 @@ fill_yin_deviation(struct lys_module *module, struct lyxml_elem *yin, struct lys
                     LOGVAL(ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "config");
                     LOGVAL(ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Adding property that already exists.");
                     goto error;
-                } else if ((d->mod == LY_DEVIATE_RPL) && !(dev_target->flags & LYS_CONFIG_SET)) {
-                    LOGVAL(ctx, LYE_INSTMT, LY_VLOG_NONE, NULL, "config");
-                    LOGVAL(ctx, LYE_SPEC, LY_VLOG_NONE, NULL, "Replacing a property that does not exist.");
-                    goto error;
                 } else { /* add and replace are the same in this case */
                     /* remove current config value of the target ... */
                     dev_target->flags &= ~LYS_CONFIG_MASK;
