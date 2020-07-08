@@ -1263,7 +1263,7 @@ ly_type_store_identityref(const struct ly_ctx *ctx, struct lysc_type *type, cons
     char *errmsg = NULL;
     const struct lys_module *mod;
     LY_ARRAY_COUNT_TYPE u;
-    struct lysc_ident *ident, *identities;
+    struct lysc_ident *ident = NULL, *identities;
 
     if (options & LY_TYPE_OPTS_SECOND_CALL) {
         return LY_SUCCESS;
@@ -1959,7 +1959,7 @@ ly_type_store_union(const struct ly_ctx *ctx, struct lysc_type *type, const char
                     const void *context_node, const struct lyd_node *tree,
                     struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
-    LY_ERR ret;
+    LY_ERR ret = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u;
     struct lysc_type_union *type_u = (struct lysc_type_union*)type;
     struct lyd_value_subvalue *subvalue;

@@ -2693,6 +2693,8 @@ lyd_diff_userord_attrs(const struct lyd_node *first, const struct lyd_node *seco
             }
         }
         assert(first_pos < LY_ARRAY_COUNT(userord_item->inst));
+    } else {
+        first_pos = 0;
     }
 
     /* learn operation first */

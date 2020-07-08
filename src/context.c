@@ -648,7 +648,7 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx)
     int bis = 0, ret;
     char id[8], *str;
     const struct lys_module *mod;
-    struct lyd_node *root = NULL, *root_bis = NULL, *cont, *set_bis, *node;
+    struct lyd_node *root = NULL, *root_bis = NULL, *cont, *set_bis = NULL, *node;
 
     LY_CHECK_ARG_RET(ctx, ctx, NULL);
 

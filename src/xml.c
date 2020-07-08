@@ -1213,6 +1213,7 @@ lyxml_value_compare(const char *value1, const struct ly_prefix *prefs1, const ch
         if (ptr1[0] != ptr2[0]) {
             /* it can be a start of prefix that maps to the same module */
             ns1 = ns2 = NULL;
+            u1 = u2 = 0;
             if (prefs1) {
                 /* find module of the first prefix, if any */
                 LY_ARRAY_FOR(prefs1, u1) {

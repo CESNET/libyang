@@ -873,8 +873,8 @@ yin_parse_value_pos(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, struct lysp
     assert(kw == LY_STMT_POSITION || kw == LY_STMT_VALUE);
     const char *temp_val = NULL;
     char *ptr;
-    long int num;
-    unsigned long int unum;
+    long int num = 0;
+    unsigned long int unum = 0;
 
     /* set value flag */
     enm->flags |= LYS_SET_VALUE;

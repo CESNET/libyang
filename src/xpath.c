@@ -1015,7 +1015,7 @@ set_remove_node_none(struct lyxp_set *set, uint32_t idx)
 static void
 set_remove_nodes_none(struct lyxp_set *set)
 {
-    uint16_t i, orig_used, end;
+    uint16_t i, orig_used, end = 0;
     int32_t start;
 
     assert(set);
@@ -1300,7 +1300,7 @@ static uint32_t
 get_node_pos(const struct lyd_node *node, enum lyxp_node_type node_type, const struct lyd_node *root,
              enum lyxp_node_type root_type, const struct lyd_node **prev, uint32_t *prev_pos)
 {
-    const struct lyd_node *next, *elem, *top_sibling;
+    const struct lyd_node *next, *elem = NULL, *top_sibling;
     uint32_t pos = 1;
 
     assert(prev && prev_pos && !root->prev->next);
@@ -4173,10 +4173,10 @@ static LY_ERR
 xpath_name(struct lyxp_set **args, uint16_t arg_count, struct lyxp_set *set, int options)
 {
     struct lyxp_set_node *item;
-    struct lys_module *mod;
+    struct lys_module *mod = NULL;
     char *str;
-    const char *name;
-    int rc;
+    const char *name = NULL;
+    int rc = -1;
 
     if (options & LYXP_SCNODE_ALL) {
         set_scnode_clear_ctx(set);
@@ -4217,8 +4217,7 @@ xpath_name(struct lyxp_set **args, uint16_t arg_count, struct lyxp_set *set, int
     case LYXP_NODE_ROOT:
     case LYXP_NODE_ROOT_CONFIG:
     case LYXP_NODE_TEXT:
-        mod = NULL;
-        name = NULL;
+        /* keep NULL */
         break;
     case LYXP_NODE_ELEM:
         mod = item->node->schema->module;
@@ -5252,7 +5251,7 @@ xpath_true(struct lyxp_set **UNUSED(args), uint16_t UNUSED(arg_count), struct ly
 static LY_ERR
 moveto_resolve_model(const char **qname, uint16_t *qname_len, struct lyxp_set *set, const struct lys_module **moveto_mod)
 {
-    const struct lys_module *mod;
+    const struct lys_module *mod = NULL;
     const char *ptr;
     int pref_len;
     char *str;

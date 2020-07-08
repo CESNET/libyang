@@ -139,7 +139,7 @@ lyd_free_subtree(struct lyd_node *node, int top)
 {
     struct lyd_node *iter, *next;
     struct lyd_node *children;
-    struct lyd_node_opaq *opaq;
+    struct lyd_node_opaq *opaq = NULL;
 
     assert(node);
 
