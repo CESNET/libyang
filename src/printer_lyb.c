@@ -253,7 +253,6 @@ lyb_write(struct ly_out *out, const uint8_t *buf, size_t count, struct lyd_lyb_c
             if (r < to_write) {
                 return LY_ESYS;
             }
-            lybctx->byte_count += r;
 
             LY_ARRAY_FOR(lybctx->subtrees, u) {
                 /* increase all written counters */
@@ -285,7 +284,6 @@ lyb_write(struct ly_out *out, const uint8_t *buf, size_t count, struct lyd_lyb_c
             if (r < LYB_META_BYTES) {
                 return LY_ESYS;
             }
-            lybctx->byte_count += r;
 
             /* increase inner chunk count */
             for (iter = &lybctx->subtrees[0]; iter != full; ++iter) {
@@ -369,7 +367,6 @@ lyb_write_start_subtree(struct ly_out *out, struct lyd_lyb_ctx *lybctx)
     if (r < LYB_META_BYTES) {
         return LY_ESYS;
     }
-    lybctx->byte_count += r;
 
     return LY_SUCCESS;
 }
@@ -405,8 +402,6 @@ lyb_write_number(uint64_t num, size_t bytes, struct ly_out *out, struct lyd_lyb_
 static LY_ERR
 lyb_write_string(const char *str, size_t str_len, int with_length, struct ly_out *out, struct lyd_lyb_ctx *lybctx)
 {
-    int r;
-
     if (!str) {
         str = "";
     }
@@ -423,11 +418,7 @@ lyb_write_string(const char *str, size_t str_len, int with_length, struct ly_out
         LY_CHECK_RET(lyb_write_number(str_len, 2, out, lybctx));
     }
 
-    r = lyb_write(out, (const uint8_t *)str, str_len, lybctx);
-    if (r < 0) {
-        return LY_ESYS;
-    }
-    lybctx->byte_count += r;
+    LY_CHECK_RET(lyb_write(out, (const uint8_t *)str, str_len, lybctx));
 
     return LY_SUCCESS;
 }
@@ -533,11 +524,10 @@ cleanup:
  * @brief Print LYB magic number.
  *
  * @param[in] out Out structure.
- * @param[in] lybctx LYB context.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_print_magic_number(struct ly_out *out, struct lyd_lyb_ctx *lybctx)
+lyb_print_magic_number(struct ly_out *out)
 {
     int r;
     uint32_t magic_number;
@@ -551,7 +541,6 @@ lyb_print_magic_number(struct ly_out *out, struct lyd_lyb_ctx *lybctx)
     if (r < 3) {
         return LY_ESYS;
     }
-    lybctx->byte_count += 3;
 
     return LY_SUCCESS;
 }
@@ -560,11 +549,10 @@ lyb_print_magic_number(struct ly_out *out, struct lyd_lyb_ctx *lybctx)
  * @brief Print LYB header.
  *
  * @param[in] out Out structure.
- * @param[in] lybctx LYB context.
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_print_header(struct ly_out *out, struct lyd_lyb_ctx *lybctx)
+lyb_print_header(struct ly_out *out)
 {
     int r;
     uint8_t byte = 0;
@@ -576,7 +564,6 @@ lyb_print_header(struct ly_out *out, struct lyd_lyb_ctx *lybctx)
     if (r < 1) {
         return LY_ESYS;
     }
-    lybctx->byte_count += 1;
 
     return LY_SUCCESS;
 }
@@ -1018,10 +1005,10 @@ lyb_print_data(struct ly_out *out, const struct lyd_node *root, int options)
     }
 
     /* LYB magic number */
-    LY_CHECK_GOTO(ret = lyb_print_magic_number(out, &lybctx), cleanup);
+    LY_CHECK_GOTO(ret = lyb_print_magic_number(out), cleanup);
 
     /* LYB header */
-    LY_CHECK_GOTO(ret = lyb_print_header(out, &lybctx), cleanup);
+    LY_CHECK_GOTO(ret = lyb_print_header(out), cleanup);
 
     /* all used models */
     LY_CHECK_GOTO(ret = lyb_print_data_models(out, root, &lybctx), cleanup);

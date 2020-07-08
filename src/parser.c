@@ -57,7 +57,7 @@ ly_in_new_fd(int fd, struct ly_in **in)
 
     (*in)->type = LY_IN_FD;
     (*in)->method.fd = fd;
-    (*in)->current = (*in)->start = addr;
+    (*in)->current = (*in)->start = (*in)->func_start = addr;
     (*in)->length = length;
 
     return LY_SUCCESS;
@@ -141,12 +141,12 @@ ly_in_new_memory(const char *str, struct ly_in **in)
     LY_CHECK_ERR_RET(!*in, LOGMEM(NULL), LY_EMEM);
 
     (*in)->type = LY_IN_MEMORY;
-    (*in)->start = (*in)->current = str;
+    (*in)->start = (*in)->current = (*in)->func_start = str;
 
     return LY_SUCCESS;
 }
 
-const char *
+API const char *
 ly_in_memory(struct ly_in *in, const char *str)
 {
     const char *data;
@@ -167,7 +167,7 @@ ly_in_reset(struct ly_in *in)
 {
     LY_CHECK_ARG_RET(NULL, in, LY_EINVAL);
 
-    in->current = in->start;
+    in->current = in->func_start = in->start;
     return LY_SUCCESS;
 }
 
@@ -320,4 +320,35 @@ ly_in_free(struct ly_in *in, int destroy)
     }
 
     free(in);
+}
+
+LY_ERR
+ly_in_read(struct ly_in *in, void *buf, size_t count)
+{
+    if (in->length && (in->length - (in->current - in->start) < count)) {
+        /* EOF */
+        return LY_EDENIED;
+    }
+
+    memcpy(buf, in->current, count);
+    in->current += count;
+    return LY_SUCCESS;
+}
+
+API size_t
+ly_in_parsed(const struct ly_in *in)
+{
+    return in->current - in->func_start;
+}
+
+LY_ERR
+ly_in_skip(struct ly_in *in, size_t count)
+{
+    if (in->length && (in->length - (in->current - in->start) < count)) {
+        /* EOF */
+        return LY_EDENIED;
+    }
+
+    in->current += count;
+    return LY_SUCCESS;
 }

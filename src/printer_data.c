@@ -23,15 +23,15 @@
 #include "printer_internal.h"
 #include "tree_data.h"
 
-API ssize_t
+API LY_ERR
 lyd_print(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, int options)
 {
     LY_ERR ret = LY_EINVAL;
-    size_t printed_prev;
 
-    LY_CHECK_ARG_RET(NULL, out, root, -LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, out, root, LY_EINVAL);
 
-    printed_prev = out->printed;
+    /* reset number of printed bytes */
+    out->func_printed = 0;
 
     switch (format) {
     case LYD_XML:
@@ -51,31 +51,20 @@ lyd_print(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, in
         break;
     }
 
-    if (ret) {
-        /* error */
-        return (-1) * (signed)ret;
-    } else {
-        /* success */
-        return (ssize_t)(out->printed - printed_prev);
-    }
+    return ret;
 }
 
 static LY_ERR
 lyd_print_(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, int options)
 {
-    ssize_t result;
+    LY_ERR ret;
 
     LY_CHECK_ARG_RET(NULL, out, LY_EINVAL);
 
-    result = lyd_print(out, root, format, options);
+    ret = lyd_print(out, root, format, options);
 
     ly_out_free(out, NULL, 0);
-
-    if (result < 0) {
-        return (-1) * result;
-    } else {
-        return LY_SUCCESS;
-    }
+    return ret;
 }
 
 API LY_ERR

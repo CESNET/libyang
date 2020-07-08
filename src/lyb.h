@@ -37,7 +37,6 @@ struct lyd_lyb_ctx {
     } *subtrees;
     LY_ARRAY_COUNT_TYPE subtree_size;
 
-    size_t byte_count;  /**< printed/parsed bytes */
     const struct ly_ctx *ctx;
     union {
         struct {
@@ -48,7 +47,7 @@ struct lyd_lyb_ctx {
     };
 
     /* LYB parser only */
-    const char *data;
+    struct ly_in *in;
     int int_opts;
     const struct lys_module **models;
     struct ly_set unres_node_type;

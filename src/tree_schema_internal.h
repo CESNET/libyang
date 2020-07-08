@@ -528,15 +528,14 @@ typedef LY_ERR (*lys_custom_check)(const struct ly_ctx *ctx, struct lysp_module 
  * The modules are added into the context and the latest_revision flag is updated.
  *
  * @param[in] ctx libyang context where to process the data model.
- * @param[in] data The string containing the dumped data model in the specified
- * format.
+ * @param[in] in Input structure.
  * @param[in] format Format of the input data (YANG or YIN).
  * @param[in] implement Flag if the schema is supposed to be marked as implemented.
  * @param[in] custom_check Callback to check the parsed schema before it is accepted.
  * @param[in] check_data Caller's data to pass to the custom_check callback.
  * @return Pointer to the data model structure or NULL on error.
  */
-struct lys_module *lys_parse_mem_module(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int implement,
+struct lys_module *lys_parse_mem_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, int implement,
                                         lys_custom_check custom_check, void *check_data);
 
 /**
@@ -545,16 +544,16 @@ struct lys_module *lys_parse_mem_module(struct ly_ctx *ctx, const char *data, LY
  * The latest_revision flag of submodule is updated.
  *
  * @param[in] ctx libyang context where to process the data model.
- * @param[in] data The string containing the dumped data model in the specified
- * format.
+ * @param[in] in Input structure.
  * @param[in] format Format of the input data (YANG or YIN).
  * @param[in] main_ctx Parser context of the main module.
  * @param[in] custom_check Callback to check the parsed schema before it is accepted.
  * @param[in] check_data Caller's data to pass to the custom_check callback.
  * @return Pointer to the data model structure or NULL on error.
  */
-struct lysp_submodule *lys_parse_mem_submodule(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, struct lys_parser_ctx *main_ctx,
-                                               lys_custom_check custom_check, void *check_data);
+struct lysp_submodule *lys_parse_mem_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
+                                               struct lys_parser_ctx *main_ctx, lys_custom_check custom_check,
+                                               void *check_data);
 
 /**
  * @brief Fill filepath value if available in input handler @p in
@@ -791,10 +790,10 @@ LY_ERR lys_set_implemented_internal(struct lys_module *mod, uint8_t implemented)
  * @brief match yang keyword
  *
  * @param[in] ctx yang parser context for logging, can be NULL if keyword is from YIN data.
- * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in,out] in Input structure, is updated.
  * @return yang_keyword values.
  */
-enum ly_stmt lysp_match_kw(struct lys_yang_parser_ctx *ctx, const char **data);
+enum ly_stmt lysp_match_kw(struct lys_yang_parser_ctx *ctx, struct ly_in *in);
 
 /**
  * @brief Generate path of the given node in the requested format.

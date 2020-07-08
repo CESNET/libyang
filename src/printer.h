@@ -218,6 +218,14 @@ void ly_print_flush(struct ly_out *out);
 ssize_t ly_write(struct ly_out *out, const char *buf, size_t len);
 
 /**
+ * @brief Get the number of printed bytes by the last function.
+ *
+ * @param[in] out Out structure used.
+ * @return Number of printed bytes.
+ */
+size_t ly_out_printed(const struct ly_out *out);
+
+/**
  * @brief Free the printer handler.
  * @param[in] out Printer handler to free.
  * @param[in] clb_arg_destructor Freeing function for printer callback (LY_OUT_CALLBACK) argument.

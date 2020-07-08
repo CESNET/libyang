@@ -750,7 +750,7 @@ lys_set_implemented(struct lys_module *mod)
 }
 
 struct lysp_submodule *
-lys_parse_mem_submodule(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, struct lys_parser_ctx *main_ctx,
+lys_parse_mem_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, struct lys_parser_ctx *main_ctx,
                         LY_ERR (*custom_check)(const struct ly_ctx*, struct lysp_module*, struct lysp_submodule*, void*), void *check_data)
 {
     LY_ERR ret = LY_EINVAL;
@@ -759,15 +759,15 @@ lys_parse_mem_submodule(struct ly_ctx *ctx, const char *data, LYS_INFORMAT forma
     struct lys_yin_parser_ctx *yinctx = NULL;
     struct lys_parser_ctx *pctx;
 
-    LY_CHECK_ARG_RET(ctx, ctx, data, NULL);
+    LY_CHECK_ARG_RET(ctx, ctx, in, NULL);
 
     switch (format) {
     case LYS_IN_YIN:
-        ret = yin_parse_submodule(&yinctx, ctx, main_ctx, data, &submod);
+        ret = yin_parse_submodule(&yinctx, ctx, main_ctx, in, &submod);
         pctx = (struct lys_parser_ctx *)yinctx;
         break;
     case LYS_IN_YANG:
-        ret = yang_parse_submodule(&yangctx, ctx, main_ctx, data, &submod);
+        ret = yang_parse_submodule(&yangctx, ctx, main_ctx, in, &submod);
         pctx = (struct lys_parser_ctx *)yangctx;
         break;
     default:
@@ -830,7 +830,7 @@ error:
 }
 
 struct lys_module *
-lys_parse_mem_module(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, int implement,
+lys_parse_mem_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, int implement,
                      LY_ERR (*custom_check)(const struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data),
                      void *check_data)
 {
@@ -843,7 +843,7 @@ lys_parse_mem_module(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, 
     struct lys_yin_parser_ctx *yinctx = NULL;
     struct lys_parser_ctx *pctx = NULL;
 
-    LY_CHECK_ARG_RET(ctx, ctx, data, NULL);
+    LY_CHECK_ARG_RET(ctx, ctx, in, NULL);
 
     mod = calloc(1, sizeof *mod);
     LY_CHECK_ERR_RET(!mod, LOGMEM(ctx), NULL);
@@ -851,11 +851,11 @@ lys_parse_mem_module(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, 
 
     switch (format) {
     case LYS_IN_YIN:
-        ret = yin_parse_module(&yinctx, data, mod);
+        ret = yin_parse_module(&yinctx, in, mod);
         pctx = (struct lys_parser_ctx *)yinctx;
         break;
     case LYS_IN_YANG:
-        ret = yang_parse_module(&yangctx, data, mod);
+        ret = yang_parse_module(&yangctx, in, mod);
         pctx = (struct lys_parser_ctx *)yangctx;
         break;
     default:
@@ -1005,7 +1005,10 @@ lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format)
 
     LY_CHECK_ARG_RET(NULL, ctx, in, format > LYS_IN_UNKNOWN, NULL);
 
-    mod = lys_parse_mem_module(ctx, in->current, format, 1, NULL, NULL);
+    /* remember input position */
+    in->func_start = in->current;
+
+    mod = lys_parse_mem_module(ctx, in, format, 1, NULL, NULL);
     LY_CHECK_RET(!mod, NULL);
 
     switch (in->type) {

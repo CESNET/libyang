@@ -36,34 +36,34 @@ void lysp_deviate_free(struct ly_ctx *ctx, struct lysp_deviate *d);
 void lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node);
 void lysp_when_free(struct ly_ctx *ctx, struct lysp_when *when);
 
-LY_ERR buf_add_char(struct ly_ctx *ctx, const char **input, size_t len, char **buf, size_t *buf_len, size_t *buf_used);
-LY_ERR buf_store_char(struct lys_yang_parser_ctx *ctx, const char **input, enum yang_arg arg, char **word_p,
+LY_ERR buf_add_char(struct ly_ctx *ctx, struct ly_in *in, size_t len, char **buf, size_t *buf_len, size_t *buf_used);
+LY_ERR buf_store_char(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum yang_arg arg, char **word_p,
                       size_t *word_len, char **word_b, size_t *buf_len, int need_buf, int *prefix);
-LY_ERR get_keyword(struct lys_yang_parser_ctx *ctx, const char **data, enum ly_stmt *kw, char **word_p, size_t *word_len);
-LY_ERR get_argument(struct lys_yang_parser_ctx *ctx, const char **data, enum yang_arg arg,
+LY_ERR get_keyword(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum ly_stmt *kw, char **word_p, size_t *word_len);
+LY_ERR get_argument(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum yang_arg arg,
                     uint16_t *flags, char **word_p, char **word_b, size_t *word_len);
-LY_ERR skip_comment(struct lys_yang_parser_ctx *ctx, const char **data, int comment);
+LY_ERR skip_comment(struct lys_yang_parser_ctx *ctx, struct ly_in *in, int comment);
 
-LY_ERR parse_action(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_action **actions);
-LY_ERR parse_any(struct lys_yang_parser_ctx *ctx, const char **data, enum ly_stmt kw, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_augment(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_augment **augments);
-LY_ERR parse_case(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_container(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_deviate(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_deviate **deviates);
-LY_ERR parse_deviation(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_deviation **deviations);
-LY_ERR parse_grouping(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_grp **groupings);
-LY_ERR parse_choice(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_leaf(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_leaflist(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_list(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_maxelements(struct lys_yang_parser_ctx *ctx, const char **data, uint32_t *max, uint16_t *flags, struct lysp_ext_instance **exts);
-LY_ERR parse_minelements(struct lys_yang_parser_ctx *ctx, const char **data, uint32_t *min, uint16_t *flags, struct lysp_ext_instance **exts);
-LY_ERR parse_module(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_module *mod);
-LY_ERR parse_notif(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_notif **notifs);
-LY_ERR parse_submodule(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_submodule *submod);
-LY_ERR parse_uses(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_node *parent, struct lysp_node **siblings);
-LY_ERR parse_when(struct lys_yang_parser_ctx *ctx, const char **data, struct lysp_when **when_p);
-LY_ERR parse_type_enum_value_pos(struct lys_yang_parser_ctx *ctx, const char **data, enum ly_stmt val_kw, int64_t *value, uint16_t *flags, struct lysp_ext_instance **exts);
+LY_ERR parse_action(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_node *parent, struct lysp_action **actions);
+LY_ERR parse_any(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum ly_stmt kw, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_augment(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_node *parent, struct lysp_augment **augments);
+LY_ERR parse_case(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_container(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_deviate(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_deviate **deviates);
+LY_ERR parse_deviation(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_deviation **deviations);
+LY_ERR parse_grouping(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_node *parent, struct lysp_grp **groupings);
+LY_ERR parse_choice(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_leaf(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_leaflist(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_list(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_maxelements(struct lys_yang_parser_ctx *ctx, struct ly_in *in, uint32_t *max, uint16_t *flags, struct lysp_ext_instance **exts);
+LY_ERR parse_minelements(struct lys_yang_parser_ctx *ctx, struct ly_in *in, uint32_t *min, uint16_t *flags, struct lysp_ext_instance **exts);
+LY_ERR parse_module(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_module *mod);
+LY_ERR parse_notif(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_node *parent, struct lysp_notif **notifs);
+LY_ERR parse_submodule(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_submodule *submod);
+LY_ERR parse_uses(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_node *parent, struct lysp_node **siblings);
+LY_ERR parse_when(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_when **when_p);
+LY_ERR parse_type_enum_value_pos(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum ly_stmt val_kw, int64_t *value, uint16_t *flags, struct lysp_ext_instance **exts);
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
@@ -125,8 +125,8 @@ logbuf_clean(void)
 #endif
 
 #define TEST_DUP_GENERIC(PREFIX, MEMBER, VALUE1, VALUE2, FUNC, RESULT, LINE, CLEANUP) \
-    str = PREFIX MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
-    assert_int_equal(LY_EVALID, FUNC(&ctx, &str, RESULT)); \
+    in.current = PREFIX MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
+    assert_int_equal(LY_EVALID, FUNC(&ctx, &in, RESULT)); \
     logbuf_assert("Duplicate keyword \""MEMBER"\". Line number "LINE"."); \
     CLEANUP
 
@@ -135,7 +135,7 @@ test_helpers(void **state)
 {
     (void) state; /* unused */
 
-    const char *str;
+    struct ly_in in = {0};
     char *buf, *p;
     size_t len, size;
     struct lys_yang_parser_ctx ctx;
@@ -146,44 +146,44 @@ test_helpers(void **state)
     int prefix = 0;
 
     /* storing into buffer */
-    str = "abcd";
+    in.current = "abcd";
     buf = NULL;
     size = len = 0;
-    assert_int_equal(LY_SUCCESS, buf_add_char(NULL, &str, 2, &buf, &size, &len));
+    assert_int_equal(LY_SUCCESS, buf_add_char(NULL, &in, 2, &buf, &size, &len));
     assert_int_not_equal(0, size);
     assert_int_equal(2, len);
-    assert_string_equal("cd", str);
+    assert_string_equal("cd", in.current);
     assert_false(strncmp("ab", buf, 2));
     free(buf);
     buf = NULL;
 
     /* invalid first characters */
     len = 0;
-    str = "2invalid";
-    assert_int_equal(LY_EVALID, buf_store_char(&ctx, &str, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1, &prefix));
-    str = ".invalid";
-    assert_int_equal(LY_EVALID, buf_store_char(&ctx, &str, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1, &prefix));
-    str = "-invalid";
-    assert_int_equal(LY_EVALID, buf_store_char(&ctx, &str, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1, &prefix));
+    in.current = "2invalid";
+    assert_int_equal(LY_EVALID, buf_store_char(&ctx, &in, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1, &prefix));
+    in.current = ".invalid";
+    assert_int_equal(LY_EVALID, buf_store_char(&ctx, &in, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1, &prefix));
+    in.current = "-invalid";
+    assert_int_equal(LY_EVALID, buf_store_char(&ctx, &in, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1, &prefix));
     /* invalid following characters */
     len = 3; /* number of characters read before the str content */
-    str = "!";
-    assert_int_equal(LY_EVALID, buf_store_char(&ctx, &str, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1, &prefix));
-    str = ":";
-    assert_int_equal(LY_EVALID, buf_store_char(&ctx, &str, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1, &prefix));
+    in.current = "!";
+    assert_int_equal(LY_EVALID, buf_store_char(&ctx, &in, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1, &prefix));
+    in.current = ":";
+    assert_int_equal(LY_EVALID, buf_store_char(&ctx, &in, Y_IDENTIF_ARG, &p, &len, &buf, &size, 1, &prefix));
     /* valid colon for prefixed identifiers */
     len = size = 0;
     p = NULL;
     prefix = 0;
-    str = "x:id";
-    assert_int_equal(LY_SUCCESS, buf_store_char(&ctx, &str, Y_PREF_IDENTIF_ARG, &p, &len, &buf, &size, 0, &prefix));
+    in.current = "x:id";
+    assert_int_equal(LY_SUCCESS, buf_store_char(&ctx, &in, Y_PREF_IDENTIF_ARG, &p, &len, &buf, &size, 0, &prefix));
     assert_int_equal(1, len);
     assert_null(buf);
-    assert_string_equal(":id", str);
+    assert_string_equal(":id", in.current);
     assert_int_equal('x', p[len - 1]);
-    assert_int_equal(LY_SUCCESS, buf_store_char(&ctx, &str, Y_PREF_IDENTIF_ARG, &p, &len, &buf, &size, 1, &prefix));
+    assert_int_equal(LY_SUCCESS, buf_store_char(&ctx, &in, Y_PREF_IDENTIF_ARG, &p, &len, &buf, &size, 1, &prefix));
     assert_int_equal(2, len);
-    assert_string_equal("id", str);
+    assert_string_equal("id", in.current);
     assert_int_equal(':', p[len - 1]);
     free(buf);
     prefix = 0;
@@ -212,8 +212,8 @@ test_comments(void **state)
 {
     (void) state; /* unused */
 
+    struct ly_in in = {0};
     struct lys_yang_parser_ctx ctx;
-    const char *str, *p;
     char *word, *buf;
     size_t len;
 
@@ -222,27 +222,27 @@ test_comments(void **state)
     ctx.pos_type = LY_VLOG_LINE;
     ctx.line = 1;
 
-    str = " // this is a text of / one * line */ comment\nargument;";
-    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
+    in.current = " // this is a text of / one * line */ comment\nargument;";
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &in, Y_STR_ARG, NULL, &word, &buf, &len));
     assert_string_equal("argument;", word);
     assert_null(buf);
     assert_int_equal(8, len);
 
-    str = "/* this is a \n * text // of / block * comment */\"arg\" + \"ume\" \n + \n \"nt\";";
-    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
+    in.current = "/* this is a \n * text // of / block * comment */\"arg\" + \"ume\" \n + \n \"nt\";";
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &in, Y_STR_ARG, NULL, &word, &buf, &len));
     assert_string_equal("argument", word);
     assert_ptr_equal(buf, word);
     assert_int_equal(8, len);
     free(word);
 
-    str = p = " this is one line comment on last line";
-    assert_int_equal(LY_SUCCESS, skip_comment(&ctx, &str, 1));
-    assert_true(str[0] == '\0');
+    in.current = " this is one line comment on last line";
+    assert_int_equal(LY_SUCCESS, skip_comment(&ctx, &in, 1));
+    assert_true(in.current[0] == '\0');
 
-    str = p = " this is a not terminated comment x";
-    assert_int_equal(LY_EVALID, skip_comment(&ctx, &str, 2));
+    in.current = " this is a not terminated comment x";
+    assert_int_equal(LY_EVALID, skip_comment(&ctx, &in, 2));
     logbuf_assert("Unexpected end-of-input, non-terminated comment. Line number 5.");
-    assert_true(str[0] == '\0');
+    assert_true(in.current[0] == '\0');
 }
 
 static void
@@ -251,7 +251,7 @@ test_arg(void **state)
     (void) state; /* unused */
 
     struct lys_yang_parser_ctx ctx;
-    const char *str;
+    struct ly_in in = {0};
     char *word, *buf;
     size_t len;
 
@@ -261,78 +261,78 @@ test_arg(void **state)
     ctx.line = 1;
 
     /* missing argument */
-    str = ";";
-    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_MAYBE_STR_ARG, NULL, &word, &buf, &len));
+    in.current = ";";
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &in, Y_MAYBE_STR_ARG, NULL, &word, &buf, &len));
     assert_null(word);
 
-    str = "{";
-    assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
+    in.current = "{";
+    assert_int_equal(LY_EVALID, get_argument(&ctx, &in, Y_STR_ARG, NULL, &word, &buf, &len));
     logbuf_assert("Invalid character sequence \"{\", expected an argument. Line number 1.");
 
     /* invalid escape sequence */
-    str = "\"\\s\"";
-    assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
+    in.current = "\"\\s\"";
+    assert_int_equal(LY_EVALID, get_argument(&ctx, &in, Y_STR_ARG, NULL, &word, &buf, &len));
     logbuf_assert("Double-quoted string unknown special character \'\\s\'. Line number 1.");
-    str = "\'\\s\'"; /* valid, since it is not an escape sequence in single quoted string */
-    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
+    in.current = "\'\\s\'"; /* valid, since it is not an escape sequence in single quoted string */
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &in, Y_STR_ARG, NULL, &word, &buf, &len));
     assert_int_equal(2, len);
     assert_string_equal("\\s\'", word);
-    assert_int_equal('\0', str[0]); /* input has been eaten */
+    assert_int_equal('\0', in.current[0]); /* input has been eaten */
 
     /* invalid character after the argument */
-    str = "hello\"";
-    assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
+    in.current = "hello\"";
+    assert_int_equal(LY_EVALID, get_argument(&ctx, &in, Y_STR_ARG, NULL, &word, &buf, &len));
     logbuf_assert("Invalid character sequence \"\"\", expected unquoted string character, optsep, semicolon or opening brace. Line number 1.");
-    str = "hello}";
-    assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
+    in.current = "hello}";
+    assert_int_equal(LY_EVALID, get_argument(&ctx, &in, Y_STR_ARG, NULL, &word, &buf, &len));
     logbuf_assert("Invalid character sequence \"}\", expected unquoted string character, optsep, semicolon or opening brace. Line number 1.");
 
     /* invalid identifier-ref-arg-str */
-    str = "pre:pre:value";
-    assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_PREF_IDENTIF_ARG, NULL, &word, &buf, &len));
+    in.current = "pre:pre:value";
+    assert_int_equal(LY_EVALID, get_argument(&ctx, &in, Y_PREF_IDENTIF_ARG, NULL, &word, &buf, &len));
 
-    str = "\"\";"; /* empty identifier is not allowed */
-    assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_IDENTIF_ARG, NULL, &word, &buf, &len));
+    in.current = "\"\";"; /* empty identifier is not allowed */
+    assert_int_equal(LY_EVALID, get_argument(&ctx, &in, Y_IDENTIF_ARG, NULL, &word, &buf, &len));
     logbuf_assert("Statement argument is required. Line number 1.");
     logbuf_clean();
-    str = "\"\";"; /* empty reference identifier is not allowed */
-    assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_PREF_IDENTIF_ARG, NULL, &word, &buf, &len));
+    in.current = "\"\";"; /* empty reference identifier is not allowed */
+    assert_int_equal(LY_EVALID, get_argument(&ctx, &in, Y_PREF_IDENTIF_ARG, NULL, &word, &buf, &len));
     logbuf_assert("Statement argument is required. Line number 1.");
 
-    str = "hello/x\t"; /* slash is not an invalid character */
-    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
+    in.current = "hello/x\t"; /* slash is not an invalid character */
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &in, Y_STR_ARG, NULL, &word, &buf, &len));
     assert_int_equal(7, len);
     assert_string_equal("hello/x\t", word);
 
     assert_null(buf);
 
     /* different quoting */
-    str = "hello ";
-    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
+    in.current = "hello ";
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &in, Y_STR_ARG, NULL, &word, &buf, &len));
     assert_null(buf);
     assert_int_equal(5, len);
     assert_string_equal("hello ", word);
 
-    str = "hello/*comment*/\n";
-    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
+    in.current = "hello/*comment*/\n";
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &in, Y_STR_ARG, NULL, &word, &buf, &len));
     assert_null(buf);
     assert_int_equal(5, len);
     assert_false(strncmp("hello", word, len));
 
 
-    str = "\"hello\\n\\t\\\"\\\\\";";
-    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
+    in.current = "\"hello\\n\\t\\\"\\\\\";";
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &in, Y_STR_ARG, NULL, &word, &buf, &len));
     assert_non_null(buf);
     assert_int_equal(9, len);
     assert_string_equal("hello\n\t\"\\", word);
     free(buf);
 
     ctx.indent = 14;
-    str = "\"hello \t\n\t\t world!\"";
+    in.current = "\"hello \t\n\t\t world!\"";
     /* - space and tabs before newline are stripped out
      * - space and tabs after newline (indentation) are stripped out
      */
-    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &in, Y_STR_ARG, NULL, &word, &buf, &len));
     assert_non_null(buf);
     assert_ptr_equal(word, buf);
     assert_int_equal(14, len);
@@ -340,8 +340,8 @@ test_arg(void **state)
     free(buf);
     /* In contrast to previous, the backslash-escaped tabs are expanded after trimming, so they are preserved */
     ctx.indent = 14;
-    str = "\"hello \\t\n\t\\t world!\"";
-    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
+    in.current = "\"hello \\t\n\t\\t world!\"";
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &in, Y_STR_ARG, NULL, &word, &buf, &len));
     assert_non_null(buf);
     assert_ptr_equal(word, buf);
     assert_int_equal(16, len);
@@ -349,8 +349,8 @@ test_arg(void **state)
     free(buf);
     /* Do not handle whitespaces after backslash-escaped newline as indentation */
     ctx.indent = 14;
-    str = "\"hello\\n\t\t world!\"";
-    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
+    in.current = "\"hello\\n\t\t world!\"";
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &in, Y_STR_ARG, NULL, &word, &buf, &len));
     assert_non_null(buf);
     assert_ptr_equal(word, buf);
     assert_int_equal(15, len);
@@ -358,47 +358,47 @@ test_arg(void **state)
     free(buf);
 
     ctx.indent = 14;
-    str = "\"hello\n \tworld!\"";
-    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
+    in.current = "\"hello\n \tworld!\"";
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &in, Y_STR_ARG, NULL, &word, &buf, &len));
     assert_non_null(buf);
     assert_ptr_equal(word, buf);
     assert_int_equal(12, len);
     assert_string_equal("hello\nworld!", word);
     free(buf);
 
-    str = "\'hello\'";
-    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
+    in.current = "\'hello\'";
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &in, Y_STR_ARG, NULL, &word, &buf, &len));
     assert_null(buf);
     assert_int_equal(5, len);
     assert_false(strncmp("hello", word, 5));
 
-    str = "\"hel\"  +\t\n\"lo\"";
-    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
+    in.current = "\"hel\"  +\t\n\"lo\"";
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &in, Y_STR_ARG, NULL, &word, &buf, &len));
     assert_ptr_equal(word, buf);
     assert_int_equal(5, len);
     assert_string_equal("hello", word);
     free(buf);
-    str = "\"hel\"  +\t\nlo"; /* unquoted the second part */
-    assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
+    in.current = "\"hel\"  +\t\nlo"; /* unquoted the second part */
+    assert_int_equal(LY_EVALID, get_argument(&ctx, &in, Y_STR_ARG, NULL, &word, &buf, &len));
     logbuf_assert("Both string parts divided by '+' must be quoted. Line number 6.");
 
-    str = "\'he\'\t\n+ \"llo\"";
-    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
+    in.current = "\'he\'\t\n+ \"llo\"";
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &in, Y_STR_ARG, NULL, &word, &buf, &len));
     assert_ptr_equal(word, buf);
     assert_int_equal(5, len);
     assert_string_equal("hello", word);
     free(buf);
 
-    str = " \t\n\"he\"+\'llo\'";
-    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
+    in.current = " \t\n\"he\"+\'llo\'";
+    assert_int_equal(LY_SUCCESS, get_argument(&ctx, &in, Y_STR_ARG, NULL, &word, &buf, &len));
     assert_ptr_equal(word, buf);
     assert_int_equal(5, len);
     assert_string_equal("hello", word);
     free(buf);
 
     /* missing argument */
-    str = ";";
-    assert_int_equal(LY_EVALID, get_argument(&ctx, &str, Y_STR_ARG, NULL, &word, &buf, &len));
+    in.current = ";";
+    assert_int_equal(LY_EVALID, get_argument(&ctx, &in, Y_STR_ARG, NULL, &word, &buf, &len));
     logbuf_assert("Invalid character sequence \";\", expected an argument. Line number 8.");
 }
 
@@ -408,7 +408,8 @@ test_stmts(void **state)
     (void) state; /* unused */
 
     struct lys_yang_parser_ctx ctx;
-    const char *str, *p;
+    struct ly_in in = {0};
+    const char *p;
     enum ly_stmt kw;
     char *word;
     size_t len;
@@ -418,328 +419,328 @@ test_stmts(void **state)
     ctx.pos_type = LY_VLOG_LINE;
     ctx.line = 1;
 
-    str = "\n// comment\n\tinput\t{";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "\n// comment\n\tinput\t{";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_INPUT, kw);
     assert_int_equal(5, len);
     assert_string_equal("input\t{", word);
-    assert_string_equal("\t{", str);
+    assert_string_equal("\t{", in.current);
 
-    str = "\t /* comment */\t output\n\t{";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "\t /* comment */\t output\n\t{";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_OUTPUT, kw);
     assert_int_equal(6, len);
     assert_string_equal("output\n\t{", word);
-    assert_string_equal("\n\t{", str);
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    assert_string_equal("\n\t{", in.current);
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_SYNTAX_LEFT_BRACE, kw);
     assert_int_equal(1, len);
     assert_string_equal("{", word);
-    assert_string_equal("", str);
+    assert_string_equal("", in.current);
 
-    str = "/input { "; /* invalid slash */
-    assert_int_equal(LY_EVALID, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "/input { "; /* invalid slash */
+    assert_int_equal(LY_EVALID, get_keyword(&ctx, &in, &kw, &word, &len));
     logbuf_assert("Invalid identifier first character '/'. Line number 4.");
 
-    str = "not-a-statement-nor-extension { "; /* invalid identifier */
-    assert_int_equal(LY_EVALID, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "not-a-statement-nor-extension { "; /* invalid identifier */
+    assert_int_equal(LY_EVALID, get_keyword(&ctx, &in, &kw, &word, &len));
     logbuf_assert("Invalid character sequence \"not-a-statement-nor-extension\", expected a keyword. Line number 4.");
 
-    str = "path;"; /* missing sep after the keyword */
-    assert_int_equal(LY_EVALID, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "path;"; /* missing sep after the keyword */
+    assert_int_equal(LY_EVALID, get_keyword(&ctx, &in, &kw, &word, &len));
     logbuf_assert("Invalid character sequence \"path;\", expected a keyword followed by a separator. Line number 4.");
 
-    str = "action ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "action ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_ACTION, kw);
     assert_int_equal(6, len);
-    str = "anydata ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "anydata ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_ANYDATA, kw);
     assert_int_equal(7, len);
-    str = "anyxml ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "anyxml ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_ANYXML, kw);
     assert_int_equal(6, len);
-    str = "argument ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "argument ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_ARGUMENT, kw);
     assert_int_equal(8, len);
-    str = "augment ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "augment ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_AUGMENT, kw);
     assert_int_equal(7, len);
-    str = "base ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "base ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_BASE, kw);
     assert_int_equal(4, len);
-    str = "belongs-to ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "belongs-to ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_BELONGS_TO, kw);
     assert_int_equal(10, len);
-    str = "bit ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "bit ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_BIT, kw);
     assert_int_equal(3, len);
-    str = "case ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "case ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_CASE, kw);
     assert_int_equal(4, len);
-    str = "choice ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "choice ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_CHOICE, kw);
     assert_int_equal(6, len);
-    str = "config ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "config ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_CONFIG, kw);
     assert_int_equal(6, len);
-    str = "contact ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "contact ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_CONTACT, kw);
     assert_int_equal(7, len);
-    str = "container ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "container ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_CONTAINER, kw);
     assert_int_equal(9, len);
-    str = "default ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "default ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_DEFAULT, kw);
     assert_int_equal(7, len);
-    str = "description ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "description ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_DESCRIPTION, kw);
     assert_int_equal(11, len);
-    str = "deviate ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "deviate ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_DEVIATE, kw);
     assert_int_equal(7, len);
-    str = "deviation ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "deviation ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_DEVIATION, kw);
     assert_int_equal(9, len);
-    str = "enum ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "enum ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_ENUM, kw);
     assert_int_equal(4, len);
-    str = "error-app-tag ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "error-app-tag ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_ERROR_APP_TAG, kw);
     assert_int_equal(13, len);
-    str = "error-message ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "error-message ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_ERROR_MESSAGE, kw);
     assert_int_equal(13, len);
-    str = "extension ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "extension ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_EXTENSION, kw);
     assert_int_equal(9, len);
-    str = "feature ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "feature ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_FEATURE, kw);
     assert_int_equal(7, len);
-    str = "fraction-digits ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "fraction-digits ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_FRACTION_DIGITS, kw);
     assert_int_equal(15, len);
-    str = "grouping ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "grouping ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_GROUPING, kw);
     assert_int_equal(8, len);
-    str = "identity ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "identity ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_IDENTITY, kw);
     assert_int_equal(8, len);
-    str = "if-feature ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "if-feature ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_IF_FEATURE, kw);
     assert_int_equal(10, len);
-    str = "import ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "import ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_IMPORT, kw);
     assert_int_equal(6, len);
-    str = "include ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "include ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_INCLUDE, kw);
     assert_int_equal(7, len);
-    str = "input{";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "input{";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_INPUT, kw);
     assert_int_equal(5, len);
-    str = "key ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "key ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_KEY, kw);
     assert_int_equal(3, len);
-    str = "leaf ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "leaf ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_LEAF, kw);
     assert_int_equal(4, len);
-    str = "leaf-list ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "leaf-list ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_LEAF_LIST, kw);
     assert_int_equal(9, len);
-    str = "length ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "length ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_LENGTH, kw);
     assert_int_equal(6, len);
-    str = "list ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "list ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_LIST, kw);
     assert_int_equal(4, len);
-    str = "mandatory ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "mandatory ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_MANDATORY, kw);
     assert_int_equal(9, len);
-    str = "max-elements ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "max-elements ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_MAX_ELEMENTS, kw);
     assert_int_equal(12, len);
-    str = "min-elements ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "min-elements ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_MIN_ELEMENTS, kw);
     assert_int_equal(12, len);
-    str = "modifier ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "modifier ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_MODIFIER, kw);
     assert_int_equal(8, len);
-    str = "module ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "module ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_MODULE, kw);
     assert_int_equal(6, len);
-    str = "must ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "must ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_MUST, kw);
     assert_int_equal(4, len);
-    str = "namespace ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "namespace ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_NAMESPACE, kw);
     assert_int_equal(9, len);
-    str = "notification ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "notification ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_NOTIFICATION, kw);
     assert_int_equal(12, len);
-    str = "ordered-by ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "ordered-by ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_ORDERED_BY, kw);
     assert_int_equal(10, len);
-    str = "organization ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "organization ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_ORGANIZATION, kw);
     assert_int_equal(12, len);
-    str = "output ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "output ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_OUTPUT, kw);
     assert_int_equal(6, len);
-    str = "path ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "path ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_PATH, kw);
     assert_int_equal(4, len);
-    str = "pattern ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "pattern ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_PATTERN, kw);
     assert_int_equal(7, len);
-    str = "position ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "position ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_POSITION, kw);
     assert_int_equal(8, len);
-    str = "prefix ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "prefix ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_PREFIX, kw);
     assert_int_equal(6, len);
-    str = "presence ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "presence ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_PRESENCE, kw);
     assert_int_equal(8, len);
-    str = "range ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "range ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_RANGE, kw);
     assert_int_equal(5, len);
-    str = "reference ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "reference ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_REFERENCE, kw);
     assert_int_equal(9, len);
-    str = "refine ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "refine ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_REFINE, kw);
     assert_int_equal(6, len);
-    str = "require-instance ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "require-instance ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_REQUIRE_INSTANCE, kw);
     assert_int_equal(16, len);
-    str = "revision ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "revision ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_REVISION, kw);
     assert_int_equal(8, len);
-    str = "revision-date ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "revision-date ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_REVISION_DATE, kw);
     assert_int_equal(13, len);
-    str = "rpc ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "rpc ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_RPC, kw);
     assert_int_equal(3, len);
-    str = "status ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "status ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_STATUS, kw);
     assert_int_equal(6, len);
-    str = "submodule ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "submodule ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_SUBMODULE, kw);
     assert_int_equal(9, len);
-    str = "type ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "type ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_TYPE, kw);
     assert_int_equal(4, len);
-    str = "typedef ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "typedef ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_TYPEDEF, kw);
     assert_int_equal(7, len);
-    str = "unique ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "unique ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_UNIQUE, kw);
     assert_int_equal(6, len);
-    str = "units ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "units ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_UNITS, kw);
     assert_int_equal(5, len);
-    str = "uses ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "uses ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_USES, kw);
     assert_int_equal(4, len);
-    str = "value ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "value ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_VALUE, kw);
     assert_int_equal(5, len);
-    str = "when ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "when ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_WHEN, kw);
     assert_int_equal(4, len);
-    str = "yang-version ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "yang-version ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_YANG_VERSION, kw);
     assert_int_equal(12, len);
-    str = "yin-element ";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = "yin-element ";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_YIN_ELEMENT, kw);
     assert_int_equal(11, len);
-    str = ";config false;";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = ";config false;";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_SYNTAX_SEMICOLON, kw);
     assert_int_equal(1, len);
-    assert_string_equal("config false;", str);
-    str = "{ config false;";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    assert_string_equal("config false;", in.current);
+    in.current = "{ config false;";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_SYNTAX_LEFT_BRACE, kw);
     assert_int_equal(1, len);
-    assert_string_equal(" config false;", str);
-    str = "}";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    assert_string_equal(" config false;", in.current);
+    in.current = "}";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_SYNTAX_RIGHT_BRACE, kw);
     assert_int_equal(1, len);
-    assert_string_equal("", str);
+    assert_string_equal("", in.current);
 
     /* geenric extension */
-    str = p = "nacm:default-deny-write;";
-    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &str, &kw, &word, &len));
+    in.current = p = "nacm:default-deny-write;";
+    assert_int_equal(LY_SUCCESS, get_keyword(&ctx, &in, &kw, &word, &len));
     assert_int_equal(LY_STMT_EXTENSION_INSTANCE, kw);
     assert_int_equal(23, len);
     assert_ptr_equal(p, word);
@@ -754,7 +755,7 @@ test_minmax(void **state)
     uint16_t flags = 0;
     uint32_t value = 0;
     struct lysp_ext_instance *ext = NULL;
-    const char *str;
+    struct ly_in in = {0};
 
     ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
@@ -763,30 +764,30 @@ test_minmax(void **state)
     ctx.line = 1;
     ctx.mod_version = 2; /* simulate YANG 1.1 */
 
-    str = " 1invalid; ...";
-    assert_int_equal(LY_EVALID, parse_minelements(&ctx, &str, &value, &flags, &ext));
+    in.current = " 1invalid; ...";
+    assert_int_equal(LY_EVALID, parse_minelements(&ctx, &in, &value, &flags, &ext));
     logbuf_assert("Invalid value \"1invalid\" of \"min-elements\". Line number 1.");
 
     flags = value = 0;
-    str = " -1; ...";
-    assert_int_equal(LY_EVALID, parse_minelements(&ctx, &str, &value, &flags, &ext));
+    in.current = " -1; ...";
+    assert_int_equal(LY_EVALID, parse_minelements(&ctx, &in, &value, &flags, &ext));
     logbuf_assert("Invalid value \"-1\" of \"min-elements\". Line number 1.");
 
     /* implementation limit */
     flags = value = 0;
-    str = " 4294967296; ...";
-    assert_int_equal(LY_EVALID, parse_minelements(&ctx, &str, &value, &flags, &ext));
+    in.current = " 4294967296; ...";
+    assert_int_equal(LY_EVALID, parse_minelements(&ctx, &in, &value, &flags, &ext));
     logbuf_assert("Value \"4294967296\" is out of \"min-elements\" bounds. Line number 1.");
 
     flags = value = 0;
-    str = " 1; ...";
-    assert_int_equal(LY_SUCCESS, parse_minelements(&ctx, &str, &value, &flags, &ext));
+    in.current = " 1; ...";
+    assert_int_equal(LY_SUCCESS, parse_minelements(&ctx, &in, &value, &flags, &ext));
     assert_int_equal(LYS_SET_MIN, flags);
     assert_int_equal(1, value);
 
     flags = value = 0;
-    str = " 1 {m:ext;} ...";
-    assert_int_equal(LY_SUCCESS, parse_minelements(&ctx, &str, &value, &flags, &ext));
+    in.current = " 1 {m:ext;} ...";
+    assert_int_equal(LY_SUCCESS, parse_minelements(&ctx, &in, &value, &flags, &ext));
     assert_int_equal(LYS_SET_MIN, flags);
     assert_int_equal(1, value);
     assert_non_null(ext);
@@ -794,40 +795,40 @@ test_minmax(void **state)
     ext = NULL;
 
     flags = value = 0;
-    str = " 1 {config true;} ...";
-    assert_int_equal(LY_EVALID, parse_minelements(&ctx, &str, &value, &flags, &ext));
+    in.current = " 1 {config true;} ...";
+    assert_int_equal(LY_EVALID, parse_minelements(&ctx, &in, &value, &flags, &ext));
     logbuf_assert("Invalid keyword \"config\" as a child of \"min-elements\". Line number 1.");
 
-    str = " 1invalid; ...";
-    assert_int_equal(LY_EVALID, parse_maxelements(&ctx, &str, &value, &flags, &ext));
+    in.current = " 1invalid; ...";
+    assert_int_equal(LY_EVALID, parse_maxelements(&ctx, &in, &value, &flags, &ext));
     logbuf_assert("Invalid value \"1invalid\" of \"max-elements\". Line number 1.");
 
     flags = value = 0;
-    str = " -1; ...";
-    assert_int_equal(LY_EVALID, parse_maxelements(&ctx, &str, &value, &flags, &ext));
+    in.current = " -1; ...";
+    assert_int_equal(LY_EVALID, parse_maxelements(&ctx, &in, &value, &flags, &ext));
     logbuf_assert("Invalid value \"-1\" of \"max-elements\". Line number 1.");
 
     /* implementation limit */
     flags = value = 0;
-    str = " 4294967296; ...";
-    assert_int_equal(LY_EVALID, parse_maxelements(&ctx, &str, &value, &flags, &ext));
+    in.current = " 4294967296; ...";
+    assert_int_equal(LY_EVALID, parse_maxelements(&ctx, &in, &value, &flags, &ext));
     logbuf_assert("Value \"4294967296\" is out of \"max-elements\" bounds. Line number 1.");
 
     flags = value = 0;
-    str = " 1; ...";
-    assert_int_equal(LY_SUCCESS, parse_maxelements(&ctx, &str, &value, &flags, &ext));
+    in.current = " 1; ...";
+    assert_int_equal(LY_SUCCESS, parse_maxelements(&ctx, &in, &value, &flags, &ext));
     assert_int_equal(LYS_SET_MAX, flags);
     assert_int_equal(1, value);
 
     flags = value = 0;
-    str = " unbounded; ...";
-    assert_int_equal(LY_SUCCESS, parse_maxelements(&ctx, &str, &value, &flags, &ext));
+    in.current = " unbounded; ...";
+    assert_int_equal(LY_SUCCESS, parse_maxelements(&ctx, &in, &value, &flags, &ext));
     assert_int_equal(LYS_SET_MAX, flags);
     assert_int_equal(0, value);
 
     flags = value = 0;
-    str = " 1 {m:ext;} ...";
-    assert_int_equal(LY_SUCCESS, parse_maxelements(&ctx, &str, &value, &flags, &ext));
+    in.current = " 1 {m:ext;} ...";
+    assert_int_equal(LY_SUCCESS, parse_maxelements(&ctx, &in, &value, &flags, &ext));
     assert_int_equal(LYS_SET_MAX, flags);
     assert_int_equal(1, value);
     assert_non_null(ext);
@@ -835,8 +836,8 @@ test_minmax(void **state)
     ext = NULL;
 
     flags = value = 0;
-    str = " 1 {config true;} ...";
-    assert_int_equal(LY_EVALID, parse_maxelements(&ctx, &str, &value, &flags, &ext));
+    in.current = " 1 {config true;} ...";
+    assert_int_equal(LY_EVALID, parse_maxelements(&ctx, &in, &value, &flags, &ext));
     logbuf_assert("Invalid keyword \"config\" as a child of \"max-elements\". Line number 1.");
 
     *state = NULL;
@@ -897,7 +898,7 @@ test_module(void **state)
     struct lysp_module *mod = NULL;
     struct lysp_submodule *submod = NULL;
     struct lys_module *m;
-    const char *str;
+    struct ly_in in = {0};
 
     ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
@@ -909,35 +910,35 @@ test_module(void **state)
     mod = mod_renew(&ctx);
 
     /* missing mandatory substatements */
-    str = " name {}";
-    assert_int_equal(LY_EVALID, parse_module(&ctx, &str, mod));
+    in.current = " name {}";
+    assert_int_equal(LY_EVALID, parse_module(&ctx, &in, mod));
     assert_string_equal("name", mod->mod->name);
     logbuf_assert("Missing mandatory keyword \"namespace\" as a child of \"module\". Line number 1.");
     mod = mod_renew(&ctx);
 
-    str = " name {namespace urn:x;}";
-    assert_int_equal(LY_EVALID, parse_module(&ctx, &str, mod));
+    in.current = " name {namespace urn:x;}";
+    assert_int_equal(LY_EVALID, parse_module(&ctx, &in, mod));
     assert_string_equal("urn:x", mod->mod->ns);
     logbuf_assert("Missing mandatory keyword \"prefix\" as a child of \"module\". Line number 1.");
     mod = mod_renew(&ctx);
 
-    str = " name {namespace urn:x;prefix \"x\";}";
-    assert_int_equal(LY_SUCCESS, parse_module(&ctx, &str, mod));
+    in.current = " name {namespace urn:x;prefix \"x\";}";
+    assert_int_equal(LY_SUCCESS, parse_module(&ctx, &in, mod));
     assert_string_equal("x", mod->mod->prefix);
     mod = mod_renew(&ctx);
 
 #define SCHEMA_BEGINNING " name {yang-version 1.1;namespace urn:x;prefix \"x\";"
 #define SCHEMA_BEGINNING2 " name {namespace urn:x;prefix \"x\";"
 #define TEST_NODE(NODETYPE, INPUT, NAME) \
-        str = SCHEMA_BEGINNING INPUT; \
-        assert_int_equal(LY_SUCCESS, parse_module(&ctx, &str, mod)); \
+        in.current = SCHEMA_BEGINNING INPUT; \
+        assert_int_equal(LY_SUCCESS, parse_module(&ctx, &in, mod)); \
         assert_non_null(mod->data); \
         assert_int_equal(NODETYPE, mod->data->nodetype); \
         assert_string_equal(NAME, mod->data->name); \
         mod = mod_renew(&ctx);
 #define TEST_GENERIC(INPUT, TARGET, TEST) \
-        str = SCHEMA_BEGINNING INPUT; \
-        assert_int_equal(LY_SUCCESS, parse_module(&ctx, &str, mod)); \
+        in.current = SCHEMA_BEGINNING INPUT; \
+        assert_int_equal(LY_SUCCESS, parse_module(&ctx, &in, mod)); \
         assert_non_null(TARGET); \
         TEST; \
         mod = mod_renew(&ctx);
@@ -954,8 +955,8 @@ test_module(void **state)
     TEST_DUP("reference", "a", "b", "1");
 
     /* not allowed in module (submodule-specific) */
-    str = SCHEMA_BEGINNING "belongs-to master {prefix m;}}";
-    assert_int_equal(LY_EVALID, parse_module(&ctx, &str, mod));
+    in.current = SCHEMA_BEGINNING "belongs-to master {prefix m;}}";
+    assert_int_equal(LY_EVALID, parse_module(&ctx, &in, mod));
     logbuf_assert("Invalid keyword \"belongs-to\" as a child of \"module\". Line number 1.");
     mod = mod_renew(&ctx);
 
@@ -997,32 +998,32 @@ test_module(void **state)
                  assert_string_equal("zzz", mod->imports[0].name));
 
     /* import - prefix collision */
-    str = SCHEMA_BEGINNING "import zzz {prefix x;}}";
-    assert_int_equal(LY_EVALID, parse_module(&ctx, &str, mod));
+    in.current = SCHEMA_BEGINNING "import zzz {prefix x;}}";
+    assert_int_equal(LY_EVALID, parse_module(&ctx, &in, mod));
     logbuf_assert("Prefix \"x\" already used as module prefix. Line number 2.");
     mod = mod_renew(&ctx);
-    str = SCHEMA_BEGINNING "import zzz {prefix y;}import zzz {prefix y;}}";
-    assert_int_equal(LY_EVALID, parse_module(&ctx, &str, mod));
+    in.current = SCHEMA_BEGINNING "import zzz {prefix y;}import zzz {prefix y;}}";
+    assert_int_equal(LY_EVALID, parse_module(&ctx, &in, mod));
     logbuf_assert("Prefix \"y\" already used to import \"zzz\" module. Line number 2.");
     mod = mod_renew(&ctx);
-    str = "module" SCHEMA_BEGINNING "import zzz {prefix y;}import zzz {prefix z;}}";
-    assert_null(lys_parse_mem(ctx.ctx, str, LYS_IN_YANG));
+    in.current = "module" SCHEMA_BEGINNING "import zzz {prefix y;}import zzz {prefix z;}}";
+    assert_null(lys_parse_mem(ctx.ctx, in.current, LYS_IN_YANG));
     assert_int_equal(LY_EVALID, ly_errcode(ctx.ctx));
     logbuf_assert("Single revision of the module \"zzz\" referred twice.");
 
     /* include */
     store = 1;
     ly_ctx_set_module_imp_clb(ctx.ctx, test_imp_clb, "module xxx { namespace urn:xxx; prefix x;}");
-    str = "module" SCHEMA_BEGINNING "include xxx;}";
-    assert_null(lys_parse_mem(ctx.ctx, str, LYS_IN_YANG));
+    in.current = "module" SCHEMA_BEGINNING "include xxx;}";
+    assert_null(lys_parse_mem(ctx.ctx, in.current, LYS_IN_YANG));
     assert_int_equal(LY_EVALID, ly_errcode(ctx.ctx));
     logbuf_assert("Input data contains module in situation when a submodule is expected.");
     store = -1;
 
     store = 1;
     ly_ctx_set_module_imp_clb(ctx.ctx, test_imp_clb, "submodule xxx {belongs-to wrong-name {prefix w;}}");
-    str = "module" SCHEMA_BEGINNING "include xxx;}";
-    assert_null(lys_parse_mem(ctx.ctx, str, LYS_IN_YANG));
+    in.current = "module" SCHEMA_BEGINNING "include xxx;}";
+    assert_null(lys_parse_mem(ctx.ctx, in.current, LYS_IN_YANG));
     assert_int_equal(LY_EVALID, ly_errcode(ctx.ctx));
     logbuf_assert("Included \"xxx\" submodule from \"name\" belongs-to a different module \"wrong-name\".");
     store = -1;
@@ -1058,48 +1059,47 @@ test_module(void **state)
     /* uses */
     TEST_NODE(LYS_USES, "uses test;}", "test");
     /* yang-version */
-    str = SCHEMA_BEGINNING2 "\n\tyang-version 10;}";
-    assert_int_equal(LY_EVALID, parse_module(&ctx, &str, mod));
+    in.current = SCHEMA_BEGINNING2 "\n\tyang-version 10;}";
+    assert_int_equal(LY_EVALID, parse_module(&ctx, &in, mod));
     logbuf_assert("Invalid value \"10\" of \"yang-version\". Line number 3.");
     mod = mod_renew(&ctx);
-    str = SCHEMA_BEGINNING2 "yang-version 1.0;yang-version 1.1;}";
-    assert_int_equal(LY_EVALID, parse_module(&ctx, &str, mod));
+    in.current = SCHEMA_BEGINNING2 "yang-version 1.0;yang-version 1.1;}";
+    assert_int_equal(LY_EVALID, parse_module(&ctx, &in, mod));
     logbuf_assert("Duplicate keyword \"yang-version\". Line number 3.");
     mod = mod_renew(&ctx);
-    str = SCHEMA_BEGINNING2 "yang-version 1.0;}";
-    assert_int_equal(LY_SUCCESS, parse_module(&ctx, &str, mod));
+    in.current = SCHEMA_BEGINNING2 "yang-version 1.0;}";
+    assert_int_equal(LY_SUCCESS, parse_module(&ctx, &in, mod));
     assert_int_equal(1, mod->mod->version);
     mod = mod_renew(&ctx);
-    str = SCHEMA_BEGINNING2 "yang-version \"1.1\";}";
-    assert_int_equal(LY_SUCCESS, parse_module(&ctx, &str, mod));
+    in.current = SCHEMA_BEGINNING2 "yang-version \"1.1\";}";
+    assert_int_equal(LY_SUCCESS, parse_module(&ctx, &in, mod));
     assert_int_equal(2, mod->mod->version);
     mod = mod_renew(&ctx);
 
     struct lys_yang_parser_ctx *ctx_p = NULL;
-    str = "module " SCHEMA_BEGINNING "} module q {namespace urn:q;prefixq;}";
+    in.current = "module " SCHEMA_BEGINNING "} module q {namespace urn:q;prefixq;}";
     m = mod->mod;
     free(mod);
     m->parsed = NULL;
-    assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, str, m));
+    assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, &in, m));
     logbuf_assert("Trailing garbage \"module q {names...\" after module, expected end-of-input. Line number 1.");
     yang_parser_ctx_free(ctx_p);
     mod = mod_renew(&ctx);
 
-    str = "prefix " SCHEMA_BEGINNING "}";
+    in.current = "prefix " SCHEMA_BEGINNING "}";
     m = mod->mod;
     free(mod);
     m->parsed = NULL;
-    assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, str, m));
+    assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, &in, m));
     yang_parser_ctx_free(ctx_p);
     logbuf_assert("Invalid keyword \"prefix\", expected \"module\" or \"submodule\". Line number 1.");
     mod = mod_renew(&ctx);
 
-    str = "module " SCHEMA_BEGINNING "}";
-    str = "module " SCHEMA_BEGINNING "leaf enum {type enumeration {enum seven { position 7;}}}}";
+    in.current = "module " SCHEMA_BEGINNING "leaf enum {type enumeration {enum seven { position 7;}}}}";
     m = mod->mod;
     free(mod);
     m->parsed = NULL;
-    assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, str, m));
+    assert_int_equal(LY_EVALID, yang_parse_module(&ctx_p, &in, m));
     yang_parser_ctx_free(ctx_p);
     logbuf_assert("Invalid keyword \"position\" as a child of \"enum\". Line number 1.");
     mod = mod_renew(&ctx);
@@ -1111,8 +1111,8 @@ test_module(void **state)
     mod = mod_renew(&ctx);
 
     /* invalid substatement */
-    str = SCHEMA_BEGINNING "must false;}";
-    assert_int_equal(LY_EVALID, parse_module(&ctx, &str, mod));
+    in.current = SCHEMA_BEGINNING "must false;}";
+    assert_int_equal(LY_EVALID, parse_module(&ctx, &in, mod));
     logbuf_assert("Invalid keyword \"must\" as a child of \"module\". Line number 3.");
     mod = mod_renew(&ctx);
 
@@ -1120,16 +1120,16 @@ test_module(void **state)
     submod = submod_renew(&ctx, submod);
 
     /* missing mandatory substatements */
-    str = " subname {}";
+    in.current = " subname {}";
     lydict_remove(ctx.ctx, submod->name);
-    assert_int_equal(LY_EVALID, parse_submodule(&ctx, &str, submod));
+    assert_int_equal(LY_EVALID, parse_submodule(&ctx, &in, submod));
     assert_string_equal("subname", submod->name);
     logbuf_assert("Missing mandatory keyword \"belongs-to\" as a child of \"submodule\". Line number 3.");
     submod = submod_renew(&ctx, submod);
 
-    str = " subname {belongs-to name {prefix x;}}";
+    in.current = " subname {belongs-to name {prefix x;}}";
     lydict_remove(ctx.ctx, submod->name);
-    assert_int_equal(LY_SUCCESS, parse_submodule(&ctx, &str, submod));
+    assert_int_equal(LY_SUCCESS, parse_submodule(&ctx, &in, submod));
     assert_string_equal("name", submod->belongsto);
     submod = submod_renew(&ctx, submod);
 
@@ -1137,30 +1137,30 @@ test_module(void **state)
 #define SCHEMA_BEGINNING " subname {belongs-to name {prefix x;}"
 
     /* duplicated namespace, prefix */
-    str = " subname {belongs-to name {prefix x;}belongs-to module1;belongs-to module2;} ...";
-    assert_int_equal(LY_EVALID, parse_submodule(&ctx, &str, submod)); \
+    in.current = " subname {belongs-to name {prefix x;}belongs-to module1;belongs-to module2;} ...";
+    assert_int_equal(LY_EVALID, parse_submodule(&ctx, &in, submod)); \
     logbuf_assert("Duplicate keyword \"belongs-to\". Line number 3."); \
     submod = submod_renew(&ctx, submod);
 
     /* not allowed in submodule (module-specific) */
-    str = SCHEMA_BEGINNING "namespace \"urn:z\";}";
-    assert_int_equal(LY_EVALID, parse_submodule(&ctx, &str, submod));
+    in.current = SCHEMA_BEGINNING "namespace \"urn:z\";}";
+    assert_int_equal(LY_EVALID, parse_submodule(&ctx, &in, submod));
     logbuf_assert("Invalid keyword \"namespace\" as a child of \"submodule\". Line number 3.");
     submod = submod_renew(&ctx, submod);
-    str = SCHEMA_BEGINNING "prefix m;}}";
-    assert_int_equal(LY_EVALID, parse_submodule(&ctx, &str, submod));
+    in.current = SCHEMA_BEGINNING "prefix m;}}";
+    assert_int_equal(LY_EVALID, parse_submodule(&ctx, &in, submod));
     logbuf_assert("Invalid keyword \"prefix\" as a child of \"submodule\". Line number 3.");
     submod = submod_renew(&ctx, submod);
 
-    str = "submodule " SCHEMA_BEGINNING "} module q {namespace urn:q;prefixq;}";
+    in.current = "submodule " SCHEMA_BEGINNING "} module q {namespace urn:q;prefixq;}";
     lysp_submodule_free(ctx.ctx, submod);
     submod = NULL;
-    assert_int_equal(LY_EVALID, yang_parse_submodule(&ctx_p, ctx.ctx, (struct lys_parser_ctx *)&ctx, str, &submod));
+    assert_int_equal(LY_EVALID, yang_parse_submodule(&ctx_p, ctx.ctx, (struct lys_parser_ctx *)&ctx, &in, &submod));
     yang_parser_ctx_free(ctx_p);
     logbuf_assert("Trailing garbage \"module q {names...\" after submodule, expected end-of-input. Line number 1.");
 
-    str = "prefix " SCHEMA_BEGINNING "}";
-    assert_int_equal(LY_EVALID, yang_parse_submodule(&ctx_p, ctx.ctx, (struct lys_parser_ctx *)&ctx, str, &submod));
+    in.current = "prefix " SCHEMA_BEGINNING "}";
+    assert_int_equal(LY_EVALID, yang_parse_submodule(&ctx_p, ctx.ctx, (struct lys_parser_ctx *)&ctx, &in, &submod));
     yang_parser_ctx_free(ctx_p);
     logbuf_assert("Invalid keyword \"prefix\", expected \"module\" or \"submodule\". Line number 1.");
     submod = submod_renew(&ctx, submod);
@@ -1177,25 +1177,6 @@ test_module(void **state)
     *state = NULL;
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 static void
 test_deviation(void **state)
 {
@@ -1203,7 +1184,7 @@ test_deviation(void **state)
 
     struct lys_yang_parser_ctx ctx;
     struct lysp_deviation *d = NULL;
-    const char *str;
+    struct ly_in in = {0};
 
     ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
@@ -1221,23 +1202,23 @@ test_deviation(void **state)
     TEST_DUP("reference", "a", "b");
 
     /* full content */
-    str = " test {deviate not-supported;description text;reference \'another text\';prefix:ext;} ...";
-    assert_int_equal(LY_SUCCESS, parse_deviation(&ctx, &str, &d));
+    in.current = " test {deviate not-supported;description text;reference \'another text\';prefix:ext;} ...";
+    assert_int_equal(LY_SUCCESS, parse_deviation(&ctx, &in, &d));
     assert_non_null(d);
-    assert_string_equal(" ...", str);
+    assert_string_equal(" ...", in.current);
     FREE_ARRAY(ctx.ctx, d, lysp_deviation_free);
     d = NULL;
 
     /* missing mandatory substatement */
-    str = " test {description text;}";
-    assert_int_equal(LY_EVALID, parse_deviation(&ctx, &str, &d));
+    in.current = " test {description text;}";
+    assert_int_equal(LY_EVALID, parse_deviation(&ctx, &in, &d));
     logbuf_assert("Missing mandatory keyword \"deviate\" as a child of \"deviation\". Line number 1.");
     FREE_ARRAY(ctx.ctx, d, lysp_deviation_free);
     d = NULL;
 
     /* invalid substatement */
-    str = " test {deviate not-supported; status obsolete;}";
-    assert_int_equal(LY_EVALID, parse_deviation(&ctx, &str, &d));
+    in.current = " test {deviate not-supported; status obsolete;}";
+    assert_int_equal(LY_EVALID, parse_deviation(&ctx, &in, &d));
     logbuf_assert("Invalid keyword \"status\" as a child of \"deviation\". Line number 1.");
     FREE_ARRAY(ctx.ctx, d, lysp_deviation_free);
     d = NULL;
@@ -1254,7 +1235,7 @@ test_deviate(void **state)
 
     struct lys_yang_parser_ctx ctx;
     struct lysp_deviate *d = NULL;
-    const char *str;
+    struct ly_in in = {0};
 
     ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
@@ -1277,31 +1258,31 @@ test_deviate(void **state)
     TEST_DUP("add", "units", "kilometers", "miles");
 
     /* full contents */
-    str = " not-supported {prefix:ext;} ...";
-    assert_int_equal(LY_SUCCESS, parse_deviate(&ctx, &str, &d));
+    in.current = " not-supported {prefix:ext;} ...";
+    assert_int_equal(LY_SUCCESS, parse_deviate(&ctx, &in, &d));
     assert_non_null(d);
-    assert_string_equal(" ...", str);
+    assert_string_equal(" ...", in.current);
     lysp_deviate_free(ctx.ctx, d); free(d); d = NULL;
-    str = " add {units meters; must 1; must 2; unique x; unique y; default a; default b; config true; mandatory true; min-elements 1; max-elements 2; prefix:ext;} ...";
-    assert_int_equal(LY_SUCCESS, parse_deviate(&ctx, &str, &d));
+    in.current = " add {units meters; must 1; must 2; unique x; unique y; default a; default b; config true; mandatory true; min-elements 1; max-elements 2; prefix:ext;} ...";
+    assert_int_equal(LY_SUCCESS, parse_deviate(&ctx, &in, &d));
     assert_non_null(d);
-    assert_string_equal(" ...", str);
+    assert_string_equal(" ...", in.current);
     lysp_deviate_free(ctx.ctx, d); free(d); d = NULL;
-    str = " delete {units meters; must 1; must 2; unique x; unique y; default a; default b; prefix:ext;} ...";
-    assert_int_equal(LY_SUCCESS, parse_deviate(&ctx, &str, &d));
+    in.current = " delete {units meters; must 1; must 2; unique x; unique y; default a; default b; prefix:ext;} ...";
+    assert_int_equal(LY_SUCCESS, parse_deviate(&ctx, &in, &d));
     assert_non_null(d);
-    assert_string_equal(" ...", str);
+    assert_string_equal(" ...", in.current);
     lysp_deviate_free(ctx.ctx, d); free(d); d = NULL;
-    str = " replace {type string; units meters; default a; config true; mandatory true; min-elements 1; max-elements 2; prefix:ext;} ...";
-    assert_int_equal(LY_SUCCESS, parse_deviate(&ctx, &str, &d));
+    in.current = " replace {type string; units meters; default a; config true; mandatory true; min-elements 1; max-elements 2; prefix:ext;} ...";
+    assert_int_equal(LY_SUCCESS, parse_deviate(&ctx, &in, &d));
     assert_non_null(d);
-    assert_string_equal(" ...", str);
+    assert_string_equal(" ...", in.current);
     lysp_deviate_free(ctx.ctx, d); free(d); d = NULL;
 
     /* invalid substatements */
 #define TEST_NOT_SUP(DEV, STMT, VALUE) \
-    str = " "DEV" {"STMT" "VALUE";}..."; \
-    assert_int_equal(LY_EVALID, parse_deviate(&ctx, &str, &d)); \
+    in.current = " "DEV" {"STMT" "VALUE";}..."; \
+    assert_int_equal(LY_EVALID, parse_deviate(&ctx, &in, &d)); \
     logbuf_assert("Deviate \""DEV"\" does not support keyword \""STMT"\". Line number 1."); \
     lysp_deviate_free(ctx.ctx, d); free(d); d = NULL
 
@@ -1323,8 +1304,8 @@ test_deviate(void **state)
     TEST_NOT_SUP("replace", "must", "1");
     TEST_NOT_SUP("replace", "unique", "a");
 
-    str = " nonsence; ...";
-    assert_int_equal(LY_EVALID, parse_deviate(&ctx, &str, &d));
+    in.current = " nonsence; ...";
+    assert_int_equal(LY_EVALID, parse_deviate(&ctx, &in, &d));
     logbuf_assert("Invalid value \"nonsence\" of \"deviate\". Line number 1.");
     assert_null(d);
 
@@ -1341,7 +1322,7 @@ test_container(void **state)
 
     struct lys_yang_parser_ctx ctx = {0};
     struct lysp_node_container *c = NULL;
-    const char *str;
+    struct ly_in in = {0};
 
     ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
@@ -1352,8 +1333,8 @@ test_container(void **state)
 
     /* invalid cardinality */
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
-    str = "cont {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
-    assert_int_equal(LY_EVALID, parse_container(&ctx, &str, NULL, (struct lysp_node**)&c)); \
+    in.current = "cont {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
+    assert_int_equal(LY_EVALID, parse_container(&ctx, &in, NULL, (struct lysp_node**)&c)); \
     logbuf_assert("Duplicate keyword \""MEMBER"\". Line number 1."); \
     lysp_node_free(ctx.ctx, (struct lysp_node*)c); c = NULL;
 
@@ -1366,9 +1347,9 @@ test_container(void **state)
 #undef TEST_DUP
 
     /* full content */
-    str = "cont {action x;anydata any;anyxml anyxml; choice ch;config false;container c;description test;grouping g;if-feature f; leaf l {type string;}"
+    in.current = "cont {action x;anydata any;anyxml anyxml; choice ch;config false;container c;description test;grouping g;if-feature f; leaf l {type string;}"
           "leaf-list ll {type string;} list li;must 'expr';notification not; presence true; reference test;status current;typedef t {type int8;}uses g;when true;m:ext;} ...";
-    assert_int_equal(LY_SUCCESS, parse_container(&ctx, &str, NULL, (struct lysp_node**)&c));
+    assert_int_equal(LY_SUCCESS, parse_container(&ctx, &in, NULL, (struct lysp_node**)&c));
     assert_non_null(c);
     assert_int_equal(LYS_CONTAINER, c->nodetype);
     assert_string_equal("cont", c->name);
@@ -1391,18 +1372,18 @@ test_container(void **state)
     lysp_node_free(ctx.ctx, (struct lysp_node*)c); c = NULL;
 
     /* invalid */
-    str = " cont {augment /root;} ...";
-    assert_int_equal(LY_EVALID, parse_container(&ctx, &str, NULL, (struct lysp_node**)&c));
+    in.current = " cont {augment /root;} ...";
+    assert_int_equal(LY_EVALID, parse_container(&ctx, &in, NULL, (struct lysp_node**)&c));
     logbuf_assert("Invalid keyword \"augment\" as a child of \"container\". Line number 1.");
     lysp_node_free(ctx.ctx, (struct lysp_node*)c); c = NULL;
-    str = " cont {nonsence true;} ...";
-    assert_int_equal(LY_EVALID, parse_container(&ctx, &str, NULL, (struct lysp_node**)&c));
+    in.current = " cont {nonsence true;} ...";
+    assert_int_equal(LY_EVALID, parse_container(&ctx, &in, NULL, (struct lysp_node**)&c));
     logbuf_assert("Invalid character sequence \"nonsence\", expected a keyword. Line number 1.");
     lysp_node_free(ctx.ctx, (struct lysp_node*)c); c = NULL;
 
     ctx.mod_version = 1; /* simulate YANG 1.0 */
-    str = " cont {action x;} ...";
-    assert_int_equal(LY_EVALID, parse_container(&ctx, &str, NULL, (struct lysp_node**)&c));
+    in.current = " cont {action x;} ...";
+    assert_int_equal(LY_EVALID, parse_container(&ctx, &in, NULL, (struct lysp_node**)&c));
     logbuf_assert("Invalid keyword \"action\" as a child of \"container\" - the statement is allowed only in YANG 1.1 modules. Line number 1.");
     lysp_node_free(ctx.ctx, (struct lysp_node*)c); c = NULL;
 
@@ -1416,7 +1397,7 @@ test_leaf(void **state)
 
     struct lys_yang_parser_ctx ctx = {0};
     struct lysp_node_leaf *l = NULL;
-    const char *str;
+    struct ly_in in = {0};
 
     ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
@@ -1427,8 +1408,8 @@ test_leaf(void **state)
 
     /* invalid cardinality */
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
-    str = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
-    assert_int_equal(LY_EVALID, parse_leaf(&ctx, &str, NULL, (struct lysp_node**)&l)); \
+    in.current = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
+    assert_int_equal(LY_EVALID, parse_leaf(&ctx, &in, NULL, (struct lysp_node**)&l)); \
     logbuf_assert("Duplicate keyword \""MEMBER"\". Line number 1."); \
     lysp_node_free(ctx.ctx, (struct lysp_node*)l); l = NULL;
 
@@ -1444,9 +1425,9 @@ test_leaf(void **state)
 #undef TEST_DUP
 
     /* full content - without mandatory which is mutual exclusive with default */
-    str = "l {config false;default \"xxx\";description test;if-feature f;"
+    in.current = "l {config false;default \"xxx\";description test;if-feature f;"
           "must 'expr';reference test;status current;type string; units yyy;when true;m:ext;} ...";
-    assert_int_equal(LY_SUCCESS, parse_leaf(&ctx, &str, NULL, (struct lysp_node**)&l));
+    assert_int_equal(LY_SUCCESS, parse_leaf(&ctx, &in, NULL, (struct lysp_node**)&l));
     assert_non_null(l);
     assert_int_equal(LYS_LEAF, l->nodetype);
     assert_string_equal("l", l->name);
@@ -1465,8 +1446,8 @@ test_leaf(void **state)
     lysp_node_free(ctx.ctx, (struct lysp_node*)l); l = NULL;
 
     /* full content - now with mandatory */
-    str = "l {mandatory true; type string;} ...";
-    assert_int_equal(LY_SUCCESS, parse_leaf(&ctx, &str, NULL, (struct lysp_node**)&l));
+    in.current = "l {mandatory true; type string;} ...";
+    assert_int_equal(LY_SUCCESS, parse_leaf(&ctx, &in, NULL, (struct lysp_node**)&l));
     assert_non_null(l);
     assert_int_equal(LYS_LEAF, l->nodetype);
     assert_string_equal("l", l->name);
@@ -1475,13 +1456,13 @@ test_leaf(void **state)
     lysp_node_free(ctx.ctx, (struct lysp_node*)l); l = NULL;
 
     /* invalid */
-    str = " l {mandatory true; default xx; type string;} ...";
-    assert_int_equal(LY_EVALID, parse_leaf(&ctx, &str, NULL, (struct lysp_node**)&l));
+    in.current = " l {mandatory true; default xx; type string;} ...";
+    assert_int_equal(LY_EVALID, parse_leaf(&ctx, &in, NULL, (struct lysp_node**)&l));
     logbuf_assert("Invalid combination of keywords \"mandatory\" and \"default\" as substatements of \"leaf\". Line number 1.");
     lysp_node_free(ctx.ctx, (struct lysp_node*)l); l = NULL;
 
-    str = " l {description \"missing type\";} ...";
-    assert_int_equal(LY_EVALID, parse_leaf(&ctx, &str, NULL, (struct lysp_node**)&l));
+    in.current = " l {description \"missing type\";} ...";
+    assert_int_equal(LY_EVALID, parse_leaf(&ctx, &in, NULL, (struct lysp_node**)&l));
     logbuf_assert("Missing mandatory keyword \"type\" as a child of \"leaf\". Line number 1.");
     lysp_node_free(ctx.ctx, (struct lysp_node*)l); l = NULL;
 
@@ -1496,7 +1477,7 @@ test_leaflist(void **state)
 
     struct lys_yang_parser_ctx ctx = {0};
     struct lysp_node_leaflist *ll = NULL;
-    const char *str;
+    struct ly_in in = {0};
 
     ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
@@ -1507,8 +1488,8 @@ test_leaflist(void **state)
 
     /* invalid cardinality */
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
-    str = "ll {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
-    assert_int_equal(LY_EVALID, parse_leaflist(&ctx, &str, NULL, (struct lysp_node**)&ll)); \
+    in.current = "ll {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
+    assert_int_equal(LY_EVALID, parse_leaflist(&ctx, &in, NULL, (struct lysp_node**)&ll)); \
     logbuf_assert("Duplicate keyword \""MEMBER"\". Line number 1."); \
     lysp_node_free(ctx.ctx, (struct lysp_node*)ll); ll = NULL;
 
@@ -1525,10 +1506,10 @@ test_leaflist(void **state)
 #undef TEST_DUP
 
     /* full content - without min-elements which is mutual exclusive with default */
-    str = "ll {config false;default \"xxx\"; default \"yyy\";description test;if-feature f;"
+    in.current = "ll {config false;default \"xxx\"; default \"yyy\";description test;if-feature f;"
           "max-elements 10;must 'expr';ordered-by user;reference test;"
           "status current;type string; units zzz;when true;m:ext;} ...";
-    assert_int_equal(LY_SUCCESS, parse_leaflist(&ctx, &str, NULL, (struct lysp_node**)&ll));
+    assert_int_equal(LY_SUCCESS, parse_leaflist(&ctx, &in, NULL, (struct lysp_node**)&ll));
     assert_non_null(ll);
     assert_int_equal(LYS_LEAFLIST, ll->nodetype);
     assert_string_equal("ll", ll->name);
@@ -1552,8 +1533,8 @@ test_leaflist(void **state)
     lysp_node_free(ctx.ctx, (struct lysp_node*)ll); ll = NULL;
 
     /* full content - now with min-elements */
-    str = "ll {min-elements 10; type string;} ...";
-    assert_int_equal(LY_SUCCESS, parse_leaflist(&ctx, &str, NULL, (struct lysp_node**)&ll));
+    in.current = "ll {min-elements 10; type string;} ...";
+    assert_int_equal(LY_SUCCESS, parse_leaflist(&ctx, &in, NULL, (struct lysp_node**)&ll));
     assert_non_null(ll);
     assert_int_equal(LYS_LEAFLIST, ll->nodetype);
     assert_string_equal("ll", ll->name);
@@ -1564,24 +1545,24 @@ test_leaflist(void **state)
     lysp_node_free(ctx.ctx, (struct lysp_node*)ll); ll = NULL;
 
     /* invalid */
-    str = " ll {min-elements 1; default xx; type string;} ...";
-    assert_int_equal(LY_EVALID, parse_leaflist(&ctx, &str, NULL, (struct lysp_node**)&ll));
+    in.current = " ll {min-elements 1; default xx; type string;} ...";
+    assert_int_equal(LY_EVALID, parse_leaflist(&ctx, &in, NULL, (struct lysp_node**)&ll));
     logbuf_assert("Invalid combination of keywords \"min-elements\" and \"default\" as substatements of \"leaf-list\". Line number 1.");
     lysp_node_free(ctx.ctx, (struct lysp_node*)ll); ll = NULL;
 
-    str = " ll {description \"missing type\";} ...";
-    assert_int_equal(LY_EVALID, parse_leaflist(&ctx, &str, NULL, (struct lysp_node**)&ll));
+    in.current = " ll {description \"missing type\";} ...";
+    assert_int_equal(LY_EVALID, parse_leaflist(&ctx, &in, NULL, (struct lysp_node**)&ll));
     logbuf_assert("Missing mandatory keyword \"type\" as a child of \"leaf-list\". Line number 1.");
     lysp_node_free(ctx.ctx, (struct lysp_node*)ll); ll = NULL;
 
-    str = " ll {type string; min-elements 10; max-elements 1;} ..."; /* invalid combination of min/max */
-    assert_int_equal(LY_EVALID, parse_leaflist(&ctx, &str, NULL, (struct lysp_node**)&ll));
+    in.current = " ll {type string; min-elements 10; max-elements 1;} ..."; /* invalid combination of min/max */
+    assert_int_equal(LY_EVALID, parse_leaflist(&ctx, &in, NULL, (struct lysp_node**)&ll));
     logbuf_assert("Invalid combination of min-elements and max-elements: min value 10 is bigger than the max value 1. Line number 1.");
     lysp_node_free(ctx.ctx, (struct lysp_node*)ll); ll = NULL;
 
     ctx.mod_version = 1; /* simulate YANG 1.0 - default statement is not allowed */
-    str = " ll {default xx; type string;} ...";
-    assert_int_equal(LY_EVALID, parse_leaflist(&ctx, &str, NULL, (struct lysp_node**)&ll));
+    in.current = " ll {default xx; type string;} ...";
+    assert_int_equal(LY_EVALID, parse_leaflist(&ctx, &in, NULL, (struct lysp_node**)&ll));
     logbuf_assert("Invalid keyword \"default\" as a child of \"leaf-list\" - the statement is allowed only in YANG 1.1 modules. Line number 1.");
     lysp_node_free(ctx.ctx, (struct lysp_node*)ll); ll = NULL;
 
@@ -1596,7 +1577,7 @@ test_list(void **state)
 
     struct lys_yang_parser_ctx ctx = {0};
     struct lysp_node_list *l = NULL;
-    const char *str;
+    struct ly_in in = {0};
 
     ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
@@ -1607,8 +1588,8 @@ test_list(void **state)
 
     /* invalid cardinality */
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
-    str = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
-    assert_int_equal(LY_EVALID, parse_list(&ctx, &str, NULL, (struct lysp_node**)&l)); \
+    in.current = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
+    assert_int_equal(LY_EVALID, parse_list(&ctx, &in, NULL, (struct lysp_node**)&l)); \
     logbuf_assert("Duplicate keyword \""MEMBER"\". Line number 1."); \
     lysp_node_free(ctx.ctx, (struct lysp_node*)l); l = NULL;
 
@@ -1624,10 +1605,10 @@ test_list(void **state)
 #undef TEST_DUP
 
     /* full content */
-    str = "l {action x;anydata any;anyxml anyxml; choice ch;config false;container c;description test;grouping g;if-feature f; key l; leaf l {type string;}"
+    in.current = "l {action x;anydata any;anyxml anyxml; choice ch;config false;container c;description test;grouping g;if-feature f; key l; leaf l {type string;}"
           "leaf-list ll {type string;} list li;max-elements 10; min-elements 1;must 'expr';notification not; ordered-by system; reference test;"
           "status current;typedef t {type int8;}unique xxx;unique yyy;uses g;when true;m:ext;} ...";
-    assert_int_equal(LY_SUCCESS, parse_list(&ctx, &str, NULL, (struct lysp_node**)&l));
+    assert_int_equal(LY_SUCCESS, parse_list(&ctx, &in, NULL, (struct lysp_node**)&l));
     assert_non_null(l);
     assert_int_equal(LYS_LIST, l->nodetype);
     assert_string_equal("l", l->name);
@@ -1652,8 +1633,8 @@ test_list(void **state)
 
     /* invalid content */
     ctx.mod_version = 1; /* simulate YANG 1.0 */
-    str = "l {action x;} ...";
-    assert_int_equal(LY_EVALID, parse_list(&ctx, &str, NULL, (struct lysp_node**)&l));
+    in.current = "l {action x;} ...";
+    assert_int_equal(LY_EVALID, parse_list(&ctx, &in, NULL, (struct lysp_node**)&l));
     logbuf_assert("Invalid keyword \"action\" as a child of \"list\" - the statement is allowed only in YANG 1.1 modules. Line number 1.");
     lysp_node_free(ctx.ctx, (struct lysp_node*)l); l = NULL;
 
@@ -1668,7 +1649,7 @@ test_choice(void **state)
 
     struct lys_yang_parser_ctx ctx = {0};
     struct lysp_node_choice *ch = NULL;
-    const char *str;
+    struct ly_in in = {0};
 
     ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
@@ -1679,8 +1660,8 @@ test_choice(void **state)
 
     /* invalid cardinality */
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
-    str = "ch {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
-    assert_int_equal(LY_EVALID, parse_choice(&ctx, &str, NULL, (struct lysp_node**)&ch)); \
+    in.current = "ch {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
+    assert_int_equal(LY_EVALID, parse_choice(&ctx, &in, NULL, (struct lysp_node**)&ch)); \
     logbuf_assert("Duplicate keyword \""MEMBER"\". Line number 1."); \
     lysp_node_free(ctx.ctx, (struct lysp_node*)ch); ch = NULL;
 
@@ -1694,9 +1675,9 @@ test_choice(void **state)
 #undef TEST_DUP
 
     /* full content - without default due to a collision with mandatory */
-    str = "ch {anydata any;anyxml anyxml; case c;choice ch;config false;container c;description test;if-feature f;leaf l {type string;}"
+    in.current = "ch {anydata any;anyxml anyxml; case c;choice ch;config false;container c;description test;if-feature f;leaf l {type string;}"
           "leaf-list ll {type string;} list li;mandatory true;reference test;status current;when true;m:ext;} ...";
-    assert_int_equal(LY_SUCCESS, parse_choice(&ctx, &str, NULL, (struct lysp_node**)&ch));
+    assert_int_equal(LY_SUCCESS, parse_choice(&ctx, &in, NULL, (struct lysp_node**)&ch));
     assert_non_null(ch);
     assert_int_equal(LYS_CHOICE, ch->nodetype);
     assert_string_equal("ch", ch->name);
@@ -1711,8 +1692,8 @@ test_choice(void **state)
     lysp_node_free(ctx.ctx, (struct lysp_node*)ch); ch = NULL;
 
     /* full content - the default missing from the previous node */
-    str = "ch {default c;case c;} ...";
-    assert_int_equal(LY_SUCCESS, parse_choice(&ctx, &str, NULL, (struct lysp_node**)&ch));
+    in.current = "ch {default c;case c;} ...";
+    assert_int_equal(LY_SUCCESS, parse_choice(&ctx, &in, NULL, (struct lysp_node**)&ch));
     assert_non_null(ch);
     assert_int_equal(LYS_CHOICE, ch->nodetype);
     assert_string_equal("ch", ch->name);
@@ -1721,8 +1702,8 @@ test_choice(void **state)
     lysp_node_free(ctx.ctx, (struct lysp_node*)ch); ch = NULL;
 
     /* invalid content */
-    str = "ch {mandatory true; default c1; case c1 {leaf x{type string;}}} ...";
-    assert_int_equal(LY_EVALID, parse_choice(&ctx, &str, NULL, (struct lysp_node**)&ch));
+    in.current = "ch {mandatory true; default c1; case c1 {leaf x{type string;}}} ...";
+    assert_int_equal(LY_EVALID, parse_choice(&ctx, &in, NULL, (struct lysp_node**)&ch));
     logbuf_assert("Invalid combination of keywords \"mandatory\" and \"default\" as substatements of \"choice\". Line number 1.");
     lysp_node_free(ctx.ctx, (struct lysp_node*)ch); ch = NULL;
 
@@ -1737,7 +1718,7 @@ test_case(void **state)
 
     struct lys_yang_parser_ctx ctx = {0};
     struct lysp_node_case *cs = NULL;
-    const char *str;
+    struct ly_in in = {0};
 
     ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
@@ -1748,8 +1729,8 @@ test_case(void **state)
 
     /* invalid cardinality */
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
-    str = "cs {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
-    assert_int_equal(LY_EVALID, parse_case(&ctx, &str, NULL, (struct lysp_node**)&cs)); \
+    in.current = "cs {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
+    assert_int_equal(LY_EVALID, parse_case(&ctx, &in, NULL, (struct lysp_node**)&cs)); \
     logbuf_assert("Duplicate keyword \""MEMBER"\". Line number 1."); \
     lysp_node_free(ctx.ctx, (struct lysp_node*)cs); cs = NULL;
 
@@ -1760,9 +1741,9 @@ test_case(void **state)
 #undef TEST_DUP
 
     /* full content */
-    str = "cs {anydata any;anyxml anyxml; choice ch;container c;description test;if-feature f;leaf l {type string;}"
+    in.current = "cs {anydata any;anyxml anyxml; choice ch;container c;description test;if-feature f;leaf l {type string;}"
           "leaf-list ll {type string;} list li;reference test;status current;uses grp;when true;m:ext;} ...";
-    assert_int_equal(LY_SUCCESS, parse_case(&ctx, &str, NULL, (struct lysp_node**)&cs));
+    assert_int_equal(LY_SUCCESS, parse_case(&ctx, &in, NULL, (struct lysp_node**)&cs));
     assert_non_null(cs);
     assert_int_equal(LYS_CASE, cs->nodetype);
     assert_string_equal("cs", cs->name);
@@ -1777,8 +1758,8 @@ test_case(void **state)
     lysp_node_free(ctx.ctx, (struct lysp_node*)cs); cs = NULL;
 
     /* invalid content */
-    str = "cs {config true} ...";
-    assert_int_equal(LY_EVALID, parse_case(&ctx, &str, NULL, (struct lysp_node**)&cs));
+    in.current = "cs {config true} ...";
+    assert_int_equal(LY_EVALID, parse_case(&ctx, &in, NULL, (struct lysp_node**)&cs));
     logbuf_assert("Invalid keyword \"config\" as a child of \"case\". Line number 1.");
     lysp_node_free(ctx.ctx, (struct lysp_node*)cs); cs = NULL;
 
@@ -1793,7 +1774,7 @@ test_any(void **state, enum ly_stmt kw)
 
     struct lys_yang_parser_ctx ctx = {0};
     struct lysp_node_anydata *any = NULL;
-    const char *str;
+    struct ly_in in = {0};
 
     ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
@@ -1808,8 +1789,8 @@ test_any(void **state, enum ly_stmt kw)
 
     /* invalid cardinality */
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
-    str = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
-    assert_int_equal(LY_EVALID, parse_any(&ctx, &str, kw, NULL, (struct lysp_node**)&any)); \
+    in.current = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
+    assert_int_equal(LY_EVALID, parse_any(&ctx, &in, kw, NULL, (struct lysp_node**)&any)); \
     logbuf_assert("Duplicate keyword \""MEMBER"\". Line number 1."); \
     lysp_node_free(ctx.ctx, (struct lysp_node*)any); any = NULL;
 
@@ -1822,8 +1803,8 @@ test_any(void **state, enum ly_stmt kw)
 #undef TEST_DUP
 
     /* full content */
-    str = "any {config true;description test;if-feature f;mandatory true;must 'expr';reference test;status current;when true;m:ext;} ...";
-    assert_int_equal(LY_SUCCESS, parse_any(&ctx, &str, kw, NULL, (struct lysp_node**)&any));
+    in.current = "any {config true;description test;if-feature f;mandatory true;must 'expr';reference test;status current;when true;m:ext;} ...";
+    assert_int_equal(LY_SUCCESS, parse_any(&ctx, &in, kw, NULL, (struct lysp_node**)&any));
     assert_non_null(any);
     assert_int_equal(kw == LY_STMT_ANYDATA ? LYS_ANYDATA : LYS_ANYXML, any->nodetype);
     assert_string_equal("any", any->name);
@@ -1861,7 +1842,7 @@ test_grouping(void **state)
 
     struct lys_yang_parser_ctx ctx = {0};
     struct lysp_grp *grp = NULL;
-    const char *str;
+    struct ly_in in = {0};
 
     ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
@@ -1872,8 +1853,8 @@ test_grouping(void **state)
 
     /* invalid cardinality */
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
-    str = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
-    assert_int_equal(LY_EVALID, parse_grouping(&ctx, &str, NULL, &grp)); \
+    in.current = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
+    assert_int_equal(LY_EVALID, parse_grouping(&ctx, &in, NULL, &grp)); \
     logbuf_assert("Duplicate keyword \""MEMBER"\". Line number 1."); \
     FREE_ARRAY(ctx.ctx, grp, lysp_grp_free); grp = NULL;
 
@@ -1883,9 +1864,9 @@ test_grouping(void **state)
 #undef TEST_DUP
 
     /* full content */
-    str = "grp {action x;anydata any;anyxml anyxml; choice ch;container c;description test;grouping g;leaf l {type string;}"
+    in.current = "grp {action x;anydata any;anyxml anyxml; choice ch;container c;description test;grouping g;leaf l {type string;}"
           "leaf-list ll {type string;} list li;notification not;reference test;status current;typedef t {type int8;}uses g;m:ext;} ...";
-    assert_int_equal(LY_SUCCESS, parse_grouping(&ctx, &str, NULL, &grp));
+    assert_int_equal(LY_SUCCESS, parse_grouping(&ctx, &in, NULL, &grp));
     assert_non_null(grp);
     assert_int_equal(LYS_GROUPING, grp->nodetype);
     assert_string_equal("grp", grp->name);
@@ -1898,13 +1879,13 @@ test_grouping(void **state)
     FREE_ARRAY(ctx.ctx, grp, lysp_grp_free); grp = NULL;
 
     /* invalid content */
-    str = "grp {config true} ...";
-    assert_int_equal(LY_EVALID, parse_grouping(&ctx, &str, NULL, &grp));
+    in.current = "grp {config true} ...";
+    assert_int_equal(LY_EVALID, parse_grouping(&ctx, &in, NULL, &grp));
     logbuf_assert("Invalid keyword \"config\" as a child of \"grouping\". Line number 1.");
     FREE_ARRAY(ctx.ctx, grp, lysp_grp_free); grp = NULL;
 
-    str = "grp {must 'expr'} ...";
-    assert_int_equal(LY_EVALID, parse_grouping(&ctx, &str, NULL, &grp));
+    in.current = "grp {must 'expr'} ...";
+    assert_int_equal(LY_EVALID, parse_grouping(&ctx, &in, NULL, &grp));
     logbuf_assert("Invalid keyword \"must\" as a child of \"grouping\". Line number 1.");
     FREE_ARRAY(ctx.ctx, grp, lysp_grp_free); grp = NULL;
 
@@ -1920,7 +1901,7 @@ test_action(void **state)
     struct lys_yang_parser_ctx ctx = {0};
     struct lysp_action *rpcs = NULL;
     struct lysp_node_container *c = NULL;
-    const char *str;
+    struct ly_in in = {0};
 
     ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
@@ -1931,8 +1912,8 @@ test_action(void **state)
 
     /* invalid cardinality */
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
-    str = "func {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
-    assert_int_equal(LY_EVALID, parse_action(&ctx, &str, NULL, &rpcs)); \
+    in.current = "func {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
+    assert_int_equal(LY_EVALID, parse_action(&ctx, &in, NULL, &rpcs)); \
     logbuf_assert("Duplicate keyword \""MEMBER"\". Line number 1."); \
     FREE_ARRAY(ctx.ctx, rpcs, lysp_action_free); rpcs = NULL;
 
@@ -1944,14 +1925,14 @@ test_action(void **state)
 #undef TEST_DUP
 
     /* full content */
-    str = "top;";
-    assert_int_equal(LY_SUCCESS, parse_container(&ctx, &str, NULL, (struct lysp_node**)&c));
-    str = "func {description test;grouping grp;if-feature f;reference test;status current;typedef mytype {type int8;} m:ext;"
+    in.current = "top;";
+    assert_int_equal(LY_SUCCESS, parse_container(&ctx, &in, NULL, (struct lysp_node**)&c));
+    in.current = "func {description test;grouping grp;if-feature f;reference test;status current;typedef mytype {type int8;} m:ext;"
           "input {anydata a1; anyxml a2; choice ch; container c; grouping grp; leaf l {type int8;} leaf-list ll {type int8;}"
           " list li; must 1; typedef mytypei {type int8;} uses grp; m:ext;}"
           "output {anydata a1; anyxml a2; choice ch; container c; grouping grp; leaf l {type int8;} leaf-list ll {type int8;}"
           " list li; must 1; typedef mytypeo {type int8;} uses grp; m:ext;}} ...";
-    assert_int_equal(LY_SUCCESS, parse_action(&ctx, &str, (struct lysp_node*)c, &rpcs));
+    assert_int_equal(LY_SUCCESS, parse_action(&ctx, &in, (struct lysp_node*)c, &rpcs));
     assert_non_null(rpcs);
     assert_int_equal(LYS_ACTION, rpcs->nodetype);
     assert_string_equal("func", rpcs->name);
@@ -1981,8 +1962,8 @@ test_action(void **state)
     FREE_ARRAY(ctx.ctx, rpcs, lysp_action_free); rpcs = NULL;
 
     /* invalid content */
-    str = "func {config true} ...";
-    assert_int_equal(LY_EVALID, parse_action(&ctx, &str, NULL, &rpcs));
+    in.current = "func {config true} ...";
+    assert_int_equal(LY_EVALID, parse_action(&ctx, &in, NULL, &rpcs));
     logbuf_assert("Invalid keyword \"config\" as a child of \"rpc\". Line number 1.");
     FREE_ARRAY(ctx.ctx, rpcs, lysp_action_free); rpcs = NULL;
 
@@ -1999,7 +1980,7 @@ test_notification(void **state)
     struct lys_yang_parser_ctx ctx = {0};
     struct lysp_notif *notifs = NULL;
     struct lysp_node_container *c = NULL;
-    const char *str;
+    struct ly_in in = {0};
 
     ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
@@ -2010,8 +1991,8 @@ test_notification(void **state)
 
     /* invalid cardinality */
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
-    str = "func {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
-    assert_int_equal(LY_EVALID, parse_notif(&ctx, &str, NULL, &notifs)); \
+    in.current = "func {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
+    assert_int_equal(LY_EVALID, parse_notif(&ctx, &in, NULL, &notifs)); \
     logbuf_assert("Duplicate keyword \""MEMBER"\". Line number 1."); \
     FREE_ARRAY(ctx.ctx, notifs, lysp_notif_free); notifs = NULL;
 
@@ -2021,11 +2002,11 @@ test_notification(void **state)
 #undef TEST_DUP
 
     /* full content */
-    str = "top;";
-    assert_int_equal(LY_SUCCESS, parse_container(&ctx, &str, NULL, (struct lysp_node**)&c));
-    str = "ntf {anydata a1; anyxml a2; choice ch; container c; description test; grouping grp; if-feature f; leaf l {type int8;}"
+    in.current = "top;";
+    assert_int_equal(LY_SUCCESS, parse_container(&ctx, &in, NULL, (struct lysp_node**)&c));
+    in.current = "ntf {anydata a1; anyxml a2; choice ch; container c; description test; grouping grp; if-feature f; leaf l {type int8;}"
           "leaf-list ll {type int8;} list li; must 1; reference test; status current; typedef mytype {type int8;} uses grp; m:ext;}";
-    assert_int_equal(LY_SUCCESS, parse_notif(&ctx, &str, (struct lysp_node*)c, &notifs));
+    assert_int_equal(LY_SUCCESS, parse_notif(&ctx, &in, (struct lysp_node*)c, &notifs));
     assert_non_null(notifs);
     assert_int_equal(LYS_NOTIF, notifs->nodetype);
     assert_string_equal("ntf", notifs->name);
@@ -2043,8 +2024,8 @@ test_notification(void **state)
     FREE_ARRAY(ctx.ctx, notifs, lysp_notif_free); notifs = NULL;
 
     /* invalid content */
-    str = "ntf {config true} ...";
-    assert_int_equal(LY_EVALID, parse_notif(&ctx, &str, NULL, &notifs));
+    in.current = "ntf {config true} ...";
+    assert_int_equal(LY_EVALID, parse_notif(&ctx, &in, NULL, &notifs));
     logbuf_assert("Invalid keyword \"config\" as a child of \"notification\". Line number 1.");
     FREE_ARRAY(ctx.ctx, notifs, lysp_notif_free); notifs = NULL;
 
@@ -2060,7 +2041,7 @@ test_uses(void **state)
 
     struct lys_yang_parser_ctx ctx = {0};
     struct lysp_node_uses *u = NULL;
-    const char *str;
+    struct ly_in in = {0};
 
     ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
@@ -2071,8 +2052,8 @@ test_uses(void **state)
 
     /* invalid cardinality */
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
-    str = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
-    assert_int_equal(LY_EVALID, parse_uses(&ctx, &str, NULL, (struct lysp_node**)&u)); \
+    in.current = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
+    assert_int_equal(LY_EVALID, parse_uses(&ctx, &in, NULL, (struct lysp_node**)&u)); \
     logbuf_assert("Duplicate keyword \""MEMBER"\". Line number 1."); \
     lysp_node_free(ctx.ctx, (struct lysp_node*)u); u = NULL;
 
@@ -2083,8 +2064,8 @@ test_uses(void **state)
 #undef TEST_DUP
 
     /* full content */
-    str = "grpref {augment some/node;description test;if-feature f;reference test;refine some/other/node;status current;when true;m:ext;} ...";
-    assert_int_equal(LY_SUCCESS, parse_uses(&ctx, &str, NULL, (struct lysp_node**)&u));
+    in.current = "grpref {augment some/node;description test;if-feature f;reference test;refine some/other/node;status current;when true;m:ext;} ...";
+    assert_int_equal(LY_SUCCESS, parse_uses(&ctx, &in, NULL, (struct lysp_node**)&u));
     assert_non_null(u);
     assert_int_equal(LYS_USES, u->nodetype);
     assert_string_equal("grpref", u->name);
@@ -2112,7 +2093,7 @@ test_augment(void **state)
 
     struct lys_yang_parser_ctx ctx = {0};
     struct lysp_augment *a = NULL;
-    const char *str;
+    struct ly_in in = {0};
 
     ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
@@ -2123,8 +2104,8 @@ test_augment(void **state)
 
     /* invalid cardinality */
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
-    str = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
-    assert_int_equal(LY_EVALID, parse_augment(&ctx, &str, NULL, &a)); \
+    in.current = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
+    assert_int_equal(LY_EVALID, parse_augment(&ctx, &in, NULL, &a)); \
     logbuf_assert("Duplicate keyword \""MEMBER"\". Line number 1."); \
     FREE_ARRAY(ctx.ctx, a, lysp_augment_free); a = NULL;
 
@@ -2135,9 +2116,9 @@ test_augment(void **state)
 #undef TEST_DUP
 
     /* full content */
-    str = "/target/nodeid {action x; anydata any;anyxml anyxml; case cs; choice ch;container c;description test;if-feature f;leaf l {type string;}"
+    in.current = "/target/nodeid {action x; anydata any;anyxml anyxml; case cs; choice ch;container c;description test;if-feature f;leaf l {type string;}"
           "leaf-list ll {type string;} list li;notification not;reference test;status current;uses g;when true;m:ext;} ...";
-    assert_int_equal(LY_SUCCESS, parse_augment(&ctx, &str, NULL, &a));
+    assert_int_equal(LY_SUCCESS, parse_augment(&ctx, &in, NULL, &a));
     assert_non_null(a);
     assert_int_equal(LYS_AUGMENT, a->nodetype);
     assert_string_equal("/target/nodeid", a->nodeid);
@@ -2161,7 +2142,7 @@ test_when(void **state)
 
     struct lys_yang_parser_ctx ctx = {0};
     struct lysp_when *w = NULL;
-    const char *str;
+    struct ly_in in = {0};
 
     ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
@@ -2172,8 +2153,8 @@ test_when(void **state)
 
     /* invalid cardinality */
 #define TEST_DUP(MEMBER, VALUE1, VALUE2) \
-    str = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
-    assert_int_equal(LY_EVALID, parse_when(&ctx, &str, &w)); \
+    in.current = "l {" MEMBER" "VALUE1";"MEMBER" "VALUE2";} ..."; \
+    assert_int_equal(LY_EVALID, parse_when(&ctx, &in, &w)); \
     logbuf_assert("Duplicate keyword \""MEMBER"\". Line number 1."); \
     FREE_MEMBER(ctx.ctx, w, lysp_when_free); w = NULL;
 
@@ -2182,8 +2163,8 @@ test_when(void **state)
 #undef TEST_DUP
 
     /* full content */
-    str = "expression {description test;reference test;m:ext;} ...";
-    assert_int_equal(LY_SUCCESS, parse_when(&ctx, &str, &w));
+    in.current = "expression {description test;reference test;m:ext;} ...";
+    assert_int_equal(LY_SUCCESS, parse_when(&ctx, &in, &w));
     assert_non_null(w);
     assert_string_equal("expression", w->cond);
     assert_string_equal("test", w->dsc);
@@ -2192,8 +2173,8 @@ test_when(void **state)
     FREE_MEMBER(ctx.ctx, w, lysp_when_free); w = NULL;
 
     /* empty condition */
-    str = "\"\";";
-    assert_int_equal(LY_SUCCESS, parse_when(&ctx, &str, &w));
+    in.current = "\"\";";
+    assert_int_equal(LY_SUCCESS, parse_when(&ctx, &in, &w));
     logbuf_assert("Empty argument of when statement does not make sense.");
     assert_non_null(w);
     assert_string_equal("", w->cond);
@@ -2208,6 +2189,7 @@ test_value(void **state)
 {
     *state = test_value;
     struct lys_yang_parser_ctx ctx;
+    struct ly_in in = {0};
 
     ctx.format = LYS_IN_YANG;
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx.ctx));
@@ -2218,13 +2200,13 @@ test_value(void **state)
     int64_t val = 0;
     uint16_t flags = 0;
 
-    const char *data = "-0;";
-    assert_int_equal(parse_type_enum_value_pos(&ctx, &data, LY_STMT_VALUE, &val, &flags, NULL), LY_SUCCESS);
+    in.current = "-0;";
+    assert_int_equal(parse_type_enum_value_pos(&ctx, &in, LY_STMT_VALUE, &val, &flags, NULL), LY_SUCCESS);
     assert_int_equal(val, 0);
 
-    data = "-0;";
+    in.current = "-0;";
     flags = 0;
-    assert_int_equal(parse_type_enum_value_pos(&ctx, &data, LY_STMT_POSITION, &val, &flags, NULL), LY_EVALID);
+    assert_int_equal(parse_type_enum_value_pos(&ctx, &in, LY_STMT_POSITION, &val, &flags, NULL), LY_EVALID);
     logbuf_assert("Invalid value \"-0\" of \"position\". Line number 1.");
 
     *state = NULL;

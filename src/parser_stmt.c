@@ -23,6 +23,7 @@
 #include "dict.h"
 #include "log.h"
 #include "path.h"
+#include "parser.h"
 #include "parser_schema.h"
 #include "tree.h"
 #include "tree_schema.h"
@@ -97,7 +98,7 @@ lysp_stmt_ext(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, LYEXT_SU
  * description, etc...
  *
  * @param[in] ctx yang parser context for logging.
- * @param[in,out] data Data to read from, always moved to currently handled character.
+ * @param[in] stmt Statement structure.
  * @param[in] substmt Type of this substatement.
  * @param[in] substmt_index Index of this substatement.
  * @param[in,out] value Place to store the parsed value.
@@ -121,8 +122,10 @@ lysp_stmt_text_field(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, L
     *value = lydict_insert(PARSER_CTX(ctx), stmt->arg, 0);
 
     for (child = stmt->child; child; child = child->next) {
-        const char *s = child->stmt;
-        enum ly_stmt kw = lysp_match_kw(NULL, &s);
+        struct ly_in *in;
+        LY_CHECK_RET(ly_in_new_memory(child->stmt, &in));
+        enum ly_stmt kw = lysp_match_kw(NULL, in);
+        ly_in_free(in, 0);
 
         switch (kw) {
         case LY_STMT_EXTENSION_INSTANCE:
@@ -149,8 +152,8 @@ lysp_stmt_text_field(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, L
  * @return LY_ERR values.
  */
 static LY_ERR
-lysp_stmt_text_fields(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, LYEXT_SUBSTMT substmt, const char ***texts, enum yang_arg arg,
-                      struct lysp_ext_instance **exts)
+lysp_stmt_text_fields(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, LYEXT_SUBSTMT substmt,
+                      const char ***texts, enum yang_arg arg, struct lysp_ext_instance **exts)
 {
     const char **item;
     const struct lysp_stmt *child;
@@ -162,8 +165,10 @@ lysp_stmt_text_fields(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, 
     *item = lydict_insert(PARSER_CTX(ctx), stmt->arg, 0);
 
     for (child = stmt->child; child; child = child->next) {
-        const char *s = child->stmt;
-        enum ly_stmt kw = lysp_match_kw(NULL, &s);
+        struct ly_in *in;
+        LY_CHECK_RET(ly_in_new_memory(child->stmt, &in));
+        enum ly_stmt kw = lysp_match_kw(NULL, in);
+        ly_in_free(in, 0);
 
         switch (kw) {
         case LY_STMT_EXTENSION_INSTANCE:
@@ -212,8 +217,10 @@ lysp_stmt_status(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, uint1
     }
 
     for (child = stmt->child; child; child = child->next) {
-        const char *s = child->stmt;
-        enum ly_stmt kw = lysp_match_kw(NULL, &s);
+        struct ly_in *in;
+        LY_CHECK_RET(ly_in_new_memory(child->stmt, &in));
+        enum ly_stmt kw = lysp_match_kw(NULL, in);
+        ly_in_free(in, 0);
 
         switch (kw) {
         case LY_STMT_EXTENSION_INSTANCE:
@@ -246,8 +253,10 @@ lysp_stmt_restr(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, enum l
     restr->arg = lydict_insert(PARSER_CTX(ctx), stmt->arg, 0);
 
     for (child = stmt->child; child; child = child->next) {
-        const char *s = child->stmt;
-        enum ly_stmt kw = lysp_match_kw(NULL, &s);
+        struct ly_in *in;
+        LY_CHECK_RET(ly_in_new_memory(child->stmt, &in));
+        enum ly_stmt kw = lysp_match_kw(NULL, in);
+        ly_in_free(in, 0);
 
         switch (kw) {
         case LY_STMT_DESCRIPTION:
@@ -358,8 +367,10 @@ lysp_stmt_type_enum_value_pos(struct lys_parser_ctx *ctx, const struct lysp_stmt
     }
 
     for (child = stmt->child; child; child = child->next) {
-        const char *s = child->stmt;
-        enum ly_stmt kw = lysp_match_kw(NULL, &s);
+        struct ly_in *in;
+        LY_CHECK_RET(ly_in_new_memory(child->stmt, &in));
+        enum ly_stmt kw = lysp_match_kw(NULL, in);
+        ly_in_free(in, 0);
 
         switch (kw) {
         case LY_STMT_EXTENSION_INSTANCE:
@@ -404,8 +415,10 @@ lysp_stmt_type_enum(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, en
     CHECK_UNIQUENESS(ctx, *enums, name, ly_stmt2str(enum_kw), enm->name);
 
     for (child = stmt->child; child; child = child->next) {
-        const char *s = child->stmt;
-        enum ly_stmt kw = lysp_match_kw(NULL, &s);
+        struct ly_in *in;
+        LY_CHECK_RET(ly_in_new_memory(child->stmt, &in));
+        enum ly_stmt kw = lysp_match_kw(NULL, in);
+        ly_in_free(in, 0);
 
         switch (kw) {
         case LY_STMT_DESCRIPTION:
@@ -486,8 +499,10 @@ lysp_stmt_type_fracdigits(struct lys_parser_ctx *ctx, const struct lysp_stmt *st
     *fracdig = num;
 
     for (child = stmt->child; child; child = child->next) {
-        const char *s = child->stmt;
-        enum ly_stmt kw = lysp_match_kw(NULL, &s);
+        struct ly_in *in;
+        LY_CHECK_RET(ly_in_new_memory(child->stmt, &in));
+        enum ly_stmt kw = lysp_match_kw(NULL, in);
+        ly_in_free(in, 0);
 
         switch (kw) {
         case LY_STMT_EXTENSION_INSTANCE:
@@ -535,8 +550,10 @@ lysp_stmt_type_reqinstance(struct lys_parser_ctx *ctx, const struct lysp_stmt *s
     }
 
     for (child = stmt->child; child; child = child->next) {
-        const char *s = child->stmt;
-        enum ly_stmt kw = lysp_match_kw(NULL, &s);
+        struct ly_in *in;
+        LY_CHECK_RET(ly_in_new_memory(child->stmt, &in));
+        enum ly_stmt kw = lysp_match_kw(NULL, in);
+        ly_in_free(in, 0);
 
         switch (kw) {
         case LY_STMT_EXTENSION_INSTANCE:
@@ -590,8 +607,10 @@ lysp_stmt_type_pattern_modifier(struct lys_parser_ctx *ctx, const struct lysp_st
     *pat = lydict_insert_zc(PARSER_CTX(ctx), buf);
 
     for (child = stmt->child; child; child = child->next) {
-        const char *s = child->stmt;
-        enum ly_stmt kw = lysp_match_kw(NULL, &s);
+        struct ly_in *in;
+        LY_CHECK_RET(ly_in_new_memory(child->stmt, &in));
+        enum ly_stmt kw = lysp_match_kw(NULL, in);
+        ly_in_free(in, 0);
 
         switch (kw) {
         case LY_STMT_EXTENSION_INSTANCE:
@@ -635,8 +654,10 @@ lysp_stmt_type_pattern(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt,
     restr->arg = lydict_insert_zc(PARSER_CTX(ctx), buf);
 
     for (child = stmt->child; child; child = child->next) {
-        const char *s = child->stmt;
-        enum ly_stmt kw = lysp_match_kw(NULL, &s);
+        struct ly_in *in;
+        LY_CHECK_RET(ly_in_new_memory(child->stmt, &in));
+        enum ly_stmt kw = lysp_match_kw(NULL, in);
+        ly_in_free(in, 0);
 
         switch (kw) {
         case LY_STMT_DESCRIPTION:
@@ -690,8 +711,10 @@ lysp_stmt_type(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, struct 
     type->name = lydict_insert(PARSER_CTX(ctx), stmt->arg, 0);
 
     for (child = stmt->child; child; child = child->next) {
-        const char *s = child->stmt;
-        enum ly_stmt kw = lysp_match_kw(NULL, &s);
+        struct ly_in *in;
+        LY_CHECK_RET(ly_in_new_memory(child->stmt, &in));
+        enum ly_stmt kw = lysp_match_kw(NULL, in);
+        ly_in_free(in, 0);
 
         switch (kw) {
         case LY_STMT_BASE:

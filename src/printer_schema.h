@@ -66,10 +66,9 @@ typedef enum {
  * @param[in] format Output format.
  * @param[in] line_length Maximum characters to be printed on a line, 0 for unlimited. Only for #LYS_OUT_TREE printer.
  * @param[in] options Schema output options (see @ref schemaprinterflags).
- * @return Number of printed bytes in case of success.
- * @return Negative value failure (absolute value corresponds to LY_ERR values).
+ * @return LY_ERR value.
  */
-ssize_t lys_print(struct ly_out *out, const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options);
+LY_ERR lys_print(struct ly_out *out, const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options);
 
 /**
  * @brief Print schema tree in the specified format into a memory block.
@@ -157,10 +156,9 @@ LY_ERR lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t coun
  * @param[in] format Output format.
  * @param[in] line_length Maximum characters to be printed on a line, 0 for unlimited. Only for #LYS_OUT_TREE printer.
  * @param[in] options Schema output options (see @ref schemaprinterflags).
- * @return Number of printed bytes in case of success.
- * @return Negative value failure (absolute value corresponds to LY_ERR values).
+ * @return LY_ERR value.
  */
-ssize_t lys_print_node(struct ly_out *out, const struct lysc_node *node, LYS_OUTFORMAT format, int line_length, int options);
+LY_ERR lys_print_node(struct ly_out *out, const struct lysc_node *node, LYS_OUTFORMAT format, int line_length, int options);
 
 /** @} schematree */
 

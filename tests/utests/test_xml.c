@@ -24,8 +24,10 @@
 #include <stdio.h>
 #include <string.h>
 
-#include "xml.h"
 #include "context.h"
+#include "parser.h"
+#include "parser_internal.h"
+#include "xml.h"
 
 LY_ERR lyxml_ns_add(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_len, char *uri);
 LY_ERR lyxml_ns_rm(struct lyxml_ctx *xmlctx);
@@ -91,39 +93,50 @@ static void
 test_element(void **state)
 {
     struct lyxml_ctx *xmlctx;
+    struct ly_in *in;
     const char *str;
 
     /* empty */
     str = "";
-    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, str, &xmlctx));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
+    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, in, &xmlctx));
     assert_int_equal(LYXML_END, xmlctx->status);
-    assert_true(xmlctx->input[0] == '\0');
     lyxml_ctx_free(xmlctx);
+    ly_in_free(in, 0);
 
     /* end element */
     str = "</element>";
-    assert_int_equal(LY_EVALID, lyxml_ctx_new(*state, str, &xmlctx));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
+    assert_int_equal(LY_EVALID, lyxml_ctx_new(*state, in, &xmlctx));
     logbuf_assert("Stray closing element tag (\"element\"). Line number 1.");
+    ly_in_free(in, 0);
 
     /* no element */
     //logbuf_clean();
     str = "no data present";
-    assert_int_equal(LY_EVALID, lyxml_ctx_new(*state, str, &xmlctx));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
+    assert_int_equal(LY_EVALID, lyxml_ctx_new(*state, in, &xmlctx));
     logbuf_assert("Invalid character sequence \"no data present\", expected element tag start ('<'). Line number 1.");
+    ly_in_free(in, 0);
 
     /* not supported DOCTYPE */
     str = "<!DOCTYPE greeting SYSTEM \"hello.dtd\"><greeting/>";
-    assert_int_equal(LY_EVALID, lyxml_ctx_new(*state, str, &xmlctx));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
+    assert_int_equal(LY_EVALID, lyxml_ctx_new(*state, in, &xmlctx));
     logbuf_assert("Document Type Declaration not supported. Line number 1.");
+    ly_in_free(in, 0);
 
     /* invalid XML */
     str = "<!NONSENSE/>";
-    assert_int_equal(LY_EVALID, lyxml_ctx_new(*state, str, &xmlctx));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
+    assert_int_equal(LY_EVALID, lyxml_ctx_new(*state, in, &xmlctx));
     logbuf_assert("Unknown XML section \"<!NONSENSE/>\". Line number 1.");
+    ly_in_free(in, 0);
 
     /* unqualified element */
     str = "  <  element/>";
-    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, str, &xmlctx));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
+    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, in, &xmlctx));
     assert_int_equal(LYXML_ELEMENT, xmlctx->status);
     assert_null(xmlctx->prefix);
     assert_true(!strncmp("element", xmlctx->name, xmlctx->name_len));
@@ -139,10 +152,12 @@ test_element(void **state)
     assert_int_equal(LY_SUCCESS, lyxml_ctx_next(xmlctx));
     assert_int_equal(LYXML_END, xmlctx->status);
     lyxml_ctx_free(xmlctx);
+    ly_in_free(in, 0);
 
     /* element with attribute */
     str = "  <  element attr=\'x\'/>";
-    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, str, &xmlctx));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
+    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, in, &xmlctx));
     assert_int_equal(LYXML_ELEMENT, xmlctx->status);
     assert_true(!strncmp("element", xmlctx->name, xmlctx->name_len));
     assert_null(xmlctx->prefix);
@@ -168,10 +183,12 @@ test_element(void **state)
     assert_int_equal(LY_SUCCESS, lyxml_ctx_next(xmlctx));
     assert_int_equal(LYXML_END, xmlctx->status);
     lyxml_ctx_free(xmlctx);
+    ly_in_free(in, 0);
 
     /* headers and comments */
     str = "<?xml version=\"1.0\"?>  <!-- comment --> <![CDATA[<greeting>Hello, world!</greeting>]]> <?TEST xxx?> <element/>";
-    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, str, &xmlctx));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
+    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, in, &xmlctx));
     assert_int_equal(LYXML_ELEMENT, xmlctx->status);
     assert_true(!strncmp("element", xmlctx->name, xmlctx->name_len));
     assert_null(xmlctx->prefix);
@@ -186,10 +203,12 @@ test_element(void **state)
     assert_int_equal(LY_SUCCESS, lyxml_ctx_next(xmlctx));
     assert_int_equal(LYXML_END, xmlctx->status);
     lyxml_ctx_free(xmlctx);
+    ly_in_free(in, 0);
 
     /* separate opening and closing tags, neamespaced parsed internally */
     str = "<element xmlns=\"urn\"></element>";
-    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, str, &xmlctx));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
+    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, in, &xmlctx));
     assert_int_equal(LYXML_ELEMENT, xmlctx->status);
     assert_true(!strncmp("element", xmlctx->name, xmlctx->name_len));
     assert_null(xmlctx->prefix);
@@ -207,10 +226,12 @@ test_element(void **state)
     assert_int_equal(LY_SUCCESS, lyxml_ctx_next(xmlctx));
     assert_int_equal(LYXML_END, xmlctx->status);
     lyxml_ctx_free(xmlctx);
+    ly_in_free(in, 0);
 
     /* qualified element */
     str = "  <  yin:element/>";
-    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, str, &xmlctx));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
+    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, in, &xmlctx));
     assert_int_equal(LYXML_ELEMENT, xmlctx->status);
     assert_true(!strncmp("element", xmlctx->name, xmlctx->name_len));
     assert_true(!strncmp("yin", xmlctx->prefix, xmlctx->prefix_len));
@@ -224,10 +245,12 @@ test_element(void **state)
     assert_int_equal(LY_SUCCESS, lyxml_ctx_next(xmlctx));
     assert_int_equal(LYXML_END, xmlctx->status);
     lyxml_ctx_free(xmlctx);
+    ly_in_free(in, 0);
 
     /* non-matching closing tag */
     str = "<yin:element xmlns=\"urn\"></element>";
-    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, str, &xmlctx));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
+    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, in, &xmlctx));
     assert_int_equal(LYXML_ELEMENT, xmlctx->status);
     assert_true(!strncmp("element", xmlctx->name, xmlctx->name_len));
     assert_true(!strncmp("yin", xmlctx->prefix, xmlctx->prefix_len));
@@ -239,18 +262,23 @@ test_element(void **state)
 
     assert_int_equal(LY_EVALID, lyxml_ctx_next(xmlctx));
     logbuf_assert("Opening (\"yin:element\") and closing (\"element\") elements tag mismatch. Line number 1.");
+    lyxml_ctx_free(xmlctx);
+    ly_in_free(in, 0);
 
-    /* just replace closing tag */
-    xmlctx->input = "</yin:element/>";
-    xmlctx->status = LYXML_ELEM_CONTENT;
-    xmlctx->dynamic = 0;
+    /* invalid closing tag */
+    str = "<yin:element xmlns=\"urn\"></yin:element/>";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
+    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, in, &xmlctx));
+    assert_int_equal(LY_SUCCESS, lyxml_ctx_next(xmlctx));
     assert_int_equal(LY_EVALID, lyxml_ctx_next(xmlctx));
     logbuf_assert("Invalid character sequence \"/>\", expected element tag termination ('>'). Line number 1.");
     lyxml_ctx_free(xmlctx);
+    ly_in_free(in, 0);
 
     /* UTF8 characters */
     str = "<𠜎€𠜎Øn:𠜎€𠜎Øn/>";
-    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, str, &xmlctx));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
+    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, in, &xmlctx));
     assert_true(!strncmp("𠜎€𠜎Øn", xmlctx->name, xmlctx->name_len));
     assert_true(!strncmp("𠜎€𠜎Øn", xmlctx->prefix, xmlctx->prefix_len));
 
@@ -263,21 +291,27 @@ test_element(void **state)
     assert_int_equal(LY_SUCCESS, lyxml_ctx_next(xmlctx));
     assert_int_equal(LYXML_END, xmlctx->status);
     lyxml_ctx_free(xmlctx);
+    ly_in_free(in, 0);
 
     /* invalid UTF-8 characters */
     str = "<¢:element>";
-    assert_int_equal(LY_EVALID, lyxml_ctx_new(*state, str, &xmlctx));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
+    assert_int_equal(LY_EVALID, lyxml_ctx_new(*state, in, &xmlctx));
     logbuf_assert("Identifier \"¢:element>\" starts with an invalid character. Line number 1.");
+    ly_in_free(in, 0);
 
     str = "<yin:c⁐element>";
-    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, str, &xmlctx));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
+    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, in, &xmlctx));
     assert_int_equal(LY_EVALID, lyxml_ctx_next(xmlctx));
     logbuf_assert("Invalid character sequence \"⁐element>\", expected element tag end ('>' or '/>') or an attribute. Line number 1.");
     lyxml_ctx_free(xmlctx);
+    ly_in_free(in, 0);
 
     /* mixed content */
     str = "<a>text <b>x</b></a>";
-    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, str, &xmlctx));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
+    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, in, &xmlctx));
     assert_int_equal(LYXML_ELEMENT, xmlctx->status);
     assert_true(!strncmp("a", xmlctx->name, xmlctx->name_len));
     assert_null(xmlctx->prefix);
@@ -304,10 +338,12 @@ test_element(void **state)
     assert_int_equal(LY_SUCCESS, lyxml_ctx_next(xmlctx));
     assert_int_equal(LYXML_END, xmlctx->status);
     lyxml_ctx_free(xmlctx);
+    ly_in_free(in, 0);
 
     /* tag mismatch */
     str = "<a>text</b>";
-    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, str, &xmlctx));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
+    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, in, &xmlctx));
     assert_int_equal(LYXML_ELEMENT, xmlctx->status);
     assert_true(!strncmp("a", xmlctx->name, xmlctx->name_len));
     assert_null(xmlctx->prefix);
@@ -319,6 +355,7 @@ test_element(void **state)
     assert_int_equal(LY_EVALID, lyxml_ctx_next(xmlctx));
     logbuf_assert("Opening (\"a\") and closing (\"b\") elements tag mismatch. Line number 1.");
     lyxml_ctx_free(xmlctx);
+    ly_in_free(in, 0);
 }
 
 static void
@@ -326,24 +363,32 @@ test_attribute(void **state)
 {
     const char *str;
     struct lyxml_ctx *xmlctx;
+    struct ly_in *in;
     struct lyxml_ns *ns;
 
     /* not an attribute */
     str = "<e unknown/>";
-    assert_int_equal(LY_EVALID, lyxml_ctx_new(*state, str, &xmlctx));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
+    assert_int_equal(LY_EVALID, lyxml_ctx_new(*state, in, &xmlctx));
     logbuf_assert("Invalid character sequence \"/>\", expected '='. Line number 1.");
+    ly_in_free(in, 0);
 
     str = "<e xxx=/>";
-    assert_int_equal(LY_EVALID, lyxml_ctx_new(*state, str, &xmlctx));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
+    assert_int_equal(LY_EVALID, lyxml_ctx_new(*state, in, &xmlctx));
     logbuf_assert("Invalid character sequence \"/>\", expected either single or double quotation mark. Line number 1.");
+    ly_in_free(in, 0);
 
     str = "<e xxx\n = yyy/>";
-    assert_int_equal(LY_EVALID, lyxml_ctx_new(*state, str, &xmlctx));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
+    assert_int_equal(LY_EVALID, lyxml_ctx_new(*state, in, &xmlctx));
     logbuf_assert("Invalid character sequence \"yyy/>\", expected either single or double quotation mark. Line number 2.");
+    ly_in_free(in, 0);
 
     /* valid attribute */
     str = "<e attr=\"val\"";
-    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, str, &xmlctx));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
+    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, in, &xmlctx));
     assert_int_equal(LYXML_ELEMENT, xmlctx->status);
     assert_int_equal(LY_SUCCESS, lyxml_ctx_next(xmlctx));
     assert_int_equal(LYXML_ATTRIBUTE, xmlctx->status);
@@ -356,16 +401,19 @@ test_attribute(void **state)
     assert_int_equal(xmlctx->ws_only, 0);
     assert_int_equal(xmlctx->dynamic, 0);
     lyxml_ctx_free(xmlctx);
+    ly_in_free(in, 0);
 
     /* valid namespace with prefix */
     str = "<e xmlns:nc\n = \'urn\'/>";
-    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, str, &xmlctx));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
+    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, in, &xmlctx));
     assert_int_equal(LYXML_ELEMENT, xmlctx->status);
     assert_int_equal(1, xmlctx->ns.count);
     ns = (struct lyxml_ns *)xmlctx->ns.objs[0];
     assert_string_equal(ns->prefix, "nc");
     assert_string_equal(ns->uri, "urn");
     lyxml_ctx_free(xmlctx);
+    ly_in_free(in, 0);
 }
 
 static void
@@ -373,10 +421,12 @@ test_text(void **state)
 {
     const char *str;
     struct lyxml_ctx *xmlctx;
+    struct ly_in *in;
 
     /* empty attribute value */
     str = "<e a=\"\"";
-    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, str, &xmlctx));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
+    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, in, &xmlctx));
     assert_int_equal(LYXML_ELEMENT, xmlctx->status);
     assert_int_equal(LY_SUCCESS, lyxml_ctx_next(xmlctx));
     assert_int_equal(LYXML_ATTRIBUTE, xmlctx->status);
@@ -386,41 +436,51 @@ test_text(void **state)
     assert_true(!strncmp("", xmlctx->value, xmlctx->value_len));
     assert_int_equal(xmlctx->ws_only, 1);
     assert_int_equal(xmlctx->dynamic, 0);
+    ly_in_free(in, 0);
 
     /* empty value but in single quotes */
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory("=\'\'", &in));
+    xmlctx->in = in;
     xmlctx->status = LYXML_ATTRIBUTE;
-    xmlctx->input = "=\'\'";
     assert_int_equal(LY_SUCCESS, lyxml_ctx_next(xmlctx));
     assert_int_equal(LYXML_ATTR_CONTENT, xmlctx->status);
     assert_true(!strncmp("", xmlctx->value, xmlctx->value_len));
     assert_int_equal(xmlctx->ws_only, 1);
     assert_int_equal(xmlctx->dynamic, 0);
+    ly_in_free(in, 0);
 
     /* empty element content - only formating before defining child */
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(">\n  <y>", &in));
+    xmlctx->in = in;
     xmlctx->status = LYXML_ELEMENT;
-    xmlctx->input = ">\n  <y>";
     assert_int_equal(LY_SUCCESS, lyxml_ctx_next(xmlctx));
     assert_int_equal(LYXML_ELEM_CONTENT, xmlctx->status);
     assert_true(!strncmp("\n  ", xmlctx->value, xmlctx->value_len));
     assert_int_equal(xmlctx->ws_only, 1);
     assert_int_equal(xmlctx->dynamic, 0);
+    ly_in_free(in, 0);
 
     /* empty element content is invalid - missing content terminating character < */
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory("", &in));
+    xmlctx->in = in;
     xmlctx->status = LYXML_ELEM_CONTENT;
-    xmlctx->input = "";
     assert_int_equal(LY_EVALID, lyxml_ctx_next(xmlctx));
     logbuf_assert("Unexpected end-of-input. Line number 2.");
+    ly_in_free(in, 0);
 
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory("xxx", &in));
+    xmlctx->in = in;
     xmlctx->status = LYXML_ELEM_CONTENT;
-    xmlctx->input = "xxx";
     assert_int_equal(LY_EVALID, lyxml_ctx_next(xmlctx));
     logbuf_assert("Invalid character sequence \"xxx\", expected element tag start ('<'). Line number 2.");
+    ly_in_free(in, 0);
 
     lyxml_ctx_free(xmlctx);
 
     /* valid strings */
     str = "<a>€𠜎Øn \n&lt;&amp;&quot;&apos;&gt; &#82;&#x4f;&#x4B;</a>";
-    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, str, &xmlctx));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
+    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, in, &xmlctx));
     assert_int_equal(LYXML_ELEMENT, xmlctx->status);
 
     assert_int_equal(LY_SUCCESS, lyxml_ctx_next(xmlctx));
@@ -429,52 +489,69 @@ test_text(void **state)
     assert_int_equal(xmlctx->ws_only, 0);
     assert_int_equal(xmlctx->dynamic, 1);
     free((char *)xmlctx->value);
+    ly_in_free(in, 0);
 
     /* test using n-bytes UTF8 hexadecimal code points */
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory("=\'&#x0024;&#x00A2;&#x20ac;&#x10348;\'", &in));
+    xmlctx->in = in;
     xmlctx->status = LYXML_ATTRIBUTE;
-    xmlctx->input = "=\'&#x0024;&#x00A2;&#x20ac;&#x10348;\'";
     assert_int_equal(LY_SUCCESS, lyxml_ctx_next(xmlctx));
     assert_int_equal(LYXML_ATTR_CONTENT, xmlctx->status);
     assert_true(!strncmp("$¢€𐍈", xmlctx->value, xmlctx->value_len));
     assert_int_equal(xmlctx->ws_only, 0);
     assert_int_equal(xmlctx->dynamic, 1);
     free((char *)xmlctx->value);
+    ly_in_free(in, 0);
 
     /* invalid characters in string */
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory("=\'&#x52\'", &in));
+    xmlctx->in = in;
     xmlctx->status = LYXML_ATTRIBUTE;
-    xmlctx->input = "=\'&#x52\'";
     assert_int_equal(LY_EVALID, lyxml_ctx_next(xmlctx));
     logbuf_assert("Invalid character sequence \"'\", expected ;. Line number 2.");
+    ly_in_free(in, 0);
 
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory("=\"&#82\"", &in));
+    xmlctx->in = in;
     xmlctx->status = LYXML_ATTRIBUTE;
-    xmlctx->input = "=\"&#82\"";
     assert_int_equal(LY_EVALID, lyxml_ctx_next(xmlctx));
     logbuf_assert("Invalid character sequence \"\"\", expected ;. Line number 2.");
+    ly_in_free(in, 0);
 
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory("=\"&nonsense;\"", &in));
+    xmlctx->in = in;
     xmlctx->status = LYXML_ATTRIBUTE;
-    xmlctx->input = "=\"&nonsense;\"";
     assert_int_equal(LY_EVALID, lyxml_ctx_next(xmlctx));
     logbuf_assert("Entity reference \"&nonsense;\" not supported, only predefined references allowed. Line number 2.");
+    ly_in_free(in, 0);
 
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(">&#o122;", &in));
+    xmlctx->in = in;
     xmlctx->status = LYXML_ELEMENT;
-    xmlctx->input = ">&#o122;";
     assert_int_equal(LY_EVALID, lyxml_ctx_next(xmlctx));
     logbuf_assert("Invalid character reference \"&#o122;\". Line number 2.");
+    ly_in_free(in, 0);
 
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory("=\'&#x06;\'", &in));
+    xmlctx->in = in;
     xmlctx->status = LYXML_ATTRIBUTE;
-    xmlctx->input = "=\'&#x06;\'";
     assert_int_equal(LY_EVALID, lyxml_ctx_next(xmlctx));
     logbuf_assert("Invalid character reference \"&#x06;\'\" (0x00000006). Line number 2.");
+    ly_in_free(in, 0);
 
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory("=\'&#xfdd0;\'", &in));
+    xmlctx->in = in;
     xmlctx->status = LYXML_ATTRIBUTE;
-    xmlctx->input = "=\'&#xfdd0;\'";
     assert_int_equal(LY_EVALID, lyxml_ctx_next(xmlctx));
     logbuf_assert("Invalid character reference \"&#xfdd0;\'\" (0x0000fdd0). Line number 2.");
+    ly_in_free(in, 0);
 
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory("=\'&#xffff;\'", &in));
+    xmlctx->in = in;
     xmlctx->status = LYXML_ATTRIBUTE;
-    xmlctx->input = "=\'&#xffff;\'";
     assert_int_equal(LY_EVALID, lyxml_ctx_next(xmlctx));
     logbuf_assert("Invalid character reference \"&#xffff;\'\" (0x0000ffff). Line number 2.");
+    ly_in_free(in, 0);
 
     lyxml_ctx_free(xmlctx);
 }
@@ -484,11 +561,13 @@ test_ns(void **state)
 {
     const char *str;
     struct lyxml_ctx *xmlctx;
+    struct ly_in *in;
     const struct lyxml_ns *ns;
 
     /* opening element1 */
     str = "<element1/>";
-    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, str, &xmlctx));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
+    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, in, &xmlctx));
 
     /* processing namespace definitions */
     assert_int_equal(LY_SUCCESS, lyxml_ns_add(xmlctx, NULL, 0, strdup("urn:default")));
@@ -529,6 +608,7 @@ test_ns(void **state)
     assert_null(lyxml_ns_get(xmlctx, NULL, 0));
 
     lyxml_ctx_free(xmlctx);
+    ly_in_free(in, 0);
 }
 
 static void
@@ -536,10 +616,12 @@ test_ns2(void **state)
 {
     const char *str;
     struct lyxml_ctx *xmlctx;
+    struct ly_in *in;
 
     /* opening element1 */
     str = "<element1/>";
-    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, str, &xmlctx));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
+    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, in, &xmlctx));
 
     /* default namespace defined in parent element1 */
     assert_int_equal(LY_SUCCESS, lyxml_ns_add(xmlctx, NULL, 0, strdup("urn:default")));
@@ -558,59 +640,63 @@ test_ns2(void **state)
     assert_int_equal(0, xmlctx->ns.count);
 
     lyxml_ctx_free(xmlctx);
+    ly_in_free(in, 0);
 }
 
 static void
 test_simple_xml(void **state)
 {
     struct lyxml_ctx *xmlctx;
+    struct ly_in *in;
     const char *test_input = "<elem1 attr1=\"value\"> <elem2 attr2=\"value\" /> </elem1>";
 
-    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, test_input, &xmlctx));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(test_input, &in));
+    assert_int_equal(LY_SUCCESS, lyxml_ctx_new(*state, in, &xmlctx));
     assert_int_equal(LYXML_ELEMENT, xmlctx->status);
-    assert_string_equal(xmlctx->input, "attr1=\"value\"> <elem2 attr2=\"value\" /> </elem1>");
+    assert_string_equal(xmlctx->in->current, "attr1=\"value\"> <elem2 attr2=\"value\" /> </elem1>");
 
     assert_int_equal(LY_SUCCESS, lyxml_ctx_next(xmlctx));
     assert_int_equal(LYXML_ATTRIBUTE, xmlctx->status);
-    assert_string_equal(xmlctx->input, "=\"value\"> <elem2 attr2=\"value\" /> </elem1>");
+    assert_string_equal(xmlctx->in->current, "=\"value\"> <elem2 attr2=\"value\" /> </elem1>");
 
     assert_int_equal(LY_SUCCESS, lyxml_ctx_next(xmlctx));
     assert_int_equal(LYXML_ATTR_CONTENT, xmlctx->status);
-    assert_string_equal(xmlctx->input, "> <elem2 attr2=\"value\" /> </elem1>");
+    assert_string_equal(xmlctx->in->current, "> <elem2 attr2=\"value\" /> </elem1>");
 
     assert_int_equal(LY_SUCCESS, lyxml_ctx_next(xmlctx));
     assert_int_equal(LYXML_ELEM_CONTENT, xmlctx->status);
-    assert_string_equal(xmlctx->input, "<elem2 attr2=\"value\" /> </elem1>");
+    assert_string_equal(xmlctx->in->current, "<elem2 attr2=\"value\" /> </elem1>");
 
     assert_int_equal(LY_SUCCESS, lyxml_ctx_next(xmlctx));
     assert_int_equal(LYXML_ELEMENT, xmlctx->status);
-    assert_string_equal(xmlctx->input, "attr2=\"value\" /> </elem1>");
+    assert_string_equal(xmlctx->in->current, "attr2=\"value\" /> </elem1>");
 
     assert_int_equal(LY_SUCCESS, lyxml_ctx_next(xmlctx));
     assert_int_equal(LYXML_ATTRIBUTE, xmlctx->status);
-    assert_string_equal(xmlctx->input, "=\"value\" /> </elem1>");
+    assert_string_equal(xmlctx->in->current, "=\"value\" /> </elem1>");
 
     assert_int_equal(LY_SUCCESS, lyxml_ctx_next(xmlctx));
     assert_int_equal(LYXML_ATTR_CONTENT, xmlctx->status);
-    assert_string_equal(xmlctx->input, " /> </elem1>");
+    assert_string_equal(xmlctx->in->current, " /> </elem1>");
 
     assert_int_equal(LY_SUCCESS, lyxml_ctx_next(xmlctx));
     assert_int_equal(LYXML_ELEM_CONTENT, xmlctx->status);
-    assert_string_equal(xmlctx->input, "/> </elem1>");
+    assert_string_equal(xmlctx->in->current, "/> </elem1>");
 
     assert_int_equal(LY_SUCCESS, lyxml_ctx_next(xmlctx));
     assert_int_equal(LYXML_ELEM_CLOSE, xmlctx->status);
-    assert_string_equal(xmlctx->input, " </elem1>");
+    assert_string_equal(xmlctx->in->current, " </elem1>");
 
     assert_int_equal(LY_SUCCESS, lyxml_ctx_next(xmlctx));
     assert_int_equal(LYXML_ELEM_CLOSE, xmlctx->status);
-    assert_string_equal(xmlctx->input, "");
+    assert_string_equal(xmlctx->in->current, "");
 
     assert_int_equal(LY_SUCCESS, lyxml_ctx_next(xmlctx));
     assert_int_equal(LYXML_END, xmlctx->status);
-    assert_string_equal(xmlctx->input, "");
+    assert_string_equal(xmlctx->in->current, "");
 
     lyxml_ctx_free(xmlctx);
+    ly_in_free(in, 0);
 }
 
 int main(void)

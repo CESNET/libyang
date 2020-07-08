@@ -27,6 +27,7 @@
 
 #include "common.h"
 #include "hash_table.h"
+#include "parser.h"
 #include "parser_data.h"
 #include "plugins_types.h"
 #include "set.h"
@@ -200,6 +201,7 @@ ly_ctx_new(const char *search_dir, int options, struct ly_ctx **new_ctx)
     char *search_dir_list;
     char *sep, *dir;
     int i;
+    struct ly_in *in = NULL;
     LY_ERR rc = LY_SUCCESS;
 
     LY_CHECK_ARG_RET(NULL, new_ctx, LY_EINVAL);
@@ -248,18 +250,25 @@ ly_ctx_new(const char *search_dir, int options, struct ly_ctx **new_ctx)
     }
     ctx->module_set_id = 1;
 
+    /* create dummy in */
+    rc = ly_in_new_memory(internal_modules[0].data, &in);
+    LY_CHECK_GOTO(rc, error);
+
     /* load internal modules */
     for (i = 0; i < ((options & LY_CTX_NOYANGLIBRARY) ? (LY_INTERNAL_MODS_COUNT - 2) : LY_INTERNAL_MODS_COUNT); i++) {
-        module = (struct lys_module *)lys_parse_mem_module(ctx, internal_modules[i].data, internal_modules[i].format,
+        ly_in_memory(in, internal_modules[i].data);
+        module = (struct lys_module *)lys_parse_mem_module(ctx, in, internal_modules[i].format,
                                                            internal_modules[i].implemented, NULL, NULL);
         LY_CHECK_ERR_GOTO(!module, rc = ly_errcode(ctx), error);
         LY_CHECK_GOTO((rc = lys_compile(&module, 0)), error);
     }
 
+    ly_in_free(in, 0);
     *new_ctx = ctx;
     return rc;
 
 error:
+    ly_in_free(in, 0);
     ly_ctx_destroy(ctx, NULL);
     return rc;
 }

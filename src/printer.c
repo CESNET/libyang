@@ -539,6 +539,7 @@ ly_print(struct ly_out *out, const char *format, ...)
             lseek(out->method.fdstream.fd, 0, SEEK_END);
         }
         out->printed += count;
+        out->func_printed += count;
         return count;
     }
 }
@@ -614,6 +615,7 @@ repeat:
         (*out->method.mem.buf)[out->method.mem.len] = '\0';
 
         out->printed += len;
+        out->func_printed += len;
         return len;
     case LY_OUT_FD:
         written = write(out->method.fd, buf, len);
@@ -621,7 +623,7 @@ repeat:
     case LY_OUT_FDSTREAM:
     case LY_OUT_FILEPATH:
     case LY_OUT_FILE:
-        written =  fwrite(buf, sizeof *buf, len, out->method.f);
+        written = fwrite(buf, sizeof *buf, len, out->method.f);
         break;
     case LY_OUT_CALLBACK:
         written = out->method.clb.func(out->method.clb.arg, buf, len);
@@ -639,7 +641,8 @@ repeat:
         out->status = LY_ESYS;
         return -LY_ESYS;
     } else if ((size_t)written != len) {
-        LOGERR(out->ctx, LY_ESYS, "%s: writing data failed (unable to write %u from %u data).", __func__, len - (size_t)written, len);
+        LOGERR(out->ctx, LY_ESYS, "%s: writing data failed (unable to write %u from %u data).", __func__,
+               len - (size_t)written, len);
         out->status = LY_ESYS;
         return -LY_ESYS;
     } else {
@@ -648,8 +651,15 @@ repeat:
             lseek(out->method.fdstream.fd, 0, SEEK_END);
         }
         out->printed += written;
+        out->func_printed += written;
         return written;
     }
+}
+
+API size_t
+ly_out_printed(const struct ly_out *out)
+{
+    return out->func_printed;
 }
 
 ssize_t
@@ -678,6 +688,7 @@ ly_write_skip(struct ly_out *out, size_t count, size_t *position)
 
         /* update printed bytes counter despite we actually printed just a hole */
         out->printed += count;
+        out->func_printed += count;
         break;
     case LY_OUT_FD:
     case LY_OUT_FDSTREAM:

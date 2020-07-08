@@ -311,7 +311,7 @@ lydxml_data_check_schema(struct lyd_xml_ctx *lydctx, const struct lysc_node **sn
 {
     LY_ERR ret = LY_SUCCESS;
     enum LYXML_PARSER_STATUS prev_status;
-    const char *prev_input, *pname, *pprefix;
+    const char *prev_current, *pname, *pprefix;
     size_t pprefix_len, pname_len;
     struct lyxml_ctx *xmlctx = lydctx->xmlctx;
 
@@ -355,7 +355,7 @@ lydxml_data_check_schema(struct lyd_xml_ctx *lydctx, const struct lysc_node **sn
         pprefix_len = xmlctx->prefix_len;
         pname = xmlctx->name;
         pname_len = xmlctx->name_len;
-        prev_input = xmlctx->input;
+        prev_current = xmlctx->in->current;
         if ((xmlctx->status == LYXML_ELEM_CONTENT) && xmlctx->dynamic) {
             /* it was backed up, do not free */
             xmlctx->dynamic = 0;
@@ -392,7 +392,7 @@ restore:
         xmlctx->prefix_len = pprefix_len;
         xmlctx->name = pname;
         xmlctx->name_len = pname_len;
-        xmlctx->input = prev_input;
+        xmlctx->in->current = prev_current;
     }
 
     return ret;
@@ -676,7 +676,7 @@ cleanup:
 }
 
 LY_ERR
-lyd_parse_xml_data(const struct ly_ctx *ctx, const char *data, int parse_options, int validate_options, struct lyd_node **tree)
+lyd_parse_xml_data(const struct ly_ctx *ctx, struct ly_in *in, int parse_options, int validate_options, struct lyd_node **tree)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_xml_ctx lydctx = {0};
@@ -688,7 +688,7 @@ lyd_parse_xml_data(const struct ly_ctx *ctx, const char *data, int parse_options
     assert(!(validate_options & ~LYD_VALIDATE_OPTS_MASK));
 
     /* init context and tree */
-    LY_CHECK_GOTO(ret = lyxml_ctx_new(ctx, data, &lydctx.xmlctx), cleanup);
+    LY_CHECK_GOTO(ret = lyxml_ctx_new(ctx, in, &lydctx.xmlctx), cleanup);
     lydctx.options = parse_options;
     *tree = NULL;
 
@@ -806,14 +806,14 @@ cleanup:
 }
 
 LY_ERR
-lyd_parse_xml_rpc(const struct ly_ctx *ctx, const char *data, struct lyd_node **tree, struct lyd_node **op)
+lyd_parse_xml_rpc(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node **tree, struct lyd_node **op)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_xml_ctx lydctx = {0};
     struct lyd_node *rpc_e = NULL, *act_e = NULL;
 
     /* init */
-    LY_CHECK_GOTO(ret = lyxml_ctx_new(ctx, data, &lydctx.xmlctx), cleanup);
+    LY_CHECK_GOTO(ret = lyxml_ctx_new(ctx, in, &lydctx.xmlctx), cleanup);
     lydctx.options = LYD_PARSE_ONLY | LYD_PARSE_STRICT;
     lydctx.int_opts = LYD_INTOPT_RPC;
     *tree = NULL;
@@ -990,14 +990,14 @@ cleanup:
 }
 
 LY_ERR
-lyd_parse_xml_notif(const struct ly_ctx *ctx, const char *data, struct lyd_node **tree, struct lyd_node **ntf)
+lyd_parse_xml_notif(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node **tree, struct lyd_node **ntf)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_xml_ctx lydctx = {0};
     struct lyd_node *ntf_e = NULL;
 
     /* init */
-    LY_CHECK_GOTO(ret = lyxml_ctx_new(ctx, data, &lydctx.xmlctx), cleanup);
+    LY_CHECK_GOTO(ret = lyxml_ctx_new(ctx, in, &lydctx.xmlctx), cleanup);
     lydctx.options = LYD_PARSE_ONLY | LYD_PARSE_STRICT;
     lydctx.int_opts = LYD_INTOPT_NOTIF;
     *tree = NULL;
@@ -1053,14 +1053,14 @@ cleanup:
 }
 
 LY_ERR
-lyd_parse_xml_reply(const struct lyd_node *request, const char *data, struct lyd_node **tree, struct lyd_node **op)
+lyd_parse_xml_reply(const struct lyd_node *request, struct ly_in *in, struct lyd_node **tree, struct lyd_node **op)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_xml_ctx lydctx = {0};
     struct lyd_node *rpcr_e = NULL, *iter, *req_op, *rep_op = NULL;
 
     /* init */
-    LY_CHECK_GOTO(ret = lyxml_ctx_new(LYD_NODE_CTX(request), data, &lydctx.xmlctx), cleanup);
+    LY_CHECK_GOTO(ret = lyxml_ctx_new(LYD_NODE_CTX(request), in, &lydctx.xmlctx), cleanup);
     lydctx.options = LYD_PARSE_ONLY | LYD_PARSE_STRICT;
     lydctx.int_opts = LYD_INTOPT_REPLY;
     *tree = NULL;

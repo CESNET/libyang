@@ -97,7 +97,7 @@ struct lyxml_ctx {
 
     const struct ly_ctx *ctx;
     uint64_t line;          /* current line */
-    const char *input;      /* current input pointer */
+    struct ly_in *in;       /* input structure */
     struct ly_set elements; /* list of not-yet-closed elements */
     struct ly_set ns;       /* handled with LY_SET_OPT_USEASLIST */
 };
@@ -106,11 +106,11 @@ struct lyxml_ctx {
  * @brief Create a new XML parser context and start parsing.
  *
  * @param[in] ctx libyang context.
- * @param[in] input XML string data to parse.
+ * @param[in] in Input structure.
  * @param[out] xmlctx New XML context with status ::LYXML_ELEMENT.
  * @return LY_ERR value.
  */
-LY_ERR lyxml_ctx_new(const struct ly_ctx *ctx, const char *input, struct lyxml_ctx **xmlctx);
+LY_ERR lyxml_ctx_new(const struct ly_ctx *ctx, struct ly_in *in, struct lyxml_ctx **xmlctx);
 
 /**
  * @brief Move to the next XML artefact and update parser status.

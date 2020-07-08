@@ -26,6 +26,7 @@
 #include "context.h"
 #include "dict.h"
 #include "path.h"
+#include "parser_internal.h"
 #include "parser_schema.h"
 #include "set.h"
 #include "tree.h"
@@ -57,11 +58,12 @@ const char *const yin_attr_list[] = {
 
 enum ly_stmt
 yin_match_keyword(struct lys_yin_parser_ctx *ctx, const char *name, size_t name_len,
-                  const char *prefix, size_t prefix_len, enum ly_stmt parrent)
+                  const char *prefix, size_t prefix_len, enum ly_stmt parent)
 {
     const char *start = NULL;
     enum ly_stmt kw = LY_STMT_NONE;
     const struct lyxml_ns *ns = NULL;
+    struct ly_in *in;
 
     if (!name || name_len == 0) {
         return LY_STMT_NONE;
@@ -77,12 +79,15 @@ yin_match_keyword(struct lys_yin_parser_ctx *ctx, const char *name, size_t name_
         return LY_STMT_NONE;
     }
 
-    start = name;
-    kw = lysp_match_kw(NULL, &name);
+    LY_CHECK_RET(ly_in_new_memory(name, &in), LY_STMT_NONE);
+    start = in->current;
+    kw = lysp_match_kw(NULL, in);
+    name = in->current;
+    ly_in_free(in, 0);
 
     if (name - start == (long int)name_len) {
         /* this is done because of collision in yang statement value and yang argument mapped to yin element value */
-        if (kw == LY_STMT_VALUE && parrent == LY_STMT_ERROR_MESSAGE) {
+        if (kw == LY_STMT_VALUE && parent == LY_STMT_ERROR_MESSAGE) {
             return LY_STMT_ARG_VALUE;
         }
         return kw;
@@ -3482,7 +3487,8 @@ yin_parse_submod(struct lys_yin_parser_ctx *ctx, struct lysp_submodule *submod)
 }
 
 LY_ERR
-yin_parse_submodule(struct lys_yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, struct lys_parser_ctx *main_ctx, const char *data, struct lysp_submodule **submod)
+yin_parse_submodule(struct lys_yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, struct lys_parser_ctx *main_ctx,
+                    struct ly_in *in, struct lysp_submodule **submod)
 {
     enum ly_stmt kw = LY_STMT_NONE;
     LY_ERR ret = LY_SUCCESS;
@@ -3492,7 +3498,7 @@ yin_parse_submodule(struct lys_yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, str
     *yin_ctx = calloc(1, sizeof **yin_ctx);
     LY_CHECK_ERR_RET(!(*yin_ctx), LOGMEM(ctx), LY_EMEM);
     (*yin_ctx)->format = LYS_IN_YIN;
-    LY_CHECK_RET(lyxml_ctx_new(ctx, data, &(*yin_ctx)->xmlctx));
+    LY_CHECK_RET(lyxml_ctx_new(ctx, in, &(*yin_ctx)->xmlctx));
 
     /* map the typedefs and groupings list from main context to the submodule's context */
     memcpy(&(*yin_ctx)->tpdfs_nodes, &main_ctx->tpdfs_nodes, sizeof main_ctx->tpdfs_nodes);
@@ -3519,12 +3525,12 @@ yin_parse_submodule(struct lys_yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, str
     LY_CHECK_GOTO(ret, cleanup);
 
     /* skip possible trailing whitespaces at end of the input */
-    data = (*yin_ctx)->xmlctx->input;
-    while (*data && isspace(*data)) {
-        data++;
+    while (isspace(in->current[0])) {
+        ly_in_skip(in, 1);
     }
-    if (*data) {
-        LOGVAL_PARSER((struct lys_parser_ctx *)*yin_ctx, LY_VCODE_TRAILING_SUBMOD, 15, data, strlen(data) > 15 ? "..." : "");
+    if (in->current[0]) {
+        LOGVAL_PARSER((struct lys_parser_ctx *)*yin_ctx, LY_VCODE_TRAILING_SUBMOD, 15, in->current,
+                      strlen(in->current) > 15 ? "..." : "");
         ret = LY_EVALID;
         goto cleanup;
     }
@@ -3542,7 +3548,7 @@ cleanup:
 }
 
 LY_ERR
-yin_parse_module(struct lys_yin_parser_ctx **yin_ctx, const char *data, struct lys_module *mod)
+yin_parse_module(struct lys_yin_parser_ctx **yin_ctx, struct ly_in *in, struct lys_module *mod)
 {
     LY_ERR ret = LY_SUCCESS;
     enum ly_stmt kw = LY_STMT_NONE;
@@ -3552,7 +3558,7 @@ yin_parse_module(struct lys_yin_parser_ctx **yin_ctx, const char *data, struct l
     *yin_ctx = calloc(1, sizeof **yin_ctx);
     LY_CHECK_ERR_RET(!(*yin_ctx), LOGMEM(mod->ctx), LY_EMEM);
     (*yin_ctx)->format = LYS_IN_YIN;
-    LY_CHECK_RET(lyxml_ctx_new(mod->ctx, data, &(*yin_ctx)->xmlctx));
+    LY_CHECK_RET(lyxml_ctx_new(mod->ctx, in, &(*yin_ctx)->xmlctx));
 
     /* check module */
     kw = yin_match_keyword(*yin_ctx, (*yin_ctx)->xmlctx->name, (*yin_ctx)->xmlctx->name_len, (*yin_ctx)->xmlctx->prefix,
@@ -3578,12 +3584,12 @@ yin_parse_module(struct lys_yin_parser_ctx **yin_ctx, const char *data, struct l
     LY_CHECK_GOTO(ret, cleanup);
 
     /* skip possible trailing whitespaces at end of the input */
-    data = (*yin_ctx)->xmlctx->input;
-    while (*data && isspace(*data)) {
-        data++;
+    while (isspace(in->current[0])) {
+        ly_in_skip(in, 1);
     }
-    if (*data) {
-        LOGVAL_PARSER((struct lys_parser_ctx *)*yin_ctx, LY_VCODE_TRAILING_MOD, 15, data, strlen(data) > 15 ? "..." : "");
+    if (in->current[0]) {
+        LOGVAL_PARSER((struct lys_parser_ctx *)*yin_ctx, LY_VCODE_TRAILING_MOD, 15, in->current,
+                      strlen(in->current) > 15 ? "..." : "");
         ret = LY_EVALID;
         goto cleanup;
     }

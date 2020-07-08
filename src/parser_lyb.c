@@ -43,7 +43,6 @@
 static void
 lyb_read(uint8_t *buf, size_t count, struct lyd_lyb_ctx *lybctx)
 {
-    int parsed = 0;
     LY_ARRAY_COUNT_TYPE u;
     struct lyd_lyb_subtree *empty;
     size_t to_read;
@@ -72,7 +71,9 @@ lyb_read(uint8_t *buf, size_t count, struct lyd_lyb_ctx *lybctx)
         /* we are actually reading some data, not just finishing another chunk */
         if (to_read) {
             if (buf) {
-                memcpy(buf, lybctx->data + parsed, to_read);
+                ly_in_read(lybctx->in, buf, to_read);
+            } else {
+                ly_in_skip(lybctx->in, to_read);
             }
 
             LY_ARRAY_FOR(lybctx->subtrees, u) {
@@ -85,25 +86,18 @@ lyb_read(uint8_t *buf, size_t count, struct lyd_lyb_ctx *lybctx)
             if (buf) {
                 buf += to_read;
             }
-
-            parsed += to_read;
         }
 
         if (empty) {
             /* read the next chunk meta information */
-            memcpy(meta_buf, lybctx->data + parsed, LYB_META_BYTES);
+            ly_in_read(lybctx->in, meta_buf, LYB_META_BYTES);
             empty->written = meta_buf[0];
             empty->inner_chunks = meta_buf[1];
 
             /* remember whether there is a following chunk or not */
             empty->position = (empty->written == LYB_SIZE_MAX ? 1 : 0);
-
-            parsed += LYB_META_BYTES;
         }
     }
-
-    lybctx->byte_count += parsed;
-    lybctx->data += parsed;
 }
 
 /**
@@ -233,15 +227,13 @@ lyb_read_start_subtree(struct lyd_lyb_ctx *lybctx)
         lybctx->subtree_size = u + LYB_SUBTREE_STEP;
     }
 
-    memcpy(meta_buf, lybctx->data, LYB_META_BYTES);
+    LY_CHECK_RET(ly_in_read(lybctx->in, meta_buf, LYB_META_BYTES));
 
     LY_ARRAY_INCREMENT(lybctx->subtrees);
     LYB_LAST_SUBTREE(lybctx).written = meta_buf[0];
     LYB_LAST_SUBTREE(lybctx).inner_chunks = meta_buf[LYB_SIZE_BYTES];
     LYB_LAST_SUBTREE(lybctx).position = (LYB_LAST_SUBTREE(lybctx).written == LYB_SIZE_MAX ? 1 : 0);
 
-    lybctx->byte_count += LYB_META_BYTES;
-    lybctx->data += LYB_META_BYTES;
     return LY_SUCCESS;
 }
 
@@ -693,13 +685,9 @@ lyb_parse_schema_hash(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparen
 static void
 lyb_skip_subtree(struct lyd_lyb_ctx *lybctx)
 {
-    int parsed;
-
     do {
         /* first skip any meta information inside */
-        parsed = LYB_LAST_SUBTREE(lybctx).inner_chunks * LYB_META_BYTES;
-        lybctx->data += parsed;
-        lybctx->byte_count += parsed;
+        ly_in_skip(lybctx->in, LYB_LAST_SUBTREE(lybctx).inner_chunks * LYB_META_BYTES);
 
         /* then read data */
         lyb_read(NULL, LYB_LAST_SUBTREE(lybctx).written, lybctx);
@@ -1017,7 +1005,8 @@ lyb_parse_header(struct lyd_lyb_ctx *lybctx)
 }
 
 LY_ERR
-lyd_parse_lyb_data(const struct ly_ctx *ctx, const char *data, int parse_options, int validate_options, struct lyd_node **tree, int *parsed_bytes)
+lyd_parse_lyb_data(const struct ly_ctx *ctx, struct ly_in *in, int parse_options, int validate_options,
+                   struct lyd_node **tree)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_lyb_ctx lybctx = {0};
@@ -1027,7 +1016,7 @@ lyd_parse_lyb_data(const struct ly_ctx *ctx, const char *data, int parse_options
 
     *tree = NULL;
 
-    lybctx.data = data;
+    lybctx.in = in;
     lybctx.ctx = ctx;
     lybctx.parse_options = parse_options;
     lybctx.validate_options = validate_options;
@@ -1045,14 +1034,13 @@ lyd_parse_lyb_data(const struct ly_ctx *ctx, const char *data, int parse_options
     LY_CHECK_GOTO(ret, cleanup);
 
     /* read subtree(s) */
-    while (lybctx.data[0]) {
+    while (lybctx.in->current[0]) {
         ret = lyb_parse_subtree_r(&lybctx, NULL, tree);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
     /* read the last zero, parsing finished */
-    ++lybctx.byte_count;
-    ++lybctx.data;
+    ly_in_skip(lybctx.in, 1);
 
     /* TODO validation */
 
@@ -1063,9 +1051,6 @@ cleanup:
     ly_set_erase(&lybctx.unres_meta_type, NULL);
     ly_set_erase(&lybctx.when_check, NULL);
 
-    if (parsed_bytes) {
-        *parsed_bytes = lybctx.byte_count;
-    }
     if (ret) {
         lyd_free_all(*tree);
         *tree = NULL;
@@ -1074,12 +1059,12 @@ cleanup:
 }
 
 LY_ERR
-lyd_parse_lyb_rpc(const struct ly_ctx *ctx, const char *data, struct lyd_node **tree, struct lyd_node **op, int *parsed_bytes)
+lyd_parse_lyb_rpc(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node **tree, struct lyd_node **op)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_lyb_ctx lybctx = {0};
 
-    lybctx.data = data;
+    lybctx.in = in;
     lybctx.ctx = ctx;
     lybctx.parse_options = LYD_PARSE_ONLY | LYD_PARSE_STRICT;
     lybctx.int_opts = LYD_INTOPT_RPC;
@@ -1102,14 +1087,13 @@ lyd_parse_lyb_rpc(const struct ly_ctx *ctx, const char *data, struct lyd_node **
     LY_CHECK_GOTO(ret, cleanup);
 
     /* read subtree(s) */
-    while (lybctx.data[0]) {
+    while (lybctx.in->current[0]) {
         ret = lyb_parse_subtree_r(&lybctx, NULL, tree);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
     /* read the last zero, parsing finished */
-    ++lybctx.byte_count;
-    ++lybctx.data;
+    ly_in_skip(lybctx.in, 1);
 
     /* make sure we have parsed some operation */
     if (!lybctx.op_ntf) {
@@ -1128,9 +1112,6 @@ cleanup:
     LY_ARRAY_FREE(lybctx.models);
     assert(!lybctx.unres_node_type.count && !lybctx.unres_meta_type.count && !lybctx.when_check.count);
 
-    if (parsed_bytes) {
-        *parsed_bytes = lybctx.byte_count;
-    }
     if (ret) {
         lyd_free_all(*tree);
         *tree = NULL;
@@ -1139,12 +1120,12 @@ cleanup:
 }
 
 LY_ERR
-lyd_parse_lyb_notif(const struct ly_ctx *ctx, const char *data, struct lyd_node **tree, struct lyd_node **ntf, int *parsed_bytes)
+lyd_parse_lyb_notif(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node **tree, struct lyd_node **ntf)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_lyb_ctx lybctx = {0};
 
-    lybctx.data = data;
+    lybctx.in = in;
     lybctx.ctx = ctx;
     lybctx.parse_options = LYD_PARSE_ONLY | LYD_PARSE_STRICT;
     lybctx.int_opts = LYD_INTOPT_NOTIF;
@@ -1167,14 +1148,13 @@ lyd_parse_lyb_notif(const struct ly_ctx *ctx, const char *data, struct lyd_node 
     LY_CHECK_GOTO(ret, cleanup);
 
     /* read subtree(s) */
-    while (lybctx.data[0]) {
+    while (lybctx.in->current[0]) {
         ret = lyb_parse_subtree_r(&lybctx, NULL, tree);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
     /* read the last zero, parsing finished */
-    ++lybctx.byte_count;
-    ++lybctx.data;
+    ly_in_skip(lybctx.in, 1);
 
     /* make sure we have parsed some notification */
     if (!lybctx.op_ntf) {
@@ -1193,9 +1173,6 @@ cleanup:
     LY_ARRAY_FREE(lybctx.models);
     assert(!lybctx.unres_node_type.count && !lybctx.unres_meta_type.count && !lybctx.when_check.count);
 
-    if (parsed_bytes) {
-        *parsed_bytes = lybctx.byte_count;
-    }
     if (ret) {
         lyd_free_all(*tree);
         *tree = NULL;
@@ -1204,14 +1181,13 @@ cleanup:
 }
 
 LY_ERR
-lyd_parse_lyb_reply(const struct lyd_node *request, const char *data, struct lyd_node **tree, struct lyd_node **op,
-                    int *parsed_bytes)
+lyd_parse_lyb_reply(const struct lyd_node *request, struct ly_in *in, struct lyd_node **tree, struct lyd_node **op)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_lyb_ctx lybctx = {0};
     struct lyd_node *iter, *req_op, *rep_op = NULL;
 
-    lybctx.data = data;
+    lybctx.in = in;
     lybctx.ctx = LYD_NODE_CTX(request);
     lybctx.parse_options = LYD_PARSE_ONLY | LYD_PARSE_STRICT;
     lybctx.int_opts = LYD_INTOPT_REPLY;
@@ -1251,14 +1227,13 @@ lyd_parse_lyb_reply(const struct lyd_node *request, const char *data, struct lyd
     LY_CHECK_GOTO(ret, cleanup);
 
     /* read subtree(s) */
-    while (lybctx.data[0]) {
+    while (lybctx.in->current[0]) {
         ret = lyb_parse_subtree_r(&lybctx, (struct lyd_node_inner *)rep_op, NULL);
         LY_CHECK_GOTO(ret, cleanup);
     }
 
     /* read the last zero, parsing finished */
-    ++lybctx.byte_count;
-    ++lybctx.data;
+    ly_in_skip(lybctx.in, 1);
 
     if (op) {
         *op = rep_op;
@@ -1273,9 +1248,6 @@ cleanup:
     LY_ARRAY_FREE(lybctx.models);
     assert(!lybctx.unres_node_type.count && !lybctx.unres_meta_type.count && !lybctx.when_check.count);
 
-    if (parsed_bytes) {
-        *parsed_bytes = lybctx.byte_count;
-    }
     if (ret) {
         lyd_free_all(*tree);
         *tree = NULL;
@@ -1296,7 +1268,8 @@ lyd_lyb_data_length(const char *data)
         return -1;
     }
 
-    lybctx.data = data;
+    ret = ly_in_new_memory(data, &lybctx.in);
+    LY_CHECK_GOTO(ret, cleanup);
 
     /* read magic number */
     ret = lyb_parse_magic_number(&lybctx);
@@ -1322,7 +1295,7 @@ lyd_lyb_data_length(const char *data)
         lyb_read(buf, 2, &lybctx);
     }
 
-    while (lybctx.data[0]) {
+    while (lybctx.in->current[0]) {
         /* register a new subtree */
         ret = lyb_read_start_subtree(&lybctx);
         LY_CHECK_GOTO(ret, cleanup);
@@ -1336,10 +1309,12 @@ lyd_lyb_data_length(const char *data)
     }
 
     /* read the last zero, parsing finished */
-    ++lybctx.byte_count;
-    ++lybctx.data;
+    ly_in_skip(lybctx.in, 1);
 
 cleanup:
+    count = lybctx.in->current - lybctx.in->start;
+
+    ly_in_free(lybctx.in, 0);
     LY_ARRAY_FREE(lybctx.subtrees);
-    return ret ? -1 : (signed)lybctx.byte_count;
+    return ret ? -1 : count;
 }

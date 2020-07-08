@@ -46,12 +46,14 @@ struct ly_out {
         } clb;           /**< printer callback for LY_OUT_CALLBACK type */
     } method;            /**< type-specific information about the output */
 
-    char *buffered;      /**< additional buffer for holes, used only for LYB data format */
-    size_t buf_len;      /**< number of used bytes in the additional buffer for holes, used only for LYB data format */
-    size_t buf_size;     /**< allocated size of the buffer for holes, used only for LYB data format */
-    size_t hole_count;   /**< hole counter, used only for LYB data format */
+    /* LYB only */
+    char *buffered;      /**< additional buffer for holes */
+    size_t buf_len;      /**< number of used bytes in the additional buffer for holes */
+    size_t buf_size;     /**< allocated size of the buffer for holes */
+    size_t hole_count;   /**< hole counter */
 
-    size_t printed;      /**< Number of printed bytes */
+    size_t printed;      /**< Total number of printed bytes */
+    size_t func_printed; /**< Number of bytes printed by the last function */
 
     const struct ly_ctx *ctx;   /**< libyang context for error logging */
     LY_ERR status;       /**< current status of the printer */

@@ -767,9 +767,9 @@ lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision,
     check_data.path = filepath;
     check_data.submoduleof = main_name;
     if (main_ctx) {
-        mod = lys_parse_mem_submodule(ctx, in->current, format, main_ctx, lysp_load_module_check, &check_data);
+        mod = lys_parse_mem_submodule(ctx, in, format, main_ctx, lysp_load_module_check, &check_data);
     } else {
-        mod = lys_parse_mem_module(ctx, in->current, format, implement, lysp_load_module_check, &check_data);
+        mod = lys_parse_mem_module(ctx, in, format, implement, lysp_load_module_check, &check_data);
 
     }
     LY_CHECK_ERR_GOTO(!mod, ly_in_free(in, 1);ly_errcode(ctx), cleanup);
@@ -801,6 +801,7 @@ lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, int
     void (*module_data_free)(void *module_data, void *user_data) = NULL;
     struct lysp_load_module_check_data check_data = {0};
     struct lys_module *m = NULL;
+    struct ly_in *in;
 
     assert(mod);
 
@@ -844,10 +845,11 @@ search_clb:
             if (ctx->imp_clb) {
                 if (ctx->imp_clb(name, revision, NULL, NULL, ctx->imp_clb_data,
                                       &format, &module_data, &module_data_free) == LY_SUCCESS) {
+                    LY_CHECK_RET(ly_in_new_memory(module_data, &in));
                     check_data.name = name;
                     check_data.revision = revision;
-                    *mod = lys_parse_mem_module(ctx, module_data, format, implement,
-                                                lysp_load_module_check, &check_data);
+                    *mod = lys_parse_mem_module(ctx, in, format, implement, lysp_load_module_check, &check_data);
+                    ly_in_free(in, 0);
                     if (module_data_free) {
                         module_data_free((void*)module_data, ctx->imp_clb_data);
                     }
@@ -956,6 +958,7 @@ lysp_load_submodule(struct lys_parser_ctx *pctx, struct lysp_module *mod, struct
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
     void (*submodule_data_free)(void *module_data, void *user_data) = NULL;
     struct lysp_load_module_check_data check_data = {0};
+    struct ly_in *in;
 
     /* submodule not present in the context, get the input data and parse it */
     if (!(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
@@ -963,11 +966,12 @@ search_clb:
         if (ctx->imp_clb) {
             if (ctx->imp_clb(mod->mod->name, NULL, inc->name, inc->rev[0] ? inc->rev : NULL, ctx->imp_clb_data,
                                   &format, &submodule_data, &submodule_data_free) == LY_SUCCESS) {
+                LY_CHECK_RET(ly_in_new_memory(submodule_data, &in));
                 check_data.name = inc->name;
                 check_data.revision = inc->rev[0] ? inc->rev : NULL;
                 check_data.submoduleof = mod->mod->name;
-                submod = lys_parse_mem_submodule(ctx, submodule_data, format, pctx,
-                                                 lysp_load_module_check, &check_data);
+                submod = lys_parse_mem_submodule(ctx, in, format, pctx, lysp_load_module_check, &check_data);
+                ly_in_free(in, 0);
                 if (submodule_data_free) {
                     submodule_data_free((void*)submodule_data, ctx->imp_clb_data);
                 }
@@ -1420,26 +1424,26 @@ lysp_find_module(struct ly_ctx *ctx, const struct lysp_module *mod)
 }
 
 enum ly_stmt
-lysp_match_kw(struct lys_yang_parser_ctx *ctx, const char **data)
+lysp_match_kw(struct lys_yang_parser_ctx *ctx, struct ly_in *in)
 {
 /**
- * @brief Move the DATA pointer by COUNT items. Also updates the indent value in yang parser context
+ * @brief Move the INPUT by COUNT items. Also updates the indent value in yang parser context
  * @param[in] CTX yang parser context to update its indent value.
- * @param[in,out] DATA pointer to move
+ * @param[in,out] IN input to move
  * @param[in] COUNT number of items for which the DATA pointer is supposed to move on.
  */
-#define MOVE_IN(CTX, DATA, COUNT) (*(DATA))+=COUNT;if(CTX){(CTX)->indent+=COUNT;}
-#define IF_KW(STR, LEN, STMT) if (!strncmp(*(data), STR, LEN)) {MOVE_IN(ctx, data, LEN);*kw=STMT;}
-#define IF_KW_PREFIX(STR, LEN) if (!strncmp(*(data), STR, LEN)) {MOVE_IN(ctx, data, LEN);
+#define MOVE_IN(CTX, IN, COUNT) ly_in_skip(IN, COUNT);if(CTX){(CTX)->indent+=COUNT;}
+#define IF_KW(STR, LEN, STMT) if (!strncmp(in->current, STR, LEN)) {MOVE_IN(ctx, in, LEN);*kw=STMT;}
+#define IF_KW_PREFIX(STR, LEN) if (!strncmp(in->current, STR, LEN)) {MOVE_IN(ctx, in, LEN);
 #define IF_KW_PREFIX_END }
 
-    const char *start = *data;
+    const char *start = in->current;
     enum ly_stmt result = LY_STMT_NONE;
     enum ly_stmt *kw = &result;
     /* read the keyword itself */
-    switch (**data) {
+    switch (in->current[0]) {
     case 'a':
-        MOVE_IN(ctx, data, 1);
+        MOVE_IN(ctx, in, 1);
         IF_KW("rgument", 7, LY_STMT_ARGUMENT)
         else IF_KW("ugment", 6, LY_STMT_AUGMENT)
         else IF_KW("ction", 5, LY_STMT_ACTION)
@@ -1449,13 +1453,13 @@ lysp_match_kw(struct lys_yang_parser_ctx *ctx, const char **data)
         IF_KW_PREFIX_END
         break;
     case 'b':
-        MOVE_IN(ctx, data, 1);
+        MOVE_IN(ctx, in, 1);
         IF_KW("ase", 3, LY_STMT_BASE)
         else IF_KW("elongs-to", 9, LY_STMT_BELONGS_TO)
         else IF_KW("it", 2, LY_STMT_BIT)
         break;
     case 'c':
-        MOVE_IN(ctx, data, 1);
+        MOVE_IN(ctx, in, 1);
         IF_KW("ase", 3, LY_STMT_CASE)
         else IF_KW("hoice", 5, LY_STMT_CHOICE)
         else IF_KW_PREFIX("on", 2)
@@ -1467,7 +1471,7 @@ lysp_match_kw(struct lys_yang_parser_ctx *ctx, const char **data)
         IF_KW_PREFIX_END
         break;
     case 'd':
-        MOVE_IN(ctx, data, 1);
+        MOVE_IN(ctx, in, 1);
         IF_KW_PREFIX("e", 1)
             IF_KW("fault", 5, LY_STMT_DEFAULT)
             else IF_KW("scription", 9, LY_STMT_DESCRIPTION)
@@ -1478,7 +1482,7 @@ lysp_match_kw(struct lys_yang_parser_ctx *ctx, const char **data)
         IF_KW_PREFIX_END
         break;
     case 'e':
-        MOVE_IN(ctx, data, 1);
+        MOVE_IN(ctx, in, 1);
         IF_KW("num", 3, LY_STMT_ENUM)
         else IF_KW_PREFIX("rror-", 5)
             IF_KW("app-tag", 7, LY_STMT_ERROR_APP_TAG)
@@ -1487,16 +1491,16 @@ lysp_match_kw(struct lys_yang_parser_ctx *ctx, const char **data)
         else IF_KW("xtension", 8, LY_STMT_EXTENSION)
         break;
     case 'f':
-        MOVE_IN(ctx, data, 1);
+        MOVE_IN(ctx, in, 1);
         IF_KW("eature", 6, LY_STMT_FEATURE)
         else IF_KW("raction-digits", 14, LY_STMT_FRACTION_DIGITS)
         break;
     case 'g':
-        MOVE_IN(ctx, data, 1);
+        MOVE_IN(ctx, in, 1);
         IF_KW("rouping", 7, LY_STMT_GROUPING)
         break;
     case 'i':
-        MOVE_IN(ctx, data, 1);
+        MOVE_IN(ctx, in, 1);
         IF_KW("dentity", 7, LY_STMT_IDENTITY)
         else IF_KW("f-feature", 9, LY_STMT_IF_FEATURE)
         else IF_KW("mport", 5, LY_STMT_IMPORT)
@@ -1506,11 +1510,11 @@ lysp_match_kw(struct lys_yang_parser_ctx *ctx, const char **data)
         IF_KW_PREFIX_END
         break;
     case 'k':
-        MOVE_IN(ctx, data, 1);
+        MOVE_IN(ctx, in, 1);
         IF_KW("ey", 2, LY_STMT_KEY)
         break;
     case 'l':
-        MOVE_IN(ctx, data, 1);
+        MOVE_IN(ctx, in, 1);
         IF_KW_PREFIX("e", 1)
             IF_KW("af-list", 7, LY_STMT_LEAF_LIST)
             else IF_KW("af", 2, LY_STMT_LEAF)
@@ -1519,7 +1523,7 @@ lysp_match_kw(struct lys_yang_parser_ctx *ctx, const char **data)
         else IF_KW("ist", 3, LY_STMT_LIST)
         break;
     case 'm':
-        MOVE_IN(ctx, data, 1);
+        MOVE_IN(ctx, in, 1);
         IF_KW_PREFIX("a", 1)
             IF_KW("ndatory", 7, LY_STMT_MANDATORY)
             else IF_KW("x-elements", 10, LY_STMT_MAX_ELEMENTS)
@@ -1532,12 +1536,12 @@ lysp_match_kw(struct lys_yang_parser_ctx *ctx, const char **data)
         IF_KW_PREFIX_END
         break;
     case 'n':
-        MOVE_IN(ctx, data, 1);
+        MOVE_IN(ctx, in, 1);
         IF_KW("amespace", 8, LY_STMT_NAMESPACE)
         else IF_KW("otification", 11, LY_STMT_NOTIFICATION)
         break;
     case 'o':
-        MOVE_IN(ctx, data, 1);
+        MOVE_IN(ctx, in, 1);
         IF_KW_PREFIX("r", 1)
             IF_KW("dered-by", 8, LY_STMT_ORDERED_BY)
             else IF_KW("ganization", 10, LY_STMT_ORGANIZATION)
@@ -1545,7 +1549,7 @@ lysp_match_kw(struct lys_yang_parser_ctx *ctx, const char **data)
         else IF_KW("utput", 5, LY_STMT_OUTPUT)
         break;
     case 'p':
-        MOVE_IN(ctx, data, 1);
+        MOVE_IN(ctx, in, 1);
         IF_KW("ath", 3, LY_STMT_PATH)
         else IF_KW("attern", 6, LY_STMT_PATTERN)
         else IF_KW("osition", 7, LY_STMT_POSITION)
@@ -1555,7 +1559,7 @@ lysp_match_kw(struct lys_yang_parser_ctx *ctx, const char **data)
         IF_KW_PREFIX_END
         break;
     case 'r':
-        MOVE_IN(ctx, data, 1);
+        MOVE_IN(ctx, in, 1);
         IF_KW("ange", 4, LY_STMT_RANGE)
         else IF_KW_PREFIX("e", 1)
             IF_KW_PREFIX("f", 1)
@@ -1569,17 +1573,17 @@ lysp_match_kw(struct lys_yang_parser_ctx *ctx, const char **data)
         else IF_KW("pc", 2, LY_STMT_RPC)
         break;
     case 's':
-        MOVE_IN(ctx, data, 1);
+        MOVE_IN(ctx, in, 1);
         IF_KW("tatus", 5, LY_STMT_STATUS)
         else IF_KW("ubmodule", 8, LY_STMT_SUBMODULE)
         break;
     case 't':
-        MOVE_IN(ctx, data, 1);
+        MOVE_IN(ctx, in, 1);
         IF_KW("ypedef", 6, LY_STMT_TYPEDEF)
         else IF_KW("ype", 3, LY_STMT_TYPE)
         break;
     case 'u':
-        MOVE_IN(ctx, data, 1);
+        MOVE_IN(ctx, in, 1);
         IF_KW_PREFIX("ni", 2)
             IF_KW("que", 3, LY_STMT_UNIQUE)
             else IF_KW("ts", 2, LY_STMT_UNITS)
@@ -1587,39 +1591,39 @@ lysp_match_kw(struct lys_yang_parser_ctx *ctx, const char **data)
         else IF_KW("ses", 3, LY_STMT_USES)
         break;
     case 'v':
-        MOVE_IN(ctx, data, 1);
+        MOVE_IN(ctx, in, 1);
         IF_KW("alue", 4, LY_STMT_VALUE)
         break;
     case 'w':
-        MOVE_IN(ctx, data, 1);
+        MOVE_IN(ctx, in, 1);
         IF_KW("hen", 3, LY_STMT_WHEN)
         break;
     case 'y':
-        MOVE_IN(ctx, data, 1);
+        MOVE_IN(ctx, in, 1);
         IF_KW("ang-version", 11, LY_STMT_YANG_VERSION)
         else IF_KW("in-element", 10, LY_STMT_YIN_ELEMENT)
         break;
     default:
         /* if context is not NULL we are matching keyword from YANG data*/
         if (ctx) {
-            if (**data == ';') {
-                MOVE_IN(ctx, data, 1);
+            if (in->current[0] == ';') {
+                MOVE_IN(ctx, in, 1);
                 *kw = LY_STMT_SYNTAX_SEMICOLON;
-            } else if (**data == '{') {
-                MOVE_IN(ctx, data, 1);
+            } else if (in->current[0] == '{') {
+                MOVE_IN(ctx, in, 1);
                 *kw = LY_STMT_SYNTAX_LEFT_BRACE;
-            } else if (**data == '}') {
-                MOVE_IN(ctx, data, 1);
+            } else if (in->current[0] == '}') {
+                MOVE_IN(ctx, in, 1);
                 *kw = LY_STMT_SYNTAX_RIGHT_BRACE;
             }
         }
         break;
     }
 
-    if ((*kw < LY_STMT_SYNTAX_SEMICOLON) && isalnum(**data)) {
+    if ((*kw < LY_STMT_SYNTAX_SEMICOLON) && isalnum(in->current[0])) {
         /* the keyword is not terminated */
         *kw = LY_STMT_NONE;
-        *data = start;
+        in->current = start;
     }
 
 #undef IF_KW

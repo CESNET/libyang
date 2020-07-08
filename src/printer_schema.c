@@ -24,15 +24,15 @@
 #include "printer_internal.h"
 #include "tree_schema.h"
 
-API ssize_t
+API LY_ERR
 lys_print(struct ly_out *out, const struct lys_module *module, LYS_OUTFORMAT format, int UNUSED(line_length), int options)
 {
     LY_ERR ret;
-    size_t printed_prev;
 
-    LY_CHECK_ARG_RET(NULL, out, module, -LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, out, module, LY_EINVAL);
 
-    printed_prev = out->printed;
+    /* reset number of printed bytes */
+    out->func_printed = 0;
 
     switch (format) {
     case LYS_OUT_YANG:
@@ -58,31 +58,20 @@ lys_print(struct ly_out *out, const struct lys_module *module, LYS_OUTFORMAT for
         break;
     }
 
-    if (ret) {
-        /* error */
-        return (-1) * (signed)ret;
-    } else {
-        /* success */
-        return (ssize_t)(out->printed - printed_prev);
-    }
+    return ret;
 }
 
 static LY_ERR
 lys_print_(struct ly_out *out, const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options)
 {
-    ssize_t result;
+    LY_ERR ret;
 
     LY_CHECK_ARG_RET(NULL, out, LY_EINVAL);
 
-    result = lys_print(out, module, format, line_length, options);
+    ret = lys_print(out, module, format, line_length, options);
 
     ly_out_free(out, NULL, 0);
-
-    if (result < 0) {
-        return (-1) * result;
-    } else {
-        return LY_SUCCESS;
-    }
+    return ret;
 }
 
 API LY_ERR
@@ -144,15 +133,15 @@ lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), voi
     return lys_print_(out, module, format, line_length, options);
 }
 
-API ssize_t
+API LY_ERR
 lys_print_node(struct ly_out *out, const struct lysc_node *node, LYS_OUTFORMAT format, int UNUSED(line_length), int options)
 {
     LY_ERR ret;
-    size_t printed_prev;
 
-    LY_CHECK_ARG_RET(NULL, out, node, -LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, out, node, LY_EINVAL);
 
-    printed_prev = out->printed;
+    /* reset number of printed bytes */
+    out->func_printed = 0;
 
     switch (format) {
     case LYS_OUT_YANG_COMPILED:
@@ -172,12 +161,6 @@ lys_print_node(struct ly_out *out, const struct lysc_node *node, LYS_OUTFORMAT f
         break;
     }
 
-    if (ret) {
-        /* error */
-        return (-1) * (signed)ret;
-    } else {
-        /* success */
-        return (ssize_t)(out->printed - printed_prev);
-    }
+    return ret;
 }
 

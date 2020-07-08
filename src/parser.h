@@ -154,6 +154,14 @@ LY_ERR ly_in_new_filepath(const char *filepath, size_t len, struct ly_in **in);
 const char *ly_in_filepath(struct ly_in *in, const char *filepath, size_t len);
 
 /**
+ * @brief Get the number of parsed bytes by the last function.
+ *
+ * @param[in] in In structure used.
+ * @return Number of parsed bytes.
+ */
+size_t ly_in_parsed(const struct ly_in *in);
+
+/**
  * @brief Free the input handler.
  * @param[in] in Input handler to free.
  * @param[in] destroy Flag to free the input data buffer (for LY_IN_MEMORY) or to

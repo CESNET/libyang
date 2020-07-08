@@ -102,6 +102,7 @@ test_module(void **state)
     *state = test_module;
 
     const char *str;
+    struct ly_in *in;
     struct ly_ctx *ctx = NULL;
     struct lys_module *mod = NULL;
     struct lysc_feature *f;
@@ -115,7 +116,9 @@ test_module(void **state)
     logbuf_assert("Invalid argument mod (lys_compile()).");
     assert_int_equal(LY_EINVAL, lys_compile(&mod, 0));
     logbuf_assert("Invalid argument *mod (lys_compile()).");
-    assert_non_null(mod = lys_parse_mem_module(ctx, str, LYS_IN_YANG, 0, NULL, NULL));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
+    assert_non_null(mod = lys_parse_mem_module(ctx, in, LYS_IN_YANG, 0, NULL, NULL));
+    ly_in_free(in, 0);
     assert_int_equal(0, mod->implemented);
     assert_int_equal(LY_SUCCESS, lys_compile(&mod, 0));
     assert_null(mod->compiled);
@@ -139,12 +142,16 @@ test_module(void **state)
 
     /* submodules cannot be compiled directly */
     str = "submodule test {belongs-to xxx {prefix x;}}";
-    assert_null(lys_parse_mem_module(ctx, str, LYS_IN_YANG, 1, NULL, NULL));
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
+    assert_null(lys_parse_mem_module(ctx, in, LYS_IN_YANG, 1, NULL, NULL));
+    ly_in_free(in, 0);
     logbuf_assert("Input data contains submodule which cannot be parsed directly without its main module.");
 
     /* data definition name collision in top level */
-    assert_non_null(mod = lys_parse_mem_module(ctx, "module aa {namespace urn:aa;prefix aa;"
-                                        "leaf a {type string;} container a{presence x;}}", LYS_IN_YANG, 1, NULL, NULL));
+    str = "module aa {namespace urn:aa;prefix aa; leaf a {type string;} container a{presence x;}}";
+    assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
+    assert_non_null(mod = lys_parse_mem_module(ctx, in, LYS_IN_YANG, 1, NULL, NULL));
+    ly_in_free(in, 0);
     assert_int_equal(LY_EVALID, lys_compile(&mod, 0));
     logbuf_assert("Duplicate identifier \"a\" of data definition/RPC/action/notification statement. /aa:a");
     assert_null(mod);
