@@ -1027,7 +1027,7 @@ test_defaults(void **state)
 
     /* get defaults */
     tree = NULL;
-    assert_int_equal(lyd_validate_modules(&tree, &mod, 1, 0), LY_SUCCESS);
+    assert_int_equal(lyd_validate_module(&tree, mod, 0), LY_SUCCESS);
     assert_non_null(tree);
 
     /* check all defaults exist */
@@ -1178,7 +1178,7 @@ test_iffeature(void **state)
 
     /* get empty data */
     tree = NULL;
-    assert_int_equal(lyd_validate_modules(&tree, &mod, 1, 0), LY_SUCCESS);
+    assert_int_equal(lyd_validate_module(&tree, mod, 0), LY_SUCCESS);
     assert_null(tree);
 
     /* disabled by f1 */
@@ -1194,7 +1194,7 @@ test_iffeature(void **state)
     assert_int_equal(lys_feature_enable(mod, "f1"), LY_SUCCESS);
 
     /* get data with default container */
-    assert_int_equal(lyd_validate_modules(&tree, &mod, 1, 0), LY_SUCCESS);
+    assert_int_equal(lyd_validate_module(&tree, mod, 0), LY_SUCCESS);
     assert_non_null(tree);
     lyd_free_siblings(tree);
 

@@ -701,7 +701,7 @@ lyd_parse_xml_data(const struct ly_ctx *ctx, struct ly_in *in, int parse_options
             if (validate_options & LYD_VALIDATE_PRESENT) {
                 mod = lyd_data_next_module(&next, &first);
             } else {
-                mod = lyd_mod_next_module(next, NULL, 0, ctx, &i, &first);
+                mod = lyd_mod_next_module(next, NULL, ctx, &i, &first);
             }
             if (!mod) {
                 break;

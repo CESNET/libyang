@@ -460,15 +460,14 @@ LY_ERR lyd_find_sibling_next2(const struct lyd_node *first, const struct lysc_no
  * @brief Iterate over implemented modules for functions that accept specific modules or the whole context.
  *
  * @param[in] tree Data tree.
- * @param[in] modules Selected modules, NULL for all.
- * @param[in] mod_count Count of @p modules.
+ * @param[in] module Selected module, NULL for all.
  * @param[in] ctx Context, NULL for selected modules.
  * @param[in,out] i Iterator, set to 0 on first call.
  * @param[out] first First sibling of the returned module.
  * @return Next module.
  * @return NULL if all modules were traversed.
  */
-const struct lys_module *lyd_mod_next_module(struct lyd_node *tree, const struct lys_module **modules, int mod_count,
+const struct lys_module *lyd_mod_next_module(struct lyd_node *tree, const struct lys_module *module,
                                              const struct ly_ctx *ctx, uint32_t *i, struct lyd_node **first);
 
 /**

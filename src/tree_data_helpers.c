@@ -87,18 +87,19 @@ lyd_owner_module(const struct lyd_node *node)
 }
 
 const struct lys_module *
-lyd_mod_next_module(struct lyd_node *tree, const struct lys_module **modules, int mod_count, const struct ly_ctx *ctx,
-                    uint32_t *i, struct lyd_node **first)
+lyd_mod_next_module(struct lyd_node *tree, const struct lys_module *module, const struct ly_ctx *ctx, uint32_t *i,
+                    struct lyd_node **first)
 {
     struct lyd_node *iter;
     const struct lys_module *mod;
 
     /* get the next module */
-    if (modules && mod_count) {
-        if (*i < (unsigned)mod_count) {
-            mod = modules[(*i)++];
-        } else {
+    if (module) {
+        if (*i) {
             mod = NULL;
+        } else {
+            mod = module;
+            ++(*i);
         }
     } else {
         do {

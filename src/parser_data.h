@@ -254,16 +254,15 @@ LY_ERR lyd_parse_notif(const struct ly_ctx *ctx, struct ly_in *in, LYD_FORMAT fo
 LY_ERR lyd_validate(struct lyd_node **tree, const struct ly_ctx *ctx, int val_opts);
 
 /**
- * @brief Fully validate a data tree.
+ * @brief Fully validate a data tree of a module.
  *
  * @param[in,out] tree Data tree to recursively validate. May be changed by validation.
- * @param[in] modules Array of modules to validate.
- * @param[in] mod_count Number of @p modules.
+ * @param[in] module Module whose data (and schema restrictions) to validate.
  * @param[in] val_opts Validation options (@ref datavalidationoptions).
  * @return LY_SUCCESS on success.
  * @return LY_ERR error on error.
  */
-LY_ERR lyd_validate_modules(struct lyd_node **tree, const struct lys_module **modules, int mod_count, int val_opts);
+LY_ERR lyd_validate_module(struct lyd_node **tree, const struct lys_module *module, int val_opts);
 
 /**
  * @brief Validate an RPC/action, notification, or RPC/action reply.

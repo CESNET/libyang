@@ -1192,8 +1192,7 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *type_check, struct ly
  * @return LY_ERR value.
  */
 static LY_ERR
-_lyd_validate(struct lyd_node **tree, const struct lys_module **modules, int mod_count, const struct ly_ctx *ctx,
-              int val_opts)
+_lyd_validate(struct lyd_node **tree, const struct lys_module *module, const struct ly_ctx *ctx, int val_opts)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node *first, *next, **first2;
@@ -1201,14 +1200,14 @@ _lyd_validate(struct lyd_node **tree, const struct lys_module **modules, int mod
     struct ly_set type_check = {0}, type_meta_check = {0}, when_check = {0};
     uint32_t i = 0;
 
-    LY_CHECK_ARG_RET(NULL, tree, *tree || ctx || (modules && mod_count), LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, tree, *tree || ctx || module, LY_EINVAL);
 
     next = *tree;
     while (1) {
         if (val_opts & LYD_VALIDATE_PRESENT) {
             mod = lyd_data_next_module(&next, &first);
         } else {
-            mod = lyd_mod_next_module(next, modules, mod_count, ctx, &i, &first);
+            mod = lyd_mod_next_module(next, module, ctx, &i, &first);
         }
         if (!mod) {
             break;
@@ -1249,13 +1248,13 @@ cleanup:
 API LY_ERR
 lyd_validate(struct lyd_node **tree, const struct ly_ctx *ctx, int val_opts)
 {
-    return _lyd_validate(tree, NULL, 0, ctx, val_opts);
+    return _lyd_validate(tree, NULL, ctx, val_opts);
 }
 
 API LY_ERR
-lyd_validate_modules(struct lyd_node **tree, const struct lys_module **modules, int mod_count, int val_opts)
+lyd_validate_module(struct lyd_node **tree, const struct lys_module *module, int val_opts)
 {
-    return _lyd_validate(tree, modules, mod_count, NULL, val_opts);
+    return _lyd_validate(tree, module, NULL, val_opts);
 }
 
 /**
