@@ -102,7 +102,6 @@ struct ly_in;
 #define LYD_VALIDATE_PRESENT      0x0002    /**< Validate only modules whose data actually exist. */
 //#define LYD_VALIDATE_DIFF         0x0004    /**< Flag only for validation, store all the data node changes performed by the validation
 //                                                 in a diff structure. */
-//#define LYD_VALIDATE_DATA_TEMPLATE 0x0008   /**< Data represents YANG data template. */
 
 /** @} datavalidationoptions */
 
@@ -132,7 +131,7 @@ typedef enum {
  * @param[out] tree Resulting data tree built from the input data. Note that NULL can be a valid result as a representation of an empty YANG data tree.
  * The returned data are expected to be freed using lyd_free_all().
  * @return LY_SUCCESS in case of successful parsing (and validation).
- * @reutnr LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions.
+ * @return LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions.
  */
 LY_ERR lyd_parse_data(const struct ly_ctx *ctx, struct ly_in *in, LYD_FORMAT format, int parse_options, int validate_options, struct lyd_node **tree);
 
@@ -149,7 +148,7 @@ LY_ERR lyd_parse_data(const struct ly_ctx *ctx, struct ly_in *in, LYD_FORMAT for
  * @param[out] tree Resulting data tree built from the input data. Note that NULL can be a valid result as a representation of an empty YANG data tree.
  * The returned data are expected to be freed using lyd_free_all().
  * @return LY_SUCCESS in case of successful parsing (and validation).
- * @reutnr LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions.
+ * @return LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions.
  */
 LY_ERR lyd_parse_data_mem(const struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int parse_options, int validate_options, struct lyd_node **tree);
 
@@ -166,7 +165,7 @@ LY_ERR lyd_parse_data_mem(const struct ly_ctx *ctx, const char *data, LYD_FORMAT
  * @param[out] tree Resulting data tree built from the input data. Note that NULL can be a valid result as a representation of an empty YANG data tree.
  * The returned data are expected to be freed using lyd_free_all().
  * @return LY_SUCCESS in case of successful parsing (and validation).
- * @reutnr LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions.
+ * @return LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions.
  */
 LY_ERR lyd_parse_data_fd(const struct ly_ctx *ctx, int fd, LYD_FORMAT format, int parse_options, int validate_options, struct lyd_node **tree);
 
@@ -183,7 +182,7 @@ LY_ERR lyd_parse_data_fd(const struct ly_ctx *ctx, int fd, LYD_FORMAT format, in
  * @param[out] tree Resulting data tree built from the input data. Note that NULL can be a valid result as a representation of an empty YANG data tree.
  * The returned data are expected to be freed using lyd_free_all().
  * @return LY_SUCCESS in case of successful parsing (and validation).
- * @reutnr LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions.
+ * @return LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions.
  */
 LY_ERR lyd_parse_data_path(const struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int parse_options, int validate_options, struct lyd_node **tree);
 
@@ -202,7 +201,7 @@ LY_ERR lyd_parse_data_path(const struct ly_ctx *ctx, const char *path, LYD_FORMA
  * In contrast to YANG data tree, result of parsing RPC/action cannot be NULL until an error occurs.
  * @param[out] op Optional pointer to the actual operation node inside the full action @p tree, useful only for action.
  * @return LY_SUCCESS in case of successful parsing (and validation).
- * @reutnr LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions.
+ * @return LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions.
  */
 LY_ERR lyd_parse_rpc(const struct ly_ctx *ctx, struct ly_in *in, LYD_FORMAT format, struct lyd_node **tree, struct lyd_node **op);
 
@@ -222,7 +221,7 @@ LY_ERR lyd_parse_rpc(const struct ly_ctx *ctx, struct ly_in *in, LYD_FORMAT form
  * the result of parsing RPC/action reply cannot be NULL until an error occurs.
  * @param[out] op Optional pointer to the actual operation node inside the full action reply @p tree, useful only for action.
  * @return LY_SUCCESS in case of successful parsing (and validation).
- * @reutnr LY_ERR value in case of error. Additional error information can be obtained from the request's context using ly_err* functions.
+ * @return LY_ERR value in case of error. Additional error information can be obtained from the request's context using ly_err* functions.
  */
 LY_ERR lyd_parse_reply(const struct lyd_node *request, struct ly_in *in, LYD_FORMAT format, struct lyd_node **tree, struct lyd_node **op);
 
@@ -239,7 +238,7 @@ LY_ERR lyd_parse_reply(const struct lyd_node *request, struct ly_in *in, LYD_FOR
  * In contrast to YANG data tree, result of parsing Notification cannot be NULL until an error occurs.
  * @param[out] ntf Optional pointer to the actual notification node inside the full Notification @p tree, useful for nested notifications.
  * @return LY_SUCCESS in case of successful parsing (and validation).
- * @reutnr LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions.
+ * @return LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions.
  */
 LY_ERR lyd_parse_notif(const struct ly_ctx *ctx, struct ly_in *in, LYD_FORMAT format, struct lyd_node **tree, struct lyd_node **ntf);
 
