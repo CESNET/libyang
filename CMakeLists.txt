@@ -13,6 +13,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/CMakeModules/")
 include(GNUInstallDirs)
 include(CheckSymbolExists)
 include(UseCompat)
+include(ABICheck)
 
 set(LIBYANG_DESCRIPTION "libyang is YANG data modelling language parser and toolkit written (and providing API) in C.")
 
@@ -33,11 +34,26 @@ set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_SOVERSION})
 
 # set default build type if not specified by user
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE debug)
+    set(CMAKE_BUILD_TYPE Debug)
 endif()
+# normalize build type string
+string(TOUPPER "${CMAKE_BUILD_TYPE}" BUILD_TYPE_UPPER)
+if ("${BUILD_TYPE_UPPER}" STREQUAL "RELEASE")
+  set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build Type" FORCE)
+elseif ("${BUILD_TYPE_UPPER}" STREQUAL "DEBUG")
+  set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build Type" FORCE)
+elseif ("${BUILD_TYPE_UPPER}" STREQUAL "RELWITHDEBINFO")
+  set(CMAKE_BUILD_TYPE "RelWithDebInfo" CACHE STRING "Build Type" FORCE)
+elseif ("${BUILD_TYPE_UPPER}" STREQUAL "RELWITHDEBUG")
+  set(CMAKE_BUILD_TYPE "RelWithDebug" CACHE STRING "Build Type" FORCE)
+elseif ("${BUILD_TYPE_UPPER}" STREQUAL "ABICHECK")
+  set(CMAKE_BUILD_TYPE "ABICheck" CACHE STRING "Build Type" FORCE)
+else ()
+  message(FATAL_ERROR "Unknown CMAKE_BUILD_TYPE \"${CMAKE_BUILD_TYPE}\".")
+endif ()
 
 # options
-if((CMAKE_BUILD_TYPE STREQUAL debug) OR (CMAKE_BUILD_TYPE STREQUAL Package))
+if(("${BUILD_TYPE_UPPER}" STREQUAL "DEBUG") OR ("${BUILD_TYPE_UPPER}" STREQUAL "RELWITHDEBINFO"))
     option(ENABLE_BUILD_TESTS "Build tests" ON)
     option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" ON)
     set(INTERNAL_DOCS YES)
@@ -47,7 +63,6 @@ else()
     set(INTERNAL_DOCS NO)
 endif()
 option(ENABLE_COVERAGE "Build code coverage report from tests" OFF)
-
 option(ENABLE_FUZZ_TARGETS "Build target programs suitable for fuzzing with AFL" OFF)
 #option(ENABLE_CALLGRIND_TESTS "Build performance tests to be run with callgrind" OFF)
 
@@ -105,10 +120,9 @@ if(ENABLE_COVERAGE)
     endif()
 endif()
 
-set(CMAKE_C_FLAGS         "${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_COVERAGE} -Wall -Wextra -Wno-missing-field-initializers -std=c99")
-set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG")
-set(CMAKE_C_FLAGS_PACKAGE "-g -O2 -DNDEBUG")
-set(CMAKE_C_FLAGS_DEBUG   "-g -Og")
+set(CMAKE_C_FLAGS                "${CMAKE_C_FLAGS} ${CMAKE_C_FLAGS_COVERAGE} -Wall -Wextra -Wno-missing-field-initializers -std=c99")
+set(CMAKE_C_FLAGS_DEBUG          "-g3 -O0")
+set(CMAKE_C_FLAGS_ABICHECK       "-g -Og")
 
 include_directories(${PROJECT_BINARY_DIR}/src ${PROJECT_SOURCE_DIR}/src)
 configure_file(${PROJECT_SOURCE_DIR}/src/config.h.in ${PROJECT_BINARY_DIR}/src/config.h @ONLY)
@@ -279,6 +293,11 @@ if(DOXYGEN_FOUND)
     configure_file(Doxyfile.in Doxyfile)
 endif()
 
+# generate API/ABI report
+if ("${BUILD_TYPE_UPPER}" STREQUAL "ABICHECK")
+	libyang_abicheck()
+endif()
+
 # clean cmake cache
 add_custom_target(cclean
         COMMAND make clean
@@ -291,9 +310,9 @@ add_custom_target(cclean
 # if the tests are enabled, build libyang_ext_test
 if(ENABLE_BUILD_TESTS)
     find_package(CMocka 1.0.0)
-#    if(CMOCKA_FOUND AND CMAKE_BUILD_TYPE MATCHES debug)
+#    if(CMOCKA_FOUND AND CMAKE_BUILD_TYPE MATCHES Debug)
 #        list(APPEND EXTENSIONS_LIST "libyang_ext_test")
-#    endif(CMOCKA_FOUND AND CMAKE_BUILD_TYPE MATCHES debug)
+#    endif(CMOCKA_FOUND AND CMAKE_BUILD_TYPE MATCHES Debug)
 endif(ENABLE_BUILD_TESTS)
 
 #if(ENABLE_STATIC)
