@@ -507,4 +507,16 @@ void lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *when_check, 
  */
 void ly_free_val_prefs(const struct ly_ctx *ctx, struct ly_prefix *val_prefs);
 
+/**
+ * @brief Append all list key predicates to path.
+ *
+ * @param[in] node Node with keys to print.
+ * @param[in,out] buffer Buffer to print to.
+ * @param[in,out] buflen Current buffer length.
+ * @param[in,out] bufused Current number of characters used in @p buffer.
+ * @param[in] is_static Whether buffer is static or can be reallocated.
+ * @return LY_ERR
+ */
+LY_ERR lyd_path_list_predicate(const struct lyd_node *node, char **buffer, size_t *buflen, size_t *bufused, int is_static);
+
 #endif /* LY_TREE_DATA_INTERNAL_H_ */

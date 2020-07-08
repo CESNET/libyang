@@ -139,6 +139,7 @@ set(libsrc
     src/hash_table.c
     src/set.c
     src/path.c
+    src/diff.c
     src/context.c
     src/tree_data.c
     src/tree_data_free.c
