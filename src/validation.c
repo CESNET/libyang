@@ -11,6 +11,7 @@
  *
  *     https://opensource.org/licenses/BSD-3-Clause
  */
+#include "validation.h"
 
 #include <assert.h>
 #include <stdint.h>

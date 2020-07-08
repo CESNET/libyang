@@ -823,8 +823,8 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node_inner *parent, s
             LY_CHECK_GOTO(ret, cleanup);
 
             /* add any missing default children */
-            ret = lyd_validate_defaults_r((struct lyd_node_inner *)node, lyd_node_children_p(node), NULL, NULL,
-                                          &lybctx->unres_node_type, &lybctx->when_check, lybctx->validate_options);
+            ret = lyd_validate_defaults_r(node, lyd_node_children_p(node), NULL, NULL, &lybctx->unres_node_type,
+                                          &lybctx->when_check, lybctx->validate_options);
             LY_CHECK_GOTO(ret, cleanup);
         }
 

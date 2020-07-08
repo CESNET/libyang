@@ -16,6 +16,7 @@
 #define LY_VALIDATION_H_
 
 #include "log.h"
+#include "parser_data.h"
 #include "tree_data.h"
 
 /**
@@ -72,7 +73,7 @@ LY_ERR lyd_validate_final_r(struct lyd_node *first, const struct lysc_node *spar
  * @param[in] val_opts Validation options (@ref datavalidationoptions).
  * @return LY_ERR value.
  */
-LY_ERR lyd_validate_defaults_r(struct lyd_node_inner *parent, struct lyd_node **first, const struct lysc_node *sparent,
+LY_ERR lyd_validate_defaults_r(struct lyd_node *parent, struct lyd_node **first, const struct lysc_node *sparent,
                                const struct lys_module *mod, struct ly_set *node_types, struct ly_set *node_when, int val_opts);
 
 #endif /* LY_VALIDATION_H_ */

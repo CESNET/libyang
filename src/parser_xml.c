@@ -592,8 +592,8 @@ lydxml_data_r(struct lyd_xml_ctx *lydctx, struct lyd_node_inner *parent, struct 
                 LY_CHECK_GOTO(ret, cleanup);
 
                 /* add any missing default children */
-                ret = lyd_validate_defaults_r((struct lyd_node_inner *)cur, lyd_node_children_p(cur), NULL, NULL,
-                                              &lydctx->unres_node_type, &lydctx->when_check, lydctx->options);
+                ret = lyd_validate_defaults_r(cur, lyd_node_children_p(cur), NULL, NULL, &lydctx->unres_node_type,
+                                              &lydctx->when_check, lydctx->options);
                 LY_CHECK_GOTO(ret, cleanup);
             }
 
