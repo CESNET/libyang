@@ -383,6 +383,8 @@ lyxml_pututf8(char *dst, uint32_t value, size_t *bytes_written)
         dst[3] = 0x80 | (value & 0x3f);
 
         (*bytes_written) = 4;
+    } else {
+	    return LY_EINVAL;
     }
     return LY_SUCCESS;
 }
@@ -437,7 +439,7 @@ lyxml_parse_value(struct lyxml_ctx *xmlctx, char endchar, char **value, size_t *
             /* allocate enough for the offset and next character,
              * we will need 4 bytes at most since we support only the predefined
              * (one-char) entities and character references */
-            if (len + offset + 4 >= size) {
+            while (len + offset + 4 >= size) {
                 buf = ly_realloc(buf, size + BUFSIZE_STEP);
                 LY_CHECK_ERR_RET(!buf, LOGMEM(ctx), LY_EMEM);
                 size += BUFSIZE_STEP;
