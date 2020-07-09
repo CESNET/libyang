@@ -2093,7 +2093,15 @@ lyd_dup_recursive(const struct lyd_node *node, struct lyd_node *parent, struct l
     dup->schema = node->schema;
     dup->prev = dup;
 
-    /* TODO duplicate attributes, implement LYD_DUP_NO_ATTR */
+    /* duplicate metadata */
+    if (!(options & LYD_DUP_NO_META)) {
+        LY_LIST_FOR(node->meta, meta) {
+            if (!lyd_dup_meta(meta, dup)) {
+                ret = LY_EINT;
+                goto error;
+            }
+        }
+    }
 
     /* nodetype-specific work */
     if (!dup->schema) {
@@ -2183,7 +2191,6 @@ error:
 API struct lyd_node *
 lyd_dup(const struct lyd_node *node, struct lyd_node_inner *parent, int options)
 {
-    struct ly_ctx *ctx;
     const struct lyd_node *orig;          /* original node to be duplicated */
     struct lyd_node *first = NULL;        /* the first duplicated node, this is returned */
     struct lyd_node *top = NULL;          /* the most higher created node */
@@ -2191,7 +2198,6 @@ lyd_dup(const struct lyd_node *node, struct lyd_node_inner *parent, int options)
     int keyless_parent_list = 0;
 
     LY_CHECK_ARG_RET(NULL, node, NULL);
-    ctx = node->schema->module->ctx;
 
     if (options & LYD_DUP_WITH_PARENTS) {
         struct lyd_node_inner *orig_parent, *iter;
@@ -2238,7 +2244,8 @@ lyd_dup(const struct lyd_node *node, struct lyd_node_inner *parent, int options)
         }
         if (repeat && parent) {
             /* given parent and created parents chain actually do not interconnect */
-            LOGERR(ctx, LY_EINVAL, "Invalid argument parent (%s()) - does not interconnect with the created node's parents chain.", __func__);
+            LOGERR(LYD_NODE_CTX(node), LY_EINVAL,
+                   "Invalid argument parent (%s()) - does not interconnect with the created node's parents chain.", __func__);
             goto error;
         }
     } else {
@@ -2269,6 +2276,35 @@ error:
         lyd_free_siblings(first);
     }
     return NULL;
+}
+
+API struct lyd_meta *
+lyd_dup_meta(const struct lyd_meta *meta, struct lyd_node *node)
+{
+    LY_ERR ret;
+    struct lyd_meta *mt, *last;
+
+    LY_CHECK_ARG_RET(NULL, meta, node, NULL);
+
+    /* create a copy */
+    mt = calloc(1, sizeof *mt);
+    LY_CHECK_ERR_RET(!mt, LOGMEM(LYD_NODE_CTX(node)), NULL);
+    mt->parent = node;
+    mt->annotation = meta->annotation;
+    mt->value.realtype = meta->value.realtype;
+    ret = mt->value.realtype->plugin->duplicate(LYD_NODE_CTX(node), &meta->value, &mt->value);
+    LY_CHECK_ERR_RET(ret, LOGERR(LYD_NODE_CTX(node), LY_EINT, "Value duplication failed."), NULL);
+    mt->name = lydict_insert(LYD_NODE_CTX(node), meta->name, 0);
+
+    /* insert as the last attribute */
+    if (node->meta) {
+        for (last = node->meta; last->next; last = last->next);
+        last->next = mt;
+    } else {
+        node->meta = mt;
+    }
+
+    return mt;
 }
 
 /**
@@ -2630,6 +2666,49 @@ iter_print:
     }
 
     return buffer;
+}
+
+API struct lyd_meta *
+lyd_find_meta(const struct lyd_meta *first, const struct lys_module *module, const char *name)
+{
+    struct lyd_meta *ret = NULL;
+    const struct ly_ctx *ctx;
+    const char *prefix, *tmp;
+    char *str;
+    size_t pref_len, name_len;
+
+    LY_CHECK_ARG_RET(NULL, module || strchr(name, ':'), name, NULL);
+
+    if (!first) {
+        return NULL;
+    }
+
+    ctx = first->annotation->module->ctx;
+
+    /* parse the name */
+    tmp = name;
+    if (ly_parse_nodeid(&tmp, &prefix, &pref_len, &name, &name_len) || tmp[0]) {
+        LOGERR(ctx, LY_EINVAL, "Metadata name \"%s\" is not valid.", name);
+        return NULL;
+    }
+
+    /* find the module */
+    if (prefix) {
+        str = strndup(prefix, pref_len);
+        module = ly_ctx_get_module_latest(ctx, str);
+        free(str);
+        LY_CHECK_ERR_RET(!module, LOGERR(ctx, LY_EINVAL, "Module \"%.*s\" not found.", pref_len, prefix), NULL);
+    }
+
+    /* find the metadata */
+    LY_LIST_FOR(first, first) {
+        if ((first->annotation->module == module) && !strcmp(first->name, name)) {
+            ret = (struct lyd_meta *)first;
+            break;
+        }
+    }
+
+    return ret;
 }
 
 LY_ERR

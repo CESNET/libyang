@@ -895,6 +895,16 @@ LY_ERR lyd_compare_meta(const struct lyd_meta *meta1, const struct lyd_meta *met
 struct lyd_node *lyd_dup(const struct lyd_node *node, struct lyd_node_inner *parent, int options);
 
 /**
+ * @brief Create a copy of the metadata.
+ *
+ * @param[in] meta Metadata to copy.
+ * @param[in] node Node where to append the new metadata.
+ * @return Created metadata copy,
+ * @return NULL on error.
+ */
+struct lyd_meta *lyd_dup_meta(const struct lyd_meta *meta, struct lyd_node *node);
+
+/**
  * @defgroup mergeoptions Data merge options.
  * @ingroup datatree
  *
@@ -1055,6 +1065,17 @@ typedef enum {
 char *lyd_path(const struct lyd_node *node, LYD_PATH_TYPE pathtype, char *buffer, size_t buflen);
 
 /**
+ * @brief Find a specific metadata.
+ *
+ * @param[in] first First metadata to consider.
+ * @param[in] module Module of the metadata definition, may be NULL if @p name includes a prefix.
+ * @param[in] name Name of the metadata to find, may not include a prefix (module name) if @p module is set.
+ * @return Found metadata,
+ * @return NULL if not found.
+ */
+struct lyd_meta *lyd_find_meta(const struct lyd_meta *first, const struct lys_module *module, const char *name);
+
+/**
  * @brief Find the node, in the list, satisfying the given restrictions.
  * Does **not** use hashes - should not be used unless necessary for best performance.
  *
@@ -1080,7 +1101,7 @@ char *lyd_path(const struct lyd_node *node, LYD_PATH_TYPE pathtype, char *buffer
  *              Note that any explicit values (leaf, leaf-list or list key values) will be canonized first
  *              before comparison. But values that do not have a canonical value are expected to be in the
  *              JSON format!
- * @param[in] val_len Optional length of @p key_or_value in case it is not 0-terminated string.
+ * @param[in] val_len Optional length of @p key_or_value in case it is not a 0-terminated string.
  * @param[out] match Found data node.
  * @return LY_SUCCESS on success, @p match set.
  * @return LY_ENOTFOUND if not found, @p match set to NULL.
