@@ -1770,7 +1770,7 @@ lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct ly
     }
 
     /* remove default flags from NP containers */
-    while (parent && (parent->flags & LYD_DEFAULT)) {
+    while (parent && (parent->schema->nodetype == LYS_CONTAINER) && (parent->flags & LYD_DEFAULT)) {
         parent->flags &= ~LYD_DEFAULT;
         parent = (struct lyd_node *)parent->parent;
     }
