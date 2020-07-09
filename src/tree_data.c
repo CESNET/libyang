@@ -2051,8 +2051,9 @@ lyd_dup_recursive(const struct lyd_node *node, struct lyd_node *parent, struct l
                   struct lyd_node **dup_p)
 {
     LY_ERR ret;
-    int len;
     struct lyd_node *dup = NULL;
+    struct lyd_meta *meta;
+    struct lyd_node_any *any;
     LY_ARRAY_COUNT_TYPE u;
 
     LY_CHECK_ARG_RET(NULL, node, LY_EINVAL);
@@ -2161,40 +2162,9 @@ lyd_dup_recursive(const struct lyd_node *node, struct lyd_node *parent, struct l
         }
         lyd_hash(dup);
     } else if (dup->schema->nodetype & LYD_NODE_ANY) {
-        struct lyd_node_any *any = (struct lyd_node_any *)dup;
-        struct lyd_node_any *orig = (struct lyd_node_any *)node;
-
-        any->hash = orig->hash;
-        any->value_type = orig->value_type;
-        switch (any->value_type) {
-        case LYD_ANYDATA_DATATREE:
-            if (orig->value.tree) {
-                any->value.tree = lyd_dup(orig->value.tree, NULL, LYD_DUP_RECURSIVE | LYD_DUP_WITH_SIBLINGS);
-                if (!any->value.tree) {
-                    /* get the last error's error code recorded by lyd_dup */
-                    struct ly_err_item *ei = ly_err_first(LYD_NODE_CTX(node));
-                    ret = ei ? ei->prev->no : LY_EOTHER;
-                    goto error;
-                }
-                LY_CHECK_ERR_GOTO(!any->value.tree, ret = 0, error);
-            }
-            break;
-        case LYD_ANYDATA_STRING:
-        case LYD_ANYDATA_XML:
-        case LYD_ANYDATA_JSON:
-            if (orig->value.str) {
-                any->value.str = lydict_insert(LYD_NODE_CTX(node), orig->value.str, strlen(orig->value.str));
-            }
-            break;
-        case LYD_ANYDATA_LYB:
-            if (orig->value.mem) {
-                len = lyd_lyb_data_length(orig->value.mem);
-                any->value.mem = malloc(len);
-                LY_CHECK_ERR_GOTO(!any->value.mem, LOGMEM(LYD_NODE_CTX(node)); ret = LY_EMEM, error);
-                memcpy(any->value.mem, orig->value.mem, len);
-            }
-            break;
-        }
+        dup->hash = node->hash;
+        any = (struct lyd_node_any *)node;
+        LY_CHECK_GOTO(ret = lyd_any_copy_value(dup, &any->value, any->value_type), error);
     }
 
     /* insert */

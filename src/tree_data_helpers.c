@@ -206,6 +206,66 @@ lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *when_check, struc
     }
 }
 
+LY_ERR
+lyd_any_copy_value(struct lyd_node *trg, const union lyd_any_value *value, LYD_ANYDATA_VALUETYPE value_type)
+{
+    struct lyd_node_any *t;
+    int len;
+
+    assert(trg->schema->nodetype & LYS_ANYDATA);
+
+    t = (struct lyd_node_any *)trg;
+
+    /* free trg */
+    switch (t->value_type) {
+    case LYD_ANYDATA_DATATREE:
+        lyd_free_all(t->value.tree);
+        break;
+    case LYD_ANYDATA_STRING:
+    case LYD_ANYDATA_XML:
+    case LYD_ANYDATA_JSON:
+        FREE_STRING(LYD_NODE_CTX(trg), t->value.str);
+        break;
+    case LYD_ANYDATA_LYB:
+        free(t->value.mem);
+        break;
+    }
+    t->value.str = NULL;
+
+    if (!value) {
+        /* only free value in this case */
+        return LY_SUCCESS;
+    }
+
+    /* copy src */
+    t->value_type = value_type;
+    switch (value_type) {
+    case LYD_ANYDATA_DATATREE:
+        if (value->tree) {
+            t->value.tree = lyd_dup(value->tree, NULL, LYD_DUP_RECURSIVE | LYD_DUP_WITH_SIBLINGS);
+            LY_CHECK_RET(!t->value.tree, LY_EINT);
+        }
+        break;
+    case LYD_ANYDATA_STRING:
+    case LYD_ANYDATA_XML:
+    case LYD_ANYDATA_JSON:
+        if (value->str) {
+            t->value.str = lydict_insert(LYD_NODE_CTX(trg), value->str, 0);
+        }
+        break;
+    case LYD_ANYDATA_LYB:
+        if (value->mem) {
+            len = lyd_lyb_data_length(value->mem);
+            t->value.mem = malloc(len);
+            LY_CHECK_ERR_RET(!t->value.mem, LOGMEM(LYD_NODE_CTX(trg)), LY_EMEM);
+            memcpy(t->value.mem, value->mem, len);
+        }
+        break;
+    }
+
+    return LY_SUCCESS;
+}
+
 LYB_HASH
 lyb_hash(struct lysc_node *sibling, uint8_t collision_id)
 {

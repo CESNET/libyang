@@ -168,19 +168,8 @@ lyd_free_subtree(struct lyd_node *node, int top)
             lyd_free_subtree(iter, 0);
         }
     } else if (node->schema->nodetype & LYD_NODE_ANY) {
-        switch (((struct lyd_node_any *)node)->value_type) {
-        case LYD_ANYDATA_DATATREE:
-            lyd_free_all(((struct lyd_node_any *)node)->value.tree);
-            break;
-        case LYD_ANYDATA_STRING:
-        case LYD_ANYDATA_XML:
-        case LYD_ANYDATA_JSON:
-            FREE_STRING(LYD_NODE_CTX(node), ((struct lyd_node_any *)node)->value.str);
-            break;
-        case LYD_ANYDATA_LYB:
-            free(((struct lyd_node_any *)node)->value.mem);
-            break;
-        }
+        /* only frees the value this way */
+        lyd_any_copy_value(node, NULL, 0);
     } else if (node->schema->nodetype & LYD_NODE_TERM) {
         ((struct lysc_node_leaf *)node->schema)->type->plugin->free(LYD_NODE_CTX(node), &((struct lyd_node_term *)node)->value);
     }
