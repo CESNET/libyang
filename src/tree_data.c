@@ -907,7 +907,7 @@ lyd_new_meta(struct lyd_node *parent, const struct lys_module *module, const cha
 
     /* find the module */
     if (prefix) {
-        str = strndup(name, name_len);
+        str = strndup(prefix, pref_len);
         module = ly_ctx_get_module_implemented(ctx, str);
         free(str);
         LY_CHECK_ERR_RET(!module, LOGERR(ctx, LY_EINVAL, "Module \"%.*s\" not found.", pref_len, prefix), NULL);
