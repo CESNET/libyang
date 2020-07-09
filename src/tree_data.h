@@ -815,6 +815,7 @@ LY_ERR lyd_value_validate(const struct ly_ctx *ctx, const struct lyd_node_term *
  * @return LY_SUCCESS on success
  * @return LY_EINCOMPLETE in case of success when the @p trees is not provided and it was needed to finish the validation of
  * the given string @p value (e.g. due to require-instance).
+ * @return LY_ENOT if the values do not match.
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_value_compare(const struct lyd_node_term *node, const char *value, size_t value_len,

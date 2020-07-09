@@ -254,7 +254,7 @@ lyd_value_compare(const struct lyd_node_term *node, const char *value, size_t va
     /* compare data */
     if (type->plugin->compare(&node->value, &data)) {
         /* do not assign it directly from the compare callback to keep possible LY_EINCOMPLETE from validation */
-        ret = LY_EVALID;
+        ret = LY_ENOT;
     }
 
 cleanup:
