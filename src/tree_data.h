@@ -1017,6 +1017,40 @@ LY_ERR lyd_diff_apply_module(struct lyd_node **data, const struct lyd_node *diff
 LY_ERR lyd_diff_apply(struct lyd_node **data, const struct lyd_node *diff);
 
 /**
+ * @brief Merge 2 diffs into each other but restrict the operation to one module.
+ *
+ * The diffs must be possible to be merged, which is guaranteed only if the source diff was
+ * created on data that had the target diff applied on them. In other words, this sequence is legal
+ *
+ * diff1 from data1 and data2 -> data11 from apply diff1 on data1 -> diff2 from data11 and data3 ->
+ * -> data 33 frm apply diff2 on data1
+ *
+ * and reusing these diffs
+ *
+ * diff11 from merge diff1 and diff2 -> data33 from apply diff11 on data1
+ *
+ * @param[in] src_diff Source diff.
+ * @param[in] mod Module, whose diff only to consider, NULL for all modules.
+ * @param[in] diff_cb Optional diff callback that will be called for every changed node.
+ * @param[in] cb_data Arbitrary callback data.
+ * @param[in,out] diff Target diff to merge into.
+ * @return LY_SUCCESS on success,
+ * @return LY_ERR on error.
+ */
+LY_ERR lyd_diff_merge_module(const struct lyd_node *src_diff, const struct lys_module *mod, lyd_diff_cb diff_cb,
+                             void *cb_data, struct lyd_node **diff);
+
+/**
+ * @brief Merge 2 diffs into each other.
+ *
+ * @param[in] src_diff Source diff.
+ * @param[in,out] diff Target diff to merge into.
+ * @return LY_SUCCESS on success,
+ * @return LY_ERR on error.
+ */
+LY_ERR lyd_diff_merge(const struct lyd_node *src_diff, struct lyd_node **diff);
+
+/**
  * @brief Find the target in data of a compiled ly_path structure (instance-identifier).
  *
  * @param[in] path Compiled path structure.
