@@ -84,6 +84,18 @@ jobs:
       after_success:
         - bash <(curl -s https://codecov.io/bash)
     - stage: Test
+      name: ABI check
+      os: linux
+      compiled: gcc
+      before_install:
+        - sudo apt-get update -qq && sudo apt-get install -y abi-dumper abi-compliance-checker
+        - sudo snap install core universal-ctags
+        - wget https://ftp.pcre.org/pub/pcre/pcre2-10.30.tar.gz
+        - tar -xzf pcre2-10.30.tar.gz
+        - cd pcre2-10.30 && ./configure && make -j2 && sudo make install && cd ..
+      script:
+        - mkdir build && cd build && cmake -DCMAKE_BUILD_TYPE=ABICheck .. && LC_ALL=C.UTF-8 PATH=/snap/bin:$PATH make abi-check && cd -
+    - stage: Test
       name: OS X with GCC
       os: osx
       compiler: gcc
@@ -96,4 +108,4 @@ jobs:
         - brew update
       script:
         - mkdir build && cd build && cmake -DENABLE_VALGRIND_TESTS=OFF .. && make -j2 && ctest --output-on-failure && cd -
-
+ 
