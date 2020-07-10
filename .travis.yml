@@ -33,7 +33,6 @@ jobs:
           build_command: "make"
           branch_pattern: libyang2
       before_install:
-        - sudo apt-get install libpcre2-dev
         # check if something changed from the last coverity build
         - echo "Last coverity build on revision" `cat $HOME/cache/coveritybuild 2>/dev/null`
         - echo "Current revision" `git rev-parse HEAD`
