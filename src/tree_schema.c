@@ -772,6 +772,7 @@ lys_parse_mem_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT forma
         break;
     default:
         LOGERR(ctx, LY_EINVAL, "Invalid schema input format.");
+        ret = LY_EINVAL;
         break;
     }
     LY_CHECK_GOTO(ret, error);

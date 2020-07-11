@@ -256,6 +256,7 @@ lyd_any_copy_value(struct lyd_node *trg, const union lyd_any_value *value, LYD_A
     case LYD_ANYDATA_LYB:
         if (value->mem) {
             len = lyd_lyb_data_length(value->mem);
+            LY_CHECK_RET(len == -1, LY_EINVAL);
             t->value.mem = malloc(len);
             LY_CHECK_ERR_RET(!t->value.mem, LOGMEM(LYD_NODE_CTX(trg)), LY_EMEM);
             memcpy(t->value.mem, value->mem, len);
