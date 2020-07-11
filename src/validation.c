@@ -970,7 +970,7 @@ lyd_validate_must(const struct lyd_node *node, LYD_VALIDATE_OP op)
 LY_ERR
 lyd_validate_final_r(struct lyd_node *first, const struct lysc_node *sparent, const struct lys_module *mod, int val_opts, LYD_VALIDATE_OP op)
 {
-    struct lyd_node *next, *node;
+    struct lyd_node *next = NULL, *node;
     const struct lysc_node *snode;
 
     /* validate all restrictions of nodes themselves */

@@ -334,7 +334,7 @@ static LY_ERR
 cast_string_recursive(const struct lyd_node *node, int fake_cont, enum lyxp_node_type root_type, uint16_t indent, char **str,
                       uint16_t *used, uint16_t *size)
 {
-    char *buf, *line, *ptr;
+    char *buf, *line, *ptr = NULL;
     const char *value_str;
     int dynamic;
     const struct lyd_node *child;
