@@ -527,7 +527,8 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct ly
             LY_ARRAY_FOR(ctx->mod_def->compiled->imports, v) {
                 if (!ly_strncmp(ctx->mod_def->compiled->imports[v].module->ns, ext_p->name, u - 1)) {
                     char *s;
-                    asprintf(&s, "%s:%s", ctx->mod_def->compiled->imports[v].prefix, &ext_p->name[u]);
+                    LY_CHECK_ERR_GOTO(asprintf(&s, "%s:%s", ctx->mod_def->compiled->imports[v].prefix, &ext_p->name[u]) == -1,
+                                      ret = LY_EMEM, cleanup);
                     prefixed_name = lydict_insert_zc(ctx->ctx, s);
                     u = strlen(ctx->mod_def->compiled->imports[v].prefix) + 1; /* add semicolon */
                     break;
@@ -5133,13 +5134,13 @@ lys_compile_grouping_pathlog(struct lysc_ctx *ctx, struct lysp_node *node, char 
 
         switch (iter->nodetype) {
         case LYS_USES:
-            asprintf(&id, "{uses='%s'}", iter->name);
+            LY_CHECK_RET(asprintf(&id, "{uses='%s'}", iter->name) == -1, -1);
             break;
         case LYS_GROUPING:
-            asprintf(&id, "{grouping='%s'}", iter->name);
+            LY_CHECK_RET(asprintf(&id, "{grouping='%s'}", iter->name) == -1, -1);
             break;
         case LYS_AUGMENT:
-            asprintf(&id, "{augment='%s'}", iter->name);
+            LY_CHECK_RET(asprintf(&id, "{augment='%s'}", iter->name) == -1, -1);
             break;
         default:
             id = strdup(iter->name);

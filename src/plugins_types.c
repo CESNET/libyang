@@ -127,6 +127,7 @@ ly_type_parse_int(const char *datatype, int base, int64_t min, int64_t max, cons
                   int64_t *ret, struct ly_err_item **err)
 {
     char *errmsg = NULL;
+    int rc = 0;
 
     LY_CHECK_ARG_RET(NULL, err, datatype, LY_EINVAL);
 
@@ -134,24 +135,29 @@ ly_type_parse_int(const char *datatype, int base, int64_t min, int64_t max, cons
     for (;value_len && isspace(*value); ++value, --value_len);
 
     if (!value || !value[0] || !value_len) {
-        asprintf(&errmsg, "Invalid empty %s value.", datatype);
+        rc = asprintf(&errmsg, "Invalid empty %s value.", datatype);
         goto error;
     }
 
     switch(ly_parse_int(value, value_len, min, max, base, ret)) {
     case LY_EDENIED:
-        asprintf(&errmsg, "Value is out of %s's min/max bounds.", datatype);
+        rc = asprintf(&errmsg, "Value is out of %s's min/max bounds.", datatype);
         goto error;
     case LY_SUCCESS:
         return LY_SUCCESS;
     default:
-        asprintf(&errmsg, "Invalid %s value \"%.*s\".", datatype, (int)value_len, value);
+        rc = asprintf(&errmsg, "Invalid %s value \"%.*s\".", datatype, (int)value_len, value);
         goto error;
     }
 
 error:
-    *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
-    return LY_EVALID;
+    if (rc == -1) {
+        *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+        return LY_EMEM;
+    } else {
+        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
+        return LY_EVALID;
+    }
 }
 
 API struct lyd_value_prefix *
@@ -215,6 +221,7 @@ ly_type_parse_uint(const char *datatype, int base, uint64_t max, const char *val
                    struct ly_err_item **err)
 {
     char *errmsg = NULL;
+    int rc = 0;
 
     LY_CHECK_ARG_RET(NULL, err, datatype, LY_EINVAL);
 
@@ -222,25 +229,30 @@ ly_type_parse_uint(const char *datatype, int base, uint64_t max, const char *val
     for (;value_len && isspace(*value); ++value, --value_len);
 
     if (!value || !value[0] || !value_len) {
-        asprintf(&errmsg, "Invalid empty %s value.", datatype);
+        rc = asprintf(&errmsg, "Invalid empty %s value.", datatype);
         goto error;
     }
 
     *err = NULL;
     switch (ly_parse_uint(value, value_len, max, base, ret)) {
     case LY_EDENIED:
-        asprintf(&errmsg, "Value \"%.*s\" is out of %s's min/max bounds.", (int)value_len, value, datatype);
+        rc = asprintf(&errmsg, "Value \"%.*s\" is out of %s's min/max bounds.", (int)value_len, value, datatype);
         goto error;
     case LY_SUCCESS:
         return LY_SUCCESS;
     default:
-        asprintf(&errmsg, "Invalid %s value \"%.*s\".", datatype, (int)value_len, value);
+        rc = asprintf(&errmsg, "Invalid %s value \"%.*s\".", datatype, (int)value_len, value);
         goto error;
     }
 
 error:
-    *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
-    return LY_EVALID;
+    if (rc == -1) {
+        *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+        return LY_EMEM;
+    } else {
+        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
+        return LY_EVALID;
+    }
 }
 
 API LY_ERR
@@ -260,8 +272,11 @@ ly_type_parse_dec64(uint8_t fraction_digits, const char *value, size_t value_len
         errmsg = strdup("Invalid empty decimal64 value.");
         goto error;
     } else if (!isdigit(value[len]) && (value[len] != '-') && (value[len] != '+')) {
-        asprintf(&errmsg, "Invalid %lu. character of decimal64 value \"%.*s\".",
-                 len + 1, (int)value_len, value);
+        if (asprintf(&errmsg, "Invalid %lu. character of decimal64 value \"%.*s\".",
+                     len + 1, (int)value_len, value) == -1) {
+            errmsg = NULL;
+            rc = LY_EMEM;
+        }
         goto error;
     }
 
@@ -291,8 +306,11 @@ ly_type_parse_dec64(uint8_t fraction_digits, const char *value, size_t value_len
 
 decimal:
     if (fraction && (len - 1 - fraction > fraction_digits)) {
-        asprintf(&errmsg, "Value \"%.*s\" of decimal64 type exceeds defined number (%u) of fraction digits.", (int)len, value,
-                 fraction_digits);
+        if (asprintf(&errmsg, "Value \"%.*s\" of decimal64 type exceeds defined number (%u) of fraction digits.", (int)len, value,
+                     fraction_digits) == -1) {
+            errmsg = NULL;
+            rc = LY_EMEM;
+        }
         goto error;
     }
     if (fraction) {
@@ -306,8 +324,11 @@ decimal:
         unsigned long int u;
         for (u = len + trailing_zeros; u < value_len && isspace(value[u]); ++u);
         if (u != value_len) {
-            asprintf(&errmsg, "Invalid %lu. character of decimal64 value \"%.*s\".",
-                     u + 1, (int)value_len, value);
+            if (asprintf(&errmsg, "Invalid %lu. character of decimal64 value \"%.*s\".",
+                         u + 1, (int)value_len, value) == -1) {
+                errmsg = NULL;
+                rc = LY_EMEM;
+            }
             goto error;
         }
     }
@@ -365,9 +386,13 @@ ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str, size_
 
         rc = pcre2_match(patterns[u]->code, (PCRE2_SPTR)str, str_len, 0, PCRE2_ANCHORED | PCRE2_ENDANCHORED, match_data, NULL);
         if (rc == PCRE2_ERROR_NOMATCH) {
-            asprintf(&errmsg, "String \"%.*s\" does not conform to the pattern \"%s\".", (int)str_len, str, patterns[u]->expr);
-            *err = ly_err_new(LY_LLERR, LY_ESYS, 0, errmsg, NULL, NULL);
-            ret = LY_EVALID;
+            if (asprintf(&errmsg, "String \"%.*s\" does not conform to the pattern \"%s\".", (int)str_len, str, patterns[u]->expr) == -1) {
+                *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+                ret = LY_EMEM;
+            } else {
+                *err = ly_err_new(LY_LLERR, LY_ESYS, 0, errmsg, NULL, NULL);
+                ret = LY_EVALID;
+            }
             goto cleanup;
         } else if (rc < 0) {
             /* error */
@@ -394,6 +419,7 @@ ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t 
 {
     LY_ARRAY_COUNT_TYPE u;
     char *errmsg = NULL;
+    int rc = 0;
 
     LY_ARRAY_FOR(range->parts, u) {
         if (basetype < LY_TYPE_DEC64) {
@@ -402,9 +428,9 @@ ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t 
                 if (range->emsg) {
                     errmsg = strdup(range->emsg);
                 } else {
-                    asprintf(&errmsg, "%s \"%s\" does not satisfy the %s constraint.",
-                           (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "Length" : "Value", strval,
-                           (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "length" : "range");
+                    rc = asprintf(&errmsg, "%s \"%s\" does not satisfy the %s constraint.",
+                                  (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "Length" : "Value", strval,
+                                  (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "length" : "range");
                 }
                 goto error;
             } else if ((uint64_t)value <= range->parts[u].max_u64) {
@@ -415,9 +441,9 @@ ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t 
                 if (range->emsg) {
                     errmsg = strdup(range->emsg);
                 } else {
-                    asprintf(&errmsg, "%s \"%s\" does not satisfy the %s constraint.",
-                           (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "Length" : "Value", strval,
-                           (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "length" : "range");
+                    rc = asprintf(&errmsg, "%s \"%s\" does not satisfy the %s constraint.",
+                                  (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "Length" : "Value", strval,
+                                  (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "length" : "range");
                 }
                 goto error;
             }
@@ -427,7 +453,7 @@ ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t 
                 if (range->emsg) {
                     errmsg = strdup(range->emsg);
                 } else {
-                    asprintf(&errmsg, "Value \"%s\" does not satisfy the range constraint.", strval);
+                    rc = asprintf(&errmsg, "Value \"%s\" does not satisfy the range constraint.", strval);
                 }
                 goto error;
             } else if (value < range->parts[u].max_64) {
@@ -438,7 +464,7 @@ ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t 
                 if (range->emsg) {
                     errmsg = strdup(range->emsg);
                 } else {
-                    asprintf(&errmsg, "Value \"%s\" does not satisfy the range constraint.", strval);
+                    rc = asprintf(&errmsg, "Value \"%s\" does not satisfy the range constraint.", strval);
                 }
                 goto error;
             }
@@ -448,8 +474,13 @@ ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t 
     return LY_SUCCESS;
 
 error:
-    *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, range->eapptag ? strdup(range->eapptag) : NULL);
-    return LY_EVALID;
+    if (rc == -1 || !errmsg) {
+        *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+        return LY_EMEM;
+    } else {
+        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, range->eapptag ? strdup(range->eapptag) : NULL);
+        return LY_EVALID;
+    }
 }
 
 static void
@@ -525,7 +556,7 @@ ly_type_store_int(const struct ly_ctx *ctx, struct lysc_type *type, const char *
         LOGINT_RET(NULL);
     }
 
-    asprintf(&str, "%"PRId64, i);
+    LY_CHECK_RET(asprintf(&str, "%"PRId64, i) == -1, LY_EMEM);
 
     /* range of the number */
     if (type_num->range) {
@@ -598,7 +629,7 @@ ly_type_store_uint(const struct ly_ctx *ctx, struct lysc_type *type, const char 
         LOGINT_RET(NULL);
     }
 
-    asprintf(&str, "%"PRIu64, u);
+    LY_CHECK_RET(asprintf(&str, "%"PRIu64, u) == -1, LY_EMEM);
 
     /* range of the number */
     if (type_num->range) {
@@ -733,6 +764,7 @@ ly_type_store_binary(const struct ly_ctx *ctx, struct lysc_type *type, const cha
     size_t start = 0, stop = 0, count = 0, u, termination = 0;
     struct lysc_type_bin *type_bin = (struct lysc_type_bin *)type;
     char *errmsg;
+    int erc = 0;
 
     LY_CHECK_ARG_RET(ctx, value, LY_EINVAL);
 
@@ -776,7 +808,7 @@ ly_type_store_binary(const struct ly_ctx *ctx, struct lysc_type *type, const cha
                 }
                 if (!termination) {
                     /* error */
-                    asprintf(&errmsg, "Invalid Base64 character (%c).", value[u]);
+                    erc = asprintf(&errmsg, "Invalid Base64 character (%c).", value[u]);
                     goto error;
                 }
             }
@@ -819,7 +851,11 @@ finish:
 
 error:
     if (!*err) {
-        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
+        if (erc == -1 || !errmsg) {
+            *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+        } else {
+            *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
+        }
     }
     return (*err)->no;
 }
@@ -893,6 +929,7 @@ ly_type_store_bits(const struct ly_ctx *ctx, struct lysc_type *type, const char 
     size_t ws_count;
     size_t lws_count; /* leading whitespace count */
     const char *can = NULL;
+    int erc = 0;
 
     if (options & LY_TYPE_OPTS_SECOND_CALL) {
         return LY_SUCCESS;
@@ -924,8 +961,8 @@ ly_type_store_bits(const struct ly_ctx *ctx, struct lysc_type *type, const char 
                 /* check that the bit is not disabled */
                 LY_ARRAY_FOR(type_bits->bits[u].iffeatures, v) {
                     if (lysc_iffeature_value(&type_bits->bits[u].iffeatures[v]) == LY_ENOT) {
-                        asprintf(&errmsg, "Bit \"%s\" is disabled by its %" LY_PRI_ARRAY_COUNT_TYPE ". if-feature condition.",
-                                 type_bits->bits[u].name, v + 1);
+                        erc = asprintf(&errmsg, "Bit \"%s\" is disabled by its %" LY_PRI_ARRAY_COUNT_TYPE ". if-feature condition.",
+                                       type_bits->bits[u].name, v + 1);
                         goto error;
                     }
                 }
@@ -936,14 +973,14 @@ ly_type_store_bits(const struct ly_ctx *ctx, struct lysc_type *type, const char 
                 inserted = ly_set_add(items, &type_bits->bits[u], 0);
                 LY_CHECK_ERR_GOTO(inserted == -1, ret = LY_EMEM, error);
                 if ((unsigned int)inserted != items->count - 1) {
-                    asprintf(&errmsg, "Bit \"%s\" used multiple times.", type_bits->bits[u].name);
+                    erc = asprintf(&errmsg, "Bit \"%s\" used multiple times.", type_bits->bits[u].name);
                     goto error;
                 }
                 goto next;
             }
         }
         /* item not found */
-        asprintf(&errmsg, "Invalid bit value \"%.*s\".", (int)item_len, item);
+        erc = asprintf(&errmsg, "Invalid bit value \"%.*s\".", (int)item_len, item);
         goto error;
 next:
         /* remember for canonized form: item + space/termination-byte */
@@ -1010,7 +1047,10 @@ next:
     ly_set_free(items, NULL);
     return LY_SUCCESS;
 error:
-    if (errmsg) {
+    if (erc == -1) {
+        *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+        ret = LY_EMEM;
+    } else if (errmsg) {
         *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
     }
     ly_set_free(items, NULL);
@@ -1067,6 +1107,7 @@ ly_type_store_enum(const struct ly_ctx *ctx, struct lysc_type *type, const char 
     LY_ARRAY_COUNT_TYPE u, v;
     char *errmsg = NULL;
     struct lysc_type_enum *type_enum = (struct lysc_type_enum*)type;
+    int erc = 0;
 
     if (options & LY_TYPE_OPTS_SECOND_CALL) {
         return LY_SUCCESS;
@@ -1080,8 +1121,8 @@ ly_type_store_enum(const struct ly_ctx *ctx, struct lysc_type *type, const char 
             /* check that the enumeration value is not disabled */
             LY_ARRAY_FOR(type_enum->enums[u].iffeatures, v) {
                 if (lysc_iffeature_value(&type_enum->enums[u].iffeatures[v]) == LY_ENOT) {
-                    asprintf(&errmsg, "Enumeration \"%s\" is disabled by its %" LY_PRI_ARRAY_COUNT_TYPE ". if-feature condition.",
-                             type_enum->enums[u].name, v + 1);
+                    erc = asprintf(&errmsg, "Enumeration \"%s\" is disabled by its %" LY_PRI_ARRAY_COUNT_TYPE ". if-feature condition.",
+                                   type_enum->enums[u].name, v + 1);
                     goto error;
                 }
             }
@@ -1089,7 +1130,7 @@ ly_type_store_enum(const struct ly_ctx *ctx, struct lysc_type *type, const char 
         }
     }
     /* enum not found */
-    asprintf(&errmsg, "Invalid enumeration value \"%.*s\".", (int)value_len, value);
+    erc = asprintf(&errmsg, "Invalid enumeration value \"%.*s\".", (int)value_len, value);
     goto error;
 
 match:
@@ -1112,10 +1153,13 @@ match:
     return LY_SUCCESS;
 
 error:
-    if (errmsg) {
+    if (erc == -1) {
+        *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+        return LY_EMEM;
+    } else {
         *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
+        return LY_EVALID;
     }
-    return LY_EVALID;
 }
 
 /* @brief Duplication callback of the enumeration values.
@@ -1152,9 +1196,13 @@ ly_type_store_boolean(const struct ly_ctx *ctx, struct lysc_type *UNUSED(type), 
         i = 0;
     } else {
         char *errmsg;
-        asprintf(&errmsg, "Invalid boolean value \"%.*s\".", (int)value_len, value);
-        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
-        return LY_EVALID;
+        if (asprintf(&errmsg, "Invalid boolean value \"%.*s\".", (int)value_len, value) == -1) {
+            *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+            return LY_EMEM;
+        } else {
+            *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
+            return LY_EVALID;
+        }
     }
 
     if (options & (LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_STORE)) {
@@ -1202,9 +1250,13 @@ ly_type_store_empty(const struct ly_ctx *ctx, struct lysc_type *UNUSED(type), co
 
     if (value_len) {
         char *errmsg;
-        asprintf(&errmsg, "Invalid empty value \"%.*s\".", (int)value_len, value);
-        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
-        return LY_EVALID;
+        if (asprintf(&errmsg, "Invalid empty value \"%.*s\".", (int)value_len, value) == -1) {
+            *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+            return LY_EMEM;
+        } else {
+            *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
+            return LY_EVALID;
+        }
     }
 
     if (options & (LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_STORE)) {
@@ -1264,6 +1316,7 @@ ly_type_store_identityref(const struct ly_ctx *ctx, struct lysc_type *type, cons
     const struct lys_module *mod;
     LY_ARRAY_COUNT_TYPE u;
     struct lysc_ident *ident = NULL, *identities;
+    int erc = 0;
 
     if (options & LY_TYPE_OPTS_SECOND_CALL) {
         return LY_SUCCESS;
@@ -1287,7 +1340,7 @@ ly_type_store_identityref(const struct ly_ctx *ctx, struct lysc_type *type, cons
 
     mod = resolve_prefix(ctx, prefix, prefix_len, parser);
     if (!mod) {
-        asprintf(&errmsg, "Invalid identityref \"%.*s\" value - unable to map prefix to YANG schema.", (int)value_len, value);
+        erc = asprintf(&errmsg, "Invalid identityref \"%.*s\" value - unable to map prefix to YANG schema.", (int)value_len, value);
         goto error;
     }
     if (mod->compiled) {
@@ -1304,11 +1357,11 @@ ly_type_store_identityref(const struct ly_ctx *ctx, struct lysc_type *type, cons
     }
     if (u == LY_ARRAY_COUNT(identities)) {
         /* no match */
-        asprintf(&errmsg, "Invalid identityref \"%.*s\" value - identity not found.", (int)value_len, value);
+        erc = asprintf(&errmsg, "Invalid identityref \"%.*s\" value - identity not found.", (int)value_len, value);
         goto error;
     } else if (!mod->compiled) {
         /* non-implemented module */
-        asprintf(&errmsg, "Invalid identityref \"%.*s\" value - identity found in non-implemented module \"%s\".",
+        erc = asprintf(&errmsg, "Invalid identityref \"%.*s\" value - identity found in non-implemented module \"%s\".",
                  (int)value_len, value, mod->name);
         goto error;
     }
@@ -1322,7 +1375,7 @@ ly_type_store_identityref(const struct ly_ctx *ctx, struct lysc_type *type, cons
     }
     if (u == LY_ARRAY_COUNT(type_ident->bases)) {
         /* no match */
-        asprintf(&errmsg, "Invalid identityref \"%.*s\" value - identity not accepted by the type specification.", (int)value_len, value);
+        erc = asprintf(&errmsg, "Invalid identityref \"%.*s\" value - identity not accepted by the type specification.", (int)value_len, value);
         goto error;
     }
 
@@ -1344,8 +1397,13 @@ ly_type_store_identityref(const struct ly_ctx *ctx, struct lysc_type *type, cons
     return LY_SUCCESS;
 
 error:
-    *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
-    return LY_EVALID;
+    if (erc == -1 || !errmsg) {
+        *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+        return LY_EMEM;
+    } else {
+        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
+        return LY_EVALID;
+    }
 }
 
 /**
@@ -1373,9 +1431,11 @@ ly_type_print_identityref(const struct lyd_value *value, LYD_FORMAT UNUSED(forma
     char *result = NULL;
 
     *dynamic = 1;
-    asprintf(&result, "%s:%s", get_prefix(value->ident->module, printer), value->ident->name);
-
-    return result;
+    if (asprintf(&result, "%s:%s", get_prefix(value->ident->module, printer), value->ident->name) == -1) {
+        return NULL;
+    } else {
+        return result;
+    }
 }
 
 /* @brief Duplication callback of the identityref values.
@@ -1429,6 +1489,7 @@ ly_type_store_instanceid(const struct ly_ctx *ctx, struct lysc_type *type, const
     struct ly_set predicates = {0};
     struct lyxp_expr *exp = NULL;
     const struct lysc_node *ctx_scnode;
+    int erc = 0;
 
     /* init */
     *err = NULL;
@@ -1448,7 +1509,7 @@ ly_type_store_instanceid(const struct ly_ctx *ctx, struct lysc_type *type, const
              * to get the exactly same string as original, JSON is less demanding and still well readable/understandable. */
             int dynamic = 0;
             const char *id = storage->realtype->plugin->print(storage, LYD_JSON, json_print_get_prefix, NULL, &dynamic);
-            asprintf(&errmsg, "Invalid instance-identifier \"%s\" value - required instance not found.", id);
+            erc = asprintf(&errmsg, "Invalid instance-identifier \"%s\" value - required instance not found.", id);
             if (dynamic) {
                 free((char*)id);
             }
@@ -1467,7 +1528,7 @@ ly_type_store_instanceid(const struct ly_ctx *ctx, struct lysc_type *type, const
     ret = ly_path_parse(ctx, value, value_len, LY_PATH_BEGIN_ABSOLUTE, LY_PATH_LREF_FALSE, LY_PATH_PREFIX_MANDATORY,
                         LY_PATH_PRED_SIMPLE, &exp);
     if (ret) {
-        asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - syntax error.", (int)value_len, value);
+        erc = asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - syntax error.", (int)value_len, value);
         goto error;
     }
 
@@ -1478,7 +1539,7 @@ ly_type_store_instanceid(const struct ly_ctx *ctx, struct lysc_type *type, const
                           LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_SINGLE, ly_type_stored_prefixes_clb,
                           prefixes, format, &path);
     if (ret) {
-        asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - semantic error.", (int)value_len, value);
+        erc = asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - semantic error.", (int)value_len, value);
         goto error;
     }
 
@@ -1486,7 +1547,7 @@ ly_type_store_instanceid(const struct ly_ctx *ctx, struct lysc_type *type, const
     if (!(options & LY_TYPE_OPTS_INCOMPLETE_DATA) && !(options & LY_TYPE_OPTS_SCHEMA) && type_inst->require_instance) {
         ret = ly_path_eval(path, tree, NULL);
         if (ret) {
-            asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - instance not found.", (int)value_len, value);
+            erc = asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - instance not found.", (int)value_len, value);
             goto error;
         }
     }
@@ -1536,7 +1597,12 @@ error:
     ly_path_free(ctx, path);
 
     if (!*err) {
-        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
+        if (erc == -1) {
+            *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+            ret = LY_EMEM;
+        } else {
+            *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
+        }
     }
     return ret;
 }
@@ -1761,8 +1827,12 @@ ly_type_find_leafref(const struct lysc_type_leafref *lref, const struct lyd_node
     /* find all target data instances */
     ret = lyxp_eval(lref->path, LYD_SCHEMA, lref->path_context, node, LYXP_NODE_ELEM, tree, &set, 0);
     if (ret) {
+        ret = LY_ENOTFOUND;
         val_str = lref->plugin->print(value, LYD_JSON, json_print_get_prefix, NULL, &dynamic);
-        asprintf(errmsg, "Invalid leafref value \"%s\" - XPath evaluation error.", val_str);
+        if (asprintf(errmsg, "Invalid leafref value \"%s\" - XPath evaluation error.", val_str) == -1) {
+            *errmsg = NULL;
+            ret = LY_EMEM;
+        }
         if (dynamic) {
             free((char *)val_str);
         }
@@ -1780,9 +1850,13 @@ ly_type_find_leafref(const struct lysc_type_leafref *lref, const struct lyd_node
         }
     }
     if (i == set.used) {
+        ret = LY_ENOTFOUND;
         val_str = lref->plugin->print(value, LYD_JSON, json_print_get_prefix, NULL, &dynamic);
-        asprintf(errmsg, "Invalid leafref value \"%s\" - no target instance \"%s\" with the same value.", val_str,
-                 lref->path->expr);
+        if (asprintf(errmsg, "Invalid leafref value \"%s\" - no target instance \"%s\" with the same value.", val_str,
+                     lref->path->expr) == -1) {
+            *errmsg = NULL;
+            ret = LY_EMEM;
+        }
         if (dynamic) {
             free((char *)val_str);
         }
@@ -1798,7 +1872,7 @@ ly_type_find_leafref(const struct lysc_type_leafref *lref, const struct lyd_node
 
 error:
     lyxp_set_free_content(&set);
-    return LY_ENOTFOUND;
+    return ret;
 }
 
 /**
@@ -2017,8 +2091,23 @@ search_subtype:
         }
 
         if (u == LY_ARRAY_COUNT(type_u->types)) {
-            asprintf(&errmsg, "Invalid union value \"%.*s\" - no matching subtype found.", (int)value_len, value);
-            goto error;
+            if (asprintf(&errmsg, "Invalid union value \"%.*s\" - no matching subtype found.", (int)value_len, value) == -1) {
+                *err = ly_err_new(LY_LLERR, LY_EMEM, 0, "Memory allocation failed.", NULL, NULL);
+                ret = LY_EMEM;
+            } else {
+                *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
+                ret = LY_EVALID;
+            }
+            LY_ARRAY_FOR(subvalue->prefixes, u) {
+                lydict_remove(ctx, subvalue->prefixes[u].prefix);
+            }
+            LY_ARRAY_FREE(subvalue->prefixes);
+            free(subvalue->value);
+            free(subvalue);
+            if ((options & LY_TYPE_OPTS_SECOND_CALL) && (options & LY_TYPE_OPTS_STORE)) {
+                storage->subvalue = NULL;
+            }
+            return ret;
         }
 
         if ((options & LY_TYPE_OPTS_STORE) && !storage->original) {
@@ -2043,23 +2132,6 @@ search_subtype:
     }
 
     return ret;
-
-error:
-
-    if (!*err) {
-        *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
-    }
-    LY_ARRAY_FOR(subvalue->prefixes, u) {
-        lydict_remove(ctx, subvalue->prefixes[u].prefix);
-    }
-    LY_ARRAY_FREE(subvalue->prefixes);
-    free(subvalue->value);
-    free(subvalue);
-    if ((options & LY_TYPE_OPTS_SECOND_CALL) && (options & LY_TYPE_OPTS_STORE)) {
-        storage->subvalue = NULL;
-    }
-
-    return LY_EVALID;
 }
 
 /**
