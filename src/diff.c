@@ -12,6 +12,7 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 #define _XOPEN_SOURCE 500
+#define _POSIX_C_SOURCE 200809L
 
 #include "diff.h"
 
@@ -20,7 +21,6 @@
 #include <string.h>
 
 #include "common.h"
-#include "compat.h"
 #include "log.h"
 #include "tree_data_internal.h"
 #include "tree_schema.h"
