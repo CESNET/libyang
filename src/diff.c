@@ -20,6 +20,7 @@
 #include <string.h>
 
 #include "common.h"
+#include "compat.h"
 #include "log.h"
 #include "tree_data_internal.h"
 #include "tree_schema.h"
