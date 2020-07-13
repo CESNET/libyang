@@ -781,7 +781,7 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx)
         root_bis = 0;
     }
 
-    if (lyd_validate(&root, NULL, LYD_VALIDATE_PRESENT)) {
+    if (lyd_validate(&root, NULL, LYD_VALIDATE_PRESENT, NULL)) {
         goto error;
     }
 

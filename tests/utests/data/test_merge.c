@@ -282,7 +282,7 @@ test_leaf(void **state)
 
     /* merge them */
     assert_int_equal(lyd_merge(&st->target, st->source, 0), LY_SUCCESS);
-    assert_int_equal(lyd_validate(&st->target, NULL, LYD_VALIDATE_PRESENT), LY_SUCCESS);
+    assert_int_equal(lyd_validate(&st->target, NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
 
     /* check the result */
     lyd_print_mem(&printed, st->target, LYD_XML, LYD_PRINT_WITHSIBLINGS);
@@ -324,7 +324,7 @@ test_container(void **state)
 
     /* merge them */
     assert_int_equal(lyd_merge(&st->target, st->source, 0), LY_SUCCESS);
-    assert_int_equal(lyd_validate(&st->target, NULL, LYD_VALIDATE_PRESENT), LY_SUCCESS);
+    assert_int_equal(lyd_validate(&st->target, NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
 
     /* check the result */
     lyd_print_mem(&printed, st->target, LYD_XML, LYD_PRINT_WITHSIBLINGS);
@@ -394,7 +394,7 @@ test_list(void **state)
 
     /* merge them */
     assert_int_equal(lyd_merge(&st->target, st->source, LYD_MERGE_EXPLICIT), LY_SUCCESS);
-    assert_int_equal(lyd_validate(&st->target, NULL, LYD_VALIDATE_PRESENT), LY_SUCCESS);
+    assert_int_equal(lyd_validate(&st->target, NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
 
     /* check the result */
     lyd_print_mem(&printed, st->target, LYD_XML, LYD_PRINT_WITHSIBLINGS);
@@ -473,7 +473,7 @@ test_list2(void **state)
 
     /* merge them */
     assert_int_equal(lyd_merge(&st->target, st->source, LYD_MERGE_EXPLICIT), LY_SUCCESS);
-    assert_int_equal(lyd_validate(&st->target, NULL, LYD_VALIDATE_PRESENT), LY_SUCCESS);
+    assert_int_equal(lyd_validate(&st->target, NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
 
     /* check the result */
     lyd_print_mem(&printed, st->target, LYD_XML, LYD_PRINT_WITHSIBLINGS);
@@ -531,7 +531,7 @@ test_case(void **state)
 
     /* merge them */
     assert_int_equal(lyd_merge(&st->target, st->source, 0), LY_SUCCESS);
-    assert_int_equal(lyd_validate(&st->target, NULL, LYD_VALIDATE_PRESENT), LY_SUCCESS);
+    assert_int_equal(lyd_validate(&st->target, NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
 
     /* check the result */
     lyd_print_mem(&printed, st->target, LYD_XML, LYD_PRINT_WITHSIBLINGS);
@@ -566,13 +566,13 @@ test_dflt(void **state)
 
     st->target = lyd_new_path(NULL, st->ctx, "/merge-dflt:top/c", "c_dflt", 0);
     assert_non_null(st->target);
-    assert_int_equal(lyd_validate(&(st->target), NULL, LYD_VALIDATE_PRESENT), LY_SUCCESS);
+    assert_int_equal(lyd_validate(&(st->target), NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
 
     st->source = lyd_new_path(NULL, st->ctx, "/merge-dflt:top/a", "a_val", 0);
     assert_non_null(st->source);
     tmp = lyd_new_path(st->source, st->ctx, "/merge-dflt:top/b", "b_val", 0);
     assert_non_null(tmp);
-    assert_int_equal(lyd_validate(&(st->source), NULL, LYD_VALIDATE_PRESENT), LY_SUCCESS);
+    assert_int_equal(lyd_validate(&(st->source), NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
 
     assert_int_equal(lyd_merge(&st->target, st->source, LYD_MERGE_DESTRUCT), LY_SUCCESS);
     st->source = NULL;
@@ -608,13 +608,13 @@ test_dflt2(void **state)
 
     st->target = lyd_new_path(NULL, st->ctx, "/merge-dflt:top/c", "c_dflt", 0);
     assert_non_null(st->target);
-    assert_int_equal(lyd_validate(&(st->target), NULL, LYD_VALIDATE_PRESENT), LY_SUCCESS);
+    assert_int_equal(lyd_validate(&(st->target), NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
 
     st->source = lyd_new_path(NULL, st->ctx, "/merge-dflt:top/a", "a_val", 0);
     assert_non_null(st->source);
     tmp = lyd_new_path(st->source, st->ctx, "/merge-dflt:top/b", "b_val", 0);
     assert_non_null(tmp);
-    assert_int_equal(lyd_validate(&(st->source), NULL, LYD_VALIDATE_PRESENT), LY_SUCCESS);
+    assert_int_equal(lyd_validate(&(st->source), NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
 
     assert_int_equal(lyd_merge(&st->target, st->source, LYD_MERGE_EXPLICIT), LY_SUCCESS);
 

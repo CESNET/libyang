@@ -100,8 +100,6 @@ struct ly_in;
  */
 #define LYD_VALIDATE_NO_STATE     0x0001    /**< Consider state data not allowed and raise an error if they are found. */
 #define LYD_VALIDATE_PRESENT      0x0002    /**< Validate only modules whose data actually exist. */
-//#define LYD_VALIDATE_DIFF         0x0004    /**< Flag only for validation, store all the data node changes performed by the validation
-//                                                 in a diff structure. */
 
 /** @} datavalidationoptions */
 
@@ -248,10 +246,11 @@ LY_ERR lyd_parse_notif(const struct ly_ctx *ctx, struct ly_in *in, LYD_FORMAT fo
  * @param[in,out] tree Data tree to recursively validate. May be changed by validation.
  * @param[in] ctx libyang context. Can be NULL if @p tree is set.
  * @param[in] val_opts Validation options (@ref datavalidationoptions).
+ * @param[out] diff Optional diff with any changes made by the validation.
  * @return LY_SUCCESS on success.
  * @return LY_ERR error on error.
  */
-LY_ERR lyd_validate(struct lyd_node **tree, const struct ly_ctx *ctx, int val_opts);
+LY_ERR lyd_validate(struct lyd_node **tree, const struct ly_ctx *ctx, int val_opts, struct lyd_node **diff);
 
 /**
  * @brief Fully validate a data tree of a module.
@@ -259,10 +258,11 @@ LY_ERR lyd_validate(struct lyd_node **tree, const struct ly_ctx *ctx, int val_op
  * @param[in,out] tree Data tree to recursively validate. May be changed by validation.
  * @param[in] module Module whose data (and schema restrictions) to validate.
  * @param[in] val_opts Validation options (@ref datavalidationoptions).
+ * @param[out] diff Optional diff with any changes made by the validation.
  * @return LY_SUCCESS on success.
  * @return LY_ERR error on error.
  */
-LY_ERR lyd_validate_module(struct lyd_node **tree, const struct lys_module *module, int val_opts);
+LY_ERR lyd_validate_module(struct lyd_node **tree, const struct lys_module *module, int val_opts, struct lyd_node **diff);
 
 /**
  * @brief Validate an RPC/action, notification, or RPC/action reply.
@@ -272,12 +272,13 @@ LY_ERR lyd_validate_module(struct lyd_node **tree, const struct lys_module *modu
  * @param[in] tree Tree to be used for validating references from the operation subtree.
  * @param[in] op Operation to validate (@ref datavalidateop), the given @p op_tree must correspond to this value. Note that
  * it isn't possible to detect the operation simply from the @p op_tree since RPC/action and their reply share the same
- * RPC/action data node and in case one of the input and output do not define any data node children, it is not passible
+ * RPC/action data node and in case one of the input and output do not define any data node children, it is not possible
  * to get know what is here given for validation and if it is really valid.
+ * @param[out] diff Optional diff with any changes made by the validation.
  * @return LY_SUCCESS on success.
  * @return LY_ERR error on error.
  */
-LY_ERR lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *tree, LYD_VALIDATE_OP op);
+LY_ERR lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *tree, LYD_VALIDATE_OP op, struct lyd_node **diff);
 
 /** @} datatree */
 

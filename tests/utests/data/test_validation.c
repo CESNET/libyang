@@ -1019,7 +1019,7 @@ test_defaults(void **state)
     *state = test_defaults;
 
     char *str;
-    struct lyd_node *tree, *node;
+    struct lyd_node *tree, *node, *diff;
     const struct lys_module *mod = ly_ctx_get_module_latest(ctx, "f");
 
     struct ly_out *out;
@@ -1027,8 +1027,9 @@ test_defaults(void **state)
 
     /* get defaults */
     tree = NULL;
-    assert_int_equal(lyd_validate_module(&tree, mod, 0), LY_SUCCESS);
+    assert_int_equal(lyd_validate_module(&tree, mod, 0, &diff), LY_SUCCESS);
     assert_non_null(tree);
+    assert_non_null(diff);
 
     /* check all defaults exist */
     lyd_print(out, tree, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_IMPL_TAG);
@@ -1049,11 +1050,32 @@ test_defaults(void **state)
         "</cont>");
     ly_out_reset(out);
 
+    /* check diff */
+    lyd_print(out, diff, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_ALL);
+    assert_string_equal(str,
+        "<ll1 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">def1</ll1>"
+        "<ll1 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">def2</ll1>"
+        "<ll1 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">def3</ll1>"
+        "<d xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">15</d>"
+        "<ll2 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">dflt1</ll2>"
+        "<ll2 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"create\">dflt2</ll2>"
+        "<cont xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
+            "<ll1 yang:operation=\"create\">def1</ll1>"
+            "<ll1 yang:operation=\"create\">def2</ll1>"
+            "<ll1 yang:operation=\"create\">def3</ll1>"
+            "<d yang:operation=\"create\">15</d>"
+            "<ll2 yang:operation=\"create\">dflt1</ll2>"
+            "<ll2 yang:operation=\"create\">dflt2</ll2>"
+        "</cont>"
+        );
+    ly_out_reset(out);
+    lyd_free_siblings(diff);
+
     /* create another explicit case and validate */
     node = lyd_new_term(NULL, mod, "l", "value");
     assert_non_null(node);
     assert_int_equal(lyd_insert_sibling(tree, node), LY_SUCCESS);
-    assert_int_equal(lyd_validate(&tree, ctx, LYD_VALIDATE_PRESENT), LY_SUCCESS);
+    assert_int_equal(lyd_validate(&tree, ctx, LYD_VALIDATE_PRESENT, &diff), LY_SUCCESS);
 
     /* check data tree */
     lyd_print(out, tree, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_IMPL_TAG);
@@ -1072,6 +1094,16 @@ test_defaults(void **state)
         "<l xmlns=\"urn:tests:f\">value</l>");
     ly_out_reset(out);
 
+    /* check diff */
+    lyd_print(out, diff, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_ALL);
+    assert_string_equal(str,
+        "<ll1 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">def1</ll1>"
+        "<ll1 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">def2</ll1>"
+        "<ll1 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">def3</ll1>"
+        );
+    ly_out_reset(out);
+    lyd_free_siblings(diff);
+
     /* create explicit leaf-list and leaf and validate */
     node = lyd_new_term(NULL, mod, "d", "15");
     assert_non_null(node);
@@ -1079,7 +1111,7 @@ test_defaults(void **state)
     node = lyd_new_term(NULL, mod, "ll2", "dflt2");
     assert_non_null(node);
     assert_int_equal(lyd_insert_sibling(tree, node), LY_SUCCESS);
-    assert_int_equal(lyd_validate(&tree, ctx, LYD_VALIDATE_PRESENT), LY_SUCCESS);
+    assert_int_equal(lyd_validate(&tree, ctx, LYD_VALIDATE_PRESENT, &diff), LY_SUCCESS);
 
     /* check data tree */
     lyd_print(out, tree, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_IMPL_TAG);
@@ -1096,13 +1128,23 @@ test_defaults(void **state)
         "<d xmlns=\"urn:tests:f\">15</d>"
         "<ll2 xmlns=\"urn:tests:f\">dflt2</ll2>");
     ly_out_reset(out);
+
+    /* check diff */
+    lyd_print(out, diff, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_ALL);
+    assert_string_equal(str,
+        "<d xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">15</d>"
+        "<ll2 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">dflt1</ll2>"
+        "<ll2 xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"delete\">dflt2</ll2>"
+        );
+    ly_out_reset(out);
+    lyd_free_siblings(diff);
 
     /* create first explicit container, which should become implicit */
     node = lyd_new_inner(NULL, mod, "cont");
     assert_non_null(node);
     assert_int_equal(lyd_insert_before(tree, node), LY_SUCCESS);
     tree = tree->prev;
-    assert_int_equal(lyd_validate(&tree, ctx, LYD_VALIDATE_PRESENT), LY_SUCCESS);
+    assert_int_equal(lyd_validate(&tree, ctx, LYD_VALIDATE_PRESENT, &diff), LY_SUCCESS);
 
     /* check data tree */
     lyd_print(out, tree, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_IMPL_TAG);
@@ -1119,12 +1161,15 @@ test_defaults(void **state)
         "<d xmlns=\"urn:tests:f\">15</d>"
         "<ll2 xmlns=\"urn:tests:f\">dflt2</ll2>");
     ly_out_reset(out);
+
+    /* check diff */
+    assert_null(diff);
 
     /* create second explicit container, which should become implicit, so the first tree node should be removed */
     node = lyd_new_inner(NULL, mod, "cont");
     assert_non_null(node);
     assert_int_equal(lyd_insert_after(tree, node), LY_SUCCESS);
-    assert_int_equal(lyd_validate(&tree, ctx, LYD_VALIDATE_PRESENT), LY_SUCCESS);
+    assert_int_equal(lyd_validate(&tree, ctx, LYD_VALIDATE_PRESENT, &diff), LY_SUCCESS);
 
     /* check data tree */
     lyd_print(out, tree, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_IMPL_TAG);
@@ -1142,11 +1187,14 @@ test_defaults(void **state)
         "<ll2 xmlns=\"urn:tests:f\">dflt2</ll2>");
     ly_out_reset(out);
 
+    /* check diff */
+    assert_null(diff);
+
     /* similar changes for nested defaults */
     assert_non_null(lyd_new_term(tree, NULL, "ll1", "def3"));
     assert_non_null(lyd_new_term(tree, NULL, "d", "5"));
     assert_non_null(lyd_new_term(tree, NULL, "ll2", "non-dflt"));
-    assert_int_equal(lyd_validate(&tree, ctx, LYD_VALIDATE_PRESENT), LY_SUCCESS);
+    assert_int_equal(lyd_validate(&tree, ctx, LYD_VALIDATE_PRESENT, &diff), LY_SUCCESS);
 
     /* check data tree */
     lyd_print(out, tree, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_IMPL_TAG);
@@ -1160,6 +1208,21 @@ test_defaults(void **state)
         "<d xmlns=\"urn:tests:f\">15</d>"
         "<ll2 xmlns=\"urn:tests:f\">dflt2</ll2>");
     ly_out_reset(out);
+
+    /* check diff */
+    lyd_print(out, diff, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_ALL);
+    assert_string_equal(str,
+        "<cont xmlns=\"urn:tests:f\" xmlns:yang=\"urn:ietf:params:xml:ns:yang:1\" yang:operation=\"none\">"
+            "<ll1 yang:operation=\"delete\">def1</ll1>"
+            "<ll1 yang:operation=\"delete\">def2</ll1>"
+            "<ll1 yang:operation=\"delete\">def3</ll1>"
+            "<d yang:operation=\"delete\">15</d>"
+            "<ll2 yang:operation=\"delete\">dflt1</ll2>"
+            "<ll2 yang:operation=\"delete\">dflt2</ll2>"
+        "</cont>"
+        );
+    ly_out_reset(out);
+    lyd_free_siblings(diff);
 
     lyd_free_siblings(tree);
     ly_out_free(out, NULL, 1);
@@ -1178,7 +1241,7 @@ test_iffeature(void **state)
 
     /* get empty data */
     tree = NULL;
-    assert_int_equal(lyd_validate_module(&tree, mod, 0), LY_SUCCESS);
+    assert_int_equal(lyd_validate_module(&tree, mod, 0, NULL), LY_SUCCESS);
     assert_null(tree);
 
     /* disabled by f1 */
@@ -1194,7 +1257,7 @@ test_iffeature(void **state)
     assert_int_equal(lys_feature_enable(mod, "f1"), LY_SUCCESS);
 
     /* get data with default container */
-    assert_int_equal(lyd_validate_module(&tree, mod, 0), LY_SUCCESS);
+    assert_int_equal(lyd_validate_module(&tree, mod, 0, NULL), LY_SUCCESS);
     assert_non_null(tree);
     lyd_free_siblings(tree);
 
@@ -1256,17 +1319,17 @@ test_iffeature(void **state)
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, LYD_PARSE_ONLY, 0, &tree));
     assert_non_null(tree);
 
-    assert_int_equal(LY_EVALID, lyd_validate(&tree, NULL, LYD_VALIDATE_PRESENT));
+    assert_int_equal(LY_EVALID, lyd_validate(&tree, NULL, LYD_VALIDATE_PRESENT, NULL));
     logbuf_assert("Data are disabled by \"cont\" schema node if-feature. /g:cont");
 
     assert_int_equal(lys_feature_enable(mod, "f1"), LY_SUCCESS);
 
-    assert_int_equal(LY_EVALID, lyd_validate(&tree, NULL, LYD_VALIDATE_PRESENT));
+    assert_int_equal(LY_EVALID, lyd_validate(&tree, NULL, LYD_VALIDATE_PRESENT, NULL));
     logbuf_assert("Data are disabled by \"b\" schema node if-feature. /g:cont/l");
 
     assert_int_equal(lys_feature_enable(mod, "f2"), LY_SUCCESS);
 
-    assert_int_equal(LY_SUCCESS, lyd_validate(&tree, NULL, LYD_VALIDATE_PRESENT));
+    assert_int_equal(LY_SUCCESS, lyd_validate(&tree, NULL, LYD_VALIDATE_PRESENT, NULL));
 
     lyd_free_siblings(tree);
 
@@ -1298,7 +1361,7 @@ test_state(void **state)
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, LYD_PARSE_ONLY, 0, &tree));
     assert_non_null(tree);
 
-    assert_int_equal(LY_EVALID, lyd_validate(&tree, NULL, LYD_VALIDATE_PRESENT | LYD_VALIDATE_NO_STATE));
+    assert_int_equal(LY_EVALID, lyd_validate(&tree, NULL, LYD_VALIDATE_PRESENT | LYD_VALIDATE_NO_STATE, NULL));
     logbuf_assert("Invalid state data node \"cont2\" found. /h:cont/cont2");
 
     lyd_free_siblings(tree);
@@ -1359,7 +1422,7 @@ test_action(void **state)
     assert_non_null(op_tree);
 
     /* missing leafref */
-    assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, NULL, LYD_VALIDATE_OP_RPC));
+    assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, NULL, LYD_VALIDATE_OP_RPC, NULL));
     logbuf_assert("Invalid leafref value \"target\" - no target instance \"/lf3\" with the same value."
         " /j:cont/l1[k='val1']/act/lf2");
     ly_in_free(in, 0);
@@ -1373,7 +1436,7 @@ test_action(void **state)
     assert_non_null(tree);
 
     /* disabled if-feature */
-    assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, tree, LYD_VALIDATE_OP_RPC));
+    assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, tree, LYD_VALIDATE_OP_RPC, NULL));
     logbuf_assert("Data are disabled by \"act\" schema node if-feature. /j:cont/l1[k='val1']/act");
 
     mod = ly_ctx_get_module_latest(ctx, "j");
@@ -1381,7 +1444,7 @@ test_action(void **state)
     assert_int_equal(LY_SUCCESS, lys_feature_enable(mod, "feat1"));
 
     /* input must false */
-    assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, tree, LYD_VALIDATE_OP_RPC));
+    assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, tree, LYD_VALIDATE_OP_RPC, NULL));
     logbuf_assert("Must condition \"../../lf1 = 'true'\" not satisfied. /j:cont/l1[k='val1']/act");
 
     lyd_free_siblings(tree);
@@ -1394,7 +1457,7 @@ test_action(void **state)
     assert_non_null(tree);
 
     /* success */
-    assert_int_equal(LY_SUCCESS, lyd_validate_op(op_tree, tree, LYD_VALIDATE_OP_RPC));
+    assert_int_equal(LY_SUCCESS, lyd_validate_op(op_tree, tree, LYD_VALIDATE_OP_RPC, NULL));
 
     lys_feature_disable(mod, "feat1");
     lyd_free_tree(op_tree);
@@ -1435,7 +1498,7 @@ test_reply(void **state)
     ly_in_free(in, 0);
 
     /* missing leafref */
-    assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, NULL, LYD_VALIDATE_OP_REPLY));
+    assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, NULL, LYD_VALIDATE_OP_REPLY, NULL));
     logbuf_assert("Invalid leafref value \"target\" - no target instance \"/lf4\" with the same value."
         " /j:cont/l1[k='val1']/act/lf2");
 
@@ -1448,7 +1511,7 @@ test_reply(void **state)
     assert_non_null(tree);
 
     /* disabled if-feature */
-    assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, tree, LYD_VALIDATE_OP_REPLY));
+    assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, tree, LYD_VALIDATE_OP_REPLY, NULL));
     logbuf_assert("Data are disabled by \"act\" schema node if-feature. /j:cont/l1[k='val1']/act");
 
     mod = ly_ctx_get_module_latest(ctx, "j");
@@ -1456,7 +1519,7 @@ test_reply(void **state)
     assert_int_equal(LY_SUCCESS, lys_feature_enable(mod, "feat1"));
 
     /* input must false */
-    assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, tree, LYD_VALIDATE_OP_REPLY));
+    assert_int_equal(LY_EVALID, lyd_validate_op(op_tree, tree, LYD_VALIDATE_OP_REPLY, NULL));
     logbuf_assert("Must condition \"../../lf1 = 'true2'\" not satisfied. /j:cont/l1[k='val1']/act");
 
     lyd_free_siblings(tree);
@@ -1469,7 +1532,7 @@ test_reply(void **state)
     assert_non_null(tree);
 
     /* success */
-    assert_int_equal(LY_SUCCESS, lyd_validate_op(op_tree, tree, LYD_VALIDATE_OP_REPLY));
+    assert_int_equal(LY_SUCCESS, lyd_validate_op(op_tree, tree, LYD_VALIDATE_OP_REPLY, NULL));
 
     lys_feature_disable(mod, "feat1");
     lyd_free_tree(op_tree);

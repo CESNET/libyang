@@ -842,7 +842,7 @@ test_wd(void **state)
     assert_non_null(mod);
 
     st->first = NULL;
-    assert_int_equal(lyd_validate_module(&st->first, mod, 0), LY_SUCCESS);
+    assert_int_equal(lyd_validate_module(&st->first, mod, 0, NULL), LY_SUCCESS);
     assert_ptr_not_equal(st->first, NULL);
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(st->ctx, xml2, LYD_XML, 0, LYD_VALIDATE_PRESENT, &st->second));
     assert_non_null(st->second);

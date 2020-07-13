@@ -819,12 +819,12 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node_inner *parent, s
 
         if (!(lybctx->parse_options & LYD_PARSE_ONLY)) {
             /* new node validation, autodelete CANNOT occur, all nodes are new */
-            ret = lyd_validate_new(lyd_node_children_p(node), snode, NULL);
+            ret = lyd_validate_new(lyd_node_children_p(node), snode, NULL, NULL);
             LY_CHECK_GOTO(ret, cleanup);
 
             /* add any missing default children */
             ret = lyd_validate_defaults_r(node, lyd_node_children_p(node), NULL, NULL, &lybctx->unres_node_type,
-                                          &lybctx->when_check, lybctx->validate_options);
+                                          &lybctx->when_check, lybctx->validate_options, NULL);
             LY_CHECK_GOTO(ret, cleanup);
         }
 

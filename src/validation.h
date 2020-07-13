@@ -31,10 +31,11 @@
  * @param[in] format Format of the unresolved data.
  * @param[in] get_prefix_clb Format-specific getter to resolve prefixes.
  * @param[in] parser_data Parser's data for @p get_prefix_clb.
+ * @param[in,out] diff Validation diff.
  * @return LY_ERR value.
  */
 LY_ERR lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, struct ly_set *node_types, struct ly_set *meta_types,
-                          LYD_FORMAT format, ly_clb_resolve_prefix get_prefix_clb, void *parser_data);
+                          LYD_FORMAT format, ly_clb_resolve_prefix get_prefix_clb, void *parser_data, struct lyd_node **diff);
 
 /**
  * @brief Validate new siblings. Specifically, check duplicated instances, autodelete default values and cases.
@@ -44,9 +45,11 @@ LY_ERR lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, stru
  * @param[in,out] first First sibling.
  * @param[in] sparent Schema parent of the siblings, NULL for top-level siblings.
  * @param[in] mod Module of the siblings, NULL for nested siblings.
+ * @param[in,out] diff Validation diff.
  * @return LY_ERR value.
  */
-LY_ERR lyd_validate_new(struct lyd_node **first, const struct lysc_node *sparent, const struct lys_module *mod);
+LY_ERR lyd_validate_new(struct lyd_node **first, const struct lysc_node *sparent, const struct lys_module *mod,
+                        struct lyd_node **diff);
 
 /**
  * @brief Perform all remaining validation tasks, the data tree must be final when calling this function.
@@ -71,9 +74,11 @@ LY_ERR lyd_validate_final_r(struct lyd_node *first, const struct lysc_node *spar
  * @param[in] node_types Set to add nodes with unresolved types into.
  * @param[in] node_when Set to add nodes with "when" conditions into.
  * @param[in] val_opts Validation options (@ref datavalidationoptions).
+ * @param[in,out] diff Validation diff.
  * @return LY_ERR value.
  */
 LY_ERR lyd_validate_defaults_r(struct lyd_node *parent, struct lyd_node **first, const struct lysc_node *sparent,
-                               const struct lys_module *mod, struct ly_set *node_types, struct ly_set *node_when, int val_opts);
+                               const struct lys_module *mod, struct ly_set *node_types, struct ly_set *node_when,
+                               int val_opts, struct lyd_node **diff);
 
 #endif /* LY_VALIDATION_H_ */
