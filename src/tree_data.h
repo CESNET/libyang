@@ -675,6 +675,18 @@ LY_ERR lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const ch
 LY_ERR lyd_change_term(struct lyd_node *term, const char *val_str);
 
 /**
+ * @brief Change the value of a metadata instance.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] meta Metadata to change.
+ * @param[in] val_str New value to set, any prefixes are expected in JSON format.
+ * @return LY_SUCCESS if value was changed,
+ * @return LY_ENOT if the values were equal and no change occured,
+ * @return LY_ERR value on other errors.
+ */
+LY_ERR lyd_change_meta(struct lyd_meta *meta, const char *val_str);
+
+/**
  * @brief Insert a child into a parent. It is inserted as the last child.
  *
  * - if the node is part of some other tree, it is automatically unlinked.

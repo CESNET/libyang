@@ -285,8 +285,8 @@ LY_ERR lyd_value_store(struct lyd_value *val, const struct lysc_node *schema, co
  * @return LY_EINCOMPLETE in case the @p trees is not provided and it was needed to finish the validation.
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_value_parse_meta(struct ly_ctx *ctx, struct lyd_meta *meta, const char *value, size_t value_len, int *dynamic,
-                            int second, ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format,
+LY_ERR lyd_value_parse_meta(const struct ly_ctx *ctx, struct lyd_meta *meta, const char *value, size_t value_len,
+                            int *dynamic, int second, ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format,
                             const struct lysc_node *ctx_snode, const struct lyd_node *tree);
 
 /**

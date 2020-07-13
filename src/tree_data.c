@@ -122,7 +122,7 @@ lyd_value_store(struct lyd_value *val, const struct lysc_node *schema, const cha
 }
 
 LY_ERR
-lyd_value_parse_meta(struct ly_ctx *ctx, struct lyd_meta *meta, const char *value, size_t value_len, int *dynamic,
+lyd_value_parse_meta(const struct ly_ctx *ctx, struct lyd_meta *meta, const char *value, size_t value_len, int *dynamic,
                      int second, ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format,
                      const struct lysc_node *ctx_snode, const struct lyd_node *tree)
 {
@@ -1050,6 +1050,45 @@ lyd_change_term(struct lyd_node *term, const char *val_str)
 
 cleanup:
     type->plugin->free(LYD_NODE_CTX(term), &val);
+    return ret;
+}
+
+API LY_ERR
+lyd_change_meta(struct lyd_meta *meta, const char *val_str)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lyd_meta *m2;
+    struct lyd_value val;
+    int val_change;
+
+    LY_CHECK_ARG_RET(NULL, meta, LY_EINVAL);
+
+    if (!val_str) {
+        val_str = "";
+    }
+
+    /* parse the new value into a new meta structure */
+    LY_CHECK_GOTO(ret = lyd_create_meta(NULL, &m2, meta->annotation->module, meta->name, strlen(meta->name), val_str,
+                                        strlen(val_str), NULL, lydjson_resolve_prefix, NULL, LYD_JSON, NULL), cleanup);
+
+    /* compare original and new value */
+    if (lyd_compare_meta(meta, m2)) {
+        /* values differ, switch them */
+        val = meta->value;
+        meta->value = m2->value;
+        m2->value = val;
+        val_change = 1;
+    } else {
+        val_change = 0;
+    }
+
+    /* retrun value */
+    if (!val_change) {
+        /* no change */
+        ret = LY_ENOT;
+    } /* else value changed, LY_SUCCESS */
+
+cleanup:
     return ret;
 }
 
