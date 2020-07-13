@@ -1063,6 +1063,17 @@ LY_ERR lyd_diff_merge_module(const struct lyd_node *src_diff, const struct lys_m
 LY_ERR lyd_diff_merge(const struct lyd_node *src_diff, struct lyd_node **diff);
 
 /**
+ * @brief Reverse a diff and make the opposite changes. Meaning change create to delete, delete to create,
+ * or move from place A to B to move from B to A and so on.
+ *
+ * @param[in] src_diff Diff to reverse.
+ * @param[out] diff Reversed diff.
+ * @return LY_SUCCESS on success.
+ * @return LY_ERR on error.
+ */
+LY_ERR lyd_diff_reverse(const struct lyd_node *src_diff, struct lyd_node **diff);
+
+/**
  * @brief Find the target in data of a compiled ly_path structure (instance-identifier).
  *
  * @param[in] path Compiled path structure.

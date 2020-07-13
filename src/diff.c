@@ -1134,7 +1134,7 @@ lyd_diff_merge_replace(struct lyd_node *diff_match, enum lyd_diff_op cur_op, con
         switch (diff_match->schema->nodetype) {
         case LYS_LIST:
         case LYS_LEAFLIST:
-            /* it was created/moved somewhere somewhere, but now it will be created/moved somewhere else,
+            /* it was created/moved somewhere, but now it will be created/moved somewhere else,
              * keep orig_key/orig_value (only replace oper) and replace key/value */
             assert(lysc_is_userordered(diff_match->schema));
             meta_name = (diff_match->schema->nodetype == LYS_LIST ? "key" : "value");
@@ -1544,4 +1544,192 @@ API LY_ERR
 lyd_diff_merge(const struct lyd_node *src_diff, struct lyd_node **diff)
 {
     return lyd_diff_merge_module(src_diff, NULL, NULL, NULL, diff);
+}
+
+static LY_ERR
+lyd_diff_reverse_value(struct lyd_node *leaf, const struct lys_module *mod)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lyd_meta *meta;
+    const char *val1 = NULL, *val2 = NULL;
+    int dyn1 = 0, dyn2 = 0, flags;
+
+    meta = lyd_find_meta(leaf->meta, mod, "orig-value");
+    LY_CHECK_ERR_RET(!meta, LOGINT(LYD_NODE_CTX(leaf)), LY_EINT);
+
+    /* orig-value */
+    val1 = lyd_meta2str(meta, &dyn1);
+
+    /* current value */
+    val2 = lyd_value2str((struct lyd_node_term *)leaf, &dyn2);
+
+    /* switch values, keep default flag */
+    flags = leaf->flags;
+    LY_CHECK_GOTO(ret = lyd_change_term(leaf, val1), cleanup);
+    leaf->flags = flags;
+    LY_CHECK_GOTO(ret = lyd_change_meta(meta, val2), cleanup);
+
+cleanup:
+    if (dyn1) {
+        free((char *)val1);
+    }
+    if (dyn2) {
+        free((char *)val2);
+    }
+    return ret;
+}
+
+static LY_ERR
+lyd_diff_reverse_default(struct lyd_node *node, const struct lys_module *mod)
+{
+    struct lyd_meta *meta;
+    const char *val;
+    int dyn, flag1, flag2;
+
+    meta = lyd_find_meta(node->meta, mod, "orig-default");
+    if (!meta) {
+        /* default flag did not change */
+        return LY_SUCCESS;
+    }
+
+    /* orig-default */
+    val = lyd_meta2str(meta, &dyn);
+    assert(!dyn);
+    if (!strcmp(val, "true")) {
+        flag1 = LYD_DEFAULT;
+    } else {
+        flag1 = 0;
+    }
+
+    /* current default */
+    flag2 = node->flags & LYD_DEFAULT;
+
+    /* switch defaults */
+    node->flags &= ~LYD_DEFAULT;
+    node->flags |= flag1;
+    LY_CHECK_RET(lyd_change_meta(meta, flag2 ? "true" : "false"));
+
+    return LY_SUCCESS;
+}
+
+static LY_ERR
+lyd_diff_reverse_meta(struct lyd_node *node, const struct lys_module *mod, const char *name1, const char *name2)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lyd_meta *meta1, *meta2;
+    const char *val1 = NULL, *val2 = NULL;
+    int dyn1 = 0, dyn2 = 0;
+
+    meta1 = lyd_find_meta(node->meta, mod, name1);
+    LY_CHECK_ERR_RET(!meta1, LOGINT(LYD_NODE_CTX(node)), LY_EINT);
+
+    meta2 = lyd_find_meta(node->meta, mod, name2);
+    LY_CHECK_ERR_RET(!meta2, LOGINT(LYD_NODE_CTX(node)), LY_EINT);
+
+    /* value1 */
+    val1 = lyd_meta2str(meta1, &dyn1);
+
+    /* value2 */
+    val2 = lyd_meta2str(meta2, &dyn2);
+
+    /* switch values */
+    LY_CHECK_GOTO(ret = lyd_change_meta(meta1, val2), cleanup);
+    LY_CHECK_GOTO(ret = lyd_change_meta(meta2, val1), cleanup);
+
+cleanup:
+    if (dyn1) {
+        free((char *)val1);
+    }
+    if (dyn2) {
+        free((char *)val2);
+    }
+    return ret;
+}
+
+API LY_ERR
+lyd_diff_reverse(const struct lyd_node *src_diff, struct lyd_node **diff)
+{
+    LY_ERR ret = LY_SUCCESS;
+    const struct lys_module *mod;
+    struct lyd_node *root, *next, *elem;
+    enum lyd_diff_op op;
+
+    LY_CHECK_ARG_RET(NULL, diff, LY_EINVAL);
+
+    if (!src_diff) {
+        *diff = NULL;
+        return LY_SUCCESS;
+    }
+
+    /* duplicate diff */
+    *diff = lyd_dup(src_diff, NULL, LYD_DUP_WITH_SIBLINGS | LYD_DUP_RECURSIVE);
+    LY_CHECK_RET(!*diff, LY_EMEM);
+
+    /* find module with metadata needed for later */
+    mod = ly_ctx_get_module_latest(LYD_NODE_CTX(src_diff), "yang");
+    LY_CHECK_ERR_GOTO(!mod, LOGINT(LYD_NODE_CTX(src_diff)); ret = LY_EINT, cleanup);
+
+    LY_LIST_FOR(*diff, root) {
+        LYD_TREE_DFS_BEGIN(root, next, elem) {
+            /* find operation attribute, if any */
+            LY_CHECK_GOTO(ret = lyd_diff_get_op(elem, &op), cleanup);
+
+            switch (op) {
+            case LYD_DIFF_OP_CREATE:
+                /* reverse create to delete */
+                LY_CHECK_GOTO(ret = lyd_diff_change_op(elem, LYD_DIFF_OP_DELETE), cleanup);
+                break;
+            case LYD_DIFF_OP_DELETE:
+                /* reverse delete to create */
+                LY_CHECK_GOTO(ret = lyd_diff_change_op(elem, LYD_DIFF_OP_CREATE), cleanup);
+                break;
+            case LYD_DIFF_OP_REPLACE:
+                switch (elem->schema->nodetype) {
+                case LYS_LEAF:
+                    /* leaf value change */
+                    LY_CHECK_GOTO(ret = lyd_diff_reverse_value(elem, mod), cleanup);
+                    LY_CHECK_GOTO(ret = lyd_diff_reverse_default(elem, mod), cleanup);
+                    break;
+                case LYS_LEAFLIST:
+                    /* leaf-list move */
+                    LY_CHECK_GOTO(ret = lyd_diff_reverse_default(elem, mod), cleanup);
+                    LY_CHECK_GOTO(ret = lyd_diff_reverse_meta(elem, mod, "orig-value", "value"), cleanup);
+                    break;
+                case LYS_LIST:
+                    /* list move */
+                    LY_CHECK_GOTO(ret = lyd_diff_reverse_meta(elem, mod, "orig-key", "key"), cleanup);
+                    break;
+                default:
+                    LOGINT(LYD_NODE_CTX(src_diff));
+                    ret = LY_EINT;
+                    goto cleanup;
+                }
+                break;
+            case LYD_DIFF_OP_NONE:
+                switch (elem->schema->nodetype) {
+                case LYS_LEAF:
+                case LYS_LEAFLIST:
+                    /* default flag change */
+                    LY_CHECK_GOTO(ret = lyd_diff_reverse_default(elem, mod), cleanup);
+                    break;
+                default:
+                    /* nothing to do */
+                    break;
+                }
+                break;
+            default:
+                /* nothing to do */
+                break;
+            }
+
+            LYD_TREE_DFS_END(root, next, elem);
+        }
+    }
+
+cleanup:
+    if (ret) {
+        lyd_free_siblings(*diff);
+        *diff = NULL;
+    }
+    return ret;
 }
