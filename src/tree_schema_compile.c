@@ -4055,7 +4055,8 @@ done:
 }
 
 /**
- * @brief Connect the node into the siblings list and check its name uniqueness.
+ * @brief Connect the node into the siblings list and check its name uniqueness. Also,
+ * keep specific order of augments targetting the same node.
  *
  * @param[in] ctx Compile context
  * @param[in] parent Parent node holding the children list, in case of node from a choice's case,
@@ -4067,7 +4068,8 @@ done:
 static LY_ERR
 lys_compile_node_connect(struct lysc_ctx *ctx, struct lysc_node *parent, struct lysc_node *node)
 {
-    struct lysc_node **children;
+    struct lysc_node **children, *start, *end;
+    const struct lys_module *mod;
 
     if (node->nodetype == LYS_CASE) {
         children = (struct lysc_node**)&((struct lysc_node_choice*)parent)->cases;
@@ -4084,10 +4086,32 @@ lys_compile_node_connect(struct lysc_ctx *ctx, struct lysc_node *parent, struct 
              * the first child of each case must be referenced from the case node. So the node is
              * actually always already inserted in case it is the first children - so here such
              * a situation actually corresponds to the first branch */
-            /* insert at the end of the parent's children list */
-            (*children)->prev->next = node;
-            node->prev = (*children)->prev;
-            (*children)->prev = node;
+            if (((*children)->prev->module != (*children)->module) && (node->module != (*children)->module)
+                    && (strcmp((*children)->prev->module->name, node->module->name) > 0)) {
+                /* some augments are already connected and we are connecting new ones,
+                 * keep module name order and insert the node into the children list */
+                end = (*children);
+                do {
+                    end = end->prev;
+                    mod = end->module;
+                    while (end->prev->module == mod) {
+                        end = end->prev;
+                    }
+                } while ((end->prev->module != (*children)->module) && (end->prev->module != node->module)
+                        && (strcmp(mod->name, node->module->name) > 0));
+
+                /* we have the last existing node after our node, easily get the first before and connect it */
+                start = end->prev;
+                start->next = node;
+                node->next = end;
+                end->prev = node;
+                node->prev = start;
+            } else {
+                /* insert at the end of the parent's children list */
+                (*children)->prev->next = node;
+                node->prev = (*children)->prev;
+                (*children)->prev = node;
+            }
 
             /* check the name uniqueness */
             if (lys_compile_node_uniqness(ctx, *children, lysc_node_actions(parent),
