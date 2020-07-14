@@ -1345,9 +1345,6 @@ lyd_insert_after_node(struct lyd_node *sibling, struct lyd_node *node)
             lyd_hash((struct lyd_node *)par);
         }
     }
-
-    /* insert into hash table */
-    lyd_insert_hash(node);
 }
 
 /**
@@ -1388,9 +1385,6 @@ lyd_insert_before_node(struct lyd_node *sibling, struct lyd_node *node)
             lyd_hash((struct lyd_node *)par);
         }
     }
-
-    /* insert into hash table */
-    lyd_insert_hash(node);
 }
 
 /**
@@ -1430,17 +1424,40 @@ lyd_insert_last_node(struct lyd_node *parent, struct lyd_node *node)
             lyd_hash((struct lyd_node *)par);
         }
     }
+}
 
-    /* insert into hash table */
-    lyd_insert_hash(node);
+/**
+ * @brief Learn whether a list instance has all the keys.
+ *
+ * @param[in] list List instance to check.
+ * @return non-zero if all the keys were found,
+ * @return 0 otherwise.
+ */
+static int
+lyd_insert_has_keys(const struct lyd_node *list)
+{
+    const struct lyd_node *key;
+    const struct lysc_node *skey = NULL;
+
+    assert(list->schema->nodetype == LYS_LIST);
+    key = lyd_node_children(list, 0);
+    while ((skey = lys_getnext(skey, list->schema, NULL, 0)) && (skey->flags & LYS_KEY)) {
+        if (!key || (key->schema != skey)) {
+            /* key missing */
+            return 0;
+        }
+
+        key = key->next;
+    }
+
+    /* all keys found */
+    return 1;
 }
 
 void
 lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling, struct lyd_node *node)
 {
     struct lyd_node *anchor;
-    const struct lysc_node *skey = NULL;
-    int has_keys;
 
     assert((parent || first_sibling) && node && (node->hash || !node->schema));
 
@@ -1460,26 +1477,25 @@ lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling, struct
                 lyd_insert_last_node(parent, node);
             }
 
-            /* hash list if all its keys were added */
-            assert(parent->schema->nodetype == LYS_LIST);
-            anchor = lyd_node_children(parent, 0);
-            has_keys = 1;
-            while ((skey = lys_getnext(skey, parent->schema, NULL, 0)) && (skey->flags & LYS_KEY)) {
-                if (!anchor || (anchor->schema != skey)) {
-                    /* key missing */
-                    has_keys = 0;
-                    break;
-                }
+            /* insert into parent HT */
+            lyd_insert_hash(node);
 
-                anchor = anchor->next;
-            }
-            if (has_keys) {
+            /* hash list if all its keys were added */
+            if (lyd_insert_has_keys(parent)) {
                 lyd_hash(parent);
+
+                /* now we can insert even the list into its parent HT */
+                lyd_insert_hash(parent);
             }
 
         } else {
             /* last child */
             lyd_insert_last_node(parent, node);
+
+            if (!node->schema || (node->schema->nodetype != LYS_LIST) || lyd_insert_has_keys(node)) {
+                /* insert into parent HT */
+                lyd_insert_hash(node);
+            }
         }
     } else if (*first_sibling) {
         /* top-level siblings */
@@ -1661,6 +1677,8 @@ lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node)
         lyd_unlink_tree(node);
 
         lyd_insert_before_node(sibling, node);
+        lyd_insert_hash(node);
+
         /* move the anchor accordingly */
         sibling = node;
 
@@ -1697,6 +1715,8 @@ lyd_insert_after(struct lyd_node *sibling, struct lyd_node *node)
         lyd_unlink_tree(node);
 
         lyd_insert_after_node(sibling, node);
+        lyd_insert_hash(node);
+
         /* move the anchor accordingly */
         sibling = node;
 

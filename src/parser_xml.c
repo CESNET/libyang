@@ -597,10 +597,7 @@ lydxml_data_r(struct lyd_xml_ctx *lydctx, struct lyd_node_inner *parent, struct 
                 LY_CHECK_GOTO(ret, cleanup);
             }
 
-            if (snode->nodetype == LYS_LIST) {
-                /* hash now that all keys should be parsed, rehash for key-less list */
-                lyd_hash(cur);
-            } else if (snode->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) {
+            if (snode->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) {
                 /* rememeber the RPC/action/notification */
                 lydctx->op_ntf = cur;
             }

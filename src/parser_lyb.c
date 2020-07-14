@@ -828,10 +828,7 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node_inner *parent, s
             LY_CHECK_GOTO(ret, cleanup);
         }
 
-        if (snode->nodetype == LYS_LIST) {
-            /* hash now that all keys should be parsed, rehash for key-less list */
-            lyd_hash(node);
-        } else if (snode->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) {
+        if (snode->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) {
             /* rememeber the RPC/action/notification */
             lybctx->op_ntf = node;
         }
