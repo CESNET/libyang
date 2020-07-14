@@ -364,7 +364,7 @@ error:
 static LY_ERR
 ly_path_compile_prefix(const struct ly_ctx *ctx, const struct lysc_node *cur_node, const struct lys_module *cur_mod,
                        const struct lysc_node *prev_ctx_node, const struct lyxp_expr *expr, uint16_t tok_idx,
-                       uint8_t lref, ly_clb_resolve_prefix resolve_prefix, void *prefix_data, LYD_FORMAT format,
+                       uint8_t lref, ly_resolve_prefix_clb resolve_prefix, void *prefix_data, LYD_FORMAT format,
                        const struct lys_module **mod, const char **name, size_t *name_len)
 {
     const char *ptr;
@@ -423,7 +423,7 @@ ly_path_compile_prefix(const struct ly_ctx *ctx, const struct lysc_node *cur_nod
 LY_ERR
 ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_node, const struct lys_module *cur_mod,
                           const struct lysc_node *ctx_node, const struct lyxp_expr *expr, uint16_t *tok_idx,
-                          ly_clb_resolve_prefix resolve_prefix, void *prefix_data, LYD_FORMAT format,
+                          ly_resolve_prefix_clb resolve_prefix, void *prefix_data, LYD_FORMAT format,
                           struct ly_path_predicate **predicates, enum ly_path_pred_type *pred_type)
 {
     struct ly_path_predicate *p;
@@ -574,7 +574,7 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
  */
 static LY_ERR
 ly_path_compile_predicate_leafref(const struct lysc_node *ctx_node, const struct lysc_node *cur_node,
-                                  const struct lyxp_expr *expr, uint16_t *tok_idx, ly_clb_resolve_prefix resolve_prefix,
+                                  const struct lyxp_expr *expr, uint16_t *tok_idx, ly_resolve_prefix_clb resolve_prefix,
                                   void *prefix_data, LYD_FORMAT format)
 {
     const struct lysc_node *key, *node, *node2;
@@ -694,7 +694,7 @@ ly_path_compile_predicate_leafref(const struct lysc_node *ctx_node, const struct
 LY_ERR
 ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, const struct lysc_node *ctx_node,
                 const struct lyxp_expr *expr, uint8_t lref, uint8_t oper, uint8_t target,
-                ly_clb_resolve_prefix resolve_prefix, void *prefix_data, LYD_FORMAT format, struct ly_path **path)
+                ly_resolve_prefix_clb resolve_prefix, void *prefix_data, LYD_FORMAT format, struct ly_path **path)
 {
     LY_ERR ret = LY_SUCCESS;
     uint16_t tok_idx = 0;

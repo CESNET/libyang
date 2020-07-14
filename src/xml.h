@@ -76,6 +76,10 @@ enum LYXML_PARSER_STATUS {
 };
 
 struct lyxml_ctx {
+    const struct ly_ctx *ctx;
+    uint64_t line;          /* current line */
+    struct ly_in *in;       /* input structure */
+
     enum LYXML_PARSER_STATUS status; /* status providing information about the last parsed object, following attributes
                                         are filled based on it */
     union {
@@ -95,9 +99,6 @@ struct lyxml_ctx {
         int dynamic;        /* LYXML_ELEM_CONTENT, LYXML_ATTR_CONTENT - whether elem/attr value is dynamically allocated */
     };
 
-    const struct ly_ctx *ctx;
-    uint64_t line;          /* current line */
-    struct ly_in *in;       /* input structure */
     struct ly_set elements; /* list of not-yet-closed elements */
     struct ly_set ns;       /* handled with LY_SET_OPT_USEASLIST */
 };

@@ -1346,7 +1346,7 @@ test_state(void **state)
     "</cont>";
     assert_int_equal(LY_EVALID, lyd_parse_data_mem(ctx, data, LYD_XML, LYD_PARSE_ONLY | LYD_PARSE_NO_STATE, 0, &tree));
     assert_null(tree);
-    logbuf_assert("Invalid state data node \"cont2\" found. Line number 1.");
+    logbuf_assert("Invalid state data node \"cont2\" found. /h:cont/cont2");
 
     assert_int_equal(LY_EVALID, lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT | LYD_VALIDATE_NO_STATE, &tree));
     assert_null(tree);

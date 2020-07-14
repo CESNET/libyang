@@ -343,6 +343,11 @@ char *ly_strnchr(const char *s, int c, unsigned int len);
 int ly_strncmp(const char *refstr, const char *str, size_t str_len);
 
 /**
+ * @brief Wrapper around strlen() to handle NULL strings.
+ */
+#define ly_strlen(STR) (STR ? strlen(STR) : 0)
+
+/**
  * @brief Get UTF8 code point of the next character in the input string.
  *
  * @param[in,out] input Input string to process, updated according to the processed/read data.
@@ -454,7 +459,7 @@ LY_ERR ly_parse_instance_predicate(const char **pred, size_t limit, LYD_FORMAT f
                                    const char **value, size_t *value_len, const char **errmsg);
 
 /**
- * @brief ly_clb_get_prefix implementation for JSON. For its simplicity, this implementation is used
+ * @brief ly_get_prefix_clb implementation for JSON. For its simplicity, this implementation is used
  * internally for various purposes.
  *
  * Implemented in printer_json.c

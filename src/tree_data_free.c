@@ -78,9 +78,9 @@ lyd_free_meta_siblings(struct lyd_meta *meta)
 }
 
 static void
-ly_free_attr(const struct ly_ctx *ctx, struct ly_attr *attr, int siblings)
+ly_free_attr(const struct ly_ctx *ctx, struct lyd_attr *attr, int siblings)
 {
-    struct ly_attr *iter;
+    struct lyd_attr *iter;
     LY_ARRAY_COUNT_TYPE u;
 
     LY_CHECK_ARG_RET(NULL, ctx, );
@@ -116,26 +116,26 @@ ly_free_attr(const struct ly_ctx *ctx, struct ly_attr *attr, int siblings)
         iter = iter->next;
 
         LY_ARRAY_FOR(attr->val_prefs, u) {
-            FREE_STRING(ctx, attr->val_prefs[u].pref);
-            FREE_STRING(ctx, attr->val_prefs[u].ns);
+            FREE_STRING(ctx, attr->val_prefs[u].id);
+            FREE_STRING(ctx, attr->val_prefs[u].module_ns);
         }
         LY_ARRAY_FREE(attr->val_prefs);
         FREE_STRING(ctx, attr->name);
         FREE_STRING(ctx, attr->value);
-        FREE_STRING(ctx, attr->prefix.pref);
-        FREE_STRING(ctx, attr->prefix.ns);
+        FREE_STRING(ctx, attr->prefix.id);
+        FREE_STRING(ctx, attr->prefix.module_ns);
         free(attr);
     }
 }
 
 API void
-ly_free_attr_single(const struct ly_ctx *ctx, struct ly_attr *attr)
+ly_free_attr_single(const struct ly_ctx *ctx, struct lyd_attr *attr)
 {
     ly_free_attr(ctx, attr, 0);
 }
 
 API void
-ly_free_attr_siblings(const struct ly_ctx *ctx, struct ly_attr *attr)
+ly_free_attr_siblings(const struct ly_ctx *ctx, struct lyd_attr *attr)
 {
     ly_free_attr(ctx, attr, 1);
 }
@@ -146,8 +146,8 @@ ly_free_val_prefs(const struct ly_ctx *ctx, struct ly_prefix *val_prefs)
     LY_ARRAY_COUNT_TYPE u;
 
     LY_ARRAY_FOR(val_prefs, u) {
-        FREE_STRING(ctx, val_prefs[u].pref);
-        FREE_STRING(ctx, val_prefs[u].ns);
+        FREE_STRING(ctx, val_prefs[u].id);
+        FREE_STRING(ctx, val_prefs[u].module_ns);
     }
     LY_ARRAY_FREE(val_prefs);
 }
@@ -176,8 +176,8 @@ lyd_free_subtree(struct lyd_node *node, int top)
         }
 
         FREE_STRING(LYD_NODE_CTX(opaq), opaq->name);
-        FREE_STRING(LYD_NODE_CTX(opaq), opaq->prefix.pref);
-        FREE_STRING(LYD_NODE_CTX(opaq), opaq->prefix.ns);
+        FREE_STRING(LYD_NODE_CTX(opaq), opaq->prefix.id);
+        FREE_STRING(LYD_NODE_CTX(opaq), opaq->prefix.module_ns);
         ly_free_val_prefs(LYD_NODE_CTX(opaq), opaq->val_prefs);
         FREE_STRING(LYD_NODE_CTX(opaq), opaq->value);
     } else if (node->schema->nodetype & LYD_NODE_INNER) {

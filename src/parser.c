@@ -28,7 +28,9 @@
 #include "compat.h"
 #include "dict.h"
 #include "log.h"
+#include "parser_data.h"
 #include "parser_internal.h"
+#include "tree_data_internal.h"
 #include "tree_schema_internal.h"
 
 API LY_IN_TYPE
@@ -352,4 +354,84 @@ ly_in_skip(struct ly_in *in, size_t count)
 
     in->current += count;
     return LY_SUCCESS;
+}
+
+void
+lyd_ctx_free(struct lyd_ctx *lydctx)
+{
+    ly_set_erase(&lydctx->unres_node_type, NULL);
+    ly_set_erase(&lydctx->unres_meta_type, NULL);
+    ly_set_erase(&lydctx->when_check, NULL);
+}
+
+LY_ERR
+lyd_parser_check_schema(struct lyd_ctx *lydctx, const struct lysc_node *snode)
+{
+    /* alternatively, we could provide line for the error messages, but it doesn't work for the LYB format */
+
+    if ((lydctx->parse_options & LYD_PARSE_NO_STATE) && (snode->flags & LYS_CONFIG_R)) {
+        LOGVAL(lydctx->data_ctx->ctx, LY_VLOG_LYSC, snode, LY_VCODE_INNODE, "state", snode->name);
+        return LY_EVALID;
+    }
+
+    if (snode->nodetype & (LYS_RPC | LYS_ACTION)) {
+        if (lydctx->int_opts & LYD_INTOPT_RPC) {
+            if (lydctx->op_node) {
+                LOGVAL(lydctx->data_ctx->ctx, LY_VLOG_LYSC, snode, LYVE_DATA, "Unexpected %s element \"%s\", %s \"%s\" already parsed.",
+                       lys_nodetype2str(snode->nodetype), snode->name,
+                       lys_nodetype2str(lydctx->op_node->schema->nodetype), lydctx->op_node->schema->name);
+                return LY_EVALID;
+            }
+        } else {
+            LOGVAL(lydctx->data_ctx->ctx, LY_VLOG_LYSC, snode, LYVE_DATA, "Unexpected %s element \"%s\".",
+                   lys_nodetype2str(snode->nodetype), snode->name);
+            return LY_EVALID;
+        }
+    } else if (snode->nodetype == LYS_NOTIF) {
+        if (lydctx->int_opts & LYD_INTOPT_NOTIF) {
+            if (lydctx->op_node) {
+                LOGVAL(lydctx->data_ctx->ctx, LY_VLOG_LYSC, snode, LYVE_DATA, "Unexpected %s element \"%s\", %s \"%s\" already parsed.",
+                       lys_nodetype2str(snode->nodetype), snode->name,
+                       lys_nodetype2str(lydctx->op_node->schema->nodetype), lydctx->op_node->schema->name);
+                return LY_EVALID;
+            }
+        } else {
+            LOGVAL(lydctx->data_ctx->ctx, LY_VLOG_LYSC, snode, LYVE_DATA, "Unexpected %s element \"%s\".",
+                   lys_nodetype2str(snode->nodetype), snode->name);
+            return LY_EVALID;
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
+LY_ERR
+lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *schema, const char *value, size_t value_len,
+                       int *dynamic, int value_hints, ly_resolve_prefix_clb get_prefix, void *prefix_data,
+                       LYD_FORMAT format, struct lyd_node **node)
+{
+    LY_ERR ret;
+
+    ret = lyd_create_term(schema, value, value_len, dynamic, value_hints, get_prefix, prefix_data, format, node);
+    if (ret == LY_EINCOMPLETE) {
+        if (!(lydctx->parse_options & LYD_PARSE_ONLY)) {
+            ly_set_add(&lydctx->unres_node_type, *node, LY_SET_OPT_USEASLIST);
+        }
+        ret = LY_SUCCESS;
+    }
+    return ret;
+}
+
+LY_ERR
+lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct lyd_meta **meta, const struct lys_module *mod,
+                       const char *name, size_t name_len, const char *value, size_t value_len, int *dynamic, int value_hints,
+                       ly_resolve_prefix_clb resolve_prefix, void *prefix_data, LYD_FORMAT format, const struct lysc_node *ctx_snode)
+{
+    LY_ERR ret;
+    ret = lyd_create_meta(parent, meta, mod, name, name_len, value, value_len, dynamic, value_hints, resolve_prefix, prefix_data, format, ctx_snode);
+    if (ret == LY_EINCOMPLETE) {
+        ly_set_add(&lydctx->unres_meta_type, *meta, LY_SET_OPT_USEASLIST);
+        ret = LY_SUCCESS;
+    }
+    return ret;
 }

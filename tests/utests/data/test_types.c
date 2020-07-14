@@ -943,10 +943,10 @@ test_instanceid(void **state)
               "<a:inst xmlns:a=\"urn:tests:types\">/a:list2[a:id='a'][a:value='a']/a:id</a:inst>", LY_SUCCESS, "");
 
     /* key-predicate */
-    data = "/types:list2[types:id='a'][types:value='b']/types:id";
+    data = "/types:list2[id='a'][value='b']/id";
     assert_int_equal(LY_ENOTFOUND, lyd_value_validate(s->ctx, (const struct lyd_node_term*)tree->prev->prev, data, strlen(data),
                                                    tree, NULL));
-    logbuf_assert("Invalid instance-identifier \"/types:list2[types:id='a'][types:value='b']/types:id\" value - instance not found. /");
+    logbuf_assert("Invalid instance-identifier \"/types:list2[id='a'][value='b']/id\" value - instance not found. /");
     /* leaf-list-predicate */
     data = "/types:leaflisttarget[.='c']";
     assert_int_equal(LY_ENOTFOUND, lyd_value_validate(s->ctx, (const struct lyd_node_term*)tree->prev->prev, data, strlen(data),

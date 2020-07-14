@@ -1637,7 +1637,7 @@ lysp_ext_instance_iter(struct lysp_ext_instance *ext, LY_ARRAY_COUNT_TYPE index,
 /**
  * @brief Schema mapping of YANG modules to prefixes in values.
  *
- * Implementation of ly_clb_get_prefix. Inverse function to lys_resolve_prefix.
+ * Implementation of ly_get_prefix_clb. Inverse function to lys_resolve_prefix.
  *
  * In this case the @p mod is searched in the list of imports and the import's prefix
  * (not the module's itself) prefix is returned.
@@ -1664,7 +1664,7 @@ lys_get_prefix(const struct lys_module *mod, void *private)
 /**
  * @brief Schema mapping of prefix in values to YANG modules (imports).
  *
- * Implementation of ly_clb_resolve_prefix. Inverse function to lys_get_prefix().
+ * Implementation of ly_resolve_prefix_clb. Inverse function to lys_get_prefix().
  *
  * In this case the @p prefix is searched in the list of imports' prefixes (not the prefixes of the imported modules themselves).
  */

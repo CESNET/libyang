@@ -194,6 +194,7 @@ struct lyd_value {
             } *prefixes;                 /**< list of mappings between prefix in canonized value to a YANG schema ([sized array](@ref sizedarrays)) */
             struct lyd_value *value;     /**< representation of the value according to the selected union's subtype (stored as lyd_value::realpath
                                               here, in subvalue structure */
+            int parser_hint;             /**< Hint options from the parser */
         } *subvalue;                     /**< data to represent data with multiple types (union). Original value is stored in the main
                                               lyd_value:canonical_cache while the lyd_value_subvalue::value contains representation according to the
                                               one of the union's type. The lyd_value_subvalue:prefixes provides (possible) mappings from prefixes
@@ -238,23 +239,31 @@ struct lyd_meta {
 
 /**
  * @brief Generic prefix and namespace mapping, meaning depends on the format.
+ *
+ * The union is used as a reference to the data's module and according to the format, it can be used as a key for
+ * ly_ctx_get_module_implemented_ns() or ly_ctx_get_module_implemented(). While the module reference is always present,
+ * the id member can be omitted in case it is not present in the source data as a reference to the default namespace.
  */
 struct ly_prefix {
-    const char *pref;
-    const char *ns;
+    const char *id;               /**< identifier used in the qualified name of the item to reference data node namespace */
+    union {
+        const char *module_ns;    /**< namespace of the module where the data are supposed to belongs to, used for LYD_XML format. */
+        const char *module_name;  /**< name of the module where the data are supposed to belongs to, used for LYD_JSON format. */
+    };
 };
 
 /**
  * @brief Generic attribute structure.
  */
-struct ly_attr {
+struct lyd_attr {
     struct lyd_node_opaq *parent;   /**< data node where the attribute is placed */
-    struct ly_attr *next;
+    struct lyd_attr *next;
     struct ly_prefix *val_prefs;    /**< list of prefixes in the value ([sized array](@ref sizedarrays)) */
     const char *name;
     const char *value;
 
     LYD_FORMAT format;
+    int hint;                       /**< additional information about from the data source, see the [hints list](@ref lydopaqhints) */
     struct ly_prefix prefix;        /**< name prefix, it is stored because they are a real pain to generate properly */
 
 };
@@ -291,6 +300,37 @@ struct ly_attr {
 #define LYD_NEW          0x04        /**< node was created after the last validation, is needed for the next validation */
 
 /** @} */
+
+/**
+ * @brief Callback provided by the data/schema parsers to type plugins to resolve (format-specific) mapping between prefixes used
+ * in the value strings to the YANG schemas.
+ *
+ * Reverse function to ly_get_prefix_clb.
+ *
+ * XML uses XML namespaces, JSON uses schema names as prefixes, YIN/YANG uses prefixes of the imports.
+ *
+ * @param[in] ctx libyang context to find the schema.
+ * @param[in] prefix Prefix found in the value string
+ * @param[in] prefix_len Length of the @p prefix.
+ * @param[in] private Internal data needed by the callback.
+ * @return Pointer to the YANG schema identified by the provided prefix or NULL if no mapping found.
+ */
+typedef const struct lys_module *(*ly_resolve_prefix_clb)(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len,
+                                                          void *private);
+
+/**
+ * @brief Callback provided by the data/schema printers to type plugins to resolve (format-specific) mapping between YANG module of a data object
+ * to prefixes used in the value strings.
+ *
+ * Reverse function to ly_resolve_prefix_clb.
+ *
+ * XML uses XML namespaces, JSON uses schema names as prefixes, YIN/YANG uses prefixes of the imports.
+ *
+ * @param[in] mod YANG module of the object.
+ * @param[in] private Internal data needed by the callback.
+ * @return String representing prefix for the object of the given YANG module @p mod.
+ */
+typedef const char *(*ly_get_prefix_clb)(const struct lys_module *mod, void *private);
 
 /**
  * @brief Generic structure for a data node.
@@ -401,6 +441,23 @@ struct lyd_node_any {
 };
 
 /**
+ * @defgroup lydopaqhints Opaq data node hints.
+ *
+ * Additional information about the opaq nodes from their source. The flags are stored in lyd_node_opaq::hint
+ * and they can have a slightly different meaning for the specific lyd_node_opaq::format.
+ * @{
+ */
+#define LYD_NODE_OPAQ_ISLIST       0x001 /**< LYD_JSON: node is expected to be a list or leaf-list */
+#define LYD_NODE_OPAQ_ISENVELOPE   0x002 /**< LYD_JSON, LYD_XML: RPC/Action/Notification envelope out of the YANG schemas */
+
+#define LYD_NODE_OPAQ_ISSTRING     0x100 /**< LYD_JSON: value is expected to be string as defined in JSON encoding. */
+#define LYD_NODE_OPAQ_ISNUMBER     0x200 /**< LYD_JSON: value is expected to be number as defined in JSON encoding. */
+#define LYD_NODE_OPAQ_ISBOOLEAN    0x400 /**< LYD_JSON: value is expected to be boolean as defined in JSON encoding. */
+#define LYD_NODE_OPAQ_ISEMPTY      0x800 /**< LYD_JSON: value is expected to be empty as defined in JSON encoding. */
+
+/** @} lydopaqhints */
+
+/**
  * @brief Data node structure for unparsed (opaque) nodes.
  */
 struct lyd_node_opaq {
@@ -410,7 +467,7 @@ struct lyd_node_opaq {
     struct lyd_node *parent;        /**< pointer to the parent node (NULL in case of root node) */
     struct lyd_node *next;          /**< pointer to the next sibling node (NULL if there is no one) */
     struct lyd_node *prev;          /**< pointer to the previous sibling node (last sibling if there is none) */
-    struct ly_attr *attr;
+    struct lyd_attr *attr;
 
 #ifdef LY_ENABLED_LYD_PRIV
     void *priv;                     /**< private user data, not used by libyang */
@@ -422,6 +479,7 @@ struct lyd_node_opaq {
     struct ly_prefix prefix;        /**< name prefix */
     struct ly_prefix *val_prefs;    /**< list of prefixes in the value ([sized array](@ref sizedarrays)) */
     const char *value;              /**< original value */
+    int hint;                       /**< additional information about from the data source, see the [hints list](@ref lydopaqhints) */
     const struct ly_ctx *ctx;       /**< libyang context */
 };
 
@@ -580,7 +638,7 @@ LY_ERR lyd_new_opaq(struct lyd_node *parent, const struct ly_ctx *ctx, const cha
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_attr(struct lyd_node *parent, const char *module_name, const char *name, const char *val_str,
-                    struct ly_attr **attr);
+                    struct lyd_attr **attr);
 
 /**
  * @defgroup pathoptions Data path creation options
@@ -845,7 +903,7 @@ void lyd_free_meta_siblings(struct lyd_meta *meta);
  * @param[in] ctx Context where the attributes were created.
  * @param[in] attr Attribute to free.
  */
-void ly_free_attr_single(const struct ly_ctx *ctx, struct ly_attr *attr);
+void ly_free_attr_single(const struct ly_ctx *ctx, struct lyd_attr *attr);
 
 /**
  * @brief Free the attribute with any following attributes.
@@ -853,7 +911,7 @@ void ly_free_attr_single(const struct ly_ctx *ctx, struct ly_attr *attr);
  * @param[in] ctx Context where the attributes were created.
  * @param[in] attr First attribute to free.
  */
-void ly_free_attr_siblings(const struct ly_ctx *ctx, struct ly_attr *attr);
+void ly_free_attr_siblings(const struct ly_ctx *ctx, struct lyd_attr *attr);
 
 /**
  * @brief Check type restrictions applicable to the particular leaf/leaf-list with the given string @p value.
