@@ -1,4 +1,4 @@
-name: @PACKAGE@1
+name: @PACKAGE@@LIBYANG_MAJOR_SOVERSION@
 Version: @LIBYANG_VERSION@
 Release: 0
 Summary: Libyang library
@@ -53,27 +53,27 @@ Summary:    Helper Tools
 Requires:   %{name} = %{version}-%{release}
 
 %if %{with_lang_bind}
-%package -n @CPP_PACKAGE@1
+%package -n @CPP_PACKAGE@@LIBYANG_MAJOR_SOVERSION@
 Summary:    Bindings to c++ language
 Requires:   %{name} = %{version}-%{release}
 
 %package -n @CPP_PACKAGE@-devel
 Summary:    Headers of bindings to c++ language
-Requires:   @CPP_PACKAGE@1 = %{version}-%{release}
+Requires:   @CPP_PACKAGE@@LIBYANG_MAJOR_SOVERSION@ = %{version}-%{release}
 Requires:   pcre-devel
 
-%package -n @PYTHON_PACKAGE@1
+%package -n @PYTHON_PACKAGE@@LIBYANG_MAJOR_SOVERSION@
 Summary:    Binding to python
-Requires:   @CPP_PACKAGE@1 = %{version}-%{release}
+Requires:   @CPP_PACKAGE@@LIBYANG_MAJOR_SOVERSION@ = %{version}-%{release}
 Requires:   %{name} = %{version}-%{release}
 
-%description -n @CPP_PACKAGE@1
+%description -n @CPP_PACKAGE@@LIBYANG_MAJOR_SOVERSION@
 Bindings of libyang library to C++ language.
 
 %description -n @CPP_PACKAGE@-devel
 Headers of bindings to c++ language.
 
-%description -n @PYTHON_PACKAGE@1
+%description -n @PYTHON_PACKAGE@@LIBYANG_MAJOR_SOVERSION@
 Bindings of libyang library to python language.
 %endif
 
@@ -122,19 +122,19 @@ make DESTDIR=%{buildroot} install
 
 %post -p /sbin/ldconfig
 %if %{with_lang_bind}
-%post -n @CPP_PACKAGE@1 -p /sbin/ldconfig
+%post -n @CPP_PACKAGE@@LIBYANG_MAJOR_SOVERSION@ -p /sbin/ldconfig
 %endif
 
 %postun -p /sbin/ldconfig
 %if %{with_lang_bind}
-%postun -n @CPP_PACKAGE@1 -p /sbin/ldconfig
+%postun -n @CPP_PACKAGE@@LIBYANG_MAJOR_SOVERSION@ -p /sbin/ldconfig
 %endif
 
 %files
 %defattr(-,root,root)
 %{_libdir}/libyang.so.*
-%{_libdir}/libyang1/*
-%dir %{_libdir}/libyang1/
+%{_libdir}/libyang@LIBYANG_MAJOR_SOVERSION@/*
+%dir %{_libdir}/libyang@LIBYANG_MAJOR_SOVERSION@/
 
 %files -n @PACKAGE@-devel
 %defattr(-,root,root)
@@ -150,7 +150,7 @@ make DESTDIR=%{buildroot} install
 %{_datadir}/man/man1/yangre.1.gz
 
 %if %{with_lang_bind}
-%files -n @CPP_PACKAGE@1
+%files -n @CPP_PACKAGE@@LIBYANG_MAJOR_SOVERSION@
 %defattr(-,root,root)
 %{_libdir}/libyang-cpp.so.*
 
@@ -161,7 +161,7 @@ make DESTDIR=%{buildroot} install
 %{_libdir}/pkgconfig/libyang-cpp.pc
 %dir %{_includedir}/libyang/
 
-%files -n @PYTHON_PACKAGE@1
+%files -n @PYTHON_PACKAGE@@LIBYANG_MAJOR_SOVERSION@
 %defattr(-,root,root)
 %{_libdir}/python*
 
