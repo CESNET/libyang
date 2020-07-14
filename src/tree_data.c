@@ -2910,7 +2910,12 @@ lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *t
 
         /* find by hash */
         if (!lyht_find(parent->children_ht, &target, target->hash, (void **)&match_p)) {
-            siblings = *match_p;
+            /* check even value when needed */
+            if (!(target->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) || !lyd_compare(target, *match_p, 0)) {
+                siblings = *match_p;
+            } else {
+                siblings = NULL;
+            }
         } else {
             /* not found */
             siblings = NULL;
@@ -2970,7 +2975,12 @@ lyd_find_sibling_set(const struct lyd_node *siblings, const struct lyd_node *tar
 
         /* find by hash */
         if (!lyht_find(parent->children_ht, &target, target->hash, (void **)&match_p)) {
-            match = *match_p;
+            /* check even value when needed */
+            if (!(target->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) || !lyd_compare(target, *match_p, 0)) {
+                match = *match_p;
+            } else {
+                match = NULL;
+            }
         } else {
             /* not found */
             match = NULL;
@@ -2985,7 +2995,12 @@ lyd_find_sibling_set(const struct lyd_node *siblings, const struct lyd_node *tar
             if (lyht_find_next(parent->children_ht, &match, match->hash, (void **)&match_p)) {
                 match = NULL;
             } else {
-                match = *match_p;
+                /* check even value when needed */
+                if (!(match->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) || !lyd_compare(match, *match_p, 0)) {
+                    match = *match_p;
+                } else {
+                    match = NULL;
+                }
             }
         }
     } else {

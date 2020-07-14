@@ -1168,7 +1168,7 @@ LY_ERR lyd_find_sibling_next(const struct lyd_node *first, const struct lys_modu
                              size_t name_len, const char *key_or_value, size_t val_len, struct lyd_node **match);
 
 /**
- * @brief Search in the given siblings (NOT recursively) for the first target instance.
+ * @brief Search in the given siblings (NOT recursively) for the first target instance with the same value.
  * Uses hashes - should be used whenever possible for best performance.
  *
  * @param[in] siblings Siblings to search in including preceding and succeeding nodes.
@@ -1181,7 +1181,7 @@ LY_ERR lyd_find_sibling_next(const struct lyd_node *first, const struct lys_modu
 LY_ERR lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *target, struct lyd_node **match);
 
 /**
- * @brief Search in the given siblings for all target instances.
+ * @brief Search in the given siblings for all target instances with the same value.
  * Uses hashes - should be used whenever possible for best performance.
  *
  * @param[in] siblings Siblings to search in including preceding and succeeding nodes.

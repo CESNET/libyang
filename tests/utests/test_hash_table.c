@@ -143,11 +143,11 @@ test_ht_basic(void **state)
     assert_non_null(ht = lyht_new(8, sizeof(int), ht_equal_clb, NULL, 0));
 
     i = 2;
-    assert_int_equal(1, lyht_find(ht, &i, i, NULL));
+    assert_int_equal(LY_ENOTFOUND, lyht_find(ht, &i, i, NULL));
     assert_int_equal(LY_SUCCESS, lyht_insert(ht, &i, i, NULL));
-    assert_int_equal(0, lyht_find(ht, &i, i, NULL));
+    assert_int_equal(LY_SUCCESS, lyht_find(ht, &i, i, NULL));
     assert_int_equal(LY_SUCCESS, lyht_remove(ht, &i, i));
-    assert_int_equal(1, lyht_find(ht, &i, i, NULL));
+    assert_int_equal(LY_ENOTFOUND, lyht_find(ht, &i, i, NULL));
     assert_int_equal(LY_EINVAL, lyht_remove(ht, &i, i));
     logbuf_assert("Invalid argument hash (lyht_remove()).");
 
@@ -206,7 +206,7 @@ test_ht_resize(void **state)
     }
 
     for (i = 0; i < 8; ++i) {
-        assert_int_equal(1, lyht_find(ht, &i, i, NULL));
+        assert_int_equal(LY_ENOTFOUND, lyht_find(ht, &i, i, NULL));
     }
 
     /* cleanup */
@@ -281,16 +281,16 @@ test_ht_collisions(void **state)
     }
 
     for (i = 0; i < 3; ++i) {
-        assert_int_equal(lyht_find(ht, &i, 2, NULL), 1);
+        assert_int_equal(lyht_find(ht, &i, 2, NULL), LY_ENOTFOUND);
     }
-    assert_int_equal(lyht_find(ht, &i, 2, NULL), 0);
+    assert_int_equal(lyht_find(ht, &i, 2, NULL), LY_SUCCESS);
     ++i;
-    assert_int_equal(lyht_find(ht, &i, 2, NULL), 1);
+    assert_int_equal(lyht_find(ht, &i, 2, NULL), LY_ENOTFOUND);
     ++i;
-    assert_int_equal(lyht_find(ht, &i, 2, NULL), 0);
+    assert_int_equal(lyht_find(ht, &i, 2, NULL), LY_SUCCESS);
     ++i;
     for (; i < 8; ++i) {
-        assert_int_equal(lyht_find(ht, &i, 2, NULL), 1);
+        assert_int_equal(lyht_find(ht, &i, 2, NULL), LY_ENOTFOUND);
     }
 
     i = 3;

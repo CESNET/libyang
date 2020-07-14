@@ -371,9 +371,16 @@ lyht_resize(struct hash_table *ht, int enlarge)
     return LY_SUCCESS;
 }
 
-/* return: 0 - hash found, returned its record,
- *         1 - hash not found, returned the record where it would be inserted */
-static int
+/**
+ * @brief Search for the first match.
+ *
+ * @param[in] ht Hash table to search in.
+ * @param[in] hash Hash to find.
+ * @param[out] rec_p Optional found record.
+ * @return LY_SUCCESS hash found, returned its record,
+ * @return LY_ENOTFOUND hash not found, returned the record where it would be inserted.
+ */
+static LY_ERR
 lyht_find_first(struct hash_table *ht, uint32_t hash, struct ht_rec **rec_p)
 {
     struct ht_rec *rec;
@@ -397,7 +404,7 @@ lyht_find_first(struct hash_table *ht, uint32_t hash, struct ht_rec **rec_p)
             /* we went through all the records (very unlikely, but possible when many records are invalid),
              * just return not found */
             assert(!rec_p || *rec_p);
-            return 1;
+            return LY_ENOTFOUND;
         }
         rec = lyht_get_rec(ht->recs, ht->rec_size, i);
     }
@@ -406,14 +413,14 @@ lyht_find_first(struct hash_table *ht, uint32_t hash, struct ht_rec **rec_p)
         if (rec_p && !*rec_p) {
             *rec_p = rec;
         }
-        return 1;
+        return LY_ENOTFOUND;
     }
 
     /* we have found a record with equal (shortened) hash */
     if (rec_p) {
         *rec_p = rec;
     }
-    return 0;
+    return LY_SUCCESS;
 }
 
 /**
@@ -422,10 +429,10 @@ lyht_find_first(struct hash_table *ht, uint32_t hash, struct ht_rec **rec_p)
  * @param[in] ht Hash table to search in.
  * @param[in,out] last Last returned collision record.
  * @param[in] first First collision record (hits > 1).
- * @return 0 when hash collision found, \p last points to this next collision,
- *         1 when hash collision not found, \p last points to the record where it would be inserted.
+ * @return LY_SUCCESS when hash collision found, \p last points to this next collision,
+ * @return LY_ENOTFOUND when hash collision not found, \p last points to the record where it would be inserted.
  */
-static int
+static LY_ERR
 lyht_find_collision(struct hash_table *ht, struct ht_rec **last, struct ht_rec *first)
 {
     struct ht_rec *empty = NULL;
@@ -444,7 +451,7 @@ lyht_find_collision(struct hash_table *ht, struct ht_rec **last, struct ht_rec *
              * just return an invalid record */
             assert(empty);
             *last = empty;
-            return 1;
+            return LY_ENOTFOUND;
         }
 
         if (((*last)->hits == -1) && !empty) {
@@ -455,113 +462,130 @@ lyht_find_collision(struct hash_table *ht, struct ht_rec **last, struct ht_rec *
     if ((*last)->hits > 0) {
         /* we found a collision */
         assert((*last)->hits == 1);
-        return 0;
+        return LY_SUCCESS;
     }
 
     /* no next collision found, return the record where it would be inserted */
     if (empty) {
         *last = empty;
     } /* else (*last)->hits == 0, it is already correct */
-    return 1;
+    return LY_ENOTFOUND;
 }
 
-int
-lyht_find(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p)
+/**
+ * @brief Search for a record with specific value and hash.
+ *
+ * @param[in] ht Hash table to search in.
+ * @param[in] val_p Pointer to the value to find.
+ * @param[in] hash Hash to find.
+ * @param[in] mod Operation kind for the val_equal callback.
+ * @param[out] crec_p Optional found first record.
+ * @param[out] col Optional collision number of @p rec_p, 0 for no collision.
+ * @param[out] rec_p Found exact matching record, may be a collision of @p crec_p.
+ * @return LY_ENOTFOUND if no record found,
+ * @return LY_SUCCESS if record was found.
+ */
+static LY_ERR
+lyht_find_rec(struct hash_table *ht, void *val_p, uint32_t hash, int mod, struct ht_rec **crec_p, uint32_t *col,
+              struct ht_rec **rec_p)
 {
     struct ht_rec *rec, *crec;
     uint32_t i, c;
-    int r;
+    LY_ERR r;
+
+    if (crec_p) {
+        *crec_p = NULL;
+    }
+    if (col) {
+        *col = 0;
+    }
+    *rec_p = NULL;
 
     if (lyht_find_first(ht, hash, &rec)) {
         /* not found */
-        return 1;
+        return LY_ENOTFOUND;
     }
-    if ((rec->hash == hash) && ht->val_equal(val_p, &rec->val, 0, ht->cb_data)) {
+    if ((rec->hash == hash) && ht->val_equal(val_p, &rec->val, mod, ht->cb_data)) {
         /* even the value matches */
-        if (match_p) {
-            *match_p = rec->val;
+        if (crec_p) {
+            *crec_p = rec;
         }
-        return 0;
+        if (col) {
+            *col = 0;
+        }
+        *rec_p = rec;
+        return LY_SUCCESS;
     }
 
     /* some collisions, we need to go through them, too */
     crec = rec;
-    c = rec->hits;
+    c = crec->hits;
     for (i = 1; i < c; ++i) {
         r = lyht_find_collision(ht, &rec, crec);
         assert(!r);
         (void)r;
 
         /* compare values */
-        if ((rec->hash == hash) && ht->val_equal(val_p, &rec->val, 0, ht->cb_data)) {
-            if (match_p) {
-                *match_p = rec->val;
+        if ((rec->hash == hash) && ht->val_equal(val_p, &rec->val, mod, ht->cb_data)) {
+            if (crec_p) {
+                *crec_p = crec;
             }
-            return 0;
+            if (col) {
+                *col = i;
+            }
+            *rec_p = rec;
+            return LY_SUCCESS;
         }
     }
 
     /* not found even in collisions */
-    return 1;
+    return LY_ENOTFOUND;
 }
 
-int
+LY_ERR
+lyht_find(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p)
+{
+    struct ht_rec *rec;
+
+    lyht_find_rec(ht, val_p, hash, 0, NULL, NULL, &rec);
+
+    if (rec && match_p) {
+        *match_p = rec->val;
+    }
+    return rec ? LY_SUCCESS : LY_ENOTFOUND;
+}
+
+LY_ERR
 lyht_find_next(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p)
 {
     struct ht_rec *rec, *crec;
     uint32_t i, c;
-    int r, found = 0;
+    LY_ERR r;
 
-    if (lyht_find_first(ht, hash, &rec)) {
+    /* found the record of the previously found value */
+    if (lyht_find_rec(ht, val_p, hash, 1, &crec, &i, &rec)) {
         /* not found, cannot happen */
-        assert(0);
-    }
-
-    if ((rec->hash == hash) && ht->val_equal(val_p, &rec->val, 1, ht->cb_data)) {
-        /* previously returned value */
-        found = 1;
-    }
-
-    if (rec->hits == 1) {
-        /* there are no more similar values */
-        assert(rec->hash == hash);
-        assert(found);
-        return 1;
+        LOGINT_RET(NULL);
     }
 
     /* go through collisions and find next one after the previous one */
-    crec = rec;
-    c = rec->hits;
-    for (i = 1; i < c; ++i) {
+    c = crec->hits;
+    for (++i; i < c; ++i) {
         r = lyht_find_collision(ht, &rec, crec);
         assert(!r);
         (void)r;
 
-        if (rec->hash != hash) {
-            /* a normal collision, we are not interested in those */
-            continue;
-        }
-
-        if (found) {
-            /* next value with equal hash, found our value */
+        if ((rec->hash == hash) && ht->val_equal(val_p, &rec->val, 0, ht->cb_data)) {
+            /* even the value matches */
             if (match_p) {
                 *match_p = rec->val;
             }
-            return 0;
+            return LY_SUCCESS;
         }
-
-        if (!ht->val_equal(val_p, &rec->val, 1, ht->cb_data)) {
-            /* already returned value, skip */
-            continue;
-        }
-
-        /* this one was returned previously, continue looking */
-        found = 1;
     }
 
     /* the last equal value was already returned */
-    assert(found);
-    return 1;
+    return LY_ENOTFOUND;
 }
 
 LY_ERR
