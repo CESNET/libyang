@@ -43,7 +43,7 @@ BuildRequires:  python36-devel
 
 %endif
 
-%package devel
+%package -n @PACKAGE@-devel
 Summary:    Headers of libyang library
 Requires:   %{name} = %{version}-%{release}
 Requires:   pcre-devel
@@ -77,7 +77,7 @@ Headers of bindings to c++ language.
 Bindings of libyang library to python language.
 %endif
 
-%description devel
+%description -n @PACKAGE@-devel
 Headers of libyang library.
 
 %description -n @TOOLS_PACKAGE@
@@ -136,7 +136,7 @@ make DESTDIR=%{buildroot} install
 %{_libdir}/libyang1/*
 %dir %{_libdir}/libyang1/
 
-%files devel
+%files -n @PACKAGE@-devel
 %defattr(-,root,root)
 %{_libdir}/libyang.so
 %{_libdir}/pkgconfig/libyang.pc
