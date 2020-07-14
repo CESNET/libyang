@@ -1374,7 +1374,7 @@ lyd_diff_is_redundant(struct lyd_node *diff)
     assert(mod);
 
     /* get node operation */
-    lyd_diff_get_op(diff, &op);
+    LY_CHECK_RET(lyd_diff_get_op(diff, &op), 0);
 
     if ((op == LYD_DIFF_OP_REPLACE) && lysc_is_userordered(diff->schema)) {
         /* check for redundant move */
