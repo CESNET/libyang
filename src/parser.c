@@ -187,7 +187,8 @@ ly_in_new_filepath(const char *filepath, size_t len, struct ly_in **in)
     }
 
     fd = open(fp, O_RDONLY);
-    LY_CHECK_ERR_RET(!fd, LOGERR(NULL, LY_ESYS, "Failed to open file \"%s\" (%s).", fp, strerror(errno)); free(fp), LY_ESYS);
+    LY_CHECK_ERR_RET(fd == -1, LOGERR(NULL, LY_ESYS, "Failed to open file \"%s\" (%s).", fp, strerror(errno)); free(fp),
+                     LY_ESYS);
 
     LY_CHECK_ERR_RET(ret = ly_in_new_fd(fd, in), free(fp), ret);
 
