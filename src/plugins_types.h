@@ -155,10 +155,19 @@ typedef const char *(*ly_clb_get_prefix)(const struct lys_module *mod, void *pri
                                             can (e.g. store the canonical/auxiliary value if it is requested) and in the case of need to use
                                             data trees (checking require-instance), it returns LY_EINCOMPLETE.
                                             Caller is supposed to call such validation callback again later with complete data trees. */
-#define LY_TYPE_OPTS_SECOND_CALL 0x20  /**< Flag for the second call of the callback when the first call returns LY_EINCOMPLETE,
+#define LY_TYPE_OPTS_SECOND_CALL  0x20 /**< Flag for the second call of the callback when the first call returns LY_EINCOMPLETE,
                                             other options should be the same as for the first call. **!!** Note that this second call
                                             can occur even if the first call succeeded, in which case the plugin should immediately
                                             return LY_SUCCESS. */
+#define LY_TYPE_OPTS_ISSTRING     LYD_NODE_OPAQ_ISSTRING /**< Hint flag from the parser in case the source format provides some additional information
+                                            about the type of the data. The flag is expected to be used in combination with the format information. */
+#define LY_TYPE_OPTS_ISNUMBER     LYD_NODE_OPAQ_ISNUMBER /**< Hint flag from the parser in case the source format provides some additional information
+                                            about the type of the data. The flag is expected to be used in combination with the format information. */
+#define LY_TYPE_OPTS_ISBOOLEAN    LYD_NODE_OPAQ_ISBOOLEAN /**< Hint flag from the parser in case the source format provides some additional information
+                                            about the type of the data. The flag is expected to be used in combination with the format information. */
+#define LY_TYPE_OPTS_ISEMPTY      LYD_NODE_OPAQ_ISEMPTY /**< Hint flag from the parser in case the source format provides some additional information
+                                            about the type of the data. The flag is expected to be used in combination with the format information. */
+#define LY_TYPE_PARSER_HINTS_MASK (LY_TYPE_OPTS_ISSTRING | LY_TYPE_OPTS_ISNUMBER | LY_TYPE_OPTS_ISBOOLEAN | LY_TYPE_OPTS_ISEMPTY)
 
 /** @} plugintypeopts */
 
@@ -200,7 +209,7 @@ typedef const char *(*ly_clb_get_prefix)(const struct lys_module *mod, void *pri
  * @return LY_ERR value if an error occurred and the value could not be canonized following the type's rules.
  */
 typedef LY_ERR (*ly_type_store_clb)(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len,
-                                    int options, ly_clb_resolve_prefix resolve_prefix, void *parser, LYD_FORMAT format,
+                                    int options, ly_resolve_prefix_clb resolve_prefix, void *parser, LYD_FORMAT format,
                                     const void *context_node, const struct lyd_node *tree,
                                     struct lyd_value *storage, const char **canonized, struct ly_err_item **err);
 
@@ -234,7 +243,7 @@ typedef LY_ERR (*ly_type_compare_clb)(const struct lyd_value *val1, const struct
  *         can be responsible for freeing allocated memory.
  * @return NULL in case of error.
  */
-typedef const char *(*ly_type_print_clb)(const struct lyd_value *value, LYD_FORMAT format, ly_clb_get_prefix get_prefix,
+typedef const char *(*ly_type_print_clb)(const struct lyd_value *value, LYD_FORMAT format, ly_get_prefix_clb get_prefix,
                                          void *printer, int *dynamic);
 
 /**
@@ -391,7 +400,7 @@ LY_ERR ly_type_find_leafref(const struct lysc_type_leafref *lref, const struct l
  * @return Created [sized array](@ref sizedarrays) of prefix mappings, NULL in case of error.
  */
 struct lyd_value_prefix *ly_type_get_prefixes(const struct ly_ctx *ctx, const char *value, size_t value_len,
-                                              ly_clb_resolve_prefix get_prefix, void *parser);
+                                              ly_resolve_prefix_clb get_prefix, void *parser);
 
 /** @} types */
 

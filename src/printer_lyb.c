@@ -223,7 +223,7 @@ lyb_hash_find(struct hash_table *ht, struct lysc_node *node, LYB_HASH *hash_p)
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_write(struct ly_out *out, const uint8_t *buf, size_t count, struct lyd_lyb_ctx *lybctx)
+lyb_write(struct ly_out *out, const uint8_t *buf, size_t count, struct lylyb_ctx *lybctx)
 {
     LY_ARRAY_COUNT_TYPE u;
     struct lyd_lyb_subtree *full, *iter;
@@ -307,7 +307,7 @@ lyb_write(struct ly_out *out, const uint8_t *buf, size_t count, struct lyd_lyb_c
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_write_stop_subtree(struct ly_out *out, struct lyd_lyb_ctx *lybctx)
+lyb_write_stop_subtree(struct ly_out *out, struct lylyb_ctx *lybctx)
 {
     ssize_t r;
     uint8_t meta_buf[LYB_META_BYTES];
@@ -334,7 +334,7 @@ lyb_write_stop_subtree(struct ly_out *out, struct lyd_lyb_ctx *lybctx)
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_write_start_subtree(struct ly_out *out, struct lyd_lyb_ctx *lybctx)
+lyb_write_start_subtree(struct ly_out *out, struct lylyb_ctx *lybctx)
 {
     ssize_t r;
     LY_ARRAY_COUNT_TYPE u;
@@ -381,7 +381,7 @@ lyb_write_start_subtree(struct ly_out *out, struct lyd_lyb_ctx *lybctx)
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_write_number(uint64_t num, size_t bytes, struct ly_out *out, struct lyd_lyb_ctx *lybctx)
+lyb_write_number(uint64_t num, size_t bytes, struct ly_out *out, struct lylyb_ctx *lybctx)
 {
     /* correct byte order */
     num = htole64(num);
@@ -400,7 +400,7 @@ lyb_write_number(uint64_t num, size_t bytes, struct ly_out *out, struct lyd_lyb_
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_write_string(const char *str, size_t str_len, int with_length, struct ly_out *out, struct lyd_lyb_ctx *lybctx)
+lyb_write_string(const char *str, size_t str_len, int with_length, struct ly_out *out, struct lylyb_ctx *lybctx)
 {
     if (!str) {
         str = "";
@@ -432,7 +432,7 @@ lyb_write_string(const char *str, size_t str_len, int with_length, struct ly_out
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_print_model(struct ly_out *out, const struct lys_module *mod, struct lyd_lyb_ctx *lybctx)
+lyb_print_model(struct ly_out *out, const struct lys_module *mod, struct lylyb_ctx *lybctx)
 {
     int r;
     uint16_t revision;
@@ -477,7 +477,7 @@ lyb_print_model(struct ly_out *out, const struct lys_module *mod, struct lyd_lyb
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_print_data_models(struct ly_out *out, const struct lyd_node *root, struct lyd_lyb_ctx *lybctx)
+lyb_print_data_models(struct ly_out *out, const struct lyd_node *root, struct lylyb_ctx *lybctx)
 {
     struct ly_set *set;
     LY_ARRAY_COUNT_TYPE u;
@@ -577,7 +577,7 @@ lyb_print_header(struct ly_out *out)
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_print_opaq_prefixes(struct ly_out *out, const struct ly_prefix *prefs, struct lyd_lyb_ctx *lybctx)
+lyb_print_opaq_prefixes(struct ly_out *out, const struct ly_prefix *prefs, struct lylyb_ctx *lybctx)
 {
     uint8_t count;
     LY_ARRAY_COUNT_TYPE u;
@@ -595,10 +595,10 @@ lyb_print_opaq_prefixes(struct ly_out *out, const struct ly_prefix *prefs, struc
     /* write all the prefixes */
     LY_ARRAY_FOR(prefs, u) {
         /* prefix */
-        LY_CHECK_RET(lyb_write_string(prefs[u].pref, 0, 1, out, lybctx));
+        LY_CHECK_RET(lyb_write_string(prefs[u].id, 0, 1, out, lybctx));
 
         /* namespace */
-        LY_CHECK_RET(lyb_write_string(prefs[u].ns, 0, 1, out, lybctx));
+        LY_CHECK_RET(lyb_write_string(prefs[u].module_name, 0, 1, out, lybctx));
     }
 
     return LY_SUCCESS;
@@ -613,13 +613,13 @@ lyb_print_opaq_prefixes(struct ly_out *out, const struct ly_prefix *prefs, struc
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_print_opaq(struct lyd_node_opaq *opaq, struct ly_out *out, struct lyd_lyb_ctx *lybctx)
+lyb_print_opaq(struct lyd_node_opaq *opaq, struct ly_out *out, struct lylyb_ctx *lybctx)
 {
     /* prefix */
-    LY_CHECK_RET(lyb_write_string(opaq->prefix.pref, 0, 1, out, lybctx));
+    LY_CHECK_RET(lyb_write_string(opaq->prefix.id, 0, 1, out, lybctx));
 
-    /* namespace */
-    LY_CHECK_RET(lyb_write_string(opaq->prefix.ns, 0, 1, out, lybctx));
+    /* module reference */
+    LY_CHECK_RET(lyb_write_string(opaq->prefix.module_name, 0, 1, out, lybctx));
 
     /* name */
     LY_CHECK_RET(lyb_write_string(opaq->name, 0, 1, out, lybctx));
@@ -645,7 +645,7 @@ lyb_print_opaq(struct lyd_node_opaq *opaq, struct ly_out *out, struct lyd_lyb_ct
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_print_anydata(struct lyd_node_any *anydata, struct ly_out *out, struct lyd_lyb_ctx *lybctx)
+lyb_print_anydata(struct lyd_node_any *anydata, struct ly_out *out, struct lylyb_ctx *lybctx)
 {
     LY_ERR ret = LY_SUCCESS;
     LYD_ANYDATA_VALUETYPE value_type;
@@ -698,7 +698,7 @@ cleanup:
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_print_term(struct lyd_node_term *term, struct ly_out *out, struct lyd_lyb_ctx *lybctx)
+lyb_print_term(struct lyd_node_term *term, struct ly_out *out, struct lylyb_ctx *lybctx)
 {
     LY_ERR ret;
     int dynamic;
@@ -749,47 +749,47 @@ lyb_print_metadata(struct ly_out *out, const struct lyd_node *node, struct lyd_l
     }
     for (iter = node->meta; iter; iter = iter->next) {
         if (count == UINT8_MAX) {
-            LOGERR(lybctx->ctx, LY_EINT, "Maximum supported number of data node metadata is %u.", UINT8_MAX);
+            LOGERR(lybctx->lybctx->ctx, LY_EINT, "Maximum supported number of data node metadata is %u.", UINT8_MAX);
             return LY_EINT;
         }
         ++count;
     }
 
     /* write number of metadata on 1 byte */
-    LY_CHECK_RET(lyb_write(out, &count, 1, lybctx));
+    LY_CHECK_RET(lyb_write(out, &count, 1, lybctx->lybctx));
 
     if (wd_mod) {
         /* write the "default" metadata */
-        LY_CHECK_RET(lyb_write_start_subtree(out, lybctx));
-        LY_CHECK_RET(lyb_print_model(out, wd_mod, lybctx));
-        LY_CHECK_RET(lyb_write_string("default", 0, 1, out, lybctx));
-        LY_CHECK_RET(lyb_write_string("true", 0, 0, out, lybctx));
-        LY_CHECK_RET(lyb_write_stop_subtree(out, lybctx));
+        LY_CHECK_RET(lyb_write_start_subtree(out, lybctx->lybctx));
+        LY_CHECK_RET(lyb_print_model(out, wd_mod, lybctx->lybctx));
+        LY_CHECK_RET(lyb_write_string("default", 0, 1, out, lybctx->lybctx));
+        LY_CHECK_RET(lyb_write_string("true", 0, 0, out, lybctx->lybctx));
+        LY_CHECK_RET(lyb_write_stop_subtree(out, lybctx->lybctx));
     }
 
     /* write all the node metadata */
     LY_LIST_FOR(node->meta, iter) {
         /* each metadata is a subtree */
-        LY_CHECK_RET(lyb_write_start_subtree(out, lybctx));
+        LY_CHECK_RET(lyb_write_start_subtree(out, lybctx->lybctx));
 
         /* model */
-        LY_CHECK_RET(lyb_print_model(out, iter->annotation->module, lybctx));
+        LY_CHECK_RET(lyb_print_model(out, iter->annotation->module, lybctx->lybctx));
 
         /* annotation name with length */
-        LY_CHECK_RET(lyb_write_string(iter->name, 0, 1, out, lybctx));
+        LY_CHECK_RET(lyb_write_string(iter->name, 0, 1, out, lybctx->lybctx));
 
         /* get the value */
         str = lyd_meta2str(iter, &dynamic);
 
         /* metadata value */
-        ret = lyb_write_string(str, 0, 0, out, lybctx);
+        ret = lyb_write_string(str, 0, 0, out, lybctx->lybctx);
         if (dynamic) {
             free((char *)str);
         }
         LY_CHECK_RET(ret);
 
         /* finish metadata subtree */
-        LY_CHECK_RET(lyb_write_stop_subtree(out, lybctx));
+        LY_CHECK_RET(lyb_write_stop_subtree(out, lybctx->lybctx));
     }
 
     return LY_SUCCESS;
@@ -804,7 +804,7 @@ lyb_print_metadata(struct ly_out *out, const struct lyd_node *node, struct lyd_l
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_print_attributes(struct ly_out *out, const struct lyd_node_opaq *node, struct lyd_lyb_ctx *lybctx)
+lyb_print_attributes(struct ly_out *out, const struct lyd_node_opaq *node, struct lylyb_ctx *lybctx)
 {
     uint8_t count = 0;
     struct ly_attr *iter;
@@ -826,10 +826,10 @@ lyb_print_attributes(struct ly_out *out, const struct lyd_node_opaq *node, struc
         LY_CHECK_RET(lyb_write_start_subtree(out, lybctx));
 
         /* prefix */
-        LY_CHECK_RET(lyb_write_string(iter->prefix.pref, 0, 1, out, lybctx));
+        LY_CHECK_RET(lyb_write_string(iter->prefix.id, 0, 1, out, lybctx));
 
         /* namespace */
-        LY_CHECK_RET(lyb_write_string(iter->prefix.ns, 0, 1, out, lybctx));
+        LY_CHECK_RET(lyb_write_string(iter->prefix.module_name, 0, 1, out, lybctx));
 
         /* name */
         LY_CHECK_RET(lyb_write_string(iter->name, 0, 1, out, lybctx));
@@ -860,7 +860,7 @@ lyb_print_attributes(struct ly_out *out, const struct lyd_node_opaq *node, struc
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_print_schema_hash(struct ly_out *out, struct lysc_node *schema, struct hash_table **sibling_ht, struct lyd_lyb_ctx *lybctx)
+lyb_print_schema_hash(struct ly_out *out, struct lysc_node *schema, struct hash_table **sibling_ht, struct lylyb_ctx *lybctx)
 {
     LY_ARRAY_COUNT_TYPE u;
     uint32_t i;
@@ -941,36 +941,36 @@ lyb_print_subtree(struct ly_out *out, const struct lyd_node *node, struct hash_t
     struct hash_table *child_ht = NULL;
 
     /* register a new subtree */
-    LY_CHECK_RET(lyb_write_start_subtree(out, lybctx));
+    LY_CHECK_RET(lyb_write_start_subtree(out, lybctx->lybctx));
 
     /* write model info first */
     if (!node->schema && !((struct lyd_node_opaq *)node)->parent) {
-        LY_CHECK_RET(lyb_print_model(out, NULL, lybctx));
+        LY_CHECK_RET(lyb_print_model(out, NULL, lybctx->lybctx));
     } else if (node->schema && !lysc_data_parent(node->schema)) {
-        LY_CHECK_RET(lyb_print_model(out, node->schema->module, lybctx));
+        LY_CHECK_RET(lyb_print_model(out, node->schema->module, lybctx->lybctx));
     }
 
     /* write schema hash */
-    LY_CHECK_RET(lyb_print_schema_hash(out, (struct lysc_node *)node->schema, sibling_ht, lybctx));
+    LY_CHECK_RET(lyb_print_schema_hash(out, (struct lysc_node *)node->schema, sibling_ht, lybctx->lybctx));
 
     /* write any metadata/attributes */
     if (node->schema) {
         LY_CHECK_RET(lyb_print_metadata(out, node, lybctx));
     } else {
-        LY_CHECK_RET(lyb_print_attributes(out, (struct lyd_node_opaq *)node, lybctx));
+        LY_CHECK_RET(lyb_print_attributes(out, (struct lyd_node_opaq *)node, lybctx->lybctx));
     }
 
     /* write node content */
     if (!node->schema) {
-        LY_CHECK_RET(lyb_print_opaq((struct lyd_node_opaq *)node, out, lybctx));
+        LY_CHECK_RET(lyb_print_opaq((struct lyd_node_opaq *)node, out, lybctx->lybctx));
     } else if (node->schema->nodetype & LYD_NODE_INNER) {
         /* nothing to write */
     } else if (node->schema->nodetype & LYD_NODE_TERM) {
-        LY_CHECK_RET(lyb_print_term((struct lyd_node_term *)node, out, lybctx));
+        LY_CHECK_RET(lyb_print_term((struct lyd_node_term *)node, out, lybctx->lybctx));
     } else if (node->schema->nodetype & LYD_NODE_ANY) {
-        LY_CHECK_RET(lyb_print_anydata((struct lyd_node_any *)node, out, lybctx));
+        LY_CHECK_RET(lyb_print_anydata((struct lyd_node_any *)node, out, lybctx->lybctx));
     } else {
-        LOGINT_RET(lybctx->ctx);
+        LOGINT_RET(lybctx->lybctx->ctx);
     }
 
     /* recursively write all the descendants */
@@ -979,7 +979,7 @@ lyb_print_subtree(struct ly_out *out, const struct lyd_node *node, struct hash_t
     }
 
     /* finish this subtree */
-    LY_CHECK_RET(lyb_write_stop_subtree(out, lybctx));
+    LY_CHECK_RET(lyb_write_stop_subtree(out, lybctx->lybctx));
 
     return LY_SUCCESS;
 }
@@ -989,17 +989,22 @@ lyb_print_data(struct ly_out *out, const struct lyd_node *root, int options)
 {
     LY_ERR ret = LY_SUCCESS;
     uint8_t zero = 0;
-    LY_ARRAY_COUNT_TYPE u;
     struct hash_table *top_sibling_ht = NULL;
     const struct lys_module *prev_mod = NULL;
-    struct lyd_lyb_ctx lybctx = {0};
+    struct lyd_lyb_ctx *lybctx;
+    const struct ly_ctx *ctx = LYD_NODE_CTX(root);
 
-    lybctx.print_options = options;
+    lybctx = calloc(1, sizeof *lybctx);
+    LY_CHECK_ERR_RET(!lybctx, LOGMEM(ctx), LY_EMEM);
+    lybctx->lybctx = calloc(1, sizeof *lybctx->lybctx);
+    LY_CHECK_ERR_RET(!lybctx, LOGMEM(ctx), LY_EMEM);
+
+    lybctx->print_options = options;
     if (root) {
-        lybctx.ctx = LYD_NODE_CTX(root);
+        lybctx->lybctx->ctx = ctx;
 
         if (root->schema && lysc_data_parent(root->schema)) {
-            LOGERR(lybctx.ctx, LY_EINVAL, "LYB printer supports only printing top-level nodes.");
+            LOGERR(lybctx->lybctx->ctx, LY_EINVAL, "LYB printer supports only printing top-level nodes.");
             return LY_EINVAL;
         }
     }
@@ -1011,7 +1016,7 @@ lyb_print_data(struct ly_out *out, const struct lyd_node *root, int options)
     LY_CHECK_GOTO(ret = lyb_print_header(out), cleanup);
 
     /* all used models */
-    LY_CHECK_GOTO(ret = lyb_print_data_models(out, root, &lybctx), cleanup);
+    LY_CHECK_GOTO(ret = lyb_print_data_models(out, root, lybctx->lybctx), cleanup);
 
     LY_LIST_FOR(root, root) {
         /* do not reuse sibling hash tables from different modules */
@@ -1020,7 +1025,7 @@ lyb_print_data(struct ly_out *out, const struct lyd_node *root, int options)
             prev_mod = root->schema ? root->schema->module : NULL;
         }
 
-        LY_CHECK_GOTO(ret = lyb_print_subtree(out, root, &top_sibling_ht, &lybctx), cleanup);
+        LY_CHECK_GOTO(ret = lyb_print_subtree(out, root, &top_sibling_ht, lybctx), cleanup);
 
         if (!(options & LYD_PRINT_WITHSIBLINGS)) {
             break;
@@ -1028,14 +1033,9 @@ lyb_print_data(struct ly_out *out, const struct lyd_node *root, int options)
     }
 
     /* ending zero byte */
-    LY_CHECK_GOTO(ret = lyb_write(out, &zero, sizeof zero, &lybctx), cleanup);
+    LY_CHECK_GOTO(ret = lyb_write(out, &zero, sizeof zero, lybctx->lybctx), cleanup);
 
 cleanup:
-    LY_ARRAY_FREE(lybctx.subtrees);
-    LY_ARRAY_FOR(lybctx.sib_hts, u) {
-        lyht_free(lybctx.sib_hts[u].ht);
-    }
-    LY_ARRAY_FREE(lybctx.sib_hts);
-
+    lyd_lyb_ctx_free((struct lyd_ctx *)lybctx);
     return ret;
 }

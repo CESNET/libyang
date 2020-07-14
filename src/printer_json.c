@@ -20,7 +20,7 @@
 /**
  * @brief JSON mapping of YANG modules to prefixes in values.
  *
- * Implementation of ly_clb_get_prefix.
+ * Implementation of ly_get_prefix_clb.
  */
 const char *
 json_print_get_prefix(const struct lys_module *mod, void *UNUSED(private))

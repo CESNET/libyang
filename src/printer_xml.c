@@ -50,6 +50,7 @@ struct xmlpr_ctx {
 #define LEVEL_DEC if (LEVEL) {LEVEL--;}      /**< decrease indentation level */
 
 #define LYXML_PREFIX_REQUIRED 0x01  /**< The prefix is not just a suggestion but a requirement. */
+#define LYXML_PREFIX_DEFAULT  0x02  /**< The namespace is required to be a default (without prefix) */
 
 /**
  * @brief Print a namespace if not already printed.
@@ -107,10 +108,35 @@ xml_print_ns(struct xmlpr_ctx *ctx, const char *ns, const char *new_prefix, int 
     return ctx->prefix.objs[i];
 }
 
+static const char*
+xml_print_ns_opaq(struct xmlpr_ctx *ctx, LYD_FORMAT format, const struct ly_prefix *prefix, int prefix_opts)
+{
+
+    switch (format) {
+    case LYD_XML:
+        return xml_print_ns(ctx, prefix->module_ns, (prefix_opts & LYXML_PREFIX_DEFAULT) ? NULL : prefix->id, prefix_opts);
+        break;
+    case LYD_JSON:
+        if (prefix->module_name) {
+            const struct lys_module *mod = ly_ctx_get_module_latest(ctx->ctx, prefix->module_name);
+            if (mod) {
+                return xml_print_ns(ctx, mod->ns, (prefix_opts & LYXML_PREFIX_DEFAULT) ? NULL : prefix->id, prefix_opts);
+            }
+        }
+        break;
+    case LYD_SCHEMA:
+    case LYD_LYB:
+        /* cannot be created */
+        LOGINT(ctx->ctx);
+    }
+
+    return NULL;
+}
+
 /**
  * @brief XML mapping of YANG modules to prefixes in values.
  *
- * Implementation of ly_clb_get_prefix
+ * Implementation of ly_get_prefix_clb
  */
 static const char *
 xml_print_get_prefix(const struct lys_module *mod, void *private)
@@ -237,24 +263,15 @@ xml_print_attr(struct xmlpr_ctx *ctx, const struct lyd_node_opaq *node)
 
     LY_LIST_FOR(node->attr, attr) {
         pref = NULL;
-        if (attr->prefix.pref) {
+        if (attr->prefix.id) {
             /* print attribute namespace */
-            switch (attr->format) {
-            case LYD_XML:
-                pref = xml_print_ns(ctx, attr->prefix.ns, attr->prefix.pref, 0);
-                break;
-            case LYD_SCHEMA:
-            case LYD_LYB:
-                /* cannot be created */
-                LOGINT(node->ctx);
-                return LY_EINT;
-            }
+            pref = xml_print_ns_opaq(ctx, attr->format, &attr->prefix, 0);
         }
 
         /* print namespaces connected with the value's prefixes */
         if (attr->val_prefs) {
             LY_ARRAY_FOR(attr->val_prefs, u) {
-                xml_print_ns(ctx, attr->val_prefs[u].ns, attr->val_prefs[u].pref, LYXML_PREFIX_REQUIRED);
+                xml_print_ns_opaq(ctx, attr->format, &attr->val_prefs[u], LYXML_PREFIX_REQUIRED);
             }
         }
 
@@ -272,16 +289,7 @@ xml_print_opaq_open(struct xmlpr_ctx *ctx, const struct lyd_node_opaq *node)
     ly_print(ctx->out, "%*s<%s", INDENT, node->name);
 
     /* print default namespace */
-    switch (node->format) {
-    case LYD_XML:
-        xml_print_ns(ctx, node->prefix.ns, NULL, 0);
-        break;
-    case LYD_SCHEMA:
-    case LYD_LYB:
-        /* cannot be created */
-        LOGINT(node->ctx);
-        return LY_EINT;
-    }
+    xml_print_ns_opaq(ctx, node->format, &node->prefix, LYXML_PREFIX_DEFAULT);
 
     /* print attributes */
     LY_CHECK_RET(xml_print_attr(ctx, node));
@@ -457,7 +465,7 @@ xml_print_opaq(struct xmlpr_ctx *ctx, const struct lyd_node_opaq *node)
         /* print namespaces connected with the value's prefixes */
         if (node->val_prefs) {
             LY_ARRAY_FOR(node->val_prefs, u) {
-                xml_print_ns(ctx, node->val_prefs[u].ns, node->val_prefs[u].pref, LYXML_PREFIX_REQUIRED);
+                xml_print_ns_opaq(ctx, node->format, &node->val_prefs[u], LYXML_PREFIX_REQUIRED);
             }
         }
 

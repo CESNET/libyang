@@ -18,6 +18,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "parser_internal.h"
 #include "set.h"
 #include "tree.h"
 
@@ -26,10 +27,13 @@ struct ly_ctx;
 struct lyd_node;
 struct lysc_node;
 
-/**
- * @brief Internal structure for LYB parser/printer.
- */
-struct lyd_lyb_ctx {
+struct lylyb_ctx {
+    const struct ly_ctx *ctx;
+    uint64_t line;             /* current line */
+    struct ly_in *in;          /* input structure */
+
+    const struct lys_module **models;
+
     struct lyd_lyb_subtree {
         size_t written;
         size_t position;
@@ -37,30 +41,45 @@ struct lyd_lyb_ctx {
     } *subtrees;
     LY_ARRAY_COUNT_TYPE subtree_size;
 
-    const struct ly_ctx *ctx;
-    union {
-        struct {
-            int parse_options;
-            int validate_options;
-        };
-        int print_options;
-    };
-
-    /* LYB parser only */
-    struct ly_in *in;
-    int int_opts;
-    const struct lys_module **models;
-    struct ly_set unres_node_type;
-    struct ly_set unres_meta_type;
-    struct ly_set when_check;
-    struct lyd_node *op_ntf;
-
     /* LYB printer only */
     struct lyd_lyb_sib_ht {
         struct lysc_node *first_sibling;
         struct hash_table *ht;
     } *sib_hts;
 };
+
+/**
+ * @brief Internal structure for LYB parser/printer.
+ *
+ * Note that the structure maps to the lyd_ctx which is common for all the data parsers
+ */
+struct lyd_lyb_ctx {
+    union {
+        struct {
+            uint32_t parse_options;        /**< various @ref dataparseroptions. */
+            uint32_t validate_options;     /**< various @ref datavalidationoptions. */
+        };
+        uint32_t print_options;
+    };
+    uint32_t int_opts;             /**< internal data parser options */
+    uint32_t path_len;             /**< used bytes in the path buffer */
+    char path[LYD_PARSER_BUFSIZE]; /**< buffer for the generated path */
+    struct ly_set unres_node_type; /**< set of nodes validated with LY_EINCOMPLETE result */
+    struct ly_set unres_meta_type; /**< set of metadata validated with LY_EINCOMPLETE result */
+    struct ly_set when_check;      /**< set of nodes with "when" conditions */
+    struct lyd_node *op_node;      /**< if an RPC/action/notification is being parsed, store the pointer to it */
+
+    /* callbacks */
+    lyd_ctx_free_clb free;           /* destructor */
+    ly_resolve_prefix_clb resolve_prefix;
+
+    struct lylyb_ctx *lybctx;      /* lyb format context */
+};
+
+/**
+ * @brief Destructor for the lylyb_ctx structure
+ */
+void lyd_lyb_ctx_free(struct lyd_ctx *lydctx);
 
 /**
  * LYB format

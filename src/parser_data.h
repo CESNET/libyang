@@ -220,8 +220,9 @@ LY_ERR lyd_parse_rpc(const struct ly_ctx *ctx, struct ly_in *in, LYD_FORMAT form
  * @param[in] format Format of the input data to be parsed.
  * @param[out] tree Resulting full RPC/action reply tree built from the input data. The returned data are expected to be freed using lyd_free_all().
  * The reply tree always includes duplicated operation node (and its parents) of the @p request, so in contrast to YANG data tree,
- * the result of parsing RPC/action reply cannot be NULL until an error occurs.
- * @param[out] op Optional pointer to the actual operation node inside the full action reply @p tree, useful only for action.
+ * the result of parsing RPC/action reply cannot be NULL until an error occurs. At least one of the @p tree and @p op output variables must be provided.
+ * @param[out] op Pointer to the actual operation node inside the full action reply @p tree, useful only for action. At least one of the @p op
+ * and @p tree output variables must be provided.
  * @return LY_SUCCESS in case of successful parsing (and validation).
  * @return LY_ERR value in case of error. Additional error information can be obtained from the request's context using ly_err* functions.
  */

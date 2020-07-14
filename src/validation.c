@@ -111,7 +111,7 @@ lyd_validate_when(struct lyd_node **tree, struct lyd_node *node, struct lysc_whe
 
 LY_ERR
 lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, struct ly_set *node_types, struct ly_set *meta_types,
-                   LYD_FORMAT format, ly_clb_resolve_prefix get_prefix_clb, void *parser_data, struct lyd_node **diff)
+                   LYD_FORMAT format, ly_resolve_prefix_clb get_prefix_clb, void *parser_data, struct lyd_node **diff)
 {
     LY_ERR ret = LY_SUCCESS;
     uint32_t i;
@@ -172,7 +172,7 @@ lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, struct ly_s
             struct lyd_node_term *node = (struct lyd_node_term *)node_types->objs[i];
 
             /* validate and store the value of the node */
-            ret = lyd_value_parse(node, node->value.original, strlen(node->value.original), 0, 1, get_prefix_clb,
+            ret = lyd_value_parse(node, node->value.original, strlen(node->value.original), 0, 1, 0, get_prefix_clb,
                                   parser_data, format, *tree);
             LY_CHECK_RET(ret);
 
@@ -191,7 +191,7 @@ lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, struct ly_s
 
             /* validate and store the value of the metadata */
             ret = lyd_value_parse_meta(meta->parent->schema->module->ctx, meta, meta->value.original,
-                                       strlen(meta->value.original), 0, 1, get_prefix_clb, parser_data, format, NULL, *tree);
+                                       strlen(meta->value.original), 0, 1, 0, get_prefix_clb, parser_data, format, NULL, *tree);
             LY_CHECK_RET(ret);
 
             /* remove this attr from the set */

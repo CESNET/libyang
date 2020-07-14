@@ -48,7 +48,7 @@ LY_ERR lyd_val_diff_add(const struct lyd_node *node, enum lyd_diff_op op, struct
  * @return LY_ERR value.
  */
 LY_ERR lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, struct ly_set *node_types, struct ly_set *meta_types,
-                          LYD_FORMAT format, ly_clb_resolve_prefix get_prefix_clb, void *parser_data, struct lyd_node **diff);
+                          LYD_FORMAT format, ly_resolve_prefix_clb get_prefix_clb, void *parser_data, struct lyd_node **diff);
 
 /**
  * @brief Validate new siblings. Specifically, check duplicated instances, autodelete default values and cases.

@@ -1103,15 +1103,15 @@ lyxml_get_prefixes(struct lyxml_ctx *xmlctx, const char *value, size_t value_len
 
                     /* check whether we do not already have this prefix stored */
                     LY_ARRAY_FOR(prefixes, u) {
-                        if (!ly_strncmp(prefixes[u].pref, start, len)) {
+                        if (!ly_strncmp(prefixes[u].id, start, len)) {
                             p = &prefixes[u];
                             break;
                         }
                     }
                     if (!p) {
                         LY_ARRAY_NEW_GOTO(xmlctx->ctx, prefixes, p, ret, error);
-                        p->pref = lydict_insert(xmlctx->ctx, start, len);
-                        p->ns = lydict_insert(xmlctx->ctx, ns->uri, 0);
+                        p->id = lydict_insert(xmlctx->ctx, start, len);
+                        p->module_ns = lydict_insert(xmlctx->ctx, ns->uri, 0);
                     } /* else the prefix already present */
                 }
             }
@@ -1124,7 +1124,8 @@ lyxml_get_prefixes(struct lyxml_ctx *xmlctx, const char *value, size_t value_len
 
 error:
     LY_ARRAY_FOR(prefixes, u) {
-        lydict_remove(xmlctx->ctx, prefixes[u].pref);
+        lydict_remove(xmlctx->ctx, prefixes[u].id);
+        lydict_remove(xmlctx->ctx, prefixes[u].module_ns);
     }
     LY_ARRAY_FREE(prefixes);
     return ret;
@@ -1154,9 +1155,9 @@ lyxml_value_compare(const char *value1, const struct ly_prefix *prefs1, const ch
             if (prefs1) {
                 /* find module of the first prefix, if any */
                 LY_ARRAY_FOR(prefs1, u1) {
-                    len = strlen(prefs1[u1].pref);
-                    if (!strncmp(ptr1, prefs1[u1].pref, len) && (ptr1[len] == ':')) {
-                        ns1 = prefs1[u1].ns;
+                    len = strlen(prefs1[u1].id);
+                    if (!strncmp(ptr1, prefs1[u1].id, len) && (ptr1[len] == ':')) {
+                        ns1 = prefs1[u1].module_ns;
                         break;
                     }
                 }
@@ -1164,9 +1165,9 @@ lyxml_value_compare(const char *value1, const struct ly_prefix *prefs1, const ch
             if (prefs2) {
                 /* find module of the second prefix, if any */
                 LY_ARRAY_FOR(prefs2, u2) {
-                    len = strlen(prefs2[u2].pref);
-                    if (!strncmp(ptr2, prefs2[u2].pref, len) && (ptr2[len] == ':')) {
-                        ns2 = prefs2[u2].ns;
+                    len = strlen(prefs2[u2].id);
+                    if (!strncmp(ptr2, prefs2[u2].id, len) && (ptr2[len] == ':')) {
+                        ns2 = prefs2[u2].module_ns;
                         break;
                     }
                 }
@@ -1178,8 +1179,8 @@ lyxml_value_compare(const char *value1, const struct ly_prefix *prefs1, const ch
             }
 
             /* skip prefixes in both values (':' is skipped as iter) */
-            ptr1 += strlen(prefs1[u1].pref);
-            ptr2 += strlen(prefs2[u2].pref);
+            ptr1 += strlen(prefs1[u1].id);
+            ptr2 += strlen(prefs2[u2].id);
         }
 
         ++ptr1;
