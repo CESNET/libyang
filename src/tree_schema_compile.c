@@ -911,7 +911,7 @@ done:
 static LY_ERR
 lys_compile_import(struct lysc_ctx *ctx, struct lysp_import *imp_p, struct lysc_import *imp)
 {
-    struct lys_module *mod = NULL;
+    const struct lys_module *mod = NULL;
     LY_ERR ret = LY_SUCCESS;
 
     DUP_STRING(ctx->ctx, imp_p->prefix, imp->prefix);
@@ -928,16 +928,18 @@ lys_compile_import(struct lysc_ctx *ctx, struct lysp_import *imp_p, struct lysc_
             if (ly_in_new_filepath(imp->module->filepath, 0, &in)) {
                 LOGINT(ctx->ctx);
             } else {
-                mod = lys_parse(ctx->ctx, in, !strcmp(&imp->module->filepath[strlen(imp->module->filepath - 4)], ".yin") ? LYS_IN_YIN : LYS_IN_YANG);
+                LY_CHECK_RET(lys_parse(ctx->ctx, in, !strcmp(&imp->module->filepath[strlen(imp->module->filepath - 4)],
+                                                             ".yin") ? LYS_IN_YIN : LYS_IN_YANG, &mod));
                 if (mod != imp->module) {
-                    LOGERR(ctx->ctx, LY_EINT, "Filepath \"%s\" of the module \"%s\" does not match.", imp->module->filepath, imp->module->name);
+                    LOGERR(ctx->ctx, LY_EINT, "Filepath \"%s\" of the module \"%s\" does not match.",
+                           imp->module->filepath, imp->module->name);
                     mod = NULL;
                 }
             }
             ly_in_free(in, 1);
         }
         if (!mod) {
-            if (lysp_load_module(ctx->ctx, imp->module->name, imp->module->revision, 0, 1, &mod)) {
+            if (lysp_load_module(ctx->ctx, imp->module->name, imp->module->revision, 0, 1, (struct lys_module **)&mod)) {
                 LOGERR(ctx->ctx, LY_ENOTFOUND, "Unable to reload \"%s\" module to import it into \"%s\", source data not found.",
                        imp->module->name, ctx->mod->name);
                 return LY_ENOTFOUND;

@@ -20,6 +20,7 @@ extern "C" {
 #endif
 
 struct ly_in;
+struct lys_module;
 
 /**
  * @addtogroup schematree
@@ -41,9 +42,10 @@ typedef enum {
  * @param[in] ctx libyang context where to process the data model.
  * @param[in] in The input handle to provide the dumped data model in the specified format.
  * @param[in] format Format of the schema to parse.
- * @return Pointer to the data model structure or NULL on error.
+ * @param[out] module Optional parsed module.
+ * @return LY_ERR value.
  */
-struct lys_module *lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format);
+LY_ERR lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const struct lys_module **module);
 
 /**
  * @brief Load a schema into the specified context.
@@ -52,12 +54,12 @@ struct lys_module *lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT 
  * consider use of lys_parse() with a standalone input handler.
  *
  * @param[in] ctx libyang context where to process the data model.
- * @param[in] data The string containing the dumped data model in the specified
- * format.
+ * @param[in] data The string containing the dumped data model in the specified format.
  * @param[in] format Format of the input data (YANG or YIN).
- * @return Pointer to the data model structure or NULL on error.
+ * @param[out] module Optional parsed module.
+ * @return LY_ERR value.
  */
-struct lys_module *lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format);
+LY_ERR lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const struct lys_module **module);
 
 /**
  * @brief Read a schema from file descriptor into the specified context.
@@ -71,9 +73,10 @@ struct lys_module *lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFOR
  * @param[in] fd File descriptor of a regular file (e.g. sockets are not supported) containing the schema
  *            in the specified format.
  * @param[in] format Format of the input data (YANG or YIN).
- * @return Pointer to the data model structure or NULL on error.
+ * @param[out] module Optional parsed module.
+ * @return LY_ERR value.
  */
-struct lys_module *lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format);
+LY_ERR lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, const struct lys_module **module);
 
 /**
  * @brief Load a schema into the specified context from a file.
@@ -84,9 +87,10 @@ struct lys_module *lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
  * @param[in] ctx libyang context where to process the data model.
  * @param[in] path Path to the file with the model in the specified format.
  * @param[in] format Format of the input data (YANG or YIN).
- * @return Pointer to the data model structure or NULL on error.
+ * @param[out] module Optional parsed module.
+ * @return LY_ERR value.
  */
-struct lys_module *lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format);
+LY_ERR lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, const struct lys_module **module);
 
 /**
  * @brief Search for the schema file in the specified searchpaths.
@@ -103,7 +107,8 @@ struct lys_module *lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFO
  * file suffix.
  * @return LY_ERR value (LY_SUCCESS is returned even if the file is not found, then the *localfile is NULL).
  */
-LY_ERR lys_search_localfile(const char * const *searchpaths, int cwd, const char *name, const char *revision, char **localfile, LYS_INFORMAT *format);
+LY_ERR lys_search_localfile(const char * const *searchpaths, int cwd, const char *name, const char *revision,
+                            char **localfile, LYS_INFORMAT *format);
 
 /** @} schematree */
 

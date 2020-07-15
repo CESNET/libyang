@@ -749,17 +749,18 @@ lys_set_implemented(struct lys_module *mod)
     return lys_set_implemented_internal(mod, 1);
 }
 
-struct lysp_submodule *
+LY_ERR
 lys_parse_mem_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, struct lys_parser_ctx *main_ctx,
-                        LY_ERR (*custom_check)(const struct ly_ctx*, struct lysp_module*, struct lysp_submodule*, void*), void *check_data)
+                        LY_ERR (*custom_check)(const struct ly_ctx*, struct lysp_module*, struct lysp_submodule*, void*),
+                        void *check_data, struct lysp_submodule **submodule)
 {
-    LY_ERR ret = LY_EINVAL;
+    LY_ERR ret;
     struct lysp_submodule *submod = NULL, *latest_sp;
     struct lys_yang_parser_ctx *yangctx = NULL;
     struct lys_yin_parser_ctx *yinctx = NULL;
     struct lys_parser_ctx *pctx;
 
-    LY_CHECK_ARG_RET(ctx, ctx, in, NULL);
+    LY_CHECK_ARG_RET(ctx, ctx, in, LY_EINVAL);
 
     switch (format) {
     case LYS_IN_YIN:
@@ -802,7 +803,7 @@ lys_parse_mem_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT forma
     }
 
     if (custom_check) {
-        LY_CHECK_GOTO(custom_check(PARSER_CTX(pctx), NULL, submod, check_data), error);
+        LY_CHECK_GOTO(ret = custom_check(PARSER_CTX(pctx), NULL, submod, check_data), error);
     }
 
     if (latest_sp) {
@@ -818,7 +819,8 @@ lys_parse_mem_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT forma
     } else {
         yin_parser_ctx_free(yinctx);
     }
-    return submod;
+    *submodule = submod;
+    return LY_SUCCESS;
 
 error:
     lysp_submodule_free(ctx, submod);
@@ -827,27 +829,28 @@ error:
     } else {
         yin_parser_ctx_free(yinctx);
     }
-    return NULL;
+    return ret;
 }
 
-struct lys_module *
+LY_ERR
 lys_parse_mem_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, int implement,
-                     LY_ERR (*custom_check)(const struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data),
-                     void *check_data)
+                     LY_ERR (*custom_check)(const struct ly_ctx *ctx, struct lysp_module *mod,
+                                            struct lysp_submodule *submod, void *data), void *check_data,
+                     struct lys_module **module)
 {
     struct lys_module *mod = NULL, *latest, *mod_dup;
     struct lysp_import *imp;
     struct lysp_include *inc;
-    LY_ERR ret = LY_EINVAL;
+    LY_ERR ret;
     LY_ARRAY_COUNT_TYPE u, v;
     struct lys_yang_parser_ctx *yangctx = NULL;
     struct lys_yin_parser_ctx *yinctx = NULL;
     struct lys_parser_ctx *pctx = NULL;
 
-    LY_CHECK_ARG_RET(ctx, ctx, in, NULL);
+    LY_CHECK_ARG_RET(ctx, ctx, in, LY_EINVAL);
 
     mod = calloc(1, sizeof *mod);
-    LY_CHECK_ERR_RET(!mod, LOGMEM(ctx), NULL);
+    LY_CHECK_ERR_RET(!mod, LOGMEM(ctx), LY_EMEM);
     mod->ctx = ctx;
 
     switch (format) {
@@ -861,6 +864,7 @@ lys_parse_mem_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, 
         break;
     default:
         LOGERR(ctx, LY_EINVAL, "Invalid schema input format.");
+        ret = LY_EINVAL;
         break;
     }
     LY_CHECK_GOTO(ret, error);
@@ -893,13 +897,14 @@ lys_parse_mem_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, 
     }
 
     if (custom_check) {
-        LY_CHECK_GOTO(custom_check(ctx, mod->parsed, NULL, check_data), error);
+        LY_CHECK_GOTO(ret = custom_check(ctx, mod->parsed, NULL, check_data), error);
     }
 
     if (implement) {
         /* mark the loaded module implemented */
         if (ly_ctx_get_module_implemented(ctx, mod->name)) {
             LOGERR(ctx, LY_EDENIED, "Module \"%s\" is already implemented in the context.", mod->name);
+            ret = LY_EDENIED;
             goto error;
         }
         mod->implemented = 1;
@@ -917,6 +922,7 @@ lys_parse_mem_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, 
                 LOGERR(ctx, LY_EEXIST, "Module \"%s\" with no revision is already present in the context.",
                        mod->name);
             }
+            ret = LY_EEXIST;
             goto error;
         } else {
             /* add the parsed data to the currently compiled-only module in the context */
@@ -931,8 +937,8 @@ lys_parse_mem_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, 
 
     if (!mod->implemented) {
         /* pre-compile features and identities of the module */
-        LY_CHECK_GOTO(lys_feature_precompile(NULL, ctx, mod, mod->parsed->features, &mod->dis_features), error);
-        LY_CHECK_GOTO(lys_identity_precompile(NULL, ctx, mod, mod->parsed->identities, &mod->dis_identities), error);
+        LY_CHECK_GOTO(ret = lys_feature_precompile(NULL, ctx, mod, mod->parsed->features, &mod->dis_features), error);
+        LY_CHECK_GOTO(ret = lys_identity_precompile(NULL, ctx, mod, mod->parsed->identities, &mod->dis_identities), error);
     }
 
     if (latest) {
@@ -947,39 +953,44 @@ finish_parsing:
     mod->parsed->parsing = 1;
     LY_ARRAY_FOR(mod->parsed->imports, u) {
         imp = &mod->parsed->imports[u];
-        if (!imp->module && lysp_load_module(ctx, imp->name, imp->rev[0] ? imp->rev : NULL, 0, 0, &imp->module)) {
-            goto error_ctx;
+        if (!imp->module) {
+            LY_CHECK_GOTO(ret = lysp_load_module(ctx, imp->name, imp->rev[0] ? imp->rev : NULL, 0, 0, &imp->module),
+                          error_ctx);
         }
         /* check for importing the same module twice */
         for (v = 0; v < u; ++v) {
             if (imp->module == mod->parsed->imports[v].module) {
-                LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "Single revision of the module \"%s\" referred twice.", imp->name);
+                LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "Single revision of the module \"%s\" referred twice.",
+                       imp->name);
+                ret = LY_EVALID;
                 goto error_ctx;
             }
         }
     }
     LY_ARRAY_FOR(mod->parsed->includes, u) {
         inc = &mod->parsed->includes[u];
-        if (!inc->submodule && lysp_load_submodule(pctx, mod->parsed, inc)) {
-            goto error_ctx;
+        if (!inc->submodule) {
+            LY_CHECK_GOTO(ret = lysp_load_submodule(pctx, mod->parsed, inc), error_ctx);
         }
         if (!mod->implemented) {
             /* pre-compile features and identities of the submodule */
-            LY_CHECK_GOTO(lys_feature_precompile(NULL, ctx, mod, inc->submodule->features, &mod->dis_features), error);
-            LY_CHECK_GOTO(lys_identity_precompile(NULL, ctx, mod, inc->submodule->identities, &mod->dis_identities), error);
+            LY_CHECK_GOTO(ret = lys_feature_precompile(NULL, ctx, mod, inc->submodule->features, &mod->dis_features), error);
+            LY_CHECK_GOTO(ret = lys_identity_precompile(NULL, ctx, mod, inc->submodule->identities, &mod->dis_identities),
+                          error);
         }
     }
     mod->parsed->parsing = 0;
 
     /* check name collisions - typedefs and TODO groupings */
-    LY_CHECK_GOTO(lysp_check_typedefs(pctx, mod->parsed), error_ctx);
+    LY_CHECK_GOTO(ret = lysp_check_typedefs(pctx, mod->parsed), error_ctx);
 
     if (format == LYS_IN_YANG) {
         yang_parser_ctx_free(yangctx);
     } else {
         yin_parser_ctx_free(yinctx);
     }
-    return mod;
+    *module = mod;
+    return LY_SUCCESS;
 
 error_ctx:
     ly_set_rm(&ctx->list, mod, NULL);
@@ -994,23 +1005,25 @@ error:
         yin_parser_ctx_free(yinctx);
     }
 
-    return NULL;
+    return ret;
 }
 
-API struct lys_module *
-lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format)
+API LY_ERR
+lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const struct lys_module **module)
 {
     struct lys_module *mod;
     char *filename, *rev, *dot;
     size_t len;
 
-    LY_CHECK_ARG_RET(NULL, ctx, in, format > LYS_IN_UNKNOWN, NULL);
+    if (module) {
+        *module = NULL;
+    }
+    LY_CHECK_ARG_RET(NULL, ctx, in, format > LYS_IN_UNKNOWN, LY_EINVAL);
 
     /* remember input position */
     in->func_start = in->current;
 
-    mod = lys_parse_mem_module(ctx, in, format, 1, NULL, NULL);
-    LY_CHECK_RET(!mod, NULL);
+    LY_CHECK_RET(lys_parse_mem_module(ctx, in, format, 1, NULL, NULL, &mod));
 
     switch (in->type) {
     case LY_IN_FILEPATH:
@@ -1045,65 +1058,66 @@ lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format)
         /* nothing special to do */
         break;
     default:
-        LOGINT(ctx);
+        LOGINT_RET(ctx);
         break;
     }
 
     lys_parser_fill_filepath(ctx, in, &mod->filepath);
-    lys_compile(&mod, 0);
+    LY_CHECK_RET(lys_compile(&mod, 0));
 
-    return mod;
+    if (module) {
+        *module = mod;
+    }
+    return LY_SUCCESS;
 }
 
-API struct lys_module *
-lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format)
+API LY_ERR
+lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const struct lys_module **module)
 {
 	LY_ERR ret;
     struct ly_in *in = NULL;
-    struct lys_module *result = NULL;
 
-    LY_CHECK_ARG_RET(ctx, data, format != LYS_IN_UNKNOWN, NULL);
+    LY_CHECK_ARG_RET(ctx, data, format != LYS_IN_UNKNOWN, LY_EINVAL);
 
-    LY_CHECK_ERR_RET(ret = ly_in_new_memory(data, &in), LOGERR(ctx, ret, "Unable to create input handler."), NULL);
+    LY_CHECK_ERR_RET(ret = ly_in_new_memory(data, &in), LOGERR(ctx, ret, "Unable to create input handler."), ret);
 
-    result = lys_parse(ctx, in, format);
+    ret = lys_parse(ctx, in, format, module);
     ly_in_free(in, 0);
 
-    return result;
+    return ret;
 }
 
-API struct lys_module *
-lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format)
+API LY_ERR
+lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, const struct lys_module **module)
 {
 	LY_ERR ret;
     struct ly_in *in = NULL;
-    struct lys_module *result = NULL;
 
-    LY_CHECK_ARG_RET(ctx, fd != -1, format != LYS_IN_UNKNOWN, NULL);
+    LY_CHECK_ARG_RET(ctx, fd > -1, format != LYS_IN_UNKNOWN, LY_EINVAL);
 
-    LY_CHECK_ERR_RET(ret = ly_in_new_fd(fd, &in), LOGERR(ctx, ret, "Unable to create input handler."), NULL);
+    LY_CHECK_ERR_RET(ret = ly_in_new_fd(fd, &in), LOGERR(ctx, ret, "Unable to create input handler."), ret);
 
-    result = lys_parse(ctx, in, format);
+    ret = lys_parse(ctx, in, format, module);
     ly_in_free(in, 0);
 
-    return result;
+    return ret;
 }
 
-API struct lys_module *
-lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format)
+API LY_ERR
+lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, const struct lys_module **module)
 {
 	LY_ERR ret;
     struct ly_in *in = NULL;
-    struct lys_module *result = NULL;
 
-    LY_CHECK_ARG_RET(ctx, path, format != LYS_IN_UNKNOWN, NULL);
+    LY_CHECK_ARG_RET(ctx, path, format != LYS_IN_UNKNOWN, LY_EINVAL);
 
-    LY_CHECK_ERR_RET(ret = ly_in_new_filepath(path, 0, &in), LOGERR(ctx, ret, "Unable to create input handler for filepath %s.", path), NULL);
+    LY_CHECK_ERR_RET(ret = ly_in_new_filepath(path, 0, &in),
+                     LOGERR(ctx, ret, "Unable to create input handler for filepath %s.", path), ret);
 
-    result = lys_parse(ctx, in, format);
+    ret = lys_parse(ctx, in, format, module);
     ly_in_free(in, 0);
 
-    return result;
+    return ret;
 }
 
 API LY_ERR

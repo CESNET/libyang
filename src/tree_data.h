@@ -475,10 +475,10 @@ int lyd_lyb_data_length(const char *data);
  * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
  * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
  * @param[in] name Schema node name of the new data node. The node can be #LYS_CONTAINER, #LYS_NOTIF, #LYS_RPC, or #LYS_ACTION.
- * @return New created node.
- * @return NULL on error.
+ * @param[out] node Optional created node.
+ * @return LY_ERR value.
  */
-struct lyd_node *lyd_new_inner(struct lyd_node *parent, const struct lys_module *module, const char *name);
+LY_ERR lyd_new_inner(struct lyd_node *parent, const struct lys_module *module, const char *name, struct lyd_node **node);
 
 /**
  * @brief Create a new list node in the data tree.
@@ -486,13 +486,13 @@ struct lyd_node *lyd_new_inner(struct lyd_node *parent, const struct lys_module 
  * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.
  * @param[in] module Module of the node being created. If NULL, @p parent module will be used.
  * @param[in] name Schema node name of the new data node. The node must be #LYS_LIST.
+ * @param[out] node Optional created node.
  * @param[in] ... Ordered key values of the new list instance, all must be set. In case of an instance-identifier
  * or identityref value, the JSON format is expected (module names instead of prefixes). No keys are expected for
  * key-less lists.
- * @return New created node.
- * @return NULL on error.
+ * @return LY_ERR value.
  */
-struct lyd_node *lyd_new_list(struct lyd_node *parent, const struct lys_module *module, const char *name, ...);
+LY_ERR lyd_new_list(struct lyd_node *parent, const struct lys_module *module, const char *name, struct lyd_node **node, ...);
 
 /**
  * @brief Create a new list node in the data tree.
@@ -503,10 +503,11 @@ struct lyd_node *lyd_new_list(struct lyd_node *parent, const struct lys_module *
  * @param[in] keys All key values predicate in the form of "[key1='val1'][key2='val2']...", they do not have to be ordered.
  * In case of an instance-identifier or identityref value, the JSON format is expected (module names instead of prefixes).
  * Use NULL or string of length 0 in case of key-less list.
- * @return New created node.
- * @return NULL on error.
+ * @param[out] node Optional created node.
+ * @return LY_ERR value.
  */
-struct lyd_node *lyd_new_list2(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *keys);
+LY_ERR lyd_new_list2(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *keys,
+                     struct lyd_node **node);
 
 /**
  * @brief Create a new term node in the data tree.
@@ -516,10 +517,11 @@ struct lyd_node *lyd_new_list2(struct lyd_node *parent, const struct lys_module 
  * @param[in] name Schema node name of the new data node. The node can be #LYS_LEAF or #LYS_LEAFLIST.
  * @param[in] val_str String form of the value of the node being created. In case of an instance-identifier or identityref
  * value, the JSON format is expected (module names instead of prefixes).
- * @return New created node.
- * @return NULL on error.
+ * @param[out] node Optional created node.
+ * @return LY_ERR value.
  */
-struct lyd_node *lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *val_str);
+LY_ERR lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *val_str,
+                    struct lyd_node **node);
 
 /**
  * @brief Create a new any node in the data tree.
@@ -529,11 +531,11 @@ struct lyd_node *lyd_new_term(struct lyd_node *parent, const struct lys_module *
  * @param[in] name Schema node name of the new data node. The node can be #LYS_ANYDATA or #LYS_ANYXML.
  * @param[in] value Value to be directly assigned to the node. Expected type is determined by @p value_type.
  * @param[in] value_type Type of the provided value in @p value.
- * @return New created node.
- * @return NULL on error.
+ * @param[out] node Optional created node.
+ * @return LY_ERR value.
  */
-struct lyd_node *lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char *name,
-                             const void *value, LYD_ANYDATA_VALUETYPE value_type);
+LY_ERR lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char *name, const void *value,
+                   LYD_ANYDATA_VALUETYPE value_type, struct lyd_node **node);
 
 /**
  * @brief Create new metadata for a data node.
@@ -544,11 +546,11 @@ struct lyd_node *lyd_new_any(struct lyd_node *parent, const struct lys_module *m
  *            If the prefix is specified it is always used but if not specified, @p module must be set.
  * @param[in] val_str String form of the value of the metadata. In case of an instance-identifier or identityref
  * value, the JSON format is expected (module names instead of prefixes).
- * @return New created metadata of @p parent.
- * @return NULL on error.
+ * @param[out] meta Optional created metadata.
+ * @return LY_ERR value.
  */
-struct lyd_meta *lyd_new_meta(struct lyd_node *parent, const struct lys_module *module, const char *name,
-                              const char *val_str);
+LY_ERR lyd_new_meta(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *val_str,
+                    struct lyd_meta **meta);
 
 /**
  * @brief Create a new opaque node in the data tree.
@@ -558,11 +560,11 @@ struct lyd_meta *lyd_new_meta(struct lyd_node *parent, const struct lys_module *
  * @param[in] name Node name.
  * @param[in] value Node value, may be NULL.
  * @param[in] module_name Node module name.
- * @return New created node.
- * @return NULL on error.
+ * @param[out] node Optional created node.
+ * @return LY_ERR value.
  */
-struct lyd_node *lyd_new_opaq(struct lyd_node *parent, const struct ly_ctx *ctx, const char *name, const char *value,
-                              const char *module_name);
+LY_ERR lyd_new_opaq(struct lyd_node *parent, const struct ly_ctx *ctx, const char *name, const char *value,
+                    const char *module_name, struct lyd_node **node);
 
 /**
  * @brief Create new attribute for an opaque data node.
@@ -571,10 +573,11 @@ struct lyd_node *lyd_new_opaq(struct lyd_node *parent, const struct ly_ctx *ctx,
  * @param[in] module Module name of the attribute being created. There may be none.
  * @param[in] name Attribute name. It can include the module name as the prefix.
  * @param[in] val_str String value of the attribute. Is stored directly.
- * @return New created attribute of @p parent.
- * @return NULL on error.
+ * @param[out] attr Optional created attribute.
+ * @return LY_ERR value.
  */
-struct ly_attr *lyd_new_attr(struct lyd_node *parent, const char *module_name, const char *name, const char *val_str);
+LY_ERR lyd_new_attr(struct lyd_node *parent, const char *module_name, const char *name, const char *val_str,
+                    struct ly_attr **attr);
 
 /**
  * @defgroup pathoptions Data path creation options
@@ -614,11 +617,11 @@ struct ly_attr *lyd_new_attr(struct lyd_node *parent, const char *module_name, c
  * @param[in] path Path to create (TODO ref path).
  * @param[in] value Value of the new leaf/leaf-list. For other node types, it is ignored.
  * @param[in] options Bitmask of options, see @ref pathoptions.
- * @return First created node.
- * @return NULL on error.
+ * @param[out] node Optional first created node.
+ * @return LY_ERR value.
  */
-struct lyd_node *lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const char *value,
-                              int options);
+LY_ERR lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const char *value,
+                    int options, struct lyd_node **node);
 
 /**
  * @brief Create a new node in the data tree based on a path. All node types can be created.
@@ -633,11 +636,11 @@ struct lyd_node *lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx,
  * @param[in] value Value of the new leaf/leaf-list/anyxml/anydata. For other node types, it is ignored.
  * @param[in] value_type Anyxml/anydata node @p value type.
  * @param[in] options Bitmask of options, see @ref pathoptions.
- * @return First created node.
- * @return NULL on error.
+ * @param[out] node Optional first created node.
+ * @return LY_ERR value.
  */
-struct lyd_node *lyd_new_path_any(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const void *value,
-                                  LYD_ANYDATA_VALUETYPE value_type, int options);
+LY_ERR lyd_new_path_any(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const void *value,
+                        LYD_ANYDATA_VALUETYPE value_type, int options, struct lyd_node **node);
 
 /**
  * @brief Create a new node in the data tree based on a path. All node types can be created.
@@ -652,8 +655,8 @@ struct lyd_node *lyd_new_path_any(struct lyd_node *parent, const struct ly_ctx *
  * @param[in] value Value of the new leaf/leaf-list/anyxml/anydata. For other node types, it is ignored.
  * @param[in] value_type Anyxml/anydata node @p value type.
  * @param[in] options Bitmask of options, see @ref pathoptions.
- * @param[out] new_parent First parent node created, can be NULL. If only one node was created, equals to @p new_node.
- * @param[out] new_node Last node created, can be NULL.
+ * @param[out] new_parent Optional first parent node created. If only one node was created, equals to @p new_node.
+ * @param[out] new_node Optional last node created.
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const void *value,
@@ -753,7 +756,7 @@ void lyd_unlink_tree(struct lyd_node *node);
 void lyd_free_all(struct lyd_node *node);
 
 /**
- * @brief Free all the sibling nodes.
+ * @brief Free all the sibling nodes (preceding as well as succeeding).
  *
  * @param[in] node Any of the sibling nodes to free.
  */
@@ -767,24 +770,34 @@ void lyd_free_siblings(struct lyd_node *node);
 void lyd_free_tree(struct lyd_node *node);
 
 /**
- * @brief Destroy metadata.
+ * @brief Free a single metadata instance.
  *
- * @param[in] ctx Context where the metadata was created.
- * @param[in] meta Metadata to destroy
- * @param[in] recursive Zero to destroy only the single metadata (the metadata list is corrected),
- * non-zero to destroy also all the subsequent metadata in the list.
+ * @param[in] meta Metadata to free.
  */
-void lyd_free_meta(const struct ly_ctx *ctx, struct lyd_meta *meta, int recursive);
+void lyd_free_meta_single(struct lyd_meta *meta);
 
 /**
- * @brief Destroy attributes.
+ * @brief Free the metadata instance with any following instances.
+ *
+ * @param[in] meta Metadata to free.
+ */
+void lyd_free_meta_siblings(struct lyd_meta *meta);
+
+/**
+ * @brief Free a single attribute.
  *
  * @param[in] ctx Context where the attributes were created.
- * @param[in] attr Attributes to destroy.
- * @param[in] recursive Zero to destroy only the single attribute (the attribute list is corrected),
- * non-zero to destroy also all the subsequent attributes in the list.
+ * @param[in] attr Attribute to free.
  */
-void ly_free_attr(const struct ly_ctx *ctx, struct ly_attr *attr, int recursive);
+void ly_free_attr_single(const struct ly_ctx *ctx, struct ly_attr *attr);
+
+/**
+ * @brief Free the attribute with any following attributes.
+ *
+ * @param[in] ctx Context where the attributes were created.
+ * @param[in] attr First attribute to free.
+ */
+void ly_free_attr_siblings(const struct ly_ctx *ctx, struct ly_attr *attr);
 
 /**
  * @brief Check type restrictions applicable to the particular leaf/leaf-list with the given string @p value.
@@ -877,7 +890,7 @@ LY_ERR lyd_compare_meta(const struct lyd_meta *meta1, const struct lyd_meta *met
  *
  * Default behavior:
  * - only the specified node is duplicated without siblings, parents, or children.
- * - all the attributes of the duplicated nodes are also duplicated.
+ * - all the metadata of the duplicated nodes are also duplicated.
  * @{
  */
 
@@ -886,8 +899,7 @@ LY_ERR lyd_compare_meta(const struct lyd_meta *meta1, const struct lyd_meta *met
 #define LYD_DUP_NO_META      0x02  /**< Do not duplicate metadata of any node. */
 #define LYD_DUP_WITH_PARENTS 0x04  /**< If a nested node is being duplicated, duplicate also all the parents.
                                         Keys are also duplicated for lists. Return value does not change! */
-#define LYD_DUP_WITH_SIBLINGS 0x08 /**< Duplicate also all the sibling of the given node. */
-#define LYD_DUP_WITH_FLAGS    0x10 /**< Also copy any data node flags. That will cause the duplicated data to preserve
+#define LYD_DUP_WITH_FLAGS   0x08  /**< Also copy any data node flags. That will cause the duplicated data to preserve
                                         its validation/default node state. */
 
 /** @} dupoptions */
@@ -897,24 +909,38 @@ LY_ERR lyd_compare_meta(const struct lyd_meta *meta1, const struct lyd_meta *met
  *
  * @param[in] node Data tree node to be duplicated.
  * @param[in] parent Optional parent node where to connect the duplicated node(s).
- * If set in combination with LYD_DUP_WITH_PARENTS, the parents chain is duplicated until it comes to and connect with the @p parent
- * (if the parents chain does not match at some node the schema node of the provided @p parent, duplication fails).
+ * If set in combination with LYD_DUP_WITH_PARENTS, the parents chain is duplicated until it comes to and connects with
+ * the @p parent.
  * @param[in] options Bitmask of options flags, see @ref dupoptions.
- * @return Created copy of the provided data \p node (the first of the duplicated siblings when LYD_DUP_WITH_SIBLINGS used).
- * Note that in case the parents chain is duplicated for the duplicated node(s) (when LYD_DUP_WITH_PARENTS used), the first duplicated node
- * is still returned, not a pointer to the duplicated parents.
+ * @param[out] dup Optional created copy of the node. Note that in case the parents chain is duplicated for the duplicated
+ * node(s) (when LYD_DUP_WITH_PARENTS used), the first duplicated node is still returned.
+ * @return LY_ERR value.
  */
-struct lyd_node *lyd_dup(const struct lyd_node *node, struct lyd_node_inner *parent, int options);
+LY_ERR lyd_dup_single(const struct lyd_node *node, struct lyd_node_inner *parent, int options, struct lyd_node **dup);
+
+/**
+ * @brief Create a copy of the specified data tree \p node with any following siblings. Schema references are kept the same.
+ *
+ * @param[in] node Data tree node to be duplicated.
+ * @param[in] parent Optional parent node where to connect the duplicated node(s).
+ * If set in combination with LYD_DUP_WITH_PARENTS, the parents chain is duplicated until it comes to and connects with
+ * the @p parent.
+ * @param[in] options Bitmask of options flags, see @ref dupoptions.
+ * @param[out] dup Optional created copy of the node. Note that in case the parents chain is duplicated for the duplicated
+ * node(s) (when LYD_DUP_WITH_PARENTS used), the first duplicated node is still returned.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_dup_siblings(const struct lyd_node *node, struct lyd_node_inner *parent, int options, struct lyd_node **dup);
 
 /**
  * @brief Create a copy of the metadata.
  *
  * @param[in] meta Metadata to copy.
- * @param[in] node Node where to append the new metadata.
- * @return Created metadata copy,
- * @return NULL on error.
+ * @param[in] parent Node where to append the new metadata.
+ * @param[out] dup Optional created metadata copy.
+ * @return LY_ERR value.
  */
-struct lyd_meta *lyd_dup_meta(const struct lyd_meta *meta, struct lyd_node *node);
+LY_ERR lyd_dup_meta_single(const struct lyd_meta *meta, struct lyd_node *parent, struct lyd_meta **dup);
 
 /**
  * @defgroup mergeoptions Data merge options.
@@ -924,20 +950,17 @@ struct lyd_meta *lyd_dup_meta(const struct lyd_meta *meta, struct lyd_node *node
  *
  * Default behavior:
  * - source data tree is not modified in any way,
- * - source data tree is merged with any succeeding siblings,
- * - any default nodes from source replace explicit nodes in the target.
+ * - any default nodes in the source are ignored if there are explicit nodes in the target.
  * @{
  */
 
 #define LYD_MERGE_DESTRUCT      0x01 /**< Spend source data tree in the function, it cannot be used afterwards! */
-#define LYD_MERGE_NOSIBLINGS    0x02 /**< Merge only the single source data tree, no siblings. */
-#define LYD_MERGE_EXPLICIT      0x04 /**< Default nodes in the source tree are ignored if there are explicit nodes
-                                          in the target tree. */
+#define LYD_MERGE_DEFAULTS      0x02 /**< Default nodes in the source tree replace even explicit nodes in the target. */
 
 /** @} mergeoptions */
 
 /**
- * @brief Merge the source data tree into the target data tree. Merge may not be complete until validation
+ * @brief Merge the source data subtree into the target data tree. Merge may not be complete until validation
  * is called on the resulting data tree (data from more cases may be present, default and non-default values).
  *
  * @param[in,out] target Target data tree to merge into, must be a top-level tree.
@@ -946,7 +969,20 @@ struct lyd_meta *lyd_dup_meta(const struct lyd_meta *meta, struct lyd_node *node
  * @return LY_SUCCESS on success,
  * @return LY_ERR value on error.
  */
-LY_ERR lyd_merge(struct lyd_node **target, const struct lyd_node *source, int options);
+LY_ERR lyd_merge_tree(struct lyd_node **target, const struct lyd_node *source, int options);
+
+/**
+ * @brief Merge the source data tree with any following siblings into the target data tree. Merge may not be
+ * complete until validation called on the resulting data tree (data from more cases may be present, default
+ * and non-default values).
+ *
+ * @param[in,out] target Target data tree to merge into, must be a top-level tree.
+ * @param[in] source Source data tree to merge, must be a top-level tree.
+ * @param[in] options Bitmask of option flags, see @ref mergeoptions.
+ * @return LY_SUCCESS on success,
+ * @return LY_ERR value on error.
+ */
+LY_ERR lyd_merge_siblings(struct lyd_node **target, const struct lyd_node *source, int options);
 
 /**
  * @defgroup diffoptions Data diff options.
@@ -955,15 +991,13 @@ LY_ERR lyd_merge(struct lyd_node **target, const struct lyd_node *source, int op
  * Various options to change lyd_diff() behavior.
  *
  * Default behavior:
- * - data trees are compared with all the siblings,
  * - any default nodes are treated as non-existent and ignored.
  * @{
  */
 
-#define LYD_DIFF_NOSIBLINGS     0x01 /**< Only the single subtree is compared, no siblings. */
-#define LYD_DIFF_WITHDEFAULTS   0x02 /**< Default nodes in the trees are not ignored but treated similarly to explicit
-                                          nodes. Also, leaves and leaf-lists are added into diff even in case only their
-                                          default flag (state) was changed. */
+#define LYD_DIFF_DEFAULTS   0x01 /**< Default nodes in the trees are not ignored but treated similarly to explicit
+                                      nodes. Also, leaves and leaf-lists are added into diff even in case only their
+                                      default flag (state) was changed. */
 
 /** @} diffoptions */
 
@@ -992,7 +1026,19 @@ LY_ERR lyd_merge(struct lyd_node **target, const struct lyd_node *source, int op
  * @return LY_SUCCESS on success,
  * @return LY_ERR on error.
  */
-LY_ERR lyd_diff(const struct lyd_node *first, const struct lyd_node *second, int options, struct lyd_node **diff);
+LY_ERR lyd_diff_tree(const struct lyd_node *first, const struct lyd_node *second, int options, struct lyd_node **diff);
+
+/**
+ * @brief Learn the differences between 2 data trees including all the following siblings.
+ *
+ * @param[in] first First data tree.
+ * @param[in] second Second data tree.
+ * @param[in] options Bitmask of options flags, see @ref diffoptions.
+ * @param[out] diff Generated diff.
+ * @return LY_SUCCESS on success,
+ * @return LY_ERR on error.
+ */
+LY_ERR lyd_diff_siblings(const struct lyd_node *first, const struct lyd_node *second, int options, struct lyd_node **diff);
 
 /**
  * @brief Callback for diff nodes.
@@ -1005,7 +1051,7 @@ LY_ERR lyd_diff(const struct lyd_node *first, const struct lyd_node *second, int
 typedef LY_ERR (*lyd_diff_cb)(const struct lyd_node *diff_node, struct lyd_node *data_node, void *cb_data);
 
 /**
- * @brief Apply a difference on a data tree but restrict the operation to one module.
+ * @brief Apply the whole diff on a data tree but restrict the operation to one module.
  *
  * @param[in,out] data Data to apply the diff on.
  * @param[in] diff Diff to apply.
@@ -1019,14 +1065,14 @@ LY_ERR lyd_diff_apply_module(struct lyd_node **data, const struct lyd_node *diff
                              lyd_diff_cb diff_cb, void *cb_data);
 
 /**
- * @brief Apply a difference on a data tree.
+ * @brief Apply the whole diff tree on a data tree.
  *
  * @param[in,out] data Data to apply the diff on.
  * @param[in] diff Diff to apply.
  * @return LY_SUCCESS on success,
  * @return LY_ERR on error.
  */
-LY_ERR lyd_diff_apply(struct lyd_node **data, const struct lyd_node *diff);
+LY_ERR lyd_diff_apply_all(struct lyd_node **data, const struct lyd_node *diff);
 
 /**
  * @brief Merge 2 diffs into each other but restrict the operation to one module.
@@ -1060,7 +1106,7 @@ LY_ERR lyd_diff_merge_module(const struct lyd_node *src_diff, const struct lys_m
  * @return LY_SUCCESS on success,
  * @return LY_ERR on error.
  */
-LY_ERR lyd_diff_merge(const struct lyd_node *src_diff, struct lyd_node **diff);
+LY_ERR lyd_diff_merge_all(const struct lyd_node *src_diff, struct lyd_node **diff);
 
 /**
  * @brief Reverse a diff and make the opposite changes. Meaning change create to delete, delete to create,
@@ -1071,7 +1117,7 @@ LY_ERR lyd_diff_merge(const struct lyd_node *src_diff, struct lyd_node **diff);
  * @return LY_SUCCESS on success.
  * @return LY_ERR on error.
  */
-LY_ERR lyd_diff_reverse(const struct lyd_node *src_diff, struct lyd_node **diff);
+LY_ERR lyd_diff_reverse_all(const struct lyd_node *src_diff, struct lyd_node **diff);
 
 /**
  * @brief Find the target in data of a compiled ly_path structure (instance-identifier).

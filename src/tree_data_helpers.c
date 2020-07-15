@@ -198,7 +198,7 @@ lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *when_check, struc
             } else {
                 *meta = (*meta)->next;
             }
-            lyd_free_meta(LYD_NODE_CTX(node), meta2, 0);
+            lyd_free_meta_single(meta2);
             break;
         }
 
@@ -242,8 +242,7 @@ lyd_any_copy_value(struct lyd_node *trg, const union lyd_any_value *value, LYD_A
     switch (value_type) {
     case LYD_ANYDATA_DATATREE:
         if (value->tree) {
-            t->value.tree = lyd_dup(value->tree, NULL, LYD_DUP_RECURSIVE | LYD_DUP_WITH_SIBLINGS);
-            LY_CHECK_RET(!t->value.tree, LY_EINT);
+            LY_CHECK_RET(lyd_dup_siblings(value->tree, NULL, LYD_DUP_RECURSIVE, &t->value.tree));
         }
         break;
     case LYD_ANYDATA_STRING:

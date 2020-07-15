@@ -304,7 +304,7 @@ test_origin(void **state)
         "<leaf3 xmlns:or=\"urn:ietf:params:xml:ns:yang:ietf-origin\" or:origin=\"or:system\">125</leaf3>"
     "</cont>";
 
-    assert_non_null(lys_parse_mem(st->ctx, origin_yang, LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(st->ctx, origin_yang, LYS_IN_YANG, NULL));
     lys_set_implemented(ly_ctx_get_module_latest(st->ctx, "ietf-origin"));
 
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(st->ctx, data_xml, LYD_XML, LYD_PARSE_ONLY, 0, &st->dt1));
@@ -514,8 +514,8 @@ test_statements(void **state)
         "<iref>random-identity</iref>"
     "</random>";
 
-    assert_non_null(lys_parse_mem(st->ctx, links_yang, LYS_IN_YANG));
-    assert_non_null(lys_parse_mem(st->ctx, statements_yang, LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(st->ctx, links_yang, LYS_IN_YANG, NULL));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(st->ctx, statements_yang, LYS_IN_YANG, NULL));
 
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(st->ctx, data_xml, LYD_XML, LYD_PARSE_ONLY, 0, &st->dt1));
     assert_ptr_not_equal(st->dt1, NULL);

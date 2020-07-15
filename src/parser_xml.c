@@ -139,7 +139,7 @@ skip_attr:
 
 cleanup:
     if (ret) {
-        lyd_free_meta(xmlctx->ctx, *meta, 1);
+        lyd_free_meta_siblings(*meta);
         *meta = NULL;
     }
     return ret;
@@ -203,7 +203,7 @@ lydxml_attrs(struct lyxml_ctx *xmlctx, struct ly_attr **attr)
 
 cleanup:
     if (ret) {
-        ly_free_attr(xmlctx->ctx, *attr, 1);
+        ly_free_attr_siblings(xmlctx->ctx, *attr);
         *attr = NULL;
     }
     return ret;
@@ -662,8 +662,8 @@ lydxml_data_r(struct lyd_xml_ctx *lydctx, struct lyd_node_inner *parent, struct 
     ret = LY_SUCCESS;
 
 cleanup:
-    lyd_free_meta(ctx, meta, 1);
-    ly_free_attr(ctx, attr, 1);
+    lyd_free_meta_siblings(meta);
+    ly_free_attr_siblings(ctx, attr);
     lyd_free_tree(cur);
     if (ret && *first) {
         lyd_free_siblings(*first);
@@ -799,7 +799,7 @@ lydxml_envelope(struct lyxml_ctx *xmlctx, const char *name, const char *uri, str
     attr = NULL;
 
 cleanup:
-    ly_free_attr(xmlctx->ctx, attr, 1);
+    ly_free_attr_siblings(xmlctx->ctx, attr);
     return ret;
 }
 
@@ -982,7 +982,7 @@ lydxml_notif_envelope(struct lyxml_ctx *xmlctx, struct lyd_node **envp)
 cleanup:
     if (ret) {
         lyd_free_tree(*envp);
-        ly_free_attr(xmlctx->ctx, attr, 1);
+        ly_free_attr_siblings(xmlctx->ctx, attr);
     }
     return ret;
 }
@@ -1080,11 +1080,11 @@ lyd_parse_xml_reply(const struct lyd_node *request, struct ly_in *in, struct lyd
     }
 
     /* duplicate request OP with parents */
-    rep_op = lyd_dup(req_op, NULL, LYD_DUP_WITH_PARENTS);
-    LY_CHECK_ERR_GOTO(!rep_op, ret = LY_EMEM, cleanup);
+    LY_CHECK_GOTO(ret = lyd_dup_single(req_op, NULL, LYD_DUP_WITH_PARENTS, &rep_op), cleanup);
 
     /* parse "rpc-reply", if any */
-    LY_CHECK_GOTO(ret = lydxml_envelope(lydctx.xmlctx, "rpc-reply", "urn:ietf:params:xml:ns:netconf:base:1.0", &rpcr_e), cleanup);
+    LY_CHECK_GOTO(ret = lydxml_envelope(lydctx.xmlctx, "rpc-reply", "urn:ietf:params:xml:ns:netconf:base:1.0", &rpcr_e),
+                  cleanup);
 
     /* parse the rest of data normally but connect them to the duplicated operation */
     LY_CHECK_GOTO(ret = lydxml_data_r(&lydctx, (struct lyd_node_inner *)rep_op, lyd_node_children_p(rep_op)), cleanup);

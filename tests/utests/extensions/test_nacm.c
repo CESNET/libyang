@@ -108,7 +108,7 @@ test_deny_all(void **state)
     struct state_s *s = (struct state_s*)(*state);
     s->func = test_deny_all;
 
-    struct lys_module *mod;
+    const struct lys_module *mod;
     struct lysc_node_container *cont;
     struct lysc_node_leaf *leaf;
     struct lysc_ext_instance *e;
@@ -119,7 +119,7 @@ test_deny_all(void **state)
             "leaf b {type string;}}";
 
     /* valid data */
-    assert_non_null(mod = lys_parse_mem(s->ctx, data, LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(s->ctx, data, LYS_IN_YANG, &mod));
     assert_non_null(cont = (struct lysc_node_container*)mod->compiled->data);
     assert_non_null(leaf = (struct lysc_node_leaf*)cont->child);
     assert_non_null(e = &cont->exts[0]);
@@ -133,14 +133,14 @@ test_deny_all(void **state)
     data = "module aa {yang-version 1.1; namespace urn:tests:extensions:nacm:aa; prefix en;"
             "import ietf-netconf-acm {revision-date 2018-02-14; prefix nacm;}"
             "nacm:default-deny-all;}";
-    assert_null(lys_parse_mem(s->ctx, data, LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_parse_mem(s->ctx, data, LYS_IN_YANG, NULL));
     logbuf_assert("Extension plugin \"libyang 2 - NACM, version 1\": "
             "Extension nacm:default-deny-all is allowed only in a data nodes, but it is placed in \"module\" statement.) /aa:{extension='nacm:default-deny-all'}");
 
     data = "module aa {yang-version 1.1; namespace urn:tests:extensions:nacm:aa; prefix en;"
             "import ietf-netconf-acm {revision-date 2018-02-14; prefix nacm;}"
             "leaf l { type string; nacm:default-deny-all; nacm:default-deny-write;}}";
-    assert_null(lys_parse_mem(s->ctx, data, LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_parse_mem(s->ctx, data, LYS_IN_YANG, NULL));
     logbuf_assert("Extension plugin \"libyang 2 - NACM, version 1\": "
             "Extension nacm:default-deny-write is mixed with nacm:default-deny-all.) /aa:l/{extension='nacm:default-deny-write'}");
 
@@ -153,7 +153,7 @@ test_deny_write(void **state)
     struct state_s *s = (struct state_s*)(*state);
     s->func = test_deny_write;
 
-    struct lys_module *mod;
+    const struct lys_module *mod;
     struct lysc_node_container *cont;
     struct lysc_node_leaf *leaf;
     struct lysc_ext_instance *e;
@@ -164,7 +164,7 @@ test_deny_write(void **state)
             "leaf b {type string;}}";
 
     /* valid data */
-    assert_non_null(mod = lys_parse_mem(s->ctx, data, LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(s->ctx, data, LYS_IN_YANG, &mod));
     assert_non_null(cont = (struct lysc_node_container*)mod->compiled->data);
     assert_non_null(leaf = (struct lysc_node_leaf*)cont->child);
     assert_non_null(e = &cont->exts[0]);
@@ -178,14 +178,14 @@ test_deny_write(void **state)
     data = "module aa {yang-version 1.1; namespace urn:tests:extensions:nacm:aa; prefix en;"
             "import ietf-netconf-acm {revision-date 2018-02-14; prefix nacm;}"
             "notification notif {nacm:default-deny-write;}}";
-    assert_null(lys_parse_mem(s->ctx, data, LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_parse_mem(s->ctx, data, LYS_IN_YANG, NULL));
     logbuf_assert("Extension plugin \"libyang 2 - NACM, version 1\": "
             "Extension nacm:default-deny-write is not allowed in notification statement.) /aa:notif/{extension='nacm:default-deny-write'}");
 
     data = "module aa {yang-version 1.1; namespace urn:tests:extensions:nacm:aa; prefix en;"
             "import ietf-netconf-acm {revision-date 2018-02-14; prefix nacm;}"
             "leaf l { type string; nacm:default-deny-write; nacm:default-deny-write;}}";
-    assert_null(lys_parse_mem(s->ctx, data, LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_parse_mem(s->ctx, data, LYS_IN_YANG, NULL));
     logbuf_assert("Extension plugin \"libyang 2 - NACM, version 1\": "
             "Extension nacm:default-deny-write is instantiated multiple times.) /aa:l/{extension='nacm:default-deny-write'}");
 

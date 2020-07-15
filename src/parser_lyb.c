@@ -379,7 +379,7 @@ stop_subtree:
 cleanup:
     free(meta_name);
     if (ret) {
-        lyd_free_meta(lybctx->ctx, *meta, 1);
+        lyd_free_meta_siblings(*meta);
         *meta = NULL;
     }
     return ret;
@@ -518,7 +518,7 @@ cleanup:
     }
     ly_free_val_prefs(lybctx->ctx, val_prefs);
     if (ret) {
-        ly_free_attr(lybctx->ctx, *attr, 1);
+        ly_free_attr_siblings(lybctx->ctx, *attr);
         *attr = NULL;
     }
     return ret;
@@ -910,8 +910,8 @@ cleanup:
     }
     ly_free_val_prefs(lybctx->ctx, val_prefs);
 
-    lyd_free_meta(lybctx->ctx, meta, 1);
-    ly_free_attr(lybctx->ctx, attr, 1);
+    lyd_free_meta_siblings(meta);
+    ly_free_attr_siblings(lybctx->ctx, attr);
     lyd_free_tree(node);
     return ret;
 }
@@ -1208,8 +1208,8 @@ lyd_parse_lyb_reply(const struct lyd_node *request, struct ly_in *in, struct lyd
     }
 
     /* duplicate request OP with parents */
-    rep_op = lyd_dup(req_op, NULL, LYD_DUP_WITH_PARENTS);
-    LY_CHECK_ERR_GOTO(!rep_op, ret = LY_EMEM, cleanup);
+    ret = lyd_dup_single(req_op, NULL, LYD_DUP_WITH_PARENTS, &rep_op);
+    LY_CHECK_GOTO(ret, cleanup);
 
     /* read magic number */
     ret = lyb_parse_magic_number(&lybctx);

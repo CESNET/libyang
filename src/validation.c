@@ -117,7 +117,7 @@ lyd_val_diff_add(const struct lyd_node *node, enum lyd_diff_op op, struct lyd_no
     LY_CHECK_RET(lyd_diff_add(node, op, NULL, NULL, NULL, NULL, NULL, &new_diff));
 
     /* merge into existing diff */
-    ret = lyd_diff_merge(new_diff, diff);
+    ret = lyd_diff_merge_all(new_diff, diff);
 
     lyd_free_tree(new_diff);
     return ret;
@@ -1256,7 +1256,7 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *type_check, struct ly
  * @return LY_ERR value.
  */
 static LY_ERR
-_lyd_validate(struct lyd_node **tree, const struct lys_module *module, const struct ly_ctx *ctx, int val_opts,
+lyd_validate(struct lyd_node **tree, const struct lys_module *module, const struct ly_ctx *ctx, int val_opts,
               struct lyd_node **diff)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -1319,15 +1319,15 @@ cleanup:
 }
 
 API LY_ERR
-lyd_validate(struct lyd_node **tree, const struct ly_ctx *ctx, int val_opts, struct lyd_node **diff)
+lyd_validate_all(struct lyd_node **tree, const struct ly_ctx *ctx, int val_opts, struct lyd_node **diff)
 {
-    return _lyd_validate(tree, NULL, ctx, val_opts, diff);
+    return lyd_validate(tree, NULL, ctx, val_opts, diff);
 }
 
 API LY_ERR
 lyd_validate_module(struct lyd_node **tree, const struct lys_module *module, int val_opts, struct lyd_node **diff)
 {
-    return _lyd_validate(tree, module, NULL, val_opts, diff);
+    return lyd_validate(tree, module, NULL, val_opts, diff);
 }
 
 /**

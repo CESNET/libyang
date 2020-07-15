@@ -106,7 +106,7 @@ test_yang(void **state)
     struct state_s *s = (struct state_s*)(*state);
     s->func = test_yang;
 
-    struct lys_module *mod;
+    const struct lys_module *mod;
     struct lysc_ext_instance *e;
     struct lyext_metadata *ant;
 
@@ -121,7 +121,7 @@ test_yang(void **state)
             "  type uint8;"
             "  units meters;"
             "}}";
-    assert_non_null(mod = lys_parse_mem(s->ctx, data, LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(s->ctx, data, LYS_IN_YANG, &mod));
     assert_int_equal(1, LY_ARRAY_COUNT(mod->compiled->exts));
     e = &mod->compiled->exts[0];
     assert_non_null(ant = (struct lyext_metadata*)e->data);
@@ -132,42 +132,42 @@ test_yang(void **state)
     data = "module aa {yang-version 1.1; namespace urn:tests:extensions:metadata:aa; prefix aa;"
             "import ietf-yang-metadata {prefix md;}"
             "md:annotation aa;}";
-    assert_null(lys_parse_mem(s->ctx, data, LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_parse_mem(s->ctx, data, LYS_IN_YANG, NULL));
     logbuf_assert("Missing mandatory keyword \"type\" as a child of \"md:annotation aa\". /aa:{extension='md:annotation'}/aa");
 
     /* not allowed substatement */
     data = "module aa {yang-version 1.1; namespace urn:tests:extensions:metadata:aa; prefix aa;"
             "import ietf-yang-metadata {prefix md;}"
             "md:annotation aa {default x;}}";
-    assert_null(lys_parse_mem(s->ctx, data, LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_parse_mem(s->ctx, data, LYS_IN_YANG, NULL));
     logbuf_assert("Invalid keyword \"default\" as a child of \"md:annotation aa\" extension instance. /aa:{extension='md:annotation'}/aa");
 
     /* invalid cardinality of units substatement */
     data = "module aa {yang-version 1.1; namespace urn:tests:extensions:metadata:aa; prefix aa;"
             "import ietf-yang-metadata {prefix md;}"
             "md:annotation aa {type string; units x; units y;}}";
-    assert_null(lys_parse_mem(s->ctx, data, LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_parse_mem(s->ctx, data, LYS_IN_YANG, NULL));
     logbuf_assert("Duplicate keyword \"units\". /aa:{extension='md:annotation'}/aa");
 
     /* invalid cardinality of status substatement */
     data = "module aa {yang-version 1.1; namespace urn:tests:extensions:metadata:aa; prefix aa;"
             "import ietf-yang-metadata {prefix md;}"
             "md:annotation aa {type string; status current; status obsolete;}}";
-    assert_null(lys_parse_mem(s->ctx, data, LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_parse_mem(s->ctx, data, LYS_IN_YANG, NULL));
     logbuf_assert("Duplicate keyword \"status\". /aa:{extension='md:annotation'}/aa");
 
     /* invalid cardinality of status substatement */
     data = "module aa {yang-version 1.1; namespace urn:tests:extensions:metadata:aa; prefix aa;"
             "import ietf-yang-metadata {prefix md;}"
             "md:annotation aa {type string; type uint8;}}";
-    assert_null(lys_parse_mem(s->ctx, data, LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_parse_mem(s->ctx, data, LYS_IN_YANG, NULL));
     logbuf_assert("Duplicate keyword \"type\". /aa:{extension='md:annotation'}/aa");
 
     /* duplication of the same annotation */
     data = "module aa {yang-version 1.1; namespace urn:tests:extensions:metadata:aa; prefix aa;"
             "import ietf-yang-metadata {prefix md;}"
             "md:annotation aa {type string;} md:annotation aa {type uint8;}}";
-    assert_null(lys_parse_mem(s->ctx, data, LYS_IN_YANG));
+    assert_int_equal(LY_EVALID, lys_parse_mem(s->ctx, data, LYS_IN_YANG, NULL));
     logbuf_assert("Extension plugin \"libyang 2 - metadata, version 1\": "
             "Extension md:annotation is instantiated multiple times.) /aa:{extension='md:annotation'}/aa");
 
@@ -180,7 +180,7 @@ test_yin(void **state)
     struct state_s *s = (struct state_s*)(*state);
     s->func = test_yin;
 
-    struct lys_module *mod;
+    const struct lys_module *mod;
     struct lysc_ext_instance *e;
     struct lyext_metadata *ant;
 
@@ -196,7 +196,7 @@ test_yin(void **state)
             "  <type name=\"uint8\"/>\n"
             "  <units name=\"meters\"/>\n"
             "</md:annotation></module>";
-    assert_non_null(mod = lys_parse_mem(s->ctx, data, LYS_IN_YIN));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(s->ctx, data, LYS_IN_YIN, &mod));
     assert_int_equal(1, LY_ARRAY_COUNT(mod->compiled->exts));
     e = &mod->compiled->exts[0];
     assert_non_null(ant = (struct lyext_metadata*)e->data);
@@ -209,7 +209,7 @@ test_yin(void **state)
             "<import module=\"ietf-yang-metadata\"><prefix value=\"md\"/></import>\n"
             "<md:annotation name=\"aa\"/>\n"
             "</module>";
-    assert_null(lys_parse_mem(s->ctx, data, LYS_IN_YIN));
+    assert_int_equal(LY_EVALID, lys_parse_mem(s->ctx, data, LYS_IN_YIN, NULL));
     logbuf_assert("Missing mandatory keyword \"type\" as a child of \"md:annotation aa\". /aa:{extension='md:annotation'}/aa");
 
     /* not allowed substatement */
@@ -219,7 +219,7 @@ test_yin(void **state)
             "<md:annotation name=\"aa\">\n"
             "  <default value=\"x\"/>\n"
             "</md:annotation></module>";
-    assert_null(lys_parse_mem(s->ctx, data, LYS_IN_YIN));
+    assert_int_equal(LY_EVALID, lys_parse_mem(s->ctx, data, LYS_IN_YIN, NULL));
     logbuf_assert("Invalid keyword \"default\" as a child of \"md:annotation aa\" extension instance. /aa:{extension='md:annotation'}/aa");
 
     /* invalid cardinality of units substatement */
@@ -231,7 +231,7 @@ test_yin(void **state)
             "  <units name=\"x\"/>\n"
             "  <units name=\"y\"/>\n"
             "</md:annotation></module>";
-    assert_null(lys_parse_mem(s->ctx, data, LYS_IN_YIN));
+    assert_int_equal(LY_EVALID, lys_parse_mem(s->ctx, data, LYS_IN_YIN, NULL));
     logbuf_assert("Duplicate keyword \"units\". /aa:{extension='md:annotation'}/aa");
 
     /* invalid cardinality of status substatement */
@@ -243,7 +243,7 @@ test_yin(void **state)
             "  <status value=\"current\"/>\n"
             "  <status value=\"obsolete\"/>\n"
             "</md:annotation></module>";
-    assert_null(lys_parse_mem(s->ctx, data, LYS_IN_YIN));
+    assert_int_equal(LY_EVALID, lys_parse_mem(s->ctx, data, LYS_IN_YIN, NULL));
     logbuf_assert("Duplicate keyword \"status\". /aa:{extension='md:annotation'}/aa");
 
     /* invalid cardinality of status substatement */
@@ -254,7 +254,7 @@ test_yin(void **state)
             "  <type name=\"string\"/>\n"
             "  <type name=\"uint8\"/>\n"
             "</md:annotation></module>";
-    assert_null(lys_parse_mem(s->ctx, data, LYS_IN_YIN));
+    assert_int_equal(LY_EVALID, lys_parse_mem(s->ctx, data, LYS_IN_YIN, NULL));
     logbuf_assert("Duplicate keyword \"type\". /aa:{extension='md:annotation'}/aa");
 
     /* duplication of the same annotation */
@@ -266,7 +266,7 @@ test_yin(void **state)
             "</md:annotation><md:annotation name=\"aa\">\n"
             "  <type name=\"uint8\"/>\n"
             "</md:annotation></module>";
-    assert_null(lys_parse_mem(s->ctx, data, LYS_IN_YIN));
+    assert_int_equal(LY_EVALID, lys_parse_mem(s->ctx, data, LYS_IN_YIN, NULL));
     logbuf_assert("Extension plugin \"libyang 2 - metadata, version 1\": "
             "Extension md:annotation is instantiated multiple times.) /aa:{extension='md:annotation'}/aa");
     s->func = NULL;

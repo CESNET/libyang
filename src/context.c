@@ -257,10 +257,9 @@ ly_ctx_new(const char *search_dir, int options, struct ly_ctx **new_ctx)
     /* load internal modules */
     for (i = 0; i < ((options & LY_CTX_NOYANGLIBRARY) ? (LY_INTERNAL_MODS_COUNT - 2) : LY_INTERNAL_MODS_COUNT); i++) {
         ly_in_memory(in, internal_modules[i].data);
-        module = (struct lys_module *)lys_parse_mem_module(ctx, in, internal_modules[i].format,
-                                                           internal_modules[i].implemented, NULL, NULL);
-        LY_CHECK_ERR_GOTO(!module, rc = ly_errcode(ctx), error);
-        LY_CHECK_GOTO((rc = lys_compile(&module, 0)), error);
+        LY_CHECK_GOTO(rc = lys_parse_mem_module(ctx, in, internal_modules[i].format, internal_modules[i].implemented,
+                                                NULL, NULL, &module), error);
+        LY_CHECK_GOTO(rc = lys_compile(&module, 0), error);
     }
 
     ly_in_free(in, 0);
@@ -551,7 +550,6 @@ static LY_ERR
 ylib_feature(struct lyd_node *parent, const struct lys_module *cur_mod)
 {
     LY_ARRAY_COUNT_TYPE i;
-    struct lyd_node *node;
 
     if (!cur_mod->implemented) {
         /* no features can be enabled */
@@ -563,8 +561,7 @@ ylib_feature(struct lyd_node *parent, const struct lys_module *cur_mod)
             continue;
         }
 
-        node = lyd_new_term(parent, NULL, "feature", cur_mod->compiled->features[i].name);
-        LY_CHECK_RET(!node, LY_EOTHER);
+        LY_CHECK_RET(lyd_new_term(parent, NULL, "feature", cur_mod->compiled->features[i].name, NULL));
     }
 
     return LY_SUCCESS;
@@ -574,7 +571,6 @@ static LY_ERR
 ylib_deviation(struct lyd_node *parent, const struct lys_module *cur_mod, int bis)
 {
     LY_ARRAY_COUNT_TYPE i;
-    struct lyd_node *node;
     struct lys_module *mod;
 
     if (!cur_mod->implemented) {
@@ -586,11 +582,10 @@ ylib_deviation(struct lyd_node *parent, const struct lys_module *cur_mod, int bi
         mod = cur_mod->compiled->deviated_by[i];
 
         if (bis) {
-            node = lyd_new_term(parent, NULL, "deviation", mod->name);
-            LY_CHECK_RET(!node, LY_EOTHER);
+            LY_CHECK_RET(lyd_new_term(parent, NULL, "deviation", mod->name, NULL));
         } else {
-            node = lyd_new_list(parent, NULL, "deviation", mod->name, (mod->parsed->revs ? mod->parsed->revs[0].date : ""));
-            LY_CHECK_RET(!node, LY_EOTHER);
+            LY_CHECK_RET(lyd_new_list(parent, NULL, "deviation", NULL, mod->name,
+                                      (mod->parsed->revs ? mod->parsed->revs[0].date : "")));
         }
     }
 
@@ -600,35 +595,34 @@ ylib_deviation(struct lyd_node *parent, const struct lys_module *cur_mod, int bi
 static LY_ERR
 ylib_submodules(struct lyd_node *parent, const struct lys_module *cur_mod, int bis)
 {
+    LY_ERR ret;
     LY_ARRAY_COUNT_TYPE i;
-    struct lyd_node *node, *cont;
+    struct lyd_node *cont;
     struct lysp_submodule *submod;
-    int ret;
+    int r;
     char *str;
 
     LY_ARRAY_FOR(cur_mod->parsed->includes, i) {
         submod = cur_mod->parsed->includes[i].submodule;
 
         if (bis) {
-            cont = lyd_new_list(parent, NULL, "submodule", submod->name);
-            LY_CHECK_RET(!cont, LY_EOTHER);
+            LY_CHECK_RET(lyd_new_list(parent, NULL, "submodule", &cont, submod->name));
 
             if (submod->revs) {
-                node = lyd_new_term(cont, NULL, "revision", submod->revs[0].date);
-                LY_CHECK_RET(!node, LY_EOTHER);
+                LY_CHECK_RET(lyd_new_term(cont, NULL, "revision", submod->revs[0].date, NULL));
             }
         } else {
-            cont = lyd_new_list(parent, NULL, "submodule", submod->name, (submod->revs ? submod->revs[0].date : ""));
-            LY_CHECK_RET(!cont, LY_EOTHER);
+            LY_CHECK_RET(lyd_new_list(parent, NULL, "submodule", &cont, submod->name,
+                                      (submod->revs ? submod->revs[0].date : "")));
         }
 
         if (submod->filepath) {
-            ret = asprintf(&str, "file://%s", submod->filepath);
-            LY_CHECK_ERR_RET(ret == -1, LOGMEM(cur_mod->ctx), LY_EMEM);
+            r = asprintf(&str, "file://%s", submod->filepath);
+            LY_CHECK_ERR_RET(r == -1, LOGMEM(cur_mod->ctx), LY_EMEM);
 
-            node = lyd_new_term(cont, NULL, bis ? "location" : "schema", str);
-            LY_CHECK_RET(!node, LY_EOTHER);
+            ret = lyd_new_term(cont, NULL, bis ? "location" : "schema", str, NULL);
             free(str);
+            LY_CHECK_RET(ret);
         }
     }
 
@@ -641,19 +635,20 @@ ly_ctx_get_yanglib_id(const struct ly_ctx *ctx)
     return ctx->module_set_id;
 }
 
-API struct lyd_node *
-ly_ctx_get_yanglib_data(const struct ly_ctx *ctx)
+API LY_ERR
+ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root_p)
 {
+    LY_ERR ret;
     uint32_t i;
-    int bis = 0, ret;
+    int bis = 0, r;
     char id[8], *str;
     const struct lys_module *mod;
-    struct lyd_node *root = NULL, *root_bis = NULL, *cont, *set_bis = NULL, *node;
+    struct lyd_node *root = NULL, *root_bis = NULL, *cont, *set_bis = NULL;
 
-    LY_CHECK_ARG_RET(ctx, ctx, NULL);
+    LY_CHECK_ARG_RET(ctx, ctx, root_p, LY_EINVAL);
 
     mod = ly_ctx_get_module_implemented(ctx, "ietf-yang-library");
-    LY_CHECK_ERR_RET(!mod, LOGERR(ctx, LY_EINVAL, "Module \"ietf-yang-library\" is not implemented."), NULL);
+    LY_CHECK_ERR_RET(!mod, LOGERR(ctx, LY_EINVAL, "Module \"ietf-yang-library\" is not implemented."), LY_EINVAL);
 
     if (mod->parsed->revs && !strcmp(mod->parsed->revs[0].date, "2016-06-21")) {
         bis = 0;
@@ -661,18 +656,14 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx)
         bis = 1;
     } else {
         LOGERR(ctx, LY_EINVAL, "Incompatible ietf-yang-library version in context.");
-        return NULL;
+        return LY_EINVAL;
     }
 
-    root = lyd_new_inner(NULL, mod, "modules-state");
-    LY_CHECK_GOTO(!root, error);
+    LY_CHECK_GOTO(ret = lyd_new_inner(NULL, mod, "modules-state", &root), error);
 
     if (bis) {
-        root_bis = lyd_new_inner(NULL, mod, "yang-library");
-        LY_CHECK_GOTO(!root_bis, error);
-
-        set_bis = lyd_new_list(root_bis, NULL, "module-set", "complete");
-        LY_CHECK_GOTO(!set_bis, error);
+        LY_CHECK_GOTO(ret = lyd_new_inner(NULL, mod, "yang-library", &root_bis), error);
+        LY_CHECK_GOTO(ret = lyd_new_list(root_bis, NULL, "module-set", &set_bis, "complete"), error);
     }
 
     for (i = 0; i < ctx->list.count; ++i) {
@@ -681,35 +672,34 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx)
         /*
          * deprecated legacy
          */
-        cont = lyd_new_list(root, NULL, "module", mod->name, (mod->parsed->revs ? mod->parsed->revs[0].date : ""));
-        LY_CHECK_GOTO(!cont, error);
+        LY_CHECK_GOTO(ret = lyd_new_list(root, NULL, "module", &cont, mod->name,
+                                         (mod->parsed->revs ? mod->parsed->revs[0].date : "")), error);
 
         /* schema */
         if (mod->filepath) {
-            ret = asprintf(&str, "file://%s", mod->filepath);
-            LY_CHECK_ERR_GOTO(ret == -1, LOGMEM(ctx), error);
+            r = asprintf(&str, "file://%s", mod->filepath);
+            LY_CHECK_ERR_GOTO(r == -1, LOGMEM(ctx); ret = LY_EMEM, error);
 
-            node = lyd_new_term(cont, NULL, "schema", str);
+            ret = lyd_new_term(cont, NULL, "schema", str, NULL);
             free(str);
-            LY_CHECK_GOTO(!node, error);
+            LY_CHECK_GOTO(ret, error);
         }
 
         /* namespace */
-        node = lyd_new_term(cont, NULL, "namespace", mod->ns);
-        LY_CHECK_GOTO(!node, error);
+        LY_CHECK_GOTO(ret = lyd_new_term(cont, NULL, "namespace", mod->ns, NULL), error);
 
         /* feature leaf-list */
-        LY_CHECK_GOTO(ylib_feature(cont, mod), error);
+        LY_CHECK_GOTO(ret = ylib_feature(cont, mod), error);
 
         /* deviation list */
-        LY_CHECK_GOTO(ylib_deviation(cont, mod, 0), error);
+        LY_CHECK_GOTO(ret = ylib_deviation(cont, mod, 0), error);
 
         /* conformance-type */
-        node = lyd_new_term(cont, NULL, "conformance-type", (mod->implemented ? "implement" : "import"));
-        LY_CHECK_GOTO(!node, error);
+        LY_CHECK_GOTO(ret = lyd_new_term(cont, NULL, "conformance-type", mod->implemented ? "implement" : "import",
+                                         NULL), error);
 
         /* submodule list */
-        LY_CHECK_GOTO(ylib_submodules(cont, mod, 0), error);
+        LY_CHECK_GOTO(ret = ylib_submodules(cont, mod, 0), error);
 
         /*
          * current revision
@@ -717,60 +707,52 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx)
         if (bis) {
             /* name and revision */
             if (mod->implemented) {
-                cont = lyd_new_list(set_bis, NULL, "module", mod->name);
-                LY_CHECK_GOTO(!cont, error);
+                LY_CHECK_GOTO(ret = lyd_new_list(set_bis, NULL, "module", &cont, mod->name), error);
 
                 if (mod->parsed->revs) {
-                    node = lyd_new_term(cont, NULL, "revision", mod->parsed->revs[0].date);
-                    LY_CHECK_GOTO(!node, error);
+                    LY_CHECK_GOTO(ret = lyd_new_term(cont, NULL, "revision", mod->parsed->revs[0].date, NULL), error);
                 }
             } else {
-                cont = lyd_new_list(set_bis, NULL, "import-only-module", mod->name,
-                                    (mod->parsed->revs ? mod->parsed->revs[0].date : ""));
-                LY_CHECK_GOTO(!cont, error);
+                LY_CHECK_GOTO(ret = lyd_new_list(set_bis, NULL, "import-only-module", &cont, mod->name,
+                                                 (mod->parsed->revs ? mod->parsed->revs[0].date : "")), error);
             }
 
             /* namespace */
-            node = lyd_new_term(cont, NULL, "namespace", mod->ns);
-            LY_CHECK_GOTO(!node, error);
+            LY_CHECK_GOTO(ret = lyd_new_term(cont, NULL, "namespace", mod->ns, NULL), error);
 
             /* location */
             if (mod->filepath) {
-                ret = asprintf(&str, "file://%s", mod->filepath);
-                LY_CHECK_ERR_GOTO(ret == -1, LOGMEM(ctx), error);
+                r = asprintf(&str, "file://%s", mod->filepath);
+                LY_CHECK_ERR_GOTO(r == -1, LOGMEM(ctx); ret = LY_EMEM, error);
 
-                node = lyd_new_term(cont, NULL, "schema", str);
+                ret = lyd_new_term(cont, NULL, "schema", str, NULL);
                 free(str);
-                LY_CHECK_GOTO(!node, error);
+                LY_CHECK_GOTO(ret, error);
             }
 
             /* submodule list */
-            LY_CHECK_GOTO(ylib_submodules(cont, mod, 1), error);
+            LY_CHECK_GOTO(ret = ylib_submodules(cont, mod, 1), error);
 
             /* feature list */
-            LY_CHECK_GOTO(ylib_feature(cont, mod), error);
+            LY_CHECK_GOTO(ret = ylib_feature(cont, mod), error);
 
             /* deviation */
-            LY_CHECK_GOTO(ylib_deviation(cont, mod, 1), error);
+            LY_CHECK_GOTO(ret = ylib_deviation(cont, mod, 1), error);
         }
     }
 
     /* IDs */
     sprintf(id, "%u", ctx->module_set_id);
-    node = lyd_new_term(root, NULL, "module-set-id", id);
-    LY_CHECK_GOTO(!node, error);
+    LY_CHECK_GOTO(ret = lyd_new_term(root, NULL, "module-set-id", id, NULL), error);
 
     if (bis) {
         /* create one complete schema */
-        cont = lyd_new_list(root_bis, NULL, "schema", "complete");
-        LY_CHECK_GOTO(!cont, error);
+        LY_CHECK_GOTO(ret = lyd_new_list(root_bis, NULL, "schema", &cont, "complete"), error);
 
-        node = lyd_new_term(cont, NULL, "module-set", "complete");
-        LY_CHECK_GOTO(!node, error);
+        LY_CHECK_GOTO(ret = lyd_new_term(cont, NULL, "module-set", "complete", NULL), error);
 
         /* content-id */
-        node = lyd_new_term(root_bis, NULL, "content-id", id);
-        LY_CHECK_GOTO(!node, error);
+        LY_CHECK_GOTO(ret = lyd_new_term(root_bis, NULL, "content-id", id, NULL), error);
     }
 
     if (root_bis) {
@@ -781,16 +763,15 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx)
         root_bis = 0;
     }
 
-    if (lyd_validate(&root, NULL, LYD_VALIDATE_PRESENT, NULL)) {
-        goto error;
-    }
+    LY_CHECK_GOTO(ret = lyd_validate_all(&root, NULL, LYD_VALIDATE_PRESENT, NULL), error);
 
-    return root;
+    *root_p = root;
+    return LY_SUCCESS;
 
 error:
     lyd_free_all(root);
     lyd_free_all(root_bis);
-    return NULL;
+    return ret;
 }
 
 API void

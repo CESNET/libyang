@@ -242,7 +242,7 @@ test_batch(void **state)
         assert_int_equal(LY_SUCCESS, lyd_parse_data(st->ctx, in, LYD_XML, LYD_PARSE_ONLY, 0, &st->source));
         assert_non_null(st->source);
 
-        assert_int_equal(LY_SUCCESS, lyd_merge(&st->target, st->source, LYD_MERGE_DESTRUCT));
+        assert_int_equal(LY_SUCCESS, lyd_merge_siblings(&st->target, st->source, LYD_MERGE_DESTRUCT));
         st->source = NULL;
     }
 
@@ -272,7 +272,7 @@ test_leaf(void **state)
     const char *result = "<A xmlns=\"urn:x\"><f1>aa</f1><B><f2>bb</f2></B></A>";
     char *printed = NULL;
 
-    assert_non_null(lys_parse_mem(st->ctx, sch, LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(st->ctx, sch, LYS_IN_YANG, NULL));
 
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(st->ctx, src, LYD_XML, 0, LYD_VALIDATE_PRESENT, &st->source));
     assert_non_null(st->source);
@@ -281,8 +281,8 @@ test_leaf(void **state)
     assert_non_null(st->target);
 
     /* merge them */
-    assert_int_equal(lyd_merge(&st->target, st->source, 0), LY_SUCCESS);
-    assert_int_equal(lyd_validate(&st->target, NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
+    assert_int_equal(lyd_merge_siblings(&st->target, st->source, 0), LY_SUCCESS);
+    assert_int_equal(lyd_validate_all(&st->target, NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
 
     /* check the result */
     lyd_print_mem(&printed, st->target, LYD_XML, LYD_PRINT_WITHSIBLINGS);
@@ -314,7 +314,7 @@ test_container(void **state)
     const char *result = "<A xmlns=\"aa:A\"><B><f2>aaa</f2></B><C><f3>bbb</f3></C></A>";
     char *printed = NULL;
 
-    assert_non_null(lys_parse_mem(st->ctx, sch, LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(st->ctx, sch, LYS_IN_YANG, NULL));
 
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(st->ctx, src, LYD_XML, 0, LYD_VALIDATE_PRESENT, &st->source));
     assert_non_null(st->source);
@@ -323,8 +323,8 @@ test_container(void **state)
     assert_non_null(st->target);
 
     /* merge them */
-    assert_int_equal(lyd_merge(&st->target, st->source, 0), LY_SUCCESS);
-    assert_int_equal(lyd_validate(&st->target, NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
+    assert_int_equal(lyd_merge_siblings(&st->target, st->source, 0), LY_SUCCESS);
+    assert_int_equal(lyd_validate_all(&st->target, NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
 
     /* check the result */
     lyd_print_mem(&printed, st->target, LYD_XML, LYD_PRINT_WITHSIBLINGS);
@@ -384,7 +384,7 @@ test_list(void **state)
     "</inner1>";
     char *printed = NULL;
 
-    assert_non_null(lys_parse_mem(st->ctx, sch, LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(st->ctx, sch, LYS_IN_YANG, NULL));
 
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(st->ctx, src, LYD_XML, 0, LYD_VALIDATE_PRESENT, &st->source));
     assert_non_null(st->source);
@@ -393,8 +393,8 @@ test_list(void **state)
     assert_non_null(st->target);
 
     /* merge them */
-    assert_int_equal(lyd_merge(&st->target, st->source, LYD_MERGE_EXPLICIT), LY_SUCCESS);
-    assert_int_equal(lyd_validate(&st->target, NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
+    assert_int_equal(lyd_merge_siblings(&st->target, st->source, 0), LY_SUCCESS);
+    assert_int_equal(lyd_validate_all(&st->target, NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
 
     /* check the result */
     lyd_print_mem(&printed, st->target, LYD_XML, LYD_PRINT_WITHSIBLINGS);
@@ -463,7 +463,7 @@ test_list2(void **state)
     "</inner1>";
     char *printed = NULL;
 
-    assert_non_null(lys_parse_mem(st->ctx, sch, LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(st->ctx, sch, LYS_IN_YANG, NULL));
 
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(st->ctx, src, LYD_XML, 0, LYD_VALIDATE_PRESENT, &st->source));
     assert_non_null(st->source);
@@ -472,8 +472,8 @@ test_list2(void **state)
     assert_non_null(st->target);
 
     /* merge them */
-    assert_int_equal(lyd_merge(&st->target, st->source, LYD_MERGE_EXPLICIT), LY_SUCCESS);
-    assert_int_equal(lyd_validate(&st->target, NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
+    assert_int_equal(lyd_merge_siblings(&st->target, st->source, 0), LY_SUCCESS);
+    assert_int_equal(lyd_validate_all(&st->target, NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
 
     /* check the result */
     lyd_print_mem(&printed, st->target, LYD_XML, LYD_PRINT_WITHSIBLINGS);
@@ -521,7 +521,7 @@ test_case(void **state)
     "</cont>";
     char *printed = NULL;
 
-    assert_non_null(lys_parse_mem(st->ctx, sch, LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(st->ctx, sch, LYS_IN_YANG, NULL));
 
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(st->ctx, src, LYD_XML, 0, LYD_VALIDATE_PRESENT, &st->source));
     assert_non_null(st->source);
@@ -530,8 +530,8 @@ test_case(void **state)
     assert_non_null(st->target);
 
     /* merge them */
-    assert_int_equal(lyd_merge(&st->target, st->source, 0), LY_SUCCESS);
-    assert_int_equal(lyd_validate(&st->target, NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
+    assert_int_equal(lyd_merge_siblings(&st->target, st->source, 0), LY_SUCCESS);
+    assert_int_equal(lyd_validate_all(&st->target, NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
 
     /* check the result */
     lyd_print_mem(&printed, st->target, LYD_XML, LYD_PRINT_WITHSIBLINGS);
@@ -543,7 +543,6 @@ static void
 test_dflt(void **state)
 {
     struct state *st = (*state);
-    struct lyd_node *tmp;
     const char *sch =
     "module merge-dflt {"
         "namespace \"urn:merge-dflt\";"
@@ -562,19 +561,16 @@ test_dflt(void **state)
         "}"
     "}";
 
-    assert_non_null(lys_parse_mem(st->ctx, sch, LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(st->ctx, sch, LYS_IN_YANG, NULL));
 
-    st->target = lyd_new_path(NULL, st->ctx, "/merge-dflt:top/c", "c_dflt", 0);
-    assert_non_null(st->target);
-    assert_int_equal(lyd_validate(&(st->target), NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
+    assert_int_equal(lyd_new_path(NULL, st->ctx, "/merge-dflt:top/c", "c_dflt", 0, &st->target), LY_SUCCESS);
+    assert_int_equal(lyd_validate_all(&(st->target), NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
 
-    st->source = lyd_new_path(NULL, st->ctx, "/merge-dflt:top/a", "a_val", 0);
-    assert_non_null(st->source);
-    tmp = lyd_new_path(st->source, st->ctx, "/merge-dflt:top/b", "b_val", 0);
-    assert_non_null(tmp);
-    assert_int_equal(lyd_validate(&(st->source), NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
+    assert_int_equal(lyd_new_path(NULL, st->ctx, "/merge-dflt:top/a", "a_val", 0, &st->source), LY_SUCCESS);
+    assert_int_equal(lyd_new_path(st->source, st->ctx, "/merge-dflt:top/b", "b_val", 0, NULL), LY_SUCCESS);
+    assert_int_equal(lyd_validate_all(&(st->source), NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
 
-    assert_int_equal(lyd_merge(&st->target, st->source, LYD_MERGE_DESTRUCT), LY_SUCCESS);
+    assert_int_equal(lyd_merge_siblings(&st->target, st->source, LYD_MERGE_DESTRUCT | LYD_MERGE_DEFAULTS), LY_SUCCESS);
     st->source = NULL;
 
     /* c should be replaced and now be default */
@@ -585,7 +581,6 @@ static void
 test_dflt2(void **state)
 {
     struct state *st = (*state);
-    struct lyd_node *tmp;
     const char *sch =
     "module merge-dflt {"
         "namespace \"urn:merge-dflt\";"
@@ -604,19 +599,16 @@ test_dflt2(void **state)
         "}"
     "}";
 
-    assert_non_null(lys_parse_mem(st->ctx, sch, LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(st->ctx, sch, LYS_IN_YANG, NULL));
 
-    st->target = lyd_new_path(NULL, st->ctx, "/merge-dflt:top/c", "c_dflt", 0);
-    assert_non_null(st->target);
-    assert_int_equal(lyd_validate(&(st->target), NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
+    assert_int_equal(lyd_new_path(NULL, st->ctx, "/merge-dflt:top/c", "c_dflt", 0, &st->target), LY_SUCCESS);
+    assert_int_equal(lyd_validate_all(&(st->target), NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
 
-    st->source = lyd_new_path(NULL, st->ctx, "/merge-dflt:top/a", "a_val", 0);
-    assert_non_null(st->source);
-    tmp = lyd_new_path(st->source, st->ctx, "/merge-dflt:top/b", "b_val", 0);
-    assert_non_null(tmp);
-    assert_int_equal(lyd_validate(&(st->source), NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
+    assert_int_equal(lyd_new_path(NULL, st->ctx, "/merge-dflt:top/a", "a_val", 0, &st->source), LY_SUCCESS);
+    assert_int_equal(lyd_new_path(st->source, st->ctx, "/merge-dflt:top/b", "b_val", 0, NULL), LY_SUCCESS);
+    assert_int_equal(lyd_validate_all(&(st->source), NULL, LYD_VALIDATE_PRESENT, NULL), LY_SUCCESS);
 
-    assert_int_equal(lyd_merge(&st->target, st->source, LYD_MERGE_EXPLICIT), LY_SUCCESS);
+    assert_int_equal(lyd_merge_siblings(&st->target, st->source, 0), LY_SUCCESS);
 
     /* c should not be replaced, so c remains not default */
     assert_false(lyd_node_children(st->target, 0)->flags & LYD_DEFAULT);
@@ -643,7 +635,7 @@ test_leafrefs(void **state)
                       "<l xmlns=\"urn:x\"><n>c</n><r>a</r></l>";
     char *prt = NULL;
 
-    assert_non_null(lys_parse_mem(st->ctx, sch, LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(st->ctx, sch, LYS_IN_YANG, NULL));
 
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(st->ctx, src, LYD_XML, 0, LYD_VALIDATE_PRESENT, &st->source));
     assert_non_null(st->source);
@@ -651,8 +643,7 @@ test_leafrefs(void **state)
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(st->ctx, trg, LYD_XML, 0, LYD_VALIDATE_PRESENT, &st->target));
     assert_non_null(st->target);
 
-    assert_int_equal(lyd_merge(&st->target, st->source, LYD_MERGE_DESTRUCT), LY_SUCCESS);
-    st->source = NULL;
+    assert_int_equal(lyd_merge_siblings(&st->target, st->source, 0), LY_SUCCESS);
 
     lyd_print_mem(&prt, st->target, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     assert_string_equal(prt, res);

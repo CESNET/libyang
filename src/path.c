@@ -424,7 +424,7 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lys_module *cur
             key = lys_find_child(ctx_node, mod, name, name_len, 0, LYS_GETNEXT_NOSTATECHECK);
             if (!key) {
                 LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_XPATH, "Not found node \"%.*s\" in path.", name_len, name);
-                return LY_EVALID;
+                return LY_ENOTFOUND;
             } else if ((key->nodetype != LYS_LEAF) || !(key->flags & LYS_KEY)) {
                 LOGVAL(ctx, LY_VLOG_LYSC, key, LYVE_XPATH, "Key expected instead of %s \"%s\" in path.",
                        lys_nodetype2str(key->nodetype), key->name);

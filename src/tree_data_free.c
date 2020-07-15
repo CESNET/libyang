@@ -23,19 +23,18 @@
 #include "tree_data_internal.h"
 #include "plugins_types.h"
 
-API void
-lyd_free_meta(const struct ly_ctx *ctx, struct lyd_meta *meta, int recursive)
+static void
+lyd_free_meta(struct lyd_meta *meta, int siblings)
 {
     struct lyd_meta *iter;
 
-    LY_CHECK_ARG_RET(NULL, ctx, );
     if (!meta) {
         return;
     }
 
     if (meta->parent) {
         if (meta->parent->meta == meta) {
-            if (recursive) {
+            if (siblings) {
                 meta->parent->meta = NULL;
             } else {
                 meta->parent->meta = meta->next;
@@ -43,7 +42,7 @@ lyd_free_meta(const struct ly_ctx *ctx, struct lyd_meta *meta, int recursive)
         } else {
             for (iter = meta->parent->meta; iter->next != meta; iter = iter->next);
             if (iter->next) {
-                if (recursive) {
+                if (siblings) {
                     iter->next = NULL;
                 } else {
                     iter->next = meta->next;
@@ -52,7 +51,7 @@ lyd_free_meta(const struct ly_ctx *ctx, struct lyd_meta *meta, int recursive)
         }
     }
 
-    if (!recursive) {
+    if (!siblings) {
         meta->next = NULL;
     }
 
@@ -60,14 +59,26 @@ lyd_free_meta(const struct ly_ctx *ctx, struct lyd_meta *meta, int recursive)
         meta = iter;
         iter = iter->next;
 
-        FREE_STRING(ctx, meta->name);
-        meta->value.realtype->plugin->free(ctx, &meta->value);
+        FREE_STRING(meta->annotation->module->ctx, meta->name);
+        meta->value.realtype->plugin->free(meta->annotation->module->ctx, &meta->value);
         free(meta);
     }
 }
 
 API void
-ly_free_attr(const struct ly_ctx *ctx, struct ly_attr *attr, int recursive)
+lyd_free_meta_single(struct lyd_meta *meta)
+{
+    lyd_free_meta(meta, 0);
+}
+
+API void
+lyd_free_meta_siblings(struct lyd_meta *meta)
+{
+    lyd_free_meta(meta, 1);
+}
+
+static void
+ly_free_attr(const struct ly_ctx *ctx, struct ly_attr *attr, int siblings)
 {
     struct ly_attr *iter;
     LY_ARRAY_COUNT_TYPE u;
@@ -79,7 +90,7 @@ ly_free_attr(const struct ly_ctx *ctx, struct ly_attr *attr, int recursive)
 
     if (attr->parent) {
         if (attr->parent->attr == attr) {
-            if (recursive) {
+            if (siblings) {
                 attr->parent->attr = NULL;
             } else {
                 attr->parent->attr = attr->next;
@@ -87,7 +98,7 @@ ly_free_attr(const struct ly_ctx *ctx, struct ly_attr *attr, int recursive)
         } else {
             for (iter = attr->parent->attr; iter->next != attr; iter = iter->next);
             if (iter->next) {
-                if (recursive) {
+                if (siblings) {
                     iter->next = NULL;
                 } else {
                     iter->next = attr->next;
@@ -96,7 +107,7 @@ ly_free_attr(const struct ly_ctx *ctx, struct ly_attr *attr, int recursive)
         }
     }
 
-    if (!recursive) {
+    if (!siblings) {
         attr->next = NULL;
     }
 
@@ -115,6 +126,18 @@ ly_free_attr(const struct ly_ctx *ctx, struct ly_attr *attr, int recursive)
         FREE_STRING(ctx, attr->prefix.ns);
         free(attr);
     }
+}
+
+API void
+ly_free_attr_single(const struct ly_ctx *ctx, struct ly_attr *attr)
+{
+    ly_free_attr(ctx, attr, 0);
+}
+
+API void
+ly_free_attr_siblings(const struct ly_ctx *ctx, struct ly_attr *attr)
+{
+    ly_free_attr(ctx, attr, 1);
 }
 
 void
@@ -175,10 +198,10 @@ lyd_free_subtree(struct lyd_node *node, int top)
     }
 
     if (!node->schema) {
-        ly_free_attr(LYD_NODE_CTX(node), opaq->attr, 1);
+        ly_free_attr_siblings(LYD_NODE_CTX(node), opaq->attr);
     } else {
         /* free the node's metadata */
-        lyd_free_meta(LYD_NODE_CTX(node), node->meta, 1);
+        lyd_free_meta_siblings(node->meta);
     }
 
     /* unlink only the nodes from the first level, nodes in subtree are freed all, so no unlink is needed */

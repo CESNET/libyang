@@ -704,7 +704,7 @@ main_ni(int argc, char* argv[])
             }
             dir = strdup(argv[optind + i]);
             ly_ctx_set_searchdir(ctx, ptr = dirname(dir));
-            mod = lys_parse_path(ctx, argv[optind + i], informat_s);
+            lys_parse_path(ctx, argv[optind + i], informat_s, &mod);
             ly_ctx_unset_searchdir(ctx, index);
             free(dir);
             if (!mod) {
@@ -1067,7 +1067,7 @@ parse_reply:
                     }
                 }
 #endif
-                lyd_print(out, data_item->tree, outformat_d, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_FORMAT /* TODO defaults | options_dflt */);
+                lyd_print_all(out, data_item->tree, outformat_d, LYD_PRINT_FORMAT /* TODO defaults | options_dflt */);
 #if 0
                 if (envelope_s) {
                     if (data_item->type == LYD_OPT_RPC && data_item->tree->schema->nodetype != LYS_RPC) {

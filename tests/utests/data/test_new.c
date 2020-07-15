@@ -65,7 +65,7 @@ setup(void **state)
 #endif
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
-    assert_non_null(lys_parse_mem(ctx, schema_a, LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, schema_a, LYS_IN_YANG, NULL));
 
     return 0;
 }
@@ -112,93 +112,72 @@ test_top_level(void **state)
     assert_non_null(mod);
 
     /* list */
-    node = lyd_new_list(NULL, mod, "l1", "val_a", "val_b");
-    assert_non_null(node);
+    assert_int_equal(lyd_new_list(NULL, mod, "l1", &node, "val_a", "val_b"), LY_SUCCESS);
     lyd_free_tree(node);
 
-    node = lyd_new_list2(NULL, mod, "l1", "[]");
-    assert_null(node);
+    assert_int_equal(lyd_new_list2(NULL, mod, "l1", "[]", &node), LY_EVALID);
     logbuf_assert("Unexpected XPath token ] (]).");
 
-    node = lyd_new_list2(NULL, mod, "l1", "[key1='a'][key2='b']");
-    assert_null(node);
+    assert_int_equal(lyd_new_list2(NULL, mod, "l1", "[key1='a'][key2='b']", NULL), LY_ENOTFOUND);
     logbuf_assert("Not found node \"key1\" in path.");
 
-    node = lyd_new_list2(NULL, mod, "l1", "[a='a'][b='b'][c='c']");
-    assert_null(node);
+    assert_int_equal(lyd_new_list2(NULL, mod, "l1", "[a='a'][b='b'][c='c']", NULL), LY_EVALID);
     logbuf_assert("Key expected instead of leaf \"c\" in path. /a:l1/c");
 
-    node = lyd_new_list2(NULL, mod, "c", "[a='a'][b='b']");
-    assert_null(node);
+    assert_int_equal(lyd_new_list2(NULL, mod, "c", "[a='a'][b='b']", NULL), LY_ENOTFOUND);
     logbuf_assert("List node \"c\" not found.");
 
-    node = lyd_new_list2(NULL, mod, "l1", "[a='a'][b='b']");
-    assert_non_null(node);
+    assert_int_equal(lyd_new_list2(NULL, mod, "l1", "[a='a'][b='b']", &node), LY_SUCCESS);
     lyd_free_tree(node);
 
-    node = lyd_new_list2(NULL, mod, "l1", "[a=''][b='']");
-    assert_non_null(node);
+    assert_int_equal(lyd_new_list2(NULL, mod, "l1", "[a=''][b='']", &node), LY_SUCCESS);
     lyd_free_tree(node);
 
-    node = lyd_new_list2(NULL, mod, "l1", "[a:a='a'][a:b='b']");
-    assert_non_null(node);
+    assert_int_equal(lyd_new_list2(NULL, mod, "l1", "[a:a='a'][a:b='b']", &node), LY_SUCCESS);
     lyd_free_tree(node);
 
-    node = lyd_new_list2(NULL, mod, "l1", "[a=   'a']\n[b  =\t'b']");
-    assert_non_null(node);
+    assert_int_equal(lyd_new_list2(NULL, mod, "l1", "[a=   'a']\n[b  =\t'b']", &node), LY_SUCCESS);
     lyd_free_tree(node);
 
     /* leaf */
-    node = lyd_new_term(NULL, mod, "foo", "[a='a'][b='b'][c='c']");
-    assert_null(node);
+    assert_int_equal(lyd_new_term(NULL, mod, "foo", "[a='a'][b='b'][c='c']", NULL), LY_EVALID);
     logbuf_assert("Invalid uint16 value \"[a='a'][b='b'][c='c']\". /a:foo");
 
-    node = lyd_new_term(NULL, mod, "c", "value");
-    assert_null(node);
+    assert_int_equal(lyd_new_term(NULL, mod, "c", "value", NULL), LY_ENOTFOUND);
     logbuf_assert("Term node \"c\" not found.");
 
-    node = lyd_new_term(NULL, mod, "foo", "256");
-    assert_non_null(node);
+    assert_int_equal(lyd_new_term(NULL, mod, "foo", "256", &node), LY_SUCCESS);
     lyd_free_tree(node);
 
     /* leaf-list */
-    node = lyd_new_term(NULL, mod, "ll", "ahoy");
-    assert_non_null(node);
+    assert_int_equal(lyd_new_term(NULL, mod, "ll", "ahoy", &node), LY_SUCCESS);
     lyd_free_tree(node);
 
     /* container */
-    node = lyd_new_inner(NULL, mod, "c");
-    assert_non_null(node);
+    assert_int_equal(lyd_new_inner(NULL, mod, "c", &node), LY_SUCCESS);
     lyd_free_tree(node);
 
-    node = lyd_new_inner(NULL, mod, "l1");
-    assert_null(node);
+    assert_int_equal(lyd_new_inner(NULL, mod, "l1", NULL), LY_ENOTFOUND);
     logbuf_assert("Inner node (and not a list) \"l1\" not found.");
 
-    node = lyd_new_inner(NULL, mod, "l2");
-    assert_null(node);
+    assert_int_equal(lyd_new_inner(NULL, mod, "l2", NULL), LY_ENOTFOUND);
     logbuf_assert("Inner node (and not a list) \"l2\" not found.");
 
     /* anydata */
-    node = lyd_new_any(NULL, mod, "any", "some-value", LYD_ANYDATA_STRING);
-    assert_non_null(node);
+    assert_int_equal(lyd_new_any(NULL, mod, "any", "some-value", LYD_ANYDATA_STRING, &node), LY_SUCCESS);
     lyd_free_tree(node);
 
     /* key-less list */
-    node = lyd_new_list2(NULL, mod, "l2", "[a='a'][b='b']");
-    assert_null(node);
+    assert_int_equal(lyd_new_list2(NULL, mod, "l2", "[a='a'][b='b']", NULL), LY_EVALID);
     logbuf_assert("List predicate defined for keyless list \"l2\" in path.");
 
-    node = lyd_new_list2(NULL, mod, "l2", "");
-    assert_non_null(node);
+    assert_int_equal(lyd_new_list2(NULL, mod, "l2", "", &node), LY_SUCCESS);
     lyd_free_tree(node);
 
-    node = lyd_new_list2(NULL, mod, "l2", NULL);
-    assert_non_null(node);
+    assert_int_equal(lyd_new_list2(NULL, mod, "l2", NULL, &node), LY_SUCCESS);
     lyd_free_tree(node);
 
-    node = lyd_new_list(NULL, mod, "l2");
-    assert_non_null(node);
+    assert_int_equal(lyd_new_list(NULL, mod, "l2", &node), LY_SUCCESS);
     lyd_free_tree(node);
 
     *state = NULL;
@@ -212,16 +191,14 @@ test_opaq(void **state)
     struct lyd_node *root, *node;
     struct lyd_node_opaq *opq;
 
-    root = lyd_new_opaq(NULL, ctx, "node1", NULL, "my-module");
-    assert_non_null(root);
+    assert_int_equal(lyd_new_opaq(NULL, ctx, "node1", NULL, "my-module", &root), LY_SUCCESS);
     assert_null(root->schema);
     opq = (struct lyd_node_opaq *)root;
     assert_string_equal(opq->name, "node1");
     assert_string_equal(opq->value, "");
     assert_string_equal(opq->prefix.ns, "my-module");
 
-    node = lyd_new_opaq(root, NULL, "node2", "value", "my-module2");
-    assert_non_null(node);
+    assert_int_equal(lyd_new_opaq(root, NULL, "node2", "value", "my-module2", &node), LY_SUCCESS);
     assert_null(node->schema);
     opq = (struct lyd_node_opaq *)node;
     assert_string_equal(opq->name, "node2");

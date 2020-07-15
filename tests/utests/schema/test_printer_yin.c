@@ -586,7 +586,7 @@ test_module(void **state)
     assert_int_equal(LY_SUCCESS, ly_out_new_memory(&printed, 0, &out));
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
 
-    assert_non_null(mod = lys_parse_mem(ctx, orig, LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, orig, LYS_IN_YANG, &mod));
     assert_int_equal(LY_SUCCESS, lys_print(out, mod, LYS_OUT_YIN, 0, 0));
     assert_int_equal(strlen(ori_res), ly_out_printed(out));
     assert_string_equal(printed, ori_res);

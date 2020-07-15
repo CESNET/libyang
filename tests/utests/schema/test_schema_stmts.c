@@ -33,7 +33,7 @@ test_identity(void **state)
     *state = test_identity;
 
     struct ly_ctx *ctx;
-    struct lys_module *mod, *mod_imp;
+    const struct lys_module *mod, *mod_imp;
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
 
@@ -161,7 +161,7 @@ test_feature(void **state)
     *state = test_feature;
 
     struct ly_ctx *ctx;
-    struct lys_module *mod;
+    const struct lys_module *mod;
     const struct lysc_feature *f, *f1;
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));

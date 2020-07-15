@@ -113,8 +113,8 @@ setup(void **state)
 #endif
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &s->ctx));
-    assert_non_null(lys_parse_mem(s->ctx, schema_a, LYS_IN_YANG));
-    assert_non_null(lys_parse_mem(s->ctx, schema_b, LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(s->ctx, schema_a, LYS_IN_YANG, NULL));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(s->ctx, schema_b, LYS_IN_YANG, NULL));
 
     *state = s;
 
@@ -897,7 +897,7 @@ test_instanceid(void **state)
 
     TEST_DATA("<t:inst-noreq xmlns:t=\"urn:tests:types\">/t:cont/t:listtarget[t:value='x']</t:inst-noreq>", LY_EVALID,
               "Invalid instance-identifier \"/t:cont/t:listtarget[t:value='x']\" value - semantic error. /types:inst-noreq");
-    TEST_DATA("<t:inst-noreq xmlns:t=\"urn:tests:types\">/t:cont/t:listtarget[t:x='x']</t:inst-noreq>", LY_EVALID,
+    TEST_DATA("<t:inst-noreq xmlns:t=\"urn:tests:types\">/t:cont/t:listtarget[t:x='x']</t:inst-noreq>", LY_ENOTFOUND,
               "Invalid instance-identifier \"/t:cont/t:listtarget[t:x='x']\" value - semantic error. /types:inst-noreq");
     TEST_DATA("<cont xmlns=\"urn:tests:types\"><listtarget><id>1</id><value>x</value></listtarget></cont>"
               "<t:inst xmlns:t=\"urn:tests:types\">/t:cont/t:listtarget[.='x']</t:inst>", LY_EVALID,
@@ -990,7 +990,7 @@ test_leafref(void **state)
             "}}}";
 
     /* additional schema */
-    assert_non_null(lys_parse_mem(s->ctx, schema, LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(s->ctx, schema, LYS_IN_YANG, NULL));
 
     /* valid data */
     TEST_DATA("<leaflisttarget xmlns=\"urn:tests:types\">x</leaflisttarget><leaflisttarget xmlns=\"urn:tests:types\">y</leaflisttarget><lref xmlns=\"urn:tests:types\">y</lref>", LY_SUCCESS, "");

@@ -126,8 +126,8 @@ setup(void **state)
 #endif
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_DIR_MODULES_YANG, 0, &ctx));
-    assert_non_null(lys_parse_mem(ctx, schema_a, LYS_IN_YANG));
-    assert_non_null(lys_parse_mem(ctx, schema_b, LYS_IN_YANG));
+    assert_int_equal(lys_parse_mem(ctx, schema_a, LYS_IN_YANG, NULL), LY_SUCCESS);
+    assert_int_equal(lys_parse_mem(ctx, schema_b, LYS_IN_YANG, NULL), LY_SUCCESS);
 
     return 0;
 }

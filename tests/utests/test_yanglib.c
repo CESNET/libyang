@@ -145,10 +145,9 @@ setup(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_DIR_MODULES_YANG, 0, &ctx));
     ly_ctx_set_module_imp_clb(ctx, test_imp_clb, NULL);
 
-    mod = lys_parse_mem(ctx, schema_a, LYS_IN_YANG);
-    assert_non_null(mod);
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, schema_a, LYS_IN_YANG, &mod));
     assert_int_equal(LY_SUCCESS, lys_feature_enable(mod, "feat1"));
-    assert_non_null(lys_parse_mem(ctx, schema_b, LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, schema_b, LYS_IN_YANG, NULL));
 
     return 0;
 }
@@ -191,8 +190,7 @@ test_yanglib(void **state)
     struct ly_set *set;
     LY_ERR ret;
 
-    tree = ly_ctx_get_yanglib_data(ctx);
-    assert_non_null(tree);
+    assert_int_equal(LY_SUCCESS, ly_ctx_get_yanglib_data(ctx, &tree));
 
     /* make sure there is "a" with a submodule and deviation */
     ret = lyd_find_xpath(tree, "/ietf-yang-library:yang-library/module-set/module[name='a'][submodule/name='a_sub']"

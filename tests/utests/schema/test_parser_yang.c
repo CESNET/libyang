@@ -1007,24 +1007,21 @@ test_module(void **state)
     logbuf_assert("Prefix \"y\" already used to import \"zzz\" module. Line number 2.");
     mod = mod_renew(&ctx);
     in.current = "module" SCHEMA_BEGINNING "import zzz {prefix y;}import zzz {prefix z;}}";
-    assert_null(lys_parse_mem(ctx.ctx, in.current, LYS_IN_YANG));
-    assert_int_equal(LY_EVALID, ly_errcode(ctx.ctx));
+    assert_int_equal(lys_parse_mem(ctx.ctx, in.current, LYS_IN_YANG, NULL), LY_EVALID);
     logbuf_assert("Single revision of the module \"zzz\" referred twice.");
 
     /* include */
     store = 1;
     ly_ctx_set_module_imp_clb(ctx.ctx, test_imp_clb, "module xxx { namespace urn:xxx; prefix x;}");
     in.current = "module" SCHEMA_BEGINNING "include xxx;}";
-    assert_null(lys_parse_mem(ctx.ctx, in.current, LYS_IN_YANG));
-    assert_int_equal(LY_EVALID, ly_errcode(ctx.ctx));
+    assert_int_equal(lys_parse_mem(ctx.ctx, in.current, LYS_IN_YANG, NULL), LY_EVALID);
     logbuf_assert("Input data contains module in situation when a submodule is expected.");
     store = -1;
 
     store = 1;
     ly_ctx_set_module_imp_clb(ctx.ctx, test_imp_clb, "submodule xxx {belongs-to wrong-name {prefix w;}}");
     in.current = "module" SCHEMA_BEGINNING "include xxx;}";
-    assert_null(lys_parse_mem(ctx.ctx, in.current, LYS_IN_YANG));
-    assert_int_equal(LY_EVALID, ly_errcode(ctx.ctx));
+    assert_int_equal(lys_parse_mem(ctx.ctx, in.current, LYS_IN_YANG, NULL), LY_EVALID);
     logbuf_assert("Included \"xxx\" submodule from \"name\" belongs-to a different module \"wrong-name\".");
     store = -1;
 

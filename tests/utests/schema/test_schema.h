@@ -68,14 +68,14 @@ LY_ERR test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), c
     { \
     const char *test_str__; \
     TEST_SCHEMA_STR(CTX, RFC7950, YIN, MOD_NAME, CONTENT, test_str__) \
-    assert_non_null(RESULT = lys_parse_mem(CTX, test_str__, YIN ? LYS_IN_YIN : LYS_IN_YANG)); \
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(CTX, test_str__, YIN ? LYS_IN_YIN : LYS_IN_YANG, &(RESULT))); \
     }
 
 #define TEST_SCHEMA_ERR(CTX, RFC7950, YIN, MOD_NAME, CONTENT, ERRMSG) \
     { \
     const char *test_str__; \
     TEST_SCHEMA_STR(CTX, RFC7950, YIN, MOD_NAME, CONTENT, test_str__) \
-    assert_null(lys_parse_mem(CTX, test_str__, YIN ? LYS_IN_YIN : LYS_IN_YANG)); \
+    assert_int_not_equal(lys_parse_mem(CTX, test_str__, YIN ? LYS_IN_YIN : LYS_IN_YANG, NULL), LY_SUCCESS); \
     logbuf_assert(ERRMSG); \
     }
 

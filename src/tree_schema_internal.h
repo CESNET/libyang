@@ -520,7 +520,8 @@ const char *lys_prefix_find_module(const struct lys_module *mod, const struct ly
  */
 const char *lys_datatype2str(LY_DATA_TYPE basetype);
 
-typedef LY_ERR (*lys_custom_check)(const struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *check_data);
+typedef LY_ERR (*lys_custom_check)(const struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod,
+                                   void *check_data);
 
 /**
  * @brief Parse module from a string.
@@ -533,10 +534,11 @@ typedef LY_ERR (*lys_custom_check)(const struct ly_ctx *ctx, struct lysp_module 
  * @param[in] implement Flag if the schema is supposed to be marked as implemented.
  * @param[in] custom_check Callback to check the parsed schema before it is accepted.
  * @param[in] check_data Caller's data to pass to the custom_check callback.
- * @return Pointer to the data model structure or NULL on error.
+ * @param[out] module Parsed module.
+ * @return LY_ERR value.
  */
-struct lys_module *lys_parse_mem_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, int implement,
-                                        lys_custom_check custom_check, void *check_data);
+LY_ERR lys_parse_mem_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, int implement,
+                            lys_custom_check custom_check, void *check_data, struct lys_module **module);
 
 /**
  * @brief Parse submodule from a string.
@@ -549,11 +551,12 @@ struct lys_module *lys_parse_mem_module(struct ly_ctx *ctx, struct ly_in *in, LY
  * @param[in] main_ctx Parser context of the main module.
  * @param[in] custom_check Callback to check the parsed schema before it is accepted.
  * @param[in] check_data Caller's data to pass to the custom_check callback.
- * @return Pointer to the data model structure or NULL on error.
+ * @param[out] submodule Parsed submodule.
+ * @return LY_ERR value.
  */
-struct lysp_submodule *lys_parse_mem_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
-                                               struct lys_parser_ctx *main_ctx, lys_custom_check custom_check,
-                                               void *check_data);
+LY_ERR lys_parse_mem_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
+                               struct lys_parser_ctx *main_ctx, lys_custom_check custom_check,
+                               void *check_data, struct lysp_submodule **submodule);
 
 /**
  * @brief Fill filepath value if available in input handler @p in

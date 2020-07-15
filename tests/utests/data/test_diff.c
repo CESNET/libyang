@@ -228,7 +228,7 @@ setup_f(void **state)
     assert_non_null(st);
     assert_int_equal(LY_SUCCESS, ly_ctx_new(TESTS_DIR_MODULES_YANG, 0, &st->ctx));
     assert_non_null(ly_ctx_load_module(st->ctx, "ietf-netconf-acm", "2018-02-14"));
-    assert_non_null(lys_parse_mem(st->ctx, schema, LYS_IN_YANG));
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(st->ctx, schema, LYS_IN_YANG, NULL));
 
     return 0;
 }
@@ -263,9 +263,9 @@ test_invalid(void **state)
     assert_non_null(st->first);
     st->second = NULL;
 
-    assert_int_equal(lyd_diff(st->first, lyd_node_children(st->first, 0), 0, &st->diff1), LY_EINVAL);
+    assert_int_equal(lyd_diff_siblings(st->first, lyd_node_children(st->first, 0), 0, &st->diff1), LY_EINVAL);
 
-    assert_int_equal(lyd_diff(NULL, NULL, 0, NULL), LY_EINVAL);
+    assert_int_equal(lyd_diff_siblings(NULL, NULL, 0, NULL), LY_EINVAL);
 }
 
 static void
@@ -288,10 +288,10 @@ test_same(void **state)
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(st->ctx, xml, LYD_XML, LYD_PARSE_ONLY, 0, &st->second));
     assert_non_null(st->second);
 
-    assert_int_equal(lyd_diff(st->first, st->second, 0, &st->diff1), LY_SUCCESS);
+    assert_int_equal(lyd_diff_siblings(st->first, st->second, 0, &st->diff1), LY_SUCCESS);
     assert_null(st->diff1);
 
-    assert_int_equal(lyd_diff_apply(&st->first, st->diff1), LY_SUCCESS);
+    assert_int_equal(lyd_diff_apply_all(&st->first, st->diff1), LY_SUCCESS);
     lyd_print_mem(&st->xml1, st->first, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     lyd_print_mem(&st->xml2, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     assert_string_equal(st->xml1, st->xml2);
@@ -313,7 +313,7 @@ test_empty1(void **state)
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(st->ctx, xml, LYD_XML, LYD_PARSE_ONLY, 0, &st->second));
     assert_non_null(st->second);
 
-    assert_int_equal(lyd_diff(st->first, st->second, 0, &st->diff1), LY_SUCCESS);
+    assert_int_equal(lyd_diff_siblings(st->first, st->second, 0, &st->diff1), LY_SUCCESS);
 
     assert_non_null(st->diff1);
     lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS);
@@ -326,7 +326,7 @@ test_empty1(void **state)
         "</hidden>"
     );
 
-    assert_int_equal(lyd_diff_apply(&st->first, st->diff1), LY_SUCCESS);
+    assert_int_equal(lyd_diff_apply_all(&st->first, st->diff1), LY_SUCCESS);
     lyd_print_mem(&st->xml1, st->first, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     lyd_print_mem(&st->xml2, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     assert_string_equal(st->xml1, st->xml2);
@@ -345,7 +345,7 @@ test_empty2(void **state)
     assert_non_null(st->first);
     st->second = NULL;
 
-    assert_int_equal(lyd_diff(st->first, st->second, 0, &st->diff1), LY_SUCCESS);
+    assert_int_equal(lyd_diff_siblings(st->first, st->second, 0, &st->diff1), LY_SUCCESS);
 
     assert_non_null(st->diff1);
     lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS);
@@ -358,7 +358,7 @@ test_empty2(void **state)
         "</hidden>"
     );
 
-    assert_int_equal(lyd_diff_apply(&st->first, st->diff1), LY_SUCCESS);
+    assert_int_equal(lyd_diff_apply_all(&st->first, st->diff1), LY_SUCCESS);
     assert_ptr_equal(st->first, st->second);
 }
 
@@ -372,10 +372,10 @@ test_empty_nested(void **state)
     assert_non_null(st->first);
     st->second = NULL;
 
-    assert_int_equal(lyd_diff(NULL, NULL, 0, &st->diff1), LY_SUCCESS);
+    assert_int_equal(lyd_diff_siblings(NULL, NULL, 0, &st->diff1), LY_SUCCESS);
     assert_null(st->diff1);
 
-    assert_int_equal(lyd_diff(NULL, lyd_node_children(st->first, 0), 0, &st->diff1), LY_SUCCESS);
+    assert_int_equal(lyd_diff_siblings(NULL, lyd_node_children(st->first, 0), 0, &st->diff1), LY_SUCCESS);
 
     assert_non_null(st->diff1);
     lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS);
@@ -386,7 +386,7 @@ test_empty_nested(void **state)
     );
 
     free(st->xml);
-    assert_int_equal(lyd_diff(lyd_node_children(st->first, 0), NULL, 0, &st->diff2), LY_SUCCESS);
+    assert_int_equal(lyd_diff_siblings(lyd_node_children(st->first, 0), NULL, 0, &st->diff2), LY_SUCCESS);
 
     assert_non_null(st->diff2);
     lyd_print_mem(&st->xml, st->diff2, LYD_XML, LYD_PRINT_WITHSIBLINGS);
@@ -428,7 +428,7 @@ test_leaf(void **state)
     assert_non_null(st->third);
 
     /* diff1 */
-    assert_int_equal(lyd_diff(st->first, st->second, 0, &st->diff1), LY_SUCCESS);
+    assert_int_equal(lyd_diff_siblings(st->first, st->second, 0, &st->diff1), LY_SUCCESS);
 
     assert_non_null(st->diff1);
     lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS);
@@ -443,13 +443,13 @@ test_leaf(void **state)
         "</hidden>"
     );
 
-    assert_int_equal(lyd_diff_apply(&st->first, st->diff1), LY_SUCCESS);
+    assert_int_equal(lyd_diff_apply_all(&st->first, st->diff1), LY_SUCCESS);
     lyd_print_mem(&st->xml1, st->first, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     lyd_print_mem(&st->xml2, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     assert_string_equal(st->xml1, st->xml2);
 
     /* diff2 */
-    assert_int_equal(lyd_diff(st->second, st->third, 0, &st->diff2), LY_SUCCESS);
+    assert_int_equal(lyd_diff_siblings(st->second, st->third, 0, &st->diff2), LY_SUCCESS);
 
     assert_non_null(st->diff2);
     free(st->xml);
@@ -464,7 +464,7 @@ test_leaf(void **state)
         "</hidden>"
     );
 
-    assert_int_equal(lyd_diff_apply(&st->second, st->diff2), LY_SUCCESS);
+    assert_int_equal(lyd_diff_apply_all(&st->second, st->diff2), LY_SUCCESS);
     free(st->xml1);
     lyd_print_mem(&st->xml1, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     free(st->xml2);
@@ -472,7 +472,7 @@ test_leaf(void **state)
     assert_string_equal(st->xml1, st->xml2);
 
     /* merge */
-    assert_int_equal(lyd_diff_merge(st->diff2, &st->diff1), LY_SUCCESS);
+    assert_int_equal(lyd_diff_merge_all(st->diff2, &st->diff1), LY_SUCCESS);
 
     free(st->xml);
     lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS);
@@ -512,7 +512,7 @@ test_list(void **state)
     assert_non_null(st->third);
 
     /* diff1 */
-    assert_int_equal(lyd_diff(st->first, st->second, 0, &st->diff1), LY_SUCCESS);
+    assert_int_equal(lyd_diff_siblings(st->first, st->second, 0, &st->diff1), LY_SUCCESS);
 
     assert_non_null(st->diff1);
     lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS);
@@ -533,13 +533,13 @@ test_list(void **state)
         "</df>"
     );
 
-    assert_int_equal(lyd_diff_apply(&st->first, st->diff1), LY_SUCCESS);
+    assert_int_equal(lyd_diff_apply_all(&st->first, st->diff1), LY_SUCCESS);
     lyd_print_mem(&st->xml1, st->first, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     lyd_print_mem(&st->xml2, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     assert_string_equal(st->xml1, st->xml2);
 
     /* diff2 */
-    assert_int_equal(lyd_diff(st->second, st->third, 0, &st->diff2), LY_SUCCESS);
+    assert_int_equal(lyd_diff_siblings(st->second, st->third, 0, &st->diff2), LY_SUCCESS);
 
     assert_non_null(st->diff2);
     free(st->xml);
@@ -557,7 +557,7 @@ test_list(void **state)
         "</df>"
     );
 
-    assert_int_equal(lyd_diff_apply(&st->second, st->diff2), LY_SUCCESS);
+    assert_int_equal(lyd_diff_apply_all(&st->second, st->diff2), LY_SUCCESS);
     free(st->xml1);
     lyd_print_mem(&st->xml1, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     free(st->xml2);
@@ -565,7 +565,7 @@ test_list(void **state)
     /* TODO ordering assert_string_equal(st->xml1, st->xml2); */
 
     /* merge */
-    assert_int_equal(lyd_diff_merge(st->diff2, &st->diff1), LY_SUCCESS);
+    assert_int_equal(lyd_diff_merge_all(st->diff2, &st->diff1), LY_SUCCESS);
 
     free(st->xml);
     lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS);
@@ -616,7 +616,7 @@ test_userord_llist(void **state)
     assert_non_null(st->third);
 
     /* diff1 */
-    assert_int_equal(lyd_diff(st->first, st->second, 0, &st->diff1), LY_SUCCESS);
+    assert_int_equal(lyd_diff_siblings(st->first, st->second, 0, &st->diff1), LY_SUCCESS);
 
     assert_non_null(st->diff1);
     lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS);
@@ -627,13 +627,13 @@ test_userord_llist(void **state)
         "</df>"
     );
 
-    assert_int_equal(lyd_diff_apply(&st->first, st->diff1), LY_SUCCESS);
+    assert_int_equal(lyd_diff_apply_all(&st->first, st->diff1), LY_SUCCESS);
     lyd_print_mem(&st->xml1, st->first, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     lyd_print_mem(&st->xml2, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     assert_string_equal(st->xml1, st->xml2);
 
     /* diff2 */
-    assert_int_equal(lyd_diff(st->second, st->third, 0, &st->diff2), LY_SUCCESS);
+    assert_int_equal(lyd_diff_siblings(st->second, st->third, 0, &st->diff2), LY_SUCCESS);
 
     assert_non_null(st->diff2);
     free(st->xml);
@@ -645,7 +645,7 @@ test_userord_llist(void **state)
         "</df>"
     );
 
-    assert_int_equal(lyd_diff_apply(&st->second, st->diff2), LY_SUCCESS);
+    assert_int_equal(lyd_diff_apply_all(&st->second, st->diff2), LY_SUCCESS);
     free(st->xml1);
     lyd_print_mem(&st->xml1, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     free(st->xml2);
@@ -653,7 +653,7 @@ test_userord_llist(void **state)
     assert_string_equal(st->xml1, st->xml2);
 
     /* merge */
-    assert_int_equal(lyd_diff_merge(st->diff2, &st->diff1), LY_SUCCESS);
+    assert_int_equal(lyd_diff_merge_all(st->diff2, &st->diff1), LY_SUCCESS);
 
     free(st->xml);
     lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS);
@@ -700,7 +700,7 @@ test_userord_llist2(void **state)
     assert_non_null(st->third);
 
     /* diff1 */
-    assert_int_equal(lyd_diff(st->first, st->second, 0, &st->diff1), LY_SUCCESS);
+    assert_int_equal(lyd_diff_siblings(st->first, st->second, 0, &st->diff1), LY_SUCCESS);
 
     assert_non_null(st->diff1);
     lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS);
@@ -710,13 +710,13 @@ test_userord_llist2(void **state)
         "</df>"
     );
 
-    assert_int_equal(lyd_diff_apply(&st->first, st->diff1), LY_SUCCESS);
+    assert_int_equal(lyd_diff_apply_all(&st->first, st->diff1), LY_SUCCESS);
     lyd_print_mem(&st->xml1, st->first, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     lyd_print_mem(&st->xml2, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     assert_string_equal(st->xml1, st->xml2);
 
     /* diff2 */
-    assert_int_equal(lyd_diff(st->second, st->third, 0, &st->diff2), LY_SUCCESS);
+    assert_int_equal(lyd_diff_siblings(st->second, st->third, 0, &st->diff2), LY_SUCCESS);
 
     assert_non_null(st->diff2);
     free(st->xml);
@@ -728,7 +728,7 @@ test_userord_llist2(void **state)
         "</df>"
     );
 
-    assert_int_equal(lyd_diff_apply(&st->second, st->diff2), LY_SUCCESS);
+    assert_int_equal(lyd_diff_apply_all(&st->second, st->diff2), LY_SUCCESS);
     free(st->xml1);
     lyd_print_mem(&st->xml1, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     free(st->xml2);
@@ -736,7 +736,7 @@ test_userord_llist2(void **state)
     assert_string_equal(st->xml1, st->xml2);
 
     /* merge */
-    assert_int_equal(lyd_diff_merge(st->diff2, &st->diff1), LY_SUCCESS);
+    assert_int_equal(lyd_diff_merge_all(st->diff2, &st->diff1), LY_SUCCESS);
 
     free(st->xml);
     lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS);
@@ -775,7 +775,7 @@ test_userord_mix(void **state)
     assert_non_null(st->third);
 
     /* diff1 */
-    assert_int_equal(lyd_diff(st->first, st->second, 0, &st->diff1), LY_SUCCESS);
+    assert_int_equal(lyd_diff_siblings(st->first, st->second, 0, &st->diff1), LY_SUCCESS);
 
     assert_non_null(st->diff1);
     lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS);
@@ -786,13 +786,13 @@ test_userord_mix(void **state)
         "</df>"
     );
 
-    assert_int_equal(lyd_diff_apply(&st->first, st->diff1), LY_SUCCESS);
+    assert_int_equal(lyd_diff_apply_all(&st->first, st->diff1), LY_SUCCESS);
     lyd_print_mem(&st->xml1, st->first, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     lyd_print_mem(&st->xml2, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     assert_string_equal(st->xml1, st->xml2);
 
     /* diff2 */
-    assert_int_equal(lyd_diff(st->second, st->third, 0, &st->diff2), LY_SUCCESS);
+    assert_int_equal(lyd_diff_siblings(st->second, st->third, 0, &st->diff2), LY_SUCCESS);
 
     assert_non_null(st->diff2);
     free(st->xml);
@@ -804,7 +804,7 @@ test_userord_mix(void **state)
         "</df>"
     );
 
-    assert_int_equal(lyd_diff_apply(&st->second, st->diff2), LY_SUCCESS);
+    assert_int_equal(lyd_diff_apply_all(&st->second, st->diff2), LY_SUCCESS);
     free(st->xml1);
     lyd_print_mem(&st->xml1, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     free(st->xml2);
@@ -812,7 +812,7 @@ test_userord_mix(void **state)
     assert_string_equal(st->xml1, st->xml2);
 
     /* merge */
-    assert_int_equal(lyd_diff_merge(st->diff2, &st->diff1), LY_SUCCESS);
+    assert_int_equal(lyd_diff_merge_all(st->diff2, &st->diff1), LY_SUCCESS);
 
     free(st->xml);
     lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS);
@@ -850,7 +850,7 @@ test_wd(void **state)
     assert_non_null(st->third);
 
     /* diff1 */
-    assert_int_equal(lyd_diff(st->first, st->second, LYD_DIFF_WITHDEFAULTS, &st->diff1), LY_SUCCESS);
+    assert_int_equal(lyd_diff_siblings(st->first, st->second, LYD_DIFF_DEFAULTS, &st->diff1), LY_SUCCESS);
 
     assert_non_null(st->diff1);
     lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_ALL);
@@ -864,14 +864,14 @@ test_wd(void **state)
         "</df>"
     );
 
-    assert_int_equal(lyd_diff_apply(&st->first, st->diff1), LY_SUCCESS);
+    assert_int_equal(lyd_diff_apply_all(&st->first, st->diff1), LY_SUCCESS);
     lyd_print_mem(&st->xml1, st->first, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     lyd_print_mem(&st->xml2, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     /* TODO just an ordering problem
     assert_string_equal(st->xml1, st->xml2);*/
 
     /* diff2 */
-    assert_int_equal(lyd_diff(st->second, st->third, LYD_DIFF_WITHDEFAULTS, &st->diff2), LY_SUCCESS);
+    assert_int_equal(lyd_diff_siblings(st->second, st->third, LYD_DIFF_DEFAULTS, &st->diff2), LY_SUCCESS);
 
     assert_non_null(st->diff2);
     free(st->xml);
@@ -883,7 +883,7 @@ test_wd(void **state)
         "</df>"
     );
 
-    assert_int_equal(lyd_diff_apply(&st->second, st->diff2), LY_SUCCESS);
+    assert_int_equal(lyd_diff_apply_all(&st->second, st->diff2), LY_SUCCESS);
     free(st->xml1);
     lyd_print_mem(&st->xml1, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     free(st->xml2);
@@ -891,7 +891,7 @@ test_wd(void **state)
     /* TODO ordering assert_string_equal(st->xml1, st->xml2); */
 
     /* merge */
-    assert_int_equal(lyd_diff_merge(st->diff2, &st->diff1), LY_SUCCESS);
+    assert_int_equal(lyd_diff_merge_all(st->diff2, &st->diff1), LY_SUCCESS);
 
     free(st->xml);
     lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_ALL);

@@ -57,15 +57,26 @@ struct ly_out;
  */
 
 /**
- * @brief Common YANG data printer.
+ * @brief Print the whole data tree of the root, including all the siblings.
  *
  * @param[in] out Printer handler for a specific output. Use ly_out_*() functions to create and free the handler.
- * @param[in] root The root element of the (sub)tree to print.
+ * @param[in] root The root element of the tree to print, can be any sibling.
  * @param[in] format Output format.
- * @param[in] options [Data printer flags](@ref dataprinterflags).
+ * @param[in] options [Data printer flags](@ref dataprinterflags) except ::LYD_PRINT_WITHSIBLINGS.
  * @return LY_ERR value.
  */
-LY_ERR lyd_print(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, int options);
+LY_ERR lyd_print_all(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, int options);
+
+/**
+ * @brief Print the selected data subtree.
+ *
+ * @param[in] out Printer handler for a specific output. Use ly_out_*() functions to create and free the handler.
+ * @param[in] root The root element of the subtree to print.
+ * @param[in] format Output format.
+ * @param[in] options [Data printer flags](@ref dataprinterflags) except ::LYD_PRINT_WITHSIBLINGS.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_print_tree(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, int options);
 
 /**
  * @brief Print data tree in the specified format.

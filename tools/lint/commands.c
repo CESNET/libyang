@@ -231,7 +231,7 @@ cmd_add(const char *arg)
 
         dir = strdup(path);
         ly_ctx_set_searchdir(ctx, dirname(dir));
-        model = lys_parse_path(ctx, path, format);
+        lys_parse_path(ctx, path, format, &model);
         ly_ctx_unset_searchdir(ctx, index);
         free(path);
         free(dir);
@@ -822,7 +822,7 @@ cmd_data(const char *arg)
     }
 
     if (outformat) {
-        ret = lyd_print(out, data, outformat, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_FORMAT | printopt);
+        ret = lyd_print_all(out, data, outformat, LYD_PRINT_FORMAT | printopt);
         ret = ret < 0 ? ret * (-1) : 0;
     }
 

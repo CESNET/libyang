@@ -755,34 +755,42 @@ lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision,
 
     LY_CHECK_RET(lys_search_localfile(ly_ctx_get_searchdirs(ctx), !(ctx->flags & LY_CTX_DISABLE_SEARCHDIR_CWD), name, revision,
                                       &filepath, &format));
-    LY_CHECK_ERR_RET(!filepath, if (required) {LOGERR(ctx, LY_ENOTFOUND, "Data model \"%s%s%s\" not found in local searchdirs.",
-                                       name, revision ? "@" : "", revision ? revision : "");}, LY_ENOTFOUND);
+    if (!filepath) {
+        if (required) {
+            LOGERR(ctx, LY_ENOTFOUND, "Data model \"%s%s%s\" not found in local searchdirs.", name, revision ? "@" : "",
+                   revision ? revision : "");
+        }
+        return LY_ENOTFOUND;
+    }
 
     LOGVRB("Loading schema from \"%s\" file.", filepath);
 
     /* get the (sub)module */
-    LY_CHECK_ERR_GOTO(ret = ly_in_new_filepath(filepath, 0, &in), LOGERR(ctx, ret, "Unable to create input handler for filepath %s.", filepath), cleanup);
+    LY_CHECK_ERR_GOTO(ret = ly_in_new_filepath(filepath, 0, &in),
+                      LOGERR(ctx, ret, "Unable to create input handler for filepath %s.", filepath), cleanup);
     check_data.name = name;
     check_data.revision = revision;
     check_data.path = filepath;
     check_data.submoduleof = main_name;
     if (main_ctx) {
-        mod = lys_parse_mem_submodule(ctx, in, format, main_ctx, lysp_load_module_check, &check_data);
+        ret = lys_parse_mem_submodule(ctx, in, format, main_ctx, lysp_load_module_check, &check_data,
+                                      (struct lysp_submodule **)&mod);
     } else {
-        mod = lys_parse_mem_module(ctx, in, format, implement, lysp_load_module_check, &check_data);
+        ret = lys_parse_mem_module(ctx, in, format, implement, lysp_load_module_check, &check_data,
+                                   (struct lys_module **)&mod);
 
     }
-    LY_CHECK_ERR_GOTO(!mod, ly_in_free(in, 1);ly_errcode(ctx), cleanup);
+    LY_CHECK_ERR_GOTO(ret, ly_in_free(in, 1), cleanup);
 
     if (main_ctx) {
-        lys_parser_fill_filepath(ctx, in, &((struct lysp_submodule*)mod)->filepath);
+        lys_parser_fill_filepath(ctx, in, &((struct lysp_submodule *)mod)->filepath);
     } else {
-        lys_parser_fill_filepath(ctx, in, &((struct lys_module*)mod)->filepath);
+        lys_parser_fill_filepath(ctx, in, &((struct lys_module *)mod)->filepath);
     }
     ly_in_free(in, 1);
 
     if (mod && implement) {
-        lys_compile((struct lys_module**)&mod, 0);
+        lys_compile((struct lys_module **)&mod, 0);
     }
 
     *result = mod;
@@ -794,7 +802,8 @@ cleanup:
 }
 
 LY_ERR
-lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, int implement, int require_parsed, struct lys_module **mod)
+lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, int implement, int require_parsed,
+                 struct lys_module **mod)
 {
     const char *module_data = NULL;
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
@@ -848,7 +857,7 @@ search_clb:
                     LY_CHECK_RET(ly_in_new_memory(module_data, &in));
                     check_data.name = name;
                     check_data.revision = revision;
-                    *mod = lys_parse_mem_module(ctx, in, format, implement, lysp_load_module_check, &check_data);
+                    lys_parse_mem_module(ctx, in, format, implement, lysp_load_module_check, &check_data, mod);
                     ly_in_free(in, 0);
                     if (module_data_free) {
                         module_data_free((void*)module_data, ctx->imp_clb_data);
@@ -970,7 +979,7 @@ search_clb:
                 check_data.name = inc->name;
                 check_data.revision = inc->rev[0] ? inc->rev : NULL;
                 check_data.submoduleof = mod->mod->name;
-                submod = lys_parse_mem_submodule(ctx, in, format, pctx, lysp_load_module_check, &check_data);
+                lys_parse_mem_submodule(ctx, in, format, pctx, lysp_load_module_check, &check_data, &submod);
                 ly_in_free(in, 0);
                 if (submodule_data_free) {
                     submodule_data_free((void*)submodule_data, ctx->imp_clb_data);

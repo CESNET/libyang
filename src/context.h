@@ -24,6 +24,7 @@
 extern "C" {
 #endif
 
+struct lyd_node;
 struct lysc_node;
 
 /**
@@ -446,10 +447,10 @@ uint16_t ly_ctx_get_yanglib_id(const struct ly_ctx *ctx);
  * ietf-yang-library module must be loaded.
  *
  * @param[in] ctx Context with the modules.
- * @return Generated data, must be freed,
- * @return NULL on error.
+ * @param[out] root Generated yang-library data.
+ * @return LY_ERR value
  */
-struct lyd_node *ly_ctx_get_yanglib_data(const struct ly_ctx *ctx);
+LY_ERR ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root);
 
 /**
  * @brief Free all internal structures of the specified context.
