@@ -1501,7 +1501,7 @@ lyd_diff_merge_r(const struct lyd_node *src_diff, struct lyd_node *diff_parent, 
     }
 
     /* remove any redundant nodes */
-    if (diff_parent && lyd_diff_is_redundant(diff_parent)) {
+    if (lyd_diff_is_redundant(diff_parent)) {
         if (diff_parent == *diff) {
             *diff = (*diff)->next;
         }
