@@ -1,7 +1,7 @@
 set(PACKAGE "libyang")
 set(CPP_PACKAGE "libyang-cpp")
 set(PYTHON_PACKAGE "python3-yang")
-set(TOOLS_PACKAGE "yang-tools")
+set(TOOLS_PACKAGE "libyang-tools")
 
 find_program(DEB_BUILDER NAMES debuild)
 find_program(RPM_BUILDER NAMES rpmbuild)
