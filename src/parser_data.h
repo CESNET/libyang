@@ -63,10 +63,9 @@ struct ly_in;
                                                  data are not valid, using this flag may lead to some unexpected behavior!
                                                  This flag can be used only with #LYD_OPT_PARSE_ONLY. */
 #define LYD_PARSE_STRICT    0x040000        /**< Instead of silently ignoring data without schema definition raise an error.
-                                                 Do not combine with #LYD_OPT_OPAQ. */
+                                                 Do not combine with #LYD_OPT_OPAQ (except for ::LYD_LYB). */
 #define LYD_PARSE_OPAQ      0x080000        /**< Instead of silently ignoring data without definition, parse them into
-                                                 an opaq node. Do not combine with #LYD_OPT_STRICT and use only for a generic
-                                                 YANG data tree (opaq Notifications, RPCs or actions are not allowed). */
+                                                 an opaq node. Do not combine with #LYD_OPT_STRICT (except for ::LYD_LYB). */
 #define LYD_PARSE_NO_STATE  0x100000        /**< Forbid state data in the parsed data. */
 
 #define LYD_PARSE_LYB_MOD_UPDATE  0x200000  /**< Only for LYB format, allow parsing data printed using a specific module
