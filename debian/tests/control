@@ -4,4 +4,4 @@ Depends: python3-all,
 
 Tests: yanglint
 Depends: gzip,
-         yang-tools
+         libyang-tools
