@@ -664,7 +664,7 @@ lyd_new_inner(struct lyd_node *parent, const struct lys_module *module, const ch
     const struct lysc_node *schema;
     struct ly_ctx *ctx = parent ? parent->schema->module->ctx : (module ? module->ctx : NULL);
 
-    LY_CHECK_ARG_RET(ctx, parent || module, name, LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, parent || module, parent || node, name, LY_EINVAL);
 
     if (!module) {
         module = parent->schema->module;
@@ -695,7 +695,7 @@ lyd_new_list(struct lyd_node *parent, const struct lys_module *module, const cha
     const char *key_val;
     LY_ERR rc = LY_SUCCESS;
 
-    LY_CHECK_ARG_RET(ctx, parent || module, name, LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, parent || module, parent || node, name, LY_EINVAL);
 
     if (!module) {
         module = parent->schema->module;
@@ -742,7 +742,7 @@ lyd_new_list2(struct lyd_node *parent, const struct lys_module *module, const ch
     const struct lysc_node *schema;
     struct ly_ctx *ctx = parent ? parent->schema->module->ctx : (module ? module->ctx : NULL);
 
-    LY_CHECK_ARG_RET(ctx, parent || module, name, LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, parent || module, parent || node, name, LY_EINVAL);
 
     if (!module) {
         module = parent->schema->module;
@@ -781,7 +781,7 @@ lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const cha
     const struct lysc_node *schema;
     struct ly_ctx *ctx = parent ? parent->schema->module->ctx : (module ? module->ctx : NULL);
 
-    LY_CHECK_ARG_RET(ctx, parent || module, name, LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, parent || module, parent || node, name, LY_EINVAL);
 
     if (!module) {
         module = parent->schema->module;
@@ -810,7 +810,7 @@ lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char
     const struct lysc_node *schema;
     struct ly_ctx *ctx = parent ? parent->schema->module->ctx : (module ? module->ctx : NULL);
 
-    LY_CHECK_ARG_RET(ctx, parent || module, name, LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, parent || module, parent || node, name, LY_EINVAL);
 
     if (!module) {
         module = parent->schema->module;
@@ -952,7 +952,7 @@ lyd_new_opaq(struct lyd_node *parent, const struct ly_ctx *ctx, const char *name
 {
     struct lyd_node *ret = NULL;
 
-    LY_CHECK_ARG_RET(ctx, parent || ctx, name, module_name, LY_EINVAL);
+    LY_CHECK_ARG_RET(ctx, parent || ctx, parent || node, name, module_name, LY_EINVAL);
 
     if (!ctx) {
         ctx = LYD_NODE_CTX(parent);
