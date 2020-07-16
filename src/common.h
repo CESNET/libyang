@@ -266,6 +266,17 @@ struct ly_ctx {
  */
 struct lysp_submodule *ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *submodule, const char *revision);
 
+/**
+ * @brief Get the (only) implemented YANG module specified by its name.
+ *
+ * @param[in] ctx Context where to search.
+ * @param[in] name Name of the YANG module to get.
+ * @param[in] name_len Optional length of the @p name. If zero, NULL-terminated name is expected.
+ * @return The only implemented YANG module revision of the given name in the given context. NULL if there is no
+ * implemented module of the given name.
+ */
+struct lys_module *ly_ctx_get_module_implemented2(const struct ly_ctx *ctx, const char *name, size_t name_len);
+
 /******************************************************************************
  * Parsers
  *****************************************************************************/

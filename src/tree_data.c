@@ -928,7 +928,6 @@ lyd_new_meta(struct lyd_node *parent, const struct lys_module *module, const cha
     struct lyd_meta *ret = NULL;
     const struct ly_ctx *ctx;
     const char *prefix, *tmp;
-    char *str;
     size_t pref_len, name_len;
 
     LY_CHECK_ARG_RET(NULL, parent, name, module || strchr(name, ':'), LY_EINVAL);
@@ -944,9 +943,7 @@ lyd_new_meta(struct lyd_node *parent, const struct lys_module *module, const cha
 
     /* find the module */
     if (prefix) {
-        str = strndup(prefix, pref_len);
-        module = ly_ctx_get_module_implemented(ctx, str);
-        free(str);
+        module = ly_ctx_get_module_implemented2(ctx, prefix, pref_len);
         LY_CHECK_ERR_RET(!module, LOGERR(ctx, LY_EINVAL, "Module \"%.*s\" not found.", pref_len, prefix), LY_ENOTFOUND);
     }
 
