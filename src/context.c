@@ -350,6 +350,7 @@ ly_ctx_get_module_iter(const struct ly_ctx *ctx, unsigned int *index)
  *
  * @param[in] ctx Context where to iterate.
  * @param[in] key Key value to search for.
+ * @param[in] key_size Optional length of the @p key. If zero, NULL-terminated key is expected.
  * @param[in] key_offset Key's offset in struct lys_module to get value from the context's modules to match with the key.
  * @param[in,out] Iterator to pass between the function calls. On the first call, the variable is supposed to be
  * initiated to 0. After each call returning a module, the value is greater by 1 than the index of the returned
@@ -357,7 +358,7 @@ ly_ctx_get_module_iter(const struct ly_ctx *ctx, unsigned int *index)
  * @return Module matching the given key, NULL if no such module found.
  */
 static struct lys_module *
-ly_ctx_get_module_by_iter(const struct ly_ctx *ctx, const char *key, size_t key_offset, unsigned int *index)
+ly_ctx_get_module_by_iter(const struct ly_ctx *ctx, const char *key, size_t key_size, size_t key_offset, unsigned int *index)
 {
     struct lys_module *mod;
     const char *value;
@@ -365,7 +366,7 @@ ly_ctx_get_module_by_iter(const struct ly_ctx *ctx, const char *key, size_t key_
     for (; *index < ctx->list.count; ++(*index)) {
         mod = ctx->list.objs[*index];
         value = *(const char**)(((int8_t*)(mod)) + key_offset);
-        if (!strcmp(key, value)) {
+        if ((!key_size && !strcmp(key, value)) || (key_size && !strncmp(key, value, key_size) && value[key_size] == '\0')) {
             /* increment index for the next run */
             ++(*index);
             return mod;
@@ -390,7 +391,7 @@ ly_ctx_get_module_by(const struct ly_ctx *ctx, const char *key, size_t key_offse
     struct lys_module *mod;
     unsigned int index = 0;
 
-    while ((mod = ly_ctx_get_module_by_iter(ctx, key, key_offset, &index))) {
+    while ((mod = ly_ctx_get_module_by_iter(ctx, key, 0, key_offset, &index))) {
         if (!revision) {
             if (!mod->revision) {
                 /* found requested module without revision */
@@ -434,7 +435,7 @@ ly_ctx_get_module_latest_by(const struct ly_ctx *ctx, const char *key, size_t ke
     struct lys_module *mod;
     unsigned int index = 0;
 
-    while ((mod = ly_ctx_get_module_by_iter(ctx, key, key_offset, &index))) {
+    while ((mod = ly_ctx_get_module_by_iter(ctx, key, 0, key_offset, &index))) {
         if (mod->latest_revision) {
             return mod;
         }
@@ -461,16 +462,17 @@ ly_ctx_get_module_latest_ns(const struct ly_ctx *ctx, const char *ns)
  * @brief Unifying function for ly_ctx_get_module_implemented() and ly_ctx_get_module_implemented_ns()
  * @param[in] ctx Context where to search.
  * @param[in] key Name or Namespace as a search key.
+ * @param[in] key_size Optional length of the @p key. If zero, NULL-terminated key is expected.
  * @param[in] key_offset Key's offset in struct lys_module to get value from the context's modules to match with the key.
  * @return Matching module if any.
  */
 static struct lys_module *
-ly_ctx_get_module_implemented_by(const struct ly_ctx *ctx, const char *key, size_t key_offset)
+ly_ctx_get_module_implemented_by(const struct ly_ctx *ctx, const char *key, size_t key_size, size_t key_offset)
 {
     struct lys_module *mod;
     unsigned int index = 0;
 
-    while ((mod = ly_ctx_get_module_by_iter(ctx, key, key_offset, &index))) {
+    while ((mod = ly_ctx_get_module_by_iter(ctx, key, key_size, key_offset, &index))) {
         if (mod->implemented) {
             return mod;
         }
@@ -483,14 +485,21 @@ API struct lys_module *
 ly_ctx_get_module_implemented(const struct ly_ctx *ctx, const char *name)
 {
     LY_CHECK_ARG_RET(ctx, ctx, name, NULL);
-    return ly_ctx_get_module_implemented_by(ctx, name, offsetof(struct lys_module, name));
+    return ly_ctx_get_module_implemented_by(ctx, name, 0, offsetof(struct lys_module, name));
+}
+
+struct lys_module *
+ly_ctx_get_module_implemented2(const struct ly_ctx *ctx, const char *name, size_t name_len)
+{
+    LY_CHECK_ARG_RET(ctx, ctx, name, NULL);
+    return ly_ctx_get_module_implemented_by(ctx, name, name_len, offsetof(struct lys_module, name));
 }
 
 API struct lys_module *
 ly_ctx_get_module_implemented_ns(const struct ly_ctx *ctx, const char *ns)
 {
     LY_CHECK_ARG_RET(ctx, ctx, ns, NULL);
-    return ly_ctx_get_module_implemented_by(ctx, ns, offsetof(struct lys_module, ns));
+    return ly_ctx_get_module_implemented_by(ctx, ns, 0, offsetof(struct lys_module, ns));
 }
 
 struct lysp_submodule *

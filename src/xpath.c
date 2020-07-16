@@ -5280,7 +5280,6 @@ moveto_resolve_model(const char **qname, uint16_t *qname_len, struct lyxp_set *s
     const struct lys_module *mod = NULL;
     const char *ptr;
     int pref_len;
-    char *str;
 
     assert((set->type == LYXP_SET_NODE_SET) || (set->type == LYXP_SET_SCNODE_SET));
 
@@ -5295,9 +5294,7 @@ moveto_resolve_model(const char **qname, uint16_t *qname_len, struct lyxp_set *s
             break;
         case LYD_JSON:
             /* JSON data, search in context */
-            str = strndup(*qname, pref_len);
-            mod = ly_ctx_get_module_implemented(set->ctx, str);
-            free(str);
+            mod = ly_ctx_get_module_implemented2(set->ctx, *qname, pref_len);
             break;
         case LYD_XML:
         case LYD_LYB:
