@@ -1775,6 +1775,19 @@ lyd_unlink_tree(struct lyd_node *node)
             node->parent->child = node->next;
         }
 
+        /* check for NP container whether its last non-default node is not being unlinked */
+        if (node->parent->schema && (node->parent->schema->nodetype == LYS_CONTAINER)
+                && !(node->parent->flags & LYD_DEFAULT) && !(node->parent->schema->flags & LYS_PRESENCE)) {
+            LY_LIST_FOR(node->parent->child, iter) {
+                if ((iter != node) && !(iter->flags & LYD_DEFAULT)) {
+                    break;
+                }
+            }
+            if (!iter) {
+                node->parent->flags |= LYD_DEFAULT;
+            }
+        }
+
         /* check for keyless list and update its hash */
         for (iter = (struct lyd_node *)node->parent; iter; iter = (struct lyd_node *)iter->parent) {
             if (iter->schema && (iter->schema->flags & LYS_KEYLESS)) {
