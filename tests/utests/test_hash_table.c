@@ -148,7 +148,7 @@ test_ht_basic(void **state)
     assert_int_equal(LY_SUCCESS, lyht_find(ht, &i, i, NULL));
     assert_int_equal(LY_SUCCESS, lyht_remove(ht, &i, i));
     assert_int_equal(LY_ENOTFOUND, lyht_find(ht, &i, i, NULL));
-    assert_int_equal(LY_EINVAL, lyht_remove(ht, &i, i));
+    assert_int_equal(LY_ENOTFOUND, lyht_remove(ht, &i, i));
     logbuf_assert("Invalid argument hash (lyht_remove()).");
 
     lyht_free(ht);
@@ -190,7 +190,7 @@ test_ht_resize(void **state)
     /* removing not present data should fail */
     for (i = 0; i < 2; ++i) {
         logbuf_clean();
-        assert_int_equal(LY_EINVAL, lyht_remove(ht, &i, i));
+        assert_int_equal(LY_ENOTFOUND, lyht_remove(ht, &i, i));
         logbuf_assert("Invalid argument hash (lyht_remove()).");
     }
     /* removing present data, resize should happened

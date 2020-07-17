@@ -686,7 +686,7 @@ lyht_remove(struct hash_table *ht, void *val_p, uint32_t hash)
     int32_t i;
     int first_matched = 0, r, ret;
 
-    LY_CHECK_ERR_RET(lyht_find_first(ht, hash, &rec), LOGARG(NULL, hash), LY_EINVAL); /* hash not found */
+    LY_CHECK_ERR_RET(lyht_find_first(ht, hash, &rec), LOGARG(NULL, hash), LY_ENOTFOUND); /* hash not found */
 
     if ((rec->hash == hash) && ht->val_equal(val_p, &rec->val, 1, ht->cb_data)) {
         /* even the value matches */
@@ -720,8 +720,7 @@ lyht_remove(struct hash_table *ht, void *val_p, uint32_t hash)
         rec->hits = -1;
     } else {
         /* value not found even in collisions */
-        LOGINT(NULL);
-        return LY_EINT;
+        return LY_ENOTFOUND;
     }
 
     /* check size & shrink if needed */
