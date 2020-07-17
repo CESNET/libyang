@@ -286,30 +286,30 @@ test_defaults(void **state)
 
     assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_ALL));
     assert_int_equal(strlen(printed), ly_out_printed(out));
-    data = "<c xmlns=\"urn:defaults\">aa</c><a xmlns=\"urn:defaults\" xmlns:d=\"urn:defaults\">/d:b</a>";
+    data = "<a xmlns=\"urn:defaults\" xmlns:d=\"urn:defaults\">/d:b</a><c xmlns=\"urn:defaults\">aa</c>";
     assert_string_equal(printed, data);
     ly_out_reset(out);
 
     assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_ALL_TAG));
     assert_int_equal(strlen(printed), ly_out_printed(out));
-    data = "<c xmlns=\"urn:defaults\">aa</c>"
-        "<a xmlns=\"urn:defaults\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\""
-        " ncwd:default=\"true\" xmlns:d=\"urn:defaults\">/d:b</a>";
+    data = "<a xmlns=\"urn:defaults\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\""
+        " ncwd:default=\"true\" xmlns:d=\"urn:defaults\">/d:b</a>"
+        "<c xmlns=\"urn:defaults\">aa</c>";
     assert_string_equal(printed, data);
     ly_out_reset(out);
 
     assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_IMPL_TAG));
     assert_int_equal(strlen(printed), ly_out_printed(out));
-    data = "<c xmlns=\"urn:defaults\">aa</c>"
-        "<a xmlns=\"urn:defaults\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\""
-        " ncwd:default=\"true\" xmlns:d=\"urn:defaults\">/d:b</a>";
+    data = "<a xmlns=\"urn:defaults\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\""
+        " ncwd:default=\"true\" xmlns:d=\"urn:defaults\">/d:b</a>"
+        "<c xmlns=\"urn:defaults\">aa</c>";
     assert_string_equal(printed, data);
     ly_out_reset(out);
 
     lyd_free_all(tree);
 
     /* string value equal to the default but default is an unresolved instance-identifier, so they are not considered equal */
-    data = "<c xmlns=\"urn:defaults\">aa</c><a xmlns=\"urn:defaults\">/d:b</a>";
+    data = "<a xmlns=\"urn:defaults\">/d:b</a><c xmlns=\"urn:defaults\">aa</c>";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(s->ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
 
     assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_TRIM));
@@ -335,33 +335,33 @@ test_defaults(void **state)
     lyd_free_all(tree);
 
     /* instance-identifier value equal to the default, should be considered equal */
-    data = "<c xmlns=\"urn:defaults\">aa</c><a xmlns=\"urn:defaults\" xmlns:d=\"urn:defaults\">/d:b</a><b xmlns=\"urn:defaults\">val</b>";
+    data = "<a xmlns=\"urn:defaults\" xmlns:d=\"urn:defaults\">/d:b</a><b xmlns=\"urn:defaults\">val</b><c xmlns=\"urn:defaults\">aa</c>";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(s->ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
 
     assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_TRIM));
     assert_int_equal(strlen(printed), ly_out_printed(out));
-    data = "<c xmlns=\"urn:defaults\">aa</c><b xmlns=\"urn:defaults\">val</b>";
+    data = "<b xmlns=\"urn:defaults\">val</b><c xmlns=\"urn:defaults\">aa</c>";
     assert_string_equal(printed, data);
     ly_out_reset(out);
 
     assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_ALL));
     assert_int_equal(strlen(printed), ly_out_printed(out));
-    data = "<c xmlns=\"urn:defaults\">aa</c><a xmlns=\"urn:defaults\" xmlns:d=\"urn:defaults\">/d:b</a><b xmlns=\"urn:defaults\">val</b>";
+    data = "<a xmlns=\"urn:defaults\" xmlns:d=\"urn:defaults\">/d:b</a><b xmlns=\"urn:defaults\">val</b><c xmlns=\"urn:defaults\">aa</c>";
     assert_string_equal(printed, data);
     ly_out_reset(out);
 
     assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_ALL_TAG));
     assert_int_equal(strlen(printed), ly_out_printed(out));
-    data = "<c xmlns=\"urn:defaults\">aa</c>"
-        "<a xmlns=\"urn:defaults\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\""
+    data = "<a xmlns=\"urn:defaults\" xmlns:ncwd=\"urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults\""
         " ncwd:default=\"true\" xmlns:d=\"urn:defaults\">/d:b</a>"
-        "<b xmlns=\"urn:defaults\">val</b>";
+        "<b xmlns=\"urn:defaults\">val</b>"
+        "<c xmlns=\"urn:defaults\">aa</c>";
     assert_string_equal(printed, data);
     ly_out_reset(out);
 
     assert_int_equal(LY_SUCCESS, lyd_print_all(out, tree, LYD_XML, LYD_PRINT_WD_IMPL_TAG));
     assert_int_equal(strlen(printed), ly_out_printed(out));
-    data = "<c xmlns=\"urn:defaults\">aa</c><a xmlns=\"urn:defaults\" xmlns:d=\"urn:defaults\">/d:b</a><b xmlns=\"urn:defaults\">val</b>";
+    data = "<a xmlns=\"urn:defaults\" xmlns:d=\"urn:defaults\">/d:b</a><b xmlns=\"urn:defaults\">val</b><c xmlns=\"urn:defaults\">aa</c>";
     assert_string_equal(printed, data);
     ly_out_reset(out);
 

@@ -500,8 +500,8 @@ test_list(void **state)
                          "<list><name>c</name><value>3</value></list>"
                        "</df>";
     const char *xml3 = "<df xmlns=\"urn:libyang:tests:defaults\">"
-                         "<list><name>a</name><value>2</value></list>"
                          "<list><name>b</name><value>-2</value></list>"
+                         "<list><name>a</name><value>2</value></list>"
                        "</df>";
 
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(st->ctx, xml1, LYD_XML, LYD_PARSE_ONLY, 0, &st->first));
@@ -562,7 +562,7 @@ test_list(void **state)
     lyd_print_mem(&st->xml1, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     free(st->xml2);
     lyd_print_mem(&st->xml2, st->third, LYD_XML, LYD_PRINT_WITHSIBLINGS);
-    /* TODO ordering assert_string_equal(st->xml1, st->xml2); */
+    assert_string_equal(st->xml1, st->xml2);
 
     /* merge */
     assert_int_equal(lyd_diff_merge_all(st->diff2, &st->diff1), LY_SUCCESS);
@@ -835,7 +835,7 @@ test_wd(void **state)
                          "<foo>41</foo><dllist>4</dllist>"
                        "</df>";
     const char *xml3 = "<df xmlns=\"urn:libyang:tests:defaults\">"
-                         "<foo>42</foo><dllist>1</dllist><dllist>4</dllist>"
+                         "<foo>42</foo><dllist>4</dllist><dllist>1</dllist>"
                        "</df>";
 
     mod = ly_ctx_get_module_implemented(st->ctx, "defaults");
@@ -867,8 +867,7 @@ test_wd(void **state)
     assert_int_equal(lyd_diff_apply_all(&st->first, st->diff1), LY_SUCCESS);
     lyd_print_mem(&st->xml1, st->first, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     lyd_print_mem(&st->xml2, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS);
-    /* TODO just an ordering problem
-    assert_string_equal(st->xml1, st->xml2);*/
+    assert_string_equal(st->xml1, st->xml2);
 
     /* diff2 */
     assert_int_equal(lyd_diff_siblings(st->second, st->third, LYD_DIFF_DEFAULTS, &st->diff2), LY_SUCCESS);
@@ -888,7 +887,7 @@ test_wd(void **state)
     lyd_print_mem(&st->xml1, st->second, LYD_XML, LYD_PRINT_WITHSIBLINGS);
     free(st->xml2);
     lyd_print_mem(&st->xml2, st->third, LYD_XML, LYD_PRINT_WITHSIBLINGS);
-    /* TODO ordering assert_string_equal(st->xml1, st->xml2); */
+    assert_string_equal(st->xml1, st->xml2);
 
     /* merge */
     assert_int_equal(lyd_diff_merge_all(st->diff2, &st->diff1), LY_SUCCESS);

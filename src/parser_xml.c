@@ -535,9 +535,9 @@ lydxml_data_r(struct lyd_xml_ctx *lydctx, struct lyd_node_inner *parent, struct 
             }
 
             if (parent && (cur->schema->flags & LYS_KEY)) {
-                /* check the key order, the anchor must always be the last child */
-                anchor = lyd_get_prev_key_anchor(parent->child, cur->schema);
-                if ((!anchor && parent->child) || (anchor && anchor->next)) {
+                /* check the key order, the anchor must never be a key */
+                anchor = lyd_insert_get_next_anchor(parent->child, cur);
+                if (anchor && (anchor->schema->flags & LYS_KEY)) {
                     if (lydctx->options & LYD_PARSE_STRICT) {
                         LOGVAL(ctx, LY_VLOG_LINE, &xmlctx->line, LYVE_DATA, "Invalid position of the key \"%s\" in a list.",
                                 cur->schema->name);
@@ -649,8 +649,11 @@ lydxml_data_r(struct lyd_xml_ctx *lydctx, struct lyd_node_inner *parent, struct 
             attr = NULL;
         }
 
-        /* insert */
+        /* insert, keep first pointer correct */
         lyd_insert_node((struct lyd_node *)parent, first, cur);
+        while (!parent && (*first)->prev->next) {
+            *first = (*first)->prev;
+        }
         cur = NULL;
 
         /* parser next */

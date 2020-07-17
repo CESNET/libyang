@@ -690,7 +690,7 @@ LY_ERR lyd_change_term(struct lyd_node *term, const char *val_str);
 LY_ERR lyd_change_meta(struct lyd_meta *meta, const char *val_str);
 
 /**
- * @brief Insert a child into a parent. It is inserted as the last child.
+ * @brief Insert a child into a parent.
  *
  * - if the node is part of some other tree, it is automatically unlinked.
  * - if the node is the first node of a node list (with no parent), all the subsequent nodes are also inserted.
@@ -700,23 +700,24 @@ LY_ERR lyd_change_meta(struct lyd_meta *meta, const char *val_str);
  * @return LY_SUCCESS on success.
  * @return LY_ERR error on error.
  */
-LY_ERR lyd_insert(struct lyd_node *parent, struct lyd_node *node);
+LY_ERR lyd_insert_child(struct lyd_node *parent, struct lyd_node *node);
 
 /**
- * @brief Insert a node into siblings. It is inserted as the last sibling.
+ * @brief Insert a node into siblings.
  *
  * - if the node is part of some other tree, it is automatically unlinked.
  * - if the node is the first node of a node list (with no parent), all the subsequent nodes are also inserted.
  *
- * @param[in] sibling Siblings to insert into.
+ * @param[in] sibling Siblings to insert into, can even be NULL.
  * @param[in] node Node to insert.
+ * @param[out] first Optionally return the first sibling after insertion. Can be the address of @p sibling.
  * @return LY_SUCCESS on success.
  * @return LY_ERR error on error.
  */
-LY_ERR lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node);
+LY_ERR lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node, struct lyd_node **first);
 
 /**
- * @brief Insert a node before another node that is its schema sibling.
+ * @brief Insert a node before another node, can be used only for user-ordered nodes.
  *
  * - if the node is part of some other tree, it is automatically unlinked.
  * - if the node is the first node of a node list (with no parent), all the subsequent nodes are also inserted.
@@ -729,7 +730,7 @@ LY_ERR lyd_insert_sibling(struct lyd_node *sibling, struct lyd_node *node);
 LY_ERR lyd_insert_before(struct lyd_node *sibling, struct lyd_node *node);
 
 /**
- * @brief Insert a node after another node that is its schema sibling.
+ * @brief Insert a node after another node, can be used only for user-ordered nodes.
  *
  * - if the node is part of some other tree, it is automatically unlinked.
  * - if the node is the first node of a node list (with no parent), all the subsequent nodes are also inserted.
@@ -1246,15 +1247,8 @@ LY_ERR lyd_find_sibling_set(const struct lyd_node *siblings, const struct lyd_no
  *
  * @param[in] siblings Siblings to search in including preceding and succeeding nodes.
  * @param[in] schema Schema node of the data node to find.
- * @param[in] key_or_value Expected value depends on the type of \p schema:
- *              LYS_CONTAINER:
- *              LYS_LEAF:
- *              LYS_ANYXML:
- *              LYS_ANYDATA:
- *              LYS_NOTIF:
- *              LYS_RPC:
- *              LYS_ACTION:
- *                  NULL should be always set, will be ignored.
+ * @param[in] key_or_value If it is NULL, the first schema node data instance is found. For nodes with many
+ * instances, it can be set based on the type of @p schema:
  *              LYS_LEAFLIST:
  *                  Searched instance value.
  *              LYS_LIST:
@@ -1277,7 +1271,7 @@ LY_ERR lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_n
 /**
  * @brief Search in the given data for instances of nodes matching the provided XPath.
  *
- * The expected format of the expression is JSON (::LYD_JSON) meaning the first node in every path
+ * The expected format of the expression is ::LYD_JSON, meaning the first node in every path
  * must have its module name as prefix or be the special `*` value for all the nodes.
  *
  * If a list instance is being selected with all its key values specified (but not necessarily ordered)

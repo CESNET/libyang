@@ -191,25 +191,24 @@ test_batch(void **state)
         "<module>"
             "<name>yang</name>"
             "<revision>2016-02-11</revision>"
-            "<conformance-type>implement</conformance-type>"
             "<namespace>urn:ietf:params:xml:ns:yang:1</namespace>"
+            "<conformance-type>implement</conformance-type>"
         "</module>"
         "<module>"
             "<name>ietf-yang-library</name>"
             "<revision>2016-02-01</revision>"
-            "<conformance-type>implement</conformance-type>"
             "<namespace>urn:ietf:params:xml:ns:yang:ietf-yang-library</namespace>"
+            "<conformance-type>implement</conformance-type>"
         "</module>"
         "<module>"
             "<name>ietf-netconf-acm</name>"
             "<revision>2012-02-22</revision>"
-            "<conformance-type>implement</conformance-type>"
             "<namespace>urn:ietf:params:xml:ns:yang:ietf-netconf-acm</namespace>"
+            "<conformance-type>implement</conformance-type>"
         "</module>"
         "<module>"
             "<name>ietf-netconf</name>"
             "<revision>2011-06-01</revision>"
-            "<conformance-type>implement</conformance-type>"
             "<namespace>urn:ietf:params:xml:ns:netconf:base:1.0</namespace>"
             "<feature>writable-running</feature>"
             "<feature>candidate</feature>"
@@ -217,18 +216,19 @@ test_batch(void **state)
             "<feature>validate</feature>"
             "<feature>startup</feature>"
             "<feature>xpath</feature>"
+            "<conformance-type>implement</conformance-type>"
         "</module>"
         "<module>"
             "<name>ietf-netconf-monitoring</name>"
             "<revision>2010-10-04</revision>"
-            "<conformance-type>implement</conformance-type>"
             "<namespace>urn:ietf:params:xml:ns:yang:ietf-netconf-monitoring</namespace>"
+            "<conformance-type>implement</conformance-type>"
         "</module>"
         "<module>"
             "<name>ietf-netconf-with-defaults</name>"
             "<revision>2011-06-01</revision>"
-            "<conformance-type>implement</conformance-type>"
             "<namespace>urn:ietf:params:xml:ns:yang:ietf-netconf-with-defaults</namespace>"
+            "<conformance-type>implement</conformance-type>"
         "</module>"
     "</modules-state>";
     struct ly_in *in = NULL;
@@ -574,7 +574,8 @@ test_dflt(void **state)
     st->source = NULL;
 
     /* c should be replaced and now be default */
-    assert_true(lyd_node_children(st->target, 0)->flags & LYD_DEFAULT);
+    assert_string_equal(lyd_node_children(st->target, 0)->prev->schema->name, "c");
+    assert_true(lyd_node_children(st->target, 0)->prev->flags & LYD_DEFAULT);
 }
 
 static void

@@ -756,11 +756,10 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root_p)
     }
 
     if (root_bis) {
-        if (lyd_insert_sibling(root_bis, root)) {
+        if (lyd_insert_sibling(root, root_bis, &root)) {
             goto error;
         }
-        root = root_bis;
-        root_bis = 0;
+        root_bis = NULL;
     }
 
     LY_CHECK_GOTO(ret = lyd_validate_all(&root, NULL, LYD_VALIDATE_PRESENT, NULL), error);
