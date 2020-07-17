@@ -12,6 +12,7 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
+#include <assert.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -73,11 +74,10 @@ lyd_hash(struct lyd_node *node)
                     break;
                 }
                 int dynamic = 0;
-                struct lysc_type *type = ((struct lysc_node_leaf*)iter->schema)->type;
-                const char *value = type->plugin->print(&((struct lyd_node_term*)iter)->value, LYD_JSON, json_print_get_prefix, NULL, &dynamic);
+                const char *value = lyd_value2str((struct lyd_node_term *)iter, &dynamic);
                 node->hash = dict_hash_multi(node->hash, value, strlen(value));
                 if (dynamic) {
-                    free((char*)value);
+                    free((char *)value);
                 }
             }
         } else {
@@ -85,10 +85,8 @@ lyd_hash(struct lyd_node *node)
             lyd_hash_keyless_list_dfs(list->child, &node->hash);
         }
     } else if (node->schema->nodetype == LYS_LEAFLIST) {
-        struct lyd_node_term *llist = (struct lyd_node_term*)node;
         int dynamic = 0;
-        const char *value = ((struct lysc_node_leaflist*)node->schema)->type->plugin->print(&llist->value, LYD_JSON,
-                                                                                            json_print_get_prefix, NULL, &dynamic);
+        const char *value = lyd_value2str((struct lyd_node_term *)node, &dynamic);
         node->hash = dict_hash_multi(node->hash, value, strlen(value));
         if (dynamic) {
             free((char*)value);
@@ -128,10 +126,58 @@ lyd_hash_table_val_equal(void *val1_p, void *val2_p, int mod, void *UNUSED(cb_da
     return 0;
 }
 
+/**
+ * @brief Add single node into children hash table.
+ *
+ * @param[in] ht Children hash table.
+ * @param[in] node Node to insert.
+ * @param[in] empty_ht Whether we started with an empty HT meaning no nodes were inserted yet.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lyd_insert_hash_add(struct hash_table *ht, struct lyd_node *node, int empty_ht)
+{
+    uint32_t hash;
+
+    assert(ht && node && node->schema);
+
+    /* add node itself */
+    if (lyht_insert(ht, &node, node->hash, NULL)) {
+        LOGINT(LYD_NODE_CTX(node));
+        return LY_EINT;
+    }
+
+    /* add first instance of a (leaf-)list */
+    if ((node->schema->nodetype & (LYS_LIST | LYS_LEAFLIST))
+            && (!node->prev->next || (node->prev->schema != node->schema))) {
+        /* get the simple hash */
+        hash = dict_hash_multi(0, node->schema->module->name, strlen(node->schema->module->name));
+        hash = dict_hash_multi(hash, node->schema->name, strlen(node->schema->name));
+        hash = dict_hash_multi(hash, NULL, 0);
+
+        /* remove any previous stored instance, only if we did not start with an empty HT */
+        if (!empty_ht && node->next && (node->next->schema == node->schema)) {
+            if (lyht_remove(ht, &node->next, hash)) {
+                LOGINT(LYD_NODE_CTX(node));
+                return LY_EINT;
+            }
+        }
+
+        /* insert this instance as the first (leaf-)list instance */
+        if (lyht_insert(ht, &node, hash, NULL)) {
+            LOGINT(LYD_NODE_CTX(node));
+            return LY_EINT;
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
 LY_ERR
 lyd_insert_hash(struct lyd_node *node)
 {
     struct lyd_node *iter;
+    uint32_t u;
 
     if (!node->parent || !node->schema || !node->parent->schema) {
         /* nothing to do */
@@ -140,27 +186,26 @@ lyd_insert_hash(struct lyd_node *node)
 
     /* create parent hash table if required, otherwise just add the new child */
     if (!node->parent->children_ht) {
-        unsigned int u;
-
         /* the hash table is created only when the number of children in a node exceeds the
          * defined minimal limit LYD_HT_MIN_ITEMS
          */
-        for (u = 0, iter = node->parent->child; iter; ++u, iter = iter->next);
+        u = 0;
+        LY_LIST_FOR(node->parent->child, iter) {
+            if (iter->schema) {
+                ++u;
+            }
+        }
         if (u >= LYD_HT_MIN_ITEMS) {
             /* create hash table, insert all the children */
             node->parent->children_ht = lyht_new(1, sizeof(struct lyd_node *), lyd_hash_table_val_equal, NULL, 1);
             LY_LIST_FOR(node->parent->child, iter) {
-                if (lyht_insert(node->parent->children_ht, &iter, iter->hash, NULL)) {
-                    LOGINT(node->schema->module->ctx);
-                    return LY_EINT;
+                if (iter->schema) {
+                    LY_CHECK_RET(lyd_insert_hash_add(node->parent->children_ht, iter, 1));
                 }
             }
         }
     } else {
-        if (lyht_insert(node->parent->children_ht, &node, node->hash, NULL)) {
-            LOGINT(node->schema->module->ctx);
-            return LY_EINT;
-        }
+        LY_CHECK_RET(lyd_insert_hash_add(node->parent->children_ht, node, 0));
     }
 
     return LY_SUCCESS;
@@ -169,7 +214,38 @@ lyd_insert_hash(struct lyd_node *node)
 void
 lyd_unlink_hash(struct lyd_node *node)
 {
-    if (node->parent && node->parent->schema && node->parent->children_ht) {
-        lyht_remove(node->parent->children_ht, &node, node->hash);
+    uint32_t hash;
+
+    if (!node->parent || !node->schema || !node->parent->schema || !node->parent->children_ht) {
+        /* not in any HT */
+        return;
+    }
+
+    /* remove from the parent HT */
+    if (lyht_remove(node->parent->children_ht, &node, node->hash)) {
+        LOGINT(LYD_NODE_CTX(node));
+        return;
+    }
+
+    /* first instance of the (leaf-)list, needs to be removed from HT */
+    if ((node->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) && (!node->prev->next || (node->prev->schema != node->schema))) {
+        /* get the simple hash */
+        hash = dict_hash_multi(0, node->schema->module->name, strlen(node->schema->module->name));
+        hash = dict_hash_multi(hash, node->schema->name, strlen(node->schema->name));
+        hash = dict_hash_multi(hash, NULL, 0);
+
+        /* remove the instance */
+        if (lyht_remove(node->parent->children_ht, &node, hash)) {
+            LOGINT(LYD_NODE_CTX(node));
+            return;
+        }
+
+        /* add the next instance */
+        if (node->next && (node->next->schema == node->schema)) {
+            if (lyht_insert(node->parent->children_ht, &node->next, hash, NULL)) {
+                LOGINT(LYD_NODE_CTX(node));
+                return;
+            }
+        }
     }
 }

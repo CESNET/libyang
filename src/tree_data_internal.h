@@ -173,20 +173,17 @@ LY_ERR lyd_create_opaq(const struct ly_ctx *ctx, const char *name, size_t name_l
                        const char *ns, struct lyd_node **node);
 
 /**
- * @brief Find the key after which to insert the new key.
+ * @brief Find the next node, before which to insert the new node.
  *
- * @param[in] first_sibling List first sibling.
- * @param[in] new_key Key that will be inserted.
- * @return Key to insert after.
- * @return NULL if the new key should be first.
+ * @param[in] first_sibling First sibling of the nodes to consider.
+ * @param[in] new_node Node that will be inserted.
+ * @return Node to insert after.
+ * @return NULL if the new node should be first.
  */
-struct lyd_node *lyd_get_prev_key_anchor(const struct lyd_node *first_sibling, const struct lysc_node *new_key);
+struct lyd_node *lyd_insert_get_next_anchor(const struct lyd_node *first_sibling, const struct lyd_node *new_node);
 
 /**
- * @brief Insert a node into parent/siblings. In case a key is being inserted into a list, the correct position
- * is found, inserted into, and if it is the last key, parent list hash is calculated. Also, in case we are inserting
- * into top-level siblings, insert it as the last sibling of all the module data siblings. Otherwise it is inserted at
- * the very last place.
+ * @brief Insert a node into parent/siblings. Order and hashes are fully handled.
  *
  * @param[in] parent Parent to insert into, NULL for top-level sibling.
  * @param[in,out] first_sibling First sibling, NULL if no top-level sibling exist yet. Can be also NULL if @p parent is set.

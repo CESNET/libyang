@@ -441,17 +441,18 @@ test_rpc(void **state)
     assert_string_equal(node->schema->name, "edit-config");
     node = lyd_node_children(node, 0)->next;
     assert_string_equal(node->schema->name, "config");
+
     node = ((struct lyd_node_any *)node)->value.tree;
-    /* l1 key c has invalid value */
-    assert_null(node->schema);
-    assert_string_equal(((struct lyd_node_opaq *)node)->name, "l1");
-    node = node->next;
     assert_non_null(node->schema);
     assert_string_equal(node->schema->name, "cp");
     node = lyd_node_children(node, 0);
     /* z has no value */
     assert_null(node->schema);
     assert_string_equal(((struct lyd_node_opaq *)node)->name, "z");
+    node = node->parent->next;
+    /* l1 key c has invalid value so it is at the end */
+    assert_null(node->schema);
+    assert_string_equal(((struct lyd_node_opaq *)node)->name, "l1");
 
     lyd_print_tree(out, tree, LYD_XML, 0);
     assert_string_equal(str,
@@ -461,14 +462,14 @@ test_rpc(void **state)
                     "<running/>"
                 "</target>"
                 "<config>"
+                    "<cp xmlns=\"urn:tests:a\">"
+                        "<z xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:operation=\"delete\"/>"
+                    "</cp>"
                     "<l1 xmlns=\"urn:tests:a\" xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:operation=\"replace\">"
                         "<a>val_a</a>"
                         "<b>val_b</b>"
                         "<c>val_c</c>"
                     "</l1>"
-                    "<cp xmlns=\"urn:tests:a\">"
-                        "<z xmlns:nc=\"urn:ietf:params:xml:ns:netconf:base:1.0\" nc:operation=\"delete\"/>"
-                    "</cp>"
                 "</config>"
             "</edit-config>"
         "</rpc>");

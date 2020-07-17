@@ -121,17 +121,9 @@ lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_
     /* no parent existed, must be manually connected */
     if (!diff_parent) {
         /* there actually was no parent to duplicate */
-        if (*diff) {
-            lyd_insert_sibling(*diff, dup);
-        } else {
-            *diff = dup;
-        }
+        lyd_insert_sibling(*diff, dup, diff);
     } else if (!diff_parent->parent) {
-        if (*diff) {
-            lyd_insert_sibling(*diff, diff_parent);
-        } else {
-            *diff = diff_parent;
-        }
+        lyd_insert_sibling(*diff, diff_parent, diff);
     }
 
     /* get module with the operation metadata */
@@ -811,15 +803,14 @@ lyd_diff_insert(struct lyd_node **first_node, struct lyd_node *parent_node, stru
                    new_node->schema->name);
             return LY_EINVAL;
         }
-        return lyd_insert(parent_node, new_node);
+        return lyd_insert_child(parent_node, new_node);
     }
 
     assert(!(*first_node)->parent || ((struct lyd_node *)(*first_node)->parent == parent_node));
 
-    /* simple insert */
     if (!lysc_is_userordered(new_node->schema)) {
-        /* insert at the end */
-        return lyd_insert_sibling(*first_node, new_node);
+        /* simple insert */
+        return lyd_insert_sibling(*first_node, new_node, first_node);
     }
 
     if (key_or_value) {
@@ -945,12 +936,10 @@ lyd_diff_apply_r(struct lyd_node **first_node, struct lyd_node *parent_node, con
 
         /* insert it at the end */
         ret = 0;
-        if (*first_node) {
-            ret = lyd_insert_after((*first_node)->prev, match);
-        } else if (parent_node) {
-            ret = lyd_insert(parent_node, match);
+        if (parent_node) {
+            ret = lyd_insert_child(parent_node, match);
         } else {
-            *first_node = match;
+            ret = lyd_insert_sibling(*first_node, match, first_node);
         }
         if (ret) {
             lyd_free_tree(match);
@@ -1481,11 +1470,7 @@ lyd_diff_merge_r(const struct lyd_node *src_diff, struct lyd_node *diff_parent, 
 
         /* insert node into diff if not already */
         if (!diff_parent) {
-            if (*diff) {
-                lyd_insert_sibling(*diff, diff_node);
-            } else {
-                *diff = diff_node;
-            }
+            lyd_insert_sibling(*diff, diff_node, diff);
         }
 
         /* update operation */
