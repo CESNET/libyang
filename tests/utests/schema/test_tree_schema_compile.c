@@ -1739,17 +1739,17 @@ test_type_leafref(void **state)
     /* invalid paths */
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;container a {leaf target2 {type uint8;}}"
                                         "leaf ref1 {type leafref {path ../a/invalid;}}}", LYS_IN_YANG, &mod));
-    logbuf_assert("Not found node \"invalid\" in path.");
+    logbuf_assert("Not found node \"invalid\" in path. /aa:ref1");
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb;container a {leaf target2 {type uint8;}}"
                                         "leaf ref1 {type leafref {path ../../toohigh;}}}", LYS_IN_YANG, &mod));
-    logbuf_assert("Too many parent references in path.");
+    logbuf_assert("Too many parent references in path. /bb:ref1");
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module cc {namespace urn:cc;prefix cc;container a {leaf target2 {type uint8;}}"
                                         "leaf ref1 {type leafref {path /a:invalid;}}}", LYS_IN_YANG, &mod));
-    logbuf_assert("Prefix \"a\" not found of a module in path.");
+    logbuf_assert("Prefix \"a\" not found of a module in path. /cc:ref1");
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module dd {namespace urn:dd;prefix dd;leaf target1 {type string;}"
                                         "container a {leaf target2 {type uint8;}} leaf ref1 {type leafref {"
                                         "path '/a[target2 = current()/../target1]/target2';}}}", LYS_IN_YANG, &mod));
-    logbuf_assert("List predicate defined for container \"a\" in path.");
+    logbuf_assert("List predicate defined for container \"a\" in path. /dd:ref1");
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module ee {namespace urn:ee;prefix ee;container a {leaf target2 {type uint8;}}"
                                         "leaf ref1 {type leafref {path /a!invalid;}}}", LYS_IN_YANG, &mod));
     logbuf_assert("Invalid character 0x21 ('!'), perhaps \"a\" is supposed to be a function call.");
@@ -1799,14 +1799,14 @@ test_type_leafref(void **state)
                                         "leaf ifname{type leafref{ path \"../interface/name\";}}"
                                         "leaf address {type leafref{ path \"/interface[x:name=current()/../ifname]/ip\";}}}",
                                         LYS_IN_YANG, &mod));
-    logbuf_assert("Prefix \"x\" not found of a module in path.");
+    logbuf_assert("Prefix \"x\" not found of a module in path. /pp:address");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module qq {namespace urn:qq;prefix qq;"
                                         "list interface{key name;leaf name{type string;}leaf ip {type string;}}"
                                         "leaf ifname{type leafref{ path \"../interface/name\";}}"
                                         "leaf address {type leafref{ path \"/interface[id=current()/../ifname]/ip\";}}}",
                                         LYS_IN_YANG, &mod));
-    logbuf_assert("Not found node \"id\" in path.");
+    logbuf_assert("Not found node \"id\" in path. /qq:address");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module rr {namespace urn:rr;prefix rr;"
                                         "list interface{key name;leaf name{type string;}leaf ip {type string;}}"
@@ -1862,32 +1862,32 @@ test_type_leafref(void **state)
                                         "leaf ifname{type leafref{ path \"../interface/name\";}}"
                                         "leaf address {type leafref{ path \"/interface[name=current()/../x:ifname]/ip\";}}}",
                                         LYS_IN_YANG, &mod));
-    logbuf_assert("Prefix \"x\" not found of a module in path.");
+    logbuf_assert("Prefix \"x\" not found of a module in path. /yy:address");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module zz {namespace urn:zz;prefix zz;"
                                         "list interface{key name;leaf name{type string;}leaf ip {type string;}}"
                                         "leaf ifname{type leafref{ path \"../interface/name\";}}"
                                         "leaf address {type leafref{ path \"/interface[name=current()/../xxx]/ip\";}}}",
                                         LYS_IN_YANG, &mod));
-    logbuf_assert("Not found node \"xxx\" in path.");
+    logbuf_assert("Not found node \"xxx\" in path. /zz:address");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module zza {namespace urn:zza;prefix zza;"
                                         "list interface{key name;leaf name{type string;}leaf ip {type string;}}"
                                         "leaf ifname{type leafref{ path \"../interface/name\";}}container c;"
                                         "leaf address {type leafref{ path \"/interface[name=current()/../c]/ip\";}}}",
                                         LYS_IN_YANG, &mod));
-    logbuf_assert("Leaf expected instead of container \"c\" in leafref predicate in path.");
+    logbuf_assert("Leaf expected instead of container \"c\" in leafref predicate in path. /zza:address");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module zzb {namespace urn:zzb;prefix zzb;"
                                         "list interface{key name;leaf name{type string;}leaf ip {type string;}container c;}"
                                         "leaf ifname{type leafref{ path \"../interface/name\";}}"
                                         "leaf address {type leafref{ path \"/interface[c=current()/../ifname]/ip\";}}}",
                                         LYS_IN_YANG, &mod));
-    logbuf_assert("Key expected instead of container \"c\" in path.");
+    logbuf_assert("Key expected instead of container \"c\" in path. /zzb:address");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module zzc {namespace urn:zzc;prefix zzc;"
                                         "leaf source {type leafref {path \"../target\";}default true;}}", LYS_IN_YANG, &mod));
-    logbuf_assert("Not found node \"target\" in path.");
+    logbuf_assert("Not found node \"target\" in path. /zzc:source");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module zzd {namespace urn:zzd;prefix zzd;"
                                         "leaf source {type leafref {path \"../target\";}default true;}"

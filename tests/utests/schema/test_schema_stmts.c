@@ -154,7 +154,6 @@ test_identity(void **state)
     ly_ctx_destroy(ctx, NULL);
 }
 
-
 void
 test_feature(void **state)
 {

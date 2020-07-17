@@ -314,3 +314,390 @@ test_typedef(void **state)
     *state = NULL;
     ly_ctx_destroy(ctx, NULL);
 }
+
+void
+test_accessible_tree(void **state)
+{
+    *state = test_accessible_tree;
+
+    struct ly_ctx *ctx = NULL;
+    const char *str;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+    logbuf_clean();
+
+    /* config -> config */
+    str =
+        "module a {"
+            "namespace urn:a;"
+            "prefix a;"
+            "container cont {"
+                "leaf l {"
+                    "type empty;"
+                "}"
+            "}"
+            "container cont2 {"
+                "leaf l2 {"
+                    "must ../../cont/l;"
+                    "type leafref {"
+                        "path /cont/l;"
+                    "}"
+                "}"
+            "}"
+        "}";
+    assert_int_equal(lys_parse_mem(ctx, str, LYS_IN_YANG, NULL), LY_SUCCESS);
+    logbuf_assert("");
+
+    /* config -> state leafref */
+    str =
+        "module b {"
+            "namespace urn:a;"
+            "prefix a;"
+            "container cont {"
+                "config false;"
+                "leaf l {"
+                    "type empty;"
+                "}"
+            "}"
+            "container cont2 {"
+                "leaf l2 {"
+                    "type leafref {"
+                        "path /cont/l;"
+                    "}"
+                "}"
+            "}"
+        "}";
+    assert_int_equal(lys_parse_mem(ctx, str, LYS_IN_YANG, NULL), LY_EVALID);
+    logbuf_assert("Invalid leafref path \"/cont/l\" - target is supposed to represent configuration data"
+        " (as the leafref does), but it does not. /b:cont2/l2");
+    logbuf_clean();
+
+    /* config -> state must */
+    str =
+        "module b {"
+            "namespace urn:a;"
+            "prefix a;"
+            "container cont {"
+                "config false;"
+                "leaf l {"
+                    "type empty;"
+                "}"
+            "}"
+            "container cont2 {"
+                "leaf l2 {"
+                    "must ../../cont/l;"
+                    "type empty;"
+                "}"
+            "}"
+        "}";
+    assert_int_equal(lys_parse_mem(ctx, str, LYS_IN_YANG, NULL), LY_SUCCESS);
+    logbuf_assert("Schema node \"l\" not found (../../cont/) with context node \"/b:cont2/l2\".");
+    logbuf_clean();
+
+    /* state -> config */
+    str =
+        "module c {"
+            "namespace urn:a;"
+            "prefix a;"
+            "container cont {"
+                "leaf l {"
+                    "type empty;"
+                "}"
+            "}"
+            "container cont2 {"
+                "config false;"
+                "leaf l2 {"
+                    "must ../../cont/l;"
+                    "type leafref {"
+                        "path /cont/l;"
+                    "}"
+                "}"
+            "}"
+        "}";
+    assert_int_equal(lys_parse_mem(ctx, str, LYS_IN_YANG, NULL), LY_SUCCESS);
+    logbuf_assert("");
+
+    /* notif -> state */
+    str =
+        "module d {"
+            "namespace urn:a;"
+            "prefix a;"
+            "container cont {"
+                "config false;"
+                "leaf l {"
+                    "type empty;"
+                "}"
+            "}"
+            "notification notif {"
+                "leaf l2 {"
+                    "must ../../cont/l;"
+                    "type leafref {"
+                        "path /cont/l;"
+                    "}"
+                "}"
+            "}"
+        "}";
+    assert_int_equal(lys_parse_mem(ctx, str, LYS_IN_YANG, NULL), LY_SUCCESS);
+    logbuf_assert("");
+
+    /* notif -> notif */
+    str =
+        "module e {"
+            "namespace urn:a;"
+            "prefix a;"
+            "notification notif {"
+                "leaf l {"
+                    "type empty;"
+                "}"
+                "leaf l2 {"
+                    "must ../../notif/l;"
+                    "type leafref {"
+                        "path /notif/l;"
+                    "}"
+                "}"
+            "}"
+        "}";
+    assert_int_equal(lys_parse_mem(ctx, str, LYS_IN_YANG, NULL), LY_SUCCESS);
+    logbuf_assert("");
+
+    /* rpc input -> state */
+    str =
+        "module f {"
+            "namespace urn:a;"
+            "prefix a;"
+            "container cont {"
+                "config false;"
+                "leaf l {"
+                    "type empty;"
+                "}"
+            "}"
+            "rpc rp {"
+                "input {"
+                    "leaf l2 {"
+                        "must ../../cont/l;"
+                        "type leafref {"
+                            "path /cont/l;"
+                        "}"
+                    "}"
+                "}"
+            "}"
+        "}";
+    assert_int_equal(lys_parse_mem(ctx, str, LYS_IN_YANG, NULL), LY_SUCCESS);
+    logbuf_assert("");
+
+    /* rpc input -> rpc input */
+    str =
+        "module g {"
+            "namespace urn:a;"
+            "prefix a;"
+            "rpc rp {"
+                "input {"
+                    "leaf l {"
+                        "type empty;"
+                    "}"
+                    "leaf l2 {"
+                        "must ../l;"
+                        "type leafref {"
+                            "path /rp/l;"
+                        "}"
+                    "}"
+                "}"
+            "}"
+        "}";
+    assert_int_equal(lys_parse_mem(ctx, str, LYS_IN_YANG, NULL), LY_SUCCESS);
+    logbuf_assert("");
+
+    /* rpc input -> rpc output leafref */
+    str =
+        "module h {"
+            "namespace urn:a;"
+            "prefix a;"
+            "rpc rp {"
+                "input {"
+                    "leaf l2 {"
+                        "type leafref {"
+                            "path /rp/l;"
+                        "}"
+                    "}"
+                "}"
+                "output {"
+                    "leaf l {"
+                        "type empty;"
+                    "}"
+                "}"
+            "}"
+        "}";
+    assert_int_equal(lys_parse_mem(ctx, str, LYS_IN_YANG, NULL), LY_EVALID);
+    logbuf_assert("Not found node \"l\" in path. /h:rp/l2");
+    logbuf_clean();
+
+    /* rpc input -> rpc output must */
+    str =
+        "module h {"
+            "namespace urn:a;"
+            "prefix a;"
+            "rpc rp {"
+                "input {"
+                    "leaf l2 {"
+                        "must ../l;"
+                        "type empty;"
+                    "}"
+                "}"
+                "output {"
+                    "leaf l {"
+                        "type empty;"
+                    "}"
+                "}"
+            "}"
+        "}";
+    assert_int_equal(lys_parse_mem(ctx, str, LYS_IN_YANG, NULL), LY_SUCCESS);
+    logbuf_assert("Schema node \"l\" not found (../) with context node \"/h:rp/l2\".");
+    logbuf_clean();
+
+    /* rpc input -> notif leafref */
+    str =
+        "module i {"
+            "namespace urn:a;"
+            "prefix a;"
+            "rpc rp {"
+                "input {"
+                    "leaf l2 {"
+                        "type leafref {"
+                            "path ../../notif/l;"
+                        "}"
+                    "}"
+                "}"
+            "}"
+            "notification notif {"
+                "leaf l {"
+                    "type empty;"
+                "}"
+            "}"
+        "}";
+    assert_int_equal(lys_parse_mem(ctx, str, LYS_IN_YANG, NULL), LY_EVALID);
+    logbuf_assert("Not found node \"notif\" in path. /i:rp/l2");
+    logbuf_clean();
+
+    /* rpc input -> notif must */
+    str =
+        "module i {"
+            "namespace urn:a;"
+            "prefix a;"
+            "rpc rp {"
+                "input {"
+                    "leaf l2 {"
+                        "must /notif/l;"
+                        "type empty;"
+                    "}"
+                "}"
+            "}"
+            "notification notif {"
+                "leaf l {"
+                    "type empty;"
+                "}"
+            "}"
+        "}";
+    assert_int_equal(lys_parse_mem(ctx, str, LYS_IN_YANG, NULL), LY_SUCCESS);
+    logbuf_assert("Schema node \"l\" not found (/notif/) with context node \"/i:rp/l2\".");
+    logbuf_clean();
+
+    /* action output -> state */
+    str =
+        "module j {"
+            "yang-version 1.1;"
+            "namespace urn:a;"
+            "prefix a;"
+            "container cont {"
+                "list ll {"
+                    "key k;"
+                    "leaf k {"
+                        "type string;"
+                    "}"
+                    "action act {"
+                        "output {"
+                            "leaf l2 {"
+                                "must /cont/l;"
+                                "type leafref {"
+                                    "path ../../../l;"
+                                "}"
+                            "}"
+                        "}"
+                    "}"
+                "}"
+                "leaf l {"
+                    "config false;"
+                    "type empty;"
+                "}"
+            "}"
+        "}";
+    assert_int_equal(lys_parse_mem(ctx, str, LYS_IN_YANG, NULL), LY_SUCCESS);
+    logbuf_assert("");
+
+    /* action output -> action input leafref */
+    str =
+        "module k {"
+            "yang-version 1.1;"
+            "namespace urn:a;"
+            "prefix a;"
+            "container cont {"
+                "list ll {"
+                    "key k;"
+                    "leaf k {"
+                        "type string;"
+                    "}"
+                    "action act {"
+                        "input {"
+                            "leaf l {"
+                                "type empty;"
+                            "}"
+                        "}"
+                        "output {"
+                            "leaf l2 {"
+                                "type leafref {"
+                                    "path ../l;"
+                                "}"
+                            "}"
+                        "}"
+                    "}"
+                "}"
+            "}"
+        "}";
+    assert_int_equal(lys_parse_mem(ctx, str, LYS_IN_YANG, NULL), LY_EVALID);
+    logbuf_assert("Not found node \"l\" in path. /k:cont/ll/act/l2");
+    logbuf_clean();
+
+    /* action output -> action input must */
+    str =
+        "module k {"
+            "yang-version 1.1;"
+            "namespace urn:a;"
+            "prefix a;"
+            "container cont {"
+                "list ll {"
+                    "key k;"
+                    "leaf k {"
+                        "type string;"
+                    "}"
+                    "action act {"
+                        "input {"
+                            "leaf l {"
+                                "type empty;"
+                            "}"
+                        "}"
+                        "output {"
+                            "leaf l2 {"
+                                "must /cont/ll/act/l;"
+                                "type empty;"
+                            "}"
+                        "}"
+                    "}"
+                "}"
+            "}"
+        "}";
+    assert_int_equal(lys_parse_mem(ctx, str, LYS_IN_YANG, NULL), LY_SUCCESS);
+    logbuf_assert("Schema node \"l\" not found (/cont/ll/act/) with context node \"/k:cont/ll/act/l2\".");
+    logbuf_clean();
+
+    *state = NULL;
+    ly_ctx_destroy(ctx, NULL);
+}

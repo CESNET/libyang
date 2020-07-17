@@ -102,6 +102,7 @@ void test_getnext(void **state);
 void test_date(void **state);
 void test_revisions(void **state);
 void test_typedef(void **state);
+void test_accessible_tree(void **state);
 
 /* test_schema_stmts.c */
 void test_identity(void **state);
@@ -115,6 +116,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_date, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_revisions, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_typedef, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_accessible_tree, logger_setup, logger_teardown),
 
         /** test_schema_stmts.c */
         cmocka_unit_test_setup_teardown(test_identity, logger_setup, logger_teardown),

@@ -773,6 +773,7 @@ set_init(struct lyxp_set *new, struct lyxp_set *set)
         new->ctx = set->ctx;
         new->ctx_node = set->ctx_node;
         new->root_type = set->root_type;
+        new->context_op = set->context_op;
         new->local_mod = set->local_mod;
         new->tree = set->tree;
         new->format = set->format;
@@ -5360,14 +5361,15 @@ moveto_when_check(const struct lyd_node *node)
  *
  * @param[in] node Node to check.
  * @param[in] root_type XPath root node type.
+ * @param[in] context_op XPath operation parent.
  * @param[in] node_name Node name in the dictionary to move to, NULL for any node.
  * @param[in] moveto_mod Expected module of the node, NULL for any.
  * @return LY_ERR (LY_ENOT if node does not match, LY_EINCOMPLETE on unresolved when,
  * LY_EINVAL if netither node nor any children match)
  */
 static LY_ERR
-moveto_node_check(const struct lyd_node *node, enum lyxp_node_type root_type, const char *node_name,
-                  const struct lys_module *moveto_mod)
+moveto_node_check(const struct lyd_node *node, enum lyxp_node_type root_type, const struct lysc_node *context_op,
+                  const char *node_name, const struct lys_module *moveto_mod)
 {
     /* module check */
     if (moveto_mod && (node->schema->module != moveto_mod)) {
@@ -5376,6 +5378,8 @@ moveto_node_check(const struct lyd_node *node, enum lyxp_node_type root_type, co
 
     /* context check */
     if ((root_type == LYXP_NODE_ROOT_CONFIG) && (node->schema->flags & LYS_CONFIG_R)) {
+        return LY_EINVAL;
+    } else if (context_op && (node->schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) && (node->schema != context_op)) {
         return LY_EINVAL;
     }
 
@@ -5398,13 +5402,14 @@ moveto_node_check(const struct lyd_node *node, enum lyxp_node_type root_type, co
  *
  * @param[in] node Schema node to check.
  * @param[in] root_type XPath root node type.
+ * @param[in] context_op XPath operation parent.
  * @param[in] node_name Node name in the dictionary to move to, NULL for any nodes.
  * @param[in] moveto_mod Expected module of the node, NULL for any.
  * @return LY_ERR (LY_ENOT if node does not match, LY_EINVAL if neither node nor any children match)
  */
 static LY_ERR
-moveto_scnode_check(const struct lysc_node *node, enum lyxp_node_type root_type, const char *node_name,
-                    const struct lys_module *moveto_mod)
+moveto_scnode_check(const struct lysc_node *node, enum lyxp_node_type root_type, const struct lysc_node *context_op,
+                    const char *node_name, const struct lys_module *moveto_mod)
 {
     /* module check */
     if (moveto_mod && (node->module != moveto_mod)) {
@@ -5413,6 +5418,8 @@ moveto_scnode_check(const struct lysc_node *node, enum lyxp_node_type root_type,
 
     /* context check */
     if ((root_type == LYXP_NODE_ROOT_CONFIG) && (node->flags & LYS_CONFIG_R)) {
+        return LY_EINVAL;
+    } else if (context_op && (node->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) && (node != context_op)) {
         return LY_EINVAL;
     }
 
@@ -5464,7 +5471,7 @@ moveto_node(struct lyxp_set *set, const struct lys_module *mod, const char *ncna
         }
 
         for (sub = siblings; sub; sub = sub->next) {
-            rc = moveto_node_check(sub, set->root_type, ncname, mod);
+            rc = moveto_node_check(sub, set->root_type, set->context_op, ncname, mod);
             if (rc == LY_SUCCESS) {
                 if (!replaced) {
                     set_replace_node(set, sub, 0, LYXP_NODE_ELEM, i);
@@ -5518,6 +5525,10 @@ moveto_node_hash(struct lyxp_set *set, const struct lysc_node *scnode, const str
 
     /* context check for all the nodes since we have the schema node */
     if ((set->root_type == LYXP_NODE_ROOT_CONFIG) && (scnode->flags & LYS_CONFIG_R)) {
+        lyxp_set_free_content(set);
+        goto cleanup;
+    }  else if (set->context_op && (scnode->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF))
+            && (scnode != set->context_op)) {
         lyxp_set_free_content(set);
         goto cleanup;
     }
@@ -5624,7 +5635,7 @@ moveto_scnode(struct lyxp_set *set, const struct lys_module *mod, const char *nc
                 iter = NULL;
                 /* module may not be implemented */
                 while (mod->implemented && (iter = lys_getnext(iter, NULL, mod->compiled, getnext_opts))) {
-                    if (!moveto_scnode_check(iter, set->root_type, ncname, mod)) {
+                    if (!moveto_scnode_check(iter, set->root_type, set->context_op, ncname, mod)) {
                         idx = lyxp_set_scnode_insert_node(set, iter, LYXP_NODE_ELEM);
                         /* we need to prevent these nodes from being considered in this moveto */
                         if ((idx < orig_used) && (idx > i)) {
@@ -5645,7 +5656,7 @@ moveto_scnode(struct lyxp_set *set, const struct lys_module *mod, const char *nc
         } else if (set->val.scnodes[i].type == LYXP_NODE_ELEM) {
             iter = NULL;
             while ((iter = lys_getnext(iter, start_parent, NULL, getnext_opts))) {
-                if (!moveto_scnode_check(iter, set->root_type, ncname, (mod ? mod : set->local_mod))) {
+                if (!moveto_scnode_check(iter, set->root_type, set->context_op, ncname, (mod ? mod : set->local_mod))) {
                     idx = lyxp_set_scnode_insert_node(set, iter, LYXP_NODE_ELEM);
                     if ((idx < orig_used) && (idx > i)) {
                         set->val.scnodes[idx].in_ctx = 2;
@@ -5705,7 +5716,7 @@ moveto_node_alldesc(struct lyxp_set *set, const struct lys_module *mod, const ch
         /* TREE DFS */
         start = set->val.nodes[i].node;
         for (elem = next = start; elem; elem = next) {
-            rc = moveto_node_check(elem, set->root_type, ncname, mod);
+            rc = moveto_node_check(elem, set->root_type, set->context_op, ncname, mod);
             if (!rc) {
                 /* add matching node into result set */
                 set_insert_node(&ret_set, elem, 0, LYXP_NODE_ELEM, ret_set.used);
@@ -5800,7 +5811,7 @@ moveto_scnode_alldesc(struct lyxp_set *set, const struct lys_module *mod, const 
                 goto next_iter;
             }
 
-            rc = moveto_scnode_check(elem, set->root_type, ncname, mod);
+            rc = moveto_scnode_check(elem, set->root_type, set->context_op, ncname, mod);
             if (!rc) {
                 if ((idx = lyxp_set_scnode_dup_node_check(set, elem, LYXP_NODE_ELEM, i)) > -1) {
                     set->val.scnodes[idx].in_ctx = 1;
@@ -6902,17 +6913,17 @@ eval_name_test_try_compile_predicates(struct lyxp_expr *exp, uint16_t *tok_idx, 
     prev_lo = ly_log_options(0);
 
     /* parse the predicate(s) */
-    LY_CHECK_GOTO(ret = ly_path_parse_predicate(scnode->module->ctx, exp->expr + exp->tok_pos[*tok_idx], pred_len,
+    LY_CHECK_GOTO(ret = ly_path_parse_predicate(scnode->module->ctx, scnode, exp->expr + exp->tok_pos[*tok_idx], pred_len,
                                                 LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_SIMPLE, &exp2), cleanup);
 
     /* compile */
     switch (format) {
     case LYD_SCHEMA:
-        ret = ly_path_compile_predicate(scnode->module->ctx, scnode->module, scnode, exp2, &pred_idx, lys_resolve_prefix,
-                                        scnode->module, LYD_SCHEMA, predicates, pred_type);
+        ret = ly_path_compile_predicate(scnode->module->ctx, scnode, scnode->module, scnode, exp2, &pred_idx,
+                                        lys_resolve_prefix, scnode->module, LYD_SCHEMA, predicates, pred_type);
         break;
     case LYD_JSON:
-        ret = ly_path_compile_predicate(scnode->module->ctx, scnode->module, scnode, exp2, &pred_idx,
+        ret = ly_path_compile_predicate(scnode->module->ctx, scnode, scnode->module, scnode, exp2, &pred_idx,
                                         lydjson_resolve_prefix, NULL, LYD_JSON, predicates, pred_type);
         break;
     case LYD_XML:
@@ -7050,8 +7061,7 @@ moveto:
             if (i == -1) {
                 path = lysc_path(set->ctx_scnode, LYSC_PATH_LOG, NULL, 0);
                 LOGWRN(set->ctx, "Schema node \"%.*s\" not found (%.*s) with context node \"%s\".",
-                       exp->tok_len[*tok_idx], &exp->expr[exp->tok_pos[*tok_idx]],
-                       exp->tok_pos[*tok_idx] + exp->tok_len[*tok_idx], exp->expr, path);
+                       ncname_len, ncname, ncname - exp->expr, exp->expr, path);
                 free(path);
             }
         } else {
@@ -8305,19 +8315,25 @@ eval_expr_select(struct lyxp_expr *exp, uint16_t *tok_idx, enum lyxp_expr_type e
 static enum lyxp_node_type
 lyxp_get_root_type(const struct lyd_node *ctx_node, const struct lysc_node *ctx_scnode, int options)
 {
+    const struct lysc_node *op;
+
     if (options & LYXP_SCNODE_ALL) {
-        if (options & LYXP_SCNODE) {
+        for (op = ctx_scnode; op && !(op->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)); op = op->parent);
+
+        if (op || (options & LYXP_SCNODE)) {
             /* general root that can access everything */
             return LYXP_NODE_ROOT;
         } else if (!ctx_scnode || (ctx_scnode->flags & LYS_CONFIG_W)) {
             /* root context node can access only config data (because we said so, it is unspecified) */
             return LYXP_NODE_ROOT_CONFIG;
-        } else {
-            return LYXP_NODE_ROOT;
         }
+        return LYXP_NODE_ROOT;
     }
 
-    if (!ctx_node || (ctx_node->schema->flags & LYS_CONFIG_W)) {
+    op = ctx_node ? ctx_node->schema : NULL;
+    for (; op && !(op->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)); op = op->parent);
+
+    if (!ctx_node || (!op && (ctx_node->schema->flags & LYS_CONFIG_W))) {
         /* root context node can access only config data (because we said so, it is unspecified) */
         return LYXP_NODE_ROOT_CONFIG;
     }
@@ -8350,6 +8366,9 @@ lyxp_eval(struct lyxp_expr *exp, LYD_FORMAT format, const struct lys_module *loc
     set->ctx = local_mod->ctx;
     set->ctx_node = ctx_node;
     set->root_type = lyxp_get_root_type(real_ctx_node, NULL, options);
+    for (set->context_op = ctx_node->schema;
+         set->context_op && !(set->context_op->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF));
+         set->context_op = set->context_op->parent);
     set->local_mod = local_mod;
     set->tree = tree;
     set->format = format;
@@ -8618,6 +8637,9 @@ lyxp_atomize(struct lyxp_expr *exp, LYD_FORMAT format, const struct lys_module *
     set->ctx = ctx;
     set->ctx_scnode = ctx_scnode;
     set->root_type = lyxp_get_root_type(NULL, real_ctx_scnode, options);
+    for (set->context_op = ctx_scnode;
+         set->context_op && !(set->context_op->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF));
+         set->context_op = set->context_op->parent);
     set->local_mod = local_mod;
     set->format = format;
 

@@ -6810,9 +6810,17 @@ lys_compile_unres_xpath(struct lysc_ctx *ctx, const struct lysc_node *node)
     struct lysc_when **when = NULL;
     struct lysc_must *musts = NULL;
     LY_ERR ret = LY_SUCCESS;
+    const struct lysc_node *op;
 
     memset(&tmp_set, 0, sizeof tmp_set);
     opts = LYXP_SCNODE_SCHEMA;
+    if (node->flags & LYS_CONFIG_R) {
+        for (op = node->parent; op && !(op->nodetype & (LYS_RPC | LYS_ACTION)); op = op->parent);
+        if (op) {
+            /* we are actually in output */
+            opts = LYXP_SCNODE_OUTPUT;
+        }
+    }
 
     switch (node->nodetype) {
     case LYS_CONTAINER:
@@ -6932,7 +6940,7 @@ cleanup:
 static LY_ERR
 lys_compile_unres_leafref(struct lysc_ctx *ctx, const struct lysc_node *node, struct lysc_type_leafref *lref)
 {
-    const struct lysc_node *target = NULL;
+    const struct lysc_node *target = NULL, *siter;
     struct ly_path *p;
     struct lysc_type *type;
 
@@ -6965,8 +6973,9 @@ lys_compile_unres_leafref(struct lysc_ctx *ctx, const struct lysc_node *node, st
     ctx->path[1] = '\0';
 
     /* check config */
-    if (lref->require_instance && (node->flags & LYS_CONFIG_W)) {
-        if (target->flags & LYS_CONFIG_R) {
+    if (lref->require_instance) {
+        for (siter = node->parent; siter && !(siter->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)); siter = siter->parent);
+        if (!siter && (node->flags & LYS_CONFIG_W) && (target->flags & LYS_CONFIG_R)) {
             LOGVAL(ctx->ctx, LY_VLOG_LYSC, node, LYVE_REFERENCE, "Invalid leafref path \"%s\" - target is supposed"
                    " to represent configuration data (as the leafref does), but it does not.", lref->path->expr);
             return LY_EVALID;

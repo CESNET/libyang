@@ -587,12 +587,12 @@ lyd_create_list2(const struct lysc_node *schema, const char *keys, size_t keys_l
     struct ly_path_predicate *predicates = NULL;
 
     /* parse keys */
-    LY_CHECK_GOTO(ret = ly_path_parse_predicate(schema->module->ctx, keys, keys_len, LY_PATH_PREFIX_OPTIONAL,
+    LY_CHECK_GOTO(ret = ly_path_parse_predicate(schema->module->ctx, NULL, keys, keys_len, LY_PATH_PREFIX_OPTIONAL,
                                                 LY_PATH_PRED_KEYS, &expr), cleanup);
 
     /* compile them */
-    LY_CHECK_GOTO(ret = ly_path_compile_predicate(schema->module->ctx, NULL, schema, expr, &exp_idx, lydjson_resolve_prefix,
-                                                  NULL, LYD_JSON, &predicates, &pred_type), cleanup);
+    LY_CHECK_GOTO(ret = ly_path_compile_predicate(schema->module->ctx, NULL, NULL, schema, expr, &exp_idx,
+                                                  lydjson_resolve_prefix, NULL, LYD_JSON, &predicates, &pred_type), cleanup);
 
     /* create the list node */
     LY_CHECK_GOTO(ret = lyd_create_list(schema, predicates, node), cleanup);
@@ -1156,7 +1156,7 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
     }
 
     /* parse path */
-    LY_CHECK_GOTO(ret = ly_path_parse(ctx, path, strlen(path), LY_PATH_BEGIN_EITHER, LY_PATH_LREF_FALSE,
+    LY_CHECK_GOTO(ret = ly_path_parse(ctx, NULL, path, strlen(path), LY_PATH_BEGIN_EITHER, LY_PATH_LREF_FALSE,
                                       LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_SIMPLE, &exp), cleanup);
 
     /* compile path */
