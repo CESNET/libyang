@@ -1423,6 +1423,8 @@ struct lysc_action {
     struct lysc_action_inout input;  /**< RPC's/action's input */
     struct lysc_action_inout output; /**< RPC's/action's output */
 
+    void *priv;                      /** private arbitrary user data, not used by libyang */
+
 };
 
 struct lysc_notif {
@@ -1442,6 +1444,8 @@ struct lysc_notif {
 
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
+
+    void *priv;                      /** private arbitrary user data, not used by libyang */
 };
 
 /**
@@ -1466,6 +1470,7 @@ struct lysc_node {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
+    void *priv;                      /**< private arbitrary user data, not used by libyang */
 };
 
 struct lysc_node_container {
@@ -1486,6 +1491,7 @@ struct lysc_node_container {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
+    void *priv;                      /**< private arbitrary user data, not used by libyang */
 
     struct lysc_node *child;         /**< first child node (linked list) */
     struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
@@ -1511,6 +1517,7 @@ struct lysc_node_case {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
+    void *priv;                      /**< private arbitrary user data, not used by libyang */
 
     struct lysc_node *child;         /**< first child node of the case (linked list). Note that all the children of all the sibling cases are linked
                                           each other as siblings with the parent pointer pointing to appropriate case node. */
@@ -1534,6 +1541,7 @@ struct lysc_node_choice {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
+    void *priv;                      /**< private arbitrary user data, not used by libyang */
 
     struct lysc_node_case *cases;    /**< list of the cases (linked list). Note that all the children of all the cases are linked each other
                                           as siblings. Their parent pointers points to the specific case they belongs to, so distinguish the
@@ -1559,6 +1567,7 @@ struct lysc_node_leaf {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
+    void *priv;                      /**< private arbitrary user data, not used by libyang */
 
     struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
     struct lysc_type *type;          /**< type of the leaf node (mandatory) */
@@ -1586,6 +1595,7 @@ struct lysc_node_leaflist {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
+    void *priv;                      /**< private arbitrary user data, not used by libyang */
 
     struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
     struct lysc_type *type;          /**< type of the leaf node (mandatory) */
@@ -1617,6 +1627,7 @@ struct lysc_node_list {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
+    void *priv;                      /**< private arbitrary user data, not used by libyang */
 
     struct lysc_node *child;         /**< first child node (linked list) */
     struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
@@ -1646,6 +1657,7 @@ struct lysc_node_anydata {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
     struct lysc_iffeature *iffeatures; /**< list of if-feature expressions ([sized array](@ref sizedarrays)) */
     struct lysc_when **when;         /**< list of pointers to when statements ([sized array](@ref sizedarrays)) */
+    void *priv;                      /**< private arbitrary user data, not used by libyang */
 
     struct lysc_must *musts;         /**< list of must restrictions ([sized array](@ref sizedarrays)) */
 };
@@ -1743,6 +1755,17 @@ const struct lysc_node *lysc_node_children(const struct lysc_node *node, uint16_
  * @return 0 if not.
  */
 int lysc_is_userordered(const struct lysc_node *schema);
+
+/**
+ * @brief Set a schema private pointer to a user pointer.
+ *
+ * @param[in] node Node, whose private field will be assigned. Works also for RPCs, actions, and notifications.
+ * @param[in] priv Arbitrary user-specified pointer.
+ * @param[out] prev Optional previous private object of the \p node. Note, that
+ * the caller is in this case responsible (if it is necessary) for freeing the replaced private object.
+ * @return LY_ERR value.
+ */
+LY_ERR lysc_set_private(const struct lysc_node *node, void *priv, void **prev);
 
 /**
  * @brief Get how the if-feature statement currently evaluates.
