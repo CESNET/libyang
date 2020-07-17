@@ -1180,41 +1180,6 @@ char *lyd_path(const struct lyd_node *node, LYD_PATH_TYPE pathtype, char *buffer
 struct lyd_meta *lyd_find_meta(const struct lyd_meta *first, const struct lys_module *module, const char *name);
 
 /**
- * @brief Find the node, in the list, satisfying the given restrictions.
- * Does **not** use hashes - should not be used unless necessary for best performance.
- *
- * @param[in] first Starting sibling node for search, only succeeding ones are searched.
- * @param[in] module Module of the node to find.
- * @param[in] name Name of the node to find.
- * @param[in] name_len Optional length of @p name in case it is not 0-terminated string.
- * @param[in] key_or_value Expected value depends on the type of @p name node:
- *              LYS_CONTAINER:
- *              LYS_ANYXML:
- *              LYS_ANYDATA:
- *              LYS_NOTIF:
- *              LYS_RPC:
- *              LYS_ACTION:
- *                  NULL should be always set, will be ignored.
- *              LYS_LEAF:
- *              LYS_LEAFLIST:
- *                  Optional restriction on the specific leaf(-list) value.
- *              LYS_LIST:
- *                  Optional keys values of the matching list instances in the form of "[key1='val1'][key2='val2']...".
- *                  The keys do not have to be ordered and not all keys need to be specified.
- *
- *              Note that any explicit values (leaf, leaf-list or list key values) will be canonized first
- *              before comparison. But values that do not have a canonical value are expected to be in the
- *              JSON format!
- * @param[in] val_len Optional length of @p key_or_value in case it is not a 0-terminated string.
- * @param[out] match Found data node.
- * @return LY_SUCCESS on success, @p match set.
- * @return LY_ENOTFOUND if not found, @p match set to NULL.
- * @return LY_ERR value if another error occurred.
- */
-LY_ERR lyd_find_sibling_next(const struct lyd_node *first, const struct lys_module *module, const char *name,
-                             size_t name_len, const char *key_or_value, size_t val_len, struct lyd_node **match);
-
-/**
  * @brief Search in the given siblings (NOT recursively) for the first target instance with the same value.
  * Uses hashes - should be used whenever possible for best performance.
  *
@@ -1226,20 +1191,6 @@ LY_ERR lyd_find_sibling_next(const struct lyd_node *first, const struct lys_modu
  * @return LY_ERR value if another error occurred.
  */
 LY_ERR lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *target, struct lyd_node **match);
-
-/**
- * @brief Search in the given siblings for all target instances with the same value.
- * Uses hashes - should be used whenever possible for best performance.
- *
- * @param[in] siblings Siblings to search in including preceding and succeeding nodes.
- * @param[in] target Target node to find. Key-less lists are compared based on
- * all its descendants (both direct and indirect).
- * @param[out] set Found nodes in a set in case of success.
- * @return LY_SUCCESS on success.
- * @return LY_ENOTFOUND if no matching siblings found.
- * @return LY_ERR value if another error occurred.
- */
-LY_ERR lyd_find_sibling_set(const struct lyd_node *siblings, const struct lyd_node *target, struct ly_set **set);
 
 /**
  * @brief Search in the given siblings for the first schema instance.

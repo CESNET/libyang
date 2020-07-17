@@ -25,6 +25,7 @@
 #include "log.h"
 #include "plugins_types.h"
 #include "set.h"
+#include "tree.h"
 #include "tree_data_internal.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
@@ -793,8 +794,7 @@ ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *start, L
         case LY_PATH_PREDTYPE_POSITION:
             /* we cannot use hashes and want an instance on a specific position */
             pos = 1;
-            node = (struct lyd_node *)start;
-            while (!lyd_find_sibling_next2(node, path[u].node, NULL, 0, &node)) {
+            LYD_LIST_FOR_INST(start, path[u].node, node) {
                 if (pos == path[u].predicates[0].position) {
                     break;
                 }

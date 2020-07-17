@@ -60,33 +60,14 @@ lys_getnext_data(const struct lyd_node *last, const struct lyd_node *sibling, co
         siter = *slast;
     }
 
-    if (last && last->next) {
-        /* find next data instance */
-        lyd_find_sibling_next2(last->next, siter, NULL, 0, &match);
-        if (match) {
-            return match;
-        }
+    if (last && last->next && (last->next->schema == siter)) {
+        /* return next data instance */
+        return last->next;
     }
 
     /* find next schema node data instance */
     while ((siter = lys_getnext(siter, parent, module, 0))) {
-        switch (siter->nodetype) {
-        case LYS_CONTAINER:
-        case LYS_ANYXML:
-        case LYS_ANYDATA:
-        case LYS_LEAF:
-            lyd_find_sibling_val(sibling, siter, NULL, 0, &match);
-            break;
-        case LYS_LIST:
-        case LYS_LEAFLIST:
-            lyd_find_sibling_next2(sibling, siter, NULL, 0, &match);
-            break;
-        default:
-            assert(0);
-            LOGINT(NULL);
-        }
-
-        if (match) {
+        if (!lyd_find_sibling_val(sibling, siter, NULL, 0, &match)) {
             break;
         }
     }
@@ -450,14 +431,7 @@ lyd_validate_autodel_dup(struct lyd_node **first, struct lyd_node *node, struct 
 
     if (lyd_val_has_default(node->schema)) {
         assert(node->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_CONTAINER));
-        if (node->schema->nodetype == LYS_LEAFLIST) {
-            lyd_find_sibling_next2(*first, node->schema, NULL, 0, &match);
-        } else {
-            lyd_find_sibling_val(*first, node->schema, NULL, 0, &match);
-        }
-
-        while (match) {
-            next = match->next;
+        LYD_LIST_FOR_INST_SAFE(*first, node->schema, next, match) {
             if ((match->flags & LYD_DEFAULT) && !(match->flags & LYD_NEW)) {
                 /* default instance found, remove it */
                 if (LYD_DEL_IS_ROOT(*first, match)) {
@@ -484,8 +458,6 @@ lyd_validate_autodel_dup(struct lyd_node **first, struct lyd_node *node, struct 
                     break;
                 }
             }
-
-            lyd_find_sibling_next2(next, node->schema, NULL, 0, &match);
         }
     }
 }
@@ -572,26 +544,24 @@ static LY_ERR
 lyd_validate_minmax(const struct lyd_node *first, const struct lysc_node *snode, uint32_t min, uint32_t max)
 {
     uint32_t count = 0;
-    const struct lyd_node *iter;
+    struct lyd_node *iter;
 
     assert(min || max);
 
-    LY_LIST_FOR(first, iter) {
-        if (iter->schema == snode) {
-            ++count;
+    LYD_LIST_FOR_INST(first, snode, iter) {
+        ++count;
 
-            if (min && (count == min)) {
-                /* satisfied */
-                min = 0;
-                if (!max) {
-                    /* nothing more to check */
-                    break;
-                }
-            }
-            if (max && (count > max)) {
-                /* not satisifed */
+        if (min && (count == min)) {
+            /* satisfied */
+            min = 0;
+            if (!max) {
+                /* nothing more to check */
                 break;
             }
+        }
+        if (max && (count > max)) {
+            /* not satisifed */
+            break;
         }
     }
 
@@ -1160,7 +1130,7 @@ lyd_validate_defaults_r(struct lyd_node *parent, struct lyd_node **first, const 
             }
             break;
         case LYS_LEAFLIST:
-            if (((struct lysc_node_leaflist *)iter)->dflts && lyd_find_sibling_next2(*first, iter, NULL, 0, NULL)) {
+            if (((struct lysc_node_leaflist *)iter)->dflts && lyd_find_sibling_val(*first, iter, NULL, 0, NULL)) {
                 /* create all default leaf-lists */
                 dflts = ((struct lysc_node_leaflist *)iter)->dflts;
                 LY_ARRAY_FOR(dflts, u) {

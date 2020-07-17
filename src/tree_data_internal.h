@@ -421,39 +421,6 @@ void lyd_unlink_hash(struct lyd_node *node);
 /** @} datahash */
 
 /**
- * @brief Find the node, in the list, satisfying the given restrictions.
- * Does **not** use hashes - should not be used unless necessary for best performance.
- *
- * @param[in] first Starting sibling node for search, only succeeding ones are searched.
- * @param[in] schema Schema node of the data node to find.
- * @param[in] key_or_value Expected value depends on the type of @p schema:
- *              LYS_CONTAINER:
- *              LYS_ANYXML:
- *              LYS_ANYDATA:
- *              LYS_NOTIF:
- *              LYS_RPC:
- *              LYS_ACTION:
- *                  NULL should be always set, will be ignored.
- *              LYS_LEAF:
- *              LYS_LEAFLIST:
- *                  Optional restriction on the specific leaf(-list) value.
- *              LYS_LIST:
- *                  Optional keys values of the matching list instances in the form of "[key1='val1'][key2='val2']...".
- *                  The keys do not have to be ordered and not all keys need to be specified.
- *
- *              Note that any explicit values (leaf, leaf-list or list key values) will be canonized first
- *              before comparison. But values that do not have a canonical value are expected to be in the
- *              JSON format!
- * @param[in] val_len Optional length of the @p key_or_value argument in case it is not NULL-terminated string.
- * @param[out] match Can be NULL, otherwise the found data node.
- * @return LY_SUCCESS on success, @p match set.
- * @return LY_ENOTFOUND if not found, @p match set to NULL.
- * @return LY_ERR value if another error occurred.
- */
-LY_ERR lyd_find_sibling_next2(const struct lyd_node *first, const struct lysc_node *schema, const char *key_or_value,
-                              size_t val_len, struct lyd_node **match);
-
-/**
  * @brief Iterate over implemented modules for functions that accept specific modules or the whole context.
  *
  * @param[in] tree Data tree.
