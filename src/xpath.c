@@ -3702,6 +3702,114 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set 
     return LY_SUCCESS;
 }
 
+static LY_ERR
+xpath_derived_(struct lyxp_set **args, struct lyxp_set *set, int options, int self_match, const char *func)
+{
+    uint16_t i;
+    LY_ARRAY_COUNT_TYPE u;
+    struct lyd_node_term *leaf;
+    struct lysc_node_leaf *sleaf;
+    struct lyd_meta *meta;
+    struct lyd_value data = {0}, *val;
+    struct ly_err_item *err = NULL;
+    LY_ERR rc = LY_SUCCESS;
+    int found;
+
+    if (options & LYXP_SCNODE_ALL) {
+        if ((args[0]->type != LYXP_SET_SCNODE_SET) || !(sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[0]))) {
+            LOGWRN(set->ctx, "Argument #1 of %s not a node-set as expected.", func);
+        } else if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+            LOGWRN(set->ctx, "Argument #1 of %s is a %s node \"%s\".", func, lys_nodetype2str(sleaf->nodetype),
+                   sleaf->name);
+        } else if (!warn_is_specific_type(sleaf->type, LY_TYPE_IDENT)) {
+            LOGWRN(set->ctx, "Argument #1 of %s is node \"%s\", not of type \"identityref\".", func, sleaf->name);
+        }
+
+        if ((args[1]->type == LYXP_SET_SCNODE_SET) && (sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[1]))) {
+            if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
+                LOGWRN(set->ctx, "Argument #2 of %s is a %s node \"%s\".", func, lys_nodetype2str(sleaf->nodetype),
+                       sleaf->name);
+            } else if (!warn_is_string_type(sleaf->type)) {
+                LOGWRN(set->ctx, "Argument #2 of %s is node \"%s\", not of string-type.", func, sleaf->name);
+            }
+        }
+        set_scnode_clear_ctx(set);
+        return rc;
+    }
+
+    if (args[0]->type != LYXP_SET_NODE_SET) {
+        LOGVAL(set->ctx, LY_VLOG_LYD, set->ctx_node, LY_VCODE_XP_INARGTYPE, 1, print_set_type(args[0]),
+               "derived-from(-or-self)(node-set, string)");
+        return LY_EVALID;
+    }
+    rc = lyxp_set_cast(args[1], LYXP_SET_STRING);
+    LY_CHECK_RET(rc);
+
+    set_fill_boolean(set, 0);
+    found = 0;
+    for (i = 0; i < args[0]->used; ++i) {
+        if ((args[0]->val.nodes[i].type != LYXP_NODE_ELEM) && (args[0]->val.nodes[i].type != LYXP_NODE_META)) {
+            continue;
+        }
+
+        if (args[0]->val.nodes[i].type == LYXP_NODE_ELEM) {
+            leaf = (struct lyd_node_term *)args[0]->val.nodes[i].node;
+            sleaf = (struct lysc_node_leaf *)leaf->schema;
+            val = &leaf->value;
+            if (!(sleaf->nodetype & LYD_NODE_TERM) || (leaf->value.realtype->basetype != LY_TYPE_IDENT)) {
+                /* uninteresting */
+                continue;
+            }
+
+            /* store args[1] as ident */
+            rc = val->realtype->plugin->store(set->ctx, val->realtype, args[1]->val.str, strlen(args[1]->val.str),
+                                              LY_TYPE_OPTS_STORE, lys_resolve_prefix, (void *)sleaf->dflt_mod,
+                                              set->format, (struct lyd_node *)leaf, set->tree, &data, NULL, &err);
+        } else {
+            meta = args[0]->val.meta[i].meta;
+            val = &meta->value;
+            if (val->realtype->basetype != LY_TYPE_IDENT) {
+                /* uninteresting */
+                continue;
+            }
+
+            /* store args[1] as ident */
+            rc = val->realtype->plugin->store(set->ctx, val->realtype, args[1]->val.str, strlen(args[1]->val.str),
+                                              LY_TYPE_OPTS_STORE, lys_resolve_prefix, (void *)meta->annotation->module,
+                                              set->format, meta->parent, set->tree, &data, NULL, &err);
+        }
+
+        if (err) {
+            ly_err_print(err);
+            ly_err_free(err);
+        }
+        LY_CHECK_RET(rc);
+
+        /* finally check the identity itself */
+        if (self_match && (data.ident == val->ident)) {
+            set_fill_boolean(set, 1);
+            found = 1;
+        }
+        if (!found) {
+            LY_ARRAY_FOR(data.ident->derived, u) {
+                if (data.ident->derived[u] == val->ident) {
+                    set_fill_boolean(set, 1);
+                    found = 1;
+                    break;
+                }
+            }
+        }
+
+        /* free temporary value */
+        val->realtype->plugin->free(set->ctx, &data);
+        if (found) {
+            break;
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
 /**
  * @brief Execute the YANG 1.1 derived-from(node-set, string) function. Returns LYXP_SET_BOOLEAN depending
  *        on whether the first argument nodes contain a node of an identity derived from the second
@@ -3716,73 +3824,7 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set 
 static LY_ERR
 xpath_derived_from(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set *set, int options)
 {
-    uint16_t i;
-    LY_ARRAY_COUNT_TYPE u;
-    struct lyd_node_term *leaf;
-    struct lysc_node_leaf *sleaf;
-    struct lyd_value data = {0};
-    struct ly_err_item *err = NULL;
-    LY_ERR rc = LY_SUCCESS;
-    int found;
-
-    if (options & LYXP_SCNODE_ALL) {
-        if ((args[0]->type != LYXP_SET_SCNODE_SET) || !(sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[0]))) {
-            LOGWRN(set->ctx, "Argument #1 of %s not a node-set as expected.", __func__);
-        } else if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
-            LOGWRN(set->ctx, "Argument #1 of %s is a %s node \"%s\".", __func__, lys_nodetype2str(sleaf->nodetype), sleaf->name);
-        } else if (!warn_is_specific_type(sleaf->type, LY_TYPE_IDENT)) {
-            LOGWRN(set->ctx, "Argument #1 of %s is node \"%s\", not of type \"identityref\".", __func__, sleaf->name);
-        }
-
-        if ((args[1]->type == LYXP_SET_SCNODE_SET) && (sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[1]))) {
-            if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
-                LOGWRN(set->ctx, "Argument #2 of %s is a %s node \"%s\".", __func__, lys_nodetype2str(sleaf->nodetype), sleaf->name);
-            } else if (!warn_is_string_type(sleaf->type)) {
-                LOGWRN(set->ctx, "Argument #2 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
-            }
-        }
-        set_scnode_clear_ctx(set);
-        return rc;
-    }
-
-    if (args[0]->type != LYXP_SET_NODE_SET) {
-        LOGVAL(set->ctx, LY_VLOG_LYD, set->ctx_node, LY_VCODE_XP_INARGTYPE, 1, print_set_type(args[0]),
-               "derived-from(node-set, string)");
-        return LY_EVALID;
-    }
-    rc = lyxp_set_cast(args[1], LYXP_SET_STRING);
-    LY_CHECK_RET(rc);
-
-    set_fill_boolean(set, 0);
-    found = 0;
-    for (i = 0; i < args[0]->used; ++i) {
-        leaf = (struct lyd_node_term *)args[0]->val.nodes[i].node;
-        sleaf = (struct lysc_node_leaf *)leaf->schema;
-        if ((sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST)) && (sleaf->type->basetype == LY_TYPE_IDENT)) {
-            /* store args[1] into ident */
-            rc = sleaf->type->plugin->store(set->ctx, sleaf->type, args[1]->val.str, strlen(args[1]->val.str),
-                                            LY_TYPE_OPTS_STORE, lys_resolve_prefix, (void *)sleaf->dflt_mod, set->format,
-                                            (struct lyd_node *)leaf, set->tree, &data, NULL, &err);
-            if (err) {
-                ly_err_print(err);
-                ly_err_free(err);
-            }
-            LY_CHECK_RET(rc);
-
-            LY_ARRAY_FOR(data.ident->derived, u) {
-                if (data.ident->derived[u] == leaf->value.ident) {
-                    set_fill_boolean(set, 1);
-                    found = 1;
-                    break;
-                }
-            }
-            if (found) {
-                break;
-            }
-        }
-    }
-
-    return LY_SUCCESS;
+    return xpath_derived_(args, set, options, 0, __func__);
 }
 
 /**
@@ -3799,77 +3841,7 @@ xpath_derived_from(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct ly
 static LY_ERR
 xpath_derived_from_or_self(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set *set, int options)
 {
-    uint16_t i;
-    LY_ARRAY_COUNT_TYPE u;
-    struct lyd_node_term *leaf;
-    struct lysc_node_leaf *sleaf;
-    struct lyd_value data = {0};
-    struct ly_err_item *err = NULL;
-    LY_ERR rc = LY_SUCCESS;
-    int found;
-
-    if (options & LYXP_SCNODE_ALL) {
-        if ((args[0]->type != LYXP_SET_SCNODE_SET) || !(sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[0]))) {
-            LOGWRN(set->ctx, "Argument #1 of %s not a node-set as expected.", __func__);
-        } else if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
-            LOGWRN(set->ctx, "Argument #1 of %s is a %s node \"%s\".", __func__, lys_nodetype2str(sleaf->nodetype), sleaf->name);
-        } else if (!warn_is_specific_type(sleaf->type, LY_TYPE_IDENT)) {
-            LOGWRN(set->ctx, "Argument #1 of %s is node \"%s\", not of type \"identityref\".", __func__, sleaf->name);
-        }
-
-        if ((args[1]->type == LYXP_SET_SCNODE_SET) && (sleaf = (struct lysc_node_leaf *)warn_get_scnode_in_ctx(args[1]))) {
-            if (!(sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST))) {
-                LOGWRN(set->ctx, "Argument #2 of %s is a %s node \"%s\".", __func__, lys_nodetype2str(sleaf->nodetype), sleaf->name);
-            } else if (!warn_is_string_type(sleaf->type)) {
-                LOGWRN(set->ctx, "Argument #2 of %s is node \"%s\", not of string-type.", __func__, sleaf->name);
-            }
-        }
-        set_scnode_clear_ctx(set);
-        return rc;
-    }
-
-    if (args[0]->type != LYXP_SET_NODE_SET) {
-        LOGVAL(set->ctx, LY_VLOG_LYD, set->ctx_node, LY_VCODE_XP_INARGTYPE, 1, print_set_type(args[0]),
-               "derived-from-or-self(node-set, string)");
-        return LY_EVALID;
-    }
-    rc = lyxp_set_cast(args[1], LYXP_SET_STRING);
-    LY_CHECK_RET(rc);
-
-    set_fill_boolean(set, 0);
-    found = 0;
-    for (i = 0; i < args[0]->used; ++i) {
-        leaf = (struct lyd_node_term *)args[0]->val.nodes[i].node;
-        sleaf = (struct lysc_node_leaf *)leaf->schema;
-        if ((sleaf->nodetype & (LYS_LEAF | LYS_LEAFLIST)) && (sleaf->type->basetype == LY_TYPE_IDENT)) {
-            /* store args[1] into ident */
-            rc = sleaf->type->plugin->store(set->ctx, sleaf->type, args[1]->val.str, strlen(args[1]->val.str),
-                                            LY_TYPE_OPTS_STORE, lys_resolve_prefix, (void *)sleaf->dflt_mod, set->format,
-                                            (struct lyd_node *)leaf, set->tree, &data, NULL, &err);
-            if (err) {
-                ly_err_print(err);
-                ly_err_free(err);
-            }
-            LY_CHECK_RET(rc);
-
-            if (data.ident == leaf->value.ident) {
-                set_fill_boolean(set, 1);
-                break;
-            }
-            LY_ARRAY_FOR(data.ident->derived, u) {
-                if (data.ident->derived[u] == leaf->value.ident) {
-                    set_fill_boolean(set, 1);
-                    found = 1;
-                    break;
-                }
-            }
-            if (found) {
-                break;
-            }
-        }
-    }
-
-    return LY_SUCCESS;
+    return xpath_derived_(args, set, options, 1, __func__);
 }
 
 /**
