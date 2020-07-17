@@ -283,11 +283,11 @@ test_feature(void **state)
     /* disable all features */
     assert_int_equal(LY_SUCCESS, lys_feature_disable(mod, "*"));
     LY_ARRAY_FOR(mod->compiled->features, struct lysc_feature, f) {
-        assert_int_equal(0, lys_feature_value(mod, f->name));
+        assert_int_equal(LY_ENOT, lys_feature_value(mod, f->name));
     }
     /* re-setting already set feature */
     assert_int_equal(LY_SUCCESS, lys_feature_disable(mod, "f1"));
-    assert_int_equal(0, lys_feature_value(mod, "f1"));
+    assert_int_equal(LY_ENOT, lys_feature_value(mod, "f1"));
 
     /* enabling feature that cannot be enabled due to its if-features */
     assert_int_equal(LY_SUCCESS, lys_feature_enable(mod, "f1"));
@@ -296,8 +296,8 @@ test_feature(void **state)
     assert_int_equal(LY_EDENIED, lys_feature_enable(mod, "*"));
     logbuf_assert("Feature \"f6\" cannot be enabled since it is disabled by its if-feature condition(s).");
     /* test if not changed */
-    assert_int_equal(1, lys_feature_value(mod, "f1"));
-    assert_int_equal(0, lys_feature_value(mod, "f2"));
+    assert_int_equal(LY_SUCCESS, lys_feature_value(mod, "f1"));
+    assert_int_equal(LY_ENOT, lys_feature_value(mod, "f2"));
 
     TEST_SCHEMA_OK(ctx, 0, 0, "b", "feature f1 {if-feature f2;}feature f2;", mod);
     assert_non_null(mod->compiled);
@@ -315,7 +315,7 @@ test_feature(void **state)
     assert_ptr_equal(&mod->compiled->features[0], mod->compiled->features[1].depfeatures[0]);
 
     /* invalid reference */
-    assert_int_equal(LY_EINVAL, lys_feature_enable(mod, "xxx"));
+    assert_int_equal(LY_ENOTFOUND, lys_feature_enable(mod, "xxx"));
     logbuf_assert("Feature \"xxx\" not found in module \"b\".");
 
     /* some invalid expressions */
@@ -361,8 +361,8 @@ test_feature(void **state)
     assert_int_equal(LY_SUCCESS, lys_feature_enable(mod, "f1"));
     TEST_SCHEMA_OK(ctx, 0, 0, "c", "import a {prefix a;} feature f1; feature f2{if-feature 'a:f1';}", mod);
     assert_int_equal(LY_SUCCESS, lys_feature_enable(mod, "f2"));
-    assert_int_equal(0, lys_feature_value(mod, "f1"));
-    assert_int_equal(1, lys_feature_value(mod, "f2"));
+    assert_int_equal(LY_ENOT, lys_feature_value(mod, "f1"));
+    assert_int_equal(LY_SUCCESS, lys_feature_value(mod, "f2"));
 
     /*
      * printing

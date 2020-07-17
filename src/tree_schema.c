@@ -495,7 +495,7 @@ lysc_iffeature_value(const struct lysc_iffeature *iff)
  * @return LY_ERR value.
  */
 static LY_ERR
-lys_feature_change(const struct lys_module *mod, const char *name, int value)
+lys_feature_change(const struct lys_module *mod, const char *name, int value, int skip_checks)
 {
     int all = 0;
     LY_ARRAY_COUNT_TYPE u, disabled_count;
@@ -521,7 +521,7 @@ lys_feature_change(const struct lys_module *mod, const char *name, int value)
             return LY_SUCCESS;
         }
         LOGERR(ctx, LY_EINVAL, "Unable to switch feature since the module \"%s\" has no features.", mod->name);
-        return LY_EINVAL;
+        return LY_ENOTFOUND;
     }
 
     changed = ly_set_new();
@@ -543,18 +543,20 @@ run:
             }
 
             if (value) { /* enable */
-                /* check referenced features if they are enabled */
-                LY_ARRAY_FOR(f->iffeatures, struct lysc_iffeature, iff) {
-                    if (lysc_iffeature_value(iff) == LY_ENOT) {
-                        if (all) {
-                            ++disabled_count;
-                            goto next;
-                        } else {
-                            LOGERR(ctx, LY_EDENIED,
-                                   "Feature \"%s\" cannot be enabled since it is disabled by its if-feature condition(s).",
-                                   f->name);
-                            ly_set_free(changed, NULL);
-                            return LY_EDENIED;
+                if (!skip_checks) {
+                    /* check referenced features if they are enabled */
+                    LY_ARRAY_FOR(f->iffeatures, struct lysc_iffeature, iff) {
+                        if (lysc_iffeature_value(iff) == LY_ENOT) {
+                            if (all) {
+                                ++disabled_count;
+                                goto next;
+                            } else {
+                                LOGERR(ctx, LY_EDENIED,
+                                    "Feature \"%s\" cannot be enabled since it is disabled by its if-feature condition(s).",
+                                    f->name);
+                                ly_set_free(changed, NULL);
+                                return LY_EDENIED;
+                            }
                         }
                     }
                 }
@@ -580,7 +582,7 @@ next:
     if (!all && !changed->count) {
         LOGERR(ctx, LY_EINVAL, "Feature \"%s\" not found in module \"%s\".", name, mod->name);
         ly_set_free(changed, NULL);
-        return LY_EINVAL;
+        return LY_ENOTFOUND;
     }
 
     if (value && all && disabled_count) {
@@ -612,7 +614,7 @@ next:
     }
 
     /* reflect change(s) in the dependent features */
-    for (u = 0; u < changed->count; ++u) {
+    for (u = 0; !skip_checks && (u < changed->count); ++u) {
         /* If a dependent feature is enabled, it can be now changed by the change (to false) of the value of
          * its if-feature statements. The reverse logic, automatically enable feature when its feature is enabled
          * is not done - by default, features are disabled and must be explicitely enabled. */
@@ -644,7 +646,7 @@ lys_feature_enable(const struct lys_module *module, const char *feature)
 {
     LY_CHECK_ARG_RET(NULL, module, feature, LY_EINVAL);
 
-    return lys_feature_change((struct lys_module*)module, feature, 1);
+    return lys_feature_change((struct lys_module*)module, feature, 1, 0);
 }
 
 API LY_ERR
@@ -652,13 +654,29 @@ lys_feature_disable(const struct lys_module *module, const char *feature)
 {
     LY_CHECK_ARG_RET(NULL, module, feature, LY_EINVAL);
 
-    return lys_feature_change((struct lys_module*)module, feature, 0);
+    return lys_feature_change((struct lys_module*)module, feature, 0, 0);
 }
 
-API int
+API LY_ERR
+lys_feature_enable_force(const struct lys_module *module, const char *feature)
+{
+    LY_CHECK_ARG_RET(NULL, module, feature, LY_EINVAL);
+
+    return lys_feature_change((struct lys_module*)module, feature, 1, 1);
+}
+
+API LY_ERR
+lys_feature_disable_force(const struct lys_module *module, const char *feature)
+{
+    LY_CHECK_ARG_RET(NULL, module, feature, LY_EINVAL);
+
+    return lys_feature_change((struct lys_module*)module, feature, 0, 1);
+}
+
+API LY_ERR
 lys_feature_value(const struct lys_module *module, const char *feature)
 {
-    struct lysc_feature *f;
+    struct lysc_feature *f = NULL;
     struct lysc_module *mod;
     LY_ARRAY_COUNT_TYPE u;
 
@@ -666,19 +684,33 @@ lys_feature_value(const struct lys_module *module, const char *feature)
     mod = module->compiled;
 
     /* search for the specified feature */
-    for (u = 0; u < LY_ARRAY_COUNT(mod->features); ++u) {
+    LY_ARRAY_FOR(mod->features, u) {
         f = &mod->features[u];
         if (!strcmp(f->name, feature)) {
-            if (f->flags & LYS_FENABLED) {
-                return 1;
-            } else {
-                return 0;
-            }
+            break;
         }
     }
 
     /* feature definition not found */
-    return -1;
+    if (!f) {
+        return LY_ENOTFOUND;
+    }
+
+    /* feature disabled */
+    if (!(f->flags & LYS_FENABLED)) {
+        return LY_ENOT;
+    }
+
+    /* check referenced features if they are enabled */
+    LY_ARRAY_FOR(f->iffeatures, u) {
+        if (lysc_iffeature_value(&f->iffeatures[u]) == LY_ENOT) {
+            /* if-feature disabled */
+            return LY_ENOT;
+        }
+    }
+
+    /* feature enabled */
+    return LY_SUCCESS;
 }
 
 API const struct lysc_node *

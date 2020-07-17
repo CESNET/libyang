@@ -1855,7 +1855,10 @@ struct lys_module {
  *
  * @param[in] module Module where the feature will be enabled.
  * @param[in] feature Name of the feature to enable. To enable all features at once, use asterisk (`*`) character.
- * @return LY_ERR value.
+ * @return LY_SUCCESS on success,
+ * @return LY_EINVAL if @p module is not implemented,
+ * @return LY_ENOTFOUND if @p feature was not found,
+ * @return LY_EDENIED if @p feature could not be enabled because it has some false if-feature statements.
  */
 LY_ERR lys_feature_enable(const struct lys_module *module, const char *feature);
 
@@ -1864,23 +1867,53 @@ LY_ERR lys_feature_enable(const struct lys_module *module, const char *feature);
  *
  * By default, when the module is loaded by libyang parser, all features are disabled.
  *
+ * If disabling a feature causes some other features that depend on this feature to become disabled.
+ *
  * @param[in] module Module where the feature will be disabled.
  * @param[in] feature Name of the feature to disable. To disable all features at once, use asterisk (`*`) character.
- * @return LY_ERR value
+ * @return LY_SUCCESS on success,
+ * @return LY_EINVAL if @p module is not implemented,
+ * @return LY_ENOTFOUND if @p feature was not found.
  */
 LY_ERR lys_feature_disable(const struct lys_module *module, const char *feature);
 
 /**
- * @brief Get the current status of the specified feature in the module.
+ * @brief Enable specified feature in the module disregarding its if-features.
+ *
+ * @param[in] module Module where the feature will be enabled.
+ * @param[in] feature Name of the feature to enable. To enable all features at once, use asterisk character.
+ * @return LY_SUCCESS on success,
+ * @return LY_EINVAL if @p module is not implemented,
+ * @return LY_ENOTFOUND if @p feature was not found.
+ */
+LY_ERR lys_feature_enable_force(const struct lys_module *module, const char *feature);
+
+/**
+ * @brief Disable specified feature in the module disregarding dependant features.
+ *
+ * By default, when the module is loaded by libyang parser, all features are disabled.
+ *
+ * @param[in] module Module where the feature will be disabled.
+ * @param[in] feature Name of the feature to disable. To disable all features at once, use asterisk character.
+ * @return LY_SUCCESS on success,
+ * @return LY_EINVAL if @p module is not implemented,
+ * @return LY_ENOTFOUND if @p feature was not found.
+ */
+LY_ERR lys_feature_disable_force(const struct lys_module *module, const char *feature);
+
+/**
+ * @brief Get the current real status of the specified feature in the module.
+ *
+ * If the feature is enabled, but some of its if-features are false, the feature is considered
+ * disabled.
  *
  * @param[in] module Module where the feature is defined.
  * @param[in] feature Name of the feature to inspect.
- * @return
- * - 1 if feature is enabled,
- * - 0 if feature is disabled,
- * - -1 in case of error (e.g. feature is not defined or invalid arguments)
+ * @return LY_SUCCESS if the feature is enabled,
+ * @return LY_ENOT if the feature is disabled,
+ * @return LY_ENOTFOUND if the feature was not found.
  */
-int lys_feature_value(const struct lys_module *module, const char *feature);
+LY_ERR lys_feature_value(const struct lys_module *module, const char *feature);
 
 /**
  * @brief Get next schema tree (sibling) node element that can be instantiated in a data tree. Returned node can
