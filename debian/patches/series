@@ -1,2 +1,3 @@
 0001-pybuild
 0002-swigpy37
+0003-data-tree-BUGFIX-hash-canonical-values-for-leaves.patch
