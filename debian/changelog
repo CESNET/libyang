@@ -1,3 +1,9 @@
+libyang (1.0.176-3) unstable; urgency=medium
+
+  * Add upstream patch for 'data tree BUGFIX hash canonical values for leaves'
+
+ -- Ondřej Surý <ondrej@debian.org>  Sun, 19 Jul 2020 11:00:20 +0200
+
 libyang (1.0.176-2) unstable; urgency=medium
 
   * Make the C++ symbols human readable
