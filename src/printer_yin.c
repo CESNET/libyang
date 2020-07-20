@@ -19,6 +19,7 @@
 #include <stdlib.h>
 
 #include "common.h"
+#include "compat.h"
 #include "log.h"
 #include "printer.h"
 #include "printer_internal.h"

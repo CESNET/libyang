@@ -26,6 +26,7 @@
 #include <unistd.h>
 
 #include "common.h"
+#include "compat.h"
 #include "hash_table.h"
 #include "parser.h"
 #include "parser_data.h"

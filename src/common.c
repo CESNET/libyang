@@ -27,6 +27,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "compat.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 

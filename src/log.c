@@ -26,6 +26,7 @@
 #include <string.h>
 
 #include "common.h"
+#include "compat.h"
 #include "plugins_exts.h"
 #include "tree_data.h"
 #include "tree_schema.h"
