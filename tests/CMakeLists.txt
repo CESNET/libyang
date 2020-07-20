@@ -48,8 +48,6 @@ function(ly_add_utest)
     endif(ENABLE_VALGRIND_TESTS)
 endfunction(ly_add_utest)
 
-add_subdirectory(utests)
-
 if(ENABLE_COVERAGE)
     # Destination
     set(COVERAGE_DIR        "${CMAKE_BINARY_DIR}/tests/code_coverage/")
@@ -94,3 +92,6 @@ if(ENABLE_COVERAGE)
         COMMAND ;
         )
 endif()
+
+add_subdirectory(style)
+add_subdirectory(utests)
