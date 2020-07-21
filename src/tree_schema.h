@@ -2164,7 +2164,8 @@ int lys_search_localfile(const char * const *searchpaths, int cwd, const char *n
 const char **lys_features_list(const struct lys_module *module, uint8_t **states);
 
 /**
- * @brief Enable specified feature in the module
+ * @brief Enable specified feature in the module. In case its if-feature evaluates
+ * to false, return an error.
  *
  * By default, when the module is loaded by libyang parser, all features are disabled.
  *
@@ -2175,7 +2176,8 @@ const char **lys_features_list(const struct lys_module *module, uint8_t **states
 int lys_features_enable(const struct lys_module *module, const char *feature);
 
 /**
- * @brief Disable specified feature in the module
+ * @brief Disable specified feature in the module. If it causes some dependant features
+ * to be disabled, they are also set to disabled.
  *
  * By default, when the module is loaded by libyang parser, all features are disabled.
  *
@@ -2186,7 +2188,29 @@ int lys_features_enable(const struct lys_module *module, const char *feature);
 int lys_features_disable(const struct lys_module *module, const char *feature);
 
 /**
- * @brief Get the current status of the specified feature in the module.
+ * @brief Enable specified feature in the module disregarding its if-features.
+ *
+ * @param[in] module Module where the feature will be enabled.
+ * @param[in] feature Name of the feature to enable. To enable all features at once, use asterisk character.
+ * @return 0 on success, 1 when the feature is not defined in the specified module
+ */
+int lys_features_enable_force(const struct lys_module *module, const char *feature);
+
+/**
+ * @brief Disable specified feature in the module disregarding dependant features.
+ *
+ * By default, when the module is loaded by libyang parser, all features are disabled.
+ *
+ * @param[in] module Module where the feature will be disabled.
+ * @param[in] feature Name of the feature to disable. To disable all features at once, use asterisk character.
+ * @return 0 on success, 1 when the feature is not defined in the specified module
+ */
+int lys_features_disable_force(const struct lys_module *module, const char *feature);
+
+/**
+ * @brief Get the current status of the specified feature in the module. Even if the
+ * feature is enabled but some of its if-features evaluate to false, it is reported
+ * as disabled.
  *
  * @param[in] module Module where the feature is defined.
  * @param[in] feature Name of the feature to inspect.

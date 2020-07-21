@@ -2,7 +2,16 @@ Source: @PACKAGE@
 Maintainer: CESNET <mvasko@cesnet.cz>
 Priority: extra
 Standards-Version: 3.8.2
-Build-Depends: debhelper (>= 9), gcc
+Build-Depends:
+ debhelper (>= 9),
+ make,
+ gcc,
+ g++,
+ doxygen,
+ cmake,
+ pkg-config,
+ libpcre3-dev,
+ libcmocka-dev,
 Homepage: https://github.com/CESNET/libyang
 
 Package: @PACKAGE@

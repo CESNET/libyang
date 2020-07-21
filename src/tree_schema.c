@@ -3883,7 +3883,7 @@ lys_features_disable_recursive(struct lys_feature *f)
  * op: 1 - enable, 0 - disable
  */
 static int
-lys_features_change(const struct lys_module *module, const char *name, int op)
+lys_features_change(const struct lys_module *module, const char *name, int op, int skip_checks)
 {
     int all = 0;
     int i, j, k;
@@ -3925,31 +3925,40 @@ lys_features_change(const struct lys_module *module, const char *name, int op)
                         }
                     }
 
-                    if (op) {
-                        /* check referenced features if they are enabled */
-                        for (k = 0; k < f[j].iffeature_size; k++) {
-                            if (!resolve_iffeature(&f[j].iffeature[k])) {
-                                if (all) {
-                                    faili = i;
-                                    failj = j;
-                                    failk = k + 1;
-                                    break;
-                                } else {
-                                    LOGERR(module->ctx, LY_EINVAL, "Feature \"%s\" is disabled by its %d. if-feature condition.",
-                                           f[j].name, k + 1);
-                                    return EXIT_FAILURE;
+                    if (skip_checks) {
+                        if (op) {
+                            f[j].flags |= LYS_FENABLED;
+                        } else {
+                            f[j].flags &= ~LYS_FENABLED;
+                        }
+                        progress++;
+                    } else {
+                        if (op) {
+                            /* check referenced features if they are enabled */
+                            for (k = 0; k < f[j].iffeature_size; k++) {
+                                if (!resolve_iffeature(&f[j].iffeature[k])) {
+                                    if (all) {
+                                        faili = i;
+                                        failj = j;
+                                        failk = k + 1;
+                                        break;
+                                    } else {
+                                        LOGERR(module->ctx, LY_EINVAL, "Feature \"%s\" is disabled by its %d. if-feature condition.",
+                                            f[j].name, k + 1);
+                                        return EXIT_FAILURE;
+                                    }
                                 }
                             }
-                        }
 
-                        if (k == f[j].iffeature_size) {
-                            /* the last check passed, do the change */
-                            f[j].flags |= LYS_FENABLED;
+                            if (k == f[j].iffeature_size) {
+                                /* the last check passed, do the change */
+                                f[j].flags |= LYS_FENABLED;
+                                progress++;
+                            }
+                        } else {
+                            lys_features_disable_recursive(&f[j]);
                             progress++;
                         }
-                    } else {
-                        lys_features_disable_recursive(&f[j]);
-                        progress++;
                     }
                     if (!all) {
                         /* stop in case changing a single feature */
@@ -3979,7 +3988,7 @@ lys_features_enable(const struct lys_module *module, const char *feature)
 {
     FUN_IN;
 
-    return lys_features_change(module, feature, 1);
+    return lys_features_change(module, feature, 1, 0);
 }
 
 API int
@@ -3987,7 +3996,47 @@ lys_features_disable(const struct lys_module *module, const char *feature)
 {
     FUN_IN;
 
-    return lys_features_change(module, feature, 0);
+    return lys_features_change(module, feature, 0, 0);
+}
+
+API int
+lys_features_enable_force(const struct lys_module *module, const char *feature)
+{
+    FUN_IN;
+
+    return lys_features_change(module, feature, 1, 1);
+}
+
+API int
+lys_features_disable_force(const struct lys_module *module, const char *feature)
+{
+    FUN_IN;
+
+    return lys_features_change(module, feature, 0, 1);
+}
+
+static struct lys_feature *
+lys_features_find(const struct lys_module *module, const char *name)
+{
+    int i, j;
+
+    /* module itself */
+    for (i = 0; i < module->features_size; i++) {
+        if (!strcmp(name, module->features[i].name)) {
+            return &module->features[i];
+        }
+    }
+
+    /* submodules */
+    for (j = 0; j < module->inc_size; j++) {
+        for (i = 0; i < module->inc[j].submodule->features_size; i++) {
+            if (!strcmp(name, module->inc[j].submodule->features[i].name)) {
+                return &module->inc[j].submodule->features[i];
+            }
+        }
+    }
+
+    return NULL;
 }
 
 API int
@@ -3995,39 +4044,33 @@ lys_features_state(const struct lys_module *module, const char *feature)
 {
     FUN_IN;
 
-    int i, j;
+    struct lys_feature *f;
+    int i;
 
     if (!module || !feature) {
         return -1;
     }
 
     /* search for the specified feature */
-    /* module itself */
-    for (i = 0; i < module->features_size; i++) {
-        if (!strcmp(feature, module->features[i].name)) {
-            if (module->features[i].flags & LYS_FENABLED) {
-                return 1;
-            } else {
-                return 0;
-            }
+    f = lys_features_find(module, feature);
+    if (!f) {
+        return -1;
+    }
+
+    if (!(f->flags & LYS_FENABLED)) {
+        /* disabled for sure */
+        return 0;
+    }
+
+    /* check referenced features if they are enabled */
+    for (i = 0; i < f->iffeature_size; ++i) {
+        if (!resolve_iffeature(&f->iffeature[i])) {
+            /* if-feature disabled */
+            return 0;
         }
     }
 
-    /* submodules */
-    for (j = 0; j < module->inc_size; j++) {
-        for (i = 0; i < module->inc[j].submodule->features_size; i++) {
-            if (!strcmp(feature, module->inc[j].submodule->features[i].name)) {
-                if (module->inc[j].submodule->features[i].flags & LYS_FENABLED) {
-                    return 1;
-                } else {
-                    return 0;
-                }
-            }
-        }
-    }
-
-    /* feature definition not found */
-    return -1;
+    return 1;
 }
 
 API const char **
@@ -4452,31 +4495,33 @@ apply_aug(struct lys_node_augment *augment, struct unres_schema *unres)
         }
     }
 
-    /* check that all leafrefs point to implemented modules */
-    LY_TREE_DFS_BEGIN((struct lys_node *)augment, parent, child) {
-        if (child->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
-            type = &((struct lys_node_leaf *)child)->type;
-            if (type->base == LY_TYPE_LEAFREF) {
-                /* must be resolved or in unres */
-                if (!type->info.lref.target) {
-                    if (unres_schema_find(unres, -1, type, UNRES_TYPE_LEAFREF) > -1) {
-                        if (unres_schema_add_node(lys_node_module(child), unres, type, UNRES_TYPE_LEAFREF, child) == -1) {
-                            return -1;
+    if (lys_node_module((struct lys_node *)augment)->implemented) {
+        /* check that all leafrefs point to implemented modules */
+        LY_TREE_DFS_BEGIN((struct lys_node *)augment, parent, child) {
+            if (child->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
+                type = &((struct lys_node_leaf *)child)->type;
+                if (type->base == LY_TYPE_LEAFREF) {
+                    /* must be resolved or in unres */
+                    if (!type->info.lref.target) {
+                        if (unres_schema_find(unres, -1, type, UNRES_TYPE_LEAFREF) > -1) {
+                            if (unres_schema_add_node(lys_node_module(child), unres, type, UNRES_TYPE_LEAFREF, child) == -1) {
+                                return -1;
+                            }
                         }
-                    }
-                } else {
-                    mod = lys_node_module((struct lys_node *)type->info.lref.target);
-                    if (!mod->implemented) {
-                        mod->implemented = 1;
-                        if (unres_schema_add_node(mod, unres, NULL, UNRES_MOD_IMPLEMENT, NULL) == -1) {
-                            return -1;
+                    } else {
+                        mod = lys_node_module((struct lys_node *)type->info.lref.target);
+                        if (!mod->implemented) {
+                            mod->implemented = 1;
+                            if (unres_schema_add_node(mod, unres, NULL, UNRES_MOD_IMPLEMENT, NULL) == -1) {
+                                return -1;
+                            }
                         }
                     }
                 }
             }
-        }
 
-        LY_TREE_DFS_END((struct lys_node *)augment, parent, child);
+            LY_TREE_DFS_END((struct lys_node *)augment, parent, child);
+        }
     }
 
     /* reconnect augmenting data into the target - add them to the target child list */
