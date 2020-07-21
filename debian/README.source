@@ -9,7 +9,7 @@ echo $VERSION
 
 Update debian/sid branch
 - git checkout debian/master
-- git merge b$VERSION
+- git merge v$VERSION
 
 Update the debian/copyright file:
 - cme update dpkg-copyright
@@ -19,7 +19,7 @@ Check patches (and cleanup if necessary):
 - gbp pq rebase --commit --drop
 
 Download upstream tarball:
-- uscan --download --verbose --version $VERSION
+- uscan --download --verbose --download-version $VERSION
 
 Add pristine-tar:
 - pristine-tar commit ../libyang_$VERSION.orig.tar.gz v$VERSION
@@ -63,4 +63,4 @@ Maintainer Notes (moved from README.md)
   future release tags the same as the internal version number.  At that point
   the watch file will work.
 
- -- Ondřej Surý <Ondřej Surý <ondrej@debian.org>>, Mon,  8 Jun 2020 11:20:27 +0200
+ -- Ondřej Surý <Ondřej Surý <ondrej@debian.org>>, Tue, 21 Jul 2020 16:31:52 +0200
