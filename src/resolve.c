@@ -35,6 +35,9 @@
 /* internal parsed predicate structure */
 struct parsed_pred {
     const struct lys_node *schema;
+    const char *pred_str;
+    int pred_str_len;
+
     int len;
     struct {
         const char *mod_name;
@@ -1147,123 +1150,26 @@ parse_schema_json_predicate(const char *id, const char **mod_name, int *mod_name
     return parsed;
 }
 
-#ifdef LY_ENABLED_CACHE
-
-static int
-resolve_hash_table_find_equal(void *val1_p, void *val2_p, int mod, void *UNUSED(cb_data))
-{
-    struct lyd_node *val2, *elem2;
-    struct parsed_pred pp;
-    const char *str;
-    int i;
-
-    assert(!mod);
-    (void)mod;
-
-    pp = *((struct parsed_pred *)val1_p);
-    val2 = *((struct lyd_node **)val2_p);
-
-    if (val2->schema != pp.schema) {
-        return 0;
-    }
-
-    switch (val2->schema->nodetype) {
-    case LYS_CONTAINER:
-    case LYS_LEAF:
-    case LYS_ANYXML:
-    case LYS_ANYDATA:
-        return 1;
-    case LYS_LEAFLIST:
-        str = ((struct lyd_node_leaf_list *)val2)->value_str;
-        if (!strncmp(str, pp.pred[0].value, pp.pred[0].val_len) && !str[pp.pred[0].val_len]) {
-            return 1;
-        }
-        return 0;
-    case LYS_LIST:
-        assert(((struct lys_node_list *)val2->schema)->keys_size);
-        assert(((struct lys_node_list *)val2->schema)->keys_size == pp.len);
-
-        /* lists with keys, their equivalence is based on their keys */
-        elem2 = val2->child;
-        /* the exact data order is guaranteed */
-        for (i = 0; elem2 && (i < pp.len); ++i) {
-            /* module check */
-            if (pp.pred[i].mod_name) {
-                if (strncmp(lyd_node_module(elem2)->name, pp.pred[i].mod_name, pp.pred[i].mod_name_len)
-                        || lyd_node_module(elem2)->name[pp.pred[i].mod_name_len]) {
-                    break;
-                }
-            } else {
-                if (lyd_node_module(elem2) != lys_node_module(pp.schema)) {
-                    break;
-                }
-            }
-
-            /* name check */
-            if (strncmp(elem2->schema->name, pp.pred[i].name, pp.pred[i].nam_len) || elem2->schema->name[pp.pred[i].nam_len]) {
-                break;
-            }
-
-            /* value check */
-            str = ((struct lyd_node_leaf_list *)elem2)->value_str;
-            if (strncmp(str, pp.pred[i].value, pp.pred[i].val_len) || str[pp.pred[i].val_len]) {
-                break;
-            }
-
-            /* next key */
-            elem2 = elem2->next;
-        }
-        if (i == pp.len) {
-            return 1;
-        }
-        return 0;
-    default:
-        break;
-    }
-
-    LOGINT(val2->schema->module->ctx);
-    return 0;
-}
-
 static struct lyd_node *
-resolve_json_data_node_hash(struct lyd_node *parent, struct parsed_pred pp)
+resolve_json_data_node_hash(struct lyd_node *siblings, struct parsed_pred pp)
 {
-    values_equal_cb prev_cb;
-    struct lyd_node **ret = NULL;
-    uint32_t hash;
-    int i;
+    struct lyd_node *ret = NULL;
+    char *key_or_value = NULL;
 
-    assert(parent && parent->hash);
-
-    /* set our value equivalence callback that does not require data nodes */
-    prev_cb = lyht_set_cb(parent->ht, resolve_hash_table_find_equal);
-
-    /* get the hash of the searched node */
-    hash = dict_hash_multi(0, lys_node_module(pp.schema)->name, strlen(lys_node_module(pp.schema)->name));
-    hash = dict_hash_multi(hash, pp.schema->name, strlen(pp.schema->name));
     if (pp.schema->nodetype == LYS_LEAFLIST) {
         assert((pp.len == 1) && (pp.pred[0].name[0] == '.') && (pp.pred[0].nam_len == 1));
-        /* leaf-list value in predicate */
-        hash = dict_hash_multi(hash, pp.pred[0].value, pp.pred[0].val_len);
+
+        key_or_value = strndup(pp.pred[0].value, pp.pred[0].val_len);
     } else if (pp.schema->nodetype == LYS_LIST) {
-        /* list keys in predicates */
-        for (i = 0; i < pp.len; ++i) {
-            hash = dict_hash_multi(hash, pp.pred[i].value, pp.pred[i].val_len);
-        }
+        key_or_value = strndup(pp.pred_str, pp.pred_str_len);
     }
-    hash = dict_hash_multi(hash, NULL, 0);
 
     /* try to find the node */
-    i = lyht_find(parent->ht, &pp, hash, (void **)&ret);
-    assert(i || *ret);
+    lyd_find_sibling_val(siblings, pp.schema, key_or_value, &ret);
+    free(key_or_value);
 
-    /* restore the original callback */
-    lyht_set_cb(parent->ht, prev_cb);
-
-    return (i ? NULL : *ret);
+    return ret;
 }
-
-#endif
 
 /**
  * @brief Resolve (find) a feature definition. Logs directly.
@@ -2761,14 +2667,11 @@ resolve_partial_json_data_nodeid(const char *nodeid, const char *llist_value, st
             goto error;
         }
 
-#ifdef LY_ENABLED_CACHE
-        /* we will not be matching keyless lists or state leaf-lists this way */
-        if (start->parent && start->parent->ht && ((pp.schema->nodetype != LYS_LIST) || ((struct lys_node_list *)pp.schema)->keys_size)
+        /* we will not be matching list position, keyless lists, or state leaf-lists this way */
+        if (((pp.schema->nodetype != LYS_LIST) || (((struct lys_node_list *)pp.schema)->keys_size && !isdigit(pp.pred[0].name[0])))
                 && ((pp.schema->nodetype != LYS_LEAFLIST) || (pp.schema->flags & LYS_CONFIG_W))) {
-            sibling = resolve_json_data_node_hash(start->parent, pp);
-        } else
-#endif
-        {
+            sibling = resolve_json_data_node_hash(start, pp);
+        } else {
             list_instance_position = 0;
             LY_TREE_FOR(start, sibling) {
                 /* RPC/action data check, return simply invalid argument, because the data tree is invalid */
@@ -2881,9 +2784,15 @@ parse_predicates:
         /* parse all the predicates */
         free(pp.pred);
         pp.schema = NULL;
+        pp.pred_str = NULL;
+        pp.pred_str_len = 0;
         pp.len = 0;
         pp.pred = NULL;
         while (has_predicate) {
+            if (!pp.pred_str) {
+                pp.pred_str = id;
+            }
+
             ++pp.len;
             pp.pred = ly_realloc(pp.pred, pp.len * sizeof *pp.pred);
             LY_CHECK_ERR_GOTO(!pp.pred, LOGMEM(ctx), error);
@@ -2896,6 +2805,7 @@ parse_predicates:
 
             id += r;
             last_parsed += r;
+            pp.pred_str_len += r;
         }
     }
 
@@ -7519,14 +7429,19 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
      * if-features are resolved here to make sure that we will have all if-features for
      * later check of feature circular dependency */
     if (resolve_unres_schema_types(unres, UNRES_USES | UNRES_IFFEAT | UNRES_TYPE_DER | UNRES_TYPE_DER_TPDF | UNRES_TYPE_DER_TPDF
-                                   | UNRES_TYPE_LEAFREF | UNRES_MOD_IMPLEMENT | UNRES_AUGMENT | UNRES_CHOICE_DFLT | UNRES_IDENT,
+                                   | UNRES_AUGMENT | UNRES_CHOICE_DFLT | UNRES_IDENT,
                                    mod->ctx, 1, 0, &resolved)) {
+        return -1;
+    }
+
+    if (resolve_unres_schema_types(unres, UNRES_MOD_IMPLEMENT, mod->ctx, 1, 0, &resolved)) {
         return -1;
     }
 
     /* another batch of resolved items */
     if (resolve_unres_schema_types(unres, UNRES_TYPE_IDENTREF | UNRES_FEATURE | UNRES_TYPEDEF_DFLT | UNRES_TYPE_DFLT
-                                   | UNRES_LIST_KEYS | UNRES_LIST_UNIQ | UNRES_EXT, mod->ctx, 1, 0, &resolved)) {
+                                   | UNRES_TYPE_LEAFREF | UNRES_LIST_KEYS | UNRES_LIST_UNIQ | UNRES_EXT, mod->ctx, 1, 0,
+                                   &resolved)) {
         return -1;
     }
 

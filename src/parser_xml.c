@@ -469,7 +469,7 @@ attr_error:
             xml->child = NULL;
             LY_TREE_FOR(child, next) {
                 next->parent = NULL;
-                lyxml_correct_elem_ns(ctx, next, 1, 1);
+                lyxml_correct_elem_ns(ctx, next, xml, 1, 1);
             }
 
             ((struct lyd_node_anydata *)*result)->value_type = LYD_ANYDATA_XML;
@@ -673,7 +673,8 @@ lyd_parse_xml(struct ly_ctx *ctx, struct lyxml_elem **root, int options, ...)
     }
 
     if ((options & LYD_OPT_RPC)
-            && !strcmp(xmlstart->name, "action") && !strcmp(xmlstart->ns->value, LY_NSYANG)) {
+            && !strcmp(xmlstart->name, "action")
+            && xmlstart->ns && !strcmp(xmlstart->ns->value, LY_NSYANG)) {
         /* it's an action, not a simple RPC */
         xmlstart = xmlstart->child;
         if (options & LYD_OPT_DESTRUCT) {
