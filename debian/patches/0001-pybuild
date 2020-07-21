@@ -13,7 +13,7 @@ version of python.
  2 files changed, 39 insertions(+), 39 deletions(-)
 
 diff --git a/swig/CMakeLists.txt b/swig/CMakeLists.txt
-index cbd694d..05c85ec 100644
+index e3b9c98..284ff9b 100644
 --- a/swig/CMakeLists.txt
 +++ b/swig/CMakeLists.txt
 @@ -20,28 +20,34 @@ endif()
