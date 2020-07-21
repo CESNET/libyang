@@ -1,3 +1,12 @@
+libyang (1.0.184-1~1.gbp418b5c) UNRELEASED; urgency=medium
+
+  ** SNAPSHOT build @418b5c46e4e89bd8d9ceab321b53df77cddec318 **
+
+  * Revert "Add upstream patch for 'data tree BUGFIX hash canonical values for leaves'"
+  * Fix typo in d/README.source
+
+ -- Ondřej Surý <ondrej@debian.org>  Tue, 21 Jul 2020 16:32:24 +0200
+
 libyang (1.0.176-3) unstable; urgency=medium
 
   * Add upstream patch for 'data tree BUGFIX hash canonical values for leaves'
