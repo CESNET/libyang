@@ -1,4 +1,4 @@
-# SymbolsHelper-Confirmed: 1.0.176 amd64
+# SymbolsHelper-Confirmed: 1.0.184 amd64
 libyang.so.1 libyang1 #MINVER#
 * Build-Depends-Package: libyang-dev
  ly_clean_plugins@Base 1.0.130
@@ -134,7 +134,9 @@ libyang.so.1 libyang1 #MINVER#
  lys_ext_instance_presence@Base 1.0.130
  lys_ext_instance_substmt@Base 1.0.130
  lys_features_disable@Base 1.0.130
+ lys_features_disable_force@Base 1.0.184
  lys_features_enable@Base 1.0.130
+ lys_features_enable_force@Base 1.0.184
  lys_features_list@Base 1.0.130
  lys_features_state@Base 1.0.130
  lys_find_path@Base 1.0.130
