@@ -766,7 +766,7 @@ lyxp_set_free(struct lyxp_set *set)
  * @param[in] set Arbitrary initialized set.
  */
 static void
-set_init(struct lyxp_set *new, struct lyxp_set *set)
+set_init(struct lyxp_set *new, const struct lyxp_set *set)
 {
     memset(new, 0, sizeof *new);
     if (set) {
@@ -893,7 +893,7 @@ set_fill_boolean(struct lyxp_set *set, int boolean)
  * @param[in] src Source set to copy into \p trg.
  */
 static void
-set_fill_set(struct lyxp_set *trg, struct lyxp_set *src)
+set_fill_set(struct lyxp_set *trg, const struct lyxp_set *src)
 {
     if (!trg || !src) {
         return;
@@ -1544,6 +1544,83 @@ set_comp_cast(struct lyxp_set *trg, struct lyxp_set *src, enum lyxp_set_type typ
 
     /* cast target set appropriately */
     return lyxp_set_cast(trg, type);
+}
+
+/**
+ * @brief Set content canonization for comparisons.
+ *
+ * @param[in] trg Target set to put the canononized source into.
+ * @param[in] src Source set.
+ * @param[in] xp_node Source XPath node/meta to use for canonization.
+ * @return LY_ERR
+ */
+static LY_ERR
+set_comp_canonize(struct lyxp_set *trg, const struct lyxp_set *src, const struct lyxp_set_node *xp_node)
+{
+    struct lysc_type *type = NULL;
+    struct lyd_value val;
+    struct ly_err_item *err = NULL;
+    char *str, *ptr;
+    int dynamic;
+    LY_ERR rc;
+
+    /* is there anything to canonize even? */
+    if ((src->type == LYXP_SET_NUMBER) || (src->type == LYXP_SET_STRING)) {
+        /* do we have a type to use for canonization? */
+        if ((xp_node->type == LYXP_NODE_ELEM) && (xp_node->node->schema->nodetype & LYD_NODE_TERM)) {
+            type = ((struct lyd_node_term *)xp_node->node)->value.realtype;
+        } else if (xp_node->type == LYXP_NODE_META) {
+            type = ((struct lyd_meta *)xp_node->node)->value.realtype;
+        }
+    }
+    if (!type) {
+        goto fill;
+    }
+
+    if (src->type == LYXP_SET_NUMBER) {
+        /* canonize number */
+        if (asprintf(&str, "%Lf", src->val.num) == -1) {
+            LOGMEM(src->ctx);
+            return LY_EMEM;
+        }
+    } else {
+        /* canonize string */
+        str = strdup(src->val.str);
+    }
+
+    /* ignore errors, the value may not satisfy schema constraints */
+    rc = type->plugin->store(src->ctx, type, str, strlen(str),
+                             LY_TYPE_OPTS_STORE | LY_TYPE_OPTS_INCOMPLETE_DATA | LY_TYPE_OPTS_DYNAMIC, NULL,
+                             NULL, LYD_JSON, NULL, NULL, &val, NULL, &err);
+    ly_err_free(err);
+    if (rc) {
+        /* invalid value */
+        free(str);
+        goto fill;
+    }
+
+    /* storing successful, now print the canonical value */
+    str = (char *)type->plugin->print(&val, LYD_JSON, json_print_get_prefix, NULL, &dynamic);
+
+    /* use the canonized value */
+    set_init(trg, src);
+    trg->type = src->type;
+    if (src->type == LYXP_SET_NUMBER) {
+        trg->val.num = strtold(str, &ptr);
+        if (dynamic) {
+            free(str);
+        }
+        LY_CHECK_ERR_RET(ptr[0], LOGINT(src->ctx), LY_EINT);
+    } else {
+        trg->val.str = (dynamic ? str : strdup(str));
+    }
+    type->plugin->free(src->ctx, &val);
+    return LY_SUCCESS;
+
+fill:
+    /* no canonization needed/possible */
+    set_fill_set(trg, src);
+    return LY_SUCCESS;
 }
 
 #ifndef NDEBUG
@@ -6439,6 +6516,7 @@ moveto_op_comp(struct lyxp_set *set1, struct lyxp_set *set2, const char *op, int
     if ((set1->type == LYXP_SET_NODE_SET) || (set2->type == LYXP_SET_NODE_SET)) {
         if (set1->type == LYXP_SET_NODE_SET) {
             for (i = 0; i < set1->used; ++i) {
+                /* cast set1 */
                 switch (set2->type) {
                 case LYXP_SET_NUMBER:
                     rc = set_comp_cast(&iter1, set1, LYXP_SET_NUMBER, i);
@@ -6452,11 +6530,13 @@ moveto_op_comp(struct lyxp_set *set1, struct lyxp_set *set2, const char *op, int
                 }
                 LY_CHECK_RET(rc);
 
-                rc = moveto_op_comp(&iter1, set2, op, options);
-                if (rc != LY_SUCCESS) {
-                    lyxp_set_free_content(&iter1);
-                    return rc;
-                }
+                /* canonize set2 */
+                LY_CHECK_ERR_RET(rc = set_comp_canonize(&iter2, set2, &set1->val.nodes[i]), lyxp_set_free_content(&iter1), rc);
+
+                /* compare recursively */
+                rc = moveto_op_comp(&iter1, &iter2, op, options);
+                lyxp_set_free_content(&iter2);
+                LY_CHECK_ERR_RET(rc, lyxp_set_free_content(&iter1), rc);
 
                 /* lazy evaluation until true */
                 if (iter1.val.bln) {
@@ -6466,28 +6546,27 @@ moveto_op_comp(struct lyxp_set *set1, struct lyxp_set *set2, const char *op, int
             }
         } else {
             for (i = 0; i < set2->used; ++i) {
+                /* set set2 */
                 switch (set1->type) {
-                    case LYXP_SET_NUMBER:
-                        rc = set_comp_cast(&iter2, set2, LYXP_SET_NUMBER, i);
-                        break;
-                    case LYXP_SET_BOOLEAN:
-                        rc = set_comp_cast(&iter2, set2, LYXP_SET_BOOLEAN, i);
-                        break;
-                    default:
-                        rc = set_comp_cast(&iter2, set2, LYXP_SET_STRING, i);
-                        break;
+                case LYXP_SET_NUMBER:
+                    rc = set_comp_cast(&iter2, set2, LYXP_SET_NUMBER, i);
+                    break;
+                case LYXP_SET_BOOLEAN:
+                    rc = set_comp_cast(&iter2, set2, LYXP_SET_BOOLEAN, i);
+                    break;
+                default:
+                    rc = set_comp_cast(&iter2, set2, LYXP_SET_STRING, i);
+                    break;
                 }
                 LY_CHECK_RET(rc);
 
-                set_fill_set(&iter1, set1);
+                /* canonize set1 */
+                LY_CHECK_ERR_RET(rc = set_comp_canonize(&iter1, set1, &set2->val.nodes[i]), lyxp_set_free_content(&iter2), rc);
 
+                /* compare recursively */
                 rc = moveto_op_comp(&iter1, &iter2, op, options);
-                if (rc != LY_SUCCESS) {
-                    lyxp_set_free_content(&iter1);
-                    lyxp_set_free_content(&iter2);
-                    return rc;
-                }
                 lyxp_set_free_content(&iter2);
+                LY_CHECK_ERR_RET(rc, lyxp_set_free_content(&iter1), rc);
 
                 /* lazy evaluation until true */
                 if (iter1.val.bln) {

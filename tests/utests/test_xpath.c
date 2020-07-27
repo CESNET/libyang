@@ -80,6 +80,9 @@ setup(void **state)
         "leaf foo {"
             "type string;"
         "}"
+        "leaf foo2 {"
+            "type uint8;"
+        "}"
         "container c {"
             "leaf x {"
                 "type string;"
@@ -376,7 +379,7 @@ test_atomize(void **state)
 
     /* some random paths just making sure the API function works */
     assert_int_equal(LY_SUCCESS, lys_atomize_xpath(mod->compiled->data, "/a:*", 0, &set));
-    assert_int_equal(3, set->count);
+    assert_int_equal(4, set->count);
 
     ly_set_free(set, NULL);
 
@@ -386,10 +389,34 @@ test_atomize(void **state)
 
     ly_set_free(set, NULL);
 
-    assert_int_equal(LY_SUCCESS, lys_atomize_xpath(mod->compiled->data->next->next, "/a:c/ll[a='val1']/ll[a='val2']/b", 0, &set));
-    assert_int_equal(6, set->count);
+    assert_int_equal(LY_SUCCESS, lys_atomize_xpath(mod->compiled->data->next->next, "/a:c/ll[a='val1']/ll[a='val2']/b",
+                                                   0, &set));
+    assert_int_equal(7, set->count);
 
     ly_set_free(set, NULL);
+}
+
+static void
+test_canonize(void **state)
+{
+    *state = test_canonize;
+
+    const char *data =
+    "<foo2 xmlns=\"urn:tests:a\">50</foo2>";
+    struct lyd_node *tree;
+    struct ly_set *set;
+
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
+    assert_non_null(tree);
+
+    assert_int_equal(LY_SUCCESS, lyd_find_xpath(tree, "/a:foo2[.='050']", &set));
+    assert_int_equal(1, set->count);
+    ly_set_free(set, NULL);
+
+    /* TODO more use-cases once there are some type plugins that have canonical values */
+
+    lyd_free_all(tree);
+    *state = NULL;
 }
 
 int main(void)
@@ -398,6 +425,7 @@ int main(void)
         cmocka_unit_test_setup_teardown(test_hash, setup, teardown),
         cmocka_unit_test_setup_teardown(test_toplevel, setup, teardown),
         cmocka_unit_test_setup_teardown(test_atomize, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_canonize, setup, teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
