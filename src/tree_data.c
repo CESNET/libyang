@@ -1222,7 +1222,7 @@ lyd_create_leaf(const struct lys_node *schema, const char *val_str, int dflt, in
     ret->value_str = lydict_insert(schema->module->ctx, val_str ? val_str : "", 0);
     ret->dflt = dflt;
 
-    if (edit_leaf && !ret->value_str[0]) {
+    if (edit_leaf && !val_str) {
         /* empty edit leaf, it is fine */
         ((struct lyd_node_leaf_list *)ret)->value_type = LY_TYPE_UNKNOWN;
     } else if (!lyp_parse_value(&((struct lys_node_leaf *)schema)->type, &ret->value_str, NULL, ret, NULL, NULL, 1, dflt)) {
