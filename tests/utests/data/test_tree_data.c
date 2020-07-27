@@ -19,6 +19,9 @@
 #include <cmocka.h>
 
 #include "libyang.h"
+#include "common.h"
+#include "path.h"
+#include "xpath.h"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
@@ -58,7 +61,9 @@ setup(void **state)
             "leaf-list ll { type string;}"
             "container c {leaf-list x {type string;}}"
             "anydata any {config false;}"
-            "list l2 {config false; container c{leaf x {type string;}}}}";
+            "list l2 {config false;"
+                "container c{leaf x {type string;} leaf-list d {type string;}}"
+            "}}";
 
 #if ENABLE_LOGGER_CHECKING
     ly_set_log_clb(logger, 1);
@@ -263,11 +268,58 @@ test_dup(void **state)
     *state = NULL;
 }
 
+static void
+test_target(void **state)
+{
+    *state = test_target;
+
+    const struct lyd_node_term *term;
+    struct lyd_node *tree;
+    struct lyxp_expr *exp;
+    struct ly_path *path;
+    const char *path_str = "/a:l2[2]/c/d[3]", *val;
+    int dynamic;
+    const char *data =
+        "<l2 xmlns=\"urn:tests:a\"><c>"
+            "<d>a</d>"
+        "</c></l2>"
+        "<l2 xmlns=\"urn:tests:a\"><c>"
+            "<d>a</d>"
+            "<d>b</d>"
+            "<d>b</d>"
+            "<d>c</d>"
+        "</c></l2>"
+        "<l2 xmlns=\"urn:tests:a\"><c>"
+        "</c></l2>";
+
+    assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, 0, LYD_VALIDATE_PRESENT, &tree));
+    assert_int_equal(LY_SUCCESS, ly_path_parse(ctx, NULL, path_str, strlen(path_str), LY_PATH_BEGIN_EITHER, LY_PATH_LREF_FALSE,
+                                               LY_PATH_PREFIX_OPTIONAL, LY_PATH_PRED_SIMPLE, &exp));
+    assert_int_equal(LY_SUCCESS, ly_path_compile(ctx, NULL, NULL, exp, LY_PATH_LREF_FALSE, LY_PATH_OPER_INPUT,
+                                                 LY_PATH_TARGET_SINGLE, lydjson_resolve_prefix, NULL, LYD_JSON, &path));
+    term = lyd_target(path, tree);
+
+    assert_string_equal(term->schema->name, "d");
+    val = lyd_value2str(term, &dynamic);
+    assert_int_equal(dynamic, 0);
+    assert_string_equal(val, "b");
+    val = lyd_value2str((struct lyd_node_term *)term->prev, &dynamic);
+    assert_int_equal(dynamic, 0);
+    assert_string_equal(val, "b");
+
+    lyd_free_all(tree);
+    ly_path_free(ctx, path);
+    lyxp_expr_free(ctx, exp);
+
+    *state = NULL;
+}
+
 int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_compare, setup, teardown),
         cmocka_unit_test_setup_teardown(test_dup, setup, teardown),
+        cmocka_unit_test_setup_teardown(test_target, setup, teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
