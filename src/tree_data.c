@@ -1205,7 +1205,7 @@ lyd_new(struct lyd_node *parent, const struct lys_module *module, const char *na
 }
 
 static struct lyd_node *
-lyd_create_leaf(const struct lys_node *schema, const char *val_str, int dflt)
+lyd_create_leaf(const struct lys_node *schema, const char *val_str, int dflt, int edit_leaf)
 {
     struct lyd_node_leaf_list *ret;
 
@@ -1222,6 +1222,14 @@ lyd_create_leaf(const struct lys_node *schema, const char *val_str, int dflt)
     ret->value_str = lydict_insert(schema->module->ctx, val_str ? val_str : "", 0);
     ret->dflt = dflt;
 
+    if (edit_leaf && !val_str) {
+        /* empty edit leaf, it is fine */
+        ((struct lyd_node_leaf_list *)ret)->value_type = LY_TYPE_UNKNOWN;
+    } else if (!lyp_parse_value(&((struct lys_node_leaf *)schema)->type, &ret->value_str, NULL, ret, NULL, NULL, 1, dflt)) {
+        lyd_free((struct lyd_node *)ret);
+        return NULL;
+    }
+
 #ifdef LY_ENABLED_CACHE
     lyd_hash((struct lyd_node *)ret);
 #endif
@@ -1234,7 +1242,7 @@ _lyd_new_leaf(struct lyd_node *parent, const struct lys_node *schema, const char
 {
     struct lyd_node *ret;
 
-    ret = lyd_create_leaf(schema, val_str, dflt);
+    ret = lyd_create_leaf(schema, val_str, dflt, edit_leaf);
     if (!ret) {
         return NULL;
     }
@@ -1245,19 +1253,6 @@ _lyd_new_leaf(struct lyd_node *parent, const struct lys_node *schema, const char
             lyd_free(ret);
             return NULL;
         }
-    }
-
-    if (edit_leaf && !((struct lyd_node_leaf_list *)ret)->value_str[0]) {
-        /* empty edit leaf, it is fine */
-        ((struct lyd_node_leaf_list *)ret)->value_type = LY_TYPE_UNKNOWN;
-        return ret;
-    }
-
-    /* resolve the type correctly (after it was connected to parent cause of log) */
-    if (!lyp_parse_value(&((struct lys_node_leaf *)ret->schema)->type, &((struct lyd_node_leaf_list *)ret)->value_str,
-                         NULL, (struct lyd_node_leaf_list *)ret, NULL, NULL, 1, dflt)) {
-        lyd_free(ret);
-        return NULL;
     }
 
     if ((ret->schema->nodetype == LYS_LEAF) && (ret->schema->flags & LYS_UNIQUE)) {
@@ -1631,16 +1626,10 @@ lyd_make_canonical(const struct lys_node *schema, const char *val_str, int val_s
         return NULL;
     }
 
-    node = lyd_create_leaf(schema, str, 0);
+    /* parse the value into a fake leaf */
+    node = lyd_create_leaf(schema, str, 0, 0);
     free(str);
     if (!node) {
-        return NULL;
-    }
-
-    /* parse the value into a fake leaf */
-    if (!lyp_parse_value(&((struct lys_node_leaf *)node->schema)->type, &((struct lyd_node_leaf_list *)node)->value_str,
-                         NULL, (struct lyd_node_leaf_list *)node, NULL, NULL, 1, 0)) {
-        lyd_free(node);
         return NULL;
     }
 
@@ -2293,22 +2282,12 @@ lyd_new_dummy(struct lyd_node *root, struct lyd_node *parent, const struct lys_n
             }
         }
     }
-    while(index) {
+    while (index) {
         /* create the missing part of the path */
         switch (spath->set.s[index - 1]->nodetype) {
         case LYS_LEAF:
         case LYS_LEAFLIST:
-            if (value) {
-                iter = _lyd_new_leaf(parent, spath->set.s[index - 1], value, dflt, 0);
-            } else {
-                iter = lyd_create_leaf(spath->set.s[index - 1], value, dflt);
-                if (iter && parent) {
-                    if (lyd_insert(parent, iter)) {
-                        lyd_free(iter);
-                        goto error;
-                    }
-                }
-            }
+            iter = _lyd_new_leaf(parent, spath->set.s[index - 1], value, dflt, 1);
             break;
         case LYS_CONTAINER:
         case LYS_LIST:
@@ -6892,12 +6871,12 @@ lyd_find_sibling_val(const struct lyd_node *siblings, const struct lys_node *sch
         break;
     case LYS_LEAF:
         /* used attributes: schema, hash */
-        target = lyd_create_leaf(schema, NULL, 0);
+        target = lyd_create_leaf(schema, NULL, 0, 1);
         LY_CHECK_RETURN(!target, -1);
         break;
     case LYS_LEAFLIST:
         /* used attributes: schema, hash, value_str */
-        target = lyd_create_leaf(schema, key_or_value, 0);
+        target = lyd_create_leaf(schema, key_or_value, 0, 0);
         LY_CHECK_RETURN(!target, -1);
         break;
     case LYS_LIST:
@@ -6918,7 +6897,7 @@ lyd_find_sibling_val(const struct lyd_node *siblings, const struct lys_node *sch
             LY_CHECK_GOTO(!val, error);
 
             /* create and insert key */
-            node = lyd_create_leaf(key, val, 0);
+            node = lyd_create_leaf(key, val, 0, 0);
             if (!node || lyd_insert(target, node)) {
                 lyd_free(node);
                 goto error;

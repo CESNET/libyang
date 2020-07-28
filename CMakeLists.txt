@@ -25,15 +25,15 @@ set(CMAKE_MACOSX_RPATH TRUE)
 # micro version is changed with a set of small changes or bugfixes anywhere in the project.
 set(LIBYANG_MAJOR_VERSION 1)
 set(LIBYANG_MINOR_VERSION 0)
-set(LIBYANG_MICRO_VERSION 180)
+set(LIBYANG_MICRO_VERSION 185)
 set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_MICRO_VERSION})
 
 # Version of the library
 # Major version is changed with every backward non-compatible API/ABI change in libyang, minor version changes
 # with backward compatible change and micro version is connected with any internal change of the library.
 set(LIBYANG_MAJOR_SOVERSION 1)
-set(LIBYANG_MINOR_SOVERSION 8)
-set(LIBYANG_MICRO_SOVERSION 6)
+set(LIBYANG_MINOR_SOVERSION 9)
+set(LIBYANG_MICRO_SOVERSION 3)
 set(LIBYANG_SOVERSION_FULL ${LIBYANG_MAJOR_SOVERSION}.${LIBYANG_MINOR_SOVERSION}.${LIBYANG_MICRO_SOVERSION})
 set(LIBYANG_SOVERSION ${LIBYANG_MAJOR_SOVERSION})
 
@@ -50,7 +50,7 @@ endif()
 set(CMAKE_C_FLAGS         "${CMAKE_C_FLAGS} -Wall -Wextra -std=gnu99")
 set(CMAKE_C_FLAGS_RELEASE "-O2 -DNDEBUG")
 set(CMAKE_C_FLAGS_PACKAGE "-g -O2 -DNDEBUG")
-set(CMAKE_C_FLAGS_DEBUG   "-g -O0")
+set(CMAKE_C_FLAGS_DEBUG   "-g -Og")
 
 # options
 if((CMAKE_BUILD_TYPE STREQUAL debug) OR (CMAKE_BUILD_TYPE STREQUAL Package))
@@ -106,9 +106,8 @@ set(USER_TYPES_PLUGINS_DIR_MACRO "${PLUGINS_DIR}/user_types")
 set(GEN_LANGUAGE_BINDINGS 0 CACHE BOOL "Enable language bindings generation.")
 set(GEN_CPP_BINDINGS 1 CACHE BOOL "Enable C++ bindings.")
 # Python bindings depend on C++ bindings because of SWIG
-set(GEN_PYTHON_BINDINGS 1 CACHE BOOL "Enable Python SWIG bindings.")
+set(GEN_PYTHON_BINDINGS 1 CACHE BOOL "Enable Python bindings.")
 set(GEN_PYTHON_VERSION "3" CACHE STRING "Python version")
-set(GEN_PYTHON_CFFI_BINDINGS 0 CACHE BOOL "Enable Python CFFI bindings.")
 set(GEN_JAVASCRIPT_BINDINGS 0 CACHE BOOL "Enable JavaScript bindings.")
 set(GEN_JAVA_BINDINGS 0 CACHE BOOL "Enable Java bindings.")
 
@@ -195,8 +194,6 @@ set(headers
 # link compat
 use_compat()
 
-set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
-
 # create static libyang library
 if(ENABLE_STATIC)
     add_definitions(-DSTATIC)
@@ -217,6 +214,7 @@ if(ENABLE_STATIC)
         set(ENABLE_VALGRIND_TESTS OFF)
     endif(ENABLE_VALGRIND_TESTS)
 else()
+    set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
     add_library(yangobj OBJECT ${libsrc})
     add_library(yang SHARED $<TARGET_OBJECTS:yangobj> $<TARGET_OBJECTS:compat>)
 
@@ -376,8 +374,4 @@ endif()
 
 if(GEN_LANGUAGE_BINDINGS AND GEN_CPP_BINDINGS)
     add_subdirectory(swig)
-endif()
-
-if(GEN_PYTHON_CFFI_BINDINGS)
-    add_subdirectory(python)
 endif()
