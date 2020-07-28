@@ -2103,15 +2103,10 @@ lyd_compare_siblings(const struct lyd_node *node1, const struct lyd_node *node2,
         LY_CHECK_RET(lyd_compare_single(node1, node2, options));
     }
 
-    if (!node1 || !node2) {
-        if (node1 == node2) {
-            return LY_SUCCESS;
-        } else {
-            return LY_ENOT;
-        }
+    if (node1 == node2) {
+        return LY_SUCCESS;
     }
-
-    return LY_SUCCESS;
+    return LY_ENOT;
 }
 
 API LY_ERR
