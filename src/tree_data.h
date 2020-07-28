@@ -871,7 +871,18 @@ LY_ERR lyd_value_compare(const struct lyd_node_term *node, const char *value, si
  * @return LY_SUCCESS if the nodes are equivalent.
  * @return LY_ENOT if the nodes are not equivalent.
  */
-LY_ERR lyd_compare(const struct lyd_node *node1, const struct lyd_node *node2, int options);
+LY_ERR lyd_compare_single(const struct lyd_node *node1, const struct lyd_node *node2, int options);
+
+/**
+ * @brief Compare 2 lists of siblings if they are equivalent.
+ *
+ * @param[in] node1 The first sibling list to compare.
+ * @param[in] node2 The second sibling list to compare.
+ * @param[in] options Various @ref datacompareoptions.
+ * @return LY_SUCCESS if all the siblings are equivalent.
+ * @return LY_ENOT if the siblings are not equivalent.
+ */
+LY_ERR lyd_compare_siblings(const struct lyd_node *node1, const struct lyd_node *node2, int options);
 
 /**
  * @brief Compare 2 metadata.

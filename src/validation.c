@@ -289,7 +289,7 @@ lyd_validate_duplicates(const struct lyd_node *first, const struct lyd_node *nod
                     fail = 1;
                     break;
                 }
-            } else if (!lyd_compare(first, node, 0)) {
+            } else if (!lyd_compare_single(first, node, 0)) {
                 fail = 1;
                 break;
             }

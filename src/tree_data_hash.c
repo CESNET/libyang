@@ -116,7 +116,7 @@ lyd_hash_table_val_equal(void *val1_p, void *val2_p, int mod, void *UNUSED(cb_da
 
     if (val1->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
         /* match on exact instance */
-        if (!lyd_compare(val1, val2, 0)) {
+        if (!lyd_compare_single(val1, val2, 0)) {
             return 1;
         }
     } else if (val1->schema == val2->schema) {

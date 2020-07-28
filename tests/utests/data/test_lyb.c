@@ -154,7 +154,7 @@ check_data_tree(struct lyd_node *root1, struct lyd_node *root2)
         case LYS_LEAFLIST:
         case LYS_ANYDATA:
         case LYS_ANYXML:
-            if (lyd_compare(elem1, elem2, 0)) {
+            if (lyd_compare_single(elem1, elem2, 0)) {
                 fprintf(stderr, "\"%s\": value mismatch.\n", elem1->schema->name);
                 fail();
             }

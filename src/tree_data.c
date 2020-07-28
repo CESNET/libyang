@@ -883,7 +883,7 @@ lyd_new_path_update(struct lyd_node *node, const void *value, LYD_ANYDATA_VALUET
         LY_CHECK_RET(lyd_create_any(node->schema, value, value_type, &new_any));
 
         /* compare with the existing one */
-        if (lyd_compare(node, new_any, 0)) {
+        if (lyd_compare_single(node, new_any, 0)) {
             /* not equal, switch values (so that we can use generic node free) */
             ((struct lyd_node_any *)new_any)->value = ((struct lyd_node_any *)node)->value;
             ((struct lyd_node_any *)new_any)->value_type = ((struct lyd_node_any *)node)->value_type;
@@ -1932,7 +1932,7 @@ lyd_target(const struct ly_path *path, const struct lyd_node *tree)
 }
 
 API LY_ERR
-lyd_compare(const struct lyd_node *node1, const struct lyd_node *node2, int options)
+lyd_compare_single(const struct lyd_node *node1, const struct lyd_node *node2, int options)
 {
     const struct lyd_node *iter1, *iter2;
     struct lyd_node_term *term1, *term2;
@@ -2034,7 +2034,7 @@ lyd_compare(const struct lyd_node *node1, const struct lyd_node *node2, int opti
                 for (struct lysc_node *key = ((struct lysc_node_list*)node1->schema)->child;
                         key && (key->flags & LYS_KEY);
                         key = key->next) {
-                    if (lyd_compare(iter1, iter2, options)) {
+                    if (lyd_compare_single(iter1, iter2, options)) {
                         return LY_ENOT;
                     }
                     iter1 = iter1->next;
@@ -2050,7 +2050,7 @@ lyd_compare(const struct lyd_node *node1, const struct lyd_node *node2, int opti
                 }
 
                 for (; iter1 && iter2; iter1 = iter1->next, iter2 = iter2->next) {
-                    if (lyd_compare(iter1, iter2, options | LYD_COMPARE_FULL_RECURSION)) {
+                    if (lyd_compare_single(iter1, iter2, options | LYD_COMPARE_FULL_RECURSION)) {
                         return LY_ENOT;
                     }
                 }
@@ -2094,6 +2094,24 @@ lyd_compare(const struct lyd_node *node1, const struct lyd_node *node2, int opti
 
     LOGINT(LYD_NODE_CTX(node1));
     return LY_EINT;
+}
+
+API LY_ERR
+lyd_compare_siblings(const struct lyd_node *node1, const struct lyd_node *node2, int options)
+{
+    for (; node1 && node2; node1 = node1->next, node2 = node2->next) {
+        LY_CHECK_RET(lyd_compare_single(node1, node2, options));
+    }
+
+    if (!node1 || !node2) {
+        if (node1 == node2) {
+            return LY_SUCCESS;
+        } else {
+            return LY_ENOT;
+        }
+    }
+
+    return LY_SUCCESS;
 }
 
 API LY_ERR
@@ -2438,7 +2456,7 @@ lyd_merge_sibling_r(struct lyd_node **first_trg, struct lyd_node *parent_trg, co
 
     if (!ret) {
         /* node found, make sure even value matches for all node types */
-        if ((match_trg->schema->nodetype == LYS_LEAF) && lyd_compare(sibling_src, match_trg, LYD_COMPARE_DEFAULTS)) {
+        if ((match_trg->schema->nodetype == LYS_LEAF) && lyd_compare_single(sibling_src, match_trg, LYD_COMPARE_DEFAULTS)) {
             /* since they are different, they cannot both be default */
             assert(!(sibling_src->flags & LYD_DEFAULT) || !(match_trg->flags & LYD_DEFAULT));
 
@@ -2452,7 +2470,7 @@ lyd_merge_sibling_r(struct lyd_node **first_trg, struct lyd_node *parent_trg, co
                 /* copy flags and add LYD_NEW */
                 match_trg->flags = sibling_src->flags | LYD_NEW;
             }
-        } else if ((match_trg->schema->nodetype & LYS_ANYDATA) && lyd_compare(sibling_src, match_trg, 0)) {
+        } else if ((match_trg->schema->nodetype & LYS_ANYDATA) && lyd_compare_single(sibling_src, match_trg, 0)) {
             /* update value */
             LY_CHECK_RET(lyd_any_copy_value(match_trg, &((struct lyd_node_any *)sibling_src)->value,
                                             ((struct lyd_node_any *)sibling_src)->value_type));
@@ -2838,7 +2856,7 @@ lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *t
         /* find by hash */
         if (!lyht_find(parent->children_ht, &target, target->hash, (void **)&match_p)) {
             /* check even value when needed */
-            if (!(target->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) || !lyd_compare(target, *match_p, 0)) {
+            if (!(target->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) || !lyd_compare_single(target, *match_p, 0)) {
                 siblings = *match_p;
             } else {
                 siblings = NULL;
@@ -2850,7 +2868,7 @@ lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *t
     } else {
         /* no children hash table */
         for (; siblings; siblings = siblings->next) {
-            if (!lyd_compare(siblings, target, 0)) {
+            if (!lyd_compare_single(siblings, target, 0)) {
                 break;
             }
         }

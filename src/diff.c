@@ -277,7 +277,7 @@ lyd_diff_userord_attrs(const struct lyd_node *first, const struct lyd_node *seco
         *op = LYD_DIFF_OP_CREATE;
     } else {
         assert(schema->nodetype & (LYS_LIST | LYS_LEAFLIST));
-        if (lyd_compare(second, userord_item->inst[second_pos], 0)) {
+        if (lyd_compare_single(second, userord_item->inst[second_pos], 0)) {
             /* in first, there is a different instance on the second position, we are going to move 'first' node */
             *op = LYD_DIFF_OP_REPLACE;
         } else if ((options & LYD_DIFF_DEFAULTS) && ((first->flags & LYD_DEFAULT) != (second->flags & LYD_DEFAULT))) {
@@ -441,7 +441,7 @@ lyd_diff_attrs(const struct lyd_node *first, const struct lyd_node *second, int 
         case LYS_LEAF:
         case LYS_ANYXML:
         case LYS_ANYDATA:
-            if (lyd_compare(first, second, 0)) {
+            if (lyd_compare_single(first, second, 0)) {
                 /* different values */
                 *op = LYD_DIFF_OP_REPLACE;
             } else if ((options & LYD_DIFF_DEFAULTS) && ((first->flags & LYD_DEFAULT) != (second->flags & LYD_DEFAULT))) {
@@ -1135,7 +1135,7 @@ lyd_diff_merge_replace(struct lyd_node *diff_match, enum lyd_diff_op cur_op, con
             break;
         case LYS_LEAF:
             /* replaced with the exact same value, impossible */
-            if (!lyd_compare(diff_match, src_diff, 0)) {
+            if (!lyd_compare_single(diff_match, src_diff, 0)) {
                 LOGINT_RET(LYD_NODE_CTX(src_diff));
             }
 
@@ -1172,7 +1172,7 @@ lyd_diff_merge_replace(struct lyd_node *diff_match, enum lyd_diff_op cur_op, con
             break;
         case LYS_ANYXML:
         case LYS_ANYDATA:
-            if (!lyd_compare(diff_match, src_diff, 0)) {
+            if (!lyd_compare_single(diff_match, src_diff, 0)) {
                 /* replaced with the exact same value, impossible */
                 LOGINT_RET(LYD_NODE_CTX(src_diff));
             }
@@ -1228,7 +1228,7 @@ lyd_diff_merge_create(struct lyd_node *diff_match, enum lyd_diff_op cur_op, cons
     switch (cur_op) {
     case LYD_DIFF_OP_DELETE:
         /* delete operation, if any */
-        if (!lyd_compare(diff_match, src_diff, 0)) {
+        if (!lyd_compare_single(diff_match, src_diff, 0)) {
             /* deleted + created -> operation NONE */
             LY_CHECK_RET(lyd_diff_change_op(diff_match, LYD_DIFF_OP_NONE));
 
@@ -1292,7 +1292,7 @@ lyd_diff_merge_delete(struct lyd_node *diff_match, enum lyd_diff_op cur_op, cons
     struct lyd_node *next, *child;
 
     /* we can delete only exact existing nodes */
-    LY_CHECK_ERR_RET(lyd_compare(diff_match, src_diff, 0), LOGINT(LYD_NODE_CTX(src_diff)), LY_EINT);
+    LY_CHECK_ERR_RET(lyd_compare_single(diff_match, src_diff, 0), LOGINT(LYD_NODE_CTX(src_diff)), LY_EINT);
 
     switch (cur_op) {
     case LYD_DIFF_OP_CREATE:
