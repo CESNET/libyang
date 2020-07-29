@@ -13,19 +13,21 @@ configure_file(${PROJECT_SOURCE_DIR}/packages/debian.control.in ${PROJECT_BINARY
 configure_file(${PROJECT_SOURCE_DIR}/packages/debian.rules.in ${PROJECT_BINARY_DIR}/build-packages/debian.rules)
 configure_file(${PROJECT_SOURCE_DIR}/packages/debian.compat
                ${PROJECT_BINARY_DIR}/build-packages/debian.compat COPYONLY)
+configure_file(${PROJECT_SOURCE_DIR}/packages/debian.copyright
+               ${PROJECT_BINARY_DIR}/build-packages/debian.copyright COPYONLY)
 configure_file(${PROJECT_SOURCE_DIR}/packages/${PACKAGE}.rpmlintrc
                ${PROJECT_BINARY_DIR}/build-packages/${PACKAGE}.rpmlintrc COPYONLY)
 configure_file(${PROJECT_SOURCE_DIR}/packages/debian.${PACKAGE}.install
-               ${PROJECT_BINARY_DIR}/build-packages/debian.${PACKAGE}.install COPYONLY)
+               ${PROJECT_BINARY_DIR}/build-packages/debian.${PACKAGE}${LIBYANG_MAJOR_SOVERSION}.install COPYONLY)
 configure_file(${PROJECT_SOURCE_DIR}/packages/debian.${PACKAGE}-dev.install
                ${PROJECT_BINARY_DIR}/build-packages/debian.${PACKAGE}-dev.install COPYONLY)
 configure_file(${PROJECT_SOURCE_DIR}/packages/debian.${CPP_PACKAGE}.install
-               ${PROJECT_BINARY_DIR}/build-packages/debian.${CPP_PACKAGE}.install COPYONLY)
+               ${PROJECT_BINARY_DIR}/build-packages/debian.${CPP_PACKAGE}${LIBYANG_MAJOR_SOVERSION}.install COPYONLY)
 configure_file(${PROJECT_SOURCE_DIR}/packages/debian.${CPP_PACKAGE}-dev.install
                ${PROJECT_BINARY_DIR}/build-packages/debian.${CPP_PACKAGE}-dev.install COPYONLY)
 # no python package for Debian because there is only SWIG 3.10 on Debian 9 :-/
 #configure_file(${PROJECT_SOURCE_DIR}/packages/debian.${PYTHON_PACKAGE}.install
-#               ${PROJECT_BINARY_DIR}/build-packages/debian.${PYTHON_PACKAGE}.install COPYONLY)
+#               ${PROJECT_BINARY_DIR}/build-packages/debian.${PYTHON_PACKAGE}${LIBYANG_MAJOR_SOVERSION}.install COPYONLY)
 
 if(NOT DEB_BUILDER)
     message(STATUS "Missing tools (devscripts, debhelper package) for building DEB package.")

@@ -79,7 +79,7 @@ script:
 
 deploy:
   - provider: script
-    script: bash <(curl -s https://codecov.io/bash)
+    script: ./tools/codecov.sh
     skip_cleanup: true
     verbose: true
     on:
