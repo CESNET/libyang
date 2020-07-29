@@ -33,7 +33,7 @@ Architecture: any
 Description: Debug symbols of libyang library.
 
 Package: @CPP_PACKAGE@@LIBYANG_MAJOR_SOVERSION@
-Depends: @PACKAGE@ (=@LIBYANG_VERSION@)
+Depends: @PACKAGE@@LIBYANG_MAJOR_SOVERSION@ (=@LIBYANG_VERSION@)
 Section: libs
 Architecture: any
 Description: Bindings of libyang library to C++ language.
