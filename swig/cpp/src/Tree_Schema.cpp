@@ -184,29 +184,29 @@ Type_Info_Union::Type_Info_Union(lys_type_info_union *info_union, S_Deleter dele
 Type_Info_Union::~Type_Info_Union() {};
 std::vector<S_Type> Type_Info_Union::types() LY_NEW_LIST(info_union, types, count, Type);
 
-Type_Info::Type_Info(union lys_type_info info, LY_DATA_TYPE *type, uint8_t flags, S_Deleter deleter):
+Type_Info::Type_Info(union lys_type_info *info, LY_DATA_TYPE *type, uint8_t flags, S_Deleter deleter):
     info(info),
     type(*type),
     flags(flags),
     deleter(deleter)
 {};
 Type_Info::~Type_Info() {};
-S_Type_Info_Binary Type_Info::binary() {return LY_TYPE_BINARY == type ? std::make_shared<Type_Info_Binary>(&info.binary, deleter) : nullptr;};
-S_Type_Info_Bits Type_Info::bits() {return LY_TYPE_BITS == type ? std::make_shared<Type_Info_Bits>(&info.bits, deleter) : nullptr;};
-S_Type_Info_Dec64 Type_Info::dec64() {return LY_TYPE_DEC64 == type ? std::make_shared<Type_Info_Dec64>(&info.dec64, deleter) : nullptr;};
-S_Type_Info_Enums Type_Info::enums() {return LY_TYPE_ENUM == type ? std::make_shared<Type_Info_Enums>(&info.enums, deleter) : nullptr;};
-S_Type_Info_Ident Type_Info::ident() {return LY_TYPE_IDENT == type ? std::make_shared<Type_Info_Ident>(&info.ident, deleter) : nullptr;};
-S_Type_Info_Inst Type_Info::inst() {return LY_TYPE_INST == type ? std::make_shared<Type_Info_Inst>(&info.inst, deleter) : nullptr;};
+S_Type_Info_Binary Type_Info::binary() {return LY_TYPE_BINARY == type ? std::make_shared<Type_Info_Binary>(&info->binary, deleter) : nullptr;};
+S_Type_Info_Bits Type_Info::bits() {return LY_TYPE_BITS == type ? std::make_shared<Type_Info_Bits>(&info->bits, deleter) : nullptr;};
+S_Type_Info_Dec64 Type_Info::dec64() {return LY_TYPE_DEC64 == type ? std::make_shared<Type_Info_Dec64>(&info->dec64, deleter) : nullptr;};
+S_Type_Info_Enums Type_Info::enums() {return LY_TYPE_ENUM == type ? std::make_shared<Type_Info_Enums>(&info->enums, deleter) : nullptr;};
+S_Type_Info_Ident Type_Info::ident() {return LY_TYPE_IDENT == type ? std::make_shared<Type_Info_Ident>(&info->ident, deleter) : nullptr;};
+S_Type_Info_Inst Type_Info::inst() {return LY_TYPE_INST == type ? std::make_shared<Type_Info_Inst>(&info->inst, deleter) : nullptr;};
 S_Type_Info_Num Type_Info::num() {
     if (type >= LY_TYPE_INT8 && type <= LY_TYPE_UINT64) {
-        return std::make_shared<Type_Info_Num>(&info.num, deleter);
+        return std::make_shared<Type_Info_Num>(&info->num, deleter);
     } else {
         return nullptr;
     }
 };
-S_Type_Info_Lref Type_Info::lref() {return LY_TYPE_LEAFREF == type ? std::make_shared<Type_Info_Lref>(&info.lref, deleter) : nullptr;};
-S_Type_Info_Str Type_Info::str() {return LY_TYPE_STRING == type ? std::make_shared<Type_Info_Str>(&info.str, deleter) : nullptr;};
-S_Type_Info_Union Type_Info::uni() {return LY_TYPE_UNION == type ? std::make_shared<Type_Info_Union>(&info.uni, deleter) : nullptr;};
+S_Type_Info_Lref Type_Info::lref() {return LY_TYPE_LEAFREF == type ? std::make_shared<Type_Info_Lref>(&info->lref, deleter) : nullptr;};
+S_Type_Info_Str Type_Info::str() {return LY_TYPE_STRING == type ? std::make_shared<Type_Info_Str>(&info->str, deleter) : nullptr;};
+S_Type_Info_Union Type_Info::uni() {return LY_TYPE_UNION == type ? std::make_shared<Type_Info_Union>(&info->uni, deleter) : nullptr;};
 
 Type::Type(struct lys_type *type, S_Deleter deleter):
     type(type),
@@ -216,7 +216,7 @@ Type::~Type() {};
 std::vector<S_Ext_Instance> Type::ext() LY_NEW_P_LIST(type, ext, ext_size, Ext_Instance);
 S_Tpdf Type::der() {return type->der ? std::make_shared<Tpdf>(type->der, deleter) : nullptr;};
 S_Tpdf Type::parent() {return type->parent ? std::make_shared<Tpdf>(type->parent, deleter) : nullptr;};
-S_Type_Info Type::info() {return std::make_shared<Type_Info>(type->info, &type->base, type->value_flags, deleter);};
+S_Type_Info Type::info() {return std::make_shared<Type_Info>(&type->info, &type->base, type->value_flags, deleter);};
 
 Iffeature::Iffeature(struct lys_iffeature *iffeature, S_Deleter deleter):
     iffeature(iffeature),
