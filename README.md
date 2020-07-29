@@ -40,7 +40,7 @@ and it occurs on the `master` branch, the **first response will likely be** to u
 ## Packages
 
 We are using openSUSE Build Service to automaticaly prepare binary packages for number of GNU/Linux distros.
-The [libyang](https://software.opensuse.org//download.html?project=home%3Aliberouter&package=libyang)
+The [libyang](https://software.opensuse.org//download.html?project=home%3Aliberouter&package=libyang1)
 packages are always build from current `master` branch (latest release). If you are interested in any other packages
 (such as *devel* or C++ and Python bindings), you can browse
 [all packages](https://download.opensuse.org/repositories/home:/liberouter/) from our repository.
