@@ -7,9 +7,9 @@ export DH_VERBOSE=1
 	dh $@
 
 override_dh_strip:
-	dh_strip -p@PACKAGE@  --dbg-package=@PACKAGE@-dbg
-	dh_strip -p@CPP_PACKAGE@ --dbg-package=@CPP_PACKAGE@-dbg
-#	dh_strip -p@PYTHON_PACKAGE@ --dbg-package=@PYTHON_PACKAGE@-dbg
+	dh_strip -p@PACKAGE@@LIBYANG_MAJOR_SOVERSION@  --dbg-package=@PACKAGE@-dbg
+	dh_strip -p@CPP_PACKAGE@@LIBYANG_MAJOR_SOVERSION@ --dbg-package=@CPP_PACKAGE@-dbg
+#	dh_strip -p@PYTHON_PACKAGE@@LIBYANG_MAJOR_SOVERSION@ --dbg-package=@PYTHON_PACKAGE@-dbg
 
 override_dh_auto_configure:
 	cmake -DCMAKE_INSTALL_PREFIX=/usr -DFORCE_INSRC_BUILD=ON -DCMAKE_BUILD_TYPE="Package" -DENABLE_LYD_PRIV=ON \
