@@ -1221,14 +1221,30 @@ static LY_ERR
 lyd_diff_merge_create(struct lyd_node *diff_match, enum lyd_diff_op cur_op, const struct lyd_node *src_diff)
 {
     struct lyd_node *child;
+    const struct lysc_node_leaf *sleaf;
     const char *str_val;
     int dynamic;
     LY_ERR ret;
 
     switch (cur_op) {
     case LYD_DIFF_OP_DELETE:
-        /* delete operation, if any */
-        if (!lyd_compare_single(diff_match, src_diff, 0)) {
+        if (diff_match->schema->nodetype == LYS_LEAF) {
+            sleaf = (struct lysc_node_leaf *)diff_match->schema;
+        } else {
+            sleaf = NULL;
+        }
+
+        if (sleaf && sleaf->dflt
+                && !sleaf->dflt->realtype->plugin->compare(sleaf->dflt, &((struct lyd_node_term *)src_diff)->value)) {
+            /* we deleted it, so a default value was in-use, and it matches the created value -> operation NONE */
+            LY_CHECK_RET(lyd_diff_change_op(diff_match, LYD_DIFF_OP_NONE));
+
+            if (diff_match->schema->nodetype & LYD_NODE_TERM) {
+                /* add orig-dflt metadata */
+                LY_CHECK_RET(lyd_new_meta(diff_match, NULL, "yang:orig-default",
+                                          diff_match->flags & LYD_DEFAULT ? "true" : "false", NULL));
+            }
+        } else if (!lyd_compare_single(diff_match, src_diff, 0)) {
             /* deleted + created -> operation NONE */
             LY_CHECK_RET(lyd_diff_change_op(diff_match, LYD_DIFF_OP_NONE));
 
@@ -1238,10 +1254,12 @@ lyd_diff_merge_create(struct lyd_node *diff_match, enum lyd_diff_op cur_op, cons
                                           diff_match->flags & LYD_DEFAULT ? "true" : "false", NULL));
             }
         } else {
-            assert(diff_match->schema->nodetype == LYS_LEAF);
+            assert(sleaf);
             /* we deleted it, but it was created with a different value -> operation REPLACE */
             LY_CHECK_RET(lyd_diff_change_op(diff_match, LYD_DIFF_OP_REPLACE));
+        }
 
+        if (lyd_compare_single(diff_match, src_diff, 0)) {
             /* current value is the previous one (meta) */
             str_val = lyd_value2str((struct lyd_node_term *)diff_match, &dynamic);
             ret = lyd_new_meta(diff_match, NULL, "yang:orig-value", str_val, NULL);
@@ -1318,9 +1336,11 @@ lyd_diff_merge_delete(struct lyd_node *diff_match, enum lyd_diff_op cur_op, cons
         /* it was not modified, but should be deleted -> set DELETE operation */
         LY_CHECK_RET(lyd_diff_change_op(diff_match, LYD_DIFF_OP_DELETE));
 
-        /* all descendants will be deleted even without being in the diff, so remove them */
+        /* all descendants not in the diff will be deleted and redundant in the diff, so remove them */
         LY_LIST_FOR_SAFE(LYD_CHILD(diff_match), next, child) {
-            lyd_free_tree(child);
+            if (lyd_find_sibling_first(lyd_node_children(src_diff, 0), child, NULL) == LY_ENOTFOUND) {
+                lyd_free_tree(child);
+            }
         }
         break;
     default:
