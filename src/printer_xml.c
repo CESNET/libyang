@@ -437,10 +437,17 @@ printvalue:
         goto printvalue;
 
     case LY_TYPE_EMPTY:
-    case LY_TYPE_UNKNOWN:
         /* treat <edit-config> node without value as empty */
         ly_print(out, "/>");
         break;
+
+    case LY_TYPE_UNKNOWN:
+        if (leaf->value_str[0] == '\0') {
+            ly_print(out, "/>");
+            break;
+        }
+        datatype = ((struct lys_node_leaf *)leaf->schema)->type.base;
+        goto printvalue;
 
     default:
         /* error */

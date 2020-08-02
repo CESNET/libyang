@@ -75,13 +75,18 @@ xml_data_search_schemanode(struct lyxml_elem *xml, struct lys_node *start, int o
 
 /* logs directly */
 static int
-xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int editbits)
+xml_get_value(struct lyd_node *node, struct lyxml_elem *xml, int editbits, int options)
 {
     struct lyd_node_leaf_list *leaf = (struct lyd_node_leaf_list *)node;
 
     assert(node && (node->schema->nodetype & (LYS_LEAFLIST | LYS_LEAF)) && xml);
 
     leaf->value_str = lydict_insert(node->schema->module->ctx, xml->content, 0);
+
+    if ((options & (LYD_OPT_GET | LYD_OPT_GETCONFIG)) && (options & (LYD_OPT_TRUSTED))) {
+        leaf->value_type = LY_TYPE_UNKNOWN;
+        return EXIT_SUCCESS;
+    }
 
     if ((editbits & 0x20) && (node->schema->nodetype & LYS_LEAF) && (!leaf->value_str || !leaf->value_str[0])) {
         /* we have edit-config leaf/leaf-list with delete operation and no (empty) value,
@@ -458,7 +463,7 @@ attr_error:
     /* type specific processing */
     if (schema->nodetype & (LYS_LEAF | LYS_LEAFLIST)) {
         /* type detection and assigning the value */
-        if (xml_get_value(*result, xml, editbits)) {
+        if (xml_get_value(*result, xml, editbits, options)) {
             goto unlink_node_error;
         }
     } else if (schema->nodetype & LYS_ANYDATA) {
