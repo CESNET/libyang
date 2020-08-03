@@ -1808,7 +1808,8 @@ LY_ERR lys_atomize_xpath(const struct lysc_node *ctx_node, const char *xpath, in
  * @brief Types of the different schema paths.
  */
 typedef enum {
-    LYSC_PATH_LOG /**< Descriptive path format used in log messages */
+    LYSC_PATH_LOG,  /**< Descriptive path format used in log messages */
+    LYSC_PATH_DATA  /**< Similar to ::LYSC_PATH_LOG except that schema-only nodes (choice, case) are skipped */
 } LYSC_PATH_TYPE;
 
 /**

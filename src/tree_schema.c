@@ -348,10 +348,16 @@ lysc_path_until(const struct lysc_node *node, const struct lysc_node *parent, LY
 
     switch (pathtype) {
     case LYSC_PATH_LOG:
+    case LYSC_PATH_DATA:
         for (iter = node; iter && (iter != parent) && (len >= 0); iter = iter->parent) {
             char *s = buffer ? strdup(buffer) : path;
             char *id;
             const char *slash;
+
+            if ((pathtype == LYSC_PATH_DATA) && (iter->nodetype & (LYS_CHOICE | LYS_CASE))) {
+                /* schema-only node */
+                continue;
+            }
 
             id = strdup(iter->name);
             if (parent && (iter->parent == parent)) {
