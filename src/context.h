@@ -400,6 +400,18 @@ struct lys_module *ly_ctx_get_module_latest_ns(const struct ly_ctx *ctx, const c
 struct lys_module *ly_ctx_get_module_implemented_ns(const struct ly_ctx *ctx, const char *ns);
 
 /**
+ * @brief Get a schema node based on the given data path (JSON format, see @ref howtoxpath).
+ *
+ * @param[in] ctx libyang context, set for absolute paths.
+ * @param[in] ctx_node Starting context node for a relative data path, set for relative paths.
+ * @param[in] data_path JSON data path of the node to get.
+ * @param[in] output Search operation output instead of input.
+ * @return Found schema node or NULL.
+ */
+const struct lysc_node *ly_ctx_get_node(const struct ly_ctx *ctx, const struct lysc_node *ctx_node,
+                                        const char *data_path, int output);
+
+/**
  * @brief Reset cached latest revision information of the schemas in the context.
  *
  * When a (sub)module is imported/included without revision, the latest revision is

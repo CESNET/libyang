@@ -30,12 +30,14 @@
 #include "hash_table.h"
 #include "parser.h"
 #include "parser_data.h"
+#include "path.h"
 #include "plugins_types.h"
 #include "set.h"
 #include "tree.h"
 #include "tree_data.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
+#include "xpath.h"
 
 #define LY_INTERNAL_MODS_COUNT 6
 
@@ -525,6 +527,40 @@ ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *s
     }
 
     return NULL;
+}
+
+API const struct lysc_node *
+ly_ctx_get_node(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *data_path, int output)
+{
+    const struct lysc_node *snode = NULL;
+    struct lyxp_expr *exp = NULL;
+    struct ly_path *p = NULL;
+    LY_ERR ret;
+    uint8_t oper;
+
+    LY_CHECK_ARG_RET(ctx, ctx || ctx_node, NULL);
+
+    if (!ctx) {
+        ctx = ctx_node->module->ctx;
+    }
+
+    /* parse */
+    exp = lyxp_expr_parse(ctx, data_path, strlen(data_path), 0);
+    LY_CHECK_GOTO(!exp, cleanup);
+
+    /* compile */
+    oper = output ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT;
+    ret = ly_path_compile(ctx, NULL, ctx_node, exp, LY_PATH_LREF_FALSE, oper, LY_PATH_TARGET_MANY,
+                          lydjson_resolve_prefix, NULL, LYD_JSON, &p);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* get last node */
+    snode = p[LY_ARRAY_COUNT(p) - 1].node;
+
+cleanup:
+    ly_path_free(ctx, p);
+    lyxp_expr_free(ctx, exp);
+    return snode;
 }
 
 API void
