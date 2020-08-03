@@ -945,17 +945,17 @@ test_instanceid(void **state)
     /* key-predicate */
     data = "/a:list2[a:id='a'][a:value='b']/a:id";
     assert_int_equal(LY_ENOTFOUND, lyd_value_validate(s->ctx, (const struct lyd_node_term*)tree->prev->prev, data, strlen(data),
-                                                   test_instanceid_getprefix, tree->schema->module, LYD_XML, tree));
+                                                   test_instanceid_getprefix, tree->schema->module, LYD_XML, tree, NULL));
     logbuf_assert("Invalid instance-identifier \"/a:list2[a:id='a'][a:value='b']/a:id\" value - instance not found. /");
     /* leaf-list-predicate */
     data = "/a:leaflisttarget[.='c']";
     assert_int_equal(LY_ENOTFOUND, lyd_value_validate(s->ctx, (const struct lyd_node_term*)tree->prev->prev, data, strlen(data),
-                                                   test_instanceid_getprefix, tree->schema->module, LYD_XML, tree));
+                                                   test_instanceid_getprefix, tree->schema->module, LYD_XML, tree, NULL));
     logbuf_assert("Invalid instance-identifier \"/a:leaflisttarget[.='c']\" value - instance not found. /");
     /* position predicate */
     data = "/a:list_keyless[4]";
     assert_int_equal(LY_ENOTFOUND, lyd_value_validate(s->ctx, (const struct lyd_node_term*)tree->prev->prev, data, strlen(data),
-                                                   test_instanceid_getprefix, tree->schema->module, LYD_XML, tree));
+                                                   test_instanceid_getprefix, tree->schema->module, LYD_XML, tree, NULL));
     logbuf_assert("Invalid instance-identifier \"/a:list_keyless[4]\" value - instance not found. /");
 
     lyd_free_all(tree);

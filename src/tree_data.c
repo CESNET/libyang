@@ -196,19 +196,21 @@ lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const
 
 API LY_ERR
 lyd_value_validate(const struct ly_ctx *ctx, const struct lyd_node_term *node, const char *value, size_t value_len,
-                   ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format, const struct lyd_node *tree)
+                   ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format,
+                   const struct lyd_node *tree, struct lysc_type **realtype)
 {
     LY_ERR rc;
     struct ly_err_item *err = NULL;
     struct lysc_type *type;
-    int options = (tree ? 0 : LY_TYPE_OPTS_INCOMPLETE_DATA);
+    struct lyd_value val = {0};
+    int options = (tree ? 0 : LY_TYPE_OPTS_INCOMPLETE_DATA) | (realtype ? LY_TYPE_OPTS_STORE : 0);
 
     LY_CHECK_ARG_RET(ctx, node, value, LY_EINVAL);
 
     type = ((struct lysc_node_leaf*)node->schema)->type;
     rc = type->plugin->store(ctx ? ctx : node->schema->module->ctx, type, value, value_len, options,
                              get_prefix, get_prefix_data, format, tree ? (void*)node : (void*)node->schema, tree,
-                             NULL, NULL, &err);
+                             &val, NULL, &err);
     if (rc == LY_EINCOMPLETE) {
         return rc;
     } else if (rc) {
@@ -222,6 +224,11 @@ lyd_value_validate(const struct ly_ctx *ctx, const struct lyd_node_term *node, c
         return rc;
     }
 
+    if (realtype) {
+        *realtype = val.realtype;
+    }
+
+    type->plugin->free(ctx ? ctx : node->schema->module->ctx, &val);
     return LY_SUCCESS;
 }
 

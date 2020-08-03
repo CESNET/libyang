@@ -818,12 +818,14 @@ void ly_free_attr_siblings(const struct ly_ctx *ctx, struct ly_attr *attr);
  * @param[in] tree Data tree (e.g. when validating RPC/Notification) where the required data instance (leafref target,
  *            instance-identifier) can be placed. NULL in case the data tree is not yet complete,
  *            then LY_EINCOMPLETE can be returned.
+ * @param[out] realtype Optional real type of the value.
  * @return LY_SUCCESS on success
  * @return LY_EINCOMPLETE in case the @p trees is not provided and it was needed to finish the validation (e.g. due to require-instance).
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_value_validate(const struct ly_ctx *ctx, const struct lyd_node_term *node, const char *value, size_t value_len,
-                          ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format, const struct lyd_node *tree);
+                          ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format,
+                          const struct lyd_node *tree, struct lysc_type **realtype);
 
 /**
  * @brief Compare the node's value with the given string value. The string value is first validated according to the node's type.
