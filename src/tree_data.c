@@ -159,9 +159,9 @@ error:
     return ret;
 }
 
-API LY_ERR
-lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const char *value, size_t value_len,
-                   ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format)
+LY_ERR
+_lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const char *value, size_t value_len,
+                    ly_clb_resolve_prefix resolve_prefix, void *prefix_data, LYD_FORMAT format)
 {
     LY_ERR rc = LY_SUCCESS;
     struct ly_err_item *err = NULL;
@@ -177,7 +177,7 @@ lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const
     type = ((struct lysc_node_leaf*)node)->type;
     /* just validate, no storing of enything */
     rc = type->plugin->store(ctx ? ctx : node->module->ctx, type, value, value_len, LY_TYPE_OPTS_INCOMPLETE_DATA,
-                             get_prefix, get_prefix_data, format, node, NULL, NULL, NULL, &err);
+                             resolve_prefix, prefix_data, format, node, NULL, NULL, NULL, &err);
     if (rc == LY_EINCOMPLETE) {
         /* actually success since we do not provide the context tree and call validation with
          * LY_TYPE_OPTS_INCOMPLETE_DATA */
@@ -195,8 +195,13 @@ lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const
 }
 
 API LY_ERR
+lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const char *value, size_t value_len)
+{
+    return _lys_value_validate(ctx, node, value, value_len, lydjson_resolve_prefix, NULL, LYD_JSON);
+}
+
+API LY_ERR
 lyd_value_validate(const struct ly_ctx *ctx, const struct lyd_node_term *node, const char *value, size_t value_len,
-                   ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format,
                    const struct lyd_node *tree, struct lysc_type **realtype)
 {
     LY_ERR rc;
@@ -209,7 +214,7 @@ lyd_value_validate(const struct ly_ctx *ctx, const struct lyd_node_term *node, c
 
     type = ((struct lysc_node_leaf*)node->schema)->type;
     rc = type->plugin->store(ctx ? ctx : node->schema->module->ctx, type, value, value_len, options,
-                             get_prefix, get_prefix_data, format, tree ? (void*)node : (void*)node->schema, tree,
+                             lydjson_resolve_prefix, NULL, LYD_JSON, tree ? (void*)node : (void*)node->schema, tree,
                              &val, NULL, &err);
     if (rc == LY_EINCOMPLETE) {
         return rc;
@@ -233,8 +238,7 @@ lyd_value_validate(const struct ly_ctx *ctx, const struct lyd_node_term *node, c
 }
 
 API LY_ERR
-lyd_value_compare(const struct lyd_node_term *node, const char *value, size_t value_len,
-                  ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format, const struct lyd_node *tree)
+lyd_value_compare(const struct lyd_node_term *node, const char *value, size_t value_len, const struct lyd_node *tree)
 {
     LY_ERR ret = LY_SUCCESS, rc;
     struct ly_err_item *err = NULL;
@@ -247,8 +251,8 @@ lyd_value_compare(const struct lyd_node_term *node, const char *value, size_t va
 
     ctx = node->schema->module->ctx;
     type = ((struct lysc_node_leaf*)node->schema)->type;
-    rc = type->plugin->store(ctx, type, value, value_len, options, get_prefix, get_prefix_data, format, (struct lyd_node*)node,
-                             tree, &data, NULL, &err);
+    rc = type->plugin->store(ctx, type, value, value_len, options, lydjson_resolve_prefix, NULL, LYD_JSON,
+                             (struct lyd_node *)node, tree, &data, NULL, &err);
     if (rc == LY_EINCOMPLETE) {
         ret = rc;
         /* continue with comparing, just remember what to return if storing is ok */
@@ -1189,7 +1193,7 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
 
         r = LY_SUCCESS;
         if (options & LYD_NEWOPT_OPAQ) {
-            r = lys_value_validate(NULL, schema, value, strlen(value), lydjson_resolve_prefix, NULL, LYD_JSON);
+            r = lys_value_validate(NULL, schema, value, strlen(value));
         }
         if (!r) {
             LY_CHECK_GOTO(ret = lyd_value_store(&pred->value, schema, value, strlen(value), NULL, lydjson_resolve_prefix,
@@ -1268,7 +1272,7 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
 
             r = LY_SUCCESS;
             if (options & LYD_NEWOPT_OPAQ) {
-                r = lys_value_validate(NULL, schema, value, strlen(value), lydjson_resolve_prefix, NULL, LYD_JSON);
+                r = lys_value_validate(NULL, schema, value, strlen(value));
             }
             if (!r) {
                 LY_CHECK_GOTO(ret = lyd_create_term(schema, value, strlen(value), NULL, lydjson_resolve_prefix, NULL,

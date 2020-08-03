@@ -1155,8 +1155,7 @@ lyd_diff_merge_replace(struct lyd_node *diff_match, enum lyd_diff_op cur_op, con
             meta = lyd_find_meta(diff_match->meta, mod, "orig-value");
             LY_CHECK_ERR_RET(!meta, LOGINT(LYD_NODE_CTX(diff_match)), LY_EINT);
             str_val = lyd_meta2str(meta, &dynamic);
-            ret = lyd_value_compare((struct lyd_node_term *)diff_match, str_val, strlen(str_val), lydjson_resolve_prefix,
-                                    NULL, LYD_JSON, NULL);
+            ret = lyd_value_compare((struct lyd_node_term *)diff_match, str_val, strlen(str_val), NULL);
             if (dynamic) {
                 free((char *)str_val);
             }

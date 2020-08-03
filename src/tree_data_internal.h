@@ -286,6 +286,10 @@ LY_ERR lyd_value_parse_meta(const struct ly_ctx *ctx, struct lyd_meta *meta, con
                             int *dynamic, int second, ly_clb_resolve_prefix get_prefix, void *parser, LYD_FORMAT format,
                             const struct lysc_node *ctx_snode, const struct lyd_node *tree);
 
+/* generic function lys_value_validate */
+LY_ERR _lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const char *value, size_t value_len,
+                           ly_clb_resolve_prefix resolve_prefix, void *prefix_data, LYD_FORMAT format);
+
 /**
  * @brief Parse XML string as YANG data tree.
  *

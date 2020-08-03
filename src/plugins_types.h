@@ -103,6 +103,37 @@ struct ly_err_item *ly_err_new(LY_LOG_LEVEL level, LY_ERR code, LY_VECODE vecode
 void ly_err_free(void *ptr);
 
 /**
+ * @brief Callback provided by the data/schema parsers to type plugins to resolve (format-specific) mapping between prefixes used
+ * in the value strings to the YANG schemas.
+ *
+ * Reverse function to ly_clb_get_prefix.
+ *
+ * XML uses XML namespaces, JSON uses schema names as prefixes, YIN/YANG uses prefixes of the imports.
+ *
+ * @param[in] ctx libyang context to find the schema.
+ * @param[in] prefix Prefix found in the value string
+ * @param[in] prefix_len Length of the @p prefix.
+ * @param[in] private Internal data needed by the callback.
+ * @return Pointer to the YANG schema identified by the provided prefix or NULL if no mapping found.
+ */
+typedef const struct lys_module *(*ly_clb_resolve_prefix)(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len,
+                                                          void *private);
+
+/**
+ * @brief Callback provided by the data/schema printers to type plugins to resolve (format-specific) mapping between YANG module of a data object
+ * to prefixes used in the value strings.
+ *
+ * Reverse function to ly_clb_resolve_prefix.
+ *
+ * XML uses XML namespaces, JSON uses schema names as prefixes, YIN/YANG uses prefixes of the imports.
+ *
+ * @param[in] mod YANG module of the object.
+ * @param[in] private Internal data needed by the callback.
+ * @return String representing prefix for the object of the given YANG module @p mod.
+ */
+typedef const char *(*ly_clb_get_prefix)(const struct lys_module *mod, void *private);
+
+/**
  * @defgroup plugintypeopts Options for type plugin callbacks. The same set of the options is passed to all the type's callbacks used together.
  *
  * Options applicable to ly_type_validate_clb() and ly_type_store_clb.

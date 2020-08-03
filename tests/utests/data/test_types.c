@@ -943,20 +943,20 @@ test_instanceid(void **state)
               "<a:inst xmlns:a=\"urn:tests:types\">/a:list2[a:id='a'][a:value='a']/a:id</a:inst>", LY_SUCCESS, "");
 
     /* key-predicate */
-    data = "/a:list2[a:id='a'][a:value='b']/a:id";
+    data = "/types:list2[types:id='a'][types:value='b']/types:id";
     assert_int_equal(LY_ENOTFOUND, lyd_value_validate(s->ctx, (const struct lyd_node_term*)tree->prev->prev, data, strlen(data),
-                                                   test_instanceid_getprefix, tree->schema->module, LYD_XML, tree, NULL));
-    logbuf_assert("Invalid instance-identifier \"/a:list2[a:id='a'][a:value='b']/a:id\" value - instance not found. /");
+                                                   tree, NULL));
+    logbuf_assert("Invalid instance-identifier \"/types:list2[types:id='a'][types:value='b']/types:id\" value - instance not found. /");
     /* leaf-list-predicate */
-    data = "/a:leaflisttarget[.='c']";
+    data = "/types:leaflisttarget[.='c']";
     assert_int_equal(LY_ENOTFOUND, lyd_value_validate(s->ctx, (const struct lyd_node_term*)tree->prev->prev, data, strlen(data),
-                                                   test_instanceid_getprefix, tree->schema->module, LYD_XML, tree, NULL));
-    logbuf_assert("Invalid instance-identifier \"/a:leaflisttarget[.='c']\" value - instance not found. /");
+                                                   tree, NULL));
+    logbuf_assert("Invalid instance-identifier \"/types:leaflisttarget[.='c']\" value - instance not found. /");
     /* position predicate */
-    data = "/a:list_keyless[4]";
+    data = "/types:list_keyless[4]";
     assert_int_equal(LY_ENOTFOUND, lyd_value_validate(s->ctx, (const struct lyd_node_term*)tree->prev->prev, data, strlen(data),
-                                                   test_instanceid_getprefix, tree->schema->module, LYD_XML, tree, NULL));
-    logbuf_assert("Invalid instance-identifier \"/a:list_keyless[4]\" value - instance not found. /");
+                                                   tree, NULL));
+    logbuf_assert("Invalid instance-identifier \"/types:list_keyless[4]\" value - instance not found. /");
 
     lyd_free_all(tree);
 

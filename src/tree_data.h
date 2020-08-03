@@ -269,37 +269,6 @@ struct ly_attr {
 /** @} */
 
 /**
- * @brief Callback provided by the data/schema parsers to type plugins to resolve (format-specific) mapping between prefixes used
- * in the value strings to the YANG schemas.
- *
- * Reverse function to ly_clb_get_prefix.
- *
- * XML uses XML namespaces, JSON uses schema names as prefixes, YIN/YANG uses prefixes of the imports.
- *
- * @param[in] ctx libyang context to find the schema.
- * @param[in] prefix Prefix found in the value string
- * @param[in] prefix_len Length of the @p prefix.
- * @param[in] private Internal data needed by the callback.
- * @return Pointer to the YANG schema identified by the provided prefix or NULL if no mapping found.
- */
-typedef const struct lys_module *(*ly_clb_resolve_prefix)(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len,
-                                                          void *private);
-
-/**
- * @brief Callback provided by the data/schema printers to type plugins to resolve (format-specific) mapping between YANG module of a data object
- * to prefixes used in the value strings.
- *
- * Reverse function to ly_clb_resolve_prefix.
- *
- * XML uses XML namespaces, JSON uses schema names as prefixes, YIN/YANG uses prefixes of the imports.
- *
- * @param[in] mod YANG module of the object.
- * @param[in] private Internal data needed by the callback.
- * @return String representing prefix for the object of the given YANG module @p mod.
- */
-typedef const char *(*ly_clb_get_prefix)(const struct lys_module *mod, void *private);
-
-/**
  * @brief Generic structure for a data node.
  */
 struct lyd_node {
@@ -810,11 +779,8 @@ void ly_free_attr_siblings(const struct ly_ctx *ctx, struct ly_attr *attr);
  *
  * @param[in] ctx libyang context for logging (function does not log errors when @p ctx is NULL)
  * @param[in] node Data node for the @p value.
- * @param[in] value String value to be checked.
+ * @param[in] value String value to be checked, it is expected to be in JSON format.
  * @param[in] value_len Length of the given @p value (mandatory).
- * @param[in] get_prefix Callback function to resolve prefixes used in the @p value string.
- * @param[in] get_prefix_data Private data for the @p get_prefix callback.
- * @param[in] format Input format of the data.
  * @param[in] tree Data tree (e.g. when validating RPC/Notification) where the required data instance (leafref target,
  *            instance-identifier) can be placed. NULL in case the data tree is not yet complete,
  *            then LY_EINCOMPLETE can be returned.
@@ -824,7 +790,6 @@ void ly_free_attr_siblings(const struct ly_ctx *ctx, struct ly_attr *attr);
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_value_validate(const struct ly_ctx *ctx, const struct lyd_node_term *node, const char *value, size_t value_len,
-                          ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format,
                           const struct lyd_node *tree, struct lysc_type **realtype);
 
 /**
@@ -832,11 +797,8 @@ LY_ERR lyd_value_validate(const struct ly_ctx *ctx, const struct lyd_node_term *
  *
  * @param[in] node Data node to compare.
  * @param[in] value String value to be compared. It does not need to be in a canonical form - as part of the process,
- * it is validated and canonized if possible.
+ * it is validated and canonized if possible. But it is expected to be in JSON format.
  * @param[in] value_len Length of the given @p value (mandatory).
- * @param[in] get_prefix Callback function to resolve prefixes used in the @p value string.
- * @param[in] get_prefix_data Private data for the @p get_prefix callback.
- * @param[in] format Input format of the data.
  * @param[in] tree Data tree (e.g. when validating RPC/Notification) where the required data instance (leafref target,
  *            instance-identifier) can be placed. NULL in case the data tree is not yet complete,
  *            then LY_EINCOMPLETE can be returned.
@@ -846,8 +808,7 @@ LY_ERR lyd_value_validate(const struct ly_ctx *ctx, const struct lyd_node_term *
  * @return LY_ENOT if the values do not match.
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_value_compare(const struct lyd_node_term *node, const char *value, size_t value_len,
-                         ly_clb_resolve_prefix get_prefix, void *get_prefix_data, LYD_FORMAT format, const struct lyd_node *tree);
+LY_ERR lyd_value_compare(const struct lyd_node_term *node, const char *value, size_t value_len, const struct lyd_node *tree);
 
 /**
  * @defgroup datacompareoptions Data compare options

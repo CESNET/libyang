@@ -17,6 +17,7 @@
 
 #include "log.h"
 #include "parser_data.h"
+#include "plugins_types.h"
 #include "tree_data.h"
 
 /**
