@@ -2702,7 +2702,7 @@ lyd_path(const struct lyd_node *node, LYD_PATH_TYPE pathtype, char *buffer, size
     size_t bufused = 0, len;
     const struct lyd_node *iter;
     const struct lys_module *mod;
-    LY_ERR rc;
+    LY_ERR rc = LY_SUCCESS;
 
     LY_CHECK_ARG_RET(NULL, node, NULL);
     if (buffer) {
@@ -2714,6 +2714,7 @@ lyd_path(const struct lyd_node *node, LYD_PATH_TYPE pathtype, char *buffer, size
 
     switch (pathtype) {
     case LYD_PATH_LOG:
+    case LYD_PATH_LOG_NO_LAST_PRED:
         depth = 1;
         for (iter = node; iter->parent; iter = (const struct lyd_node *)iter->parent) {
             ++depth;
@@ -2740,29 +2741,31 @@ iter_print:
             /* print next node */
             bufused += sprintf(buffer + bufused, "/%s%s%s", mod ? mod->name : "", mod ? ":" : "", iter->schema->name);
 
-            switch (iter->schema->nodetype) {
-            case LYS_LIST:
-                if (iter->schema->flags & LYS_KEYLESS) {
-                    /* print its position */
-                    rc = lyd_path_position_predicate(iter, &buffer, &buflen, &bufused, is_static);
-                } else {
-                    /* print all list keys in predicates */
-                    rc = lyd_path_list_predicate(iter, &buffer, &buflen, &bufused, is_static);
+            /* do not always print the last (first) predicate */
+            if (bufused || (pathtype == LYD_PATH_LOG)) {
+                switch (iter->schema->nodetype) {
+                case LYS_LIST:
+                    if (iter->schema->flags & LYS_KEYLESS) {
+                        /* print its position */
+                        rc = lyd_path_position_predicate(iter, &buffer, &buflen, &bufused, is_static);
+                    } else {
+                        /* print all list keys in predicates */
+                        rc = lyd_path_list_predicate(iter, &buffer, &buflen, &bufused, is_static);
+                    }
+                    break;
+                case LYS_LEAFLIST:
+                    if (iter->schema->flags & LYS_CONFIG_W) {
+                        /* print leaf-list value */
+                        rc = lyd_path_leaflist_predicate(iter, &buffer, &buflen, &bufused, is_static);
+                    } else {
+                        /* print its position */
+                        rc = lyd_path_position_predicate(iter, &buffer, &buflen, &bufused, is_static);
+                    }
+                    break;
+                default:
+                    /* nothing to print more */
+                    break;
                 }
-                break;
-            case LYS_LEAFLIST:
-                if (iter->schema->flags & LYS_CONFIG_W) {
-                    /* print leaf-list value */
-                    rc = lyd_path_leaflist_predicate(iter, &buffer, &buflen, &bufused, is_static);
-                } else {
-                    /* print its position */
-                    rc = lyd_path_position_predicate(iter, &buffer, &buflen, &bufused, is_static);
-                }
-                break;
-            default:
-                /* nothing to print more */
-                rc = LY_SUCCESS;
-                break;
             }
             if (rc != LY_SUCCESS) {
                 break;

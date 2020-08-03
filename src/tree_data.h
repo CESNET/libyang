@@ -1164,6 +1164,7 @@ const char *lyd_meta2str(const struct lyd_meta *meta, int *dynamic);
  */
 typedef enum {
     LYD_PATH_LOG, /**< Descriptive path format used in log messages */
+    LYD_PATH_LOG_NO_LAST_PRED, /**< Similar to ::LYD_PATH_LOG except there is never a predicate on the last node */
 } LYD_PATH_TYPE;
 
 /**
