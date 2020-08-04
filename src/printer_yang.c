@@ -52,9 +52,6 @@ struct ypr_ctx {
     int options;                     /**< Schema output options (see @ref schemaprinterflags). */
 };
 
-#define LEVEL ctx->level             /**< current level */
-#define INDENT (LEVEL)*2,""          /**< indentation parameters for printer functions */
-
 /**
  * @brief Print the given text as content of a double quoted YANG string,
  * including encoding characters that have special meanings. The quotation marks
@@ -2226,10 +2223,10 @@ yang_print_parsed_body(struct ypr_ctx *ctx, const struct lysp_module *modp)
 }
 
 LY_ERR
-yang_print_parsed_module(struct ly_out *out, const struct lys_module *module, const struct lysp_module *modp)
+yang_print_parsed_module(struct ly_out *out, const struct lys_module *module, const struct lysp_module *modp, int options)
 {
     LY_ARRAY_COUNT_TYPE u;
-    struct ypr_ctx ctx_ = {.out = out, .level = 0, .module = module, .schema = YPR_PARSED}, *ctx = &ctx_;
+    struct ypr_ctx ctx_ = {.out = out, .level = 0, .module = module, .schema = YPR_PARSED, .options = options | LYD_PRINT_FORMAT}, *ctx = &ctx_;
 
     ly_print(ctx->out, "%*smodule %s {\n", INDENT, module->name);
     LEVEL++;
@@ -2283,10 +2280,10 @@ yprp_belongsto(struct ypr_ctx *ctx, const struct lysp_submodule *submodp)
 }
 
 LY_ERR
-yang_print_parsed_submodule(struct ly_out *out, const struct lys_module *module, const struct lysp_submodule *submodp)
+yang_print_parsed_submodule(struct ly_out *out, const struct lys_module *module, const struct lysp_submodule *submodp, int options)
 {
     LY_ARRAY_COUNT_TYPE u;
-    struct ypr_ctx ctx_ = {.out = out, .level = 0, .module = module, .schema = YPR_PARSED}, *ctx = &ctx_;
+    struct ypr_ctx ctx_ = {.out = out, .level = 0, .module = module, .schema = YPR_PARSED, .options = options | LYD_PRINT_FORMAT}, *ctx = &ctx_;
 
     ly_print(ctx->out, "%*ssubmodule %s {\n", INDENT, submodp->name);
     LEVEL++;
@@ -2330,7 +2327,7 @@ yang_print_parsed_submodule(struct ly_out *out, const struct lys_module *module,
 LY_ERR
 yang_print_compiled_node(struct ly_out *out, const struct lysc_node *node, int options)
 {
-    struct ypr_ctx ctx_ = {.out = out, .level = 0, .module = node->module, .options = options}, *ctx = &ctx_;
+    struct ypr_ctx ctx_ = {.out = out, .level = 0, .module = node->module, .options = options | LYD_PRINT_FORMAT}, *ctx = &ctx_;
 
     yprc_node(ctx, node);
 
@@ -2344,7 +2341,7 @@ yang_print_compiled(struct ly_out *out, const struct lys_module *module, int opt
     LY_ARRAY_COUNT_TYPE u;
     struct lysc_node *data;
     struct lysc_module *modc = module->compiled;
-    struct ypr_ctx ctx_ = {.out = out, .level = 0, .module = module, .options = options}, *ctx = &ctx_;
+    struct ypr_ctx ctx_ = {.out = out, .level = 0, .module = module, .options = options | LYD_PRINT_FORMAT}, *ctx = &ctx_;
 
     ly_print(ctx->out, "%*smodule %s {\n", INDENT, module->name);
     LEVEL++;

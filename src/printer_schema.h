@@ -38,6 +38,7 @@ struct lysp_submodule;
  * @defgroup schemaprinterflags Schema output options
  * @{
  */
+/* Keep the value 0x02 reserver for implicit LYS_PRINT_FORMAT */
 #define LYS_OUTPUT_NO_SUBSTMT        0x10 /**< Print only top-level/referede node information,
                                                do not print information from the substatements */
 //#define LYS_OUTOPT_TREE_RFC        0x01 /**< Conform to the RFC TODO tree output (only for tree format) */

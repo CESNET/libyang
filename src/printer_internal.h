@@ -87,9 +87,19 @@ extern struct ext_substmt_info_s ext_substmt_info[];
  * @param[in] out Output specification.
  * @param[in] module Main module.
  * @param[in] modp Parsed module to print.
+ * @param[in] options Schema output options (see @ref schemaprinterflags).
  * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
  */
-LY_ERR yang_print_parsed_module(struct ly_out *out, const struct lys_module *module, const struct lysp_module *modp);
+LY_ERR yang_print_parsed_module(struct ly_out *out, const struct lys_module *module, const struct lysp_module *modp, int options);
+
+/**
+ * @brief Helper macros for data printers
+ */
+#define DO_FORMAT (ctx->options & LYD_PRINT_FORMAT)
+#define LEVEL ctx->level                      /**< current level */
+#define INDENT (DO_FORMAT ? (LEVEL)*2 : 0),"" /**< indentation parameters for printer functions */
+#define LEVEL_INC LEVEL++                     /**< increase indentation level */
+#define LEVEL_DEC LEVEL--                     /**< decrease indentation level */
 
 /**
  * @brief YANG printer of the parsed submodule. Full YANG printer.
@@ -97,9 +107,10 @@ LY_ERR yang_print_parsed_module(struct ly_out *out, const struct lys_module *mod
  * @param[in] out Output specification.
  * @param[in] module Main module.
  * @param[in] submodp Parsed submodule to print.
+ * @param[in] options Schema output options (see @ref schemaprinterflags).
  * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
  */
-LY_ERR yang_print_parsed_submodule(struct ly_out *out, const struct lys_module *module, const struct lysp_submodule *submodp);
+LY_ERR yang_print_parsed_submodule(struct ly_out *out, const struct lys_module *module, const struct lysp_submodule *submodp, int options);
 
 /**
  * @brief YANG printer of the compiled schemas.
@@ -135,9 +146,10 @@ LY_ERR yang_print_compiled_node(struct ly_out *out, const struct lysc_node *node
  * @param[in] out Output specification.
  * @param[in] module Main module.
  * @param[in] modp Parsed module to print.
+ * @param[in] options Schema output options (see @ref schemaprinterflags).
  * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
  */
-LY_ERR yin_print_parsed_module(struct ly_out *out, const struct lys_module *module, const struct lysp_module *modp);
+LY_ERR yin_print_parsed_module(struct ly_out *out, const struct lys_module *module, const struct lysp_module *modp, int options);
 
 /**
  * @brief YIN printer of the parsed submodule. Full YIN printer.
@@ -145,9 +157,10 @@ LY_ERR yin_print_parsed_module(struct ly_out *out, const struct lys_module *modu
  * @param[in] out Output specification.
  * @param[in] module Main module.
  * @param[in] submodp Parsed submodule to print.
+ * @param[in] options Schema output options (see @ref schemaprinterflags).
  * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
  */
-LY_ERR yin_print_parsed_submodule(struct ly_out *out, const struct lys_module *module, const struct lysp_submodule *submodp);
+LY_ERR yin_print_parsed_submodule(struct ly_out *out, const struct lys_module *module, const struct lysp_submodule *submodp, int options);
 
 /**
  * @brief XML printer of YANG data.
@@ -158,6 +171,16 @@ LY_ERR yin_print_parsed_submodule(struct ly_out *out, const struct lys_module *m
  * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
  */
 LY_ERR xml_print_data(struct ly_out *out, const struct lyd_node *root, int options);
+
+/**
+ * @brief JSON printer of YANG data.
+ *
+ * @param[in] out Output specification.
+ * @param[in] root The root element of the (sub)tree to print.
+ * @param[in] options [Data printer flags](@ref dataprinterflags).
+ * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
+ */
+LY_ERR json_print_data(struct ly_out *out, const struct lyd_node *root, int options);
 
 /**
  * @brief LYB printer of YANG data.

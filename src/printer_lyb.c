@@ -807,7 +807,7 @@ static LY_ERR
 lyb_print_attributes(struct ly_out *out, const struct lyd_node_opaq *node, struct lylyb_ctx *lybctx)
 {
     uint8_t count = 0;
-    struct ly_attr *iter;
+    struct lyd_attr *iter;
 
     for (iter = node->attr; iter; iter = iter->next) {
         if (count == UINT8_MAX) {

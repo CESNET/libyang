@@ -262,7 +262,7 @@ struct lyd_attr {
     const char *name;
     const char *value;
 
-    LYD_FORMAT format;
+    LYD_FORMAT format;              /**< format of the prefixes, only LYD_XML and LYD_JSON values can appear at this place */
     int hint;                       /**< additional information about from the data source, see the [hints list](@ref lydopaqhints) */
     struct ly_prefix prefix;        /**< name prefix, it is stored because they are a real pain to generate properly */
 

@@ -43,7 +43,7 @@ lys_print_module(struct ly_out *out, const struct lys_module *module, LYS_OUTFOR
             break;
         }
 
-        ret = yang_print_parsed_module(out, module, module->parsed);
+        ret = yang_print_parsed_module(out, module, module->parsed, options);
         break;
     case LYS_OUT_YANG_COMPILED:
         if (!module->compiled) {
@@ -61,7 +61,7 @@ lys_print_module(struct ly_out *out, const struct lys_module *module, LYS_OUTFOR
             break;
         }
 
-        ret = yin_print_parsed_module(out, module, module->parsed);
+        ret = yin_print_parsed_module(out, module, module->parsed, options);
         break;
     /* TODO not yet implemented
     case LYS_OUT_TREE:
@@ -82,7 +82,7 @@ lys_print_module(struct ly_out *out, const struct lys_module *module, LYS_OUTFOR
 
 API LY_ERR
 lys_print_submodule(struct ly_out *out, const struct lys_module *module, const struct lysp_submodule *submodule,
-                    LYS_OUTFORMAT format, int UNUSED(line_length), int UNUSED(options))
+                    LYS_OUTFORMAT format, int UNUSED(line_length), int options)
 {
     LY_ERR ret;
 
@@ -93,10 +93,10 @@ lys_print_submodule(struct ly_out *out, const struct lys_module *module, const s
 
     switch (format) {
     case LYS_OUT_YANG:
-        ret = yang_print_parsed_submodule(out, module, submodule);
+        ret = yang_print_parsed_submodule(out, module, submodule, options);
         break;
     case LYS_OUT_YIN:
-        ret = yin_print_parsed_submodule(out, module, submodule);
+        ret = yin_print_parsed_submodule(out, module, submodule, options);
         break;
     /* TODO not yet implemented
     case LYS_OUT_TREE:
