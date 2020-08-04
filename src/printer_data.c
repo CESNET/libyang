@@ -32,11 +32,9 @@ lyd_print_(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, i
     case LYD_XML:
         ret = xml_print_data(out, root, options);
         break;
-#if 0
     case LYD_JSON:
         ret = json_print_data(out, root, options);
         break;
-#endif
     case LYD_LYB:
         ret = lyb_print_data(out, root, options);
         break;

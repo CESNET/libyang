@@ -36,10 +36,8 @@ struct ypr_ctx {
     struct ly_out *out;               /**< output specification */
     unsigned int level;              /**< current indentation level: 0 - no formatting, >= 1 indentation levels */
     const struct lys_module *module; /**< schema to print */
+    int options;                     /**< Schema output options (see @ref schemaprinterflags). */
 };
-
-#define LEVEL ctx->level             /**< current level */
-#define INDENT (LEVEL)*2,""          /**< indentation parameters for printer functions */
 
 static void yprp_extension_instances(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t substmt_index,
                                struct lysp_ext_instance *ext, int *flag, LY_ARRAY_COUNT_TYPE count);
@@ -1467,10 +1465,10 @@ yin_print_parsed_body(struct ypr_ctx *ctx, const struct lysp_module *modp)
 }
 
 LY_ERR
-yin_print_parsed_module(struct ly_out *out, const struct lys_module *module, const struct lysp_module *modp)
+yin_print_parsed_module(struct ly_out *out, const struct lys_module *module, const struct lysp_module *modp, int options)
 {
     LY_ARRAY_COUNT_TYPE u;
-    struct ypr_ctx ctx_ = {.out = out, .level = 0, .module = module}, *ctx = &ctx_;
+    struct ypr_ctx ctx_ = {.out = out, .level = 0, .module = module, .options = options | LYD_PRINT_FORMAT}, *ctx = &ctx_;
 
     ly_print(ctx->out, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
     ly_print(ctx->out, "%*s<module name=\"%s\"\n", INDENT, module->name);
@@ -1529,10 +1527,10 @@ yprp_belongsto(struct ypr_ctx *ctx, const struct lysp_submodule *submodp)
 }
 
 LY_ERR
-yin_print_parsed_submodule(struct ly_out *out, const struct lys_module *module, const struct lysp_submodule *submodp)
+yin_print_parsed_submodule(struct ly_out *out, const struct lys_module *module, const struct lysp_submodule *submodp, int options)
 {
     LY_ARRAY_COUNT_TYPE u;
-    struct ypr_ctx ctx_ = {.out = out, .level = 0, .module = module}, *ctx = &ctx_;
+    struct ypr_ctx ctx_ = {.out = out, .level = 0, .module = module, .options = options | LYD_PRINT_FORMAT}, *ctx = &ctx_;
 
     ly_print(ctx->out, "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
     ly_print(ctx->out, "%*s<submodule name=\"%s\"\n", INDENT, submodp->name);

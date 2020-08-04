@@ -229,11 +229,9 @@ get_fileformat(const char *filename, LYS_INFORMAT *schema, LYD_FORMAT *data)
         } else if (!strcmp(ptr, "xml")) {
             informat_s = 0;
             informat_d = LYD_XML;
-#if 0
         } else if (!strcmp(ptr, "json")) {
             informat_s = 0;
             informat_d = LYD_JSON;
-#endif
         } else {
             fprintf(stderr, "yanglint error: input file in an unknown format \"%s\".\n", ptr);
             return 0;
@@ -391,11 +389,9 @@ main_ni(int argc, char* argv[])
             } else if (!strcasecmp(optarg, "xml")) {
                 outformat_s = 0;
                 outformat_d = LYD_XML;
-#if 0
             } else if (!strcasecmp(optarg, "json")) {
                 outformat_s = 0;
                 outformat_d = LYD_JSON;
-#endif
             } else {
                 fprintf(stderr, "yanglint error: unknown output format %s\n", optarg);
                 help(1);
@@ -971,7 +967,7 @@ parse_reply:
                     fprintf(stderr, "yanglint error: input data file \"%s\".\n", data_item->filename);
                     goto cleanup;
                 }
-                if (lyd_parse_data(ctx, in, 0, options_parser, 0, &data_item->tree)) {
+                if (lyd_parse_data(ctx, in, 0, options_parser, LYD_VALIDATE_PRESENT, &data_item->tree)) {
                     fprintf(stderr, "yanglint error: Failed to parse input data file \"%s\".\n", data_item->filename);
                     ly_in_free(in, 0);
                     goto cleanup;
@@ -1067,6 +1063,9 @@ parse_reply:
                     }
                 }
 #endif
+                if (!out) {
+                    ly_out_new_file(stdout, &out);
+                }
                 lyd_print_all(out, data_item->tree, outformat_d, LYD_PRINT_FORMAT /* TODO defaults | options_dflt */);
 #if 0
                 if (envelope_s) {

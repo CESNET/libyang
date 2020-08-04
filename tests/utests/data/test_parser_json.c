@@ -167,7 +167,7 @@ test_leaf(void **state)
     lyd_free_all(tree);
 
     /* parse foo2 but make it implicit */
-    data = "{\"a:foo2\" : \"default-val\", \"@a:foo2\" : { \"ietf-netconf-with-defaults:default\" : true }}";
+    data = "{\"a:foo2\":\"default-val\",\"@a:foo2\":{\"ietf-netconf-with-defaults:default\":true}}";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
@@ -176,10 +176,15 @@ test_leaf(void **state)
     assert_string_equal("default-val", leaf->value.original);
     assert_true(leaf->flags & LYD_DEFAULT);
 
+    /* TODO default values
+    lyd_print_tree(out, tree, LYD_JSON, 0);
+    assert_string_equal(printed, data);
+    ly_out_reset(out);
+    */
     lyd_free_all(tree);
 
     /* multiple meatadata hint and unknown metadata xxx supposed to be skipped since it is from missing schema */
-    data = "{\"@a:foo\" : { \"a:hint\" : 1, \"a:hint\" : 2, \"x:xxx\" : { \"value\" : \"/x:no/x:yes\" }}, \"a:foo\" : \"xxx\"}";
+    data = "{\"@a:foo\":{\"a:hint\":1,\"a:hint\":2,\"x:xxx\":{\"value\":\"/x:no/x:yes\"}},\"a:foo\":\"xxx\"}";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
@@ -198,6 +203,8 @@ test_leaf(void **state)
     assert_ptr_equal(tree, tree->meta->next->parent);
     assert_null(tree->meta->next->next);
 
+    lyd_print_tree(out, tree, LYD_JSON, 0);
+    assert_string_equal(printed, "{\"a:foo\":\"xxx\",\"@a:foo\":{\"a:hint\":1,\"a:hint\":2}}");
     ly_out_free(out, NULL, 1);
     lyd_free_all(tree);
 
@@ -222,9 +229,13 @@ test_leaflist(void **state)
 {
     *state = test_leaflist;
 
-    const char *data = "{ \"a:ll1\" : [10,11] }";
+    const char *data = "{\"a:ll1\":[10,11]}";
     struct lyd_node *tree;
     struct lyd_node_term *ll;
+
+    char *printed;
+    struct ly_out *out;
+    assert_int_equal(LY_SUCCESS, ly_out_new_memory(&printed, 0, &out));
 
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
@@ -239,10 +250,13 @@ test_leaflist(void **state)
     ll = (struct lyd_node_term*)tree->next;
     assert_string_equal("11", ll->value.original);
 
+    lyd_print_all(out, tree, LYD_JSON, 0);
+    assert_string_equal(printed, data);
+    ly_out_reset(out);
     lyd_free_all(tree);
 
     /* simple metadata */
-    data = "{ \"a:ll1\" : [10,11], \"@a:ll1\" : [null, {\"a:hint\" : 2}] }";
+    data = "{\"a:ll1\":[10,11],\"@a:ll1\":[null,{\"a:hint\":2}]}";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
     assert_int_equal(LYS_LEAFLIST, tree->schema->nodetype);
@@ -260,6 +274,9 @@ test_leaflist(void **state)
     assert_string_equal("2", ll->meta->value.original);
     assert_null(ll->meta->next);
 
+    lyd_print_all(out, tree, LYD_JSON, 0);
+    assert_string_equal(printed, data);
+    ly_out_reset(out);
     lyd_free_all(tree);
 
         /* multiple meatadata hint and unknown metadata xxx supposed to be skipped since it is from missing schema */
@@ -304,6 +321,9 @@ test_leaflist(void **state)
     assert_ptr_equal(ll, ll->meta->parent);
     assert_null(ll->meta->next);
 
+    lyd_print_all(out, tree, LYD_JSON, 0);
+    assert_string_equal(printed, "{\"a:ll1\":[1,2,3],\"@a:ll1\":[{\"a:hint\":1,\"a:hint\":10},null,{\"a:hint\":3}]}");
+    ly_out_free(out, NULL, 1);
     lyd_free_all(tree);
 
     /* missing referenced metadata node */
@@ -355,10 +375,14 @@ test_list(void **state)
 {
     *state = test_list;
 
-    const char *data = "{ \"a:l1\" : [{ \"a\":\"one\",\"b\":\"one\",\"c\":1 }]} ";
+    const char *data = "{\"a:l1\":[{\"a\":\"one\",\"b\":\"one\",\"c\":1}]}";
     struct lyd_node *tree, *iter;
     struct lyd_node_inner *list;
     struct lyd_node_term *leaf;
+
+    char *printed;
+    struct ly_out *out;
+    assert_int_equal(LY_SUCCESS, ly_out_new_memory(&printed, 0, &out));
 
     /* check hashes */
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
@@ -369,6 +393,10 @@ test_list(void **state)
     LY_LIST_FOR(list->child, iter) {
         assert_int_not_equal(0, iter->hash);
     }
+
+    lyd_print_all(out, tree, LYD_JSON, 0);
+    assert_string_equal(printed, data);
+    ly_out_reset(out);
     lyd_free_all(tree);
 
     /* missing keys */
@@ -406,10 +434,14 @@ test_list(void **state)
     assert_non_null(leaf = (struct lyd_node_term*)leaf->next);
     assert_string_equal("d", leaf->schema->name);
     logbuf_assert("");
+
+    lyd_print_all(out, tree, LYD_JSON, 0);
+    assert_string_equal(printed, "{\"a:l1\":[{\"a\":\"a\",\"b\":\"b\",\"c\":1,\"d\":\"d\"}]}");
+    ly_out_reset(out);
     lyd_free_all(tree);
 
     /*  */
-    data = "{ \"a:l1\": [ {\"c\" : 1, \"b\" : \"b\", \"a\" : \"a\"}]}";
+    data = "{\"a:l1\":[{\"c\":1,\"b\":\"b\",\"a\":\"a\"}]}";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
     assert_int_equal(LYS_LIST, tree->schema->nodetype);
@@ -422,9 +454,13 @@ test_list(void **state)
     assert_non_null(leaf = (struct lyd_node_term*)leaf->next);
     assert_string_equal("c", leaf->schema->name);
     logbuf_assert("");
+
+    lyd_print_all(out, tree, LYD_JSON, 0);
+    assert_string_equal(printed, "{\"a:l1\":[{\"a\":\"a\",\"b\":\"b\",\"c\":1}]}");
+    ly_out_reset(out);
     lyd_free_all(tree);
 
-    data = "{\"a:cp\" : { \"@\" : { \"a:hint\" : 1 }}}";
+    data = "{\"a:cp\":{\"@\":{\"a:hint\":1}}}";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
     assert_int_equal(LYS_CONTAINER, tree->schema->nodetype);
@@ -434,6 +470,10 @@ test_list(void **state)
     assert_string_equal("1", tree->meta->value.original);
     assert_ptr_equal(tree, tree->meta->parent);
     assert_null(tree->meta->next);
+
+    lyd_print_all(out, tree, LYD_JSON, 0);
+    assert_string_equal(printed, data);
+    ly_out_free(out, NULL, 1);
     lyd_free_all(tree);
 
     *state = NULL;
@@ -444,9 +484,13 @@ test_container(void **state)
 {
     *state = test_container;
 
-    const char *data = " {\"a:c\" : {}}";
+    const char *data = "{\"a:c\":{}}";
     struct lyd_node *tree;
     struct lyd_node_inner *cont;
+
+    char *printed;
+    struct ly_out *out;
+    assert_int_equal(LY_SUCCESS, ly_out_new_memory(&printed, 0, &out));
 
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
@@ -454,15 +498,23 @@ test_container(void **state)
     assert_string_equal("c", tree->schema->name);
     cont = (struct lyd_node_inner*)tree;
     assert_true(cont->flags & LYD_DEFAULT);
+
+    lyd_print_all(out, tree, LYD_JSON, 0);
+    assert_string_equal(printed, "{}");
+    ly_out_reset(out);
     lyd_free_all(tree);
 
-    data = "{\"a:cp\" : {}}";
+    data = "{\"a:cp\":{}}";
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_JSON, 0, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
     assert_int_equal(LYS_CONTAINER, tree->schema->nodetype);
     assert_string_equal("cp", tree->schema->name);
     cont = (struct lyd_node_inner*)tree;
     assert_false(cont->flags & LYD_DEFAULT);
+
+    lyd_print_all(out, tree, LYD_JSON, 0);
+    assert_string_equal(printed, data);
+    ly_out_free(out, NULL, 1);
     lyd_free_all(tree);
 
     *state = NULL;

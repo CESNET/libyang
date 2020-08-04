@@ -647,7 +647,7 @@ parse_data(char *filepath, int *options, const struct lyd_node *tree, const char
         } else {
 #endif
 
-            lyd_parse_data(ctx, in, 0, opts, 0, &data);
+            lyd_parse_data(ctx, in, 0, opts, LYD_VALIDATE_PRESENT, &data);
 #if 0
         }
     }
@@ -734,12 +734,10 @@ cmd_data(const char *arg)
         case 'f':
             if (!strcmp(optarg, "xml")) {
                 outformat = LYD_XML;
-#if 0
             } else if (!strcmp(optarg, "json")) {
                 outformat = LYD_JSON;
             } else if (!strcmp(optarg, "lyb")) {
                 outformat = LYD_LYB;
-#endif
             } else {
                 fprintf(stderr, "Unknown output format \"%s\".\n", optarg);
                 goto cleanup;
