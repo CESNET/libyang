@@ -849,6 +849,7 @@ lyd_validate_siblings_schema_r(const struct lyd_node *first, const struct lysc_n
 {
     const struct lysc_node *snode = NULL;
     struct lysc_node_list *slist;
+    struct lysc_node_leaflist *sllist;
     int getnext_opts;
 
     getnext_opts = LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | (op == LYD_VALIDATE_OP_REPLY ? LYS_GETNEXT_OUTPUT : 0);
@@ -860,10 +861,15 @@ lyd_validate_siblings_schema_r(const struct lyd_node *first, const struct lysc_n
         }
 
         /* check min-elements and max-elements */
-        if (snode->nodetype & (LYS_LIST | LYS_LEAFLIST)) {
+        if (snode->nodetype == LYS_LIST) {
             slist = (struct lysc_node_list *)snode;
             if (slist->min || slist->max) {
                 LY_CHECK_RET(lyd_validate_minmax(first, snode, slist->min, slist->max));
+            }
+        } else if (snode->nodetype == LYS_LEAFLIST) {
+            sllist = (struct lysc_node_leaflist *)snode;
+            if (sllist->min || sllist->max) {
+                LY_CHECK_RET(lyd_validate_minmax(first, snode, sllist->min, sllist->max));
             }
 
         /* check generic mandatory existence */
