@@ -960,7 +960,7 @@ yprc_type(struct ypr_ctx *ctx, const struct lysc_type *type)
         yprc_dflt_value(ctx, type->dflt, type->dflt_mod, type->exts);
     }
 
-    switch(type->basetype) {
+    switch (type->basetype) {
     case LY_TYPE_BINARY: {
         struct lysc_type_bin *bin = (struct lysc_type_bin*)type;
         yprc_range(ctx, bin->length, type->basetype, &flag);
@@ -1901,7 +1901,6 @@ yprp_augment(struct ypr_ctx *ctx, const struct lysp_augment *aug)
     LEVEL--;
     ypr_close(ctx, 1);
 }
-
 
 static void
 yprp_uses(struct ypr_ctx *ctx, const struct lysp_node *node)
