@@ -780,7 +780,7 @@ main_ni(int argc, char* argv[])
                 if (u) {
                     ly_print(out, "\n");
                 }
-                lys_print(out, (struct lys_module *)mods->objs[u], outformat_s, outline_length_s, outoptions_s);
+                lys_print_module(out, (struct lys_module *)mods->objs[u], outformat_s, outline_length_s, outoptions_s);
             }
         }
     } else if (data) {

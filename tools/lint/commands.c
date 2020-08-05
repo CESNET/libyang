@@ -511,7 +511,7 @@ cmd_print(const char *arg)
             fprintf(stderr, "The requested schema node \"%s\" does not exists.\n", target_path);
         }
     } else {
-        ret = lys_print(out, module, format, tree_ll, output_opts);
+        ret = lys_print_module(out, module, format, tree_ll, output_opts);
     }
 
 cleanup:

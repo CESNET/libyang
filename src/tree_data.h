@@ -156,9 +156,9 @@ struct lyd_value {
         int32_t int32;               /**< 32-bit signed integer */
         int64_t int64;               /**< 64-bit signed integer */
         uint8_t uint8;               /**< 8-bit unsigned integer */
-        uint16_t uint16;             /**< 16-bit signed integer */
-        uint32_t uint32;             /**< 32-bit signed integer */
-        uint64_t uint64;             /**< 64-bit signed integer */
+        uint16_t uint16;             /**< 16-bit unsigned integer */
+        uint32_t uint32;             /**< 32-bit unsigned integer */
+        uint64_t uint64;             /**< 64-bit unsigned integer */
         struct lysc_type_bitenum_item *enum_item;  /**< pointer to the definition of the enumeration value */
         struct lysc_type_bitenum_item **bits_items; /**< list of set pointers to the specification of the set bits ([sized array](@ref sizedarrays)) */
         struct lysc_ident *ident;    /**< pointer to the schema definition of the identityref value */

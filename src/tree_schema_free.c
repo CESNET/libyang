@@ -528,14 +528,6 @@ lysc_must_free(struct ly_ctx *ctx, struct lysc_must *must)
 }
 
 static void
-lysc_import_free(struct ly_ctx *ctx, struct lysc_import *import)
-{
-    /* imported module is freed directly from the context's list */
-    FREE_STRING(ctx, import->prefix);
-    FREE_ARRAY(ctx, import->exts, lysc_ext_instance_free);
-}
-
-static void
 lysc_ident_free(struct ly_ctx *ctx, struct lysc_ident *ident)
 {
     FREE_STRING(ctx, ident->name);
@@ -837,7 +829,6 @@ lysc_module_free_(struct lysc_module *module)
     LY_CHECK_ARG_RET(NULL, module,);
     ctx = module->mod->ctx;
 
-    FREE_ARRAY(ctx, module->imports, lysc_import_free);
     FREE_ARRAY(ctx, module->features, lysc_feature_free);
     FREE_ARRAY(ctx, module->identities, lysc_ident_free);
 

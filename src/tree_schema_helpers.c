@@ -357,6 +357,7 @@ lysp_type_find(const char *id, struct lysp_node *start_node, struct lysp_module 
 {
     const char *str, *name;
     struct lysp_tpdf *typedefs;
+    struct lys_module *mod;
     LY_ARRAY_COUNT_TYPE u, v;
 
     assert(id);
@@ -368,7 +369,8 @@ lysp_type_find(const char *id, struct lysp_node *start_node, struct lysp_module 
     *node = NULL;
     str = strchr(id, ':');
     if (str) {
-        *module = lysp_module_find_prefix(start_module, id, str - id);
+        mod = lys_module_find_prefix(start_module->mod, id, str - id);
+        *module = mod ? mod->parsed : NULL;
         name = str + 1;
         *type = LY_TYPE_UNKNOWN;
     } else {
@@ -959,7 +961,7 @@ lysp_check_identifierchar(struct lys_parser_ctx *ctx, unsigned int c, int first,
 }
 
 LY_ERR
-lysp_load_submodule(struct lys_parser_ctx *pctx, struct lysp_module *mod, struct lysp_include *inc)
+lysp_load_submodule(struct lys_parser_ctx *pctx, struct lysp_include *inc)
 {
     struct ly_ctx *ctx = (struct ly_ctx *)(PARSER_CTX(pctx));
     struct lysp_submodule *submod = NULL;
@@ -973,12 +975,12 @@ lysp_load_submodule(struct lys_parser_ctx *pctx, struct lysp_module *mod, struct
     if (!(ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
 search_clb:
         if (ctx->imp_clb) {
-            if (ctx->imp_clb(mod->mod->name, NULL, inc->name, inc->rev[0] ? inc->rev : NULL, ctx->imp_clb_data,
+            if (ctx->imp_clb(pctx->main_mod->name, NULL, inc->name, inc->rev[0] ? inc->rev : NULL, ctx->imp_clb_data,
                                   &format, &submodule_data, &submodule_data_free) == LY_SUCCESS) {
                 LY_CHECK_RET(ly_in_new_memory(submodule_data, &in));
                 check_data.name = inc->name;
                 check_data.revision = inc->rev[0] ? inc->rev : NULL;
-                check_data.submoduleof = mod->mod->name;
+                check_data.submoduleof = pctx->main_mod->name;
                 lys_parse_mem_submodule(ctx, in, format, pctx, lysp_load_module_check, &check_data, &submod);
                 ly_in_free(in, 0);
                 if (submodule_data_free) {
@@ -993,7 +995,8 @@ search_clb:
 search_file:
         if (!(ctx->flags & LY_CTX_DISABLE_SEARCHDIRS)) {
             /* submodule was not received from the callback or there is no callback set */
-            lys_module_localfile(ctx, inc->name, inc->rev[0] ? inc->rev : NULL, 0, pctx, mod->mod->name, 1, (void**)&submod);
+            lys_module_localfile(ctx, inc->name, inc->rev[0] ? inc->rev : NULL, 0, pctx, pctx->main_mod->name, 1,
+                                 (void**)&submod);
         }
         if (!submod && (ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
             goto search_clb;
@@ -1010,61 +1013,35 @@ search_file:
     }
     if (!inc->submodule) {
         LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "Including \"%s\" submodule into \"%s\" failed.",
-               inc->name, mod->mod->name);
+               inc->name, pctx->main_mod->name);
         return LY_EVALID;
     }
 
     return LY_SUCCESS;
 }
 
-#define FIND_MODULE(TYPE, MOD) \
-    TYPE *imp; \
-    if (!ly_strncmp((MOD)->mod->prefix, prefix, len)) { \
-        /* it is the prefix of the module itself */ \
-        m = ly_ctx_get_module((MOD)->mod->ctx, (MOD)->mod->name, (MOD)->mod->revision); \
-    } \
-    /* search in imports */ \
-    if (!m) { \
-        LY_ARRAY_FOR((MOD)->imports, TYPE, imp) { \
-            if (!ly_strncmp(imp->prefix, prefix, len)) { \
-                m = imp->module; \
-                break; \
-            } \
-        } \
-    }
-
-struct lysc_module *
-lysc_module_find_prefix(const struct lysc_module *mod, const char *prefix, size_t len)
-{
-    const struct lys_module *m = NULL;
-
-    FIND_MODULE(struct lysc_import, mod);
-    return m ? m->compiled : NULL;
-}
-
-struct lysp_module *
-lysp_module_find_prefix(const struct lysp_module *mod, const char *prefix, size_t len)
-{
-    const struct lys_module *m = NULL;
-
-    FIND_MODULE(struct lysp_import, mod);
-    return m ? m->parsed : NULL;
-}
-
 struct lys_module *
 lys_module_find_prefix(const struct lys_module *mod, const char *prefix, size_t len)
 {
-    const struct lys_module *m = NULL;
+    struct lys_module *m = NULL;
+    LY_ARRAY_COUNT_TYPE u;
 
-    if (!prefix || (!strncmp(prefix, mod->prefix, len) && !mod->prefix[len])) {
-        return (struct lys_module *)mod;
+    if (!prefix || !ly_strncmp(mod->prefix, prefix, len)) {
+        /* it is the prefix of the module itself */
+        m = (struct lys_module *)mod;
     }
-    if (mod->compiled) {
-        FIND_MODULE(struct lysc_import, mod->compiled);
-    } else {
-        FIND_MODULE(struct lysp_import, mod->parsed);
+
+    /* search in imports */
+    if (!m && mod->parsed) {
+        LY_ARRAY_FOR(mod->parsed->imports, u) {
+            if (!ly_strncmp(mod->parsed->imports[u].prefix, prefix, len)) {
+                m = mod->parsed->imports[u].module;
+                break;
+            }
+        }
     }
-    return (struct lys_module*)m;
+
+    return m;
 }
 
 const char *
@@ -1674,10 +1651,10 @@ lys_get_prefix(const struct lys_module *mod, void *private)
     if (context_mod == mod) {
         return context_mod->prefix;
     }
-    LY_ARRAY_FOR(context_mod->compiled->imports, u) {
-        if (context_mod->compiled->imports[u].module == mod) {
+    LY_ARRAY_FOR(context_mod->parsed->imports, u) {
+        if (context_mod->parsed->imports[u].module == mod) {
             /* match */
-            return context_mod->compiled->imports[u].prefix;
+            return context_mod->parsed->imports[u].prefix;
         }
     }
 

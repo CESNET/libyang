@@ -2201,7 +2201,7 @@ test_uses(void **state)
     assert_int_equal(1, LY_ARRAY_COUNT(child->iffeatures));
     assert_int_equal(1, LY_ARRAY_COUNT(child->iffeatures[0].features));
     assert_string_equal("f", child->iffeatures[0].features[0]->name);
-    assert_int_equal(LY_EINVAL, lys_feature_enable(mod->compiled->imports[0].module, "f"));
+    assert_int_equal(LY_EINVAL, lys_feature_enable(mod->parsed->imports[0].module, "f"));
     logbuf_assert("Module \"grp\" is not implemented so all its features are permanently disabled without a chance to change it.");
     assert_int_equal(LY_ENOT, lysc_iffeature_value(&child->iffeatures[0]));
 

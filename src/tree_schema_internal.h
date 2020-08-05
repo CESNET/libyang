@@ -97,7 +97,7 @@ enum yang_arg {
     Y_MAYBE_STR_ARG       /**< optional YANG "string" rule */
 };
 
-#define PARSER_CTX(CTX) (CTX)->format == LYS_IN_YANG ? ((struct lys_yang_parser_ctx *)CTX)->ctx : ((struct lys_yin_parser_ctx *)CTX)->xmlctx->ctx
+#define PARSER_CTX(CTX) (CTX)->format == LYS_IN_YANG ? ((struct lys_yang_parser_ctx *)CTX)->ctx : ((struct ly_ctx *)((struct lys_yin_parser_ctx *)CTX)->xmlctx->ctx)
 
 #define LOGVAL_PARSER(CTX, ...) (CTX)->format == LYS_IN_YANG ? LOGVAL_YANG(CTX, __VA_ARGS__) : LOGVAL_YIN(CTX, __VA_ARGS__)
 
@@ -110,10 +110,11 @@ enum yang_arg {
                                      &((struct lys_yin_parser_ctx *)CTX)->xmlctx->line, __VA_ARGS__)
 
 struct lys_parser_ctx {
-    LYS_INFORMAT format;        /**< parser format */
-    struct ly_set tpdfs_nodes;  /**< set of typedef nodes */
-    struct ly_set grps_nodes;   /**< set of grouping nodes */
-    uint8_t mod_version;        /**< module's version */
+    LYS_INFORMAT format;            /**< parser format */
+    struct ly_set tpdfs_nodes;      /**< set of typedef nodes */
+    struct ly_set grps_nodes;       /**< set of grouping nodes */
+    struct lys_module *main_mod;    /**< main module (belongs-to module for submodules) */
+    uint8_t mod_version;            /**< module's version */
 };
 
 /**
@@ -123,6 +124,7 @@ struct lys_yang_parser_ctx {
     LYS_INFORMAT format;        /**< parser format */
     struct ly_set tpdfs_nodes;  /**< set of typedef nodes */
     struct ly_set grps_nodes;   /**< set of grouping nodes */
+    struct lys_module *main_mod;    /**< main module (belongs-to module for submodules) */
     uint8_t mod_version;        /**< module's version */
     enum LY_VLOG_ELEM pos_type; /**< */
     struct ly_ctx *ctx;         /**< context of then yang schemas */
@@ -145,6 +147,7 @@ struct lys_yin_parser_ctx {
     LYS_INFORMAT format;           /**< parser format */
     struct ly_set tpdfs_nodes;     /**< set of typedef nodes */
     struct ly_set grps_nodes;      /**< set of grouping nodes */
+    struct lys_module *main_mod;    /**< main module (belongs-to module for submodules) */
     uint8_t mod_version;           /**< module's version */
     struct lyxml_ctx *xmlctx;      /**< context for xml parser */
 };
@@ -329,13 +332,12 @@ LY_ERR lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revisi
 /**
  * @brief Parse included submodule into the simply parsed YANG module.
  *
- * @param[in] ctx parser context
- * @param[in] mod Module including a submodule.
+ * @param[in] pctx main parser context
  * @param[in,out] inc Include structure holding all available information about the include statement, the parsed
  * submodule is stored into this structure.
  * @return LY_ERR value.
  */
-LY_ERR lysp_load_submodule(struct lys_parser_ctx *pctx, struct lysp_module *mod, struct lysp_include *inc);
+LY_ERR lysp_load_submodule(struct lys_parser_ctx *pctx, struct lysp_include *inc);
 
 /**
  * @brief Compile printable schema into a validated schema linking all the references.
@@ -422,26 +424,6 @@ LY_ARRAY_COUNT_TYPE lysp_ext_instance_iter(struct lysp_ext_instance *ext, LY_ARR
  * @return Corresponding lys_module structure for the given parsed schema structure.
  */
 struct lys_module *lysp_find_module(struct ly_ctx *ctx, const struct lysp_module *mod);
-
-/**
- * @brief Find the module referenced by prefix in the provided parsed mod.
- *
- * @param[in] mod Schema module where the prefix was used.
- * @param[in] prefix Prefix used to reference a module.
- * @param[in] len Length of the prefix since it is not necessary NULL-terminated.
- * @return Pointer to the module or NULL if the module is not found.
- */
-struct lysp_module *lysp_module_find_prefix(const struct lysp_module *mod, const char *prefix, size_t len);
-
-/**
- * @brief Find the module referenced by prefix in the provided compiled mod.
- *
- * @param[in] mod Schema module where the prefix was used.
- * @param[in] prefix Prefix used to reference a module.
- * @param[in] len Length of the prefix since it is not necessary NULL-terminated.
- * @return Pointer to the module or NULL if the module is not found or it is not compiled.
- */
-struct lysc_module *lysc_module_find_prefix(const struct lysc_module *mod, const char *prefix, size_t len);
 
 /**
  * @brief Check statement's status for invalid combination.

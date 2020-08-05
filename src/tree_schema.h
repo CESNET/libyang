@@ -254,7 +254,7 @@ typedef enum {
     LYEXT_PAR_WHEN,      /**< ::lysc_when */
     LYEXT_PAR_IDENT,     /**< ::lysc_ident */
     LYEXT_PAR_EXT,       /**< ::lysc_ext */
-    LYEXT_PAR_IMPORT,    /**< ::lysc_import */
+    LYEXT_PAR_IMPORT,    /**< ::lysp_import */
 //    LYEXT_PAR_TPDF,      /**< ::lysp_tpdf */
 //    LYEXT_PAR_EXTINST,   /**< ::lysp_ext_instance */
 //    LYEXT_PAR_REFINE,    /**< ::lysp_refine */
@@ -1151,15 +1151,6 @@ struct lysc_iffeature {
 };
 
 /**
- * @brief YANG import-stmt
- */
-struct lysc_import {
-    struct lys_module *module;       /**< link to the imported module */
-    const char *prefix;              /**< prefix for the data from the imported schema (mandatory) */
-    struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-};
-
-/**
  * @brief YANG when-stmt
  */
 struct lysc_when {
@@ -1670,7 +1661,6 @@ struct lysc_node_anydata {
  */
 struct lysc_module {
     struct lys_module *mod;          /**< covering module structure */
-    struct lysc_import *imports;     /**< list of imported modules ([sized array](@ref sizedarrays)) */
 
     struct lysc_feature *features;   /**< list of feature definitions ([sized array](@ref sizedarrays)) */
     struct lysc_ident *identities;   /**< list of identities ([sized array](@ref sizedarrays)) */
@@ -1787,6 +1777,10 @@ LY_ERR lysc_iffeature_value(const struct lysc_iffeature *iff);
  */
 LY_ERR lysc_feature_value(const struct lysc_feature *feature);
 
+#define LYXP_SCNODE 0x02        /**< No special tree access modifiers. */
+#define LYXP_SCNODE_SCHEMA 0x04 /**< Apply node access restrictions defined for 'when' and 'must' evaluation. */
+#define LYXP_SCNODE_OUTPUT 0x08 /**< Search RPC/action output nodes instead of input ones. */
+
 /**
  * @brief Get all the schema nodes (atoms) that are required for \p xpath to be evaluated.
  *
@@ -1800,9 +1794,18 @@ LY_ERR lysc_feature_value(const struct lysc_feature *feature);
  */
 LY_ERR lys_atomize_xpath(const struct lysc_node *ctx_node, const char *xpath, int options, struct ly_set **set);
 
-#define LYXP_SCNODE 0x02        /**< No special tree access modifiers. */
-#define LYXP_SCNODE_SCHEMA 0x04 /**< Apply node access restrictions defined for 'when' and 'must' evaluation. */
-#define LYXP_SCNODE_OUTPUT 0x08 /**< Search RPC/action output nodes instead of input ones. */
+/**
+ * @brief Evaluate an \p xpath expression on schema nodes.
+ *
+ * @param[in] ctx_node XPath schema context node.
+ * @param[in] xpath Data XPath expression filtering the matching nodes. ::LYD_JSON format is expected.
+ * @param[in] options Whether to apply some node access restrictions, one of the options should always be used.
+ * If none is set, ::LYXP_SCNODE is used.
+ * @param[out] set Set of found schema nodes.
+ * @return LY_SUCCESS on success, @p set is returned.
+ * @return LY_ERR value if an error occurred.
+ */
+LY_ERR lys_find_xpath(const struct lysc_node *ctx_node, const char *xpath, int options, struct ly_set **set);
 
 /**
  * @brief Types of the different schema paths.

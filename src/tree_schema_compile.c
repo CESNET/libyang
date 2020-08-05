@@ -36,6 +36,7 @@
 #include "set.h"
 #include "tree.h"
 #include "tree_data.h"
+#include "tree_data_internal.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 #include "xpath.h"
@@ -523,14 +524,15 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct ly
         if (!ly_strncmp(ctx->mod_def->ns, ext_p->name, u - 1)) {
             prefixed_name = lydict_insert(ctx->ctx, &ext_p->name[u], 0);
             u = 0;
-        } else if (ctx->mod_def->compiled) {
-            LY_ARRAY_FOR(ctx->mod_def->compiled->imports, v) {
-                if (!ly_strncmp(ctx->mod_def->compiled->imports[v].module->ns, ext_p->name, u - 1)) {
+        } else {
+            assert(ctx->mod_def->parsed);
+            LY_ARRAY_FOR(ctx->mod_def->parsed->imports, v) {
+                if (!ly_strncmp(ctx->mod_def->parsed->imports[v].module->ns, ext_p->name, u - 1)) {
                     char *s;
-                    LY_CHECK_ERR_GOTO(asprintf(&s, "%s:%s", ctx->mod_def->compiled->imports[v].prefix, &ext_p->name[u]) == -1,
+                    LY_CHECK_ERR_GOTO(asprintf(&s, "%s:%s", ctx->mod_def->parsed->imports[v].prefix, &ext_p->name[u]) == -1,
                                       ret = LY_EMEM, cleanup);
                     prefixed_name = lydict_insert_zc(ctx->ctx, s);
-                    u = strlen(ctx->mod_def->compiled->imports[v].prefix) + 1; /* add semicolon */
+                    u = strlen(ctx->mod_def->parsed->imports[v].prefix) + 1; /* add semicolon */
                     break;
                 }
             }
@@ -902,52 +904,46 @@ done:
 }
 
 /**
- * @brief Compile information from the import statement
+ * @brief Compile information in the import statement - make sure there is the target module
  * @param[in] ctx Compile context.
- * @param[in] imp_p The parsed import statement structure.
- * @param[in,out] imp Prepared (empty) compiled import structure to fill.
+ * @param[in] imp_p The parsed import statement structure to fill the module to.
  * @return LY_ERR value.
  */
 static LY_ERR
-lys_compile_import(struct lysc_ctx *ctx, struct lysp_import *imp_p, struct lysc_import *imp)
+lys_compile_import(struct lysc_ctx *ctx, struct lysp_import *imp_p)
 {
     const struct lys_module *mod = NULL;
     LY_ERR ret = LY_SUCCESS;
 
-    DUP_STRING(ctx->ctx, imp_p->prefix, imp->prefix);
-    COMPILE_EXTS_GOTO(ctx, imp_p->exts, imp->exts, imp, LYEXT_PAR_IMPORT, ret, done);
-    imp->module = imp_p->module;
-
     /* make sure that we have the parsed version (lysp_) of the imported module to import groupings or typedefs.
      * The compiled version is needed only for augments, deviates and leafrefs, so they are checked (and added,
      * if needed) when these nodes are finally being instantiated and validated at the end of schema compilation. */
-    if (!imp->module->parsed) {
+    if (!imp_p->module->parsed) {
         /* try to use filepath if present */
-        if (imp->module->filepath) {
+        if (imp_p->module->filepath) {
             struct ly_in *in;
-            if (ly_in_new_filepath(imp->module->filepath, 0, &in)) {
+            if (ly_in_new_filepath(imp_p->module->filepath, 0, &in)) {
                 LOGINT(ctx->ctx);
             } else {
-                LY_CHECK_RET(lys_parse(ctx->ctx, in, !strcmp(&imp->module->filepath[strlen(imp->module->filepath - 4)],
+                LY_CHECK_RET(lys_parse(ctx->ctx, in, !strcmp(&imp_p->module->filepath[strlen(imp_p->module->filepath - 4)],
                                                              ".yin") ? LYS_IN_YIN : LYS_IN_YANG, &mod));
-                if (mod != imp->module) {
+                if (mod != imp_p->module) {
                     LOGERR(ctx->ctx, LY_EINT, "Filepath \"%s\" of the module \"%s\" does not match.",
-                           imp->module->filepath, imp->module->name);
+                           imp_p->module->filepath, imp_p->module->name);
                     mod = NULL;
                 }
             }
             ly_in_free(in, 1);
         }
         if (!mod) {
-            if (lysp_load_module(ctx->ctx, imp->module->name, imp->module->revision, 0, 1, (struct lys_module **)&mod)) {
+            if (lysp_load_module(ctx->ctx, imp_p->module->name, imp_p->module->revision, 0, 1, (struct lys_module **)&mod)) {
                 LOGERR(ctx->ctx, LY_ENOTFOUND, "Unable to reload \"%s\" module to import it into \"%s\", source data not found.",
-                       imp->module->name, ctx->mod->name);
+                       imp_p->module->name, ctx->mod->name);
                 return LY_ENOTFOUND;
             }
         }
     }
 
-done:
     return ret;
 }
 
@@ -3468,7 +3464,7 @@ lys_compile_node_leaf(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lys
 {
     struct lysp_node_leaf *leaf_p = (struct lysp_node_leaf*)node_p;
     struct lysc_node_leaf *leaf = (struct lysc_node_leaf*)node;
-    unsigned int u;
+    LY_ARRAY_COUNT_TYPE u;
     LY_ERR ret = LY_SUCCESS;
 
     COMPILE_ARRAY_GOTO(ctx, leaf_p->musts, leaf->musts, u, lys_compile_must, ret, done);
@@ -7150,10 +7146,11 @@ lys_compile(struct lys_module **mod, int options)
     LY_CHECK_ERR_RET(!mod_c, LOGMEM((*mod)->ctx), LY_EMEM);
     mod_c->mod = *mod;
 
-    COMPILE_ARRAY_GOTO(&ctx, sp->imports, mod_c->imports, u, lys_compile_import, ret, error);
+    LY_ARRAY_FOR(sp->imports, u) {
+        LY_CHECK_GOTO(ret = lys_compile_import(&ctx, &sp->imports[u]), error);
+    }
     LY_ARRAY_FOR(sp->includes, u) {
-        ret = lys_compile_submodule(&ctx, &sp->includes[u]);
-        LY_CHECK_GOTO(ret != LY_SUCCESS, error);
+        LY_CHECK_GOTO(ret = lys_compile_submodule(&ctx, &sp->includes[u]), error);
     }
 
     /* features */

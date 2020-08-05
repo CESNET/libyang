@@ -25,7 +25,8 @@
 #include "tree_schema.h"
 
 API LY_ERR
-lys_print(struct ly_out *out, const struct lys_module *module, LYS_OUTFORMAT format, int UNUSED(line_length), int options)
+lys_print_module(struct ly_out *out, const struct lys_module *module, LYS_OUTFORMAT format, int UNUSED(line_length),
+                 int options)
 {
     LY_ERR ret;
 
@@ -36,13 +37,66 @@ lys_print(struct ly_out *out, const struct lys_module *module, LYS_OUTFORMAT for
 
     switch (format) {
     case LYS_OUT_YANG:
-        ret = yang_print_parsed(out, module);
+        if (!module->parsed) {
+            LOGERR(module->ctx, LY_EINVAL, "Module \"%s\" parsed module missing.", module->name);
+            ret = LY_EINVAL;
+            break;
+        }
+
+        ret = yang_print_parsed_module(out, module, module->parsed);
         break;
     case LYS_OUT_YANG_COMPILED:
+        if (!module->compiled) {
+            LOGERR(module->ctx, LY_EINVAL, "Module \"%s\" compiled module missing.", module->name);
+            ret = LY_EINVAL;
+            break;
+        }
+
         ret = yang_print_compiled(out, module, options);
         break;
     case LYS_OUT_YIN:
-        ret = yin_print_parsed(out, module);
+        if (!module->parsed) {
+            LOGERR(module->ctx, LY_EINVAL, "Module \"%s\" parsed module missing.", module->name);
+            ret = LY_EINVAL;
+            break;
+        }
+
+        ret = yin_print_parsed_module(out, module, module->parsed);
+        break;
+    /* TODO not yet implemented
+    case LYS_OUT_TREE:
+        ret = tree_print_model(out, module, target_node, line_length, options);
+        break;
+    case LYS_OUT_INFO:
+        ret = info_print_model(out, module, target_node);
+        break;
+    */
+    default:
+        LOGERR(module->ctx, LY_EINVAL, "Unsupported output format.");
+        ret = LY_EINVAL;
+        break;
+    }
+
+    return ret;
+}
+
+API LY_ERR
+lys_print_submodule(struct ly_out *out, const struct lys_module *module, const struct lysp_submodule *submodule,
+                    LYS_OUTFORMAT format, int UNUSED(line_length), int UNUSED(options))
+{
+    LY_ERR ret;
+
+    LY_CHECK_ARG_RET(NULL, out, module, submodule, LY_EINVAL);
+
+    /* reset number of printed bytes */
+    out->func_printed = 0;
+
+    switch (format) {
+    case LYS_OUT_YANG:
+        ret = yang_print_parsed_submodule(out, module, submodule);
+        break;
+    case LYS_OUT_YIN:
+        ret = yin_print_parsed_submodule(out, module, submodule);
         break;
     /* TODO not yet implemented
     case LYS_OUT_TREE:
@@ -62,20 +116,20 @@ lys_print(struct ly_out *out, const struct lys_module *module, LYS_OUTFORMAT for
 }
 
 static LY_ERR
-lys_print_(struct ly_out *out, const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options)
+lys_print_(struct ly_out *out, const struct lys_module *module, LYS_OUTFORMAT format, int options)
 {
     LY_ERR ret;
 
     LY_CHECK_ARG_RET(NULL, out, LY_EINVAL);
 
-    ret = lys_print(out, module, format, line_length, options);
+    ret = lys_print_module(out, module, format, 0, options);
 
     ly_out_free(out, NULL, 0);
     return ret;
 }
 
 API LY_ERR
-lys_print_mem(char **strp, const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options)
+lys_print_mem(char **strp, const struct lys_module *module, LYS_OUTFORMAT format, int options)
 {
     struct ly_out *out;
 
@@ -85,52 +139,52 @@ lys_print_mem(char **strp, const struct lys_module *module, LYS_OUTFORMAT format
     *strp = NULL;
 
     LY_CHECK_RET(ly_out_new_memory(strp, 0, &out));
-    return lys_print_(out, module, format, line_length, options);
+    return lys_print_(out, module, format, options);
 }
 
 API LY_ERR
-lys_print_fd(int fd, const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options)
+lys_print_fd(int fd, const struct lys_module *module, LYS_OUTFORMAT format, int options)
 {
     struct ly_out *out;
 
     LY_CHECK_ARG_RET(NULL, fd != -1, module, LY_EINVAL);
 
     LY_CHECK_RET(ly_out_new_fd(fd, &out));
-    return lys_print_(out, module, format, line_length, options);
+    return lys_print_(out, module, format, options);
 }
 
 API LY_ERR
-lys_print_file(FILE *f, const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options)
+lys_print_file(FILE *f, const struct lys_module *module, LYS_OUTFORMAT format, int options)
 {
     struct ly_out *out;
 
     LY_CHECK_ARG_RET(NULL, f, module, LY_EINVAL);
 
     LY_CHECK_RET(ly_out_new_file(f, &out));
-    return lys_print_(out, module, format, line_length, options);
+    return lys_print_(out, module, format, options);
 }
 
 API LY_ERR
-lys_print_path(const char *path, const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options)
+lys_print_path(const char *path, const struct lys_module *module, LYS_OUTFORMAT format, int options)
 {
     struct ly_out *out;
 
     LY_CHECK_ARG_RET(NULL, path, module, LY_EINVAL);
 
     LY_CHECK_RET(ly_out_new_filepath(path, &out));
-    return lys_print_(out, module, format, line_length, options);
+    return lys_print_(out, module, format, options);
 }
 
 API LY_ERR
 lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg,
-              const struct lys_module *module, LYS_OUTFORMAT format, int line_length, int options)
+              const struct lys_module *module, LYS_OUTFORMAT format, int options)
 {
     struct ly_out *out;
 
     LY_CHECK_ARG_RET(NULL, writeclb, module, LY_EINVAL);
 
     LY_CHECK_RET(ly_out_new_clb(writeclb, arg, &out));
-    return lys_print_(out, module, format, line_length, options);
+    return lys_print_(out, module, format, options);
 }
 
 API LY_ERR
