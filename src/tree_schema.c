@@ -333,6 +333,50 @@ cleanup:
     return ret;
 }
 
+API LY_ERR
+lys_find_xpath(const struct lysc_node *ctx_node, const char *xpath, int options, struct ly_set **set)
+{
+    LY_ERR ret = LY_SUCCESS;
+    struct lyxp_set xp_set;
+    struct lyxp_expr *exp;
+    uint32_t i;
+
+    LY_CHECK_ARG_RET(NULL, ctx_node, xpath, set, LY_EINVAL);
+    if (!(options & LYXP_SCNODE_ALL)) {
+        options = LYXP_SCNODE;
+    }
+
+    memset(&xp_set, 0, sizeof xp_set);
+
+    /* compile expression */
+    exp = lyxp_expr_parse(ctx_node->module->ctx, xpath, 0, 1);
+    LY_CHECK_ERR_GOTO(!exp, ret = LY_EINVAL, cleanup);
+
+    /* atomize expression */
+    ret = lyxp_atomize(exp, LYD_JSON, ctx_node->module, ctx_node, LYXP_NODE_ELEM, &xp_set, options);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* allocate return set */
+    *set = ly_set_new();
+    LY_CHECK_ERR_GOTO(!*set, LOGMEM(ctx_node->module->ctx); ret = LY_EMEM, cleanup);
+
+    /* transform into ly_set */
+    (*set)->objs = malloc(xp_set.used * sizeof *(*set)->objs);
+    LY_CHECK_ERR_GOTO(!(*set)->objs, LOGMEM(ctx_node->module->ctx); ret = LY_EMEM, cleanup);
+    (*set)->size = xp_set.used;
+
+    for (i = 0; i < xp_set.used; ++i) {
+        if ((xp_set.val.scnodes[i].type == LYXP_NODE_ELEM) && (xp_set.val.scnodes[i].in_ctx == 1)) {
+            ly_set_add(*set, xp_set.val.scnodes[i].scnode, LY_SET_OPT_USEASLIST);
+        }
+    }
+
+cleanup:
+    lyxp_set_free_content(&xp_set);
+    lyxp_expr_free(ctx_node->module->ctx, exp);
+    return ret;
+}
+
 char *
 lysc_path_until(const struct lysc_node *node, const struct lysc_node *parent, LYSC_PATH_TYPE pathtype, char *buffer,
                 size_t buflen)
