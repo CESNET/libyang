@@ -3357,8 +3357,8 @@ warn_equality_value(struct lyxp_expr *exp, struct lyxp_set *set, uint16_t val_ex
 
         type = ((struct lysc_node_leaf *)scnode)->type;
         if (type->basetype != LY_TYPE_IDENT) {
-            rc = type->plugin->store(set->ctx, type, value, strlen(value), LY_TYPE_OPTS_SCHEMA,
-                                      lys_resolve_prefix, (void *)type->dflt_mod, LYD_XML, NULL, NULL, NULL, NULL, &err);
+            rc = type->plugin->store(set->ctx, type, value, strlen(value), LY_TYPE_OPTS_SCHEMA, lys_resolve_prefix,
+                                     (void *)set->local_mod, LYD_XML, NULL, NULL, NULL, NULL, &err);
 
             if (err) {
                 LOGWRN(set->ctx, "Invalid value \"%s\" which does not fit the type (%s).", value, err->msg);
@@ -3840,7 +3840,7 @@ xpath_derived_(struct lyxp_set **args, struct lyxp_set *set, int options, int se
 
             /* store args[1] as ident */
             rc = val->realtype->plugin->store(set->ctx, val->realtype, args[1]->val.str, strlen(args[1]->val.str),
-                                              LY_TYPE_OPTS_STORE, lys_resolve_prefix, (void *)sleaf->dflt_mod,
+                                              LY_TYPE_OPTS_STORE, lys_resolve_prefix, (void *)set->local_mod,
                                               set->format, (struct lyd_node *)leaf, set->tree, &data, NULL, &err);
         } else {
             meta = args[0]->val.meta[i].meta;
