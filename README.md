@@ -211,6 +211,10 @@ directory, the plugins are not available. There are two options:
 $ LIBYANG_EXTENSIONS_PLUGINS_DIR="`pwd`/src/extensions" ./yanglint
 ```
 
+## Windows
+
+There is an unofficial [Windows port](https://github.com/mekleo/libyang/tree/Windows) of this library available.
+
 ## Tests
 
 libyang includes several tests built with [cmocka](https://cmocka.org/). The tests
