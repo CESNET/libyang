@@ -20,9 +20,11 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "common.h"
 #include "context.h"
 #include "printer.h"
 #include "printer_schema.h"
+#include "tree_schema.h"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
@@ -83,7 +85,6 @@ logbuf_clean(void)
 #   define logbuf_assert(str)
 #endif
 
-
 static void
 test_module(void **state)
 {
@@ -117,10 +118,6 @@ test_module(void **state)
             "  yang-version 1.1;\n"
             "  namespace \"urn:test:a\";\n"
             "  prefix a;\n\n"
-            "  import ietf-yang-types {\n"
-            "    prefix yt;\n"
-            "    revision-date 2013-07-15;\n"
-            "  }\n\n"
             "  organization\n"
             "    \"ORG\";\n"
             "  contact\n"
@@ -138,11 +135,11 @@ test_module(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, orig, LYS_IN_YANG, &mod));
-    assert_int_equal(LY_SUCCESS, lys_print(out, mod, LYS_OUT_YANG, 0, 0));
+    assert_int_equal(LY_SUCCESS, lys_print_module(out, mod, LYS_OUT_YANG, 0, 0));
     assert_int_equal(strlen(orig), ly_out_printed(out));
     assert_string_equal(printed, orig);
     ly_out_reset(out);
-    assert_int_equal(LY_SUCCESS, lys_print(out, mod, LYS_OUT_YANG_COMPILED, 0, 0));
+    assert_int_equal(LY_SUCCESS, lys_print_module(out, mod, LYS_OUT_YANG_COMPILED, 0, 0));
     assert_int_equal(strlen(compiled), ly_out_printed(out));
     assert_string_equal(printed, compiled);
     ly_out_reset(out);
@@ -189,16 +186,16 @@ test_module(void **state)
             "  }\n"
             "}\n";
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, orig, LYS_IN_YANG, &mod));
-    assert_int_equal(LY_SUCCESS, lys_print(out, mod, LYS_OUT_YANG, 0, 0));
+    assert_int_equal(LY_SUCCESS, lys_print_module(out, mod, LYS_OUT_YANG, 0, 0));
     assert_int_equal(strlen(orig), ly_out_printed(out));
     assert_string_equal(printed, orig);
     ly_out_reset(out);
-    assert_int_equal(LY_SUCCESS, lys_print(out, mod, LYS_OUT_YANG_COMPILED, 0, 0));
+    assert_int_equal(LY_SUCCESS, lys_print_module(out, mod, LYS_OUT_YANG_COMPILED, 0, 0));
     assert_int_equal(strlen(compiled), ly_out_printed(out));
     assert_string_equal(printed, compiled);
     ly_out_reset(out);
 
-    orig = compiled ="module c {\n"
+    orig = compiled = "module c {\n"
             "  yang-version 1.1;\n"
             "  namespace \"urn:test:c\";\n"
             "  prefix c;\n\n"
@@ -216,26 +213,83 @@ test_module(void **state)
             "  }\n"
             "}\n";
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, orig, LYS_IN_YANG, &mod));
-    assert_int_equal(LY_SUCCESS, lys_print(out, mod, LYS_OUT_YANG, 0, 0));
+    assert_int_equal(LY_SUCCESS, lys_print_module(out, mod, LYS_OUT_YANG, 0, 0));
     assert_int_equal(strlen(orig), ly_out_printed(out));
     assert_string_equal(printed, orig);
     ly_out_reset(out);
-    assert_int_equal(LY_SUCCESS, lys_print(out, mod, LYS_OUT_YANG, 0, 0));
+    assert_int_equal(LY_SUCCESS, lys_print_module(out, mod, LYS_OUT_YANG, 0, 0));
     assert_int_equal(strlen(compiled), ly_out_printed(out));
     assert_string_equal(printed, compiled);
-    /* missing free(printed); which is done in the following lyp_free() */
 
     *state = NULL;
     ly_out_free(out, NULL, 1);
     ly_ctx_destroy(ctx, NULL);
 }
 
-/* TODO: include */
+static LY_ERR test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), const char *UNUSED(submod_name),
+                           const char *UNUSED(sub_rev), void *user_data, LYS_INFORMAT *format,
+                           const char **module_data, void (**free_module_data)(void *model_data, void *user_data))
+{
+    *module_data = user_data;
+    *format = LYS_IN_YANG;
+    *free_module_data = NULL;
+    return LY_SUCCESS;
+}
+
+static void
+test_submodule(void **state)
+{
+    *state = test_submodule;
+
+    struct ly_ctx *ctx = {0};
+    const struct lys_module *mod;
+    const char *mod_yang = "module a {\n"
+            "  yang-version 1.1;\n"
+            "  namespace \"urn:test:a\";\n"
+            "  prefix a;\n\n"
+            "  include a-sub;\n"
+            "}\n";
+    char *submod_yang = "submodule a-sub {\n"
+            "  yang-version 1.1;\n"
+            "  belongs-to a {\n"
+            "    prefix a;\n"
+            "  }\n\n"
+            "  import ietf-yang-types {\n"
+            "    prefix yt;\n"
+            "    revision-date 2013-07-15;\n"
+            "  }\n\n"
+            "  organization\n"
+            "    \"ORG\";\n"
+            "  contact\n"
+            "    \"Radek Krejci.\";\n"
+            "  description\n"
+            "    \"Long multiline\n"
+            "      description.\";\n"
+            "  reference\n"
+            "    \"some reference\";\n"
+            "}\n";
+    char *printed;
+    struct ly_out *out;
+
+    assert_int_equal(LY_SUCCESS, ly_out_new_memory(&printed, 0, &out));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
+
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, submod_yang);
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, mod_yang, LYS_IN_YANG, &mod));
+    assert_int_equal(LY_SUCCESS, lys_print_submodule(out, mod, mod->parsed->includes[0].submodule, LYS_OUT_YANG, 0, 0));
+    assert_int_equal(strlen(submod_yang), ly_out_printed(out));
+    assert_string_equal(printed, submod_yang);
+
+    *state = NULL;
+    ly_out_free(out, NULL, 1);
+    ly_ctx_destroy(ctx, NULL);
+}
 
 int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_module, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_submodule, logger_setup, logger_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

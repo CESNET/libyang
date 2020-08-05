@@ -21,9 +21,11 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "common.h"
 #include "context.h"
 #include "printer.h"
 #include "printer_schema.h"
+#include "tree_schema.h"
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
@@ -83,7 +85,6 @@ logbuf_clean(void)
 #else
 #   define logbuf_assert(str)
 #endif
-
 
 static void
 test_module(void **state)
@@ -330,7 +331,6 @@ test_module(void **state)
             "        argument \"name\";\n"
             "    }\n"
             "}\n";
-
 
     const char * ori_res =
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
@@ -587,21 +587,80 @@ test_module(void **state)
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, orig, LYS_IN_YANG, &mod));
-    assert_int_equal(LY_SUCCESS, lys_print(out, mod, LYS_OUT_YIN, 0, 0));
+    assert_int_equal(LY_SUCCESS, lys_print_module(out, mod, LYS_OUT_YIN, 0, 0));
     assert_int_equal(strlen(ori_res), ly_out_printed(out));
     assert_string_equal(printed, ori_res);
 
-    /*
-    lyp_memory_clean(out);
-    assert_int_equal(strlen(compiled), lys_print_mem(&printed, mod, LYS_OUT_YANG_COMPILED, 0, 0));
-    assert_string_equal(printed, compiled);
-    */
+    *state = NULL;
+    ly_out_free(out, NULL, 1);
+    ly_ctx_destroy(ctx, NULL);
+}
 
-    /* note that the printed is freed here, so it must not be freed via lyp_free()! */
-    free(printed);
+static LY_ERR test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), const char *UNUSED(submod_name),
+                           const char *UNUSED(sub_rev), void *user_data, LYS_INFORMAT *format,
+                           const char **module_data, void (**free_module_data)(void *model_data, void *user_data))
+{
+    *module_data = user_data;
+    *format = LYS_IN_YIN;
+    *free_module_data = NULL;
+    return LY_SUCCESS;
+}
+
+static void
+test_submodule(void **state)
+{
+    *state = test_module;
+
+    struct ly_ctx *ctx = {0};
+    const struct lys_module *mod;
+
+    const char *mod_yin =
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+            "<module name=\"a\"\n"
+            "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+            "        xmlns:a_mod=\"urn:a\">\n"
+            "  <yang-version value=\"1.1\"/>\n"
+            "  <namespace uri=\"urn:a\"/>\n"
+            "  <prefix value=\"a_mod\"/>\n"
+            "  <include module=\"a-sub\"/>\n"
+            "</module>\n";
+
+    char *submod_yin =
+            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+            "<submodule name=\"a-sub\"\n"
+            "        xmlns=\"urn:ietf:params:xml:ns:yang:yin:1\"\n"
+            "        xmlns:a_mod=\"urn:a\"\n"
+            "        xmlns:yt=\"urn:ietf:params:xml:ns:yang:ietf-yang-types\">\n"
+            "  <yang-version value=\"1.1\"/>\n"
+            "  <belongs-to module=\"a\">\n"
+            "    <prefix value=\"a_mod\"/>\n"
+            "  </belongs-to>\n"
+            "  <import module=\"ietf-yang-types\">\n"
+            "    <prefix value=\"yt\"/>\n"
+            "    <revision-date date=\"2013-07-15\"/>\n"
+            "  </import>\n\n"
+            "  <description>\n"
+            "    <text>YANG types</text>\n"
+            "  </description>\n"
+            "  <reference>\n"
+            "    <text>RFC reference</text>\n"
+            "  </reference>\n"
+            "</submodule>\n";
+
+    char *printed;
+    struct ly_out *out;
+
+    assert_int_equal(LY_SUCCESS, ly_out_new_memory(&printed, 0, &out));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0, &ctx));
+
+    ly_ctx_set_module_imp_clb(ctx, test_imp_clb, submod_yin);
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, mod_yin, LYS_IN_YIN, &mod));
+    assert_int_equal(LY_SUCCESS, lys_print_submodule(out, mod, mod->parsed->includes[0].submodule, LYS_OUT_YIN, 0, 0));
+    assert_int_equal(strlen(submod_yin), ly_out_printed(out));
+    assert_string_equal(printed, submod_yin);
 
     *state = NULL;
-    ly_out_free(out, NULL, 0);
+    ly_out_free(out, NULL, 1);
     ly_ctx_destroy(ctx, NULL);
 }
 
@@ -609,6 +668,7 @@ int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_module, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_submodule, logger_setup, logger_teardown),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

@@ -3498,6 +3498,7 @@ yin_parse_submodule(struct lys_yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, str
     *yin_ctx = calloc(1, sizeof **yin_ctx);
     LY_CHECK_ERR_RET(!(*yin_ctx), LOGMEM(ctx), LY_EMEM);
     (*yin_ctx)->format = LYS_IN_YIN;
+    (*yin_ctx)->main_mod = main_ctx->main_mod;
     LY_CHECK_RET(lyxml_ctx_new(ctx, in, &(*yin_ctx)->xmlctx));
 
     /* map the typedefs and groupings list from main context to the submodule's context */
@@ -3558,6 +3559,7 @@ yin_parse_module(struct lys_yin_parser_ctx **yin_ctx, struct ly_in *in, struct l
     *yin_ctx = calloc(1, sizeof **yin_ctx);
     LY_CHECK_ERR_RET(!(*yin_ctx), LOGMEM(mod->ctx), LY_EMEM);
     (*yin_ctx)->format = LYS_IN_YIN;
+    (*yin_ctx)->main_mod = mod;
     LY_CHECK_RET(lyxml_ctx_new(mod->ctx, in, &(*yin_ctx)->xmlctx));
 
     /* check module */

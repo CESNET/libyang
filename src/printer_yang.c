@@ -2138,74 +2138,13 @@ yprp_deviation(struct ypr_ctx *ctx, const struct lysp_deviation *deviation)
     ypr_close(ctx, 1);
 }
 
-/**
- * @brief Minimal print of a schema.
- *
- * To print
- * a) compiled schema when it is not compiled or
- * b) parsed when the parsed form was already removed
- */
-static LY_ERR
-ypr_missing_format(struct ypr_ctx *ctx, const struct lys_module *module)
-{
-    /* module-header-stmts */
-    if (module->version) {
-        if (module->version) {
-            ypr_substmt(ctx, LYEXT_SUBSTMT_VERSION, 0, module->version == LYS_VERSION_1_1 ? "1.1" : "1", NULL);
-        }
-    }
-    ypr_substmt(ctx, LYEXT_SUBSTMT_NAMESPACE, 0, module->ns, NULL);
-    ypr_substmt(ctx, LYEXT_SUBSTMT_PREFIX, 0, module->prefix, NULL);
-
-    /* meta-stmts */
-    if (module->org || module->contact || module->dsc || module->ref) {
-        ly_print(ctx->out, "\n");
-    }
-    ypr_substmt(ctx, LYEXT_SUBSTMT_ORGANIZATION, 0, module->org, NULL);
-    ypr_substmt(ctx, LYEXT_SUBSTMT_CONTACT, 0, module->contact, NULL);
-    ypr_substmt(ctx, LYEXT_SUBSTMT_DESCRIPTION, 0, module->dsc, NULL);
-    ypr_substmt(ctx, LYEXT_SUBSTMT_REFERENCE, 0, module->ref, NULL);
-
-    /* revision-stmts */
-    if (module->revision) {
-        ly_print(ctx->out, "\n%*srevision %s;\n", INDENT, module->revision);
-    }
-
-    LEVEL--;
-    ly_print(ctx->out, "%*s}\n", INDENT);
-    ly_print_flush(ctx->out);
-
-    return LY_SUCCESS;
-}
-
-LY_ERR
-yang_print_parsed(struct ly_out *out, const struct lys_module *module)
+static void
+yang_print_parsed_linkage(struct ypr_ctx *ctx, const struct lysp_module *modp)
 {
     LY_ARRAY_COUNT_TYPE u;
-    struct lysp_node *data;
-    struct lysp_module *modp = module->parsed;
-    struct ypr_ctx ctx_ = {.out = out, .level = 0, .module = module, .schema = YPR_PARSED}, *ctx = &ctx_;
 
-    ly_print(ctx->out, "%*smodule %s {\n", INDENT, module->name);
-    LEVEL++;
-
-    if (!modp) {
-        ly_print(ctx->out, "%*s/* PARSED INFORMATION ARE NOT FULLY PRESENT */\n", INDENT);
-        return ypr_missing_format(ctx, module);
-    }
-
-    /* module-header-stmts */
-    if (module->version) {
-        if (module->version) {
-            ypr_substmt(ctx, LYEXT_SUBSTMT_VERSION, 0, module->version == LYS_VERSION_1_1 ? "1.1" : "1", modp->exts);
-        }
-    }
-    ypr_substmt(ctx, LYEXT_SUBSTMT_NAMESPACE, 0, module->ns, modp->exts);
-    ypr_substmt(ctx, LYEXT_SUBSTMT_PREFIX, 0, module->prefix, modp->exts);
-
-    /* linkage-stmts */
     LY_ARRAY_FOR(modp->imports, u) {
-        ly_print(out, "%s%*simport %s {\n", u ? "" : "\n", INDENT, modp->imports[u].module->name);
+        ly_print(ctx->out, "%s%*simport %s {\n", u ? "" : "\n", INDENT, modp->imports[u].name);
         LEVEL++;
         yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, modp->imports[u].exts, NULL, 0);
         ypr_substmt(ctx, LYEXT_SUBSTMT_PREFIX, 0, modp->imports[u].prefix, modp->imports[u].exts);
@@ -2215,11 +2154,11 @@ yang_print_parsed(struct ly_out *out, const struct lys_module *module)
         ypr_substmt(ctx, LYEXT_SUBSTMT_DESCRIPTION, 0, modp->imports[u].dsc, modp->imports[u].exts);
         ypr_substmt(ctx, LYEXT_SUBSTMT_REFERENCE, 0, modp->imports[u].ref, modp->imports[u].exts);
         LEVEL--;
-        ly_print(out, "%*s}\n", INDENT);
+        ly_print(ctx->out, "%*s}\n", INDENT);
     }
     LY_ARRAY_FOR(modp->includes, u) {
         if (modp->includes[u].rev[0] || modp->includes[u].dsc || modp->includes[u].ref || modp->includes[u].exts) {
-            ly_print(out, "%s%*sinclude %s {\n", u ? "" : "\n",  INDENT, modp->includes[u].submodule->name);
+            ly_print(ctx->out, "%s%*sinclude %s {\n", u ? "" : "\n",  INDENT, modp->includes[u].name);
             LEVEL++;
             yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, modp->includes[u].exts, NULL, 0);
             if (modp->includes[u].rev[0]) {
@@ -2228,36 +2167,26 @@ yang_print_parsed(struct ly_out *out, const struct lys_module *module)
             ypr_substmt(ctx, LYEXT_SUBSTMT_DESCRIPTION, 0, modp->includes[u].dsc, modp->includes[u].exts);
             ypr_substmt(ctx, LYEXT_SUBSTMT_REFERENCE, 0, modp->includes[u].ref, modp->includes[u].exts);
             LEVEL--;
-            ly_print(out, "%*s}\n", INDENT);
+            ly_print(ctx->out, "%*s}\n", INDENT);
         } else {
-            ly_print(out, "\n%*sinclude \"%s\";\n", INDENT, modp->includes[u].submodule->name);
+            ly_print(ctx->out, "\n%*sinclude \"%s\";\n", INDENT, modp->includes[u].name);
         }
     }
+}
 
-    /* meta-stmts */
-    if (module->org || module->contact || module->dsc || module->ref) {
-        ly_print(out, "\n");
-    }
-    ypr_substmt(ctx, LYEXT_SUBSTMT_ORGANIZATION, 0, module->org, modp->exts);
-    ypr_substmt(ctx, LYEXT_SUBSTMT_CONTACT, 0, module->contact, modp->exts);
-    ypr_substmt(ctx, LYEXT_SUBSTMT_DESCRIPTION, 0, module->dsc, modp->exts);
-    ypr_substmt(ctx, LYEXT_SUBSTMT_REFERENCE, 0, module->ref, modp->exts);
+static void
+yang_print_parsed_body(struct ypr_ctx *ctx, const struct lysp_module *modp)
+{
+    LY_ARRAY_COUNT_TYPE u;
+    struct lysp_node *data;
 
-    /* revision-stmts */
-    if (modp->revs) {
-        ly_print(out, "\n");
-    }
-    LY_ARRAY_FOR(modp->revs, u) {
-        yprp_revision(ctx, &modp->revs[u]);
-    }
-    /* body-stmts */
     LY_ARRAY_FOR(modp->extensions, u) {
-        ly_print(out, "\n");
+        ly_print(ctx->out, "\n");
         yprp_extension(ctx, &modp->extensions[u]);
     }
     if (modp->exts) {
-        ly_print(out, "\n");
-        yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, module->parsed->exts, NULL, 0);
+        ly_print(ctx->out, "\n");
+        yprp_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, modp->exts, NULL, 0);
     }
 
     LY_ARRAY_FOR(modp->features, u) {
@@ -2295,6 +2224,102 @@ yang_print_parsed(struct ly_out *out, const struct lys_module *module)
     LY_ARRAY_FOR(modp->deviations, u) {
         yprp_deviation(ctx, &modp->deviations[u]);
     }
+}
+
+LY_ERR
+yang_print_parsed_module(struct ly_out *out, const struct lys_module *module, const struct lysp_module *modp)
+{
+    LY_ARRAY_COUNT_TYPE u;
+    struct ypr_ctx ctx_ = {.out = out, .level = 0, .module = module, .schema = YPR_PARSED}, *ctx = &ctx_;
+
+    ly_print(ctx->out, "%*smodule %s {\n", INDENT, module->name);
+    LEVEL++;
+
+    /* module-header-stmts */
+    if (module->version) {
+        ypr_substmt(ctx, LYEXT_SUBSTMT_VERSION, 0, module->version == LYS_VERSION_1_1 ? "1.1" : "1", modp->exts);
+    }
+
+    ypr_substmt(ctx, LYEXT_SUBSTMT_NAMESPACE, 0, module->ns, modp->exts);
+    ypr_substmt(ctx, LYEXT_SUBSTMT_PREFIX, 0, module->prefix, modp->exts);
+
+    /* linkage-stmts (import/include) */
+    yang_print_parsed_linkage(ctx, modp);
+
+    /* meta-stmts */
+    if (module->org || module->contact || module->dsc || module->ref) {
+        ly_print(out, "\n");
+    }
+    ypr_substmt(ctx, LYEXT_SUBSTMT_ORGANIZATION, 0, module->org, modp->exts);
+    ypr_substmt(ctx, LYEXT_SUBSTMT_CONTACT, 0, module->contact, modp->exts);
+    ypr_substmt(ctx, LYEXT_SUBSTMT_DESCRIPTION, 0, module->dsc, modp->exts);
+    ypr_substmt(ctx, LYEXT_SUBSTMT_REFERENCE, 0, module->ref, modp->exts);
+
+    /* revision-stmts */
+    if (modp->revs) {
+        ly_print(out, "\n");
+    }
+    LY_ARRAY_FOR(modp->revs, u) {
+        yprp_revision(ctx, &modp->revs[u]);
+    }
+    /* body-stmts */
+    yang_print_parsed_body(ctx, modp);
+
+    LEVEL--;
+    ly_print(out, "%*s}\n", INDENT);
+    ly_print_flush(out);
+
+    return LY_SUCCESS;
+}
+
+static void
+yprp_belongsto(struct ypr_ctx *ctx, const struct lysp_submodule *submodp)
+{
+    ly_print(ctx->out, "%*sbelongs-to %s {\n", INDENT, submodp->belongsto);
+    LEVEL++;
+    yprp_extension_instances(ctx, LYEXT_SUBSTMT_BELONGSTO, 0, submodp->exts, NULL, 0);
+    ypr_substmt(ctx, LYEXT_SUBSTMT_PREFIX, 0, submodp->prefix, submodp->exts);
+    LEVEL--;
+    ly_print(ctx->out, "%*s}\n", INDENT);
+}
+
+LY_ERR
+yang_print_parsed_submodule(struct ly_out *out, const struct lys_module *module, const struct lysp_submodule *submodp)
+{
+    LY_ARRAY_COUNT_TYPE u;
+    struct ypr_ctx ctx_ = {.out = out, .level = 0, .module = module, .schema = YPR_PARSED}, *ctx = &ctx_;
+
+    ly_print(ctx->out, "%*ssubmodule %s {\n", INDENT, submodp->name);
+    LEVEL++;
+
+    /* submodule-header-stmts */
+    if (submodp->version) {
+        ypr_substmt(ctx, LYEXT_SUBSTMT_VERSION, 0, submodp->version == LYS_VERSION_1_1 ? "1.1" : "1", submodp->exts);
+    }
+
+    yprp_belongsto(ctx, submodp);
+
+    /* linkage-stmts (import/include) */
+    yang_print_parsed_linkage(ctx, (struct lysp_module *)submodp);
+
+    /* meta-stmts */
+    if (submodp->org || submodp->contact || submodp->dsc || submodp->ref) {
+        ly_print(out, "\n");
+    }
+    ypr_substmt(ctx, LYEXT_SUBSTMT_ORGANIZATION, 0, submodp->org, submodp->exts);
+    ypr_substmt(ctx, LYEXT_SUBSTMT_CONTACT, 0, submodp->contact, submodp->exts);
+    ypr_substmt(ctx, LYEXT_SUBSTMT_DESCRIPTION, 0, submodp->dsc, submodp->exts);
+    ypr_substmt(ctx, LYEXT_SUBSTMT_REFERENCE, 0, submodp->ref, submodp->exts);
+
+    /* revision-stmts */
+    if (submodp->revs) {
+        ly_print(out, "\n");
+    }
+    LY_ARRAY_FOR(submodp->revs, u) {
+        yprp_revision(ctx, &submodp->revs[u]);
+    }
+    /* body-stmts */
+    yang_print_parsed_body(ctx, (struct lysp_module *)submodp);
 
     LEVEL--;
     ly_print(out, "%*s}\n", INDENT);
@@ -2325,32 +2350,14 @@ yang_print_compiled(struct ly_out *out, const struct lys_module *module, int opt
     ly_print(ctx->out, "%*smodule %s {\n", INDENT, module->name);
     LEVEL++;
 
-    if (!modc) {
-        ly_print(ctx->out, "%*s/* COMPILED INFORMATION ARE NOT PRESENT */\n", INDENT);
-        return ypr_missing_format(ctx, module);
-    }
-
     /* module-header-stmts */
     if (module->version) {
-        if (module->version) {
-            ypr_substmt(ctx, LYEXT_SUBSTMT_VERSION, 0, module->version == LYS_VERSION_1_1 ? "1.1" : "1", modc->exts);
-        }
+        ypr_substmt(ctx, LYEXT_SUBSTMT_VERSION, 0, module->version == LYS_VERSION_1_1 ? "1.1" : "1", modc->exts);
     }
     ypr_substmt(ctx, LYEXT_SUBSTMT_NAMESPACE, 0, module->ns, modc->exts);
     ypr_substmt(ctx, LYEXT_SUBSTMT_PREFIX, 0, module->prefix, modc->exts);
 
-    /* linkage-stmts */
-    LY_ARRAY_FOR(modc->imports, u) {
-        ly_print(out, "\n%*simport %s {\n", INDENT, modc->imports[u].module->name);
-        LEVEL++;
-        yprc_extension_instances(ctx, LYEXT_SUBSTMT_SELF, 0, modc->imports[u].exts, NULL, 0);
-        ypr_substmt(ctx, LYEXT_SUBSTMT_PREFIX, 0, modc->imports[u].prefix, modc->imports[u].exts);
-        if (modc->imports[u].module->revision) {
-            ypr_substmt(ctx, LYEXT_SUBSTMT_REVISIONDATE, 0, modc->imports[u].module->revision, modc->imports[u].exts);
-        }
-        LEVEL--;
-        ly_print(out, "%*s}\n", INDENT);
-    }
+    /* no linkage-stmts */
 
     /* meta-stmts */
     if (module->org || module->contact || module->dsc || module->ref) {

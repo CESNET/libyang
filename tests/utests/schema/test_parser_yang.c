@@ -1006,9 +1006,9 @@ test_module(void **state)
     assert_int_equal(LY_EVALID, parse_module(&ctx, &in, mod));
     logbuf_assert("Prefix \"y\" already used to import \"zzz\" module. Line number 2.");
     mod = mod_renew(&ctx);
-    in.current = "module" SCHEMA_BEGINNING "import zzz {prefix y;}import zzz {prefix z;}}";
-    assert_int_equal(lys_parse_mem(ctx.ctx, in.current, LYS_IN_YANG, NULL), LY_EVALID);
-    logbuf_assert("Single revision of the module \"zzz\" referred twice.");
+    in.current = "module name10 {yang-version 1.1;namespace urn:x;prefix \"x\";import zzz {prefix y;}import zzz {prefix z;}}";
+    assert_int_equal(lys_parse_mem(ctx.ctx, in.current, LYS_IN_YANG, NULL), LY_SUCCESS);
+    logbuf_assert("Single revision of the module \"zzz\" imported twice.");
 
     /* include */
     store = 1;
@@ -2081,7 +2081,6 @@ test_uses(void **state)
     *state = NULL;
     ly_ctx_destroy(ctx.ctx, NULL);
 }
-
 
 static void
 test_augment(void **state)

@@ -254,7 +254,7 @@ typedef enum {
     LYEXT_PAR_WHEN,      /**< ::lysc_when */
     LYEXT_PAR_IDENT,     /**< ::lysc_ident */
     LYEXT_PAR_EXT,       /**< ::lysc_ext */
-    LYEXT_PAR_IMPORT,    /**< ::lysc_import */
+    LYEXT_PAR_IMPORT,    /**< ::lysp_import */
 //    LYEXT_PAR_TPDF,      /**< ::lysp_tpdf */
 //    LYEXT_PAR_EXTINST,   /**< ::lysp_ext_instance */
 //    LYEXT_PAR_REFINE,    /**< ::lysp_refine */
@@ -1151,15 +1151,6 @@ struct lysc_iffeature {
 };
 
 /**
- * @brief YANG import-stmt
- */
-struct lysc_import {
-    struct lys_module *module;       /**< link to the imported module */
-    const char *prefix;              /**< prefix for the data from the imported schema (mandatory) */
-    struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-};
-
-/**
  * @brief YANG when-stmt
  */
 struct lysc_when {
@@ -1670,7 +1661,6 @@ struct lysc_node_anydata {
  */
 struct lysc_module {
     struct lys_module *mod;          /**< covering module structure */
-    struct lysc_import *imports;     /**< list of imported modules ([sized array](@ref sizedarrays)) */
 
     struct lysc_feature *features;   /**< list of feature definitions ([sized array](@ref sizedarrays)) */
     struct lysc_ident *identities;   /**< list of identities ([sized array](@ref sizedarrays)) */

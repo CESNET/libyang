@@ -4446,6 +4446,7 @@ yang_parse_submodule(struct lys_yang_parser_ctx **context, struct ly_ctx *ly_ctx
     *context = calloc(1, sizeof **context);
     LY_CHECK_ERR_RET(!(*context), LOGMEM(ly_ctx), LY_EMEM);
     (*context)->format = LYS_IN_YANG;
+    (*context)->main_mod = main_ctx->main_mod;
     (*context)->ctx = ly_ctx;
     (*context)->pos_type = LY_VLOG_LINE;
     (*context)->line = 1;
@@ -4512,6 +4513,7 @@ yang_parse_module(struct lys_yang_parser_ctx **context, struct ly_in *in, struct
     *context = calloc(1, sizeof **context);
     LY_CHECK_ERR_RET(!(*context), LOGMEM(mod->ctx), LY_EMEM);
     (*context)->format = LYS_IN_YANG;
+    (*context)->main_mod = mod;
     (*context)->ctx = mod->ctx;
     (*context)->pos_type = LY_VLOG_LINE;
     (*context)->line = 1;

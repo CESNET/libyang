@@ -380,7 +380,7 @@ test_imports(void **state)
     assert_int_equal(1, mod1->implemented);
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;import a {prefix a;}}",
                                                LYS_IN_YANG, &mod2));
-    import = mod2->compiled->imports[0].module;
+    import = mod2->parsed->imports[0].module;
     assert_int_equal(2, import->latest_revision);
     assert_int_equal(0, mod1->latest_revision);
     assert_ptr_not_equal(mod1, import);
@@ -399,7 +399,7 @@ test_imports(void **state)
     assert_int_equal(1, mod1->implemented);
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module b {namespace urn:b;prefix b;import a {prefix a;}}",
                                                LYS_IN_YANG, &mod2));
-    import = mod2->compiled->imports[0].module;
+    import = mod2->parsed->imports[0].module;
     assert_ptr_equal(mod1, import);
     assert_int_equal(2, import->latest_revision);
     assert_int_equal(1, import->implemented);

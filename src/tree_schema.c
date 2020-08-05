@@ -787,6 +787,37 @@ lys_set_implemented(struct lys_module *mod)
     return lys_set_implemented_internal(mod, 1);
 }
 
+static LY_ERR
+lys_resolve_import_include(struct lys_parser_ctx *pctx, struct lysp_module *modp)
+{
+    struct lysp_import *imp;
+    struct lysp_include *inc;
+    LY_ARRAY_COUNT_TYPE u, v;
+
+    modp->parsing = 1;
+    LY_ARRAY_FOR(modp->imports, u) {
+        imp = &modp->imports[u];
+        if (!imp->module) {
+            LY_CHECK_RET(lysp_load_module(PARSER_CTX(pctx), imp->name, imp->rev[0] ? imp->rev : NULL, 0, 0, &imp->module));
+        }
+        /* check for importing the same module twice */
+        for (v = 0; v < u; ++v) {
+            if (imp->module == modp->imports[v].module) {
+                LOGWRN(PARSER_CTX(pctx), "Single revision of the module \"%s\" imported twice.", imp->name);
+            }
+        }
+    }
+    LY_ARRAY_FOR(modp->includes, u) {
+        inc = &modp->includes[u];
+        if (!inc->submodule) {
+            LY_CHECK_RET(lysp_load_submodule(pctx, inc));
+        }
+    }
+    modp->parsing = 0;
+
+    return LY_SUCCESS;
+}
+
 LY_ERR
 lys_parse_mem_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, struct lys_parser_ctx *main_ctx,
                         LY_ERR (*custom_check)(const struct ly_ctx*, struct lysp_module*, struct lysp_submodule*, void*),
@@ -820,7 +851,7 @@ lys_parse_mem_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT forma
     lysp_sort_revisions(submod->revs);
 
     /* decide the latest revision */
-    latest_sp = ly_ctx_get_submodule(PARSER_CTX(pctx), submod->belongsto, submod->name, NULL);
+    latest_sp = ly_ctx_get_submodule(ctx, submod->belongsto, submod->name, NULL);
     if (latest_sp) {
         if (submod->revs) {
             if (!latest_sp->revs) {
@@ -841,12 +872,15 @@ lys_parse_mem_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT forma
     }
 
     if (custom_check) {
-        LY_CHECK_GOTO(ret = custom_check(PARSER_CTX(pctx), NULL, submod, check_data), error);
+        LY_CHECK_GOTO(ret = custom_check(ctx, NULL, submod, check_data), error);
     }
 
     if (latest_sp) {
         latest_sp->latest_revision = 0;
     }
+
+    /* resolve imports and includes */
+    LY_CHECK_GOTO(ret = lys_resolve_import_include(pctx, (struct lysp_module *)submod), error);
 
     /* remap possibly changed and reallocated typedefs and groupings list back to the main context */
     memcpy(&main_ctx->tpdfs_nodes, &pctx->tpdfs_nodes, sizeof main_ctx->tpdfs_nodes);
@@ -877,10 +911,8 @@ lys_parse_mem_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, 
                      struct lys_module **module)
 {
     struct lys_module *mod = NULL, *latest, *mod_dup;
-    struct lysp_import *imp;
-    struct lysp_include *inc;
     LY_ERR ret;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LY_ARRAY_COUNT_TYPE u;
     struct lys_yang_parser_ctx *yangctx = NULL;
     struct lys_yin_parser_ctx *yinctx = NULL;
     struct lys_parser_ctx *pctx = NULL;
@@ -987,37 +1019,18 @@ lys_parse_mem_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, 
     ly_set_add(&ctx->list, mod, LY_SET_OPT_USEASLIST);
 
 finish_parsing:
-    /* resolve imports */
-    mod->parsed->parsing = 1;
-    LY_ARRAY_FOR(mod->parsed->imports, u) {
-        imp = &mod->parsed->imports[u];
-        if (!imp->module) {
-            LY_CHECK_GOTO(ret = lysp_load_module(ctx, imp->name, imp->rev[0] ? imp->rev : NULL, 0, 0, &imp->module),
-                          error_ctx);
-        }
-        /* check for importing the same module twice */
-        for (v = 0; v < u; ++v) {
-            if (imp->module == mod->parsed->imports[v].module) {
-                LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_REFERENCE, "Single revision of the module \"%s\" referred twice.",
-                       imp->name);
-                ret = LY_EVALID;
-                goto error_ctx;
-            }
+    /* resolve imports and includes */
+    LY_CHECK_GOTO(ret = lys_resolve_import_include(pctx, mod->parsed), error_ctx);
+
+    if (!mod->implemented) {
+        /* pre-compile features and identities of any submodules */
+        LY_ARRAY_FOR(mod->parsed->includes, u) {
+            LY_CHECK_GOTO(ret = lys_feature_precompile(NULL, ctx, mod, mod->parsed->includes[u].submodule->features,
+                                                       &mod->dis_features), error);
+            LY_CHECK_GOTO(ret = lys_identity_precompile(NULL, ctx, mod, mod->parsed->includes[u].submodule->identities,
+                                                        &mod->dis_identities), error);
         }
     }
-    LY_ARRAY_FOR(mod->parsed->includes, u) {
-        inc = &mod->parsed->includes[u];
-        if (!inc->submodule) {
-            LY_CHECK_GOTO(ret = lysp_load_submodule(pctx, mod->parsed, inc), error_ctx);
-        }
-        if (!mod->implemented) {
-            /* pre-compile features and identities of the submodule */
-            LY_CHECK_GOTO(ret = lys_feature_precompile(NULL, ctx, mod, inc->submodule->features, &mod->dis_features), error);
-            LY_CHECK_GOTO(ret = lys_identity_precompile(NULL, ctx, mod, inc->submodule->identities, &mod->dis_identities),
-                          error);
-        }
-    }
-    mod->parsed->parsing = 0;
 
     /* check name collisions - typedefs and TODO groupings */
     LY_CHECK_GOTO(ret = lysp_check_typedefs(pctx, mod->parsed), error_ctx);
