@@ -29,6 +29,38 @@
 #include "tree_data_internal.h"
 #include "tree_schema.h"
 
+struct lyd_node *
+lys_getnext_data(const struct lyd_node *last, const struct lyd_node *sibling, const struct lysc_node **slast,
+                 const struct lysc_node *parent, const struct lysc_module *module)
+{
+    const struct lysc_node *siter = NULL;
+    struct lyd_node *match = NULL;
+
+    assert(parent || module);
+    assert(!last || (slast && *slast));
+
+    if (slast) {
+        siter = *slast;
+    }
+
+    if (last && last->next && (last->next->schema == siter)) {
+        /* return next data instance */
+        return last->next;
+    }
+
+    /* find next schema node data instance */
+    while ((siter = lys_getnext(siter, parent, module, 0))) {
+        if (!lyd_find_sibling_val(sibling, siter, NULL, 0, &match)) {
+            break;
+        }
+    }
+
+    if (slast) {
+        *slast = siter;
+    }
+    return match;
+}
+
 struct lyd_node **
 lyd_node_children_p(struct lyd_node *node)
 {
