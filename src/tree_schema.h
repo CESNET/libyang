@@ -747,7 +747,9 @@ struct lysp_deviation {
                                           ::lysp_node_leaf/::lysc_node_leaf and ::lysp_node_anydata/::lysc_node_anydata.
                                           This flag is present only in case the mandatory false statement was explicitly specified. */
 #define LYS_MAND_MASK    0x60        /**< mask for mandatory values */
-#define LYS_PRESENCE     0x80        /**< flag for presence property of a container, applicable only to ::lysc_node_container */
+#define LYS_PRESENCE     0x80        /**< flag for presence property of a container, but it is not only for explicit presence
+                                          containers, but also for NP containers with some meaning, applicable only to
+                                          ::lysc_node_container */
 #define LYS_UNIQUE       0x80        /**< flag for leafs being part of a unique set, applicable only to ::lysc_node_leaf */
 #define LYS_KEY          0x100       /**< flag for leafs being a key of a list, applicable only to ::lysc_node_leaf */
 #define LYS_KEYLESS      0x200       /**< flag for list without any key, applicable only to ::lysc_node_list */
