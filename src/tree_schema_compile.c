@@ -1480,8 +1480,8 @@ range_part_check_ascendancy(int unsigned_value, int max, int64_t value, int64_t 
  * frdigits value), LY_EMEM.
  */
 static LY_ERR
-range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, int64_t prev, LY_DATA_TYPE basetype, int first, int length_restr,
-                  uint8_t frdigits, struct lysc_range *base_range, const char **value)
+range_part_minmax(struct lysc_ctx *ctx, struct lysc_range_part *part, int max, int64_t prev, LY_DATA_TYPE basetype,
+                  int first, int length_restr, uint8_t frdigits, struct lysc_range *base_range, const char **value)
 {
     LY_ERR ret = LY_SUCCESS;
     char *valcopy = NULL;
@@ -1643,8 +1643,8 @@ finalize:
  * @return LY_ERR value.
  */
 static LY_ERR
-lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA_TYPE basetype, int length_restr, uint8_t frdigits,
-                       struct lysc_range *base_range, struct lysc_range **range)
+lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA_TYPE basetype, int length_restr,
+                       uint8_t frdigits, struct lysc_range *base_range, struct lysc_range **range)
 {
     LY_ERR ret = LY_EVALID;
     const char *expr;
@@ -3371,12 +3371,35 @@ lys_compile_node_container(struct lysc_ctx *ctx, struct lysp_node *node_p, struc
     struct lysp_node_container *cont_p = (struct lysp_node_container*)node_p;
     struct lysc_node_container *cont = (struct lysc_node_container*)node;
     struct lysp_node *child_p;
-    unsigned int u;
+    LY_ARRAY_COUNT_TYPE u;
     LY_ERR ret = LY_SUCCESS;
 
     if (cont_p->presence) {
+        /* explicit presence */
         cont->flags |= LYS_PRESENCE;
+    } else if (cont_p->musts) {
+        /* container with a must condition */
+        LOGWRN(ctx->ctx, "Container \"%s\" changed to presence because it has a \"must\" condition.", cont_p->name);
+        cont->flags |= LYS_PRESENCE;
+    } else if (cont_p->parent) {
+        if (cont_p->parent->nodetype == LYS_CHOICE) {
+            /* container is an implicit case, so its existence decides the existence of the whole case */
+            LOGWRN(ctx->ctx, "Container \"%s\" changed to presence because it is an implicit case of choice \"%s\".",
+                   cont_p->name, cont_p->parent->name);
+            cont->flags |= LYS_PRESENCE;
+        } else if ((cont_p->parent->nodetype == LYS_CASE)
+                && (((struct lysp_node_case *)cont_p->parent)->child == node_p) && !cont_p->next) {
+            /* container is the only node in a case, so its existence decides the existence of the whole case */
+            LOGWRN(ctx->ctx, "Container \"%s\" changed to presence because it is the only data node of case \"%s\".",
+                   cont_p->name, cont_p->parent->name);
+            cont->flags |= LYS_PRESENCE;
+        }
     }
+
+    /* more cases when the container has meaning but is kept NP for convenience:
+     *   - when condition
+     *   - direct child action/notification
+     */
 
     LY_LIST_FOR(cont_p->child, child_p) {
         LY_CHECK_RET(lys_compile_node(ctx, child_p, node, 0));

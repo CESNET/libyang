@@ -1102,10 +1102,8 @@ lyd_validate_defaults_r(struct lyd_node *parent, struct lyd_node **first, const 
                 node->flags = LYD_DEFAULT;
                 lyd_insert_node(parent, first, node);
 
-                if (iter->when) {
-                    /* remember to resolve when */
-                    ly_set_add(node_when, node, LY_SET_OPT_USEASLIST);
-                }
+                /* cannot be a NP container with when */
+                assert(!iter->when);
 
                 /* create any default children */
                 LY_CHECK_RET(lyd_validate_defaults_r(node, lyd_node_children_p(node), NULL, NULL, node_types, node_when,
