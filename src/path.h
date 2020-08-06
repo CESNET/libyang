@@ -77,7 +77,9 @@ struct ly_path {
  * @{
  */
 #define LY_PATH_PREFIX_OPTIONAL     0x10    /**< prefixes in the path are optional */
-#define LY_PATH_PREFIX_MANDATORY    0x20    /**< prefixes in the path are mandatory (XML insatnce-identifier) */
+#define LY_PATH_PREFIX_MANDATORY    0x20    /**< prefixes in the path are mandatory (XML instance-identifier) */
+#define LY_PATH_PREFIX_STRICT_INHERIT 0x30  /**< prefixes in the path are mandatory in case they differ from the
+                                                 previous prefixes, otherwise they are prohibited (JSON instance-identifier) */
 /** @} */
 
 /**

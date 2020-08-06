@@ -70,6 +70,10 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
                     LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Prefix missing for \"%.*s\" in path.", exp->tok_len[*tok_idx],
                              exp->expr + exp->tok_pos[*tok_idx]);
                     goto error;
+                } else if ((prefix == LY_PATH_PREFIX_STRICT_INHERIT) && name) {
+                    LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Redundant prefix for \"%.*s\" in path.", exp->tok_len[*tok_idx],
+                             exp->expr + exp->tok_pos[*tok_idx]);
+                    goto error;
                 }
                 if (!name) {
                     name = exp->expr + exp->tok_pos[*tok_idx];
@@ -219,11 +223,13 @@ ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
               uint8_t begin, uint8_t lref, uint8_t prefix, uint8_t pred, struct lyxp_expr **expr)
 {
     struct lyxp_expr *exp;
-    uint16_t tok_idx;
+    uint16_t tok_idx, cur_len;
+    const char *cur_node, *prev_prefix = NULL, *ptr;
 
     assert((begin == LY_PATH_BEGIN_ABSOLUTE) || (begin == LY_PATH_BEGIN_EITHER));
     assert((lref == LY_PATH_LREF_TRUE) || (lref == LY_PATH_LREF_FALSE));
-    assert((prefix == LY_PATH_PREFIX_OPTIONAL) || (prefix == LY_PATH_PREFIX_MANDATORY));
+    assert((prefix == LY_PATH_PREFIX_OPTIONAL) || (prefix == LY_PATH_PREFIX_MANDATORY)
+            || (prefix == LY_PATH_PREFIX_STRICT_INHERIT));
     assert((pred == LY_PATH_PRED_KEYS) || (pred == LY_PATH_PRED_SIMPLE) || (pred == LY_PATH_PRED_LEAFREF));
 
     /* parse as a generic XPath expression */
@@ -250,10 +256,36 @@ ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
         LY_CHECK_GOTO(lyxp_check_token(ctx, exp, tok_idx, LYXP_TOKEN_NAMETEST), error);
 
         /* check prefix based on the options */
-        if ((prefix == LY_PATH_PREFIX_MANDATORY) && !strnstr(exp->expr + exp->tok_pos[tok_idx], ":", exp->tok_len[tok_idx])) {
-            LOGVAL_P(ctx, ctx_node, LYVE_XPATH, "Prefix missing for \"%.*s\" in path.", exp->tok_len[tok_idx],
-                     exp->expr + exp->tok_pos[tok_idx]);
-            goto error;
+        cur_node = exp->expr + exp->tok_pos[tok_idx];
+        cur_len = exp->tok_len[tok_idx];
+        if (prefix == LY_PATH_PREFIX_MANDATORY) {
+            if (!strnstr(cur_node, ":", cur_len)) {
+                LOGVAL_P(ctx, ctx_node, LYVE_XPATH, "Prefix missing for \"%.*s\" in path.", cur_len, cur_node);
+                goto error;
+            }
+        } else if (prefix == LY_PATH_PREFIX_STRICT_INHERIT) {
+            if (!prev_prefix) {
+                /* the first node must have a prefix */
+                if (!strnstr(cur_node, ":", cur_len)) {
+                    LOGVAL_P(ctx, ctx_node, LYVE_XPATH, "Prefix missing for \"%.*s\" in path.", cur_len, cur_node);
+                    goto error;
+                }
+
+                /* remember the first prefix */
+                prev_prefix = cur_node;
+            } else {
+                /* the prefix must be different, if any */
+                ptr = strnstr(cur_node, ":", cur_len);
+                if (ptr) {
+                    if (!strncmp(prev_prefix, cur_node, ptr - cur_node) && (prev_prefix[ptr - cur_node] == ':')) {
+                        LOGVAL_P(ctx, ctx_node, LYVE_XPATH, "Duplicate prefix for \"%.*s\" in path.", cur_len, cur_node);
+                        goto error;
+                    }
+
+                    /* remember this next prefix */
+                    prev_prefix = cur_node;
+                }
+            }
         }
 
         ++tok_idx;
