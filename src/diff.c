@@ -1516,8 +1516,8 @@ lyd_diff_merge_r(const struct lyd_node *src_diff, struct lyd_node *diff_parent, 
 }
 
 API LY_ERR
-lyd_diff_merge_module(const struct lyd_node *src_diff, const struct lys_module *mod, lyd_diff_cb diff_cb, void *cb_data,
-                      struct lyd_node **diff)
+lyd_diff_merge_module(struct lyd_node **diff, const struct lyd_node *src_diff, const struct lys_module *mod,
+                      lyd_diff_cb diff_cb, void *cb_data)
 {
     const struct lyd_node *src_root;
 
@@ -1535,9 +1535,9 @@ lyd_diff_merge_module(const struct lyd_node *src_diff, const struct lys_module *
 }
 
 API LY_ERR
-lyd_diff_merge_all(const struct lyd_node *src_diff, struct lyd_node **diff)
+lyd_diff_merge_all(struct lyd_node **diff, const struct lyd_node *src_diff)
 {
-    return lyd_diff_merge_module(src_diff, NULL, NULL, NULL, diff);
+    return lyd_diff_merge_module(diff, src_diff, NULL, NULL, NULL);
 }
 
 static LY_ERR

@@ -472,7 +472,7 @@ test_leaf(void **state)
     assert_string_equal(st->xml1, st->xml2);
 
     /* merge */
-    assert_int_equal(lyd_diff_merge_all(st->diff2, &st->diff1), LY_SUCCESS);
+    assert_int_equal(lyd_diff_merge_all(&st->diff1, st->diff2), LY_SUCCESS);
 
     free(st->xml);
     lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS);
@@ -565,7 +565,7 @@ test_list(void **state)
     assert_string_equal(st->xml1, st->xml2);
 
     /* merge */
-    assert_int_equal(lyd_diff_merge_all(st->diff2, &st->diff1), LY_SUCCESS);
+    assert_int_equal(lyd_diff_merge_all(&st->diff1, st->diff2), LY_SUCCESS);
 
     free(st->xml);
     lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS);
@@ -653,7 +653,7 @@ test_userord_llist(void **state)
     assert_string_equal(st->xml1, st->xml2);
 
     /* merge */
-    assert_int_equal(lyd_diff_merge_all(st->diff2, &st->diff1), LY_SUCCESS);
+    assert_int_equal(lyd_diff_merge_all(&st->diff1, st->diff2), LY_SUCCESS);
 
     free(st->xml);
     lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS);
@@ -736,7 +736,7 @@ test_userord_llist2(void **state)
     assert_string_equal(st->xml1, st->xml2);
 
     /* merge */
-    assert_int_equal(lyd_diff_merge_all(st->diff2, &st->diff1), LY_SUCCESS);
+    assert_int_equal(lyd_diff_merge_all(&st->diff1, st->diff2), LY_SUCCESS);
 
     free(st->xml);
     lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS);
@@ -812,7 +812,7 @@ test_userord_mix(void **state)
     assert_string_equal(st->xml1, st->xml2);
 
     /* merge */
-    assert_int_equal(lyd_diff_merge_all(st->diff2, &st->diff1), LY_SUCCESS);
+    assert_int_equal(lyd_diff_merge_all(&st->diff1, st->diff2), LY_SUCCESS);
 
     free(st->xml);
     lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS);
@@ -890,7 +890,7 @@ test_wd(void **state)
     assert_string_equal(st->xml1, st->xml2);
 
     /* merge */
-    assert_int_equal(lyd_diff_merge_all(st->diff2, &st->diff1), LY_SUCCESS);
+    assert_int_equal(lyd_diff_merge_all(&st->diff1, st->diff2), LY_SUCCESS);
 
     free(st->xml);
     lyd_print_mem(&st->xml, st->diff1, LYD_XML, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_WD_ALL);

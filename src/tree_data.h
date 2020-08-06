@@ -1066,32 +1066,32 @@ LY_ERR lyd_diff_apply_all(struct lyd_node **data, const struct lyd_node *diff);
  * created on data that had the target diff applied on them. In other words, this sequence is legal
  *
  * diff1 from data1 and data2 -> data11 from apply diff1 on data1 -> diff2 from data11 and data3 ->
- * -> data 33 frm apply diff2 on data1
+ * -> data 33 from apply diff2 on data1
  *
  * and reusing these diffs
  *
  * diff11 from merge diff1 and diff2 -> data33 from apply diff11 on data1
  *
+ * @param[in,out] diff Target diff to merge into.
  * @param[in] src_diff Source diff.
  * @param[in] mod Module, whose diff only to consider, NULL for all modules.
  * @param[in] diff_cb Optional diff callback that will be called for every changed node.
  * @param[in] cb_data Arbitrary callback data.
- * @param[in,out] diff Target diff to merge into.
  * @return LY_SUCCESS on success,
  * @return LY_ERR on error.
  */
-LY_ERR lyd_diff_merge_module(const struct lyd_node *src_diff, const struct lys_module *mod, lyd_diff_cb diff_cb,
-                             void *cb_data, struct lyd_node **diff);
+LY_ERR lyd_diff_merge_module(struct lyd_node **diff, const struct lyd_node *src_diff, const struct lys_module *mod,
+                             lyd_diff_cb diff_cb, void *cb_data);
 
 /**
  * @brief Merge 2 diffs into each other.
  *
- * @param[in] src_diff Source diff.
  * @param[in,out] diff Target diff to merge into.
+ * @param[in] src_diff Source diff.
  * @return LY_SUCCESS on success,
  * @return LY_ERR on error.
  */
-LY_ERR lyd_diff_merge_all(const struct lyd_node *src_diff, struct lyd_node **diff);
+LY_ERR lyd_diff_merge_all(struct lyd_node **diff, const struct lyd_node *src_diff);
 
 /**
  * @brief Reverse a diff and make the opposite changes. Meaning change create to delete, delete to create,
