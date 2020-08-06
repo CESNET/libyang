@@ -32,6 +32,7 @@
 #include "config.h"
 #include "context.h"
 #include "dict.h"
+#include "diff.h"
 #include "hash_table.h"
 #include "log.h"
 #include "parser_data.h"
@@ -46,6 +47,7 @@
 #include "tree_data_internal.h"
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
+#include "validation.h"
 #include "xml.h"
 #include "xpath.h"
 
@@ -1319,6 +1321,221 @@ cleanup:
         if (new_node) {
             *new_node = nnode;
         }
+    }
+    return ret;
+}
+
+LY_ERR
+lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struct lysc_node *sparent,
+                   const struct lys_module *mod, struct ly_set *node_types, struct ly_set *node_when, int impl_opts,
+                   struct lyd_node **diff)
+{
+    LY_ERR ret;
+    const struct lysc_node *iter = NULL;
+    struct lyd_node *node;
+    struct lyd_value **dflts;
+    LY_ARRAY_COUNT_TYPE u;
+
+    assert(first && (parent || sparent || mod));
+
+    if (!sparent && parent) {
+        sparent = parent->schema;
+    }
+
+    while ((iter = lys_getnext(iter, sparent, mod ? mod->compiled : NULL, LYS_GETNEXT_WITHCHOICE))) {
+        if ((impl_opts & LYD_IMPLICIT_NO_STATE) && (iter->flags & LYS_CONFIG_R)) {
+            continue;
+        }
+
+        switch (iter->nodetype) {
+        case LYS_CHOICE:
+            if (((struct lysc_node_choice *)iter)->dflt && !lys_getnext_data(NULL, *first, NULL, iter, NULL)) {
+                /* create default case data */
+                LY_CHECK_RET(lyd_new_implicit_r(parent, first, (struct lysc_node *)((struct lysc_node_choice *)iter)->dflt,
+                                                NULL, node_types, node_when, impl_opts, diff));
+            }
+            break;
+        case LYS_CONTAINER:
+            if (!(iter->flags & LYS_PRESENCE) && lyd_find_sibling_val(*first, iter, NULL, 0, NULL)) {
+                /* create default NP container */
+                LY_CHECK_RET(lyd_create_inner(iter, &node));
+                node->flags = LYD_DEFAULT;
+                lyd_insert_node(parent, first, node);
+
+                /* cannot be a NP container with when */
+                assert(!iter->when);
+
+                /* create any default children */
+                LY_CHECK_RET(lyd_new_implicit_r(node, lyd_node_children_p(node), NULL, NULL, node_types, node_when,
+                                                impl_opts, diff));
+            }
+            break;
+        case LYS_LEAF:
+            if (!(impl_opts & LYD_IMPLICIT_NO_DEFAULTS) && ((struct lysc_node_leaf *)iter)->dflt
+                    && lyd_find_sibling_val(*first, iter, NULL, 0, NULL)) {
+                /* create default leaf */
+                ret = lyd_create_term2(iter, ((struct lysc_node_leaf *)iter)->dflt, &node);
+                if (ret == LY_EINCOMPLETE) {
+                    if (node_types) {
+                        /* remember to resolve type */
+                        ly_set_add(node_types, node, LY_SET_OPT_USEASLIST);
+                    }
+                } else if (ret) {
+                    return ret;
+                }
+                node->flags = LYD_DEFAULT;
+                lyd_insert_node(parent, first, node);
+
+                if (iter->when && node_when) {
+                    /* remember to resolve when */
+                    ly_set_add(node_when, node, LY_SET_OPT_USEASLIST);
+                }
+                if (diff) {
+                    /* add into diff */
+                    LY_CHECK_RET(lyd_val_diff_add(node, LYD_DIFF_OP_CREATE, diff));
+                }
+            }
+            break;
+        case LYS_LEAFLIST:
+            if (!(impl_opts & LYD_IMPLICIT_NO_DEFAULTS) && ((struct lysc_node_leaflist *)iter)->dflts
+                    && lyd_find_sibling_val(*first, iter, NULL, 0, NULL)) {
+                /* create all default leaf-lists */
+                dflts = ((struct lysc_node_leaflist *)iter)->dflts;
+                LY_ARRAY_FOR(dflts, u) {
+                    ret = lyd_create_term2(iter, dflts[u], &node);
+                    if (ret == LY_EINCOMPLETE) {
+                        if (node_types) {
+                            /* remember to resolve type */
+                            ly_set_add(node_types, node, LY_SET_OPT_USEASLIST);
+                        }
+                    } else if (ret) {
+                        return ret;
+                    }
+                    node->flags = LYD_DEFAULT;
+                    lyd_insert_node(parent, first, node);
+
+                    if (iter->when && node_when) {
+                        /* remember to resolve when */
+                        ly_set_add(node_when, node, LY_SET_OPT_USEASLIST);
+                    }
+                    if (diff) {
+                        /* add into diff */
+                        LY_CHECK_RET(lyd_val_diff_add(node, LYD_DIFF_OP_CREATE, diff));
+                    }
+                }
+            }
+            break;
+        default:
+            /* without defaults */
+            break;
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
+API LY_ERR
+lyd_new_implicit_tree(struct lyd_node *tree, int implicit_options, struct lyd_node **diff)
+{
+    struct lyd_node *next, *node;
+    LY_ERR ret = LY_SUCCESS;
+
+    LY_CHECK_ARG_RET(NULL, tree, LY_EINVAL);
+    if (diff) {
+        *diff = NULL;
+    }
+
+    LYD_TREE_DFS_BEGIN(tree, next, node) {
+        /* skip added default nodes */
+        if (((node->flags & (LYD_DEFAULT | LYD_NEW)) != (LYD_DEFAULT | LYD_NEW))
+                && (node->schema->nodetype & LYD_NODE_INNER)) {
+            LY_CHECK_GOTO(ret = lyd_new_implicit_r(node, lyd_node_children_p((struct lyd_node *)node), NULL, NULL, NULL,
+                                                   NULL, implicit_options, diff), cleanup);
+        }
+
+        LYD_TREE_DFS_END(tree, next, node);
+    }
+
+cleanup:
+    if (ret && diff) {
+        lyd_free_all(*diff);
+        *diff = NULL;
+    }
+    return ret;
+}
+
+API LY_ERR
+lyd_new_implicit_all(struct lyd_node **tree, const struct ly_ctx *ctx, int implicit_options, struct lyd_node **diff)
+{
+    const struct lys_module *mod;
+    struct lyd_node *d = NULL;
+    uint32_t i = 0;
+    LY_ERR ret = LY_SUCCESS;
+
+    LY_CHECK_ARG_RET(ctx, tree, *tree || ctx, LY_EINVAL);
+    if (diff) {
+        *diff = NULL;
+    }
+    if (!ctx) {
+        ctx = LYD_NODE_CTX(*tree);
+    }
+
+    /* add nodes for each module one-by-one */
+    while ((mod = ly_ctx_get_module_iter(ctx, &i))) {
+        if (!mod->implemented) {
+            continue;
+        }
+
+        LY_CHECK_GOTO(ret = lyd_new_implicit_module(tree, mod, implicit_options, diff ? &d : NULL), cleanup);
+        if (d) {
+            /* merge into one diff */
+            lyd_insert_sibling(*diff, d, diff);
+
+            d = NULL;
+        }
+    }
+
+cleanup:
+    if (ret && diff) {
+        lyd_free_all(*diff);
+        *diff = NULL;
+    }
+    return ret;
+}
+
+API LY_ERR
+lyd_new_implicit_module(struct lyd_node **tree, const struct lys_module *module, int implicit_options, struct lyd_node **diff)
+{
+    struct lyd_node *root, *d = NULL;
+    LY_ERR ret = LY_SUCCESS;
+
+    LY_CHECK_ARG_RET(NULL, tree, module, LY_EINVAL);
+    if (diff) {
+        *diff = NULL;
+    }
+
+    /* add all top-level defaults for this module */
+    LY_CHECK_GOTO(ret = lyd_new_implicit_r(NULL, tree, NULL, module, NULL, NULL, implicit_options, diff), cleanup);
+
+    /* process nested nodes */
+    LY_LIST_FOR(*tree, root) {
+        /* skip added default nodes */
+        if ((root->flags & (LYD_DEFAULT | LYD_NEW)) != (LYD_DEFAULT | LYD_NEW)) {
+            LY_CHECK_GOTO(ret = lyd_new_implicit_tree(root, implicit_options, diff ? &d : NULL), cleanup);
+
+            if (d) {
+                /* merge into one diff */
+                lyd_insert_sibling(*diff, d, diff);
+
+                d = NULL;
+            }
+        }
+    }
+
+cleanup:
+    if (ret && diff) {
+        lyd_free_all(*diff);
+        *diff = NULL;
     }
     return ret;
 }

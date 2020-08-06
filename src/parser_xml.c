@@ -592,8 +592,9 @@ lydxml_data_r(struct lyd_xml_ctx *lydctx, struct lyd_node_inner *parent, struct 
                 LY_CHECK_GOTO(ret, cleanup);
 
                 /* add any missing default children */
-                ret = lyd_validate_defaults_r(cur, lyd_node_children_p(cur), NULL, NULL, &lydctx->unres_node_type,
-                                              &lydctx->when_check, lydctx->options, NULL);
+                ret = lyd_new_implicit_r(cur, lyd_node_children_p(cur), NULL, NULL, &lydctx->unres_node_type,
+                                         &lydctx->when_check, (lydctx->options & LYD_VALIDATE_NO_STATE)
+                                            ? LYD_IMPLICIT_NO_STATE : 0, NULL);
                 LY_CHECK_GOTO(ret, cleanup);
             }
 
@@ -717,8 +718,8 @@ lyd_parse_xml_data(const struct ly_ctx *ctx, struct ly_in *in, int parse_options
             LY_CHECK_GOTO(ret = lyd_validate_new(first2, NULL, mod, NULL), cleanup);
 
             /* add all top-level defaults for this module */
-            ret = lyd_validate_defaults_r(NULL, first2, NULL, mod, &lydctx.unres_node_type, &lydctx.when_check,
-                                          validate_options, NULL);
+            ret = lyd_new_implicit_r(NULL, first2, NULL, mod, &lydctx.unres_node_type, &lydctx.when_check,
+                                     validate_options & LYD_VALIDATE_NO_STATE ? LYD_IMPLICIT_NO_STATE : 0, NULL);
             LY_CHECK_GOTO(ret, cleanup);
 
             /* finish incompletely validated terminal values/attributes and when conditions */

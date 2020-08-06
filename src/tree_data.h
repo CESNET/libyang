@@ -642,6 +642,57 @@ LY_ERR lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const ch
                      LYD_ANYDATA_VALUETYPE value_type, int options, struct lyd_node **new_parent, struct lyd_node **new_node);
 
 /**
+ * @defgroup implicitoptions Implicit node creation options
+ * @ingroup datatree
+ *
+ * Various options to change lyd_new_implicit*() behavior.
+ *
+ * Default behavior:
+ * - both configuration and state missing implicit nodes are added.
+ * - all implicit node types are added (non-presence containers, default leaves, and default leaf-lists).
+ * @{
+ */
+
+#define LYD_IMPLICIT_NO_STATE 0x01      /**< Do not add any implicit state nodes. */
+#define LYD_IMPLICIT_NO_DEFAULTS 0x02   /**< Do not add any default nodes (leaves/leaf-lists), only non-presence
+                                             containers. */
+
+/** @} implicitoptions */
+
+/**
+ * @brief Add any missing implicit nodes into a data subtree.
+ *
+ * @param[in] tree Tree to add implicit nodes into.
+ * @param[in] implicit_options Options for implicit node creation, see @ref implicitoptions.
+ * @param[out] diff Optional diff with any created nodes.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_new_implicit_tree(struct lyd_node *tree, int implicit_options, struct lyd_node **diff);
+
+/**
+ * @brief Add any missing implicit nodes.
+ *
+ * @param[in,out] tree Tree to add implicit nodes into.
+ * @param[in] ctx libyang context, must be set only if @p tree is an empty tree.
+ * @param[in] implicit_options Options for implicit node creation, see @ref implicitoptions.
+ * @param[out] diff Optional diff with any created nodes.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_new_implicit_all(struct lyd_node **tree, const struct ly_ctx *ctx, int implicit_options, struct lyd_node **diff);
+
+/**
+ * @brief Add any missing implicit nodes of one module.
+ *
+ * @param[in,out] tree Tree to add implicit nodes into.
+ * @param[in] module Module whose implicit nodes to create.
+ * @param[in] implicit_options Options for implicit node creation, see @ref implicitoptions.
+ * @param[out] diff Optional diff with any created nodes.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_new_implicit_module(struct lyd_node **tree, const struct lys_module *module, int implicit_options,
+                               struct lyd_node **diff);
+
+/**
  * @brief Change the value of a term (leaf or leaf-list) node.
  *
  * Node changed this way is always considered explicitly set, meaning its default flag

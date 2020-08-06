@@ -33,60 +33,7 @@
 #include "tree_schema_internal.h"
 #include "xpath.h"
 
-/**
- * @brief Just like lys_getnext() but iterates over all data instances of the schema nodes.
- *
- * @param[in] last Last returned data node.
- * @param[in] sibling Data node sibling to search in.
- * @param[in,out] slast Schema last node, set to NULL for first call and do not change afterwards.
- * May not be set if the function is used only for any suitable node existence check (such as the existence
- * of any choice case data).
- * @param[in] parent Schema parent of the iterated children nodes.
- * @param[in] module Schema module of the iterated top-level nodes.
- * @return Next matching data node,
- * @return NULL if last data node was already returned.
- */
-static struct lyd_node *
-lys_getnext_data(const struct lyd_node *last, const struct lyd_node *sibling, const struct lysc_node **slast,
-                 const struct lysc_node *parent, const struct lysc_module *module)
-{
-    const struct lysc_node *siter = NULL;
-    struct lyd_node *match = NULL;
-
-    assert(parent || module);
-    assert(!last || (slast && *slast));
-
-    if (slast) {
-        siter = *slast;
-    }
-
-    if (last && last->next && (last->next->schema == siter)) {
-        /* return next data instance */
-        return last->next;
-    }
-
-    /* find next schema node data instance */
-    while ((siter = lys_getnext(siter, parent, module, 0))) {
-        if (!lyd_find_sibling_val(sibling, siter, NULL, 0, &match)) {
-            break;
-        }
-    }
-
-    if (slast) {
-        *slast = siter;
-    }
-    return match;
-}
-
-/**
- * @brief Add new changes into validation diff. They are always merged.
- *
- * @param[in] node Node/subtree to add.
- * @param[in] op Operation of the change.
- * @param[in,out] diff Validation diff.
- * @return LY_ERR value.
- */
-static LY_ERR
+LY_ERR
 lyd_val_diff_add(const struct lyd_node *node, enum lyd_diff_op op, struct lyd_node **diff)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -1065,109 +1012,6 @@ lyd_validate_final_r(struct lyd_node *first, const struct lysc_node *sparent, co
     return LY_SUCCESS;
 }
 
-LY_ERR
-lyd_validate_defaults_r(struct lyd_node *parent, struct lyd_node **first, const struct lysc_node *sparent,
-                        const struct lys_module *mod, struct ly_set *node_types, struct ly_set *node_when, int val_opts,
-                        struct lyd_node **diff)
-{
-    LY_ERR ret;
-    const struct lysc_node *iter = NULL;
-    struct lyd_node *node;
-    struct lyd_value **dflts;
-    LY_ARRAY_COUNT_TYPE u;
-
-    assert(first && (parent || sparent || mod) && node_types && node_when);
-
-    if (!sparent && parent) {
-        sparent = parent->schema;
-    }
-
-    while ((iter = lys_getnext(iter, sparent, mod ? mod->compiled : NULL, LYS_GETNEXT_WITHCHOICE))) {
-        if ((val_opts & LYD_VALIDATE_NO_STATE) && (iter->flags & LYS_CONFIG_R)) {
-            continue;
-        }
-
-        switch (iter->nodetype) {
-        case LYS_CHOICE:
-            if (((struct lysc_node_choice *)iter)->dflt && !lys_getnext_data(NULL, *first, NULL, iter, NULL)) {
-                /* create default case data */
-                LY_CHECK_RET(lyd_validate_defaults_r(parent, first, (struct lysc_node *)((struct lysc_node_choice *)iter)->dflt,
-                                                     NULL, node_types, node_when, val_opts, diff));
-            }
-            break;
-        case LYS_CONTAINER:
-            if (!(iter->flags & LYS_PRESENCE) && lyd_find_sibling_val(*first, iter, NULL, 0, NULL)) {
-                /* create default NP container */
-                LY_CHECK_RET(lyd_create_inner(iter, &node));
-                node->flags = LYD_DEFAULT;
-                lyd_insert_node(parent, first, node);
-
-                /* cannot be a NP container with when */
-                assert(!iter->when);
-
-                /* create any default children */
-                LY_CHECK_RET(lyd_validate_defaults_r(node, lyd_node_children_p(node), NULL, NULL, node_types, node_when,
-                                                     val_opts, diff));
-            }
-            break;
-        case LYS_LEAF:
-            if (((struct lysc_node_leaf *)iter)->dflt && lyd_find_sibling_val(*first, iter, NULL, 0, NULL)) {
-                /* create default leaf */
-                ret = lyd_create_term2(iter, ((struct lysc_node_leaf *)iter)->dflt, &node);
-                if (ret == LY_EINCOMPLETE) {
-                    /* remember to resolve type */
-                    ly_set_add(node_types, node, LY_SET_OPT_USEASLIST);
-                } else if (ret) {
-                    return ret;
-                }
-                node->flags = LYD_DEFAULT;
-                lyd_insert_node(parent, first, node);
-
-                if (iter->when) {
-                    /* remember to resolve when */
-                    ly_set_add(node_when, node, LY_SET_OPT_USEASLIST);
-                }
-                if (diff) {
-                    /* add into diff */
-                    LY_CHECK_RET(lyd_val_diff_add(node, LYD_DIFF_OP_CREATE, diff));
-                }
-            }
-            break;
-        case LYS_LEAFLIST:
-            if (((struct lysc_node_leaflist *)iter)->dflts && lyd_find_sibling_val(*first, iter, NULL, 0, NULL)) {
-                /* create all default leaf-lists */
-                dflts = ((struct lysc_node_leaflist *)iter)->dflts;
-                LY_ARRAY_FOR(dflts, u) {
-                    ret = lyd_create_term2(iter, dflts[u], &node);
-                    if (ret == LY_EINCOMPLETE) {
-                        /* remember to resolve type */
-                        ly_set_add(node_types, node, LY_SET_OPT_USEASLIST);
-                    } else if (ret) {
-                        return ret;
-                    }
-                    node->flags = LYD_DEFAULT;
-                    lyd_insert_node(parent, first, node);
-
-                    if (iter->when) {
-                        /* remember to resolve when */
-                        ly_set_add(node_when, node, LY_SET_OPT_USEASLIST);
-                    }
-                    if (diff) {
-                        /* add into diff */
-                        LY_CHECK_RET(lyd_val_diff_add(node, LYD_DIFF_OP_CREATE, diff));
-                    }
-                }
-            }
-            break;
-        default:
-            /* without defaults */
-            break;
-        }
-    }
-
-    return LY_SUCCESS;
-}
-
 /**
  * @brief Validate the whole data subtree.
  *
@@ -1202,8 +1046,9 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *type_check, struct ly
                 LY_CHECK_RET(lyd_validate_new(lyd_node_children_p((struct lyd_node *)node), node->schema, NULL, diff));
 
                 /* add nested defaults */
-                LY_CHECK_RET(lyd_validate_defaults_r(node, lyd_node_children_p((struct lyd_node *)node), NULL, NULL, type_check,
-                                                     when_check, val_opts, diff));
+                LY_CHECK_RET(lyd_new_implicit_r(node, lyd_node_children_p((struct lyd_node *)node), NULL, NULL, type_check,
+                                                when_check, val_opts & LYD_VALIDATE_NO_STATE ? LYD_IMPLICIT_NO_STATE : 0,
+                                                diff));
             }
 
             if (!(node->schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) && node->schema->when) {
@@ -1266,7 +1111,8 @@ lyd_validate(struct lyd_node **tree, const struct lys_module *module, const stru
         LY_CHECK_GOTO(ret, cleanup);
 
         /* add all top-level defaults for this module */
-        ret = lyd_validate_defaults_r(NULL, first2, NULL, mod, &type_check, &when_check, val_opts, diff);
+        ret = lyd_new_implicit_r(NULL, first2, NULL, mod, &type_check, &when_check, val_opts & LYD_VALIDATE_NO_STATE
+                                 ? LYD_IMPLICIT_NO_STATE : 0, diff);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* process nested nodes */

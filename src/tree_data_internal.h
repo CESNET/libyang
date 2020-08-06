@@ -23,6 +23,7 @@
 #include <stddef.h>
 
 struct ly_path_predicate;
+struct lysc_module;
 
 /**
  * @brief Internal data parser flags.
@@ -74,6 +75,23 @@ int lyb_has_schema_model(const struct lysc_node *sibling, const struct lys_modul
  * @return NULL if there is no child pointer.
  */
 struct lyd_node **lyd_node_children_p(struct lyd_node *node);
+
+/**
+ * @brief Just like lys_getnext() but iterates over all data instances of the schema nodes.
+ *
+ * @param[in] last Last returned data node.
+ * @param[in] sibling Data node sibling to search in.
+ * @param[in,out] slast Schema last node, set to NULL for first call and do not change afterwards.
+ * May not be set if the function is used only for any suitable node existence check (such as the existence
+ * of any choice case data).
+ * @param[in] parent Schema parent of the iterated children nodes.
+ * @param[in] module Schema module of the iterated top-level nodes.
+ * @return Next matching data node,
+ * @return NULL if last data node was already returned.
+ */
+struct lyd_node *lys_getnext_data(const struct lyd_node *last, const struct lyd_node *sibling,
+                                  const struct lysc_node **slast, const struct lysc_node *parent,
+                                  const struct lysc_module *module);
 
 /**
  * @brief Create a term (leaf/leaf-list) node from a string value.
@@ -171,6 +189,23 @@ LY_ERR lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANY
 LY_ERR lyd_create_opaq(const struct ly_ctx *ctx, const char *name, size_t name_len, const char *value, size_t value_len,
                        int *dynamic, LYD_FORMAT format, struct ly_prefix *val_prefs, const char *prefix, size_t pref_len,
                        const char *ns, struct lyd_node **node);
+
+/**
+ * @brief Check the existence and create any non-existing implicit siblings, recursively for the created nodes.
+ *
+ * @param[in] parent Parent of the potential default values, NULL for top-level siblings.
+ * @param[in,out] first First sibling.
+ * @param[in] sparent Schema parent of the siblings, NULL if schema of @p parent can be used.
+ * @param[in] mod Module of the default values, NULL for nested siblings.
+ * @param[in] node_types Optional set to add nodes with unresolved types into.
+ * @param[in] node_when Optional set to add nodes with "when" conditions into.
+ * @param[in] impl_opts Implicit options (@ref implicitoptions).
+ * @param[in,out] diff Validation diff.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struct lysc_node *sparent,
+                          const struct lys_module *mod, struct ly_set *node_types, struct ly_set *node_when,
+                          int impl_opts, struct lyd_node **diff);
 
 /**
  * @brief Find the next node, before which to insert the new node.

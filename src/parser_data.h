@@ -49,7 +49,7 @@ struct ly_in;
  * - when statements on existing nodes are evaluated, if not satisfied, a validation error is raised,
  * - if-feature statements are evaluated,
  * - invalid multiple data instances/data from several cases cause a validation error,
- * - default values are added.
+ * - implicit nodes (NP containers and default values) are added.
  * @{
  */
 /* note: keep the lower 16bits free for use by LYD_VALIDATE_ flags. They are not supposed to be combined together,
