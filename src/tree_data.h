@@ -439,6 +439,16 @@ const struct lys_module *lyd_owner_module(const struct lyd_node *node);
 int lyd_lyb_data_length(const char *data);
 
 /**
+ * @brief Copy anydata value from one node to another. Target value is freed first.
+ *
+ * @param[in,out] trg Target node.
+ * @param[in] value Source value, may be NULL when the target value is only freed.
+ * @param[in] value_type Source value type.
+ * @return LY_ERR value.
+ */
+LY_ERR lyd_any_copy_value(struct lyd_node *trg, const union lyd_any_value *value, LYD_ANYDATA_VALUETYPE value_type);
+
+/**
  * @brief Create a new inner node in the data tree.
  *
  * @param[in] parent Parent node for the node being created. NULL in case of creating a top level element.

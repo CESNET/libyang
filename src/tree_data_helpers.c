@@ -206,7 +206,7 @@ lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *when_check, struc
     }
 }
 
-LY_ERR
+API LY_ERR
 lyd_any_copy_value(struct lyd_node *trg, const union lyd_any_value *value, LYD_ANYDATA_VALUETYPE value_type)
 {
     struct lyd_node_any *t;

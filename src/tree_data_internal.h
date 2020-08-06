@@ -468,16 +468,6 @@ LY_ERR lyd_parse_check_keys(struct lyd_node *node);
 void lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *when_check, struct lyd_meta **meta, int options);
 
 /**
- * @brief Copy anydata value from one node to another. Target value is freed first.
- *
- * @param[in,out] trg Target node.
- * @param[in] value Source value, may be NULL when the target value is only freed.
- * @param[in] value_type Source value type.
- * @return LY_ERR value.
- */
-LY_ERR lyd_any_copy_value(struct lyd_node *trg, const union lyd_any_value *value, LYD_ANYDATA_VALUETYPE value_type);
-
-/**
  * @brief Free value prefixes.
  *
  * @param[in] ctx libyang context.
