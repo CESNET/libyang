@@ -2054,10 +2054,19 @@ LY_ERR lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node
 
 /**
  * @brief Stringify schema nodetype.
+ *
  * @param[in] nodetype Nodetype to stringify.
  * @return Constant string with the name of the node's type.
  */
 const char *lys_nodetype2str(uint16_t nodetype);
+
+/**
+ * @brief Getter for original XPath expression from a parsed expression.
+ *
+ * @param[in] path Parsed expression.
+ * @return Original string expression.
+ */
+const char *lyxp_get_expr(const struct lyxp_expr *path);
 
 /** @} schematree */
 

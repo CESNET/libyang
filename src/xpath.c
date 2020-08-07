@@ -8697,3 +8697,13 @@ lyxp_atomize(struct lyxp_expr *exp, LYD_FORMAT format, const struct lys_module *
     /* evaluate */
     return eval_expr_select(exp, &tok_idx, 0, set, options);
 }
+
+API const char *
+lyxp_get_expr(const struct lyxp_expr *path)
+{
+    if (!path) {
+        return NULL;
+    }
+
+    return path->expr;
+}
