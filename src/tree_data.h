@@ -653,8 +653,9 @@ LY_ERR lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const ch
  * @{
  */
 
-#define LYD_IMPLICIT_NO_STATE 0x01      /**< Do not add any implicit state nodes. */
-#define LYD_IMPLICIT_NO_DEFAULTS 0x02   /**< Do not add any default nodes (leaves/leaf-lists), only non-presence
+#define LYD_IMPLICIT_NO_STATE    0x01   /**< Do not add any implicit state nodes. */
+#define LYD_IMPLICIT_NO_CONFIG   0x02   /**< Do not add any implicit config nodes. */
+#define LYD_IMPLICIT_NO_DEFAULTS 0x04   /**< Do not add any default nodes (leaves/leaf-lists), only non-presence
                                              containers. */
 
 /** @} implicitoptions */

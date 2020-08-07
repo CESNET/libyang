@@ -1345,6 +1345,8 @@ lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struc
     while ((iter = lys_getnext(iter, sparent, mod ? mod->compiled : NULL, LYS_GETNEXT_WITHCHOICE))) {
         if ((impl_opts & LYD_IMPLICIT_NO_STATE) && (iter->flags & LYS_CONFIG_R)) {
             continue;
+        } else if ((impl_opts & LYD_IMPLICIT_NO_CONFIG) && (iter->flags & LYS_CONFIG_W)) {
+            continue;
         }
 
         switch (iter->nodetype) {
