@@ -1535,6 +1535,17 @@ lyd_diff_merge_module(struct lyd_node **diff, const struct lyd_node *src_diff, c
 }
 
 API LY_ERR
+lyd_diff_merge_tree(struct lyd_node **diff_first, struct lyd_node *diff_parent, const struct lyd_node *src_sibling,
+                    lyd_diff_cb diff_cb, void *cb_data)
+{
+    if (!src_sibling) {
+        return LY_SUCCESS;
+    }
+
+    return lyd_diff_merge_r(src_sibling, diff_parent, diff_cb, cb_data, diff_first);
+}
+
+API LY_ERR
 lyd_diff_merge_all(struct lyd_node **diff, const struct lyd_node *src_diff)
 {
     return lyd_diff_merge_module(diff, src_diff, NULL, NULL, NULL);
