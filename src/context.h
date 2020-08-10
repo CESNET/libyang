@@ -429,6 +429,15 @@ const struct lysc_node *ly_ctx_get_node(const struct ly_ctx *ctx, const struct l
 void ly_ctx_reset_latests(struct ly_ctx *ctx);
 
 /**
+ * @brief Learn the number of internal modules of a context. Internal modules
+ * is considered one that was loaded during the context creation.
+ *
+ * @param[in] ctx libyang context to examine.
+ * @return Number of internal modules.
+ */
+uint32_t ly_ctx_internal_module_count(const struct ly_ctx *ctx);
+
+/**
  * @brief Try to find the model in the searchpaths of \p ctx and load it into it. If custom missing
  * module callback is set, it is used instead.
  *

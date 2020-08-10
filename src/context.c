@@ -39,8 +39,6 @@
 #include "tree_schema_internal.h"
 #include "xpath.h"
 
-#define LY_INTERNAL_MODS_COUNT 6
-
 #include "../models/ietf-yang-metadata@2016-08-05.h"
 #include "../models/yang@2020-06-17.h"
 #include "../models/ietf-inet-types@2013-07-15.h"
@@ -55,7 +53,7 @@ static struct internal_modules_s {
     const char *data;
     uint8_t implemented;
     LYS_INFORMAT format;
-} internal_modules[LY_INTERNAL_MODS_COUNT] = {
+} internal_modules[] = {
     {"ietf-yang-metadata", "2016-08-05", (const char*)ietf_yang_metadata_2016_08_05_yang, 1, LYS_IN_YANG},
     {"yang", "2020-06-17", (const char*)yang_2020_06_17_yang, 1, LYS_IN_YANG},
     {"ietf-inet-types", "2013-07-15", (const char*)ietf_inet_types_2013_07_15_yang, 0, LYS_IN_YANG},
@@ -64,6 +62,8 @@ static struct internal_modules_s {
     {"ietf-datastores", "2018-02-14", (const char*)ietf_datastores_2018_02_14_yang, 1, LYS_IN_YANG},
     {"ietf-yang-library", IETF_YANG_LIB_REV, (const char*)ietf_yang_library_2019_01_04_yang, 1, LYS_IN_YANG}
 };
+
+#define LY_INTERNAL_MODS_COUNT sizeof(internal_modules) / sizeof(struct internal_modules_s)
 
 API LY_ERR
 ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
@@ -203,7 +203,7 @@ ly_ctx_new(const char *search_dir, int options, struct ly_ctx **new_ctx)
     struct lys_module *module;
     char *search_dir_list;
     char *sep, *dir;
-    int i;
+    uint32_t i;
     struct ly_in *in = NULL;
     LY_ERR rc = LY_SUCCESS;
 
@@ -580,6 +580,20 @@ ly_ctx_reset_latests(struct ly_ctx *ctx)
                 }
             }
         }
+    }
+}
+
+API uint32_t
+ly_ctx_internal_module_count(const struct ly_ctx *ctx)
+{
+    if (!ctx) {
+        return 0;
+    }
+
+    if (ctx->flags & LY_CTX_NOYANGLIBRARY) {
+        return LY_INTERNAL_MODS_COUNT - 2;
+    } else {
+        return LY_INTERNAL_MODS_COUNT;
     }
 }
 
