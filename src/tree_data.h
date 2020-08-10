@@ -41,6 +41,17 @@ struct lysc_node;
  */
 
 /**
+ * @brief Macro to iterate over all children of a node.
+ *
+ * Use with opening curly bracket '{' after the macro.
+ *
+ * @param[in] INNER Node whose children to iterate over.
+ * @param[in] CHILD Child iterator to use.
+ */
+#define LYD_CHILD_FOR(INNER, CHILD) \
+    for ((CHILD) = lyd_node_children((struct lyd_node *)(INNER), 0); (CHILD); (CHILD) = (CHILD)->next)
+
+/**
  * @brief Macro to iterate via all elements in a data tree. This is the opening part
  * to the #LYD_TREE_DFS_END - they always have to be used together.
  *
