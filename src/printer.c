@@ -112,7 +112,7 @@ ly_is_default(const struct lyd_node *node)
 int
 ly_should_print(const struct lyd_node *node, int options)
 {
-    const struct lyd_node *next, *elem;
+    const struct lyd_node *elem;
 
     if (options & LYD_PRINT_WD_TRIM) {
         /* do not print default nodes */
@@ -128,23 +128,23 @@ ly_should_print(const struct lyd_node *node, int options)
     } else if ((node->flags & LYD_DEFAULT) && !(options & LYD_PRINT_WD_MASK) && !(node->schema->flags & LYS_CONFIG_R)) {
         /* LYDP_WD_EXPLICIT
          * - print only if it contains status data in its subtree */
-        LYD_TREE_DFS_BEGIN(node, next, elem) {
+        LYD_TREE_DFS_BEGIN(node, elem) {
             if ((elem->schema->nodetype != LYS_CONTAINER) || (elem->schema->flags & LYS_PRESENCE)) {
                 if (elem->schema->flags & LYS_CONFIG_R) {
                     return 1;
                 }
             }
-            LYD_TREE_DFS_END(node, next, elem)
+            LYD_TREE_DFS_END(node, elem)
         }
         return 0;
     } else if ((node->flags & LYD_DEFAULT) && (node->schema->nodetype == LYS_CONTAINER) && !(options & LYD_PRINT_KEEPEMPTYCONT)) {
         /* avoid empty default containers */
-        LYD_TREE_DFS_BEGIN(node, next, elem) {
+        LYD_TREE_DFS_BEGIN(node, elem) {
             if (elem->schema->nodetype != LYS_CONTAINER) {
                 return 1;
             }
             assert(elem->flags & LYD_DEFAULT);
-            LYD_TREE_DFS_END(node, next, elem)
+            LYD_TREE_DFS_END(node, elem)
         }
         return 0;
     }

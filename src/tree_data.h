@@ -54,51 +54,54 @@ struct lysc_node;
  * </pre>
  *
  * Use the same parameters for #LYD_TREE_DFS_BEGIN and #LYD_TREE_DFS_END. While
- * START can be any of the lyd_node* types, NEXT and ELEM variables are expected
- * to be pointers to a generic struct lyd_node.
+ * START can be any of the lyd_node* types, ELEM variable must be a pointer to
+ * the generic struct lyd_node.
  *
- * Since the next node is selected as part of #LYD_TREE_DFS_END, do not use
- * continue statement between the #LYD_TREE_DFS_BEGIN and #LYD_TREE_DFS_END.
+ * To skip a particular subtree, instead of the continue statement, set LYD_TREE_DFS_continue
+ * variable to non-zero value.
  *
  * Use with opening curly bracket '{' after the macro.
  *
  * @param START Pointer to the starting element processed first.
- * @param NEXT Temporary storage, do not use.
  * @param ELEM Iterator intended for use in the block.
  */
-#define LYD_TREE_DFS_BEGIN(START, NEXT, ELEM) \
-    for ((ELEM) = (NEXT) = (START); \
+#define LYD_TREE_DFS_BEGIN(START, ELEM) \
+    { int LYD_TREE_DFS_continue = 0; struct lyd_node *LYD_TREE_DFS_next; \
+    for ((ELEM) = (LYD_TREE_DFS_next) = (struct lyd_node *)(START); \
          (ELEM); \
-         (ELEM) = (NEXT))
+         (ELEM) = (LYD_TREE_DFS_next), LYD_TREE_DFS_continue = 0)
 
 /**
  * @brief Macro to iterate via all elements in a tree. This is the closing part
  * to the #LYD_TREE_DFS_BEGIN - they always have to be used together.
  *
  * Use the same parameters for #LYD_TREE_DFS_BEGIN and #LYD_TREE_DFS_END. While
- * START can be any of the lyd_node* types, NEXT and ELEM variables are expected
- * to be pointers to a generic struct lyd_node.
+ * START can be any of the lyd_node* types, ELEM variable must be a pointer
+ * to the generic struct lyd_node.
  *
  * Use with closing curly bracket '}' after the macro.
  *
  * @param START Pointer to the starting element processed first.
- * @param NEXT Temporary storage, do not use.
  * @param ELEM Iterator intended for use in the block.
  */
 
-#define LYD_TREE_DFS_END(START, NEXT, ELEM) \
+#define LYD_TREE_DFS_END(START, ELEM) \
     /* select element for the next run - children first */ \
-    (NEXT) = lyd_node_children((struct lyd_node*)ELEM, 0); \
-    if (!(NEXT)) { \
+    if (LYD_TREE_DFS_continue) { \
+        (LYD_TREE_DFS_next) = NULL; \
+    } else { \
+        (LYD_TREE_DFS_next) = lyd_node_children(ELEM, 0); \
+    }\
+    if (!(LYD_TREE_DFS_next)) { \
         /* no children */ \
         if ((ELEM) == (struct lyd_node*)(START)) { \
             /* we are done, (START) has no children */ \
             break; \
         } \
         /* try siblings */ \
-        (NEXT) = (ELEM)->next; \
+        (LYD_TREE_DFS_next) = (ELEM)->next; \
     } \
-    while (!(NEXT)) { \
+    while (!(LYD_TREE_DFS_next)) { \
         /* parent is already processed, go to its sibling */ \
         (ELEM) = (struct lyd_node*)(ELEM)->parent; \
         /* no siblings, go back through parents */ \
@@ -106,8 +109,8 @@ struct lysc_node;
             /* we are done, no next element to process */ \
             break; \
         } \
-        (NEXT) = (ELEM)->next; \
-    }
+        (LYD_TREE_DFS_next) = (ELEM)->next; \
+    } } \
 
 /**
  * @brief Macro to get context from a data tree node.

@@ -1656,7 +1656,7 @@ lyd_diff_reverse(const struct lyd_node *src_diff, struct lyd_node **diff)
 {
     LY_ERR ret = LY_SUCCESS;
     const struct lys_module *mod;
-    struct lyd_node *root, *next, *elem;
+    struct lyd_node *root, *elem;
     enum lyd_diff_op op;
 
     LY_CHECK_ARG_RET(NULL, diff, LY_EINVAL);
@@ -1674,7 +1674,7 @@ lyd_diff_reverse(const struct lyd_node *src_diff, struct lyd_node **diff)
     LY_CHECK_ERR_GOTO(!mod, LOGINT(LYD_NODE_CTX(src_diff)); ret = LY_EINT, cleanup);
 
     LY_LIST_FOR(*diff, root) {
-        LYD_TREE_DFS_BEGIN(root, next, elem) {
+        LYD_TREE_DFS_BEGIN(root, elem) {
             /* find operation attribute, if any */
             LY_CHECK_GOTO(ret = lyd_diff_get_op(elem, &op), cleanup);
 
@@ -1726,7 +1726,7 @@ lyd_diff_reverse(const struct lyd_node *src_diff, struct lyd_node **diff)
                 break;
             }
 
-            LYD_TREE_DFS_END(root, next, elem);
+            LYD_TREE_DFS_END(root, elem);
         }
     }
 

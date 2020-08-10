@@ -1439,7 +1439,7 @@ lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struc
 API LY_ERR
 lyd_new_implicit_tree(struct lyd_node *tree, int implicit_options, struct lyd_node **diff)
 {
-    struct lyd_node *next, *node;
+    struct lyd_node *node;
     LY_ERR ret = LY_SUCCESS;
 
     LY_CHECK_ARG_RET(NULL, tree, LY_EINVAL);
@@ -1447,7 +1447,7 @@ lyd_new_implicit_tree(struct lyd_node *tree, int implicit_options, struct lyd_no
         *diff = NULL;
     }
 
-    LYD_TREE_DFS_BEGIN(tree, next, node) {
+    LYD_TREE_DFS_BEGIN(tree, node) {
         /* skip added default nodes */
         if (((node->flags & (LYD_DEFAULT | LYD_NEW)) != (LYD_DEFAULT | LYD_NEW))
                 && (node->schema->nodetype & LYD_NODE_INNER)) {
@@ -1455,7 +1455,7 @@ lyd_new_implicit_tree(struct lyd_node *tree, int implicit_options, struct lyd_no
                                                    NULL, implicit_options, diff), cleanup);
         }
 
-        LYD_TREE_DFS_END(tree, next, node);
+        LYD_TREE_DFS_END(tree, node);
     }
 
 cleanup:
@@ -2667,7 +2667,7 @@ lyd_merge_sibling_r(struct lyd_node **first_trg, struct lyd_node *parent_trg, co
 {
     LY_ERR ret;
     const struct lyd_node *child_src, *tmp, *sibling_src;
-    struct lyd_node *match_trg, *dup_src, *next, *elem;
+    struct lyd_node *match_trg, *dup_src, *elem;
     struct lysc_type *type;
 
     sibling_src = *sibling_src_p;
@@ -2720,9 +2720,9 @@ lyd_merge_sibling_r(struct lyd_node **first_trg, struct lyd_node *parent_trg, co
         }
 
         /* set LYD_NEW for all the new nodes, required for validation */
-        LYD_TREE_DFS_BEGIN(dup_src, next, elem) {
+        LYD_TREE_DFS_BEGIN(dup_src, elem) {
             elem->flags |= LYD_NEW;
-            LYD_TREE_DFS_END(dup_src, next, elem);
+            LYD_TREE_DFS_END(dup_src, elem);
         }
 
         lyd_insert_node(parent_trg, first_trg, dup_src);

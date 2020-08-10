@@ -38,10 +38,33 @@ check_data_tree_next(struct lyd_node **start, struct lyd_node **next, struct lyd
     }
 
 loop_begin:
-    LYD_TREE_DFS_BEGIN(*start, *next, *elem) {
+    /* LYD_TREE_DFS_BEGIN */
+    for (*elem = *next = *start; *elem; *elem = *next) {
         return;
 loop_next:
-        LYD_TREE_DFS_END(*start, *next, *elem);
+        /* LYD_TREE_DFS_END */
+
+        /* select element for the next run - children first */
+        *next = lyd_node_children(*elem, 0);
+        if (!*next) {
+            /* no children */
+            if (*elem == *start) {
+                /* we are done, (START) has no children */
+                break;
+            }
+            /* try siblings */
+            *next = (*elem)->next;
+        }
+        while (!*next) {
+            /* parent is already processed, go to its sibling */
+            *elem = (struct lyd_node *)(*elem)->parent;
+            /* no siblings, go back through parents */
+            if ((*elem)->parent == (*start)->parent) {
+                /* we are done, no next element to process */
+                break;
+            }
+            *next = (*elem)->next;
+        }
     }
 
     if (!*next) {

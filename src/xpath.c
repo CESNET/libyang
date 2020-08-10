@@ -1301,7 +1301,7 @@ static uint32_t
 get_node_pos(const struct lyd_node *node, enum lyxp_node_type node_type, const struct lyd_node *root,
              enum lyxp_node_type root_type, const struct lyd_node **prev, uint32_t *prev_pos)
 {
-    const struct lyd_node *next, *elem = NULL, *top_sibling;
+    const struct lyd_node *elem = NULL, *top_sibling;
     uint32_t pos = 1;
 
     assert(prev && prev_pos && !root->prev->next);
@@ -1312,55 +1312,31 @@ get_node_pos(const struct lyd_node *node, enum lyxp_node_type node_type, const s
 
     if (*prev) {
         /* start from the previous element instead from the root */
-        elem = next = *prev;
         pos = *prev_pos;
-        for (top_sibling = elem; top_sibling->parent; top_sibling = (struct lyd_node *)top_sibling->parent);
+        for (top_sibling = *prev; top_sibling->parent; top_sibling = (struct lyd_node *)top_sibling->parent);
         goto dfs_search;
     }
 
     for (top_sibling = root; top_sibling; top_sibling = top_sibling->next) {
-        /* TREE DFS */
-        LYD_TREE_DFS_BEGIN(top_sibling, next, elem) {
+        LYD_TREE_DFS_BEGIN(top_sibling, elem) {
 dfs_search:
+            if (*prev && !elem) {
+                /* resume previous DFS */
+                elem = LYD_TREE_DFS_next = (struct lyd_node *)*prev;
+                LYD_TREE_DFS_continue = 0;
+            }
+
             if ((root_type == LYXP_NODE_ROOT_CONFIG) && (elem->schema->flags & LYS_CONFIG_R)) {
-                goto skip_children;
-            }
-
-            if (elem == node) {
-                break;
-            }
-            ++pos;
-
-            /* TREE DFS END */
-            /* select element for the next run - children first,
-             * child exception for lyd_node_leaf and lyd_node_leaflist, but not the root */
-            if (elem->schema->nodetype & (LYS_LEAF | LYS_LEAFLIST | LYS_ANYDATA)) {
-                next = NULL;
+                /* skip */
+                LYD_TREE_DFS_continue = 1;
             } else {
-                next = lyd_node_children(elem, 0);
-            }
-            if (!next) {
-skip_children:
-                /* no children */
-                if (elem == top_sibling) {
-                    /* we are done, root has no children */
-                    elem = NULL;
+                if (elem == node) {
                     break;
                 }
-                /* try siblings */
-                next = elem->next;
+                ++pos;
             }
-            while (!next) {
-                /* no siblings, go back through parents */
-                if (elem->parent == top_sibling->parent) {
-                    /* we are done, no next element to process */
-                    elem = NULL;
-                    break;
-                }
-                /* parent is already processed, go to its sibling */
-                elem = (struct lyd_node *)elem->parent;
-                next = elem->next;
-            }
+
+            LYD_TREE_DFS_END(top_sibling, elem);
         }
 
         /* node found */
@@ -1372,13 +1348,13 @@ skip_children:
     if (!elem) {
         if (!(*prev)) {
             /* we went from root and failed to find it, cannot be */
-            LOGINT(node->schema->module->ctx);
+            LOGINT(LYD_NODE_CTX(node));
             return 0;
         } else {
-            *prev = NULL;
-            *prev_pos = 0;
+            /* start the search again from the beginning */
+            *prev = root;
 
-            elem = next = top_sibling = root;
+            top_sibling = root;
             pos = 1;
             goto dfs_search;
         }

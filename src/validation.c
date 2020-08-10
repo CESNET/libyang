@@ -1028,9 +1028,9 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *type_check, struct ly
                      struct ly_set *when_check, int val_opts, struct lyd_node **diff)
 {
     const struct lyd_meta *meta;
-    struct lyd_node *next, *node;
+    struct lyd_node *node;
 
-    LYD_TREE_DFS_BEGIN(root, next, node) {
+    LYD_TREE_DFS_BEGIN(root, node) {
         /* skip added default nodes */
         if ((node->flags & (LYD_DEFAULT | LYD_NEW)) != (LYD_DEFAULT | LYD_NEW)) {
             LY_LIST_FOR(node->meta, meta) {
@@ -1057,7 +1057,7 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *type_check, struct ly
             }
         }
 
-        LYD_TREE_DFS_END(root, next, node);
+        LYD_TREE_DFS_END(root, node);
     }
 
     return LY_SUCCESS;
@@ -1205,7 +1205,7 @@ API LY_ERR
 lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *tree, LYD_VALIDATE_OP op, struct lyd_node **diff)
 {
     LY_ERR ret;
-    struct lyd_node *tree_sibling, *op_subtree, *op_next, *op_node, *op_parent;
+    struct lyd_node *tree_sibling, *op_subtree, *op_node, *op_parent;
     struct ly_set type_check = {0}, type_meta_check = {0}, when_check = {0};
 
     LY_CHECK_ARG_RET(NULL, op_tree, !op_tree->parent, !tree || !tree->parent,
@@ -1215,13 +1215,13 @@ lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *tree, LYD_VALID
     }
 
     /* find the operation/notification */
-    LYD_TREE_DFS_BEGIN(op_tree, op_next, op_node) {
+    LYD_TREE_DFS_BEGIN(op_tree, op_node) {
         if ((op == LYD_VALIDATE_OP_RPC || op == LYD_VALIDATE_OP_REPLY) && (op_node->schema->nodetype & (LYS_RPC | LYS_ACTION))) {
             break;
         } else if ((op == LYD_VALIDATE_OP_NOTIF) && (op_node->schema->nodetype == LYS_NOTIF)) {
             break;
         }
-        LYD_TREE_DFS_END(op_tree, op_next, op_node);
+        LYD_TREE_DFS_END(op_tree, op_node);
     }
     if (op == LYD_VALIDATE_OP_RPC || op == LYD_VALIDATE_OP_REPLY) {
         if (!(op_node->schema->nodetype & (LYS_RPC | LYS_ACTION))) {
