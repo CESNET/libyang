@@ -68,7 +68,7 @@ struct ly_set;
  */
 #define LYSC_TREE_DFS_BEGIN(START, ELEM) \
     { int LYSC_TREE_DFS_continue = 0; struct lysc_node *LYSC_TREE_DFS_next; \
-    for ((ELEM) = (LYSC_TREE_DFS_next) = (START); \
+    for ((ELEM) = (LYSC_TREE_DFS_next) = (struct lysc_node*)(START); \
          (ELEM); \
          (ELEM) = (LYSC_TREE_DFS_next), LYSC_TREE_DFS_continue = 0)
 
