@@ -1652,7 +1652,7 @@ cleanup:
 }
 
 API LY_ERR
-lyd_diff_reverse(const struct lyd_node *src_diff, struct lyd_node **diff)
+lyd_diff_reverse_all(const struct lyd_node *src_diff, struct lyd_node **diff)
 {
     LY_ERR ret = LY_SUCCESS;
     const struct lys_module *mod;
