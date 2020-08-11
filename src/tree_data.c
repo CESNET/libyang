@@ -2704,7 +2704,7 @@ lyd_merge_sibling_r(struct lyd_node **first_trg, struct lyd_node *parent_trg, co
             match_trg->flags = sibling_src->flags | LYD_NEW;
         } else {
             /* check descendants, recursively */
-            LY_LIST_FOR_SAFE(LYD_CHILD(sibling_src), tmp, child_src) {
+            LY_LIST_FOR_SAFE(LYD_CHILD_NO_KEYS(sibling_src), tmp, child_src) {
                 LY_CHECK_RET(lyd_merge_sibling_r(lyd_node_children_p(match_trg), match_trg, &child_src, options));
             }
         }
