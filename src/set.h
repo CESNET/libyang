@@ -47,7 +47,11 @@ struct ly_set
 {
     uint32_t size;                    /**< allocated size of the set array */
     uint32_t count;                   /**< number of elements in (used size of) the set array */
-    void **objs;                      /**< set array of generic object pointers */
+    union {
+        struct lyd_node **dnodes;     /**< set array of data nodes */
+        struct lysc_node **snodes;    /**< set array of schema nodes */
+        void **objs;                  /**< set array of generic object pointers */
+    };
 };
 
 /**
