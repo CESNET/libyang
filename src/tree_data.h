@@ -41,15 +41,25 @@ struct lysc_node;
  */
 
 /**
- * @brief Macro to iterate over all children of a node.
+ * @brief Macro for getting child pointer of a generic data node.
  *
- * Use with opening curly bracket '{' after the macro.
- *
- * @param[in] INNER Node whose children to iterate over.
- * @param[in] CHILD Child iterator to use.
+ * @param[in] node Node whose child pointer to get.
  */
-#define LYD_CHILD_FOR(INNER, CHILD) \
-    for ((CHILD) = lyd_node_children((struct lyd_node *)(INNER), 0); (CHILD); (CHILD) = (CHILD)->next)
+#define LYD_CHILD(node) ((node)->schema ? (lyd_node_children(node, 0)) : ((struct lyd_node_opaq *)(node))->child)
+
+/**
+ * @brief Macro for getting child pointer of a generic data node but skipping its keys in case it is ::LYS_LIST.
+ *
+ * @param[in] node Node whose child pointer to get.
+ */
+#define LYD_CHILD_NO_KEYS(node) ((node)->schema ? (lyd_node_children(node, LYD_CHILDREN_SKIP_KEYS)) : ((struct lyd_node_opaq *)(node))->child)
+
+/**
+ * @brief Macro for getting generic parent pointer of a node.
+ *
+ * @param[in] node Node whose parent pointer to get.
+ */
+#define LYD_PARENT(node) ((struct lyd_node *)(node)->parent)
 
 /**
  * @brief Macro to iterate via all elements in a data tree. This is the opening part
