@@ -425,6 +425,8 @@ lys_feature_find(struct lys_module *mod, const char *name, size_t len)
     LY_ARRAY_COUNT_TYPE u;
     struct lysc_feature *f, *flist;
 
+    assert(mod);
+
     for (i = 0; i < len; ++i) {
         if (name[i] == ':') {
             /* we have a prefixed feature */
@@ -960,6 +962,7 @@ lys_identity_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lys_
     if (!ctx_sc) {
         context.ctx = ctx;
         context.mod = module;
+        context.mod_def = module;
         context.path_len = 1;
         context.path[0] = '/';
         ctx_sc = &context;
