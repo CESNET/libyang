@@ -142,7 +142,8 @@ lydjson_parse_name(const char *value, size_t value_len, const char **name_p, siz
  * @return LY_ERR value.
  */
 static LY_ERR
-lydjson_get_node_prefix(struct lyd_node *node, const char *local_prefix, size_t local_prefix_len, const char **prefix_p, size_t *prefix_len_p)
+lydjson_get_node_prefix(struct lyd_node *node, const char *local_prefix, size_t local_prefix_len, const char **prefix_p,
+                        size_t *prefix_len_p)
 {
     struct lyd_node_opaq *onode;
     const char *module_name = NULL;
@@ -193,8 +194,8 @@ lydjson_get_node_prefix(struct lyd_node *node, const char *local_prefix, size_t 
  * @return LY_ENOT in case the input data are expected to be skipped
  */
 static LY_ERR
-lydjson_get_snode(const struct lyd_json_ctx *lydctx, int is_attr, const char *prefix, size_t prefix_len, const char *name, size_t name_len,
-                  const struct lyd_node_inner *parent, const struct lysc_node **snode_p)
+lydjson_get_snode(const struct lyd_json_ctx *lydctx, int is_attr, const char *prefix, size_t prefix_len, const char *name,
+                  size_t name_len, const struct lyd_node_inner *parent, const struct lysc_node **snode_p)
 {
     struct lys_module *mod = NULL;
 
@@ -924,10 +925,9 @@ static LY_ERR lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node_inn
  * @return LY_ERR value.
  */
 static LY_ERR
-lydjson_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_len,
-                   const char *prefix, size_t prefix_len, struct lyd_node_inner *parent,
-                   enum LYJSON_PARSER_STATUS *status_p, enum LYJSON_PARSER_STATUS *status_inner_p,
-                   struct lyd_node **first_p, struct lyd_node **node_p)
+lydjson_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_len, const char *prefix, size_t prefix_len,
+                   struct lyd_node_inner *parent, enum LYJSON_PARSER_STATUS *status_p,
+                   enum LYJSON_PARSER_STATUS *status_inner_p, struct lyd_node **first_p, struct lyd_node **node_p)
 {
     LY_ERR ret = LY_SUCCESS;
     const char *value = NULL, *module_name;
@@ -1021,8 +1021,8 @@ lydjson_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_le
 static LY_ERR
 lydjson_parse_attribute(struct lyd_json_ctx *lydctx, struct lyd_node *attr_node, const struct lysc_node *snode,
                         const char *name, size_t name_len, const char *prefix, size_t prefix_len,
-                        struct lyd_node_inner *parent, enum LYJSON_PARSER_STATUS *status_p,
-                        struct lyd_node **first_p, struct lyd_node **node_p)
+                        struct lyd_node_inner *parent, enum LYJSON_PARSER_STATUS *status_p, struct lyd_node **first_p,
+                        struct lyd_node **node_p)
 {
     LY_ERR ret = LY_SUCCESS;
     enum LYJSON_PARSER_STATUS status_inner;
@@ -1072,7 +1072,7 @@ lydjson_parse_attribute(struct lyd_json_ctx *lydctx, struct lyd_node *attr_node,
 }
 
 /**
- * @brief Parse JSON subtree.
+ * @brief Parse JSON subtree. All leaf-list and list instances of a node are considered one subtree.
  *
  * @param[in] lydctx JSON data parser context.
  * @param[in] parent Data parent of the subtree, must be set if @p first is not.
@@ -1367,7 +1367,8 @@ representation_error:
  * @return LY_ERR value.
  */
 static LY_ERR
-lyd_parse_json_init(const struct ly_ctx *ctx, struct ly_in *in, int parse_options, int validate_options, struct lyd_json_ctx **lydctx_p)
+lyd_parse_json_init(const struct ly_ctx *ctx, struct ly_in *in, int parse_options, int validate_options,
+                    struct lyd_json_ctx **lydctx_p)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_json_ctx *lydctx;
@@ -1404,7 +1405,8 @@ lyd_parse_json_init(const struct ly_ctx *ctx, struct ly_in *in, int parse_option
 }
 
 LY_ERR
-lyd_parse_json_data(const struct ly_ctx *ctx, struct ly_in *in, int parse_options, int validate_options, struct lyd_node **tree_p, struct lyd_ctx **lydctx_p)
+lyd_parse_json_data(const struct ly_ctx *ctx, struct ly_in *in, int parse_options, int validate_options,
+                    struct lyd_node **tree_p, struct lyd_ctx **lydctx_p)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_json_ctx *lydctx = NULL;
@@ -1624,7 +1626,8 @@ cleanup:
  * @return LY_ERR in case of parsing failure.
  */
 static LY_ERR
-lydjson_object_envelope(struct lyjson_ctx *jsonctx, struct lyd_node *parent, const char *module_key, const char *object_id, struct lyd_node **envp_p)
+lydjson_object_envelope(struct lyjson_ctx *jsonctx, struct lyd_node *parent, const char *module_key,
+                        const char *object_id, struct lyd_node **envp_p)
 {
     LY_ERR ret = LY_ENOT, r;
     const char *name, *prefix;

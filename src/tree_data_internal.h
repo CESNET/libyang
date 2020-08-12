@@ -222,6 +222,14 @@ struct lyd_node *lyd_insert_get_next_anchor(const struct lyd_node *first_sibling
 void lyd_insert_node(struct lyd_node *parent, struct lyd_node **first_sibling, struct lyd_node *node);
 
 /**
+ * @brief Insert a metadata (last) into a parent
+ *
+ * @param[in] parent Parent of the metadata.
+ * @param[in] meta Metadata (list) to be added into the @p parent.
+ */
+void lyd_insert_meta(struct lyd_node *parent, struct lyd_meta *meta);
+
+/**
  * @brief Create and insert a metadata (last) into a parent.
  *
  * @param[in] parent Parent of the metadata, can be NULL.
@@ -246,13 +254,12 @@ LY_ERR lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const st
                        ly_resolve_prefix_clb resolve_prefix, void *prefix_data, LYD_FORMAT format, const struct lysc_node *ctx_snode);
 
 /**
- * @brief Insert a metadata (last) into a parent
+ * @brief Insert an attribute (last) into a parent
  *
- * @param[in] parent Parent of the metadata.
- * @param[in] meta Metadata (list) to be added into the @p parent.
- * @return LY_SUCCESS on success.
+ * @param[in] parent Parent of the attributes.
+ * @param[in] attr Attribute (list) to be added into the @p parent.
  */
-LY_ERR lyd_insert_meta(struct lyd_node *parent, struct lyd_meta *meta);
+void lyd_insert_attr(struct lyd_node *parent, struct lyd_attr *attr);
 
 /**
  * @brief Create and insert a generic attribute (last) into a parent.

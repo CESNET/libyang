@@ -2101,13 +2101,16 @@ lyd_unlink_tree(struct lyd_node *node)
     node->prev = node;
 }
 
-LY_ERR
+void
 lyd_insert_meta(struct lyd_node *parent, struct lyd_meta *meta)
 {
     struct lyd_meta *last, *iter;
 
     assert(parent);
-    assert(meta);
+
+    if (!meta) {
+        return;
+    }
 
     for (iter = meta; iter; iter = iter->next) {
         iter->parent = parent;
@@ -2126,8 +2129,6 @@ lyd_insert_meta(struct lyd_node *parent, struct lyd_meta *meta)
         parent->flags &= ~LYD_DEFAULT;
         parent = (struct lyd_node *)parent->parent;
     }
-
-    return LY_SUCCESS;
 }
 
 LY_ERR
@@ -2170,7 +2171,7 @@ lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct ly
 
     /* insert as the last attribute */
     if (parent) {
-        LY_CHECK_RET(lyd_insert_meta(parent, mt))
+        lyd_insert_meta(parent, mt);
     } else if (*meta) {
         for (last = *meta; last->next; last = last->next);
         last->next = mt;
@@ -2182,13 +2183,38 @@ lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct ly
     return ret;
 }
 
+void
+lyd_insert_attr(struct lyd_node *parent, struct lyd_attr *attr)
+{
+    struct lyd_attr *last, *iter;
+    struct lyd_node_opaq *opaq;
+
+    assert(parent && !parent->schema);
+
+    if (!attr) {
+        return;
+    }
+
+    opaq = (struct lyd_node_opaq *)parent;
+    for (iter = attr; iter; iter = iter->next) {
+        iter->parent = opaq;
+    }
+
+    /* insert as the last attribute */
+    if (opaq->attr) {
+        for (last = opaq->attr; last->next; last = last->next);
+        last->next = attr;
+    } else {
+        opaq->attr = attr;
+    }
+}
+
 LY_ERR
 lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const struct ly_ctx *ctx, const char *name,
                 size_t name_len, const char *value, size_t value_len, int *dynamic, int value_hint, LYD_FORMAT format,
                 struct ly_prefix *val_prefs, const char *prefix, size_t prefix_len, const char *module_key, size_t module_key_len)
 {
     struct lyd_attr *at, *last;
-    struct lyd_node_opaq *opaq;
 
     assert(ctx && (parent || attr) && (!parent || !parent->schema));
     assert(name && name_len);
@@ -2220,13 +2246,7 @@ lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const struct ly
 
     /* insert as the last attribute */
     if (parent) {
-        opaq = (struct lyd_node_opaq *)parent;
-        if (opaq->attr) {
-            for (last = opaq->attr; last->next; last = last->next);
-            last->next = at;
-        } else {
-            opaq->attr = at;
-        }
+        lyd_insert_attr(parent, at);
     } else if (*attr) {
         for (last = *attr; last->next; last = last->next);
         last->next = at;
