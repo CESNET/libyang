@@ -4071,8 +4071,8 @@ lys_compile_node_any(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lysc
     }
 
     if (any->flags & LYS_CONFIG_W) {
-        LOGWRN(ctx->ctx, "Use of %s to define configuration data is not recommended.",
-               ly_stmt2str(any->nodetype == LYS_ANYDATA ? LY_STMT_ANYDATA : LY_STMT_ANYXML));
+        LOGWRN(ctx->ctx, "Use of %s to define configuration data is not recommended. %s",
+               ly_stmt2str(any->nodetype == LYS_ANYDATA ? LY_STMT_ANYDATA : LY_STMT_ANYXML), ctx->path);
     }
 done:
     return ret;

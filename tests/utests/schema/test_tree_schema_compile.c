@@ -549,7 +549,7 @@ test_node_anydata(void **state)
     assert_non_null(any);
     assert_int_equal(LYS_ANYXML, any->nodetype);
     assert_int_equal(LYS_CONFIG_W | LYS_STATUS_CURR, any->flags);
-    logbuf_assert("Use of anyxml to define configuration data is not recommended."); /* warning */
+    logbuf_assert("Use of anyxml to define configuration data is not recommended. /b:any"); /* warning */
 
     /* invalid */
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;anydata any;}", LYS_IN_YANG, NULL));
