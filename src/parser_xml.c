@@ -755,13 +755,16 @@ lyd_parse_xml_rpc(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node **
     }
 
     /* parse the rest of data normally */
-    while (lydctx.xmlctx->status == LYXML_ELEMENT) {
-        LY_CHECK_GOTO(ret = lydxml_subtree_r(&lydctx, NULL, &tree), cleanup);
-    }
+    LY_CHECK_GOTO(ret = lydxml_subtree_r(&lydctx, NULL, &tree), cleanup);
 
-    /* make sure we have parsed some operation */
+    /* make sure we have parsed some operation and it is the only subtree */
     if (!lydctx.op_node) {
         LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_DATA, "Missing the \"rpc\"/\"action\" node.");
+        ret = LY_EVALID;
+        goto cleanup;
+    } else if (lydctx.xmlctx->status == LYXML_ELEMENT) {
+        LOGVAL(ctx, LY_VLOG_LINE, &lydctx.xmlctx->line, LYVE_SYNTAX, "Unexpected sibling element of \"%s\".",
+               tree->schema->name);
         ret = LY_EVALID;
         goto cleanup;
     }
@@ -939,13 +942,16 @@ lyd_parse_xml_notif(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node 
     LY_CHECK_GOTO(ret = lydxml_notif_envelope(lydctx.xmlctx, &ntf_e), cleanup);
 
     /* parse the rest of data normally */
-    while (lydctx.xmlctx->status == LYXML_ELEMENT) {
-        LY_CHECK_GOTO(ret = lydxml_subtree_r(&lydctx, NULL, &tree), cleanup);
-    }
+    LY_CHECK_GOTO(ret = lydxml_subtree_r(&lydctx, NULL, &tree), cleanup);
 
     /* make sure we have parsed some notification */
     if (!lydctx.op_node) {
         LOGVAL(ctx, LY_VLOG_NONE, NULL, LYVE_DATA, "Missing the \"notification\" node.");
+        ret = LY_EVALID;
+        goto cleanup;
+    } else if (lydctx.xmlctx->status == LYXML_ELEMENT) {
+        LOGVAL(ctx, LY_VLOG_LINE, &lydctx.xmlctx->line, LYVE_SYNTAX, "Unexpected sibling element of \"%s\".",
+               tree->schema->name);
         ret = LY_EVALID;
         goto cleanup;
     }
