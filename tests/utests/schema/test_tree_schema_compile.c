@@ -2176,6 +2176,8 @@ test_uses(void **state)
     const struct lys_module *mod;
     const struct lysc_node *parent, *child;
     const struct lysc_node_container *cont;
+    const struct lysc_node_choice *choice;
+    const struct lysc_node_case *cs;
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
 
@@ -2273,6 +2275,25 @@ test_uses(void **state)
     /* empty grouping */
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module g {namespace urn:g;prefix g; grouping grp; uses grp;}", LYS_IN_YANG, &mod));
     assert_null(mod->compiled->data);
+
+    /* choise in uses */
+    assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module h {yang-version 1.1;namespace urn:h;prefix h; grouping grp {choice gch {case gc1 { leaf y { type string;}} case gc2 {leaf z {type string;}}}}"
+                                        "choice ch {case one { leaf x {type string;}} case two { uses grp;}}}", LYS_IN_YANG, &mod));
+    assert_non_null(mod->compiled->data);
+    choice = (const struct lysc_node_choice*)mod->compiled->data;
+    assert_string_equal("ch", choice->name);
+    cs = choice->cases;
+    assert_non_null(cs);
+    assert_string_equal("one", cs->name);
+    assert_non_null(cs->child);
+    assert_string_equal("x", cs->child->name);
+    assert_non_null(cs->child->next);
+    assert_string_equal("gch", cs->child->next->name);
+    cs = (struct lysc_node_case *)cs->next;
+    assert_non_null(cs);
+    assert_string_equal("two", cs->name);
+    assert_non_null(cs->child);
+    assert_string_equal("gch", cs->child->name);
 
     /* invalid */
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;uses missinggrp;}", LYS_IN_YANG, &mod));

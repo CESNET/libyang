@@ -4671,10 +4671,10 @@ lys_compile_change_mandatory(struct lysc_ctx *ctx, struct lysc_node *node, uint1
  * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
  */
 static LY_ERR
-lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lysc_node *parent)
+lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lysc_node *parent, struct lysc_node **first_p)
 {
     struct lysp_node *node_p;
-    struct lysc_node *node, *child;
+    struct lysc_node *node, *child, *iter;
     /* context_node_fake allows us to temporarily isolate the nodes inserted from the grouping instead of uses */
     struct lysc_node_container context_node_fake =
         {.nodetype = LYS_CONTAINER,
@@ -4780,37 +4780,57 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
     /* check status */
     LY_CHECK_GOTO(lysc_check_status(ctx, uses_p->flags, mod_old, uses_p->name, grp->flags, mod, grp->name), cleanup);
 
+    /* remember the currently last child before processing the uses - it is needed to split the siblings to corretly
+     * applu refine and augment only to the nodes from the uses */
+    if (parent) {
+        if (parent->nodetype == LYS_CASE) {
+            child = (struct lysc_node*)lysc_node_children(parent->parent, ctx->options & LYSC_OPT_RPC_MASK);
+        } else {
+            child = (struct lysc_node*)lysc_node_children(parent, ctx->options & LYSC_OPT_RPC_MASK);
+        }
+    } else if (ctx->mod->compiled->data) {
+        child = ctx->mod->compiled->data;
+    } else {
+        child = NULL;
+    }
+    /* remember the last child */
+    if (child) {
+        child = child->prev;
+    }
+
     /* compile data nodes */
     LY_LIST_FOR(grp->data, node_p) {
         /* 0x3 in uses_status is a special bits combination to be able to detect status flags from uses */
         LY_CHECK_GOTO(lys_compile_node(ctx, node_p, parent, (uses_p->flags & LYS_STATUS_MASK) | 0x3), cleanup);
-
-        /* some preparation for applying refines */
-        if (grp->data == node_p) {
-            /* remember the first child */
-            if (parent) {
-                child = (struct lysc_node*)lysc_node_children(parent, ctx->options & LYSC_OPT_RPC_MASK);
-            } else if (ctx->mod->compiled->data) {
-                child = ctx->mod->compiled->data;
-            } else {
-                child = NULL;
-            }
-            context_node_fake.child = child ? child->prev : NULL;
-        }
     }
+
+    /* split the children and add the uses's data into the fake context node */
+    if (child) {
+        context_node_fake.child = child->next;
+    } else if (parent) {
+        context_node_fake.child = (struct lysc_node*)lysc_node_children(parent, ctx->options & LYSC_OPT_RPC_MASK);
+    } else if (ctx->mod->compiled->data) {
+        context_node_fake.child = ctx->mod->compiled->data;
+    }
+    if (context_node_fake.child) {
+        /* remember child as the last data node added by grouping to fix the list later */
+        child = context_node_fake.child->prev;
+        context_node_fake.child->prev = NULL;
+    }
+
     when_shared = NULL;
-    LY_LIST_FOR(context_node_fake.child, child) {
-        child->parent = (struct lysc_node*)&context_node_fake;
+    LY_LIST_FOR(context_node_fake.child, iter) {
+        iter->parent = (struct lysc_node*)&context_node_fake;
 
         /* pass uses's when to all the data children, actions and notifications are ignored */
         if (uses_p->when) {
-            LY_ARRAY_NEW_GOTO(ctx->ctx, child->when, when, ret, cleanup);
+            LY_ARRAY_NEW_GOTO(ctx->ctx, iter->when, when, ret, cleanup);
             if (!when_shared) {
                 LY_CHECK_GOTO(lys_compile_when(ctx, uses_p->when, uses_p->flags, parent, when), cleanup);
 
                 if (!(ctx->options & LYSC_OPT_GROUPING)) {
                     /* do not check "when" semantics in a grouping */
-                    ly_set_add(&ctx->xpath, child, 0);
+                    ly_set_add(&ctx->xpath, iter, 0);
                 }
 
                 when_shared = *when;
@@ -4820,16 +4840,10 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
 
                 if (!(ctx->options & LYSC_OPT_GROUPING)) {
                     /* in this case check "when" again for all children because of dummy node check */
-                    ly_set_add(&ctx->xpath, child, 0);
+                    ly_set_add(&ctx->xpath, iter, 0);
                 }
             }
         }
-    }
-    if (context_node_fake.child) {
-        /* child is the last data node added by grouping */
-        child = context_node_fake.child->prev;
-        /* fix child link of our fake container to point to the first child of the original list */
-        context_node_fake.child->prev = parent ? lysc_node_children(parent, ctx->options & LYSC_OPT_RPC_MASK)->prev : ctx->mod->compiled->data->prev;
     }
 
     /* compile actions */
@@ -5134,6 +5148,9 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
         }
     }
 
+    if (first_p) {
+        *first_p = context_node_fake.child;
+    }
     lysc_update_path(ctx, NULL, NULL);
     ret = LY_SUCCESS;
 
@@ -5263,7 +5280,7 @@ lys_compile_grouping(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lysp
 
     lysc_update_path(ctx, NULL, "{grouping}");
     lysc_update_path(ctx, NULL, grp->name);
-    ret = lys_compile_uses(ctx, &fake_uses, (struct lysc_node*)&fake_container);
+    ret = lys_compile_uses(ctx, &fake_uses, (struct lysc_node*)&fake_container, NULL);
     lysc_update_path(ctx, NULL, NULL);
     lysc_update_path(ctx, NULL, NULL);
 
@@ -5291,8 +5308,8 @@ static LY_ERR
 lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lysc_node *parent, uint16_t uses_status)
 {
     LY_ERR ret = LY_SUCCESS;
-    struct lysc_node *node;
-    struct lysc_node_case *cs;
+    struct lysc_node *node = NULL;
+    struct lysc_node_case *cs = NULL;
     struct lysc_when **when;
     unsigned int u;
     LY_ERR (*node_compile_spec)(struct lysc_ctx*, struct lysp_node*, struct lysc_node*);
@@ -5331,7 +5348,18 @@ lys_compile_node(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lysc_nod
         node_compile_spec = lys_compile_node_any;
         break;
     case LYS_USES:
-        ret = lys_compile_uses(ctx, (struct lysp_node_uses*)node_p, parent);
+        if (parent && parent->nodetype == LYS_CHOICE) {
+            assert(node_p->parent->nodetype == LYS_CASE);
+            lysc_update_path(ctx, parent, node_p->parent->name);
+            cs = lys_compile_node_case(ctx, node_p->parent, (struct lysc_node_choice*)parent, NULL);
+            LY_CHECK_ERR_GOTO(!cs, ret = LY_EVALID, error);
+        }
+
+        ret = lys_compile_uses(ctx, (struct lysp_node_uses*)node_p, cs ? (struct lysc_node*)cs : parent, &node);
+        if (cs) {
+            cs->child = node;
+            lysc_update_path(ctx, NULL, NULL);
+        }
         lysc_update_path(ctx, NULL, NULL);
         lysc_update_path(ctx, NULL, NULL);
         return ret;
