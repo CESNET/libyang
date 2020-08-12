@@ -4155,7 +4155,7 @@ lys_compile_node_connect(struct lysc_ctx *ctx, struct lysc_node *parent, struct 
  *
  * @param[in] ctx Compile context.
  * @param[in] node_p Node image from the parsed tree. If the case is explicit, it is the LYS_CASE node, but in case of implicit case,
- *                   it is the LYS_CHOICE node or LYS_AUGMENT node.
+ *                   it is the LYS_CHOICE, LYS_AUGMENT or LYS_GROUPING node.
  * @param[in] ch The compiled choice structure where the new case structures are created (if needed).
  * @param[in] child The new data node being part of a case (no matter if explicit or implicit).
  * @return The case structure where the child node belongs to, NULL in case of error. Note that the child is not connected into the siblings list,
@@ -4178,7 +4178,7 @@ lys_compile_node_case(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lys
         } \
     }
 
-    if (node_p->nodetype == LYS_CHOICE || node_p->nodetype == LYS_AUGMENT) {
+    if (node_p->nodetype & (LYS_CHOICE | LYS_AUGMENT | LYS_GROUPING)) {
         UNIQUE_CHECK(child->name, ctx->mod);
 
         /* we have to add an implicit case node into the parent choice */
