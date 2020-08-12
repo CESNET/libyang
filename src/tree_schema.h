@@ -1861,7 +1861,7 @@ struct lys_module {
     uint8_t implemented;             /**< flag if the module is implemented, not just imported. The module is implemented if
                                           the flag has non-zero value. Specific values are used internally:
                                           1 - implemented module
-                                          2 - recently implemented module by dependency, it can be reverted in rollback procedure */
+                                          >1 - recently implemented module by dependency, it can be reverted in rollback procedure */
     uint8_t latest_revision;         /**< flag to mark the latest available revision:
                                           1 - the latest revision in searchdirs was not searched yet and this is the
                                           latest revision in the current context

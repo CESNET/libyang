@@ -92,7 +92,7 @@ lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodei
         }
         if (implement && !mod->implemented) {
             /* make the module implemented */
-            ret = lys_set_implemented_internal((struct lys_module*)mod, 2);
+            ret = lys_set_implemented_internal((struct lys_module*)mod, ctx->ctx->module_set_id);
             LY_CHECK_RET(ret);
         }
         if (context_node && (context_node->nodetype & (LYS_RPC | LYS_ACTION))) {

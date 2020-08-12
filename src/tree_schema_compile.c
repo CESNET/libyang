@@ -1342,9 +1342,11 @@ lys_feature_precompile_revert(struct lysc_ctx *ctx, struct lys_module *mod)
 {
     LY_ARRAY_COUNT_TYPE u, v;
 
-    /* keep the dis_features list until the complete lys_module is freed */
-    mod->dis_features = mod->compiled->features;
-    mod->compiled->features = NULL;
+    if (mod->compiled) {
+        /* keep the dis_features list until the complete lys_module is freed */
+        mod->dis_features = mod->compiled->features;
+        mod->compiled->features = NULL;
+    }
 
     /* in the dis_features list, remove all the parts (from finished compiling process)
      * which may points into the data being freed here */
@@ -7203,6 +7205,7 @@ lys_compile(struct lys_module **mod, int options)
     struct lys_module *m;
     LY_ARRAY_COUNT_TYPE u, v;
     uint32_t i;
+    uint16_t compile_id;
     LY_ERR ret = LY_SUCCESS;
 
     LY_CHECK_ARG_RET(NULL, mod, *mod, (*mod)->parsed, (*mod)->ctx, LY_EINVAL);
@@ -7212,6 +7215,7 @@ lys_compile(struct lys_module **mod, int options)
         return LY_SUCCESS;
     }
 
+    compile_id = ++(*mod)->ctx->module_set_id;
     sp = (*mod)->parsed;
 
     ctx.ctx = (*mod)->ctx;
@@ -7363,13 +7367,12 @@ lys_compile(struct lys_module **mod, int options)
         /* remove flag of the modules implemented by dependency */
         for (i = 0; i < ctx.ctx->list.count; ++i) {
             m = ctx.ctx->list.objs[i];
-            if (m->implemented == 2) {
+            if (m->implemented > 1) {
                 m->implemented = 1;
             }
         }
     }
 
-    (*mod)->compiled = mod_c;
     return LY_SUCCESS;
 
 error:
@@ -7383,10 +7386,12 @@ error:
     lysc_module_free(mod_c, NULL);
     (*mod)->compiled = NULL;
 
-    /* revert compilation of modules implemented by dependency */
+    /* revert compilation of modules implemented by dependency, but only by (directly or indirectly) by dependency
+     * of this module, since this module can be also compiled from dependency, there can be some other modules being
+     * processed and we are going to get back to them via stack, so freeing them is not a good idea. */
     for (i = 0; i < ctx.ctx->list.count; ++i) {
         m = ctx.ctx->list.objs[i];
-        if ((m->implemented == 2) && m->compiled) {
+        if ((m->implemented >= compile_id) && m->compiled) {
             /* revert features list to the precompiled state */
             lys_feature_precompile_revert(&ctx, m);
             /* mark module as imported-only / not-implemented */

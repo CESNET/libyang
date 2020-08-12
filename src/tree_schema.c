@@ -1061,6 +1061,7 @@ lys_parse_mem_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, 
 
     /* add into context */
     ly_set_add(&ctx->list, mod, LY_SET_OPT_USEASLIST);
+    ctx->module_set_id++;
 
 finish_parsing:
     /* resolve imports and includes */
