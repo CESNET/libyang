@@ -3384,18 +3384,22 @@ lys_compile_node_container(struct lysc_ctx *ctx, struct lysp_node *node_p, struc
         cont->flags |= LYS_PRESENCE;
     } else if (cont_p->musts) {
         /* container with a must condition */
-        LOGWRN(ctx->ctx, "Container \"%s\" changed to presence because it has a \"must\" condition.", cont_p->name);
+        LOGWRN(ctx->ctx, "Container \"%s\" changed to presence because it has a meaning from its \"must\" condition.", cont_p->name);
+        cont->flags |= LYS_PRESENCE;
+    } else if (cont_p->when) {
+        /* container with a when condition */
+        LOGWRN(ctx->ctx, "Container \"%s\" changed to presence because it has a meaning from its \"when\" condition.", cont_p->name);
         cont->flags |= LYS_PRESENCE;
     } else if (cont_p->parent) {
         if (cont_p->parent->nodetype == LYS_CHOICE) {
             /* container is an implicit case, so its existence decides the existence of the whole case */
-            LOGWRN(ctx->ctx, "Container \"%s\" changed to presence because it is an implicit case of choice \"%s\".",
+            LOGWRN(ctx->ctx, "Container \"%s\" changed to presence because it has a meaning as a case of choice \"%s\".",
                    cont_p->name, cont_p->parent->name);
             cont->flags |= LYS_PRESENCE;
         } else if ((cont_p->parent->nodetype == LYS_CASE)
                 && (((struct lysp_node_case *)cont_p->parent)->child == node_p) && !cont_p->next) {
             /* container is the only node in a case, so its existence decides the existence of the whole case */
-            LOGWRN(ctx->ctx, "Container \"%s\" changed to presence because it is the only data node of case \"%s\".",
+            LOGWRN(ctx->ctx, "Container \"%s\" changed to presence because it has a meaning as a case of choice \"%s\".",
                    cont_p->name, cont_p->parent->name);
             cont->flags |= LYS_PRESENCE;
         }
