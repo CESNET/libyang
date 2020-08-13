@@ -737,6 +737,10 @@ main_ni(int argc, char* argv[])
     /* enable specified features, if not specified, all the module's features are enabled */
     u = 4; /* skip internal libyang modules */
     while ((mod = ly_ctx_get_module_iter(ctx, &u))) {
+        if (!mod->implemented) {
+            continue;
+        }
+
         for (i = 0; i < featsize; i++) {
             if (!strcmp(feat[i], mod->name)) {
                 /* parse features spec */

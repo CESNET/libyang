@@ -1232,7 +1232,14 @@ cmd_feature(const char *arg)
         ++revision;
     }
 
-    module = ly_ctx_get_module(ctx, model_name, revision);
+    if (!revision) {
+        module = ly_ctx_get_module_implemented(ctx, model_name);
+    } else {
+        module = ly_ctx_get_module(ctx, model_name, revision);
+        if (module && !module->implemented) {
+            module = NULL;
+        }
+    }
 #if 0
     if (!module) {
         /* not a module, try to find it as a submodule */
@@ -1242,9 +1249,9 @@ cmd_feature(const char *arg)
 
     if (module == NULL) {
         if (revision) {
-            fprintf(stderr, "No (sub)module \"%s\" in revision %s found.\n", model_name, revision);
+            fprintf(stderr, "No implemented (sub)module \"%s\" in revision %s found.\n", model_name, revision);
         } else {
-            fprintf(stderr, "No (sub)module \"%s\" found.\n", model_name);
+            fprintf(stderr, "No implemented (sub)module \"%s\" found.\n", model_name);
         }
         goto cleanup;
     }
