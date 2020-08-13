@@ -5611,6 +5611,706 @@ struct lysc_deviation {
     uint8_t not_supported;         /* flag if deviates contains not-supported deviate */
 };
 
+/* MACROS for deviates checking */
+#define DEV_CHECK_NODETYPE(NODETYPES, DEVTYPE, PROPERTY) \
+    if (!(target->nodetype & (NODETYPES))) { \
+        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NODETYPE, lys_nodetype2str(target->nodetype), DEVTYPE, PROPERTY);\
+        goto cleanup; \
+    }
+
+#define DEV_CHECK_CARDINALITY(ARRAY, MAX, PROPERTY) \
+    if (LY_ARRAY_COUNT(ARRAY) > MAX) { \
+        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS, "Invalid deviation of %s with too many (%"LY_PRI_ARRAY_COUNT_TYPE") %s properties.", \
+               lys_nodetype2str(target->nodetype), LY_ARRAY_COUNT(ARRAY), PROPERTY); \
+        goto cleanup; \
+    }
+
+#define DEV_CHECK_PRESENCE(TYPE, COND, MEMBER, DEVTYPE, PROPERTY, VALUE) \
+    if (!((TYPE)target)->MEMBER || COND) { \
+        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NOT_PRESENT, DEVTYPE, PROPERTY, VALUE); \
+        goto cleanup; \
+    }
+
+/**
+ * @brief Apply deviate add.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] target Deviation target.
+ * @param[in] dev_flags Internal deviation flags.
+ * @param[in] d Deviate add to apply.
+ * @param[out] dflt Added default value.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lys_apply_deviate_add(struct lysc_ctx *ctx, struct lysc_node *target, int dev_flags, struct lysp_deviate_add *d,
+                      const char **dflt)
+{
+    LY_ERR ret = LY_EVALID, rc;
+    struct lysc_node_leaf *leaf = (struct lysc_node_leaf *)target;
+    struct lysc_node_leaflist *llist = (struct lysc_node_leaflist *)target;
+    struct ly_err_item *err = NULL;
+    LY_ARRAY_COUNT_TYPE x, y;
+
+#define DEV_CHECK_NONPRESENCE_UINT(TYPE, COND, MEMBER, PROPERTY) \
+    if (((TYPE)target)->MEMBER COND) { \
+        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE, \
+               "Invalid deviation adding \"%s\" property which already exists (with value \"%u\").", \
+               PROPERTY, ((TYPE)target)->MEMBER); \
+        goto cleanup; \
+    }
+
+#define DEV_CHECK_NONPRESENCE_VALUE(TYPE, COND, MEMBER, PROPERTY, VALUEMEMBER, VALUEMODMEMBER) \
+    if (((TYPE)target)->MEMBER && (COND)) { \
+        int dynamic_ = 0; const char *val_; \
+        val_ = ((TYPE)target)->VALUEMEMBER->realtype->plugin->print(((TYPE)target)->VALUEMEMBER, LYD_XML, \
+                                                                             lys_get_prefix, ((TYPE)target)->VALUEMODMEMBER, &dynamic_); \
+        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE, \
+               "Invalid deviation adding \"%s\" property which already exists (with value \"%s\").", PROPERTY, val_); \
+        if (dynamic_) {free((void*)val_);} \
+        goto cleanup; \
+    }
+
+#define DEV_CHECK_NONPRESENCE(TYPE, COND, MEMBER, PROPERTY, VALUEMEMBER) \
+        if (((TYPE)target)->MEMBER && (COND)) { \
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE, \
+                   "Invalid deviation adding \"%s\" property which already exists (with value \"%s\").", \
+                   PROPERTY, ((TYPE)target)->VALUEMEMBER); \
+            goto cleanup; \
+        }
+
+    /* [units-stmt] */
+    if (d->units) {
+        DEV_CHECK_NODETYPE(LYS_LEAF | LYS_LEAFLIST, "add", "units");
+        DEV_CHECK_NONPRESENCE(struct lysc_node_leaf *, (target->flags & LYS_SET_UNITS), units, "units", units);
+
+        FREE_STRING(ctx->ctx, ((struct lysc_node_leaf *)target)->units);
+        DUP_STRING(ctx->ctx, d->units, ((struct lysc_node_leaf *)target)->units);
+    }
+
+    /* *must-stmt */
+    if (d->musts) {
+        switch (target->nodetype) {
+        case LYS_CONTAINER:
+        case LYS_LIST:
+            COMPILE_ARRAY_GOTO(ctx, d->musts, ((struct lysc_node_container *)target)->musts,
+                                x, lys_compile_must, ret, cleanup);
+            break;
+        case LYS_LEAF:
+        case LYS_LEAFLIST:
+        case LYS_ANYDATA:
+            COMPILE_ARRAY_GOTO(ctx, d->musts, ((struct lysc_node_leaf *)target)->musts,
+                                x, lys_compile_must, ret, cleanup);
+            break;
+        case LYS_NOTIF:
+            COMPILE_ARRAY_GOTO(ctx, d->musts, ((struct lysc_notif *)target)->musts,
+                                x, lys_compile_must, ret, cleanup);
+            break;
+        case LYS_RPC:
+        case LYS_ACTION:
+            if (dev_flags & LYSC_OPT_RPC_INPUT) {
+                COMPILE_ARRAY_GOTO(ctx, d->musts, ((struct lysc_action *)target)->input.musts,
+                                    x, lys_compile_must, ret, cleanup);
+                break;
+            } else if (dev_flags & LYSC_OPT_RPC_OUTPUT) {
+                COMPILE_ARRAY_GOTO(ctx, d->musts, ((struct lysc_action *)target)->output.musts,
+                                    x, lys_compile_must, ret, cleanup);
+                break;
+            }
+            /* fall through */
+        default:
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NODETYPE,
+                    lys_nodetype2str(target->nodetype), "add", "must");
+            goto cleanup;
+        }
+        ly_set_add(&ctx->xpath, target, 0);
+    }
+
+    /* *unique-stmt */
+    if (d->uniques) {
+        DEV_CHECK_NODETYPE(LYS_LIST, "add", "unique");
+        LY_CHECK_GOTO(lys_compile_node_list_unique(ctx, ctx->mod, d->uniques, (struct lysc_node_list *)target), cleanup);
+    }
+
+    /* *default-stmt */
+    if (d->dflts) {
+        switch (target->nodetype) {
+        case LYS_LEAF:
+            DEV_CHECK_CARDINALITY(d->dflts, 1, "default");
+            DEV_CHECK_NONPRESENCE_VALUE(struct lysc_node_leaf *, (target->flags & LYS_SET_DFLT), dflt, "default", dflt, dflt_mod);
+            if (leaf->dflt) {
+                /* first, remove the default value taken from the type */
+                lysc_incomplete_dflts_remove(ctx, leaf->dflt);
+                leaf->dflt->realtype->plugin->free(ctx->ctx, leaf->dflt);
+                lysc_type_free(ctx->ctx, leaf->dflt->realtype);
+            } else {
+                /* prepare new default value storage */
+                leaf->dflt = calloc(1, sizeof *leaf->dflt);
+            }
+            *dflt = d->dflts[0];
+            /* parsing is done at the end after possible replace of the leaf's type */
+
+            /* mark the new default values as leaf's own */
+            target->flags |= LYS_SET_DFLT;
+            break;
+        case LYS_LEAFLIST:
+            if (llist->dflts && !(target->flags & LYS_SET_DFLT)) {
+                /* first, remove the default value taken from the type */
+                LY_ARRAY_FOR(llist->dflts, x) {
+                    lysc_incomplete_dflts_remove(ctx, llist->dflts[x]);
+                    llist->dflts[x]->realtype->plugin->free(ctx->ctx, llist->dflts[x]);
+                    lysc_type_free(ctx->ctx, llist->dflts[x]->realtype);
+                    free(llist->dflts[x]);
+                }
+                LY_ARRAY_FREE(llist->dflts);
+                llist->dflts = NULL;
+                LY_ARRAY_FREE(llist->dflts_mods);
+                llist->dflts_mods = NULL;
+            }
+            /* add new default value(s) */
+            LY_ARRAY_CREATE_GOTO(ctx->ctx, llist->dflts_mods, LY_ARRAY_COUNT(d->dflts), ret, cleanup);
+            LY_ARRAY_CREATE_GOTO(ctx->ctx, llist->dflts, LY_ARRAY_COUNT(d->dflts), ret, cleanup);
+            for (x = y = LY_ARRAY_COUNT(llist->dflts);
+                    x < LY_ARRAY_COUNT(d->dflts) + y; ++x) {
+                LY_ARRAY_INCREMENT(llist->dflts_mods);
+                llist->dflts_mods[x] = ctx->mod_def;
+                LY_ARRAY_INCREMENT(llist->dflts);
+                llist->dflts[x] = calloc(1, sizeof *llist->dflts[x]);
+                llist->dflts[x]->realtype = llist->type;
+                rc = llist->type->plugin->store(ctx->ctx, llist->type, d->dflts[x - y], strlen(d->dflts[x - y]),
+                                                LY_TYPE_OPTS_INCOMPLETE_DATA | LY_TYPE_OPTS_SCHEMA | LY_TYPE_OPTS_STORE, lys_resolve_prefix,
+                                                (void*)llist->dflts_mods[x], LYD_XML, target, NULL, llist->dflts[x], NULL, &err);
+                llist->dflts[x]->realtype->refcount++;
+                if (err) {
+                    ly_err_print(err);
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                            "Invalid deviation adding \"default\" property \"%s\" which does not fit the type (%s).",
+                            d->dflts[x - y], err->msg);
+                    ly_err_free(err);
+                }
+                if (rc == LY_EINCOMPLETE) {
+                    /* postpone default compilation when the tree is complete */
+                    LY_CHECK_GOTO(lysc_incomplete_dflts_add(ctx, target, llist->dflts[x], llist->dflts_mods[x]), cleanup);
+
+                    /* but in general result is so far ok */
+                    rc = LY_SUCCESS;
+                }
+                LY_CHECK_GOTO(rc, cleanup);
+            }
+            /* mark the new default values as leaf-list's own */
+            target->flags |= LYS_SET_DFLT;
+            break;
+        case LYS_CHOICE:
+            DEV_CHECK_CARDINALITY(d->dflts, 1, "default");
+            DEV_CHECK_NONPRESENCE(struct lysc_node_choice *, 1, dflt, "default", dflt->name);
+            /* in contrast to delete, here we strictly resolve the prefix in the module of the deviation
+             * to allow making the default case even the augmented case from the deviating module */
+            if (lys_compile_deviation_set_choice_dflt(ctx, d->dflts[0], (struct lysc_node_choice *)target)) {
+                goto cleanup;
+            }
+            break;
+        default:
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NODETYPE,
+                    lys_nodetype2str(target->nodetype), "add", "default");
+            goto cleanup;
+        }
+    }
+
+    /* [config-stmt] */
+    if (d->flags & LYS_CONFIG_MASK) {
+        if (target->nodetype & (LYS_CASE | LYS_INOUT | LYS_RPC | LYS_ACTION | LYS_NOTIF)) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NODETYPE,
+                    lys_nodetype2str(target->nodetype), "add", "config");
+            goto cleanup;
+        }
+        if (dev_flags) {
+            LOGWRN(ctx->ctx, "Deviating config inside %s has no effect.",
+                    dev_flags & LYSC_OPT_NOTIFICATION ? "notification" : "RPC/action");
+        }
+        if (target->flags & LYS_SET_CONFIG) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                    "Invalid deviation adding \"config\" property which already exists (with value \"config %s\").",
+                    target->flags & LYS_CONFIG_W ? "true" : "false");
+            goto cleanup;
+        }
+        LY_CHECK_GOTO(lys_compile_change_config(ctx, target, d->flags, 0, 0), cleanup);
+    }
+
+    /* [mandatory-stmt] */
+    if (d->flags & LYS_MAND_MASK) {
+        if (target->flags & LYS_MAND_MASK) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                    "Invalid deviation adding \"mandatory\" property which already exists (with value \"mandatory %s\").",
+                    target->flags & LYS_MAND_TRUE ? "true" : "false");
+            goto cleanup;
+        }
+        LY_CHECK_GOTO(lys_compile_change_mandatory(ctx, target, d->flags, 0), cleanup);
+    }
+
+    /* [min-elements-stmt] */
+    if (d->flags & LYS_SET_MIN) {
+        if (target->nodetype == LYS_LEAFLIST) {
+            DEV_CHECK_NONPRESENCE_UINT(struct lysc_node_leaflist *, > 0, min, "min-elements");
+            /* change value */
+            ((struct lysc_node_leaflist*)target)->min = d->min;
+        } else if (target->nodetype == LYS_LIST) {
+            DEV_CHECK_NONPRESENCE_UINT(struct lysc_node_list *, > 0, min, "min-elements");
+            /* change value */
+            ((struct lysc_node_list*)target)->min = d->min;
+        } else {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NODETYPE,
+                    lys_nodetype2str(target->nodetype), "add", "min-elements");
+            goto cleanup;
+        }
+        if (d->min) {
+            target->flags |= LYS_MAND_TRUE;
+        }
+    }
+
+    /* [max-elements-stmt] */
+    if (d->flags & LYS_SET_MAX) {
+        if (target->nodetype == LYS_LEAFLIST) {
+            DEV_CHECK_NONPRESENCE_UINT(struct lysc_node_leaflist *, < (uint32_t)-1, max, "max-elements");
+            /* change value */
+            ((struct lysc_node_leaflist*)target)->max = d->max ? d->max : (uint32_t)-1;
+        } else if (target->nodetype == LYS_LIST) {
+            DEV_CHECK_NONPRESENCE_UINT(struct lysc_node_list *, < (uint32_t)-1, max, "max-elements");
+            /* change value */
+            ((struct lysc_node_list*)target)->max = d->max ? d->max : (uint32_t)-1;
+        } else {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NODETYPE,
+                    lys_nodetype2str(target->nodetype), "add", "max-elements");
+            goto cleanup;
+        }
+    }
+
+    ret = LY_SUCCESS;
+
+cleanup:
+    return ret;
+}
+
+/**
+ * @brief Apply deviate delete.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] target Deviation target.
+ * @param[in] dev_flags Internal deviation flags.
+ * @param[in] d Deviate delete to apply.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lys_apply_deviate_delete(struct lysc_ctx *ctx, struct lysc_node *target, int dev_flags, struct lysp_deviate_del *d)
+{
+    LY_ERR ret = LY_EVALID;
+    struct lysc_node_leaf *leaf = (struct lysc_node_leaf *)target;
+    struct lysc_node_leaflist *llist = (struct lysc_node_leaflist *)target;
+    struct lysc_node_list *list = (struct lysc_node_list *)target;
+    LY_ARRAY_COUNT_TYPE x, y, z;
+    int i;
+    size_t prefix_len, name_len;
+    const char *prefix, *name, *nodeid, *dflt;
+    struct lys_module *mod;
+
+#define DEV_DEL_ARRAY(TYPE, ARRAY_TRG, ARRAY_DEV, VALMEMBER, VALMEMBER_CMP, DELFUNC_DEREF, DELFUNC, PROPERTY) \
+    DEV_CHECK_PRESENCE(TYPE, 0, ARRAY_TRG, "deleting", PROPERTY, d->ARRAY_DEV[0]VALMEMBER); \
+    LY_ARRAY_FOR(d->ARRAY_DEV, x) { \
+        LY_ARRAY_FOR(((TYPE)target)->ARRAY_TRG, y) { \
+            if (!strcmp(((TYPE)target)->ARRAY_TRG[y]VALMEMBER_CMP, d->ARRAY_DEV[x]VALMEMBER)) { break; } \
+        } \
+        if (y == LY_ARRAY_COUNT(((TYPE)target)->ARRAY_TRG)) { \
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE, \
+                   "Invalid deviation deleting \"%s\" property \"%s\" which does not match any of the target's property values.", \
+                   PROPERTY, d->ARRAY_DEV[x]VALMEMBER); \
+            goto cleanup; \
+        } \
+        LY_ARRAY_DECREMENT(((TYPE)target)->ARRAY_TRG); \
+        DELFUNC(ctx->ctx, DELFUNC_DEREF((TYPE)target)->ARRAY_TRG[y]); \
+        memmove(&((TYPE)target)->ARRAY_TRG[y], \
+                &((TYPE)target)->ARRAY_TRG[y + 1], \
+                (LY_ARRAY_COUNT(((TYPE)target)->ARRAY_TRG) - y) * (sizeof *((TYPE)target)->ARRAY_TRG)); \
+    } \
+    if (!LY_ARRAY_COUNT(((TYPE)target)->ARRAY_TRG)) { \
+        LY_ARRAY_FREE(((TYPE)target)->ARRAY_TRG); \
+        ((TYPE)target)->ARRAY_TRG = NULL; \
+    }
+
+    /* [units-stmt] */
+    if (d->units) {
+        DEV_CHECK_NODETYPE(LYS_LEAF | LYS_LEAFLIST, "delete", "units");
+        DEV_CHECK_PRESENCE(struct lysc_node_leaf*, 0, units, "deleting", "units", d->units);
+        if (strcmp(((struct lysc_node_leaf*)target)->units, d->units)) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                    "Invalid deviation deleting \"units\" property \"%s\" which does not match the target's property value \"%s\".",
+                    d->units, ((struct lysc_node_leaf*)target)->units);
+            goto cleanup;
+        }
+        lydict_remove(ctx->ctx, ((struct lysc_node_leaf*)target)->units);
+        ((struct lysc_node_leaf*)target)->units = NULL;
+    }
+
+    /* *must-stmt */
+    if (d->musts) {
+        switch (target->nodetype) {
+        case LYS_CONTAINER:
+        case LYS_LIST:
+            DEV_DEL_ARRAY(struct lysc_node_container*, musts, musts, .arg, .cond->expr, &, lysc_must_free, "must");
+            break;
+        case LYS_LEAF:
+        case LYS_LEAFLIST:
+        case LYS_ANYDATA:
+            DEV_DEL_ARRAY(struct lysc_node_leaf*, musts, musts, .arg, .cond->expr, &, lysc_must_free, "must");
+            break;
+        case LYS_NOTIF:
+            DEV_DEL_ARRAY(struct lysc_notif*, musts, musts, .arg, .cond->expr, &, lysc_must_free, "must");
+            break;
+        case LYS_RPC:
+        case LYS_ACTION:
+            if (dev_flags & LYSC_OPT_RPC_INPUT) {
+                DEV_DEL_ARRAY(struct lysc_action*, input.musts, musts, .arg, .cond->expr, &, lysc_must_free, "must");
+                break;
+            } else if (dev_flags & LYSC_OPT_RPC_OUTPUT) {
+                DEV_DEL_ARRAY(struct lysc_action*, output.musts, musts, .arg, .cond->expr, &, lysc_must_free, "must");
+                break;
+            }
+            /* fall through */
+        default:
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NODETYPE,
+                    lys_nodetype2str(target->nodetype), "delete", "must");
+            goto cleanup;
+        }
+    }
+
+    /* *unique-stmt */
+    if (d->uniques) {
+        DEV_CHECK_NODETYPE(LYS_LIST, "delete", "unique");
+        LY_ARRAY_FOR(d->uniques, x) {
+            LY_ARRAY_FOR(list->uniques, z) {
+                for (name = d->uniques[x], y = 0; name; name = nodeid, ++y) {
+                    nodeid = strpbrk(name, " \t\n");
+                    if (nodeid) {
+                        if (ly_strncmp(list->uniques[z][y]->name, name, nodeid - name)) {
+                            break;
+                        }
+                        while (isspace(*nodeid)) {
+                            ++nodeid;
+                        }
+                    } else {
+                        if (strcmp(name, list->uniques[z][y]->name)) {
+                            break;
+                        }
+                    }
+                }
+                if (!name) {
+                    /* complete match - remove the unique */
+                    LY_ARRAY_DECREMENT(list->uniques);
+                    LY_ARRAY_FREE(list->uniques[z]);
+                    memmove(&list->uniques[z], &list->uniques[z + 1], (LY_ARRAY_COUNT(list->uniques) - z) * (sizeof *list->uniques));
+                    --z;
+                    break;
+                }
+            }
+            if (!list->uniques || z == LY_ARRAY_COUNT(list->uniques)) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                        "Invalid deviation deleting \"unique\" property \"%s\" which does not match any of the target's property values.",
+                        d->uniques[x]);
+                goto cleanup;
+            }
+        }
+        if (!LY_ARRAY_COUNT(list->uniques)) {
+            LY_ARRAY_FREE(list->uniques);
+            list->uniques = NULL;
+        }
+    }
+
+    /* *default-stmt */
+    if (d->dflts) {
+        switch (target->nodetype) {
+        case LYS_LEAF:
+            DEV_CHECK_CARDINALITY(d->dflts, 1, "default");
+            DEV_CHECK_PRESENCE(struct lysc_node_leaf*, !(target->flags & LYS_SET_DFLT),
+                                dflt, "deleting", "default", d->dflts[0]);
+
+            /* check that the values matches */
+            dflt = leaf->dflt->realtype->plugin->print(leaf->dflt, LYD_XML, lys_get_prefix, leaf->dflt_mod, &i);
+            if (strcmp(dflt, d->dflts[0])) {
+                if (i) {
+                    free((char*)dflt);
+                }
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                        "Invalid deviation deleting \"default\" property \"%s\" which does not match the target's property value \"%s\".",
+                        d->dflts[0], dflt);
+                goto cleanup;
+            }
+            if (i) {
+                free((char*)dflt);
+            }
+
+            /* update the list of incomplete default values if needed */
+            lysc_incomplete_dflts_remove(ctx, leaf->dflt);
+
+            /* remove the default specification */
+            leaf->dflt->realtype->plugin->free(ctx->ctx, leaf->dflt);
+            lysc_type_free(ctx->ctx, leaf->dflt->realtype);
+            free(leaf->dflt);
+            leaf->dflt = NULL;
+            leaf->dflt_mod = NULL;
+            target->flags &= ~LYS_SET_DFLT;
+            break;
+        case LYS_LEAFLIST:
+            DEV_CHECK_PRESENCE(struct lysc_node_leaflist*, 0, dflts, "deleting", "default", d->dflts[0]);
+            LY_ARRAY_FOR(d->dflts, x) {
+                LY_ARRAY_FOR(llist->dflts, y) {
+                    dflt = llist->type->plugin->print(llist->dflts[y], LYD_XML, lys_get_prefix, llist->dflts_mods[y], &i);
+                    if (!strcmp(dflt, d->dflts[x])) {
+                        if (i) {
+                            free((char*)dflt);
+                        }
+                        break;
+                    }
+                    if (i) {
+                        free((char*)dflt);
+                    }
+                }
+                if (y == LY_ARRAY_COUNT(llist->dflts)) {
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE, "Invalid deviation deleting \"default\" property \"%s\" "
+                            "which does not match any of the target's property values.", d->dflts[x]);
+                    goto cleanup;
+                }
+
+                /* update the list of incomplete default values if needed */
+                lysc_incomplete_dflts_remove(ctx, llist->dflts[y]);
+
+                LY_ARRAY_DECREMENT(llist->dflts_mods);
+                LY_ARRAY_DECREMENT(llist->dflts);
+                llist->dflts[y]->realtype->plugin->free(ctx->ctx, llist->dflts[y]);
+                lysc_type_free(ctx->ctx, llist->dflts[y]->realtype);
+                free(llist->dflts[y]);
+                memmove(&llist->dflts[y], &llist->dflts[y + 1], (LY_ARRAY_COUNT(llist->dflts) - y) * (sizeof *llist->dflts));
+                memmove(&llist->dflts_mods[y], &llist->dflts_mods[y + 1], (LY_ARRAY_COUNT(llist->dflts_mods) - y) * (sizeof *llist->dflts_mods));
+            }
+            if (!LY_ARRAY_COUNT(llist->dflts)) {
+                LY_ARRAY_FREE(llist->dflts_mods);
+                llist->dflts_mods = NULL;
+                LY_ARRAY_FREE(llist->dflts);
+                llist->dflts = NULL;
+                llist->flags &= ~LYS_SET_DFLT;
+            }
+            break;
+        case LYS_CHOICE:
+            DEV_CHECK_CARDINALITY(d->dflts, 1, "default");
+            DEV_CHECK_PRESENCE(struct lysc_node_choice*, 0, dflt, "deleting", "default", d->dflts[0]);
+            nodeid = d->dflts[0];
+            LY_CHECK_GOTO(ly_parse_nodeid(&nodeid, &prefix, &prefix_len, &name, &name_len), cleanup);
+            if (prefix) {
+                /* use module prefixes from the deviation module to match the module of the default case */
+                if (!(mod = lys_module_find_prefix(ctx->mod, prefix, prefix_len))) {
+                    LOGVAL(ctx->ctx,LY_VLOG_STR,ctx->path,LYVE_REFERENCE,
+                            "Invalid deviation deleting \"default\" property \"%s\" of choice. "
+                            "The prefix does not match any imported module of the deviation module.", d->dflts[0]);
+                    goto cleanup;
+                }
+                if (mod != ((struct lysc_node_choice*)target)->dflt->module) {
+                    LOGVAL(ctx->ctx,LY_VLOG_STR,ctx->path,LYVE_REFERENCE,
+                            "Invalid deviation deleting \"default\" property \"%s\" of choice. "
+                            "The prefix does not match the default case's module.", d->dflts[0]);
+                    goto cleanup;
+                }
+            }
+            /* else {
+             * strictly, the default prefix would point to the deviation module, but the value should actually
+             * match the default string in the original module (usually unprefixed), so in this case we do not check
+             * the module of the default case, just matching its name */
+            if (strcmp(name, ((struct lysc_node_choice*)target)->dflt->name)) {
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                        "Invalid deviation deleting \"default\" property \"%s\" of choice does not match the default case name \"%s\".",
+                        d->dflts[0], ((struct lysc_node_choice*)target)->dflt->name);
+                goto cleanup;
+            }
+            ((struct lysc_node_choice*)target)->dflt->flags &= ~LYS_SET_DFLT;
+            ((struct lysc_node_choice*)target)->dflt = NULL;
+            break;
+        default:
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NODETYPE,
+                    lys_nodetype2str(target->nodetype), "delete", "default");
+            goto cleanup;
+        }
+    }
+
+    ret = LY_SUCCESS;
+
+cleanup:
+    return ret;
+}
+
+/**
+ * @brief Apply deviate replace.
+ *
+ * @param[in] ctx Compile context.
+ * @param[in] target Deviation target.
+ * @param[in] d Deviate replace to apply.
+ * @param[out] dflt Added default value.
+ * @param[out] changed_type Whether the target type was changed.
+ * @return LY_ERR value.
+ */
+static LY_ERR
+lys_apply_deviate_replace(struct lysc_ctx *ctx, struct lysc_node *target, struct lysp_deviate_rpl *d, const char **dflt,
+                          int *changed_type)
+{
+    LY_ERR ret = LY_EVALID;
+    struct lysc_node_leaf *leaf = (struct lysc_node_leaf *)target;
+    struct lysc_node_leaflist *llist = (struct lysc_node_leaflist *)target;
+    LY_ARRAY_COUNT_TYPE x;
+
+#define DEV_CHECK_PRESENCE_UINT(TYPE, COND, MEMBER, PROPERTY) \
+    if (!(((TYPE)target)->MEMBER COND)) { \
+        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE, \
+               "Invalid deviation replacing with \"%s\" property \"%u\" which is not present.", PROPERTY, d->MEMBER); \
+        goto cleanup; \
+    }
+
+    /* [type-stmt] */
+    if (d->type) {
+        DEV_CHECK_NODETYPE(LYS_LEAF | LYS_LEAFLIST, "replace", "type");
+        /* type is mandatory, so checking for its presence is not necessary */
+        lysc_type_free(ctx->ctx, ((struct lysc_node_leaf *)target)->type);
+
+        if (leaf->dflt && !(target->flags & LYS_SET_DFLT)) {
+            /* the target has default from the previous type - remove it */
+            if (target->nodetype == LYS_LEAF) {
+                /* update the list of incomplete default values if needed */
+                lysc_incomplete_dflts_remove(ctx, leaf->dflt);
+
+                leaf->dflt->realtype->plugin->free(ctx->ctx, leaf->dflt);
+                lysc_type_free(ctx->ctx, leaf->dflt->realtype);
+                free(leaf->dflt);
+                leaf->dflt = NULL;
+                leaf->dflt_mod = NULL;
+            } else { /* LYS_LEAFLIST */
+                LY_ARRAY_FOR(llist->dflts, x) {
+                    lysc_incomplete_dflts_remove(ctx, llist->dflts[x]);
+                    llist->dflts[x]->realtype->plugin->free(ctx->ctx, llist->dflts[x]);
+                    lysc_type_free(ctx->ctx, llist->dflts[x]->realtype);
+                    free(llist->dflts[x]);
+                }
+                LY_ARRAY_FREE(llist->dflts);
+                llist->dflts = NULL;
+                LY_ARRAY_FREE(llist->dflts_mods);
+                llist->dflts_mods = NULL;
+            }
+        }
+        if (!leaf->dflt) {
+            /* there is no default value, do not set changed_type after type compilation
+             * which is used to recompile the default value */
+            *changed_type = -1;
+        }
+        LY_CHECK_GOTO(lys_compile_node_type(ctx, NULL, d->type, leaf), cleanup);
+        (*changed_type)++;
+    }
+
+    /* [units-stmt] */
+    if (d->units) {
+        DEV_CHECK_NODETYPE(LYS_LEAF | LYS_LEAFLIST, "replace", "units");
+        DEV_CHECK_PRESENCE(struct lysc_node_leaf *, !(target->flags & LYS_SET_UNITS),
+                            units, "replacing", "units", d->units);
+
+        lydict_remove(ctx->ctx, leaf->units);
+        DUP_STRING(ctx->ctx, d->units, leaf->units);
+    }
+
+    /* [default-stmt] */
+    if (d->dflt) {
+        switch (target->nodetype) {
+        case LYS_LEAF:
+            DEV_CHECK_PRESENCE(struct lysc_node_leaf *, !(target->flags & LYS_SET_DFLT),
+                                dflt, "replacing", "default", d->dflt);
+            /* first, remove the default value taken from the type */
+            lysc_incomplete_dflts_remove(ctx, leaf->dflt);
+            leaf->dflt->realtype->plugin->free(ctx->ctx, leaf->dflt);
+            lysc_type_free(ctx->ctx, leaf->dflt->realtype);
+            *dflt = d->dflt;
+            /* parsing is done at the end after possible replace of the leaf's type */
+            break;
+        case LYS_CHOICE:
+            DEV_CHECK_PRESENCE(struct lysc_node_choice *, 0, dflt, "replacing", "default", d->dflt);
+            if (lys_compile_deviation_set_choice_dflt(ctx, d->dflt, (struct lysc_node_choice *)target)) {
+                goto cleanup;
+            }
+            break;
+        default:
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NODETYPE,
+                    lys_nodetype2str(target->nodetype), "replace", "default");
+            goto cleanup;
+        }
+    }
+
+    /* [config-stmt] */
+    if (d->flags & LYS_CONFIG_MASK) {
+        if (target->nodetype & (LYS_CASE | LYS_INOUT | LYS_RPC | LYS_ACTION | LYS_NOTIF)) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NODETYPE,
+                    lys_nodetype2str(target->nodetype), "replace", "config");
+            goto cleanup;
+        }
+        if (!(target->flags & LYS_SET_CONFIG)) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NOT_PRESENT,
+                    "replacing", "config", d->flags & LYS_CONFIG_W ? "config true" : "config false");
+            goto cleanup;
+        }
+        LY_CHECK_GOTO(lys_compile_change_config(ctx, target, d->flags, 0, 0), cleanup);
+    }
+
+    /* [mandatory-stmt] */
+    if (d->flags & LYS_MAND_MASK) {
+        if (!(target->flags & LYS_MAND_MASK)) {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NOT_PRESENT,
+                    "replacing", "mandatory", d->flags & LYS_MAND_TRUE ? "mandatory true" : "mandatory false");
+            goto cleanup;
+        }
+        LY_CHECK_GOTO(lys_compile_change_mandatory(ctx, target, d->flags, 0), cleanup);
+    }
+
+    /* [min-elements-stmt] */
+    if (d->flags & LYS_SET_MIN) {
+        if (target->nodetype == LYS_LEAFLIST) {
+            DEV_CHECK_PRESENCE_UINT(struct lysc_node_leaflist *, > 0, min, "min-elements");
+            /* change value */
+            ((struct lysc_node_leaflist *)target)->min = d->min;
+        } else if (target->nodetype == LYS_LIST) {
+            DEV_CHECK_PRESENCE_UINT(struct lysc_node_list *, > 0, min, "min-elements");
+            /* change value */
+            ((struct lysc_node_list *)target)->min = d->min;
+        } else {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NODETYPE,
+                    lys_nodetype2str(target->nodetype), "replace", "min-elements");
+            goto cleanup;
+        }
+        if (d->min) {
+            target->flags |= LYS_MAND_TRUE;
+        }
+    }
+
+    /* [max-elements-stmt] */
+    if (d->flags & LYS_SET_MAX) {
+        if (target->nodetype == LYS_LEAFLIST) {
+            DEV_CHECK_PRESENCE_UINT(struct lysc_node_leaflist *, < (uint32_t)-1, max, "max-elements");
+            /* change value */
+            ((struct lysc_node_leaflist *)target)->max = d->max ? d->max : (uint32_t)-1;
+        } else if (target->nodetype == LYS_LIST) {
+            DEV_CHECK_PRESENCE_UINT(struct lysc_node_list *, < (uint32_t)-1, max, "max-elements");
+            /* change value */
+            ((struct lysc_node_list *)target)->max = d->max ? d->max : (uint32_t)-1;
+        } else {
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NODETYPE,
+                    lys_nodetype2str(target->nodetype), "replace", "max-elements");
+            goto cleanup;
+        }
+    }
+
+    ret = LY_SUCCESS;
+
+cleanup:
+    return ret;
+}
+
 /**
  * @brief Apply all deviations of one target node.
  *
@@ -5626,97 +6326,13 @@ lys_apply_deviation(struct lysc_ctx *ctx, struct lysc_deviation *dev)
     struct lysc_node_leaf *leaf = (struct lysc_node_leaf *)target;
     struct lysc_node_leaflist *llist = (struct lysc_node_leaflist *)target;
     struct ly_err_item *err = NULL;
-    struct lysc_node_list *list;
     struct lysc_action *rpcs;
     struct lysc_notif *notifs;
     struct lysp_deviate *d;
-    struct lysp_deviate_add *d_add;
-    struct lysp_deviate_del *d_del;
-    struct lysp_deviate_rpl *d_rpl;
-    LY_ARRAY_COUNT_TYPE v, x, y, z;
-    int i, changed_type = 0;
-    size_t prefix_len, name_len;
-    const char *prefix, *name, *nodeid, *dflt = NULL;
-    struct lys_module *mod;
+    LY_ARRAY_COUNT_TYPE v, x;
+    int changed_type = 0;
+    const char *dflt = NULL;
     uint32_t min, max;
-
-    /* MACROS for deviates checking */
-#define DEV_CHECK_NODETYPE(NODETYPES, DEVTYPE, PROPERTY) \
-    if (!(target->nodetype & (NODETYPES))) { \
-        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NODETYPE, lys_nodetype2str(target->nodetype), DEVTYPE, PROPERTY);\
-        goto cleanup; \
-    }
-
-#define DEV_CHECK_CARDINALITY(ARRAY, MAX, PROPERTY) \
-    if (LY_ARRAY_COUNT(ARRAY) > MAX) { \
-        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS, "Invalid deviation of %s with too many (%"LY_PRI_ARRAY_COUNT_TYPE") %s properties.", \
-               lys_nodetype2str(target->nodetype), LY_ARRAY_COUNT(ARRAY), PROPERTY); \
-        goto cleanup; \
-    }
-
-
-#define DEV_CHECK_NONPRESENCE(TYPE, COND, MEMBER, PROPERTY, VALUEMEMBER) \
-        if (((TYPE)target)->MEMBER && (COND)) { \
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE, \
-                   "Invalid deviation adding \"%s\" property which already exists (with value \"%s\").", \
-                   PROPERTY, ((TYPE)target)->VALUEMEMBER); \
-            goto cleanup; \
-        }
-
-#define DEV_CHECK_NONPRESENCE_VALUE(TYPE, COND, MEMBER, PROPERTY, VALUEMEMBER, VALUEMODMEMBER) \
-    if (((TYPE)target)->MEMBER && (COND)) { \
-        int dynamic_ = 0; const char *val_; \
-        val_ = ((TYPE)target)->VALUEMEMBER->realtype->plugin->print(((TYPE)target)->VALUEMEMBER, LYD_XML, \
-                                                                             lys_get_prefix, ((TYPE)target)->VALUEMODMEMBER, &dynamic_); \
-        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE, \
-               "Invalid deviation adding \"%s\" property which already exists (with value \"%s\").", PROPERTY, val_); \
-        if (dynamic_) {free((void*)val_);} \
-        goto cleanup; \
-    }
-
-#define DEV_CHECK_NONPRESENCE_UINT(TYPE, COND, MEMBER, PROPERTY) \
-    if (((TYPE)target)->MEMBER COND) { \
-        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE, \
-               "Invalid deviation adding \"%s\" property which already exists (with value \"%u\").", \
-               PROPERTY, ((TYPE)target)->MEMBER); \
-        goto cleanup; \
-    }
-
-#define DEV_CHECK_PRESENCE(TYPE, COND, MEMBER, DEVTYPE, PROPERTY, VALUE) \
-    if (!((TYPE)target)->MEMBER || COND) { \
-        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NOT_PRESENT, DEVTYPE, PROPERTY, VALUE); \
-        goto cleanup; \
-    }
-
-#define DEV_CHECK_PRESENCE_UINT(TYPE, COND, MEMBER, PROPERTY) \
-    if (!(((TYPE)target)->MEMBER COND)) { \
-        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE, \
-               "Invalid deviation replacing with \"%s\" property \"%u\" which is not present.", PROPERTY, d_rpl->MEMBER); \
-        goto cleanup; \
-    }
-
-#define DEV_DEL_ARRAY(TYPE, ARRAY_TRG, ARRAY_DEV, VALMEMBER, VALMEMBER_CMP, DELFUNC_DEREF, DELFUNC, PROPERTY) \
-    DEV_CHECK_PRESENCE(TYPE, 0, ARRAY_TRG, "deleting", PROPERTY, d_del->ARRAY_DEV[0]VALMEMBER); \
-    LY_ARRAY_FOR(d_del->ARRAY_DEV, x) { \
-        LY_ARRAY_FOR(((TYPE)target)->ARRAY_TRG, y) { \
-            if (!strcmp(((TYPE)target)->ARRAY_TRG[y]VALMEMBER_CMP, d_del->ARRAY_DEV[x]VALMEMBER)) { break; } \
-        } \
-        if (y == LY_ARRAY_COUNT(((TYPE)target)->ARRAY_TRG)) { \
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE, \
-                   "Invalid deviation deleting \"%s\" property \"%s\" which does not match any of the target's property values.", \
-                   PROPERTY, d_del->ARRAY_DEV[x]VALMEMBER); \
-            goto cleanup; \
-        } \
-        LY_ARRAY_DECREMENT(((TYPE)target)->ARRAY_TRG); \
-        DELFUNC(ctx->ctx, DELFUNC_DEREF((TYPE)target)->ARRAY_TRG[y]); \
-        memmove(&((TYPE)target)->ARRAY_TRG[y], \
-                &((TYPE)target)->ARRAY_TRG[y + 1], \
-                (LY_ARRAY_COUNT(((TYPE)target)->ARRAY_TRG) - y) * (sizeof *((TYPE)target)->ARRAY_TRG)); \
-    } \
-    if (!LY_ARRAY_COUNT(((TYPE)target)->ARRAY_TRG)) { \
-        LY_ARRAY_FREE(((TYPE)target)->ARRAY_TRG); \
-        ((TYPE)target)->ARRAY_TRG = NULL; \
-    }
 
     lysc_update_path(ctx, NULL, dev->nodeid);
 
@@ -5776,566 +6392,15 @@ lys_apply_deviation(struct lysc_ctx *ctx, struct lysc_deviation *dev)
     /* list of deviates (not-supported is not present in the list) */
     LY_ARRAY_FOR(dev->deviates, v) {
         d = dev->deviates[v];
-
         switch (d->mod) {
         case LYS_DEV_ADD:
-            d_add = (struct lysp_deviate_add*)d;
-            /* [units-stmt] */
-            if (d_add->units) {
-                DEV_CHECK_NODETYPE(LYS_LEAF | LYS_LEAFLIST, "add", "units");
-                DEV_CHECK_NONPRESENCE(struct lysc_node_leaf*, (target->flags & LYS_SET_UNITS), units, "units", units);
-
-                FREE_STRING(ctx->ctx, ((struct lysc_node_leaf*)target)->units);
-                DUP_STRING(ctx->ctx, d_add->units, ((struct lysc_node_leaf*)target)->units);
-            }
-
-            /* *must-stmt */
-            if (d_add->musts) {
-                switch (target->nodetype) {
-                case LYS_CONTAINER:
-                case LYS_LIST:
-                    COMPILE_ARRAY_GOTO(ctx, d_add->musts, ((struct lysc_node_container*)target)->musts,
-                                        x, lys_compile_must, ret, cleanup);
-                    break;
-                case LYS_LEAF:
-                case LYS_LEAFLIST:
-                case LYS_ANYDATA:
-                    COMPILE_ARRAY_GOTO(ctx, d_add->musts, ((struct lysc_node_leaf*)target)->musts,
-                                        x, lys_compile_must, ret, cleanup);
-                    break;
-                case LYS_NOTIF:
-                    COMPILE_ARRAY_GOTO(ctx, d_add->musts, ((struct lysc_notif*)target)->musts,
-                                        x, lys_compile_must, ret, cleanup);
-                    break;
-                case LYS_RPC:
-                case LYS_ACTION:
-                    if (dev->flags & LYSC_OPT_RPC_INPUT) {
-                        COMPILE_ARRAY_GOTO(ctx, d_add->musts, ((struct lysc_action*)target)->input.musts,
-                                            x, lys_compile_must, ret, cleanup);
-                        break;
-                    } else if (dev->flags & LYSC_OPT_RPC_OUTPUT) {
-                        COMPILE_ARRAY_GOTO(ctx, d_add->musts, ((struct lysc_action*)target)->output.musts,
-                                            x, lys_compile_must, ret, cleanup);
-                        break;
-                    }
-                    /* fall through */
-                default:
-                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NODETYPE,
-                            lys_nodetype2str(target->nodetype), "add", "must");
-                    goto cleanup;
-                }
-                ly_set_add(&ctx->xpath, target, 0);
-            }
-
-            /* *unique-stmt */
-            if (d_add->uniques) {
-                DEV_CHECK_NODETYPE(LYS_LIST, "add", "unique");
-                LY_CHECK_GOTO(lys_compile_node_list_unique(ctx, ctx->mod, d_add->uniques, (struct lysc_node_list*)target), cleanup);
-            }
-
-            /* *default-stmt */
-            if (d_add->dflts) {
-                switch (target->nodetype) {
-                case LYS_LEAF:
-                    DEV_CHECK_CARDINALITY(d_add->dflts, 1, "default");
-                    DEV_CHECK_NONPRESENCE_VALUE(struct lysc_node_leaf*, (target->flags & LYS_SET_DFLT), dflt, "default", dflt, dflt_mod);
-                    if (leaf->dflt) {
-                        /* first, remove the default value taken from the type */
-                        lysc_incomplete_dflts_remove(ctx, leaf->dflt);
-                        leaf->dflt->realtype->plugin->free(ctx->ctx, leaf->dflt);
-                        lysc_type_free(ctx->ctx, leaf->dflt->realtype);
-                    } else {
-                        /* prepare new default value storage */
-                        leaf->dflt = calloc(1, sizeof *leaf->dflt);
-                    }
-                    dflt = d_add->dflts[0];
-                    /* parsing is done at the end after possible replace of the leaf's type */
-
-                    /* mark the new default values as leaf's own */
-                    target->flags |= LYS_SET_DFLT;
-                    break;
-                case LYS_LEAFLIST:
-                    if (llist->dflts && !(target->flags & LYS_SET_DFLT)) {
-                        /* first, remove the default value taken from the type */
-                        LY_ARRAY_FOR(llist->dflts, x) {
-                            lysc_incomplete_dflts_remove(ctx, llist->dflts[x]);
-                            llist->dflts[x]->realtype->plugin->free(ctx->ctx, llist->dflts[x]);
-                            lysc_type_free(ctx->ctx, llist->dflts[x]->realtype);
-                            free(llist->dflts[x]);
-                        }
-                        LY_ARRAY_FREE(llist->dflts);
-                        llist->dflts = NULL;
-                        LY_ARRAY_FREE(llist->dflts_mods);
-                        llist->dflts_mods = NULL;
-                    }
-                    /* add new default value(s) */
-                    LY_ARRAY_CREATE_GOTO(ctx->ctx, llist->dflts_mods, LY_ARRAY_COUNT(d_add->dflts), ret, cleanup);
-                    LY_ARRAY_CREATE_GOTO(ctx->ctx, llist->dflts, LY_ARRAY_COUNT(d_add->dflts), ret, cleanup);
-                    for (x = y = LY_ARRAY_COUNT(llist->dflts);
-                            x < LY_ARRAY_COUNT(d_add->dflts) + y; ++x) {
-                        LY_ARRAY_INCREMENT(llist->dflts_mods);
-                        llist->dflts_mods[x] = ctx->mod_def;
-                        LY_ARRAY_INCREMENT(llist->dflts);
-                        llist->dflts[x] = calloc(1, sizeof *llist->dflts[x]);
-                        llist->dflts[x]->realtype = llist->type;
-                        rc = llist->type->plugin->store(ctx->ctx, llist->type, d_add->dflts[x - y], strlen(d_add->dflts[x - y]),
-                                                        LY_TYPE_OPTS_INCOMPLETE_DATA |LY_TYPE_OPTS_SCHEMA | LY_TYPE_OPTS_STORE, lys_resolve_prefix,
-                                                        (void*)llist->dflts_mods[x], LYD_XML, target, NULL, llist->dflts[x], NULL, &err);
-                        llist->dflts[x]->realtype->refcount++;
-                        if (err) {
-                            ly_err_print(err);
-                            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                                    "Invalid deviation adding \"default\" property \"%s\" which does not fit the type (%s).",
-                                    d_add->dflts[x - y], err->msg);
-                            ly_err_free(err);
-                        }
-                        if (rc == LY_EINCOMPLETE) {
-                            /* postpone default compilation when the tree is complete */
-                            LY_CHECK_GOTO(lysc_incomplete_dflts_add(ctx, target, llist->dflts[x], llist->dflts_mods[x]), cleanup);
-
-                            /* but in general result is so far ok */
-                            rc = LY_SUCCESS;
-                        }
-                        LY_CHECK_GOTO(rc, cleanup);
-                    }
-                    /* mark the new default values as leaf-list's own */
-                    target->flags |= LYS_SET_DFLT;
-                    break;
-                case LYS_CHOICE:
-                    DEV_CHECK_CARDINALITY(d_add->dflts, 1, "default");
-                    DEV_CHECK_NONPRESENCE(struct lysc_node_choice*, 1, dflt, "default", dflt->name);
-                    /* in contrast to delete, here we strictly resolve the prefix in the module of the deviation
-                     * to allow making the default case even the augmented case from the deviating module */
-                    if (lys_compile_deviation_set_choice_dflt(ctx, d_add->dflts[0], (struct lysc_node_choice*)target)) {
-                        goto cleanup;
-                    }
-                    break;
-                default:
-                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NODETYPE,
-                            lys_nodetype2str(target->nodetype), "add", "default");
-                    goto cleanup;
-                }
-            }
-
-            /* [config-stmt] */
-            if (d_add->flags & LYS_CONFIG_MASK) {
-                if (target->nodetype & (LYS_CASE | LYS_INOUT | LYS_RPC | LYS_ACTION | LYS_NOTIF)) {
-                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NODETYPE,
-                            lys_nodetype2str(target->nodetype), "add", "config");
-                    goto cleanup;
-                }
-                if (dev->flags) {
-                    LOGWRN(ctx->ctx, "Deviating config inside %s has no effect.",
-                            dev->flags & LYSC_OPT_NOTIFICATION ? "notification" : "RPC/action");
-                }
-                if (target->flags & LYS_SET_CONFIG) {
-                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                            "Invalid deviation adding \"config\" property which already exists (with value \"config %s\").",
-                            target->flags & LYS_CONFIG_W ? "true" : "false");
-                    goto cleanup;
-                }
-                LY_CHECK_GOTO(lys_compile_change_config(ctx, target, d_add->flags, 0, 0), cleanup);
-            }
-
-            /* [mandatory-stmt] */
-            if (d_add->flags & LYS_MAND_MASK) {
-                if (target->flags & LYS_MAND_MASK) {
-                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                            "Invalid deviation adding \"mandatory\" property which already exists (with value \"mandatory %s\").",
-                            target->flags & LYS_MAND_TRUE ? "true" : "false");
-                    goto cleanup;
-                }
-                LY_CHECK_GOTO(lys_compile_change_mandatory(ctx, target, d_add->flags, 0), cleanup);
-            }
-
-            /* [min-elements-stmt] */
-            if (d_add->flags & LYS_SET_MIN) {
-                if (target->nodetype == LYS_LEAFLIST) {
-                    DEV_CHECK_NONPRESENCE_UINT(struct lysc_node_leaflist*, > 0, min, "min-elements");
-                    /* change value */
-                    ((struct lysc_node_leaflist*)target)->min = d_add->min;
-                } else if (target->nodetype == LYS_LIST) {
-                    DEV_CHECK_NONPRESENCE_UINT(struct lysc_node_list*, > 0, min, "min-elements");
-                    /* change value */
-                    ((struct lysc_node_list*)target)->min = d_add->min;
-                } else {
-                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NODETYPE,
-                            lys_nodetype2str(target->nodetype), "add", "min-elements");
-                    goto cleanup;
-                }
-                if (d_add->min) {
-                    target->flags |= LYS_MAND_TRUE;
-                }
-            }
-
-            /* [max-elements-stmt] */
-            if (d_add->flags & LYS_SET_MAX) {
-                if (target->nodetype == LYS_LEAFLIST) {
-                    DEV_CHECK_NONPRESENCE_UINT(struct lysc_node_leaflist*, < (uint32_t)-1, max, "max-elements");
-                    /* change value */
-                    ((struct lysc_node_leaflist*)target)->max = d_add->max ? d_add->max : (uint32_t)-1;
-                } else if (target->nodetype == LYS_LIST) {
-                    DEV_CHECK_NONPRESENCE_UINT(struct lysc_node_list*, < (uint32_t)-1, max, "max-elements");
-                    /* change value */
-                    ((struct lysc_node_list*)target)->max = d_add->max ? d_add->max : (uint32_t)-1;
-                } else {
-                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NODETYPE,
-                            lys_nodetype2str(target->nodetype), "add", "max-elements");
-                    goto cleanup;
-                }
-            }
-
+            LY_CHECK_GOTO(lys_apply_deviate_add(ctx, target, dev->flags, (struct lysp_deviate_add *)d, &dflt), cleanup);
             break;
         case LYS_DEV_DELETE:
-            d_del = (struct lysp_deviate_del*)d;
-
-            /* [units-stmt] */
-            if (d_del->units) {
-                DEV_CHECK_NODETYPE(LYS_LEAF | LYS_LEAFLIST, "delete", "units");
-                DEV_CHECK_PRESENCE(struct lysc_node_leaf*, 0, units, "deleting", "units", d_del->units);
-                if (strcmp(((struct lysc_node_leaf*)target)->units, d_del->units)) {
-                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                            "Invalid deviation deleting \"units\" property \"%s\" which does not match the target's property value \"%s\".",
-                            d_del->units, ((struct lysc_node_leaf*)target)->units);
-                    goto cleanup;
-                }
-                lydict_remove(ctx->ctx, ((struct lysc_node_leaf*)target)->units);
-                ((struct lysc_node_leaf*)target)->units = NULL;
-            }
-
-            /* *must-stmt */
-            if (d_del->musts) {
-                switch (target->nodetype) {
-                case LYS_CONTAINER:
-                case LYS_LIST:
-                    DEV_DEL_ARRAY(struct lysc_node_container*, musts, musts, .arg, .cond->expr, &, lysc_must_free, "must");
-                    break;
-                case LYS_LEAF:
-                case LYS_LEAFLIST:
-                case LYS_ANYDATA:
-                    DEV_DEL_ARRAY(struct lysc_node_leaf*, musts, musts, .arg, .cond->expr, &, lysc_must_free, "must");
-                    break;
-                case LYS_NOTIF:
-                    DEV_DEL_ARRAY(struct lysc_notif*, musts, musts, .arg, .cond->expr, &, lysc_must_free, "must");
-                    break;
-                case LYS_RPC:
-                case LYS_ACTION:
-                    if (dev->flags & LYSC_OPT_RPC_INPUT) {
-                        DEV_DEL_ARRAY(struct lysc_action*, input.musts, musts, .arg, .cond->expr, &, lysc_must_free, "must");
-                        break;
-                    } else if (dev->flags & LYSC_OPT_RPC_OUTPUT) {
-                        DEV_DEL_ARRAY(struct lysc_action*, output.musts, musts, .arg, .cond->expr, &, lysc_must_free, "must");
-                        break;
-                    }
-                    /* fall through */
-                default:
-                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NODETYPE,
-                            lys_nodetype2str(target->nodetype), "delete", "must");
-                    goto cleanup;
-                }
-            }
-
-            /* *unique-stmt */
-            if (d_del->uniques) {
-                DEV_CHECK_NODETYPE(LYS_LIST, "delete", "unique");
-                list = (struct lysc_node_list*)target; /* shortcut */
-                LY_ARRAY_FOR(d_del->uniques, x) {
-                    LY_ARRAY_FOR(list->uniques, z) {
-                        for (name = d_del->uniques[x], y = 0; name; name = nodeid, ++y) {
-                            nodeid = strpbrk(name, " \t\n");
-                            if (nodeid) {
-                                if (ly_strncmp(list->uniques[z][y]->name, name, nodeid - name)) {
-                                    break;
-                                }
-                                while (isspace(*nodeid)) {
-                                    ++nodeid;
-                                }
-                            } else {
-                                if (strcmp(name, list->uniques[z][y]->name)) {
-                                    break;
-                                }
-                            }
-                        }
-                        if (!name) {
-                            /* complete match - remove the unique */
-                            LY_ARRAY_DECREMENT(list->uniques);
-                            LY_ARRAY_FREE(list->uniques[z]);
-                            memmove(&list->uniques[z], &list->uniques[z + 1], (LY_ARRAY_COUNT(list->uniques) - z) * (sizeof *list->uniques));
-                            --z;
-                            break;
-                        }
-                    }
-                    if (!list->uniques || z == LY_ARRAY_COUNT(list->uniques)) {
-                        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                                "Invalid deviation deleting \"unique\" property \"%s\" which does not match any of the target's property values.",
-                                d_del->uniques[x]);
-                        goto cleanup;
-                    }
-                }
-                if (!LY_ARRAY_COUNT(list->uniques)) {
-                    LY_ARRAY_FREE(list->uniques);
-                    list->uniques = NULL;
-                }
-            }
-
-            /* *default-stmt */
-            if (d_del->dflts) {
-                switch (target->nodetype) {
-                case LYS_LEAF:
-                    DEV_CHECK_CARDINALITY(d_del->dflts, 1, "default");
-                    DEV_CHECK_PRESENCE(struct lysc_node_leaf*, !(target->flags & LYS_SET_DFLT),
-                                        dflt, "deleting", "default", d_del->dflts[0]);
-
-                    /* check that the values matches */
-                    dflt = leaf->dflt->realtype->plugin->print(leaf->dflt, LYD_XML, lys_get_prefix, leaf->dflt_mod, &i);
-                    if (strcmp(dflt, d_del->dflts[0])) {
-                        if (i) {
-                            free((char*)dflt);
-                        }
-                        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                                "Invalid deviation deleting \"default\" property \"%s\" which does not match the target's property value \"%s\".",
-                                d_del->dflts[0], dflt);
-                        goto cleanup;
-                    }
-                    if (i) {
-                        free((char*)dflt);
-                    }
-                    dflt = NULL;
-
-                    /* update the list of incomplete default values if needed */
-                    lysc_incomplete_dflts_remove(ctx, leaf->dflt);
-
-                    /* remove the default specification */
-                    leaf->dflt->realtype->plugin->free(ctx->ctx, leaf->dflt);
-                    lysc_type_free(ctx->ctx, leaf->dflt->realtype);
-                    free(leaf->dflt);
-                    leaf->dflt = NULL;
-                    leaf->dflt_mod = NULL;
-                    target->flags &= ~LYS_SET_DFLT;
-                    break;
-                case LYS_LEAFLIST:
-                    DEV_CHECK_PRESENCE(struct lysc_node_leaflist*, 0, dflts, "deleting", "default", d_del->dflts[0]);
-                    LY_ARRAY_FOR(d_del->dflts, x) {
-                        LY_ARRAY_FOR(llist->dflts, y) {
-                            dflt = llist->type->plugin->print(llist->dflts[y], LYD_XML, lys_get_prefix, llist->dflts_mods[y], &i);
-                            if (!strcmp(dflt, d_del->dflts[x])) {
-                                if (i) {
-                                    free((char*)dflt);
-                                }
-                                dflt = NULL;
-                                break;
-                            }
-                            if (i) {
-                                free((char*)dflt);
-                            }
-                            dflt = NULL;
-                        }
-                        if (y == LY_ARRAY_COUNT(llist->dflts)) {
-                            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE, "Invalid deviation deleting \"default\" property \"%s\" "
-                                    "which does not match any of the target's property values.", d_del->dflts[x]);
-                            goto cleanup;
-                        }
-
-                        /* update the list of incomplete default values if needed */
-                        lysc_incomplete_dflts_remove(ctx, llist->dflts[y]);
-
-                        LY_ARRAY_DECREMENT(llist->dflts_mods);
-                        LY_ARRAY_DECREMENT(llist->dflts);
-                        llist->dflts[y]->realtype->plugin->free(ctx->ctx, llist->dflts[y]);
-                        lysc_type_free(ctx->ctx, llist->dflts[y]->realtype);
-                        free(llist->dflts[y]);
-                        memmove(&llist->dflts[y], &llist->dflts[y + 1], (LY_ARRAY_COUNT(llist->dflts) - y) * (sizeof *llist->dflts));
-                        memmove(&llist->dflts_mods[y], &llist->dflts_mods[y + 1], (LY_ARRAY_COUNT(llist->dflts_mods) - y) * (sizeof *llist->dflts_mods));
-                    }
-                    if (!LY_ARRAY_COUNT(llist->dflts)) {
-                        LY_ARRAY_FREE(llist->dflts_mods);
-                        llist->dflts_mods = NULL;
-                        LY_ARRAY_FREE(llist->dflts);
-                        llist->dflts = NULL;
-                        llist->flags &= ~LYS_SET_DFLT;
-                    }
-                    break;
-                case LYS_CHOICE:
-                    DEV_CHECK_CARDINALITY(d_del->dflts, 1, "default");
-                    DEV_CHECK_PRESENCE(struct lysc_node_choice*, 0, dflt, "deleting", "default", d_del->dflts[0]);
-                    nodeid = d_del->dflts[0];
-                    LY_CHECK_GOTO(ly_parse_nodeid(&nodeid, &prefix, &prefix_len, &name, &name_len), cleanup);
-                    if (prefix) {
-                        /* use module prefixes from the deviation module to match the module of the default case */
-                        if (!(mod = lys_module_find_prefix(ctx->mod, prefix, prefix_len))) {
-                            LOGVAL(ctx->ctx,LY_VLOG_STR,ctx->path,LYVE_REFERENCE,
-                                    "Invalid deviation deleting \"default\" property \"%s\" of choice. "
-                                    "The prefix does not match any imported module of the deviation module.", d_del->dflts[0]);
-                            goto cleanup;
-                        }
-                        if (mod != ((struct lysc_node_choice*)target)->dflt->module) {
-                            LOGVAL(ctx->ctx,LY_VLOG_STR,ctx->path,LYVE_REFERENCE,
-                                    "Invalid deviation deleting \"default\" property \"%s\" of choice. "
-                                    "The prefix does not match the default case's module.", d_del->dflts[0]);
-                            goto cleanup;
-                        }
-                    }
-                    /* else {
-                     * strictly, the default prefix would point to the deviation module, but the value should actually
-                     * match the default string in the original module (usually unprefixed), so in this case we do not check
-                     * the module of the default case, just matching its name */
-                    if (strcmp(name, ((struct lysc_node_choice*)target)->dflt->name)) {
-                        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                                "Invalid deviation deleting \"default\" property \"%s\" of choice does not match the default case name \"%s\".",
-                                d_del->dflts[0], ((struct lysc_node_choice*)target)->dflt->name);
-                        goto cleanup;
-                    }
-                    ((struct lysc_node_choice*)target)->dflt->flags &= ~LYS_SET_DFLT;
-                    ((struct lysc_node_choice*)target)->dflt = NULL;
-                    break;
-                default:
-                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NODETYPE,
-                            lys_nodetype2str(target->nodetype), "delete", "default");
-                    goto cleanup;
-                }
-            }
-
+            LY_CHECK_GOTO(lys_apply_deviate_delete(ctx, target, dev->flags, (struct lysp_deviate_del *)d), cleanup);
             break;
         case LYS_DEV_REPLACE:
-            d_rpl = (struct lysp_deviate_rpl*)d;
-
-            /* [type-stmt] */
-            if (d_rpl->type) {
-                DEV_CHECK_NODETYPE(LYS_LEAF | LYS_LEAFLIST, "replace", "type");
-                /* type is mandatory, so checking for its presence is not necessary */
-                lysc_type_free(ctx->ctx, ((struct lysc_node_leaf*)target)->type);
-
-                if (leaf->dflt && !(target->flags & LYS_SET_DFLT)) {
-                    /* the target has default from the previous type - remove it */
-                    if (target->nodetype == LYS_LEAF) {
-                        /* update the list of incomplete default values if needed */
-                        lysc_incomplete_dflts_remove(ctx, leaf->dflt);
-
-                        leaf->dflt->realtype->plugin->free(ctx->ctx, leaf->dflt);
-                        lysc_type_free(ctx->ctx, leaf->dflt->realtype);
-                        free(leaf->dflt);
-                        leaf->dflt = NULL;
-                        leaf->dflt_mod = NULL;
-                    } else { /* LYS_LEAFLIST */
-                        LY_ARRAY_FOR(llist->dflts, x) {
-                            lysc_incomplete_dflts_remove(ctx, llist->dflts[x]);
-                            llist->dflts[x]->realtype->plugin->free(ctx->ctx, llist->dflts[x]);
-                            lysc_type_free(ctx->ctx, llist->dflts[x]->realtype);
-                            free(llist->dflts[x]);
-                        }
-                        LY_ARRAY_FREE(llist->dflts);
-                        llist->dflts = NULL;
-                        LY_ARRAY_FREE(llist->dflts_mods);
-                        llist->dflts_mods = NULL;
-                    }
-                }
-                if (!leaf->dflt) {
-                    /* there is no default value, do not set changed_type after type compilation
-                     * which is used to recompile the default value */
-                    changed_type = -1;
-                }
-                LY_CHECK_GOTO(lys_compile_node_type(ctx, NULL, d_rpl->type, (struct lysc_node_leaf*)target), cleanup);
-                changed_type++;
-            }
-
-            /* [units-stmt] */
-            if (d_rpl->units) {
-                DEV_CHECK_NODETYPE(LYS_LEAF | LYS_LEAFLIST, "replace", "units");
-                DEV_CHECK_PRESENCE(struct lysc_node_leaf*, !(target->flags & LYS_SET_UNITS),
-                                    units, "replacing", "units", d_rpl->units);
-
-                lydict_remove(ctx->ctx, ((struct lysc_node_leaf*)target)->units);
-                DUP_STRING(ctx->ctx, d_rpl->units, ((struct lysc_node_leaf*)target)->units);
-            }
-
-            /* [default-stmt] */
-            if (d_rpl->dflt) {
-                switch (target->nodetype) {
-                case LYS_LEAF:
-                    DEV_CHECK_PRESENCE(struct lysc_node_leaf*, !(target->flags & LYS_SET_DFLT),
-                                        dflt, "replacing", "default", d_rpl->dflt);
-                    /* first, remove the default value taken from the type */
-                    lysc_incomplete_dflts_remove(ctx, leaf->dflt);
-                    leaf->dflt->realtype->plugin->free(ctx->ctx, leaf->dflt);
-                    lysc_type_free(ctx->ctx, leaf->dflt->realtype);
-                    dflt = d_rpl->dflt;
-                    /* parsing is done at the end after possible replace of the leaf's type */
-                    break;
-                case LYS_CHOICE:
-                    DEV_CHECK_PRESENCE(struct lysc_node_choice*, 0, dflt, "replacing", "default", d_rpl->dflt);
-                    if (lys_compile_deviation_set_choice_dflt(ctx, d_rpl->dflt, (struct lysc_node_choice*)target)) {
-                        goto cleanup;
-                    }
-                    break;
-                default:
-                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NODETYPE,
-                            lys_nodetype2str(target->nodetype), "replace", "default");
-                    goto cleanup;
-                }
-            }
-
-            /* [config-stmt] */
-            if (d_rpl->flags & LYS_CONFIG_MASK) {
-                if (target->nodetype & (LYS_CASE | LYS_INOUT | LYS_RPC | LYS_ACTION | LYS_NOTIF)) {
-                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NODETYPE,
-                            lys_nodetype2str(target->nodetype), "replace", "config");
-                    goto cleanup;
-                }
-                if (!(target->flags & LYS_SET_CONFIG)) {
-                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NOT_PRESENT,
-                            "replacing", "config", d_rpl->flags & LYS_CONFIG_W ? "config true" : "config false");
-                    goto cleanup;
-                }
-                LY_CHECK_GOTO(lys_compile_change_config(ctx, target, d_rpl->flags, 0, 0), cleanup);
-            }
-
-            /* [mandatory-stmt] */
-            if (d_rpl->flags & LYS_MAND_MASK) {
-                if (!(target->flags & LYS_MAND_MASK)) {
-                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NOT_PRESENT,
-                            "replacing", "mandatory", d_rpl->flags & LYS_MAND_TRUE ? "mandatory true" : "mandatory false");
-                    goto cleanup;
-                }
-                LY_CHECK_GOTO(lys_compile_change_mandatory(ctx, target, d_rpl->flags, 0), cleanup);
-            }
-
-            /* [min-elements-stmt] */
-            if (d_rpl->flags & LYS_SET_MIN) {
-                if (target->nodetype == LYS_LEAFLIST) {
-                    DEV_CHECK_PRESENCE_UINT(struct lysc_node_leaflist*, > 0, min, "min-elements");
-                    /* change value */
-                    ((struct lysc_node_leaflist*)target)->min = d_rpl->min;
-                } else if (target->nodetype == LYS_LIST) {
-                    DEV_CHECK_PRESENCE_UINT(struct lysc_node_list*, > 0, min, "min-elements");
-                    /* change value */
-                    ((struct lysc_node_list*)target)->min = d_rpl->min;
-                } else {
-                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NODETYPE,
-                            lys_nodetype2str(target->nodetype), "replace", "min-elements");
-                    goto cleanup;
-                }
-                if (d_rpl->min) {
-                    target->flags |= LYS_MAND_TRUE;
-                }
-            }
-
-            /* [max-elements-stmt] */
-            if (d_rpl->flags & LYS_SET_MAX) {
-                if (target->nodetype == LYS_LEAFLIST) {
-                    DEV_CHECK_PRESENCE_UINT(struct lysc_node_leaflist*, < (uint32_t)-1, max, "max-elements");
-                    /* change value */
-                    ((struct lysc_node_leaflist*)target)->max = d_rpl->max ? d_rpl->max : (uint32_t)-1;
-                } else if (target->nodetype == LYS_LIST) {
-                    DEV_CHECK_PRESENCE_UINT(struct lysc_node_list*, < (uint32_t)-1, max, "max-elements");
-                    /* change value */
-                    ((struct lysc_node_list*)target)->max = d_rpl->max ? d_rpl->max : (uint32_t)-1;
-                } else {
-                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LY_VCODE_DEV_NODETYPE,
-                            lys_nodetype2str(target->nodetype), "replace", "max-elements");
-                    goto cleanup;
-                }
-            }
-
+            LY_CHECK_GOTO(lys_apply_deviate_replace(ctx, target, (struct lysp_deviate_rpl *)d, &dflt, &changed_type), cleanup);
             break;
         default:
             LOGINT(ctx->ctx);
