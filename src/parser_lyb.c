@@ -999,7 +999,7 @@ lyd_parse_lyb_(const struct ly_ctx *ctx, struct lyd_node_inner **parent, struct 
     lybctx = calloc(1, sizeof *lybctx);
     LY_CHECK_ERR_RET(!lybctx, LOGMEM(ctx), LY_EMEM);
     lybctx->lybctx = calloc(1, sizeof *lybctx->lybctx);
-    LY_CHECK_ERR_RET(!lybctx->lybctx, LOGMEM(ctx), LY_EMEM);
+    LY_CHECK_ERR_GOTO(!lybctx->lybctx, LOGMEM(ctx); ret = LY_EMEM, cleanup);
 
     lybctx->lybctx->in = in;
     lybctx->lybctx->ctx = ctx;

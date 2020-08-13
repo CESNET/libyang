@@ -6033,12 +6033,12 @@ lys_apply_deviate_delete(struct lysc_ctx *ctx, struct lysc_node *target, int dev
             /* check that the values matches */
             dflt = leaf->dflt->realtype->plugin->print(leaf->dflt, LYD_XML, lys_get_prefix, leaf->dflt_mod, &i);
             if (strcmp(dflt, d->dflts[0])) {
-                if (i) {
-                    free((char*)dflt);
-                }
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                         "Invalid deviation deleting \"default\" property \"%s\" which does not match the target's property value \"%s\".",
                         d->dflts[0], dflt);
+                if (i) {
+                    free((char*)dflt);
+                }
                 goto cleanup;
             }
             if (i) {

@@ -1005,7 +1005,8 @@ lyb_print_data(struct ly_out *out, const struct lyd_node *root, int options)
 
         if (root->schema && lysc_data_parent(root->schema)) {
             LOGERR(lybctx->lybctx->ctx, LY_EINVAL, "LYB printer supports only printing top-level nodes.");
-            return LY_EINVAL;
+            ret = LY_EINVAL;
+            goto cleanup;
         }
     }
 
