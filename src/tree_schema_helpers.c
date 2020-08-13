@@ -1026,7 +1026,7 @@ lys_module_find_prefix(const struct lys_module *mod, const char *prefix, size_t 
     struct lys_module *m = NULL;
     LY_ARRAY_COUNT_TYPE u;
 
-    if (!prefix || !ly_strncmp(mod->prefix, prefix, len)) {
+    if (!len || !ly_strncmp(mod->prefix, prefix, len)) {
         /* it is the prefix of the module itself */
         m = (struct lys_module *)mod;
     }
