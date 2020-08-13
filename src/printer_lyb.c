@@ -404,6 +404,7 @@ lyb_write_string(const char *str, size_t str_len, int with_length, struct ly_out
 {
     if (!str) {
         str = "";
+        LY_CHECK_ERR_RET(str_len, LOGINT(lybctx->ctx), LY_EINT);
     }
     if (!str_len) {
         str_len = strlen(str);
@@ -992,7 +993,7 @@ lyb_print_data(struct ly_out *out, const struct lyd_node *root, int options)
     struct hash_table *top_sibling_ht = NULL;
     const struct lys_module *prev_mod = NULL;
     struct lyd_lyb_ctx *lybctx;
-    const struct ly_ctx *ctx = LYD_NODE_CTX(root);
+    const struct ly_ctx *ctx = root ? LYD_NODE_CTX(root) : NULL;
 
     lybctx = calloc(1, sizeof *lybctx);
     LY_CHECK_ERR_RET(!lybctx, LOGMEM(ctx), LY_EMEM);
