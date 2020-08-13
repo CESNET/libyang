@@ -805,22 +805,18 @@ lyd_parse_xml_rpc(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node **
         *op_p = lydctx.op_node;
     }
     assert(tree);
-    if (tree_p) {
-        *tree_p = tree;
-    }
     if (act_e) {
         /* connect to the action */
-        lyd_insert_node(act_e, NULL, *tree_p);
-        if (tree_p) {
-            *tree_p = act_e;
-        }
+        lyd_insert_node(act_e, NULL, tree);
+        tree = act_e;
     }
     if (rpc_e) {
         /* connect to the rpc */
-        lyd_insert_node(rpc_e, NULL, *tree_p);
-        if (tree_p) {
-            *tree_p = rpc_e;
-        }
+        lyd_insert_node(rpc_e, NULL, tree);
+        tree = rpc_e;
+    }
+    if (tree_p) {
+        *tree_p = tree;
     }
 
 cleanup:
@@ -972,15 +968,13 @@ lyd_parse_xml_notif(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node 
         *ntf_p = lydctx.op_node;
     }
     assert(tree);
-    if (tree_p) {
-        *tree_p = tree;
-    }
     if (ntf_e) {
         /* connect to the notification */
-        lyd_insert_node(ntf_e, NULL, *tree_p);
-        if (tree_p) {
-            *tree_p = ntf_e;
-        }
+        lyd_insert_node(ntf_e, NULL, tree);
+        tree = ntf_e;
+    }
+    if (tree_p) {
+        *tree_p = tree;
     }
 
 cleanup:
@@ -999,7 +993,7 @@ lyd_parse_xml_reply(const struct lyd_node *request, struct ly_in *in, struct lyd
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_xml_ctx lydctx = {0};
-    struct lyd_node *rpcr_e = NULL, *iter, *req_op, *rep_op = NULL;
+    struct lyd_node *rpcr_e = NULL, *tree, *req_op, *rep_op = NULL;
 
     /* init */
     LY_CHECK_GOTO(ret = lyxml_ctx_new(LYD_NODE_CTX(request), in, &lydctx.xmlctx), cleanup);
@@ -1047,16 +1041,14 @@ lyd_parse_xml_reply(const struct lyd_node *request, struct ly_in *in, struct lyd
     if (op_p) {
         *op_p = rep_op;
     }
-    for (iter = rep_op; iter->parent; iter = (struct lyd_node *)iter->parent);
-    if (tree_p) {
-        *tree_p = iter;
-    }
+    for (tree = rep_op; tree->parent; tree = LYD_PARENT(tree));
     if (rpcr_e) {
         /* connect to the operation */
-        lyd_insert_node(rpcr_e, NULL, *tree_p);
-        if (tree_p) {
-            *tree_p = rpcr_e;
-        }
+        lyd_insert_node(rpcr_e, NULL, tree);
+        tree = rpcr_e;
+    }
+    if (tree_p) {
+        *tree_p = tree;
     }
 
 cleanup:

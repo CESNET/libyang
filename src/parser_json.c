@@ -1608,15 +1608,13 @@ lyd_parse_json_notif(const struct ly_ctx *ctx, struct ly_in *in, struct lyd_node
         *ntf_p = lydctx->op_node;
     }
     assert(tree);
-    if (tree_p) {
-        *tree_p = tree;
-    }
     if (ntf_e) {
         /* connect to the notification */
-        lyd_insert_node(ntf_e, NULL, *tree_p);
-        if (tree_p) {
-            *tree_p = ntf_e;
-        }
+        lyd_insert_node(ntf_e, NULL, tree);
+        tree = ntf_e;
+    }
+    if (tree_p) {
+        *tree_p = tree;
     }
 
 cleanup:
@@ -1812,7 +1810,7 @@ lyd_parse_json_reply(const struct lyd_node *request, struct ly_in *in, struct ly
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_json_ctx *lydctx = NULL;
-    struct lyd_node *rpcr_e = NULL, *iter, *req_op, *rep_op = NULL;
+    struct lyd_node *rpcr_e = NULL, *tree, *req_op, *rep_op = NULL;
     enum LYJSON_PARSER_STATUS status;
 
     /* init */
@@ -1868,16 +1866,14 @@ lyd_parse_json_reply(const struct lyd_node *request, struct ly_in *in, struct ly
     if (op_p) {
         *op_p = rep_op;
     }
-    for (iter = rep_op; iter->parent; iter = (struct lyd_node *)iter->parent);
-    if (tree_p) {
-        *tree_p = iter;
-    }
+    for (tree = rep_op; tree->parent; tree = LYD_PARENT(tree));
     if (rpcr_e) {
         /* connect to the operation */
-        lyd_insert_node(rpcr_e, NULL, iter);
-        if (tree_p) {
-            *tree_p = rpcr_e;
-        }
+        lyd_insert_node(rpcr_e, NULL, tree);
+        tree = rpcr_e;
+    }
+    if (tree_p) {
+        *tree_p = tree;
     }
 
 cleanup:
