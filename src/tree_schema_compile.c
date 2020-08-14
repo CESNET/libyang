@@ -5521,17 +5521,15 @@ lysc_disconnect(struct lysc_node *node)
 {
     struct lysc_node *parent, *child, *prev = NULL, *next;
     struct lysc_node_case *cs = NULL;
+    struct lysc_module *modc = node->module->compiled;
     int remove_cs = 0;
 
     parent = node->parent;
 
     /* parent's first child */
-    if (!parent) {
-        return;
-    }
-    if (parent->nodetype == LYS_CHOICE) {
+    if (parent && parent->nodetype == LYS_CHOICE) {
         cs = (struct lysc_node_case*)node;
-    } else if (parent->nodetype == LYS_CASE) {
+    } else if (parent && parent->nodetype == LYS_CASE) {
         /* disconnecting some node in a case */
         cs = (struct lysc_node_case*)parent;
         parent = cs->parent;
@@ -5552,10 +5550,11 @@ lysc_disconnect(struct lysc_node *node)
         if (!remove_cs) {
             cs = NULL;
         }
-    } else if (lysc_node_children(parent, node->flags) == node) {
+    } else if (parent && lysc_node_children(parent, node->flags) == node) {
         *lysc_node_children_p(parent, node->flags) = node->next;
+    } else if (modc->data == node) {
+        modc->data = node->next;
     }
-
     if (cs) {
         if (remove_cs) {
             /* cs has only one child which is being also removed */
@@ -5603,7 +5602,11 @@ lysc_disconnect(struct lysc_node *node)
     if (node->next) {
         node->next->prev = node->prev;
     } else if (node->nodetype != LYS_CASE) {
-        child = (struct lysc_node*)lysc_node_children(parent, node->flags);
+        if (parent) {
+            child = (struct lysc_node*)lysc_node_children(parent, node->flags);
+        } else {
+            child = modc->data;
+        }
         if (child) {
             child->prev = node->prev;
         }
