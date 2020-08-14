@@ -597,6 +597,14 @@ lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type)
     if (--type->refcount) {
         return;
     }
+    FREE_ARRAY(ctx, type->exts, lysc_ext_instance_free);
+    if (type->dflt) {
+        type->plugin->free(ctx, type->dflt);
+        lysc_type_free(ctx, type->dflt->realtype);
+        free(type->dflt);
+        type->dflt = NULL;
+    }
+
     switch(type->basetype) {
     case LY_TYPE_BINARY:
         FREE_MEMBER(ctx, ((struct lysc_type_bin*)type)->length, lysc_range_free);
@@ -639,12 +647,6 @@ lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type)
     case LY_TYPE_UNKNOWN:
         /* nothing to do */
         break;
-    }
-    FREE_ARRAY(ctx, type->exts, lysc_ext_instance_free);
-    if (type->dflt) {
-        type->plugin->free(ctx, type->dflt);
-        lysc_type_free(ctx, type->dflt->realtype);
-        free(type->dflt);
     }
     free(type);
 }
