@@ -2546,7 +2546,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16
         }
         break;
     case LY_TYPE_DEC64:
-        dec = (struct lysc_type_dec*)(*type);
+        dec = (struct lysc_type_dec *)(*type);
 
         /* RFC 7950 9.3.4 - fraction-digits */
         if (!base) {
@@ -2560,26 +2560,29 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16
                 }
                 return LY_EVALID;
             }
-        } else if (type_p->fraction_digits) {
-            /* fraction digits is prohibited in types not directly derived from built-in decimal64 */
-            if (tpdfname) {
-                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
-                       "Invalid fraction-digits substatement for type \"%s\" not directly derived from decimal64 built-in type.",
-                       tpdfname);
-            } else {
-                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
-                       "Invalid fraction-digits substatement for type not directly derived from decimal64 built-in type.");
-                free(*type);
-                *type = NULL;
+            dec->fraction_digits = type_p->fraction_digits;
+        } else {
+            if (type_p->fraction_digits) {
+                /* fraction digits is prohibited in types not directly derived from built-in decimal64 */
+                if (tpdfname) {
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                           "Invalid fraction-digits substatement for type \"%s\" not directly derived from decimal64 built-in type.",
+                           tpdfname);
+                } else {
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
+                           "Invalid fraction-digits substatement for type not directly derived from decimal64 built-in type.");
+                    free(*type);
+                    *type = NULL;
+                }
+                return LY_EVALID;
             }
-            return LY_EVALID;
+            dec->fraction_digits = ((struct lysc_type_dec *)base)->fraction_digits;
         }
-        dec->fraction_digits = type_p->fraction_digits;
 
         /* RFC 7950 9.2.4 - range */
         if (type_p->range) {
             LY_CHECK_RET(lys_compile_type_range(ctx, type_p->range, basetype, 0, dec->fraction_digits,
-                                                base ? ((struct lysc_type_dec*)base)->range : NULL, &dec->range));
+                                                base ? ((struct lysc_type_dec *)base)->range : NULL, &dec->range));
             if (!tpdfname) {
                 COMPILE_EXTS_GOTO(ctx, type_p->range->exts, dec->range->exts, dec->range, LYEXT_PAR_RANGE, ret, done);
             }
