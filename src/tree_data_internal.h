@@ -69,37 +69,6 @@ int lyb_has_schema_model(const struct lysc_node *sibling, const struct lys_modul
 struct lyd_node **lyd_node_children_p(struct lyd_node *node);
 
 /**
- * @brief Callback provided by the data/schema parsers to type plugins to resolve (format-specific) mapping between prefixes used
- * in the value strings to the YANG schemas.
- *
- * Reverse function to ly_get_prefix_clb.
- *
- * XML uses XML namespaces, JSON uses schema names as prefixes, YIN/YANG uses prefixes of the imports.
- *
- * @param[in] ctx libyang context to find the schema.
- * @param[in] prefix Prefix found in the value string
- * @param[in] prefix_len Length of the @p prefix.
- * @param[in] data Format-specific data needed by the callback.
- * @return Pointer to the YANG schema identified by the provided prefix or NULL if no mapping found.
- */
-typedef const struct lys_module *(*ly_resolve_prefix_clb)(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len,
-                                                          void *data);
-
-/**
- * @brief Callback provided by the data/schema printers to type plugins to resolve (format-specific) mapping between
- * YANG module of a data object to prefixes used in the value strings.
- *
- * Reverse function to ly_resolve_prefix_clb.
- *
- * XML uses XML namespaces, JSON uses schema names as prefixes, YIN/YANG uses prefixes of the imports.
- *
- * @param[in] mod YANG module of the object.
- * @param[in] data Format-specific data needed by the callback.
- * @return String representing prefix for the object of the given YANG module @p mod.
- */
-typedef const char *(*ly_get_prefix_clb)(const struct lys_module *mod, void *data);
-
-/**
  * @brief Just like lys_getnext() but iterates over all data instances of the schema nodes.
  *
  * @param[in] last Last returned data node.
