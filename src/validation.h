@@ -42,7 +42,7 @@ LY_ERR lyd_val_diff_add(const struct lyd_node *node, enum lyd_diff_op op, struct
  * @param[in] node_types Set with nodes with unresolved types, can be NULL
  * @param[in] meta_types Set with metdata with unresolved types, can be NULL.
  * @param[in] format Format of the unresolved data.
- * @param[in] prefix_data Format-specific data for resolving any prefixes.
+ * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
  * @param[in,out] diff Validation diff.
  * @return LY_ERR value.
  */

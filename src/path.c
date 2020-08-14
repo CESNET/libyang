@@ -354,7 +354,7 @@ error:
  * @param[in] tok_idx Index in @p expr.
  * @param[in] lref Lref option.
  * @param[in] format Format of the path.
- * @param[in] prefix_data Format-specific data for resolving any prefixes.
+ * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
  * @param[out] mod Resolved module.
  * @param[out] name Parsed node name.
  * @param[out] name_len Length of @p name.
@@ -566,7 +566,7 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
  * @param[in] expr Parsed path.
  * @param[in,out] tok_idx Index in @p expr, is adjusted for parsed tokens.
  * @param[in] format Format of the path.
- * @param[in] prefix_data Format-specific data for resolving any prefixes.
+ * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
  * @return LY_ERR value.
  */
 static LY_ERR

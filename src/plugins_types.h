@@ -190,7 +190,7 @@ const char *ly_get_prefix(const struct lys_module *mod, LY_PREFIX_FORMAT format,
  * @param[in] value_len Length (number of bytes) of the given \p value.
  * @param[in] options [Type plugin options](@ref plugintypeopts).
  * @param[in] format Input format of the data.
- * @param[in] prefix_data Parser's resolve data for the format-specific callback.
+ * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
  * @param[in] context_node The @p value's node for the case that the require-instance restriction is supposed to be resolved.
  *            This argument is a lys_node (in case LY_TYPE_OPTS_INCOMPLETE_DATA or LY_TYPE_OPTS_SCHEMA set in @p options)
  *            or lyd_node structure.
@@ -234,7 +234,7 @@ typedef LY_ERR (*ly_type_compare_clb)(const struct lyd_value *val1, const struct
  * @param[in] value Value to print.
  * @param[in] format Format in which the data are supposed to be printed.
  *            Only 2 formats are currently implemented: LYD_XML and LYD_JSON.
- * @param[in] prefix_data Private data for the format-specific callback.
+ * @param[in] prefix_data Format-specific data for getting any prefixes (see ::ly_get_prefix).
  * @param[out] dynamic Flag if the returned string is dynamically allocated. In such a case the caller is responsible
  *            for freeing it.
  * @return String with the value of @p value in specified @p format. According to the returned @p dynamic flag, caller

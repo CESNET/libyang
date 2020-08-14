@@ -153,7 +153,7 @@ LY_ERR ly_path_parse_predicate(const struct ly_ctx *ctx, const struct lysc_node 
  * @param[in] oper Oper option (@ref path_oper_options).
  * @param[in] target Target option (@ref path_target_options).
  * @param[in] format Format of the path.
- * @param[in] prefix_data Data for resolving any prefixes.
+ * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
  * @param[out] path Compiled path.
  * @return LY_ERR value.
  */
@@ -171,7 +171,7 @@ LY_ERR ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mo
  * @param[in] expr Parsed path.
  * @param[in,out] tok_idx Index in @p expr, is adjusted for parsed tokens.
  * @param[in] format Format of the path.
- * @param[in] prefix_data Data for resolving any prefixes.
+ * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
  * @param[out] predicates Compiled predicates.
  * @param[out] pred_type Type of the compiled predicate(s).
  * @return LY_ERR value.

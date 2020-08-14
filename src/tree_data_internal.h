@@ -127,7 +127,7 @@ struct lyd_node *lys_getnext_data(const struct lyd_node *last, const struct lyd_
  * @param[in,out] dynamic Flag if @p value is dynamically allocated, is adjusted when @p value is consumed.
  * @param[in] value_hint [Hint options](@ref lydvalueparseopts) from the parser regarding the value type.
  * @param[in] format Input format of @p value.
- * @param[in] prefix_data Format-specific data for resolving any prefixes.
+ * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
  * @param[out] node Created node.
  * @return LY_SUCCESS on success.
  * @return LY_EINCOMPLETE in case data tree is needed to finish the validation.
@@ -272,7 +272,7 @@ void lyd_insert_meta(struct lyd_node *parent, struct lyd_meta *meta);
  * @param[in,out] dynamic Flag if @p value is dynamically allocated, is adjusted when @p value is consumed.
  * @param[in] value_hint [Value hint](@ref lydvalueparseopts) from the parser regarding the value type.
  * @param[in] format Input format of @p value.
- * @param[in] prefix_data Format-specific data for resolving any prefixes.
+ * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
  * @param[in] ctx_snode Context node for value resolution in schema.
  * @return LY_SUCCESS on success.
  * @return LY_EINCOMPLETE in case data tree is needed to finish the validation.
@@ -338,7 +338,7 @@ LY_ERR lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const st
  * @param[in] second Flag for the second call after returning LY_EINCOMPLETE
  * @param[in] value_hint [Value hint](@ref lydvalueparseopts) from the parser.
  * @param[in] format Input format of @p value.
- * @param[in] prefix_data Format-specific data for resolving any prefixes.
+ * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
  * @param[in] tree Data tree (e.g. when validating RPC/Notification) where the required
  *            data instance (leafref target, instance-identifier) can be placed. NULL in case the data tree are not yet complete,
  *            then LY_EINCOMPLETE can be returned.
@@ -364,7 +364,7 @@ LY_ERR lyd_value_store(struct lyd_value *val, const struct lysc_node *schema, co
  * @param[in] second Flag for the second call after returning LY_EINCOMPLETE
  * @param[in] value_hint [Value hint](@ref lydvalueparseopts) from the parser.
  * @param[in] format Input format of the data.
- * @param[in] prefix_data Format-specific data for resolving any prefixes.
+ * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
  * @param[in] ctx_snode Context node for value resolution in schema.
  * @param[in] tree Data tree (e.g. when validating RPC/Notification) where the required
  *            data instance (leafref target, instance-identifier) can be placed. NULL in case the data tree are not yet complete,
