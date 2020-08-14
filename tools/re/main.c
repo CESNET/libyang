@@ -273,7 +273,7 @@ main(int argc, char* argv[])
     }
 
     type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
-    match = type->plugin->store(ctx, type, str, strlen(str), 0, NULL, NULL, LYD_XML, NULL, NULL, NULL, NULL, &err);
+    match = type->plugin->store(ctx, type, str, strlen(str), 0, LY_PREF_JSON, NULL, NULL, NULL, NULL, NULL, &err);
     if (verbose) {
         for (i = 0; i < patterns_count; i++) {
             fprintf(stdout, "pattern  %d: %s\n", i + 1, patterns[i]);

@@ -103,35 +103,35 @@ struct ly_err_item *ly_err_new(LY_LOG_LEVEL level, LY_ERR code, LY_VECODE vecode
 void ly_err_free(void *ptr);
 
 /**
- * @brief Callback provided by the data/schema parsers to type plugins to resolve (format-specific) mapping between prefixes used
- * in the value strings to the YANG schemas.
+ * @brief Resolve format-specific prefixes to modules.
  *
- * Reverse function to ly_clb_get_prefix.
- *
- * XML uses XML namespaces, JSON uses schema names as prefixes, YIN/YANG uses prefixes of the imports.
- *
- * @param[in] ctx libyang context to find the schema.
- * @param[in] prefix Prefix found in the value string
- * @param[in] prefix_len Length of the @p prefix.
- * @param[in] private Internal data needed by the callback.
- * @return Pointer to the YANG schema identified by the provided prefix or NULL if no mapping found.
+ * @param[in] ctx libyang context.
+ * @param[in] prefix Prefix to resolve.
+ * @param[in] prefix_len Length of @p prefix.
+ * @param[in] format Format of the prefix.
+ * @param[in] prefix_data Format-specific data:
+ *      LY_PREF_SCHEMA  - const struct lys_module * (local module)
+ *      LY_PREF_XML     - const struct ly_set * (set with defined namespaces stored as ::lyxml_ns)
+ *      LY_PREF_JSON    - NULL
+ * @return Resolved prefix module,
+ * @return NULL otherwise.
  */
-typedef const struct lys_module *(*ly_clb_resolve_prefix)(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len,
-                                                          void *private);
+const struct lys_module *ly_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len,
+                                           LY_PREFIX_FORMAT format, void *prefix_data);
 
 /**
- * @brief Callback provided by the data/schema printers to type plugins to resolve (format-specific) mapping between YANG module of a data object
- * to prefixes used in the value strings.
+ * @brief Get format-specific prefix for a module.
  *
- * Reverse function to ly_clb_resolve_prefix.
- *
- * XML uses XML namespaces, JSON uses schema names as prefixes, YIN/YANG uses prefixes of the imports.
- *
- * @param[in] mod YANG module of the object.
- * @param[in] private Internal data needed by the callback.
- * @return String representing prefix for the object of the given YANG module @p mod.
+ * @param[in] mod Module whose prefix to get.
+ * @param[in] format Format of the prefix.
+ * @param[in] prefix_data Format-specific data:
+ *      LY_PREF_SCHEMA  - const struct lys_module * (local module)
+ *      LY_PREF_XML     - struct ly_set * (set of all returned modules as ::struct lys_module)
+ *      LY_PREF_JSON    - NULL
+ * @return Module prefix to print.
+ * @return NULL on error.
  */
-typedef const char *(*ly_clb_get_prefix)(const struct lys_module *mod, void *private);
+const char *ly_get_prefix(const struct lys_module *mod, LY_PREFIX_FORMAT format, void *prefix_data);
 
 /**
  * @defgroup plugintypeopts Options for type plugin callbacks. The same set of the options is passed to all the type's callbacks used together.
@@ -189,9 +189,8 @@ typedef const char *(*ly_clb_get_prefix)(const struct lys_module *mod, void *pri
  *            It is never NULL, empty string is represented as "" with zero @p value_len.
  * @param[in] value_len Length (number of bytes) of the given \p value.
  * @param[in] options [Type plugin options](@ref plugintypeopts).
- * @param[in] resolve_prefix Parser-specific callback to resolve prefixes used in the value strings.
- * @param[in] parser Parser's data for @p resolve_prefix
  * @param[in] format Input format of the data.
+ * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
  * @param[in] context_node The @p value's node for the case that the require-instance restriction is supposed to be resolved.
  *            This argument is a lys_node (in case LY_TYPE_OPTS_INCOMPLETE_DATA or LY_TYPE_OPTS_SCHEMA set in @p options)
  *            or lyd_node structure.
@@ -209,9 +208,9 @@ typedef const char *(*ly_clb_get_prefix)(const struct lys_module *mod, void *pri
  * @return LY_ERR value if an error occurred and the value could not be canonized following the type's rules.
  */
 typedef LY_ERR (*ly_type_store_clb)(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len,
-                                    int options, ly_resolve_prefix_clb resolve_prefix, void *parser, LYD_FORMAT format,
-                                    const void *context_node, const struct lyd_node *tree,
-                                    struct lyd_value *storage, const char **canonized, struct ly_err_item **err);
+                                    int options, LY_PREFIX_FORMAT format, void *prefix_data, const void *context_node,
+                                    const struct lyd_node *tree, struct lyd_value *storage, const char **canonized,
+                                    struct ly_err_item **err);
 
 /**
  * @brief Callback for comparing 2 values of the same type.
@@ -235,16 +234,15 @@ typedef LY_ERR (*ly_type_compare_clb)(const struct lyd_value *val1, const struct
  * @param[in] value Value to print.
  * @param[in] format Format in which the data are supposed to be printed.
  *            Only 2 formats are currently implemented: LYD_XML and LYD_JSON.
- * @param[in] get_prefix Callback to get prefix to use when printing objects supposed to be prefixed.
- * @param[in] printer Private data for the @p get_prefix callback.
+ * @param[in] prefix_data Format-specific data for getting any prefixes (see ::ly_get_prefix).
  * @param[out] dynamic Flag if the returned string is dynamically allocated. In such a case the caller is responsible
  *            for freeing it.
  * @return String with the value of @p value in specified @p format. According to the returned @p dynamic flag, caller
  *         can be responsible for freeing allocated memory.
  * @return NULL in case of error.
  */
-typedef const char *(*ly_type_print_clb)(const struct lyd_value *value, LYD_FORMAT format, ly_get_prefix_clb get_prefix,
-                                         void *printer, int *dynamic);
+typedef const char *(*ly_type_print_clb)(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data,
+                                         int *dynamic);
 
 /**
  * @brief Callback to duplicate data in data structure. Note that callback is even responsible for duplicating lyd_value::canonized.
@@ -359,7 +357,8 @@ LY_ERR ly_type_identity_isderived(struct lysc_ident *base, struct lysc_ident *de
  * @param[out] err Error information in case of failure. The error structure can be freed by ly_err_free().
  * @return LY_ERR value according to the result of the validation.
  */
-LY_ERR ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t value, const char *strval, struct ly_err_item **err);
+LY_ERR ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t value, const char *strval,
+                              struct ly_err_item **err);
 
 /**
  * @brief Data type validator for pattern-restricted string values.
@@ -388,19 +387,6 @@ LY_ERR ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str
  */
 LY_ERR ly_type_find_leafref(const struct lysc_type_leafref *lref, const struct lyd_node *node, struct lyd_value *value,
                             const struct lyd_node *tree, struct lyd_node **target, char **errmsg);
-
-/**
- * @brief Helper function for type validation callbacks to prepare list of all possible prefixes used in the value string.
- *
- * @param[in] ctx libyang context.
- * @param[in] value Value string to be parsed.
- * @param[in] value_len Length of the @p value string.
- * @param[in] get_prefix Parser-specific getter to resolve prefixes used in the value strings.
- * @param[in] parser Parser's data for @p get_prefix.
- * @return Created [sized array](@ref sizedarrays) of prefix mappings, NULL in case of error.
- */
-struct lyd_value_prefix *ly_type_get_prefixes(const struct ly_ctx *ctx, const char *value, size_t value_len,
-                                              ly_resolve_prefix_clb get_prefix, void *parser);
 
 /** @} types */
 

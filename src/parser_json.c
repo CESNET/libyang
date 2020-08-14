@@ -47,7 +47,6 @@ struct lyd_json_ctx {
 
     /* callbacks */
     lyd_ctx_free_clb free;           /* destructor */
-    ly_resolve_prefix_clb resolve_prefix;
 
     struct lyjson_ctx *jsonctx;    /**< JSON context */
 };
@@ -67,15 +66,6 @@ lyd_json_ctx_free(struct lyd_ctx *lydctx)
         lyjson_ctx_free(ctx->jsonctx);
         free(ctx);
     }
-}
-
-/**
- * @brief JSON implementation of ly_resolve_prefix_clb.
- */
-const struct lys_module *
-lydjson_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len, void *UNUSED(parser))
-{
-    return ly_ctx_get_module_implemented2(ctx, prefix, prefix_len);
 }
 
 /**
@@ -407,7 +397,7 @@ lydjson_check_list(struct lyjson_ctx *jsonctx, const struct lysc_node *list)
                         goto cleanup;
                     }
 
-                    ret = _lys_value_validate(NULL, snode, jsonctx->value, jsonctx->value_len, lydjson_resolve_prefix, jsonctx, LYD_JSON);
+                    ret = _lys_value_validate(NULL, snode, jsonctx->value, jsonctx->value_len, LY_PREF_JSON, NULL);
                     LY_CHECK_GOTO(ret, cleanup);
 
                     /* key with a valid value, remove from the set */
@@ -520,8 +510,7 @@ lydjson_data_check_opaq(struct lyd_json_ctx *lydctx, const struct lysc_node *sno
                 break;
             }
 
-            if (_lys_value_validate(NULL, snode, jsonctx->value, jsonctx->value_len, lydjson_resolve_prefix, jsonctx,
-                    LYD_JSON)) {
+            if (_lys_value_validate(NULL, snode, jsonctx->value, jsonctx->value_len, LY_PREF_JSON, NULL)) {
                 ret = LY_ENOT;
             }
             break;
@@ -652,7 +641,7 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
                     if (mod) {
                         ret = lyd_parser_create_meta((struct lyd_ctx*)lydctx, node, NULL, mod,
                                                      meta->name, strlen(meta->name), meta->value, ly_strlen(meta->value),
-                                                     &dynamic, meta->hint, lydjson_resolve_prefix, NULL, LYD_JSON, snode);
+                                                     &dynamic, meta->hint, LY_PREF_JSON, NULL, snode);
                         LY_CHECK_GOTO(ret, cleanup);
                     } else if (lydctx->parse_options & LYD_PARSE_STRICT) {
                         LOGVAL(lydctx->jsonctx->ctx, LY_VLOG_LYD, node, LYVE_REFERENCE,
@@ -832,8 +821,8 @@ next_entry:
         if (node->schema) {
             /* create metadata */
             meta = NULL;
-            ret = lyd_parser_create_meta((struct lyd_ctx*)lydctx, node, &meta, mod, name, name_len, lydctx->jsonctx->value, lydctx->jsonctx->value_len,
-                                         &lydctx->jsonctx->dynamic, 0, lydjson_resolve_prefix, lydctx->jsonctx, LYD_JSON, snode);
+            ret = lyd_parser_create_meta((struct lyd_ctx*)lydctx, node, &meta, mod, name, name_len, lydctx->jsonctx->value,
+                                         lydctx->jsonctx->value_len, &lydctx->jsonctx->dynamic, 0, LY_PREF_JSON, NULL, snode);
             LY_CHECK_GOTO(ret, cleanup);
 
             /* add/correct flags */
@@ -1109,7 +1098,7 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node_inner *paren
             /* create terminal node */
             ret = lyd_parser_create_term((struct lyd_ctx *)lydctx, snode, lydctx->jsonctx->value,
                                         lydctx->jsonctx->value_len, &lydctx->jsonctx->dynamic, type_hint,
-                                        lydjson_resolve_prefix, lydctx->jsonctx, LYD_JSON, node);
+                                        LY_PREF_JSON, NULL, node);
             LY_CHECK_RET(ret);
 
             /* move JSON parser */
@@ -1409,7 +1398,6 @@ lyd_parse_json_init(const struct ly_ctx *ctx, struct ly_in *in, int parse_option
     lydctx->parse_options = parse_options;
     lydctx->validate_options = validate_options;
     lydctx->free = lyd_json_ctx_free;
-    lydctx->resolve_prefix = lydjson_resolve_prefix;
 
     LY_CHECK_ERR_RET(ret = lyjson_ctx_new(ctx, in, &lydctx->jsonctx), free(lydctx), ret);
 

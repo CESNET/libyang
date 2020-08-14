@@ -47,7 +47,6 @@ struct lyd_xml_ctx {
 
     /* callbacks */
     lyd_ctx_free_clb free;           /* destructor */
-    ly_resolve_prefix_clb resolve_prefix;
 
     struct lyxml_ctx *xmlctx;      /**< XML context */
 };
@@ -60,24 +59,6 @@ lyd_xml_ctx_free(struct lyd_ctx *lydctx)
     lyd_ctx_free(lydctx);
     lyxml_ctx_free(ctx->xmlctx);
     free(ctx);
-}
-
-/**
- * @brief XML-parser's implementation of ly_type_resolve_prefix() callback to provide mapping between prefixes used
- * in the values to the schema via XML namespaces.
- */
-static const struct lys_module *
-lydxml_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len, void *parser)
-{
-    const struct lyxml_ns *ns;
-    struct lyxml_ctx *xmlctx = (struct lyxml_ctx *)parser;
-
-    ns = lyxml_ns_get(xmlctx, prefix, prefix_len);
-    if (!ns) {
-        return NULL;
-    }
-
-    return ly_ctx_get_module_implemented_ns(ctx, ns->uri);
 }
 
 static LY_ERR
@@ -110,7 +91,7 @@ skip_attr:
         }
 
         /* get namespace of the attribute to find its annotation definition */
-        ns = lyxml_ns_get(xmlctx, xmlctx->prefix, xmlctx->prefix_len);
+        ns = lyxml_ns_get(&xmlctx->ns, xmlctx->prefix, xmlctx->prefix_len);
         if (!ns) {
             /* unknown namespace, XML error */
             LOGVAL(xmlctx->ctx, LY_VLOG_LINE, &xmlctx->line, LYVE_REFERENCE, "Unknown XML prefix \"%.*s\".",
@@ -137,8 +118,8 @@ skip_attr:
         assert(xmlctx->status == LYXML_ATTR_CONTENT);
 
         /* create metadata */
-        ret = lyd_parser_create_meta((struct lyd_ctx*)lydctx, NULL, meta, mod, name, name_len, xmlctx->value, xmlctx->value_len,
-                                     &xmlctx->dynamic, 0, lydxml_resolve_prefix, xmlctx, LYD_XML, sparent);
+        ret = lyd_parser_create_meta((struct lyd_ctx *)lydctx, NULL, meta, mod, name, name_len, xmlctx->value,
+                                     xmlctx->value_len, &xmlctx->dynamic, 0, LY_PREF_XML, &xmlctx->ns, sparent);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* next attribute */
@@ -172,7 +153,7 @@ lydxml_attrs(struct lyxml_ctx *xmlctx, struct lyd_attr **attr)
         ns = NULL;
         if (xmlctx->prefix_len) {
             /* get namespace of the attribute */
-            ns = lyxml_ns_get(xmlctx, xmlctx->prefix, xmlctx->prefix_len);
+            ns = lyxml_ns_get(&xmlctx->ns, xmlctx->prefix, xmlctx->prefix_len);
             if (!ns) {
                 LOGVAL(xmlctx->ctx, LY_VLOG_LINE, &xmlctx->line, LYVE_REFERENCE, "Unknown XML prefix \"%.*s\".",
                        xmlctx->prefix_len, xmlctx->prefix);
@@ -257,7 +238,7 @@ lydxml_check_list(struct lyxml_ctx *xmlctx, const struct lysc_node *list)
         assert(xmlctx->status == LYXML_ELEM_CONTENT);
         if (i < key_set.count) {
             /* validate the value */
-            r = _lys_value_validate(NULL, snode, xmlctx->value, xmlctx->value_len, lydxml_resolve_prefix, xmlctx, LYD_XML);
+            r = _lys_value_validate(NULL, snode, xmlctx->value, xmlctx->value_len, LY_PREF_XML, xmlctx);
             if (!r) {
                 /* key with a valid value, remove from the set */
                 ly_set_rm_index(&key_set, i, NULL);
@@ -347,7 +328,7 @@ lydxml_data_check_opaq(struct lyd_xml_ctx *lydctx, const struct lysc_node **snod
 
         if ((*snode)->nodetype & LYD_NODE_TERM) {
             /* value may not be valid in which case we parse it as an opaque node */
-            if (_lys_value_validate(NULL, *snode, xmlctx->value, xmlctx->value_len, lydxml_resolve_prefix, xmlctx, LYD_XML)) {
+            if (_lys_value_validate(NULL, *snode, xmlctx->value, xmlctx->value_len, LY_PREF_XML, &xmlctx->ns)) {
                 *snode = NULL;
             }
         } else {
@@ -416,7 +397,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node_inner *parent, stru
     name_len = xmlctx->name_len;
 
     /* get the element module */
-    ns = lyxml_ns_get(xmlctx, prefix, prefix_len);
+    ns = lyxml_ns_get(&xmlctx->ns, prefix, prefix_len);
     if (!ns) {
         LOGVAL(ctx, LY_VLOG_LINE, &xmlctx->line, LYVE_REFERENCE, "Unknown XML prefix \"%.*s\".",
                prefix_len, prefix);
@@ -505,7 +486,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node_inner *parent, stru
     } else if (snode->nodetype & LYD_NODE_TERM) {
         /* create node */
         LY_CHECK_GOTO(ret = lyd_parser_create_term((struct lyd_ctx*)lydctx, snode, xmlctx->value, xmlctx->value_len,
-                                        &xmlctx->dynamic, 0, lydxml_resolve_prefix, xmlctx, LYD_XML, &node), error);
+                                        &xmlctx->dynamic, 0, LY_PREF_XML, &xmlctx->ns, &node), error);
 
         if (parent && (node->schema->flags & LYS_KEY)) {
             /* check the key order, the anchor must never be a key */
@@ -651,7 +632,6 @@ lyd_parse_xml_data(const struct ly_ctx *ctx, struct ly_in *in, int parse_options
     lydctx->parse_options = parse_options;
     lydctx->validate_options = validate_options;
     lydctx->free = lyd_xml_ctx_free;
-    lydctx->resolve_prefix = lydxml_resolve_prefix;
 
     /* parse XML data */
     while (lydctx->xmlctx->status == LYXML_ELEMENT) {
@@ -692,7 +672,7 @@ lydxml_envelope(struct lyxml_ctx *xmlctx, const char *name, const char *uri, str
 
     prefix = xmlctx->prefix;
     prefix_len = xmlctx->prefix_len;
-    ns = lyxml_ns_get(xmlctx, prefix, prefix_len);
+    ns = lyxml_ns_get(&xmlctx->ns, prefix, prefix_len);
     if (!ns) {
         LOGVAL(xmlctx->ctx, LY_VLOG_LINE, &xmlctx->line, LYVE_REFERENCE, "Unknown XML prefix \"%.*s\".",
                prefix_len, prefix);
@@ -861,7 +841,7 @@ lydxml_notif_envelope(struct lyxml_ctx *xmlctx, struct lyd_node **envp)
 
     prefix = xmlctx->prefix;
     prefix_len = xmlctx->prefix_len;
-    ns = lyxml_ns_get(xmlctx, prefix, prefix_len);
+    ns = lyxml_ns_get(&xmlctx->ns, prefix, prefix_len);
     if (!ns) {
         LOGVAL(xmlctx->ctx, LY_VLOG_LINE, &xmlctx->line, LYVE_REFERENCE, "Unknown XML prefix \"%.*s\".",
                prefix_len, prefix);

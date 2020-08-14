@@ -36,6 +36,124 @@
 #include "xpath.h"
 
 /**
+ * @brief Find import prefix in imports.
+ */
+static const struct lys_module *
+ly_schema_resolve_prefix(const struct ly_ctx *UNUSED(ctx), const char *prefix, size_t prefix_len, void *data)
+{
+    return lys_module_find_prefix((const struct lys_module *)data, prefix, prefix_len);
+}
+
+/**
+ * @brief Find XML namespace prefix in XML namespaces, which are then mapped to modules.
+ */
+static const struct lys_module *
+ly_xml_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len, void *data)
+{
+    const struct lyxml_ns *ns;
+    const struct ly_set *ns_set = data;
+
+    ns = lyxml_ns_get(ns_set, prefix, prefix_len);
+    if (!ns) {
+        return NULL;
+    }
+
+    return ly_ctx_get_module_implemented_ns(ctx, ns->uri);
+}
+
+/**
+ * @brief Find module name.
+ */
+static const struct lys_module *
+ly_json_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len, void *UNUSED(parser))
+{
+    return ly_ctx_get_module_implemented2(ctx, prefix, prefix_len);
+}
+
+const struct lys_module *
+ly_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len, LY_PREFIX_FORMAT format, void *prefix_data)
+{
+    const struct lys_module *mod;
+
+    switch (format) {
+    case LY_PREF_SCHEMA:
+        mod = ly_schema_resolve_prefix(ctx, prefix, prefix_len, prefix_data);
+        break;
+    case LY_PREF_XML:
+        mod = ly_xml_resolve_prefix(ctx, prefix, prefix_len, prefix_data);
+        break;
+    case LY_PREF_JSON:
+        mod = ly_json_resolve_prefix(ctx, prefix, prefix_len, prefix_data);
+        break;
+    }
+
+    return mod;
+}
+
+/**
+ * @brief Find module in import prefixes.
+ */
+static const char *
+ly_schema_get_prefix(const struct lys_module *mod, void *data)
+{
+    const struct lys_module *context_mod = data;
+    LY_ARRAY_COUNT_TYPE u;
+
+    if (context_mod == mod) {
+        return context_mod->prefix;
+    }
+    LY_ARRAY_FOR(context_mod->parsed->imports, u) {
+        if (context_mod->parsed->imports[u].module == mod) {
+            /* match */
+            return context_mod->parsed->imports[u].prefix;
+        }
+    }
+
+    return NULL;
+}
+
+/**
+ * @brief Simply return module local prefix. Also, store the module in a set.
+ */
+static const char *
+ly_xml_get_prefix(const struct lys_module *mod, void *data)
+{
+    struct ly_set *ns_list = data;
+
+    ly_set_add(ns_list, (void *)mod, 0);
+    return mod->prefix;
+}
+
+/**
+ * @brief Simply return module name.
+ */
+static const char *
+ly_json_get_prefix(const struct lys_module *mod, void *UNUSED(data))
+{
+    return mod->name;
+}
+
+const char *
+ly_get_prefix(const struct lys_module *mod, LY_PREFIX_FORMAT format, void *prefix_data)
+{
+    const char *prefix = NULL;
+
+    switch (format) {
+    case LY_PREF_SCHEMA:
+        prefix = ly_schema_get_prefix(mod, prefix_data);
+        break;
+    case LY_PREF_XML:
+        prefix = ly_xml_get_prefix(mod, prefix_data);
+        break;
+    case LY_PREF_JSON:
+        prefix = ly_json_get_prefix(mod, prefix_data);
+        break;
+    }
+
+    return prefix;
+}
+
+/**
  * @brief Generic comparison callback checking the canonical value.
  *
  * Implementation of the ly_type_compare_clb.
@@ -56,11 +174,11 @@ ly_type_compare_canonical(const struct lyd_value *val1, const struct lyd_value *
  * Implementation of the ly_type_print_clb.
  */
 static const char *
-ly_type_print_canonical(const struct lyd_value *value, LYD_FORMAT UNUSED(format),
-                        ly_get_prefix_clb UNUSED(get_prefix), void *UNUSED(printer), int *dynamic)
+ly_type_print_canonical(const struct lyd_value *value, LY_PREFIX_FORMAT UNUSED(format),
+                        void *UNUSED(prefix_data), int *dynamic)
 {
     *dynamic = 0;
-    return (char*)value->canonical_cache;
+    return (char *)value->canonical_cache;
 }
 
 /**
@@ -158,62 +276,6 @@ error:
         *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
         return LY_EVALID;
     }
-}
-
-API struct lyd_value_prefix *
-ly_type_get_prefixes(const struct ly_ctx *ctx, const char *value, size_t value_len, ly_resolve_prefix_clb resolve_prefix,
-                     void *parser)
-{
-    LY_ERR ret;
-    unsigned int c;
-    const char *start, *stop;
-    struct lyd_value_prefix *prefixes = NULL;
-    const struct lys_module *mod;
-    LY_ARRAY_COUNT_TYPE u;
-
-    for (stop = start = value; (size_t)(stop - value) < value_len; start = stop) {
-        size_t bytes;
-        ly_getutf8(&stop, &c, &bytes);
-        if (is_xmlqnamestartchar(c)) {
-            for (ly_getutf8(&stop, &c, &bytes);
-                    is_xmlqnamechar(c) && (size_t)(stop - value) < value_len;
-                    ly_getutf8(&stop, &c, &bytes));
-            stop = stop - bytes;
-            if (*stop == ':') {
-                /* we have a possible prefix */
-                struct lyd_value_prefix *p;
-                size_t len = stop - start;
-                mod = NULL;
-
-                LY_ARRAY_FOR(prefixes, u) {
-                    if (!ly_strncmp(prefixes[u].prefix, start, len)) {
-                        mod = prefixes[u].mod;
-                        break;
-                    }
-                }
-                if (!mod) {
-                    mod = resolve_prefix(ctx, start, len, parser);
-                    if (mod) {
-                        LY_ARRAY_NEW_GOTO(ctx, prefixes, p, ret, error);
-                        p->mod = mod;
-                        p->prefix = lydict_insert(ctx, start, len);
-                    }
-                } /* else the prefix already present */
-            }
-            stop = stop + bytes;
-        }
-    }
-
-    return prefixes;
-
-error:
-    LY_ARRAY_FOR(prefixes, u) {
-        lydict_remove(ctx, prefixes[u].prefix);
-    }
-    LY_ARRAY_FREE(prefixes);
-
-    (void)ret;
-    return NULL;
 }
 
 API LY_ERR
@@ -524,9 +586,9 @@ ly_type_store_canonized(const struct ly_ctx *ctx, int options, const char *value
  */
 static LY_ERR
 ly_type_store_int(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                  ly_resolve_prefix_clb UNUSED(resolve_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
-                  const void *UNUSED(context_node), const struct lyd_node *UNUSED(tree),
-                  struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
+                  LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), const void *UNUSED(context_node),
+                  const struct lyd_node *UNUSED(tree), struct lyd_value *storage, const char **canonized,
+                  struct ly_err_item **err)
 {
     LY_ERR ret;
     int64_t i;
@@ -599,9 +661,9 @@ ly_type_dup_int(const struct ly_ctx *ctx, const struct lyd_value *original, stru
  */
 static LY_ERR
 ly_type_store_uint(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                   ly_resolve_prefix_clb UNUSED(resolve_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
-                   const void *UNUSED(context_node), const struct lyd_node *UNUSED(tree),
-                   struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
+                   LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), const void *UNUSED(context_node),
+                   const struct lyd_node *UNUSED(tree), struct lyd_value *storage, const char **canonized,
+                   struct ly_err_item **err)
 {
     LY_ERR ret;
     uint64_t u;
@@ -673,9 +735,9 @@ ly_type_dup_uint(const struct ly_ctx *ctx, const struct lyd_value *original, str
  */
 static LY_ERR
 ly_type_store_decimal64(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                        ly_resolve_prefix_clb UNUSED(resolve_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
-                        const void *UNUSED(context_node), const struct lyd_node *UNUSED(tree),
-                        struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
+                        LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), const void *UNUSED(context_node),
+                        const struct lyd_node *UNUSED(tree), struct lyd_value *storage, const char **canonized,
+                        struct ly_err_item **err)
 {
     int64_t d;
     struct lysc_type_dec* type_dec = (struct lysc_type_dec*)type;
@@ -757,9 +819,9 @@ ly_type_dup_decimal64(const struct ly_ctx *ctx, const struct lyd_value *original
  */
 static LY_ERR
 ly_type_store_binary(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                     ly_resolve_prefix_clb UNUSED(resolve_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
-                     const void *UNUSED(context_node), const struct lyd_node *UNUSED(tree),
-                     struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
+                     LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), const void *UNUSED(context_node),
+                     const struct lyd_node *UNUSED(tree), struct lyd_value *storage, const char **canonized,
+                     struct ly_err_item **err)
 {
     size_t start = 0, stop = 0, count = 0, u, termination = 0;
     struct lysc_type_bin *type_bin = (struct lysc_type_bin *)type;
@@ -867,9 +929,9 @@ error:
  */
 static LY_ERR
 ly_type_store_string(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                     ly_resolve_prefix_clb UNUSED(resolve_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
-                     const void *UNUSED(context_node), const struct lyd_node *UNUSED(tree),
-                     struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
+                     LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), const void *UNUSED(context_node),
+                     const struct lyd_node *UNUSED(tree), struct lyd_value *storage, const char **canonized,
+                     struct ly_err_item **err)
 {
     struct lysc_type_str *type_str = (struct lysc_type_str *)type;
 
@@ -911,9 +973,9 @@ ly_type_store_string(const struct ly_ctx *ctx, struct lysc_type *type, const cha
  */
 static LY_ERR
 ly_type_store_bits(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                   ly_resolve_prefix_clb UNUSED(resolve_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
-                   const void *UNUSED(context_node), const struct lyd_node *UNUSED(tree),
-                   struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
+                   LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), const void *UNUSED(context_node),
+                   const struct lyd_node *UNUSED(tree), struct lyd_value *storage, const char **canonized,
+                   struct ly_err_item **err)
 {
     LY_ERR ret = LY_EVALID;
     size_t item_len;
@@ -1100,9 +1162,9 @@ ly_type_free_bits(const struct ly_ctx *ctx, struct lyd_value *value)
  */
 static LY_ERR
 ly_type_store_enum(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                   ly_resolve_prefix_clb UNUSED(resolve_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
-                   const void *UNUSED(context_node), const struct lyd_node *UNUSED(tree),
-                   struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
+                   LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), const void *UNUSED(context_node),
+                   const struct lyd_node *UNUSED(tree), struct lyd_value *storage, const char **canonized,
+                   struct ly_err_item **err)
 {
     LY_ARRAY_COUNT_TYPE u, v;
     char *errmsg = NULL;
@@ -1179,8 +1241,8 @@ ly_type_dup_enum(const struct ly_ctx *ctx, const struct lyd_value *original, str
  * Implementation of the ly_type_store_clb.
  */
 static LY_ERR
-ly_type_store_boolean(const struct ly_ctx *ctx, struct lysc_type *UNUSED(type), const char *value, size_t value_len, int options,
-                      ly_resolve_prefix_clb UNUSED(resolve_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
+ly_type_store_boolean(const struct ly_ctx *ctx, struct lysc_type *UNUSED(type), const char *value, size_t value_len,
+                      int options, LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data),
                       const void *UNUSED(context_node), const struct lyd_node *UNUSED(tree),
                       struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
@@ -1240,7 +1302,7 @@ ly_type_dup_boolean(const struct ly_ctx *ctx, const struct lyd_value *original, 
  */
 static LY_ERR
 ly_type_store_empty(const struct ly_ctx *ctx, struct lysc_type *UNUSED(type), const char *value, size_t value_len, int options,
-                    ly_resolve_prefix_clb UNUSED(resolve_prefix), void *UNUSED(parser), LYD_FORMAT UNUSED(format),
+                    LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data),
                     const void *UNUSED(context_node), const struct lyd_node *UNUSED(tree),
                     struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
@@ -1305,9 +1367,9 @@ ly_type_identity_isderived(struct lysc_ident *base, struct lysc_ident *der)
  */
 static LY_ERR
 ly_type_store_identityref(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                          ly_resolve_prefix_clb resolve_prefix, void *parser, LYD_FORMAT UNUSED(format),
-                          const void *UNUSED(context_node), const struct lyd_node *UNUSED(tree),
-                          struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
+                          LY_PREFIX_FORMAT format, void *prefix_data, const void *UNUSED(context_node),
+                          const struct lyd_node *UNUSED(tree),struct lyd_value *storage, const char **canonized,
+                          struct ly_err_item **err)
 {
     struct lysc_type_identityref *type_ident = (struct lysc_type_identityref *)type;
     const char *id_name, *prefix = value;
@@ -1338,7 +1400,7 @@ ly_type_store_identityref(const struct ly_ctx *ctx, struct lysc_type *type, cons
         goto error;
     }
 
-    mod = resolve_prefix(ctx, prefix, prefix_len, parser);
+    mod = ly_resolve_prefix(ctx, prefix, prefix_len, format, prefix_data);
     if (!mod) {
         erc = asprintf(&errmsg, "Invalid identityref \"%.*s\" value - unable to map prefix to YANG schema.", (int)value_len, value);
         goto error;
@@ -1426,12 +1488,12 @@ ly_type_compare_identityref(const struct lyd_value *val1, const struct lyd_value
  * Implementation of the ly_type_print_clb.
  */
 static const char *
-ly_type_print_identityref(const struct lyd_value *value, LYD_FORMAT UNUSED(format), ly_get_prefix_clb get_prefix, void *printer, int *dynamic)
+ly_type_print_identityref(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data, int *dynamic)
 {
     char *result = NULL;
 
     *dynamic = 1;
-    if (asprintf(&result, "%s:%s", get_prefix(value->ident->module, printer), value->ident->name) == -1) {
+    if (asprintf(&result, "%s:%s", ly_get_prefix(value->ident->module, format, prefix_data), value->ident->name) == -1) {
         return NULL;
     } else {
         return result;
@@ -1450,41 +1512,18 @@ ly_type_dup_identityref(const struct ly_ctx *UNUSED(ctx), const struct lyd_value
 }
 
 /**
- * @brief Helper function for ly_type_store_instanceid_parse_predicate_value() to provide prefix mapping for the
- * validation callbacks for the values used in instance-identifier predicates.
- *
- * Implementation of the ly_resolve_prefix_clb.
- */
-static const struct lys_module *
-ly_type_stored_prefixes_clb(const struct ly_ctx *UNUSED(ctx), const char *prefix, size_t prefix_len, void *private)
-{
-    struct lyd_value_prefix *prefixes = (struct lyd_value_prefix*)private;
-    LY_ARRAY_COUNT_TYPE u;
-
-    LY_ARRAY_FOR(prefixes, u) {
-        if (!ly_strncmp(prefixes[u].prefix, prefix, prefix_len)) {
-            return prefixes[u].mod;
-        }
-    }
-    return NULL;
-}
-
-/**
  * @brief Validate and store value of the YANG built-in instance-identifier type.
  *
  * Implementation of the ly_type_store_clb.
  */
 static LY_ERR
 ly_type_store_instanceid(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                         ly_resolve_prefix_clb resolve_prefix, void *parser, LYD_FORMAT format,
-                         const void *context_node, const struct lyd_node *tree, struct lyd_value *storage,
-                         const char **canonized, struct ly_err_item **err)
+                         LY_PREFIX_FORMAT format, void *prefix_data, const void *context_node, const struct lyd_node *tree,
+                         struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
     LY_ERR ret = LY_EVALID;
     struct lysc_type_instanceid *type_inst = (struct lysc_type_instanceid *)type;
     char *errmsg = NULL;
-    struct lyd_value_prefix *prefixes = NULL;
-    LY_ARRAY_COUNT_TYPE u;
     struct ly_path *path = NULL;
     struct ly_set predicates = {0};
     struct lyxp_expr *exp = NULL;
@@ -1506,12 +1545,11 @@ ly_type_store_instanceid(const struct ly_ctx *ctx, struct lysc_type *type, const
     }
 
     switch (format) {
-    case LYD_SCHEMA:
-    case LYD_XML:
+    case LY_PREF_SCHEMA:
+    case LY_PREF_XML:
         prefix_opt = LY_PATH_PREFIX_MANDATORY;
         break;
-    case LYD_JSON:
-    case LYD_LYB:
+    case LY_PREF_JSON:
         prefix_opt = LY_PATH_PREFIX_STRICT_INHERIT;
         break;
     }
@@ -1522,7 +1560,7 @@ ly_type_store_instanceid(const struct ly_ctx *ctx, struct lysc_type *type, const
             /* in error message we print the JSON format of the instance-identifier - in case of XML, it is not possible
              * to get the exactly same string as original, JSON is less demanding and still well readable/understandable. */
             int dynamic = 0;
-            const char *id = storage->realtype->plugin->print(storage, LYD_JSON, json_print_get_prefix, NULL, &dynamic);
+            const char *id = storage->realtype->plugin->print(storage, LY_PREF_JSON, NULL, &dynamic);
             erc = asprintf(&errmsg, "Invalid instance-identifier \"%s\" value - required instance not found.", id);
             if (dynamic) {
                 free((char*)id);
@@ -1535,9 +1573,6 @@ ly_type_store_instanceid(const struct ly_ctx *ctx, struct lysc_type *type, const
         return LY_SUCCESS;
     }
 
-    /* get all used prefixes */
-    prefixes = ly_type_get_prefixes(ctx, value, value_len, resolve_prefix, parser);
-
     /* parse the value */
     ret = ly_path_parse(ctx, ctx_scnode, value, value_len, LY_PATH_BEGIN_ABSOLUTE, LY_PATH_LREF_FALSE,
                         prefix_opt, LY_PATH_PRED_SIMPLE, &exp);
@@ -1548,8 +1583,7 @@ ly_type_store_instanceid(const struct ly_ctx *ctx, struct lysc_type *type, const
 
     /* resolve it on schema tree */
     ret = ly_path_compile(ctx, ctx_scnode->module, NULL, exp, LY_PATH_LREF_FALSE, lysc_is_output(ctx_scnode) ?
-                          LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_SINGLE, ly_type_stored_prefixes_clb,
-                          prefixes, format, &path);
+                          LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_SINGLE, format, prefix_data, &path);
     if (ret) {
         erc = asprintf(&errmsg, "Invalid instance-identifier \"%.*s\" value - semantic error.", (int)value_len, value);
         goto error;
@@ -1575,10 +1609,6 @@ ly_type_store_instanceid(const struct ly_ctx *ctx, struct lysc_type *type, const
     }
 
 cleanup:
-    LY_ARRAY_FOR(prefixes, u) {
-        lydict_remove(ctx, prefixes[u].prefix);
-    }
-    LY_ARRAY_FREE(prefixes);
     ly_set_erase(&predicates, NULL);
     lyxp_expr_free(ctx, exp);
     ly_path_free(ctx, path);
@@ -1600,10 +1630,6 @@ cleanup:
     }
 
 error:
-    LY_ARRAY_FOR(prefixes, u) {
-        lydict_remove(ctx, prefixes[u].prefix);
-    }
-    LY_ARRAY_FREE(prefixes);
     ly_set_erase(&predicates, NULL);
     lyxp_expr_free(ctx, exp);
     ly_path_free(ctx, path);
@@ -1682,8 +1708,7 @@ ly_type_compare_instanceid(const struct lyd_value *val1, const struct lyd_value 
  * Implementation of the ly_type_print_clb.
  */
 static const char *
-ly_type_print_instanceid(const struct lyd_value *value, LYD_FORMAT format, ly_get_prefix_clb get_prefix, void *printer,
-                         int *dynamic)
+ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data, int *dynamic)
 {
     LY_ARRAY_COUNT_TYPE u, v;
     char *result = NULL;
@@ -1694,10 +1719,11 @@ ly_type_print_instanceid(const struct lyd_value *value, LYD_FORMAT format, ly_ge
         return strdup(value->canonical_cache);
     }
 
-    if (format == LYD_XML) {
+    if ((format == LY_PREF_XML) || (format == LY_PREF_SCHEMA)) {
         /* everything is prefixed */
         LY_ARRAY_FOR(value->target, u) {
-            ly_strcat(&result, "/%s:%s", get_prefix(value->target[u].node->module, printer), value->target[u].node->name);
+            ly_strcat(&result, "/%s:%s", ly_get_prefix(value->target[u].node->module, format, prefix_data),
+                      value->target[u].node->name);
             LY_ARRAY_FOR(value->target[u].predicates, v) {
                 struct ly_path_predicate *pred = &value->target[u].predicates[v];
                 switch (value->target[u].pred_type) {
@@ -1711,12 +1737,13 @@ ly_type_print_instanceid(const struct lyd_value *value, LYD_FORMAT format, ly_ge
                 {
                     /* key-predicate */
                     int d = 0;
-                    const char *value = pred->value.realtype->plugin->print(&pred->value, format, get_prefix, printer, &d);
+                    const char *value = pred->value.realtype->plugin->print(&pred->value, format, prefix_data, &d);
                     char quot = '\'';
                     if (strchr(value, quot)) {
                         quot = '"';
                     }
-                    ly_strcat(&result, "[%s:%s=%c%s%c]", get_prefix(pred->key->module, printer), pred->key->name, quot, value, quot);
+                    ly_strcat(&result, "[%s:%s=%c%s%c]", ly_get_prefix(pred->key->module, format, prefix_data),
+                              pred->key->name, quot, value, quot);
                     if (d) {
                         free((char*)value);
                     }
@@ -1726,7 +1753,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LYD_FORMAT format, ly_ge
                 {
                     /* leaf-list-predicate */
                     int d = 0;
-                    const char *value = pred->value.realtype->plugin->print(&pred->value, format, get_prefix, printer, &d);
+                    const char *value = pred->value.realtype->plugin->print(&pred->value, format, prefix_data, &d);
                     char quot = '\'';
                     if (strchr(value, quot)) {
                         quot = '"';
@@ -1740,13 +1767,13 @@ ly_type_print_instanceid(const struct lyd_value *value, LYD_FORMAT format, ly_ge
                 }
             }
         }
-    } else if (format == LYD_JSON) {
+    } else if (format == LY_PREF_JSON) {
         /* only the first node or the node changing module is prefixed */
         struct lys_module *mod = NULL;
         LY_ARRAY_FOR(value->target, u) {
             if (mod != value->target[u].node->module) {
                 mod = value->target[u].node->module;
-                ly_strcat(&result, "/%s:%s", get_prefix(mod, printer), value->target[u].node->name);
+                ly_strcat(&result, "/%s:%s", ly_get_prefix(mod, format, prefix_data), value->target[u].node->name);
             } else {
                 ly_strcat(&result, "/%s", value->target[u].node->name);
             }
@@ -1763,7 +1790,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LYD_FORMAT format, ly_ge
                 {
                     /* key-predicate */
                     int d = 0;
-                    const char *value = pred->value.realtype->plugin->print(&pred->value, format, get_prefix, printer, &d);
+                    const char *value = pred->value.realtype->plugin->print(&pred->value, format, prefix_data, &d);
                     char quot = '\'';
                     if (strchr(value, quot)) {
                         quot = '"';
@@ -1778,7 +1805,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LYD_FORMAT format, ly_ge
                 {
                     /* leaf-list-predicate */
                     int d = 0;
-                    const char *value = pred->value.realtype->plugin->print(&pred->value, format, get_prefix, printer, &d);
+                    const char *value = pred->value.realtype->plugin->print(&pred->value, format, prefix_data, &d);
                     char quot = '\'';
                     if (strchr(value, quot)) {
                         quot = '"';
@@ -1837,10 +1864,10 @@ ly_type_find_leafref(const struct lysc_type_leafref *lref, const struct lyd_node
     uint32_t i;
 
     /* find all target data instances */
-    ret = lyxp_eval(lref->path, LYD_SCHEMA, lref->path_context, node, LYXP_NODE_ELEM, tree, &set, 0);
+    ret = lyxp_eval(lref->path, LY_PREF_SCHEMA, lref->path_context, node, LYXP_NODE_ELEM, tree, &set, 0);
     if (ret) {
         ret = LY_ENOTFOUND;
-        val_str = lref->plugin->print(value, LYD_JSON, json_print_get_prefix, NULL, &dynamic);
+        val_str = lref->plugin->print(value, LY_PREF_JSON, NULL, &dynamic);
         if (asprintf(errmsg, "Invalid leafref value \"%s\" - XPath evaluation error.", val_str) == -1) {
             *errmsg = NULL;
             ret = LY_EMEM;
@@ -1863,7 +1890,7 @@ ly_type_find_leafref(const struct lysc_type_leafref *lref, const struct lyd_node
     }
     if (i == set.used) {
         ret = LY_ENOTFOUND;
-        val_str = lref->plugin->print(value, LYD_JSON, json_print_get_prefix, NULL, &dynamic);
+        val_str = lref->plugin->print(value, LY_PREF_JSON, NULL, &dynamic);
         if (asprintf(errmsg, "Invalid leafref value \"%s\" - no target instance \"%s\" with the same value.", val_str,
                      lref->path->expr) == -1) {
             *errmsg = NULL;
@@ -1894,13 +1921,12 @@ error:
  */
 static LY_ERR
 ly_type_store_leafref(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                      ly_resolve_prefix_clb resolve_prefix, void *parser, LYD_FORMAT format,
-                      const void *context_node, const struct lyd_node *tree,
+                      LY_PREFIX_FORMAT format, void *prefix_data, const void *context_node, const struct lyd_node *tree,
                       struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
     char *errmsg = NULL;
-    struct lysc_type_leafref *type_lr = (struct lysc_type_leafref*)type;
+    struct lysc_type_leafref *type_lr = (struct lysc_type_leafref *)type;
     int storage_dummy = 0;
     const char *orig = NULL;
     struct ly_path *p = NULL;
@@ -1952,9 +1978,8 @@ ly_type_store_leafref(const struct ly_ctx *ctx, struct lysc_type *type, const ch
     }
 
     /* check value according to the real type of the leafref target */
-    ret = type_lr->realtype->plugin->store(ctx, type_lr->realtype, value, value_len, options,
-                                           resolve_prefix, parser, format, context_node, tree,
-                                           storage, canonized, err);
+    ret = type_lr->realtype->plugin->store(ctx, type_lr->realtype, value, value_len, options, format, prefix_data,
+                                           context_node, tree, storage, canonized, err);
     if (ret != LY_SUCCESS && ret != LY_EINCOMPLETE) {
         goto cleanup;
     }
@@ -2002,9 +2027,9 @@ ly_type_compare_leafref(const struct lyd_value *val1, const struct lyd_value *va
  * Implementation of the ly_type_print_clb.
  */
 static const char *
-ly_type_print_leafref(const struct lyd_value *value, LYD_FORMAT format, ly_get_prefix_clb get_prefix, void *printer, int *dynamic)
+ly_type_print_leafref(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data, int *dynamic)
 {
-    return value->realtype->plugin->print(value, format, get_prefix, printer, dynamic);
+    return value->realtype->plugin->print(value, format, prefix_data, dynamic);
 }
 
 /* @brief Duplication callback of the leafref values.
@@ -2038,9 +2063,9 @@ ly_type_free_leafref(const struct ly_ctx *ctx, struct lyd_value *value)
  * @brief Answer if the type is suitable for the parser's hit (if any) in the specified format
  */
 LY_ERR
-type_check_parser_hint(LYD_FORMAT format, int hint, LY_DATA_TYPE type)
+type_check_parser_hint(LY_PREFIX_FORMAT format, int hint, LY_DATA_TYPE type)
 {
-    if (format == LYD_JSON && hint) {
+    if (format == LY_PREF_JSON && hint) {
         switch (type) {
         case LY_TYPE_UINT8:
         case LY_TYPE_UINT16:
@@ -2084,19 +2109,186 @@ type_check_parser_hint(LYD_FORMAT format, int hint, LY_DATA_TYPE type)
 }
 
 /**
+ * @brief Free stored prefix data of a union.
+ *
+ * @param[in] format Format of the prefixes.
+ * @param[in] prefix_data Prefix data to free.
+ */
+static void
+ly_type_union_free_prefix_data(LY_PREFIX_FORMAT format, void *prefix_data)
+{
+    struct ly_set *ns_list;
+    uint32_t i;
+
+    switch (format) {
+    case LY_PREF_XML:
+        ns_list = prefix_data;
+        for (i = 0; i < ns_list->count; ++i) {
+            free(((struct lyxml_ns *)ns_list->objs[i])->prefix);
+            free(((struct lyxml_ns *)ns_list->objs[i])->uri);
+        }
+        ly_set_free(ns_list, free);
+        break;
+    case LY_PREF_SCHEMA:
+    case LY_PREF_JSON:
+        break;
+    }
+}
+
+/**
+ * @brief Store prefix data of a union.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] value Value string to be parsed.
+ * @param[in] value_len Length of the @p value string.
+ * @param[in] format Format of the prefixes in the value.
+ * @param[in] prefix_data Parser's data for get prefix.
+ * @return Created format-specific prefix data for prefix resolution callback.
+ */
+static void *
+ly_type_union_store_prefix_data(const struct ly_ctx *ctx, const char *value, size_t value_len, LY_PREFIX_FORMAT format,
+                                void *prefix_data)
+{
+    unsigned int c;
+    const char *start, *stop;
+    const struct lys_module *mod;
+    struct lyxml_ns *ns;
+    struct ly_set *ns_list;
+
+    switch (format) {
+    case LY_PREF_SCHEMA:
+        /* just remember the local module */
+        return prefix_data;
+    case LY_PREF_XML:
+        /* copy only referenced namespaces from the ns_set */
+        break;
+    case LY_PREF_JSON:
+        /* there should be no prefix data */
+        assert(!prefix_data);
+        return NULL;
+    }
+
+    /* XML only */
+    ns_list = ly_set_new();
+    LY_CHECK_ERR_RET(!ns_list, LOGMEM(ctx), NULL);
+
+    /* add all used prefixes */
+    for (stop = start = value; (size_t)(stop - value) < value_len; start = stop) {
+        size_t bytes;
+        ly_getutf8(&stop, &c, &bytes);
+        if (is_xmlqnamestartchar(c)) {
+            for (ly_getutf8(&stop, &c, &bytes);
+                    is_xmlqnamechar(c) && (size_t)(stop - value) < value_len;
+                    ly_getutf8(&stop, &c, &bytes));
+            stop = stop - bytes;
+            if (*stop == ':') {
+                /* we have a possible prefix */
+                size_t len = stop - start;
+
+                /* do we already have the prefix? */
+                mod = ly_resolve_prefix(ctx, start, len, format, ns_list);
+                if (!mod) {
+                    /* is it even defined? */
+                    mod = ly_resolve_prefix(ctx, start, len, format, prefix_data);
+                    if (mod) {
+                        /* store a new prefix - namespace pair */
+                        ns = calloc(1, sizeof *ns);
+                        LY_CHECK_ERR_GOTO(!ns, LOGMEM(ctx), error);
+                        ly_set_add(ns_list, ns, LY_SET_OPT_USEASLIST);
+
+                        ns->prefix = strndup(start, len);
+                        LY_CHECK_ERR_GOTO(!ns->prefix, LOGMEM(ctx), error);
+                        ns->uri = strdup(mod->ns);
+                        LY_CHECK_ERR_GOTO(!ns->uri, LOGMEM(ctx), error);
+                    }
+                } /* else the prefix already present */
+            }
+            stop = stop + bytes;
+        }
+    }
+
+    /* add default namespace */
+    mod = ly_resolve_prefix(ctx, NULL, 0, format, prefix_data);
+    if (mod) {
+        ns = calloc(1, sizeof *ns);
+        LY_CHECK_ERR_GOTO(!ns, LOGMEM(ctx), error);
+        ly_set_add(ns_list, ns, LY_SET_OPT_USEASLIST);
+
+        ns->uri = strdup(mod->ns);
+        LY_CHECK_ERR_GOTO(!ns->uri, LOGMEM(ctx), error);
+    }
+
+    return ns_list;
+
+error:
+    ly_type_union_free_prefix_data(LY_PREF_XML, ns_list);
+    return NULL;
+}
+
+/**
+ * @brief Duplicate prefix data of a union.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] format Format of the prefixes in the value.
+ * @param[in] prefix_data Prefix data to duplicate.
+ * @return Duplicated prefix data.
+ */
+static void *
+ly_type_union_dup_prefix_data(const struct ly_ctx *ctx, LY_PREFIX_FORMAT format, const void *prefix_data)
+{
+    struct lyxml_ns *ns;
+    struct ly_set *ns_list, *orig;
+    uint32_t i;
+
+    switch (format) {
+    case LY_PREF_SCHEMA:
+        return (void *)prefix_data;
+    case LY_PREF_XML:
+        break;
+    case LY_PREF_JSON:
+        assert(!prefix_data);
+        return NULL;
+    }
+
+    /* XML only */
+    ns_list = ly_set_new();
+    LY_CHECK_ERR_RET(!ns_list, LOGMEM(ctx), NULL);
+
+    /* copy all the namespaces */
+    orig = (struct ly_set *)prefix_data;
+    for (i = 0; i < orig->count; ++i) {
+        ns = calloc(1, sizeof *ns);
+        LY_CHECK_ERR_GOTO(!ns, LOGMEM(ctx), error);
+        ly_set_add(ns_list, ns, LY_SET_OPT_USEASLIST);
+
+        if (((struct lyxml_ns *)orig->objs[i])->prefix) {
+            ns->prefix = strdup(((struct lyxml_ns *)orig->objs[i])->prefix);
+            LY_CHECK_ERR_GOTO(!ns->prefix, LOGMEM(ctx), error);
+        }
+        ns->uri = strdup(((struct lyxml_ns *)orig->objs[i])->uri);
+        LY_CHECK_ERR_GOTO(!ns->uri, LOGMEM(ctx), error);
+    }
+
+    return ns_list;
+
+error:
+    ly_type_union_free_prefix_data(LY_PREF_XML, ns_list);
+    return NULL;
+}
+
+/**
  * @brief Validate, canonize and store value of the YANG built-in union type.
  *
  * Implementation of the ly_type_store_clb.
  */
 static LY_ERR
 ly_type_store_union(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                    ly_resolve_prefix_clb resolve_prefix, void *parser, LYD_FORMAT format,
-                    const void *context_node, const struct lyd_node *tree,
+                    LY_PREFIX_FORMAT format, void *prefix_data, const void *context_node, const struct lyd_node *tree,
                     struct lyd_value *storage, const char **canonized, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u;
-    struct lysc_type_union *type_u = (struct lysc_type_union*)type;
+    struct lysc_type_union *type_u = (struct lysc_type_union *)type;
     struct lyd_value_subvalue *subvalue;
     char *errmsg = NULL;
     int prev_lo;
@@ -2107,8 +2299,8 @@ ly_type_store_union(const struct ly_ctx *ctx, struct lysc_type *type, const char
         /* call the callback second time */
         ret = subvalue->value->realtype->plugin->store(ctx, subvalue->value->realtype, value, value_len,
                                                        options & ~(LY_TYPE_OPTS_CANONIZE | LY_TYPE_OPTS_DYNAMIC),
-                                                       ly_type_stored_prefixes_clb, subvalue->prefixes, format,
-                                                       context_node, tree, subvalue->value, canonized, err);
+                                                       subvalue->format, subvalue->prefix_data, context_node, tree,
+                                                       subvalue->value, canonized, err);
         if (ret) {
             /* second call failed, we have to try another subtype of the union.
              * Unfortunately, since the realtype can change (e.g. in leafref), we are not able to detect
@@ -2128,8 +2320,9 @@ ly_type_store_union(const struct ly_ctx *ctx, struct lysc_type *type, const char
         subvalue = calloc(1, sizeof *subvalue);
         subvalue->value = calloc(1, sizeof *subvalue->value);
 
-        /* store prefixes for later use */
-        subvalue->prefixes = ly_type_get_prefixes(ctx, value, value_len, resolve_prefix, parser);
+        /* store format-specific data for later prefix resolution */
+        subvalue->format = format;
+        subvalue->prefix_data = ly_type_union_store_prefix_data(ctx, value, value_len, format, prefix_data);
 
         /* remember the hint options */
         subvalue->parser_hint = options & LY_TYPE_PARSER_HINTS_MASK;
@@ -2147,8 +2340,8 @@ search_subtype:
             /* turn logging off */
             prev_lo = ly_log_options(0);
             ret = type_u->types[u]->plugin->store(ctx, type_u->types[u], value, value_len, options & ~LY_TYPE_OPTS_DYNAMIC,
-                                                  ly_type_stored_prefixes_clb, subvalue->prefixes, format,
-                                                  context_node, tree, subvalue->value, canonized, err);
+                                                  subvalue->format, subvalue->prefix_data, context_node, tree, subvalue->value,
+                                                  canonized, err);
             /* restore logging */
             ly_log_options(prev_lo);
             if (ret == LY_SUCCESS || ret == LY_EINCOMPLETE) {
@@ -2167,11 +2360,11 @@ search_subtype:
                 *err = ly_err_new(LY_LLERR, LY_EVALID, LYVE_DATA, errmsg, NULL, NULL);
                 ret = LY_EVALID;
             }
-            LY_ARRAY_FOR(subvalue->prefixes, u) {
-                lydict_remove(ctx, subvalue->prefixes[u].prefix);
-            }
-            LY_ARRAY_FREE(subvalue->prefixes);
+
+            /* free any stored information */
+            subvalue->value->realtype->plugin->free(ctx, subvalue->value);
             free(subvalue->value);
+            ly_type_union_free_prefix_data(subvalue->format, subvalue->prefix_data);
             free(subvalue);
             if ((options & LY_TYPE_OPTS_SECOND_CALL) && (options & LY_TYPE_OPTS_STORE)) {
                 storage->subvalue = NULL;
@@ -2186,17 +2379,15 @@ search_subtype:
     /* success */
 
     if (options & LY_TYPE_OPTS_DYNAMIC) {
-        free((char*)value);
+        free((char *)value);
     }
 
     if (options & LY_TYPE_OPTS_STORE) {
         storage->subvalue = subvalue;
     } else {
-        LY_ARRAY_FOR(subvalue->prefixes, u) {
-            lydict_remove(ctx, subvalue->prefixes[u].prefix);
-        }
-        LY_ARRAY_FREE(subvalue->prefixes);
+        subvalue->value->realtype->plugin->free(ctx, subvalue->value);
         free(subvalue->value);
+        ly_type_union_free_prefix_data(subvalue->format, subvalue->prefix_data);
         free(subvalue);
     }
 
@@ -2223,9 +2414,9 @@ ly_type_compare_union(const struct lyd_value *val1, const struct lyd_value *val2
  * Implementation of the ly_type_print_clb.
  */
 static const char *
-ly_type_print_union(const struct lyd_value *value, LYD_FORMAT format, ly_get_prefix_clb get_prefix, void *printer, int *dynamic)
+ly_type_print_union(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data, int *dynamic)
 {
-    return value->subvalue->value->realtype->plugin->print(value->subvalue->value, format, get_prefix, printer, dynamic);
+    return value->subvalue->value->realtype->plugin->print(value->subvalue->value, format, prefix_data, dynamic);
 }
 
 /* @brief Duplication callback of the union values.
@@ -2235,18 +2426,11 @@ ly_type_print_union(const struct lyd_value *value, LYD_FORMAT format, ly_get_pre
 static LY_ERR
 ly_type_dup_union(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup)
 {
-    LY_ARRAY_COUNT_TYPE u;
-
     dup->subvalue = calloc(1, sizeof *dup->subvalue);
     LY_CHECK_ERR_RET(!dup->subvalue, LOGMEM(ctx), LY_EMEM);
-    if (original->subvalue->prefixes) {
-        LY_ARRAY_CREATE_RET(ctx, dup->subvalue->prefixes, LY_ARRAY_COUNT(original->subvalue->prefixes), LY_EMEM);
-        LY_ARRAY_FOR(original->subvalue->prefixes, u) {
-            LY_ARRAY_INCREMENT(dup->subvalue->prefixes);
-            dup->subvalue->prefixes[u].mod = original->subvalue->prefixes[u].mod;
-            dup->subvalue->prefixes[u].prefix = lydict_insert(ctx, original->subvalue->prefixes[u].prefix, 0);
-        }
-    }
+    dup->subvalue->format = original->subvalue->format;
+    dup->subvalue->prefix_data = ly_type_union_dup_prefix_data(ctx, original->subvalue->format,
+                                                               original->subvalue->prefix_data);
     dup->subvalue->value = calloc(1, sizeof *dup->subvalue->value);
     LY_CHECK_ERR_RET(!dup->subvalue->value, LOGMEM(ctx), LY_EMEM);
     dup->subvalue->value->realtype = original->subvalue->value->realtype;
@@ -2263,16 +2447,11 @@ ly_type_dup_union(const struct ly_ctx *ctx, const struct lyd_value *original, st
 static void
 ly_type_free_union(const struct ly_ctx *ctx, struct lyd_value *value)
 {
-    LY_ARRAY_COUNT_TYPE u;
-
     if (value->subvalue) {
         if (value->subvalue->value) {
             value->subvalue->value->realtype->plugin->free(ctx, value->subvalue->value);
-            LY_ARRAY_FOR(value->subvalue->prefixes, u) {
-                lydict_remove(ctx, value->subvalue->prefixes[u].prefix);
-            }
-            LY_ARRAY_FREE(value->subvalue->prefixes);
             free(value->subvalue->value);
+            ly_type_union_free_prefix_data(value->subvalue->format, value->subvalue->prefix_data);
         }
         free(value->subvalue);
         value->subvalue = NULL;

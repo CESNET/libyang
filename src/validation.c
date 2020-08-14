@@ -77,7 +77,7 @@ lyd_validate_when(struct lyd_node **tree, struct lyd_node *node, struct lysc_whe
     }
 
     /* evaluate when */
-    ret = lyxp_eval(when->cond, LYD_SCHEMA, when->module, ctx_node, ctx_node ? LYXP_NODE_ELEM : LYXP_NODE_ROOT_CONFIG,
+    ret = lyxp_eval(when->cond, LY_PREF_SCHEMA, when->module, ctx_node, ctx_node ? LYXP_NODE_ELEM : LYXP_NODE_ROOT_CONFIG,
                     *tree, &xp_set, LYXP_SCHEMA);
     lyxp_set_cast(&xp_set, LYXP_SET_BOOLEAN);
 
@@ -111,7 +111,7 @@ lyd_validate_when(struct lyd_node **tree, struct lyd_node *node, struct lysc_whe
 
 LY_ERR
 lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, struct ly_set *node_types, struct ly_set *meta_types,
-                   LYD_FORMAT format, ly_resolve_prefix_clb get_prefix_clb, void *parser_data, struct lyd_node **diff)
+                   LY_PREFIX_FORMAT format, void *prefix_data, struct lyd_node **diff)
 {
     LY_ERR ret = LY_SUCCESS;
     uint32_t i;
@@ -172,8 +172,8 @@ lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, struct ly_s
             struct lyd_node_term *node = (struct lyd_node_term *)node_types->objs[i];
 
             /* validate and store the value of the node */
-            ret = lyd_value_parse(node, node->value.original, strlen(node->value.original), 0, 1, 0, get_prefix_clb,
-                                  parser_data, format, *tree);
+            ret = lyd_value_parse(node, node->value.original, strlen(node->value.original), 0, 1, 0, format,
+                                  prefix_data, *tree);
             LY_CHECK_RET(ret);
 
             /* remove this node from the set */
@@ -191,7 +191,7 @@ lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, struct ly_s
 
             /* validate and store the value of the metadata */
             ret = lyd_value_parse_meta(meta->parent->schema->module->ctx, meta, meta->value.original,
-                                       strlen(meta->value.original), 0, 1, 0, get_prefix_clb, parser_data, format, NULL, *tree);
+                                       strlen(meta->value.original), 0, 1, 0, format, prefix_data, NULL, *tree);
             LY_CHECK_RET(ret);
 
             /* remove this attr from the set */
@@ -741,7 +741,7 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
                     }
 
                     /* get canonical string value */
-                    str = val->realtype->plugin->print(val, LYD_JSON, json_print_get_prefix, NULL, &dynamic);
+                    str = val->realtype->plugin->print(val, LY_PREF_JSON, NULL, &dynamic);
                     hash = dict_hash_multi(hash, str, strlen(str));
                     if (dynamic) {
                         free((char *)str);
@@ -928,7 +928,8 @@ lyd_validate_must(const struct lyd_node *node, LYD_VALIDATE_OP op)
         memset(&xp_set, 0, sizeof xp_set);
 
         /* evaluate must */
-        LY_CHECK_RET(lyxp_eval(musts[u].cond, LYD_SCHEMA, musts[u].module, node, LYXP_NODE_ELEM, tree, &xp_set, LYXP_SCHEMA));
+        LY_CHECK_RET(lyxp_eval(musts[u].cond, LY_PREF_SCHEMA, musts[u].module, node, LYXP_NODE_ELEM, tree, &xp_set,
+                               LYXP_SCHEMA));
 
         /* check the result */
         lyxp_set_cast(&xp_set, LYXP_SET_BOOLEAN);
@@ -1122,8 +1123,7 @@ lyd_validate(struct lyd_node **tree, const struct lys_module *module, const stru
         }
 
         /* finish incompletely validated terminal values/attributes and when conditions */
-        ret = lyd_validate_unres(tree, &when_check, &type_check, &type_meta_check, LYD_JSON, lydjson_resolve_prefix,
-                                 NULL, diff);
+        ret = lyd_validate_unres(tree, &when_check, &type_check, &type_meta_check, LY_PREF_JSON, NULL, diff);
         LY_CHECK_GOTO(ret, cleanup);
 
         /* perform final validation that assumes the data tree is final */
@@ -1254,7 +1254,7 @@ lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *tree, LYD_VALID
 
     /* finish incompletely validated terminal values/attributes and when conditions on the full tree */
     LY_CHECK_GOTO(ret = lyd_validate_unres((struct lyd_node **)&tree, &when_check, &type_check, &type_meta_check,
-                                           LYD_JSON, lydjson_resolve_prefix, NULL, diff), cleanup);
+                                           LY_PREF_JSON, NULL, diff), cleanup);
 
     /* perform final validation of the operation/notification */
     lyd_validate_obsolete(op_node);

@@ -22,6 +22,7 @@
 #include "printer.h"
 #include "printer_internal.h"
 #include "tree_data.h"
+#include "tree_schema.h"
 
 static LY_ERR
 lyd_print_(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, int options)
@@ -38,9 +39,9 @@ lyd_print_(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, i
     case LYD_LYB:
         ret = lyb_print_data(out, root, options);
         break;
-    case LYD_SCHEMA:
-        LOGERR(out->ctx, LY_EINVAL, "Invalid output format.");
-        ret = LY_EINVAL;
+    case LYD_UNKNOWN:
+        LOGINT(root ? LYD_NODE_CTX(root) : NULL);
+        ret = LY_EINT;
         break;
     }
 

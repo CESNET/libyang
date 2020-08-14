@@ -197,13 +197,13 @@ lyxml_ns_rm(struct lyxml_ctx *xmlctx)
 }
 
 const struct lyxml_ns *
-lyxml_ns_get(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_len)
+lyxml_ns_get(const struct ly_set *ns_set, const char *prefix, size_t prefix_len)
 {
     unsigned int u;
     struct lyxml_ns *ns;
 
-    for (u = xmlctx->ns.count - 1; u + 1 > 0; --u) {
-        ns = (struct lyxml_ns *)xmlctx->ns.objs[u];
+    for (u = ns_set->count - 1; u + 1 > 0; --u) {
+        ns = (struct lyxml_ns *)ns_set->objs[u];
         if (prefix && prefix_len) {
             if (ns->prefix && !ly_strncmp(ns->prefix, prefix, prefix_len)) {
                 return ns;
@@ -1097,7 +1097,7 @@ lyxml_get_prefixes(struct lyxml_ctx *xmlctx, const char *value, size_t value_len
             if (*stop == ':') {
                 /* we have a possible prefix */
                 len = stop - start;
-                ns = lyxml_ns_get(xmlctx, start, len);
+                ns = lyxml_ns_get(&xmlctx->ns, start, len);
                 if (ns) {
                     struct ly_prefix *p = NULL;
 

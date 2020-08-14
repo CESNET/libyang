@@ -57,17 +57,6 @@ struct jsonpr_ctx {
 static LY_ERR json_print_node(struct jsonpr_ctx *ctx, const struct lyd_node *node);
 
 /**
- * @brief JSON mapping of YANG modules to prefixes in values.
- *
- * Implementation of ly_get_prefix_clb.
- */
-const char *
-json_print_get_prefix(const struct lys_module *mod, void *UNUSED(private))
-{
-    return mod->name;
-}
-
-/**
  * Compare 2 nodes, despite it is regular data node or an opaq node, and
  * decide if they corresponds to the same schema node.
  *
@@ -174,8 +163,8 @@ node_prefix(const struct lyd_node *node)
                 return NULL;
             }
             return mod->name;
-        case LYD_SCHEMA:
         case LYD_LYB:
+        case LYD_UNKNOWN:
             /* cannot be created */
             LOGINT(LYD_NODE_CTX(node));
         }
@@ -317,8 +306,8 @@ json_print_member2(struct jsonpr_ctx *ctx, const struct lyd_node *parent, LYD_FO
                 module_name = mod->name;
             }
             break;
-        case LYD_SCHEMA:
         case LYD_LYB:
+        case LYD_UNKNOWN:
             /* cannot be created */
             LOGINT_RET(ctx->ctx);
         }
@@ -345,7 +334,7 @@ static LY_ERR
 json_print_value(struct jsonpr_ctx *ctx, const struct lyd_value *val)
 {
     int dynamic = 0;
-    const char *value = val->realtype->plugin->print(val, LYD_JSON, json_print_get_prefix, NULL, &dynamic);
+    const char *value = val->realtype->plugin->print(val, LY_PREF_JSON, NULL, &dynamic);
 
     /* leafref is not supported */
     switch (val->realtype->basetype) {
