@@ -3512,7 +3512,7 @@ xpath_concat(struct lyxp_set **args, uint16_t arg_count, struct lyxp_set *set, i
                     LOGWRN(set->ctx, "Argument #%u of %s is a %s node \"%s\".",
                            i + 1, __func__, lys_nodetype2str(sleaf->nodetype), sleaf->name);
                 } else if (!warn_is_string_type(sleaf->type)) {
-                    LOGWRN(set->ctx, "Argument #%u of %s is node \"%s\", not of string-type.", __func__, i + 1, sleaf->name);
+                    LOGWRN(set->ctx, "Argument #%u of %s is node \"%s\", not of string-type.", i + 1, __func__, sleaf->name);
                 }
             }
         }
