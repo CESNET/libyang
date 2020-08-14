@@ -188,12 +188,10 @@ const char *ly_out_filepath(struct ly_out *out, const char *filepath);
  * Alternatively, ly_write() can be used.
  *
  * @param[in] out Output specification.
- * @param[in] format format string to be printed.
- * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
- * @return The number of printed bytes.
- * @return Negative value in case of error, absolute value of the return code maps to LY_ERR value.
+ * @param[in] format Format string to be printed.
+ * @return LY_ERR value, get number of the printed bytes using ::ly_out_printed.
  */
-ssize_t ly_print(struct ly_out *out, const char *format, ...);
+LY_ERR ly_print(struct ly_out *out, const char *format, ...);
 
 /**
  * @brief Flush the output from any internal buffers and clean any auxiliary data.
@@ -206,16 +204,12 @@ void ly_print_flush(struct ly_out *out);
  *
  * Alternatively, ly_print() can be used.
  *
- * As an extension for printing holes (skipping some data until they are known),
- * ly_write_skip() and ly_write_skipped() can be used.
- *
  * @param[in] out Output specification.
  * @param[in] buf Memory buffer with the data to print.
  * @param[in] len Length of the data to print in the @p buf.
- * @return The number of printed bytes.
- * @return Negative value in case of error, absolute value of the return code maps to LY_ERR value.
+ * @return LY_ERR value, get number of the printed bytes using ::ly_out_printed.
  */
-ssize_t ly_write(struct ly_out *out, const char *buf, size_t len);
+LY_ERR ly_write(struct ly_out *out, const char *buf, size_t len);
 
 /**
  * @brief Get the number of printed bytes by the last function.

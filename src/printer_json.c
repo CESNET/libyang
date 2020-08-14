@@ -51,7 +51,7 @@ struct jsonpr_ctx {
 
 #define PRINT_COMMA \
     if (ctx->level_printed >= ctx->level) {\
-        ly_print(ctx->out, ",%s", (DO_FORMAT ? "\n" : ""));\
+        ly_print_(ctx->out, ",%s", (DO_FORMAT ? "\n" : ""));\
     }
 
 static LY_ERR json_print_node(struct jsonpr_ctx *ctx, const struct lyd_node *node);
@@ -96,7 +96,7 @@ static void
 json_print_array_open(struct jsonpr_ctx *ctx, const struct lyd_node *node)
 {
     /* leaf-list's content is always printed on a single line */
-    ly_print(ctx->out, "[%s", (!node->schema || node->schema->nodetype != LYS_LEAFLIST) && DO_FORMAT ? "\n" : "");
+    ly_print_(ctx->out, "[%s", (!node->schema || node->schema->nodetype != LYS_LEAFLIST) && DO_FORMAT ? "\n" : "");
     ly_set_add(&ctx->open, (void*)node, 0);
     LEVEL_INC;
 }
@@ -133,9 +133,9 @@ json_print_array_close(struct jsonpr_ctx *ctx)
     ly_set_rm_index(&ctx->open, ctx->open.count - 1, NULL);
     if (schema && schema->nodetype == LYS_LEAFLIST) {
         /* leaf-list's content is always printed on a single line */
-        ly_print(ctx->out, "]");
+        ly_print_(ctx->out, "]");
     } else {
-        ly_print(ctx->out, "%s%*s]", DO_FORMAT ? "\n" : "", INDENT);
+        ly_print_(ctx->out, "%s%*s]", DO_FORMAT ? "\n" : "", INDENT);
     }
 }
 
@@ -214,40 +214,40 @@ json_nscmp(const struct lyd_node *node1, const struct lyd_node *node2)
  *
  * @param[in] out The output handler.
  * @param[in] text The string to print.
- * @return The number of printed characters.
+ * @return LY_ERR value.
  */
-static int
+static LY_ERR
 json_print_string(struct ly_out *out, const char *text)
 {
     unsigned int i, n;
 
     if (!text) {
-        return 0;
+        return LY_SUCCESS;
     }
 
-    ly_write(out, "\"", 1);
+    ly_write_(out, "\"", 1);
     for (i = n = 0; text[i]; i++) {
         const unsigned char ascii = text[i];
         if (ascii < 0x20) {
             /* control character */
-            n += ly_print(out, "\\u%.4X", ascii);
+            ly_print_(out, "\\u%.4X", ascii);
         } else {
             switch (ascii) {
             case '"':
-                n += ly_print(out, "\\\"");
+                ly_print_(out, "\\\"");
                 break;
             case '\\':
-                n += ly_print(out, "\\\\");
+                ly_print_(out, "\\\\");
                 break;
             default:
-                ly_write(out, &text[i], 1);
+                ly_write_(out, &text[i], 1);
                 n++;
             }
         }
     }
-    ly_write(out, "\"", 1);
+    ly_write_(out, "\"", 1);
 
-    return n + 2;
+    return LY_SUCCESS;
 }
 
 /**
@@ -264,10 +264,10 @@ json_print_member(struct jsonpr_ctx *ctx, const struct lyd_node *node, int is_at
     PRINT_COMMA;
     if (LEVEL == 1 || json_nscmp(node, (const struct lyd_node*)node->parent)) {
         /* print "namespace" */
-        ly_print(ctx->out, "%*s\"%s%s:%s\":%s", INDENT, is_attr ? "@" : "",
+        ly_print_(ctx->out, "%*s\"%s%s:%s\":%s", INDENT, is_attr ? "@" : "",
                  node_prefix(node), node->schema->name, DO_FORMAT ? " " : "");
     } else {
-        ly_print(ctx->out, "%*s\"%s%s\":%s", INDENT, is_attr ? "@" : "",
+        ly_print_(ctx->out, "%*s\"%s%s\":%s", INDENT, is_attr ? "@" : "",
                  node->schema->name, DO_FORMAT ? " " : "");
     }
 
@@ -315,9 +315,9 @@ json_print_member2(struct jsonpr_ctx *ctx, const struct lyd_node *parent, LYD_FO
 
     /* print the member */
     if (module_name && (!parent || node_prefix(parent) != module_name)) {
-        ly_print(ctx->out, "%*s\"%s%s:%s\":%s", INDENT, is_attr ? "@" : "", module_name, name, DO_FORMAT ? " " : "");
+        ly_print_(ctx->out, "%*s\"%s%s:%s\":%s", INDENT, is_attr ? "@" : "", module_name, name, DO_FORMAT ? " " : "");
     } else {
-        ly_print(ctx->out, "%*s\"%s%s\":%s", INDENT, is_attr ? "@" : "", name, DO_FORMAT ? " " : "");
+        ly_print_(ctx->out, "%*s\"%s%s\":%s", INDENT, is_attr ? "@" : "", name, DO_FORMAT ? " " : "");
     }
 
     return LY_SUCCESS;
@@ -357,11 +357,11 @@ json_print_value(struct jsonpr_ctx *ctx, const struct lyd_value *val)
     case LY_TYPE_UINT16:
     case LY_TYPE_UINT32:
     case LY_TYPE_BOOL:
-        ly_print(ctx->out, "%s", value[0] ? value : "null");
+        ly_print_(ctx->out, "%s", value[0] ? value : "null");
         break;
 
     case LY_TYPE_EMPTY:
-        ly_print(ctx->out, "[null]");
+        ly_print_(ctx->out, "[null]");
         break;
 
     default:
@@ -390,7 +390,7 @@ json_print_attribute(struct jsonpr_ctx *ctx, const struct lyd_node_opaq *node, c
     struct lyd_attr *attr;
 
     if (wdmod) {
-        ly_print(ctx->out, "%*s\"%s:default\":\"true\"", INDENT, wdmod->name);
+        ly_print_(ctx->out, "%*s\"%s:default\":\"true\"", INDENT, wdmod->name);
         LEVEL_PRINTED;
     }
 
@@ -399,9 +399,9 @@ json_print_attribute(struct jsonpr_ctx *ctx, const struct lyd_node_opaq *node, c
         json_print_member2(ctx, (struct lyd_node*)node, attr->format, &attr->prefix, attr->name, 0);
 
         if (attr->hint & (LYD_NODE_OPAQ_ISBOOLEAN | LYD_NODE_OPAQ_ISNUMBER)) {
-            ly_print(ctx->out, "%s", attr->value[0] ? attr->value : "null");
+            ly_print_(ctx->out, "%s", attr->value[0] ? attr->value : "null");
         } else if (attr->hint & LYD_NODE_OPAQ_ISEMPTY) {
-            ly_print(ctx->out, "[null]");
+            ly_print_(ctx->out, "[null]");
         } else {
             json_print_string(ctx->out, attr->value);
         }
@@ -425,13 +425,13 @@ json_print_metadata(struct jsonpr_ctx *ctx, const struct lyd_node *node, const s
     struct lyd_meta *meta;
 
     if (wdmod) {
-        ly_print(ctx->out, "%*s\"%s:default\":\"true\"", INDENT, wdmod->name);
+        ly_print_(ctx->out, "%*s\"%s:default\":\"true\"", INDENT, wdmod->name);
         LEVEL_PRINTED;
     }
 
     for (meta = node->meta; meta; meta = meta->next) {
         PRINT_COMMA;
-        ly_print(ctx->out, "%*s\"%s:%s\":%s", INDENT, meta->annotation->module->name, meta->name, DO_FORMAT ? " " : "");
+        ly_print_(ctx->out, "%*s\"%s:%s\":%s", INDENT, meta->annotation->module->name, meta->name, DO_FORMAT ? " " : "");
         LY_CHECK_RET(json_print_value(ctx, &meta->value));
         LEVEL_PRINTED;
     }
@@ -464,11 +464,11 @@ json_print_attributes(struct jsonpr_ctx *ctx, const struct lyd_node *node, int i
         } else {
             LY_CHECK_RET(json_print_member(ctx, node, 1));
         }
-        ly_print(ctx->out, "{%s", (DO_FORMAT ? "\n" : ""));
+        ly_print_(ctx->out, "{%s", (DO_FORMAT ? "\n" : ""));
         LEVEL_INC;
         LY_CHECK_RET(json_print_metadata(ctx, node, wdmod));
         LEVEL_DEC;
-        ly_print(ctx->out, "%s%*s}", DO_FORMAT ? "\n" : "", INDENT);
+        ly_print_(ctx->out, "%s%*s}", DO_FORMAT ? "\n" : "", INDENT);
         LEVEL_PRINTED;
     } else if (!node->schema && ((struct lyd_node_opaq*)node)->attr) {
         if (inner) {
@@ -477,11 +477,11 @@ json_print_attributes(struct jsonpr_ctx *ctx, const struct lyd_node *node, int i
             LY_CHECK_RET(json_print_member2(ctx, node, ((struct lyd_node_opaq*)node)->format,
                                             &((struct lyd_node_opaq*)node)->prefix, ((struct lyd_node_opaq*)node)->name, 1));
         }
-        ly_print(ctx->out, "{%s", (DO_FORMAT ? "\n" : ""));
+        ly_print_(ctx->out, "{%s", (DO_FORMAT ? "\n" : ""));
         LEVEL_INC;
         LY_CHECK_RET(json_print_attribute(ctx, (struct lyd_node_opaq*)node, wdmod));
         LEVEL_DEC;
-        ly_print(ctx->out, "%s%*s}", DO_FORMAT ? "\n" : "", INDENT);
+        ly_print_(ctx->out, "%s%*s}", DO_FORMAT ? "\n" : "", INDENT);
         LEVEL_PRINTED;
     }
 
@@ -563,7 +563,7 @@ json_print_anydata(struct jsonpr_ctx *ctx, struct lyd_node_any *any)
         if (!any->value.str[0]) {
             return LY_SUCCESS;
         }
-        ly_print(ctx->out, "%*s%s", INDENT, any->value.str);
+        ly_print_(ctx->out, "%*s%s", INDENT, any->value.str);
         break;
     case LYD_ANYDATA_STRING:
     case LYD_ANYDATA_XML:
@@ -598,10 +598,10 @@ json_print_inner(struct jsonpr_ctx *ctx, const struct lyd_node *node)
     }
 
     if (!node->schema || node->schema->nodetype != LYS_LIST) {
-        ly_print(ctx->out, "%s{%s", (is_open_array(ctx, node) && ctx->level_printed >= ctx->level) ? "," : "",
+        ly_print_(ctx->out, "%s{%s", (is_open_array(ctx, node) && ctx->level_printed >= ctx->level) ? "," : "",
                  (DO_FORMAT && has_content) ? "\n" : "");
     } else {
-        ly_print(ctx->out, "%s%*s{%s", (is_open_array(ctx, node) && ctx->level_printed >= ctx->level) ? "," : "",
+        ly_print_(ctx->out, "%s%*s{%s", (is_open_array(ctx, node) && ctx->level_printed >= ctx->level) ? "," : "",
                  INDENT, (DO_FORMAT && has_content) ? "\n" : "");
     }
     LEVEL_INC;
@@ -621,9 +621,9 @@ json_print_inner(struct jsonpr_ctx *ctx, const struct lyd_node *node)
 
     LEVEL_DEC;
     if (DO_FORMAT && has_content) {
-        ly_print(ctx->out, "\n%*s}", INDENT);
+        ly_print_(ctx->out, "\n%*s}", INDENT);
     } else {
-        ly_print(ctx->out, "}");
+        ly_print_(ctx->out, "}");
     }
     LEVEL_PRINTED;
 
@@ -664,13 +664,13 @@ json_print_leaf_list(struct jsonpr_ctx *ctx, const struct lyd_node *node)
         LY_CHECK_RET(json_print_member(ctx, node, 0));
         json_print_array_open(ctx, node);
     } else if (node->schema->nodetype == LYS_LEAFLIST) {
-        ly_print(ctx->out, ",");
+        ly_print_(ctx->out, ",");
     }
 
     if (node->schema->nodetype == LYS_LIST) {
         if (!lyd_node_children(node, 0)) {
             /* empty, e.g. in case of filter */
-            ly_print(ctx->out, "%s%snull", (ctx->level_printed >= ctx->level) ? "," : "", DO_FORMAT ? " " : "");
+            ly_print_(ctx->out, "%s%snull", (ctx->level_printed >= ctx->level) ? "," : "", DO_FORMAT ? " " : "");
             LEVEL_PRINTED;
         } else {
             /* print list's content */
@@ -715,18 +715,18 @@ json_print_metadata_leaflist(struct jsonpr_ctx *ctx)
     /* node is the first instance of the leaf-list */
 
     LY_CHECK_RET(json_print_member(ctx, node, 1));
-    ly_print(ctx->out, "[%s", (DO_FORMAT ? "\n" : ""));
+    ly_print_(ctx->out, "[%s", (DO_FORMAT ? "\n" : ""));
     LEVEL_INC;
     LY_LIST_FOR(node, iter) {
         PRINT_COMMA;
         if (iter->meta) {
-            ly_print(ctx->out, "%*s%s", INDENT, DO_FORMAT ? "{\n" : "{");
+            ly_print_(ctx->out, "%*s%s", INDENT, DO_FORMAT ? "{\n" : "{");
             LEVEL_INC;
             LY_CHECK_RET(json_print_metadata(ctx, iter, NULL));
             LEVEL_DEC;
-            ly_print(ctx->out, "%s%*s}", DO_FORMAT ? "\n" : "", INDENT);
+            ly_print_(ctx->out, "%s%*s}", DO_FORMAT ? "\n" : "", INDENT);
         } else {
-            ly_print(ctx->out, "null");
+            ly_print_(ctx->out, "null");
         }
         LEVEL_PRINTED;
         if (!matching_node(iter, iter->next)) {
@@ -734,7 +734,7 @@ json_print_metadata_leaflist(struct jsonpr_ctx *ctx)
         }
     }
     LEVEL_DEC;
-    ly_print(ctx->out, "%s%*s]", DO_FORMAT ? "\n" : "", INDENT);
+    ly_print_(ctx->out, "%s%*s]", DO_FORMAT ? "\n" : "", INDENT);
     LEVEL_PRINTED;
 
     return LY_SUCCESS;
@@ -776,12 +776,12 @@ json_print_opaq(struct jsonpr_ctx *ctx, const struct lyd_node_opaq *node)
         LEVEL_PRINTED;
     } else {
         if (node->hint & LYD_VALUE_PARSE_ISEMPTY) {
-            ly_print(ctx->out, "[null]");
+            ly_print_(ctx->out, "[null]");
         } else if (node->hint & (LYD_VALUE_PARSE_ISBOOLEAN | LYD_VALUE_PARSE_ISNUMBER)) {
-            ly_print(ctx->out, "%s", node->value);
+            ly_print_(ctx->out, "%s", node->value);
         } else {
             /* string */
-            ly_print(ctx->out, "\"%s\"", node->value);
+            ly_print_(ctx->out, "\"%s\"", node->value);
         }
         LEVEL_PRINTED;
 
@@ -866,7 +866,7 @@ json_print_data(struct ly_out *out, const struct lyd_node *root, int options)
     ctx.ctx = LYD_NODE_CTX(root);
 
     /* start */
-    ly_print(ctx.out, "{%s", delimiter);
+    ly_print_(ctx.out, "{%s", delimiter);
 
     /* content */
     LY_LIST_FOR(root, node) {
@@ -877,7 +877,7 @@ json_print_data(struct ly_out *out, const struct lyd_node *root, int options)
     }
 
     /* end */
-    ly_print(out, "%s}%s", delimiter, delimiter);
+    ly_print_(out, "%s}%s", delimiter, delimiter);
 
     assert(!ctx.open.count);
     ly_set_erase(&ctx.open, NULL);

@@ -28,7 +28,7 @@
 #include "compat.h"
 #include "dict.h"
 #include "parser_internal.h"
-#include "printer.h"
+#include "printer_internal.h"
 #include "tree.h"
 #include "tree_data.h"
 
@@ -1042,7 +1042,7 @@ lyxml_ctx_free(struct lyxml_ctx *xmlctx)
 LY_ERR
 lyxml_dump_text(struct ly_out *out, const char *text, int attribute)
 {
-    ssize_t ret = LY_SUCCESS;
+    LY_ERR ret;
     unsigned int u;
 
     if (!text) {
@@ -1052,27 +1052,29 @@ lyxml_dump_text(struct ly_out *out, const char *text, int attribute)
     for (u = 0; text[u]; u++) {
         switch (text[u]) {
         case '&':
-            ret = ly_print(out, "&amp;");
+            ret = ly_print_(out, "&amp;");
             break;
         case '<':
-            ret = ly_print(out, "&lt;");
+            ret = ly_print_(out, "&lt;");
             break;
         case '>':
             /* not needed, just for readability */
-            ret = ly_print(out, "&gt;");
+            ret = ly_print_(out, "&gt;");
             break;
         case '"':
             if (attribute) {
-                ret = ly_print(out, "&quot;");
+                ret = ly_print_(out, "&quot;");
                 break;
             }
             /* falls through */
         default:
-            ret = ly_write(out, &text[u], 1);
+            ret = ly_write_(out, &text[u], 1);
+            break;
         }
+        LY_CHECK_RET(ret);
     }
 
-    return ret < 0 ? (-1 * ret) : 0;
+    return LY_SUCCESS;
 }
 
 LY_ERR

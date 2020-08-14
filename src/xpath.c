@@ -8393,18 +8393,18 @@ lyxp_set_print_xml(FILE *f, struct lyxp_set *set)
 
     switch (set->type) {
     case LYXP_SET_EMPTY:
-        ly_print(&out, "Empty XPath set\n\n");
+        ly_print_(&out, "Empty XPath set\n\n");
         break;
     case LYXP_SET_BOOLEAN:
-        ly_print(&out, "Boolean XPath set:\n");
-        ly_print(&out, "%s\n\n", set->value.bool ? "true" : "false");
+        ly_print_(&out, "Boolean XPath set:\n");
+        ly_print_(&out, "%s\n\n", set->value.bool ? "true" : "false");
         break;
     case LYXP_SET_STRING:
-        ly_print(&out, "String XPath set:\n");
-        ly_print(&out, "\"%s\"\n\n", set->value.str);
+        ly_print_(&out, "String XPath set:\n");
+        ly_print_(&out, "\"%s\"\n\n", set->value.str);
         break;
     case LYXP_SET_NUMBER:
-        ly_print(&out, "Number XPath set:\n");
+        ly_print_(&out, "Number XPath set:\n");
 
         if (isnan(set->value.num)) {
             str_num = strdup("NaN");
@@ -8427,43 +8427,43 @@ lyxp_set_print_xml(FILE *f, struct lyxp_set *set)
             LOGMEM;
             return;
         }
-        ly_print(&out, "%s\n\n", str_num);
+        ly_print_(&out, "%s\n\n", str_num);
         free(str_num);
         break;
     case LYXP_SET_NODE_SET:
-        ly_print(&out, "Node XPath set:\n");
+        ly_print_(&out, "Node XPath set:\n");
 
         for (i = 0; i < set->used; ++i) {
-            ly_print(&out, "%d. ", i + 1);
+            ly_print_(&out, "%d. ", i + 1);
             switch (set->node_type[i]) {
             case LYXP_NODE_ROOT_ALL:
-                ly_print(&out, "ROOT all\n\n");
+                ly_print_(&out, "ROOT all\n\n");
                 break;
             case LYXP_NODE_ROOT_CONFIG:
-                ly_print(&out, "ROOT config\n\n");
+                ly_print_(&out, "ROOT config\n\n");
                 break;
             case LYXP_NODE_ROOT_STATE:
-                ly_print(&out, "ROOT state\n\n");
+                ly_print_(&out, "ROOT state\n\n");
                 break;
             case LYXP_NODE_ROOT_NOTIF:
-                ly_print(&out, "ROOT notification \"%s\"\n\n", set->value.nodes[i]->schema->name);
+                ly_print_(&out, "ROOT notification \"%s\"\n\n", set->value.nodes[i]->schema->name);
                 break;
             case LYXP_NODE_ROOT_RPC:
-                ly_print(&out, "ROOT rpc \"%s\"\n\n", set->value.nodes[i]->schema->name);
+                ly_print_(&out, "ROOT rpc \"%s\"\n\n", set->value.nodes[i]->schema->name);
                 break;
             case LYXP_NODE_ROOT_OUTPUT:
-                ly_print(&out, "ROOT output \"%s\"\n\n", set->value.nodes[i]->schema->name);
+                ly_print_(&out, "ROOT output \"%s\"\n\n", set->value.nodes[i]->schema->name);
                 break;
             case LYXP_NODE_ELEM:
-                ly_print(&out, "ELEM \"%s\"\n", set->value.nodes[i]->schema->name);
+                ly_print_(&out, "ELEM \"%s\"\n", set->value.nodes[i]->schema->name);
                 xml_print_node(&out, 1, set->value.nodes[i], 1, LYP_FORMAT);
-                ly_print(&out, "\n");
+                ly_print_(&out, "\n");
                 break;
             case LYXP_NODE_TEXT:
-                ly_print(&out, "TEXT \"%s\"\n\n", ((struct lyd_node_leaf_list *)set->value.nodes[i])->value_str);
+                ly_print_(&out, "TEXT \"%s\"\n\n", ((struct lyd_node_leaf_list *)set->value.nodes[i])->value_str);
                 break;
             case LYXP_NODE_ATTR:
-                ly_print(&out, "ATTR \"%s\" = \"%s\"\n\n", set->value.attrs[i]->name, set->value.attrs[i]->value);
+                ly_print_(&out, "ATTR \"%s\" = \"%s\"\n\n", set->value.attrs[i]->name, set->value.attrs[i]->value);
                 break;
             }
         }
