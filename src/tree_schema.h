@@ -1312,7 +1312,7 @@ struct lysc_type_bitenum_item {
 
 struct lysc_type_enum {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    const char *dflt;                /**< type's default value if any */
+    struct lyd_value *dflt;          /**< type's default value if any */
     struct lys_module *dflt_mod;     /**< module where the lysc_type::dflt value was defined (needed to correctly map prefixes). */
     struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
@@ -1322,7 +1322,7 @@ struct lysc_type_enum {
 
 struct lysc_type_bits {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    const char *dflt;                /**< type's default value if any */
+    struct lyd_value *dflt;          /**< type's default value if any */
     struct lys_module *dflt_mod;     /**< module where the lysc_type::dflt value was defined (needed to correctly map prefixes). */
     struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
@@ -1333,7 +1333,7 @@ struct lysc_type_bits {
 
 struct lysc_type_leafref {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    const char *dflt;                /**< type's default value if any */
+    struct lyd_value *dflt;          /**< type's default value if any */
     struct lys_module *dflt_mod;     /**< module where the lysc_type::dflt value was defined (needed to correctly map prefixes). */
     struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
@@ -1346,7 +1346,7 @@ struct lysc_type_leafref {
 
 struct lysc_type_identityref {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    const char *dflt;                /**< type's default value if any */
+    struct lyd_value *dflt;          /**< type's default value if any */
     struct lys_module *dflt_mod;     /**< module where the lysc_type::dflt value was defined (needed to correctly map prefixes). */
     struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
@@ -1357,7 +1357,7 @@ struct lysc_type_identityref {
 
 struct lysc_type_instanceid {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    const char *dflt;                /**< type's default value if any */
+    struct lyd_value *dflt;          /**< type's default value if any */
     struct lys_module *dflt_mod;     /**< module where the lysc_type::dflt value was defined (needed to correctly map prefixes). */
     struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
@@ -1367,7 +1367,7 @@ struct lysc_type_instanceid {
 
 struct lysc_type_union {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    const char *dflt;                /**< type's default value if any */
+    struct lyd_value *dflt;          /**< type's default value if any */
     struct lys_module *dflt_mod;     /**< module where the lysc_type::dflt value was defined (needed to correctly map prefixes). */
     struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
@@ -1377,7 +1377,7 @@ struct lysc_type_union {
 
 struct lysc_type_bin {
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    const char *dflt;                /**< type's default value if any */
+    struct lyd_value *dflt;          /**< type's default value if any */
     struct lys_module *dflt_mod;     /**< module where the lysc_type::dflt value was defined (needed to correctly map prefixes). */
     struct lysc_type_plugin *plugin; /**< type's plugin with built-in as well as user functions to canonize or validate the value of the type */
     LY_DATA_TYPE basetype;           /**< Base type of the type */
