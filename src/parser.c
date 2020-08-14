@@ -407,12 +407,11 @@ lyd_parser_check_schema(struct lyd_ctx *lydctx, const struct lysc_node *snode)
 
 LY_ERR
 lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *schema, const char *value, size_t value_len,
-                       int *dynamic, int value_hints, ly_resolve_prefix_clb get_prefix, void *prefix_data,
-                       LYD_FORMAT format, struct lyd_node **node)
+                       int *dynamic, int value_hints, LY_PREFIX_FORMAT format, void *prefix_data, struct lyd_node **node)
 {
     LY_ERR ret;
 
-    ret = lyd_create_term(schema, value, value_len, dynamic, value_hints, get_prefix, prefix_data, format, node);
+    ret = lyd_create_term(schema, value, value_len, dynamic, value_hints, format, prefix_data, node);
     if (ret == LY_EINCOMPLETE) {
         if (!(lydctx->parse_options & LYD_PARSE_ONLY)) {
             ly_set_add(&lydctx->unres_node_type, *node, LY_SET_OPT_USEASLIST);
@@ -425,10 +424,11 @@ lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *schema, c
 LY_ERR
 lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct lyd_meta **meta, const struct lys_module *mod,
                        const char *name, size_t name_len, const char *value, size_t value_len, int *dynamic, int value_hints,
-                       ly_resolve_prefix_clb resolve_prefix, void *prefix_data, LYD_FORMAT format, const struct lysc_node *ctx_snode)
+                       LY_PREFIX_FORMAT format, void *prefix_data, const struct lysc_node *ctx_snode)
 {
     LY_ERR ret;
-    ret = lyd_create_meta(parent, meta, mod, name, name_len, value, value_len, dynamic, value_hints, resolve_prefix, prefix_data, format, ctx_snode);
+    ret = lyd_create_meta(parent, meta, mod, name, name_len, value, value_len, dynamic, value_hints, format, prefix_data,
+                          ctx_snode);
     if (ret == LY_EINCOMPLETE) {
         ly_set_add(&lydctx->unres_meta_type, *meta, LY_SET_OPT_USEASLIST);
         ret = LY_SUCCESS;

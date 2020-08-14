@@ -71,7 +71,6 @@ struct lyd_lyb_ctx {
 
     /* callbacks */
     lyd_ctx_free_clb free;           /* destructor */
-    ly_resolve_prefix_clb resolve_prefix;
 
     struct lylyb_ctx *lybctx;      /* lyb format context */
 };

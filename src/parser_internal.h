@@ -16,6 +16,7 @@
 #define LY_PARSER_INTERNAL_H_
 
 #include "parser.h"
+#include "plugins_types.h"
 #include "tree_schema_internal.h"
 
 /**
@@ -24,11 +25,12 @@
 #define LYD_PARSE_OPTS_MASK    0xFFFF0000
 
 /**
- * @brief Mask for checking LYD_VALIDATEP_ options (@ref datavalidationoptions)
+ * @brief Mask for checking LYD_VALIDATE_ options (@ref datavalidationoptions)
  */
 #define LYD_VALIDATE_OPTS_MASK 0x0000FFFF
 
 struct lyd_ctx;
+
 /**
  * @brief Callback for lyd_ctx to free the structure
  *
@@ -53,7 +55,6 @@ struct lyd_ctx {
 
     /* callbacks */
     lyd_ctx_free_clb free;             /* destructor */
-    ly_resolve_prefix_clb resolve_prefix;
 
     struct {
         const struct ly_ctx *ctx;
@@ -170,8 +171,7 @@ LY_ERR lyd_parser_check_schema(struct lyd_ctx *lydctx, const struct lysc_node *s
  * @param[in] value_hints Data parser's hint for the value's type.
  */
 LY_ERR lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *schema, const char *value, size_t value_len,
-                              int *dynamic, int value_hints, ly_resolve_prefix_clb get_prefix, void *prefix_data,
-                              LYD_FORMAT format, struct lyd_node **node);
+                              int *dynamic, int value_hints, LY_PREFIX_FORMAT format, void *prefix_data, struct lyd_node **node);
 
 /**
  * @brief Wrapper around lyd_create_meta() for data parsers.
@@ -179,8 +179,9 @@ LY_ERR lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *sc
  * @param[in] lydctx Data parser context.
  * @param[in] value_hints [Value hint](@ref lydvalueparseopts) from the parser regarding the value type.
  */
-LY_ERR lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct lyd_meta **meta, const struct lys_module *mod,
-                              const char *name, size_t name_len, const char *value, size_t value_len, int *dynamic, int value_hints,
-                              ly_resolve_prefix_clb resolve_prefix, void *prefix_data, LYD_FORMAT format, const struct lysc_node *ctx_snode);
+LY_ERR lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct lyd_meta **meta,
+                              const struct lys_module *mod, const char *name, size_t name_len, const char *value,
+                              size_t value_len, int *dynamic, int value_hints, LY_PREFIX_FORMAT format,
+                              void *prefix_data, const struct lysc_node *ctx_snode);
 
 #endif /* LY_PARSER_INTERNAL_H_ */

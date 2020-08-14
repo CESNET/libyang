@@ -380,8 +380,8 @@ lyb_parse_metadata(struct lyd_lyb_ctx *lybctx, const struct lysc_node *sparent, 
         dynamic = 1;
 
         /* create metadata */
-        ret = lyd_parser_create_meta((struct lyd_ctx*)lybctx, NULL, meta, mod, meta_name, strlen(meta_name), meta_value, ly_strlen(meta_value),
-                                     &dynamic, 0, lydjson_resolve_prefix, NULL, LYD_JSON, sparent);
+        ret = lyd_parser_create_meta((struct lyd_ctx *)lybctx, NULL, meta, mod, meta_name, strlen(meta_name), meta_value,
+                                     ly_strlen(meta_value), &dynamic, 0, LY_PREF_JSON, NULL, sparent);
 
         /* free strings */
         free(meta_name);
@@ -767,8 +767,8 @@ lyb_parse_subtree_r(struct lyd_lyb_ctx *lybctx, struct lyd_node_inner *parent, s
         dynamic = 1;
 
         /* create node */
-        ret = lyd_parser_create_term((struct lyd_ctx*)lybctx, snode, value, ly_strlen(value), &dynamic, 0,
-                                     lydjson_resolve_prefix, NULL, LYD_JSON, &node);
+        ret = lyd_parser_create_term((struct lyd_ctx *)lybctx, snode, value, ly_strlen(value), &dynamic, 0,
+                                     LY_PREF_JSON, NULL, &node);
         if (dynamic) {
             free(value);
             dynamic = 0;

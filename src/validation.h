@@ -42,13 +42,12 @@ LY_ERR lyd_val_diff_add(const struct lyd_node *node, enum lyd_diff_op op, struct
  * @param[in] node_types Set with nodes with unresolved types, can be NULL
  * @param[in] meta_types Set with metdata with unresolved types, can be NULL.
  * @param[in] format Format of the unresolved data.
- * @param[in] get_prefix_clb Format-specific getter to resolve prefixes.
- * @param[in] parser_data Parser's data for @p get_prefix_clb.
+ * @param[in] prefix_data Format-specific data for resolving any prefixes.
  * @param[in,out] diff Validation diff.
  * @return LY_ERR value.
  */
 LY_ERR lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, struct ly_set *node_types, struct ly_set *meta_types,
-                          LYD_FORMAT format, ly_resolve_prefix_clb get_prefix_clb, void *parser_data, struct lyd_node **diff);
+                          LY_PREFIX_FORMAT format, void *prefix_data, struct lyd_node **diff);
 
 /**
  * @brief Validate new siblings. Specifically, check duplicated instances, autodelete default values and cases.

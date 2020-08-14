@@ -69,7 +69,7 @@ yin_match_keyword(struct lys_yin_parser_ctx *ctx, const char *name, size_t name_
         return LY_STMT_NONE;
     }
 
-    ns = lyxml_ns_get(ctx->xmlctx, prefix, prefix_len);
+    ns = lyxml_ns_get(&ctx->xmlctx->ns, prefix, prefix_len);
     if (ns) {
         if (!IS_YIN_NS(ns->uri)) {
             return LY_STMT_EXTENSION_INSTANCE;
@@ -2738,7 +2738,7 @@ yin_check_relative_order(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, enum l
 static const char *
 name2nsname(struct lys_yin_parser_ctx *ctx, const char *name, size_t name_len, const char *prefix, size_t prefix_len)
 {
-    const struct lyxml_ns *ns = lyxml_ns_get(ctx->xmlctx, prefix, prefix_len);
+    const struct lyxml_ns *ns = lyxml_ns_get(&ctx->xmlctx->ns, prefix, prefix_len);
     LY_CHECK_ERR_RET(!ns, LOGINT(ctx->xmlctx->ctx), NULL);
 
     if (!strcmp(ns->uri, YIN_NS_URI)) {

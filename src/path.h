@@ -152,15 +152,14 @@ LY_ERR ly_path_parse_predicate(const struct ly_ctx *ctx, const struct lysc_node 
  * @param[in] lref Lref option (@ref path_lref_options).
  * @param[in] oper Oper option (@ref path_oper_options).
  * @param[in] target Target option (@ref path_target_options).
- * @param[in] resolve_prefix Callback for prefix resolution.
- * @param[in] prefix_data Data for @p resolve_prefix.
  * @param[in] format Format of the path.
+ * @param[in] prefix_data Data for resolving any prefixes.
  * @param[out] path Compiled path.
  * @return LY_ERR value.
  */
 LY_ERR ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, const struct lysc_node *ctx_node,
                        const struct lyxp_expr *expr, uint8_t lref, uint8_t oper, uint8_t target,
-                       ly_resolve_prefix_clb resolve_prefix, void *prefix_data, LYD_FORMAT format, struct ly_path **path);
+                       LY_PREFIX_FORMAT format, void *prefix_data, struct ly_path **path);
 
 /**
  * @brief Compile predicate into ly_path_predicate structure. Only simple predicates (not leafref) are supported.
@@ -171,17 +170,16 @@ LY_ERR ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mo
  * @param[in] ctx_node Context node, node for which the predicate is defined.
  * @param[in] expr Parsed path.
  * @param[in,out] tok_idx Index in @p expr, is adjusted for parsed tokens.
- * @param[in] resolve_prefix Callback for prefix resolution.
- * @param[in] prefix_data Data for @p resolve_prefix.
  * @param[in] format Format of the path.
+ * @param[in] prefix_data Data for resolving any prefixes.
  * @param[out] predicates Compiled predicates.
  * @param[out] pred_type Type of the compiled predicate(s).
  * @return LY_ERR value.
  */
 LY_ERR ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_node, const struct lys_module *cur_mod,
                                  const struct lysc_node *ctx_node, const struct lyxp_expr *expr, uint16_t *tok_idx,
-                                 ly_resolve_prefix_clb resolve_prefix, void *prefix_data, LYD_FORMAT format,
-                                 struct ly_path_predicate **predicates, enum ly_path_pred_type *pred_type);
+                                 LY_PREFIX_FORMAT format, void *prefix_data, struct ly_path_predicate **predicates,
+                                 enum ly_path_pred_type *pred_type);
 
 /**
  * @brief Resolve at least partially the target defined by ly_path structure. Not supported for leafref!

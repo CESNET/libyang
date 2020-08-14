@@ -20,6 +20,7 @@
 
 #include "config.h"
 #include "log.h"
+#include "plugins_types.h"
 #include "tree_schema.h"
 
 struct ly_ctx;
@@ -259,7 +260,7 @@ struct lyxp_set {
     const struct lysc_node *context_op;
     const struct lys_module *local_mod;
     const struct lyd_node *tree;
-    LYD_FORMAT format;
+    LY_PREFIX_FORMAT format;
 };
 
 /**
@@ -289,8 +290,9 @@ const char *lyxp_print_token(enum lyxp_token tok);
  * @return LY_EINCOMPLETE for unresolved when,
  * @return LY_EINVAL, LY_EMEM, LY_EINT for other errors.
  */
-LY_ERR lyxp_eval(struct lyxp_expr *exp, LYD_FORMAT format, const struct lys_module *local_mod, const struct lyd_node *ctx_node,
-                 enum lyxp_node_type ctx_node_type, const struct lyd_node *tree, struct lyxp_set *set, int options);
+LY_ERR lyxp_eval(struct lyxp_expr *exp, LY_PREFIX_FORMAT format, const struct lys_module *local_mod,
+                 const struct lyd_node *ctx_node, enum lyxp_node_type ctx_node_type, const struct lyd_node *tree,
+                 struct lyxp_set *set, int options);
 
 #define LYXP_SCHEMA 0x01        /**< Apply data node access restrictions defined for 'when' and 'must' evaluation. */
 
@@ -308,8 +310,9 @@ LY_ERR lyxp_eval(struct lyxp_expr *exp, LYD_FORMAT format, const struct lys_modu
  * @param[in] options Whether to apply some evaluation restrictions, one flag must always be used.
  * @return LY_ERR (same as lyxp_eval()).
  */
-LY_ERR lyxp_atomize(struct lyxp_expr *exp, LYD_FORMAT format, const struct lys_module *local_mod, const struct lysc_node *ctx_scnode,
-                    enum lyxp_node_type ctx_scnode_type, struct lyxp_set *set, int options);
+LY_ERR lyxp_atomize(struct lyxp_expr *exp, LY_PREFIX_FORMAT format, const struct lys_module *local_mod,
+                    const struct lysc_node *ctx_scnode, enum lyxp_node_type ctx_scnode_type, struct lyxp_set *set,
+                    int options);
 
 /* used only internally */
 #define LYXP_SCNODE_ALL 0x0E

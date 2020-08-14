@@ -309,7 +309,7 @@ lys_atomize_xpath(const struct lysc_node *ctx_node, const char *xpath, int optio
     LY_CHECK_ERR_GOTO(!exp, ret = LY_EINVAL, cleanup);
 
     /* atomize expression */
-    ret = lyxp_atomize(exp, LYD_JSON, ctx_node->module, ctx_node, LYXP_NODE_ELEM, &xp_set, options);
+    ret = lyxp_atomize(exp, LY_PREF_JSON, ctx_node->module, ctx_node, LYXP_NODE_ELEM, &xp_set, options);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* allocate return set */
@@ -353,7 +353,7 @@ lys_find_xpath(const struct lysc_node *ctx_node, const char *xpath, int options,
     LY_CHECK_ERR_GOTO(!exp, ret = LY_EINVAL, cleanup);
 
     /* atomize expression */
-    ret = lyxp_atomize(exp, LYD_JSON, ctx_node->module, ctx_node, LYXP_NODE_ELEM, &xp_set, options);
+    ret = lyxp_atomize(exp, LY_PREF_JSON, ctx_node->module, ctx_node, LYXP_NODE_ELEM, &xp_set, options);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* allocate return set */

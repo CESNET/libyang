@@ -579,12 +579,12 @@ test_ns(void **state)
     assert_int_equal(3, xmlctx->ns.count);
     assert_int_not_equal(0, xmlctx->ns.size);
 
-    ns = lyxml_ns_get(xmlctx, NULL, 0);
+    ns = lyxml_ns_get(&xmlctx->ns, NULL, 0);
     assert_non_null(ns);
     assert_null(ns->prefix);
     assert_string_equal("urn:default", ns->uri);
 
-    ns = lyxml_ns_get(xmlctx, "nc", 2);
+    ns = lyxml_ns_get(&xmlctx->ns, "nc", 2);
     assert_non_null(ns);
     assert_string_equal("nc", ns->prefix);
     assert_string_equal("urn:nc2", ns->uri);
@@ -594,7 +594,7 @@ test_ns(void **state)
     lyxml_ns_rm(xmlctx);
     assert_int_equal(2, xmlctx->ns.count);
 
-    ns = lyxml_ns_get(xmlctx, "nc", 2);
+    ns = lyxml_ns_get(&xmlctx->ns, "nc", 2);
     assert_non_null(ns);
     assert_string_equal("nc", ns->prefix);
     assert_string_equal("urn:nc1", ns->uri);
@@ -604,8 +604,8 @@ test_ns(void **state)
     assert_int_equal(LY_SUCCESS, lyxml_ctx_next(xmlctx));
     assert_int_equal(0, xmlctx->ns.count);
 
-    assert_null(lyxml_ns_get(xmlctx, "nc", 2));
-    assert_null(lyxml_ns_get(xmlctx, NULL, 0));
+    assert_null(lyxml_ns_get(&xmlctx->ns, "nc", 2));
+    assert_null(lyxml_ns_get(&xmlctx->ns, NULL, 0));
 
     lyxml_ctx_free(xmlctx);
     ly_in_free(in, 0);

@@ -560,7 +560,7 @@ ly_ctx_get_node(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, cons
     /* compile */
     oper = output ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT;
     ret = ly_path_compile(ctx, NULL, ctx_node, exp, LY_PATH_LREF_FALSE, oper, LY_PATH_TARGET_MANY,
-                          lydjson_resolve_prefix, NULL, LYD_JSON, &p);
+                          LY_PREF_JSON, NULL, &p);
     LY_CHECK_GOTO(ret, cleanup);
 
     /* get last node */

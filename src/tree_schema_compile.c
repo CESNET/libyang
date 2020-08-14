@@ -3092,7 +3092,7 @@ preparenext:
         (*type)->dflt->realtype = (*type);
         ret = (*type)->plugin->store(ctx->ctx, (*type), dflt, strlen(dflt),
                                      LY_TYPE_OPTS_INCOMPLETE_DATA | LY_TYPE_OPTS_SCHEMA | LY_TYPE_OPTS_STORE,
-                                     lys_resolve_prefix, (void*)(*type)->dflt_mod, LYD_XML, NULL, NULL, (*type)->dflt, NULL, &err);
+                                     LY_PREF_SCHEMA, (*type)->dflt_mod, NULL, NULL, (*type)->dflt, NULL, &err);
         if (err) {
             ly_err_print(err);
             LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
@@ -3524,7 +3524,7 @@ lys_compile_node_leaf(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lys
         leaf->dflt->realtype = leaf->type;
         ret = leaf->type->plugin->store(ctx->ctx, leaf->type, leaf_p->dflt, strlen(leaf_p->dflt),
                                         LY_TYPE_OPTS_INCOMPLETE_DATA | LY_TYPE_OPTS_SCHEMA | LY_TYPE_OPTS_STORE,
-                                        lys_resolve_prefix, (void*)leaf->dflt_mod, LYD_XML, node, NULL, leaf->dflt, NULL, &err);
+                                        LY_PREF_SCHEMA, leaf->dflt_mod, node, NULL, leaf->dflt, NULL, &err);
         leaf->dflt->realtype->refcount++;
         if (err) {
             ly_err_print(err);
@@ -3598,7 +3598,7 @@ lys_compile_node_leaflist(struct lysc_ctx *ctx, struct lysp_node *node_p, struct
             llist->dflts[u]->realtype = llist->type;
             ret = llist->type->plugin->store(ctx->ctx, llist->type, llist_p->dflts[u], strlen(llist_p->dflts[u]),
                                              LY_TYPE_OPTS_INCOMPLETE_DATA | LY_TYPE_OPTS_SCHEMA | LY_TYPE_OPTS_STORE,
-                                             lys_resolve_prefix, (void*)llist->dflts_mods[u], LYD_XML, node, NULL, llist->dflts[u], NULL, &err);
+                                             LY_PREF_SCHEMA, llist->dflts_mods[u], node, NULL, llist->dflts[u], NULL, &err);
             llist->dflts[u]->realtype->refcount++;
             if (err) {
                 ly_err_print(err);
@@ -3623,7 +3623,8 @@ lys_compile_node_leaflist(struct lysc_ctx *ctx, struct lysp_node *node_p, struct
             for (v = u + 1; v < LY_ARRAY_COUNT(llist->dflts); ++v) {
                 if (!llist->type->plugin->compare(llist->dflts[u], llist->dflts[v])) {
                     int dynamic = 0;
-                    const char *val = llist->type->plugin->print(llist->dflts[v], LYD_XML, lys_get_prefix, llist->dflts_mods[v], &dynamic);
+                    const char *val = llist->type->plugin->print(llist->dflts[v], LY_PREF_SCHEMA, llist->dflts_mods[v],
+                                                                 &dynamic);
                     LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
                            "Configuration leaf-list has multiple defaults of the same value \"%s\".", val);
                     if (dynamic) {
@@ -4929,7 +4930,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
                 leaf->dflt_mod = ctx->mod_def;
                 rc = leaf->type->plugin->store(ctx->ctx, leaf->type, rfn->dflts[0], strlen(rfn->dflts[0]),
                                                 LY_TYPE_OPTS_INCOMPLETE_DATA | LY_TYPE_OPTS_SCHEMA | LY_TYPE_OPTS_STORE,
-                                                lys_resolve_prefix, (void*)leaf->dflt_mod, LYD_XML, node, NULL, leaf->dflt, NULL, &err);
+                                                LY_PREF_SCHEMA, leaf->dflt_mod, node, NULL, leaf->dflt, NULL, &err);
                 leaf->dflt->realtype->refcount++;
                 if (err) {
                     ly_err_print(err);
@@ -4978,8 +4979,9 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
                     llist->dflts[u] = calloc(1, sizeof *llist->dflts[u]);
                     llist->dflts[u]->realtype = llist->type;
                     rc = llist->type->plugin->store(ctx->ctx, llist->type, rfn->dflts[u], strlen(rfn->dflts[u]),
-                                                     LY_TYPE_OPTS_INCOMPLETE_DATA | LY_TYPE_OPTS_SCHEMA | LY_TYPE_OPTS_STORE,
-                                                     lys_resolve_prefix, (void*)llist->dflts_mods[u], LYD_XML, node, NULL, llist->dflts[u], NULL, &err);
+                                                    LY_TYPE_OPTS_INCOMPLETE_DATA | LY_TYPE_OPTS_SCHEMA | LY_TYPE_OPTS_STORE,
+                                                    LY_PREF_SCHEMA, llist->dflts_mods[u], node, NULL, llist->dflts[u],
+                                                    NULL, &err);
                     llist->dflts[u]->realtype->refcount++;
                     if (err) {
                         ly_err_print(err);
@@ -5666,8 +5668,8 @@ lys_apply_deviate_add(struct lysc_ctx *ctx, struct lysc_node *target, int dev_fl
 #define DEV_CHECK_NONPRESENCE_VALUE(TYPE, COND, MEMBER, PROPERTY, VALUEMEMBER, VALUEMODMEMBER) \
     if (((TYPE)target)->MEMBER && (COND)) { \
         int dynamic_ = 0; const char *val_; \
-        val_ = ((TYPE)target)->VALUEMEMBER->realtype->plugin->print(((TYPE)target)->VALUEMEMBER, LYD_XML, \
-                                                                             lys_get_prefix, ((TYPE)target)->VALUEMODMEMBER, &dynamic_); \
+        val_ = ((TYPE)target)->VALUEMEMBER->realtype->plugin->print(((TYPE)target)->VALUEMEMBER, LY_PREF_SCHEMA, \
+                                                                             ((TYPE)target)->VALUEMODMEMBER, &dynamic_); \
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE, \
                "Invalid deviation adding \"%s\" property which already exists (with value \"%s\").", PROPERTY, val_); \
         if (dynamic_) {free((void*)val_);} \
@@ -5781,8 +5783,8 @@ lys_apply_deviate_add(struct lysc_ctx *ctx, struct lysc_node *target, int dev_fl
                 llist->dflts[x] = calloc(1, sizeof *llist->dflts[x]);
                 llist->dflts[x]->realtype = llist->type;
                 rc = llist->type->plugin->store(ctx->ctx, llist->type, d->dflts[x - y], strlen(d->dflts[x - y]),
-                                                LY_TYPE_OPTS_INCOMPLETE_DATA | LY_TYPE_OPTS_SCHEMA | LY_TYPE_OPTS_STORE, lys_resolve_prefix,
-                                                (void*)llist->dflts_mods[x], LYD_XML, target, NULL, llist->dflts[x], NULL, &err);
+                                                LY_TYPE_OPTS_INCOMPLETE_DATA | LY_TYPE_OPTS_SCHEMA | LY_TYPE_OPTS_STORE,
+                                                LY_PREF_SCHEMA, llist->dflts_mods[x], target, NULL, llist->dflts[x], NULL, &err);
                 llist->dflts[x]->realtype->refcount++;
                 if (err) {
                     ly_err_print(err);
@@ -6035,7 +6037,7 @@ lys_apply_deviate_delete(struct lysc_ctx *ctx, struct lysc_node *target, int dev
                                 dflt, "deleting", "default", d->dflts[0]);
 
             /* check that the values matches */
-            dflt = leaf->dflt->realtype->plugin->print(leaf->dflt, LYD_XML, lys_get_prefix, leaf->dflt_mod, &i);
+            dflt = leaf->dflt->realtype->plugin->print(leaf->dflt, LY_PREF_SCHEMA, leaf->dflt_mod, &i);
             if (strcmp(dflt, d->dflts[0])) {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                         "Invalid deviation deleting \"default\" property \"%s\" which does not match the target's property value \"%s\".",
@@ -6064,7 +6066,7 @@ lys_apply_deviate_delete(struct lysc_ctx *ctx, struct lysc_node *target, int dev
             DEV_CHECK_PRESENCE(struct lysc_node_leaflist*, 0, dflts, "deleting", "default", d->dflts[0]);
             LY_ARRAY_FOR(d->dflts, x) {
                 LY_ARRAY_FOR(llist->dflts, y) {
-                    dflt = llist->type->plugin->print(llist->dflts[y], LYD_XML, lys_get_prefix, llist->dflts_mods[y], &i);
+                    dflt = llist->type->plugin->print(llist->dflts[y], LY_PREF_SCHEMA, llist->dflts_mods[y], &i);
                     if (!strcmp(dflt, d->dflts[x])) {
                         if (i) {
                             free((char*)dflt);
@@ -6365,16 +6367,16 @@ lys_apply_deviation(struct lysc_ctx *ctx, struct lysc_deviation *dev)
         if (target->nodetype & (LYS_RPC | LYS_ACTION)) {
             if (dev->flags & LYSC_OPT_RPC_INPUT) {
                 /* remove RPC's/action's input */
-                lysc_action_inout_free(ctx->ctx, &((struct lysc_action*)target)->input);
-                memset(&((struct lysc_action*)target)->input, 0, sizeof ((struct lysc_action*)target)->input);
-                FREE_ARRAY(ctx->ctx, ((struct lysc_action*)target)->input_exts, lysc_ext_instance_free);
-                ((struct lysc_action*)target)->input_exts = NULL;
+                lysc_action_inout_free(ctx->ctx, &((struct lysc_action *)target)->input);
+                memset(&((struct lysc_action *)target)->input, 0, sizeof ((struct lysc_action *)target)->input);
+                FREE_ARRAY(ctx->ctx, ((struct lysc_action *)target)->input_exts, lysc_ext_instance_free);
+                ((struct lysc_action *)target)->input_exts = NULL;
             } else if (dev->flags & LYSC_OPT_RPC_OUTPUT) {
                 /* remove RPC's/action's output */
-                lysc_action_inout_free(ctx->ctx, &((struct lysc_action*)target)->output);
-                memset(&((struct lysc_action*)target)->output, 0, sizeof ((struct lysc_action*)target)->output);
-                FREE_ARRAY(ctx->ctx, ((struct lysc_action*)target)->output_exts, lysc_ext_instance_free);
-                ((struct lysc_action*)target)->output_exts = NULL;
+                lysc_action_inout_free(ctx->ctx, &((struct lysc_action *)target)->output);
+                memset(&((struct lysc_action *)target)->output, 0, sizeof ((struct lysc_action *)target)->output);
+                FREE_ARRAY(ctx->ctx, ((struct lysc_action *)target)->output_exts, lysc_ext_instance_free);
+                ((struct lysc_action *)target)->output_exts = NULL;
             } else {
                 /* remove RPC/action */
                 REMOVE_NONDATA(rpcs, struct lysc_action, lysc_node_actions, lysc_action_free);
@@ -6416,11 +6418,11 @@ lys_apply_deviation(struct lysc_ctx *ctx, struct lysc_deviation *dev)
 
     /* check min-max compatibility */
     if (target->nodetype == LYS_LEAFLIST) {
-        min = ((struct lysc_node_leaflist*)target)->min;
-        max = ((struct lysc_node_leaflist*)target)->max;
+        min = ((struct lysc_node_leaflist *)target)->min;
+        max = ((struct lysc_node_leaflist *)target)->max;
     } else if (target->nodetype == LYS_LIST) {
-        min = ((struct lysc_node_list*)target)->min;
-        max = ((struct lysc_node_list*)target)->max;
+        min = ((struct lysc_node_list *)target)->min;
+        max = ((struct lysc_node_list *)target)->max;
     } else {
         min = max = 0;
     }
@@ -6436,7 +6438,7 @@ lys_apply_deviation(struct lysc_ctx *ctx, struct lysc_deviation *dev)
         leaf->dflt->realtype = leaf->type;
         rc = leaf->type->plugin->store(ctx->ctx, leaf->type, dflt, strlen(dflt),
                                         LY_TYPE_OPTS_INCOMPLETE_DATA | LY_TYPE_OPTS_SCHEMA | LY_TYPE_OPTS_STORE,
-                                        lys_resolve_prefix, (void*)leaf->dflt_mod, LYD_XML, target, NULL, leaf->dflt, NULL, &err);
+                                        LY_PREF_SCHEMA, leaf->dflt_mod, target, NULL, leaf->dflt, NULL, &err);
         leaf->dflt->realtype->refcount++;
         if (err) {
             ly_err_print(err);
@@ -6456,7 +6458,7 @@ lys_apply_deviation(struct lysc_ctx *ctx, struct lysc_deviation *dev)
         /* the leaf/leaf-list's type has changed, but there is still a default value for the previous type */
         int dynamic;
         if (target->nodetype == LYS_LEAF) {
-            dflt = leaf->dflt->realtype->plugin->print(leaf->dflt, LYD_XML, lys_get_prefix, leaf->dflt_mod, &dynamic);
+            dflt = leaf->dflt->realtype->plugin->print(leaf->dflt, LY_PREF_SCHEMA, leaf->dflt_mod, &dynamic);
 
             /* update the list of incomplete default values if needed */
             lysc_incomplete_dflts_remove(ctx, leaf->dflt);
@@ -6467,7 +6469,7 @@ lys_apply_deviation(struct lysc_ctx *ctx, struct lysc_deviation *dev)
             leaf->dflt->realtype = leaf->type;
             rc = leaf->type->plugin->store(ctx->ctx, leaf->type, dflt, strlen(dflt),
                                             LY_TYPE_OPTS_INCOMPLETE_DATA | LY_TYPE_OPTS_SCHEMA | LY_TYPE_OPTS_STORE,
-                                            lys_resolve_prefix, (void*)leaf->dflt_mod, LYD_XML, target, NULL, leaf->dflt, NULL, &err);
+                                            LY_PREF_SCHEMA, leaf->dflt_mod, target, NULL, leaf->dflt, NULL, &err);
             leaf->dflt->realtype->refcount++;
             if (err) {
                 ly_err_print(err);
@@ -6489,14 +6491,13 @@ lys_apply_deviation(struct lysc_ctx *ctx, struct lysc_deviation *dev)
             LY_CHECK_GOTO(rc, cleanup);
         } else { /* LYS_LEAFLIST */
             LY_ARRAY_FOR(llist->dflts, x) {
-                dflt = llist->dflts[x]->realtype->plugin->print(llist->dflts[x], LYD_XML, lys_get_prefix, llist->dflts_mods[x], &dynamic);
+                dflt = llist->dflts[x]->realtype->plugin->print(llist->dflts[x], LY_PREF_SCHEMA, llist->dflts_mods[x], &dynamic);
                 llist->dflts[x]->realtype->plugin->free(ctx->ctx, llist->dflts[x]);
                 lysc_type_free(ctx->ctx, llist->dflts[x]->realtype);
                 llist->dflts[x]->realtype = llist->type;
                 rc = llist->type->plugin->store(ctx->ctx, llist->type, dflt, strlen(dflt),
                                                 LY_TYPE_OPTS_INCOMPLETE_DATA | LY_TYPE_OPTS_SCHEMA | LY_TYPE_OPTS_STORE,
-                                                lys_resolve_prefix, (void*)llist->dflts_mods[x], LYD_XML, target, NULL,
-                                                llist->dflts[x], NULL, &err);
+                                                LY_PREF_SCHEMA, llist->dflts_mods[x], target, NULL, llist->dflts[x], NULL, &err);
                 llist->dflts[x]->realtype->refcount++;
                 if (err) {
                     ly_err_print(err);
@@ -6527,7 +6528,7 @@ lys_apply_deviation(struct lysc_ctx *ctx, struct lysc_deviation *dev)
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
                 "Invalid deviation combining default value and mandatory %s.", lys_nodetype2str(target->nodetype));
         goto cleanup;
-    } else if ((target->nodetype & LYS_CHOICE) && ((struct lysc_node_choice*)target)->dflt
+    } else if ((target->nodetype & LYS_CHOICE) && ((struct lysc_node_choice* )target)->dflt
             && (target->flags & LYS_MAND_TRUE)) {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS, "Invalid deviation combining default case and mandatory choice.");
         goto cleanup;
@@ -6897,7 +6898,7 @@ lys_compile_unres_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
         do {
             LY_ARRAY_FOR(node->when, u) {
                 when = node->when[u];
-                ret = lyxp_atomize(when->cond, LYD_SCHEMA, when->module, when->context,
+                ret = lyxp_atomize(when->cond, LY_PREF_SCHEMA, when->module, when->context,
                                 when->context ? LYXP_NODE_ELEM : LYXP_NODE_ROOT_CONFIG, &tmp_set, LYXP_SCNODE_SCHEMA);
                 if (ret != LY_SUCCESS) {
                     LOGVAL(set->ctx, LY_VLOG_LYSC, node, LYVE_SEMANTICS, "Invalid when condition \"%s\".", when->cond->expr);
@@ -7011,7 +7012,7 @@ lys_compile_unres_xpath(struct lysc_ctx *ctx, const struct lysc_node *node)
 
     /* check "when" */
     LY_ARRAY_FOR(when, u) {
-        ret = lyxp_atomize(when[u]->cond, LYD_SCHEMA, when[u]->module, when[u]->context ? when[u]->context : node,
+        ret = lyxp_atomize(when[u]->cond, LY_PREF_SCHEMA, when[u]->module, when[u]->context ? when[u]->context : node,
                            when[u]->context ? LYXP_NODE_ELEM : LYXP_NODE_ROOT_CONFIG, &tmp_set, opts);
         if (ret != LY_SUCCESS) {
             LOGVAL(ctx->ctx, LY_VLOG_LYSC, node, LYVE_SEMANTICS, "Invalid when condition \"%s\".", when[u]->cond->expr);
@@ -7049,7 +7050,7 @@ lys_compile_unres_xpath(struct lysc_ctx *ctx, const struct lysc_node *node)
 check_musts:
     /* check "must" */
     LY_ARRAY_FOR(musts, u) {
-        ret = lyxp_atomize(musts[u].cond, LYD_SCHEMA, musts[u].module, node, LYXP_NODE_ELEM, &tmp_set, opts);
+        ret = lyxp_atomize(musts[u].cond, LY_PREF_SCHEMA, musts[u].module, node, LYXP_NODE_ELEM, &tmp_set, opts);
         if (ret != LY_SUCCESS) {
             LOGVAL(ctx->ctx, LY_VLOG_LYSC, node, LYVE_SEMANTICS, "Invalid must restriction \"%s\".", musts[u].cond->expr);
             goto cleanup;
@@ -7095,7 +7096,7 @@ lys_compile_unres_leafref(struct lysc_ctx *ctx, const struct lysc_node *node, st
     /* try to find the target */
     LY_CHECK_RET(ly_path_compile(ctx->ctx, node->module, node, lref->path, LY_PATH_LREF_TRUE,
                                  lysc_is_output(node) ? LY_PATH_OPER_OUTPUT : LY_PATH_OPER_INPUT, LY_PATH_TARGET_MANY,
-                                 lys_resolve_prefix, lref->path_context, LYD_SCHEMA, &p));
+                                 LY_PREF_SCHEMA, lref->path_context, &p));
 
     /* get the target node */
     target = p[LY_ARRAY_COUNT(p) - 1].node;
@@ -7246,8 +7247,8 @@ lys_compile_unres(struct lysc_ctx *ctx)
         struct lysc_incomplete_dflt *r = ctx->dflts.objs[i];
         LY_ERR ret;
         ret = r->dflt->realtype->plugin->store(ctx->ctx, r->dflt->realtype, r->dflt->original, strlen(r->dflt->original),
-                                               LY_TYPE_OPTS_SCHEMA | LY_TYPE_OPTS_STORE | LY_TYPE_OPTS_SECOND_CALL, lys_resolve_prefix,
-                                               (void*)r->dflt_mod, LYD_XML, r->context_node, NULL, r->dflt, NULL, &err);
+                                               LY_TYPE_OPTS_SCHEMA | LY_TYPE_OPTS_STORE | LY_TYPE_OPTS_SECOND_CALL,
+                                               LY_PREF_SCHEMA, r->dflt_mod, r->context_node, NULL, r->dflt, NULL, &err);
         if (err) {
             ly_err_print(err);
             ctx->path[0] = '\0';

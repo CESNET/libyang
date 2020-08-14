@@ -119,27 +119,13 @@ xml_print_ns_opaq(struct xmlpr_ctx *ctx, LYD_FORMAT format, const struct ly_pref
             }
         }
         break;
-    case LYD_SCHEMA:
     case LYD_LYB:
+    case LYD_UNKNOWN:
         /* cannot be created */
         LOGINT(ctx->ctx);
     }
 
     return NULL;
-}
-
-/**
- * @brief XML mapping of YANG modules to prefixes in values.
- *
- * Implementation of ly_get_prefix_clb
- */
-static const char *
-xml_print_get_prefix(const struct lys_module *mod, void *private)
-{
-    struct ly_set *ns_list = (struct ly_set*)private;
-
-    ly_set_add(ns_list, (void*)mod, 0);
-    return mod->prefix;
 }
 
 /**
@@ -181,7 +167,7 @@ xml_print_meta(struct xmlpr_ctx *ctx, const struct lyd_node *node)
     }
 #endif
     for (meta = node->meta; meta; meta = meta->next) {
-        const char *value = meta->value.realtype->plugin->print(&meta->value, LYD_XML, xml_print_get_prefix, &ns_list, &dynamic);
+        const char *value = meta->value.realtype->plugin->print(&meta->value, LY_PREF_XML, &ns_list, &dynamic);
 
         /* print namespaces connected with the value's prefixes */
         for (u = 0; u < ns_list.count; ++u) {
@@ -309,7 +295,7 @@ xml_print_term(struct xmlpr_ctx *ctx, const struct lyd_node_term *node)
     const char *value;
 
     xml_print_node_open(ctx, (struct lyd_node *)node);
-    value = ((struct lysc_node_leaf *)node->schema)->type->plugin->print(&node->value, LYD_XML, xml_print_get_prefix, &ns_list, &dynamic);
+    value = ((struct lysc_node_leaf *)node->schema)->type->plugin->print(&node->value, LY_PREF_XML, &ns_list, &dynamic);
 
     /* print namespaces connected with the values's prefixes */
     for (u = 0; u < ns_list.count; ++u) {

@@ -140,14 +140,23 @@ struct lysc_node;
 
 /**
  * @brief Data input/output formats supported by libyang [parser](@ref howtodataparsers) and
- * [printer](@ref howtodataprinters) functions. Also used for value prefix format (TODO link to prefix formats descriptions).
+ * [printer](@ref howtodataprinters) functions.
  */
 typedef enum {
-    LYD_SCHEMA = 0,      /**< invalid instance data format, value prefixes map to YANG import prefixes */
-    LYD_XML,             /**< XML instance data format, value prefixes map to XML namespace prefixes */
-    LYD_JSON,            /**< JSON instance data format, value prefixes map to module names */
-    LYD_LYB,             /**< LYB instance data format, invalid value prefix format (same as LYD_JSON) */
+    LYD_UNKNOWN = 0,     /**< unknown data format, invalid value */
+    LYD_XML,             /**< XML instance data format */
+    LYD_JSON,            /**< JSON instance data format */
+    LYD_LYB,             /**< LYB instance data format */
 } LYD_FORMAT;
+
+/**
+ * @brief All kinds of supported prefix mappings to modules.
+ */
+typedef enum {
+    LY_PREF_SCHEMA,          /**< value prefixes map to YANG import prefixes */
+    LY_PREF_XML,             /**< value prefixes map to XML namespace prefixes */
+    LY_PREF_JSON,            /**< value prefixes map to module names */
+} LY_PREFIX_FORMAT;
 
 /**
  * @brief List of possible value types stored in ::lyd_node_any.
@@ -165,6 +174,22 @@ typedef enum {
 } LYD_ANYDATA_VALUETYPE;
 
 /** @} */
+
+/**
+ * @brief Special lyd_value structure for union.
+ *
+ * Represents data with multiple types (union). Original value is stored in the main lyd_value:canonical_cache while
+ * the lyd_value_subvalue::value contains representation according to one of the union's types.
+ * The lyd_value_subvalue:prefixes provides (possible) mappings from prefixes in the original value to YANG modules.
+ * These prefixes are necessary to parse original value to the union's subtypes.
+ */
+struct lyd_value_subvalue {
+    struct lyd_value *value;     /**< representation of the value according to the selected union's subtype
+                                      (stored as lyd_value::realpath here, in subvalue structure */
+    LY_PREFIX_FORMAT format;     /**< Prefix format of the value */
+    void *prefix_data;           /**< Format-specific data for prefix resolution */
+    int parser_hint;             /**< Hint options from the parser */
+};
 
 /**
  * @brief YANG data representation
@@ -186,23 +211,8 @@ struct lyd_value {
         struct lysc_type_bitenum_item *enum_item;  /**< pointer to the definition of the enumeration value */
         struct lysc_type_bitenum_item **bits_items; /**< list of set pointers to the specification of the set bits ([sized array](@ref sizedarrays)) */
         struct lysc_ident *ident;    /**< pointer to the schema definition of the identityref value */
-
-        struct lyd_value_subvalue {
-            struct lyd_value_prefix {
-                const char *prefix;           /**< prefix string used in the canonized string to identify the mod of the YANG schema */
-                const struct lys_module *mod; /**< YANG schema module identified by the prefix string */
-            } *prefixes;                 /**< list of mappings between prefix in canonized value to a YANG schema ([sized array](@ref sizedarrays)) */
-            struct lyd_value *value;     /**< representation of the value according to the selected union's subtype (stored as lyd_value::realpath
-                                              here, in subvalue structure */
-            int parser_hint;             /**< Hint options from the parser */
-        } *subvalue;                     /**< data to represent data with multiple types (union). Original value is stored in the main
-                                              lyd_value:canonical_cache while the lyd_value_subvalue::value contains representation according to the
-                                              one of the union's type. The lyd_value_subvalue:prefixes provides (possible) mappings from prefixes
-                                              in original value to YANG modules. These prefixes are necessary to parse original value to the union's
-                                              subtypes. */
-
-        struct ly_path *target;          /**< Instance-identifier's target path. */
-
+        struct ly_path *target;      /**< Instance-identifier target path. */
+        struct lyd_value_subvalue *subvalue; /** Union value with some metadata. */
         void *ptr;                   /**< generic data type structure used to store the data */
     };  /**< The union is just a list of shorthands to possible values stored by a type's plugin. libyang itself uses the lyd_value::realtype
              plugin's callbacks to work with the data. */
@@ -300,37 +310,6 @@ struct lyd_attr {
 #define LYD_NEW          0x04        /**< node was created after the last validation, is needed for the next validation */
 
 /** @} */
-
-/**
- * @brief Callback provided by the data/schema parsers to type plugins to resolve (format-specific) mapping between prefixes used
- * in the value strings to the YANG schemas.
- *
- * Reverse function to ly_get_prefix_clb.
- *
- * XML uses XML namespaces, JSON uses schema names as prefixes, YIN/YANG uses prefixes of the imports.
- *
- * @param[in] ctx libyang context to find the schema.
- * @param[in] prefix Prefix found in the value string
- * @param[in] prefix_len Length of the @p prefix.
- * @param[in] private Internal data needed by the callback.
- * @return Pointer to the YANG schema identified by the provided prefix or NULL if no mapping found.
- */
-typedef const struct lys_module *(*ly_resolve_prefix_clb)(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len,
-                                                          void *private);
-
-/**
- * @brief Callback provided by the data/schema printers to type plugins to resolve (format-specific) mapping between YANG module of a data object
- * to prefixes used in the value strings.
- *
- * Reverse function to ly_resolve_prefix_clb.
- *
- * XML uses XML namespaces, JSON uses schema names as prefixes, YIN/YANG uses prefixes of the imports.
- *
- * @param[in] mod YANG module of the object.
- * @param[in] private Internal data needed by the callback.
- * @return String representing prefix for the object of the given YANG module @p mod.
- */
-typedef const char *(*ly_get_prefix_clb)(const struct lys_module *mod, void *private);
 
 /**
  * @brief Generic structure for a data node.

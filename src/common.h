@@ -459,22 +459,6 @@ LY_ERR ly_parse_instance_predicate(const char **pred, size_t limit, LYD_FORMAT f
                                    const char **value, size_t *value_len, const char **errmsg);
 
 /**
- * @brief ly_get_prefix_clb implementation for JSON. For its simplicity, this implementation is used
- * internally for various purposes.
- *
- * Implemented in printer_json.c
- */
-const char *json_print_get_prefix(const struct lys_module *mod, void *private);
-
-/**
- * @brief ly_type_resolve_prefix implementation for JSON. For its simplicity, this implementation is used
- * internally for various purposes.
- *
- * Implemented in parser_json.c
- */
-const struct lys_module *lydjson_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len, void *parser);
-
-/**
  * @brief mmap(2) wrapper to map input files into memory to unify parsing.
  *
  * The address space is allocate only for reading.
