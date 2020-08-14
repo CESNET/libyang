@@ -186,8 +186,10 @@ typedef enum {
 struct lyd_value_subvalue {
     struct lyd_value *value;     /**< representation of the value according to the selected union's subtype
                                       (stored as lyd_value::realpath here, in subvalue structure */
-    LY_PREFIX_FORMAT format;     /**< Prefix format of the value */
-    void *prefix_data;           /**< Format-specific data for prefix resolution */
+    LY_PREFIX_FORMAT format;     /**< Prefix format of the value. However, this information is also used to decide
+                                      whether a value is valid for the specific format or not on later validations
+                                      (instance-identifier in XML looks different than in JSON). */
+    void *prefix_data;           /**< Format-specific data for prefix resolution (see ::ly_resolve_prefix) */
     int parser_hint;             /**< Hint options from the parser */
 };
 
