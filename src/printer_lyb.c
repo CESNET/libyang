@@ -227,7 +227,7 @@ lyb_write(struct ly_out *out, const uint8_t *buf, size_t count, struct lylyb_ctx
 {
     LY_ARRAY_COUNT_TYPE u;
     struct lyd_lyb_subtree *full, *iter;
-    ssize_t r, to_write;
+    size_t to_write;
     uint8_t meta_buf[LYB_META_BYTES];
 
     while (1) {
@@ -249,41 +249,30 @@ lyb_write(struct ly_out *out, const uint8_t *buf, size_t count, struct lylyb_ctx
 
         /* we are actually writing some data, not just finishing another chunk */
         if (to_write) {
-            r = ly_write(out, (char *)buf, to_write);
-            if (r < to_write) {
-                return LY_ESYS;
-            }
+            LY_CHECK_RET(ly_write_(out, (char *)buf, to_write));
 
             LY_ARRAY_FOR(lybctx->subtrees, u) {
                 /* increase all written counters */
-                lybctx->subtrees[u].written += r;
+                lybctx->subtrees[u].written += to_write;
                 assert(lybctx->subtrees[u].written <= LYB_SIZE_MAX);
             }
             /* decrease count/buf */
-            count -= r;
-            buf += r;
+            count -= to_write;
+            buf += to_write;
         }
 
         if (full) {
             /* write the meta information (inner chunk count and chunk size) */
             meta_buf[0] = full->written & 0xFF;
             meta_buf[1] = full->inner_chunks & 0xFF;
-
-            r = ly_write_skipped(out, full->position, (char *)meta_buf, LYB_META_BYTES);
-            if (r < 0) {
-                return LY_ESYS;
-            }
-            /* these bytes were already counted */
+            LY_CHECK_RET(ly_write_skipped(out, full->position, (char *)meta_buf, LYB_META_BYTES));
 
             /* zero written and inner chunks */
             full->written = 0;
             full->inner_chunks = 0;
 
             /* skip space for another chunk size */
-            r = ly_write_skip(out, LYB_META_BYTES, &full->position);
-            if (r < LYB_META_BYTES) {
-                return LY_ESYS;
-            }
+            LY_CHECK_RET(ly_write_skip(out, LYB_META_BYTES, &full->position));
 
             /* increase inner chunk count */
             for (iter = &lybctx->subtrees[0]; iter != full; ++iter) {
@@ -309,18 +298,12 @@ lyb_write(struct ly_out *out, const uint8_t *buf, size_t count, struct lylyb_ctx
 static LY_ERR
 lyb_write_stop_subtree(struct ly_out *out, struct lylyb_ctx *lybctx)
 {
-    ssize_t r;
     uint8_t meta_buf[LYB_META_BYTES];
 
     /* write the meta chunk information */
     meta_buf[0] = LYB_LAST_SUBTREE(lybctx).written & 0xFF;
     meta_buf[1] = LYB_LAST_SUBTREE(lybctx).inner_chunks & 0xFF;
-
-    r = ly_write_skipped(out, LYB_LAST_SUBTREE(lybctx).position, (char *)&meta_buf, LYB_META_BYTES);
-    if (r < 0) {
-        return LY_ESYS;
-    }
-    /* do not count these bytes */
+    LY_CHECK_RET(ly_write_skipped(out, LYB_LAST_SUBTREE(lybctx).position, (char *)&meta_buf, LYB_META_BYTES));
 
     LY_ARRAY_DECREMENT(lybctx->subtrees);
     return LY_SUCCESS;
@@ -336,7 +319,6 @@ lyb_write_stop_subtree(struct ly_out *out, struct lylyb_ctx *lybctx)
 static LY_ERR
 lyb_write_start_subtree(struct ly_out *out, struct lylyb_ctx *lybctx)
 {
-    ssize_t r;
     LY_ARRAY_COUNT_TYPE u;
 
     if (!lybctx->subtrees) {
@@ -358,15 +340,12 @@ lyb_write_start_subtree(struct ly_out *out, struct lylyb_ctx *lybctx)
     for (u = 0; u < LY_ARRAY_COUNT(lybctx->subtrees) - 1; ++u) {
         if (lybctx->subtrees[u].inner_chunks == LYB_INCHUNK_MAX) {
             LOGINT(lybctx->ctx);
-            return -1;
+            return LY_EINT;
         }
         ++lybctx->subtrees[u].inner_chunks;
     }
 
-    r = ly_write_skip(out, LYB_META_BYTES, &LYB_LAST_SUBTREE(lybctx).position);
-    if (r < LYB_META_BYTES) {
-        return LY_ESYS;
-    }
+    LY_CHECK_RET(ly_write_skip(out, LYB_META_BYTES, &LYB_LAST_SUBTREE(lybctx).position));
 
     return LY_SUCCESS;
 }
@@ -530,7 +509,6 @@ cleanup:
 static LY_ERR
 lyb_print_magic_number(struct ly_out *out)
 {
-    int r;
     uint32_t magic_number;
 
     /* 'l', 'y', 'b' - 0x6c7962 */
@@ -538,10 +516,7 @@ lyb_print_magic_number(struct ly_out *out)
     ((char *)&magic_number)[1] = 'y';
     ((char *)&magic_number)[2] = 'b';
 
-    r = ly_write(out, (char *)&magic_number, 3);
-    if (r < 3) {
-        return LY_ESYS;
-    }
+    LY_CHECK_RET(ly_write_(out, (char *)&magic_number, 3));
 
     return LY_SUCCESS;
 }
@@ -555,16 +530,12 @@ lyb_print_magic_number(struct ly_out *out)
 static LY_ERR
 lyb_print_header(struct ly_out *out)
 {
-    int r;
     uint8_t byte = 0;
 
     /* version, future flags */
     byte |= LYB_VERSION_NUM;
 
-    r = ly_write(out, (char *)&byte, 1);
-    if (r < 1) {
-        return LY_ESYS;
-    }
+    LY_CHECK_RET(ly_write_(out, (char *)&byte, 1));
 
     return LY_SUCCESS;
 }

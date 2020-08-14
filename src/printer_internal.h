@@ -57,9 +57,6 @@ struct ly_out {
 
     size_t printed;      /**< Total number of printed bytes */
     size_t func_printed; /**< Number of bytes printed by the last function */
-
-    const struct ly_ctx *ctx;   /**< libyang context for error logging */
-    LY_ERR status;       /**< current status of the printer */
 };
 
 /**
@@ -75,11 +72,6 @@ struct ext_substmt_info_s {
 
 /* filled in printer.c */
 extern struct ext_substmt_info_s ext_substmt_info[];
-
-/**
- * @brief macro to check current status of the printer.
- */
-#define LYOUT_CHECK(LYOUT, ...) if (LYOUT->status) {return __VA_ARGS__;}
 
 /**
  * @brief YANG printer of the parsed module. Full YANG printer.
@@ -212,27 +204,51 @@ int ly_is_default(const struct lyd_node *node);
 int ly_should_print(const struct lyd_node *node, int options);
 
 /**
+ * @brief Generic printer of the given format string into the specified output.
+ *
+ * Does not reset printed bytes. Adds to printed bytes.
+ *
+ * @param[in] out Output specification.
+ * @param[in] format Format string to be printed.
+ * @return LY_ERR value.
+ */
+LY_ERR ly_print_(struct ly_out *out, const char *format, ...);
+
+/**
+ * @brief Generic printer of the given string buffer into the specified output.
+ *
+ * Does not reset printed bytes. Adds to printed bytes.
+ *
+ * @param[in] out Output specification.
+ * @param[in] buf Memory buffer with the data to print.
+ * @param[in] len Length of the data to print in the @p buf.
+ * @return LY_ERR value.
+ */
+LY_ERR ly_write_(struct ly_out *out, const char *buf, size_t len);
+
+/**
  * @brief Create a hole in the output data that will be filled later.
+ *
+ * Adds printed bytes.
  *
  * @param[in] out Output specification.
  * @param[in] len Length of the created hole.
  * @param[out] position Position of the hole, value must be later provided to the ly_write_skipped() call.
- * @return The number of bytes prepared for write. The number of the printed bytes is updated in lyout::printed
- * only in case the data are really written into the output.
- * @return Negative value in case of error, absolute value of the return code maps to LY_ERR value.
+ * @return LY_ERR value.
  */
-ssize_t ly_write_skip(struct ly_out *out, size_t len, size_t *position);
+LY_ERR ly_write_skip(struct ly_out *out, size_t len, size_t *position);
 
 /**
  * @brief Write data into the hole at given position.
+ *
+ * Does not change printed bytes.
  *
  * @param[in] out Output specification.
  * @param[in] position Position of the hole to fill, the value was provided by ly_write_skip().
  * @param[in] buf Memory buffer with the data to print.
  * @param[in] len Length of the data to print in the @p buf. Not that the length must correspond
  * to the len value specified in the corresponding ly_write_skip() call.
- * @return LY_SUCCESS on success.
- * @return LY_ERR value in case of error.
+ * @return LY_ERR value.
  */
 LY_ERR ly_write_skipped(struct ly_out *out, size_t position, const char *buf, size_t len);
 
