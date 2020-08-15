@@ -7478,6 +7478,8 @@ error:
         }
     }
 
+    LOGERR(ctx.ctx, ret, "Compiling module \"%s\" failed.", (*mod)->name);
+
     /* remove the module itself from the context and free it */
     ly_set_rm(&ctx.ctx->list, *mod, NULL);
     lys_module_free(*mod, NULL);

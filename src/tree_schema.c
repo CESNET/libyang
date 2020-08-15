@@ -939,6 +939,11 @@ lys_parse_mem_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT forma
     return LY_SUCCESS;
 
 error:
+    if (!submod || !submod->name) {
+        LOGERR(ctx, ret, "Parsing submodule failed.");
+    } else {
+        LOGERR(ctx, ret, "Parsing submodule \"%s\" failed.", submod->name);
+    }
     lysp_submodule_free(ctx, submod);
     if (format == LYS_IN_YANG) {
         yang_parser_ctx_free(yangctx);
@@ -1091,6 +1096,12 @@ finish_parsing:
 error_ctx:
     ly_set_rm(&ctx->list, mod, NULL);
 error:
+    if (!mod || !mod->name) {
+        LOGERR(ctx, ret, "Parsing module failed.");
+    } else {
+        LOGERR(ctx, ret, "Parsing module \"%s\" failed.", mod->name);
+    }
+
     lys_module_free(mod, NULL);
     if (pctx) {
         ly_set_erase(&pctx->tpdfs_nodes, NULL);
