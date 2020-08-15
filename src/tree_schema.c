@@ -1203,6 +1203,11 @@ lys_parse_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, s
     return LY_SUCCESS;
 
 error:
+    if (!submod || !submod->name) {
+        LOGERR(ctx, ret, "Parsing submodule failed.");
+    } else {
+        LOGERR(ctx, ret, "Parsing submodule \"%s\" failed.", submod->name);
+    }
     lysp_module_free((struct lysp_module *)submod);
     if (format == LYS_IN_YANG) {
         yang_parser_ctx_free(yangctx);
@@ -1439,6 +1444,7 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
     struct lys_parser_ctx *pctx = NULL;
     char *filename, *rev, *dot;
     size_t len;
+    ly_bool module_created = 0;
 
     assert(ctx && in && new_mods);
 
@@ -1465,12 +1471,12 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
         ret = LY_EINVAL;
         break;
     }
-    LY_CHECK_GOTO(ret, free_mod_cleanup);
+    LY_CHECK_GOTO(ret, cleanup);
 
     /* make sure that the newest revision is at position 0 */
     lysp_sort_revisions(mod->parsed->revs);
     if (mod->parsed->revs) {
-        LY_CHECK_GOTO(ret = lydict_insert(ctx, mod->parsed->revs[0].date, 0, &mod->revision), free_mod_cleanup);
+        LY_CHECK_GOTO(ret = lydict_insert(ctx, mod->parsed->revs[0].date, 0, &mod->revision), cleanup);
     }
 
     /* decide the latest revision */
@@ -1495,7 +1501,7 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
     }
 
     if (custom_check) {
-        LY_CHECK_GOTO(ret = custom_check(ctx, mod->parsed, NULL, check_data), free_mod_cleanup);
+        LY_CHECK_GOTO(ret = custom_check(ctx, mod->parsed, NULL, check_data), cleanup);
     }
 
     /* check whether it is not already in the context in the same revision */
@@ -1504,7 +1510,7 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
         /* nothing to do */
         LOGVRB("Module \"%s@%s\" is already present in the context.", mod_dup->name,
                 mod_dup->revision ? mod_dup->revision : "<none>");
-        goto free_mod_cleanup;
+        goto cleanup;
     }
 
     switch (in->type) {
@@ -1542,7 +1548,7 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
     case LY_IN_ERROR:
         LOGINT(ctx);
         ret = LY_EINT;
-        goto free_mod_cleanup;
+        goto cleanup;
     }
     lys_parser_fill_filepath(ctx, in, &mod->filepath);
 
@@ -1552,13 +1558,14 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
 
     /* add internal data in case specific modules were parsed */
     if (!strcmp(mod->name, "ietf-netconf")) {
-        LY_CHECK_GOTO(ret = lys_parsed_add_internal_ietf_netconf(mod->parsed), free_mod_cleanup);
+        LY_CHECK_GOTO(ret = lys_parsed_add_internal_ietf_netconf(mod->parsed), cleanup);
     } else if (!strcmp(mod->name, "ietf-netconf-with-defaults")) {
-        LY_CHECK_GOTO(ret = lys_parsed_add_internal_ietf_netconf_with_defaults(mod->parsed), free_mod_cleanup);
+        LY_CHECK_GOTO(ret = lys_parsed_add_internal_ietf_netconf_with_defaults(mod->parsed), cleanup);
     }
 
     /* add the module into newly created module set, will also be freed from there on any error */
-    LY_CHECK_GOTO(ret = ly_set_add(new_mods, mod, 1, NULL), free_mod_cleanup);
+    LY_CHECK_GOTO(ret = ly_set_add(new_mods, mod, 1, NULL), cleanup);
+    module_created = 1;
 
     /* add into context */
     ret = ly_set_add(&ctx->list, mod, 1, NULL);
@@ -1586,19 +1593,23 @@ lys_parse_in(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
     }
 
     /* success */
-    goto cleanup;
 
-free_mod_cleanup:
-    lys_module_free(mod);
+cleanup:
     if (ret) {
-        mod = NULL;
-    } else {
-        /* return the existing module */
-        assert(mod_dup);
+        if (mod && mod->name) {
+            /* there are cases when path is not available for parsing error, so this additional
+             * message tries to add information about the module where the error occurred */
+            struct ly_err_item *e = ly_err_last(ctx);
+            if (e && (!e->path || !strncmp(e->path, "Line ", ly_strlen_const("Line ")))) {
+                LOGERR(ctx, ret, "Parsing module \"%s\" failed.", mod->name);
+            }
+        }
+    }
+    if (!module_created) {
+        lys_module_free(mod);
         mod = mod_dup;
     }
 
-cleanup:
     if (format == LYS_IN_YANG) {
         yang_parser_ctx_free(yangctx);
     } else {
