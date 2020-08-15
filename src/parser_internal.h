@@ -54,13 +54,13 @@ struct lyd_ctx {
     struct lyd_node *op_node;      /**< if an RPC/action/notification is being parsed, store the pointer to it */
 
     /* callbacks */
-    lyd_ctx_free_clb free;             /* destructor */
+    lyd_ctx_free_clb free;         /**< destructor */
 
     struct {
-        const struct ly_ctx *ctx;
-        uint64_t line;             /* current line */
-        struct ly_in *in;          /* input structure */
-    } *data_ctx;                   /* generic pointer supposed to map to and access (common part of) XML/JSON/... parser contexts */
+        const struct ly_ctx *ctx;  /**< libyang context */
+        uint64_t line;             /**< current line */
+        struct ly_in *in;          /**< input structure */
+    } *data_ctx;                   /**< generic pointer supposed to map to and access (common part of) XML/JSON/... parser contexts */
 };
 
 /**
