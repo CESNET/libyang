@@ -223,16 +223,23 @@ cmd_add(const char *arg)
     }
 
     while (path) {
+        int unset_path = 1;
         format = get_schema_format(path);
         if (format == LYS_IN_UNKNOWN) {
             free(path);
             goto cleanup;
         }
 
+        /* add temporarily also the path of the module itself */
         dir = strdup(path);
-        ly_ctx_set_searchdir(ctx, dirname(dir));
+        if (ly_ctx_set_searchdir(ctx, dirname(dir)) == LY_EEXIST) {
+            unset_path = 0;
+        }
+        /* parse the file */
         lys_parse_path(ctx, path, format, &model);
-        ly_ctx_unset_searchdir(ctx, index);
+        if (unset_path) {
+            ly_ctx_unset_searchdir(ctx, index);
+        }
         free(path);
         free(dir);
 

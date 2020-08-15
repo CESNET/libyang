@@ -677,7 +677,9 @@ main_ni(int argc, char* argv[])
         for (u = 0; u < searchpaths->count; u++) {
             ly_ctx_set_searchdir(ctx, (const char*)searchpaths->objs[u]);
         }
-        index = u + 1;
+        /* remember the number of set paths, respectively the first index after the set serchpaths
+         * to know what index is supposed to be removed in case of adding some implicit paths later */
+        index = u;
     }
 
     /* derefered setting of verbosity in libyang after context initiation */
@@ -695,13 +697,21 @@ main_ni(int argc, char* argv[])
 
         if (informat_s) {
             /* load/validate schema */
+            int unset_path = 1;
+
             if (verbose >= 2) {
                 fprintf(stdout, "Validating %s schema file.\n", argv[optind + i]);
             }
+
+            /* add temporarily also the path of the module itself */
             dir = strdup(argv[optind + i]);
-            ly_ctx_set_searchdir(ctx, ptr = dirname(dir));
+            if (ly_ctx_set_searchdir(ctx, ptr = dirname(dir)) == LY_EEXIST) {
+                unset_path = 0;
+            }
             lys_parse_path(ctx, argv[optind + i], informat_s, &mod);
-            ly_ctx_unset_searchdir(ctx, index);
+            if (unset_path) {
+                ly_ctx_unset_searchdir(ctx, index);
+            }
             free(dir);
             if (!mod) {
                 goto cleanup;
