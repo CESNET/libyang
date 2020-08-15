@@ -176,7 +176,7 @@ ly_ctx_unset_searchdir(struct ly_ctx *ctx, unsigned int index)
     }
 
     if (index >= ctx->search_paths.count) {
-        LOGARG(ctx, value);
+        LOGARG(ctx, index);
         return LY_EINVAL;
     } else {
         return ly_set_rm_index(&ctx->search_paths, index, free);
