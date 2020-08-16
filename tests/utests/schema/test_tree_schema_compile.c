@@ -543,7 +543,8 @@ test_node_anydata(void **state)
 
     /* invalid */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;anydata any;}", LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Invalid keyword \"anydata\" as a child of \"module\" - the statement is allowed only in YANG 1.1 modules.", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
+            "Invalid keyword \"anydata\" as a child of \"module\" - the statement is allowed only in YANG 1.1 modules.", "Line number 1.");
 }
 
 static void
@@ -577,7 +578,8 @@ test_action(void **state)
     /* invalid */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;container top {action x;}}",
             LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Invalid keyword \"action\" as a child of \"container\" - the statement is allowed only in YANG 1.1 modules.", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
+            "Invalid keyword \"action\" as a child of \"container\" - the statement is allowed only in YANG 1.1 modules.", "Line number 1.");
 
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module bb {namespace urn:bb;prefix bb;leaf x{type string;} rpc x;}",
             LYS_IN_YANG, NULL));
@@ -647,7 +649,8 @@ test_notification(void **state)
     /* invalid */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa;container top {notification x;}}",
             LYS_IN_YANG, NULL));
-    CHECK_LOG_CTX("Invalid keyword \"notification\" as a child of \"container\" - the statement is allowed only in YANG 1.1 modules.", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
+            "Invalid keyword \"notification\" as a child of \"container\" - the statement is allowed only in YANG 1.1 modules.", "Line number 1.");
 
     assert_int_equal(LY_EEXIST, lys_parse_mem(UTEST_LYCTX, "module bb {namespace urn:bb;prefix bb;leaf x{type string;} notification x;}", LYS_IN_YANG, NULL));
     CHECK_LOG_CTX("Duplicate identifier \"x\" of data definition/RPC/action/notification statement.", "/bb:x");
@@ -1148,25 +1151,32 @@ test_type_enum(void **state)
     /* invalid cases */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; feature f; leaf l {type enumeration {"
             "enum one {if-feature f;}}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid keyword \"if-feature\" as a child of \"enum\" - the statement is allowed only in YANG 1.1 modules.", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
+            "Invalid keyword \"if-feature\" as a child of \"enum\" - the statement is allowed only in YANG 1.1 modules.", "Line number 1.");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type enumeration {"
             "enum one {value -2147483649;}}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid value \"-2147483649\" of \"value\".", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
+            "Invalid value \"-2147483649\" of \"value\".", "Line number 1.");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type enumeration {"
             "enum one {value 2147483648;}}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid value \"2147483648\" of \"value\".", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
+            "Invalid value \"2147483648\" of \"value\".", "Line number 1.");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type enumeration {"
             "enum one; enum one;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Duplicate identifier \"one\" of enum statement.", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
+            "Duplicate identifier \"one\" of enum statement.", "Line number 1.");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type enumeration {"
             "enum '';}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Enum name must not be zero-length.", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
+            "Enum name must not be zero-length.", "Line number 1.");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type enumeration {"
             "enum ' x';}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Enum name must not have any leading or trailing whitespaces (\" x\").", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
+            "Enum name must not have any leading or trailing whitespaces (\" x\").", "Line number 1.");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type enumeration {"
             "enum 'x ';}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Enum name must not have any leading or trailing whitespaces (\"x \").", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
+            "Enum name must not have any leading or trailing whitespaces (\"x \").", "Line number 1.");
     assert_int_equal(LY_SUCCESS, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type enumeration {"
             "enum 'inva\nlid';}}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Control characters in enum name should be avoided (\"inva\nlid\", character number 5).", NULL);
@@ -1244,44 +1254,56 @@ test_type_bits(void **state)
     /* invalid cases */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; feature f; leaf l {type bits {"
             "bit one {if-feature f;}}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid keyword \"if-feature\" as a child of \"bit\" - the statement is allowed only in YANG 1.1 modules.", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
+            "Invalid keyword \"if-feature\" as a child of \"bit\" - the statement is allowed only in YANG 1.1 modules.", "Line number 1.");
 
 #if 0
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type bits {"
             "bit one {position -1;}}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid value \"-1\" of \"position\".", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
+            "Invalid value \"-1\" of \"position\".", "Line number 1.");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type bits {"
             "bit one {position 4294967296;}}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid value \"4294967296\" of \"position\".", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
+            "Invalid value \"4294967296\" of \"position\".", "Line number 1.");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type bits {"
             "bit one; bit one;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Duplicate identifier \"one\" of bit statement.", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
+            "Duplicate identifier \"one\" of bit statement.", "Line number 1.");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type bits {"
             "bit '11';}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid identifier first character '1' (0x0031).", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
+            "Invalid identifier first character '1' (0x0031).", "Line number 1.");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type bits {"
             "bit 'x1$1';}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid identifier character '$' (0x0024).", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
+            "Invalid identifier character '$' (0x0024).", "Line number 1.");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module bb {namespace urn:bb;prefix bb; leaf l {type bits;}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Missing bit substatement for bits type.", "/bb:l");
+    CHECK_LOG_CTX("Parsing module \"bb\" failed.", NULL,
+            "Missing bit substatement for bits type.", "/bb:l");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module cc {yang-version 1.1;namespace urn:cc;prefix cc;typedef mytype {type bits {bit one;}}"
             "leaf l {type mytype {bit two;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid bits - derived type adds new item \"two\".", "/cc:l");
+    CHECK_LOG_CTX("Parsing module \"cc\" failed.", NULL,
+            "Invalid bits - derived type adds new item \"two\".", "/cc:l");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module dd {yang-version 1.1;namespace urn:dd;prefix dd;typedef mytype {type bits {bit one;}}"
             "leaf l {type mytype {bit one {position 1;}}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid bits - position of the item \"one\" has changed from 0 to 1 in the derived type.", "/dd:l");
+    CHECK_LOG_CTX("Parsing module \"dd\" failed.", NULL,
+            "Invalid bits - position of the item \"one\" has changed from 0 to 1 in the derived type.", "/dd:l");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ee {namespace urn:ee;prefix ee;leaf l {type bits {bit x {position 4294967295;}bit y;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid bits - it is not possible to auto-assign bit position for \"y\" since the highest value is already 4294967295.", "/ee:l");
+    CHECK_LOG_CTX("Parsing module \"ee\" failed.", NULL,
+            "Invalid bits - it is not possible to auto-assign bit position for \"y\" since the highest value is already 4294967295.", "/ee:l");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ff {namespace urn:ff;prefix ff;leaf l {type bits {bit x {position 1;}bit y {position 1;}}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid bits - position 1 collide in items \"y\" and \"x\".", "/ff:l");
+    CHECK_LOG_CTX("Parsing module \"ff\" failed.", NULL,
+            "Invalid bits - position 1 collide in items \"y\" and \"x\".", "/ff:l");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module gg {namespace urn:gg;prefix gg;typedef mytype {type bits;}"
             "leaf l {type mytype {bit one;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Missing bit substatement for bits type mytype.", "/gg:l");
+    CHECK_LOG_CTX("Parsing module \"gg\" failed.", NULL,
+            "Missing bit substatement for bits type mytype.", "/gg:l");
 #endif
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module hh {namespace urn:hh;prefix hh; typedef mytype {type bits {bit one;}}"
@@ -1337,11 +1359,14 @@ test_type_dec64(void **state)
 
     /* invalid cases */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type decimal64 {fraction-digits 0;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid value \"0\" of \"fraction-digits\".", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
+            "Invalid value \"0\" of \"fraction-digits\".", "Line number 1.");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type decimal64 {fraction-digits -1;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid value \"-1\" of \"fraction-digits\".", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
+            "Invalid value \"-1\" of \"fraction-digits\".", "Line number 1.");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type decimal64 {fraction-digits 19;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Value \"19\" is out of \"fraction-digits\" bounds.", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
+            "Value \"19\" is out of \"fraction-digits\" bounds.", "Line number 1.");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type decimal64;}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Missing fraction-digits substatement for decimal64 type.", "/aa:l");
@@ -1399,7 +1424,8 @@ test_type_instanceid(void **state)
 
     /* invalid cases */
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type instance-identifier {require-instance yes;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid value \"yes\" of \"require-instance\".", "Line number 1.");
+    CHECK_LOG_CTX("Parsing module \"aa\" failed.", NULL,
+            "Invalid value \"yes\" of \"require-instance\".", "Line number 1.");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module aa {namespace urn:aa;prefix aa; leaf l {type instance-identifier {fraction-digits 1;}}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Invalid type restrictions for instance-identifier type.", "/aa:l");
@@ -1692,7 +1718,8 @@ test_type_leafref(void **state)
     CHECK_LOG_CTX("List predicate defined for container \"a\" in path.", "Schema location /dd:ref1.");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ee {namespace urn:ee;prefix ee;\n  container a {leaf target2 {type uint8;}}\n"
             "leaf ref1 {type leafref {path /a!invalid;}}}", LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid character 0x21 ('!'), perhaps \"a\" is supposed to be a function call.", "Line number 3.");
+    CHECK_LOG_CTX("Parsing module \"ee\" failed.", NULL,
+            "Invalid character 0x21 ('!'), perhaps \"a\" is supposed to be a function call.", "Line number 3.");
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ff {namespace urn:ff;prefix ff;container a {leaf target2 {type uint8;}}"
             "leaf ref1 {type leafref {path /a;}}}", LYS_IN_YANG, &mod));
     CHECK_LOG_CTX("Invalid leafref path \"/a\" - target node is container instead of leaf or leaf-list.", "Schema location /ff:ref1.");
@@ -1721,14 +1748,16 @@ test_type_leafref(void **state)
             "leaf ifname{type leafref{ path \"../interface/name\";}}\n"
             "leaf address {type leafref{\n path \"/interface[name is current()/../ifname]/ip\";}}}",
             LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid character 0x69 ('i'), perhaps \"name\" is supposed to be a function call.", "Line number 5.");
+    CHECK_LOG_CTX("Parsing module \"nn\" failed.", NULL,
+            "Invalid character 0x69 ('i'), perhaps \"name\" is supposed to be a function call.", "Line number 5.");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module oo {namespace urn:oo;prefix oo;\n"
             "list interface{key name;leaf name{type string;}leaf ip {type string;}}\n"
             "leaf ifname{type leafref{ path \"../interface/name\";}}\n"
             "leaf address {type leafref{\n path \"/interface[name=current()/../ifname/ip\";}}}",
             LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Unexpected XPath expression end.", "Line number 5.");
+    CHECK_LOG_CTX("Parsing module \"oo\" failed.", NULL,
+            "Unexpected XPath expression end.", "Line number 5.");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module pp {namespace urn:pp;prefix pp;"
             "list interface{key name;leaf name{type string;}leaf ip {type string;}}"
@@ -1749,49 +1778,56 @@ test_type_leafref(void **state)
             "leaf ifname{type leafref{ path \"../interface/name\";}}leaf test{type string;}\n"
             "leaf address {type leafref{ path \"/interface[name=current() /  .. / ifname][name=current()/../test]/ip\";}}}",
             LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Duplicate predicate key \"name\" in path.", "Line number 4.");
+    CHECK_LOG_CTX("Parsing module \"rr\" failed.", NULL,
+            "Duplicate predicate key \"name\" in path.", "Line number 4.");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ss {namespace urn:ss;prefix ss;\n"
             "list interface{key name;leaf name{type string;}leaf ip {type string;}}\n"
             "leaf ifname{type leafref{ path \"../interface/name\";}}leaf test{type string;}\n"
             "leaf address {type leafref{ path \"/interface[name = ../ifname]/ip\";}}}",
             LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Unexpected XPath token \"..\" (\"../ifname]/ip\"), expected \"FunctionName\".", "Line number 4.");
+    CHECK_LOG_CTX("Parsing module \"ss\" failed.", NULL,
+            "Unexpected XPath token \"..\" (\"../ifname]/ip\"), expected \"FunctionName\".", "Line number 4.");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module tt {namespace urn:tt;prefix tt;\n"
             "list interface{key name;leaf name{type string;}leaf ip {type string;}}\n"
             "leaf ifname{type leafref{ path \"../interface/name\";}}leaf test{type string;}\n"
             "leaf address {type leafref{ path \"/interface[name = current()../ifname]/ip\";}}}",
             LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Unexpected XPath token \"..\" (\"../ifname]/ip\"), expected \"]\".", "Line number 4.");
+    CHECK_LOG_CTX("Parsing module \"tt\" failed.", NULL,
+            "Unexpected XPath token \"..\" (\"../ifname]/ip\"), expected \"]\".", "Line number 4.");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module uu {namespace urn:uu;prefix uu;\n"
             "list interface{key name;leaf name{type string;}leaf ip {type string;}}\n"
             "leaf ifname{type leafref{ path \"../interface/name\";}}leaf test{type string;}\n"
             "leaf address {type leafref{ path \"/interface[name = current()/..ifname]/ip\";}}}",
             LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid character 'i'[31] of expression '/interface[name = current()/..ifname]/ip'.", "Line number 4.");
+    CHECK_LOG_CTX("Parsing module \"uu\" failed.", NULL,
+            "Invalid character 'i'[31] of expression '/interface[name = current()/..ifname]/ip'.", "Line number 4.");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module vv {namespace urn:vv;prefix vv;\n"
             "list interface{key name;leaf name{type string;}leaf ip {type string;}}\n"
             "leaf ifname{type leafref{ path \"../interface/name\";}}leaf test{type string;}\n"
             "leaf address {type leafref{ path \"/interface[name = current()/ifname]/ip\";}}}",
             LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Unexpected XPath token \"NameTest\" (\"ifname]/ip\"), expected \"..\".", "Line number 4.");
+    CHECK_LOG_CTX("Parsing module \"vv\" failed.", NULL,
+            "Unexpected XPath token \"NameTest\" (\"ifname]/ip\"), expected \"..\".", "Line number 4.");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module ww {namespace urn:ww;prefix ww;\n"
             "list interface{key name;leaf name{type string;}leaf ip {type string;}}\n"
             "leaf ifname{type leafref{ path \"../interface/name\";}}leaf test{type string;}\n"
             "leaf address {type leafref{ path \"/interface[name = current()/../]/ip\";}}}",
             LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Unexpected XPath token \"]\" (\"]/ip\").", "Line number 4.");
+    CHECK_LOG_CTX("Parsing module \"ww\" failed.", NULL,
+            "Unexpected XPath token \"]\" (\"]/ip\").", "Line number 4.");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module xx {namespace urn:xx;prefix xx;\n"
             "list interface{key name;leaf name{type string;}leaf ip {type string;}}\n"
             "leaf ifname{type leafref{ path \"../interface/name\";}}leaf test{type string;}\n"
             "leaf address {type leafref{ path \"/interface[name = current()/../$node]/ip\";}}}",
             LYS_IN_YANG, &mod));
-    CHECK_LOG_CTX("Invalid character 0x24 ('$'), perhaps \"\" is supposed to be a function call.", "Line number 4.");
+    CHECK_LOG_CTX("Parsing module \"xx\" failed.", NULL,
+            "Invalid character 0x24 ('$'), perhaps \"\" is supposed to be a function call.", "Line number 4.");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, "module yy {namespace urn:yy;prefix yy;\n"
             "list interface{key name;leaf name{type string;}leaf ip {type string;}}\n"

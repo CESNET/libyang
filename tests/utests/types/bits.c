@@ -163,8 +163,7 @@ test_schema_yang(void **state)
             "leaf port {type my_type {"
             "   bit ten {position 11;} bit two;}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Invalid bits - position of the item \"ten\" has changed from 10 to 11 in the derived type.",
-            "/TERR_0:port");
+    CHECK_LOG_CTX("Invalid bits - position of the item \"ten\" has changed from 10 to 11 in the derived type.", "/TERR_0:port");
 
     /* add new bit */
     schema = MODULE_CREATE_YANG("TERR_1", "typedef my_type{type bits {"
@@ -172,16 +171,15 @@ test_schema_yang(void **state)
             "leaf port {type my_type {"
             "   bit ten {position 10;} bit two;  bit test;}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Invalid bits - derived type adds new item \"test\".",
-            "/TERR_1:port");
+    CHECK_LOG_CTX("Invalid bits - derived type adds new item \"test\".", "/TERR_1:port");
 
     /* different max value => autoadd index */
     schema = MODULE_CREATE_YANG("TERR_2", "leaf port {type bits {"
             " bit first {position -1;} bit second;"
             "}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Invalid value \"-1\" of \"position\".",
-            "Line number 5.");
+    CHECK_LOG_CTX("Parsing module \"TERR_2\" failed.", NULL,
+            "Invalid value \"-1\" of \"position\".", "Line number 5.");
 
     /* different max value => autoadd index */
     schema = MODULE_CREATE_YANG("TERR_3", "leaf port {type bits {"
@@ -195,43 +193,42 @@ test_schema_yang(void **state)
             " bit first {position 10;} bit \"\";"
             "}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Statement argument is required.",
-            "Line number 5.");
+    CHECK_LOG_CTX("Parsing module \"TERR_4\" failed.", NULL,
+            "Statement argument is required.", "Line number 5.");
 
     /* wrong character */
     schema = MODULE_CREATE_YANG("TERR_5", "leaf port {type bits {"
             " bit first {position 10;} bit abcd^;"
             "}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Invalid identifier character '^' (0x005e).",
-            "Line number 5.");
+    CHECK_LOG_CTX("Parsing module \"TERR_5\" failed.", NULL,
+            "Invalid identifier character '^' (0x005e).", "Line number 5.");
 
     schema = MODULE_CREATE_YANG("TERR_6", "leaf port {type bits {"
             " bit hi; bit hi;"
             "}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Duplicate identifier \"hi\" of bit statement.",
-            "Line number 5.");
+    CHECK_LOG_CTX("Parsing module \"TERR_6\" failed.", NULL,
+            "Duplicate identifier \"hi\" of bit statement.", "Line number 5.");
 
     /* wrong character */
     schema = MODULE_CREATE_YANG("TERR_7", "leaf port {type bits {"
             " bit first {position 10;} bit \"ab&cd\";"
             "}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Invalid identifier character '&' (0x0026).",
-            "Line number 5.");
+    CHECK_LOG_CTX("Parsing module \"TERR_7\" failed.", NULL,
+            "Invalid identifier character '&' (0x0026).", "Line number 5.");
 
     schema = MODULE_CREATE_YANG("TERR_8", "leaf port {type bits {"
             " bit first {position 10;} bit \"4abcd\";"
             "}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Invalid identifier first character '4' (0x0034).",
-            "Line number 5.");
+    CHECK_LOG_CTX("Parsing module \"TERR_8\" failed.", NULL,
+            "Invalid identifier first character '4' (0x0034).", "Line number 5.");
 
     schema = MODULE_CREATE_YANG("TERR_9", "leaf port {type bits;}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Missing bit substatement for bits type.",
-            "/TERR_9:port");
+    CHECK_LOG_CTX("Missing bit substatement for bits type.", "/TERR_9:port");
 
     /* feature is not present */
     schema = MODULE_CREATE_YANG("IF_0", "feature f;"
@@ -379,8 +376,7 @@ test_schema_yin(void **state)
             "   <bit name=\"ten\"> <position value=\"11\"/> </bit> <bit name=\"two\"/>"
             "</type></leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Invalid bits - position of the item \"ten\" has changed from 10 to 11 in the derived type.",
-            "/TERR_0:port");
+    CHECK_LOG_CTX("Invalid bits - position of the item \"ten\" has changed from 10 to 11 in the derived type.", "/TERR_0:port");
 
     /* add new bit */
     schema = MODULE_CREATE_YIN("TERR_1",
@@ -396,8 +392,7 @@ test_schema_yin(void **state)
             "   <bit name=\"test\"/>"
             "</type></leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Invalid bits - derived type adds new item \"test\".",
-            "/TERR_1:port");
+    CHECK_LOG_CTX("Invalid bits - derived type adds new item \"test\".", "/TERR_1:port");
 
     /* different max value => autoadd index */
     schema = MODULE_CREATE_YIN("TERR_2",
@@ -406,8 +401,8 @@ test_schema_yin(void **state)
             "   <bit name=\"second\">"
             "</type></leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Invalid value \"-1\" of \"value\" attribute in \"position\" element.",
-            "Line number 10.");
+    CHECK_LOG_CTX("Parsing module \"TERR_2\" failed.", NULL,
+            "Invalid value \"-1\" of \"value\" attribute in \"position\" element.", "Line number 10.");
 
     /* different max value => autoadd index */
     schema = MODULE_CREATE_YIN("TERR_3",
@@ -425,7 +420,8 @@ test_schema_yin(void **state)
             "  <bit name=\"second\"/>"
             "</type></leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Invalid identifier first character ' ' (0x0020).",
+    CHECK_LOG_CTX("Parsing module \"TERR_4\" failed.", NULL,
+            "Invalid identifier first character ' ' (0x0020).",
             "Line number 10.");
 
     schema = MODULE_CREATE_YIN("TERR_5",
@@ -434,7 +430,8 @@ test_schema_yin(void **state)
             "  <bit name=\"second\"/>"
             "</type></leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Invalid identifier character ' ' (0x0020).",
+    CHECK_LOG_CTX("Parsing module \"TERR_5\" failed.", NULL,
+            "Invalid identifier character ' ' (0x0020).",
             "Line number 10.");
 
     schema = MODULE_CREATE_YIN("TERR_6",
@@ -443,7 +440,8 @@ test_schema_yin(void **state)
             "  <bit name=\"hi\"/>"
             "</type></leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Duplicate identifier \"hi\" of bit statement.",
+    CHECK_LOG_CTX("Parsing module \"TERR_6\" failed.", NULL,
+            "Duplicate identifier \"hi\" of bit statement.",
             "Line number 10.");
 
     schema = MODULE_CREATE_YIN("TERR_7",
@@ -452,7 +450,8 @@ test_schema_yin(void **state)
             "  <bit name=\"second\"/>"
             "</type></leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Invalid identifier first character '4' (0x0034).",
+    CHECK_LOG_CTX("Parsing module \"TERR_7\" failed.", NULL,
+            "Invalid identifier first character '4' (0x0034).",
             "Line number 10.");
 
     /* TEST EMPTY NAME*/
@@ -462,7 +461,8 @@ test_schema_yin(void **state)
             "  <bit name=\"second\"/>"
             "</type></leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EVALID);
-    CHECK_LOG_CTX("Empty identifier is not allowed.",
+    CHECK_LOG_CTX("Parsing module \"TERR_8\" failed.", NULL,
+            "Empty identifier is not allowed.",
             "Line number 10.");
 }
 
