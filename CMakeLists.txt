@@ -14,6 +14,7 @@ include(GNUInstallDirs)
 include(CheckSymbolExists)
 include(UseCompat)
 include(ABICheck)
+include(SourceFormat)
 
 set(LIBYANG_DESCRIPTION "libyang is YANG data modelling language parser and toolkit written (and providing API) in C.")
 
@@ -299,6 +300,9 @@ endif()
 if ("${BUILD_TYPE_UPPER}" STREQUAL "ABICHECK")
 	libyang_abicheck()
 endif()
+
+# source code format
+source_format(src/* compat/*)
 
 # clean cmake cache
 add_custom_target(cclean
