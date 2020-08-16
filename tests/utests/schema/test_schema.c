@@ -18,6 +18,7 @@
 
 #include "log.h"
 #include "parser_schema.h"
+#include "set.h"
 #include "tree_schema.h"
 
 LY_ERR

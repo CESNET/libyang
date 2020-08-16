@@ -19,10 +19,11 @@
 
 #include "log.h"
 #include "parser_schema.h"
+#include "set.h"
 #include "tests_config.h"
 
 LY_ERR test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), const char *UNUSED(submod_name),
-        const char *UNUSED(sub_rev), void *user_data, LYS_INFORMAT * format,
+        const char *UNUSED(sub_rev), void *user_data, LYS_INFORMAT *format,
         const char **module_data, void (**free_module_data)(void *model_data, void *user_data));
 
 #define TEST_YANG_MODULE_10(MOD_NAME, MOD_PREFIX, MOD_NS, CONTENT) \
@@ -69,16 +70,24 @@ LY_ERR test_imp_clb(const char *UNUSED(mod_name), const char *UNUSED(mod_rev), c
     CHECK_LOG_CTX(ERRMSG, ERRPATH); \
     }
 
+#define TEST_SCHEMA_PARSE_ERR(RFC7950, YIN, MOD_NAME, CONTENT, ERRMSG, ERRPATH) \
+    { \
+    const char *test_str__; \
+    TEST_SCHEMA_STR(RFC7950, YIN, MOD_NAME, CONTENT, test_str__) \
+    assert_int_not_equal(lys_parse_mem(UTEST_LYCTX, test_str__, YIN ? LYS_IN_YIN : LYS_IN_YANG, NULL), LY_SUCCESS); \
+    CHECK_LOG_CTX("Parsing module \""MOD_NAME"\" failed.", NULL, ERRMSG, ERRPATH); \
+    }
+
 #define TEST_STMT_DUP(RFC7950, YIN, STMT, MEMBER, VALUE1, VALUE2, LINE) \
     if (YIN) { \
-        TEST_SCHEMA_ERR(RFC7950, YIN, "dup", "", "Duplicate keyword \""MEMBER"\".", "Line number "LINE"."); \
+        TEST_SCHEMA_PARSE_ERR(RFC7950, YIN, "dup", "", "Duplicate keyword \""MEMBER"\".", "Line number "LINE"."); \
     } else { \
-        TEST_SCHEMA_ERR(RFC7950, YIN, "dup", STMT"{"MEMBER" "VALUE1";"MEMBER" "VALUE2";}", \
+        TEST_SCHEMA_PARSE_ERR(RFC7950, YIN, "dup", STMT"{"MEMBER" "VALUE1";"MEMBER" "VALUE2";}", \
                         "Duplicate keyword \""MEMBER"\".", "Line number "LINE"."); \
     }
 
 #define TEST_STMT_SUBSTM_ERR(RFC7950, STMT, SUBSTMT, VALUE) ;\
-        TEST_SCHEMA_ERR(RFC7950, 0, "inv", STMT" test {"SUBSTMT" "VALUE";}", \
+        TEST_SCHEMA_PARSE_ERR(RFC7950, 0, "inv", STMT" test {"SUBSTMT" "VALUE";}", \
                         "Invalid keyword \""SUBSTMT"\" as a child of \""STMT"\".", "Line number 1.");
 
 #endif /* TESTS_UTESTS_SCHEMA_TEST_SCHEMA_H_ */

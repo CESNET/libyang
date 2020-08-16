@@ -1199,9 +1199,30 @@ struct utest_context {
         _CHECK_LOG_CTX(ly_err_last(_UC->ctx)->prev->prev->prev->prev, MSG5, PATH5)
 
 /**
+ * @brief Internal macro to check the last three libyang's context error.
+ */
+#define _CHECK_LOG_CTX6(MSG1, PATH1, MSG2, PATH2, MSG3, PATH3, MSG4, PATH4, MSG5, PATH5, MSG6, PATH6) \
+        _CHECK_LOG_CTX5(MSG1, PATH1, MSG2, PATH2, MSG3, PATH3, MSG4, PATH4, MSG5, PATH5); \
+        _CHECK_LOG_CTX(ly_err_last(_UC->ctx)->prev->prev->prev->prev->prev, MSG6, PATH6)
+
+/**
+ * @brief Internal macro to check the last three libyang's context error.
+ */
+#define _CHECK_LOG_CTX7(MSG1, PATH1, MSG2, PATH2, MSG3, PATH3, MSG4, PATH4, MSG5, PATH5, MSG6, PATH6, MSG7, PATH7) \
+        _CHECK_LOG_CTX6(MSG1, PATH1, MSG2, PATH2, MSG3, PATH3, MSG4, PATH4, MSG5, PATH5, MSG6, PATH6); \
+        _CHECK_LOG_CTX(ly_err_last(_UC->ctx)->prev->prev->prev->prev->prev->prev, MSG7, PATH7)
+
+/**
+ * @brief Internal macro to check the last three libyang's context error.
+ */
+#define _CHECK_LOG_CTX8(MSG1, PATH1, MSG2, PATH2, MSG3, PATH3, MSG4, PATH4, MSG5, PATH5, MSG6, PATH6, MSG7, PATH7, MSG8, PATH8) \
+        _CHECK_LOG_CTX7(MSG1, PATH1, MSG2, PATH2, MSG3, PATH3, MSG4, PATH4, MSG5, PATH5, MSG6, PATH6, MSG7, PATH7); \
+        _CHECK_LOG_CTX(ly_err_last(_UC->ctx)->prev->prev->prev->prev->prev->prev->prev, MSG8, PATH8)
+
+/**
  * @brief Internal helper macro to select _CHECK_LOG_CTX* macro according to the provided parameters.
  */
-#define _GET_CHECK_LOG_MACRO(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, NAME, ...) NAME
+#define _GET_CHECK_LOG_MACRO(_1, _2, _3, _4, _5, _6, _7, _8, _9, _10, _11, _12, _13, _14, _15, _16, NAME, ...) NAME
 
 /**
  * @brief Check expected error(s) in libyang context.
@@ -1214,7 +1235,8 @@ struct utest_context {
  * @param[in] PATH Expected error path.
  */
 #define CHECK_LOG_CTX(...) \
-    _GET_CHECK_LOG_MACRO(__VA_ARGS__, _CHECK_LOG_CTX5, _INVAL, _CHECK_LOG_CTX4, _INVAL, \
+    _GET_CHECK_LOG_MACRO(__VA_ARGS__, _CHECK_LOG_CTX8, _INVAL, _CHECK_LOG_CTX7, _INVAL, \
+            _CHECK_LOG_CTX6, _INVAL, _CHECK_LOG_CTX5, _INVAL, _CHECK_LOG_CTX4, _INVAL, \
             _CHECK_LOG_CTX3, _INVAL, _CHECK_LOG_CTX2, _INVAL, _CHECK_LOG_CTX1)(__VA_ARGS__); \
     ly_err_clean(_UC->ctx, NULL)
 

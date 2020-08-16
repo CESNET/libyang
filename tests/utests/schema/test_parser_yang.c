@@ -702,12 +702,12 @@ test_module(void **state)
     ly_ctx_set_module_imp_clb(YCTX->parsed_mod->mod->ctx, test_imp_clb, "module xxx { namespace urn:xxx; prefix x;}");
     in.current = "module" SCHEMA_BEGINNING "include xxx;}";
     assert_int_equal(lys_parse_mem(YCTX->parsed_mod->mod->ctx, in.current, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Including \"xxx\" submodule into \"name\" failed.", NULL);
+    CHECK_LOG_CTX("Parsing module \"name\" failed.", NULL, "Including \"xxx\" submodule into \"name\" failed.", NULL);
 
     ly_ctx_set_module_imp_clb(YCTX->parsed_mod->mod->ctx, test_imp_clb, "submodule xxx {belongs-to wrong-name {prefix w;}}");
     in.current = "module" SCHEMA_BEGINNING "include xxx;}";
     assert_int_equal(lys_parse_mem(YCTX->parsed_mod->mod->ctx, in.current, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG_CTX("Including \"xxx\" submodule into \"name\" failed.", NULL);
+    CHECK_LOG_CTX("Parsing module \"name\" failed.", NULL, "Including \"xxx\" submodule into \"name\" failed.", NULL);
 
     ly_ctx_set_module_imp_clb(YCTX->parsed_mod->mod->ctx, test_imp_clb, "submodule xxx {belongs-to name {prefix x;}}");
     TEST_GENERIC("include xxx;}", mod->includes,

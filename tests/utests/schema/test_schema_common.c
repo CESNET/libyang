@@ -15,6 +15,7 @@
 
 #include <string.h>
 
+#include "compat.h"
 #include "context.h"
 #include "log.h"
 #include "tree_edit.h"
@@ -221,61 +222,80 @@ test_collision_typedef(void **state)
     /* collision with a built-in type */
     str = "module a {namespace urn:a; prefix a; typedef binary {type string;}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"binary\" of typedef statement - name collision with a built-in type.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"binary\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef bits {type string;}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"bits\" of typedef statement - name collision with a built-in type.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"bits\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef boolean {type string;}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"boolean\" of typedef statement - name collision with a built-in type.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"boolean\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef decimal64 {type string;}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"decimal64\" of typedef statement - name collision with a built-in type.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"decimal64\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef empty {type string;}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"empty\" of typedef statement - name collision with a built-in type.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"empty\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef enumeration {type string;}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"enumeration\" of typedef statement - name collision with a built-in type.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"enumeration\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef int8 {type string;}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"int8\" of typedef statement - name collision with a built-in type.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"int8\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef int16 {type string;}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"int16\" of typedef statement - name collision with a built-in type.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"int16\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef int32 {type string;}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"int32\" of typedef statement - name collision with a built-in type.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"int32\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef int64 {type string;}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"int64\" of typedef statement - name collision with a built-in type.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"int64\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef instance-identifier {type string;}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"instance-identifier\" of typedef statement - name collision with a built-in type.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"instance-identifier\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef identityref {type string;}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"identityref\" of typedef statement - name collision with a built-in type.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"identityref\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef leafref {type string;}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"leafref\" of typedef statement - name collision with a built-in type.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"leafref\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef string {type int8;}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"string\" of typedef statement - name collision with a built-in type.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"string\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef union {type string;}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"union\" of typedef statement - name collision with a built-in type.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"union\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef uint8 {type string;}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"uint8\" of typedef statement - name collision with a built-in type.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"uint8\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef uint16 {type string;}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"uint16\" of typedef statement - name collision with a built-in type.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"uint16\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef uint32 {type string;}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"uint32\" of typedef statement - name collision with a built-in type.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"uint32\" of typedef statement - name collision with a built-in type.", NULL);
     str = "module a {namespace urn:a; prefix a; typedef uint64 {type string;}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"uint64\" of typedef statement - name collision with a built-in type.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"uint64\" of typedef statement - name collision with a built-in type.", NULL);
 
     str = "module mytypes {namespace urn:types; prefix t; typedef binary_ {type string;} typedef bits_ {type string;} typedef boolean_ {type string;} "
             "typedef decimal64_ {type string;} typedef empty_ {type string;} typedef enumeration_ {type string;} typedef int8_ {type string;} typedef int16_ {type string;}"
@@ -287,29 +307,34 @@ test_collision_typedef(void **state)
     /* collision in node's scope */
     str = "module a {namespace urn:a; prefix a; container c {typedef y {type int8;} typedef y {type string;}}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"y\" of typedef statement - name collision with sibling type.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"y\" of typedef statement - name collision with sibling type.", NULL);
 
     /* collision with parent node */
     str = "module a {namespace urn:a; prefix a; container c {container d {typedef y {type int8;}} typedef y {type string;}}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"y\" of typedef statement - name collision with another scoped type.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"y\" of typedef statement - name collision with another scoped type.", NULL);
 
     /* collision with module's top-level */
     str = "module a {namespace urn:a; prefix a; typedef x {type string;} container c {typedef x {type int8;}}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"x\" of typedef statement - scoped type collide with a top-level type.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"x\" of typedef statement - scoped type collide with a top-level type.", NULL);
 
     /* collision of submodule's node with module's top-level */
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule b {belongs-to a {prefix a;} container c {typedef x {type string;}}}");
     str = "module a {namespace urn:a; prefix a; include b; typedef x {type int8;}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"x\" of typedef statement - scoped type collide with a top-level type.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"x\" of typedef statement - scoped type collide with a top-level type.", NULL);
 
     /* collision of module's node with submodule's top-level */
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule b {belongs-to a {prefix a;} typedef x {type int8;}}");
     str = "module a {namespace urn:a; prefix a; include b; container c {typedef x {type string;}}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"x\" of typedef statement - scoped type collide with a top-level type.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"x\" of typedef statement - scoped type collide with a top-level type.", NULL);
 
     /* collision of submodule's node with another submodule's top-level */
     str = "module a {yang-version 1.1; namespace urn:a; prefix a; include asub; include bsub;}";
@@ -317,25 +342,29 @@ test_collision_typedef(void **state)
     list[1].data = "submodule bsub {belongs-to a {prefix a;} container c {typedef g {type int;}}}";
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, module_clb, list);
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
-    CHECK_LOG("Duplicate identifier \"g\" of typedef statement - scoped type collide with a top-level type.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"g\" of typedef statement - scoped type collide with a top-level type.", NULL);
 
     /* collision of module's top-levels */
     str = "module a {namespace urn:a; prefix a; typedef test {type string;} typedef test {type int8;}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"test\" of typedef statement - name collision with another top-level type.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"test\" of typedef statement - name collision with another top-level type.", NULL);
 
     /* collision of submodule's top-levels */
     submod = "submodule asub {belongs-to a {prefix a;} typedef g {type int;} typedef g {type int;}}";
     str = "module a {yang-version 1.1; namespace urn:a; prefix a; include asub;}";
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, submod);
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
-    CHECK_LOG("Duplicate identifier \"g\" of typedef statement - name collision with another top-level type.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"g\" of typedef statement - name collision with another top-level type.", NULL);
 
     /* collision of module's top-level with submodule's top-levels */
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule b {belongs-to a {prefix a;} typedef x {type string;}}");
     str = "module a {namespace urn:a; prefix a; include b; typedef x {type int8;}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"x\" of typedef statement - name collision with another top-level type.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"x\" of typedef statement - name collision with another top-level type.", NULL);
 
     /* collision of submodule's top-level with another submodule's top-levels */
     str = "module a {yang-version 1.1; namespace urn:a; prefix a; include asub; include bsub;}";
@@ -343,12 +372,14 @@ test_collision_typedef(void **state)
     list[1].data = "submodule bsub {belongs-to a {prefix a;} typedef g {type int;}}";
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, module_clb, list);
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
-    CHECK_LOG("Duplicate identifier \"g\" of typedef statement - name collision with another top-level type.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"g\" of typedef statement - name collision with another top-level type.", NULL);
 
     /* error in type-stmt */
     str = "module a {namespace urn:a; prefix a; container c {typedef x {type t{}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_STRING(_UC->err_msg, "Unexpected end-of-input.");
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Unexpected end-of-input.", "Line number 1.");
     UTEST_LOG_CLEAN;
 
     /* no collision if the same names are in different scope */
@@ -370,29 +401,34 @@ test_collision_grouping(void **state)
     /* collision in node's scope */
     str = "module a {namespace urn:a; prefix a; container c {grouping y; grouping y;}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"y\" of grouping statement - name collision with sibling grouping.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"y\" of grouping statement - name collision with sibling grouping.", NULL);
 
     /* collision with parent node */
     str = "module a {namespace urn:a; prefix a; container c {container d {grouping y;} grouping y;}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"y\" of grouping statement - name collision with another scoped grouping.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"y\" of grouping statement - name collision with another scoped grouping.", NULL);
 
     /* collision with module's top-level */
     str = "module a {namespace urn:a; prefix a; grouping x; container c {grouping x;}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"x\" of grouping statement - scoped grouping collide with a top-level grouping.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"x\" of grouping statement - scoped grouping collide with a top-level grouping.", NULL);
 
     /* collision of submodule's node with module's top-level */
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule b {belongs-to a {prefix a;} container c {grouping x;}}");
     str = "module a {namespace urn:a; prefix a; include b; grouping x;}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"x\" of grouping statement - scoped grouping collide with a top-level grouping.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"x\" of grouping statement - scoped grouping collide with a top-level grouping.", NULL);
 
     /* collision of module's node with submodule's top-level */
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule b {belongs-to a {prefix a;} grouping x;}");
     str = "module a {namespace urn:a; prefix a; include b; container c {grouping x;}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"x\" of grouping statement - scoped grouping collide with a top-level grouping.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"x\" of grouping statement - scoped grouping collide with a top-level grouping.", NULL);
 
     /* collision of submodule's node with another submodule's top-level */
     str = "module a {yang-version 1.1; namespace urn:a; prefix a; include asub; include bsub;}";
@@ -400,25 +436,29 @@ test_collision_grouping(void **state)
     list[1].data = "submodule bsub {belongs-to a {prefix a;} container c {grouping g;}}";
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, module_clb, list);
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
-    CHECK_LOG("Duplicate identifier \"g\" of grouping statement - scoped grouping collide with a top-level grouping.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"g\" of grouping statement - scoped grouping collide with a top-level grouping.", NULL);
 
     /* collision of module's top-levels */
     str = "module a {namespace urn:a; prefix a; grouping test; grouping test;}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"test\" of grouping statement - name collision with another top-level grouping.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"test\" of grouping statement - name collision with another top-level grouping.", NULL);
 
     /* collision of submodule's top-levels */
     submod = "submodule asub {belongs-to a {prefix a;} grouping g; grouping g;}";
     str = "module a {yang-version 1.1; namespace urn:a; prefix a; include asub;}";
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, submod);
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
-    CHECK_LOG("Duplicate identifier \"g\" of grouping statement - name collision with another top-level grouping.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"g\" of grouping statement - name collision with another top-level grouping.", NULL);
 
     /* collision of module's top-level with submodule's top-levels */
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, "submodule b {belongs-to a {prefix a;} grouping x;}");
     str = "module a {namespace urn:a; prefix a; include b; grouping x;}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"x\" of grouping statement - name collision with another top-level grouping.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"x\" of grouping statement - name collision with another top-level grouping.", NULL);
 
     /* collision of submodule's top-level with another submodule's top-levels */
     str = "module a {yang-version 1.1; namespace urn:a; prefix a; include asub; include bsub;}";
@@ -426,17 +466,20 @@ test_collision_grouping(void **state)
     list[1].data = "submodule bsub {belongs-to a {prefix a;} grouping g;}";
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, module_clb, list);
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
-    CHECK_LOG("Duplicate identifier \"g\" of grouping statement - name collision with another top-level grouping.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"g\" of grouping statement - name collision with another top-level grouping.", NULL);
 
     /* collision in nested groupings, top-level */
     str = "module a {namespace urn:a; prefix a; grouping g {grouping g;}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"g\" of grouping statement - scoped grouping collide with a top-level grouping.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"g\" of grouping statement - scoped grouping collide with a top-level grouping.", NULL);
 
     /* collision in nested groupings, in node */
     str = "module a {namespace urn:a; prefix a; container c {grouping g {grouping g;}}}";
     assert_int_equal(lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL), LY_EVALID);
-    CHECK_LOG("Duplicate identifier \"g\" of grouping statement - name collision with another scoped grouping.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"g\" of grouping statement - name collision with another scoped grouping.", NULL);
 
     /* no collision if the same names are in different scope */
     str = "module a {yang-version 1.1; namespace urn:a; prefix a;"
@@ -457,21 +500,24 @@ test_collision_identity(void **state)
     /* collision of module's top-levels */
     str = "module a {yang-version 1.1; namespace urn:a; prefix a; identity g; identity g;}";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
-    CHECK_LOG("Duplicate identifier \"g\" of identity statement - name collision with another top-level identity.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"g\" of identity statement - name collision with another top-level identity.", NULL);
 
     /* collision of submodule's top-levels */
     submod = "submodule asub {belongs-to a {prefix a;} identity g; identity g;}";
     str = "module a {yang-version 1.1; namespace urn:a; prefix a; include asub;}";
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, submod);
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
-    CHECK_LOG("Duplicate identifier \"g\" of identity statement - name collision with another top-level identity.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"g\" of identity statement - name collision with another top-level identity.", NULL);
 
     /* collision of module's top-level with submodule's top-levels */
     submod = "submodule asub {belongs-to a {prefix a;} identity g;}";
     str = "module a {yang-version 1.1; namespace urn:a; prefix a; include asub; identity g;}";
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, submod);
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
-    CHECK_LOG("Duplicate identifier \"g\" of identity statement - name collision with another top-level identity.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"g\" of identity statement - name collision with another top-level identity.", NULL);
 
     /* collision of submodule's top-level with another submodule's top-levels */
     str = "module a {yang-version 1.1; namespace urn:a; prefix a; include asub; include bsub;}";
@@ -479,7 +525,8 @@ test_collision_identity(void **state)
     list[1].data = "submodule bsub {belongs-to a {prefix a;} identity g;}";
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, module_clb, list);
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
-    CHECK_LOG("Duplicate identifier \"g\" of identity statement - name collision with another top-level identity.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"g\" of identity statement - name collision with another top-level identity.", NULL);
 }
 
 void
@@ -495,21 +542,24 @@ test_collision_feature(void **state)
     /* collision of module's top-levels */
     str = "module a {yang-version 1.1; namespace urn:a; prefix a; feature g; feature g;}";
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
-    CHECK_LOG("Duplicate identifier \"g\" of feature statement - name collision with another top-level feature.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"g\" of feature statement - name collision with another top-level feature.", NULL);
 
     /* collision of submodule's top-levels */
     submod = "submodule asub {belongs-to a {prefix a;} feature g; feature g;}";
     str = "module a {yang-version 1.1; namespace urn:a; prefix a; include asub;}";
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, submod);
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
-    CHECK_LOG("Duplicate identifier \"g\" of feature statement - name collision with another top-level feature.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"g\" of feature statement - name collision with another top-level feature.", NULL);
 
     /* collision of module's top-level with submodule's top-levels */
     submod = "submodule asub {belongs-to a {prefix a;} feature g;}";
     str = "module a {yang-version 1.1; namespace urn:a; prefix a; include asub; feature g;}";
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, test_imp_clb, submod);
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
-    CHECK_LOG("Duplicate identifier \"g\" of feature statement - name collision with another top-level feature.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"g\" of feature statement - name collision with another top-level feature.", NULL);
 
     /* collision of submodule's top-level with another submodule's top-levels */
     str = "module a {yang-version 1.1; namespace urn:a; prefix a; include asub; include bsub;}";
@@ -517,7 +567,8 @@ test_collision_feature(void **state)
     list[1].data = "submodule bsub {belongs-to a {prefix a;} feature g;}";
     ly_ctx_set_module_imp_clb(UTEST_LYCTX, module_clb, list);
     assert_int_equal(LY_EVALID, lys_parse_mem(UTEST_LYCTX, str, LYS_IN_YANG, NULL));
-    CHECK_LOG("Duplicate identifier \"g\" of feature statement - name collision with another top-level feature.", NULL);
+    CHECK_LOG_CTX("Parsing module \"a\" failed.", NULL,
+            "Duplicate identifier \"g\" of feature statement - name collision with another top-level feature.", NULL);
 }
 
 void
@@ -908,10 +959,13 @@ test_includes(void **state)
         assert_null(mod);
         CHECK_LOG_CTX("Loading \"main_b\" module failed.", NULL,
                 "Data model \"main_b\" not found in local searchdirs.", NULL,
+                "Parsing module \"main_b\" failed.", NULL,
                 "Including \"sub_b_one\" submodule into \"main_b\" failed.", NULL,
                 "Data model \"sub_b_one\" not found in local searchdirs.", NULL,
+                "Parsing submodule \"sub_b_one\" failed.", NULL,
                 "YANG 1.1 requires all submodules to be included from main module. But submodule \"sub_b_one\" includes "
-                "submodule \"sub_b_two\" which is not included by main module \"main_b\".", NULL);
+                "submodule \"sub_b_two\" which is not included by main module \"main_b\".", NULL,
+                "YANG version 1.1 expects all includes in main module, includes in submodules (sub_b_one) are not necessary.", NULL);
     }
 
     {

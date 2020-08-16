@@ -224,26 +224,22 @@ test_schema_yang(void **state)
     /* TEST ERROR -60 .. 0 | 0 .. 127 */
     schema = MODULE_CREATE_YANG("ERR0", "leaf port {type int8 {range \"-60 .. 0 | 0 .. 127\";}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EEXIST);
-    CHECK_LOG_CTX("Invalid range restriction - values are not in ascending order (0).",
-            "/ERR0:port");
+    CHECK_LOG_CTX("Invalid range restriction - values are not in ascending order (0).", "/ERR0:port");
 
     /* TEST ERROR 0 .. 128 */
     schema = MODULE_CREATE_YANG("ERR1", "leaf port {type int8 {range \"0 .. 128\";}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EDENIED);
-    CHECK_LOG_CTX("Invalid range restriction - value \"128\" does not fit the type limitations.",
-            "/ERR1:port");
+    CHECK_LOG_CTX("Invalid range restriction - value \"128\" does not fit the type limitations.", "/ERR1:port");
 
     /* TEST ERROR -129 .. 126 */
     schema = MODULE_CREATE_YANG("ERR2", "leaf port {type int8 {range \"-129 .. 0\";}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EDENIED);
-    CHECK_LOG_CTX("Invalid range restriction - value \"-129\" does not fit the type limitations.",
-            "/ERR2:port");
+    CHECK_LOG_CTX("Invalid range restriction - value \"-129\" does not fit the type limitations.", "/ERR2:port");
 
     /* TEST ERROR 0 */
     schema = MODULE_CREATE_YANG("ERR3", "leaf port {type int8 {range \"-129\";}}");
     UTEST_INVALID_MODULE(schema, LYS_IN_YANG, NULL, LY_EDENIED);
-    CHECK_LOG_CTX("Invalid range restriction - value \"-129\" does not fit the type limitations.",
-            "/ERR3:port");
+    CHECK_LOG_CTX("Invalid range restriction - value \"-129\" does not fit the type limitations.", "/ERR3:port");
 
     /*
      * TEST MODULE SUBTYPE
@@ -733,8 +729,7 @@ test_schema_yin(void **state)
             "   <type name=\"int8\"> <range value = \"min .. 0 | 0 .. 12\"/>  </type>"
             "</leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EEXIST);
-    CHECK_LOG_CTX("Invalid range restriction - values are not in ascending order (0).",
-            "/TE0:port");
+    CHECK_LOG_CTX("Invalid range restriction - values are not in ascending order (0).", "/TE0:port");
 
     /* TEST ERROR 0 .. 128 */
     schema = MODULE_CREATE_YIN("TE1",
@@ -742,8 +737,7 @@ test_schema_yin(void **state)
             "   <type name=\"int8\"> <range value = \"0 .. 128\"/>  </type>"
             "</leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EDENIED);
-    CHECK_LOG_CTX("Invalid range restriction - value \"128\" does not fit the type limitations.",
-            "/TE1:port");
+    CHECK_LOG_CTX("Invalid range restriction - value \"128\" does not fit the type limitations.", "/TE1:port");
 
     /* TEST ERROR -129 .. 126 */
     schema = MODULE_CREATE_YIN("TE2",
@@ -751,8 +745,7 @@ test_schema_yin(void **state)
             "   <type name=\"int8\"> <range value =\"-129 .. 126\"/>  </type>"
             "</leaf>");
     UTEST_INVALID_MODULE(schema, LYS_IN_YIN, NULL, LY_EDENIED);
-    CHECK_LOG_CTX("Invalid range restriction - value \"-129\" does not fit the type limitations.",
-            "/TE2:port");
+    CHECK_LOG_CTX("Invalid range restriction - value \"-129\" does not fit the type limitations.", "/TE2:port");
 
     /* TEST YIN */
     schema = MODULE_CREATE_YIN("TS0",
