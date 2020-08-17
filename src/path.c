@@ -708,7 +708,7 @@ ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, cons
     assert((target == LY_PATH_TARGET_SINGLE) || (target == LY_PATH_TARGET_MANY));
 
     /* find operation, if we are in any */
-    for (op = ctx_node; op && !(op->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)); op = op->parent);
+    for (op = ctx_node; op && !(op->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)); op = op->parent) {}
 
     /* remember original context node */
     cur_node = ctx_node;

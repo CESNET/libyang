@@ -919,7 +919,7 @@ lyd_validate_must(const struct lyd_node *node, LYD_VALIDATE_OP op)
     }
 
     /* find first top-level node */
-    for (tree = node; tree->parent; tree = (struct lyd_node *)tree->parent);
+    for (tree = node; tree->parent; tree = (struct lyd_node *)tree->parent) {}
     while (tree->prev->next) {
         tree = tree->prev;
     }

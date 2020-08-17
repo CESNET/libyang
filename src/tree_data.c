@@ -283,7 +283,7 @@ lyd_parse_get_format(const struct ly_in *in, LYD_FORMAT format)
         size_t len = strlen(path);
 
         /* ignore trailing whitespaces */
-        for (; len > 0 && isspace(path[len - 1]); len--);
+        for (; len > 0 && isspace(path[len - 1]); len--) {}
 
         if (len >= 5 && !strncmp(&path[len - 4], ".xml", 4)) {
             format = LYD_XML;
@@ -1700,7 +1700,7 @@ lyd_insert_after_node(struct lyd_node *sibling, struct lyd_node *node)
         if (sibling->parent) {
             sibling = sibling->parent->child;
         } else {
-            for (; sibling->prev->next != node; sibling = sibling->prev);
+            for (; sibling->prev->next != node; sibling = sibling->prev) {}
         }
         sibling->prev = node;
     }
@@ -2103,7 +2103,7 @@ lyd_insert_meta(struct lyd_node *parent, struct lyd_meta *meta)
 
     /* insert as the last attribute */
     if (parent->meta) {
-        for (last = parent->meta; last->next; last = last->next);
+        for (last = parent->meta; last->next; last = last->next) {}
         last->next = meta;
     } else {
         parent->meta = meta;
@@ -2158,7 +2158,7 @@ lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct ly
     if (parent) {
         lyd_insert_meta(parent, mt);
     } else if (*meta) {
-        for (last = *meta; last->next; last = last->next);
+        for (last = *meta; last->next; last = last->next) {}
         last->next = mt;
     }
 
@@ -2187,7 +2187,7 @@ lyd_insert_attr(struct lyd_node *parent, struct lyd_attr *attr)
 
     /* insert as the last attribute */
     if (opaq->attr) {
-        for (last = opaq->attr; last->next; last = last->next);
+        for (last = opaq->attr; last->next; last = last->next) {}
         last->next = attr;
     } else {
         opaq->attr = attr;
@@ -2233,7 +2233,7 @@ lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const struct ly
     if (parent) {
         lyd_insert_attr(parent, at);
     } else if (*attr) {
-        for (last = *attr; last->next; last = last->next);
+        for (last = *attr; last->next; last = last->next) {}
         last->next = at;
     }
 
@@ -2736,7 +2736,7 @@ lyd_dup_meta_single(const struct lyd_meta *meta, struct lyd_node *node, struct l
 
     /* insert as the last attribute */
     if (node->meta) {
-        for (last = node->meta; last->next; last = last->next);
+        for (last = node->meta; last->next; last = last->next) {}
         last->next = mt;
     } else {
         node->meta = mt;
@@ -2975,7 +2975,7 @@ lyd_path_position_predicate(const struct lyd_node *node, char **buffer, size_t *
     if (node->parent) {
         first = node->parent->child;
     } else {
-        for (first = node; node->prev->next; node = node->prev);
+        for (first = node; node->prev->next; node = node->prev) {}
     }
     pos = 1;
     for (iter = first; iter != node; iter = iter->next) {
@@ -3028,7 +3028,7 @@ lyd_path(const struct lyd_node *node, LYD_PATH_TYPE pathtype, char *buffer, size
         goto iter_print;
         while (depth) {
             /* find the right node */
-            for (iter = node, i = 1; i < depth; iter = (const struct lyd_node *)iter->parent, ++i);
+            for (iter = node, i = 1; i < depth; iter = (const struct lyd_node *)iter->parent, ++i) {}
 iter_print:
             /* print prefix and name */
             mod = NULL;

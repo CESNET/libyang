@@ -243,7 +243,7 @@ lysc_update_path(struct lysc_ctx *ctx, struct lysc_node *parent, const char *nam
     if (!name) {
         /* removing last path segment */
         if (ctx->path[ctx->path_len - 1] == '}') {
-            for (; ctx->path[ctx->path_len] != '=' && ctx->path[ctx->path_len] != '{'; --ctx->path_len);
+            for (; ctx->path[ctx->path_len] != '=' && ctx->path[ctx->path_len] != '{'; --ctx->path_len) {}
             if (ctx->path[ctx->path_len] == '=') {
                 ctx->path[ctx->path_len++] = '}';
             } else {
@@ -252,7 +252,7 @@ lysc_update_path(struct lysc_ctx *ctx, struct lysc_node *parent, const char *nam
             }
         } else {
 remove_nodelevel:
-            for (; ctx->path[ctx->path_len] != '/' ; --ctx->path_len);
+            for (; ctx->path[ctx->path_len] != '/' ; --ctx->path_len) {}
             if (ctx->path_len == 0) {
                 /* top-level (last segment) */
                 ctx->path_len = 1;
@@ -559,7 +559,7 @@ lys_compile_ext(struct lysc_ctx *ctx, struct lysp_ext_instance *ext_p, struct ly
     lysc_update_path(ctx, ext->parent_type == LYEXT_PAR_NODE ? (struct lysc_node*)ext->parent : NULL, "{extension}");
 
     /* get module where the extension definition should be placed */
-    for (u = strlen(ext_p->name); u && ext_p->name[u - 1] != ':'; --u);
+    for (u = strlen(ext_p->name); u && ext_p->name[u - 1] != ':'; --u) {}
     if (ext_p->yin) {
         /* YIN parser has to replace prefixes by the namespace - XML namespace/prefix pairs may differs form the YANG schema's
          * namespace/prefix pair. YIN parser does not have the imports available, so mapping from XML namespace to the
@@ -888,7 +888,7 @@ static struct lysc_node *
 lysc_xpath_context(struct lysc_node *start)
 {
     for (; start && !(start->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_ANYDATA | LYS_RPC | LYS_ACTION | LYS_NOTIF));
-            start = start->parent);
+            start = start->parent) {}
     return start;
 }
 
@@ -2364,7 +2364,7 @@ lys_compile_type_enums(struct lysc_ctx *ctx, struct lysp_type_enum *enums_p, LY_
 
         if (basetype == LY_TYPE_BITS) {
             /* keep bits ordered by position */
-            for (v = u; v && (*enums)[v - 1].value > e->value; --v);
+            for (v = u; v && (*enums)[v - 1].value > e->value; --v) {}
             if (v != u) {
                 memcpy(&storage, e, sizeof *e);
                 memmove(&(*enums)[v + 1], &(*enums)[v], (u - v) * sizeof **enums);
@@ -4424,7 +4424,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, const stru
          * here we gets the last created node as last children of our parent */
         if (target->nodetype == LYS_CASE) {
             /* the compiled node is the last child of the target (but it is a case, so we have to be careful and stop) */
-            for (node = (struct lysc_node*)lysc_node_children(target, flags); node->next && node->next->parent == node->parent; node = node->next);
+            for (node = (struct lysc_node*)lysc_node_children(target, flags); node->next && node->next->parent == node->parent; node = node->next) {}
         } else if (target->nodetype == LYS_CHOICE) {
             /* to pass when statement, we need the last case no matter if it is explicit or implicit case */
             node = ((struct lysc_node_choice*)target)->cases->prev;
@@ -6999,7 +6999,7 @@ lys_compile_unres_leafref(struct lysc_ctx *ctx, const struct lysc_node *node, st
 
     /* check config */
     if (lref->require_instance) {
-        for (siter = node->parent; siter && !(siter->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)); siter = siter->parent);
+        for (siter = node->parent; siter && !(siter->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)); siter = siter->parent) {}
         if (!siter && (node->flags & LYS_CONFIG_W) && (target->flags & LYS_CONFIG_R)) {
             LOGVAL(ctx->ctx, LY_VLOG_LYSC, node, LYVE_REFERENCE, "Invalid leafref path \"%s\" - target is supposed"
                    " to represent configuration data (as the leafref does), but it does not.", lref->path->expr);
@@ -7216,14 +7216,14 @@ lys_compile_unres(struct lysc_ctx *ctx)
         if (type->basetype == LY_TYPE_LEAFREF) {
             for (typeiter = ((struct lysc_type_leafref*)type)->realtype;
                     typeiter->basetype == LY_TYPE_LEAFREF;
-                    typeiter = ((struct lysc_type_leafref*)typeiter)->realtype);
+                    typeiter = ((struct lysc_type_leafref*)typeiter)->realtype) {}
             ((struct lysc_type_leafref*)type)->realtype = typeiter;
         } else if (type->basetype == LY_TYPE_UNION) {
             LY_ARRAY_FOR(((struct lysc_type_union*)type)->types, v) {
                 if (((struct lysc_type_union*)type)->types[v]->basetype == LY_TYPE_LEAFREF) {
                     for (typeiter = ((struct lysc_type_leafref*)((struct lysc_type_union*)type)->types[v])->realtype;
                             typeiter->basetype == LY_TYPE_LEAFREF;
-                            typeiter = ((struct lysc_type_leafref*)typeiter)->realtype);
+                            typeiter = ((struct lysc_type_leafref*)typeiter)->realtype) {}
                     ((struct lysc_type_leafref*)((struct lysc_type_union*)type)->types[v])->realtype = typeiter;
                 }
             }

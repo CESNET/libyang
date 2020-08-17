@@ -1021,7 +1021,7 @@ lyd_parse_xml_reply(const struct lyd_node *request, struct ly_in *in, struct lyd
     if (op_p) {
         *op_p = rep_op;
     }
-    for (tree = rep_op; tree->parent; tree = LYD_PARENT(tree));
+    for (tree = rep_op; tree->parent; tree = LYD_PARENT(tree)) {}
     if (rpcr_e) {
         /* connect to the operation */
         lyd_insert_node(rpcr_e, NULL, tree);

@@ -168,7 +168,7 @@ ly_err_clean(struct ly_ctx *ctx, struct ly_err_item *eitem)
     }
     if (eitem) {
         /* disconnect the error */
-        for (i = first; i && (i->next != eitem); i = i->next);
+        for (i = first; i && (i->next != eitem); i = i->next) {}
         assert(i);
         i->next = NULL;
         first->prev = i;

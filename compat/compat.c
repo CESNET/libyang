@@ -80,7 +80,7 @@ strndup(const char *s, size_t n)
     size_t len = 0;
 
     /* strnlen */
-    for (; (len < n) && (s[len] != '\0'); ++len);
+    for (; (len < n) && (s[len] != '\0'); ++len) {}
 
     if (!(buf = malloc(len + 1U))) {
         return NULL;

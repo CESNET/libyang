@@ -114,7 +114,7 @@ lyd_owner_module(const struct lyd_node *node)
         return NULL;
     }
 
-    for (schema = node->schema; schema->parent; schema = schema->parent);
+    for (schema = node->schema; schema->parent; schema = schema->parent) {}
     return schema->module;
 }
 

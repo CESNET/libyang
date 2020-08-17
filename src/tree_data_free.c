@@ -40,7 +40,7 @@ lyd_free_meta(struct lyd_meta *meta, int siblings)
                 meta->parent->meta = meta->next;
             }
         } else {
-            for (iter = meta->parent->meta; iter->next != meta; iter = iter->next);
+            for (iter = meta->parent->meta; iter->next != meta; iter = iter->next) {}
             if (iter->next) {
                 if (siblings) {
                     iter->next = NULL;
@@ -96,7 +96,7 @@ ly_free_attr(const struct ly_ctx *ctx, struct lyd_attr *attr, int siblings)
                 attr->parent->attr = attr->next;
             }
         } else {
-            for (iter = attr->parent->attr; iter->next != attr; iter = iter->next);
+            for (iter = attr->parent->attr; iter->next != attr; iter = iter->next) {}
             if (iter->next) {
                 if (siblings) {
                     iter->next = NULL;
@@ -233,7 +233,7 @@ lyd_free_(struct lyd_node *node, int top)
 
     /* get the first (top-level) sibling */
     if (top) {
-        for (; node->parent; node = (struct lyd_node *)node->parent);
+        for (; node->parent; node = (struct lyd_node *)node->parent) {}
     }
     while (node->prev->next) {
         node = node->prev;

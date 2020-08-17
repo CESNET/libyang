@@ -778,7 +778,7 @@ parse_ext_substmt(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum ly_stm
     if (!*child) {
         *child = stmt;
     } else {
-        for (par_child = *child; par_child->next; par_child = par_child->next);
+        for (par_child = *child; par_child->next; par_child = par_child->next) {}
         par_child->next = stmt;
     }
 
