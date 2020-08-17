@@ -1643,7 +1643,7 @@ lysc_data_parent(const struct lysc_node *schema)
 {
     const struct lysc_node *parent;
 
-    for (parent = schema->parent; parent && (parent->nodetype & (LYS_CHOICE | LYS_CASE)); parent = parent->parent);
+    for (parent = schema->parent; parent && (parent->nodetype & (LYS_CHOICE | LYS_CASE)); parent = parent->parent) {}
 
     return parent;
 }
@@ -1655,7 +1655,7 @@ lysc_is_output(const struct lysc_node *schema)
 
     assert(schema);
 
-    for (parent = schema->parent; parent && !(parent->nodetype & (LYS_RPC | LYS_ACTION)); parent = parent->parent);
+    for (parent = schema->parent; parent && !(parent->nodetype & (LYS_RPC | LYS_ACTION)); parent = parent->parent) {}
     if (parent && (schema->flags & LYS_CONFIG_R)) {
         return 1;
     }

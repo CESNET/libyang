@@ -216,7 +216,7 @@ ly_type_parse_int(const char *datatype, int base, int64_t min, int64_t max, cons
     LY_CHECK_ARG_RET(NULL, err, datatype, LY_EINVAL);
 
     /* consume leading whitespaces */
-    for (;value_len && isspace(*value); ++value, --value_len);
+    for (;value_len && isspace(*value); ++value, --value_len) {}
 
     if (!value || !value[0] || !value_len) {
         rc = asprintf(&errmsg, "Invalid empty %s value.", datatype);
@@ -254,7 +254,7 @@ ly_type_parse_uint(const char *datatype, int base, uint64_t max, const char *val
     LY_CHECK_ARG_RET(NULL, err, datatype, LY_EINVAL);
 
     /* consume leading whitespaces */
-    for (;value_len && isspace(*value); ++value, --value_len);
+    for (;value_len && isspace(*value); ++value, --value_len) {}
 
     if (!value || !value[0] || !value_len) {
         rc = asprintf(&errmsg, "Invalid empty %s value.", datatype);
@@ -293,7 +293,7 @@ ly_type_parse_dec64(uint8_t fraction_digits, const char *value, size_t value_len
     int64_t d;
 
     /* consume leading whitespaces */
-    for (;value_len && isspace(*value); ++value, --value_len);
+    for (;value_len && isspace(*value); ++value, --value_len) {}
 
     /* parse value */
     if (!value_len) {
@@ -350,7 +350,7 @@ decimal:
     if (len + trailing_zeros < value_len) {
         /* consume trailing whitespaces to check that there is nothing after it */
         unsigned long int u;
-        for (u = len + trailing_zeros; u < value_len && isspace(value[u]); ++u);
+        for (u = len + trailing_zeros; u < value_len && isspace(value[u]); ++u) {}
         if (u != value_len) {
             if (asprintf(&errmsg, "Invalid %lu. character of decimal64 value \"%.*s\".",
                          u + 1, (int)value_len, value) == -1) {
@@ -714,8 +714,8 @@ ly_type_store_binary(const struct ly_ctx *ctx, struct lysc_type *type, const cha
     /* validate characters and remember the number of octets for length validation */
     if (value_len) {
         /* silently skip leading/trailing whitespaces */
-        for (start = 0; (start < value_len) && isspace(value[start]); start++);
-        for (stop = value_len - 1; stop > start && isspace(value[stop]); stop--);
+        for (start = 0; (start < value_len) && isspace(value[start]); start++) {}
+        for (stop = value_len - 1; stop > start && isspace(value[stop]); stop--) {}
         if (start == stop) {
             /* empty string */
             goto finish;
@@ -877,7 +877,7 @@ ly_type_store_bits(const struct ly_ctx *ctx, struct lysc_type *type, const char 
 
         /* start of the item */
         item = &value[index];
-        for (item_len = 0; index + item_len < value_len && !isspace(item[item_len]); item_len++);
+        for (item_len = 0; index + item_len < value_len && !isspace(item[item_len]); item_len++) {}
         LY_ARRAY_FOR(type_bits->bits, u) {
             if (!ly_strncmp(type_bits->bits[u].name, item, item_len)) {
                 /* we have the match */
@@ -1212,7 +1212,7 @@ ly_type_store_identityref(const struct ly_ctx *ctx, struct lysc_type *type, cons
     }
 
     /* locate prefix if any */
-    for (prefix_len = 0; prefix_len < value_len && value[prefix_len] != ':'; ++prefix_len);
+    for (prefix_len = 0; prefix_len < value_len && value[prefix_len] != ':'; ++prefix_len) {}
     if (prefix_len < value_len) {
         id_name = &value[prefix_len + 1];
         id_len = value_len - (prefix_len + 1);
@@ -1959,7 +1959,7 @@ ly_type_union_store_prefix_data(const struct ly_ctx *ctx, const char *value, siz
         if (is_xmlqnamestartchar(c)) {
             for (ly_getutf8(&stop, &c, &bytes);
                     is_xmlqnamechar(c) && (size_t)(stop - value) < value_len;
-                    ly_getutf8(&stop, &c, &bytes));
+                    ly_getutf8(&stop, &c, &bytes)) {}
             stop = stop - bytes;
             if (*stop == ':') {
                 /* we have a possible prefix */

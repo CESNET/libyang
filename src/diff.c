@@ -199,7 +199,7 @@ lyd_diff_userord_get(const struct lyd_node *first, const struct lysc_node *schem
         if (first->parent) {
             iter = first->parent->child;
         } else {
-            for (iter = first; iter->prev->next; iter = iter->prev);
+            for (iter = first; iter->prev->next; iter = iter->prev) {}
         }
         for (; iter; iter = iter->next) {
             if (iter->schema == first->schema) {

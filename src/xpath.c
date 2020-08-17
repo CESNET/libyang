@@ -1285,7 +1285,7 @@ get_node_pos(const struct lyd_node *node, enum lyxp_node_type node_type, const s
     if (*prev) {
         /* start from the previous element instead from the root */
         pos = *prev_pos;
-        for (top_sibling = *prev; top_sibling->parent; top_sibling = (struct lyd_node *)top_sibling->parent);
+        for (top_sibling = *prev; top_sibling->parent; top_sibling = (struct lyd_node *)top_sibling->parent) {}
         goto dfs_search;
     }
 
@@ -1594,8 +1594,8 @@ set_sort(struct lyxp_set *set)
     }
 
     /* find first top-level node to be used as anchor for positions */
-    for (root = set->ctx_node; root->parent; root = (const struct lyd_node *)root->parent);
-    for (; root->prev->next; root = root->prev);
+    for (root = set->ctx_node; root->parent; root = (const struct lyd_node *)root->parent) {}
+    for (; root->prev->next; root = root->prev) {}
 
     /* fill positions */
     if (set_assign_pos(set, root, set->root_type)) {
@@ -1714,8 +1714,8 @@ set_sorted_merge(struct lyxp_set *trg, struct lyxp_set *src)
     }
 
     /* find first top-level node to be used as anchor for positions */
-    for (root = trg->ctx_node; root->parent; root = (const struct lyd_node *)root->parent);
-    for (; root->prev->next; root = root->prev);
+    for (root = trg->ctx_node; root->parent; root = (const struct lyd_node *)root->parent) {}
+    for (; root->prev->next; root = root->prev) {}
 
     /* fill positions */
     if (set_assign_pos(trg, root, trg->root_type) || set_assign_pos(src, root, src->root_type)) {
@@ -1892,7 +1892,7 @@ exp_repeat_push(struct lyxp_expr *exp, uint16_t tok_idx, uint16_t repeat_op_idx)
     uint16_t i;
 
     if (exp->repeat[tok_idx]) {
-        for (i = 0; exp->repeat[tok_idx][i]; ++i);
+        for (i = 0; exp->repeat[tok_idx][i]; ++i) {}
         exp->repeat[tok_idx] = realloc(exp->repeat[tok_idx], (i + 2) * sizeof *exp->repeat[tok_idx]);
         LY_CHECK_ERR_RET(!exp->repeat[tok_idx], LOGMEM(NULL), );
         exp->repeat[tok_idx][i] = repeat_op_idx;
@@ -2754,7 +2754,7 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr, size_t expr_len, int
         } else if (expr[parsed] == '\'') {
 
             /* Literal with ' */
-            for (tok_len = 1; (expr[parsed + tok_len] != '\0') && (expr[parsed + tok_len] != '\''); ++tok_len);
+            for (tok_len = 1; (expr[parsed + tok_len] != '\0') && (expr[parsed + tok_len] != '\''); ++tok_len) {}
             LY_CHECK_ERR_GOTO(expr[parsed + tok_len] == '\0',
                               LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_EOE, expr[parsed], &expr[parsed]), error);
             ++tok_len;
@@ -2763,7 +2763,7 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr, size_t expr_len, int
         } else if (expr[parsed] == '\"') {
 
             /* Literal with " */
-            for (tok_len = 1; (expr[parsed + tok_len] != '\0') && (expr[parsed + tok_len] != '\"'); ++tok_len);
+            for (tok_len = 1; (expr[parsed + tok_len] != '\0') && (expr[parsed + tok_len] != '\"'); ++tok_len) {}
             LY_CHECK_ERR_GOTO(expr[parsed + tok_len] == '\0',
                               LOGVAL(ctx, LY_VLOG_NONE, NULL, LY_VCODE_XP_EOE, expr[parsed], &expr[parsed]), error);
             ++tok_len;
@@ -2772,10 +2772,10 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr, size_t expr_len, int
         } else if ((expr[parsed] == '.') || (isdigit(expr[parsed]))) {
 
             /* Number */
-            for (tok_len = 0; isdigit(expr[parsed + tok_len]); ++tok_len);
+            for (tok_len = 0; isdigit(expr[parsed + tok_len]); ++tok_len) {}
             if (expr[parsed + tok_len] == '.') {
                 ++tok_len;
-                for (; isdigit(expr[parsed + tok_len]); ++tok_len);
+                for (; isdigit(expr[parsed + tok_len]); ++tok_len) {}
             }
             tok_type = LYXP_TOKEN_NUMBER;
 
@@ -2955,7 +2955,7 @@ lyxp_expr_dup(const struct ly_ctx *ctx, const struct lyxp_expr *exp)
         if (!exp->repeat[i]) {
             dup->repeat[i] = NULL;
         } else {
-            for (j = 0; exp->repeat[i][j]; ++j);
+            for (j = 0; exp->repeat[i][j]; ++j) {}
             /* the ending 0 as well */
             ++j;
 
@@ -6839,7 +6839,7 @@ eval_name_test_try_compile_predicates(struct lyxp_expr *exp, uint16_t *tok_idx, 
         if (scnode->flags & LYS_KEYLESS) {
             return LY_EINVAL;
         }
-        for (key_count = 0, key = lysc_node_children(scnode, 0); key && (key->flags & LYS_KEY); key = key->next, ++key_count);
+        for (key_count = 0, key = lysc_node_children(scnode, 0); key && (key->flags & LYS_KEY); key = key->next, ++key_count) {}
         assert(key_count);
 
         /* learn where the predicates end */
@@ -8215,13 +8215,13 @@ eval_expr_select(struct lyxp_expr *exp, uint16_t *tok_idx, enum lyxp_expr_type e
         next_etype = LYXP_EXPR_NONE;
     } else {
         /* find etype repeat */
-        for (i = 0; exp->repeat[*tok_idx][i] > etype; ++i);
+        for (i = 0; exp->repeat[*tok_idx][i] > etype; ++i) {}
 
         /* select one-priority lower because etype expression called us */
         if (i) {
             next_etype = exp->repeat[*tok_idx][i - 1];
             /* count repeats for that expression */
-            for (count = 0; i && exp->repeat[*tok_idx][i - 1] == next_etype; ++count, --i);
+            for (count = 0; i && exp->repeat[*tok_idx][i - 1] == next_etype; ++count, --i) {}
         } else {
             next_etype = LYXP_EXPR_NONE;
         }
@@ -8277,7 +8277,7 @@ lyxp_get_root_type(const struct lyd_node *ctx_node, const struct lysc_node *ctx_
     const struct lysc_node *op;
 
     if (options & LYXP_SCNODE_ALL) {
-        for (op = ctx_scnode; op && !(op->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)); op = op->parent);
+        for (op = ctx_scnode; op && !(op->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)); op = op->parent) {}
 
         if (op || (options & LYXP_SCNODE)) {
             /* general root that can access everything */
@@ -8290,7 +8290,7 @@ lyxp_get_root_type(const struct lyd_node *ctx_node, const struct lysc_node *ctx_
     }
 
     op = ctx_node ? ctx_node->schema : NULL;
-    for (; op && !(op->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)); op = op->parent);
+    for (; op && !(op->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)); op = op->parent) {}
 
     if (!ctx_node || (!op && (ctx_node->schema->flags & LYS_CONFIG_W))) {
         /* root context node can access only config data (because we said so, it is unspecified) */
@@ -8327,7 +8327,7 @@ lyxp_eval(struct lyxp_expr *exp, LY_PREFIX_FORMAT format, const struct lys_modul
     set->root_type = lyxp_get_root_type(real_ctx_node, NULL, options);
     for (set->context_op = ctx_node->schema;
          set->context_op && !(set->context_op->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF));
-         set->context_op = set->context_op->parent);
+         set->context_op = set->context_op->parent) {}
     set->local_mod = local_mod;
     set->tree = tree;
     set->format = format;
@@ -8598,7 +8598,7 @@ lyxp_atomize(struct lyxp_expr *exp, LY_PREFIX_FORMAT format, const struct lys_mo
     set->root_type = lyxp_get_root_type(NULL, real_ctx_scnode, options);
     for (set->context_op = ctx_scnode;
          set->context_op && !(set->context_op->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF));
-         set->context_op = set->context_op->parent);
+         set->context_op = set->context_op->parent) {}
     set->local_mod = local_mod;
     set->format = format;
 

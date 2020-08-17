@@ -300,7 +300,7 @@ lydjson_get_value_prefixes(const struct ly_ctx *ctx, const char *value, size_t v
         if (is_yangidentstartchar(c)) {
             for (ly_getutf8(&stop, &c, &bytes);
                     is_yangidentchar(c) && (size_t)(stop - value) < value_len;
-                    ly_getutf8(&stop, &c, &bytes));
+                    ly_getutf8(&stop, &c, &bytes)) {}
             stop = stop - bytes;
             if (*stop == ':') {
                 /* we have a possible prefix */
@@ -1849,7 +1849,7 @@ lyd_parse_json_reply(const struct lyd_node *request, struct ly_in *in, struct ly
     if (op_p) {
         *op_p = rep_op;
     }
-    for (tree = rep_op; tree->parent; tree = LYD_PARENT(tree));
+    for (tree = rep_op; tree->parent; tree = LYD_PARENT(tree)) {}
     if (rpcr_e) {
         /* connect to the operation */
         lyd_insert_node(rpcr_e, NULL, tree);

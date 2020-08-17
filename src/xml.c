@@ -1094,7 +1094,7 @@ lyxml_get_prefixes(struct lyxml_ctx *xmlctx, const char *value, size_t value_len
         if (is_xmlqnamestartchar(c)) {
             for (ly_getutf8(&stop, &c, &bytes);
                     is_xmlqnamechar(c) && (size_t)(stop - value) < value_len;
-                    ly_getutf8(&stop, &c, &bytes));
+                    ly_getutf8(&stop, &c, &bytes)) {}
             stop = stop - bytes;
             if (*stop == ':') {
                 /* we have a possible prefix */

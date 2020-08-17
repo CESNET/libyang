@@ -214,7 +214,7 @@ ly_ctx_new(const char *search_dir, int options, struct ly_ctx **new_ctx)
 #endif
 
     /* initialize thread-specific key */
-    while ((pthread_key_create(&ctx->errlist_key, ly_err_free)) == EAGAIN);
+    while ((pthread_key_create(&ctx->errlist_key, ly_err_free)) == EAGAIN) {}
 
     /* models list */
     ctx->flags = options;

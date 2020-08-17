@@ -651,7 +651,7 @@ LY_ERR ly_strcat(char **dest, const char *format, ...);
     } else { \
         do { \
             __typeof__(*(LIST)) iterator; \
-            for (iterator = *(LIST); iterator->LINKER; iterator = iterator->LINKER); \
+            for (iterator = *(LIST); iterator->LINKER; iterator = iterator->LINKER) {} \
             iterator->LINKER = (__typeof__(*(LIST)))NEW_ITEM; \
         } while (0); \
     }
