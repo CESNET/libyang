@@ -224,7 +224,7 @@ struct ly_ctx {
     struct ly_set implementing;       /**< set of YANG schemas being atomically implemented (compiled); the first added
                                            module is always the explcitly implemented module, the other ones are dependencies */
     ly_module_imp_clb imp_clb;        /**< Optional callback for retrieving missing included or imported models in a custom way. */
-    void *imp_clb_data;               /**< Optional private data for imp_clb() */
+    void *imp_clb_data;               /**< Optional private data for ::ly_ctx.imp_clb */
     uint16_t module_set_id;           /**< ID of the current set of schemas */
     uint16_t flags;                   /**< context settings, see @ref contextoptions. */
     pthread_key_t errlist_key;        /**< key for the thread-specific list of errors related to the context */
@@ -455,7 +455,7 @@ LY_ERR ly_parse_instance_predicate(const char **pred, size_t limit, LYD_FORMAT f
 LY_ERR ly_mmap(struct ly_ctx *ctx, int fd, size_t *length, void **addr);
 
 /**
- * @brief munmap(2) wrapper to free the memory mapped by ly_mmap()
+ * @brief munmap(2) wrapper to free the memory mapped by ::ly_mmap()
  *
  * @param[in] addr Address where the input file is mapped.
  * @param[in] length Allocated size of the address space.

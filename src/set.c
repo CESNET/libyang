@@ -100,7 +100,7 @@ ly_set_dup(const struct ly_set *set, void *(*duplicator)(void *obj), struct ly_s
     struct ly_set *newset;
     uint32_t u;
 
-    LY_CHECK_ARG_RET(NULL, set, LY_EINVAL);
+    LY_CHECK_ARG_RET(NULL, set, newset_p, LY_EINVAL);
 
     newset = malloc(sizeof *newset);
     LY_CHECK_ERR_RET(!newset, LOGMEM(NULL), LY_EMEM);

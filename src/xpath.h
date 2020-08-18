@@ -304,7 +304,7 @@ LY_ERR lyxp_eval(struct lyxp_expr *exp, const struct lys_module *cur_mod, LY_PRE
  * @param[in] ctx_scnode Current (context) schema node, NULL in case of the root node.
  * @param[out] set Result set.
  * @param[in] options Whether to apply some evaluation restrictions, one flag must always be used.
- * @return LY_ERR (same as lyxp_eval()).
+ * @return LY_ERR (same as ::lyxp_eval()).
  */
 LY_ERR lyxp_atomize(struct lyxp_expr *exp, const struct lys_module *cur_mod, LY_PREFIX_FORMAT format, void *prefix_data,
         const struct lysc_node *ctx_scnode, struct lyxp_set *set, uint32_t options);

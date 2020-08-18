@@ -80,7 +80,7 @@ extern struct ext_substmt_info_s ext_substmt_info[];
  * @param[in] module Main module.
  * @param[in] modp Parsed module to print.
  * @param[in] options Schema output options (see @ref schemaprinterflags).
- * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
+ * @return LY_ERR value, number of the printed bytes is updated in ::ly_out.printed.
  */
 LY_ERR yang_print_parsed_module(struct ly_out *out, const struct lys_module *module, const struct lysp_module *modp, uint32_t options);
 
@@ -100,7 +100,7 @@ LY_ERR yang_print_parsed_module(struct ly_out *out, const struct lys_module *mod
  * @param[in] module Main module.
  * @param[in] submodp Parsed submodule to print.
  * @param[in] options Schema output options (see @ref schemaprinterflags).
- * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
+ * @return LY_ERR value, number of the printed bytes is updated in ::ly_out.printed.
  */
 LY_ERR yang_print_parsed_submodule(struct ly_out *out, const struct lys_module *module, const struct lysp_submodule *submodp, uint32_t options);
 
@@ -114,7 +114,7 @@ LY_ERR yang_print_parsed_submodule(struct ly_out *out, const struct lys_module *
  * @param[in] out Output specification.
  * @param[in] module Schema to be printed (the compiled member is used).
  * @param[in] options Schema output options (see @ref schemaprinterflags).
- * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
+ * @return LY_ERR value, number of the printed bytes is updated in ::ly_out.printed.
  */
 LY_ERR yang_print_compiled(struct ly_out *out, const struct lys_module *module, uint32_t options);
 
@@ -128,7 +128,7 @@ LY_ERR yang_print_compiled(struct ly_out *out, const struct lys_module *module, 
  * @param[in] out Output specification.
  * @param[in] node Schema node to be printed including all its substatements.
  * @param[in] options Schema output options (see @ref schemaprinterflags).
- * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
+ * @return LY_ERR value, number of the printed bytes is updated in ::ly_out.printed.
  */
 LY_ERR yang_print_compiled_node(struct ly_out *out, const struct lysc_node *node, uint32_t options);
 
@@ -139,7 +139,7 @@ LY_ERR yang_print_compiled_node(struct ly_out *out, const struct lysc_node *node
  * @param[in] module Main module.
  * @param[in] modp Parsed module to print.
  * @param[in] options Schema output options (see @ref schemaprinterflags).
- * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
+ * @return LY_ERR value, number of the printed bytes is updated in ::ly_out.printed.
  */
 LY_ERR yin_print_parsed_module(struct ly_out *out, const struct lys_module *module, const struct lysp_module *modp, uint32_t options);
 
@@ -150,7 +150,7 @@ LY_ERR yin_print_parsed_module(struct ly_out *out, const struct lys_module *modu
  * @param[in] module Main module.
  * @param[in] submodp Parsed submodule to print.
  * @param[in] options Schema output options (see @ref schemaprinterflags).
- * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
+ * @return LY_ERR value, number of the printed bytes is updated in ::ly_out.printed.
  */
 LY_ERR yin_print_parsed_submodule(struct ly_out *out, const struct lys_module *module, const struct lysp_submodule *submodp, uint32_t options);
 
@@ -160,7 +160,7 @@ LY_ERR yin_print_parsed_submodule(struct ly_out *out, const struct lys_module *m
  * @param[in] out Output specification.
  * @param[in] root The root element of the (sub)tree to print.
  * @param[in] options [Data printer flags](@ref dataprinterflags).
- * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
+ * @return LY_ERR value, number of the printed bytes is updated in ::ly_out.printed.
  */
 LY_ERR xml_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t options);
 
@@ -170,7 +170,7 @@ LY_ERR xml_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t 
  * @param[in] out Output specification.
  * @param[in] root The root element of the (sub)tree to print.
  * @param[in] options [Data printer flags](@ref dataprinterflags).
- * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
+ * @return LY_ERR value, number of the printed bytes is updated in ::ly_out.printed.
  */
 LY_ERR json_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t options);
 
@@ -180,7 +180,7 @@ LY_ERR json_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t
  * @param[in] out Output structure.
  * @param[in] root The root element of the (sub)tree to print.
  * @param[in] options [Data printer flags](@ref dataprinterflags).
- * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
+ * @return LY_ERR value, number of the printed bytes is updated in ::ly_out.printed.
  */
 LY_ERR lyb_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t options);
 
@@ -223,7 +223,7 @@ LY_ERR ly_write_(struct ly_out *out, const char *buf, size_t len);
  *
  * @param[in] out Output specification.
  * @param[in] len Length of the created hole.
- * @param[out] position Position of the hole, value must be later provided to the ly_write_skipped() call.
+ * @param[out] position Position of the hole, value must be later provided to the ::ly_write_skipped() call.
  * @return LY_ERR value.
  */
 LY_ERR ly_write_skip(struct ly_out *out, size_t len, size_t *position);
@@ -234,10 +234,10 @@ LY_ERR ly_write_skip(struct ly_out *out, size_t len, size_t *position);
  * Does not change printed bytes.
  *
  * @param[in] out Output specification.
- * @param[in] position Position of the hole to fill, the value was provided by ly_write_skip().
+ * @param[in] position Position of the hole to fill, the value was provided by ::ly_write_skip().
  * @param[in] buf Memory buffer with the data to print.
  * @param[in] len Length of the data to print in the @p buf. Not that the length must correspond
- * to the len value specified in the corresponding ly_write_skip() call.
+ * to the len value specified in the corresponding ::ly_write_skip() call.
  * @return LY_ERR value.
  */
 LY_ERR ly_write_skipped(struct ly_out *out, size_t position, const char *buf, size_t len);

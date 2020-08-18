@@ -34,8 +34,125 @@ struct ly_ctx;
 struct ly_set;
 
 /**
- * @defgroup schematree Schema Tree
+ * @page howtoSchema YANG Modules
+ *
+ * To be able to work with YANG data instances, libyang has to represent YANG data models. All the processed modules are stored
+ * in libyang [context](@ref howtoContext) and loaded using [parser functions](@ref howtoSchemaParsers). It means, that there is
+ * no way to create/change YANG module programmatically. However, all the YANG model definitions are available and can be examined
+ * through the C structures. All the context's modules together form YANG Schema for the data being instantiated.
+ *
+ * Any YANG module is represented as ::lys_module. In fact, the module is represented in two different formats. As ::lys_module.parsed,
+ * there is a parsed schema reflecting the source YANG module. It is exactly what is read from the input. This format is good for
+ * converting from one format to another (YANG to YIN and vice versa), but it is not very useful for validating/manipulating YANG
+ * data. Therefore, there is ::lys_module.compiled storing the compiled YANG module. It is based on the parsed module, but all the
+ * references are resolved. It means that, for example, there are no `grouping`s or `typedef`s since they are supposed to be placed instead of
+ * `uses` or `type` references. This split also means, that the YANG module is fully validated after compilation of the parsed
+ * representation of the module. YANG submodules are available only in the parsed representation. When a submodule is compiled, it
+ * is fully integrated into its main module.
+ *
+ * The context can contain even modules without the compiled representation. Such modules are still useful as imports of other
+ * modules. The grouping or typedef definition can be even compiled into the importing modules. This is actually the main
+ * difference between the imported and implemented modules in the libyang context. The implemented modules are compiled while the
+ * imported modules are only parsed.
+ *
+ * In case the context's ::LY_CTX_ALLIMPLEMENTED option is not set, the module is not implemented in case it is implicitly
+ * loaded as import for another module and it is not referenced in such a module (and no other) as target of leafref, augment
+ * or deviation.
+ *
+ * All modules with deviation definition are always marked as implemented. The imported (not implemented) module can be set implemented by ::lys_set_implemented(). But
+ * the implemented module cannot be changed back to just imported module. Note also that only one revision of a specific module
+ * can be implemented in a single context. The imported modules are used only as a
+ * source of definitions for types and groupings for uses statements. The data in such modules are ignored - caller
+ * is not allowed to create the data (including instantiating identities) defined in the model via data parsers,
+ * the default nodes are not added into any data tree and mandatory nodes are not checked in the data trees.
+ *
+ * The compiled schema tree nodes are able to hold private objects (::lysc_node.priv as a pointer to a structure, function, variable, ...) used by
+ * a caller application. Such an object can be assigned to a specific node using ::lysc_set_private() function.
+ * Note that the object is not freed by libyang when the context is being destroyed. So the caller is responsible
+ * for freeing the provided structure after the context is destroyed or the private pointer is set to NULL in
+ * appropriate schema nodes where the object was previously set. This can be automated via destructor function
+ * to free these private objects. The destructor is passed to the ::ly_ctx_destroy() function.
+ *
+ * Despite all the schema structures and their members are available as part of the libyang API and callers can use
+ * it to navigate through the schema tree structure or to obtain various information, we recommend to use the following
+ * macros for the specific actions.
+ * - ::LYSC_TREE_DFS_BEGIN and ::LYSC_TREE_DFS_END to traverse the schema tree (depth-first).
+ * - ::LY_LIST_FOR and ::LY_ARRAY_FOR as described on @ref howtoStructures page.
+ *
+ * Further information about modules handling can be found on the following pages:
+ * - @subpage howtoSchemaParsers
+ * - @subpage howtoSchemaFeatures
+ * - @subpage howtoPlugins
+ * - @subpage howtoSchemaPrinters
+ *
+ * \note There are many functions to access information from the schema trees. Details are available in
+ * the [Schema Tree module](@ref schematree).
+ *
+ * For information about difference between implemented and imported modules, see the
+ * [context description](@ref howtoContext).
+ *
+ * Functions List (not assigned to above subsections)
+ * --------------------------------------------------
+ * - ::lys_getnext()
+ * - ::lys_nodetype2str()
+ * - ::lys_set_implemented()
+ * - ::lys_value_validate()
+ *
+ * - ::lysc_set_private()
+ *
+ * - ::lysc_node_children()
+ * - ::lysc_node_actions()
+ * - ::lysc_node_notifs()
+ *
+ * - ::lysp_node_children()
+ * - ::lysp_node_actions()
+ * - ::lysp_node_notifs()
+ * - ::lysp_node_groupings()
+ * - ::lysp_node_typedefs()
+ */
+
+/**
+ * @page howtoSchemaFeatures YANG Features
+ *
+ * YANG feature statement is an iportant part of the language which can significantly affect the meaning of the schemas. Despite
+ * the features have similar effect as loading/removing schema from the context, manipulating with the feature value is not
+ * limited to the context preparation period before working with data. YANG features, respectively their use in if-feature
+ * statements, are evaluated as part of the [data validation process](@ref howtoDataValidation).
+ *
+ * The main functions with *lys_feature_* prefix are used to change the value (true/false) of the feature and to get its current
+ * value. Enabling/disabling all the features in a particular module can be done using '`*`' value instead of the feature name.
+ *
+ * There are two options to reflect feature's if-feature statements when enabling/disabling the feature. The ::lys_feature_enable()
+ * and ::lys_feature_disable() functions check their if-feature expressions (it is not possible to enable feature if it is not
+ * allowed by its if-feature expressions) and also checks for and update other features those if-feature expressions use the
+ * changed feature. On the contrary, ::lys_feature_enable_force() and ::lys_feature_disable_force() ignore all the if-feature
+ * limitations.
+ *
+ * The ::lysc_feature_value() and ::lys_feature_value() functions differ only by their parameters. The ::lysc_iffeature_value()
+ * is used to evaluate (possibly complex in YANG 1.1) logical expression from if-feature statement.
+ *
+ * The list of features of a particular YANG module is available in ::lys_module.features.
+ *
+ * To get know, if a specific schema node is currently disabled or enable, the ::lysc_node_is_disabled() function can be used.
+ *
+ * Note, that the feature's state can affect some of the output formats (e.g. Tree format).
+ *
+ * Functions List
+ * --------------
+ * - ::lys_feature_enable()
+ * - ::lys_feature_enable_force()
+ * - ::lys_feature_disable()
+ * - ::lys_feature_disable_force()
+ * - ::lys_feature_value()
+ * - ::lysc_feature_value()
+ * - ::lysc_iffeature_value()
+ *
+ * - ::lysc_node_is_disabled()
+ */
+
+/**
  * @ingroup trees
+ * @defgroup schematree Schema Tree
  * @{
  *
  * Data structures and functions to manipulate and access schema tree.
@@ -156,13 +273,13 @@ struct ly_set;
  */
 enum ly_stmt {
     LY_STMT_NONE = 0,
-    LY_STMT_STATUS,             /**< in lysc_ext_substmt::storage stored as a pointer to `uint16_t`, only cardinality < #LY_STMT_CARD_SOME is allowed */
-    LY_STMT_CONFIG,             /**< in lysc_ext_substmt::storage stored as a pointer to `uint16_t`, only cardinality < #LY_STMT_CARD_SOME is allowed */
+    LY_STMT_STATUS,             /**< in ::lysc_ext_substmt.storage stored as a pointer to `uint16_t`, only cardinality < #LY_STMT_CARD_SOME is allowed */
+    LY_STMT_CONFIG,             /**< in ::lysc_ext_substmt.storage stored as a pointer to `uint16_t`, only cardinality < #LY_STMT_CARD_SOME is allowed */
     LY_STMT_MANDATORY,
-    LY_STMT_UNITS,              /**< in lysc_ext_substmt::storage stored as a pointer to `const char *` (cardinality < #LY_STMT_CARD_SOME)
+    LY_STMT_UNITS,              /**< in ::lysc_ext_substmt.storage stored as a pointer to `const char *` (cardinality < #LY_STMT_CARD_SOME)
                                      or as a pointer to a [sized array](@ref sizedarrays) `const char **` */
     LY_STMT_DEFAULT,
-    LY_STMT_TYPE,               /**< in lysc_ext_substmt::storage stored as a pointer to `struct lysc_type *` (cardinality < #LY_STMT_CARD_SOME)
+    LY_STMT_TYPE,               /**< in ::lysc_ext_substmt.storage stored as a pointer to `struct lysc_type *` (cardinality < #LY_STMT_CARD_SOME)
                                      or as a pointer to a [sized array](@ref sizedarrays) `struct lysc_type **` */
 
     LY_STMT_ACTION,
@@ -188,7 +305,7 @@ enum ly_stmt {
     LY_STMT_FRACTION_DIGITS,
     LY_STMT_GROUPING,
     LY_STMT_IDENTITY,
-    LY_STMT_IF_FEATURE,         /**< in lysc_ext_substmt::storage stored as a pointer to `struct lysc_iffeature` (cardinality < #LY_STMT_CARD_SOME)
+    LY_STMT_IF_FEATURE,         /**< in ::lysc_ext_substmt.storage stored as a pointer to `struct lysc_iffeature` (cardinality < #LY_STMT_CARD_SOME)
                                      or as a pointer to a [sized array](@ref sizedarrays) `struct lysc_iffeature *` */
     LY_STMT_IMPORT,
     LY_STMT_INCLUDE,
@@ -572,7 +689,11 @@ struct lysp_augment {
 };
 
 /**
+ * @ingroup schematree
  * @defgroup deviatetypes Deviate types
+ *
+ * Type of the deviate operation (used as ::lysp_deviate.mod)
+ *
  * @{
  */
 #define LYS_DEV_NOT_SUPPORTED 1      /**< deviate type not-supported */
@@ -634,10 +755,10 @@ struct lysp_deviation {
 };
 
 /**
- * @defgroup spnodeflags Parsed schema nodes flags
  * @ingroup snodeflags
+ * @defgroup spnodeflags Parsed schema nodes flags
  *
- * Various flags for parsed schema nodes.
+ * Various flags for parsed schema nodes (used as ::lysp_node.flags).
  *
  *     1 - container    6 - anydata/anyxml    11 - output       16 - grouping   21 - enum
  *     2 - choice       7 - case              12 - feature      17 - uses       22 - type
@@ -693,10 +814,10 @@ struct lysp_deviation {
  */
 
 /**
- * @defgroup scnodeflags Compiled schema nodes flags
  * @ingroup snodeflags
+ * @defgroup scnodeflags Compiled schema nodes flags
  *
- * Various flags for compiled schema nodes.
+ * Various flags for compiled schema nodes (used as ::lysc_node.flags).
  *
  *     1 - container    6 - anydata/anyxml    11 - identity
  *     2 - choice       7 - case              12 - extension
@@ -742,6 +863,9 @@ struct lysp_deviation {
 
 /**
  * @defgroup snodeflags Schema nodes flags
+ *
+ * Various flags for schema nodes ([parsed](@ref spnodeflags) as well as [compiled](@ref scnodeflags)).
+ *
  * @{
  */
 #define LYS_CONFIG_W     0x01        /**< config true; also set for input children nodes */
@@ -766,7 +890,10 @@ struct lysp_deviation {
 #define LYS_UNIQUE       0x80        /**< flag for leafs being part of a unique set, applicable only to ::lysc_node_leaf */
 #define LYS_KEY          0x100       /**< flag for leafs being a key of a list, applicable only to ::lysc_node_leaf */
 #define LYS_KEYLESS      0x200       /**< flag for list without any key, applicable only to ::lysc_node_list */
-#define LYS_FENABLED     0x100       /**< feature enabled flag, applicable only to ::lysc_feature */
+#define LYS_FENABLED     0x100       /**< feature enabled flag, applicable only to ::lysc_feature.
+                                          Do not interpret presence of this flag as enabled feature! Also if-feature statements
+                                          are supposed to be taken into account, so use ::lys_feature_value() or
+                                          ::lysc_feature_value() to get know if a specific feature is really enabled. */
 #define LYS_ORDBY_SYSTEM 0x80        /**< ordered-by user lists, applicable only to ::lysc_node_leaflist/::lysp_node_leaflist and
                                           ::lysc_node_list/::lysp_node_list */
 #define LYS_ORDBY_USER   0x40        /**< ordered-by user lists, applicable only to ::lysc_node_leaflist/::lysp_node_leaflist and
@@ -1218,7 +1345,7 @@ struct lysc_feature {
 
 /**
  * @defgroup ifftokens if-feature expression tokens
- * Tokens of if-feature expression used in ::lysc_iffeature#expr
+ * Tokens of if-feature expression used in ::lysc_iffeature.expr.
  *
  * @{
  */
@@ -1734,7 +1861,7 @@ const struct lysc_node *lysc_node_children(const struct lysc_node *node, uint16_
 /**
  * @brief Examine whether a node is user-ordered list or leaf-list.
  *
- * @param[in] node Node to examine.
+ * @param[in] schema Schema node to examine.
  * @return non-zero if it is,
  * @return Boolean value whether the @p node is user-ordered or not.
  */
@@ -1944,7 +2071,7 @@ LY_ERR lys_feature_value(const struct lys_module *module, const char *feature);
  * @brief Get next schema tree (sibling) node element that can be instantiated in a data tree. Returned node can
  * be from an augment.
  *
- * lys_getnext() is supposed to be called sequentially. In the first call, the \p last parameter is usually NULL
+ * ::lys_getnext() is supposed to be called sequentially. In the first call, the \p last parameter is usually NULL
  * and function starts returning i) the first \p parent's child or ii) the first top level element of the \p module.
  * Consequent calls suppose to provide the previously returned node as the \p last parameter and still the same
  * \p parent and \p module parameters.
@@ -1964,16 +2091,19 @@ const struct lysc_node *lys_getnext(const struct lysc_node *last, const struct l
         const struct lysc_module *module, uint32_t options);
 
 /**
- * @defgroup sgetnextflags lys_getnext() flags
+ * @defgroup sgetnextflags Options for ::lys_getnext().
+ *
+ * Various options setting behavior of ::lys_getnext().
+ *
  * @{
  */
-#define LYS_GETNEXT_WITHCHOICE   0x01 /**< lys_getnext() option to allow returning #LYS_CHOICE nodes instead of looking into them */
-#define LYS_GETNEXT_NOCHOICE     0x02 /**< lys_getnext() option to ignore (kind of conditional) nodes within choice node */
-#define LYS_GETNEXT_WITHCASE     0x04 /**< lys_getnext() option to allow returning #LYS_CASE nodes instead of looking into them */
-#define LYS_GETNEXT_INTONPCONT   0x40 /**< lys_getnext() option to look into non-presence container, instead of returning container itself */
-#define LYS_GETNEXT_NOSTATECHECK 0x100 /**< lys_getnext() option to skip checking module validity (import-only, disabled) and
+#define LYS_GETNEXT_WITHCHOICE   0x01 /**< ::lys_getnext() option to allow returning #LYS_CHOICE nodes instead of looking into them */
+#define LYS_GETNEXT_NOCHOICE     0x02 /**< ::lys_getnext() option to ignore (kind of conditional) nodes within choice node */
+#define LYS_GETNEXT_WITHCASE     0x04 /**< ::lys_getnext() option to allow returning #LYS_CASE nodes instead of looking into them */
+#define LYS_GETNEXT_INTONPCONT   0x40 /**< ::lys_getnext() option to look into non-presence container, instead of returning container itself */
+#define LYS_GETNEXT_NOSTATECHECK 0x100 /**< ::lys_getnext() option to skip checking module validity (import-only, disabled) and
                                             relevant if-feature conditions state */
-#define LYS_GETNEXT_OUTPUT       0x200 /**< lys_getnext() option to provide RPC's/action's output schema nodes instead of input schema nodes
+#define LYS_GETNEXT_OUTPUT       0x200 /**< ::lys_getnext() option to provide RPC's/action's output schema nodes instead of input schema nodes
                                             provided by default */
 /** @} sgetnextflags */
 
@@ -2018,7 +2148,7 @@ const struct lysc_node *lysc_node_is_disabled(const struct lysc_node *node, ly_b
  * @brief Check type restrictions applicable to the particular leaf/leaf-list with the given string @p value.
  *
  * This function check just the type's restriction, if you want to check also the data tree context (e.g. in case of
- * require-instance restriction), use lyd_value_validate().
+ * require-instance restriction), use ::lyd_value_validate().
  *
  * @param[in] ctx libyang context for logging (function does not log errors when @p ctx is NULL)
  * @param[in] node Schema node for the @p value.

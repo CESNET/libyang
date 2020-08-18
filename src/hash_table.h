@@ -28,8 +28,8 @@
  *
  * Usage:
  * - init hash to 0
- * - repeatedly call dict_hash_multi(), provide hash from the last call
- * - call dict_hash_multi() with key_part = NULL to finish the hash
+ * - repeatedly call ::dict_hash_multi(), provide hash from the last call
+ * - call ::dict_hash_multi() with key_part = NULL to finish the hash
  */
 uint32_t dict_hash_multi(uint32_t hash, const char *key_part, size_t len);
 
@@ -202,7 +202,7 @@ LY_ERR lyht_find_next(struct hash_table *ht, void *val_p, uint32_t hash, void **
 LY_ERR lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p);
 
 /**
- * @brief Insert a value into hash table. Same functionality as lyht_insert()
+ * @brief Insert a value into hash table. Same functionality as ::lyht_insert()
  * but allows to specify a temporary val equal callback to be used in case the hash table
  * will be resized after successful insertion.
  *
@@ -232,7 +232,7 @@ LY_ERR lyht_insert_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t h
 LY_ERR lyht_remove(struct hash_table *ht, void *val_p, uint32_t hash);
 
 /**
- * @brief Remove a value from a hash table. Same functionality as lyht_remove()
+ * @brief Remove a value from a hash table. Same functionality as ::lyht_remove()
  * but allows to specify a temporary val equal callback to be used in case the hash table
  * will be resized after successful removal.
  *

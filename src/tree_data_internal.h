@@ -70,7 +70,7 @@ ly_bool lyb_has_schema_model(const struct lysc_node *sibling, const struct lys_m
 struct lyd_node **lyd_node_children_p(struct lyd_node *node);
 
 /**
- * @brief Just like lys_getnext() but iterates over all data instances of the schema nodes.
+ * @brief Just like ::lys_getnext() but iterates over all data instances of the schema nodes.
  *
  * @param[in] last Last returned data node.
  * @param[in] sibling Data node sibling to search in.
@@ -505,7 +505,7 @@ LY_ERR lyd_hash(struct lyd_node *node);
 /**
  * @brief Insert hash of the node into the hash table of its parent.
  *
- * @param[in] node Data node which hash will be inserted into the lyd_node_inner::children_hash hash table of its parent.
+ * @param[in] node Data node which hash will be inserted into the ::lyd_node_inner.children_ht hash table of its parent.
  * @return LY_ERR value.
  */
 LY_ERR lyd_insert_hash(struct lyd_node *node);

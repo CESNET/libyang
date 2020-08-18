@@ -176,7 +176,7 @@ endif()
 if(("${BUILD_TYPE_UPPER}" STREQUAL "DEBUG") OR ("${BUILD_TYPE_UPPER}" STREQUAL "RELWITHDEBINFO"))
     option(ENABLE_BUILD_TESTS "Build tests" ON)
     option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" ON)
-    set(INTERNAL_DOCS YES)
+    set(INTERNAL_DOCS NO) # TODO enable when the internal docs ready
 else()
     option(ENABLE_BUILD_TESTS "Build tests" OFF)
     option(ENABLE_VALGRIND_TESTS "Build tests with valgrind" OFF)

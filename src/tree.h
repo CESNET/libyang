@@ -1,7 +1,7 @@
 /**
  * @file tree.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
- * @brief libyang geenric macros and functions to work with YANG schema or data trees.
+ * @brief libyang generic macros and functions to work with YANG schema or data trees.
  *
  * Copyright (c) 2019 CESNET, z.s.p.o.
  *
@@ -22,6 +22,72 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/**
+ * @page howtoXPath XPath Addressing
+ *
+ * Internally, XPath evaluation is performed on __when__ and __must__ conditions in the schema. For that almost
+ * a full [XPath 1.0](http://www.w3.org/TR/1999/REC-xpath-19991116/) evaluator was implemented.
+ * In YANG models you can also find paths identifying __augment__ targets, __leafref__ targets, and trivial paths in
+ * __choice default__ and __unique__ statements argument. The exact format of all those paths can be found in the
+ * relevant RFCs. Further will only be discussed paths that are used directly in libyang API functions.
+ *
+ * XPath
+ * =====
+ *
+ * Generally, any xpath argument expects an expression similar to _when_ or _must_ as the same evaluator is used. As for
+ * the format of any prefixes, the standardized JSON ([RFC 7951](https://tools.ietf.org/html/rfc7951#section-6.11))
+ * was used. Summarized, xpath follows these conventions:
+ *   - full XPath can be used, but only data nodes (node sets) will always be returned,
+ *   - as per the specification, prefixes are actually __module names__,
+ *   - also in the specification, for _absolute_ paths, the first (leftmost) node _MUST_ have a prefix,
+ *   - for _relative_ paths, you specify the __context node__, which then acts as a parent for the first node in the path,
+ *   - nodes always inherit their module (prefix) from their __parent node__ so whenever a node is from a different
+ *     module than its parent, it _MUST_ have a prefix,
+ *   - nodes from the same module as their __parent__ _MUST NOT_ have a prefix,
+ *   - note that non-data nodes/schema-only node (choice, case, uses, input, output) are skipped and _MUST_ not be
+ *     included in the path.
+ *
+ * Functions List
+ * --------------
+ * - ::lyd_find_xpath()
+ * - ::lys_find_xpath()
+ *
+ * Path
+ * ====
+ *
+ * The term path is used when a simplified (subset of) XPath is expected. Path is always a valid XPath but not
+ * the other way around. In short, paths only identify a specific (set of) nodes based on their ancestors in the
+ * schema. Predicates are allowed the same as for an [instance-identifier](https://tools.ietf.org/html/rfc7950#section-9.13).
+ * Specifically, key values of a list, leaf-list value, or position of lists without keys can be used.
+ *
+ * Examples
+ * --------
+ *
+ * - get __list__ instance with __key1__ of value __1__ and __key2__ of value __2__ (this can return more __list__ instances if there are more keys than __key1__ and __key2__)
+ *
+ *       /module-name:container/list[key1='1'][key2='2']
+ *
+ * - get __leaf-list__ instance with the value __val__
+ *
+ *       /module-name:container/leaf-list[.='val']
+ *
+ * - get __3rd list-without-keys__ instance with no keys defined
+ *
+ *       /module-name:container/list-without-keys[3]
+ *
+ * - get __aug-list__ with __aug-list-key__, which was added to __module-name__ from an augment module __augment-module__
+ *
+ *       /module-name:container/container2/augment-module:aug-cont/aug-list[aug-list-key='value']
+ *
+ * Functions List
+ * --------------
+ * - ::lyd_new_path()
+ * - ::lyd_new_path2()
+ * - ::lyd_path()
+ * - ::ly_ctx_get_node()
+ *
+ */
 
 /**
  * @defgroup trees Trees

@@ -24,6 +24,54 @@ extern "C" {
 #endif
 
 /**
+ * @page howtoParsers Input Processing
+ *
+ * libyang provides a mechanism to generalize work with the inputs (and [outputs](@ref howtoPrinters)) of
+ * the different types. The ::ly_in handler can be created providing necessary information connected with the specific
+ * input type and then used throughout the parser functions processing the input data. Using a generic input handler avoids
+ * need to have a set of functions for each parser functionality and results in simpler API.
+ *
+ * The API allows to alter the source of the data behind the handler by another source. Also reseting a seekable source
+ * input is possible with ::ly_in_reset() to re-read the input.
+ *
+ * @note
+ * Currently, libyang supports only reading data from standard (disk) file, not from sockets, pipes, etc. The reason is
+ * that the parsers expects all the data to be present in the file (input data are complete). In future, we would like
+ * to change the internal mechanism and support sequential processing of the input data. In XML wording - we have DOM
+ * parser, but in future we would like to move to something like a SAX parser.
+ *
+ * @note
+ * This mechanism was introduced in libyang 2.0. To simplify transition from libyang 1.0 to version 2.0 and also for
+ * some simple use case where using the input handler would be an overkill, there are some basic parsers functions
+ * that do not require input handler. But remember, that functionality of these function can be limited in particular cases
+ * in contrast to the functions using input handlers.
+ *
+ * Functions List
+ * --------------
+ * - ::ly_in_new_fd()
+ * - ::ly_in_new_file()
+ * - ::ly_in_new_filepath()
+ * - ::ly_in_new_memory()
+ *
+ * - ::ly_in_fd()
+ * - ::ly_in_file()
+ * - ::ly_in_filepath()
+ * - ::ly_in_memory()
+ *
+ * - ::ly_in_type()
+ * - ::ly_in_parsed()
+ *
+ * - ::ly_in_reset()
+ * - ::ly_in_free()
+ *
+ * libyang Parsers List
+ * --------------------
+ * - @subpage howtoSchemaParsers
+ * - @subpage howtoDataParsers
+ */
+
+/**
+ * @struct ly_in
  * @brief Parser input structure specifying where the data are read.
  */
 struct ly_in;
@@ -53,7 +101,7 @@ LY_IN_TYPE ly_in_type(const struct ly_in *in);
  * Note that in case the underlying output is not seekable (stream referring a pipe/FIFO/socket or the callback output type),
  * nothing actually happens despite the function succeeds. Also note that the medium is not returned to the state it was when
  * the handler was created. For example, file is seeked into the offset zero, not to the offset where it was opened when
- * ly_in_new_file() was called.
+ * ::ly_in_new_file() was called.
  *
  * @param[in] in Input handler.
  * @return LY_SUCCESS in case of success
@@ -105,7 +153,7 @@ FILE *ly_in_file(struct ly_in *in, FILE *f);
  * @brief Create input handler using memory to read data.
  *
  * @param[in] str Pointer where to start reading data. The input data are expected to be NULL-terminated.
- * Note that in case the destroy argument of ly_in_free() is used, the input string is passed to free(),
+ * Note that in case the destroy argument of ::ly_in_free() is used, the input string is passed to free(),
  * so if it is really a static string, do not use the destroy argument!
  * @param[out] in Created input handler supposed to be passed to different ly*_parse() functions.
  * @return LY_SUCCESS in case of success
@@ -118,7 +166,7 @@ LY_ERR ly_in_new_memory(const char *str, struct ly_in **in);
  *
  * @param[in] in Input handler.
  * @param[in] str String containing the data to read. The input data are expected to be NULL-terminated.
- * Note that in case the destroy argument of ly_in_free() is used, the input string is passed to free(),
+ * Note that in case the destroy argument of ::ly_in_free() is used, the input string is passed to free(),
  * so if it is really a static string, do not use the destroy argument!
  * @return Previous starting address to read data from. Note that the caller is responsible to free
  * the data in case of changing string pointer @p str.
