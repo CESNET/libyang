@@ -172,7 +172,7 @@ lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, struct ly_s
             struct lyd_node_term *node = (struct lyd_node_term *)node_types->objs[i];
 
             /* validate and store the value of the node */
-            ret = lyd_value_parse(node, node->value.original, strlen(node->value.original), 0, 1, 0, format,
+            ret = lyd_value_parse(node, node->value.canonical, strlen(node->value.canonical), 0, 1, 0, format,
                                   prefix_data, *tree);
             LY_CHECK_RET(ret);
 
@@ -190,8 +190,8 @@ lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, struct ly_s
             struct lyd_meta *meta = (struct lyd_meta *)meta_types->objs[i];
 
             /* validate and store the value of the metadata */
-            ret = lyd_value_parse_meta(meta->parent->schema->module->ctx, meta, meta->value.original,
-                                       strlen(meta->value.original), 0, 1, 0, format, prefix_data, NULL, *tree);
+            ret = lyd_value_parse_meta(meta->parent->schema->module->ctx, meta, meta->value.canonical,
+                                       strlen(meta->value.canonical), 0, 1, 0, format, prefix_data, NULL, *tree);
             LY_CHECK_RET(ret);
 
             /* remove this attr from the set */

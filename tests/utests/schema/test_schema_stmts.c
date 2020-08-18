@@ -134,12 +134,12 @@ test_identity(void **state)
 
     /* default value from non-implemented module */
     TEST_SCHEMA_ERR(ctx, 0, 0, "ident2", "import base {prefix b;} leaf l {type identityref {base b:i1;} default b:i2;}",
-                    "Invalid leaf's default value \"b:i2\" which does not fit the type (Invalid identityref \"b:i2\" value"
+                    "Invalid default - value does not fit the type (Invalid identityref \"b:i2\" value"
                     " - identity found in non-implemented module \"base\".). /ident2:l");
 
     /* default value in typedef from non-implemented module */
     TEST_SCHEMA_ERR(ctx, 0, 0, "ident2", "import base {prefix b;} typedef t1 {type identityref {base b:i1;} default b:i2;}"
-                    "leaf l {type t1;}", "Invalid type's default value \"b:i2\" which does not fit the type (Invalid"
+                    "leaf l {type t1;}", "Invalid default - value does not fit the type (Invalid"
                     " identityref \"b:i2\" value - identity found in non-implemented module \"base\".). /ident2:l");
 
     /*

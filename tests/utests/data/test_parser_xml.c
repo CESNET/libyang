@@ -132,12 +132,12 @@ test_leaf(void **state)
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("foo", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
-    assert_string_equal("foo value", leaf->value.original);
+    assert_string_equal("foo value", leaf->value.canonical);
 
     assert_int_equal(LYS_LEAF, tree->next->next->schema->nodetype);
     assert_string_equal("foo2", tree->next->next->schema->name);
     leaf = (struct lyd_node_term*)tree->next->next;
-    assert_string_equal("default-val", leaf->value.original);
+    assert_string_equal("default-val", leaf->value.canonical);
     assert_true(leaf->flags & LYD_DEFAULT);
 
     lyd_free_all(tree);
@@ -149,7 +149,7 @@ test_leaf(void **state)
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("foo2", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
-    assert_string_equal("default-val", leaf->value.original);
+    assert_string_equal("default-val", leaf->value.canonical);
     assert_false(leaf->flags & LYD_DEFAULT);
 
     lyd_free_all(tree);
@@ -161,7 +161,7 @@ test_leaf(void **state)
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("foo2", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
-    assert_string_equal("default-val", leaf->value.original);
+    assert_string_equal("default-val", leaf->value.canonical);
     assert_true(leaf->flags & LYD_DEFAULT);
 
     lyd_free_all(tree);

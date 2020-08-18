@@ -136,26 +136,23 @@ const char *ly_get_prefix(const struct lys_module *mod, LY_PREFIX_FORMAT format,
 /**
  * @defgroup plugintypeopts Options for type plugin callbacks. The same set of the options is passed to all the type's callbacks used together.
  *
- * Options applicable to ly_type_validate_clb() and ly_type_store_clb.
+ * Options applicable to ly_type_store_clb().
  * @{
  */
-#define LY_TYPE_OPTS_CANONIZE     0x01 /**< Canonize the given value and store it (insert into the context's dictionary)
-                                            as the value's canonized string */
-#define LY_TYPE_OPTS_DYNAMIC      0x02 /**< Flag for the dynamically allocated string value, in this case the value
+#define LY_TYPE_OPTS_DYNAMIC      0x01 /**< Flag for the dynamically allocated string value, in this case the value
                                             is supposed to be freed or directly inserted into the context's dictionary
                                             (e.g. in case of canonization).
                                             In any case, the caller of the callback does not free the provided string value after calling
                                             the type's callbacks with this option */
-#define LY_TYPE_OPTS_STORE        0x04 /**< Flag announcing calling of ly_type_store_clb() */
-#define LY_TYPE_OPTS_SCHEMA       0x08 /**< Flag for the value used in schema instead of the data tree. With this flag also the meaning of
+#define LY_TYPE_OPTS_SCHEMA       0x02 /**< Flag for the value used in schema instead of the data tree. With this flag also the meaning of
                                             LY_TYPE_OPTS_INCOMPLETE_DATA changes and means that the schema tree is not complete (data tree
                                             is not taken into account at all). */
-#define LY_TYPE_OPTS_INCOMPLETE_DATA 0x10 /**< Flag for the case the data trees (schema trees in case it is used in combination with
+#define LY_TYPE_OPTS_INCOMPLETE_DATA 0x04 /**< Flag for the case the data trees (schema trees in case it is used in combination with
                                             LY_TYPE_OPTS_SCHEMA) are not yet complete. In this case the plugin should do what it
                                             can (e.g. store the canonical/auxiliary value if it is requested) and in the case of need to use
                                             data trees (checking require-instance), it returns LY_EINCOMPLETE.
                                             Caller is supposed to call such validation callback again later with complete data trees. */
-#define LY_TYPE_OPTS_SECOND_CALL  0x20 /**< Flag for the second call of the callback when the first call returns LY_EINCOMPLETE,
+#define LY_TYPE_OPTS_SECOND_CALL  0x08 /**< Flag for the second call of the callback when the first call returns LY_EINCOMPLETE,
                                             other options should be the same as for the first call. **!!** Note that this second call
                                             can occur even if the first call succeeded, in which case the plugin should immediately
                                             return LY_SUCCESS. */
@@ -195,11 +192,7 @@ const char *ly_get_prefix(const struct lys_module *mod, LY_PREFIX_FORMAT format,
  *            This argument is a lys_node (in case LY_TYPE_OPTS_INCOMPLETE_DATA or LY_TYPE_OPTS_SCHEMA set in @p options)
  *            or lyd_node structure.
  * @param[in] tree External data tree (e.g. when validating RPC/Notification) where the required data instance can be placed.
- * @param[in,out] storage If LY_TYPE_OPTS_STORE option set, the parsed data are stored into this structure in the type's specific way.
- *             If the @p canonized differs from the storage's canonized member, the canonized value is also stored here despite the
- *             LY_TYPE_OPTS_CANONIZE option.
- * @param[out] canonized If LY_TYPE_OPTS_CANONIZE option set, the canonized string stored in the @p ctx dictionary
- *             is returned via this parameter.
+ * @param[in] storage Storage for the value in the type's specific encoding. All the members should be filled by the plugin.
  * @param[out] err Optionally provided error information in case of failure. If not provided to the caller, a generic
  *             error message is prepared instead.
  *             The error structure can be created by ly_err_new().
@@ -209,8 +202,7 @@ const char *ly_get_prefix(const struct lys_module *mod, LY_PREFIX_FORMAT format,
  */
 typedef LY_ERR (*ly_type_store_clb)(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len,
                                     int options, LY_PREFIX_FORMAT format, void *prefix_data, const void *context_node,
-                                    const struct lyd_node *tree, struct lyd_value *storage, const char **canonized,
-                                    struct ly_err_item **err);
+                                    const struct lyd_node *tree, struct lyd_value *storage, struct ly_err_item **err);
 
 /**
  * @brief Callback for comparing 2 values of the same type.

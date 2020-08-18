@@ -186,6 +186,7 @@ typedef enum {
 struct lyd_value_subvalue {
     struct lyd_value *value;     /**< representation of the value according to the selected union's subtype
                                       (stored as lyd_value::realpath here, in subvalue structure */
+    const char *original;        /**< Original value in the dictionary. */
     LY_PREFIX_FORMAT format;     /**< Prefix format of the value. However, this information is also used to decide
                                       whether a value is valid for the specific format or not on later validations
                                       (instance-identifier in XML looks different than in JSON). */
@@ -197,8 +198,8 @@ struct lyd_value_subvalue {
  * @brief YANG data representation
  */
 struct lyd_value {
-    const char *original;           /**< Original string representation of the value. It is never NULL, but (canonical) string representation
-                                         of the value should be always obtained via the type's printer callback (lyd_value::realtype::plugin::print). */
+    const char *canonical;           /**< Canonical string representation of the value in the dictionary. It is never
+                                          NULL and in case of no canonical value, its JSON representation is used instead. */
     union {
         int8_t boolean;              /**< 0 as false, 1 as true */
         int64_t dec64;               /**< decimal64: value = dec64 / 10^fraction-digits  */
@@ -226,10 +227,15 @@ struct lyd_value {
                                           lyd_value::subvalue structure, so here is the pointer to the union type.
                                           In general, this type is used to get free callback for this lyd_value structure, so it must reflect
                                           the type used to store data directly in the same lyd_value instance. */
-    void *canonical_cache;           /**< Generic cache for type plugins to store data necessary to print canonical value. It can be the canonical
-                                          value itself or anything else useful to print the canonical form of the value. Plugin is responsible for
-                                          freeing the cache in its free callback. */
 };
+
+/**
+ * @brief Macro for getting the string canonical value from a term node.
+ *
+ * @param[in] node Term node with the value.
+ * @return Canonical value.
+ */
+#define LYD_CANONICAL(node) ((struct lyd_node_term *)(node))->value.canonical
 
 /**
  * @brief Metadata structure.
@@ -1242,24 +1248,6 @@ LY_ERR lyd_diff_reverse_all(const struct lyd_node *src_diff, struct lyd_node **d
  * @return NULL if not found.
  */
 const struct lyd_node_term *lyd_target(const struct ly_path *path, const struct lyd_node *tree);
-
-/**
- * @brief Get string value of a term data \p node.
- *
- * @param[in] node Data tree node with the value.
- * @param[out] dynamic Whether the string value was dynmically allocated.
- * @return String value of @p node, if @p dynamic, needs to be freed.
- */
-const char *lyd_value2str(const struct lyd_node_term *node, int *dynamic);
-
-/**
- * @brief Get string value of a metadata \p meta.
- *
- * @param[in] meta Metadata with the value.
- * @param[out] dynamic Whether the string value was dynmically allocated.
- * @return String value of @p meta, if @p dynamic, needs to be freed.
- */
-const char *lyd_meta2str(const struct lyd_meta *meta, int *dynamic);
 
 /**
  * @brief Types of the different data paths.

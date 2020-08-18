@@ -160,9 +160,13 @@ struct lys_yin_parser_ctx {
 void yin_parser_ctx_free(struct lys_yin_parser_ctx *ctx);
 
 struct lysc_incomplete_dflt {
-    struct lyd_value *dflt;
+    union {
+        struct lysc_node_leaf *leaf;
+        struct lysc_node_leaflist *llist;
+    };
+    const char *dflt;
+    const char **dflts;
     struct lys_module *dflt_mod;
-    struct lysc_node *context_node;
 };
 
 /**

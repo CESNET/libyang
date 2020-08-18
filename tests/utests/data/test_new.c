@@ -218,7 +218,6 @@ test_path(void **state)
 
     LY_ERR ret;
     struct lyd_node *root, *node, *parent;
-    int dynamic;
 
     /* create 2 nodes */
     ret = lyd_new_path2(NULL, ctx, "/a:c/x[.='val']", "vvv", 0, 0, &root, &node);
@@ -227,24 +226,21 @@ test_path(void **state)
     assert_string_equal(root->schema->name, "c");
     assert_non_null(node);
     assert_string_equal(node->schema->name, "x");
-    assert_string_equal("val", lyd_value2str((struct lyd_node_term *)node, &dynamic));
-    assert_int_equal(dynamic, 0);
+    assert_string_equal("val", LYD_CANONICAL(node));
 
     /* append another */
     ret = lyd_new_path2(root, NULL, "/a:c/x", "val2", 0, 0, &parent, &node);
     assert_int_equal(ret, LY_SUCCESS);
     assert_ptr_equal(parent, node);
     assert_string_equal(node->schema->name, "x");
-    assert_string_equal("val2", lyd_value2str((struct lyd_node_term *)node, &dynamic));
-    assert_int_equal(dynamic, 0);
+    assert_string_equal("val2", LYD_CANONICAL(node));
 
     /* and a last one */
     ret = lyd_new_path2(root, NULL, "x", "val3", 0, 0, &parent, &node);
     assert_int_equal(ret, LY_SUCCESS);
     assert_ptr_equal(parent, node);
     assert_string_equal(node->schema->name, "x");
-    assert_string_equal("val3", lyd_value2str((struct lyd_node_term *)node, &dynamic));
-    assert_int_equal(dynamic, 0);
+    assert_string_equal("val3", LYD_CANONICAL(node));
 
     lyd_free_tree(root);
 
@@ -276,8 +272,7 @@ test_path(void **state)
     assert_int_equal(ret, LY_SUCCESS);
     assert_non_null(root);
     assert_string_equal(node->schema->name, "x");
-    assert_string_equal("val", lyd_value2str((struct lyd_node_term *)node, &dynamic));
-    assert_int_equal(dynamic, 0);
+    assert_string_equal("val", LYD_CANONICAL(node));
 
     ret = lyd_new_path2(root, NULL, "/a:l2[1]/c/x", "val", 0, 0, NULL, &node);
     assert_int_equal(ret, LY_EEXIST);
@@ -290,8 +285,7 @@ test_path(void **state)
     assert_int_equal(ret, LY_SUCCESS);
     assert_non_null(node);
     assert_string_equal(node->schema->name, "x");
-    assert_string_equal("val2", lyd_value2str((struct lyd_node_term *)node, &dynamic));
-    assert_int_equal(dynamic, 0);
+    assert_string_equal("val2", LYD_CANONICAL(node));
 
     lyd_free_tree(root);
 

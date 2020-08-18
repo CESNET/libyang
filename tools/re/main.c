@@ -133,6 +133,7 @@ main(int argc, char* argv[])
     ssize_t l;
     struct lysc_type *type;
     struct ly_err_item *err = NULL;
+    struct lyd_value storage;
 
     opterr = 0;
     while ((i = getopt_long(argc, argv, "hf:ivVp:", options, &opt_index)) != -1) {
@@ -272,8 +273,11 @@ main(int argc, char* argv[])
         goto cleanup;
     }
 
-    type = ((struct lysc_node_leaf*)mod->compiled->data)->type;
-    match = type->plugin->store(ctx, type, str, strlen(str), 0, LY_PREF_JSON, NULL, NULL, NULL, NULL, NULL, &err);
+    type = ((struct lysc_node_leaf *)mod->compiled->data)->type;
+    match = type->plugin->store(ctx, type, str, strlen(str), 0, LY_PREF_JSON, NULL, NULL, NULL, &storage, &err);
+    if ((match == LY_SUCCESS) || (match == LY_EINCOMPLETE)) {
+        storage.realtype->plugin->free(ctx, &storage);
+    }
     if (verbose) {
         for (i = 0; i < patterns_count; i++) {
             fprintf(stdout, "pattern  %d: %s\n", i + 1, patterns[i]);

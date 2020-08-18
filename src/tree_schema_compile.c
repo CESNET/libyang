@@ -148,23 +148,64 @@ lysc_ext_instance_dup(struct ly_ctx *ctx, struct lysc_ext_instance *orig)
     return NULL;
 }
 
+static LY_ERR
+lysc_incomplete_leaf_dflt_add(struct lysc_ctx *ctx, struct lysc_node_leaf *leaf, const char *dflt,
+                              struct lys_module *dflt_mod)
+{
+    struct lysc_incomplete_dflt *r;
+    uint32_t i;
+
+    for (i = 0; i < ctx->dflts.count; ++i) {
+        r = (struct lysc_incomplete_dflt *)ctx->dflts.objs[i];
+        if (r->leaf == leaf) {
+            /* just replace the default */
+            r->dflt = dflt;
+            return LY_SUCCESS;
+        }
+    }
+
+    r = malloc(sizeof *r);
+    LY_CHECK_ERR_RET(!r, LOGMEM(ctx->ctx), LY_EMEM);
+    r->leaf = leaf;
+    r->dflt = dflt;
+    r->dflts = NULL;
+    r->dflt_mod = dflt_mod;
+    ly_set_add(&ctx->dflts, r, LY_SET_OPT_USEASLIST);
+
+    return LY_SUCCESS;
+}
+
 /**
  * @brief Add record into the compile context's list of incomplete default values.
  * @param[in] ctx Compile context with the incomplete default values list.
- * @param[in] context_node Context schema node to store in the record.
- * @param[in] dflt Incomplete default value to store in the record.
+ * @param[in] term Term context node with the default value.
+ * @param[in] value String default value.
+ * @param[in] val_len Length of @p value.
  * @param[in] dflt_mod Module of the default value definition to store in the record.
  * @return LY_EMEM in case of memory allocation failure.
  * @return LY_SUCCESS
  */
 static LY_ERR
-lysc_incomplete_dflts_add(struct lysc_ctx *ctx, struct lysc_node *context_node, struct lyd_value *dflt, struct lys_module *dflt_mod)
+lysc_incomplete_llist_dflts_add(struct lysc_ctx *ctx, struct lysc_node_leaflist *llist, const char **dflts,
+                                struct lys_module *dflt_mod)
 {
     struct lysc_incomplete_dflt *r;
+    uint32_t i;
+
+    for (i = 0; i < ctx->dflts.count; ++i) {
+        r = (struct lysc_incomplete_dflt *)ctx->dflts.objs[i];
+        if (r->llist == llist) {
+            /* just replace the defaults */
+            r->dflts = dflts;
+            return LY_SUCCESS;
+        }
+    }
+
     r = malloc(sizeof *r);
     LY_CHECK_ERR_RET(!r, LOGMEM(ctx->ctx), LY_EMEM);
-    r->context_node = context_node;
-    r->dflt = dflt;
+    r->llist = llist;
+    r->dflt = NULL;
+    r->dflts = dflts;
     r->dflt_mod = dflt_mod;
     ly_set_add(&ctx->dflts, r, LY_SET_OPT_USEASLIST);
 
@@ -177,14 +218,14 @@ lysc_incomplete_dflts_add(struct lysc_ctx *ctx, struct lysc_node *context_node, 
  * @param[in] dflt Incomplete default values identifying the record to remove.
  */
 static void
-lysc_incomplete_dflts_remove(struct lysc_ctx *ctx, struct lyd_value *dflt)
+lysc_incomplete_dflt_remove(struct lysc_ctx *ctx, struct lysc_node *term)
 {
-    unsigned int u;
+    uint32_t u;
     struct lysc_incomplete_dflt *r;
 
     for (u = 0; u < ctx->dflts.count; ++u) {
-        r = (struct lysc_incomplete_dflt*)ctx->dflts.objs[u];
-        if (r->dflt == dflt) {
+        r = ctx->dflts.objs[u];
+        if (r->leaf == (struct lysc_node_leaf *)term) {
             free(ctx->dflts.objs[u]);
             memmove(&ctx->dflts.objs[u], &ctx->dflts.objs[u + 1], (ctx->dflts.count - (u + 1)) * sizeof *ctx->dflts.objs);
             --ctx->dflts.count;
@@ -2467,7 +2508,7 @@ cleanup:
 
 static LY_ERR lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16_t context_flags,
                                struct lysp_module *context_mod, const char *context_name, struct lysp_type *type_p,
-                               struct lysc_type **type, const char **units);
+                               struct lysc_type **type, const char **units, const char **dflt, struct lys_module **dflt_mod);
 
 /**
  * @brief The core of the lys_compile_type() - compile information about the given type (from typedef or leaf/leaf-list).
@@ -2791,7 +2832,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16
             LY_ARRAY_CREATE_RET(ctx->ctx, un->types, LY_ARRAY_COUNT(type_p->types), LY_EVALID);
             for (LY_ARRAY_COUNT_TYPE u = 0, additional = 0; u < LY_ARRAY_COUNT(type_p->types); ++u) {
                 LY_CHECK_RET(lys_compile_type(ctx, context_node_p, context_flags, context_mod, context_name,
-                                              &type_p->types[u], &un->types[u + additional], NULL));
+                                              &type_p->types[u], &un->types[u + additional], NULL, NULL, NULL));
                 if (un->types[u + additional]->basetype == LY_TYPE_UNION) {
                     /* add space for additional types from the union subtype */
                     un_aux = (struct lysc_type_union *)un->types[u + additional];
@@ -2868,12 +2909,14 @@ done:
  * @param[in] type_p Parsed type to compile.
  * @param[out] type Newly created (or reused with increased refcount) type structure with the filled information about the type.
  * @param[out] units Storage for inheriting units value from the typedefs the current type derives from.
+ * @param[out] dflt Default value for the type.
+ * @param[out] dflt_mod Local module for the default value.
  * @return LY_ERR value.
  */
 static LY_ERR
 lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16_t context_flags,
                  struct lysp_module *context_mod, const char *context_name, struct lysp_type *type_p,
-                 struct lysc_type **type, const char **units)
+                 struct lysc_type **type, const char **units, const char **dflt, struct lys_module **dflt_mod)
 {
     LY_ERR ret = LY_SUCCESS;
     unsigned int u;
@@ -2886,10 +2929,14 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16_
     LY_DATA_TYPE basetype = LY_TYPE_UNKNOWN;
     struct lysc_type *base = NULL, *prev_type;
     struct ly_set tpdf_chain = {0};
-    const char *dflt = NULL;
-    struct lys_module *dflt_mod = NULL;
+
+    assert((dflt && dflt_mod) || (!dflt && !dflt_mod));
 
     (*type) = NULL;
+    if (dflt) {
+        *dflt = NULL;
+        *dflt_mod = NULL;
+    }
 
     tctx = calloc(1, sizeof *tctx);
     LY_CHECK_ERR_RET(!tctx, LOGMEM(ctx->ctx), LY_EMEM);
@@ -2911,12 +2958,12 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16_
             /* inherit units */
             DUP_STRING(ctx->ctx, tctx->tpdf->units, *units);
         }
-        if (!dflt) {
+        if (dflt && !*dflt) {
             /* inherit default */
-            dflt = tctx->tpdf->dflt;
-            dflt_mod = tctx->mod->mod;
+            *dflt = tctx->tpdf->dflt;
+            *dflt_mod = tctx->mod->mod;
         }
-        if (dummyloops && (!units || *units) && dflt) {
+        if (dummyloops && (!units || *units) && dflt && *dflt) {
             basetype = ((struct type_context*)tpdf_chain.objs[tpdf_chain.count - 1])->tpdf->type.compiled->basetype;
             break;
         }
@@ -2926,7 +2973,7 @@ lys_compile_type(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16_
              * but we still may need to inherit default and units values, so start dummy loops */
             basetype = tctx->tpdf->type.compiled->basetype;
             ly_set_add(&tpdf_chain, tctx, LY_SET_OPT_USEASLIST);
-            if ((units && !*units) || !dflt) {
+            if ((units && !*units) || (dflt && !*dflt)) {
                 dummyloops = 1;
                 goto preparenext;
             } else {
@@ -3087,29 +3134,6 @@ preparenext:
         free(*type);
         (*type) = base;
         ++(*type)->refcount;
-    }
-    if (dflt && !(*type)->dflt) {
-        struct ly_err_item *err = NULL;
-        (*type)->dflt_mod = dflt_mod;
-        (*type)->dflt = calloc(1, sizeof *(*type)->dflt);
-        (*type)->dflt->realtype = (*type);
-        ret = (*type)->plugin->store(ctx->ctx, (*type), dflt, strlen(dflt),
-                                     LY_TYPE_OPTS_INCOMPLETE_DATA | LY_TYPE_OPTS_SCHEMA | LY_TYPE_OPTS_STORE,
-                                     LY_PREF_SCHEMA, (*type)->dflt_mod, NULL, NULL, (*type)->dflt, NULL, &err);
-        if (err) {
-            ly_err_print(err);
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                   "Invalid type's default value \"%s\" which does not fit the type (%s).", dflt, err->msg);
-            ly_err_free(err);
-        }
-        if (ret == LY_EINCOMPLETE) {
-            /* postpone default compilation when the tree is complete */
-            LY_CHECK_GOTO(lysc_incomplete_dflts_add(ctx, NULL, (*type)->dflt, (*type)->dflt_mod), cleanup);
-
-            /* but in general result is so far ok */
-            ret = LY_SUCCESS;
-        }
-        LY_CHECK_GOTO(ret, cleanup);
     }
 
     COMPILE_EXTS_GOTO(ctx, type_p->exts, (*type)->exts, (*type), LYEXT_PAR_TYPE, ret, cleanup);
@@ -3438,39 +3462,27 @@ done:
  * @return LY_ERR value.
  */
 static LY_ERR
-lys_compile_node_type(struct lysc_ctx *ctx, struct lysp_node *context_node, struct lysp_type *type_p, struct lysc_node_leaf *leaf)
+lys_compile_node_type(struct lysc_ctx *ctx, struct lysp_node *context_node, struct lysp_type *type_p,
+                      struct lysc_node_leaf *leaf)
 {
-    struct lysc_node_leaflist *llist = (struct lysc_node_leaflist*)leaf;
+    const char *dflt;
+    struct lys_module *dflt_mod;
 
     LY_CHECK_RET(lys_compile_type(ctx, context_node, leaf->flags, ctx->mod_def->parsed, leaf->name, type_p, &leaf->type,
-                                  leaf->units ? NULL : &leaf->units));
-    if (leaf->nodetype == LYS_LEAFLIST) {
-        if (llist->type->dflt && !llist->dflts && !llist->min) {
-            LY_ARRAY_CREATE_RET(ctx->ctx, llist->dflts_mods, 1, LY_EMEM);
-            llist->dflts_mods[0] = llist->type->dflt_mod;
-            LY_ARRAY_CREATE_RET(ctx->ctx, llist->dflts, 1, LY_EMEM);
-            llist->dflts[0] = calloc(1, sizeof *llist->dflts[0]);
-            llist->dflts[0]->realtype = llist->type->dflt->realtype;
-            llist->dflts[0]->realtype->plugin->duplicate(ctx->ctx, llist->type->dflt, llist->dflts[0]);
-            llist->dflts[0]->realtype->refcount++;
-            LY_ARRAY_INCREMENT(llist->dflts);
-        }
-    } else {
-        if (leaf->type->dflt && !leaf->dflt && !(leaf->flags & LYS_MAND_TRUE)) {
-            leaf->dflt_mod = leaf->type->dflt_mod;
-            leaf->dflt = calloc(1, sizeof *leaf->dflt);
-            leaf->dflt->realtype = leaf->type->dflt->realtype;
-            leaf->dflt->realtype->plugin->duplicate(ctx->ctx, leaf->type->dflt, leaf->dflt);
-            leaf->dflt->realtype->refcount++;
-        }
+                                  leaf->units ? NULL : &leaf->units, &dflt, &dflt_mod));
+
+    /* store default value, if any */
+    if (dflt && !(leaf->flags & LYS_SET_DFLT)) {
+        LY_CHECK_RET(lysc_incomplete_leaf_dflt_add(ctx, leaf, dflt, dflt_mod));
     }
+
     if (leaf->type->basetype == LY_TYPE_LEAFREF) {
         /* store to validate the path in the current context at the end of schema compiling when all the nodes are present */
         ly_set_add(&ctx->leafrefs, leaf, 0);
     } else if (leaf->type->basetype == LY_TYPE_UNION) {
         LY_ARRAY_COUNT_TYPE u;
-        LY_ARRAY_FOR(((struct lysc_type_union*)leaf->type)->types, u) {
-            if (((struct lysc_type_union*)leaf->type)->types[u]->basetype == LY_TYPE_LEAFREF) {
+        LY_ARRAY_FOR(((struct lysc_type_union *)leaf->type)->types, u) {
+            if (((struct lysc_type_union *)leaf->type)->types[u]->basetype == LY_TYPE_LEAFREF) {
                 /* store to validate the path in the current context at the end of schema compiling when all the nodes are present */
                 ly_set_add(&ctx->leafrefs, leaf, 0);
             }
@@ -3512,40 +3524,14 @@ lys_compile_node_leaf(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lys
         leaf->flags |= LYS_SET_UNITS;
     }
 
-    /* the dflt member is just filled to avoid getting the default value from the type */
-    leaf->dflt = (void*)leaf_p->dflt;
-    ret = lys_compile_node_type(ctx, node_p, &leaf_p->type, leaf);
-    if (ret) {
-        leaf->dflt = NULL;
-        return ret;
-    }
+    /* compile type */
+    LY_CHECK_RET(lys_compile_node_type(ctx, node_p, &leaf_p->type, leaf));
 
+    /* store/update default value */
     if (leaf_p->dflt) {
-        struct ly_err_item *err = NULL;
-        leaf->dflt_mod = ctx->mod_def;
-        leaf->dflt = calloc(1, sizeof *leaf->dflt);
-        leaf->dflt->realtype = leaf->type;
-        ret = leaf->type->plugin->store(ctx->ctx, leaf->type, leaf_p->dflt, strlen(leaf_p->dflt),
-                                        LY_TYPE_OPTS_INCOMPLETE_DATA | LY_TYPE_OPTS_SCHEMA | LY_TYPE_OPTS_STORE,
-                                        LY_PREF_SCHEMA, leaf->dflt_mod, node, NULL, leaf->dflt, NULL, &err);
-        leaf->dflt->realtype->refcount++;
-        if (err) {
-            ly_err_print(err);
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                   "Invalid leaf's default value \"%s\" which does not fit the type (%s).", leaf_p->dflt, err->msg);
-            ly_err_free(err);
-        }
-        if (ret == LY_EINCOMPLETE) {
-            /* postpone default compilation when the tree is complete */
-            LY_CHECK_RET(lysc_incomplete_dflts_add(ctx, node, leaf->dflt, leaf->dflt_mod));
-
-            /* but in general result is so far ok */
-            ret = LY_SUCCESS;
-        }
-        LY_CHECK_RET(ret);
+        LY_CHECK_RET(lysc_incomplete_leaf_dflt_add(ctx, leaf, leaf_p->dflt, ctx->mod_def));
         leaf->flags |= LYS_SET_DFLT;
     }
-
 
 done:
     return ret;
@@ -3564,7 +3550,7 @@ lys_compile_node_leaflist(struct lysc_ctx *ctx, struct lysp_node *node_p, struct
 {
     struct lysp_node_leaflist *llist_p = (struct lysp_node_leaflist*)node_p;
     struct lysc_node_leaflist *llist = (struct lysc_node_leaflist*)node;
-    LY_ARRAY_COUNT_TYPE u, v;
+    LY_ARRAY_COUNT_TYPE u;
     LY_ERR ret = LY_SUCCESS;
 
     COMPILE_ARRAY_GOTO(ctx, llist_p->musts, llist->musts, u, lys_compile_must, ret, done);
@@ -3577,69 +3563,14 @@ lys_compile_node_leaflist(struct lysc_ctx *ctx, struct lysp_node *node_p, struct
         llist->flags |= LYS_SET_UNITS;
     }
 
-    /* the dflts member is just filled to avoid getting the default value from the type */
-    llist->dflts = (void*)llist_p->dflts;
-    ret = lys_compile_node_type(ctx, node_p, &llist_p->type, (struct lysc_node_leaf*)llist);
-    if (ret != LY_SUCCESS) {
-        /* make sure the defaults are freed correctly */
-        if (llist_p->dflts) {
-            llist->dflts = NULL;
-        }
-        return ret;
-    }
+    /* compile type */
+    LY_CHECK_RET(lys_compile_node_type(ctx, node_p, &llist_p->type, (struct lysc_node_leaf *)llist));
 
+    /* store/update default values */
     if (llist_p->dflts) {
-        llist->dflts = NULL; /* reset the temporary llist_p->dflts */
-        LY_ARRAY_CREATE_GOTO(ctx->ctx, llist->dflts_mods, LY_ARRAY_COUNT(llist_p->dflts), ret, done);
-        LY_ARRAY_CREATE_GOTO(ctx->ctx, llist->dflts, LY_ARRAY_COUNT(llist_p->dflts), ret, done);
-        LY_ARRAY_FOR(llist_p->dflts, u) {
-            struct ly_err_item *err = NULL;
-            LY_ARRAY_INCREMENT(llist->dflts_mods);
-            llist->dflts_mods[u] = ctx->mod_def;
-            LY_ARRAY_INCREMENT(llist->dflts);
-            llist->dflts[u] = calloc(1, sizeof *llist->dflts[u]);
-            llist->dflts[u]->realtype = llist->type;
-            ret = llist->type->plugin->store(ctx->ctx, llist->type, llist_p->dflts[u], strlen(llist_p->dflts[u]),
-                                             LY_TYPE_OPTS_INCOMPLETE_DATA | LY_TYPE_OPTS_SCHEMA | LY_TYPE_OPTS_STORE,
-                                             LY_PREF_SCHEMA, llist->dflts_mods[u], node, NULL, llist->dflts[u], NULL, &err);
-            llist->dflts[u]->realtype->refcount++;
-            if (err) {
-                ly_err_print(err);
-                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                       "Invalid leaf-lists's default value \"%s\" which does not fit the type (%s).", llist_p->dflts[u], err->msg);
-                ly_err_free(err);
-            }
-            if (ret == LY_EINCOMPLETE) {
-                /* postpone default compilation when the tree is complete */
-                LY_CHECK_GOTO(lysc_incomplete_dflts_add(ctx, node, llist->dflts[u], llist->dflts_mods[u]), done);
-
-                /* but in general result is so far ok */
-                ret = LY_SUCCESS;
-            }
-            LY_CHECK_GOTO(ret, done);
-        }
+        LY_CHECK_GOTO(lysc_incomplete_llist_dflts_add(ctx, llist, llist_p->dflts, ctx->mod_def), done);
         llist->flags |= LYS_SET_DFLT;
     }
-    if ((llist->flags & LYS_CONFIG_W) && llist->dflts && LY_ARRAY_COUNT(llist->dflts)) {
-        /* configuration data values must be unique - so check the default values */
-        LY_ARRAY_FOR(llist->dflts, u) {
-            for (v = u + 1; v < LY_ARRAY_COUNT(llist->dflts); ++v) {
-                if (!llist->type->plugin->compare(llist->dflts[u], llist->dflts[v])) {
-                    int dynamic = 0;
-                    const char *val = llist->type->plugin->print(llist->dflts[v], LY_PREF_SCHEMA, llist->dflts_mods[v],
-                                                                 &dynamic);
-                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                           "Configuration leaf-list has multiple defaults of the same value \"%s\".", val);
-                    if (dynamic) {
-                        free((char*)val);
-                    }
-                    return LY_EVALID;
-                }
-            }
-        }
-    }
-
-    /* TODO validate default value according to the type, possibly postpone the check when the leafref target is known */
 
     llist->min = llist_p->min;
     if (llist->min) {
@@ -3852,7 +3783,6 @@ lys_compile_node_list(struct lysc_ctx *ctx, struct lysp_node *node_p, struct lys
             lysc_type_free(ctx->ctx, key->dflt->realtype);
             free(key->dflt);
             key->dflt = NULL;
-            key->dflt_mod = NULL;
         }
         /* mark leaf as key */
         key->flags |= LYS_KEY;
@@ -4623,20 +4553,8 @@ lys_compile_change_mandatory(struct lysc_ctx *ctx, struct lysc_node *node, uint1
                            "Invalid refine of mandatory - leaf already has \"default\" statement.");
                     return LY_EVALID;
                 }
-            } else if (((struct lysc_node_leaf*)node)->dflt) {
-                /* remove the default value taken from the leaf's type */
-                struct lysc_node_leaf *leaf = (struct lysc_node_leaf*)node;
-
-                /* update the list of incomplete default values if needed */
-                lysc_incomplete_dflts_remove(ctx, leaf->dflt);
-
-                leaf->dflt->realtype->plugin->free(ctx->ctx, leaf->dflt);
-                lysc_type_free(ctx->ctx, leaf->dflt->realtype);
-                free(leaf->dflt);
-                leaf->dflt = NULL;
-                leaf->dflt_mod = NULL;
             }
-        } else if ((node->nodetype & LYS_CHOICE) && ((struct lysc_node_choice*)node)->dflt) {
+        } else if ((node->nodetype & LYS_CHOICE) && ((struct lysc_node_choice *)node)->dflt) {
             if (refine_flag) {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
                        "Invalid refine of mandatory - choice already has \"default\" statement.");
@@ -4656,15 +4574,6 @@ lys_compile_change_mandatory(struct lysc_ctx *ctx, struct lysc_node *node, uint1
         node->flags &= ~LYS_MAND_TRUE;
         node->flags |= LYS_MAND_FALSE;
         lys_compile_mandatory_parents(node->parent, 0);
-        if ((node->nodetype & LYS_LEAF) && !((struct lysc_node_leaf*)node)->dflt && ((struct lysc_node_leaf*)node)->type->dflt) {
-            /* get the type's default value if any */
-            struct lysc_node_leaf *leaf = (struct lysc_node_leaf*)node;
-            leaf->dflt_mod = leaf->type->dflt_mod;
-            leaf->dflt = calloc(1, sizeof *leaf->dflt);
-            leaf->dflt->realtype = leaf->type->dflt->realtype;
-            leaf->dflt->realtype->plugin->duplicate(ctx->ctx, leaf->type->dflt, leaf->dflt);
-            leaf->dflt->realtype->refcount++;
-        }
     }
     return LY_SUCCESS;
 }
@@ -4701,7 +4610,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
     size_t prefix_len, name_len;
     struct lys_module *mod, *mod_old;
     struct lysp_refine *rfn;
-    LY_ERR ret = LY_EVALID, rc;
+    LY_ERR ret = LY_EVALID;
     uint32_t min, max;
     uint16_t flags;
     struct ly_set refined = {0};
@@ -4917,91 +4826,21 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
                 goto cleanup;
             }
             if (node->nodetype == LYS_LEAF) {
-                struct ly_err_item *err = NULL;
-                struct lysc_node_leaf *leaf = (struct lysc_node_leaf*)node;
-                if (leaf->dflt) {
-                    /* remove the previous default value */
-                    lysc_incomplete_dflts_remove(ctx, leaf->dflt);
-                    leaf->dflt->realtype->plugin->free(ctx->ctx, leaf->dflt);
-                    lysc_type_free(ctx->ctx, leaf->dflt->realtype);
-                } else {
-                    /* prepare a new one */
-                    leaf->dflt = calloc(1, sizeof *leaf->dflt);
-                    leaf->dflt->realtype = leaf->type;
-                }
-                /* parse the new one */
-                leaf->dflt_mod = ctx->mod_def;
-                rc = leaf->type->plugin->store(ctx->ctx, leaf->type, rfn->dflts[0], strlen(rfn->dflts[0]),
-                                                LY_TYPE_OPTS_INCOMPLETE_DATA | LY_TYPE_OPTS_SCHEMA | LY_TYPE_OPTS_STORE,
-                                                LY_PREF_SCHEMA, leaf->dflt_mod, node, NULL, leaf->dflt, NULL, &err);
-                leaf->dflt->realtype->refcount++;
-                if (err) {
-                    ly_err_print(err);
-                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                           "Invalid refine of default - value \"%s\" does not fit the type (%s).", rfn->dflts[0], err->msg);
-                    ly_err_free(err);
-                }
-                if (rc == LY_EINCOMPLETE) {
-                    /* postpone default compilation when the tree is complete */
-                    LY_CHECK_GOTO(lysc_incomplete_dflts_add(ctx, node, leaf->dflt, leaf->dflt_mod), cleanup);
-
-                    /* but in general result is so far ok */
-                    rc = LY_SUCCESS;
-                }
-                LY_CHECK_GOTO(rc, cleanup);
-                leaf->flags |= LYS_SET_DFLT;
+                /* postpone default compilation when the tree is complete */
+                LY_CHECK_GOTO(lysc_incomplete_leaf_dflt_add(ctx, (struct lysc_node_leaf *)node, rfn->dflts[0],
+                                                            ctx->mod_def), cleanup);
+                node->flags |= LYS_SET_DFLT;
             } else if (node->nodetype == LYS_LEAFLIST) {
-                struct lysc_node_leaflist *llist = (struct lysc_node_leaflist*)node;
-
                 if (ctx->mod->version < 2) {
                     LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
                            "Invalid refine of default in leaf-list - the default statement is allowed only in YANG 1.1 modules.");
                     goto cleanup;
                 }
 
-                /* remove previous set of default values */
-                LY_ARRAY_FOR(llist->dflts, u) {
-                    lysc_incomplete_dflts_remove(ctx, llist->dflts[u]);
-                    llist->dflts[u]->realtype->plugin->free(ctx->ctx, llist->dflts[u]);
-                    lysc_type_free(ctx->ctx, llist->dflts[u]->realtype);
-                    free(llist->dflts[u]);
-                }
-                LY_ARRAY_FREE(llist->dflts);
-                llist->dflts = NULL;
-                LY_ARRAY_FREE(llist->dflts_mods);
-                llist->dflts_mods = NULL;
-
-                /* create the new set of the default values */
-                LY_ARRAY_CREATE_GOTO(ctx->ctx, llist->dflts_mods, LY_ARRAY_COUNT(rfn->dflts), ret, cleanup);
-                LY_ARRAY_CREATE_GOTO(ctx->ctx, llist->dflts, LY_ARRAY_COUNT(rfn->dflts), ret, cleanup);
-                LY_ARRAY_FOR(rfn->dflts, u) {
-                    struct ly_err_item *err = NULL;
-                    LY_ARRAY_INCREMENT(llist->dflts_mods);
-                    llist->dflts_mods[u] = ctx->mod_def;
-                    LY_ARRAY_INCREMENT(llist->dflts);
-                    llist->dflts[u] = calloc(1, sizeof *llist->dflts[u]);
-                    llist->dflts[u]->realtype = llist->type;
-                    rc = llist->type->plugin->store(ctx->ctx, llist->type, rfn->dflts[u], strlen(rfn->dflts[u]),
-                                                    LY_TYPE_OPTS_INCOMPLETE_DATA | LY_TYPE_OPTS_SCHEMA | LY_TYPE_OPTS_STORE,
-                                                    LY_PREF_SCHEMA, llist->dflts_mods[u], node, NULL, llist->dflts[u],
-                                                    NULL, &err);
-                    llist->dflts[u]->realtype->refcount++;
-                    if (err) {
-                        ly_err_print(err);
-                        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                               "Invalid refine of default in leaf-lists -  value \"%s\" does not fit the type (%s).", rfn->dflts[u], err->msg);
-                        ly_err_free(err);
-                    }
-                    if (rc == LY_EINCOMPLETE) {
-                        /* postpone default compilation when the tree is complete */
-                        LY_CHECK_GOTO(lysc_incomplete_dflts_add(ctx, node, llist->dflts[u], llist->dflts_mods[u]), cleanup);
-
-                        /* but in general result is so far ok */
-                        rc = LY_SUCCESS;
-                    }
-                    LY_CHECK_GOTO(rc, cleanup);
-                }
-                llist->flags |= LYS_SET_DFLT;
+                /* postpone default compilation when the tree is complete */
+                LY_CHECK_GOTO(lysc_incomplete_llist_dflts_add(ctx, (struct lysc_node_leaflist *)node, rfn->dflts,
+                                                              ctx->mod_def), cleanup);
+                node->flags |= LYS_SET_DFLT;
             } else if (node->nodetype == LYS_CHOICE) {
                 if (((struct lysc_node_choice*)node)->dflt) {
                     /* unset LYS_SET_DFLT from the current default case */
@@ -5650,18 +5489,15 @@ struct lysc_deviation {
  * @param[in] target Deviation target.
  * @param[in] dev_flags Internal deviation flags.
  * @param[in] d Deviate add to apply.
- * @param[out] dflt Added default value.
  * @return LY_ERR value.
  */
 static LY_ERR
-lys_apply_deviate_add(struct lysc_ctx *ctx, struct lysc_node *target, int dev_flags, struct lysp_deviate_add *d,
-                      const char **dflt)
+lys_apply_deviate_add(struct lysc_ctx *ctx, struct lysc_node *target, int dev_flags, struct lysp_deviate_add *d)
 {
-    LY_ERR ret = LY_EVALID, rc;
+    LY_ERR ret = LY_EVALID;
     struct lysc_node_leaf *leaf = (struct lysc_node_leaf *)target;
     struct lysc_node_leaflist *llist = (struct lysc_node_leaflist *)target;
-    struct ly_err_item *err = NULL;
-    LY_ARRAY_COUNT_TYPE x, y;
+    LY_ARRAY_COUNT_TYPE x;
 
 #define DEV_CHECK_NONPRESENCE_UINT(TYPE, COND, MEMBER, PROPERTY) \
     if (((TYPE)target)->MEMBER COND) { \
@@ -5671,11 +5507,11 @@ lys_apply_deviate_add(struct lysc_ctx *ctx, struct lysc_node *target, int dev_fl
         goto cleanup; \
     }
 
-#define DEV_CHECK_NONPRESENCE_VALUE(TYPE, COND, MEMBER, PROPERTY, VALUEMEMBER, VALUEMODMEMBER) \
+#define DEV_CHECK_NONPRESENCE_VALUE(TYPE, COND, MEMBER, PROPERTY, VALUEMEMBER) \
     if (((TYPE)target)->MEMBER && (COND)) { \
         int dynamic_ = 0; const char *val_; \
         val_ = ((TYPE)target)->VALUEMEMBER->realtype->plugin->print(((TYPE)target)->VALUEMEMBER, LY_PREF_SCHEMA, \
-                                                                             ((TYPE)target)->VALUEMODMEMBER, &dynamic_); \
+                                                                             ctx->mod_def, &dynamic_); \
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE, \
                "Invalid deviation adding \"%s\" property which already exists (with value \"%s\").", PROPERTY, val_); \
         if (dynamic_) {free((void*)val_);} \
@@ -5748,67 +5584,33 @@ lys_apply_deviate_add(struct lysc_ctx *ctx, struct lysc_node *target, int dev_fl
         switch (target->nodetype) {
         case LYS_LEAF:
             DEV_CHECK_CARDINALITY(d->dflts, 1, "default");
-            DEV_CHECK_NONPRESENCE_VALUE(struct lysc_node_leaf *, (target->flags & LYS_SET_DFLT), dflt, "default", dflt, dflt_mod);
+            DEV_CHECK_NONPRESENCE_VALUE(struct lysc_node_leaf *, (target->flags & LYS_SET_DFLT), dflt, "default", dflt);
             if (leaf->dflt) {
                 /* first, remove the default value taken from the type */
-                lysc_incomplete_dflts_remove(ctx, leaf->dflt);
                 leaf->dflt->realtype->plugin->free(ctx->ctx, leaf->dflt);
                 lysc_type_free(ctx->ctx, leaf->dflt->realtype);
-            } else {
-                /* prepare new default value storage */
-                leaf->dflt = calloc(1, sizeof *leaf->dflt);
+                free(leaf->dflt);
+                leaf->dflt = NULL;
             }
-            *dflt = d->dflts[0];
-            /* parsing is done at the end after possible replace of the leaf's type */
 
-            /* mark the new default values as leaf's own */
+            /* store the default value in unres */
+            lysc_incomplete_leaf_dflt_add(ctx, leaf, d->dflts[0], ctx->mod_def);
             target->flags |= LYS_SET_DFLT;
             break;
         case LYS_LEAFLIST:
             if (llist->dflts && !(target->flags & LYS_SET_DFLT)) {
                 /* first, remove the default value taken from the type */
                 LY_ARRAY_FOR(llist->dflts, x) {
-                    lysc_incomplete_dflts_remove(ctx, llist->dflts[x]);
                     llist->dflts[x]->realtype->plugin->free(ctx->ctx, llist->dflts[x]);
                     lysc_type_free(ctx->ctx, llist->dflts[x]->realtype);
                     free(llist->dflts[x]);
                 }
                 LY_ARRAY_FREE(llist->dflts);
                 llist->dflts = NULL;
-                LY_ARRAY_FREE(llist->dflts_mods);
-                llist->dflts_mods = NULL;
             }
-            /* add new default value(s) */
-            LY_ARRAY_CREATE_GOTO(ctx->ctx, llist->dflts_mods, LY_ARRAY_COUNT(d->dflts), ret, cleanup);
-            LY_ARRAY_CREATE_GOTO(ctx->ctx, llist->dflts, LY_ARRAY_COUNT(d->dflts), ret, cleanup);
-            for (x = y = LY_ARRAY_COUNT(llist->dflts);
-                    x < LY_ARRAY_COUNT(d->dflts) + y; ++x) {
-                LY_ARRAY_INCREMENT(llist->dflts_mods);
-                llist->dflts_mods[x] = ctx->mod_def;
-                LY_ARRAY_INCREMENT(llist->dflts);
-                llist->dflts[x] = calloc(1, sizeof *llist->dflts[x]);
-                llist->dflts[x]->realtype = llist->type;
-                rc = llist->type->plugin->store(ctx->ctx, llist->type, d->dflts[x - y], strlen(d->dflts[x - y]),
-                                                LY_TYPE_OPTS_INCOMPLETE_DATA | LY_TYPE_OPTS_SCHEMA | LY_TYPE_OPTS_STORE,
-                                                LY_PREF_SCHEMA, llist->dflts_mods[x], target, NULL, llist->dflts[x], NULL, &err);
-                llist->dflts[x]->realtype->refcount++;
-                if (err) {
-                    ly_err_print(err);
-                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                            "Invalid deviation adding \"default\" property \"%s\" which does not fit the type (%s).",
-                            d->dflts[x - y], err->msg);
-                    ly_err_free(err);
-                }
-                if (rc == LY_EINCOMPLETE) {
-                    /* postpone default compilation when the tree is complete */
-                    LY_CHECK_GOTO(lysc_incomplete_dflts_add(ctx, target, llist->dflts[x], llist->dflts_mods[x]), cleanup);
 
-                    /* but in general result is so far ok */
-                    rc = LY_SUCCESS;
-                }
-                LY_CHECK_GOTO(rc, cleanup);
-            }
-            /* mark the new default values as leaf-list's own */
+            /* store the default values in unres */
+            LY_CHECK_GOTO(lysc_incomplete_llist_dflts_add(ctx, llist, d->dflts, ctx->mod_def), cleanup);
             target->flags |= LYS_SET_DFLT;
             break;
         case LYS_CHOICE:
@@ -5901,6 +5703,164 @@ cleanup:
     return ret;
 }
 
+static LY_ERR
+lys_apply_deviate_delete_leaf_dflt(struct lysc_ctx *ctx, struct lysc_node *target, const char *dflt)
+{
+    struct lysc_node_leaf *leaf = (struct lysc_node_leaf *)target;
+    int dyn = 0;
+    const char *orig_dflt;
+    uint32_t i;
+
+    if (target->module != ctx->mod) {
+        /* foreign deviation */
+        DEV_CHECK_PRESENCE(struct lysc_node_leaf *, !(target->flags & LYS_SET_DFLT), dflt, "deleting", "default", dflt);
+
+        /* check that the value matches */
+        orig_dflt = leaf->dflt->realtype->plugin->print(leaf->dflt, LY_PREF_SCHEMA, ctx->mod_def, &dyn);
+        if (strcmp(orig_dflt, dflt)) {
+            goto error;
+        }
+        if (dyn) {
+            free((char *)orig_dflt);
+        }
+
+        /* remove the default specification */
+        leaf->dflt->realtype->plugin->free(ctx->ctx, leaf->dflt);
+        lysc_type_free(ctx->ctx, leaf->dflt->realtype);
+        free(leaf->dflt);
+        leaf->dflt = NULL;
+    } else {
+        /* local deviation */
+        DEV_CHECK_PRESENCE(struct lysc_node_leaf *, !(target->flags & LYS_SET_DFLT), name, "deleting", "default", dflt);
+
+        /* find the incomplete default */
+        orig_dflt = NULL;
+        for (i = 0; i < ctx->dflts.count; ++i) {
+            if (((struct lysc_incomplete_dflt *)ctx->dflts.objs[i])->leaf == leaf) {
+                orig_dflt = ((struct lysc_incomplete_dflt *)ctx->dflts.objs[i])->dflt;
+                break;
+            }
+        }
+        LY_CHECK_ERR_RET(!orig_dflt, LOGINT(ctx->ctx), LY_EINT);
+
+        /* check that the value matches */
+        if (strcmp(orig_dflt, dflt)) {
+            goto error;
+        }
+
+        /* update the list of incomplete default values */
+        lysc_incomplete_dflt_remove(ctx, target);
+    }
+
+    target->flags &= ~LYS_SET_DFLT;
+    return LY_SUCCESS;
+
+error:
+    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+            "Invalid deviation deleting \"default\" property \"%s\" which does not match the target's property value \"%s\".",
+            dflt, orig_dflt);
+    if (dyn) {
+        free((char *)orig_dflt);
+    }
+cleanup:
+    return LY_EVALID;
+}
+
+static LY_ERR
+lys_apply_deviate_delete_llist_dflts(struct lysc_ctx *ctx, struct lysc_node *target, const char **dflts)
+{
+    struct lysc_node_leaflist *llist = (struct lysc_node_leaflist *)target;
+    int dyn = 0, found;
+    const char *orig_dflt, **orig_dflts;
+    uint32_t i;
+    LY_ARRAY_COUNT_TYPE x, y;
+
+    if (target->module != ctx->mod) {
+        /* foreign deviation */
+        DEV_CHECK_PRESENCE(struct lysc_node_leaflist *, 0, dflts, "deleting", "default", dflts[0]);
+        LY_ARRAY_FOR(dflts, x) {
+            found = 0;
+            LY_ARRAY_FOR(llist->dflts, y) {
+                orig_dflt = llist->type->plugin->print(llist->dflts[y], LY_PREF_SCHEMA, ctx->mod_def, &dyn);
+                if (!strcmp(orig_dflt, dflts[x])) {
+                    if (dyn) {
+                        free((char *)orig_dflt);
+                    }
+                    found = 1;
+                    break;
+                }
+                if (dyn) {
+                    free((char *)orig_dflt);
+                }
+            }
+            if (!found) {
+                goto error;
+            }
+
+            /* update compiled default values */
+            LY_ARRAY_DECREMENT(llist->dflts);
+            llist->dflts[y]->realtype->plugin->free(ctx->ctx, llist->dflts[y]);
+            lysc_type_free(ctx->ctx, llist->dflts[y]->realtype);
+            free(llist->dflts[y]);
+            memmove(&llist->dflts[y], &llist->dflts[y + 1], (LY_ARRAY_COUNT(llist->dflts) - y) * (sizeof *llist->dflts));
+        }
+        if (!LY_ARRAY_COUNT(llist->dflts)) {
+            LY_ARRAY_FREE(llist->dflts);
+            llist->dflts = NULL;
+            llist->flags &= ~LYS_SET_DFLT;
+        }
+    } else {
+        /* local deviation */
+        orig_dflt = NULL;
+        orig_dflts = NULL;
+        for (i = 0; i < ctx->dflts.count; ++i) {
+            if (((struct lysc_incomplete_dflt *)ctx->dflts.objs[i])->llist == llist) {
+                orig_dflt = ((struct lysc_incomplete_dflt *)ctx->dflts.objs[i])->dflt;
+                orig_dflts = ((struct lysc_incomplete_dflt *)ctx->dflts.objs[i])->dflts;
+                break;
+            }
+        }
+        LY_CHECK_ERR_RET(!orig_dflt && !orig_dflts, LOGINT(ctx->ctx), LY_EINT);
+
+        if (orig_dflts && (LY_ARRAY_COUNT(orig_dflts) > 1)) {
+            /* TODO it is not currently possible to remove just one default value from incomplete defaults array */
+            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+                "Local deviation deleting leaf-list defaults is not supported.");
+            return LY_EVALID;
+        }
+
+        LY_ARRAY_FOR(dflts, x) {
+            found = 0;
+            if (orig_dflts) {
+                LY_ARRAY_FOR(orig_dflts, y) {
+                    if (!strcmp(orig_dflts[y], dflts[x])) {
+                        found = 1;
+                        break;
+                    }
+                }
+            } else if (!strcmp(orig_dflt, dflts[x])) {
+                found = 1;
+            }
+            if (!found) {
+                goto error;
+            }
+
+            /* update the list of incomplete default values */
+            lysc_incomplete_dflt_remove(ctx, target);
+        }
+
+        llist->flags &= ~LYS_SET_DFLT;
+    }
+
+    return LY_SUCCESS;
+
+error:
+    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE, "Invalid deviation deleting \"default\" property \"%s\" "
+                "which does not match any of the target's property values.", dflts[x]);
+cleanup:
+    return LY_EVALID;
+}
+
 /**
  * @brief Apply deviate delete.
  *
@@ -5914,13 +5874,10 @@ static LY_ERR
 lys_apply_deviate_delete(struct lysc_ctx *ctx, struct lysc_node *target, int dev_flags, struct lysp_deviate_del *d)
 {
     LY_ERR ret = LY_EVALID;
-    struct lysc_node_leaf *leaf = (struct lysc_node_leaf *)target;
-    struct lysc_node_leaflist *llist = (struct lysc_node_leaflist *)target;
     struct lysc_node_list *list = (struct lysc_node_list *)target;
     LY_ARRAY_COUNT_TYPE x, y, z;
-    int i;
     size_t prefix_len, name_len;
-    const char *prefix, *name, *nodeid, *dflt;
+    const char *prefix, *name, *nodeid;
     struct lys_module *mod;
 
 #define DEV_DEL_ARRAY(TYPE, ARRAY_TRG, ARRAY_DEV, VALMEMBER, VALMEMBER_CMP, DELFUNC_DEREF, DELFUNC, PROPERTY) \
@@ -6039,74 +5996,10 @@ lys_apply_deviate_delete(struct lysc_ctx *ctx, struct lysc_node *target, int dev
         switch (target->nodetype) {
         case LYS_LEAF:
             DEV_CHECK_CARDINALITY(d->dflts, 1, "default");
-            DEV_CHECK_PRESENCE(struct lysc_node_leaf*, !(target->flags & LYS_SET_DFLT),
-                                dflt, "deleting", "default", d->dflts[0]);
-
-            /* check that the values matches */
-            dflt = leaf->dflt->realtype->plugin->print(leaf->dflt, LY_PREF_SCHEMA, leaf->dflt_mod, &i);
-            if (strcmp(dflt, d->dflts[0])) {
-                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-                        "Invalid deviation deleting \"default\" property \"%s\" which does not match the target's property value \"%s\".",
-                        d->dflts[0], dflt);
-                if (i) {
-                    free((char*)dflt);
-                }
-                goto cleanup;
-            }
-            if (i) {
-                free((char*)dflt);
-            }
-
-            /* update the list of incomplete default values if needed */
-            lysc_incomplete_dflts_remove(ctx, leaf->dflt);
-
-            /* remove the default specification */
-            leaf->dflt->realtype->plugin->free(ctx->ctx, leaf->dflt);
-            lysc_type_free(ctx->ctx, leaf->dflt->realtype);
-            free(leaf->dflt);
-            leaf->dflt = NULL;
-            leaf->dflt_mod = NULL;
-            target->flags &= ~LYS_SET_DFLT;
+            LY_CHECK_GOTO(lys_apply_deviate_delete_leaf_dflt(ctx, target, d->dflts[0]), cleanup);
             break;
         case LYS_LEAFLIST:
-            DEV_CHECK_PRESENCE(struct lysc_node_leaflist*, 0, dflts, "deleting", "default", d->dflts[0]);
-            LY_ARRAY_FOR(d->dflts, x) {
-                LY_ARRAY_FOR(llist->dflts, y) {
-                    dflt = llist->type->plugin->print(llist->dflts[y], LY_PREF_SCHEMA, llist->dflts_mods[y], &i);
-                    if (!strcmp(dflt, d->dflts[x])) {
-                        if (i) {
-                            free((char*)dflt);
-                        }
-                        break;
-                    }
-                    if (i) {
-                        free((char*)dflt);
-                    }
-                }
-                if (y == LY_ARRAY_COUNT(llist->dflts)) {
-                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE, "Invalid deviation deleting \"default\" property \"%s\" "
-                            "which does not match any of the target's property values.", d->dflts[x]);
-                    goto cleanup;
-                }
-
-                /* update the list of incomplete default values if needed */
-                lysc_incomplete_dflts_remove(ctx, llist->dflts[y]);
-
-                LY_ARRAY_DECREMENT(llist->dflts_mods);
-                LY_ARRAY_DECREMENT(llist->dflts);
-                llist->dflts[y]->realtype->plugin->free(ctx->ctx, llist->dflts[y]);
-                lysc_type_free(ctx->ctx, llist->dflts[y]->realtype);
-                free(llist->dflts[y]);
-                memmove(&llist->dflts[y], &llist->dflts[y + 1], (LY_ARRAY_COUNT(llist->dflts) - y) * (sizeof *llist->dflts));
-                memmove(&llist->dflts_mods[y], &llist->dflts_mods[y + 1], (LY_ARRAY_COUNT(llist->dflts_mods) - y) * (sizeof *llist->dflts_mods));
-            }
-            if (!LY_ARRAY_COUNT(llist->dflts)) {
-                LY_ARRAY_FREE(llist->dflts_mods);
-                llist->dflts_mods = NULL;
-                LY_ARRAY_FREE(llist->dflts);
-                llist->dflts = NULL;
-                llist->flags &= ~LYS_SET_DFLT;
-            }
+            LY_CHECK_GOTO(lys_apply_deviate_delete_llist_dflts(ctx, target, d->dflts), cleanup);
             break;
         case LYS_CHOICE:
             DEV_CHECK_CARDINALITY(d->dflts, 1, "default");
@@ -6154,19 +6047,83 @@ cleanup:
     return ret;
 }
 
+static LY_ERR
+lys_apply_deviate_replace_dflt_recompile(struct lysc_ctx *ctx, struct lysc_node *target)
+{
+    LY_ERR ret;
+    struct lysc_node_leaf *leaf = (struct lysc_node_leaf *)target;
+    struct lysc_node_leaflist *llist = (struct lysc_node_leaflist *)target;
+    struct ly_err_item *err = NULL;
+    LY_ARRAY_COUNT_TYPE x;
+    const char *dflt;
+    int dyn;
+
+    if (target->module != ctx->mod) {
+        /* foreign deviation */
+        if (target->nodetype == LYS_LEAF) {
+            dflt = leaf->dflt->realtype->plugin->print(leaf->dflt, LY_PREF_JSON, NULL, &dyn);
+            leaf->dflt->realtype->plugin->free(ctx->ctx, leaf->dflt);
+            lysc_type_free(ctx->ctx, leaf->dflt->realtype);
+
+            ret = leaf->type->plugin->store(ctx->ctx, leaf->type, dflt, strlen(dflt), LY_TYPE_OPTS_SCHEMA,
+                                            LY_PREF_JSON, NULL, target, NULL, leaf->dflt, &err);
+            if (dyn) {
+                free((char *)dflt);
+            }
+            if (err) {
+                ly_err_print(err);
+                ctx->path[0] = '\0';
+                lysc_path(target, LYSC_PATH_LOG, ctx->path, LYSC_CTX_BUFSIZE);
+                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                    "Invalid default - value does not fit the type (%s).", err->msg);
+                ly_err_free(err);
+            }
+            LY_CHECK_RET(ret);
+
+            ++leaf->dflt->realtype->refcount;
+        } else { /* LY_LEAFLIST */
+            LY_ARRAY_FOR(llist->dflts, x) {
+                dflt = llist->dflts[x]->realtype->plugin->print(llist->dflts[x], LY_PREF_JSON, NULL, &dyn);
+                llist->dflts[x]->realtype->plugin->free(ctx->ctx, llist->dflts[x]);
+                lysc_type_free(ctx->ctx, llist->dflts[x]->realtype);
+
+                ret = llist->type->plugin->store(ctx->ctx, llist->type, dflt, strlen(dflt), LY_TYPE_OPTS_SCHEMA,
+                                                 LY_PREF_JSON, NULL, target, NULL, llist->dflts[x], &err);
+                if (dyn) {
+                    free((char *)dflt);
+                }
+                if (err) {
+                    ly_err_print(err);
+                    ctx->path[0] = '\0';
+                    lysc_path(target, LYSC_PATH_LOG, ctx->path, LYSC_CTX_BUFSIZE);
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                        "Invalid default - value does not fit the type (%s).", err->msg);
+                    ly_err_free(err);
+                }
+                LY_CHECK_RET(ret);
+
+                ++llist->dflts[x]->realtype->refcount;
+            }
+        }
+    } else {
+        /* local deviation */
+
+        /* these default were not compiled yet, so they will use the new type automatically */
+    }
+
+    return LY_SUCCESS;
+}
+
 /**
  * @brief Apply deviate replace.
  *
  * @param[in] ctx Compile context.
  * @param[in] target Deviation target.
  * @param[in] d Deviate replace to apply.
- * @param[out] dflt Added default value.
- * @param[out] changed_type Whether the target type was changed.
  * @return LY_ERR value.
  */
 static LY_ERR
-lys_apply_deviate_replace(struct lysc_ctx *ctx, struct lysc_node *target, struct lysp_deviate_rpl *d, const char **dflt,
-                          int *changed_type)
+lys_apply_deviate_replace(struct lysc_ctx *ctx, struct lysc_node *target, struct lysp_deviate_rpl *d)
 {
     LY_ERR ret = LY_EVALID;
     struct lysc_node_leaf *leaf = (struct lysc_node_leaf *)target;
@@ -6186,37 +6143,36 @@ lys_apply_deviate_replace(struct lysc_ctx *ctx, struct lysc_node *target, struct
         /* type is mandatory, so checking for its presence is not necessary */
         lysc_type_free(ctx->ctx, ((struct lysc_node_leaf *)target)->type);
 
-        if (leaf->dflt && !(target->flags & LYS_SET_DFLT)) {
-            /* the target has default from the previous type - remove it */
-            if (target->nodetype == LYS_LEAF) {
-                /* update the list of incomplete default values if needed */
-                lysc_incomplete_dflts_remove(ctx, leaf->dflt);
-
-                leaf->dflt->realtype->plugin->free(ctx->ctx, leaf->dflt);
-                lysc_type_free(ctx->ctx, leaf->dflt->realtype);
-                free(leaf->dflt);
-                leaf->dflt = NULL;
-                leaf->dflt_mod = NULL;
-            } else { /* LYS_LEAFLIST */
-                LY_ARRAY_FOR(llist->dflts, x) {
-                    lysc_incomplete_dflts_remove(ctx, llist->dflts[x]);
-                    llist->dflts[x]->realtype->plugin->free(ctx->ctx, llist->dflts[x]);
-                    lysc_type_free(ctx->ctx, llist->dflts[x]->realtype);
-                    free(llist->dflts[x]);
+        /* remove only default value inherited from the type */
+        if (!(target->flags & LYS_SET_DFLT)) {
+            if (target->module != ctx->mod) {
+                /* foreign deviation - the target has default from the previous type, remove it */
+                if (target->nodetype == LYS_LEAF) {
+                    leaf->dflt->realtype->plugin->free(ctx->ctx, leaf->dflt);
+                    lysc_type_free(ctx->ctx, leaf->dflt->realtype);
+                    free(leaf->dflt);
+                    leaf->dflt = NULL;
+                } else { /* LYS_LEAFLIST */
+                    LY_ARRAY_FOR(llist->dflts, x) {
+                        llist->dflts[x]->realtype->plugin->free(ctx->ctx, llist->dflts[x]);
+                        lysc_type_free(ctx->ctx, llist->dflts[x]->realtype);
+                        free(llist->dflts[x]);
+                    }
+                    LY_ARRAY_FREE(llist->dflts);
+                    llist->dflts = NULL;
                 }
-                LY_ARRAY_FREE(llist->dflts);
-                llist->dflts = NULL;
-                LY_ARRAY_FREE(llist->dflts_mods);
-                llist->dflts_mods = NULL;
+            } else {
+                /* local deviation */
+                lysc_incomplete_dflt_remove(ctx, target);
             }
         }
-        if (!leaf->dflt) {
-            /* there is no default value, do not set changed_type after type compilation
-             * which is used to recompile the default value */
-            *changed_type = -1;
+
+        LY_CHECK_RET(lys_compile_node_type(ctx, NULL, d->type, leaf));
+
+        if (target->flags & LYS_SET_DFLT) {
+            /* the term default value(s) needs to be recompiled */
+            LY_CHECK_RET(lys_apply_deviate_replace_dflt_recompile(ctx, target));
         }
-        LY_CHECK_GOTO(lys_compile_node_type(ctx, NULL, d->type, leaf), cleanup);
-        (*changed_type)++;
     }
 
     /* [units-stmt] */
@@ -6233,14 +6189,25 @@ lys_apply_deviate_replace(struct lysc_ctx *ctx, struct lysc_node *target, struct
     if (d->dflt) {
         switch (target->nodetype) {
         case LYS_LEAF:
-            DEV_CHECK_PRESENCE(struct lysc_node_leaf *, !(target->flags & LYS_SET_DFLT),
-                                dflt, "replacing", "default", d->dflt);
-            /* first, remove the default value taken from the type */
-            lysc_incomplete_dflts_remove(ctx, leaf->dflt);
-            leaf->dflt->realtype->plugin->free(ctx->ctx, leaf->dflt);
-            lysc_type_free(ctx->ctx, leaf->dflt->realtype);
-            *dflt = d->dflt;
-            /* parsing is done at the end after possible replace of the leaf's type */
+            if (target->module != ctx->mod) {
+                /* foreign deviation */
+                DEV_CHECK_PRESENCE(struct lysc_node_leaf *, !(target->flags & LYS_SET_DFLT), dflt, "replacing",
+                                   "default", d->dflt);
+
+                /* remove the default specification */
+                leaf->dflt->realtype->plugin->free(ctx->ctx, leaf->dflt);
+                lysc_type_free(ctx->ctx, leaf->dflt->realtype);
+                free(leaf->dflt);
+                leaf->dflt = NULL;
+            } else {
+                /* local deviation */
+                DEV_CHECK_PRESENCE(struct lysc_node_leaf *, !(target->flags & LYS_SET_DFLT), name, "replacing",
+                                   "default", d->dflt);
+                assert(!leaf->dflt);
+            }
+
+            /* store the new default value */
+            LY_CHECK_RET(lysc_incomplete_leaf_dflt_add(ctx, leaf, d->dflt, ctx->mod_def));
             break;
         case LYS_CHOICE:
             DEV_CHECK_PRESENCE(struct lysc_node_choice *, 0, dflt, "replacing", "default", d->dflt);
@@ -6333,17 +6300,12 @@ cleanup:
 static LY_ERR
 lys_apply_deviation(struct lysc_ctx *ctx, struct lysc_deviation *dev)
 {
-    LY_ERR ret = LY_EVALID, rc;
+    LY_ERR ret = LY_EVALID;
     struct lysc_node *target = dev->target;
-    struct lysc_node_leaf *leaf = (struct lysc_node_leaf *)target;
-    struct lysc_node_leaflist *llist = (struct lysc_node_leaflist *)target;
-    struct ly_err_item *err = NULL;
     struct lysc_action *rpcs;
     struct lysc_notif *notifs;
     struct lysp_deviate *d;
     LY_ARRAY_COUNT_TYPE v, x;
-    int changed_type = 0;
-    const char *dflt = NULL;
     uint32_t min, max;
 
     lysc_update_path(ctx, NULL, dev->nodeid);
@@ -6406,13 +6368,13 @@ lys_apply_deviation(struct lysc_ctx *ctx, struct lysc_deviation *dev)
         d = dev->deviates[v];
         switch (d->mod) {
         case LYS_DEV_ADD:
-            LY_CHECK_GOTO(lys_apply_deviate_add(ctx, target, dev->flags, (struct lysp_deviate_add *)d, &dflt), cleanup);
+            LY_CHECK_GOTO(lys_apply_deviate_add(ctx, target, dev->flags, (struct lysp_deviate_add *)d), cleanup);
             break;
         case LYS_DEV_DELETE:
             LY_CHECK_GOTO(lys_apply_deviate_delete(ctx, target, dev->flags, (struct lysp_deviate_del *)d), cleanup);
             break;
         case LYS_DEV_REPLACE:
-            LY_CHECK_GOTO(lys_apply_deviate_replace(ctx, target, (struct lysp_deviate_rpl *)d, &dflt, &changed_type), cleanup);
+            LY_CHECK_GOTO(lys_apply_deviate_replace(ctx, target, (struct lysp_deviate_rpl *)d), cleanup);
             break;
         default:
             LOGINT(ctx->ctx);
@@ -6436,96 +6398,6 @@ lys_apply_deviation(struct lysc_ctx *ctx, struct lysc_deviation *dev)
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS, "Invalid combination of min-elements and max-elements "
                 "after deviation: min value %u is bigger than max value %u.", min, max);
         goto cleanup;
-    }
-
-    if (dflt) {
-        /* parse added/changed default value after possible change of the type */
-        leaf->dflt_mod = ctx->mod_def;
-        leaf->dflt->realtype = leaf->type;
-        rc = leaf->type->plugin->store(ctx->ctx, leaf->type, dflt, strlen(dflt),
-                                        LY_TYPE_OPTS_INCOMPLETE_DATA | LY_TYPE_OPTS_SCHEMA | LY_TYPE_OPTS_STORE,
-                                        LY_PREF_SCHEMA, leaf->dflt_mod, target, NULL, leaf->dflt, NULL, &err);
-        leaf->dflt->realtype->refcount++;
-        if (err) {
-            ly_err_print(err);
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                    "Invalid deviation setting \"default\" property \"%s\" which does not fit the type (%s).", dflt, err->msg);
-            ly_err_free(err);
-        }
-        if (rc == LY_EINCOMPLETE) {
-            /* postpone default compilation when the tree is complete */
-            LY_CHECK_GOTO(lysc_incomplete_dflts_add(ctx, target, leaf->dflt, leaf->dflt_mod), cleanup);
-
-            /* but in general result is so far ok */
-            rc = LY_SUCCESS;
-        }
-        LY_CHECK_GOTO(rc, cleanup);
-    } else if (changed_type) {
-        /* the leaf/leaf-list's type has changed, but there is still a default value for the previous type */
-        int dynamic;
-        if (target->nodetype == LYS_LEAF) {
-            dflt = leaf->dflt->realtype->plugin->print(leaf->dflt, LY_PREF_SCHEMA, leaf->dflt_mod, &dynamic);
-
-            /* update the list of incomplete default values if needed */
-            lysc_incomplete_dflts_remove(ctx, leaf->dflt);
-
-            /* remove the previous default */
-            leaf->dflt->realtype->plugin->free(ctx->ctx, leaf->dflt);
-            lysc_type_free(ctx->ctx, leaf->dflt->realtype);
-            leaf->dflt->realtype = leaf->type;
-            rc = leaf->type->plugin->store(ctx->ctx, leaf->type, dflt, strlen(dflt),
-                                            LY_TYPE_OPTS_INCOMPLETE_DATA | LY_TYPE_OPTS_SCHEMA | LY_TYPE_OPTS_STORE,
-                                            LY_PREF_SCHEMA, leaf->dflt_mod, target, NULL, leaf->dflt, NULL, &err);
-            leaf->dflt->realtype->refcount++;
-            if (err) {
-                ly_err_print(err);
-                LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                        "Invalid deviation replacing leaf's type - the leaf's default value \"%s\" does not match the type (%s).", dflt, err->msg);
-                ly_err_free(err);
-            }
-            if (dynamic) {
-                free((void*)dflt);
-            }
-            dflt = NULL;
-            if (rc == LY_EINCOMPLETE) {
-                /* postpone default compilation when the tree is complete */
-                LY_CHECK_GOTO(lysc_incomplete_dflts_add(ctx, target, leaf->dflt, leaf->dflt_mod), cleanup);
-
-                /* but in general result is so far ok */
-                rc = LY_SUCCESS;
-            }
-            LY_CHECK_GOTO(rc, cleanup);
-        } else { /* LYS_LEAFLIST */
-            LY_ARRAY_FOR(llist->dflts, x) {
-                dflt = llist->dflts[x]->realtype->plugin->print(llist->dflts[x], LY_PREF_SCHEMA, llist->dflts_mods[x], &dynamic);
-                llist->dflts[x]->realtype->plugin->free(ctx->ctx, llist->dflts[x]);
-                lysc_type_free(ctx->ctx, llist->dflts[x]->realtype);
-                llist->dflts[x]->realtype = llist->type;
-                rc = llist->type->plugin->store(ctx->ctx, llist->type, dflt, strlen(dflt),
-                                                LY_TYPE_OPTS_INCOMPLETE_DATA | LY_TYPE_OPTS_SCHEMA | LY_TYPE_OPTS_STORE,
-                                                LY_PREF_SCHEMA, llist->dflts_mods[x], target, NULL, llist->dflts[x], NULL, &err);
-                llist->dflts[x]->realtype->refcount++;
-                if (err) {
-                    ly_err_print(err);
-                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                               "Invalid deviation replacing leaf-list's type - the leaf-list's default value \"%s\" does not match the type (%s).",
-                            dflt, err->msg);
-                    ly_err_free(err);
-                }
-                if (dynamic) {
-                    free((void*)dflt);
-                }
-                dflt = NULL;
-                if (rc == LY_EINCOMPLETE) {
-                    /* postpone default compilation when the tree is complete */
-                    LY_CHECK_GOTO(lysc_incomplete_dflts_add(ctx, target, llist->dflts[x], llist->dflts_mods[x]), cleanup);
-
-                    /* but in general result is so far ok */
-                    rc = LY_SUCCESS;
-                }
-                LY_CHECK_GOTO(rc, cleanup);
-            }
-        }
     }
 
     /* check mandatory - default compatibility */
@@ -6811,7 +6683,7 @@ lys_compile_extension_instance(struct lysc_ctx *ctx, const struct lysp_ext_insta
                     LY_CHECK_ERR_GOTO(r = lysp_stmt_parse(ctx, stmt, stmt->kw, &parsed, NULL), ret = r, cleanup);
                     LY_CHECK_ERR_GOTO(r = lys_compile_type(ctx, ext->parent_type == LYEXT_PAR_NODE ? ((struct lysc_node*)ext->parent)->sp : NULL,
                                       flags ? *flags : 0, ctx->mod_def->parsed, ext->name, parsed, (struct lysc_type**)compiled,
-                                      units && !*units ? units : NULL), lysp_type_free(ctx->ctx, parsed); free(parsed); ret = r, cleanup);
+                                      units && !*units ? units : NULL, NULL, NULL), lysp_type_free(ctx->ctx, parsed); free(parsed); ret = r, cleanup);
                     lysp_type_free(ctx->ctx, parsed);
                     free(parsed);
                     break;
@@ -7196,6 +7068,122 @@ cleanup:
 }
 
 static LY_ERR
+lys_compile_unres_dflt(struct lysc_ctx *ctx, struct lysc_node *node, struct lysc_type *type, const char *dflt,
+                       const struct lys_module *dflt_mod, struct lyd_value *storage)
+{
+    LY_ERR ret;
+    struct ly_err_item *err = NULL;
+
+    ret = type->plugin->store(ctx->ctx, type, dflt, strlen(dflt), LY_TYPE_OPTS_SCHEMA,
+                              LY_PREF_SCHEMA, (void *)dflt_mod, node, NULL, storage, &err);
+    if (err) {
+        ly_err_print(err);
+        ctx->path[0] = '\0';
+        lysc_path(node, LYSC_PATH_LOG, ctx->path, LYSC_CTX_BUFSIZE);
+        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+               "Invalid default - value does not fit the type (%s).", err->msg);
+        ly_err_free(err);
+    }
+    if (!ret) {
+        ++storage->realtype->refcount;
+        return LY_SUCCESS;
+    }
+    return ret;
+}
+
+static LY_ERR
+lys_compile_unres_leaf_dlft(struct lysc_ctx *ctx, struct lysc_node_leaf *leaf, const char *dflt,
+                            const struct lys_module *dflt_mod)
+{
+    LY_ERR ret;
+
+    assert(!leaf->dflt);
+
+    if (leaf->flags & (LYS_MAND_TRUE | LYS_KEY)) {
+        /* ignore default values for keys and mandatory leaves */
+        return LY_SUCCESS;
+    }
+
+    /* allocate the default value */
+    leaf->dflt = calloc(1, sizeof *leaf->dflt);
+    LY_CHECK_ERR_RET(!leaf->dflt, LOGMEM(ctx->ctx), LY_EMEM);
+
+    /* store the default value */
+    ret = lys_compile_unres_dflt(ctx, (struct lysc_node *)leaf, leaf->type, dflt, dflt_mod, leaf->dflt);
+    if (ret) {
+        free(leaf->dflt);
+        leaf->dflt = NULL;
+    }
+
+    return ret;
+}
+
+static LY_ERR
+lys_compile_unres_llist_dflts(struct lysc_ctx *ctx, struct lysc_node_leaflist *llist, const char *dflt, const char **dflts,
+                              const struct lys_module *dflt_mod)
+{
+    LY_ERR ret;
+    LY_ARRAY_COUNT_TYPE orig_count, u, v;
+
+    assert(dflt || dflts);
+
+    if (llist->dflts) {
+        /* there were already some defaults and we are adding new by deviations */
+        assert(dflts);
+        orig_count = LY_ARRAY_COUNT(llist->dflts);
+    } else {
+        orig_count = 0;
+    }
+
+    /* allocate new items */
+    if (dflts) {
+        LY_ARRAY_CREATE_RET(ctx->ctx, llist->dflts, orig_count + LY_ARRAY_COUNT(dflts), LY_EMEM);
+    } else {
+        LY_ARRAY_CREATE_RET(ctx->ctx, llist->dflts, orig_count + 1, LY_EMEM);
+    }
+
+    /* fill each new default value */
+    if (dflts) {
+        LY_ARRAY_FOR(dflts, u) {
+            llist->dflts[orig_count + u] = calloc(1, sizeof **llist->dflts);
+            ret = lys_compile_unres_dflt(ctx, (struct lysc_node *)llist, llist->type, dflts[u], dflt_mod,
+                                         llist->dflts[orig_count + u]);
+            LY_CHECK_ERR_RET(ret, free(llist->dflts[orig_count + u]), ret);
+            LY_ARRAY_INCREMENT(llist->dflts);
+        }
+    } else {
+        llist->dflts[orig_count] = calloc(1, sizeof **llist->dflts);
+        ret = lys_compile_unres_dflt(ctx, (struct lysc_node *)llist, llist->type, dflt, dflt_mod, llist->dflts[orig_count]);
+        LY_CHECK_ERR_RET(ret, free(llist->dflts[orig_count]), ret);
+        LY_ARRAY_INCREMENT(llist->dflts);
+    }
+
+    /* check default value uniqueness */
+    if (llist->flags & LYS_CONFIG_W) {
+        /* configuration data values must be unique - so check the default values */
+        for (u = orig_count; u < LY_ARRAY_COUNT(llist->dflts); ++u) {
+            for (v = 0; v < u; ++v) {
+                if (!llist->dflts[u]->realtype->plugin->compare(llist->dflts[u], llist->dflts[v])) {
+                    int dynamic = 0;
+                    const char *val = llist->type->plugin->print(llist->dflts[u], LY_PREF_SCHEMA, (void *)dflt_mod, &dynamic);
+
+                    lysc_update_path(ctx, llist->parent, llist->name);
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
+                        "Configuration leaf-list has multiple defaults of the same value \"%s\".", val);
+                    lysc_update_path(ctx, NULL, NULL);
+                    if (dynamic) {
+                        free((char *)val);
+                    }
+                    return LY_EVALID;
+                }
+            }
+        }
+    }
+
+    return LY_SUCCESS;
+}
+
+static LY_ERR
 lys_compile_unres(struct lysc_ctx *ctx)
 {
     struct lysc_node *node;
@@ -7249,21 +7237,12 @@ lys_compile_unres(struct lysc_ctx *ctx)
 
     /* finish incomplete default values compilation */
     for (i = 0; i < ctx->dflts.count; ++i) {
-        struct ly_err_item *err = NULL;
         struct lysc_incomplete_dflt *r = ctx->dflts.objs[i];
-        LY_ERR ret;
-        ret = r->dflt->realtype->plugin->store(ctx->ctx, r->dflt->realtype, r->dflt->original, strlen(r->dflt->original),
-                                               LY_TYPE_OPTS_SCHEMA | LY_TYPE_OPTS_STORE | LY_TYPE_OPTS_SECOND_CALL,
-                                               LY_PREF_SCHEMA, r->dflt_mod, r->context_node, NULL, r->dflt, NULL, &err);
-        if (err) {
-            ly_err_print(err);
-            ctx->path[0] = '\0';
-            lysc_path(r->context_node, LYSC_PATH_LOG, ctx->path, LYSC_CTX_BUFSIZE);
-            LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
-                   "Invalid default - value does not fit the type (%s).", err->msg);
-            ly_err_free(err);
+        if (r->leaf->nodetype == LYS_LEAF) {
+            LY_CHECK_RET(lys_compile_unres_leaf_dlft(ctx, r->leaf, r->dflt, r->dflt_mod));
+        } else {
+            LY_CHECK_RET(lys_compile_unres_llist_dflts(ctx, r->llist, r->dflt, r->dflts, r->dflt_mod));
         }
-        LY_CHECK_RET(ret);
     }
 
     return LY_SUCCESS;

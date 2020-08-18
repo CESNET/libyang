@@ -597,13 +597,6 @@ lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type)
     if (--type->refcount) {
         return;
     }
-    FREE_ARRAY(ctx, type->exts, lysc_ext_instance_free);
-    if (type->dflt) {
-        type->plugin->free(ctx, type->dflt);
-        lysc_type_free(ctx, type->dflt->realtype);
-        free(type->dflt);
-        type->dflt = NULL;
-    }
 
     switch(type->basetype) {
     case LY_TYPE_BINARY:
@@ -648,6 +641,8 @@ lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type)
         /* nothing to do */
         break;
     }
+
+    FREE_ARRAY(ctx, type->exts, lysc_ext_instance_free);
     free(type);
 }
 
@@ -736,7 +731,6 @@ lysc_node_leaflist_free(struct ly_ctx *ctx, struct lysc_node_leaflist *node)
         free(node->dflts[u]);
     }
     LY_ARRAY_FREE(node->dflts);
-    LY_ARRAY_FREE(node->dflts_mods);
 }
 
 static void
