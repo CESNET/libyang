@@ -1,0 +1,51 @@
+/**
+ * @page transition Transition Manual (1.x -> 2.0)
+ * 
+ * [TOC]
+ * 
+ * @section transitionContext Context
+ * 
+ * ly_ctx_info() -> ly_ctx_get_yanglib_data()
+ *
+ * - nedoporucuje se menit context po zacatku prace s daty
+ *   - neni ly_ctx_set_module_data_clb() ani souvisejici callback
+ *
+ * 
+ * - ::ly_ctx_find_path() byla odebrana
+ *
+ * @subsection contextSearchpaths Search Paths
+ *
+ * Internally, search directories are still handled the same way. However, API to manipulate the search directories chenged.
+ * 
+ * ### Unchanged functions
+ * - ::ly_ctx_get_searchdirs()
+ * 
+ * ### Changed functions
+ * - ::ly_ctx_set_searchdir() - Return value was changed to ::LY_ERR.
+ 
+ * ### Added functions
+ * - ::ly_ctx_unset_searchdir()
+ * - ::ly_ctx_unset_searchdir_last()
+ * 
+ * ### Removed functions
+ * - ly_ctx_unset_searchdirs() - Since the index is hard to work with, the function was replaced by ::ly_ctx_unset_searchdir() and
+ * ::ly_ctx_unset_searchdir_last().
+ * - lyd_leaf_type() - the type is now more clearer from the schema node than in libyang 1.x 
+ *
+ *
+ * @section transitionSchema Schema 
+ *
+ * lys_set_private() -> lysc_node_set_private()
+ * lys_is_disabled() -> lys_node_is_disabled()
+ * X lys_features_list()
+ * lys_features_enable -> lys_feature_enable()
+ * lys_features_disable -> lys_feature_disable()
+ * N lys_feature_*_force()
+ * lys_features_state() -> lys_feature_value()
+ * N lysc_feature_value()
+ * lyd_validate() -> lyd_validate_all(), lyd_validate_op()
+ * lyd_wd_default() -> lyd_is_default()
+ * X moving data from one context to another
+ * X lys_parent(), lys_module(), lys_node_module(), lys_set_enabled(), lys_set_disabled()
+ * lys_set_private() -> lysc_node_set_private()
+ */

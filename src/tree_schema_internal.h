@@ -609,7 +609,7 @@ void lysc_node_free(struct ly_ctx *ctx, struct lysc_node *node);
  * @brief Free the compiled container node structure.
  *
  * Only the container-specific members are freed, for generic node free function,
- * use lysc_node_free().
+ * use ::lysc_node_free().
  *
  * @param[in] ctx libyang context where the string data resides in a dictionary.
  * @param[in,out] node Compiled container node structure to be freed.

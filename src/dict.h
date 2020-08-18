@@ -29,11 +29,37 @@ extern "C" {
 struct ly_ctx;
 
 /**
+ * @page howtoContextDict Context Dictionary
+ *
+ * Context includes dictionary to store strings more effectively. The most of strings repeats quite often in schema
+ * as well as data trees. Therefore, instead of allocating those strings each time they appear, libyang stores them
+ * as records in the dictionary. The basic API to the context dictionary is public, so even a caller application can
+ * use the dictionary.
+ *
+ * To insert a string into the dictionary, caller can use ::lydict_insert() (adding a constant string) or
+ * ::lydict_insert_zc() (for dynamically allocated strings that won't be used by the caller after its insertion into
+ * the dictionary). Both functions provide the pointer to the inserted string in the dictionary record.
+ *
+ * To remove (reference of the) string from the context dictionary, ::lydict_remove() is supposed to be used.
+ *
+ * \note Incorrect usage of the dictionary can break libyang functionality.
+ *
+ * \note API for this group of functions is described in the [Dictionary module](@ref dict).
+ *
+ * Functions List
+ * --------------
+ * - ::lydict_insert()
+ * - ::lydict_insert_zc()
+ * - ::lydict_remove()
+ */
+
+/**
  * @defgroup dict Dictionary
  * @{
  *
  * Publicly visible functions and values of the libyang dictionary. They provide
- * access to the strings stored in the libyang context.
+ * access to the strings stored in the libyang context. More detailed information can be found at
+ * @ref howtoContextDict page.
  */
 
 /**

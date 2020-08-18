@@ -156,7 +156,7 @@ LY_ERR lys_compile_iffeature(struct lysc_ctx *ctx, struct lysp_qname *qname, str
 /**
  * @brief Compile information from the identity statement
  *
- * The backlinks to the identities derived from this one are supposed to be filled later via lys_compile_identity_bases().
+ * The backlinks to the identities derived from this one are supposed to be filled later via ::lys_compile_identity_bases().
  *
  * @param[in] ctx_sc Compile context - alternative to the combination of @p ctx and @p parsed_mod.
  * @param[in] ctx libyang context.
@@ -195,7 +195,7 @@ LY_ERR lys_compile_identity_bases(struct lysc_ctx *ctx, const struct lysp_module
  * the compilation is not finished (if-feature and extensions are missing) and all the features are permanently
  * disabled without a chance to change it. The list is used as target for any if-feature statement in any
  * implemented module to get valid data to evaluate its result. The compilation is finished via
- * lys_feature_precompile_finish() in implemented modules. In case a not implemented module becomes implemented,
+ * ::lys_feature_precompile_finish() in implemented modules. In case a not implemented module becomes implemented,
  * the precompiled list is reused to finish the compilation to preserve pointers already used in various compiled
  * if-feature structures.
  *

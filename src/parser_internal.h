@@ -165,7 +165,7 @@ LY_ERR yin_parse_submodule(struct lys_yin_parser_ctx **yin_ctx, struct ly_ctx *c
 LY_ERR lyd_parser_check_schema(struct lyd_ctx *lydctx, const struct lysc_node *snode);
 
 /**
- * @brief Wrapper around lyd_create_term() for data parsers.
+ * @brief Wrapper around ::lyd_create_term() for data parsers.
  *
  * @param[in] lydctx Data parser context.
  * @param[in] hints Data parser's hint for the value's type.
@@ -174,7 +174,7 @@ LY_ERR lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *sc
         ly_bool *dynamic, LY_PREFIX_FORMAT format, void *prefix_data, uint32_t hints, struct lyd_node **node);
 
 /**
- * @brief Wrapper around lyd_create_meta() for data parsers.
+ * @brief Wrapper around ::lyd_create_meta() for data parsers.
  *
  * @param[in] lydctx Data parser context.
  * @param[in] hints [Value hint](@ref lydvalhints) from the parser regarding the value type.

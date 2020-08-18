@@ -25,6 +25,57 @@ extern "C" {
 #endif
 
 /**
+ * @page howtoPrinters Output Processing
+ *
+ * libyang provides a mechanism to generalize work with the outputs (and [inputs](@ref howtoParsers)) of
+ * the different types. The ::ly_out handler can be created providing necessary information connected with the specific
+ * output type and then used throughout the printers functions. The API allows to combine output from libyang (data or schema)
+ * printers and output directly provided by the caller (via ::ly_print() or ::ly_write()).
+ *
+ * Using a generic output handler avoids need to have a set of functions for each printer functionality and results in simpler API.
+ *
+ * The API allows to alter the target of the data behind the handler by another target (of the same type). Also reseting
+ * a seekable output is possible with ::ly_out_reset() to re-write the output.
+ *
+ * @note
+ * This mechanism was introduced in libyang 2.0. To simplify transition from libyang 1.0 to version 2.0 and also for
+ * some simple use case where using the output handler would be an overkill, there are some basic printer functions
+ * that do not require output handler. But remember, that functionality of these function can be limited in particular cases
+ * in contrast to the functions using output handlers.
+ *
+ * Functions List
+ * --------------
+ * - ::ly_out_new_clb()
+ * - ::ly_out_new_fd()
+ * - ::ly_out_new_file()
+ * - ::ly_out_new_filepath()
+ * - ::ly_out_new_memory()
+ *
+ * - ::ly_out_clb()
+ * - ::ly_out_clb_arg()
+ * - ::ly_out_fd()
+ * - ::ly_out_file()
+ * - ::ly_out_filepath()
+ * - ::ly_out_memory()
+ *
+ * - ::ly_out_type()
+ * - ::ly_out_printed()
+ *
+ * - ::ly_out_reset()
+ * - ::ly_out_free()
+ *
+ * - ::ly_print()
+ * - ::ly_print_flush()
+ * - ::ly_write()
+ *
+ * libyang Printers List
+ * --------------------
+ * - @subpage howtoSchemaPrinters
+ * - @subpage howtoDataPrinters
+ */
+
+/**
+ * @struct ly_out
  * @brief Printer output structure specifying where the data are printed.
  */
 struct ly_out;
@@ -62,7 +113,7 @@ LY_OUT_TYPE ly_out_type(const struct ly_out *out);
  * Note that in case the underlying output is not seekable (stream referring a pipe/FIFO/socket or the callback output type),
  * nothing actually happens despite the function succeeds. Also note that the medium is not returned to the state it was when
  * the handler was created. For example, file is seeked into the offset zero and truncated, the content from the time it was opened with
- * ly_out_new_file() is not restored.
+ * ::ly_out_new_file() is not restored.
  *
  * @param[in] out Printer handler.
  * @return LY_SUCCESS in case of success
@@ -96,8 +147,9 @@ LY_ERR ly_out_new_clb(ly_write_clb writeclb, void *user_data, struct ly_out **ou
  * @brief Get or reset callback function associated with a callback printer handler.
  *
  * @param[in] out Printer handler.
- * @param[in] fd Optional value of a new file descriptor for the handler. If -1, only the current file descriptor value is returned.
- * @return Previous value of the file descriptor.
+ * @param[in] writeclb Optional argument providing a new printer callback function for the handler. If NULL, only the current
+ * printer callback is returned.
+ * @return Previous printer callback.
  */
 ly_write_clb ly_out_clb(struct ly_out *out, ly_write_clb writeclb);
 
@@ -167,7 +219,7 @@ LY_ERR ly_out_new_memory(char **strp, size_t size, struct ly_out **out);
  * @brief Get or change memory where the data are dumped.
  *
  * @param[in] out Printer handler.
- * @param[in] strp Optional new string pointer to store the resulting data, same rules as in ly_out_new_memory() are applied.
+ * @param[in] strp Optional new string pointer to store the resulting data, same rules as in ::ly_out_new_memory() are applied.
  * @param[in] size Size of the buffer provided via @p strp. In case it is 0, the buffer for the printed data
  * is newly allocated even if @p strp points to a pointer to an existing buffer. In case the @p strp is NULL, this
  * parameter is ignored.
@@ -179,6 +231,7 @@ char *ly_out_memory(struct ly_out *out, char **strp, size_t size);
  * @brief Create printer handler file of the given filename.
  *
  * @param[in] filepath Path of the file where to write data.
+ * @param[out] out Created printer handler supposed to be passed to different ly*_print() functions.
  * @return NULL in case of error.
  * @return Created printer handler supposed to be passed to different ly*_print_*() functions.
  */
@@ -201,7 +254,7 @@ const char *ly_out_filepath(struct ly_out *out, const char *filepath);
 /**
  * @brief Generic printer of the given format string into the specified output.
  *
- * Alternatively, ly_write() can be used.
+ * Alternatively, ::ly_write() can be used.
  *
  * @param[in] out Output specification.
  * @param[in] format Format string to be printed.
@@ -218,7 +271,7 @@ void ly_print_flush(struct ly_out *out);
 /**
  * @brief Generic printer of the given string buffer into the specified output.
  *
- * Alternatively, ly_print() can be used.
+ * Alternatively, ::ly_print() can be used.
  *
  * @param[in] out Output specification.
  * @param[in] buf Memory buffer with the data to print.

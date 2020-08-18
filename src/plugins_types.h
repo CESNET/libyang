@@ -36,15 +36,6 @@ struct lysc_type_leafref;
 struct lysp_module;
 
 /**
- * @internal
- * @page internals
- *
- * @section types Types Processing
- *
- * @subsection types_
- */
-
-/**
  * @defgroup types Plugins - Types
  * @{
  *
@@ -52,8 +43,7 @@ struct lysp_module;
  */
 
 /**
- * @page howtoplugins
- * @section Types
+ * @page howtoPluginsTypes
  *
  * YANG allows schemas to define new data types via *typedef* statement or even in leaf's/leaf-list's *type* statements.
  * Such types are derived (directly or indirectly) from a set of [YANG built-in types](https://tools.ietf.org/html/rfc7950#section-4.2.4).
@@ -66,19 +56,21 @@ struct lysp_module;
  * - duplicate data in lyd_value and
  * - free the connected data from lyd_value.
  *
- * All these functions are provided to libyang via a set of callback functions specified as lysc_type_plugin.
+ * All these functions are provided to libyang via a set of callback functions specified as ::lysc_type_plugin.
  * All the callbacks are supposed to do not log directly via libyang logger. Instead, they return LY_ERR value and
- * ly_err_item error structure(s) describing the detected error(s) (helper functions ly_err_new() and ly_err_free()
+ * ::ly_err_item error structure(s) describing the detected error(s) (helper functions ::ly_err_new() and ::ly_err_free()
  * are available).
  *
- * The main functionality is provided via ::ly_type_store_clb callback responsible for validating, canonizing and storing
+ * The main functionality is provided via ::ly_type_store_clb callback responsible for canonizing and storing
  * provided string representation of the value in specified format (XML and JSON supported). Valid value is stored in
- * lyd_value structure - its union allows to store data as one of the predefined type or in a custom form behind
- * lyd_value's ptr member (`void*`). The callback is also responsible for storing original string representation of the
- * value as lyd_value::original. Optionally, the callback can utilize lyd_value::canonical_cache to store data for providing
- * canonical string representation via the ::ly_type_print_clb callback. Canonical value cannot be available directly, since
- * some types do not have/provide canonical value (respectively it may be multivalent according to the output format as
- * in the case of instance-identifiers).
+ * ::lyd_value structure - its union allows to store data as one of the predefined type or in a custom form behind
+ * the ptr member (void *) of ::lyd_value structure. The callback is also responsible for storing canonized string
+ * representation of the value as ::lyd_value.canonical. If the type does not define canonical representation, the original
+ * representation is stored. In case there are any differences between the representation in specific input types, the plugin
+ * is supposed to store the value in JSON representation - typically, the difference is in prefix representation and JSON
+ * format use directly the module names as prefixes. Optionally, in case the type requires some validation referencing other
+ * entities in the data tree, the ::ly_type_validate_clb can be implemented. The stored value can be printed into the
+ * required format via ::ly_type_print_clb implementation.
  */
 
 /**
@@ -91,12 +83,12 @@ struct lysp_module;
  * @param[in] path Path to the node causing the error.
  * @param[in] apptag Error-app-tag value.
  * @return NULL in case of memory allocation failure.
- * @return Created error information structure that can be freed using ly_err_free().
+ * @return Created error information structure that can be freed using ::ly_err_free().
  */
 struct ly_err_item *ly_err_new(LY_LOG_LEVEL level, LY_ERR code, LY_VECODE vecode, char *msg, char *path, char *apptag);
 
 /**
- * @brief Destructor for the error records created with ly_err_new().
+ * @brief Destructor for the error records created with ::ly_err_new().
  *
  * Compatible with the free(), so usable as a generic callback.
  *
@@ -159,15 +151,15 @@ LY_ERR lysc_prefixes_dup(const struct lysc_prefix *orig, struct lysc_prefix **du
 /**
  * @brief Free compiled prefixes.
  *
- * @param[in] prefix Prefixes to free.
+ * @param[in] prefixes Prefixes to free.
  */
 void lysc_prefixes_free(struct lysc_prefix *prefixes);
 
 /**
- * @defgroup plugintypeopts Options for type plugin callbacks. The same set of the options is passed to
- * all the type's callbacks used together.
+ * @defgroup plugintypeopts Type store callback options.
  *
- * Options applicable to ly_type_store_clb().
+ * Options applicable to ::ly_type_store_clb().
+ *
  * @{
  */
 #define LY_TYPE_OPTS_DYNAMIC      0x01 /**< Flag for the dynamically allocated string value, in this case the value
@@ -192,12 +184,12 @@ void lysc_prefixes_free(struct lysc_prefix *prefixes);
  * @param[in] value_len Length (number of bytes) of the given \p value.
  * @param[in] options [Type plugin options](@ref plugintypeopts).
  * @param[in] format Input format of the value.
- * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_resolve_prefix).
+ * @param[in] prefix_data Format-specific data for resolving any prefixes (see ::ly_type_store_resolve_prefix).
  * @param[in] hints Bitmap of [value hints](@ref lydvalhints) of all the allowed value types.
  * @param[in] ctx_node The @p value schema context node.
  * @param[out] storage Storage for the value in the type's specific encoding. All the members should be filled by the plugin.
  * @param[out] err Optionally provided error information in case of failure. If not provided to the caller, a generic
- *             error message is prepared instead. The error structure can be created by ly_err_new().
+ *             error message is prepared instead. The error structure can be created by ::ly_err_new().
  * @return LY_SUCCESS on success,
  * @return LY_EINCOMPLETE in case the ::ly_type_validate_clb should be called to finish value validation in data,
  * @return LY_ERR value on error.
@@ -219,7 +211,7 @@ typedef LY_ERR (*ly_type_store_clb)(const struct ly_ctx *ctx, const struct lysc_
  * @param[in] tree External data tree (e.g. when validating RPC/Notification) with possibly referenced data.
  * @param[in,out] storage Storage of the value successfully filled by ::ly_type_store_clb. May be modified.
  * @param[out] err Optionally provided error information in case of failure. If not provided to the caller, a generic
- *             error message is prepared instead. The error structure can be created by ly_err_new().
+ *             error message is prepared instead. The error structure can be created by ::ly_err_new().
  * @return LY_SUCCESS on success,
  * @return LY_ERR value on error.
  */
@@ -244,7 +236,7 @@ typedef LY_ERR (*ly_type_compare_clb)(const struct lyd_value *val1, const struct
  * @param[in] value Value to print.
  * @param[in] format Format in which the data are supposed to be printed.
  *            Only 2 formats are currently implemented: LYD_XML and LYD_JSON.
- * @param[in] prefix_data Format-specific data for getting any prefixes (see ::ly_get_prefix).
+ * @param[in] prefix_data Format-specific data for getting any prefixes (see ::ly_type_print_get_prefix()).
  * @param[out] dynamic Flag if the returned string is dynamically allocated. In such a case the caller is responsible
  *            for freeing it.
  * @return String with the value of @p value in specified @p format. According to the returned @p dynamic flag, caller
@@ -256,7 +248,7 @@ typedef const char *(*ly_type_print_clb)(const struct lyd_value *value, LY_PREFI
 
 /**
  * @brief Callback to duplicate data in data structure. Note that callback is even responsible for
- * duplicating lyd_value::canonized.
+ * duplicating ::lyd_value.canonical.
  *
  * @param[in] ctx libyang context of the @p dup. Note that the context of @p original and @p dup might not be the same.
  * @param[in] original Original data structure to be duplicated.
@@ -267,12 +259,12 @@ typedef const char *(*ly_type_print_clb)(const struct lyd_value *value, LY_PREFI
 typedef LY_ERR (*ly_type_dup_clb)(const struct ly_ctx *ctx, const struct lyd_value *original, struct lyd_value *dup);
 
 /**
- * @brief Callback for freeing the user type values stored by ly_type_store_clb().
+ * @brief Callback for freeing the user type values stored by ::ly_type_store_clb.
  *
  * Note that this callback is responsible also for freeing the canonized member in the @p value.
  *
  * @param[in] ctx libyang ctx to enable correct manipulation with values that are in the dictionary.
- * @param[in,out] value Value structure to free the data stored there by the plugin's ly_type_store_clb() callback
+ * @param[in,out] value Value structure to free the data stored there by the plugin's ::ly_type_store_clb callback
  */
 typedef void (*ly_type_free_clb)(const struct ly_ctx *ctx, struct lyd_value *value);
 
@@ -312,7 +304,7 @@ extern struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT];
  * @param[in] value Value string to parse.
  * @param[in] value_len Length of the @p value (mandatory parameter).
  * @param[out] ret Parsed integer value (optional).
- * @param[out] err Error information in case of failure. The error structure can be freed by ly_err_free().
+ * @param[out] err Error information in case of failure. The error structure can be freed by ::ly_err_free().
  * @return LY_ERR value according to the result of the parsing and validation.
  */
 LY_ERR ly_type_parse_int(const char *datatype, int base, int64_t min, int64_t max, const char *value, size_t value_len,
@@ -328,7 +320,7 @@ LY_ERR ly_type_parse_int(const char *datatype, int base, int64_t min, int64_t ma
  * @param[in] value Value string to parse.
  * @param[in] value_len Length of the @p value (mandatory parameter).
  * @param[out] ret Parsed unsigned integer value (optional).
- * @param[out] err Error information in case of failure. The error structure can be freed by ly_err_free().
+ * @param[out] err Error information in case of failure. The error structure can be freed by ::ly_err_free().
  * @return LY_ERR value according to the result of the parsing and validation.
  */
 LY_ERR ly_type_parse_uint(const char *datatype, int base, uint64_t max, const char *value, size_t value_len,
@@ -342,7 +334,7 @@ LY_ERR ly_type_parse_uint(const char *datatype, int base, uint64_t max, const ch
  * @param[in] value Value string to parse.
  * @param[in] value_len Length of the @p value (mandatory parameter).
  * @param[out] ret Parsed decimal64 value representing original value * 10^fraction-digits (optional).
- * @param[out] err Error information in case of failure. The error structure can be freed by ly_err_free().
+ * @param[out] err Error information in case of failure. The error structure can be freed by ::ly_err_free().
  * @return LY_ERR value according to the result of the parsing and validation.
  */
 LY_ERR ly_type_parse_dec64(uint8_t fraction_digits, const char *value, size_t value_len, int64_t *ret, struct ly_err_item **err);
@@ -364,7 +356,7 @@ LY_ERR ly_type_identity_isderived(struct lysc_ident *base, struct lysc_ident *de
  * @param[in] range Range (length) restriction information.
  * @param[in] value Value to check. In case of basetypes using unsigned integer values, the value is actually cast to uint64_t.
  * @param[in] strval String representation of the @p value for error logging.
- * @param[out] err Error information in case of failure. The error structure can be freed by ly_err_free().
+ * @param[out] err Error information in case of failure. The error structure can be freed by ::ly_err_free().
  * @return LY_ERR value according to the result of the validation.
  */
 LY_ERR ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t value, const char *strval,
@@ -374,10 +366,10 @@ LY_ERR ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, i
  * @brief Data type validator for pattern-restricted string values.
  *
  * @param[in] patterns ([Sized array](@ref sizedarrays)) of the compiled list of pointers to the pattern restrictions.
- * The array can be found in the lysc_type_str::patterns structure.
+ * The array can be found in the ::lysc_type_str.patterns structure.
  * @param[in] str String to validate.
  * @param[in] str_len Length (number of bytes) of the string to validate (mandatory).
- * @param[out] err Error information in case of failure or non-matching @p str. The error structure can be freed by ly_err_free().
+ * @param[out] err Error information in case of failure or non-matching @p str. The error structure can be freed by ::ly_err_free().
  * @return LY_SUCCESS when @p matches all the patterns.
  * @return LY_EVALID when @p does not match any of the patterns.
  * @return LY_ESYS in case of PCRE2 error.

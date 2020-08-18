@@ -109,13 +109,13 @@ const char *lyjson_token2str(enum LYJSON_PARSER_STATUS status);
 LY_ERR lyjson_ctx_next(struct lyjson_ctx *jsonctx, enum LYJSON_PARSER_STATUS *status);
 
 /**
- * @brief Backup the JSON parser context's state To restore the backup, use lyjson_ctx_restore().
+ * @brief Backup the JSON parser context's state To restore the backup, use ::lyjson_ctx_restore().
  * @param[in] jsonctx JSON parser context to backup.
  */
 void lyjson_ctx_backup(struct lyjson_ctx *jsonctx);
 
 /**
- * @brief REstore the JSON parser context's state from the backup created by lyjson_ctx_backup().
+ * @brief REstore the JSON parser context's state from the backup created by ::lyjson_ctx_backup().
  * @param[in] jsonctx JSON parser context to restore.
  */
 void lyjson_ctx_restore(struct lyjson_ctx *jsonctx);
