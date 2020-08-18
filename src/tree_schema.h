@@ -2038,6 +2038,17 @@ LY_ERR lys_set_implemented(struct lys_module *mod);
 const struct lysc_node *lysc_node_is_disabled(const struct lysc_node *node, int recursive);
 
 /**
+ * @brief Set a schema private pointer to a user pointer.
+ *
+ * @param[in] node Node, whose private field will be assigned.
+ * @param[in] priv Arbitrary user-specified pointer.
+ * @param[out] prev_priv_p Pointer to the previous private data being returned after replacinf by @p priv.
+ * @return LY_EINVAL in case of invalid @p node.
+ * @return LY_SUCCESS on success.
+ */
+LY_ERR lysc_node_set_private(const struct lysc_node *node, void *priv, void **prev_priv_p);
+
+/**
  * @brief Check type restrictions applicable to the particular leaf/leaf-list with the given string @p value.
  *
  * This function check just the type's restriction, if you want to check also the data tree context (e.g. in case of

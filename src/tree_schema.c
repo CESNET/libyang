@@ -791,6 +791,19 @@ lysc_node_is_disabled(const struct lysc_node *node, int recursive)
     return NULL;
 }
 
+API LY_ERR
+lysc_node_set_private(const struct lysc_node *node, void *priv, void** prev_priv_p)
+{
+    LY_CHECK_ARG_RET(NULL, node, LY_EINVAL);
+
+    if (prev_priv_p) {
+        *prev_priv_p = node->priv;
+    }
+    ((struct lysc_node *)node)->priv = priv;
+
+    return LY_SUCCESS;
+}
+
 LY_ERR
 lys_set_implemented_internal(struct lys_module *mod, uint8_t value)
 {
