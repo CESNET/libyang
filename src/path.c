@@ -947,7 +947,6 @@ ly_path_dup(const struct ly_ctx *ctx, const struct ly_path *path, struct ly_path
                 case LY_PATH_PREDTYPE_LEAFLIST:
                     /* key-predicate or leaf-list-predicate */
                     (*dup)[u].predicates[v].key = pred->key;
-                    (*dup)[u].predicates[v].value.realtype = pred->value.realtype;
                     pred->value.realtype->plugin->duplicate(ctx, &pred->value, &(*dup)[u].predicates[v].value);
                     break;
                 case LY_PATH_PREDTYPE_NONE:

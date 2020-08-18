@@ -65,32 +65,17 @@ lyd_hash(struct lyd_node *node)
         struct lyd_node_inner *list = (struct lyd_node_inner*)node;
         if (!(node->schema->flags & LYS_KEYLESS)) {
             /* list's hash is made of its keys */
-            struct lysc_node *key;
-            for (key = ((struct lysc_node_list*)node->schema)->child, iter = list->child;
-                    key && key->nodetype == LYS_LEAF && (key->flags & LYS_KEY) && iter;
-                    key = key->next, iter = iter->next) {
-                for ( ; iter && iter->schema != key; iter = iter->next);
-                if (!iter) {
-                    break;
-                }
-                int dynamic = 0;
-                const char *value = lyd_value2str((struct lyd_node_term *)iter, &dynamic);
+            for (iter = list->child; iter && (iter->schema->flags & LYS_KEY); iter = iter->next) {
+                const char *value = LYD_CANONICAL(iter);
                 node->hash = dict_hash_multi(node->hash, value, strlen(value));
-                if (dynamic) {
-                    free((char *)value);
-                }
             }
         } else {
             /* keyless status list */
             lyd_hash_keyless_list_dfs(list->child, &node->hash);
         }
     } else if (node->schema->nodetype == LYS_LEAFLIST) {
-        int dynamic = 0;
-        const char *value = lyd_value2str((struct lyd_node_term *)node, &dynamic);
+        const char *value = LYD_CANONICAL(node);
         node->hash = dict_hash_multi(node->hash, value, strlen(value));
-        if (dynamic) {
-            free((char*)value);
-        }
     }
     /* finish the hash */
     node->hash = dict_hash_multi(node->hash, NULL, 0);

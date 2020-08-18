@@ -277,8 +277,7 @@ test_target(void **state)
     struct lyd_node *tree;
     struct lyxp_expr *exp;
     struct ly_path *path;
-    const char *path_str = "/a:l2[2]/c/d[3]", *val;
-    int dynamic;
+    const char *path_str = "/a:l2[2]/c/d[3]";
     const char *data =
         "<l2 xmlns=\"urn:tests:a\"><c>"
             "<d>a</d>"
@@ -300,12 +299,8 @@ test_target(void **state)
     term = lyd_target(path, tree);
 
     assert_string_equal(term->schema->name, "d");
-    val = lyd_value2str(term, &dynamic);
-    assert_int_equal(dynamic, 0);
-    assert_string_equal(val, "b");
-    val = lyd_value2str((struct lyd_node_term *)term->prev, &dynamic);
-    assert_int_equal(dynamic, 0);
-    assert_string_equal(val, "b");
+    assert_string_equal(LYD_CANONICAL(term), "b");
+    assert_string_equal(LYD_CANONICAL(term->prev), "b");
 
     lyd_free_all(tree);
     ly_path_free(ctx, path);

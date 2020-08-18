@@ -138,12 +138,12 @@ test_leaf(void **state)
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("foo", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
-    assert_string_equal("foo value", leaf->value.original);
+    assert_string_equal("foo value", leaf->value.canonical);
 
     assert_int_equal(LYS_LEAF, tree->next->next->schema->nodetype);
     assert_string_equal("foo2", tree->next->next->schema->name);
     leaf = (struct lyd_node_term*)tree->next->next;
-    assert_string_equal("default-val", leaf->value.original);
+    assert_string_equal("default-val", leaf->value.canonical);
     assert_true(leaf->flags & LYD_DEFAULT);
 
     lyd_print_tree(out, tree, LYD_JSON, 0);
@@ -158,7 +158,7 @@ test_leaf(void **state)
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("foo2", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
-    assert_string_equal("default-val", leaf->value.original);
+    assert_string_equal("default-val", leaf->value.canonical);
     assert_false(leaf->flags & LYD_DEFAULT);
 
     lyd_print_tree(out, tree, LYD_JSON, 0);
@@ -173,7 +173,7 @@ test_leaf(void **state)
     assert_int_equal(LYS_LEAF, tree->schema->nodetype);
     assert_string_equal("foo2", tree->schema->name);
     leaf = (struct lyd_node_term*)tree;
-    assert_string_equal("default-val", leaf->value.original);
+    assert_string_equal("default-val", leaf->value.canonical);
     assert_true(leaf->flags & LYD_DEFAULT);
 
     /* TODO default values
@@ -192,13 +192,13 @@ test_leaf(void **state)
     assert_non_null(tree->meta);
     assert_string_equal("hint", tree->meta->name);
     assert_int_equal(LY_TYPE_INT8, tree->meta->value.realtype->basetype);
-    assert_string_equal("1", tree->meta->value.original);
+    assert_string_equal("1", tree->meta->value.canonical);
     assert_int_equal(1, tree->meta->value.int8);
     assert_ptr_equal(tree, tree->meta->parent);
     assert_non_null(tree->meta->next);
     assert_string_equal("hint", tree->meta->next->name);
     assert_int_equal(LY_TYPE_INT8, tree->meta->next->value.realtype->basetype);
-    assert_string_equal("2", tree->meta->next->value.original);
+    assert_string_equal("2", tree->meta->next->value.canonical);
     assert_int_equal(2, tree->meta->next->value.int8);
     assert_ptr_equal(tree, tree->meta->next->parent);
     assert_null(tree->meta->next->next);
@@ -242,13 +242,13 @@ test_leaflist(void **state)
     assert_int_equal(LYS_LEAFLIST, tree->schema->nodetype);
     assert_string_equal("ll1", tree->schema->name);
     ll = (struct lyd_node_term*)tree;
-    assert_string_equal("10", ll->value.original);
+    assert_string_equal("10", ll->value.canonical);
 
     assert_non_null(tree->next);
     assert_int_equal(LYS_LEAFLIST, tree->next->schema->nodetype);
     assert_string_equal("ll1", tree->next->schema->name);
     ll = (struct lyd_node_term*)tree->next;
-    assert_string_equal("11", ll->value.original);
+    assert_string_equal("11", ll->value.canonical);
 
     lyd_print_all(out, tree, LYD_JSON, 0);
     assert_string_equal(printed, data);
@@ -262,16 +262,16 @@ test_leaflist(void **state)
     assert_int_equal(LYS_LEAFLIST, tree->schema->nodetype);
     assert_string_equal("ll1", tree->schema->name);
     ll = (struct lyd_node_term*)tree;
-    assert_string_equal("10", ll->value.original);
+    assert_string_equal("10", ll->value.canonical);
     assert_null(ll->meta);
 
     assert_non_null(tree->next);
     assert_int_equal(LYS_LEAFLIST, tree->next->schema->nodetype);
     assert_string_equal("ll1", tree->next->schema->name);
     ll = (struct lyd_node_term*)tree->next;
-    assert_string_equal("11", ll->value.original);
+    assert_string_equal("11", ll->value.canonical);
     assert_non_null(ll->meta);
-    assert_string_equal("2", ll->meta->value.original);
+    assert_string_equal("2", ll->meta->value.canonical);
     assert_null(ll->meta->next);
 
     lyd_print_all(out, tree, LYD_JSON, 0);
@@ -286,17 +286,17 @@ test_leaflist(void **state)
     assert_int_equal(LYS_LEAFLIST, tree->schema->nodetype);
     assert_string_equal("ll1", tree->schema->name);
     ll = (struct lyd_node_term*)tree;
-    assert_string_equal("1", ll->value.original);
+    assert_string_equal("1", ll->value.canonical);
     assert_non_null(ll->meta);
     assert_string_equal("hint", ll->meta->name);
     assert_int_equal(LY_TYPE_INT8, ll->meta->value.realtype->basetype);
-    assert_string_equal("1", ll->meta->value.original);
+    assert_string_equal("1", ll->meta->value.canonical);
     assert_int_equal(1, ll->meta->value.int8);
     assert_ptr_equal(ll, ll->meta->parent);
     assert_non_null(ll->meta->next);
     assert_string_equal("hint", ll->meta->next->name);
     assert_int_equal(LY_TYPE_INT8, ll->meta->next->value.realtype->basetype);
-    assert_string_equal("10", ll->meta->next->value.original);
+    assert_string_equal("10", ll->meta->next->value.canonical);
     assert_int_equal(10, ll->meta->next->value.int8);
     assert_ptr_equal(ll, ll->meta->next->parent);
     assert_null(ll->meta->next->next);
@@ -305,18 +305,18 @@ test_leaflist(void **state)
     assert_int_equal(LYS_LEAFLIST, tree->next->schema->nodetype);
     assert_string_equal("ll1", tree->next->schema->name);
     ll = (struct lyd_node_term*)tree->next;
-    assert_string_equal("2", ll->value.original);
+    assert_string_equal("2", ll->value.canonical);
     assert_null(ll->meta);
 
     assert_non_null(tree->next->next);
     assert_int_equal(LYS_LEAFLIST, tree->next->next->schema->nodetype);
     assert_string_equal("ll1", tree->next->next->schema->name);
     ll = (struct lyd_node_term*)tree->next->next;
-    assert_string_equal("3", ll->value.original);
+    assert_string_equal("3", ll->value.canonical);
     assert_non_null(ll->meta);
     assert_string_equal("hint", ll->meta->name);
     assert_int_equal(LY_TYPE_INT8, ll->meta->value.realtype->basetype);
-    assert_string_equal("3", ll->meta->value.original);
+    assert_string_equal("3", ll->meta->value.canonical);
     assert_int_equal(3, ll->meta->value.int8);
     assert_ptr_equal(ll, ll->meta->parent);
     assert_null(ll->meta->next);
@@ -467,7 +467,7 @@ test_list(void **state)
     assert_string_equal("cp", tree->schema->name);
     assert_non_null(tree->meta);
     assert_string_equal("hint", tree->meta->name);
-    assert_string_equal("1", tree->meta->value.original);
+    assert_string_equal("1", tree->meta->value.canonical);
     assert_ptr_equal(tree, tree->meta->parent);
     assert_null(tree->meta->next);
 

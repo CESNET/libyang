@@ -223,8 +223,6 @@ test_hash(void **state)
     "</c>";
     struct lyd_node *tree, *node;
     struct ly_set *set;
-    int dynamic;
-    const char *val_str;
 
     assert_int_equal(LY_SUCCESS, lyd_parse_data_mem(ctx, data, LYD_XML, LYD_PARSE_STRICT, LYD_VALIDATE_PRESENT, &tree));
     assert_non_null(tree);
@@ -237,9 +235,7 @@ test_hash(void **state)
     assert_string_equal(node->schema->name, "l1");
     node = lyd_node_children(node, 0);
     assert_string_equal(node->schema->name, "a");
-    val_str = lyd_value2str((struct lyd_node_term *)node, &dynamic);
-    assert_int_equal(0, dynamic);
-    assert_string_equal(val_str, "a3");
+    assert_string_equal(LYD_CANONICAL(node), "a3");
 
     ly_set_free(set, NULL);
 
@@ -251,9 +247,7 @@ test_hash(void **state)
     assert_string_equal(node->schema->name, "ll");
     node = lyd_node_children(node, 0);
     assert_string_equal(node->schema->name, "a");
-    val_str = lyd_value2str((struct lyd_node_term *)node, &dynamic);
-    assert_int_equal(0, dynamic);
-    assert_string_equal(val_str, "val_b");
+    assert_string_equal(LYD_CANONICAL(node), "val_b");
     node = node->next;
     assert_string_equal(node->schema->name, "b");
     assert_null(node->next);
@@ -272,9 +266,7 @@ test_hash(void **state)
 
     node = set->objs[0];
     assert_string_equal(node->schema->name, "ll2");
-    val_str = lyd_value2str((struct lyd_node_term *)node, &dynamic);
-    assert_int_equal(0, dynamic);
-    assert_string_equal(val_str, "three");
+    assert_string_equal(LYD_CANONICAL(node), "three");
 
     ly_set_free(set, NULL);
 

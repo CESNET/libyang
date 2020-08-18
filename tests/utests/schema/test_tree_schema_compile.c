@@ -285,7 +285,6 @@ test_node_leaflist(void **state)
     assert_non_null(l = (struct lysc_node_leaf*)mod->compiled->data);
     assert_string_equal("ref", l->name);
     assert_non_null(l->dflt);
-    assert_null(l->dflt->canonical_cache);
 
     /* invalid */
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;leaf-list ll {type empty;}}",
@@ -293,7 +292,7 @@ test_node_leaflist(void **state)
     logbuf_assert("Leaf-list of type \"empty\" is allowed only in YANG 1.1 modules. /aa:ll");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module bb {yang-version 1.1;namespace urn:bb;prefix bb;leaf-list ll {type empty; default x;}}", LYS_IN_YANG, NULL));
-    logbuf_assert("Invalid leaf-lists's default value \"x\" which does not fit the type (Invalid empty value \"x\".). /bb:ll");
+    logbuf_assert("Invalid default - value does not fit the type (Invalid empty value \"x\".). /bb:ll");
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module cc {yang-version 1.1;namespace urn:cc;prefix cc;"
                     "leaf-list ll {config false;type string; default one;default two;default one;}}", LYS_IN_YANG, &mod));
@@ -1918,7 +1917,7 @@ test_type_empty(void **state)
     /* invalid */
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;"
                                         "leaf l {type empty; default x;}}", LYS_IN_YANG, NULL));
-    logbuf_assert("Invalid leaf's default value \"x\" which does not fit the type (Invalid empty value \"x\".). /aa:l");
+    logbuf_assert("Invalid default - value does not fit the type (Invalid empty value \"x\".). /aa:l");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb;typedef mytype {type empty; default x;}"
                                         "leaf l {type mytype;}}", LYS_IN_YANG, NULL));
@@ -2944,7 +2943,7 @@ test_deviation(void **state)
     assert_int_equal(0, dynamic);
     assert_int_equal(1, llist->dflts[0]->uint8);
 
-    /* instance-identifiers with NULL canonical_cach are changed to string types with a canonical_cache value equal to the original value */
+    /* instance-identifiers with NULL canonical are changed to string types with a canonical value equal to the original value */
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module q {yang-version 1.1; namespace urn:q;prefix q; import e {prefix e;}"
                                         "leaf q {type instance-identifier; default \"/e:d2[.='a']\";}"
                                         "leaf-list ql {type instance-identifier; default \"/e:d[.='b']\"; default \"/e:d2[.='c']\";}}", LYS_IN_YANG, &mod));
@@ -2953,31 +2952,26 @@ test_deviation(void **state)
                                   "deviation /q:ql { deviate replace {type string;}}}", LYS_IN_YANG, NULL));
     assert_non_null(leaf = (struct lysc_node_leaf*)mod->compiled->data);
     assert_int_equal(LY_TYPE_STRING, leaf->dflt->realtype->basetype);
-    assert_non_null(leaf->dflt->canonical_cache);
-    assert_string_equal("/e:d2[.='a']", leaf->dflt->canonical_cache);
+    assert_non_null(leaf->dflt->canonical);
+    assert_string_equal("/e:d2[.='a']", leaf->dflt->canonical);
     assert_non_null(llist = (struct lysc_node_leaflist*)leaf->next);
     assert_int_equal(2, LY_ARRAY_COUNT(llist->dflts));
-    assert_int_equal(2, LY_ARRAY_COUNT(llist->dflts_mods));
-    assert_ptr_equal(llist->dflts_mods[0], mod);
     assert_int_equal(LY_TYPE_STRING, llist->dflts[0]->realtype->basetype);
-    assert_string_equal("/e:d[.='b']", llist->dflts[0]->canonical_cache);
-    assert_ptr_equal(llist->dflts_mods[1], mod);
+    assert_string_equal("/e:d[.='b']", llist->dflts[0]->canonical);
     assert_int_equal(LY_TYPE_STRING, llist->dflts[0]->realtype->basetype);
-    assert_string_equal("/e:d2[.='c']", llist->dflts[1]->canonical_cache);
+    assert_string_equal("/e:d2[.='c']", llist->dflts[1]->canonical);
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module r {yang-version 1.1; namespace urn:r;prefix r;"
                                         "typedef mytype {type uint8; default 200;}"
                                         "leaf r {type mytype;} leaf-list lr {type mytype;}"
                                         "deviation /r:r {deviate replace {type string;}}"
                                         "deviation /r:lr {deviate replace {type string;}}}", LYS_IN_YANG, &mod));
-    assert_non_null(leaf = (struct lysc_node_leaf*)mod->compiled->data);
+    assert_non_null(leaf = (struct lysc_node_leaf *)mod->compiled->data);
     assert_string_equal("r", leaf->name);
     assert_null(leaf->dflt);
-    assert_null(leaf->dflt_mod);
     assert_non_null(llist = (struct lysc_node_leaflist* )leaf->next);
     assert_string_equal("lr", llist->name);
     assert_null(llist->dflts);
-    assert_null(llist->dflts_mods);
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module s {yang-version 1.1; namespace urn:s;prefix s;"
                                         "leaf s {type instance-identifier {require-instance true;} default /s:x;}"
@@ -3177,16 +3171,16 @@ test_deviation(void **state)
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module oo1 {namespace urn:oo1;prefix oo1; leaf x {type uint16; default 300;}"
                                   "deviation /x {deviate replace {type uint8;}}}", LYS_IN_YANG, &mod));
-    logbuf_assert("Invalid deviation replacing leaf's type - the leaf's default value \"300\" does not match the type "
-                  "(Value \"300\" is out of uint8's min/max bounds.). /oo1:{deviation='/x'}");
+    logbuf_assert("Invalid default - value does not fit the type "
+                  "(Value \"300\" is out of uint8's min/max bounds.). /oo1:x");
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module oo2 {yang-version 1.1;namespace urn:oo2;prefix oo2; leaf-list x {type uint16; default 10; default 300;}"
                                   "deviation /x {deviate replace {type uint8;}}}", LYS_IN_YANG, &mod));
-    logbuf_assert("Invalid deviation replacing leaf-list's type - the leaf-list's default value \"300\" does not match the type "
-                  "(Value \"300\" is out of uint8's min/max bounds.). /oo2:{deviation='/x'}");
+    logbuf_assert("Invalid default - value does not fit the type "
+                  "(Value \"300\" is out of uint8's min/max bounds.). /oo2:x");
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module oo3 {namespace urn:oo3;prefix oo3; leaf x {type uint8;}"
                                   "deviation /x {deviate add {default 300;}}}", LYS_IN_YANG, &mod));
-    logbuf_assert("Invalid deviation setting \"default\" property \"300\" which does not fit the type "
-                  "(Value \"300\" is out of uint8's min/max bounds.). /oo3:{deviation='/x'}");
+    logbuf_assert("Invalid default - value does not fit the type "
+                  "(Value \"300\" is out of uint8's min/max bounds.). /oo3:x");
 
 /* TODO recompiling reference object after deviation changes schema tree
     assert_non_null(lys_parse_mem(ctx, "module pp {namespace urn:pp;prefix pp; leaf l { type leafref {path /c/x;}}"
