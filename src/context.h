@@ -203,7 +203,7 @@ LY_ERR ly_ctx_new(const char *search_dir, int options, struct ly_ctx **new_ctx);
 /**
  * @brief Add the search path into libyang context
  *
- * To reset search paths set in the context, use ly_ctx_unset_searchdirs() and then
+ * To reset search paths set in the context, use ly_ctx_unset_searchdir() and then
  * set search paths again.
  *
  * @param[in] ctx Context to be modified.
@@ -215,24 +215,26 @@ LY_ERR ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir);
 /**
  * @brief Clean the search path(s) from the libyang context
  *
- * To remove the search path by its index, use ly_ctx_unset_searchdir().
+ * To remove the recently added search path(s), use ly_ctx_unset_searchdir_last().
  *
  * @param[in] ctx Context to be modified.
  * @param[in] value Searchdir to be removed, use NULL to remove them all.
  * @return LY_ERR return value
  */
-LY_ERR ly_ctx_unset_searchdirs(struct ly_ctx *ctx, const char *value);
+LY_ERR ly_ctx_unset_searchdir(struct ly_ctx *ctx, const char *value);
 
 /**
- * @brief Remove the specific search path from the libyang context.
+ * @brief Remove the least recently added search path(s) from the libyang context.
  *
- * To remove the search path by its value, use ly_ctx_unset_searchdirs().
+ * To remove a specific search path by its value, use ly_ctx_unset_searchdir().
  *
  * @param[in] ctx Context to be modified.
- * @param[in] index Index of the searchdir to be removed.
+ * @param[in] count Number of the searchdirs to be removed (starting by the least recently added).
+ * If the value is higher then the actual number of search paths, all paths are removed and no error is returned.
+ * Value 0 does not change the search path set.
  * @return LY_ERR return value
  */
-LY_ERR ly_ctx_unset_searchdir(struct ly_ctx *ctx, unsigned int index);
+LY_ERR ly_ctx_unset_searchdir_last(struct ly_ctx *ctx, unsigned int count);
 
 /**
  * @brief Get the NULL-terminated list of the search paths in libyang context. Do not modify the result!

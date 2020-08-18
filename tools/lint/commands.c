@@ -186,9 +186,8 @@ get_schema_format(const char *path)
 int
 cmd_add(const char *arg)
 {
-    int path_len, ret = 1, index = 0;
+    int path_len, ret = 1;
     char *path, *dir, *s, *arg_ptr;
-    const char * const *searchpaths;
     const struct lys_module *model;
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
 
@@ -217,11 +216,6 @@ cmd_add(const char *arg)
     }
     path = strndup(arg_ptr, path_len);
 
-    searchpaths = ly_ctx_get_searchdirs(ctx);
-    if (searchpaths) {
-        for (index = 0; searchpaths[index]; index++);
-    }
-
     while (path) {
         int unset_path = 1;
         format = get_schema_format(path);
@@ -237,9 +231,7 @@ cmd_add(const char *arg)
         }
         /* parse the file */
         lys_parse_path(ctx, path, format, &model);
-        if (unset_path) {
-            ly_ctx_unset_searchdir(ctx, index);
-        }
+        ly_ctx_unset_searchdir_last(ctx, unset_path);
         free(path);
         free(dir);
 
@@ -1333,7 +1325,7 @@ cmd_searchpath(const char *arg)
         cmd_searchpath_help();
         return 0;
     } else if (!strncmp(path, "--clear", 7) && (path[7] == '\0' || path[7] == ' ')) {
-        ly_ctx_unset_searchdirs(ctx, NULL);
+        ly_ctx_unset_searchdir(ctx, NULL);
         return 0;
     }
 

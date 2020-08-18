@@ -134,7 +134,7 @@ ly_ctx_get_searchdirs(const struct ly_ctx *ctx)
 }
 
 API LY_ERR
-ly_ctx_unset_searchdirs(struct ly_ctx *ctx, const char *value)
+ly_ctx_unset_searchdir(struct ly_ctx *ctx, const char *value)
 {
     unsigned int index;
 
@@ -167,19 +167,12 @@ ly_ctx_unset_searchdirs(struct ly_ctx *ctx, const char *value)
 }
 
 API LY_ERR
-ly_ctx_unset_searchdir(struct ly_ctx *ctx, unsigned int index)
+ly_ctx_unset_searchdir_last(struct ly_ctx *ctx, unsigned int count)
 {
     LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
 
-    if (!ctx->search_paths.count) {
-        return LY_SUCCESS;
-    }
-
-    if (index >= ctx->search_paths.count) {
-        LOGARG(ctx, index);
-        return LY_EINVAL;
-    } else {
-        return ly_set_rm_index(&ctx->search_paths, index, free);
+    for ( ; count > 0 && ctx->search_paths.count; --count) {
+        LY_CHECK_RET(ly_set_rm_index(&ctx->search_paths, ctx->search_paths.count - 1, free))
     }
 
     return LY_SUCCESS;

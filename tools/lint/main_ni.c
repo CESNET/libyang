@@ -337,7 +337,6 @@ main_ni(int argc, char* argv[])
     } *data = NULL, *data_item, *data_prev = NULL;
     struct ly_set *mods = NULL;
     void *p;
-    int index = 0;
 
     opterr = 0;
 #ifndef NDEBUG
@@ -677,9 +676,6 @@ main_ni(int argc, char* argv[])
         for (u = 0; u < searchpaths->count; u++) {
             ly_ctx_set_searchdir(ctx, (const char*)searchpaths->objs[u]);
         }
-        /* remember the number of set paths, respectively the first index after the set serchpaths
-         * to know what index is supposed to be removed in case of adding some implicit paths later */
-        index = u;
     }
 
     /* derefered setting of verbosity in libyang after context initiation */
@@ -709,9 +705,7 @@ main_ni(int argc, char* argv[])
                 unset_path = 0;
             }
             lys_parse_path(ctx, argv[optind + i], informat_s, &mod);
-            if (unset_path) {
-                ly_ctx_unset_searchdir(ctx, index);
-            }
+            ly_ctx_unset_searchdir_last(ctx, unset_path);
             free(dir);
             if (!mod) {
                 goto cleanup;

@@ -92,8 +92,8 @@ test_searchdirs(void **state)
     logbuf_assert("Invalid argument ctx (ly_ctx_set_searchdir()).");
     assert_null(ly_ctx_get_searchdirs(NULL));
     logbuf_assert("Invalid argument ctx (ly_ctx_get_searchdirs()).");
-    assert_int_equal(LY_EINVAL, ly_ctx_unset_searchdirs(NULL, NULL));
-    logbuf_assert("Invalid argument ctx (ly_ctx_unset_searchdirs()).");
+    assert_int_equal(LY_EINVAL, ly_ctx_unset_searchdir(NULL, NULL));
+    logbuf_assert("Invalid argument ctx (ly_ctx_unset_searchdir()).");
 
     /* readable and executable, but not a directory */
     assert_int_equal(LY_EINVAL, ly_ctx_set_searchdir(ctx, TESTS_BIN"/utest_context"));
@@ -141,24 +141,24 @@ test_searchdirs(void **state)
 
     /* removing searchpaths */
     /* nonexisting */
-    assert_int_equal(LY_EINVAL, ly_ctx_unset_searchdirs(ctx, "/nonexistingfile"));
-    logbuf_assert("Invalid argument value (ly_ctx_unset_searchdirs()).");
+    assert_int_equal(LY_EINVAL, ly_ctx_unset_searchdir(ctx, "/nonexistingfile"));
+    logbuf_assert("Invalid argument value (ly_ctx_unset_searchdir()).");
     /* first */
-    assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdirs(ctx, TESTS_BIN"/utests"));
+    assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdir(ctx, TESTS_BIN"/utests"));
     assert_string_not_equal(TESTS_BIN"/utests", list[0]);
     assert_int_equal(7, ctx->search_paths.count);
     /* middle */
-    assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdirs(ctx, TESTS_SRC));
+    assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdir(ctx, TESTS_SRC));
     assert_int_equal(6, ctx->search_paths.count);
     /* last */
-    assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdirs(ctx, "/home"));
+    assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdir(ctx, "/home"));
     assert_int_equal(5, ctx->search_paths.count);
     /* all */
-    assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdirs(ctx, NULL));
+    assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdir(ctx, NULL));
     assert_int_equal(0, ctx->search_paths.count);
 
     /* again - no change */
-    assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdirs(ctx, NULL));
+    assert_int_equal(LY_SUCCESS, ly_ctx_unset_searchdir(ctx, NULL));
 
     /* cleanup */
     ly_ctx_destroy(ctx, NULL);
