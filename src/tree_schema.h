@@ -41,6 +41,8 @@ struct ly_set;
  * Data structures and functions to manipulate and access schema tree.
  */
 
+/* *INDENT-OFF* */
+
 /**
  * @brief Macro to iterate via all elements in a schema tree which can be instantiated in data tree
  * (skips cases, input, output). This is the opening part to the #LYSC_TREE_DFS_END - they always have to be used together.
@@ -124,6 +126,8 @@ struct ly_set;
             (LYSC_TREE_DFS_next) = (ELEM)->next; \
         } \
     } } \
+
+/* *INDENT-ON* */
 
 #define LY_REV_SIZE 11   /**< revision data string length (including terminating NULL byte) */
 

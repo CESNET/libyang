@@ -61,6 +61,8 @@ struct lysc_node;
  */
 #define LYD_PARENT(node) ((struct lyd_node *)(node)->parent)
 
+/* *INDENT-OFF* */
+
 /**
  * @brief Macro to iterate via all elements in a data tree. This is the opening part
  * to the #LYD_TREE_DFS_END - they always have to be used together.
@@ -132,6 +134,8 @@ struct lysc_node;
         } \
         (LYD_TREE_DFS_next) = (ELEM)->next; \
     } } \
+
+/* *INDENT-ON* */
 
 /**
  * @brief Macro to get context from a data tree node.
