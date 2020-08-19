@@ -1421,6 +1421,8 @@ lysp_match_kw(struct lys_yang_parser_ctx *ctx, struct ly_in *in)
  * @param[in] CTX yang parser context to update its indent value.
  * @param[in,out] IN input to move
  * @param[in] COUNT number of items for which the DATA pointer is supposed to move on.
+ *
+ * *INDENT-OFF*
  */
 #define MOVE_IN(CTX, IN, COUNT) ly_in_skip(IN, COUNT);if(CTX){(CTX)->indent+=COUNT;}
 #define IF_KW(STR, LEN, STMT) if (!strncmp(in->current, STR, LEN)) {MOVE_IN(ctx, in, LEN);*kw=STMT;}
@@ -1620,6 +1622,7 @@ lysp_match_kw(struct lys_yang_parser_ctx *ctx, struct ly_in *in)
 #undef IF_KW_PREFIX
 #undef IF_KW_PREFIX_END
 #undef MOVE_IN
+    /* *INDENT-ON* */
 
     return result;
 }
