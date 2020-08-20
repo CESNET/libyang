@@ -673,7 +673,7 @@ static LY_ERR
 lyb_print_term(struct lyd_node_term *term, struct ly_out *out, struct lylyb_ctx *lybctx)
 {
     /* print the value */
-    return lyb_write_string(LYD_CANONICAL(term), 0, 0, out, lybctx);
+    return lyb_write_string(LYD_CANON_VALUE(term), 0, 0, out, lybctx);
 }
 
 /**
@@ -942,7 +942,7 @@ lyb_print_data(struct ly_out *out, const struct lyd_node *root, int options)
     struct hash_table *top_sibling_ht = NULL;
     const struct lys_module *prev_mod = NULL;
     struct lyd_lyb_ctx *lybctx;
-    const struct ly_ctx *ctx = root ? LYD_NODE_CTX(root) : NULL;
+    const struct ly_ctx *ctx = root ? LYD_CTX(root) : NULL;
 
     lybctx = calloc(1, sizeof *lybctx);
     LY_CHECK_ERR_RET(!lybctx, LOGMEM(ctx), LY_EMEM);

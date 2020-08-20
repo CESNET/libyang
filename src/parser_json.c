@@ -1798,7 +1798,7 @@ lyd_parse_json_reply(const struct lyd_node *request, struct ly_in *in, struct ly
     enum LYJSON_PARSER_STATUS status;
 
     /* init */
-    ret = lyd_parse_json_init(LYD_NODE_CTX(request), in, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &lydctx);
+    ret = lyd_parse_json_init(LYD_CTX(request), in, LYD_PARSE_ONLY | LYD_PARSE_STRICT, 0, &lydctx);
     LY_CHECK_GOTO(ret || !lydctx, cleanup);
     lydctx->int_opts = LYD_INTOPT_REPLY;
 
@@ -1810,7 +1810,7 @@ lyd_parse_json_reply(const struct lyd_node *request, struct ly_in *in, struct ly
         LYD_TREE_DFS_END(request, req_op);
     }
     if (!(req_op->schema->nodetype & (LYS_RPC | LYS_ACTION))) {
-        LOGERR(LYD_NODE_CTX(request), LY_EINVAL, "No RPC/action in the request found.");
+        LOGERR(LYD_CTX(request), LY_EINVAL, "No RPC/action in the request found.");
         ret = LY_EINVAL;
         goto cleanup;
     }

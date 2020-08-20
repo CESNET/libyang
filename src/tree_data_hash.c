@@ -66,7 +66,7 @@ lyd_hash(struct lyd_node *node)
         if (!(node->schema->flags & LYS_KEYLESS)) {
             /* list's hash is made of its keys */
             for (iter = list->child; iter && (iter->schema->flags & LYS_KEY); iter = iter->next) {
-                const char *value = LYD_CANONICAL(iter);
+                const char *value = LYD_CANON_VALUE(iter);
                 node->hash = dict_hash_multi(node->hash, value, strlen(value));
             }
         } else {
@@ -74,7 +74,7 @@ lyd_hash(struct lyd_node *node)
             lyd_hash_keyless_list_dfs(list->child, &node->hash);
         }
     } else if (node->schema->nodetype == LYS_LEAFLIST) {
-        const char *value = LYD_CANONICAL(node);
+        const char *value = LYD_CANON_VALUE(node);
         node->hash = dict_hash_multi(node->hash, value, strlen(value));
     }
     /* finish the hash */
@@ -128,7 +128,7 @@ lyd_insert_hash_add(struct hash_table *ht, struct lyd_node *node, int empty_ht)
 
     /* add node itself */
     if (lyht_insert(ht, &node, node->hash, NULL)) {
-        LOGINT(LYD_NODE_CTX(node));
+        LOGINT(LYD_CTX(node));
         return LY_EINT;
     }
 
@@ -143,14 +143,14 @@ lyd_insert_hash_add(struct hash_table *ht, struct lyd_node *node, int empty_ht)
         /* remove any previous stored instance, only if we did not start with an empty HT */
         if (!empty_ht && node->next && (node->next->schema == node->schema)) {
             if (lyht_remove(ht, &node->next, hash)) {
-                LOGINT(LYD_NODE_CTX(node));
+                LOGINT(LYD_CTX(node));
                 return LY_EINT;
             }
         }
 
         /* insert this instance as the first (leaf-)list instance */
         if (lyht_insert(ht, &node, hash, NULL)) {
-            LOGINT(LYD_NODE_CTX(node));
+            LOGINT(LYD_CTX(node));
             return LY_EINT;
         }
     }
@@ -208,7 +208,7 @@ lyd_unlink_hash(struct lyd_node *node)
 
     /* remove from the parent HT */
     if (lyht_remove(node->parent->children_ht, &node, node->hash)) {
-        LOGINT(LYD_NODE_CTX(node));
+        LOGINT(LYD_CTX(node));
         return;
     }
 
@@ -221,14 +221,14 @@ lyd_unlink_hash(struct lyd_node *node)
 
         /* remove the instance */
         if (lyht_remove(node->parent->children_ht, &node, hash)) {
-            LOGINT(LYD_NODE_CTX(node));
+            LOGINT(LYD_CTX(node));
             return;
         }
 
         /* add the next instance */
         if (node->next && (node->next->schema == node->schema)) {
             if (lyht_insert(node->parent->children_ht, &node->next, hash, NULL)) {
-                LOGINT(LYD_NODE_CTX(node));
+                LOGINT(LYD_CTX(node));
                 return;
             }
         }

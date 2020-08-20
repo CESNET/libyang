@@ -976,7 +976,7 @@ lyd_parse_xml_reply(const struct lyd_node *request, struct ly_in *in, struct lyd
     struct lyd_node *rpcr_e = NULL, *tree, *req_op, *rep_op = NULL;
 
     /* init */
-    LY_CHECK_GOTO(ret = lyxml_ctx_new(LYD_NODE_CTX(request), in, &lydctx.xmlctx), cleanup);
+    LY_CHECK_GOTO(ret = lyxml_ctx_new(LYD_CTX(request), in, &lydctx.xmlctx), cleanup);
     lydctx.parse_options = LYD_PARSE_ONLY | LYD_PARSE_STRICT;
     lydctx.int_opts = LYD_INTOPT_REPLY;
 
@@ -988,7 +988,7 @@ lyd_parse_xml_reply(const struct lyd_node *request, struct ly_in *in, struct lyd
         LYD_TREE_DFS_END(request, req_op);
     }
     if (!(req_op->schema->nodetype & (LYS_RPC | LYS_ACTION))) {
-        LOGERR(LYD_NODE_CTX(request), LY_EINVAL, "No RPC/action in the request found.");
+        LOGERR(LYD_CTX(request), LY_EINVAL, "No RPC/action in the request found.");
         ret = LY_EINVAL;
         goto cleanup;
     }
@@ -1010,7 +1010,7 @@ lyd_parse_xml_reply(const struct lyd_node *request, struct ly_in *in, struct lyd
     if (rpcr_e) {
         if (lydctx.xmlctx->status != LYXML_ELEM_CLOSE) {
             assert(lydctx.xmlctx->status == LYXML_ELEMENT);
-            LOGVAL(LYD_NODE_CTX(request), LY_VLOG_LINE, &lydctx.xmlctx->line, LYVE_SYNTAX,
+            LOGVAL(LYD_CTX(request), LY_VLOG_LINE, &lydctx.xmlctx->line, LYVE_SYNTAX,
                    "Unexpected sibling element \"%.*s\" of \"rpc-reply\".", lydctx.xmlctx->name_len, lydctx.xmlctx->name);
             ret = LY_EVALID;
             goto cleanup;

@@ -1106,7 +1106,7 @@ lyd_parse_lyb_reply(const struct lyd_node *request, struct ly_in *in, struct lyd
 {
     LY_ERR ret;
     struct lyd_node *req_op, *rep_op = NULL;
-    const struct ly_ctx *ctx = LYD_NODE_CTX(request);
+    const struct ly_ctx *ctx = LYD_CTX(request);
 
     /* find request OP */
     LYD_TREE_DFS_BEGIN((struct lyd_node *)request, req_op) {
@@ -1116,7 +1116,7 @@ lyd_parse_lyb_reply(const struct lyd_node *request, struct ly_in *in, struct lyd
         LYD_TREE_DFS_END(request, req_op);
     }
     if (!(req_op->schema->nodetype & (LYS_RPC | LYS_ACTION))) {
-        LOGERR(LYD_NODE_CTX(request), LY_EINVAL, "No RPC/action in the request found.");
+        LOGERR(LYD_CTX(request), LY_EINVAL, "No RPC/action in the request found.");
         return LY_EINVAL;
     }
 

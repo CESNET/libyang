@@ -188,7 +188,7 @@ lyd_parse_check_keys(struct lyd_node *node)
     key = lyd_node_children(node, 0);
     while ((skey = lys_getnext(skey, node->schema, NULL, 0)) && (skey->flags & LYS_KEY)) {
         if (!key || (key->schema != skey)) {
-            LOGVAL(LYD_NODE_CTX(node), LY_VLOG_LYD, node, LY_VCODE_NOKEY, skey->name);
+            LOGVAL(LYD_CTX(node), LY_VLOG_LYD, node, LY_VCODE_NOKEY, skey->name);
             return LY_EVALID;
         }
 
@@ -256,7 +256,7 @@ lyd_any_copy_value(struct lyd_node *trg, const union lyd_any_value *value, LYD_A
     case LYD_ANYDATA_STRING:
     case LYD_ANYDATA_XML:
     case LYD_ANYDATA_JSON:
-        FREE_STRING(LYD_NODE_CTX(trg), t->value.str);
+        FREE_STRING(LYD_CTX(trg), t->value.str);
         break;
     case LYD_ANYDATA_LYB:
         free(t->value.mem);
@@ -281,7 +281,7 @@ lyd_any_copy_value(struct lyd_node *trg, const union lyd_any_value *value, LYD_A
     case LYD_ANYDATA_XML:
     case LYD_ANYDATA_JSON:
         if (value->str) {
-            t->value.str = lydict_insert(LYD_NODE_CTX(trg), value->str, 0);
+            t->value.str = lydict_insert(LYD_CTX(trg), value->str, 0);
         }
         break;
     case LYD_ANYDATA_LYB:
@@ -289,7 +289,7 @@ lyd_any_copy_value(struct lyd_node *trg, const union lyd_any_value *value, LYD_A
             len = lyd_lyb_data_length(value->mem);
             LY_CHECK_RET(len == -1, LY_EINVAL);
             t->value.mem = malloc(len);
-            LY_CHECK_ERR_RET(!t->value.mem, LOGMEM(LYD_NODE_CTX(trg)), LY_EMEM);
+            LY_CHECK_ERR_RET(!t->value.mem, LOGMEM(LYD_CTX(trg)), LY_EMEM);
             memcpy(t->value.mem, value->mem, len);
         }
         break;

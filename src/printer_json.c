@@ -166,7 +166,7 @@ node_prefix(const struct lyd_node *node)
         case LYD_LYB:
         case LYD_UNKNOWN:
             /* cannot be created */
-            LOGINT(LYD_NODE_CTX(node));
+            LOGINT(LYD_CTX(node));
         }
     }
 
@@ -455,7 +455,7 @@ json_print_attributes(struct jsonpr_ctx *ctx, const struct lyd_node *node, int i
     if ((node->flags & LYD_DEFAULT) && (ctx->options & (LYD_PRINT_WD_ALL_TAG | LYD_PRINT_WD_IMPL_TAG))) {
         /* we have implicit OR explicit default node */
         /* get with-defaults module */
-        wdmod = ly_ctx_get_module_implemented(LYD_NODE_CTX(node), "ietf-netconf-with-defaults");
+        wdmod = ly_ctx_get_module_implemented(LYD_CTX(node), "ietf-netconf-with-defaults");
     }
 
     if (node->schema && node->meta) {
@@ -863,7 +863,7 @@ json_print_data(struct ly_out *out, const struct lyd_node *root, int options)
     ctx.level = 1;
     ctx.level_printed = 0;
     ctx.options = options;
-    ctx.ctx = LYD_NODE_CTX(root);
+    ctx.ctx = LYD_CTX(root);
 
     /* start */
     ly_print_(ctx.out, "{%s", delimiter);

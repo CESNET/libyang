@@ -136,7 +136,7 @@ struct lysc_node;
 /**
  * @brief Macro to get context from a data tree node.
  */
-#define LYD_NODE_CTX(node) ((node)->schema ? (node)->schema->module->ctx : ((struct lyd_node_opaq *)(node))->ctx)
+#define LYD_CTX(node) ((node)->schema ? (node)->schema->module->ctx : ((struct lyd_node_opaq *)(node))->ctx)
 
 /**
  * @brief Data input/output formats supported by libyang [parser](@ref howtodataparsers) and
@@ -235,7 +235,7 @@ struct lyd_value {
  * @param[in] node Term node with the value.
  * @return Canonical value.
  */
-#define LYD_CANONICAL(node) ((struct lyd_node_term *)(node))->value.canonical
+#define LYD_CANON_VALUE(node) ((struct lyd_node_term *)(node))->value.canonical
 
 /**
  * @brief Metadata structure.
