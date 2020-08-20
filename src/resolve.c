@@ -7438,10 +7438,10 @@ resolve_unres_schema(struct lys_module *mod, struct unres_schema *unres)
         return -1;
     }
 
-    /* another batch of resolved items */
+    /* another batch of resolved items (UNRES_MOD_IMPLEMENT must be set again because it can be added again) */
     if (resolve_unres_schema_types(unres, UNRES_TYPE_IDENTREF | UNRES_FEATURE | UNRES_TYPEDEF_DFLT | UNRES_TYPE_DFLT
-                                   | UNRES_TYPE_LEAFREF | UNRES_LIST_KEYS | UNRES_LIST_UNIQ | UNRES_EXT, mod->ctx, 1, 0,
-                                   &resolved)) {
+                                   | UNRES_TYPE_LEAFREF | UNRES_LIST_KEYS | UNRES_LIST_UNIQ | UNRES_EXT | UNRES_MOD_IMPLEMENT,
+                                   mod->ctx, 1, 0, &resolved)) {
         return -1;
     }
 
