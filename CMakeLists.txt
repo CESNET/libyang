@@ -198,7 +198,6 @@ set(resrc
     tools/re/main.c)
 
 set(headers
-    src/version.h
     src/libyang.h
     src/context.h
     src/dict.h
@@ -259,7 +258,7 @@ include_directories(${PCRE2_INCLUDE_DIRS})
 target_link_libraries(yang ${PCRE2_LIBRARIES})
 
 install(TARGETS yang DESTINATION ${CMAKE_INSTALL_LIBDIR})
-install(FILES ${headers} ${PROJECT_BINARY_DIR}/src/config.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libyang)
+install(FILES ${headers} ${PROJECT_BINARY_DIR}/src/version.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libyang)
 
 find_package(PkgConfig)
 if(PKG_CONFIG_FOUND)
@@ -292,7 +291,7 @@ if(DOXYGEN_FOUND)
     add_custom_target(doc
             COMMAND ${DOXYGEN_EXECUTABLE} ${CMAKE_BINARY_DIR}/Doxyfile
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
-    string(REPLACE ";" " " DOXY_HEADERS "${headers}")
+    string(REPLACE ";" " " DOXY_HEADERS "${headers};${PROJECT_BINARY_DIR}/src/version.h")
     configure_file(Doxyfile.in Doxyfile)
 endif()
 
