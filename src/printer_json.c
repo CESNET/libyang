@@ -17,7 +17,6 @@
 #include <string.h>
 
 #include "common.h"
-#include "config.h"
 #include "log.h"
 #include "parser_data.h"
 #include "plugins_types.h"

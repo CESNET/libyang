@@ -29,7 +29,6 @@
 
 #include "common.h"
 #include "compat.h"
-#include "config.h"
 #include "context.h"
 #include "dict.h"
 #include "diff.h"

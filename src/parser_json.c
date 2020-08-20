@@ -20,7 +20,6 @@
 
 #include "common.h"
 #include "compat.h"
-#include "config.h"
 #include "context.h"
 #include "json.h"
 #include "parser_internal.h"

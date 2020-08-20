@@ -1,9 +1,9 @@
 /**
- * @file config.h
+ * @file version.h
  * @author Radek Krejci <rkrejci@cesnet.cz>
- * @brief various variables detected by cmake
+ * @brief libyang version definitions
  *
- * Copyright (c) 2015 - 2018 CESNET, z.s.p.o.
+ * Copyright (c) 2020 CESNET, z.s.p.o.
  *
  * This source code is licensed under BSD 3-Clause License (the "License").
  * You may not use this file except in compliance with the License.
@@ -12,22 +12,12 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-#ifndef LY_CONFIG_H_
-#define LY_CONFIG_H_
-
-/**
- * @brief Compiler flag for unused function attributes
- */
-#define UNUSED(x) @COMPILER_UNUSED_ATTR@
-
-/**
- * @brief Compiler flag for packed data types.
- */
-#define _PACKED @COMPILER_PACKED_ATTR@
+#ifndef LY_VERSION_H_
+#define LY_VERSION_H_
 
 #define LY_VERSION_MAJOR @LIBYANG_MAJOR_SOVERSION@ /**< libyang major version number */
 #define LY_VERSION_MINOR @LIBYANG_MINOR_SOVERSION@ /**< libyang minor version number */
 #define LY_VERSION_MICRO @LIBYANG_MICRO_SOVERSION@ /**< libyang micro version number */
 #define LY_VERSION "@LIBYANG_SOVERSION_FULL@" /**< libyang version string */
 
-#endif /* LY_CONFIG_H_ */
+#endif /* LY_VERSION_H_ */

@@ -23,7 +23,6 @@
 
 #include "common.h"
 #include "compat.h"
-#include "config.h"
 #include "context.h"
 #include "hash_table.h"
 #include "log.h"

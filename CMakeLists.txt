@@ -125,7 +125,7 @@ set(CMAKE_C_FLAGS_DEBUG          "-g3 -O0")
 set(CMAKE_C_FLAGS_ABICHECK       "-g -Og")
 
 include_directories(${PROJECT_BINARY_DIR}/src ${PROJECT_SOURCE_DIR}/src)
-configure_file(${PROJECT_SOURCE_DIR}/src/config.h.in ${PROJECT_BINARY_DIR}/src/config.h @ONLY)
+configure_file(${PROJECT_SOURCE_DIR}/src/version.h.in ${PROJECT_BINARY_DIR}/src/version.h @ONLY)
 
 #set(EXTENSIONS_PLUGINS_DIR_MACRO "${PLUGINS_DIR}/extensions")
 #set(USER_TYPES_PLUGINS_DIR_MACRO "${PLUGINS_DIR}/user_types")
@@ -198,6 +198,7 @@ set(resrc
     tools/re/main.c)
 
 set(headers
+    src/version.h
     src/libyang.h
     src/context.h
     src/dict.h

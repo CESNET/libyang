@@ -37,6 +37,14 @@
 #  endif
 #endif
 
+#if (@CMAKE_C_COMPILER_ID@ == GNU) || (@CMAKE_C_COMPILER_ID@ == Clang)
+# define UNUSED(x) UNUSED_ ## x __attribute__((__unused__))
+# define _PACKED __attribute__((__packed__))
+#else
+# define UNUSED(x) UNUSED_ ## x
+# define _PACKED
+#endif
+
 #cmakedefine HAVE_VDPRINTF
 #cmakedefine HAVE_ASPRINTF
 #cmakedefine HAVE_VASPRINTF

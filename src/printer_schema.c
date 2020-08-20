@@ -17,8 +17,8 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#include "compat.h"
 #include "common.h"
-#include "config.h"
 #include "log.h"
 #include "printer.h"
 #include "printer_internal.h"

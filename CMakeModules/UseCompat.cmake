@@ -21,8 +21,8 @@ macro(USE_COMPAT)
     TEST_BIG_ENDIAN(IS_BIG_ENDIAN)
 
     # header and object file
-    configure_file(${PROJECT_SOURCE_DIR}/compat/compat.h.in ${PROJECT_BINARY_DIR}/compat.h @ONLY)
-    include_directories(${PROJECT_BINARY_DIR})
+    configure_file(${PROJECT_SOURCE_DIR}/compat/compat.h.in ${PROJECT_BINARY_DIR}/compat/compat.h @ONLY)
+    include_directories(${PROJECT_BINARY_DIR}/compat)
     add_library(compat OBJECT ${PROJECT_SOURCE_DIR}/compat/compat.c)
     set_property(TARGET compat PROPERTY POSITION_INDEPENDENT_CODE ON)
 endmacro()

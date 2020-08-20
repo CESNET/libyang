@@ -20,7 +20,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "config.h"
+#include "compat.h"
 #include "log.h"
 
 /**

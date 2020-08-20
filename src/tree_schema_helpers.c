@@ -21,8 +21,8 @@
 #include <string.h>
 #include <time.h>
 
+#include "compat.h"
 #include "common.h"
-#include "config.h"
 #include "context.h"
 #include "hash_table.h"
 #include "log.h"

@@ -18,7 +18,7 @@
 #include <stdint.h>
 #include <stddef.h>
 
-#include "config.h"
+#include "compat.h"
 #include "log.h"
 #include "plugins_types.h"
 #include "tree_schema.h"

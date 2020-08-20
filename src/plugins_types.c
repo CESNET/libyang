@@ -25,7 +25,6 @@
 
 #include "common.h"
 #include "compat.h"
-#include "config.h"
 #include "dict.h"
 #include "path.h"
 #include "set.h"

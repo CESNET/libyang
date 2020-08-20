@@ -19,8 +19,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "config.h"
-
 #include "context.h"
 #include "dict.h"
 #include "hash_table.h"
