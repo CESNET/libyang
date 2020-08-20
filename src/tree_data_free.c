@@ -175,11 +175,11 @@ lyd_free_subtree(struct lyd_node *node, int top)
             lyd_free_subtree(iter, 0);
         }
 
-        FREE_STRING(LYD_NODE_CTX(opaq), opaq->name);
-        FREE_STRING(LYD_NODE_CTX(opaq), opaq->prefix.id);
-        FREE_STRING(LYD_NODE_CTX(opaq), opaq->prefix.module_ns);
-        ly_free_val_prefs(LYD_NODE_CTX(opaq), opaq->val_prefs);
-        FREE_STRING(LYD_NODE_CTX(opaq), opaq->value);
+        FREE_STRING(LYD_CTX(opaq), opaq->name);
+        FREE_STRING(LYD_CTX(opaq), opaq->prefix.id);
+        FREE_STRING(LYD_CTX(opaq), opaq->prefix.module_ns);
+        ly_free_val_prefs(LYD_CTX(opaq), opaq->val_prefs);
+        FREE_STRING(LYD_CTX(opaq), opaq->value);
     } else if (node->schema->nodetype & LYD_NODE_INNER) {
         /* remove children hash table in case of inner data node */
         lyht_free(((struct lyd_node_inner *)node)->children_ht);
@@ -194,11 +194,11 @@ lyd_free_subtree(struct lyd_node *node, int top)
         /* only frees the value this way */
         lyd_any_copy_value(node, NULL, 0);
     } else if (node->schema->nodetype & LYD_NODE_TERM) {
-        ((struct lysc_node_leaf *)node->schema)->type->plugin->free(LYD_NODE_CTX(node), &((struct lyd_node_term *)node)->value);
+        ((struct lysc_node_leaf *)node->schema)->type->plugin->free(LYD_CTX(node), &((struct lyd_node_term *)node)->value);
     }
 
     if (!node->schema) {
-        ly_free_attr_siblings(LYD_NODE_CTX(node), opaq->attr);
+        ly_free_attr_siblings(LYD_CTX(node), opaq->attr);
     } else {
         /* free the node's metadata */
         lyd_free_meta_siblings(node->meta);

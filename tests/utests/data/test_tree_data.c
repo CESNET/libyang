@@ -299,8 +299,8 @@ test_target(void **state)
     term = lyd_target(path, tree);
 
     assert_string_equal(term->schema->name, "d");
-    assert_string_equal(LYD_CANONICAL(term), "b");
-    assert_string_equal(LYD_CANONICAL(term->prev), "b");
+    assert_string_equal(LYD_CANON_VALUE(term), "b");
+    assert_string_equal(LYD_CANON_VALUE(term->prev), "b");
 
     lyd_free_all(tree);
     ly_path_free(ctx, path);

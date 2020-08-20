@@ -372,7 +372,7 @@ no_content:
             prev_lo = ly_log_options(0);
 
             /* try to parse it into a data tree */
-            if (lyd_parse_data_mem((struct ly_ctx *)LYD_NODE_CTX(node), any->value.mem, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_OPAQ | LYD_PARSE_STRICT, 0, &iter) == LY_SUCCESS) {
+            if (lyd_parse_data_mem((struct ly_ctx *)LYD_CTX(node), any->value.mem, LYD_LYB, LYD_PARSE_ONLY | LYD_PARSE_OPAQ | LYD_PARSE_STRICT, 0, &iter) == LY_SUCCESS) {
                 /* successfully parsed */
                 free(any->value.mem);
                 any->value.tree = iter;
@@ -418,7 +418,7 @@ no_content:
         case LYD_ANYDATA_JSON:
         case LYD_ANYDATA_LYB:
             /* JSON and LYB format is not supported */
-            LOGWRN(LYD_NODE_CTX(node), "Unable to print anydata content (type %d) as XML.", any->value_type);
+            LOGWRN(LYD_CTX(node), "Unable to print anydata content (type %d) as XML.", any->value_type);
             goto no_content;
         }
 
@@ -550,7 +550,7 @@ xml_print_data(struct ly_out *out, const struct lyd_node *root, int options)
     ctx.out = out;
     ctx.level = (options & LYD_PRINT_FORMAT ? 1 : 0);
     ctx.options = options;
-    ctx.ctx = LYD_NODE_CTX(root);
+    ctx.ctx = LYD_CTX(root);
 
     /* content */
     LY_LIST_FOR(root, node) {
