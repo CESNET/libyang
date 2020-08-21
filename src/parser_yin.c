@@ -107,48 +107,64 @@ yin_match_argument_name(const char *name, size_t len)
     size_t already_read = 0;
     LY_CHECK_RET(len == 0, YIN_ARG_NONE);
 
-#define IF_ARG(STR, LEN, STMT) if (!strncmp((name) + already_read, STR, LEN)) {already_read+=LEN;arg=STMT;}
-#define IF_ARG_PREFIX(STR, LEN) if (!strncmp((name) + already_read, STR, LEN)) {already_read+=LEN;
-#define IF_ARG_PREFIX_END }
+#define READ_INC(LEN) already_read += LEN
+#define ARG_SET(STMT) arg=STMT
+#define ARG_CHECK(STR, LEN) (!strncmp((name) + already_read, STR, LEN) && (READ_INC(LEN)))
 
     switch (*name) {
     case 'c':
-        already_read += 1;
-        IF_ARG("ondition", 8, YIN_ARG_CONDITION);
+        READ_INC(1);
+        if (ARG_CHECK("ondition", 8)) {
+            ARG_SET(YIN_ARG_CONDITION);
+        }
         break;
 
     case 'd':
-        already_read += 1;
-        IF_ARG("ate", 3, YIN_ARG_DATE);
+        READ_INC(1);
+        if (ARG_CHECK("ate", 3)) {
+            ARG_SET(YIN_ARG_DATE);
+        }
         break;
 
     case 'm':
-        already_read += 1;
-        IF_ARG("odule", 5, YIN_ARG_MODULE);
+        READ_INC(1);
+        if (ARG_CHECK("odule", 5)) {
+            ARG_SET(YIN_ARG_MODULE);
+        }
         break;
 
     case 'n':
-        already_read += 1;
-        IF_ARG("ame", 3, YIN_ARG_NAME);
+        READ_INC(1);
+        if (ARG_CHECK("ame", 3)) {
+            ARG_SET(YIN_ARG_NAME);
+        }
         break;
 
     case 't':
-        already_read += 1;
-        IF_ARG_PREFIX("a", 1)
-            IF_ARG("g", 1, YIN_ARG_TAG)
-            else IF_ARG("rget-node", 9, YIN_ARG_TARGET_NODE)
-        IF_ARG_PREFIX_END
-        else IF_ARG("ext", 3, YIN_ARG_TEXT)
+        READ_INC(1);
+        if (ARG_CHECK("a", 1)) {
+            if (ARG_CHECK("g", 1)) {
+                ARG_SET(YIN_ARG_TAG);
+            } else if (ARG_CHECK("rget-node", 9)) {
+                ARG_SET(YIN_ARG_TARGET_NODE);
+            }
+        } else if (ARG_CHECK("ext", 3)) {
+            ARG_SET(YIN_ARG_TEXT);
+        }
         break;
 
     case 'u':
-        already_read += 1;
-        IF_ARG("ri", 2, YIN_ARG_URI)
+        READ_INC(1);
+        if (ARG_CHECK("ri", 2)) {
+            ARG_SET(YIN_ARG_URI);
+        }
         break;
 
     case 'v':
-        already_read += 1;
-        IF_ARG("alue", 4, YIN_ARG_VALUE);
+        READ_INC(1);
+        if (ARG_CHECK("alue", 4)) {
+            ARG_SET(YIN_ARG_VALUE);
+        }
         break;
     }
 
@@ -157,9 +173,9 @@ yin_match_argument_name(const char *name, size_t len)
         arg = YIN_ARG_UNKNOWN;
     }
 
-#undef IF_ARG
-#undef IF_ARG_PREFIX
-#undef IF_ARG_PREFIX_END
+#undef ARG_CHECK
+#undef ARG_SET
+#undef READ_INC
 
     return arg;
 }
