@@ -259,7 +259,7 @@ lys_find_node(struct ly_ctx *ctx, const struct lysc_node *context_node, const ch
 
 API const struct lysc_node *
 lys_find_child(const struct lysc_node *parent, const struct lys_module *module, const char *name, size_t name_len,
-               uint16_t nodetype, int options)
+        uint16_t nodetype, int options)
 {
     const struct lysc_node *node = NULL;
 
@@ -379,7 +379,7 @@ cleanup:
 
 char *
 lysc_path_until(const struct lysc_node *node, const struct lysc_node *parent, LYSC_PATH_TYPE pathtype, char *buffer,
-                size_t buflen)
+        size_t buflen)
 {
     const struct lysc_node *iter;
     char *path = NULL;
@@ -877,8 +877,8 @@ lys_resolve_import_include(struct lys_parser_ctx *pctx, struct lysp_module *modp
 
 LY_ERR
 lys_parse_mem_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, struct lys_parser_ctx *main_ctx,
-                        LY_ERR (*custom_check)(const struct ly_ctx*, struct lysp_module*, struct lysp_submodule*, void*),
-                        void *check_data, struct lysp_submodule **submodule)
+        LY_ERR (*custom_check)(const struct ly_ctx*, struct lysp_module*, struct lysp_submodule*, void*),
+        void *check_data, struct lysp_submodule **submodule)
 {
     LY_ERR ret;
     struct lysp_submodule *submod = NULL, *latest_sp;
@@ -963,9 +963,9 @@ error:
 
 LY_ERR
 lys_parse_mem_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, int implement,
-                     LY_ERR (*custom_check)(const struct ly_ctx *ctx, struct lysp_module *mod,
+        LY_ERR (*custom_check)(const struct ly_ctx *ctx, struct lysp_module *mod,
                                             struct lysp_submodule *submod, void *data), void *check_data,
-                     struct lys_module **module)
+        struct lys_module **module)
 {
     struct lys_module *mod = NULL, *latest, *mod_dup;
     LY_ERR ret;
@@ -1183,7 +1183,7 @@ lys_parse(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, const struc
 API LY_ERR
 lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const struct lys_module **module)
 {
-	LY_ERR ret;
+    LY_ERR ret;
     struct ly_in *in = NULL;
 
     LY_CHECK_ARG_RET(ctx, data, format != LYS_IN_UNKNOWN, LY_EINVAL);
@@ -1199,7 +1199,7 @@ lys_parse_mem(struct ly_ctx *ctx, const char *data, LYS_INFORMAT format, const s
 API LY_ERR
 lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, const struct lys_module **module)
 {
-	LY_ERR ret;
+    LY_ERR ret;
     struct ly_in *in = NULL;
 
     LY_CHECK_ARG_RET(ctx, fd > -1, format != LYS_IN_UNKNOWN, LY_EINVAL);
@@ -1215,7 +1215,7 @@ lys_parse_fd(struct ly_ctx *ctx, int fd, LYS_INFORMAT format, const struct lys_m
 API LY_ERR
 lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, const struct lys_module **module)
 {
-	LY_ERR ret;
+    LY_ERR ret;
     struct ly_in *in = NULL;
 
     LY_CHECK_ARG_RET(ctx, path, format != LYS_IN_UNKNOWN, LY_EINVAL);
@@ -1231,7 +1231,7 @@ lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, const 
 
 API LY_ERR
 lys_search_localfile(const char * const *searchpaths, int cwd, const char *name, const char *revision,
-                     char **localfile, LYS_INFORMAT *format)
+        char **localfile, LYS_INFORMAT *format)
 {
     size_t len, flen, match_len = 0, dir_len;
     int i, implicit_cwd = 0, ret = EXIT_FAILURE;
@@ -1344,10 +1344,10 @@ lys_search_localfile(const char * const *searchpaths, int cwd, const char *name,
                 flen = strlen(file->d_name);
                 if (!strcmp(&file->d_name[flen - 5], ".yang")) {
                     format_aux = LYS_IN_YANG;
-                /* TODO YIN parser
-                } else if (!strcmp(&file->d_name[flen - 4], ".yin")) {
-                    format_aux = LYS_IN_YIN;
-                */
+                    /* TODO YIN parser
+                    } else if (!strcmp(&file->d_name[flen - 4], ".yin")) {
+                        format_aux = LYS_IN_YIN;
+                    */
                 } else {
                     /* not supportde suffix/file format */
                     continue;
@@ -1420,4 +1420,3 @@ cleanup:
 
     return ret;
 }
-

@@ -40,7 +40,7 @@ struct ypr_ctx {
 };
 
 static void yprp_extension_instances(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t substmt_index,
-                               struct lysp_ext_instance *ext, int *flag, LY_ARRAY_COUNT_TYPE count);
+        struct lysp_ext_instance *ext, int *flag, LY_ARRAY_COUNT_TYPE count);
 
 static void
 ypr_open(struct ypr_ctx *ctx, const char *elem_name, const char *attr_name, const char *attr_value, int flag)
@@ -1278,8 +1278,7 @@ yprp_stmt(struct ypr_ctx *ctx, struct lysp_stmt *stmt)
         if(stmt_attr_info[stmt->kw].flags & SUBST_FLAG_YIN) {
             ypr_open(ctx, stmt->stmt, NULL, NULL, flag);
             ypr_yin_arg(ctx, stmt_attr_info[stmt->kw].arg, stmt->arg);
-        }
-        else {
+        } else {
             ypr_open(ctx, stmt->stmt, stmt_attr_info[stmt->kw].arg, stmt->arg, flag);
         }
     }
@@ -1299,7 +1298,7 @@ yprp_stmt(struct ypr_ctx *ctx, struct lysp_stmt *stmt)
  */
 static void
 yprp_extension_instances(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t substmt_index,
-                               struct lysp_ext_instance *ext, int *flag, LY_ARRAY_COUNT_TYPE count)
+        struct lysp_ext_instance *ext, int *flag, LY_ARRAY_COUNT_TYPE count)
 {
     LY_ARRAY_COUNT_TYPE u;
     char *str;

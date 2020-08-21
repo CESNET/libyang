@@ -54,6 +54,6 @@ enum lyd_diff_op {
  * @return LY_ERR value.
  */
 LY_ERR lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_default, const char *orig_value,
-                    const char *key, const char *value, const char *orig_key, struct lyd_node **diff);
+        const char *key, const char *value, const char *orig_key, struct lyd_node **diff);
 
 #endif /* LY_DIFF_H_ */

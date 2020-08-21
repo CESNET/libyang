@@ -291,7 +291,7 @@ mem_fail:
 
 static void
 log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE vecode, char *path,
-            const char *format, va_list args)
+        const char *format, va_list args)
 {
     char *msg = NULL;
     int free_strs;
@@ -413,7 +413,7 @@ ly_vlog_build_path(const struct ly_ctx *ctx, enum LY_VLOG_ELEM elem_type, const 
         LY_CHECK_ERR_RET(!(*path), LOGMEM(ctx), LY_EMEM);
         break;
     case LY_VLOG_LINE:
-        rc = asprintf(path, "Line number %"PRIu64".", *((uint64_t*)elem));
+        rc = asprintf(path, "Line number %" PRIu64 ".", *((uint64_t*)elem));
         LY_CHECK_ERR_RET(rc == -1, LOGMEM(ctx), LY_EMEM);
         break;
     case LY_VLOG_LYSC:

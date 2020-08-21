@@ -145,7 +145,7 @@ lyd_print_path(const char *path, const struct lyd_node *root, LYD_FORMAT format,
 
 API LY_ERR
 lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg,
-              const struct lyd_node *root, LYD_FORMAT format, int options)
+        const struct lyd_node *root, LYD_FORMAT format, int options)
 {
     LY_ERR ret;
     struct ly_out *out;

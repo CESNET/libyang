@@ -79,7 +79,7 @@
             ERR = get_keyword(CTX, IN, &KW, &WORD, &WORD_LEN))
 
 LY_ERR parse_container(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_node *parent,
-                       struct lysp_node **siblings);
+        struct lysp_node **siblings);
 LY_ERR parse_uses(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_node *parent, struct lysp_node **siblings);
 LY_ERR parse_choice(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_node *parent, struct lysp_node **siblings);
 LY_ERR parse_case(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_node *parent, struct lysp_node **siblings);
@@ -139,7 +139,7 @@ buf_add_char(struct ly_ctx *ctx, struct ly_in *in, size_t len, char **buf, size_
  */
 LY_ERR
 buf_store_char(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum yang_arg arg, char **word_p, size_t *word_len,
-               char **word_b, size_t *buf_len, int need_buf, int *prefix)
+        char **word_b, size_t *buf_len, int need_buf, int *prefix)
 {
     unsigned int c;
     size_t len;
@@ -290,7 +290,7 @@ skip_comment(struct lys_yang_parser_ctx *ctx, struct ly_in *in, int comment)
  */
 static LY_ERR
 read_qstring(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum yang_arg arg, char **word_p, char **word_b,
-             size_t *word_len, size_t *buf_len)
+        size_t *word_len, size_t *buf_len)
 {
     /* string: 0 - string ended, 1 - string with ', 2 - string with ", 3 - string with " with last character \,
      *         4 - string finished, now skipping whitespaces looking for +,
@@ -448,7 +448,7 @@ read_qstring(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum yang_arg ar
                 break;
             case '\n':
                 ++ctx->line;
-                /* fallthrough */
+            /* fallthrough */
             case ' ':
             case '\t':
                 /* just skip */
@@ -463,7 +463,7 @@ read_qstring(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum yang_arg ar
             switch (in->current[0]) {
             case '\n':
                 ++ctx->line;
-                /* fallthrough */
+            /* fallthrough */
             case ' ':
             case '\t':
                 /* skip */
@@ -511,7 +511,7 @@ string_end:
  */
 LY_ERR
 get_argument(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum yang_arg arg, uint16_t *flags, char **word_p,
-             char **word_b, size_t *word_len)
+        char **word_b, size_t *word_len)
 {
     size_t buf_len = 0;
     int prefix = 0;
@@ -708,7 +708,7 @@ keyword_start:
             if (*kw == LY_STMT_INPUT || *kw == LY_STMT_OUTPUT) {
                 break;
             }
-            /* fallthrough */
+        /* fallthrough */
         default:
             MOVE_INPUT(ctx, in, 1);
             LOGVAL_PARSER(ctx, LY_VCODE_INSTREXP, (int)(in->current - word_start), word_start,
@@ -764,7 +764,7 @@ success:
  */
 static LY_ERR
 parse_ext_substmt(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum ly_stmt kw, char *word, size_t word_len,
-                  struct lysp_stmt **child)
+        struct lysp_stmt **child)
 {
     char *buf;
     LY_ERR ret = LY_SUCCESS;
@@ -817,7 +817,7 @@ parse_ext_substmt(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum ly_stm
  */
 static LY_ERR
 parse_ext(struct lys_yang_parser_ctx *ctx, struct ly_in *in, const char *ext_name, int ext_name_len, LYEXT_SUBSTMT insubstmt,
-          LY_ARRAY_COUNT_TYPE insubstmt_index, struct lysp_ext_instance **exts)
+        LY_ARRAY_COUNT_TYPE insubstmt_index, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -861,7 +861,7 @@ parse_ext(struct lys_yang_parser_ctx *ctx, struct ly_in *in, const char *ext_nam
  */
 static LY_ERR
 parse_text_field(struct lys_yang_parser_ctx *ctx, struct ly_in *in, LYEXT_SUBSTMT substmt, uint32_t substmt_index,
-                 const char **value, enum yang_arg arg, struct lysp_ext_instance **exts)
+        const char **value, enum yang_arg arg, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -1223,7 +1223,7 @@ parse_revision(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_re
  */
 static LY_ERR
 parse_text_fields(struct lys_yang_parser_ctx *ctx, struct ly_in *in, LYEXT_SUBSTMT substmt, const char ***texts, enum yang_arg arg,
-                  struct lysp_ext_instance **exts)
+        struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -1582,7 +1582,7 @@ parse_any(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum ly_stmt kw, st
             break;
         default:
             LOGVAL_PARSER(ctx, LY_VCODE_INCHILDSTMT, ly_stmt2str(kw),
-                   (any->nodetype & LYS_ANYDATA) == LYS_ANYDATA ? ly_stmt2str(LY_STMT_ANYDATA) : ly_stmt2str(LY_STMT_ANYXML));
+                    (any->nodetype & LYS_ANYDATA) == LYS_ANYDATA ? ly_stmt2str(LY_STMT_ANYDATA) : ly_stmt2str(LY_STMT_ANYXML));
             return LY_EVALID;
         }
     }
@@ -1603,7 +1603,7 @@ parse_any(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum ly_stmt kw, st
  */
 LY_ERR
 parse_type_enum_value_pos(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum ly_stmt val_kw, int64_t *value, uint16_t *flags,
-                          struct lysp_ext_instance **exts)
+        struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word, *ptr;
@@ -1815,7 +1815,7 @@ parse_type_fracdigits(struct lys_yang_parser_ctx *ctx, struct ly_in *in, uint8_t
  */
 static LY_ERR
 parse_type_reqinstance(struct lys_yang_parser_ctx *ctx, struct ly_in *in, uint8_t *reqinst, uint16_t *flags,
-                       struct lysp_ext_instance **exts)
+        struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -1865,7 +1865,7 @@ parse_type_reqinstance(struct lys_yang_parser_ctx *ctx, struct ly_in *in, uint8_
  */
 static LY_ERR
 parse_type_pattern_modifier(struct lys_yang_parser_ctx *ctx, struct ly_in *in, const char **pat,
-                            struct lysp_ext_instance **exts)
+        struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word;
@@ -2179,7 +2179,7 @@ checks:
  */
 LY_ERR
 parse_maxelements(struct lys_yang_parser_ctx *ctx, struct ly_in *in, uint32_t *max, uint16_t *flags,
-                  struct lysp_ext_instance **exts)
+        struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word, *ptr;
@@ -2247,7 +2247,7 @@ parse_maxelements(struct lys_yang_parser_ctx *ctx, struct ly_in *in, uint32_t *m
  */
 LY_ERR
 parse_minelements(struct lys_yang_parser_ctx *ctx, struct ly_in *in, uint32_t *min, uint16_t *flags,
-                  struct lysp_ext_instance **exts)
+        struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
     char *buf, *word, *ptr;
@@ -2618,7 +2618,7 @@ parse_inout(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum ly_stmt inou
         switch (kw) {
         case LY_STMT_ANYDATA:
             PARSER_CHECK_STMTVER2_RET(ctx, "anydata", ly_stmt2str(inout_kw));
-            /* fall through */
+        /* fall through */
         case LY_STMT_ANYXML:
             LY_CHECK_RET(parse_any(ctx, in, kw, (struct lysp_node*)inout_p, &inout_p->data));
             break;
@@ -2785,7 +2785,7 @@ parse_notif(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_node 
 
         case LY_STMT_ANYDATA:
             PARSER_CHECK_STMTVER2_RET(ctx, "anydata", "notification");
-            /* fall through */
+        /* fall through */
         case LY_STMT_ANYXML:
             LY_CHECK_RET(parse_any(ctx, in, kw, (struct lysp_node*)notif, &notif->data));
             break;
@@ -2874,7 +2874,7 @@ parse_grouping(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_no
 
         case LY_STMT_ANYDATA:
             PARSER_CHECK_STMTVER2_RET(ctx, "anydata", "grouping");
-            /* fall through */
+        /* fall through */
         case LY_STMT_ANYXML:
             LY_CHECK_RET(parse_any(ctx, in, kw, (struct lysp_node*)grp, &grp->data));
             break;
@@ -2974,7 +2974,7 @@ parse_augment(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_nod
 
         case LY_STMT_ANYDATA:
             PARSER_CHECK_STMTVER2_RET(ctx, "anydata", "augment");
-            /* fall through */
+        /* fall through */
         case LY_STMT_ANYXML:
             LY_CHECK_RET(parse_any(ctx, in, kw, (struct lysp_node*)aug, &aug->child));
             break;
@@ -3139,7 +3139,7 @@ parse_case(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_node *
 
         case LY_STMT_ANYDATA:
             PARSER_CHECK_STMTVER2_RET(ctx, "anydata", "case");
-            /* fall through */
+        /* fall through */
         case LY_STMT_ANYXML:
             LY_CHECK_RET(parse_any(ctx, in, kw, (struct lysp_node*)cas, &cas->child));
             break;
@@ -3229,7 +3229,7 @@ parse_choice(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_node
 
         case LY_STMT_ANYDATA:
             PARSER_CHECK_STMTVER2_RET(ctx, "anydata", "choice");
-            /* fall through */
+        /* fall through */
         case LY_STMT_ANYXML:
             LY_CHECK_RET(parse_any(ctx, in, kw, (struct lysp_node*)choice, &choice->child));
             break;
@@ -3323,7 +3323,7 @@ parse_container(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_n
 
         case LY_STMT_ANYDATA:
             PARSER_CHECK_STMTVER2_RET(ctx, "anydata", "container");
-            /* fall through */
+        /* fall through */
         case LY_STMT_ANYXML:
             LY_CHECK_RET(parse_any(ctx, in, kw, (struct lysp_node*)cont, &cont->child));
             break;
@@ -3443,7 +3443,7 @@ parse_list(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_node *
 
         case LY_STMT_ANYDATA:
             PARSER_CHECK_STMTVER2_RET(ctx, "anydata", "list");
-            /* fall through */
+        /* fall through */
         case LY_STMT_ANYXML:
             LY_CHECK_RET(parse_any(ctx, in, kw, (struct lysp_node*)list, &list->child));
             break;
@@ -4143,7 +4143,7 @@ parse_module(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_modu
         /* body */
         case LY_STMT_ANYDATA:
             PARSER_CHECK_STMTVER2_RET(ctx, "anydata", "module");
-            /* fall through */
+        /* fall through */
         case LY_STMT_ANYXML:
             LY_CHECK_RET(parse_any(ctx, in, kw, NULL, &mod->data));
             break;
@@ -4349,7 +4349,7 @@ parse_submodule(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_s
         /* body */
         case LY_STMT_ANYDATA:
             PARSER_CHECK_STMTVER2_RET(ctx, "anydata", "submodule");
-            /* fall through */
+        /* fall through */
         case LY_STMT_ANYXML:
             LY_CHECK_RET(parse_any(ctx, in, kw, NULL, &submod->data));
             break;
@@ -4434,7 +4434,7 @@ checks:
 
 LY_ERR
 yang_parse_submodule(struct lys_yang_parser_ctx **context, struct ly_ctx *ly_ctx, struct lys_parser_ctx *main_ctx,
-                     struct ly_in *in, struct lysp_submodule **submod)
+        struct ly_in *in, struct lysp_submodule **submod)
 {
     LY_ERR ret = LY_SUCCESS;
     char *word;

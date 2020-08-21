@@ -301,8 +301,8 @@ uint16_t ly_ctx_get_module_set_id(const struct ly_ctx *ctx);
  * according to the settings of its mechanism to search for the imported/included schemas.
  */
 typedef LY_ERR (*ly_module_imp_clb)(const char *mod_name, const char *mod_rev, const char *submod_name, const char *sub_rev,
-                                    void *user_data, LYS_INFORMAT *format, const char **module_data,
-                                    void (**free_module_data)(void *model_data, void *user_data));
+        void *user_data, LYS_INFORMAT *format, const char **module_data,
+        void (**free_module_data)(void *model_data, void *user_data));
 
 /**
  * @brief Get the custom callback for missing import/include module retrieval.
@@ -411,7 +411,7 @@ struct lys_module *ly_ctx_get_module_implemented_ns(const struct ly_ctx *ctx, co
  * @return Found schema node or NULL.
  */
 const struct lysc_node *ly_ctx_get_node(const struct ly_ctx *ctx, const struct lysc_node *ctx_node,
-                                        const char *data_path, int output);
+        const char *data_path, int output);
 
 /**
  * @brief Reset cached latest revision information of the schemas in the context.

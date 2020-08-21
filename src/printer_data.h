@@ -133,7 +133,7 @@ LY_ERR lyd_print_path(const char *path, const struct lyd_node *root, LYD_FORMAT 
  * @return LY_ERR value.
  */
 LY_ERR lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg,
-                     const struct lyd_node *root, LYD_FORMAT format, int options);
+        const struct lyd_node *root, LYD_FORMAT format, int options);
 
 #ifdef __cplusplus
 }

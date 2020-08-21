@@ -26,7 +26,7 @@
 
 API LY_ERR
 lys_print_module(struct ly_out *out, const struct lys_module *module, LYS_OUTFORMAT format, int UNUSED(line_length),
-                 int options)
+        int options)
 {
     LY_ERR ret;
 
@@ -82,7 +82,7 @@ lys_print_module(struct ly_out *out, const struct lys_module *module, LYS_OUTFOR
 
 API LY_ERR
 lys_print_submodule(struct ly_out *out, const struct lys_module *module, const struct lysp_submodule *submodule,
-                    LYS_OUTFORMAT format, int UNUSED(line_length), int options)
+        LYS_OUTFORMAT format, int UNUSED(line_length), int options)
 {
     LY_ERR ret;
 
@@ -177,7 +177,7 @@ lys_print_path(const char *path, const struct lys_module *module, LYS_OUTFORMAT 
 
 API LY_ERR
 lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg,
-              const struct lys_module *module, LYS_OUTFORMAT format, int options)
+        const struct lys_module *module, LYS_OUTFORMAT format, int options)
 {
     struct ly_out *out;
 
@@ -217,4 +217,3 @@ lys_print_node(struct ly_out *out, const struct lysc_node *node, LYS_OUTFORMAT f
 
     return ret;
 }
-

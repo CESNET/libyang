@@ -103,8 +103,8 @@ annotation_free(struct ly_ctx *ctx, struct lysc_ext_instance *ext)
     annotation_substmt[2].storage = &annotation->flags;
     annotation_substmt[3].storage = &annotation->type;
 
-   lysc_extension_instance_free(ctx, annotation_substmt);
-   free(ext->data);
+    lysc_extension_instance_free(ctx, annotation_substmt);
+    free(ext->data);
 }
 
 /**

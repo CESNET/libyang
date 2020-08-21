@@ -82,8 +82,8 @@ struct lyd_node **lyd_node_children_p(struct lyd_node *node);
  * @return NULL if last data node was already returned.
  */
 struct lyd_node *lys_getnext_data(const struct lyd_node *last, const struct lyd_node *sibling,
-                                  const struct lysc_node **slast, const struct lysc_node *parent,
-                                  const struct lysc_module *module);
+        const struct lysc_node **slast, const struct lysc_node *parent,
+        const struct lysc_module *module);
 
 /**
  * @brief Create a term (leaf/leaf-list) node from a string value.
@@ -103,7 +103,7 @@ struct lyd_node *lys_getnext_data(const struct lyd_node *last, const struct lyd_
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_create_term(const struct lysc_node *schema, const char *value, size_t value_len, int *dynamic, int value_hint,
-                       LY_PREFIX_FORMAT format, void *prefix_data, struct lyd_node **node);
+        LY_PREFIX_FORMAT format, void *prefix_data, struct lyd_node **node);
 
 /**
  * @brief Create a term (leaf/leaf-list) node from a parsed value by duplicating it.
@@ -158,7 +158,7 @@ LY_ERR lyd_create_list(const struct lysc_node *schema, const struct ly_path_pred
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANYDATA_VALUETYPE value_type,
-                      struct lyd_node **node);
+        struct lyd_node **node);
 
 /**
  * @brief Create an opaque node.
@@ -181,8 +181,8 @@ LY_ERR lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANY
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_create_opaq(const struct ly_ctx *ctx, const char *name, size_t name_len, const char *value, size_t value_len,
-                       int *dynamic, int value_hint, LYD_FORMAT format, struct ly_prefix *val_prefs, const char *prefix,
-                       size_t pref_len, const char *module_key, size_t module_key_len, struct lyd_node **node);
+        int *dynamic, int value_hint, LYD_FORMAT format, struct ly_prefix *val_prefs, const char *prefix,
+        size_t pref_len, const char *module_key, size_t module_key_len, struct lyd_node **node);
 
 /**
  * @brief Check the existence and create any non-existing implicit siblings, recursively for the created nodes.
@@ -198,8 +198,8 @@ LY_ERR lyd_create_opaq(const struct ly_ctx *ctx, const char *name, size_t name_l
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struct lysc_node *sparent,
-                          const struct lys_module *mod, struct ly_set *node_types, struct ly_set *node_when,
-                          int impl_opts, struct lyd_node **diff);
+        const struct lys_module *mod, struct ly_set *node_types, struct ly_set *node_when,
+        int impl_opts, struct lyd_node **diff);
 
 /**
  * @brief Find the next node, before which to insert the new node.
@@ -248,8 +248,8 @@ void lyd_insert_meta(struct lyd_node *parent, struct lyd_meta *meta);
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct lys_module *mod, const char *name,
-                       size_t name_len, const char *value, size_t value_len, int *dynamic, int value_hint,
-                       LY_PREFIX_FORMAT format, void *prefix_data, const struct lysc_node *ctx_snode);
+        size_t name_len, const char *value, size_t value_len, int *dynamic, int value_hint,
+        LY_PREFIX_FORMAT format, void *prefix_data, const struct lysc_node *ctx_snode);
 
 /**
  * @brief Insert an attribute (last) into a parent
@@ -281,8 +281,8 @@ void lyd_insert_attr(struct lyd_node *parent, struct lyd_attr *attr);
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const struct ly_ctx *ctx, const char *name,
-                       size_t name_len, const char *value, size_t value_len, int *dynamic, int value_hint, LYD_FORMAT format,
-                       struct ly_prefix *val_prefs, const char *prefix, size_t prefix_len, const char *module_key, size_t module_key_len);
+        size_t name_len, const char *value, size_t value_len, int *dynamic, int value_hint, LYD_FORMAT format,
+        struct ly_prefix *val_prefs, const char *prefix, size_t prefix_len, const char *module_key, size_t module_key_len);
 
 /**
  * @defgroup lydvalueparseopts Hint options for type plugin callbacks from the data parsers.
@@ -316,11 +316,11 @@ LY_ERR lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const st
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len, int *dynamic, int second, int value_hint,
-                       LY_PREFIX_FORMAT format, void *prefix_data, const struct lyd_node *tree);
+        LY_PREFIX_FORMAT format, void *prefix_data, const struct lyd_node *tree);
 
 /* similar to lyd_value_parse except can be used just to store the value, hence does also not support a second call */
 LY_ERR lyd_value_store(struct lyd_value *val, const struct lysc_node *schema, const char *value, size_t value_len,
-                       int *dynamic, LY_PREFIX_FORMAT format, void *prefix_data);
+        int *dynamic, LY_PREFIX_FORMAT format, void *prefix_data);
 
 /**
  * @brief Validate, canonize and store the given @p value into the metadata according to the annotation type's rules.
@@ -343,12 +343,12 @@ LY_ERR lyd_value_store(struct lyd_value *val, const struct lysc_node *schema, co
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_value_parse_meta(const struct ly_ctx *ctx, struct lyd_meta *meta, const char *value, size_t value_len,
-                            int *dynamic, int second, int value_hint, LY_PREFIX_FORMAT format, void *prefix_data,
-                            const struct lysc_node *ctx_snode, const struct lyd_node *tree);
+        int *dynamic, int second, int value_hint, LY_PREFIX_FORMAT format, void *prefix_data,
+        const struct lysc_node *ctx_snode, const struct lyd_node *tree);
 
 /* generic function lys_value_validate */
 LY_ERR _lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, const char *value, size_t value_len,
-                           LY_PREFIX_FORMAT format, void *prefix_data);
+        LY_PREFIX_FORMAT format, void *prefix_data);
 
 /**
  * @brief Parse XML string as YANG data tree.
@@ -362,7 +362,7 @@ LY_ERR _lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *nod
  * @return LY_ERR value.
  */
 LY_ERR lyd_parse_xml_data(const struct ly_ctx *ctx, struct ly_in *in, int parse_options, int validate_options,
-                          struct lyd_node **tree_p, struct lyd_ctx **lydctx_p);
+        struct lyd_node **tree_p, struct lyd_ctx **lydctx_p);
 
 /**
  * @brief Parse XML string as YANG RPC/action invocation.
@@ -419,7 +419,7 @@ LY_ERR lyd_parse_xml_reply(const struct lyd_node *request, struct ly_in *in, str
  * @return LY_ERR value.
  */
 LY_ERR lyd_parse_json_data(const struct ly_ctx *ctx, struct ly_in *in, int parse_options, int validate_options,
-                           struct lyd_node **tree_p, struct lyd_ctx **lydctx_p);
+        struct lyd_node **tree_p, struct lyd_ctx **lydctx_p);
 
 /**
  * @brief Parse JSON string as YANG notification.
@@ -475,7 +475,7 @@ LY_ERR lyd_parse_json_reply(const struct lyd_node *request, struct ly_in *in, st
  * @return LY_ERR value.
  */
 LY_ERR lyd_parse_lyb_data(const struct ly_ctx *ctx, struct ly_in *in, int parse_options, int validate_options,
-                          struct lyd_node **tree_p, struct lyd_ctx **lydctx_p);
+        struct lyd_node **tree_p, struct lyd_ctx **lydctx_p);
 
 /**
  * @brief Parse binary data as YANG RPC/action invocation.
@@ -554,7 +554,7 @@ void lyd_unlink_hash(struct lyd_node *node);
  * @return NULL if all modules were traversed.
  */
 const struct lys_module *lyd_mod_next_module(struct lyd_node *tree, const struct lys_module *module,
-                                             const struct ly_ctx *ctx, uint32_t *i, struct lyd_node **first);
+        const struct ly_ctx *ctx, uint32_t *i, struct lyd_node **first);
 
 /**
  * @brief Iterate over modules for functions that want to traverse all the top-level data.

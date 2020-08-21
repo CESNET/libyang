@@ -46,7 +46,7 @@
  */
 static LY_ERR
 ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_node, const struct lyxp_expr *exp,
-                        uint16_t *tok_idx, uint8_t prefix, uint8_t pred)
+        uint16_t *tok_idx, uint8_t prefix, uint8_t pred)
 {
     struct ly_set *set = NULL;
     uint32_t i;
@@ -108,7 +108,7 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
                 /* ']' */
                 LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_BRACK2), error);
 
-            /* '[' */
+                /* '[' */
             } while (!lyxp_next_token(NULL, exp, tok_idx, LYXP_TOKEN_BRACK1));
 
         } else if ((pred == LY_PATH_PRED_SIMPLE) && !lyxp_next_token(NULL, exp, tok_idx, LYXP_TOKEN_DOT)) {
@@ -202,7 +202,7 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
                 /* ']' */
                 LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_BRACK2), error);
 
-            /* '[' */
+                /* '[' */
             } while (!lyxp_next_token(NULL, exp, tok_idx, LYXP_TOKEN_BRACK1));
 
         } else {
@@ -222,7 +222,7 @@ error:
 
 LY_ERR
 ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *str_path, size_t path_len,
-              uint8_t begin, uint8_t lref, uint8_t prefix, uint8_t pred, struct lyxp_expr **expr)
+        uint8_t begin, uint8_t lref, uint8_t prefix, uint8_t pred, struct lyxp_expr **expr)
 {
     struct lyxp_expr *exp;
     uint16_t tok_idx, cur_len;
@@ -295,7 +295,7 @@ ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const 
         /* Predicate* */
         LY_CHECK_GOTO(ly_path_check_predicate(ctx, ctx_node, exp, &tok_idx, prefix, pred), error);
 
-    /* '/' */
+        /* '/' */
     } while (!lyxp_next_token(NULL, exp, &tok_idx, LYXP_TOKEN_OPER_PATH));
 
     /* trailing token check */
@@ -315,7 +315,7 @@ error:
 
 LY_ERR
 ly_path_parse_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_node, const char *str_path,
-                        size_t path_len, uint8_t prefix, uint8_t pred, struct lyxp_expr **expr)
+        size_t path_len, uint8_t prefix, uint8_t pred, struct lyxp_expr **expr)
 {
     struct lyxp_expr *exp;
     uint16_t tok_idx;
@@ -364,9 +364,9 @@ error:
  */
 static LY_ERR
 ly_path_compile_prefix(const struct ly_ctx *ctx, const struct lysc_node *cur_node, const struct lys_module *cur_mod,
-                       const struct lysc_node *prev_ctx_node, const struct lyxp_expr *expr, uint16_t tok_idx,
-                       uint8_t lref, LY_PREFIX_FORMAT format, void *prefix_data, const struct lys_module **mod,
-                       const char **name, size_t *name_len)
+        const struct lysc_node *prev_ctx_node, const struct lyxp_expr *expr, uint16_t tok_idx,
+        uint8_t lref, LY_PREFIX_FORMAT format, void *prefix_data, const struct lys_module **mod,
+        const char **name, size_t *name_len)
 {
     const char *ptr;
     size_t len;
@@ -422,9 +422,9 @@ ly_path_compile_prefix(const struct ly_ctx *ctx, const struct lysc_node *cur_nod
 
 LY_ERR
 ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_node, const struct lys_module *cur_mod,
-                          const struct lysc_node *ctx_node, const struct lyxp_expr *expr, uint16_t *tok_idx,
-                          LY_PREFIX_FORMAT format, void *prefix_data, struct ly_path_predicate **predicates,
-                          enum ly_path_pred_type *pred_type)
+        const struct lysc_node *ctx_node, const struct lyxp_expr *expr, uint16_t *tok_idx,
+        LY_PREFIX_FORMAT format, void *prefix_data, struct ly_path_predicate **predicates,
+        enum ly_path_pred_type *pred_type)
 {
     struct ly_path_predicate *p;
     const struct lysc_node *key;
@@ -572,7 +572,7 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
  */
 static LY_ERR
 ly_path_compile_predicate_leafref(const struct lysc_node *ctx_node, const struct lysc_node *cur_node,
-                                  const struct lyxp_expr *expr, uint16_t *tok_idx, LY_PREFIX_FORMAT format, void *prefix_data)
+        const struct lyxp_expr *expr, uint16_t *tok_idx, LY_PREFIX_FORMAT format, void *prefix_data)
 {
     const struct lysc_node *key, *node, *node2;
     const struct lys_module *mod;
@@ -681,7 +681,7 @@ ly_path_compile_predicate_leafref(const struct lysc_node *ctx_node, const struct
         assert(expr->tokens[*tok_idx] == LYXP_TOKEN_BRACK2);
         ++(*tok_idx);
 
-    /* another predicate follows? */
+        /* another predicate follows? */
     } while (!lyxp_next_token(NULL, expr, tok_idx, LYXP_TOKEN_BRACK1));
 
     return LY_SUCCESS;
@@ -689,8 +689,8 @@ ly_path_compile_predicate_leafref(const struct lysc_node *ctx_node, const struct
 
 LY_ERR
 ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, const struct lysc_node *ctx_node,
-                const struct lyxp_expr *expr, uint8_t lref, uint8_t oper, uint8_t target, LY_PREFIX_FORMAT format,
-                void *prefix_data, struct ly_path **path)
+        const struct lyxp_expr *expr, uint8_t lref, uint8_t oper, uint8_t target, LY_PREFIX_FORMAT format,
+        void *prefix_data, struct ly_path **path)
 {
     LY_ERR ret = LY_SUCCESS;
     uint16_t tok_idx = 0;
@@ -801,7 +801,7 @@ cleanup:
 
 LY_ERR
 ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *start, LY_ARRAY_COUNT_TYPE *path_idx,
-                     struct lyd_node **match)
+        struct lyd_node **match)
 {
     LY_ARRAY_COUNT_TYPE u;
     struct lyd_node *prev_node = NULL, *node, *target;
@@ -961,7 +961,7 @@ ly_path_dup(const struct ly_ctx *ctx, const struct ly_path *path, struct ly_path
 
 void
 ly_path_predicates_free(const struct ly_ctx *ctx, enum ly_path_pred_type pred_type, const struct lysc_node *llist,
-                        struct ly_path_predicate *predicates)
+        struct ly_path_predicate *predicates)
 {
     LY_ARRAY_COUNT_TYPE u;
 

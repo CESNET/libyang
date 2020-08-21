@@ -36,8 +36,8 @@
 
 LY_ERR
 lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodeid_len, const struct lysc_node *context_node,
-                          const struct lys_module *context_module, int nodetype, int implement,
-                          const struct lysc_node **target, uint16_t *result_flag)
+        const struct lys_module *context_module, int nodetype, int implement,
+        const struct lysc_node **target, uint16_t *result_flag)
 {
     LY_ERR ret = LY_EVALID;
     const char *name, *prefix, *id;
@@ -171,8 +171,8 @@ lysp_check_prefix(struct lys_parser_ctx *ctx, struct lysp_import *imports, const
 
 LY_ERR
 lysc_check_status(struct lysc_ctx *ctx,
-                  uint16_t flags1, void *mod1, const char *name1,
-                  uint16_t flags2, void *mod2, const char *name2)
+        uint16_t flags1, void *mod1, const char *name1,
+        uint16_t flags2, void *mod2, const char *name2)
 {
     uint16_t flg1, flg2;
 
@@ -353,7 +353,7 @@ lysp_type_str2builtin(const char *name, size_t len)
 
 LY_ERR
 lysp_type_find(const char *id, struct lysp_node *start_node, struct lysp_module *start_module,
-               LY_DATA_TYPE *type, const struct lysp_tpdf **tpdf, struct lysp_node **node, struct lysp_module **module)
+        LY_DATA_TYPE *type, const struct lysp_tpdf **tpdf, struct lysp_node **node, struct lysp_module **module)
 {
     const char *str, *name;
     struct lysp_tpdf *typedefs;
@@ -462,7 +462,7 @@ lysp_check_enum_name(struct lys_parser_ctx *ctx, const char *name, size_t name_l
  */
 static LY_ERR
 lysp_check_typedef(struct lys_parser_ctx *ctx, struct lysp_node *node, const struct lysp_tpdf *tpdf,
-                   struct hash_table *tpdfs_global, struct hash_table *tpdfs_scoped)
+        struct hash_table *tpdfs_global, struct hash_table *tpdfs_scoped)
 {
     struct lysp_node *parent;
     uint32_t hash;
@@ -532,7 +532,7 @@ lysp_id_cmp(void *val1, void *val2, int UNUSED(mod), void *UNUSED(cb_data))
 
 LY_ERR
 lysp_parse_finalize_reallocated(struct lys_parser_ctx *ctx, struct lysp_grp *groupings, struct lysp_augment *augments,
-                                struct lysp_action *actions, struct lysp_notif *notifs)
+        struct lysp_action *actions, struct lysp_notif *notifs)
 {
     LY_ARRAY_COUNT_TYPE u, v;
     struct lysp_node *child;
@@ -746,7 +746,7 @@ lysp_load_module_check(const struct ly_ctx *ctx, struct lysp_module *mod, struct
 
 LY_ERR
 lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, int implement,
-                     struct lys_parser_ctx *main_ctx, const char *main_name, int required, void **result)
+        struct lys_parser_ctx *main_ctx, const char *main_name, int required, void **result)
 {
     struct ly_in *in;
     char *filepath = NULL;
@@ -776,10 +776,10 @@ lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision,
     check_data.submoduleof = main_name;
     if (main_ctx) {
         ret = lys_parse_mem_submodule(ctx, in, format, main_ctx, lysp_load_module_check, &check_data,
-                                      (struct lysp_submodule **)&mod);
+                        (struct lysp_submodule **)&mod);
     } else {
         ret = lys_parse_mem_module(ctx, in, format, implement, lysp_load_module_check, &check_data,
-                                   (struct lys_module **)&mod);
+                        (struct lys_module **)&mod);
 
     }
     LY_CHECK_ERR_GOTO(ret, ly_in_free(in, 1), cleanup);
@@ -805,7 +805,7 @@ cleanup:
 
 LY_ERR
 lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, int implement, int require_parsed,
-                 struct lys_module **mod)
+        struct lys_module **mod)
 {
     const char *module_data = NULL;
     LYS_INFORMAT format = LYS_IN_UNKNOWN;
@@ -1000,7 +1000,7 @@ search_file:
         if (!(ctx->flags & LY_CTX_DISABLE_SEARCHDIRS)) {
             /* submodule was not received from the callback or there is no callback set */
             lys_module_localfile(ctx, inc->name, inc->rev[0] ? inc->rev : NULL, 0, pctx, pctx->main_mod->name, 1,
-                                 (void**)&submod);
+                    (void**)&submod);
         }
         if (!submod && (ctx->flags & LY_CTX_PREFER_SEARCHDIRS)) {
             goto search_clb;

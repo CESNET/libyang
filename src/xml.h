@@ -185,6 +185,6 @@ LY_ERR lyxml_get_prefixes(struct lyxml_ctx *xmlctx, const char *value, size_t va
  * @return LY_ERR on error.
  */
 LY_ERR lyxml_value_compare(const char *value1, const struct ly_prefix *prefs1, const char *value2,
-                           const struct ly_prefix *prefs2);
+        const struct ly_prefix *prefs2);
 
 #endif /* LY_XML_H_ */

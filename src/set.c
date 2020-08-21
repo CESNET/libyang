@@ -212,4 +212,3 @@ ly_set_rm(struct ly_set *set, void *object, void (*destructor)(void *obj))
 
     return ly_set_rm_index(set, i, destructor);
 }
-

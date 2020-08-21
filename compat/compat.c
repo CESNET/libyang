@@ -39,6 +39,7 @@ vdprintf(int fd, const char *format, va_list ap)
     }
     return count;
 }
+
 #endif
 
 #ifndef HAVE_ASPRINTF
@@ -53,6 +54,7 @@ asprintf(char **strp, const char *fmt, ...)
     va_end(ap);
     return ret;
 }
+
 #endif
 
 #ifndef HAVE_VASPRINTF
@@ -70,6 +72,7 @@ vasprintf(char **strp, const char *fmt, va_list ap)
 
     return vsnprintf(*strp, l + 1U, fmt, ap);
 }
+
 #endif
 
 #ifndef HAVE_STRNDUP
@@ -90,6 +93,7 @@ strndup(const char *s, size_t n)
     buf[len] = '\0';
     return buf;
 }
+
 #endif
 
 #ifndef HAVE_STRNSTR
@@ -115,6 +119,7 @@ strnstr(const char *s, const char *find, size_t slen)
     }
     return (char *)s;
 }
+
 #endif
 
 #ifndef HAVE_GETLINE
@@ -157,6 +162,7 @@ getline(char **lineptr, size_t *n, FILE *stream)
     strcpy(*lineptr, line);
     return len;
 }
+
 #endif
 
 #ifndef HAVE_GET_CURRENT_DIR_NAME
@@ -175,4 +181,5 @@ get_current_dir_name(void)
 
     return retval;
 }
+
 #endif

@@ -1055,7 +1055,7 @@ struct lysp_module {
     struct lysp_deviation *deviations; /**< list of deviations ([sized array](@ref sizedarrays)) */
     struct lysp_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 
-    uint8_t parsing:1;               /**< flag for circular check */
+    uint8_t parsing : 1;               /**< flag for circular check */
 };
 
 struct lysp_submodule {
@@ -1077,9 +1077,9 @@ struct lysp_submodule {
     struct lysp_deviation *deviations; /**< list of deviations ([sized array](@ref sizedarrays)) */
     struct lysp_ext_instance *exts; /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 
-    uint8_t parsing:1;               /**< flag for circular check */
+    uint8_t parsing : 1;               /**< flag for circular check */
 
-    uint8_t latest_revision:2;       /**< flag to mark the latest available revision:
+    uint8_t latest_revision : 2;       /**< flag to mark the latest available revision:
                                           1 - the latest revision in searchdirs was not searched yet and this is the
                                           latest revision in the current context
                                           2 - searchdirs were searched and this is the latest available revision */
@@ -1245,8 +1245,8 @@ struct lysc_pattern {
     const char *emsg;                /**< error-message */
     const char *eapptag;             /**< error-app-tag value */
     struct lysc_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
-    uint32_t inverted:1;             /**< invert-match flag */
-    uint32_t refcount:31;            /**< reference counter */
+    uint32_t inverted : 1;             /**< invert-match flag */
+    uint32_t refcount : 31;            /**< reference counter */
 };
 
 struct lysc_must {
@@ -1945,7 +1945,7 @@ LY_ERR lys_feature_value(const struct lys_module *module, const char *feature);
  * @return Next schema tree node that can be instantiated in a data tree, NULL in case there is no such element.
  */
 const struct lysc_node *lys_getnext(const struct lysc_node *last, const struct lysc_node *parent,
-                                    const struct lysc_module *module, int options);
+        const struct lysc_module *module, int options);
 
 /**
  * @defgroup sgetnextflags lys_getnext() flags
@@ -1974,7 +1974,7 @@ const struct lysc_node *lys_getnext(const struct lysc_node *last, const struct l
  * @return Found node if any.
  */
 const struct lysc_node *lys_find_child(const struct lysc_node *parent, const struct lys_module *module,
-                                       const char *name, size_t name_len, uint16_t nodetype, int options);
+        const char *name, size_t name_len, uint16_t nodetype, int options);
 
 /**
  * @brief Get schema node specified by the schema path.

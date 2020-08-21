@@ -115,7 +115,6 @@ invalid_parent:
     return LY_SUCCESS;
 }
 
-
 /**
  * @brief Plugin for the NACM's default-deny-write and default-deny-all extensions
  */

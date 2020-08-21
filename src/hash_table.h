@@ -215,7 +215,7 @@ LY_ERR lyht_insert(struct hash_table *ht, void *val_p, uint32_t hash, void **mat
  * @return LY_EEXIST if the value is already present.
  */
 LY_ERR lyht_insert_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash, values_equal_cb resize_val_equal,
-                                  void **match_p);
+        void **match_p);
 
 /**
  * @brief Remove a value from a hash table.

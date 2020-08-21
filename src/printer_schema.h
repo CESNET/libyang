@@ -84,7 +84,7 @@ LY_ERR lys_print_module(struct ly_out *out, const struct lys_module *module, LYS
  * @return LY_ERR value.
  */
 LY_ERR lys_print_submodule(struct ly_out *out, const struct lys_module *module, const struct lysp_submodule *submodule,
-                           LYS_OUTFORMAT format, int line_length, int options);
+        LYS_OUTFORMAT format, int line_length, int options);
 
 /**
  * @brief Print schema tree in the specified format into a memory block.
@@ -157,7 +157,7 @@ LY_ERR lys_print_path(const char *path, const struct lys_module *module, LYS_OUT
  * @return LY_ERR value.
  */
 LY_ERR lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg,
-                     const struct lys_module *module, LYS_OUTFORMAT format, int options);
+        const struct lys_module *module, LYS_OUTFORMAT format, int options);
 
 /**
  * @brief Schema node printer.

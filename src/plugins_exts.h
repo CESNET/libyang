@@ -26,7 +26,6 @@ struct lyd_node;
 extern "C" {
 #endif
 
-
 /**
  * @defgroup extensions YANG Extensions
  *
@@ -177,7 +176,6 @@ struct lyext_plugins_list {
     const char *name;            /**< name of the extension */
     struct lyext_plugin *plugin; /**< plugin for the extension */
 };
-
 
 /**
  * @brief Provide a log message from an extension plugin.

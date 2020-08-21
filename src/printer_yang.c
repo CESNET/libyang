@@ -219,7 +219,7 @@ yprp_stmt(struct ypr_ctx *ctx, struct lysp_stmt *stmt)
  */
 static void
 yprp_extension_instances(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t substmt_index,
-                               struct lysp_ext_instance *ext, int *flag, LY_ARRAY_COUNT_TYPE count)
+        struct lysp_ext_instance *ext, int *flag, LY_ARRAY_COUNT_TYPE count)
 {
     LY_ARRAY_COUNT_TYPE u;
     struct lysp_stmt *stmt;
@@ -243,7 +243,6 @@ yprp_extension_instances(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t sub
             ly_print_(ctx->out, "%*s%s; // Model comes from different input format, extensions must be resolved first.\n", INDENT, ext[u].name);
             continue;
         }
-
 
         ypr_open(ctx->out, flag);
         argument = NULL;
@@ -286,7 +285,7 @@ yprp_extension_instances(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t sub
  */
 static void
 yprc_extension_instances(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t substmt_index,
-                                 struct lysc_ext_instance *ext, int *flag, LY_ARRAY_COUNT_TYPE count)
+        struct lysc_ext_instance *ext, int *flag, LY_ARRAY_COUNT_TYPE count)
 {
     LY_ARRAY_COUNT_TYPE u;
 
@@ -322,7 +321,7 @@ ypr_substmt(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t substmt_index, c
         ly_print_(ctx->out, "%*s%s %s", INDENT, ext_substmt_info[substmt].name, text);
     } else {
         ypr_text(ctx, ext_substmt_info[substmt].name, text,
-                 (ext_substmt_info[substmt].flags & SUBST_FLAG_YIN) ? 0 : 1, 0);
+                (ext_substmt_info[substmt].flags & SUBST_FLAG_YIN) ? 0 : 1, 0);
     }
 
     LEVEL++;
@@ -493,7 +492,7 @@ yprc_iffeature(struct ypr_ctx *ctx, struct lysc_iffeature *feat, int *index_e, i
                 brackets_flag = 0;
             }
         }
-        /* falls through */
+    /* falls through */
     case LYS_IFF_OR:
         if (brackets_flag) {
             ly_print_(ctx->out, "(");
@@ -743,15 +742,15 @@ yprc_range(struct ypr_ctx *ctx, const struct lysc_range *range, LY_DATA_TYPE bas
         }
         if (range->parts[u].max_64 == range->parts[u].min_64) {
             if (basetype <= LY_TYPE_STRING) { /* unsigned values */
-                ly_print_(ctx->out, "%"PRIu64, range->parts[u].max_u64);
+                ly_print_(ctx->out, "%" PRIu64, range->parts[u].max_u64);
             } else { /* signed values */
-                ly_print_(ctx->out, "%"PRId64, range->parts[u].max_64);
+                ly_print_(ctx->out, "%" PRId64, range->parts[u].max_64);
             }
         } else {
             if (basetype <= LY_TYPE_STRING) { /* unsigned values */
-                ly_print_(ctx->out, "%"PRIu64"..%"PRIu64, range->parts[u].min_u64, range->parts[u].max_u64);
+                ly_print_(ctx->out, "%" PRIu64 "..%" PRIu64, range->parts[u].min_u64, range->parts[u].max_u64);
             } else { /* signed values */
-                ly_print_(ctx->out, "%"PRId64"..%"PRId64, range->parts[u].min_64, range->parts[u].max_64);
+                ly_print_(ctx->out, "%" PRId64 "..%" PRId64, range->parts[u].min_64, range->parts[u].max_64);
             }
         }
     }
