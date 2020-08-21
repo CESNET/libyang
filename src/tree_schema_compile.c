@@ -5594,7 +5594,7 @@ lys_apply_deviate_add(struct lysc_ctx *ctx, struct lysc_node *target, int dev_fl
             }
 
             /* store the default value in unres */
-            lysc_incomplete_leaf_dflt_add(ctx, leaf, d->dflts[0], ctx->mod_def);
+            LY_CHECK_GOTO(lysc_incomplete_leaf_dflt_add(ctx, leaf, d->dflts[0], ctx->mod_def), cleanup);
             target->flags |= LYS_SET_DFLT;
             break;
         case LYS_LEAFLIST:
