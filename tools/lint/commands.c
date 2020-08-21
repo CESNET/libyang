@@ -1021,24 +1021,23 @@ cleanup:
 
     return ret;
 }
+#endif
 
 int
 print_list(FILE *out, struct ly_ctx *ctx, LYD_FORMAT outformat)
 {
     struct lyd_node *ylib;
     uint32_t idx = 0, has_modules = 0;
-    uint8_t u;
     const struct lys_module *mod;
 
     if (outformat != LYD_UNKNOWN) {
-        ylib = ly_ctx_info(ctx);
-        if (!ylib) {
+        if (ly_ctx_get_yanglib_data(ctx, &ylib)) {
             fprintf(stderr, "Getting context info (ietf-yang-library data) failed.\n");
             return 1;
         }
 
-        lyd_print_file(out, ylib, outformat, LYP_WITHSIBLINGS | LYP_FORMAT);
-        lyd_free_withsiblings(ylib);
+        lyd_print_file(out, ylib, outformat, LYD_PRINT_WITHSIBLINGS | LYD_PRINT_FORMAT);
+        lyd_free_all(ylib);
         return 0;
     }
 
@@ -1056,17 +1055,18 @@ print_list(FILE *out, struct ly_ctx *ctx, LYD_FORMAT outformat)
 
         /* module print */
         fprintf(out, " %s", mod->name);
-        if (mod->rev_size) {
-            fprintf(out, "@%s", mod->rev[0].date);
+        if (mod->revision) {
+            fprintf(out, "@%s", mod->revision);
         }
 
         /* submodules print */
-        if (mod->inc_size) {
+        if (mod->parsed && mod->parsed->includes) {
+            uint64_t u = 0;
             fprintf(out, " (");
-            for (u = 0; u < mod->inc_size; u++) {
-                fprintf(out, "%s%s", !u ? "" : ",", mod->inc[u].submodule->name);
-                if (mod->inc[u].submodule->rev_size) {
-                    fprintf(out, "@%s", mod->inc[u].submodule->rev[0].date);
+            LY_ARRAY_FOR(mod->parsed->includes, u) {
+                fprintf(out, "%s%s", !u ? "" : ",", mod->parsed->includes[u].name);
+                if (mod->parsed->includes[u].rev[0]) {
+                    fprintf(out, "@%s", mod->parsed->includes[u].rev);
                 }
             }
             fprintf(out, ")");
@@ -1152,7 +1152,7 @@ error:
 
     return print_list(stdout, ctx, outformat);
 }
-#endif
+
 int
 cmd_feature(const char *arg)
 {
@@ -1535,8 +1535,8 @@ COMMAND commands[] = {
         {"data", cmd_data, cmd_data_help, "Load, validate and optionally print instance data"},
 #if 0
         {"xpath", cmd_xpath, cmd_xpath_help, "Get data nodes satisfying an XPath expression"},
-        {"list", cmd_list, cmd_list_help, "List all the loaded models"},
 #endif
+        {"list", cmd_list, cmd_list_help, "List all the loaded models"},
         {"feature", cmd_feature, cmd_feature_help, "Print/enable/disable all/specific features of models"},
         {"searchpath", cmd_searchpath, cmd_searchpath_help, "Print/set the search path(s) for models"},
         {"clear", cmd_clear, cmd_clear_help, "Clear the context - remove all the loaded models"},
