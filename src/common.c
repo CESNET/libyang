@@ -321,8 +321,7 @@ ly_pututf8(char *dst, uint32_t value, size_t *bytes_written)
 /**
  * @brief Static table of the UTF8 characters lengths according to their first byte.
  */
-static const unsigned char
-utf8_char_length_table[] = {
+static const unsigned char utf8_char_length_table[] = {
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
     1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,

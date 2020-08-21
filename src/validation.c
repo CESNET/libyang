@@ -819,8 +819,8 @@ lyd_validate_siblings_schema_r(const struct lyd_node *first, const struct lysc_n
                 LY_CHECK_RET(lyd_validate_minmax(first, snode, sllist->min, sllist->max));
             }
 
-        /* check generic mandatory existence */
         } else if (snode->flags & LYS_MAND_TRUE) {
+            /* check generic mandatory existence */
             LY_CHECK_RET(lyd_validate_mandatory(first, snode));
         }
 
