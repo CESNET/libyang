@@ -107,11 +107,20 @@ void ly_verb_dbg(int dbg_groups);
 #endif
 
 /**
- * @brief Set logger callback.
+ * @brief Logger callback.
  *
  * !IMPORTANT! If an error has a specific error-app-tag defined in the model, it will NOT be set
  *             at the time of calling this callback. It will be set right after, so to retrieve it
  *             it must be checked afterwards with ly_errapptag().
+ *
+ * @param[in] level Log level of the message.
+ * @param[in] msg Message.
+ * @param[in] path Optional path of the concerned node.
+ */
+typedef void (*ly_log_clb)(LY_LOG_LEVEL level, const char *msg, const char *path);
+
+/**
+ * @brief Set logger callback.
  *
  * @param[in] clb Logging callback.
  * @param[in] path flag to resolve and provide path as the third parameter of the callback function. In case of
@@ -120,13 +129,13 @@ void ly_verb_dbg(int dbg_groups);
  *            presence) or it can be NULL, so consider it as an optional parameter. If the flag is 0, libyang will
  *            not bother with resolving the path.
  */
-void ly_set_log_clb(void(*clb)(LY_LOG_LEVEL level, const char *msg, const char *path), int path);
+void ly_set_log_clb(ly_log_clb clb, int path);
 
 /**
  * @brief Get logger callback.
  * @return Logger callback (can be NULL).
  */
-void (*ly_get_log_clb(void))(LY_LOG_LEVEL, const char *, const char *);
+ly_log_clb ly_get_log_clb(void);
 
 /** @} log */
 

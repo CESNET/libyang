@@ -33,7 +33,7 @@
 
 volatile uint8_t ly_log_level = LY_LLWRN;
 volatile uint8_t ly_log_opts = LY_LOLOG | LY_LOSTORE_LAST;
-static void (*ly_log_clb)(LY_LOG_LEVEL level, const char *msg, const char *path);
+static ly_log_clb log_clb;
 static volatile int path_flag = 1;
 #ifndef NDEBUG
 volatile int ly_log_dbg_groups = 0;
@@ -210,16 +210,16 @@ ly_verb_dbg(int dbg_groups)
 }
 
 API void
-ly_set_log_clb(void (*clb)(LY_LOG_LEVEL level, const char *msg, const char *path), int path)
+ly_set_log_clb(ly_log_clb clb, int path)
 {
-    ly_log_clb = clb;
+    log_clb = clb;
     path_flag = path;
 }
 
-API void
-(*ly_get_log_clb(void))(LY_LOG_LEVEL, const char *, const char *)
+API ly_log_clb
+ly_get_log_clb(void)
 {
-    return ly_log_clb;
+    return log_clb;
 }
 
 static LY_ERR
@@ -330,8 +330,8 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE v
 
     /* if we are only storing errors internally, never print the message (yet) */
     if (ly_log_opts & LY_LOLOG) {
-        if (ly_log_clb) {
-            ly_log_clb(level, msg, path);
+        if (log_clb) {
+            log_clb(level, msg, path);
         } else {
             fprintf(stderr, "libyang[%d]: %s%s", level, msg, path ? " " : "\n");
             if (path) {
@@ -490,8 +490,8 @@ API void
 ly_err_print(struct ly_err_item *eitem)
 {
     if (ly_log_opts & LY_LOLOG) {
-        if (ly_log_clb) {
-            ly_log_clb(eitem->level, eitem->msg, eitem->path);
+        if (log_clb) {
+            log_clb(eitem->level, eitem->msg, eitem->path);
         } else {
             fprintf(stderr, "libyang[%d]: %s%s", eitem->level, eitem->msg, eitem->path ? " " : "\n");
             if (eitem->path) {
