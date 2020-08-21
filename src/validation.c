@@ -111,7 +111,7 @@ lyd_validate_when(struct lyd_node **tree, struct lyd_node *node, struct lysc_whe
 
 LY_ERR
 lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, struct ly_set *node_types, struct ly_set *meta_types,
-                   LY_PREFIX_FORMAT format, void *prefix_data, struct lyd_node **diff)
+        LY_PREFIX_FORMAT format, void *prefix_data, struct lyd_node **diff)
 {
     LY_ERR ret = LY_SUCCESS;
     uint32_t i;
@@ -156,7 +156,7 @@ lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, struct ly_s
                 }
             }
 
-        /* there must have been some when conditions resolved */
+            /* there must have been some when conditions resolved */
         } while (prev_count > node_when->count);
 
         /* there could have been no cyclic when dependencies, checked during compilation */
@@ -411,7 +411,7 @@ lyd_validate_autodel_dup(struct lyd_node **first, struct lyd_node *node, struct 
 
 LY_ERR
 lyd_validate_new(struct lyd_node **first, const struct lysc_node *sparent, const struct lys_module *mod,
-                 struct lyd_node **diff)
+        struct lyd_node **diff)
 {
     struct lyd_node *next, *node;
     const struct lysc_node *snode = NULL;
@@ -792,7 +792,7 @@ cleanup:
  */
 static LY_ERR
 lyd_validate_siblings_schema_r(const struct lyd_node *first, const struct lysc_node *sparent,
-                               const struct lysc_module *mod, int val_opts, LYD_VALIDATE_OP op)
+        const struct lysc_module *mod, int val_opts, LYD_VALIDATE_OP op)
 {
     const struct lysc_node *snode = NULL;
     struct lysc_node_list *slist;
@@ -944,7 +944,7 @@ lyd_validate_must(const struct lyd_node *node, LYD_VALIDATE_OP op)
 
 LY_ERR
 lyd_validate_final_r(struct lyd_node *first, const struct lysc_node *sparent, const struct lys_module *mod, int val_opts,
-                     LYD_VALIDATE_OP op)
+        LYD_VALIDATE_OP op)
 {
     struct lyd_node *next = NULL, *node;
     const struct lysc_node *snode;
@@ -959,7 +959,7 @@ lyd_validate_final_r(struct lyd_node *first, const struct lysc_node *sparent, co
         /* opaque data */
         if (!node->schema) {
             LOGVAL(LYD_CTX(node), LY_VLOG_LYD, node, LYVE_DATA, "Opaque node \"%s\" found.",
-                   ((struct lyd_node_opaq *)node)->name);
+                    ((struct lyd_node_opaq *)node)->name);
             return LY_EVALID;
         }
 
@@ -1026,7 +1026,7 @@ lyd_validate_final_r(struct lyd_node *first, const struct lysc_node *sparent, co
  */
 static LY_ERR
 lyd_validate_subtree(struct lyd_node *root, struct ly_set *type_check, struct ly_set *type_meta_check,
-                     struct ly_set *when_check, int val_opts, struct lyd_node **diff)
+        struct ly_set *when_check, int val_opts, struct lyd_node **diff)
 {
     const struct lyd_meta *meta;
     struct lyd_node *node;
@@ -1077,7 +1077,7 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *type_check, struct ly
  */
 static LY_ERR
 lyd_validate(struct lyd_node **tree, const struct lys_module *module, const struct ly_ctx *ctx, int val_opts,
-              struct lyd_node **diff)
+        struct lyd_node **diff)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node *first, *next, **first2;
@@ -1161,7 +1161,7 @@ lyd_validate_module(struct lyd_node **tree, const struct lys_module *module, int
  */
 static void
 lyd_val_op_merge_find(const struct lyd_node *op_tree, const struct lyd_node *op_node, const struct lyd_node *tree,
-                      struct lyd_node **op_subtree, struct lyd_node **tree_sibling)
+        struct lyd_node **op_subtree, struct lyd_node **tree_sibling)
 {
     const struct lyd_node *tree_iter, *op_iter;
     struct lyd_node *match;
@@ -1209,7 +1209,7 @@ lyd_validate_op(struct lyd_node *op_tree, const struct lyd_node *tree, LYD_VALID
     struct ly_set type_check = {0}, type_meta_check = {0}, when_check = {0};
 
     LY_CHECK_ARG_RET(NULL, op_tree, !op_tree->parent, !tree || !tree->parent,
-                     (op == LYD_VALIDATE_OP_NOTIF) || (op == LYD_VALIDATE_OP_RPC) || (op == LYD_VALIDATE_OP_REPLY), LY_EINVAL);
+            (op == LYD_VALIDATE_OP_NOTIF) || (op == LYD_VALIDATE_OP_RPC) || (op == LYD_VALIDATE_OP_REPLY), LY_EINVAL);
     if (diff) {
         *diff = NULL;
     }

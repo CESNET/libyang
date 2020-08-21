@@ -386,7 +386,6 @@ invalid_character:
             return LY_EVALID;
         }
 
-
         dec_point = ly_strnchr(in, '.', exponent);
         if (!dec_point) {
             /* value is integer, we are just ... */
@@ -785,4 +784,3 @@ lyjson_ctx_free(struct lyjson_ctx *jsonctx)
 
     free(jsonctx);
 }
-

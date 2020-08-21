@@ -31,7 +31,7 @@
 
 struct lyd_node *
 lys_getnext_data(const struct lyd_node *last, const struct lyd_node *sibling, const struct lysc_node **slast,
-                 const struct lysc_node *parent, const struct lysc_module *module)
+        const struct lysc_node *parent, const struct lysc_module *module)
 {
     const struct lysc_node *siter = NULL;
     struct lyd_node *match = NULL;
@@ -120,7 +120,7 @@ lyd_owner_module(const struct lyd_node *node)
 
 const struct lys_module *
 lyd_mod_next_module(struct lyd_node *tree, const struct lys_module *module, const struct ly_ctx *ctx, uint32_t *i,
-                    struct lyd_node **first)
+        struct lyd_node **first)
 {
     struct lyd_node *iter;
     const struct lys_module *mod;

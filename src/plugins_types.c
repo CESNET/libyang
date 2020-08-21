@@ -174,7 +174,7 @@ ly_type_compare_simple(const struct lyd_value *val1, const struct lyd_value *val
  */
 static const char *
 ly_type_print_simple(const struct lyd_value *value, LY_PREFIX_FORMAT UNUSED(format),
-                        void *UNUSED(prefix_data), int *dynamic)
+        void *UNUSED(prefix_data), int *dynamic)
 {
     *dynamic = 0;
     return (char *)value->canonical;
@@ -208,7 +208,7 @@ ly_type_free_simple(const struct ly_ctx *ctx, struct lyd_value *value)
 
 API LY_ERR
 ly_type_parse_int(const char *datatype, int base, int64_t min, int64_t max, const char *value, size_t value_len,
-                  int64_t *ret, struct ly_err_item **err)
+        int64_t *ret, struct ly_err_item **err)
 {
     char *errmsg = NULL;
     int rc = 0;
@@ -216,7 +216,7 @@ ly_type_parse_int(const char *datatype, int base, int64_t min, int64_t max, cons
     LY_CHECK_ARG_RET(NULL, err, datatype, LY_EINVAL);
 
     /* consume leading whitespaces */
-    for (;value_len && isspace(*value); ++value, --value_len) {}
+    for (; value_len && isspace(*value); ++value, --value_len) {}
 
     if (!value || !value[0] || !value_len) {
         rc = asprintf(&errmsg, "Invalid empty %s value.", datatype);
@@ -246,7 +246,7 @@ error:
 
 API LY_ERR
 ly_type_parse_uint(const char *datatype, int base, uint64_t max, const char *value, size_t value_len, uint64_t *ret,
-                   struct ly_err_item **err)
+        struct ly_err_item **err)
 {
     char *errmsg = NULL;
     int rc = 0;
@@ -254,7 +254,7 @@ ly_type_parse_uint(const char *datatype, int base, uint64_t max, const char *val
     LY_CHECK_ARG_RET(NULL, err, datatype, LY_EINVAL);
 
     /* consume leading whitespaces */
-    for (;value_len && isspace(*value); ++value, --value_len) {}
+    for (; value_len && isspace(*value); ++value, --value_len) {}
 
     if (!value || !value[0] || !value_len) {
         rc = asprintf(&errmsg, "Invalid empty %s value.", datatype);
@@ -293,7 +293,7 @@ ly_type_parse_dec64(uint8_t fraction_digits, const char *value, size_t value_len
     int64_t d;
 
     /* consume leading whitespaces */
-    for (;value_len && isspace(*value); ++value, --value_len) {}
+    for (; value_len && isspace(*value); ++value, --value_len) {}
 
     /* parse value */
     if (!value_len) {
@@ -443,7 +443,7 @@ ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str, size_
 
 API LY_ERR
 ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t value, const char *strval,
-                       struct ly_err_item **err)
+        struct ly_err_item **err)
 {
     LY_ARRAY_COUNT_TYPE u;
     char *errmsg = NULL;
@@ -457,8 +457,8 @@ ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t 
                     errmsg = strdup(range->emsg);
                 } else {
                     rc = asprintf(&errmsg, "%s \"%s\" does not satisfy the %s constraint.",
-                                  (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "Length" : "Value", strval,
-                                  (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "length" : "range");
+                                    (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "Length" : "Value", strval,
+                                    (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "length" : "range");
                 }
                 goto error;
             } else if ((uint64_t)value <= range->parts[u].max_u64) {
@@ -470,8 +470,8 @@ ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t 
                     errmsg = strdup(range->emsg);
                 } else {
                     rc = asprintf(&errmsg, "%s \"%s\" does not satisfy the %s constraint.",
-                                  (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "Length" : "Value", strval,
-                                  (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "length" : "range");
+                                    (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "Length" : "Value", strval,
+                                    (basetype == LY_TYPE_BINARY || basetype == LY_TYPE_STRING) ? "length" : "range");
                 }
                 goto error;
             }
@@ -518,8 +518,8 @@ error:
  */
 static LY_ERR
 ly_type_store_int(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                  LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), const void *UNUSED(context_node),
-                  const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err)
+        LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), const void *UNUSED(context_node),
+        const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err)
 {
     LY_ERR ret;
     int64_t num;
@@ -549,7 +549,7 @@ ly_type_store_int(const struct ly_ctx *ctx, struct lysc_type *type, const char *
         LOGINT_RET(ctx);
     }
 
-    LY_CHECK_RET(asprintf(&str, "%"PRId64, num) == -1, LY_EMEM);
+    LY_CHECK_RET(asprintf(&str, "%" PRId64, num) == -1, LY_EMEM);
 
     /* range of the number */
     if (type_num->range) {
@@ -574,8 +574,8 @@ ly_type_store_int(const struct ly_ctx *ctx, struct lysc_type *type, const char *
  */
 static LY_ERR
 ly_type_store_uint(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                   LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), const void *UNUSED(context_node),
-                   const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err)
+        LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), const void *UNUSED(context_node),
+        const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err)
 {
     LY_ERR ret;
     uint64_t num;
@@ -603,7 +603,7 @@ ly_type_store_uint(const struct ly_ctx *ctx, struct lysc_type *type, const char 
         LOGINT_RET(ctx);
     }
 
-    LY_CHECK_RET(asprintf(&str, "%"PRIu64, num) == -1, LY_EMEM);
+    LY_CHECK_RET(asprintf(&str, "%" PRIu64, num) == -1, LY_EMEM);
 
     /* range of the number */
     if (type_num->range) {
@@ -628,8 +628,8 @@ ly_type_store_uint(const struct ly_ctx *ctx, struct lysc_type *type, const char 
  */
 static LY_ERR
 ly_type_store_decimal64(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                        LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), const void *UNUSED(context_node),
-                        const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err)
+        LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), const void *UNUSED(context_node),
+        const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err)
 {
     int64_t d;
     struct lysc_type_dec* type_dec = (struct lysc_type_dec*)type;
@@ -647,14 +647,14 @@ ly_type_store_decimal64(const struct ly_ctx *ctx, struct lysc_type *type, const 
     LY_CHECK_RET(ly_type_parse_dec64(type_dec->fraction_digits, value, value_len, &d, err));
     /* prepare canonized value */
     if (d) {
-        int count = sprintf(buf, "%"PRId64" ", d);
+        int count = sprintf(buf, "%" PRId64 " ", d);
         if ( (d > 0 && (count - 1) <= type_dec->fraction_digits)
-             || (count - 2) <= type_dec->fraction_digits ) {
+                || (count - 2) <= type_dec->fraction_digits ) {
             /* we have 0. value, print the value with the leading zeros
              * (one for 0. and also keep the correct with of num according
              * to fraction-digits value)
              * for (num<0) - extra character for '-' sign */
-            count = sprintf(buf, "%0*"PRId64" ", (d > 0) ? (type_dec->fraction_digits + 1) : (type_dec->fraction_digits + 2), d);
+            count = sprintf(buf, "%0*" PRId64 " ", (d > 0) ? (type_dec->fraction_digits + 1) : (type_dec->fraction_digits + 2), d);
         }
         for (int i = type_dec->fraction_digits, j = 1; i > 0 ; i--) {
             if (j && i > 1 && buf[count - 2] == '0') {
@@ -694,8 +694,8 @@ ly_type_store_decimal64(const struct ly_ctx *ctx, struct lysc_type *type, const 
  */
 static LY_ERR
 ly_type_store_binary(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                     LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), const void *UNUSED(context_node),
-                     const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err)
+        LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), const void *UNUSED(context_node),
+        const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err)
 {
     size_t start = 0, stop = 0, count = 0, u, termination = 0;
     struct lysc_type_bin *type_bin = (struct lysc_type_bin *)type;
@@ -738,7 +738,7 @@ ly_type_store_binary(const struct ly_ctx *ctx, struct lysc_type *type, const cha
                         termination = 2;
                         count++;
                         u++;
-                    } else if (u == stop){
+                    } else if (u == stop) {
                         termination = 1;
                     }
                 }
@@ -762,7 +762,7 @@ finish:
     if (type_bin->length) {
         char buf[22];
         uint64_t len = ((count / 4) * 3) - termination;
-        snprintf(buf, 22, "%"PRIu64, len);
+        snprintf(buf, 22, "%" PRIu64, len);
         LY_CHECK_RET(ly_type_validate_range(LY_TYPE_BINARY, type_bin->length, len, buf, err));
     }
 
@@ -797,8 +797,8 @@ error:
  */
 static LY_ERR
 ly_type_store_string(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                     LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), const void *UNUSED(context_node),
-                     const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err)
+        LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), const void *UNUSED(context_node),
+        const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err)
 {
     struct lysc_type_str *type_str = (struct lysc_type_str *)type;
 
@@ -837,8 +837,8 @@ ly_type_store_string(const struct ly_ctx *ctx, struct lysc_type *type, const cha
  */
 static LY_ERR
 ly_type_store_bits(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                   LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), const void *UNUSED(context_node),
-                   const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err)
+        LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), const void *UNUSED(context_node),
+        const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err)
 {
     LY_ERR ret = LY_EVALID;
     size_t item_len;
@@ -1026,8 +1026,8 @@ ly_type_free_bits(const struct ly_ctx *ctx, struct lyd_value *value)
  */
 static LY_ERR
 ly_type_store_enum(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                   LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), const void *UNUSED(context_node),
-                   const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err)
+        LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), const void *UNUSED(context_node),
+        const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err)
 {
     LY_ARRAY_COUNT_TYPE u, v;
     char *errmsg = NULL;
@@ -1088,9 +1088,9 @@ error:
  */
 static LY_ERR
 ly_type_store_boolean(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len,
-                      int options, LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data),
-                      const void *UNUSED(context_node), const struct lyd_node *UNUSED(tree),
-                      struct lyd_value *storage, struct ly_err_item **err)
+        int options, LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data),
+        const void *UNUSED(context_node), const struct lyd_node *UNUSED(tree),
+        struct lyd_value *storage, struct ly_err_item **err)
 {
     int8_t i;
 
@@ -1131,9 +1131,9 @@ ly_type_store_boolean(const struct ly_ctx *ctx, struct lysc_type *type, const ch
  */
 static LY_ERR
 ly_type_store_empty(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                    LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data),
-                    const void *UNUSED(context_node), const struct lyd_node *UNUSED(tree),
-                    struct lyd_value *storage, struct ly_err_item **err)
+        LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data),
+        const void *UNUSED(context_node), const struct lyd_node *UNUSED(tree),
+        struct lyd_value *storage, struct ly_err_item **err)
 {
     if (options & LY_TYPE_OPTS_SECOND_CALL) {
         return LY_SUCCESS;
@@ -1186,7 +1186,7 @@ ly_type_identity_isderived(struct lysc_ident *base, struct lysc_ident *der)
 }
 
 static const char *ly_type_print_identityref(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data,
-                                             int *dynamic);
+        int *dynamic);
 
 /**
  * @brief Validate, canonize and store value of the YANG built-in identiytref type.
@@ -1195,8 +1195,8 @@ static const char *ly_type_print_identityref(const struct lyd_value *value, LY_P
  */
 static LY_ERR
 ly_type_store_identityref(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                          LY_PREFIX_FORMAT format, void *prefix_data, const void *UNUSED(context_node),
-                          const struct lyd_node *UNUSED(tree),struct lyd_value *storage, struct ly_err_item **err)
+        LY_PREFIX_FORMAT format, void *prefix_data, const void *UNUSED(context_node),
+        const struct lyd_node *UNUSED(tree),struct lyd_value *storage, struct ly_err_item **err)
 {
     struct lysc_type_identityref *type_ident = (struct lysc_type_identityref *)type;
     const char *id_name, *prefix = value;
@@ -1251,7 +1251,7 @@ ly_type_store_identityref(const struct ly_ctx *ctx, struct lysc_type *type, cons
     } else if (!mod->compiled) {
         /* non-implemented module */
         erc = asprintf(&errmsg, "Invalid identityref \"%.*s\" value - identity found in non-implemented module \"%s\".",
-                 (int)value_len, value, mod->name);
+                        (int)value_len, value, mod->name);
         goto error;
     }
 
@@ -1265,7 +1265,7 @@ ly_type_store_identityref(const struct ly_ctx *ctx, struct lysc_type *type, cons
     if (u == LY_ARRAY_COUNT(type_ident->bases)) {
         /* no match */
         erc = asprintf(&errmsg, "Invalid identityref \"%.*s\" value - identity not accepted by the type specification.",
-                       (int)value_len, value);
+                        (int)value_len, value);
         goto error;
     }
 
@@ -1325,7 +1325,7 @@ ly_type_print_identityref(const struct lyd_value *value, LY_PREFIX_FORMAT format
 }
 
 static const char *ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data,
-                                            int *dynamic);
+        int *dynamic);
 
 /**
  * @brief Validate and store value of the YANG built-in instance-identifier type.
@@ -1334,8 +1334,8 @@ static const char *ly_type_print_instanceid(const struct lyd_value *value, LY_PR
  */
 static LY_ERR
 ly_type_store_instanceid(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                         LY_PREFIX_FORMAT format, void *prefix_data, const void *context_node, const struct lyd_node *tree,
-                         struct lyd_value *storage, struct ly_err_item **err)
+        LY_PREFIX_FORMAT format, void *prefix_data, const void *context_node, const struct lyd_node *tree,
+        struct lyd_value *storage, struct ly_err_item **err)
 {
     LY_ERR ret = LY_EVALID;
     struct lysc_type_instanceid *type_inst = (struct lysc_type_instanceid *)type;
@@ -1349,7 +1349,7 @@ ly_type_store_instanceid(const struct ly_ctx *ctx, struct lysc_type *type, const
     /* init */
     *err = NULL;
     ctx_scnode = (options & (LY_TYPE_OPTS_SCHEMA | LY_TYPE_OPTS_INCOMPLETE_DATA)) ?
-                 (struct lysc_node *)context_node : ((struct lyd_node *)context_node)->schema;
+            (struct lysc_node *)context_node : ((struct lyd_node *)context_node)->schema;
 
     if ((options & LY_TYPE_OPTS_SCHEMA) && (options & LY_TYPE_OPTS_INCOMPLETE_DATA)) {
         /* we have incomplete schema tree */
@@ -1542,7 +1542,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format,
                     break;
                 case LY_PATH_PREDTYPE_POSITION:
                     /* position predicate */
-                    ly_strcat(&result, "[%"PRIu64"]", pred->position);
+                    ly_strcat(&result, "[%" PRIu64 "]", pred->position);
                     break;
                 case LY_PATH_PREDTYPE_LIST:
                 {
@@ -1595,7 +1595,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format,
                     break;
                 case LY_PATH_PREDTYPE_POSITION:
                     /* position predicate */
-                    ly_strcat(&result, "[%"PRIu64"]", pred->position);
+                    ly_strcat(&result, "[%" PRIu64 "]", pred->position);
                     break;
                 case LY_PATH_PREDTYPE_LIST:
                 {
@@ -1668,7 +1668,7 @@ ly_type_free_instanceid(const struct ly_ctx *ctx, struct lyd_value *value)
 
 LY_ERR
 ly_type_find_leafref(const struct lysc_type_leafref *lref, const struct lyd_node *node, struct lyd_value *value,
-                     const struct lyd_node *tree, struct lyd_node **target, char **errmsg)
+        const struct lyd_node *tree, struct lyd_node **target, char **errmsg)
 {
     LY_ERR ret;
     struct lyxp_set set = {0};
@@ -1734,8 +1734,8 @@ error:
  */
 static LY_ERR
 ly_type_store_leafref(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                      LY_PREFIX_FORMAT format, void *prefix_data, const void *context_node, const struct lyd_node *tree,
-                      struct lyd_value *storage, struct ly_err_item **err)
+        LY_PREFIX_FORMAT format, void *prefix_data, const void *context_node, const struct lyd_node *tree,
+        struct lyd_value *storage, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
     char *errmsg = NULL;
@@ -1927,7 +1927,7 @@ ly_type_union_free_prefix_data(LY_PREFIX_FORMAT format, void *prefix_data)
  */
 static void *
 ly_type_union_store_prefix_data(const struct ly_ctx *ctx, const char *value, size_t value_len, LY_PREFIX_FORMAT format,
-                                void *prefix_data)
+        void *prefix_data)
 {
     unsigned int c;
     const char *start, *stop;
@@ -2063,8 +2063,8 @@ error:
  */
 static LY_ERR
 ly_type_store_union(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
-                    LY_PREFIX_FORMAT format, void *prefix_data, const void *context_node, const struct lyd_node *tree,
-                    struct lyd_value *storage, struct ly_err_item **err)
+        LY_PREFIX_FORMAT format, void *prefix_data, const void *context_node, const struct lyd_node *tree,
+        struct lyd_value *storage, struct ly_err_item **err)
 {
     LY_ERR ret = LY_SUCCESS;
     LY_ARRAY_COUNT_TYPE u;

@@ -196,11 +196,11 @@ xml_print_meta(struct xmlpr_ctx *ctx, const struct lyd_node *node)
             ly_print_(out, " %s=\"", meta->name);
         } else {
 #endif
-            /* print the metadata with its namespace */
-            mod = meta->annotation->module;
-            ly_print_(ctx->out, " %s:%s=\"", xml_print_ns(ctx, mod->ns, mod->prefix, 1), meta->name);
+        /* print the metadata with its namespace */
+        mod = meta->annotation->module;
+        ly_print_(ctx->out, " %s:%s=\"", xml_print_ns(ctx, mod->ns, mod->prefix, 1), meta->name);
 #if 0
-        }
+    }
 #endif
 
         /* print metadata value */
@@ -567,4 +567,3 @@ finish:
     ly_print_flush(out);
     return LY_SUCCESS;
 }
-

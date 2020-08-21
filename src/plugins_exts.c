@@ -87,23 +87,23 @@ lyext_parent2str(LYEXT_PARENT type)
         return "extension instance";
     case LYEXT_PAR_IMPORT:
         return "import";
-/* YANG allows extension instances inside the following statements,
- * but they do not have any meaning in current libyang
-    case LYEXT_PAR_TPDF:
-        return "typedef";
-    case LYEXT_PAR_EXTINST:
-        return "extension";
-    case LYEXT_PAR_REFINE:
-        return "refine";
-    case LYEXT_PAR_DEVIATION:
-        return "deviation";
-    case LYEXT_PAR_DEVIATE:
-        return "deviate";
-    case LYEXT_PAR_INCLUDE:
-        return "include";
-    case LYEXT_PAR_REVISION:
-        return "revision";
- */
+    /* YANG allows extension instances inside the following statements,
+     * but they do not have any meaning in current libyang
+        case LYEXT_PAR_TPDF:
+            return "typedef";
+        case LYEXT_PAR_EXTINST:
+            return "extension";
+        case LYEXT_PAR_REFINE:
+            return "refine";
+        case LYEXT_PAR_DEVIATION:
+            return "deviation";
+        case LYEXT_PAR_DEVIATE:
+            return "deviate";
+        case LYEXT_PAR_INCLUDE:
+            return "include";
+        case LYEXT_PAR_REVISION:
+            return "revision";
+     */
     default:
         return "unknown";
     }

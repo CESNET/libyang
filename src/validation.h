@@ -47,7 +47,7 @@ LY_ERR lyd_val_diff_add(const struct lyd_node *node, enum lyd_diff_op op, struct
  * @return LY_ERR value.
  */
 LY_ERR lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, struct ly_set *node_types, struct ly_set *meta_types,
-                          LY_PREFIX_FORMAT format, void *prefix_data, struct lyd_node **diff);
+        LY_PREFIX_FORMAT format, void *prefix_data, struct lyd_node **diff);
 
 /**
  * @brief Validate new siblings. Specifically, check duplicated instances, autodelete default values and cases.
@@ -61,7 +61,7 @@ LY_ERR lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, stru
  * @return LY_ERR value.
  */
 LY_ERR lyd_validate_new(struct lyd_node **first, const struct lysc_node *sparent, const struct lys_module *mod,
-                        struct lyd_node **diff);
+        struct lyd_node **diff);
 
 /**
  * @brief Perform all remaining validation tasks, the data tree must be final when calling this function.
@@ -74,6 +74,6 @@ LY_ERR lyd_validate_new(struct lyd_node **first, const struct lysc_node *sparent
  * @return LY_ERR value.
  */
 LY_ERR lyd_validate_final_r(struct lyd_node *first, const struct lysc_node *sparent, const struct lys_module *mod,
-                            int val_opts, LYD_VALIDATE_OP op);
+        int val_opts, LYD_VALIDATE_OP op);
 
 #endif /* LY_VALIDATION_H_ */

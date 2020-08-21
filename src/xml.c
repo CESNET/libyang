@@ -39,7 +39,7 @@
 #define ign_xmlws(c) while (is_xmlws(*(c)->in->current)) {if (*(c)->in->current == '\n') {++c->line;} ly_in_skip(c->in, 1);}
 
 static LY_ERR lyxml_next_attr_content(struct lyxml_ctx *xmlctx, const char **value, size_t *value_len, int *ws_only,
-                                      int *dynamic);
+        int *dynamic);
 
 /**
  * @brief Ignore any characters until the delim of the size delim_len is read
@@ -519,7 +519,7 @@ success:
  */
 static LY_ERR
 lyxml_close_element(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_len, const char *name, size_t name_len,
-                    int empty)
+        int empty)
 {
     struct lyxml_elem *e;
 
@@ -763,7 +763,7 @@ lyxml_next_attribute(struct lyxml_ctx *xmlctx, const char **prefix, size_t *pref
  */
 static LY_ERR
 lyxml_next_element(struct lyxml_ctx *xmlctx, const char **prefix, size_t *prefix_len, const char **name, size_t *name_len,
-                   int *closing)
+        int *closing)
 {
     /* skip WS until EOF or after opening tag '<' */
     LY_CHECK_RET(lyxml_skip_until_end_or_after_otag(xmlctx));
@@ -863,7 +863,7 @@ lyxml_ctx_next(struct lyxml_ctx *xmlctx)
             xmlctx->status = LYXML_ELEM_CLOSE;
             break;
         }
-        /* fallthrough */
+    /* fallthrough */
 
     /* </elem>| <elem2>* */
     case LYXML_ELEM_CLOSE:
@@ -977,7 +977,7 @@ lyxml_ctx_peek(struct lyxml_ctx *xmlctx, enum LYXML_PARSER_STATUS *next)
             *next = LYXML_ELEM_CLOSE;
             break;
         }
-        /* fallthrough */
+    /* fallthrough */
     case LYXML_ELEM_CLOSE:
         /* parse next element, if any */
         ret = lyxml_next_element(xmlctx, &prefix, &prefix_len, &name, &name_len, &closing);
@@ -1066,7 +1066,7 @@ lyxml_dump_text(struct ly_out *out, const char *text, int attribute)
                 ret = ly_print_(out, "&quot;");
                 break;
             }
-            /* falls through */
+        /* falls through */
         default:
             ret = ly_write_(out, &text[u], 1);
             break;

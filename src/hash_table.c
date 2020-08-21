@@ -488,7 +488,7 @@ lyht_find_collision(struct hash_table *ht, struct ht_rec **last, struct ht_rec *
  */
 static LY_ERR
 lyht_find_rec(struct hash_table *ht, void *val_p, uint32_t hash, int mod, struct ht_rec **crec_p, uint32_t *col,
-              struct ht_rec **rec_p)
+        struct ht_rec **rec_p)
 {
     struct ht_rec *rec, *crec;
     uint32_t i, c;
@@ -591,7 +591,7 @@ lyht_find_next(struct hash_table *ht, void *val_p, uint32_t hash, void **match_p
 
 LY_ERR
 lyht_insert_with_resize_cb(struct hash_table *ht, void *val_p, uint32_t hash,
-                           values_equal_cb resize_val_equal, void **match_p)
+        values_equal_cb resize_val_equal, void **match_p)
 {
     struct ht_rec *rec, *crec = NULL;
     int32_t i;

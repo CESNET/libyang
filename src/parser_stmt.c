@@ -73,7 +73,7 @@ lysp_stmt_validate_value(struct lys_parser_ctx *ctx, enum yang_arg val_type, con
  */
 static LY_ERR
 lysp_stmt_ext(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, LYEXT_SUBSTMT insubstmt,
-              LY_ARRAY_COUNT_TYPE insubstmt_index, struct lysp_ext_instance **exts)
+        LY_ARRAY_COUNT_TYPE insubstmt_index, struct lysp_ext_instance **exts)
 {
     struct lysp_ext_instance *e;
 
@@ -109,7 +109,7 @@ lysp_stmt_ext(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, LYEXT_SU
  */
 static LY_ERR
 lysp_stmt_text_field(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, LYEXT_SUBSTMT substmt, uint32_t substmt_index,
-                     const char **value, enum yang_arg arg, struct lysp_ext_instance **exts)
+        const char **value, enum yang_arg arg, struct lysp_ext_instance **exts)
 {
     const struct lysp_stmt *child;
 
@@ -153,7 +153,7 @@ lysp_stmt_text_field(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, L
  */
 static LY_ERR
 lysp_stmt_text_fields(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, LYEXT_SUBSTMT substmt,
-                      const char ***texts, enum yang_arg arg, struct lysp_ext_instance **exts)
+        const char ***texts, enum yang_arg arg, struct lysp_ext_instance **exts)
 {
     const char **item;
     const struct lysp_stmt *child;
@@ -315,7 +315,7 @@ lysp_stmt_restrs(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, enum 
  */
 static LY_ERR
 lysp_stmt_type_enum_value_pos(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, enum ly_stmt val_kw, int64_t *value, uint16_t *flags,
-                              struct lysp_ext_instance **exts)
+        struct lysp_ext_instance **exts)
 {
     size_t arg_len;
     char *ptr = NULL;
@@ -529,7 +529,7 @@ lysp_stmt_type_fracdigits(struct lys_parser_ctx *ctx, const struct lysp_stmt *st
  */
 static LY_ERR
 lysp_stmt_type_reqinstance(struct lys_parser_ctx *ctx, const struct lysp_stmt *stmt, uint8_t *reqinst, uint16_t *flags,
-                           struct lysp_ext_instance **exts)
+        struct lysp_ext_instance **exts)
 {
     size_t arg_len;
     struct lysp_stmt *child;
@@ -811,7 +811,7 @@ lysp_stmt_parse(struct lysc_ctx *ctx, const struct lysp_stmt *stmt, enum ly_stmt
         ret = lysp_stmt_type((struct lys_parser_ctx *)&pctx, stmt, type);
         (*result) = type;
         break;
-        }
+    }
     default:
         LOGINT(ctx->ctx);
         return LY_EINT;

@@ -257,7 +257,7 @@ LY_ERR lysp_check_typedefs(struct lys_parser_ctx *ctx, struct lysp_module *mod);
  */
 LY_ERR
 lysp_parse_finalize_reallocated(struct lys_parser_ctx *ctx, struct lysp_grp *groupings, struct lysp_augment *augments,
-                                struct lysp_action *actions, struct lysp_notif *notifs);
+        struct lysp_action *actions, struct lysp_notif *notifs);
 
 /**
  * @brief Just move the newest revision into the first position, does not sort the rest
@@ -277,7 +277,7 @@ void lysp_sort_revisions(struct lysp_revision *revs);
  * @param[out] module Module where the found typedef is being defined, NULL in case of built-in YANG types.
  */
 LY_ERR lysp_type_find(const char *id, struct lysp_node *start_node, struct lysp_module *start_module,
-                      LY_DATA_TYPE *type, const struct lysp_tpdf **tpdf, struct lysp_node **node, struct lysp_module **module);
+        LY_DATA_TYPE *type, const struct lysp_tpdf **tpdf, struct lysp_node **node, struct lysp_module **module);
 
 /**
  * @brief Validate enum name.
@@ -419,8 +419,8 @@ struct lys_module *lysp_find_module(struct ly_ctx *ctx, const struct lysp_module
  * @return LY_ERR value
  */
 LY_ERR lysc_check_status(struct lysc_ctx *ctx,
-                         uint16_t flags1, void *mod1, const char *name1,
-                         uint16_t flags2, void *mod2, const char *name2);
+        uint16_t flags1, void *mod1, const char *name1,
+        uint16_t flags2, void *mod2, const char *name2);
 
 /**
  * @brief Find the node according to the given descendant/absolute schema nodeid.
@@ -443,8 +443,8 @@ LY_ERR lysc_check_status(struct lysc_ctx *ctx,
  * @return LY_ERR values - LY_ENOTFOUND, LY_EVALID, LY_EDENIED or LY_SUCCESS.
  */
 LY_ERR lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodeid_len, const struct lysc_node *context_node,
-                                 const struct lys_module *context_module, int nodetype, int implement,
-                                 const struct lysc_node **target, uint16_t *result_flag);
+        const struct lys_module *context_module, int nodetype, int implement,
+        const struct lysc_node **target, uint16_t *result_flag);
 
 /**
  * @brief Find the module referenced by prefix in the provided mod.
@@ -480,7 +480,7 @@ const char *lys_prefix_find_module(const struct lys_module *mod, const struct ly
 const char *lys_datatype2str(LY_DATA_TYPE basetype);
 
 typedef LY_ERR (*lys_custom_check)(const struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod,
-                                   void *check_data);
+        void *check_data);
 
 /**
  * @brief Parse module from a string.
@@ -497,7 +497,7 @@ typedef LY_ERR (*lys_custom_check)(const struct ly_ctx *ctx, struct lysp_module 
  * @return LY_ERR value.
  */
 LY_ERR lys_parse_mem_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, int implement,
-                            lys_custom_check custom_check, void *check_data, struct lys_module **module);
+        lys_custom_check custom_check, void *check_data, struct lys_module **module);
 
 /**
  * @brief Parse submodule from a string.
@@ -514,8 +514,8 @@ LY_ERR lys_parse_mem_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT f
  * @return LY_ERR value.
  */
 LY_ERR lys_parse_mem_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format,
-                               struct lys_parser_ctx *main_ctx, lys_custom_check custom_check,
-                               void *check_data, struct lysp_submodule **submodule);
+        struct lys_parser_ctx *main_ctx, lys_custom_check custom_check,
+        void *check_data, struct lysp_submodule **submodule);
 
 /**
  * @brief Fill filepath value if available in input handler @p in
@@ -546,7 +546,7 @@ void lys_parser_fill_filepath(struct ly_ctx *ctx, struct ly_in *in, const char *
  * @return LY_ERR value, in case of LY_SUCCESS, the \arg result is always provided.
  */
 LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, int implement,
-                            struct lys_parser_ctx *main_ctx, const char *main_name, int required, void **result);
+        struct lys_parser_ctx *main_ctx, const char *main_name, int required, void **result);
 
 /**
  * @brief Compile information from the identity statement
@@ -563,7 +563,7 @@ LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *re
  * @return LY_ERR value.
  */
 LY_ERR lys_identity_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lys_module *module,
-                               struct lysp_ident *identities_p, struct lysc_ident **identities);
+        struct lysp_ident *identities_p, struct lysc_ident **identities);
 
 /**
  * @brief Create pre-compiled features array.
@@ -587,7 +587,7 @@ LY_ERR lys_identity_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, stru
  * @return LY_ERR value.
  */
 LY_ERR lys_feature_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struct lys_module *module,
-                              struct lysp_feature *features_p, struct lysc_feature **features);
+        struct lysp_feature *features_p, struct lysc_feature **features);
 
 /**
  * @brief Get the @ref ifftokens from the given position in the 2bits array
@@ -770,7 +770,7 @@ enum ly_stmt lysp_match_kw(struct lys_yang_parser_ctx *ctx, struct ly_in *in);
  * In case the @p buffer is NULL, the returned string is dynamically allocated and caller is responsible to free it.
  */
 char *lysc_path_until(const struct lysc_node *node, const struct lysc_node *parent, LYSC_PATH_TYPE pathtype, char *buffer,
-                      size_t buflen);
+        size_t buflen);
 
 /**
  * @brief Get schema parent that can be instantiated in data. In other words, skip any choice or case nodes.

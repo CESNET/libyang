@@ -12,7 +12,6 @@
  *     https://opensource.org/licenses/BSD-3-Clause
  */
 
-
 #include <assert.h>
 #include <stdlib.h>
 

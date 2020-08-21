@@ -58,7 +58,7 @@ const char *const yin_attr_list[] = {
 
 enum ly_stmt
 yin_match_keyword(struct lys_yin_parser_ctx *ctx, const char *name, size_t name_len,
-                  const char *prefix, size_t prefix_len, enum ly_stmt parent)
+        const char *prefix, size_t prefix_len, enum ly_stmt parent)
 {
     const char *start = NULL;
     enum ly_stmt kw = LY_STMT_NONE;
@@ -217,7 +217,7 @@ subelems_deallocator(size_t count, struct yin_subelement *subelems)
  */
 static LY_ERR
 subelems_allocator(struct lys_yin_parser_ctx *ctx, size_t count, struct lysp_node *parent,
-                   struct yin_subelement **result, ...)
+        struct yin_subelement **result, ...)
 {
     va_list ap;
 
@@ -321,7 +321,7 @@ yin_validate_value(struct lys_yin_parser_ctx *ctx, enum yang_arg val_type)
  */
 static LY_ERR
 yin_parse_attribute(struct lys_yin_parser_ctx *ctx, enum yin_argument arg_type, const char **arg_val, enum yang_arg val_type,
-                    enum ly_stmt current_element)
+        enum ly_stmt current_element)
 {
     enum yin_argument arg = YIN_ARG_UNKNOWN;
     bool found = false;
@@ -400,7 +400,7 @@ get_record(enum ly_stmt type, size_t array_size, struct yin_subelement *array)
  */
 static LY_ERR
 yin_check_subelem_mandatory_constraint(struct lys_yin_parser_ctx *ctx, struct yin_subelement *subelem_info,
-                                       signed char subelem_info_size, enum ly_stmt current_element)
+        signed char subelem_info_size, enum ly_stmt current_element)
 {
     for (signed char i = 0; i < subelem_info_size; ++i) {
         /* if there is element that is mandatory and isn't parsed log error and return LY_EVALID */
@@ -427,8 +427,8 @@ yin_check_subelem_mandatory_constraint(struct lys_yin_parser_ctx *ctx, struct yi
  */
 static LY_ERR
 yin_check_subelem_first_constraint(struct lys_yin_parser_ctx *ctx, struct yin_subelement *subelem_info,
-                                   signed char subelem_info_size, enum ly_stmt current_element,
-                                   struct yin_subelement *exp_first)
+        signed char subelem_info_size, enum ly_stmt current_element,
+        struct yin_subelement *exp_first)
 {
     for (signed char i = 0; i < subelem_info_size; ++i) {
         if (subelem_info[i].flags & YIN_SUBELEM_PARSED) {
@@ -455,13 +455,13 @@ yin_check_subelem_first_constraint(struct lys_yin_parser_ctx *ctx, struct yin_su
  */
 static LY_ERR
 yin_parse_simple_element(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, const char **value,
-                         enum yin_argument arg_type, enum yang_arg arg_val_type, struct lysp_ext_instance **exts)
+        enum yin_argument arg_type, enum yang_arg arg_val_type, struct lysp_ext_instance **exts)
 {
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, arg_type, value, arg_val_type, kw));
     struct yin_subelement subelems[1] = {
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
-                                        };
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
+    };
 
     return yin_parse_content(ctx, subelems, 1, kw, NULL, exts);
 }
@@ -520,13 +520,13 @@ yin_parse_pattern(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
     type->flags |= LYS_SET_PATTERN;
 
     struct yin_subelement subelems[6] = {
-                                            {LY_STMT_DESCRIPTION, &restr->dsc, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_ERROR_APP_TAG, &restr->eapptag, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_ERROR_MESSAGE, &restr->emsg, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_MODIFIER, &restr->arg, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_REFERENCE, &restr->ref, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
-                                        };
+        {LY_STMT_DESCRIPTION, &restr->dsc, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_ERROR_APP_TAG, &restr->eapptag, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_ERROR_MESSAGE, &restr->emsg, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_MODIFIER, &restr->arg, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_REFERENCE, &restr->ref, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
+    };
     return yin_parse_content(ctx, subelems, 6, LY_STMT_PATTERN, NULL, &restr->exts);
 }
 
@@ -569,8 +569,8 @@ yin_parse_fracdigits(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
     type->fraction_digits = num;
     type->flags |= LYS_SET_FRDIGITS;
     struct yin_subelement subelems[1] = {
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
-                                        };
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
+    };
     return yin_parse_content(ctx, subelems, 1, LY_STMT_FRACTION_DIGITS, NULL, &type->exts);
 }
 
@@ -595,13 +595,13 @@ yin_parse_enum(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
     CHECK_UNIQUENESS((struct lys_parser_ctx *)ctx, type->enums, name, "enum", en->name);
 
     struct yin_subelement subelems[6] = {
-                                            {LY_STMT_DESCRIPTION, &en->dsc, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_IF_FEATURE, &en->iffeatures, 0},
-                                            {LY_STMT_REFERENCE, &en->ref, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_STATUS, &en->flags, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_VALUE, en, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
-                                        };
+        {LY_STMT_DESCRIPTION, &en->dsc, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_IF_FEATURE, &en->iffeatures, 0},
+        {LY_STMT_REFERENCE, &en->ref, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_STATUS, &en->flags, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_VALUE, en, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
+    };
     return yin_parse_content(ctx, subelems, 6, LY_STMT_ENUM, NULL, &en->exts);
 }
 
@@ -624,13 +624,13 @@ yin_parse_bit(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
     CHECK_UNIQUENESS((struct lys_parser_ctx *)ctx, type->enums, name, "bit", en->name);
 
     struct yin_subelement subelems[6] = {
-                                            {LY_STMT_DESCRIPTION, &en->dsc, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_IF_FEATURE, &en->iffeatures, 0},
-                                            {LY_STMT_POSITION, en, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_REFERENCE, &en->ref, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_STATUS, &en->flags, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
-                                        };
+        {LY_STMT_DESCRIPTION, &en->dsc, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_IF_FEATURE, &en->iffeatures, 0},
+        {LY_STMT_POSITION, en, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_REFERENCE, &en->ref, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_STATUS, &en->flags, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
+    };
     return yin_parse_content(ctx, subelems, 6, LY_STMT_BIT, NULL, &en->exts);
 }
 
@@ -648,14 +648,14 @@ yin_parse_bit(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
  */
 static LY_ERR
 yin_parse_simple_elements(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, const char ***values, enum yin_argument arg_type,
-                          enum yang_arg arg_val_type, struct lysp_ext_instance **exts)
+        enum yang_arg arg_val_type, struct lysp_ext_instance **exts)
 {
     const char **value;
     LY_ARRAY_NEW_RET(ctx->xmlctx->ctx, *values, value, LY_EMEM);
     LY_ARRAY_COUNT_TYPE index = LY_ARRAY_COUNT(*values) - 1;
     struct yin_subelement subelems[1] = {
-                                            {LY_STMT_EXTENSION_INSTANCE, &index, 0}
-                                        };
+        {LY_STMT_EXTENSION_INSTANCE, &index, 0}
+    };
 
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, arg_type, value, arg_val_type, kw));
@@ -676,7 +676,7 @@ yin_parse_simple_elements(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, const
  */
 static LY_ERR
 yin_parse_simple_elem(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, struct yin_subelement *subinfo,
-                      enum yin_argument arg_type, enum yang_arg arg_val_type, struct lysp_ext_instance **exts)
+        enum yin_argument arg_type, enum yang_arg arg_val_type, struct lysp_ext_instance **exts)
 {
     if (subinfo->flags & YIN_SUBELEM_UNIQUE) {
         LY_CHECK_RET(yin_parse_simple_element(ctx, kw, (const char **)subinfo->dest,
@@ -731,8 +731,8 @@ yin_pasrse_reqinstance(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
 {
     const char *temp_val = NULL;
     struct yin_subelement subelems[1] = {
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
-                                        };
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
+    };
 
     type->flags |= LYS_SET_REQINST;
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
@@ -766,8 +766,8 @@ yin_parse_modifier(struct lys_yin_parser_ctx *ctx, const char **pat, struct lysp
     const char *temp_val;
     char *modified_val;
     struct yin_subelement subelems[1] = {
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
-                                        };
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
+    };
 
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_VALUE, &temp_val, Y_STR_ARG, LY_STMT_MODIFIER));
@@ -804,12 +804,12 @@ yin_parse_restriction(struct lys_yin_parser_ctx *ctx, enum ly_stmt restr_kw, str
 {
     assert(restr_kw == LY_STMT_MUST || restr_kw == LY_STMT_LENGTH || restr_kw == LY_STMT_RANGE);
     struct yin_subelement subelems[5] = {
-                                            {LY_STMT_DESCRIPTION, &restr->dsc, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_ERROR_APP_TAG, &restr->eapptag, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_ERROR_MESSAGE, &restr->emsg, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_REFERENCE, &restr->ref, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
-                                        };
+        {LY_STMT_DESCRIPTION, &restr->dsc, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_ERROR_APP_TAG, &restr->eapptag, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_ERROR_MESSAGE, &restr->emsg, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_REFERENCE, &restr->ref, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
+    };
     /* argument of must is called condition, but argument of length and range is called value */
     enum yin_argument arg_type = (restr_kw == LY_STMT_MUST) ? YIN_ARG_CONDITION : YIN_ARG_VALUE;
 
@@ -899,7 +899,7 @@ yin_parse_value_pos(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, struct lysp
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_VALUE, &temp_val, Y_STR_ARG, kw));
     if (!temp_val || temp_val[0] == '\0' || (temp_val[0] == '+') ||
-        ((temp_val[0] == '0') && (temp_val[1] != '\0')) || ((kw == LY_STMT_POSITION) && !strcmp(temp_val, "-0"))) {
+            ((temp_val[0] == '0') && (temp_val[1] != '\0')) || ((kw == LY_STMT_POSITION) && !strcmp(temp_val, "-0"))) {
         LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_INVAL_YIN, temp_val, "value", ly_stmt2str(kw));
         goto error;
     }
@@ -938,8 +938,8 @@ yin_parse_value_pos(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, struct lysp
 
     /* parse subelements */
     struct yin_subelement subelems[1] = {
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
-                                        };
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
+    };
     return yin_parse_content(ctx, subelems, 1, kw, NULL, &enm->exts);
 
 error:
@@ -960,9 +960,9 @@ static LY_ERR
 yin_parse_belongs_to(struct lys_yin_parser_ctx *ctx, struct lysp_submodule *submod, struct lysp_ext_instance **exts)
 {
     struct yin_subelement subelems[2] = {
-                                            {LY_STMT_PREFIX, &submod->prefix, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
-                                        };
+        {LY_STMT_PREFIX, &submod->prefix, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE},
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
+    };
 
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_MODULE, &submod->belongsto, Y_IDENTIF_ARG, LY_STMT_BELONGS_TO));
@@ -987,9 +987,9 @@ yin_parse_meta(struct lys_yin_parser_ctx *ctx, enum ly_stmt elem_type, const cha
     assert(elem_type == LY_STMT_ORGANIZATION || elem_type == LY_STMT_CONTACT || elem_type == LY_STMT_DESCRIPTION || elem_type == LY_STMT_REFERENCE);
 
     struct yin_subelement subelems[2] = {
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
-                                            {LY_STMT_ARG_TEXT, value, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE | YIN_SUBELEM_FIRST}
-                                        };
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
+        {LY_STMT_ARG_TEXT, value, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE | YIN_SUBELEM_FIRST}
+    };
     /* check attributes */
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_NONE, NULL, Y_MAYBE_STR_ARG, elem_type));
@@ -1011,9 +1011,9 @@ static LY_ERR
 yin_parse_err_msg(struct lys_yin_parser_ctx *ctx, const char **value, struct lysp_ext_instance **exts)
 {
     struct yin_subelement subelems[2] = {
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
-                                            {LY_STMT_ARG_VALUE, value, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE | YIN_SUBELEM_FIRST}
-                                        };
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
+        {LY_STMT_ARG_VALUE, value, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE | YIN_SUBELEM_FIRST}
+    };
 
     /* check attributes */
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
@@ -1050,18 +1050,18 @@ yin_parse_type(struct lys_yin_parser_ctx *ctx, enum ly_stmt parent, struct yin_s
         type = nested_type;
     }
     struct yin_subelement subelems[11] = {
-                                            {LY_STMT_BASE, type, 0},
-                                            {LY_STMT_BIT, type, 0},
-                                            {LY_STMT_ENUM, type, 0},
-                                            {LY_STMT_FRACTION_DIGITS, type, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_LENGTH, type, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_PATH, type, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_PATTERN, type, 0},
-                                            {LY_STMT_RANGE, type, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_REQUIRE_INSTANCE, type, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_TYPE, type},
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
-                                        };
+        {LY_STMT_BASE, type, 0},
+        {LY_STMT_BIT, type, 0},
+        {LY_STMT_ENUM, type, 0},
+        {LY_STMT_FRACTION_DIGITS, type, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_LENGTH, type, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_PATH, type, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_PATTERN, type, 0},
+        {LY_STMT_RANGE, type, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_REQUIRE_INSTANCE, type, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_TYPE, type},
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
+    };
 
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_NAME, &type->name, Y_PREF_IDENTIF_ARG, LY_STMT_TYPE));
@@ -1085,8 +1085,8 @@ yin_parse_maxelements(struct lys_yin_parser_ctx *ctx, uint32_t *max, uint16_t *f
     char *ptr;
     unsigned long int num;
     struct yin_subelement subelems[1] = {
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
-                                        };
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
+    };
 
     *flags |= LYS_SET_MAX;
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
@@ -1133,8 +1133,8 @@ yin_parse_minelements(struct lys_yin_parser_ctx *ctx, uint32_t *min, uint16_t *f
     char *ptr;
     unsigned long int num;
     struct yin_subelement subelems[1] = {
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
-                                        };
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
+    };
 
     *flags |= LYS_SET_MIN;
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
@@ -1223,8 +1223,8 @@ yin_parse_orderedby(struct lys_yin_parser_ctx *ctx, uint16_t *flags, struct lysp
 {
     const char *temp_val;
     struct yin_subelement subelems[1] = {
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
-                                        };
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
+    };
 
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_VALUE, &temp_val, Y_STR_ARG, LY_STMT_ORDERED_BY));
@@ -1267,16 +1267,16 @@ yin_parse_any(struct lys_yin_parser_ctx *ctx, enum ly_stmt any_kw, struct tree_n
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_NAME, &any->name, Y_IDENTIF_ARG, any_kw));
 
     struct yin_subelement subelems[9] = {
-                                            {LY_STMT_CONFIG, &any->flags, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_DESCRIPTION, &any->dsc, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_IF_FEATURE, &any->iffeatures, 0},
-                                            {LY_STMT_MANDATORY, &any->flags, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_MUST, &any->musts, 0},
-                                            {LY_STMT_REFERENCE, &any->ref, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_STATUS, &any->flags, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_WHEN, &any->when, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
-                                        };
+        {LY_STMT_CONFIG, &any->flags, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_DESCRIPTION, &any->dsc, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_IF_FEATURE, &any->iffeatures, 0},
+        {LY_STMT_MANDATORY, &any->flags, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_MUST, &any->musts, 0},
+        {LY_STMT_REFERENCE, &any->ref, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_STATUS, &any->flags, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_WHEN, &any->when, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
+    };
     return yin_parse_content(ctx, subelems, 9, any_kw, NULL, &any->exts);
 }
 
@@ -1304,19 +1304,19 @@ yin_parse_leaf(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *node_meta)
 
     /* parse content */
     struct yin_subelement subelems[12] = {
-                                            {LY_STMT_CONFIG, &leaf->flags, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_DEFAULT, &leaf->dflt, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_DESCRIPTION, &leaf->dsc, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_IF_FEATURE, &leaf->iffeatures, 0},
-                                            {LY_STMT_MANDATORY, &leaf->flags, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_MUST, &leaf->musts, 0},
-                                            {LY_STMT_REFERENCE, &leaf->ref, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_STATUS, &leaf->flags, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_TYPE, &leaf->type, YIN_SUBELEM_UNIQUE | YIN_SUBELEM_MANDATORY},
-                                            {LY_STMT_UNITS, &leaf->units, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_WHEN, &leaf->when, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
-                                         };
+        {LY_STMT_CONFIG, &leaf->flags, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_DEFAULT, &leaf->dflt, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_DESCRIPTION, &leaf->dsc, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_IF_FEATURE, &leaf->iffeatures, 0},
+        {LY_STMT_MANDATORY, &leaf->flags, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_MUST, &leaf->musts, 0},
+        {LY_STMT_REFERENCE, &leaf->ref, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_STATUS, &leaf->flags, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_TYPE, &leaf->type, YIN_SUBELEM_UNIQUE | YIN_SUBELEM_MANDATORY},
+        {LY_STMT_UNITS, &leaf->units, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_WHEN, &leaf->when, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
+    };
     return yin_parse_content(ctx, subelems, 12, LY_STMT_LEAF, NULL, &leaf->exts);
 }
 
@@ -1344,21 +1344,21 @@ yin_parse_leaflist(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *node_m
 
     /* parse content */
     struct yin_subelement subelems[14] = {
-                                            {LY_STMT_CONFIG, &llist->flags, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_DEFAULT, &llist->dflts, 0},
-                                            {LY_STMT_DESCRIPTION, &llist->dsc, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_IF_FEATURE, &llist->iffeatures, 0},
-                                            {LY_STMT_MAX_ELEMENTS, llist, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_MIN_ELEMENTS, llist, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_MUST, &llist->musts, 0},
-                                            {LY_STMT_ORDERED_BY, &llist->flags, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_REFERENCE, &llist->ref, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_STATUS, &llist->flags, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_TYPE, &llist->type, YIN_SUBELEM_UNIQUE | YIN_SUBELEM_MANDATORY},
-                                            {LY_STMT_UNITS, &llist->units, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_WHEN, &llist->when, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
-                                        };
+        {LY_STMT_CONFIG, &llist->flags, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_DEFAULT, &llist->dflts, 0},
+        {LY_STMT_DESCRIPTION, &llist->dsc, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_IF_FEATURE, &llist->iffeatures, 0},
+        {LY_STMT_MAX_ELEMENTS, llist, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_MIN_ELEMENTS, llist, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_MUST, &llist->musts, 0},
+        {LY_STMT_ORDERED_BY, &llist->flags, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_REFERENCE, &llist->ref, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_STATUS, &llist->flags, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_TYPE, &llist->type, YIN_SUBELEM_UNIQUE | YIN_SUBELEM_MANDATORY},
+        {LY_STMT_UNITS, &llist->units, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_WHEN, &llist->when, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
+    };
     LY_CHECK_RET(yin_parse_content(ctx, subelems, 14, LY_STMT_LEAF_LIST, NULL, &llist->exts));
 
     /* check invalid combination of subelements */
@@ -1395,14 +1395,14 @@ yin_parse_typedef(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *typedef
 
     /* parse content */
     struct yin_subelement subelems[7] = {
-                                            {LY_STMT_DEFAULT, &tpdf->dflt, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_DESCRIPTION, &tpdf->dsc, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_REFERENCE, &tpdf->ref, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_STATUS, &tpdf->flags, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_TYPE, &tpdf->type, YIN_SUBELEM_UNIQUE | YIN_SUBELEM_MANDATORY},
-                                            {LY_STMT_UNITS, &tpdf->units, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
-                                        };
+        {LY_STMT_DEFAULT, &tpdf->dflt, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_DESCRIPTION, &tpdf->dsc, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_REFERENCE, &tpdf->ref, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_STATUS, &tpdf->flags, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_TYPE, &tpdf->type, YIN_SUBELEM_UNIQUE | YIN_SUBELEM_MANDATORY},
+        {LY_STMT_UNITS, &tpdf->units, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
+    };
     LY_CHECK_RET(yin_parse_content(ctx, subelems, 7, LY_STMT_TYPEDEF, NULL, &tpdf->exts));
 
     /* store data for collision check */
@@ -1436,18 +1436,18 @@ yin_parse_refine(struct lys_yin_parser_ctx *ctx, struct lysp_refine **refines)
 
     /* parse content */
     struct yin_subelement subelems[11] = {
-                                            {LY_STMT_CONFIG, &rf->flags, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_DEFAULT, &rf->dflts, 0},
-                                            {LY_STMT_DESCRIPTION, &rf->dsc, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_IF_FEATURE, &rf->iffeatures, 0},
-                                            {LY_STMT_MANDATORY, &rf->flags, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_MAX_ELEMENTS, rf, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_MIN_ELEMENTS, rf, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_MUST, &rf->musts, 0},
-                                            {LY_STMT_PRESENCE, &rf->presence, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_REFERENCE, &rf->ref, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
-                                        };
+        {LY_STMT_CONFIG, &rf->flags, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_DEFAULT, &rf->dflts, 0},
+        {LY_STMT_DESCRIPTION, &rf->dsc, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_IF_FEATURE, &rf->iffeatures, 0},
+        {LY_STMT_MANDATORY, &rf->flags, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_MAX_ELEMENTS, rf, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_MIN_ELEMENTS, rf, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_MUST, &rf->musts, 0},
+        {LY_STMT_PRESENCE, &rf->presence, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_REFERENCE, &rf->ref, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
+    };
     return yin_parse_content(ctx, subelems, 11, LY_STMT_REFINE, NULL, &rf->exts);
 }
 
@@ -1476,15 +1476,15 @@ yin_parse_uses(struct lys_yin_parser_ctx *ctx, struct tree_node_meta *node_meta)
     /* parse content */
     struct tree_node_meta augments = {(struct lysp_node *)uses, (struct lysp_node **)&uses->augments};
     struct yin_subelement subelems[8] = {
-                                            {LY_STMT_AUGMENT, &augments, 0},
-                                            {LY_STMT_DESCRIPTION, &uses->dsc, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_IF_FEATURE, &uses->iffeatures, 0},
-                                            {LY_STMT_REFERENCE, &uses->ref, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_REFINE, &uses->refines, 0},
-                                            {LY_STMT_STATUS, &uses->flags, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_WHEN, &uses->when, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
-                                        };
+        {LY_STMT_AUGMENT, &augments, 0},
+        {LY_STMT_DESCRIPTION, &uses->dsc, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_IF_FEATURE, &uses->iffeatures, 0},
+        {LY_STMT_REFERENCE, &uses->ref, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_REFINE, &uses->refines, 0},
+        {LY_STMT_STATUS, &uses->flags, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_WHEN, &uses->when, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
+    };
     LY_CHECK_RET(yin_parse_content(ctx, subelems, 8, LY_STMT_USES, NULL, &uses->exts));
     LY_CHECK_RET(lysp_parse_finalize_reallocated((struct lys_parser_ctx *)ctx, NULL, uses->augments, NULL, NULL));
 
@@ -1521,10 +1521,10 @@ yin_parse_revision(struct lys_yin_parser_ctx *ctx, struct lysp_revision **revs)
 
     /* parse content */
     struct yin_subelement subelems[3] = {
-                                            {LY_STMT_DESCRIPTION, &rev->dsc, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_REFERENCE, &rev->ref, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
-                                        };
+        {LY_STMT_DESCRIPTION, &rev->dsc, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_REFERENCE, &rev->ref, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
+    };
     return yin_parse_content(ctx, subelems, 3, LY_STMT_REVISION, NULL, &rev->exts);
 }
 
@@ -1557,11 +1557,11 @@ yin_parse_include(struct lys_yin_parser_ctx *ctx, struct include_meta *inc_meta)
 
     /* parse content */
     struct yin_subelement subelems[4] = {
-                                            {LY_STMT_DESCRIPTION, &inc->dsc, YIN_SUBELEM_UNIQUE | YIN_SUBELEM_VER2},
-                                            {LY_STMT_REFERENCE, &inc->ref, YIN_SUBELEM_UNIQUE | YIN_SUBELEM_VER2},
-                                            {LY_STMT_REVISION_DATE, &inc->rev, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
-                                        };
+        {LY_STMT_DESCRIPTION, &inc->dsc, YIN_SUBELEM_UNIQUE | YIN_SUBELEM_VER2},
+        {LY_STMT_REFERENCE, &inc->ref, YIN_SUBELEM_UNIQUE | YIN_SUBELEM_VER2},
+        {LY_STMT_REVISION_DATE, &inc->rev, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
+    };
     return yin_parse_content(ctx, subelems, 4, LY_STMT_INCLUDE, NULL, &inc->exts);
 }
 
@@ -1579,8 +1579,8 @@ yin_parse_revision_date(struct lys_yin_parser_ctx *ctx, char *rev, struct lysp_e
 {
     const char *temp_rev;
     struct yin_subelement subelems[1] = {
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
-                                        };
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
+    };
 
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_DATE, &temp_rev, Y_STR_ARG, LY_STMT_REVISION_DATE));
@@ -1607,8 +1607,8 @@ yin_parse_config(struct lys_yin_parser_ctx *ctx, uint16_t *flags, struct lysp_ex
 {
     const char *temp_val = NULL;
     struct yin_subelement subelems[1] = {
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
-                                        };
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
+    };
 
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_VALUE, &temp_val, Y_STR_ARG, LY_STMT_CONFIG));
@@ -1641,8 +1641,8 @@ yin_parse_yangversion(struct lys_yin_parser_ctx *ctx, uint8_t *version, struct l
 {
     const char *temp_version = NULL;
     struct yin_subelement subelems[1] = {
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
-                                        };
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
+    };
 
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_VALUE, &temp_version, Y_STR_ARG, LY_STMT_YANG_VERSION));
@@ -1678,12 +1678,12 @@ yin_parse_import(struct lys_yin_parser_ctx *ctx, struct import_meta *imp_meta)
     LY_ARRAY_NEW_RET(ctx->xmlctx->ctx, *imp_meta->imports, imp, LY_EMEM);
 
     struct yin_subelement subelems[5] = {
-                                            {LY_STMT_DESCRIPTION, &imp->dsc, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_PREFIX, &imp->prefix, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_REFERENCE, &imp->ref, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_REVISION_DATE, imp->rev, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
-                                        };
+        {LY_STMT_DESCRIPTION, &imp->dsc, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_PREFIX, &imp->prefix, YIN_SUBELEM_MANDATORY | YIN_SUBELEM_UNIQUE},
+        {LY_STMT_REFERENCE, &imp->ref, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_REVISION_DATE, imp->rev, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
+    };
 
     /* parse import attributes */
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
@@ -1709,8 +1709,8 @@ yin_parse_mandatory(struct lys_yin_parser_ctx *ctx, uint16_t *flags, struct lysp
 {
     const char *temp_val = NULL;
     struct yin_subelement subelems[1] = {
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
-                                        };
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
+    };
 
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_VALUE, &temp_val, Y_STR_ARG, LY_STMT_MANDATORY));
@@ -1743,8 +1743,8 @@ yin_parse_status(struct lys_yin_parser_ctx *ctx, uint16_t *flags, struct lysp_ex
 {
     const char *value = NULL;
     struct yin_subelement subelems[1] = {
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
-                                        };
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
+    };
 
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_VALUE, &value, Y_STR_ARG, LY_STMT_STATUS));
@@ -1788,10 +1788,10 @@ yin_parse_when(struct lys_yin_parser_ctx *ctx, struct lysp_when **when_p)
 
     *when_p = when;
     struct yin_subelement subelems[3] = {
-                                            {LY_STMT_DESCRIPTION, &when->dsc, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_REFERENCE, &when->ref, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
-                                        };
+        {LY_STMT_DESCRIPTION, &when->dsc, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_REFERENCE, &when->ref, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
+    };
 
     return yin_parse_content(ctx, subelems, 3, LY_STMT_WHEN, NULL, &when->exts);
 }
@@ -1811,8 +1811,8 @@ yin_parse_yin_element(struct lys_yin_parser_ctx *ctx, uint16_t *flags, struct ly
 {
     const char *temp_val = NULL;
     struct yin_subelement subelems[1] = {
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
-                                        };
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
+    };
 
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_VALUE, &temp_val, Y_STR_ARG, LY_STMT_YIN_ELEMENT));
@@ -1844,9 +1844,9 @@ static LY_ERR
 yin_parse_argument(struct lys_yin_parser_ctx *ctx, struct yin_argument_meta *arg_meta, struct lysp_ext_instance **exts)
 {
     struct yin_subelement subelems[2] = {
-                                            {LY_STMT_YIN_ELEMENT, arg_meta->flags, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
-                                        };
+        {LY_STMT_YIN_ELEMENT, arg_meta->flags, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
+    };
 
     LY_CHECK_RET(lyxml_ctx_next(ctx->xmlctx));
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_NAME, arg_meta->argument, Y_IDENTIF_ARG, LY_STMT_ARGUMENT));
@@ -1872,12 +1872,12 @@ yin_parse_extension(struct lys_yin_parser_ctx *ctx, struct lysp_ext **extensions
 
     struct yin_argument_meta arg_info = {&ex->flags, &ex->argument};
     struct yin_subelement subelems[5] = {
-                                            {LY_STMT_ARGUMENT, &arg_info, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_DESCRIPTION, &ex->dsc, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_REFERENCE, &ex->ref, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_STATUS, &ex->flags, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
-                                        };
+        {LY_STMT_ARGUMENT, &arg_info, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_DESCRIPTION, &ex->dsc, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_REFERENCE, &ex->ref, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_STATUS, &ex->flags, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
+    };
 
     return yin_parse_content(ctx, subelems, 5, LY_STMT_EXTENSION, NULL, &ex->exts);
 }
@@ -1904,12 +1904,12 @@ yin_parse_feature(struct lys_yin_parser_ctx *ctx, struct lysp_feature **features
 
     /* parse content */
     struct yin_subelement subelems[5] = {
-                                            {LY_STMT_DESCRIPTION, &feat->dsc, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_IF_FEATURE, &feat->iffeatures, 0},
-                                            {LY_STMT_REFERENCE, &feat->ref, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_STATUS, &feat->flags, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
-                                        };
+        {LY_STMT_DESCRIPTION, &feat->dsc, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_IF_FEATURE, &feat->iffeatures, 0},
+        {LY_STMT_REFERENCE, &feat->ref, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_STATUS, &feat->flags, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
+    };
     return yin_parse_content(ctx, subelems, 5, LY_STMT_FEATURE, NULL, &feat->exts);
 }
 
@@ -1935,13 +1935,13 @@ yin_parse_identity(struct lys_yin_parser_ctx *ctx, struct lysp_ident **identitie
 
     /* parse content */
     struct yin_subelement subelems[6] = {
-                                            {LY_STMT_BASE, &ident->bases, 0},
-                                            {LY_STMT_DESCRIPTION, &ident->dsc, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_IF_FEATURE, &ident->iffeatures, YIN_SUBELEM_VER2},
-                                            {LY_STMT_REFERENCE, &ident->ref, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_STATUS, &ident->flags, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
-                                        };
+        {LY_STMT_BASE, &ident->bases, 0},
+        {LY_STMT_DESCRIPTION, &ident->dsc, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_IF_FEATURE, &ident->iffeatures, YIN_SUBELEM_VER2},
+        {LY_STMT_REFERENCE, &ident->ref, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_STATUS, &ident->flags, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
+    };
     return yin_parse_content(ctx, subelems, 6, LY_STMT_IDENTITY, NULL, &ident->exts);
 }
 
@@ -2470,8 +2470,8 @@ yin_parse_deviate(struct lys_yin_parser_ctx *ctx, struct lysp_deviate **deviates
         d = calloc(1, sizeof *d);
         LY_CHECK_ERR_RET(!d, LOGMEM(ctx->xmlctx->ctx), LY_EMEM);
         struct yin_subelement subelems[1] = {
-                                                {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
-                                            };
+            {LY_STMT_EXTENSION_INSTANCE, NULL, 0}
+        };
         ret = yin_parse_content(ctx, subelems, 1, LY_STMT_DEVIATE, NULL, &d->exts);
 
     } else if (dev_mod == LYS_DEV_ADD) {
@@ -2481,16 +2481,16 @@ yin_parse_deviate(struct lys_yin_parser_ctx *ctx, struct lysp_deviate **deviates
         struct minmax_dev_meta min = {&d_add->min, &d_add->flags, &d_add->exts};
         struct minmax_dev_meta max = {&d_add->max, &d_add->flags, &d_add->exts};
         struct yin_subelement subelems[9] = {
-                                                {LY_STMT_CONFIG, &d_add->flags, YIN_SUBELEM_UNIQUE},
-                                                {LY_STMT_DEFAULT, &d_add->dflts, 0},
-                                                {LY_STMT_MANDATORY, &d_add->flags, YIN_SUBELEM_UNIQUE},
-                                                {LY_STMT_MAX_ELEMENTS, &max, YIN_SUBELEM_UNIQUE},
-                                                {LY_STMT_MIN_ELEMENTS, &min, YIN_SUBELEM_UNIQUE},
-                                                {LY_STMT_MUST, &d_add->musts, 0},
-                                                {LY_STMT_UNIQUE, &d_add->uniques, 0},
-                                                {LY_STMT_UNITS, &d_add->units, YIN_SUBELEM_UNIQUE},
-                                                {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
-                                            };
+            {LY_STMT_CONFIG, &d_add->flags, YIN_SUBELEM_UNIQUE},
+            {LY_STMT_DEFAULT, &d_add->dflts, 0},
+            {LY_STMT_MANDATORY, &d_add->flags, YIN_SUBELEM_UNIQUE},
+            {LY_STMT_MAX_ELEMENTS, &max, YIN_SUBELEM_UNIQUE},
+            {LY_STMT_MIN_ELEMENTS, &min, YIN_SUBELEM_UNIQUE},
+            {LY_STMT_MUST, &d_add->musts, 0},
+            {LY_STMT_UNIQUE, &d_add->uniques, 0},
+            {LY_STMT_UNITS, &d_add->units, YIN_SUBELEM_UNIQUE},
+            {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
+        };
         ret = yin_parse_content(ctx, subelems, 9, LY_STMT_DEVIATE, NULL, &d_add->exts);
 
     } else if (dev_mod == LYS_DEV_REPLACE) {
@@ -2500,15 +2500,15 @@ yin_parse_deviate(struct lys_yin_parser_ctx *ctx, struct lysp_deviate **deviates
         struct minmax_dev_meta min = {&d_rpl->min, &d_rpl->flags, &d_rpl->exts};
         struct minmax_dev_meta max = {&d_rpl->max, &d_rpl->flags, &d_rpl->exts};
         struct yin_subelement subelems[8] = {
-                                                {LY_STMT_CONFIG, &d_rpl->flags, YIN_SUBELEM_UNIQUE},
-                                                {LY_STMT_DEFAULT, &d_rpl->dflt, YIN_SUBELEM_UNIQUE},
-                                                {LY_STMT_MANDATORY, &d_rpl->flags, YIN_SUBELEM_UNIQUE},
-                                                {LY_STMT_MAX_ELEMENTS, &max, YIN_SUBELEM_UNIQUE},
-                                                {LY_STMT_MIN_ELEMENTS, &min, YIN_SUBELEM_UNIQUE},
-                                                {LY_STMT_TYPE, &d_rpl->type, YIN_SUBELEM_UNIQUE},
-                                                {LY_STMT_UNITS, &d_rpl->units, YIN_SUBELEM_UNIQUE},
-                                                {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
-                                            };
+            {LY_STMT_CONFIG, &d_rpl->flags, YIN_SUBELEM_UNIQUE},
+            {LY_STMT_DEFAULT, &d_rpl->dflt, YIN_SUBELEM_UNIQUE},
+            {LY_STMT_MANDATORY, &d_rpl->flags, YIN_SUBELEM_UNIQUE},
+            {LY_STMT_MAX_ELEMENTS, &max, YIN_SUBELEM_UNIQUE},
+            {LY_STMT_MIN_ELEMENTS, &min, YIN_SUBELEM_UNIQUE},
+            {LY_STMT_TYPE, &d_rpl->type, YIN_SUBELEM_UNIQUE},
+            {LY_STMT_UNITS, &d_rpl->units, YIN_SUBELEM_UNIQUE},
+            {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
+        };
         ret = yin_parse_content(ctx, subelems, 8,  LY_STMT_DEVIATE, NULL, &d_rpl->exts);
 
     } else {
@@ -2516,12 +2516,12 @@ yin_parse_deviate(struct lys_yin_parser_ctx *ctx, struct lysp_deviate **deviates
         LY_CHECK_ERR_RET(!d_del, LOGMEM(ctx->xmlctx->ctx), LY_EMEM);
         d = (struct lysp_deviate *)d_del;
         struct yin_subelement subelems[5] = {
-                                                {LY_STMT_DEFAULT, &d_del->dflts, 0},
-                                                {LY_STMT_MUST, &d_del->musts, 0},
-                                                {LY_STMT_UNIQUE, &d_del->uniques, 0},
-                                                {LY_STMT_UNITS, &d_del->units, YIN_SUBELEM_UNIQUE},
-                                                {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
-                                            };
+            {LY_STMT_DEFAULT, &d_del->dflts, 0},
+            {LY_STMT_MUST, &d_del->musts, 0},
+            {LY_STMT_UNIQUE, &d_del->uniques, 0},
+            {LY_STMT_UNITS, &d_del->units, YIN_SUBELEM_UNIQUE},
+            {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
+        };
         ret = yin_parse_content(ctx, subelems, 5, LY_STMT_DEVIATE, NULL, &d_del->exts);
     }
     LY_CHECK_GOTO(ret, cleanup);
@@ -2558,11 +2558,11 @@ yin_parse_deviation(struct lys_yin_parser_ctx *ctx, struct lysp_deviation **devi
     LY_CHECK_RET(yin_parse_attribute(ctx, YIN_ARG_TARGET_NODE, &dev->nodeid, Y_STR_ARG, LY_STMT_DEVIATION));
     CHECK_NONEMPTY((struct lys_parser_ctx *)ctx, strlen(dev->nodeid), "deviation");
     struct yin_subelement subelems[4] = {
-                                            {LY_STMT_DESCRIPTION, &dev->dsc, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_DEVIATE, &dev->deviates, YIN_SUBELEM_MANDATORY},
-                                            {LY_STMT_REFERENCE, &dev->ref, YIN_SUBELEM_UNIQUE},
-                                            {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
-                                        };
+        {LY_STMT_DESCRIPTION, &dev->dsc, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_DEVIATE, &dev->deviates, YIN_SUBELEM_MANDATORY},
+        {LY_STMT_REFERENCE, &dev->ref, YIN_SUBELEM_UNIQUE},
+        {LY_STMT_EXTENSION_INSTANCE, NULL, 0},
+    };
     return yin_parse_content(ctx, subelems, 4, LY_STMT_DEVIATION, NULL, &dev->exts);
 }
 
@@ -2659,54 +2659,54 @@ static LY_ERR
 kw2kw_group(struct lys_yin_parser_ctx *ctx, enum ly_stmt kw, enum yang_module_stmt *group)
 {
     switch (kw) {
-        /* module header */
-        case LY_STMT_NONE:
-        case LY_STMT_NAMESPACE:
-        case LY_STMT_PREFIX:
-        case LY_STMT_BELONGS_TO:
-        case LY_STMT_YANG_VERSION:
-            *group = Y_MOD_MODULE_HEADER;
-            break;
-        /* linkage */
-        case LY_STMT_INCLUDE:
-        case LY_STMT_IMPORT:
-            *group = Y_MOD_LINKAGE;
-            break;
-        /* meta */
-        case LY_STMT_ORGANIZATION:
-        case LY_STMT_CONTACT:
-        case LY_STMT_DESCRIPTION:
-        case LY_STMT_REFERENCE:
-            *group = Y_MOD_META;
-            break;
-        /* revision */
-        case LY_STMT_REVISION:
-            *group = Y_MOD_REVISION;
-            break;
-        /* body */
-        case LY_STMT_ANYDATA:
-        case LY_STMT_ANYXML:
-        case LY_STMT_AUGMENT:
-        case LY_STMT_CHOICE:
-        case LY_STMT_CONTAINER:
-        case LY_STMT_DEVIATION:
-        case LY_STMT_EXTENSION:
-        case LY_STMT_FEATURE:
-        case LY_STMT_GROUPING:
-        case LY_STMT_IDENTITY:
-        case LY_STMT_LEAF:
-        case LY_STMT_LEAF_LIST:
-        case LY_STMT_LIST:
-        case LY_STMT_NOTIFICATION:
-        case LY_STMT_RPC:
-        case LY_STMT_TYPEDEF:
-        case LY_STMT_USES:
-        case LY_STMT_EXTENSION_INSTANCE:
-            *group = Y_MOD_BODY;
-            break;
-        default:
-            LOGINT(ctx->xmlctx->ctx);
-            return LY_EINT;
+    /* module header */
+    case LY_STMT_NONE:
+    case LY_STMT_NAMESPACE:
+    case LY_STMT_PREFIX:
+    case LY_STMT_BELONGS_TO:
+    case LY_STMT_YANG_VERSION:
+        *group = Y_MOD_MODULE_HEADER;
+        break;
+    /* linkage */
+    case LY_STMT_INCLUDE:
+    case LY_STMT_IMPORT:
+        *group = Y_MOD_LINKAGE;
+        break;
+    /* meta */
+    case LY_STMT_ORGANIZATION:
+    case LY_STMT_CONTACT:
+    case LY_STMT_DESCRIPTION:
+    case LY_STMT_REFERENCE:
+        *group = Y_MOD_META;
+        break;
+    /* revision */
+    case LY_STMT_REVISION:
+        *group = Y_MOD_REVISION;
+        break;
+    /* body */
+    case LY_STMT_ANYDATA:
+    case LY_STMT_ANYXML:
+    case LY_STMT_AUGMENT:
+    case LY_STMT_CHOICE:
+    case LY_STMT_CONTAINER:
+    case LY_STMT_DEVIATION:
+    case LY_STMT_EXTENSION:
+    case LY_STMT_FEATURE:
+    case LY_STMT_GROUPING:
+    case LY_STMT_IDENTITY:
+    case LY_STMT_LEAF:
+    case LY_STMT_LEAF_LIST:
+    case LY_STMT_LIST:
+    case LY_STMT_NOTIFICATION:
+    case LY_STMT_RPC:
+    case LY_STMT_TYPEDEF:
+    case LY_STMT_USES:
+    case LY_STMT_EXTENSION_INSTANCE:
+        *group = Y_MOD_BODY;
+        break;
+    default:
+        LOGINT(ctx->xmlctx->ctx);
+        return LY_EINT;
     }
 
     return LY_SUCCESS;
@@ -2781,7 +2781,7 @@ name2nsname(struct lys_yin_parser_ctx *ctx, const char *name, size_t name_len, c
 
 LY_ERR
 yin_parse_content(struct lys_yin_parser_ctx *ctx, struct yin_subelement *subelem_info, size_t subelem_info_size,
-                  enum ly_stmt current_element, const char **text_content, struct lysp_ext_instance **exts)
+        enum ly_stmt current_element, const char **text_content, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;
     enum LYXML_PARSER_STATUS next_status;
@@ -2853,7 +2853,7 @@ yin_parse_content(struct lys_yin_parser_ctx *ctx, struct yin_subelement *subelem
             /* call responsible function */
             case LY_STMT_EXTENSION_INSTANCE:
                 ret = yin_parse_extension_instance(ctx, kw2lyext_substmt(current_element),
-                                                   (subelem->dest) ? *((LY_ARRAY_COUNT_TYPE*)subelem->dest) : 0, exts);
+                                (subelem->dest) ? *((LY_ARRAY_COUNT_TYPE*)subelem->dest) : 0, exts);
                 break;
             case LY_STMT_ACTION:
             case LY_STMT_RPC:
@@ -3071,7 +3071,7 @@ cleanup:
 
 LY_ERR
 yin_parse_extension_instance(struct lys_yin_parser_ctx *ctx, LYEXT_SUBSTMT subelem, LY_ARRAY_COUNT_TYPE subelem_index,
-                             struct lysp_ext_instance **exts)
+        struct lysp_ext_instance **exts)
 {
     struct lysp_ext_instance *e;
     struct lysp_stmt *last_subelem = NULL, *new_subelem = NULL;
@@ -3263,7 +3263,7 @@ yin_parse_extension_instance_arg(struct lys_yin_parser_ctx *ctx, enum ly_stmt el
         /* parse child element */
         child = yin_match_keyword(ctx, ctx->xmlctx->name, ctx->xmlctx->name_len, ctx->xmlctx->prefix, ctx->xmlctx->prefix_len, elem_type);
         if ((elem_type == LY_STMT_ERROR_MESSAGE && child != LY_STMT_ARG_VALUE) ||
-            (elem_type != LY_STMT_ERROR_MESSAGE && child != LY_STMT_ARG_TEXT)) {
+                (elem_type != LY_STMT_ERROR_MESSAGE && child != LY_STMT_ARG_TEXT)) {
             LOGVAL_PARSER((struct lys_parser_ctx *)ctx, LY_VCODE_UNEXP_SUBELEM, ctx->xmlctx->name_len, ctx->xmlctx->name,
                           ly_stmt2str(elem_type));
             return LY_EVALID;
@@ -3504,7 +3504,7 @@ yin_parse_submod(struct lys_yin_parser_ctx *ctx, struct lysp_submodule *submod)
 
 LY_ERR
 yin_parse_submodule(struct lys_yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, struct lys_parser_ctx *main_ctx,
-                    struct ly_in *in, struct lysp_submodule **submod)
+        struct ly_in *in, struct lysp_submodule **submod)
 {
     enum ly_stmt kw = LY_STMT_NONE;
     LY_ERR ret = LY_SUCCESS;
@@ -3523,7 +3523,7 @@ yin_parse_submodule(struct lys_yin_parser_ctx **yin_ctx, struct ly_ctx *ctx, str
 
     /* check submodule */
     kw = yin_match_keyword(*yin_ctx, (*yin_ctx)->xmlctx->name, (*yin_ctx)->xmlctx->name_len, (*yin_ctx)->xmlctx->prefix,
-                           (*yin_ctx)->xmlctx->prefix_len, LY_STMT_NONE);
+                    (*yin_ctx)->xmlctx->prefix_len, LY_STMT_NONE);
     if (kw == LY_STMT_MODULE) {
         LOGERR(ctx, LY_EDENIED, "Input data contains module in situation when a submodule is expected.");
         ret = LY_EINVAL;
@@ -3580,7 +3580,7 @@ yin_parse_module(struct lys_yin_parser_ctx **yin_ctx, struct ly_in *in, struct l
 
     /* check module */
     kw = yin_match_keyword(*yin_ctx, (*yin_ctx)->xmlctx->name, (*yin_ctx)->xmlctx->name_len, (*yin_ctx)->xmlctx->prefix,
-                           (*yin_ctx)->xmlctx->prefix_len, LY_STMT_NONE);
+                    (*yin_ctx)->xmlctx->prefix_len, LY_STMT_NONE);
     if (kw == LY_STMT_SUBMODULE) {
         LOGERR(mod->ctx, LY_EDENIED, "Input data contains submodule which cannot be parsed directly without its main module.");
         ret = LY_EINVAL;

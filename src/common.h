@@ -33,8 +33,8 @@ struct lys_module;
 #if __STDC_VERSION__ >= 201112 && !defined __STDC_NO_THREADS__
 # define THREAD_LOCAL _Thread_local
 #elif defined __GNUC__ || \
-      defined __SUNPRO_C || \
-      defined __xlC__
+    defined __SUNPRO_C || \
+    defined __xlC__
 # define THREAD_LOCAL __thread
 #else
 # error "Cannot define THREAD_LOCAL"
@@ -52,7 +52,6 @@ struct lys_module;
  * the public API.
  */
 #define API __attribute__((visibility("default")))
-
 
 /******************************************************************************
  * Logger
@@ -106,7 +105,7 @@ void ly_vlog(const struct ly_ctx *ctx, enum LY_VLOG_ELEM elem_type, const void *
 #ifdef NDEBUG
 #  define LOGDBG(dbg_group, str, ...)
 #else
-   void ly_log_dbg(int group, const char *format, ...);
+void ly_log_dbg(int group, const char *format, ...);
 #  define LOGDBG(dbg_group, str, ...) ly_log_dbg(dbg_group, str, ##__VA_ARGS__);
 #endif
 
@@ -453,8 +452,8 @@ LY_ERR ly_parse_nodeid(const char **id, const char **prefix, size_t *prefix_len,
  * @return LY_EINVAL in case of reaching @p limit when parsing @p pred.
  */
 LY_ERR ly_parse_instance_predicate(const char **pred, size_t limit, LYD_FORMAT format,
-                                   const char **prefix, size_t *prefix_len, const char **id, size_t *id_len,
-                                   const char **value, size_t *value_len, const char **errmsg);
+        const char **prefix, size_t *prefix_len, const char **id, size_t *id_len,
+        const char **value, size_t *value_len, const char **errmsg);
 
 /**
  * @brief mmap(2) wrapper to map input files into memory to unify parsing.

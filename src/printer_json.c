@@ -598,7 +598,7 @@ json_print_inner(struct jsonpr_ctx *ctx, const struct lyd_node *node)
 
     if (!node->schema || node->schema->nodetype != LYS_LIST) {
         ly_print_(ctx->out, "%s{%s", (is_open_array(ctx, node) && ctx->level_printed >= ctx->level) ? "," : "",
-                 (DO_FORMAT && has_content) ? "\n" : "");
+                (DO_FORMAT && has_content) ? "\n" : "");
     } else {
         ly_print_(ctx->out, "%s%*s{%s", (is_open_array(ctx, node) && ctx->level_printed >= ctx->level) ? "," : "",
                  INDENT, (DO_FORMAT && has_content) ? "\n" : "");
@@ -616,7 +616,6 @@ json_print_inner(struct jsonpr_ctx *ctx, const struct lyd_node *node)
         /* anydata */
         json_print_anydata(ctx, (struct lyd_node_any *)node);
     }
-
 
     LEVEL_DEC;
     if (DO_FORMAT && has_content) {

@@ -547,7 +547,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node_inner *parent, stru
 
             /* add any missing default children */
             ret = lyd_new_implicit_r(node, lyd_node_children_p(node), NULL, NULL, &lydctx->unres_node_type, &lydctx->when_check,
-                                     (lydctx->validate_options & LYD_VALIDATE_NO_STATE) ? LYD_IMPLICIT_NO_STATE : 0, NULL);
+                            (lydctx->validate_options & LYD_VALIDATE_NO_STATE) ? LYD_IMPLICIT_NO_STATE : 0, NULL);
             LY_CHECK_GOTO(ret, error);
         }
 
@@ -617,7 +617,7 @@ error:
 
 LY_ERR
 lyd_parse_xml_data(const struct ly_ctx *ctx, struct ly_in *in, int parse_options, int validate_options,
-                   struct lyd_node **tree_p, struct lyd_ctx **lydctx_p)
+        struct lyd_node **tree_p, struct lyd_ctx **lydctx_p)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_xml_ctx *lydctx;
@@ -641,7 +641,7 @@ lyd_parse_xml_data(const struct ly_ctx *ctx, struct ly_in *in, int parse_options
 cleanup:
     /* there should be no unresolved types stored */
     assert(!(parse_options & LYD_PARSE_ONLY) || (!lydctx->unres_node_type.count && !lydctx->unres_meta_type.count
-           && !lydctx->when_check.count));
+            && !lydctx->when_check.count));
 
     if (ret) {
         lyd_xml_ctx_free((struct lyd_ctx *)lydctx);

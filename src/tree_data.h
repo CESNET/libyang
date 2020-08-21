@@ -559,7 +559,7 @@ LY_ERR lyd_new_list(struct lyd_node *parent, const struct lys_module *module, co
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_list2(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *keys,
-                     struct lyd_node **node);
+        struct lyd_node **node);
 
 /**
  * @brief Create a new term node in the data tree.
@@ -573,7 +573,7 @@ LY_ERR lyd_new_list2(struct lyd_node *parent, const struct lys_module *module, c
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_term(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *val_str,
-                    struct lyd_node **node);
+        struct lyd_node **node);
 
 /**
  * @brief Create a new any node in the data tree.
@@ -587,7 +587,7 @@ LY_ERR lyd_new_term(struct lyd_node *parent, const struct lys_module *module, co
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_any(struct lyd_node *parent, const struct lys_module *module, const char *name, const void *value,
-                   LYD_ANYDATA_VALUETYPE value_type, struct lyd_node **node);
+        LYD_ANYDATA_VALUETYPE value_type, struct lyd_node **node);
 
 /**
  * @brief Create new metadata for a data node.
@@ -602,7 +602,7 @@ LY_ERR lyd_new_any(struct lyd_node *parent, const struct lys_module *module, con
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_meta(struct lyd_node *parent, const struct lys_module *module, const char *name, const char *val_str,
-                    struct lyd_meta **meta);
+        struct lyd_meta **meta);
 
 /**
  * @brief Create a new opaque node in the data tree.
@@ -616,7 +616,7 @@ LY_ERR lyd_new_meta(struct lyd_node *parent, const struct lys_module *module, co
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_opaq(struct lyd_node *parent, const struct ly_ctx *ctx, const char *name, const char *value,
-                    const char *module_name, struct lyd_node **node);
+        const char *module_name, struct lyd_node **node);
 
 /**
  * @brief Create new attribute for an opaque data node.
@@ -629,7 +629,7 @@ LY_ERR lyd_new_opaq(struct lyd_node *parent, const struct ly_ctx *ctx, const cha
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_attr(struct lyd_node *parent, const char *module_name, const char *name, const char *val_str,
-                    struct lyd_attr **attr);
+        struct lyd_attr **attr);
 
 /**
  * @defgroup pathoptions Data path creation options
@@ -673,7 +673,7 @@ LY_ERR lyd_new_attr(struct lyd_node *parent, const char *module_name, const char
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const char *value,
-                    int options, struct lyd_node **node);
+        int options, struct lyd_node **node);
 
 /**
  * @brief Create a new node in the data tree based on a path. All node types can be created.
@@ -692,7 +692,7 @@ LY_ERR lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx, const cha
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_path_any(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const void *value,
-                        LYD_ANYDATA_VALUETYPE value_type, int options, struct lyd_node **node);
+        LYD_ANYDATA_VALUETYPE value_type, int options, struct lyd_node **node);
 
 /**
  * @brief Create a new node in the data tree based on a path. All node types can be created.
@@ -712,7 +712,7 @@ LY_ERR lyd_new_path_any(struct lyd_node *parent, const struct ly_ctx *ctx, const
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const void *value,
-                     LYD_ANYDATA_VALUETYPE value_type, int options, struct lyd_node **new_parent, struct lyd_node **new_node);
+        LYD_ANYDATA_VALUETYPE value_type, int options, struct lyd_node **new_parent, struct lyd_node **new_node);
 
 /**
  * @defgroup implicitoptions Implicit node creation options
@@ -764,7 +764,7 @@ LY_ERR lyd_new_implicit_all(struct lyd_node **tree, const struct ly_ctx *ctx, in
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_implicit_module(struct lyd_node **tree, const struct lys_module *module, int implicit_options,
-                               struct lyd_node **diff);
+        struct lyd_node **diff);
 
 /**
  * @brief Change the value of a term (leaf or leaf-list) node.
@@ -925,7 +925,7 @@ void ly_free_attr_siblings(const struct ly_ctx *ctx, struct lyd_attr *attr);
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_value_validate(const struct ly_ctx *ctx, const struct lyd_node_term *node, const char *value, size_t value_len,
-                          const struct lyd_node *tree, struct lysc_type **realtype);
+        const struct lyd_node *tree, struct lysc_type **realtype);
 
 /**
  * @brief Compare the node's value with the given string value. The string value is first validated according to the node's type.
@@ -1172,7 +1172,7 @@ typedef LY_ERR (*lyd_diff_cb)(const struct lyd_node *diff_node, struct lyd_node 
  * @return LY_ERR on error.
  */
 LY_ERR lyd_diff_apply_module(struct lyd_node **data, const struct lyd_node *diff, const struct lys_module *mod,
-                             lyd_diff_cb diff_cb, void *cb_data);
+        lyd_diff_cb diff_cb, void *cb_data);
 
 /**
  * @brief Apply the whole diff tree on a data tree.
@@ -1206,7 +1206,7 @@ LY_ERR lyd_diff_apply_all(struct lyd_node **data, const struct lyd_node *diff);
  * @return LY_ERR on error.
  */
 LY_ERR lyd_diff_merge_module(struct lyd_node **diff, const struct lyd_node *src_diff, const struct lys_module *mod,
-                             lyd_diff_cb diff_cb, void *cb_data);
+        lyd_diff_cb diff_cb, void *cb_data);
 
 /**
  * @brief Merge 2 diff trees into each other.
@@ -1220,7 +1220,7 @@ LY_ERR lyd_diff_merge_module(struct lyd_node **diff, const struct lyd_node *src_
  * @return LY_ERR on error.
  */
 LY_ERR lyd_diff_merge_tree(struct lyd_node **diff_first, struct lyd_node *diff_parent, const struct lyd_node *src_sibling,
-                           lyd_diff_cb diff_cb, void *cb_data);
+        lyd_diff_cb diff_cb, void *cb_data);
 
 /**
  * @brief Merge 2 diffs into each other.
@@ -1323,7 +1323,7 @@ LY_ERR lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_
  * @return LY_ERR value if another error occurred.
  */
 LY_ERR lyd_find_sibling_val(const struct lyd_node *siblings, const struct lysc_node *schema, const char *key_or_value,
-                            size_t val_len, struct lyd_node **match);
+        size_t val_len, struct lyd_node **match);
 
 /**
  * @brief Search in the given data for instances of nodes matching the provided XPath.

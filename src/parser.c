@@ -176,7 +176,7 @@ ly_in_reset(struct ly_in *in)
 API LY_ERR
 ly_in_new_filepath(const char *filepath, size_t len, struct ly_in **in)
 {
-	LY_ERR ret;
+    LY_ERR ret;
     char *fp;
     int fd;
 
@@ -407,7 +407,7 @@ lyd_parser_check_schema(struct lyd_ctx *lydctx, const struct lysc_node *snode)
 
 LY_ERR
 lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *schema, const char *value, size_t value_len,
-                       int *dynamic, int value_hints, LY_PREFIX_FORMAT format, void *prefix_data, struct lyd_node **node)
+        int *dynamic, int value_hints, LY_PREFIX_FORMAT format, void *prefix_data, struct lyd_node **node)
 {
     LY_ERR ret;
 
@@ -423,8 +423,8 @@ lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *schema, c
 
 LY_ERR
 lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct lyd_meta **meta, const struct lys_module *mod,
-                       const char *name, size_t name_len, const char *value, size_t value_len, int *dynamic, int value_hints,
-                       LY_PREFIX_FORMAT format, void *prefix_data, const struct lysc_node *ctx_snode)
+        const char *name, size_t name_len, const char *value, size_t value_len, int *dynamic, int value_hints,
+        LY_PREFIX_FORMAT format, void *prefix_data, const struct lysc_node *ctx_snode)
 {
     LY_ERR ret;
     ret = lyd_create_meta(parent, meta, mod, name, name_len, value, value_len, dynamic, value_hints, format, prefix_data,

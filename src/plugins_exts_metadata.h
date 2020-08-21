@@ -31,7 +31,6 @@ struct lyext_metadata {
     uint16_t flags;                    /**< [schema node flags](@ref snodeflags) - only LYS_STATUS_* values are allowed */
 };
 
-
 #ifdef __cplusplus
 }
 #endif

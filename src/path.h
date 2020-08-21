@@ -107,7 +107,7 @@ struct ly_path {
  * @return LY_ERR value.
  */
 LY_ERR ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *str_path, size_t path_len,
-                     uint8_t begin, uint8_t lref, uint8_t prefix, uint8_t pred, struct lyxp_expr **expr);
+        uint8_t begin, uint8_t lref, uint8_t prefix, uint8_t pred, struct lyxp_expr **expr);
 
 /**
  * @brief Parse predicate into XPath token structure and perform all additional checks.
@@ -122,7 +122,7 @@ LY_ERR ly_path_parse(const struct ly_ctx *ctx, const struct lysc_node *ctx_node,
  * @return LY_ERR value.
  */
 LY_ERR ly_path_parse_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_node, const char *str_path,
-                               size_t path_len, uint8_t prefix, uint8_t pred, struct lyxp_expr **expr);
+        size_t path_len, uint8_t prefix, uint8_t pred, struct lyxp_expr **expr);
 
 /**
  * @defgroup path_oper_options Path operation options.
@@ -158,8 +158,8 @@ LY_ERR ly_path_parse_predicate(const struct ly_ctx *ctx, const struct lysc_node 
  * @return LY_ERR value.
  */
 LY_ERR ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, const struct lysc_node *ctx_node,
-                       const struct lyxp_expr *expr, uint8_t lref, uint8_t oper, uint8_t target,
-                       LY_PREFIX_FORMAT format, void *prefix_data, struct ly_path **path);
+        const struct lyxp_expr *expr, uint8_t lref, uint8_t oper, uint8_t target,
+        LY_PREFIX_FORMAT format, void *prefix_data, struct ly_path **path);
 
 /**
  * @brief Compile predicate into ly_path_predicate structure. Only simple predicates (not leafref) are supported.
@@ -177,9 +177,9 @@ LY_ERR ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mo
  * @return LY_ERR value.
  */
 LY_ERR ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_node, const struct lys_module *cur_mod,
-                                 const struct lysc_node *ctx_node, const struct lyxp_expr *expr, uint16_t *tok_idx,
-                                 LY_PREFIX_FORMAT format, void *prefix_data, struct ly_path_predicate **predicates,
-                                 enum ly_path_pred_type *pred_type);
+        const struct lysc_node *ctx_node, const struct lyxp_expr *expr, uint16_t *tok_idx,
+        LY_PREFIX_FORMAT format, void *prefix_data, struct ly_path_predicate **predicates,
+        enum ly_path_pred_type *pred_type);
 
 /**
  * @brief Resolve at least partially the target defined by ly_path structure. Not supported for leafref!
@@ -194,7 +194,7 @@ LY_ERR ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_nod
  * @return LY_ERR on another error.
  */
 LY_ERR ly_path_eval_partial(const struct ly_path *path, const struct lyd_node *start, LY_ARRAY_COUNT_TYPE *path_idx,
-                            struct lyd_node **match);
+        struct lyd_node **match);
 
 /**
  * @brief Resolve the target defined by ly_path structure. Not supported for leafref!
@@ -227,7 +227,7 @@ LY_ERR ly_path_dup(const struct ly_ctx *ctx, const struct ly_path *path, struct 
  * @param[in] predicates Predicates ([sized array](@ref sizedarrays)) to free.
  */
 void ly_path_predicates_free(const struct ly_ctx *ctx, enum ly_path_pred_type pred_type, const struct lysc_node *llist,
-                             struct ly_path_predicate *predicates);
+        struct ly_path_predicate *predicates);
 
 /**
  * @brief Free ly_path structure.

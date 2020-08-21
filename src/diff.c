@@ -68,7 +68,7 @@ lyd_diff_str2op(const char *str)
 
 LY_ERR
 lyd_diff_add(const struct lyd_node *node, enum lyd_diff_op op, const char *orig_default, const char *orig_value,
-             const char *key, const char *value, const char *orig_key, struct lyd_node **diff)
+        const char *key, const char *value, const char *orig_key, struct lyd_node **diff)
 {
     struct lyd_node *dup, *siblings, *match = NULL, *diff_parent = NULL;
     const struct lyd_node *parent = NULL;
@@ -232,8 +232,8 @@ lyd_diff_userord_get(const struct lyd_node *first, const struct lysc_node *schem
  */
 static LY_ERR
 lyd_diff_userord_attrs(const struct lyd_node *first, const struct lyd_node *second, int options,
-                       struct lyd_diff_userord **userord, enum lyd_diff_op *op, const char **orig_default, char **value,
-                       char **orig_value, char **key, char **orig_key)
+        struct lyd_diff_userord **userord, enum lyd_diff_op *op, const char **orig_default, char **value,
+        char **orig_value, char **key, char **orig_key)
 {
     const struct lysc_node *schema;
     size_t buflen, bufused, first_pos, second_pos;
@@ -395,7 +395,7 @@ lyd_diff_userord_attrs(const struct lyd_node *first, const struct lyd_node *seco
  */
 static LY_ERR
 lyd_diff_attrs(const struct lyd_node *first, const struct lyd_node *second, int options, enum lyd_diff_op *op,
-               const char **orig_default, char **orig_value)
+        const char **orig_default, char **orig_value)
 {
     const struct lysc_node *schema;
 
@@ -517,7 +517,7 @@ lyd_diff_attrs(const struct lyd_node *first, const struct lyd_node *second, int 
  */
 static LY_ERR
 lyd_diff_siblings_r(const struct lyd_node *first, const struct lyd_node *second, int options, int nosiblings,
-                    struct lyd_node **diff)
+        struct lyd_node **diff)
 {
     LY_ERR ret = LY_SUCCESS;
     const struct lyd_node *iter_first, *iter_second;
@@ -771,7 +771,7 @@ lyd_diff_get_op(const struct lyd_node *diff_node, enum lyd_diff_op *op)
  */
 static LY_ERR
 lyd_diff_insert(struct lyd_node **first_node, struct lyd_node *parent_node, struct lyd_node *new_node,
-                const char *key_or_value)
+        const char *key_or_value)
 {
     LY_ERR ret;
     struct lyd_node *anchor;
@@ -851,7 +851,7 @@ lyd_diff_insert(struct lyd_node **first_node, struct lyd_node *parent_node, stru
  */
 static LY_ERR
 lyd_diff_apply_r(struct lyd_node **first_node, struct lyd_node *parent_node, const struct lyd_node *diff_node,
-                 lyd_diff_cb diff_cb, void *cb_data)
+        lyd_diff_cb diff_cb, void *cb_data)
 {
     LY_ERR ret;
     struct lyd_node *match, *diff_child;
@@ -980,7 +980,7 @@ next_iter_r:
 
 API LY_ERR
 lyd_diff_apply_module(struct lyd_node **data, const struct lyd_node *diff, const struct lys_module *mod,
-                      lyd_diff_cb diff_cb, void *cb_data)
+        lyd_diff_cb diff_cb, void *cb_data)
 {
     const struct lyd_node *root;
 
@@ -1286,7 +1286,7 @@ lyd_diff_merge_delete(struct lyd_node *diff_match, enum lyd_diff_op cur_op, cons
     case LYD_DIFF_OP_REPLACE:
         /* similar to none operation but also remove the redundant attribute */
         lyd_diff_del_meta(diff_match, "orig-value");
-        /* fallthrough */
+    /* fallthrough */
     case LYD_DIFF_OP_NONE:
         /* it was not modified, but should be deleted -> set DELETE operation */
         LY_CHECK_RET(lyd_diff_change_op(diff_match, LYD_DIFF_OP_DELETE));
@@ -1387,7 +1387,7 @@ lyd_diff_is_redundant(struct lyd_node *diff)
  */
 static LY_ERR
 lyd_diff_merge_r(const struct lyd_node *src_diff, struct lyd_node *diff_parent, lyd_diff_cb diff_cb, void *cb_data,
-                 struct lyd_node **diff)
+        struct lyd_node **diff)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node *child, *diff_node = NULL;
@@ -1471,7 +1471,7 @@ lyd_diff_merge_r(const struct lyd_node *src_diff, struct lyd_node *diff_parent, 
 
 API LY_ERR
 lyd_diff_merge_module(struct lyd_node **diff, const struct lyd_node *src_diff, const struct lys_module *mod,
-                      lyd_diff_cb diff_cb, void *cb_data)
+        lyd_diff_cb diff_cb, void *cb_data)
 {
     const struct lyd_node *src_root;
 
@@ -1490,7 +1490,7 @@ lyd_diff_merge_module(struct lyd_node **diff, const struct lyd_node *src_diff, c
 
 API LY_ERR
 lyd_diff_merge_tree(struct lyd_node **diff_first, struct lyd_node *diff_parent, const struct lyd_node *src_sibling,
-                    lyd_diff_cb diff_cb, void *cb_data)
+        lyd_diff_cb diff_cb, void *cb_data)
 {
     if (!src_sibling) {
         return LY_SUCCESS;

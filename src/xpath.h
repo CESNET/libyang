@@ -291,8 +291,8 @@ const char *lyxp_print_token(enum lyxp_token tok);
  * @return LY_EINVAL, LY_EMEM, LY_EINT for other errors.
  */
 LY_ERR lyxp_eval(struct lyxp_expr *exp, LY_PREFIX_FORMAT format, const struct lys_module *local_mod,
-                 const struct lyd_node *ctx_node, enum lyxp_node_type ctx_node_type, const struct lyd_node *tree,
-                 struct lyxp_set *set, int options);
+        const struct lyd_node *ctx_node, enum lyxp_node_type ctx_node_type, const struct lyd_node *tree,
+        struct lyxp_set *set, int options);
 
 #define LYXP_SCHEMA 0x01        /**< Apply data node access restrictions defined for 'when' and 'must' evaluation. */
 
@@ -311,8 +311,8 @@ LY_ERR lyxp_eval(struct lyxp_expr *exp, LY_PREFIX_FORMAT format, const struct ly
  * @return LY_ERR (same as lyxp_eval()).
  */
 LY_ERR lyxp_atomize(struct lyxp_expr *exp, LY_PREFIX_FORMAT format, const struct lys_module *local_mod,
-                    const struct lysc_node *ctx_scnode, enum lyxp_node_type ctx_scnode_type, struct lyxp_set *set,
-                    int options);
+        const struct lysc_node *ctx_scnode, enum lyxp_node_type ctx_scnode_type, struct lyxp_set *set,
+        int options);
 
 /* used only internally */
 #define LYXP_SCNODE_ALL 0x0E
@@ -354,7 +354,7 @@ int lyxp_set_scnode_insert_node(struct lyxp_set *set, const struct lysc_node *no
  * @return Index of the found node, -1 if not found.
  */
 int lyxp_set_scnode_dup_node_check(struct lyxp_set *set, const struct lysc_node *node, enum lyxp_node_type node_type,
-                                   int skip_idx);
+        int skip_idx);
 
 /**
  * @brief Merge 2 schema node sets.

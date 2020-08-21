@@ -591,6 +591,7 @@ lysc_type2_free(struct ly_ctx *ctx, struct lysc_type **type)
 {
     lysc_type_free(ctx, *type);
 }
+
 void
 lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type)
 {
@@ -939,7 +940,7 @@ lysc_extension_instance_free(struct ly_ctx *ctx, struct lysc_ext_substmt *substm
             break;
         }
 
-            /* TODO other statements */
+        /* TODO other statements */
         default:
             LOGINT(ctx);
         }

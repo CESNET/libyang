@@ -139,7 +139,7 @@ enum yin_argument yin_match_argument_name(const char *name, size_t len);
  * @return LY_ERR values.
  */
 LY_ERR yin_parse_content(struct lys_yin_parser_ctx *ctx, struct yin_subelement *subelem_info, size_t subelem_info_size,
-                         enum ly_stmt current_element, const char **text_content, struct lysp_ext_instance **exts);
+        enum ly_stmt current_element, const char **text_content, struct lysp_ext_instance **exts);
 
 /**
  * @brief Check that val is valid UTF8 character sequence of val_type.
@@ -165,7 +165,7 @@ LY_ERR yin_validate_value(struct lys_yin_parser_ctx *ctx, enum yang_arg val_type
  * @return yang_keyword values.
  */
 enum ly_stmt yin_match_keyword(struct lys_yin_parser_ctx *ctx, const char *name, size_t name_len,
-                               const char *prefix, size_t prefix_len, enum ly_stmt parrent);
+        const char *prefix, size_t prefix_len, enum ly_stmt parrent);
 
 /**
  * @brief Parse instance of extension.
@@ -178,7 +178,7 @@ enum ly_stmt yin_match_keyword(struct lys_yin_parser_ctx *ctx, const char *name,
  * @return LY_ERR values.
  */
 LY_ERR yin_parse_extension_instance(struct lys_yin_parser_ctx *ctx, LYEXT_SUBSTMT subelem, LY_ARRAY_COUNT_TYPE subelem_index,
-                                    struct lysp_ext_instance **exts);
+        struct lysp_ext_instance **exts);
 
 /**
  * @brief Parse yin element into generic structure.

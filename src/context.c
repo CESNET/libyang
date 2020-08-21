@@ -267,6 +267,7 @@ error:
     ly_ctx_destroy(ctx, NULL);
     return rc;
 }
+
 API int
 ly_ctx_get_options(const struct ly_ctx *ctx)
 {
@@ -638,7 +639,7 @@ ylib_deviation(struct lyd_node *parent, const struct lys_module *cur_mod, int bi
             LY_CHECK_RET(lyd_new_term(parent, NULL, "deviation", mod->name, NULL));
         } else {
             LY_CHECK_RET(lyd_new_list(parent, NULL, "deviation", NULL, mod->name,
-                                      (mod->parsed->revs ? mod->parsed->revs[0].date : "")));
+                    (mod->parsed->revs ? mod->parsed->revs[0].date : "")));
         }
     }
 
@@ -666,7 +667,7 @@ ylib_submodules(struct lyd_node *parent, const struct lys_module *cur_mod, int b
             }
         } else {
             LY_CHECK_RET(lyd_new_list(parent, NULL, "submodule", &cont, submod->name,
-                                      (submod->revs ? submod->revs[0].date : "")));
+                    (submod->revs ? submod->revs[0].date : "")));
         }
 
         if (submod->filepath) {
@@ -726,7 +727,7 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root_p)
          * deprecated legacy
          */
         LY_CHECK_GOTO(ret = lyd_new_list(root, NULL, "module", &cont, mod->name,
-                                         (mod->parsed->revs ? mod->parsed->revs[0].date : "")), error);
+                (mod->parsed->revs ? mod->parsed->revs[0].date : "")), error);
 
         /* schema */
         if (mod->filepath) {
@@ -767,7 +768,7 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root_p)
                 }
             } else {
                 LY_CHECK_GOTO(ret = lyd_new_list(set_bis, NULL, "import-only-module", &cont, mod->name,
-                                                 (mod->parsed->revs ? mod->parsed->revs[0].date : "")), error);
+                        (mod->parsed->revs ? mod->parsed->revs[0].date : "")), error);
             }
 
             /* namespace */

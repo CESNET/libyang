@@ -117,7 +117,7 @@ void ly_err_free(void *ptr);
  * @return NULL otherwise.
  */
 const struct lys_module *ly_resolve_prefix(const struct ly_ctx *ctx, const char *prefix, size_t prefix_len,
-                                           LY_PREFIX_FORMAT format, void *prefix_data);
+        LY_PREFIX_FORMAT format, void *prefix_data);
 
 /**
  * @brief Get format-specific prefix for a module.
@@ -201,8 +201,8 @@ const char *ly_get_prefix(const struct lys_module *mod, LY_PREFIX_FORMAT format,
  * @return LY_ERR value if an error occurred and the value could not be canonized following the type's rules.
  */
 typedef LY_ERR (*ly_type_store_clb)(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len,
-                                    int options, LY_PREFIX_FORMAT format, void *prefix_data, const void *context_node,
-                                    const struct lyd_node *tree, struct lyd_value *storage, struct ly_err_item **err);
+        int options, LY_PREFIX_FORMAT format, void *prefix_data, const void *context_node,
+        const struct lyd_node *tree, struct lyd_value *storage, struct ly_err_item **err);
 
 /**
  * @brief Callback for comparing 2 values of the same type.
@@ -234,7 +234,7 @@ typedef LY_ERR (*ly_type_compare_clb)(const struct lyd_value *val1, const struct
  * @return NULL in case of error.
  */
 typedef const char *(*ly_type_print_clb)(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data,
-                                         int *dynamic);
+        int *dynamic);
 
 /**
  * @brief Callback to duplicate data in data structure. Note that callback is even responsible for duplicating lyd_value::canonized.
@@ -298,7 +298,7 @@ extern struct lysc_type_plugin ly_builtin_type_plugins[LY_DATA_TYPE_COUNT];
  * @return LY_ERR value according to the result of the parsing and validation.
  */
 LY_ERR ly_type_parse_int(const char *datatype, int base, int64_t min, int64_t max, const char *value, size_t value_len,
-                 int64_t *ret, struct ly_err_item **err);
+        int64_t *ret, struct ly_err_item **err);
 
 /**
  * @brief Unsigned integer value parser and validator.
@@ -314,7 +314,7 @@ LY_ERR ly_type_parse_int(const char *datatype, int base, int64_t min, int64_t ma
  * @return LY_ERR value according to the result of the parsing and validation.
  */
 LY_ERR ly_type_parse_uint(const char *datatype, int base, uint64_t max, const char *value, size_t value_len,
-                  uint64_t *ret, struct ly_err_item **err);
+        uint64_t *ret, struct ly_err_item **err);
 
 /**
  * @brief Convert a string with a decimal64 value into libyang representation:
@@ -350,7 +350,7 @@ LY_ERR ly_type_identity_isderived(struct lysc_ident *base, struct lysc_ident *de
  * @return LY_ERR value according to the result of the validation.
  */
 LY_ERR ly_type_validate_range(LY_DATA_TYPE basetype, struct lysc_range *range, int64_t value, const char *strval,
-                              struct ly_err_item **err);
+        struct ly_err_item **err);
 
 /**
  * @brief Data type validator for pattern-restricted string values.
@@ -378,7 +378,7 @@ LY_ERR ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str
  * @return LY_ERR value.
  */
 LY_ERR ly_type_find_leafref(const struct lysc_type_leafref *lref, const struct lyd_node *node, struct lyd_value *value,
-                            const struct lyd_node *tree, struct lyd_node **target, char **errmsg);
+        const struct lyd_node *tree, struct lyd_node **target, char **errmsg);
 
 /** @} types */
 

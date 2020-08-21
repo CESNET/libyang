@@ -568,8 +568,8 @@ ly_parse_nodeid(const char **id, const char **prefix, size_t *prefix_len, const 
 
 LY_ERR
 ly_parse_instance_predicate(const char **pred, size_t limit, LYD_FORMAT format,
-                            const char **prefix, size_t *prefix_len, const char **id, size_t *id_len, const char **value, size_t *value_len,
-                            const char **errmsg)
+        const char **prefix, size_t *prefix_len, const char **id, size_t *id_len, const char **value, size_t *value_len,
+        const char **errmsg)
 {
     LY_ERR ret = LY_EVALID;
     const char *in = *pred;
@@ -647,7 +647,7 @@ ly_parse_instance_predicate(const char **pred, size_t limit, LYD_FORMAT format,
             goto error;
         }
         *value = &in[offset];
-        for (;offset < limit && (in[offset] != quot || (offset && in[offset - 1] == '\\')); offset++) {}
+        for (; offset < limit && (in[offset] != quot || (offset && in[offset - 1] == '\\')); offset++) {}
         if (in[offset] == quot) {
             *value_len = &in[offset] - *value;
             offset++;

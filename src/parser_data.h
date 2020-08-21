@@ -73,7 +73,6 @@ struct ly_in;
                                                  revision. */
 /** @} dataparseroptions */
 
-
 /**
  * @defgroup datavalidationoptions Data validation options
  * @ingroup datatree
@@ -131,7 +130,7 @@ typedef enum {
  * @return LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions.
  */
 LY_ERR lyd_parse_data(const struct ly_ctx *ctx, struct ly_in *in, LYD_FORMAT format, int parse_options,
-                      int validate_options, struct lyd_node **tree);
+        int validate_options, struct lyd_node **tree);
 
 /**
  * @brief Parse (and validate) input data as a YANG data tree.
@@ -149,7 +148,7 @@ LY_ERR lyd_parse_data(const struct ly_ctx *ctx, struct ly_in *in, LYD_FORMAT for
  * @return LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions.
  */
 LY_ERR lyd_parse_data_mem(const struct ly_ctx *ctx, const char *data, LYD_FORMAT format, int parse_options,
-                          int validate_options, struct lyd_node **tree);
+        int validate_options, struct lyd_node **tree);
 
 /**
  * @brief Parse (and validate) input data as a YANG data tree.
@@ -167,7 +166,7 @@ LY_ERR lyd_parse_data_mem(const struct ly_ctx *ctx, const char *data, LYD_FORMAT
  * @return LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions.
  */
 LY_ERR lyd_parse_data_fd(const struct ly_ctx *ctx, int fd, LYD_FORMAT format, int parse_options, int validate_options,
-                         struct lyd_node **tree);
+        struct lyd_node **tree);
 
 /**
  * @brief Parse (and validate) input data as a YANG data tree.
@@ -185,7 +184,7 @@ LY_ERR lyd_parse_data_fd(const struct ly_ctx *ctx, int fd, LYD_FORMAT format, in
  * @return LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions.
  */
 LY_ERR lyd_parse_data_path(const struct ly_ctx *ctx, const char *path, LYD_FORMAT format, int parse_options,
-                           int validate_options, struct lyd_node **tree);
+        int validate_options, struct lyd_node **tree);
 
 /**
  * @brief Parse (and validate) data from the input handler as a YANG RPC/action invocation.
@@ -205,7 +204,7 @@ LY_ERR lyd_parse_data_path(const struct ly_ctx *ctx, const char *path, LYD_FORMA
  * @return LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions.
  */
 LY_ERR lyd_parse_rpc(const struct ly_ctx *ctx, struct ly_in *in, LYD_FORMAT format, struct lyd_node **tree,
-                     struct lyd_node **op);
+        struct lyd_node **op);
 
 /**
  * @brief Parse (and validate) data from the input handler as a YANG RPC/action reply.
@@ -227,7 +226,7 @@ LY_ERR lyd_parse_rpc(const struct ly_ctx *ctx, struct ly_in *in, LYD_FORMAT form
  * @return LY_ERR value in case of error. Additional error information can be obtained from the request's context using ly_err* functions.
  */
 LY_ERR lyd_parse_reply(const struct lyd_node *request, struct ly_in *in, LYD_FORMAT format, struct lyd_node **tree,
-                       struct lyd_node **op);
+        struct lyd_node **op);
 
 /**
  * @brief Parse XML string as YANG notification.
@@ -245,7 +244,7 @@ LY_ERR lyd_parse_reply(const struct lyd_node *request, struct ly_in *in, LYD_FOR
  * @return LY_ERR value in case of error. Additional error information can be obtained from the context using ly_err* functions.
  */
 LY_ERR lyd_parse_notif(const struct ly_ctx *ctx, struct ly_in *in, LYD_FORMAT format, struct lyd_node **tree,
-                       struct lyd_node **ntf);
+        struct lyd_node **ntf);
 
 /**
  * @brief Fully validate a data tree.
