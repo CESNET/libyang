@@ -99,21 +99,21 @@ void ly_log(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, const char 
  */
 void ly_vlog(const struct ly_ctx *ctx, enum LY_VLOG_ELEM elem_type, const void *elem, LY_VECODE code, const char *format, ...);
 
-#define LOGERR(ctx, errno, str, args...) ly_log(ctx, LY_LLERR, errno, str, ##args)
+#define LOGERR(ctx, errno, str, ...) ly_log(ctx, LY_LLERR, errno, str, ##__VA_ARGS__)
 #define LOGWRN(ctx, str, ...) ly_log(ctx, LY_LLWRN, 0, str, ##__VA_ARGS__)
-#define LOGVRB(str, args...) ly_log(NULL, LY_LLVRB, 0, str, ##args)
+#define LOGVRB(str, ...) ly_log(NULL, LY_LLVRB, 0, str, ##__VA_ARGS__)
 
 #ifdef NDEBUG
-#  define LOGDBG(dbg_group, str, args...)
+#  define LOGDBG(dbg_group, str, ...)
 #else
    void ly_log_dbg(int group, const char *format, ...);
-#  define LOGDBG(dbg_group, str, args...) ly_log_dbg(dbg_group, str, ##args);
+#  define LOGDBG(dbg_group, str, ...) ly_log_dbg(dbg_group, str, ##__VA_ARGS__);
 #endif
 
 #define LOGMEM(CTX) LOGERR(CTX, LY_EMEM, "Memory allocation failed (%s()).", __func__)
 #define LOGINT(CTX) LOGERR(CTX, LY_EINT, "Internal error (%s:%d).", __FILE__, __LINE__)
 #define LOGARG(CTX, ARG) LOGERR(CTX, LY_EINVAL, "Invalid argument %s (%s()).", #ARG, __func__)
-#define LOGVAL(CTX, ELEM_TYPE, ELEM, CODE, FORMAT...) ly_vlog(CTX, ELEM_TYPE, ELEM, CODE, ##FORMAT)
+#define LOGVAL(CTX, ELEM_TYPE, ELEM, CODE, ...) ly_vlog(CTX, ELEM_TYPE, ELEM, CODE, ##__VA_ARGS__)
 
 #define LOGMEM_RET(CTX) LOGMEM(CTX); return LY_EMEM
 #define LOGINT_RET(CTX) LOGINT(CTX); return LY_EINT
