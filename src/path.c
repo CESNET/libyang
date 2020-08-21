@@ -31,7 +31,7 @@
 #include "tree_schema_internal.h"
 #include "xpath.h"
 
-#define LOGVAL_P(CTX, CUR_NODE, CODE, FORMAT...) ly_vlog(CTX, (CUR_NODE) ? LY_VLOG_LYSC : LY_VLOG_NONE, CUR_NODE, CODE, ##FORMAT)
+#define LOGVAL_P(CTX, CUR_NODE, CODE, ...) ly_vlog(CTX, (CUR_NODE) ? LY_VLOG_LYSC : LY_VLOG_NONE, CUR_NODE, CODE, ##__VA_ARGS__)
 
 /**
  * @brief Check predicate syntax.
