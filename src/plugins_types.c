@@ -820,7 +820,7 @@ ly_type_store_string(const struct ly_ctx *ctx, struct lysc_type *type, const cha
     LY_CHECK_RET(ly_type_validate_patterns(type_str->patterns, value, value_len, err));
 
     if (options & LY_TYPE_OPTS_DYNAMIC) {
-        storage->canonical = lydict_insert_zc(ctx, value);
+        storage->canonical = lydict_insert_zc(ctx, (char *)value);
     } else {
         storage->canonical = lydict_insert(ctx, value_len ? value : "", value_len);
     }
