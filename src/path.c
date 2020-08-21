@@ -53,8 +53,9 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
     const char *name;
     size_t name_len;
 
-    /* '[' */
     if (!lyxp_next_token(NULL, exp, tok_idx, LYXP_TOKEN_BRACK1)) {
+        /* '[' */
+
         if (((pred == LY_PATH_PRED_SIMPLE) || (pred == LY_PATH_PRED_KEYS))
                 && !lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_NAMETEST)) {
             set = ly_set_new();
@@ -110,8 +111,9 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
             /* '[' */
             } while (!lyxp_next_token(NULL, exp, tok_idx, LYXP_TOKEN_BRACK1));
 
-        /* '.' */
         } else if ((pred == LY_PATH_PRED_SIMPLE) && !lyxp_next_token(NULL, exp, tok_idx, LYXP_TOKEN_DOT)) {
+            /* '.' */
+
             /* '=' */
             LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_OPER_EQUAL), error);
 
@@ -121,8 +123,8 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
             /* ']' */
             LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_BRACK2), error);
 
-        /* Number */
         } else if ((pred == LY_PATH_PRED_SIMPLE) && !lyxp_next_token(NULL, exp, tok_idx, LYXP_TOKEN_NUMBER)) {
+            /* Number */
 
             /* ']' */
             LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_BRACK2), error);
@@ -434,9 +436,8 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
 
     *pred_type = 0;
 
-    /* '[' */
     if (lyxp_next_token(NULL, expr, tok_idx, LYXP_TOKEN_BRACK1)) {
-        /* no predicate */
+        /* '[', no predicate */
         return LY_SUCCESS;
     }
 
@@ -466,8 +467,8 @@ ly_path_compile_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_
             }
             ++(*tok_idx);
 
-            /* new predicate */
             if (!*pred_type) {
+                /* new predicate */
                 *pred_type = LY_PATH_PREDTYPE_LIST;
             }
             assert(*pred_type == LY_PATH_PREDTYPE_LIST);
@@ -578,9 +579,8 @@ ly_path_compile_predicate_leafref(const struct lysc_node *ctx_node, const struct
     const char *name;
     size_t name_len;
 
-    /* '[' */
     if (lyxp_next_token(NULL, expr, tok_idx, LYXP_TOKEN_BRACK1)) {
-        /* no predicate */
+        /* '[', no predicate */
         return LY_SUCCESS;
     }
 

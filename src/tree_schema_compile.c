@@ -4061,8 +4061,7 @@ lys_compile_node_connect(struct lysc_ctx *ctx, struct lysc_node *parent, struct 
                     while (end->prev->module == mod) {
                         end = end->prev;
                     }
-                } while ((end->prev->module != (*children)->module) && (end->prev->module != node->module)
-                        && (strcmp(mod->name, node->module->name) > 0));
+                } while ((end->prev->module != (*children)->module) && (end->prev->module != node->module) && (strcmp(mod->name, node->module->name) > 0));
 
                 /* we have the last existing node after our node, easily get the first before and connect it */
                 start = end->prev;

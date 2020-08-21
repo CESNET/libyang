@@ -2055,9 +2055,8 @@ reparse_absolute_location_path(const struct ly_ctx *ctx, struct lyxp_expr *exp, 
             break;
         }
 
-    /* '//' RelativeLocationPath */
     } else {
-        /* '//' */
+        /* '//' RelativeLocationPath */
         ++(*tok_idx);
 
         rc = reparse_relative_location_path(ctx, exp, tok_idx);
@@ -6276,12 +6275,12 @@ moveto_parent(struct lyxp_set *set, int all_desc, int options)
             return LY_EINCOMPLETE;
         }
 
-        /* node already there can also be the root */
         if (!new_node) {
+            /* node already there can also be the root */
             new_type = set->root_type;
 
-        /* node has a standard parent (it can equal the root, it's not the root yet since they are fake) */
         } else {
+            /* node has a standard parent (it can equal the root, it's not the root yet since they are fake) */
             new_type = LYXP_NODE_ELEM;
         }
 
@@ -6352,12 +6351,12 @@ moveto_scnode_parent(struct lyxp_set *set, int all_desc, int options)
             continue;
         }
 
-        /* node has no parent */
         if (!new_node) {
+            /* node has no parent */
             new_type = set->root_type;
 
-        /* node has a standard parent (it can equal the root, it's not the root yet since they are fake) */
         } else {
+            /* node has a standard parent (it can equal the root, it's not the root yet since they are fake) */
             new_type = LYXP_NODE_ELEM;
         }
 
@@ -7257,8 +7256,8 @@ eval_absolute_location_path(struct lyxp_expr *exp, uint16_t *tok_idx, struct lyx
             break;
         }
 
-    /* '//' RelativeLocationPath */
     } else {
+        /* '//' RelativeLocationPath */
         /* evaluate '//' - deferred so as not to waste memory by remembering all the nodes */
         all_desc = 1;
         LOGDBG(LY_LDGXPATH, "%-27s %s %s[%u]", __func__, (set ? "parsed" : "skipped"),
