@@ -816,6 +816,10 @@ lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, int
 
     assert(mod);
 
+    if (ctx->flags & LY_CTX_ALLIMPLEMENTED) {
+        implement = 1;
+    }
+
     if (!*mod) {
         /* try to get the module from the context */
         if (revision) {
