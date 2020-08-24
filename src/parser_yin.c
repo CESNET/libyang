@@ -833,7 +833,7 @@ yin_parse_range(struct lys_yin_parser_ctx *ctx, struct lysp_type *type)
     type->range = calloc(1, sizeof *type->range);
     LY_CHECK_ERR_RET(!type->range, LOGMEM(ctx->xmlctx->ctx), LY_EMEM);
     LY_CHECK_RET(yin_parse_restriction(ctx, LY_STMT_RANGE, type->range));
-    type->flags |=  LYS_SET_RANGE;
+    type->flags |= LYS_SET_RANGE;
 
     return LY_SUCCESS;
 }

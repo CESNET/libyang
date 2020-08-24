@@ -56,7 +56,7 @@ void
 lydict_clean(struct dict_table *dict)
 {
     unsigned int i;
-    struct dict_rec *dict_rec  = NULL;
+    struct dict_rec *dict_rec = NULL;
     struct ht_rec *rec = NULL;
 
     LY_CHECK_ARG_RET(NULL, dict,);
@@ -70,7 +70,7 @@ lydict_clean(struct dict_table *dict)
              * dictionary are supposed to be removed using lydict_remove()
              * before calling lydict_clean()
              */
-            dict_rec  = (struct dict_rec *)rec->val;
+            dict_rec = (struct dict_rec *)rec->val;
             LOGWRN(NULL, "String \"%s\" not freed from the dictionary, refcount %d", dict_rec->value, dict_rec->refcount);
             /* if record wasn't removed before free string allocated for that record */
 #ifdef NDEBUG
