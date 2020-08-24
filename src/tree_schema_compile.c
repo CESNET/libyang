@@ -6399,7 +6399,7 @@ lys_apply_deviation(struct lysc_ctx *ctx, struct lysc_deviation *dev)
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS,
                 "Invalid deviation combining default value and mandatory %s.", lys_nodetype2str(target->nodetype));
         goto cleanup;
-    } else if ((target->nodetype & LYS_CHOICE) && ((struct lysc_node_choice* )target)->dflt
+    } else if ((target->nodetype & LYS_CHOICE) && ((struct lysc_node_choice*)target)->dflt
             && (target->flags & LYS_MAND_TRUE)) {
         LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SEMANTICS, "Invalid deviation combining default case and mandatory choice.");
         goto cleanup;
