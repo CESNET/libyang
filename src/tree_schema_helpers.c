@@ -1075,7 +1075,7 @@ lys_prefix_find_module(const struct lys_module *mod, const struct lys_module *im
 API const char *
 lys_nodetype2str(uint16_t nodetype)
 {
-    switch(nodetype) {
+    switch (nodetype) {
     case LYS_CONTAINER:
         return "container";
     case LYS_CHOICE:
@@ -1108,7 +1108,7 @@ lys_nodetype2str(uint16_t nodetype)
 const char *
 lys_datatype2str(LY_DATA_TYPE basetype)
 {
-    switch(basetype) {
+    switch (basetype) {
     case LY_TYPE_BINARY:
         return "binary";
     case LY_TYPE_UINT8:
@@ -1632,7 +1632,7 @@ lysp_ext_instance_iter(struct lysp_ext_instance *ext, LY_ARRAY_COUNT_TYPE index,
 {
     LY_CHECK_ARG_RET(NULL, ext, LY_EINVAL);
 
-    for (; index < LY_ARRAY_COUNT(ext); index++) {
+    for ( ; index < LY_ARRAY_COUNT(ext); index++) {
         if (ext[index].insubstmt == substmt) {
             return index;
         }

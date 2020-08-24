@@ -54,7 +54,7 @@ lyext_get_plugin(struct lysc_ext *ext)
 API const char *
 lyext_parent2str(LYEXT_PARENT type)
 {
-    switch(type) {
+    switch (type) {
     case LYEXT_PAR_MODULE:
         return "module";
     case LYEXT_PAR_NODE:

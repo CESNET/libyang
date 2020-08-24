@@ -995,7 +995,7 @@ set_remove_nodes_none(struct lyxp_set *set)
 
     orig_used = set->used;
     set->used = 0;
-    for (i = 0; i < orig_used;) {
+    for (i = 0; i < orig_used; ) {
         start = -1;
         do {
             if ((set->val.nodes[i].type != LYXP_NODE_NONE) && (start == -1)) {
@@ -1595,7 +1595,7 @@ set_sort(struct lyxp_set *set)
 
     /* find first top-level node to be used as anchor for positions */
     for (root = set->ctx_node; root->parent; root = (const struct lyd_node *)root->parent) {}
-    for (; root->prev->next; root = root->prev) {}
+    for ( ; root->prev->next; root = root->prev) {}
 
     /* fill positions */
     if (set_assign_pos(set, root, set->root_type)) {
@@ -1715,7 +1715,7 @@ set_sorted_merge(struct lyxp_set *trg, struct lyxp_set *src)
 
     /* find first top-level node to be used as anchor for positions */
     for (root = trg->ctx_node; root->parent; root = (const struct lyd_node *)root->parent) {}
-    for (; root->prev->next; root = root->prev) {}
+    for ( ; root->prev->next; root = root->prev) {}
 
     /* fill positions */
     if (set_assign_pos(trg, root, trg->root_type) || set_assign_pos(src, root, src->root_type)) {
@@ -2774,7 +2774,7 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr, size_t expr_len, int
             for (tok_len = 0; isdigit(expr[parsed + tok_len]); ++tok_len) {}
             if (expr[parsed + tok_len] == '.') {
                 ++tok_len;
-                for (; isdigit(expr[parsed + tok_len]); ++tok_len) {}
+                for ( ; isdigit(expr[parsed + tok_len]); ++tok_len) {}
             }
             tok_type = LYXP_TOKEN_NUMBER;
 
@@ -2789,7 +2789,7 @@ lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr, size_t expr_len, int
                 tok_type = LYXP_TOKEN_OPER_PATH;
             }
 
-        } else if  (!strncmp(&expr[parsed], "!=", 2)) {
+        } else if (!strncmp(&expr[parsed], "!=", 2)) {
 
             /* Operator '!=' */
             tok_len = 2;
@@ -4009,7 +4009,7 @@ xpath_lang(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set *
     }
 
     /* find lang metadata */
-    for (; node; node = (struct lyd_node *)node->parent) {
+    for ( ; node; node = (struct lyd_node *)node->parent) {
         for (meta = node->meta; meta; meta = meta->next) {
             /* annotations */
             if (meta->name && !strcmp(meta->name, "lang") && !strcmp(meta->annotation->module->name, "xml")) {
@@ -5070,7 +5070,7 @@ xpath_text(struct lyxp_set **UNUSED(args), uint16_t UNUSED(arg_count), struct ly
         return LY_EVALID;
     }
 
-    for (i = 0; i < set->used;) {
+    for (i = 0; i < set->used; ) {
         switch (set->val.nodes[i].type) {
         case LYXP_NODE_NONE:
             LOGINT_RET(set->ctx);
@@ -8289,7 +8289,7 @@ lyxp_get_root_type(const struct lyd_node *ctx_node, const struct lysc_node *ctx_
     }
 
     op = ctx_node ? ctx_node->schema : NULL;
-    for (; op && !(op->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)); op = op->parent) {}
+    for ( ; op && !(op->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)); op = op->parent) {}
 
     if (!ctx_node || (!op && (ctx_node->schema->flags & LYS_CONFIG_W))) {
         /* root context node can access only config data (because we said so, it is unspecified) */

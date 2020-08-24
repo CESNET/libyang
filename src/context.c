@@ -309,7 +309,7 @@ ly_ctx_get_module_set_id(const struct ly_ctx *ctx)
 API void
 ly_ctx_set_module_imp_clb(struct ly_ctx *ctx, ly_module_imp_clb clb, void *user_data)
 {
-    LY_CHECK_ARG_RET(ctx, ctx,);
+    LY_CHECK_ARG_RET(ctx, ctx, );
 
     ctx->imp_clb = clb;
     ctx->imp_clb_data = user_data;
@@ -357,7 +357,7 @@ ly_ctx_get_module_by_iter(const struct ly_ctx *ctx, const char *key, size_t key_
     struct lys_module *mod;
     const char *value;
 
-    for (; *index < ctx->list.count; ++(*index)) {
+    for ( ; *index < ctx->list.count; ++(*index)) {
         mod = ctx->list.objs[*index];
         value = *(const char**)(((int8_t*)(mod)) + key_offset);
         if ((!key_size && !strcmp(key, value)) || (key_size && !strncmp(key, value, key_size) && value[key_size] == '\0')) {
@@ -835,7 +835,7 @@ ly_ctx_destroy(struct ly_ctx *ctx, void (*private_destructor)(const struct lysc_
     }
 
     /* models list */
-    for (; ctx->list.count; ctx->list.count--) {
+    for ( ; ctx->list.count; ctx->list.count--) {
         /* remove the module */
         lys_module_free(ctx->list.objs[ctx->list.count - 1], private_destructor);
     }

@@ -33,7 +33,7 @@
 #include "tree_data.h"
 
 /* Move input p by s characters, if EOF log with lyxml_ctx c */
-#define move_input(c,s) ly_in_skip(c->in, s); LY_CHECK_ERR_RET(!c->in->current[0], LOGVAL(c->ctx, LY_VLOG_LINE, &c->line, LY_VCODE_EOF), LY_EVALID)
+#define move_input(c, s) ly_in_skip(c->in, s); LY_CHECK_ERR_RET(!c->in->current[0], LOGVAL(c->ctx, LY_VLOG_LINE, &c->line, LY_VCODE_EOF), LY_EVALID)
 
 /* Ignore whitespaces in the input string p */
 #define ign_xmlws(c) while (is_xmlws(*(c)->in->current)) {if (*(c)->in->current == '\n') {++c->line;} ly_in_skip(c->in, 1);}

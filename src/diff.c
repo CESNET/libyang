@@ -201,7 +201,7 @@ lyd_diff_userord_get(const struct lyd_node *first, const struct lysc_node *schem
         } else {
             for (iter = first; iter->prev->next; iter = iter->prev) {}
         }
-        for (; iter; iter = iter->next) {
+        for ( ; iter; iter = iter->next) {
             if (iter->schema == first->schema) {
                 LY_ARRAY_NEW_RET(schema->module->ctx, item->inst, node, NULL);
                 *node = iter;
@@ -353,7 +353,7 @@ lyd_diff_userord_attrs(const struct lyd_node *first, const struct lyd_node *seco
     if (*op == LYD_DIFF_OP_CREATE) {
         /* insert the instance */
         LY_ARRAY_RESIZE_ERR_RET(schema->module->ctx, userord_item->inst, LY_ARRAY_COUNT(userord_item->inst) + 1,
-                                ;, LY_EMEM);
+                                ; , LY_EMEM);
         if (second_pos < LY_ARRAY_COUNT(userord_item->inst)) {
             memmove(userord_item->inst + second_pos + 1, userord_item->inst + second_pos,
                     (LY_ARRAY_COUNT(userord_item->inst) - second_pos) * sizeof *userord_item->inst);

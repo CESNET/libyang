@@ -1274,8 +1274,8 @@ yprp_stmt(struct ypr_ctx *ctx, struct lysp_stmt *stmt)
              the extension instance substatements in extension instances (LY_STMT_EXTENSION_INSTANCE)
              cannot find the compiled information, so it is needed to be done,
              currently it is ignored */
-    if(stmt_attr_info[stmt->kw].name) {
-        if(stmt_attr_info[stmt->kw].flags & SUBST_FLAG_YIN) {
+    if (stmt_attr_info[stmt->kw].name) {
+        if (stmt_attr_info[stmt->kw].flags & SUBST_FLAG_YIN) {
             ypr_open(ctx, stmt->stmt, NULL, NULL, flag);
             ypr_yin_arg(ctx, stmt_attr_info[stmt->kw].arg, stmt->arg);
         } else {

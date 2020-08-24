@@ -202,7 +202,7 @@ lys_find_node(struct ly_ctx *ctx, const struct lysc_node *context_node, const ch
 
     LY_CHECK_ARG_RET(ctx, qpath, NULL);
 
-    while(*id) {
+    while (*id) {
         if (id[0] == '/') {
             ++id;
         }

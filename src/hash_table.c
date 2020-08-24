@@ -45,7 +45,7 @@ lydict_val_eq(void *val1_p, void *val2_p, int UNUSED(mod), void *cb_data)
 void
 lydict_init(struct dict_table *dict)
 {
-    LY_CHECK_ARG_RET(NULL, dict,);
+    LY_CHECK_ARG_RET(NULL, dict, );
 
     dict->hash_tab = lyht_new(1024, sizeof(struct dict_rec), lydict_val_eq, NULL, 1);
     LY_CHECK_ERR_RET(!dict->hash_tab, LOGINT(NULL), );
@@ -59,7 +59,7 @@ lydict_clean(struct dict_table *dict)
     struct dict_rec *dict_rec = NULL;
     struct ht_rec *rec = NULL;
 
-    LY_CHECK_ARG_RET(NULL, dict,);
+    LY_CHECK_ARG_RET(NULL, dict, );
 
     for (i = 0; i < dict->hash_tab->size; i++) {
         /* get ith record */

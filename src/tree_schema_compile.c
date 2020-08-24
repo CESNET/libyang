@@ -243,7 +243,7 @@ lysc_update_path(struct lysc_ctx *ctx, struct lysc_node *parent, const char *nam
     if (!name) {
         /* removing last path segment */
         if (ctx->path[ctx->path_len - 1] == '}') {
-            for (; ctx->path[ctx->path_len] != '=' && ctx->path[ctx->path_len] != '{'; --ctx->path_len) {}
+            for ( ; ctx->path[ctx->path_len] != '=' && ctx->path[ctx->path_len] != '{'; --ctx->path_len) {}
             if (ctx->path[ctx->path_len] == '=') {
                 ctx->path[ctx->path_len++] = '}';
             } else {
@@ -252,7 +252,7 @@ lysc_update_path(struct lysc_ctx *ctx, struct lysc_node *parent, const char *nam
             }
         } else {
 remove_nodelevel:
-            for (; ctx->path[ctx->path_len] != '/' ; --ctx->path_len) {}
+            for ( ; ctx->path[ctx->path_len] != '/'; --ctx->path_len) {}
             if (ctx->path_len == 0) {
                 /* top-level (last segment) */
                 ctx->path_len = 1;
@@ -721,7 +721,7 @@ lys_compile_iffeature(struct lysc_ctx *ctx, const char **value, struct lysc_iffe
 
         if (!strncmp(&c[i], "not", r = 3) || !strncmp(&c[i], "and", r = 3) || !strncmp(&c[i], "or", r = 2)) {
             int sp;
-            for(sp = 0; c[i + r + sp] && isspace(c[i + r + sp]); sp++);
+            for (sp = 0; c[i + r + sp] && isspace(c[i + r + sp]); sp++);
             if (c[i + r + sp] == '\0') {
                 LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_SYNTAX_YANG,
                        "Invalid value \"%s\" of if-feature - unexpected end of expression.", *value);
@@ -803,7 +803,7 @@ lys_compile_iffeature(struct lysc_ctx *ctx, const char **value, struct lysc_iffe
             continue;
         } else if (c[i] == '(') {
             /* pop from the stack into result all operators until ) */
-            while((op = iff_stack_pop(&stack)) != LYS_IFF_RP) {
+            while ((op = iff_stack_pop(&stack)) != LYS_IFF_RP) {
                 iff_setop(iff->expr, op, expr_size--);
             }
             continue;
@@ -1701,7 +1701,7 @@ lys_compile_type_range(struct lysc_ctx *ctx, struct lysp_restr *range_p, LY_DATA
     assert(range_p);
 
     expr = range_p->arg;
-    while(1) {
+    while (1) {
         if (isspace(*expr)) {
             ++expr;
         } else if (*expr == '\0') {
@@ -2842,7 +2842,7 @@ lys_compile_type_(struct lysc_ctx *ctx, struct lysp_node *context_node_p, uint16
                         if (un_aux->types[v]->basetype == LY_TYPE_LEAFREF) {
                             /* duplicate the whole structure because of the instance-specific path resolving for realtype */
                             un->types[u + additional] = calloc(1, sizeof(struct lysc_type_leafref));
-                            LY_CHECK_ERR_RET(!un->types[u + additional], LOGMEM(ctx->ctx);lysc_type_free(ctx->ctx, (struct lysc_type*)un_aux), LY_EMEM);
+                            LY_CHECK_ERR_RET(!un->types[u + additional], LOGMEM(ctx->ctx); lysc_type_free(ctx->ctx, (struct lysc_type*)un_aux), LY_EMEM);
                             lref = (struct lysc_type_leafref *)un->types[u + additional];
 
                             lref->basetype = LY_TYPE_LEAFREF;
@@ -4244,12 +4244,12 @@ lys_compile_mandatory_parents(struct lysc_node *parent, int add)
     struct lysc_node *iter;
 
     if (add) { /* set flag */
-        for (; parent && parent->nodetype == LYS_CONTAINER && !(parent->flags & LYS_MAND_TRUE) && !(parent->flags & LYS_PRESENCE);
+        for ( ; parent && parent->nodetype == LYS_CONTAINER && !(parent->flags & LYS_MAND_TRUE) && !(parent->flags & LYS_PRESENCE);
                 parent = parent->parent) {
             parent->flags |= LYS_MAND_TRUE;
         }
     } else { /* unset flag */
-        for (; parent && parent->nodetype == LYS_CONTAINER && (parent->flags & LYS_MAND_TRUE); parent = parent->parent) {
+        for ( ; parent && parent->nodetype == LYS_CONTAINER && (parent->flags & LYS_MAND_TRUE); parent = parent->parent) {
             for (iter = (struct lysc_node*)lysc_node_children(parent, 0); iter; iter = iter->next) {
                 if (iter->flags & LYS_MAND_TRUE) {
                     /* there is another mandatory node */
@@ -6002,13 +6002,13 @@ lys_apply_deviate_delete(struct lysc_ctx *ctx, struct lysc_node *target, int dev
             if (prefix) {
                 /* use module prefixes from the deviation module to match the module of the default case */
                 if (!(mod = lys_module_find_prefix(ctx->mod, prefix, prefix_len))) {
-                    LOGVAL(ctx->ctx,LY_VLOG_STR,ctx->path,LYVE_REFERENCE,
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                             "Invalid deviation deleting \"default\" property \"%s\" of choice. "
                             "The prefix does not match any imported module of the deviation module.", d->dflts[0]);
                     goto cleanup;
                 }
                 if (mod != ((struct lysc_node_choice*)target)->dflt->module) {
-                    LOGVAL(ctx->ctx,LY_VLOG_STR,ctx->path,LYVE_REFERENCE,
+                    LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
                             "Invalid deviation deleting \"default\" property \"%s\" of choice. "
                             "The prefix does not match the default case's module.", d->dflts[0]);
                     goto cleanup;
@@ -6742,7 +6742,7 @@ lys_compile_unres_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
     memset(&tmp_set, 0, sizeof tmp_set);
 
     /* prepare in_ctx of the set */
-    for ( i = 0; i < set->used; ++i) {
+    for (i = 0; i < set->used; ++i) {
         xp_scnode = &set->val.scnodes[i];
 
         if (xp_scnode->in_ctx != -1) {

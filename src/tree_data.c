@@ -283,7 +283,7 @@ lyd_parse_get_format(const struct ly_in *in, LYD_FORMAT format)
         size_t len = strlen(path);
 
         /* ignore trailing whitespaces */
-        for (; len > 0 && isspace(path[len - 1]); len--) {}
+        for ( ; len > 0 && isspace(path[len - 1]); len--) {}
 
         if (len >= 5 && !strncmp(&path[len - 4], ".xml", 4)) {
             format = LYD_XML;
@@ -1284,7 +1284,7 @@ lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *pat
     }
 
     /* create all the non-existing nodes in a loop */
-    for (; path_idx < LY_ARRAY_COUNT(p); ++path_idx) {
+    for ( ; path_idx < LY_ARRAY_COUNT(p); ++path_idx) {
         cur_parent = node;
         schema = p[path_idx].node;
 
@@ -1700,7 +1700,7 @@ lyd_insert_after_node(struct lyd_node *sibling, struct lyd_node *node)
         if (sibling->parent) {
             sibling = sibling->parent->child;
         } else {
-            for (; sibling->prev->next != node; sibling = sibling->prev) {}
+            for ( ; sibling->prev->next != node; sibling = sibling->prev) {}
         }
         sibling->prev = node;
     }
@@ -1779,7 +1779,7 @@ lyd_insert_only_child(struct lyd_node *parent, struct lyd_node *node)
     par->child = node;
     node->parent = par;
 
-    for (; par; par = par->parent) {
+    for ( ; par; par = par->parent) {
         if ((par->flags & LYD_DEFAULT) && !(node->flags & LYD_DEFAULT)) {
             /* remove default flags from NP containers */
             par->flags &= ~LYD_DEFAULT;
@@ -2379,7 +2379,7 @@ all_children_compare:
                     return LY_SUCCESS;
                 }
 
-                for (; iter1 && iter2; iter1 = iter1->next, iter2 = iter2->next) {
+                for ( ; iter1 && iter2; iter1 = iter1->next, iter2 = iter2->next) {
                     if (lyd_compare_single(iter1, iter2, options | LYD_COMPARE_FULL_RECURSION)) {
                         return LY_ENOT;
                     }
@@ -2429,7 +2429,7 @@ all_children_compare:
 API LY_ERR
 lyd_compare_siblings(const struct lyd_node *node1, const struct lyd_node *node2, int options)
 {
-    for (; node1 && node2; node1 = node1->next, node2 = node2->next) {
+    for ( ; node1 && node2; node1 = node1->next, node2 = node2->next) {
         LY_CHECK_RET(lyd_compare_single(node1, node2, options));
     }
 
@@ -2685,7 +2685,7 @@ lyd_dup(const struct lyd_node *node, struct lyd_node_inner *parent, int options,
     }
 
     /* rehash if needed */
-    for (; local_parent; local_parent = local_parent->parent) {
+    for ( ; local_parent; local_parent = local_parent->parent) {
         if (local_parent->schema->nodetype == LYS_LIST && (local_parent->schema->flags & LYS_KEYLESS)) {
             lyd_hash((struct lyd_node *)local_parent);
         }
@@ -3171,7 +3171,7 @@ lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *t
         }
     } else {
         /* no children hash table */
-        for (; siblings; siblings = siblings->next) {
+        for ( ; siblings; siblings = siblings->next) {
             if (!lyd_compare_single(siblings, target, 0)) {
                 break;
             }
@@ -3249,7 +3249,7 @@ lyd_find_sibling_schema(const struct lyd_node *siblings, const struct lysc_node 
         }
 
         /* search manually without hashes */
-        for (; siblings; siblings = siblings->next) {
+        for ( ; siblings; siblings = siblings->next) {
             if (siblings->schema == schema) {
                 /* schema match is enough */
                 break;
