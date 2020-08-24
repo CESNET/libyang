@@ -216,14 +216,14 @@ ly_type_parse_int(const char *datatype, int base, int64_t min, int64_t max, cons
     LY_CHECK_ARG_RET(NULL, err, datatype, LY_EINVAL);
 
     /* consume leading whitespaces */
-    for (; value_len && isspace(*value); ++value, --value_len) {}
+    for ( ; value_len && isspace(*value); ++value, --value_len) {}
 
     if (!value || !value[0] || !value_len) {
         rc = asprintf(&errmsg, "Invalid empty %s value.", datatype);
         goto error;
     }
 
-    switch(ly_parse_int(value, value_len, min, max, base, ret)) {
+    switch (ly_parse_int(value, value_len, min, max, base, ret)) {
     case LY_EDENIED:
         rc = asprintf(&errmsg, "Value is out of %s's min/max bounds.", datatype);
         goto error;
@@ -254,7 +254,7 @@ ly_type_parse_uint(const char *datatype, int base, uint64_t max, const char *val
     LY_CHECK_ARG_RET(NULL, err, datatype, LY_EINVAL);
 
     /* consume leading whitespaces */
-    for (; value_len && isspace(*value); ++value, --value_len) {}
+    for ( ; value_len && isspace(*value); ++value, --value_len) {}
 
     if (!value || !value[0] || !value_len) {
         rc = asprintf(&errmsg, "Invalid empty %s value.", datatype);
@@ -293,7 +293,7 @@ ly_type_parse_dec64(uint8_t fraction_digits, const char *value, size_t value_len
     int64_t d;
 
     /* consume leading whitespaces */
-    for (; value_len && isspace(*value); ++value, --value_len) {}
+    for ( ; value_len && isspace(*value); ++value, --value_len) {}
 
     /* parse value */
     if (!value_len) {
@@ -649,14 +649,14 @@ ly_type_store_decimal64(const struct ly_ctx *ctx, struct lysc_type *type, const 
     if (d) {
         int count = sprintf(buf, "%" PRId64 " ", d);
         if ((d > 0 && (count - 1) <= type_dec->fraction_digits)
-                || (count - 2) <= type_dec->fraction_digits ) {
+                || (count - 2) <= type_dec->fraction_digits) {
             /* we have 0. value, print the value with the leading zeros
              * (one for 0. and also keep the correct with of num according
              * to fraction-digits value)
              * for (num<0) - extra character for '-' sign */
             count = sprintf(buf, "%0*" PRId64 " ", (d > 0) ? (type_dec->fraction_digits + 1) : (type_dec->fraction_digits + 2), d);
         }
-        for (int i = type_dec->fraction_digits, j = 1; i > 0 ; i--) {
+        for (int i = type_dec->fraction_digits, j = 1; i > 0; i--) {
             if (j && i > 1 && buf[count - 2] == '0') {
                 /* we have trailing zero to skip */
                 buf[count - 1] = '\0';
@@ -1196,7 +1196,7 @@ static const char *ly_type_print_identityref(const struct lyd_value *value, LY_P
 static LY_ERR
 ly_type_store_identityref(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len, int options,
         LY_PREFIX_FORMAT format, void *prefix_data, const void *UNUSED(context_node),
-        const struct lyd_node *UNUSED(tree),struct lyd_value *storage, struct ly_err_item **err)
+        const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err)
 {
     struct lysc_type_identityref *type_ident = (struct lysc_type_identityref *)type;
     const char *id_name, *prefix = value;

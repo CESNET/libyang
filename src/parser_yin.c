@@ -196,7 +196,7 @@ yin_match_argument_name(const char *name, size_t len)
 static void
 subelems_deallocator(size_t count, struct yin_subelement *subelems)
 {
-    for(size_t i = 0; i < count; ++i) {
+    for (size_t i = 0; i < count; ++i) {
         if (HAS_META(subelems[i].type)) {
             free(subelems[i].dest);
         }
@@ -1039,7 +1039,7 @@ yin_parse_type(struct lys_yin_parser_ctx *ctx, enum ly_stmt parent, struct yin_s
         *(struct lysp_type **)subinfo->dest = calloc(1, sizeof **(struct lysp_type **)subinfo->dest);
         LY_CHECK_ERR_RET(!(*(struct lysp_type **)subinfo->dest), LOGMEM(ctx->xmlctx->ctx), LY_EMEM);
         type = *((struct lysp_type **)subinfo->dest);
-    } else  {
+    } else {
         type = (struct lysp_type *)subinfo->dest;
     }
     /* type as child of another type */

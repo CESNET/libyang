@@ -432,7 +432,7 @@ invalid_character:
         if (dp_position <= 0) {
             num[i++] = '0';
             num[i++] = '.';
-            for (; dp_position; dp_position++) {
+            for ( ; dp_position; dp_position++) {
                 num[i++] = '0';
             }
         }

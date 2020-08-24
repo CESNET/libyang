@@ -226,7 +226,7 @@ lyd_validate_duplicates(const struct lyd_node *first, const struct lyd_node *nod
             fail = 1;
         }
     } else {
-        for (; first; first = first->next) {
+        for ( ; first; first = first->next) {
             if (first == node) {
                 continue;
             }

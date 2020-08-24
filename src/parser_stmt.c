@@ -799,7 +799,7 @@ lysp_stmt_parse(struct lysc_ctx *ctx, const struct lysp_stmt *stmt, enum ly_stmt
     pctx.pos_type = LY_VLOG_STR;
     pctx.path = ctx->path;
 
-    switch(kw) {
+    switch (kw) {
     case LY_STMT_STATUS: {
         ret = lysp_stmt_status((struct lys_parser_ctx *)&pctx, stmt, *(uint16_t**)result, exts);
         break;

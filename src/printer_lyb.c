@@ -862,7 +862,7 @@ lyb_print_schema_hash(struct ly_out *out, struct lysc_node *schema, struct hash_
     /* written hash was a collision, write also all the preceding hashes */
     for (i = 0; !(hash & (LYB_HASH_COLLISION_ID >> i)); ++i) {}
 
-    for (; i; --i) {
+    for ( ; i; --i) {
         hash = lyb_hash(schema, i - 1);
         if (!hash) {
             return LY_EINT;

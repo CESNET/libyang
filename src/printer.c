@@ -341,7 +341,7 @@ ly_out_reset(struct ly_out *out)
 {
     LY_CHECK_ARG_RET(NULL, out, LY_EINVAL);
 
-    switch(out->type) {
+    switch (out->type) {
     case LY_OUT_ERROR:
         LOGINT(NULL);
         return LY_EINT;

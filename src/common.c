@@ -166,7 +166,7 @@ ly_realloc(void *ptr, size_t size)
 char *
 ly_strnchr(const char *s, int c, unsigned int len)
 {
-    for (; *s != (char)c; ++s, --len) {
+    for ( ; *s != (char)c; ++s, --len) {
         if ((*s == '\0') || (!len)) {
             return NULL;
         }
@@ -346,7 +346,7 @@ ly_utf8len(const char *str, size_t bytes)
     size_t len = 0;
     const char *ptr = str;
 
-    while(*ptr && (size_t)(ptr - str) < bytes) {
+    while (*ptr && (size_t)(ptr - str) < bytes) {
         ++len;
         ptr += utf8_char_length_table[((unsigned char)(*ptr))];
     }
@@ -583,7 +583,7 @@ ly_parse_instance_predicate(const char **pred, size_t limit, LYD_FORMAT format,
     *prefix_len = *id_len = *value_len = 0;
 
     /* leading *WSP */
-    for (; isspace(in[offset]); offset++) {}
+    for ( ; isspace(in[offset]); offset++) {}
 
     if (isdigit(in[offset])) {
         /* pos: "[" *WSP positive-integer-value *WSP "]" */
@@ -595,7 +595,7 @@ ly_parse_instance_predicate(const char **pred, size_t limit, LYD_FORMAT format,
 
         /* positive-integer-value */
         *value = &in[offset++];
-        for (; isdigit(in[offset]); offset++) {}
+        for ( ; isdigit(in[offset]); offset++) {}
         *value_len = &in[offset] - *value;
 
     } else if (in[offset] == '.') {
@@ -627,7 +627,7 @@ ly_parse_instance_predicate(const char **pred, size_t limit, LYD_FORMAT format,
 
     if (expr) {
         /*  *WSP "=" *WSP quoted-string *WSP "]" */
-        for (; isspace(in[offset]); offset++) {}
+        for ( ; isspace(in[offset]); offset++) {}
 
         if (in[offset] != '=') {
             if (expr == 1) {
@@ -638,7 +638,7 @@ ly_parse_instance_predicate(const char **pred, size_t limit, LYD_FORMAT format,
             goto error;
         }
         offset++;
-        for (; isspace(in[offset]); offset++) {}
+        for ( ; isspace(in[offset]); offset++) {}
 
         /* quoted-string */
         quot = in[offset++];
@@ -647,7 +647,7 @@ ly_parse_instance_predicate(const char **pred, size_t limit, LYD_FORMAT format,
             goto error;
         }
         *value = &in[offset];
-        for (; offset < limit && (in[offset] != quot || (offset && in[offset - 1] == '\\')); offset++) {}
+        for ( ; offset < limit && (in[offset] != quot || (offset && in[offset - 1] == '\\')); offset++) {}
         if (in[offset] == quot) {
             *value_len = &in[offset] - *value;
             offset++;
@@ -658,7 +658,7 @@ ly_parse_instance_predicate(const char **pred, size_t limit, LYD_FORMAT format,
     }
 
     /* *WSP "]" */
-    for(; isspace(in[offset]); offset++) {}
+    for ( ; isspace(in[offset]); offset++) {}
     if (in[offset] != ']') {
         if (expr == 0) {
             *errmsg = "Predicate (pos) is not terminated by \']\' character.";

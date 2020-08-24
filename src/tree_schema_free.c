@@ -276,7 +276,7 @@ lysp_deviate_free(struct ly_ctx *ctx, struct lysp_deviate *d)
     struct lysp_deviate_rpl *rpl = (struct lysp_deviate_rpl*)d;
 
     FREE_ARRAY(ctx, d->exts, lysp_ext_instance_free);
-    switch(d->mod) {
+    switch (d->mod) {
     case LYS_DEV_NOT_SUPPORTED:
         /* nothing to do */
         break;
@@ -338,7 +338,7 @@ lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node)
     FREE_STRINGS(ctx, node->iffeatures);
     FREE_ARRAY(ctx, node->exts, lysp_ext_instance_free);
 
-    switch(node->nodetype) {
+    switch (node->nodetype) {
     case LYS_CONTAINER:
         FREE_ARRAY(ctx, ((struct lysp_node_container*)node)->musts, lysp_restr_free);
         FREE_STRING(ctx, ((struct lysp_node_container*)node)->presence);
@@ -599,7 +599,7 @@ lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type)
         return;
     }
 
-    switch(type->basetype) {
+    switch (type->basetype) {
     case LY_TYPE_BINARY:
         FREE_MEMBER(ctx, ((struct lysc_type_bin*)type)->length, lysc_range_free);
         break;
@@ -784,7 +784,7 @@ lysc_node_free(struct ly_ctx *ctx, struct lysc_node *node)
     FREE_STRING(ctx, node->ref);
 
     /* nodetype-specific part */
-    switch(node->nodetype) {
+    switch (node->nodetype) {
     case LYS_CONTAINER:
         lysc_node_container_free(ctx, (struct lysc_node_container*)node);
         break;
@@ -823,7 +823,7 @@ lysc_module_free_(struct lysc_module *module)
     struct ly_ctx *ctx;
     struct lysc_node *node, *node_next;
 
-    LY_CHECK_ARG_RET(NULL, module,);
+    LY_CHECK_ARG_RET(NULL, module, );
     ctx = module->mod->ctx;
 
     FREE_ARRAY(ctx, module->features, lysc_feature_free);
@@ -885,7 +885,7 @@ lysc_extension_instance_free(struct ly_ctx *ctx, struct lysc_ext_substmt *substm
             continue;
         }
 
-        switch(substmts[u].stmt) {
+        switch (substmts[u].stmt) {
         case LY_STMT_TYPE:
             if (substmts[u].cardinality < LY_STMT_CARD_SOME) {
                 /* single item */
