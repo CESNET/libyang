@@ -176,14 +176,13 @@ lys_print_path(const char *path, const struct lys_module *module, LYS_OUTFORMAT 
 }
 
 API LY_ERR
-lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg,
-        const struct lys_module *module, LYS_OUTFORMAT format, int options)
+lys_print_clb(ly_write_clb writeclb, void *user_data, const struct lys_module *module, LYS_OUTFORMAT format, int options)
 {
     struct ly_out *out;
 
     LY_CHECK_ARG_RET(NULL, writeclb, module, LY_EINVAL);
 
-    LY_CHECK_RET(ly_out_new_clb(writeclb, arg, &out));
+    LY_CHECK_RET(ly_out_new_clb(writeclb, user_data, &out));
     return lys_print_(out, module, format, options);
 }
 

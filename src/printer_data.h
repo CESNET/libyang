@@ -19,6 +19,7 @@
 #include <unistd.h>
 
 #include "log.h"
+#include "printer.h"
 #include "tree_data.h"
 
 #ifdef __cplusplus
@@ -126,14 +127,13 @@ LY_ERR lyd_print_path(const char *path, const struct lyd_node *root, LYD_FORMAT 
  * @brief Print data tree in the specified format.
  *
  * @param[in] writeclb Callback function to write the data (see write(1)).
- * @param[in] arg Optional caller-specific argument to be passed to the \p writeclb callback.
+ * @param[in] user_data Optional caller-specific argument to be passed to the \p writeclb callback.
  * @param[in] root The root element of the (sub)tree to print.
  * @param[in] format Output format.
  * @param[in] options [Data printer flags](@ref dataprinterflags).
  * @return LY_ERR value.
  */
-LY_ERR lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg,
-        const struct lyd_node *root, LYD_FORMAT format, int options);
+LY_ERR lyd_print_clb(ly_write_clb writeclb, void *user_data, const struct lyd_node *root, LYD_FORMAT format, int options);
 
 #ifdef __cplusplus
 }
