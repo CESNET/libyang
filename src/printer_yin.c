@@ -108,10 +108,10 @@ ypr_substmt(struct ypr_ctx *ctx, LYEXT_SUBSTMT substmt, uint8_t substmt_index, c
 
     LEVEL++;
     LY_ARRAY_FOR(ext, u) {
-        if (((struct lysp_ext_instance*)ext)[u].insubstmt != substmt || ((struct lysp_ext_instance*)ext)[u].insubstmt_index != substmt_index) {
+        if (((struct lysp_ext_instance *)ext)[u].insubstmt != substmt || ((struct lysp_ext_instance *)ext)[u].insubstmt_index != substmt_index) {
             continue;
         }
-        yprp_extension_instances(ctx, substmt, substmt_index, &((struct lysp_ext_instance*)ext)[u], &extflag, 1);
+        yprp_extension_instances(ctx, substmt, substmt_index, &((struct lysp_ext_instance *)ext)[u], &extflag, 1);
     }
 
     /* argument as yin-element */
@@ -1093,7 +1093,7 @@ yprp_deviation(struct ypr_ctx *ctx, const struct lysp_deviation *deviation)
                 continue;
             }
         } else if (elem->mod == LYS_DEV_ADD) {
-            add = (struct lysp_deviate_add*)elem;
+            add = (struct lysp_deviate_add *)elem;
             ly_print_(ctx->out, "add\">\n");
             LEVEL++;
 
@@ -1121,7 +1121,7 @@ yprp_deviation(struct ypr_ctx *ctx, const struct lysp_deviation *deviation)
                 }
             }
         } else if (elem->mod == LYS_DEV_REPLACE) {
-            rpl = (struct lysp_deviate_rpl*)elem;
+            rpl = (struct lysp_deviate_rpl *)elem;
             ly_print_(ctx->out, "replace\">\n");
             LEVEL++;
 
@@ -1144,7 +1144,7 @@ yprp_deviation(struct ypr_ctx *ctx, const struct lysp_deviation *deviation)
                 }
             }
         } else if (elem->mod == LYS_DEV_DELETE) {
-            del = (struct lysp_deviate_del*)elem;
+            del = (struct lysp_deviate_del *)elem;
             ly_print_(ctx->out, "delete\">\n");
             LEVEL++;
 

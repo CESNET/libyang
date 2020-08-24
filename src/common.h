@@ -279,15 +279,15 @@ struct lys_module *ly_ctx_get_module_implemented2(const struct ly_ctx *ctx, cons
  *****************************************************************************/
 
 /* list of the YANG statements strings */
-extern const char *const ly_stmt_list[];
+extern const char * const ly_stmt_list[];
 #define ly_stmt2str(STMT) ly_stmt_list[STMT]
 
 /* list of the extensions' substatements strings */
-extern const char *const lyext_substmt_list[];
+extern const char * const lyext_substmt_list[];
 #define lyext_substmt2str(STMT) lyext_substmt_list[STMT]
 
 /* list of the deviate modifications strings */
-extern const char *const ly_devmod_list[];
+extern const char * const ly_devmod_list[];
 #define ly_devmod2str(TYPE) ly_devmod_list[TYPE]
 
 /******************************************************************************

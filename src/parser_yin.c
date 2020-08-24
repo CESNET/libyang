@@ -43,7 +43,7 @@
  */
 #define IS_YIN_NS(ns) (strcmp(ns, YIN_NS_URI) == 0)
 
-const char *const yin_attr_list[] = {
+const char * const yin_attr_list[] = {
     [YIN_ARG_NAME] = "name",
     [YIN_ARG_TARGET_NODE] = "target-node",
     [YIN_ARG_MODULE] = "module",
@@ -2853,7 +2853,7 @@ yin_parse_content(struct lys_yin_parser_ctx *ctx, struct yin_subelement *subelem
             /* call responsible function */
             case LY_STMT_EXTENSION_INSTANCE:
                 ret = yin_parse_extension_instance(ctx, kw2lyext_substmt(current_element),
-                                (subelem->dest) ? *((LY_ARRAY_COUNT_TYPE*)subelem->dest) : 0, exts);
+                                (subelem->dest) ? *((LY_ARRAY_COUNT_TYPE *)subelem->dest) : 0, exts);
                 break;
             case LY_STMT_ACTION:
             case LY_STMT_RPC:

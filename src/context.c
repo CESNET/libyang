@@ -54,13 +54,13 @@ static struct internal_modules_s {
     uint8_t implemented;
     LYS_INFORMAT format;
 } internal_modules[] = {
-    {"ietf-yang-metadata", "2016-08-05", (const char*)ietf_yang_metadata_2016_08_05_yang, 1, LYS_IN_YANG},
-    {"yang", "2020-06-17", (const char*)yang_2020_06_17_yang, 1, LYS_IN_YANG},
-    {"ietf-inet-types", "2013-07-15", (const char*)ietf_inet_types_2013_07_15_yang, 0, LYS_IN_YANG},
-    {"ietf-yang-types", "2013-07-15", (const char*)ietf_yang_types_2013_07_15_yang, 0, LYS_IN_YANG},
+    {"ietf-yang-metadata", "2016-08-05", (const char *)ietf_yang_metadata_2016_08_05_yang, 1, LYS_IN_YANG},
+    {"yang", "2020-06-17", (const char *)yang_2020_06_17_yang, 1, LYS_IN_YANG},
+    {"ietf-inet-types", "2013-07-15", (const char *)ietf_inet_types_2013_07_15_yang, 0, LYS_IN_YANG},
+    {"ietf-yang-types", "2013-07-15", (const char *)ietf_yang_types_2013_07_15_yang, 0, LYS_IN_YANG},
     /* ietf-datastores and ietf-yang-library must be right here at the end of the list! */
-    {"ietf-datastores", "2018-02-14", (const char*)ietf_datastores_2018_02_14_yang, 1, LYS_IN_YANG},
-    {"ietf-yang-library", IETF_YANG_LIB_REV, (const char*)ietf_yang_library_2019_01_04_yang, 1, LYS_IN_YANG}
+    {"ietf-datastores", "2018-02-14", (const char *)ietf_datastores_2018_02_14_yang, 1, LYS_IN_YANG},
+    {"ietf-yang-library", IETF_YANG_LIB_REV, (const char *)ietf_yang_library_2019_01_04_yang, 1, LYS_IN_YANG}
 };
 
 #define LY_INTERNAL_MODS_COUNT sizeof(internal_modules) / sizeof(struct internal_modules_s)
@@ -359,7 +359,7 @@ ly_ctx_get_module_by_iter(const struct ly_ctx *ctx, const char *key, size_t key_
 
     for ( ; *index < ctx->list.count; ++(*index)) {
         mod = ctx->list.objs[*index];
-        value = *(const char**)(((int8_t*)(mod)) + key_offset);
+        value = *(const char **)(((int8_t *)(mod)) + key_offset);
         if ((!key_size && !strcmp(key, value)) || (key_size && !strncmp(key, value, key_size) && value[key_size] == '\0')) {
             /* increment index for the next run */
             ++(*index);

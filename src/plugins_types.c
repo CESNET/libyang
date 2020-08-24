@@ -426,7 +426,7 @@ ly_type_validate_patterns(struct lysc_pattern **patterns, const char *str, size_
             /* error */
             PCRE2_UCHAR pcre2_errmsg[256] = {0};
             pcre2_get_error_message(rc, pcre2_errmsg, 256);
-            *err = ly_err_new(LY_LLERR, LY_ESYS, 0, strdup((const char*)pcre2_errmsg), NULL, NULL);
+            *err = ly_err_new(LY_LLERR, LY_ESYS, 0, strdup((const char *)pcre2_errmsg), NULL, NULL);
             ret = LY_ESYS;
             goto cleanup;
         }
@@ -579,7 +579,7 @@ ly_type_store_uint(const struct ly_ctx *ctx, struct lysc_type *type, const char 
 {
     LY_ERR ret;
     uint64_t num;
-    struct lysc_type_num* type_num = (struct lysc_type_num*)type;
+    struct lysc_type_num *type_num = (struct lysc_type_num *)type;
     char *str;
 
     if (options & LY_TYPE_OPTS_SECOND_CALL) {
@@ -632,7 +632,7 @@ ly_type_store_decimal64(const struct ly_ctx *ctx, struct lysc_type *type, const 
         const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err)
 {
     int64_t d;
-    struct lysc_type_dec* type_dec = (struct lysc_type_dec*)type;
+    struct lysc_type_dec *type_dec = (struct lysc_type_dec *)type;
     char buf[22];
 
     if (options & LY_TYPE_OPTS_SECOND_CALL) {
@@ -849,7 +849,7 @@ ly_type_store_bits(const struct ly_ctx *ctx, struct lysc_type *type, const char 
     size_t index;
     LY_ARRAY_COUNT_TYPE u, v;
     char *errmsg = NULL;
-    struct lysc_type_bits *type_bits = (struct lysc_type_bits*)type;
+    struct lysc_type_bits *type_bits = (struct lysc_type_bits *)type;
     int iscanonical = 1;
     size_t ws_count;
     size_t lws_count; /* leading whitespace count */
@@ -892,7 +892,7 @@ ly_type_store_bits(const struct ly_ctx *ctx, struct lysc_type *type, const char 
                     }
                 }
 
-                if (iscanonical && items->count && type_bits->bits[u].position < ((struct lysc_type_bitenum_item*)items->objs[items->count - 1])->position) {
+                if (iscanonical && items->count && type_bits->bits[u].position < ((struct lysc_type_bitenum_item *)items->objs[items->count - 1])->position) {
                     iscanonical = 0;
                 }
                 inserted = ly_set_add(items, &type_bits->bits[u], 0);
@@ -1031,7 +1031,7 @@ ly_type_store_enum(const struct ly_ctx *ctx, struct lysc_type *type, const char 
 {
     LY_ARRAY_COUNT_TYPE u, v;
     char *errmsg = NULL;
-    struct lysc_type_enum *type_enum = (struct lysc_type_enum*)type;
+    struct lysc_type_enum *type_enum = (struct lysc_type_enum *)type;
     int erc = 0;
 
     if (options & LY_TYPE_OPTS_SECOND_CALL) {
@@ -1114,7 +1114,7 @@ ly_type_store_boolean(const struct ly_ctx *ctx, struct lysc_type *type, const ch
     }
 
     if (options & LY_TYPE_OPTS_DYNAMIC) {
-        storage->canonical = lydict_insert_zc(ctx, (char*)value);
+        storage->canonical = lydict_insert_zc(ctx, (char *)value);
     } else {
         storage->canonical = lydict_insert(ctx, value, value_len);
     }
@@ -1497,7 +1497,7 @@ ly_type_compare_instanceid(const struct lyd_value *val1, const struct lyd_value 
                     break;
                 case LY_PATH_PREDTYPE_LIST:
                     /* key-predicate */
-                    if (pred1->key != pred2->key || ((struct lysc_node_leaf*)pred1->key)->type->plugin->compare(&pred1->value, &pred2->value)) {
+                    if (pred1->key != pred2->key || ((struct lysc_node_leaf *)pred1->key)->type->plugin->compare(&pred1->value, &pred2->value)) {
                         return LY_ENOT;
                     }
                     break;
@@ -1556,7 +1556,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format,
                     ly_strcat(&result, "[%s:%s=%c%s%c]", ly_get_prefix(pred->key->module, format, prefix_data),
                               pred->key->name, quot, value, quot);
                     if (d) {
-                        free((char*)value);
+                        free((char *)value);
                     }
                     break;
                 }
@@ -1571,7 +1571,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format,
                     }
                     ly_strcat(&result, "[.=%c%s%c]", quot, value, quot);
                     if (d) {
-                        free((char*)value);
+                        free((char *)value);
                     }
                     break;
                 }
@@ -1608,7 +1608,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format,
                     }
                     ly_strcat(&result, "[%s=%c%s%c]", pred->key->name, quot, value, quot);
                     if (d) {
-                        free((char*)value);
+                        free((char *)value);
                     }
                     break;
                 }
@@ -1623,7 +1623,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format,
                     }
                     ly_strcat(&result, "[.=%c%s%c]", quot, value, quot);
                     if (d) {
-                        free((char*)value);
+                        free((char *)value);
                     }
                     break;
                 }

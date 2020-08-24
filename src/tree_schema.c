@@ -59,8 +59,8 @@ next:
         if (parent) {
             /* schema subtree */
             if (parent->nodetype == LYS_CHOICE && (options & LYS_GETNEXT_WITHCASE)) {
-                if (((struct lysc_node_choice*)parent)->cases) {
-                    next = last = (const struct lysc_node*)&((struct lysc_node_choice*)parent)->cases[0];
+                if (((struct lysc_node_choice *)parent)->cases) {
+                    next = last = (const struct lysc_node *)&((struct lysc_node_choice *)parent)->cases[0];
                 }
             } else {
                 snode = lysc_node_children_p(parent, (options & LYS_GETNEXT_OUTPUT) ? LYS_CONFIG_R : LYS_CONFIG_W);
@@ -88,12 +88,12 @@ next:
             actions = module->rpcs;
         }
         LY_ARRAY_FOR(actions, u) {
-            if (&actions[u] == (struct lysc_action*)last) {
+            if (&actions[u] == (struct lysc_action *)last) {
                 break;
             }
         }
         if (u + 1 < LY_ARRAY_COUNT(actions)) {
-            next = (struct lysc_node*)(&actions[u + 1]);
+            next = (struct lysc_node *)(&actions[u + 1]);
         }
         goto repeat;
     } else if (last->nodetype == LYS_NOTIF) {
@@ -104,12 +104,12 @@ next:
             notifs = module->notifs;
         }
         LY_ARRAY_FOR(notifs, u) {
-            if (&notifs[u] == (struct lysc_notif*)last) {
+            if (&notifs[u] == (struct lysc_notif *)last) {
                 break;
             }
         }
         if (u + 1 < LY_ARRAY_COUNT(notifs)) {
-            next = (struct lysc_node*)(&notifs[u + 1]);
+            next = (struct lysc_node *)(&notifs[u + 1]);
         }
         goto repeat;
     }
@@ -128,10 +128,10 @@ repeat:
             goto next;
         } else if (!action_flag) {
             action_flag = 1;
-            next = parent ? (struct lysc_node*)lysc_node_actions(parent) : (struct lysc_node*)module->rpcs;
+            next = parent ? (struct lysc_node *)lysc_node_actions(parent) : (struct lysc_node *)module->rpcs;
         } else if (!notif_flag) {
             notif_flag = 1;
-            next = parent ? (struct lysc_node*)lysc_node_notifs(parent) : (struct lysc_node*)module->notifs;
+            next = parent ? (struct lysc_node *)lysc_node_notifs(parent) : (struct lysc_node *)module->notifs;
         } else {
             return NULL;
         }
@@ -168,7 +168,7 @@ check:
         } else {
             /* go into */
             if (options & LYS_GETNEXT_WITHCASE) {
-                next = (struct lysc_node*)((struct lysc_node_choice *)next)->cases;
+                next = (struct lysc_node *)((struct lysc_node_choice *)next)->cases;
             } else {
                 next = ((struct lysc_node_choice *)next)->cases->child;
             }
@@ -669,7 +669,7 @@ next:
          * its if-feature statements. The reverse logic, automatically enable feature when its feature is enabled
          * is not done - by default, features are disabled and must be explicitely enabled. */
         f = changed->objs[u];
-        LY_ARRAY_FOR(f->depfeatures, struct lysc_feature*, df) {
+        LY_ARRAY_FOR(f->depfeatures, struct lysc_feature *, df) {
             if (!((*df)->flags & LYS_FENABLED)) {
                 /* not enabled, nothing to do */
                 continue;
@@ -696,7 +696,7 @@ lys_feature_enable(const struct lys_module *module, const char *feature)
 {
     LY_CHECK_ARG_RET(NULL, module, feature, LY_EINVAL);
 
-    return lys_feature_change((struct lys_module*)module, feature, 1, 0);
+    return lys_feature_change((struct lys_module *)module, feature, 1, 0);
 }
 
 API LY_ERR
@@ -704,7 +704,7 @@ lys_feature_disable(const struct lys_module *module, const char *feature)
 {
     LY_CHECK_ARG_RET(NULL, module, feature, LY_EINVAL);
 
-    return lys_feature_change((struct lys_module*)module, feature, 0, 0);
+    return lys_feature_change((struct lys_module *)module, feature, 0, 0);
 }
 
 API LY_ERR
@@ -712,7 +712,7 @@ lys_feature_enable_force(const struct lys_module *module, const char *feature)
 {
     LY_CHECK_ARG_RET(NULL, module, feature, LY_EINVAL);
 
-    return lys_feature_change((struct lys_module*)module, feature, 1, 1);
+    return lys_feature_change((struct lys_module *)module, feature, 1, 1);
 }
 
 API LY_ERR
@@ -720,7 +720,7 @@ lys_feature_disable_force(const struct lys_module *module, const char *feature)
 {
     LY_CHECK_ARG_RET(NULL, module, feature, LY_EINVAL);
 
-    return lys_feature_change((struct lys_module*)module, feature, 0, 1);
+    return lys_feature_change((struct lys_module *)module, feature, 0, 1);
 }
 
 API LY_ERR
@@ -792,7 +792,7 @@ lysc_node_is_disabled(const struct lysc_node *node, int recursive)
 }
 
 API LY_ERR
-lysc_node_set_private(const struct lysc_node *node, void *priv, void** prev_priv_p)
+lysc_node_set_private(const struct lysc_node *node, void *priv, void **prev_priv_p)
 {
     LY_CHECK_ARG_RET(NULL, node, LY_EINVAL);
 
@@ -877,7 +877,7 @@ lys_resolve_import_include(struct lys_parser_ctx *pctx, struct lysp_module *modp
 
 LY_ERR
 lys_parse_mem_submodule(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, struct lys_parser_ctx *main_ctx,
-        LY_ERR (*custom_check)(const struct ly_ctx*, struct lysp_module*, struct lysp_submodule*, void*),
+        LY_ERR (*custom_check)(const struct ly_ctx *, struct lysp_module *, struct lysp_submodule *, void *),
         void *check_data, struct lysp_submodule **submodule)
 {
     LY_ERR ret;
@@ -1003,7 +1003,7 @@ lys_parse_mem_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, 
     }
 
     /* decide the latest revision */
-    latest = (struct lys_module*)ly_ctx_get_module_latest(ctx, mod->name);
+    latest = (struct lys_module *)ly_ctx_get_module_latest(ctx, mod->name);
     if (latest) {
         if (mod->revision) {
             if (!latest->revision) {
@@ -1038,7 +1038,7 @@ lys_parse_mem_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, 
     }
 
     /* check for duplicity in the context */
-    mod_dup = (struct lys_module*)ly_ctx_get_module(ctx, mod->name, mod->revision);
+    mod_dup = (struct lys_module *)ly_ctx_get_module(ctx, mod->name, mod->revision);
     if (mod_dup) {
         if (mod_dup->parsed) {
             /* error */

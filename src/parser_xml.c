@@ -485,7 +485,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node_inner *parent, stru
         }
     } else if (snode->nodetype & LYD_NODE_TERM) {
         /* create node */
-        LY_CHECK_GOTO(ret = lyd_parser_create_term((struct lyd_ctx*)lydctx, snode, xmlctx->value, xmlctx->value_len,
+        LY_CHECK_GOTO(ret = lyd_parser_create_term((struct lyd_ctx *)lydctx, snode, xmlctx->value, xmlctx->value_len,
                                         &xmlctx->dynamic, 0, LY_PREF_XML, &xmlctx->ns, &node), error);
 
         if (parent && (node->schema->flags & LYS_KEY)) {

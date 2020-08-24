@@ -189,7 +189,7 @@ typedef enum
 /**
  * @brief Stringified YANG built-in data types
  */
-extern const char* ly_data_type2str[LY_DATA_TYPE_COUNT];
+extern const char *ly_data_type2str[LY_DATA_TYPE_COUNT];
 
 /** @} trees */
 

@@ -413,7 +413,7 @@ ly_vlog_build_path(const struct ly_ctx *ctx, enum LY_VLOG_ELEM elem_type, const 
         LY_CHECK_ERR_RET(!(*path), LOGMEM(ctx), LY_EMEM);
         break;
     case LY_VLOG_LINE:
-        rc = asprintf(path, "Line number %" PRIu64 ".", *((uint64_t*)elem));
+        rc = asprintf(path, "Line number %" PRIu64 ".", *((uint64_t *)elem));
         LY_CHECK_ERR_RET(rc == -1, LOGMEM(ctx), LY_EMEM);
         break;
     case LY_VLOG_LYSC:
@@ -436,7 +436,7 @@ void
 ly_vlog(const struct ly_ctx *ctx, enum LY_VLOG_ELEM elem_type, const void *elem, LY_VECODE code, const char *format, ...)
 {
     va_list ap;
-    char* path = NULL;
+    char *path = NULL;
     const struct ly_err_item *first;
 
     if (path_flag && (elem_type != LY_VLOG_NONE)) {

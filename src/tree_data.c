@@ -67,7 +67,7 @@ lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len,
 
     ctx = node->schema->module->ctx;
 
-    type = ((struct lysc_node_leaf*)node->schema)->type;
+    type = ((struct lysc_node_leaf *)node->schema)->type;
     ret = type->plugin->store(ctx, type, value, value_len, options, format, prefix_data,
                               tree ? (void *)node : (void *)node->schema, tree, &node->value, &err);
     if (ret && (ret != LY_EINCOMPLETE)) {
@@ -168,7 +168,7 @@ _lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *node, cons
         return LY_EINVAL;
     }
 
-    type = ((struct lysc_node_leaf*)node)->type;
+    type = ((struct lysc_node_leaf *)node)->type;
     /* just validate, no storing of enything */
     rc = type->plugin->store(ctx ? ctx : node->module->ctx, type, value, value_len, LY_TYPE_OPTS_INCOMPLETE_DATA,
                              format, prefix_data, node, NULL, &storage, &err);
@@ -209,9 +209,9 @@ lyd_value_validate(const struct ly_ctx *ctx, const struct lyd_node_term *node, c
 
     LY_CHECK_ARG_RET(ctx, node, value, LY_EINVAL);
 
-    type = ((struct lysc_node_leaf*)node->schema)->type;
+    type = ((struct lysc_node_leaf *)node->schema)->type;
     rc = type->plugin->store(ctx ? ctx : node->schema->module->ctx, type, value, value_len, options, LY_PREF_JSON, NULL,
-                             tree ? (void*)node : (void*)node->schema, tree, &val, &err);
+                             tree ? (void *)node : (void *)node->schema, tree, &val, &err);
     if (rc == LY_EINCOMPLETE) {
         return rc;
     } else if (rc) {
@@ -246,7 +246,7 @@ lyd_value_compare(const struct lyd_node_term *node, const char *value, size_t va
     LY_CHECK_ARG_RET(node ? node->schema->module->ctx : NULL, node, value, LY_EINVAL);
 
     ctx = node->schema->module->ctx;
-    type = ((struct lysc_node_leaf*)node->schema)->type;
+    type = ((struct lysc_node_leaf *)node->schema)->type;
     rc = type->plugin->store(ctx, type, value, value_len, options, LY_PREF_JSON, NULL, (struct lyd_node *)node, tree, &data,
                              &err);
     if (rc == LY_EINCOMPLETE) {
@@ -2335,8 +2335,8 @@ lyd_compare_single(const struct lyd_node *node1, const struct lyd_node *node2, i
                 }
             }
             if (options & LYD_COMPARE_FULL_RECURSION) {
-                iter1 = ((struct lyd_node_inner*)node1)->child;
-                iter2 = ((struct lyd_node_inner*)node2)->child;
+                iter1 = ((struct lyd_node_inner *)node1)->child;
+                iter2 = ((struct lyd_node_inner *)node2)->child;
                 goto all_children_compare;
             }
             return LY_SUCCESS;
@@ -2356,12 +2356,12 @@ lyd_compare_single(const struct lyd_node *node1, const struct lyd_node *node2, i
             }
             return LY_SUCCESS;
         case LYS_LIST:
-            iter1 = ((struct lyd_node_inner*)node1)->child;
-            iter2 = ((struct lyd_node_inner*)node2)->child;
+            iter1 = ((struct lyd_node_inner *)node1)->child;
+            iter2 = ((struct lyd_node_inner *)node2)->child;
 
             if (!(node1->schema->flags & LYS_KEYLESS) && !(options & LYD_COMPARE_FULL_RECURSION)) {
                 /* lists with keys, their equivalence is based on their keys */
-                for (struct lysc_node *key = ((struct lysc_node_list*)node1->schema)->child;
+                for (struct lysc_node *key = ((struct lysc_node_list *)node1->schema)->child;
                         key && (key->flags & LYS_KEY);
                         key = key->next) {
                     if (lyd_compare_single(iter1, iter2, options)) {
@@ -2391,8 +2391,8 @@ all_children_compare:
             return LY_SUCCESS;
         case LYS_ANYXML:
         case LYS_ANYDATA:
-            any1 = (struct lyd_node_any*)node1;
-            any2 = (struct lyd_node_any*)node2;
+            any1 = (struct lyd_node_any *)node1;
+            any2 = (struct lyd_node_any *)node2;
 
             if (any1->value_type != any2->value_type) {
                 return LY_ENOT;
@@ -3037,7 +3037,7 @@ iter_print:
             }
 
             /* realloc string */
-            len = 1 + (mod ? strlen(mod->name) + 1 : 0) + (iter->schema ? strlen(iter->schema->name) : strlen(((struct lyd_node_opaq*)iter)->name));
+            len = 1 + (mod ? strlen(mod->name) + 1 : 0) + (iter->schema ? strlen(iter->schema->name) : strlen(((struct lyd_node_opaq *)iter)->name));
             rc = lyd_path_str_enlarge(&buffer, &buflen, bufused + len, is_static);
             if (rc != LY_SUCCESS) {
                 break;
@@ -3045,7 +3045,7 @@ iter_print:
 
             /* print next node */
             bufused += sprintf(buffer + bufused, "/%s%s%s", mod ? mod->name : "", mod ? ":" : "",
-                               iter->schema ? iter->schema->name : ((struct lyd_node_opaq*)iter)->name);
+                               iter->schema ? iter->schema->name : ((struct lyd_node_opaq *)iter)->name);
 
             /* do not always print the last (first) predicate */
             if (iter->schema && (bufused || (pathtype == LYD_PATH_LOG))) {
