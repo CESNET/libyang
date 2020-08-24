@@ -19,6 +19,7 @@
 #include <unistd.h>
 
 #include "log.h"
+#include "printer.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -151,12 +152,12 @@ LY_ERR lys_print_path(const char *path, const struct lys_module *module, LYS_OUT
  *
  * @param[in] module Schema tree to print.
  * @param[in] writeclb Callback function to write the data (see write(1)).
- * @param[in] arg Optional caller-specific argument to be passed to the \p writeclb callback.
+ * @param[in] user_data Optional caller-specific argument to be passed to the \p writeclb callback.
  * @param[in] format Schema output format.
  * @param[in] options Schema output options (see @ref schemaprinterflags).
  * @return LY_ERR value.
  */
-LY_ERR lys_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg,
+LY_ERR lys_print_clb(ly_write_clb writeclb, void *user_data,
         const struct lys_module *module, LYS_OUTFORMAT format, int options);
 
 /**

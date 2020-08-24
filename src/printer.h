@@ -66,15 +66,26 @@ LY_OUT_TYPE ly_out_type(const struct ly_out *out);
 LY_ERR ly_out_reset(struct ly_out *out);
 
 /**
+ * @brief Generic write callback for data printed by libyang.
+ *
+ * @param[in] user_data Optional caller-specific argument.
+ * @param[in] buf Data to write.
+ * @param[in] count Number of bytes to write.
+ * @return Number of printed bytes.
+ * @return Negative value in case of error.
+ */
+typedef ssize_t (*ly_write_clb)(void *user_data, const void *buf, size_t count);
+
+/**
  * @brief Create printer handler using callback printer function.
  *
  * @param[in] writeclb Pointer to the printer callback function writing the data (see write(2)).
- * @param[in] arg Optional caller-specific argument to be passed to the @p writeclb callback.
+ * @param[in] user_data Optional caller-specific argument to be passed to the @p writeclb callback.
  * @param[out] out Created printer handler supposed to be passed to different ly*_print() functions.
  * @return LY_SUCCESS in case of success
  * @return LY_EMEM in case allocating the @p out handler fails.
  */
-LY_ERR ly_out_new_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, struct ly_out **out);
+LY_ERR ly_out_new_clb(ly_write_clb writeclb, void *user_data, struct ly_out **out);
 
 /**
  * @brief Get or reset callback function associated with a callback printer handler.
@@ -83,7 +94,7 @@ LY_ERR ly_out_new_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t cou
  * @param[in] fd Optional value of a new file descriptor for the handler. If -1, only the current file descriptor value is returned.
  * @return Previous value of the file descriptor.
  */
-ssize_t (*ly_out_clb(struct ly_out *out, ssize_t (*writeclb)(void *arg, const void *buf, size_t count)))(void *arg, const void *buf, size_t count);
+ly_write_clb ly_out_clb(struct ly_out *out, ly_write_clb writeclb);
 
 /**
  * @brief Get or reset callback function's argument aasociated with a callback printer handler.

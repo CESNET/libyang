@@ -160,7 +160,7 @@ ly_out_type(const struct ly_out *out)
 }
 
 API LY_ERR
-ly_out_new_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg, struct ly_out **out)
+ly_out_new_clb(ly_write_clb writeclb, void *user_data, struct ly_out **out)
 {
     LY_CHECK_ARG_RET(NULL, out, writeclb, LY_EINVAL);
 
@@ -169,12 +169,12 @@ ly_out_new_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), vo
 
     (*out)->type = LY_OUT_CALLBACK;
     (*out)->method.clb.func = writeclb;
-    (*out)->method.clb.arg = arg;
+    (*out)->method.clb.arg = user_data;
 
     return LY_SUCCESS;
 }
 
-API ssize_t (*ly_out_clb(struct ly_out *out, ssize_t (*writeclb)(void *arg, const void *buf, size_t count)))(void *arg, const void *buf, size_t count)
+API ly_write_clb ly_out_clb(struct ly_out *out, ly_write_clb writeclb)
 {
     void *prev_clb;
 

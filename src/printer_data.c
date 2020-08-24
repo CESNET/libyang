@@ -144,15 +144,14 @@ lyd_print_path(const char *path, const struct lyd_node *root, LYD_FORMAT format,
 }
 
 API LY_ERR
-lyd_print_clb(ssize_t (*writeclb)(void *arg, const void *buf, size_t count), void *arg,
-        const struct lyd_node *root, LYD_FORMAT format, int options)
+lyd_print_clb(ly_write_clb writeclb, void *user_data, const struct lyd_node *root, LYD_FORMAT format, int options)
 {
     LY_ERR ret;
     struct ly_out *out;
 
     LY_CHECK_ARG_RET(NULL, writeclb, LY_EINVAL);
 
-    LY_CHECK_RET(ly_out_new_clb(writeclb, arg, &out));
+    LY_CHECK_RET(ly_out_new_clb(writeclb, user_data, &out));
     ret = lyd_print_(out, root, format, options);
     ly_out_free(out, NULL, 0);
     return ret;
