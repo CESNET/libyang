@@ -620,7 +620,7 @@ struct lysp_deviation {
     const char *nodeid;              /**< target absolute schema nodeid (mandatory) */
     const char *dsc;                 /**< description statement */
     const char *ref;                 /**< reference statement */
-    struct lysp_deviate* deviates;   /**< list of deviate specifications (linked list) */
+    struct lysp_deviate *deviates;   /**< list of deviate specifications (linked list) */
     struct lysp_ext_instance *exts;  /**< list of the extension instances ([sized array](@ref sizedarrays)) */
 };
 
@@ -921,7 +921,7 @@ struct lysp_node_choice {
 
     /* choice */
     struct lysp_node *child;         /**< list of data nodes (linked list) */
-    const char* dflt;                /**< default case */
+    const char *dflt;                /**< default case */
 };
 
 struct lysp_node_case {

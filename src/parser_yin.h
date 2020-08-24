@@ -24,7 +24,7 @@
 #include "tree_schema_internal.h"
 
 /* list of yin attribute strings */
-extern const char *const yin_attr_list[];
+extern const char * const yin_attr_list[];
 #define yin_attr2str(STMT) yin_attr_list[STMT]
 
 #define VALID_VALS1 " Only valid value is \"%s\"."

@@ -103,7 +103,7 @@ xml_print_ns(struct xmlpr_ctx *ctx, const char *ns, const char *new_prefix, int 
     return ctx->prefix.objs[i];
 }
 
-static const char*
+static const char *
 xml_print_ns_opaq(struct xmlpr_ctx *ctx, LYD_FORMAT format, const struct ly_prefix *prefix, int prefix_opts)
 {
 

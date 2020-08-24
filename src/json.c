@@ -29,7 +29,7 @@
 #define JSON_POP_STATUS_RET(CTX) \
     assert(CTX->status.count); CTX->status.count--;
 
-const char*
+const char *
 lyjson_token2str(enum LYJSON_PARSER_STATUS status)
 {
     switch (status) {
@@ -92,7 +92,7 @@ lyjson_ctx_set_value(struct lyjson_ctx *jsonctx, const char *value, size_t value
     assert(jsonctx);
 
     if (dynamic) {
-        free((char*)jsonctx->value);
+        free((char *)jsonctx->value);
     }
     jsonctx->value = value;
     jsonctx->value_len = value_len;
@@ -667,7 +667,7 @@ lyjson_ctx_restore(struct lyjson_ctx *jsonctx)
         free((char *)jsonctx->value);
     }
     jsonctx->status.count = jsonctx->backup.status_count;
-    jsonctx->status.objs[jsonctx->backup.status_count - 1] = (void*)jsonctx->backup.status;
+    jsonctx->status.objs[jsonctx->backup.status_count - 1] = (void *)jsonctx->backup.status;
     jsonctx->value = jsonctx->backup.value;
     jsonctx->value_len = jsonctx->backup.value_len;
     jsonctx->in->current = jsonctx->backup.input;
@@ -774,7 +774,7 @@ lyjson_ctx_free(struct lyjson_ctx *jsonctx)
     }
 
     if (jsonctx->dynamic) {
-        free((char*)jsonctx->value);
+        free((char *)jsonctx->value);
     }
     if (jsonctx->backup.dynamic) {
         free((char *)jsonctx->backup.value);

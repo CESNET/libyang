@@ -272,8 +272,8 @@ lysp_augment_free(struct ly_ctx *ctx, struct lysp_augment *augment)
 void
 lysp_deviate_free(struct ly_ctx *ctx, struct lysp_deviate *d)
 {
-    struct lysp_deviate_add *add = (struct lysp_deviate_add*)d;
-    struct lysp_deviate_rpl *rpl = (struct lysp_deviate_rpl*)d;
+    struct lysp_deviate_add *add = (struct lysp_deviate_add *)d;
+    struct lysp_deviate_rpl *rpl = (struct lysp_deviate_rpl *)d;
 
     FREE_ARRAY(ctx, d->exts, lysp_ext_instance_free);
     switch (d->mod) {
@@ -340,58 +340,58 @@ lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node)
 
     switch (node->nodetype) {
     case LYS_CONTAINER:
-        FREE_ARRAY(ctx, ((struct lysp_node_container*)node)->musts, lysp_restr_free);
-        FREE_STRING(ctx, ((struct lysp_node_container*)node)->presence);
-        FREE_ARRAY(ctx, ((struct lysp_node_container*)node)->typedefs, lysp_tpdf_free);
-        FREE_ARRAY(ctx, ((struct lysp_node_container*)node)->groupings, lysp_grp_free);
-        LY_LIST_FOR_SAFE(((struct lysp_node_container*)node)->child, next, child) {
+        FREE_ARRAY(ctx, ((struct lysp_node_container *)node)->musts, lysp_restr_free);
+        FREE_STRING(ctx, ((struct lysp_node_container *)node)->presence);
+        FREE_ARRAY(ctx, ((struct lysp_node_container *)node)->typedefs, lysp_tpdf_free);
+        FREE_ARRAY(ctx, ((struct lysp_node_container *)node)->groupings, lysp_grp_free);
+        LY_LIST_FOR_SAFE(((struct lysp_node_container *)node)->child, next, child) {
             lysp_node_free(ctx, child);
         }
-        FREE_ARRAY(ctx, ((struct lysp_node_container*)node)->actions, lysp_action_free);
-        FREE_ARRAY(ctx, ((struct lysp_node_container*)node)->notifs, lysp_notif_free);
+        FREE_ARRAY(ctx, ((struct lysp_node_container *)node)->actions, lysp_action_free);
+        FREE_ARRAY(ctx, ((struct lysp_node_container *)node)->notifs, lysp_notif_free);
         break;
     case LYS_LEAF:
-        FREE_ARRAY(ctx, ((struct lysp_node_leaf*)node)->musts, lysp_restr_free);
-        lysp_type_free(ctx, &((struct lysp_node_leaf*)node)->type);
-        FREE_STRING(ctx, ((struct lysp_node_leaf*)node)->units);
-        FREE_STRING(ctx, ((struct lysp_node_leaf*)node)->dflt);
+        FREE_ARRAY(ctx, ((struct lysp_node_leaf *)node)->musts, lysp_restr_free);
+        lysp_type_free(ctx, &((struct lysp_node_leaf *)node)->type);
+        FREE_STRING(ctx, ((struct lysp_node_leaf *)node)->units);
+        FREE_STRING(ctx, ((struct lysp_node_leaf *)node)->dflt);
         break;
     case LYS_LEAFLIST:
-        FREE_ARRAY(ctx, ((struct lysp_node_leaflist*)node)->musts, lysp_restr_free);
-        lysp_type_free(ctx, &((struct lysp_node_leaflist*)node)->type);
-        FREE_STRING(ctx, ((struct lysp_node_leaflist*)node)->units);
-        FREE_STRINGS(ctx, ((struct lysp_node_leaflist*)node)->dflts);
+        FREE_ARRAY(ctx, ((struct lysp_node_leaflist *)node)->musts, lysp_restr_free);
+        lysp_type_free(ctx, &((struct lysp_node_leaflist *)node)->type);
+        FREE_STRING(ctx, ((struct lysp_node_leaflist *)node)->units);
+        FREE_STRINGS(ctx, ((struct lysp_node_leaflist *)node)->dflts);
         break;
     case LYS_LIST:
-        FREE_ARRAY(ctx, ((struct lysp_node_list*)node)->musts, lysp_restr_free);
-        FREE_STRING(ctx, ((struct lysp_node_list*)node)->key);
-        FREE_ARRAY(ctx, ((struct lysp_node_list*)node)->typedefs, lysp_tpdf_free);
-        FREE_ARRAY(ctx, ((struct lysp_node_list*)node)->groupings,  lysp_grp_free);
-        LY_LIST_FOR_SAFE(((struct lysp_node_list*)node)->child, next, child) {
+        FREE_ARRAY(ctx, ((struct lysp_node_list *)node)->musts, lysp_restr_free);
+        FREE_STRING(ctx, ((struct lysp_node_list *)node)->key);
+        FREE_ARRAY(ctx, ((struct lysp_node_list *)node)->typedefs, lysp_tpdf_free);
+        FREE_ARRAY(ctx, ((struct lysp_node_list *)node)->groupings,  lysp_grp_free);
+        LY_LIST_FOR_SAFE(((struct lysp_node_list *)node)->child, next, child) {
             lysp_node_free(ctx, child);
         }
-        FREE_ARRAY(ctx, ((struct lysp_node_list*)node)->actions, lysp_action_free);
-        FREE_ARRAY(ctx, ((struct lysp_node_list*)node)->notifs, lysp_notif_free);
-        FREE_STRINGS(ctx, ((struct lysp_node_list*)node)->uniques);
+        FREE_ARRAY(ctx, ((struct lysp_node_list *)node)->actions, lysp_action_free);
+        FREE_ARRAY(ctx, ((struct lysp_node_list *)node)->notifs, lysp_notif_free);
+        FREE_STRINGS(ctx, ((struct lysp_node_list *)node)->uniques);
         break;
     case LYS_CHOICE:
-        LY_LIST_FOR_SAFE(((struct lysp_node_choice*)node)->child, next, child) {
+        LY_LIST_FOR_SAFE(((struct lysp_node_choice *)node)->child, next, child) {
             lysp_node_free(ctx, child);
         }
-        FREE_STRING(ctx, ((struct lysp_node_choice*)node)->dflt);
+        FREE_STRING(ctx, ((struct lysp_node_choice *)node)->dflt);
         break;
     case LYS_CASE:
-        LY_LIST_FOR_SAFE(((struct lysp_node_case*)node)->child, next, child) {
+        LY_LIST_FOR_SAFE(((struct lysp_node_case *)node)->child, next, child) {
             lysp_node_free(ctx, child);
         }
         break;
     case LYS_ANYDATA:
     case LYS_ANYXML:
-        FREE_ARRAY(ctx, ((struct lysp_node_anydata*)node)->musts, lysp_restr_free);
+        FREE_ARRAY(ctx, ((struct lysp_node_anydata *)node)->musts, lysp_restr_free);
         break;
     case LYS_USES:
-        FREE_ARRAY(ctx, ((struct lysp_node_uses*)node)->refines, lysp_refine_free);
-        FREE_ARRAY(ctx, ((struct lysp_node_uses*)node)->augments, lysp_augment_free);
+        FREE_ARRAY(ctx, ((struct lysp_node_uses *)node)->refines, lysp_refine_free);
+        FREE_ARRAY(ctx, ((struct lysp_node_uses *)node)->augments, lysp_augment_free);
         break;
     default:
         LOGINT(ctx);
@@ -601,20 +601,20 @@ lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type)
 
     switch (type->basetype) {
     case LY_TYPE_BINARY:
-        FREE_MEMBER(ctx, ((struct lysc_type_bin*)type)->length, lysc_range_free);
+        FREE_MEMBER(ctx, ((struct lysc_type_bin *)type)->length, lysc_range_free);
         break;
     case LY_TYPE_BITS:
-        FREE_ARRAY(ctx, (struct lysc_type_bitenum_item*)((struct lysc_type_bits*)type)->bits, lysc_enum_item_free);
+        FREE_ARRAY(ctx, (struct lysc_type_bitenum_item *)((struct lysc_type_bits *)type)->bits, lysc_enum_item_free);
         break;
     case LY_TYPE_DEC64:
-        FREE_MEMBER(ctx, ((struct lysc_type_dec*)type)->range, lysc_range_free);
+        FREE_MEMBER(ctx, ((struct lysc_type_dec *)type)->range, lysc_range_free);
         break;
     case LY_TYPE_STRING:
-        FREE_MEMBER(ctx, ((struct lysc_type_str*)type)->length, lysc_range_free);
-        FREE_ARRAY(ctx, ((struct lysc_type_str*)type)->patterns, lysc_pattern_free);
+        FREE_MEMBER(ctx, ((struct lysc_type_str *)type)->length, lysc_range_free);
+        FREE_ARRAY(ctx, ((struct lysc_type_str *)type)->patterns, lysc_pattern_free);
         break;
     case LY_TYPE_ENUM:
-        FREE_ARRAY(ctx, ((struct lysc_type_enum*)type)->enums, lysc_enum_item_free);
+        FREE_ARRAY(ctx, ((struct lysc_type_enum *)type)->enums, lysc_enum_item_free);
         break;
     case LY_TYPE_INT8:
     case LY_TYPE_UINT8:
@@ -624,16 +624,16 @@ lysc_type_free(struct ly_ctx *ctx, struct lysc_type *type)
     case LY_TYPE_UINT32:
     case LY_TYPE_INT64:
     case LY_TYPE_UINT64:
-        FREE_MEMBER(ctx, ((struct lysc_type_num*)type)->range, lysc_range_free);
+        FREE_MEMBER(ctx, ((struct lysc_type_num *)type)->range, lysc_range_free);
         break;
     case LY_TYPE_IDENT:
-        LY_ARRAY_FREE(((struct lysc_type_identityref*)type)->bases);
+        LY_ARRAY_FREE(((struct lysc_type_identityref *)type)->bases);
         break;
     case LY_TYPE_UNION:
-        FREE_ARRAY(ctx, ((struct lysc_type_union*)type)->types, lysc_type2_free);
+        FREE_ARRAY(ctx, ((struct lysc_type_union *)type)->types, lysc_type2_free);
         break;
     case LY_TYPE_LEAFREF:
-        lyxp_expr_free(ctx, ((struct lysc_type_leafref*)type)->path);
+        lyxp_expr_free(ctx, ((struct lysc_type_leafref *)type)->path);
         break;
     case LY_TYPE_INST:
     case LY_TYPE_BOOL:
@@ -763,7 +763,7 @@ lysc_node_choice_free(struct ly_ctx *ctx, struct lysc_node_choice *node)
         LY_LIST_FOR_SAFE(node->cases->child, child_next, child) {
             lysc_node_free(ctx, child);
         }
-        LY_LIST_FOR_SAFE((struct lysc_node*)node->cases, child_next, child) {
+        LY_LIST_FOR_SAFE((struct lysc_node *)node->cases, child_next, child) {
             lysc_node_free(ctx, child);
         }
     }
@@ -786,26 +786,26 @@ lysc_node_free(struct ly_ctx *ctx, struct lysc_node *node)
     /* nodetype-specific part */
     switch (node->nodetype) {
     case LYS_CONTAINER:
-        lysc_node_container_free(ctx, (struct lysc_node_container*)node);
+        lysc_node_container_free(ctx, (struct lysc_node_container *)node);
         break;
     case LYS_LEAF:
-        lysc_node_leaf_free(ctx, (struct lysc_node_leaf*)node);
+        lysc_node_leaf_free(ctx, (struct lysc_node_leaf *)node);
         break;
     case LYS_LEAFLIST:
-        lysc_node_leaflist_free(ctx, (struct lysc_node_leaflist*)node);
+        lysc_node_leaflist_free(ctx, (struct lysc_node_leaflist *)node);
         break;
     case LYS_LIST:
-        lysc_node_list_free(ctx, (struct lysc_node_list*)node);
+        lysc_node_list_free(ctx, (struct lysc_node_list *)node);
         break;
     case LYS_CHOICE:
-        lysc_node_choice_free(ctx, (struct lysc_node_choice*)node);
+        lysc_node_choice_free(ctx, (struct lysc_node_choice *)node);
         break;
     case LYS_CASE:
         /* nothing specific */
         break;
     case LYS_ANYDATA:
     case LYS_ANYXML:
-        lysc_node_anydata_free(ctx, (struct lysc_node_anydata*)node);
+        lysc_node_anydata_free(ctx, (struct lysc_node_anydata *)node);
         break;
     default:
         LOGINT(ctx);
@@ -889,14 +889,14 @@ lysc_extension_instance_free(struct ly_ctx *ctx, struct lysc_ext_substmt *substm
         case LY_STMT_TYPE:
             if (substmts[u].cardinality < LY_STMT_CARD_SOME) {
                 /* single item */
-                struct lysc_type *type = *((struct lysc_type**)substmts[u].storage);
+                struct lysc_type *type = *((struct lysc_type **)substmts[u].storage);
                 if (!type) {
                     break;
                 }
                 lysc_type_free(ctx, type);
             } else {
                 /* multiple items */
-                struct lysc_type **types = *((struct lysc_type***)substmts[u].storage);
+                struct lysc_type **types = *((struct lysc_type ***)substmts[u].storage);
                 if (!types) {
                     break;
                 }
@@ -906,14 +906,14 @@ lysc_extension_instance_free(struct ly_ctx *ctx, struct lysc_ext_substmt *substm
         case LY_STMT_UNITS:
             if (substmts[u].cardinality < LY_STMT_CARD_SOME) {
                 /* single item */
-                const char *str = *((const char**)substmts[u].storage);
+                const char *str = *((const char **)substmts[u].storage);
                 if (!str) {
                     break;
                 }
                 FREE_STRING(ctx, str);
             } else {
                 /* multiple items */
-                const char **strs = *((const char***)substmts[u].storage);
+                const char **strs = *((const char ***)substmts[u].storage);
                 if (!strs) {
                     break;
                 }
@@ -925,7 +925,7 @@ lysc_extension_instance_free(struct ly_ctx *ctx, struct lysc_ext_substmt *substm
             /* nothing to do */
             break;
         case LY_STMT_IF_FEATURE: {
-            struct lysc_iffeature *iff = *((struct lysc_iffeature**)substmts[u].storage);
+            struct lysc_iffeature *iff = *((struct lysc_iffeature **)substmts[u].storage);
             if (!iff) {
                 break;
             }

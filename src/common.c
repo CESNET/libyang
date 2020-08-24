@@ -31,7 +31,7 @@
 #include "tree_schema.h"
 #include "tree_schema_internal.h"
 
-const char *const ly_stmt_list[] = {
+const char * const ly_stmt_list[] = {
     [LY_STMT_ACTION] = "action",
     [LY_STMT_ANYDATA] = "anydata",
     [LY_STMT_ANYXML] = "anyxml",
@@ -108,7 +108,7 @@ const char *const ly_stmt_list[] = {
     [LY_STMT_ARG_VALUE] = "value",
 };
 
-const char *const lyext_substmt_list[] = {
+const char * const lyext_substmt_list[] = {
     [LYEXT_SUBSTMT_ARGUMENT] = "argument",
     [LYEXT_SUBSTMT_BASE] = "base",
     [LYEXT_SUBSTMT_BELONGSTO] = "belongs-to",
@@ -143,7 +143,7 @@ const char *const lyext_substmt_list[] = {
     [LYEXT_SUBSTMT_IFFEATURE] = "if-feature",
 };
 
-const char *const ly_devmod_list[] = {
+const char * const ly_devmod_list[] = {
     [LYS_DEV_NOT_SUPPORTED] = "not-supported",
     [LYS_DEV_ADD] = "add",
     [LYS_DEV_DELETE] = "delete",

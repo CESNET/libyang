@@ -83,7 +83,7 @@ ly_in_fd(struct ly_in *in, int fd)
             return -1;
         }
 
-        ly_munmap((char*)in->start, in->length);
+        ly_munmap((char *)in->start, in->length);
 
         in->method.fd = fd;
         in->current = in->start = addr;
@@ -299,9 +299,9 @@ ly_in_free(struct ly_in *in, int destroy)
 
     if (destroy) {
         if (in->type == LY_IN_MEMORY) {
-            free((char*)in->start);
+            free((char *)in->start);
         } else {
-            ly_munmap((char*)in->start, in->length);
+            ly_munmap((char *)in->start, in->length);
 
             if (in->type == LY_IN_FILE) {
                 fclose(in->method.f);
@@ -314,7 +314,7 @@ ly_in_free(struct ly_in *in, int destroy)
             }
         }
     } else if (in->type != LY_IN_MEMORY) {
-        ly_munmap((char*)in->start, in->length);
+        ly_munmap((char *)in->start, in->length);
 
         if (in->type == LY_IN_FILEPATH) {
             close(in->method.fpath.fd);

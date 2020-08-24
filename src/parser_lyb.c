@@ -1047,7 +1047,7 @@ lyd_parse_lyb_(const struct ly_ctx *ctx, struct lyd_node_inner **parent, struct 
         assert(parent);
 
         if (op_p) {
-            *op_p = (struct lyd_node*)(*parent);
+            *op_p = (struct lyd_node *)(*parent);
         }
         for (iter = *parent; iter->parent; iter = iter->parent) {}
         tree = (struct lyd_node *)iter;

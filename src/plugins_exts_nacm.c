@@ -41,9 +41,9 @@ nacm_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, struc
 
     /* store the NACM flag */
     if (!strcmp(c_ext->def->name, "default-deny-write")) {
-        c_ext->data = (void*)&nacm_deny_write;
+        c_ext->data = (void *)&nacm_deny_write;
     } else if (!strcmp(c_ext->def->name, "default-deny-all")) {
-        c_ext->data = (void*)&nacm_deny_all;
+        c_ext->data = (void *)&nacm_deny_all;
     } else {
         return LY_EINT;
     }
@@ -54,7 +54,7 @@ nacm_compile(struct lysc_ctx *cctx, const struct lysp_ext_instance *p_ext, struc
                   p_ext->name, lyext_parent2str(c_ext->parent_type));
         return LY_EVALID;
     } else {
-        parent = (struct lysc_node*)c_ext->parent;
+        parent = (struct lysc_node *)c_ext->parent;
         if (!(parent->nodetype & (LYS_CONTAINER | LYS_LEAF | LYS_LEAFLIST | LYS_LIST | LYS_CHOICE | LYS_ANYDATA
                 | LYS_CASE | LYS_RPC | LYS_ACTION | LYS_NOTIF))) {
             /* note LYS_AUGMENT and LYS_USES is not in the list since they are not present in the compiled tree. Instead, libyang
@@ -64,7 +64,7 @@ invalid_parent:
                       "Extension %s is not allowed in %s statement.", p_ext->name, lys_nodetype2str(parent->nodetype));
             return LY_EVALID;
         }
-        if (c_ext->data == (void*)&nacm_deny_write && (parent->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF))) {
+        if (c_ext->data == (void *)&nacm_deny_write && (parent->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF))) {
             goto invalid_parent;
         }
     }

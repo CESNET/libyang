@@ -97,7 +97,7 @@ enum LYJSON_PARSER_STATUS lyjson_ctx_status(struct lyjson_ctx *jsonctx, uint32_t
  * @param[in] status Context status (aka JSON token)
  * @return String representation of the @p status.
  */
-const char*lyjson_token2str(enum LYJSON_PARSER_STATUS status);
+const char *lyjson_token2str(enum LYJSON_PARSER_STATUS status);
 
 /**
  * @brief Move to the next JSON artefact and update parser status.
