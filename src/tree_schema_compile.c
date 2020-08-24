@@ -3617,7 +3617,7 @@ lys_compile_node_list_unique(struct lysc_ctx *ctx, struct lys_module *context_mo
 
             /* unique node must be present */
             LY_ARRAY_NEW_RET(ctx->ctx, *unique, key, LY_EMEM);
-            ret = lys_resolve_schema_nodeid(ctx, keystr, len, (struct lysc_node*)list, context_module, LYS_LEAF, 0,
+            ret = lysc_resolve_schema_nodeid(ctx, keystr, len, (struct lysc_node*)list, context_module, LYS_LEAF, 0,
                             (const struct lysc_node**)key, &flags);
             if (ret != LY_SUCCESS) {
                 if (ret == LY_EDENIED) {
@@ -4372,7 +4372,7 @@ lys_compile_augment(struct lysc_ctx *ctx, struct lysp_augment *aug_p, const stru
     lysc_update_path(ctx, NULL, "{augment}");
     lysc_update_path(ctx, NULL, aug_p->nodeid);
 
-    ret = lys_resolve_schema_nodeid(ctx, aug_p->nodeid, 0, parent, parent ? parent->module : ctx->mod_def,
+    ret = lysc_resolve_schema_nodeid(ctx, aug_p->nodeid, 0, parent, parent ? parent->module : ctx->mod_def,
                                                LYS_CONTAINER | LYS_LIST | LYS_CHOICE | LYS_CASE | LYS_INOUT | LYS_NOTIF,
                                                1, (const struct lysc_node**)&target, &flags);
     if (ret != LY_SUCCESS) {
@@ -4801,7 +4801,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
     LY_ARRAY_FOR(uses_p->refines, struct lysp_refine, rfn) {
         lysc_update_path(ctx, NULL, rfn->nodeid);
 
-        LY_CHECK_GOTO(lys_resolve_schema_nodeid(ctx, rfn->nodeid, 0, (struct lysc_node*)&context_node_fake, ctx->mod,
+        LY_CHECK_GOTO(lysc_resolve_schema_nodeid(ctx, rfn->nodeid, 0, (struct lysc_node*)&context_node_fake, ctx->mod,
                                                 0, 0, (const struct lysc_node**)&node, &flags),
                       cleanup);
         ly_set_add(&refined, node, LY_SET_OPT_USEASLIST);
@@ -5451,7 +5451,7 @@ struct lysc_deviation {
     const char *nodeid;
     struct lysc_node *target;      /* target node of the deviation */
     struct lysp_deviate** deviates;/* sized array of pointers to parsed deviate statements to apply on target */
-    uint16_t flags;                /* target's flags from lys_resolve_schema_nodeid() */
+    uint16_t flags;                /* target's flags from lysc_resolve_schema_nodeid() */
     uint8_t not_supported;         /* flag if deviates contains not-supported deviate */
 };
 
@@ -6458,7 +6458,7 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p)
         lysc_update_path(ctx, NULL, dev->nodeid);
 
         /* resolve the target */
-        LY_CHECK_GOTO(lys_resolve_schema_nodeid(ctx, dev->nodeid, 0, NULL, ctx->mod, 0, 1,
+        LY_CHECK_GOTO(lysc_resolve_schema_nodeid(ctx, dev->nodeid, 0, NULL, ctx->mod, 0, 1,
                 (const struct lysc_node**)&target, &flags), cleanup);
         if (target->nodetype & (LYS_RPC | LYS_ACTION)) {
             /* move the target pointer to input/output to make them different from the action and

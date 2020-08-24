@@ -35,7 +35,7 @@
 #include "tree_schema_internal.h"
 
 LY_ERR
-lys_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodeid_len, const struct lysc_node *context_node,
+lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodeid_len, const struct lysc_node *context_node,
         const struct lys_module *context_module, int nodetype, int implement,
         const struct lysc_node **target, uint16_t *result_flag)
 {
