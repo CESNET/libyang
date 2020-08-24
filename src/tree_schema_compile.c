@@ -6483,7 +6483,7 @@ lys_compile_deviations(struct lysc_ctx *ctx, struct lysp_module *mod_p)
             devs[i]->flags = flags;
         }
         /* add deviates into the deviation's list of deviates */
-        for (d = dev->deviates; d; d = d->next) {
+        LY_LIST_FOR(dev->deviates, d) {
             LY_ARRAY_NEW_GOTO(ctx->ctx, devs[i]->deviates, dp_new, ret, cleanup);
             *dp_new = d;
             if (d->mod == LYS_DEV_NOT_SUPPORTED) {
