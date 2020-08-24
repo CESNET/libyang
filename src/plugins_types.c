@@ -648,7 +648,7 @@ ly_type_store_decimal64(const struct ly_ctx *ctx, struct lysc_type *type, const 
     /* prepare canonized value */
     if (d) {
         int count = sprintf(buf, "%" PRId64 " ", d);
-        if ( (d > 0 && (count - 1) <= type_dec->fraction_digits)
+        if ((d > 0 && (count - 1) <= type_dec->fraction_digits)
                 || (count - 2) <= type_dec->fraction_digits ) {
             /* we have 0. value, print the value with the leading zeros
              * (one for 0. and also keep the correct with of num according
@@ -892,7 +892,7 @@ ly_type_store_bits(const struct ly_ctx *ctx, struct lysc_type *type, const char 
                     }
                 }
 
-                if (iscanonical &&items->count && type_bits->bits[u].position < ((struct lysc_type_bitenum_item*)items->objs[items->count - 1])->position) {
+                if (iscanonical && items->count && type_bits->bits[u].position < ((struct lysc_type_bitenum_item*)items->objs[items->count - 1])->position) {
                     iscanonical = 0;
                 }
                 inserted = ly_set_add(items, &type_bits->bits[u], 0);

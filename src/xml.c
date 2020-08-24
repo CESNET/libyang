@@ -408,7 +408,7 @@ lyxml_parse_value(struct lyxml_ctx *xmlctx, char endchar, char **value, size_t *
                     in += 6; /* &quot; */
                 } else {
                     LOGVAL(ctx, LY_VLOG_LINE, &xmlctx->line, LYVE_SYNTAX,
-                           "Entity reference \"%.*s\" not supported, only predefined references allowed.", 10, &in[offset-1]);
+                           "Entity reference \"%.*s\" not supported, only predefined references allowed.", 10, &in[offset - 1]);
                     goto error;
                 }
                 offset = 0;

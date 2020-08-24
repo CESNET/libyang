@@ -217,7 +217,7 @@ lys_find_node(struct ly_ctx *ctx, const struct lysc_node *context_node, const ch
         }
 
         if (ly_parse_nodeid(&id, &prefix, &prefix_len, &name, &name_len) != LY_SUCCESS) {
-            LOGERR(ctx, LY_EINVAL, "Invalid qpath \"%s\" - invalid nodeid \"%.*s\".", qpath, id- qpath, qpath);
+            LOGERR(ctx, LY_EINVAL, "Invalid qpath \"%s\" - invalid nodeid \"%.*s\".", qpath, id - qpath, qpath);
             return NULL;
         }
         if (prefix) {
@@ -1374,7 +1374,7 @@ lys_search_localfile(const char * const *searchpaths, int cwd, const char *name,
                         free(match_name);
                         match_name = wn;
                         wn = NULL;
-                        match_len = dir_len + 1 +len;
+                        match_len = dir_len + 1 + len;
                         match_format = format_aux;
                         continue;
                     }

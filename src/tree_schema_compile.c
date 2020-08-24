@@ -4244,7 +4244,7 @@ lys_compile_mandatory_parents(struct lysc_node *parent, int add)
     struct lysc_node *iter;
 
     if (add) { /* set flag */
-        for (; parent &&  parent->nodetype == LYS_CONTAINER && !(parent->flags & LYS_MAND_TRUE) && !(parent->flags & LYS_PRESENCE);
+        for (; parent && parent->nodetype == LYS_CONTAINER && !(parent->flags & LYS_MAND_TRUE) && !(parent->flags & LYS_PRESENCE);
                 parent = parent->parent) {
             parent->flags |= LYS_MAND_TRUE;
         }

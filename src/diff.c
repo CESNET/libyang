@@ -326,7 +326,7 @@ lyd_diff_userord_attrs(const struct lyd_node *first, const struct lyd_node *seco
     }
 
     /* key */
-    if ((schema->nodetype == LYS_LIST) && ((*op == LYD_DIFF_OP_REPLACE) || (*op ==LYD_DIFF_OP_CREATE))) {
+    if ((schema->nodetype == LYS_LIST) && ((*op == LYD_DIFF_OP_REPLACE) || (*op == LYD_DIFF_OP_CREATE))) {
         if (second_pos) {
             buflen = bufused = 0;
             LY_CHECK_RET(lyd_path_list_predicate(userord_item->inst[second_pos - 1], key, &buflen, &bufused, 0));

@@ -888,7 +888,7 @@ set_fill_set(struct lyxp_set *trg, const struct lyxp_set *src)
         memcpy(trg->val.scnodes, src->val.scnodes, src->used * sizeof *src->val.scnodes);
     } else if (src->type == LYXP_SET_BOOLEAN) {
         set_fill_boolean(trg, src->val.bln);
-    } else if (src->type ==  LYXP_SET_NUMBER) {
+    } else if (src->type == LYXP_SET_NUMBER) {
         set_fill_number(trg, src->val.num);
     } else if (src->type == LYXP_SET_STRING) {
         set_fill_string(trg, src->val.str, strlen(src->val.str));
