@@ -279,6 +279,14 @@ LY_ERR ly_ctx_unset_options(struct ly_ctx *ctx, int option);
 uint16_t ly_ctx_get_module_set_id(const struct ly_ctx *ctx);
 
 /**
+ * @brief Callback for freeing returned module data in #ly_module_imp_clb.
+ *
+ * @param[in] module_data Data to free.
+ * @param[in] user_data User-supplied callback data, same as for #ly_module_imp_clb.
+ */
+typedef void (*ly_module_imp_data_free_clb)(void *module_data, void *user_data);
+
+/**
  * @brief Callback for retrieving missing included or imported models in a custom way.
  *
  * When submod_name is provided, the submodule is requested instead of the module (in this case only
@@ -301,8 +309,7 @@ uint16_t ly_ctx_get_module_set_id(const struct ly_ctx *ctx);
  * according to the settings of its mechanism to search for the imported/included schemas.
  */
 typedef LY_ERR (*ly_module_imp_clb)(const char *mod_name, const char *mod_rev, const char *submod_name, const char *sub_rev,
-        void *user_data, LYS_INFORMAT *format, const char **module_data,
-        void (**free_module_data)(void *model_data, void *user_data));
+        void *user_data, LYS_INFORMAT *format, const char **module_data, ly_module_imp_data_free_clb *free_module_data);
 
 /**
  * @brief Get the custom callback for missing import/include module retrieval.
