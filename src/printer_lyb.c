@@ -39,8 +39,8 @@
 /**
  * @brief Hash table equal callback for checking hash equality only.
  */
-static int
-lyb_hash_equal_cb(void *UNUSED(val1_p), void *UNUSED(val2_p), int UNUSED(mod), void *UNUSED(cb_data))
+static uint8_t
+lyb_hash_equal_cb(void *UNUSED(val1_p), void *UNUSED(val2_p), uint8_t UNUSED(mod), void *UNUSED(cb_data))
 {
     /* for this purpose, if hash matches, the value does also, we do not want 2 values to have the same hash */
     return 1;
@@ -49,8 +49,8 @@ lyb_hash_equal_cb(void *UNUSED(val1_p), void *UNUSED(val2_p), int UNUSED(mod), v
 /**
  * @brief Hash table equal callback for checking value pointer equality only.
  */
-static int
-lyb_ptr_equal_cb(void *val1_p, void *val2_p, int UNUSED(mod), void *UNUSED(cb_data))
+static uint8_t
+lyb_ptr_equal_cb(void *val1_p, void *val2_p, uint8_t UNUSED(mod), void *UNUSED(cb_data))
 {
     struct lysc_node *val1 = *(struct lysc_node **)val1_p;
     struct lysc_node *val2 = *(struct lysc_node **)val2_p;
@@ -72,9 +72,8 @@ lyb_ptr_equal_cb(void *val1_p, void *val2_p, int UNUSED(mod), void *UNUSED(cb_da
  * @return LY_EEXIST when the whole hash sequence sollides.
  */
 static LY_ERR
-lyb_hash_sequence_check(struct hash_table *ht, struct lysc_node *sibling, int ht_col_id, int compare_col_id)
+lyb_hash_sequence_check(struct hash_table *ht, struct lysc_node *sibling, LYB_HASH ht_col_id, LYB_HASH compare_col_id)
 {
-    int j;
     struct lysc_node **col_node;
 
     /* get the first node inserted with last hash col ID ht_col_id */
@@ -85,7 +84,8 @@ lyb_hash_sequence_check(struct hash_table *ht, struct lysc_node *sibling, int ht
 
     lyht_set_cb(ht, lyb_ptr_equal_cb);
     do {
-        for (j = compare_col_id; j > -1; --j) {
+        int64_t j;
+        for (j = (int64_t)compare_col_id; j > -1; --j) {
             if (lyb_hash(sibling, j) != lyb_hash(*col_node, j)) {
                 /* one non-colliding hash */
                 break;
@@ -117,7 +117,7 @@ lyb_hash_siblings(struct lysc_node *sibling, struct hash_table **ht_p)
     struct hash_table *ht;
     const struct lysc_node *parent;
     const struct lys_module *mod;
-    int i, j;
+    LYB_HASH i;
 
     ht = lyht_new(1, sizeof(struct lysc_node *), lyb_hash_equal_cb, NULL, 1);
     LY_CHECK_ERR_RET(!ht, LOGMEM(sibling->module->ctx), LY_EMEM);
@@ -131,8 +131,9 @@ lyb_hash_siblings(struct lysc_node *sibling, struct hash_table **ht_p)
         /* find the first non-colliding hash (or specifically non-colliding hash sequence) */
         for (i = 0; i < LYB_HASH_BITS; ++i) {
             /* check that we are not colliding with nodes inserted with a lower collision ID than ours */
-            for (j = i - 1; j > -1; --j) {
-                if (lyb_hash_sequence_check(ht, sibling, j, i)) {
+            int64_t j;
+            for (j = (int64_t)i - 1; j > -1; --j) {
+                if (lyb_hash_sequence_check(ht, sibling, (LYB_HASH)j, i)) {
                     break;
                 }
             }
@@ -378,7 +379,7 @@ lyb_write_number(uint64_t num, size_t bytes, struct ly_out *out, struct lylyb_ct
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_write_string(const char *str, size_t str_len, int with_length, struct ly_out *out, struct lylyb_ctx *lybctx)
+lyb_write_string(const char *str, size_t str_len, uint8_t with_length, struct ly_out *out, struct lylyb_ctx *lybctx)
 {
     if (!str) {
         str = "";
@@ -413,7 +414,6 @@ lyb_write_string(const char *str, size_t str_len, int with_length, struct ly_out
 static LY_ERR
 lyb_print_model(struct ly_out *out, const struct lys_module *mod, struct lylyb_ctx *lybctx)
 {
-    int r;
     uint16_t revision;
 
     /* model name length and model name */
@@ -427,7 +427,7 @@ lyb_print_model(struct ly_out *out, const struct lys_module *mod, struct lylyb_c
      *                   YYYY YYYM MMMD DDDD */
     revision = 0;
     if (mod && mod->revision) {
-        r = atoi(mod->revision);
+        int r = atoi(mod->revision);
         r -= 2000;
         r <<= 9;
 
@@ -934,7 +934,7 @@ lyb_print_subtree(struct ly_out *out, const struct lyd_node *node, struct hash_t
 }
 
 LY_ERR
-lyb_print_data(struct ly_out *out, const struct lyd_node *root, int options)
+lyb_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t options)
 {
     LY_ERR ret = LY_SUCCESS;
     uint8_t zero = 0;

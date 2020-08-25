@@ -74,6 +74,6 @@ LY_ERR lyd_validate_new(struct lyd_node **first, const struct lysc_node *sparent
  * @return LY_ERR value.
  */
 LY_ERR lyd_validate_final_r(struct lyd_node *first, const struct lysc_node *sparent, const struct lys_module *mod,
-        int val_opts, LYD_VALIDATE_OP op);
+        uint32_t val_opts, LYD_VALIDATE_OP op);
 
 #endif /* LY_VALIDATION_H_ */

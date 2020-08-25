@@ -87,7 +87,7 @@ skip_ws(struct lyjson_ctx *jsonctx)
  * @brief Set value corresponding to the current context's status
  */
 static void
-lyjson_ctx_set_value(struct lyjson_ctx *jsonctx, const char *value, size_t value_len, int dynamic)
+lyjson_ctx_set_value(struct lyjson_ctx *jsonctx, const char *value, size_t value_len, uint8_t dynamic)
 {
     assert(jsonctx);
 
@@ -323,7 +323,7 @@ lyjson_number(struct lyjson_ctx *jsonctx)
 {
     size_t offset = 0, exponent = 0;
     const char *in = jsonctx->in->current;
-    int minus = 0;
+    uint8_t minus = 0;
 
     if (in[offset] == '-') {
         ++offset;
@@ -376,7 +376,7 @@ invalid_character:
         char *ptr, *dec_point, *num;
         const char *e_ptr = &in[exponent + 1];
         size_t num_len, i;
-        long int dp_position; /* final position of the deciaml point */
+        int64_t dp_position; /* final position of the deciaml point */
 
         errno = 0;
         e_val = strtol(e_ptr, &ptr, 10);
@@ -437,7 +437,9 @@ invalid_character:
             }
         }
         /* copy the value */
-        for (unsigned int dp_placed = dp_position ? 0 : 1, j = minus; j < exponent; j++) {
+        uint8_t dp_placed;
+        size_t j;
+        for (dp_placed = dp_position ? 0 : 1, j = minus; j < exponent; j++) {
             if (in[j] == '.') {
                 continue;
             }
@@ -679,7 +681,7 @@ LY_ERR
 lyjson_ctx_next(struct lyjson_ctx *jsonctx, enum LYJSON_PARSER_STATUS *status)
 {
     LY_ERR ret = LY_SUCCESS;
-    int toplevel = 0;
+    uint8_t toplevel = 0;
     enum LYJSON_PARSER_STATUS prev;
 
     assert(jsonctx);

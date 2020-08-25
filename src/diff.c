@@ -231,7 +231,7 @@ lyd_diff_userord_get(const struct lyd_node *first, const struct lysc_node *schem
  * @return LY_ERR value on other errors.
  */
 static LY_ERR
-lyd_diff_userord_attrs(const struct lyd_node *first, const struct lyd_node *second, int options,
+lyd_diff_userord_attrs(const struct lyd_node *first, const struct lyd_node *second, uint16_t options,
         struct lyd_diff_userord **userord, enum lyd_diff_op *op, const char **orig_default, char **value,
         char **orig_value, char **key, char **orig_key)
 {
@@ -394,7 +394,7 @@ lyd_diff_userord_attrs(const struct lyd_node *first, const struct lyd_node *seco
  * @return LY_ERR value on other errors.
  */
 static LY_ERR
-lyd_diff_attrs(const struct lyd_node *first, const struct lyd_node *second, int options, enum lyd_diff_op *op,
+lyd_diff_attrs(const struct lyd_node *first, const struct lyd_node *second, uint16_t options, enum lyd_diff_op *op,
         const char **orig_default, char **orig_value)
 {
     const struct lysc_node *schema;
@@ -516,7 +516,7 @@ lyd_diff_attrs(const struct lyd_node *first, const struct lyd_node *second, int 
  * @return LY_ERR value.
  */
 static LY_ERR
-lyd_diff_siblings_r(const struct lyd_node *first, const struct lyd_node *second, int options, int nosiblings,
+lyd_diff_siblings_r(const struct lyd_node *first, const struct lyd_node *second, uint16_t options, uint8_t nosiblings,
         struct lyd_node **diff)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -669,7 +669,7 @@ cleanup:
 }
 
 static LY_ERR
-lyd_diff(const struct lyd_node *first, const struct lyd_node *second, int options, int nosiblings, struct lyd_node **diff)
+lyd_diff(const struct lyd_node *first, const struct lyd_node *second, uint16_t options, uint8_t nosiblings, struct lyd_node **diff)
 {
     const struct ly_ctx *ctx;
 
@@ -694,13 +694,13 @@ lyd_diff(const struct lyd_node *first, const struct lyd_node *second, int option
 }
 
 API LY_ERR
-lyd_diff_tree(const struct lyd_node *first, const struct lyd_node *second, int options, struct lyd_node **diff)
+lyd_diff_tree(const struct lyd_node *first, const struct lyd_node *second, uint16_t options, struct lyd_node **diff)
 {
     return lyd_diff(first, second, options, 1, diff);
 }
 
 API LY_ERR
-lyd_diff_siblings(const struct lyd_node *first, const struct lyd_node *second, int options, struct lyd_node **diff)
+lyd_diff_siblings(const struct lyd_node *first, const struct lyd_node *second, uint16_t options, struct lyd_node **diff)
 {
     return lyd_diff(first, second, options, 0, diff);
 }
@@ -1512,7 +1512,7 @@ lyd_diff_reverse_value(struct lyd_node *leaf, const struct lys_module *mod)
     struct lyd_meta *meta;
     const char *val1 = NULL;
     char *val2;
-    int flags;
+    uint32_t flags;
 
     meta = lyd_find_meta(leaf->meta, mod, "orig-value");
     LY_CHECK_ERR_RET(!meta, LOGINT(LYD_CTX(leaf)), LY_EINT);
@@ -1538,7 +1538,7 @@ static LY_ERR
 lyd_diff_reverse_default(struct lyd_node *node, const struct lys_module *mod)
 {
     struct lyd_meta *meta;
-    int flag1, flag2;
+    uint32_t flag1, flag2;
 
     meta = lyd_find_meta(node->meta, mod, "orig-default");
     if (!meta) {

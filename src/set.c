@@ -118,7 +118,7 @@ ly_set_dup(const struct ly_set *set, void *(*duplicator)(void *obj))
 }
 
 API int
-ly_set_add(struct ly_set *set, void *object, int options)
+ly_set_add(struct ly_set *set, void *object, uint32_t options)
 {
     uint32_t i;
     void **new;
@@ -148,7 +148,7 @@ ly_set_add(struct ly_set *set, void *object, int options)
 }
 
 API int
-ly_set_merge(struct ly_set *trg, struct ly_set *src, int options, void *(*duplicator)(void *obj))
+ly_set_merge(struct ly_set *trg, struct ly_set *src, uint32_t options, void *(*duplicator)(void *obj))
 {
     uint32_t u, c, ret = 0;
     int i;

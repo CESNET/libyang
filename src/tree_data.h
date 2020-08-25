@@ -89,7 +89,7 @@ struct lysc_node;
  * @param ELEM Iterator intended for use in the block.
  */
 #define LYD_TREE_DFS_BEGIN(START, ELEM) \
-    { int LYD_TREE_DFS_continue = 0; struct lyd_node *LYD_TREE_DFS_next; \
+    { uint8_t LYD_TREE_DFS_continue = 0; struct lyd_node *LYD_TREE_DFS_next; \
     for ((ELEM) = (LYD_TREE_DFS_next) = (struct lyd_node *)(START); \
          (ELEM); \
          (ELEM) = (LYD_TREE_DFS_next), LYD_TREE_DFS_continue = 0)
@@ -195,7 +195,7 @@ struct lyd_value_subvalue {
                                       whether a value is valid for the specific format or not on later validations
                                       (instance-identifier in XML looks different than in JSON). */
     void *prefix_data;           /**< Format-specific data for prefix resolution (see ::ly_resolve_prefix) */
-    int parser_hint;             /**< Hint options from the parser */
+    uint32_t parser_hint;        /**< Hint options from the parser */
 };
 
 /**
@@ -285,7 +285,7 @@ struct lyd_attr {
     const char *value;
 
     LYD_FORMAT format;              /**< format of the prefixes, only LYD_XML and LYD_JSON values can appear at this place */
-    int hint;                       /**< additional information about from the data source, see the [hints list](@ref lydopaqhints) */
+    uint32_t hint;                  /**< additional information about from the data source, see the [hints list](@ref lydopaqhints) */
     struct ly_prefix prefix;        /**< name prefix, it is stored because they are a real pain to generate properly */
 
 };
@@ -470,7 +470,7 @@ struct lyd_node_opaq {
     struct ly_prefix prefix;        /**< name prefix */
     struct ly_prefix *val_prefs;    /**< list of prefixes in the value ([sized array](@ref sizedarrays)) */
     const char *value;              /**< original value */
-    int hint;                       /**< additional information about from the data source, see the [hints list](@ref lydopaqhints) */
+    uint32_t hint;                  /**< additional information about from the data source, see the [hints list](@ref lydopaqhints) */
     const struct ly_ctx *ctx;       /**< libyang context */
 };
 
@@ -491,7 +491,7 @@ struct lyd_node_opaq {
  * @param[in] options Bitmask of options, see @ref
  * @return Pointer to the first child node (if any) of the \p node.
  */
-struct lyd_node *lyd_node_children(const struct lyd_node *node, int options);
+struct lyd_node *lyd_node_children(const struct lyd_node *node, uint32_t options);
 
 /**
  * @brief Get the owner module of the data node. It is the module of the top-level schema node. Generally,
@@ -673,7 +673,7 @@ LY_ERR lyd_new_attr(struct lyd_node *parent, const char *module_name, const char
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const char *value,
-        int options, struct lyd_node **node);
+        uint32_t options, struct lyd_node **node);
 
 /**
  * @brief Create a new node in the data tree based on a path. All node types can be created.
@@ -692,7 +692,7 @@ LY_ERR lyd_new_path(struct lyd_node *parent, const struct ly_ctx *ctx, const cha
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_path_any(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const void *value,
-        LYD_ANYDATA_VALUETYPE value_type, int options, struct lyd_node **node);
+        LYD_ANYDATA_VALUETYPE value_type, uint32_t options, struct lyd_node **node);
 
 /**
  * @brief Create a new node in the data tree based on a path. All node types can be created.
@@ -712,7 +712,7 @@ LY_ERR lyd_new_path_any(struct lyd_node *parent, const struct ly_ctx *ctx, const
  * @return LY_ERR value.
  */
 LY_ERR lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const char *path, const void *value,
-        LYD_ANYDATA_VALUETYPE value_type, int options, struct lyd_node **new_parent, struct lyd_node **new_node);
+        LYD_ANYDATA_VALUETYPE value_type, uint32_t options, struct lyd_node **new_parent, struct lyd_node **new_node);
 
 /**
  * @defgroup implicitoptions Implicit node creation options
@@ -741,7 +741,7 @@ LY_ERR lyd_new_path2(struct lyd_node *parent, const struct ly_ctx *ctx, const ch
  * @param[out] diff Optional diff with any created nodes.
  * @return LY_ERR value.
  */
-LY_ERR lyd_new_implicit_tree(struct lyd_node *tree, int implicit_options, struct lyd_node **diff);
+LY_ERR lyd_new_implicit_tree(struct lyd_node *tree, uint32_t implicit_options, struct lyd_node **diff);
 
 /**
  * @brief Add any missing implicit nodes.
@@ -752,7 +752,7 @@ LY_ERR lyd_new_implicit_tree(struct lyd_node *tree, int implicit_options, struct
  * @param[out] diff Optional diff with any created nodes.
  * @return LY_ERR value.
  */
-LY_ERR lyd_new_implicit_all(struct lyd_node **tree, const struct ly_ctx *ctx, int implicit_options, struct lyd_node **diff);
+LY_ERR lyd_new_implicit_all(struct lyd_node **tree, const struct ly_ctx *ctx, uint32_t implicit_options, struct lyd_node **diff);
 
 /**
  * @brief Add any missing implicit nodes of one module.
@@ -763,7 +763,7 @@ LY_ERR lyd_new_implicit_all(struct lyd_node **tree, const struct ly_ctx *ctx, in
  * @param[out] diff Optional diff with any created nodes.
  * @return LY_ERR value.
  */
-LY_ERR lyd_new_implicit_module(struct lyd_node **tree, const struct lys_module *module, int implicit_options,
+LY_ERR lyd_new_implicit_module(struct lyd_node **tree, const struct lys_module *module, uint32_t implicit_options,
         struct lyd_node **diff);
 
 /**
@@ -969,7 +969,7 @@ LY_ERR lyd_value_compare(const struct lyd_node_term *node, const char *value, si
  * @return LY_SUCCESS if the nodes are equivalent.
  * @return LY_ENOT if the nodes are not equivalent.
  */
-LY_ERR lyd_compare_single(const struct lyd_node *node1, const struct lyd_node *node2, int options);
+LY_ERR lyd_compare_single(const struct lyd_node *node1, const struct lyd_node *node2, uint32_t options);
 
 /**
  * @brief Compare 2 lists of siblings if they are equivalent.
@@ -980,7 +980,7 @@ LY_ERR lyd_compare_single(const struct lyd_node *node1, const struct lyd_node *n
  * @return LY_SUCCESS if all the siblings are equivalent.
  * @return LY_ENOT if the siblings are not equivalent.
  */
-LY_ERR lyd_compare_siblings(const struct lyd_node *node1, const struct lyd_node *node2, int options);
+LY_ERR lyd_compare_siblings(const struct lyd_node *node1, const struct lyd_node *node2, uint32_t options);
 
 /**
  * @brief Compare 2 metadata.
@@ -1026,7 +1026,7 @@ LY_ERR lyd_compare_meta(const struct lyd_meta *meta1, const struct lyd_meta *met
  * node(s) (when LYD_DUP_WITH_PARENTS used), the first duplicated node is still returned.
  * @return LY_ERR value.
  */
-LY_ERR lyd_dup_single(const struct lyd_node *node, struct lyd_node_inner *parent, int options, struct lyd_node **dup);
+LY_ERR lyd_dup_single(const struct lyd_node *node, struct lyd_node_inner *parent, uint32_t options, struct lyd_node **dup);
 
 /**
  * @brief Create a copy of the specified data tree \p node with any following siblings. Schema references are kept the same.
@@ -1040,7 +1040,7 @@ LY_ERR lyd_dup_single(const struct lyd_node *node, struct lyd_node_inner *parent
  * node(s) (when LYD_DUP_WITH_PARENTS used), the first duplicated node is still returned.
  * @return LY_ERR value.
  */
-LY_ERR lyd_dup_siblings(const struct lyd_node *node, struct lyd_node_inner *parent, int options, struct lyd_node **dup);
+LY_ERR lyd_dup_siblings(const struct lyd_node *node, struct lyd_node_inner *parent, uint32_t options, struct lyd_node **dup);
 
 /**
  * @brief Create a copy of the metadata.
@@ -1079,7 +1079,7 @@ LY_ERR lyd_dup_meta_single(const struct lyd_meta *meta, struct lyd_node *parent,
  * @return LY_SUCCESS on success,
  * @return LY_ERR value on error.
  */
-LY_ERR lyd_merge_tree(struct lyd_node **target, const struct lyd_node *source, int options);
+LY_ERR lyd_merge_tree(struct lyd_node **target, const struct lyd_node *source, uint16_t options);
 
 /**
  * @brief Merge the source data tree with any following siblings into the target data tree. Merge may not be
@@ -1092,7 +1092,7 @@ LY_ERR lyd_merge_tree(struct lyd_node **target, const struct lyd_node *source, i
  * @return LY_SUCCESS on success,
  * @return LY_ERR value on error.
  */
-LY_ERR lyd_merge_siblings(struct lyd_node **target, const struct lyd_node *source, int options);
+LY_ERR lyd_merge_siblings(struct lyd_node **target, const struct lyd_node *source, uint16_t options);
 
 /**
  * @defgroup diffoptions Data diff options.
@@ -1136,7 +1136,7 @@ LY_ERR lyd_merge_siblings(struct lyd_node **target, const struct lyd_node *sourc
  * @return LY_SUCCESS on success,
  * @return LY_ERR on error.
  */
-LY_ERR lyd_diff_tree(const struct lyd_node *first, const struct lyd_node *second, int options, struct lyd_node **diff);
+LY_ERR lyd_diff_tree(const struct lyd_node *first, const struct lyd_node *second, uint16_t options, struct lyd_node **diff);
 
 /**
  * @brief Learn the differences between 2 data trees including all the following siblings.
@@ -1148,7 +1148,7 @@ LY_ERR lyd_diff_tree(const struct lyd_node *first, const struct lyd_node *second
  * @return LY_SUCCESS on success,
  * @return LY_ERR on error.
  */
-LY_ERR lyd_diff_siblings(const struct lyd_node *first, const struct lyd_node *second, int options, struct lyd_node **diff);
+LY_ERR lyd_diff_siblings(const struct lyd_node *first, const struct lyd_node *second, uint16_t options, struct lyd_node **diff);
 
 /**
  * @brief Callback for diff nodes.

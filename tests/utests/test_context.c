@@ -183,7 +183,7 @@ test_options(void **state)
 
     struct ly_ctx *ctx;
 
-    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0xffffffff, &ctx));
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, 0xffff, &ctx));
 
     /* invalid arguments */
     assert_int_equal(0, ly_ctx_get_options(NULL));

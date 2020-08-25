@@ -67,8 +67,8 @@ enum LY_VLOG_ELEM {
 };
 
 extern THREAD_LOCAL enum int_log_opts log_opt;
-extern volatile uint8_t ly_log_level;
-extern volatile uint8_t ly_log_opts;
+extern volatile LY_LOG_LEVEL ly_log_level;
+extern volatile uint32_t ly_log_opts;
 
 /**
  * @brief Set error-app-tag to the last error record in the context.
@@ -105,7 +105,7 @@ void ly_vlog(const struct ly_ctx *ctx, enum LY_VLOG_ELEM elem_type, const void *
 #ifdef NDEBUG
 #  define LOGDBG(dbg_group, str, ...)
 #else
-void ly_log_dbg(int group, const char *format, ...);
+void ly_log_dbg(uint32_t group, const char *format, ...);
 #  define LOGDBG(dbg_group, str, ...) ly_log_dbg(dbg_group, str, ##__VA_ARGS__);
 #endif
 
@@ -326,7 +326,7 @@ void *ly_realloc(void *ptr, size_t size);
  * @param[in] len Limit the search to this number of characters in @p s.
  * @return Pointer to first @p c occurence in @p s, NULL if not found in first @p len characters.
  */
-char *ly_strnchr(const char *s, int c, unsigned int len);
+char *ly_strnchr(const char *s, int c, size_t len);
 
 /**
  * @brief Compare NULL-terminated @p refstr with @str_len bytes from @p str.

@@ -633,7 +633,7 @@ test_printed_value(const struct lyd_value *value, const char *expected_value, LY
                    const struct lys_module *mod)
 {
     const char *str;
-    int dynamic;
+    uint8_t dynamic;
 
     assert_non_null(str = value->realtype->plugin->print(value, format, (void *)mod, &dynamic));
     assert_string_equal(expected_value, str);

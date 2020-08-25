@@ -139,9 +139,9 @@ buf_add_char(struct ly_ctx *ctx, struct ly_in *in, size_t len, char **buf, size_
  */
 LY_ERR
 buf_store_char(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum yang_arg arg, char **word_p, size_t *word_len,
-        char **word_b, size_t *buf_len, int need_buf, int *prefix)
+        char **word_b, size_t *buf_len, uint8_t need_buf, uint8_t *prefix)
 {
-    unsigned int c;
+    uint32_t c;
     size_t len;
 
     /* check  valid combination of input paremeters - if need_buf specified, word_b must be provided */
@@ -220,7 +220,7 @@ buf_store_char(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum yang_arg 
  * @return LY_ERR values.
  */
 LY_ERR
-skip_comment(struct lys_yang_parser_ctx *ctx, struct ly_in *in, int comment)
+skip_comment(struct lys_yang_parser_ctx *ctx, struct ly_in *in, uint8_t comment)
 {
     /* internal statuses: 0 - comment ended,
      *                    1 - in line comment,
@@ -295,10 +295,11 @@ read_qstring(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum yang_arg ar
     /* string: 0 - string ended, 1 - string with ', 2 - string with ", 3 - string with " with last character \,
      *         4 - string finished, now skipping whitespaces looking for +,
      *         5 - string continues after +, skipping whitespaces */
-    unsigned int string, block_indent = 0, current_indent = 0, need_buf = 0;
+    uint8_t string;
+    uint64_t block_indent = 0, current_indent = 0;
+    uint8_t need_buf = 0, prefix = 0;
     const char *c;
-    int prefix = 0;
-    unsigned int trailing_ws = 0; /* current number of stored trailing whitespace characters */
+    uint64_t trailing_ws = 0; /* current number of stored trailing whitespace characters */
 
     if (in->current[0] == '\"') {
         string = 2;
@@ -514,7 +515,7 @@ get_argument(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum yang_arg ar
         char **word_b, size_t *word_len)
 {
     size_t buf_len = 0;
-    int prefix = 0;
+    uint8_t prefix = 0;
     /* word buffer - dynamically allocated */
     *word_b = NULL;
 
@@ -631,9 +632,8 @@ str_end:
 LY_ERR
 get_keyword(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum ly_stmt *kw, char **word_p, size_t *word_len)
 {
-    int prefix;
+    uint8_t prefix;
     const char *word_start;
-    unsigned int c;
     size_t len;
 
     if (word_p) {
@@ -721,6 +721,8 @@ keyword_start:
 extension:
         while (in->current[0] && (in->current[0] != ' ') && (in->current[0] != '\t') && (in->current[0] != '\n')
                 && (in->current[0] != '{') && (in->current[0] != ';')) {
+            uint32_t c = 0;
+
             LY_CHECK_ERR_RET(ly_getutf8(&in->current, &c, &len),
                              LOGVAL_PARSER(ctx, LY_VCODE_INCHAR, in->current[-len]), LY_EVALID);
             ++ctx->indent;
@@ -816,7 +818,7 @@ parse_ext_substmt(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum ly_stm
  * @return LY_ERR values.
  */
 static LY_ERR
-parse_ext(struct lys_yang_parser_ctx *ctx, struct ly_in *in, const char *ext_name, int ext_name_len, LYEXT_SUBSTMT insubstmt,
+parse_ext(struct lys_yang_parser_ctx *ctx, struct ly_in *in, const char *ext_name, size_t ext_name_len, LYEXT_SUBSTMT insubstmt,
         LY_ARRAY_COUNT_TYPE insubstmt_index, struct lysp_ext_instance **exts)
 {
     LY_ERR ret = LY_SUCCESS;

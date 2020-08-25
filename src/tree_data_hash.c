@@ -83,8 +83,8 @@ lyd_hash(struct lyd_node *node)
     return LY_SUCCESS;
 }
 
-static int
-lyd_hash_table_val_equal(void *val1_p, void *val2_p, int mod, void *UNUSED(cb_data))
+static uint8_t
+lyd_hash_table_val_equal(void *val1_p, void *val2_p, uint8_t mod, void *UNUSED(cb_data))
 {
     struct lyd_node *val1, *val2;
 
@@ -120,7 +120,7 @@ lyd_hash_table_val_equal(void *val1_p, void *val2_p, int mod, void *UNUSED(cb_da
  * @return LY_ERR value.
  */
 static LY_ERR
-lyd_insert_hash_add(struct hash_table *ht, struct lyd_node *node, int empty_ht)
+lyd_insert_hash_add(struct hash_table *ht, struct lyd_node *node, uint8_t empty_ht)
 {
     uint32_t hash;
 

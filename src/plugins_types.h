@@ -201,7 +201,7 @@ const char *ly_get_prefix(const struct lys_module *mod, LY_PREFIX_FORMAT format,
  * @return LY_ERR value if an error occurred and the value could not be canonized following the type's rules.
  */
 typedef LY_ERR (*ly_type_store_clb)(const struct ly_ctx *ctx, struct lysc_type *type, const char *value, size_t value_len,
-        int options, LY_PREFIX_FORMAT format, void *prefix_data, const void *context_node,
+        uint32_t options, LY_PREFIX_FORMAT format, void *prefix_data, const void *context_node,
         const struct lyd_node *tree, struct lyd_value *storage, struct ly_err_item **err);
 
 /**
@@ -234,7 +234,7 @@ typedef LY_ERR (*ly_type_compare_clb)(const struct lyd_value *val1, const struct
  * @return NULL in case of error.
  */
 typedef const char *(*ly_type_print_clb)(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data,
-        int *dynamic);
+        uint8_t *dynamic);
 
 /**
  * @brief Callback to duplicate data in data structure. Note that callback is even responsible for duplicating lyd_value::canonized.

@@ -48,8 +48,9 @@ LYB_HASH lyb_hash(struct lysc_node *sibling, uint8_t collision_id);
  * @param[in] models Modules in a sized array.
  * @return non-zero if the module was found,
  * @return 0 if not found.
+ * @return 1 if found.
  */
-int lyb_has_schema_model(const struct lysc_node *sibling, const struct lys_module **models);
+uint8_t lyb_has_schema_model(const struct lysc_node *sibling, const struct lys_module **models);
 
 /**
  * @brief Check whether a node to be deleted is the first top-level sibling.
@@ -102,7 +103,7 @@ struct lyd_node *lys_getnext_data(const struct lyd_node *last, const struct lyd_
  * @return LY_EINCOMPLETE in case data tree is needed to finish the validation.
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_create_term(const struct lysc_node *schema, const char *value, size_t value_len, int *dynamic, int value_hint,
+LY_ERR lyd_create_term(const struct lysc_node *schema, const char *value, size_t value_len, uint8_t *dynamic, uint32_t value_hint,
         LY_PREFIX_FORMAT format, void *prefix_data, struct lyd_node **node);
 
 /**
@@ -181,7 +182,7 @@ LY_ERR lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANY
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_create_opaq(const struct ly_ctx *ctx, const char *name, size_t name_len, const char *value, size_t value_len,
-        int *dynamic, int value_hint, LYD_FORMAT format, struct ly_prefix *val_prefs, const char *prefix,
+        uint8_t *dynamic, uint32_t value_hint, LYD_FORMAT format, struct ly_prefix *val_prefs, const char *prefix,
         size_t pref_len, const char *module_key, size_t module_key_len, struct lyd_node **node);
 
 /**
@@ -199,7 +200,7 @@ LY_ERR lyd_create_opaq(const struct ly_ctx *ctx, const char *name, size_t name_l
  */
 LY_ERR lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struct lysc_node *sparent,
         const struct lys_module *mod, struct ly_set *node_types, struct ly_set *node_when,
-        int impl_opts, struct lyd_node **diff);
+        uint32_t impl_opts, struct lyd_node **diff);
 
 /**
  * @brief Find the next node, before which to insert the new node.
@@ -248,7 +249,7 @@ void lyd_insert_meta(struct lyd_node *parent, struct lyd_meta *meta);
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct lys_module *mod, const char *name,
-        size_t name_len, const char *value, size_t value_len, int *dynamic, int value_hint,
+        size_t name_len, const char *value, size_t value_len, uint8_t *dynamic, uint32_t value_hint,
         LY_PREFIX_FORMAT format, void *prefix_data, const struct lysc_node *ctx_snode);
 
 /**
@@ -281,7 +282,7 @@ void lyd_insert_attr(struct lyd_node *parent, struct lyd_attr *attr);
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const struct ly_ctx *ctx, const char *name,
-        size_t name_len, const char *value, size_t value_len, int *dynamic, int value_hint, LYD_FORMAT format,
+        size_t name_len, const char *value, size_t value_len, uint8_t *dynamic, uint32_t value_hint, LYD_FORMAT format,
         struct ly_prefix *val_prefs, const char *prefix, size_t prefix_len, const char *module_key, size_t module_key_len);
 
 /**
@@ -315,12 +316,12 @@ LY_ERR lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const st
  * @return LY_EINCOMPLETE in case the @p trees is not provided and it was needed to finish the validation.
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len, int *dynamic, int second, int value_hint,
-        LY_PREFIX_FORMAT format, void *prefix_data, const struct lyd_node *tree);
+LY_ERR lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len, uint8_t *dynamic, uint8_t second,
+        uint32_t value_hint, LY_PREFIX_FORMAT format, void *prefix_data, const struct lyd_node *tree);
 
 /* similar to lyd_value_parse except can be used just to store the value, hence does also not support a second call */
 LY_ERR lyd_value_store(struct lyd_value *val, const struct lysc_node *schema, const char *value, size_t value_len,
-        int *dynamic, LY_PREFIX_FORMAT format, void *prefix_data);
+        uint8_t *dynamic, LY_PREFIX_FORMAT format, void *prefix_data);
 
 /**
  * @brief Validate, canonize and store the given @p value into the metadata according to the annotation type's rules.
@@ -343,7 +344,7 @@ LY_ERR lyd_value_store(struct lyd_value *val, const struct lysc_node *schema, co
  * @return LY_ERR value if an error occurred.
  */
 LY_ERR lyd_value_parse_meta(const struct ly_ctx *ctx, struct lyd_meta *meta, const char *value, size_t value_len,
-        int *dynamic, int second, int value_hint, LY_PREFIX_FORMAT format, void *prefix_data,
+        uint8_t *dynamic, uint8_t second, uint32_t value_hint, LY_PREFIX_FORMAT format, void *prefix_data,
         const struct lysc_node *ctx_snode, const struct lyd_node *tree);
 
 /* generic function lys_value_validate */
@@ -361,7 +362,7 @@ LY_ERR _lys_value_validate(const struct ly_ctx *ctx, const struct lysc_node *nod
  * @param[out] lydctx_p Data parser context to finish validation.
  * @return LY_ERR value.
  */
-LY_ERR lyd_parse_xml_data(const struct ly_ctx *ctx, struct ly_in *in, int parse_options, int validate_options,
+LY_ERR lyd_parse_xml_data(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_options, uint32_t validate_options,
         struct lyd_node **tree_p, struct lyd_ctx **lydctx_p);
 
 /**
@@ -418,7 +419,7 @@ LY_ERR lyd_parse_xml_reply(const struct lyd_node *request, struct ly_in *in, str
  * @param[out] lydctx_p Data parser context to finish validation.
  * @return LY_ERR value.
  */
-LY_ERR lyd_parse_json_data(const struct ly_ctx *ctx, struct ly_in *in, int parse_options, int validate_options,
+LY_ERR lyd_parse_json_data(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_options, uint32_t validate_options,
         struct lyd_node **tree_p, struct lyd_ctx **lydctx_p);
 
 /**
@@ -474,7 +475,7 @@ LY_ERR lyd_parse_json_reply(const struct lyd_node *request, struct ly_in *in, st
  * @param[out] lydctx_p Data parser context to finish validation.
  * @return LY_ERR value.
  */
-LY_ERR lyd_parse_lyb_data(const struct ly_ctx *ctx, struct ly_in *in, int parse_options, int validate_options,
+LY_ERR lyd_parse_lyb_data(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_options, uint32_t validate_options,
         struct lyd_node **tree_p, struct lyd_ctx **lydctx_p);
 
 /**
@@ -583,7 +584,7 @@ LY_ERR lyd_parse_check_keys(struct lyd_node *node);
  * @param[in,out] meta Node metadata, may be removed from.
  * @param[in] options Parse options.
  */
-void lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *when_check, struct lyd_meta **meta, int options);
+void lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *when_check, struct lyd_meta **meta, uint32_t options);
 
 /**
  * @brief Free value prefixes.
@@ -603,6 +604,6 @@ void ly_free_val_prefs(const struct ly_ctx *ctx, struct ly_prefix *val_prefs);
  * @param[in] is_static Whether buffer is static or can be reallocated.
  * @return LY_ERR
  */
-LY_ERR lyd_path_list_predicate(const struct lyd_node *node, char **buffer, size_t *buflen, size_t *bufused, int is_static);
+LY_ERR lyd_path_list_predicate(const struct lyd_node *node, char **buffer, size_t *buflen, size_t *bufused, uint8_t is_static);
 
 #endif /* LY_TREE_DATA_INTERNAL_H_ */

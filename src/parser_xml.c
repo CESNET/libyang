@@ -381,7 +381,7 @@ lydxml_subtree_r(struct lyd_xml_ctx *lydctx, struct lyd_node_inner *parent, stru
     uint32_t prev_opts;
     struct lyd_node *node = NULL, *anchor;
     struct ly_prefix *val_prefs;
-    int getnext_opts;
+    uint32_t getnext_opts;
 
     xmlctx = lydctx->xmlctx;
     ctx = xmlctx->ctx;
@@ -616,7 +616,7 @@ error:
 }
 
 LY_ERR
-lyd_parse_xml_data(const struct ly_ctx *ctx, struct ly_in *in, int parse_options, int validate_options,
+lyd_parse_xml_data(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_options, uint32_t validate_options,
         struct lyd_node **tree_p, struct lyd_ctx **lydctx_p)
 {
     LY_ERR ret = LY_SUCCESS;

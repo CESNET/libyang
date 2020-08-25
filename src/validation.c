@@ -126,7 +126,7 @@ lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, struct ly_s
                 /* evaluate all when expressions that affect this node's existence */
                 struct lyd_node *node = (struct lyd_node *)node_when->objs[i];
                 const struct lysc_node *schema = node->schema;
-                int unres_when = 0;
+                uint8_t unres_when = 0;
 
                 do {
                     LY_ARRAY_COUNT_TYPE u;
@@ -213,7 +213,7 @@ static LY_ERR
 lyd_validate_duplicates(const struct lyd_node *first, const struct lyd_node *node)
 {
     struct lyd_node **match_p;
-    int fail = 0;
+    uint8_t fail = 0;
 
     if ((node->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) && (node->schema->flags & LYS_CONFIG_R)) {
         /* duplicate instances allowed */
@@ -263,7 +263,7 @@ lyd_validate_cases(struct lyd_node **first, const struct lysc_node_choice *choic
 {
     const struct lysc_node *scase, *iter, *old_case = NULL, *new_case = NULL;
     struct lyd_node *match, *to_del;
-    int found;
+    uint8_t found;
 
     LY_LIST_FOR((struct lysc_node *)choic->cases, scase) {
         found = 0;
@@ -565,8 +565,8 @@ lyd_val_uniq_find_leaf(const struct lysc_node_leaf *uniq_leaf, const struct lyd_
  *
  * @param[in] cb_data 0 to compare all uniques, n to compare only n-th unique.
  */
-static int
-lyd_val_uniq_list_equal(void *val1_p, void *val2_p, int UNUSED(mod), void *cb_data)
+static uint8_t
+lyd_val_uniq_list_equal(void *val1_p, void *val2_p, uint8_t UNUSED(mod), void *cb_data)
 {
     struct ly_ctx *ctx;
     struct lysc_node_list *slist;
@@ -677,7 +677,7 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
     LY_ARRAY_COUNT_TYPE u, v, x = 0;
     LY_ERR ret = LY_SUCCESS;
     uint32_t hash, i, size = 0;
-    int dynamic;
+    uint8_t dynamic;
     const char *str;
     struct hash_table **uniqtables = NULL;
     struct lyd_value *val;
@@ -792,12 +792,12 @@ cleanup:
  */
 static LY_ERR
 lyd_validate_siblings_schema_r(const struct lyd_node *first, const struct lysc_node *sparent,
-        const struct lysc_module *mod, int val_opts, LYD_VALIDATE_OP op)
+        const struct lysc_module *mod, uint32_t val_opts, LYD_VALIDATE_OP op)
 {
     const struct lysc_node *snode = NULL;
     struct lysc_node_list *slist;
     struct lysc_node_leaflist *sllist;
-    int getnext_opts;
+    uint32_t getnext_opts;
 
     getnext_opts = LYS_GETNEXT_WITHCHOICE | LYS_GETNEXT_WITHCASE | (op == LYD_VALIDATE_OP_REPLY ? LYS_GETNEXT_OUTPUT : 0);
 
@@ -943,7 +943,7 @@ lyd_validate_must(const struct lyd_node *node, LYD_VALIDATE_OP op)
 }
 
 LY_ERR
-lyd_validate_final_r(struct lyd_node *first, const struct lysc_node *sparent, const struct lys_module *mod, int val_opts,
+lyd_validate_final_r(struct lyd_node *first, const struct lysc_node *sparent, const struct lys_module *mod, uint32_t val_opts,
         LYD_VALIDATE_OP op)
 {
     struct lyd_node *next = NULL, *node;
@@ -1026,7 +1026,7 @@ lyd_validate_final_r(struct lyd_node *first, const struct lysc_node *sparent, co
  */
 static LY_ERR
 lyd_validate_subtree(struct lyd_node *root, struct ly_set *type_check, struct ly_set *type_meta_check,
-        struct ly_set *when_check, int val_opts, struct lyd_node **diff)
+        struct ly_set *when_check, uint32_t val_opts, struct lyd_node **diff)
 {
     const struct lyd_meta *meta;
     struct lyd_node *node;
@@ -1076,7 +1076,7 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *type_check, struct ly
  * @return LY_ERR value.
  */
 static LY_ERR
-lyd_validate(struct lyd_node **tree, const struct lys_module *module, const struct ly_ctx *ctx, int val_opts,
+lyd_validate(struct lyd_node **tree, const struct lys_module *module, const struct ly_ctx *ctx, uint32_t val_opts,
         struct lyd_node **diff)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -1139,13 +1139,13 @@ cleanup:
 }
 
 API LY_ERR
-lyd_validate_all(struct lyd_node **tree, const struct ly_ctx *ctx, int val_opts, struct lyd_node **diff)
+lyd_validate_all(struct lyd_node **tree, const struct ly_ctx *ctx, uint32_t val_opts, struct lyd_node **diff)
 {
     return lyd_validate(tree, NULL, ctx, val_opts, diff);
 }
 
 API LY_ERR
-lyd_validate_module(struct lyd_node **tree, const struct lys_module *module, int val_opts, struct lyd_node **diff)
+lyd_validate_module(struct lyd_node **tree, const struct lys_module *module, uint32_t val_opts, struct lyd_node **diff)
 {
     return lyd_validate(tree, module, NULL, val_opts, diff);
 }

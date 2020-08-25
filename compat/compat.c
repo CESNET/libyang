@@ -128,7 +128,7 @@ getline(char **lineptr, size_t *n, FILE *stream)
 {
     static char line[256];
     char *ptr;
-    unsigned int len;
+    ssize_t len;
 
     if (!lineptr || !n) {
         errno = EINVAL;

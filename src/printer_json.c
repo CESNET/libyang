@@ -32,12 +32,12 @@
  * @brief JSON printer context.
  */
 struct jsonpr_ctx {
-    struct ly_out *out;  /**< output specification */
-    unsigned int level; /**< current indentation level: 0 - no formatting, >= 1 indentation levels */
-    int options;        /**< [Data printer flags](@ref dataprinterflags) */
-    const struct ly_ctx *ctx; /**< libyang context */
+    struct ly_out *out;         /**< output specification */
+    uint16_t level;             /**< current indentation level: 0 - no formatting, >= 1 indentation levels */
+    uint32_t options;           /**< [Data printer flags](@ref dataprinterflags) */
+    const struct ly_ctx *ctx;   /**< libyang context */
 
-    unsigned int level_printed; /* level where some dara were already printed */
+    uint16_t level_printed;     /* level where some data were already printed */
     struct ly_set open; /* currently open array(s) */
     const struct lyd_node *print_sibling_metadata;
 };
@@ -218,7 +218,7 @@ json_nscmp(const struct lyd_node *node1, const struct lyd_node *node2)
 static LY_ERR
 json_print_string(struct ly_out *out, const char *text)
 {
-    unsigned int i, n;
+    uint64_t i, n;
 
     if (!text) {
         return LY_SUCCESS;
@@ -258,7 +258,7 @@ json_print_string(struct ly_out *out, const char *text)
  * @return LY_ERR value.
  */
 static LY_ERR
-json_print_member(struct jsonpr_ctx *ctx, const struct lyd_node *node, int is_attr)
+json_print_member(struct jsonpr_ctx *ctx, const struct lyd_node *node, uint8_t is_attr)
 {
     PRINT_COMMA;
     if (LEVEL == 1 || json_nscmp(node, (const struct lyd_node *)node->parent)) {
@@ -285,7 +285,8 @@ json_print_member(struct jsonpr_ctx *ctx, const struct lyd_node *node, int is_at
  * @return LY_ERR value.
  */
 static LY_ERR
-json_print_member2(struct jsonpr_ctx *ctx, const struct lyd_node *parent, LYD_FORMAT format, const struct ly_prefix *prefix, const char *name, int is_attr)
+json_print_member2(struct jsonpr_ctx *ctx, const struct lyd_node *parent, LYD_FORMAT format,
+        const struct ly_prefix *prefix, const char *name, uint8_t is_attr)
 {
     const char *module_name = NULL;
 
@@ -332,7 +333,7 @@ json_print_member2(struct jsonpr_ctx *ctx, const struct lyd_node *parent, LYD_FO
 static LY_ERR
 json_print_value(struct jsonpr_ctx *ctx, const struct lyd_value *val)
 {
-    int dynamic = 0;
+    uint8_t dynamic = 0;
     const char *value = val->realtype->plugin->print(val, LY_PREF_JSON, NULL, &dynamic);
 
     /* leafref is not supported */
@@ -447,7 +448,7 @@ json_print_metadata(struct jsonpr_ctx *ctx, const struct lyd_node *node, const s
  * @return LY_ERR value.
  */
 static LY_ERR
-json_print_attributes(struct jsonpr_ctx *ctx, const struct lyd_node *node, int inner)
+json_print_attributes(struct jsonpr_ctx *ctx, const struct lyd_node *node, uint8_t inner)
 {
     const struct lys_module *wdmod = NULL;
 
@@ -519,7 +520,7 @@ json_print_anydata(struct jsonpr_ctx *ctx, struct lyd_node_any *any)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node *iter;
-    int prev_opts, prev_lo;
+    uint32_t prev_opts, prev_lo;
 
     if (!any->value.tree) {
         /* no content */
@@ -527,7 +528,7 @@ json_print_anydata(struct jsonpr_ctx *ctx, struct lyd_node_any *any)
     }
 
     if (any->value_type == LYD_ANYDATA_LYB) {
-        int parser_options = LYD_PARSE_ONLY | LYD_PARSE_OPAQ | LYD_PARSE_STRICT;
+        uint32_t parser_options = LYD_PARSE_ONLY | LYD_PARSE_OPAQ | LYD_PARSE_STRICT;
 
         /* turn logging off */
         prev_lo = ly_log_options(0);
@@ -588,7 +589,7 @@ json_print_inner(struct jsonpr_ctx *ctx, const struct lyd_node *node)
 {
     struct lyd_node *child;
     struct lyd_node *children = lyd_node_children(node, 0);
-    int has_content = 0;
+    uint8_t has_content = 0;
 
     if (node->meta || children) {
         has_content = 1;
@@ -748,7 +749,7 @@ json_print_metadata_leaflist(struct jsonpr_ctx *ctx)
 static LY_ERR
 json_print_opaq(struct jsonpr_ctx *ctx, const struct lyd_node_opaq *node)
 {
-    int first = 1, last = 1;
+    uint8_t first = 1, last = 1;
 
     if (node->hint & LYD_NODE_OPAQ_ISLIST) {
         const struct lyd_node_opaq *prev = (const struct lyd_node_opaq *)node->prev;
@@ -851,7 +852,7 @@ json_print_node(struct jsonpr_ctx *ctx, const struct lyd_node *node)
 }
 
 LY_ERR
-json_print_data(struct ly_out *out, const struct lyd_node *root, int options)
+json_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t options)
 {
     const struct lyd_node *node;
     struct jsonpr_ctx ctx = {0};

@@ -697,7 +697,7 @@ ly_path_compile(const struct ly_ctx *ctx, const struct lys_module *cur_mod, cons
     const struct lys_module *mod;
     const struct lysc_node *node2, *cur_node, *op;
     struct ly_path *p = NULL;
-    int getnext_opts;
+    uint32_t getnext_opts;
     const char *name;
     size_t name_len;
 

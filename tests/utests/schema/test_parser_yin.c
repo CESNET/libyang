@@ -754,7 +754,7 @@ test_validate_value(void **state)
     st->yin_ctx->xmlctx->value = "#invalid";
     st->yin_ctx->xmlctx->value_len = 8;
     assert_int_equal(yin_validate_value(st->yin_ctx, Y_IDENTIF_ARG), LY_EVALID);
-    logbuf_assert("Invalid identifier character '#'. Line number 1.");
+    logbuf_assert("Invalid identifier character '#' (0x0023). Line number 1.");
 
     st->yin_ctx->xmlctx->value = "";
     st->yin_ctx->xmlctx->value_len = 0;

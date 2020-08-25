@@ -107,7 +107,7 @@ LY_ERR lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format,
  * file suffix.
  * @return LY_ERR value (LY_SUCCESS is returned even if the file is not found, then the *localfile is NULL).
  */
-LY_ERR lys_search_localfile(const char * const *searchpaths, int cwd, const char *name, const char *revision,
+LY_ERR lys_search_localfile(const char * const *searchpaths, uint8_t cwd, const char *name, const char *revision,
         char **localfile, LYS_INFORMAT *format);
 
 /** @} schematree */

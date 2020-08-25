@@ -71,7 +71,7 @@ struct ext_substmt_info_s ext_substmt_info[] = {
     {"unique", "tag", 0},                       /**< LYEXT_SUBSTMT_UNIQUE */
 };
 
-int
+uint8_t
 ly_is_default(const struct lyd_node *node)
 {
     const struct lysc_node_leaf *leaf;
@@ -109,8 +109,8 @@ ly_is_default(const struct lyd_node *node)
     return 1;
 }
 
-int
-ly_should_print(const struct lyd_node *node, int options)
+uint8_t
+ly_should_print(const struct lyd_node *node, uint32_t options)
 {
     const struct lyd_node *elem;
 
@@ -429,7 +429,7 @@ ly_out_filepath(struct ly_out *out, const char *filepath)
 }
 
 API void
-ly_out_free(struct ly_out *out, void (*clb_arg_destructor)(void *arg), int destroy)
+ly_out_free(struct ly_out *out, void (*clb_arg_destructor)(void *arg), uint8_t destroy)
 {
     if (!out) {
         return;
@@ -597,8 +597,8 @@ ly_print_flush(struct ly_out *out)
 LY_ERR
 ly_write_(struct ly_out *out, const char *buf, size_t len)
 {
-    LY_ERR ret;
-    int written = 0;
+    LY_ERR ret = LY_SUCCESS;
+    size_t written = 0;
 
     if (out->hole_count) {
         /* we are buffering data after a hole */
@@ -640,29 +640,46 @@ repeat:
 
         written = len;
         break;
-    case LY_OUT_FD:
-        written = write(out->method.fd, buf, len);
+    case LY_OUT_FD: {
+        ssize_t r;
+        r = write(out->method.fd, buf, len);
+        if (r < 0) {
+            ret = LY_ESYS;
+        } else {
+            written = (size_t)r;
+        }
         break;
+    }
     case LY_OUT_FDSTREAM:
     case LY_OUT_FILEPATH:
     case LY_OUT_FILE:
         written = fwrite(buf, sizeof *buf, len, out->method.f);
+        if (written != len) {
+            ret = LY_ESYS;
+        }
         break;
-    case LY_OUT_CALLBACK:
-        written = out->method.clb.func(out->method.clb.arg, buf, len);
+    case LY_OUT_CALLBACK: {
+        ssize_t r;
+        r = out->method.clb.func(out->method.clb.arg, buf, len);
+        if (r < 0) {
+            ret = LY_ESYS;
+        } else {
+            written = (size_t)r;
+        }
         break;
+    }
     case LY_OUT_ERROR:
         LOGINT(NULL);
         return LY_EINT;
     }
 
-    if (written < 0) {
+    if (ret) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            ret = LY_SUCCESS;
             goto repeat;
         }
         LOGERR(NULL, LY_ESYS, "%s: writing data failed (%s).", __func__, strerror(errno));
         written = 0;
-        ret = LY_ESYS;
     } else if ((size_t)written != len) {
         LOGERR(NULL, LY_ESYS, "%s: writing data failed (unable to write %u from %u data).", __func__,
                len - (size_t)written, len);

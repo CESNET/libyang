@@ -276,8 +276,8 @@ mem_err:
 LY_ERR
 yin_validate_value(struct lys_yin_parser_ctx *ctx, enum yang_arg val_type)
 {
-    int prefix = 0;
-    unsigned int c;
+    uint8_t prefix = 0;
+    uint32_t c;
     size_t utf8_char_len, already_read = 0;
     const char *val;
 
@@ -292,10 +292,10 @@ yin_validate_value(struct lys_yin_parser_ctx *ctx, enum yang_arg val_type)
 
         switch (val_type) {
         case Y_IDENTIF_ARG:
-            LY_CHECK_RET(lysp_check_identifierchar((struct lys_parser_ctx *)ctx, c, !already_read, NULL));
+            LY_CHECK_RET(lysp_check_identifierchar((struct lys_parser_ctx *)ctx, c, already_read ? 0 : 1, NULL));
             break;
         case Y_PREF_IDENTIF_ARG:
-            LY_CHECK_RET(lysp_check_identifierchar((struct lys_parser_ctx *)ctx, c, !already_read, &prefix));
+            LY_CHECK_RET(lysp_check_identifierchar((struct lys_parser_ctx *)ctx, c, already_read ? 0 : 1, &prefix));
             break;
         case Y_STR_ARG:
         case Y_MAYBE_STR_ARG:
@@ -378,9 +378,9 @@ yin_parse_attribute(struct lys_yin_parser_ctx *ctx, enum yin_argument arg_type, 
  * @return Pointer to desired record on success, NULL if element is not in the array.
  */
 static struct yin_subelement *
-get_record(enum ly_stmt type, size_t array_size, struct yin_subelement *array)
+get_record(enum ly_stmt type, LY_ARRAY_COUNT_TYPE array_size, struct yin_subelement *array)
 {
-    for (unsigned int u = 0; u < array_size; ++u) {
+    for (LY_ARRAY_COUNT_TYPE u = 0; u < array_size; ++u) {
         if (array[u].type == type) {
             return &array[u];
         }

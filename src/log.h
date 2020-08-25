@@ -15,6 +15,8 @@
 #ifndef LY_LOG_H_
 #define LY_LOG_H_
 
+#include <stdint.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -75,7 +77,7 @@ LY_LOG_LEVEL ly_verb(LY_LOG_LEVEL level);
  * @param[in] opts Bitfield of @ref logopts.
  * @return Previous logger options.
  */
-int ly_log_options(int opts);
+uint32_t ly_log_options(uint32_t opts);
 
 #ifndef NDEBUG
 
@@ -102,7 +104,7 @@ int ly_log_options(int opts);
  * @brief Enable specific debugging messages (independent of log level).
  * @param[in] dbg_groups Bitfield of enabled debug message groups (see @ref dbggroup).
  */
-void ly_verb_dbg(int dbg_groups);
+void ly_verb_dbg(uint32_t dbg_groups);
 
 #endif
 
@@ -129,7 +131,7 @@ typedef void (*ly_log_clb)(LY_LOG_LEVEL level, const char *msg, const char *path
  *            presence) or it can be NULL, so consider it as an optional parameter. If the flag is 0, libyang will
  *            not bother with resolving the path.
  */
-void ly_set_log_clb(ly_log_clb clb, int path);
+void ly_set_log_clb(ly_log_clb clb, uint8_t path);
 
 /**
  * @brief Get logger callback.

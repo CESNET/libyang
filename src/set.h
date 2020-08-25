@@ -91,7 +91,7 @@ struct ly_set *ly_set_dup(const struct ly_set *set, void *(*duplicator)(void *ob
  * - #LY_SET_OPT_USEASLIST - do not check for duplicities
  * @return -1 on failure, index of the \p node in the set on success
  */
-int ly_set_add(struct ly_set *set, void *object, int options);
+int ly_set_add(struct ly_set *set, void *object, uint32_t options);
 
 /**
  * @brief Add all objects from \p src to \p trg.
@@ -107,7 +107,7 @@ int ly_set_add(struct ly_set *set, void *object, int options);
  * objects as the \p src set.
  * @return -1 on failure, number of objects added into \p trg on success.
  */
-int ly_set_merge(struct ly_set *trg, struct ly_set *src, int options, void *(*duplicator)(void *obj));
+int ly_set_merge(struct ly_set *trg, struct ly_set *src, uint32_t options, void *(*duplicator)(void *obj));
 
 /**
  * @brief Learn whether the set contains the specified object.

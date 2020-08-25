@@ -237,7 +237,7 @@ size_t ly_out_printed(const struct ly_out *out);
  * @param[in] destroy Flag to free allocated buffer (for LY_OUT_MEMORY) or to
  * close stream/file descriptor (for LY_OUT_FD, LY_OUT_FDSTREAM and LY_OUT_FILE)
  */
-void ly_out_free(struct ly_out *out, void (*clb_arg_destructor)(void *arg), int destroy);
+void ly_out_free(struct ly_out *out, void (*clb_arg_destructor)(void *arg), uint8_t destroy);
 
 #ifdef __cplusplus
 }

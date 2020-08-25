@@ -65,7 +65,7 @@ struct ly_out {
 struct ext_substmt_info_s {
     const char *name;      /**< name of the statement */
     const char *arg;       /**< name of YIN's attribute to present the statement */
-    int flags;             /**< various flags to clarify printing of the statement */
+    uint8_t flags;         /**< various flags to clarify printing of the statement */
 #define SUBST_FLAG_YIN 0x1 /**< has YIN element */
 #define SUBST_FLAG_ID 0x2  /**< the value is identifier -> no quotes */
 };
@@ -82,7 +82,7 @@ extern struct ext_substmt_info_s ext_substmt_info[];
  * @param[in] options Schema output options (see @ref schemaprinterflags).
  * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
  */
-LY_ERR yang_print_parsed_module(struct ly_out *out, const struct lys_module *module, const struct lysp_module *modp, int options);
+LY_ERR yang_print_parsed_module(struct ly_out *out, const struct lys_module *module, const struct lysp_module *modp, uint32_t options);
 
 /**
  * @brief Helper macros for data printers
@@ -102,7 +102,7 @@ LY_ERR yang_print_parsed_module(struct ly_out *out, const struct lys_module *mod
  * @param[in] options Schema output options (see @ref schemaprinterflags).
  * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
  */
-LY_ERR yang_print_parsed_submodule(struct ly_out *out, const struct lys_module *module, const struct lysp_submodule *submodp, int options);
+LY_ERR yang_print_parsed_submodule(struct ly_out *out, const struct lys_module *module, const struct lysp_submodule *submodp, uint32_t options);
 
 /**
  * @brief YANG printer of the compiled schemas.
@@ -116,7 +116,7 @@ LY_ERR yang_print_parsed_submodule(struct ly_out *out, const struct lys_module *
  * @param[in] options Schema output options (see @ref schemaprinterflags).
  * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
  */
-LY_ERR yang_print_compiled(struct ly_out *out, const struct lys_module *module, int options);
+LY_ERR yang_print_compiled(struct ly_out *out, const struct lys_module *module, uint32_t options);
 
 /**
  * @brief YANG printer of the compiled schema node
@@ -130,7 +130,7 @@ LY_ERR yang_print_compiled(struct ly_out *out, const struct lys_module *module, 
  * @param[in] options Schema output options (see @ref schemaprinterflags).
  * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
  */
-LY_ERR yang_print_compiled_node(struct ly_out *out, const struct lysc_node *node, int options);
+LY_ERR yang_print_compiled_node(struct ly_out *out, const struct lysc_node *node, uint32_t options);
 
 /**
  * @brief YIN printer of the parsed module. Full YIN printer.
@@ -141,7 +141,7 @@ LY_ERR yang_print_compiled_node(struct ly_out *out, const struct lysc_node *node
  * @param[in] options Schema output options (see @ref schemaprinterflags).
  * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
  */
-LY_ERR yin_print_parsed_module(struct ly_out *out, const struct lys_module *module, const struct lysp_module *modp, int options);
+LY_ERR yin_print_parsed_module(struct ly_out *out, const struct lys_module *module, const struct lysp_module *modp, uint32_t options);
 
 /**
  * @brief YIN printer of the parsed submodule. Full YIN printer.
@@ -152,7 +152,7 @@ LY_ERR yin_print_parsed_module(struct ly_out *out, const struct lys_module *modu
  * @param[in] options Schema output options (see @ref schemaprinterflags).
  * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
  */
-LY_ERR yin_print_parsed_submodule(struct ly_out *out, const struct lys_module *module, const struct lysp_submodule *submodp, int options);
+LY_ERR yin_print_parsed_submodule(struct ly_out *out, const struct lys_module *module, const struct lysp_submodule *submodp, uint32_t options);
 
 /**
  * @brief XML printer of YANG data.
@@ -162,7 +162,7 @@ LY_ERR yin_print_parsed_submodule(struct ly_out *out, const struct lys_module *m
  * @param[in] options [Data printer flags](@ref dataprinterflags).
  * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
  */
-LY_ERR xml_print_data(struct ly_out *out, const struct lyd_node *root, int options);
+LY_ERR xml_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t options);
 
 /**
  * @brief JSON printer of YANG data.
@@ -172,7 +172,7 @@ LY_ERR xml_print_data(struct ly_out *out, const struct lyd_node *root, int optio
  * @param[in] options [Data printer flags](@ref dataprinterflags).
  * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
  */
-LY_ERR json_print_data(struct ly_out *out, const struct lyd_node *root, int options);
+LY_ERR json_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t options);
 
 /**
  * @brief LYB printer of YANG data.
@@ -182,16 +182,16 @@ LY_ERR json_print_data(struct ly_out *out, const struct lyd_node *root, int opti
  * @param[in] options [Data printer flags](@ref dataprinterflags).
  * @return LY_ERR value, number of the printed bytes is updated in lyout::printed.
  */
-LY_ERR lyb_print_data(struct ly_out *out, const struct lyd_node *root, int options);
+LY_ERR lyb_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t options);
 
 /**
  * @brief Check whether a node value equals to its default one.
  *
  * @param[in] node Term node to test.
  * @return 0 if no,
- * @return non-zero if yes.
+ * @return 1 if yes.
  */
-int ly_is_default(const struct lyd_node *node);
+uint8_t ly_is_default(const struct lyd_node *node);
 
 /**
  * @brief Check whether the node should even be printed.
@@ -199,9 +199,9 @@ int ly_is_default(const struct lyd_node *node);
  * @param[in] node Node to check.
  * @param[in] options Printer options.
  * @return 0 if no.
- * @return non-zero if yes.
+ * @return 1 if yes.
  */
-int ly_should_print(const struct lyd_node *node, int options);
+uint8_t ly_should_print(const struct lyd_node *node, uint32_t options);
 
 /**
  * @brief Generic printer of the given format string into the specified output.

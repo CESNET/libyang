@@ -184,8 +184,8 @@ struct lysc_ctx {
     struct ly_set leafrefs;     /**< when/must to check */
     struct ly_set dflts;        /**< set of incomplete default values */
     struct ly_set tpdf_chain;
-    uint16_t path_len;
-    int options;                /**< various @ref scflags. */
+    uint32_t path_len;
+    uint32_t options;           /**< various @ref scflags. */
 #define LYSC_CTX_BUFSIZE 4078
     char path[LYSC_CTX_BUFSIZE];
 };
@@ -197,7 +197,7 @@ struct lysc_ctx {
  * @param[in] c UTF8 code point of a character to check.
  * @return LY_ERR values.
  */
-LY_ERR lysp_check_stringchar(struct lys_parser_ctx *ctx, unsigned int c);
+LY_ERR lysp_check_stringchar(struct lys_parser_ctx *ctx, uint32_t c);
 
 /**
  * @brief Check that \p c is valid UTF8 code point for YANG identifier.
@@ -213,7 +213,7 @@ LY_ERR lysp_check_stringchar(struct lys_parser_ctx *ctx, unsigned int c);
  * If the identifier cannot be prefixed, NULL is expected.
  * @return LY_ERR values.
  */
-LY_ERR lysp_check_identifierchar(struct lys_parser_ctx *ctx, unsigned int c, int first, int *prefix);
+LY_ERR lysp_check_identifierchar(struct lys_parser_ctx *ctx, uint32_t c, uint8_t first, uint8_t *prefix);
 
 /**
  * @brief Check the currently present prefixes in the module for collision with the new one.
@@ -235,7 +235,7 @@ LY_ERR lysp_check_prefix(struct lys_parser_ctx *ctx, struct lysp_import *imports
  * @param[in] stmt Statement name for error message.
  * @return LY_ERR value.
  */
-LY_ERR lysp_check_date(struct lys_parser_ctx *ctx, const char *date, int date_len, const char *stmt);
+LY_ERR lysp_check_date(struct lys_parser_ctx *ctx, const char *date, uint8_t date_len, const char *stmt);
 
 /**
  * @brief Check names of typedefs in the parsed module to detect collisions.
@@ -304,7 +304,7 @@ LY_ERR lysp_check_enum_name(struct lys_parser_ctx *ctx, const char *name, size_t
  * @param[out] mod Parsed module structure.
  * @return LY_ERR value.
  */
-LY_ERR lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, int implement, int require_parsed, struct lys_module **mod);
+LY_ERR lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, uint8_t implement, uint8_t require_parsed, struct lys_module **mod);
 
 /**
  * @brief Parse included submodule into the simply parsed YANG module.
@@ -325,7 +325,7 @@ LY_ERR lysp_load_submodule(struct lys_parser_ctx *pctx, struct lysp_include *inc
  * @param[in] options Various options to modify compiler behavior, see [compile flags](@ref scflags).
  * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
  */
-LY_ERR lys_compile(struct lys_module **mod, int options);
+LY_ERR lys_compile(struct lys_module **mod, uint32_t options);
 
 /**
  * @brief Get address of a node's actions list if any.
@@ -443,7 +443,7 @@ LY_ERR lysc_check_status(struct lysc_ctx *ctx,
  * @return LY_ERR values - LY_ENOTFOUND, LY_EVALID, LY_EDENIED or LY_SUCCESS.
  */
 LY_ERR lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodeid_len, const struct lysc_node *context_node,
-        const struct lys_module *context_module, int nodetype, int implement,
+        const struct lys_module *context_module, uint16_t nodetype, uint8_t implement,
         const struct lysc_node **target, uint16_t *result_flag);
 
 /**
@@ -496,7 +496,7 @@ typedef LY_ERR (*lys_custom_check)(const struct ly_ctx *ctx, struct lysp_module 
  * @param[out] module Parsed module.
  * @return LY_ERR value.
  */
-LY_ERR lys_parse_mem_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, int implement,
+LY_ERR lys_parse_mem_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, uint8_t implement,
         lys_custom_check custom_check, void *check_data, struct lys_module **module);
 
 /**
@@ -545,8 +545,8 @@ void lys_parser_fill_filepath(struct ly_ctx *ctx, struct ly_in *in, const char *
  * If it is a module, it is already in the context!
  * @return LY_ERR value, in case of LY_SUCCESS, the \arg result is always provided.
  */
-LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, int implement,
-        struct lys_parser_ctx *main_ctx, const char *main_name, int required, void **result);
+LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, uint8_t implement,
+        struct lys_parser_ctx *main_ctx, const char *main_name, uint8_t required, void **result);
 
 /**
  * @brief Compile information from the identity statement
@@ -595,7 +595,7 @@ LY_ERR lys_feature_precompile(struct lysc_ctx *ctx_sc, struct ly_ctx *ctx, struc
  * @param[in] list The 2bits array with the compiled if-feature expression.
  * @param[in] pos Position (0-based) to specify from which position get the operator.
  */
-uint8_t lysc_iff_getop(uint8_t *list, int pos);
+uint8_t lysc_iff_getop(uint8_t *list, size_t pos);
 
 /**
  * @brief Checks pattern syntax.
@@ -781,12 +781,12 @@ char *lysc_path_until(const struct lysc_node *node, const struct lysc_node *pare
 const struct lysc_node *lysc_data_parent(const struct lysc_node *schema);
 
 /**
- * @brief Learn whether a node is in an operation output.
+ * @brief Learn whether a node is inside an operation output.
  *
  * @param[in] schema Schema node to examine.
- * @return non-zero is the node is in output,
  * @return 0 if it is not.
+ * @return 1 if the node is under an operation output
  */
-int lysc_is_output(const struct lysc_node *schema);
+uint8_t lysc_is_output(const struct lysc_node *schema);
 
 #endif /* LY_TREE_SCHEMA_INTERNAL_H_ */
