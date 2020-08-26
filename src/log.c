@@ -31,12 +31,12 @@
 #include "tree_data.h"
 #include "tree_schema.h"
 
-volatile uint8_t ly_log_level = LY_LLWRN;
-volatile uint8_t ly_log_opts = LY_LOLOG | LY_LOSTORE_LAST;
+volatile LY_LOG_LEVEL ly_log_level = LY_LLWRN;
+volatile uint32_t ly_log_opts = LY_LOLOG | LY_LOSTORE_LAST;
 static ly_log_clb log_clb;
-static volatile int path_flag = 1;
+static volatile uint8_t path_flag = 1;
 #ifndef NDEBUG
-volatile int ly_log_dbg_groups = 0;
+volatile uint32_t ly_log_dbg_groups = 0;
 #endif
 
 /* how many bytes add when enlarging buffers */
@@ -190,17 +190,17 @@ ly_verb(LY_LOG_LEVEL level)
     return prev;
 }
 
-API int
-ly_log_options(int opts)
+API uint32_t
+ly_log_options(uint32_t opts)
 {
-    uint8_t prev = ly_log_opts;
+    uint32_t prev = ly_log_opts;
 
     ly_log_opts = opts;
     return prev;
 }
 
 API void
-ly_verb_dbg(int dbg_groups)
+ly_verb_dbg(uint32_t dbg_groups)
 {
 #ifndef NDEBUG
     ly_log_dbg_groups = dbg_groups;
@@ -210,7 +210,7 @@ ly_verb_dbg(int dbg_groups)
 }
 
 API void
-ly_set_log_clb(ly_log_clb clb, int path)
+ly_set_log_clb(ly_log_clb clb, uint8_t path)
 {
     log_clb = clb;
     path_flag = path;
@@ -294,7 +294,7 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE v
         const char *format, va_list args)
 {
     char *msg = NULL;
-    int free_strs;
+    uint8_t free_strs;
 
     if (level > ly_log_level) {
         /* do not print or store the message */
@@ -349,7 +349,7 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE v
 #ifndef NDEBUG
 
 void
-ly_log_dbg(int group, const char *format, ...)
+ly_log_dbg(uint32_t group, const char *format, ...)
 {
     char *dbg_format;
     const char *str_group;

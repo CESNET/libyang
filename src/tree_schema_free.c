@@ -880,7 +880,7 @@ lys_module_free(struct lys_module *module, void (*private_destructor)(const stru
 API void
 lysc_extension_instance_free(struct ly_ctx *ctx, struct lysc_ext_substmt *substmts)
 {
-    for (unsigned int u = 0; substmts[u].stmt; ++u) {
+    for (LY_ARRAY_COUNT_TYPE u = 0; substmts[u].stmt; ++u) {
         if (!substmts[u].storage) {
             continue;
         }

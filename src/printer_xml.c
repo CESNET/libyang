@@ -36,12 +36,12 @@
  * @brief XML printer context.
  */
 struct xmlpr_ctx {
-    struct ly_out *out;  /**< output specification */
-    unsigned int level; /**< current indentation level: 0 - no formatting, >= 1 indentation levels */
-    int options;        /**< [Data printer flags](@ref dataprinterflags) */
+    struct ly_out *out;       /**< output specification */
+    uint16_t level;           /**< current indentation level: 0 - no formatting, >= 1 indentation levels */
+    uint32_t options;         /**< [Data printer flags](@ref dataprinterflags) */
     const struct ly_ctx *ctx; /**< libyang context */
-    struct ly_set prefix;   /**< printed namespace prefixes */
-    struct ly_set ns;   /**< printed namespaces */
+    struct ly_set prefix;     /**< printed namespace prefixes */
+    struct ly_set ns;         /**< printed namespaces */
 };
 
 #define LYXML_PREFIX_REQUIRED 0x01  /**< The prefix is not just a suggestion but a requirement. */
@@ -57,11 +57,11 @@ struct xmlpr_ctx {
  * @return Printed prefix of the namespace to use.
  */
 static const char *
-xml_print_ns(struct xmlpr_ctx *ctx, const char *ns, const char *new_prefix, int prefix_opts)
+xml_print_ns(struct xmlpr_ctx *ctx, const char *ns, const char *new_prefix, uint32_t prefix_opts)
 {
-    int i;
+    int64_t i;
 
-    for (i = ctx->ns.count - 1; i > -1; --i) {
+    for (i = (int64_t)ctx->ns.count - 1; i > -1; --i) {
         if (!new_prefix) {
             /* find default namespace */
             if (!ctx->prefix.objs[i]) {
@@ -104,7 +104,7 @@ xml_print_ns(struct xmlpr_ctx *ctx, const char *ns, const char *new_prefix, int 
 }
 
 static const char *
-xml_print_ns_opaq(struct xmlpr_ctx *ctx, LYD_FORMAT format, const struct ly_prefix *prefix, int prefix_opts)
+xml_print_ns_opaq(struct xmlpr_ctx *ctx, LYD_FORMAT format, const struct ly_prefix *prefix, uint32_t prefix_opts)
 {
 
     switch (format) {
@@ -141,12 +141,11 @@ xml_print_meta(struct xmlpr_ctx *ctx, const struct lyd_node *node)
     const char **prefs, **nss;
     const char *xml_expr = NULL, *mod_name;
     uint32_t ns_count, i;
-    int rpc_filter = 0;
+    uint8_t rpc_filter = 0;
     char *p;
     size_t len;
 #endif
-    int dynamic;
-    unsigned int u;
+    uint8_t dynamic;
 
     /* with-defaults */
     if (node->schema->nodetype & LYD_NODE_TERM) {
@@ -170,7 +169,7 @@ xml_print_meta(struct xmlpr_ctx *ctx, const struct lyd_node *node)
         const char *value = meta->value.realtype->plugin->print(&meta->value, LY_PREF_XML, &ns_list, &dynamic);
 
         /* print namespaces connected with the value's prefixes */
-        for (u = 0; u < ns_list.count; ++u) {
+        for (uint32_t u = 0; u < ns_list.count; ++u) {
             mod = (const struct lys_module *)ns_list.objs[u];
             xml_print_ns(ctx, mod->ns, mod->prefix, 1);
         }
@@ -290,15 +289,14 @@ static void
 xml_print_term(struct xmlpr_ctx *ctx, const struct lyd_node_term *node)
 {
     struct ly_set ns_list = {0};
-    unsigned int u;
-    int dynamic;
+    uint8_t dynamic;
     const char *value;
 
     xml_print_node_open(ctx, (struct lyd_node *)node);
     value = ((struct lysc_node_leaf *)node->schema)->type->plugin->print(&node->value, LY_PREF_XML, &ns_list, &dynamic);
 
     /* print namespaces connected with the values's prefixes */
-    for (u = 0; u < ns_list.count; ++u) {
+    for (uint32_t u = 0; u < ns_list.count; ++u) {
         const struct lys_module *mod = (const struct lys_module *)ns_list.objs[u];
         ly_print_(ctx->out, " xmlns:%s=\"%s\"", mod->prefix, mod->ns);
     }
@@ -356,7 +354,7 @@ xml_print_anydata(struct xmlpr_ctx *ctx, const struct lyd_node_any *node)
 {
     struct lyd_node_any *any = (struct lyd_node_any *)node;
     struct lyd_node *iter;
-    int prev_opts, prev_lo;
+    uint32_t prev_opts, prev_lo;
     LY_ERR ret;
 
     xml_print_node_open(ctx, (struct lyd_node *)node);
@@ -535,7 +533,7 @@ xml_print_node(struct xmlpr_ctx *ctx, const struct lyd_node *node)
 }
 
 LY_ERR
-xml_print_data(struct ly_out *out, const struct lyd_node *root, int options)
+xml_print_data(struct ly_out *out, const struct lyd_node *root, uint32_t options)
 {
     const struct lyd_node *node;
     struct xmlpr_ctx ctx = {0};

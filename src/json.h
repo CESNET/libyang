@@ -60,14 +60,14 @@ struct lyjson_ctx {
 
     const char *value;      /* LYJSON_STRING, LYJSON_NUMBER, LYJSON_OBJECT */
     size_t value_len;       /* LYJSON_STRING, LYJSON_NUMBER, LYJSON_OBJECT */
-    int dynamic;            /* LYJSON_STRING, LYJSON_NUMBER, LYJSON_OBJECT */
+    uint8_t dynamic;        /* LYJSON_STRING, LYJSON_NUMBER, LYJSON_OBJECT */
 
     struct {
         enum LYJSON_PARSER_STATUS status;
         uint32_t status_count;
         const char *value;
         size_t value_len;
-        int dynamic;
+        uint8_t dynamic;
         const char *input;
     } backup;
 };

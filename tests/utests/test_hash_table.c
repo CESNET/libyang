@@ -119,8 +119,8 @@ test_dict_hit(void **state)
 #endif
 }
 
-static int
-ht_equal_clb(void *val1, void *val2, int mod, void *cb_data)
+static uint8_t
+ht_equal_clb(void *val1, void *val2, uint8_t mod, void *cb_data)
 {
     int *v1, *v2;
     (void)mod;

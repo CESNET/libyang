@@ -38,11 +38,11 @@ void lysp_when_free(struct ly_ctx *ctx, struct lysp_when *when);
 
 LY_ERR buf_add_char(struct ly_ctx *ctx, struct ly_in *in, size_t len, char **buf, size_t *buf_len, size_t *buf_used);
 LY_ERR buf_store_char(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum yang_arg arg, char **word_p,
-                      size_t *word_len, char **word_b, size_t *buf_len, int need_buf, int *prefix);
+                      size_t *word_len, char **word_b, size_t *buf_len, uint8_t need_buf, uint8_t *prefix);
 LY_ERR get_keyword(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum ly_stmt *kw, char **word_p, size_t *word_len);
 LY_ERR get_argument(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum yang_arg arg,
                     uint16_t *flags, char **word_p, char **word_b, size_t *word_len);
-LY_ERR skip_comment(struct lys_yang_parser_ctx *ctx, struct ly_in *in, int comment);
+LY_ERR skip_comment(struct lys_yang_parser_ctx *ctx, struct ly_in *in, uint8_t comment);
 
 LY_ERR parse_action(struct lys_yang_parser_ctx *ctx, struct ly_in *in, struct lysp_node *parent, struct lysp_action **actions);
 LY_ERR parse_any(struct lys_yang_parser_ctx *ctx, struct ly_in *in, enum ly_stmt kw, struct lysp_node *parent, struct lysp_node **siblings);
@@ -143,7 +143,7 @@ test_helpers(void **state)
     ctx.ctx = NULL;
     ctx.pos_type = LY_VLOG_LINE;
     ctx.line = 1;
-    int prefix = 0;
+    uint8_t prefix = 0;
 
     /* storing into buffer */
     in.current = "abcd";
@@ -190,9 +190,9 @@ test_helpers(void **state)
 
     /* checking identifiers */
     assert_int_equal(LY_EVALID, lysp_check_identifierchar((struct lys_parser_ctx *)&ctx, ':', 0, NULL));
-    logbuf_assert("Invalid identifier character ':'. Line number 1.");
+    logbuf_assert("Invalid identifier character ':' (0x003a). Line number 1.");
     assert_int_equal(LY_EVALID, lysp_check_identifierchar((struct lys_parser_ctx *)&ctx, '#', 1, NULL));
-    logbuf_assert("Invalid identifier first character '#'. Line number 1.");
+    logbuf_assert("Invalid identifier first character '#' (0x0023). Line number 1.");
 
     assert_int_equal(LY_SUCCESS, lysp_check_identifierchar((struct lys_parser_ctx *)&ctx, 'a', 1, &prefix));
     assert_int_equal(0, prefix);
@@ -204,7 +204,7 @@ test_helpers(void **state)
     assert_int_equal(2, prefix);
     /* second colon is invalid */
     assert_int_equal(LY_EVALID, lysp_check_identifierchar((struct lys_parser_ctx *)&ctx, ':', 0, &prefix));
-    logbuf_assert("Invalid identifier character ':'. Line number 1.");
+    logbuf_assert("Invalid identifier character ':' (0x003a). Line number 1.");
 }
 
 static void

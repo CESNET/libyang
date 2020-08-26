@@ -238,7 +238,7 @@ struct lyxp_set {
         } *meta;
         char *str;
         long double num;
-        int bln;
+        uint8_t bln; /* boolean */
     } val;
 
     /* this is valid only for type LYXP_SET_NODE_SET and LYXP_SET_SCNODE_SET */
@@ -292,7 +292,7 @@ const char *lyxp_print_token(enum lyxp_token tok);
  */
 LY_ERR lyxp_eval(struct lyxp_expr *exp, LY_PREFIX_FORMAT format, const struct lys_module *local_mod,
         const struct lyd_node *ctx_node, enum lyxp_node_type ctx_node_type, const struct lyd_node *tree,
-        struct lyxp_set *set, int options);
+        struct lyxp_set *set, uint32_t options);
 
 #define LYXP_SCHEMA 0x01        /**< Apply data node access restrictions defined for 'when' and 'must' evaluation. */
 
@@ -312,7 +312,7 @@ LY_ERR lyxp_eval(struct lyxp_expr *exp, LY_PREFIX_FORMAT format, const struct ly
  */
 LY_ERR lyxp_atomize(struct lyxp_expr *exp, LY_PREFIX_FORMAT format, const struct lys_module *local_mod,
         const struct lysc_node *ctx_scnode, enum lyxp_node_type ctx_scnode_type, struct lyxp_set *set,
-        int options);
+        uint32_t options);
 
 /* used only internally */
 #define LYXP_SCNODE_ALL 0x0E
@@ -377,7 +377,7 @@ void lyxp_set_scnode_merge(struct lyxp_set *set1, struct lyxp_set *set2);
  * information about expressions and their operators (fill repeat).
  * @return Filled expression structure or NULL on error.
  */
-struct lyxp_expr *lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr, size_t expr_len, int reparse);
+struct lyxp_expr *lyxp_expr_parse(const struct ly_ctx *ctx, const char *expr, size_t expr_len, uint8_t reparse);
 
 /**
  * @brief Duplicate parsed XPath expression.

@@ -86,11 +86,11 @@ lyd_json_ctx_free(struct lyd_ctx *lydctx)
  */
 static void
 lydjson_parse_name(const char *value, size_t value_len, const char **name_p, size_t *name_len_p, const char **prefix_p,
-        size_t *prefix_len_p, int *is_meta_p)
+        size_t *prefix_len_p, uint8_t *is_meta_p)
 {
     const char *name, *prefix = NULL;
     size_t name_len, prefix_len = 0;
-    int is_meta = 0;
+    uint8_t is_meta = 0;
 
     name = memchr(value, ':', value_len);
     if (name != NULL) {
@@ -183,13 +183,13 @@ lydjson_get_node_prefix(struct lyd_node *node, const char *local_prefix, size_t 
  * @return LY_ENOT in case the input data are expected to be skipped
  */
 static LY_ERR
-lydjson_get_snode(const struct lyd_json_ctx *lydctx, int is_attr, const char *prefix, size_t prefix_len, const char *name,
+lydjson_get_snode(const struct lyd_json_ctx *lydctx, uint8_t is_attr, const char *prefix, size_t prefix_len, const char *name,
         size_t name_len, const struct lyd_node_inner *parent, const struct lysc_node **snode_p)
 {
     struct lys_module *mod = NULL;
 
     /* leave if-feature check for validation */
-    int getnext_opts = LYS_GETNEXT_NOSTATECHECK | (lydctx->int_opts & LYD_INTOPT_REPLY ? LYS_GETNEXT_OUTPUT : 0);
+    uint32_t getnext_opts = LYS_GETNEXT_NOSTATECHECK | (lydctx->int_opts & LYD_INTOPT_REPLY ? LYS_GETNEXT_OUTPUT : 0);
 
     /* init return value */
     *snode_p = NULL;
@@ -371,7 +371,7 @@ lydjson_check_list(struct lyjson_ctx *jsonctx, const struct lysc_node *list)
         while (key_set.count && status != LYJSON_OBJECT_CLOSED) {
             const char *name, *prefix;
             size_t name_len, prefix_len;
-            int is_attr;
+            uint8_t is_attr;
 
             /* match the key */
             snode = NULL;
@@ -436,7 +436,7 @@ cleanup:
  * @return LY_EINVAL in case of invalid context status not referring to a value.
  */
 static LY_ERR
-lydjson_value_type_hint(struct lyd_json_ctx *lydctx, enum LYJSON_PARSER_STATUS *status_p, int *type_hint_p)
+lydjson_value_type_hint(struct lyd_json_ctx *lydctx, enum LYJSON_PARSER_STATUS *status_p, uint32_t *type_hint_p)
 {
     *type_hint_p = 0;
 
@@ -480,7 +480,7 @@ lydjson_value_type_hint(struct lyd_json_ctx *lydctx, enum LYJSON_PARSER_STATUS *
  * and they are expected to be parsed as opaq nodes.
  */
 static LY_ERR
-lydjson_data_check_opaq(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, int *type_hint_p)
+lydjson_data_check_opaq(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, uint32_t *type_hint_p)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyjson_ctx *jsonctx = lydctx->jsonctx;
@@ -548,14 +548,14 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyd_node *node, *attr, *next, *start = *first_p, *meta_iter;
-    unsigned int instance = 0;
+    uint64_t instance = 0;
     const char *prev = NULL;
 
     /* finish linking metadata */
     LY_LIST_FOR_SAFE(*first_p, next, attr) {
         struct lyd_node_opaq *meta_container = (struct lyd_node_opaq *)attr;
-        unsigned int match = 0;
-        int is_attr;
+        uint64_t match = 0;
+        uint8_t is_attr;
         const char *name, *prefix;
         size_t name_len, prefix_len;
         const struct lysc_node *snode;
@@ -599,7 +599,7 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
                     /* convert opaq node to a attribute of the opaq node */
                     struct lyd_node_opaq *meta = (struct lyd_node_opaq *)meta_iter;
                     struct ly_prefix *val_prefs = NULL;
-                    int dynamic = 0;
+                    uint8_t dynamic = 0;
 
                     /* get value prefixes */
                     LY_CHECK_GOTO(ret = lydjson_get_value_prefixes(lydctx->jsonctx->ctx, lydctx->jsonctx->value, lydctx->jsonctx->value_len, &val_prefs), cleanup);
@@ -634,7 +634,7 @@ lydjson_metadata_finish(struct lyd_json_ctx *lydctx, struct lyd_node **first_p)
                     /* convert opaq node to a metadata of the node */
                     struct lyd_node_opaq *meta = (struct lyd_node_opaq *)meta_iter;
                     struct lys_module *mod = NULL;
-                    int dynamic = 0;
+                    uint8_t dynamic = 0;
 
                     mod = ly_ctx_get_module_implemented(lydctx->jsonctx->ctx, meta->prefix.id);
                     if (mod) {
@@ -701,15 +701,15 @@ lydjson_metadata(struct lyd_json_ctx *lydctx, const struct lysc_node *snode, str
     LY_ERR ret = LY_SUCCESS;
     enum LYJSON_PARSER_STATUS status;
     const char *expected;
-    int in_parent = 0;
+    uint8_t in_parent = 0;
     const char *name, *prefix = NULL;
     size_t name_len, prefix_len = 0;
     struct lys_module *mod;
     struct lyd_meta *meta = NULL;
     const struct ly_ctx *ctx = lydctx->jsonctx->ctx;
-    int is_attr = 0;
+    uint8_t is_attr = 0;
     struct lyd_node *prev = node;
-    int instance = 0;
+    uint32_t instance = 0;
     uint16_t nodetype;
 
     assert(snode || node);
@@ -743,7 +743,7 @@ next_entry:
 
         if (!node || node->schema != prev->schema) {
             LOGVAL(lydctx->jsonctx->ctx, LY_VLOG_LYD, prev->parent, LYVE_REFERENCE,
-                   "Missing JSON data instance no. %d of %s:%s to be coupled with metadata.",
+                   "Missing JSON data instance no. %u of %s:%s to be coupled with metadata.",
                    instance, prev->schema->module->name, prev->schema->name);
             ret = LY_EVALID;
             goto cleanup;
@@ -928,8 +928,8 @@ lydjson_parse_opaq(struct lyd_json_ctx *lydctx, const char *name, size_t name_le
     const char *value = NULL, *module_name;
     size_t value_len = 0, module_name_len = 0;
     struct ly_prefix *val_prefs = NULL;
-    int dynamic = 0;
-    int type_hint = 0;
+    uint8_t dynamic = 0;
+    uint32_t type_hint = 0;
 
     if (*status_inner_p != LYJSON_OBJECT && *status_inner_p != LYJSON_OBJECT_EMPTY) {
         /* prepare for creating opaq node with a value */
@@ -1086,7 +1086,7 @@ lydjson_parse_instance(struct lyd_json_ctx *lydctx, struct lyd_node_inner *paren
         enum LYJSON_PARSER_STATUS *status, struct lyd_node **node)
 {
     LY_ERR ret;
-    int type_hint;
+    uint32_t type_hint;
     uint32_t prev_opts;
     struct lyd_node *tree = NULL;
 
@@ -1199,7 +1199,7 @@ lydjson_subtree_r(struct lyd_json_ctx *lydctx, struct lyd_node_inner *parent, st
     enum LYJSON_PARSER_STATUS status_inner = 0;
     const char *name, *prefix = NULL;
     size_t name_len, prefix_len = 0;
-    int is_meta = 0;
+    uint8_t is_meta = 0;
     const struct lysc_node *snode = NULL;
     struct lyd_node *node = NULL, *attr_node = NULL;
     const struct ly_ctx *ctx = lydctx->jsonctx->ctx;
@@ -1368,7 +1368,7 @@ representation_error:
  * @return LY_ERR value.
  */
 static LY_ERR
-lyd_parse_json_init(const struct ly_ctx *ctx, struct ly_in *in, int parse_options, int validate_options,
+lyd_parse_json_init(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_options, uint32_t validate_options,
         struct lyd_json_ctx **lydctx_p)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -1405,7 +1405,7 @@ lyd_parse_json_init(const struct ly_ctx *ctx, struct ly_in *in, int parse_option
 }
 
 LY_ERR
-lyd_parse_json_data(const struct ly_ctx *ctx, struct ly_in *in, int parse_options, int validate_options,
+lyd_parse_json_data(const struct ly_ctx *ctx, struct ly_in *in, uint32_t parse_options, uint32_t validate_options,
         struct lyd_node **tree_p, struct lyd_ctx **lydctx_p)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -1464,7 +1464,7 @@ lydjson_notif_envelope(struct lyjson_ctx *jsonctx, struct lyd_node **envp_p)
     LY_ERR ret = LY_ENOT, r;
     const char *name, *prefix, *value = NULL;
     size_t name_len, prefix_len, value_len;
-    int is_attr, dynamic = 0;
+    uint8_t is_attr, dynamic = 0;
     enum LYJSON_PARSER_STATUS status;
     struct lyd_node *et;
 
@@ -1631,7 +1631,7 @@ lydjson_object_envelope(struct lyjson_ctx *jsonctx, struct lyd_node *parent, con
     LY_ERR ret = LY_ENOT, r;
     const char *name, *prefix;
     size_t name_len, prefix_len;
-    int is_attr;
+    uint8_t is_attr;
     enum LYJSON_PARSER_STATUS status;
 
     *envp_p = NULL;

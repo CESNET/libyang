@@ -198,7 +198,7 @@ struct ly_ctx;
  * @param[out] new_ctx Pointer to the created libyang context if LY_SUCCESS returned.
  * @return LY_ERR return value.
  */
-LY_ERR ly_ctx_new(const char *search_dir, int options, struct ly_ctx **new_ctx);
+LY_ERR ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx);
 
 /**
  * @brief Add the search path into libyang context
@@ -234,7 +234,7 @@ LY_ERR ly_ctx_unset_searchdir(struct ly_ctx *ctx, const char *value);
  * Value 0 does not change the search path set.
  * @return LY_ERR return value
  */
-LY_ERR ly_ctx_unset_searchdir_last(struct ly_ctx *ctx, unsigned int count);
+LY_ERR ly_ctx_unset_searchdir_last(struct ly_ctx *ctx, uint32_t count);
 
 /**
  * @brief Get the NULL-terminated list of the search paths in libyang context. Do not modify the result!
@@ -251,7 +251,7 @@ const char * const *ly_ctx_get_searchdirs(const struct ly_ctx *ctx);
  * @param[in] ctx Context to query.
  * @return Combination of all the currently set context's options, see @ref contextoptions.
  */
-int ly_ctx_get_options(const struct ly_ctx *ctx);
+uint16_t ly_ctx_get_options(const struct ly_ctx *ctx);
 
 /**
  * @brief Set some of the context's options, see @ref contextoptions.
@@ -259,7 +259,7 @@ int ly_ctx_get_options(const struct ly_ctx *ctx);
  * @param[in] option Combination of the context's options to be set, see @ref contextoptions.
  * @return LY_ERR value.
  */
-LY_ERR ly_ctx_set_options(struct ly_ctx *ctx, int option);
+LY_ERR ly_ctx_set_options(struct ly_ctx *ctx, uint16_t option);
 
 /**
  * @brief Unset some of the context's options, see @ref contextoptions.
@@ -267,7 +267,7 @@ LY_ERR ly_ctx_set_options(struct ly_ctx *ctx, int option);
  * @param[in] option Combination of the context's options to be unset, see @ref contextoptions.
  * @return LY_ERR value.
  */
-LY_ERR ly_ctx_unset_options(struct ly_ctx *ctx, int option);
+LY_ERR ly_ctx_unset_options(struct ly_ctx *ctx, uint16_t option);
 
 /**
  * @brief Get current ID of the modules set. The value is available also
@@ -373,7 +373,7 @@ struct lys_module *ly_ctx_get_module_implemented(const struct ly_ctx *ctx, const
  * to be used in all calls starting with value 0.
  * @return Next context module, NULL if the last was already returned.
  */
-const struct lys_module *ly_ctx_get_module_iter(const struct ly_ctx *ctx, unsigned int *index);
+const struct lys_module *ly_ctx_get_module_iter(const struct ly_ctx *ctx, uint32_t *index);
 
 /**
  * @brief Get YANG module of the given namespace and revision.
@@ -418,7 +418,7 @@ struct lys_module *ly_ctx_get_module_implemented_ns(const struct ly_ctx *ctx, co
  * @return Found schema node or NULL.
  */
 const struct lysc_node *ly_ctx_get_node(const struct ly_ctx *ctx, const struct lysc_node *ctx_node,
-        const char *data_path, int output);
+        const char *data_path, uint8_t output);
 
 /**
  * @brief Reset cached latest revision information of the schemas in the context.

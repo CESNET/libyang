@@ -70,7 +70,6 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
 {
     struct stat st;
     char *new_dir = NULL;
-    unsigned int u;
 
     LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
 
@@ -92,7 +91,7 @@ ly_ctx_set_searchdir(struct ly_ctx *ctx, const char *search_dir)
                          LOGERR(ctx, LY_ESYS, "Given search directory \"%s\" is not a directory.", new_dir); free(new_dir),
                          LY_EINVAL);
         /* avoid path duplication */
-        for (u = 0; u < ctx->search_paths.count; ++u) {
+        for (uint32_t u = 0; u < ctx->search_paths.count; ++u) {
             if (!strcmp(new_dir, ctx->search_paths.objs[u])) {
                 free(new_dir);
                 return LY_EEXIST;
@@ -136,8 +135,6 @@ ly_ctx_get_searchdirs(const struct ly_ctx *ctx)
 API LY_ERR
 ly_ctx_unset_searchdir(struct ly_ctx *ctx, const char *value)
 {
-    unsigned int index;
-
     LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
 
     if (!ctx->search_paths.count) {
@@ -146,6 +143,8 @@ ly_ctx_unset_searchdir(struct ly_ctx *ctx, const char *value)
 
     if (value) {
         /* remove specific search directory */
+        uint32_t index;
+
         for (index = 0; index < ctx->search_paths.count; ++index) {
             if (!strcmp(value, ctx->search_paths.objs[index])) {
                 break;
@@ -167,7 +166,7 @@ ly_ctx_unset_searchdir(struct ly_ctx *ctx, const char *value)
 }
 
 API LY_ERR
-ly_ctx_unset_searchdir_last(struct ly_ctx *ctx, unsigned int count)
+ly_ctx_unset_searchdir_last(struct ly_ctx *ctx, uint32_t count)
 {
     LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
 
@@ -190,7 +189,7 @@ ly_ctx_load_module(struct ly_ctx *ctx, const char *name, const char *revision)
 }
 
 API LY_ERR
-ly_ctx_new(const char *search_dir, int options, struct ly_ctx **new_ctx)
+ly_ctx_new(const char *search_dir, uint16_t options, struct ly_ctx **new_ctx)
 {
     struct ly_ctx *ctx = NULL;
     struct lys_module *module;
@@ -268,7 +267,7 @@ error:
     return rc;
 }
 
-API int
+API uint16_t
 ly_ctx_get_options(const struct ly_ctx *ctx)
 {
     LY_CHECK_ARG_RET(ctx, ctx, 0);
@@ -276,7 +275,7 @@ ly_ctx_get_options(const struct ly_ctx *ctx)
 }
 
 API LY_ERR
-ly_ctx_set_options(struct ly_ctx *ctx, int option)
+ly_ctx_set_options(struct ly_ctx *ctx, uint16_t option)
 {
     LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
     LY_CHECK_ERR_RET(option & LY_CTX_NOYANGLIBRARY, LOGARG(ctx, option), LY_EINVAL);
@@ -288,7 +287,7 @@ ly_ctx_set_options(struct ly_ctx *ctx, int option)
 }
 
 API LY_ERR
-ly_ctx_unset_options(struct ly_ctx *ctx, int option)
+ly_ctx_unset_options(struct ly_ctx *ctx, uint16_t option)
 {
     LY_CHECK_ARG_RET(ctx, ctx, LY_EINVAL);
     LY_CHECK_ERR_RET(option & LY_CTX_NOYANGLIBRARY, LOGARG(ctx, option), LY_EINVAL);
@@ -327,7 +326,7 @@ ly_ctx_get_module_imp_clb(const struct ly_ctx *ctx, void **user_data)
 }
 
 API const struct lys_module *
-ly_ctx_get_module_iter(const struct ly_ctx *ctx, unsigned int *index)
+ly_ctx_get_module_iter(const struct ly_ctx *ctx, uint32_t *index)
 {
     LY_CHECK_ARG_RET(ctx, ctx, index, NULL);
 
@@ -352,7 +351,7 @@ ly_ctx_get_module_iter(const struct ly_ctx *ctx, unsigned int *index)
  * @return Module matching the given key, NULL if no such module found.
  */
 static struct lys_module *
-ly_ctx_get_module_by_iter(const struct ly_ctx *ctx, const char *key, size_t key_size, size_t key_offset, unsigned int *index)
+ly_ctx_get_module_by_iter(const struct ly_ctx *ctx, const char *key, size_t key_size, size_t key_offset, uint32_t *index)
 {
     struct lys_module *mod;
     const char *value;
@@ -383,7 +382,7 @@ static struct lys_module *
 ly_ctx_get_module_by(const struct ly_ctx *ctx, const char *key, size_t key_offset, const char *revision)
 {
     struct lys_module *mod;
-    unsigned int index = 0;
+    uint32_t index = 0;
 
     while ((mod = ly_ctx_get_module_by_iter(ctx, key, 0, key_offset, &index))) {
         if (!revision) {
@@ -427,7 +426,7 @@ static struct lys_module *
 ly_ctx_get_module_latest_by(const struct ly_ctx *ctx, const char *key, size_t key_offset)
 {
     struct lys_module *mod;
-    unsigned int index = 0;
+    uint32_t index = 0;
 
     while ((mod = ly_ctx_get_module_by_iter(ctx, key, 0, key_offset, &index))) {
         if (mod->latest_revision) {
@@ -464,7 +463,7 @@ static struct lys_module *
 ly_ctx_get_module_implemented_by(const struct ly_ctx *ctx, const char *key, size_t key_size, size_t key_offset)
 {
     struct lys_module *mod;
-    unsigned int index = 0;
+    uint32_t index = 0;
 
     while ((mod = ly_ctx_get_module_by_iter(ctx, key, key_size, key_offset, &index))) {
         if (mod->implemented) {
@@ -533,7 +532,7 @@ ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *s
 }
 
 API const struct lysc_node *
-ly_ctx_get_node(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *data_path, int output)
+ly_ctx_get_node(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *data_path, uint8_t output)
 {
     const struct lysc_node *snode = NULL;
     struct lyxp_expr *exp = NULL;
@@ -622,7 +621,7 @@ ylib_feature(struct lyd_node *parent, const struct lys_module *cur_mod)
 }
 
 static LY_ERR
-ylib_deviation(struct lyd_node *parent, const struct lys_module *cur_mod, int bis)
+ylib_deviation(struct lyd_node *parent, const struct lys_module *cur_mod, uint8_t bis)
 {
     LY_ARRAY_COUNT_TYPE i;
     struct lys_module *mod;
@@ -647,7 +646,7 @@ ylib_deviation(struct lyd_node *parent, const struct lys_module *cur_mod, int bi
 }
 
 static LY_ERR
-ylib_submodules(struct lyd_node *parent, const struct lys_module *cur_mod, int bis)
+ylib_submodules(struct lyd_node *parent, const struct lys_module *cur_mod, uint8_t bis)
 {
     LY_ERR ret;
     LY_ARRAY_COUNT_TYPE i;
@@ -694,7 +693,8 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root_p)
 {
     LY_ERR ret;
     uint32_t i;
-    int bis = 0, r;
+    uint8_t bis = 0;
+    int r;
     char id[8], *str;
     const struct lys_module *mod;
     struct lyd_node *root = NULL, *root_bis = NULL, *cont, *set_bis = NULL;

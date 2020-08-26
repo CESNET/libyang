@@ -69,7 +69,7 @@ struct ly_set;
  * @param ELEM Iterator intended for use in the block.
  */
 #define LYSC_TREE_DFS_BEGIN(START, ELEM) \
-    { int LYSC_TREE_DFS_continue = 0; struct lysc_node *LYSC_TREE_DFS_next; \
+    { uint8_t LYSC_TREE_DFS_continue = 0; struct lysc_node *LYSC_TREE_DFS_next; \
     for ((ELEM) = (LYSC_TREE_DFS_next) = (struct lysc_node*)(START); \
          (ELEM); \
          (ELEM) = (LYSC_TREE_DFS_next), LYSC_TREE_DFS_continue = 0)
@@ -1725,8 +1725,9 @@ const struct lysc_node *lysc_node_children(const struct lysc_node *node, uint16_
  * @param[in] node Node to examine.
  * @return non-zero if it is,
  * @return 0 if not.
+ * @return 1 if the @p node is user-ordered
  */
-int lysc_is_userordered(const struct lysc_node *schema);
+uint8_t lysc_is_userordered(const struct lysc_node *schema);
 
 /**
  * @brief Set a schema private pointer to a user pointer.
@@ -1774,7 +1775,7 @@ LY_ERR lysc_feature_value(const struct lysc_feature *feature);
  * @return LY_SUCCESS on success, @p set is returned.
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lys_atomize_xpath(const struct lysc_node *ctx_node, const char *xpath, int options, struct ly_set **set);
+LY_ERR lys_atomize_xpath(const struct lysc_node *ctx_node, const char *xpath, uint32_t options, struct ly_set **set);
 
 /**
  * @brief Evaluate an \p xpath expression on schema nodes.
@@ -1787,7 +1788,7 @@ LY_ERR lys_atomize_xpath(const struct lysc_node *ctx_node, const char *xpath, in
  * @return LY_SUCCESS on success, @p set is returned.
  * @return LY_ERR value if an error occurred.
  */
-LY_ERR lys_find_xpath(const struct lysc_node *ctx_node, const char *xpath, int options, struct ly_set **set);
+LY_ERR lys_find_xpath(const struct lysc_node *ctx_node, const char *xpath, uint32_t options, struct ly_set **set);
 
 /**
  * @brief Types of the different schema paths.
@@ -1945,7 +1946,7 @@ LY_ERR lys_feature_value(const struct lys_module *module, const char *feature);
  * @return Next schema tree node that can be instantiated in a data tree, NULL in case there is no such element.
  */
 const struct lysc_node *lys_getnext(const struct lysc_node *last, const struct lysc_node *parent,
-        const struct lysc_module *module, int options);
+        const struct lysc_module *module, uint32_t options);
 
 /**
  * @defgroup sgetnextflags lys_getnext() flags
@@ -1974,7 +1975,7 @@ const struct lysc_node *lys_getnext(const struct lysc_node *last, const struct l
  * @return Found node if any.
  */
 const struct lysc_node *lys_find_child(const struct lysc_node *parent, const struct lys_module *module,
-        const char *name, size_t name_len, uint16_t nodetype, int options);
+        const char *name, size_t name_len, uint16_t nodetype, uint32_t options);
 
 /**
  * @brief Get schema node specified by the schema path.
@@ -2015,7 +2016,7 @@ LY_ERR lys_set_implemented(struct lys_module *mod);
  * @return NULL if enabled,
  * @return pointer to the node with the unsatisfied (disabled) if-feature expression.
  */
-const struct lysc_node *lysc_node_is_disabled(const struct lysc_node *node, int recursive);
+const struct lysc_node *lysc_node_is_disabled(const struct lysc_node *node, uint8_t recursive);
 
 /**
  * @brief Set a schema private pointer to a user pointer.

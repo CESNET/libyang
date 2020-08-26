@@ -30,7 +30,7 @@ void lysc_feature_free(struct ly_ctx *ctx, struct lysc_feature *feat);
 void yang_parser_ctx_free(struct lys_yang_parser_ctx *ctx);
 
 LY_ERR lys_path_token(const char **path, const char **prefix, size_t *prefix_len, const char **name, size_t *name_len,
-                      int *parent_times, int *has_predicate);
+                      int32_t *parent_times, uint8_t *has_predicate);
 
 #define BUFSIZE 1024
 char logbuf[BUFSIZE] = {0};
@@ -204,7 +204,7 @@ test_node_leaflist(void **state)
     struct lysc_node_leaflist *ll;
     struct lysc_node_leaf *l;
     const char *dflt;
-    int dynamic;
+    uint8_t dynamic;
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
 
@@ -1276,10 +1276,10 @@ test_type_bits(void **state)
     logbuf_assert("Duplicate identifier \"one\" of bit statement. Line number 1.");
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; leaf l {type bits {"
                                    "bit '11';}}}", LYS_IN_YANG, &mod));
-    logbuf_assert("Invalid identifier first character '1'. Line number 1.");
+    logbuf_assert("Invalid identifier first character '1' (0x0031). Line number 1.");
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa; leaf l {type bits {"
                                    "bit 'x1$1';}}}", LYS_IN_YANG, &mod));
-    logbuf_assert("Invalid identifier character '$'. Line number 1.");
+    logbuf_assert("Invalid identifier character '$' (0x0024). Line number 1.");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb; leaf l {type bits;}}", LYS_IN_YANG, &mod));
     logbuf_assert("Missing bit substatement for bits type. /bb:l");
@@ -1519,7 +1519,8 @@ test_type_leafref(void **state)
     struct lysc_type *type;
     const char *path, *name, *prefix;
     size_t prefix_len, name_len;
-    int parent_times, has_predicate;
+    int32_t parent_times;
+    uint8_t has_predicate;
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
 
@@ -2016,7 +2017,7 @@ test_type_dflt(void **state)
     const struct lys_module *mod;
     struct lysc_type *type;
     struct lysc_node_leaf *leaf;
-    int dynamic;
+    uint8_t dynamic;
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
 
@@ -2357,7 +2358,7 @@ test_refine(void **state)
     struct lysc_node *parent, *child;
     struct lysc_node_leaf *leaf;
     struct lysc_node_leaflist *llist;
-    int dynamic;
+    uint8_t dynamic;
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
 
@@ -2667,7 +2668,7 @@ test_deviation(void **state)
     const struct lysc_node_leaflist *llist;
     const struct lysc_node_leaf *leaf;
     const char *str;
-    int dynamic;
+    uint8_t dynamic;
 
     assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
 

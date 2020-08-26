@@ -164,7 +164,7 @@ ly_realloc(void *ptr, size_t size)
 }
 
 char *
-ly_strnchr(const char *s, int c, unsigned int len)
+ly_strnchr(const char *s, int c, size_t len)
 {
     for ( ; *s != (char)c; ++s, --len) {
         if ((*s == '\0') || (!len)) {
@@ -188,9 +188,8 @@ ly_strncmp(const char *refstr, const char *str, size_t str_len)
 LY_ERR
 ly_getutf8(const char **input, uint32_t *utf8_char, size_t *bytes_read)
 {
-    uint32_t c, len;
-    int aux;
-    int i;
+    uint32_t c, aux;
+    size_t len;
 
     if (bytes_read) {
         (*bytes_read) = 0;
@@ -224,7 +223,7 @@ ly_getutf8(const char **input, uint32_t *utf8_char, size_t *bytes_read)
         len = 3;
 
         c &= 0x0f;
-        for (i = 1; i <= 2; i++) {
+        for (uint64_t i = 1; i <= 2; i++) {
             aux = (*input)[i];
             if ((aux & 0xc0) != 0x80) {
                 return LY_EINVAL;
@@ -241,7 +240,7 @@ ly_getutf8(const char **input, uint32_t *utf8_char, size_t *bytes_read)
         len = 4;
 
         c &= 0x07;
-        for (i = 1; i <= 3; i++) {
+        for (uint64_t i = 1; i <= 3; i++) {
             aux = (*input)[i];
             if ((aux & 0xc0) != 0x80) {
                 return LY_EINVAL;
@@ -574,7 +573,7 @@ ly_parse_instance_predicate(const char **pred, size_t limit, LYD_FORMAT format,
     LY_ERR ret = LY_EVALID;
     const char *in = *pred;
     size_t offset = 1;
-    int expr = 0;
+    uint8_t expr = 0;
     char quot;
 
     assert(in[0] == '\[');

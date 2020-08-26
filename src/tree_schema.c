@@ -40,11 +40,11 @@
 #include "xpath.h"
 
 API const struct lysc_node *
-lys_getnext(const struct lysc_node *last, const struct lysc_node *parent, const struct lysc_module *module, int options)
+lys_getnext(const struct lysc_node *last, const struct lysc_node *parent, const struct lysc_module *module, uint32_t options)
 {
     const struct lysc_node *next = NULL;
     struct lysc_node **snode;
-    int action_flag = 0, notif_flag = 0;
+    uint8_t action_flag = 0, notif_flag = 0;
     const struct lysc_action *actions;
     const struct lysc_notif *notifs;
     LY_ARRAY_COUNT_TYPE u;
@@ -196,7 +196,6 @@ lys_find_node(struct ly_ctx *ctx, const struct lysc_node *context_node, const ch
     const char *id = qpath;
     const char *prefix, *name;
     size_t prefix_len, name_len;
-    unsigned int u;
     const struct lysc_node *node = context_node;
     struct lys_module *mod = NULL;
 
@@ -224,7 +223,7 @@ lys_find_node(struct ly_ctx *ctx, const struct lysc_node *context_node, const ch
             if (context_node) {
                 mod = lys_module_find_prefix(context_node->module, prefix, prefix_len);
             } else {
-                for (u = 0; u < ctx->list.count; ++u) {
+                for (uint32_t u = 0; u < ctx->list.count; ++u) {
                     if (!ly_strncmp(((struct lys_module *)ctx->list.objs[u])->name, prefix, prefix_len)) {
                         struct lys_module *m = (struct lys_module *)ctx->list.objs[u];
                         if (mod) {
@@ -259,7 +258,7 @@ lys_find_node(struct ly_ctx *ctx, const struct lysc_node *context_node, const ch
 
 API const struct lysc_node *
 lys_find_child(const struct lysc_node *parent, const struct lys_module *module, const char *name, size_t name_len,
-        uint16_t nodetype, int options)
+        uint16_t nodetype, uint32_t options)
 {
     const struct lysc_node *node = NULL;
 
@@ -290,7 +289,7 @@ lys_find_child(const struct lysc_node *parent, const struct lys_module *module, 
 }
 
 API LY_ERR
-lys_atomize_xpath(const struct lysc_node *ctx_node, const char *xpath, int options, struct ly_set **set)
+lys_atomize_xpath(const struct lysc_node *ctx_node, const char *xpath, uint32_t options, struct ly_set **set)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyxp_set xp_set;
@@ -334,7 +333,7 @@ cleanup:
 }
 
 API LY_ERR
-lys_find_xpath(const struct lysc_node *ctx_node, const char *xpath, int options, struct ly_set **set)
+lys_find_xpath(const struct lysc_node *ctx_node, const char *xpath, uint32_t options, struct ly_set **set)
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyxp_set xp_set;
@@ -467,12 +466,10 @@ lysc_feature_value(const struct lysc_feature *feature)
 }
 
 uint8_t
-lysc_iff_getop(uint8_t *list, int pos)
+lysc_iff_getop(uint8_t *list, size_t pos)
 {
     uint8_t *item;
     uint8_t mask = 3, result;
-
-    assert(pos >= 0);
 
     item = &list[pos / 4];
     result = (*item) & (mask << 2 * (pos % 4));
@@ -480,7 +477,7 @@ lysc_iff_getop(uint8_t *list, int pos)
 }
 
 static LY_ERR
-lysc_iffeature_value_(const struct lysc_iffeature *iff, int *index_e, int *index_f)
+lysc_iffeature_value_(const struct lysc_iffeature *iff, size_t *index_e, size_t *index_f)
 {
     uint8_t op;
     LY_ERR a, b;
@@ -520,7 +517,7 @@ lysc_iffeature_value_(const struct lysc_iffeature *iff, int *index_e, int *index
 API LY_ERR
 lysc_iffeature_value(const struct lysc_iffeature *iff)
 {
-    int index_e = 0, index_f = 0;
+    size_t index_e = 0, index_f = 0;
 
     LY_CHECK_ARG_RET(NULL, iff, -1);
 
@@ -545,9 +542,9 @@ lysc_iffeature_value(const struct lysc_iffeature *iff)
  * @return LY_ERR value.
  */
 static LY_ERR
-lys_feature_change(const struct lys_module *mod, const char *name, int value, int skip_checks)
+lys_feature_change(const struct lys_module *mod, const char *name, uint8_t value, uint8_t skip_checks)
 {
-    int all = 0;
+    uint8_t all = 0;
     LY_ARRAY_COUNT_TYPE u, disabled_count;
     uint32_t changed_count;
     struct lysc_feature *f, **df;
@@ -764,7 +761,7 @@ lys_feature_value(const struct lys_module *module, const char *feature)
 }
 
 API const struct lysc_node *
-lysc_node_is_disabled(const struct lysc_node *node, int recursive)
+lysc_node_is_disabled(const struct lysc_node *node, uint8_t recursive)
 {
     LY_ARRAY_COUNT_TYPE u;
 
@@ -962,10 +959,9 @@ error:
 }
 
 LY_ERR
-lys_parse_mem_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, int implement,
-        LY_ERR (*custom_check)(const struct ly_ctx *ctx, struct lysp_module *mod,
-                                            struct lysp_submodule *submod, void *data), void *check_data,
-        struct lys_module **module)
+lys_parse_mem_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, uint8_t implement,
+        LY_ERR (*custom_check)(const struct ly_ctx *ctx, struct lysp_module *mod, struct lysp_submodule *submod, void *data),
+        void *check_data, struct lys_module **module)
 {
     struct lys_module *mod = NULL, *latest, *mod_dup;
     LY_ERR ret;
@@ -1230,11 +1226,12 @@ lys_parse_path(struct ly_ctx *ctx, const char *path, LYS_INFORMAT format, const 
 }
 
 API LY_ERR
-lys_search_localfile(const char * const *searchpaths, int cwd, const char *name, const char *revision,
+lys_search_localfile(const char * const *searchpaths, uint8_t cwd, const char *name, const char *revision,
         char **localfile, LYS_INFORMAT *format)
 {
+    LY_ERR ret = LY_EMEM;
     size_t len, flen, match_len = 0, dir_len;
-    int i, implicit_cwd = 0, ret = EXIT_FAILURE;
+    uint8_t implicit_cwd = 0;
     char *wd, *wn = NULL;
     DIR *dir = NULL;
     struct dirent *file;
@@ -1249,8 +1246,7 @@ lys_search_localfile(const char * const *searchpaths, int cwd, const char *name,
      * and the current working directory */
     dirs = ly_set_new();
     if (!dirs) {
-        LOGMEM(NULL);
-        return EXIT_FAILURE;
+        LOGMEM_RET(NULL);
     }
 
     len = strlen(name);
@@ -1269,7 +1265,7 @@ lys_search_localfile(const char * const *searchpaths, int cwd, const char *name,
         }
     }
     if (searchpaths) {
-        for (i = 0; searchpaths[i]; i++) {
+        for (uint64_t i = 0; searchpaths[i]; i++) {
             /* check for duplicities with the implicit current working directory */
             if (implicit_cwd && !strcmp(dirs->objs[0], searchpaths[i])) {
                 implicit_cwd = 0;
@@ -1407,7 +1403,7 @@ success:
     if (format) {
         (*format) = match_format;
     }
-    ret = EXIT_SUCCESS;
+    ret = LY_SUCCESS;
 
 cleanup:
     free(wn);

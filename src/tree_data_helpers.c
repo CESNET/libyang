@@ -83,7 +83,7 @@ lyd_node_children_p(struct lyd_node *node)
 }
 
 API struct lyd_node *
-lyd_node_children(const struct lyd_node *node, int options)
+lyd_node_children(const struct lyd_node *node, uint32_t options)
 {
     struct lyd_node **children, *child;
 
@@ -199,7 +199,7 @@ lyd_parse_check_keys(struct lyd_node *node)
 }
 
 void
-lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *when_check, struct lyd_meta **meta, int options)
+lyd_parse_set_data_flags(struct lyd_node *node, struct ly_set *when_check, struct lyd_meta **meta, uint32_t options)
 {
     struct lyd_meta *meta2, *prev_meta = NULL;
 
@@ -242,7 +242,6 @@ API LY_ERR
 lyd_any_copy_value(struct lyd_node *trg, const union lyd_any_value *value, LYD_ANYDATA_VALUETYPE value_type)
 {
     struct lyd_node_any *t;
-    int len;
 
     assert(trg->schema->nodetype & LYS_ANYDATA);
 
@@ -286,7 +285,7 @@ lyd_any_copy_value(struct lyd_node *trg, const union lyd_any_value *value, LYD_A
         break;
     case LYD_ANYDATA_LYB:
         if (value->mem) {
-            len = lyd_lyb_data_length(value->mem);
+            int len = lyd_lyb_data_length(value->mem);
             LY_CHECK_RET(len == -1, LY_EINVAL);
             t->value.mem = malloc(len);
             LY_CHECK_ERR_RET(!t->value.mem, LOGMEM(LYD_CTX(trg)), LY_EMEM);
@@ -302,7 +301,6 @@ LYB_HASH
 lyb_hash(struct lysc_node *sibling, uint8_t collision_id)
 {
     const struct lys_module *mod;
-    int ext_len;
     uint32_t full_hash;
     LYB_HASH hash;
 
@@ -315,6 +313,8 @@ lyb_hash(struct lysc_node *sibling, uint8_t collision_id)
     full_hash = dict_hash_multi(0, mod->name, strlen(mod->name));
     full_hash = dict_hash_multi(full_hash, sibling->name, strlen(sibling->name));
     if (collision_id) {
+        size_t ext_len;
+
         if (collision_id > strlen(mod->name)) {
             /* fine, we will not hash more bytes, just use more bits from the hash than previously */
             ext_len = strlen(mod->name);
@@ -339,7 +339,7 @@ lyb_hash(struct lysc_node *sibling, uint8_t collision_id)
     return hash;
 }
 
-int
+uint8_t
 lyb_has_schema_model(const struct lysc_node *sibling, const struct lys_module **models)
 {
     LY_ARRAY_COUNT_TYPE u;

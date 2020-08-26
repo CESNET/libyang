@@ -92,11 +92,11 @@ struct lyxml_ctx {
     };
     union {
         const char *name;   /* LYXML_ELEMENT, LYXML_ATTRIBUTE - elem/attr name */
-        int ws_only;        /* LYXML_ELEM_CONTENT, LYXML_ATTR_CONTENT - whether elem/attr value is empty/white-space only */
+        uint8_t ws_only;    /* LYXML_ELEM_CONTENT, LYXML_ATTR_CONTENT - whether elem/attr value is empty/white-space only */
     };
     union {
         size_t name_len;    /* LYXML_ELEMENT, LYXML_ATTRIBUTE - elem/attr name length */
-        int dynamic;        /* LYXML_ELEM_CONTENT, LYXML_ATTR_CONTENT - whether elem/attr value is dynamically allocated */
+        uint8_t dynamic;    /* LYXML_ELEM_CONTENT, LYXML_ATTR_CONTENT - whether elem/attr value is dynamically allocated */
     };
 
     struct ly_set elements; /* list of not-yet-closed elements */
@@ -153,7 +153,7 @@ const struct lyxml_ns *lyxml_ns_get(const struct ly_set *ns_set, const char *pre
  * @param[in] attribute Flag for attribute's value where a double quotes must be replaced.
  * @return LY_ERR values.
  */
-LY_ERR lyxml_dump_text(struct ly_out *out, const char *text, int attribute);
+LY_ERR lyxml_dump_text(struct ly_out *out, const char *text, uint8_t attribute);
 
 /**
  * @brief Remove the allocated working memory of the context.

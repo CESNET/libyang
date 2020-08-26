@@ -41,7 +41,7 @@ extern "C" {
  * @brief Macro to store version of extension plugins API in the plugins.
  * It is matched when the plugin is being loaded by libyang.
  */
-#define LYEXT_VERSION_CHECK int lyext_api_version = LYEXT_API_VERSION;
+#define LYEXT_VERSION_CHECK uint32_t lyext_api_version = LYEXT_API_VERSION;
 
 /**
  * @defgroup extensionscompile YANG Extensions - Compilation Helpers

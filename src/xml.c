@@ -38,16 +38,16 @@
 /* Ignore whitespaces in the input string p */
 #define ign_xmlws(c) while (is_xmlws(*(c)->in->current)) {if (*(c)->in->current == '\n') {++c->line;} ly_in_skip(c->in, 1);}
 
-static LY_ERR lyxml_next_attr_content(struct lyxml_ctx *xmlctx, const char **value, size_t *value_len, int *ws_only,
-        int *dynamic);
+static LY_ERR lyxml_next_attr_content(struct lyxml_ctx *xmlctx, const char **value, size_t *value_len, uint8_t *ws_only,
+        uint8_t *dynamic);
 
 /**
  * @brief Ignore any characters until the delim of the size delim_len is read
  *
  * Detects number of read new lines.
- * Returns 0 if delim was found, non-zero if was not.
+ * Returns 0 if delim was found, 1 if was not.
  */
-static int
+static uint8_t
 ign_todelim(register const char *input, const char *delim, size_t delim_len, size_t *newlines, size_t *parsed)
 {
     size_t i;
@@ -76,7 +76,7 @@ ign_todelim(register const char *input, const char *delim, size_t delim_len, siz
     }
 
     /* delim not found */
-    return -1;
+    return 1;
 }
 
 /**
@@ -176,9 +176,7 @@ lyxml_ns_add(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_len, ch
 void
 lyxml_ns_rm(struct lyxml_ctx *xmlctx)
 {
-    unsigned int u;
-
-    for (u = xmlctx->ns.count - 1; u + 1 > 0; --u) {
+    for (uint32_t u = xmlctx->ns.count - 1; u + 1 > 0; --u) {
         if (((struct lyxml_ns *)xmlctx->ns.objs[u])->depth != xmlctx->elements.count + 1) {
             /* we are done, the namespaces from a single element are supposed to be together */
             break;
@@ -199,10 +197,9 @@ lyxml_ns_rm(struct lyxml_ctx *xmlctx)
 const struct lyxml_ns *
 lyxml_ns_get(const struct ly_set *ns_set, const char *prefix, size_t prefix_len)
 {
-    unsigned int u;
     struct lyxml_ns *ns;
 
-    for (u = ns_set->count - 1; u + 1 > 0; --u) {
+    for (uint32_t u = ns_set->count - 1; u + 1 > 0; --u) {
         ns = (struct lyxml_ns *)ns_set->objs[u];
         if (prefix && prefix_len) {
             if (ns->prefix && !ly_strncmp(ns->prefix, prefix, prefix_len)) {
@@ -230,7 +227,7 @@ lyxml_skip_until_end_or_after_otag(struct lyxml_ctx *xmlctx)
     const struct ly_ctx *ctx = xmlctx->ctx; /* shortcut */
     const char *endtag, *sectname;
     size_t endtag_len, newlines, parsed;
-    int rc;
+    uint8_t rc;
 
     while (1) {
         ign_xmlws(xmlctx);
@@ -336,7 +333,7 @@ lyxml_parse_qname(struct lyxml_ctx *xmlctx, const char **prefix, size_t *prefix_
  * @return LY_ERR value.
  */
 static LY_ERR
-lyxml_parse_value(struct lyxml_ctx *xmlctx, char endchar, char **value, size_t *length, int *ws_only, int *dynamic)
+lyxml_parse_value(struct lyxml_ctx *xmlctx, char endchar, char **value, size_t *length, uint8_t *ws_only, uint8_t *dynamic)
 {
 #define BUFSIZE 24
 #define BUFSIZE_STEP 128
@@ -350,7 +347,7 @@ lyxml_parse_value(struct lyxml_ctx *xmlctx, char endchar, char **value, size_t *
     void *p;
     uint32_t n;
     size_t u;
-    int ws = 1;
+    uint8_t ws = 1;
 
     assert(xmlctx);
 
@@ -519,7 +516,7 @@ success:
  */
 static LY_ERR
 lyxml_close_element(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_len, const char *name, size_t name_len,
-        int empty)
+        uint8_t empty)
 {
     struct lyxml_elem *e;
 
@@ -585,7 +582,7 @@ lyxml_open_element(struct lyxml_ctx *xmlctx, const char *prefix, size_t prefix_l
     const char *prev_input;
     char *value;
     size_t parsed, value_len;
-    int ws_only, dynamic, is_ns;
+    uint8_t ws_only, dynamic, is_ns;
     uint32_t c;
 
     /* store element opening tag information */
@@ -652,7 +649,7 @@ cleanup:
  * @return LY_ERR value.
  */
 static LY_ERR
-lyxml_next_attr_content(struct lyxml_ctx *xmlctx, const char **value, size_t *value_len, int *ws_only, int *dynamic)
+lyxml_next_attr_content(struct lyxml_ctx *xmlctx, const char **value, size_t *value_len, uint8_t *ws_only, uint8_t *dynamic)
 {
     char quot;
 
@@ -713,7 +710,7 @@ lyxml_next_attribute(struct lyxml_ctx *xmlctx, const char **prefix, size_t *pref
     char *value;
     uint32_t c;
     size_t parsed, value_len;
-    int ws_only, dynamic;
+    uint8_t ws_only, dynamic;
 
     /* skip WS */
     ign_xmlws(xmlctx);
@@ -759,11 +756,12 @@ lyxml_next_attribute(struct lyxml_ctx *xmlctx, const char **prefix, size_t *pref
  * @param[out] prefix_len Length of @p prefix.
  * @param[out] name Parse element name.
  * @param[out] name_len Length of @p name.
+ * @param[out] closing Flag if the element is closing (includes '/').
  * @return LY_ERR value.
  */
 static LY_ERR
 lyxml_next_element(struct lyxml_ctx *xmlctx, const char **prefix, size_t *prefix_len, const char **name, size_t *name_len,
-        int *closing)
+        uint8_t *closing)
 {
     /* skip WS until EOF or after opening tag '<' */
     LY_CHECK_RET(lyxml_skip_until_end_or_after_otag(xmlctx));
@@ -795,7 +793,7 @@ lyxml_ctx_new(const struct ly_ctx *ctx, struct ly_in *in, struct lyxml_ctx **xml
 {
     LY_ERR ret = LY_SUCCESS;
     struct lyxml_ctx *xmlctx;
-    int closing;
+    uint8_t closing;
 
     /* new context */
     xmlctx = calloc(1, sizeof *xmlctx);
@@ -837,7 +835,7 @@ LY_ERR
 lyxml_ctx_next(struct lyxml_ctx *xmlctx)
 {
     LY_ERR ret = LY_SUCCESS;
-    int closing;
+    uint8_t closing;
     struct lyxml_elem *e;
 
     /* if the value was not used, free it */
@@ -967,7 +965,7 @@ lyxml_ctx_peek(struct lyxml_ctx *xmlctx, enum LYXML_PARSER_STATUS *next)
     LY_ERR ret = LY_SUCCESS;
     const char *prefix, *name, *prev_input;
     size_t prefix_len, name_len;
-    int closing;
+    uint8_t closing;
 
     prev_input = xmlctx->in->current;
 
@@ -1040,16 +1038,15 @@ lyxml_ctx_free(struct lyxml_ctx *xmlctx)
 }
 
 LY_ERR
-lyxml_dump_text(struct ly_out *out, const char *text, int attribute)
+lyxml_dump_text(struct ly_out *out, const char *text, uint8_t attribute)
 {
     LY_ERR ret;
-    unsigned int u;
 
     if (!text) {
         return 0;
     }
 
-    for (u = 0; text[u]; u++) {
+    for (uint64_t u = 0; text[u]; u++) {
         switch (text[u]) {
         case '&':
             ret = ly_print_(out, "&amp;");
@@ -1138,7 +1135,6 @@ lyxml_value_compare(const char *value1, const struct ly_prefix *prefs1, const ch
 {
     const char *ptr1, *ptr2, *ns1, *ns2;
     LY_ARRAY_COUNT_TYPE u1, u2;
-    int len;
 
     if (!value1 && !value2) {
         return LY_SUCCESS;
@@ -1152,6 +1148,7 @@ lyxml_value_compare(const char *value1, const struct ly_prefix *prefs1, const ch
     while (ptr1[0] && ptr2[0]) {
         if (ptr1[0] != ptr2[0]) {
             /* it can be a start of prefix that maps to the same module */
+            size_t len;
             ns1 = ns2 = NULL;
             u1 = u2 = 0;
             if (prefs1) {

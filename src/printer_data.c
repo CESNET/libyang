@@ -25,7 +25,7 @@
 #include "tree_schema.h"
 
 static LY_ERR
-lyd_print_(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, int options)
+lyd_print_(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, uint32_t options)
 {
     LY_ERR ret = LY_SUCCESS;
 
@@ -49,7 +49,7 @@ lyd_print_(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, i
 }
 
 API LY_ERR
-lyd_print_all(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, int options)
+lyd_print_all(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, uint32_t options)
 {
     LY_CHECK_ARG_RET(NULL, out, !(options & LYD_PRINT_WITHSIBLINGS), LY_EINVAL);
 
@@ -71,7 +71,7 @@ lyd_print_all(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format
 }
 
 API LY_ERR
-lyd_print_tree(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, int options)
+lyd_print_tree(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format, uint32_t options)
 {
     LY_CHECK_ARG_RET(NULL, out, !(options & LYD_PRINT_WITHSIBLINGS), LY_EINVAL);
 
@@ -85,7 +85,7 @@ lyd_print_tree(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT forma
 }
 
 API LY_ERR
-lyd_print_mem(char **strp, const struct lyd_node *root, LYD_FORMAT format, int options)
+lyd_print_mem(char **strp, const struct lyd_node *root, LYD_FORMAT format, uint32_t options)
 {
     LY_ERR ret;
     struct ly_out *out;
@@ -102,7 +102,7 @@ lyd_print_mem(char **strp, const struct lyd_node *root, LYD_FORMAT format, int o
 }
 
 API LY_ERR
-lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format, int options)
+lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format, uint32_t options)
 {
     LY_ERR ret;
     struct ly_out *out;
@@ -116,7 +116,7 @@ lyd_print_fd(int fd, const struct lyd_node *root, LYD_FORMAT format, int options
 }
 
 API LY_ERR
-lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format, int options)
+lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format, uint32_t options)
 {
     LY_ERR ret;
     struct ly_out *out;
@@ -130,7 +130,7 @@ lyd_print_file(FILE *f, const struct lyd_node *root, LYD_FORMAT format, int opti
 }
 
 API LY_ERR
-lyd_print_path(const char *path, const struct lyd_node *root, LYD_FORMAT format, int options)
+lyd_print_path(const char *path, const struct lyd_node *root, LYD_FORMAT format, uint32_t options)
 {
     LY_ERR ret;
     struct ly_out *out;
@@ -144,7 +144,7 @@ lyd_print_path(const char *path, const struct lyd_node *root, LYD_FORMAT format,
 }
 
 API LY_ERR
-lyd_print_clb(ly_write_clb writeclb, void *user_data, const struct lyd_node *root, LYD_FORMAT format, int options)
+lyd_print_clb(ly_write_clb writeclb, void *user_data, const struct lyd_node *root, LYD_FORMAT format, uint32_t options)
 {
     LY_ERR ret;
     struct ly_out *out;

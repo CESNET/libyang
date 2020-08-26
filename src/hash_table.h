@@ -47,7 +47,7 @@ uint32_t dict_hash(const char *key, size_t len);
  * @param[in] cb_data User callback data.
  * @return 0 on non-equal, non-zero on equal.
  */
-typedef int (*values_equal_cb)(void *val1_p, void *val2_p, int mod, void *cb_data);
+typedef uint8_t (*values_equal_cb)(void *val1_p, void *val2_p, uint8_t mod, void *cb_data);
 
 /** when the table is at least this much percent full, it is enlarged (double the size) */
 #define LYHT_ENLARGE_PERCENTAGE 75
@@ -128,7 +128,7 @@ void lydict_clean(struct dict_table *dict);
  * @param[in] resize Whether to resize the table on too few/too many records taken.
  * @return Empty hash table, NULL on error.
  */
-struct hash_table *lyht_new(uint32_t size, uint16_t val_size, values_equal_cb val_equal, void *cb_data, int resize);
+struct hash_table *lyht_new(uint32_t size, uint16_t val_size, values_equal_cb val_equal, void *cb_data, uint16_t resize);
 
 /**
  * @brief Set hash table value equal callback.

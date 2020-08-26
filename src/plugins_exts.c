@@ -37,9 +37,7 @@ struct lyext_plugins_list lyext_plugins_internal[6] = {
 struct lyext_plugin *
 lyext_get_plugin(struct lysc_ext *ext)
 {
-    unsigned int u;
-
-    for (u = 0; lyext_plugins_internal[u].module; ++u) {
+    for (uint8_t u = 0; lyext_plugins_internal[u].module; ++u) {
         if (!strcmp(ext->name, lyext_plugins_internal[u].name) &&
                 !strcmp(ext->module->name, lyext_plugins_internal[u].module) &&
                 (!lyext_plugins_internal[u].revision || !strcmp(ext->module->revision, lyext_plugins_internal[u].revision))) {

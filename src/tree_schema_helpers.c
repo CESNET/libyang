@@ -36,7 +36,7 @@
 
 LY_ERR
 lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodeid_len, const struct lysc_node *context_node,
-        const struct lys_module *context_module, int nodetype, int implement,
+        const struct lys_module *context_module, uint16_t nodetype, uint8_t implement,
         const struct lysc_node **target, uint16_t *result_flag)
 {
     LY_ERR ret = LY_EVALID;
@@ -44,8 +44,8 @@ lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t node
     size_t name_len, prefix_len;
     const struct lys_module *mod;
     const char *nodeid_type;
-    int getnext_extra_flag = 0;
-    int current_nodetype = 0;
+    uint32_t getnext_extra_flag = 0;
+    uint16_t current_nodetype = 0;
 
     assert(nodeid);
     assert(target);
@@ -193,9 +193,8 @@ lysc_check_status(struct lysc_ctx *ctx,
 }
 
 LY_ERR
-lysp_check_date(struct lys_parser_ctx *ctx, const char *date, int date_len, const char *stmt)
+lysp_check_date(struct lys_parser_ctx *ctx, const char *date, uint8_t date_len, const char *stmt)
 {
-    int i;
     struct tm tm, tm_;
     char *r;
 
@@ -203,7 +202,7 @@ lysp_check_date(struct lys_parser_ctx *ctx, const char *date, int date_len, cons
     LY_CHECK_ERR_RET(date_len != LY_REV_SIZE - 1, LOGARG(ctx ? PARSER_CTX(ctx) : NULL, date_len), LY_EINVAL);
 
     /* check format */
-    for (i = 0; i < date_len; i++) {
+    for (uint8_t i = 0; i < date_len; i++) {
         if (i == 4 || i == 7) {
             if (date[i] != '-') {
                 goto error;
@@ -524,10 +523,10 @@ lysp_check_typedef(struct lys_parser_ctx *ctx, struct lysp_node *node, const str
     return LY_SUCCESS;
 }
 
-static int
-lysp_id_cmp(void *val1, void *val2, int UNUSED(mod), void *UNUSED(cb_data))
+static uint8_t
+lysp_id_cmp(void *val1, void *val2, uint8_t UNUSED(mod), void *UNUSED(cb_data))
 {
-    return !strcmp(val1, val2);
+    return strcmp(val1, val2) == 0 ? 1 : 0;
 }
 
 LY_ERR
@@ -745,8 +744,8 @@ lysp_load_module_check(const struct ly_ctx *ctx, struct lysp_module *mod, struct
 }
 
 LY_ERR
-lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, int implement,
-        struct lys_parser_ctx *main_ctx, const char *main_name, int required, void **result)
+lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, uint8_t implement,
+        struct lys_parser_ctx *main_ctx, const char *main_name, uint8_t required, void **result)
 {
     struct ly_in *in;
     char *filepath = NULL;
@@ -804,7 +803,7 @@ cleanup:
 }
 
 LY_ERR
-lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, int implement, int require_parsed,
+lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, uint8_t implement, uint8_t require_parsed,
         struct lys_module **mod)
 {
     const char *module_data = NULL;
@@ -930,7 +929,7 @@ search_file:
 }
 
 LY_ERR
-lysp_check_stringchar(struct lys_parser_ctx *ctx, unsigned int c)
+lysp_check_stringchar(struct lys_parser_ctx *ctx, uint32_t c)
 {
     if (!is_yangutf8char(c)) {
         LOGVAL_PARSER(ctx, LY_VCODE_INCHAR, c);
@@ -940,11 +939,11 @@ lysp_check_stringchar(struct lys_parser_ctx *ctx, unsigned int c)
 }
 
 LY_ERR
-lysp_check_identifierchar(struct lys_parser_ctx *ctx, unsigned int c, int first, int *prefix)
+lysp_check_identifierchar(struct lys_parser_ctx *ctx, uint32_t c, uint8_t first, uint8_t *prefix)
 {
     if (first || (prefix && (*prefix) == 1)) {
         if (!is_yangidentstartchar(c)) {
-            LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid identifier first character '%c'.", c);
+            LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid identifier first character '%c' (0x%04x).", (char)c, c);
             return LY_EVALID;
         }
         if (prefix) {
@@ -957,7 +956,7 @@ lysp_check_identifierchar(struct lys_parser_ctx *ctx, unsigned int c, int first,
     } else if (c == ':' && prefix && (*prefix) == 0) {
         (*prefix) = 1;
     } else if (!is_yangidentchar(c)) {
-        LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid identifier character '%c'.", c);
+        LOGVAL_PARSER(ctx, LYVE_SYNTAX_YANG, "Invalid identifier character '%c' (0x%04x).", (char)c, c);
         return LY_EVALID;
     }
 
@@ -1403,9 +1402,7 @@ lysc_node_children(const struct lysc_node *node, uint16_t flags)
 struct lys_module *
 lysp_find_module(struct ly_ctx *ctx, const struct lysp_module *mod)
 {
-    unsigned int u;
-
-    for (u = 0; u < ctx->list.count; ++u) {
+    for (uint32_t u = 0; u < ctx->list.count; ++u) {
         if (((struct lys_module *)ctx->list.objs[u])->parsed == mod) {
             return ((struct lys_module *)ctx->list.objs[u]);
         }
@@ -1651,7 +1648,7 @@ lysc_data_parent(const struct lysc_node *schema)
     return parent;
 }
 
-int
+uint8_t
 lysc_is_output(const struct lysc_node *schema)
 {
     const struct lysc_node *parent;
@@ -1665,7 +1662,7 @@ lysc_is_output(const struct lysc_node *schema)
     return 0;
 }
 
-API int
+API uint8_t
 lysc_is_userordered(const struct lysc_node *schema)
 {
     if (!schema || !(schema->nodetype & (LYS_LEAFLIST | LYS_LIST)) || !(schema->flags & LYS_ORDBY_USER)) {
