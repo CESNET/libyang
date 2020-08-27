@@ -63,9 +63,12 @@ struct ly_set
 /**
  * @brief Create and initiate new ::ly_set structure.
  *
- * @return Created ::ly_set structure or NULL in case of error.
+ * @param[out] set Pointer to store the created ::ly_set structure.
+ * @return LY_SUCCESS on success.
+ * @return LY_EINVAL in case of NULL @p set parameter.
+ * @return LY_EMEM in case of memory allocation failure.
  */
-struct ly_set *ly_set_new(void);
+LY_ERR ly_set_new(struct ly_set **set_p);
 
 /**
  * @brief Duplicate the existing set.
@@ -76,22 +79,23 @@ struct ly_set *ly_set_new(void);
  * the original set.
  * @return Duplication of the original set.
  */
-struct ly_set *ly_set_dup(const struct ly_set *set, void *(*duplicator)(void *obj));
+LY_ERR ly_set_dup(const struct ly_set *set, void *(*duplicator)(void *obj), struct ly_set **newset_p);
 
 /**
  * @brief Add an object into the set
- *
- * Since it is a set, the function checks for duplicity and if the
- * node is already in the set, the index of the previously added
- * node is returned.
  *
  * @param[in] set Set where the \p object will be added.
  * @param[in] object Object to be added into the \p set;
  * @param[in] options Options to change behavior of the function. Accepted options are:
  * - #LY_SET_OPT_USEASLIST - do not check for duplicities
- * @return -1 on failure, index of the \p node in the set on success
+ * @param[out] index_p Optional pointer to return index of the added @p object. Usually it is the last index (::ly_set::count - 1),
+ * but in case the duplicities are checked and the object is already in the set, the @p object is not added and index of the
+ * already present object is returned.
+ * @return LY_SUCCESS in case of success
+ * @return LY_EINVAL in case of invalid input parameters.
+ * @return LY_EMEM in case of memory allocation failure.
  */
-int ly_set_add(struct ly_set *set, void *object, uint32_t options);
+LY_ERR ly_set_add(struct ly_set *set, void *object, uint32_t options, uint32_t *index_p);
 
 /**
  * @brief Add all objects from \p src to \p trg.
@@ -105,18 +109,21 @@ int ly_set_add(struct ly_set *set, void *object, uint32_t options);
  * @param[in] duplicator Optional pointer to function that duplicates the objects being added
  * from \p src into \p trg set. If not provided, the \p trg set will point to the exact same
  * objects as the \p src set.
- * @return -1 on failure, number of objects added into \p trg on success.
+ * @return LY_SUCCESS in case of success
+ * @return LY_EINVAL in case of invalid input parameters.
+ * @return LY_EMEM in case of memory allocation failure.
  */
-int ly_set_merge(struct ly_set *trg, struct ly_set *src, uint32_t options, void *(*duplicator)(void *obj));
+LY_ERR ly_set_merge(struct ly_set *trg, struct ly_set *src, uint32_t options, void *(*duplicator)(void *obj));
 
 /**
  * @brief Learn whether the set contains the specified object.
  *
  * @param[in] set Set to explore.
  * @param[in] object Object to be found in the set.
- * @return Index of the object in the set or -1 if the object is not present in the set.
+ * @param[out] index_p Optional pointer to return index of the searched @p object.
+ * @return Boolean value (0 is false) if the @p object was found in the @p set.
  */
-int ly_set_contains(const struct ly_set *set, void *object);
+uint8_t ly_set_contains(const struct ly_set *set, void *object, uint32_t *index_p);
 
 /**
  * @brief Remove all objects from the set, but keep the set container for further use.

@@ -96,7 +96,7 @@ json_print_array_open(struct jsonpr_ctx *ctx, const struct lyd_node *node)
 {
     /* leaf-list's content is always printed on a single line */
     ly_print_(ctx->out, "[%s", (!node->schema || node->schema->nodetype != LYS_LEAFLIST) && DO_FORMAT ? "\n" : "");
-    ly_set_add(&ctx->open, (void *)node, 0);
+    ly_set_add(&ctx->open, (void *)node, 0, NULL);
     LEVEL_INC;
 }
 

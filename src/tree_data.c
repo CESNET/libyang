@@ -1434,7 +1434,7 @@ lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struc
                 if (ret == LY_EINCOMPLETE) {
                     if (node_types) {
                         /* remember to resolve type */
-                        ly_set_add(node_types, node, LY_SET_OPT_USEASLIST);
+                        LY_CHECK_RET(ly_set_add(node_types, node, LY_SET_OPT_USEASLIST, NULL));
                     }
                 } else if (ret) {
                     return ret;
@@ -1444,7 +1444,7 @@ lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struc
 
                 if (iter->when && node_when) {
                     /* remember to resolve when */
-                    ly_set_add(node_when, node, LY_SET_OPT_USEASLIST);
+                    LY_CHECK_RET(ly_set_add(node_when, node, LY_SET_OPT_USEASLIST, NULL));
                 }
                 if (diff) {
                     /* add into diff */
@@ -1462,7 +1462,7 @@ lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struc
                     if (ret == LY_EINCOMPLETE) {
                         if (node_types) {
                             /* remember to resolve type */
-                            ly_set_add(node_types, node, LY_SET_OPT_USEASLIST);
+                            LY_CHECK_RET(ly_set_add(node_types, node, LY_SET_OPT_USEASLIST, NULL));
                         }
                     } else if (ret) {
                         return ret;
@@ -1472,7 +1472,7 @@ lyd_new_implicit_r(struct lyd_node *parent, struct lyd_node **first, const struc
 
                     if (iter->when && node_when) {
                         /* remember to resolve when */
-                        ly_set_add(node_when, node, LY_SET_OPT_USEASLIST);
+                        LY_CHECK_RET(ly_set_add(node_when, node, LY_SET_OPT_USEASLIST, NULL));
                     }
                     if (diff) {
                         /* add into diff */
@@ -3335,8 +3335,8 @@ lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct ly_set
     LY_CHECK_GOTO(ret, cleanup);
 
     /* allocate return set */
-    *set = ly_set_new();
-    LY_CHECK_ERR_GOTO(!*set, LOGMEM(LYD_CTX(ctx_node)); ret = LY_EMEM, cleanup);
+    ret = ly_set_new(set);
+    LY_CHECK_GOTO(ret, cleanup);
 
     /* transform into ly_set */
     if (xp_set.type == LYXP_SET_NODE_SET) {
@@ -3347,7 +3347,8 @@ lyd_find_xpath(const struct lyd_node *ctx_node, const char *xpath, struct ly_set
 
         for (i = 0; i < xp_set.used; ++i) {
             if (xp_set.val.nodes[i].type == LYXP_NODE_ELEM) {
-                ly_set_add(*set, xp_set.val.nodes[i].node, LY_SET_OPT_USEASLIST);
+                ret = ly_set_add(*set, xp_set.val.nodes[i].node, LY_SET_OPT_USEASLIST, NULL);
+                LY_CHECK_GOTO(ret, cleanup);
             }
         }
     }

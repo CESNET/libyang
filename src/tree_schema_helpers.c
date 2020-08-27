@@ -553,7 +553,7 @@ lysp_parse_finalize_reallocated(struct lys_parser_ctx *ctx, struct lysp_grp *gro
             groupings[u].groupings[v].parent = (struct lysp_node *)&groupings[u];
         }
         if (groupings[u].typedefs) {
-            ly_set_add(&ctx->tpdfs_nodes, &groupings[u], 0);
+            LY_CHECK_RET(ly_set_add(&ctx->tpdfs_nodes, &groupings[u], 0, NULL));
         }
     }
 
@@ -581,7 +581,7 @@ lysp_parse_finalize_reallocated(struct lys_parser_ctx *ctx, struct lysp_grp *gro
                 actions[u].input.groupings[v].parent = (struct lysp_node *)&actions[u].input;
             }
             if (actions[u].input.typedefs) {
-                ly_set_add(&ctx->tpdfs_nodes, &actions[u].input, 0);
+                LY_CHECK_RET(ly_set_add(&ctx->tpdfs_nodes, &actions[u].input, 0, NULL));
             }
         }
         if (actions[u].output.parent) {
@@ -593,14 +593,14 @@ lysp_parse_finalize_reallocated(struct lys_parser_ctx *ctx, struct lysp_grp *gro
                 actions[u].output.groupings[v].parent = (struct lysp_node *)&actions[u].output;
             }
             if (actions[u].output.typedefs) {
-                ly_set_add(&ctx->tpdfs_nodes, &actions[u].output, 0);
+                LY_CHECK_RET(ly_set_add(&ctx->tpdfs_nodes, &actions[u].output, 0, NULL));
             }
         }
         LY_ARRAY_FOR(actions[u].groupings, v) {
             actions[u].groupings[v].parent = (struct lysp_node *)&actions[u];
         }
         if (actions[u].typedefs) {
-            ly_set_add(&ctx->tpdfs_nodes, &actions[u], 0);
+            LY_CHECK_RET(ly_set_add(&ctx->tpdfs_nodes, &actions[u], 0, NULL));
         }
     }
 
@@ -613,7 +613,7 @@ lysp_parse_finalize_reallocated(struct lys_parser_ctx *ctx, struct lysp_grp *gro
             notifs[u].groupings[v].parent = (struct lysp_node *)&notifs[u];
         }
         if (notifs[u].typedefs) {
-            ly_set_add(&ctx->tpdfs_nodes, &notifs[u], 0);
+            LY_CHECK_RET(ly_set_add(&ctx->tpdfs_nodes, &notifs[u], 0, NULL));
         }
     }
 

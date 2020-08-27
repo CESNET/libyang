@@ -215,7 +215,8 @@ lydxml_check_list(struct lyxml_ctx *xmlctx, const struct lysc_node *list)
     /* get all keys into a set (keys do not have if-features or anything) */
     snode = NULL;
     while ((snode = lys_getnext(snode, list, NULL, LYS_GETNEXT_NOSTATECHECK)) && (snode->flags & LYS_KEY)) {
-        ly_set_add(&key_set, (void *)snode, LY_SET_OPT_USEASLIST);
+        ret = ly_set_add(&key_set, (void *)snode, LY_SET_OPT_USEASLIST, NULL);
+        LY_CHECK_GOTO(ret, cleanup);
     }
 
     while (xmlctx->status == LYXML_ELEMENT) {

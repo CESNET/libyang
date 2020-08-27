@@ -24,7 +24,7 @@
 #include "parser_internal.h"
 
 #define JSON_PUSH_STATUS_RET(CTX, STATUS) \
-    LY_CHECK_ERR_RET(ly_set_add(&CTX->status, (void*)STATUS, LY_SET_OPT_USEASLIST) == -1, LOGMEM(CTX->ctx), LY_EMEM)
+    LY_CHECK_RET(ly_set_add(&CTX->status, (void*)STATUS, LY_SET_OPT_USEASLIST, NULL))
 
 #define JSON_POP_STATUS_RET(CTX) \
     assert(CTX->status.count); CTX->status.count--;
