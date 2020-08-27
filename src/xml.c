@@ -668,7 +668,7 @@ parse_text(struct ly_ctx *ctx, const char *data, char delim, unsigned int *len)
 #define BUFSIZE 1024
 
     char buf[BUFSIZE];
-    char *result = NULL, *aux;
+    char *result = NULL;
     unsigned int r;
     int o, size = 0;
     int cdsect = 0;
@@ -790,8 +790,7 @@ loop:
     if (o) {
         if (result) {
             size = size + o;
-            aux = realloc(result, size + 1);
-            result = aux;
+            result = ly_realloc(result, size + 1);
         } else {
             size = o;
             result = malloc((size + 1) * sizeof *result);
