@@ -492,9 +492,15 @@ main_ni(int argc, char* argv[])
                 goto cleanup;
             }
             if (!searchpaths) {
-                searchpaths = ly_set_new();
+                if (ly_set_new(&searchpaths)) {
+                    fprintf(stderr, "yanglint error: Preparing storage for searchpaths failed.\n");
+                    goto cleanup;
+                }
             }
-            ly_set_add(searchpaths, optarg, 0);
+            if (ly_set_add(searchpaths, optarg, 0, NULL)) {
+                fprintf(stderr, "yanglint error: Storing searchpath failed.\n");
+                goto cleanup;
+            }
             break;
 #if 0
         case 'r':
@@ -681,7 +687,10 @@ main_ni(int argc, char* argv[])
     /* derefered setting of verbosity in libyang after context initiation */
     ly_verb(verbose);
 
-    mods = ly_set_new();
+    if (ly_set_new(&mods)) {
+        fprintf(stderr, "yanglint error: Preparing storage for the parsed modules failed.\n");
+        goto cleanup;
+    }
 
 
     /* divide input files */
@@ -710,7 +719,10 @@ main_ni(int argc, char* argv[])
             if (!mod) {
                 goto cleanup;
             }
-            ly_set_add(mods, (void *)mod, 0);
+            if (ly_set_add(mods, (void *)mod, 0, NULL)) {
+                fprintf(stderr, "yanglint error: Storing parsed module for further processing failed.\n");
+                goto cleanup;
+            }
         } else {
             if (autodetection && informat_d != LYD_XML) {
                 /* data file content autodetection is possible only for XML input */

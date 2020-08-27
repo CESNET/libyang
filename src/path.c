@@ -48,6 +48,7 @@ static LY_ERR
 ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_node, const struct lyxp_expr *exp,
         uint16_t *tok_idx, uint8_t prefix, uint8_t pred)
 {
+    LY_ERR ret = LY_SUCCESS;
     struct ly_set *set = NULL;
     uint32_t i;
     const char *name;
@@ -58,23 +59,23 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
 
         if (((pred == LY_PATH_PRED_SIMPLE) || (pred == LY_PATH_PRED_KEYS))
                 && !lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_NAMETEST)) {
-            set = ly_set_new();
-            LY_CHECK_ERR_GOTO(!set, LOGMEM(ctx), error);
+            ret = ly_set_new(&set);
+            LY_CHECK_GOTO(ret, cleanup);
 
             do {
                 /* NameTest is always expected here */
-                LY_CHECK_GOTO(lyxp_check_token(ctx, exp, *tok_idx, LYXP_TOKEN_NAMETEST), error);
+                LY_CHECK_GOTO(lyxp_check_token(ctx, exp, *tok_idx, LYXP_TOKEN_NAMETEST), token_error);
 
                 /* check prefix based on the options */
                 name = strnstr(exp->expr + exp->tok_pos[*tok_idx], ":", exp->tok_len[*tok_idx]);
                 if ((prefix == LY_PATH_PREFIX_MANDATORY) && !name) {
                     LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Prefix missing for \"%.*s\" in path.", exp->tok_len[*tok_idx],
                              exp->expr + exp->tok_pos[*tok_idx]);
-                    goto error;
+                    goto token_error;
                 } else if ((prefix == LY_PATH_PREFIX_STRICT_INHERIT) && name) {
                     LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Redundant prefix for \"%.*s\" in path.", exp->tok_len[*tok_idx],
                              exp->expr + exp->tok_pos[*tok_idx]);
-                    goto error;
+                    goto token_error;
                 }
                 if (!name) {
                     name = exp->expr + exp->tok_pos[*tok_idx];
@@ -89,24 +90,25 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
                     /* all the keys must be from the same module so this comparison should be fine */
                     if (!strncmp(set->objs[i], name, name_len) && !isalpha(((char *)set->objs[i])[name_len])) {
                         LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Duplicate predicate key \"%.*s\" in path.", name_len, name);
-                        goto error;
+                        goto token_error;
                     }
                 }
 
                 /* add it into the set */
-                ly_set_add(set, (void *)name, LY_SET_OPT_USEASLIST);
+                ret = ly_set_add(set, (void *)name, LY_SET_OPT_USEASLIST, NULL);
+                LY_CHECK_GOTO(ret, cleanup);
 
                 /* NameTest */
                 ++(*tok_idx);
 
                 /* '=' */
-                LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_OPER_EQUAL), error);
+                LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_OPER_EQUAL), token_error);
 
                 /* Literal */
-                LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_LITERAL), error);
+                LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_LITERAL), token_error);
 
                 /* ']' */
-                LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_BRACK2), error);
+                LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_BRACK2), token_error);
 
                 /* '[' */
             } while (!lyxp_next_token(NULL, exp, tok_idx, LYXP_TOKEN_BRACK1));
@@ -115,28 +117,28 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
             /* '.' */
 
             /* '=' */
-            LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_OPER_EQUAL), error);
+            LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_OPER_EQUAL), token_error);
 
             /* Literal */
-            LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_LITERAL), error);
+            LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_LITERAL), token_error);
 
             /* ']' */
-            LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_BRACK2), error);
+            LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_BRACK2), token_error);
 
         } else if ((pred == LY_PATH_PRED_SIMPLE) && !lyxp_next_token(NULL, exp, tok_idx, LYXP_TOKEN_NUMBER)) {
             /* Number */
 
             /* ']' */
-            LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_BRACK2), error);
+            LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_BRACK2), token_error);
 
         } else if ((pred == LY_PATH_PRED_LEAFREF) && !lyxp_check_token(NULL, exp, *tok_idx, LYXP_TOKEN_NAMETEST)) {
             assert(prefix == LY_PATH_PREFIX_OPTIONAL);
-            set = ly_set_new();
-            LY_CHECK_ERR_GOTO(!set, LOGMEM(ctx), error);
+            ret = ly_set_new(&set);
+            LY_CHECK_GOTO(ret, cleanup);
 
             do {
                 /* NameTest is always expected here */
-                LY_CHECK_GOTO(lyxp_check_token(ctx, exp, *tok_idx, LYXP_TOKEN_NAMETEST), error);
+                LY_CHECK_GOTO(lyxp_check_token(ctx, exp, *tok_idx, LYXP_TOKEN_NAMETEST), token_error);
 
                 name = strnstr(exp->expr + exp->tok_pos[*tok_idx], ":", exp->tok_len[*tok_idx]);
                 if (!name) {
@@ -152,55 +154,56 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
                     /* all the keys must be from the same module so this comparison should be fine */
                     if (!strncmp(set->objs[i], name, name_len) && !isalpha(((char *)set->objs[i])[name_len])) {
                         LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Duplicate predicate key \"%.*s\" in path.", name_len, name);
-                        goto error;
+                        goto token_error;
                     }
                 }
 
                 /* add it into the set */
-                ly_set_add(set, (void *)name, LY_SET_OPT_USEASLIST);
+                ret = ly_set_add(set, (void *)name, LY_SET_OPT_USEASLIST, NULL);
+                LY_CHECK_GOTO(ret, cleanup);
 
                 /* NameTest */
                 ++(*tok_idx);
 
                 /* '=' */
-                LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_OPER_EQUAL), error);
+                LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_OPER_EQUAL), token_error);
 
                 /* FuncName */
-                LY_CHECK_GOTO(lyxp_check_token(ctx, exp, *tok_idx, LYXP_TOKEN_FUNCNAME), error);
+                LY_CHECK_GOTO(lyxp_check_token(ctx, exp, *tok_idx, LYXP_TOKEN_FUNCNAME), token_error);
                 if ((exp->tok_len[*tok_idx] != 7) || strncmp(exp->expr + exp->tok_pos[*tok_idx], "current", 7)) {
                     LOGVAL_P(ctx, cur_node, LYVE_XPATH, "Invalid function \"%.*s\" invocation in path.",
                              exp->tok_len[*tok_idx], exp->expr + exp->tok_pos[*tok_idx]);
-                    goto error;
+                    goto token_error;
                 }
                 ++(*tok_idx);
 
                 /* '(' */
-                LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_PAR1), error);
+                LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_PAR1), token_error);
 
                 /* ')' */
-                LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_PAR2), error);
+                LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_PAR2), token_error);
 
                 /* '/' */
-                LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_OPER_PATH), error);
+                LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_OPER_PATH), token_error);
 
                 /* '..' */
-                LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_DDOT), error);
+                LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_DDOT), token_error);
                 do {
                     /* '/' */
-                    LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_OPER_PATH), error);
+                    LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_OPER_PATH), token_error);
                 } while (!lyxp_next_token(NULL, exp, tok_idx, LYXP_TOKEN_DDOT));
 
                 /* NameTest */
-                LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_NAMETEST), error);
+                LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_NAMETEST), token_error);
 
                 /* '/' */
                 while (!lyxp_next_token(NULL, exp, tok_idx, LYXP_TOKEN_OPER_PATH)) {
                     /* NameTest */
-                    LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_NAMETEST), error);
+                    LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_NAMETEST), token_error);
                 }
 
                 /* ']' */
-                LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_BRACK2), error);
+                LY_CHECK_GOTO(lyxp_next_token(ctx, exp, tok_idx, LYXP_TOKEN_BRACK2), token_error);
 
                 /* '[' */
             } while (!lyxp_next_token(NULL, exp, tok_idx, LYXP_TOKEN_BRACK1));
@@ -208,14 +211,15 @@ ly_path_check_predicate(const struct ly_ctx *ctx, const struct lysc_node *cur_no
         } else {
             LOGVAL_P(ctx, cur_node, LY_VCODE_XP_INTOK, lyxp_print_token(exp->tokens[*tok_idx]),
                      exp->expr + exp->tok_pos[*tok_idx]);
-            goto error;
+            goto token_error;
         }
     }
 
+cleanup:
     ly_set_free(set, NULL);
-    return LY_SUCCESS;
+    return ret;
 
-error:
+token_error:
     ly_set_free(set, NULL);
     return LY_EVALID;
 }

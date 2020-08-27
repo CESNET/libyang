@@ -21,14 +21,15 @@
 #include "log.h"
 #include "set.h"
 
-API struct ly_set *
-ly_set_new(void)
+API LY_ERR
+ly_set_new(struct ly_set **set_p)
 {
-    struct ly_set *new;
+    LY_CHECK_ARG_RET(NULL, set_p, LY_EINVAL);
 
-    new = calloc(1, sizeof(struct ly_set));
-    LY_CHECK_ERR_RET(!new, LOGMEM(NULL), NULL);
-    return new;
+    *set_p = calloc(1, sizeof **set_p);
+    LY_CHECK_ERR_RET(!(*set_p), LOGMEM(NULL), LY_EMEM);
+
+    return LY_SUCCESS;
 }
 
 API void
@@ -74,88 +75,98 @@ ly_set_free(struct ly_set *set, void (*destructor)(void *obj))
     free(set);
 }
 
-API int
-ly_set_contains(const struct ly_set *set, void *object)
+API uint8_t
+ly_set_contains(const struct ly_set *set, void *object, uint32_t *index_p)
 {
-    uint32_t i;
+    LY_CHECK_ARG_RET(NULL, set, 0);
 
-    LY_CHECK_ARG_RET(NULL, set, -1);
-
-    for (i = 0; i < set->count; i++) {
+    for (uint32_t i = 0; i < set->count; i++) {
         if (set->objs[i] == object) {
             /* object found */
-            return i;
+            if (index_p) {
+                *index_p = i;
+            }
+            return 1;
         }
     }
 
     /* object not found */
-    return -1;
+    return 0;
 }
 
-API struct ly_set *
-ly_set_dup(const struct ly_set *set, void *(*duplicator)(void *obj))
+API LY_ERR
+ly_set_dup(const struct ly_set *set, void *(*duplicator)(void *obj), struct ly_set **newset_p)
 {
-    struct ly_set *new;
+    struct ly_set *newset;
     uint32_t u;
 
-    LY_CHECK_ARG_RET(NULL, set, NULL);
+    LY_CHECK_ARG_RET(NULL, set, LY_EINVAL);
 
-    new = malloc(sizeof *new);
-    LY_CHECK_ERR_RET(!new, LOGMEM(NULL), NULL);
-    new->count = set->count;
-    new->size = set->count; /* optimize the size */
-    new->objs = malloc(new->size * sizeof *(new->objs));
-    LY_CHECK_ERR_RET(!new->objs, LOGMEM(NULL); free(new), NULL);
+    newset = malloc(sizeof *newset);
+    LY_CHECK_ERR_RET(!newset, LOGMEM(NULL), LY_EMEM);
+    newset->count = set->count;
+    newset->size = set->count; /* optimize the size */
+    newset->objs = malloc(newset->size * sizeof *(newset->objs));
+    LY_CHECK_ERR_RET(!newset->objs, LOGMEM(NULL); free(newset), LY_EMEM);
     if (duplicator) {
         for (u = 0; u < set->count; ++u) {
-            new->objs[u] = duplicator(set->objs[u]);
+            newset->objs[u] = duplicator(set->objs[u]);
         }
     } else {
-        memcpy(new->objs, set->objs, new->size * sizeof *(new->objs));
+        memcpy(newset->objs, set->objs, newset->size * sizeof *(newset->objs));
     }
 
-    return new;
+    *newset_p = newset;
+    return LY_SUCCESS;
 }
 
-API int
-ly_set_add(struct ly_set *set, void *object, uint32_t options)
+API LY_ERR
+ly_set_add(struct ly_set *set, void *object, uint32_t options, uint32_t *index_p)
 {
-    uint32_t i;
     void **new;
 
-    LY_CHECK_ARG_RET(NULL, set, -1);
+    LY_CHECK_ARG_RET(NULL, set, LY_EINVAL);
 
     if (!(options & LY_SET_OPT_USEASLIST)) {
         /* search for duplication */
-        for (i = 0; i < set->count; i++) {
+        for (uint32_t i = 0; i < set->count; i++) {
             if (set->objs[i] == object) {
                 /* already in set */
-                return i;
+                if (index_p) {
+                    *index_p = i;
+                }
+                return LY_SUCCESS;
             }
         }
     }
 
     if (set->size == set->count) {
         new = realloc(set->objs, (set->size + 8) * sizeof *(set->objs));
-        LY_CHECK_ERR_RET(!new, LOGMEM(NULL), -1);
+        LY_CHECK_ERR_RET(!new, LOGMEM(NULL), LY_EMEM);
         set->size += 8;
         set->objs = new;
     }
 
+    if (index_p) {
+        *index_p = set->count;
+    }
     set->objs[set->count++] = object;
 
-    return set->count - 1;
+    return LY_SUCCESS;
 }
 
-API int
+API LY_ERR
 ly_set_merge(struct ly_set *trg, struct ly_set *src, uint32_t options, void *(*duplicator)(void *obj))
 {
-    uint32_t u, c, ret = 0;
-    int i;
+    uint32_t u;
     void *obj;
 
-    LY_CHECK_ARG_RET(NULL, trg, -1);
-    LY_CHECK_ARG_RET(NULL, src, 0);
+    LY_CHECK_ARG_RET(NULL, trg, LY_EINVAL);
+
+    if (!src) {
+        /* nothing to do */
+        return LY_SUCCESS;
+    }
 
     for (u = 0; u < src->count; ++u) {
         if (duplicator) {
@@ -163,14 +174,10 @@ ly_set_merge(struct ly_set *trg, struct ly_set *src, uint32_t options, void *(*d
         } else {
             obj = src->objs[u];
         }
-        c = trg->count;
-        i = ly_set_add(trg, obj, options);
-        if (i > 0 && (unsigned)i == c) {
-            ++ret;
-        }
+        LY_CHECK_RET(ly_set_add(trg, obj, options, NULL));
     }
 
-    return ret;
+    return LY_SUCCESS;
 }
 
 API LY_ERR

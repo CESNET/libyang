@@ -686,11 +686,10 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
     assert(uniques);
 
     /* get all list instances */
-    set = ly_set_new();
-    LY_CHECK_ERR_RET(!set, LOGMEM(ctx), LY_EMEM);
+    LY_CHECK_RET(ly_set_new(&set));
     LY_LIST_FOR(first, diter) {
         if (diter->schema == snode) {
-            ly_set_add(set, (void *)diter, LY_SET_OPT_USEASLIST);
+            LY_CHECK_RET(ly_set_add(set, (void *)diter, LY_SET_OPT_USEASLIST, NULL));
         }
     }
 
@@ -1036,12 +1035,12 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *type_check, struct ly
         if ((node->flags & (LYD_DEFAULT | LYD_NEW)) != (LYD_DEFAULT | LYD_NEW)) {
             LY_LIST_FOR(node->meta, meta) {
                 /* metadata type resolution */
-                ly_set_add(type_meta_check, (void *)meta, LY_SET_OPT_USEASLIST);
+                LY_CHECK_RET(ly_set_add(type_meta_check, (void *)meta, LY_SET_OPT_USEASLIST, NULL));
             }
 
             if (node->schema->nodetype & LYD_NODE_TERM) {
                 /* node type resolution */
-                ly_set_add(type_check, (void *)node, LY_SET_OPT_USEASLIST);
+                LY_CHECK_RET(ly_set_add(type_check, (void *)node, LY_SET_OPT_USEASLIST, NULL));
             } else if (node->schema->nodetype & LYD_NODE_INNER) {
                 /* new node validation, autodelete */
                 LY_CHECK_RET(lyd_validate_new(lyd_node_children_p((struct lyd_node *)node), node->schema, NULL, diff));
@@ -1054,7 +1053,7 @@ lyd_validate_subtree(struct lyd_node *root, struct ly_set *type_check, struct ly
 
             if (!(node->schema->nodetype & (LYS_RPC | LYS_ACTION | LYS_NOTIF)) && node->schema->when) {
                 /* when evaluation */
-                ly_set_add(when_check, (void *)node, LY_SET_OPT_USEASLIST);
+                LY_CHECK_RET(ly_set_add(when_check, (void *)node, LY_SET_OPT_USEASLIST, NULL));
             }
         }
 

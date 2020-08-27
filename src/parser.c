@@ -414,7 +414,7 @@ lyd_parser_create_term(struct lyd_ctx *lydctx, const struct lysc_node *schema, c
     ret = lyd_create_term(schema, value, value_len, dynamic, value_hints, format, prefix_data, node);
     if (ret == LY_EINCOMPLETE) {
         if (!(lydctx->parse_options & LYD_PARSE_ONLY)) {
-            ly_set_add(&lydctx->unres_node_type, *node, LY_SET_OPT_USEASLIST);
+            LY_CHECK_RET(ly_set_add(&lydctx->unres_node_type, *node, LY_SET_OPT_USEASLIST, NULL));
         }
         ret = LY_SUCCESS;
     }
@@ -430,7 +430,7 @@ lyd_parser_create_meta(struct lyd_ctx *lydctx, struct lyd_node *parent, struct l
     ret = lyd_create_meta(parent, meta, mod, name, name_len, value, value_len, dynamic, value_hints, format, prefix_data,
                           ctx_snode);
     if (ret == LY_EINCOMPLETE) {
-        ly_set_add(&lydctx->unres_meta_type, *meta, LY_SET_OPT_USEASLIST);
+        LY_CHECK_RET(ly_set_add(&lydctx->unres_meta_type, *meta, LY_SET_OPT_USEASLIST, NULL));
         ret = LY_SUCCESS;
     }
     return ret;

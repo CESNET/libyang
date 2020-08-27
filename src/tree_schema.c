@@ -312,8 +312,8 @@ lys_atomize_xpath(const struct lysc_node *ctx_node, const char *xpath, uint32_t 
     LY_CHECK_GOTO(ret, cleanup);
 
     /* allocate return set */
-    *set = ly_set_new();
-    LY_CHECK_ERR_GOTO(!*set, LOGMEM(ctx_node->module->ctx); ret = LY_EMEM, cleanup);
+    ret = ly_set_new(set);
+    LY_CHECK_GOTO(ret, cleanup);
 
     /* transform into ly_set */
     (*set)->objs = malloc(xp_set.used * sizeof *(*set)->objs);
@@ -322,7 +322,8 @@ lys_atomize_xpath(const struct lysc_node *ctx_node, const char *xpath, uint32_t 
 
     for (i = 0; i < xp_set.used; ++i) {
         if (xp_set.val.scnodes[i].type == LYXP_NODE_ELEM) {
-            ly_set_add(*set, xp_set.val.scnodes[i].scnode, LY_SET_OPT_USEASLIST);
+            ret = ly_set_add(*set, xp_set.val.scnodes[i].scnode, LY_SET_OPT_USEASLIST, NULL);
+            LY_CHECK_GOTO(ret, cleanup);
         }
     }
 
@@ -356,8 +357,8 @@ lys_find_xpath(const struct lysc_node *ctx_node, const char *xpath, uint32_t opt
     LY_CHECK_GOTO(ret, cleanup);
 
     /* allocate return set */
-    *set = ly_set_new();
-    LY_CHECK_ERR_GOTO(!*set, LOGMEM(ctx_node->module->ctx); ret = LY_EMEM, cleanup);
+    ret = ly_set_new(set);
+    LY_CHECK_GOTO(ret, cleanup);
 
     /* transform into ly_set */
     (*set)->objs = malloc(xp_set.used * sizeof *(*set)->objs);
@@ -366,7 +367,8 @@ lys_find_xpath(const struct lysc_node *ctx_node, const char *xpath, uint32_t opt
 
     for (i = 0; i < xp_set.used; ++i) {
         if ((xp_set.val.scnodes[i].type == LYXP_NODE_ELEM) && (xp_set.val.scnodes[i].in_ctx == 1)) {
-            ly_set_add(*set, xp_set.val.scnodes[i].scnode, LY_SET_OPT_USEASLIST);
+            ret = ly_set_add(*set, xp_set.val.scnodes[i].scnode, LY_SET_OPT_USEASLIST, NULL);
+            LY_CHECK_GOTO(ret, cleanup);
         }
     }
 
@@ -571,7 +573,7 @@ lys_feature_change(const struct lys_module *mod, const char *name, uint8_t value
         return LY_ENOTFOUND;
     }
 
-    changed = ly_set_new();
+    LY_CHECK_RET(ly_set_new(&changed));
     changed_count = 0;
 
 run:
@@ -615,7 +617,7 @@ run:
             }
 
             /* remember the changed feature */
-            ly_set_add(changed, f, LY_SET_OPT_USEASLIST);
+            LY_CHECK_RET(ly_set_add(changed, f, LY_SET_OPT_USEASLIST, NULL));
 
             if (!all) {
                 /* stop in case changing a single feature */
@@ -677,7 +679,7 @@ next:
                     /* the feature must be disabled now */
                     (*df)->flags &= ~LYS_FENABLED;
                     /* add the feature into the list of changed features */
-                    ly_set_add(changed, *df, LY_SET_OPT_USEASLIST);
+                    LY_CHECK_RET(ly_set_add(changed, *df, LY_SET_OPT_USEASLIST, NULL));
                     break;
                 }
             }
@@ -1069,7 +1071,8 @@ lys_parse_mem_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, 
     }
 
     /* add into context */
-    ly_set_add(&ctx->list, mod, LY_SET_OPT_USEASLIST);
+    ret = ly_set_add(&ctx->list, mod, LY_SET_OPT_USEASLIST, NULL);
+    LY_CHECK_GOTO(ret, error);
     ctx->module_set_id++;
 
 finish_parsing:
@@ -1244,10 +1247,7 @@ lys_search_localfile(const char * const *searchpaths, uint8_t cwd, const char *n
 
     /* start to fill the dir fifo with the context's search path (if set)
      * and the current working directory */
-    dirs = ly_set_new();
-    if (!dirs) {
-        LOGMEM_RET(NULL);
-    }
+    LY_CHECK_RET(ly_set_new(&dirs));
 
     len = strlen(name);
     if (cwd) {
@@ -1258,9 +1258,8 @@ lys_search_localfile(const char * const *searchpaths, uint8_t cwd, const char *n
         } else {
             /* add implicit current working directory (./) to be searched,
              * this directory is not searched recursively */
-            if (ly_set_add(dirs, wd, 0) == -1) {
-                goto cleanup;
-            }
+            ret = ly_set_add(dirs, wd, 0, NULL);
+            LY_CHECK_GOTO(ret, cleanup);
             implicit_cwd = 1;
         }
     }
@@ -1275,8 +1274,9 @@ lys_search_localfile(const char * const *searchpaths, uint8_t cwd, const char *n
             if (!wd) {
                 LOGMEM(NULL);
                 goto cleanup;
-            } else if (ly_set_add(dirs, wd, 0) == -1) {
-                goto cleanup;
+            } else {
+                ret = ly_set_add(dirs, wd, 0, NULL);
+                LY_CHECK_GOTO(ret, cleanup);
             }
         }
     }
@@ -1318,9 +1318,9 @@ lys_search_localfile(const char * const *searchpaths, uint8_t cwd, const char *n
                 if (S_ISDIR(st.st_mode) && (dirs->count || !implicit_cwd)) {
                     /* we have another subdirectory in searchpath to explore,
                      * subdirectories are not taken into account in current working dir (dirs->set.g[0]) */
-                    if (ly_set_add(dirs, wn, 0) == -1) {
-                        goto cleanup;
-                    }
+                    ret = ly_set_add(dirs, wn, 0, NULL);
+                    LY_CHECK_GOTO(ret, cleanup);
+
                     /* continue with the next item in current directory */
                     wn = NULL;
                     continue;

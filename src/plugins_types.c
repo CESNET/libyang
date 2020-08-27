@@ -119,7 +119,7 @@ ly_xml_get_prefix(const struct lys_module *mod, void *data)
 {
     struct ly_set *ns_list = data;
 
-    ly_set_add(ns_list, (void *)mod, 0);
+    ly_set_add(ns_list, (void *)mod, 0, NULL);
     return mod->prefix;
 }
 
@@ -840,7 +840,7 @@ ly_type_store_bits(const struct ly_ctx *ctx, struct lysc_type *type, const char 
         LY_PREFIX_FORMAT UNUSED(format), void *UNUSED(prefix_data), const void *UNUSED(context_node),
         const struct lyd_node *UNUSED(tree), struct lyd_value *storage, struct ly_err_item **err)
 {
-    LY_ERR ret = LY_EVALID;
+    LY_ERR r, ret = LY_EVALID;
     size_t item_len;
     const char *item;
     struct ly_set *items = NULL, *items_ordered = NULL;
@@ -861,8 +861,7 @@ ly_type_store_bits(const struct ly_ctx *ctx, struct lysc_type *type, const char 
     }
 
     /* remember the present items for further work */
-    items = ly_set_new();
-    LY_CHECK_RET(!items, LY_EMEM);
+    LY_CHECK_RET(ly_set_new(&items));
 
     for (index = ws_count = lws_count = 0; index < value_len; index++, ws_count++) {
         if (isspace(value[index])) {
@@ -881,7 +880,7 @@ ly_type_store_bits(const struct ly_ctx *ctx, struct lysc_type *type, const char 
         LY_ARRAY_FOR(type_bits->bits, u) {
             if (!ly_strncmp(type_bits->bits[u].name, item, item_len)) {
                 /* we have the match */
-                int inserted;
+                uint32_t inserted;
 
                 /* check that the bit is not disabled */
                 LY_ARRAY_FOR(type_bits->bits[u].iffeatures, v) {
@@ -895,9 +894,9 @@ ly_type_store_bits(const struct ly_ctx *ctx, struct lysc_type *type, const char 
                 if (iscanonical && items->count && type_bits->bits[u].position < ((struct lysc_type_bitenum_item *)items->objs[items->count - 1])->position) {
                     iscanonical = 0;
                 }
-                inserted = ly_set_add(items, &type_bits->bits[u], 0);
-                LY_CHECK_ERR_GOTO(inserted == -1, ret = LY_EMEM, error);
-                if ((uint32_t)inserted != items->count - 1) {
+                r = ly_set_add(items, &type_bits->bits[u], 0, &inserted);
+                LY_CHECK_ERR_GOTO(r, ret = r, error);
+                if (inserted != items->count - 1) {
                     rc = asprintf(&errmsg, "Bit \"%s\" used multiple times.", type_bits->bits[u].name);
                     goto error;
                 }
@@ -931,17 +930,18 @@ next:
         LY_CHECK_ERR_GOTO(!buf, LOGMEM(ctx); ret = LY_EMEM, error);
         index = 0;
 
-        items_ordered = ly_set_dup(items, NULL);
-        LY_CHECK_ERR_GOTO(!items_ordered, LOGMEM(ctx); ret = LY_EMEM, error);
+        ret = ly_set_dup(items, NULL, &items_ordered);
+        LY_CHECK_GOTO(ret, error);
         items_ordered->count = 0;
 
         /* generate ordered bits list */
         LY_ARRAY_FOR(type_bits->bits, u) {
-            if (ly_set_contains(items, &type_bits->bits[u]) != -1) {
+            if (ly_set_contains(items, &type_bits->bits[u], NULL)) {
                 int c = sprintf(&buf[index], "%s%s", index ? " " : "", type_bits->bits[u].name);
                 LY_CHECK_ERR_GOTO(c < 0, LOGERR(ctx, LY_ESYS, "sprintf() failed."); ret = LY_ESYS, error);
                 index += c;
-                ly_set_add(items_ordered, &type_bits->bits[u], LY_SET_OPT_USEASLIST);
+                r = ly_set_add(items_ordered, &type_bits->bits[u], LY_SET_OPT_USEASLIST, NULL);
+                LY_CHECK_ERR_GOTO(r, ret = r, error);
             }
         }
         assert(buf_size == index + 1);
@@ -1951,8 +1951,7 @@ ly_type_union_store_prefix_data(const struct ly_ctx *ctx, const char *value, siz
     }
 
     /* XML only */
-    ns_list = ly_set_new();
-    LY_CHECK_ERR_RET(!ns_list, LOGMEM(ctx), NULL);
+    LY_CHECK_RET(ly_set_new(&ns_list), NULL);
 
     /* add all used prefixes */
     for (stop = start = value; (size_t)(stop - value) < value_len; start = stop) {
@@ -1978,7 +1977,7 @@ ly_type_union_store_prefix_data(const struct ly_ctx *ctx, const char *value, siz
                         /* store a new prefix - namespace pair */
                         ns = calloc(1, sizeof *ns);
                         LY_CHECK_ERR_GOTO(!ns, LOGMEM(ctx), error);
-                        ly_set_add(ns_list, ns, LY_SET_OPT_USEASLIST);
+                        LY_CHECK_GOTO(ly_set_add(ns_list, ns, LY_SET_OPT_USEASLIST, NULL), error);
 
                         ns->prefix = strndup(start, len);
                         LY_CHECK_ERR_GOTO(!ns->prefix, LOGMEM(ctx), error);
@@ -1996,7 +1995,7 @@ ly_type_union_store_prefix_data(const struct ly_ctx *ctx, const char *value, siz
     if (mod) {
         ns = calloc(1, sizeof *ns);
         LY_CHECK_ERR_GOTO(!ns, LOGMEM(ctx), error);
-        ly_set_add(ns_list, ns, LY_SET_OPT_USEASLIST);
+        LY_CHECK_GOTO(ly_set_add(ns_list, ns, LY_SET_OPT_USEASLIST, NULL), error);
 
         ns->uri = strdup(mod->ns);
         LY_CHECK_ERR_GOTO(!ns->uri, LOGMEM(ctx), error);
@@ -2035,15 +2034,14 @@ ly_type_union_dup_prefix_data(const struct ly_ctx *ctx, LY_PREFIX_FORMAT format,
     }
 
     /* XML only */
-    ns_list = ly_set_new();
-    LY_CHECK_ERR_RET(!ns_list, LOGMEM(ctx), NULL);
+    LY_CHECK_RET(ly_set_new(&ns_list), NULL);
 
     /* copy all the namespaces */
     orig = (struct ly_set *)prefix_data;
     for (i = 0; i < orig->count; ++i) {
         ns = calloc(1, sizeof *ns);
         LY_CHECK_ERR_GOTO(!ns, LOGMEM(ctx), error);
-        ly_set_add(ns_list, ns, LY_SET_OPT_USEASLIST);
+        LY_CHECK_GOTO(ly_set_add(ns_list, ns, LY_SET_OPT_USEASLIST, NULL), error);
 
         if (((struct lyxml_ns *)orig->objs[i])->prefix) {
             ns->prefix = strdup(((struct lyxml_ns *)orig->objs[i])->prefix);

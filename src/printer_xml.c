@@ -59,45 +59,44 @@ struct xmlpr_ctx {
 static const char *
 xml_print_ns(struct xmlpr_ctx *ctx, const char *ns, const char *new_prefix, uint32_t prefix_opts)
 {
-    int64_t i;
+    uint32_t i;
 
-    for (i = (int64_t)ctx->ns.count - 1; i > -1; --i) {
+    for (i = ctx->ns.count; i > 0; --i) {
         if (!new_prefix) {
             /* find default namespace */
-            if (!ctx->prefix.objs[i]) {
-                if (ctx->ns.objs[i] != ns) {
-                    /* different default namespace */
-                    i = -1;
+            if (!ctx->prefix.objs[i - 1]) {
+                if (ctx->ns.objs[i - 1] == ns) {
+                    /* matching default namespace */
+                    return ctx->prefix.objs[i - 1];
                 }
+                /* not matching default namespace */
                 break;
             }
         } else {
             /* find prefixed namespace */
-            if (ctx->ns.objs[i] == ns) {
-                if (!ctx->prefix.objs[i]) {
+            if (ctx->ns.objs[i - 1] == ns) {
+                if (!ctx->prefix.objs[i - 1]) {
                     /* default namespace is not interesting */
                     continue;
                 }
 
-                if (!strcmp(ctx->prefix.objs[i], new_prefix) || !(prefix_opts & LYXML_PREFIX_REQUIRED)) {
+                if (!strcmp(ctx->prefix.objs[i - 1], new_prefix) || !(prefix_opts & LYXML_PREFIX_REQUIRED)) {
                     /* the same prefix or can be any */
-                    break;
+                    return ctx->prefix.objs[i - 1];
                 }
             }
         }
     }
 
-    if (i == -1) {
-        /* suitable namespace not found, must be printed */
-        ly_print_(ctx->out, " xmlns%s%s=\"%s\"", new_prefix ? ":" : "", new_prefix ? new_prefix : "", ns);
+    /* suitable namespace not found, must be printed */
+    ly_print_(ctx->out, " xmlns%s%s=\"%s\"", new_prefix ? ":" : "", new_prefix ? new_prefix : "", ns);
 
-        /* and added into namespaces */
-        if (new_prefix) {
-            new_prefix = lydict_insert(ctx->ctx, new_prefix, 0);
-        }
-        ly_set_add(&ctx->prefix, (void *)new_prefix, LY_SET_OPT_USEASLIST);
-        i = ly_set_add(&ctx->ns, (void *)ns, LY_SET_OPT_USEASLIST);
+    /* and added into namespaces */
+    if (new_prefix) {
+        new_prefix = lydict_insert(ctx->ctx, new_prefix, 0);
     }
+    LY_CHECK_RET(ly_set_add(&ctx->prefix, (void *)new_prefix, LY_SET_OPT_USEASLIST, NULL), NULL);
+    LY_CHECK_RET(ly_set_add(&ctx->ns, (void *)ns, LY_SET_OPT_USEASLIST, &i), NULL);
 
     /* return it */
     return ctx->prefix.objs[i];

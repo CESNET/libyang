@@ -465,8 +465,7 @@ lyb_print_data_models(struct ly_out *out, const struct lyd_node *root, struct ly
     const struct lyd_node *node;
     uint32_t i;
 
-    set = ly_set_new();
-    LY_CHECK_RET(!set, LY_EMEM);
+    LY_CHECK_RET(ly_set_new(&set));
 
     /* collect all data node modules */
     LY_LIST_FOR(root, node) {
@@ -475,14 +474,17 @@ lyb_print_data_models(struct ly_out *out, const struct lyd_node *root, struct ly
         }
 
         mod = node->schema->module;
-        ly_set_add(set, mod, 0);
+        ret = ly_set_add(set, mod, 0, NULL);
+        LY_CHECK_GOTO(ret, cleanup);
 
         /* add also their modules deviating or augmenting them */
         LY_ARRAY_FOR(mod->compiled->deviated_by, u) {
-            ly_set_add(set, mod->compiled->deviated_by[u], 0);
+            ret = ly_set_add(set, mod->compiled->deviated_by[u], 0, NULL);
+            LY_CHECK_GOTO(ret, cleanup);
         }
         LY_ARRAY_FOR(mod->compiled->augmented_by, u) {
-            ly_set_add(set, mod->compiled->augmented_by[u], 0);
+            ret = ly_set_add(set, mod->compiled->augmented_by[u], 0, NULL);
+            LY_CHECK_GOTO(ret, cleanup);
         }
     }
 
