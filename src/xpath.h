@@ -340,9 +340,11 @@ void lyxp_set_free_content(struct lyxp_set *set);
  * @param[in] set Set to insert into.
  * @param[in] node Node to insert.
  * @param[in] node_type Node type of @p node.
- * @return Index of the inserted node in set.
+ * @param[out] index_p Optional pointer to store index if the inserted @p node.
+ * @return LY_SUCCESS on success.
+ * @return LY_EMEM on memory allocation failure.
  */
-int lyxp_set_scnode_insert_node(struct lyxp_set *set, const struct lysc_node *node, enum lyxp_node_type node_type);
+LY_ERR lyxp_set_scnode_insert_node(struct lyxp_set *set, const struct lysc_node *node, enum lyxp_node_type node_type, uint32_t *index_p);
 
 /**
  * @brief Check for duplicates in a schema node set.
@@ -351,10 +353,12 @@ int lyxp_set_scnode_insert_node(struct lyxp_set *set, const struct lysc_node *no
  * @param[in] node Node to look for in @p set.
  * @param[in] node_type Type of @p node.
  * @param[in] skip_idx Index from @p set to skip.
- * @return Index of the found node, -1 if not found.
+ * @param[out] index_p Optional pointer to store index if the node is found.
+ * @return 0 if not found
+ * @return 1 if the @p node found.
  */
-int lyxp_set_scnode_dup_node_check(struct lyxp_set *set, const struct lysc_node *node, enum lyxp_node_type node_type,
-        int skip_idx);
+uint8_t lyxp_set_scnode_contains(struct lyxp_set *set, const struct lysc_node *node, enum lyxp_node_type node_type,
+        int skip_idx, uint32_t *index_p);
 
 /**
  * @brief Merge 2 schema node sets.
