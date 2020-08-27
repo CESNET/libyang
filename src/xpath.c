@@ -777,9 +777,11 @@ set_copy(struct lyxp_set *set)
 
         for (i = 0; i < set->used; ++i) {
             if ((set->val.scnodes[i].in_ctx == 1) || (set->val.scnodes[i].in_ctx == -2)) {
-                int idx = lyxp_set_scnode_insert_node(ret, set->val.scnodes[i].scnode, set->val.scnodes[i].type);
+                uint32_t idx;
+                LY_CHECK_ERR_RET(lyxp_set_scnode_insert_node(ret, set->val.scnodes[i].scnode, set->val.scnodes[i].type, &idx),
+                        lyxp_set_free(ret), NULL);
                 /* coverity seems to think scnodes can be NULL */
-                if ((idx == -1) || !ret->val.scnodes) {
+                if (!ret->val.scnodes) {
                     lyxp_set_free(ret);
                     return NULL;
                 }
@@ -1052,8 +1054,9 @@ set_dup_node_check(const struct lyxp_set *set, const struct lyd_node *node, enum
     return LY_SUCCESS;
 }
 
-int
-lyxp_set_scnode_dup_node_check(struct lyxp_set *set, const struct lysc_node *node, enum lyxp_node_type node_type, int skip_idx)
+uint8_t
+lyxp_set_scnode_contains(struct lyxp_set *set, const struct lysc_node *node, enum lyxp_node_type node_type, int skip_idx,
+        uint32_t *index_p)
 {
     uint32_t i;
 
@@ -1063,11 +1066,14 @@ lyxp_set_scnode_dup_node_check(struct lyxp_set *set, const struct lysc_node *nod
         }
 
         if ((set->val.scnodes[i].scnode == node) && (set->val.scnodes[i].type == node_type)) {
-            return i;
+            if (index_p) {
+                *index_p = i;
+            }
+            return 1;
         }
     }
 
-    return -1;
+    return 0;
 }
 
 void
@@ -1173,31 +1179,34 @@ set_insert_node(struct lyxp_set *set, const struct lyd_node *node, uint32_t pos,
     }
 }
 
-int
-lyxp_set_scnode_insert_node(struct lyxp_set *set, const struct lysc_node *node, enum lyxp_node_type node_type)
+LY_ERR
+lyxp_set_scnode_insert_node(struct lyxp_set *set, const struct lysc_node *node, enum lyxp_node_type node_type, uint32_t *index_p)
 {
-    int ret;
+    uint32_t index;
 
     assert(set->type == LYXP_SET_SCNODE_SET);
 
-    ret = lyxp_set_scnode_dup_node_check(set, node, node_type, -1);
-    if (ret > -1) {
-        set->val.scnodes[ret].in_ctx = 1;
+    if (lyxp_set_scnode_contains(set, node, node_type, -1, &index)) {
+        set->val.scnodes[index].in_ctx = 1;
     } else {
         if (set->used == set->size) {
             set->val.scnodes = ly_realloc(set->val.scnodes, (set->size + LYXP_SET_SIZE_STEP) * sizeof *set->val.scnodes);
-            LY_CHECK_ERR_RET(!set->val.scnodes, LOGMEM(set->ctx), -1);
+            LY_CHECK_ERR_RET(!set->val.scnodes, LOGMEM(set->ctx), LY_EMEM);
             set->size += LYXP_SET_SIZE_STEP;
         }
 
-        ret = set->used;
-        set->val.scnodes[ret].scnode = (struct lysc_node *)node;
-        set->val.scnodes[ret].type = node_type;
-        set->val.scnodes[ret].in_ctx = 1;
+        index = set->used;
+        set->val.scnodes[index].scnode = (struct lysc_node *)node;
+        set->val.scnodes[index].type = node_type;
+        set->val.scnodes[index].in_ctx = 1;
         ++set->used;
     }
 
-    return ret;
+    if (index_p) {
+        *index_p = index;
+    }
+
+    return LY_SUCCESS;
 }
 
 /**
@@ -3619,7 +3628,7 @@ xpath_current(struct lyxp_set **args, uint16_t arg_count, struct lyxp_set *set, 
     if (options & LYXP_SCNODE_ALL) {
         set_scnode_clear_ctx(set);
 
-        lyxp_set_scnode_insert_node(set, set->ctx_scnode, LYXP_NODE_ELEM);
+        LY_CHECK_RET(lyxp_set_scnode_insert_node(set, set->ctx_scnode, LYXP_NODE_ELEM, NULL));
     } else {
         lyxp_set_free_content(set);
 
@@ -3676,7 +3685,7 @@ xpath_deref(struct lyxp_set **args, uint16_t UNUSED(arg_count), struct lyxp_set 
             target = p[LY_ARRAY_COUNT(p) - 1].node;
             ly_path_free(set->ctx, p);
 
-            lyxp_set_scnode_insert_node(set, target, LYXP_NODE_ELEM);
+            LY_CHECK_RET(lyxp_set_scnode_insert_node(set, target, LYXP_NODE_ELEM, NULL));
         }
 
         return rc;
@@ -5291,7 +5300,7 @@ moveto_root(struct lyxp_set *set, uint32_t options)
 
     if (options & LYXP_SCNODE_ALL) {
         set_scnode_clear_ctx(set);
-        lyxp_set_scnode_insert_node(set, NULL, set->root_type);
+        lyxp_set_scnode_insert_node(set, NULL, set->root_type, NULL);
     } else {
         set->type = LYXP_SET_NODE_SET;
         set->used = 0;
@@ -5561,7 +5570,6 @@ cleanup:
 static LY_ERR
 moveto_scnode(struct lyxp_set *set, const struct lys_module *mod, const char *ncname, uint32_t options)
 {
-    int idx;
     uint8_t temp_ctx = 0;
     uint32_t getnext_opts;
     uint32_t orig_used, i;
@@ -5585,6 +5593,8 @@ moveto_scnode(struct lyxp_set *set, const struct lys_module *mod, const char *nc
 
     orig_used = set->used;
     for (i = 0; i < orig_used; ++i) {
+        uint32_t idx;
+
         if (set->val.scnodes[i].in_ctx != 1) {
             if (set->val.scnodes[i].in_ctx != -2) {
                 continue;
@@ -5607,10 +5617,10 @@ moveto_scnode(struct lyxp_set *set, const struct lys_module *mod, const char *nc
                 /* module may not be implemented */
                 while (mod->implemented && (iter = lys_getnext(iter, NULL, mod->compiled, getnext_opts))) {
                     if (!moveto_scnode_check(iter, set->root_type, set->context_op, ncname, mod)) {
-                        idx = lyxp_set_scnode_insert_node(set, iter, LYXP_NODE_ELEM);
-                        LY_CHECK_RET(idx < 0, LY_EMEM);
+                        LY_CHECK_RET(lyxp_set_scnode_insert_node(set, iter, LYXP_NODE_ELEM, &idx));
+
                         /* we need to prevent these nodes from being considered in this moveto */
-                        if (((uint32_t)idx < orig_used) && ((uint32_t)idx > i)) {
+                        if ((idx < orig_used) && (idx > i)) {
                             set->val.scnodes[idx].in_ctx = 2;
                             temp_ctx = 1;
                         }
@@ -5629,9 +5639,9 @@ moveto_scnode(struct lyxp_set *set, const struct lys_module *mod, const char *nc
             iter = NULL;
             while ((iter = lys_getnext(iter, start_parent, NULL, getnext_opts))) {
                 if (!moveto_scnode_check(iter, set->root_type, set->context_op, ncname, (mod ? mod : set->local_mod))) {
-                    idx = lyxp_set_scnode_insert_node(set, iter, LYXP_NODE_ELEM);
-                    LY_CHECK_RET(idx < 0, LY_EMEM);
-                    if (((uint32_t)idx < orig_used) && ((uint32_t)idx > i)) {
+                    LY_CHECK_RET(lyxp_set_scnode_insert_node(set, iter, LYXP_NODE_ELEM, &idx));
+
+                    if ((idx < orig_used) && (idx > i)) {
                         set->val.scnodes[idx].in_ctx = 2;
                         temp_ctx = 1;
                     }
@@ -5751,7 +5761,6 @@ static LY_ERR
 moveto_scnode_alldesc(struct lyxp_set *set, const struct lys_module *mod, const char *ncname, uint32_t options)
 {
     uint32_t i, orig_used;
-    int idx;
     const struct lysc_node *next, *elem, *start;
     LY_ERR rc;
 
@@ -5787,14 +5796,16 @@ moveto_scnode_alldesc(struct lyxp_set *set, const struct lys_module *mod, const 
 
             rc = moveto_scnode_check(elem, set->root_type, set->context_op, ncname, mod);
             if (!rc) {
-                if ((idx = lyxp_set_scnode_dup_node_check(set, elem, LYXP_NODE_ELEM, i)) > -1) {
+                uint32_t idx;
+
+                if (lyxp_set_scnode_contains(set, elem, LYXP_NODE_ELEM, i, &idx)) {
                     set->val.scnodes[idx].in_ctx = 1;
                     if ((uint32_t)idx > i) {
                         /* we will process it later in the set */
                         goto skip_children;
                     }
                 } else {
-                    lyxp_set_scnode_insert_node(set, elem, LYXP_NODE_ELEM);
+                    LY_CHECK_RET(lyxp_set_scnode_insert_node(set, elem, LYXP_NODE_ELEM, NULL));
                 }
             } else if (rc == LY_EINVAL) {
                 goto skip_children;
@@ -6201,7 +6212,7 @@ moveto_scnode_self(struct lyxp_set *set, uint8_t all_desc, uint32_t options)
                         continue;
                     }
 
-                    lyxp_set_scnode_insert_node(set, iter, LYXP_NODE_ELEM);
+                    LY_CHECK_RET(lyxp_set_scnode_insert_node(set, iter, LYXP_NODE_ELEM, NULL));
                     /* throw away the insert index, we want to consider that node again, recursively */
                 }
             }
@@ -6214,7 +6225,7 @@ moveto_scnode_self(struct lyxp_set *set, uint8_t all_desc, uint32_t options)
                     continue;
                 }
 
-                lyxp_set_scnode_insert_node(set, iter, LYXP_NODE_ELEM);
+                LY_CHECK_RET(lyxp_set_scnode_insert_node(set, iter, LYXP_NODE_ELEM, NULL));
             }
         }
     }
@@ -6310,8 +6321,7 @@ moveto_parent(struct lyxp_set *set, uint8_t all_desc, uint32_t options)
 static LY_ERR
 moveto_scnode_parent(struct lyxp_set *set, uint8_t all_desc, uint32_t options)
 {
-    int idx;
-    uint32_t i, orig_used;
+    uint32_t i, orig_used, idx;
     uint8_t temp_ctx = 0;
     const struct lysc_node *node, *new_node;
     enum lyxp_node_type new_type;
@@ -6361,9 +6371,8 @@ moveto_scnode_parent(struct lyxp_set *set, uint8_t all_desc, uint32_t options)
             new_type = LYXP_NODE_ELEM;
         }
 
-        idx = lyxp_set_scnode_insert_node(set, new_node, new_type);
-        LY_CHECK_RET(idx < 0, LY_EMEM);
-        if (((uint32_t)idx < orig_used) && ((uint32_t)idx > i)) {
+        LY_CHECK_RET(lyxp_set_scnode_insert_node(set, new_node, new_type, &idx));
+        if ((idx < orig_used) && (idx > i)) {
             set->val.scnodes[idx].in_ctx = 2;
             temp_ctx = 1;
         }
@@ -8593,7 +8602,7 @@ lyxp_atomize(struct lyxp_expr *exp, LY_PREFIX_FORMAT format, const struct lys_mo
     tok_idx = 0;
     memset(set, 0, sizeof *set);
     set->type = LYXP_SET_SCNODE_SET;
-    lyxp_set_scnode_insert_node(set, real_ctx_scnode, ctx_scnode_type);
+    LY_CHECK_RET(lyxp_set_scnode_insert_node(set, real_ctx_scnode, ctx_scnode_type, NULL));
     set->val.scnodes[0].in_ctx = -2;
     set->ctx = ctx;
     set->ctx_scnode = ctx_scnode;

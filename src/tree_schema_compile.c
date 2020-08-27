@@ -6810,8 +6810,8 @@ lys_compile_unres_when_cyclic(struct lyxp_set *set, const struct lysc_node *node
                     /* skip roots'n'stuff */
                     if (tmp_set.val.scnodes[j].type == LYXP_NODE_ELEM) {
                         /* try to find this node in our set */
-                        int idx = lyxp_set_scnode_dup_node_check(set, tmp_set.val.scnodes[j].scnode, LYXP_NODE_ELEM, -1);
-                        if ((idx > -1) && (set->val.scnodes[idx].in_ctx == -1)) {
+                        uint32_t idx;
+                        if (lyxp_set_scnode_contains(set, tmp_set.val.scnodes[j].scnode, LYXP_NODE_ELEM, -1, &idx) && (set->val.scnodes[idx].in_ctx == -1)) {
                             LOGVAL(set->ctx, LY_VLOG_LYSC, node, LY_VCODE_CIRC_WHEN, node->name, set->val.scnodes[idx].scnode->name);
                             ret = LY_EVALID;
                             goto cleanup;
