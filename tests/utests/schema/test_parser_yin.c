@@ -3508,7 +3508,7 @@ test_action_elem(void **state)
                 "</action>"
            ELEMENT_WRAPPER_END;
     /* there must be parent for action */
-    act_meta.parent = NULL + 1;
+    act_meta.parent = (void*)1;
     assert_int_equal(test_element_helper(st, data, &act_meta, NULL, NULL), LY_SUCCESS);
     act_meta.parent = NULL;
     assert_non_null(actions->parent);
