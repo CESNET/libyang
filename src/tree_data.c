@@ -6759,15 +6759,12 @@ lyd_find_sibling_val_key_value(char **next_key, struct lys_node *key)
     }
     ++ptr;
 
-    /* optional module name */
-    if (!strncmp(ptr, lys_node_module(key)->name, strlen(lys_node_module(key)->name))) {
-        ptr += strlen(lys_node_module(key)->name);
-
-        /* ":" */
-        if (ptr[0] != ':') {
-            goto error;
-        }
-        ++ptr;
+    /* optional module name, we are not checking it */
+    for (ptr2 = ptr; ptr2[0] && (ptr2[0] != '=') && (ptr2[0] != ':'); ++ptr2);
+    if (!ptr2[0]) {
+        goto error;
+    } else if (ptr2[0] == ':') {
+        ptr = ptr2 + 1;
     }
 
     /* key name */
