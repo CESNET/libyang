@@ -25,7 +25,7 @@ set(CMAKE_MACOSX_RPATH TRUE)
 # micro version is changed with a set of small changes or bugfixes anywhere in the project.
 set(LIBYANG_MAJOR_VERSION 1)
 set(LIBYANG_MINOR_VERSION 0)
-set(LIBYANG_MICRO_VERSION 189)
+set(LIBYANG_MICRO_VERSION 190)
 set(LIBYANG_VERSION ${LIBYANG_MAJOR_VERSION}.${LIBYANG_MINOR_VERSION}.${LIBYANG_MICRO_VERSION})
 
 # Version of the library
