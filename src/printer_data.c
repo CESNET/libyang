@@ -56,12 +56,14 @@ lyd_print_all(struct ly_out *out, const struct lyd_node *root, LYD_FORMAT format
     /* reset the number of printed bytes */
     out->func_printed = 0;
 
-    /* get first top-level sibling */
-    while (root->parent) {
-        root = (struct lyd_node *)root->parent;
-    }
-    while (root->prev->next) {
-        root = root->prev;
+    if (root) {
+        /* get first top-level sibling */
+        while (root->parent) {
+            root = (struct lyd_node *)root->parent;
+        }
+        while (root->prev->next) {
+            root = root->prev;
+        }
     }
 
     /* print each top-level sibling */
