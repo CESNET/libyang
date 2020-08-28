@@ -2474,7 +2474,6 @@ lys_compile_leafref_features_validate(const struct lysc_node *refnode, const str
     LY_ERR ret = LY_EVALID;
     const struct lysc_node *iter;
     LY_ARRAY_COUNT_TYPE u, v;
-    uint32_t count;
     struct ly_set features = {0};
 
     for (iter = refnode; iter; iter = iter->parent) {
@@ -2490,7 +2489,6 @@ lys_compile_leafref_features_validate(const struct lysc_node *refnode, const str
     /* we should have, in features set, a superset of features applicable to the target node.
      * If the feature is not present, we don;t have a subset of features applicable
      * to the leafref itself. */
-    count = features.count;
     for (iter = target; iter; iter = iter->parent) {
         if (iter->iffeatures) {
             LY_ARRAY_FOR(iter->iffeatures, u) {
