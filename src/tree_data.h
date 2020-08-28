@@ -1199,7 +1199,8 @@ int lyd_find_sibling_set(const struct lyd_node *siblings, const struct lyd_node 
  *              LYS_LEAFLIST:
  *                  Searched instance value.
  *              LYS_LIST:
- *                  Searched instance all ordered key values in the form of "[key1='val1'][key2='val2']...".
+ *                  Searched instance all ordered key values in the form of "[key1='val1'][key2='val2']...",
+ *                  while the key name may have optional prefixes their module names.
  * @param[out] match Found data node, NULL if not found.
  * @return 0 on success (even on not found), -1 on error.
  */
