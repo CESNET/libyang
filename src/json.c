@@ -764,7 +764,7 @@ lyjson_ctx_status(struct lyjson_ctx *jsonctx, uint32_t index)
     } else if (jsonctx->status.count == index) {
         return LYJSON_ROOT;
     } else {
-        return (enum LYJSON_PARSER_STATUS)jsonctx->status.objs[jsonctx->status.count - (index + 1)];
+        return (enum LYJSON_PARSER_STATUS)(uintptr_t)jsonctx->status.objs[jsonctx->status.count - (index + 1)];
     }
 }
 
