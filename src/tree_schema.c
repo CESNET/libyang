@@ -554,6 +554,7 @@ lysc_iffeature_value(const struct lysc_iffeature *iff)
 static LY_ERR
 lys_feature_change(const struct lys_module *mod, const char *name, uint8_t value, uint8_t skip_checks)
 {
+    LY_ERR ret = LY_SUCCESS;
     uint8_t all = 0;
     LY_ARRAY_COUNT_TYPE u, disabled_count;
     uint32_t changed_count;
@@ -594,8 +595,7 @@ run:
                     continue;
                 } else {
                     /* feature already set correctly */
-                    ly_set_free(changed, NULL);
-                    return LY_SUCCESS;
+                    goto cleanup;
                 }
             }
 
@@ -611,8 +611,8 @@ run:
                                 LOGERR(ctx, LY_EDENIED,
                                     "Feature \"%s\" cannot be enabled since it is disabled by its if-feature condition(s).",
                                     f->name);
-                                ly_set_free(changed, NULL);
-                                return LY_EDENIED;
+                                ret = LY_EDENIED;
+                                goto cleanup;
                             }
                         }
                     }
@@ -625,7 +625,8 @@ run:
             }
 
             /* remember the changed feature */
-            LY_CHECK_RET(ly_set_add(changed, f, LY_SET_OPT_USEASLIST, NULL));
+            ret = ly_set_add(changed, f, LY_SET_OPT_USEASLIST, NULL);
+            LY_CHECK_GOTO(ret, cleanup);
 
             if (!all) {
                 /* stop in case changing a single feature */
@@ -638,8 +639,8 @@ next:
 
     if (!all && !changed->count) {
         LOGERR(ctx, LY_EINVAL, "Feature \"%s\" not found in module \"%s\".", name, mod->name);
-        ly_set_free(changed, NULL);
-        return LY_ENOTFOUND;
+        ret = LY_ENOTFOUND;
+        goto cleanup;
     }
 
     if (value && all && disabled_count) {
@@ -661,8 +662,8 @@ next:
                 f->flags &= ~LYS_FENABLED;
             }
 
-            ly_set_free(changed, NULL);
-            return LY_EDENIED;
+            ret = LY_EDENIED;
+            goto cleanup;
         } else {
             /* we did some change in last run, try it again */
             changed_count = changed->count;
@@ -687,15 +688,17 @@ next:
                     /* the feature must be disabled now */
                     (*df)->flags &= ~LYS_FENABLED;
                     /* add the feature into the list of changed features */
-                    LY_CHECK_RET(ly_set_add(changed, *df, LY_SET_OPT_USEASLIST, NULL));
+                    ret = ly_set_add(changed, *df, LY_SET_OPT_USEASLIST, NULL);
+                    LY_CHECK_GOTO(ret, cleanup);
                     break;
                 }
             }
         }
     }
 
+cleanup:
     ly_set_free(changed, NULL);
-    return LY_SUCCESS;
+    return ret;
 }
 
 API LY_ERR

@@ -90,14 +90,17 @@ matching_node(const struct lyd_node *node1, const struct lyd_node *node2)
  *
  * @param[in] ctx JSON printer context.
  * @param[in] node First node of the array.
+ * @return LY_ERR value.
  */
-static void
+static LY_ERR
 json_print_array_open(struct jsonpr_ctx *ctx, const struct lyd_node *node)
 {
     /* leaf-list's content is always printed on a single line */
     ly_print_(ctx->out, "[%s", (!node->schema || node->schema->nodetype != LYS_LEAFLIST) && DO_FORMAT ? "\n" : "");
-    ly_set_add(&ctx->open, (void *)node, 0, NULL);
+    LY_CHECK_RET(ly_set_add(&ctx->open, (void *)node, 0, NULL));
     LEVEL_INC;
+
+    return LY_SUCCESS;
 }
 
 /**
@@ -661,7 +664,7 @@ json_print_leaf_list(struct jsonpr_ctx *ctx, const struct lyd_node *node)
 {
     if (!is_open_array(ctx, node)) {
         LY_CHECK_RET(json_print_member(ctx, node, 0));
-        json_print_array_open(ctx, node);
+        LY_CHECK_RET(json_print_array_open(ctx, node));
     } else if (node->schema->nodetype == LYS_LEAFLIST) {
         ly_print_(ctx->out, ",");
     }
@@ -766,7 +769,7 @@ json_print_opaq(struct jsonpr_ctx *ctx, const struct lyd_node_opaq *node)
         LY_CHECK_RET(json_print_member2(ctx, node->parent, node->format, &node->prefix, node->name, 0));
 
         if (node->hint & LYD_NODE_OPAQ_ISLIST) {
-            json_print_array_open(ctx, (struct lyd_node *)node);
+            LY_CHECK_RET(json_print_array_open(ctx, (struct lyd_node *)node));
             LEVEL_INC;
         }
     }

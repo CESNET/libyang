@@ -5290,22 +5290,25 @@ moveto_resolve_model(const char **qname, uint16_t *qname_len, struct lyxp_set *s
  *
  * @param[in,out] set Set to use.
  * @param[in] options Xpath options.
+ * @return LY_ERR value.
  */
-static void
+static LY_ERR
 moveto_root(struct lyxp_set *set, uint32_t options)
 {
     if (!set) {
-        return;
+        return LY_SUCCESS;
     }
 
     if (options & LYXP_SCNODE_ALL) {
         set_scnode_clear_ctx(set);
-        lyxp_set_scnode_insert_node(set, NULL, set->root_type, NULL);
+        LY_CHECK_RET(lyxp_set_scnode_insert_node(set, NULL, set->root_type, NULL));
     } else {
         set->type = LYXP_SET_NODE_SET;
         set->used = 0;
         set_insert_node(set, NULL, 0, set->root_type, 0);
     }
+
+    return LY_SUCCESS;
 }
 
 /**
@@ -7237,11 +7240,10 @@ static LY_ERR
 eval_absolute_location_path(struct lyxp_expr *exp, uint16_t *tok_idx, struct lyxp_set *set, uint32_t options)
 {
     uint8_t all_desc;
-    LY_ERR rc;
 
     if (set) {
         /* no matter what tokens follow, we need to be at the root */
-        moveto_root(set, options);
+        LY_CHECK_RET(moveto_root(set, options));
     }
 
     /* '/' RelativeLocationPath? */
@@ -7261,8 +7263,7 @@ eval_absolute_location_path(struct lyxp_expr *exp, uint16_t *tok_idx, struct lyx
         case LYXP_TOKEN_AT:
         case LYXP_TOKEN_NAMETEST:
         case LYXP_TOKEN_NODETYPE:
-            rc = eval_relative_location_path(exp, tok_idx, all_desc, set, options);
-            LY_CHECK_RET(rc);
+            LY_CHECK_RET(eval_relative_location_path(exp, tok_idx, all_desc, set, options));
             break;
         default:
             break;
@@ -7276,8 +7277,7 @@ eval_absolute_location_path(struct lyxp_expr *exp, uint16_t *tok_idx, struct lyx
                lyxp_print_token(exp->tokens[*tok_idx]), exp->tok_pos[*tok_idx]);
         ++(*tok_idx);
 
-        rc = eval_relative_location_path(exp, tok_idx, all_desc, set, options);
-        LY_CHECK_RET(rc);
+        LY_CHECK_RET(eval_relative_location_path(exp, tok_idx, all_desc, set, options));
     }
 
     return LY_SUCCESS;

@@ -119,7 +119,7 @@ ly_xml_get_prefix(const struct lys_module *mod, void *data)
 {
     struct ly_set *ns_list = data;
 
-    ly_set_add(ns_list, (void *)mod, 0, NULL);
+    LY_CHECK_RET(ly_set_add(ns_list, (void *)mod, 0, NULL), NULL);
     return mod->prefix;
 }
 

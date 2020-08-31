@@ -689,7 +689,8 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
     LY_CHECK_RET(ly_set_new(&set));
     LY_LIST_FOR(first, diter) {
         if (diter->schema == snode) {
-            LY_CHECK_RET(ly_set_add(set, (void *)diter, LY_SET_OPT_USEASLIST, NULL));
+            ret = ly_set_add(set, (void *)diter, LY_SET_OPT_USEASLIST, NULL);
+            LY_CHECK_GOTO(ret, cleanup);
         }
     }
 
