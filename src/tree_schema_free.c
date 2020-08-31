@@ -26,7 +26,6 @@
 #include "xpath.h"
 
 void lysp_grp_free(struct ly_ctx *ctx, struct lysp_grp *grp);
-void lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node);
 void lysc_extension_free(struct ly_ctx *ctx, struct lysc_ext **ext);
 
 static void
@@ -759,13 +758,18 @@ lysc_node_choice_free(struct ly_ctx *ctx, struct lysc_node_choice *node)
 {
     struct lysc_node *child, *child_next;
 
-    if (node->cases) {
-        LY_LIST_FOR_SAFE(node->cases->child, child_next, child) {
-            lysc_node_free(ctx, child);
-        }
-        LY_LIST_FOR_SAFE((struct lysc_node *)node->cases, child_next, child) {
-            lysc_node_free(ctx, child);
-        }
+    LY_LIST_FOR_SAFE((struct lysc_node *)node->cases, child_next, child) {
+        lysc_node_free(ctx, child);
+    }
+}
+
+static void
+lysc_node_case_free(struct ly_ctx *ctx, struct lysc_node_case *node)
+{
+    struct lysc_node *child, *child_next;
+
+    LY_LIST_FOR_SAFE(node->child, child_next, child) {
+        lysc_node_free(ctx, child);
     }
 }
 
@@ -801,7 +805,7 @@ lysc_node_free(struct ly_ctx *ctx, struct lysc_node *node)
         lysc_node_choice_free(ctx, (struct lysc_node_choice *)node);
         break;
     case LYS_CASE:
-        /* nothing specific */
+        lysc_node_case_free(ctx, (struct lysc_node_case *)node);
         break;
     case LYS_ANYDATA:
     case LYS_ANYXML:

@@ -1358,11 +1358,7 @@ lysc_node_children_p(const struct lysc_node *node, uint16_t flags)
     case LYS_CONTAINER:
         return &((struct lysc_node_container *)node)->child;
     case LYS_CHOICE:
-        if (((struct lysc_node_choice *)node)->cases) {
-            return &((struct lysc_node_choice *)node)->cases->child;
-        } else {
-            return NULL;
-        }
+        return (struct lysc_node **)&((struct lysc_node_choice *)node)->cases;
     case LYS_CASE:
         return &((struct lysc_node_case *)node)->child;
     case LYS_LIST:

@@ -112,9 +112,10 @@ next:
             next = (struct lysc_node *)(&notifs[u + 1]);
         }
         goto repeat;
+    } else {
+        next = last->next;
     }
 
-    next = last->next;
 repeat:
     if (next && parent && parent->nodetype == LYS_CASE && next->parent != parent) {
         /* inside case (as an explicit parent, not when diving into it from choice),
@@ -147,8 +148,15 @@ check:
     case LYS_ANYDATA:
     case LYS_LIST:
     case LYS_LEAFLIST:
-    case LYS_CASE:
         break;
+    case LYS_CASE:
+        if (options & LYS_GETNEXT_WITHCASE) {
+            break;
+        } else {
+            /* go into */
+            next = ((struct lysc_node_case *)next)->child;
+        }
+        goto repeat;
     case LYS_CONTAINER:
         if (!(((struct lysc_node_container *)next)->flags & LYS_PRESENCE) && (options & LYS_GETNEXT_INTONPCONT)) {
             if (((struct lysc_node_container *)next)->child) {
@@ -162,7 +170,7 @@ check:
         break;
     case LYS_CHOICE:
         if (options & LYS_GETNEXT_WITHCHOICE) {
-            return next;
+            break;
         } else if ((options & LYS_GETNEXT_NOCHOICE) || !((struct lysc_node_choice *)next)->cases) {
             next = next->next;
         } else {
