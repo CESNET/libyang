@@ -2975,7 +2975,7 @@ lyd_path_position_predicate(const struct lyd_node *node, char **buffer, size_t *
     if (node->parent) {
         first = node->parent->child;
     } else {
-        for (first = node; node->prev->next; node = node->prev) {}
+        for (first = node; first->prev->next; first = first->prev) {}
     }
     pos = 1;
     for (iter = first; iter != node; iter = iter->next) {
