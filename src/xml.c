@@ -867,6 +867,10 @@ parse_attr(struct ly_ctx *ctx, const char *data, unsigned int *len, struct lyxml
                 start = c + 1;
 
                 /* look for the prefix in namespaces */
+                if (prefix) {
+                    LOGVAL(ctx, LYE_XML_INVAL, LY_VLOG_NONE, NULL, "prefix start, \":\" already parsed");
+                    goto error;
+                }
                 prefix = malloc((c - data + 1) * sizeof *prefix);
                 LY_CHECK_ERR_GOTO(!prefix, LOGMEM(ctx), error);
                 memcpy(prefix, data, c - data);
