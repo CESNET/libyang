@@ -4638,46 +4638,28 @@ lys_compile_change_mandatory(struct lysc_ctx *ctx, struct lysc_node *node, uint1
 }
 
 /**
- * @brief Compile parsed uses statement - resolve target grouping and connect its content into parent.
- * If present, also apply uses's modificators.
+ * @brief Find grouping for a uses.
  *
- * @param[in] ctx Compile context
- * @param[in] uses_p Parsed uses schema node.
- * @param[in] parent Compiled parent node where the content of the referenced grouping is supposed to be connected. It is
- * NULL for top-level nodes, in such a case the module where the node will be connected is taken from
- * the compile context.
- * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
+ * @param[in] ctx Compile context.
+ * @param[in] uses_p Parsed uses node.
+ * @param[out] gpr_p Found grouping on success.
+ * @param[out] grp_mod Module of @p grp_p on success.
+ * @return LY_ERR value.
  */
 static LY_ERR
-lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lysc_node *parent, struct lysc_node **first_p)
+lys_compile_uses_find_grouping(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lysp_grp **grp_p,
+        struct lys_module **grp_mod)
 {
     struct lysp_node *node_p;
-    struct lysc_node *node, *child, *iter;
-    /* context_node_fake allows us to temporarily isolate the nodes inserted from the grouping instead of uses */
-    struct lysc_node_container context_node_fake =
-    {.nodetype = LYS_CONTAINER,
-        .module = ctx->mod,
-        .flags = parent ? parent->flags : 0,
-        .child = NULL, .next = NULL,
-        .prev = (struct lysc_node *)&context_node_fake,
-        .actions = NULL, .notifs = NULL};
-    struct lysp_grp *grp = NULL;
+    struct lysp_grp *grp;
     LY_ARRAY_COUNT_TYPE u, v;
-    uint32_t grp_stack_count;
     uint8_t found = 0;
     const char *id, *name, *prefix;
     size_t prefix_len, name_len;
-    struct lys_module *mod, *mod_old;
-    struct lysp_refine *rfn;
-    LY_ERR ret = LY_SUCCESS;
-    uint32_t min, max;
-    uint16_t flags;
-    struct ly_set refined = {0};
-    struct lysc_when **when, *when_shared;
-    struct lysp_augment **augments = NULL;
-    LY_ARRAY_COUNT_TYPE actions_index = 0, notifs_index = 0;
-    struct lysc_notif **notifs = NULL;
-    struct lysc_action **actions = NULL;
+    struct lys_module *mod;
+
+    *grp_p = NULL;
+    *grp_mod = NULL;
 
     /* search for the grouping definition */
     id = uses_p->name;
@@ -4707,25 +4689,26 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
     if (!found) {
         /* search in top-level groupings of the main module ... */
         grp = mod->parsed->groupings;
-        if (grp) {
-            for (u = 0; !found && u < LY_ARRAY_COUNT(grp); ++u) {
-                if (!strcmp(grp[u].name, name)) {
-                    grp = &grp[u];
-                    found = 1;
-                }
+        LY_ARRAY_FOR(grp, u) {
+            if (!strcmp(grp[u].name, name)) {
+                grp = &grp[u];
+                found = 1;
+                break;
             }
         }
-        if (!found && mod->parsed->includes) {
+        if (!found) {
             /* ... and all the submodules */
-            for (u = 0; !found && u < LY_ARRAY_COUNT(mod->parsed->includes); ++u) {
+            LY_ARRAY_FOR(mod->parsed->includes, u) {
                 grp = mod->parsed->includes[u].submodule->groupings;
-                if (grp) {
-                    for (v = 0; !found && v < LY_ARRAY_COUNT(grp); ++v) {
-                        if (!strcmp(grp[v].name, name)) {
-                            grp = &grp[v];
-                            found = 1;
-                        }
+                LY_ARRAY_FOR(grp, v) {
+                    if (!strcmp(grp[v].name, name)) {
+                        grp = &grp[v];
+                        found = 1;
+                        break;
                     }
+                }
+                if (found) {
+                    break;
                 }
             }
         }
@@ -4736,141 +4719,34 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
         return LY_EVALID;
     }
 
-    /* grouping must not reference themselves - stack in ctx maintains list of groupings currently being applied */
-    grp_stack_count = ctx->groupings.count;
-    LY_CHECK_RET(ly_set_add(&ctx->groupings, (void *)grp, 0, NULL));
-    if (grp_stack_count == ctx->groupings.count) {
-        /* the target grouping is already in the stack, so we are already inside it -> circular dependency */
-        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
-               "Grouping \"%s\" references itself through a uses statement.", grp->name);
-        return LY_EVALID;
-    }
     if (!(ctx->options & LYSC_OPT_GROUPING)) {
         /* remember that the grouping is instantiated to avoid its standalone validation */
         grp->flags |= LYS_USED_GRP;
     }
 
-    /* switch context's mod_def */
-    mod_old = ctx->mod_def;
-    ctx->mod_def = mod;
+    *grp_p = grp;
+    *grp_mod = mod;
+    return LY_SUCCESS;
+}
 
-    /* check status */
-    ret = lysc_check_status(ctx, uses_p->flags, mod_old, uses_p->name, grp->flags, mod, grp->name);
-    LY_CHECK_GOTO(ret, cleanup);
+static LY_ERR
+lys_compile_refines(struct lysc_ctx *ctx, struct lysp_refine *refines, const struct lysc_node *context_node)
+{
+    struct lysc_node *node;
+    LY_ARRAY_COUNT_TYPE u;
+    struct lysp_refine *rfn;
+    LY_ERR ret = LY_SUCCESS;
+    uint32_t min, max;
+    uint16_t flags;
+    struct ly_set refined = {0};
 
-    /* remember the currently last child before processing the uses - it is needed to split the siblings to corretly
-     * applu refine and augment only to the nodes from the uses */
-    if (parent) {
-        if (parent->nodetype == LYS_CASE) {
-            child = (struct lysc_node *)lysc_node_children(parent->parent, ctx->options & LYSC_OPT_RPC_MASK);
-        } else {
-            child = (struct lysc_node *)lysc_node_children(parent, ctx->options & LYSC_OPT_RPC_MASK);
-        }
-    } else if (ctx->mod->compiled->data) {
-        child = ctx->mod->compiled->data;
-    } else {
-        child = NULL;
-    }
-    /* remember the last child */
-    if (child) {
-        child = child->prev;
-    }
-
-    /* compile data nodes */
-    LY_LIST_FOR(grp->data, node_p) {
-        /* 0x3 in uses_status is a special bits combination to be able to detect status flags from uses */
-        ret = lys_compile_node(ctx, node_p, parent, (uses_p->flags & LYS_STATUS_MASK) | 0x3);
-        LY_CHECK_GOTO(ret, cleanup);
-    }
-
-    /* split the children and add the uses's data into the fake context node */
-    if (child) {
-        context_node_fake.child = child->next;
-    } else if (parent) {
-        context_node_fake.child = (struct lysc_node *)lysc_node_children(parent, ctx->options & LYSC_OPT_RPC_MASK);
-    } else if (ctx->mod->compiled->data) {
-        context_node_fake.child = ctx->mod->compiled->data;
-    }
-    if (context_node_fake.child) {
-        /* remember child as the last data node added by grouping to fix the list later */
-        child = context_node_fake.child->prev;
-        context_node_fake.child->prev = NULL;
-    }
-
-    when_shared = NULL;
-    LY_LIST_FOR(context_node_fake.child, iter) {
-        iter->parent = (struct lysc_node *)&context_node_fake;
-
-        /* pass uses's when to all the data children, actions and notifications are ignored */
-        if (uses_p->when) {
-            LY_ARRAY_NEW_GOTO(ctx->ctx, iter->when, when, ret, cleanup);
-            if (!when_shared) {
-                ret = lys_compile_when(ctx, uses_p->when, uses_p->flags, parent, when);
-                LY_CHECK_GOTO(ret, cleanup);
-
-                if (!(ctx->options & LYSC_OPT_GROUPING)) {
-                    /* do not check "when" semantics in a grouping */
-                    ret = ly_set_add(&ctx->xpath, iter, 0, NULL);
-                    LY_CHECK_GOTO(ret, cleanup);
-                }
-
-                when_shared = *when;
-            } else {
-                ++when_shared->refcount;
-                (*when) = when_shared;
-
-                if (!(ctx->options & LYSC_OPT_GROUPING)) {
-                    /* in this case check "when" again for all children because of dummy node check */
-                    ret = ly_set_add(&ctx->xpath, iter, 0, NULL);
-                    LY_CHECK_GOTO(ret, cleanup);
-                }
-            }
-        }
-    }
-
-    /* compile actions */
-    actions = parent ? lysc_node_actions_p(parent) : &ctx->mod->compiled->rpcs;
-    if (actions) {
-        actions_index = *actions ? LY_ARRAY_COUNT(*actions) : 0;
-        COMPILE_ARRAY1_GOTO(ctx, grp->actions, *actions, parent, u, lys_compile_action, 0, ret, cleanup);
-        if (*actions && (uses_p->augments || uses_p->refines)) {
-            /* but for augment and refine, we need to separate the compiled grouping's actions to avoid modification of others */
-            LY_ARRAY_CREATE_GOTO(ctx->ctx, context_node_fake.actions, LY_ARRAY_COUNT(*actions) - actions_index, ret, cleanup);
-            LY_ARRAY_COUNT(context_node_fake.actions) = LY_ARRAY_COUNT(*actions) - actions_index;
-            memcpy(context_node_fake.actions, &(*actions)[actions_index], LY_ARRAY_COUNT(context_node_fake.actions) * sizeof **actions);
-        }
-    }
-
-    /* compile notifications */
-    notifs = parent ? lysc_node_notifs_p(parent) : &ctx->mod->compiled->notifs;
-    if (notifs) {
-        notifs_index = *notifs ? LY_ARRAY_COUNT(*notifs) : 0;
-        COMPILE_ARRAY1_GOTO(ctx, grp->notifs, *notifs, parent, u, lys_compile_notif, 0, ret, cleanup);
-        if (*notifs && (uses_p->augments || uses_p->refines)) {
-            /* but for augment and refine, we need to separate the compiled grouping's notification to avoid modification of others */
-            LY_ARRAY_CREATE_GOTO(ctx->ctx, context_node_fake.notifs, LY_ARRAY_COUNT(*notifs) - notifs_index, ret, cleanup);
-            LY_ARRAY_COUNT(context_node_fake.notifs) = LY_ARRAY_COUNT(*notifs) - notifs_index;
-            memcpy(context_node_fake.notifs, &(*notifs)[notifs_index], LY_ARRAY_COUNT(context_node_fake.notifs) * sizeof **notifs);
-        }
-    }
-
-    /* sort and apply augments */
-    ret = lys_compile_augment_sort(ctx, uses_p->augments, NULL, &augments);
-    LY_CHECK_GOTO(ret, cleanup);
-    LY_ARRAY_FOR(augments, u) {
-        ret = lys_compile_augment(ctx, augments[u], (struct lysc_node *)&context_node_fake);
-        LY_CHECK_GOTO(ret, cleanup);
-    }
-
-    /* reload previous context's mod_def */
-    ctx->mod_def = mod_old;
     lysc_update_path(ctx, NULL, "{refine}");
 
     /* apply refine */
-    LY_ARRAY_FOR(uses_p->refines, struct lysp_refine, rfn) {
+    LY_ARRAY_FOR(refines, struct lysp_refine, rfn) {
         lysc_update_path(ctx, NULL, rfn->nodeid);
 
-        ret = lysc_resolve_schema_nodeid(ctx, rfn->nodeid, 0, (struct lysc_node *)&context_node_fake, ctx->mod,
+        ret = lysc_resolve_schema_nodeid(ctx, rfn->nodeid, 0, context_node, ctx->mod,
                 0, 0, (const struct lysc_node **)&node, &flags);
         LY_CHECK_GOTO(ret, cleanup);
         ret = ly_set_add(&refined, node, LY_SET_OPT_USEASLIST, NULL);
@@ -5046,7 +4922,7 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
     /* do some additional checks of the changed nodes when all the refines are applied */
     for (uint32_t i = 0; i < refined.count; ++i) {
         node = (struct lysc_node *)refined.objs[i];
-        rfn = &uses_p->refines[i];
+        rfn = &refines[i];
         lysc_update_path(ctx, NULL, rfn->nodeid);
 
         /* check possible conflict with default value (default added, mandatory left true) */
@@ -5075,12 +4951,182 @@ lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lys
                 goto cleanup;
             }
         }
+
+        lysc_update_path(ctx, NULL, NULL);
     }
+
+cleanup:
+    ly_set_erase(&refined, NULL);
+    lysc_update_path(ctx, NULL, NULL);
+    return ret;
+}
+
+/**
+ * @brief Compile parsed uses statement - resolve target grouping and connect its content into parent.
+ * If present, also apply uses's modificators.
+ *
+ * @param[in] ctx Compile context
+ * @param[in] uses_p Parsed uses schema node.
+ * @param[in] parent Compiled parent node where the content of the referenced grouping is supposed to be connected. It is
+ * NULL for top-level nodes, in such a case the module where the node will be connected is taken from
+ * the compile context.
+ * @return LY_ERR value - LY_SUCCESS or LY_EVALID.
+ */
+static LY_ERR
+lys_compile_uses(struct lysc_ctx *ctx, struct lysp_node_uses *uses_p, struct lysc_node *parent, struct lysc_node **first_p)
+{
+    struct lysp_node *node_p;
+    struct lysc_node *child, *iter;
+    /* context_node_fake allows us to temporarily isolate the nodes inserted from the grouping instead of uses */
+    struct lysc_node_container context_node_fake =
+    {.nodetype = LYS_CONTAINER,
+        .module = ctx->mod,
+        .flags = parent ? parent->flags : 0,
+        .child = NULL, .next = NULL,
+        .prev = (struct lysc_node *)&context_node_fake,
+        .actions = NULL, .notifs = NULL};
+    struct lysp_grp *grp = NULL;
+    LY_ARRAY_COUNT_TYPE u;
+    uint32_t grp_stack_count;
+    struct lys_module *grp_mod, *mod_old;
+    LY_ERR ret = LY_SUCCESS;
+    struct lysc_when **when, *when_shared;
+    struct lysp_augment **augments = NULL;
+    LY_ARRAY_COUNT_TYPE actions_index = 0, notifs_index = 0;
+    struct lysc_notif **notifs = NULL;
+    struct lysc_action **actions = NULL;
+
+    /* find the referenced grouping */
+    LY_CHECK_RET(lys_compile_uses_find_grouping(ctx, uses_p, &grp, &grp_mod));
+
+    /* grouping must not reference themselves - stack in ctx maintains list of groupings currently being applied */
+    grp_stack_count = ctx->groupings.count;
+    LY_CHECK_RET(ly_set_add(&ctx->groupings, (void *)grp, 0, NULL));
+    if (grp_stack_count == ctx->groupings.count) {
+        /* the target grouping is already in the stack, so we are already inside it -> circular dependency */
+        LOGVAL(ctx->ctx, LY_VLOG_STR, ctx->path, LYVE_REFERENCE,
+               "Grouping \"%s\" references itself through a uses statement.", grp->name);
+        return LY_EVALID;
+    }
+
+    /* switch context's mod_def */
+    mod_old = ctx->mod_def;
+    ctx->mod_def = grp_mod;
+
+    /* check status */
+    ret = lysc_check_status(ctx, uses_p->flags, mod_old, uses_p->name, grp->flags, grp_mod, grp->name);
+    LY_CHECK_GOTO(ret, cleanup);
+
+    /* remember the currently last child before processing the uses - it is needed to split the siblings to corretly
+     * applu refine and augment only to the nodes from the uses */
+    if (parent) {
+        child = (struct lysc_node *)lysc_node_children(parent, ctx->options & LYSC_OPT_RPC_MASK);
+    } else if (ctx->mod->compiled->data) {
+        child = ctx->mod->compiled->data;
+    } else {
+        child = NULL;
+    }
+    /* remember the last child */
+    if (child) {
+        child = child->prev;
+    }
+
+    /* compile data nodes */
+    LY_LIST_FOR(grp->data, node_p) {
+        /* 0x3 in uses_status is a special bits combination to be able to detect status flags from uses */
+        ret = lys_compile_node(ctx, node_p, parent, (uses_p->flags & LYS_STATUS_MASK) | 0x3);
+        LY_CHECK_GOTO(ret, cleanup);
+    }
+
+    /* split the children and add the uses's data into the fake context node */
+    if (child) {
+        context_node_fake.child = child->next;
+    } else if (parent) {
+        context_node_fake.child = (struct lysc_node *)lysc_node_children(parent, ctx->options & LYSC_OPT_RPC_MASK);
+    } else if (ctx->mod->compiled->data) {
+        context_node_fake.child = ctx->mod->compiled->data;
+    }
+    if (context_node_fake.child) {
+        /* remember child as the last data node added by grouping to fix the list later */
+        child = context_node_fake.child->prev;
+        context_node_fake.child->prev = NULL;
+    }
+
+    when_shared = NULL;
+    LY_LIST_FOR(context_node_fake.child, iter) {
+        iter->parent = (struct lysc_node *)&context_node_fake;
+
+        /* pass uses's when to all the data children, actions and notifications are ignored */
+        if (uses_p->when) {
+            LY_ARRAY_NEW_GOTO(ctx->ctx, iter->when, when, ret, cleanup);
+            if (!when_shared) {
+                ret = lys_compile_when(ctx, uses_p->when, uses_p->flags, parent, when);
+                LY_CHECK_GOTO(ret, cleanup);
+
+                if (!(ctx->options & LYSC_OPT_GROUPING)) {
+                    /* do not check "when" semantics in a grouping */
+                    ret = ly_set_add(&ctx->xpath, iter, 0, NULL);
+                    LY_CHECK_GOTO(ret, cleanup);
+                }
+
+                when_shared = *when;
+            } else {
+                ++when_shared->refcount;
+                (*when) = when_shared;
+
+                if (!(ctx->options & LYSC_OPT_GROUPING)) {
+                    /* in this case check "when" again for all children because of dummy node check */
+                    ret = ly_set_add(&ctx->xpath, iter, 0, NULL);
+                    LY_CHECK_GOTO(ret, cleanup);
+                }
+            }
+        }
+    }
+
+    /* compile actions */
+    actions = parent ? lysc_node_actions_p(parent) : &ctx->mod->compiled->rpcs;
+    if (actions) {
+        actions_index = *actions ? LY_ARRAY_COUNT(*actions) : 0;
+        COMPILE_ARRAY1_GOTO(ctx, grp->actions, *actions, parent, u, lys_compile_action, 0, ret, cleanup);
+        if (*actions && (uses_p->augments || uses_p->refines)) {
+            /* but for augment and refine, we need to separate the compiled grouping's actions to avoid modification of others */
+            LY_ARRAY_CREATE_GOTO(ctx->ctx, context_node_fake.actions, LY_ARRAY_COUNT(*actions) - actions_index, ret, cleanup);
+            LY_ARRAY_COUNT(context_node_fake.actions) = LY_ARRAY_COUNT(*actions) - actions_index;
+            memcpy(context_node_fake.actions, &(*actions)[actions_index], LY_ARRAY_COUNT(context_node_fake.actions) * sizeof **actions);
+        }
+    }
+
+    /* compile notifications */
+    notifs = parent ? lysc_node_notifs_p(parent) : &ctx->mod->compiled->notifs;
+    if (notifs) {
+        notifs_index = *notifs ? LY_ARRAY_COUNT(*notifs) : 0;
+        COMPILE_ARRAY1_GOTO(ctx, grp->notifs, *notifs, parent, u, lys_compile_notif, 0, ret, cleanup);
+        if (*notifs && (uses_p->augments || uses_p->refines)) {
+            /* but for augment and refine, we need to separate the compiled grouping's notification to avoid modification of others */
+            LY_ARRAY_CREATE_GOTO(ctx->ctx, context_node_fake.notifs, LY_ARRAY_COUNT(*notifs) - notifs_index, ret, cleanup);
+            LY_ARRAY_COUNT(context_node_fake.notifs) = LY_ARRAY_COUNT(*notifs) - notifs_index;
+            memcpy(context_node_fake.notifs, &(*notifs)[notifs_index], LY_ARRAY_COUNT(context_node_fake.notifs) * sizeof **notifs);
+        }
+    }
+
+    /* sort and apply augments */
+    ret = lys_compile_augment_sort(ctx, uses_p->augments, NULL, &augments);
+    LY_CHECK_GOTO(ret, cleanup);
+    LY_ARRAY_FOR(augments, u) {
+        ret = lys_compile_augment(ctx, augments[u], (struct lysc_node *)&context_node_fake);
+        LY_CHECK_GOTO(ret, cleanup);
+    }
+
+    /* reload previous context's mod_def */
+    ctx->mod_def = mod_old;
+
+    /* apply all refines */
+    ret = lys_compile_refines(ctx, uses_p->refines, (struct lysc_node *)&context_node_fake);
+    LY_CHECK_GOTO(ret, cleanup);
 
     if (first_p) {
         *first_p = context_node_fake.child;
     }
-    lysc_update_path(ctx, NULL, NULL);
 
 cleanup:
     /* fix connection of the children nodes from fake context node back into the parent */
@@ -5108,7 +5154,6 @@ cleanup:
     /* remove the grouping from the stack for circular groupings dependency check */
     ly_set_rm_index(&ctx->groupings, ctx->groupings.count - 1, NULL);
     assert(ctx->groupings.count == grp_stack_count);
-    ly_set_erase(&refined, NULL);
     LY_ARRAY_FREE(augments);
 
     return ret;
