@@ -652,6 +652,14 @@ void lysp_ext_instance_free(struct ly_ctx *ctx, struct lysp_ext_instance *ext);
 LY_ERR lysp_stmt_parse(struct lysc_ctx *ctx, const struct lysp_stmt *stmt, enum ly_stmt kw, void **result, struct lysp_ext_instance **exts);
 
 /**
+ * @brief Free a parsed node.
+ *
+ * @param[in] ctx libyang context.
+ * @param[in] node Node to free.
+ */
+void lysp_node_free(struct ly_ctx *ctx, struct lysp_node *node);
+
+/**
  * @brief Free the compiled type structure.
  * @param[in] ctx libyang context where the string data resides in a dictionary.
  * @param[in,out] type Compiled type structure to be freed. The structure has refcount, so it is freed only in case the value is decreased to 0.

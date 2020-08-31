@@ -152,11 +152,93 @@ test_module(void **state)
     assert_int_equal(LY_SUCCESS, ly_in_new_memory(str, &in));
     assert_int_equal(LY_SUCCESS, lys_parse_mem_module(ctx, in, LYS_IN_YANG, 1, NULL, NULL, &mod));
     ly_in_free(in, 0);
-    assert_int_equal(LY_EVALID, lys_compile(&mod, 0));
+    assert_int_equal(LY_EEXIST, lys_compile(&mod, 0));
     logbuf_assert("Duplicate identifier \"a\" of data definition/RPC/action/notification statement. /aa:a");
     assert_null(mod);
 
     *state = NULL;
+    ly_ctx_destroy(ctx, NULL);
+}
+
+static void
+test_name_collisions(void **state)
+{
+    (void) state; /* unused */
+
+    struct ly_ctx *ctx;
+    const char *yang_data;
+
+    assert_int_equal(LY_SUCCESS, ly_ctx_new(NULL, LY_CTX_DISABLE_SEARCHDIRS, &ctx));
+
+    /* top-level */
+    yang_data = "module a {namespace urn:a;prefix a;"
+            "container c;"
+            "leaf a {type empty;}"
+            "leaf c {type empty;}"
+        "}";
+    assert_int_equal(LY_EEXIST, lys_parse_mem(ctx, yang_data, LYS_IN_YANG, NULL));
+    logbuf_assert("Duplicate identifier \"c\" of data definition/RPC/action/notification statement. /a:c");
+    logbuf_clean();
+
+    yang_data = "module a {namespace urn:a;prefix a;"
+            "container c;"
+            "leaf a {type empty;}"
+            "notification c;"
+        "}";
+    assert_int_equal(LY_EEXIST, lys_parse_mem(ctx, yang_data, LYS_IN_YANG, NULL));
+    logbuf_assert("Duplicate identifier \"c\" of data definition/RPC/action/notification statement. /a:c");
+    logbuf_clean();
+
+    yang_data = "module a {namespace urn:a;prefix a;"
+            "container c;"
+            "leaf a {type empty;}"
+            "rpc c;"
+        "}";
+    assert_int_equal(LY_EEXIST, lys_parse_mem(ctx, yang_data, LYS_IN_YANG, NULL));
+    logbuf_assert("Duplicate identifier \"c\" of data definition/RPC/action/notification statement. /a:c");
+    logbuf_clean();
+
+    yang_data = "module a {namespace urn:a;prefix a;"
+            "container c;"
+            "leaf a {type empty;}"
+            "choice ch {"
+                "leaf c {type string;}"
+                "case c2 {"
+                    "leaf aa {type empty;}"
+                "}"
+            "}"
+        "}";
+    assert_int_equal(LY_EEXIST, lys_parse_mem(ctx, yang_data, LYS_IN_YANG, NULL));
+    logbuf_assert("Duplicate identifier \"c\" of data definition/RPC/action/notification statement. /a:ch/c/c");
+    logbuf_clean();
+
+    /* nested */
+    yang_data = "module a {namespace urn:a;prefix a;container c { list l {key \"k\"; leaf k {type string;}"
+            "leaf-list a {type string;}"
+            "container a;"
+        "}}}";
+    assert_int_equal(LY_EEXIST, lys_parse_mem(ctx, yang_data, LYS_IN_YANG, NULL));
+    logbuf_assert("Duplicate identifier \"a\" of data definition/RPC/action/notification statement. /a:c/l/a");
+    logbuf_clean();
+
+    yang_data = "module a {yang-version 1.1;namespace urn:a;prefix a;container c { list l {key \"k\"; leaf k {type string;}"
+            "leaf-list a {type string;}"
+            "notification a;"
+        "}}}";
+    assert_int_equal(LY_EEXIST, lys_parse_mem(ctx, yang_data, LYS_IN_YANG, NULL));
+    logbuf_assert("Duplicate identifier \"a\" of data definition/RPC/action/notification statement. /a:c/l/a");
+    logbuf_clean();
+
+    yang_data = "module a {yang-version 1.1;namespace urn:a;prefix a;container c { list l {key \"k\"; leaf k {type string;}"
+            "leaf-list a {type string;}"
+            "action a;"
+        "}}}";
+    assert_int_equal(LY_EEXIST, lys_parse_mem(ctx, yang_data, LYS_IN_YANG, NULL));
+    logbuf_assert("Duplicate identifier \"a\" of data definition/RPC/action/notification statement. /a:c/l/a");
+    logbuf_clean();
+
+    /* grouping */
+
     ly_ctx_destroy(ctx, NULL);
 }
 
@@ -490,21 +572,18 @@ test_node_choice(void **state)
     assert_non_null(cs->child);
     assert_string_equal("b", cs->child->name);
     assert_ptr_equal(cs, cs->child->parent);
-    assert_ptr_equal(ch->cases->child->next, cs->child->prev);
-    assert_ptr_equal(ch->cases->child->next->next, cs->child);
-    assert_ptr_equal(ch->cases->child->prev, cs->child);
     assert_ptr_equal(ch->dflt, cs);
 
-    assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;"
+    assert_int_equal(LY_EEXIST, lys_parse_mem(ctx, "module aa {namespace urn:aa;prefix aa;"
                               "choice ch {case a {leaf x {type string;}}leaf x {type string;}}}", LYS_IN_YANG, NULL));
     logbuf_assert("Duplicate identifier \"x\" of data definition/RPC/action/notification statement. /aa:ch/x/x");
-    assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module aa2 {namespace urn:aa2;prefix aa;"
+    assert_int_equal(LY_EEXIST, lys_parse_mem(ctx, "module aa2 {namespace urn:aa2;prefix aa;"
                         "choice ch {case a {leaf y {type string;}}case b {leaf y {type string;}}}}", LYS_IN_YANG, NULL));
     logbuf_assert("Duplicate identifier \"y\" of data definition/RPC/action/notification statement. /aa2:ch/b/y");
-    assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb;"
+    assert_int_equal(LY_EEXIST, lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb;"
                               "choice ch {case a {leaf x {type string;}}leaf a {type string;}}}", LYS_IN_YANG, NULL));
     logbuf_assert("Duplicate identifier \"a\" of case statement. /bb:ch/a");
-    assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module bb2 {namespace urn:bb2;prefix bb;"
+    assert_int_equal(LY_EEXIST, lys_parse_mem(ctx, "module bb2 {namespace urn:bb2;prefix bb;"
                         "choice ch {case b {leaf x {type string;}}case b {leaf y {type string;}}}}", LYS_IN_YANG, NULL));
     logbuf_assert("Duplicate identifier \"b\" of case statement. /bb2:ch/b");
 
@@ -595,15 +674,15 @@ test_action(void **state)
                                               LYS_IN_YANG, NULL));
     logbuf_assert("Invalid keyword \"action\" as a child of \"container\" - the statement is allowed only in YANG 1.1 modules. Line number 1.");
 
-    assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb;leaf x{type string;} rpc x;}",
+    assert_int_equal(LY_EEXIST, lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb;leaf x{type string;} rpc x;}",
                                               LYS_IN_YANG, NULL));
     logbuf_assert("Duplicate identifier \"x\" of data definition/RPC/action/notification statement. /bb:x");
-    assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module cc {yang-version 1.1; namespace urn:cc;prefix cc;container c {leaf y {type string;} action y;}}", LYS_IN_YANG, NULL));
+    assert_int_equal(LY_EEXIST, lys_parse_mem(ctx, "module cc {yang-version 1.1; namespace urn:cc;prefix cc;container c {leaf y {type string;} action y;}}", LYS_IN_YANG, NULL));
     logbuf_assert("Duplicate identifier \"y\" of data definition/RPC/action/notification statement. /cc:c/y");
-    assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module dd {yang-version 1.1; namespace urn:dd;prefix dd;container c {action z; action z;}}", LYS_IN_YANG, NULL));
+    assert_int_equal(LY_EEXIST, lys_parse_mem(ctx, "module dd {yang-version 1.1; namespace urn:dd;prefix dd;container c {action z; action z;}}", LYS_IN_YANG, NULL));
     logbuf_assert("Duplicate identifier \"z\" of data definition/RPC/action/notification statement. /dd:c/z");
     ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule eesub {belongs-to ee {prefix ee;} notification w;}");
-    assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module ee {yang-version 1.1; namespace urn:ee;prefix ee;include eesub; rpc w;}", LYS_IN_YANG, NULL));
+    assert_int_equal(LY_EEXIST, lys_parse_mem(ctx, "module ee {yang-version 1.1; namespace urn:ee;prefix ee;include eesub; rpc w;}", LYS_IN_YANG, NULL));
     logbuf_assert("Duplicate identifier \"w\" of data definition/RPC/action/notification statement. /ee:w");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module ff {yang-version 1.1; namespace urn:ff;prefix ff; rpc test {input {container a {leaf b {type string;}}}}"
@@ -669,14 +748,14 @@ test_notification(void **state)
                                               LYS_IN_YANG, NULL));
     logbuf_assert("Invalid keyword \"notification\" as a child of \"container\" - the statement is allowed only in YANG 1.1 modules. Line number 1.");
 
-    assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb;leaf x{type string;} notification x;}", LYS_IN_YANG, NULL));
+    assert_int_equal(LY_EEXIST, lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb;leaf x{type string;} notification x;}", LYS_IN_YANG, NULL));
     logbuf_assert("Duplicate identifier \"x\" of data definition/RPC/action/notification statement. /bb:x");
-    assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module cc {yang-version 1.1; namespace urn:cc;prefix cc;container c {leaf y {type string;} notification y;}}", LYS_IN_YANG, NULL));
+    assert_int_equal(LY_EEXIST, lys_parse_mem(ctx, "module cc {yang-version 1.1; namespace urn:cc;prefix cc;container c {leaf y {type string;} notification y;}}", LYS_IN_YANG, NULL));
     logbuf_assert("Duplicate identifier \"y\" of data definition/RPC/action/notification statement. /cc:c/y");
-    assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module dd {yang-version 1.1; namespace urn:dd;prefix dd;container c {notification z; notification z;}}", LYS_IN_YANG, NULL));
+    assert_int_equal(LY_EEXIST, lys_parse_mem(ctx, "module dd {yang-version 1.1; namespace urn:dd;prefix dd;container c {notification z; notification z;}}", LYS_IN_YANG, NULL));
     logbuf_assert("Duplicate identifier \"z\" of data definition/RPC/action/notification statement. /dd:c/z");
     ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "submodule eesub {belongs-to ee {prefix ee;} rpc w;}");
-    assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module ee {yang-version 1.1; namespace urn:ee;prefix ee;include eesub; notification w;}", LYS_IN_YANG, NULL));
+    assert_int_equal(LY_EEXIST, lys_parse_mem(ctx, "module ee {yang-version 1.1; namespace urn:ee;prefix ee;include eesub; notification w;}", LYS_IN_YANG, NULL));
     logbuf_assert("Duplicate identifier \"w\" of data definition/RPC/action/notification statement. /ee:w");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module ff {yang-version 1.1; namespace urn:ff;prefix ff; rpc test {input {container a {leaf b {type string;}}}}"
@@ -2276,7 +2355,7 @@ test_uses(void **state)
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module g {namespace urn:g;prefix g; grouping grp; uses grp;}", LYS_IN_YANG, &mod));
     assert_null(mod->compiled->data);
 
-    /* choise in uses */
+    /* choice in uses */
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module h {yang-version 1.1;namespace urn:h;prefix h; grouping grp {choice gch {case gc1 { leaf y { type string;}} case gc2 {leaf z {type string;}}}}"
                                         "choice ch {case one { leaf x {type string;}} case two { uses grp;}}}", LYS_IN_YANG, &mod));
     assert_non_null(mod->compiled->data);
@@ -2287,8 +2366,7 @@ test_uses(void **state)
     assert_string_equal("one", cs->name);
     assert_non_null(cs->child);
     assert_string_equal("x", cs->child->name);
-    assert_non_null(cs->child->next);
-    assert_string_equal("gch", cs->child->next->name);
+
     cs = (struct lysc_node_case *)cs->next;
     assert_non_null(cs);
     assert_string_equal("two", cs->name);
@@ -2308,7 +2386,7 @@ test_uses(void **state)
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module cc {namespace urn:cc;prefix cc;uses a:missingprefix;}", LYS_IN_YANG, &mod));
     logbuf_assert("Invalid prefix used for grouping reference. /cc:{uses='a:missingprefix'}");
 
-    assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module dd {namespace urn:dd;prefix dd;grouping grp{leaf a{type string;}}"
+    assert_int_equal(LY_EEXIST, lys_parse_mem(ctx, "module dd {namespace urn:dd;prefix dd;grouping grp{leaf a{type string;}}"
                                         "leaf a {type string;}uses grp;}", LYS_IN_YANG, &mod));
     logbuf_assert("Duplicate identifier \"a\" of data definition/RPC/action/notification statement. /dd:{uses='grp'}/dd:a");
 
@@ -2316,10 +2394,10 @@ test_uses(void **state)
                                         "uses grp {status obsolete;}}", LYS_IN_YANG, &mod));
     logbuf_assert("A \"deprecated\" status is in conflict with the parent's \"obsolete\" status. /ee:{uses='grp'}/ee:l");
 
-    assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module ff {namespace urn:ff;prefix ff;grouping grp {leaf l {type string;}}"
+    assert_int_equal(LY_EEXIST, lys_parse_mem(ctx, "module ff {namespace urn:ff;prefix ff;grouping grp {leaf l {type string;}}"
                                         "leaf l {type int8;}uses grp;}", LYS_IN_YANG, &mod));
     logbuf_assert("Duplicate identifier \"l\" of data definition/RPC/action/notification statement. /ff:{uses='grp'}/ff:l");
-    assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module fg {namespace urn:fg;prefix fg;grouping grp {leaf m {type string;}}"
+    assert_int_equal(LY_EEXIST, lys_parse_mem(ctx, "module fg {namespace urn:fg;prefix fg;grouping grp {leaf m {type string;}}"
                                         "uses grp;leaf m {type int8;}}", LYS_IN_YANG, &mod));
     logbuf_assert("Duplicate identifier \"m\" of data definition/RPC/action/notification statement. /fg:m");
 
@@ -2329,12 +2407,12 @@ test_uses(void **state)
                               "container top {uses grp {augment /g {leaf x {type int8;}}}}}", LYS_IN_YANG, &mod));
     logbuf_assert("Invalid descendant-schema-nodeid value \"/g\" - absolute-schema-nodeid used. /gg:top/{uses='grp'}/{augment='/g'}");
 
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module hh {yang-version 1.1;namespace urn:hh;prefix hh;"
+    assert_int_equal(LY_ENOTFOUND, lys_parse_mem(ctx, "module hh {yang-version 1.1;namespace urn:hh;prefix hh;"
                                         "grouping grp {notification g { description \"super g\";}}"
                                         "container top {notification h; uses grp {refine h {description \"ultra h\";}}}}", LYS_IN_YANG, &mod));
     logbuf_assert("Invalid descendant-schema-nodeid value \"h\" - target node not found. /hh:top/{uses='grp'}/{refine='h'}");
 
-    assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module ii {yang-version 1.1;namespace urn:ii;prefix ii;"
+    assert_int_equal(LY_ENOTFOUND, lys_parse_mem(ctx, "module ii {yang-version 1.1;namespace urn:ii;prefix ii;"
                                         "grouping grp {action g { description \"super g\";}}"
                                         "container top {action i; uses grp {refine i {description \"ultra i\";}}}}", LYS_IN_YANG, &mod));
     logbuf_assert("Invalid descendant-schema-nodeid value \"i\" - target node not found. /ii:top/{uses='grp'}/{refine='i'}");
@@ -2365,7 +2443,7 @@ test_refine(void **state)
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module grp {yang-version 1.1;namespace urn:grp;prefix g; feature f;typedef mytype {type string; default cheers!;}"
                                        "grouping grp {container c {leaf l {type mytype; default goodbye;}"
                                        "leaf-list ll {type mytype; default goodbye; max-elements 6;}"
-                                       "choice ch {default a; leaf a {type int8;}leaf b{type uint8;}}"
+                                       "choice ch {default ca; leaf ca {type int8;}leaf cb{type uint8;}}"
                                        "leaf x {type mytype; mandatory true; must 1;}"
                                        "anydata a {mandatory false; if-feature f; description original; reference original;}"
                                        "container c {config false; leaf l {type string;}}}}}", LYS_IN_YANG, NULL));
@@ -2373,7 +2451,7 @@ test_refine(void **state)
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module a {yang-version 1.1;namespace urn:a;prefix a;import grp {prefix g;}feature fa;"
                                         "uses g:grp {refine c/l {default hello; config false;}"
                                         "refine c/ll {default hello;default world; min-elements 2; max-elements 5;}"
-                                        "refine c/ch {default b;config true; if-feature fa;}"
+                                        "refine c/ch {default cb;config true; if-feature fa;}"
                                         "refine c/x {mandatory false; must ../ll;description refined; reference refined;}"
                                         "refine c/a {mandatory true; must 1; if-feature fa;description refined; reference refined;}"
                                         "refine c/c {config true;presence indispensable;}}}", LYS_IN_YANG, &mod));
@@ -2399,7 +2477,7 @@ test_refine(void **state)
     assert_non_null(child = llist->next);
     assert_int_equal(LYS_CHOICE, child->nodetype);
     assert_string_equal("ch", child->name);
-    assert_string_equal("b", ((struct lysc_node_choice*)child)->dflt->name);
+    assert_string_equal("cb", ((struct lysc_node_choice*)child)->dflt->name);
     assert_true(LYS_SET_DFLT & ((struct lysc_node_choice*)child)->dflt->flags);
     assert_false(LYS_SET_DFLT & ((struct lysc_node_choice*)child)->cases[0].flags);
     assert_non_null(child->iffeatures);
@@ -2465,8 +2543,8 @@ test_refine(void **state)
     logbuf_assert("Invalid refine of mandatory - choice already has \"default\" statement. /ef:{uses='g:grp'}/{refine='c/ch'}");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module ff {namespace urn:ff;prefix ff;import grp {prefix g;}"
-                                        "uses g:grp {refine c/ch/a/a {mandatory true;}}}", LYS_IN_YANG, &mod));
-    logbuf_assert("Invalid refine of mandatory under the default case. /ff:{uses='g:grp'}/{refine='c/ch/a/a'}");
+                                        "uses g:grp {refine c/ch/ca/ca {mandatory true;}}}", LYS_IN_YANG, &mod));
+    logbuf_assert("Invalid refine of mandatory under the default case. /ff:{uses='g:grp'}/{refine='c/ch/ca/ca'}");
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module gg {namespace urn:gg;prefix gg;import grp {prefix g;}"
                                         "uses g:grp {refine c/x {default hello;}}}", LYS_IN_YANG, &mod));
@@ -2562,7 +2640,6 @@ test_augment(void **state)
     assert_null(((const struct lysc_node_case*)c)->child->when);
     assert_string_equal("lc2", ((const struct lysc_node_case*)c)->child->next->name);
     assert_non_null(((const struct lysc_node_case*)c)->child->next->when);
-    assert_ptr_equal(ch->cases->child->prev, ((const struct lysc_node_case*)c)->child->next);
     assert_null(c->next);
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module f {namespace urn:f;prefix f;grouping g {leaf a {type string;}}"
@@ -2627,7 +2704,7 @@ test_augment(void **state)
                                         "augment /x {leaf a {type int8;}}}", LYS_IN_YANG, &mod));
     logbuf_assert("Invalid absolute-schema-nodeid value \"/x\" - target node not found. /aa:{augment='/x'}");
 
-    assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb; container c {leaf a {type string;}}"
+    assert_int_equal(LY_EEXIST, lys_parse_mem(ctx, "module bb {namespace urn:bb;prefix bb; container c {leaf a {type string;}}"
                                         "augment /c {leaf a {type int8;}}}", LYS_IN_YANG, &mod));
     logbuf_assert("Duplicate identifier \"a\" of data definition/RPC/action/notification statement. /bb:{augment='/c'}/a");
 
@@ -2736,14 +2813,14 @@ test_deviation(void **state)
     assert_null(((struct lysc_node_leaf*)node)->musts);
 
     ly_ctx_set_module_imp_clb(ctx, test_imp_clb, "module e {yang-version 1.1; namespace urn:e;prefix e; typedef mytype {type string; default nothing;}"
-                              "choice a {default a;leaf a {type string;} leaf b {type string;} leaf c {type string; mandatory true;}}"
-                              "choice b {default a;leaf a {type string;} leaf b {type string;}}"
+                              "choice a {default aa;leaf aa {type string;} leaf ab {type string;} leaf ac {type string; mandatory true;}}"
+                              "choice b {default ba;leaf ba {type string;} leaf bb {type string;}}"
                               "leaf c {default hello; type string;}"
                               "leaf-list d {default hello; default world; type string;}"
                               "leaf c2 {type mytype;} leaf-list d2 {type mytype;}}");
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module f {yang-version 1.1; namespace urn:f;prefix f;import e {prefix x;}"
-                                  "deviation /x:a {deviate delete {default a;}}"
-                                  "deviation /x:b {deviate delete {default x:a;}}"
+                                  "deviation /x:a {deviate delete {default aa;}}"
+                                  "deviation /x:b {deviate delete {default x:ba;}}"
                                   "deviation /x:c {deviate delete {default hello;}}"
                                   "deviation /x:d {deviate delete {default world;}}}", LYS_IN_YANG, NULL));
     assert_non_null((mod = ly_ctx_get_module_implemented(ctx, "e")));
@@ -2767,7 +2844,7 @@ test_deviation(void **state)
     assert_int_equal(0, dynamic);
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module g {yang-version 1.1; namespace urn:g;prefix g;import e {prefix x;}"
-                                  "deviation /x:b {deviate add {default x:b;}}"
+                                  "deviation /x:b {deviate add {default x:ba;}}"
                                   "deviation /x:c {deviate add {default bye;}}"
                                   "deviation /x:d {deviate add {default all; default people;}}"
                                   "deviation /x:c2 {deviate add {default hi; must 1;}}"
@@ -2777,7 +2854,7 @@ test_deviation(void **state)
     assert_null(((struct lysc_node_choice*)node)->dflt);
     assert_non_null(node = node->next);
     assert_non_null(((struct lysc_node_choice*)node)->dflt);
-    assert_string_equal("b", ((struct lysc_node_choice*)node)->dflt->name);
+    assert_string_equal("ba", ((struct lysc_node_choice*)node)->dflt->name);
     assert_non_null(leaf = (struct lysc_node_leaf*)node->next);
     assert_non_null(leaf->dflt);
     assert_string_equal("bye", leaf->dflt->realtype->plugin->print(leaf->dflt, LY_PREF_SCHEMA, NULL, &dynamic));
@@ -2806,14 +2883,14 @@ test_deviation(void **state)
     assert_int_equal(0, dynamic);
 
     assert_int_equal(LY_SUCCESS, lys_parse_mem(ctx, "module h {yang-version 1.1; namespace urn:h;prefix h;import e {prefix x;}"
-                                  "deviation /x:b {deviate replace {default x:a;}}"
+                                  "deviation /x:b {deviate replace {default x:ba;}}"
                                   "deviation /x:c {deviate replace {default hello;}}}", LYS_IN_YANG, NULL));
     assert_non_null((mod = ly_ctx_get_module_implemented(ctx, "e")));
     assert_non_null(node = mod->compiled->data);
     assert_null(((struct lysc_node_choice*)node)->dflt);
     assert_non_null(node = node->next);
     assert_non_null(((struct lysc_node_choice*)node)->dflt);
-    assert_string_equal("a", ((struct lysc_node_choice*)node)->dflt->name);
+    assert_string_equal("ba", ((struct lysc_node_choice*)node)->dflt->name);
     assert_non_null(leaf = (struct lysc_node_leaf*)node->next);
     assert_non_null(leaf->dflt);
     assert_string_equal("hello", leaf->dflt->realtype->plugin->print(leaf->dflt, LY_PREF_SCHEMA, NULL, &dynamic));
@@ -3033,7 +3110,7 @@ test_deviation(void **state)
                   "The prefix does not match any imported module of the deviation module. /ff2:{deviation='/e:b'}");
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module ff3 {namespace urn:ff3;prefix ff3; import e {prefix e;}"
                               "deviation /e:b {deviate delete {default e:b;}}}", LYS_IN_YANG, &mod));
-    logbuf_assert("Invalid deviation deleting \"default\" property \"e:b\" of choice does not match the default case name \"a\". /ff3:{deviation='/e:b'}");
+    logbuf_assert("Invalid deviation deleting \"default\" property \"e:b\" of choice does not match the default case name \"ba\". /ff3:{deviation='/e:b'}");
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module ff4 {namespace urn:ff4;prefix ff4; import e {prefix e;}"
                               "deviation /e:b {deviate delete {default ff4:a;}}}", LYS_IN_YANG, &mod));
     logbuf_assert("Invalid deviation deleting \"default\" property \"ff4:a\" of choice. The prefix does not match the default case's module. /ff4:{deviation='/e:b'}");
@@ -3049,7 +3126,7 @@ test_deviation(void **state)
 
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module gg1 {namespace urn:gg1;prefix gg1; import e {prefix e;}"
                               "deviation /e:b {deviate add {default e:a;}}}", LYS_IN_YANG, &mod));
-    logbuf_assert("Invalid deviation adding \"default\" property which already exists (with value \"a\"). /gg1:{deviation='/e:b'}");
+    logbuf_assert("Invalid deviation adding \"default\" property which already exists (with value \"ba\"). /gg1:{deviation='/e:b'}");
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module gg2 {namespace urn:gg2;prefix gg2; import e {prefix e;}"
                               "deviation /e:a {deviate add {default x:a;}}}", LYS_IN_YANG, &mod));
     logbuf_assert("Invalid deviation adding \"default\" property \"x:a\" of choice. "
@@ -3061,8 +3138,8 @@ test_deviation(void **state)
                               "deviation /e:c {deviate add {default hi;}}}", LYS_IN_YANG, &mod));
     logbuf_assert("Invalid deviation adding \"default\" property which already exists (with value \"hello\"). /gg4:{deviation='/e:c'}");
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module gg4 {namespace urn:gg4;prefix gg4; import e {prefix e;}"
-                              "deviation /e:a {deviate add {default e:c;}}}", LYS_IN_YANG, &mod));
-    logbuf_assert("Invalid deviation adding \"default\" property \"e:c\" of choice - mandatory node \"c\" under the default case. /gg4:{deviation='/e:a'}");
+                              "deviation /e:a {deviate add {default e:ac;}}}", LYS_IN_YANG, &mod));
+    logbuf_assert("Invalid deviation adding \"default\" property \"e:ac\" of choice - mandatory node \"ac\" under the default case. /gg4:{deviation='/e:a'}");
     assert_int_equal(LY_EVALID, lys_parse_mem(ctx, "module gg5 {namespace urn:gg5;prefix gg5; leaf x {type string; mandatory true;}"
                               "deviation /x {deviate add {default error;}}}", LYS_IN_YANG, &mod));
     logbuf_assert("Invalid deviation combining default value and mandatory leaf. /gg5:{deviation='/x'}");
@@ -3311,6 +3388,7 @@ int main(void)
 {
     const struct CMUnitTest tests[] = {
         cmocka_unit_test_setup_teardown(test_module, logger_setup, logger_teardown),
+        cmocka_unit_test_setup_teardown(test_name_collisions, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_type_length, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_type_range, logger_setup, logger_teardown),
         cmocka_unit_test_setup_teardown(test_type_pattern, logger_setup, logger_teardown),
