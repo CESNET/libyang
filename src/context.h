@@ -418,7 +418,7 @@ struct lys_module *ly_ctx_get_module_implemented_ns(const struct ly_ctx *ctx, co
  * @return Found schema node or NULL.
  */
 const struct lysc_node *ly_ctx_get_node(const struct ly_ctx *ctx, const struct lysc_node *ctx_node,
-        const char *data_path, uint8_t output);
+        const char *data_path, ly_bool output);
 
 /**
  * @brief Reset cached latest revision information of the schemas in the context.

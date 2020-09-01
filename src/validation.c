@@ -126,7 +126,7 @@ lyd_validate_unres(struct lyd_node **tree, struct ly_set *node_when, struct ly_s
                 /* evaluate all when expressions that affect this node's existence */
                 struct lyd_node *node = (struct lyd_node *)node_when->objs[i];
                 const struct lysc_node *schema = node->schema;
-                uint8_t unres_when = 0;
+                ly_bool unres_when = 0;
 
                 do {
                     LY_ARRAY_COUNT_TYPE u;
@@ -213,7 +213,7 @@ static LY_ERR
 lyd_validate_duplicates(const struct lyd_node *first, const struct lyd_node *node)
 {
     struct lyd_node **match_p;
-    uint8_t fail = 0;
+    ly_bool fail = 0;
 
     if ((node->schema->nodetype & (LYS_LIST | LYS_LEAFLIST)) && (node->schema->flags & LYS_CONFIG_R)) {
         /* duplicate instances allowed */
@@ -263,7 +263,7 @@ lyd_validate_cases(struct lyd_node **first, const struct lysc_node_choice *choic
 {
     const struct lysc_node *scase, *iter, *old_case = NULL, *new_case = NULL;
     struct lyd_node *match, *to_del;
-    uint8_t found;
+    ly_bool found;
 
     LY_LIST_FOR((struct lysc_node *)choic->cases, scase) {
         found = 0;
@@ -563,10 +563,12 @@ lyd_val_uniq_find_leaf(const struct lysc_node_leaf *uniq_leaf, const struct lyd_
 /**
  * @brief Callback for comparing 2 list unique leaf values.
  *
+ * Implementation of ::values_equal_cb.
+ *
  * @param[in] cb_data 0 to compare all uniques, n to compare only n-th unique.
  */
-static uint8_t
-lyd_val_uniq_list_equal(void *val1_p, void *val2_p, uint8_t UNUSED(mod), void *cb_data)
+static ly_bool
+lyd_val_uniq_list_equal(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *cb_data)
 {
     struct ly_ctx *ctx;
     struct lysc_node_list *slist;
@@ -677,7 +679,7 @@ lyd_validate_unique(const struct lyd_node *first, const struct lysc_node *snode,
     LY_ARRAY_COUNT_TYPE u, v, x = 0;
     LY_ERR ret = LY_SUCCESS;
     uint32_t hash, i, size = 0;
-    uint8_t dynamic;
+    ly_bool dynamic;
     const char *str;
     struct hash_table **uniqtables = NULL;
     struct lyd_value *val;

@@ -121,9 +121,9 @@ LY_ERR ly_set_merge(struct ly_set *trg, struct ly_set *src, uint32_t options, vo
  * @param[in] set Set to explore.
  * @param[in] object Object to be found in the set.
  * @param[out] index_p Optional pointer to return index of the searched @p object.
- * @return Boolean value (0 is false) if the @p object was found in the @p set.
+ * @return Boolean value whether the @p object was found in the @p set.
  */
-uint8_t ly_set_contains(const struct ly_set *set, void *object, uint32_t *index_p);
+ly_bool ly_set_contains(const struct ly_set *set, void *object, uint32_t *index_p);
 
 /**
  * @brief Remove all objects from the set, but keep the set container for further use.

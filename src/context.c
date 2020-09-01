@@ -51,7 +51,7 @@ static struct internal_modules_s {
     const char *name;
     const char *revision;
     const char *data;
-    uint8_t implemented;
+    ly_bool implemented;
     LYS_INFORMAT format;
 } internal_modules[] = {
     {"ietf-yang-metadata", "2016-08-05", (const char *)ietf_yang_metadata_2016_08_05_yang, 1, LYS_IN_YANG},
@@ -532,7 +532,7 @@ ly_ctx_get_submodule(const struct ly_ctx *ctx, const char *module, const char *s
 }
 
 API const struct lysc_node *
-ly_ctx_get_node(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *data_path, uint8_t output)
+ly_ctx_get_node(const struct ly_ctx *ctx, const struct lysc_node *ctx_node, const char *data_path, ly_bool output)
 {
     const struct lysc_node *snode = NULL;
     struct lyxp_expr *exp = NULL;
@@ -621,7 +621,7 @@ ylib_feature(struct lyd_node *parent, const struct lys_module *cur_mod)
 }
 
 static LY_ERR
-ylib_deviation(struct lyd_node *parent, const struct lys_module *cur_mod, uint8_t bis)
+ylib_deviation(struct lyd_node *parent, const struct lys_module *cur_mod, ly_bool bis)
 {
     LY_ARRAY_COUNT_TYPE i;
     struct lys_module *mod;
@@ -646,7 +646,7 @@ ylib_deviation(struct lyd_node *parent, const struct lys_module *cur_mod, uint8_
 }
 
 static LY_ERR
-ylib_submodules(struct lyd_node *parent, const struct lys_module *cur_mod, uint8_t bis)
+ylib_submodules(struct lyd_node *parent, const struct lys_module *cur_mod, ly_bool bis)
 {
     LY_ERR ret;
     LY_ARRAY_COUNT_TYPE i;
@@ -693,7 +693,7 @@ ly_ctx_get_yanglib_data(const struct ly_ctx *ctx, struct lyd_node **root_p)
 {
     LY_ERR ret;
     uint32_t i;
-    uint8_t bis = 0;
+    ly_bool bis = 0;
     int r;
     char id[8], *str;
     const struct lys_module *mod;

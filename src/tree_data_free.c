@@ -23,7 +23,7 @@
 #include "plugins_types.h"
 
 static void
-lyd_free_meta(struct lyd_meta *meta, uint8_t siblings)
+lyd_free_meta(struct lyd_meta *meta, ly_bool siblings)
 {
     struct lyd_meta *iter;
 
@@ -77,7 +77,7 @@ lyd_free_meta_siblings(struct lyd_meta *meta)
 }
 
 static void
-ly_free_attr(const struct ly_ctx *ctx, struct lyd_attr *attr, uint8_t siblings)
+ly_free_attr(const struct ly_ctx *ctx, struct lyd_attr *attr, ly_bool siblings)
 {
     struct lyd_attr *iter;
     LY_ARRAY_COUNT_TYPE u;
@@ -157,7 +157,7 @@ ly_free_val_prefs(const struct ly_ctx *ctx, struct ly_prefix *val_prefs)
  * @param[in] top Recursion flag to unlink the root of the subtree being freed.
  */
 static void
-lyd_free_subtree(struct lyd_node *node, uint8_t top)
+lyd_free_subtree(struct lyd_node *node, ly_bool top)
 {
     struct lyd_node *iter, *next;
     struct lyd_node *children;
@@ -222,7 +222,7 @@ lyd_free_tree(struct lyd_node *node)
 }
 
 static void
-lyd_free_(struct lyd_node *node, uint8_t top)
+lyd_free_(struct lyd_node *node, ly_bool top)
 {
     struct lyd_node *iter, *next;
 

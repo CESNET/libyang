@@ -36,7 +36,7 @@
 
 LY_ERR
 lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodeid_len, const struct lysc_node *context_node,
-        const struct lys_module *context_module, uint16_t nodetype, uint8_t implement,
+        const struct lys_module *context_module, uint16_t nodetype, ly_bool implement,
         const struct lysc_node **target, uint16_t *result_flag)
 {
     LY_ERR ret = LY_EVALID;
@@ -242,7 +242,7 @@ error:
 void
 lysp_sort_revisions(struct lysp_revision *revs)
 {
-    uint8_t i, r;
+    LY_ARRAY_COUNT_TYPE i, r;
     struct lysp_revision rev;
 
     for (i = 1, r = 0; revs && i < LY_ARRAY_COUNT(revs); i++) {
@@ -523,8 +523,12 @@ lysp_check_typedef(struct lys_parser_ctx *ctx, struct lysp_node *node, const str
     return LY_SUCCESS;
 }
 
-static uint8_t
-lysp_id_cmp(void *val1, void *val2, uint8_t UNUSED(mod), void *UNUSED(cb_data))
+/**
+ * @brief Compare identifiers.
+ * Implementation of ::values_equal_cb.
+ */
+static ly_bool
+lysp_id_cmp(void *val1, void *val2, ly_bool UNUSED(mod), void *UNUSED(cb_data))
 {
     return strcmp(val1, val2) == 0 ? 1 : 0;
 }
@@ -744,8 +748,8 @@ lysp_load_module_check(const struct ly_ctx *ctx, struct lysp_module *mod, struct
 }
 
 LY_ERR
-lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, uint8_t implement,
-        struct lys_parser_ctx *main_ctx, const char *main_name, uint8_t required, void **result)
+lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, ly_bool implement,
+        struct lys_parser_ctx *main_ctx, const char *main_name, ly_bool required, void **result)
 {
     struct ly_in *in;
     char *filepath = NULL;
@@ -803,7 +807,7 @@ cleanup:
 }
 
 LY_ERR
-lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, uint8_t implement, uint8_t require_parsed,
+lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, ly_bool implement, ly_bool require_parsed,
         struct lys_module **mod)
 {
     const char *module_data = NULL;
@@ -939,7 +943,7 @@ lysp_check_stringchar(struct lys_parser_ctx *ctx, uint32_t c)
 }
 
 LY_ERR
-lysp_check_identifierchar(struct lys_parser_ctx *ctx, uint32_t c, uint8_t first, uint8_t *prefix)
+lysp_check_identifierchar(struct lys_parser_ctx *ctx, uint32_t c, ly_bool first, uint8_t *prefix)
 {
     if (first || (prefix && (*prefix) == 1)) {
         if (!is_yangidentstartchar(c)) {
@@ -1644,7 +1648,7 @@ lysc_data_parent(const struct lysc_node *schema)
     return parent;
 }
 
-uint8_t
+ly_bool
 lysc_is_output(const struct lysc_node *schema)
 {
     const struct lysc_node *parent;
@@ -1658,7 +1662,7 @@ lysc_is_output(const struct lysc_node *schema)
     return 0;
 }
 
-API uint8_t
+API ly_bool
 lysc_is_userordered(const struct lysc_node *schema)
 {
     if (!schema || !(schema->nodetype & (LYS_LEAFLIST | LYS_LIST)) || !(schema->flags & LYS_ORDBY_USER)) {

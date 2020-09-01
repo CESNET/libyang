@@ -573,7 +573,7 @@ ly_parse_instance_predicate(const char **pred, size_t limit, LYD_FORMAT format,
     LY_ERR ret = LY_EVALID;
     const char *in = *pred;
     size_t offset = 1;
-    uint8_t expr = 0;
+    uint8_t expr = 0; /* 0 - position predicate; 1 - leaf-list-predicate; 2 - key-predicate */
     char quot;
 
     assert(in[0] == '\[');

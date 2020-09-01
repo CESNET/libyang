@@ -34,7 +34,7 @@
 volatile LY_LOG_LEVEL ly_log_level = LY_LLWRN;
 volatile uint32_t ly_log_opts = LY_LOLOG | LY_LOSTORE_LAST;
 static ly_log_clb log_clb;
-static volatile uint8_t path_flag = 1;
+static volatile ly_bool path_flag = 1;
 #ifndef NDEBUG
 volatile uint32_t ly_log_dbg_groups = 0;
 #endif
@@ -210,7 +210,7 @@ ly_verb_dbg(uint32_t dbg_groups)
 }
 
 API void
-ly_set_log_clb(ly_log_clb clb, uint8_t path)
+ly_set_log_clb(ly_log_clb clb, ly_bool path)
 {
     log_clb = clb;
     path_flag = path;
@@ -294,7 +294,7 @@ log_vprintf(const struct ly_ctx *ctx, LY_LOG_LEVEL level, LY_ERR no, LY_VECODE v
         const char *format, va_list args)
 {
     char *msg = NULL;
-    uint8_t free_strs;
+    ly_bool free_strs;
 
     if (level > ly_log_level) {
         /* do not print or store the message */

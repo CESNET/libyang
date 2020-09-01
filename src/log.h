@@ -25,6 +25,13 @@ extern "C" {
 struct ly_ctx;
 
 /**
+ * @brief Type to indicate boolean value.
+ *
+ * Do not test for actual value. Instead, handle it as true/false value in condition.
+ */
+typedef uint8_t ly_bool;
+
+/**
  * @defgroup log Logger
  * @{
  *
@@ -131,7 +138,7 @@ typedef void (*ly_log_clb)(LY_LOG_LEVEL level, const char *msg, const char *path
  *            presence) or it can be NULL, so consider it as an optional parameter. If the flag is 0, libyang will
  *            not bother with resolving the path.
  */
-void ly_set_log_clb(ly_log_clb clb, uint8_t path);
+void ly_set_log_clb(ly_log_clb clb, ly_bool path);
 
 /**
  * @brief Get logger callback.

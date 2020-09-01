@@ -71,7 +71,7 @@ struct ext_substmt_info_s ext_substmt_info[] = {
     {"unique", "tag", 0},                       /**< LYEXT_SUBSTMT_UNIQUE */
 };
 
-uint8_t
+ly_bool
 ly_is_default(const struct lyd_node *node)
 {
     const struct lysc_node_leaf *leaf;
@@ -109,7 +109,7 @@ ly_is_default(const struct lyd_node *node)
     return 1;
 }
 
-uint8_t
+ly_bool
 ly_should_print(const struct lyd_node *node, uint32_t options)
 {
     const struct lyd_node *elem;
@@ -429,7 +429,7 @@ ly_out_filepath(struct ly_out *out, const char *filepath)
 }
 
 API void
-ly_out_free(struct ly_out *out, void (*clb_arg_destructor)(void *arg), uint8_t destroy)
+ly_out_free(struct ly_out *out, void (*clb_arg_destructor)(void *arg), ly_bool destroy)
 {
     if (!out) {
         return;

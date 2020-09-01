@@ -54,7 +54,7 @@ static LY_ERR lyd_find_sibling_schema(const struct lyd_node *siblings, const str
         struct lyd_node **match);
 
 LY_ERR
-lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len, uint8_t *dynamic, uint8_t second,
+lyd_value_parse(struct lyd_node_term *node, const char *value, size_t value_len, ly_bool *dynamic, ly_bool second,
         uint32_t value_hint, LY_PREFIX_FORMAT format, void *prefix_data, const struct lyd_node *tree)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -91,7 +91,7 @@ error:
 
 /* similar to lyd_value_parse except can be used just to store the value, hence also does not support a second call */
 LY_ERR
-lyd_value_store(struct lyd_value *val, const struct lysc_node *schema, const char *value, size_t value_len, uint8_t *dynamic,
+lyd_value_store(struct lyd_value *val, const struct lysc_node *schema, const char *value, size_t value_len, ly_bool *dynamic,
         LY_PREFIX_FORMAT format, void *prefix_data)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -122,8 +122,8 @@ lyd_value_store(struct lyd_value *val, const struct lysc_node *schema, const cha
 }
 
 LY_ERR
-lyd_value_parse_meta(const struct ly_ctx *ctx, struct lyd_meta *meta, const char *value, size_t value_len, uint8_t *dynamic,
-        uint8_t second, uint32_t value_hint, LY_PREFIX_FORMAT format, void *prefix_data, const struct lysc_node *ctx_snode,
+lyd_value_parse_meta(const struct ly_ctx *ctx, struct lyd_meta *meta, const char *value, size_t value_len, ly_bool *dynamic,
+        ly_bool second, uint32_t value_hint, LY_PREFIX_FORMAT format, void *prefix_data, const struct lysc_node *ctx_snode,
         const struct lyd_node *tree)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -533,7 +533,7 @@ lyd_parse_notif(const struct ly_ctx *ctx, struct ly_in *in, LYD_FORMAT format, s
 }
 
 LY_ERR
-lyd_create_term(const struct lysc_node *schema, const char *value, size_t value_len, uint8_t *dynamic, uint32_t value_hint,
+lyd_create_term(const struct lysc_node *schema, const char *value, size_t value_len, ly_bool *dynamic, uint32_t value_hint,
         LY_PREFIX_FORMAT format, void *prefix_data, struct lyd_node **node)
 {
     LY_ERR ret;
@@ -693,7 +693,7 @@ lyd_create_any(const struct lysc_node *schema, const void *value, LYD_ANYDATA_VA
 
 LY_ERR
 lyd_create_opaq(const struct ly_ctx *ctx, const char *name, size_t name_len, const char *value, size_t value_len,
-        uint8_t *dynamic, uint32_t value_hint, LYD_FORMAT format, struct ly_prefix *val_prefs, const char *prefix, size_t pref_len,
+        ly_bool *dynamic, uint32_t value_hint, LYD_FORMAT format, struct ly_prefix *val_prefs, const char *prefix, size_t pref_len,
         const char *module_key, size_t module_key_len, struct lyd_node **node)
 {
     struct lyd_node_opaq *opaq;
@@ -1087,7 +1087,7 @@ lyd_change_term(struct lyd_node *term, const char *val_str)
     struct lyd_node_term *t;
     struct lyd_node *parent;
     struct lyd_value val = {0};
-    uint8_t dflt_change, val_change;
+    ly_bool dflt_change, val_change;
 
     LY_CHECK_ARG_RET(NULL, term, term->schema, term->schema->nodetype & LYD_NODE_TERM, LY_EINVAL);
 
@@ -1163,7 +1163,7 @@ lyd_change_meta(struct lyd_meta *meta, const char *val_str)
     LY_ERR ret = LY_SUCCESS;
     struct lyd_meta *m2;
     struct lyd_value val;
-    uint8_t val_change;
+    ly_bool val_change;
 
     LY_CHECK_ARG_RET(NULL, meta, LY_EINVAL);
 
@@ -1601,7 +1601,7 @@ lyd_insert_get_next_anchor(const struct lyd_node *first_sibling, const struct ly
 {
     const struct lysc_node *schema, *sparent;
     struct lyd_node *match = NULL;
-    uint8_t found;
+    ly_bool found;
 
     assert(new_node);
 
@@ -2118,7 +2118,7 @@ lyd_insert_meta(struct lyd_node *parent, struct lyd_meta *meta)
 
 LY_ERR
 lyd_create_meta(struct lyd_node *parent, struct lyd_meta **meta, const struct lys_module *mod, const char *name,
-        size_t name_len, const char *value, size_t value_len, uint8_t *dynamic, uint32_t value_hint, LY_PREFIX_FORMAT format,
+        size_t name_len, const char *value, size_t value_len, ly_bool *dynamic, uint32_t value_hint, LY_PREFIX_FORMAT format,
         void *prefix_data, const struct lysc_node *ctx_snode)
 {
     LY_ERR ret;
@@ -2196,7 +2196,7 @@ lyd_insert_attr(struct lyd_node *parent, struct lyd_attr *attr)
 
 LY_ERR
 lyd_create_attr(struct lyd_node *parent, struct lyd_attr **attr, const struct ly_ctx *ctx, const char *name,
-        size_t name_len, const char *value, size_t value_len, uint8_t *dynamic, uint32_t value_hint, LYD_FORMAT format,
+        size_t name_len, const char *value, size_t value_len, ly_bool *dynamic, uint32_t value_hint, LYD_FORMAT format,
         struct ly_prefix *val_prefs, const char *prefix, size_t prefix_len, const char *module_key, size_t module_key_len)
 {
     struct lyd_attr *at, *last;
@@ -2614,7 +2614,7 @@ lyd_dup_get_local_parent(const struct lyd_node *node, const struct lyd_node_inne
         struct lyd_node_inner **local_parent)
 {
     const struct lyd_node_inner *orig_parent, *iter;
-    uint8_t repeat = 1;
+    ly_bool repeat = 1;
 
     *dup_parent = NULL;
     *local_parent = NULL;
@@ -2660,7 +2660,7 @@ lyd_dup_get_local_parent(const struct lyd_node *node, const struct lyd_node_inne
 }
 
 static LY_ERR
-lyd_dup(const struct lyd_node *node, struct lyd_node_inner *parent, uint32_t options, uint8_t  nosiblings, struct lyd_node **dup)
+lyd_dup(const struct lyd_node *node, struct lyd_node_inner *parent, uint32_t options, ly_bool nosiblings, struct lyd_node **dup)
 {
     LY_ERR rc;
     const struct lyd_node *orig;          /* original node to be duplicated */
@@ -2828,10 +2828,10 @@ lyd_merge_sibling_r(struct lyd_node **first_trg, struct lyd_node *parent_trg, co
 }
 
 static LY_ERR
-lyd_merge(struct lyd_node **target, const struct lyd_node *source, uint16_t options, uint8_t nosiblings)
+lyd_merge(struct lyd_node **target, const struct lyd_node *source, uint16_t options, ly_bool nosiblings)
 {
     const struct lyd_node *sibling_src, *tmp;
-    uint8_t first;
+    ly_bool first;
 
     LY_CHECK_ARG_RET(NULL, target, LY_EINVAL);
 
@@ -2846,7 +2846,7 @@ lyd_merge(struct lyd_node **target, const struct lyd_node *source, uint16_t opti
     }
 
     LY_LIST_FOR_SAFE(source, tmp, sibling_src) {
-        first = sibling_src == source ? 1 : 0;
+        first = (sibling_src == source) ? 1 : 0;
         LY_CHECK_RET(lyd_merge_sibling_r(target, NULL, &sibling_src, options));
         if (first && !sibling_src) {
             /* source was spent (unlinked), move to the next node */
@@ -2879,7 +2879,7 @@ lyd_merge_siblings(struct lyd_node **target, const struct lyd_node *source, uint
 }
 
 static LY_ERR
-lyd_path_str_enlarge(char **buffer, size_t *buflen, size_t reqlen, uint8_t is_static)
+lyd_path_str_enlarge(char **buffer, size_t *buflen, size_t reqlen, ly_bool is_static)
 {
     /* ending \0 */
     ++reqlen;
@@ -2901,7 +2901,7 @@ lyd_path_str_enlarge(char **buffer, size_t *buflen, size_t reqlen, uint8_t is_st
 }
 
 LY_ERR
-lyd_path_list_predicate(const struct lyd_node *node, char **buffer, size_t *buflen, size_t *bufused, uint8_t is_static)
+lyd_path_list_predicate(const struct lyd_node *node, char **buffer, size_t *buflen, size_t *bufused, ly_bool is_static)
 {
     const struct lyd_node *key;
     size_t len;
@@ -2934,7 +2934,7 @@ lyd_path_list_predicate(const struct lyd_node *node, char **buffer, size_t *bufl
  * @return LY_ERR
  */
 static LY_ERR
-lyd_path_leaflist_predicate(const struct lyd_node *node, char **buffer, size_t *buflen, size_t *bufused, uint8_t is_static)
+lyd_path_leaflist_predicate(const struct lyd_node *node, char **buffer, size_t *buflen, size_t *bufused, ly_bool is_static)
 {
     size_t len;
     const char *val;
@@ -2964,7 +2964,7 @@ lyd_path_leaflist_predicate(const struct lyd_node *node, char **buffer, size_t *
  * @return LY_ERR
  */
 static LY_ERR
-lyd_path_position_predicate(const struct lyd_node *node, char **buffer, size_t *buflen, size_t *bufused, uint8_t is_static)
+lyd_path_position_predicate(const struct lyd_node *node, char **buffer, size_t *buflen, size_t *bufused, ly_bool is_static)
 {
     const struct lyd_node *first, *iter;
     size_t len;
@@ -3003,7 +3003,7 @@ cleanup:
 API char *
 lyd_path(const struct lyd_node *node, LYD_PATH_TYPE pathtype, char *buffer, size_t buflen)
 {
-    uint8_t is_static = 0;
+    ly_bool is_static = 0;
     uint32_t i, depth;
     size_t bufused = 0, len;
     const struct lyd_node *iter;
@@ -3192,8 +3192,15 @@ lyd_find_sibling_first(const struct lyd_node *siblings, const struct lyd_node *t
     return LY_SUCCESS;
 }
 
-static uint8_t
-lyd_hash_table_schema_val_equal(void *val1_p, void *val2_p, uint8_t UNUSED(mod), void *UNUSED(cb_data))
+/**
+ * @brief Comparison callback to match schema node with a schema of a data node.
+ *
+ * @param[in] val1_p Pointer to the schema node
+ * @param[in] val2_p Pointer to the data node
+ * Implementation of ::values_equal_cb.
+ */
+static ly_bool
+lyd_hash_table_schema_val_equal(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *UNUSED(cb_data))
 {
     struct lysc_node *val1;
     struct lyd_node *val2;

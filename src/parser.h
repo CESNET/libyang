@@ -167,7 +167,7 @@ size_t ly_in_parsed(const struct ly_in *in);
  * @param[in] destroy Flag to free the input data buffer (for LY_IN_MEMORY) or to
  * close stream/file descriptor (for LY_IN_FD and LY_IN_FILE)
  */
-void ly_in_free(struct ly_in *in, uint8_t destroy);
+void ly_in_free(struct ly_in *in, ly_bool destroy);
 
 #ifdef __cplusplus
 }

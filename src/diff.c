@@ -516,7 +516,7 @@ lyd_diff_attrs(const struct lyd_node *first, const struct lyd_node *second, uint
  * @return LY_ERR value.
  */
 static LY_ERR
-lyd_diff_siblings_r(const struct lyd_node *first, const struct lyd_node *second, uint16_t options, uint8_t nosiblings,
+lyd_diff_siblings_r(const struct lyd_node *first, const struct lyd_node *second, uint16_t options, ly_bool nosiblings,
         struct lyd_node **diff)
 {
     LY_ERR ret = LY_SUCCESS;
@@ -669,7 +669,7 @@ cleanup:
 }
 
 static LY_ERR
-lyd_diff(const struct lyd_node *first, const struct lyd_node *second, uint16_t options, uint8_t nosiblings, struct lyd_node **diff)
+lyd_diff(const struct lyd_node *first, const struct lyd_node *second, uint16_t options, ly_bool nosiblings, struct lyd_node **diff)
 {
     const struct ly_ctx *ctx;
 

@@ -38,9 +38,11 @@
 
 /**
  * @brief Hash table equal callback for checking hash equality only.
+ *
+ * Implementation of ::values_equal_cb.
  */
-static uint8_t
-lyb_hash_equal_cb(void *UNUSED(val1_p), void *UNUSED(val2_p), uint8_t UNUSED(mod), void *UNUSED(cb_data))
+static ly_bool
+lyb_hash_equal_cb(void *UNUSED(val1_p), void *UNUSED(val2_p), ly_bool UNUSED(mod), void *UNUSED(cb_data))
 {
     /* for this purpose, if hash matches, the value does also, we do not want 2 values to have the same hash */
     return 1;
@@ -48,9 +50,11 @@ lyb_hash_equal_cb(void *UNUSED(val1_p), void *UNUSED(val2_p), uint8_t UNUSED(mod
 
 /**
  * @brief Hash table equal callback for checking value pointer equality only.
+ *
+ * Implementation of ::values_equal_cb.
  */
-static uint8_t
-lyb_ptr_equal_cb(void *val1_p, void *val2_p, uint8_t UNUSED(mod), void *UNUSED(cb_data))
+static ly_bool
+lyb_ptr_equal_cb(void *val1_p, void *val2_p, ly_bool UNUSED(mod), void *UNUSED(cb_data))
 {
     struct lysc_node *val1 = *(struct lysc_node **)val1_p;
     struct lysc_node *val2 = *(struct lysc_node **)val2_p;
@@ -379,7 +383,7 @@ lyb_write_number(uint64_t num, size_t bytes, struct ly_out *out, struct lylyb_ct
  * @return LY_ERR value.
  */
 static LY_ERR
-lyb_write_string(const char *str, size_t str_len, uint8_t with_length, struct ly_out *out, struct lylyb_ctx *lybctx)
+lyb_write_string(const char *str, size_t str_len, ly_bool with_length, struct ly_out *out, struct lylyb_ctx *lybctx)
 {
     if (!str) {
         str = "";

@@ -32,7 +32,8 @@
 static LY_ERR
 lysp_stmt_validate_value(struct lys_parser_ctx *ctx, enum yang_arg val_type, const char *val)
 {
-    uint8_t prefix = 0, first = 1;
+    uint8_t prefix = 0;
+    ly_bool first = 1;
     uint32_t c;
     size_t utf8_char_len;
 

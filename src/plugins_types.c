@@ -174,7 +174,7 @@ ly_type_compare_simple(const struct lyd_value *val1, const struct lyd_value *val
  */
 static const char *
 ly_type_print_simple(const struct lyd_value *value, LY_PREFIX_FORMAT UNUSED(format),
-        void *UNUSED(prefix_data), uint8_t *dynamic)
+        void *UNUSED(prefix_data), ly_bool *dynamic)
 {
     *dynamic = 0;
     return (char *)value->canonical;
@@ -850,7 +850,7 @@ ly_type_store_bits(const struct ly_ctx *ctx, struct lysc_type *type, const char 
     LY_ARRAY_COUNT_TYPE u, v;
     char *errmsg = NULL;
     struct lysc_type_bits *type_bits = (struct lysc_type_bits *)type;
-    uint8_t iscanonical = 1;
+    ly_bool iscanonical = 1;
     size_t ws_count;
     size_t lws_count; /* leading whitespace count */
     const char *can = NULL;
@@ -1186,7 +1186,7 @@ ly_type_identity_isderived(struct lysc_ident *base, struct lysc_ident *der)
 }
 
 static const char *ly_type_print_identityref(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data,
-        uint8_t *dynamic);
+        ly_bool *dynamic);
 
 /**
  * @brief Validate, canonize and store value of the YANG built-in identiytref type.
@@ -1206,7 +1206,7 @@ ly_type_store_identityref(const struct ly_ctx *ctx, struct lysc_type *type, cons
     LY_ARRAY_COUNT_TYPE u;
     struct lysc_ident *ident = NULL, *identities;
     int rc = 0;
-    uint8_t dyn;
+    ly_bool dyn;
 
     if (options & LY_TYPE_OPTS_SECOND_CALL) {
         return LY_SUCCESS;
@@ -1313,7 +1313,7 @@ ly_type_compare_identityref(const struct lyd_value *val1, const struct lyd_value
  * Implementation of the ly_type_print_clb.
  */
 static const char *
-ly_type_print_identityref(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data, uint8_t *dynamic)
+ly_type_print_identityref(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data, ly_bool *dynamic)
 {
     char *result = NULL;
 
@@ -1326,7 +1326,7 @@ ly_type_print_identityref(const struct lyd_value *value, LY_PREFIX_FORMAT format
 }
 
 static const char *ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data,
-        uint8_t *dynamic);
+        ly_bool *dynamic);
 
 /**
  * @brief Validate and store value of the YANG built-in instance-identifier type.
@@ -1347,7 +1347,7 @@ ly_type_store_instanceid(const struct ly_ctx *ctx, struct lysc_type *type, const
     const struct lysc_node *ctx_scnode;
     int rc = 0;
     uint32_t prefix_opt = 0;
-    uint8_t dyn;
+    ly_bool dyn;
 
     /* init */
     *err = NULL;
@@ -1376,7 +1376,7 @@ ly_type_store_instanceid(const struct ly_ctx *ctx, struct lysc_type *type, const
         if (ly_path_eval(storage->target, tree, NULL)) {
             /* in error message we print the JSON format of the instance-identifier - in case of XML, it is not possible
              * to get the exactly same string as original, JSON is less demanding and still well readable/understandable. */
-            uint8_t dynamic = 0;
+            ly_bool dynamic = 0;
             const char *id = storage->realtype->plugin->print(storage, LY_PREF_JSON, NULL, &dynamic);
             rc = asprintf(&errmsg, "Invalid instance-identifier \"%s\" value - required instance not found.", id);
             if (dynamic) {
@@ -1523,7 +1523,7 @@ ly_type_compare_instanceid(const struct lyd_value *val1, const struct lyd_value 
  * Implementation of the ly_type_print_clb.
  */
 static const char *
-ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data, uint8_t *dynamic)
+ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data, ly_bool *dynamic)
 {
     LY_ARRAY_COUNT_TYPE u, v;
     char *result = NULL;
@@ -1550,7 +1550,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format,
                 case LY_PATH_PREDTYPE_LIST:
                 {
                     /* key-predicate */
-                    uint8_t d = 0;
+                    ly_bool d = 0;
                     const char *value = pred->value.realtype->plugin->print(&pred->value, format, prefix_data, &d);
                     char quot = '\'';
                     if (strchr(value, quot)) {
@@ -1566,7 +1566,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format,
                 case LY_PATH_PREDTYPE_LEAFLIST:
                 {
                     /* leaf-list-predicate */
-                    uint8_t d = 0;
+                    ly_bool d = 0;
                     const char *value = pred->value.realtype->plugin->print(&pred->value, format, prefix_data, &d);
                     char quot = '\'';
                     if (strchr(value, quot)) {
@@ -1603,7 +1603,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format,
                 case LY_PATH_PREDTYPE_LIST:
                 {
                     /* key-predicate */
-                    uint8_t d = 0;
+                    ly_bool d = 0;
                     const char *value = pred->value.realtype->plugin->print(&pred->value, format, prefix_data, &d);
                     char quot = '\'';
                     if (strchr(value, quot)) {
@@ -1618,7 +1618,7 @@ ly_type_print_instanceid(const struct lyd_value *value, LY_PREFIX_FORMAT format,
                 case LY_PATH_PREDTYPE_LEAFLIST:
                 {
                     /* leaf-list-predicate */
-                    uint8_t d = 0;
+                    ly_bool d = 0;
                     const char *value = pred->value.realtype->plugin->print(&pred->value, format, prefix_data, &d);
                     char quot = '\'';
                     if (strchr(value, quot)) {
@@ -1676,7 +1676,7 @@ ly_type_find_leafref(const struct lysc_type_leafref *lref, const struct lyd_node
     LY_ERR ret;
     struct lyxp_set set = {0};
     const char *val_str;
-    uint8_t dynamic;
+    ly_bool dynamic;
     uint32_t i;
 
     /* find all target data instances */
@@ -1813,7 +1813,7 @@ ly_type_compare_leafref(const struct lyd_value *val1, const struct lyd_value *va
  * Implementation of the ly_type_print_clb.
  */
 static const char *
-ly_type_print_leafref(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data, uint8_t *dynamic)
+ly_type_print_leafref(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data, ly_bool *dynamic)
 {
     return value->realtype->plugin->print(value, format, prefix_data, dynamic);
 }
@@ -2189,7 +2189,7 @@ ly_type_compare_union(const struct lyd_value *val1, const struct lyd_value *val2
  * Implementation of the ly_type_print_clb.
  */
 static const char *
-ly_type_print_union(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data, uint8_t *dynamic)
+ly_type_print_union(const struct lyd_value *value, LY_PREFIX_FORMAT format, void *prefix_data, ly_bool *dynamic)
 {
     return value->subvalue->value->realtype->plugin->print(value->subvalue->value, format, prefix_data, dynamic);
 }

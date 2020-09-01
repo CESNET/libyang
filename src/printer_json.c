@@ -261,7 +261,7 @@ json_print_string(struct ly_out *out, const char *text)
  * @return LY_ERR value.
  */
 static LY_ERR
-json_print_member(struct jsonpr_ctx *ctx, const struct lyd_node *node, uint8_t is_attr)
+json_print_member(struct jsonpr_ctx *ctx, const struct lyd_node *node, ly_bool is_attr)
 {
     PRINT_COMMA;
     if (LEVEL == 1 || json_nscmp(node, (const struct lyd_node *)node->parent)) {
@@ -289,7 +289,7 @@ json_print_member(struct jsonpr_ctx *ctx, const struct lyd_node *node, uint8_t i
  */
 static LY_ERR
 json_print_member2(struct jsonpr_ctx *ctx, const struct lyd_node *parent, LYD_FORMAT format,
-        const struct ly_prefix *prefix, const char *name, uint8_t is_attr)
+        const struct ly_prefix *prefix, const char *name, ly_bool is_attr)
 {
     const char *module_name = NULL;
 
@@ -336,7 +336,7 @@ json_print_member2(struct jsonpr_ctx *ctx, const struct lyd_node *parent, LYD_FO
 static LY_ERR
 json_print_value(struct jsonpr_ctx *ctx, const struct lyd_value *val)
 {
-    uint8_t dynamic = 0;
+    ly_bool dynamic = 0;
     const char *value = val->realtype->plugin->print(val, LY_PREF_JSON, NULL, &dynamic);
 
     /* leafref is not supported */
@@ -447,11 +447,11 @@ json_print_metadata(struct jsonpr_ctx *ctx, const struct lyd_node *node, const s
  *
  * @param[in] ctx JSON printer context.
  * @param[in] node Data node where the attributes/metadata are placed.
- * @param[in] wdmod With-defaults module to mark that default attribute is supposed to be printed.
+ * @param[in] inner Flag if the @p node is an inner node in the tree.
  * @return LY_ERR value.
  */
 static LY_ERR
-json_print_attributes(struct jsonpr_ctx *ctx, const struct lyd_node *node, uint8_t inner)
+json_print_attributes(struct jsonpr_ctx *ctx, const struct lyd_node *node, ly_bool inner)
 {
     const struct lys_module *wdmod = NULL;
 
@@ -592,7 +592,7 @@ json_print_inner(struct jsonpr_ctx *ctx, const struct lyd_node *node)
 {
     struct lyd_node *child;
     struct lyd_node *children = lyd_node_children(node, 0);
-    uint8_t has_content = 0;
+    ly_bool has_content = 0;
 
     if (node->meta || children) {
         has_content = 1;
@@ -752,7 +752,7 @@ json_print_metadata_leaflist(struct jsonpr_ctx *ctx)
 static LY_ERR
 json_print_opaq(struct jsonpr_ctx *ctx, const struct lyd_node_opaq *node)
 {
-    uint8_t first = 1, last = 1;
+    ly_bool first = 1, last = 1;
 
     if (node->hint & LYD_NODE_OPAQ_ISLIST) {
         const struct lyd_node_opaq *prev = (const struct lyd_node_opaq *)node->prev;

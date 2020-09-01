@@ -213,7 +213,7 @@ LY_ERR lysp_check_stringchar(struct lys_parser_ctx *ctx, uint32_t c);
  * If the identifier cannot be prefixed, NULL is expected.
  * @return LY_ERR values.
  */
-LY_ERR lysp_check_identifierchar(struct lys_parser_ctx *ctx, uint32_t c, uint8_t first, uint8_t *prefix);
+LY_ERR lysp_check_identifierchar(struct lys_parser_ctx *ctx, uint32_t c, ly_bool first, uint8_t *prefix);
 
 /**
  * @brief Check the currently present prefixes in the module for collision with the new one.
@@ -304,7 +304,7 @@ LY_ERR lysp_check_enum_name(struct lys_parser_ctx *ctx, const char *name, size_t
  * @param[out] mod Parsed module structure.
  * @return LY_ERR value.
  */
-LY_ERR lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, uint8_t implement, uint8_t require_parsed, struct lys_module **mod);
+LY_ERR lysp_load_module(struct ly_ctx *ctx, const char *name, const char *revision, ly_bool implement, ly_bool require_parsed, struct lys_module **mod);
 
 /**
  * @brief Parse included submodule into the simply parsed YANG module.
@@ -443,7 +443,7 @@ LY_ERR lysc_check_status(struct lysc_ctx *ctx,
  * @return LY_ERR values - LY_ENOTFOUND, LY_EVALID, LY_EDENIED or LY_SUCCESS.
  */
 LY_ERR lysc_resolve_schema_nodeid(struct lysc_ctx *ctx, const char *nodeid, size_t nodeid_len, const struct lysc_node *context_node,
-        const struct lys_module *context_module, uint16_t nodetype, uint8_t implement,
+        const struct lys_module *context_module, uint16_t nodetype, ly_bool implement,
         const struct lysc_node **target, uint16_t *result_flag);
 
 /**
@@ -496,7 +496,7 @@ typedef LY_ERR (*lys_custom_check)(const struct ly_ctx *ctx, struct lysp_module 
  * @param[out] module Parsed module.
  * @return LY_ERR value.
  */
-LY_ERR lys_parse_mem_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, uint8_t implement,
+LY_ERR lys_parse_mem_module(struct ly_ctx *ctx, struct ly_in *in, LYS_INFORMAT format, ly_bool implement,
         lys_custom_check custom_check, void *check_data, struct lys_module **module);
 
 /**
@@ -545,8 +545,8 @@ void lys_parser_fill_filepath(struct ly_ctx *ctx, struct ly_in *in, const char *
  * If it is a module, it is already in the context!
  * @return LY_ERR value, in case of LY_SUCCESS, the \arg result is always provided.
  */
-LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, uint8_t implement,
-        struct lys_parser_ctx *main_ctx, const char *main_name, uint8_t required, void **result);
+LY_ERR lys_module_localfile(struct ly_ctx *ctx, const char *name, const char *revision, ly_bool implement,
+        struct lys_parser_ctx *main_ctx, const char *main_name, ly_bool required, void **result);
 
 /**
  * @brief Compile information from the identity statement
@@ -750,7 +750,7 @@ void lys_module_free(struct lys_module *module, void (*private_destructor)(const
  * @brief Make the specific module implemented, use the provided value as flag.
  *
  * @param[in] mod Module to make implemented. It is not an error to provide already implemented module, it just does nothing.
- * @param[in] implemented Flag value for the ::lys_module#implemented item.
+ * @param[in] implemented Flag value for the ::lys_module::implemented item.
  * @return LY_SUCCESS or LY_EDENIED in case the context contains some other revision of the
  * same module which is already implemented.
  */
@@ -792,9 +792,8 @@ const struct lysc_node *lysc_data_parent(const struct lysc_node *schema);
  * @brief Learn whether a node is inside an operation output.
  *
  * @param[in] schema Schema node to examine.
- * @return 0 if it is not.
- * @return 1 if the node is under an operation output
+ * @return Boolean value whether the node is under an operation output or not.
  */
-uint8_t lysc_is_output(const struct lysc_node *schema);
+ly_bool lysc_is_output(const struct lysc_node *schema);
 
 #endif /* LY_TREE_SCHEMA_INTERNAL_H_ */

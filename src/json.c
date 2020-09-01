@@ -87,7 +87,7 @@ skip_ws(struct lyjson_ctx *jsonctx)
  * @brief Set value corresponding to the current context's status
  */
 static void
-lyjson_ctx_set_value(struct lyjson_ctx *jsonctx, const char *value, size_t value_len, uint8_t dynamic)
+lyjson_ctx_set_value(struct lyjson_ctx *jsonctx, const char *value, size_t value_len, ly_bool dynamic)
 {
     assert(jsonctx);
 
@@ -437,7 +437,7 @@ invalid_character:
             }
         }
         /* copy the value */
-        uint8_t dp_placed;
+        ly_bool dp_placed;
         size_t j;
         for (dp_placed = dp_position ? 0 : 1, j = minus; j < exponent; j++) {
             if (in[j] == '.') {
@@ -681,7 +681,7 @@ LY_ERR
 lyjson_ctx_next(struct lyjson_ctx *jsonctx, enum LYJSON_PARSER_STATUS *status)
 {
     LY_ERR ret = LY_SUCCESS;
-    uint8_t toplevel = 0;
+    ly_bool toplevel = 0;
     enum LYJSON_PARSER_STATUS prev;
 
     assert(jsonctx);
